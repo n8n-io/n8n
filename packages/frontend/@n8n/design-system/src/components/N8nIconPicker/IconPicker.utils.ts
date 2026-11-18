@@ -1,3 +1,4 @@
+import { BRAND_ICON_PREFIX, isBrandIcon, withBrandIconStyle } from '../N8nIcon/brandIcons';
 import type { IconPickerVirtualRow } from './useIconPickerVirtualRows';
 
 export type PickerCoordinate = {
@@ -27,7 +28,11 @@ export function isSamePickerCoordinate(
 }
 
 export function humanizeIconName(name: string): string {
-	return name.replace(/-/g, ' ').replace(/\b\w/g, function capitalizeLetter(letter) {
+	// A brand icon reads as its own name, without the prefix and the style.
+	const plainName = isBrandIcon(name)
+		? withBrandIconStyle(name, 'outline').slice(BRAND_ICON_PREFIX.length)
+		: name;
+	return plainName.replace(/-/g, ' ').replace(/\b\w/g, function capitalizeLetter(letter) {
 		return letter.toUpperCase();
 	});
 }

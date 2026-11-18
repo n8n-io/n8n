@@ -5,6 +5,13 @@ import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue';
 import { useI18n } from '../../composables/useI18n';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
+import {
+	BRAND_ICON_PREFIX,
+	getBrandIconStyle,
+	isBrandIcon,
+	withBrandIconStyle,
+	type BrandIconStyle,
+} from '../N8nIcon/brandIcons';
 import type { IconName } from '../N8nIcon/icons';
 import N8nIconButton from '../N8nIconButton';
 import N8nInput from '../N8nInput';
@@ -92,6 +99,8 @@ const props = withDefaults(defineProps<Props>(), {
 const model = defineModel<IconOrEmoji>();
 
 const lucideData = ref<Record<string, LucideIconMeta> | null>(null);
+/** The n8n brand icons that have an outline and a filled version, in their outline form */
+const brandIconNames = ref<string[]>([]);
 const rawEmojiSections = ref<EmojiSection[]>([]);
 const iconsLoaded = ref(false);
 const iconsLoading = ref(false);
@@ -130,8 +139,12 @@ async function loadIconData() {
 	if (iconsLoaded.value || iconsLoading.value) return;
 	iconsLoading.value = true;
 	try {
-		const module = await import('./lucideIconData');
+		const [module, brandModule] = await Promise.all([
+			import('./lucideIconData'),
+			import('../N8nIcon/brand-picker-icons'),
+		]);
 		lucideData.value = module.lucideIcons;
+		brandIconNames.value = brandModule.brandIconNames;
 		iconsLoaded.value = true;
 	} finally {
 		iconsLoading.value = false;
@@ -160,6 +173,29 @@ const selectedCategory = ref<string | null>(null);
 const selectedColor = ref<string | undefined>(
 	props.showColorPicker && model.value?.type === 'icon' ? model.value.color : undefined,
 );
+/** Outline or filled, for the n8n icons. The other icons have one style only. */
+const selectedIconStyle = ref<BrandIconStyle>(getSelectedIconStyle());
+
+function getSelectedIconStyle(): BrandIconStyle {
+	return model.value?.type === 'icon' && isBrandIcon(model.value.value)
+		? getBrandIconStyle(model.value.value)
+		: 'outline';
+}
+
+/** The n8n icons in the selected style, as search and section entries */
+const brandIconEntries = computed<Array<[string, LucideIconMeta]>>(() =>
+	brandIconNames.value.map((name) => [
+		withBrandIconStyle(name, selectedIconStyle.value),
+		{ keywords: name.slice(BRAND_ICON_PREFIX.length).split('-'), categories: [] },
+	]),
+);
+
+const matchingBrandIcons = computed(() => {
+	const tokens = searchQuery.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
+	return brandIconEntries.value.filter(([, meta]) =>
+		tokens.every((token) => meta.keywords.some((keyword) => keyword.includes(token))),
+	);
+});
 const buttonIconName = computed<IconName>(() =>
 	model.value?.type === 'icon' ? (model.value.value as IconName) : 'smile',
 );
@@ -184,11 +220,23 @@ const { filteredIcons, filteredIconSections, filteredEmojiSections } = useIconPi
 );
 
 const isSearching = computed(() => searchQuery.value.trim().length > 0);
-const iconRows = computed<IconPickerVirtualRow[]>(() =>
-	isSearching.value
-		? buildIconSearchRows(filteredIcons.value)
-		: buildIconBrowseRows(filteredIconSections.value),
-);
+// The n8n icons come first: they match the rest of the product.
+const iconRows = computed<IconPickerVirtualRow[]>(() => {
+	if (isSearching.value) {
+		return buildIconSearchRows([...matchingBrandIcons.value, ...filteredIcons.value]);
+	}
+	const brandSection =
+		!selectedCategory.value && brandIconEntries.value.length > 0
+			? [
+					{
+						key: 'n8n',
+						labelKey: 'iconPicker.iconSection.n8n',
+						icons: brandIconEntries.value,
+					},
+				]
+			: [];
+	return buildIconBrowseRows([...brandSection, ...filteredIconSections.value]);
+});
 const emojiRows = computed<IconPickerVirtualRow[]>(() =>
 	buildEmojiRows(filteredEmojiSections.value),
 );
@@ -263,6 +311,7 @@ async function handlePopupOpen() {
 	selectedCategory.value = null;
 	selectedColor.value =
 		props.showColorPicker && model.value?.type === 'icon' ? model.value.color : undefined;
+	selectedIconStyle.value = getSelectedIconStyle();
 	loadActiveTabData();
 	startProgressiveRender();
 	await nextTick();
@@ -568,6 +617,8 @@ function handlePickerKeyup(event: KeyboardEvent) {
 						<IconColorPicker
 							ref="colorPickerRef"
 							v-model="selectedColor"
+							v-model:icon-style="selectedIconStyle"
+							show-icon-style
 							data-test-id="icon-color-picker"
 						/>
 					</N8nTooltip>
@@ -648,7 +699,8 @@ function handlePickerKeyup(event: KeyboardEvent) {
 									@blur="hideItemTooltip"
 									@click="selectIcon({ type: 'icon', value: name, color: selectedColor })"
 								>
-									<N8nIcon :icon="name" :size="20" />
+									<!-- The n8n icons are drawn for 16px, so they stay crisp at that size. -->
+									<N8nIcon :icon="name" :size="isBrandIcon(name) ? 16 : 20" />
 								</N8nButton>
 							</div>
 						</template>

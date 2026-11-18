@@ -8,3 +8,4 @@ export {
 	isSupportedIconName,
 	updatedIconSet,
 } from './icons';
+export { isBrandIcon, withBrandIconStyle, type BrandIconStyle } from './brandIcons';

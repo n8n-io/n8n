@@ -64,6 +64,15 @@ vi.mock('./emojiData', () => ({
 	],
 }));
 
+// The n8n brand icons: none by default, so the counts below stay those of the Lucide mock.
+const brandIcons = vi.hoisted(() => ({ names: [] as string[] }));
+vi.mock('../N8nIcon/brand-picker-icons', () => ({
+	get brandIconNames() {
+		return brandIcons.names;
+	},
+	brandIconSet: {},
+}));
+
 // Mock is-emoji-supported to always return true in tests
 vi.mock('is-emoji-supported', () => ({
 	isEmojiSupported: () => true,
@@ -744,5 +753,76 @@ describe('IconPicker', () => {
 		// Should return no results since 'settings' is blocklisted
 		const noResults = await findByTestId('icon-picker-no-results');
 		expect(noResults).toBeVisible();
+	});
+
+	describe('n8n icons', () => {
+		beforeEach(() => {
+			brandIcons.names = ['brand:home', 'brand:inbox'];
+		});
+
+		afterEach(() => {
+			brandIcons.names = [];
+		});
+
+		function renderPicker(value = 'smile') {
+			return render(IconPicker, {
+				props: {
+					modelValue: { type: 'icon', value },
+					buttonTooltip: 'Select an icon',
+					showColorPicker: true,
+				},
+				global: { plugins: [router], components, stubs: ['N8nIcon', 'N8nButton'] },
+			});
+		}
+
+		it('lists the n8n icons first, in their outline style', async () => {
+			const { getByTestId, findAllByTestId, getByText } = renderPicker();
+
+			await fireEvent.click(getByTestId('icon-picker-button'));
+			const icons = await findAllByTestId('icon-picker-icon');
+
+			expect(getByText('n8n icons')).toBeVisible();
+			expect(icons.slice(0, 2).map((icon) => icon.getAttribute('aria-label'))).toEqual([
+				'Home',
+				'Inbox',
+			]);
+		});
+
+		it('saves the filled version after the style switches to filled', async () => {
+			const { getByTestId, findAllByTestId, getByText, emitted } = renderPicker();
+
+			await fireEvent.click(getByTestId('icon-picker-button'));
+			await fireEvent.click(getByTestId('icon-color-picker-trigger'));
+			await fireEvent.click(getByText('Filled'));
+			const icons = await findAllByTestId('icon-picker-icon');
+			await fireEvent.click(icons[0]);
+
+			const [[value]] = emitted('update:modelValue') as Array<[Record<string, unknown>]>;
+			expect(value).toMatchObject({ type: 'icon', value: 'brand:home:filled' });
+		});
+
+		it('opens in the style of the selected n8n icon', async () => {
+			const { getByTestId, findAllByTestId, emitted } = renderPicker('brand:inbox:filled');
+
+			await fireEvent.click(getByTestId('icon-picker-button'));
+			const icons = await findAllByTestId('icon-picker-icon');
+			await fireEvent.click(icons[1]);
+
+			const [[value]] = emitted('update:modelValue') as Array<[Record<string, unknown>]>;
+			expect(value).toMatchObject({ value: 'brand:inbox:filled' });
+		});
+
+		it('finds n8n icons by name before the other icons', async () => {
+			const { getByTestId, getByPlaceholderText, findAllByTestId } = renderPicker();
+
+			await fireEvent.click(getByTestId('icon-picker-button'));
+			await findAllByTestId('icon-picker-icon');
+			await fireEvent.update(getByPlaceholderText('Search...'), 'inbox');
+
+			await waitFor(async () => {
+				const icons = await findAllByTestId('icon-picker-icon');
+				expect(icons.map((icon) => icon.getAttribute('aria-label'))).toEqual(['Inbox']);
+			});
+		});
 	});
 });

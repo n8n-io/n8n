@@ -4,6 +4,8 @@ import { computed, ref, shallowRef, useCssModule, watch } from 'vue';
 import { resolveIconColor } from './iconColor';
 import { deprecatedIconSet, updatedIconSet } from './icons';
 import type { IconName, NodeIconName } from './icons';
+import type { brandIconSet as BrandIconSetType } from './brand-picker-icons';
+import { isBrandIcon } from './brandIcons';
 import type { nodeIconSet as NodeIconSetType } from './node-icons';
 import { vSvgContent } from './svgContentDirective';
 import { useInjectIconBodyLoader } from '../../composables/useIconBodyLoader';
@@ -82,9 +84,12 @@ const styles = computed(() => {
 });
 
 const nodeIconSetRef = shallowRef<typeof NodeIconSetType | null>(null);
+// The brand icons of the icon picker load on the first `brand:` name, like node icons.
+const brandIconSetRef = shallowRef<typeof BrandIconSetType | null>(null);
 
 const findComponent = (name: string) =>
 	nodeIconSetRef.value?.[name as keyof typeof NodeIconSetType] ??
+	brandIconSetRef.value?.[name] ??
 	updatedIconSet[name as keyof typeof updatedIconSet] ??
 	deprecatedIconSet[name as keyof typeof deprecatedIconSet] ??
 	null;
@@ -108,6 +113,10 @@ watch(
 			const { nodeIconSet } = await import('./node-icons');
 			nodeIconSetRef.value = nodeIconSet;
 		}
+		if (isBrandIcon(icon) && !brandIconSetRef.value) {
+			const { brandIconSet } = await import('./brand-picker-icons');
+			brandIconSetRef.value = brandIconSet;
+		}
 	},
 	{ immediate: true },
 );
@@ -121,7 +130,8 @@ watch(
 	() => [displayedIcon.value, resolvedComponent.value] as const,
 	async ([iconName, resolvedIcon]) => {
 		const requestId = ++fallbackRequestId;
-		if (resolvedIcon) {
+		// A brand icon draws once its lazy set loads; it is never a Lucide icon.
+		if (resolvedIcon || isBrandIcon(iconName)) {
 			fallbackBody.value = null;
 			return;
 		}

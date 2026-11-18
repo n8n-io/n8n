@@ -98,6 +98,9 @@ export {
 	type NodeIconName,
 	isNodeIcon,
 	updatedIconSet,
+	isBrandIcon,
+	withBrandIconStyle,
+	type BrandIconStyle,
 } from './N8nIcon';
 export { default as N8nIconButton } from './N8nIconButton';
 export { default as N8nInlineAskAssistantButton } from './InlineAskAssistantButton';

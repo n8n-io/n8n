@@ -3,13 +3,29 @@ import { computed, ref } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import N8nButton from '../N8nButton';
+import type { BrandIconStyle } from '../N8nIcon/brandIcons';
 import N8nPopover from '../N8nPopover';
+import N8nSegmentControl from '../N8nSegmentControl';
 
 defineOptions({ name: 'IconColorPicker' });
 
 const { t } = useI18n();
 
+const props = withDefaults(
+	defineProps<{
+		/** Show the outline or filled choice for the n8n icons above the colors */
+		showIconStyle?: boolean;
+	}>(),
+	{ showIconStyle: false },
+);
+
 const model = defineModel<string | undefined>({ default: undefined });
+const iconStyle = defineModel<BrandIconStyle>('iconStyle', { default: 'outline' });
+
+const iconStyleOptions = computed(() => [
+	{ label: t('iconPicker.iconStyle.outline'), value: 'outline' as const },
+	{ label: t('iconPicker.iconStyle.filled'), value: 'filled' as const },
+]);
 const isOpen = ref(false);
 
 const DEFAULT_COLOR_VARIABLE = '--node--icon--color--neutral';
@@ -102,6 +118,15 @@ defineExpose({ isOpen });
 			</N8nButton>
 		</template>
 		<template #content>
+			<div v-if="props.showIconStyle" :class="$style.iconStyle">
+				<N8nSegmentControl
+					v-model="iconStyle"
+					:options="iconStyleOptions"
+					size="small"
+					:aria-label="t('iconPicker.iconStyle.label')"
+					data-test-id="icon-style-control"
+				/>
+			</div>
 			<div
 				:class="$style.colorGrid"
 				role="radiogroup"
@@ -141,6 +166,17 @@ defineExpose({ isOpen });
 	height: var(--spacing--sm);
 	border-radius: 50%;
 	flex-shrink: 0;
+}
+
+.iconStyle {
+	display: flex;
+	justify-content: center;
+	padding: var(--spacing--2xs) var(--spacing--2xs) 0;
+
+	// The control spans the color grid below it.
+	> * {
+		flex: 1;
+	}
 }
 
 .colorGrid {

@@ -10,7 +10,13 @@ import {
 	watch,
 } from 'vue';
 import { useRoute } from 'vue-router';
-import { N8nTooltip, updatedIconSet, type IconOrEmoji } from '@n8n/design-system';
+import {
+	N8nTooltip,
+	isBrandIcon,
+	updatedIconSet,
+	withBrandIconStyle,
+	type IconOrEmoji,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -106,6 +112,8 @@ const projectItems = computed(() => railItems.value.filter((item) => item.group 
 /** The active item shows the solid twin of its icon, when the icon set has one */
 function railIcon(icon: IconOrEmoji, isActive: boolean): IconOrEmoji {
 	if (!isActive || icon.type !== 'icon') return icon;
+	// Every n8n icon from the picker has a filled version.
+	if (isBrandIcon(icon.value)) return { ...icon, value: withBrandIconStyle(icon.value, 'filled') };
 	const filled = `${icon.value}-filled`;
 	return filled in updatedIconSet ? { type: 'icon', value: filled } : icon;
 }
