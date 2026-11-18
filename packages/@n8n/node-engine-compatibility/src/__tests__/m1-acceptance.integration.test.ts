@@ -1,5 +1,6 @@
-import { createDataSource } from '@n8n/engine';
+import { createDataSource, type StepDetail } from '@n8n/engine';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import type { IPairedItemData, ITaskData } from 'n8n-workflow';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -16,6 +17,7 @@ import {
 	TRIGGER,
 } from './acceptance-fixtures';
 import { v1Workflow } from './fixtures';
+import { toV1RunExecutionData } from '../v1-execution-read';
 
 describe('M1 acceptance (integration)', () => {
 	let container: StartedPostgreSqlContainer;
@@ -498,6 +500,104 @@ describe('M1 acceptance (integration)', () => {
 		expect((bodyTwoItems as Array<{ json: { n: number } }>).map(({ json }) => json.n)).toEqual([
 			1, 2,
 		]);
+	});
+
+	//                         ┌──────┐  done  ┌───────┐
+	// ┌───────┐  ┌─────────┐  │      ├───────►│ After │
+	// │trigger├─►│Split Out├─►│ Loop │        └───────┘
+	// └───────┘  └─────────┘  │      ├─┐ loop
+	//                         └──▲───┘ │   ┌───┐
+	//                            │     └──►│ C ├──┐
+	//                            │         └───┘  │
+	//                            └────────────────┘
+	// Split Out makes three items from one, so each of them links to input item 0.
+	// Loop hands out one item per pass. C and After read the Split Out item behind
+	// their own. The walk passes through the loop node, so it needs the link that
+	// the loop node puts on each item it hands out and on each done item.
+	it('resolves paired items through the loop node, inside the body and after the loop', async () => {
+		const graph = converter.convert(
+			v1Workflow(
+				[
+					TRIGGER,
+					{
+						id: 'split-out',
+						name: 'Split Out',
+						type: 'n8n-nodes-base.splitOut',
+						typeVersion: 1,
+						parameters: { fieldToSplitOut: 'list', options: {} },
+					},
+					{
+						id: 'loop',
+						name: 'Loop',
+						type: 'n8n-nodes-base.splitInBatches',
+						typeVersion: 3,
+						parameters: { batchSize: 1 },
+					},
+					setNode('c', 'C', [
+						{ name: 'got', value: "={{ $('Split Out').item.json.list }}", type: 'number' },
+					]),
+					setNode('after', 'After', [
+						{ name: 'done', value: "={{ $('Split Out').item.json.list }}", type: 'number' },
+					]),
+				],
+				{
+					'When clicking Execute': mainTo('Split Out'),
+					'Split Out': mainTo('Loop'),
+					Loop: {
+						main: [
+							[{ node: 'After', type: 'main' as const, index: 0 }],
+							[{ node: 'C', type: 'main' as const, index: 0 }],
+						],
+					},
+					C: mainTo('Loop'),
+				},
+			),
+		);
+		const { execution, steps } = await runWorkflow(graph, [[{ json: { list: [1, 2, 3] } }]]);
+
+		expect(execution.status).toBe('completed');
+		const gotPerPass = steps
+			.filter((step) => step.nodeId === 'c')
+			.sort((a, b) => a.iteration - b.iteration)
+			.map((step) => {
+				const [items] = step.outputs ?? [];
+				return (items as Array<{ json: { got: number } }>)[0].json.got;
+			});
+		expect(gotPerPass).toEqual([1, 2, 3]);
+
+		const [afterItems] = steps.find((step) => step.nodeId === 'after')?.outputs ?? [];
+		expect((afterItems as Array<{ json: { done: number } }>).map(({ json }) => json.done)).toEqual([
+			1, 2, 3,
+		]);
+
+		// The execution view reads the same links, through the read path. Each link is
+		// shown as Node/Pass/Slot/Item, resolved as the data proxy resolves it: the
+		// item's own address if it has one, else the source of the run.
+		const { resultData } = toV1RunExecutionData(
+			graph,
+			steps.map(
+				(step): StepDetail => ({
+					...step,
+					createdAt: step.createdAt.toISOString(),
+					updatedAt: step.updatedAt.toISOString(),
+				}),
+			),
+		);
+		const linksOf = (run: ITaskData, slot: number) =>
+			(run.data?.main[slot] ?? []).map(({ pairedItem }) => {
+				const link = pairedItem as IPairedItemData;
+				const address = link.sourceOverwrite ?? run.source[link.input ?? 0];
+				return `${address?.previousNode}/${address?.previousNodeRun ?? 0}/${address?.previousNodeOutput ?? 0}/${link.item}`;
+			});
+		const [pass0, pass1, pass2, lastPass] = resultData.runData.Loop;
+		expect([linksOf(pass0, 1), linksOf(pass1, 1), linksOf(pass2, 1), linksOf(lastPass, 0)]).toEqual(
+			[
+				['Split Out/0/0/0'],
+				['Split Out/0/0/1'],
+				['Split Out/0/0/2'],
+				['C/0/0/0', 'C/1/0/0', 'C/2/0/0'],
+			],
+		);
 	});
 
 	// TODO(CAT-2874): slot-shaped IO and branching land as a PR series (#35672

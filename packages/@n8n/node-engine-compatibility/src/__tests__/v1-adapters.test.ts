@@ -176,7 +176,7 @@ describe('toV1Execution', () => {
 		const execution = toV1Execution(
 			graph,
 			{
-				loop: { 0: items({ p: 0 }), 1: items({ p: 1 }) },
+				loop: { 0: [null, [{ json: { p: 0 } }]], 1: [null, [{ json: { p: 1 } }]] },
 				body: { 0: items({ p: 0 }), 1: items({ p: 1 }) },
 			},
 			'body',

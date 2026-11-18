@@ -301,7 +301,7 @@ describe('toV1RunExecutionData', () => {
 		const looped: WorkflowGraph = {
 			nodes: [
 				{ id: 't', name: 'Trigger', type: 'trigger' },
-				{ id: 'loop', name: 'Loop', type: 'batch' },
+				{ id: 'loop', name: 'Loop', type: 'batch', config: { batchSize: 1 } },
 				{ id: 'body', name: 'Body', type: 'v1-node' },
 				{ id: 'done', name: 'Done', type: 'v1-node' },
 			],
@@ -314,9 +314,14 @@ describe('toV1RunExecutionData', () => {
 		};
 
 		const twoPasses = [
-			step({ nodeId: 'loop', iteration: 0 }),
+			step({ nodeId: 'loop', iteration: 0, outputs: [null, [{ json: { hello: 'world' } }]] }),
 			step({ id: 's2', nodeId: 'body', iteration: 0 }),
-			step({ id: 's3', nodeId: 'loop', iteration: 1 }),
+			step({
+				id: 's3',
+				nodeId: 'loop',
+				iteration: 1,
+				outputs: [null, [{ json: { hello: 'world' } }]],
+			}),
 			step({ id: 's4', nodeId: 'body', iteration: 1 }),
 			step({ id: 's5', nodeId: 'done', iteration: 0 }),
 		];
@@ -360,11 +365,22 @@ describe('toV1RunExecutionData', () => {
 
 		it('points a node after a loop at the last pass that was reported', () => {
 			const data = toV1RunExecutionData(skippedLastPass, [
-				step({ nodeId: 'loop', iteration: 0 }),
+				step({ nodeId: 'loop', iteration: 0, outputs: [null, [{ json: { hello: 'world' } }]] }),
 				step({ id: 's2', nodeId: 'body', iteration: 0 }),
-				step({ id: 's3', nodeId: 'loop', iteration: 1 }),
+				step({
+					id: 's3',
+					nodeId: 'loop',
+					iteration: 1,
+					outputs: [null, [{ json: { hello: 'world' } }]],
+				}),
 				step({ id: 's4', nodeId: 'body', iteration: 1 }),
-				step({ id: 's5', nodeId: 'loop', iteration: 2 }),
+				// The last pass of the loop sends what the body returned out of done.
+				step({
+					id: 's5',
+					nodeId: 'loop',
+					iteration: 2,
+					outputs: [[{ json: { hello: 'world' } }, { json: { hello: 'world' } }], null],
+				}),
 				// The last pass of the body ran nothing, so it gets no run data.
 				step({ id: 's6', nodeId: 'body', iteration: 2, status: 'skipped', outputs: null }),
 				step({ id: 's7', nodeId: 'aside', iteration: 0 }),
