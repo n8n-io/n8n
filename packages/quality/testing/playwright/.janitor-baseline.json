@@ -21,68 +21,6 @@
 				"hash": "140cf31c63ab"
 			}
 		],
-		"composables/BuilderWizardComposer.ts": [
-			{
-				"rule": "no-page-in-flow",
-				"line": 19,
-				"message": "Direct page access in composable: this.n8n.page.route",
-				"hash": "ceda398a2fc4"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 31,
-				"message": "Direct page access in composable: this.n8n.page.unroute",
-				"hash": "2a1f05cab567"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 52,
-				"message": "Direct page access in composable: this.n8n.page.route",
-				"hash": "ceda398a2fc4"
-			}
-		],
-		"composables/ExecutionsComposer.ts": [
-			{
-				"rule": "no-page-in-flow",
-				"line": 21,
-				"message": "Direct page access in composable: this.n8n.page.waitForResponse",
-				"hash": "2bb43ddcf2ed"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 47,
-				"message": "Direct page access in composable: this.n8n.page.waitForRequest",
-				"hash": "ff02b5de4505"
-			}
-		],
-		"composables/TestEntryComposer.ts": [
-			{
-				"rule": "no-page-in-flow",
-				"line": 90,
-				"message": "Direct page access in composable: this.n8n.page.waitForEvent",
-				"hash": "28286eb6437c"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 106,
-				"message": "Direct page access in composable: this.n8n.page.context",
-				"hash": "786c6592ceb9"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 132,
-				"message": "Direct page access in composable: this.n8n.page.context",
-				"hash": "786c6592ceb9"
-			}
-		],
-		"composables/WorkflowComposer.ts": [
-			{
-				"rule": "no-page-in-flow",
-				"line": 20,
-				"message": "Direct page access in composable: this.n8n.page.waitForResponse",
-				"hash": "652001b1476b"
-			}
-		],
 		"tests/e2e/capabilities/proxy-server.spec.ts": [
 			{
 				"rule": "api-purity",
