@@ -8,7 +8,7 @@ import {
 	type ClassDeclaration,
 } from 'ts-morph';
 
-import { getConfig } from '../config.js';
+import { getConfig, ruleAllows } from '../config.js';
 import type { Violation } from '../types.js';
 import {
 	hasContainerMember,
@@ -17,7 +17,7 @@ import {
 	isPageLevelMethod,
 	isLocatorCall,
 } from '../utils/ast-helpers.js';
-import { isExcludedPage, isComponentFile } from '../utils/paths.js';
+import { getRelativePath, isExcludedPage, isComponentFile } from '../utils/paths.js';
 
 /**
  * Check if a call expression is inside a container getter or property definition
@@ -141,8 +141,23 @@ export class ScopeLockdownRule extends AstRule<{ rootDir: string }> {
 
 				// For classes with container, check for unscoped locator calls
 				const calls = getCallExpressions(classDecl);
+				// Each call in a locator chain has the same start. Keep nested arguments independent.
+				const allowedStarts = new Set(
+					calls
+						.filter((call) =>
+							ruleAllows(
+								this.id,
+								`${getRelativePath(filePath).replaceAll('\\', '/')}:${className}: ${call.getText()}`,
+							),
+						)
+						.map((call) => call.getStart()),
+				);
 
 				for (const call of calls) {
+					if (allowedStarts.has(call.getStart())) {
+						continue;
+					}
+
 					// Skip page-level methods (goto, waitForURL, etc.)
 					if (isPageLevelMethod(call)) {
 						continue;

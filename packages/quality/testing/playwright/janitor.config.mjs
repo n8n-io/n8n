@@ -53,7 +53,18 @@ export default defineConfig({
 
 	rules: {
 		'boundary-protection': { enabled: true, severity: 'error' },
-		'scope-lockdown': { enabled: true, severity: 'error' },
+		'scope-lockdown': {
+			enabled: true,
+			severity: 'error',
+			allowPatterns: [
+				// The error-workflow list is teleported outside the settings content.
+				/^pages\/WorkflowSettingsModal\.ts:WorkflowSettingsModal: this\.page\.getByRole\('listbox'\)\.filter\(\{ visible: true \}\)$/,
+				// The save button is in the footer, outside the settings content slot.
+				/^pages\/WorkflowSettingsModal\.ts:WorkflowSettingsModal: this\.page\.getByTestId\('workflow-settings-save-button'\)\.getByRole\('button'\)$/,
+				// The sharing select teleports its options to the body.
+				/^pages\/WorkflowSharingModal\.ts:WorkflowSharingModal: this\.page\.locator\('\.el-select-dropdown__item'\)\.filter\(\{ hasText: text \}\)$/,
+			],
+		},
 		'selector-purity': { enabled: true, severity: 'error' },
 		deduplication: { enabled: true, severity: 'warning' },
 		'dead-code': { enabled: true, severity: 'warning' },
