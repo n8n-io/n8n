@@ -33,8 +33,7 @@ registration of a kind. The backend owns how leases are claimed, renewed and syn
 
 ## Consequences
 
-1. Consumers depend only on `LeaseService`. Only `LeaseService` depends on the `LeaseProvider`
-   port.
+1. Consumers depend only on `LeaseService`. Only `LeaseService` calls the `LeaseProvider` port.
 2. The registration of a kind, with its checks, lives in `LeaseService` and not in consumers or
    backends.
 3. `LeaseService` keeps the registered kinds in memory. Each process registers its kinds when it
