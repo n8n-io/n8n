@@ -1,4 +1,5 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { SettingsRepository } from '@n8n/db';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
@@ -12,10 +13,12 @@ const item = (json: IDataObject): INodeExecutionData => ({ json });
 describe('RuntimeCredentialsService', () => {
 	let service: RuntimeCredentialsService;
 	let config: MockProxy<RuntimeCredentialsConfig>;
+	let settingsRepository: MockProxy<SettingsRepository>;
 
 	beforeEach(() => {
 		config = mock<RuntimeCredentialsConfig>();
-		service = new RuntimeCredentialsService(mockLogger(), config);
+		settingsRepository = mock<SettingsRepository>();
+		service = new RuntimeCredentialsService(mockLogger(), config, settingsRepository);
 	});
 
 	describe('init', () => {
@@ -175,6 +178,77 @@ describe('RuntimeCredentialsService', () => {
 
 			expect(result.triggerItems).toBe(items);
 			expect(result.triggerItems[0].json).toBe(json);
+		});
+	});
+
+	describe('stored rules', () => {
+		const ENV_RULES = '{"env_key":{"nodeType":"*","path":"headers.authorization"}}';
+		const storedRule = {
+			alias: 'tenant_key',
+			nodeType: 'n8n-nodes-base.webhook',
+			path: 'headers.x-tenant-key',
+			description: 'Tenant API key',
+		};
+
+		beforeEach(() => {
+			config.sensitiveFieldRules = ENV_RULES;
+			service.init();
+		});
+
+		it('lists env rules and stored rules with their source', async () => {
+			settingsRepository.findByKey.mockResolvedValue(mock({ value: JSON.stringify([storedRule]) }));
+
+			await service.loadStoredRules();
+
+			expect(service.getRules()).toEqual([
+				{ alias: 'env_key', nodeType: '*', path: 'headers.authorization', source: 'env' },
+				{ ...storedRule, source: 'settings' },
+			]);
+			expect(service.getAliases().sort()).toEqual(['env_key', 'tenant_key']);
+		});
+
+		it('strips fields for stored rules', async () => {
+			settingsRepository.findByKey.mockResolvedValue(mock({ value: JSON.stringify([storedRule]) }));
+			await service.loadStoredRules();
+
+			const { artifactsByAlias } = service.strip(
+				[item({ headers: { 'x-tenant-key': 'sk_1' } })],
+				'n8n-nodes-base.webhook',
+			);
+
+			expect(artifactsByAlias).toEqual({ tenant_key: ['sk_1'] });
+		});
+
+		it('ignores an invalid stored value and keeps the env rules', async () => {
+			settingsRepository.findByKey.mockResolvedValue(mock({ value: '{"not":"a list"}' }));
+
+			await service.loadStoredRules();
+
+			expect(service.getAliases()).toEqual(['env_key']);
+		});
+
+		it('saves the rules and applies them at once', async () => {
+			await service.saveRules([storedRule]);
+
+			expect(settingsRepository.upsertByKey).toHaveBeenCalledWith(
+				'runtimeCredentials.rules',
+				JSON.stringify([storedRule]),
+				true,
+				{},
+			);
+			expect(service.getAliases()).toContain('tenant_key');
+		});
+
+		it.each([
+			[
+				'an alias that the env var already uses',
+				[{ ...storedRule, alias: 'env_key' }],
+				/already set/,
+			],
+			['a duplicate alias', [storedRule, storedRule], /more than one rule/],
+		])('refuses %s', async (_name, rules, message) => {
+			await expect(service.saveRules(rules)).rejects.toThrow(message);
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
 		});
 	});
 });

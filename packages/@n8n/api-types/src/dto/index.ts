@@ -608,6 +608,15 @@ export {
 	UpdateSecuritySettingsDto,
 } from './security-settings/security-settings.dto';
 export {
+	UpdateRuntimeCredentialRulesDto,
+	runtimeCredentialAliasSchema,
+	runtimeCredentialRuleSchema,
+	type RuntimeCredentialRule,
+	type RuntimeCredentialRuleSource,
+	type RuntimeCredentialRuleWithSource,
+	type RuntimeCredentialRulesResponse,
+} from './runtime-credentials/runtime-credential-rules.dto';
+export {
 	SecurityPolicyPublicDto,
 	UpdateSecurityPolicyDto,
 	securityPolicyPublicSchema,
