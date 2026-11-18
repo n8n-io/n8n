@@ -96,6 +96,18 @@ describe('parseDataset', () => {
 		expect(older?.entities[0].metrics.finishedCount).toBe(0);
 	});
 
+	it('reads project membership from the project list', () => {
+		const dataset = parseDataset({
+			projects: [
+				{ id: 'mine', name: 'Mine', isMember: true },
+				{ id: 'other', name: 'Other', isMember: false },
+			],
+			entities: [workflow('1', 5, { projectId: 'mine' }), workflow('2', 3, { projectId: 'other' })],
+		});
+
+		expect(dataset?.entities.map((e) => e.project?.isMember)).toEqual([true, false]);
+	});
+
 	it('names a project that the file does not list by its id', () => {
 		const dataset = parseDataset({ entities: [workflow('1', 1, { projectId: 'p-missing' })] });
 

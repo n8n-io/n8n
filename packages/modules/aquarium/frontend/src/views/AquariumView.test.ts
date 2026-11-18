@@ -93,4 +93,19 @@ describe('AquariumView', () => {
 		await waitFor(() => expect(store.dataset).toBeUndefined());
 		expect(store.entities.map((e) => e.name)).toContain('Slack ping');
 	});
+
+	it('shows only the projects of the account when "My projects" is on', async () => {
+		const { findByTestId, getByTestId, store } = await setup();
+		await waitFor(() => expect(store.hasLoaded).toBe(true));
+		const canvas = () => getByTestId('aquarium-canvas').getAttribute('aria-label');
+		const all = store.entities.length;
+		const mine = store.entities.filter((e) => e.project?.isMember).length;
+		expect(canvas()).toBe(`Aquarium with ${all} creatures`);
+
+		await fireEvent.click(await findByTestId('aquarium-my-projects'));
+
+		await waitFor(() => expect(canvas()).toBe(`Aquarium with ${mine} creatures`));
+		expect(mine).toBeGreaterThan(0);
+		expect(mine).toBeLessThan(all);
+	});
 });

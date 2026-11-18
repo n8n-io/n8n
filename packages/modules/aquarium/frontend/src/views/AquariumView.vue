@@ -20,6 +20,7 @@ import { useAquariumStore } from '../aquarium.store';
 import type { AquariumEntity, TankGrouping } from '../aquarium.types';
 import AquariumTank from '../components/AquariumTank.vue';
 import { readDatasetFile } from '../sources/dataset';
+import { hasMembership, isInMemberProject } from '../sources/membership.source';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -44,6 +45,22 @@ const grouping = computed<TankGrouping>({
 		});
 	},
 });
+
+/** Shows only projects that the account is a member of. Kept in the URL like the other options. */
+const onlyMyProjects = computed<boolean>({
+	get: () => route.query.mine === 'true',
+	set: (value) => {
+		void router.replace({ query: { ...route.query, mine: value ? 'true' : undefined } });
+	},
+});
+
+const canFilterByMembership = computed(() => hasMembership(store.entities));
+
+const visibleEntities = computed(() =>
+	onlyMyProjects.value && canFilterByMembership.value
+		? store.entities.filter(isInMemberProject)
+		: store.entities,
+);
 
 const groupingOptions = computed<Array<SegmentOption<TankGrouping>>>(() => [
 	{ label: i18n.baseText('aquarium.view.single'), value: 'single' },
@@ -113,7 +130,7 @@ watch(isDemo, load);
 	<div :class="$style.view">
 		<div :class="$style.tank">
 			<AquariumTank
-				:entities="store.entities"
+				:entities="visibleEntities"
 				:activity="store.activity"
 				:grouping="grouping"
 				:top-inset="tankTopInset"
@@ -137,6 +154,12 @@ watch(isDemo, load);
 					size="small"
 					:aria-label="i18n.baseText('aquarium.view.label')"
 					data-test-id="aquarium-grouping"
+				/>
+				<N8nSwitch
+					v-if="canFilterByMembership"
+					v-model="onlyMyProjects"
+					:label="i18n.baseText('aquarium.myProjects')"
+					data-test-id="aquarium-my-projects"
 				/>
 				<template v-if="store.dataset">
 					<N8nText size="small" data-test-id="aquarium-dataset-label">{{ datasetLabel }}</N8nText>
@@ -193,11 +216,12 @@ watch(isDemo, load);
 		</div>
 
 		<N8nText
-			v-if="store.hasLoaded && store.entities.length === 0"
+			v-if="store.hasLoaded && visibleEntities.length === 0"
 			:class="[$style.panel, $style.empty]"
 			color="text-light"
+			data-test-id="aquarium-empty"
 		>
-			{{ i18n.baseText('aquarium.empty') }}
+			{{ i18n.baseText(store.entities.length > 0 ? 'aquarium.emptyMyProjects' : 'aquarium.empty') }}
 		</N8nText>
 	</div>
 </template>

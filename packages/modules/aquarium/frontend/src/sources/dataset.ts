@@ -29,7 +29,13 @@ function projectsOf(raw: unknown): Map<string, EntityProject> {
 	for (const item of raw) {
 		if (!isRecord(item) || typeof item.id !== 'string' || typeof item.name !== 'string') continue;
 		const type = typeof item.type === 'string' ? item.type : undefined;
-		projects.set(item.id, { id: item.id, name: item.name, ...(type ? { type } : {}) });
+		const isMember = typeof item.isMember === 'boolean' ? item.isMember : undefined;
+		projects.set(item.id, {
+			id: item.id,
+			name: item.name,
+			...(type ? { type } : {}),
+			...(isMember === undefined ? {} : { isMember }),
+		});
 	}
 	return projects;
 }

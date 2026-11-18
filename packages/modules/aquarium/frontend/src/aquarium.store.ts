@@ -17,6 +17,7 @@ import {
 } from './sources';
 import { fetchActivity } from './sources/activity.source';
 import type { AquariumDataset } from './sources/dataset';
+import { applyMembership, fetchMemberProjectIds } from './sources/membership.source';
 import { datasetActivity, demoActivity } from './sources/demo-activity';
 import { loadFromSources } from './sources/source.utils';
 
@@ -68,7 +69,9 @@ export const useAquariumStore = defineStore('aquarium', () => {
 				metricsSources,
 			);
 			if (generation !== loadGeneration) return;
-			entities.value = result.entities;
+			const withMembership = options.demo ? result.entities : await markMembership(result.entities);
+			if (generation !== loadGeneration) return;
+			entities.value = withMembership;
 			failedSources.value = result.failedSources;
 			const failed = new Set(result.failedSources);
 			const allFailed = (sources: Array<{ id: string }>) =>
@@ -79,6 +82,16 @@ export const useAquariumStore = defineStore('aquarium', () => {
 			hasLoaded.value = true;
 		} finally {
 			if (generation === loadGeneration) isLoading.value = false;
+		}
+	}
+
+	/** Without membership data the "my projects" filter is hidden, so a failure is not an error. */
+	async function markMembership(list: AquariumEntity[]): Promise<AquariumEntity[]> {
+		try {
+			const memberIds = await fetchMemberProjectIds({ restApiContext: rootStore.restApiContext });
+			return applyMembership(list, memberIds);
+		} catch {
+			return list;
 		}
 	}
 

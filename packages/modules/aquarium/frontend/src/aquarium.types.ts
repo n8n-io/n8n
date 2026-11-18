@@ -8,6 +8,11 @@ export interface EntityProject {
 	name: string;
 	/** `personal` or `team` on n8n. Other sources can leave it out. */
 	type?: string;
+	/**
+	 * The current account is a direct member: it has a project role, not only a global role that
+	 * can see every project. Undefined when the source does not know.
+	 */
+	isMember?: boolean;
 }
 
 /** `single` shows one tank. `project` shows one tank for each project. */

@@ -1,6 +1,7 @@
 import { useAquariumStore } from './aquarium.store';
 import { DEMO_ENTITIES } from './sources/demo.source';
 import * as activitySource from './sources/activity.source';
+import * as membershipSource from './sources/membership.source';
 import * as sourceUtils from './sources/source.utils';
 
 describe('useAquariumStore', () => {
@@ -165,6 +166,52 @@ describe('useAquariumStore', () => {
 			await store.load({ demo: true });
 
 			expect(store.entities).toEqual(DEMO_ENTITIES);
+		});
+	});
+
+	describe('membership', () => {
+		const live = [
+			{
+				key: 'workflow:1',
+				id: '1',
+				kind: 'workflow' as const,
+				name: 'Mine',
+				project: { id: 'p1', name: 'P1' },
+				metrics: {
+					complexity: 1,
+					executionCount: 0,
+					failedCount: 0,
+					averageRunTimeMs: 0,
+					waitingCount: 0,
+					finishedCount: 0,
+				},
+			},
+		];
+
+		it('marks the projects of the account after a live load', async () => {
+			vi.spyOn(sourceUtils, 'loadFromSources').mockResolvedValue({
+				entities: live,
+				failedSources: [],
+			});
+			vi.spyOn(membershipSource, 'fetchMemberProjectIds').mockResolvedValue(new Set(['p1']));
+			const store = useAquariumStore();
+
+			await store.load();
+
+			expect(store.entities[0].project?.isMember).toBe(true);
+		});
+
+		it('loads without membership when the request fails', async () => {
+			vi.spyOn(sourceUtils, 'loadFromSources').mockResolvedValue({
+				entities: live,
+				failedSources: [],
+			});
+			vi.spyOn(membershipSource, 'fetchMemberProjectIds').mockRejectedValue(new Error('403'));
+			const store = useAquariumStore();
+
+			await store.load();
+
+			expect(store.entities[0].project?.isMember).toBeUndefined();
 		});
 	});
 });

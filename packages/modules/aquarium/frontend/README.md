@@ -67,6 +67,16 @@ together. The choice is in the URL (`?view=projects`).
 - "Show all" fits the tanks below the page header. Personal projects show the name without the
   email address.
 
+### My projects
+
+**My projects** shows only the projects that the account is a direct member of: a project role,
+not only a global role that lets an admin see every project. It works in both views and is in the
+URL (`?mine=true`). The switch shows only when the data has membership:
+
+- Live: the store asks `GET /rest/projects/my-projects` and keeps projects with a `project:…` role.
+- Data sets: each project in `projects` can have `isMember`.
+- Demo: the demo account is a member of Sales and Operations.
+
 ## Zoom
 
 The tank is a world that grows with its creatures: their sprites cover about 10%

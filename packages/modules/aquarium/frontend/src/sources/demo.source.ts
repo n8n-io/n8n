@@ -2,11 +2,12 @@ import type { AquariumEntity, EntityKind, EntitySource, WorkflowDesign } from '.
 import { entityKey } from './source.utils';
 
 const DEMO_PROJECTS = {
-	sales: { id: 'demo-sales', name: 'Sales', type: 'team' },
-	data: { id: 'demo-data', name: 'Data platform', type: 'team' },
-	ops: { id: 'demo-ops', name: 'Operations', type: 'team' },
-	support: { id: 'demo-support', name: 'Support', type: 'team' },
-	legacy: { id: 'demo-legacy', name: 'Legacy', type: 'team' },
+	// The demo account is a member of Sales and Operations, so "My projects" has an effect.
+	sales: { id: 'demo-sales', name: 'Sales', type: 'team', isMember: true },
+	data: { id: 'demo-data', name: 'Data platform', type: 'team', isMember: false },
+	ops: { id: 'demo-ops', name: 'Operations', type: 'team', isMember: true },
+	support: { id: 'demo-support', name: 'Support', type: 'team', isMember: false },
+	legacy: { id: 'demo-legacy', name: 'Legacy', type: 'team', isMember: false },
 } as const;
 
 interface DemoExtras {
