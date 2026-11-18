@@ -425,7 +425,7 @@ const { width } = useElementSize(defNameRef);
 	<N8nDialog
 		:open="modalOpen"
 		:size="isTypeAbstract ? 'medium' : '2xlarge'"
-		:container-class="isTypeAbstract ? $style.abstractDialog : $style.settingsDialog"
+		:container-class="isTypeAbstract ? undefined : $style.settingsDialog"
 		@update:open="onDialogOpenUpdate"
 	>
 		<N8nDialogBody v-if="loading">
@@ -536,7 +536,7 @@ const { width } = useElementSize(defNameRef);
 						/>
 					</nav>
 					<div :class="$style.contentArea">
-						<div v-if="activeTab === 'settings'" ref="content" :class="$style.mainContent">
+						<div v-if="activeTab === 'settings'" ref="content">
 							<template v-if="isTypeWebhook">
 								<ParameterInputList
 									:parameters="webhookDescription"
@@ -593,29 +593,15 @@ const { width } = useElementSize(defNameRef);
 </template>
 
 <style lang="scss" module>
-.abstractDialog {
-	/* Previous dialog height. No spacing token. */
-	min-height: 160px;
-	max-height: 300px;
-	overflow-y: auto;
-}
-
 .continueRow {
 	display: flex;
 	justify-content: flex-end;
 	margin-top: var(--spacing--md);
 }
 
-.settingsDialog.settingsDialog {
-	display: flex;
-	flex-direction: column;
-	overflow: hidden;
-	/* Previous shell was 70% of the viewport. */
-	--dialog--max-width: min(70%, calc(100dvw - var(--spacing--lg)));
-	/* Previous dialog height. No spacing token for 650px. */
+.settingsDialog {
 	height: min(650px, calc(100dvh - var(--spacing--lg)));
 	max-height: min(650px, calc(100dvh - var(--spacing--lg)));
-	/* Room for the title and the type label, so the header does not grow. */
 	--log-stream-dialog-header--height: calc(
 		var(--n8n-dialog-region--padding) * 2 + var(--n8n-dialog-title--line) + var(--spacing--4xs) +
 			var(--font-size--2xs) * var(--line-height--lg)
@@ -642,37 +628,22 @@ const { width } = useElementSize(defNameRef);
 	margin-bottom: 1em;
 }
 
-.dialogHeader.dialogHeader {
+.dialogHeader {
 	align-items: center;
-	flex-wrap: nowrap;
-	width: 100%;
-}
-
-.settingsDialog .dialogHeader {
-	box-sizing: border-box;
 	min-height: var(--log-stream-dialog-header--height);
 	padding-block: var(--n8n-dialog-region--padding);
 }
 
 .body {
-	&.body {
-		--n8n-dialog-body--padding-block-start: 0;
-		--n8n-dialog-body--padding-block-end: 0;
-		--n8n-dialog-body--padding-inline: 0;
-		flex: 1 1 auto;
-		min-height: 0;
-		overflow: hidden;
-		border-block: var(--border);
-	}
+	--n8n-dialog-body--padding-block-start: 0;
+	--n8n-dialog-body--padding-block-end: 0;
+	--n8n-dialog-body--padding-inline: 0;
+	border-block: var(--border);
 }
 
 .modalLayout {
 	display: flex;
 	flex: 1 1 auto;
-	flex-direction: row;
-	align-items: stretch;
-	min-width: 0;
-	min-height: 0;
 	overflow: hidden;
 }
 
@@ -692,14 +663,8 @@ const { width } = useElementSize(defNameRef);
 
 .contentArea {
 	flex: 1 1 auto;
-	min-width: 0;
-	min-height: 0;
 	overflow: auto;
 	padding: var(--n8n-dialog-region--padding, var(--spacing--md));
-}
-
-.mainContent {
-	min-width: 0;
 }
 
 .cardTitle {
