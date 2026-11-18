@@ -192,6 +192,9 @@ Proves: auth, scopes, and rate-limit parity.
 each layer gets, shortcuts and the road to production). Open the file in a
 browser; arrow keys or a click move between slides.
 
+`docs/poc/mcp-shared-tool-layer/eval-summary.md`: the eval results for the
+team, with the verdict on PoC gaps versus protocol limits.
+
 ## Evaluation
 
 Same LangSmith dataset, three runs: native Assistant (baseline, `master`),
