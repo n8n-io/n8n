@@ -1,0 +1,317 @@
+{
+  "name": "Lead router with Slack",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "leads",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "ce052f90-7f1b-4450-9736-27bd7362fda4",
+      "name": "Webhook",
+      "webhookId": "00000000-0000-4000-8000-000000000001",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -304,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-3",
+              "name": "email",
+              "type": "string",
+              "value": "={{ $json.body.email }}"
+            },
+            {
+              "id": "id-4",
+              "name": "score",
+              "type": "number",
+              "value": "={{ $json.body.score }}"
+            },
+            {
+              "id": "id-5",
+              "name": "source",
+              "type": "string",
+              "value": "n8n-lite"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8ef26935-0575-4355-8a3c-747a55bfe147",
+      "name": "Normalize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -96,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "id-7",
+              "leftValue": "={{ $json.score }}",
+              "rightValue": 50,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "75b7265d-e35c-4de2-82d9-a7e8085b379d",
+      "name": "Hot lead?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        96,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-9",
+              "name": "route",
+              "type": "string",
+              "value": "sales"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "97437bb4-c4c7-47e8-9712-1acda0f6a0bd",
+      "name": "Sales",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        304,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-11",
+              "name": "route",
+              "type": "string",
+              "value": "nurture"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "106cd48f-cf38-478c-800a-8ca11f04bf88",
+      "name": "Nurture",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        304,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "2ddcc485-d69c-463a-91f6-c02dd2012c45",
+      "name": "Respond sales",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        496,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "79f87fc8-3244-4ce2-8711-a80618ad6306",
+      "name": "Respond nurture",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        512,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://webhook.site/56c2c612-ef7c-4247-ab05-dc1ad24e8913",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "email",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "route",
+              "value": "={{ $json.route }}"
+            },
+            {
+              "name": "source",
+              "value": "={{ $json.source }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Persist lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        128
+      ],
+      "id": "4e419e43-228e-4790-8f66-56294f85665c"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0CJEBXD2AK",
+          "mode": "id"
+        },
+        "text": "=:fire: Hot lead: {{ $json.email }} (score {{ $json.score }}, source {{ $json.source }})",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "name": "Notify sales",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        720,
+        -80
+      ],
+      "id": "fba461fe-814a-4dd9-8825-a871a83a3834"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize": {
+      "main": [
+        [
+          {
+            "node": "Hot lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hot lead?": {
+      "main": [
+        [
+          {
+            "node": "Sales",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Nurture",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sales": {
+      "main": [
+        [
+          {
+            "node": "Respond sales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nurture": {
+      "main": [
+        [
+          {
+            "node": "Respond nurture",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond nurture": {
+      "main": [
+        [
+          {
+            "node": "Persist lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond sales": {
+      "main": [
+        [
+          {
+            "node": "Notify sales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "1d112889-373f-45c9-ba55-a939698f27e4",
+  "meta": {
+    "instanceId": "157fce876abf5ef60eb86a2e777e5e190ff8f3e36b5b37aafec6636c31d4d1f9"
+  },
+  "nodeGroups": [],
+  "id": "LeadRouterSlack1",
+  "tags": []
+}

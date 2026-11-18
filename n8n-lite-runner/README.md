@@ -129,8 +129,19 @@ The tests do not need network access beyond localhost. The integration tests sta
 | `tests/end_to_end.rs` | A workflow with all five nodes answers two parallel webhook calls through real HTTP. |
 | `tests/sample_workflow.rs` | The "Lead router" workflow, exported from n8n, routes leads and reports each execution to a stub of the n8n endpoint. |
 | `tests/embedded_runner.rs` | A copy of the binary with an appended config starts with no arguments, answers its webhook and reports to n8n. |
+| `tests/slack_live.rs` | A webhook workflow posts a real message to Slack. `cargo test` skips it, see [Test the Slack node](#test-the-slack-node). |
 
 Every report in the tests is checked against the rules of `liteRunReportSchema` from the n8n PR.
+
+### Test the Slack node
+
+The unit tests of the Slack node use a mock HTTP client. The live test posts a real message, so it needs a Slack app whose bot has the `chat:write` scope and is a member of the channel. Invite the bot with `/invite @<bot name>` in the channel. Then run:
+
+```sh
+SLACK_TEST_TOKEN=xoxb-... SLACK_TEST_CHANNEL=C0123456789 cargo test --test slack_live -- --ignored
+```
+
+The channel ID is at the bottom of the channel details in Slack, and it starts with `C`.
 
 ## Run a workflow
 
@@ -181,6 +192,7 @@ The runner reads the workflow and the report settings from the end of its own fi
 | `--report-before-response` | `LITE_REPORT_BEFORE_RESPONSE` | off | Send the webhook answer only after the run ends and the report is sent. The variable accepts `1`, `true`, `yes` and `on`, or `0`, `false`, `no`, `off` and an empty value. |
 | `--report-url` | `LITE_REPORT_URL` | none | The n8n report endpoint, for a workflow from `--workflow`. |
 | `--report-token` | `LITE_REPORT_TOKEN` | none | The report token for that workflow. Prefer the environment variable, which keeps the token out of the shell history and the process list. |
+| `--slack-token` | `LITE_SLACK_TOKEN` | none | The Slack bot token for every Slack node, starting with `xoxb-`. A workflow with a Slack node does not start without it. Prefer the environment variable. |
 
 `--report-url` and `--report-token` work only together. Reporting also needs a workflow with an `id` field. Without report settings, the runner only prints its log lines.
 
@@ -286,8 +298,11 @@ The runner checks every node when it loads the workflow. A setting that it does 
 | Edit Fields (Set) | 3.3 to 3.5 | Manual mapping with typed fields. "Include other input fields" with all, selected or all-except. Dot notation. "Ignore type conversion errors". | The JSON mode. |
 | Respond to Webhook | 1 to 1.5 | First incoming item, all incoming items, JSON, text, no data, redirect. Response code, response headers and response key. | Binary and JWT responses. |
 | HTTP Request | 3 to 4.5 | Any method and URL. Query parameters, headers and a JSON body, as fields or as JSON. Full response, never error, and the autodetect, JSON and text response formats. | Credentials, form and binary bodies, file responses. |
+| Slack | 2 to 2.7 | "Send a message" to a channel, with the channel ID from "By ID" or "From list". A simple text message. The options `mrkdwn`, `unfurl_links`, `unfurl_media` and `link_names`. | Other resources and operations, sending to a user, blocks, attachments, threads, ephemeral messages, bot profiles, channels "By URL". |
 
 The Webhook node emits one item with `headers`, `params`, `query` and `body`, as in n8n. The webhook path is `/webhook/<path>`, the path of production webhooks in n8n.
+
+The Slack node outputs Slack's `chat.postMessage` response, with `ts` renamed to `message_timestamp`, as n8n does. It takes the bot token from `LITE_SLACK_TOKEN`, not from the n8n credential that the node refers to. Unlike n8n, it does not append a link to the workflow to the message.
 
 ### Expressions
 
@@ -385,11 +400,12 @@ The engine depends only on the traits in `src/node.rs`, `src/context.rs` and `sr
 ## Known limitations
 
 1. **Triggers.** The n8n backend also accepts Schedule Trigger and Manual Trigger. The runner supports only the Webhook node, so a downloaded runner for such a workflow stops at startup.
-2. **HTTP Request options.** The runner ignores the `timeout`, batching, pagination, redirect and proxy options, and uses no timeout. The n8n backend allows only `timeout`, so a downloaded runner never has the others.
-3. **macOS downloads.** The macOS runner has only an ad-hoc signature, and the appended config is outside that signature. A file downloaded with a browser is quarantined, and macOS refuses to open it. Remove the quarantine with `xattr -d com.apple.quarantine <file>`. A file downloaded with curl is not quarantined.
-4. **Item pairing.** The runner does not track n8n's `pairedItem` data. `$('Node name').item` uses the item position instead.
-5. **Reports.** A report that fails is not retried.
-6. **Default port.** The runner listens on port 5678 by default, the same port as n8n. Pass `--listen 127.0.0.1:<port>` or set `LITE_PORT` when both run on one machine.
+2. **Slack in downloaded runners.** The n8n backend refuses to build a runner for a workflow with a Slack node, for two reasons. The Slack node is not in its list of supported nodes, and the backend rejects every node that has credentials. Until the backend allows it, use the Slack node only with `--workflow`.
+3. **HTTP Request options.** The runner ignores the `timeout`, batching, pagination, redirect and proxy options, and uses no timeout. The n8n backend allows only `timeout`, so a downloaded runner never has the others.
+4. **macOS downloads.** The macOS runner has only an ad-hoc signature, and the appended config is outside that signature. A file downloaded with a browser is quarantined, and macOS refuses to open it. Remove the quarantine with `xattr -d com.apple.quarantine <file>`. A file downloaded with curl is not quarantined.
+5. **Item pairing.** The runner does not track n8n's `pairedItem` data. `$('Node name').item` uses the item position instead.
+6. **Reports.** A report that fails is not retried.
+7. **Default port.** The runner listens on port 5678 by default, the same port as n8n. Pass `--listen 127.0.0.1:<port>` or set `LITE_PORT` when both run on one machine.
 
 ## Troubleshooting
 

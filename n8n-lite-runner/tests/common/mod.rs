@@ -14,6 +14,7 @@ use axum::routing::post;
 use axum::{Json, Router};
 use n8n_mini::client::ReqwestClient;
 use n8n_mini::engine::Engine;
+use n8n_mini::nodes::Credentials;
 use n8n_mini::reporter::{ExecutionReporter, ExecutionSummary, ReportError};
 use n8n_mini::workflow::Workflow;
 use n8n_mini::{nodes, server};
@@ -126,9 +127,18 @@ pub async fn serve(router: Router) -> String {
 
 /// Loads `workflow` with the real nodes and HTTP client, serves it, and returns its base URL.
 pub async fn start_runner(workflow: Workflow, reporter: Arc<dyn ExecutionReporter>) -> String {
+    start_runner_with(workflow, reporter, &Credentials::default()).await
+}
+
+/// Like `start_runner`, with credentials for the nodes that need them.
+pub async fn start_runner_with(
+    workflow: Workflow,
+    reporter: Arc<dyn ExecutionReporter>,
+    credentials: &Credentials,
+) -> String {
     let engine = Engine::load(
         workflow,
-        &nodes::registry(),
+        &nodes::registry(credentials),
         Arc::new(ReqwestClient::default()),
         reporter,
     )

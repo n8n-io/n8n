@@ -162,7 +162,7 @@ mod tests {
         .unwrap();
         let engine = Engine::load(
             workflow,
-            &nodes::registry(),
+            &nodes::registry(&nodes::Credentials::default()),
             Arc::new(NoHttp),
             Arc::new(MockReporter::default()),
         )

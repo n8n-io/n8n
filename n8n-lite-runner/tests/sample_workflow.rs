@@ -24,6 +24,8 @@ use common::{
 };
 
 const SAMPLE: &str = include_str!("fixtures/sample-workflow.json");
+/// The same workflow with a Slack node that notifies sales of hot leads.
+const SAMPLE_WITH_SLACK: &str = include_str!("fixtures/sample-workflow-slack.json");
 
 /// Loads the sample and points the "Persist lead" node at `url` instead of webhook.site.
 fn sample_workflow(url: &str) -> Workflow {
@@ -99,13 +101,39 @@ fn loads_the_exported_file_unchanged() {
     let workflow = Workflow::from_json(SAMPLE).unwrap();
     let engine = Engine::load(
         workflow,
-        &nodes::registry(),
+        &nodes::registry(&nodes::Credentials::default()),
         Arc::new(n8n_mini::client::ReqwestClient::default()),
         Arc::new(LogReporter),
     )
     .unwrap();
 
     assert_eq!(engine.webhook().path, "leads");
+}
+
+fn load_with_slack(credentials: &nodes::Credentials) -> Result<Engine, String> {
+    Engine::load(
+        Workflow::from_json(SAMPLE_WITH_SLACK).unwrap(),
+        &nodes::registry(credentials),
+        Arc::new(n8n_mini::client::ReqwestClient::default()),
+        Arc::new(LogReporter),
+    )
+    .map_err(|error| error.to_string())
+}
+
+#[test]
+fn loads_the_slack_variant_only_with_a_token() {
+    let with_token = nodes::Credentials {
+        slack_token: Some("xoxb-test".into()),
+    };
+
+    assert!(load_with_slack(&with_token).is_ok());
+    let error = load_with_slack(&nodes::Credentials::default())
+        .err()
+        .unwrap();
+    assert!(
+        error.contains("Notify sales") && error.contains("LITE_SLACK_TOKEN"),
+        "{error}"
+    );
 }
 
 #[tokio::test]

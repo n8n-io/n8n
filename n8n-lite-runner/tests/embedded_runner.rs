@@ -72,11 +72,12 @@ fn build_runner(directory: &Path, config: &Value) -> PathBuf {
 }
 
 /// The variables that the runner reads. The tests clear them, so the developer's shell cannot change a result.
-const RUNNER_VARIABLES: [&str; 4] = [
+const RUNNER_VARIABLES: [&str; 5] = [
     "LITE_PORT",
     "LITE_REPORT_BEFORE_RESPONSE",
     "LITE_REPORT_URL",
     "LITE_REPORT_TOKEN",
+    "LITE_SLACK_TOKEN",
 ];
 
 fn runner_command(runner: &Path) -> Command {

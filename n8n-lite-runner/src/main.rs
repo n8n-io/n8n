@@ -16,6 +16,7 @@ use n8n_mini::client::ReqwestClient;
 use n8n_mini::config::read_embedded;
 use n8n_mini::engine::{AnswerTiming, Engine};
 use n8n_mini::n8n_report::{N8nReporter, ReportTarget};
+use n8n_mini::nodes::Credentials;
 use n8n_mini::reporter::{ExecutionReporter, LogReporter, Reporters};
 use n8n_mini::workflow::Workflow;
 use n8n_mini::{nodes, server};
@@ -61,6 +62,10 @@ struct Args {
         requires = "report_url"
     )]
     report_token: Option<String>,
+
+    /// The Slack bot token for Slack nodes. Prefer the environment variable, which stays out of the shell history.
+    #[arg(long, env = "LITE_SLACK_TOKEN", hide_env_values = true)]
+    slack_token: Option<String>,
 }
 
 /// Reads an on or off setting. An empty value is off, so `NAME=` in a deployment file disables the setting.
@@ -101,9 +106,12 @@ async fn main() -> ExitCode {
 
 async fn run(args: Args) -> Result<(), Box<dyn Error>> {
     let (workflow, report) = settings(&args)?;
+    let credentials = Credentials {
+        slack_token: args.slack_token.clone(),
+    };
     let engine = Engine::load(
         workflow,
-        &nodes::registry(),
+        &nodes::registry(&credentials),
         Arc::new(ReqwestClient::default()),
         reporter(report),
     )?
