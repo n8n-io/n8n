@@ -5,6 +5,8 @@ import { Container } from '@n8n/di';
 @BackendModule({ name: 'agent-determinism', instanceTypes: ['main'] })
 export class AgentDeterminismModule implements ModuleInterface {
 	async init() {
+		await import('./agent-determinism.controller.js');
+
 		const { RunClusterer, RunCollector, WorkflowTranslator } = await import(
 			'./agent-determinism.contracts.js'
 		);
