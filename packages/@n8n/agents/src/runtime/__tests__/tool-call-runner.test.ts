@@ -1,9 +1,12 @@
 import type { ModelMessage } from 'ai';
 import { describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 
 import { InMemoryFilesystem } from '../../__tests__/workspace/test-utils';
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
+import type { PreToolExecution, PreToolExecutionContext } from '../../types/sdk/pre-tool-execution';
 import type { BuiltTool } from '../../types/sdk/tool';
+import type { JSONValue } from '../../types/utils/json';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { InMemoryMemory } from '../memory/memory-store';
 import { AgentMessageList } from '../model/message-list';
@@ -328,5 +331,270 @@ describe('ToolCallRunner guardrail after-stage stop', () => {
 
 		expect(outcome).toMatchObject({ outcome: 'success' });
 		expect(handler).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('ToolCallRunner preToolExecution', () => {
+	const refusal = { isPolicyRefusal: true, message: 'Not allowed' };
+	const allow: PreToolExecution = async () => await Promise.resolve({ allow: true });
+	const deny: PreToolExecution = async () =>
+		await Promise.resolve({ allow: false, result: refusal });
+
+	function makeRunner(preToolExecution: PreToolExecution) {
+		return new ToolCallRunner({
+			eventBus: new AgentEventBus(),
+			telemetry: new RuntimeTelemetry({
+				name: 'test-agent',
+				model: 'openai/gpt-5',
+				instructions: '',
+			}),
+			concurrency: 1,
+			onCancelled: vi.fn(),
+			tokenCounter: vi.fn((text: string) => text.length),
+			preToolExecution,
+		});
+	}
+
+	function makeCall(tools: BuiltTool[], call: { toolName: string; input?: JSONValue }) {
+		const input = call.input ?? {};
+		const list = new AgentMessageList();
+		list.addResponse(
+			fromAiMessages([
+				{
+					role: 'assistant',
+					content: [{ type: 'tool-call', toolCallId: 'call-1', toolName: call.toolName, input }],
+				},
+			]),
+		);
+		return {
+			toolName: call.toolName,
+			toolCallId: 'call-1',
+			input,
+			toolMap: new Map(tools.map((tool) => [tool.name, tool])),
+			list,
+			runId: 'run-1',
+		};
+	}
+
+	const makeHandler = () => vi.fn<NonNullable<BuiltTool['handler']>>().mockResolvedValue('done');
+
+	it.each<{ kind: string; identity: Partial<BuiltTool> }>([
+		{ kind: 'node', identity: { metadata: { kind: 'node', nodeType: 'n8n-nodes-base.slack' } } },
+		{
+			kind: 'MCP',
+			identity: { mcpTool: true, mcpServerName: 'crm', mcpToolName: 'send' },
+		},
+	])(
+		'gives the hook the $kind tool, the validated input and the run identity',
+		async ({ identity }) => {
+			const handler = makeHandler();
+			const tool: BuiltTool = {
+				name: 'send_message',
+				description: 'Send a message',
+				inputSchema: z.object({ channel: z.string().default('general') }),
+				handler,
+				...identity,
+			};
+			const hook = vi.fn(allow);
+			const persistence = { threadId: 'thread-1', resourceId: 'user-1' };
+
+			const outcome = await makeRunner(hook).processToolCall({
+				...makeCall([tool], { toolName: tool.name }),
+				persistence,
+			});
+
+			expect(outcome).toMatchObject({ outcome: 'success' });
+			expect(handler).toHaveBeenCalledTimes(1);
+			expect(hook).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({
+					toolCallId: 'call-1',
+					runId: 'run-1',
+					input: { channel: 'general' },
+					resumed: false,
+					persistence,
+				}),
+			);
+			const { tool: target } = hook.mock.calls[0][0];
+			const { mcpTool: _, ...expectedIdentity } = identity;
+			expect(target).toEqual({ name: tool.name, ...expectedIdentity });
+		},
+	);
+
+	it('gives the hook the target of a dispatched call', async () => {
+		const handler = makeHandler();
+		const target: BuiltTool = { name: 'send_message', description: 'Send a message', handler };
+		const dispatcher: BuiltTool = {
+			name: 'call_tool',
+			description: 'Run a tool from the tool catalog',
+			handler: makeHandler(),
+			dispatch: {
+				resolve: (input) => ({ tool: target, input: (input as { arguments: unknown }).arguments }),
+				wrap: () => undefined,
+			},
+		};
+		let runToolCalls: ReturnType<PreToolExecutionContext['runToolCalls']> = [];
+		const hook = vi.fn<PreToolExecution>(async (ctx) => {
+			runToolCalls = ctx.runToolCalls();
+			return await allow(ctx);
+		});
+
+		await makeRunner(hook).processToolCall(
+			makeCall([dispatcher], {
+				toolName: dispatcher.name,
+				input: { tool: target.name, arguments: { text: 'hi' } },
+			}),
+		);
+
+		// The history names the tool that runs, the same as `tool` does.
+		expect(runToolCalls).toMatchObject([
+			{ toolCallId: 'call-1', toolName: 'send_message', input: { text: 'hi' } },
+		]);
+
+		expect(hook).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({
+				tool: { name: 'send_message', dispatchedBy: 'call_tool' },
+				input: { text: 'hi' },
+			}),
+		);
+		expect(handler).toHaveBeenCalledExactlyOnceWith({ text: 'hi' }, expect.anything());
+	});
+
+	it('returns the result of a denial and does not run the handler', async () => {
+		const handler = makeHandler();
+		const onCancellation = vi.fn();
+		const tool: BuiltTool = { name: 'send_message', description: '', handler, onCancellation };
+		const call = makeCall([tool], { toolName: tool.name });
+
+		const outcome = await makeRunner(deny).processToolCall(call);
+
+		expect(outcome).toMatchObject({
+			outcome: 'success',
+			modelOutput: refusal,
+			toolEntry: { tool: tool.name, output: refusal },
+		});
+		expect(handler).not.toHaveBeenCalled();
+		// The call never started, so there is nothing to clean up.
+		expect(onCancellation).not.toHaveBeenCalled();
+		expect(call.list.responseDelta()).toMatchObject([
+			{ content: [{ type: 'tool-call', state: 'resolved', output: refusal }] },
+		]);
+	});
+
+	it('does not run the handler when the hook throws', async () => {
+		const handler = makeHandler();
+		const tool: BuiltTool = { name: 'send_message', description: '', handler };
+		const hook: PreToolExecution = async () =>
+			await Promise.reject(new Error('policy store is down'));
+
+		const outcome = await makeRunner(hook).processToolCall(
+			makeCall([tool], { toolName: tool.name }),
+		);
+
+		expect(outcome).toMatchObject({ outcome: 'error' });
+		expect(handler).not.toHaveBeenCalled();
+	});
+
+	describe('for a call that resumes', () => {
+		function makeSuspendedTool(overrides: Partial<BuiltTool> = {}): BuiltTool {
+			return {
+				name: 'send_message',
+				description: '',
+				suspendSchema: z.object({ reason: z.string() }),
+				resumeSchema: z.object({ approved: z.boolean() }),
+				handler: makeHandler(),
+				...overrides,
+			};
+		}
+
+		const resumeParams = {
+			previouslySuspended: true,
+			resumeData: { approved: true },
+			suspendPayload: { reason: 'needs approval' },
+		};
+
+		it('runs the hook again', async () => {
+			const tool = makeSuspendedTool();
+			const hook = vi.fn(allow);
+
+			await makeRunner(hook).processToolCall({
+				...makeCall([tool], { toolName: tool.name }),
+				...resumeParams,
+			});
+
+			expect(hook).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ resumed: true }));
+			expect(tool.handler).toHaveBeenCalledTimes(1);
+		});
+
+		it('cleans up a call that is denied', async () => {
+			const onCancellation = vi.fn();
+			const tool = makeSuspendedTool({ onCancellation });
+
+			const outcome = await makeRunner(deny).processToolCall({
+				...makeCall([tool], { toolName: tool.name }),
+				...resumeParams,
+			});
+
+			expect(outcome).toMatchObject({ outcome: 'success', modelOutput: refusal });
+			expect(tool.handler).not.toHaveBeenCalled();
+			expect(onCancellation).toHaveBeenCalledExactlyOnceWith(
+				{},
+				expect.objectContaining({ suspendPayload: resumeParams.suspendPayload }),
+			);
+		});
+
+		it('keeps the call pending when the hook throws', async () => {
+			const onCancellation = vi.fn();
+			const tool = makeSuspendedTool({ onCancellation });
+			const hook: PreToolExecution = async () =>
+				await Promise.reject(new Error('policy store is down'));
+
+			const outcome = await makeRunner(hook).processToolCall({
+				...makeCall([tool], { toolName: tool.name }),
+				...resumeParams,
+			});
+
+			expect(outcome).toEqual({ outcome: 'retryable-error' });
+			expect(tool.handler).not.toHaveBeenCalled();
+			expect(onCancellation).not.toHaveBeenCalled();
+		});
+
+		it('keeps the call pending when the cleanup of a denied call fails', async () => {
+			const tool = makeSuspendedTool({
+				onCancellation: vi.fn().mockRejectedValue(new Error('cleanup failed')),
+			});
+
+			const outcome = await makeRunner(deny).processToolCall({
+				...makeCall([tool], { toolName: tool.name }),
+				...resumeParams,
+			});
+
+			expect(outcome).toEqual({ outcome: 'retryable-error' });
+			expect(tool.handler).not.toHaveBeenCalled();
+		});
+	});
+
+	it('lists the tool calls of the run so far', async () => {
+		const tool: BuiltTool = { name: 'send_message', description: '', handler: makeHandler() };
+		const call = makeCall([tool], { toolName: tool.name });
+		const toolCallMessage = (toolCallId: string, toolName: string) =>
+			fromAiMessages([
+				{ role: 'assistant', content: [{ type: 'tool-call', toolCallId, toolName, input: {} }] },
+			]);
+		const list = new AgentMessageList();
+		list.addResponse(toolCallMessage('call-0', 'lookup'));
+		list.setToolCallResult('call-0', { found: true });
+		list.addResponse(toolCallMessage('call-1', tool.name));
+		let runToolCalls: ReturnType<PreToolExecutionContext['runToolCalls']> = [];
+		const hook: PreToolExecution = async (ctx) => {
+			runToolCalls = ctx.runToolCalls();
+			return await allow(ctx);
+		};
+
+		await makeRunner(hook).processToolCall({ ...call, list });
+
+		expect(runToolCalls).toMatchObject([
+			{ toolCallId: 'call-0', toolName: 'lookup', state: 'resolved', output: { found: true } },
+			{ toolCallId: 'call-1', toolName: 'send_message', state: 'pending' },
+		]);
 	});
 });

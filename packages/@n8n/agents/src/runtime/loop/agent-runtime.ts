@@ -294,6 +294,7 @@ export class AgentRuntime {
 			tokenCounter,
 			...(config.workspaceFilesystem ? { workspaceFilesystem: config.workspaceFilesystem } : {}),
 			...(this.activeSkills ? { loadSkill: this.activeSkills.load.bind(this.activeSkills) } : {}),
+			...(config.preToolExecution ? { preToolExecution: config.preToolExecution } : {}),
 		});
 		this.modelCost = config.modelCost;
 		this.currentState = {

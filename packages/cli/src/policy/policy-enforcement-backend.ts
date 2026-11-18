@@ -5,6 +5,7 @@ import type {
 	CredentialTransferContext,
 	EnforcementPoint,
 	PolicyDecision,
+	PreToolExecutionContext,
 	WorkflowPublishContext,
 	WorkflowSaveContext,
 	WorkflowStartContext,
@@ -23,6 +24,7 @@ type PolicyContexts = {
 	credentialTransfer: CredentialTransferContext;
 	credentialDecrypt: CredentialDecryptContext;
 	contentImport: ContentImportContext;
+	preToolExecution: PreToolExecutionContext;
 };
 
 export type PolicyContext<Point extends EnforcementPoint> = PolicyContexts[Point];

@@ -6,6 +6,7 @@ import type {
 	EnforcementPoint,
 	PolicedWorkflow,
 	PolicyDecision,
+	PreToolExecutionContext,
 	WorkflowPublishContext,
 	WorkflowSaveContext,
 	WorkflowStartContext,
@@ -215,6 +216,21 @@ export class PolicyEnforcementService {
 
 	async evaluateContentImport(context: ContentImportContext): Promise<PolicyDecision> {
 		return await this.evaluate('contentImport', expandedImport(context));
+	}
+
+	/**
+	 * The agent runtime calls this each time it enters a tool handler. No `evaluate` twin: no
+	 * advisory surface asks about a single tool call.
+	 */
+	async enforcePreToolExecution(
+		context: PreToolExecutionContext,
+		actor: PolicyActor,
+	): Promise<PolicyCleared<'preToolExecution'>> {
+		// A tool call id is unique in its run only, so the run id is part of the subject.
+		return await this.enforce('preToolExecution', context, actor, {
+			type: 'toolCall',
+			id: `${context.runId}:${context.toolCallId}`,
+		});
 	}
 
 	private async enforce<Point extends EnforcementPoint>(

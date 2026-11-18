@@ -17,6 +17,7 @@ import { fixSchema } from '../../utils/json-schema';
 import { isZodSchema } from '../../utils/zod';
 import { loadAi } from '../model/lazy-ai';
 import { applyToolProviderOptionDefaults } from '../model/provider-quirks';
+import { isToolCallClearance, type ToolCallClearance } from './tool-call-clearance';
 
 type AiSdkProviderTool = AiSdkTool & {
 	type: 'provider';
@@ -109,11 +110,15 @@ export function toAiSdkTools(tools?: BuiltTool[]): Record<string, AiSdkTool> {
 export async function executeTool(
 	args: unknown,
 	builtTool: BuiltTool,
+	clearance: ToolCallClearance,
 	resumeData?: unknown,
 	parentTelemetry?: BuiltTelemetry,
 	toolCallId?: string,
 	executionContext: ToolExecutionContext = {},
 ): Promise<unknown> {
+	if (!isToolCallClearance(clearance)) {
+		throw new Error(`Tool "${builtTool.name}" was not cleared to run`);
+	}
 	if (!builtTool.handler) {
 		throw new Error(`No handler found for tool "${builtTool.name}"`);
 	}

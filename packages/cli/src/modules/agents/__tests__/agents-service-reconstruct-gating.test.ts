@@ -34,6 +34,7 @@ import type { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { AgentPolicyService } from '../agent-policy.service';
 import type { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
 import { AgentPlanService } from '../agent-plan.service';
 import { AgentWakeService } from '../background/agent-wake.service';
@@ -113,6 +114,7 @@ function makeReconstructionService(
 		agentWorkspaceService?: AgentWorkspaceService;
 		knowledgeRetriever?: KnowledgeRetrievalService;
 		knowledgeAvailabilityService?: KnowledgeAvailabilityService;
+		agentPolicyService?: AgentPolicyService;
 	} = {},
 ): AgentRuntimeReconstructionService {
 	const secureRuntime = mock<AgentSecureRuntime>();
@@ -150,6 +152,7 @@ function makeReconstructionService(
 		mock<AgentKnowledgeUsageTracker>(),
 		overrides.knowledgeAvailabilityService ?? makeKnowledgeAvailabilityService(),
 		mock<AgentSandboxFilesService>(),
+		overrides.agentPolicyService ?? mock<AgentPolicyService>(),
 	);
 }
 
@@ -319,6 +322,33 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 			modelToolName: 'Linear_Prod_read_file_12345678',
 			success: true,
 		});
+	});
+});
+
+describe('AgentRuntimeReconstructionService — tool call policy', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		builtAgent.hasCheckpointStorage.mockReturnValue(true);
+		buildFromJsonMock.mockImplementation(async () => builtAgent);
+	});
+
+	it('gives each runtime the tool call policy hook of its agent', async () => {
+		const hook = vi.fn();
+		const agentPolicyService = mock<AgentPolicyService>();
+		agentPolicyService.preToolExecutionHook.mockReturnValue(hook);
+		const service = makeReconstructionService({ agentPolicyService });
+
+		await service.reconstructFromAgentEntity(
+			storedRunSource(makeAgentEntity()),
+			mock<CredentialProvider>(),
+			'production',
+		);
+
+		expect(agentPolicyService.preToolExecutionHook).toHaveBeenCalledExactlyOnceWith(
+			'project-1',
+			'agent-1',
+		);
+		expect(builtAgent.preToolExecution).toHaveBeenCalledExactlyOnceWith(hook);
 	});
 });
 

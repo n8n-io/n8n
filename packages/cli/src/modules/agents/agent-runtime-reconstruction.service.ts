@@ -72,6 +72,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import type { AgentCredentialProvider } from './agent-credential-provider.contracts';
 import { AgentKnowledgeUsageTracker } from './agent-knowledge-usage-tracker';
+import { AgentPolicyService } from './agent-policy.service';
 import type { AgentSandboxPrincipalHash } from './agent-sandbox-principal';
 import {
 	AgentSandboxRuntimeService,
@@ -390,6 +391,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly knowledgeUsageTracker: AgentKnowledgeUsageTracker,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 		private readonly sandboxFiles: AgentSandboxFilesService,
+		private readonly agentPolicyService: AgentPolicyService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -857,6 +859,10 @@ export class AgentRuntimeReconstructionService {
 			webSearchFetch,
 			previewChat,
 		});
+		// Every runtime of a first-class agent is built here, so each one gets the hook.
+		reconstructed.preToolExecution(
+			this.agentPolicyService.preToolExecutionHook(projectId, memoryOwnerAgentId),
+		);
 		return {
 			agent: reconstructed,
 			resolvedTools,

@@ -43,6 +43,7 @@ export const MODULE_NAMES = [
 	'engine-v2',
 	'policy-infrastructure',
 	'type-availability-policies',
+	'agent-tool-policies',
 	'instance-reporting',
 	'inbound-auth-core',
 	'scim',

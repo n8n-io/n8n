@@ -12804,3 +12804,47 @@ describe('AgentRuntime — tool output files', () => {
 		expect(saved.join()).not.toContain('"data"');
 	});
 });
+
+describe('Agent — preToolExecution', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	it('asks the hook before it runs a tool call of the model', async () => {
+		const handler = vi.fn(async () => await Promise.resolve('sent'));
+		const tool = new Tool('send_message')
+			.description('Send a message')
+			.input(z.object({ text: z.string() }))
+			.handler(handler)
+			.build();
+		const refusal = { isPolicyRefusal: true, message: 'Not allowed' };
+		const hook = vi.fn(
+			async () => await Promise.resolve({ allow: false as const, result: refusal }),
+		);
+		const agent = new Agent('gated')
+			.model('openai/gpt-4o-mini')
+			.instructions('Test')
+			.tool(tool)
+			.preToolExecution(hook);
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'send_message', { text: 'hi' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('I could not send it'));
+
+		const result = await agent.generate('Send hi');
+
+		expect(handler).not.toHaveBeenCalled();
+		expect(hook).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({
+				toolCallId: 'tc-1',
+				tool: { name: 'send_message' },
+				input: { text: 'hi' },
+			}),
+		);
+		const toolCalls = result.messages
+			.filter((message): message is Message => isLlmMessage(message))
+			.flatMap((message) => message.content)
+			.filter((block) => block.type === 'tool-call');
+		expect(toolCalls).toMatchObject([{ toolCallId: 'tc-1', state: 'resolved', output: refusal }]);
+	});
+});

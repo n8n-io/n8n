@@ -8,7 +8,7 @@ The module holds no policy of its own. A policy feature adds a check class and a
 store for its rules. It does not add an enforcement path, an error shape, or an
 audit gap.
 
-Why these eight points, why every check must pass, and why a check that does not
+Why the first eight points, why every check must pass, and why a check that does not
 answer blocks: read the policy infrastructure RFC in Notion. This README is the
 working reference for writing a check. It does not restate the RFC.
 
@@ -100,8 +100,9 @@ request. A check can compare it with `workflow` to judge only what the save adds
 | `credentialTransfer` | 1000 ms | row id                            | move to another project                                               |
 | `contentImport`     | 1000 ms  | row id                            | CLI import, source control import, package and git-connection import  |
 | `credentialDecrypt` | 250 ms   | credential id                     | credential resolution during a run or a test                          |
+| `preToolExecution`  | 250 ms   | run id and tool call id           | each entry into a tool handler of a first-class agent                 |
 
-Deadlines are tight on the two points that sit inside a running execution. A
+Deadlines are tight on the three points that sit inside a running execution. A
 wedged policy store there pins worker slots instead of failing one request.
 
 A one-off CLI command registers no check unless it calls
@@ -129,6 +130,7 @@ Each point hands its check a different context. The types are in
 | `credentialTransfer` | `CredentialTransferContext` | `credential`, `targetProjectId` — the project it moves _into_, whose policy applies   |
 | `contentImport`     | `ContentImportContext`     | `workflow`, `projectId`, `transport`                                                     |
 | `credentialDecrypt` | `CredentialDecryptContext` | `credentialType`, `credentialId`, `consumer` (`null` for a credential test), `projectId` |
+| `preToolExecution`  | `PreToolExecutionContext`  | `agentId`, `projectId`, `threadId`, `agentExecutionId`, `runId`, `toolCallId`, `tool`, `input`, `resumed`, `runToolCalls()`, `sessionHistory()` |
 
 `workflow` is a `PolicedWorkflow`: `id` (`null` before the first save), `name`,
 `nodes`. Nothing else, so a check cannot start to depend on unrelated fields.
@@ -143,8 +145,9 @@ package, a source-control pull skips and reports the workflow.
 
 ## Agents and embedded nodes
 
-An agent has no enforcement point of its own. It goes through the workflow
-points, so every check that reads `nodes` covers agents with no change.
+An agent goes through the workflow points when it is saved and published, so
+every check that reads `nodes` covers agents with no change. Its tool calls have
+a point of their own, `preToolExecution`.
 
 - **An agent is a `PolicedWorkflow` with `artifactKind: 'agent'`.** Its `nodes`
   are its node tools, one node each, built by `toPolicedNodes` in
@@ -168,6 +171,41 @@ points, so every check that reads `nodes` covers agents with no change.
   binds to the host's own subject, and the host does not write the added nodes.
   An inline agent set by an expression is not expanded; the executor polices its
   tools when they run.
+
+### Agent tool calls
+
+The agent runtime calls `preToolExecution` each time it enters a tool handler.
+This includes a call that suspended and resumes, for example after an approval.
+
+- **The hook belongs to the runtime, not to a run.**
+  `AgentRuntimeReconstructionService` sets it on each runtime that it builds, so
+  top-level runs, sub-agent runs and runs that a workflow starts all have it.
+- **A violation goes to the model as the tool result.** The handler does not run.
+  The result has the same shape as the refusal of a node tool.
+- **A check that does not answer stops the call.** A call that resumes stays
+  pending, so that the tool can clean up later.
+- **`tool` says what runs.** `metadata` holds what the host knows, such as `kind`,
+  `nodeType` and `workflowId`. An MCP tool has `mcpServerName` and `mcpToolName`.
+  A custom tool and a built-in tool have a name only.
+- **`input` is not redacted.** The audit line records the tool name and the tool
+  call id, not the input.
+- **`runToolCalls()` is the history that costs nothing.** It returns the tool
+  calls that the run holds in memory, with their results. It can miss older
+  turns, because the run does not always load the whole session.
+- **`sessionHistory()` is the full history.** It returns this session first, then
+  each session that delegated to it, up to the root. For this session it joins
+  the stored turns with `runToolCalls()`. It reads the database on each call and
+  runs inside the deadline of the check, so call it only when the decision
+  needs it.
+- **Stored calls differ from calls in memory.** A stored call has its sensitive
+  keys redacted. Large results are cut in both.
+- **The stored copy of a running turn can lag.** So the last calls of a parent
+  session, made in the turn that delegated, can be absent from `sessionHistory()`.
+  An agent that a workflow started has no link to the agent session behind that
+  workflow.
+- **Not covered:** tools that the model provider executes, such as native web
+  search. There is no `evaluatePreToolExecution`, because no advisory surface
+  asks about one tool call.
 
 ## Fail posture
 

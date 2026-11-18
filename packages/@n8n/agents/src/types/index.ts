@@ -242,3 +242,10 @@ export type {
 	GuardrailDecision,
 	GuardrailStop,
 } from './sdk/guardrail';
+
+export type {
+	PreToolExecution,
+	PreToolExecutionContext,
+	PreToolExecutionDecision,
+	ToolCallTarget,
+} from './sdk/pre-tool-execution';

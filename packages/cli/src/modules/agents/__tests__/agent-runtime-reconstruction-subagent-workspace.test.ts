@@ -16,6 +16,7 @@ import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/
 import type { WorkflowRepository } from '@n8n/db';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { AgentPolicyService } from '../agent-policy.service';
 import type { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
@@ -88,6 +89,7 @@ function makeService(sandboxFilesEnabled = true) {
 		mock<AgentSandboxFilesService>({
 			isEnabled: vi.fn().mockResolvedValue(sandboxFilesEnabled),
 		}),
+		mock<AgentPolicyService>(),
 	);
 
 	return { service, workspaceService };

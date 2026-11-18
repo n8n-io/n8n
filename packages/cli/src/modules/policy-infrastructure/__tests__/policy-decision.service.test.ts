@@ -7,6 +7,7 @@ import {
 	type PolicyCheckClass,
 	type PolicyCheckMetadata,
 	type PolicyCheckResult,
+	type PreToolExecutionContext,
 	type RegisteredPolicyCheck,
 	type WorkflowSaveContext,
 	type WorkflowStartContext,
@@ -194,6 +195,10 @@ class OtherPointsCheck implements RegisteredPolicyCheck {
 	}
 
 	async onCredentialTransfer(): Promise<PolicyCheckResult> {
+		return { violations: [slackBlocked] };
+	}
+
+	async onPreToolExecution(): Promise<PolicyCheckResult> {
 		return { violations: [slackBlocked] };
 	}
 }
@@ -519,6 +524,36 @@ describe('PolicyDecisionService', () => {
 				consumerNodeType: 'n8n-nodes-base.slack',
 				projectId: 'proj-1',
 			});
+			expect(audit.mock.calls[0][1]).not.toHaveProperty('workflowId');
+		});
+
+		it('records the agent, the tool and the tool call', async () => {
+			const { service, audit } = auditedServiceWith(OtherPointsCheck);
+			const toolCallContext: PreToolExecutionContext = {
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+				threadId: 'thread-1',
+				agentExecutionId: 'agent-exec-1',
+				runId: 'run-1',
+				toolCallId: 'call-1',
+				tool: { name: 'send_message' },
+				input: { text: 'hi' },
+				resumed: false,
+				runToolCalls: () => [],
+				sessionHistory: async () => await Promise.resolve([]),
+			};
+
+			await service.enforce('preToolExecution', toolCallContext, unattended);
+
+			expect(audit.mock.calls[0][1]).toMatchObject({
+				point: 'preToolExecution',
+				agentId: 'agent-1',
+				toolName: 'send_message',
+				toolCallId: 'call-1',
+				projectId: 'proj-1',
+			});
+			// The line names the call. It does not copy what the call carried.
+			expect(audit.mock.calls[0][1]).not.toHaveProperty('input');
 			expect(audit.mock.calls[0][1]).not.toHaveProperty('workflowId');
 		});
 

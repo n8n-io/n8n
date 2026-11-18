@@ -17,6 +17,7 @@ import type {
 } from '../index';
 import type { AgentPersistenceOptions, ToolResultEntry } from '../sdk/agent';
 import type { AgentMessage } from '../sdk/message';
+import type { PreToolExecution } from '../sdk/pre-tool-execution';
 import type { JSONValue } from '../utils/json';
 
 /** Pending tool calls from a suspended run, passed into the loop to execute before the first LLM call. */
@@ -153,4 +154,6 @@ export interface ToolCallExecutorDeps {
 	onCancelled: () => void;
 	tokenCounter: TokenCounter;
 	workspaceFilesystem?: WorkspaceFilesystem;
+	/** Runs before each entry into a tool handler. Unset: every tool call runs. */
+	preToolExecution?: PreToolExecution;
 }

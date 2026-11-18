@@ -976,6 +976,16 @@ export class AgentExecutionService {
 	}
 
 	/**
+	 * All executions of a thread with their timelines, oldest first. It makes no access check,
+	 * so it is for host code that holds a thread id of its own run, never a client's id.
+	 */
+	async findThreadExecutions(threadId: string, agentId: string): Promise<AgentExecution[]> {
+		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
+		await this.hydrateTimelines(agentId, threadId, executions);
+		return executions;
+	}
+
+	/**
 	 * Get the newest `limit` turns of a thread before `before`, oldest first.
 	 * Validates projectId and agentId ownership.
 	 *

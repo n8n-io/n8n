@@ -73,6 +73,7 @@ describe('eligibleModules', () => {
 		'inbox',
 		'promotions',
 		'type-availability-policies',
+		'agent-tool-policies',
 		'execution-limits',
 	])('should include %s by default', (moduleName) => {
 		expect(Container.get(ModuleRegistry).eligibleModules).toContain(moduleName);
@@ -86,6 +87,7 @@ describe('eligibleModules', () => {
 		'inbox',
 		'promotions',
 		'type-availability-policies',
+		'agent-tool-policies',
 		'execution-limits',
 	])('should allow opting out of the default %s module via env var', (moduleName) => {
 		process.env.N8N_DISABLED_MODULES = moduleName;
@@ -180,6 +182,7 @@ describe('eligibleModules', () => {
 			'agent-evals',
 			'scim',
 			'type-availability-policies',
+			'agent-tool-policies',
 			'execution-limits',
 		]);
 	});
@@ -230,6 +233,7 @@ describe('eligibleModules', () => {
 			'agent-evals',
 			'scim',
 			'type-availability-policies',
+			'agent-tool-policies',
 			'execution-limits',
 			'engine-v2',
 		]);

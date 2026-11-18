@@ -4,9 +4,11 @@ import type { JSONSchema7 } from 'json-schema';
 import {
 	executeTool,
 	isSuspendedToolResult,
+	reportedToolCall,
 	resolveToolCallTarget,
 	type SuspendedToolResult,
 } from './tool-adapter';
+import { clearToolCall, type ToolCallClearance } from './tool-call-clearance';
 import { CALL_TOOL_TOOL_NAME, FIND_TOOLS_TOOL_NAME } from './tool-catalog';
 import {
 	guardToolErrorForModel,
@@ -30,6 +32,7 @@ import type {
 	ToolCallOutcome,
 } from '../../types/runtime/tool-execution';
 import type { AgentMessage, ContentToolCall, Message } from '../../types/sdk/message';
+import type { PreToolExecutionDecision, ToolCallTarget } from '../../types/sdk/pre-tool-execution';
 import type { JSONValue } from '../../types/utils/json';
 import { parseWithSchema } from '../../utils/parse';
 import { isZodSchema } from '../../utils/zod';
@@ -81,6 +84,29 @@ function requestedCall(toolName: string, input: JSONValue): { name: string; inpu
 		return { name: toolName, input };
 	}
 	return { name: input.tool, input: input.arguments ?? {} };
+}
+
+function toolCallTarget(tool: BuiltTool, dispatchedBy: BuiltTool | undefined): ToolCallTarget {
+	return {
+		name: tool.name,
+		...(tool.metadata !== undefined ? { metadata: tool.metadata } : {}),
+		...(tool.mcpServerName !== undefined ? { mcpServerName: tool.mcpServerName } : {}),
+		...(tool.mcpToolName !== undefined ? { mcpToolName: tool.mcpToolName } : {}),
+		...(tool.mcpAnnotations !== undefined ? { mcpAnnotations: tool.mcpAnnotations } : {}),
+		...(dispatchedBy !== undefined ? { dispatchedBy: dispatchedBy.name } : {}),
+	};
+}
+
+/**
+ * Copies, because the list changes a block in place when its call settles. A dispatched call
+ * is listed as the tool that runs, not as the dispatcher.
+ */
+function toolCallsOf(list: AgentMessageList, toolMap: Map<string, BuiltTool>): ContentToolCall[] {
+	return list
+		.messages()
+		.flatMap((m) => (isLlmMessage(m) && 'content' in m ? (m as Message).content : []))
+		.filter((c): c is ContentToolCall => c.type === 'tool-call')
+		.map((c) => reportedToolCall(toolMap, { ...c }));
 }
 
 /** Execute one tool call and keep its result, cancellation, and lifecycle events together. */
@@ -161,6 +187,9 @@ export class ToolCallRunner {
 		if (!validation.ok) return validation.outcome;
 		const input = validation.input;
 
+		const cleared = await this.clearToolCall(params, builtTool, input, target.dispatchedBy);
+		if ('outcome' in cleared) return cleared.outcome;
+
 		const guardrails = GuardrailRunner.from(params.guardrails);
 		// Guardrails check the tool that runs, so a dispatched call reports that tool, not call_tool.
 		const guardCtx = guardrails?.toolCallContext({
@@ -190,13 +219,92 @@ export class ToolCallRunner {
 			});
 		}
 
-		return await this.executeValidatedToolCall(params, builtTool, input, guardrails, guardCtx);
+		return await this.executeValidatedToolCall(
+			params,
+			builtTool,
+			input,
+			cleared.clearance,
+			guardrails,
+			guardCtx,
+		);
+	}
+
+	/**
+	 * Ask the host whether the call runs. This happens on each entry into a handler, so a
+	 * call that resumes is asked about again. A hook that throws stops the call.
+	 */
+	private async clearToolCall(
+		params: ProcessToolCallParams,
+		builtTool: BuiltTool,
+		input: JSONValue,
+		dispatchedBy: BuiltTool | undefined,
+	): Promise<{ clearance: ToolCallClearance } | { outcome: ToolCallOutcome }> {
+		const hook = this.deps.preToolExecution;
+		if (!hook) return { clearance: clearToolCall() };
+
+		let decision: PreToolExecutionDecision;
+		try {
+			decision = await hook({
+				toolCallId: params.toolCallId,
+				runId: params.runId,
+				tool: toolCallTarget(builtTool, dispatchedBy),
+				input,
+				resumed: params.previouslySuspended ?? false,
+				...(params.persistence !== undefined ? { persistence: params.persistence } : {}),
+				runToolCalls: () => toolCallsOf(params.list, params.toolMap),
+			});
+		} catch {
+			// A failed check must not end a suspended call without its cleanup. It stays pending.
+			if (params.previouslySuspended) return { outcome: { outcome: 'retryable-error' } };
+			// The hook's error can hold host internals, so the model gets a fixed text.
+			const error = new Error('Tool call stopped: the check before execution failed');
+			return { outcome: await this.toolError(params, error) };
+		}
+		if (decision.allow) return { clearance: clearToolCall() };
+
+		return { outcome: await this.buildDeniedOutcome({ ...params, input }, builtTool, decision) };
+	}
+
+	/** Record the host's result for a call that the hook denied. The handler does not run. */
+	private async buildDeniedOutcome(
+		params: ProcessToolCallParams,
+		builtTool: BuiltTool,
+		{ result }: Extract<PreToolExecutionDecision, { allow: false }>,
+	): Promise<ToolCallOutcome> {
+		const { toolCallId, toolName, input, list } = params;
+		// A call that suspended can have started its work, so the tool cleans up first.
+		if (params.previouslySuspended) {
+			try {
+				await this.runCancellationCleanup(params, builtTool, 'Tool call denied');
+			} catch {
+				return { outcome: 'retryable-error' };
+			}
+		}
+		const guardedResult = await guardToolResultForModel(
+			result,
+			this.deps.tokenCounter,
+			this.getResultStorage(params),
+		);
+		this.eventBus.emit({
+			type: AgentEvent.ToolExecutionEnd,
+			toolCallId,
+			toolName,
+			result,
+			isError: false,
+		});
+		list.setToolCallResult(toolCallId, guardedResult.historyOutput);
+		return {
+			outcome: 'success',
+			toolEntry: { tool: toolName, input, output: result, transformed: false },
+			modelOutput: guardedResult.wireOutput,
+		};
 	}
 
 	private async executeValidatedToolCall(
 		params: ProcessToolCallParams,
 		builtTool: BuiltTool,
 		input: JSONValue,
+		clearance: ToolCallClearance,
 		guardrails: GuardrailRunner | undefined,
 		guardCtx: ReturnType<GuardrailRunner['toolCallContext']> | undefined,
 	): Promise<ToolCallOutcome> {
@@ -219,6 +327,7 @@ export class ToolCallRunner {
 						await this.cleanupInterruptedSuspension(params, builtTool, input, suspension);
 					}
 				},
+				clearance,
 				guardrails,
 				guardCtx,
 			);
@@ -438,6 +547,7 @@ export class ToolCallRunner {
 		builtTool: BuiltTool,
 		input: JSONValue,
 		onSuspend: (payload: unknown, options?: ToolSuspendOptions) => void,
+		clearance: ToolCallClearance,
 		guardrails: GuardrailRunner | undefined,
 		guardCtx: ReturnType<GuardrailRunner['toolCallContext']> | undefined,
 	): Promise<unknown> {
@@ -465,6 +575,7 @@ export class ToolCallRunner {
 					const result = await executeTool(
 						input,
 						builtTool,
+						clearance,
 						resumeData,
 						resolvedTelemetry,
 						toolCallId,

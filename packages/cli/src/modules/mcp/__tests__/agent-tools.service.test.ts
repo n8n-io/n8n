@@ -90,6 +90,7 @@ import { McpAgentSlackSetup } from '../tools/agents/agent-slack-setup';
 import { McpAgentToolsService } from '../tools/agents/agent-tools.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { AgentPolicyService } from '@/modules/agents/agent-policy.service';
+import type { AgentToolCallHistoryService } from '@/modules/agents/agent-tool-call-history.service';
 import {
 	createAgentSkillRefsService,
 	storedAgentConfig,
@@ -298,7 +299,7 @@ describe('McpAgentToolsService', () => {
 				agentRepository,
 				agentTaskRepository,
 				agentSkillRefs,
-				new AgentPolicyService(new PolicyEnforcementService()),
+				new AgentPolicyService(new PolicyEnforcementService(), mock<AgentToolCallHistoryService>()),
 				mock<CredentialsFinderService>({
 					findCredentialForUser: async (id: string) => ({ id }) as never,
 				}),

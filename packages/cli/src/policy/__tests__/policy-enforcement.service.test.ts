@@ -367,6 +367,32 @@ describe('PolicyEnforcementService', () => {
 	describe('subject binding', () => {
 		const service = new PolicyEnforcementService();
 
+		it('binds a tool call to its run and its call id', async () => {
+			const backend = mock<PolicyEnforcementBackend>();
+			backend.enforce.mockResolvedValue({ violations: [] });
+			const gated = new PolicyEnforcementService();
+			gated.setImplementation(backend);
+			const context = {
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+				threadId: null,
+				agentExecutionId: null,
+				runId: 'run-1',
+				toolCallId: 'call-1',
+				tool: { name: 'send_message' },
+				input: {},
+				resumed: false,
+				runToolCalls: () => [],
+				sessionHistory: async () => await Promise.resolve([]),
+			};
+			const actor: PolicyActor = { kind: 'system', reason: 'execution' };
+
+			const token = await gated.enforcePreToolExecution(context, actor);
+
+			expect(backend.enforce).toHaveBeenCalledExactlyOnceWith('preToolExecution', context, actor);
+			expect(token.subject).toEqual({ type: 'toolCall', id: 'run-1:call-1' });
+		});
+
 		it('binds a saved workflow to its id', async () => {
 			const token = await service.enforceWorkflowStart(
 				{

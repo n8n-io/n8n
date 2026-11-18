@@ -97,6 +97,7 @@ export class ModuleRegistry {
 		'agent-evals',
 		'scim',
 		'type-availability-policies',
+		'agent-tool-policies',
 		'execution-limits',
 	];
 

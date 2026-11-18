@@ -94,6 +94,7 @@ import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { AgentPolicyService } from '@/modules/agents/agent-policy.service';
+import type { AgentToolCallHistoryService } from '@/modules/agents/agent-tool-call-history.service';
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
@@ -165,6 +166,7 @@ function makeRuntimeReconstructionService(
 		mock<AgentKnowledgeUsageTracker>(),
 		makeKnowledgeAvailabilityService(),
 		mock<AgentSandboxFilesService>(),
+		mock<AgentPolicyService>(),
 	);
 }
 
@@ -303,7 +305,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				agentRepository,
 				agentTaskRepository,
 				skillRefs,
-				new AgentPolicyService(new PolicyEnforcementService()),
+				new AgentPolicyService(new PolicyEnforcementService(), mock<AgentToolCallHistoryService>()),
 				mock<CredentialsFinderService>({
 					findCredentialForUser: async (id: string) => ({ id }) as never,
 				}),
@@ -366,7 +368,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AiGatewayService>(),
 			skillRefs,
 			// No enforcement implementation is registered, so every evaluation comes back clear.
-			new AgentPolicyService(new PolicyEnforcementService()),
+			new AgentPolicyService(new PolicyEnforcementService(), mock<AgentToolCallHistoryService>()),
 		);
 		agentPublishService = new AgentPublishService(
 			logger,
@@ -382,7 +384,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			transactionRunner,
 			saveCompletion,
 			definitionService,
-			new AgentPolicyService(new PolicyEnforcementService()),
+			new AgentPolicyService(new PolicyEnforcementService(), mock<AgentToolCallHistoryService>()),
 			skillRefs,
 			mock<KnowledgeFileRepository>({
 				getKnowledgeTotals: async () => ({ fileCount: 0, totalBytes: 0 }),
@@ -407,7 +409,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			credentialsService,
 			mock<ProjectScopeService>(),
 			mock<AgentsSettingsService>(),
-			new AgentPolicyService(new PolicyEnforcementService()),
+			new AgentPolicyService(new PolicyEnforcementService(), mock<AgentToolCallHistoryService>()),
 			skillRefs,
 			transactionRunner,
 			mock<AgentConfigPreparationService>(),

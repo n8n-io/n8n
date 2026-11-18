@@ -32,6 +32,7 @@ import type {
 	PromptCachingConfig,
 	ToolDeferralConfig,
 } from '../sdk/agent';
+import type { PreToolExecution } from '../sdk/pre-tool-execution';
 
 export interface VolatileInstructionsContext {
 	persistence?: AgentPersistenceOptions;
@@ -81,6 +82,11 @@ export interface AgentRuntimeConfig {
 	 * HTTP_PROXY resolver.
 	 */
 	modelFetch?: FetchFn;
+	/**
+	 * Decides whether each tool call of this runtime runs. It belongs to the runtime and not
+	 * to a run, so no run can leave it out. Unset: every tool call runs.
+	 */
+	preToolExecution?: PreToolExecution;
 	/**
 	 * Caller identity sent as the `x-n8n-function-id` header on this runtime's model
 	 * calls. Side calls add a suffix (`.memory-observer`, `.title`). Unset: no header.

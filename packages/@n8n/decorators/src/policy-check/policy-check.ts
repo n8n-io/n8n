@@ -1,4 +1,4 @@
-import type { PolicyCheckFailure, PolicyViolation } from '@n8n/api-types';
+import type { McpToolAnnotations, PolicyCheckFailure, PolicyViolation } from '@n8n/api-types';
 import type { Constructable } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 
@@ -20,6 +20,7 @@ export const ENFORCEMENT_POINTS = [
 	'credentialTransfer',
 	'credentialDecrypt',
 	'contentImport',
+	'preToolExecution',
 ] as const;
 
 export type EnforcementPoint = (typeof ENFORCEMENT_POINTS)[number];
@@ -147,6 +148,74 @@ export type ContentImportContext = {
 	readonly transport: ContentImportTransport;
 } & ({ readonly workflow: PolicedWorkflow } | { readonly credential: PolicedCredential });
 
+/** The tool that an agent tool call runs, as the agent runtime describes it. */
+export type PolicedTool = {
+	/** The name that the runtime runs the tool under. */
+	readonly name: string;
+	/** What the host knows about the tool, such as `kind`, `nodeType` or `workflowId`. */
+	readonly metadata?: Readonly<Record<string, unknown>>;
+	readonly mcpServerName?: string;
+	readonly mcpToolName?: string;
+	/** As the MCP server sent them, such as `readOnlyHint`. The server is not trusted. */
+	readonly mcpAnnotations?: Readonly<McpToolAnnotations>;
+	/** The dispatcher that the model called, such as `call_tool`. Absent for a direct call. */
+	readonly dispatchedBy?: string;
+};
+
+/** One tool call in the history of an agent session. */
+export type PolicedToolCallRecord = {
+	readonly toolCallId: string;
+	readonly toolName: string;
+	readonly input: unknown;
+	/** `pending` for a call with no result yet, such as the call that is being decided. */
+	readonly status: 'pending' | 'success' | 'error' | 'canceled';
+	/**
+	 * The result or the error text, as the model got it. Large values are cut. A call that was
+	 * read from storage also has its sensitive keys redacted, in `input` and here.
+	 */
+	readonly output?: unknown;
+};
+
+/** The tool calls of one agent session, oldest first. */
+export type PolicedSession = {
+	/** `null` for a run that keeps no session. */
+	readonly threadId: string | null;
+	/** `null` when the session has no stored thread, such as an agent that a workflow defines. */
+	readonly agentId: string | null;
+	readonly toolCalls: readonly PolicedToolCallRecord[];
+};
+
+/**
+ * One tool call that an agent is about to run. The agent runtime asks each time it enters a
+ * tool handler, so a call that suspended is asked about again when it resumes.
+ */
+export type PreToolExecutionContext = {
+	readonly agentId: string;
+	readonly projectId: string;
+	/** The agent session. `null` for a run that keeps no session. */
+	readonly threadId: string | null;
+	/** The agent execution of the turn, not a workflow execution. `null` when there is none. */
+	readonly agentExecutionId: string | null;
+	readonly runId: string;
+	readonly toolCallId: string;
+	readonly tool: PolicedTool;
+	/** The input that the tool handler receives, after schema validation. */
+	readonly input: unknown;
+	readonly resumed: boolean;
+	/**
+	 * The tool calls that the run holds in memory, oldest first, with this call last or among
+	 * the last as `pending`. It costs no query, but it can miss older turns of the session.
+	 */
+	readonly runToolCalls: () => readonly PolicedToolCallRecord[];
+	/**
+	 * The full history: this session first, then each session that delegated to it, up to the
+	 * root. It reads the stored turns on each call and runs inside the deadline of the check,
+	 * so call it only when the decision needs it. The stored copy of a turn that still runs
+	 * can lag, so the last calls of a parent session can be absent.
+	 */
+	readonly sessionHistory: () => Promise<readonly PolicedSession[]>;
+};
+
 /** A policy version a check read, recorded on the audit log. */
 export type PolicyVersionRef = {
 	/** Usually `'instance'` or `'project'`. Open, like {@link PolicyViolation.scope}. */
@@ -240,6 +309,10 @@ export interface RegisteredPolicyCheck {
 		signal: AbortSignal,
 	): Promise<PolicyCheckResult>;
 	onContentImport?(ctx: ContentImportContext, signal: AbortSignal): Promise<PolicyCheckResult>;
+	onPreToolExecution?(
+		ctx: PreToolExecutionContext,
+		signal: AbortSignal,
+	): Promise<PolicyCheckResult>;
 }
 
 /** The {@link RegisteredPolicyCheck} method for a point, e.g. `'onWorkflowSave'`. */
@@ -263,6 +336,7 @@ export const ENFORCEMENT_POINT_METHODS: {
 	credentialTransfer: 'onCredentialTransfer',
 	credentialDecrypt: 'onCredentialDecrypt',
 	contentImport: 'onContentImport',
+	preToolExecution: 'onPreToolExecution',
 };
 
 /** Constructor of a class implementing {@link RegisteredPolicyCheck}, for DI. */

@@ -62,6 +62,9 @@ export type PolicyDecisionAudit = {
 	credentialId?: string | null;
 	credentialType?: string;
 	consumerNodeType?: string;
+	/** `preToolExecution` only: the tool an agent was about to run, and which call it was. */
+	toolName?: string;
+	toolCallId?: string;
 	projectId: string | null;
 };
 
@@ -88,6 +91,15 @@ const policedWorkflowId = (context: {
 
 /** What was policed, read off the context. */
 function targetOf(context: AnyPolicyContext) {
+	if ('toolCallId' in context) {
+		return {
+			agentId: context.agentId,
+			toolName: context.tool.name,
+			toolCallId: context.toolCallId,
+			projectId: context.projectId,
+		};
+	}
+
 	// Same rule as a workflow save: a create has no committed id, whatever the payload claims.
 	if ('storedCredential' in context) {
 		return {

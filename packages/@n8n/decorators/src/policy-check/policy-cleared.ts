@@ -15,7 +15,7 @@ import type {
  * that silently never matches. Open to widening: `contentImport` in particular is generic over
  * artifact kind, and adding a kind here touches no signature.
  */
-export type PolicySubjectType = 'workflow' | 'credential' | 'agent';
+export type PolicySubjectType = 'workflow' | 'credential' | 'agent' | 'toolCall';
 
 /** What a decision was about. */
 export type PolicySubject = {

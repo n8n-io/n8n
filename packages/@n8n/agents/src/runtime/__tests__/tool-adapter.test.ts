@@ -5,6 +5,7 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import type { BuiltTool } from '../../types';
 import { executeTool, toAiSdkTools } from '../tools/tool-adapter';
+import { clearToolCall } from '../tools/tool-call-clearance';
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -253,6 +254,21 @@ describe('toAiSdkTools — description forwarding', () => {
 // executeTool — context propagation
 // ---------------------------------------------------------------------------
 
+describe('executeTool — clearance', () => {
+	it.each([undefined, {}, { hostClearance: true }])(
+		'does not run the handler with %j as the clearance',
+		async (notAClearance) => {
+			const handler = vi.fn().mockResolvedValue('ok');
+			const tool: BuiltTool = { name: 'guarded', description: 'd', handler };
+
+			await expect(executeTool({}, tool, notAClearance as never)).rejects.toThrow(
+				'Tool "guarded" was not cleared to run',
+			);
+			expect(handler).not.toHaveBeenCalled();
+		},
+	);
+});
+
 describe('executeTool — context propagation', () => {
 	it('passes MCP tool input to the handler unchanged', async () => {
 		const handler = vi.fn().mockResolvedValue('ok');
@@ -264,7 +280,7 @@ describe('executeTool — context propagation', () => {
 		};
 		const input = { team: 'Agent', query: '', priority: 0 };
 
-		await executeTool(input, tool);
+		await executeTool(input, tool, clearToolCall());
 
 		expect(handler.mock.calls[0][0]).toBe(input);
 	});
@@ -274,7 +290,9 @@ describe('executeTool — context propagation', () => {
 		const tool: BuiltTool = { name: 'cancellable', description: 'd', handler };
 		const { signal } = new AbortController();
 
-		await executeTool({}, tool, undefined, undefined, 'call-1', { abortSignal: signal });
+		await executeTool({}, tool, clearToolCall(), undefined, undefined, 'call-1', {
+			abortSignal: signal,
+		});
 
 		expect(handler).toHaveBeenCalledWith({}, expect.objectContaining({ abortSignal: signal }));
 	});
@@ -289,7 +307,9 @@ describe('executeTool — context propagation', () => {
 		};
 		const { signal } = new AbortController();
 
-		await executeTool({}, tool, undefined, undefined, 'call-1', { abortSignal: signal });
+		await executeTool({}, tool, clearToolCall(), undefined, undefined, 'call-1', {
+			abortSignal: signal,
+		});
 
 		expect(handler).toHaveBeenCalledWith({}, expect.objectContaining({ abortSignal: signal }));
 	});
@@ -303,7 +323,9 @@ describe('executeTool — context propagation', () => {
 			incrementTokenCount: vi.fn(),
 		};
 
-		await executeTool({}, tool, undefined, undefined, 'call-1', { executionCounter });
+		await executeTool({}, tool, clearToolCall(), undefined, undefined, 'call-1', {
+			executionCounter,
+		});
 
 		expect(handler).toHaveBeenCalledWith({}, expect.objectContaining({ executionCounter }));
 	});
@@ -322,7 +344,9 @@ describe('executeTool — context propagation', () => {
 			incrementTokenCount: vi.fn(),
 		};
 
-		await executeTool({}, tool, undefined, undefined, 'call-1', { executionCounter });
+		await executeTool({}, tool, clearToolCall(), undefined, undefined, 'call-1', {
+			executionCounter,
+		});
 
 		expect(handler).toHaveBeenCalledWith({}, expect.objectContaining({ executionCounter }));
 	});
@@ -336,7 +360,7 @@ describe('executeTool — context propagation', () => {
 			suspendSchema: z.object({ requestId: z.string() }),
 		};
 
-		await executeTool({}, tool, { approved: true }, undefined, 'call-1', {
+		await executeTool({}, tool, clearToolCall(), { approved: true }, undefined, 'call-1', {
 			suspendPayload: { requestId: 'r1' },
 		});
 

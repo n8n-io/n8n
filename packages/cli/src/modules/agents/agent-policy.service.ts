@@ -1,10 +1,17 @@
+import type { ContentToolCall, PreToolExecution } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
-import type { PolicedWorkflow, PolicyDecision } from '@n8n/decorators';
+import type { PolicedToolCallRecord, PolicedWorkflow, PolicyDecision } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 
 import { toPolicedNodes } from '@/policy/policed-agent-nodes';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { findPolicyViolations } from '@/policy/policy-violation.error';
+
+import { AgentToolCallHistoryService } from './agent-tool-call-history.service';
+import { toPolicyRefusalResult } from './tools/policy-refusal';
+import { hostMetadataExecutionId } from './types/agent-queued-message';
 
 /** The part of an agent config the policy reads. */
 export type PolicedAgentContent = Pick<AgentJsonConfig, 'name' | 'tools' | 'mcpServers'>;
@@ -22,14 +29,30 @@ function policedWorkflowForAgent(
 	};
 }
 
+/** A tool call of the running turn, as a policy check reads it. */
+function toPolicedToolCall(call: ContentToolCall): PolicedToolCallRecord {
+	const { toolCallId, toolName, input } = call;
+	if (call.state === 'pending') return { toolCallId, toolName, input, status: 'pending' };
+	if (call.state === 'rejected') {
+		return { toolCallId, toolName, input, status: 'error', output: call.error };
+	}
+	const status = call.canceled ? 'canceled' : 'success';
+	return { toolCallId, toolName, input, status, output: call.output };
+}
+
 /**
  * Polices an agent at the workflow points, with one node for each node tool and each MCP
  * server, so every workflow check covers agents too. Call it outside a transaction: checks
  * read on their own.
+ *
+ * A running agent is policed for each tool call instead, through {@link preToolExecutionHook}.
  */
 @Service()
 export class AgentPolicyService {
-	constructor(private readonly policyEnforcementService: PolicyEnforcementService) {}
+	constructor(
+		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly toolCallHistory: AgentToolCallHistoryService,
+	) {}
 
 	async evaluateSave(
 		projectId: string,
@@ -88,5 +111,44 @@ export class AgentPolicyService {
 			workflow: policedWorkflowForAgent(agentId, content),
 			projectId,
 		});
+	}
+
+	/**
+	 * The hook that asks the policy before each tool call of one agent runtime.
+	 *
+	 * A runtime is cached and shared between runs, so the hook holds only the agent and its
+	 * project. What changes for each run comes from the call.
+	 */
+	preToolExecutionHook(projectId: string, agentId: string): PreToolExecution {
+		return async ({ toolCallId, runId, tool, input, resumed, persistence, runToolCalls }) => {
+			const threadId = persistence?.threadId ?? null;
+			const policedRunToolCalls = () => runToolCalls().map(toPolicedToolCall);
+			try {
+				await this.policyEnforcementService.enforcePreToolExecution(
+					{
+						agentId,
+						projectId,
+						threadId,
+						agentExecutionId: hostMetadataExecutionId(persistence?.hostMetadata) ?? null,
+						runId,
+						toolCallId,
+						tool,
+						input,
+						resumed,
+						runToolCalls: policedRunToolCalls,
+						sessionHistory: async () =>
+							await this.toolCallHistory.sessionHistory(threadId, agentId, policedRunToolCalls()),
+					},
+					// An agent execution is not a workflow execution, so the actor has no `executionId`.
+					{ kind: 'system', reason: 'execution' },
+				);
+				return { allow: true };
+			} catch (error) {
+				const violations = findPolicyViolations(error);
+				// A check that did not answer is not a refusal. The runtime stops the call on a throw.
+				if (!violations) throw error;
+				return { allow: false, result: toPolicyRefusalResult(getErrorMessage(error), violations) };
+			}
+		};
 	}
 }

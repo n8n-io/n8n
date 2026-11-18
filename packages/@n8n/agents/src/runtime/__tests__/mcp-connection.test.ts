@@ -1,6 +1,7 @@
 import { McpClient } from '../../sdk/mcp-client';
 import { McpConnection } from '../mcp/mcp-connection';
 import { executeTool } from '../tools/tool-adapter';
+import { clearToolCall } from '../tools/tool-call-clearance';
 
 const sseCtor = vi.fn();
 const streamableHttpCtor = vi.fn();
@@ -491,8 +492,8 @@ describe('McpConnection — tool filtering', () => {
 			reversedTools[1]?.name,
 			reversedTools[0]?.name,
 		]);
-		await executeTool({}, tools[0]);
-		await executeTool({}, tools[1]);
+		await executeTool({}, tools[0], clearToolCall());
+		await executeTool({}, tools[1], clearToolCall());
 		expect(onToolCallSettled).toHaveBeenNthCalledWith(1, {
 			toolName: 'read file',
 			modelToolName: tools[0].name,

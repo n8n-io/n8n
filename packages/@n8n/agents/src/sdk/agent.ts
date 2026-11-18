@@ -93,6 +93,7 @@ import type { AgentEvent } from '../types/runtime/event';
 import type { StreamChunk } from '../types/sdk/agent';
 import type { AgentBuilder } from '../types/sdk/agent-builder';
 import type { AgentMessage } from '../types/sdk/message';
+import type { PreToolExecution } from '../types/sdk/pre-tool-execution';
 import { getCatalogModelId, modelConfigToId } from '../utils/model';
 import type { Workspace } from '../workspace/workspace';
 
@@ -185,6 +186,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private modelConfig?: ModelConfig;
 
 	private modelFetchValue?: FetchFn;
+
+	private preToolExecutionValue?: PreToolExecution;
 
 	private functionIdValue?: string;
 
@@ -308,6 +311,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 */
 	modelFetch(fetch: FetchFn): this {
 		this.modelFetchValue = fetch;
+		return this;
+	}
+
+	/**
+	 * Set the hook that decides whether each tool call runs. It applies to every run of this
+	 * agent and to its inline sub-agents.
+	 */
+	preToolExecution(hook: PreToolExecution): this {
+		this.preToolExecutionValue = hook;
 		return this;
 	}
 
@@ -1247,6 +1259,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			name: this.name,
 			model: modelConfig,
 			...(this.modelFetchValue !== undefined ? { modelFetch: this.modelFetchValue } : {}),
+			...(this.preToolExecutionValue !== undefined
+				? { preToolExecution: this.preToolExecutionValue }
+				: {}),
 			...(this.functionIdValue !== undefined ? { functionId: this.functionIdValue } : {}),
 			instructions,
 			...(this.skillSource ? { skillSource: this.skillSource } : {}),
@@ -1415,6 +1430,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				// Inherit the parent's transport so children can't bypass a
 				// guarded/instrumented fetch via the ambient default.
 				...(this.modelFetchValue !== undefined ? { modelFetch: this.modelFetchValue } : {}),
+				// The child runs the parent's tools, so the parent's hook decides for them too.
+				...(this.preToolExecutionValue !== undefined
+					? { preToolExecution: this.preToolExecutionValue }
+					: {}),
 				...(this.functionIdValue !== undefined
 					? { functionId: `${this.functionIdValue}.subagent` }
 					: {}),

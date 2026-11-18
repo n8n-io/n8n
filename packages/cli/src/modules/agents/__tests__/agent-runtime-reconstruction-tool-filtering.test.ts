@@ -37,6 +37,7 @@ import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/
 
 import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { AgentPolicyService } from '../agent-policy.service';
 import type { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
@@ -196,6 +197,7 @@ function makeService(overrides: {
 		mock<AgentKnowledgeUsageTracker>(),
 		makeKnowledgeAvailabilityService(),
 		mock<AgentSandboxFilesService>(),
+		mock<AgentPolicyService>(),
 	);
 
 	return {
