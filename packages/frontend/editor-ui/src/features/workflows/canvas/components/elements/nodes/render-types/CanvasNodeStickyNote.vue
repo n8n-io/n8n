@@ -7,6 +7,10 @@ import { NodeResizer } from '@vue-flow/node-resizer';
 import type { OnResize } from '@vue-flow/node-resizer';
 import type { XYPosition } from '@vue-flow/core';
 
+import CanvasOrigamiEffect from '../../../delight/CanvasOrigamiEffect.vue';
+import { useI18n } from '@n8n/i18n';
+import { useRoute } from 'vue-router';
+
 import { N8nSticky } from '@n8n/design-system';
 defineOptions({
 	inheritAttrs: false,
@@ -21,6 +25,9 @@ const emit = defineEmits<{
 }>();
 
 const $style = useCssModule();
+const i18n = useI18n();
+const route = useRoute();
+const delightEnabled = computed(() => route?.query.hackmation === 'delight');
 
 const { id, isSelected, isReadOnly, render, eventBus } = useCanvasNode();
 
@@ -105,22 +112,28 @@ onBeforeUnmount(() => {
 		:is-visible="!isReadOnly"
 		@resize="onResize"
 	/>
-	<N8nSticky
-		v-bind="$attrs"
-		:id="id"
-		:class="classes"
-		data-test-id="sticky"
-		:height="renderOptions.height"
-		:width="renderOptions.width"
-		:model-value="renderOptions.content"
-		:background-color="renderOptions.color"
-		:edit-mode="isActive"
-		:read-only="isReadOnly"
-		@edit="onSetActive"
-		@dblclick.stop="onActivate"
-		@update:model-value="onInputChange"
-		@contextmenu="openContextMenu"
-	/>
+	<CanvasOrigamiEffect
+		:enabled="delightEnabled"
+		:disabled="isActive || isReadOnly"
+		:label="i18n.baseText('canvas.delight.fold')"
+	>
+		<N8nSticky
+			v-bind="$attrs"
+			:id="id"
+			:class="classes"
+			data-test-id="sticky"
+			:height="renderOptions.height"
+			:width="renderOptions.width"
+			:model-value="renderOptions.content"
+			:background-color="renderOptions.color"
+			:edit-mode="isActive"
+			:read-only="isReadOnly"
+			@edit="onSetActive"
+			@dblclick.stop="onActivate"
+			@update:model-value="onInputChange"
+			@contextmenu="openContextMenu"
+		/>
+	</CanvasOrigamiEffect>
 </template>
 
 <style lang="scss" module>

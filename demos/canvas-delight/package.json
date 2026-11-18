@@ -1,0 +1,8 @@
+{
+  "name": "n8n-canvas-delight-demo",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "vite --host 127.0.0.1 --port 5183 --strictPort", "test": "vitest run --maxWorkers=1", "build": "vite build" },
+  "dependencies": { "vue": "^3.5.13" },
+  "devDependencies": { "@vitejs/plugin-vue": "^6.0.0", "vite": "^7.0.0", "vitest": "^3.2.0", "@vue/test-utils": "^2.4.6", "jsdom": "^26.0.0", "sass": "^1.85.0", "prettier": "3.6.2", "oxlint": "1.78.0", "typescript": "^5.9.0", "vue-tsc": "^3.0.0" }
+}

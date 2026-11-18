@@ -1,0 +1,24 @@
+{
+	"compilerOptions": {
+		"target": "ES2022",
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"strict": true,
+		"skipLibCheck": true,
+		"lib": ["ES2022", "DOM", "DOM.Iterable"],
+		"types": ["vite/client"],
+		"allowImportingTsExtensions": true,
+		"baseUrl": ".",
+		"paths": {
+			"vue": ["./node_modules/vue"],
+			"@vue/test-utils": ["./node_modules/@vue/test-utils"],
+			"vitest": ["./node_modules/vitest"]
+		}
+	},
+	"include": [
+		"App.vue",
+		"main.ts",
+		"../../packages/frontend/editor-ui/src/features/workflows/canvas/components/delight/*.vue",
+		"../../packages/frontend/editor-ui/src/features/workflows/canvas/components/delight/*.ts"
+	]
+}

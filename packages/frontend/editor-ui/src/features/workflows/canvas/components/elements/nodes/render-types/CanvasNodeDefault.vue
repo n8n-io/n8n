@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref, useCssModule, watch } from 'vue';
+import CanvasSleepEffect from '../../../delight/CanvasSleepEffect.vue';
 import { useNodeConnections } from '@/app/composables/useNodeConnections';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
@@ -79,6 +80,17 @@ const {
 
 const nodeHelpers = useNodeHelpers();
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
+const delightEnabled = computed(() => route.query.hackmation === 'delight');
+const sleepEligible = computed(
+	() =>
+		!isRunning.value &&
+		!isWaiting.value &&
+		(isDisabled.value ||
+			Object.values(connections.value).every((direction) =>
+				Object.values(direction).every((ports) => ports.every((links) => !links?.length)),
+			)),
+);
+
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 
 const isWaiting = computed(() =>
@@ -232,6 +244,14 @@ function onActivate(event: MouseEvent) {
 		@contextmenu="openContextMenu"
 		@dblclick.stop="onActivate"
 	>
+		<CanvasSleepEffect
+			v-if="delightEnabled && sleepEligible"
+			:eligible="sleepEligible"
+			:delay="3000"
+			:show-controls="isSelected"
+			:sleep-label="i18n.baseText('canvas.delight.sleep')"
+			:wake-label="i18n.baseText('canvas.delight.wake')"
+		/>
 		<span v-if="isRunning || isWaiting" :class="$style.statusRing" />
 		<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
 		<NodeIcon

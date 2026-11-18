@@ -1,0 +1,24 @@
+{
+  "baseline": {
+    "rect": {
+      "bottom": 667.5599975585938,
+      "height": 145.96002197265625,
+      "left": 351,
+      "right": 621.5999755859375,
+      "top": 521.5999755859375,
+      "width": 270.5999755859375,
+      "x": 351,
+      "y": 521.5999755859375
+    },
+    "style": "width: 330px; height: 178px;",
+    "text": "THE MORNING DIGESTA small moment of quiet.\n\nSend the good stories to the team.\nKeep the rest for a rainy day.Try the folded corner \u2197"
+  },
+  "sleepNow": true,
+  "wakeOnActivity": true,
+  "idleSleep": true,
+  "cornerFlight": true,
+  "restored": true,
+  "repeatFlights": true,
+  "reducedMotion": true,
+  "cancelOnDisable": true
+}

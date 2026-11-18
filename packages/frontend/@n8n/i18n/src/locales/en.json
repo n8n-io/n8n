@@ -1,4 +1,7 @@
 {
+	"canvas.delight.sleep": "Sleep now",
+	"canvas.delight.wake": "Wake",
+	"canvas.delight.fold": "Fold into a paper bird",
 	"experiments.mcpDiscovery.cta.connect": "Connect Claude",
 	"experiments.mcpDiscovery.cta.build": "Build in Claude",
 	"experiments.mcpDiscovery.footer.prefix": "Prefer Claude?",
