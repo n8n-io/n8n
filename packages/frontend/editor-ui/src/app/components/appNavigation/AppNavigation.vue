@@ -353,7 +353,8 @@ onBeforeUnmount(() => {
 						/>
 					</RouterLink>
 				</N8nTooltip>
-				<MainSidebarAccountMenu :is-collapsed="true" />
+				<div :class="$style.divider" role="separator" />
+				<MainSidebarAccountMenu :is-collapsed="true" :show-divider="false" />
 			</div>
 		</div>
 
@@ -499,11 +500,6 @@ $panel-width: 240px;
 	gap: var(--spacing--4xs);
 	margin-top: auto;
 	padding-top: var(--spacing--2xs);
-
-	// The account row draws its own top hairline for the old sidebar; the rail does not need it.
-	> div {
-		border-top: none;
-	}
 }
 
 .docked {

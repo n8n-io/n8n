@@ -36,7 +36,14 @@ import { trackTemplatesClick, TemplateClickSource } from '@/experiments/utils';
 /** A help row either opens a link or carries a caption, like the version on About. */
 type HelpEntry = DropdownMenuItemProps<string, { href?: string; caption?: string }>;
 
-const props = defineProps<{ isCollapsed: boolean }>();
+const props = withDefaults(
+	defineProps<{
+		isCollapsed: boolean;
+		/** Draw the hairline above the account row. A host with its own divider turns it off. */
+		showDivider?: boolean;
+	}>(),
+	{ showDivider: true },
+);
 
 const i18n = useI18n();
 const router = useRouter();
@@ -305,7 +312,10 @@ useKeybindings({ ctrl_alt_o: () => onHelpSelect('about') });
 
 <template>
 	<div
-		:class="[$style.account, { [$style.collapsed]: isCollapsed }]"
+		:class="[
+			$style.account,
+			{ [$style.collapsed]: isCollapsed, [$style.withoutDivider]: !showDivider },
+		]"
 		data-test-id="main-sidebar-account"
 	>
 		<!-- The full name as a tooltip: always on the rail, on the row only when it is cut. -->
@@ -500,6 +510,11 @@ useKeybindings({ ctrl_alt_o: () => onHelpSelect('about') });
 		justify-content: center;
 		padding: var(--spacing--3xs) 0 var(--spacing--2xs);
 		border-top: var(--border);
+	}
+
+	&.withoutDivider {
+		padding-top: 0;
+		border-top: none;
 	}
 }
 
