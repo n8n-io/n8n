@@ -13,6 +13,7 @@ function makePageService(): InstanceAiPageService {
 			.fn()
 			.mockResolvedValue({ id: 'page-1', title: 'Invoice Sync', projectId: 'project-1' }),
 		getPage: vi.fn(),
+		updatePageContent: vi.fn(),
 	};
 }
 

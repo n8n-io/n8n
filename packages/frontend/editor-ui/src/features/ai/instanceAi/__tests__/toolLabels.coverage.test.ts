@@ -25,6 +25,7 @@ const OTHER_INSTANCE_AI_TOOL_NAMES = [
 	'save_user_preference',
 	'create_page',
 	'get_page',
+	'update_page',
 	'get-session',
 	'write-file',
 	'materialize-node-type',

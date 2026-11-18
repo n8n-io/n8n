@@ -9663,6 +9663,46 @@ describe('createContext: pageService', () => {
 
 		await expect(context.pageService?.getPage('page-9')).rejects.toThrow('Page not found');
 	});
+
+	it('replaces the content of a page in the project of the thread', async () => {
+		const pages = mockPageModule(true);
+		const stored = {
+			id: 'page-1',
+			projectId: 'project-1',
+			title: 'Orders runbook',
+			content: 'Old',
+			version: 1,
+			createdAt: '2026-01-01T00:00:00.000Z',
+			updatedAt: '2026-01-01T00:00:00.000Z',
+		};
+		pages.getReadablePage.mockResolvedValue(stored);
+		pages.replacePageContent.mockResolvedValue({ ...stored, content: 'New', version: 2 });
+		const { context } = createDataTableAdapterForTests({ projectId: 'project-1' });
+
+		const page = await context.pageService?.updatePageContent({ pageId: 'page-1', content: 'New' });
+
+		expect(pages.replacePageContent).toHaveBeenCalledWith('project-1', 'page-1', 'New');
+		expect(page).toMatchObject({ id: 'page-1', content: 'New' });
+	});
+
+	it('does not replace the content of a page of another project', async () => {
+		const pages = mockPageModule(true);
+		pages.getReadablePage.mockResolvedValue({
+			id: 'page-2',
+			projectId: 'project-2',
+			title: 'Other',
+			content: 'Old',
+			version: 1,
+			createdAt: '2026-01-01T00:00:00.000Z',
+			updatedAt: '2026-01-01T00:00:00.000Z',
+		});
+		const { context } = createDataTableAdapterForTests({ projectId: 'project-1' });
+
+		await expect(
+			context.pageService?.updatePageContent({ pageId: 'page-2', content: 'New' }),
+		).rejects.toThrow();
+		expect(pages.replacePageContent).not.toHaveBeenCalled();
+	});
 });
 
 describe('createContext: appService', () => {

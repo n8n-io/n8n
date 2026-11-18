@@ -9467,6 +9467,7 @@
 	"instanceAi.tools.save_user_preference": "Saving preference",
 	"instanceAi.tools.create_page": "Writing page",
 	"instanceAi.tools.get_page": "Reading page",
+	"instanceAi.tools.update_page": "Updating page",
 	"instanceAi.tools.leave-onboarding": "Leaving onboarding",
 	"instanceAi.tools.updateWorkingMemory": "Updating memory",
 	"instanceAi.tools.workflow_builder_apply_workflow_credentials": "Applying credentials",

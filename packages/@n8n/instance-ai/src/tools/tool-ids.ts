@@ -77,6 +77,7 @@ export const DOMAIN_TOOL_IDS = {
 	APPS: 'apps',
 	CREATE_PAGE: 'create_page',
 	GET_PAGE: 'get_page',
+	UPDATE_PAGE: 'update_page',
 } as const;
 
 /** Trace-only chain-typed child run emitted by `workflow_builder_build_workflow` with the
@@ -165,6 +166,9 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// A request that links a page must be able to read it in one call. A deferred entry
 	// puts the read behind tool discovery, and the model answers without the page.
 	DOMAIN_TOOL_IDS.GET_PAGE,
+	// Its description holds the rules that keep a rewrite from losing text. A deferred entry
+	// shows the model the name only.
+	DOMAIN_TOOL_IDS.UPDATE_PAGE,
 	'web-search',
 	'fetch-url',
 	DOMAIN_TOOL_IDS.SKILLS,

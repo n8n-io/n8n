@@ -19,6 +19,7 @@ function makePageService(): InstanceAiPageService {
 	return {
 		createPage: vi.fn(),
 		getPage: vi.fn().mockResolvedValue(page),
+		updatePageContent: vi.fn(),
 	};
 }
 

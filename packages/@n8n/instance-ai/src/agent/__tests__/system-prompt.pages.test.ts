@@ -13,6 +13,7 @@ describe('system prompt: writing pages', () => {
 	it('tells the model to read a page before it answers, and to cite it as a link', () => {
 		const prompt = getSystemPrompt({ pageWritingEnabled: true });
 		expect(prompt).toContain('read the page with `get_page` before you answer');
+		expect(prompt).toContain('save the new text with `update_page`');
 		expect(prompt).toContain('cite it as a Markdown link');
 	});
 
@@ -21,6 +22,7 @@ describe('system prompt: writing pages', () => {
 		expect(prompt).not.toContain('## Writing Pages');
 		expect(prompt).not.toContain('create_page');
 		expect(prompt).not.toContain('get_page');
+		expect(prompt).not.toContain('update_page');
 	});
 
 	it('lists the page link format with the other resource links', () => {

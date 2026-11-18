@@ -1348,6 +1348,11 @@ export interface InstanceAiPageService {
 	 * Fails when the page does not exist, or when the user cannot read pages in its project.
 	 */
 	getPage(pageId: string): Promise<InstanceAiPage>;
+	/**
+	 * Replaces the content of a page and returns the saved page. The title does not change.
+	 * Fails when the page does not exist, when the user cannot update pages in its project, or when the project is not the one of the thread.
+	 */
+	updatePageContent(input: { pageId: string; content: string }): Promise<InstanceAiPage>;
 }
 
 export interface InstanceAiAppService {
@@ -1820,7 +1825,7 @@ export interface InstanceAiContext {
 	aiPreferenceService?: InstanceAiPreferenceService;
 	skillService?: InstanceAiSkillService;
 	appService?: InstanceAiAppService;
-	/** Present only when the page module is active. Its absence hides the `create_page` and `get_page` tools. */
+	/** Present only when the page module is active. Its absence hides the `create_page`, `get_page` and `update_page` tools. */
 	pageService?: InstanceAiPageService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always

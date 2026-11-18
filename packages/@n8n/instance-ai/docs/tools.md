@@ -101,7 +101,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `agent-context` | 13 lookup types |
 | `skills` | 5 |
 | `apps` | 6 |
-| `workflow_builder_build_workflow`, `ask_user`, `create_page`, `get_page`, `parse-file`, `search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
+| `workflow_builder_build_workflow`, `ask_user`, `create_page`, `get_page`, `update_page`, `parse-file`, `search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
 
 ## Orchestration Tools
 
@@ -1416,6 +1416,26 @@ the same not-found error.
 
 The system prompt tells the model to read a page before it answers a question
 about it (see `getPageWritingSection` in `agent/system-prompt.ts`).
+
+---
+
+## `update_page` *(conditional)*
+
+Replace the body of a Markdown page. Present only when the page module is
+active (the adapter wires `pageService`). Always loaded, because its description
+holds the rules that keep a rewrite from losing text.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `page` | string | yes | Page id, or the instance-relative path `/page/<pageId>` |
+| `content` | string | yes | The whole new body, in Markdown |
+
+**Returns**: `{ pageId, title, projectId, updatedAt, url }`.
+
+The adapter requires the `page:update` scope in the project of the page. A
+thread that is bound to a project can update only a page of that project. The
+title does not change. A page has no version history, so the description tells
+the model to keep each sentence that is still correct.
 
 ---
 

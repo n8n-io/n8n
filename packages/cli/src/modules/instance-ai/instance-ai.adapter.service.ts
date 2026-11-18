@@ -3653,6 +3653,22 @@ export class InstanceAiAdapterService {
 					updatedAt: page.updatedAt,
 				};
 			},
+			updatePageContent: async ({ pageId, content }) => {
+				this.assertInstanceNotReadOnly('pages');
+				const { PageService } = await import('@n8n/backend-module-page');
+				const pageService = Container.get(PageService);
+				const current = await pageService.getReadablePage(user, pageId);
+				const pageProjectId = await resolveProjectId(['page:update'], current.projectId);
+				assertInBoundProject(pageProjectId);
+				const page = await pageService.replacePageContent(pageProjectId, pageId, content);
+				return {
+					id: page.id,
+					title: page.title,
+					content: page.content,
+					projectId: page.projectId,
+					updatedAt: page.updatedAt,
+				};
+			},
 		};
 	}
 

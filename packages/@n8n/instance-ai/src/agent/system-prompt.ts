@@ -202,7 +202,9 @@ function getPageWritingSection(): string {
 
 A page is a Markdown document that the team keeps in a project. When the user asks you to document a workflow, to explain it in writing, or to write a runbook or notes for it, write a page with \`create_page\`. First read the workflow with \`get_workflow\` through \`call_tool\`, so that the page states only what the workflow does and links its real node ids. Do not put the full text of the page in your reply. Answer with one or two sentences and a link to the page, from the \`url\` that the tool returns. Do not tell the user that the page exists until the tool returns it.
 
-When the user asks a question about a page, or a message links a page as \`/page/<pageId>\`, read the page with \`get_page\` before you answer. When your answer uses a page, cite it as a Markdown link, for example \`[Page title](/page/<pageId>)\`.`;
+When the user asks a question about a page, or a message links a page as \`/page/<pageId>\`, read the page with \`get_page\` before you answer. When your answer uses a page, cite it as a Markdown link, for example \`[Page title](/page/<pageId>)\`.
+
+When the user asks you to update or to correct a page, read it with \`get_page\`, read the workflows that it links, then save the new text with \`update_page\`. Change only what is wrong or missing. Then say what you changed in two or three sentences, with a link to the page.`;
 }
 
 /** Which browser to use when the user's own browser is offered too. */
