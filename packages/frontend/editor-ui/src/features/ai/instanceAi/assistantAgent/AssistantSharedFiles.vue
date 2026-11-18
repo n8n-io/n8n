@@ -26,8 +26,8 @@ const errors = computed(() => getShareErrors(props.toolCall));
 			:agent-id="ASSISTANT_AGENT_ID"
 		/>
 		<N8nText
-			v-for="failure in errors"
-			:key="failure.path"
+			v-for="(failure, index) in errors"
+			:key="`${failure.path}-${index}`"
 			tag="div"
 			size="small"
 			color="danger"
