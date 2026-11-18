@@ -4003,7 +4003,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 				persistence: expect.objectContaining({
 					hostMetadata: {
 						instanceContext: {
-							hubSkills: { sequence: 1, calls: [], context: [] },
+							hubSkills: { sequence: 1, calls: [] },
 							injection: { state: 'absent', reason: 'disabled' },
 							instanceContextEnabled: false,
 							nodeUsageEnabled: false,
@@ -7158,7 +7158,7 @@ describe('InstanceAiService — instance-context turn event', () => {
 				const saved = service.runState.suspendRun.mock.lastCall?.[1] as SuspendedRunState<User>;
 				expect(saved.instanceContext).toEqual({
 					...instanceContext,
-					hubSkills: { sequence: 1, calls: [], context: [] },
+					hubSkills: { sequence: 1, calls: [] },
 					reachSoFar: {
 						surfaces: enabled
 							? ['activity-list', 'activity-expand']
