@@ -3,6 +3,7 @@ import {
 	jsonParse,
 	NodeConnectionTypes,
 	NodeOperationError,
+	setSafeObjectProperty,
 	type GenericValue,
 	type IDataObject,
 	type IHttpRequestOptions,
@@ -200,7 +201,7 @@ function nameValues(this: IPollFunctions, name: string, additionalKeys: IDataObj
 			entry.value === null
 		)
 			continue;
-		result[entry.name] = entry.value;
+		setSafeObjectProperty(result, entry.name, entry.value);
 	}
 	return result;
 }
