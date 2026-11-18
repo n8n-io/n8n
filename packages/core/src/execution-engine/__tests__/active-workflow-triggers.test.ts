@@ -7,7 +7,6 @@ import type {
 	ICredentialDataDecryptedObject,
 	INode,
 	INodeExecutionData,
-	INodeType,
 	INodeTypes,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
@@ -1745,47 +1744,6 @@ describe('ActiveWorkflowTriggers', () => {
 			expect(pollJobManager.register).not.toHaveBeenCalled();
 			expect(scheduledTaskManager.register).not.toHaveBeenCalled();
 		});
-
-		it.each([
-			{ persistActivationCursor: true, removesCursor: true },
-			{ persistActivationCursor: false, removesCursor: false },
-		])(
-			'on a failed inline poll with persistActivationCursor=$persistActivationCursor, removes the cursor: $removesCursor',
-			async ({ persistActivationCursor, removesCursor }) => {
-				const pollJobManager = buildDurablePollJobManager(true);
-				const triggers = buildTriggers(pollJobManager);
-				nodeTypes.getByNameAndVersion.mockReturnValueOnce(
-					mock<INodeType>({ description: { persistActivationCursor } }),
-				);
-				workflow.getTriggerNodes.mockReturnValue([]);
-				workflow.getPollNodes.mockReturnValue([pollNode]);
-				getPollFunctions.mockReturnValue(pollFunctions);
-				pollFunctions.getNodeParameter
-					.calledWith('pollTimes')
-					.mockReturnValue({ item: [{ mode: 'custom', cronExpression: customCron }] });
-				triggersAndPollers.runPollFunction.mockReset();
-				triggersAndPollers.runPollFunction.mockRejectedValue(new Error('poll failed'));
-
-				await expect(
-					triggers.addAllTriggers(
-						workflowId,
-						workflow,
-						additionalData,
-						mode,
-						activation,
-						getTriggerFunctions,
-						getPollFunctions,
-					),
-				).rejects.toThrow();
-
-				expect(pollJobManager.remove).toHaveBeenCalledWith(workflowId, pollNode.id);
-				if (removesCursor) {
-					expect(pollJobManager.removeCursor).toHaveBeenCalledWith(workflowId, pollNode.id);
-				} else {
-					expect(pollJobManager.removeCursor).not.toHaveBeenCalled();
-				}
-			},
-		);
 
 		// Durable job rows are torn down elsewhere (deactivate/delete/republish), not
 		// by this in-memory teardown, so removeTriggers never touches the manager.

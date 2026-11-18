@@ -21,8 +21,4 @@ export class NoOpPollJobManager extends PollJobManager {
 	async remove(_workflowId: string, _nodeId: string): Promise<void> {
 		await Promise.resolve();
 	}
-
-	async removeCursor(_workflowId: string, _nodeId: string): Promise<void> {
-		await Promise.resolve();
-	}
 }

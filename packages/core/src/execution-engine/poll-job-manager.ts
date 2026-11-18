@@ -29,10 +29,4 @@ export abstract class PollJobManager {
 	 * durable job firing.
 	 */
 	abstract remove(workflowId: string, nodeId: string): Promise<void>;
-
-	/**
-	 * Delete the node's stored poll cursor. Used to roll back a failed activation of
-	 * a node type that persists its activation cursor.
-	 */
-	abstract removeCursor(workflowId: string, nodeId: string): Promise<void>;
 }
