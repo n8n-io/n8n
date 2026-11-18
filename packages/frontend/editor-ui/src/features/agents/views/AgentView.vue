@@ -1,21 +1,36 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted } from 'vue';
+import { computed, defineAsyncComponent, onMounted } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 import BackToWorkflowBanner from '@/features/agents/components/BackToWorkflowBanner.vue';
+import { loadDeterminismCallout } from '@n8n/frontend-module-agent-determinism';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const documentTitle = useDocumentTitle();
 const locale = useI18n();
 const route = useRoute();
 const router = useRouter();
 const returnContext = useAgentReturnContextStore();
+const settingsStore = useSettingsStore();
+
+const DeterminismCallout = defineAsyncComponent(loadDeterminismCallout);
 
 const routeAgentId = computed(() => {
 	const id = route.params.agentId;
 	return Array.isArray(id) ? id[0] : id;
+});
+
+const determinismSource = computed(() => {
+	const projectId = route.params.projectId;
+	if (!settingsStore.isModuleActive('agent-determinism') || typeof projectId !== 'string') {
+		return null;
+	}
+	return routeAgentId.value
+		? { projectId, sourceType: 'agent' as const, sourceId: routeAgentId.value }
+		: null;
 });
 
 // Show the banner only on the pages of the agent the round-trip navigated to.
@@ -62,6 +77,7 @@ async function onBackToWorkflow() {
 <template>
 	<div :class="$style.agentView">
 		<BackToWorkflowBanner v-if="showBackBanner" @back="onBackToWorkflow" />
+		<DeterminismCallout v-if="determinismSource" v-bind="determinismSource" />
 		<RouterView />
 	</div>
 </template>

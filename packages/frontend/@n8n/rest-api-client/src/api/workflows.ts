@@ -4,6 +4,7 @@ import type {
 	INode,
 	IPinData,
 	IWorkflowGroup,
+	WorkflowGeneratedFrom,
 } from 'n8n-workflow';
 
 import type { ITag } from './tags';
@@ -13,6 +14,7 @@ export interface WorkflowMetadata {
 	templateId?: string;
 	instanceId?: string;
 	templateCredsSetupCompleted?: boolean;
+	generatedFrom?: WorkflowGeneratedFrom;
 }
 
 // Simple version of n8n-workflow.Workflow
