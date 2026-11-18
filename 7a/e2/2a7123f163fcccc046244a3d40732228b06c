@@ -1,0 +1,51 @@
+packages/frontend/editor-ui/src/app/components/print-studio/sample.ts
+  s_c33bde4687101e::t_4a334b603f7b94 1-29
+packages/frontend/editor-ui/src/app/components/print-studio/art.ts
+  s_c33bde4687101e::t_4a334b603f7b94 1-204
+packages/frontend/editor-ui/src/app/components/print-studio/demo/main.ts
+  s_c33bde4687101e::t_4a334b603f7b94 1-11
+packages/frontend/editor-ui/src/app/components/print-studio/demo/index.html
+  s_c33bde4687101e::t_4a334b603f7b94 1
+packages/frontend/editor-ui/src/app/components/print-studio/art.test.ts
+  s_c33bde4687101e::t_4a334b603f7b94 1-107
+packages/frontend/editor-ui/src/app/components/print-studio/relief.ts
+  s_c33bde4687101e::t_4a334b603f7b94 1-77
+packages/frontend/editor-ui/src/app/components/print-studio/copy.ts
+  s_c33bde4687101e::t_4a334b603f7b94 1-44
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_c33bde4687101e::t_4a334b603f7b94 18,2202-2207
+packages/frontend/editor-ui/src/app/components/print-studio/demo/vitest.config.ts
+  s_c33bde4687101e::t_4a334b603f7b94 1-4
+packages/frontend/editor-ui/src/app/components/print-studio/demo/tsconfig.json
+  s_c33bde4687101e::t_4a334b603f7b94 1-16
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_c33bde4687101e::t_4a334b603f7b94 11455-11491
+packages/frontend/editor-ui/src/app/components/print-studio/studio.css
+  s_c33bde4687101e::t_4a334b603f7b94 1-293
+packages/frontend/editor-ui/src/app/components/print-studio/REPORT.md
+  s_c33bde4687101e::t_4a334b603f7b94 1-75
+packages/frontend/editor-ui/src/app/components/print-studio/PrintStudio.vue
+  s_c33bde4687101e::t_4a334b603f7b94 1-186
+packages/frontend/editor-ui/src/app/components/print-studio/README.md
+  s_c33bde4687101e::t_4a334b603f7b94 1-66
+packages/frontend/editor-ui/src/app/components/print-studio/demo/vite.config.ts
+  s_c33bde4687101e::t_4a334b603f7b94 1-10
+packages/frontend/editor-ui/src/app/components/print-studio/WorkflowPrintStudio.vue
+  s_c33bde4687101e::t_4a334b603f7b94 1-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7ae22a7123f163fcccc046244a3d40732228b06c",
+  "prompts": {},
+  "sessions": {
+    "s_c33bde4687101e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edf6-ffe6-77f0-898f-eea7d7b98df2",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

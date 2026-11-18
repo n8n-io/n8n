@@ -1,0 +1,23 @@
+demos/canvas-delight/README.md
+  s_c33bde4687101e::t_171694d562d656 5,8-9,25
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeDefault.vue
+  s_c33bde4687101e::t_a4f7c335472486 83-87
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeStickyNote.vue
+  s_c33bde4687101e::t_635bae03a69794 30-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4b563c899d2a2b1517d29ee45f09366d99a7d0be",
+  "prompts": {},
+  "sessions": {
+    "s_c33bde4687101e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edf6-ffe6-77f0-898f-eea7d7b98df2",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
