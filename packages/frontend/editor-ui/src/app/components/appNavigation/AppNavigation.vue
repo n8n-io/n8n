@@ -558,7 +558,7 @@ $panel-width: 240px;
 	width: var(--spacing--2xs);
 	height: var(--spacing--2xs);
 	border-radius: 50%;
-	background-color: var(--color--pink-500);
+	background-color: var(--color--pink-600);
 	// The state colors are see-through, so the ring lays the item's tint over the rail color.
 	box-shadow:
 		0 0 0 var(--border-width, 1px) var(--rail-item--state-color),
@@ -597,6 +597,8 @@ $panel-width: 240px;
 	gap: var(--spacing--4xs);
 	margin-top: auto;
 	padding-top: var(--spacing--2xs);
+	// Some room under the avatar, so it does not sit on the window's edge.
+	padding-bottom: var(--spacing--3xs);
 }
 
 .docked {
