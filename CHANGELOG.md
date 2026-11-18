@@ -1,3 +1,18 @@
+## [2.49.1](https://github.com/n8n-io/n8n/compare/n8n@2.49.0...n8n@2.49.1) (2026-11-18)
+
+
+### Bug Fixes
+
+* **core:** Give fresh installs a random instance ID ([#44274](https://github.com/n8n-io/n8n/issues/44274)) ([06498b9](https://github.com/n8n-io/n8n/commit/06498b9edc3bfbee750f7f4db27db725e6fc6703))
+* **core:** Keep small objects inside an Error in sandboxed expressions ([#44300](https://github.com/n8n-io/n8n/issues/44300)) ([0300e53](https://github.com/n8n-io/n8n/commit/0300e5357cf8d0b6345812c840c9c85a94614e6b))
+* **core:** Treat instance owners and admins as team project members in credential checks ([#44182](https://github.com/n8n-io/n8n/issues/44182)) ([9698f86](https://github.com/n8n-io/n8n/commit/9698f86dac54425668cffaa8177349480059683b))
+
+
+### Features
+
+* **editor:** Explain the last run state of workflows in the migration report ([#44281](https://github.com/n8n-io/n8n/issues/44281)) ([ba10e07](https://github.com/n8n-io/n8n/commit/ba10e0787aa17dfef255ec0c68a9a261717be806))
+
+
 # [2.49.0](https://github.com/n8n-io/n8n/compare/n8n@2.48.0...n8n@2.49.0) (2026-11-17)
 
 
