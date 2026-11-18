@@ -172,6 +172,8 @@ function originPresentation(thread: AgentExecutionThread): OriginPresentation {
 			return { icon: 'workflow', label: i18n.baseText('agentSessions.origin.workflow') };
 		case 'n8n_chat_production':
 			return { icon: 'message-square', label: i18n.baseText('agentSessions.origin.n8nChat') };
+		case 'webhook':
+			return { icon: 'plug', label: i18n.baseText('agentSessions.origin.webhook') };
 		case 'slack':
 		case 'telegram':
 		case 'linear':
@@ -739,6 +741,13 @@ async function onFiltersChange(value: AgentSessionFilters) {
 			display: block;
 			width: 100%;
 		}
+	}
+
+	// A block td treats `height` as fixed, not as a minimum like a table cell does.
+	// Let the two-line empty state grow instead of being clipped.
+	.wrapper .sessionsTable .lastRow td {
+		height: auto;
+		min-height: var(--height--2xl);
 	}
 
 	.wrapper .sessionsTable .skeletonRow td:not(:first-child) {

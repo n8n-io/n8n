@@ -6,8 +6,9 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiInputMenu from '../InstanceAiInputMenu.vue';
 
-const { action, track } = vi.hoisted(() => ({
+const { action, refreshSkills, track } = vi.hoisted(() => ({
 	action: vi.fn(),
+	refreshSkills: vi.fn(),
 	track: vi.fn(),
 }));
 
@@ -22,6 +23,18 @@ vi.mock('../../composables/useInstanceAiInputMenuItems', async () => {
 		useInstanceAiInputMenuItems: (_attachFiles: () => void) => ({
 			menuItems: ref([{ id: 'action', label: 'Action', data: { action } }]),
 			disconnectedConnectionCount: ref(0),
+			refreshSkills,
+		}),
+	};
+});
+
+vi.mock('../../composables/useLocalBrowserCoachmark', async () => {
+	const { ref } = await import('vue');
+
+	return {
+		useLocalBrowserCoachmark: () => ({
+			shouldShowCoachmark: ref(false),
+			onDismissCoachmark: vi.fn(),
 		}),
 	};
 });
@@ -59,6 +72,21 @@ describe('InstanceAiInputMenu', () => {
 		await userEvent.click(getByRole('menuitem', { name: 'Action' }));
 
 		expect(action).toHaveBeenCalledOnce();
+	});
+
+	it('refreshes skills each time the menu opens', async () => {
+		const { getByRole } = renderComponent();
+		const trigger = getByRole('button', { name: /Add .*files/ });
+		expect(refreshSkills).not.toHaveBeenCalled();
+
+		await userEvent.click(trigger);
+		expect(refreshSkills).toHaveBeenCalledOnce();
+
+		await userEvent.click(getByRole('menuitem', { name: 'Action' }));
+		expect(refreshSkills).toHaveBeenCalledOnce();
+
+		await userEvent.click(trigger);
+		expect(refreshSkills).toHaveBeenCalledTimes(2);
 	});
 
 	it('disables both the trigger and menu interaction', async () => {

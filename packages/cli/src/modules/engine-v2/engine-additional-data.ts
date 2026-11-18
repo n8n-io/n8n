@@ -1,10 +1,17 @@
 import { SsrfProtectionService } from '@n8n/backend-network';
-import { EventService, UrlService } from '@n8n/backend-services';
+import {
+	CodeExecutionBackend,
+	EventService,
+	toCodeTaskRequest,
+	UrlService,
+} from '@n8n/backend-services';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { UnimplementedError } from '@n8n/engine';
+import { UnexpectedError } from '@n8n/errors';
 import type { AdditionalDataContext } from '@n8n/node-engine-compatibility';
 import { ExternalSecretsProxy } from 'n8n-core';
+
 import type {
 	DataTableProxyProvider,
 	ICredentialsHelper,
@@ -19,21 +26,30 @@ function unimplemented(feature: string) {
 }
 
 /**
- * `$vars` that fails on first read. Variables live in the control plane
- * database, and an empty object would turn `$vars.x` into a silent `undefined`
- * inside a request or a parameter.
+ * Stands in for `$vars` on the data plane, which has no variables: they live
+ * in the control plane database. Three rules make it safe to hand around:
+ *
+ * - A read of a named variable throws, so `$vars.x` in an expression fails
+ *   loudly instead of resolving to `undefined`.
+ * - Enumeration finds nothing, so the task broker can serialize the additional
+ *   data for a runner. A Code node then sees an empty `$vars`, as it does on a
+ *   v1 instance without variables.
+ * - Symbols, own properties and `toJSON` pass through, because serializers and
+ *   inspectors probe them before they read anything.
  */
-const unimplementedVariablesAccess = (): never => {
-	throw new UnimplementedError('Variables ($vars) are not supported on Engine v2 yet');
-};
-
-const unimplementedVariables: IWorkflowExecuteAdditionalData['variables'] = new Proxy(
+const variablesPlaceholder: IWorkflowExecuteAdditionalData['variables'] = new Proxy(
 	{},
 	{
-		get: unimplementedVariablesAccess,
-		ownKeys: unimplementedVariablesAccess,
-		has: unimplementedVariablesAccess,
-		getOwnPropertyDescriptor: unimplementedVariablesAccess,
+		get: (target, property) => {
+			if (
+				typeof property === 'symbol' ||
+				Object.hasOwn(target, property) ||
+				property === 'toJSON'
+			) {
+				return Reflect.get(target, property);
+			}
+			throw new UnimplementedError('Variables ($vars) are not supported on Engine v2 yet');
+		},
 	},
 );
 
@@ -79,7 +95,13 @@ export class EngineAdditionalDataBuilder {
 		private readonly eventService: EventService,
 		private readonly ssrfProtectionConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
-	) {}
+		private readonly codeExecutionBackend: CodeExecutionBackend,
+	) {
+		// DI injects `undefined` when no module has set a backend yet.
+		if (!codeExecutionBackend) {
+			throw new UnexpectedError('Code execution backend is not set');
+		}
+	}
 
 	build(
 		context: AdditionalDataContext,
@@ -109,7 +131,7 @@ export class EngineAdditionalDataBuilder {
 			webhookTestBaseUrl: testWebhookBase + endpoints.webhookTest,
 			mcpBaseUrl: webhookBase + endpoints.mcp,
 			mcpTestBaseUrl: testWebhookBase + endpoints.mcpTest,
-			variables: unimplementedVariables,
+			variables: variablesPlaceholder,
 			externalSecretsProxy: unimplementedExternalSecretsProxy,
 			// The key the Data Table node's helpers look for. In v1 the data-table
 			// module fills it; here the provider asks the control plane.
@@ -120,12 +142,10 @@ export class EngineAdditionalDataBuilder {
 			logHitlResponse: (payload) => {
 				eventService.emit('hitl-response-actioned', payload);
 			},
-			// The data plane runs no task runner, so the Code node has nowhere to send
-			// work. Python asks first and gets "unavailable" with no reason, since the
-			// node maps reasons to Python install problems; JavaScript reaches
-			// `startRunnerTask` and fails there.
-			getRunnerStatus: () => ({ available: false }),
-			startRunnerTask: unimplemented('Task runners (Code node)'),
+			// The Code node's work goes to the code execution backend of this process, as on v1.
+			getRunnerStatus: (taskType) => this.codeExecutionBackend.getStatus(taskType),
+			startRunnerTask: async (...args) =>
+				await this.codeExecutionBackend.runTask(toCodeTaskRequest(...args)),
 			executeWorkflow: unimplemented('Sub-workflows (executeWorkflow)'),
 			executeAgent: unimplemented('Agents (executeAgent)'),
 			listAgents: unimplemented('Agents (listAgents)'),

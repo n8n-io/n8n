@@ -17,6 +17,7 @@ export const NoUnneededBackticksRule = ESLintUtils.RuleCreator.withoutDocs({
 	create(context) {
 		return {
 			TemplateLiteral(node) {
+				if (node.parent.type === 'TaggedTemplateExpression') return;
 				if (node.expressions.length > 0) return;
 				if (node.quasis.every((q) => q.loc.start.line !== q.loc.end.line)) return;
 

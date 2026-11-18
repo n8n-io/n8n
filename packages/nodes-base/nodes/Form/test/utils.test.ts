@@ -35,7 +35,12 @@ import type {
 	MultiPartFormData,
 	NodeTypeAndVersion,
 } from 'n8n-workflow';
-import { BINARY_MODE_COMBINED, FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE } from 'n8n-workflow';
+import {
+	BINARY_MODE_COMBINED,
+	FORM_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	WAIT_NODE_TYPE,
+} from 'n8n-workflow';
 
 import {
 	formWebhook,
@@ -60,6 +65,11 @@ import { isIpAllowed } from '../../Webhook/utils';
 import type { Mock } from 'vitest';
 
 Container.set(InstanceSettings, { hmacSignatureSecret: 'test-hmac-secret' } as InstanceSettings);
+
+const SPECIAL_CHARACTERS_TEMPLATE = '<div>{{ $json.value }}</div>';
+const SPECIAL_CHARACTERS_VALUE = "<p>1$&2 1$$2 '^[0-9]+$'</p>";
+const SPECIAL_CHARACTERS_LITERAL_HTML = "<div><p>1$&2 1$$2 '^[0-9]+$'</p></div>";
+const SPECIAL_CHARACTERS_LEGACY_HTML = "<div><p>1{{ $json.value }}2 1$2 '^[0-9]+</div></p></div>";
 
 describe('FormTrigger, parseFormDescription', () => {
 	it('should remove HTML tags and truncate to 150 characters', () => {
@@ -1506,6 +1516,46 @@ describe('FormTrigger, formWebhook', () => {
 			});
 		});
 	});
+
+	it.each([
+		{ type: FORM_TRIGGER_NODE_TYPE, typeVersion: 2.7, expected: SPECIAL_CHARACTERS_LITERAL_HTML },
+		{ type: FORM_TRIGGER_NODE_TYPE, typeVersion: 2.6, expected: SPECIAL_CHARACTERS_LEGACY_HTML },
+		{ type: WAIT_NODE_TYPE, typeVersion: 1.2, expected: SPECIAL_CHARACTERS_LITERAL_HTML },
+		{ type: WAIT_NODE_TYPE, typeVersion: 1.1, expected: SPECIAL_CHARACTERS_LEGACY_HTML },
+	])(
+		'resolves html field expressions for $type version $typeVersion',
+		async ({ type, typeVersion, expected }) => {
+			const ctx = mock<IWebhookFunctions>();
+			const formFields: FormFieldsParameter = [
+				{ fieldLabel: 'Custom HTML', fieldType: 'html', html: SPECIAL_CHARACTERS_TEMPLATE },
+			];
+			ctx.getNode.mockReturnValue(mock<INode>({ type, typeVersion, name: 'Form' }));
+			ctx.getNodeParameter.calledWith('options').mockReturnValue({});
+			ctx.getNodeParameter.calledWith('authentication', 'none').mockReturnValue('none');
+			ctx.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
+			ctx.getNodeParameter.calledWith('formTitle').mockReturnValue('Test Form');
+			ctx.getNodeParameter.calledWith('formDescription').mockReturnValue('');
+			ctx.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
+			ctx.getRequestObject.mockReturnValue(
+				mock<ReturnType<IWebhookFunctions['getRequestObject']>>({
+					method: 'GET',
+					query: {},
+					headers: {},
+				}),
+			);
+			ctx.getResponseObject.mockReturnValue(
+				mock<ReturnType<IWebhookFunctions['getResponseObject']>>(),
+			);
+			ctx.getMode.mockReturnValue('manual');
+			ctx.getInstanceId.mockReturnValue('instanceId');
+			ctx.getChildNodes.mockReturnValue([]);
+			ctx.evaluateExpression.mockReturnValue(SPECIAL_CHARACTERS_VALUE);
+
+			await formWebhook(ctx);
+
+			expect(formFields[0].html).toBe(sanitizeHtml(expected));
+		},
+	);
 });
 
 describe('FormTrigger, prepareFormData', () => {
@@ -3087,6 +3137,7 @@ describe('resolveRawData', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 
+		mockContext.getNode.mockReturnValue(mock<INode>({ type: FORM_NODE_TYPE, typeVersion: 2.6 }));
 		mockContext.evaluateExpression.mockImplementation((expression: string) => {
 			const key = expression.replace(/[{}]/g, '').trim();
 			return key.split('.').reduce((obj, prop) => obj?.[prop], dummyData as any);
@@ -3199,6 +3250,16 @@ describe('resolveRawData', () => {
 		expect(resolveRawData(mockContext, input)).toBe(
 			'Address object: {"street":"123 Main St","zipCode":"10001","country":"USA"}.',
 		);
+	});
+
+	it.each([
+		{ typeVersion: 2.6, expected: SPECIAL_CHARACTERS_LITERAL_HTML },
+		{ typeVersion: 2.5, expected: SPECIAL_CHARACTERS_LEGACY_HTML },
+	])('resolves expressions for form node version $typeVersion', ({ typeVersion, expected }) => {
+		mockContext.getNode.mockReturnValue(mock<INode>({ type: FORM_NODE_TYPE, typeVersion }));
+		mockContext.evaluateExpression.mockReturnValue(SPECIAL_CHARACTERS_VALUE);
+
+		expect(resolveRawData(mockContext, `=${SPECIAL_CHARACTERS_TEMPLATE}`)).toBe(expected);
 	});
 });
 
@@ -3723,6 +3784,9 @@ describe('parseFormFields - HTML field expression resolution', () => {
 
 	beforeEach(() => {
 		mockWebhookFunctions = mock<IWebhookFunctions>();
+		mockWebhookFunctions.getNode.mockReturnValue(
+			mock<INode>({ type: FORM_NODE_TYPE, typeVersion: 2.6 }),
+		);
 	});
 
 	it('should resolve expressions in html fields', () => {
@@ -3850,6 +3914,29 @@ describe('parseFormFields - HTML field expression resolution', () => {
 
 		expect(result[0].html).toBe('');
 	});
+
+	it.each([
+		{ typeVersion: 2.6, expected: SPECIAL_CHARACTERS_LITERAL_HTML },
+		{ typeVersion: 2.5, expected: SPECIAL_CHARACTERS_LEGACY_HTML },
+	])(
+		'resolves html field expressions for form node version $typeVersion',
+		({ typeVersion, expected }) => {
+			mockWebhookFunctions.getNode.mockReturnValue(
+				mock<INode>({ type: FORM_NODE_TYPE, typeVersion }),
+			);
+			mockWebhookFunctions.getNodeParameter.mockReturnValue([
+				{ fieldLabel: 'Custom HTML', fieldType: 'html', html: SPECIAL_CHARACTERS_TEMPLATE },
+			]);
+			mockWebhookFunctions.evaluateExpression.mockReturnValue(SPECIAL_CHARACTERS_VALUE);
+
+			const result = parseFormFields(mockWebhookFunctions, {
+				defineForm: 'fields',
+				fieldsParameterName: 'formFields.values',
+			});
+
+			expect(result[0].html).toBe(expected);
+		},
+	);
 });
 
 describe('validateFormPageAuth', () => {

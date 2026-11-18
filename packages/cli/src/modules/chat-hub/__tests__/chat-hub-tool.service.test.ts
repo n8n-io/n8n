@@ -123,6 +123,42 @@ describe('ChatHubToolService', () => {
 			expect(chatToolRepository.getToolsForSession).toHaveBeenCalledWith(mockSessionId, undefined);
 			expect(result).toEqual(tools.map((t) => t.definition));
 		});
+
+		it('should skip stored tools with unsupported expressions', async () => {
+			const valid = makeTool({
+				definition: { ...mockDefinition, parameters: { url: '={{ $fromAI("url") }}' } },
+			});
+			const invalid = makeTool({
+				definition: {
+					...mockDefinition,
+					parameters: { url: "=$fromAI('url', '{{ $vars.anything }}')" },
+				},
+			});
+			chatToolRepository.getToolsForSession.mockResolvedValue([valid, invalid]);
+
+			const result = await service.getToolDefinitionsForSession(mockSessionId);
+
+			expect(result).toEqual([valid.definition]);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipping chat hub tool with unsupported expressions',
+				{ toolId: invalid.id, paths: ['url'] },
+			);
+		});
+	});
+
+	describe('getEnabledToolDefinitions', () => {
+		it('should return definitions of enabled tools and skip invalid ones', async () => {
+			const valid = makeTool();
+			const invalid = makeTool({
+				definition: { ...mockDefinition, parameters: { url: '={{ $vars.anything }}' } },
+			});
+			chatToolRepository.getEnabledByUserId.mockResolvedValue([valid, invalid]);
+
+			const result = await service.getEnabledToolDefinitions(mockUserId);
+
+			expect(chatToolRepository.getEnabledByUserId).toHaveBeenCalledWith(mockUserId, undefined);
+			expect(result).toEqual([valid.definition]);
+		});
 	});
 
 	describe('getToolDefinitionsForAgent', () => {
@@ -134,6 +170,17 @@ describe('ChatHubToolService', () => {
 
 			expect(chatToolRepository.getToolsForAgent).toHaveBeenCalledWith(mockAgentId, undefined);
 			expect(result).toEqual(tools.map((t) => t.definition));
+		});
+
+		it('should skip stored tools with unsupported expressions', async () => {
+			const invalid = makeTool({
+				definition: { ...mockDefinition, parameters: { url: '={{ $vars.anything }}' } },
+			});
+			chatToolRepository.getToolsForAgent.mockResolvedValue([invalid]);
+
+			const result = await service.getToolDefinitionsForAgent(mockAgentId);
+
+			expect(result).toEqual([]);
 		});
 	});
 
@@ -445,6 +492,33 @@ describe('ChatHubToolService', () => {
 		it('allows disabling a stored tool of a deprecated node type', async () => {
 			markCodeNodeDeprecated();
 			chatToolRepository.getOneById.mockResolvedValue(makeTool({ definition: deprecatedCodeTool }));
+			chatToolRepository.updateTool.mockResolvedValue(makeTool({ enabled: false }));
+
+			await service.updateTool('tool-1', mockUser, { enabled: false });
+
+			expect(chatToolRepository.updateTool).toHaveBeenCalled();
+		});
+
+		it('rejects enabling a stored tool with unsupported expressions', async () => {
+			chatToolRepository.getOneById.mockResolvedValue(
+				makeTool({
+					definition: { ...mockDefinition, parameters: { url: '={{ $vars.anything }}' } },
+					enabled: false,
+				}),
+			);
+
+			await expect(service.updateTool('tool-1', mockUser, { enabled: true })).rejects.toThrow(
+				BadRequestError,
+			);
+			expect(chatToolRepository.updateTool).not.toHaveBeenCalled();
+		});
+
+		it('allows disabling a stored tool with unsupported expressions', async () => {
+			chatToolRepository.getOneById.mockResolvedValue(
+				makeTool({
+					definition: { ...mockDefinition, parameters: { url: '={{ $vars.anything }}' } },
+				}),
+			);
 			chatToolRepository.updateTool.mockResolvedValue(makeTool({ enabled: false }));
 
 			await service.updateTool('tool-1', mockUser, { enabled: false });

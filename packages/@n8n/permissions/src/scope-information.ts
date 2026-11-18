@@ -107,6 +107,24 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Delete Execution',
 		description: 'Allows deleting executions of workflows in the project.',
 	},
+	'executionLimit:read': {
+		displayName: 'View Execution Limits',
+		description:
+			'Allows viewing the instance execution limit, the default for new projects, and the limit of every project.',
+	},
+	'executionLimit:update': {
+		displayName: 'Change Execution Limits',
+		description:
+			'Allows setting and removing the instance execution limit, the default for new projects, and the limit of every project.',
+	},
+	'projectExecutionLimit:read': {
+		displayName: 'View Project Execution Limit',
+		description: 'Allows viewing the execution limit of the project.',
+	},
+	'projectExecutionLimit:update': {
+		displayName: 'Change Project Execution Limit',
+		description: 'Allows setting and removing the execution limit of the project.',
+	},
 	'nodeTypePolicy:manage': {
 		displayName: 'Manage Node Type Policies',
 		description: 'Allows managing which node types are available, on the instance or in a project.',

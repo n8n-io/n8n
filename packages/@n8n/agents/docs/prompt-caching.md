@@ -24,26 +24,35 @@ new Agent('assistant')
   .instructions(LONG_SYSTEM_PROMPT);
 ```
 
-## The n8n Agent JSON config is a mandatory, simplified surface
+## The n8n Agent JSON config is a simplified surface
 
 The richer SDK shape above (OpenAI key/retention overrides) is for direct SDK
 callers. The n8n Agent product (JSON config / builder UI) exposes
 `config.promptCaching: { enabled: boolean; anthropic?: { ttl?: '5m' | '1h' } }`
 and passes explicit settings to `agent.promptCaching(config.promptCaching)`.
 
-- **Mandatory in the builder.** For OpenAI, Anthropic, and Claude on OpenRouter
-  or Vertex, the config is always force-written with `{ enabled: true, ... }` by the
-  builder agent's write-path normalizer and the model picker — regardless of
-  what the LLM or a prior config said; there is no user-facing way to disable
-  it. Other models do not get the field.
+- **On by default in the builder.** For OpenAI, Anthropic, and Claude on
+  OpenRouter, Vertex, or Microsoft Foundry, the builder agent's write-path
+  normalizer and the model picker write `{ enabled: true, ... }` when the config
+  has no explicit setting. They keep an explicit `{ enabled: false }`. A builder
+  write that omits `promptCaching` keeps the stored setting. The user turns caching off with
+  the Prompt caching switch in the Advanced panel, for example when a proxy
+  rejects the OpenAI `prompt_cache_key` / `prompt_cache_retention` fields. When
+  it is off, the runtime sends no cache fields. Other models do not get the
+  field.
+- **Rejected cache fields get a readable error.** When a provider answers 400
+  or 422 and the payload names `prompt_cache_key` or `prompt_cache_retention`,
+  the runtime replaces the error with `PromptCacheParamsError`. Its message tells
+  the user to turn off Prompt caching. The provider error stays on `cause`.
 - **Existing routed Claude agents get the default on their next run.** When a
-  saved `openrouter/anthropic/claude-*` or `google-vertex/claude-*` agent has no
+  saved `openrouter/anthropic/claude-*`, `google-vertex/claude-*`, or
+  `azure-openai/anthropic/<deployment>` agent has no
   cache config, the JSON loader supplies `{ enabled: true }`. This does not
   change the saved config. Explicit settings, including `enabled: false`, pass
   through unchanged. Standalone SDK use stays opt-in.
-- **Claude cache duration defaults to `1h`.** The Advanced panel renders
-  a Cache duration dropdown (`5m` / `1h`) for Anthropic and routed Claude agents.
-  OpenAI has no sub-config or UI (its caching is fully automatic server-side).
+- **Claude cache duration defaults to `1h`.** When caching is on, the Advanced
+  panel renders a Cache duration dropdown (`5m` / `1h`) for Anthropic and routed
+  Claude agents. OpenAI has only the switch (its caching is automatic server-side).
   The TTL is preserved when switching between the supported Claude routes.
 
 ## Native tool deferral
@@ -305,8 +314,11 @@ these two options only influence routing and retention.
   or the excess traffic overflows to additional machines (each a cache miss).
 - **`promptCacheRetention: '24h'` (default).** Extends retention beyond the
   default ~5–10 minute in-memory window. It's free on `gpt-4.1`, `gpt-5`, and
-  `gpt-5.1`; on `gpt-5.5` and later, `'24h'` is the only supported value.
+  `gpt-5.1`; on `gpt-5.5` and `gpt-5.6`, `'24h'` is the only supported value.
   Pass `'in_memory'` explicitly to opt back into the short-lived default.
+  GPT-6 and later do not accept the option. For them n8n never sends a
+  retention, even when one is set, and assumes the 30 minute minimum lifetime
+  that OpenAI documents for GPT-5.6 and later.
 
 ## Reading cache usage and cost
 

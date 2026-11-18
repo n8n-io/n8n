@@ -1,3 +1,4 @@
+import { requestUrl } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import {
@@ -12,11 +13,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const host = await getHost(this, credentialType);
 	const fullName = extractResourceLocatorValue(this.getNodeParameter('fullName', i));
 
-	const response = await databricksApiRequest(this, credentialType, {
-		method: 'DELETE',
-		url: `${host}/api/2.1/unity-catalog/tables/${fullName}`,
-		json: true,
-	});
+	const response = await databricksApiRequest(
+		this,
+		credentialType,
+		requestUrl`${host}/api/2.1/unity-catalog/tables/${fullName}`,
+		{
+			method: 'DELETE',
+			json: true,
+		},
+	);
 
 	return [{ json: response || {}, pairedItem: { item: i } }];
 }

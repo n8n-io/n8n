@@ -179,7 +179,7 @@ export function ownCheckpoint(
  * only its open suspensions.
  */
 export function threadMessagesResponse(
-	history: Pick<AgentChatMessagesResponse, 'messages' | 'activeExecutionId'> | null,
+	history: Pick<AgentChatMessagesResponse, 'messages' | 'activeExecutionId' | 'nextCursor'> | null,
 	checkpoint: SerializableAgentState | null,
 ): AgentChatMessagesResponse {
 	if (!history) return { ...withOpenSuspensions([], checkpoint), activeExecutionId: null };
@@ -188,5 +188,6 @@ export function threadMessagesResponse(
 			appendInactiveCheckpointMessages: false,
 		}),
 		activeExecutionId: history.activeExecutionId,
+		...(history.nextCursor !== undefined ? { nextCursor: history.nextCursor } : {}),
 	};
 }

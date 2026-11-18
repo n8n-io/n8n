@@ -351,6 +351,19 @@ describe('AgentSkillsService', () => {
 			skillService.saveTrusted.mockResolvedValue(saveResult());
 		});
 
+		it('rejects the update of an unpinned skill through an archived agent', async () => {
+			givenAgent({
+				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
+				skills: { skill_a: skill },
+				isArchived: true,
+			});
+
+			await expect(
+				service.updateSkill(agentId, projectId, 'skill_a', { name: 'Renamed' }, context),
+			).rejects.toThrow('Cannot update an archived agent');
+			expect(skillService.saveTrusted).not.toHaveBeenCalled();
+		});
+
 		it('changes where the skill can be added without saving a new version', async () => {
 			const agent = givenAgent({
 				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
@@ -529,7 +542,9 @@ describe('AgentSkillsService', () => {
 				getAgentSkillHash(skill),
 			);
 
-			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined);
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined, {
+				allowArchivedUpdate: false,
+			});
 			expect(skillRefs.unpinDraftRef).toHaveBeenCalledWith(agent, 'skill_a', {});
 			await expect(skillRefs.refsForDraft(agent, {})).resolves.toEqual([
 				{ type: 'skill', id: 'skill_a' },
@@ -679,7 +694,9 @@ describe('AgentSkillsService', () => {
 				[{ type: 'skill', id: 'skill_b' }],
 				{},
 			);
-			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined);
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined, {
+				allowArchivedUpdate: false,
+			});
 			expect(skillService.delete).not.toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		});

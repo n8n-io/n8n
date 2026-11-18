@@ -6,7 +6,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { getResolvables, updateDisplayOptions } from '@utils/utilities';
+import { createEventLoopYielder } from '@n8n/utils/promise/create-event-loop-yielder';
+
+import { evaluateResolvables, resolveExpressions, updateDisplayOptions } from '@utils/utilities';
 
 import type {
 	PgpDatabase,
@@ -59,19 +61,20 @@ export async function execute(
 	nodeOptions: PostgresNodeOptions,
 	_db?: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
-	const queries: QueryWithValues[] = replaceEmptyStringsByNulls(
-		items,
-		nodeOptions.replaceEmptyStrings as boolean,
-	).map((_, index) => {
-		let query = this.getNodeParameter('query', index) as string;
+	const yieldToEventLoop = createEventLoopYielder();
+	const queries: QueryWithValues[] = [];
+	replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
+	for (let index = 0; index < items.length; index++) {
+		await yieldToEventLoop();
+		const nodeVersion = nodeOptions.nodeVersion as number;
 
-		for (const resolvable of getResolvables(query)) {
-			query = query.replace(resolvable, this.evaluateExpression(resolvable, index) as string);
-		}
+		let query = resolveExpressions(
+			this.getNodeParameter('query', index) as string,
+			(resolvable) => this.evaluateExpression(resolvable, index),
+			{ legacy: nodeVersion < 2.9 },
+		);
 
 		let values: QueryValue[] = [];
-
-		const nodeVersion = nodeOptions.nodeVersion as number;
 
 		let queryReplacement = this.getNodeParameter('options.queryReplacement', index, '');
 
@@ -87,11 +90,11 @@ export async function execute(
 			if (rawReplacements) {
 				if (nodeVersion >= 2.5) {
 					const rawValues = rawReplacements.replace(/^=+/, '');
-					const resolvables = getResolvables(rawValues);
-					if (resolvables.length) {
-						for (const resolvable of resolvables) {
-							const rawEvaluated = this.evaluateExpression(`${resolvable}`, index);
-
+					const evaluatedResolvables = evaluateResolvables(rawValues, (resolvable) =>
+						this.evaluateExpression(resolvable, index),
+					);
+					if (evaluatedResolvables.length) {
+						for (const rawEvaluated of evaluatedResolvables) {
 							if (Array.isArray(rawEvaluated)) {
 								for (const item of rawEvaluated) {
 									if (item === undefined) {
@@ -136,12 +139,12 @@ export async function execute(
 						.map((entry) => entry.trim());
 
 					for (const rawValue of rawValues) {
-						const resolvables = getResolvables(rawValue);
+						const evaluatedValues = evaluateResolvables(rawValue, (resolvable) =>
+							this.evaluateExpression(resolvable, index),
+						);
 
-						if (resolvables.length) {
-							for (const resolvable of resolvables) {
-								values.push(this.evaluateExpression(`${resolvable}`, index) as IDataObject);
-							}
+						if (evaluatedValues.length) {
+							values.push(...(evaluatedValues as IDataObject[]));
 						} else {
 							values.push(rawValue);
 						}
@@ -176,8 +179,8 @@ export async function execute(
 			}
 		}
 
-		return { query, values, options: { partial: true } };
-	});
+		queries.push({ query, values, options: { partial: true } });
+	}
 
 	return await runQueries(queries, nodeOptions);
 }

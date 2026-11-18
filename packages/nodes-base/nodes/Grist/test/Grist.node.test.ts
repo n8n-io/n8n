@@ -67,7 +67,7 @@ describe('Execute Grist Node', () => {
 		expect(gristApiRequest).toHaveBeenCalledTimes(1);
 		expect(gristApiRequest).toHaveBeenCalledWith(
 			'PUT',
-			'/docs/test-doc-id/tables/test-table-id/records',
+			expect.objectContaining({ value: '/docs/test-doc-id/tables/test-table-id/records' }),
 			{
 				records: [
 					{
@@ -219,7 +219,7 @@ describe('Execute Grist Node', () => {
 		expect(gristApiRequest).toHaveBeenCalledTimes(1);
 		expect(gristApiRequest).toHaveBeenCalledWith(
 			'PUT',
-			'/docs/test-doc-id/tables/test-table-id/records',
+			expect.objectContaining({ value: '/docs/test-doc-id/tables/test-table-id/records' }),
 			{
 				records: [
 					{
@@ -271,7 +271,7 @@ describe('Grist credentialTest', () => {
 		const { result, request } = await run([{ id: 1, name: 'Personal' }]);
 
 		expect(result.status).toBe('OK');
-		expect(request.mock.calls[0][0].uri).toBe('https://api.getgrist.com/api/orgs');
+		expect(String(request.mock.calls[0][0].uri)).toBe('https://api.getgrist.com/api/orgs');
 		expect(request.mock.calls[0][0].headers.Authorization).toBe('Bearer k');
 	});
 
@@ -308,7 +308,7 @@ describe('Grist credentialTest', () => {
 			selfHostedUrl: 'http://localhost:8484',
 		});
 
-		expect(request.mock.calls[0][0].uri).toBe('http://localhost:8484/api/orgs');
+		expect(String(request.mock.calls[0][0].uri)).toBe('http://localhost:8484/api/orgs');
 	});
 });
 

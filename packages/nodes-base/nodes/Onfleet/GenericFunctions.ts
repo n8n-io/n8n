@@ -9,22 +9,23 @@ import type {
 	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 export async function onfleetApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 
 	qs?: any,
-	uri?: string,
 ): Promise<any> {
 	const credentials = await this.getCredentials('onfleetApi');
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 			'User-Agent': 'n8n-onfleet',
@@ -36,7 +37,7 @@ export async function onfleetApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://onfleet.com/api/v2/${resource}`,
+		uri: requestUrl`https://onfleet.com/api/v2/${resource}`,
 		json: true,
 	};
 	try {
@@ -50,7 +51,7 @@ export async function onfleetApiRequestAllItems(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -70,7 +71,11 @@ export async function onfleetApiRequestAllItems(
 export const resourceLoaders = {
 	async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 		try {
-			const teams = (await onfleetApiRequest.call(this, 'GET', 'teams')) as IDataObject[];
+			const teams = (await onfleetApiRequest.call(
+				this,
+				'GET',
+				requestPath`teams`,
+			)) as IDataObject[];
 			return teams.map(({ name = '', id: value = '' }) => ({
 				name,
 				value,
@@ -82,7 +87,11 @@ export const resourceLoaders = {
 
 	async getWorkers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 		try {
-			const workers = (await onfleetApiRequest.call(this, 'GET', 'workers')) as IDataObject[];
+			const workers = (await onfleetApiRequest.call(
+				this,
+				'GET',
+				requestPath`workers`,
+			)) as IDataObject[];
 			return workers.map(({ name = '', id: value = '' }) => ({
 				name,
 				value,
@@ -94,7 +103,11 @@ export const resourceLoaders = {
 
 	async getAdmins(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 		try {
-			const admins = (await onfleetApiRequest.call(this, 'GET', 'admins')) as IDataObject[];
+			const admins = (await onfleetApiRequest.call(
+				this,
+				'GET',
+				requestPath`admins`,
+			)) as IDataObject[];
 			return admins.map(({ name = '', id: value = '' }) => ({
 				name,
 				value,
@@ -106,7 +119,7 @@ export const resourceLoaders = {
 
 	async getHubs(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 		try {
-			const hubs = (await onfleetApiRequest.call(this, 'GET', 'hubs')) as IDataObject[];
+			const hubs = (await onfleetApiRequest.call(this, 'GET', requestPath`hubs`)) as IDataObject[];
 			return hubs.map(({ name = '', id: value = '' }) => ({
 				name,
 				value,

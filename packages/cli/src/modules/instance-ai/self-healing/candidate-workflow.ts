@@ -84,6 +84,16 @@ export async function compileCandidateWorkflow({
 	try {
 		const compiled = await compileWorkflowSource(context, filePath, source, abortSignal);
 		if (!compiled.success) return compiled;
+		if (compiled.workflow.id !== baseline.workflowId) {
+			return {
+				success: false,
+				reason: 'candidate_workflow_mismatch',
+				errors: [
+					`The file does not declare workflow ${baseline.workflowId}. ` +
+						'Verify the file that get_workflow_as_code returned for this workflow.',
+				],
+			};
+		}
 
 		const original = toWorkflowJSON({ ...baseline.original, id: baseline.workflowId });
 		const warnings = downgradeUnchangedNodeBlockers(compiled.warnings, compiled.workflow, original);

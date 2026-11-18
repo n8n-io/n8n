@@ -113,6 +113,11 @@ export type PromotePackageResult = {
 	git: PromotionGitResult;
 };
 
+/** Outcome of promoting a selection of a project. Only `promoted` pushed anything. */
+export type PromoteSelectionResult =
+	| (PromotePackageResult & { status: 'promoted' })
+	| { status: 'preview-changed'; environmentId: string };
+
 /** The reviewed source that Apply must still match. Any mismatch reports `source-changed`. */
 export interface PromotionExpectedSource {
 	environmentId: string;
@@ -485,11 +490,13 @@ export class N8nClient {
 		projectId: string,
 		selection: PromotionSelection,
 		commitMessage?: string,
+		expectedPreviewRevision?: string,
 	) {
-		return await this.post<PromotePackageResult>(`/promotions/projects/${projectId}/promote`, {
+		return await this.post<PromoteSelectionResult>(`/promotions/projects/${projectId}/promote`, {
 			...selection,
-			// Dropped by JSON serialization when undefined, so the server default applies.
+			// Dropped by JSON serialization when undefined, so the server defaults apply.
 			commitMessage,
+			expectedPreviewRevision,
 		});
 	}
 
@@ -786,7 +793,7 @@ export class N8nClient {
 		if (fields.versionPolicy) body.versionPolicy = fields.versionPolicy;
 		// Only sent when set, so an older server without this field in its schema never sees it.
 		if (fields.credentialExportPolicy) body.credentialExportPolicy = fields.credentialExportPolicy;
-		if (fields.includeArchivedWorkflows) body.includeArchivedWorkflows = true;
+		if (fields.includeArchived) body.includeArchived = true;
 
 		let counts: ExportPackageCounts | undefined;
 		const archive = await this.request<Buffer>('POST', '/n8n-packages/export', {

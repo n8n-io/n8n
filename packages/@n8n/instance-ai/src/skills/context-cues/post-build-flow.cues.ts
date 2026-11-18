@@ -48,7 +48,7 @@ export const POST_BUILD_FLOW_CUES: ContextCueSet = {
 		},
 		{
 			id: 'empty-lookup-seed-and-remove',
-			text: 'Non-empty `nodesNotReached` with `success: true` is partial evidence, usually a lookup that returned zero items. Seed a matching test row (e.g. `insert_data_table_rows`), verify again once, then delete the row. If you cannot seed, or the second pass still does not reach them, name the unreached nodes and offer a manual test; do not start a live run.',
+			text: 'Non-empty `nodesNotReached` with `success: true` is partial evidence, usually a lookup that returned zero items. Seed a matching test row (an `insert-rows` change in `change_data_tables`), verify again once, then delete the row. If you cannot seed, or the second pass still does not reach them, name the unreached nodes and offer a manual test; do not start a live run.',
 			appliesWhen:
 				'Verification succeeded but stopped early and lists nodes not reached, often after an empty lookup or query.',
 		},
@@ -83,11 +83,6 @@ export const POST_BUILD_FLOW_CUES: ContextCueSet = {
 			text: 'Never publish a workflow to test it. `run_workflow` and verification inject `inputData` as the trigger output, so form, webhook and chat triggers are testable unpublished.',
 			appliesWhen:
 				'About to test a workflow with a form, webhook, chat or other event trigger that is not published.',
-		},
-		{
-			id: 'verification-follow-up-no-ack',
-			text: 'On `<workflow-verification-follow-up>`, verify at once from the `obligation`, with no acknowledgement first and no `setup_workflow` call in this turn. Setup comes as a separate `<workflow-setup-required>` step.',
-			appliesWhen: 'The current message contains a workflow-verification-follow-up block.',
 		},
 		// Setup
 		{

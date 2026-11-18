@@ -6,12 +6,11 @@ import { mock } from 'vitest-mock-extended';
 import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
 
-import type { Telemetry } from '@/telemetry';
-
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentExecutionService, type RecordMessageParams } from '../agent-execution.service';
 import { SESSION_STOPPED_REASON } from '../agent-session-stop-reason';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
+import type { AgentUsageTelemetryService } from '../agent-usage-telemetry.service';
 import type {
 	AgentExecutionThread,
 	AgentThreadAccess,
@@ -106,7 +105,7 @@ describe('AgentExecutionService', () => {
 	let agentExecutionThreadRepository: Mocked<AgentExecutionThreadRepository>;
 	let n8nMemory: Mocked<N8nMemory>;
 	let memoryBackend: Mocked<N8nMemoryImplementation>;
-	let telemetry: Mocked<Telemetry>;
+	let telemetry: Mocked<AgentUsageTelemetryService>;
 	let agentExecutionLogStore: Mocked<AgentExecutionLogStore>;
 	let storageConfig: Mocked<StorageConfig>;
 	let errorReporter: Mocked<ErrorReporter>;
@@ -136,7 +135,7 @@ describe('AgentExecutionService', () => {
 		n8nMemory = mock<N8nMemory>();
 		memoryBackend = mock<N8nMemoryImplementation>();
 		n8nMemory.getImplementation.mockReturnValue(memoryBackend);
-		telemetry = mock<Telemetry>();
+		telemetry = mock<AgentUsageTelemetryService>();
 		agentExecutionLogStore = mock<AgentExecutionLogStore>();
 		storageConfig = mock<StorageConfig>({ modeTag: 'db' });
 		errorReporter = mock<ErrorReporter>();
@@ -1814,13 +1813,13 @@ describe('AgentExecutionService', () => {
 					status: 'interrupted',
 					timeline: partial,
 					storedAt: 'db',
-					error: expect.stringContaining('interrupted'),
+					error: expect.stringContaining('n8n restarted'),
 					failureSummary: {
 						count: 1,
 						latest: {
 							kind: 'execution',
 							name: null,
-							message: expect.stringContaining('interrupted'),
+							message: expect.stringContaining('n8n restarted'),
 							occurredAt: expect.any(Number),
 						},
 					},
@@ -2333,6 +2332,140 @@ describe('AgentExecutionService', () => {
 		});
 	});
 
+	describe('getThreadDetailPage', () => {
+		const execution = (id: string, minute: number) =>
+			({
+				id,
+				storedAt: 'db',
+				createdAt: new Date(`2026-05-07T10:${String(minute).padStart(2, '0')}:00Z`),
+			}) as AgentExecution;
+
+		beforeEach(() => {
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(makeThread());
+			messageRepository.continuesExecution.mockResolvedValue(false);
+		});
+
+		it('returns the newest turns oldest first, and reports older turns', async () => {
+			agentExecutionRepository.findByThreadIdNewestFirst.mockResolvedValue([
+				execution('execution-4', 4),
+				execution('execution-3', 3),
+				execution('execution-2', 2),
+			]);
+
+			const result = await service.getThreadDetailPage(
+				'thread-1',
+				'project-1',
+				'agent-1',
+				'user-1',
+				{ limit: 2 },
+			);
+
+			expect(agentExecutionRepository.findByThreadIdNewestFirst).toHaveBeenCalledWith(
+				'thread-1',
+				3,
+				undefined,
+			);
+			expect(result?.executions.map(({ id }) => id)).toEqual(['execution-3', 'execution-4']);
+			expect(result?.hasOlder).toBe(true);
+		});
+
+		it('reports no older turns on the last page', async () => {
+			const before = { createdAt: new Date('2026-05-07T10:03:00Z'), id: 'execution-3' };
+			agentExecutionRepository.findByThreadIdNewestFirst.mockResolvedValue([
+				execution('execution-2', 2),
+				execution('execution-1', 1),
+			]);
+
+			const result = await service.getThreadDetailPage(
+				'thread-1',
+				'project-1',
+				'agent-1',
+				'user-1',
+				{ limit: 2, before },
+			);
+
+			expect(agentExecutionRepository.findByThreadIdNewestFirst).toHaveBeenCalledWith(
+				'thread-1',
+				3,
+				before,
+			);
+			expect(result?.executions.map(({ id }) => id)).toEqual(['execution-1', 'execution-2']);
+			expect(result?.hasOlder).toBe(false);
+		});
+
+		it('keeps a resumed turn on the page of the execution that it continues', async () => {
+			const suspended = execution('execution-2', 2);
+			const first = execution('execution-1', 1);
+			agentExecutionRepository.findByThreadIdNewestFirst
+				.mockResolvedValueOnce([
+					execution('execution-4', 4),
+					execution('execution-3', 3),
+					suspended,
+				])
+				.mockResolvedValueOnce([first]);
+			messageRepository.continuesExecution.mockImplementation(
+				async (executionId, predecessorId) =>
+					executionId === 'execution-3' && predecessorId === 'execution-2',
+			);
+
+			const result = await service.getThreadDetailPage(
+				'thread-1',
+				'project-1',
+				'agent-1',
+				'user-1',
+				{ limit: 2 },
+			);
+
+			expect(agentExecutionRepository.findByThreadIdNewestFirst).toHaveBeenLastCalledWith(
+				'thread-1',
+				1,
+				suspended,
+			);
+			expect(result?.executions.map(({ id }) => id)).toEqual([
+				'execution-2',
+				'execution-3',
+				'execution-4',
+			]);
+			expect(result?.hasOlder).toBe(true);
+		});
+
+		it('keeps a resume without input links on the page of the execution before it', async () => {
+			// Resumes from before input messages were linked have only their status.
+			const resumed = { ...execution('execution-3', 3), hitlStatus: 'resumed' } as AgentExecution;
+			const suspended = execution('execution-2', 2);
+			agentExecutionRepository.findByThreadIdNewestFirst
+				.mockResolvedValueOnce([execution('execution-4', 4), resumed, suspended])
+				.mockResolvedValueOnce([]);
+
+			const result = await service.getThreadDetailPage(
+				'thread-1',
+				'project-1',
+				'agent-1',
+				'user-1',
+				{ limit: 2 },
+			);
+
+			expect(messageRepository.continuesExecution).not.toHaveBeenCalled();
+			expect(result?.executions.map(({ id }) => id)).toEqual([
+				'execution-2',
+				'execution-3',
+				'execution-4',
+			]);
+			expect(result?.hasOlder).toBe(false);
+		});
+
+		it('does not read executions for a thread outside the requested owner', async () => {
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(
+				makeThread({ ownerId: 'other-user' }),
+			);
+
+			await expect(
+				service.getThreadDetailPage('thread-1', 'project-1', 'agent-1', 'user-1', { limit: 2 }),
+			).resolves.toBeNull();
+			expect(agentExecutionRepository.findByThreadIdNewestFirst).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('findLatestSuspendedRun', () => {
 		it('delegates to the repository and returns its result', async () => {
 			const suspended = { id: 'execution-1', source: 'telegram' } as AgentExecution;
@@ -2394,6 +2527,21 @@ describe('AgentExecutionService', () => {
 			expect(agentExecutionLogStore.delete).toHaveBeenCalledWith([
 				{ agentId: 'agent-1', threadId: 'thread-1', executionId: 'execution-1', storedAt: 'fs' },
 			]);
+		});
+
+		it('reports the deletion when the blob-stored logs fail to delete', async () => {
+			agentExecutionThreadRepository.deleteSession.mockResolvedValue({
+				status: 'deleted',
+				refs: {
+					attachmentBinaryDataIds: [],
+					executionLogs: [{ id: 'execution-1', storedAt: 'fs' }],
+				},
+			});
+			agentExecutionLogStore.delete.mockRejectedValue(new Error('store down'));
+
+			await expect(
+				service.deleteThread('project-1', 'agent-1', 'thread-1', 'user-1'),
+			).resolves.toBe(true);
 		});
 
 		it('does not clean SDK memory when the execution thread is not found', async () => {

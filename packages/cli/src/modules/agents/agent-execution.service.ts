@@ -18,11 +18,14 @@ import groupBy from 'lodash/groupBy';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
 
 import { ConflictError, OperationalError, UnexpectedError } from '@n8n/errors';
-import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
-import { Telemetry } from '@/telemetry';
 
 import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import type {
+	AgentRunTelemetryType,
+	IAgentConfigurationTelemetryProperties,
+} from './agent-telemetry.types';
+import { AgentUsageTelemetryService } from './agent-usage-telemetry.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
@@ -76,6 +79,7 @@ import {
 	type ThreadFailureSummary,
 } from './utils/execution-failure-summary';
 import { applyFatalSessionOutcome } from './utils/fatal-session-outcome';
+import type { ChatHistoryPageRequest } from './utils/chat-history-page';
 
 export interface RecordMessageParams {
 	threadId: string;
@@ -140,6 +144,12 @@ export interface ThreadDetail {
 	executions: AgentExecution[];
 }
 
+/** One page of a thread's turns, oldest first. */
+export interface ThreadDetailPage extends ThreadDetail {
+	/** Whether the thread has turns older than this page. */
+	hasOlder: boolean;
+}
+
 export interface ThreadListItem
 	extends Omit<
 			AgentExecutionThread,
@@ -195,7 +205,7 @@ export class AgentExecutionService {
 		private readonly agentExecutionRepository: AgentExecutionRepository,
 		private readonly agentExecutionThreadRepository: AgentExecutionThreadRepository,
 		private readonly n8nMemory: N8nMemory,
-		private readonly telemetry: Telemetry,
+		private readonly agentUsageTelemetry: AgentUsageTelemetryService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 		private readonly agentExecutionLogStore: AgentExecutionLogStore,
 		private readonly storageConfig: StorageConfig,
@@ -518,7 +528,8 @@ export class AgentExecutionService {
 	): Promise<boolean> {
 		const timeline = execution.timeline ?? [];
 		const stoppedAt = new Date();
-		const error = 'Agent execution was interrupted by a process restart.';
+		const error =
+			'Agent execution stopped because n8n restarted, for example after a crash or an update.';
 		const duration = execution.startedAt
 			? Math.max(0, stoppedAt.getTime() - execution.startedAt.getTime())
 			: 0;
@@ -745,18 +756,34 @@ export class AgentExecutionService {
 		}
 		const { refs } = result;
 
+		// The thread is already deleted, so a failed blob delete only leaves orphaned bytes.
 		await Promise.all([
 			this.agentChatAttachmentService.deleteStoredData(refs.attachmentBinaryDataIds, { threadId }),
-			this.agentExecutionLogStore.delete(
-				this.toBlobRefs(refs.executionLogs).map((ref) => ({
+			this.deleteThreadExecutionLogs(agentId, threadId, refs.executionLogs),
+		]);
+		return true;
+	}
+
+	private async deleteThreadExecutionLogs(
+		agentId: string,
+		threadId: string,
+		executionLogs: Array<Pick<AgentExecution, 'id' | 'storedAt'>>,
+	): Promise<void> {
+		try {
+			await this.agentExecutionLogStore.delete(
+				this.toBlobRefs(executionLogs).map((ref) => ({
 					agentId,
 					threadId,
 					executionId: ref.id,
 					storedAt: ref.storedAt,
 				})),
-			),
-		]);
-		return true;
+			);
+		} catch (error) {
+			this.logger.warn('Failed to delete agent execution logs of a deleted thread', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	/**
@@ -946,6 +973,57 @@ export class AgentExecutionService {
 		await this.hydrateExecutionInputs(executions, thread.agentName);
 		await this.hydrateTimelines(agentId, threadId, executions);
 		return { thread, executions };
+	}
+
+	/**
+	 * Get the newest `limit` turns of a thread before `before`, oldest first.
+	 * Validates projectId and agentId ownership.
+	 *
+	 * A page never splits a continuation, such as a resume after a suspension,
+	 * from the execution that it continues. The transcript merges the tool calls
+	 * and the input messages of these executions, so they must load together.
+	 * Thus a page can hold more than `limit` executions.
+	 */
+	async getThreadDetailPage(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+		{ limit, before }: ChatHistoryPageRequest,
+	): Promise<ThreadDetailPage | null> {
+		const thread = await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
+		if (!thread) return null;
+		if (!threadBelongsTo(thread, projectId, agentId, userId)) return null;
+
+		const rows = await this.agentExecutionRepository.findByThreadIdNewestFirst(
+			threadId,
+			limit + 1,
+			before,
+		);
+		const executions = rows.slice(0, limit);
+		let older: AgentExecution | undefined = rows[limit];
+		// A page with older turns checks once whether its oldest turn continues the
+		// next older one. Each continuation adds up to two queries, but
+		// continuations are rare.
+		while (older && (await this.continues(executions[executions.length - 1], older))) {
+			executions.push(older);
+			[older] = await this.agentExecutionRepository.findByThreadIdNewestFirst(threadId, 1, older);
+		}
+		executions.reverse();
+
+		await this.hydrateExecutionInputs(executions, thread.agentName);
+		await this.hydrateTimelines(agentId, threadId, executions);
+		return { thread, executions, hasOlder: older !== undefined };
+	}
+
+	/**
+	 * Whether `execution` continues `older`, the execution before it. A resume
+	 * from before input messages were linked has no links, but it has the
+	 * `resumed` status.
+	 */
+	private async continues(execution: AgentExecution, older: AgentExecution): Promise<boolean> {
+		if (execution.hitlStatus === 'resumed') return true;
+		return await this.messageRepository.continuesExecution(execution.id, older.id);
 	}
 
 	private async hydrateExecutionInputs(
@@ -1414,7 +1492,7 @@ export class AgentExecutionService {
 		if (status === 'awaiting' || !params.telemetry) return;
 		const { agentId, threadId, record } = params;
 		try {
-			this.telemetry.trackAgentTurnFinished({
+			this.agentUsageTelemetry.trackAgentTurnFinished({
 				agent_id: agentId,
 				user_id: params.telemetry.userId,
 				thread_id: threadId,

@@ -1,6 +1,6 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { Person } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
@@ -29,7 +29,7 @@ const testServer = setupTestServer({
 	endpointGroups: ['mcp'],
 });
 
-let owner: User;
+let owner: Person;
 let mcpSettingsService: McpSettingsService;
 /** Every resource's scopes: the authorization server advertises the union. */
 let supportedScopes: string[];

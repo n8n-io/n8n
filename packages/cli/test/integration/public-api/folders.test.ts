@@ -1,5 +1,5 @@
 import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
-import type { Project, User } from '@n8n/db';
+import type { Person, Project } from '@n8n/db';
 import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
@@ -14,8 +14,8 @@ import { createOwnerWithApiKey, createMemberWithApiKey } from '../shared/db/user
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
-let owner: User;
-let member: User;
+let owner: Person;
+let member: Person;
 let ownerPersonalProject: Project;
 let memberPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
@@ -39,7 +39,7 @@ beforeEach(async () => {
 	const projectRepository = Container.get(ProjectRepository);
 	const projectRelationRepository = Container.get(ProjectRelationRepository);
 
-	const createPersonalProject = async (user: User) => {
+	const createPersonalProject = async (user: Person) => {
 		const project = await projectRepository.save(
 			projectRepository.create({
 				type: 'personal',
@@ -492,7 +492,7 @@ describe('GET /projects/:projectId/folders', () => {
 			name: 'an unknown select field',
 			query: { select: JSON.stringify(['unknownField']) },
 			message:
-				'request/query/select Invalid select fields. Valid fields are: id, name, createdAt, updatedAt, project, tags, parentFolder, workflowCount, subFolderCount, path',
+				'request/query/select Invalid select fields. Valid fields are: id, name, createdAt, updatedAt, project, tags, parentFolder, workflowCount, agentCount, resourceType, subFolderCount, path',
 		},
 		{
 			name: 'a take that is not a number',

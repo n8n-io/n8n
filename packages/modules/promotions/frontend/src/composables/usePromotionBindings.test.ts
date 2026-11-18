@@ -1,62 +1,39 @@
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import { ResponseError } from '@n8n/rest-api-client';
-import type { ApplyPackageResultDto } from '@n8n/api-types';
 import { promotionBindingKey, usePromotionBindings } from './usePromotionBindings';
-import { continueApplyPromotion } from '../promotionsSettings.api';
 import {
 	applied,
 	blocked,
 	consumers,
 	credential,
-	projectDeletion,
 	savedCredential,
 	variable,
 } from '../__tests__/bindings.fixtures';
 import type { CreatedPromotionBinding, MissingPromotionBinding } from '../promotions.types';
 
-vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: () => ({ publicApiContext: { baseUrl: '/custom/api/v1' } }),
-}));
-vi.mock('../promotionsSettings.api');
-
-beforeEach(() => vi.resetAllMocks());
+const statuses = (session: ReturnType<typeof usePromotionBindings>) =>
+	Object.fromEntries(session.rows.value.map(({ key, status }) => [key, status]));
 
 it('resolves shared credentials once and keeps variable scopes separate', async () => {
 	const projectVariable: Extract<MissingPromotionBinding, { kind: 'variable' }> = {
 		...variable,
 		scope: { kind: 'project', project: consumers[0].project },
 	};
-	const otherProjectVariable: Extract<MissingPromotionBinding, { kind: 'variable' }> = {
-		...variable,
-		scope: { kind: 'project', project: consumers[1].project },
-	};
 	const session = usePromotionBindings();
-	const result = blocked({
-		missingBindings: [credential, variable, projectVariable, otherProjectVariable],
-	});
-	session.start(result);
-	expect(session.originalResult.value).toBe(result);
-	expect(session.unresolvedCount.value).toBe(4);
-	expect(session.groups.value.map((group) => group.project.id)).toEqual(['team-a', 'team-b']);
+	session.start(blocked({ missingBindings: [credential, variable, projectVariable] }));
 	const create = vi.fn().mockResolvedValue(savedCredential);
 	await session.createBinding(promotionBindingKey(credential), create);
 	expect(create.mock.calls[0][0]).toBe(credential);
-	expect(session.unresolvedCount.value).toBe(3);
-	expect(session.groups.value.map((group) => group.workflows[0].rows[0].status)).toEqual([
-		'resolved',
-		'resolved',
-	]);
 	await session.createBinding(promotionBindingKey(projectVariable), async () => ({
 		kind: 'variable',
 		id: 'var-1',
 		name: variable.name,
 		scope: projectVariable.scope,
 	}));
-	expect(session.unresolvedCount.value).toBe(2);
-	expect(session.savedResources.value).toEqual([
-		savedCredential,
-		{ kind: 'variable', id: 'var-1', name: variable.name, scope: projectVariable.scope },
-	]);
+	expect(statuses(session)).toEqual({
+		[promotionBindingKey(credential)]: 'resolved',
+		[promotionBindingKey(variable)]: 'missing',
+		[promotionBindingKey(projectVariable)]: 'resolved',
+	});
 });
 
 it.each([
@@ -69,211 +46,50 @@ it.each([
 	const session = usePromotionBindings();
 	session.start(blocked());
 	await session.createBinding(promotionBindingKey(credential), async () => result);
-	expect(session.unresolvedCount.value).toBe(1);
-	expect(session.savedResources.value).toEqual([]);
-	expect(session.canContinue.value).toBe(false);
+	expect(statuses(session)[promotionBindingKey(credential)]).toBe('missing');
 });
 
 it('keeps global variables unresolved after a project variable is saved', async () => {
 	const session = usePromotionBindings();
 	session.start(blocked({ missingBindings: [variable] }));
-	await session.createBinding(promotionBindingKey(variable), async (item) => {
-		expect(item).toBe(variable);
-		return {
-			kind: 'variable',
-			name: variable.name,
-			id: 'var-id',
-			scope: { kind: 'project', project: consumers[0].project },
-		};
-	});
+	await session.createBinding(promotionBindingKey(variable), async () => ({
+		kind: 'variable',
+		name: variable.name,
+		id: 'var-id',
+		scope: { kind: 'project', project: consumers[0].project },
+	}));
 	expect(session.error.value).toEqual({ kind: 'creationMismatch' });
-	expect(session.canContinue.value).toBe(false);
+	expect(statuses(session)[promotionBindingKey(variable)]).toBe('missing');
 });
 
-it('guards creation and Continue while the editor is open and recovers after failure', async () => {
+it('guards creation while the editor is open and recovers after failure', async () => {
 	const pending = createDeferredPromise<CreatedPromotionBinding | null>();
 	const session = usePromotionBindings();
 	session.start(blocked());
 	const create = vi.fn().mockReturnValue(pending.promise);
 	const first = session.createBinding(promotionBindingKey(credential), create);
 	await session.createBinding(promotionBindingKey(credential), create);
-	await session.continueInstanceApply();
 	expect(create).toHaveBeenCalledTimes(1);
-	expect(continueApplyPromotion).not.toHaveBeenCalled();
-	expect(session.isCreating.value).toBe(true);
+	expect(session.isBusy.value).toBe(true);
 	pending.reject(new Error('Save failed'));
 	await first;
 	expect(session.error.value).toBeNull();
-	expect(session.isCreating.value).toBe(false);
-	expect(session.unresolvedCount.value).toBe(1);
+	expect(session.isBusy.value).toBe(false);
+	expect(statuses(session)[promotionBindingKey(credential)]).toBe('missing');
 });
 
-it.each(['access', 'conflict'] as const)('blocks Continue for %s requirements', async (kind) => {
+it('keeps created bindings resolved when a later check of the same commit comes in', async () => {
 	const session = usePromotionBindings();
-	session.start(
-		blocked({
-			missingBindings: [],
-			accessRequirements: kind === 'access' ? [{ ...credential, code: 'access-required' }] : [],
-			conflicts:
-				kind === 'conflict'
-					? [
-							{
-								kind: 'variable',
-								name: variable.name,
-								code: 'missing-definition',
-								referenceFiles: ['workflow.json'],
-								consumers,
-							},
-						]
-					: [],
-		}),
-	);
-	expect(session.canContinue.value).toBe(false);
-	expect(session.unresolvedCount.value).toBe(1);
-	await session.continueInstanceApply();
-	expect(continueApplyPromotion).not.toHaveBeenCalled();
-});
-
-it('counts credentials with the same name and different types separately', () => {
-	const session = usePromotionBindings();
-	session.start(
-		blocked({
-			missingBindings: [],
-			conflicts: ['githubApi', 'gitlabApi'].map((type) => ({
-				kind: 'credential',
-				code: 'missing-id',
-				sourceId: null,
-				name: 'Production',
-				expectedTypes: [type],
-				consumers,
-				referenceFiles: ['workflow.json'],
-			})),
-		}),
-	);
-	expect(session.unresolvedCount.value).toBe(2);
-	expect(session.canContinue.value).toBe(false);
-});
-
-it('submits once with the original source and allows warnings', async () => {
-	const pending = createDeferredPromise<ApplyPackageResultDto>();
-	vi.mocked(continueApplyPromotion).mockReturnValue(pending.promise);
-	const session = usePromotionBindings();
-	const result = blocked({ missingBindings: [], warnings: applied.warnings });
-	session.start(result);
-	expect(session.canContinue.value).toBe(true);
-	const first = session.continueInstanceApply();
-	await session.continueInstanceApply();
-	expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
-	expect(continueApplyPromotion).toHaveBeenCalledWith(
-		{ baseUrl: '/custom/api/v1' },
-		result.environmentId,
-		{ expectedSource: { environmentId: result.environmentId, ...result.git } },
-	);
-	pending.resolve(applied);
-	expect(await first).toBe(applied);
-	expect(session.canContinue.value).toBe(false);
-	await session.continueInstanceApply();
-	expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
-});
-
-it('asks to review project deletions and confirms them on Continue', async () => {
-	vi.mocked(continueApplyPromotion).mockResolvedValue(applied);
-	const session = usePromotionBindings();
-	const result = blocked({ missingBindings: [], conflicts: [projectDeletion] });
-	session.start(result);
-	expect(session.mode.value).toBe('review');
-	expect(session.projectDeletions.value).toEqual([projectDeletion]);
-	expect(session.hardConflicts.value).toEqual([]);
-	expect(await session.continueInstanceApply()).toBe(applied);
-	expect(continueApplyPromotion).toHaveBeenCalledWith(
-		{ baseUrl: '/custom/api/v1' },
-		result.environmentId,
-		{
-			expectedSource: { environmentId: result.environmentId, ...result.git },
-			confirmDestructiveChanges: true,
-		},
-	);
-});
-
-it('reconciles a blocked result and stops on a source change', async () => {
-	const session = usePromotionBindings();
-	const initial = blocked({ missingBindings: [] });
-	session.start(initial);
-	const next = blocked({ missingBindings: [credential] });
-	vi.mocked(continueApplyPromotion).mockResolvedValueOnce(next);
-	await session.continueInstanceApply();
+	session.start(blocked({ missingBindings: [credential, variable] }));
+	await session.createBinding(promotionBindingKey(credential), async () => savedCredential);
+	const next = blocked({ missingBindings: [variable], warnings: applied.warnings });
+	session.reconcile(next);
 	expect(session.check.value).toBe(next.check);
-	expect(session.unresolvedCount.value).toBe(1);
-	await session.createBinding(promotionBindingKey(credential), async () => savedCredential);
-	const changed = {
-		...initial,
-		status: 'source-changed' as const,
-		git: { branchName: 'main', commitSha: 'b'.repeat(40) },
-	};
-	vi.mocked(continueApplyPromotion).mockResolvedValueOnce(changed);
-	expect(await session.continueInstanceApply()).toBe(changed);
-	expect(session.sourceChanged.value).toBe(true);
-	expect(continueApplyPromotion).toHaveBeenCalledTimes(2);
-});
-
-it('replaces blockers and preserves saved rows after another blocked result', async () => {
-	const session = usePromotionBindings();
-	const result = blocked({ missingBindings: [credential, variable] });
-	session.start(result);
-	await session.createBinding(promotionBindingKey(credential), async () => savedCredential);
-	await session.createBinding(promotionBindingKey(variable), async () => ({
-		kind: 'variable',
-		id: 'var-id',
-		name: variable.name,
-		scope: variable.scope,
-	}));
-	const next = blocked({
-		accessRequirements: [{ ...credential, sourceId: 'other-credential', code: 'access-required' }],
-		warnings: applied.warnings,
+	expect(statuses(session)).toEqual({
+		[promotionBindingKey(credential)]: 'resolved',
+		[promotionBindingKey(variable)]: 'missing',
 	});
-	vi.mocked(continueApplyPromotion).mockResolvedValue(next);
-	await session.continueInstanceApply();
-	expect(session.check.value).toBe(next.check);
-	expect(session.originalResult.value).toBe(result);
-	expect(session.unresolvedCount.value).toBe(2);
-	const rows = session.groups.value[0].workflows[0].rows;
-	expect(rows.find((row) => row.binding.kind === 'credential')?.status).toBe('missing');
-	expect(rows.find((row) => row.binding.kind === 'variable')?.status).toBe('resolved');
-	expect(session.savedResources.value).toHaveLength(2);
-	expect(session.canContinue.value).toBe(false);
 });
-
-it('stops after a source change without retrying', async () => {
-	const session = usePromotionBindings();
-	const initial = blocked({ missingBindings: [] });
-	session.start(initial);
-	const changed = {
-		...initial,
-		status: 'source-changed' as const,
-		git: { branchName: 'main', commitSha: 'b'.repeat(40) },
-	};
-	vi.mocked(continueApplyPromotion).mockResolvedValue(changed);
-	expect(await session.continueInstanceApply()).toBe(changed);
-	expect(session.sourceChanged.value).toBe(true);
-	expect(session.originalResult.value).toBe(initial);
-	await session.continueInstanceApply();
-	expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
-});
-
-it.each([new Error('Offline'), new ResponseError('Forbidden', { httpStatusCode: 403 })])(
-	'keeps saved items after a request fails: %s',
-	async (error) => {
-		const session = usePromotionBindings();
-		session.start(blocked());
-		await session.createBinding(promotionBindingKey(credential), async () => savedCredential);
-		vi.mocked(continueApplyPromotion).mockRejectedValue(error);
-		await session.continueInstanceApply();
-		expect(session.error.value).toEqual({ kind: 'continue', cause: error });
-		expect(session.savedResources.value).toEqual([savedCredential]);
-		expect(session.canContinue.value).toBe(true);
-		expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
-	},
-);
 
 it('ignores an editor result from a closed session', async () => {
 	const pending = createDeferredPromise<CreatedPromotionBinding | null>();
@@ -287,6 +103,5 @@ it('ignores an editor result from a closed session', async () => {
 	session.start(blocked());
 	pending.resolve(savedCredential);
 	await creating;
-	expect(session.savedResources.value).toEqual([]);
-	expect(session.unresolvedCount.value).toBe(1);
+	expect(statuses(session)[promotionBindingKey(credential)]).toBe('missing');
 });

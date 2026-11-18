@@ -1,0 +1,61 @@
+{
+	"name": "LingvaNex request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "8f0b2c1e-0000-4000-8000-000000000001",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"text": "Hello",
+				"translateTo": "de_DE"
+			},
+			"id": "8f0b2c1e-0000-4000-8000-000000000002",
+			"name": "Translate",
+			"type": "n8n-nodes-base.lingvaNex",
+			"typeVersion": 1,
+			"position": [240, 0],
+			"credentials": {
+				"lingvaNexApi": {
+					"id": "1",
+					"name": "LingvaNex account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Translate": [
+			{
+				"json": {
+					"err": null,
+					"result": "Hallo"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Translate",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "00000000-0000-4000-8000-000000000000",
+	"id": "LingvaNexRequestUrls",
+	"meta": {},
+	"tags": []
+}
