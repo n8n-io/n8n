@@ -71,6 +71,18 @@ function openLoop(c: NodeContext, list: string, index: boolean): void {
 	}
 }
 
+/**
+ * Starts paired item tracking for an output list when a later expression reads through
+ * this node. Returns the name of the pairs variable, or null when not needed.
+ */
+function startPairs(c: NodeContext, out: string): string | null {
+	if (c.pairsWanted !== true || c.setPairs === undefined) return null;
+	const pairVar = `${out}PairData`;
+	c.w.line(`const ${pairVar}: Json = { items: ${out}, paired: [] };`);
+	c.setPairs(pairVar);
+	return pairVar;
+}
+
 const mapParams = (index: boolean) =>
 	index ? `(${ITEM}: Json, ${INDEX}: number)` : `(${ITEM}: Json)`;
 
@@ -113,8 +125,13 @@ export function lowerIf(c: NodeContext): void {
 	const f = c.output(1, 'False');
 	c.w.line(`const ${t}: Json[] = [];`);
 	c.w.line(`const ${f}: Json[] = [];`);
-	openLoop(c, c.input, usage.index);
-	c.w.line(`if (${code}) ${t}.push(${ITEM});`);
+	const pairVar = startPairs(c, t);
+	openLoop(c, c.input, usage.index || pairVar !== null);
+	if (pairVar) {
+		c.w.line(`if (${code}) { ${t}.push(${ITEM}); ${pairVar}.paired.push(${INDEX}); }`);
+	} else {
+		c.w.line(`if (${code}) ${t}.push(${ITEM});`);
+	}
 	c.w.line(`else ${f}.push(${ITEM});`);
 	c.w.close();
 	keepsPlain(c, [t, f]);
@@ -159,8 +176,13 @@ export function lowerFilter(c: NodeContext): void {
 	const discarded = c.output(1, 'Discarded');
 	c.w.line(`const ${kept}: Json[] = [];`);
 	c.w.line(`const ${discarded}: Json[] = [];`);
-	openLoop(c, c.input, usage.index);
-	c.w.line(`if (${code}) ${kept}.push(${ITEM});`);
+	const pairVar = startPairs(c, kept);
+	openLoop(c, c.input, usage.index || pairVar !== null);
+	if (pairVar) {
+		c.w.line(`if (${code}) { ${kept}.push(${ITEM}); ${pairVar}.paired.push(${INDEX}); }`);
+	} else {
+		c.w.line(`if (${code}) ${kept}.push(${ITEM});`);
+	}
 	c.w.line(`else ${discarded}.push(${ITEM});`);
 	c.w.close();
 	keepsPlain(c, [kept, discarded]);

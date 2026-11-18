@@ -1,0 +1,12 @@
+{
+	"description": "A Set node reads the item of a node before a Filter through the Filter ($('Source').item) and reads through Filter to Tag",
+	"trigger": {
+		"body": {
+			"label": "filter-paired"
+		}
+	},
+	"compare": [
+		"Read Expression",
+		"Read If Expression"
+	]
+}
