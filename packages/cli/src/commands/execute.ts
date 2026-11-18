@@ -51,7 +51,7 @@ export class Execute extends BaseCommand<z.infer<typeof flagsSchema>> {
 		const { flags } = this;
 
 		// oxlint-disable-next-line typescript/no-deprecated
-		if (flags.file) {
+		if (flags.file !== undefined) {
 			throw new UserError(
 				'The --file flag is no longer supported. Please first import the workflow and then execute it using the --id flag.',
 				{ level: 'warning' },

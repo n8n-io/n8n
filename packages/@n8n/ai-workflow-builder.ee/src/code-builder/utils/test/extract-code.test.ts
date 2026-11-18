@@ -240,8 +240,7 @@ describe('SDK_IMPORT_STATEMENT', () => {
 		expect(SDK_IMPORT_STATEMENT).toContain('memory');
 		expect(SDK_IMPORT_STATEMENT).toContain('tool');
 		expect(SDK_IMPORT_STATEMENT).toContain('outputParser');
-		expect(SDK_IMPORT_STATEMENT).toContain('embedding');
-		expect(SDK_IMPORT_STATEMENT).toContain('embedding,');
+		expect(SDK_IMPORT_STATEMENT).toMatch(/\bembedding\b/);
 		expect(SDK_IMPORT_STATEMENT).not.toMatch(/\bembeddings\b/);
 		expect(SDK_IMPORT_STATEMENT).toContain('vectorStore');
 		expect(SDK_IMPORT_STATEMENT).toContain('retriever');

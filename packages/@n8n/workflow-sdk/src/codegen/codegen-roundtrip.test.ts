@@ -2485,9 +2485,11 @@ export default workflow('shared-tool-test', 'Shared Tool Test')
 			expect(targetAgents).toEqual(['Research Agent', 'Writing Agent']);
 		});
 
-		it('should produce a single embedding node connected to both vector stores', () => {
-			const code = `
-const sharedEmbedding = embedding({
+		it.each(['embedding', 'embeddings'])(
+			'should preserve a shared embedding when the source code uses %s',
+			(embeddingFactory) => {
+				const code = `
+const sharedEmbedding = ${embeddingFactory}({
   type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
   version: 1.2,
   config: {
@@ -2502,7 +2504,7 @@ const vectorStore1 = node({
   config: {
     name: 'Vector Store 1',
     parameters: {},
-    subnodes: { embedding: sharedEmbedding }
+    subnodes: { ${embeddingFactory}: sharedEmbedding }
   }
 });
 
@@ -2512,7 +2514,7 @@ const vectorStore2 = node({
   config: {
     name: 'Vector Store 2',
     parameters: {},
-    subnodes: { embedding: sharedEmbedding }
+    subnodes: { ${embeddingFactory}: sharedEmbedding }
   }
 });
 
@@ -2520,25 +2522,31 @@ export default workflow('shared-embedding-test', 'Shared Embedding Test')
   .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } })
     .to([vectorStore1, vectorStore2]));
 `;
-			const parsedJson = parseWorkflowCode(code);
+				const parsedJson = parseWorkflowCode(code);
 
-			// Should have 4 nodes: trigger, 2 vector stores, 1 shared embedding
-			expect(parsedJson.nodes).toHaveLength(4);
+				// Should have 4 nodes: trigger, 2 vector stores, 1 shared embedding
+				expect(parsedJson.nodes).toHaveLength(4);
 
-			// Only ONE embedding node should exist
-			const embeddingNodes = parsedJson.nodes.filter(
-				(n) => n.type === '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			);
-			expect(embeddingNodes).toHaveLength(1);
-			expect(embeddingNodes[0].name).toBe('Shared Embeddings');
+				// Only ONE embedding node should exist
+				const embeddingNodes = parsedJson.nodes.filter(
+					(n) => n.type === '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+				);
+				expect(embeddingNodes).toHaveLength(1);
+				expect(embeddingNodes[0].name).toBe('Shared Embeddings');
 
-			// The shared embedding should have ai_embedding connections to BOTH vector stores
-			const embeddingConnections = parsedJson.connections['Shared Embeddings']?.ai_embedding?.[0];
-			expect(embeddingConnections).toBeDefined();
-			expect(embeddingConnections).toHaveLength(2);
-			const targetStores = embeddingConnections!.map((c) => c.node).sort();
-			expect(targetStores).toEqual(['Vector Store 1', 'Vector Store 2']);
-		});
+				// The shared embedding should have ai_embedding connections to BOTH vector stores
+				const embeddingConnections = parsedJson.connections['Shared Embeddings']?.ai_embedding?.[0];
+				expect(embeddingConnections).toBeDefined();
+				expect(embeddingConnections).toHaveLength(2);
+				const targetStores = embeddingConnections!.map((c) => c.node).sort();
+				expect(targetStores).toEqual(['Vector Store 1', 'Vector Store 2']);
+
+				const generatedCode = generateWorkflowCode(parsedJson);
+				expect(generatedCode).toMatch(/\bembedding\(/);
+				expect(generatedCode).toMatch(/\bembedding:/);
+				expect(generatedCode).not.toMatch(/\bembeddings[(:]/);
+			},
+		);
 
 		it('should handle same-named agents sharing a language model (auto-rename scenario)', () => {
 			const code = `

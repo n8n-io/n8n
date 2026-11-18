@@ -839,7 +839,7 @@ const AI_CONNECTION_TO_SDK_FUNCTION: Record<string, string> = {
 	ai_memory: 'memory()',
 	ai_tool: 'tool()',
 	ai_outputParser: 'outputParser()',
-	ai_embedding: 'embeddings()',
+	ai_embedding: 'embedding()',
 	ai_vectorStore: 'vectorStore()',
 	ai_retriever: 'retriever()',
 	ai_document: 'documentLoader()',
