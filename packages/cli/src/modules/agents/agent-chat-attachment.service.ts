@@ -389,12 +389,12 @@ export class AgentChatAttachmentService {
 	}
 
 	/**
-	 * An attachment that a system chat stored for one memory resource. The
-	 * caller checks access to its thread.
+	 * A file that a system chat stored for one memory resource, from one of
+	 * the given sources. The caller checks access to its thread.
 	 */
 	async getForSystemAgent(
 		attachmentId: string,
-		scope: { agentId: string; resourceId: string; source: string },
+		scope: { agentId: string; resourceId: string; sources: readonly string[] },
 	): Promise<AgentChatAttachment | null> {
 		return await this.repository.findByIdForSystemAgent(attachmentId, scope, {});
 	}

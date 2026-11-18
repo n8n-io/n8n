@@ -349,13 +349,17 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		const { sandboxFiles } = turn;
 		if (sandboxFiles) {
 			const { context } = environment;
+			// Read the sandbox when a tool runs: it belongs to the turn, not to this setup.
+			const workspaceOf = () => {
+				if (!context.workspace) throw new UserError('This conversation has no sandbox');
+				return context.workspace;
+			};
 			context.sandboxFiles = {
 				maxImportBytes: sandboxFiles.maxImportBytes,
-				importFiles: async (files, abortSignal) => {
-					const { workspace } = context;
-					if (!workspace) throw new UserError('This conversation has no sandbox');
-					return await sandboxFiles.importFiles(workspace, files, abortSignal);
-				},
+				importFiles: async (files, abortSignal) =>
+					await sandboxFiles.importFiles(workspaceOf(), files, abortSignal),
+				storeOutput: async (path, abortSignal) =>
+					await sandboxFiles.storeOutput(workspaceOf(), path, abortSignal),
 			};
 		}
 		const contextTurn = await this.createContextTurnTelemetry(turn, runId);

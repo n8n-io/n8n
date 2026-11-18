@@ -33,7 +33,11 @@ function setup(files: Record<string, InstanceAiStoredFile>) {
 				})),
 			),
 	);
-	const tool = createImportFilesTool(context, reader, { maxImportBytes: MAX_BYTES, importFiles });
+	const tool = createImportFilesTool(context, reader, {
+		maxImportBytes: MAX_BYTES,
+		importFiles,
+		storeOutput: vi.fn(),
+	});
 	const run = async (input: unknown) =>
 		await executeTool<{
 			imported: Array<{ fileId: string; path: string; sizeBytes: number }>;

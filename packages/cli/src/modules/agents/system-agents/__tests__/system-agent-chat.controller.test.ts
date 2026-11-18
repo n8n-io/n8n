@@ -454,7 +454,7 @@ describe('SystemAgentChatController', () => {
 	});
 
 	describe('attachments', () => {
-		it('looks up the attachment in the memory resource of the user and the system chat source', async () => {
+		it('looks up the file in the memory resource of the user, from the system chat sources', async () => {
 			const { controller, attachments } = setup();
 			attachments.getForSystemAgent.mockResolvedValue(mock<AgentChatAttachment>());
 
@@ -466,7 +466,8 @@ describe('SystemAgentChatController', () => {
 			expect(attachments.getForSystemAgent).toHaveBeenCalledWith('att-1', {
 				agentId: AGENT_ID,
 				resourceId: 'system-chat:user-1',
-				source: 'system_chat',
+				// Uploads, and the files that the sandbox stored for the chat.
+				sources: ['system_chat', 'sandbox'],
 			});
 		});
 

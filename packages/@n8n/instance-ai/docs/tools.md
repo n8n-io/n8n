@@ -1361,6 +1361,28 @@ workspace path. When a check or the copy fails, the result has no files and an
 files stay in `inputs/`, and the `error` names them. The list is not named
 `files`, because the chat shows the `files` of a tool result as new files.
 
+## `share-files`
+
+Store files of `outputs/` in the sandbox workspace as conversation files, so
+the chat shows them under the step and the user can download them. The registry
+adds the tool when the host sets `sandboxFiles` on the context and the turn has
+a workspace. The host stores each file with `storeOutput`. A file whose name and
+bytes did not change keeps its `fileId`. When the tool is present, the
+`## Sandbox workspace` prompt section tells the model to put the files for the
+user in `outputs/` and to share them.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `paths` | string[] | yes | 1 to 10 paths relative to `outputs/`. A leading `outputs/` is dropped |
+
+The result lists the stored files under `files`, with `fileId`, `fileName`,
+`mimeType` and `sizeBytes`, and lists each path that failed under `errors`.
+
+When a turn that used a workspace tool ends, the Agents runtime also stores
+the new files of `outputs/`. For the Assistant, these files belong to the
+system chat of the user, so `parse-file`, `import-files` and the chat download
+route can read them.
+
 ## `ask_user`
 
 Suspend the run for one or more human decisions.

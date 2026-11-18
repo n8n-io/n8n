@@ -100,10 +100,17 @@ describe('AgentChatAttachmentRepository', () => {
 				expect(
 					await repository.findByIdForSystemAgent(
 						original.id,
-						{ agentId, resourceId: 'resource-1', source: 'chat' },
+						{ agentId, resourceId: 'resource-1', sources: ['system_chat', 'chat'] },
 						ctx,
 					),
 				).toEqual(changed);
+				expect(
+					await repository.findByIdForSystemAgent(
+						original.id,
+						{ agentId, resourceId: 'resource-1', sources: ['system_chat', 'sandbox'] },
+						ctx,
+					),
+				).toBeNull();
 				expect(await repository.findByThread(original.threadId, { projectId }, ctx)).toEqual([
 					changed,
 				]);

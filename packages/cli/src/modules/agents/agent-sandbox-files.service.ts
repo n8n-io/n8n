@@ -71,6 +71,8 @@ export interface SandboxFileScope {
 	projectId: string;
 	/** Thread whose workspace holds the file. */
 	threadId: string;
+	/** Memory resource of the stored file. A system chat reads its files by resource. */
+	resourceId?: string;
 }
 
 // Lists and hashes in the sandbox, so unchanged bytes never leave it.

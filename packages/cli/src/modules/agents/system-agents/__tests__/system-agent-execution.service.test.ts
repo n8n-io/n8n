@@ -27,6 +27,7 @@ import type {
 	AgentTurnExecutionService,
 	AgentTurnRequest,
 } from '../../agent-turn-execution.service';
+import type { AgentChatAttachment } from '../../entities/agent-chat-attachment.entity';
 import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
 import { ExecutionRecorder, type TimelineEvent } from '../../execution-recorder';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
@@ -551,6 +552,8 @@ describe('SystemAgentExecutionService', () => {
 					agentInstance: handle.agent,
 					admittedExecution: expect.objectContaining({ executionId: 'exec-1' }),
 					context: { projectId: 'project-1', agentId: AGENT_ID, threadId: 'thread-1' },
+					// The sandbox files of the turn belong to the system chat of the user.
+					fileResourceId: 'system-chat:user-1',
 				}),
 			);
 			expect(prepared[0]).toMatchObject({
@@ -729,6 +732,7 @@ describe('SystemAgentExecutionService', () => {
 			expect(on.provider.prepareTurn.mock.calls[0][0].sandboxFiles).toEqual({
 				maxImportBytes: 200 * 1024 * 1024,
 				importFiles: expect.any(Function),
+				storeOutput: expect.any(Function),
 			});
 		});
 
@@ -773,7 +777,7 @@ describe('SystemAgentExecutionService', () => {
 				expect(attachmentService.getForSystemAgent).toHaveBeenCalledWith('f1', {
 					agentId: AGENT_ID,
 					resourceId: 'system-chat:user-1',
-					source: 'system_chat',
+					sources: ['system_chat', 'sandbox'],
 				});
 				attachmentService.getForSystemAgent.mockResolvedValueOnce({
 					id: 'f2',
@@ -817,6 +821,65 @@ describe('SystemAgentExecutionService', () => {
 			});
 		});
 
+		describe('storing a file of outputs/', () => {
+			const workspace = mock<Workspace>();
+
+			async function storeOutputOfTurn() {
+				const context = setup([textChunk]);
+				context.sandboxFiles.isEnabled.mockResolvedValue(true);
+				await context.service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+				const sandboxFiles = context.provider.prepareTurn.mock.calls[0][0].sandboxFiles;
+				if (!sandboxFiles) throw new Error('expected the sandbox files of the turn');
+				return { ...context, storeOutput: sandboxFiles.storeOutput };
+			}
+
+			it('stores the file in the system chat of the user and gives the stored file', async () => {
+				const { sandboxFiles, storeOutput } = await storeOutputOfTurn();
+				sandboxFiles.store.mockResolvedValue({
+					id: 'file-1',
+					fileName: 'report.csv',
+					mimeType: 'text/csv',
+					fileSizeBytes: 3,
+				} as AgentChatAttachment);
+				const abortSignal = new AbortController().signal;
+
+				await expect(storeOutput(workspace, 'report.csv', abortSignal)).resolves.toEqual({
+					fileId: 'file-1',
+					fileName: 'report.csv',
+					mimeType: 'text/csv',
+					sizeBytes: 3,
+				});
+				expect(sandboxFiles.store).toHaveBeenCalledWith(
+					workspace,
+					'report.csv',
+					{
+						agentId: thread.agentId,
+						projectId: thread.projectId,
+						threadId: 'thread-1',
+						resourceId: 'system-chat:user-1',
+					},
+					abortSignal,
+				);
+			});
+
+			it('keeps a cap error, which is for the model', async () => {
+				const { sandboxFiles, storeOutput } = await storeOutputOfTurn();
+				const capError = new UserError('File "big.bin" is larger than 50 MB');
+				sandboxFiles.store.mockRejectedValue(capError);
+
+				await expect(storeOutput(workspace, 'big.bin')).rejects.toBe(capError);
+			});
+
+			it('turns a raw sandbox error into words the model can act on', async () => {
+				const { sandboxFiles, storeOutput } = await storeOutputOfTurn();
+				sandboxFiles.store.mockRejectedValue(new Error('ENOENT: no such file'));
+
+				await expect(storeOutput(workspace, 'gone.csv')).rejects.toThrow(
+					'"gone.csv" could not be read from outputs/',
+				);
+			});
+		});
+
 		describe('attachment reads', () => {
 			const ref = { id: 'att-1', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 5 };
 
@@ -842,7 +905,7 @@ describe('SystemAgentExecutionService', () => {
 				expect(attachmentService.getForSystemAgent).toHaveBeenCalledWith('att-1', {
 					agentId: AGENT_ID,
 					resourceId: 'system-chat:user-1',
-					source: 'system_chat',
+					sources: ['system_chat', 'sandbox'],
 				});
 			});
 
@@ -904,10 +967,11 @@ describe('SystemAgentExecutionService', () => {
 				// The bytes load only on request, so a caller can check the size first.
 				expect(attachmentService.getStream).not.toHaveBeenCalled();
 				await expect(file?.readContent()).resolves.toEqual(Buffer.from('a,b'));
+				// Files that the sandbox stored for the thread are readable too.
 				expect(attachmentService.getForSystemAgent).toHaveBeenCalledWith('att-earlier', {
 					agentId: AGENT_ID,
 					resourceId: 'system-chat:user-1',
-					source: 'system_chat',
+					sources: ['system_chat', 'sandbox'],
 				});
 			});
 
