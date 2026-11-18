@@ -349,8 +349,8 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		};
 		// The same flag and import cap as the sandbox files of project agents.
 		if (await this.sandboxFiles.isEnabled()) {
-			environment.context.sandboxFileImport = {
-				maxBytes: this.agentsConfig.maxImportMb * 1024 * 1024,
+			environment.context.sandboxFiles = {
+				maxImportBytes: this.agentsConfig.maxImportMb * 1024 * 1024,
 			};
 		}
 		const contextTurn = await this.createContextTurnTelemetry(turn, runId);

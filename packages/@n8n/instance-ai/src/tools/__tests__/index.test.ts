@@ -316,20 +316,20 @@ describe('domain tool construction', () => {
 	describe('import-files registration', () => {
 		const storedFiles = { read: vi.fn() };
 		const workspace = {} as InstanceAiContext['workspace'];
-		const sandboxFileImport = { maxBytes: 1024 };
+		const sandboxFiles = { maxImportBytes: 1024 };
 
 		it.each([
 			['nothing', {}],
 			['only a file reader', { storedFiles }],
-			['no workspace', { storedFiles, sandboxFileImport }],
+			['no workspace', { storedFiles, sandboxFiles }],
 			['the feature off', { storedFiles, workspace }],
-			['no file reader', { workspace, sandboxFileImport }],
+			['no file reader', { workspace, sandboxFiles }],
 		])('leaves the tool out with %s', (_label, overrides) => {
 			expect(createOrchestratorDomainTools(makeContext(overrides)).has('import-files')).toBe(false);
 		});
 
 		it('registers the tool with a file reader, a workspace and the feature on', () => {
-			const context = makeContext({ storedFiles, workspace, sandboxFileImport });
+			const context = makeContext({ storedFiles, workspace, sandboxFiles });
 
 			expect(createOrchestratorDomainTools(context).get('import-files')).toEqual({
 				id: 'import-files',

@@ -34,10 +34,10 @@ function setup(files: Record<string, InstanceAiStoredFile>) {
 		logger: { debug: vi.fn(), warn: vi.fn() },
 	} as unknown as InstanceAiContext;
 	const reader = { read: vi.fn(async (fileId: string) => await Promise.resolve(files[fileId])) };
-	const tool = createImportFilesTool(context, reader, workspace, { maxBytes: MAX_BYTES });
+	const tool = createImportFilesTool(context, reader, workspace, { maxImportBytes: MAX_BYTES });
 	const run = async (input: unknown) =>
 		await executeTool<{
-			files: Array<{ fileId: string; path: string; sizeBytes: number }>;
+			imported: Array<{ fileId: string; path: string; sizeBytes: number }>;
 			error?: string;
 		}>(tool, input, {});
 	return { tool, run, written, writeFile, reader };
@@ -50,8 +50,9 @@ describe('createImportFilesTool', () => {
 		const result = await run({ files: [{ fileId: 'file-1' }] });
 
 		expect(written.get('inputs/sales.csv')?.toString()).toBe('a,b\n1,2');
+		// Not under `files`, so the chat does not show the upload again as a new file.
 		expect(result).toEqual({
-			files: [
+			imported: [
 				{
 					fileId: 'file-1',
 					fileName: 'sales.csv',
@@ -112,7 +113,10 @@ describe('createImportFilesTool', () => {
 
 		const result = await run({ files: [{ fileId: 'file-1' }, { fileId: 'missing' }] });
 
-		expect(result).toEqual({ files: [], error: 'File "missing" not found in this conversation' });
+		expect(result).toEqual({
+			imported: [],
+			error: 'File "missing" not found in this conversation',
+		});
 		expect(writeFile).not.toHaveBeenCalled();
 	});
 
@@ -160,7 +164,7 @@ describe('createImportFilesTool', () => {
 
 		const result = await run({ files: [{ fileId: 'file-1' }, { fileId: 'file-2' }] });
 
-		expect(result.files.map((file) => file.fileId)).toEqual(['file-1']);
+		expect(result.imported.map((file) => file.fileId)).toEqual(['file-1']);
 		expect(result.error).toBe('File "file-2" is no longer available');
 	});
 

@@ -3,7 +3,7 @@
  * sandbox workspace, so the agent can work on them with the workspace tools.
  *
  * The registry adds the tool only when the host sets `context.storedFiles` and
- * `context.sandboxFileImport`, and the turn has a workspace. Only the Assistant
+ * `context.sandboxFiles`, and the turn has a workspace. Only the Assistant
  * agent on the Agents runtime sets them, and only when the sandbox files
  * feature is on.
  */
@@ -15,7 +15,7 @@ import { z } from 'zod';
 
 import type {
 	InstanceAiContext,
-	InstanceAiSandboxFileImport,
+	InstanceAiSandboxFiles,
 	InstanceAiStoredFileReader,
 } from '../../types';
 import { writeWorkspaceFile } from '../../workspace/workspace-files';
@@ -63,8 +63,10 @@ const importedFileSchema = z.object({
 	path: z.string().describe('Where the file is in the workspace'),
 });
 
+// Not `files`: the chat shows the `files` of a tool result as new files, and these
+// are copies of files that the conversation already has.
 export const importFilesOutputSchema = z.object({
-	files: z.array(importedFileSchema),
+	imported: z.array(importedFileSchema),
 	error: z.string().optional(),
 });
 
@@ -109,14 +111,14 @@ export function createImportFilesTool(
 	context: InstanceAiContext,
 	reader: InstanceAiStoredFileReader,
 	workspace: Workspace,
-	{ maxBytes }: InstanceAiSandboxFileImport,
+	{ maxImportBytes: maxBytes }: InstanceAiSandboxFiles,
 ) {
 	return new Tool('import-files')
 		.description(describeTool(maxBytes))
 		.input(importFilesInputSchema)
 		.output(importFilesOutputSchema)
 		.handler(async ({ files }: ImportFilesInput, ctx): Promise<ImportFilesOutput> => {
-			const fail = (error: string): ImportFilesOutput => ({ files: [], error });
+			const fail = (error: string): ImportFilesOutput => ({ imported: [], error });
 
 			// Check every file before the first write, so a failed call copies nothing.
 			const planned: Array<{
@@ -149,12 +151,12 @@ export function createImportFilesTool(
 				return fail(`One call copies up to ${formatMb(maxBytes)}. Import fewer files at a time.`);
 			}
 
-			const imported: ImportFilesOutput['files'] = [];
+			const imported: ImportFilesOutput['imported'] = [];
 			for (const { fileId, path, file } of planned) {
 				// One file in memory at a time.
 				const content = await file.readContent();
 				if (!content) {
-					return { files: imported, error: `File "${fileId}" is no longer available` };
+					return { imported, error: `File "${fileId}" is no longer available` };
 				}
 				try {
 					await writeWorkspaceFile(workspace, path, content, {
@@ -165,7 +167,7 @@ export function createImportFilesTool(
 				} catch (error) {
 					if (isAbortError(error)) throw error;
 					const reason = error instanceof Error ? error.message : String(error);
-					return { files: imported, error: `Could not copy "${fileId}" to ${path}: ${reason}` };
+					return { imported, error: `Could not copy "${fileId}" to ${path}: ${reason}` };
 				}
 				imported.push({
 					fileId,
@@ -175,7 +177,7 @@ export function createImportFilesTool(
 					path: context.workspaceRoot ? joinWorkspacePath(context.workspaceRoot, path) : path,
 				});
 			}
-			return { files: imported };
+			return { imported };
 		})
 		.build();
 }

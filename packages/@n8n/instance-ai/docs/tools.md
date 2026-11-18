@@ -1334,9 +1334,9 @@ attachment and can contain an error.
 
 Copy stored files of the thread into `inputs/` of the sandbox workspace, so the
 agent can work on them with the workspace tools. The registry adds the tool only
-when the host sets `storedFiles` and `sandboxFileImport` on the context and the
+when the host sets `storedFiles` and `sandboxFiles` on the context and the
 turn has a workspace. Only the Assistant on the Agents runtime sets them. It
-sets `sandboxFileImport` only when the instance flag `137_agent_sandbox_files`
+sets `sandboxFiles` only when the instance flag `137_agent_sandbox_files`
 is on, and takes its byte cap from `N8N_AGENTS_FILES_MAX_IMPORT_MB`, like the
 `import_files` tool of project agents. When the tool is present, the
 `## Sandbox workspace` prompt section tells the model when to use it.
@@ -1349,8 +1349,9 @@ is on, and takes its byte cap from `N8N_AGENTS_FILES_MAX_IMPORT_MB`, like the
 
 The tool checks every file, path and the total size before the first write, so
 a failed check copies nothing. It then writes one file at a time. The result
-lists each copied file with its absolute workspace path, and has an `error`
-when a file could not be copied.
+lists each copied file under `imported`, with its absolute workspace path, and
+has an `error` when a file could not be copied. The list is not named `files`,
+because the chat shows the `files` of a tool result as new files.
 
 ## `ask_user`
 

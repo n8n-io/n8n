@@ -486,14 +486,14 @@ describe('AssistantAgentProvider', () => {
 		it('lets the Assistant import files into its sandbox only when the sandbox files flag is on', async () => {
 			const off = setup();
 			await off.provider.prepareTurn(startTurn());
-			expect(off.environment.context.sandboxFileImport).toBeUndefined();
+			expect(off.environment.context.sandboxFiles).toBeUndefined();
 
 			const on = setup();
 			on.sandboxFiles.isEnabled.mockResolvedValue(true);
 			await on.provider.prepareTurn(startTurn());
 			// The import cap of project agents, N8N_AGENTS_FILES_MAX_IMPORT_MB.
-			expect(on.environment.context.sandboxFileImport).toEqual({
-				maxBytes: 200 * 1024 * 1024,
+			expect(on.environment.context.sandboxFiles).toEqual({
+				maxImportBytes: 200 * 1024 * 1024,
 			});
 		});
 

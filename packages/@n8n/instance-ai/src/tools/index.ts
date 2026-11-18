@@ -278,19 +278,14 @@ function getOrchestratorDomainToolFactories(
 			: () => loadParseFileTool().createParseFileTool(context),
 	]);
 
-	// The host sets `sandboxFileImport` only when the sandbox files feature is on. With
+	// The host sets `sandboxFiles` only when the sandbox files feature is on. With
 	// stored files and the sandbox, it stays the same for the thread, so the tool list does too.
-	const { workspace, sandboxFileImport } = context;
-	if (storedFiles && workspace && sandboxFileImport) {
+	const { workspace, sandboxFiles } = context;
+	if (storedFiles && workspace && sandboxFiles) {
 		tools.push([
 			DOMAIN_TOOL_IDS.IMPORT_FILES,
 			() =>
-				loadImportFilesTool().createImportFilesTool(
-					context,
-					storedFiles,
-					workspace,
-					sandboxFileImport,
-				),
+				loadImportFilesTool().createImportFilesTool(context, storedFiles, workspace, sandboxFiles),
 		]);
 	}
 
