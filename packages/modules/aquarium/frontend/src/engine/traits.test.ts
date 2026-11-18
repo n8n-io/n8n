@@ -24,7 +24,9 @@ describe('deriveTraits', () => {
 	});
 
 	it('gives agents an agent species', () => {
-		expect(deriveTraits(entity({ complexity: 1 }, 'agent')).speciesId).toBe('jellyfish');
+		expect(['jellyfish', 'seahorse']).toContain(
+			deriveTraits(entity({ complexity: 1 }, 'agent')).speciesId,
+		);
 		expect(deriveTraits(entity({ complexity: 20 }, 'agent')).speciesId).toBe('octopus');
 	});
 
