@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { onMounted } from 'vue';
+import { I18nT } from 'vue-i18n';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCard, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 
 import {
 	RECOMMENDED_SKILLS,
@@ -58,6 +59,28 @@ onMounted(() => {
 				</template>
 				<N8nText tag="p" size="small" color="text-base" :class="$style.cardText">
 					{{ i18n.baseText(recommended.cardTextKey) }}
+				</N8nText>
+				<N8nText
+					tag="p"
+					size="small"
+					color="text-light"
+					:class="$style.source"
+					data-test-id="recommended-skill-source"
+				>
+					<I18nT keypath="experiments.recommendedSkills.basedOn" scope="global" tag="span">
+						<template #source>
+							<N8nLink
+								:to="recommended.source.url"
+								new-window
+								rel="noopener noreferrer"
+								theme="text"
+								size="small"
+								data-test-id="recommended-skill-source-link"
+								:data-attr="`recommended-skill-source-${recommended.id}`"
+								>{{ recommended.source.label }}</N8nLink
+							>
+						</template>
+					</I18nT>
 				</N8nText>
 				<template #footer>
 					<N8nButton
@@ -119,6 +142,11 @@ onMounted(() => {
 
 .cardText {
 	flex: 1;
-	padding: var(--spacing--2xs) 0 var(--spacing--sm);
+	padding: var(--spacing--2xs) 0 var(--spacing--3xs);
+}
+
+.source {
+	padding-bottom: var(--spacing--sm);
+	overflow-wrap: anywhere;
 }
 </style>

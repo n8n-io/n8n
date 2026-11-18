@@ -383,6 +383,7 @@ const pickerItemsWithRecommended = computed<SkillConnectionItem[]>(() =>
 						skillId: recommended.id,
 						title: recommended.name,
 						description: i18n.baseText(recommended.cardTextKey),
+						source: recommended.source,
 						category: 'recommended' as const,
 						status: 'none' as const,
 						attached: false,

@@ -96,6 +96,7 @@ vi.mock('@/features/shared/toolsConnection/ToolsConnectionModal.vue', () => ({
 				<div v-for="item in items" :key="item.id" data-testid="agent-skill-picker-row">
 					<button data-testid="agent-skill-picker-row-open" @click="$emit('open-detail', item)">{{ item.title }}</button>
 					<span data-testid="agent-skill-picker-category">{{ item.category }}</span>
+					<a v-if="item.source" data-testid="agent-skill-picker-source" :href="item.source.url">{{ item.source.label }}</a>
 					<span v-if="item.disabled" data-testid="agent-skill-picker-disabled">{{ item.disabledReason }}</span>
 					<span v-else-if="item.attached" data-testid="agent-skill-picker-added" />
 					<button v-else data-testid="agent-skill-picker-add" :aria-label="connectAriaLabel?.(item)" @click="$emit('connect', item)">{{ connectLabel?.(item) }}</button>
@@ -916,6 +917,21 @@ describe('AgentSkillModal', () => {
 				expect(recommendedSkills.trackCardsShown).toHaveBeenCalledExactlyOnceWith(
 					'agent_skill_modal',
 				);
+			});
+
+			it('passes the source of each recommended skill to the picker', async () => {
+				listAttachableSkills.mockResolvedValue([projectSkill]);
+				const { findAllByTestId } = renderModal({
+					skillRefsEnabled: true,
+					onAttach: vi.fn(),
+				});
+
+				const sources = await findAllByTestId('agent-skill-picker-source');
+				expect(sources.map((source) => source.getAttribute('href'))).toEqual([
+					'https://github.com/blader/humanizer',
+					'https://github.com/coreyhaines31/marketingskills/tree/main/skills/cold-email',
+					'https://github.com/mattpocock/skills/tree/main/skills/engineering/research',
+				]);
 			});
 
 			it('refuses a recommended skill with the name of an attached skill', async () => {
