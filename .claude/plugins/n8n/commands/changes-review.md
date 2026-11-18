@@ -42,6 +42,8 @@ Dispatch **in a single message** so they run concurrently. Give each the diff, t
 
 Also run an **independent second-opinion pass** over the diff when available (e.g. `codex review`, or a `cubic` / `/run-review` pass) and fold its findings in as another lens.
 
+Also run one **unbriefed run-it pass**. Start a fresh `general-purpose` agent. Give it the diff only: no brief, no summary of intent, no hypotheses of yours. Its rule: every defect comes with an input, the observed output and the expected output from code that it ran. It drops a defect that it cannot show this way. Give it a scratch clone for its probe tests: run `git clone --shared` into a temporary directory, then apply the uncommitted and untracked diffs of Step 1 there with `git apply`. Never let it use the working tree. The read-only rule covers the checkout. The clone is scratch. In the clone, run `pnpm agent:setup install`, then `pnpm exec turbo run build --filter='<package>...'` for the packages that the diff touches. For code that talks to a service, tell it to put a local server behind the real n8n HTTP helper. Run this pass when the diff has code that can run on its own (parsers, validators, transport, paging, error handling). Skip it for docs, config and copy changes, and say so in the coverage note. It costs about as much as the other lenses together. It does not replace the second opinion above. When the second opinion is unavailable, this pass stands in for it.
+
 ## Step 3 — Synthesize
 
 1. **Verdict** — one line: looks-good / fix-before-PR / needs-work, plus the single most important reason.
