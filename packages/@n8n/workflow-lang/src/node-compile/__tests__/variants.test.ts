@@ -1,8 +1,3 @@
-/**
- * The cases that the verifier makes for the parameters of a node: a resource locator whose rule
- * does not match, an options field that shows and hides its neighbours, a long list of options,
- * and a collection inside a collection.
- */
 import { parameterVariants } from '../variants.ts';
 import type { Json, WalkNode, WalkProperty } from '../walk.ts';
 import { locatorMiss, locatorSample } from '../walk.ts';
