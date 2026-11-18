@@ -625,6 +625,20 @@ describe('changing the project review settings', () => {
 		await testServer.authAgentFor(outsider).get(projectSettingsUrl(teamProject.id)).expect(403);
 	});
 
+	test('refuses to read or change Require approval once an admin turns reviews off', async () => {
+		await policyService.update({ enabled: false });
+
+		await ownerAgent.get(projectSettingsUrl(teamProject.id)).expect(403);
+		await ownerAgent
+			.patch(projectSettingsUrl(teamProject.id))
+			.send({ projectApprovalRequired: true })
+			.expect(403);
+
+		await policyService.update({ enabled: true });
+		const stored = await ownerAgent.get(projectSettingsUrl(teamProject.id)).expect(200);
+		expect(stored.body.data).toEqual({ projectApprovalRequired: false });
+	});
+
 	test('never requires a review in a personal space', async () => {
 		await ownerAgent.get(projectSettingsUrl(ownerProject.id)).expect(404);
 		await ownerAgent

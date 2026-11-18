@@ -7,15 +7,19 @@ import { ProjectRepository, ProjectWorkflowReviewSettingsRepository, type User }
 import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 
+import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
+
 @Service()
 export class WorkflowReviewProjectSettingsService {
 	constructor(
 		private readonly settingsRepository: ProjectWorkflowReviewSettingsRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly eventService: EventService,
+		private readonly featureGate: WorkflowReviewFeatureGate,
 	) {}
 
 	async get(projectId: string): Promise<ProjectWorkflowReviewSettingsResponse> {
+		await this.featureGate.assertAvailable();
 		const [project] = await this.projectRepository.findTypesByIds([projectId]);
 		if (project?.type !== 'team') throw new NotFoundError('Could not find team project');
 
@@ -32,6 +36,7 @@ export class WorkflowReviewProjectSettingsService {
 		projectId: string,
 		{ projectApprovalRequired }: UpdateProjectWorkflowReviewSettingsDto,
 	): Promise<ProjectWorkflowReviewSettingsResponse> {
+		await this.featureGate.assertAvailable();
 		const changed = await this.settingsRepository.setTeamProjectApprovalRequired(
 			projectId,
 			projectApprovalRequired,

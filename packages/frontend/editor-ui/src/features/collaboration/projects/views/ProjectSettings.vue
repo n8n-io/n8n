@@ -553,7 +553,10 @@ watch(
 				.catch(() => {
 					// Non-fatal; the store stays cleared, so the setting stays hidden.
 				})
-				.finally(resetWorkflowReviewFormData);
+				.finally(() => {
+					// A late response for the previous project must not reset the current form.
+					if (projectsStore.currentProjectId === projectId) resetWorkflowReviewFormData();
+				});
 		}
 		if (canUpdateProject.value && projectId && isWorkerPoolsEnabled.value) {
 			await projectsStore

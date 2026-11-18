@@ -436,7 +436,11 @@ const onPublishButtonClick = async () => {
 	}
 
 	if (!(await ensureWorkflowSaved())) return;
+	// Saving a new workflow changes the ID, so capture it after the save.
+	const workflowId = props.id;
 	await refetchReviewStatus();
+	// The user may have opened another workflow while the requests ran.
+	if (props.id !== workflowId) return;
 
 	if (reviewsApply.value) {
 		// Best effort: a status that is not fetched yet reads as "no open review".
