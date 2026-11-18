@@ -577,16 +577,16 @@ function failureCode(message: string): string | undefined {
 
 /**
  * The reason of a failed request, as v1's item carries it: the AxiosError with the status,
- * its code, the message and the body of the response. A failure without a status (a
- * network error) keeps the name 'Error' and the code that Node.js gives it.
+ * its code and the message, and a `stack` of the same kind as v1's. A failure without a
+ * status (a network error) keeps the name 'Error' and the code that Node.js gives it.
  */
-function requestReason(status: number | undefined, message: string, body?: unknown): Item {
-	const reason: Item = { name: status === undefined ? 'Error' : 'AxiosError', message };
+function requestReason(status: number | undefined, message: string): Item {
+	// `stack` is the V8 text of n8n's install; a compiled node cannot make it. The key
+	// stays with a placeholder of the same kind, and the tests do not compare its value.
+	const reason: Item = { message, name: status === undefined ? 'Error' : 'AxiosError', stack: '' };
 	if (status !== undefined) {
 		reason.code = status >= 500 ? 'ERR_BAD_RESPONSE' : 'ERR_BAD_REQUEST';
 		reason.status = status;
-		reason.statusCode = status;
-		if (body !== undefined) reason.error = bodyText(body);
 		return reason;
 	}
 	const code = failureCode(message);
@@ -891,6 +891,7 @@ export default defineNode<HttpRequestParameters>({
 						error: {
 							message,
 							name: 'Error [ERR_FR_TOO_MANY_REDIRECTS]',
+							stack: '',
 							code: 'ERR_FR_TOO_MANY_REDIRECTS',
 						},
 					};
@@ -947,10 +948,11 @@ export default defineNode<HttpRequestParameters>({
 				const message = `${status} - ${JSON.stringify(bodyText(response.body))}`;
 				// With the response format "file" the error of v1's HTTP client has no body.
 				const reason = !stores
-					? requestReason(status, message, response.body)
+					? requestReason(status, message)
 					: {
 							name: 'AxiosError',
 							message,
+							stack: '',
 							code: status >= 500 ? 'ERR_BAD_RESPONSE' : 'ERR_BAD_REQUEST',
 							status,
 						};
@@ -1157,6 +1159,7 @@ function failedRequestItem(
 			error: {
 				message: `timeout of ${timeoutMs ?? 300000}ms exceeded`,
 				name: 'AxiosError',
+				stack: '',
 				code: 'ECONNABORTED',
 			},
 		};

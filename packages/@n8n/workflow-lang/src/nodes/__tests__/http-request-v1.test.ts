@@ -180,16 +180,27 @@ function workflow(c: Case) {
 	};
 }
 
-/** Drops what changes per request, and the error fields that only axios has (stack, config). */
+/**
+ * The JSON form of v1's items: the item of a failed request holds an Error
+ * object, and n8n persists its `toJSON` form. The server headers that change
+ * per request are dropped. `stack` is the text of a V8 stack and is compared
+ * by its kind only.
+ */
 function comparable(value: unknown): unknown {
-	if (Array.isArray(value)) return value.map(comparable);
+	return mask(JSON.parse(JSON.stringify(value)) as unknown);
+}
+
+function mask(value: unknown): unknown {
+	if (Array.isArray(value)) return value.map(mask);
 	if (typeof value !== 'object' || value === null) return value;
 	const out: Record<string, unknown> = {};
 	for (const [k, v] of Object.entries(value)) {
 		if (['date', 'connection', 'content-length', 'keep-alive'].includes(k)) continue;
-		if (['stack', 'config', 'request', 'response', 'options', 'isAxiosError', 'code'].includes(k))
+		if (k === 'stack' && typeof v === 'string') {
+			out[k] = '<string>';
 			continue;
-		out[k] = comparable(v);
+		}
+		out[k] = mask(v);
 	}
 	return out;
 }
