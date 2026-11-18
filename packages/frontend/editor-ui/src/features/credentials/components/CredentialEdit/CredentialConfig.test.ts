@@ -20,7 +20,8 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { mockedStore } from '@/__tests__/utils';
 import { addCredentialTranslation } from '@n8n/i18n';
 import type { INodeUi } from '@/Interface';
-import { computed, toValue } from 'vue';
+import { computed, nextTick, toValue } from 'vue';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useGatewayCreditsPromotion } from '../../gatewayCreditsPromotion/useGatewayCreditsPromotion';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
@@ -63,6 +64,7 @@ const defaultRenderOptions: RenderOptions<typeof CredentialConfig> = {
 						externalSecrets: false,
 					},
 				},
+				moduleSettings: { 'runtime-credentials': { enabled: true, aliases: [] } },
 			},
 		},
 	}),
@@ -111,6 +113,26 @@ describe('CredentialConfig', () => {
 		expect(screen.getByTestId('credential-runtime-values-callout')).toHaveTextContent(
 			'This credential reads tenant_key from the trigger request',
 		);
+	});
+
+	it('should not explain runtime values when the feature is off', async () => {
+		renderComponent(
+			{
+				props: {
+					isManaged: false,
+					credentialData: {
+						value: '={{ $runtimeCredentials.tenant_key }}',
+					} as ICredentialDataDecryptedObject,
+				},
+			},
+			{ merge: true },
+		);
+		const settingsStore = useSettingsStore();
+		settingsStore.moduleSettings = { 'runtime-credentials': { enabled: false, aliases: [] } };
+		await nextTick();
+
+		expect(screen.queryByTestId('credential-runtime-values-callout')).not.toBeInTheDocument();
+		settingsStore.moduleSettings = { 'runtime-credentials': { enabled: true, aliases: [] } };
 	});
 
 	it('should not explain runtime values for a credential without them', () => {

@@ -420,10 +420,7 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 			expect(run.data.resultData.error?.message).toBe(
 				'Could not read the runtime credentials of this execution',
 			);
-			expect(mockErrorReporter.error).not.toHaveBeenCalledWith(
-				expect.objectContaining({ message: 'boom' }),
-				expect.anything(),
-			);
+			expect(mockErrorReporter.error).not.toHaveBeenCalled();
 		});
 	});
 });

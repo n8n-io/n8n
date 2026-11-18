@@ -153,7 +153,7 @@ describe('RuntimeCredentialsSettingsView', () => {
 
 		expect(
 			await screen.findByTestId('runtime-credentials-impact', {}, { timeout: 3000 }),
-		).toHaveTextContent('2 workflow(s) read this field today');
+		).toHaveTextContent('2 workflows read this field today');
 		expect(getImpactMock).toHaveBeenLastCalledWith(expect.anything(), '*', 'headers.x-api-key');
 	});
 });

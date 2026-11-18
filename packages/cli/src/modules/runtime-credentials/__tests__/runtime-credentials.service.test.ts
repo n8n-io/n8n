@@ -239,6 +239,12 @@ describe('RuntimeCredentialsService', () => {
 			expect(service.getAliases()).toContain('tenant_key');
 		});
 
+		it('saves an alias that matches an Object.prototype key', async () => {
+			await service.saveRules([{ ...storedRule, alias: 'constructor' }]);
+
+			expect(settingsRepository.upsertByKey).toHaveBeenCalled();
+		});
+
 		it.each([
 			[
 				'an alias that the env var already uses',
@@ -246,6 +252,7 @@ describe('RuntimeCredentialsService', () => {
 				/already set/,
 			],
 			['a duplicate alias', [storedRule, storedRule], /more than one rule/],
+			['the __proto__ alias', [{ ...storedRule, alias: '__proto__' }], /not supported/],
 		])('refuses %s', async (_name, rules, message) => {
 			await expect(service.saveRules(rules)).rejects.toThrow(message);
 			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();

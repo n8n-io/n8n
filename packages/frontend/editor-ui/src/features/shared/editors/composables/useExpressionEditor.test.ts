@@ -12,6 +12,7 @@ import { setActivePinia } from 'pinia';
 import { beforeEach, describe, vi } from 'vitest';
 import { defineComponent, h, ref, toValue } from 'vue';
 import { useExpressionEditor } from './useExpressionEditor';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createRunExecutionData, Expression } from 'n8n-workflow';
 import * as completionUtils from '../plugins/codemirror/completions/utils';
 
@@ -700,6 +701,29 @@ describe('useExpressionEditor', () => {
 						resolved: '[secret not found]',
 						state: 'invalid',
 					}),
+				]);
+			});
+		});
+
+		test.each([
+			['tenant_key', '[runtime value, set during the execution]', 'pending'],
+			['unknown', '[no admin rule defines this runtime value]', 'invalid'],
+		])('should preview the runtime credential alias %s as %s', async (alias, resolved, state) => {
+			vi.spyOn(completionUtils, 'isCredentialsModalOpen').mockReturnValueOnce(true);
+			useSettingsStore().moduleSettings = {
+				'runtime-credentials': { enabled: true, aliases: ['tenant_key'] },
+			};
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: `{{ $runtimeCredentials.${alias} }}`,
+				extensions: [n8nLang()],
+			});
+
+			await waitFor(() => {
+				expect(toValue(segments.resolvable)).toEqual([
+					expect.objectContaining({ resolved, state }),
 				]);
 			});
 		});

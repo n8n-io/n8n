@@ -26,6 +26,7 @@ import {
 import type { PermissionsRecord } from '@n8n/permissions';
 import { useCredentialsStore } from '../../credentials.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import Banner from '@/app/components/Banner.vue';
@@ -201,6 +202,7 @@ const runtimeCredentialUse = computed(() => {
 });
 
 const runtimeCredentialCalloutText = computed(() => {
+	if (!useSettingsStore().moduleSettings['runtime-credentials']?.enabled) return '';
 	const { aliases, computedAlias } = runtimeCredentialUse.value;
 	if (aliases.length === 0 && !computedAlias) return '';
 	return i18n.baseText('credentialEdit.credentialConfig.runtimeValues', {

@@ -96,7 +96,11 @@ export class RuntimeCredentialsService {
 	async saveRules(rules: RuntimeCredentialRule[]) {
 		const seen = new Set<string>();
 		for (const { alias } of rules) {
-			if (alias in this.envRules) {
+			// Runtime values are stored by alias in a plain object, so this key cannot be one.
+			if (alias === '__proto__') {
+				throw new UserError(`The alias "${alias}" is not supported`);
+			}
+			if (Object.hasOwn(this.envRules, alias)) {
 				throw new UserError(
 					`The alias "${alias}" is already set in N8N_SECURITY_SENSITIVE_FIELD_RULES. Choose another alias.`,
 				);

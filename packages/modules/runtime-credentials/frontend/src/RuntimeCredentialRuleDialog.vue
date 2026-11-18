@@ -107,6 +107,7 @@ onBeforeUnmount(() => clearTimeout(impactTimer));
 const impactText = computed(() => {
 	if (!impact.value || impact.value.count === 0) return '';
 	return i18n.baseText('settings.runtimeCredentials.form.impact', {
+		adjustToNumber: impact.value.count,
 		interpolate: {
 			count: String(impact.value.count),
 			workflows: impact.value.workflows.map(({ name }) => name).join(', '),
