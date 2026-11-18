@@ -1,78 +1,159 @@
 /**
- * Option shapes of `this.helpers.httpRequest` and `helpers.httpRequest` not
- * covered by `code-native-http.test.ts`: template literal URLs, direct calls
- * on a constant that holds the helper, and non-string body types.
+ * Option shapes of `this.helpers.httpRequest` and `helpers.httpRequest` not covered by
+ * `code-native-http.test.ts`.
+ *
+ * The oracle is n8n's real task runner (`runner-oracle.ts`): it runs the code as a Code node
+ * in v1 and makes the real request to a server on 127.0.0.1, which records the request and
+ * answers by its path. Native code runs in the bytecode VM with those answers as the results
+ * of its `http` effect. The results must be equal, and the requests must match (method, path,
+ * query, headers that the code sets, body bytes).
  */
-import { describe, expect, it } from 'vitest';
+import { createServer } from 'node:http';
+import type { Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { useUtc } from '../../../reference/runner.ts';
 import { checkTranslation } from '../check.ts';
 import { translateCode } from '../translate.ts';
+import { nativeCode, runnerCode, startRunner, taskRunnerAvailable } from './runner-oracle.ts';
 
-/** True when the code translates and compiles to a native form. */
-function ok(code: string): boolean {
-	const t = translateCode({ code, mode: 'all', kind: 'code', hasNode: () => false, timezone: 'system' });
-	if (!t.ok) return false;
-	const c = checkTranslation(t.translation, 'all');
-	return c.ok;
+useUtc();
+
+interface Seen {
+	method: string;
+	url: string;
+	headers: Record<string, string>;
+	body: string;
+	answer: { status: number; type: string | null; text: string };
+}
+
+function answerOf(path: string): { status: number; type: string | null; text: string } {
+	const [, kind] = path.split('?')[0].split('/');
+	if (kind === 'text') return { status: 200, type: 'text/plain', text: 'hello' };
+	if (kind === 'echo') return { status: 200, type: 'application/json', text: '{"echo":true}' };
+	return { status: 200, type: 'application/json; charset=utf-8', text: '{"ok":true,"n":[1,2]}' };
+}
+
+let server: Server;
+let base = '';
+const seen: Seen[] = [];
+
+beforeAll(async () => {
+	server = createServer((request, response) => {
+		let body = '';
+		request.setEncoding('utf8');
+		request.on('data', (chunk: string) => {
+			body += chunk;
+		});
+		request.on('end', () => {
+			const answer = answerOf(request.url ?? '/');
+			const headers: Record<string, string> = {};
+			for (const [name, value] of Object.entries(request.headers)) {
+				headers[name] = Array.isArray(value) ? value.join(', ') : (value ?? '');
+			}
+			seen.push({ method: request.method ?? '', url: request.url ?? '', headers, body, answer });
+			response.writeHead(
+				answer.status,
+				answer.type === null ? {} : { 'content-type': answer.type },
+			);
+			response.end(answer.text);
+		});
+	});
+	await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
+	base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+});
+
+afterAll(async () => {
+	await new Promise((resolve) => server.close(resolve));
+});
+
+/** The result of the `http` effect for an answer, as the runtime gives it (spec 7.1). */
+function effectResult(answer: Seen['answer']): unknown {
+	const headers: Record<string, string> =
+		answer.type === null ? {} : { 'content-type': answer.type };
+	let body: unknown = answer.text;
+	if (answer.type !== null && /json/i.test(answer.type) && answer.text.trim() !== '') {
+		try {
+			body = JSON.parse(answer.text);
+		} catch {}
+	}
+	return { status: answer.status, headers, body };
 }
 
 /**
- * Returns the blocker messages when the code does not translate, or empty array.
- * The code uses `{URL}` as a placeholder for a real URL so the checker does not
- * block on the URL value.
+ * Runs the code in the real task runner, then natively with the answers that the server gave.
+ * Compares the results and the requests.
  */
-function blockersOf(code: string): string[] {
-	const t = translateCode({ code, mode: 'all', kind: 'code', hasNode: () => false, timezone: 'system' });
-	return t.ok ? [] : t.blockers.map((b) => b.message);
+async function same(code: string): Promise<void> {
+	const items = [{ id: 1, name: 'Ada' }, { id: 2, name: 'Grace' }];
+	const withBase = items.map((i) => ({ ...i, base }));
+	seen.length = 0;
+	const runner = await runnerCode(code, 'all', withBase);
+	const requests = [...seen];
+	const native = nativeCode(code, 'all', withBase, {
+		effects: { code: requests.map((r) => effectResult(r.answer)) },
+	});
+	expect(native).toEqual(runner);
+	expect(requests.length).toBeGreaterThan(0);
 }
 
-const URL = "'http://127.0.0.1/x'";
+describe.skipIf(!taskRunnerAvailable())('httpRequest option shapes against the task runner', () => {
+	beforeAll(async () => await startRunner(), 120_000);
 
-describe('this.helpers.httpRequest: additional option shapes', () => {
-	it('translates a request with a template literal URL', () => {
-		const code = `const r = await this.helpers.httpRequest({ url: \`${URL}/json\` }); return [{ json: r }];`;
-		expect(ok(code)).toBe(true);
-	});
+	it('sends a template literal URL', async () => {
+		await same('const r = await this.helpers.httpRequest({ url: `${items[0].json.base}/json?x=${items[0].json.id}` }); return [{ json: r }];');
+	}, 60_000);
 
-	it('translates a request through a constant that holds the helper', () => {
-		const code = `const req = this.helpers.httpRequest; const r = await req({ url: ${URL} }); return [{ json: r }];`;
-		expect(ok(code)).toBe(true);
-	});
+	it('sends through a constant that holds the helper', async () => {
+		const code =
+			'const req = this.helpers.httpRequest;\nconst out = [];\nfor (const i of items) out.push({ json: await req({ url: `${i.json.base}/json` }) });\nreturn out;';
+		await same(code);
+	}, 60_000);
 
-	it('translates helpers.httpRequest with a template URL', () => {
-		const code = `const r = await helpers.httpRequest({ url: \`${URL}/text\` }); return [{ json: r }];`;
-		expect(ok(code)).toBe(true);
-	});
+	it('sends helpers.httpRequest', async () => {
+		await same('const r = await helpers.httpRequest({ url: `${items[0].json.base}/text` }); return [{ json: { r, kind: typeof r } }];');
+	}, 60_000);
 
-	it('translates a POST with a boolean body', () => {
-		const code = `const r = await this.helpers.httpRequest({ method: 'POST', url: ${URL}, body: true }); return [{ json: r }];`;
-		expect(ok(code)).toBe(true);
-	});
+	it('sends a boolean body', async () => {
+		const code =
+			'const out = [];\nfor (const i of items) out.push({ json: await this.helpers.httpRequest({ method: "POST", url: i.json.base + "/echo", body: i.json.id === 1 }) });\nreturn out;';
+		await same(code);
+	}, 60_000);
 
-	it('translates a POST with a number body', () => {
-		const code = `const r = await this.helpers.httpRequest({ method: 'POST', url: ${URL}, body: 42 }); return [{ json: r }];`;
-		expect(ok(code)).toBe(true);
-	});
+	it('sends a number body', async () => {
+		await same('const r = await this.helpers.httpRequest({ method: "POST", url: `${items[0].json.base}/echo`, body: 42 }); return [{ json: r }];');
+	}, 60_000);
 
-	it('translates a request with template literal headers', () => {
-		const code = `const r = await this.helpers.httpRequest({ url: ${URL}, headers: { 'X-User': \`user-1\` } }); return [{ json: r }];`;
-		expect(ok(code)).toBe(true);
-	});
+	it('sends template literal headers', async () => {
+		const code =
+			'const r = await this.helpers.httpRequest({ url: `${items[0].json.base}/json`, headers: { "X-Id": `${items[0].json.id}`, "X-Name": items[0].json.name } }); return [{ json: r }];';
+		await same(code);
+	}, 60_000);
 });
 
-describe('this.helpers.httpRequest: shapes kept in the host', () => {
-	it('keeps a request with encoding arraybuffer in the host', () => {
-		const code = `const r = await this.helpers.httpRequest({ url: ${URL}, encoding: 'arraybuffer' }); return [{ json: r }];`;
-		expect(ok(code)).toBe(false);
-	});
+describe('httpRequest option shapes that must stay in the host', () => {
+	const refused = (code: string): boolean => {
+		const t = translateCode({ code, mode: 'all', kind: 'code', hasNode: () => false, timezone: 'system' });
+		if (!t.ok) return true;
+		return !checkTranslation(t.translation, 'all').ok;
+	};
 
-	it('keeps a request with the legacy request helper in the host', () => {
-		const code = `const r = await this.helpers.request({ url: ${URL} }); return [{ json: r }];`;
-		expect(blockersOf(code)).not.toEqual([]);
-	});
-
-	it('keeps a multipart body in the host', () => {
-		const code = `const r = await this.helpers.httpRequest({ method: 'POST', url: ${URL}, headers: { 'content-type': 'multipart/form-data' }, body: { a: 1 } }); return [{ json: r }];`;
-		expect(ok(code)).toBe(false);
+	it.each([
+		[
+			'bytes',
+			"await this.helpers.httpRequest({ url: 'http://localhost/x', encoding: 'arraybuffer' })",
+		],
+		[
+			'a multipart body',
+			"await this.helpers.httpRequest({ method: 'POST', url: 'http://localhost/x', headers: { 'content-type': 'multipart/form-data' }, body: { a: 1 } })",
+		],
+		['the legacy request helper', "await this.helpers.request({ url: 'http://localhost/x' })"],
+		[
+			'another option',
+			"await this.helpers.httpRequest({ url: 'http://localhost/x', proxy: { host: 'h' } })",
+		],
+	])('refuses %s', (_, expression) => {
+		expect(refused(`const r = ${expression}; return [{ json: { r } }];`)).toBe(true);
 	});
 });
