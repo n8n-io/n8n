@@ -33,6 +33,10 @@ const SANDBOX_FILE_IMPORT_GUIDANCE =
 const SANDBOX_FILE_LISTING_GUIDANCE =
 	'Older messages can lose their file attachment labels. To find the fileId of a file from an earlier turn, such as an upload or a file from `outputs/`, call `list-files`.';
 
+/** Only turns that have the `view-file` tool get this text. */
+const SANDBOX_FILE_VIEWING_GUIDANCE =
+	'You cannot see a file that you make in the workspace. To check an image or a PDF that you made, share it with `share-files`, then call `view-file` with the fileId that `share-files` returns, and look at it before you describe the result. Fix the file when it does not look right. You can also call `view-file` to look again at an image or a PDF of an earlier turn that is no longer attached.';
+
 /** Only turns that have the `share-files` tool get this text. */
 const SANDBOX_FILE_SHARING_GUIDANCE =
 	'Put each file that you make for the user in `outputs/`, for example `outputs/report.xlsx`. To give a file to the user, call `share-files` with its path: the chat shows the file and the user can download it. Keep scratch files out of `outputs/`, because n8n stores every new file there with the conversation when your turn ends.';
@@ -43,6 +47,7 @@ export function getSandboxWorkspaceSection(
 		fileImportEnabled?: boolean;
 		fileListingEnabled?: boolean;
 		fileSharingEnabled?: boolean;
+		fileViewingEnabled?: boolean;
 	} = {},
 ): string {
 	const isolation = workspaceRoot
@@ -52,6 +57,7 @@ export function getSandboxWorkspaceSection(
 		options.fileImportEnabled ? SANDBOX_FILE_IMPORT_GUIDANCE : undefined,
 		options.fileListingEnabled ? SANDBOX_FILE_LISTING_GUIDANCE : undefined,
 		options.fileSharingEnabled ? SANDBOX_FILE_SHARING_GUIDANCE : undefined,
+		options.fileViewingEnabled ? SANDBOX_FILE_VIEWING_GUIDANCE : undefined,
 	].filter((text): text is string => text !== undefined);
 
 	return `## Sandbox workspace

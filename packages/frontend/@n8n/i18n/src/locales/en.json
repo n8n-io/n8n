@@ -9480,6 +9480,7 @@
 	"instanceAi.tools.parse-file": "Parsing file",
 	"instanceAi.tools.import-files": "Copying files to the sandbox",
 	"instanceAi.tools.share-files": "Sharing files",
+	"instanceAi.tools.view-file": "Viewing file",
 	"instanceAi.tools.workspace_read_file": "Reading file",
 	"instanceAi.tools.workspace_read_files": "Reading files",
 	"instanceAi.tools.workspace_read_tool_result": "Reading tool result",

@@ -59,6 +59,17 @@ describe('getSystemPrompt — sandbox workspace', () => {
 		expect(withListing).toContain('call `list-files`');
 	});
 
+	it('tells the model to view the images it makes only when view-file is wired', () => {
+		const without = getSystemPrompt({ workspaceRoot: '/home/user/workspace' });
+		const withViewing = getSystemPrompt({
+			workspaceRoot: '/home/user/workspace',
+			fileViewingEnabled: true,
+		});
+
+		expect(without).not.toContain('view-file');
+		expect(withViewing).toContain('call `view-file` with the fileId that `share-files` returns');
+	});
+
 	it('leaves out the import guidance without a workspace', () => {
 		expect(getSystemPrompt({ fileImportEnabled: true })).not.toContain('import-files');
 	});

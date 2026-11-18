@@ -21,6 +21,10 @@ vi.mock('../attachments/list-files.tool', () => ({
 	createListFilesTool: vi.fn((list: unknown) => ({ id: 'list-files', list })),
 }));
 
+vi.mock('../attachments/view-file.tool', () => ({
+	createViewFileTool: vi.fn((storedFiles: unknown) => ({ id: 'view-file', storedFiles })),
+}));
+
 vi.mock('../attachments/share-files.tool', () => ({
 	createShareFilesTool: vi.fn(() => ({ id: 'share-files' })),
 }));
@@ -375,6 +379,26 @@ describe('domain tool construction', () => {
 			// The list keeps the reader as `this`.
 			await expect(tool.list()).resolves.toBe(files);
 			expect(ALWAYS_LOADED_TOOL_NAMES.has('list-files')).toBe(true);
+		});
+	});
+
+	describe('view-file registration', () => {
+		it.each([
+			['nothing', {}],
+			['a file reader without a list', { storedFiles: { read: vi.fn() } }],
+		])('leaves the tool out with %s', (_label, overrides) => {
+			expect(createOrchestratorDomainTools(makeContext(overrides)).has('view-file')).toBe(false);
+		});
+
+		it('registers the tool with the file reader when the sandbox files feature is on', () => {
+			const storedFiles = { read: vi.fn(), list: vi.fn() };
+
+			const tool = createOrchestratorDomainTools(makeContext({ storedFiles })).get(
+				'view-file',
+			) as unknown as { storedFiles: unknown };
+
+			expect(tool.storedFiles).toBe(storedFiles);
+			expect(ALWAYS_LOADED_TOOL_NAMES.has('view-file')).toBe(true);
 		});
 	});
 

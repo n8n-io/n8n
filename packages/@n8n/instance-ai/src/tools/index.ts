@@ -35,6 +35,9 @@ const loadShareFilesTool = lazyMod(
 	() =>
 		require('./attachments/share-files.tool') as typeof import('./attachments/share-files.tool'),
 );
+const loadViewFileTool = lazyMod(
+	() => require('./attachments/view-file.tool') as typeof import('./attachments/view-file.tool'),
+);
 const loadCredentialsTool = lazyMod(
 	() => require('./credentials.tool') as typeof import('./credentials.tool'),
 );
@@ -287,10 +290,14 @@ function getOrchestratorDomainToolFactories(
 
 	// The host sets `list` only when the sandbox files feature is on, so it stays the same for the thread.
 	const listFiles = storedFiles?.list?.bind(storedFiles);
-	if (listFiles) {
+	if (storedFiles && listFiles) {
 		tools.push([
 			DOMAIN_TOOL_IDS.LIST_FILES,
 			() => loadListFilesTool().createListFilesTool(listFiles),
+		]);
+		tools.push([
+			DOMAIN_TOOL_IDS.VIEW_FILE,
+			() => loadViewFileTool().createViewFileTool(storedFiles),
 		]);
 	}
 

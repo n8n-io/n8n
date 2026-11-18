@@ -228,6 +228,7 @@ export async function createInstanceAgent(
 			fileImportEnabled: allOrchestratorTools.has(DOMAIN_TOOL_IDS.IMPORT_FILES),
 			fileListingEnabled: allOrchestratorTools.has(DOMAIN_TOOL_IDS.LIST_FILES),
 			fileSharingEnabled: allOrchestratorTools.has(DOMAIN_TOOL_IDS.SHARE_FILES),
+			fileViewingEnabled: allOrchestratorTools.has(DOMAIN_TOOL_IDS.VIEW_FILE),
 			workspaceRoot:
 				orchestrationContext?.workspace && orchestrationContext.workspaceRoot
 					? orchestrationContext.workspaceRoot

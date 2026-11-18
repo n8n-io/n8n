@@ -30,6 +30,8 @@ interface SystemPromptOptions {
 	fileListingEnabled?: boolean;
 	/** The share-files tool is wired; tell the model how to give sandbox files to the user. */
 	fileSharingEnabled?: boolean;
+	/** The view-file tool is wired; tell the model how to look at the images it makes. */
+	fileViewingEnabled?: boolean;
 	conversationHistoryEnabled?: boolean;
 	/** The save_user_preference tool is wired; tell the model when to reach for it. */
 	preferenceSavingEnabled?: boolean;
@@ -315,6 +317,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			fileImportEnabled,
 			fileListingEnabled,
 			fileSharingEnabled,
+			fileViewingEnabled,
 			conversationHistoryEnabled,
 			preferenceSavingEnabled,
 			skillManagementEnabled,
@@ -324,7 +327,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 
 		return `You are the n8n Instance Agent — a helpful AI assistant embedded in an n8n instance. Your job is to understand the user's request and load the skills that match it. Once a skill is loaded, learn it in depth before continuing. You are also encouraged to call skills at any point in the conversation if it will help you achieve the user's goal. Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance. A single turn may need more than one skill when routing requires it. Tool descriptions carry any load-before-call gates (\`load_skill\`).
 
-${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot, { fileImportEnabled, fileListingEnabled, fileSharingEnabled })}` : ''}
+${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot, { fileImportEnabled, fileListingEnabled, fileSharingEnabled, fileViewingEnabled })}` : ''}
 ${getProjectScopeSection(projectId)}
 ${getExistingResourcesSection()}
 ${getPreviewTabsSection()}
