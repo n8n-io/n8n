@@ -1,5 +1,11 @@
 import { expressionPathValidator } from './expression-path-validator';
-import type { GraphNode, NodeInstance, ConnectionTarget, IDataObject } from '../../../types/base';
+import type {
+	GraphNode,
+	NodeInstance,
+	ConnectionTarget,
+	IDataObject,
+	OnError,
+} from '../../../types/base';
 import type { PluginContext } from '../types';
 
 // Helper to create a mock node instance with optional config
@@ -9,6 +15,7 @@ function createMockNode(
 	config: {
 		parameters?: Record<string, unknown>;
 		output?: IDataObject[];
+		onError?: OnError;
 	} = {},
 ): NodeInstance<string, string, unknown> {
 	return {
@@ -18,6 +25,7 @@ function createMockNode(
 		config: {
 			parameters: config.parameters ?? {},
 			output: config.output,
+			onError: config.onError,
 		},
 	} as NodeInstance<string, string, unknown>;
 }
@@ -389,6 +397,103 @@ describe('expressionPathValidator', () => {
 					code: 'PARTIAL_EXPRESSION_PATH',
 					severity: 'warning',
 				}),
+			);
+		});
+	});
+	describe('error output connections', () => {
+		function validateErrorBranch(options: {
+			sourceType?: string;
+			onError?: OnError;
+			outputIndex: number;
+			expression: string;
+			useDeclaredConnections?: boolean;
+		}) {
+			const source = createMockNode(options.sourceType ?? 'n8n-nodes-base.httpRequest', 'HTTP', {
+				output: [{ status: 'ok' }],
+				onError: options.onError ?? 'continueErrorOutput',
+			});
+			const sourceConns = new Map<string, Map<number, ConnectionTarget[]>>();
+			if (options.useDeclaredConnections) {
+				(source as unknown as Record<string, unknown>).getConnections = () => [
+					{ target: { name: 'Handle Error' }, outputIndex: options.outputIndex },
+				];
+			} else {
+				sourceConns.set('main', new Map([[options.outputIndex, [conn('Handle Error', 0)]]]));
+			}
+			const consumer = createMockNode('n8n-nodes-base.set', 'Handle Error', {
+				parameters: { value: options.expression },
+			});
+
+			const nodes = new Map<string, GraphNode>();
+			nodes.set('HTTP', createGraphNode(source, sourceConns));
+			nodes.set('Handle Error', createGraphNode(consumer));
+
+			return expressionPathValidator.validateWorkflow!(createMockPluginContext(nodes));
+		}
+
+		it('accepts $json.error on the error output', () => {
+			const issues = validateErrorBranch({ outputIndex: 1, expression: '={{ $json.error }}' });
+
+			expect(issues).toHaveLength(0);
+		});
+
+		it('accepts nested $json.error paths on the error output', () => {
+			const issues = validateErrorBranch({
+				outputIndex: 1,
+				expression: '={{ $json.error.message }}',
+			});
+
+			expect(issues).toHaveLength(0);
+		});
+
+		it('accepts $json.error on an error output declared through getConnections()', () => {
+			const issues = validateErrorBranch({
+				outputIndex: 1,
+				expression: '={{ $json.error.message }}',
+				useDeclaredConnections: true,
+			});
+
+			expect(issues).toHaveLength(0);
+		});
+
+		it('uses the type-specific error output index for multi-output nodes', () => {
+			const issues = validateErrorBranch({
+				sourceType: 'n8n-nodes-base.if',
+				outputIndex: 2,
+				expression: '={{ $json.error.message }}',
+			});
+
+			expect(issues).toHaveLength(0);
+		});
+
+		it('still reports $json.error on the success output', () => {
+			const issues = validateErrorBranch({ outputIndex: 0, expression: '={{ $json.error }}' });
+
+			expect(issues).toContainEqual(
+				expect.objectContaining({ code: 'INVALID_EXPRESSION_PATH', nodeName: 'Handle Error' }),
+			);
+		});
+
+		it('still reports $json.error when the source does not route errors to an output', () => {
+			const issues = validateErrorBranch({
+				onError: 'continueRegularOutput',
+				outputIndex: 1,
+				expression: '={{ $json.error }}',
+			});
+
+			expect(issues).toContainEqual(
+				expect.objectContaining({ code: 'INVALID_EXPRESSION_PATH', nodeName: 'Handle Error' }),
+			);
+		});
+
+		it('still reports missing non-error fields on the error output', () => {
+			const issues = validateErrorBranch({
+				outputIndex: 1,
+				expression: '={{ $json.missingField }}',
+			});
+
+			expect(issues).toContainEqual(
+				expect.objectContaining({ code: 'INVALID_EXPRESSION_PATH', nodeName: 'Handle Error' }),
 			);
 		});
 	});

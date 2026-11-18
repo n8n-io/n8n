@@ -5,7 +5,12 @@
  * that exist in predecessor node outputs.
  */
 
-import { isNodeChain, type GraphNode, type NodeInstance } from '../../../types/base';
+import {
+	isNodeChain,
+	resolveErrorOutputIndex,
+	type GraphNode,
+	type NodeInstance,
+} from '../../../types/base';
 import { filterMethodsFromPath } from '../../string-utils';
 import { extractExpressions, parseExpression, hasPath } from '../../validation-helpers';
 import type { ValidatorPlugin, ValidationIssue, PluginContext } from '../types';
@@ -37,37 +42,73 @@ function resolveTargetNodeName(target: unknown): string | undefined {
 }
 
 /**
- * Find all predecessors for a node by scanning all outgoing connections.
+ * A direct predecessor of a node. `isErrorOutput` is true when the connection
+ * leaves the source node's error output, whose items carry an `error` field.
  */
-function findPredecessors(nodeName: string, nodes: ReadonlyMap<string, GraphNode>): string[] {
-	const predecessors: string[] = [];
+interface Predecessor {
+	name: string;
+	isErrorOutput: boolean;
+}
 
-	// Scan all nodes' connections to find which ones connect to this node
-	for (const [sourceNodeName, graphNode] of nodes) {
-		const mainConns = graphNode.connections.get('main');
-		if (mainConns) {
-			for (const [_outputIndex, targets] of mainConns) {
-				for (const target of targets) {
-					if (target.node === nodeName) {
-						predecessors.push(sourceNodeName);
-					}
-				}
-			}
-		}
+function isErrorOutputIndex(graphNode: GraphNode, outputIndex: number): boolean {
+	const { config, type } = graphNode.instance;
+	if (config?.onError !== 'continueErrorOutput') return false;
+	return outputIndex === resolveErrorOutputIndex(type, config.parameters);
+}
 
-		// Also check connections declared via node's .to()
-		if (typeof graphNode.instance.getConnections === 'function') {
-			const connections = graphNode.instance.getConnections();
-			for (const conn of connections) {
-				const targetName = resolveTargetNodeName(conn.target);
-				if (targetName === nodeName) {
-					predecessors.push(sourceNodeName);
-				}
-			}
+/**
+ * Collect the output indexes of a source node that connect to `nodeName`,
+ * from both the connections map and connections declared via node's .to().
+ */
+function findOutputIndexesTo(nodeName: string, graphNode: GraphNode): number[] {
+	const outputIndexes: number[] = [];
+
+	for (const [outputIndex, targets] of graphNode.connections.get('main') ?? []) {
+		if (targets.some((target) => target.node === nodeName)) outputIndexes.push(outputIndex);
+	}
+
+	if (typeof graphNode.instance.getConnections === 'function') {
+		for (const conn of graphNode.instance.getConnections()) {
+			if (resolveTargetNodeName(conn.target) === nodeName) outputIndexes.push(conn.outputIndex);
 		}
 	}
 
-	return [...new Set(predecessors)];
+	return outputIndexes;
+}
+
+/**
+ * Find all predecessors for a node by scanning all outgoing connections.
+ * A source node appears at most once for each output kind (success or error).
+ */
+function findPredecessors(nodeName: string, nodes: ReadonlyMap<string, GraphNode>): Predecessor[] {
+	const predecessors = new Map<string, Predecessor>();
+
+	for (const [sourceNodeName, graphNode] of nodes) {
+		for (const outputIndex of findOutputIndexesTo(nodeName, graphNode)) {
+			const isErrorOutput = isErrorOutputIndex(graphNode, outputIndex);
+			predecessors.set(`${sourceNodeName}:${isErrorOutput}`, {
+				name: sourceNodeName,
+				isErrorOutput,
+			});
+		}
+	}
+
+	return [...predecessors.values()];
+}
+
+/**
+ * Check whether a predecessor outputs `fieldPath`. Error output items always
+ * carry `error`, and its content varies by node, so any path under it is valid.
+ * Returns undefined when the output shape of the predecessor is unknown.
+ */
+function predecessorHasPath(
+	pred: Predecessor,
+	fieldPath: string[],
+	outputShapes: Map<string, Record<string, unknown>>,
+): boolean | undefined {
+	if (pred.isErrorOutput && fieldPath[0] === 'error') return true;
+	const shape = outputShapes.get(pred.name);
+	return shape ? hasPath(shape, fieldPath) : undefined;
 }
 
 /**
@@ -77,7 +118,7 @@ function validateJsonPath(
 	nodeName: string,
 	paramPath: string,
 	fieldPath: string[],
-	predecessors: string[],
+	predecessors: Predecessor[],
 	outputShapes: Map<string, Record<string, unknown>>,
 	issues: ValidationIssue[],
 ): void {
@@ -85,14 +126,9 @@ function validateJsonPath(
 	const invalidIn: string[] = [];
 
 	for (const pred of predecessors) {
-		const shape = outputShapes.get(pred);
-		if (shape) {
-			if (hasPath(shape, fieldPath)) {
-				validIn.push(pred);
-			} else {
-				invalidIn.push(pred);
-			}
-		}
+		const found = predecessorHasPath(pred, fieldPath, outputShapes);
+		if (found === true) validIn.push(pred.name);
+		if (found === false) invalidIn.push(pred.name);
 	}
 
 	const fieldPathStr = fieldPath.join('.');
