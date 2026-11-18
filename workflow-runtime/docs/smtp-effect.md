@@ -233,7 +233,7 @@ send the message.
 | The message of MailComposer from the fields, with the content types of nodemailer | `src/core/mail.zig`, `src/core/mailmime_tables.zig`; vectors from the real nodemailer in `src/core/mailcase_tables.zig` (`node src/core/gen_mail_cases.mjs`, run by hand); the fuzz target `fuzz mail builder` |
 | `ctx.smtp` with the fields, in the SDK, the compiler, the reference runner and the test VM | `packages/@n8n/workflow-lang`: `src/sdk/index.ts`, `src/compiler`, `src/reference/runner.ts`, `src/__tests__/smtp-effect.test.ts` |
 | The `emailSend` library node (versions 2 and 2.1, operation `send`), the converter lowering behind the convert option `smtp`, the n8n setting `N8N_COMPILED_ENGINE_SMTP_NATIVE` | `packages/@n8n/workflow-lang/src/nodes/email-send.ts`, `src/convert/library.ts`, `packages/cli/src/modules/compiled-engine` |
-| The proof against v1: the v1 node and the runtime against one scripted SMTP server on a loopback socket | `src/nodes/__tests__/email-send-equivalence.test.ts` (48 cases), `smtp-server.ts`, `smtp-runtime.ts` |
+| The proof against v1: the v1 node and the runtime against one scripted SMTP server on a loopback socket | `src/nodes/__tests__/email-send-equivalence.test.ts` (53 cases), `smtp-server.ts`, `smtp-runtime.ts` |
 | The call with `build`, and the Gmail library node on it (`message.send`, `message.reply`, `thread.reply`, `draft.create`, with files) | `src/shell/smtp.zig` (`writeBuilt`), `src/nodes/gmail.ts`, `src/nodes/__tests__/gmail-mail-builder.test.ts` |
 
 ## What the library node does

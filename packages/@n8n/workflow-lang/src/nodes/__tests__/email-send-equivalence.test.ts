@@ -411,6 +411,9 @@ describe('Send Email library node and the v1 node', () => {
 		const out = convertWorkflow(workflowOf(EMAIL_SEND_CASES[0]), { instance });
 		expect(out.ok).toBe(true);
 		expect(out.fallbackNodes).toEqual([NODE]);
+		// The step is the host step of the node, without the parameters that the library node gets.
+		expect(out.source).toContain("host: 'fallback'");
+		expect(out.source).not.toContain('nodeVersion:');
 	});
 
 	it('without the instance id, a node with the attribution stays in the fallback host', () => {
