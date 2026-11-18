@@ -626,8 +626,6 @@ $panel-width: 240px;
 	background-color: var(--app-shell--nav-panel--color--background);
 	box-shadow: var(--shadow--md);
 	overflow: hidden;
-	// It slides out from the rail, so it grows from the rail's edge.
-	transform-origin: left center;
 }
 
 // Opens on hover many times a day, so the motion stays short and small. It closes faster
@@ -646,7 +644,7 @@ $panel-width: 240px;
 
 .floatingHidden {
 	opacity: 0;
-	transform: translateX(calc(var(--spacing--3xs) * -1)) scale(0.98);
+	transform: translateX(calc(var(--spacing--3xs) * -1));
 }
 
 @media (prefers-reduced-motion: reduce) {
