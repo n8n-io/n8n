@@ -1,4 +1,4 @@
-import { mergeSamples, stableKeyShare } from './merge.mjs';
+import { keysAgree, mergeSamples } from './merge.mjs';
 import { planSchemaFile } from './plan.mjs';
 
 function compareVersions(a, b) {
@@ -87,8 +87,8 @@ function groupRowsByFile(rows, index, defaultOf) {
 /**
  * A group from fewer than `minSamples` accounts is skipped. A group seen in
  * fewer than `minWorkflows` workflows is too small for the share thresholds
- * to filter user-defined keys. It is kept only when every top-level key of
- * every sample recurs in at least half of the samples.
+ * to filter user-defined keys. It is kept only when every key of every
+ * sample, at every level, recurs in at least half of the samples.
  * Subsampling the large groups shows that this rule accepts about 1% of
  * user-shaped groups at 5 samples, and none at 12.
  */
@@ -96,7 +96,7 @@ function smallGroupSkip(samples, { workflows, accounts }, { minWorkflows, minSam
 	if (accounts < minSamples) return 'too few accounts';
 	if (workflows >= minWorkflows) return undefined;
 	if (samples.length < minSamples) return 'small group: too few samples';
-	if (stableKeyShare(samples, { recurringShare: 0.5 }) < 1) return 'small group: samples disagree';
+	if (!keysAgree(samples)) return 'small group: samples disagree';
 	return undefined;
 }
 

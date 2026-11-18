@@ -66,3 +66,17 @@ export function buildNodeIndex(packages, { types, noOperationTypes, schemaPaths 
 	}
 	return index;
 }
+
+/**
+ * Node types that telemetry never shows with an operation. An action node on
+ * its default operation often omits the parameter, but the schema lookup fills
+ * in that default, so such a node does not read a trigger's `output.json`.
+ *
+ * @param {{ node_type: string, operation?: string | null }[]} rows
+ */
+export function noOperationTypesOf(rows) {
+	const withOperation = new Set(rows.filter((r) => r.operation).map((r) => r.node_type));
+	return [...new Set(rows.filter((r) => !r.operation).map((r) => r.node_type))].filter(
+		(type) => !withOperation.has(type),
+	);
+}

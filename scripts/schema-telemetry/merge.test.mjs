@@ -215,3 +215,23 @@ describe('stringifySchema', () => {
 		);
 	});
 });
+
+describe('mergeSamples user-defined bags', () => {
+	it('drops keys that are numeric record ids', () => {
+		const merged = mergeSamples([
+			obj({ tracking: obj({ 1: { type: 'number' }, 2: { type: 'number' } }) }),
+			obj({ tracking: obj({ 1: { type: 'number' } }) }),
+		]);
+
+		assert.deepEqual(merged, obj({ tracking: { type: 'object' } }));
+	});
+
+	it('describes a metadata object as open, because its keys are user-defined', () => {
+		const sample = obj({ id: { type: 'string' }, metadata: obj({ orderRef: { type: 'string' } }) });
+
+		assert.deepEqual(
+			mergeSamples([sample, sample]),
+			obj({ id: { type: 'string' }, metadata: { type: 'object' } }),
+		);
+	});
+});

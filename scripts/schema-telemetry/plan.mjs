@@ -14,6 +14,12 @@ const PASS_THROUGH_NODES = new Set([
 	'n8n-nodes-base.removeDuplicates',
 ]);
 
+/** Operations whose output follows what the user configured, keyed `type:resource:operation`. */
+const USER_CONFIGURED_OPERATIONS = new Map([
+	// Each agent's manifest describes its own input form.
+	['n8n-nodes-base.phantombuster:agent:getAll', 'agent manifests'],
+]);
+
 /** "1.2" → "v1.2.0", the on-disk version folder name. */
 function versionDir(version) {
 	return 'v' + String(version).split('.').concat(['0', '0']).slice(0, 3).join('.');
@@ -68,6 +74,10 @@ function planWithoutOperation(group, entry, base, defaultOf) {
 export function planSchemaFile(group, index, { defaultOf }) {
 	const entry = index.get(group.node_type);
 	if (!entry) return { skip: `unknown node ${group.node_type}` };
+	const configured = USER_CONFIGURED_OPERATIONS.get(
+		`${group.node_type}:${group.resource}:${group.operation}`,
+	);
+	if (configured) return { skip: `user-configured output (${configured})` };
 	if (PASS_THROUGH_NODES.has(group.node_type))
 		return { skip: 'the node passes its input items through' };
 	if (![null, undefined, 'true', 'false'].includes(group.simplify)) {

@@ -8,9 +8,17 @@
  * ever null widens to unknown.
  */
 
-/** A UUID or a long hex digest names a record, not a field. */
+/** A UUID, a long hex digest or a plain number names a record, not a field. */
 const OPAQUE_KEY =
-	/^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{32,})$/i;
+	/^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{32,}|\d+)$/i;
+
+/** Properties whose keys the user or the account defines; only the container is knowable. */
+const OPAQUE_PROPERTIES = new Set(['metadata', 'custom_fields']);
+
+/** An opaque bag keeps its type and stays an open object, without keys. */
+function opaqueBag(schema) {
+	return schema.type === undefined ? schema : { type: schema.type };
+}
 
 /** Below this share of stable keys, samples add user-defined keys to an object. */
 const MIN_STABLE_KEY_SHARE = 0.8;
@@ -38,7 +46,8 @@ function mergeProperties(objects, minShare) {
 		if (OPAQUE_KEY.test(key)) continue;
 		const values = objects.map((o) => o.properties?.[key]).filter(Boolean);
 		if (values.length / objects.length < minShare) continue;
-		properties[key] = mergeSchemaList(values, minShare);
+		const merged = mergeSchemaList(values, minShare);
+		properties[key] = OPAQUE_PROPERTIES.has(key) ? opaqueBag(merged) : merged;
 	}
 	return properties;
 }
@@ -98,6 +107,28 @@ export function stableKeyShare(samples, { recurringShare = 0.25 } = {}) {
 	const isStable = (key) => counts.get(key) / keySets.length >= recurringShare;
 	const shares = keySets.map((keys) => keys.filter(isStable).length / keys.length);
 	return shares.reduce((a, b) => a + b, 0) / shares.length;
+}
+
+/** The object schemas inside a property or array item of each sample. */
+function childObjects(samples, key) {
+	return samples
+		.map((s) => s.properties?.[key])
+		.flatMap((child) => (child?.type === 'array' ? [child.items] : [child]))
+		.filter((child) => child && typeof child === 'object' && child.properties);
+}
+
+/**
+ * Whether every key of every sample recurs in at least `recurringShare` of the
+ * samples, at every level. A key that only one sample has, even deep inside a
+ * nested object, marks user data.
+ */
+export function keysAgree(samples, { recurringShare = 0.5 } = {}) {
+	if (stableKeyShare(samples, { recurringShare }) < 1) return false;
+	const keys = new Set(samples.flatMap((s) => Object.keys(s.properties ?? {})));
+	return [...keys].every((key) => {
+		const children = childObjects(samples, key);
+		return children.length < 2 || keysAgree(children, { recurringShare });
+	});
 }
 
 /** Deterministic, sorted, tab-indented JSON — the format Biome applies on commit. */

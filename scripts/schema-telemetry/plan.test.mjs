@@ -272,3 +272,24 @@ describe('planSchemaFile item transform nodes', () => {
 		});
 	}
 });
+
+describe('planSchemaFile skipped operations', () => {
+	it('skips an operation whose output depends on what the user configured', () => {
+		const withPhantom = new Map([
+			...index,
+			['n8n-nodes-base.phantombuster', { dir: 'nodes/Phantombuster', noOperationSiblings: [] }],
+		]);
+		const plan = planSchemaFile(
+			group({
+				node_type: 'n8n-nodes-base.phantombuster',
+				node_version: '1',
+				resource: 'agent',
+				operation: 'getAll',
+			}),
+			withPhantom,
+			opts,
+		);
+
+		assert.match(plan.skip, /user-configured/);
+	});
+});

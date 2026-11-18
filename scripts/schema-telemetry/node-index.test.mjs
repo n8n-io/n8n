@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { buildNodeIndex } from './node-index.mjs';
+import { buildNodeIndex, noOperationTypesOf } from './node-index.mjs';
 
 const packages = [
 	{
@@ -151,5 +151,22 @@ describe('buildNodeIndex known nodes', () => {
 			index.get('n8n-nodes-base.telegramTrigger')?.dir,
 			'packages/nodes-base/nodes/Telegram',
 		);
+	});
+});
+
+describe('noOperationTypesOf', () => {
+	it('lists a node type that telemetry never shows with an operation', () => {
+		const rows = [{ node_type: 'n8n-nodes-base.gmailTrigger', operation: null }];
+
+		assert.deepEqual(noOperationTypesOf(rows), ['n8n-nodes-base.gmailTrigger']);
+	});
+
+	it('leaves out an action node that some rows show on its default operation', () => {
+		const rows = [
+			{ node_type: 'n8n-nodes-base.gmail', operation: 'send' },
+			{ node_type: 'n8n-nodes-base.gmail', operation: null },
+		];
+
+		assert.deepEqual(noOperationTypesOf(rows), []);
 	});
 });

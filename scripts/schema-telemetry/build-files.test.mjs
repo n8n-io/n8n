@@ -199,6 +199,44 @@ describe('buildFiles small groups', () => {
 		assert.deepEqual(Object.keys(files[0].schema.properties), ['id', 'labels']);
 	});
 
+	it('skips a group under 20 workflows when a nested object holds a key of its own', () => {
+		const nested = (extra) =>
+			JSON.stringify({
+				type: 'object',
+				properties: {
+					id: { type: 'string' },
+					fields: {
+						type: 'object',
+						properties: Object.fromEntries(['email', ...extra].map((k) => [k, { type: 'string' }])),
+					},
+				},
+			});
+		const samples = [nested([]), nested([]), nested([]), nested([]), nested(['Customer Tier'])];
+		const result = buildFiles([row({ workflows: '5', samples })], index, {
+			exists: noFiles,
+			defaultOf,
+		});
+
+		assert.deepEqual(result.files, []);
+		assert.match(result.skipped[0].reason, /samples disagree/);
+	});
+
+	it('writes a small group whose nested objects agree', () => {
+		const nested = JSON.stringify({
+			type: 'object',
+			properties: {
+				id: { type: 'string' },
+				fields: { type: 'object', properties: { email: { type: 'string' } } },
+			},
+		});
+		const { files } = buildFiles([row({ workflows: '5', samples: Array(5).fill(nested) })], index, {
+			exists: noFiles,
+			defaultOf,
+		});
+
+		assert.equal(files.length, 1);
+	});
+
 	it('skips a group under 20 workflows with fewer than 5 samples', () => {
 		const result = buildFiles(
 			[row({ workflows: '5', samples: fiveOf(['id']).slice(0, 4) })],

@@ -26,7 +26,7 @@ import { parseArgs } from 'node:util';
 
 import { buildFiles } from './build-files.mjs';
 import { stringifySchema } from './merge.mjs';
-import { buildNodeIndex } from './node-index.mjs';
+import { buildNodeIndex, noOperationTypesOf } from './node-index.mjs';
 import { findParamDefault } from './param-defaults.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -180,7 +180,7 @@ function main() {
 	const packages = loadPackages();
 	const telemetry = {
 		types: [...new Set(rows.map((r) => r.node_type))],
-		noOperationTypes: [...new Set(rows.filter((r) => !r.operation).map((r) => r.node_type))],
+		noOperationTypes: noOperationTypesOf(rows),
 	};
 	const sourceIndex = buildNodeIndex(packages, telemetry);
 	const index = buildNodeIndex(packages, {
