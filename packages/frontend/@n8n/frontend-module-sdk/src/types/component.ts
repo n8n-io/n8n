@@ -27,6 +27,8 @@ import type { IWorkflowSettings } from 'n8n-workflow';
  * itself and renders nothing when insights are not available to the user.
  * `resources-list-layout` is the shared resource list page (search, sort, pagination, empty
  * state). It takes the props and slots of the shell's `ResourcesListLayout`.
+ * `node-icon` is the icon of a node type, by its name. It shows a generic icon while the node
+ * types load and when the instance does not know the type.
  */
 export type ModuleComponentSlot =
 	| 'project-filter'
@@ -36,7 +38,8 @@ export type ModuleComponentSlot =
 	| 'promotion-changes'
 	| 'project-header'
 	| 'insights-summary'
-	| 'resources-list-layout';
+	| 'resources-list-layout'
+	| 'node-icon';
 
 /**
  * The `v-model` value of the `project-filter` slot. `null` means "all projects".
@@ -78,6 +81,13 @@ export type SlotWorkflowDiffPlaceholderProps = {
 	hideIllustration?: boolean;
 };
 
+export type SlotNodeIconProps = {
+	/** The name of the node type, for example `n8n-nodes-base.slack`. */
+	nodeType: string;
+	/** The width and the height of the icon, in pixels. */
+	size?: number;
+};
+
 export type SlotCodeDiffProps = {
 	oldString: string;
 	newString: string;
@@ -104,7 +114,8 @@ export type SlotProjectHeaderMainButton =
 	| 'variable'
 	| 'agent'
 	| 'app'
-	| 'selfHealing';
+	| 'selfHealing'
+	| 'page';
 
 export type SlotProjectHeaderProps = {
 	hasActiveCallouts?: boolean;

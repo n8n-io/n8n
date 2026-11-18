@@ -57,6 +57,13 @@ export const registerComponentSlots = () => {
 	);
 
 	componentRegistry.register(
+		'node-icon',
+		defineAsyncComponent(
+			async () => await import('@/features/pages/components/NodeTypeIconSlot.vue'),
+		),
+	);
+
+	componentRegistry.register(
 		'resources-list-layout',
 		defineAsyncComponent(
 			async () => await import('@/app/components/layouts/ResourcesListLayout.vue'),
