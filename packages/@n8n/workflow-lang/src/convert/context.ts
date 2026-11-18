@@ -117,6 +117,8 @@ export interface NodeContext {
 	mysqlRecordFirst?: boolean;
 	/** True when the `sql` effect of the runtime has a SQL Server client (`ConvertOptions.mssql`). */
 	mssql?: boolean;
+	/** True when the runtime has the native SMTP client (`ConvertOptions.smtp`). */
+	smtp?: boolean;
 	/** Records a time zone that the node's native code formats dates in (META \`zones\`). */
 	useZone?(zone: string): void;
 	/**

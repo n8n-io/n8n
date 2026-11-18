@@ -4,9 +4,10 @@ Status: the runtime side is built and tested against a scripted server: the pure
 (`src/core/smtp.zig`), the message builder (`src/core/mail.zig`), the session and the settings of the
 credential (`src/shell/smtp_call.zig`), the connection on the event loop (`src/shell/smtp.zig`) and the effect
 kind 8, behind `--smtp-native` (off by default). The SDK, the compiler and the reference runner have
-`ctx.smtp` with the fields of the message. The `emailSend` library node, the converter lowering and the
-recording against v1 are not built: see "What is built". Until they are, the Send Email node runs in the
-fallback host, as before.
+`ctx.smtp` with the fields of the message. The `emailSend` library node sends with the effect, and the Gmail
+library node gets its messages from the builder (a call with `build`). The converter links both only with
+the option `smtp`, which n8n sets from `N8N_COMPILED_ENGINE_SMTP_NATIVE` (off by default). Without it, the
+Send Email node runs in the fallback host, as before.
 
 ## Why
 
@@ -143,6 +144,13 @@ call ends.
 Without `--smtp-native` the shard has no SMTP client, and an `smtp` step ends with
 `smtp: the native SMTP client is not on in this build (limit: smtp-host)`.
 
+A call with `build: true` builds the message and sends nothing. It needs no credential, and the runtime
+makes no connection. The result is `{raw, messageId}`: `raw` is the message in base64 with `-` and `_`,
+without padding, as `encodeEmail` of the Gmail node writes it for the Gmail API. Three more fields are for
+the mail options of the Gmail node: `inReplyTo`, `references` and `keepBcc` (the message has the Bcc
+header). A file can have a `contentType`: the Gmail node gives the type of the binary data, and the Send
+Email node gives none, so nodemailer takes the type from the file name.
+
 ## The message builder
 
 `src/core/mail.zig` builds the message from the fields: `build(fields, entropy, work)`. It allocates nothing:
@@ -164,6 +172,9 @@ buffer (`--smtp-max-message-kb`), and the shard has one work space.
 - A file: base64 in lines of 76, the content type from the table of nodemailer (`mailmime_tables.zig`, 1,013
   extensions), `name` and `filename` with their quotes, `Content-ID`, and `inline` for an image with a `cid`.
 - The envelope: the first address of From (or of Reply-To), and each address of To, Cc and Bcc once.
+- The mail options of the Gmail node (300 more field sets, built as `encodeEmail` builds them with
+  `MailComposer` and `keepBcc`): the Bcc header, In-Reply-To and References (each id in `<` and `>`), a
+  file with a content type, and the address lists of `prepareEmailsInput` (`<a@b>, <c@d>, `).
 
 **From the runtime, in the format of nodemailer:** 8 random bytes for the boundaries
 (`--_NmP-<16 hex>-Part_<n>`), 16 random bytes for the Message-ID (`<8-4-4-4-12 hex@domain>`), and the clock
@@ -176,7 +187,9 @@ before a connection is open.** An address with a group, a comment, an escape in 
 domain that is not ASCII, a domain that is an IP address, has an IDNA label or ends with a dot; a name with
 `@`, a control character or a Unicode space; a file name that is not printable ASCII, has `"`, or has 75
 characters or more; a file of the type `message/*`; a `cid` that is not printable ASCII; a field that is not
-valid UTF-8; more than 16 files or 256 recipients.
+valid UTF-8; more than 16 files or 256 recipients; an In-Reply-To or References value with a control
+character or a character that is not ASCII; a content type of a file that is not `type/subtype` in token
+characters (a type with a parameter).
 
 ## The hand-over to the host
 
@@ -203,7 +216,7 @@ send the message.
 | More than 8 replies `334` at the end of a login | An empty line for each, without a bound | Hand-over (the MAIL command is not written) |
 | A reply over 64 KiB, or kept texts over 256 KiB | 1 MB for one reply | Hand-over before the MAIL command; a plain limit error after it |
 | A name lookup that fails, a connect error for a host with more than one address, a TLS error | Errors with the texts of nodemailer and Node.js | Hand-over: no command was written |
-| `rejectedErrors` | Error objects | Objects with `message`, `code`, `response`, `responseCode`, `command`, `recipient` |
+| `rejectedErrors` | Error objects. Their JSON (the saved run data) has no `message` | The effect gives objects with `message`, `code`, `response`, `responseCode`, `command`, `recipient`. The library node gives the JSON of v1, without `message`. An expression of a later node that reads `message` gets no value |
 | A reply with more than 15 digits at its start | `responseCode` is a rounded number | The first 15 digits |
 | `envelopeTime`, `messageTime` | Times of the run | Times of the run: a comparison must ignore them |
 | QUIT | Not sent | Not sent |
@@ -219,9 +232,11 @@ send the message.
 | The effect kind `smtp` (8) and the gate `--smtp-native` | `src/core/module.zig`, `src/shell/server.zig`, `src/main.zig` |
 | The message of MailComposer from the fields, with the content types of nodemailer | `src/core/mail.zig`, `src/core/mailmime_tables.zig`; vectors from the real nodemailer in `src/core/mailcase_tables.zig` (`node src/core/gen_mail_cases.mjs`, run by hand); the fuzz target `fuzz mail builder` |
 | `ctx.smtp` with the fields, in the SDK, the compiler, the reference runner and the test VM | `packages/@n8n/workflow-lang`: `src/sdk/index.ts`, `src/compiler`, `src/reference/runner.ts`, `src/__tests__/smtp-effect.test.ts` |
-| The `emailSend` library node, the converter lowering behind a convert option, the n8n setting, the recording of v1 against a loopback server | Not built: see "What the library node needs" |
+| The `emailSend` library node (versions 2 and 2.1, operation `send`), the converter lowering behind the convert option `smtp`, the n8n setting `N8N_COMPILED_ENGINE_SMTP_NATIVE` | `packages/@n8n/workflow-lang/src/nodes/email-send.ts`, `src/convert/library.ts`, `packages/cli/src/modules/compiled-engine` |
+| The proof against v1: the v1 node and the runtime against one scripted SMTP server on a loopback socket | `src/nodes/__tests__/email-send-equivalence.test.ts` (53 cases), `smtp-server.ts`, `smtp-runtime.ts` |
+| The call with `build`, and the Gmail library node on it (`message.send`, `message.reply`, `thread.reply`, `draft.create`, with files) | `src/shell/smtp.zig` (`writeBuilt`), `src/nodes/gmail.ts`, `src/nodes/__tests__/gmail-mail-builder.test.ts` |
 
-## What the library node needs
+## What the library node does
 
 The runtime builds the message, so the node has no MIME code. It does what `send.operation.ts` does:
 
@@ -232,13 +247,24 @@ The runtime builds the message, so the node has no MIME code. It does what `send
 - **Attachments.** Only when the item has binary data: `{filename: fileName || 'unknown', cid, data, id}` for
   each name of `attachments` (`prepareBinariesDataList`), and the same without `cid` for each name of
   `fileAttachments`.
-- **The result.** The result of the effect is `info`. An `{error}` result becomes `NodeApiError(node, error)`,
-  and with "continue on fail" the item `{ error: message }`. Each result has the paired item of its input.
-- **Per item.** v1 makes one transport and one message for each item.
-- **The gate.** The converter links the node only when the caller says that the runtime has `--smtp-native`
-  (a convert option from an n8n setting that is off by default, as `mysql` is). `sendAndWait` stays in the host.
-- **The recording.** The v1 node against a loopback SMTP server: compare `info` and the received message, with
-  `envelopeTime`, `messageTime`, the Message-ID, the Date and the boundaries masked.
+- **The result.** The result of the effect is `info`. The item is its JSON as v1 gives it: the members in
+  the order of nodemailer, and each entry of `rejectedErrors` without `message`.
+- **The error.** An `{error}` result becomes the `NodeApiError(node, error)` of v1: the message of nodemailer
+  (or the text of n8n for a code of Node.js in the message, `COMMON_ERRORS`), no description, and the
+  `code` of nodemailer as the HTTP code. Under a continue setting the item is `{ error: message }` with the
+  message of nodemailer as it is. With the error output, the item has the JSON of the input item and the
+  error, without binary data.
+- **Per item.** v1 makes one transport and one message for each item. The converter calls the node once
+  for each item.
+- **The hand-over.** When the effect ends with the marker, the converted workflow runs the v1 node in the
+  fallback host for that item only (the step `<node> (fallback host)`). The items before it are not sent
+  again. n8n then moves the node to the host for the next runs.
+- **The gate.** The converter links the node only with the option `smtp` (the n8n setting
+  `N8N_COMPILED_ENGINE_SMTP_NATIVE`, off by default, as `mysql` is). With the attribution and no instance
+  id, the node stays in the host. `sendAndWait` is not a call of the library node.
+- **Retry on fail.** v1 runs the node again for all items, so it sends the messages before the failure
+  again. The step does the same: the loop of the tries is around the loop of the items. With "retry on
+  fail" and the error output together, the node stays in the host.
 
 ## Tests
 
@@ -284,6 +310,22 @@ connection) and with it (the result resumes the run).
 
 `packages/@n8n/workflow-lang/src/__tests__/smtp-effect.test.ts`: `ctx.smtp` in the compiler, the reference
 runner and the bytecode VM.
+
+`packages/@n8n/workflow-lang/src/nodes/__tests__/email-send-equivalence.test.ts`, with `wfrt` built: each
+case runs the v1 node (nodemailer in n8n's engine) and the library node against one scripted SMTP server
+on a loopback socket. `wfrt serve --smtp-native` answers the `smtp` effects of the library node, and runs
+the whole converted workflow as bytecode. The test compares the result or the error, the commands and the
+message, with the Message-ID digits, the boundaries, the Date value and the two times masked. The cases:
+text, HTML and both with the attribution, versions 2 and 2.1, a subject and names that are not ASCII,
+quoted-printable and base64 bodies, cc, bcc and reply-to, values that are not texts, files and inline
+files from binary data, a binary field that is missing, two items, a refused recipient, every recipient
+refused, no recipient, a refused login, AUTH LOGIN, no AUTH, a refused message, no pipelining, STARTTLS,
+STARTTLS turned off, TLS from the first byte, a certificate that is not trusted and an address group (both
+go to the host), a port without a server, and the continue settings. Without `wfrt`, the library node
+runs on the recorded results.
+
+`gmail-mail-builder.test.ts`, with `wfrt` built: the requests of the v1 Gmail node and of the library node,
+with the message of `raw` from the call with `build`, byte for byte with the same masks.
 
 ## What the bed must run live
 

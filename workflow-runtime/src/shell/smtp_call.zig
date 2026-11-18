@@ -61,13 +61,17 @@ pub const Call = struct {
     credential: []const u8 = "",
     /// `allowUnauthorizedCerts` of the node.
     insecure: bool = false,
+    /// `build`: the call wants the message only. It needs no credential,
+    /// and no connection is made.
+    build: bool = false,
 };
 
 /// Read the arguments. The answer is null, or the text of the error (a
 /// constant: it names no value of the call).
 pub fn parseCall(args: []const u8, call: *Call) ?[]const u8 {
+    call.build = std.mem.eql(u8, std.mem.trim(u8, http.member(args, "build") orelse "false", " \t\r\n"), "true");
     call.credential = http.plainString(http.member(args, "credential") orelse "") orelse "";
-    if (call.credential.len == 0) return "smtp: the call needs a credential slot";
+    if (call.credential.len == 0 and !call.build) return "smtp: the call needs a credential slot";
     const insecure = http.member(args, "allowUnauthorizedCerts") orelse "false";
     call.insecure = std.mem.eql(u8, insecure, "true");
     return null;

@@ -1575,6 +1575,18 @@ function fileLimitInHost(error: Json): boolean {
 	return error != null && typeof error.message === 'string' && error.message.includes(${JSON.stringify(RUNS_IN_HOST)});
 }`,
 	},
+	errorItemOf: {
+		uses: [],
+		source: `/**
+ * The item of the error output for an input item that failed, as n8n's engine makes it: the
+ * JSON of the input item with the error. The item has no binary data.
+ */
+function errorItemOf(item: Json, error: Json): Json {
+	const out: Json = { ...item, error };
+	if (out.$binary !== undefined) delete out.$binary;
+	return out;
+}`,
+	},
 	retryError: {
 		uses: [],
 		source: `/** True when an output item has an error, as v1's "retry on fail" checks \`json.error\`. */
