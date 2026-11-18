@@ -3611,6 +3611,26 @@ describe('createBuildWorkflowTool', () => {
 		expect(firstAgain).toMatchObject({ success: true, workflowId: 'wf-1', workItemId: 'wi-run' });
 	});
 
+	it('keeps an explicit work item for later builds of the same file that omit it', async () => {
+		const { context, filePath } = makeContext({
+			overrides: {
+				workflowBuildContext: {
+					threadId: 'thread-1',
+					runId: 'run-1',
+					taskId: 'task-1',
+					workItemId: 'wi-run',
+				},
+			},
+		});
+		const tool = createBuildWorkflowTool(context);
+
+		const explicit = await executeTool<BuildToolOutput>(tool, { filePath, workItemId: 'wi-old' });
+		const omitted = await executeTool<BuildToolOutput>(tool, { filePath });
+
+		expect(explicit).toMatchObject({ success: true, workItemId: 'wi-old' });
+		expect(omitted).toMatchObject({ success: true, workItemId: 'wi-old' });
+	});
+
 	it('uses workflowBuildContext work item as the repeat-failure key', async () => {
 		const workflowBuildContext = {
 			threadId: 'thread-1',
