@@ -483,4 +483,19 @@ describe('useProjectsStore workflow review settings', () => {
 
 		expect(store.currentProjectWorkflowReviewSettings).toBeNull();
 	});
+
+	it('drops a saved value for a project that is no longer current', async () => {
+		vi.mocked(workflowReviewsApi.updateProjectWorkflowReviewSettings).mockResolvedValue({
+			projectApprovalRequired: true,
+		});
+		const store = useProjectsStore();
+		const save = store.updateCurrentProjectWorkflowReviewSettings('p1', {
+			projectApprovalRequired: true,
+		});
+
+		mockRoute.params = { projectId: 'p2' };
+		await save;
+
+		expect(store.currentProjectWorkflowReviewSettings).toBeNull();
+	});
 });
