@@ -35,10 +35,14 @@
   },
   "peerDependencies": {
     "@n8n/n8n-nodes-langchain": "workspace:*",
-    "nock": "catalog:"
+    "nock": "catalog:",
+    "vitest": "catalog:"
   },
   "peerDependenciesMeta": {
     "@n8n/n8n-nodes-langchain": {
+      "optional": true
+    },
+    "vitest": {
       "optional": true
     }
   },

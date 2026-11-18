@@ -10,8 +10,10 @@ import type { WebhookPushMessage } from './webhook';
 import type { WorkerPushMessage } from './worker';
 import type { WorkflowPushMessage } from './workflow';
 import type { WorkflowReviewPushMessage } from './workflow-review';
+import type { WorkflowTestPushMessage } from './workflow-test';
 
 export type { AgentNodeCapability, AgentNodeProgress } from './execution';
+export type { WorkflowTestRunEvent } from './workflow-test';
 
 export type PushMessage =
 	| AgentsPushMessage
@@ -25,7 +27,8 @@ export type PushMessage =
 	| BuilderCreditsPushMessage
 	| ChatHubPushMessage
 	| InstanceAiPushMessage
-	| WorkflowReviewPushMessage;
+	| WorkflowReviewPushMessage
+	| WorkflowTestPushMessage;
 
 export type PushType = PushMessage['type'];
 
