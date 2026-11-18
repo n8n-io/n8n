@@ -700,8 +700,10 @@ Hide the tool row when the Agent has no attached tools or MCP servers.
 Expiry defaults to Never expires. Offer one hour, one day, and one week.
 Keep expiry and tool selections local until Save.
 Put labels on the left and controls on the right. Keep workflow and channel
-selects at the same width. Reserve the workflow link space in both modes so the
-select width stays stable. Use one-third of the section for controls.
+selects at the same width. Align a select with the section's right content edge.
+Add space for the workflow link only when the link is visible. Use one-third of
+the section for controls. Give the method selector a contrasting group background
+on the modal surface in both themes.
 Use `padding: var(--spacing--sm) var(--spacing--md)` inside review configuration
 rows and tool approval sections. Centre labels vertically beside their controls.
 Use `--font-size--sm` for labels. Let controls set row height. Keep section

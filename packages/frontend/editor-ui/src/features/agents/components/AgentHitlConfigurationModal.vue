@@ -451,6 +451,7 @@ const rowLayout = computed(() => (fieldsWidth.value < 480 ? 'vertical' : 'horizo
 					>
 						<N8nSegmentControl
 							id="agent-hitl-method"
+							:class="$style.methodControl"
 							:model-value="method"
 							:disabled="creating || openingChannel"
 							:options="[
@@ -473,7 +474,7 @@ const rowLayout = computed(() => (fieldsWidth.value < 480 ? 'vertical' : 'horizo
 							action-max-width="66.666%"
 							:class="$style.sectionRow"
 						>
-							<div :class="$style.resourceRow">
+							<div :class="[$style.resourceRow, { [$style.withWorkflowLink]: workflowHref }]">
 								<N8nCombobox2
 									size="large"
 									:model-value="workflowId || undefined"
@@ -666,18 +667,24 @@ const rowLayout = computed(() => (fieldsWidth.value < 480 ? 'vertical' : 'horizo
 	flex-direction: column;
 	gap: var(--spacing--md);
 }
+.methodControl {
+	background-color: var(--background--hover);
+}
 .resourceRow {
-	// Reserve the workflow link column in both modes to keep the select widths equal.
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) var(--spacing--lg);
+	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	width: calc((100cqi - 2 * var(--spacing--md)) / 3 + var(--spacing--lg) + var(--spacing--2xs));
+	width: calc((100cqi - 2 * var(--spacing--md)) / 3);
 	max-width: 100%;
 
 	> :first-child {
+		flex: 1;
 		min-width: 0;
 	}
+}
+.withWorkflowLink {
+	// Keep the select width stable, but add space only for a visible link.
+	width: calc((100cqi - 2 * var(--spacing--md)) / 3 + var(--spacing--lg) + var(--spacing--2xs));
 }
 .saveTrigger {
 	display: inline-flex;
