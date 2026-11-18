@@ -1,0 +1,40 @@
+packages/workflow/src/interfaces.ts
+  s_f27bda1bd0c713::t_37f5342dee5fb7 1312-1331,1337-1350,1534,1634
+  s_f27bda1bd0c713::t_7d0f4750d6167c 1332-1336
+packages/core/src/execution-engine/node-execution-context/utils/page-helper-functions.ts
+  s_f27bda1bd0c713::t_2da43cbc392ec8 1-21
+pnpm-lock.yaml
+  ai_agent 8616-8618
+packages/core/src/execution-engine/node-execution-context/execute-context.ts
+  s_f27bda1bd0c713::t_2da43cbc392ec8 42
+  s_f27bda1bd0c713::t_37f5342dee5fb7 98
+packages/core/src/execution-engine/index.ts
+  s_f27bda1bd0c713::t_37f5342dee5fb7 4,66
+packages/modules/page/backend/package.json
+  ai_agent 45-46
+packages/core/src/execution-engine/node-execution-context/load-options-context.ts
+  s_f27bda1bd0c713::t_37f5342dee5fb7 35
+  s_f27bda1bd0c713::t_2da43cbc392ec8 15
+packages/modules/page/backend/src/page.module.ts
+  s_f27bda1bd0c713::t_7d74952b81d7eb 3,18-22
+packages/modules/page/backend/src/page-proxy.service.ts
+  s_f27bda1bd0c713::t_a444b8119a5ac5 77
+  s_f27bda1bd0c713::t_7d74952b81d7eb 1-75,78-82
+  s_f27bda1bd0c713::t_7d0f4750d6167c 76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1e99aa40804f8c2c585e8317be9b470986695036",
+  "prompts": {},
+  "sessions": {
+    "s_f27bda1bd0c713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e884d7e-3c84-4428-98db-a0c5cff39be6",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
