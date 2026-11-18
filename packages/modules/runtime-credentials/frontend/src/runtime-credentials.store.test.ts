@@ -8,6 +8,11 @@ vi.mock('./runtime-credentials.api', () => ({
 	updateRuntimeCredentialRules: vi.fn(),
 }));
 
+const getModuleSettings = vi.fn(async () => {});
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => ({ getModuleSettings }),
+}));
+
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: 'http://localhost', pushRef: '' } }),
 }));
@@ -70,6 +75,24 @@ describe('useRuntimeCredentialsStore', () => {
 		expect(updateRuntimeCredentialRules).toHaveBeenCalledWith(expect.anything(), [
 			{ alias: 'renamed', nodeType: '*', path: 'body.key' },
 		]);
+	});
+
+	it('refuses to save before the rules load, so a save cannot drop unloaded rules', async () => {
+		const store = useRuntimeCredentialsStore();
+
+		await expect(
+			store.upsertRule({ alias: 'new_key', nodeType: '*', path: 'body.key' }),
+		).rejects.toThrow('not loaded');
+		expect(updateRuntimeCredentialRules).not.toHaveBeenCalled();
+	});
+
+	it('refreshes the module settings after a save, so the editor sees the new aliases', async () => {
+		const store = useRuntimeCredentialsStore();
+		await store.fetchRules();
+
+		await store.removeRule('tenant_key');
+
+		expect(getModuleSettings).toHaveBeenCalled();
 	});
 
 	it('removes a saved rule', async () => {

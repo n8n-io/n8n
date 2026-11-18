@@ -54,6 +54,33 @@ describe('buildRuntimeCredentialScrubber', () => {
 		expect(error.message).toBe('Rejected [runtime credential: tenant_key]');
 	});
 
+	it('scrubs only values of at least six characters', () => {
+		expect(buildRuntimeCredentialScrubber({ pin: ['12345'] })).toBeUndefined();
+
+		const scrubber = buildRuntimeCredentialScrubber({ pin: ['123456'], plain: 'sk_plain' })!;
+		const items: INodeExecutionData[] = [{ json: { text: 'code 123456, key sk_plain' } }];
+		scrubber.scrubItems([items]);
+
+		expect(items[0].json.text).toBe(
+			'code [runtime credential: pin], key [runtime credential: plain]',
+		);
+	});
+
+	it('scrubs the json and the error of the same item', () => {
+		const scrubber = buildRuntimeCredentialScrubber({ tenant_key: ['sk_acme_123'] })!;
+		const error = new NodeApiError(
+			{ name: 'HTTP', type: 'n8n-nodes-base.httpRequest' } as INode,
+			{ message: 'bad key' },
+			{ message: 'Rejected sk_acme_123' },
+		);
+		const items: INodeExecutionData[] = [{ json: { echoed: 'sk_acme_123' }, error }];
+
+		scrubber.scrubItems([items]);
+
+		expect(items[0].json.echoed).toBe('[runtime credential: tenant_key]');
+		expect(error.message).toBe('Rejected [runtime credential: tenant_key]');
+	});
+
 	it('handles circular output without looping', () => {
 		const scrubber = buildRuntimeCredentialScrubber({ tenant_key: ['sk_acme_123'] })!;
 		const json: Record<string, unknown> = { value: 'sk_acme_123' };

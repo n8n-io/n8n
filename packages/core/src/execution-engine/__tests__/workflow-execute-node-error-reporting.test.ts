@@ -398,4 +398,32 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 		expect(options.extra).toMatchObject({ executionId: 'exec-42' });
 		expect((options.extra as { executionUrl?: string }).executionUrl).toBeUndefined();
 	});
+
+	describe('with runtime credentials', () => {
+		it('should replace a runtime value in the error before it is reported', async () => {
+			const baseError = new UserError('Partner API rejected key sk_acme_123');
+
+			const run = await runWorkflowThatThrows(baseError, {
+				getRuntimeCredentials: vi.fn().mockResolvedValue({ partner_token: ['sk_acme_123'] }),
+			});
+
+			const [reported] = mockErrorReporter.error.mock.calls[0] as [Error];
+			expect(reported.message).toBe('Partner API rejected key [runtime credential: partner_token]');
+			expect(JSON.stringify(run.data.resultData.runData)).not.toContain('sk_acme_123');
+		});
+
+		it('should fail the execution when the runtime values cannot be read', async () => {
+			const run = await runWorkflowThatThrows(new UserError('boom'), {
+				getRuntimeCredentials: vi.fn().mockRejectedValue(new Error('cannot decrypt')),
+			});
+
+			expect(run.data.resultData.error?.message).toBe(
+				'Could not read the runtime credentials of this execution',
+			);
+			expect(mockErrorReporter.error).not.toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'boom' }),
+				expect.anything(),
+			);
+		});
+	});
 });

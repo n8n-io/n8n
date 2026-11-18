@@ -16,3 +16,6 @@ export const SUGGESTED_TRIGGER_TYPES = [
 	'n8n-nodes-base.formTrigger',
 	'@n8n/n8n-nodes-langchain.chatTrigger',
 ] as const;
+
+/** Waits for the admin to stop typing before it checks which workflows read the field. */
+export const IMPACT_DEBOUNCE_MS = 400;

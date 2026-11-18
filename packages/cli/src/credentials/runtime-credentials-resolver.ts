@@ -130,6 +130,13 @@ export class RuntimeCredentialsResolver {
 			);
 		}
 
+		// An expression could take the allowlist from trigger data, so only a fixed list counts.
+		if (isExpression(allowedDomains)) {
+			throw new UserError(
+				`Credential ${name} uses $runtimeCredentials, so "Allowed Domains" must be a fixed list, not an expression`,
+			);
+		}
+
 		if (!consumerNode || !ALLOWED_CONSUMER_NODE_TYPES.has(consumerNode.type)) {
 			throw new UserError(
 				`Credential ${name} uses $runtimeCredentials and can only be used in the HTTP Request and GraphQL nodes`,
@@ -152,21 +159,32 @@ export class RuntimeCredentialsResolver {
 	}
 }
 
-function referencedAliases(data: ICredentialDataDecryptedObject): string[] {
-	const aliases = new Set<string>();
+const isExpression = (value: string) => value.startsWith('=');
+
+/** Only expression values can read runtime values. Literal text that names the key is data. */
+function expressionsIn(data: ICredentialDataDecryptedObject): string[] {
+	const expressions: string[] = [];
 	const visit = (value: unknown) => {
 		if (typeof value === 'string') {
-			for (const match of value.matchAll(ALIAS_REFERENCE)) aliases.add(match[1] ?? match[2]);
+			if (isExpression(value)) expressions.push(value);
 		} else if (typeof value === 'object' && value !== null) {
 			Object.values(value).forEach(visit);
 		}
 	};
 	visit(data);
+	return expressions;
+}
+
+function referencedAliases(data: ICredentialDataDecryptedObject): string[] {
+	const aliases = new Set<string>();
+	for (const expression of expressionsIn(data)) {
+		for (const match of expression.matchAll(ALIAS_REFERENCE)) aliases.add(match[1] ?? match[2]);
+	}
 	return [...aliases];
 }
 
 function refersToRuntimeCredentials(data: ICredentialDataDecryptedObject): boolean {
-	return JSON.stringify(data).includes(RUNTIME_CREDENTIALS_KEY);
+	return expressionsIn(data).some((expression) => expression.includes(RUNTIME_CREDENTIALS_KEY));
 }
 
 /**
@@ -178,10 +196,11 @@ export function buildRuntimeCredentialsProxy(values: RuntimeCredentialValues): I
 		{},
 		{
 			get(_target, alias) {
-				// `await` and `JSON.stringify` probe these keys; answering them must not throw.
-				if (typeof alias !== 'string' || PROBED_KEYS.has(alias)) return undefined;
+				if (typeof alias !== 'string') return undefined;
 
 				if (!Object.prototype.hasOwnProperty.call(values, alias)) {
+					// `await` and `JSON.stringify` probe these keys; a missing one must not throw.
+					if (PROBED_KEYS.has(alias)) return undefined;
 					throw new ExpressionError(`No runtime credential "${alias}" in this execution`, {
 						description:
 							'The value exists only when the trigger request carries it and an admin rule names it. Manual runs and credential tests have no runtime values.',

@@ -127,6 +127,25 @@ describe('CredentialConfig', () => {
 		expect(screen.queryByTestId('credential-runtime-values-callout')).not.toBeInTheDocument();
 	});
 
+	it('should explain runtime values read in a nested field or through a computed alias', () => {
+		renderComponent(
+			{
+				props: {
+					isManaged: false,
+					credentialData: {
+						value: 'static',
+						headers: { values: [{ value: '={{ $runtimeCredentials[$vars.alias] }}' }] },
+					} as unknown as ICredentialDataDecryptedObject,
+				},
+			},
+			{ merge: true },
+		);
+
+		expect(screen.getByTestId('credential-runtime-values-callout')).toHaveTextContent(
+			'This credential reads runtime values from the trigger request',
+		);
+	});
+
 	it('should not display a warning when isManaged is false', async () => {
 		renderComponent({ props: { isManaged: false } }, { merge: true });
 		expect(

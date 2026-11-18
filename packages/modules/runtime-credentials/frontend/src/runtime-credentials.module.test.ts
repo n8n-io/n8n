@@ -34,4 +34,14 @@ describe('RuntimeCredentialsModule', () => {
 		expect(settingsPage()?.section).toBe('security');
 		expect(RuntimeCredentialsModule.routes?.[0]?.name).toBe(RUNTIME_CREDENTIALS_SETTINGS_VIEW);
 	});
+
+	it.each([
+		[true, true],
+		[false, '/'],
+	])('lets the route open when enabled is %s', (enabled, expected) => {
+		setUp({ enabled, canManage: true });
+		const route = RuntimeCredentialsModule.routes?.[0] as { beforeEnter?: () => unknown };
+
+		expect(route.beforeEnter?.()).toBe(expected);
+	});
 });

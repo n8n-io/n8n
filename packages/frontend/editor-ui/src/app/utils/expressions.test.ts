@@ -47,6 +47,8 @@ describe('Utils: Expressions', () => {
 			["=Bearer {{ $runtimeCredentials['tenant_key'] }}", ['tenant_key']],
 			['={{ $runtimeCredentials.a + $runtimeCredentials.b }}', ['a', 'b']],
 			['={{ $runtimeCredentials[$vars.key] }}', [null]],
+			['={{ $runtimeCredentials?.tenant_key }}', ['tenant_key']],
+			["={{ $runtimeCredentials?.['tenant_key'] }}", ['tenant_key']],
 			['={{ $secrets.vault.key }}', []],
 			['=$runtimeCredentials.tenant_key outside a block', []],
 		])('should read the aliases in "%s"', (expression, expected) => {
@@ -66,12 +68,17 @@ describe('Utils: Expressions', () => {
 		it.each([
 			'={{ $runtimeCredentials.unknown }}',
 			'={{ $runtimeCredentials.tenant_key + $runtimeCredentials.unknown }}',
-			'={{ $runtimeCredentials[$vars.key] }}',
 		])('should report an alias that no rule defines in "%s"', (expression) => {
 			expect(getRuntimeCredentialPreview(expression, aliases)).toEqual({
 				text: '[no admin rule defines this runtime value]',
 				exists: false,
 			});
+		});
+
+		it('should not judge a computed alias, which is known only during the execution', () => {
+			expect(getRuntimeCredentialPreview('={{ $runtimeCredentials[$vars.key] }}', aliases)).toBe(
+				undefined,
+			);
 		});
 
 		it('should leave expressions without runtime values alone', () => {

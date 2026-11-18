@@ -181,16 +181,36 @@ const isHomeTeamProject = computed(
 		credentialsStore.getCredentialById(`${props.credentialId}`)?.homeProject?.type ===
 		ProjectTypes.Team,
 );
-/** Aliases that the credential fields read from `$runtimeCredentials`. */
-const runtimeCredentialAliasesInUse = computed(() => {
+/** What the credential fields read from `$runtimeCredentials`, nested fields included. */
+const runtimeCredentialUse = computed(() => {
 	const aliases = new Set<string>();
-	for (const value of Object.values(props.credentialData ?? {})) {
-		if (typeof value !== 'string' || !isExpression(value)) continue;
-		for (const alias of getRuntimeCredentialReferences(value)) {
-			if (alias) aliases.add(alias);
+	let computedAlias = false;
+	const visit = (value: unknown) => {
+		if (typeof value === 'string') {
+			if (!isExpression(value)) return;
+			for (const alias of getRuntimeCredentialReferences(value)) {
+				if (alias) aliases.add(alias);
+				else computedAlias = true;
+			}
+		} else if (typeof value === 'object' && value !== null) {
+			Object.values(value).forEach(visit);
 		}
-	}
-	return [...aliases];
+	};
+	visit(props.credentialData);
+	return { aliases: [...aliases], computedAlias };
+});
+
+const runtimeCredentialCalloutText = computed(() => {
+	const { aliases, computedAlias } = runtimeCredentialUse.value;
+	if (aliases.length === 0 && !computedAlias) return '';
+	return i18n.baseText('credentialEdit.credentialConfig.runtimeValues', {
+		interpolate: {
+			aliases:
+				aliases.length > 0
+					? aliases.join(', ')
+					: i18n.baseText('credentialEdit.credentialConfig.runtimeValues.computed'),
+		},
+	});
 });
 
 const documentationUrl = computed(() => {
@@ -515,15 +535,11 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				</N8nCallout>
 
 				<N8nCallout
-					v-if="runtimeCredentialAliasesInUse.length"
+					v-if="runtimeCredentialCalloutText"
 					theme="info"
 					data-test-id="credential-runtime-values-callout"
 				>
-					{{
-						i18n.baseText('credentialEdit.credentialConfig.runtimeValues', {
-							interpolate: { aliases: runtimeCredentialAliasesInUse.join(', ') },
-						})
-					}}
+					{{ runtimeCredentialCalloutText }}
 				</N8nCallout>
 
 				<template v-if="canWrite">

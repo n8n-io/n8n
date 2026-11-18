@@ -136,7 +136,9 @@ export const getRuntimeCredentialReferences = (expression: string): Array<string
 
 		const [, ...afterReferences] = code.split(RUNTIME_CREDENTIAL_REFERENCE);
 		for (const afterReference of afterReferences) {
-			const { keys } = readLiteralKeys(afterReference);
+			// `?.key` and `?.['key']` read the same alias as `.key` and `['key']`.
+			const access = afterReference.replace(/^\s*\?\.(?=\s*\[)/, '').replace(/^\s*\?\./, '.');
+			const { keys } = readLiteralKeys(access);
 			references.push(keys[0] ?? null);
 		}
 	}
@@ -153,7 +155,8 @@ export const getRuntimeCredentialPreview = (
 	aliases: string[],
 ): { text: string; exists: boolean } | undefined => {
 	const references = getRuntimeCredentialReferences(expression);
-	if (references.length === 0) return undefined;
+	// A computed key, e.g. `[$vars.x]`, is known only during the execution, so it is not judged.
+	if (references.length === 0 || references.includes(null)) return undefined;
 
 	const allKnown = references.every((alias) => alias !== null && aliases.includes(alias));
 	return allKnown
@@ -164,6 +167,21 @@ export const getRuntimeCredentialPreview = (
 /** Aliases from the admin rules. Read only after login, when module settings are loaded. */
 export const runtimeCredentialAliases = (): string[] =>
 	useSettingsStore().moduleSettings['runtime-credentials']?.aliases ?? [];
+
+/**
+ * Preview of a credential value that reads `$secrets` or `$runtimeCredentials`. An invalid
+ * reference wins, so a valid one in the same expression cannot hide it.
+ */
+export const getCredentialValuePreview = (
+	expression: string,
+	secrets: unknown,
+): { text: string; exists: boolean } | undefined => {
+	const previews = [
+		getExternalSecretPreview(expression, secrets),
+		getRuntimeCredentialPreview(expression, runtimeCredentialAliases()),
+	];
+	return previews.find((preview) => preview?.exists === false) ?? previews.find(Boolean);
+};
 
 export const isEmptyExpression = (expr: string) => {
 	return /\{\{\s*\}\}/.test(expr);

@@ -58,13 +58,19 @@ async function onDelete(alias: string) {
 	}
 }
 
-onMounted(async () => {
+const loadFailed = ref(false);
+
+async function loadRules() {
+	loadFailed.value = false;
 	try {
 		await store.fetchRules();
 	} catch (error) {
+		loadFailed.value = true;
 		toast.showError(error, i18n.baseText('settings.runtimeCredentials.loadError'));
 	}
-});
+}
+
+onMounted(loadRules);
 </script>
 
 <template>
@@ -94,7 +100,7 @@ onMounted(async () => {
 						variant="outline"
 						icon="plus"
 						:label="i18n.baseText('settings.runtimeCredentials.rules.add')"
-						:disabled="store.saving"
+						:disabled="store.saving || !store.loaded"
 						data-test-id="runtime-credentials-add"
 						data-attr="runtime-credentials-add"
 						@click="openDialog(null)"
@@ -102,8 +108,24 @@ onMounted(async () => {
 				</div>
 			</template>
 
+			<div
+				v-if="loadFailed"
+				:class="$style.loadError"
+				data-test-id="runtime-credentials-load-error"
+			>
+				<N8nText color="danger" size="small">
+					{{ i18n.baseText('settings.runtimeCredentials.loadError') }}
+				</N8nText>
+				<N8nButton
+					variant="outline"
+					size="small"
+					:label="i18n.baseText('settings.runtimeCredentials.retry')"
+					data-test-id="runtime-credentials-retry"
+					@click="loadRules"
+				/>
+			</div>
 			<N8nText
-				v-if="store.rules.length === 0"
+				v-else-if="store.rules.length === 0"
 				color="text-light"
 				size="small"
 				data-test-id="runtime-credentials-empty"
@@ -172,6 +194,12 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+}
+
+.loadError {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
 }
 
 .actions {

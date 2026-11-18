@@ -12,11 +12,12 @@ import type { RuntimeCredentialsService } from '../runtime-credentials.service';
 describe('RuntimeCredentialsController', () => {
 	const service = mock<RuntimeCredentialsService>();
 	const moduleRegistry = mock<ModuleRegistry>();
+	const logger = mockLogger();
 	const controller = new RuntimeCredentialsController(
 		service,
 		mock<RuntimeCredentialsImpactService>(),
 		moduleRegistry,
-		mockLogger(),
+		logger,
 	);
 	const rule = { alias: 'tenant_key', nodeType: '*', path: 'headers.x-tenant-key' };
 
@@ -33,6 +34,17 @@ describe('RuntimeCredentialsController', () => {
 		expect(service.saveRules).toHaveBeenCalledWith([rule]);
 		expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('runtime-credentials');
 		expect(result).toEqual({ rules: [{ ...rule, source: 'settings' }] });
+	});
+
+	it('returns the saved rules and logs when the module settings cannot be refreshed', async () => {
+		moduleRegistry.refreshModuleSettings.mockRejectedValueOnce(new Error('pubsub down'));
+
+		const result = await controller.updateRules(mock<AuthenticatedRequest>(), mock<Response>(), {
+			rules: [rule],
+		});
+
+		expect(result).toEqual({ rules: [{ ...rule, source: 'settings' }] });
+		expect(logger.error).toHaveBeenCalled();
 	});
 
 	it('turns a validation error into a bad request', async () => {

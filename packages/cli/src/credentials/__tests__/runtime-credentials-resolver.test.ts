@@ -69,6 +69,17 @@ describe('RuntimeCredentialsResolver', () => {
 		expect(proxyService.getRuntimeCredentials).not.toHaveBeenCalled();
 	});
 
+	it('ignores literal text that names the key, because only expressions read runtime values', async () => {
+		const result = await resolver.resolve(
+			request({
+				data: { name: 'x-api-key', value: 'docs say use $runtimeCredentials.tenant_key' },
+				credential: { id: '1', name: 'n', type: 'httpHeaderAuth', isGlobal: false },
+			}),
+		);
+
+		expect(result).toBeUndefined();
+	});
+
 	it('returns a proxy with the value of the execution', async () => {
 		const result = await resolver.resolve(request());
 
@@ -130,6 +141,17 @@ describe('RuntimeCredentialsResolver', () => {
 			/specific domains/,
 		],
 		[
+			'a domain list that is an expression',
+			{
+				data: {
+					value: '={{ $runtimeCredentials.tenant_key }}',
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: '={{ $runtimeCredentials.tenant_key }}',
+				},
+			},
+			/fixed list/,
+		],
+		[
 			'a node that does not enforce the domain restriction',
 			{ consumerNode: mock<INode>({ type: '@n8n/n8n-nodes-langchain.mcpClientTool' }) },
 			/HTTP Request and GraphQL/,
@@ -164,6 +186,12 @@ describe('buildRuntimeCredentialsProxy', () => {
 
 		await expect(Promise.resolve(proxy)).resolves.toBe(proxy);
 		expect(() => JSON.stringify(proxy)).not.toThrow();
+	});
+
+	it('returns a value stored under a key that await or JSON.stringify probe', () => {
+		const proxy = buildRuntimeCredentialsProxy({ then: ['sk_1'] });
+
+		expect(proxy.then).toBe('sk_1');
 	});
 
 	it('unwraps repeated identical values', () => {

@@ -8,6 +8,7 @@ import type { IExecutionResponse } from '@/features/execution/executions/executi
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { createRunExecutionData } from 'n8n-workflow';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -134,6 +135,37 @@ describe('useResolvedExpression', () => {
 
 		await nextTick();
 		expect(toValue(resolvedExpressionString)).toBe('[secret not found]');
+	});
+
+	it('should show a placeholder for a runtime credential that an admin rule defines', async () => {
+		useSettingsStore().moduleSettings = {
+			'runtime-credentials': { enabled: true, aliases: ['tenant_key'] },
+		};
+		mockResolveExpression().mockResolvedValue(undefined);
+		const { resolvedExpressionString } = await renderTestComponent({
+			expression: '={{ $runtimeCredentials.tenant_key }}',
+			isForCredential: true,
+		});
+
+		await nextTick();
+		expect(toValue(resolvedExpressionString)).toBe('[runtime value, set during the execution]');
+	});
+
+	it('should prefer the warning when a known secret and an unknown runtime alias mix', async () => {
+		useSettingsStore().moduleSettings = {
+			'runtime-credentials': { enabled: true, aliases: ['tenant_key'] },
+		};
+		mockResolveExpression().mockResolvedValue(undefined);
+		const { resolvedExpressionString } = await renderTestComponent({
+			expression: "={{ $secrets.aws['preview-test'] + $runtimeCredentials.unknown }}",
+			isForCredential: true,
+			additionalData: {
+				$secrets: { aws: { 'preview-test': '*********' } },
+			},
+		});
+
+		await nextTick();
+		expect(toValue(resolvedExpressionString)).toBe('[no admin rule defines this runtime value]');
 	});
 
 	const redactedExecution = (redactionInfo: Partial<{ canReveal: boolean; reason: string }> = {}) =>

@@ -2380,19 +2380,27 @@ export class WorkflowExecute {
 	}
 
 	/**
-	 * Move the error a node reported in `$error` onto the standard `error` and `json`
-	 * fields of the item, so all nodes report errors the same way.
+	 * Fails the execution when the runtime values cannot be read, because saving the output
+	 * unscrubbed could persist a value that a node echoed.
 	 */
 	private async getRuntimeCredentialScrubber() {
 		if (!this.additionalData.getRuntimeCredentials) return undefined;
 
-		this.runtimeCredentialScrubber ??= this.additionalData
-			.getRuntimeCredentials(this.runExecutionData)
-			.then(buildRuntimeCredentialScrubber)
-			.catch(() => undefined);
+		this.runtimeCredentialScrubber ??= Promise.resolve()
+			.then(async () => await this.additionalData.getRuntimeCredentials?.(this.runExecutionData))
+			.then((values) => (values ? buildRuntimeCredentialScrubber(values) : undefined))
+			.catch((error: unknown) => {
+				throw new UnexpectedError('Could not read the runtime credentials of this execution', {
+					cause: error,
+				});
+			});
 		return await this.runtimeCredentialScrubber;
 	}
 
+	/**
+	 * Move the error a node reported in `$error` onto the standard `error` and `json`
+	 * fields of the item, so all nodes report errors the same way.
+	 */
 	private normalizeNodeErrors(nodeSuccessData: INodeExecutionData[][]): void {
 		for (const execution of nodeSuccessData) {
 			for (const lineResult of execution) {
@@ -2685,6 +2693,10 @@ export class WorkflowExecute {
 
 							break;
 						} catch (error) {
+							// Scrub before reporting, so an echoed runtime value never reaches error reports.
+							if (typeof error === 'object' && error !== null) {
+								(await this.getRuntimeCredentialScrubber())?.scrubError(error);
+							}
 							executionError = this.reportNodeExecutionError(error, executionNode, workflow);
 						}
 					}

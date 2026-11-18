@@ -48,4 +48,30 @@ describe('RuntimeCredentialsImpactService', () => {
 
 		expect(impact).toEqual({ count: 0, workflows: [] });
 	});
+
+	it('matches an array path by its last two keys', async () => {
+		workflowRepository.find.mockResolvedValue([
+			workflow('4', [
+				node('n8n-nodes-base.webhook'),
+				node('n8n-nodes-base.set', { value: '={{ $json.body.items[0].id }}' }),
+			]),
+		]);
+
+		const impact = await service.findAffectedWorkflows('*', 'body.items[*].id');
+
+		expect(impact.count).toBe(1);
+	});
+
+	it('does not count a workflow that reads the field under another parent', async () => {
+		workflowRepository.find.mockResolvedValue([
+			workflow('5', [
+				node('n8n-nodes-base.webhook'),
+				node('n8n-nodes-base.set', { value: '={{ $json.query.token }}' }),
+			]),
+		]);
+
+		const impact = await service.findAffectedWorkflows('*', 'headers.token');
+
+		expect(impact.count).toBe(0);
+	});
 });

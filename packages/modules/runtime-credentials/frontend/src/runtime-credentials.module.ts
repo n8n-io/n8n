@@ -27,6 +27,9 @@ export const RuntimeCredentialsModule = defineFrontendModule({
 			path: 'runtime-credentials',
 			name: RUNTIME_CREDENTIALS_SETTINGS_VIEW,
 			component: RuntimeCredentialsSettingsView,
+			// The module is always active, so `custom` does not see the feature flag.
+			beforeEnter: () =>
+				useSettingsStore().moduleSettings[RUNTIME_CREDENTIALS_MODULE_ID]?.enabled === true || '/',
 			meta: {
 				layout: 'settings',
 				middleware: ['authenticated', 'rbac', 'custom'],

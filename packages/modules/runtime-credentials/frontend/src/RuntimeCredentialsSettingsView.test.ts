@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { screen, waitFor } from '@testing-library/vue';
 
 import RuntimeCredentialsSettingsView from './RuntimeCredentialsSettingsView.vue';
+import { IMPACT_DEBOUNCE_MS } from './runtime-credentials.constants';
 
 const showMessage = vi.fn();
 const showError = vi.fn();
@@ -72,6 +73,19 @@ describe('RuntimeCredentialsSettingsView', () => {
 		expect(savedRow.querySelector('[data-test-id="runtime-credentials-delete"]')).not.toBeNull();
 	});
 
+	it('offers a retry and blocks changes until the rules load', async () => {
+		getRulesMock.mockRejectedValueOnce(new Error('offline'));
+		renderView({ pinia: createTestingPinia({ stubActions: false }) });
+
+		await screen.findByTestId('runtime-credentials-load-error');
+		expect(screen.getByTestId('runtime-credentials-add')).toBeDisabled();
+
+		await userEvent.click(screen.getByTestId('runtime-credentials-retry'));
+
+		expect(await screen.findByTestId('runtime-credentials-rule-tenant_key')).toBeInTheDocument();
+		expect(screen.getByTestId('runtime-credentials-add')).toBeEnabled();
+	});
+
 	it('blocks an alias that credentials cannot reference', async () => {
 		renderView({ pinia: createTestingPinia({ stubActions: false }) });
 		await openAddDialog();
@@ -110,7 +124,7 @@ describe('RuntimeCredentialsSettingsView', () => {
 		await screen.findByTestId('runtime-credentials-form');
 		expect(screen.getByText('Edit rule')).toBeInTheDocument();
 		expect(inputOf('runtime-credentials-path')).toHaveValue('headers.x-tenant-key');
-		await new Promise((resolve) => setTimeout(resolve, 500));
+		await new Promise((resolve) => setTimeout(resolve, IMPACT_DEBOUNCE_MS + 100));
 		expect(getImpactMock).not.toHaveBeenCalled();
 
 		await userEvent.clear(inputOf('runtime-credentials-path'));

@@ -22,7 +22,11 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 
 import { getRuntimeCredentialRuleImpact } from './runtime-credentials.api';
-import { ANY_TRIGGER, SUGGESTED_TRIGGER_TYPES } from './runtime-credentials.constants';
+import {
+	ANY_TRIGGER,
+	IMPACT_DEBOUNCE_MS,
+	SUGGESTED_TRIGGER_TYPES,
+} from './runtime-credentials.constants';
 import { useRuntimeCredentialsStore } from './runtime-credentials.store';
 
 const props = defineProps<{
@@ -67,7 +71,6 @@ const aliasHint = computed(() =>
 	}),
 );
 
-const IMPACT_DEBOUNCE_MS = 400;
 const impact = ref<RuntimeCredentialRuleImpact | null>(null);
 let impactTimer: ReturnType<typeof setTimeout> | undefined;
 let impactRequest = 0;
@@ -90,6 +93,7 @@ watch(
 	() => [open.value, form.nodeType, form.path.trim()] as const,
 	([isOpen, nodeType, path]) => {
 		clearTimeout(impactTimer);
+		impactRequest++;
 		impact.value = null;
 		if (!isOpen || !nodeType || !path) return;
 		// The saved rule already removes its own field, so only a changed field can break workflows.

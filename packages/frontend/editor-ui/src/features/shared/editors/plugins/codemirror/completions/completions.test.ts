@@ -468,6 +468,14 @@ describe('Resolution-based completions', () => {
 			expect(result?.map((option) => option.label)).toContain('$runtimeCredentials');
 		});
 
+		test('should not offer $runtimeCredentials outside a credential field', async () => {
+			uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY] = { open: false };
+
+			const result = await completions('{{ $runt| }}');
+
+			expect(result?.map((option) => option.label) ?? []).not.toContain('$runtimeCredentials');
+		});
+
 		test('should not offer $runtimeCredentials when the feature is off', async () => {
 			settingsStore.moduleSettings = {
 				'runtime-credentials': { enabled: false, aliases: [] },
