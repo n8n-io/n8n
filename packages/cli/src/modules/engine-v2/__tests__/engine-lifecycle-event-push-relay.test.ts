@@ -469,6 +469,112 @@ describe('EngineLifecycleEventPushRelay', () => {
 		});
 	});
 
+	describe('a composite node', () => {
+		const scope = { id: 'poll', name: 'Poll Until Done' };
+		let clock = 0;
+		const at = () => new Date(Date.parse('2026-08-25T10:00:00.000Z') + ++clock * 100).toISOString();
+
+		const fields = (key: string) => ({
+			executionId: EXECUTION_ID,
+			stepId: `step-${key}`,
+			nodeId: `poll:${key}`,
+			nodeName: `Poll Until Done › ${key}`,
+			iteration: 0,
+			scope,
+			at: at(),
+		});
+		const inner = (key: string, type: 'step:started' | 'step:waiting'): LifecycleEvent => ({
+			type,
+			...fields(key),
+		});
+		const exitCompleted = (): LifecycleEvent => ({
+			type: 'step:completed',
+			executionId: EXECUTION_ID,
+			stepId: 'step-exit',
+			nodeId: 'poll',
+			nodeName: 'Poll Until Done',
+			iteration: 0,
+			scope,
+			outputs: [[{ json: { status: 'done' } }]],
+			at: at(),
+		});
+
+		/** Push messages as [type, node name, status], for a readable sequence. */
+		const timeline = () =>
+			sent().map((message) => {
+				if (message.type === 'nodeExecuteAfter') {
+					return [message.type, message.data.nodeName, message.data.data.executionStatus];
+				}
+				if (message.type === 'nodeExecuteBefore' || message.type === 'nodeExecuteAfterData') {
+					return [message.type, message.data.nodeName];
+				}
+				return [message.type];
+			});
+
+		beforeEach(() => {
+			clock = 0;
+		});
+
+		it('reports its inner steps as one run that starts, waits, resumes and ends', () => {
+			register();
+
+			relay.relay([
+				inner('entry', 'step:started'),
+				inner('request 1', 'step:started'),
+				inner('check 1', 'step:started'),
+				inner('wait 1', 'step:started'),
+				inner('wait 1', 'step:waiting'),
+				inner('wait 1', 'step:started'),
+				inner('request 2', 'step:started'),
+				{
+					type: 'step:started',
+					...fields('exit'),
+					stepId: 'step-exit',
+					nodeName: 'Poll Until Done',
+				},
+				exitCompleted(),
+			]);
+
+			expect(timeline()).toEqual([
+				['nodeExecuteBefore', 'Poll Until Done'],
+				['nodeExecuteAfter', 'Poll Until Done', 'waiting'],
+				['nodeExecuteBefore', 'Poll Until Done'],
+				['nodeExecuteAfter', 'Poll Until Done', 'success'],
+				['nodeExecuteAfterData', 'Poll Until Done'],
+			]);
+			const executionIndexes = sentOfType('nodeExecuteBefore').map(
+				(message) => message.data.data.executionIndex,
+			);
+			expect(new Set(executionIndexes).size).toBe(1);
+			expect(sentOfType('nodeExecuteAfterData')[0].data.data.data).toEqual({
+				main: [[{ json: { status: 'done' } }]],
+			});
+		});
+
+		it('fails the composite with the inner step named in the message', () => {
+			register();
+
+			relay.relay([
+				inner('entry', 'step:started'),
+				{
+					...fields('request 3'),
+					type: 'step:failed',
+					error: { name: 'NodeApiError', message: 'Service unavailable' },
+				},
+				// The exit is skipped after a failure, but a late event must not reopen the run.
+				exitCompleted(),
+			]);
+
+			expect(timeline()).toEqual([
+				['nodeExecuteBefore', 'Poll Until Done'],
+				['nodeExecuteAfter', 'Poll Until Done', 'error'],
+			]);
+			expect(sentOfType('nodeExecuteAfter')[0].data.data.error?.message).toBe(
+				'request 3: Service unavailable',
+			);
+		});
+	});
+
 	it('keeps two concurrent runs apart', () => {
 		register();
 		registry.register('exec-2', { pushRef: 'push-2', workflowId: 'wf-2' });

@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 import type { LifecycleEvent, StepError } from '@n8n/engine';
 import { fromStepInputs, fromV1ErrorDetails } from '@n8n/node-engine-compatibility';
 import type { ExecutionStatus, INodeExecutionData, ITaskData } from 'n8n-workflow';
+import { COMPOSITE_NAME_SEPARATOR } from 'n8n-workflow';
 
 import { Push } from '@/push';
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
@@ -12,6 +13,9 @@ import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connecti
 
 /** A lifecycle event scoped to one step. */
 type StepUpdate = Extract<LifecycleEvent, { stepId: string }>;
+
+/** A step event of one inner step of a composite node. */
+type CompositeStepUpdate = StepUpdate & { scope: NonNullable<StepUpdate['scope']> };
 
 /**
  * How a step settled. A completed step may have no outputs: the channel
@@ -60,6 +64,10 @@ export class EngineLifecycleEventPushRelay {
 	}
 
 	private relayOne(update: LifecycleEvent, session: EngineV2PushSession): void {
+		if ('scope' in update && update.scope) {
+			return this.relayCompositeStep({ ...update, scope: update.scope }, session);
+		}
+
 		switch (update.type) {
 			case 'execution:started':
 				return this.onExecutionStarted(update.executionId, update.at, session);
@@ -158,6 +166,59 @@ export class EngineLifecycleEventPushRelay {
 		});
 
 		run.waiting = true;
+	}
+
+	/**
+	 * Reports the inner steps of a composite node as one run of the composite.
+	 * The editor knows only the composite, so the first inner step starts that
+	 * run, an inner wait shows the composite as waiting, and an inner failure
+	 * fails it. The exit step has the composite's name and settles the run with
+	 * the composite's outputs.
+	 */
+	private relayCompositeStep(update: CompositeStepUpdate, session: EngineV2PushSession): void {
+		const { scope } = update;
+		const key = `${scope.id}@${update.iteration}`;
+		let run = session.composites.get(key);
+		if (run?.settled) return;
+
+		if (!run) {
+			run = new EngineV2StepRun(session.nextExecutionIndex++, Date.parse(update.at));
+			session.composites.set(key, run);
+			this.sendNodeExecuteBefore(update.executionId, scope.name, run, session);
+		} else if (run.waiting && update.type === 'step:started') {
+			// A resumed wait. Keep the first start time, as `onStepStarted` does.
+			this.sendNodeExecuteBefore(update.executionId, scope.name, run, session);
+			run.waiting = false;
+		}
+
+		const isExit = update.nodeName === scope.name;
+		const result = { executionTime: this.executionTimeOf(update, run) };
+
+		if (update.type === 'step:waiting' && !run.waiting) {
+			this.sendNodeExecuteAfter(update.executionId, scope.name, run, session, {
+				...result,
+				report: { status: 'waiting' },
+			});
+			run.waiting = true;
+		} else if (update.type === 'step:failed') {
+			const step = isExit
+				? undefined
+				: update.nodeName.slice(`${scope.name}${COMPOSITE_NAME_SEPARATOR}`.length);
+			const error = step
+				? { ...update.error, message: `${step}: ${update.error.message}` }
+				: update.error;
+			this.sendNodeExecuteAfter(update.executionId, scope.name, run, session, {
+				...result,
+				report: { status: 'error', error },
+			});
+			run.settled = true;
+		} else if (update.type === 'step:completed' && isExit) {
+			this.sendNodeExecuteAfter(update.executionId, scope.name, run, session, {
+				...result,
+				report: { status: 'success', outputs: update.outputs && fromStepInputs(update.outputs) },
+			});
+			run.settled = true;
+		}
 	}
 
 	/** The run `step:started` opened, or a new one so a lost start loses nothing else. */

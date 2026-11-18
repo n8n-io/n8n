@@ -13,6 +13,8 @@ export function stepEventFields(step: StepRecord, node: GraphNode) {
 		nodeId: step.nodeId,
 		nodeName: node.name,
 		iteration: step.iteration,
+		// Set only for an inner step, so a consumer can show it as the node the user placed.
+		...(node.scope ? { scope: node.scope } : {}),
 		at: new Date().toISOString(),
 	};
 }

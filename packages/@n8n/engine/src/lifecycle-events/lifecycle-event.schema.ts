@@ -21,6 +21,8 @@ const stepFields = {
 	nodeName: z.string().min(1),
 	/** Loop iteration this step ran at; `0` for a node outside a loop. */
 	iteration: z.number().int().nonnegative(),
+	/** The node the user placed, when this step is one inner step of it. */
+	scope: z.object({ id: z.string().min(1), name: z.string().min(1) }).optional(),
 	at: z.string().datetime(),
 };
 

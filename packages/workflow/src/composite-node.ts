@@ -33,7 +33,8 @@ export const COMPOSITE_EXIT_NODE_TYPE = 'n8n-nodes-base.compositeExit';
 /** Engine v2 accepts input slots 0 to 100 on one node. */
 export const COMPOSITE_MAX_EXIT_INPUTS = 101;
 
-const NAME_SEPARATOR = ' › ';
+/** Joins a composite's name and an inner step's key into the inner node's name. */
+export const COMPOSITE_NAME_SEPARATOR = ' › ';
 
 export type CompositeExitSpec =
 	| { output: number }
@@ -130,7 +131,7 @@ export interface ExpandedWorkflow {
 }
 
 export function compositeInnerNodeName(compositeName: string, key: string): string {
-	return `${compositeName}${NAME_SEPARATOR}${key}`;
+	return `${compositeName}${COMPOSITE_NAME_SEPARATOR}${key}`;
 }
 
 /**

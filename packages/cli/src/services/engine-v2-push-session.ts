@@ -25,6 +25,11 @@ export class EngineV2PushSession {
 	nextExecutionIndex = 0;
 	/** Step runs keyed by the engine's step id. */
 	readonly steps = new Map<string, EngineV2StepRun>();
+	/**
+	 * Runs of composite nodes, keyed by the composite's node id and iteration. The
+	 * editor sees one run for all the inner steps of one composite.
+	 */
+	readonly composites = new Map<string, EngineV2StepRun>();
 	/** When the last lifecycle event for this execution arrived. */
 	lastSeenAt = Date.now();
 
