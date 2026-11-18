@@ -8,6 +8,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | createdById | uuid |  | true |  | [public.user](public.user.md) | Author. NULL after the author is deleted |
 | id | varchar(36) |  | false | [public.page_reference](public.page_reference.md) |  |  |
+| isProjectSummary | boolean | false | false |  |  | True for the page that sums up its project. At most one for each project |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
 | title | varchar(255) |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -23,6 +24,7 @@
 | page_content_not_null | n | NOT NULL content |
 | page_createdAt_not_null | n | NOT NULL "createdAt" |
 | page_id_not_null | n | NOT NULL id |
+| page_isProjectSummary_not_null | n | NOT NULL "isProjectSummary" |
 | page_projectId_not_null | n | NOT NULL "projectId" |
 | page_title_not_null | n | NOT NULL title |
 | page_updatedAt_not_null | n | NOT NULL "updatedAt" |
@@ -49,6 +51,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ id
+  boolean isProjectSummary
   varchar_36_ projectId FK
   varchar_255_ title
   timestamp_3__with_time_zone updatedAt

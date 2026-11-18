@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "page" ("id" varchar(36) PRIMARY KEY NOT NULL, "projectId" varchar(36) NOT NULL, "title" varchar(255) NOT NULL, "content" text NOT NULL DEFAULT (''), "version" integer NOT NULL DEFAULT (1), "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_2d80076945d659dc90bbd11865a" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_5021d47dea711cebdc2b8b32327" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "page" ("id" varchar(36) PRIMARY KEY NOT NULL, "projectId" varchar(36) NOT NULL, "title" varchar(255) NOT NULL, "content" text NOT NULL DEFAULT (''), "version" integer NOT NULL DEFAULT (1), "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "isProjectSummary" boolean NOT NULL DEFAULT (false), CONSTRAINT "FK_5021d47dea711cebdc2b8b32327" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_2d80076945d659dc90bbd11865a" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -19,6 +19,7 @@ CREATE TABLE "page" ("id" varchar(36) PRIMARY KEY NOT NULL, "projectId" varchar(
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | createdById | varchar |  | true |  | [user](user.md) |  |
 | id | varchar(36) |  | false | [page_reference](page_reference.md) |  |  |
+| isProjectSummary | boolean | false | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
 | title | varchar(255) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -28,8 +29,8 @@ CREATE TABLE "page" ("id" varchar(36) PRIMARY KEY NOT NULL, "projectId" varchar(
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
-| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_page_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -54,6 +55,7 @@ erDiagram
   datetime_3_ createdAt
   varchar createdById FK
   varchar_36_ id PK
+  boolean isProjectSummary
   varchar_36_ projectId FK
   varchar_255_ title
   datetime_3_ updatedAt

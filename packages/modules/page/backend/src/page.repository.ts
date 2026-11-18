@@ -16,7 +16,14 @@ class PageTable extends BaseRepository<PageEntity> {
 	}
 }
 
-export type NewPageRow = Pick<PageEntity, 'projectId' | 'title' | 'content' | 'createdById'>;
+export type NewPageRow = Pick<PageEntity, 'projectId' | 'title' | 'content' | 'createdById'> &
+	Partial<Pick<PageEntity, 'isProjectSummary'>>;
+
+/** The page that sums up a project. */
+export type ProjectSummaryRow = Pick<
+	PageEntity,
+	'id' | 'projectId' | 'title' | 'content' | 'version'
+>;
 
 export type PageRowChanges = Partial<Pick<PageEntity, 'title' | 'content'>>;
 
@@ -108,6 +115,21 @@ export class PageRepository {
 			select: [...summaryColumns],
 			where: { id: In(pageIds), ...toProjectCondition(projectIds) },
 			order: { updatedAt: 'DESC' },
+		});
+	}
+
+	/**
+	 * Lists the pages that sum up a project, the oldest first.
+	 * `projectIds` restricts the result to these projects. `null` means every project.
+	 */
+	async listProjectSummaries(
+		projectIds: string[] | null,
+		ctx: OperationContext,
+	): Promise<ProjectSummaryRow[]> {
+		return await this.table.managerFor(ctx).find(PageEntity, {
+			select: ['id', 'projectId', 'title', 'content', 'version'],
+			where: { isProjectSummary: true, ...toProjectCondition(projectIds) },
+			order: { createdAt: 'ASC' },
 		});
 	}
 

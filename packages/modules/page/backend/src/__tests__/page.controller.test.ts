@@ -31,6 +31,7 @@ describe('PageController', () => {
 			listPages: 'page:list',
 			getProjectOverview: 'page:list',
 			createPage: 'page:create',
+			ensureProjectSummary: 'page:create',
 			getPage: 'page:read',
 			updatePage: 'page:update',
 			deletePage: 'page:delete',

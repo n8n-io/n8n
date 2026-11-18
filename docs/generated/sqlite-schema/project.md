@@ -234,6 +234,7 @@ erDiagram
   datetime_3_ createdAt
   varchar createdById FK
   varchar_36_ id PK
+  boolean isProjectSummary
   varchar_36_ projectId FK
   varchar_255_ title
   datetime_3_ updatedAt

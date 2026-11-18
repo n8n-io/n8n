@@ -7,6 +7,7 @@ import {
 	type PageOverview,
 	type PageOverviewExecution,
 	type PageOverviewPage,
+	type PageOverviewSummary,
 	type PageOverviewWorkflow,
 } from '@n8n/api-types';
 
@@ -15,6 +16,7 @@ import { STICKY_NOTE_NODE_TYPE } from './page-placements';
 import type { PageWorkflowLinkRow } from './page-reference.repository';
 import type { ProjectWorkflowRow } from './page-workflow.repository';
 import type { PageEntity } from './page.entity';
+import type { ProjectSummaryRow } from './page.repository';
 
 /** The most node types that the overview gives for one workflow. */
 export const PAGE_OVERVIEW_NODE_TYPES_LIMIT = 6;
@@ -95,6 +97,24 @@ function toMainPageId(links: PageWorkflowLinkRow[]): string | undefined {
 		},
 		{ linkCount: 0 },
 	).pageId;
+}
+
+/** A page that sums up a project documents no single workflow, so its links do not count. */
+export function withoutSummaryLinks(
+	links: PageWorkflowLinkRow[],
+	summaries: Array<Pick<ProjectSummaryRow, 'id'>>,
+): PageWorkflowLinkRow[] {
+	const summaryIds = new Set(summaries.map((summary) => summary.id));
+	return links.filter((link) => !summaryIds.has(link.pageId));
+}
+
+export function toOverviewSummary(summary: ProjectSummaryRow): PageOverviewSummary {
+	return {
+		id: summary.id,
+		title: summary.title,
+		version: summary.version,
+		isEmpty: summary.content.trim() === '',
+	};
 }
 
 /** Finds the pages that document each workflow. Only the pages of the project of a workflow count. */

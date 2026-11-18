@@ -120,7 +120,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.oauth_clients](public.oauth_clients.md) | 10 |  | BASE TABLE |
 | [public.oauth_refresh_tokens](public.oauth_refresh_tokens.md) | 8 |  | BASE TABLE |
 | [public.oauth_user_consents](public.oauth_user_consents.md) | 5 |  | BASE TABLE |
-| [public.page](public.page.md) | 8 |  | BASE TABLE |
+| [public.page](public.page.md) | 9 |  | BASE TABLE |
 | [public.page_reference](public.page_reference.md) | 4 |  | BASE TABLE |
 | [public.poller_state](public.poller_state.md) | 7 |  | BASE TABLE |
 | [public.processed_data](public.processed_data.md) | 5 |  | BASE TABLE |
@@ -1673,6 +1673,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ id
+  boolean isProjectSummary
   varchar_36_ projectId FK
   varchar_255_ title
   timestamp_3__with_time_zone updatedAt

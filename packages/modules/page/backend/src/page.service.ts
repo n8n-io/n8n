@@ -24,17 +24,26 @@ import { PageVersionConflictError } from './errors/page-version-conflict.error';
 import { appendMarkdownBlock } from './page-append';
 import { replaceMarkdownSection } from './page-section';
 import { PageExecutionRepository } from './page-execution.repository';
-import { toMainPageIds, toPageOverview, toWorkflowDocumentations } from './page-overview';
+import {
+	toMainPageIds,
+	toOverviewSummary,
+	toPageOverview,
+	toWorkflowDocumentations,
+	withoutSummaryLinks,
+} from './page-overview';
 import { toWorkflowPlacements } from './page-placements';
 import { PageReferenceRepository } from './page-reference.repository';
 import { toReferenceRows } from './page-references';
 import { PageWorkflowRepository, type ProjectWorkflowRow } from './page-workflow.repository';
 import type { PageEntity } from './page.entity';
 import { toNodeReferences, toPage, toPageListItem, toPageSummary } from './page.mapper';
-import { PageRepository, type PageRowChanges } from './page.repository';
+import { PageRepository, type PageRowChanges, type ProjectSummaryRow } from './page.repository';
 
 /** The most pages that the list across projects returns. */
 const ALL_PAGES_LIST_LIMIT = 200;
+
+/** The title of a new page that sums up a project. */
+const PROJECT_SUMMARY_TITLE = 'About this project';
 
 /** How many times an append reads the page and tries to save, before it fails. */
 const APPEND_MAX_ATTEMPTS = 3;
@@ -91,6 +100,28 @@ export class PageService {
 			await this.pageReferenceRepository.replaceReferences(page.id, toReferenceRows(content), ctx);
 			return toPage(page);
 		});
+	}
+
+	/**
+	 * Gives the page that sums up the project. A project without one gets an empty one.
+	 * @throws {PageProjectNotFoundError} when the project does not exist
+	 */
+	async ensureProjectSummary(projectId: string, user: User): Promise<Page> {
+		await this.assertProjectExists(projectId);
+		const [summary] = await this.pageRepository.listProjectSummaries([projectId], {});
+		const page = summary
+			? await this.findInProjectOrFail(summary.id, projectId, {})
+			: await this.pageRepository.insertPage(
+					{
+						projectId,
+						title: PROJECT_SUMMARY_TITLE,
+						content: '',
+						createdById: user.id,
+						isProjectSummary: true,
+					},
+					{},
+				);
+		return toPage(page);
 	}
 
 	/** @throws {PageNotFoundError} when the page is not in the project */
@@ -262,24 +293,34 @@ export class PageService {
 	 * Gives each workflow that is not archived and that the user can read, with the page that documents it.
 	 */
 	async getOverview(user: User): Promise<PageOverview> {
-		return await this.buildOverview(
+		const { overview } = await this.buildOverview(
 			user,
 			await this.projectScopeService.getProjectIds(user, ['page:list']),
 		);
+		return overview;
 	}
 
 	/** Sums up the documentation of one project. The caller checks that the user can list its pages. */
 	async getProjectOverview(user: User, projectId: string): Promise<PageOverview> {
-		return await this.buildOverview(user, [projectId]);
+		const { overview, summaries } = await this.buildOverview(user, [projectId]);
+		const [summary] = summaries;
+		return { ...overview, ...(summary ? { summary: toOverviewSummary(summary) } : {}) };
 	}
 
 	/** `projectIds` restricts the overview to these projects. `null` means every project. */
-	private async buildOverview(user: User, projectIds: string[] | null): Promise<PageOverview> {
-		const [workflows, links] = await Promise.all([
+	private async buildOverview(
+		user: User,
+		projectIds: string[] | null,
+	): Promise<{ overview: PageOverview; summaries: ProjectSummaryRow[] }> {
+		const [workflows, links, summaries] = await Promise.all([
 			this.listReadableWorkflows(user, projectIds),
 			this.pageReferenceRepository.listWorkflowLinks(projectIds, {}),
+			this.pageRepository.listProjectSummaries(projectIds, {}),
 		]);
-		const documentations = toWorkflowDocumentations(workflows, links);
+		const documentations = toWorkflowDocumentations(
+			workflows,
+			withoutSummaryLinks(links, summaries),
+		);
 		const [mainPages, lastExecutions] = await Promise.all([
 			this.pageRepository.listByIds(toMainPageIds(documentations), {}),
 			this.pageExecutionRepository.findLastFinishedByWorkflow(
@@ -287,7 +328,7 @@ export class PageService {
 				{},
 			),
 		]);
-		return toPageOverview(documentations, mainPages, lastExecutions);
+		return { overview: toPageOverview(documentations, mainPages, lastExecutions), summaries };
 	}
 
 	/** Lists the workflows of the projects that are not archived and that the user can read, by name. */

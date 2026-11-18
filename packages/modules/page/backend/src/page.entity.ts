@@ -22,6 +22,10 @@ export class PageEntity extends WithTimestampsAndStringId {
 	@Column({ type: 'int', default: 1 })
 	version: number;
 
+	/** True for the page that sums up its project. A project has at most one. */
+	@Column({ type: 'boolean', default: false })
+	isProjectSummary: boolean;
+
 	/** The author. `null` after the author is deleted. */
 	@Column({ type: 'uuid', nullable: true })
 	createdById: string | null;

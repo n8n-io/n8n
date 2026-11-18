@@ -418,6 +418,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ id
+  boolean isProjectSummary
   varchar_36_ projectId FK
   varchar_255_ title
   timestamp_3__with_time_zone updatedAt

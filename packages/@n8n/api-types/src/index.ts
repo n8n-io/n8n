@@ -1012,6 +1012,7 @@ export {
 	type PageOverview,
 	type PageOverviewExecution,
 	type PageOverviewPage,
+	type PageOverviewSummary,
 	type PageOverviewWorkflow,
 	type PageResourceReference,
 	type PageResourceType,

@@ -298,6 +298,41 @@ describe('PageService overview', () => {
 		expect(undocumented).not.toHaveProperty('page');
 	});
 
+	describe('the summary of the project', () => {
+		it('should give no summary to a project that has none', async () => {
+			expect(await pageService.getProjectOverview(owner, project.id)).not.toHaveProperty('summary');
+		});
+
+		it('should create one empty summary for a project and give it again', async () => {
+			const created = await pageService.ensureProjectSummary(project.id, owner);
+			const again = await pageService.ensureProjectSummary(project.id, owner);
+
+			expect(again.id).toBe(created.id);
+			expect((await pageService.getProjectOverview(owner, project.id)).summary).toEqual({
+				id: created.id,
+				title: 'About this project',
+				version: 1,
+				isEmpty: true,
+			});
+		});
+
+		it('should not count the summary as the page of a workflow', async () => {
+			const workflow = await createWorkflow({ name: 'Sync' }, project);
+			const summary = await pageService.ensureProjectSummary(project.id, owner);
+			await pageService.replacePageContent(
+				project.id,
+				summary.id,
+				`This project syncs orders. See [Sync](/workflow/${workflow.id}).`,
+			);
+
+			const overview = await pageService.getProjectOverview(owner, project.id);
+
+			expect(overview.summary).toMatchObject({ id: summary.id, version: 2, isEmpty: false });
+			expect(overview.workflows[0].pageCount).toBe(0);
+			expect(overview.workflows[0]).not.toHaveProperty('page');
+		});
+	});
+
 	it('should leave out the workflows that the user cannot read', async () => {
 		await createWorkflow({ name: 'Sync' }, project);
 		const outsider = await createUser();

@@ -40,6 +40,12 @@ export class PageController {
 		return await this.pageService.createPage(req.params.projectId, req.user, dto);
 	}
 
+	@Post('/summary')
+	@ProjectScope('page:create')
+	async ensureProjectSummary(req: AuthenticatedRequest<{ projectId: string }>) {
+		return await this.pageService.ensureProjectSummary(req.params.projectId, req.user);
+	}
+
 	@Get('/:pageId')
 	@ProjectScope('page:read')
 	async getPage(

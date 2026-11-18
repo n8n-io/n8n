@@ -88,5 +88,18 @@ export type PageOverviewWorkflow = {
 	lastExecution?: PageOverviewExecution;
 };
 
+/** The page that sums up a project on the documentation overview. */
+export type PageOverviewSummary = {
+	id: string;
+	title: string;
+	version: number;
+	/** True when the page has no text. */
+	isEmpty: boolean;
+};
+
 /** The workflows that are not archived, by name. */
-export type PageOverview = { workflows: PageOverviewWorkflow[] };
+export type PageOverview = {
+	workflows: PageOverviewWorkflow[];
+	/** The page that sums up the project. Only the overview of one project that has such a page gives it. */
+	summary?: PageOverviewSummary;
+};
