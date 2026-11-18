@@ -205,8 +205,9 @@ export class LmChatAnthropic implements INodeType {
 				type: 'resourceLocator',
 				default: {
 					mode: 'list',
-					value: 'claude-sonnet-4-5-20250929',
-					cachedResultName: 'Claude Sonnet 4.5',
+					// v1.3 uses legacy thinking parameters, so keep it on the compatible Sonnet 4.6 API.
+					value: 'claude-sonnet-4-6',
+					cachedResultName: 'Claude Sonnet 4.6',
 				},
 				builderHint: ANTHROPIC_MODEL_BUILDER_HINT,
 				required: true,
