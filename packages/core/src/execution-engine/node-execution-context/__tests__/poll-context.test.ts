@@ -319,6 +319,26 @@ describe('PollContext', () => {
 				buildContext(false).getInputConnectionData(NodeConnectionTypes.AiTool, 0),
 			).resolves.toBeUndefined();
 		});
+
+		it('runs the close functions of supplied sub-nodes once on __closeConnections', async () => {
+			const closeFunction = vi.fn(async () => {});
+			const suppliedNodeType = {
+				description: { ...toolNodeType.description },
+				async supplyData() {
+					return { response: { name: 'supplied' }, closeFunction };
+				},
+			} as unknown as INodeType;
+			toolNodeTypes.getByNameAndVersion.mockImplementation((type) =>
+				type === toolNode.type ? suppliedNodeType : pollNodeType,
+			);
+			const context = buildContext(true);
+
+			await context.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
+			await context.__closeConnections();
+			await context.__closeConnections();
+
+			expect(closeFunction).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('getExecutionContext', () => {

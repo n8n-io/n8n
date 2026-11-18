@@ -117,6 +117,21 @@ describe('PollTriggerExecutor', () => {
 			await expect(execute(true)).rejects.toThrow(error);
 			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
 		});
+
+		it.each([
+			['returns', () => triggersAndPollers.runPollFunction.mockResolvedValueOnce(null)],
+			[
+				'throws',
+				() => triggersAndPollers.runPollFunction.mockRejectedValueOnce(new Error('poll failed')),
+			],
+		])('closes sub-node connections when the poll %s', async (_, arrange) => {
+			arrange();
+
+			const execute = executor.create(workflow, node, pollFunctions, () => true);
+			await execute(true).catch(() => {});
+
+			expect(pollFunctions.__closeConnections).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('scheduled poll (testingTrigger=false)', () => {

@@ -1646,6 +1646,8 @@ export interface IPollFunctions
 	 * never by a node.
 	 */
 	__runPoll?<T>(poll: () => Promise<T>): Promise<T>;
+	/** Runs and clears the close functions of sub-nodes the poll connected to. Called by the tick engines, never by a node. */
+	__closeConnections?(): Promise<void>;
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
 		BinaryHelperFunctions &

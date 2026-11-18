@@ -97,11 +97,16 @@ export class PollTriggerExecutor {
 								isolateAcquired = true;
 							}
 
-							const pollResponse = await this.triggersAndPollers.runPollFunction(
-								workflow,
-								node,
-								pollFunctions,
-							);
+							let pollResponse: Awaited<ReturnType<TriggersAndPollers['runPollFunction']>>;
+							try {
+								pollResponse = await this.triggersAndPollers.runPollFunction(
+									workflow,
+									node,
+									pollFunctions,
+								);
+							} finally {
+								await pollFunctions.__closeConnections?.();
+							}
 
 							// Same as the above `isCurrent` check; last chance to check before
 							// potentially starting the execution. Emitting now if superseded would run

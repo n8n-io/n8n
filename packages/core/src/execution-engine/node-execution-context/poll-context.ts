@@ -116,4 +116,9 @@ export class PollContext extends NodeExecutionContext implements IPollFunctions 
 			itemIndex,
 		);
 	}
+
+	async __closeConnections() {
+		const closeFunctions = this.closeFunctions.splice(0);
+		await Promise.allSettled(closeFunctions.map(async (close) => await close()));
+	}
 }
