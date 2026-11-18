@@ -252,7 +252,12 @@ describe('createNodeAsTool', () => {
 			}
 		});
 
-		it.each(['', '   '])('uses the node default for a blank default %j', async (defaultValue) => {
+		it.each([
+			{ blank: '', nodeDefault: 50, expected: '[{"limit":50}]' },
+			{ blank: '   ', nodeDefault: 50, expected: '[{"limit":50}]' },
+			{ blank: '', nodeDefault: '', expected: '[{}]' },
+		])('handles blank default $blank with node default $nodeDefault', async (testCase) => {
+			const { blank, nodeDefault, expected } = testCase;
 			const toolNode: INode = {
 				id: 'tool',
 				name: 'Test Tool',
@@ -260,13 +265,15 @@ describe('createNodeAsTool', () => {
 				typeVersion: 1,
 				position: [0, 0],
 				parameters: {
-					limit: `={{ $fromAI('count', 'Maximum results', 'number', '${defaultValue}') }}`,
+					limit: `={{ $fromAI('count', 'Maximum results', 'number', '${blank}') }}`,
 				},
 			};
 			const toolNodeType = mock<INodeType>({
 				description: {
 					...nodeType.description,
-					properties: [{ name: 'limit', displayName: 'Limit', type: 'number', default: 50 }],
+					properties: [
+						{ name: 'limit', displayName: 'Limit', type: 'number', default: nodeDefault },
+					],
 				},
 				async execute() {
 					return [[{ json: { limit: this.getNodeParameter('limit', 0) } }]];
@@ -310,7 +317,7 @@ describe('createNodeAsTool', () => {
 				),
 			}).response;
 
-			await expect(tool.invoke({})).resolves.toBe('[{"limit":50}]');
+			await expect(tool.invoke({})).resolves.toBe(expected);
 			await expect(tool.invoke({ count: 0 })).resolves.toBe('[{"limit":0}]');
 			await expect(tool.invoke({ count: 5 })).resolves.toBe('[{"limit":5}]');
 			await expect(tool.invoke({ count: '5' })).rejects.toThrow('did not match expected schema');

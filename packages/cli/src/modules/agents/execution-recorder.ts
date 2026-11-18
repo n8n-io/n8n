@@ -9,7 +9,12 @@ import {
 import { isRecord } from '@n8n/utils/is-record';
 import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
-import { extractFromAICalls, isFromAIOnlyExpression } from 'n8n-workflow';
+import {
+	extractFromAICalls,
+	isBlankFromAINumberDefault,
+	isFromAIOnlyExpression,
+	type FromAIArgument,
+} from 'n8n-workflow';
 
 import type { ToolRegistry, ToolRegistryEntry } from './tool-registry';
 
@@ -49,6 +54,12 @@ function resolveTemplatesInString(str: string, llmArgs: Record<string, unknown>)
 	return resolveJsonRefsInString(afterFromAI, llmArgs);
 }
 
+function resolveFromAIArgument(call: FromAIArgument, llmArgs: Record<string, unknown>): unknown {
+	if (Object.hasOwn(llmArgs, call.key)) return llmArgs[call.key];
+	if (isBlankFromAINumberDefault(call.type, call.defaultValue)) return undefined;
+	return call.defaultValue;
+}
+
 function resolveFromAIInString(str: string, llmArgs: Record<string, unknown>): unknown {
 	if (!str.includes('$fromAI')) return str;
 
@@ -63,10 +74,8 @@ function resolveFromAIInString(str: string, llmArgs: Record<string, unknown>): u
 	// Full-string `$fromAI(...)` — replace the entire value with the resolved
 	// arg so the timeline shows e.g. the literal prompt text, not `={{ ... }}`.
 	if (isFromAIOnlyExpression(str)) {
-		const call = calls[0];
-		if (call.key in llmArgs) return llmArgs[call.key];
-		if (call.defaultValue !== undefined) return call.defaultValue;
-		return str;
+		const resolved = resolveFromAIArgument(calls[0], llmArgs);
+		return resolved === undefined ? str : resolved;
 	}
 
 	// Mixed-content expression — substitute each `$fromAI(...)` call inline.
@@ -78,13 +87,7 @@ function resolveFromAIInString(str: string, llmArgs: Record<string, unknown>): u
 		try {
 			const inner = extractFromAICalls(match);
 			if (inner.length === 0) return match;
-			const call = inner[0];
-			const resolved =
-				call.key in llmArgs
-					? llmArgs[call.key]
-					: call.defaultValue !== undefined
-						? call.defaultValue
-						: undefined;
+			const resolved = resolveFromAIArgument(inner[0], llmArgs);
 			if (resolved === undefined) return match;
 			if (typeof resolved === 'object') return JSON.stringify(resolved);
 			return String(resolved);
