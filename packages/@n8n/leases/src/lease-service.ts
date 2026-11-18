@@ -7,7 +7,7 @@ const LEASE_KIND_NAME_PATTERN = /^[a-z][a-z0-9-]*$/;
 
 /** Registers lease kinds with a provider and forwards their changes to it. */
 export class LeaseService<TTransaction> {
-	private readonly kinds = new Map<string, LeaseKind<TTransaction>>();
+	private readonly kinds = new Set<string>();
 
 	constructor(private readonly provider: LeaseProvider<TTransaction>) {}
 
@@ -22,14 +22,15 @@ export class LeaseService<TTransaction> {
 		}
 		if (this.kinds.has(name)) throw new DuplicateLeaseKindError(name);
 
-		this.kinds.set(name, kind);
+		this.kinds.add(name);
 
 		const {
 			leaseSeconds,
 			startTimeoutSeconds = DEFAULT_LEASE_KIND_OPTIONS.startTimeoutSeconds,
 			maxFailedStarts = DEFAULT_LEASE_KIND_OPTIONS.maxFailedStarts,
 		} = kind.options ?? {};
-		const options: LeaseKindOptions = { leaseSeconds, startTimeoutSeconds, maxFailedStarts };
+		const options: LeaseKindOptions = { startTimeoutSeconds, maxFailedStarts };
+		if (leaseSeconds !== undefined) options.leaseSeconds = leaseSeconds;
 
 		this.provider.registerSource(name, kind.source);
 		await this.provider.registerHolder(
@@ -53,7 +54,7 @@ export class LeaseService<TTransaction> {
 	async syncAll(): Promise<void> {
 		const failed: string[] = [];
 		const errors: unknown[] = [];
-		for (const kind of this.kinds.keys()) {
+		for (const kind of this.kinds) {
 			try {
 				await this.provider.sync(kind);
 			} catch (error) {
