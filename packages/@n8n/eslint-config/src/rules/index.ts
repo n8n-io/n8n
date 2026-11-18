@@ -3,6 +3,7 @@ import { NoUncaughtJsonParseRule } from './no-uncaught-json-parse.js';
 import { NoUnneededBackticksRule } from './no-unneeded-backticks.js';
 import { NoUnusedParamInCatchClauseRule } from './no-unused-param-catch-clause.js';
 import { NoUselessCatchThrowRule } from './no-useless-catch-throw.js';
+import { PreserveErrorCauseRule } from './preserve-error-cause.js';
 import { NoSkippedTestsRule } from './no-skipped-tests.js';
 import { NoInterpolationInRegularStringRule } from './no-interpolation-in-regular-string.js';
 import { NoDynamicImportTemplateRule } from './no-dynamic-import-template.js';
@@ -38,6 +39,7 @@ export const rules = {
 	'no-unneeded-backticks': NoUnneededBackticksRule,
 	'no-unused-param-in-catch-clause': NoUnusedParamInCatchClauseRule,
 	'no-useless-catch-throw': NoUselessCatchThrowRule,
+	'preserve-error-cause': PreserveErrorCauseRule,
 	'no-skipped-tests': NoSkippedTestsRule,
 	'no-interpolation-in-regular-string': NoInterpolationInRegularStringRule,
 	'no-dynamic-import-template': NoDynamicImportTemplateRule,

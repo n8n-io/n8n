@@ -25,10 +25,15 @@ export type RunnerOutcome = { ok: true; value: unknown[] } | { ok: false; error:
 export interface RunnerOptions {
 	/** The items of other nodes that ran before, by node name, in the order in which they ran. */
 	nodes?: Record<string, unknown[]>;
-	/** The error setting of the Code node. */
-	onError?: 'continueRegularOutput' | 'continueErrorOutput';
-	/** The output to read. The default is 0. */
+	/**
+	 * The items of another output of a node that ran before, by `<node>@<output>`. The other
+	 * outputs use `nodes` (output 0).
+	 */
+	outputs?: Record<string, unknown[]>;
+	/** The output of the code's own node that the check reads. The default is 0. */
 	output?: number;
+	/** The error of the node, or the items of its output. */
+	onError?: 'continueRegularOutput' | 'continueErrorOutput';
 	/** Other settings of the Code node, for example `retryOnFail`. */
 	settings?: Record<string, unknown>;
 }
@@ -99,7 +104,7 @@ export function nativeCode(
 	code: string,
 	mode: CodeMode,
 	items: unknown[],
-	options: Pick<RunnerOptions, 'nodes'> & {
+	options: Pick<RunnerOptions, 'nodes' | 'outputs'> & {
 		effects?: Record<string, unknown[]>;
 		/** What the converter knows of the workflow, for example `pairsByPosition`. */
 		known?: Partial<CodeNativeInput>;
@@ -126,7 +131,14 @@ export function nativeCode(
 	if (!c.ok) throw new Error(`does not compile: ${c.blockers.map((b) => b.message).join('; ')}`);
 	if (!c.compiled.data) throw new Error('no module');
 	const out = runModule(c.compiled.data, {
-		trigger: { body: { input: items, nodes: t.translation.nodes.map((n) => options.nodes?.[n]) } },
+		trigger: {
+			body: {
+				input: items,
+				nodes: t.translation.nodes.map(
+					(n) => options.outputs?.[`${n.name}@${n.output}`] ?? options.nodes?.[n.name],
+				),
+			},
+		},
 		now: 1_700_000_000_000,
 		seed: 1,
 		effects: options.effects ?? {},

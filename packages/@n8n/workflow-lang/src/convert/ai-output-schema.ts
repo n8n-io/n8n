@@ -37,6 +37,8 @@ export interface StructuredOutput {
 	shape: OutputShape;
 	/** False for versions before 1.3: the answer can have no `output`. */
 	outputRequired: boolean;
+	/** The JSON Schema of `{ output }`, as LangChain prints it: the schema of the tool of the agent. */
+	schema: Record<string, unknown>;
 }
 
 /** A shape, and the JSON Schema that LangChain prints for it. */
@@ -286,6 +288,22 @@ ${JSON.stringify(schema)}
 `;
 }
 
+/**
+ * The schema of a tool as the Gemini client of LangChain sends it (`removeAdditionalProperties`
+ * of `@langchain/google-genai`): without the keys `additionalProperties`, `$schema` and `strict`
+ * at every level, also when such a key is the name of a property.
+ */
+export function geminiToolSchema(value: unknown): unknown {
+	if (Array.isArray(value)) return value.map(geminiToolSchema);
+	if (!isRecord(value)) return value;
+	const out: Record<string, unknown> = {};
+	for (const [key, member] of Object.entries(value)) {
+		if (key === 'additionalProperties' || key === '$schema' || key === 'strict') continue;
+		out[key] = geminiToolSchema(member);
+	}
+	return out;
+}
+
 /** The text of a schema parameter: a string, or an object that a generated workflow stores. */
 function schemaText(raw: unknown): string | undefined {
 	if (typeof raw === 'string') return raw.startsWith('=') ? undefined : raw;
@@ -338,5 +356,10 @@ export function structuredOutput(
 		...objectJson(['output'], [built], [outputRequired], 'strip'),
 		$schema: 'http://json-schema.org/draft-07/schema#',
 	};
-	return { instructions: formatInstructions(wrapper), shape: built.shape, outputRequired };
+	return {
+		instructions: formatInstructions(wrapper),
+		shape: built.shape,
+		outputRequired,
+		schema: wrapper,
+	};
 }

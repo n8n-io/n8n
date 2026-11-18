@@ -37,7 +37,7 @@ function native(
 	const c = checkTranslation(t.translation, mode);
 	if (!c.ok) throw new Error(`does not compile: ${c.blockers.map((b) => b.message).join('; ')}`);
 	if (!c.compiled.data) throw new Error('no module');
-	const lists = t.translation.nodes.map((n) => nodes[n]);
+	const lists = t.translation.nodes.map((n) => nodes[n.name]);
 	const out = runModule(c.compiled.data, {
 		trigger: { body: { input, nodes: lists } },
 		now: NOW,
@@ -548,7 +548,9 @@ describe('regex subset check', () => {
 
 	it.each([
 		['(?<=a)b', ''],
-		['\\p{L}', 'u'],
+		// A script has no name without `sc=`: the runtime has no such property.
+		['\\p{Latin}', 'u'],
+		['\\p{L}', 'v'],
 		['a', 'iu'],
 		['\\07', ''],
 		['a', 'd'],

@@ -13,7 +13,7 @@
  * proves the parameters that the converter writes.
  */
 import { credentialFlagKey } from '../credentials/flags.ts';
-import { structuredOutput } from './ai-output-schema.ts';
+import { geminiToolSchema, structuredOutput } from './ai-output-schema.ts';
 import { toolArguments, toolNameOf } from './from-ai.ts';
 import { isRecord } from './types.ts';
 
@@ -291,12 +291,20 @@ const GEMINI_OPTIONS: Record<string, string> = {
 	topP: 'topP',
 };
 
+/** The default of `modelName` for each version of `lmChatGoogleGemini`. */
+const GEMINI_DEFAULT_MODEL: Record<string, string> = {
+	'1': 'models/gemini-2.5-flash',
+	'1.1': 'models/gemini-3-flash-preview',
+	'1.2': 'models/gemini-3-flash-preview',
+};
+
 /** The chat model sub-node `lmChatGoogleGemini` (ChatGoogleGenerativeAI of LangChain). */
 function geminiModel(sub: ClusterSubNode): Record<string, unknown> | string {
 	const version = sub.typeVersion ?? 1;
-	if (![1, 1.1].includes(version)) return `model version ${version}`;
+	const fallback = GEMINI_DEFAULT_MODEL[String(version)];
+	if (fallback === undefined) return `model version ${version}`;
 	const p = sub.parameters ?? {};
-	const model = p.modelName;
+	const model = p.modelName ?? fallback;
 	// The text of a failed request has the model, so the model is a literal.
 	if (typeof model !== 'string' || model === '' || model.startsWith('=')) return 'model name';
 	const options = p.options ?? {};
@@ -348,14 +356,37 @@ function chatModel(
 	return `model ${sub.type.replace(LC, '')}`;
 }
 
+/**
+ * The reason of a sub-node that supplies another sub-node, by the node that it supplies: a
+ * model of an output parser (the parser asks the model to fix an answer), or a sub-node of a tool.
+ */
+function subReason(subs: ClusterSubNode[]): string | undefined {
+	for (const sub of subs) {
+		if (sub.target === undefined) continue;
+		const target = subs.find((other) => other.name === sub.target);
+		if (target?.connection === 'ai_outputParser') {
+			return (target.parameters?.autoFix ?? false) === false
+				? 'model of an output parser without auto-fixing'
+				: 'auto-fixing output parser';
+		}
+		if (target?.connection === 'ai_tool')
+			return `tool ${target.type.replace(LC, '')} with sub-nodes`;
+		if (target !== undefined) return `sub-nodes of ${target.type.replace(LC, '')}`;
+	}
+	return undefined;
+}
+
 function chainLlm(
 	root: string,
 	version: number,
 	p: Record<string, unknown>,
 	subs: ClusterSubNode[],
 ): NativeCluster | string {
+	const unused = subReason(subs);
+	if (unused !== undefined) return unused;
 	const models = subs.filter((s) => s.connection === 'ai_languageModel');
 	const parsers = subs.filter((s) => s.connection === 'ai_outputParser');
+	if (models.length > 1) return 'fallback model';
 	if (models.length !== 1 || models.length + parsers.length !== subs.length) return 'sub-nodes';
 	if (subs.some((s) => s.target !== undefined)) return 'sub-nodes';
 	const [sub] = models;
@@ -363,11 +394,12 @@ function chainLlm(
 	if (typeof chat === 'string') return chat;
 	const { aiModel } = chat;
 	// The parameter exists from version 1.4. Without it, a connected parser has no effect.
-	const hasParser = p.hasOutputParser ?? false;
-	if (typeof hasParser !== 'boolean') return 'output parser';
-	if (hasParser ? parsers.length !== 1 || version < 1.4 : parsers.length !== 0) {
-		return 'output parser';
-	}
+	const wantsParser = p.hasOutputParser ?? false;
+	if (typeof wantsParser !== 'boolean') return 'output parser';
+	if (parsers.length > 1 || (wantsParser && version < 1.4)) return 'output parser';
+	// The parameter without a parser node, and a parser node without the parameter: v1 runs
+	// the chain without a parser.
+	const hasParser = wantsParser && parsers.length === 1;
 	let outputParser: Record<string, unknown> | undefined;
 	if (hasParser) {
 		const [parser] = parsers;
@@ -376,7 +408,9 @@ function chainLlm(
 		}
 		const structured = structuredOutput(parser.typeVersion ?? 1, parser.parameters ?? {});
 		if (typeof structured === 'string') return structured;
-		outputParser = { ...structured };
+		// The chain gives the model the instructions; the schema is for the tool of the agent.
+		const { schema: _schema, ...read } = structured;
+		outputParser = read;
 	}
 	let text: unknown;
 	if (version <= 1.3) {
@@ -437,7 +471,8 @@ const AGENT_OPTIONS = new Set([
 
 /** The prompt of a root: the text parameter, or the field that the chat trigger gives. */
 function promptOf(p: Record<string, unknown>): unknown {
-	const type = p.promptType ?? 'define';
+	// The default of the parameter is the prompt of the chat trigger.
+	const type = p.promptType ?? 'auto';
 	if (type === 'define') return p.text ?? '';
 	if (type === 'auto') return '={{ $json.chatInput }}';
 	if (type === 'guardrails') return '={{ $json.guardrailsInput }}';
@@ -572,10 +607,32 @@ function toolsAgent(
 	context: ClusterContext,
 	settings: ClusterSettings,
 ): NativeCluster | string {
-	if (![2, 2.1, 2.2, 3, 3.1].includes(version)) return `agent version ${version}`;
+	if (![1.6, 1.7, 1.8, 1.9, 2, 2.1, 2.2, 3, 3.1].includes(version)) {
+		return `agent version ${version}`;
+	}
+	// Before version 2 the node has other agent types, and the Tools Agent asks the model
+	// for a stream. The library node reads a stream of text of the Chat Completions API.
+	const streams = version < 2;
+	if (streams && (p.agent ?? 'toolsAgent') !== 'toolsAgent') {
+		return typeof p.agent === 'string' && !p.agent.startsWith('=')
+			? `agent type ${p.agent}`
+			: 'agent type';
+	}
+	const unused = subReason(subs);
+	if (unused !== undefined) return unused;
 	const toolSubs = subs.filter((s) => s.connection === 'ai_tool');
 	if (toolSubs.length > 0) subs = subs.filter((s) => s.connection !== 'ai_tool');
-	if (subs.some((s) => s.connection === 'ai_outputParser')) return 'output parser';
+	// The parser is in use only with the parameter `hasOutputParser`. The parameter without a
+	// parser node, and a parser node without the parameter: v1 runs the agent without a parser.
+	const parsers = subs.filter((s) => s.connection === 'ai_outputParser');
+	const wantsParser = p.hasOutputParser ?? false;
+	if (typeof wantsParser !== 'boolean' || parsers.length > 1) return 'output parser';
+	const hasParser = wantsParser && parsers.length === 1;
+	// With a stream, the answer of the parser comes as parts of a tool call.
+	if (streams && hasParser) return 'output parser before version 2';
+	if (streams && toolSubs.length > 0) return 'tools before version 2';
+	subs = subs.filter((s) => s.connection !== 'ai_outputParser');
+	if (subs.filter((s) => s.connection === 'ai_languageModel').length > 1) return 'fallback model';
 	if (subs.length !== 1 && subs.length !== 2) return 'sub-nodes';
 	const sub = subs.find((s) => s.connection === 'ai_languageModel');
 	if (sub === undefined || sub.target !== undefined) return 'sub-nodes';
@@ -586,9 +643,39 @@ function toolsAgent(
 	const chat = chatModel(root, sub);
 	if (typeof chat === 'string') return chat;
 	const { aiModel } = chat;
+	if (streams && aiMemory !== undefined) return 'memory before version 2';
+	if (streams && aiModel.provider !== 'openAi' && aiModel.provider !== 'openRouter') {
+		return 'stream of this chat model';
+	}
+	if (streams) {
+		if (aiModel.responses === true) return 'stream of the Responses API';
+		const model = aiModel.model;
+		// LangChain uses the Responses API for some model names; its stream has another form.
+		if (typeof model !== 'string' || model.startsWith('=') || prefersResponses(model)) {
+			return 'stream of the Responses API';
+		}
+	}
 	// Before version 3 the agent refuses a model that uses the Responses API.
 	if (version < 3 && aiModel.responses === true) return 'responses model before version 3';
-	if ((p.hasOutputParser ?? false) !== false) return 'output parser';
+	let outputParser: Record<string, unknown> | undefined;
+	if (hasParser) {
+		const [parser] = parsers;
+		if (parser.target !== undefined || (parser.targetIndex ?? 0) !== 0) return 'sub-nodes';
+		if (parser.type !== `${LC}outputParserStructured`) {
+			return `output parser ${parser.type.replace(LC, '')}`;
+		}
+		const structured = structuredOutput(parser.typeVersion ?? 1, parser.parameters ?? {});
+		if (typeof structured === 'string') return structured;
+		// With a memory, v1 keeps the answer as JSON text in the session.
+		if (aiMemory !== undefined) return 'output parser with a memory';
+		// The agent gives the model the schema as the tool `format_final_json_response`.
+		outputParser = {
+			shape: structured.shape,
+			outputRequired: structured.outputRequired,
+			schema:
+				aiModel.provider === 'gemini' ? geminiToolSchema(structured.schema) : structured.schema,
+		};
+	}
 	if ((p.needsFallback ?? false) !== false) return 'fallback model';
 	const text = promptOf(p);
 	if (text === undefined) return 'prompt type';
@@ -608,7 +695,8 @@ function toolsAgent(
 	if (typeof steps !== 'boolean') return 'intermediate steps';
 	// Before version 3, a tool call of the model is a step with LangChain objects in it.
 	if (steps && version < 3) return 'intermediate steps before version 3';
-	const batching = options.batching ?? {};
+	// Before version 2 the agent has no batches: one item at a time, and no wait.
+	const batching = streams ? {} : (options.batching ?? {});
 	if (!isRecord(batching)) return 'batching';
 	const size = batching.batchSize ?? 1;
 	const delay = batching.delayBetweenBatches ?? 0;
@@ -629,12 +717,15 @@ function toolsAgent(
 		delayBetweenBatches: delay,
 	};
 	if (steps) shared.returnIntermediateSteps = true;
+	if (outputParser !== undefined) shared.outputParser = outputParser;
 	let tools: string[] | undefined;
 	if (toolSubs.length > 0) {
-		// The proof of the loop is for the node that stops, one item at a time, without a
-		// memory, on the Chat Completions API of OpenAI.
-		if (aiMemory !== undefined) return 'tools with a memory';
+		// The proof of the loop is for the node that stops, one item at a time, on the
+		// Chat Completions API of OpenAI, with or without a memory.
 		if (!stops) return 'tools with an error setting';
+		// Before version 3 the memory node runs once for each turn of the executor. The
+		// library node has one proof of that run data on version 3 and 3.1 only.
+		if (aiMemory !== undefined && version < 3) return 'tools with a memory before version 3';
 		if (size !== 1) return 'tools with batches';
 		if (aiModel.provider !== 'openAi' && aiModel.provider !== 'openRouter') {
 			return 'tools with this chat model';
@@ -664,6 +755,7 @@ function toolsAgent(
 		credentialOf: sub.name,
 		model: sub.name,
 		...(memorySub === undefined ? {} : { memory: memorySub.name }),
+		...(outputParser === undefined ? {} : { parser: parsers[0].name }),
 		derivations: chat.derivations,
 	};
 }

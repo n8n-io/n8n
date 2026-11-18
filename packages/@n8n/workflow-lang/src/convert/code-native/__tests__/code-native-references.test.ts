@@ -10,9 +10,12 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { runReference, useUtc } from '../../../reference/runner.ts';
+import { runOracle } from '../../__tests__/behaviour/oracle-engine.ts';
+import { startTaskRunner } from '../../__tests__/behaviour/task-runner.ts';
 import { convertWorkflow } from '../../index.ts';
 import type { CodeMode } from '../translate.ts';
 import { translateCode } from '../translate.ts';
+import type { RunnerOutcome } from './runner-oracle.ts';
 import { nativeCode, runnerCode, startRunner, taskRunnerAvailable } from './runner-oracle.ts';
 
 useUtc();
@@ -157,6 +160,16 @@ describe('reads of other nodes that stay in the fallback host', () => {
 		expect(blockers('return $items("Source", 0, -1);', { runIndex: 'runIndex' })).toEqual([]);
 		expect(blockers('return $items();', { itemsOfFirstOnly: true })).toEqual([]);
 	});
+
+	it('takes an output that v1 has, and refuses an output that it does not have', () => {
+		const twoOutputs = { outputList: (_name: string, output: number) => output === 1 };
+		expect(blockers('return $items("Source", 1);', twoOutputs)).toEqual([]);
+		expect(blockers('return $("Source").all(1, -1);', twoOutputs)).toEqual([]);
+		expect(blockers('return [$("Source").first(1), $("Source").last(1)];', twoOutputs)).toEqual([]);
+		expect(blockers('return $items("Source", 1, 0);', twoOutputs)).toEqual([]);
+		expect(blockers('return $items("Source", 2);', twoOutputs)).not.toEqual([]);
+		expect(blockers('return $items("Source", 1, 1);', twoOutputs)).not.toEqual([]);
+	});
 });
 
 describe.skipIf(!taskRunnerAvailable())("reads of other nodes against n8n's task runner", () => {
@@ -166,6 +179,148 @@ describe.skipIf(!taskRunnerAvailable())("reads of other nodes against n8n's task
 		const mode = c.mode ?? 'all';
 		const runner = await runnerCode(c.code, mode, ITEMS, { nodes: NODES });
 		expect(nativeCode(c.code, mode, ITEMS, { nodes: NODES, known: KNOWN })).toEqual(runner);
+	});
+});
+
+/** An If node that gives the items with `n > 1` on output 0 and the other ones on output 1. */
+const IF = {
+	name: 'If',
+	type: 'n8n-nodes-base.if',
+	typeVersion: 2.2,
+	position: [300, 0],
+	parameters: {
+		conditions: {
+			options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 },
+			conditions: [
+				{
+					id: 'c0',
+					leftValue: '={{ $json.n > 1 }}',
+					rightValue: '',
+					operator: { type: 'boolean', operation: 'true', singleValue: true },
+				},
+			],
+			combinator: 'and',
+		},
+		options: {},
+	},
+};
+
+/** The items that the If node splits: the true branch has two, the false branch has one. */
+const SPLIT = [{ n: 1 }, { n: 2 }, { n: 3 }];
+const TRUE_BRANCH = [{ n: 2 }, { n: 3 }];
+const FALSE_BRANCH = [{ n: 1 }];
+
+/** What the converter knows of the If node: v1 has its two outputs. */
+const OUTPUTS = { outputList: (name: string, output: number) => name === 'If' && output === 1 };
+
+/** A workflow `T -> Items -> If -> Code`, where the Code node reads output 0 of the If. */
+function afterIf(code: string, mode: CodeMode = 'all') {
+	return {
+		name: 'Reads of the branches of an If',
+		nodes: [
+			{
+				name: 'T',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+			{
+				name: 'Items',
+				type: 'n8n-nodes-base.code',
+				typeVersion: 2,
+				position: [150, 0],
+				parameters: { jsCode: `return ${JSON.stringify(SPLIT)}.map((json) => ({ json }));` },
+			},
+			IF,
+			{
+				name: 'Code',
+				type: 'n8n-nodes-base.code',
+				typeVersion: 2,
+				position: [450, 0],
+				parameters: {
+					jsCode: code,
+					...(mode === 'each' ? { mode: 'runOnceForEachItem' } : {}),
+				},
+			},
+		],
+		connections: {
+			T: { main: [[{ node: 'Items', type: 'main', index: 0 }]] },
+			Items: { main: [[{ node: 'If', type: 'main', index: 0 }]] },
+			If: { main: [[{ node: 'Code', type: 'main', index: 0 }], []] },
+		},
+		settings: { executionOrder: 'v1' },
+	};
+}
+
+/** Runs `code` as the Code node after the If node in n8n's engine with its task runner. */
+async function codeAfterIf(code: string, mode: CodeMode = 'all'): Promise<RunnerOutcome> {
+	const runner = await startTaskRunner();
+	const result = await runOracle(afterIf(code, mode) as never, {
+		start: 'T',
+		item: {},
+		mode: 'trigger',
+		timeoutMs: 30_000,
+		additionalData: { startRunnerTask: runner.startRunnerTask },
+	});
+	if (result.error !== null) return { ok: false, error: result.error };
+	return { ok: true, value: result.nodes.Code?.[0] ?? [] };
+}
+
+const OUTPUT_CASES: Case[] = [
+	{ name: '$items(name, 0)', code: 'return $items("If", 0).map((i) => ({ json: i.json }));' },
+	{ name: '$items(name, 1)', code: 'return $items("If", 1).map((i) => ({ json: i.json }));' },
+	{ name: '$items(name, 1, 0)', code: 'return $items("If", 1, 0).map((i) => ({ json: i.json }));' },
+	{
+		name: '$items(name, 1, -1)',
+		code: 'return $items("If", 1, -1).map((i) => ({ json: i.json }));',
+	},
+	{ name: '.all(1)', code: 'return $("If").all(1).map((i) => ({ json: i.json }));' },
+	{ name: '.all(1, -1)', code: 'return $("If").all(1, -1).map((i) => ({ json: i.json }));' },
+	{
+		name: '.first(1) and .last(1)',
+		code: 'return [{ json: { first: $("If").first(1)?.json, last: $("If").last(1)?.json, yes: $("If").first(0)?.json } }];',
+	},
+	{
+		name: 'both branches of the If',
+		code: 'return [{ json: { yes: $items("If", 0).map((i) => i.json.n), no: $("If").all(1).map((i) => i.json.n) } }];',
+	},
+	{
+		name: 'a change of the items of another output',
+		code: 'const no = $items("If", 1);\nno[0].json.n = 99;\nreturn [{ json: { no: $("If").all(1)[0].json.n, yes: $items("If", 0)[0].json.n } }];',
+	},
+	{
+		name: 'each item mode reads the false branch',
+		mode: 'each',
+		code: 'return { json: { a: $json.n, no: $items("If", 1).map((i) => i.json.n) } };',
+	},
+];
+
+describe.skipIf(!taskRunnerAvailable())("reads of another output against n8n's task runner", () => {
+	beforeAll(async () => await startRunner(), 120_000);
+
+	it.each(OUTPUT_CASES)('$name', async (c) => {
+		const mode = c.mode ?? 'all';
+		const runner = await codeAfterIf(c.code, mode);
+		const native = nativeCode(c.code, mode, TRUE_BRANCH, {
+			nodes: { If: TRUE_BRANCH },
+			outputs: { 'If@1': FALSE_BRANCH },
+			known: OUTPUTS,
+		});
+		expect(native).toEqual(runner);
+	});
+
+	it('keeps an output that v1 does not have in the host', () => {
+		for (const code of ['return $items("If", 2);', 'return $("If").all(2);']) {
+			const r = translateCode({
+				code,
+				mode: 'all',
+				kind: 'code',
+				hasNode: () => true,
+				outputList: (_name: string, output: number) => output === 1,
+			});
+			expect(r.ok).toBe(false);
+		}
 	});
 });
 
@@ -218,6 +373,80 @@ describe.skipIf(!taskRunnerAvailable())(
 		});
 	},
 );
+
+const BRANCH_CODE =
+	'return [{ json: { no: $items("If", 1).map((i) => i.json.n), yes: $("If").all(0).map((i) => i.json.n) } }];';
+
+/** Converts and runs the workflow of `afterIf` and gives the items of the Code node and of v1. */
+async function convertedAfterIf(
+	code: string,
+	options: { engine?: 'always'; second?: boolean } = {},
+) {
+	const wf = afterIf(code);
+	if (options.second === true) {
+		wf.nodes.push({
+			name: 'Other',
+			type: 'n8n-nodes-base.noOp',
+			typeVersion: 1,
+			position: [450, 200],
+			parameters: {},
+		});
+		wf.connections.If = {
+			main: [
+				[{ node: 'Code', type: 'main', index: 0 }],
+				[{ node: 'Other', type: 'main', index: 0 }],
+			],
+		};
+	}
+	const v1 = await runOracle(wf as never, {
+		start: 'T',
+		item: {},
+		mode: 'trigger',
+		timeoutMs: 20_000,
+	});
+	expect(v1.error).toBeNull();
+	const converted = convertWorkflow(wf as never, { trace: 'all', engine: options.engine });
+	expect(converted.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+	expect(converted.fallbackNodes).toEqual([]);
+	const out = await runReference(converted.source, {
+		trigger: { body: {} },
+		now: 0,
+		seed: 1,
+		effects: {},
+		trace: true,
+	});
+	expect(out.status).toBe('ok');
+	return {
+		items: (out.trace ?? []).find((t) => t.step === 'Code')?.items,
+		expected: v1.nodes.Code?.[0],
+	};
+}
+
+describe('reads of another output in a converted workflow', () => {
+	it('reads both outputs of an If node', async () => {
+		const { items, expected } = await convertedAfterIf(BRANCH_CODE);
+		expect(expected).toEqual([{ no: [1], yes: [2, 3] }]);
+		expect(items).toEqual(expected);
+	});
+
+	it('reads both outputs of an If node in the run-stack shape', async () => {
+		const { items, expected } = await convertedAfterIf(BRANCH_CODE, {
+			engine: 'always',
+			second: true,
+		});
+		expect(expected).toEqual([{ no: [1], yes: [2, 3] }]);
+		expect(items).toEqual(expected);
+	});
+
+	it('refuses the code when the run stack has no list of the output', () => {
+		const out = convertWorkflow(afterIf(BRANCH_CODE) as never, { trace: 'all', engine: 'always' });
+		// The host has the items of one output of the last run only, and v1 has both here.
+		expect(out.ok).toBe(false);
+		expect(out.diagnostics.filter((d) => d.severity === 'error').map((d) => d.code)).toEqual([
+			'code-global',
+		]);
+	});
+});
 
 describe('reads of other nodes in a converted workflow', () => {
 	it('gives false for .isExecuted of a node that runs after this node', async () => {

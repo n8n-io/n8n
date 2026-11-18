@@ -75,6 +75,15 @@ export interface StepCall {
 	 * of each item of output 0, for `$('Node').item` in a later node.
 	 */
 	pairsByCall?: boolean;
+	/**
+	 * The options of a fallback-host call for one item (`[ITEM]`), for a library node that the
+	 * converter calls once for each item and that sends what v1 sends once (a message). When
+	 * the call for an item ends with the mark of `RUNS_IN_HOST`, nothing went out for that
+	 * item, and the host runs the v1 node for that item only. The items before it are not
+	 * sent again. With "retry on fail", the step runs again for all items, as v1 runs the
+	 * node again: the items before the failure go out again.
+	 */
+	hostItem?: Code;
 }
 
 /** Fails the node when a raw expression would not give the v1 value in the host. */
@@ -287,6 +296,20 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 	}
 	const push = (value: string) =>
 		pairs ? `{ ${out}.push(${value}); ${pairs}.paired.push(${INDEX}); }` : `${out}.push(${value});`;
+	// "Retry on fail" of v1 for a node that sends what v1 sends once: all items run again.
+	const again = call.hostItem !== undefined ? errorRetry(c) : null;
+	if (again) {
+		c.helper('retryError');
+		w.open(`for (let tryIndex = 0; tryIndex < ${again.tries}; tryIndex++) {`);
+		if (again.delay > 0) {
+			w.line(
+				`if (tryIndex > 0) await ctx.wait({ name: ${str(`${c.node.name} (retry)`)}, duration: ${again.delay} });`,
+			);
+		}
+		w.line(`while (${out}.length > 0) ${out}.pop();`);
+		w.line('let failed = false;');
+		w.open('try {');
+	}
 	if (call.usesIndex || pairs) {
 		w.open(`for (let ${INDEX} = 0; ${INDEX} < ${input}.length; ${INDEX}++) {`);
 		w.line(`const ${ITEM} = ${input}[${INDEX}];`);
@@ -294,7 +317,48 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 		w.open(`for (const ${ITEM} of ${input}) {`);
 	}
 	const opts = options(c, call, `[${ITEM}]`);
-	if (onError === 'stopWorkflow' && c.traceAll) {
+	if (call.hostItem !== undefined) {
+		// The call for the item, and the host call for the same item after the mark. With a
+		// retry, the error of the last try is traced after the loop of the tries.
+		const traced = onError === 'stopWorkflow' && c.traceAll === true && again === null;
+		if (onError !== 'stopWorkflow' || traced) w.open('try {');
+		// The loop of the tries is the retry of v1: the call has no retry policy of its own.
+		const once: Code =
+			opts.kind === 'object'
+				? { kind: 'object', entries: opts.entries.filter(([k]) => k !== 'retry') }
+				: opts;
+		emitItemWithHost(c, fn, once, call.hostItem);
+		// The v1 node in the host gives the error item of the item itself. n8n's engine moves
+		// an item that has only `error` to the error output, with the JSON of the input item.
+		const moved = errors
+			? `if (itemInHost && r != null && typeof r.error === 'string' && r.error !== '' && Object.keys(r).length === 1) ${errorOutputPush(c, errors, ITEM, push('{}')).replace('error.message', 'r.error')} else ${push('r')}`
+			: push('r');
+		w.line(`for (const r of result) ${moved}`);
+		if (traced) failTrace(c);
+		if (onError !== 'stopWorkflow') {
+			w.close('} catch (error) {');
+			w.depth++;
+			w.line(errors ? errorOutputPush(c, errors, ITEM, push('{}')) : push(errorItem(c)));
+			w.close();
+		}
+		if (again) {
+			// The end of the loop of the items, then the end of the try.
+			w.close();
+			w.close('} catch (error) {');
+			w.depth++;
+			w.open(`if (tryIndex + 1 >= ${again.tries}) {`);
+			if (c.traceAll && onError === 'stopWorkflow') {
+				w.line(
+					`ctx.trace(${str(c.node.name)}, { $error: { message: error.message, description: error.description ?? '' } });`,
+				);
+			}
+			w.line('throw error;');
+			w.close();
+			w.line('failed = true;');
+			w.close();
+			w.line(`if (!failed && !retryError(${out}[0])) break;`);
+		}
+	} else if (onError === 'stopWorkflow' && c.traceAll) {
 		w.open('try {');
 		emitCall(c, 'result', 'let result: Json[]', fn, opts, 'result[0]', call.hostLimit);
 		w.line(`for (const r of result) ${push('r')}`);
@@ -340,6 +404,28 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 		w.close();
 	}
 	w.close();
+}
+
+/**
+ * Emits the call of a library node for one item (`let result`), and the fallback-host call
+ * for the same item when the library call ends with the mark of `RUNS_IN_HOST`
+ * (`StepCall.hostItem`). The host call is outside the catch block.
+ */
+function emitItemWithHost(c: NodeContext, fn: string, opts: Code, host: Code): void {
+	const { w } = c;
+	c.helper('fileLimitInHost');
+	w.line('let result: Json[] = [];');
+	w.line('let itemInHost = false;');
+	w.open('try {');
+	w.block(`result = await ${fn}(${c.print(opts, `result = await ${fn}(`)});`);
+	w.close('} catch (error) {');
+	w.depth++;
+	w.line('if (!fileLimitInHost(error)) throw error;');
+	w.line('itemInHost = true;');
+	w.close();
+	w.block(
+		`if (itemInHost) result = await ctx.node(${c.print(host, 'if (itemInHost) result = await ctx.node(')});`,
+	);
 }
 
 /** The text of the error item of a v1 node: the code that reads it from the caught error. */
@@ -413,13 +499,24 @@ const WHOLE_NODE_ERRORS = new Set(['n8n-nodes-base.supabase']);
 const FIRST_PAIRED_ERROR_ITEMS = new Set(['n8n-nodes-base.supabase']);
 
 /**
+ * Nodes whose input items can have binary data and whose error item is proven against v1
+ * with such an item: the item of the error output has the JSON of the input item only.
+ */
+const NO_BINARY_ERROR_ITEMS = new Set(['n8n-nodes-base.emailSend']);
+
+/**
  * The statement that moves the error item of `item` to the error output, as v1 merges it
  * into the input item. An item without a text stays on output 0 (`toMain`).
  */
 function errorOutputPush(c: NodeContext, errors: string, item: string, toMain: string): string {
 	const text = errorText(c);
 	if (UNPAIRED_ERROR_ITEMS.has(c.node.type)) return `${errors}.push({ error: ${text.code} });`;
-	const moved = `${errors}.push({ ...${item}, error: ${text.code} });`;
+	// The error item of v1 has no binary data: the engine copies only the JSON of the input item.
+	const plain = NO_BINARY_ERROR_ITEMS.has(c.node.type);
+	if (plain) c.helper('errorItemOf');
+	const moved = plain
+		? `${errors}.push(errorItemOf(${item}, ${text.code}));`
+		: `${errors}.push({ ...${item}, error: ${text.code} });`;
 	return text.optional ? `if (${text.code}) ${moved} else ${toMain}` : moved;
 }
 

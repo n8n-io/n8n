@@ -1,6 +1,12 @@
 import { getNodeParameters } from '../convert/node-parameters.ts';
 import type { Json, WalkMember, WalkNode, WalkProperty } from './walk.ts';
-import { propertiesOf, resolveParameters } from './walk.ts';
+import {
+	displayedProperty,
+	locatorRule,
+	locatorSample,
+	propertiesOf,
+	resolveParameters,
+} from './walk.ts';
 
 const FIXED_CHOICES = new Set(['resource', 'operation', 'authentication']);
 
@@ -15,9 +21,11 @@ export interface Variant {
 	values: unknown[];
 	form?: { value: unknown; fields: Record<string, unknown[]> };
 	rejected?: { value: unknown; fields: Record<string, unknown[]> };
+	settled?: boolean;
 }
 
 const MAX_CHOICES = 12;
+const MAX_MANY_CHOICES = 40;
 const MAX_GROUP_CASES = 16;
 const MAX_VARIANT_CASES = 100;
 const DATES = ['2024-01-10T10:00:00.000Z', '2024-02-11T11:00:00.000Z', '2024-03-12T12:00:00.000Z'];
@@ -152,11 +160,29 @@ export function mapperVariant(name: string, itemExpression: (field: string) => s
 
 const MAX_GROUP_DEPTH = 2;
 
+function collectionSample(collection: WalkMember, depth: number): Json | undefined {
+	if (depth >= MAX_GROUP_DEPTH) return undefined;
+	const out: Json = {};
+	for (const member of collection.options ?? []) {
+		if (!member.name) continue;
+		const sample =
+			member.type === 'collection'
+				? collectionSample(member, depth + 1)
+				: samplesOf(member, member.default)[0];
+		if (sample === undefined) return undefined;
+		out[member.name] = sample;
+	}
+	return Object.keys(out).length > 0 ? out : undefined;
+}
+
 function membersTogetherAndAlone(collection: WalkMember): unknown[] {
 	const together: Json = {};
 	for (const member of collection.options ?? []) {
 		if (!member.name) continue;
-		const [sample] = samplesOf(member, member.default);
+		const sample =
+			member.type === 'collection'
+				? collectionSample(member, 0)
+				: samplesOf(member, member.default)[0];
 		if (sample === undefined) return [];
 		together[member.name] = sample;
 	}
@@ -203,6 +229,119 @@ function innerGroups(
 	};
 }
 
+const MAX_COMBINATIONS = 64;
+
+function siblingKeys(group: WalkMember): Set<string> {
+	const names = new Set(
+		(group.values ?? []).flatMap((field) =>
+			field.name && field.type !== 'hidden' && field.type !== 'notice' ? [field.name] : [],
+		),
+	);
+	const keys = new Set<string>();
+	for (const field of group.values ?? []) {
+		for (const rules of [field.displayOptions?.show, field.displayOptions?.hide])
+			for (const key of Object.keys(rules ?? {})) if (names.has(key)) keys.add(key);
+	}
+	return keys;
+}
+
+function shownWith(field: WalkMember, entry: Json, siblings: Set<string>): boolean {
+	for (const [key, allowed] of Object.entries(field.displayOptions?.show ?? {}))
+		if (siblings.has(key) && !allowed.includes(entry[key])) return false;
+	for (const [key, denied] of Object.entries(field.displayOptions?.hide ?? {}))
+		if (siblings.has(key) && denied.includes(entry[key])) return false;
+	return true;
+}
+
+function combinedGroupVariant(
+	property: WalkProperty,
+	group: WalkMember,
+	siblings: Set<string>,
+	itemExpression: (field: string) => string,
+	depth: number,
+): Variant | undefined {
+	if (!group.name) return undefined;
+	let entries: Json[] = [{}];
+	const free = new Map<string, WalkMember[]>();
+	const tried = new Map<string, Set<unknown>>();
+	for (const field of group.values ?? []) {
+		if (!field.name || field.type === 'notice' || field.type === 'hidden') continue;
+		const name = field.name;
+		const choices = choicesOf(field);
+		const nested =
+			field.type === 'fixedCollection'
+				? innerGroups(property, group, field, itemExpression, depth)
+				: undefined;
+		const all =
+			field.type === 'options' && choices.length > 0
+				? siblings.has(name)
+					? choices
+					: [choices[0]]
+				: nested
+					? [nested.all[0]]
+					: field.type === 'collection'
+						? membersTogetherAndAlone(field).slice(0, 1)
+						: samplesOf(field, field.default).slice(0, 1);
+		if (all.length === 0) return undefined;
+		if (field.type === 'options' && choices.length > 1 && !siblings.has(name))
+			free.set(name, [...(free.get(name) ?? []), field]);
+		const next: Json[] = [];
+		const seen = tried.get(name) ?? new Set<unknown>();
+		tried.set(name, seen);
+		const fresh = all.filter((value) => !seen.has(value));
+		for (const entry of entries) {
+			if (!shownWith(field, entry, siblings)) next.push(entry);
+			else if (name in entry) {
+				next.push(entry);
+				if (siblings.has(name) && entry[name] === [...seen][0])
+					for (const value of fresh) next.push({ ...entry, [name]: value });
+			} else for (const value of all) next.push({ ...entry, [name]: value });
+		}
+		for (const value of all) seen.add(value);
+		if (next.length > MAX_COMBINATIONS) return undefined;
+		entries = next;
+	}
+	entries = entries.filter((entry) => Object.keys(entry).length > 0);
+	if (entries.length === 0) return undefined;
+	const others: Json[] = [];
+	for (const [name, fields] of free) {
+		for (const field of fields) {
+			const base = entries.find((entry) => name in entry && shownWith(field, entry, siblings));
+			if (!base) continue;
+			for (const choice of choicesOf(field)) {
+				if (choice === base[name] || others.length >= MAX_GROUP_CASES) continue;
+				others.push({ ...base, [name]: choice });
+			}
+		}
+	}
+	const multiple = property.typeOptions?.multipleValues === true;
+	const valueOf = (first: Json, more: Json[]) => (multiple ? [first, ...more] : first);
+	const [first, second] = entries;
+	const withItems: Json = {};
+	const fields: Record<string, unknown[]> = {};
+	for (const field of group.values ?? []) {
+		if (!field.name || !(field.name in first) || field.name in withItems) continue;
+		if (!shownWith(field, first, siblings)) continue;
+		const itemValues = itemValuesOf(field, first[field.name]);
+		if (itemValues === undefined) continue;
+		const itemField = fieldNameOf(`${property.name}_${group.name}_${field.name}`);
+		withItems[field.name] = itemExpression(itemField);
+		fields[itemField] = itemValues;
+	}
+	return {
+		condition: `${property.name}.${group.name}`,
+		name: property.name,
+		member: group.name,
+		values: [
+			valueOf(first, second ? [second] : []),
+			...[...entries.slice(1), ...others].map((entry) => valueOf(entry, [])),
+		],
+		...(Object.keys(fields).length > 0
+			? { form: { value: valueOf({ ...first, ...withItems }, second ? [second] : []), fields } }
+			: {}),
+	};
+}
+
 function groupVariant(
 	property: WalkProperty,
 	group: WalkMember,
@@ -210,13 +349,16 @@ function groupVariant(
 	depth = 0,
 ): Variant | undefined {
 	if (!group.name) return undefined;
+	const siblings = siblingKeys(group);
+	if (siblings.size > 0)
+		return combinedGroupVariant(property, group, siblings, itemExpression, depth);
 	const entry: Json = {};
 	const second: Json = {};
 	const withItems: Json = {};
 	const fields: Record<string, unknown[]> = {};
 	const others: Json[] = [];
 	for (const field of group.values ?? []) {
-		if (!field.name || field.type === 'notice') continue;
+		if (!field.name || field.type === 'notice' || field.type === 'hidden') continue;
 		const choices = choicesOf(field);
 		const nested =
 			field.type === 'fixedCollection'
@@ -244,7 +386,11 @@ function groupVariant(
 			withItems[field.name] = itemExpression(itemField);
 			fields[itemField] = itemValues;
 		}
-		for (const other of all.slice(1)) others.push({ [field.name]: other });
+		for (const other of all.slice(1)) {
+			const text = JSON.stringify({ [field.name]: other });
+			if (!others.some((known) => JSON.stringify(known) === text))
+				others.push({ [field.name]: other });
+		}
 	}
 	if (Object.keys(entry).length === 0 || others.length >= MAX_GROUP_CASES) return undefined;
 	const multiple = property.typeOptions?.multipleValues === true;
@@ -280,6 +426,67 @@ function shownProperty(
 	return shown.length === 1 ? properties[shown[0]] : undefined;
 }
 
+export function filledGroups(
+	node: WalkNode,
+	version: number,
+	parameters: Json,
+	itemExpression: (field: string) => string,
+): Json | undefined {
+	let out: Json | undefined;
+	for (const [name, value] of Object.entries(resolveParameters(node, version, parameters))) {
+		if (!isRecord(value) || Object.keys(value).length > 0) continue;
+		const property = shownProperty(node, version, parameters, name);
+		if (property?.type !== 'fixedCollection') continue;
+		const [group] = property.options ?? [];
+		const variant = group === undefined ? undefined : groupVariant(property, group, itemExpression);
+		if (variant) out = withVariant(out ?? parameters, variant, variant.values[0]);
+	}
+	return out;
+}
+
+const MAX_LOCATOR_MODES = 4;
+const LOCATOR_WRONG = 'not a value of the mode';
+
+export function locatorVariants(
+	node: WalkNode,
+	version: number,
+	parameters: Json,
+	itemExpression: (field: string) => string,
+): Variant[] {
+	const resolved = resolveParameters(node, version, parameters);
+	const variants: Variant[] = [];
+	for (const [name, current] of Object.entries(parameters)) {
+		if (!isRecord(current) || current.__rl !== true || typeof current.mode !== 'string') continue;
+		const property = displayedProperty(node, version, resolved, name);
+		if (property?.type !== 'resourceLocator' || !Array.isArray(property.modes)) continue;
+		const modes = property.modes.filter((mode) => typeof mode.name === 'string');
+		const ordered = [
+			...modes.filter((mode) => mode.name !== current.mode),
+			...modes.filter((mode) => mode.name === current.mode),
+		].slice(-MAX_LOCATOR_MODES);
+		for (const mode of ordered) {
+			const rule = locatorRule(mode);
+			const sample = mode.name === current.mode ? current.value : locatorSample(mode);
+			const fits = (value: unknown) =>
+				typeof value === 'string' && (rule === undefined || rule.exec(value) !== null);
+			const wrong = rule !== undefined && !fits(LOCATOR_WRONG) ? [LOCATOR_WRONG, 5] : [5];
+			const field = fieldNameOf(`${name}_${String(mode.name)}`);
+			const locator = (value: unknown): Json => ({ __rl: true, mode: mode.name, value });
+			variants.push({
+				condition: name,
+				name,
+				settled: true,
+				values: [...(fits(sample) ? [sample] : []), ...wrong].map(locator),
+				rejected: {
+					value: locator(itemExpression(field)),
+					fields: { [field]: [fits(sample) ? sample : wrong[0], wrong[0], wrong.at(-1)] },
+				},
+			});
+		}
+	}
+	return variants;
+}
+
 export function parameterVariants(
 	node: WalkNode,
 	version: number,
@@ -296,7 +503,12 @@ export function parameterVariants(
 		cases += variant.values.length;
 		variants.push(variant);
 	};
+	for (const variant of locatorVariants(node, version, parameters, itemExpression)) {
+		cases += variant.values.length;
+		variants.push(variant);
+	}
 	const mappers: Variant[] = [];
+	const many: Variant[] = [];
 	for (const [name, value] of Object.entries(resolveParameters(node, version, parameters))) {
 		if (name in fixed || FIXED_CHOICES.has(name)) continue;
 		const property = shownProperty(node, version, parameters, name);
@@ -362,6 +574,16 @@ export function parameterVariants(
 		} else {
 			const checked = checkedSamples(property);
 			const values = [...samplesOf(property, value), ...(checked?.values ?? [])];
+			const choices = property.type === 'options' ? choicesOf(property) : [];
+			if (values.length === 0 && choices.length > MAX_CHOICES) {
+				if (choices.length <= MAX_MANY_CHOICES)
+					many.push({
+						condition: name,
+						name,
+						values: choices.filter((choice) => choice !== value),
+					});
+				continue;
+			}
 			const itemValues = itemValuesOf(property, values[0]);
 			const field = fieldNameOf(name);
 			take({
@@ -378,6 +600,7 @@ export function parameterVariants(
 		}
 	}
 	for (const mapper of mappers) take(mapper);
+	for (const variant of many) take(variant);
 	return variants;
 }
 

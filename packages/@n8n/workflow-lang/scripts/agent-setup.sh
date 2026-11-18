@@ -12,8 +12,15 @@ here=$(pwd -P)
 [ "$here" != "$(cd "$MAIN" && pwd -P)" ] || { echo "agent-setup: run this in a worktree, not in the main checkout" >&2; exit 2; }
 
 if [ -z "$(git status --short | grep -v '^??' || true)" ]; then
-	git merge -q --ff-only "$BRANCH" 2> /dev/null || git reset -q --hard "$BRANCH" 2> /dev/null ||
-		echo "agent-setup: could not move to $BRANCH; make a branch from it with: git checkout -b <name> $BRANCH" >&2
+	if ! git merge -q --ff-only "$BRANCH" 2> /dev/null; then
+		# A worktree that is only behind the branch is already fast-forwarded above. A reset here
+		# would discard the commits of an agent branch, so a worktree with its own commits stays.
+		if git merge-base --is-ancestor HEAD "$BRANCH" 2> /dev/null; then
+			git reset -q --hard "$BRANCH" 2> /dev/null
+		else
+			echo "agent-setup: this worktree has its own commits; it stays on $(git rev-parse --short HEAD)" >&2
+		fi
+	fi
 fi
 
 link() {
@@ -21,9 +28,15 @@ link() {
 	[ -e "$1" ] || [ -L "$1" ] || { mkdir -p "$(dirname "$1")"; ln -s "$MAIN/$1" "$1"; }
 }
 link node_modules
+# The node types and the credential types come from the built node packages. These are the two
+# packages of `DEFAULT_NODE_PACKAGES`; without the second one every AI test fails.
 for p in packages/@n8n/workflow-lang packages/@n8n/workflow-fallback-host packages/@n8n/node-engine-compatibility \
-	packages/nodes-base packages/core packages/workflow packages/cli packages/@n8n/task-runner; do
+	packages/nodes-base packages/@n8n/nodes-langchain packages/core packages/workflow packages/cli \
+	packages/@n8n/task-runner; do
 	link "$p/node_modules"
 	[ "$p" = packages/@n8n/workflow-lang ] || link "$p/dist"
+done
+for f in packages/nodes-base/dist/known/credentials.json packages/@n8n/nodes-langchain/dist/known/credentials.json; do
+	[ -e "$f" ] || echo "agent-setup: $f is missing. Build that package in $MAIN, or the node and AI tests fail." >&2
 done
 echo "agent-setup: $(git log --oneline -1 | cut -c1-70)"

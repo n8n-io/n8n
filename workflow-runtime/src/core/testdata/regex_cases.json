@@ -5084,6 +5084,1527 @@
   "expected": null
  },
  {
+  "source": "\\p{L}+",
+  "flags": "u",
+  "input": [
+   104,
+   233,
+   108,
+   108,
+   111,
+   32,
+   119,
+   246,
+   114,
+   108,
+   100,
+   32,
+   49,
+   50,
+   51
+  ],
+  "lastIndex": 0,
+  "expected": [
+   0,
+   5
+  ]
+ },
+ {
+  "source": "\\p{L}+",
+  "flags": "u",
+  "input": [
+   104,
+   233,
+   108,
+   108,
+   111,
+   32,
+   119,
+   246,
+   114,
+   108,
+   100,
+   32,
+   49,
+   50,
+   51
+  ],
+  "lastIndex": 1,
+  "expected": [
+   1,
+   5
+  ]
+ },
+ {
+  "source": "\\p{L}+",
+  "flags": "u",
+  "input": [
+   49,
+   50,
+   51,
+   32,
+   945,
+   946,
+   947
+  ],
+  "lastIndex": 0,
+  "expected": [
+   4,
+   7
+  ]
+ },
+ {
+  "source": "\\p{L}+",
+  "flags": "u",
+  "input": [
+   49,
+   50,
+   51,
+   32,
+   945,
+   946,
+   947
+  ],
+  "lastIndex": 1,
+  "expected": [
+   4,
+   7
+  ]
+ },
+ {
+  "source": "\\p{L}+",
+  "flags": "u",
+  "input": [
+   28450,
+   23383
+  ],
+  "lastIndex": 0,
+  "expected": [
+   0,
+   2
+  ]
+ },
+ {
+  "source": "\\p{L}+",
+  "flags": "u",
+  "input": [
+   28450,
+   23383
+  ],
+  "lastIndex": 1,
+  "expected": [
+   1,
+   2
+  ]
+ },
+ {
+  "source": "\\p{L}+",
+  "flags": "u",
+  "input": [],
+  "lastIndex": 0,
+  "expected": null
+ },
+ {
+  "source": "\\p{L}+",
+  "flags": "u",
+  "input": [],
+  "lastIndex": 1,
+  "expected": null
+ },
+ {
+  "source": "\\p{L}+",
+  "flags": "gu",
+  "input": [
+   111,
+   110,
+   101,
+   32,
+   116,
+   119,
+   111
+  ],
+  "lastIndex": 0,
+  "expected": [
+   0,
+   3
+  ]
+ },
+ {
+  "source": "\\p{L}+",
+  "flags": "gu",
+  "input": [
+   111,
+   110,
+   101,
+   32,
+   116,
+   119,
+   111
+  ],
+  "lastIndex": 1,
+  "expected": [
+   1,
+   3
+  ]
+ },
+ {
+  "source": "\\p{L}+",
+  "flags": "gu",
+  "input": [
+   111,
+   110,
+   101,
+   32,
+   116,
+   119,
+   111
+  ],
+  "lastIndex": 3,
+  "expected": [
+   4,
+   7
+  ]
+ },
+ {
+  "source": "\\p{L}+",
+  "flags": "gu",
+  "input": [
+   201,
+   67,
+   79,
+   76,
+   69,
+   32,
+   110,
+   111,
+   114,
+   109,
+   97,
+   108,
+   101
+  ],
+  "lastIndex": 0,
+  "expected": [
+   0,
+   5
+  ]
+ },
+ {
+  "source": "\\p{L}+",
+  "flags": "gu",
+  "input": [
+   201,
+   67,
+   79,
+   76,
+   69,
+   32,
+   110,
+   111,
+   114,
+   109,
+   97,
+   108,
+   101
+  ],
+  "lastIndex": 1,
+  "expected": [
+   1,
+   5
+  ]
+ },
+ {
+  "source": "\\p{L}+",
+  "flags": "gu",
+  "input": [
+   201,
+   67,
+   79,
+   76,
+   69,
+   32,
+   110,
+   111,
+   114,
+   109,
+   97,
+   108,
+   101
+  ],
+  "lastIndex": 3,
+  "expected": [
+   3,
+   5
+  ]
+ },
+ {
+  "source": "[\\p{L}\\p{N}_]+",
+  "flags": "gu",
+  "input": [
+   117,
+   115,
+   101,
+   114,
+   95,
+   52,
+   50,
+   32,
+   233,
+   109,
+   105,
+   108,
+   101,
+   45,
+   55
+  ],
+  "lastIndex": 0,
+  "expected": [
+   0,
+   7
+  ]
+ },
+ {
+  "source": "[\\p{L}\\p{N}_]+",
+  "flags": "gu",
+  "input": [
+   117,
+   115,
+   101,
+   114,
+   95,
+   52,
+   50,
+   32,
+   233,
+   109,
+   105,
+   108,
+   101,
+   45,
+   55
+  ],
+  "lastIndex": 1,
+  "expected": [
+   1,
+   7
+  ]
+ },
+ {
+  "source": "[\\p{L}\\p{N}_]+",
+  "flags": "gu",
+  "input": [
+   117,
+   115,
+   101,
+   114,
+   95,
+   52,
+   50,
+   32,
+   233,
+   109,
+   105,
+   108,
+   101,
+   45,
+   55
+  ],
+  "lastIndex": 3,
+  "expected": [
+   3,
+   7
+  ]
+ },
+ {
+  "source": "[\\p{L}\\p{N}_]+",
+  "flags": "gu",
+  "input": [
+   45,
+   45
+  ],
+  "lastIndex": 0,
+  "expected": null
+ },
+ {
+  "source": "[\\p{L}\\p{N}_]+",
+  "flags": "gu",
+  "input": [
+   45,
+   45
+  ],
+  "lastIndex": 1,
+  "expected": null
+ },
+ {
+  "source": "[\\p{L}\\p{N}_]+",
+  "flags": "gu",
+  "input": [
+   45,
+   45
+  ],
+  "lastIndex": 3,
+  "expected": null
+ },
+ {
+  "source": "\\P{L}+",
+  "flags": "u",
+  "input": [
+   97,
+   98,
+   99,
+   32,
+   49,
+   50,
+   51,
+   32,
+   100,
+   101,
+   102
+  ],
+  "lastIndex": 0,
+  "expected": [
+   3,
+   8
+  ]
+ },
+ {
+  "source": "\\P{L}+",
+  "flags": "u",
+  "input": [
+   97,
+   98,
+   99,
+   32,
+   49,
+   50,
+   51,
+   32,
+   100,
+   101,
+   102
+  ],
+  "lastIndex": 1,
+  "expected": [
+   3,
+   8
+  ]
+ },
+ {
+  "source": "\\P{L}+",
+  "flags": "u",
+  "input": [
+   97,
+   98,
+   99
+  ],
+  "lastIndex": 0,
+  "expected": null
+ },
+ {
+  "source": "\\P{L}+",
+  "flags": "u",
+  "input": [
+   97,
+   98,
+   99
+  ],
+  "lastIndex": 1,
+  "expected": null
+ },
+ {
+  "source": "[^\\p{L}\\s]",
+  "flags": "gu",
+  "input": [
+   97,
+   32,
+   98,
+   44,
+   32,
+   99,
+   33,
+   32,
+   57
+  ],
+  "lastIndex": 0,
+  "expected": [
+   3,
+   4
+  ]
+ },
+ {
+  "source": "[^\\p{L}\\s]",
+  "flags": "gu",
+  "input": [
+   97,
+   32,
+   98,
+   44,
+   32,
+   99,
+   33,
+   32,
+   57
+  ],
+  "lastIndex": 1,
+  "expected": [
+   3,
+   4
+  ]
+ },
+ {
+  "source": "[^\\p{L}\\s]",
+  "flags": "gu",
+  "input": [
+   97,
+   32,
+   98,
+   44,
+   32,
+   99,
+   33,
+   32,
+   57
+  ],
+  "lastIndex": 3,
+  "expected": [
+   3,
+   4
+  ]
+ },
+ {
+  "source": "[^\\p{L}\\s]",
+  "flags": "gu",
+  "input": [
+   97,
+   98,
+   99
+  ],
+  "lastIndex": 0,
+  "expected": null
+ },
+ {
+  "source": "[^\\p{L}\\s]",
+  "flags": "gu",
+  "input": [
+   97,
+   98,
+   99
+  ],
+  "lastIndex": 1,
+  "expected": null
+ },
+ {
+  "source": "[^\\p{L}\\s]",
+  "flags": "gu",
+  "input": [
+   97,
+   98,
+   99
+  ],
+  "lastIndex": 3,
+  "expected": null
+ },
+ {
+  "source": "[\\P{L}]",
+  "flags": "u",
+  "input": [
+   97,
+   98,
+   49
+  ],
+  "lastIndex": 0,
+  "expected": [
+   2,
+   3
+  ]
+ },
+ {
+  "source": "[\\P{L}]",
+  "flags": "u",
+  "input": [
+   97,
+   98,
+   49
+  ],
+  "lastIndex": 1,
+  "expected": [
+   2,
+   3
+  ]
+ },
+ {
+  "source": "[^\\P{L}]",
+  "flags": "u",
+  "input": [
+   49,
+   50,
+   97
+  ],
+  "lastIndex": 0,
+  "expected": [
+   2,
+   3
+  ]
+ },
+ {
+  "source": "[^\\P{L}]",
+  "flags": "u",
+  "input": [
+   49,
+   50,
+   97
+  ],
+  "lastIndex": 1,
+  "expected": [
+   2,
+   3
+  ]
+ },
+ {
+  "source": "\\p{Lu}\\p{Ll}*",
+  "flags": "gu",
+  "input": [
+   72,
+   101,
+   108,
+   108,
+   111,
+   32,
+   87,
+   111,
+   114,
+   108,
+   100,
+   32,
+   201,
+   67,
+   79,
+   76,
+   69,
+   32,
+   201,
+   116,
+   233,
+   32,
+   453
+  ],
+  "lastIndex": 0,
+  "expected": [
+   0,
+   5
+  ]
+ },
+ {
+  "source": "\\p{Lu}\\p{Ll}*",
+  "flags": "gu",
+  "input": [
+   72,
+   101,
+   108,
+   108,
+   111,
+   32,
+   87,
+   111,
+   114,
+   108,
+   100,
+   32,
+   201,
+   67,
+   79,
+   76,
+   69,
+   32,
+   201,
+   116,
+   233,
+   32,
+   453
+  ],
+  "lastIndex": 1,
+  "expected": [
+   6,
+   11
+  ]
+ },
+ {
+  "source": "\\p{Lu}\\p{Ll}*",
+  "flags": "gu",
+  "input": [
+   72,
+   101,
+   108,
+   108,
+   111,
+   32,
+   87,
+   111,
+   114,
+   108,
+   100,
+   32,
+   201,
+   67,
+   79,
+   76,
+   69,
+   32,
+   201,
+   116,
+   233,
+   32,
+   453
+  ],
+  "lastIndex": 3,
+  "expected": [
+   6,
+   11
+  ]
+ },
+ {
+  "source": "\\p{Letter}\\p{gc=Nd}\\p{General_Category=Punctuation}",
+  "flags": "u",
+  "input": [
+   97,
+   49,
+   33,
+   32,
+   98,
+   1635,
+   1567
+  ],
+  "lastIndex": 0,
+  "expected": [
+   0,
+   3
+  ]
+ },
+ {
+  "source": "\\p{Letter}\\p{gc=Nd}\\p{General_Category=Punctuation}",
+  "flags": "u",
+  "input": [
+   97,
+   49,
+   33,
+   32,
+   98,
+   1635,
+   1567
+  ],
+  "lastIndex": 1,
+  "expected": [
+   4,
+   7
+  ]
+ },
+ {
+  "source": "\\p{Script=Han}+",
+  "flags": "u",
+  "input": [
+   28450,
+   23383,
+   12363,
+   12394,
+   12459,
+   12490
+  ],
+  "lastIndex": 0,
+  "expected": [
+   0,
+   2
+  ]
+ },
+ {
+  "source": "\\p{Script=Han}+",
+  "flags": "u",
+  "input": [
+   28450,
+   23383,
+   12363,
+   12394,
+   12459,
+   12490
+  ],
+  "lastIndex": 1,
+  "expected": [
+   1,
+   2
+  ]
+ },
+ {
+  "source": "\\p{Script=Han}+",
+  "flags": "u",
+  "input": [
+   97,
+   98,
+   99
+  ],
+  "lastIndex": 0,
+  "expected": null
+ },
+ {
+  "source": "\\p{Script=Han}+",
+  "flags": "u",
+  "input": [
+   97,
+   98,
+   99
+  ],
+  "lastIndex": 1,
+  "expected": null
+ },
+ {
+  "source": "\\p{sc=Cyrl}+",
+  "flags": "u",
+  "input": [
+   1087,
+   1088,
+   1080,
+   1074,
+   1077,
+   1090,
+   32,
+   119,
+   111,
+   114,
+   108,
+   100
+  ],
+  "lastIndex": 0,
+  "expected": [
+   0,
+   6
+  ]
+ },
+ {
+  "source": "\\p{sc=Cyrl}+",
+  "flags": "u",
+  "input": [
+   1087,
+   1088,
+   1080,
+   1074,
+   1077,
+   1090,
+   32,
+   119,
+   111,
+   114,
+   108,
+   100
+  ],
+  "lastIndex": 1,
+  "expected": [
+   1,
+   6
+  ]
+ },
+ {
+  "source": "\\p{scx=Hira}+|\\p{Script_Extensions=Katakana}+",
+  "flags": "gu",
+  "input": [
+   12363,
+   12394,
+   12459,
+   12490,
+   12540,
+   28450,
+   23383
+  ],
+  "lastIndex": 0,
+  "expected": [
+   0,
+   2
+  ]
+ },
+ {
+  "source": "\\p{scx=Hira}+|\\p{Script_Extensions=Katakana}+",
+  "flags": "gu",
+  "input": [
+   12363,
+   12394,
+   12459,
+   12490,
+   12540,
+   28450,
+   23383
+  ],
+  "lastIndex": 1,
+  "expected": [
+   1,
+   2
+  ]
+ },
+ {
+  "source": "\\p{scx=Hira}+|\\p{Script_Extensions=Katakana}+",
+  "flags": "gu",
+  "input": [
+   12363,
+   12394,
+   12459,
+   12490,
+   12540,
+   28450,
+   23383
+  ],
+  "lastIndex": 3,
+  "expected": [
+   3,
+   5
+  ]
+ },
+ {
+  "source": "\\p{Emoji_Presentation}",
+  "flags": "gu",
+  "input": [
+   97,
+   55357,
+   56832,
+   98,
+   55356,
+   57225,
+   32,
+   49,
+   35
+  ],
+  "lastIndex": 0,
+  "expected": [
+   1,
+   3
+  ]
+ },
+ {
+  "source": "\\p{Emoji_Presentation}",
+  "flags": "gu",
+  "input": [
+   97,
+   55357,
+   56832,
+   98,
+   55356,
+   57225,
+   32,
+   49,
+   35
+  ],
+  "lastIndex": 1,
+  "expected": [
+   1,
+   3
+  ]
+ },
+ {
+  "source": "\\p{Emoji_Presentation}",
+  "flags": "gu",
+  "input": [
+   97,
+   55357,
+   56832,
+   98,
+   55356,
+   57225,
+   32,
+   49,
+   35
+  ],
+  "lastIndex": 3,
+  "expected": [
+   4,
+   6
+  ]
+ },
+ {
+  "source": "\\p{Extended_Pictographic}+",
+  "flags": "u",
+  "input": [
+   111,
+   107,
+   32,
+   55357,
+   56397,
+   55356,
+   57341,
+   32,
+   169
+  ],
+  "lastIndex": 0,
+  "expected": [
+   3,
+   5
+  ]
+ },
+ {
+  "source": "\\p{Extended_Pictographic}+",
+  "flags": "u",
+  "input": [
+   111,
+   107,
+   32,
+   55357,
+   56397,
+   55356,
+   57341,
+   32,
+   169
+  ],
+  "lastIndex": 1,
+  "expected": [
+   3,
+   5
+  ]
+ },
+ {
+  "source": "\\p{Emoji}",
+  "flags": "gu",
+  "input": [
+   49,
+   35,
+   32,
+   97,
+   55357,
+   56832
+  ],
+  "lastIndex": 0,
+  "expected": [
+   0,
+   1
+  ]
+ },
+ {
+  "source": "\\p{Emoji}",
+  "flags": "gu",
+  "input": [
+   49,
+   35,
+   32,
+   97,
+   55357,
+   56832
+  ],
+  "lastIndex": 1,
+  "expected": [
+   1,
+   2
+  ]
+ },
+ {
+  "source": "\\p{Emoji}",
+  "flags": "gu",
+  "input": [
+   49,
+   35,
+   32,
+   97,
+   55357,
+   56832
+  ],
+  "lastIndex": 3,
+  "expected": [
+   4,
+   6
+  ]
+ },
+ {
+  "source": "[\\p{Lu}a-c-]+",
+  "flags": "u",
+  "input": [
+   120,
+   97,
+   45,
+   98,
+   201,
+   122
+  ],
+  "lastIndex": 0,
+  "expected": [
+   1,
+   5
+  ]
+ },
+ {
+  "source": "[\\p{Lu}a-c-]+",
+  "flags": "u",
+  "input": [
+   120,
+   97,
+   45,
+   98,
+   201,
+   122
+  ],
+  "lastIndex": 1,
+  "expected": [
+   1,
+   5
+  ]
+ },
+ {
+  "source": "\\p{Any}",
+  "flags": "gu",
+  "input": [
+   97,
+   55357,
+   55357,
+   56832
+  ],
+  "lastIndex": 0,
+  "expected": [
+   0,
+   1
+  ]
+ },
+ {
+  "source": "\\p{Any}",
+  "flags": "gu",
+  "input": [
+   97,
+   55357,
+   55357,
+   56832
+  ],
+  "lastIndex": 1,
+  "expected": [
+   1,
+   2
+  ]
+ },
+ {
+  "source": "\\p{Any}",
+  "flags": "gu",
+  "input": [
+   97,
+   55357,
+   55357,
+   56832
+  ],
+  "lastIndex": 3,
+  "expected": [
+   2,
+   4
+  ]
+ },
+ {
+  "source": "\\p{Any}",
+  "flags": "gu",
+  "input": [],
+  "lastIndex": 0,
+  "expected": null
+ },
+ {
+  "source": "\\p{Any}",
+  "flags": "gu",
+  "input": [],
+  "lastIndex": 1,
+  "expected": null
+ },
+ {
+  "source": "\\p{Any}",
+  "flags": "gu",
+  "input": [],
+  "lastIndex": 3,
+  "expected": null
+ },
+ {
+  "source": "\\p{ASCII}+",
+  "flags": "u",
+  "input": [
+   97,
+   98,
+   99,
+   233
+  ],
+  "lastIndex": 0,
+  "expected": [
+   0,
+   3
+  ]
+ },
+ {
+  "source": "\\p{ASCII}+",
+  "flags": "u",
+  "input": [
+   97,
+   98,
+   99,
+   233
+  ],
+  "lastIndex": 1,
+  "expected": [
+   1,
+   3
+  ]
+ },
+ {
+  "source": "\\p{White_Space}+",
+  "flags": "gu",
+  "input": [
+   97,
+   32,
+   9,
+   160,
+   8195,
+   98
+  ],
+  "lastIndex": 0,
+  "expected": [
+   1,
+   5
+  ]
+ },
+ {
+  "source": "\\p{White_Space}+",
+  "flags": "gu",
+  "input": [
+   97,
+   32,
+   9,
+   160,
+   8195,
+   98
+  ],
+  "lastIndex": 1,
+  "expected": [
+   1,
+   5
+  ]
+ },
+ {
+  "source": "\\p{White_Space}+",
+  "flags": "gu",
+  "input": [
+   97,
+   32,
+   9,
+   160,
+   8195,
+   98
+  ],
+  "lastIndex": 3,
+  "expected": [
+   3,
+   5
+  ]
+ },
+ {
+  "source": "\\p{Mn}",
+  "flags": "gu",
+  "input": [
+   101,
+   769,
+   97,
+   776
+  ],
+  "lastIndex": 0,
+  "expected": [
+   1,
+   2
+  ]
+ },
+ {
+  "source": "\\p{Mn}",
+  "flags": "gu",
+  "input": [
+   101,
+   769,
+   97,
+   776
+  ],
+  "lastIndex": 1,
+  "expected": [
+   1,
+   2
+  ]
+ },
+ {
+  "source": "\\p{Mn}",
+  "flags": "gu",
+  "input": [
+   101,
+   769,
+   97,
+   776
+  ],
+  "lastIndex": 3,
+  "expected": [
+   3,
+   4
+  ]
+ },
+ {
+  "source": "^[\\p{L}\\p{M}\\p{Zs}\\p{Pd}'.]+$",
+  "flags": "u",
+  "input": [
+   74,
+   101,
+   97,
+   110,
+   45,
+   76,
+   117,
+   99,
+   32,
+   79,
+   39,
+   78,
+   101,
+   105,
+   108,
+   32,
+   100,
+   769
+  ],
+  "lastIndex": 0,
+  "expected": [
+   0,
+   18
+  ]
+ },
+ {
+  "source": "^[\\p{L}\\p{M}\\p{Zs}\\p{Pd}'.]+$",
+  "flags": "u",
+  "input": [
+   74,
+   101,
+   97,
+   110,
+   45,
+   76,
+   117,
+   99,
+   32,
+   79,
+   39,
+   78,
+   101,
+   105,
+   108,
+   32,
+   100,
+   769
+  ],
+  "lastIndex": 1,
+  "expected": null
+ },
+ {
+  "source": "^[\\p{L}\\p{M}\\p{Zs}\\p{Pd}'.]+$",
+  "flags": "u",
+  "input": [
+   120,
+   95,
+   49
+  ],
+  "lastIndex": 0,
+  "expected": null
+ },
+ {
+  "source": "^[\\p{L}\\p{M}\\p{Zs}\\p{Pd}'.]+$",
+  "flags": "u",
+  "input": [
+   120,
+   95,
+   49
+  ],
+  "lastIndex": 1,
+  "expected": null
+ },
+ {
+  "source": "\\p{Cs}",
+  "flags": "u",
+  "input": [
+   97,
+   55296,
+   98
+  ],
+  "lastIndex": 0,
+  "expected": [
+   1,
+   2
+  ]
+ },
+ {
+  "source": "\\p{Cs}",
+  "flags": "u",
+  "input": [
+   97,
+   55296,
+   98
+  ],
+  "lastIndex": 1,
+  "expected": [
+   1,
+   2
+  ]
+ },
+ {
+  "source": "\\p{Cs}",
+  "flags": "u",
+  "input": [
+   55357,
+   56832
+  ],
+  "lastIndex": 0,
+  "expected": null
+ },
+ {
+  "source": "\\p{Cs}",
+  "flags": "u",
+  "input": [
+   55357,
+   56832
+  ],
+  "lastIndex": 1,
+  "expected": null
+ },
+ {
+  "source": "\\p{Cn}",
+  "flags": "u",
+  "input": [
+   97,
+   888
+  ],
+  "lastIndex": 0,
+  "expected": [
+   1,
+   2
+  ]
+ },
+ {
+  "source": "\\p{Cn}",
+  "flags": "u",
+  "input": [
+   97,
+   888
+  ],
+  "lastIndex": 1,
+  "expected": [
+   1,
+   2
+  ]
+ },
+ {
+  "source": "\\p{L}",
+  "flags": "",
+  "input": [
+   112,
+   123,
+   76,
+   125
+  ],
+  "lastIndex": 0,
+  "expected": [
+   0,
+   4
+  ]
+ },
+ {
+  "source": "\\p{L}",
+  "flags": "",
+  "input": [
+   112,
+   123,
+   76,
+   125
+  ],
+  "lastIndex": 1,
+  "expected": null
+ },
+ {
+  "source": "\\p{L}",
+  "flags": "",
+  "input": [
+   76
+  ],
+  "lastIndex": 0,
+  "expected": null
+ },
+ {
+  "source": "\\p{L}",
+  "flags": "",
+  "input": [
+   76
+  ],
+  "lastIndex": 1,
+  "expected": null
+ },
+ {
+  "source": "[\\p{L}]+",
+  "flags": "",
+  "input": [
+   123,
+   112,
+   76,
+   125,
+   120
+  ],
+  "lastIndex": 0,
+  "expected": [
+   0,
+   4
+  ]
+ },
+ {
+  "source": "[\\p{L}]+",
+  "flags": "",
+  "input": [
+   123,
+   112,
+   76,
+   125,
+   120
+  ],
+  "lastIndex": 1,
+  "expected": [
+   1,
+   4
+  ]
+ },
+ {
+  "source": "[\\p{L}]+",
+  "flags": "",
+  "input": [
+   113
+  ],
+  "lastIndex": 0,
+  "expected": null
+ },
+ {
+  "source": "[\\p{L}]+",
+  "flags": "",
+  "input": [
+   113
+  ],
+  "lastIndex": 1,
+  "expected": null
+ },
+ {
+  "source": "\\P{L}",
+  "flags": "",
+  "input": [
+   80,
+   123,
+   76,
+   125
+  ],
+  "lastIndex": 0,
+  "expected": [
+   0,
+   4
+  ]
+ },
+ {
+  "source": "\\P{L}",
+  "flags": "",
+  "input": [
+   80,
+   123,
+   76,
+   125
+  ],
+  "lastIndex": 1,
+  "expected": null
+ },
+ {
   "source": "((?=(?=^A|Ac?)|^)|(?=(?=^c?|A{1,3}?)(?=^^c+?|c)c{2}|(?=c?a{1,3}?a*?|^)(?=ca+|A{1,2}^^)))?A^",
   "flags": "s",
   "input": [

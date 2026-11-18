@@ -316,6 +316,11 @@ interface PlanKnown {
 	ownErrors?: boolean;
 	/** The walk goes on after the first reason against, and collects every method check. */
 	all?: boolean;
+	/**
+	 * True for an expression that only throws V8's \`ReferenceError: <name> is not defined\`:
+	 * the read of a name that the sandbox of v1 does not have (\`SANDBOX_MISSING\`).
+	 */
+	notDefined?: (x: ts.Node) => boolean;
 }
 
 /** Checks the operations of `block` and adds the method checks to `plan`; a string is the first reason against. */
@@ -404,6 +409,7 @@ function planOperations(
 	const check = (x: ts.Node): void => {
 		// The traced form of the code wants every method check, also after a reason against.
 		if (reason !== null && !known.all) return;
+		if (known.notDefined?.(x)) return;
 		if (ts.isCallExpression(x)) {
 			const c = strip(x.expression);
 			if (ts.isIdentifier(c)) {
@@ -513,6 +519,8 @@ function planOperations(
 			reason ??= '`delete`';
 			return;
 		} else if (ts.isAwaitExpression(x)) {
+			// The value throws before the code waits for it.
+			if (known.notDefined?.(strip(x.expression))) return;
 			const kind = known.awaited?.(x) ?? null;
 			if (kind === 'http') {
 				// A failed request throws v1's error (`codeHttpResult`). The options are checked.

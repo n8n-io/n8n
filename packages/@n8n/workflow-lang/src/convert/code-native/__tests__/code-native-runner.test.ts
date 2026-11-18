@@ -373,6 +373,27 @@ const BINARY_CASES: Case[] = [
 ];
 const BINARY: Case[] = BINARY_CASES.map((c) => ({ ...c, items: FILE_ITEMS }));
 
+/** An optional call of a method that has a helper, with more of the chain after it. */
+const CHAIN_ITEMS = [{ a: 'x|y', n: 12.5, list: ['p', 'q'] }, { a: null }, {}];
+const each = (expression: string) =>
+	`return items.map((i) => ({ json: { v: ${expression}, kind: typeof (${expression}) } }));`;
+const CHAINS: Case[] = [
+	"i.json.a?.toString().split('|')[0]",
+	"i.json.a?.toString().split('|')",
+	'i.json.a?.toString().length',
+	'i.json.a?.toString().toUpperCase().length',
+	"i.json.a?.toString().split('|').length",
+	'i.json.n?.toFixed(1).length',
+	"i.json.n?.toFixed(1).split('.')[1]",
+	'i.json.a?.toString()',
+	'i.json.a?.toString()?.length',
+	"(i.json.a?.toString()).split('|')[0]",
+	"i.json.list?.join('-').toUpperCase()",
+	"i.json.list?.join('-').split('-').length",
+	'i.json.a?.trim().length',
+	"i.json.a?.toString().split('|')[0] ?? 'none'",
+].map((expression) => ({ name: expression, code: each(expression), items: CHAIN_ITEMS }));
+
 describe.skipIf(!taskRunnerAvailable())("native Code nodes against n8n's task runner", () => {
 	// n8n's modules and the runner process take some seconds to start.
 	beforeAll(async () => await startRunner(), 120_000);
@@ -398,5 +419,19 @@ describe.skipIf(!taskRunnerAvailable())("native Code nodes against n8n's task ru
 
 	it.each(BINARY)('reads the bytes of binary data as v1: $name', async (c) => {
 		await same(c);
+	});
+
+	// The form with the lines of errors has no place for a call after the helper: then the
+	// translation refuses the code, and the Code node runs in the fallback host.
+	it.each(CHAINS)('stops an optional chain as v1, or refuses the code: $name', async (c) => {
+		const items = c.items ?? ITEMS;
+		let native: unknown;
+		try {
+			native = nativeCode(c.code, 'all', items);
+		} catch (error) {
+			expect(String(error)).toMatch(/blocked: .*optional chain/);
+			return;
+		}
+		expect(native).toEqual(await runnerCode(c.code, 'all', items));
 	});
 });

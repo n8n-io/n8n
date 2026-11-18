@@ -2948,6 +2948,23 @@ const TOOL_INPUT_GAPS = [
 export const TOOL_PENDING_CASES = ALL_TOOL_CASES.filter((c) => TOOL_INPUT_GAPS.includes(c.name));
 export const TOOL_CASES = ALL_TOOL_CASES.filter((c) => !TOOL_INPUT_GAPS.includes(c.name));
 
+/** The Tools Agent with tools and a memory: a simple tool and a conversation of one item. */
+export const TOOL_MEMORY_CASES: EquivalenceCase[] = [
+	...[3.1].map((version) =>
+		agent(
+			`tools memory, version ${version}`,
+			version,
+			gpt,
+			[fetchA, page('A'), completion('The page is A')],
+			brief(version),
+			{
+				...withTools([httpTool]),
+				subNodes: [gpt, httpTool, customKey(`key-tool-mem-${version}`)],
+			},
+		),
+	),
+];
+
 function twoRounds(version: number): EquivalenceCase {
 	return agent(
 		`tools ${version}, two rounds`,
@@ -3311,6 +3328,730 @@ function toolCases(version: number): EquivalenceCase[] {
 	];
 }
 
+const FORMAT = 'format_final_json_response';
+const texasCall = callsTools([[FORMAT, texas, 'call_1']]);
+const texasText = JSON.stringify(texas);
+const otherCall = callsTools([['Other', { a: 1 }, 'call_0']]);
+const continues = { settings: { onError: 'continueRegularOutput' } as NodeSettings };
+
+/** The Tools Agent with the Structured Output Parser, and no tools. */
+function parserAgent(
+	name: string,
+	version: number,
+	responses: EquivalenceCase['responses'],
+	parameters: Record<string, unknown> = {},
+	extra: Partial<EquivalenceCase> = {},
+): EquivalenceCase {
+	return agent(
+		`parser ${version}, ${name}`,
+		version,
+		gpt,
+		responses,
+		{ hasOutputParser: true, ...parameters },
+		{ subNodes: [gpt, cityExample], ...extra },
+	);
+}
+
+function parserAgentCases(version: number): EquivalenceCase[] {
+	const failed = { expectedError: PARSER_FAILED };
+	const empty = { expectedError: PARSER_EMPTY };
+	return [
+		parserAgent('answer through the tool', version, [texasCall]),
+		parserAgent('answer as text', version, [completion(JSON.stringify(texas.output))]),
+		parserAgent('answer as text with the output', version, [completion(texasText)]),
+		parserAgent('answer that is not JSON', version, [completion('Texas')], {}, failed),
+		parserAgent(
+			'tool answer of another type',
+			version,
+			[callsTools([[FORMAT, { output: { state: 5, cities: [] } }, 'call_1']])],
+			{},
+			failed,
+		),
+		parserAgent('tool answer with text', version, [
+			callsTools([[FORMAT, texas, 'call_1']], 'Here it is'),
+		]),
+		parserAgent(
+			'system message and two items',
+			version,
+			[texasCall, completion(texasText)],
+			{ text: '={{ $json.q }}', options: { systemMessage: 'Be brief' } },
+			{ items: [{ q: 'one' }, { q: 'two' }] },
+		),
+		parserAgent('unknown tool, then the answer', version, [otherCall, texasCall]),
+		parserAgent(
+			'two items, the second calls an unknown tool',
+			version,
+			[texasCall, otherCall, texasCall, texasCall],
+			{},
+			two,
+		),
+		parserAgent(
+			'tool arguments that are not JSON',
+			version,
+			[callsTools([[FORMAT, '{bad', 'call_1']])],
+			{},
+			failed,
+		),
+		parserAgent(
+			'tool arguments of every type',
+			version,
+			[
+				callsTools([[FORMAT, '5', 'call_1']]),
+				callsTools([[FORMAT, '"text"', 'call_1']]),
+				callsTools([[FORMAT, 'null', 'call_1']]),
+				callsTools([[FORMAT, '[1]', 'call_1']]),
+				callsTools([[FORMAT, '{}', 'call_1']]),
+				callsTools([[FORMAT, '{"output":{"output":{"state":"T","cities":[]}}}', 'call_1']]),
+			],
+			{},
+			{ items: [{ a: 1 }, { a: 2 }, { a: 3 }, { a: 4 }, { a: 5 }, { a: 6 }], ...continues },
+		),
+		parserAgent(
+			'tool answer without the output',
+			version,
+			[callsTools([[FORMAT, texas.output, 'call_1']])],
+			{},
+			empty,
+		),
+		parserAgent('empty answer', version, [completion('')], {}, empty),
+		parserAgent('answer in a code fence', version, [
+			completion(`Here:\n\`\`\`json\n${texasText}\n\`\`\``),
+		]),
+		parserAgent(
+			'answers as text of every type',
+			version,
+			[
+				completion('5'),
+				completion('[1]'),
+				completion('null'),
+				completion('{"output":1,"more":2}'),
+				completion(' {"cities":["Austin"],"state":"Texas","more":1} '),
+				completion('{}'),
+			],
+			{},
+			{ items: [{ a: 1 }, { a: 2 }, { a: 3 }, { a: 4 }, { a: 5 }, { a: 6 }], ...continues },
+		),
+		parserAgent('the tool and another call', version, [
+			callsTools([
+				['Other', { a: 1 }, 'call_0'],
+				[FORMAT, texas, 'call_1'],
+				[FORMAT, { output: { state: 'Ohio', cities: [] } }, 'call_2'],
+			]),
+		]),
+		parserAgent('continue', version, [completion('no'), texasCall], {}, { ...two, ...continues }),
+		parserAgent(
+			'error output',
+			version,
+			[texasCall, completion('{}')],
+			{},
+			{ ...two, settings: { onError: 'continueErrorOutput' } },
+		),
+		parserAgent('retry', version, [completion('no'), texasCall], {}, { settings: retry }),
+		parserAgent(
+			'every type of the schema',
+			version,
+			[
+				callsTools([
+					[
+						FORMAT,
+						{
+							output: {
+								more: 'kept',
+								free: [1],
+								map: { k: 1 },
+								inner: { id: 2 },
+								mood: 'good',
+								nothing: null,
+								active: false,
+								score: 1.5,
+							},
+						},
+						'call_1',
+					],
+				]),
+				callsTools([
+					[FORMAT, { output: { score: 1, active: true, nothing: null, mood: 'sad' } }, 'call_1'],
+				]),
+			],
+			{},
+			{ ...two, ...continues, subNodes: [gpt, everyType] },
+		),
+		parserAgent(
+			'parser of version 1.2',
+			version,
+			[
+				callsTools([[FORMAT, { name: 'Ann' }, 'call_1']]),
+				completion('{"name":"Ann"}'),
+				completion('{"output":{"age":3,"name":"Ann","other":true}}'),
+			],
+			{},
+			{ items: [{ a: 1 }, { a: 2 }, { a: 3 }], ...continues, subNodes: [gpt, personSchema] },
+		),
+	];
+}
+
+const responsesModel = openAiModel(1.3, 'gpt-5', {});
+const formatFunctionCall = (args: string) => ({
+	body: {
+		id: 'resp_1',
+		object: 'response',
+		output: [
+			{ type: 'function_call', id: 'fc_1', call_id: 'call_1', name: FORMAT, arguments: args },
+		],
+	},
+});
+const formatToolUse = { type: 'tool_use', id: 'tu_1', name: FORMAT, input: texas };
+
+/** The parser on the agent with each other chat model. */
+function parserModelCases(version: number): EquivalenceCase[] {
+	const on = (model: SubNodeCase, extra: Partial<EquivalenceCase> = {}) => ({
+		...extra,
+		subNodes: [model, cityExample],
+	});
+	const brief = { options: { systemMessage: 'Be brief' } };
+	const responses =
+		version < 3
+			? []
+			: [
+					parserAgent(
+						'responses, answer through the tool',
+						version,
+						[formatFunctionCall(texasText)],
+						{},
+						on(responsesModel),
+					),
+					parserAgent(
+						'responses, answers as text',
+						version,
+						[
+							response(outputText(texasText)),
+							response(outputText('{"state":"Texas",'), outputText('"cities":[]}')),
+							response(),
+							formatFunctionCall('{bad'),
+						],
+						brief,
+						{
+							...on(responsesModel),
+							items: [{ a: 1 }, { a: 2 }, { a: 3 }, { a: 4 }],
+							...continues,
+						},
+					),
+				];
+	return [
+		...responses,
+		parserAgent(
+			'anthropic, answer through the tool',
+			version,
+			[claude([formatToolUse], 'tool_use')],
+			brief,
+			on(sonnet, withAnthropic),
+		),
+		parserAgent(
+			'anthropic, answers as text',
+			version,
+			[
+				claude([claudeText(texasText)]),
+				claude([claudeText('{"output":'), claudeText('{"state":"T","cities":[]}}')]),
+				claude([claudeText('I answer'), formatToolUse], 'tool_use'),
+				claude([]),
+			],
+			{},
+			{
+				...on(sonnet, withAnthropic),
+				items: [{ a: 1 }, { a: 2 }, { a: 3 }, { a: 4 }],
+				...continues,
+			},
+		),
+		parserAgent(
+			'gemini, answer through the tool',
+			version,
+			[gemini([{ functionCall: { name: FORMAT, args: texas } }])],
+			brief,
+			on(flash, withGoogle),
+		),
+		parserAgent(
+			'gemini, answers as text',
+			version,
+			[
+				gemini([{ text: texasText }]),
+				gemini([{ text: '{"output":' }, { text: '{"state":"T","cities":[]}}' }]),
+				gemini([{ text: 'I answer' }, { functionCall: { name: FORMAT, args: texas } }]),
+				gemini([{ text: '' }]),
+			],
+			{},
+			{ ...on(flash, withGoogle), items: [{ a: 1 }, { a: 2 }, { a: 3 }, { a: 4 }], ...continues },
+		),
+		parserAgent(
+			'gemini, every type of the schema',
+			version,
+			[
+				gemini([
+					{
+						functionCall: {
+							name: FORMAT,
+							args: { output: { score: 1, active: true, nothing: null, mood: 'bad' } },
+						},
+					},
+				]),
+			],
+			{},
+			{ ...on(flash, withGoogle), subNodes: [flash, everyType] },
+		),
+		parserAgent(
+			'open router, answer through the tool',
+			version,
+			[texasCall],
+			{},
+			on(router, openRouter),
+		),
+	];
+}
+
+/** The Tools Agent with the Structured Output Parser. */
+export const AGENT_PARSER_CASES: EquivalenceCase[] = [
+	...[3.1, 2.2].flatMap((version) => [...parserAgentCases(version), ...parserModelCases(version)]),
+	...[2, 2.1, 3].map((version) =>
+		parserAgent('answer through the tool, with steps', version, [texasCall], {
+			options: { returnIntermediateSteps: version >= 3 },
+		}),
+	),
+	parserAgent('answer as text, with steps', 3.1, [completion(texasText)], {
+		options: { returnIntermediateSteps: true },
+	}),
+];
+
+const fetchAndFormat = callsTools([
+	['Fetch_page', { url: 'https://example.com/a' }, 'call_1'],
+	[FORMAT, texas, 'call_2'],
+]);
+
+/** The Tools Agent with tools and the Structured Output Parser. */
+function toolParserCases(version: number): EquivalenceCase[] {
+	const withParser = (extra: Partial<EquivalenceCase> = {}) =>
+		withTools([httpTool], { ...extra, subNodes: [gpt, httpTool, cityExample] });
+	const parameters = { ...brief(version), hasOutputParser: true };
+	const named = (name: string) => `tools and parser ${version}, ${name}`;
+	return [
+		agent(
+			named('answer through the tool'),
+			version,
+			gpt,
+			[fetchA, page('A'), texasCall],
+			parameters,
+			withParser(),
+		),
+		agent(
+			named('answer as text'),
+			version,
+			gpt,
+			[fetchA, page('A'), completion(JSON.stringify(texas.output))],
+			parameters,
+			withParser(),
+		),
+		agent(
+			named('the tool of the parser next to a call'),
+			version,
+			gpt,
+			[fetchAndFormat],
+			parameters,
+			withParser(),
+		),
+		agent(
+			named('answer without a call'),
+			version,
+			gpt,
+			[texasCall],
+			{ hasOutputParser: true },
+			withParser(),
+		),
+		agent(
+			named('answer of another type'),
+			version,
+			gpt,
+			[fetchA, page('A'), completion('Texas')],
+			parameters,
+			withParser({ expectedError: PARSER_FAILED }),
+		),
+		agent(
+			named('two items'),
+			version,
+			gpt,
+			version >= 3
+				? [texasCall, fetchB, page('B'), texasCall, completion(texasText)]
+				: [texasCall, fetchB, page('B'), completion(texasText)],
+			parameters,
+			withParser(two),
+		),
+	];
+}
+
+/** The Tools Agent with tools on the OpenRouter chat model. */
+const ROUTER_TOOL_CASES: EquivalenceCase[] = [2.2, 3.1].map((version) =>
+	agent(
+		`tools ${version}, open router`,
+		version,
+		router,
+		[fetchA, page('A'), completion('Done')],
+		brief(version),
+		{ ...withTools([httpTool]), ...openRouter, subNodes: [router, httpTool] },
+	),
+);
+
+const TOOL_PARSER_CASES: EquivalenceCase[] = [
+	...[3.1, 2.2].flatMap((version) => toolParserCases(version)),
+	...ROUTER_TOOL_CASES,
+];
+
+/** A parser that is not in use: the parameter without a parser node, and a parser node without the parameter. */
+const PARSER_UNUSED_CASES: EquivalenceCase[] = [
+	...[3.1, 2.2].flatMap((version) => [
+		agent(`${version}, parser parameter without a parser`, version, gpt, [completion('plain')], {
+			hasOutputParser: true,
+		}),
+		agent(
+			`${version}, parser without the parameter`,
+			version,
+			gpt,
+			[completion(texasText)],
+			{},
+			{ subNodes: [gpt, cityExample] },
+		),
+	]),
+	...[1.9, 1.4].flatMap((version) => [
+		chain(
+			'parser parameter without a parser',
+			gpt,
+			[completion(' plain ')],
+			{ hasOutputParser: true },
+			{
+				name: `chainLlm ${version}, parser parameter without a parser`,
+				typeVersion: version,
+			},
+		),
+		chain(
+			'parser without the parameter',
+			gpt,
+			[completion(texasText)],
+			{},
+			{
+				name: `chainLlm ${version}, parser without the parameter`,
+				typeVersion: version,
+				subNodes: [gpt, cityExample],
+			},
+		),
+	]),
+];
+
+const defaultGemini = (typeVersion: number): SubNodeCase => ({
+	name: 'Model',
+	type: `${LC}lmChatGoogleGemini`,
+	typeVersion,
+	parameters: { options: {} },
+	connection: 'ai_languageModel',
+});
+
+/** The Gemini chat model without a model name (the default of each version), and version 1.2. */
+const GEMINI_DEFAULT_CASES: EquivalenceCase[] = [1, 1.1, 1.2].flatMap((version) => [
+	agent(
+		`gemini ${version}, default model`,
+		3.1,
+		defaultGemini(version),
+		[gemini([{ text: 'Hi' }])],
+		{},
+		{ ...withGoogle, subNodes: [defaultGemini(version)] },
+	),
+	{
+		...chain(`gemini ${version}, default model, failed`, defaultGemini(version), [
+			geminiFailed(500),
+		]),
+		...withGoogle,
+		subNodes: [defaultGemini(version)],
+		expectedError: `[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/${version === 1 ? 'gemini-2.5-flash' : 'gemini-3-flash-preview'}:generateContent: [500 ] bad thing`,
+	},
+]);
+
+/** A root without the parameter `promptType`: the default is the prompt of the chat trigger. */
+const PROMPT_DEFAULT_CASES: EquivalenceCase[] = [
+	...[2.2, 3, 3.1].map((version) =>
+		agent(
+			`${version}, default prompt type`,
+			version,
+			gpt,
+			[completion('x')],
+			{ promptType: undefined, text: 'not in use' },
+			{ items: [{ chatInput: 'from chat' }] },
+		),
+	),
+	agent(
+		'3.1, default prompt type, missing',
+		3.1,
+		gpt,
+		[completion('x')],
+		{ promptType: undefined, text: undefined },
+		{ expectedError: 'No prompt specified' },
+	),
+	...[1.9, 1.7, 1.4].map((version) =>
+		chain(
+			'default prompt type',
+			gpt,
+			[completion('x')],
+			{ promptType: undefined, text: 'not in use' },
+			{
+				name: `chainLlm ${version}, default prompt type`,
+				typeVersion: version,
+				items: [{ chatInput: 'from chat' }],
+			},
+		),
+	),
+];
+
+const withFile = (mimeType: string, fileName: string) => ({
+	items: [{ q: 'one', $binary: { data: { data: 'aGk=', mimeType, fileName } } }],
+});
+
+/**
+ * An input item with binary data. v1 gives the model an image and a text file of the item
+ * (`passthroughBinaryImages`, default on). The library node has no form of that: the cluster
+ * runs in the fallback host (`ai-cluster.test.ts`). The recordings are the facts of v1.
+ */
+export const BINARY_HOST_CASES: EquivalenceCase[] = [
+	...[2.2, 3.1].map((version) =>
+		agent(
+			`${version}, image in the input item`,
+			version,
+			gpt,
+			[completion('x')],
+			{},
+			withFile('image/png', 'a.png'),
+		),
+	),
+	agent(
+		'3.1, text file in the input item',
+		3.1,
+		gpt,
+		[completion('x')],
+		{},
+		withFile('text/plain', 'a.txt'),
+	),
+	agent(
+		'3.1, other file in the input item',
+		3.1,
+		gpt,
+		[completion('x')],
+		{},
+		withFile('application/zip', 'a.zip'),
+	),
+];
+
+/** The chain does not read the binary data of an input item. */
+const BINARY_CHAIN_CASES: EquivalenceCase[] = [
+	chain('file in the input item', gpt, [completion('x')], {}, withFile('image/png', 'a.png')),
+];
+
+/** The rate-limit text of the LangChain stream client, as v1 records it. */
+const RATE_LIMIT = 'OpenAI: Rate limit reached';
+
+/** A Chat Completions answer as a stream of server-sent events. */
+const chunk = (delta: Record<string, unknown> | null, finish: string | null = null) =>
+	`data: ${JSON.stringify({
+		id: 'chatcmpl-1',
+		object: 'chat.completion.chunk',
+		created: 1,
+		model: 'm',
+		choices: [{ index: 0, delta, logprobs: null, finish_reason: finish }],
+	})}\n\n`;
+const stream = (...chunks: string[]) => ({
+	headers: { 'content-type': 'text/event-stream' },
+	body: `${chunks.join('')}data: [DONE]\n\n`,
+});
+const streamed = (...texts: string[]) =>
+	stream(
+		chunk({ role: 'assistant', content: '', refusal: null }),
+		...texts.map((text) => chunk({ content: text })),
+		chunk({}, 'stop'),
+	);
+const usageChunk = `data: ${JSON.stringify({ id: 'chatcmpl-1', choices: [], usage: { total_tokens: 7 } })}\n\n`;
+/** The forms of a stream that the clients accept: comments, line ends, chunks without text. */
+const streamForms = {
+	headers: { 'content-type': 'text/event-stream' },
+	body: [
+		': keep-alive\n\n',
+		`data:${JSON.stringify({ id: 'c', choices: [{ index: 0, delta: { role: 'assistant', content: 'A' } }] })}\r\n\r\n`,
+		chunk({ content: null, reasoning: 'thinking', reasoning_content: 'more' }),
+		chunk({ role: 'assistant', content: 'B' }),
+		chunk(null),
+		`data: ${JSON.stringify({ id: 'c' })}\n\n`,
+		`data: ${JSON.stringify({
+			id: 'c',
+			choices: [
+				{ index: 0, delta: { content: 'C' } },
+				{ index: 1, delta: { content: 'x' } },
+			],
+		})}\n\n`,
+		chunk({ content: [{ type: 'text', text: 'skipped' }] }),
+		chunk({}, 'length'),
+		usageChunk,
+		'data: [DONE]\n\n',
+		chunk({ content: 'after the end' }),
+	].join(''),
+};
+
+/** The Tools Agent of versions 1.6 to 1.9: the model answers with a stream. */
+function streamCases(version: number): EquivalenceCase[] {
+	const named = (name: string) => `${version} stream, ${name}`;
+	return [
+		agent(named('system message'), version, gpt, [streamed('Hel', 'lo')], {
+			options: { systemMessage: 'Be brief' },
+		}),
+		agent(named('two items'), version, gpt, [streamed('Hel', 'lo'), streamed('B')], {}, two),
+	];
+}
+
+const STREAM_CASES: EquivalenceCase[] = [
+	...[1.6, 1.7, 1.8, 1.9].flatMap((version) => streamCases(version)),
+	...[1.7, 1.9].flatMap((version) => {
+		const named = (name: string) => `${version} stream, ${name}`;
+		return [
+			agent(named('empty system message'), version, gpt, [streamed('x')], {
+				options: { systemMessage: '' },
+			}),
+			agent(named('forms of the stream'), version, gpt, [streamForms]),
+			agent(named('empty answer'), version, gpt, [streamed()]),
+			agent(
+				named('model options'),
+				version,
+				openAiModel(1.2, 'gpt-5', { temperature: 0.5, maxTokens: 9 }),
+				[streamed('x')],
+				{},
+				{
+					subNodes: [openAiModel(1.2, 'gpt-5', { temperature: 0.5, maxTokens: 9 })],
+				},
+			),
+			agent(
+				named('failed'),
+				version,
+				gpt,
+				[failed(400)],
+				{},
+				{ expectedError: STATUS_ERRORS[400] },
+			),
+			agent(
+				named('failed after the tries'),
+				version,
+				gpt,
+				[failed(500)],
+				{},
+				{
+					expectedError: '500 bad thing',
+				},
+			),
+			agent(
+				named('rate limit'),
+				version,
+				gpt,
+				[failed(429)],
+				{},
+				{
+					// The stream of LangChain gives its own rate-limit text (recorded).
+					expectedError: RATE_LIMIT,
+				},
+			),
+			agent(
+				named('no answer'),
+				version,
+				gpt,
+				[refused],
+				{},
+				{ expectedError: 'Connection error.' },
+			),
+			agent(
+				named('continue'),
+				version,
+				gpt,
+				[failed(400), streamed('ok')],
+				{},
+				{
+					...two,
+					settings: { onError: 'continueRegularOutput' },
+				},
+			),
+			agent(
+				named('error output'),
+				version,
+				gpt,
+				[streamed('ok'), failed(404)],
+				{},
+				{
+					...two,
+					settings: { onError: 'continueErrorOutput' },
+				},
+			),
+			agent(named('retry'), version, gpt, [failed(400), streamed('ok')], {}, { settings: retry }),
+			agent(
+				named('no prompt'),
+				version,
+				gpt,
+				[streamed('x')],
+				{ text: '={{ $json.none }}' },
+				{
+					expectedError: 'No prompt specified',
+				},
+			),
+			agent(
+				named('default prompt type'),
+				version,
+				gpt,
+				[streamed('x')],
+				{ promptType: undefined, text: 'not in use' },
+				{
+					items: [{ chatInput: 'from chat' }],
+				},
+			),
+			agent(
+				named('open router'),
+				version,
+				router,
+				[streamed('x')],
+				{},
+				{
+					...openRouter,
+					subNodes: [router],
+				},
+			),
+		];
+	}),
+];
+
+/**
+ * Streams that the library node does not read: it gives the cluster to the fallback host
+ * (`ai-cluster.test.ts`).
+ */
+export const STREAM_HOST_CASES: EquivalenceCase[] = [
+	agent('1.7 stream, tool call', 1.7, gpt, [
+		stream(
+			chunk({
+				role: 'assistant',
+				content: null,
+				tool_calls: [
+					{ index: 0, id: 'call_1', type: 'function', function: { name: 'x', arguments: '{}' } },
+				],
+			}),
+			chunk({}, 'tool_calls'),
+		),
+	]),
+	agent('1.7 stream, answer that is not a stream', 1.7, gpt, [completion('plain')]),
+	agent('1.7 stream, no chunk', 1.7, gpt, [stream()]),
+	agent('1.7 stream, event name', 1.7, gpt, [
+		{
+			headers: { 'content-type': 'text/event-stream' },
+			body: `event: x\n${chunk({ role: 'assistant', content: 'a' })}`,
+		},
+	]),
+	agent('1.7 stream, chunk that is not JSON', 1.7, gpt, [
+		{ headers: { 'content-type': 'text/event-stream' }, body: 'data: {bad\n\n' },
+	]),
+];
+
 /** Every case that runs in the engine of n8n and through the converter. */
 export const ENGINE_CASES: EquivalenceCase[] = [
 	...OUTPUT_PARSER_CASES,
@@ -3325,4 +4066,12 @@ export const ENGINE_CASES: EquivalenceCase[] = [
 	...MEMORY_CASES,
 	...TOOL_PROBE_CASES,
 	...TOOL_CASES,
+	...TOOL_MEMORY_CASES,
+	...AGENT_PARSER_CASES,
+	...TOOL_PARSER_CASES,
+	...PARSER_UNUSED_CASES,
+	...GEMINI_DEFAULT_CASES,
+	...PROMPT_DEFAULT_CASES,
+	...BINARY_CHAIN_CASES,
+	...STREAM_CASES,
 ];

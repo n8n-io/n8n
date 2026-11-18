@@ -335,6 +335,57 @@ return out;`;
 		expect(seen.length).toBe(rows.length);
 	});
 
+	it('sends the requests of `call` and `apply` as n8n does', async () => {
+		const code = `const out = [];
+for (const i of items) {
+	const a = await this.helpers.httpRequest.call(this, { url: i.json.base + '/json' });
+	const b = await this.helpers.httpRequest.call(undefined, { method: 'POST', url: i.json.base + '/echo', body: { id: i.json.id }, json: true });
+	const c = await this.helpers.httpRequest.apply(this, [{ url: i.json.base + '/text', json: true }]);
+	const d = await this.helpers.httpRequest.apply(null, [{ url: i.json.base + '/untyped' }]);
+	out.push({ json: { a, b, c, d } });
+}
+return out;`;
+		const n = await same(code, rows);
+		expect(n.ok).toBe(true);
+		expect(seen.map((r) => r.url)).toEqual(
+			rows.flatMap(() => ['/json', '/echo', '/text', '/untyped']),
+		);
+	});
+
+	it('sends the options of a constant through `call` and `apply`', async () => {
+		const code = `const options = { url: items[0].json.base + '/json', json: true };
+const a = await this.helpers.httpRequest.call(this, options);
+const b = await this.helpers.httpRequest.apply(this, [options]);
+return [{ json: { a, b } }];`;
+		const n = await same(code, rows);
+		expect(n.ok).toBe(true);
+		expect(seen.map((r) => r.url)).toEqual(['/json', '/json']);
+	});
+
+	it('reads the request helper of a constant and sends its `call`', async () => {
+		const code = `const request = this.helpers.httpRequest;
+const results = [];
+for (const i of items) results.push(await request.call(this, { url: i.json.base + '/json' }));
+return [{ json: { results } }];`;
+		const n = await same(code, rows);
+		expect(n.ok).toBe(true);
+		expect(seen.map((r) => r.url)).toEqual(['/json', '/json']);
+	});
+
+	it.each([
+		['a second argument of `call`', 'request.call(this, { url: url }, 1)'],
+		['two elements of `apply`', 'request.apply(this, [{ url: url }, 1])'],
+		['a spread list of `apply`', 'request.apply(this, list)'],
+	])('keeps the request of %s in the host', (_, form) => {
+		const code =
+			`const list = [{ url: URL }]; const r = await ${form}; return [{ json: { r } }];`.replace(
+				'URL',
+				"'http://127.0.0.1/x'",
+			);
+		const t = translateCode({ code, mode: 'all', kind: 'code', hasNode: () => false });
+		expect(t.ok).toBe(false);
+	});
+
 	it('fails the node with the message of the error when the code does not catch it', async () => {
 		const code =
 			"const r = await this.helpers.httpRequest({ url: items[0].json.base + '/status/404' }); return [{ json: { r } }];";

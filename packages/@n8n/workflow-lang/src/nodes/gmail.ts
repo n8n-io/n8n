@@ -37,9 +37,18 @@
  * `addressparser` of nodemailer for the usual forms (names, quoted names,
  * comments, lists, groups).
  *
- * Limits: attachments and the service account authentication are not supported.
- * The attribution link has no instance id: a compiled workflow does not know
- * the n8n instance.
+ * With `mailBuilder` (the converter sets it when the runtime has the mail builder of the
+ * `smtp` effect), the node does not write the message itself. It gives the mail options of
+ * the v1 node (`encodeEmail`) to an `smtp` call with `build`, and the runtime gives the
+ * message back in base64 for the body of the request. The runtime builds the message as
+ * nodemailer builds it, so the bytes are those of v1, with other random bytes in the
+ * Message-ID and the boundaries, and the time of the build in the Date header. Files from
+ * binary data (`options.attachmentsUi`) need this route. When the runtime does not build a
+ * message as nodemailer does, the node ends with an error that the converted workflow
+ * reads, before it sends the message, and the fallback host runs the v1 node for the item.
+ *
+ * Limits: the service account authentication is not supported. Without `mailBuilder`,
+ * files are not supported.
  */
 import {
 	apiError,
@@ -48,6 +57,8 @@ import {
 	type FailedResponse,
 	type HttpResponse,
 	type Item,
+	type SmtpAttachment,
+	type SmtpBuilt,
 } from '@n8n/workflow-lang';
 
 /**
@@ -106,6 +117,23 @@ interface GmailOptions {
 	replyToRecipientsOnly?: boolean;
 	downloadAttachments?: boolean;
 	dataPropertyAttachmentsPrefixName?: string;
+	/** The binary fields of the files of a message: `{ attachmentsBinary: [{ property }] }`. */
+	attachmentsUi?: unknown;
+}
+
+/** The mail options that the v1 node gives nodemailer (`encodeEmail`). */
+interface MailOptions {
+	from: string;
+	to: string;
+	cc: string;
+	bcc: string;
+	replyTo: string;
+	inReplyTo: string;
+	references: string;
+	subject: string;
+	text: string;
+	html: string;
+	attachments: SmtpAttachment[];
 }
 
 interface Address {
@@ -162,6 +190,8 @@ interface GmailParameters {
 	itemIndex?: number;
 	/** A read without "simplify": the node adds the answers of its GET requests here. */
 	replay?: Replay;
+	/** The runtime builds the messages of the node (`smtp` with `build`). Set by the converter. */
+	mailBuilder?: boolean;
 }
 
 /** Base64 of the UTF-8 bytes of a string, with the native codec (spec section 4.3). */
@@ -288,6 +318,81 @@ function addresses(input: string, field: string, index: number): string {
 		out.push(email.includes('<') && email.includes('>') ? email : `<${email}>`);
 	}
 	return headerAddresses(parseAddresses(out.join(', ')));
+}
+
+/** prepareEmailsInput of the v1 node: the text that the v1 node gives nodemailer. */
+function emailsInput(input: unknown, field: string, index: number): string {
+	let emails = '';
+	for (const entry of String(input ?? '').split(',')) {
+		const email = entry.trim();
+		if (!email.includes('@')) {
+			// The loop of the v1 node adds the index of the item to each message.
+			throw operationError(
+				`Invalid email address (item ${index})`,
+				`The email address '${email}' in the '${field}' field isn't valid`,
+			);
+		}
+		emails += email.includes('<') && email.includes('>') ? `${email},` : `<${email}>, `;
+	}
+	return emails;
+}
+
+/** The error for a message that the runtime does not build as nodemailer does. */
+function mailInHost(reason: string): Error {
+	return new Error(`Gmail: the fallback host builds this message: ${reason} ${HOST_MARKER}`);
+}
+
+/**
+ * prepareEmailAttachments of the v1 node: the files of `options.attachmentsUi`, from the
+ * binary data of the item. The two errors are those of n8n-core's `assertBinaryData`, with
+ * the index of the item that the loop of the v1 node adds.
+ */
+function mailFiles(ui: unknown, item: Item, index: number): SmtpAttachment[] {
+	const files: SmtpAttachment[] = [];
+	if (!ui) return files;
+	if (!isObject(ui)) throw mailInHost('the attachments are not a collection');
+	const list = ui.attachmentsBinary;
+	if (list === undefined || list === null) return files;
+	if (!Array.isArray(list)) throw mailInHost('the attachments are not a list');
+	for (const entry of list) {
+		if (!isObject(entry)) throw mailInHost('an attachment is not an entry');
+		const property = entry.property;
+		if (property !== undefined && property !== null && typeof property !== 'string') {
+			throw mailInHost('the binary field of an attachment is not a text');
+		}
+		for (const name of (property ?? '').split(',')) {
+			const binary = item.$binary;
+			if (!isObject(binary)) {
+				throw operationError(
+					`This operation expects the node's input data to contain a binary file '${name}', but none was found [item ${index}] (item ${index})`,
+					'Make sure that the previous node outputs a binary file',
+				);
+			}
+			const file = binary[name];
+			if (file === undefined) {
+				throw operationError(
+					`The item has no binary field '${name}' [item ${index}] (item ${index})`,
+					'Check that the parameter where you specified the input binary field name is correct, and that it matches a field in the binary input',
+				);
+			}
+			if (!isObject(file) || typeof file.data !== 'string') {
+				throw mailInHost('a binary field is not a binary entry');
+			}
+			const given = file.fileName;
+			if (given !== undefined && given !== null && typeof given !== 'string') {
+				throw mailInHost('the file name of a binary field is not a text');
+			}
+			const kind = file.mimeType;
+			if (kind !== undefined && kind !== null && typeof kind !== 'string') {
+				throw mailInHost('the content type of a binary field is not a text');
+			}
+			const attachment: SmtpAttachment = { filename: given ? given : 'unknown', data: file.data };
+			if (kind) attachment.contentType = kind;
+			if (typeof file.id === 'string') attachment.id = file.id;
+			files.push(attachment);
+		}
+	}
+	return files;
 }
 
 /** The display name of a reply address, as formatDisplayName of the v1 node quotes it. */
@@ -1331,7 +1436,7 @@ export default defineNode<GmailParameters>({
 	version: 2.2,
 	supports: {
 		resource: 'message',
-		operation: { message: 'send' },
+		operation: { message: 'send', draft: 'create' },
 		operations: {
 			'message.getAll': [
 				'authentication',
@@ -1375,6 +1480,10 @@ export default defineNode<GmailParameters>({
 				'options.ccList',
 				'options.senderName',
 				'options.replyToSenderOnly',
+				// The v1 node does not read this option for a reply.
+				'options.appendAttribution',
+				'options.attachmentsUi',
+				'mailBuilder',
 				'replyToHeader',
 				'itemIndex',
 			],
@@ -1390,6 +1499,9 @@ export default defineNode<GmailParameters>({
 				'options.senderName',
 				'options.replyToSenderOnly',
 				'options.replyToRecipientsOnly',
+				'options.appendAttribution',
+				'options.attachmentsUi',
+				'mailBuilder',
 				'replyToHeader',
 				'itemIndex',
 			],
@@ -1405,6 +1517,8 @@ export default defineNode<GmailParameters>({
 				'options.replyTo',
 				'options.threadId',
 				'options.sendTo',
+				'options.attachmentsUi',
+				'mailBuilder',
 				'itemIndex',
 			],
 			'message.send': [
@@ -1420,13 +1534,19 @@ export default defineNode<GmailParameters>({
 				'options.ccList',
 				'options.senderName',
 				'options.replyTo',
+				// The v1 node does not read these options of a reply when it sends a message.
+				'options.replyToSenderOnly',
+				'options.replyToRecipientsOnly',
+				'options.attachmentsUi',
+				'mailBuilder',
 				'itemIndex',
 			],
 		},
 	},
 	async run(ctx, parameters, items, credential) {
 		const resource = parameters.resource ?? 'message';
-		const operation = parameters.operation ?? 'send';
+		// The default operation of the resource `draft` of the v1 node is `create`.
+		const operation = parameters.operation ?? (resource === 'draft' ? 'create' : 'send');
 		const modify = ['addLabels', 'removeLabels', 'markAsRead', 'markAsUnread'];
 		const known = ['send', 'get', 'getAll', 'delete'].concat(modify);
 		const composed =
@@ -1624,8 +1744,189 @@ export default defineNode<GmailParameters>({
 		const type = parameters.emailType ?? (resource === 'message' ? 'html' : 'text');
 		const message = String(parameters.message ?? '').trim();
 		const out: Item[] = [];
-		for (const _item of items ?? [{}]) {
+		// The message of the mail options, from the mail builder of the runtime.
+		const build = async (mail: MailOptions): Promise<string> => {
+			let result: SmtpBuilt;
+			try {
+				result = await ctx.smtp({
+					// The runtime does not read the credential for a call that builds only.
+					credential: credential ?? '',
+					build: true,
+					keepBcc: true,
+					from: mail.from,
+					to: mail.to,
+					cc: mail.cc,
+					bcc: mail.bcc,
+					replyTo: mail.replyTo,
+					inReplyTo: mail.inReplyTo,
+					references: mail.references,
+					subject: mail.subject,
+					text: mail.text,
+					html: mail.html,
+					attachments: mail.attachments.length > 0 ? mail.attachments : undefined,
+				});
+			} catch (error) {
+				const text =
+					isObject(error) && typeof error.message === 'string' ? error.message : String(error);
+				// Nothing went out for the item: the v1 node builds and sends the message.
+				throw mailInHost(text);
+			}
+			if (typeof result.raw !== 'string') throw mailInHost('the runtime gave no message');
+			return result.raw;
+		};
+		const built = parameters.mailBuilder === true;
+		const media = { userId: 'me', uploadType: 'media' };
+		const subjectOf = (value: unknown): string => {
+			if (value === undefined || value === null) return '';
+			if (typeof value !== 'string') throw mailInHost('the subject is not a text');
+			return value;
+		};
+		for (const item of items ?? [{}]) {
 			position++;
+			if (built && operation === 'reply') {
+				// replyToEmail of the v1 node, with the texts that it gives nodemailer.
+				if (options.replyToSenderOnly && options.replyToRecipientsOnly) {
+					throw new Error(
+						`Both "Reply to Sender Only" and "Reply to Recipient Only" cannot be enabled at the same time. Please select only one option. (item ${index})`,
+					);
+				}
+				const cc = options.ccList ? emailsInput(options.ccList, 'CC', index) : '';
+				const bcc = options.bccList ? emailsInput(options.bccList, 'BCC', index) : '';
+				const files = mailFiles(options.attachmentsUi, item, index);
+				const qs: Record<string, unknown> =
+					files.length > 0 ? { ...media, format: 'metadata' } : { format: 'metadata' };
+				const original = await get<{
+					payload?: { headers?: MessageHeader[] };
+					threadId?: unknown;
+				}>(`${api}/messages/${String(parameters.messageId)}`, qs);
+				const list = original.payload?.headers ?? [];
+				const valueOf = (name: string): string => {
+					for (const header of list) {
+						if ((header.name ?? '').toLowerCase() === name) return header.value || '';
+					}
+					return '';
+				};
+				const profile = await get<{ emailAddress?: string }>(`${api}/profile`, {});
+				const self = String(profile.emailAddress);
+				let sender = 'from';
+				if (parameters.replyToHeader === true) {
+					for (const header of list) {
+						if ((header.name ?? '').toLowerCase() === 'reply-to') sender = 'reply-to';
+					}
+				}
+				// The recipients without the repeats, as `uniq` of the texts of v1.
+				const to: string[] = [];
+				const add = (value: string, excludeSelf: boolean) => {
+					for (const entry of parseAddresses(value)) {
+						if (excludeSelf && entry.address.toLowerCase() === self.toLowerCase()) continue;
+						const text = entry.name
+							? `${replyName(entry.name)} <${entry.address}>`
+							: `<${entry.address}>`;
+						if (!to.includes(text)) to.push(text);
+					}
+				};
+				for (const header of list) {
+					const name = (header.name || '').toLowerCase();
+					if (name === sender && !options.replyToRecipientsOnly) add(header.value ?? '', false);
+					if (name === 'to' && !options.replyToSenderOnly) add(header.value ?? '', true);
+				}
+				const id = valueOf('message-id');
+				const raw = await build({
+					from: options.senderName ? `${options.senderName} <${self}>` : '',
+					to: to.join(', '),
+					cc,
+					bcc,
+					replyTo: '',
+					inReplyTo: id,
+					references: id,
+					subject: valueOf('subject'),
+					text: type === 'html' ? '' : message,
+					html: type === 'html' ? message : '',
+					attachments: files,
+				});
+				out.push(await post(`${api}/messages/send`, qs, { raw, threadId: original.threadId }));
+				continue;
+			}
+			if (built && resource === 'draft') {
+				const threadId =
+					options.threadId && typeof options.threadId === 'string' ? options.threadId : '';
+				const alias: unknown = options.fromAlias;
+				if (alias && typeof alias !== 'string') throw mailInHost('the alias is not a text');
+				const mail: MailOptions = {
+					from: typeof alias === 'string' ? alias : '',
+					to: options.sendTo ? emailsInput(options.sendTo, 'To', index) : '',
+					cc: options.ccList ? emailsInput(options.ccList, 'CC', index) : '',
+					bcc: options.bccList ? emailsInput(options.bccList, 'BCC', index) : '',
+					replyTo: options.replyTo ? emailsInput(options.replyTo, 'ReplyTo', index) : '',
+					inReplyTo: '',
+					references: '',
+					subject: '',
+					text: type === 'html' ? '' : message,
+					html: type === 'html' ? message : '',
+					attachments: [],
+				};
+				mail.attachments = mailFiles(options.attachmentsUi, item, index);
+				mail.subject = subjectOf(parameters.subject);
+				if (threadId) {
+					// addThreadHeadersToEmail of the v1 node: the id of the last message of the thread.
+					const thread = await get<{ messages?: Array<{ payload: { headers: MessageHeader[] } }> }>(
+						`${api}/threads/${threadId}`,
+						{ format: 'metadata', metadataHeaders: ['Message-ID'] },
+					);
+					const messages = thread.messages;
+					if (messages) {
+						for (const header of messages[messages.length - 1].payload.headers) {
+							const name = (header.name ?? '').toLowerCase();
+							if (name.includes('message') && name.includes('id')) {
+								if (header.value) {
+									mail.inReplyTo = header.value;
+									mail.references = header.value;
+								}
+								break;
+							}
+						}
+					}
+				}
+				const draft: Record<string, unknown> = { raw: await build(mail) };
+				if (threadId) draft.threadId = threadId;
+				out.push(
+					await post(`${api}/drafts`, mail.attachments.length > 0 ? media : {}, { message: draft }),
+				);
+				continue;
+			}
+			if (built) {
+				const to = emailsInput(parameters.sendTo, 'To', index);
+				const cc = options.ccList ? emailsInput(options.ccList, 'CC', index) : '';
+				const bcc = options.bccList ? emailsInput(options.bccList, 'BCC', index) : '';
+				const replyTo = options.replyTo ? emailsInput(options.replyTo, 'ReplyTo', index) : '';
+				const files = mailFiles(options.attachmentsUi, item, index);
+				let from = '';
+				if (options.senderName) {
+					const profile = await get<{ emailAddress?: string }>(`${api}/profile`, {});
+					from = `${options.senderName} <${String(profile.emailAddress)}>`;
+				}
+				const body = emailBody(
+					type,
+					message,
+					options.appendAttribution ?? true,
+					parameters.instanceId,
+				);
+				const raw = await build({
+					from,
+					to,
+					cc,
+					bcc,
+					replyTo,
+					inReplyTo: '',
+					references: '',
+					subject: subjectOf(parameters.subject),
+					text: type === 'html' ? '' : body,
+					html: type === 'html' ? body : '',
+					attachments: files,
+				});
+				out.push(await post(`${api}/messages/send`, files.length > 0 ? media : {}, { raw }));
+				continue;
+			}
 			if (operation === 'reply') {
 				// replyToEmail of the v1 node.
 				if (options.replyToSenderOnly && options.replyToRecipientsOnly) {

@@ -142,7 +142,11 @@ for (let k = 0; k < SHARDS; k++) {
 		dir: WORK,
 		env: { ...gymEnv, WFRT_ADMIN_SECRET: secret, TZ: 'UTC' },
 		argv: [
-			process.env.LT_WFRT ?? path.join(SRC, 'workflow-runtime/zig-out/bin/wfrt'), 'serve', '--profile', 'embedded', '--port', String(port), '--shards', '1',
+			process.env.LT_WFRT ?? path.join(SRC, 'workflow-runtime/zig-out/bin/wfrt'), 'serve', '--profile', 'embedded',
+			// The tables of the shard for this many executions at one time (docs/limits.md).
+			// `GET /_admin/limits` on the admin port gives the fill and the wait counts.
+			...(process.env.LT_WFRT_IN_FLIGHT ? ['--target-in-flight', process.env.LT_WFRT_IN_FLIGHT] : []),
+			'--port', String(port), '--shards', '1',
 			'--max-modules', '4096', '--module-store-mb', '512',
 			'--admin-port', String(PORT + 100 + k), '--admin-secret-env', 'WFRT_ADMIN_SECRET', '--log-dir', logDir,
 			'--fallback', socket, '--gym-env', '--ca-file', CA,

@@ -158,6 +158,8 @@ function emitParts(
 	const local = localHelpers(t, mode, plainInput, traced);
 	const failure = (retrace: string[]): string[] => [
 		`\t} catch (${P}e) {`,
+		// The mark of \`RUNS_IN_HOST\` is not an error of the code (\`Translation.handsOver\`).
+		...(t.handsOver ? [`\t\tif (fileLimitInHost(${P}e)) throw ${P}e;`] : []),
 		...local,
 		...retrace,
 		'\t}',

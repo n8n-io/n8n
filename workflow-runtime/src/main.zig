@@ -30,7 +30,7 @@ const usage =
     \\        [--sql-max-request-kb K] [--sql-max-statements N] [--sql-timestamp-zone utc] [--sql-mysql] [--sql-mssql]
     \\        [--smtp-native] [--smtp-max-requests N] [--smtp-max-message-kb K]
     \\        [--admin-port P --admin-secret-env VAR] [--event-queue-mb M] [--max-outbox-mb M] [--test-clock]
-    \\        [--profile embedded] [--max-conns N] [--max-request-mb M] [--request-big-slots K]
+    \\        [--profile embedded] [--target-in-flight N] [--region-in-flight N] [--max-conns N] [--max-request-mb M] [--request-big-slots K]
     \\        [--step-events-sample N] [--max-zones N] [--max-static-data N] [--static-data-kb K] [--max-service-calls N] [--service-call-kb K] [--service-timeout-ms MS] [--max-renewals N] [--renewal-kb K] [--max-modules N] [--max-routes N] [--max-schedules N] [--module-store-mb M] [--ca-file CA.pem] [--gym-env]
     \\        [--slots N] [--target-rate R --vendor-latency-ms L [--memory-mb M]]
     \\        [--egress-max-requests N] [--egress-max-conns N] [--egress-max-origins N]
@@ -40,11 +40,11 @@ const usage =
     \\        [--egress-origin "<host>[:port] conns=N inflight=N queue=N rate=R burst=B connect-ms=T read-ms=T timeout-ms=T h2=on|off|prior aimd=on|off"]...
     \\        (--module FILE.wfm --route "POST /path" [--rate R --burst B --concurrency C])...
     \\  load [--host IPv4] --port P [--conns C] [--seconds S] [--path /p] [--body BYTES] [--threads T] [--pipeline K]
-    \\  stub [--host IPv4] --port P [--delay-ms D] [--tls-cert CERT.pem --tls-key KEY.pem] [--h2] [--h2-streams N]
+    \\  stub [--host IPv4] --port P [--delay-ms D] [--body BYTES] [--tls-cert CERT.pem --tls-key KEY.pem] [--h2] [--h2-streams N]
     \\  bench-w1 [--seconds S] [--batch B] [--threads T]
     \\  bench-w5 [N]                      park N executions on an approval, then resume them
     \\  bench-counts
-    \\  asm <glue|w2|w3|w4> <out.wfm> [durability]   write a hand-assembled benchmark module
+    \\  asm <glue|w2|w3|w3r|w4> <out.wfm> [durability]   write a hand-assembled benchmark module
     \\  cron-next <cases.json>           next slots of cron expressions (differential test)
     \\  aot-gen <out.zig> <module.wfm>... write the compiled functions of the library code in the modules
     \\  perf-model <module.wfm> <fixture.json> [N] [--json] [--gate CASE] [--profile NAME] [--no-prefetch] [--l1-kb K] [--l2-kb K] [--l3-kb K]
@@ -145,6 +145,7 @@ pub fn main(init: std.process.Init) !void {
             if (std.mem.eql(u8, args[i], "--port")) so.port = try std.fmt.parseInt(u16, args[i + 1], 10);
             if (std.mem.eql(u8, args[i], "--host")) so.host = sys.parseIp4(args[i + 1]) orelse return error.InvalidHost;
             if (std.mem.eql(u8, args[i], "--delay-ms")) so.delay_ms = try std.fmt.parseInt(u32, args[i + 1], 10);
+            if (std.mem.eql(u8, args[i], "--body")) so.body_bytes = try std.fmt.parseInt(u32, args[i + 1], 10);
             if (std.mem.eql(u8, args[i], "--tls-cert")) so.tls_cert = args[i + 1];
             if (std.mem.eql(u8, args[i], "--tls-key")) so.tls_key = args[i + 1];
         }
@@ -212,12 +213,14 @@ pub fn main(init: std.process.Init) !void {
         const dur = if (args.len >= 5) args[4] else "batched";
         // The webhook programs read only `body.id` of the trigger: what the
         // compiler would prove for them (`triggerHeaders`).
-        const reply_prog = std.mem.eql(u8, args[2], "w2") or std.mem.eql(u8, args[2], "w3") or std.mem.eql(u8, args[2], "w4");
+        // `w3r` is `w3` with a step that reads the answer of its request.
+        const w3r = std.mem.eql(u8, args[2], "w3r");
+        const reply_prog = std.mem.eql(u8, args[2], "w2") or std.mem.eql(u8, args[2], "w3") or std.mem.eql(u8, args[2], "w4") or w3r;
         const meta = try std.fmt.allocPrint(gpa, "{{\"durability\":\"{s}\"{s}}}", .{ dur, if (reply_prog) ",\"triggerHeaders\":false" else "" });
         defer gpa.free(meta);
         // `approval` waits for a person (evicted); `every-second` has a
         // schedule trigger in Europe/Berlin. ci.sh uses both.
-        const bytes = if (std.mem.eql(u8, args[2], "glue")) try programs.glue(gpa, meta) else if (std.mem.eql(u8, args[2], "approval")) try programs.approval(gpa, meta) else if (std.mem.eql(u8, args[2], "every-second")) try programs.everySecond(gpa, "{\"durability\":\"batched\",\"triggers\":[{\"kind\":\"schedule\",\"cron\":\"* * * * * *\",\"timezone\":\"Europe/Berlin\"}]}") else try programs.webhookReply(gpa, meta, if (std.mem.eql(u8, args[2], "w3")) .http else if (std.mem.eql(u8, args[2], "w4")) .fallback_code else .none);
+        const bytes = if (std.mem.eql(u8, args[2], "glue")) try programs.glue(gpa, meta) else if (std.mem.eql(u8, args[2], "approval")) try programs.approval(gpa, meta) else if (std.mem.eql(u8, args[2], "every-second")) try programs.everySecond(gpa, "{\"durability\":\"batched\",\"triggers\":[{\"kind\":\"schedule\",\"cron\":\"* * * * * *\",\"timezone\":\"Europe/Berlin\"}]}") else try programs.webhookReply(gpa, meta, if (w3r) .http_read else if (std.mem.eql(u8, args[2], "w3")) .http else if (std.mem.eql(u8, args[2], "w4")) .fallback_code else .none);
         defer gpa.free(bytes);
         try cwd.writeFile(io, .{ .sub_path = args[3], .data = bytes });
         return;
@@ -402,6 +405,19 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
             }
             opts.applyEmbedded();
         }
+        // After `--profile`: every table on the path of an execution, from
+        // the count of executions that run at one time.
+        if (std.mem.eql(u8, k, "--target-in-flight")) {
+            const n = try std.fmt.parseInt(u32, v, 10);
+            if (n == 0) {
+                std.debug.print("--target-in-flight takes a count of executions, 1 or more\n", .{});
+                std.process.exit(2);
+            }
+            opts.applyInFlight(n);
+        }
+        // The pools of an execution alone (regions and the queue of work
+        // that waits for one), for a test of the waits with small pools.
+        if (std.mem.eql(u8, k, "--region-in-flight")) opts.in_flight = @max(1, try std.fmt.parseInt(u32, v, 10));
         if (std.mem.eql(u8, k, "--max-conns")) {
             opts.max_conns = try std.fmt.parseInt(u32, v, 10);
             explicit.conns = true;
@@ -591,6 +607,12 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
         arenas[sid].markReady();
         threads[sid] = try std.Thread.spawn(.{}, server.Runner.run, .{runners[sid]});
     }
+    // What the sizes reserve. A page counts for the process only after its first use.
+    const regions = opts.regionCounts();
+    std.debug.print("sizing: {d} in flight; --max-conns {d} --slots {d} regions {d}/{d}/{d}/{d} --egress-max-requests {d} --egress-max-conns {d} --egress-big-slots {d} --request-big-slots {d} --max-service-calls {d} --max-renewals {d}; each shard reserves {d} MB\n", .{
+        opts.inFlight(),       opts.max_conns,         opts.slots,             regions[0],        regions[1],                            regions[2], regions[3], opts.max_egress, opts.egress.max_conns,
+        opts.egress_big_slots, opts.request_big_slots, opts.max_service_calls, opts.max_renewals, arenas[0].arena.queryCapacity() >> 20,
+    });
     defer for (arenas) |*a| a.deinit();
     std.debug.print("wfrt serving on :{d} with {d} shard(s), {d} route(s)\n", .{ opts.port, opts.shards, routes.items.len });
     if (opts.admin_port) |p| std.debug.print("wfrt admin on 127.0.0.1:{d}\n", .{p});

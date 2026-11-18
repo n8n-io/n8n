@@ -11,6 +11,33 @@
  * accepts the same set.
  */
 
+import { targetNode } from '../node-identity.ts';
+import {
+	REGEX_BINARY_PROPERTIES,
+	REGEX_GENERAL_CATEGORIES,
+	REGEX_PROPERTY_UNICODE,
+	REGEX_SCRIPTS,
+} from './regex-properties.generated.ts';
+
+/**
+ * True when the runtime has the Unicode property of `\p{text}` (`uniprop.zig`, which reads
+ * the text in the same way): a value of General_Category or a binary property, or
+ * `name=value` for General_Category, Script and Script_Extensions. The tables are those of
+ * one Unicode version, so the Node.js that runs the workflow on v1 must have that version.
+ */
+export function regexPropertySupported(text: string): boolean {
+	if (targetNode().unicode !== REGEX_PROPERTY_UNICODE) return false;
+	const at = text.indexOf('=');
+	if (at < 0) return REGEX_GENERAL_CATEGORIES.has(text) || REGEX_BINARY_PROPERTIES.has(text);
+	const name = text.slice(0, at);
+	const value = text.slice(at + 1);
+	if (name === 'General_Category' || name === 'gc') return REGEX_GENERAL_CATEGORIES.has(value);
+	if (name === 'Script' || name === 'sc' || name === 'Script_Extensions' || name === 'scx') {
+		return REGEX_SCRIPTS.has(value);
+	}
+	return false;
+}
+
 export interface RegexInfo {
 	/** Number of capture groups. */
 	groups: number;
@@ -247,6 +274,15 @@ class Parser {
 		this.characterEscape(false);
 	}
 
+	/** `p{…}` or `P{…}` in the Unicode mode: a property that the runtime has (`uniprop.zig`). */
+	private propertyEscape() {
+		const m = /^[pP]\{([^}]{0,96})\}/.exec(this.src.slice(this.pos, this.pos + 100));
+		if (m === null || !regexPropertySupported(m[1])) {
+			throw new Unsupported('a Unicode property escape');
+		}
+		this.pos += m[0].length;
+	}
+
 	/** One escape after `\`, outside or inside a class. */
 	private characterEscape(inClass: boolean) {
 		const c = this.peek();
@@ -255,8 +291,8 @@ class Parser {
 			return;
 		}
 		if (c === 'p' || c === 'P') {
-			if (this.unicode) throw new Unsupported('a Unicode property escape');
-			this.pos++;
+			if (this.unicode) this.propertyEscape();
+			else this.pos++;
 			return;
 		}
 		if ('fnrtv'.includes(c)) {
@@ -342,6 +378,10 @@ class Parser {
 			const e = this.peek();
 			if ('dDwWsS'.includes(e)) {
 				this.pos++;
+				return null;
+			}
+			if (this.unicode && (e === 'p' || e === 'P')) {
+				this.propertyEscape();
 				return null;
 			}
 			if (/[1-9]/.test(e)) throw new Unsupported('a legacy octal escape');
