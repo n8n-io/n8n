@@ -1,3 +1,4 @@
+import { requestUrl } from 'n8n-workflow';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
@@ -103,7 +104,7 @@ describe('Test Airtop, agent run operation', () => {
 		expect(apiRequestMock).toHaveBeenCalledTimes(1);
 		expect(apiRequestMock).toHaveBeenCalledWith(
 			'GET',
-			AGENTS_ENDPOINT,
+			requestUrl`${AGENTS_ENDPOINT}`,
 			{},
 			{ createdByMe: true, limit: 50, enabled: true, published: true, name: '' },
 		);
@@ -128,7 +129,10 @@ describe('Test Airtop, agent run operation', () => {
 		const result = await methods.agentsResourceMapping.call(mockLoadOptions);
 
 		expect(apiRequestMock).toHaveBeenCalledTimes(1);
-		expect(apiRequestMock).toHaveBeenCalledWith('GET', `${AGENTS_ENDPOINT}/test-agent-123`);
+		expect(apiRequestMock).toHaveBeenCalledWith(
+			'GET',
+			requestUrl`${AGENTS_ENDPOINT}/test-agent-123`,
+		);
 
 		expect(result).toEqual({
 			fields: [
@@ -213,13 +217,17 @@ describe('Test Airtop, agent run operation', () => {
 		expect(apiRequestMock).toHaveBeenCalledTimes(2);
 
 		// First call should be getAgentDetails
-		expect(apiRequestMock).toHaveBeenNthCalledWith(1, 'GET', `${AGENTS_ENDPOINT}/test-agent-123`);
+		expect(apiRequestMock).toHaveBeenNthCalledWith(
+			1,
+			'GET',
+			requestUrl`${AGENTS_ENDPOINT}/test-agent-123`,
+		);
 
 		// Second call should be the invocation
 		expect(apiRequestMock).toHaveBeenNthCalledWith(
 			2,
 			'POST',
-			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
+			requestUrl`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
 			{ configVars: {} },
 			{},
 		);
@@ -269,13 +277,17 @@ describe('Test Airtop, agent run operation', () => {
 		expect(apiRequestMock).toHaveBeenCalledTimes(4);
 
 		// First call should be getAgentDetails
-		expect(apiRequestMock).toHaveBeenNthCalledWith(1, 'GET', `${AGENTS_ENDPOINT}/test-agent-123`);
+		expect(apiRequestMock).toHaveBeenNthCalledWith(
+			1,
+			'GET',
+			requestUrl`${AGENTS_ENDPOINT}/test-agent-123`,
+		);
 
 		// Second call should be the invocation
 		expect(apiRequestMock).toHaveBeenNthCalledWith(
 			2,
 			'POST',
-			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
+			requestUrl`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
 			{ configVars: {} },
 			{},
 		);
@@ -284,13 +296,13 @@ describe('Test Airtop, agent run operation', () => {
 		expect(apiRequestMock).toHaveBeenNthCalledWith(
 			3,
 			'GET',
-			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/invocations/invocation-123/result`,
+			requestUrl`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/invocations/invocation-123/result`,
 		);
 
 		expect(apiRequestMock).toHaveBeenNthCalledWith(
 			4,
 			'GET',
-			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/invocations/invocation-123/result`,
+			requestUrl`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/invocations/invocation-123/result`,
 		);
 
 		expect(result).toEqual([
@@ -357,7 +369,7 @@ describe('Test Airtop, agent run operation', () => {
 
 		expect(apiRequestMock).toHaveBeenCalledWith(
 			'GET',
-			AGENTS_ENDPOINT,
+			requestUrl`${AGENTS_ENDPOINT}`,
 			{},
 			{ createdByMe: true, limit: 50, enabled: true, published: true, name: 'Test' },
 		);
@@ -395,13 +407,17 @@ describe('Test Airtop, agent run operation', () => {
 		expect(apiRequestMock).toHaveBeenCalledTimes(2);
 
 		// First call should be getAgentDetails
-		expect(apiRequestMock).toHaveBeenNthCalledWith(1, 'GET', `${AGENTS_ENDPOINT}/test-agent-123`);
+		expect(apiRequestMock).toHaveBeenNthCalledWith(
+			1,
+			'GET',
+			requestUrl`${AGENTS_ENDPOINT}/test-agent-123`,
+		);
 
 		// Second call should be the invocation with configVars
 		expect(apiRequestMock).toHaveBeenNthCalledWith(
 			2,
 			'POST',
-			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
+			requestUrl`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
 			{
 				configVars: {
 					url: 'https://example.com',
@@ -479,7 +495,7 @@ describe('Test Airtop, agent run operation', () => {
 		expect(apiRequestMock).toHaveBeenNthCalledWith(
 			2,
 			'POST',
-			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
+			requestUrl`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
 			{ configVars: {} },
 			{ profileId: 'my-profile' },
 		);
@@ -503,7 +519,7 @@ describe('Test Airtop, agent run operation', () => {
 		expect(apiRequestMock).toHaveBeenNthCalledWith(
 			2,
 			'POST',
-			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
+			requestUrl`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
 			{ configVars: {} },
 			{ profileId: 'my-profile' },
 		);
@@ -526,7 +542,7 @@ describe('Test Airtop, agent run operation', () => {
 		expect(apiRequestMock).toHaveBeenNthCalledWith(
 			2,
 			'POST',
-			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
+			requestUrl`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
 			{ configVars: {} },
 			{},
 		);
@@ -551,7 +567,7 @@ describe('Test Airtop, agent run operation', () => {
 		expect(apiRequestMock).toHaveBeenNthCalledWith(
 			2,
 			'POST',
-			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
+			requestUrl`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
 			{ configVars: {} },
 			{},
 		);
@@ -575,7 +591,7 @@ describe('Test Airtop, agent run operation', () => {
 		expect(apiRequestMock).toHaveBeenNthCalledWith(
 			2,
 			'POST',
-			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
+			requestUrl`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
 			{ configVars: {} },
 			{ profileId: 'a13c6f73-bd89-4a76-ab32-5a6c422e8224' },
 		);

@@ -1,0 +1,215 @@
+{
+	"name": "GetResponse Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking 'Execute Workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "create",
+				"email": "nathan@example.com",
+				"campaignId": "V8dZ"
+			},
+			"id": "node-0",
+			"name": "Contact Create",
+			"type": "n8n-nodes-base.getResponse",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"getResponseApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "delete",
+				"contactId": "pV3r"
+			},
+			"id": "node-1",
+			"name": "Contact Delete",
+			"type": "n8n-nodes-base.getResponse",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"getResponseApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "get",
+				"contactId": "pV3r"
+			},
+			"id": "node-2",
+			"name": "Contact Get",
+			"type": "n8n-nodes-base.getResponse",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"getResponseApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "node-3",
+			"name": "Contact Get Many",
+			"type": "n8n-nodes-base.getResponse",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"getResponseApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "node-4",
+			"name": "Contact Get Many All",
+			"type": "n8n-nodes-base.getResponse",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"getResponseApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "update",
+				"contactId": "pV3r",
+				"updateFields": {
+					"name": "Nathan"
+				}
+			},
+			"id": "node-5",
+			"name": "Contact Update",
+			"type": "n8n-nodes-base.getResponse",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"getResponseApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Contact Create": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Contact Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Contact Get": [
+			{
+				"json": {
+					"contactId": "pV3r",
+					"email": "nathan@example.com"
+				}
+			}
+		],
+		"Contact Get Many": [
+			{
+				"json": {
+					"contactId": "pV3r",
+					"email": "nathan@example.com"
+				}
+			}
+		],
+		"Contact Get Many All": [
+			{
+				"json": {
+					"contactId": "pV3r",
+					"email": "nathan@example.com"
+				}
+			}
+		],
+		"Contact Update": [
+			{
+				"json": {
+					"contactId": "pV3r",
+					"email": "nathan@example.com"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Contact Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Get Many All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

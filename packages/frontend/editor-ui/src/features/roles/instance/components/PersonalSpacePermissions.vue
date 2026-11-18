@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { N8nCallout, N8nCheckbox, N8nIconButton, N8nInfoTip, N8nLink } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { ref, useId } from 'vue';
+import { computed, ref, useId } from 'vue';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { I18nT } from 'vue-i18n';
 import { VIEWS } from '@/app/constants';
 import {
@@ -15,6 +16,14 @@ import {
 
 const i18n = useI18n();
 const listId = useId();
+const settingsStore = useSettingsStore();
+
+// Hide Apps while the module is inactive, as the editable options below do.
+const resources = computed(() =>
+	settingsStore.isAppsEnabled
+		? PERSONAL_SPACE_RESOURCES
+		: PERSONAL_SPACE_RESOURCES.filter((resource) => resource !== 'app'),
+);
 
 // Collapsed by default: the block is a reminder, the editable options below it are the task.
 const expanded = ref<Record<PersonalSpaceGroup, boolean>>({ view: false, manage: false });
@@ -62,7 +71,7 @@ function toggleLabel(group: PersonalSpaceGroup): string {
 				:class="$style.resources"
 				:data-test-id="`personal-space-resources-${group}`"
 			>
-				<li v-for="resource in PERSONAL_SPACE_RESOURCES" :key="resource" :class="$style.resource">
+				<li v-for="resource in resources" :key="resource" :class="$style.resource">
 					<N8nCheckbox
 						:label="i18n.baseText(PERSONAL_SPACE_RESOURCE_LABEL_KEYS[resource])"
 						:model-value="true"

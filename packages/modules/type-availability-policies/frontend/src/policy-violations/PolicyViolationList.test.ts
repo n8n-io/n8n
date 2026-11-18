@@ -5,6 +5,7 @@ import { within } from '@testing-library/vue';
 import { describe, expect, it } from 'vitest';
 
 import PolicyViolationList from './PolicyViolationList.vue';
+import type { PolicyViolationListItem } from './policyViolations';
 
 const SLACK_NODE_TYPE = 'n8n-nodes-base.slack';
 const TELEGRAM_NODE_TYPE = 'n8n-nodes-base.telegram';
@@ -68,7 +69,7 @@ describe('PolicyViolationList', () => {
 		const { getAllByTestId } = renderComponent({
 			props: {
 				violations: [slackOnInstance, githubCredentialOnInstance],
-				labelOf: ({ subject }: PolicyViolation) => (subject ? labels[subject] : undefined),
+				labelOf: ({ subject }: PolicyViolationListItem) => (subject ? labels[subject] : undefined),
 			},
 		});
 
@@ -131,7 +132,7 @@ describe('PolicyViolationList', () => {
 		const { getAllByTestId, emitted } = renderComponent({
 			props: {
 				violations: [slackOnInstance, githubCredentialOnInstance, telegramInProject],
-				isJumpable: ({ subject }: PolicyViolation) => subject !== TELEGRAM_NODE_TYPE,
+				isJumpable: ({ subject }: PolicyViolationListItem) => subject !== TELEGRAM_NODE_TYPE,
 			},
 		});
 

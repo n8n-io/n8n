@@ -51,6 +51,7 @@ erDiagram
 "agent_chat_attachments" {
   varchar_36_ agentId FK
   TEXT binaryDataId
+  VARCHAR_64_ contentHash
   datetime_3_ createdAt
   varchar_128_ createdByThreadId
   varchar_255_ fileName

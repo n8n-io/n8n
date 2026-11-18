@@ -9,6 +9,9 @@ import {
 	WorkflowPublishedDataService,
 	AiPreferenceService,
 	CredentialsFinderService,
+	NodeTypesProxy,
+	PostHogClient,
+	TelemetryProxy,
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -23,15 +26,12 @@ import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { NodeCatalogService } from '@/node-catalog';
-import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { TagService } from '@/services/tag.service';
-import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
@@ -60,6 +60,7 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service';
 
 import type { McpAuthContext } from '../mcp.types';
+import { McpPreferencesNoteService } from '../mcp-preferences-note.service';
 
 vi.mock('@n8n/permissions', async (importOriginal) => ({
 	...(await importOriginal<typeof permissions>()),
@@ -71,7 +72,6 @@ const hasGlobalScope = vi.mocked(permissions.hasGlobalScope);
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
 	mcpApps: { enabled: false, variant: 'unassigned' },
 	instanceContextEnabled: false,
-	aiPreferencesEnabled: false,
 	...overrides,
 });
 
@@ -121,13 +121,13 @@ describe('install_community_node registration', () => {
 				diagnostics: { enabled: false, frontendConfig: '' },
 				instanceSettingsLoader: { communityPackagesManagedByEnv: managedByEnv },
 			}),
-			mockInstance(Telemetry),
+			mockInstance(TelemetryProxy),
 			mockInstance(WorkflowRunner),
 			mockInstance(RoleService),
 			mockInstance(ProjectService),
 			mockInstance(NodeCatalogService),
 			mockInstance(WorkflowCreationService),
-			mockInstance(NodeTypes),
+			mockInstance(NodeTypesProxy),
 			mockInstance(ProjectRepository),
 			mockInstance(FolderFinderService),
 			mockInstance(SharedWorkflowRepository),
@@ -159,6 +159,7 @@ describe('install_community_node registration', () => {
 			mockInstance(McpConfig, { communityNodeDiscoveryEnabled: true }),
 			mockInstance(ExecutionRedactionServiceProxy),
 			mockInstance(InstanceWriteAccessService),
+			mockInstance(McpPreferencesNoteService),
 		);
 
 	beforeEach(() => {

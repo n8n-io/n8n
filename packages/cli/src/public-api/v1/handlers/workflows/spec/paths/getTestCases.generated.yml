@@ -2,7 +2,10 @@ operationId: getTestCases
 tags:
   - Evaluation
 summary: Retrieve test run cases
-description: Retrieve the per-case results of an evaluation test run.
+description: |-
+  Retrieve the per-case results of an evaluation test run.
+
+  Requires the `testRun:read` API key scope.
 x-required-scope: testRun:read
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml

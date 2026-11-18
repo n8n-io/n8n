@@ -5,8 +5,9 @@ import type {
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	JsonObject,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, randomInt } from 'n8n-workflow';
+import { NodeApiError, randomInt, requestUrl } from 'n8n-workflow';
 
 import { odooGetDBName } from '../helpers/utils';
 
@@ -31,9 +32,9 @@ async function callJson2(
 	const db = odooGetDBName(credentials.db as string, baseUrl);
 	if (db) headers['X-Odoo-Database'] = db;
 
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		method: 'POST',
-		url: `${baseUrl}/json/2/${model}/${method}`,
+		url: requestUrl`${baseUrl}/json/2/${model}/${method}`,
 		headers,
 		body,
 		json: true,
@@ -92,9 +93,9 @@ async function getRpcUserID(
 	password: string,
 	baseUrl: string,
 ): Promise<number> {
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		method: 'POST',
-		url: `${baseUrl}/jsonrpc`,
+		url: requestUrl`${baseUrl}/jsonrpc`,
 		headers: {
 			Connection: 'keep-alive',
 			Accept: '*/*',
@@ -133,9 +134,9 @@ async function rpcRequest(
 	const userID = await getRpcUserID.call(this, db, username, password, baseUrl);
 	const args = bodyToRpcArgs(method, body);
 
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		method: 'POST',
-		url: `${baseUrl}/jsonrpc`,
+		url: requestUrl`${baseUrl}/jsonrpc`,
 		headers: {
 			Connection: 'keep-alive',
 			Accept: '*/*',

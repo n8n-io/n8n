@@ -1,5 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
 
 import { versionDescription } from '../../../../v2/actions/versionDescription';
@@ -24,13 +24,19 @@ describe.each<[string, string]>([
 	['softDeleteMessage', 'softDelete'],
 	['undoSoftDeleteMessage', 'undoSoftDelete'],
 ])('Microsoft Teams V2 — chatMessage:%s', (operation, action) => {
-	const actionPath = `/v1.0/users/${userId}/chats/${chatId}/messages/${messageId}/${action}`;
+	const actionPath = requestPath`/v1.0/users/${userId}/chats/${chatId}/messages/${messageId}/${action}`;
 	const apiRequest = vi.mocked(transport.microsoftApiRequest);
 	let node: MicrosoftTeamsV2;
 	let ctx: MockProxy<IExecuteFunctions>;
 
 	const expectMeCall = (n: number) =>
-		expect(apiRequest).toHaveBeenNthCalledWith(n, 'GET', '/v1.0/me', {}, { $select: 'id' });
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			n,
+			'GET',
+			requestPath`/v1.0/me`,
+			{},
+			{ $select: 'id' },
+		);
 
 	beforeEach(() => {
 		vi.resetAllMocks();

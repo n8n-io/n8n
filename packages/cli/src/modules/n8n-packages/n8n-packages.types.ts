@@ -1,7 +1,9 @@
 import type { AgentImportIssue } from './entities/agent/agent-import.types';
 import type { ImportedAgentChannel, PolicyViolation } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import type { OperationContext, User } from '@n8n/db';
 import type { Readable } from 'node:stream';
+
+import type { PublicApiCaller } from '@/public-api/public-api-client';
 
 import type {
 	CredentialConflict,
@@ -120,7 +122,7 @@ export const ExportVersionPolicy = {
 } as const;
 
 export const CredentialExportPolicy = {
-	/** Bundles only expression-valued fields from credential data; literal values never travel. */
+	/** Bundles expression-valued fields from credential data. A literal travels only when it decides whether a field with a bundled expression shows. */
 	ExpressionValuesOnly: 'expression-values-only',
 	/** Keeps credential data out of the package; credential.json carries id, name and type only. */
 	NoValues: 'no-values',
@@ -261,6 +263,8 @@ export type TagConflictPolicy = (typeof TagConflictPolicy)[keyof typeof TagConfl
 
 export interface ExportPackageRequest {
 	user: User;
+	/** The caller's operation context. Audit events read the login of a service account from it. */
+	ctx?: OperationContext;
 	agentIds?: string[];
 	workflowIds?: string[];
 	folderIds?: string[];
@@ -271,13 +275,15 @@ export interface ExportPackageRequest {
 	 * project shells only. Every id must belong to one of `projectIds`.
 	 */
 	projectWorkflowIds?: string[];
+	/** With `projectWorkflowIds`, also export these folders and the folders above them. */
+	projectFolderIds?: string[];
 	/** Internal opt-out for callers that cannot import Agents yet. */
 	includeAgents?: boolean;
 	includeVariableValues?: boolean;
 	canExportVariableValues?: boolean;
 	includeTags?: boolean;
-	/** Whether folder and project exports include archived workflows. Explicit ids always export. */
-	includeArchivedWorkflows?: boolean;
+	/** Whether folder exports include archived workflows and project exports include archived workflows and agents. Explicit ids always export. */
+	includeArchived?: boolean;
 	dependencyPolicy?: ExportDependencyPolicy;
 	versionPolicy?: ExportVersionPolicy;
 	credentialExportPolicy?: CredentialExportPolicy;
@@ -287,10 +293,13 @@ export type PackageImportSource = 'package-import' | 'git-pull';
 
 export type ImportRequest = {
 	user: User;
+	/** The caller's operation context. Audit events read the login of a service account from it. */
+	ctx?: OperationContext;
 	projectId?: string;
 	folderId?: string;
 	bindings?: Partial<Pick<PackageImportBindings, 'credentials'>>;
 	apiKeyScopes?: string[];
+	publicApi: PublicApiCaller;
 	/** Omit to import the whole package. */
 	selection?: ImportSelection;
 } & ImportCredentialProperties &
@@ -306,7 +315,8 @@ export type ImportPackageRequest = ImportRequest & {
 };
 
 /**
- * Import only the selected workflows. Do not add referenced sub-workflows to the selection.
+ * Import only the selected workflows and folders. Do not add referenced sub-workflows to the
+ * selection.
  *
  * Delete only within the destination project, even under `merge`. Ignore absent or archived IDs.
  * References to deleted workflows remain unchanged.
@@ -316,6 +326,8 @@ export interface ImportSelection {
 	selectedProjectId: string;
 	/** Source workflow IDs from the selected project. */
 	selectedWorkflowIds: string[];
+	/** Source folder IDs from the selected project. Their parents come along. */
+	selectedFolderIds?: string[];
 	/** Destination workflow IDs to remove. */
 	deletedWorkflowIds?: string[];
 }
@@ -326,12 +338,15 @@ export interface ImportSelection {
  * `overwriteDeletionPolicy` (how removals are carried out; defaults to `archive`),
  * `dataTableSchemaConflictPolicy` (defaults to `fail`), `tagConflictPolicy` (defaults to `skip`),
  * `credentialConflictPolicy` (defaults to `keep-existing`), `layoutConflictPolicy` (defaults to
- * `fail`; only promotions set it), and `publishingPolicy` (defaults to `match-source`; only
- * promotions set it).
+ * `fail`; only promotions set it), `publishingPolicy` (defaults to `match-source`; only
+ * promotions set it), and `projectConflictPolicy` (defaults to `merge`; only promotions set it).
  */
 export type ImportSelectionRequest = {
 	user: User;
+	/** The caller's operation context. Audit events read the login of a service account from it. */
+	ctx?: OperationContext;
 	apiKeyScopes?: string[];
+	publicApi: PublicApiCaller;
 	bindings?: Partial<Pick<PackageImportBindings, 'credentials'>>;
 	conflictPolicy?: ImportConflictPolicy;
 	idPolicy?: WorkflowIdPolicy;
@@ -342,6 +357,11 @@ export type ImportSelectionRequest = {
 	credentialConflictPolicy?: CredentialConflictPolicy;
 	/** Promotion-only. The public selection import does not carry it. Omitted means `match-source`. */
 	publishingPolicy?: WorkflowPublishingPolicy;
+	/**
+	 * Promotion-only. `overwrite` also applies the project's details from the package. Omitted means
+	 * `merge`. The folder policy stays `merge`, so nothing is removed.
+	 */
+	projectConflictPolicy?: ProjectConflictPolicy;
 } & PromotionLayoutProperties;
 
 export type ImportPackageSelectionRequest = ImportSelectionRequest & {
@@ -440,8 +460,11 @@ export type ImportTagProperties = {
  */
 export interface ImportContext {
 	user: User;
+	/** The caller's operation context. Audit events read the login of a service account from it. */
+	ctx?: OperationContext;
 	projectId: string;
 	folderId: string | null;
+	publicApi: PublicApiCaller;
 }
 
 export type ImportPackageEventOptions = Required<ImportCredentialProperties> &

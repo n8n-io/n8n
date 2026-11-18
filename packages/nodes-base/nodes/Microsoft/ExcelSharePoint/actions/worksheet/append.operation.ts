@@ -1,5 +1,11 @@
-import type { IExecuteFunctions, INode, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INode,
+	INodeExecutionData,
+	INodeProperties,
+	RequestPath,
+} from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { processJsonInput, updateDisplayOptions } from '@utils/utilities';
 
@@ -284,7 +290,7 @@ function combineInOrder(
 // isn't a per-item concept: one blob of rows for the whole batch, in one write.
 async function executeRaw(
 	this: IExecuteFunctions,
-	sheetPath: string,
+	sheetPath: RequestPath,
 	usedRangeAddress: string,
 	existingColumns: string[] | undefined,
 	settings: AppendSettings,
@@ -296,7 +302,7 @@ async function executeRaw(
 	const responseData = await (microsoftApiRequest<ExcelResponse>).call(
 		this,
 		'PATCH',
-		`${sheetPath}/range(address='${range}')`,
+		requestPath`${sheetPath}/range(address='${range}')`,
 		{ values: settings.rawRows },
 	);
 
@@ -311,7 +317,7 @@ async function executeRaw(
 async function executeMapped(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
-	sheetPath: string,
+	sheetPath: RequestPath,
 	usedRangeAddress: string,
 	isEmpty: boolean,
 	existingColumns: string[] | undefined,
@@ -364,7 +370,7 @@ async function executeMapped(
 		const responseData = await (microsoftApiRequest<ExcelResponse>).call(
 			this,
 			'PATCH',
-			`${sheetPath}/range(address='${range}')`,
+			requestPath`${sheetPath}/range(address='${range}')`,
 			{ values: rowsToWrite },
 		);
 
@@ -406,12 +412,12 @@ export async function execute(
 	const settings = getSettings.call(this);
 
 	const workbookRoot = await resolveWorkbookRoot.call(this, 0);
-	const sheetPath = `${workbookRoot}/workbook/worksheets/${encodeURIComponent(settings.worksheetId)}`;
+	const sheetPath = requestPath`${workbookRoot}/workbook/worksheets/${settings.worksheetId}`;
 
 	const usedRange = await (microsoftApiRequest<ExcelResponse & { address: string }>).call(
 		this,
 		'GET',
-		`${sheetPath}/usedRange`,
+		requestPath`${sheetPath}/usedRange`,
 	);
 
 	// An empty sheet has no header row to read; the raw/mapped writers seed one

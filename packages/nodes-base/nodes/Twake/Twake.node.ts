@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { twakeApiRequest } from './GenericFunctions';
 
@@ -164,7 +164,7 @@ export class Twake implements INodeType {
 	methods = {
 		loadOptions: {
 			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const responseData = await twakeApiRequest.call(this, 'POST', '/channel', {});
+				const responseData = await twakeApiRequest.call(this, 'POST', requestPath`/channel`, {});
 				if (responseData === undefined) {
 					throw new NodeOperationError(this.getNode(), 'No data got returned');
 				}
@@ -217,7 +217,7 @@ export class Twake implements INodeType {
 						object: message,
 					};
 
-					const endpoint = '/actions/message/save';
+					const endpoint = requestPath`/actions/message/save`;
 
 					responseData = await twakeApiRequest.call(this, 'POST', endpoint, body);
 

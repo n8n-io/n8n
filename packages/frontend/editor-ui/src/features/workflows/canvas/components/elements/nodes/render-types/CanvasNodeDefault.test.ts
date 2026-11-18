@@ -33,7 +33,6 @@ const renderNodeInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>
 const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
 const pinnedDataByNodeName: IPinData = {};
 const executionPinDataByNodeId = new Map<string, ComputedRef<IPinData[string] | undefined>>();
-let isExecutionDataDisplayed = false;
 
 vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
@@ -44,8 +43,8 @@ vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 				nodeInputsByNodeId: renderNodeInputsMap,
 				nodeOutputsByNodeId: renderNodeOutputsMap,
 				pinnedDataByNodeName,
-				executionPinDataByNodeId,
-				isExecutionDataDisplayed,
+				getDisplayedExecutionPinData: (nodeId: string) =>
+					executionPinDataByNodeId.get(nodeId)?.value,
 			}),
 		})),
 	};
@@ -86,7 +85,6 @@ beforeEach(() => {
 		delete pinnedDataByNodeName[key];
 	}
 	executionPinDataByNodeId.clear();
-	isExecutionDataDisplayed = false;
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 	nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -369,7 +367,9 @@ describe('CanvasNodeDefault', () => {
 					},
 				},
 			});
-			expect(getByText('Test Node').closest('.node')).toHaveClass('waiting');
+			const node = getByText('Test Node').closest('.node');
+			expect(node).toHaveClass('waiting');
+			expect(node?.querySelector('.statusRing')).not.toBeNull();
 		});
 	});
 
@@ -383,7 +383,16 @@ describe('CanvasNodeDefault', () => {
 					},
 				},
 			});
-			expect(getByText('Test Node').closest('.node')).toHaveClass('running');
+			const node = getByText('Test Node').closest('.node');
+			expect(node).toHaveClass('running');
+			expect(node?.querySelector('.statusRing')).not.toBeNull();
+		});
+
+		it('should not render the status ring when node is idle', () => {
+			const { getByText } = renderComponent({
+				global: { stubs, provide: { ...createCanvasNodeProvide() } },
+			});
+			expect(getByText('Test Node').closest('.node')?.querySelector('.statusRing')).toBeNull();
 		});
 	});
 
@@ -393,7 +402,6 @@ describe('CanvasNodeDefault', () => {
 				'node',
 				computed(() => [{ json: { ok: true } }]),
 			);
-			isExecutionDataDisplayed = true;
 
 			const { getByText } = renderComponent({
 				global: {
@@ -414,9 +422,8 @@ describe('CanvasNodeDefault', () => {
 			expect(nodeElement).not.toHaveClass('success');
 		});
 
-		it('should ignore workflow pin data when displaying an execution without pin data for the node', () => {
-			pinnedDataByNodeName['Test Node'] = [{ json: { stale: true } }];
-			isExecutionDataDisplayed = true;
+		it('should apply pinned styling for workflow pin data without execution pin data', () => {
+			pinnedDataByNodeName['Test Node'] = [{ json: { ok: true } }];
 
 			const { getByText } = renderComponent({
 				global: {
@@ -432,34 +439,7 @@ describe('CanvasNodeDefault', () => {
 				},
 			});
 
-			const nodeElement = getByText('Test Node').closest('.node');
-			expect(nodeElement).not.toHaveClass('pinned');
-			expect(nodeElement).toHaveClass('success');
-		});
-
-		it('should ignore execution pin data outside execution preview mode', () => {
-			executionPinDataByNodeId.set(
-				'node',
-				computed(() => [{ json: { ok: true } }]),
-			);
-
-			const { getByText } = renderComponent({
-				global: {
-					stubs,
-					provide: {
-						...createCanvasNodeProvide({
-							data: {
-								execution: { status: 'success', running: false },
-								runData: { outputMap: {}, iterations: 1, visible: true },
-							},
-						}),
-					},
-				},
-			});
-
-			const nodeElement = getByText('Test Node').closest('.node');
-			expect(nodeElement).not.toHaveClass('pinned');
-			expect(nodeElement).toHaveClass('success');
+			expect(getByText('Test Node').closest('.node')).toHaveClass('pinned');
 		});
 	});
 
@@ -597,6 +577,53 @@ describe('CanvasNodeDefault', () => {
 
 			expect(getByTestId('canvas-configurable-node')).toMatchSnapshot();
 		});
+
+		it.each([
+			[1, '240px'],
+			[4, '240px'],
+			[6, '336px'],
+		])(
+			'should give a node with %s non-main outputs at the top a width of %s',
+			(outputCount, expectedWidth) => {
+				renderNodeInputsMap.set(
+					'node',
+					computed(() => [
+						{ type: NodeConnectionTypes.Main, index: 0 },
+						{ type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+					]),
+				);
+				renderNodeOutputsMap.set(
+					'node',
+					computed(() =>
+						Array.from({ length: outputCount }, (_, index) => ({
+							type: NodeConnectionTypes.AiTool,
+							index,
+						})),
+					),
+				);
+
+				const { getByText } = renderComponent({
+					global: {
+						stubs,
+						provide: {
+							...createCanvasNodeProvide({
+								data: {
+									render: {
+										type: CanvasNodeRenderType.Default,
+										options: { configurable: true, configuration: true },
+									},
+								},
+							}),
+						},
+					},
+				});
+
+				expect(getByText('Test Node').closest('.node')).toHaveStyle({
+					'--canvas-node--width': expectedWidth,
+					'--canvas-node--height': '80px',
+				});
+			},
+		);
 	});
 
 	describe('trigger', () => {

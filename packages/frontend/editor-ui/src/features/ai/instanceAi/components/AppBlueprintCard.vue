@@ -3,6 +3,7 @@ import {
 	appNameSchema,
 	appNamespaceSchema,
 	type AppBlueprint,
+	type AppBlueprintErrors,
 	type InstanceAiConfirmRequest,
 } from '@n8n/api-types';
 import {
@@ -24,6 +25,10 @@ type AppBlueprintBinding = NonNullable<AppBlueprint['bindings']>[number];
 const props = defineProps<{
 	blueprint: AppBlueprint;
 	readOnly?: boolean;
+	/** Field errors from the previous attempt. The card reopens with them. */
+	errors?: AppBlueprintErrors;
+	/** n8n tried to create the app after approval and failed. */
+	failed?: boolean;
 }>();
 
 const emit = defineEmits<{ submit: [body: InstanceAiConfirmRequest] }>();
@@ -59,10 +64,20 @@ const editedBlueprint = computed<AppBlueprint>(() => ({
 		? { additionalInstructions: additionalInstructions.value.trim() }
 		: {}),
 }));
+// The error applies to the rejected namespace only. It clears when the user edits it.
+// A resolved card shows the approved blueprint, so the error no longer applies.
+const namespaceError = computed(() =>
+	!props.readOnly &&
+	props.errors?.namespace === 'taken' &&
+	editedBlueprint.value.namespace === props.blueprint.namespace
+		? i18n.baseText('instanceAi.appBlueprint.namespace.taken')
+		: undefined,
+);
 const isValid = computed(
 	() =>
 		appNameSchema.safeParse(editedBlueprint.value.name).success &&
 		appNamespaceSchema.safeParse(editedBlueprint.value.namespace).success &&
+		!namespaceError.value &&
 		editedBlueprint.value.description.length > 0,
 );
 
@@ -123,8 +138,19 @@ function cancel() {
 						v-model="namespace"
 						size="medium"
 						:disabled="readOnly"
+						:class="namespaceError && $style.fieldInvalid"
+						:aria-invalid="namespaceError ? 'true' : undefined"
 						data-test-id="instance-ai-app-blueprint-namespace"
 					/>
+					<N8nText
+						v-if="namespaceError"
+						size="small"
+						color="danger"
+						role="alert"
+						data-test-id="instance-ai-app-blueprint-namespace-error"
+					>
+						{{ namespaceError }}
+					</N8nText>
 				</label>
 				<label :class="$style.field">
 					<N8nText size="medium" color="text-dark">{{
@@ -194,6 +220,17 @@ function cancel() {
 					</div>
 				</div>
 			</div>
+		</div>
+
+		<div
+			v-if="failed"
+			:class="$style.failed"
+			role="alert"
+			data-test-id="instance-ai-app-blueprint-failed"
+		>
+			<N8nText size="medium" color="danger">
+				{{ i18n.baseText('instanceAi.appBlueprint.failed') }}
+			</N8nText>
 		</div>
 
 		<div :class="$style.instructions">
@@ -310,6 +347,18 @@ function cancel() {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding: var(--spacing--sm);
+	border-top: var(--border);
+}
+
+/* The input declares its own border variable, so set it on the input element itself. */
+.fieldInvalid:global(.n8n-input) {
+	--input--border-color: var(--color--danger);
+	--input--border-color--hover: var(--color--danger);
+	--input--border-color--focus: var(--color--danger);
+}
+
+.failed {
+	padding: var(--spacing--xs) var(--spacing--sm);
 	border-top: var(--border);
 }
 

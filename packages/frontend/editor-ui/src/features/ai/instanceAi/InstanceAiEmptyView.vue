@@ -24,11 +24,11 @@ import { countAttachedNodes } from './utils/buildNodesAttachment';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
-// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 import { usePostHog } from '@/app/stores/posthog.store';
 // EOF Experiment cleanup
 import {
-	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
 	// EOF Experiment cleanup
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
@@ -37,7 +37,8 @@ import {
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useInstanceAiStore } from './instanceAi.store';
-import type { InstanceAiMessageAuthorship, InstanceAiPrefillDeclaration } from './prefills';
+import { useAssistantCreditsStore } from './assistantCredits.store';
+import type { InstanceAiMessageAuthorship } from './prefills';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {
 	INSTANCE_AI_THREAD_VIEW,
@@ -75,11 +76,8 @@ import {
 	type PersonalizedPromptMetadataLoadState,
 	type PersonalizedPromptSuggestionResolution,
 } from '@/experiments/instanceAiPersonalizedPromptSuggestions';
-// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 import {
-	INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_BIS,
-	INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_BIS_VERSION,
-	INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION,
 	isPersonalizedPromptSuggestionResolution,
 	isTaxonomyPromptSuggestionResolution,
 	resolveTaxonomyPromptSuggestions,
@@ -96,11 +94,7 @@ import {
 	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_VERSION,
 	getPreviewWorkflow,
 } from '@/experiments/instanceAiWorkflowPreviewSuggestions';
-import {
-	InstanceAiSplitEmptyState,
-	INSTANCE_AI_SPLIT_EMPTY_STATE_SUGGESTIONS_VERSION,
-	useInstanceAiSplitEmptyStateExperiment,
-} from '@/experiments/instanceAiSplitEmptyState';
+import ApprovalModeSelector from './components/ApprovalModeSelector.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
@@ -125,7 +119,7 @@ import {
 	stashPendingN8nChatMessage,
 } from '@/features/agents/n8nChatPage/pendingN8nChatMessage';
 import {
-	ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES,
+	ASSISTANT_AGENT_ACCEPTED_MIME_TYPES,
 	clearAssistantAgentLaunch,
 	discardPendingAssistantAgentMessage,
 	stashAssistantAgentLaunch,
@@ -148,14 +142,8 @@ const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_TITLE_KEY =
 	'experiments.instanceAiWorkflowPreviewSuggestions.emptyState.title' as BaseTextKey;
 const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_PLACEHOLDER_KEY =
 	'experiments.instanceAiWorkflowPreviewSuggestions.input.placeholder' as BaseTextKey;
-const INSTANCE_AI_SPLIT_EMPTY_STATE_PLACEHOLDER_KEY: BaseTextKey =
-	'experiments.instanceAiSplitEmptyState.input.placeholder';
 const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY: BaseTextKey =
 	'experiments.instanceAiPersonalizedPromptSuggestions.input.placeholder';
-// Experiment cleanup: remove with instanceAiSplitEmptyState. The split layout
-// locks the composer to a constant height so hovering an example only swaps
-// the placeholder text — the examples list below it never shifts.
-const INSTANCE_AI_SPLIT_FIXED_ROWS = 5;
 const PERSONALIZED_PROMPT_METADATA_TIMEOUT_MS = 2000;
 const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPOSURE_EVENT =
 	'Instance AI personalized prompt suggestions exposed';
@@ -195,7 +183,8 @@ const canSelectProject = computed(
 		projectsStore.myProjects.length > 1,
 );
 const settingsStore = useInstanceAiSettingsStore();
-const { isLowCredits, isOutOfCredits } = storeToRefs(store);
+const creditsStore = useAssistantCreditsStore();
+const { isLowCredits, isOutOfCredits } = storeToRefs(creditsStore);
 const rootStore = useRootStore();
 const toast = useToast();
 const telemetry = useTelemetry();
@@ -220,7 +209,6 @@ const {
 	variant: workflowPreviewsAboveAssistantVariant,
 } = useWorkflowPreviewsAboveAssistantExperiment();
 // EOF Experiment cleanup
-const { isVariantEnabled: isSplitVariantEnabled } = useInstanceAiSplitEmptyStateExperiment();
 // Variant A replaces the empty state with an agent picker, variant B with a
 // "Chat with [agent]" picker — both force the default layout and win over
 // every other empty-state experiment.
@@ -236,8 +224,6 @@ const showWorkflowPreviewsAboveAssistant = computed(
 	() => isWorkflowPreviewsAboveAssistantEnabled.value && !forcesDefaultEmptyLayout.value,
 );
 // EOF Experiment cleanup
-// Experiment cleanup: remove with instanceAiSplitEmptyState.
-const splitPreviewPromptKey = ref<BaseTextKey | null>(null);
 const composerHasContent = ref(false);
 // Experiment cleanup (124_workflow_previews_above_assistant)
 const workflowPreviewPromptKey = ref<BaseTextKey | null>(null);
@@ -252,7 +238,7 @@ const {
 	isTreatmentVariant: isPersonalizedPromptSuggestionsTreatmentVariant,
 	suggestionFormat: personalizedPromptSuggestionsFormat,
 } = useInstanceAiPersonalizedPromptSuggestionsExperiment();
-// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 const { currentVariant: inspirationFromTaxonomyVariant, isRowsVariant: isTaxonomyRowsVariant } =
 	useInstanceAiInspirationFromTaxonomyExperiment();
 const posthogStore = usePostHog();
@@ -261,36 +247,26 @@ const isTaxonomyExperimentAssigned = computed(
 		inspirationFromTaxonomyVariant.value ===
 			INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.control ||
 		inspirationFromTaxonomyVariant.value ===
-			INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.variant ||
-		inspirationFromTaxonomyVariant.value ===
-			INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.variantBis,
+			INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.variant,
 );
 // EOF Experiment cleanup
 const showProactiveStarter = computed(
 	() => isProactiveAgentExperimentEnabled.value && !forcesDefaultEmptyLayout.value,
 );
-// Experiment cleanup: remove with instanceAiSplitEmptyState. The split layout
-// hosts the view header inside its chat column; the proactive starter (082)
-// keeps precedence.
-const isSplitLayoutActive = computed(
-	() =>
-		isSplitVariantEnabled.value && !showProactiveStarter.value && !forcesDefaultEmptyLayout.value,
-);
 const shouldTrackPersonalizedPromptSuggestionsExposure = computed(
 	() =>
 		typeof personalizedPromptSuggestionsVariant.value === 'string' &&
 		!showProactiveStarter.value &&
-		!isSplitLayoutActive.value &&
 		!forcesDefaultEmptyLayout.value &&
 		!showWorkflowPreviewsAboveAssistant.value && // Experiment cleanup (124_workflow_previews_above_assistant)
 		settingsStore.isWorkflowBuilderAvailable,
 );
 const personalizedPromptSuggestionResolution = ref<
 	| PersonalizedPromptSuggestionResolution
-	| TaxonomyPromptSuggestionResolution // Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	| TaxonomyPromptSuggestionResolution // Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 	| null
 >(null);
-// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 const shouldShowTaxonomySuggestions = computed(() =>
 	isTaxonomyPromptSuggestionResolution(personalizedPromptSuggestionResolution.value),
 );
@@ -333,7 +309,6 @@ const shouldTrackInspirationFromTaxonomyExposure = computed(() => {
 	// These layouts replace the suggestion list on the Assistant empty state.
 	if (
 		showProactiveStarter.value ||
-		isSplitLayoutActive.value ||
 		forcesDefaultEmptyLayout.value ||
 		showWorkflowPreviewsAboveAssistant.value
 	) {
@@ -351,20 +326,19 @@ const activeWorkflowPreview = computed(() => {
 const personalizedPromptProfileOverride = usePersonalizedPromptProfileOverride();
 let personalizedPromptMetadataTimeout: ReturnType<typeof setTimeout> | null = null;
 let hasTrackedPersonalizedPromptSuggestionsExposure = false;
-let hasTrackedInspirationFromTaxonomyExposure = false; // Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+let hasTrackedInspirationFromTaxonomyExposure = false; // Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 // Experiment cleanup (124_workflow_previews_above_assistant)
 let hasTrackedWorkflowPreviewsEmptyStateView = false;
 const shouldTrackWorkflowPreviewsEmptyStateView = computed(
 	() =>
 		workflowPreviewsAboveAssistantVariant.value !== null &&
 		!showProactiveStarter.value &&
-		!isSplitLayoutActive.value &&
 		!forcesDefaultEmptyLayout.value,
 );
 // EOF Experiment cleanup
 const isAnyPersonalizedSuggestionsTreatmentActive = computed(
 	() =>
-		isTaxonomyRowsVariant.value || // Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		isTaxonomyRowsVariant.value || // Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 		isPersonalizedPromptSuggestionsTreatmentVariant.value,
 );
 
@@ -382,20 +356,13 @@ function clearPersonalizedPromptMetadataTimeout() {
 }
 
 function setPersonalizedPromptResolution(metadataLoadState: PersonalizedPromptMetadataLoadState) {
-	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 	// Control keeps the default empty state. Only the variant renders the rows.
 	if (isTaxonomyRowsVariant.value) {
-		const isVariantBis =
-			inspirationFromTaxonomyVariant.value ===
-			INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.variantBis;
 		const taxonomyResolution = resolveTaxonomyPromptSuggestions({
 			metadata: cloudPlanStore.currentUserCloudInfo?.information ?? null,
 			metadataLoadState,
 			suggestionFormat: 'rows',
-			catalog: isVariantBis ? INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_BIS : undefined,
-			catalogVersion: isVariantBis
-				? INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_BIS_VERSION
-				: INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION,
 		});
 
 		if (taxonomyResolution.source === 'taxonomy') {
@@ -435,7 +402,7 @@ function resolvePersonalizedPromptMetadata() {
 		return;
 	}
 
-	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 	if (!isTaxonomyRowsVariant.value && personalizedPromptProfileOverride.value) {
 		setPersonalizedPromptResolution('loaded');
 		return;
@@ -460,8 +427,8 @@ function resolvePersonalizedPromptMetadata() {
 
 watch(
 	[
-		isTaxonomyRowsVariant, // Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
-		inspirationFromTaxonomyVariant, // Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		isTaxonomyRowsVariant, // Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
+		inspirationFromTaxonomyVariant, // Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 		isPersonalizedPromptSuggestionsTreatmentVariant,
 		personalizedPromptSuggestionsFormat,
 		personalizedPromptProfileOverride,
@@ -495,7 +462,7 @@ watch(
 	{ immediate: true },
 );
 
-// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 watch(
 	shouldTrackInspirationFromTaxonomyExposure,
 	(shouldTrackExposure) => {
@@ -553,7 +520,7 @@ watch(
 	},
 );
 
-// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 const isTaxonomySuggestionsPending = computed(
 	() => isTaxonomyRowsVariant.value && personalizedPromptSuggestionResolution.value === null,
 );
@@ -595,7 +562,7 @@ const emptyStatePromptSuggestionProps = computed(() => {
 		return {};
 	}
 
-	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 	if (isTaxonomySuggestionsPending.value) {
 		return {
 			suggestions: [],
@@ -679,8 +646,8 @@ const emptyStateTitleKey = computed<BaseTextKey>(() => {
 		return INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_TITLE_KEY;
 	}
 	if (
-		shouldShowTaxonomySuggestions.value || // Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
-		isTaxonomySuggestionsPending.value || // Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		shouldShowTaxonomySuggestions.value || // Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
+		isTaxonomySuggestionsPending.value || // Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 		shouldShowPersonalizedPromptSuggestions.value ||
 		(isPersonalizedPromptSuggestionsTreatmentVariant.value &&
 			personalizedPromptSuggestionResolution.value === null)
@@ -713,6 +680,11 @@ const composerAttachOnlyMimeTypes = computed(() =>
 		: undefined,
 );
 
+// The Assistant agent accepts only the files it can read. Check them on drop, not at send.
+const composerAcceptedMimeTypes = computed(() =>
+	settingsStore.newThreadsUseAssistantAgent ? ASSISTANT_AGENT_ACCEPTED_MIME_TYPES : undefined,
+);
+
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 // Layout changes mount a new, empty composer.
 watch(chatInputRef, () => {
@@ -740,13 +712,6 @@ watch(
 watch(selectedChatAgent, (agent) => {
 	selectedProject.value = agent ? agent.project.id : resolveInitialProjectId();
 });
-
-type ShelfSuggestionPayload = InstanceAiPrefillDeclaration & {
-	promptKey: BaseTextKey;
-	suggestionId: string;
-	suggestionKind: 'prompt' | 'quick_example';
-	position: number;
-};
 
 const emptyLayoutRef = useTemplateRef<HTMLElement>('emptyLayout');
 const centeredInputRef = useTemplateRef<HTMLElement>('centeredInput');
@@ -806,7 +771,6 @@ async function handleSubmit(
 	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
 	responseStartedAtEpochMs?: number,
-	acceptDraft: () => void = () => {},
 	mentionCounts: AssistantMentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS,
 	mentionedWorkflowIds: readonly string[] = [],
 ) {
@@ -827,7 +791,6 @@ async function handleSubmit(
 		}
 		const pendingMessage = { agentId, text: message, files };
 		stashPendingN8nChatMessage(pendingMessage);
-		acceptDraft();
 		const failure = await router.push({ name: AGENT_N8N_CHAT_VIEW, params: { agentId } });
 		// A blocked or cancelled navigation must not leave the hand-off for a later
 		// visit. Only discard and restore the draft if the slot still holds this
@@ -849,13 +812,14 @@ async function handleSubmit(
 		return;
 	}
 
-	if (settingsStore.isAssistantAgentEnabled && !isCreatingApp.value) {
+	if (settingsStore.newThreadsUseAssistantAgent && !isCreatingApp.value) {
 		await startAssistantAgentThread(
 			selectedProject.value,
 			message,
 			attachments,
 			restoreDraft,
-			acceptDraft,
+			authorship,
+			mentionCounts,
 		);
 		return;
 	}
@@ -937,7 +901,6 @@ async function handleSubmit(
 			runtime: 'instance-ai',
 		});
 	}
-	acceptDraft();
 
 	try {
 		await router.replace({
@@ -960,9 +923,10 @@ async function startAssistantAgentThread(
 	message: string,
 	attachments: InstanceAiAttachment[] | undefined,
 	restoreDraft: () => boolean,
-	acceptDraft: () => void,
+	authorship: InstanceAiMessageAuthorship,
+	mentionCounts: AssistantMentionCounts,
 ) {
-	const acceptString = acceptedMimeTypesFromCapabilities(ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES);
+	const acceptString = ASSISTANT_AGENT_ACCEPTED_MIME_TYPES;
 	const fileAttachments: InstanceAiFileAttachment[] = [];
 	for (const attachment of attachments ?? []) {
 		if (attachment.type !== 'file') continue;
@@ -990,6 +954,8 @@ async function startAssistantAgentThread(
 			base64ToFile(attachment.data, attachment.fileName, attachment.mimeType),
 		),
 		references: (attachments ?? []).filter((attachment) => attachment.type !== 'file'),
+		authorship,
+		mentionCounts,
 	};
 	stashPendingAssistantAgentMessage(pendingMessage);
 	stashAssistantAgentLaunch(pendingMessage.threadId, {
@@ -997,7 +963,6 @@ async function startAssistantAgentThread(
 		source: resolveLaunchSource(),
 		origin: 'internal',
 	});
-	acceptDraft();
 	const failure = await router.push({
 		name: INSTANCE_AI_THREAD_VIEW,
 		params: { threadId: pendingMessage.threadId },
@@ -1006,15 +971,6 @@ async function startAssistantAgentThread(
 		clearAssistantAgentLaunch(pendingMessage.threadId);
 		restoreDraftAfterFailedSubmit(restoreDraft);
 	}
-}
-
-function handleShelfSuggestionSubmit(payload: ShelfSuggestionPayload) {
-	void chatInputRef.value?.submitSuggestion(payload);
-}
-
-function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
-	splitPreviewPromptKey.value = null;
-	void chatInputRef.value?.insertSuggestion(payload);
 }
 
 // Experiment cleanup (124_workflow_previews_above_assistant)
@@ -1044,7 +1000,7 @@ async function handleWorkflowPreviewExampleUse(
 
 <template>
 	<div :class="$style.chatArea">
-		<InstanceAiViewHeader v-if="!isSplitLayoutActive" />
+		<InstanceAiViewHeader />
 
 		<div :class="$style.contentArea">
 			<div v-if="showProactiveStarter" :class="$style.proactiveLayout">
@@ -1054,8 +1010,8 @@ async function handleWorkflowPreviewExampleUse(
 				<div :class="$style.proactiveInput">
 					<CreditWarningBanner
 						v-if="isOutOfCredits || creditBanner.visible.value"
-						:credits-remaining="store.creditsRemaining"
-						:credits-quota="store.creditsQuota"
+						:credits-remaining="creditsStore.creditsRemaining"
+						:credits-quota="creditsStore.creditsQuota"
 						:message="outOfCreditsMessage"
 						:dismissible="!isOutOfCredits"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
@@ -1073,6 +1029,9 @@ async function handleWorkflowPreviewExampleUse(
 						@submit="handleSubmit"
 						@content-change="composerHasContent = $event"
 					>
+						<template #footer-after-menu>
+							<ApprovalModeSelector />
+						</template>
 						<template v-if="canSelectProject" #footer>
 							<div :class="$style.inputFooter">
 								<ProjectSelect v-model="selectedProject" />
@@ -1084,59 +1043,6 @@ async function handleWorkflowPreviewExampleUse(
 				<ClaudeEntryPoint placement="footer" />
 				<!-- EOF Experiment cleanup -->
 			</div>
-			<InstanceAiSplitEmptyState
-				v-else-if="isSplitLayoutActive"
-				:project-id="selectedProject"
-				:disabled="isStartingThread || !settingsStore.isWorkflowBuilderAvailable"
-				:writing="composerHasContent"
-				@submit-suggestion="handleShelfSuggestionSubmit"
-				@insert-suggestion="handleShelfSuggestionInsert"
-				@example-change="(_i, key) => (splitPreviewPromptKey = key)"
-			>
-				<template #header>
-					<InstanceAiViewHeader />
-				</template>
-				<template #input>
-					<div :class="$style.centeredInput">
-						<CreditWarningBanner
-							v-if="isOutOfCredits || creditBanner.visible.value"
-							:credits-remaining="store.creditsRemaining"
-							:credits-quota="store.creditsQuota"
-							:message="outOfCreditsMessage"
-							:dismissible="!isOutOfCredits"
-							@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
-							@dismiss="creditBanner.dismiss()"
-						/>
-						<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
-						<LimitedModeNotice />
-						<InstanceAiInput
-							ref="chatInputRef"
-							:is-submitting="isStartingThread"
-							:is-out-of-credits="isOutOfCredits"
-							:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
-							:mentions-enabled="mentionsEnabled"
-							:mention-project-id="selectedProject"
-							:placeholder-key="INSTANCE_AI_SPLIT_EMPTY_STATE_PLACEHOLDER_KEY"
-							:preview-prompt-key="composerHasContent ? null : splitPreviewPromptKey"
-							:fixed-rows="INSTANCE_AI_SPLIT_FIXED_ROWS"
-							:submit-label="i18n.baseText('experiments.instanceAiSplitEmptyState.cta.buildWithAi')"
-							:submit-active-requires-focus="true"
-							:suggestion-catalog-version="INSTANCE_AI_SPLIT_EMPTY_STATE_SUGGESTIONS_VERSION"
-							@submit="handleSubmit"
-							@content-change="composerHasContent = $event"
-						>
-							<template v-if="canSelectProject" #footer>
-								<div :class="$style.inputFooter" data-test-id="instance-ai-split-project-select">
-									<ProjectSelect v-model="selectedProject" />
-								</div>
-							</template>
-						</InstanceAiInput>
-						<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
-						<ClaudeEntryPoint placement="footer" />
-						<!-- EOF Experiment cleanup -->
-					</div>
-				</template>
-			</InstanceAiSplitEmptyState>
 			<div
 				v-else
 				ref="emptyLayout"
@@ -1181,7 +1087,7 @@ async function handleWorkflowPreviewExampleUse(
 					<InstanceAiFreeNudge
 						v-if="!isCreatingApp"
 						:eligible="
-							store.creditsQuota !== undefined &&
+							creditsStore.creditsQuota !== undefined &&
 							!isOutOfCredits &&
 							!creditBanner.visible.value &&
 							settingsStore.isWorkflowBuilderAvailable
@@ -1189,8 +1095,8 @@ async function handleWorkflowPreviewExampleUse(
 					/>
 					<CreditWarningBanner
 						v-if="isOutOfCredits || creditBanner.visible.value"
-						:credits-remaining="store.creditsRemaining"
-						:credits-quota="store.creditsQuota"
+						:credits-remaining="creditsStore.creditsRemaining"
+						:credits-quota="creditsStore.creditsQuota"
 						:message="outOfCreditsMessage"
 						:dismissible="!isOutOfCredits"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
@@ -1207,6 +1113,7 @@ async function handleWorkflowPreviewExampleUse(
 						:mention-project-id="selectedProject"
 						:placeholder="isAgentsN8nChatVariantB ? n8nChatPickerPlaceholder : undefined"
 						:attach-only-mime-types="composerAttachOnlyMimeTypes"
+						:accepted-mime-types="composerAcceptedMimeTypes"
 						v-bind="
 							// Experiment cleanup (124_workflow_previews_above_assistant)
 							showWorkflowPreviewsAboveAssistant
@@ -1218,6 +1125,10 @@ async function handleWorkflowPreviewExampleUse(
 						@workflow-preview="handleWorkflowPreview"
 						@content-change="composerHasContent = $event"
 					>
+						<!-- Variant B can start an Agent chat, where Assistant approval modes don't apply. -->
+						<template v-if="!selectedChatAgent" #footer-after-menu>
+							<ApprovalModeSelector />
+						</template>
 						<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
 						<template v-if="showClaudeBeforeSuggestions" #before-suggestions>
 							<ClaudeEntryPoint :class="$style.claudeBeforeSuggestions" placement="footer" />

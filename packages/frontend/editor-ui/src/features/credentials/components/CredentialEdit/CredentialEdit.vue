@@ -25,6 +25,8 @@ import CredentialConfig from './CredentialConfig.vue';
 import CredentialInfo from './CredentialInfo.vue';
 import CredentialSharing from './CredentialSharing.ee.vue';
 import SaveButton from '@/app/components/SaveButton.vue';
+import DependencyPill from '@/app/components/DependencyPill.vue';
+import { useDependencies } from '@/app/composables/useDependencies';
 import { useMessage } from '@/app/composables/useMessage';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useToast } from '@n8n/composables/useToast';
@@ -82,6 +84,11 @@ import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCreden
 import TypeToConfirmDialog from './TypeToConfirmDialog.vue';
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import { useCredentialForm } from '../../composables/useCredentialForm';
+import {
+	RestrictedTypeCallout,
+	useCredentialTypeRestriction,
+	useTypeAvailabilityPoliciesStore,
+} from '@n8n/frontend-module-type-availability-policies';
 import type { CredentialModeOption } from './CredentialModeSelector.vue';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -178,6 +185,7 @@ const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 const { getQuickConnectOption, connect: quickConnect } = useQuickConnect();
 const aiGateway = useAiGateway();
 const aiGatewayStore = useAiGatewayStore();
+const { fetchDependencyCounts, hasDependencies } = useDependencies();
 const isQuickConnectMode = ref(false);
 const activeTab = ref('connection');
 const modalBus = ref(createEventBus());
@@ -403,6 +411,10 @@ const showSaveButton = computed(() => {
 	return true;
 });
 
+const credentialHasDependents = computed(
+	() => !!credentialId.value && hasDependencies(credentialId.value, 'credential'),
+);
+
 const showHeaderSaveButton = computed(
 	() =>
 		showSaveButton.value &&
@@ -511,6 +523,7 @@ onMounted(async () => {
 			const cred = currentCredential.value;
 			isSharedGlobally.value =
 				!!cred && 'isGlobal' in cred && typeof cred.isGlobal === 'boolean' ? cred.isGlobal : false;
+			if (credentialId.value) void fetchDependencyCounts([credentialId.value], 'credential');
 		}
 
 		// Default to quick connect mode for new credentials when available and not forced to manual
@@ -836,6 +849,34 @@ function onDescriptionEdit(text: string) {
 	credentialDescription.value = text;
 	hasUnsavedChanges.value = true;
 }
+
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
+
+const policyProjectId = computed(() => {
+	if (props.mode !== 'edit') return homeProject.value?.id;
+	if (!currentCredential.value) return undefined;
+	return currentCredential.value.homeProject?.id ?? homeProject.value?.id;
+});
+
+const projectBeforeEdit = typeAvailabilityPoliciesStore.requestedProjectId;
+
+watch(
+	policyProjectId,
+	(projectId) => {
+		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
+	},
+	{ immediate: true },
+);
+
+onBeforeUnmount(() => {
+	if (projectBeforeEdit && projectBeforeEdit !== policyProjectId.value) {
+		void typeAvailabilityPoliciesStore.fetchForProject(projectBeforeEdit);
+	}
+});
+
+const { restriction: credentialTypeRestriction } = useCredentialTypeRestriction(
+	() => credentialTypeName.value,
+);
 
 function scrollToTop() {
 	setTimeout(() => {
@@ -1671,6 +1712,14 @@ const { width } = useElementSize(credNameRef);
 					</div>
 				</N8nDialogTitle>
 				<div :class="$style.credActions">
+					<DependencyPill
+						v-if="credentialHasDependents"
+						resource-type="credential"
+						:resource-id="credentialId"
+						source="credential_modal"
+						in-dialog
+						data-test-id="credential-edit-dependents"
+					/>
 					<SaveButton
 						v-if="showHeaderSaveButton"
 						:class="$style.saveButton"
@@ -1756,6 +1805,12 @@ const { width } = useElementSize(credNameRef);
 										</N8nButton>
 									</template>
 								</N8nCallout>
+								<RestrictedTypeCallout
+									v-if="credentialTypeRestriction"
+									surface="credential"
+									:type-name="credentialType.displayName"
+									:restriction="credentialTypeRestriction"
+								/>
 								<CredentialConfig
 									:credential-type="credentialType"
 									:credential-properties="credentialProperties"

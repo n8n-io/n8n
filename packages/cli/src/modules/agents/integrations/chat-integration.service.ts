@@ -1,13 +1,19 @@
 import {
 	AgentIntegrationConfig,
-	isCredentialAgentIntegration,
+	hasChannelRuntime,
 	isDraftIntegration,
 	type AgentIntegrationSettings,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { OnLeaderStepdown, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
+import {
+	LOWEST_SHUTDOWN_PRIORITY,
+	OnLeaderStepdown,
+	OnPubSubEvent,
+	OnShutdown,
+	type PubSubCommandMap,
+} from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -15,9 +21,7 @@ import type { Channel, Chat as ChatSdk, StateAdapter, Thread, UserInfo } from 'c
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError, UnexpectedError } from '@n8n/errors';
 
-import { LOWEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { UrlService } from '@n8n/backend-services';
 
 import { AgentChatBridge } from './agent-chat-bridge';
@@ -208,8 +212,8 @@ export class ChatIntegrationService {
 		integration: AgentIntegrationConfig,
 		action: 'connect' | 'disconnect',
 	): Promise<void> {
-		// n8n Chat has no runtime connection for peers to reconcile.
-		if (!isCredentialAgentIntegration(integration)) return;
+		// A channel without a platform runtime has no connection for peers to reconcile.
+		if (!hasChannelRuntime(integration)) return;
 		await this.changePublisher.publish({
 			command: 'agent-chat-integration-changed',
 			payload: { agentId, integration, action },
@@ -235,7 +239,7 @@ export class ChatIntegrationService {
 		integration: AgentIntegrationConfig,
 		projectId: string,
 	): Promise<void> {
-		if (!isCredentialAgentIntegration(integration)) return;
+		if (!hasChannelRuntime(integration)) return;
 		const implementation = this.integrationRegistry.require(integration.type);
 		// Deliberately not `validateConfig`: publishing already validates the whole
 		// configuration, and running it again here would newly reject an agent whose
@@ -253,7 +257,7 @@ export class ChatIntegrationService {
 		integration: AgentIntegrationConfig,
 		projectId: string,
 	): Promise<void> {
-		if (!isCredentialAgentIntegration(integration)) return;
+		if (!hasChannelRuntime(integration)) return;
 		const implementation = this.integrationRegistry.require(integration.type);
 		implementation.validateConfig?.(integration);
 		if (!implementation.onBeforeConnect) return;
@@ -289,7 +293,7 @@ export class ChatIntegrationService {
 		projectId: string,
 		options: ConnectOptions = {},
 	): Promise<void> {
-		if (!isCredentialAgentIntegration(integration)) return;
+		if (!hasChannelRuntime(integration)) return;
 		const ingress = options.ingressEnabled ?? true;
 		if (!this.shouldRouteToLeader(integration.type, ingress)) {
 			return await this.connectLocal(agentId, integration, projectId, options);
@@ -487,7 +491,7 @@ export class ChatIntegrationService {
 		integration: AgentIntegrationConfig,
 		options: DisconnectChannelOptions = {},
 	): Promise<void> {
-		if (!isCredentialAgentIntegration(integration)) return;
+		if (!hasChannelRuntime(integration)) return;
 		const { deleteSubscriptions = true } = options;
 
 		try {
@@ -601,8 +605,8 @@ export class ChatIntegrationService {
 		previous: AgentIntegrationConfig[],
 		next: AgentIntegrationConfig[],
 	): Promise<void> {
-		const previousExternal = previous.filter(isCredentialAgentIntegration);
-		const nextExternal = next.filter(isCredentialAgentIntegration);
+		const previousExternal = previous.filter(hasChannelRuntime);
+		const nextExternal = next.filter(hasChannelRuntime);
 		const previousKeys = new Set(previousExternal.map(buildIntegrationConnectionId));
 		const nextKeys = new Set(nextExternal.map(buildIntegrationConnectionId));
 

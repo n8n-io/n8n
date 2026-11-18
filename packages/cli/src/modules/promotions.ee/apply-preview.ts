@@ -3,11 +3,11 @@ import type {
 	PromotionBindingConflict,
 	PromotionBindingConsumer,
 	PromotionPreviewCheck,
-	PromotionResource,
 	PromotionResourceChange,
 	PromotionVariableScope,
 } from '@n8n/api-types';
-import { createHash } from 'node:crypto';
+import { isRecord } from '@n8n/utils/is-record';
+import { jsonParse } from 'n8n-workflow';
 
 import type { PackageImportPlan } from '@/modules/n8n-packages/engine/project-package-importer';
 import type {
@@ -15,8 +15,10 @@ import type {
 	InventoryWorkflow,
 	PackageDirectoryInventory,
 } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
+import { formatEntityFile } from '@/modules/n8n-packages/io/entity-file-format';
 import { PACKAGE_ENTITY_LAYOUT } from '@/modules/n8n-packages/io/manifest-entry';
 import type { BlockingIssue } from '@/modules/n8n-packages/n8n-packages.types';
+import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import type { PackageRequirementConsumer } from '@/modules/n8n-packages/spec/requirements.schema';
 
 import {
@@ -29,13 +31,10 @@ import {
 	type VariableReference,
 } from './package-references';
 import type { CrossProjectMoves } from './cross-project-moves';
-import { resourceKey, variableResourceKey } from './promotion-preview';
+import { canonicalJson, resourceKey, variableResourceKey } from './promotion-preview';
 
 /** Conflicts that stop every workflow of the project. */
 type ProjectWideCode = 'project-conflict' | 'check-not-run' | 'import-blocked';
-
-/** Raise when the preview changes shape, so that a revision from an older version never matches. */
-const PREVIEW_SCHEMA_VERSION = 1;
 
 /** What Apply does to a resource, where the import plan decides it rather than the file comparison. */
 export type PlannedChange = {
@@ -127,6 +126,26 @@ export function plannedChanges(plan: PackageImportPlan): Map<string, PlannedChan
 		}
 	}
 	return changes;
+}
+
+/** The manifest without tags. With workflow tags disabled, Apply ignores them. */
+export function withoutTags(manifest: PackageManifest): PackageManifest {
+	return {
+		...manifest,
+		tags: undefined,
+		requirements: manifest.requirements && { ...manifest.requirements, tags: undefined },
+	};
+}
+
+/**
+ * A workflow file without its `tagIds`, so that it matches the export of this instance when
+ * workflow tags are disabled.
+ */
+export function withoutTagIds(content: string): string {
+	const workflow = jsonParse<unknown>(content, { fallbackValue: null });
+	if (!isRecord(workflow) || !('tagIds' in workflow)) return content;
+	const { tagIds: _tagIds, ...rest } = workflow;
+	return formatEntityFile(rest);
 }
 
 /** The package data that the Apply check reads besides the plan. */
@@ -589,26 +608,4 @@ function sortedByJson<T>(entries: T[]): T[] {
 		.map((entry) => [canonicalJson(entry), entry] as const)
 		.sort(([a], [b]) => compare(a, b))
 		.map(([, entry]) => entry);
-}
-
-/** JSON with object keys in a fixed order, so equal values give equal text. */
-function canonicalJson(value: unknown): string {
-	return JSON.stringify(value, (_key, nested: unknown) =>
-		nested !== null && typeof nested === 'object' && !Array.isArray(nested)
-			? Object.fromEntries(Object.entries(nested).sort(([a], [b]) => compare(a, b)))
-			: nested,
-	);
-}
-
-/**
- * A hash of the resources and the check. It leaves out `changes` and `dependencies`: they come
- * from the same data, and `changes` holds a save time.
- */
-export function previewRevision(
-	resources: PromotionResource[],
-	check: PromotionPreviewCheck,
-): string {
-	return createHash('sha256')
-		.update(canonicalJson({ schemaVersion: PREVIEW_SCHEMA_VERSION, resources, check }))
-		.digest('hex');
 }

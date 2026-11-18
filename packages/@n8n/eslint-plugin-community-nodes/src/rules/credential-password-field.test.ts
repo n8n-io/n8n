@@ -90,6 +90,16 @@ ruleTester.run('credential-password-field', CredentialPasswordFieldRule, {
 			code: createCredentialCode([createProperty('Base URL', 'baseUrl')]),
 		},
 		{
+			name: 'separated non-sensitive names do not require password masking',
+			code: createCredentialCode([
+				createProperty('Client ID', 'client_id'),
+				createProperty('Token URL', 'token_url'),
+				createProperty('API Key ID', 'api_key_id'),
+				createProperty('Private Key URL', 'private_key_url'),
+				createProperty('Public Token', 'public_token'),
+			]),
+		},
+		{
 			name: 'multiple sensitive fields with correct typeOptions',
 			code: createCredentialCode([
 				createProperty('Password', 'password', { password: true }),
@@ -154,6 +164,26 @@ ruleTester.run('credential-password-field', CredentialPasswordFieldRule, {
 		},
 	],
 	invalid: [
+		// CE-3604: Check separated names and the existing client_secret match.
+		...['api_key', 'access_key', 'private-key', 'client_secret'].map((fieldName) => ({
+			name: `${fieldName} requires password masking`,
+			code: createCredentialCode([createProperty(fieldName, fieldName)]),
+			errors: [{ messageId: 'missingPasswordOption' as const, data: { fieldName } }],
+			output: createCredentialCode([createProperty(fieldName, fieldName, { password: true })]),
+		})),
+		...[
+			'api_dev_token',
+			'multi_domain_password',
+			'backup_ubuntu_token',
+			'your_login_token',
+			'apiDevToken',
+			'multi-domain-password',
+		].map((fieldName) => ({
+			name: `${fieldName} requires masking when an exclusion spans words`,
+			code: createCredentialCode([createProperty(fieldName, fieldName)]),
+			errors: [{ messageId: 'missingPasswordOption' as const, data: { fieldName } }],
+			output: createCredentialCode([createProperty(fieldName, fieldName, { password: true })]),
+		})),
 		{
 			name: 'password field missing typeOptions.password = true',
 			code: createCredentialCode([createProperty('Password', 'password')]),

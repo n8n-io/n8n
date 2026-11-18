@@ -127,27 +127,20 @@ describe('buildPreview', () => {
 });
 
 describe('PromotionChangeService preview permission', () => {
-	const service = new PromotionChangeService(
-		mock(),
-		mock(),
-		mock(),
-		mock(),
-		mock(),
-		mock(),
-		mock(),
-		mock(),
-		mock(),
-	);
+	const service = new PromotionChangeService(mock(), mock(), mock(), mock(), mock(), mock());
 	// The read scope passes the route decorator, but not the check for each direction.
 	const reader = { role: { slug: 'custom', scopes: [{ slug: 'promotions:read' }] } } as User;
 
 	it.each(['promote', 'apply'] as const)(
 		'names the promotions:%s scope when the user lacks it',
 		async (direction) => {
-			const details = service.getDetails(reader, 'project1', direction, {
-				commitSha: null,
-				keys: [],
-			});
+			const details = service.getDetails(
+				reader,
+				'project1',
+				direction,
+				{ commitSha: null, keys: [] },
+				{ canSeeVariableValues: false },
+			);
 
 			await expect(details).rejects.toThrow(ForbiddenError);
 			await expect(details).rejects.toThrow(`requires the promotions:${direction} scope`);

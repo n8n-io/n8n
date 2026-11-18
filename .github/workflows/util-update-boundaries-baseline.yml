@@ -46,7 +46,7 @@ jobs:
       - name: Setup Node.js, install dependencies and build
         uses: ./.github/actions/setup-nodejs
 
-      # The check script writes the current count as is. The nightly only lowers
+      # The check script writes the current issue list and count as is. The nightly only lowers
       # the number: a higher count means master regressed, and raising the
       # baseline would hide that from every PR.
       - name: Recount boundaries issues

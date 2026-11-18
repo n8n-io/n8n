@@ -96,20 +96,16 @@ const executionErrors = computed(
 	() => renderData.value.executionIssuesByNodeId.get(id.value)?.value ?? [],
 );
 const hasExecutionErrors = computed(() => executionErrors.value.length > 0);
-const hasPinnedData = computed(
-	() =>
-		!renderData.value.isExecutionDataDisplayed &&
-		!!renderData.value.pinnedDataByNodeName[name.value],
-);
+const hasPinnedData = computed(() => !!renderData.value.pinnedDataByNodeName[name.value]);
 const hasExecutionPinData = computed(
-	() =>
-		renderData.value.isExecutionDataDisplayed &&
-		!!renderData.value.executionPinDataByNodeId.get(id.value)?.value,
+	() => !!renderData.value.getDisplayedExecutionPinData(id.value),
 );
 const hasVisiblePinData = computed(() => hasPinnedData.value || hasExecutionPinData.value);
 const route = useRoute();
 
-const hideNodeIssues = computed(() => false); // @TODO Implement this
+// Hosts such as template previews opt out of issue indicators (validation
+// and execution errors) when the viewer can't act on them.
+const hideNodeIssues = computed(() => editorFeatures?.value.showNodeIssues === false);
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 const dirtiness = computed(() =>
 	render.value.type === CanvasNodeRenderType.Default ? render.value.options.dirtiness : undefined,

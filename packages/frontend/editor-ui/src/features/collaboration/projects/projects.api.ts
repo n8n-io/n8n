@@ -1,12 +1,10 @@
-import type { CreateProjectPublicDto, CreatedProjectPublicDto } from '@n8n/api-types';
-import { makePublicApiRequest, type PublicApiContext } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 import type { Project, ProjectListItem, ProjectsCount } from './projects.types';
 import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
 import type { AssignableProjectRole } from '@n8n/permissions';
 
-export { getProject } from '@n8n/rest-api-client';
+export { addProjectMembers, getProject } from '@n8n/rest-api-client';
 
 export const getAllProjects = async (context: IRestApiContext): Promise<ProjectListItem[]> => {
 	return await makeRestApiRequest(context, 'GET', '/projects');
@@ -36,6 +34,8 @@ export const searchShareableProjects = async (
 		skip?: number;
 		type?: 'personal' | 'team';
 		activated?: boolean;
+		/** Only for pickers where a share to a service account has an effect. */
+		includeServiceAccounts?: boolean;
 	},
 ): Promise<{ count: number; data: ProjectListItem[] }> => {
 	return await getFullApiResponse<ProjectListItem[]>(
@@ -86,14 +86,6 @@ export const getProjectsCount = async (context: IRestApiContext): Promise<Projec
 	return await makeRestApiRequest(context, 'GET', '/projects/count');
 };
 
-export const addProjectMembers = async (
-	context: IRestApiContext,
-	projectId: string,
-	relations: Array<{ userId: string; role: AssignableProjectRole }>,
-): Promise<void> => {
-	await makeRestApiRequest(context, 'POST', `/projects/${projectId}/users`, { relations });
-};
-
 export const updateProjectMemberRole = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -110,10 +102,3 @@ export const deleteProjectMember = async (
 ): Promise<void> => {
 	await makeRestApiRequest(context, 'DELETE', `/projects/${projectId}/users/${userId}`);
 };
-
-export async function createPublicProject(
-	context: PublicApiContext,
-	data: CreateProjectPublicDto,
-): Promise<CreatedProjectPublicDto> {
-	return await makePublicApiRequest(context, 'POST', '/projects', data);
-}
