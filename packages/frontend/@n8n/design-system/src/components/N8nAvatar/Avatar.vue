@@ -46,8 +46,9 @@ const getSize = (size: AvatarSize): number => AVATAR_SIZES[size];
 			:class="$style.solid"
 			:style="{
 				backgroundColor: color,
-				width: `${getSize(size)}px`,
-				height: `${getSize(size)}px`,
+				// A parent can set `--avatar--size` to fit the circle between two sizes.
+				width: `var(--avatar--size, ${getSize(size)}px)`,
+				height: `var(--avatar--size, ${getSize(size)}px)`,
 			}"
 			data-test-id="avatar-solid"
 		/>
@@ -105,6 +106,8 @@ const getSize = (size: AvatarSize): number => AVATAR_SIZES[size];
 .initialsOnSolid {
 	color: var(--color--neutral-white);
 	text-shadow: none;
+	// White on a saturated color reads lighter, so one step heavier reads as medium.
+	font-weight: var(--font-weight--bold);
 }
 
 .text-xxsmall,

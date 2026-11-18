@@ -583,6 +583,8 @@ const ACCOUNT_AVATAR_COLOR = 'var(--color--purple-700)';
 	.collapsed & {
 		width: var(--height--sm);
 		height: var(--height--sm);
+		// The rail's avatar sits a little smaller than the icons around it.
+		--avatar--size: var(--spacing--lg);
 	}
 }
 
@@ -595,16 +597,11 @@ const ACCOUNT_AVATAR_COLOR = 'var(--color--purple-700)';
 
 .unreadDot {
 	position: absolute;
-	// Clips the avatar's corner rather than the column's: the avatar sits 4px inside the box.
+	// Clips the avatar's corner rather than the column's: the avatar sits inside its box.
 	top: var(--spacing--5xs);
 	right: var(--spacing--5xs);
 	// The ring lifts the dot off the avatar, like a badge on an app icon.
 	box-shadow: 0 0 0 2px var(--menu--color--background);
-
-	.collapsed & {
-		top: 0;
-		right: 0;
-	}
 }
 
 .name {
