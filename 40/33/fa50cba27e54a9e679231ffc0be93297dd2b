@@ -1,0 +1,21 @@
+packages/quality/testing/playwright/tests/e2e/ai/langchain-agents.spec.ts
+  s_1cc2f8126f45e6::t_04e10767eb9dc0 175,185
+packages/quality/testing/playwright/pages/CanvasPage.ts
+  s_1cc2f8126f45e6::t_04e10767eb9dc0 959
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4033fa50cba27e54a9e679231ffc0be93297dd2b",
+  "prompts": {},
+  "sessions": {
+    "s_1cc2f8126f45e6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1eebb-47fd-7e83-98cf-3ac7e8c5b5a1",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
