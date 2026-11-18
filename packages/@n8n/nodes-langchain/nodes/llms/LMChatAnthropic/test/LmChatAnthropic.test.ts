@@ -98,20 +98,6 @@ describe('LmChatAnthropic', () => {
 			});
 		});
 
-		it('should default v1.3 to Claude Sonnet 4.6', () => {
-			const modelProperty = lmChatAnthropic.description.properties.find(
-				(property) =>
-					property.name === 'model' &&
-					property.displayOptions?.show?.['@version']?.includes(1.3),
-			);
-
-			expect(modelProperty?.default).toEqual({
-				mode: 'list',
-				value: 'claude-sonnet-4-6',
-				cachedResultName: 'Claude Sonnet 4.6',
-			});
-		});
-
 		it('should have correct credentials configuration', () => {
 			expect(lmChatAnthropic.description.credentials).toEqual([
 				{
@@ -775,7 +761,7 @@ describe('LmChatAnthropic', () => {
 			);
 		});
 
-		it('should keep Claude Sonnet 4.5 as default for v1.3 resource locator', () => {
+		it('should have Claude Sonnet 4.6 as default for v1.3 resource locator', () => {
 			const v13ModelField = lmChatAnthropic.description.properties.find(
 				(p) =>
 					p.name === 'model' &&
@@ -786,8 +772,8 @@ describe('LmChatAnthropic', () => {
 			expect(v13ModelField).toBeDefined();
 			expect(v13ModelField!.default).toEqual({
 				mode: 'list',
-				value: 'claude-sonnet-4-5-20250929',
-				cachedResultName: 'Claude Sonnet 4.5',
+				value: 'claude-sonnet-4-6',
+				cachedResultName: 'Claude Sonnet 4.6',
 			});
 		});
 
