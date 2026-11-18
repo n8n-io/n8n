@@ -29,11 +29,8 @@ const VERSION_POLICIES = {
 	published: ExportVersionPolicy.PublishedStrict,
 } as const;
 
-interface TestRun {
-	runId: string;
-	workflowId: string;
-	user: User;
-}
+type RunFinishedEvent = Extract<WorkflowTestRunEvent, { type: 'runFinished' }>;
+type OnRunEvent = (event: WorkflowTestRunEvent) => void;
 
 @Service()
 export class WorkflowTestRunService {
@@ -43,41 +40,56 @@ export class WorkflowTestRunService {
 		private readonly push: Push,
 	) {}
 
-	start(user: User, workflowId: string, { source, version }: RunWorkflowTestDto) {
-		const run: TestRun = { runId: randomUUID(), workflowId, user };
-		void this.execute(run, source, version);
-		return { runId: run.runId };
+	start(user: User, workflowId: string, request: RunWorkflowTestDto) {
+		const runId = randomUUID();
+		void this.run(user, workflowId, request, (event) =>
+			this.push.sendToUsers({ type: 'workflowTestRunEvent', data: { runId, workflowId, event } }, [
+				user.id,
+			]),
+		);
+		return { runId };
 	}
 
-	private async execute(run: TestRun, source: string, version: RunWorkflowTestDto['version']) {
+	/** Calls `onEvent` for each event and resolves with the `runFinished` event. Never rejects. */
+	async run(
+		user: User,
+		workflowId: string,
+		{ source, version }: RunWorkflowTestDto,
+		onEvent: OnRunEvent,
+	): Promise<RunFinishedEvent> {
 		try {
-			await this.runInTemporaryDirectory(run, source, version);
+			return await this.runInTemporaryDirectory(user, workflowId, source, version, onEvent);
 		} catch (error) {
-			this.send(run, {
+			const event: RunFinishedEvent = {
 				type: 'runFinished',
 				status: 'error',
 				errors: [ensureError(error).message],
-			});
+			};
+			onEvent(event);
+			return event;
 		}
 	}
 
 	private async runInTemporaryDirectory(
-		run: TestRun,
+		user: User,
+		workflowId: string,
 		source: string,
 		version: RunWorkflowTestDto['version'],
+		onEvent: OnRunEvent,
 	) {
 		const directory = await mkdtemp(path.join(tmpdir(), 'n8n-workflow-test-'));
 		try {
-			await this.exportPackage(run, version, path.join(directory, 'package'));
+			await this.exportPackage(user, workflowId, version, path.join(directory, 'package'));
 			await writeFile(path.join(directory, 'workflow.test.ts'), source);
-			await this.runVitest(directory, (event) => this.send(run, event));
+			return await this.runVitest(directory, onEvent);
 		} finally {
 			await rm(directory, { recursive: true, force: true });
 		}
 	}
 
 	private async exportPackage(
-		{ user, workflowId }: TestRun,
+		user: User,
+		workflowId: string,
 		version: RunWorkflowTestDto['version'],
 		targetDir: string,
 	) {
@@ -94,7 +106,7 @@ export class WorkflowTestRunService {
 		);
 	}
 
-	private async runVitest(directory: string, onEvent: (event: WorkflowTestRunEvent) => void) {
+	private async runVitest(directory: string, onEvent: OnRunEvent): Promise<RunFinishedEvent> {
 		if (!this.config.packageDir) {
 			throw new OperationalError('N8N_WORKFLOW_TESTS_PACKAGE_DIR is not set');
 		}
@@ -108,14 +120,14 @@ export class WorkflowTestRunService {
 			killSignal: 'SIGKILL',
 		});
 
-		let finished = false;
+		let finished: RunFinishedEvent | undefined;
 		let stderr = '';
 		child.stderr?.on('data', (chunk: Buffer) => {
 			stderr = (stderr + chunk.toString()).slice(-STDERR_TAIL_LENGTH);
 		});
 		child.on('message', (event) => {
 			if (!isRunEvent(event)) return;
-			if (event.type === 'runFinished') finished = true;
+			if (event.type === 'runFinished') finished = event;
 			onEvent(event);
 		});
 
@@ -125,17 +137,11 @@ export class WorkflowTestRunService {
 				child.on('close', (code, signal) => resolve({ code, signal }));
 			},
 		);
-		if (finished) return;
+		if (finished) return finished;
 
 		const reason =
 			signal === 'SIGKILL' ? 'The test run timed out' : `The test runner exited with code ${code}`;
-		onEvent({ type: 'runFinished', status: 'error', errors: [`${reason}. ${stderr}`.trim()] });
-	}
-
-	private send({ runId, workflowId, user }: TestRun, event: WorkflowTestRunEvent) {
-		this.push.sendToUsers({ type: 'workflowTestRunEvent', data: { runId, workflowId, event } }, [
-			user.id,
-		]);
+		throw new OperationalError(`${reason}. ${stderr}`.trim());
 	}
 }
 
