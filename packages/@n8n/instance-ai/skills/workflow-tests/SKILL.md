@@ -26,12 +26,15 @@ the file. A run uses the saved draft of the workflow.
 
 1. Read the workflow with `get_workflow`. Note the trigger, every node name,
    every branch (IF, Switch, error outputs), the nodes that need a credential,
-   and the expressions that read `$vars` or `$env`.
+   the expressions that read `$vars` or `$env`, and the Execute Workflow nodes
+   that call a sub-workflow.
 2. Read the current file with `workflow-tests` `get`. If a file exists, keep
    its tests. Add tests or fix tests, but do not remove a test unless the user
    asks for it.
 3. Write the file. Write one test for each path through the workflow that a
-   user cares about. Three to six tests are usually enough.
+   user cares about. Three to six tests are usually enough. If the workflow
+   calls a sub-workflow, also write the contract tests in
+   [Sub-workflows and contracts](#sub-workflows-and-contracts).
 4. Save the file with `save`, then `run` it.
 5. If a test fails, read the error:
    - The test is wrong (a wrong node name, a wrong mock shape, a wrong
@@ -68,6 +71,9 @@ test file. The package holds no credential values and no variable values.
   reads.
 - Use test names that describe behavior, for example
   `'routes an enterprise customer to sales'`. The Tests tab shows the names.
+- Write each node name as a string literal in `.node('Name')`. The Tests tab
+  reads the names from the source to mark the mocked and the asserted nodes
+  on the canvas. Do not build a node name in a variable or a template.
 
 ## API
 
@@ -194,6 +200,55 @@ Common codes and what to do:
 | `TRIGGER_NOT_FOUND` | Set `trigger`. |
 | `NODE_RUN_COUNT` | Use `.runs` instead of the single-run shortcut. |
 | `MULTIPLE_END_NODES` | Assert on `result.node(name)` instead of `result.output`. |
+
+## Sub-workflows and contracts
+
+A sub-workflow declares its inputs in its Execute Workflow Trigger. The
+Execute Workflow node of the parent sends fields to it. When someone changes
+the sub-workflow, n8n runs the tests of each parent workflow again. Write the
+tests of a parent so that a change to the sub-workflow fails them.
+
+For each workflow that has an Execute Workflow node that calls a sub-workflow
+from the database:
+
+1. Add one contract test. It fails when the parent sends a field that the
+   sub-workflow does not declare, does not send a declared field, or sends a
+   field with a different type:
+
+   ```typescript
+   test('sends the fields that its sub-workflows declare', async () => {
+     const workflows = await loadPackage('./package');
+     const workflow = workflows.get('<workflowId>');
+
+     const mismatches = workflows
+       .issues()
+       .filter((issue) => issue.code === 'CONTRACT_MISMATCH' && issue.workflow === workflow.name)
+       .map((issue) => issue.message);
+
+     expect(mismatches, mismatches.join('\n')).toEqual([]);
+   });
+   ```
+
+   Keep the second argument of `expect`. The test result shows only the short
+   assertion message, and this argument puts the mismatch text into it.
+
+   Filter by `CONTRACT_MISMATCH`. Do not assert `issues()` to be empty:
+   `CONTRACT_NOT_CHECKED` only says that n8n could not compare the fields, for
+   example when the sub-workflow accepts all data.
+2. In at least one behavior test, do not mock the Execute Workflow node. Let
+   the real sub-workflow run, and assert on what the parent does with its
+   output. Mock the nodes inside the sub-workflow that call an outside system:
+   `mockNode(workflows.get('<childId>').node('Name'), [...])`.
+3. Check what the parent sends with
+   `result.workflow('<child name>').runs[0].node('<trigger name>').output`, or
+   assert on the output of the Execute Workflow node.
+
+Other tests of the same workflow can mock the Execute Workflow node to test
+one branch at a time.
+
+If the workflow is itself a sub-workflow (it starts with an Execute Workflow
+Trigger), supply `input` with the fields that the trigger declares, and test
+what it returns.
 
 ## What runs and what to mock
 
