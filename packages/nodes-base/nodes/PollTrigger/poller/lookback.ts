@@ -62,9 +62,13 @@ export const closeWindow = (
 	window: Window,
 	now: number,
 ) => {
-	const entries: Recent[] = window.entries.map(({ hash, ts, at }) => [hash, store(ts), at]);
+	const entries: Entry[] = [...window.entries];
 	for (const item of items) {
-		entries.push([hashKey(config.key(item)), store(toSortKey(config.timestamp(item))), now]);
+		entries.push({
+			hash: hashKey(config.key(item)),
+			ts: toSortKey(config.timestamp(item)),
+			at: now,
+		});
 	}
 	let from = window.from;
 	if (!previous?.lookback) {
@@ -72,10 +76,12 @@ export const closeWindow = (
 		const boundary = boundaryOf(config, next);
 		from = boundary?.ts ?? undefined;
 		if (boundary && boundary.ts !== null) {
-			for (const hash of boundary.keys) entries.push([hash, store(boundary.ts), now]);
+			for (const hash of boundary.keys) entries.push({ hash, ts: boundary.ts, at: now });
 		}
 	}
-	next.recent = entries;
+	const kept = cap(entries);
+	if (kept.length < entries.length) from = higher(from, kept[kept.length - 1].ts);
+	next.recent = kept.map(({ hash, ts, at }): Recent => [hash, store(ts), at]);
 	const at = window.started || !previous?.lookback ? now : previous.lookback.at;
 	next.lookback = { from: from === undefined ? null : store(from), at };
 };
