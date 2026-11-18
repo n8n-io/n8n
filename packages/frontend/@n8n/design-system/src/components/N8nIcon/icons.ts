@@ -364,6 +364,7 @@ import IconLucideFileMinus from '~icons/lucide/file-minus';
 import IconLucideFilePlus from '~icons/lucide/file-plus';
 import IconLucideFileOutput from '~icons/lucide/file-output';
 import IconLucideFingerprint from '~icons/lucide/fingerprint';
+import IconLucideFish from '~icons/lucide/fish';
 import IconLucideFlame from '~icons/lucide/flame';
 import IconLucideGem from '~icons/lucide/gem';
 import IconLucideGitlab from '~icons/lucide/gitlab';
@@ -894,6 +895,7 @@ export const updatedIconSet = {
 	'file-text': BrandFileText,
 	files: BrandFiles,
 	fingerprint: IconLucideFingerprint,
+	fish: IconLucideFish,
 	'flask-conical': BrandFlaskConical,
 	folder: BrandFolder,
 	'folder-open': BrandFolderOpen,

@@ -22,6 +22,7 @@ import {
 	useSidebarLayout,
 } from '@/app/composables/useSidebarLayout';
 import { useSettingsItems } from '@/app/composables/useSettingsItems';
+import { AQUARIUM_VIEW } from '@n8n/frontend-module-aquarium';
 import MainSidebarHeader from '@/app/components/MainSidebarHeader.vue';
 import BottomMenu from '@/app/components/BottomMenu.vue';
 import MainSidebarAccountMenu from '@/app/components/MainSidebarAccountMenu.vue';
@@ -128,6 +129,13 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available:
 			settingsStore.isModuleActive('insights') &&
 			hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
+	},
+	{
+		id: 'aquarium',
+		icon: 'fish',
+		label: i18n.baseText('aquarium.title'),
+		position: 'bottom',
+		route: { to: { name: AQUARIUM_VIEW } },
 	},
 	{
 		// A plain link: the settings layout has its own left nav for the individual pages.

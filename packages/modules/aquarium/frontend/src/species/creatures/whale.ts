@@ -1,0 +1,47 @@
+import { defineSpecies } from '../species.types';
+
+export const whale = defineSpecies({
+	id: 'whale',
+	kinds: ['workflow'],
+	sizeTiers: ['huge'],
+	motion: 'swim',
+	frameRate: 2,
+	mouthRow: 9,
+	sprite: {
+		palette: { o: '#14284a', b: '#3f6fb5', l: '#c9dcef', w: '#ffffff', e: '#0a1426' },
+		frames: [
+			[
+				'............oooooooooo..........',
+				'.........ooobbbbbbbbbbooo.......',
+				'.......oobbbbbbbbbbbbbbbbboo....',
+				'oo....obbbbbbbbbbbbbbbbbbbbbo...',
+				'obo..obbbbbbbbbbbbbbbbbbbbbbbo..',
+				'obbo.obbbbbbbbbbbbbbbbbbbbbbbbo.',
+				'.obbobbbbbbbbbbbbbbbbbbbbbwebbbo',
+				'..obbbbbbbbbbbbbbbbbbbbbbbbbbbbo',
+				'..obbbbbbbbbbbbbbbbbbbbbbbbbbbbo',
+				'.obbobbbbbbbbbllllllllllllllllo.',
+				'obbo.obllllllllllllllllllllllo..',
+				'obo...oollllllllllllllllllloo...',
+				'oo......oooollllllllllllooo.....',
+				'............ooooooooooooo.......',
+			],
+			[
+				'............oooooooooo..........',
+				'.........ooobbbbbbbbbbooo.......',
+				'.......oobbbbbbbbbbbbbbbbboo....',
+				'......obbbbbbbbbbbbbbbbbbbbbo...',
+				'.....obbbbbbbbbbbbbbbbbbbbbbbo..',
+				'oo...obbbbbbbbbbbbbbbbbbbbbbbbo.',
+				'obbo.bbbbbbbbbbbbbbbbbbbbbwebbbo',
+				'.obbbbbbbbbbbbbbbbbbbbbbbbbbbbbo',
+				'.obbbbbbbbbbbbbbbbbbbbbbbbbbbbbo',
+				'obbo.bbbbbbbbbllllllllllllllllo.',
+				'oo...obllllllllllllllllllllllo..',
+				'......oollllllllllllllllllloo...',
+				'........oooollllllllllllooo.....',
+				'............ooooooooooooo.......',
+			],
+		],
+	},
+});
