@@ -5,6 +5,7 @@ import {
 	type INode,
 } from 'n8n-workflow';
 
+import { makeReason } from './reason';
 import type { EngineV2Reason } from './types';
 
 /**
@@ -22,11 +23,12 @@ export function findTriggerIdentityReasons(nodes: INode[]): EngineV2Reason[] {
 				isTriggerNodeType(node.type) &&
 				classifyTriggerIdentity(node.type, node.parameters).providesExternalIdentity,
 		)
-		.map((node) => ({
-			code: 'TRIGGER_EXTERNAL_IDENTITY',
-			severity: 'blocking',
-			nodeId: node.id,
-			nodeName: node.name,
-			message: `Engine v2 cannot run the "${node.name}" trigger yet, because it takes credentials from the request.`,
-		}));
+		.map((node) =>
+			makeReason({
+				code: 'TRIGGER_EXTERNAL_IDENTITY',
+				kind: 'temporary',
+				node,
+				problem: `Engine v2 cannot run the "${node.name}" trigger yet, because it takes credentials from the request.`,
+			}),
+		);
 }

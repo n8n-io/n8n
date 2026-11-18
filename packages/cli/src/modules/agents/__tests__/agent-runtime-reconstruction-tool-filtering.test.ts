@@ -2,6 +2,7 @@ import type * as agents from '@n8n/agents';
 import type { CredentialProvider } from '@n8n/agents';
 import {
 	N8N_CHAT_INTEGRATION_TYPE,
+	AI_GATEWAY_MANAGED_TAG,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 	type AgentJsonSkillConfig,
@@ -44,6 +45,7 @@ import type { AgentWorkspaceService } from '../agent-workspace.service';
 import type { ProjectAgent } from '../entities/agent.entity';
 import { resolveAgentRunSource, type AgentRunSource } from '../utils/agent-published-snapshot';
 import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
+import type { AgentCredentialProvider } from '../agent-credential-provider.contracts';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
 import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor';
@@ -312,6 +314,62 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		expect(toolNamesPassedToBuildFromJson()).toEqual(
 			expect.arrayContaining(['Send Slack message', 'Lookup customer', 'custom_tool']),
 		);
+	});
+
+	it('resolves a guardrail model only when a model kind is configured', async () => {
+		const { service } = makeService({});
+		const resolveAiGatewayCredential = vi.fn().mockResolvedValue({ apiKey: 'gw-key' });
+		const credentialProvider = {
+			list: vi.fn().mockResolvedValue([]),
+			resolve: vi.fn().mockResolvedValue({}),
+			resolveAiGatewayModelCredential: resolveAiGatewayCredential,
+		} as unknown as AgentCredentialProvider;
+		Container.set(CallableWorkflowLoader, mock<CallableWorkflowLoader>());
+
+		// Pattern kinds only: no model is resolved even though the agent has one.
+		const patternOnly = makeAgentEntity([]);
+		(patternOnly.agent as ProjectAgent).schema = storedAgentConfig({
+			name: 'Test Agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Be helpful',
+			credential: AI_GATEWAY_MANAGED_TAG,
+			config: {
+				guardrails: {
+					tools: [{ kind: 'keywords', id: 'g1', stage: 'before', keywords: ['secret'] }],
+				},
+			},
+		});
+
+		const withoutModelKind = await service.reconstructFromAgentEntity(
+			patternOnly,
+			credentialProvider,
+			'test',
+		);
+		expect(withoutModelKind.guardrailModel).toBeUndefined();
+		expect(resolveAiGatewayCredential).not.toHaveBeenCalled();
+
+		// A model kind resolves through the Gateway credential path, using the
+		// agent's own model id.
+		const withModelKind = makeAgentEntity([]);
+		(withModelKind.agent as ProjectAgent).schema = storedAgentConfig({
+			name: 'Test Agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Be helpful',
+			credential: AI_GATEWAY_MANAGED_TAG,
+			config: {
+				guardrails: {
+					tools: [{ kind: 'jailbreak', id: 'g2', stage: 'before' }],
+				},
+			},
+		});
+
+		const runtime = await service.reconstructFromAgentEntity(
+			withModelKind,
+			credentialProvider,
+			'test',
+		);
+		expect(resolveAiGatewayCredential).toHaveBeenCalledWith('anthropic');
+		expect(runtime.guardrailModel).toBeDefined();
 	});
 
 	it('forwards the production n8n Chat marker to workflow tools', async () => {

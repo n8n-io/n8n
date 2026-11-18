@@ -2,7 +2,11 @@ import type { FavoriteResourceType } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 
-export type FavoriteResourceMeta = { name: string; projectId: string };
+export type FavoriteResourceMeta = {
+	name: string;
+	projectId: string;
+	folderResourceType?: 'workflow' | 'agent';
+};
 
 /** Favorite types resolved by the backend module that owns the resource. */
 export type ResolvedFavoriteResourceType = Extract<FavoriteResourceType, 'dataTable' | 'agent'>;

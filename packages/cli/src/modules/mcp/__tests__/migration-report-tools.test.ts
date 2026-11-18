@@ -7,7 +7,7 @@ import type {
 	WorkflowMigrationResult,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import { UrlService } from '@n8n/backend-services';
+import { UrlService, type TelemetryProxy } from '@n8n/backend-services';
 import {
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
@@ -38,7 +38,6 @@ import {
 	type IBreakingChangeInstanceRule,
 	type IBreakingChangeWorkflowRule,
 } from '@/modules/breaking-changes/types';
-import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { createGetMigrationFindingsTool } from '../tools/migration-report/get-migration-findings.tool';
@@ -79,7 +78,7 @@ const makeDeps = () => {
 		workflowFinderService: mock<WorkflowFinderService>(),
 		collaborationService: mock<CollaborationService>(),
 		urlService,
-		telemetry: mock<Telemetry>(),
+		telemetry: mock<TelemetryProxy>(),
 		logger: mock<Logger>(),
 	} satisfies MigrationReportToolDeps;
 };

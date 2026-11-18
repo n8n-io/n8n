@@ -2,9 +2,10 @@ import type {
 	ApplyPackageResultDto,
 	ApplySelectionDto,
 	ContinueApplySelectionDto,
-	PromotePackageResultDto,
 	PromoteSelectionRequestDto,
+	PromoteSelectionResultDto,
 	PromotionDirection,
+	PromotionInstanceApplyPreview,
 	PromotionPreview,
 	PromotionResourceDetails,
 	PromotionResourceDetailsRequestDto,
@@ -40,6 +41,31 @@ export async function getPromotionResourceDetails(
 	);
 }
 
+/** The preview of a whole-instance Apply from an instance Apply environment. */
+export async function getPromotionEnvironmentChanges(
+	context: PublicApiContext,
+	environmentId: string,
+): Promise<PromotionInstanceApplyPreview> {
+	return await makePublicApiRequest(
+		context,
+		'GET',
+		`/promotions/environments/${environmentId}/changes`,
+	);
+}
+
+export async function getPromotionEnvironmentDetails(
+	context: PublicApiContext,
+	environmentId: string,
+	payload: PromotionResourceDetailsRequestDto,
+): Promise<PromotionResourceDetails> {
+	return await makePublicApiRequest(
+		context,
+		'POST',
+		`/promotions/environments/${environmentId}/changes/details`,
+		payload,
+	);
+}
+
 export async function getPromotionReviewChanges(
 	context: IRestApiContext,
 	reviewId: string,
@@ -64,7 +90,7 @@ export async function promoteProjectSelection(
 	context: PublicApiContext,
 	projectId: string,
 	payload: PromoteSelectionRequestDto,
-): Promise<PromotePackageResultDto> {
+): Promise<PromoteSelectionResultDto> {
 	return await makePublicApiRequest(
 		context,
 		'POST',

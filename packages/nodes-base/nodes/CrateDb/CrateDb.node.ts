@@ -25,7 +25,7 @@ export class CrateDb implements INodeType {
 
 		icon: 'file:cratedb.png',
 		group: ['input'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Add and update data in CrateDB',
 		defaults: {
 			name: 'CrateDB',
@@ -293,6 +293,7 @@ export class CrateDb implements INodeType {
 
 			const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail(), {
 				resolveExpression: true,
+				literalExpressions: this.getNode().typeVersion >= 1.2,
 			});
 
 			returnItems = this.helpers.returnJsonArray(queryResult);

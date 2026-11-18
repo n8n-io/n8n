@@ -18,7 +18,7 @@ import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { InstanceSettings } from 'n8n-core';
 import { randomUUID } from 'node:crypto';
 
-import { Telemetry } from '@/telemetry';
+import { TelemetryProxy } from '@n8n/backend-services';
 
 import { afterCommit, runInTransaction } from '../after-commit';
 import { DurableEventLog } from '../event-bus/durable-event-log';
@@ -85,7 +85,7 @@ export class SelfHealingInvestigationService {
 		private readonly logger: Logger,
 		private readonly configurations: SelfHealingConfigurationRepository,
 		private readonly configurationService: SelfHealingConfigurationService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly instanceSettings: InstanceSettings,
 	) {}
 

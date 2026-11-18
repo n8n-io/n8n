@@ -1,0 +1,52 @@
+import type { FolderResourceType } from '@n8n/api-types';
+import type { OperationContext, User } from '@n8n/db';
+import { Service } from '@n8n/di';
+import { BadRequestError } from '@n8n/errors';
+
+import { WorkflowFolderService } from './workflow-folder.service';
+
+export interface FolderContentHandler {
+	/** Optional resource checks in addition to the folder route scopes. */
+	assertAccess?(
+		user: User,
+		projectId: string,
+		operation: 'read' | 'update' | 'delete',
+	): Promise<void>;
+	directCounts(projectId: string, folderIds: string[]): Promise<Map<string, number>>;
+	relocate(
+		projectId: string,
+		fromFolderId: string,
+		toFolderId: string | null,
+		ctx: OperationContext,
+	): Promise<void>;
+	archiveContents(
+		user: User,
+		projectId: string,
+		folderIds: string[],
+		ctx: OperationContext,
+	): Promise<void>;
+	moveArchivedToRoot(projectId: string, folderIds: string[], ctx: OperationContext): Promise<void>;
+}
+
+@Service()
+export class FolderContentService {
+	private readonly handlers = new Map<FolderResourceType, FolderContentHandler>();
+
+	constructor(workflowHandler: WorkflowFolderService) {
+		this.register('workflow', workflowHandler);
+	}
+
+	register(resourceType: FolderResourceType, handler: FolderContentHandler): void {
+		this.handlers.set(resourceType, handler);
+	}
+
+	getHandler(resourceType: FolderResourceType): FolderContentHandler {
+		const handler = this.handlers.get(resourceType);
+
+		if (!handler) {
+			throw new BadRequestError('Folder contents are not available for this resource type');
+		}
+
+		return handler;
+	}
+}

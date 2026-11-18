@@ -1,5 +1,6 @@
 import {
 	INSTANCE_AI_PREFILL_TYPES,
+	instanceAiApprovalModeSchema,
 	instanceAiAutoApprovalDeciderSchema,
 	instanceAiConfirmationSeveritySchema,
 	instanceContextAbsenceReasonSchema,
@@ -109,6 +110,12 @@ const mentionContextProperties = {
 };
 // Experiment cleanup: remove with openWorkflowInAssistant.
 const openWorkflowInAssistantVariant = z.enum(['control', 'variant']);
+
+const approvalModeProperty = z
+	.enum([...instanceAiApprovalModeSchema.options, 'unavailable'])
+	.describe(
+		'The approval mode of the run: auto or manual. A thread that builds an agent is manual. unavailable while approval modes are off',
+	);
 
 // Both taxonomies are owned by `@n8n/api-types`, beside the request schemas that
 // enforce them; the fallbacks are read-path only, so no caller can declare them.
@@ -396,6 +403,43 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'$feature/108_open_workflow_in_assistant': openWorkflowInAssistantVariant,
 		}),
 	},
+	APPROVAL_MODE_CHANGED: {
+		name: 'User changed AI Assistant approval mode',
+		description:
+			'The user picked an approval mode in the n8n Assistant chat. Manual shows an approval card for each action set to Ask first. Auto lets a judge model run the action or show the card.',
+		properties: z.object({
+			mode: z.enum(instanceAiApprovalModeSchema.options),
+			previous_mode: z.enum(instanceAiApprovalModeSchema.options),
+			thread_id: z.string().optional(),
+		}),
+	},
+	BUILDER_ASKED_FOR_INPUT: {
+		name: 'Builder asked for input',
+		description:
+			'The n8n Assistant showed a card that waits for the user: an approval, questions, a setup or credential request, or an MCP connection. Fires once per card. input_thread_id joins it with User finished providing input.',
+		properties: z.object({
+			user_id: z.string(),
+			thread_id: z.string(),
+			input_thread_id: z.string().describe('Joins the card with the answer events of the card'),
+			type: z
+				.string()
+				.describe(
+					"approval, setup, credential-setup, mcp-connect, or the card's input type for other cards",
+				),
+			num_steps: z.number().int().describe('Questions, setup or credential requests on the card'),
+			contains_templated_cred: z.boolean(),
+			tool_call_id: z
+				.string()
+				.optional()
+				.describe(
+					'The tool call that waits for the card. Joins it with AI Assistant decided approval in auto mode',
+				),
+			tool_name: z.string().optional(),
+			severity: z.enum(instanceAiConfirmationSeveritySchema.options).optional(),
+			approval_mode: approvalModeProperty,
+			runtime: assistantRuntime,
+		}),
+	},
 	APPROVAL_DECIDED_IN_AUTO_MODE: {
 		name: 'AI Assistant decided approval in auto mode',
 		description:
@@ -404,6 +448,10 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			user_id: z.string(),
 			thread_id: z.string(),
 			run_id: z.string(),
+			tool_call_id: z
+				.string()
+				.optional()
+				.describe('Joins the decision with Builder asked for input when the card showed'),
 			tool_name: z.string(),
 			is_mcp_tool: z.boolean(),
 			severity: z.enum(instanceAiConfirmationSeveritySchema.options),
@@ -415,8 +463,23 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			decision: z.enum(['approve', 'ask']).describe('approve ran the action without a card'),
 			decided_by: z.enum(instanceAiAutoApprovalDeciderSchema.options),
 			judge_failed: z.boolean().describe('The judge model failed or timed out, so the card showed'),
-			judge_duration_ms: z.number().optional(),
+			judge_duration_ms: z.number().optional().describe('The judge model call alone'),
+			review_duration_ms: z
+				.number()
+				.optional()
+				.describe(
+					'The whole review of an action that went to the judge: judge model setup, thread read and judge call',
+				),
 			judge_model: z.string().optional(),
+		}),
+	},
+	USER_STOPPED_RUN: {
+		name: 'User stopped AI Assistant run',
+		description:
+			'The user stopped the n8n Assistant while it was working, for example with the stop button. Fires once per stop request.',
+		properties: z.object({
+			user_id: z.string(),
+			thread_id: z.string(),
 		}),
 	},
 	DEFAULT_EDITOR_PREFERENCE_CHANGED: {
@@ -578,6 +641,8 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			tab_visible: z
 				.boolean()
 				.describe('Whether the document was visible when the response rendered'),
+			// Optional so the events of the current runtime stay as they are.
+			runtime: assistantRuntime.optional(),
 		}),
 	},
 	BUILDER_SPECCED_TEMPLATED_CRED: {
@@ -863,6 +928,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Whether the user edited the pre-filled text before sending. Always false for pre-fills that send without being shown. Null when the user typed the message.',
 				),
+			approval_mode: approvalModeProperty,
 			...mentionContextProperties,
 			// Optional so the events of the current runtime stay as they are.
 			runtime: assistantRuntime.optional(),

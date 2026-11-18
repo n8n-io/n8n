@@ -1,5 +1,6 @@
 import { jsonParse } from 'n8n-workflow';
 
+import { MAX_ITEMS_PER_PAGE } from '@n8n/api-types';
 import { BadRequestError } from '@n8n/errors';
 
 import type {
@@ -16,6 +17,10 @@ export const decodeCursor = (cursor: string): PaginationOffsetDecoded | Paginati
 /**
  * Resolves the offset and limit to query with for a list endpoint either from defaults
  * or from a provided cursor.
+ *
+ * The cursor is client-supplied and opaque, so its decoded values are untrusted:
+ * a forged cursor must not reach the query with a negative offset or a limit
+ * beyond `MAX_ITEMS_PER_PAGE`. Both are rejected as an invalid cursor.
  */
 export function resolveOffsetPagination({
 	cursor,
@@ -35,8 +40,19 @@ export function resolveOffsetPagination({
 			if (!('offset' in decoded)) {
 				throw new BadRequestError('An invalid cursor was provided');
 			}
+			if (!Number.isInteger(decoded.offset) || decoded.offset < 0) {
+				throw new BadRequestError('An invalid cursor was provided');
+			}
+			const decodedLimit = decoded.limit || queryLimit;
+			if (
+				!Number.isInteger(decodedLimit) ||
+				decodedLimit < 1 ||
+				decodedLimit > MAX_ITEMS_PER_PAGE
+			) {
+				throw new BadRequestError('An invalid cursor was provided');
+			}
 			offset = decoded.offset;
-			limit = decoded.limit || queryLimit;
+			limit = decodedLimit;
 		} catch {
 			throw new BadRequestError('An invalid cursor was provided');
 		}

@@ -55,7 +55,10 @@ function createSetupFactory() {
 			})),
 		},
 		settingsService: {
-			getAdminSettings: vi.fn(async () => ({ browserUseEnabled: false })),
+			getAdminSettings: vi.fn(async () => ({
+				browserUseEnabled: false,
+				cloudBrowserEnabled: false,
+			})),
 			getPermissions: vi.fn(() => ({})),
 			getSandboxStatus: vi.fn(() => ({ workflowBuilderAvailable: true })),
 			isMcpAccessEnabled: vi.fn(() => false),
@@ -73,7 +76,7 @@ function createSetupFactory() {
 			resolveApprovalJudgeModelConfig: vi.fn(async () => 'anthropic/claude-haiku'),
 			getModelFetch: vi.fn(() => undefined),
 		},
-		creditService: { claimRunUsage: vi.fn() },
+		creditService: { claimRunUsage: vi.fn(), helperUsageClaimer: vi.fn(() => vi.fn()) },
 		instanceAiErrorReporter: {
 			withBoundary: vi.fn(async (_c, _x, fn: () => unknown) => await fn()),
 		},
@@ -198,6 +201,24 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(runtime.onDomainAccessTracker).toHaveBeenCalledWith(context.domainAccessTracker);
 		});
 
+		it('wires helper usage billing into the context', async () => {
+			const { factory, fields } = createSetupFactory();
+			const claimer = vi.fn();
+			fields.creditService.helperUsageClaimer.mockReturnValue(claimer);
+
+			await factory.create(params, createRuntime());
+
+			expect(fields.creditService.helperUsageClaimer).toHaveBeenCalledWith(
+				params.user,
+				params.threadId,
+				params.runId,
+			);
+			expect(fields.adapterService.createContext).toHaveBeenCalledWith(
+				params.user,
+				expect.objectContaining({ onHelperUsage: claimer }),
+			);
+		});
+
 		it('gives the trace of the turn to the error reports of the setup', async () => {
 			const { factory, fields } = createSetupFactory();
 			const report = vi.fn();
@@ -224,6 +245,46 @@ describe('AssistantTurnEnvironmentFactory', () => {
 				expect.objectContaining({ component: 'instance-ai-agent-builder-usage', tracing }),
 			);
 		});
+
+		it.each([
+			{ cloudBrowserEnabled: true, isAvailable: true, wired: true },
+			{ cloudBrowserEnabled: true, isAvailable: false, wired: false },
+			{ cloudBrowserEnabled: false, isAvailable: true, wired: false },
+		])(
+			'sets startCloudBrowserTask only when the cloud browser is enabled and available (%j)',
+			async ({ cloudBrowserEnabled, isAvailable, wired }) => {
+				const { factory, fields } = createSetupFactory();
+				fields.settingsService.getAdminSettings.mockResolvedValue({
+					browserUseEnabled: false,
+					cloudBrowserEnabled,
+				});
+				const cloudBrowser = {
+					isAvailable: vi.fn(async () => isAvailable),
+					startTask: vi.fn(async () => ({ status: 'started' as const, taskId: 'task-1' })),
+				};
+
+				const { orchestrationContext } = await factory.create(
+					params,
+					createRuntime({ cloudBrowser }),
+				);
+
+				if (cloudBrowserEnabled) expect(cloudBrowser.isAvailable).toHaveBeenCalled();
+				else expect(cloudBrowser.isAvailable).not.toHaveBeenCalled();
+				if (!wired) {
+					expect(orchestrationContext.startCloudBrowserTask).toBeUndefined();
+					return;
+				}
+				const input = { title: 'Find the price', goal: 'Find the price of the Pro plan' };
+				await expect(orchestrationContext.startCloudBrowserTask?.(input)).resolves.toEqual({
+					status: 'started',
+					taskId: 'task-1',
+				});
+				expect(cloudBrowser.startTask).toHaveBeenCalledWith(
+					input,
+					expect.objectContaining({ runId: 'run-1', user, threadId: 'thread-1' }),
+				);
+			},
+		);
 
 		it('leaves out the optional hooks that a runtime does not supply', async () => {
 			const { factory } = createSetupFactory();
@@ -310,6 +371,8 @@ describe('AssistantTurnEnvironmentFactory', () => {
 
 			const { context } = await factory.create(params, createRuntime());
 
+			// The context is a deep mock, so check that the mode was never set.
+			expect(Object.keys(context)).not.toContain('approvalMode');
 			expect(context.enforceAdminMcpPermissions).toBe(false);
 			expect(fields.approvalModeService.resolveMode).toHaveBeenCalledWith(user, false);
 			expect(fields.approvalReviewerFactory.create).not.toHaveBeenCalled();
@@ -326,6 +389,7 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			const { context } = await factory.create(params, createRuntime());
 
 			expect(fields.approvalModeService.resolveMode).toHaveBeenCalledWith(user, true);
+			expect(context.approvalMode).toBe('manual');
 			expect(context.enforceAdminMcpPermissions).toBe(false);
 			expect(fields.approvalReviewerFactory.create).not.toHaveBeenCalled();
 		});
@@ -341,6 +405,7 @@ describe('AssistantTurnEnvironmentFactory', () => {
 
 			const { context, orchestrationContext } = await factory.create(params, runtime);
 
+			expect(context.approvalMode).toBe('auto');
 			expect(context.enforceAdminMcpPermissions).toBe(true);
 			expect(context.approvalReviewer).toBe(
 				fields.approvalReviewerFactory.create.mock.results[0].value,
@@ -402,6 +467,7 @@ describe('AssistantTurnEnvironmentFactory', () => {
 
 				const { context } = await factory.create(params, runtime);
 
+				expect(context.approvalMode).toBe('manual');
 				expect(context.enforceAdminMcpPermissions).toBe(false);
 				expect(fields.approvalReviewerFactory.create).not.toHaveBeenCalled();
 			});
