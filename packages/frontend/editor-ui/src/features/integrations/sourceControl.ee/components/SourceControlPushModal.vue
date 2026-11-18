@@ -928,10 +928,10 @@ onMounted(async () => {
 		v-if="!isLoading"
 		:open="modalOpen"
 		size="2xlarge"
-		:container-class="[$style.sourceControlPush, $style.fixedHeight].join(' ')"
+		:container-class="$style.fixedHeight"
 		@update:open="onDialogOpenUpdate"
 	>
-		<N8nDialogHeader>
+		<N8nDialogHeader :class="$style.dialogHeader">
 			<N8nDialogTitle>
 				{{ i18n.baseText('settings.sourceControl.modals.push.title') }}
 			</N8nDialogTitle>
@@ -1294,7 +1294,7 @@ onMounted(async () => {
 				</div>
 			</div>
 		</N8nDialogBody>
-		<N8nDialogFooter>
+		<N8nDialogFooter :class="$style.dialogFooter">
 			<N8nNotice
 				v-if="userNotices.length || hasModifiedCredentialsSelected"
 				id="source-control-push-modal-notice"
@@ -1460,23 +1460,14 @@ onMounted(async () => {
 	justify-content: flex-end;
 }
 
-.sourceControlPush.sourceControlPush {
-	/* Previous shell width. No spacing token for 812px. */
-	--dialog--max-width: min(812px, calc(100dvw - var(--spacing--lg)));
+.dialogHeader {
+	flex-direction: column;
+	align-items: stretch;
+}
 
-	header {
-		/* The close button switches the header to a row. Keep the title above the filters. */
-		flex-direction: column;
-		align-items: stretch;
-		padding-bottom: var(--spacing--xs);
-	}
-
-	footer {
-		display: flex;
-		flex-direction: column;
-		align-items: stretch;
-		width: 100%;
-	}
+.dialogFooter {
+	flex-direction: column;
+	align-items: stretch;
 }
 
 .fixedHeight {
