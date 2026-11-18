@@ -12,7 +12,7 @@ import {
 } from '@n8n/api-types';
 import { TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { TaskBoardActor, TaskBoardEvent, TaskBoardTaskContext } from 'n8n-workflow';
+import type { TaskBoardActor, TaskBoardTaskContext } from 'n8n-workflow';
 
 import type { TaskBoardColumnEntity } from './database/entities/task-board-column.entity';
 import type { TaskBoardCommentEntity } from './database/entities/task-board-comment.entity';
@@ -65,6 +65,12 @@ export type UpdateTaskBoardTaskInput = {
 
 // SQLite can hand back a timestamp string where the entity declares a Date.
 const toIso = (value: Date | string) => new Date(value).toISOString();
+
+/** The actor with its display name. An actor that the resolver does not know shows its id. */
+const withName = <T extends ActorKey>(actor: T, names: Map<string, string>) => ({
+	...actor,
+	name: names.get(actorKey(actor)) ?? actor.id,
+});
 
 const isColumnRole = (value: string): value is TaskBoardColumnRole =>
 	TASK_BOARD_COLUMN_ROLES.some((role) => role === value);
@@ -138,15 +144,8 @@ export class TaskBoardService {
 
 	async getTask(projectId: string, boardId: string, taskId: string): Promise<TaskBoardTaskDetail> {
 		const { task } = await this.findTaskInProject(projectId, taskId, boardId);
-		const comments = await this.commentRepository.findByTaskId(task.id);
-		const names = await this.actorResolver.resolveNames([
-			...this.actorsOfTask(task),
-			...comments.map((comment) => ({ type: comment.authorType, id: comment.authorId })),
-		]);
-		return {
-			...this.toTask(task, names),
-			comments: comments.map((comment) => this.toComment(comment, names)),
-		};
+		const thread = await this.loadThread(task);
+		return { ...thread.task, comments: thread.comments };
 	}
 
 	async createTask(
@@ -183,7 +182,13 @@ export class TaskBoardService {
 			);
 		});
 
-		this.publish({ event: 'task.created', projectId, boardId: board.id, taskId: task.id, actor });
+		this.eventBus.publish({
+			event: 'task.created',
+			projectId,
+			boardId: board.id,
+			taskId: task.id,
+			actor,
+		});
 		return await this.toTaskWithNames(task);
 	}
 
@@ -231,9 +236,9 @@ export class TaskBoardService {
 
 		const base = { projectId, boardId: board.id, taskId: task.id, actor };
 		if (toColumnId !== undefined) {
-			this.publish({ ...base, event: 'task.moved', fromColumnId, toColumnId });
+			this.eventBus.publish({ ...base, event: 'task.moved', fromColumnId, toColumnId });
 		}
-		if (assigneeChanged) this.publish({ ...base, event: 'task.assigned' });
+		if (assigneeChanged) this.eventBus.publish({ ...base, event: 'task.assigned' });
 
 		return await this.reloadTask(task.id);
 	}
@@ -280,7 +285,7 @@ export class TaskBoardService {
 			body,
 		});
 
-		this.publish({
+		this.eventBus.publish({
 			event: 'task.commented',
 			projectId,
 			boardId: board.id,
@@ -300,17 +305,11 @@ export class TaskBoardService {
 	/** The task with its board, columns and comments, for workflows and agents. */
 	async getTaskContext(projectId: string, taskId: string): Promise<TaskBoardTaskContext> {
 		const { board, task } = await this.findTaskInProject(projectId, taskId);
-		const [columns, comments] = await Promise.all([
+		const [columns, thread] = await Promise.all([
 			this.columnRepository.findByBoardId(board.id),
-			this.commentRepository.findByTaskId(task.id),
+			this.loadThread(task),
 		]);
-		const names = await this.actorResolver.resolveNames([
-			...this.actorsOfTask(task),
-			...comments.map((comment) => ({ type: comment.authorType, id: comment.authorId })),
-		]);
-
-		const taskData = this.toTask(task, names);
-		const commentData = comments.map((comment) => this.toComment(comment, names));
+		const { task: taskData, comments: commentData } = thread;
 		const columnName = columns.find((column) => column.id === task.columnId)?.name ?? 'Unknown';
 
 		return {
@@ -327,8 +326,17 @@ export class TaskBoardService {
 	//            helpers
 	// ----------------------------------
 
-	private publish(event: TaskBoardEvent) {
-		this.eventBus.publish(event);
+	/** The task and its comments, with the display name of every actor. */
+	private async loadThread(task: TaskBoardTaskEntity) {
+		const comments = await this.commentRepository.findByTaskId(task.id);
+		const names = await this.actorResolver.resolveNames([
+			...this.actorsOfTask(task),
+			...comments.map((comment) => ({ type: comment.authorType, id: comment.authorId })),
+		]);
+		return {
+			task: this.toTask(task, names),
+			comments: comments.map((comment) => this.toComment(comment, names)),
+		};
 	}
 
 	private async findBoardInProject(projectId: string, boardId: string) {
@@ -465,16 +473,10 @@ export class TaskBoardService {
 	}
 
 	private toTask(task: TaskBoardTaskEntity, names: Map<string, string>): TaskBoardTask {
-		const nameOf = (actor: ActorKey) => names.get(actorKey(actor)) ?? actor.id;
 		const assignee =
 			task.assigneeType && task.assigneeId
-				? {
-						type: task.assigneeType,
-						id: task.assigneeId,
-						name: nameOf({ type: task.assigneeType, id: task.assigneeId }),
-					}
+				? withName({ type: task.assigneeType, id: task.assigneeId }, names)
 				: null;
-		const createdBy = { type: task.createdByType, id: task.createdById };
 		return {
 			id: task.id,
 			boardId: task.boardId,
@@ -484,7 +486,7 @@ export class TaskBoardService {
 			title: task.title,
 			description: task.description,
 			assignee,
-			createdBy: { ...createdBy, name: nameOf(createdBy) },
+			createdBy: withName({ type: task.createdByType, id: task.createdById }, names),
 			position: task.position,
 			createdAt: toIso(task.createdAt),
 			updatedAt: toIso(task.updatedAt),
@@ -492,11 +494,10 @@ export class TaskBoardService {
 	}
 
 	private toComment(comment: TaskBoardCommentEntity, names: Map<string, string>): TaskBoardComment {
-		const author = { type: comment.authorType, id: comment.authorId };
 		return {
 			id: comment.id,
 			taskId: comment.taskId,
-			author: { ...author, name: names.get(actorKey(author)) ?? author.id },
+			author: withName({ type: comment.authorType, id: comment.authorId }, names),
 			body: comment.body,
 			createdAt: toIso(comment.createdAt),
 		};

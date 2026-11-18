@@ -1329,11 +1329,11 @@ export type TaskBoardEvent = {
 
 // The shapes below mirror the response types in @n8n/api-types. They are
 // duplicated because n8n-workflow must not depend on @n8n/api-types.
-export type TaskBoardNamedRef = {
-	type: 'user' | 'agent' | 'workflow';
-	id: string;
-	name: string;
-};
+export type TaskBoardNamedRef = TaskBoardActor & { name: string };
+
+export type TaskBoardAssigneeInput = { type: 'user' | 'agent'; id: string };
+
+export type TaskBoardAssigneeData = TaskBoardAssigneeInput & { name: string };
 
 export type TaskBoardColumnData = {
 	id: string;
@@ -1350,7 +1350,7 @@ export type TaskBoardTaskData = {
 	number: number;
 	title: string;
 	description: string;
-	assignee: { type: 'user' | 'agent'; id: string; name: string } | null;
+	assignee: TaskBoardAssigneeData | null;
 	createdBy: TaskBoardNamedRef;
 	position: number;
 	createdAt: string;
@@ -1369,13 +1369,11 @@ export type TaskBoardTaskContext = {
 	task: TaskBoardTaskData;
 	board: { id: string; name: string; workflowId: string | null };
 	columns: TaskBoardColumnData[];
-	assignee: { type: 'user' | 'agent'; id: string; name: string } | null;
+	assignee: TaskBoardAssigneeData | null;
 	comments: TaskBoardCommentData[];
 	/** The task title, description and comments as one plain-text thread. */
 	threadText: string;
 };
-
-export type TaskBoardAssigneeInput = { type: 'user' | 'agent'; id: string };
 
 export interface ITaskBoardProxy {
 	/** Subscribe to task events. Returns an unsubscribe function. */
