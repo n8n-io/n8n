@@ -118,6 +118,7 @@ export class RunRegistry {
 				lookups: profile.lookups,
 				finalize: profile.finalize,
 				gymFirst: profile.gymFirst,
+				listTools: profile.listTools,
 				keepParents: profile.keepParents,
 			});
 		}

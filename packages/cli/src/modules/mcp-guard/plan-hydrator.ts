@@ -41,6 +41,8 @@ export interface PlanHydratorDeps {
 	// Lookup tools that the gym answers first. An object that an agent created in the gym has no
 	// real copy, and a real object with the same key is another object.
 	gymFirst?: ReadonlySet<string>;
+	// Read tools that list entities with fewer fields than a lookup of one entity gives.
+	listTools?: ReadonlySet<string>;
 	// The gym takes a seed of an entity that it has and adds the new children, see SeededEntities.
 	keepParents?: boolean;
 }
@@ -280,7 +282,8 @@ export class PlanHydrator implements Hydrator {
 			plan = await this.ask(fullPrompt, stats);
 		}
 		const trace: { sent?: unknown } = {};
-		let problem = await this.apply(plan, ctx, verify, MAX_REPAIRS === 0, trace);
+		const shallow = this.deps.listTools?.has(tool) === true;
+		let problem = await this.apply(plan, ctx, verify, MAX_REPAIRS === 0, trace, shallow);
 		for (let repair = 0; problem !== undefined && repair < MAX_REPAIRS; repair++) {
 			// The gym's error names a path and a rule. Cut the request line, so the rule fits.
 			const shown = problem.replace(/gym POST \S+ failed: \d+ /, '').slice(0, 400);
@@ -291,7 +294,7 @@ export class PlanHydrator implements Hydrator {
 			const sent = JSON.stringify(trace.sent ?? null).slice(0, MAX_SHOWN);
 			const again = `${fullPrompt}\n\nYour previous answer:\n${JSON.stringify({ overlay: plan.overlay, events: plan.events })}\n\nWhat code sent to the gym after it filled the pointers:\n${sent}\n\nIt did not work: ${problem}\nAnswer with a complete fixed plan. You may not ask for more reads.`;
 			plan = await this.ask(again, stats);
-			problem = await this.apply(plan, ctx, verify, repair === MAX_REPAIRS - 1, trace);
+			problem = await this.apply(plan, ctx, verify, repair === MAX_REPAIRS - 1, trace, shallow);
 		}
 		return problem === undefined;
 	}
@@ -386,6 +389,7 @@ export class PlanHydrator implements Hydrator {
 		verify: Verify | undefined,
 		last: boolean,
 		trace: { sent?: unknown } = {},
+		shallow = false,
 	): Promise<string | undefined> {
 		const { admin, tenant } = this.deps;
 		const proven = provenIds(ctx.result, ctx.reads, ctx.args);
@@ -405,7 +409,7 @@ export class PlanHydrator implements Hydrator {
 				? clean({ world_version: 1, ...nestDottedKeys(plan.overlay) })
 				: undefined;
 		// The tenant keeps what an earlier call seeded. The gym refuses an id that it has.
-		const fresh = isRecord(cleaned) ? this.seeded.dedupe(cleaned) : cleaned;
+		const fresh = isRecord(cleaned) ? this.seeded.dedupe(cleaned, !shallow) : cleaned;
 		const toSeed = isRecord(fresh) && SeededEntities.isEmpty(fresh) ? undefined : fresh;
 		const overlay =
 			this.deps.finalize && isRecord(toSeed) ? this.deps.finalize(toSeed, ctx.result) : toSeed;
@@ -425,7 +429,7 @@ export class PlanHydrator implements Hydrator {
 			const report = overlay ? await admin.seed(tenant, overlay) : undefined;
 			const ignored = last ? undefined : ignoredBySeed(report);
 			if (ignored) return `the gym ignored parts of it: ${ignored}`;
-			if (isRecord(overlay)) this.seeded.record(overlay);
+			if (isRecord(overlay)) this.seeded.record(overlay, shallow);
 			for (const event of events) await admin.event(tenant, event);
 		} catch (e) {
 			return `the gym refused it: ${errText(e)}`;

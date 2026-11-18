@@ -40,6 +40,8 @@ export interface GuardServiceProfile {
 	finalize?: (overlay: Record<string, unknown>, result?: unknown) => Record<string, unknown>;
 	// Lookup tools that the gym answers before the real service does, see PlanHydratorDeps.
 	gymFirst?: ReadonlySet<string>;
+	// Read tools whose lists show fewer fields than a lookup of one entity, see PlanHydratorDeps.
+	listTools?: ReadonlySet<string>;
 	// The gym takes a seed of an entity that it has and adds new children to it, see SeededEntities.
 	keepParents?: boolean;
 	// Service part of the instructions of the hydration agent and of the plan hydrator.
@@ -76,6 +78,7 @@ export const LINEAR_PROFILE: GuardServiceProfile = {
 	lookups: linearLookups,
 	finalize: (overlay, result) => withIssueDescriptions(withUserEmails(overlay), result),
 	gymFirst: new Set(['get_issue']),
+	listTools: new Set(['list_issues', 'list_projects']),
 	upstreamReadArgs: (_tool, args) =>
 		Array.isArray(args.fields)
 			? Object.fromEntries(Object.entries(args).filter(([key]) => key !== 'fields'))

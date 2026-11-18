@@ -57,6 +57,9 @@ export class SeededEntities {
 	// `<collection>:<key>` in lower case -> the stored ref. A team key is unique, also when the id differs.
 	private readonly byKey = new Map<string, string>();
 
+	// Keys of entities that a list result seeded. A list shows less than the entity has.
+	private readonly shallow = new Set<string>();
+
 	// Ids of objects that the gym made itself, for example the issue that an agent created.
 	private readonly held = new Set<string>();
 
@@ -78,8 +81,12 @@ export class SeededEntities {
 		return ids.every((id) => keys.some((key) => key === id || key.endsWith(`:${id}`)));
 	}
 
-	/** Removes the entities that the tenant has. Returns what is left to seed. */
-	dedupe(overlay: Record<string, unknown>): Record<string, unknown> {
+	/**
+	 * Removes the entities that the tenant has. Returns what is left to seed.
+	 * detail: the overlay comes from a call that shows whole entities. It replaces an entity that
+	 * only a list seeded.
+	 */
+	dedupe(overlay: Record<string, unknown>, detail = false): Record<string, unknown> {
 		if (this.seeded.size === 0 && this.held.size === 0) return overlay;
 		const next: Record<string, unknown> = structuredClone(overlay);
 		// Children first, so a parent is judged by the children that are left.
@@ -89,6 +96,12 @@ export class SeededEntities {
 				const heldAlready = key !== undefined && this.holds(key);
 				const stored = this.byKey.get(this.keyName(name, entity));
 				if (!heldAlready && stored === undefined) return true;
+				if (detail && key !== undefined && this.shallow.has(key)) {
+					// Seed it again under the stored ref, so the gym updates the entity.
+					const ref = this.seeded.get(key);
+					if (ref !== undefined && typeof entity.ref === 'string') entity.ref = ref;
+					return true;
+				}
 				// Another ref for the same object: references to it use the stored ref.
 				if (!heldAlready && typeof entity.ref === 'string') {
 					this.refs.set(entity.ref.toLowerCase(), stored ?? entity.ref);
@@ -103,14 +116,16 @@ export class SeededEntities {
 		return typeof entity.key === 'string' ? `${collection}:${entity.key.toLowerCase()}` : '';
 	}
 
-	/** Notes the entities of an overlay that the gym took. */
-	record(overlay: Record<string, unknown>): void {
+	/** Notes the entities of an overlay that the gym took. shallow: a list result is the source. */
+	record(overlay: Record<string, unknown>, shallow = false): void {
 		for (const [service, name] of collections(overlay)) {
 			for (const entity of entities(service, name)) {
 				const key = keyOf(entity);
 				if (key === undefined) continue;
 				const ref = typeof entity.ref === 'string' ? entity.ref : key;
 				this.seeded.set(key, ref);
+				if (shallow) this.shallow.add(key);
+				else this.shallow.delete(key);
 				if (typeof entity.key === 'string') this.byKey.set(this.keyName(name, entity), ref);
 				this.refs.set(ref.toLowerCase(), ref);
 			}

@@ -145,4 +145,38 @@ describe('SeededEntities', () => {
 			expect(seeded.dedupe(again)).toEqual({ native: { notion: { databases: [] } } });
 		});
 	});
+
+	describe('entities that a list seeded', () => {
+		const issue = { id: 'i-1', ref: 'issue:a', title: 'T', description: 'short' };
+		const full = { ...issue, ref: 'issue:other', description: 'the whole text' };
+		const overlay = { world_version: 1, native: { linear: { issues: [full] } } };
+
+		it('lets a detail call seed the entity again, under the stored ref', () => {
+			const seeded = new SeededEntities();
+			seeded.record({ native: { linear: { issues: [issue] } } }, true);
+			expect(seeded.dedupe(overlay, true)).toEqual({
+				world_version: 1,
+				native: { linear: { issues: [{ ...full, ref: 'issue:a' }] } },
+			});
+		});
+
+		it('drops the entity again for another list', () => {
+			const seeded = new SeededEntities();
+			seeded.record({ native: { linear: { issues: [issue] } } }, true);
+			expect(seeded.dedupe(overlay, false)).toEqual({
+				world_version: 1,
+				native: { linear: { issues: [] } },
+			});
+		});
+
+		it('drops the entity once a detail call has seeded it', () => {
+			const seeded = new SeededEntities();
+			seeded.record({ native: { linear: { issues: [issue] } } }, true);
+			seeded.record(overlay, false);
+			expect(seeded.dedupe(overlay, true)).toEqual({
+				world_version: 1,
+				native: { linear: { issues: [] } },
+			});
+		});
+	});
 });
