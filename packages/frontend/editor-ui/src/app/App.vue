@@ -6,6 +6,8 @@ import { useQuickChat } from '@/features/ai/instanceAi/quickChat/useQuickChat';
 import AppLayout from '@/app/components/app/AppLayout.vue';
 import AppChatPanel from '@/app/components/app/AppChatPanel.vue';
 import E2ETestModeMarker from '@/app/components/app/E2ETestModeMarker.vue';
+// Prototype: the parameters panel and its chip.
+import PrototypeRoot from '@/features/projectSettingsPrototype/components/PrototypeRoot.vue';
 
 import { useHistoryHelper } from '@/app/composables/useHistoryHelper';
 import { useBackendStatus } from '@/app/composables/useBackendStatus';
@@ -163,6 +165,7 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 			<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
 			<E2ETestModeMarker />
 			<WorkflowErrorNudge />
+			<PrototypeRoot />
 		</template>
 		<template #aside>
 			<AppChatPanel v-if="layoutRef" :layout-ref="layoutRef" />

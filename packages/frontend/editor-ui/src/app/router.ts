@@ -20,6 +20,8 @@ import { initializeAuthenticatedFeatures, initializeCore } from '@/app/init';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { getSanitizedCurrentPath } from '@/app/utils/urlUtils';
 import { projectsRoutes } from '@/features/collaboration/projects/projects.routes';
+// Prototype: the instance pages project settings point to.
+import { protoInstanceRoutes } from '@/features/projectSettingsPrototype/nav/routes';
 import { MfaRequiredError, setUnauthorizedHandler } from '@n8n/rest-api-client';
 import { handleSessionExpired } from '@/app/utils/handleSessionExpired';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
@@ -617,6 +619,7 @@ export const routes: RouteRecordRaw[] = [
 			layout: 'settings',
 		},
 		children: [
+			...protoInstanceRoutes,
 			{
 				path: 'usage',
 				name: VIEWS.USAGE,

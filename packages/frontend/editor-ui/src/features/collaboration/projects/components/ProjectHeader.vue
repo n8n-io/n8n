@@ -10,6 +10,15 @@ import { useProjectsStore } from '../projects.store';
 import { canConfigureSelfHealing, selfHealingLocation } from '../projects.utils';
 import ProjectTabs from './ProjectTabs.vue';
 import { useAppNavigation } from '@/app/components/appNavigation/useAppNavigation';
+// Prototype: project settings navigation.
+import ProjectSettingsMenuButton from '@/features/projectSettingsPrototype/components/ProjectSettingsMenuButton.vue';
+import { allLinks } from '@/features/projectSettingsPrototype/nav/sections';
+import {
+	PROTO_MEMBERS_VIEW,
+	PROTO_SETTINGS_PAGE_VIEW,
+	useProtoChrome,
+} from '@/features/projectSettingsPrototype/nav/useProtoChrome';
+import { protoParams } from '@/features/projectSettingsPrototype/params';
 import { ResourceListToolbarTargetKey } from '@/app/components/layouts/resourceListToolbar';
 import ProjectIcon from './ProjectIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -172,20 +181,36 @@ const pageType = computed(() => {
 
 // The navigation panel lists the pages of Overview and of each project, so only the shared
 // pages, which the panel does not list, keep the tabs.
-const showTabs = computed(() => pageType.value === 'shared');
+// Prototype: the standard shell keeps master's tabs, unless the variant lists the pages elsewhere.
+const proto = useProtoChrome();
+const isStandardShell = computed(() => protoParams.shell === 'standard');
+const showTabs = computed(() => {
+	if (pageType.value === 'shared') return true;
+	if (!isStandardShell.value) return false;
+	if (proto.pagesInHeader.value) return true;
+	return proto.chrome.value.frame === 'tabs' || proto.chrome.value.frame === 'home';
+});
+/** The prototype's own pages bring their actions, so the header drops "Create". */
+const isProtoPage = computed(
+	() => route.name === PROTO_SETTINGS_PAGE_VIEW || route.name === PROTO_MEMBERS_VIEW,
+);
+const showSettingsMenu = computed(
+	() =>
+		proto.settingsInMenu.value &&
+		showSettings.value &&
+		(proto.nav.value?.settingsFlat.length ?? 0) > 0,
+);
 
 // While the navigation panel is collapsed, the title shows the path to the page, such as
 // "Monetization > Credentials", so the user still sees which page is open.
 const navigation = useAppNavigation();
 const currentPage = computed(() =>
-	navigation
-		.sectionsFor(navigation.activeItemId.value)
-		.flatMap((section) => section.links)
-		.find((link) => link.active),
+	allLinks(navigation.sectionsFor(navigation.activeItemId.value)).find((link) => link.active),
 );
 const pathRoot = computed(() => navigation.railItemById(navigation.activeItemId.value));
 const showPagePath = computed(
 	() =>
+		!isStandardShell.value &&
 		(uiStore.sidebarMenuCollapsed ?? false) &&
 		!showTabs.value &&
 		currentPage.value !== undefined &&
@@ -193,7 +218,9 @@ const showPagePath = computed(
 );
 // While the panel is open, its header names the project, so the title names the page.
 const pageTitle = computed(() =>
-	!(uiStore.sidebarMenuCollapsed ?? false) && !showTabs.value ? currentPage.value?.label : undefined,
+	!isStandardShell.value && !(uiStore.sidebarMenuCollapsed ?? false) && !showTabs.value
+		? currentPage.value?.label
+		: undefined,
 );
 
 const personalSelfHealingTab = computed((): TabOptions<string> | null => {
@@ -628,7 +655,11 @@ const onSelect = (action: string, source: CreateSource) => {
 						<PromotionPreviewBadges :class="$style.promotionBadges" />
 					</div>
 					<div v-if="projectDescription && !pageTitle" :class="$style.projectDescriptionWrapper">
-						<N8nText :class="$style.descriptionText" color="text-light" data-test-id="project-subtitle">
+						<N8nText
+							:class="$style.descriptionText"
+							color="text-light"
+							data-test-id="project-subtitle"
+						>
 							{{ projectDescriptionTruncated || projectDescription }}
 						</N8nText>
 						<div v-if="projectDescriptionTruncated" :class="$style.tooltip">
@@ -650,8 +681,10 @@ const onSelect = (action: string, source: CreateSource) => {
 							:class="[$style.listToolbar, $style.listToolbarInHeader]"
 							data-test-id="project-header-list-toolbar"
 						/>
-						<ReadyToRunButton :has-active-callouts="props.hasActiveCallouts" />
+						<ProjectSettingsMenuButton v-if="showSettingsMenu" />
+						<ReadyToRunButton v-if="!isProtoPage" :has-active-callouts="props.hasActiveCallouts" />
 						<ProjectCreateResource
+							v-if="!isProtoPage"
 							data-test-id="add-resource-buttons"
 							:actions="menu"
 							variant="brand"

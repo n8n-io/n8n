@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+// Prototype: the baseline appends the sections master doesn't have yet.
+import BaselineExtraSections from '@/features/projectSettingsPrototype/components/BaselineExtraSections.vue';
 import { ProjectSelfHealingSection } from '@n8n/frontend-module-self-healing';
 import type { Role } from '@n8n/permissions';
 import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
@@ -902,6 +904,11 @@ onMounted(async () => {
 							onTextInput();
 						}
 					"
+				/>
+
+				<BaselineExtraSections
+					v-if="projectsStore.currentProject"
+					:project-id="projectsStore.currentProject.id"
 				/>
 
 				<fieldset>

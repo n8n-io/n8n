@@ -39,6 +39,16 @@ import {
 	chatItemTitle,
 	type RecentChatItem,
 } from '@/features/agents/n8nChatPage/mergeRecentChats';
+// Prototype: project settings navigation.
+import { protoParams } from '@/features/projectSettingsPrototype/params';
+import {
+	PROTO_INSTANCE_PROJECTS_VIEW,
+	useProtoChrome,
+} from '@/features/projectSettingsPrototype/nav/useProtoChrome';
+import {
+	projectSections,
+	settingsSections as projectSettingsSections,
+} from '@/features/projectSettingsPrototype/nav/sections';
 
 export type AppNavRailItem = {
 	id: string;
@@ -73,6 +83,17 @@ export type AppNavSection = {
 	links: AppNavLink[];
 	/** Shown in place of the links when the section has none */
 	emptyText?: string;
+	/** Prototype: a row that opens in place to list more sections. It has no links of its own. */
+	disclosure?: { label: string; icon: IconName; open: boolean; sections: AppNavSection[] };
+};
+
+/** Prototype: a project's settings pages take over the panel, behind a back row. */
+export type AppNavPanelOverride = {
+	back: { label: string; to: RouteLocationRaw };
+	/** Replaces the panel's title. */
+	title?: string;
+	/** Names the first section, which has no heading of its own. */
+	heading?: string;
 };
 
 type NavProject = { id: string; type?: string; scopes?: Scope[] };
@@ -83,7 +104,9 @@ export const INBOX_ITEM_ID = 'inbox';
 export const SETTINGS_ITEM_ID = 'settings';
 export const PROJECT_ITEM_PREFIX = 'project:';
 
-type SettingsItemIcon = ReturnType<typeof useSettingsItems>['settingsItems']['value'][number]['icon'];
+type SettingsItemIcon = ReturnType<
+	typeof useSettingsItems
+>['settingsItems']['value'][number]['icon'];
 
 /** The panel shows icons only, so an emoji or a missing icon falls back to the settings icon. */
 function settingsIcon(icon: SettingsItemIcon): string {
@@ -179,13 +202,17 @@ export function useAppNavigation() {
 	const teamProjects = computed(() => {
 		if (!projectsStore.isTeamProjectFeatureEnabled) return [];
 		const starred = new Set(favoritesStore.projectFavoriteIds);
-		return projectsStore.myProjects
-			.filter((project) => project.type === ProjectTypes.Team)
-			.sort(
-				(a, b) =>
-					Number(starred.has(b.id)) - Number(starred.has(a.id)) ||
-					(a.name ?? '').localeCompare(b.name ?? ''),
-			);
+		return (
+			projectsStore.myProjects
+				.filter((project) => project.type === ProjectTypes.Team)
+				.sort(
+					(a, b) =>
+						Number(starred.has(b.id)) - Number(starred.has(a.id)) ||
+						(a.name ?? '').localeCompare(b.name ?? ''),
+				)
+				// Prototype: the navigation shows as many projects as the parameter allows.
+				.slice(0, Number(protoParams.projectCount))
+		);
 	});
 
 	const projectRoute = (projectId: string): RouteLocationRaw => ({
@@ -264,10 +291,49 @@ export function useAppNavigation() {
 		typeof route.params?.projectId === 'string' ? route.params.projectId : undefined,
 	);
 
+	// Prototype: the chrome the route asks for under the current parameters.
+	const proto = useProtoChrome();
+	const navContext = (projectId: string) => ({
+		projectId,
+		currentProjectId: routeProjectId.value,
+		currentPage: proto.page.value,
+	});
+	const settingsAreaProjectId = computed(() =>
+		proto.chrome.value.sidebar === 'project-settings' ? routeProjectId.value : undefined,
+	);
+
+	const panelOverride = computed<AppNavPanelOverride | null>(() => {
+		const projectId = settingsAreaProjectId.value;
+		if (!projectId) return null;
+		const projectName =
+			projectsStore.myProjects.find((project) => project.id === projectId)?.name ?? '';
+		// Under instance settings the way back is the list of projects.
+		if (proto.chrome.value.back?.label === 'projects') {
+			return {
+				back: { label: 'Projects', to: { name: PROTO_INSTANCE_PROJECTS_VIEW } },
+				heading: projectName,
+			};
+		}
+		return {
+			back: { label: projectName, to: projectRoute(projectId) },
+			title: 'Project settings',
+			// The standard sidebar has no title, so the first section names the area.
+			heading: protoParams.shell === 'standard' ? 'Project settings' : undefined,
+		};
+	});
+
 	/** `null` on a standalone page, which no rail item owns */
 	const activeItemId = computed<string | null>(() => {
 		const name = routeName.value;
 		if (STANDALONE_ROUTES.has(name)) return null;
+		// Prototype: project settings under instance settings belong to the Settings item.
+		if (
+			settingsAreaProjectId.value &&
+			proto.chrome.value.back?.label === 'projects' &&
+			railItems.value.some((item) => item.id === SETTINGS_ITEM_ID)
+		) {
+			return SETTINGS_ITEM_ID;
+		}
 		if (route.meta?.layout === 'settings') return SETTINGS_ITEM_ID;
 		if (ASSISTANT_ROUTES.has(name)) return ASSISTANT_ITEM_ID;
 		if (isInboxRoute(route)) return INBOX_ITEM_ID;
@@ -502,6 +568,13 @@ export function useAppNavigation() {
 
 	function sectionsFor(itemId: string | null | undefined): AppNavSection[] {
 		if (!itemId) return [];
+		// Prototype: in a project's settings area, the active item lists the settings pages.
+		if (settingsAreaProjectId.value && itemId === activeItemId.value) {
+			return projectSettingsSections(
+				navContext(settingsAreaProjectId.value),
+				panelOverride.value?.heading,
+			);
+		}
 		if (itemId === ASSISTANT_ITEM_ID) return assistantSections();
 		if (itemId === SETTINGS_ITEM_ID) return settingsPanelSections();
 		if (itemId === OVERVIEW_ITEM_ID) {
@@ -512,7 +585,12 @@ export function useAppNavigation() {
 		if (itemId.startsWith(PROJECT_ITEM_PREFIX)) {
 			const project = findProject(itemId.slice(PROJECT_ITEM_PREFIX.length));
 			if (!project) return [];
-			return [{ id: `${itemId}-pages`, links: pageLinks('project', project) }];
+			const links = pageLinks('project', project);
+			// Prototype: a team project's pages depend on the navigation variant.
+			if (project.type === ProjectTypes.Team) {
+				return projectSections(navContext(project.id), links);
+			}
+			return [{ id: `${itemId}-pages`, links }];
 		}
 		return [];
 	}
@@ -550,5 +628,6 @@ export function useAppNavigation() {
 		activeItemId,
 		sectionsFor,
 		railItemById,
+		panelOverride,
 	};
 }

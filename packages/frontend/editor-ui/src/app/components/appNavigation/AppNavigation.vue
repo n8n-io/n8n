@@ -84,7 +84,7 @@ function onInsightsClick() {
 const uiStore = useUIStore();
 const agentTelemetry = useAgentTelemetry();
 
-const { railItems, activeItemId, sectionsFor, railItemById } = useAppNavigation();
+const { railItems, activeItemId, sectionsFor, railItemById, panelOverride } = useAppNavigation();
 
 const isExpanded = computed(() => !(uiStore.sidebarMenuCollapsed ?? false));
 
@@ -107,11 +107,14 @@ const dockedItemId = computed(() =>
 const isDocked = computed(() => dockedItemId.value !== null);
 const peek = useNavigationPeek({ enabled: () => !isDocked.value, carryOver: true });
 
-const panelItemId = computed(() =>
-	isDocked.value ? dockedItemId.value : peek.peekItemId.value,
-);
+const panelItemId = computed(() => (isDocked.value ? dockedItemId.value : peek.peekItemId.value));
 const panelItem = computed(() => railItemById(panelItemId.value));
 const panelSections = computed(() => sectionsFor(panelItem.value?.id));
+// Prototype: a project's settings area gives the active item's panel a back row and a title.
+const panelArea = computed(() =>
+	panelItem.value?.id === activeItemId.value ? panelOverride.value : null,
+);
+const panelTitle = computed(() => panelArea.value?.title ?? panelItem.value?.label ?? '');
 
 const mainItems = computed(() => railItems.value.filter((item) => item.group === 'main'));
 const projectItems = computed(() => railItems.value.filter((item) => item.group === 'project'));
@@ -426,7 +429,8 @@ onBeforeUnmount(() => {
 
 		<div v-if="isDocked && panelItem" :class="$style.docked" data-test-id="app-nav-docked">
 			<AppNavigationPanel
-				:title="panelItem.label"
+				:title="panelTitle"
+				:back="panelArea?.back"
 				:show-logo="panelItem.id === ASSISTANT_ITEM_ID"
 				:sections="panelSections"
 				:is-expanded="true"
@@ -456,7 +460,8 @@ onBeforeUnmount(() => {
 				@mouseleave="peek.onLeave"
 			>
 				<AppNavigationPanel
-					:title="panelItem.label"
+					:title="panelTitle"
+					:back="panelArea?.back"
 					:show-logo="panelItem.id === ASSISTANT_ITEM_ID"
 					:sections="panelSections"
 					:is-expanded="false"

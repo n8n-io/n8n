@@ -13,6 +13,14 @@ import { N8nTabs } from '@n8n/design-system';
 import { useProjectsStore } from '../projects.store';
 import { ProjectTypes } from '../projects.types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+// Prototype: project settings navigation.
+import { isSettingsPage } from '@/features/projectSettingsPrototype/nav/model';
+import {
+	PROTO_MEMBERS_VIEW,
+	PROTO_SETTINGS_PAGE_VIEW,
+	useProtoChrome,
+} from '@/features/projectSettingsPrototype/nav/useProtoChrome';
+import { protoParams } from '@/features/projectSettingsPrototype/params';
 type Props = {
 	showSettings?: boolean;
 	showExecutions?: boolean;
@@ -31,6 +39,7 @@ const locale = useI18n();
 const route = useRoute();
 const projectStore = useProjectsStore();
 const telemetry = useTelemetry();
+const proto = useProtoChrome();
 
 const selectedTab = ref<RouteRecordName | null | undefined>('');
 
@@ -130,11 +139,22 @@ const options = computed<Array<TabOptions<string>>>(() => {
 		}
 	}
 
-	if (props.showSettings) {
+	// Prototype: Members can be a tab of its own, and the variant decides where settings open.
+	const nav = proto.nav.value;
+	const members = nav?.resources.find((item) => item.id === 'members');
+	if (members) {
+		tabs.push({ label: members.label, value: PROTO_MEMBERS_VIEW, to: members.to });
+	}
+
+	const settingsEntry = nav?.settingsFlat[0];
+	if (props.showSettings && settingsEntry && !proto.settingsInMenu.value) {
 		tabs.push({
 			label: locale.baseText('projects.settings'),
 			value: VIEWS.PROJECT_SETTINGS as string,
-			to: { name: VIEWS.PROJECT_SETTINGS, params: { projectId: projectId.value } },
+			to:
+				protoParams.variant === 'baseline'
+					? { name: VIEWS.PROJECT_SETTINGS, params: { projectId: projectId.value } }
+					: settingsEntry.to,
 		});
 	}
 
@@ -142,8 +162,15 @@ const options = computed<Array<TabOptions<string>>>(() => {
 });
 
 watch(
-	() => route?.name,
+	() => [route?.name, proto.page.value, protoParams.membersPlacement, protoParams.variant],
 	() => {
+		// Prototype: a settings page selects the settings tab, wherever Members is placed.
+		if (route.name === PROTO_SETTINGS_PAGE_VIEW || route.name === PROTO_MEMBERS_VIEW) {
+			const page = proto.page.value;
+			selectedTab.value =
+				page && isSettingsPage(page, protoParams) ? VIEWS.PROJECT_SETTINGS : PROTO_MEMBERS_VIEW;
+			return;
+		}
 		// Select workflows tab if folders tab is selected
 		selectedTab.value =
 			route.name === VIEWS.PROJECTS_FOLDERS ? VIEWS.PROJECTS_WORKFLOWS : route.name;

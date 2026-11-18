@@ -11,6 +11,14 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
+// Prototype: project settings navigation.
+import {
+	PROTO_INSTANCE_AUDIT_LOG_VIEW,
+	PROTO_INSTANCE_POLICIES_VIEW,
+	PROTO_INSTANCE_PROJECTS_VIEW,
+} from '@/features/projectSettingsPrototype/nav/useProtoChrome';
+import { protoParams } from '@/features/projectSettingsPrototype/params';
+import { can } from '@/features/projectSettingsPrototype/state/session';
 
 type ShellSettingsItem = IMenuSettingItem & { order: number };
 
@@ -59,6 +67,38 @@ export function useSettingsItems() {
 	const settingsItems = computed<IMenuSettingItem[]>(() => {
 		// `order` is the row inside the section, in steps of ten so a module can slot in between.
 		const shellItems: ShellSettingsItem[] = [
+			// Prototype: the instance pages that project settings point to.
+			{
+				id: 'settings-proto-projects',
+				order: 15,
+				section: 'people',
+				icon: 'layers',
+				label: 'Projects',
+				position: 'top',
+				available: can('instance:settings:view', protoParams),
+				route: { to: { name: PROTO_INSTANCE_PROJECTS_VIEW } },
+			},
+			{
+				id: 'settings-proto-policies',
+				order: 15,
+				section: 'security',
+				icon: 'scale',
+				// "Policies" is taken: it's the security page on master.
+				label: 'Project policies',
+				position: 'top',
+				available: can('instance:settings:edit', protoParams),
+				route: { to: { name: PROTO_INSTANCE_POLICIES_VIEW } },
+			},
+			{
+				id: 'settings-proto-audit-log',
+				order: 45,
+				section: 'security',
+				icon: 'scroll-text',
+				label: 'Audit log',
+				position: 'top',
+				available: can('instance:settings:edit', protoParams),
+				route: { to: { name: PROTO_INSTANCE_AUDIT_LOG_VIEW } },
+			},
 			// Personal
 			{
 				id: 'settings-personal',
@@ -281,7 +321,16 @@ export function useSettingsItems() {
 		);
 	});
 
-	const visibleSettingsItems = computed(() => settingsItems.value.filter((item) => item.available));
+	// Prototype: a simulated role without instance access keeps its own pages and its projects.
+	const visibleSettingsItems = computed(() =>
+		settingsItems.value.filter(
+			(item) =>
+				item.available &&
+				(protoParams.viewingAs === 'owner' ||
+					sectionOf(item) === 'personal' ||
+					item.id === 'settings-proto-projects'),
+		),
+	);
 
 	/** Visible items grouped under their headings. Empty groups are left out. */
 	const settingsSections = computed<SettingsSectionGroup[]>(() => {

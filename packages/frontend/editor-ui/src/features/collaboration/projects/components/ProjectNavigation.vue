@@ -1,4 +1,12 @@
 <script lang="ts" setup>
+// Prototype: project settings navigation.
+import {
+	PROJECT_ITEM_PREFIX,
+	useAppNavigation,
+} from '@/app/components/appNavigation/useAppNavigation';
+import ProjectNavSections from '@/features/projectSettingsPrototype/components/ProjectNavSections.vue';
+import { useProtoChrome } from '@/features/projectSettingsPrototype/nav/useProtoChrome';
+import { protoParams } from '@/features/projectSettingsPrototype/params';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { useGlobalEntityCreation } from '@/app/composables/useGlobalEntityCreation';
 import { VIEWS } from '@/app/constants';
@@ -78,7 +86,23 @@ const {
 	onUnpinFavorite,
 } = useFavoriteNavItems();
 
-const displayProjects = computed(() => globalEntityCreation.displayProjects.value);
+// Prototype: the sidebar shows as many projects as the parameter allows, and with the
+// expanding sidebar the open project lists its pages in place.
+const displayProjects = computed(() =>
+	globalEntityCreation.displayProjects.value.slice(0, Number(protoParams.projectCount)),
+);
+const protoChrome = useProtoChrome();
+const protoNavigation = useAppNavigation();
+const protoExpandedProjectId = computed(() =>
+	protoParams.variant === 'sidebar-expand' && protoChrome.isTeamProject.value
+		? protoChrome.projectId.value
+		: undefined,
+);
+const protoExpandedSections = computed(() =>
+	protoExpandedProjectId.value
+		? protoNavigation.sectionsFor(`${PROJECT_ITEM_PREFIX}${protoExpandedProjectId.value}`)
+		: [],
+);
 const isFoldersFeatureEnabled = computed(() => settingsStore.isFoldersFeatureEnabled);
 const isChatLinkAvailable = computed(
 	() =>
@@ -442,17 +466,25 @@ onBeforeUnmount(() => {
 			"
 			:class="$style.projectItems"
 		>
-			<N8nMenuItem
-				v-for="project in displayProjects"
-				:key="project.id"
-				:class="{
-					[$style.collapsed]: props.collapsed,
-				}"
-				:item="getProjectMenuItem(project)"
-				:compact="props.collapsed"
-				:active="sidebarActiveTabId === project.id"
-				data-test-id="project-menu-item"
-			/>
+			<template v-for="project in displayProjects" :key="project.id">
+				<N8nMenuItem
+					:class="{
+						[$style.collapsed]: props.collapsed,
+					}"
+					:item="getProjectMenuItem(project)"
+					:compact="props.collapsed"
+					:active="sidebarActiveTabId === project.id"
+					data-test-id="project-menu-item"
+				/>
+				<!-- Prototype: the open project lists its pages in place. -->
+				<div
+					v-if="!props.collapsed && protoExpandedProjectId === project.id"
+					:class="$style.protoPages"
+					data-test-id="proto-sidebar-project-pages"
+				>
+					<ProjectNavSections :sections="protoExpandedSections" />
+				</div>
+			</template>
 		</div>
 	</div>
 </template>
@@ -686,5 +718,12 @@ onBeforeUnmount(() => {
 	&:focus-visible {
 		color: var(--color--text);
 	}
+}
+
+/* Prototype: a rule down the side ties the pages to the project that opened them. */
+.protoPages {
+	margin: var(--spacing--5xs) 0 var(--spacing--2xs) var(--spacing--sm);
+	padding-inline-start: var(--spacing--3xs);
+	border-inline-start: var(--border);
 }
 </style>

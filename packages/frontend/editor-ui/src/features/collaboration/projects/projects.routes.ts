@@ -6,6 +6,8 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { hasRole } from '@/app/utils/rbac/checks';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+// Prototype: a page per settings section, and Members.
+import { protoProjectRoutes } from '@/features/projectSettingsPrototype/nav/routes';
 
 const WorkflowsView = async () => await import('@/app/views/WorkflowsView.vue');
 const CredentialsView = async () =>
@@ -141,37 +143,40 @@ export const projectsRoutes: RouteRecordRaw[] = [
 					middleware: ['authenticated'],
 				},
 				redirect: { name: VIEWS.PROJECTS_WORKFLOWS },
-				children: commonChildRoutes
-					.map((route, idx) => ({
-						...route,
-						name: commonChildRouteExtensions.projects[idx].name,
-					}))
-					.concat([
-						{
-							path: 'settings',
-							name: VIEWS.PROJECT_SETTINGS,
-							component: ProjectSettings,
-							meta: {
-								middleware: ['authenticated', 'custom'],
-								middlewareOptions: {
-									custom: (options) => {
-										const project = useProjectsStore().myProjects.find(
-											(p) => p.id === options?.to.params.projectId,
-										);
-										const permissions = getResourcePermissions(project?.scopes);
-										// Mirrors ProjectHeader's showSettings: only team projects have
-										// settings, and any one section's scope is enough to enter.
-										return (
-											project?.type === ProjectTypes.Team &&
-											(!!permissions.project.update ||
-												!!permissions.project.manageMembers ||
-												!!permissions.externalSecretsProvider.read)
-										);
+				children: [
+					...protoProjectRoutes,
+					...commonChildRoutes
+						.map((route, idx) => ({
+							...route,
+							name: commonChildRouteExtensions.projects[idx].name,
+						}))
+						.concat([
+							{
+								path: 'settings',
+								name: VIEWS.PROJECT_SETTINGS,
+								component: ProjectSettings,
+								meta: {
+									middleware: ['authenticated', 'custom'],
+									middlewareOptions: {
+										custom: (options) => {
+											const project = useProjectsStore().myProjects.find(
+												(p) => p.id === options?.to.params.projectId,
+											);
+											const permissions = getResourcePermissions(project?.scopes);
+											// Mirrors ProjectHeader's showSettings: only team projects have
+											// settings, and any one section's scope is enough to enter.
+											return (
+												project?.type === ProjectTypes.Team &&
+												(!!permissions.project.update ||
+													!!permissions.project.manageMembers ||
+													!!permissions.externalSecretsProvider.read)
+											);
+										},
 									},
 								},
 							},
-						},
-					]),
+						]),
+				],
 			},
 		],
 	},

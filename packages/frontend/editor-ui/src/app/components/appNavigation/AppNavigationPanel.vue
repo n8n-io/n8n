@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+	N8nIcon,
 	N8nIconButton,
 	N8nLogo,
 	N8nMenuItem,
@@ -13,6 +14,8 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import RecentChatIcon from '@/features/agents/n8nChatPage/components/RecentChatIcon.vue';
 import { useAgentsN8nChatFlag } from '@/features/agents/composables/useAgentsN8nChatFlag';
+import type { RouteLocationRaw } from 'vue-router';
+import ProjectSettingsDisclosure from '@/features/projectSettingsPrototype/components/ProjectSettingsDisclosure.vue';
 import type { AppNavLink, AppNavSection } from './useAppNavigation';
 
 defineProps<{
@@ -22,6 +25,8 @@ defineProps<{
 	isExpanded: boolean;
 	/** Show the n8n logo, linking home, in place of the title text */
 	showLogo?: boolean;
+	/** Prototype: a row above the sections that leads out of a settings area. */
+	back?: { label: string; to: RouteLocationRaw };
 }>();
 
 const emit = defineEmits<{
@@ -106,6 +111,14 @@ const toMenuItem = (link: AppNavLink): IMenuItem => ({
 				/>
 			</KeyboardShortcutTooltip>
 		</header>
+		<div v-if="back" :class="$style.backBar">
+			<RouterLink :to="back.to" :class="$style.back" data-test-id="app-nav-back">
+				<span :class="$style.backIcon">
+					<N8nIcon icon="arrow-left" size="small" />
+				</span>
+				<span :class="$style.backLabel">{{ back.label }}</span>
+			</RouterLink>
+		</div>
 		<!-- A rail item can bring its own content, such as the Inbox list, which scrolls itself. -->
 		<div v-if="$slots.default" :class="$style.custom">
 			<slot />
@@ -118,6 +131,7 @@ const toMenuItem = (link: AppNavLink): IMenuItem => ({
 					:class="$style.section"
 					:data-test-id="`app-nav-section-${section.id}`"
 				>
+					<ProjectSettingsDisclosure v-if="section.disclosure" :disclosure="section.disclosure" />
 					<div v-if="section.title" :class="$style.sectionHeader">
 						<N8nText size="small" bold color="text-light">{{ section.title }}</N8nText>
 						<RouterLink
@@ -197,6 +211,45 @@ const toMenuItem = (link: AppNavLink): IMenuItem => ({
 	&:focus-visible {
 		color: var(--text-color);
 	}
+}
+
+/* Mirrors the N8nMenuItem box, so the back row lines up with the links under it. */
+.backBar {
+	flex: none;
+	padding: 0 var(--spacing--2xs) var(--spacing--2xs);
+}
+
+.back {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	height: var(--spacing--xl);
+	padding: var(--spacing--4xs);
+	border-radius: var(--radius);
+	color: var(--text-color);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
+	text-decoration: none;
+
+	&:hover {
+		background-color: var(--background--hover);
+	}
+}
+
+.backIcon {
+	display: grid;
+	place-items: center;
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
+	flex: none;
+	color: var(--text-color--subtle);
+}
+
+.backLabel {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .logo {
