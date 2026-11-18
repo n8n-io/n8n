@@ -98,7 +98,7 @@ import ApprovalModeSelector from './components/ApprovalModeSelector.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
-import DitherTrailGrid from './components/DitherTrailGrid.vue';
+import DotGrid from './components/DotGrid.vue';
 import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavailableNotice.vue';
 import LimitedModeNotice from './components/LimitedModeNotice.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
@@ -1169,7 +1169,7 @@ async function handleWorkflowPreviewExampleUse(
 			</div>
 		</div>
 
-		<DitherTrailGrid :height="640" />
+		<DotGrid :height="640" />
 	</div>
 </template>
 
