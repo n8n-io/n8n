@@ -498,6 +498,19 @@ Certain page-level operations are allowed (configurable via `allowPatterns`):
 - `page.waitForURL()` - URL assertions
 - `page.reload()` - Page refresh
 
+Allow patterns can also match `relative/file.ts:ClassName.methodName: expression`.
+Use an anchored pattern to allow an operation in one composable method. The rule
+checks the full property-access chain. An allowed prefix does not allow a longer
+chain. Raw expression patterns still apply.
+
+```typescript
+'no-page-in-flow': {
+  allowPatterns: [
+    /^composables\/EntryComposer\.ts:EntryComposer\.newTab: this\.app\.page\.context\(\)\.newPage$/,
+  ],
+},
+```
+
 #### `api-purity`
 
 **Severity:** warning

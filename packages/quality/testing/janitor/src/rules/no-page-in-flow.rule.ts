@@ -5,6 +5,7 @@ import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
 import { getConfig, ruleAllows } from '../config.js';
 import type { Violation } from '../types.js';
 import { LOCATOR_METHODS } from '../utils/ast-helpers.js';
+import { getRelativePath } from '../utils/paths.js';
 
 /**
  * No Page In Flow Rule
@@ -61,7 +62,17 @@ export class NoPageInFlowRule extends AstRule<{ rootDir: string }> {
 		const pageAccessRegex = new RegExp(`^this\\.${fixtureName}\\.page\\.(\\w+)`);
 
 		for (const file of files) {
-			const propAccesses = file.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression);
+			// Check the full chain so an allowed prefix cannot hide a later DOM access.
+			const propAccesses = file
+				.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
+				.filter(
+					(propAccess) =>
+						!propAccess.getFirstAncestor(
+							(ancestor) =>
+								ancestor.getKind() === SyntaxKind.PropertyAccessExpression &&
+								ancestor.getStart() === propAccess.getStart(),
+						),
+				);
 			const flaggedPositions = new Set<string>();
 
 			for (const propAccess of propAccesses) {
@@ -69,8 +80,14 @@ export class NoPageInFlowRule extends AstRule<{ rootDir: string }> {
 				const match = text.match(pageAccessRegex);
 
 				if (match) {
-					// Check if this matches any allow patterns
-					if (ruleAllows(this.id, text)) {
+					const className = propAccess
+						.getFirstAncestorByKind(SyntaxKind.ClassDeclaration)
+						?.getName();
+					const methodName = propAccess
+						.getFirstAncestorByKind(SyntaxKind.MethodDeclaration)
+						?.getName();
+					const context = `${getRelativePath(file.getFilePath()).replaceAll('\\', '/')}:${className}.${methodName}: ${text}`;
+					if (ruleAllows(this.id, text) || ruleAllows(this.id, context)) {
 						continue;
 					}
 
@@ -83,15 +100,15 @@ export class NoPageInFlowRule extends AstRule<{ rootDir: string }> {
 					}
 					flaggedPositions.add(posKey);
 
-					const methodName = match[1];
+					const pageMethodName = match[1];
 
 					violations.push(
 						this.fileViolation(
 							file,
 							startLine,
 							startColumn,
-							`Direct page access in ${flowLayerName}: this.${fixtureName}.page.${methodName}`,
-							this.getSuggestion(methodName),
+							`Direct page access in ${flowLayerName}: this.${fixtureName}.page.${pageMethodName}`,
+							this.getSuggestion(pageMethodName),
 						),
 					);
 				}

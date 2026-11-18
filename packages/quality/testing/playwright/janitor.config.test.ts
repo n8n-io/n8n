@@ -1,9 +1,79 @@
-import { resetConfig, ScopeLockdownRule, setConfig } from '@n8n/playwright-janitor';
+import {
+	NoPageInFlowRule,
+	resetConfig,
+	ScopeLockdownRule,
+	setConfig,
+} from '@n8n/playwright-janitor';
 import { readFileSync } from 'node:fs';
 import { Project } from 'ts-morph';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 
 import config from './janitor.config.mjs';
+
+describe('Composable browser orchestration configuration', () => {
+	beforeEach(() => setConfig(config));
+	afterEach(() => resetConfig());
+
+	test.each([
+		'BuilderWizardComposer',
+		'TestEntryComposer',
+		'ExecutionsComposer',
+		'WorkflowComposer',
+	])('allows the browser orchestration in %s', (className) => {
+		const project = new Project({ useInMemoryFileSystem: true });
+		const filePath = `${config.rootDir}/composables/${className}.ts`;
+		const file = project.createSourceFile(filePath, readFileSync(filePath, 'utf8'));
+
+		expect(new NoPageInFlowRule().analyzeProject(project, [file])).toEqual([]);
+	});
+
+	test.each([
+		['BuilderWizardComposer', 'mockBuilderStream', "route('**/rest/ai/build', async () => {})"],
+		['BuilderWizardComposer', 'remockBuilderStream', "unroute('**/rest/ai/build')"],
+		['BuilderWizardComposer', 'mockAutosave', "route('**/rest/workflows/*', async () => {})"],
+		['TestEntryComposer', 'fromNewPage', "waitForEvent('popup')"],
+		['TestEntryComposer', 'newTab', 'context().newPage()'],
+		['TestEntryComposer', 'withUser', 'context().browser()'],
+		['ExecutionsComposer', 'createExecutions', "waitForResponse('**/run')"],
+		['ExecutionsComposer', 'executeNodeAndCapturePayload', "waitForRequest('**/run')"],
+		['WorkflowComposer', 'executeWorkflowAndWaitForNotification', "waitForResponse('**/run')"],
+		['WorkflowComposer', 'moveToProject', "waitForResponse('**/transfer')"],
+		['WorkflowComposer', 'selectProjectInMoveModal', "waitForResponse('**/projects')"],
+		['WorkflowComposer', 'selectFolderInMoveModal', "waitForResponse('**/folders')"],
+	])('limits %s.%s to its configured operation', (className, methodName, operation) => {
+		const cases = [
+			{ fileName: className, className, methodName, operation, expected: 0 },
+			{ fileName: 'OtherComposer', className, methodName, operation, expected: 1 },
+			{ fileName: className, className: 'OtherComposer', methodName, operation, expected: 1 },
+			{ fileName: className, className, methodName: 'otherMethod', operation, expected: 1 },
+			{
+				fileName: className,
+				className,
+				methodName,
+				operation: "getByTestId('button').click()",
+				expected: 1,
+			},
+			{
+				fileName: className,
+				className,
+				methodName,
+				operation: "context().pages()[0].getByTestId('button').click()",
+				expected: 1,
+			},
+		];
+		for (const entry of cases) {
+			const project = new Project({ useInMemoryFileSystem: true });
+			const file = project.createSourceFile(
+				`${config.rootDir}/composables/${entry.fileName}.ts`,
+				`export class ${entry.className} {
+					async ${entry.methodName}() { await this.n8n.page.${entry.operation}; }
+				}`,
+			);
+
+			expect(new NoPageInFlowRule().analyzeProject(project, [file])).toHaveLength(entry.expected);
+		}
+	});
+});
 
 describe('AIAssistantPage scope configuration', () => {
 	beforeEach(() => setConfig(config));
