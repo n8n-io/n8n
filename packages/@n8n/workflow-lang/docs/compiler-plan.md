@@ -698,7 +698,7 @@ which the answers come. v1 has no limit on the count of sessions.
 output }` after it. The node gives the runs of the memory sub-node (`memoryRuns`). Order for one item: the
 prompt check, the read, the model, the write. Versions 3 and 3.1 do not write an empty answer; versions 2 to
 2.2 do. A failed item writes nothing. An empty session key fails before `open` with "Error in sub-node <name>"
-and the description "Key parameter is empty". The cases of `ai-cluster.test.ts` prove the requests, the
+and the description "Key parameter is empty". The cases of the `ai-cluster` test shards (`ai-cluster.shared.ts`) prove the requests, the
 outputs, the errors and the runs against v1 recordings, with a store of the test that has the rules above.
 
 **Switch.** `ConvertOptions.chatMemory` (default false). Without it the cluster runs in the fallback host,

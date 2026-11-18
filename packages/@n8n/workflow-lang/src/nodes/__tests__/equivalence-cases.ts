@@ -2930,7 +2930,7 @@ const FAILED_REQUEST_CASES: EquivalenceCase[] = [
 /**
  * The item that v1 gives for an input item that failed, under "continue" and under "continue
  * (using error output)". Each case has two input items: the request of the first one fails.
- * The recorder runs them in n8n's engine, and `ai-cluster.test.ts` runs them through the
+ * The recorder runs them in n8n's engine, and `ai-cluster.shared.ts` runs them through the
  * converter and compares the items of each output.
  */
 function errorItems(
