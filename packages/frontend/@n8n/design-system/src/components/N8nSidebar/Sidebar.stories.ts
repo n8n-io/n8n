@@ -17,9 +17,9 @@ import N8nInput from '../N8nInput';
 import N8nInputLabel from '../N8nInputLabel';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
-import N8nListbox from '../../v2/components/Listbox/Listbox.vue';
-import N8nListboxItem from '../../v2/components/Listbox/ListboxItem.vue';
-import N8nModalSidebar from './ModalSidebar.vue';
+import N8nListbox from '../N8nListbox/Listbox.vue';
+import N8nListboxItem from '../N8nListbox/ListboxItem.vue';
+import N8nSidebar from './Sidebar.vue';
 import type { IMenuItem } from '../../types';
 
 function menuIcon(item: IMenuItem) {
@@ -34,8 +34,8 @@ const links: IMenuItem[] = [
 ];
 
 const meta = {
-	title: 'Core/ModalSidebar',
-	component: N8nModalSidebar,
+	title: 'Core/Sidebar',
+	component: N8nSidebar,
 	parameters: {
 		docs: {
 			description: {
@@ -50,7 +50,7 @@ const meta = {
 		minWidth: { control: 'number' },
 		maxWidth: { control: 'number' },
 	},
-} satisfies Meta<typeof N8nModalSidebar>;
+} satisfies Meta<typeof N8nSidebar>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -85,19 +85,6 @@ const contentStyle = [
 	'padding: var(--spacing--md) var(--spacing--xs) var(--spacing--2xs)',
 ].join('; ');
 
-// A menu item is 32px tall. The icon sits 12px in from the highlight.
-// The flush highlight bleeds by that 12px, so the wrapper adds it back.
-// The highlight then sits 12px in from the sidebar edge.
-const listboxStyle = [
-	'width: 100%',
-	'--listbox-flush-highlight-inset-inline: var(--spacing--xs)',
-	'--listbox-flush-highlight-inset-block: 0px',
-	'--listbox-flush-gap: var(--spacing--5xs)',
-	'--listbox-row-min-height: var(--spacing--xl)',
-	'--listbox-row-padding-block: var(--spacing--4xs)',
-	'--listbox-label-line-height: var(--font-size--lg)',
-].join('; ');
-
 const listPaddingStyle = [
 	'padding-block: var(--spacing--xs)',
 	'padding-inline: calc(var(--spacing--xs) + var(--spacing--xs))',
@@ -126,37 +113,30 @@ const rowActions: Array<DropdownMenuItemProps<'rename' | 'duplicate' | 'delete'>
 
 export const Links: Story = {
 	render: (args) => ({
-		components: { N8nModalSidebar, N8nListbox, N8nListboxItem, N8nIcon, N8nText },
+		components: { N8nSidebar, N8nListbox, N8nListboxItem, N8nIcon, N8nText },
 		setup() {
 			const width = ref(240);
 			const activeId = ref(links[0]?.id ?? '');
-			return { args, links, width, activeId, menuIcon, listboxStyle };
+			return { args, links, width, activeId, menuIcon };
 		},
 		template: `
 			<div style="${frameStyle}">
-				<N8nModalSidebar v-model:width="width" v-bind="args" label="Sections">
+				<N8nSidebar v-model:width="width" v-bind="args" label="Sections">
 					<div style="${listPaddingStyle}">
-						<N8nListbox
-							v-model="activeId"
-							variant="flush"
-							size="small"
-							max-height="none"
-							aria-label="Sections"
-							:style="listboxStyle"
-						>
+						<N8nListbox v-model="activeId" label="Sections" style="width: 100%">
 							<N8nListboxItem
 								v-for="item in links"
 								:key="item.id"
 								:value="item.id"
-								:label="item.label"
 							>
 								<template #leading>
 									<N8nIcon v-if="menuIcon(item)" :icon="menuIcon(item)" />
 								</template>
+								{{ item.label }}
 							</N8nListboxItem>
 						</N8nListbox>
 					</div>
-				</N8nModalSidebar>
+				</N8nSidebar>
 				<div style="${mainStyle}">
 					<N8nText bold size="medium">{{ links.find((item) => item.id === activeId)?.label }}</N8nText>
 				</div>
@@ -176,13 +156,13 @@ export const WithActions: Story = {
 		docs: {
 			description: {
 				story:
-					'Each row has a delete button and an actions menu. The delete button has a tooltip. The menu can rename, duplicate, or delete the row. These controls sit outside the option, so they do not change the selection.',
+					'Each row has a delete button and an actions menu. The delete button has a tooltip. The menu can rename, duplicate, or delete the row. A click on either control does not change the selection.',
 			},
 		},
 	},
 	render: (args) => ({
 		components: {
-			N8nModalSidebar,
+			N8nSidebar,
 			N8nListbox,
 			N8nListboxItem,
 			N8nIcon,
@@ -257,38 +237,30 @@ export const WithActions: Story = {
 				onRowAction,
 				rowActions,
 				menuIcon,
-				listboxStyle,
 			};
 		},
 		template: `
 			<div style="${frameStyle}">
-				<N8nModalSidebar v-model:width="width" v-bind="args" label="Sections">
+				<N8nSidebar v-model:width="width" v-bind="args" label="Sections">
 					<div style="${listPaddingStyle}">
-					<N8nListbox
-						v-model="activeId"
-						variant="flush"
-						size="small"
-						max-height="none"
-						aria-label="Sections"
-						:style="listboxStyle"
-					>
+					<N8nListbox v-model="activeId" label="Sections" style="width: 100%">
 						<N8nListboxItem
 							v-for="item in items"
 							:key="item.id"
 							:value="item.id"
-							:label="item.label"
 						>
 							<template #leading>
 								<N8nIcon v-if="menuIcon(item)" :icon="menuIcon(item)" />
 							</template>
-							<template #trailing="{ setMenuOpen }">
+							{{ item.label }}
+							<template #trailing>
 								<N8nTooltip content="Delete" placement="top" as-child>
 									<N8nIconButton
 										icon="trash-2"
 										variant="ghost"
 										size="xsmall"
 										:aria-label="'Delete ' + item.label"
-										@click="deleteItem(item.id)"
+										@click.stop="deleteItem(item.id)"
 									/>
 								</N8nTooltip>
 								<N8nDropdownMenu
@@ -296,7 +268,6 @@ export const WithActions: Story = {
 									placement="bottom-end"
 									width="12rem"
 									:modal="false"
-									@update:model-value="setMenuOpen"
 									@select="(actionId) => onRowAction(item.id, actionId)"
 								>
 									<template #trigger>
@@ -306,6 +277,7 @@ export const WithActions: Story = {
 												variant="ghost"
 												size="xsmall"
 												:aria-label="'Actions for ' + item.label"
+												@click.stop
 											/>
 										</N8nTooltip>
 									</template>
@@ -314,7 +286,7 @@ export const WithActions: Story = {
 						</N8nListboxItem>
 					</N8nListbox>
 					</div>
-				</N8nModalSidebar>
+				</N8nSidebar>
 				<div style="${mainStyle}">
 					<N8nText bold size="medium">{{ items.find((item) => item.id === activeId)?.label || 'No sections' }}</N8nText>
 				</div>
@@ -331,29 +303,23 @@ export const WithActions: Story = {
 
 export const Sections: Story = {
 	render: (args) => ({
-		components: { N8nModalSidebar, N8nListbox, N8nListboxItem, N8nIcon, N8nText, N8nIconButton },
+		components: { N8nSidebar, N8nListbox, N8nListboxItem, N8nIcon, N8nText, N8nIconButton },
 		setup() {
 			const width = ref(240);
 			const guide: IMenuItem = { id: 'guide', label: 'Guide.md', icon: 'file' };
 			const activeId = ref(guide.id);
-			return { args, width, guide, activeId, listboxStyle };
+			return { args, width, guide, activeId };
 		},
 		template: `
 			<div style="${frameStyle}">
-				<N8nModalSidebar v-model:width="width" v-bind="args" label="Files">
+				<N8nSidebar v-model:width="width" v-bind="args" label="Files">
 					<div style="${contentStyle}">
-						<N8nListbox
-							v-model="activeId"
-							variant="flush"
-							size="small"
-							max-height="none"
-							aria-label="Files"
-							:style="listboxStyle"
-						>
-							<N8nListboxItem :value="guide.id" :label="guide.label">
+						<N8nListbox v-model="activeId" label="Files" style="width: 100%">
+							<N8nListboxItem :value="guide.id">
 								<template #leading>
 									<N8nIcon icon="file" />
 								</template>
+								{{ guide.label }}
 							</N8nListboxItem>
 						</N8nListbox>
 						<div style="display: flex; flex-direction: column; gap: var(--spacing--2xs);">
@@ -364,7 +330,7 @@ export const Sections: Story = {
 							<N8nText size="small" color="text-light">No references yet</N8nText>
 						</div>
 					</div>
-				</N8nModalSidebar>
+				</N8nSidebar>
 				<div style="${mainStyle}">
 					<N8nText bold size="medium">Guide.md</N8nText>
 					<N8nText size="small" color="text-base">The sidebar can hold a selected item, a section, and an empty state.</N8nText>
@@ -380,7 +346,7 @@ export const Sections: Story = {
 
 export const CustomContent: Story = {
 	render: (args) => ({
-		components: { N8nModalSidebar, N8nText, N8nInput, N8nInputLabel },
+		components: { N8nSidebar, N8nText, N8nInput, N8nInputLabel },
 		setup() {
 			const width = ref(280);
 			const name = ref('Weekly digest');
@@ -389,7 +355,7 @@ export const CustomContent: Story = {
 		},
 		template: `
 			<div style="${frameStyle}">
-				<N8nModalSidebar v-model:width="width" v-bind="args" label="Details">
+				<N8nSidebar v-model:width="width" v-bind="args" label="Details">
 					<div style="${contentStyle}">
 						<N8nText bold size="medium">Details</N8nText>
 						<div>
@@ -401,7 +367,7 @@ export const CustomContent: Story = {
 							<N8nInput id="sidebar-note" v-model="note" type="textarea" size="small" :rows="3" />
 						</div>
 					</div>
-				</N8nModalSidebar>
+				</N8nSidebar>
 				<div style="${mainStyle}">
 					<N8nText size="small" color="text-base">Drag the inner edge to change the sidebar width.</N8nText>
 				</div>
@@ -418,11 +384,11 @@ export const CustomContent: Story = {
 
 export const RightSide: Story = {
 	render: (args) => ({
-		components: { N8nModalSidebar, N8nListbox, N8nListboxItem, N8nIcon, N8nText },
+		components: { N8nSidebar, N8nListbox, N8nListboxItem, N8nIcon, N8nText },
 		setup() {
 			const width = ref(240);
 			const activeId = ref(links[1]?.id ?? '');
-			return { args, links, width, activeId, menuIcon, listboxStyle };
+			return { args, links, width, activeId, menuIcon };
 		},
 		template: `
 			<div style="${frameStyle}">
@@ -430,29 +396,22 @@ export const RightSide: Story = {
 					<N8nText bold size="medium">Main</N8nText>
 					<N8nText size="small" color="text-base">The handle sits on the inner edge when the sidebar is on the right.</N8nText>
 				</div>
-				<N8nModalSidebar v-model:width="width" v-bind="args" label="Sections">
+				<N8nSidebar v-model:width="width" v-bind="args" label="Sections">
 					<div style="${listPaddingStyle}">
-						<N8nListbox
-							v-model="activeId"
-							variant="flush"
-							size="small"
-							max-height="none"
-							aria-label="Sections"
-							:style="listboxStyle"
-						>
+						<N8nListbox v-model="activeId" label="Sections" style="width: 100%">
 							<N8nListboxItem
 								v-for="item in links"
 								:key="item.id"
 								:value="item.id"
-								:label="item.label"
 							>
 								<template #leading>
 									<N8nIcon v-if="menuIcon(item)" :icon="menuIcon(item)" />
 								</template>
+								{{ item.label }}
 							</N8nListboxItem>
 						</N8nListbox>
 					</div>
-				</N8nModalSidebar>
+				</N8nSidebar>
 			</div>
 		`,
 	}),
@@ -569,7 +528,7 @@ export const SkillEditor: Story = {
 	},
 	render: (args) => ({
 		components: {
-			N8nModalSidebar,
+			N8nSidebar,
 			N8nListbox,
 			N8nListboxItem,
 			N8nIcon,
@@ -588,25 +547,18 @@ export const SkillEditor: Story = {
 				fileDetails,
 				pluginFiles,
 				menuIcon,
-				listboxStyle,
 			};
 		},
 		template: `
 			<div style="${editorFrameStyle}">
-				<N8nModalSidebar v-model:width="width" v-bind="args" label="Plugin files">
+				<N8nSidebar v-model:width="width" v-bind="args" label="Plugin files">
 					<div style="${listPaddingStyle}">
-					<N8nListbox
-						v-model="activeId"
-						variant="flush"
-						size="small"
-						max-height="none"
-						aria-label="Plugin files"
-						:style="listboxStyle"
-					>
-						<N8nListboxItem :value="readme.id" :label="readme.label">
+					<N8nListbox v-model="activeId" label="Plugin files" style="width: 100%">
+						<N8nListboxItem :value="readme.id">
 							<template #leading>
 								<N8nIcon v-if="menuIcon(readme)" :icon="menuIcon(readme)" />
 							</template>
+							{{ readme.label }}
 						</N8nListboxItem>
 						<template v-for="section in fileSections" :key="section.id">
 							<div style="${sectionHeaderStyle}" @keydown.stop>
@@ -622,16 +574,16 @@ export const SkillEditor: Story = {
 								v-for="item in section.items"
 								:key="item.id"
 								:value="item.id"
-								:label="item.label"
 							>
 								<template #leading>
 									<N8nIcon v-if="menuIcon(item)" :icon="menuIcon(item)" />
 								</template>
+								{{ item.label }}
 							</N8nListboxItem>
 						</template>
 					</N8nListbox>
 					</div>
-				</N8nModalSidebar>
+				</N8nSidebar>
 				<div style="${mainStyle}">
 					<N8nText bold size="large">{{ pluginFiles.find((item) => item.id === activeId)?.label }}</N8nText>
 					<N8nText size="small" color="text-base">{{ fileDetails[activeId] }}</N8nText>
@@ -664,7 +616,7 @@ export const InDialog: Story = {
 			N8nDialogHeader,
 			N8nDialogTitle,
 			N8nButton,
-			N8nModalSidebar,
+			N8nSidebar,
 			N8nListbox,
 			N8nListboxItem,
 			N8nIcon,
@@ -734,7 +686,6 @@ export const InDialog: Story = {
 				sections,
 				fileDetails,
 				menuIcon,
-				listboxStyle,
 				openAdd,
 				confirmAdd,
 			};
@@ -749,20 +700,14 @@ export const InDialog: Story = {
 					</N8nDialogHeader>
 					<N8nDialogBody style="padding: 0; overflow: hidden; border-block: var(--border);">
 						<div style="display: flex; flex: 1; min-height: 0; overflow: hidden;">
-							<N8nModalSidebar v-model:width="width" v-bind="args" label="Plugin files">
+							<N8nSidebar v-model:width="width" v-bind="args" label="Plugin files">
 								<div style="${listPaddingStyle}">
-									<N8nListbox
-										v-model="activeId"
-										variant="flush"
-										size="small"
-										max-height="none"
-										aria-label="Plugin files"
-										:style="listboxStyle"
-									>
-										<N8nListboxItem :value="readme.id" :label="readme.label">
+									<N8nListbox v-model="activeId" label="Plugin files" style="width: 100%">
+										<N8nListboxItem :value="readme.id">
 											<template #leading>
 												<N8nIcon v-if="menuIcon(readme)" :icon="menuIcon(readme)" />
 											</template>
+											{{ readme.label }}
 										</N8nListboxItem>
 										<template v-for="section in sections" :key="section.id">
 											<div style="${sectionHeaderStyle}" @keydown.stop>
@@ -772,23 +717,23 @@ export const InDialog: Story = {
 													variant="ghost"
 													size="xsmall"
 													:aria-label="section.addLabel"
-													@click="openAdd(section.id)"
+													@click.stop="openAdd(section.id)"
 												/>
 											</div>
 											<N8nListboxItem
 												v-for="item in section.items"
 												:key="item.id"
 												:value="item.id"
-												:label="item.label"
 											>
 												<template #leading>
 													<N8nIcon v-if="menuIcon(item)" :icon="menuIcon(item)" />
 												</template>
+												{{ item.label }}
 											</N8nListboxItem>
 										</template>
 									</N8nListbox>
 								</div>
-							</N8nModalSidebar>
+							</N8nSidebar>
 							<div style="${mainStyle}">
 								<N8nText bold size="large">{{ activeFile?.label }}</N8nText>
 								<N8nText size="small" color="text-base">{{ fileDetails[activeId] || 'A new file in this plugin.' }}</N8nText>

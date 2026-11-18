@@ -1,12 +1,12 @@
-export type ModalSidebarSide = 'left' | 'right';
+export type SidebarSide = 'left' | 'right';
 
-export interface ModalSidebarProps {
+export interface SidebarProps {
 	/**
 	 * Side of the parent this sidebar sits on.
 	 * The resize handle is on the inner edge.
 	 * Place the component on that side of the parent. The component does not move itself.
 	 */
-	side?: ModalSidebarSide;
+	side?: SidebarSide;
 	/**
 	 * Width restored on double-click.
 	 * Defaults to the width at mount.

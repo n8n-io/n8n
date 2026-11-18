@@ -1,20 +1,20 @@
 import { fireEvent, render } from '@testing-library/vue';
 
-import N8nModalSidebar from './ModalSidebar.vue';
+import N8nSidebar from './Sidebar.vue';
 
 function renderSidebar(props: Record<string, unknown> = {}, slot = 'Notes') {
-	return render(N8nModalSidebar, {
+	return render(N8nSidebar, {
 		props: { label: 'Files', ...props },
 		slots: { default: slot },
 	});
 }
 
-describe('N8nModalSidebar', () => {
+describe('N8nSidebar', () => {
 	it('renders custom content in a named sidebar', () => {
 		const { getByTestId, getByRole } = renderSidebar();
 
 		expect(getByRole('complementary', { name: 'Files' })).toHaveTextContent('Notes');
-		expect(getByTestId('modal-sidebar')).toBeTruthy();
+		expect(getByTestId('sidebar')).toBeTruthy();
 	});
 
 	it('puts the resize handle on the inner edge', () => {

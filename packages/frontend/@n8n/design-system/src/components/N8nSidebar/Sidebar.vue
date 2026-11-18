@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import type { ModalSidebarProps } from './ModalSidebar.types';
+import type { SidebarProps } from './Sidebar.types';
 import type { Direction, ResizeData } from '../../types';
 import N8nResizeWrapper from '../N8nResizeWrapper/ResizeWrapper.vue';
 
-defineOptions({ name: 'N8nModalSidebar' });
+defineOptions({ name: 'N8nSidebar' });
 
-const props = withDefaults(defineProps<ModalSidebarProps>(), {
+const props = withDefaults(defineProps<SidebarProps>(), {
 	side: 'left',
 	minWidth: 160,
 	maxWidth: 480,
@@ -62,11 +62,7 @@ function onResize(data: ResizeData) {
 			:is-resizing-enabled="resizable"
 			@resize="onResize"
 		>
-			<aside
-				:class="[$style.sidebar, $style[side]]"
-				:aria-label="label"
-				data-test-id="modal-sidebar"
-			>
+			<aside :class="[$style.sidebar, $style[side]]" :aria-label="label" data-test-id="sidebar">
 				<slot />
 			</aside>
 		</N8nResizeWrapper>

@@ -19,9 +19,9 @@ import N8nIconButton from '../N8nIconButton';
 import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
 import N8nInput from '../N8nInput/Input.vue';
 import N8nInputLabel from '../N8nInputLabel/InputLabel.vue';
-import N8nListbox from '../../v2/components/Listbox/Listbox.vue';
-import N8nListboxItem from '../../v2/components/Listbox/ListboxItem.vue';
-import N8nModalSidebar from '../N8nModalSidebar';
+import N8nListbox from '../N8nListbox/Listbox.vue';
+import N8nListboxItem from '../N8nListbox/ListboxItem.vue';
+import N8nSidebar from '../N8nSidebar';
 import N8nSwitch2 from '../N8nSwitch/Switch.vue';
 import N8nSelect2 from '../../v2/components/Select/Select.vue';
 import N8nText from '../N8nText/Text.vue';
@@ -779,12 +779,12 @@ const pluginFileDetails: Record<string, string> = {
 	'cred-notion': 'The Notion account this plugin uses.',
 };
 
-export const ModalSidebar: Story = {
+export const WithN8nSidebar: Story = {
 	parameters: {
 		docs: {
 			description: {
 				story:
-					'N8nModalSidebar sits in the dialog body. The body does not scroll. The sidebar and the main area scroll on their own. Arrow keys move through the files.',
+					'N8nSidebar sits in the dialog body. The body does not scroll. The sidebar and the main area scroll on their own. Arrow keys move through the files.',
 			},
 		},
 	},
@@ -799,7 +799,7 @@ export const ModalSidebar: Story = {
 			N8nIconButton,
 			N8nListbox,
 			N8nListboxItem,
-			N8nModalSidebar,
+			N8nSidebar,
 			N8nText,
 		},
 		setup() {
@@ -834,20 +834,14 @@ export const ModalSidebar: Story = {
 
 				<N8nDialogBody style="padding: 0; overflow: hidden; border-block: var(--border);">
 					<div style="display: flex; flex: 1; min-height: 0; overflow: hidden;">
-						<N8nModalSidebar v-model:width="width" label="Plugin files" :min-width="180" :max-width="360">
+						<N8nSidebar v-model:width="width" label="Plugin files" :min-width="180" :max-width="360">
 							<div style="padding-block: var(--spacing--xs); padding-inline: calc(var(--spacing--xs) + var(--spacing--xs));">
-								<N8nListbox
-									v-model="activeId"
-									variant="flush"
-									size="small"
-									max-height="none"
-									aria-label="Plugin files"
-									style="width: 100%; --listbox-flush-highlight-inset-inline: var(--spacing--xs); --listbox-flush-highlight-inset-block: 0px; --listbox-flush-gap: var(--spacing--5xs); --listbox-row-min-height: var(--spacing--xl); --listbox-row-padding-block: var(--spacing--4xs); --listbox-label-line-height: var(--font-size--lg);"
-								>
-									<N8nListboxItem :value="pluginReadme.id" :label="pluginReadme.label">
+								<N8nListbox v-model="activeId" label="Plugin files" style="width: 100%">
+									<N8nListboxItem :value="pluginReadme.id">
 										<template #leading>
 											<N8nIcon v-if="menuIcon(pluginReadme)" :icon="menuIcon(pluginReadme)" />
 										</template>
+										{{ pluginReadme.label }}
 									</N8nListboxItem>
 									<template v-for="section in pluginFileSections" :key="section.id">
 										<div style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing--4xs); margin-top: var(--spacing--xs); padding-block: var(--spacing--4xs);" @keydown.stop>
@@ -863,16 +857,16 @@ export const ModalSidebar: Story = {
 											v-for="item in section.items"
 											:key="item.id"
 											:value="item.id"
-											:label="item.label"
 										>
 											<template #leading>
 												<N8nIcon v-if="menuIcon(item)" :icon="menuIcon(item)" />
 											</template>
+											{{ item.label }}
 										</N8nListboxItem>
 									</template>
 								</N8nListbox>
 							</div>
-						</N8nModalSidebar>
+						</N8nSidebar>
 
 						<div style="flex: 1; min-width: 0; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: var(--spacing--sm); padding: var(--spacing--md);">
 							<N8nText bold size="large">{{ pluginFiles.find((item) => item.id === activeId)?.label }}</N8nText>
