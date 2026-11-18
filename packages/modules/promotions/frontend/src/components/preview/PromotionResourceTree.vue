@@ -7,7 +7,12 @@ import { computed } from 'vue';
 import { usePromotionPreviewLabels } from '../../composables/usePromotionPreviewLabels';
 import type { OwnerMoveNote } from '../../promotionMoves';
 import { blockersOf, type BlockerIndex } from '../../promotionOperation';
-import { projectSelectableKeys, type ChangesProject } from '../../promotionPreview.projects';
+import {
+	countListedChanges,
+	projectIdOf,
+	projectSelectableKeys,
+	type ChangesProject,
+} from '../../promotionPreview.projects';
 import {
 	availableKeys,
 	keysCheckState,
@@ -49,6 +54,8 @@ const props = withDefaults(
 		ownerMoves?: ReadonlyMap<ResourceKey, OwnerMoveNote>;
 		/** The workflows that the Apply of the whole instance keeps, although the branch lacks them. */
 		keptKeys?: ReadonlySet<ResourceKey>;
+		/** The data tables of other projects that a workflow uses. The operation does not copy them. */
+		notCopiedKeys?: ReadonlySet<ResourceKey>;
 	}>(),
 	{
 		selectable: true,
@@ -56,6 +63,7 @@ const props = withDefaults(
 		gapKeys: () => new Set<ResourceKey>(),
 		ownerMoves: () => new Map<ResourceKey, OwnerMoveNote>(),
 		keptKeys: () => new Set<ResourceKey>(),
+		notCopiedKeys: () => new Set<ResourceKey>(),
 	},
 );
 
@@ -83,7 +91,9 @@ function markers(resource: PromotionResource) {
 	// A gap or a waiting project matters more than a warning of the check.
 	const gap = props.gapKeys.has(resource.key)
 		? i18n.baseText('promotions.preview.marker.gap')
-		: undefined;
+		: props.notCopiedKeys.has(resource.key)
+			? i18n.baseText('promotions.preview.marker.notCopied')
+			: undefined;
 	const moves = props.ownerMoves.get(resource.key)?.allowed
 		? i18n.baseText('promotions.preview.marker.ownerMove')
 		: undefined;
@@ -106,11 +116,24 @@ function projectHeader(projectId: string | undefined) {
 	// The header stands for the project, so the count holds the items inside it. A project
 	// whose only change is the project itself counts that one.
 	const inside = keys.filter((key) => key !== `project:${project.id}`);
-	const counted = inside.length > 0 ? inside : keys;
+	// A workflow that the Apply keeps is a row and not a change, as in the count above the tree.
+	const counted = (inside.length > 0 ? inside : keys).filter((key) => !props.keptKeys.has(key));
+	// A project that the user can only read has no selectable row. Its header then counts the
+	// changes that the user reads, as the tab does.
+	const readable = project.canOperate
+		? 0
+		: countListedChanges(
+				props.graph,
+				[project],
+				[...props.graph.resources.values()]
+					.filter((resource) => projectIdOf(props.graph.resources, resource) === project.id)
+					.map(({ key }) => key),
+			);
 	return {
 		project,
 		keys,
 		state,
+		readable,
 		total: counted.length,
 		selectedCount: counted.filter((key) => props.selected.has(key)).length,
 		disabled: props.locked || (!canAdd && state === 'unchecked'),
@@ -243,8 +266,13 @@ function onToggle(resource: PromotionResource) {
 						data-test-id="promotion-preview-tree-project-count"
 					>
 						{{
-							header.keys.length === 0
-								? i18n.baseText('promotions.preview.tree.project.empty')
+							header.readable > 0
+								? i18n.baseText('promotions.preview.tree.project.changes', {
+										adjustToNumber: header.readable,
+										interpolate: { count: String(header.readable) },
+									})
+								: header.total === 0
+									? i18n.baseText('promotions.preview.tree.project.empty')
 								: i18n.baseText('promotions.preview.tree.project.count', {
 										interpolate: {
 											selected: String(header.selectedCount),
@@ -298,7 +326,11 @@ function onToggle(resource: PromotionResource) {
 					>
 						<N8nIcon v-if="item.icon" :icon="item.icon" size="small" :class="$style.icon" />
 						<span :class="$style.text">
-							<N8nText step="xs" color="text-dark" :class="$style.label">
+							<N8nText
+								step="xs"
+								color="text-dark"
+								:class="[$style.label, { [$style.kind]: unnamed }]"
+							>
 								{{
 									unnamed
 										? i18n.baseText('promotions.dependencies.target.unnamed.workflow')
@@ -462,6 +494,11 @@ function onToggle(resource: PromotionResource) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+// The word "Workflow" stands for the name, so the id is cut first.
+.kind {
+	flex-shrink: 0;
 }
 
 .id {

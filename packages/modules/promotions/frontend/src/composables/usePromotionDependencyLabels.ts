@@ -173,15 +173,16 @@ export function usePromotionDependencyLabels() {
 
 	/** One sentence for a result: it names the consumer and the resource. */
 	function resourceWarningSentence(warning: PromotionResourceWarning): string {
+		const text = resourceWarningText(warning);
+		// A table that the user cannot read has no name to show.
+		if (!warning.resource.name) {
+			return i18n.baseText('promotions.dependencies.resourceWarning.dataTable.sentence.unnamed', {
+				interpolate: { consumer: warning.consumer.name, text },
+			});
+		}
 		return i18n.baseText(
 			`promotions.dependencies.resourceWarning.${warning.resource.kind}.sentence`,
-			{
-				interpolate: {
-					consumer: warning.consumer.name,
-					name: resourceName(warning),
-					text: resourceWarningText(warning),
-				},
-			},
+			{ interpolate: { consumer: warning.consumer.name, name: warning.resource.name, text } },
 		);
 	}
 

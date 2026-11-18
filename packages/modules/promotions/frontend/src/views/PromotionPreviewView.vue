@@ -287,6 +287,16 @@ const gapKeys = computed(
 		new Set((dependencies.report.value?.gaps ?? []).map(({ target }) => targetKey(target))),
 );
 
+/** The data tables of other projects that a selected workflow uses. The operation does not copy them. */
+const notCopiedKeys = computed(
+	(): ReadonlySet<ResourceKey> =>
+		new Set(
+			(dependencies.report.value?.resourceWarnings ?? []).flatMap(({ resource }) =>
+				resource.kind === 'dataTable' && resource.id ? [`dataTable:${resource.id}`] : [],
+			),
+		),
+);
+
 /** Apply: the credentials whose owner follows the branch, with the sentence of the report. */
 const dependencyLabels = usePromotionDependencyLabels();
 const ownerMoves = computed((): ReadonlyMap<ResourceKey, OwnerMoveNote> => {
@@ -537,7 +547,8 @@ const changedKeys = computed(() =>
 const totalChanges = computed(() => {
 	if (!graph.value) return 0;
 	if (wholeInstance.value) return countChanges(changedKeys.value);
-	return isEnvironment.value && props.direction === 'apply'
+	// A reader can select nothing, and still reads every change.
+	return readOnly.value || (isEnvironment.value && props.direction === 'apply')
 		? countChanges(allChangedKeys.value)
 		: countChanges(resolveInclusion(graph.value, new Set(selectableKeys(graph.value))).included);
 });
@@ -1143,6 +1154,7 @@ watch(
 						:gap-keys="gapKeys"
 						:owner-moves="ownerMoves"
 						:kept-keys="keptKeys"
+						:not-copied-keys="notCopiedKeys"
 						:selectable="!readOnly"
 						@show-blockers="showBlockers"
 						@toggle="selection.toggle"

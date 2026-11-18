@@ -381,6 +381,12 @@ const credentialHref = (projectId: string, credentialId: string) =>
 
 .withAction {
 	justify-content: space-between;
+
+	// The action stays on one line next to a long sentence.
+	> a {
+		flex-shrink: 0;
+		white-space: nowrap;
+	}
 }
 
 .main {

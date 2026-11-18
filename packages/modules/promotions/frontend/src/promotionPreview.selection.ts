@@ -60,9 +60,19 @@ function addTo(map: Map<ResourceKey, ResourceKey[]>, key: ResourceKey, value: Re
 }
 
 export function buildSelectionGraph(
-	preview: Pick<PromotionPreview, 'resources' | 'dependencies'>,
+	preview: Pick<PromotionPreview, 'resources' | 'dependencies'> &
+		Partial<Pick<PromotionPreview, 'dependencyReport'>>,
 	direction: PromotionDirection,
 ): SelectionGraph {
+	// A data table of another project does not come with the workflow: the operation does not
+	// copy it. The report names each such reference.
+	const notCopied = new Set(
+		(preview.dependencyReport?.resourceWarnings ?? []).flatMap(({ consumer, resource }) =>
+			resource.kind === 'dataTable' && resource.id
+				? [`workflow:${consumer.id}>dataTable:${resource.id}`]
+				: [],
+		),
+	);
 	const resources = new Map(preview.resources.map((resource) => [resource.key, resource]));
 	const requires = new Map<ResourceKey, ResourceKey[]>();
 	const requiredBy = new Map<ResourceKey, ResourceKey[]>();
@@ -71,7 +81,7 @@ export function buildSelectionGraph(
 
 	for (const { workflowKey, resourceKey, included } of preview.dependencies) {
 		if (!resources.has(workflowKey) || !resources.has(resourceKey)) continue;
-		if (included) {
+		if (included && !notCopied.has(`${workflowKey}>${resourceKey}`)) {
 			addTo(requires, workflowKey, resourceKey);
 			addTo(requiredBy, resourceKey, workflowKey);
 		} else {
