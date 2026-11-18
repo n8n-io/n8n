@@ -20,6 +20,8 @@ const props = defineProps<{
 		/** A newer server can name a kind that this client does not know. */
 		kind: PromotionReferenceTarget['kind'] | (string & {});
 	};
+	/** A project variable has only a name, so it has no id to show. */
+	hideId?: boolean;
 }>();
 
 const i18n = useI18n();
@@ -27,7 +29,9 @@ const { targetName } = usePromotionDependencyLabels();
 const { credentialTypeName } = useCredentialTypeNames();
 
 // The id tells two items apart when the report holds no name or no project for them.
-const showId = computed(() => !props.target.name || !props.target.project);
+const showId = computed(
+	() => !props.hideId && (!props.target.name || !props.target.project),
+);
 const icon = computed(() => {
 	const kind = targetKindOf(props.target.kind);
 	return kind === 'other' ? 'box' : resourceIcon(kind);

@@ -60,6 +60,8 @@ const {
 	groupDescription,
 	usageLabel,
 	warningText,
+	resourceName,
+	resourceWarningText,
 	noteText,
 	hardBlockText,
 	hardBlockDetails,
@@ -142,6 +144,9 @@ function deletionCallerText(
 				interpolate: { caller: caller.name, target: target.name },
 			});
 }
+
+const resourceWarnings = computed(() => props.report.resourceWarnings ?? []);
+const warningCount = computed(() => props.report.warnings.length + resourceWarnings.value.length);
 
 const consumerLink = (consumer: { id: string; name: string }) => [
 	{ key: `workflow:${consumer.id}`, name: consumer.name },
@@ -310,11 +315,11 @@ const consumerLink = (consumer: { id: string; name: string }) => [
 		</PromotionDependencySection>
 
 		<PromotionDependencySection
-			v-if="report.warnings.length > 0"
+			v-if="warningCount > 0"
 			:title="
 				i18n.baseText('promotions.dependencies.warnings.title', {
-					adjustToNumber: report.warnings.length,
-					interpolate: { count: String(report.warnings.length) },
+					adjustToNumber: warningCount,
+					interpolate: { count: String(warningCount) },
 				})
 			"
 			:description="i18n.baseText(`promotions.dependencies.warnings.description.${direction}`)"
@@ -329,6 +334,33 @@ const consumerLink = (consumer: { id: string; name: string }) => [
 				</N8nText>
 				<N8nText tag="p" step="2xs" color="text-light" :class="$style.indented">
 					{{ usageLabel(warning.usage) }}
+					<PromotionWorkflowLinks
+						:workflows="consumerLink(warning.consumer)"
+						@inspect="emit('inspect', $event)"
+					/>
+				</N8nText>
+			</li>
+			<!-- A data table or a variable of another project. The operation does not copy it. -->
+			<li
+				v-for="(warning, index) in resourceWarnings"
+				:key="`${warning.code}:${warning.consumer.id}:${warning.resource.id ?? warning.resource.name ?? index}`"
+				:class="$style.row"
+				data-test-id="promotion-dependency-resource-warning"
+			>
+				<PromotionDependencyTarget
+					:target="{
+						kind: warning.resource.kind,
+						id: warning.resource.id ?? '',
+						name: resourceName(warning),
+						project: warning.resource.project,
+					}"
+					:hide-id="!warning.resource.id"
+				/>
+				<N8nText tag="p" step="xs" color="text-base" :class="$style.indented">
+					{{ resourceWarningText(warning) }}
+				</N8nText>
+				<N8nText tag="p" step="2xs" color="text-light" :class="$style.indented">
+					{{ i18n.baseText('promotions.dependencies.usage.resource') }}
 					<PromotionWorkflowLinks
 						:workflows="consumerLink(warning.consumer)"
 						@inspect="emit('inspect', $event)"

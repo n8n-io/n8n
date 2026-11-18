@@ -36,14 +36,6 @@ import type { AppliedResult, ApplyCheckResult } from '../promotions.types';
 import { hasApplyOutcome } from '../promotionApplyOutcome';
 import { usePromotionOutcome } from './usePromotionOutcome';
 
-/**
- * The project routes do not take `credentialIds` in this client yet, so a project page sends a
- * directly selected credential through the route of the environment (decision U4). Set this to
- * `true` when the project routes take the field: both operations then stay on the project
- * route, which also compares the revision of the project page.
- */
-const PROJECT_ROUTES_TAKE_CREDENTIALS = false;
-
 export type OperationRequest = OperationSelection & {
 	/** True when the selection imports a data table change that removes values. */
 	confirmDestructiveChanges: boolean;
@@ -282,36 +274,13 @@ export function usePromotionOperation(
 			);
 			return;
 		}
-		// Only the route of the environment takes a credential that the user selected directly.
-		// It compares another preview, so the revision of the project page is not sent.
+		// A credential that the user selected directly, such as one that another project waits for.
 		const ownCredentials = request.credentialIds?.length ? request.credentialIds : undefined;
-		if (
-			id !== undefined &&
-			ownCredentials &&
-			!PROJECT_ROUTES_TAKE_CREDENTIALS &&
-			environmentId?.value
-		) {
-			const { expectedPreviewRevision: _revision, ...withoutRevision } = shared;
-			const result = await promoteEnvironmentSelection(
-				rootStore.publicApiContext,
-				environmentId.value,
-				{
-					projects: [
-						{ projectId: id, workflowIds, folderIds, credentialIds: request.credentialIds },
-					],
-					...withoutRevision,
-				},
-			);
-			await onPromoted(result, [id], confirmedGapIds.length);
-			return;
-		}
 		if (id !== undefined) {
 			const result = await promoteProjectSelection(rootStore.publicApiContext, id, {
 				workflowIds,
 				folderIds,
-				...(PROJECT_ROUTES_TAKE_CREDENTIALS && ownCredentials
-					? { credentialIds: ownCredentials }
-					: {}),
+				...(ownCredentials ? { credentialIds: ownCredentials } : {}),
 				...shared,
 			});
 			await onPromoted(result, [id], confirmedGapIds.length);
@@ -393,31 +362,13 @@ export function usePromotionOperation(
 			await onApplied(result, false);
 			return;
 		}
-		const ownCredentials = request.credentialIds?.length ? request.credentialIds : undefined;
-		if (id !== undefined && ownCredentials && !PROJECT_ROUTES_TAKE_CREDENTIALS) {
-			const { expectedPreviewRevision: _revision, ...withoutRevision } = expected;
-			const result = await applyEnvironmentSelection(context, source.environmentId, {
-				projects: [
-					{
-						projectId: id,
-						workflowIds: request.workflowIds,
-						folderIds: request.folderIds,
-						credentialIds: request.credentialIds,
-					},
-				],
-				...withoutRevision,
-				...(confirmDestructiveChanges ? { confirmDestructiveChanges: true } : {}),
-			});
-			await onApplied(result, false);
-			return;
-		}
 		if (id !== undefined) {
 			const selection = {
 				workflowIds: request.workflowIds,
 				folderIds: request.folderIds,
-				...(PROJECT_ROUTES_TAKE_CREDENTIALS && ownCredentials
-					? { credentialIds: ownCredentials }
-					: {}),
+				// Always sent: without the list, the server applies every credential of the project
+				// that the instance holds, also one that the user cleared.
+				credentialIds: request.credentialIds ?? [],
 			};
 			const result = confirmDestructiveChanges
 				? await continueApplyProjectSelection(context, id, {

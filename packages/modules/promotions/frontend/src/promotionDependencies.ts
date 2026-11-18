@@ -143,6 +143,7 @@ export function scopeDependencyReport(
 			return consumers.length > 0 ? [{ ...grant, consumers }] : [];
 		}),
 		deletionCallers: report.deletionCallers.filter(({ target }) => inOperation(target.id)),
+		resourceWarnings: report.resourceWarnings?.filter(({ consumer }) => inOperation(consumer.id)),
 		blocked: hardBlocks.length > 0 || (!report.allowIncomplete && gaps.length > 0),
 	};
 }
@@ -162,6 +163,8 @@ export type DependencyWarningCounts = {
 	other: number;
 	/** Promote only: deleted workflows that the branch still calls. */
 	deletions: number;
+	/** Data tables and variables of other projects. The operation does not copy them. */
+	resources: number;
 };
 
 export function dependencyWarningCounts(
@@ -173,17 +176,19 @@ export function dependencyWarningCounts(
 		broken,
 		other: report.warnings.length - broken,
 		deletions: direction === 'promote' ? report.deletionCallers.length : 0,
+		resources: report.resourceWarnings?.length ?? 0,
 	};
 }
 
-export const totalWarnings = ({ broken, other, deletions }: DependencyWarningCounts) =>
-	broken + other + deletions;
+export const totalWarnings = ({ broken, other, deletions, resources }: DependencyWarningCounts) =>
+	broken + other + deletions + resources;
 
 /** True when the report has nothing to show, apart from the permanent footnote. */
 export function isEmptyReport(report: PromotionDependencyReport) {
 	return (
 		dependencyIssueCount(report) === 0 &&
 		report.warnings.length === 0 &&
+		(report.resourceWarnings?.length ?? 0) === 0 &&
 		report.notes.length === 0 &&
 		report.grants.length === 0 &&
 		report.credentialMoves.length === 0 &&
@@ -244,7 +249,7 @@ export type DependencyConfirmationPayload = {
 	confirmedGapIds?: string[];
 	confirmedGrantIds?: string[];
 	confirmDeletionCallers?: boolean;
-	/** The deleted workflows whose callers the user saw, so the server can compare them. */
+	/** The `id` of each row of deletion callers that the user saw, so the server can compare them. */
 	confirmedDeletionCallerIds?: string[];
 	credentialHomes?: Record<string, string>;
 };
@@ -265,10 +270,14 @@ export function toConfirmationPayload(
 	const grantIds = report.grants.map(({ id }) => id).filter((id) => confirmations.grantIds.has(id));
 	if (grantIds.length > 0) payload.confirmedGrantIds = grantIds.sort();
 	if (report.deletionCallers.length > 0 && confirmations.deletionCallers) {
-		payload.confirmDeletionCallers = true;
-		payload.confirmedDeletionCallerIds = report.deletionCallers
-			.map(({ target }) => target.id)
-			.sort();
+		// The server compares the ids of the rows with its own. A row without an id comes from a
+		// server that knows only the flag.
+		const rowIds = report.deletionCallers.flatMap(({ id }) => (id ? [id] : []));
+		if (rowIds.length === report.deletionCallers.length) {
+			payload.confirmedDeletionCallerIds = rowIds.sort();
+		} else {
+			payload.confirmDeletionCallers = true;
+		}
 	}
 	const homes = Object.fromEntries(
 		report.credentialHomeChoices.flatMap(({ credential }) => {

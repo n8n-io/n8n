@@ -5,7 +5,9 @@ import type {
 	PromotionDependencyWarning,
 	PromotionKeptProject,
 	PromotionKeptWorkflow,
+	PromotionLivePlaceholderWorkflows,
 	PromotionPlaceholderResult,
+	PromotionResourceWarning,
 } from '@n8n/api-types';
 
 import type { AppliedResult } from './promotions.types';
@@ -27,10 +29,11 @@ export type ApplyOutcome = {
 	unresolvedCount: number;
 	/** What did not stop the Apply, such as a reference that is broken on the source. */
 	warnings: PromotionDependencyWarning[];
+	/** Data tables and variables of other projects, which the Apply did not copy. */
+	resourceWarnings: PromotionResourceWarning[];
+	/** Published workflows that now use an empty placeholder of this Apply. They fail until it has values. */
+	livePlaceholderWorkflows: PromotionLivePlaceholderWorkflows[];
 };
-
-/** A warning that a person must act on: a live workflow now uses an empty placeholder. */
-const needsUser = ({ code }: { code: string }) => /placeholder/i.test(code);
 
 export function applyOutcome(result: AppliedResult): ApplyOutcome {
 	const credentialMoves = result.credentialMoves ?? [];
@@ -46,6 +49,8 @@ export function applyOutcome(result: AppliedResult): ApplyOutcome {
 		unresolvedCount: (result.dependencyReport?.gaps ?? []).filter(({ placeholder }) => !placeholder)
 			.length,
 		warnings: result.dependencyReport?.warnings ?? [],
+		resourceWarnings: result.dependencyReport?.resourceWarnings ?? [],
+		livePlaceholderWorkflows: result.livePlaceholderWorkflows ?? [],
 	};
 }
 
@@ -56,7 +61,7 @@ export function needsFollowUp(outcome: ApplyOutcome): boolean {
 		outcome.credentialsMoved.some(({ placeholder }) => placeholder) ||
 		outcome.credentialsNotMoved.length > 0 ||
 		outcome.unresolvedCount > 0 ||
-		outcome.warnings.some(needsUser) ||
+		outcome.livePlaceholderWorkflows.length > 0 ||
 		outcome.moves.some((move) => !!move.unpublished)
 	);
 }
@@ -73,6 +78,8 @@ export function hasApplyOutcome(result: AppliedResult): boolean {
 		outcome.keptProjects.length > 0 ||
 		outcome.moves.length > 0 ||
 		outcome.unresolvedCount > 0 ||
-		outcome.warnings.length > 0
+		outcome.warnings.length > 0 ||
+		outcome.resourceWarnings.length > 0 ||
+		outcome.livePlaceholderWorkflows.length > 0
 	);
 }

@@ -58,13 +58,18 @@ const sentences = computed(() => {
 		parts.push(i18n.baseText(`promotions.dependencies.summary.incomplete.${props.direction}`));
 	}
 	// A warning never stops the operation, so its sentence comes last and says that.
-	const { broken = 0, other = 0, deletions = 0 } = props.warnings ?? {};
+	const { broken = 0, other = 0, deletions = 0, resources = 0 } = props.warnings ?? {};
 	if (broken > 0) {
 		parts.push(i18n.baseText('promotions.dependencies.summary.warnings.broken', count(broken)));
 	}
 	if (deletions > 0) {
 		parts.push(
 			i18n.baseText('promotions.dependencies.summary.warnings.deletions', count(deletions)),
+		);
+	}
+	if (resources > 0) {
+		parts.push(
+			i18n.baseText('promotions.dependencies.summary.warnings.resources', count(resources)),
 		);
 	}
 	if (other > 0) {

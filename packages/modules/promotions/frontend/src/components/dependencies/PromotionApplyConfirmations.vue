@@ -75,7 +75,7 @@ const placeholders = computed(() =>
 			data-test-id="promotion-dependency-homes"
 		>
 			<li
-				v-for="{ credential, candidateProjects } in report.credentialHomeChoices"
+				v-for="{ credential, candidateProjects, noCandidateReason } in report.credentialHomeChoices"
 				:key="credential.id"
 				:class="$style.row"
 			>
@@ -88,6 +88,7 @@ const placeholders = computed(() =>
 					}"
 				/>
 				<N8nSelect
+					v-if="candidateProjects.length > 0"
 					:model-value="confirmations.credentialHomes[credential.id] ?? ''"
 					size="small"
 					:disabled="locked"
@@ -108,6 +109,22 @@ const placeholders = computed(() =>
 						:label="project.name"
 					/>
 				</N8nSelect>
+				<!-- No project can be the home, so the row says why instead of an empty list. -->
+				<N8nText
+					v-else
+					step="2xs"
+					color="text-base"
+					:class="$style.noHome"
+					data-test-id="promotion-dependency-home-none"
+				>
+					{{
+						i18n.baseText(
+							noCandidateReason === 'missing-create-right'
+								? 'promotions.dependencies.homes.none.missing-create-right'
+								: 'promotions.dependencies.homes.none.no-covered-project',
+						)
+					}}
+				</N8nText>
 			</li>
 		</PromotionDependencySection>
 
@@ -431,6 +448,11 @@ const placeholders = computed(() =>
 .select {
 	flex-shrink: 0;
 	width: var(--spacing--5xl);
+}
+
+.noHome {
+	flex: 1;
+	text-align: right;
 }
 
 .sentence {

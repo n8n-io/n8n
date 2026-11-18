@@ -72,7 +72,7 @@ export function usePromotionDependencies({
 	const warningCounts = computed(() =>
 		report.value
 			? dependencyWarningCounts(report.value, direction.value)
-			: { broken: 0, other: 0, deletions: 0 },
+			: { broken: 0, other: 0, deletions: 0, resources: 0 },
 	);
 	const pending = computed(() =>
 		report.value && direction.value === 'apply'

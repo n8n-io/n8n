@@ -40,9 +40,26 @@ const emit = defineEmits<{ 'update:open': [value: boolean] }>();
 const i18n = useI18n();
 const router = useRouter();
 const { credentialTypeName } = useCredentialTypeNames();
-const { credentialNotMovedText, warningSentence } = usePromotionDependencyLabels();
+const { credentialNotMovedText, warningSentence, resourceWarningSentence } =
+	usePromotionDependencyLabels();
 
 const outcome = computed(() => applyOutcome(props.result));
+const warningCount = computed(
+	() => outcome.value.warnings.length + outcome.value.resourceWarnings.length,
+);
+/** "Sync orders, Report and 1 workflow that you cannot access". */
+function liveWorkflowNames(row: { workflows: Array<{ name: string }>; hiddenWorkflowCount: number }) {
+	const names = row.workflows.map(({ name }) => name);
+	if (row.hiddenWorkflowCount > 0) {
+		names.push(
+			i18n.baseText('promotions.applyResult.livePlaceholders.hidden', {
+				adjustToNumber: row.hiddenWorkflowCount,
+				interpolate: { count: String(row.hiddenWorkflowCount) },
+			}),
+		);
+	}
+	return names.join(', ');
+}
 const unpublished = computed(() => outcome.value.moves.filter((move) => !!move.unpublished));
 const intro = computed(() =>
 	i18n.baseText(
@@ -90,6 +107,23 @@ const credentialHref = (projectId: string, credentialId: string) =>
 					{{
 						i18n.baseText('promotions.applyResult.moves.unpublished', {
 							interpolate: { name: move.name },
+						})
+					}}
+				</N8nCallout>
+
+				<N8nCallout
+					v-for="live in outcome.livePlaceholderWorkflows"
+					:key="`live:${live.credential.id}`"
+					theme="warning"
+					data-test-id="promotion-apply-result-live-placeholder"
+				>
+					{{
+						i18n.baseText('promotions.applyResult.livePlaceholders.row', {
+							adjustToNumber: live.workflows.length + live.hiddenWorkflowCount,
+							interpolate: {
+								credential: live.credential.name,
+								workflows: liveWorkflowNames(live),
+							},
 						})
 					}}
 				</N8nCallout>
@@ -269,11 +303,11 @@ const credentialHref = (projectId: string, credentialId: string) =>
 				</PromotionDependencySection>
 
 				<PromotionDependencySection
-					v-if="outcome.warnings.length > 0"
+					v-if="warningCount > 0"
 					:title="
 						i18n.baseText('promotions.dependencies.warnings.title', {
-							adjustToNumber: outcome.warnings.length,
-							interpolate: { count: String(outcome.warnings.length) },
+							adjustToNumber: warningCount,
+							interpolate: { count: String(warningCount) },
 						})
 					"
 					:description="i18n.baseText('promotions.applyResult.warnings.description')"
@@ -283,6 +317,14 @@ const credentialHref = (projectId: string, credentialId: string) =>
 				>
 					<li v-for="warning in outcome.warnings" :key="warning.id" :class="$style.row">
 						<N8nText step="xs" color="text-dark">{{ warningSentence(warning) }}</N8nText>
+					</li>
+					<li
+						v-for="(warning, index) in outcome.resourceWarnings"
+						:key="`resource:${index}`"
+						:class="$style.row"
+						data-test-id="promotion-apply-result-resource-warning"
+					>
+						<N8nText step="xs" color="text-dark">{{ resourceWarningSentence(warning) }}</N8nText>
 					</li>
 				</PromotionDependencySection>
 

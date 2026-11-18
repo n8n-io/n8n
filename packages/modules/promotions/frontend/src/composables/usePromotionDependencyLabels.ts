@@ -7,6 +7,7 @@ import type {
 	PromotionGapState,
 	PromotionHardBlock,
 	PromotionReferenceUsage,
+	PromotionResourceWarning,
 } from '@n8n/api-types';
 import { useCredentialTypeNames } from './useCredentialTypeNames';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -28,20 +29,18 @@ const USAGE_KEYS = new Map<string, BaseTextKey>([
 	['error-workflow', 'promotions.dependencies.usage.error-workflow'],
 ]);
 
+/** A warning code that this client does not know gets a generic sentence, never a raw key. */
 const WARNING_KEYS = new Map<string, BaseTextKey>([
 	['broken-on-source', 'promotions.dependencies.warning.broken-on-source'],
 	['legacy-workflow-reference', 'promotions.dependencies.warning.legacy-workflow-reference'],
 ]);
 
-/**
- * A newer server adds warning codes. The words of a code select the nearest sentence, and any
- * other code gets a generic one, so a warning never shows as a raw key.
- */
-const WARNING_FALLBACKS: ReadonlyArray<[pattern: RegExp, key: BaseTextKey]> = [
-	[/placeholder/i, 'promotions.dependencies.warning.placeholder'],
-	[/data-?table/i, 'promotions.dependencies.warning.dataTable'],
-	[/variable/i, 'promotions.dependencies.warning.variable'],
-];
+/** Promote: why the reference is broken on the source. Only when the user can read the target. */
+const WARNING_CAUSE_KEYS = new Map<string, BaseTextKey>([
+	['archived', 'promotions.dependencies.warning.cause.archived'],
+	['caller-policy', 'promotions.dependencies.warning.cause.caller-policy'],
+	['not-usable', 'promotions.dependencies.warning.cause.not-usable'],
+]);
 
 const GAP_DETAIL_KEYS: Record<PromotionGapDetail, BaseTextKey> = {
 	'placeholder-on-source': 'promotions.dependencies.detail.placeholder-on-source',
@@ -140,12 +139,12 @@ export function usePromotionDependencyLabels() {
 		return i18n.baseText('promotions.dependencies.moves.refused', { interpolate });
 	}
 
-	function warningText(warning: { code: PromotionDependencyWarning['code'] | (string & {}) }) {
-		const key =
-			WARNING_KEYS.get(warning.code) ??
-			WARNING_FALLBACKS.find(([pattern]) => pattern.test(warning.code))?.[1] ??
-			'promotions.dependencies.warning.unknown';
-		return i18n.baseText(key);
+	function warningText(warning: Pick<PromotionDependencyWarning, 'code' | 'cause'>) {
+		const text = i18n.baseText(
+			WARNING_KEYS.get(warning.code) ?? 'promotions.dependencies.warning.unknown',
+		);
+		const cause = warning.cause && WARNING_CAUSE_KEYS.get(warning.cause);
+		return cause ? `${text} ${i18n.baseText(cause)}` : text;
 	}
 
 	/** One sentence for a warning of a result: it names the consumer and the target. */
@@ -159,31 +158,45 @@ export function usePromotionDependencyLabels() {
 		});
 	}
 
+	/** The name of a data table or a variable of another project. A table can have no name. */
+	const resourceName = ({ resource }: PromotionResourceWarning) =>
+		resource.name || i18n.baseText(`promotions.dependencies.target.unnamed.${resource.kind}`);
+
+	/** "This data table belongs to project Ops. The operation does not copy it." */
+	function resourceWarningText({ resource }: PromotionResourceWarning): string {
+		return resource.project
+			? i18n.baseText(`promotions.dependencies.resourceWarning.${resource.kind}.inProject`, {
+					interpolate: { project: resource.project.name },
+				})
+			: i18n.baseText(`promotions.dependencies.resourceWarning.${resource.kind}`);
+	}
+
+	/** One sentence for a result: it names the consumer and the resource. */
+	function resourceWarningSentence(warning: PromotionResourceWarning): string {
+		return i18n.baseText(
+			`promotions.dependencies.resourceWarning.${warning.resource.kind}.sentence`,
+			{
+				interpolate: {
+					consumer: warning.consumer.name,
+					name: resourceName(warning),
+					text: resourceWarningText(warning),
+				},
+			},
+		);
+	}
+
 	const noteText = (note: PromotionDependencyNote) =>
 		i18n.baseText(`promotions.dependencies.note.${note.code}`);
-
-	/**
-	 * Why a credential cannot move to its owner on the branch. `cause` comes from a newer server.
-	 * An older one only names the missing permission.
-	 */
-	function moveForbiddenCause(
-		block: PromotionHardBlock,
-	): 'missing-move-right' | 'missing-create-right' {
-		const { cause, missingPermission } = block.detail ?? {};
-		if (cause === 'missing-create-right' || cause === 'missing-move-right') return cause;
-		return missingPermission === 'credential:create'
-			? 'missing-create-right'
-			: 'missing-move-right';
-	}
 
 	function hardBlockText(block: PromotionHardBlock): string {
 		const interpolate = {
 			name: targetName(block.target),
 			consumer: block.consumer?.name ?? '',
 		};
+		// A placeholder must get its home, and the user cannot create a credential there.
 		if (
 			block.code === 'credential-move-forbidden' &&
-			moveForbiddenCause(block) === 'missing-create-right'
+			block.detail?.cause === 'missing-create-right'
 		) {
 			const project = block.detail?.project;
 			return project
@@ -199,16 +212,6 @@ export function usePromotionDependencyLabels() {
 		// A client must treat an unknown code as a block, so it still gets a message.
 		const key = HARD_BLOCK_KEYS[block.code] ?? 'promotions.dependencies.hardBlock.unknown';
 		return i18n.baseText(key, { interpolate });
-	}
-
-	/** The permission that the user lacks, for a block that a permission causes. */
-	function missingPermissionOf(block: PromotionHardBlock): string | undefined {
-		const named = block.detail?.missingPermission;
-		if (named) return named;
-		if (block.code !== 'credential-move-forbidden') return undefined;
-		return moveForbiddenCause(block) === 'missing-create-right'
-			? 'credential:create'
-			: 'credential:move';
 	}
 
 	/** More about a hard block, one line for each fact that the user may see. */
@@ -247,7 +250,7 @@ export function usePromotionDependencyLabels() {
 				}),
 			);
 		}
-		const permission = missingPermissionOf(block);
+		const permission = block.detail?.missingPermission;
 		if (permission) {
 			lines.push(
 				i18n.baseText('promotions.dependencies.hardBlock.missingPermission', {
@@ -269,6 +272,9 @@ export function usePromotionDependencyLabels() {
 		credentialNotMovedText,
 		warningText,
 		warningSentence,
+		resourceName,
+		resourceWarningText,
+		resourceWarningSentence,
 		noteText,
 		hardBlockText,
 		hardBlockDetails,
