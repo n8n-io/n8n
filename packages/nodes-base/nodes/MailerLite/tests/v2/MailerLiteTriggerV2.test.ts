@@ -1,4 +1,5 @@
-import type { IDataObject, IWebhookFunctions } from 'n8n-workflow';
+import type { IDataObject, IHookFunctions, INode, IWebhookFunctions } from 'n8n-workflow';
+import { mock, mockDeep, type DeepMockProxy } from 'vitest-mock-extended';
 
 import { MailerLiteTriggerV2 } from '../../v2/MailerLiteTriggerV2.node';
 
@@ -74,6 +75,76 @@ describe('MailerLiteTriggerV2', () => {
 
 			expect(result.workflowData).toBeDefined();
 			expect(mockResponse.status).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('webhookMethods', () => {
+		const webhookUrl = 'https://n8n.example.com/webhook/abc';
+		const events = ['subscriber.created'];
+		let hookFunctions: DeepMockProxy<IHookFunctions>;
+		let staticData: IDataObject;
+
+		const requestedUrls = () =>
+			hookFunctions.helpers.httpRequestWithAuthentication.mock.calls.map(([, options]) =>
+				String(options.url),
+			);
+
+		beforeEach(() => {
+			staticData = {};
+			hookFunctions = mockDeep<IHookFunctions>();
+			hookFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2 }));
+			hookFunctions.getNodeWebhookUrl.mockReturnValue(webhookUrl);
+			hookFunctions.getNodeParameter.mockReturnValue(events);
+			hookFunctions.getWorkflowStaticData.mockReturnValue(staticData);
+		});
+
+		it('should list webhooks in checkExists', async () => {
+			hookFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue({
+				data: [{ id: '42', url: webhookUrl, events }],
+			});
+
+			await trigger.webhookMethods.default.checkExists.call(hookFunctions);
+
+			expect(requestedUrls()).toEqual(['https://connect.mailerlite.com/api/webhooks']);
+		});
+
+		it('should create a webhook in create', async () => {
+			hookFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue({
+				data: { id: '42' },
+			});
+
+			await expect(trigger.webhookMethods.default.create.call(hookFunctions)).resolves.toBe(true);
+
+			expect(requestedUrls()).toEqual(['https://connect.mailerlite.com/api/webhooks']);
+			expect(staticData.webhookId).toBe('42');
+		});
+
+		it('should encode the webhook ID in delete', async () => {
+			staticData.webhookId = '42/subscribers';
+			hookFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue({});
+
+			await expect(trigger.webhookMethods.default.delete.call(hookFunctions)).resolves.toBe(true);
+
+			expect(requestedUrls()).toEqual([
+				'https://connect.mailerlite.com/api/webhooks/42%2Fsubscribers',
+			]);
+			expect(staticData.webhookId).toBeUndefined();
+		});
+
+		it('should not send a request in delete when the webhook ID has a dot segment', async () => {
+			staticData.webhookId = '42/../subscribers';
+
+			await expect(trigger.webhookMethods.default.delete.call(hookFunctions)).resolves.toBe(false);
+
+			expect(hookFunctions.helpers.httpRequestWithAuthentication).not.toHaveBeenCalled();
+		});
+
+		it('should return false in delete when the webhook ID is empty', async () => {
+			staticData.webhookId = '';
+
+			await expect(trigger.webhookMethods.default.delete.call(hookFunctions)).resolves.toBe(false);
+
+			expect(hookFunctions.helpers.httpRequestWithAuthentication).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -1,12 +1,12 @@
 import { packagePolicyRestrictionsSchema, type PackagePolicyRestrictions } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import type { TelemetryProxy } from '@n8n/backend-services';
+import type { OperationContext, User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import z from 'zod';
 
 import type { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service';
 import type { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service';
 import type { INodeTypes } from 'n8n-workflow';
-import type { Telemetry } from '@/telemetry';
 
 import { INSTALL_COMMUNITY_NODE_TOOL, USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
@@ -95,7 +95,8 @@ export const createInstallCommunityNodeTool = (
 	communityNodeTypesService: CommunityNodeTypesService,
 	communityPackagesLifecycleService: CommunityPackagesLifecycleService,
 	nodeTypes: INodeTypes,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
+	ctx: OperationContext = {},
 ): ToolDefinition<typeof inputSchema> => ({
 	name: INSTALL_COMMUNITY_NODE_TOOL.toolName,
 	config: {
@@ -210,6 +211,7 @@ export const createInstallCommunityNodeTool = (
 					{ name: packageName },
 					user,
 					'mcp',
+					ctx,
 				);
 			} catch (error) {
 				// Class name only. The message is built around the `execFile`

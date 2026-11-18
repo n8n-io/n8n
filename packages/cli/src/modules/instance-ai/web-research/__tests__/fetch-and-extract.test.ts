@@ -175,6 +175,18 @@ describe('fetchAndExtract', () => {
 		expect(result.contentLength).toBe(body.length);
 	});
 
+	it('keeps a long page whole when no maxContentLength is given', async () => {
+		const longText = 'a'.repeat(100_000);
+		const { transport } = mockTransport(async () =>
+			createMockResponse(longText, { contentType: 'text/plain' }),
+		);
+
+		const result = await fetchAndExtract('https://example.com/long', { transport });
+
+		expect(result.content.length).toBe(100_000);
+		expect(result.truncated).toBe(false);
+	});
+
 	it('truncates content exceeding maxContentLength', async () => {
 		const longText = 'a'.repeat(50_000);
 		const { transport } = mockTransport(async () =>

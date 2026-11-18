@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -22,8 +23,8 @@ vi.mock('../../transport', async () => {
 });
 
 const SITE_ID = 'contoso.sharepoint.com,g1,g2';
-const WORKBOOK_ROOT = `/v1.0/sites/${encodeURIComponent(SITE_ID)}/drives/b!drive1/items/ITEM123`;
-const SHEET_PATH = `${WORKBOOK_ROOT}/workbook/worksheets/Sheet1`;
+const WORKBOOK_ROOT = requestPath`/v1.0/sites/${SITE_ID}/drives/b!drive1/items/ITEM123`;
+const SHEET_PATH = requestPath`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1`;
 
 describe('Microsoft Excel (SharePoint) — column loadOptions', () => {
 	let ctx: DeepMockProxy<ILoadOptionsFunctions>;
@@ -71,7 +72,7 @@ describe('Microsoft Excel (SharePoint) — column loadOptions', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			`${SHEET_PATH}/usedRange`,
+			requestPath`${SHEET_PATH}/usedRange`,
 			{},
 			{
 				$select: 'values',
@@ -91,7 +92,7 @@ describe('Microsoft Excel (SharePoint) — column loadOptions', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			`${SHEET_PATH}/range(address='A1:C1')`,
+			requestPath`${SHEET_PATH}/range(address='A1:C1')`,
 			{},
 			{
 				$select: 'values',
@@ -119,7 +120,7 @@ describe('Microsoft Excel (SharePoint) — column loadOptions', () => {
 		const result = await getTableColumns.call(ctx);
 
 		expect(apiRequestAllItems).toHaveBeenCalledWith(
-			`${WORKBOOK_ROOT}/workbook/tables/Table1/columns`,
+			requestPath`${WORKBOOK_ROOT}/workbook/tables/Table1/columns`,
 			{
 				$select: 'name',
 			},

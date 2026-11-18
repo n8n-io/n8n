@@ -13,8 +13,10 @@ export function nodeNameToToolName(nodeOrName: INode | string): string {
 
 	if (toolName.length > MAX_TOOL_NAME_LENGTH) {
 		toolName = toolName.slice(0, MAX_TOOL_NAME_LENGTH);
-		// Remove trailing underscore or hyphen left from truncation
-		toolName = toolName.replace(/[_-]+$/, '');
+		// Remove trailing underscore or hyphen left from truncation, but never
+		// drop the whole name: an empty tool name is rejected by the model API.
+		const trimmed = toolName.replace(/[_-]+$/, '');
+		if (trimmed) toolName = trimmed;
 	}
 
 	return toolName;

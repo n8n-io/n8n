@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as save from '../../../actions/session/save.operation';
 import { ERROR_MESSAGES } from '../../../constants';
 import * as transport from '../../../transport';
@@ -38,7 +39,7 @@ describe('Test Airtop, session save operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'PUT',
-			'/sessions/test-session-123/save-profile-on-termination/test-profile',
+			requestPath`/sessions/test-session-123/save-profile-on-termination/test-profile`,
 		);
 
 		expect(result).toEqual([

@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as upload from '../../../actions/file/upload.operation';
 import { ERROR_MESSAGES } from '../../../constants';
 import * as GenericFunctions from '../../../GenericFunctions';
@@ -94,18 +95,18 @@ describe('Test Airtop, upload file operation', () => {
 
 		// Assert the exact outgoing apiRequest calls
 		expect(apiRequestMock).toHaveBeenCalledTimes(4);
-		expect(apiRequestMock).toHaveBeenNthCalledWith(1, 'POST', '/files', {
+		expect(apiRequestMock).toHaveBeenNthCalledWith(1, 'POST', requestPath`/files`, {
 			fileName: 'test.pdf',
 			fileType: 'customer_upload',
 		});
-		expect(apiRequestMock).toHaveBeenNthCalledWith(2, 'GET', '/files/file-123');
-		expect(apiRequestMock).toHaveBeenNthCalledWith(3, 'POST', '/files/file-123/push', {
+		expect(apiRequestMock).toHaveBeenNthCalledWith(2, 'GET', requestPath`/files/file-123`);
+		expect(apiRequestMock).toHaveBeenNthCalledWith(3, 'POST', requestPath`/files/file-123/push`, {
 			sessionIds: ['test-session-123'],
 		});
 		expect(apiRequestMock).toHaveBeenNthCalledWith(
 			4,
 			'POST',
-			'/sessions/test-session-123/windows/window-123/file-input',
+			requestPath`/sessions/test-session-123/windows/window-123/file-input`,
 			{
 				fileId: 'file-123',
 				elementDescription: 'test desc',
@@ -156,7 +157,7 @@ describe('Test Airtop, upload file operation', () => {
 		expect(apiRequestMock).toHaveBeenCalledTimes(3);
 		expect(apiRequestMock).not.toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/window-123/file-input',
+			requestPath`/sessions/test-session-123/windows/window-123/file-input`,
 			expect.anything(),
 		);
 
@@ -214,7 +215,7 @@ describe('Test Airtop, upload file operation', () => {
 			},
 		});
 
-		expect(apiRequestMock).toHaveBeenNthCalledWith(1, 'POST', '/files', {
+		expect(apiRequestMock).toHaveBeenNthCalledWith(1, 'POST', requestPath`/files`, {
 			fileName: 'test.pdf',
 			fileType: 'customer_upload',
 		});

@@ -1,9 +1,5 @@
 import type { ObservationLogObserverMemory, Workspace } from '@n8n/agents';
-import type {
-	InstanceAiBuildMode,
-	InstanceAiPromptConfiguration,
-	InstanceAiSetupItem,
-} from '@n8n/api-types';
+import type { InstanceAiPromptConfiguration, InstanceAiSetupItem } from '@n8n/api-types';
 import type {
 	CreateInstanceAgentOptions,
 	DomainAccessTracker,
@@ -14,6 +10,7 @@ import type {
 	SandboxConfig,
 } from '@n8n/instance-ai';
 
+import type { InstanceAiCloudBrowserTaskService } from '../browser/instance-ai-cloud-browser-task.service';
 import type { TemporaryWorkflowMarkers } from '../temporary-workflow-markers';
 
 /** The thread memory that the turn setup reads and the agent writes. */
@@ -21,8 +18,6 @@ export type AssistantTurnMemory = ObservationLogObserverMemory;
 
 /** Turn settings that the runtime keeps for one thread between turns. */
 export interface AssistantTurnState {
-	getBuildMode(): InstanceAiBuildMode | undefined;
-	setBuildMode(mode: InstanceAiBuildMode): void;
 	getPromptVersion(): string | undefined;
 	setPromptConfiguration(configuration: InstanceAiPromptConfiguration): void;
 	setSetupPanelEnabled(enabled: boolean): void;
@@ -85,4 +80,9 @@ export interface AssistantTurnRuntime
 	temporaryWorkflowMarkers?: TemporaryWorkflowMarkers;
 	/** Detached background tasks of the thread that still run. */
 	getRunningBackgroundTasks?(): ManagedBackgroundTask[];
+	/** Starts browser tasks on the cloud browser, when the instance has it. */
+	cloudBrowser?: {
+		isAvailable(): Promise<boolean>;
+		startTask: InstanceAiCloudBrowserTaskService['startTask'];
+	};
 }

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { RESERVED_GLOBAL_ROLE_SLUGS } from './constants.ee';
 import { ALL_SCOPES } from './scope-information';
 
 export const roleNamespaceSchema = z.enum([
@@ -15,6 +16,7 @@ export const globalRoleSchema = z.enum([
 	'global:admin',
 	'global:member',
 	'global:chatUser',
+	'global:agent',
 ]);
 
 const customGlobalRoleSchema = z
@@ -25,9 +27,7 @@ const customGlobalRoleSchema = z
 	});
 
 export const assignableGlobalRoleSchema = z.union([
-	globalRoleSchema.exclude([
-		'global:owner', // Owner cannot be changed
-	]),
+	globalRoleSchema.exclude(RESERVED_GLOBAL_ROLE_SLUGS),
 	customGlobalRoleSchema,
 ]);
 
@@ -89,3 +89,6 @@ export const roleSchema = z.object({
 });
 
 export type Role = z.infer<typeof roleSchema>;
+
+/** The kind of an account: a person, or a service account. */
+export const principalTypeSchema = z.enum(['person', 'service']);

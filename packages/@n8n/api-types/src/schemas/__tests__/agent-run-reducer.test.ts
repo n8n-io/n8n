@@ -1139,6 +1139,42 @@ describe('agent-run-reducer', () => {
 			expect(state.agentsById['sub-1'].agentChange).toBe('none');
 		});
 
+		it('agent-result-delivered marks a completed agent whose result reached the orchestrator', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+			reduceEvent(state, makeAgentCompleted('run-1', 'sub-1', 'done'));
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed'));
+			reduceEvent(state, {
+				type: 'agent-result-delivered',
+				runId: 'run-1',
+				agentId: 'sub-1',
+				payload: {},
+			});
+
+			expect(state.agentsById['sub-1'].resultDelivered).toBe(true);
+			expect(state.agentsById['sub-1'].status).toBe('completed');
+			expect(toAgentTree(state).children[0].resultDelivered).toBe(true);
+		});
+
+		it.each(['error', 'cancelled'] as const)(
+			'agent-result-delivered marks a completed agent after the run finished with %s',
+			(runStatus) => {
+				const state = stateWithRun('run-1', 'root');
+				reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+				reduceEvent(state, makeAgentCompleted('run-1', 'sub-1', 'done'));
+				reduceEvent(state, makeRunFinish('run-1', 'root', runStatus));
+				reduceEvent(state, {
+					type: 'agent-result-delivered',
+					runId: 'run-1',
+					agentId: 'sub-1',
+					payload: {},
+				});
+
+				expect(state.agentsById['sub-1'].resultDelivered).toBe(true);
+				expect(state.agentsById['sub-1'].status).toBe('completed');
+			},
+		);
+
 		it('agent-completed with error sets error status', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
@@ -1434,6 +1470,48 @@ describe('agent-run-reducer', () => {
 			reduceEvent(state, makeSetupItems('run-1', 'root', '__proto__', 'slackApi'));
 
 			expect(state.agentsById['root'].setupItemsByWorkflowId).toBeUndefined();
+			expectStateMapsNotPolluted(state);
+		});
+	});
+
+	describe('auto-approval', () => {
+		it('folds the auto-approval onto its tool call', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'publish_workflow'));
+
+			reduceEvent(state, {
+				type: 'auto-approval',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					toolCallId: 'tc-1',
+					message: 'Publish "Lead router"',
+					reason: 'The user asked to publish it.',
+					decidedBy: 'judge',
+				},
+			});
+
+			expect(state.toolCallsById['tc-1'].autoApproval).toEqual({
+				message: 'Publish "Lead router"',
+				reason: 'The user asked to publish it.',
+				decidedBy: 'judge',
+			});
+		});
+
+		it('ignores an auto-approval for an unknown or unsafe tool call', () => {
+			const state = stateWithRun('run-1', 'root');
+
+			for (const toolCallId of ['missing', '__proto__']) {
+				reduceEvent(state, {
+					type: 'auto-approval',
+					runId: 'run-1',
+					agentId: 'root',
+					payload: { toolCallId, message: 'Publish', reason: 'Asked for.', decidedBy: 'rule' },
+				});
+			}
+
+			expect(Object.keys(state.toolCallsById)).toEqual([]);
+			expect('autoApproval' in Object.prototype).toBe(false);
 			expectStateMapsNotPolluted(state);
 		});
 	});
@@ -2009,6 +2087,107 @@ describe('agent-run-reducer', () => {
 				projectId: 'proj-1',
 				name: 'Support Bot',
 			});
+		});
+	});
+
+	describe('detached agents', () => {
+		function spawnDetached(state: AgentRunState) {
+			reduceEvent(state, {
+				type: 'agent-spawned',
+				runId: 'run-1',
+				agentId: 'browser-1',
+				detachedFromTurn: true,
+				payload: { parentId: 'root', role: 'cloud-browser', tools: [] },
+			});
+		}
+
+		function completeDetached(state: AgentRunState) {
+			reduceEvent(state, {
+				...makeAgentCompleted('run-1', 'browser-1', 'done'),
+				detachedFromTurn: true,
+			});
+		}
+
+		it.each(['error', 'cancelled'] as const)(
+			'keeps a detached agent running when its run ends as %s, and takes its later events',
+			(status) => {
+				const state = stateWithRun('run-1', 'root');
+				spawnDetached(state);
+				reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+				reduceEvent(state, makeRunFinish('run-1', 'root', status));
+
+				expect(state.agentsById['sub-1'].status).toBe(status);
+				expect(state.agentsById['browser-1'].status).toBe('active');
+
+				// Every event the detached agent publishes carries the flag.
+				reduceEvent(state, {
+					...makeToolCall('run-1', 'browser-1', 'tc-1', 'browser_navigate'),
+					detachedFromTurn: true,
+				});
+				completeDetached(state);
+
+				expect(state.agentsById['browser-1'].toolCalls.map((tc) => tc.toolCallId)).toEqual([
+					'tc-1',
+				]);
+				expect(state.agentsById['browser-1'].status).toBe('completed');
+			},
+		);
+
+		it.each(['error', 'cancelled'] as const)(
+			"keeps a detached agent's tool call loading when its run ends as %s",
+			(status) => {
+				const state = stateWithRun('run-1', 'root');
+				spawnDetached(state);
+				reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+				reduceEvent(state, {
+					...makeToolCall('run-1', 'browser-1', 'tc-browser', 'browser_navigate'),
+					detachedFromTurn: true,
+				});
+				reduceEvent(state, makeToolCall('run-1', 'sub-1', 'tc-sub', 'search_nodes'));
+
+				reduceEvent(state, makeRunFinish('run-1', 'root', status));
+
+				expect(state.toolCallsById['tc-browser'].isLoading).toBe(true);
+				expect(state.toolCallsById['tc-sub'].isLoading).toBe(false);
+			},
+		);
+
+		it.each(['error', 'cancelled'] as const)(
+			'keeps a detached agent running after a tree whose run ended as %s is saved and restored',
+			(status) => {
+				const state = stateWithRun('run-1', 'root');
+				spawnDetached(state);
+				reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+				reduceEvent(state, makeRunFinish('run-1', 'root', status));
+				const restored = stateFromAgentTree(deepCopy(toAgentTree(state)))!;
+
+				expect(restored.agentsById['sub-1'].status).toBe(status);
+				expect(restored.agentsById['browser-1'].status).toBe('active');
+
+				completeDetached(restored);
+
+				expect(restored.agentsById['browser-1'].status).toBe('completed');
+			},
+		);
+
+		it('drops the events of a non-detached agent after its run ended with an error', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'error'));
+
+			reduceEvent(state, makeToolCall('run-1', 'sub-1', 'tc-1', 'browser_navigate'));
+
+			expect(state.agentsById['sub-1'].toolCalls).toEqual([]);
+		});
+
+		it('closes a detached agent with its own agent-completed', () => {
+			const state = stateWithRun('run-1', 'root');
+			spawnDetached(state);
+			reduceEvent(state, makeAgentCompleted('run-1', 'browser-1', 'done'));
+
+			reduceEvent(state, makeToolCall('run-1', 'browser-1', 'tc-1', 'browser_navigate'));
+
+			expect(state.agentsById['browser-1'].toolCalls).toEqual([]);
 		});
 	});
 

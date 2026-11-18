@@ -2,6 +2,7 @@ import type * as agents from '@n8n/agents';
 import type { CredentialProvider } from '@n8n/agents';
 import {
 	N8N_CHAT_INTEGRATION_TYPE,
+	AI_GATEWAY_MANAGED_TAG,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 	type AgentJsonSkillConfig,
@@ -17,6 +18,7 @@ import type {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -35,7 +37,7 @@ import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/
 
 import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
-import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
+import type { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
@@ -43,6 +45,7 @@ import type { AgentWorkspaceService } from '../agent-workspace.service';
 import type { ProjectAgent } from '../entities/agent.entity';
 import { resolveAgentRunSource, type AgentRunSource } from '../utils/agent-published-snapshot';
 import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
+import type { AgentCredentialProvider } from '../agent-credential-provider.contracts';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
 import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor';
@@ -53,7 +56,6 @@ import { N8nChatIntegration } from '../integrations/platforms/n8n-chat/n8n-chat-
 import type * as IntegrationTools from '../integrations/integration-tools';
 import type * as FromJsonConfig from '../json-config/from-json-config';
 import type { BuildFromJsonOptions, ToolExecutor } from '../json-config/from-json-config';
-import type { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
@@ -174,7 +176,6 @@ function makeService(overrides: {
 	const service = new AgentRuntimeReconstructionService(
 		mock<Logger>(),
 		mock<AgentRepository>(),
-		mock<KnowledgeFileRepository>(),
 		mock<ActiveExecutions>(),
 		workflowRepository,
 		mock<N8NCheckpointStorage>(),
@@ -187,7 +188,7 @@ function makeService(overrides: {
 		mock<AiService>(),
 		outboundHttp,
 		mock<AgentWorkspaceService>(),
-		mock<AgentKnowledgeMirrorService>(),
+		mock<KnowledgeRetrievalService>(),
 		credentialsFinderService,
 		workflowFinderService,
 		mock<AgentChatAttachmentService>(),
@@ -294,6 +295,14 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		},
 	);
 
+	it('rejects an archived agent with a user error', async () => {
+		const agent = { id: 'agent-1', isArchived: true } as unknown as ProjectAgent;
+
+		await expect(
+			resolveAgentRunSource(agent, false, createAgentSkillRefsService(), {}),
+		).rejects.toThrow(UserError);
+	});
+
 	it('does not filter tools when no user is supplied (published/integration runs)', async () => {
 		const { service } = makeService({});
 		const entity = makeAgentEntity([nodeToolWithCredential, workflowTool, customTool]);
@@ -305,6 +314,62 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		expect(toolNamesPassedToBuildFromJson()).toEqual(
 			expect.arrayContaining(['Send Slack message', 'Lookup customer', 'custom_tool']),
 		);
+	});
+
+	it('resolves a guardrail model only when a model kind is configured', async () => {
+		const { service } = makeService({});
+		const resolveAiGatewayCredential = vi.fn().mockResolvedValue({ apiKey: 'gw-key' });
+		const credentialProvider = {
+			list: vi.fn().mockResolvedValue([]),
+			resolve: vi.fn().mockResolvedValue({}),
+			resolveAiGatewayModelCredential: resolveAiGatewayCredential,
+		} as unknown as AgentCredentialProvider;
+		Container.set(CallableWorkflowLoader, mock<CallableWorkflowLoader>());
+
+		// Pattern kinds only: no model is resolved even though the agent has one.
+		const patternOnly = makeAgentEntity([]);
+		(patternOnly.agent as ProjectAgent).schema = storedAgentConfig({
+			name: 'Test Agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Be helpful',
+			credential: AI_GATEWAY_MANAGED_TAG,
+			config: {
+				guardrails: {
+					tools: [{ kind: 'keywords', id: 'g1', stage: 'before', keywords: ['secret'] }],
+				},
+			},
+		});
+
+		const withoutModelKind = await service.reconstructFromAgentEntity(
+			patternOnly,
+			credentialProvider,
+			'test',
+		);
+		expect(withoutModelKind.guardrailModel).toBeUndefined();
+		expect(resolveAiGatewayCredential).not.toHaveBeenCalled();
+
+		// A model kind resolves through the Gateway credential path, using the
+		// agent's own model id.
+		const withModelKind = makeAgentEntity([]);
+		(withModelKind.agent as ProjectAgent).schema = storedAgentConfig({
+			name: 'Test Agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Be helpful',
+			credential: AI_GATEWAY_MANAGED_TAG,
+			config: {
+				guardrails: {
+					tools: [{ kind: 'jailbreak', id: 'g2', stage: 'before' }],
+				},
+			},
+		});
+
+		const runtime = await service.reconstructFromAgentEntity(
+			withModelKind,
+			credentialProvider,
+			'test',
+		);
+		expect(resolveAiGatewayCredential).toHaveBeenCalledWith('anthropic');
+		expect(runtime.guardrailModel).toBeDefined();
 	});
 
 	it('forwards the production n8n Chat marker to workflow tools', async () => {

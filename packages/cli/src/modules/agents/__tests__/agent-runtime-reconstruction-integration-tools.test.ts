@@ -1,3 +1,4 @@
+import type { FolderService } from '@/services/folder.service';
 import type { AgentPublishHistoryRepository } from '../repositories/agent-publish-history.repository';
 import type {
 	CredentialsFinderService,
@@ -5,6 +6,7 @@ import type {
 	NodeTypesProxy,
 	ProjectScopeService,
 	Publisher,
+	TelemetryProxy,
 } from '@n8n/backend-services';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Mocked } from 'vitest';
@@ -15,10 +17,11 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { AiConfig, GlobalConfig } from '@n8n/config';
 import type {
 	TransactionRunner,
-	User,
+	Person,
 	UserRepository,
 	CredentialsEntity,
 	ProjectRelationRepository,
+	ProjectRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -34,7 +37,7 @@ import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
-import type { Telemetry } from '@/telemetry';
+import type { TagService } from '@/services/tag.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentChangePublisher } from '../agent-change-publisher.service';
@@ -49,7 +52,7 @@ import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { AgentChatExecutionService } from '../agent-chat-execution.service';
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
-import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
+import type { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentPublishService } from '../agent-publish.service';
@@ -63,7 +66,9 @@ import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracke
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import { AgentSaveCompletionService } from '../agent-save-completion.service';
 import { AgentDefinitionService } from '../agent-definition.service';
+import type { AgentServiceAccountService } from '../agent-service-account.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
+import type { AgentUsageTelemetryService } from '../agent-usage-telemetry.service';
 
 import type { AgentTaskService } from '../agent-task.service';
 import { AgentsService } from '../agents.service';
@@ -98,8 +103,8 @@ const projectId = 'project-1';
 const userId = 'user-1';
 const versionId = 'v1';
 type N8nMemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
-const testUser = { id: userId, firstName: 'Test', lastName: 'User' } as User;
-const testUserAuthor = `${testUser.firstName} ${testUser.lastName}`;
+const testPerson = { id: userId, firstName: 'Test', lastName: 'User' } as Person;
+const testUserAuthor = `${testPerson.firstName} ${testPerson.lastName}`;
 let credentialsService: Mocked<CredentialsService>;
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
@@ -140,7 +145,6 @@ function makeRuntimeReconstructionService(
 	return new AgentRuntimeReconstructionService(
 		mock<Logger>(),
 		mock<AgentRepository>(),
-		mock<KnowledgeFileRepository>(),
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
 		mock<N8NCheckpointStorage>(),
@@ -153,7 +157,7 @@ function makeRuntimeReconstructionService(
 		mock<AiService>(),
 		outboundHttp,
 		mock<AgentWorkspaceService>(),
-		mock<AgentKnowledgeMirrorService>(),
+		mock<KnowledgeRetrievalService>(),
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
@@ -217,7 +221,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 	let agentKnowledgeService: Mocked<AgentKnowledgeService>;
 	let publisher: Mocked<Publisher>;
 	let globalConfig: Mocked<GlobalConfig>;
-	let telemetry: Mocked<Telemetry>;
+	let telemetry: Mocked<TelemetryProxy>;
 	let runtimeCacheService: AgentRuntimeCacheService;
 	let agentConfigService: AgentConfigService;
 	let agentExecutionOrchestratorService: AgentExecutionOrchestratorService;
@@ -247,7 +251,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		globalConfig = mock<GlobalConfig>({
 			multiMainSetup: { enabled: false },
 		} as Partial<GlobalConfig>);
-		telemetry = mock<Telemetry>();
+		telemetry = mock<TelemetryProxy>();
 		const logger = mockLogger();
 
 		credentialsService = mock<CredentialsService>();
@@ -300,6 +304,9 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				agentTaskRepository,
 				skillRefs,
 				new AgentPolicyService(new PolicyEnforcementService()),
+				mock<CredentialsFinderService>({
+					findCredentialForUser: async (id: string) => ({ id }) as never,
+				}),
 			),
 			mock<AgentSetupCompletionService>(),
 			transactionRunner,
@@ -322,7 +329,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				mock<AgentKnowledgeUsageTracker>(),
 				mock<AgentSandboxFilesService>(),
 			),
-			telemetry,
+			mock<AgentUsageTelemetryService>(),
 			runtimeCacheService,
 			mock<IntegrationMessageContextService>(),
 			mock<AgentRunTracingService>(),
@@ -388,6 +395,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			logger,
 			agentRepository,
 			projectRelationRepository,
+			mock<ProjectRepository>(),
 			mock<AgentChatAttachmentService>(),
 			agentKnowledgeService,
 			runtimeCacheService,
@@ -407,6 +415,11 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentSetupCompletionService>(),
 			mock<N8nChatFlagService>(),
 			mock<AgentDefinitionService>(),
+			mock<GlobalConfig>({ tags: { disabled: false } }),
+			mock<TagService>(),
+			mock<FolderService>(),
+			mock(),
+			mock<AgentServiceAccountService>(),
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(
@@ -521,6 +534,48 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 
 			expect(toolNames.filter((name) => name === 'slack_context')).toHaveLength(1);
 			expect(toolNames.filter((name) => name === 'slack_action')).toHaveLength(1);
+		});
+
+		it('injects no channel tools for the webhook channel', async () => {
+			Container.set(ChatIntegrationRegistry, new ChatIntegrationRegistry());
+			Container.set(IntegrationMessageContextService, mock<IntegrationMessageContextService>());
+			Container.set(ChatIntegrationActionExecutor, mock<ChatIntegrationActionExecutor>());
+			Container.set(
+				ChatIntegrationContextQueryExecutor,
+				mock<ChatIntegrationContextQueryExecutor>(),
+			);
+			const runtimeAgent = {
+				nativeToolDeferral: vi.fn(),
+				tool: vi.fn(),
+				on: vi.fn(),
+				hasCheckpointStorage: vi.fn().mockReturnValue(true),
+				checkpoint: vi.fn(),
+				fileStore: vi.fn(),
+			};
+
+			await (
+				makeRuntimeReconstructionService() as unknown as {
+					injectRuntimeDependencies(params: Record<string, unknown>): Promise<void>;
+				}
+			).injectRuntimeDependencies({
+				agent: runtimeAgent,
+				agentId,
+				projectId,
+				credentialProvider: mock(),
+				runtimeProfile: 'top-level',
+				config: { name: 'Test Agent', model: 'anthropic/claude-sonnet-4-5', instructions: 'Hi' },
+				parentAgentIdForDelegation: agentId,
+				subAgentDelegation: { sourcesById: {}, availableSubAgents: [] },
+				credentialIntegrations: [
+					{ type: 'webhook', credentialId: '', settings: { authentication: 'none' } },
+				],
+			});
+
+			// Each call passes one tool or an array of tools.
+			const toolNames = runtimeAgent.tool.mock.calls
+				.flat(2)
+				.map((tool: { name?: string }) => tool.name);
+			expect(toolNames.filter((name) => name?.startsWith('webhook'))).toEqual([]);
 		});
 	});
 });

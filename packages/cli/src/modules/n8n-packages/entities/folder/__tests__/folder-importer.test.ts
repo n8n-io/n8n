@@ -1,4 +1,4 @@
-import type { User } from '@n8n/db';
+import type { Folder, Project, User } from '@n8n/db';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -15,6 +15,7 @@ const context = (
 	user: mock<User>(),
 	projectId: 'project-1',
 	folderId: null,
+	publicApi: false,
 	folderConflictPolicy: 'merge',
 	layoutConflictPolicy,
 	...over,
@@ -27,7 +28,13 @@ const folder = (sourceFolderId: string, parentFolderId: string | null): Prepared
 });
 
 const existingFolder = (id: string, projectId: string, parentFolderId: string | null) =>
-	({ id, name: id, parentFolderId, homeProject: { id: projectId } }) as never;
+	mock<Folder>({
+		id,
+		name: id,
+		parentFolderId,
+		resourceType: 'workflow',
+		homeProject: mock<Project>({ id: projectId }),
+	});
 
 describe('FolderImporter', () => {
 	it('reports a parent mismatch as a conflict by default', async () => {
@@ -76,7 +83,7 @@ describe('FolderImporter', () => {
 		await importer.apply(ctx, plan);
 
 		expect(folderService.createFolder).toHaveBeenCalledExactlyOnceWith(
-			{ name: 'new', parentFolderId: undefined },
+			{ name: 'new', parentFolderId: undefined, resourceType: 'workflow' },
 			'project-1',
 			'new',
 		);
@@ -133,24 +140,29 @@ describe('FolderImporter', () => {
 		expect(folderService.updateFolder).not.toHaveBeenCalled();
 	});
 
-	it('still reports a folder that belongs to another project', async () => {
-		const folderService = mock<FolderService>();
-		folderService.getFoldersByIds.mockResolvedValue([existingFolder('a', 'project-2', null)]);
-		const importer = new FolderImporter(folderService);
-		const ctx = context('follow-package');
+	it.each(['workflow', 'agent'] as const)(
+		'reports another project before checking the %s resource type',
+		async (resourceType) => {
+			const folderService = mock<FolderService>();
+			folderService.getFoldersByIds.mockResolvedValue([
+				{ ...existingFolder('a', 'project-2', null), resourceType },
+			]);
+			const importer = new FolderImporter(folderService);
+			const ctx = context('follow-package');
 
-		// The package also renames it, so a skipped project check would plan an update.
-		const plan = await importer.plan(ctx, [{ ...folder('a', null), name: 'Renamed' }]);
-		await importer.apply(ctx, plan);
-		await importer.applyUpdates(ctx, plan);
+			// The package also renames it, so a skipped project check would plan an update.
+			const plan = await importer.plan(ctx, [{ ...folder('a', null), name: 'Renamed' }]);
+			await importer.apply(ctx, plan);
+			await importer.applyUpdates(ctx, plan);
 
-		expect(plan.conflicts).toEqual([
-			expect.objectContaining({ kind: 'id-in-other-project', existingProjectId: 'project-2' }),
-		]);
-		expect(plan.items).toEqual([]);
-		expect(folderService.createFolder).not.toHaveBeenCalled();
-		expect(folderService.updateFolder).not.toHaveBeenCalled();
-	});
+			expect(plan.conflicts).toEqual([
+				expect.objectContaining({ kind: 'id-in-other-project', existingProjectId: 'project-2' }),
+			]);
+			expect(plan.items).toEqual([]);
+			expect(folderService.createFolder).not.toHaveBeenCalled();
+			expect(folderService.updateFolder).not.toHaveBeenCalled();
+		},
+	);
 
 	it('reports a fail-policy conflict instead of moving a matched folder under the fail policy', async () => {
 		const folderService = mock<FolderService>();

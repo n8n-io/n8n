@@ -18,7 +18,7 @@ export class QuestDb implements INodeType {
 
 		icon: 'file:questdb.png',
 		group: ['input'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Get, add and update data in QuestDB',
 		defaults: {
 			name: 'QuestDB',
@@ -236,6 +236,7 @@ export class QuestDb implements INodeType {
 			const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail(), {
 				overrideMode: mode,
 				resolveExpression: true,
+				literalExpressions: this.getNode().typeVersion >= 1.2,
 			});
 
 			returnItems = this.helpers.returnJsonArray(queryResult);

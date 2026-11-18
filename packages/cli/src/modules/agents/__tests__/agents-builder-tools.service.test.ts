@@ -17,22 +17,26 @@ import {
 	type AgentJsonConfig,
 	type AgentTaskDto,
 } from '@n8n/api-types';
+import type {
+	CredentialsFinderService,
+	NodeTypesProxy,
+	TelemetryProxy,
+} from '@n8n/backend-services';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
-import type { User } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, type User } from '@n8n/db';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 import type { ZodTypeAny } from 'zod';
 
 import type { CredentialTypes } from '@/credential-types';
+import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { ConflictError, LockedError, UserError } from '@n8n/errors';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import type { NodeTypesProxy } from '@n8n/backend-services';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
-import type { CollaborationService } from '@/collaboration/collaboration.service';
+import type { AgentWriteLockService } from '../agent-write-lock.service';
 import type { FreeAiCreditsService } from '@/services/free-ai-credits.service';
-import type { Telemetry } from '@/telemetry';
 
 import type { AgentConfigService } from '../agent-config.service';
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
@@ -101,7 +105,7 @@ function makeService() {
 	const agentTaskService = mock<AgentTaskService>();
 	const agentPublishService = mock<AgentPublishService>();
 	const agentTestRunService = mock<AgentTestRunService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
 	const nodeTypes = mock<NodeTypesProxy>();
@@ -112,7 +116,12 @@ function makeService() {
 	transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.transport.mockReturnValue(transport);
-	const collaborationService = mock<CollaborationService>();
+	const agentWriteLockService = mock<AgentWriteLockService>();
+	const credentialsFinderService = mock<CredentialsFinderService>();
+	credentialsFinderService.findCredentialForUser.mockImplementation(
+		async (id) => ({ id, isGlobal: false, isResolvable: false }) as never,
+	);
+	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
 
 	const service = new AgentsBuilderToolsService(
 		agentsService as unknown as AgentsService,
@@ -134,13 +143,18 @@ function makeService() {
 		nodeTypes,
 		mock<FreeAiCreditsService>(),
 		telemetry,
-		collaborationService,
+		agentWriteLockService,
 		createAgentSkillRefsService(),
+		credentialsFinderService,
+		credentialsPermissionChecker,
 	);
 
 	return {
 		service,
-		collaborationService,
+		credentialsFinderService,
+		agentWriteLockService,
+		credentialsPermissionChecker,
+		builderModelLiveLookupService,
 		agentsService: purposeServices,
 		secureRuntime,
 		agentTaskService,
@@ -325,8 +339,8 @@ describe('AgentsBuilderToolsService', () => {
 				});
 
 				it('leaves a lock failure without a stage to its error message', async () => {
-					const { service, collaborationService } = makeService();
-					collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+					const { service, agentWriteLockService } = makeService();
+					agentWriteLockService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
 					const tool = getJsonTool(service, toolName);
 
 					const result = await tool.handler!(
@@ -387,6 +401,35 @@ describe('AgentsBuilderToolsService', () => {
 			).json;
 			const toolNames = tools.map((tool) => tool.name);
 			expect(toolNames).toContain(BUILDER_TOOLS.VERIFY_MCP_SERVER);
+		});
+
+		it('rejects MCP verification with a credential that the user can only read', async () => {
+			const { service, credentialsFinderService, outboundHttp } = makeService();
+			credentialsFinderService.findCredentialForUser.mockImplementation(
+				async (id, _user, scopes) =>
+					scopes.includes('credential:connect')
+						? null
+						: ({ id, isGlobal: false, isResolvable: false } as never),
+			);
+			const member = { id: 'user-1', role: GLOBAL_MEMBER_ROLE } as User;
+			const tool = service
+				.getTools(agentId, projectId, credentialProvider, credentialService, member)
+				.json.find((candidate) => candidate.name === BUILDER_TOOLS.VERIFY_MCP_SERVER);
+			const transportCalls = outboundHttp.transport.mock.calls.length;
+
+			const result = await tool!.handler!(
+				{
+					name: 'docs',
+					url: 'https://mcp.example.test/mcp',
+					authentication: 'headerAuth',
+					credential: 'credential-1',
+				},
+				{} as never,
+			);
+
+			expect(result).toEqual({ ok: false, error: 'Credential not found or not accessible' });
+			expect(credentialProvider.resolve).not.toHaveBeenCalled();
+			expect(outboundHttp.transport.mock.calls.length).toBe(transportCalls);
 		});
 
 		it('registers the agent_builder_finish_setup interactive tool in the builder toolset', () => {
@@ -628,9 +671,9 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('agent_builder_write_config returns a locked failure while a user holds the builder write lock', async () => {
-			const { service, agentsService, collaborationService } = makeService();
+			const { service, agentsService, agentWriteLockService } = makeService();
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
-			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+			agentWriteLockService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
 
 			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 				{
@@ -648,9 +691,9 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('agent_builder_patch_config reports stage "locked" while a user holds the builder write lock', async () => {
-			const { service, agentsService, collaborationService } = makeService();
+			const { service, agentsService, agentWriteLockService } = makeService();
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
-			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+			agentWriteLockService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
 
 			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
 				{
@@ -1922,7 +1965,7 @@ describe('AgentsBuilderToolsService', () => {
 				);
 			});
 
-			it('agent_builder_write_config force-enables prompt caching even when the config says enabled: false', async () => {
+			it('agent_builder_write_config keeps prompt caching off when the config says enabled: false', async () => {
 				const { service, agentsService } = makeService();
 				const baseAgent = {
 					...baseConfig,
@@ -1942,7 +1985,7 @@ describe('AgentsBuilderToolsService', () => {
 					...currentConfig,
 					model: 'anthropic/claude-sonnet-4-5',
 					credential: 'Anthropic Key',
-					config: { webSearch: { enabled: false }, promptCaching: { enabled: true } },
+					config: { webSearch: { enabled: false }, promptCaching: { enabled: false } },
 				};
 				agentsService.findById.mockResolvedValue(makeAgent(baseAgent));
 				agentsService.updateConfig.mockResolvedValue({
@@ -1969,6 +2012,47 @@ describe('AgentsBuilderToolsService', () => {
 						baseConfigHash: getAgentConfigHash(currentConfig),
 						modifiedBy: 'builder',
 					}),
+				);
+			});
+
+			it('agent_builder_write_config keeps the stored opt-out when a write omits promptCaching', async () => {
+				const { service, agentsService } = makeService();
+				const baseAgent = {
+					...baseConfig,
+					model: 'openai/gpt-5',
+					credential: 'OpenAI Key',
+					integrations: [],
+					config: { promptCaching: { enabled: false } },
+				};
+				const currentConfig = { ...baseAgent };
+				const updatedConfig: AgentJsonConfig = {
+					...currentConfig,
+					instructions: 'Updated instructions',
+					config: { webSearch: { enabled: false } },
+				};
+				const normalizedConfig = {
+					...updatedConfig,
+					config: { webSearch: { enabled: false }, promptCaching: { enabled: false } },
+				};
+				agentsService.findById.mockResolvedValue(makeAgent(baseAgent));
+				agentsService.updateConfig.mockResolvedValue({
+					config: normalizedConfig,
+					configHash: 'config-hash',
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					versionId: 'v2',
+				});
+
+				await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{ baseConfigHash: getAgentConfigHash(currentConfig), config: updatedConfig },
+					ctx,
+				);
+
+				expect(agentsService.updateConfig).toHaveBeenCalledWith(
+					agentId,
+					projectId,
+					normalizedConfig,
+					user,
+					expect.objectContaining({ modifiedBy: 'builder' }),
 				);
 			});
 
@@ -2029,6 +2113,32 @@ describe('AgentsBuilderToolsService', () => {
 				);
 			});
 		});
+	});
+
+	it('resolves the main model only from credentials the user can use through their own access', async () => {
+		const { service, builderModelLiveLookupService, credentialsPermissionChecker } = makeService();
+		credentialProvider.list.mockResolvedValue([
+			{ id: 'own', name: 'My Anthropic', type: 'anthropicApi' },
+			{ id: 'colleague', name: 'Their Anthropic', type: 'anthropicApi' },
+		]);
+		credentialsPermissionChecker.filterUsableThroughOwnAccess.mockImplementation(
+			async (_user, credentials) => credentials.filter((c) => c.id !== 'colleague'),
+		);
+		builderModelLiveLookupService.list.mockResolvedValue([
+			{ name: 'Claude Sonnet 5', value: 'claude-sonnet-5' },
+		]);
+		const tool = service
+			.getTools(agentId, projectId, credentialProvider, credentialService, user)
+			.json.find((candidate) => candidate.name === BUILDER_TOOLS.RESOLVE_LLM)!;
+
+		const result = await tool.handler!(
+			{ provider: 'anthropic', model: 'claude-sonnet-5' },
+			ctx as never,
+		);
+
+		expect(result).toEqual(
+			expect.objectContaining({ ok: true, credentialId: 'own', credentialName: 'My Anthropic' }),
+		);
 	});
 
 	describe('agent_builder_build_custom_tool tool', () => {
@@ -3340,9 +3450,9 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('returns a locked failure on publish while a user holds the builder write lock', async () => {
-			const { service, agentPublishService, collaborationService } = makeService();
+			const { service, agentPublishService, agentWriteLockService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
-			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+			agentWriteLockService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
 
 			const result = await getPublishTool(service).handler!({}, ctx);
 
@@ -3423,8 +3533,8 @@ describe('AgentsBuilderToolsService', () => {
 
 	describe('MCP credential apply path', () => {
 		it('returns { applied: false } when a user holds the builder write lock', async () => {
-			const { service, collaborationService } = makeService();
-			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+			const { service, agentWriteLockService } = makeService();
+			agentWriteLockService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
 
 			// applyCredentialToMcpServer is private but called from the
 			// agent_builder_verify_mcp_server tool context; invoke it directly to test the

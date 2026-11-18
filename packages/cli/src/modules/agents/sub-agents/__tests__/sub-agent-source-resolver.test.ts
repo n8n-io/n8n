@@ -200,6 +200,24 @@ describe('SubAgentSourceResolver', () => {
 		});
 	});
 
+	it('rejects an archived agent on the saved configuration and pinned version paths', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(makeAgentHistory());
+		const original = await resolver.resolveForRuntime({ agentId }, { projectId });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ isArchived: true }));
+		const message = 'Sub-agent "Helper Agent" is archived. Restore it before delegating to it.';
+
+		await expect(
+			resolver.resolveForRuntime(
+				{ agentId },
+				{ projectId, runtimeSnapshot: JSON.stringify(original) },
+			),
+		).rejects.toThrow(message);
+		await expect(resolver.resolveForRuntime({ agentId, versionId }, { projectId })).rejects.toThrow(
+			message,
+		);
+	});
+
 	it('resolves the published version with its assets for production runs', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({

@@ -113,7 +113,11 @@ export class ActiveExecutions {
 					fullExecutionData.workflowId = workflowId;
 				}
 
-				executionId = await this.executionPersistence.create(fullExecutionData);
+				executionId = await this.executionPersistence.create(
+					fullExecutionData,
+					{},
+					{ source: executionData.source },
+				);
 				assert(executionId);
 				await this.unsavedManualExecutionService.recordStarter(executionId, executionData);
 
@@ -386,7 +390,7 @@ export class ActiveExecutions {
 
 		try {
 			await Promise.race([
-				this.executionRepository.cancelManyRunning(executionIds),
+				this.executionRepository.markAsCanceled(executionIds, ['running']),
 				new Promise<never>((_, reject) => {
 					timeout = setTimeout(
 						() => reject(new OperationalError('Timed out writing the cancelled status')),

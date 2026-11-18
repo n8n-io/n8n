@@ -1,3 +1,4 @@
+import { requestUrl } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import {
@@ -15,11 +16,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const volumeName = this.getNodeParameter('volumeName', i) as string;
 	const fullName = `${catalogName}.${schemaName}.${volumeName}`;
 
-	const response = await databricksApiRequest(this, credentialType, {
-		method: 'GET',
-		url: `${host}/api/2.1/unity-catalog/volumes/${fullName}`,
-		json: true,
-	});
+	const response = await databricksApiRequest(
+		this,
+		credentialType,
+		requestUrl`${host}/api/2.1/unity-catalog/volumes/${fullName}`,
+		{
+			method: 'GET',
+			json: true,
+		},
+	);
 
 	return [{ json: response, pairedItem: { item: i } }];
 }

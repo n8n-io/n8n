@@ -1,7 +1,7 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { UserCalledMCPToolEventPayload } from '../mcp.types';
@@ -22,7 +22,8 @@ export function describeFolderError(error: unknown): string {
  * and returns the MCP error envelope.
  */
 export const createFailHandler =
-	(telemetry: Telemetry, telemetryPayload: UserCalledMCPToolEventPayload) => (error: string) => {
+	(telemetry: TelemetryProxy, telemetryPayload: UserCalledMCPToolEventPayload) =>
+	(error: string) => {
 		telemetryPayload.results = { success: false, error };
 		telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 		const output = { error };

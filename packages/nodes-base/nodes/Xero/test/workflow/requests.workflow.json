@@ -1,0 +1,204 @@
+{
+	"name": "Xero Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "invoice",
+				"operation": "get",
+				"organizationId": "b1c2d3e4-0000-4000-8000-000000000001",
+				"invoiceId": "INV-0042"
+			},
+			"id": "node-0",
+			"name": "Invoice Get",
+			"type": "n8n-nodes-base.xero",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"xeroOAuth2Api": {
+					"id": "1",
+					"name": "Xero account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "invoice",
+				"operation": "update",
+				"organizationId": "b1c2d3e4-0000-4000-8000-000000000001",
+				"invoiceId": "INV-0042",
+				"updateFields": {
+					"reference": "PO-77"
+				}
+			},
+			"id": "node-1",
+			"name": "Invoice Update",
+			"type": "n8n-nodes-base.xero",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"xeroOAuth2Api": {
+					"id": "1",
+					"name": "Xero account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "invoice",
+				"operation": "getAll",
+				"organizationId": "b1c2d3e4-0000-4000-8000-000000000001",
+				"returnAll": true,
+				"options": {}
+			},
+			"id": "node-2",
+			"name": "Invoice Get Many",
+			"type": "n8n-nodes-base.xero",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"xeroOAuth2Api": {
+					"id": "1",
+					"name": "Xero account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "create",
+				"organizationId": "b1c2d3e4-0000-4000-8000-000000000001",
+				"name": "Acme Corp",
+				"additionalFields": {}
+			},
+			"id": "node-3",
+			"name": "Contact Create",
+			"type": "n8n-nodes-base.xero",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"xeroOAuth2Api": {
+					"id": "1",
+					"name": "Xero account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "get",
+				"organizationId": "b1c2d3e4-0000-4000-8000-000000000001",
+				"contactId": "c0ffee00-1111-4222-8333-444455556666"
+			},
+			"id": "node-4",
+			"name": "Contact Get",
+			"type": "n8n-nodes-base.xero",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"xeroOAuth2Api": {
+					"id": "1",
+					"name": "Xero account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "update",
+				"organizationId": "b1c2d3e4-0000-4000-8000-000000000001",
+				"contactId": "c0ffee00-1111-4222-8333-444455556666",
+				"updateFields": {
+					"name": "Acme Ltd"
+				}
+			},
+			"id": "node-5",
+			"name": "Contact Update",
+			"type": "n8n-nodes-base.xero",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"xeroOAuth2Api": {
+					"id": "1",
+					"name": "Xero account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "getAll",
+				"organizationId": "b1c2d3e4-0000-4000-8000-000000000001",
+				"returnAll": false,
+				"limit": 5,
+				"options": {}
+			},
+			"id": "node-6",
+			"name": "Contact Get Many",
+			"type": "n8n-nodes-base.xero",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"xeroOAuth2Api": {
+					"id": "1",
+					"name": "Xero account"
+				}
+			}
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Invoice Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Invoice Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Invoice Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Get Many",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

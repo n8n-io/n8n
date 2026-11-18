@@ -140,6 +140,78 @@ describe('evaluateStepCondition', () => {
 	});
 });
 
+describe('automated release PR CI bypass', () => {
+	const releasePrConjunction = [
+		"github.event.pull_request.user.login == 'n8n-assistant[bot]'",
+		"startsWith(github.event.pull_request.head.ref, 'release-pr/')",
+		"startsWith(github.event.pull_request.base.ref, 'release/')",
+	].join(' && ');
+	const compact = (condition) =>
+		condition
+			.trim()
+			.replace(/^\$\{\{(.*)\}\}$/s, '$1')
+			.replaceAll(/\s/g, '');
+
+	const assertSkipsReleasePr = (condition) => {
+		assert.ok(compact(condition).includes(`!(${compact(releasePrConjunction)})`));
+	};
+	const assertPassesReleasePr = (condition) => {
+		assert.equal(
+			compact(condition),
+			compact(`github.event_name == 'pull_request' && ${releasePrConjunction}`),
+		);
+	};
+	const assertNeedsPrPolicy = (job) => {
+		assert.ok(job.needs === 'pr-policy' || job.needs.includes('pr-policy'));
+	};
+	const assertUsesPrPolicy = (job) => {
+		assertNeedsPrPolicy(job);
+		assert.match(job.if, /needs\.pr-policy\.outputs\.skip-ci != 'true'/);
+	};
+
+	it('skips the expensive PR jobs and keeps the aggregate checks', () => {
+		const policy = workflowFile('ci-pr-policy-reusable.yml');
+		assert.equal(policy.jobs.classify.outputs['skip-ci'], '${{ steps.policy.outputs.skip-ci }}');
+		assertPassesReleasePr(stepNamed(policy, 'classify', 'Evaluate PR policy').env.SKIP_CI);
+
+		const ci = workflowFile('ci-pull-requests.yml');
+		assert.equal(ci.jobs['pr-policy'].uses, './.github/workflows/ci-pr-policy-reusable.yml');
+		assertUsesPrPolicy(ci.jobs['install-and-build']);
+		assertUsesPrPolicy(ci.jobs['format-check']);
+		assert.equal(ci.jobs['required-checks'].if, 'always()');
+		assertNeedsPrPolicy(ci.jobs['required-checks']);
+		assert.equal(
+			stepNamed(ci, 'required-checks', 'Validate required checks').if,
+			"needs.pr-policy.outputs.skip-ci != 'true'",
+		);
+		assert.equal(
+			stepNamed(ci, 'required-checks', 'Pass automated release PR').if,
+			"needs.pr-policy.outputs.skip-ci == 'true'",
+		);
+
+		const quality = workflowFile('ci-pr-quality.yml');
+		assert.equal(quality.jobs['pr-policy'].uses, './.github/workflows/ci-pr-policy-reusable.yml');
+		assertUsesPrPolicy(quality.jobs.changes);
+		assertUsesPrPolicy(quality.jobs['check-knip']);
+		assertUsesPrPolicy(quality.jobs['check-do-not-merge']);
+		assert.equal(quality.jobs['required-pr-quality-checks'].if, 'always()');
+		assertNeedsPrPolicy(quality.jobs['required-pr-quality-checks']);
+		assert.equal(
+			stepNamed(quality, 'required-pr-quality-checks', 'Validate required checks').if,
+			"needs.pr-policy.outputs.skip-ci != 'true'",
+		);
+		assert.equal(
+			stepNamed(quality, 'required-pr-quality-checks', 'Pass automated release PR').if,
+			"needs.pr-policy.outputs.skip-ci == 'true'",
+		);
+	});
+
+	it('skips standalone workflows for automated release PRs', () => {
+		assertSkipsReleasePr(workflowFile('docker-build-smoke.yml').jobs.gate.if);
+		assertSkipsReleasePr(workflowFile('ci-owners-validation.yml').jobs.validate.if);
+	});
+});
+
 describe('release SBOM validation in PR CI', () => {
 	const workflow = workflowFile('ci-pull-requests.yml');
 	const filterStep = stepNamed(workflow, 'install-and-build', 'Check for relevant changes');
@@ -360,5 +432,33 @@ describe('test-e2e-reusable.yml', () => {
 				assert.equal(evaluateStepCondition(a11yUpload.if, { inputs, jobStatus: 'failure' }), true);
 			}
 		});
+	});
+});
+
+describe('unpublished package handling', () => {
+	const scheduledCheck = workflowFile('ci-detect-new-packages.yml');
+	const releasePublish = workflowFile('release-publish.yml');
+
+	it('checks unpublished packages every Monday and notifies Developer Platform', () => {
+		const check = stepNamed(scheduledCheck, 'detect-new-packages', 'Check unpublished packages');
+		const notify = stepNamed(scheduledCheck, 'detect-new-packages', 'Notify Developer Platform');
+
+		assert.deepEqual(triggersOf(scheduledCheck).schedule, [{ cron: '0 8 * * 1' }]);
+		assert.match(check.run, /detect-new-packages\.mjs --report-only --strict/);
+		assert.equal(notify.if, "steps.detect.outputs.packages != ''");
+		assert.match(notify.run, /--channel '#team-developer-platform'/);
+		assert.match(notify.run, /Publish each package manually/);
+	});
+
+	it('keeps unpublished package setup out of the release workflow', () => {
+		const publish = releasePublish.jobs['publish-to-npm'];
+
+		assert.equal(releasePublish.jobs['setup-trusted-publishing'], undefined);
+		assert.deepEqual(publish.needs, ['determine-version-info']);
+		assert.equal(publish.if, 'github.event.pull_request.merged == true');
+		assert.equal(
+			publish.steps.some((step) => step.run?.includes('detect-new-packages.mjs')),
+			false,
+		);
 	});
 });
