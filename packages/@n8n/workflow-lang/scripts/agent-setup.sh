@@ -12,8 +12,15 @@ here=$(pwd -P)
 [ "$here" != "$(cd "$MAIN" && pwd -P)" ] || { echo "agent-setup: run this in a worktree, not in the main checkout" >&2; exit 2; }
 
 if [ -z "$(git status --short | grep -v '^??' || true)" ]; then
-	git merge -q --ff-only "$BRANCH" 2> /dev/null || git reset -q --hard "$BRANCH" 2> /dev/null ||
-		echo "agent-setup: could not move to $BRANCH; make a branch from it with: git checkout -b <name> $BRANCH" >&2
+	if ! git merge -q --ff-only "$BRANCH" 2> /dev/null; then
+		# A worktree that is only behind the branch is already fast-forwarded above. A reset here
+		# would discard the commits of an agent branch, so a worktree with its own commits stays.
+		if git merge-base --is-ancestor HEAD "$BRANCH" 2> /dev/null; then
+			git reset -q --hard "$BRANCH" 2> /dev/null
+		else
+			echo "agent-setup: this worktree has its own commits; it stays on $(git rev-parse --short HEAD)" >&2
+		fi
+	fi
 fi
 
 link() {
