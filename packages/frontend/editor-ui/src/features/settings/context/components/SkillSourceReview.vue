@@ -45,7 +45,7 @@ const TAB_LABELS = {
 
 /** A skill that the user cannot tick is in Blocked, whatever the reason. */
 function tabOf(skill: DiscoveredSkill): ReviewTab {
-	if (!isSelectableSkill(skill)) return 'blocked';
+	if (!canSelectSkill(skill)) return 'blocked';
 	return skill.check?.verdict === 'needs_review' ? 'warning' : 'passed';
 }
 
@@ -171,6 +171,9 @@ function blockedReason(skill: DiscoveredSkill): string {
 	}
 	const findings = skill.check ? findingsText(skill.check.findings) : '';
 	if (findings) return findings;
+	if (props.disabledSkillKeys?.includes(skill.key)) {
+		return i18n.baseText('settings.context.skills.updates.importNotAllowed');
+	}
 	return skill.error ? reasonText(skill.error.reason) : '';
 }
 

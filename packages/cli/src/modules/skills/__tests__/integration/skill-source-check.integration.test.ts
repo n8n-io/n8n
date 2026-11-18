@@ -539,6 +539,32 @@ describe('Skill source checks', () => {
 			expect(unlinked.some(({ key }) => key.includes('nested/'))).toBe(false);
 		});
 
+		it('keeps a hidden new skill hidden while a truncated check does not see it', async () => {
+			const { sourceId } = await importAll();
+			pushChange({ 'skills/zz-hidden/SKILL.md': skillMd('zz-hidden') });
+			await sync().checkAll();
+			const hidden = (await review(sourceId)).newSkills![0];
+			await act(sourceId, { skippedNewSkills: [hidden] });
+			const base = github.files('acme/skills');
+			pushChange(
+				Object.fromEntries(
+					Array.from({ length: 200 }, (_, i) => [
+						`skills/aa-${String(i).padStart(3, '0')}/SKILL.md`,
+						skillMd(`aa-${i}`),
+					]),
+				),
+			);
+			await sync().checkAll();
+			const truncated = (await sourceOf(sourceId)).unlinkedSkills!;
+			expect(truncated).toContainEqual(expect.objectContaining({ key: hidden.key, skipped: true }));
+			github.push('acme/skills', base);
+			await sync().checkAll();
+			expect((await sourceOf(sourceId)).unlinkedSkills).toEqual([
+				expect.objectContaining({ key: hidden.key, skipped: true }),
+			]);
+			expect((await sources())[0].newSkillsAvailable).toBe(0);
+		});
+
 		it('reports a flagged new skill with the user of Check for updates', async () => {
 			const flaggedSkill = vi.spyOn(Container.get(SkillsTelemetry), 'flaggedSkill');
 			const { sourceId } = await importAll();

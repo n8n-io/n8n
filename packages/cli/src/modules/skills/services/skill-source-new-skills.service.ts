@@ -62,20 +62,24 @@ export class SkillSourceNewSkillsService {
 		client: SkillSourceClient,
 		auth?: SkillSourceAuth,
 		revision?: string,
-	): Promise<NewSkillRead[]> {
+	): Promise<{ reads: NewSkillRead[]; truncated: boolean }> {
 		const linked = new Set(
 			(await this.sources.findLinksBySource(source.id)).map(({ remoteRef }) =>
 				JSON.stringify(remoteRef),
 			),
 		);
 		const refs: RemoteSkillRef[] = [];
+		let truncated = false;
 		let cursor: string | undefined;
 		do {
 			const page = await client.discover(source.locator, auth, cursor, revision);
-			refs.push(...page.items.slice(0, SKILL_SOURCE_MAX_SKILLS - refs.length));
+			const room = SKILL_SOURCE_MAX_SKILLS - refs.length;
+			refs.push(...page.items.slice(0, room));
+			truncated ||= page.truncated === true || page.items.length > room;
 			revision ??= page.revision;
 			cursor = page.next;
 		} while (cursor !== undefined && refs.length < SKILL_SOURCE_MAX_SKILLS);
+		truncated ||= cursor !== undefined;
 		const unlinked = refs.filter((ref) => !linked.has(JSON.stringify(ref)));
 		const reads: NewSkillRead[] = [];
 		for (let start = 0; start < unlinked.length; start += 8) {
@@ -105,7 +109,7 @@ export class SkillSourceNewSkillsService {
 			);
 			for (const read of batch) if (read) reads.push(read);
 		}
-		return reads;
+		return { reads, truncated };
 	}
 
 	async check(
@@ -116,11 +120,15 @@ export class SkillSourceNewSkillsService {
 		/** The user of Check for updates. The hourly check has none, so its events reach BigQuery only. */
 		userId?: string,
 	): Promise<boolean> {
-		const reads = await this.discover(source, client, auth, revision);
+		const { reads, truncated } = await this.discover(source, client, auth, revision);
 		const previous = new Map((source.unlinkedSkills ?? []).map((skill) => [skill.key, skill]));
-		const stored = await this.sources.storeUnlinkedSkills(
-			source,
-			reads.map(
+		const seen = new Set(reads.map(({ key }) => key));
+		// A truncated read can miss a hidden skill. Keep it hidden until a read sees it again.
+		const unseenHidden = truncated
+			? (source.unlinkedSkills ?? []).filter(({ key, skipped }) => skipped && !seen.has(key))
+			: [];
+		const stored = await this.sources.storeUnlinkedSkills(source, [
+			...reads.map(
 				({ key, contentHash, check }): UnlinkedSkill => ({
 					key,
 					contentHash,
@@ -129,7 +137,8 @@ export class SkillSourceNewSkillsService {
 						previous.get(key)?.contentHash === contentHash && previous.get(key)?.skipped === true,
 				}),
 			),
-		);
+			...unseenHidden,
+		]);
 		if (stored) {
 			for (const read of reads) {
 				if (
@@ -162,7 +171,7 @@ export class SkillSourceNewSkillsService {
 		client: SkillSourceClient,
 		auth?: SkillSourceAuth,
 	): Promise<SkillNewUpdate[]> {
-		const reads = await this.discover(source, client, auth);
+		const { reads } = await this.discover(source, client, auth);
 		const names = await this.skills.findLatestNamesInTarget({ projectId: source.projectId });
 		return reads.map(({ key, ref, fetched, contentHash, check }) => ({
 			key,
@@ -193,7 +202,7 @@ export class SkillSourceNewSkillsService {
 	) {
 		const requested = [...payload.newSkills, ...payload.skippedNewSkills];
 		if (!requested.length) return [];
-		const reads = await this.discover(source, client, auth);
+		const { reads } = await this.discover(source, client, auth);
 		return requested.map(({ key, contentHash }) => {
 			const read = reads.find((item) => item.key === key && item.contentHash === contentHash);
 			if (!read)

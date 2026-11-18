@@ -79,7 +79,7 @@ const discovery = computed(() => ({
 		(update): DiscoveredSkill => ({
 			key: update.skillId,
 			name: update.name,
-			description: null,
+			description: update.newSkill?.description ?? null,
 			location: update.location,
 			webUrl: update.webUrl,
 			check: update.check,
