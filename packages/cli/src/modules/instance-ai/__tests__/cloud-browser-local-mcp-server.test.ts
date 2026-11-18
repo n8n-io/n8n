@@ -5,8 +5,10 @@ import {
 	createBrowserTools,
 	type AffectedResource,
 	type BrowserToolkit,
+	type PageChangeDetails,
 	type ToolDefinition,
 } from '@n8n/mcp-browser';
+import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
@@ -70,10 +72,19 @@ describe('CloudBrowserLocalMcpServer', () => {
 		} as unknown as ToolDefinition;
 		const connection = {
 			isConnected: true,
-			getConnection: () => ({ activePageId: 'page-1' }),
+			getConnection: () => state,
 			connect: vi.fn().mockResolvedValue(undefined),
 			disconnect: vi.fn().mockResolvedValue(undefined),
 		};
+		const adapter: {
+			onPageChange?: (change: PageChangeDetails) => void;
+			getPageUrl: Mock<(pageId: string) => string | undefined>;
+			getTargetId: Mock<(pageId: string) => Promise<string | undefined>>;
+		} = {
+			getPageUrl: vi.fn(),
+			getTargetId: vi.fn(async (pageId: string) => `target-${pageId}`),
+		};
+		const state = { activePageId: 'page-1', adapter };
 		const click = {
 			name: 'browser_click',
 			inputSchema: z.object({ ref: z.string() }),
@@ -96,6 +107,20 @@ describe('CloudBrowserLocalMcpServer', () => {
 				},
 			],
 		} as unknown as ToolDefinition;
+		const tabList = {
+			name: 'browser_tab_list',
+			inputSchema: z.object({}),
+			execute: vi.fn(async () => ({ content: [{ type: 'text', text: 'windows' }] })),
+			getAffectedResources: () => [],
+		};
+		const tabClose = {
+			name: 'browser_tab_close',
+			inputSchema: z.object({ pageId: z.string() }),
+			execute: vi.fn(async ({ pageId }: { pageId: string }) => ({
+				content: [{ type: 'text', text: `closed ${pageId}` }],
+			})),
+			getAffectedResources: () => [],
+		};
 		const connect = {
 			name: 'browser_connect',
 			inputSchema: z.object({}),
@@ -109,10 +134,12 @@ describe('CloudBrowserLocalMcpServer', () => {
 			getAffectedResources: () => [],
 		};
 		return {
-			tools: [navigate, click, createCredential, connect, cookies],
+			tools: [navigate, click, createCredential, tabList, tabClose, connect, cookies],
 			connection,
+			adapter,
 		} as unknown as BrowserToolkit & {
 			connection: typeof connection;
+			adapter: typeof adapter;
 		};
 	}
 
@@ -176,6 +203,8 @@ describe('CloudBrowserLocalMcpServer', () => {
 				'browser_navigate',
 				'browser_click',
 				'browser_create_credential',
+				'browser_tab_list',
+				'browser_tab_close',
 			]);
 		});
 
@@ -643,7 +672,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 				content: [
 					{
 						type: 'text',
-						text: 'Browser tools work only in the current tab. To use a page that opened in a new tab, open its URL in this tab with browser_navigate.',
+						text: 'Browser tools work only in the current window. When a site opens a new window, the tools move to it.',
 					},
 				],
 				isError: true,
@@ -668,7 +697,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 				content: [
 					{
 						type: 'text',
-						text: 'Browser tools work only in the current tab. To use a page that opened in a new tab, open its URL in this tab with browser_navigate.',
+						text: 'Browser tools work only in the current window. When a site opens a new window, the tools move to it.',
 					},
 				],
 				isError: true,
@@ -972,8 +1001,13 @@ describe('CloudBrowserLocalMcpServer', () => {
 			expect(await server.getLiveView()).toEqual({
 				status: 'live',
 				liveViewUrl: 'https://live.example.com/1',
+				windowId: 'page-1',
 			});
-			expect(sessionProvider.getSessionLiveViewUrl).toHaveBeenCalledWith(scope, 'sess-1');
+			expect(sessionProvider.getSessionLiveViewUrl).toHaveBeenCalledWith(
+				scope,
+				'sess-1',
+				undefined,
+			);
 		});
 
 		it('is starting when a new session replaced the one it asked about', async () => {
@@ -1024,6 +1058,413 @@ describe('CloudBrowserLocalMcpServer', () => {
 					status: 'disconnected',
 					reason: 'idleTimeout',
 				});
+			});
+		});
+	});
+
+	describe('windows', () => {
+		const otherWindowResult = {
+			content: [
+				{
+					type: 'text',
+					text: 'Browser tools work only in the current window. When a site opens a new window, the tools move to it.',
+				},
+			],
+			isError: true,
+		};
+		const openedNote = (pageId: string, host?: string) =>
+			`A new window opened${host ? ` on ${host}` : ''}. Browser tools now act in it. ` +
+			`If you do not need it, close it with browser_tab_close and pageId "${pageId}". ` +
+			'When it closes, the tools act on the previous window again.';
+		const closedNote = (host: string) =>
+			`The window closed. Browser tools act on the previous window on ${host} again.`;
+
+		async function setupWithSession() {
+			const context = setup();
+			await context.start({ url: 'https://example.com' });
+			const toolkit = context.toolkits[0];
+			const toolOn = (name: string) => toolkit.tools.find((tool) => tool.name === name)!;
+			return {
+				...context,
+				toolkit,
+				toolOn,
+				openWindow: (pageId: string) => toolkit.adapter.onPageChange?.({ type: 'opened', pageId }),
+				closeWindow: (pageId: string) => toolkit.adapter.onPageChange?.({ type: 'closed', pageId }),
+				currentWindow: () => toolkit.connection.getConnection().activePageId,
+				click: async () =>
+					await context.server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } }),
+			};
+		}
+
+		describe('current window', () => {
+			it('makes a window that opens the current window', async () => {
+				const { openWindow, currentWindow } = await setupWithSession();
+
+				openWindow('page-2');
+
+				expect(currentWindow()).toBe('page-2');
+			});
+
+			it('makes the previous window current again when the current one closes', async () => {
+				const { openWindow, closeWindow, currentWindow } = await setupWithSession();
+				openWindow('page-2');
+
+				closeWindow('page-2');
+
+				expect(currentWindow()).toBe('page-1');
+			});
+
+			it('follows a popup that opens from a popup', async () => {
+				const { openWindow, closeWindow, currentWindow } = await setupWithSession();
+
+				openWindow('page-2');
+				openWindow('page-3');
+				expect(currentWindow()).toBe('page-3');
+
+				closeWindow('page-3');
+				expect(currentWindow()).toBe('page-2');
+
+				closeWindow('page-2');
+				expect(currentWindow()).toBe('page-1');
+			});
+
+			it('moves the tools to a window that a tool call opened only after the call returns', async () => {
+				const { server, toolOn, openWindow, currentWindow, click } = await setupWithSession();
+				const listener = vi.fn();
+				server.setCurrentWindowListener(listener);
+				let windowWhileRunning: string | undefined;
+				vi.mocked(toolOn('browser_click').execute).mockImplementationOnce(async () => {
+					openWindow('page-2');
+					// The toolkit builds the result from the active page at this point.
+					windowWhileRunning = currentWindow();
+					return { content: [{ type: 'text', text: 'clicked e1' }] };
+				});
+
+				await click();
+
+				expect(windowWhileRunning).toBe('page-1');
+				expect(currentWindow()).toBe('page-2');
+				// The live view still shows the new window at once.
+				expect(listener).toHaveBeenCalledTimes(1);
+			});
+
+			it('moves the tools to a new window only after every parallel tool call returns', async () => {
+				const { toolOn, openWindow, currentWindow, click } = await setupWithSession();
+				let finishFirst: () => void = () => {};
+				let finishSecond: () => void = () => {};
+				vi.mocked(toolOn('browser_click').execute)
+					.mockImplementationOnce(async () => {
+						await new Promise<void>((resolve) => {
+							finishFirst = resolve;
+						});
+						return { content: [{ type: 'text', text: 'clicked e1' }] };
+					})
+					.mockImplementationOnce(async () => {
+						await new Promise<void>((resolve) => {
+							finishSecond = resolve;
+						});
+						return { content: [{ type: 'text', text: 'clicked e2' }] };
+					});
+
+				const first = click();
+				const second = click();
+				await vi.waitFor(() => expect(toolOn('browser_click').execute).toHaveBeenCalledTimes(2));
+				openWindow('page-2');
+				finishFirst();
+				await first;
+
+				// The second call still runs in the first window.
+				expect(currentWindow()).toBe('page-1');
+
+				finishSecond();
+				await second;
+
+				expect(currentWindow()).toBe('page-2');
+			});
+
+			it('moves the tools to the current window when a tool call fails', async () => {
+				const { toolOn, openWindow, currentWindow, click } = await setupWithSession();
+				vi.mocked(toolOn('browser_click').execute).mockImplementationOnce(async () => {
+					openWindow('page-2');
+					throw new Error('Click failed');
+				});
+
+				await click();
+
+				expect(currentWindow()).toBe('page-2');
+			});
+
+			it('keeps the top window current when a window below it closes', async () => {
+				const { openWindow, closeWindow, currentWindow } = await setupWithSession();
+				openWindow('page-2');
+				openWindow('page-3');
+
+				closeWindow('page-2');
+				expect(currentWindow()).toBe('page-3');
+
+				closeWindow('page-3');
+				expect(currentWindow()).toBe('page-1');
+			});
+		});
+
+		describe('current window listener', () => {
+			it('is called only when the current window changes', async () => {
+				const { server, openWindow, closeWindow } = await setupWithSession();
+				const listener = vi.fn();
+				server.setCurrentWindowListener(listener);
+
+				openWindow('page-2');
+				expect(listener).toHaveBeenCalledTimes(1);
+
+				// Known windows, unknown windows and windows below the top change nothing.
+				openWindow('page-2');
+				closeWindow('page-9');
+				openWindow('page-3');
+				closeWindow('page-2');
+				expect(listener).toHaveBeenCalledTimes(2);
+
+				closeWindow('page-3');
+				expect(listener).toHaveBeenCalledTimes(3);
+			});
+
+			it('is not called for a session that was replaced', async () => {
+				const { server, toolkits, start } = setup();
+				const listener = vi.fn();
+				server.setCurrentWindowListener(listener);
+				await start({ url: 'https://one.example.com' });
+				await start({ url: 'https://two.example.com' });
+
+				toolkits[0].adapter.onPageChange?.({ type: 'opened', pageId: 'page-2' });
+				expect(listener).not.toHaveBeenCalled();
+
+				toolkits[1].adapter.onPageChange?.({ type: 'opened', pageId: 'page-2' });
+				expect(listener).toHaveBeenCalledTimes(1);
+			});
+
+			it('is not called when the connection is gone', async () => {
+				const { server, toolkit, openWindow } = await setupWithSession();
+				const listener = vi.fn();
+				server.setCurrentWindowListener(listener);
+				toolkit.connection.getConnection = () => {
+					throw new Error('Not connected');
+				};
+
+				openWindow('page-2');
+
+				expect(listener).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('window change note', () => {
+			it('notes a window that a tool call opened', async () => {
+				const { toolkit, toolOn, openWindow, click } = await setupWithSession();
+				toolkit.adapter.getPageUrl.mockReturnValue('https://login.example.com/sign-in');
+				vi.mocked(toolOn('browser_click').execute).mockImplementationOnce(async () => {
+					openWindow('page-2');
+					return { content: [{ type: 'text', text: 'clicked e1' }] };
+				});
+
+				const result = await click();
+
+				expect(result).toEqual({
+					content: [
+						{ type: 'text', text: 'clicked e1' },
+						{ type: 'text', text: openedNote('page-2', 'login.example.com') },
+					],
+				});
+				expect(toolkit.adapter.getPageUrl).toHaveBeenCalledWith('page-2');
+			});
+
+			it('notes a window change once', async () => {
+				const { openWindow, click } = await setupWithSession();
+				openWindow('page-2');
+				await click();
+
+				const result = await click();
+
+				expect(result).toEqual({ content: [{ type: 'text', text: 'clicked e1' }] });
+			});
+
+			it('notes a window that closed', async () => {
+				const { toolkit, openWindow, closeWindow, click } = await setupWithSession();
+				toolkit.adapter.getPageUrl.mockReturnValue('https://example.com/');
+				openWindow('page-2');
+				await click();
+				closeWindow('page-2');
+
+				const result = await click();
+
+				expect(result.content).toEqual([
+					{ type: 'text', text: 'clicked e1' },
+					{ type: 'text', text: closedNote('example.com') },
+				]);
+			});
+
+			it('notes nothing when a window opened and closed between two calls', async () => {
+				const { openWindow, closeWindow, click } = await setupWithSession();
+				openWindow('page-2');
+				closeWindow('page-2');
+
+				const result = await click();
+
+				expect(result).toEqual({ content: [{ type: 'text', text: 'clicked e1' }] });
+			});
+
+			it('puts the note first in the structured content', async () => {
+				const { toolOn, openWindow, click } = await setupWithSession();
+				vi.mocked(toolOn('browser_click').execute).mockResolvedValueOnce({
+					content: [{ type: 'text', text: 'clicked e1' }],
+					structuredContent: { clicked: true },
+				});
+				openWindow('page-2');
+
+				const result = await click();
+
+				expect(result.structuredContent).toEqual({
+					windowChange: openedNote('page-2'),
+					clicked: true,
+				});
+				expect(Object.keys(result.structuredContent ?? {})[0]).toBe('windowChange');
+			});
+		});
+
+		describe('tool calls', () => {
+			it('runs a call that names the current window', async () => {
+				const { server, toolOn, openWindow } = await setupWithSession();
+				openWindow('page-2');
+
+				await server.callTool({
+					name: 'browser_click',
+					arguments: { ref: 'e1', pageId: 'page-2' },
+				});
+
+				expect(toolOn('browser_click').execute).toHaveBeenCalled();
+			});
+
+			it('refuses a call with the pageId of a window below the current one', async () => {
+				const { server, toolOn, openWindow } = await setupWithSession();
+				openWindow('page-2');
+
+				const result = await server.callTool({
+					name: 'browser_click',
+					arguments: { ref: 'e1', pageId: 'page-1' },
+				});
+
+				expect(result).toEqual(otherWindowResult);
+				expect(toolOn('browser_click').execute).not.toHaveBeenCalled();
+			});
+
+			it('refuses to close the first window', async () => {
+				const { server, toolOn } = await setupWithSession();
+
+				const result = await server.callTool({
+					name: 'browser_tab_close',
+					arguments: { pageId: 'page-1' },
+				});
+
+				expect(result).toEqual({
+					content: [
+						{
+							type: 'text',
+							text: 'This is the first window of the session, so it cannot be closed. Only a window that a site opened can be closed.',
+						},
+					],
+					isError: true,
+				});
+				expect(toolOn('browser_tab_close').execute).not.toHaveBeenCalled();
+			});
+
+			it('closes a window that a site opened', async () => {
+				const { server, toolOn, openWindow, closeWindow, currentWindow } = await setupWithSession();
+				openWindow('page-2');
+				vi.mocked(toolOn('browser_tab_close').execute).mockImplementationOnce(async () => {
+					closeWindow('page-2');
+					return { content: [{ type: 'text', text: 'closed page-2' }] };
+				});
+
+				const result = await server.callTool({
+					name: 'browser_tab_close',
+					arguments: { pageId: 'page-2' },
+				});
+
+				// The agent never saw page-2, so no change is noted.
+				expect(result).toEqual({ content: [{ type: 'text', text: 'closed page-2' }] });
+				expect(currentWindow()).toBe('page-1');
+			});
+
+			it('refuses to close a window other than the current one', async () => {
+				const { server, toolOn, openWindow } = await setupWithSession();
+				openWindow('page-2');
+
+				const result = await server.callTool({
+					name: 'browser_tab_close',
+					arguments: { pageId: 'page-1' },
+				});
+
+				expect(result).toEqual(otherWindowResult);
+				expect(toolOn('browser_tab_close').execute).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('live view', () => {
+			it('looks up no target id with one window', async () => {
+				const { server, sessionProvider, toolkit } = await setupWithSession();
+				sessionProvider.getSessionLiveViewUrl.mockResolvedValue('https://live.example.com/1');
+
+				expect(await server.getLiveView()).toEqual({
+					status: 'live',
+					liveViewUrl: 'https://live.example.com/1',
+					windowId: 'page-1',
+				});
+				expect(toolkit.adapter.getTargetId).not.toHaveBeenCalled();
+				expect(sessionProvider.getSessionLiveViewUrl).toHaveBeenCalledWith(
+					scope,
+					'sess-1',
+					undefined,
+				);
+			});
+
+			it('shows the current window when a site opened one', async () => {
+				const { server, sessionProvider, toolkit, openWindow } = await setupWithSession();
+				sessionProvider.getSessionLiveViewUrl.mockResolvedValue('https://live.example.com/2');
+				openWindow('page-2');
+
+				expect(await server.getLiveView()).toEqual({
+					status: 'live',
+					liveViewUrl: 'https://live.example.com/2',
+					windowId: 'page-2',
+				});
+				expect(toolkit.adapter.getTargetId).toHaveBeenCalledWith('page-2');
+				expect(sessionProvider.getSessionLiveViewUrl).toHaveBeenCalledWith(
+					scope,
+					'sess-1',
+					'target-page-2',
+				);
+			});
+
+			it('asks for the first tab when the current window has no target id', async () => {
+				const { server, sessionProvider, toolkit, openWindow } = await setupWithSession();
+				sessionProvider.getSessionLiveViewUrl.mockResolvedValue('https://live.example.com/1');
+				toolkit.adapter.getTargetId.mockResolvedValue(undefined);
+				openWindow('page-2');
+
+				expect(await server.getLiveView()).toMatchObject({ status: 'live', windowId: 'page-2' });
+				expect(sessionProvider.getSessionLiveViewUrl).toHaveBeenCalledWith(
+					scope,
+					'sess-1',
+					undefined,
+				);
+			});
+
+			it('shows the first window again when the popup closes', async () => {
+				const { server, sessionProvider, toolkit, openWindow, closeWindow } =
+					await setupWithSession();
+				sessionProvider.getSessionLiveViewUrl.mockResolvedValue('https://live.example.com/1');
+				openWindow('page-2');
+				closeWindow('page-2');
+
+				expect(await server.getLiveView()).toMatchObject({ status: 'live', windowId: 'page-1' });
+				expect(toolkit.adapter.getTargetId).not.toHaveBeenCalled();
 			});
 		});
 	});

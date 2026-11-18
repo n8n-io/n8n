@@ -1060,6 +1060,7 @@ describe('InstanceAiController', () => {
 			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.INSTANCE_AI.USER_STOPPED_RUN, {
 				user_id: USER_ID,
 				thread_id: THREAD_ID,
+				runtime: 'instance-ai',
 			});
 		});
 
@@ -1160,11 +1161,16 @@ describe('InstanceAiController', () => {
 			cloudBrowserService.getLiveView.mockResolvedValue({
 				status: 'live',
 				liveViewUrl: 'https://live.example.com/view',
+				windowId: 'page-1',
 			});
 
 			const result = await controller.cloudBrowserLiveView(req, res, THREAD_ID, 'task-1');
 
-			expect(result).toEqual({ status: 'live', liveViewUrl: 'https://live.example.com/view' });
+			expect(result).toEqual({
+				status: 'live',
+				liveViewUrl: 'https://live.example.com/view',
+				windowId: 'page-1',
+			});
 			expect(cloudBrowserService.getLiveView).toHaveBeenCalledWith(USER_ID, THREAD_ID, 'task-1');
 		});
 

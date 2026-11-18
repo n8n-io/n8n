@@ -604,6 +604,7 @@ export class InstanceAiController {
 		this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_STOPPED_RUN, {
 			user_id: req.user.id,
 			thread_id: threadId,
+			runtime: 'instance-ai',
 		});
 		return { ok: true };
 	}

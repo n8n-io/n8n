@@ -2083,6 +2083,7 @@ describe('TelemetryEventRelay', () => {
 				packageNodeNames: ['CustomNode1', 'CustomNode2'],
 				packageAuthor: 'John Smith',
 				packageAuthorEmail: 'john@example.com',
+				source: 'mcp',
 			};
 
 			eventService.emit('community-package-installed', event);
@@ -2097,6 +2098,7 @@ describe('TelemetryEventRelay', () => {
 				package_author: 'John Smith',
 				package_author_email: 'john@example.com',
 				failure_reason: undefined,
+				source: 'mcp',
 			});
 		});
 
