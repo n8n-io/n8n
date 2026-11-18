@@ -134,7 +134,7 @@ function parseDefaultValue(
 	value: string | undefined,
 	type: FromAIArgumentType = 'string',
 ): string | number | boolean | Record<string, unknown> | undefined {
-	if (value === undefined || value.trim() === '') return value;
+	if (value === undefined || isBlankFromAINumberDefault(type, value)) return value;
 
 	const lowerValue = value.toLowerCase();
 	if (type === 'string') {

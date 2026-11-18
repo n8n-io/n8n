@@ -35,16 +35,16 @@ import { logAiEvent } from './log-ai-event';
 import { N8nBinaryLoader } from './n8n-binary-loader';
 import { N8nJsonLoader } from './n8n-json-loader';
 
-export async function callMethodAsync<T>(
+export async function callMethodAsync<T, Result>(
 	this: T,
 	parameters: {
 		executeFunctions: IExecuteFunctions | ISupplyDataFunctions;
 		connectionType: NodeConnectionType;
 		currentNodeRunIndex: number;
-		method: (...args: any[]) => Promise<unknown>;
+		method: (...args: any[]) => Promise<Result>;
 		arguments: unknown[];
 	},
-): Promise<unknown> {
+): Promise<Result> {
 	try {
 		return await parameters.method.call(this, ...parameters.arguments);
 	} catch (e) {
@@ -104,6 +104,26 @@ export function callMethodSync<T>(
 			{ functionality: 'configuration-node' },
 		);
 	}
+}
+
+export async function logToolCall<T extends NonNullable<IDataObject[string]>>(
+	executeFunctions: IExecuteFunctions | ISupplyDataFunctions,
+	inputData: IDataObject,
+	invoke: (runIndex: number) => Promise<T>,
+): Promise<T> {
+	const connectionType = NodeConnectionTypes.AiTool;
+	const { index } = executeFunctions.addInputData(connectionType, [[{ json: inputData }]]);
+	const response = await callMethodAsync({
+		executeFunctions,
+		connectionType,
+		currentNodeRunIndex: index,
+		method: async () => await invoke(index),
+		arguments: [],
+	});
+
+	logAiEvent(executeFunctions, 'ai-tool-called', { ...inputData, response });
+	executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
+	return response;
 }
 
 export function logWrapper<
@@ -418,9 +438,9 @@ export function logWrapper<
 
 			// ========== Tool ==========
 			if (isToolsInstance(originalInstance)) {
-				if (prop === '_call' && '_call' in target) {
+				if (prop === '_call' && '_call' in target && typeof target._call === 'function') {
+					const call = target._call.bind(target);
 					return async (query: string): Promise<string> => {
-						connectionType = NodeConnectionTypes.AiTool;
 						const inputData: IDataObject = { query };
 
 						if (target.metadata?.isFromToolkit) {
@@ -429,23 +449,12 @@ export function logWrapper<
 								description: target.description,
 							};
 						}
-						const { index } = executeFunctions.addInputData(connectionType, [
-							[{ json: inputData }],
-						]);
-
-						const response = (await callMethodAsync.call(target, {
+						const response = await logToolCall(
 							executeFunctions,
-							connectionType,
-							currentNodeRunIndex: index,
-							method: (target[prop] as (...args: any[]) => Promise<unknown>).bind(target),
-							arguments: [query],
-						})) as string;
-
-						logAiEvent(executeFunctions, 'ai-tool-called', { ...inputData, response });
-						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
-
-						if (typeof response === 'string') return response;
-						return JSON.stringify(response);
+							inputData,
+							async () => await call(query),
+						);
+						return typeof response === 'string' ? response : JSON.stringify(response);
 					};
 				}
 			}

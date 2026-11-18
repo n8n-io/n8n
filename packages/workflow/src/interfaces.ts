@@ -1565,7 +1565,8 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		addExecutionHints(...hints: NodeExecutionHint[]): void;
 		cloneWith(replacements: {
 			runIndex: number;
-			inputData: INodeExecutionData[][];
+			/** Omit to read a tool run whose input was already recorded. */
+			inputData?: INodeExecutionData[][];
 		}): ISupplyDataFunctions;
 	};
 
