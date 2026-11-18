@@ -23,13 +23,13 @@ import { useN8nAssistantIdentity } from '@/features/agents/n8nChatPage/composabl
 
 import { provideArtifactThread } from '../artifactThread';
 import {
-	ASSISTANT_AGENT_ACCEPTED_MIME_TYPES,
 	ASSISTANT_AGENT_ID,
 	ASSISTANT_AGENT_PROJECT_ID,
 	ASSISTANT_AGENT_THREAD_ID,
 } from '../assistantAgent/assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
 import { assistantConfirmationExtension } from '../assistantAgent/assistantConfirmation';
+import { useAssistantAgentAttachmentRules } from '../assistantAgent/useAssistantAgentAttachmentRules';
 import { assistantSharedFilesExtension } from '../assistantAgent/assistantSharedFiles';
 import {
 	useAssistantAgentMessageTelemetry,
@@ -95,6 +95,7 @@ provide(ASSISTANT_AGENT_THREAD_ID, props.threadId);
 provide(ASSISTANT_AGENT_PROJECT_ID, props.subject.projectId);
 
 const i18n = useI18n();
+const attachmentRules = useAssistantAgentAttachmentRules();
 const rootStore = useRootStore();
 const settingsStore = useInstanceAiSettingsStore();
 const threadsStore = useAssistantAgentThreadsStore();
@@ -276,7 +277,8 @@ defineExpose({
 		:new-session="isNewSession"
 		:agent-config="agentConfig"
 		empty-state-icon="n8n-assistant"
-		:accepted-mime-types="ASSISTANT_AGENT_ACCEPTED_MIME_TYPES"
+		:accepted-mime-types="attachmentRules.acceptedMimeTypes.value"
+		:max-attachment-bytes="attachmentRules.maxAttachmentBytes.value"
 		agent-status="production"
 		:connected-triggers="[]"
 		channel="system"

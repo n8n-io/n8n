@@ -37,6 +37,10 @@ import { SYSTEM_CHAT_SOURCE, systemChatFileScope } from '../utils/agent-thread-a
 import { isOlderChatHistoryPage, parseChatHistoryPage } from '../utils/chat-history-page';
 import { ownCheckpoint, threadMessagesResponse } from '../utils/messages-envelope';
 import { parseThreadListLimit } from '../utils/parse-thread-list-limit';
+import {
+	type SystemAgentChatUploads,
+	systemAgentChatUploadMiddleware,
+} from './system-agent-chat-upload.middleware';
 import { SystemAgentExecutionService } from './system-agent-execution.service';
 
 /**
@@ -66,11 +70,13 @@ export class SystemAgentChatController {
 
 	/**
 	 * Queue a message. An existing session keeps its working project. A new
-	 * session needs `projectId` in the query.
+	 * session needs `projectId` in the query. The message is JSON, or
+	 * `multipart/form-data` when it has files that can be larger than the JSON
+	 * body limit (see `systemAgentChatUploadMiddleware`).
 	 */
-	@Post('/:agentId/chat', { usesTemplates: true })
+	@Post('/:agentId/chat', { usesTemplates: true, middlewares: [systemAgentChatUploadMiddleware] })
 	async chat(
-		req: AuthenticatedRequest,
+		req: AuthenticatedRequest & SystemAgentChatUploads,
 		res: FlushableResponse,
 		@Param('agentId') agentId: string,
 		@Body payload: SystemAgentChatMessageDto,
@@ -92,6 +98,8 @@ export class SystemAgentChatController {
 					storeAttachments: async (threadId, projectId) =>
 						await this.chatRelay.storeChatAttachments({
 							attachments,
+							uploads: req.chatUploads,
+							maxUploadBytes: req.chatUploadMaxBytes,
 							agentId,
 							projectId,
 							threadId,

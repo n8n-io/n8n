@@ -477,6 +477,12 @@ export type FrontendModuleSettings = {
 		knowledgeBaseEnabled: boolean;
 		/** Whether the AI Assistant proxy is available to the agents module. */
 		proxyEnabled: boolean;
+		/**
+		 * The most data, in bytes, that an agent copies into its sandbox in one
+		 * step. With sandbox files, the n8n Assistant chat takes files up to
+		 * this size. Controlled via `N8N_AGENTS_FILES_MAX_IMPORT_MB`.
+		 */
+		maxImportBytes?: number;
 	};
 
 	/**
