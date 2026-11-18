@@ -29,6 +29,7 @@ import type { IWorkflowSettings } from 'n8n-workflow';
  * state). It takes the props and slots of the shell's `ResourcesListLayout`.
  * `node-icon` is the icon of a node type, by its name. It shows a generic icon while the node
  * types load and when the instance does not know the type.
+ * `page-actions` holds the actions that the shell adds to the header of a page.
  */
 export type ModuleComponentSlot =
 	| 'project-filter'
@@ -39,7 +40,8 @@ export type ModuleComponentSlot =
 	| 'project-header'
 	| 'insights-summary'
 	| 'resources-list-layout'
-	| 'node-icon';
+	| 'node-icon'
+	| 'page-actions';
 
 /**
  * The `v-model` value of the `project-filter` slot. `null` means "all projects".
@@ -79,6 +81,10 @@ export type SlotWorkflowDiffProps = {
 
 export type SlotWorkflowDiffPlaceholderProps = {
 	hideIllustration?: boolean;
+};
+
+export type SlotPageActionsProps = {
+	pageId: string;
 };
 
 export type SlotNodeIconProps = {

@@ -9,6 +9,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 
 import { useFocusEntry } from '../composables/useFocusEntry';
 import { usePageOpening } from '../composables/usePageOpening';
+import UpdatePageWithAiButton from './UpdatePageWithAiButton.vue';
 
 /**
  * Shows a page in a panel on the right of the window and edits it in place.
@@ -55,6 +56,12 @@ function closeOpenModals(): void {
 		.forEach(([name]) => uiStore.closeModal(name));
 }
 
+/** Leaves the view clear for the assistant, which opens in its place. */
+function closeForAssistant(): void {
+	closeOpenModals();
+	emit('close');
+}
+
 /**
  * Opens the page view, then closes the modals, because they would cover it.
  * The modals close last, so that a route change of a closing modal cannot replace the page view.
@@ -98,6 +105,7 @@ async function startTourOnCanvas(): Promise<void> {
 			>
 				{{ saveStatusLabel }}
 			</N8nText>
+			<UpdatePageWithAiButton :page-id="pageId" @started="closeForAssistant" />
 			<N8nButton
 				v-if="canStartTour"
 				variant="ghost"

@@ -1825,6 +1825,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `node_error_view` — "Ask AI" from a node error / failed-execution view
  * - `workflow_error_nudge` — nudge on a workflow error toast that opens the Assistant to fix the run
  * - `workflow_pages_button`: "Document with AI" in the pages popover of the workflow editor
+ * - `page_update_button`: "Update with AI" in the header of a page
  * - `credential_edit` — credential setup help from the credential edit modal
  * - `credentials_list` — credential setup help from the credentials list
  * - `agent_builder_page` — Instance AI hand-off from the agent builder
@@ -1849,6 +1850,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'node_error_view',
 	'workflow_error_nudge',
 	'workflow_pages_button',
+	'page_update_button',
 	'credential_edit',
 	'credentials_list',
 	'agent_builder_page',
@@ -1898,6 +1900,8 @@ export type InstanceAiThreadSourcePersisted =
  *   finding row or after an automated migration left work behind
  * - `handoff_document_workflow`: write a page that documents a workflow, from
  *   the pages popover of the workflow editor
+ * - `handoff_update_page`: correct a page so that it matches the resources that it links, from
+ *   the header of the page
  * - `template_adjustment` — "start from this template and help me adapt it",
  *   from the in-app template preview or an n8n.io deep link
  * - `template_example` — a featured example card on the empty state
@@ -1922,6 +1926,7 @@ export const INSTANCE_AI_PREFILL_TYPES = [
 	'handoff_agent_change_request',
 	'handoff_migration_report',
 	'handoff_document_workflow',
+	'handoff_update_page',
 	'template_adjustment',
 	'template_example',
 	'suggestion_catalog',

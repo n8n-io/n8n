@@ -46,6 +46,7 @@ const pageStore = usePageStore();
 const getInstanceLocation = useInstanceLocation();
 
 const ProjectHeader = computed(() => componentRegistry.get('project-header'));
+const PageActions = computed(() => componentRegistry.get('page-actions'));
 const pageEditor = useTemplateRef<InstanceType<typeof PageEditor>>('pageEditor');
 
 function toRouteParam(value: unknown): string | undefined {
@@ -204,6 +205,7 @@ watch(selectedPageId, () => {
 						>
 							{{ saveStatusLabel }}
 						</N8nText>
+						<component :is="PageActions" v-if="PageActions" :page-id="selectedPageId" />
 						<N8nButton
 							v-if="canStartTour"
 							variant="ghost"

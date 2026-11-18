@@ -57,6 +57,13 @@ export const registerComponentSlots = () => {
 	);
 
 	componentRegistry.register(
+		'page-actions',
+		defineAsyncComponent(
+			async () => await import('@/features/pages/components/UpdatePageWithAiButton.vue'),
+		),
+	);
+
+	componentRegistry.register(
 		'node-icon',
 		defineAsyncComponent(
 			async () => await import('@/features/pages/components/NodeTypeIconSlot.vue'),
