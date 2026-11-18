@@ -661,8 +661,6 @@ async function commitAndPush() {
 	}
 }
 
-const modalHeight = computed(() => (changes.value.workflow.length ? 'min(80vh, 850px)' : 'auto'));
-
 watch(
 	() => filters.value.status,
 	(status) => {
@@ -930,12 +928,7 @@ onMounted(async () => {
 		v-if="!isLoading"
 		:open="modalOpen"
 		size="2xlarge"
-		:container-class="
-			[
-				$style.sourceControlPush,
-				modalHeight === 'auto' ? $style.autoHeight : $style.fixedHeight,
-			].join(' ')
-		"
+		:container-class="[$style.sourceControlPush, $style.fixedHeight].join(' ')"
 		@update:open="onDialogOpenUpdate"
 	>
 		<N8nDialogHeader>
@@ -1489,13 +1482,7 @@ onMounted(async () => {
 .fixedHeight {
 	/* Previous dialog height. No spacing token for 850px. */
 	height: min(80vh, 850px);
-	display: flex;
-	flex-direction: column;
 	overflow: hidden;
-}
-
-.autoHeight {
-	height: auto;
 }
 
 .table {
