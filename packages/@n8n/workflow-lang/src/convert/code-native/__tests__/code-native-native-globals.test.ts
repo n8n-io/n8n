@@ -172,6 +172,101 @@ const CASES: Case[] = [
 	),
 ];
 
+/**
+ * The methods that the translator implements for a Map, a Set and the two Intl formatters
+ * (`COLLECTION_METHODS` and the `intlFormat` form of `translate.ts`). Each must compile through
+ * a const, in a `for…of` loop, and as an argument of a call that reads the whole value.
+ */
+const IMPLEMENTED: Case[] = [
+	{
+		name: 'Map methods through a const',
+		code: code(
+			[
+				'const m = new Map();',
+				"m.set('a', 1);",
+				"const got = String(m.get('a')), has = String(m.has('a'));",
+				'm.delete("a"); m.clear();',
+				'const seen = [];',
+				'm.forEach((v, k) => seen.push([k, v]));',
+				'const parts = [String(seen.length), String(m.size)];',
+			],
+			'parts.join("|")',
+		),
+	},
+	{
+		name: 'Map.entries in a for-of',
+		code: [
+			'const m = new Map();',
+			"m.set('a', 1); m.set('b', 2);",
+			'const out = [];',
+			'for (const [k, v] of m.entries()) out.push(k + v);',
+			'return [{ json: { out } }];',
+		].join('\n'),
+	},
+	{
+		name: 'Map.keys and Map.values in a for-of',
+		code: [
+			'const m = new Map();',
+			"m.set('a', 1);",
+			'const out = [];',
+			'for (const k of m.keys()) out.push(k);',
+			'for (const v of m.values()) out.push(v);',
+			'return [{ json: { out } }];',
+		].join('\n'),
+	},
+	{
+		name: 'Set methods through a const',
+		code: [
+			'const s = new Set([1, 2]);',
+			's.add(3);',
+			'const has = String(s.has(2));',
+			's.delete(1);',
+			'const out = [];',
+			's.forEach((v) => out.push(v));',
+			's.clear();',
+			'return [{ json: { has, out, n: s.size } }];',
+		].join('\n'),
+	},
+	{
+		name: 'Set.entries in a for-of',
+		code: [
+			"const s = new Set(['x']);",
+			'const out = [];',
+			'for (const [k, v] of s.entries()) out.push(k + v);',
+			'for (const v of s.values()) out.push(v);',
+			'for (const v of s.keys()) out.push(v);',
+			'return [{ json: { out } }];',
+		].join('\n'),
+	},
+	{
+		name: 'a Map as a call argument',
+		code: [
+			'const m = new Map();',
+			"m.set('a', 1);",
+			'const out = [JSON.stringify(Object.fromEntries(m)), JSON.stringify([...m])];',
+			'return [{ json: { out } }];',
+		].join('\n'),
+	},
+	{
+		name: 'a Set as a call argument',
+		code: [
+			'const s = new Set([1, 2]);',
+			'const out = [JSON.stringify(Array.from(s)), JSON.stringify({ s })];',
+			'return [{ json: { out } }];',
+		].join('\n'),
+	},
+	{
+		name: 'Intl formatters through a const',
+		code: code(
+			[
+				`const d = new Intl.DateTimeFormat('en-CA', ${FORMAT});`,
+				`const n = new Intl.NumberFormat('en-CA', ${NUMBER});`,
+			],
+			`d.format(new Date(0)) + String(n.format(12.345)) + JSON.stringify(d.formatToParts(new Date(0)).length)`,
+		),
+	},
+];
+
 describe.skipIf(!taskRunnerAvailable())("native Code nodes on the values of native globals", () => {
 	beforeAll(async () => await startRunner(), 120_000);
 
@@ -187,5 +282,11 @@ describe.skipIf(!taskRunnerAvailable())("native Code nodes on the values of nati
 			return;
 		}
 		expect(native).toEqual(runner);
+	});
+
+	// The methods that the native form has stay compiled: the kind rules must not refuse them.
+	it.each(IMPLEMENTED)('still compiles and gives the result of v1: $name', async (c) => {
+		const native = nativeCode(c.code, 'all', [{ a: 1 }]);
+		expect(native).toEqual(await runnerCode(c.code, 'all', [{ a: 1 }]));
 	});
 });

@@ -7011,6 +7011,9 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			if (ts.isShorthandPropertyAssignment(at)) return true;
 			if (!ts.isCallExpression(at)) return false;
 			const callee = stripParens(at.expression);
+			// The compiled engine's own helpers (`__entries`, `__plain`, …) and the native helpers
+			// take the value as it is and read it.
+			if (ts.isIdentifier(callee)) return callee.text.startsWith('__');
 			if (!ts.isPropertyAccessExpression(callee) || !ts.isIdentifier(callee.expression)) {
 				return false;
 			}
