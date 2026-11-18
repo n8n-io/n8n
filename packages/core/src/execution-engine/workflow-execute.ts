@@ -56,6 +56,7 @@ import {
 	TimeoutExecutionCancelledError,
 	ManualExecutionCancelledError,
 	createRunExecutionData,
+	deepCopy,
 	applyDynamicCredentialsUsage,
 	hasExecutionRunNodes,
 	isExecutionOutputRedacted,
@@ -3164,7 +3165,9 @@ export class WorkflowExecute {
 							errorItems.push({
 								...item,
 								json: {
-									...pairedInputItem.json,
+									// The data proxy of a scripting node returns nested values as
+									// proxies. Run data must hold plain values.
+									...deepCopy(pairedInputItem.json),
 									...item.json,
 								},
 							});
