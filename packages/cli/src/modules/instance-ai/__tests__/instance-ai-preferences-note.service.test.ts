@@ -72,7 +72,7 @@ describe('InstanceAiPreferencesNoteService', () => {
 				user_id: 'user-1',
 				thread_id: 'thread-1',
 				variant: 'variant',
-				'$feature/145_assistant_empty_preferences_note': 'variant',
+				'$feature/147_assistant_empty_preferences_note': 'variant',
 			},
 		);
 	});
@@ -90,7 +90,7 @@ describe('InstanceAiPreferencesNoteService', () => {
 			TELEMETRY_EVENT.CONTEXT.ASSISTANT_PREFERENCES_NOTE_EXPOSED,
 			expect.objectContaining({
 				variant: 'control',
-				'$feature/145_assistant_empty_preferences_note': 'control',
+				'$feature/147_assistant_empty_preferences_note': 'control',
 			}),
 		);
 	});

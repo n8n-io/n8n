@@ -53,7 +53,7 @@ export class InstanceAiPreferencesNoteService {
 			user_id: user.id,
 			thread_id: threadId,
 			variant,
-			'$feature/145_assistant_empty_preferences_note': variant,
+			'$feature/147_assistant_empty_preferences_note': variant,
 		});
 
 		return variant === 'variant'

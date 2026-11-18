@@ -119,7 +119,7 @@ const preferenceExampleId = z
 const emptyPreferencesNoteVariant = z
 	.enum(['control', 'variant'])
 	.describe(
-		'Variant of the 145_assistant_empty_preferences_note feature flag. Only the treatment adds the note',
+		'Variant of the 147_assistant_empty_preferences_note feature flag. Only the treatment adds the note',
 	);
 
 const recommendedSkillsVariant = z
@@ -289,12 +289,12 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	ASSISTANT_PREFERENCES_NOTE_EXPOSED: {
 		name: 'Assistant preferences note exposed',
 		description:
-			'An n8n Assistant turn of a user with no saved preferences reached the point where experiment 145 adds a note about preferences. Fires in both arms, at most 3 times for each user and at most once in 24 hours. Only `variant` adds the note, which tells the assistant to mention after the task that the user can save a preference. Use it as the exposure of the experiment.',
+			'An n8n Assistant turn of a user with no saved preferences reached the point where experiment 147 adds a note about preferences. Fires in both arms, at most 3 times for each user and at most once in 24 hours. Only `variant` adds the note, which tells the assistant to mention after the task that the user can save a preference. Use it as the exposure of the experiment.',
 		properties: z.object({
 			user_id: userId,
 			thread_id: z.string().describe('The n8n Assistant thread of the turn'),
 			variant: emptyPreferencesNoteVariant,
-			'$feature/145_assistant_empty_preferences_note': emptyPreferencesNoteVariant,
+			'$feature/147_assistant_empty_preferences_note': emptyPreferencesNoteVariant,
 		}),
 	},
 
