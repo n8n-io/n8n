@@ -16,6 +16,7 @@ import type { ToolHandlerResult } from '@/modules/mcp/mcp.types';
 import { shapeToStandardSchema } from '@/modules/mcp/tool-schema.util';
 
 import type { McpServerEntity } from './database/mcp-server.entities';
+import { joinLabel, matchTool, toLabel } from './mcp-server-insights';
 import { McpServerStoreService, type ResolvedTool } from './mcp-server-store.service';
 import { McpServerTargetsService } from './mcp-server-targets.service';
 
@@ -244,6 +245,11 @@ export class McpServerRuntimeService {
 					description: MISSING_TOOL_DESCRIPTION,
 					inputSchema: shapeToStandardSchema({
 						request: z.string().describe('What you need to do, in one sentence.'),
+						label: z
+							.string()
+							.describe(
+								'A short name for the capability, as a verb and a noun with underscores, for example "cancel_order". Use the same name each time you need the same capability.',
+							),
 					}),
 					annotations: { title: 'Request a missing tool', readOnlyHint: true },
 				},
@@ -251,17 +257,24 @@ export class McpServerRuntimeService {
 					if (!this.rateLimiter.take(server.id, caller.label, server.rateLimitPerMinute)) {
 						return errorResult('Rate limit reached. Wait a minute, then try again.');
 					}
+					const request = isRecord(args) && typeof args.request === 'string' ? args.request : null;
+					const label = isRecord(args) ? toLabel(args.label) : null;
 					await this.record(server, caller, clientName, {
 						kind: 'missing',
 						name: MISSING_TOOL_NAME,
 						status: 'ok',
-						intent: isRecord(args) && typeof args.request === 'string' ? args.request : null,
+						intent: joinLabel(label, request),
 					});
+					const toolNames = tools.map((tool) => tool.name);
+					const match =
+						matchTool(request ?? '', toolNames) ?? matchTool(label ?? '', toolNames, true);
 					return {
 						content: [
 							{
 								type: 'text',
-								text: 'No tool is available for this yet. The request is recorded for the server owner.',
+								text: match
+									? `The tool "${match}" can do this. Call it.`
+									: 'No tool is available for this yet. The request is recorded for the server owner.',
 							},
 						],
 					};

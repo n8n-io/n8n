@@ -34,6 +34,8 @@ const props = defineProps<{
 	serverId: string;
 	/** Changes when a call is recorded. The tab then reloads. */
 	liveTick: number;
+	/** Opens the tab on the calls of one session. */
+	initialSession?: string | null;
 }>();
 
 const i18n = useI18n();
@@ -46,7 +48,11 @@ const loading = ref(true);
 const tool = ref(ALL);
 const caller = ref(ALL);
 const status = ref(ALL);
-const session = ref<string | null>(null);
+const emit = defineEmits<{ 'session-change': [sessionId: string | null] }>();
+
+const session = ref<string | null>(props.initialSession ?? null);
+// The parent keeps the filter, so it is the same when the tab opens again.
+watch(session, (value) => emit('session-change', value));
 const selectedId = ref<string | null>(null);
 
 const statuses = mcpServerCallStatusSchema.options;
@@ -54,6 +60,12 @@ const statuses = mcpServerCallStatusSchema.options;
 const selected = computed<McpServerCallDto | null>(
 	() => data.value?.items.find((call) => call.id === selectedId.value) ?? null,
 );
+
+/** One session reads as a timeline: the first call is at the top. */
+const rows = computed(() => {
+	const items = data.value?.items ?? [];
+	return session.value ? [...items].reverse() : items;
+});
 
 function isStatus(value: string): value is McpServerCallStatus {
 	return (statuses as string[]).includes(value);
@@ -171,7 +183,7 @@ function openExecution(call: McpServerCallDto) {
 					</thead>
 					<tbody>
 						<tr
-							v-for="call in data.items"
+							v-for="call in rows"
 							:key="call.id"
 							:class="{ [$style.selectedRow]: call.id === selectedId }"
 							data-testid="mcp-server-logs-row"

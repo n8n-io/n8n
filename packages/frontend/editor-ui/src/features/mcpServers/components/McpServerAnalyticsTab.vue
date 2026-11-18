@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { McpServerAnalyticsDto } from '@n8n/api-types';
+import type { McpServerAnalyticsDto, McpServerMissingCapabilityDto } from '@n8n/api-types';
 import { N8nHeading, N8nLoading, N8nSegmentControl, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -15,6 +15,13 @@ type Days = '7' | '30' | '90';
 const props = defineProps<{
 	serverId: string;
 	liveTick: number;
+	/** True when the Assistant can build a tool for a missing request. */
+	canBuild?: boolean;
+}>();
+
+const emit = defineEmits<{
+	'build-tool': [request: McpServerMissingCapabilityDto];
+	'show-session': [sessionId: string];
 }>();
 
 const i18n = useI18n();
@@ -66,6 +73,7 @@ onMounted(() => void load());
 
 const tiles = computed(() => {
 	if (!data.value) return [];
+	const outcomes = data.value.sessionOutcomes;
 	return [
 		{ label: i18n.baseText('mcpServers.analytics.calls'), value: formatNumber(data.value.calls) },
 		{
@@ -80,8 +88,48 @@ const tiles = computed(() => {
 			label: i18n.baseText('mcpServers.analytics.callers'),
 			value: formatNumber(data.value.callers),
 		},
+		{
+			label: i18n.baseText('mcpServers.analytics.deadEnds'),
+			value: formatPercent(sessionCount.value ? outcomes.deadEnd / sessionCount.value : 0),
+		},
 	];
 });
+
+const sessionCount = computed(() => {
+	const outcomes = data.value?.sessionOutcomes;
+	return outcomes ? outcomes.completed + outcomes.failed + outcomes.deadEnd : 0;
+});
+
+const missingItems = computed(() =>
+	(data.value?.missingCapabilities ?? []).map((item) => ({
+		name: item.name,
+		count: item.count,
+		// With a label, the name is the label and the requests are the lines below it.
+		details: item.label ? item.examples.map((example) => `"${example}"`) : undefined,
+		note: i18n.baseText('mcpServers.analytics.missingCapabilities.note', {
+			interpolate: { sessions: item.sessions, clients: item.clients.join(', ') || '–' },
+		}),
+		done: item.resolvedBy
+			? i18n.baseText('mcpServers.analytics.missingCapabilities.resolved', {
+					interpolate: { tool: item.resolvedBy },
+				})
+			: undefined,
+	})),
+);
+
+function findMissing(name: string) {
+	return data.value?.missingCapabilities.find((item) => item.name === name);
+}
+
+function onBuild(name: string) {
+	const item = findMissing(name);
+	if (item) emit('build-tool', item);
+}
+
+function onShowSession(name: string) {
+	const sessionId = findMissing(name)?.lastSessionId;
+	if (sessionId) emit('show-session', sessionId);
+}
 
 const maxDay = computed(() => Math.max(1, ...(data.value?.byDay ?? []).map((day) => day.calls)));
 </script>
@@ -170,8 +218,15 @@ const maxDay = computed(() => Math.max(1, ...(data.value?.byDay ?? []).map((day)
 				/>
 				<McpServerBarList
 					:title="i18n.baseText('mcpServers.analytics.missingCapabilities')"
-					:items="data.missingCapabilities"
+					:items="missingItems"
+					:class="$style.wide"
+					:select-label="i18n.baseText('mcpServers.logs.showSession')"
 					:empty-text="i18n.baseText('mcpServers.analytics.missingCapabilities.empty')"
+					:action-label="
+						canBuild ? i18n.baseText('mcpServers.analytics.missingCapabilities.build') : undefined
+					"
+					@action="onBuild"
+					@select="onShowSession"
 				/>
 			</div>
 		</template>
@@ -270,5 +325,9 @@ const maxDay = computed(() => Math.max(1, ...(data.value?.byDay ?? []).map((day)
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 	gap: var(--spacing--xs);
+}
+
+.wide {
+	grid-column: 1 / -1;
 }
 </style>

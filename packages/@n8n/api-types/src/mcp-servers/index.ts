@@ -185,6 +185,21 @@ export interface McpServerCountDto {
 	count: number;
 }
 
+/** `name` is the label that the AI clients gave, or the request text when there is no label. */
+export interface McpServerMissingCapabilityDto extends McpServerCountDto {
+	label: string | null;
+	/** The first requests, in the words of the AI clients. */
+	examples: string[];
+	/** Number of sessions that made the request. */
+	sessions: number;
+	clients: string[];
+	/** Tools that the same sessions called before the request. */
+	precedingTools: string[];
+	/** Name of a tool on the server that can do the request. */
+	resolvedBy: string | null;
+	lastSessionId: string | null;
+}
+
 export interface McpServerAnalyticsDto {
 	days: number;
 	calls: number;
@@ -194,7 +209,9 @@ export interface McpServerAnalyticsDto {
 	byTool: McpServerCountDto[];
 	byClient: McpServerCountDto[];
 	byCaller: McpServerCountDto[];
-	missingCapabilities: McpServerCountDto[];
+	missingCapabilities: McpServerMissingCapabilityDto[];
+	/** Sessions by the outcome of their last call. A dead end is a request for a missing tool. */
+	sessionOutcomes: { completed: number; failed: number; deadEnd: number };
 	byDay: Array<{ date: string; calls: number; errors: number }>;
 }
 

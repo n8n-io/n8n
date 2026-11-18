@@ -39,6 +39,7 @@ import type {
 	McpServerToolEntity,
 } from './database/mcp-server.entities';
 import { McpServerRepository } from './database/mcp-server.repository';
+import { missingCapabilities, sessionOutcomes } from './mcp-server-insights';
 import {
 	McpServerTargetsService,
 	toToolName,
@@ -400,7 +401,13 @@ export class McpServerStoreService {
 	async analytics(id: string, days = 7): Promise<McpServerAnalyticsDto> {
 		await this.requireServer(id);
 		const since = new Date(Date.now() - days * DAY_MS);
-		const calls = await this.repository.listCallStatsSince([id], since);
+		const [calls, tools] = await Promise.all([
+			this.repository.listCallStatsSince([id], since),
+			this.repository.listTools([id]).then(async (rows) => await this.resolveTools(rows)),
+		]);
+		const toolNames = tools
+			.filter((tool) => tool.row.enabled && tool.target.available)
+			.map((tool) => tool.name);
 		const toolCalls = calls.filter((call) => call.kind === 'tool');
 		const errors = calls.filter((call) => isError(call.status)).length;
 		const byDay = new Map<string, { calls: number; errors: number }>();
@@ -428,10 +435,8 @@ export class McpServerStoreService {
 			byClient: countBy(calls, (call) => call.clientName ?? 'Unknown client'),
 			byCaller: countBy(calls, (call) => call.caller),
 			// ponytail: exact-match counts. Cluster the requests into themes if the list gets noisy.
-			missingCapabilities: countBy(
-				calls.filter((call) => call.kind === 'missing'),
-				(call) => call.intent?.trim().toLowerCase(),
-			),
+			missingCapabilities: missingCapabilities(calls, toolNames),
+			sessionOutcomes: sessionOutcomes(calls),
 			byDay: [...byDay.entries()].map(([date, value]) => ({ date, ...value })),
 		};
 	}

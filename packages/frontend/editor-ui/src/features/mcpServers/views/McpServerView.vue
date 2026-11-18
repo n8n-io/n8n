@@ -1,5 +1,9 @@
 <script lang="ts" setup>
-import type { McpServerDetailDto, PushMessage } from '@n8n/api-types';
+import type {
+	McpServerDetailDto,
+	McpServerMissingCapabilityDto,
+	PushMessage,
+} from '@n8n/api-types';
 import {
 	N8nActionToggle,
 	N8nButton,
@@ -139,6 +143,45 @@ function onSuggestion(index: number) {
 		position: index + 1,
 		prefillType: 'suggestion_catalog',
 	});
+}
+
+/** Asks the Assistant to build a tool that AI clients asked for but did not find. */
+async function onBuildMissingTool(item: McpServerMissingCapabilityDto) {
+	showAssistant.value = true;
+	await nextTick();
+	const evidence = item.precedingTools.length
+		? ` ${i18n.baseText('mcpServers.assistant.buildMissingTool.before', {
+				interpolate: { tools: item.precedingTools.join(', ') },
+			})}`
+		: '';
+	const toolName = item.label
+		? ` ${i18n.baseText('mcpServers.assistant.buildMissingTool.name', {
+				interpolate: { name: item.label },
+			})}`
+		: '';
+	aiPanelRef.value?.submitSuggestion({
+		prompt:
+			i18n.baseText('mcpServers.assistant.buildMissingTool', {
+				interpolate: {
+					request: item.examples.join(' / '),
+					count: item.count,
+					sessions: item.sessions,
+				},
+			}) +
+			evidence +
+			toolName,
+		suggestionId: 'mcp-server-missing-tool',
+		suggestionKind: 'prompt',
+		position: 1,
+		prefillType: 'suggestion_catalog',
+	});
+}
+
+const logsSession = ref<string | null>(null);
+
+function onShowSession(sessionId: string) {
+	logsSession.value = sessionId;
+	setTab('logs');
 }
 
 function onAssistantResize(data: ResizeData) {
@@ -542,11 +585,16 @@ onBeforeUnmount(() => {
 						v-else-if="activeTab === 'logs'"
 						:server-id="server.id"
 						:live-tick="liveTick"
+						:initial-session="logsSession"
+						@session-change="logsSession = $event"
 					/>
 					<McpServerAnalyticsTab
 						v-else-if="activeTab === 'analytics'"
 						:server-id="server.id"
 						:live-tick="liveTick"
+						:can-build="instanceAiAvailable"
+						@build-tool="onBuildMissingTool"
+						@show-session="onShowSession"
 					/>
 				</div>
 			</div>

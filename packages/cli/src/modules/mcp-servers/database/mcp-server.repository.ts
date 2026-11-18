@@ -258,6 +258,7 @@ export class McpServerRepository {
 				status: true,
 				durationMs: true,
 				intent: true,
+				sessionId: true,
 				createdAt: true,
 			},
 			order: { createdAt: 'ASC' },
