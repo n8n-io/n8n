@@ -13,6 +13,7 @@ import { BUFFER_HELPERS } from './buffer-helpers.ts';
 const RUNS_IN_HOST = '(no request to repeat: the fallback host runs the node)';
 import { LOCALE_HELPERS } from './locale-helpers.ts';
 import { LUXON_HELPERS } from './luxon-helpers.ts';
+import { TYPED_ARRAY_HELPERS } from './typed-array-helpers.ts';
 
 export interface CodeHelperSource {
 	uses: string[];
@@ -25,6 +26,7 @@ export const CODE_HELPERS: Record<string, CodeHelperSource> = {
 	...LUXON_HELPERS,
 	// Buffer values (\`buffer-helpers.ts\`).
 	...BUFFER_HELPERS,
+	...TYPED_ARRAY_HELPERS,
 	codeClone: {
 		uses: [],
 		source: `/** A JSON copy of an item list, as the fallback host gets it. */

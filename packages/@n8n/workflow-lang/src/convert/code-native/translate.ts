@@ -4324,6 +4324,90 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			'A Buffer has a native form only in a constant, and as the value of `toString`, `length`, `equals`, `slice`, `subarray`, `toJSON`, `Buffer.concat`, a hash and `timingSafeEqual`.',
 		);
 	};
+	// ---- Typed array values --------------------------------------------------
+	/**
+	 * A `Uint8Array` of the code is an object of its bytes by index
+	 * (`typed-array-helpers.ts`): v1 gives the same object in the data of an item. The code
+	 * must not see that the value has no `length` of its own and no methods, so a typed array
+	 * has a native form only in `new Uint8Array(...)`, `length`, a read or a write of one
+	 * index, and `Array.from`. Each other use keeps the node in the host.
+	 */
+	const taEnabled = !input.nodeCode && !input.expression;
+	const taVars = new Set<ts.Symbol>();
+	/** Typed array expressions in a place that takes a typed array. */
+	const taOk = new Set<ts.Node>();
+	const isNewTypedArray = (e: ts.Expression): boolean => {
+		const x = stripParens(e);
+		return (
+			ts.isNewExpression(x) &&
+			ts.isIdentifier(x.expression) &&
+			x.expression.text === 'Uint8Array' &&
+			isFree(x.expression)
+		);
+	};
+	const isTa = (e: ts.Expression): boolean => {
+		const x = stripParens(e);
+		if (ts.isIdentifier(x)) {
+			const sym = checker.getSymbolAtLocation(x);
+			return sym !== undefined && taVars.has(sym);
+		}
+		return isNewTypedArray(x);
+	};
+	/** True when an index expression is a number for certain. */
+	const numberIndex = (e: ts.Expression): boolean =>
+		ts.isNumericLiteral(stripParens(e)) ||
+		(checker.getTypeAtLocation(e).flags & ts.TypeFlags.NumberLike) !== 0;
+	const blockTypedArray = (): void => {
+		block(
+			'typed array',
+			'A typed array has a native form only in `new Uint8Array(...)`, `length`, a read or a write of one index, and `Array.from`.',
+		);
+	};
+	/** True when the typed array value `n` is in a place that takes a value as data. */
+	const taPlace = (n: ts.Node): boolean => {
+		if (taOk.has(n)) return true;
+		let x: ts.Node = n;
+		while (ts.isParenthesizedExpression(x.parent) || ts.isAsExpression(x.parent)) x = x.parent;
+		const p = x.parent;
+		if (ts.isShorthandPropertyAssignment(p)) return true;
+		if (ts.isVariableDeclaration(p) && p.initializer === x && ts.isIdentifier(p.name)) {
+			const sym = checker.getSymbolAtLocation(p.name);
+			return sym !== undefined && taVars.has(sym);
+		}
+		if (ts.isElementAccessExpression(p) && p.expression === x) {
+			return !p.questionDotToken && !isAssignmentTarget(p) && numberIndex(p.argumentExpression);
+		}
+		return (
+			(ts.isPropertyAssignment(p) && p.initializer === x) ||
+			ts.isArrayLiteralExpression(p) ||
+			ts.isReturnStatement(p) ||
+			ts.isExpressionStatement(p) ||
+			(ts.isConditionalExpression(p) && p.condition !== x) ||
+			(ts.isBinaryExpression(p) &&
+				p.right === x &&
+				(p.operatorToken.kind === ts.SyntaxKind.BarBarToken ||
+					p.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken ||
+					p.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken))
+		);
+	};
+	if (taEnabled && root.body) {
+		// Constants that hold a typed array, in the order of the source.
+		const declare = (x: ts.Node): void => {
+			if (
+				ts.isVariableDeclaration(x) &&
+				ts.isIdentifier(x.name) &&
+				x.initializer !== undefined &&
+				ts.isVariableDeclarationList(x.parent) &&
+				(x.parent.flags & ts.NodeFlags.Const) !== 0 &&
+				isTa(x.initializer)
+			) {
+				const sym = checker.getSymbolAtLocation(x.name);
+				if (sym !== undefined) taVars.add(sym);
+			}
+			ts.forEachChild(x, declare);
+		};
+		declare(root.body);
+	}
 	/** Walks a Buffer expression in a place that takes a Buffer. */
 	const emitBuf = (e: ts.Expression): void => {
 		bufOk.add(e);
@@ -4759,6 +4843,81 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	};
 
 	const visit = (n: ts.Node): void => {
+		if (taEnabled && ts.isNewExpression(n) && isNewTypedArray(n)) {
+			if (!taPlace(n)) {
+				blockTypedArray();
+				return;
+			}
+			const args = n.arguments ?? [];
+			if (args.length > 1) {
+				blockTypedArray();
+				return;
+			}
+			if (args.length === 0) {
+				helpers.add('taNew');
+				replaceNode(n, 'taNew(undefined)');
+				return;
+			}
+			const arg = args[0];
+			if (ts.isSpreadElement(arg)) {
+				blockTypedArray();
+				return;
+			}
+			const fn = isTa(arg) ? 'taCopy' : 'taNew';
+			helpers.add(fn);
+			const o = seq;
+			replace(n.getStart(sf), arg.getStart(sf), `${fn}(`);
+			closing(arg.getEnd(), n.getEnd(), ')', o);
+			if (fn === 'taCopy') taOk.add(arg);
+			else if (isBuf(arg)) {
+				// A Buffer is a list of its bytes here, and a typed array takes them.
+				bufOk.add(arg);
+				bufOk.add(stripParens(arg));
+			}
+			visit(arg);
+			return;
+		}
+		if (
+			taEnabled &&
+			taVars.size > 0 &&
+			ts.isPropertyAccessExpression(n) &&
+			n.name.text === 'length' &&
+			!n.questionDotToken &&
+			!isAssignmentTarget(n) &&
+			isTa(n.expression)
+		) {
+			helpers.add('taLen');
+			const o = seq;
+			replace(n.getStart(sf), n.expression.getStart(sf), 'taLen(');
+			closing(n.expression.getEnd(), n.getEnd(), ')', o);
+			taOk.add(n.expression);
+			visit(n.expression);
+			return;
+		}
+		if (
+			taEnabled &&
+			taVars.size > 0 &&
+			ts.isBinaryExpression(n) &&
+			n.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+			ts.isElementAccessExpression(n.left) &&
+			!n.left.questionDotToken &&
+			isTa(n.left.expression) &&
+			numberIndex(n.left.argumentExpression)
+		) {
+			helpers.add('taSet');
+			const target = n.left.expression;
+			const index = n.left.argumentExpression;
+			const o = seq;
+			replace(n.getStart(sf), target.getStart(sf), 'taSet(');
+			closing(target.getEnd(), index.getStart(sf), ', ', o);
+			closing(index.getEnd(), n.right.getStart(sf), ', ', o);
+			closing(n.right.getEnd(), n.getEnd(), ')', o);
+			taOk.add(target);
+			visit(target);
+			visit(index);
+			visit(n.right);
+			return;
+		}
 		const missing = missingRoots.get(n);
 		if (missing !== undefined) {
 			// The read of a name that the sandbox of v1 does not have: the rest does not run.
@@ -4792,6 +4951,11 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				usesBuffers = true;
 				if (usesHttp || !bufPlace(n)) blockBuffer();
 			}
+		}
+		if (ts.isIdentifier(n) && taVars.size > 0 && !isNameOf(n)) {
+			const sym = checker.getSymbolAtLocation(n);
+			const declares = ts.isVariableDeclaration(n.parent) && n.parent.name === n;
+			if (sym !== undefined && taVars.has(sym) && !declares && !taPlace(n)) blockTypedArray();
 		}
 		const errName = errTextNodes.get(n);
 		if (errName !== undefined) {
@@ -5457,6 +5621,24 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 						}
 					}
 					const full = `${g}.${name}`;
+					if (
+						taEnabled &&
+						full === 'Array.from' &&
+						n.arguments.length >= 1 &&
+						n.arguments.length <= 2 &&
+						!n.arguments.some((a) => ts.isSpreadElement(a)) &&
+						isTa(n.arguments[0])
+					) {
+						helpers.add('taFrom');
+						const o = seq;
+						replace(callee.getStart(sf), callee.getEnd(), 'taFrom');
+						if (n.arguments.length === 1) {
+							closing(n.arguments[0].getEnd(), n.getEnd(), ', undefined)', o);
+						}
+						taOk.add(n.arguments[0]);
+						for (const a of n.arguments) visit(a);
+						return;
+					}
 					const staticHelper =
 						full === 'Object.hasOwn' ? ownHelperFor(n.arguments[1]) : own(STATIC_HELPERS, full);
 					if (staticHelper) {
@@ -6266,7 +6448,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			if (seq0 !== undefined && free(n)) around(n, seq0, 0.75, 'codeAt(', `, ${line})`);
 		}
 		for (const [n, check] of lineChecks) {
-			if (methodChecks.has(n) || bufOk.has(n)) continue;
+			if (methodChecks.has(n) || bufOk.has(n) || taOk.has(n)) continue;
 			const seq0 = lineSeq.get(n);
 			if (seq0 === undefined || !free(n) || (ts.isExpression(n) && isDateValue(n))) {
 				errorTextGap ??= 'a method call that the traced form cannot check';
