@@ -45,6 +45,7 @@ const review: WorkflowReviewRequestDetail = {
 	viewerCanDecide: true,
 	viewerDecisionIneligibilityReason: null,
 	viewerCanComment: true,
+	checks: [],
 };
 
 describe('WorkflowReviewDetailTabs decision note', () => {

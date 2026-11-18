@@ -186,6 +186,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [workflow_suggestion](workflow_suggestion.md) | 17 |  | table |
 | [workflow_suggestion_activity](workflow_suggestion_activity.md) | 7 |  | table |
 | [workflow_test](workflow_test.md) | 6 |  | table |
+| [workflow_test_review_run](workflow_test_review_run.md) | 8 |  | table |
 | [workflows_tags](workflows_tags.md) | 2 |  | table |
 
 ## Relations
@@ -479,6 +480,8 @@ erDiagram
 "workflow_suggestion_activity" }o--o| "user" : "FOREIGN KEY (actorId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_suggestion_activity" }o--|| "workflow_suggestion" : "FOREIGN KEY (suggestionId) REFERENCES workflow_suggestion (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_test" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_test_review_run" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_test_review_run" }o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflows_tags" |o--|| "tag_entity" : "FOREIGN KEY (tagId) REFERENCES tag_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflows_tags" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
@@ -2304,6 +2307,16 @@ erDiagram
   TEXT source
   datetime_3_ updatedAt
   varchar_36_ workflowId FK
+}
+"workflow_test_review_run" {
+  datetime_3_ createdAt
+  varchar id PK
+  TEXT result
+  varchar_16_ status
+  datetime_3_ updatedAt
+  varchar_36_ workflowId FK
+  varchar_36_ workflowReviewRequestId FK
+  varchar_36_ workflowVersionId
 }
 "workflows_tags" {
   INTEGER tagId PK

@@ -187,6 +187,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_suggestion](public.workflow_suggestion.md) | 17 |  | BASE TABLE |
 | [public.workflow_suggestion_activity](public.workflow_suggestion_activity.md) | 7 |  | BASE TABLE |
 | [public.workflow_test](public.workflow_test.md) | 6 |  | BASE TABLE |
+| [public.workflow_test_review_run](public.workflow_test_review_run.md) | 8 |  | BASE TABLE |
 | [public.workflows_tags](public.workflows_tags.md) | 2 |  | BASE TABLE |
 
 ## Stored procedures and functions
@@ -493,6 +494,8 @@ erDiagram
 "public.workflow_suggestion_activity" }o--o| "public.user" : "FOREIGN KEY (#quot;actorId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.workflow_suggestion_activity" }o--|| "public.workflow_suggestion" : "FOREIGN KEY (#quot;suggestionId#quot;) REFERENCES workflow_suggestion(id) ON DELETE CASCADE"
 "public.workflow_test" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.workflow_test_review_run" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.workflow_test_review_run" }o--|| "public.workflow_review_request" : "FOREIGN KEY (#quot;workflowReviewRequestId#quot;) REFERENCES workflow_review_request(id) ON DELETE CASCADE"
 "public.workflows_tags" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflows_tags" }o--|| "public.tag_entity" : "FOREIGN KEY (#quot;tagId#quot;) REFERENCES tag_entity(id) ON DELETE CASCADE"
 
@@ -2324,6 +2327,16 @@ erDiagram
   text source
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
+}
+"public.workflow_test_review_run" {
+  timestamp_3__with_time_zone createdAt
+  uuid id
+  json result
+  varchar_16_ status
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
+  varchar_36_ workflowReviewRequestId FK
+  varchar_36_ workflowVersionId
 }
 "public.workflows_tags" {
   varchar_36_ tagId FK

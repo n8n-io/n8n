@@ -15,6 +15,8 @@ const props = defineProps<{
 	viewerCanComment: boolean;
 	/** Why the viewer may not decide; empty when they may. */
 	ineligibilityHint: string;
+	/** Why the review cannot be approved yet, for example failed tests; empty when it can. */
+	approveBlockedHint?: string;
 }>();
 
 const emit = defineEmits<{
@@ -160,18 +162,24 @@ async function onComment() {
 							{{ i18n.baseText('workflowReviews.detail.decision.requestChanges') }}
 						</N8nButton>
 					</N8nTooltip>
-					<N8nButton
-						variant="outline"
-						size="small"
-						:disabled="decisionDisabled"
-						data-test-id="workflow-review-decision-approve-button"
-						@click="onApprove"
+					<N8nTooltip
+						:disabled="!approveBlockedHint"
+						:content="approveBlockedHint"
+						:show-after="300"
 					>
-						<template #icon>
-							<N8nIcon icon="check" />
-						</template>
-						{{ i18n.baseText('workflowReviews.detail.decision.approveAndPublish') }}
-					</N8nButton>
+						<N8nButton
+							variant="outline"
+							size="small"
+							:disabled="decisionDisabled || !!approveBlockedHint"
+							data-test-id="workflow-review-decision-approve-button"
+							@click="onApprove"
+						>
+							<template #icon>
+								<N8nIcon icon="check" />
+							</template>
+							{{ i18n.baseText('workflowReviews.detail.decision.approveAndPublish') }}
+						</N8nButton>
+					</N8nTooltip>
 				</div>
 			</div>
 		</template>

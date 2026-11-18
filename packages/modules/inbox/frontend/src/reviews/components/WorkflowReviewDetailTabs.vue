@@ -8,6 +8,7 @@ import { ReviewDetailScrollContainerKey, ReviewLinkedWorkflowsKey } from '../con
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 import WorkflowReviewActivityFeed from './WorkflowReviewActivityFeed.vue';
 import WorkflowReviewChangesList from './WorkflowReviewChangesList.vue';
+import WorkflowReviewChecks from './WorkflowReviewChecks.vue';
 import WorkflowReviewCommentComposer from './WorkflowReviewCommentComposer.vue';
 import WorkflowReviewDecisionPopover from './WorkflowReviewDecisionPopover.vue';
 import WorkflowReviewDetailMetadata from './WorkflowReviewDetailMetadata.vue';
@@ -107,6 +108,13 @@ const showApprovedAndPublished = computed(() => {
 	);
 });
 
+// Mirrors the decision endpoint, which refuses an approval until every check passed.
+const approveBlockedHint = computed(() =>
+	detail.value?.checks.some((check) => check.status !== 'passed')
+		? i18n.baseText('workflowReviews.checks.approveBlocked')
+		: '',
+);
+
 const tabOptions = computed(() => [
 	{
 		label: i18n.baseText('workflowReviews.detail.tabs.activity'),
@@ -138,6 +146,7 @@ const tabOptions = computed(() => [
 					:viewer-can-decide="viewerCanDecide"
 					:viewer-can-comment="viewerCanComment"
 					:ineligibility-hint="ineligibilityHint"
+					:approve-blocked-hint="approveBlockedHint"
 					@decide="emit('decide', $event)"
 					@comment-posted="emit('update:tab', 'activity')"
 				/>
@@ -177,6 +186,7 @@ const tabOptions = computed(() => [
 								{{ i18n.baseText('workflowReviews.detail.activity.noDescription') }}
 							</N8nText>
 						</div>
+						<WorkflowReviewChecks v-if="detail" :review="detail" />
 					</template>
 					<template v-if="showApprovedAndPublished" #footer>
 						<N8nCallout

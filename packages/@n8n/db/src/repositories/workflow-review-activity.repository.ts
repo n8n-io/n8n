@@ -2,6 +2,7 @@ import type {
 	WorkflowReviewClosedActivityData,
 	WorkflowReviewDecisionActivityData,
 	WorkflowReviewOpenedActivityData,
+	WorkflowReviewTestsCompletedActivityData,
 	WorkflowReviewVersionUpdatedActivityData,
 	WorkflowReviewWorkflowCauseActivityData,
 	WorkflowReviewWorkflowCauseActivityType,
@@ -39,7 +40,8 @@ export type WorkflowReviewActivityPayload =
 			type: WorkflowReviewWorkflowCauseActivityType;
 			data: WorkflowReviewWorkflowCauseActivityData;
 	  }
-	| { type: 'workflow.published'; data: WorkflowReviewWorkflowPublishedActivityData };
+	| { type: 'workflow.published'; data: WorkflowReviewWorkflowPublishedActivityData }
+	| { type: 'tests.completed'; data: WorkflowReviewTestsCompletedActivityData };
 
 @Service()
 export class WorkflowReviewActivityRepository extends BaseRepository<WorkflowReviewActivity> {

@@ -24,7 +24,9 @@ export type WorkflowReviewActivityType =
 	| WorkflowReviewWorkflowCauseActivityType
 	| 'workflow.published'
 	/** Closed without an approval. An approval writes `review.approved` instead, never both. */
-	| 'review.closed';
+	| 'review.closed'
+	/** A run of the workflow tests on the pinned version finished. */
+	| 'tests.completed';
 
 // These are the typeVersion 1 shapes. A typeVersion 2 gets its own schema, its own
 // union member and its own mapper case; never widen one of these in place.
@@ -102,6 +104,26 @@ export type WorkflowReviewWorkflowPublishedActivityData = z.infer<
 	typeof workflowReviewWorkflowPublishedActivityDataSchema
 >;
 
+/** At most this many failed tests are stored on a `tests.completed` entry. */
+export const WORKFLOW_REVIEW_TESTS_MAX_FAILURES = 10;
+
+export const workflowReviewTestsCompletedActivityDataSchema = z.object({
+	workflowId: z.string(),
+	workflowVersionId: z.string(),
+	status: z.enum(['passed', 'failed', 'error']),
+	passed: z.number().int(),
+	failed: z.number().int(),
+	skipped: z.number().int(),
+	total: z.number().int(),
+	/** The first failed tests, by Vitest full name (`describe > test`). */
+	failures: z.array(z.object({ name: z.string(), message: z.string() })),
+	/** Errors outside a test, for example a test file that does not compile. */
+	errors: z.array(z.string()),
+});
+export type WorkflowReviewTestsCompletedActivityData = z.infer<
+	typeof workflowReviewTestsCompletedActivityDataSchema
+>;
+
 type WorkflowReviewActivityBase = {
 	/** Int in the database, string on the wire. */
 	id: string;
@@ -155,4 +177,8 @@ export type WorkflowReviewActivityEntry =
 	| (WorkflowReviewActivityBase & {
 			type: 'workflow.published';
 			data: WorkflowReviewWorkflowPublishedActivityData | null;
+	  })
+	| (WorkflowReviewActivityBase & {
+			type: 'tests.completed';
+			data: WorkflowReviewTestsCompletedActivityData | null;
 	  });

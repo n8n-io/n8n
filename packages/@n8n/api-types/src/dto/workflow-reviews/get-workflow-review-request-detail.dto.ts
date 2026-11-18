@@ -2,6 +2,7 @@ import type { IConnections, INode, IWorkflowGroup } from 'n8n-workflow';
 
 import type { WorkflowReviewInboxItem } from './list-workflow-review-inbox.dto';
 import type { Iso8601DateTimeString } from '../../datetime';
+import type { WorkflowReviewCheck } from '../../workflow-review-check';
 
 /** Immutable content of one workflow-history version, as needed by the diff surface. */
 export interface WorkflowReviewVersionSnapshot {
@@ -60,4 +61,6 @@ export interface WorkflowReviewRequestDetail
 	viewerDecisionIneligibilityReason: WorkflowReviewDecisionIneligibilityReason | null;
 	/** Not advisory, unlike `viewerCanDecide`: the comment endpoint applies the same verdict. */
 	viewerCanComment: boolean;
+	/** Automatic checks on the pinned versions. Approval needs each of them to pass. */
+	checks: WorkflowReviewCheck[];
 }

@@ -15,6 +15,7 @@ import type { WorkflowReviewPolicyService } from '@/services/workflow-review-pol
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import type { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
+import { WorkflowReviewCheckRegistry } from '../workflow-review-check.registry';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewInboxService } from '../workflow-review-inbox.service';
 import type {
@@ -74,6 +75,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		inboxRepository,
 		workflowRepository,
 		participantResolver,
+		new WorkflowReviewCheckRegistry(),
 	);
 
 	/** The resolver is exercised in its own test; here it only has to answer. */

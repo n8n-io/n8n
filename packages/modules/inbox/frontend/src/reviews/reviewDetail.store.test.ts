@@ -26,6 +26,7 @@ function detail(id: string): WorkflowReviewRequestDetail {
 		workflows: [],
 		viewerCanDecide: true,
 		viewerCanComment: true,
+		checks: [],
 		viewerDecisionIneligibilityReason: null,
 	};
 }

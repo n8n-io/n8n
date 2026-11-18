@@ -1,4 +1,4 @@
-import type { DecideWorkflowReviewRequestDto } from '@n8n/api-types';
+import type { DecideWorkflowReviewRequestDto, WorkflowReviewCheck } from '@n8n/api-types';
 import type { LicenseState, Logger } from '@n8n/backend-common';
 import { type EventService, type RoleService } from '@n8n/backend-services';
 import type {
@@ -25,6 +25,10 @@ import { DbLock } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
+import {
+	WorkflowReviewCheckRegistry,
+	type WorkflowReviewCheckProvider,
+} from '../workflow-review-check.registry';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewRequestDecisionService } from '../workflow-review-request-decision.service';
 import { WorkflowReviewRequestMutationGuard } from '../workflow-review-request-mutation-guard.service';
@@ -74,6 +78,22 @@ describe('WorkflowReviewRequestDecisionService.decide', () => {
 	const eventService = mock<EventService>();
 	/** Transaction context used inside the lock. */
 	const ctx: OperationContext = { trx: mock<Transaction>() };
+	const checkProvider = mock<WorkflowReviewCheckProvider>();
+	const checkRegistry = new WorkflowReviewCheckRegistry();
+	checkRegistry.register(checkProvider);
+
+	const testsCheck = (
+		status: WorkflowReviewCheck['status'],
+		workflowVersionId = 'ver-1',
+	): WorkflowReviewCheck => ({
+		id: 'workflow-tests',
+		workflowId: 'wf-1',
+		workflowVersionId,
+		status,
+		counts: null,
+		message: null,
+		viewerCanRun: false,
+	});
 
 	const authorizationService = new WorkflowReviewAuthorizationService(
 		workflowFinderService,
@@ -105,6 +125,7 @@ describe('WorkflowReviewRequestDecisionService.decide', () => {
 		eventService,
 		new WorkflowReviewRequestMutationGuard(workflowEntityRepository, sharedWorkflowRepository),
 		new WorkflowReviewStateNotifier(logger, collaborationService),
+		checkRegistry,
 	);
 
 	const openRequest = (overrides: Partial<WorkflowReviewRequest> = {}) =>
@@ -156,6 +177,61 @@ describe('WorkflowReviewRequestDecisionService.decide', () => {
 		dbLockService.withLockContext.mockImplementation(async (_id, fn) => await fn(ctx));
 		collaborationService.broadcastWorkflowReviewStateChanged.mockResolvedValue(undefined);
 		collaborationService.broadcastWorkflowUpdate.mockResolvedValue(undefined);
+		checkProvider.getChecks.mockResolvedValue([]);
+	});
+
+	describe('checks', () => {
+		it.each(['pending', 'running', 'failed', 'error'] as const)(
+			'refuses an approval while a check is %s',
+			async (status) => {
+				mockSuccessfulDecidePath();
+				checkProvider.getChecks.mockResolvedValue([testsCheck(status)]);
+
+				await expect(service.decide(memberUser(), requestId, approveDto)).rejects.toThrow(
+					ConflictError,
+				);
+
+				expect(dbLockService.withLockContext).not.toHaveBeenCalled();
+			},
+		);
+
+		it('approves when every check passed on the pinned version', async () => {
+			mockSuccessfulDecidePath();
+			checkProvider.getChecks.mockResolvedValue([testsCheck('passed')]);
+
+			const result = await service.decide(memberUser(), requestId, approveDto);
+
+			expect(result.decision).toBe('approved');
+			expect(checkProvider.getChecks).toHaveBeenCalledWith(expect.anything(), {
+				workflowReviewRequestId: requestId,
+				workflows: [expect.objectContaining({ workflowId: 'wf-1', workflowVersionId: 'ver-1' })],
+			});
+		});
+
+		it('refuses an approval when the pin moved after the checks passed', async () => {
+			mockSuccessfulDecidePath();
+			checkProvider.getChecks.mockResolvedValue([testsCheck('passed')]);
+			// The first read sees ver-1, the read under the lock sees ver-2.
+			workflowRepository.findByRequestId
+				.mockResolvedValueOnce([pinnedRow('ver-1')])
+				.mockResolvedValueOnce([pinnedRow('ver-2')]);
+
+			await expect(service.decide(memberUser(), requestId, approveDto)).rejects.toThrow(
+				ConflictError,
+			);
+
+			expect(requestRepository.saveRequest).not.toHaveBeenCalled();
+		});
+
+		it('lets a reviewer request changes while a check failed', async () => {
+			mockSuccessfulDecidePath();
+			checkProvider.getChecks.mockResolvedValue([testsCheck('failed')]);
+
+			const result = await service.decide(memberUser(), requestId, requestChangesDto);
+
+			expect(result.decision).toBe('changes_requested');
+			expect(checkProvider.getChecks).not.toHaveBeenCalled();
+		});
 	});
 
 	it('refuses everything once an admin turns reviews off, before any lookup or lock', async () => {

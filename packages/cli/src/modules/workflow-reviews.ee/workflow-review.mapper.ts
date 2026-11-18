@@ -2,6 +2,7 @@ import {
 	workflowReviewClosedActivityDataSchema,
 	workflowReviewDecisionActivityDataSchema,
 	workflowReviewOpenedActivityDataSchema,
+	workflowReviewTestsCompletedActivityDataSchema,
 	workflowReviewVersionUpdatedActivityDataSchema,
 	workflowReviewWorkflowCauseActivityDataSchema,
 	workflowReviewWorkflowPublishedActivityDataSchema,
@@ -142,6 +143,12 @@ export function toActivityEntry(
 				...base,
 				type: row.type,
 				data: parsePayload(workflowReviewWorkflowPublishedActivityDataSchema, row, logger),
+			};
+		case 'tests.completed':
+			return {
+				...base,
+				type: row.type,
+				data: parsePayload(workflowReviewTestsCompletedActivityDataSchema, row, logger),
 			};
 	}
 

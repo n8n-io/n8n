@@ -9,7 +9,7 @@
 | connections | json |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | description | text |  | true |  |  |  |
-| id | varchar(36) |  | false | [public.agent_workflow_dependency](public.agent_workflow_dependency.md) [public.ai_builder_temporary_workflow](public.ai_builder_temporary_workflow.md) [public.chat_hub_messages](public.chat_hub_messages.md) [public.chat_hub_sessions](public.chat_hub_sessions.md) [public.evaluation_collection](public.evaluation_collection.md) [public.evaluation_config](public.evaluation_config.md) [public.execution_entity](public.execution_entity.md) [public.insights_metadata](public.insights_metadata.md) [public.migration_finding](public.migration_finding.md) [public.migration_workflow_owner](public.migration_workflow_owner.md) [public.poller_state](public.poller_state.md) [public.processed_data](public.processed_data.md) [public.self_healing_configuration_workflow](public.self_healing_configuration_workflow.md) [public.self_healing_investigation](public.self_healing_investigation.md) [public.self_healing_result](public.self_healing_result.md) [public.shared_workflow](public.shared_workflow.md) [public.test_run](public.test_run.md) [public.webhook_entity](public.webhook_entity.md) [public.workflow_builder_session](public.workflow_builder_session.md) [public.workflow_dependency](public.workflow_dependency.md) [public.workflow_history](public.workflow_history.md) [public.workflow_publication_retry_state](public.workflow_publication_retry_state.md) [public.workflow_publication_trigger_status](public.workflow_publication_trigger_status.md) [public.workflow_publish_history](public.workflow_publish_history.md) [public.workflow_published_version](public.workflow_published_version.md) [public.workflow_review_request_workflow](public.workflow_review_request_workflow.md) [public.workflow_suggestion](public.workflow_suggestion.md) [public.workflow_test](public.workflow_test.md) [public.workflows_tags](public.workflows_tags.md) |  |  |
+| id | varchar(36) |  | false | [public.agent_workflow_dependency](public.agent_workflow_dependency.md) [public.ai_builder_temporary_workflow](public.ai_builder_temporary_workflow.md) [public.chat_hub_messages](public.chat_hub_messages.md) [public.chat_hub_sessions](public.chat_hub_sessions.md) [public.evaluation_collection](public.evaluation_collection.md) [public.evaluation_config](public.evaluation_config.md) [public.execution_entity](public.execution_entity.md) [public.insights_metadata](public.insights_metadata.md) [public.migration_finding](public.migration_finding.md) [public.migration_workflow_owner](public.migration_workflow_owner.md) [public.poller_state](public.poller_state.md) [public.processed_data](public.processed_data.md) [public.self_healing_configuration_workflow](public.self_healing_configuration_workflow.md) [public.self_healing_investigation](public.self_healing_investigation.md) [public.self_healing_result](public.self_healing_result.md) [public.shared_workflow](public.shared_workflow.md) [public.test_run](public.test_run.md) [public.webhook_entity](public.webhook_entity.md) [public.workflow_builder_session](public.workflow_builder_session.md) [public.workflow_dependency](public.workflow_dependency.md) [public.workflow_history](public.workflow_history.md) [public.workflow_publication_retry_state](public.workflow_publication_retry_state.md) [public.workflow_publication_trigger_status](public.workflow_publication_trigger_status.md) [public.workflow_publish_history](public.workflow_publish_history.md) [public.workflow_published_version](public.workflow_published_version.md) [public.workflow_review_request_workflow](public.workflow_review_request_workflow.md) [public.workflow_suggestion](public.workflow_suggestion.md) [public.workflow_test](public.workflow_test.md) [public.workflow_test_review_run](public.workflow_test_review_run.md) [public.workflows_tags](public.workflows_tags.md) |  |  |
 | isArchived | boolean | false | false |  |  |  |
 | meta | json |  | true |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
@@ -94,6 +94,7 @@ erDiagram
 "public.workflow_review_request_workflow" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflow_suggestion" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflow_test" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.workflow_test_review_run" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflows_tags" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflow_entity" }o--o| "public.folder" : "FOREIGN KEY (#quot;parentFolderId#quot;) REFERENCES folder(id) ON DELETE CASCADE"
 
@@ -423,6 +424,16 @@ erDiagram
   text source
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
+}
+"public.workflow_test_review_run" {
+  timestamp_3__with_time_zone createdAt
+  uuid id
+  json result
+  varchar_16_ status
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
+  varchar_36_ workflowReviewRequestId FK
+  varchar_36_ workflowVersionId
 }
 "public.workflows_tags" {
   varchar_36_ tagId FK

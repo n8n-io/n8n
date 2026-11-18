@@ -23,6 +23,18 @@ export async function decideWorkflowReviewRequest(
 	);
 }
 
+/** Runs the workflow tests again on the versions that the review pins. */
+export async function runWorkflowReviewTests(
+	context: IRestApiContext,
+	workflowReviewRequestId: string,
+): Promise<{ started: number }> {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/workflow-tests/reviews/${encodeURIComponent(workflowReviewRequestId)}/run`,
+	);
+}
+
 export async function fetchWorkflowReviewRequestDetail(
 	context: IRestApiContext,
 	workflowReviewRequestId: string,

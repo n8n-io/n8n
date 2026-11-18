@@ -691,6 +691,7 @@ it.each([
 			viewerCanDecide: true,
 			viewerDecisionIneligibilityReason: null,
 			viewerCanComment: true,
+			checks: [],
 		} satisfies WorkflowReviewRequestDetail;
 		const approvedReview = {
 			...openReview,

@@ -118,6 +118,7 @@ function makeDetail(
 		viewerCanDecide: true,
 		viewerDecisionIneligibilityReason: null,
 		viewerCanComment: true,
+		checks: [],
 		...overrides,
 	};
 }

@@ -5,6 +5,7 @@ import { WorkflowReviewInboxRepository, WorkflowReviewRequestWorkflowRepository 
 import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
+import { WorkflowReviewCheckRegistry } from '../workflow-review-check.registry';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewInboxService } from '../workflow-review-inbox.service';
 import type {
@@ -50,6 +51,7 @@ describe('WorkflowReviewInboxService.listForInbox', () => {
 			workflowReviewInboxRepository,
 			workflowReviewRequestWorkflowRepository,
 			participantResolver,
+			new WorkflowReviewCheckRegistry(),
 		);
 	});
 

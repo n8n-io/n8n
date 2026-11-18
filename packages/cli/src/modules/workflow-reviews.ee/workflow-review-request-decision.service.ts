@@ -20,11 +20,12 @@ import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { WorkflowReviewAuthorizationService } from './workflow-review-authorization.service';
+import { WorkflowReviewCheckRegistry } from './workflow-review-check.registry';
 import {
 	resolveDecisionCapability,
 	type WorkflowReviewDecisionFacts,
@@ -56,6 +57,7 @@ export class WorkflowReviewRequestDecisionService {
 		private readonly eventService: EventService,
 		private readonly mutationGuard: WorkflowReviewRequestMutationGuard,
 		private readonly stateNotifier: WorkflowReviewStateNotifier,
+		private readonly checkRegistry: WorkflowReviewCheckRegistry,
 	) {}
 
 	async decide(
@@ -134,6 +136,12 @@ export class WorkflowReviewRequestDecisionService {
 			throw new BadRequestError('A note is required when requesting changes');
 		}
 
+		// Read before the lock, like the roles above. The lock then checks that the pins did not move.
+		const checkedVersions =
+			dto.decision === 'approved'
+				? await this.assertChecksPassed(user, workflowReviewRequestId, workflowRows)
+				: new Map<string, string | null>();
+
 		const {
 			request: saved,
 			pinnedVersionId,
@@ -184,6 +192,18 @@ export class WorkflowReviewRequestDecisionService {
 			);
 
 			if (dto.decision === 'approved') {
+				const moved = currentRows.some(
+					(row) =>
+						checkedVersions.has(row.workflowId) &&
+						checkedVersions.get(row.workflowId) !== row.workflowVersionId,
+				);
+				if (moved) {
+					throw new ConflictError(
+						'The review moved to another version while you approved it',
+						'Wait for the checks on the new version, then approve again',
+					);
+				}
+
 				// Capture the published version before auto-publish changes it.
 				for (const row of currentRows) {
 					await this.workflowReviewRequestWorkflowRepository.captureApprovalBaseline(
@@ -272,6 +292,25 @@ export class WorkflowReviewRequestDecisionService {
 				pinnedVersionId,
 			),
 		};
+	}
+
+	/**
+	 * Refuses the approval while a check, such as the workflow tests, did not pass.
+	 * Returns the version that each passed check describes, by workflow.
+	 */
+	private async assertChecksPassed(
+		user: User,
+		workflowReviewRequestId: string,
+		workflows: Array<{ workflowId: string; workflowVersionId: string | null }>,
+	): Promise<Map<string, string | null>> {
+		const checks = await this.checkRegistry.getChecks(user, { workflowReviewRequestId, workflows });
+		if (checks.some((check) => check.status !== 'passed')) {
+			throw new ConflictError(
+				'Every check must pass before you can approve this review',
+				'Wait for the workflow tests to pass on the version under review',
+			);
+		}
+		return new Map(checks.map((check) => [check.workflowId, check.workflowVersionId]));
 	}
 
 	/**

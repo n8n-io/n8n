@@ -22,6 +22,7 @@ import type { InboxSourceQuery } from '../inbox/inbox-source.registry';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { WorkflowReviewAuthorizationService } from './workflow-review-authorization.service';
+import { WorkflowReviewCheckRegistry } from './workflow-review-check.registry';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
 import {
 	WorkflowReviewParticipantResolver,
@@ -43,6 +44,7 @@ export class WorkflowReviewInboxService {
 		private readonly workflowReviewInboxRepository: WorkflowReviewInboxRepository,
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
 		private readonly participantResolver: WorkflowReviewParticipantResolver,
+		private readonly checkRegistry: WorkflowReviewCheckRegistry,
 	) {}
 
 	async isInboxAvailable() {
@@ -98,12 +100,16 @@ export class WorkflowReviewInboxService {
 		);
 		const { request, readableWorkflowRows } = access;
 
-		const [workflows, participants, eligibility] = await Promise.all([
+		const [workflows, participants, eligibility, checks] = await Promise.all([
 			Promise.all(readableWorkflowRows.map(async (row) => await this.toWorkflowDetail(row))),
 			this.participantResolver.resolve([request]),
 			// Reuses the snapshot above: capabilities are resolved against every covered
 			// row, matching what decide() authorizes against.
 			this.authorizationService.resolveViewerEligibility(user, access),
+			this.checkRegistry.getChecks(user, {
+				workflowReviewRequestId: request.id,
+				workflows: readableWorkflowRows,
+			}),
 		]);
 
 		return {
@@ -113,6 +119,7 @@ export class WorkflowReviewInboxService {
 			viewerCanDecide: eligibility.canDecide,
 			viewerDecisionIneligibilityReason: eligibility.decisionIneligibilityReason,
 			viewerCanComment: eligibility.canComment,
+			checks,
 		};
 	}
 

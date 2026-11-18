@@ -4,6 +4,7 @@ import type { Component } from 'vue';
 import WorkflowReviewActivityComment from './activity-entries/WorkflowReviewActivityComment.vue';
 import WorkflowReviewActivityFallback from './activity-entries/WorkflowReviewActivityFallback.vue';
 import WorkflowReviewActivityEventEntry from './activity-entries/WorkflowReviewActivityEventEntry.vue';
+import WorkflowReviewActivityTestsEntry from './activity-entries/WorkflowReviewActivityTestsEntry.vue';
 
 // Total over the union so a new type cannot ship without a renderer; the runtime lookup still
 // falls back for a stored type outside the union (e.g. after a version downgrade).
@@ -20,6 +21,7 @@ const registry: ActivityEntryRegistry = {
 	'workflow.deleted': { 1: WorkflowReviewActivityEventEntry },
 	'workflow.moved': { 1: WorkflowReviewActivityEventEntry },
 	'workflow.published': { 1: WorkflowReviewActivityEventEntry },
+	'tests.completed': { 1: WorkflowReviewActivityTestsEntry },
 };
 
 export function resolveActivityComponent(entry: WorkflowReviewActivityEntry): Component {
