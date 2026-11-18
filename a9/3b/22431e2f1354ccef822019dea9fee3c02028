@@ -1,0 +1,31 @@
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_3dd47ea0104342::t_3b3b0d18288f1a 123-124
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_3dd47ea0104342::t_3b3b0d18288f1a 438-442
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_3dd47ea0104342::t_5ed5c4ee32c698 305-316
+packages/@n8n/api-types/src/dto/index.ts
+  s_3dd47ea0104342::t_5ed5c4ee32c698 852
+packages/@n8n/api-types/src/dto/promotions/promotion-dependency.dto.ts
+  s_3dd47ea0104342::t_7ea714c0f52ce8 286
+  s_3dd47ea0104342::t_3b3b0d18288f1a 225-234,276-279,352-354
+  s_3dd47ea0104342::t_5ed5c4ee32c698 287
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_3dd47ea0104342::t_3b3b0d18288f1a 506-509
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a93b22431e2f1354ccef822019dea9fee3c02028",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
