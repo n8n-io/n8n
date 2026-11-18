@@ -866,7 +866,7 @@ describe('AssistantTurnInputBuilder — empty preferences note', () => {
 	const noteBlock = '<preferences-note>\nNote.\n</preferences-note>';
 
 	function createNoteBuilder(noneSaved: boolean) {
-		const takeNote = vi.fn(async () => noteBlock);
+		const takeNote = vi.fn(async (): Promise<string | undefined> => noteBlock);
 		const builder = {
 			resolveAiPreferencesTurn: vi.fn(async () => ({
 				block: undefined,
@@ -878,21 +878,32 @@ describe('AssistantTurnInputBuilder — empty preferences note', () => {
 		return { builder, takeNote };
 	}
 
-	it.each(['control', 'variant'])(
-		'takes the note in the %s arm when nothing is saved',
-		async (variant) => {
-			const { builder, takeNote } = createNoteBuilder(true);
+	it('adds the note in the variant arm when nothing is saved', async () => {
+		const { builder, takeNote } = createNoteBuilder(true);
 
-			const { fullMessage } = await buildOpeningTurn(createMemory(openedThread), {
-				builder,
-				context: { aiPreferenceService: {} },
-				environment: { preferencesNoteVariant: variant },
-			});
+		const { fullMessage } = await buildOpeningTurn(createMemory(openedThread), {
+			builder,
+			context: { aiPreferenceService: {} },
+			environment: { preferencesNoteVariant: 'variant' },
+		});
 
-			expect(takeNote).toHaveBeenCalledWith({ id: 'user-1' }, variant, 'thread-1');
-			expect(fullMessage).toContain(noteBlock);
-		},
-	);
+		expect(takeNote).toHaveBeenCalledWith({ id: 'user-1' }, 'variant', 'thread-1');
+		expect(fullMessage).toContain(noteBlock);
+	});
+
+	it('counts the impression but adds no note in the control arm', async () => {
+		const { builder, takeNote } = createNoteBuilder(true);
+		takeNote.mockResolvedValue(undefined);
+
+		const { fullMessage } = await buildOpeningTurn(createMemory(openedThread), {
+			builder,
+			context: { aiPreferenceService: {} },
+			environment: { preferencesNoteVariant: 'control' },
+		});
+
+		expect(takeNote).toHaveBeenCalledWith({ id: 'user-1' }, 'control', 'thread-1');
+		expect(fullMessage).not.toContain('<preferences-note>');
+	});
 
 	it('does not take a note when preferences are saved', async () => {
 		const { builder, takeNote } = createNoteBuilder(false);
