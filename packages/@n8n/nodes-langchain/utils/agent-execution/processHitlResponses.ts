@@ -1,6 +1,7 @@
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { EngineResponse, EngineRequest, IDataObject, ExecuteNodeResult } from 'n8n-workflow';
 
+import { INTERNAL_TOOL_ARG_STASH_KEY } from './types';
 import type { RequestResponseMetadata } from './types';
 
 /**
@@ -147,6 +148,9 @@ export function processHitlResponses(
 					? { ...hitl.originalInput }
 					: { input: hitl.originalInput };
 			input.tool = hitl.toolName;
+			if (hitl.mcpToolArguments) {
+				input[INTERNAL_TOOL_ARG_STASH_KEY] = hitl.mcpToolArguments;
+			}
 
 			pendingGatedToolActions.push({
 				actionType: 'ExecutionNodeAction' as const,
