@@ -1234,6 +1234,8 @@ defineExpose({
 	margin: 0 auto;
 	// A narrow host, such as the quick chat, can use smaller side margins.
 	padding: var(--instance-ai-message-list-padding, var(--spacing--sm) var(--spacing--lg));
+	// Fills the space above the composer, so a host's welcome state can center in it.
+	flex: 1 0 auto;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);

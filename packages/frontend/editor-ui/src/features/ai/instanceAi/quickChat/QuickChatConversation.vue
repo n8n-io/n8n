@@ -63,7 +63,8 @@ async function beforeSend() {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	height: 100%;
+	// Fills the message list, so the text centers between the header and the composer.
+	flex: 1;
 	padding: var(--spacing--lg);
 	text-align: center;
 }
