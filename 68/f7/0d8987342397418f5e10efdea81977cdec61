@@ -1,0 +1,134 @@
+packages/cli/src/modules/promotions.ee/promotion-owner-request.service.ts
+  s_3dd47ea0104342::t_5a833b92452749 159-162
+  s_3dd47ea0104342::t_68526c3e2b0ea8 398-411
+  s_3dd47ea0104342::t_52e464e752137c 157-158,163-168
+  s_3dd47ea0104342::t_62768934e3df77 412
+packages/cli/src/modules/promotions.ee/dependency-check/apply-report.ts
+  s_3dd47ea0104342::t_4ebe61a61f5768 519-530
+  s_3dd47ea0104342::t_fab0fe30a9efa7 1-2,132-139,360,363,392,399-402,404-405,409-423,430,477-480,499,570-585
+  s_3dd47ea0104342::t_6eecfb7fb38762 586-587
+packages/cli/src/modules/promotions.ee/dependency-check/gap-confirmation.ts
+  s_3dd47ea0104342::t_ba9f9eb3f1a405 107
+  s_3dd47ea0104342::t_ff917e7f199395 1,86-106,108-135
+  s_3dd47ea0104342::t_b1a181953052af 136
+packages/cli/src/modules/promotions.ee/promotion-moves.service.ts
+  s_3dd47ea0104342::t_5a833b92452749 208-210
+  s_3dd47ea0104342::t_8e7daff8b74af6 436-445,452,485-487
+  s_3dd47ea0104342::t_340941c897ecf1 27
+  s_3dd47ea0104342::t_7396bbf67f6e21 37-40,206-207,211-213
+packages/cli/src/modules/promotions.ee/apply-check-reconcile.ts
+  s_3dd47ea0104342::t_f8ac4feb8ae8eb 51-58
+  s_3dd47ea0104342::t_5a833b92452749 60-92
+packages/cli/src/modules/promotions.ee/promotions-selective-push.error.ts
+  s_3dd47ea0104342::t_5a833b92452749 37-39
+  s_3dd47ea0104342::t_7396bbf67f6e21 31-36,40-43
+packages/cli/src/modules/promotions.ee/project-moves.ts
+  s_3dd47ea0104342::t_8e7daff8b74af6 1,36-40,42-45,49,290-295,321-323,544-546,549-551,553-555
+  s_3dd47ea0104342::t_340941c897ecf1 34-35,41,46-48
+packages/cli/src/modules/promotions.ee/dependency-check/apply-check-facts.service.ts
+  s_3dd47ea0104342::t_4ebe61a61f5768 97-98,101
+packages/cli/src/modules/promotions.ee/promotion-dependency-gate.service.ts
+  s_3dd47ea0104342::t_5a833b92452749 305-307
+  s_3dd47ea0104342::t_d3bfc5c7094a86 482-485
+  s_3dd47ea0104342::t_f8ac4feb8ae8eb 59,177,224-229,373-385
+  s_3dd47ea0104342::t_4ebe61a61f5768 408,412-442,782
+  s_3dd47ea0104342::t_68526c3e2b0ea8 8,10,12,20-21,93-94,130,134-151,175-176,230,468,517-544,616-617,621,650,655-657,661-688,710,715-768
+  s_3dd47ea0104342::t_ff917e7f199395 48-49,293-301,303-304,308-309
+  s_3dd47ea0104342::t_e6a30293c23d16 231,443-444,769-770
+packages/cli/src/modules/promotions.ee/dependency-check/branch-facts.reader.ts
+  s_3dd47ea0104342::t_4ebe61a61f5768 144-145,147-150
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  s_3dd47ea0104342::t_508fb9a99a90ac 253
+  s_3dd47ea0104342::t_f89621e86a7243 114-115
+  s_3dd47ea0104342::t_9308cae0cc4fb4 195,197-202,311,313-318,463-480
+  s_3dd47ea0104342::t_e151b835b0416f 67,172,250,369,508-518,531,536,548,550,555-560,656-657,675,689-690,704
+  s_3dd47ea0104342::t_858bbef263503a 376
+  s_3dd47ea0104342::t_57fd10e8b56c63 462
+packages/cli/src/modules/promotions.ee/dependency-check/resource-warnings.service.ts
+  s_3dd47ea0104342::t_a99160314e9a5a 1-186
+packages/cli/src/modules/promotions.ee/dependency-check/promote-report.ts
+  s_3dd47ea0104342::t_96d1255784ac4c 61-67,75,177-189
+packages/cli/src/modules/promotions.ee/promote-preview.service.ts
+  s_3dd47ea0104342::t_e151b835b0416f 18,43,46-56,103,225
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  s_3dd47ea0104342::t_5a833b92452749 161
+  s_3dd47ea0104342::t_879729c34592d6 220
+  s_3dd47ea0104342::t_80f1087321cb22 55-57,80-81,115-119,157-160,162-164,168,170-186,214,503,523-524,526-527
+packages/cli/src/modules/promotions.ee/dependency-check/index.ts
+  s_3dd47ea0104342::t_ba9f9eb3f1a405 6-7
+packages/cli/src/modules/promotions.ee/instance-package.ts
+  s_3dd47ea0104342::t_ff917e7f199395 50-52
+packages/cli/src/modules/promotions.ee/dependency-check/dependency-check.types.ts
+  s_3dd47ea0104342::t_4ebe61a61f5768 93-98
+packages/cli/src/modules/promotions.ee/apply-preview.ts
+  s_3dd47ea0104342::t_68526c3e2b0ea8 327-331,333-334
+  s_3dd47ea0104342::t_a74a441b51dca4 332
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_3dd47ea0104342::t_f7cdb7e6c144a5 99
+  s_3dd47ea0104342::t_c0743b0efad519 102,992,1024,1057
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_3dd47ea0104342::t_bc9448130319f3 896,928-936,1494-1509,1902-1903,1926-1929,1931-1942,1977,2010-2018,2833-2838,2841-2845
+  s_3dd47ea0104342::t_7396bbf67f6e21 1053-1054
+  s_3dd47ea0104342::t_f8ac4feb8ae8eb 336,369,429-433,685-689
+  s_3dd47ea0104342::t_ff917e7f199395 314-315,319,334-335,347-349,352-356,368,370-371,378,408,427-428,434-435
+  s_3dd47ea0104342::t_68526c3e2b0ea8 1438,2044,2173-2178
+  s_3dd47ea0104342::t_963755fb2200cd 350-351,357-366,674,676-680
+  s_3dd47ea0104342::t_5a833b92452749 897,1930
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_3dd47ea0104342::t_7396bbf67f6e21 410,416
+  s_3dd47ea0104342::t_963755fb2200cd 195-220
+  s_3dd47ea0104342::t_6a1741e5cc43ed 18-21
+  s_3dd47ea0104342::t_43d91573ec77a2 194
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyEnvironmentSelection.generated.yml
+  s_3dd47ea0104342::t_1343e761a5df67 8,99-105
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  s_3dd47ea0104342::t_7499e2e79d3535 8,63-69
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  s_3dd47ea0104342::t_88a24939c3429d 8,39-45,82-88
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  s_3dd47ea0104342::t_dc68205bf300af 8,67-73
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  s_3dd47ea0104342::t_de99ccb231285a 8,40-46,86-92
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionDependencyReport.generated.yml
+  s_3dd47ea0104342::t_5c5704349e5d28 165-170,361-363,502-506,581-639
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
+  s_3dd47ea0104342::t_5a9d81e91801db 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  s_3dd47ea0104342::t_1c954fe56f29a6 8,39-45
+packages/cli/src/public-api/v1/shared/spec/schemas/applyPackageResultDto.generated.yml
+  s_3dd47ea0104342::t_fae40febe17b86 522-557
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionApplyCheck.generated.yml
+  s_3dd47ea0104342::t_e5ce9612a15a48 1032-1033
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionDependencyReport.generated.yml
+  s_3dd47ea0104342::t_089e64d2cab263 81-86,277-279,418-422,497-555
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionResource.generated.yml
+  s_3dd47ea0104342::t_f26b7c5a9d6502 66-67
+packages/cli/src/modules/promotions.ee/local-package-entities.service.ts
+  s_61cd64805f10d1::t_e6b2ba9b70c588 4-9,18,40,97-108,125-126,128-130
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_61cd64805f10d1::t_f6e8715e2c46f0 287-288,292,297,301,355-361,365,371,383-393,441,475,484,493,495,505-506
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "68f70d8987342397418f5e10efdea81977cdec61",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_61cd64805f10d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac8bd23073eee8e34",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

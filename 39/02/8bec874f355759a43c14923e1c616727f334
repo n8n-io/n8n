@@ -1,0 +1,23 @@
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-channel-card.ts
+  s_b83c2cc9d859ec::t_432d7b85f8d621 79-83,85
+  s_b83c2cc9d859ec::t_9c9e42a93d3259 14-15,38-48,75-77,86-97
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-channel-card.test.ts
+  s_b83c2cc9d859ec::t_8ff8006af7b916 57-103,105-117
+  s_b83c2cc9d859ec::t_c863b917b6e973 104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "39028bec874f355759a43c14923e1c616727f334",
+  "prompts": {},
+  "sessions": {
+    "s_b83c2cc9d859ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b90adbb-dcfe-439f-a7eb-7c74a20d13cc",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/roles/project/projectRoleScopes.ts
+  s_f27bda1bd0c713::t_7043cf3ffde4c0 31
+packages/frontend/@n8n/stores/src/rbac.store.ts
+  s_f27bda1bd0c713::t_7043cf3ffde4c0 54
+packages/@n8n/permissions/src/utilities/__tests__/get-resource-permissions.test.ts
+  s_f27bda1bd0c713::t_36a98f98e27510 35,149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "56238b36b1e79b4195786d3063bc0d33c1a44fbc",
+  "prompts": {},
+  "sessions": {
+    "s_f27bda1bd0c713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e884d7e-3c84-4428-98db-a0c5cff39be6",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,98 @@
+packages/@n8n/cli/src/commands/promotion-environment/apply-command.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 5,52-54,59-64,156-174
+  s_3dd47ea0104342::t_b4c34e20c47398 175-177
+packages/cli/src/modules/promotions.ee/promote-preview.service.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 1-7,28,42,45-177
+  s_3dd47ea0104342::t_7e185f307cf7df 178
+packages/@n8n/cli/src/commands/promotion-environment/apply-environment-selection.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 1-63
+packages/cli/src/modules/promotions.ee/promotion-commit-message.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 62-93
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 4,10,19-20,30,56,69,77,79-81,138-142,180-183,457-462,467-472,475-481,484-517,545,548,570-571,574-577,590-596,602,617,680,685,687,691-712,775,777,786-1164,1384,1817,2120-2121,2128,2130-2142,2144-2147,2287-2306
+  s_3dd47ea0104342::t_deead694198981 2307-2308
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 73,359,727-732
+packages/@n8n/cli/README.md
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 64
+packages/cli/src/modules/promotions.ee/promotion-environment-projects.service.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 1-113
+packages/@n8n/cli/src/index.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 41,52,56,132,137-138,142-143
+packages/@n8n/api-types/src/dto/promotions/promotion-apply-check.dto.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 93-94
+packages/@n8n/cli/src/client.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 9-12,124-144,191-195,197,560-596
+  s_3dd47ea0104342::t_582c82fd1541e4 597
+spike/ligo-1159/poc/decisions.md
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 327-387
+packages/@n8n/cli/src/commands/promotion-environment/promote-environment-selection.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 1-73
+packages/cli/src/modules/promotions.ee/instance-package.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 23-29
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 4,7,544-546
+packages/cli/src/modules/promotions.ee/base-branch-files.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 42,52
+packages/@n8n/cli/docs/commands/promotions.md
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 570-650
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 2,17,23,721-854
+  s_3dd47ea0104342::t_3fbd5389330999 855
+packages/@n8n/cli/src/commands/promotion-environment/list-environment-changes.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 1-65
+packages/cli/src/modules/promotions.ee/promotion-review-gate.service.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 56-68,71,74-76,80-87,90
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_3dd47ea0104342::t_8f0a772307fc75 504
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 31-32,37-42,95-103,132-134,136,139-140,151-188,349,353-358,425-426,429-439,479,484-486,501,506-507,511,528,557
+  s_3dd47ea0104342::t_8c1a9a15327dc2 505
+packages/@n8n/cli/src/commands/promotion-environment/environment-selection.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 1-78
+packages/cli/src/modules/promotions.ee/promotion-access.service.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 127-133
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 280-284,338-353
+packages/cli/src/modules/promotions.ee/promotion-dependency-gate.service.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 1-68
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 39,72,130-134,138-139,168-172,415-420,422,424,427-428,436-439,519,533-538,544-560
+  s_3dd47ea0104342::t_8f0a772307fc75 175
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 40-44,66-70,80-81,119-120,125
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 3,42-43,54-58,204-297,446-454,458,537-574,607
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_3dd47ea0104342::t_e651cf0e3c7bf3 3-4,26,46,50-54,75,176-275
+  s_3dd47ea0104342::t_c256cfd8d2d7ac 276
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyEnvironmentSelection.generated.yml
+  s_3dd47ea0104342::t_ccd350b9794e87 1-136
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironmentChangeDetails.generated.yml
+  s_3dd47ea0104342::t_9b616f425b02e3 1-78
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironmentChanges.generated.yml
+  s_3dd47ea0104342::t_3284bbae04ca65 1-221
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteEnvironmentSelection.generated.yml
+  s_3dd47ea0104342::t_3d2956b6abcf7a 1-104
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  s_3dd47ea0104342::t_24009b16bb7724 61
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_3dd47ea0104342::t_94929111ecdddb 332-343
+packages/cli/src/public-api/v1/shared/spec/schemas/promoteSelectionResultDto.generated.yml
+  s_3dd47ea0104342::t_add84ead1c1953 1-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "902af49a9a8bdc30d3b9969fe4994ebf798281ce",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
