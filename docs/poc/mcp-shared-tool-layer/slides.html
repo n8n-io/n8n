@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MCP as the shared tool layer — PoC</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --panel: #171a23;
+    --panel-2: #1f2330;
+    --line: #2b3040;
+    --text: #e8eaf0;
+    --muted: #9aa3b5;
+    --accent: #ff6d5a;
+    --accent-2: #7c9cff;
+    --ok: #4cd4a0;
+    --warn: #f5c35b;
+    --bad: #ff7b7b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif; }
+  .deck { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+  .slide { position: absolute; inset: 0; display: none; padding: 4vh 5vw; flex-direction: column; }
+  .slide.active { display: flex; }
+  h1 { font-size: 3.6vh; margin: 0 0 0.6vh; letter-spacing: -0.01em; }
+  h1 small { color: var(--muted); font-weight: 500; font-size: 2.2vh; margin-left: 1vw; }
+  .sub { color: var(--muted); font-size: 2.2vh; margin: 0 0 2.4vh; }
+  .grow { flex: 1; min-height: 0; }
+  .cols { display: grid; gap: 1.6vw; height: 100%; }
+  .cols.three { grid-template-columns: repeat(3, 1fr); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 1.2vh; padding: 2vh 1.6vw; display: flex; flex-direction: column; min-height: 0; }
+  .card h2 { font-size: 2.8vh; margin: 0 0 1.2vh; display: flex; align-items: center; gap: 0.6vw; }
+  .card h2 .dot { width: 1.2vh; height: 1.2vh; border-radius: 50%; display: inline-block; }
+  .card ul { margin: 0; padding-left: 1.4vw; font-size: 2.3vh; line-height: 1.5; color: var(--text); }
+  .card li { margin-bottom: 1.4vh; }
+  .card li b { color: #fff; }
+  .card li code, .foot code, .legend code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.92em; background: var(--panel-2); padding: 0.1em 0.35em; border-radius: 0.4em; color: #dfe4ff; }
+  .tag { display: inline-block; font-size: 1.5vh; padding: 0.2vh 0.7vw; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); margin-left: 0.5vw; }
+  .foot { color: var(--muted); font-size: 1.9vh; margin-top: 1.6vh; display: flex; justify-content: space-between; }
+  .counter { position: absolute; right: 2vw; bottom: 1.6vh; color: var(--muted); font-size: 1.6vh; }
+  svg { width: 100%; height: 100%; }
+  .box { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; }
+  .box.accent { stroke: var(--accent); }
+  .box.accent2 { stroke: var(--accent-2); }
+  .box.inner { fill: var(--panel-2); stroke: var(--line); }
+  .t { fill: var(--text); font-size: 17px; }
+  .t.b { font-weight: 700; font-size: 19px; }
+  .t.m { fill: var(--muted); font-size: 14px; }
+  .t.c { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13.5px; fill: #dfe4ff; }
+  .arrow { stroke: var(--muted); stroke-width: 2; fill: none; marker-end: url(#head); }
+  .arrow.accent { stroke: var(--accent); }
+  .arrow.accent2 { stroke: var(--accent-2); }
+  .legend { display: flex; gap: 2vw; font-size: 1.9vh; color: var(--muted); margin-top: 1vh; }
+  .legend span::before { content: ""; display: inline-block; width: 1.4vw; height: 0.35vh; margin-right: 0.5vw; vertical-align: middle; border-radius: 2px; }
+  .legend .a::before { background: var(--accent); }
+  .legend .b::before { background: var(--accent-2); }
+  .matrix { width: 100%; border-collapse: collapse; font-size: 2.05vh; }
+  .matrix th, .matrix td { text-align: left; padding: 1vh 0.8vw; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .matrix th { color: var(--muted); font-weight: 600; font-size: 1.6vh; }
+  .pill { display: inline-block; padding: 0.15vh 0.6vw; border-radius: 999px; font-size: 1.8vh; white-space: nowrap; font-weight: 600; }
+  .pill.ok { background: rgba(76,212,160,.15); color: var(--ok); }
+  .pill.ext { background: rgba(124,156,255,.15); color: var(--accent-2); }
+  .pill.client { background: rgba(245,195,91,.15); color: var(--warn); }
+  .pill.no { background: rgba(255,123,123,.15); color: var(--bad); }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- Slide 1: what was built -->
+  <section class="slide active">
+    <h1>MCP as the shared tool layer <small>PoC · the n8n Assistant as a real MCP client of the instance server</small></h1>
+    <p class="sub">One server, two kinds of clients. Same tools, same instructions, same sandbox — the Assistant keeps only its harness.</p>
+    <div class="grow">
+      <svg viewBox="0 0 1200 520" aria-label="Architecture">
+        <defs>
+          <marker id="head" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="#9aa3b5"/>
+          </marker>
+        </defs>
+
+        <!-- External clients -->
+        <rect class="box accent2" x="40" y="30" width="330" height="124" rx="14"/>
+        <text class="t b" x="60" y="62">External MCP clients</text>
+        <text class="t m" x="60" y="88">Claude Code · Claude Desktop · Cursor</text>
+        <text class="t c" x="60" y="114">HTTP · OAuth / API key</text>
+        <text class="t m" x="60" y="140">form elicitation → confirmations</text>
+
+        <!-- Assistant -->
+        <rect class="box accent" x="40" y="200" width="330" height="290" rx="14"/>
+        <text class="t b" x="60" y="232">n8n Assistant</text>
+        <text class="t m" x="60" y="256">@n8n/agents loop · unchanged UI</text>
+        <rect class="box inner" x="60" y="272" width="290" height="92" rx="10"/>
+        <text class="t" x="74" y="298">Harness tools stay native</text>
+        <text class="t m" x="74" y="320">ask_user · setup · executions</text>
+        <text class="t m" x="74" y="340">credentials · data tables · files</text>
+        <rect class="box inner" x="60" y="378" width="290" height="96" rx="10"/>
+        <text class="t" x="74" y="404">Bridge (client side)</text>
+        <text class="t m" x="74" y="426">input_required → approval card</text>
+        <text class="t m" x="74" y="446">grants · judge · workspace = thread</text>
+
+        <!-- Arrows into the server -->
+        <path class="arrow accent2" d="M370 92 C 480 92, 480 196, 590 196"/>
+        <text class="t c" x="392" y="78">HTTP · JSON-RPC</text>
+        <path class="arrow accent" d="M370 345 C 480 345, 480 300, 590 300"/>
+        <text class="t c" x="384" y="372">MCP client 2026-07-28</text>
+        <text class="t m" x="384" y="392">in-process handler.fetch()</text>
+        <text class="t m" x="384" y="410">no socket · no token</text>
+
+        <!-- Server -->
+        <rect class="box" x="590" y="140" width="580" height="350" rx="14"/>
+        <text class="t b" x="612" y="172">Instance MCP server</text>
+        <text class="t m" x="612" y="196">@modelcontextprotocol/server · a fresh McpServer per request</text>
+
+        <rect class="box inner" x="612" y="214" width="170" height="64" rx="10"/>
+        <text class="t" x="626" y="238">nodes</text>
+        <text class="t m" x="626" y="258">search · types</text>
+
+        <rect class="box inner" x="794" y="214" width="170" height="64" rx="10"/>
+        <text class="t" x="808" y="238">workflow reads</text>
+        <text class="t m" x="808" y="258">search · details</text>
+
+        <rect class="box inner" x="976" y="214" width="172" height="64" rx="10"/>
+        <text class="t" x="990" y="238">lifecycle</text>
+        <text class="t m" x="990" y="258">publish · archive</text>
+
+        <rect class="box inner" x="612" y="292" width="262" height="64" rx="10"/>
+        <text class="t" x="626" y="316">build</text>
+        <text class="t m" x="626" y="336">code in · operations · confirmed</text>
+
+        <rect class="box inner" x="886" y="292" width="262" height="64" rx="10"/>
+        <text class="t" x="900" y="316">workspace (sandbox)</text>
+        <text class="t m" x="900" y="336">files · shell · build_workflow</text>
+
+        <rect class="box inner" x="612" y="372" width="536" height="66" rx="10"/>
+        <text class="t m" x="626" y="396">Extensions: <tspan class="t c">_meta.n8n/group</tspan> · <tspan class="t c">_meta.n8n/approval</tspan> · signed <tspan class="t c">requestState</tspan></text>
+        <text class="t m" x="626" y="420">first-party caller policy · writes confirm through multi-round-trip elicitation</text>
+
+        <text class="t m" x="612" y="468">Below: NodeCatalog · WorkflowService · credentials · one sandbox per (user, key)</text>
+      </svg>
+    </div>
+    <div class="legend"><span class="a">Assistant path (M0–M4)</span><span class="b">External clients (unchanged transport)</span></div>
+  </section>
+
+  <!-- Slide 2: what each layer gets -->
+  <section class="slide">
+    <h1>What each layer gets <small>and what the protocol could carry</small></h1>
+    <div class="grow">
+      <div class="cols three">
+        <div class="card">
+          <h2><span class="dot" style="background:var(--accent-2)"></span>External MCP clients</h2>
+          <ul>
+            <li><b>The build sandbox:</b> <code>open_workspace</code>, file and shell tools, <code>build_workflow</code> (tsx, multi-file, lint) — also one-call with <code>files</code></li>
+            <li><b>The edit loop:</b> <code>get_workflow_as_code</code> → edit → rebuild with <code>workflowId</code></li>
+            <li><b>Confirmations before writes</b> on form-capable clients (archive, publish, unpublish, restore, update)</li>
+            <li>Tool groups and approval details in <code>_meta</code>; ignorable by any client</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2><span class="dot" style="background:var(--accent)"></span>The Assistant</h2>
+          <ul>
+            <li><b>14 native tools and the workspace tool set replaced</b> by the server's: discovery, reads, lifecycle, build, sandbox</li>
+            <li><b>Same UX:</b> approval cards, “Always allow” grants, admin rules and Auto-mode judge all still apply — client side</li>
+            <li><b>Durable HITL over the protocol:</b> the suspension keeps the signed <code>requestState</code>; resume retries the call, survives a restart</li>
+            <li>Workspace bound to the thread; workflow tab and thread ownership restored by the bridge</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2><span class="dot" style="background:var(--ok)"></span>Does the protocol carry it?</h2>
+          <table class="matrix">
+            <tr><td>discovery · typed outputs · cancellation</td><td><span class="pill ok">native</span></td></tr>
+            <tr><td>approval before a write (MRTR elicitation)</td><td><span class="pill ok">native</span></td></tr>
+            <tr><td>guidance (instructions, resources)</td><td><span class="pill ok">native</span> partial</td></tr>
+            <tr><td>tool groups · rich approval card</td><td><span class="pill ext">_meta</span></td></tr>
+            <tr><td>grants · admin rules · judge · thread ownership</td><td><span class="pill client">client</span></td></tr>
+            <tr><td>workspace / sandbox</td><td><span class="pill client">client key</span></td></tr>
+            <tr><td>first-party vs third-party caller</td><td><span class="pill no">no</span> host marker</td></tr>
+            <tr><td>tool namespaces (name collisions)</td><td><span class="pill no">no</span></td></tr>
+            <tr><td>verification evidence, setup state</td><td><span class="pill no">thread state</span></td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>Branch <code>poc/mcp-shared-tool-layer</code> · spec in <code>.agents/specs/mcp-shared-tool-layer.md</code></span><span>M0 client · M1 reads · M2 approvals · M3 build · M4 sandbox</span></div>
+  </section>
+
+  <!-- Slide 3: shortcuts, drawbacks, what's missing -->
+  <section class="slide">
+    <h1>Shortcuts, drawbacks, and the road to production</h1>
+    <div class="grow">
+      <div class="cols three">
+        <div class="card">
+          <h2><span class="dot" style="background:var(--warn)"></span>Shortcuts taken</h2>
+          <ul>
+            <li><b>In-process transport:</b> <code>handler.fetch()</code>, no token, no middleware — the auth story (M5) is untested</li>
+            <li><b>No flag:</b> native tools replaced wholesale; the <code>workflow-builder</code> skill switched off rather than rewritten</li>
+            <li><code>Container.get</code> inside tools, handler-side HMAC instead of the SDK's <code>requestState.verify</code>, <code>request()</code> to dodge a client output-validation quirk</li>
+            <li>Verified by integration tests and manual runs — <b>no LangSmith evals</b> against the native Assistant</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2><span class="dot" style="background:var(--bad)"></span>Drawbacks observed</h2>
+          <ul>
+            <li><b>Lost thread state:</b> build→verify→debug loop, setup diffs, unverified-publish disclosure don't exist over MCP</li>
+            <li><b>Guidance drift:</b> the skill's references (credential choices, model selection, trigger shapes) never reach the model; one run hit a name collision and self-recovered</li>
+            <li><b>No namespaces:</b> collisions resolved by swap rules; <code>workspaceKey</code> on every call because the protocol has no session</li>
+            <li>Behaviour changes for everyone: confirmations on by default; Assistant builds counted as MCP builds; a JSON-RPC hop and a fresh server per call</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2><span class="dot" style="background:var(--ok)"></span>Missing for production</h2>
+          <ul>
+            <li><b>Evidence:</b> eval parity (native vs MCP Assistant vs Claude-over-MCP), latency and token budgets</li>
+            <li><b>Contract:</b> tool naming/versioning, schema-parity tests in CI, first-party caller on the token for loopback/sidecar</li>
+            <li><b>Platform:</b> a v2 MCP connection in <code>@n8n/agents</code> (promote the bridge), sandbox quotas/TTL for external callers, legacy tool names for persisted threads, i18n, telemetry attribution</li>
+            <li><b>Product:</b> which Assistant behaviours become server tools (setup, verification) and which stay harness</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>Verdict: the protocol carries the tool layer; the harness, the policy and the session stay with the client — by design, not by accident.</span></div>
+  </section>
+
+  <div class="counter" id="counter">1 / 3</div>
+</div>
+<script>
+  (function () {
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    const counter = document.getElementById('counter');
+    let index = 0;
+    const show = (next) => {
+      index = Math.max(0, Math.min(slides.length - 1, next));
+      slides.forEach((slide, i) => slide.classList.toggle('active', i === index));
+      counter.textContent = `${index + 1} / ${slides.length}`;
+      location.hash = `#${index + 1}`;
+    };
+    document.addEventListener('keydown', (event) => {
+      if (['ArrowRight', ' ', 'PageDown', 'Enter'].includes(event.key)) show(index + 1);
+      if (['ArrowLeft', 'PageUp', 'Backspace'].includes(event.key)) show(index - 1);
+    });
+    document.getElementById('deck').addEventListener('click', (event) => {
+      if (event.target.closest('a')) return;
+      show(event.clientX < window.innerWidth / 4 ? index - 1 : index + 1);
+    });
+    const fromHash = Number.parseInt(location.hash.slice(1), 10);
+    show(Number.isFinite(fromHash) ? fromHash - 1 : 0);
+  })();
+</script>
+</body>
+</html>

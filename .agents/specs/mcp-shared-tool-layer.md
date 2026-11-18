@@ -185,6 +185,12 @@ External clients without a filesystem get the full builder loop.
 
 Proves: auth, scopes, and rate-limit parity.
 
+## Presentation
+
+`docs/poc/mcp-shared-tool-layer/slides.html`: three slides (architecture, what
+each layer gets, shortcuts and the road to production). Open the file in a
+browser; arrow keys or a click move between slides.
+
 ## Evaluation
 
 Same LangSmith dataset, three runs: native Assistant (baseline, `master`),
