@@ -44,11 +44,11 @@ import { isStringArray } from '../utils/is-string-array';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 import { TimedQuery } from '../utils/timed-query';
 import {
-	getWithWorkflowCollections,
+	getWithWorkflowRelationAggregates,
 	joinsSeveralRows,
 	splitWorkflowRelations,
-	type WorkflowCollections,
-} from '../utils/workflow-collections';
+	type WorkflowRelationAggregates,
+} from '../utils/workflow-relation-aggregates';
 
 export type WorkflowIdsQuery = { query: string; parameters: Record<string, unknown> };
 
@@ -238,14 +238,14 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		ctx: OperationContext = {},
 	): Promise<WorkflowEntity | null> {
 		const manager = this.managerFor(ctx);
-		const { relations, collections } = splitWorkflowRelations(options?.relations, where);
+		const { relations, aggregates } = splitWorkflowRelations(options?.relations, where);
 		const qb = manager
 			.createQueryBuilder(WorkflowEntity, 'workflow')
 			.setFindOptions({ where, relations });
 		if (joinsSeveralRows(qb.expressionMap.mainAlias!.metadata, relations)) qb.take(1);
 		else qb.limit(1);
 
-		const [workflow] = await getWithWorkflowCollections(qb, collections);
+		const [workflow] = await getWithWorkflowRelationAggregates(qb, aggregates);
 		return workflow ?? null;
 	}
 
@@ -260,20 +260,20 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			: projectId
 				? { shared: { projectId } }
 				: {};
-		return await this.findWithCollections(
+		return await this.findWithRelationAggregates(
 			{ where },
 			{ tags: true, shared: { project: true }, sharedProjectId: projectId },
 		);
 	}
 
 	/** Workflows matching `options`, with the requested tags and shares, in one statement. */
-	private async findWithCollections(
+	private async findWithRelationAggregates(
 		options: Pick<FindManyOptions<WorkflowEntity>, 'where' | 'select' | 'relations'>,
-		collections: WorkflowCollections,
+		aggregates: WorkflowRelationAggregates,
 	): Promise<WorkflowEntity[]> {
-		return await getWithWorkflowCollections(
+		return await getWithWorkflowRelationAggregates(
 			this.createQueryBuilder('workflow').setFindOptions(options),
-			collections,
+			aggregates,
 		);
 	}
 
@@ -309,7 +309,9 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			if (options.includeActiveVersion) {
 				qb.leftJoinAndSelect('workflow.activeVersion', 'activeVersion');
 			}
-			workflows.push(...(await getWithWorkflowCollections(qb, { tags: options.includeTags })));
+			workflows.push(
+				...(await getWithWorkflowRelationAggregates(qb, { tags: options.includeTags })),
+			);
 		}
 
 		return workflows;
@@ -679,7 +681,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			.leftJoinAndSelect('workflow.activeVersion', 'activeVersion')
 			.where('workflow.id = :workflowId', { workflowId });
 
-		const [workflow] = await getWithWorkflowCollections(qb, { shared: { project: true } });
+		const [workflow] = await getWithWorkflowRelationAggregates(qb, { shared: { project: true } });
 		return workflow ?? null;
 	}
 
@@ -751,7 +753,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		for (const chunk of chunkIds(folderIds)) {
 			workflows.push(
-				...(await this.findWithCollections(
+				...(await this.findWithRelationAggregates(
 					{
 						select: [
 							'id',
@@ -1459,17 +1461,17 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		 * Tags and shares to return as JSON arrays in the same statement, instead of selecting
 		 * them through `options.select`, which joins them and repeats each workflow per row.
 		 */
-		collections?: WorkflowCollections,
+		aggregates?: WorkflowRelationAggregates,
 	): Promise<WorkflowListResult> {
 		await this.expandParentFolderToSubtree(options, { onSearch: false });
 		const query = this.getManyQueryWithSharingSubquery(user, sharingOptions, options);
 
-		if (!collections) {
+		if (!aggregates) {
 			const [workflows, count] = await query.getManyAndCount();
 			return { workflows, count };
 		}
 
-		const workflows = await getWithWorkflowCollections(query, collections);
+		const workflows = await getWithWorkflowRelationAggregates(query, aggregates);
 		return { workflows, count: await query.getCount() };
 	}
 

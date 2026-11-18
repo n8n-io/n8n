@@ -5,7 +5,7 @@ import type { IWorkflowBase, VersionedWorkflowSettings } from 'n8n-workflow';
 import { BaseRepository } from './base-repository';
 import { WorkflowPublishedVersion, type WorkflowHistory } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
-import { getWithWorkflowCollections } from '../utils/workflow-collections';
+import { getWithWorkflowRelationAggregates } from '../utils/workflow-relation-aggregates';
 
 export type PublishedWorkflowDataForExecution = Pick<
 	IWorkflowBase,
@@ -125,7 +125,7 @@ export class WorkflowPublishedVersionRepository extends BaseRepository<WorkflowP
 			.leftJoinAndSelect('record.publishedVersion', 'publishedVersion')
 			.where('record.workflowId = :workflowId', { workflowId });
 
-		const [record] = await getWithWorkflowCollections(
+		const [record] = await getWithWorkflowRelationAggregates(
 			qb,
 			{ shared: { project: true } },
 			({ workflow }) => workflow,

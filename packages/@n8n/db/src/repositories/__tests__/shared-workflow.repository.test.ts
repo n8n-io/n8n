@@ -14,11 +14,13 @@ import type {
 import { SharedWorkflow } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { mockInstance } from '../../utils/test-utils/mock-instance';
-import { getWithWorkflowCollections } from '../../utils/workflow-collections';
+import { getWithWorkflowRelationAggregates } from '../../utils/workflow-relation-aggregates';
 import { SharedWorkflowRepository } from '../shared-workflow.repository';
 import { WorkflowPublishHistoryRepository } from '../workflow-publish-history.repository';
 
-vi.mock('../../utils/workflow-collections', () => ({ getWithWorkflowCollections: vi.fn() }));
+vi.mock('../../utils/workflow-relation-aggregates', () => ({
+	getWithWorkflowRelationAggregates: vi.fn(),
+}));
 
 describe('SharedWorkflowRepository', () => {
 	const entityManager = mockEntityManager(SharedWorkflow);
@@ -383,10 +385,10 @@ describe('SharedWorkflowRepository', () => {
 			mock<WorkflowEntity>({ id: 'workflow-1', activeVersion });
 		const found = (workflow: WorkflowEntity | null) =>
 			vi
-				.mocked(getWithWorkflowCollections)
+				.mocked(getWithWorkflowRelationAggregates)
 				.mockResolvedValueOnce(workflow ? [mock<SharedWorkflow>({ workflow })] : []);
 
-		it('reads the share, the workflow and its collections in one limited statement', async () => {
+		it('reads the share, the workflow and its relation aggregates in one limited statement', async () => {
 			found(workflowWith(null));
 			const where = { role: In(['workflow:owner']) };
 
@@ -418,9 +420,10 @@ describe('SharedWorkflowRepository', () => {
 				'workflow.activeVersion',
 				'activeVersion',
 			);
-			const [qb, collections, workflowOf] = vi.mocked(getWithWorkflowCollections).mock.calls[0];
+			const [qb, aggregates, workflowOf] = vi.mocked(getWithWorkflowRelationAggregates).mock
+				.calls[0];
 			expect(qb).toBe(queryBuilder);
-			expect(collections).toEqual({ shared: { project: true }, tags: true });
+			expect(aggregates).toEqual({ shared: { project: true }, tags: true });
 			const share = mock<SharedWorkflow>({ workflow: workflowWith(null) });
 			expect(workflowOf?.(share)).toBe(share.workflow);
 		});
@@ -431,7 +434,7 @@ describe('SharedWorkflowRepository', () => {
 			await sharedWorkflowRepository.findWorkflowWithOptions('workflow-1');
 
 			expect(queryBuilder.leftJoinAndSelect).not.toHaveBeenCalled();
-			expect(vi.mocked(getWithWorkflowCollections).mock.calls[0][1]).toEqual({
+			expect(vi.mocked(getWithWorkflowRelationAggregates).mock.calls[0][1]).toEqual({
 				shared: { project: true },
 				tags: false,
 			});

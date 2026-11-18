@@ -1,10 +1,14 @@
 import type { EntityMetadata } from '@n8n/typeorm';
 
-import { joinsSeveralRows, parseJsonArray, splitWorkflowRelations } from '../workflow-collections';
+import {
+	joinsSeveralRows,
+	parseJsonArray,
+	splitWorkflowRelations,
+} from '../workflow-relation-aggregates';
 
 describe('splitWorkflowRelations', () => {
 	it('keeps undefined relations as they are', () => {
-		expect(splitWorkflowRelations(undefined)).toEqual({ relations: undefined, collections: {} });
+		expect(splitWorkflowRelations(undefined)).toEqual({ relations: undefined, aggregates: {} });
 	});
 
 	it.each([
@@ -13,8 +17,8 @@ describe('splitWorkflowRelations', () => {
 		[['shared', 'shared.project'], {}, { shared: { project: true } }],
 		[['shared.project'], {}, { shared: { project: true } }],
 		[[], {}, {}],
-	])('splits the relation paths %j', (relations, joined, collections) => {
-		expect(splitWorkflowRelations(relations)).toEqual({ relations: joined, collections });
+	])('splits the relation paths %j', (relations, joined, aggregates) => {
+		expect(splitWorkflowRelations(relations)).toEqual({ relations: joined, aggregates });
 	});
 
 	it.each([
@@ -27,30 +31,30 @@ describe('splitWorkflowRelations', () => {
 		[{ shared: { project: false } }, {}, { shared: true }],
 		[{ tags: true, shared: true }, {}, { tags: true, shared: true }],
 		[{ tags: false, activeVersion: true }, { tags: false, activeVersion: true }, {}],
-	])('splits the relations object %j', (relations, joined, collections) => {
-		expect(splitWorkflowRelations(relations)).toEqual({ relations: joined, collections });
+	])('splits the relations object %j', (relations, joined, aggregates) => {
+		expect(splitWorkflowRelations(relations)).toEqual({ relations: joined, aggregates });
 	});
 
-	it('keeps a collection joined when it asks for nested relations the loader does not cover', () => {
+	it('keeps a relation joined when it asks for nested relations the aggregate does not cover', () => {
 		const relations = {
 			shared: { project: { projectRelations: true } },
 			tags: { workflows: true },
 		};
 
-		expect(splitWorkflowRelations(relations)).toEqual({ relations, collections: {} });
+		expect(splitWorkflowRelations(relations)).toEqual({ relations, aggregates: {} });
 	});
 
 	it.each([
 		[{ shared: { projectId: 'project-1' } }, 'shared'],
 		[{ id: 'workflow-1', tags: { name: 'prod' } }, 'tags'],
-	])('keeps a collection joined when where %j filters on it', (where, collection) => {
-		const { relations, collections } = splitWorkflowRelations(
+	])('keeps a relation joined when where %j filters on it', (where, relation) => {
+		const { relations, aggregates } = splitWorkflowRelations(
 			{ tags: true, shared: true, activeVersion: true },
 			where,
 		);
 
-		expect(relations).toHaveProperty(collection, true);
-		expect(collections).not.toHaveProperty(collection);
+		expect(relations).toHaveProperty(relation, true);
+		expect(aggregates).not.toHaveProperty(relation);
 	});
 
 	it('does not change the relations it was given', () => {
