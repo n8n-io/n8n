@@ -6,6 +6,7 @@ import {
 	PROJECT_TASK_BOARDS_VIEW,
 	TASK_BOARD_INBOX_VIEW,
 	TASK_BOARD_SETTINGS_VIEW,
+	TASK_BOARD_TASK_VIEW,
 	TASK_BOARD_TEAM_VIEW,
 	TASK_BOARD_VIEW,
 	TASK_BOARDS_VIEW,
@@ -13,6 +14,7 @@ import {
 
 const TasksShellView = async () => await import('./views/TasksShellView/TasksShellView.vue');
 const TaskBoardView = async () => await import('./views/TaskBoardView/TaskBoardView.vue');
+const TaskView = async () => await import('./views/TaskView/TaskView.vue');
 const TaskInboxView = async () => await import('./views/TaskInboxView/TaskInboxView.vue');
 const TaskTeamView = async () => await import('./views/TaskTeamView/TaskTeamView.vue');
 const TaskBoardSettingsView = async () =>
@@ -51,6 +53,7 @@ export const TaskBoardModule = defineFrontendModule({
 			meta: { projectRoute: true, ...shellMeta() },
 			children: [
 				{ name: TASK_BOARD_VIEW, path: '', component: TaskBoardView },
+				{ name: TASK_BOARD_TASK_VIEW, path: 'task/:taskId', component: TaskView },
 				{ name: TASK_BOARD_INBOX_VIEW, path: 'inbox', component: TaskInboxView },
 				{ name: TASK_BOARD_TEAM_VIEW, path: 'team', component: TaskTeamView },
 				{ name: TASK_BOARD_SETTINGS_VIEW, path: 'settings', component: TaskBoardSettingsView },

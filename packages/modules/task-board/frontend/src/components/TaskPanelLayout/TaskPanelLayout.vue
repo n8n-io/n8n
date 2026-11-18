@@ -6,7 +6,7 @@ import { useTaskPanel } from './useTaskPanel';
 import TaskPanel from '../TaskPanel/TaskPanel.vue';
 
 /** A board page with the selected task in a panel that the user can resize, on the right. */
-const { projectId, columns, selectedTask, assigneeItems, close, move, assign } = useTaskPanel();
+const { selectedTask, selectedTaskLocation, close, openFullPage } = useTaskPanel();
 
 const layoutRef = useTemplateRef<HTMLElement>('layout');
 const panelResizer = useResizablePanel({
@@ -27,20 +27,17 @@ const panelWidth = panelResizer.width;
 			<slot />
 		</main>
 		<N8nResizeWrapper
-			v-if="selectedTask"
+			v-if="selectedTask && selectedTaskLocation"
 			:class="$style.panelResizer"
 			:style="{ width: `${panelWidth}px` }"
 			:resizer="panelResizer"
 			:supported-directions="['left']"
 		>
 			<TaskPanel
-				:project-id="projectId"
 				:task="selectedTask"
-				:columns="columns"
-				:assignee-items="assigneeItems"
+				:task-location="selectedTaskLocation"
 				@close="close"
-				@move="move"
-				@assign="assign"
+				@open-full-page="openFullPage"
 			/>
 		</N8nResizeWrapper>
 	</div>

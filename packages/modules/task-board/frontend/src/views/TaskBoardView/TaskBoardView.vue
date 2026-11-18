@@ -10,6 +10,8 @@ const {
 	columns,
 	tasksByColumnId,
 	assigneeItems,
+	tagSuggestions,
+	taskLocation,
 	selectedTaskId,
 	selectTask,
 	moveTask,
@@ -29,6 +31,7 @@ const {
 				:column="column"
 				:tasks="tasksByColumnId.get(column.id) ?? []"
 				:selected-task-id="selectedTaskId"
+				:task-location="taskLocation"
 				@select="selectTask"
 				@drop-task="moveTask($event, column.id)"
 			/>
@@ -36,6 +39,7 @@ const {
 		<CreateTaskDialog
 			v-model:open="createDialogOpen"
 			:assignee-items="assigneeItems"
+			:tag-suggestions="tagSuggestions"
 			:creating="creatingTask"
 			@submit="createTask"
 		/>

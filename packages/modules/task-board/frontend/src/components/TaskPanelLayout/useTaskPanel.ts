@@ -1,36 +1,31 @@
-import { storeToRefs } from 'pinia';
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 
-import { useActiveTaskBoard } from '../../composables/useActiveTaskBoard';
+import { useTaskLinks } from '../../composables/useTaskLinks';
 import { useTaskSelection } from '../../composables/useTaskSelection';
 import { useTaskBoardStore } from '../../task-board.store';
-import { decodeAssignee } from '../../task-board.utils';
 
-/** The task in the side panel of a board page, and the changes the panel makes to it. */
+/** The task in the side panel of a board page, and the way from the panel to the task page. */
 export function useTaskPanel() {
 	const store = useTaskBoardStore();
-	const { columns } = storeToRefs(store);
-	const { boardRef, moveTask, assignTask, assignees } = useActiveTaskBoard();
+	const router = useRouter();
+	const { taskLocation } = useTaskLinks();
 	const { selectedTaskId, selectTask } = useTaskSelection();
 
-	const projectId = computed(() => boardRef().projectId);
 	const selectedTask = computed(() =>
 		selectedTaskId.value ? store.findTask(selectedTaskId.value) : undefined,
 	);
-	const assigneeItems = computed(() => assignees.itemsFor(selectedTask.value?.assignee ?? null));
+	const selectedTaskLocation = computed(() =>
+		selectedTaskId.value ? taskLocation(selectedTaskId.value) : undefined,
+	);
 
 	function close() {
 		selectTask(undefined);
 	}
 
-	async function move(columnId: string) {
-		if (selectedTaskId.value) await moveTask(selectedTaskId.value, columnId);
+	async function openFullPage() {
+		if (selectedTaskLocation.value) await router.push(selectedTaskLocation.value);
 	}
 
-	async function assign(value: string) {
-		if (!selectedTaskId.value) return;
-		await assignTask(selectedTaskId.value, decodeAssignee(value), assignees.labelFor(value));
-	}
-
-	return { projectId, columns, selectedTask, assigneeItems, close, move, assign };
+	return { selectedTask, selectedTaskLocation, close, openFullPage };
 }
