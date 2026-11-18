@@ -1,0 +1,21 @@
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  s_3dd47ea0104342::t_b8b34ac9f89bfb 391-393
+spike/ligo-1159/poc/decisions.md
+  s_3dd47ea0104342::t_b8b34ac9f89bfb 725-765
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "07bdb14929369b06613b8bf6fb1ec231fe2467b9",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

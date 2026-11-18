@@ -1,0 +1,21 @@
+packages/quality/testing/playwright/tests/e2e/workflow-reviews/required-approval.spec.ts
+  s_d842348d080092::t_9b25efd6fe06fe 11,18,43-54
+packages/quality/testing/playwright/services/project-api-helper.ts
+  s_d842348d080092::t_9b25efd6fe06fe 124-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e8e88399944037eadf1d32498f30a7be9099e231",
+  "prompts": {},
+  "sessions": {
+    "s_d842348d080092": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e5ff11ea-ea68-4dce-b3b9-094b483d7df4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

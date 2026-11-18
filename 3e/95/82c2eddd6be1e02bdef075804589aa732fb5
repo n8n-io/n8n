@@ -1,0 +1,63 @@
+packages/frontend/editor-ui/src/features/pages/components/ResourcePagesPopover.vue
+  ai_agent 1-246
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNode.vue
+  ai_agent 40-41,341-348,461-464,496-501
+packages/frontend/editor-ui/src/features/pages/composables/useProjectResourcePages.test.ts
+  ai_agent 1-58
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowDetails.test.ts
+  ai_agent 35,40-44,267-295
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  ai_agent 388-402,696-771
+packages/frontend/editor-ui/src/features/pages/components/NodePagesBadge.vue
+  ai_agent 1-111
+packages/frontend/editor-ui/src/features/pages/components/WorkflowPagesButton.test.ts
+  ai_agent 1-164
+packages/frontend/editor-ui/src/features/pages/components/NodePagesButton.vue
+  ai_agent 1-47
+packages/frontend/editor-ui/src/features/pages/composables/useDocumentWorkflowWithAi.test.ts
+  ai_agent 1-96
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableDetailsView.test.ts
+  ai_agent 45-59,95-130
+packages/frontend/editor-ui/src/features/pages/components/DocumentWorkflowWithAiButton.vue
+  ai_agent 1-44
+packages/frontend/editor-ui/src/features/ndv/shared/views/NodeDetailsView.vue
+  ai_agent 10-11,80,799-803
+packages/frontend/editor-ui/src/features/pages/composables/useDocumentWorkflowWithAi.ts
+  ai_agent 1-60
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNode.test.ts
+  ai_agent 38-50,178-211
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableDetailsView.vue
+  ai_agent 33-34,65,194-201
+packages/frontend/editor-ui/src/features/ndv/panel/components/NDVHeader.vue
+  ai_agent 61
+packages/frontend/editor-ui/src/features/pages/nodePages.store.ts
+  ai_agent 1-50
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowDetails.vue
+  ai_agent 20-21,81-84,387-391
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  ai_agent 29-30,855-857,1720-1728
+packages/frontend/editor-ui/src/features/pages/components/ResourcePagesButton.test.ts
+  ai_agent 1-175
+packages/frontend/editor-ui/src/features/pages/components/ResourcePagesButton.vue
+  ai_agent 1-90
+packages/frontend/editor-ui/src/features/pages/composables/usePagesReferencingResource.ts
+  ai_agent 1-60
+packages/frontend/editor-ui/src/features/pages/components/WorkflowPagesButton.vue
+  ai_agent 1-52
+packages/frontend/editor-ui/src/features/pages/composables/usePagesWorkflowId.ts
+  ai_agent 1-24
+packages/frontend/editor-ui/src/features/pages/composables/useProjectResourcePages.ts
+  ai_agent 1-52
+packages/frontend/editor-ui/src/features/pages/components/DocumentWorkflowWithAiButton.test.ts
+  ai_agent 1-64
+packages/frontend/editor-ui/src/features/pages/components/NodePagesBadge.test.ts
+  ai_agent 1-124
+packages/frontend/editor-ui/src/features/pages/nodePages.store.test.ts
+  ai_agent 1-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3e9582c2eddd6be1e02bdef075804589aa732fb5",
+  "prompts": {}
+}

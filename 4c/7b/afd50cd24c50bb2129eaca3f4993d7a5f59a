@@ -1,0 +1,23 @@
+packages/modules/promotions/frontend/src/composables/usePromotionOwnerRequest.ts
+  s_3dd47ea0104342::t_932b9b62b04d76 1-4,6-12,15-21,24,26-31,34-35,38-40,45-48,50-74
+  s_3dd47ea0104342::t_b30f1121232261 5,13-14,22-23,25,32-33,36-37,41-44,49
+packages/modules/promotions/frontend/src/promotions.api.ts
+  s_3dd47ea0104342::t_8edd9dbc74642a 5,10,144-158
+  s_3dd47ea0104342::t_f2d6a1fee51a77 159-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4c7bafd50cd24c50bb2129eaca3f4993d7a5f59a",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

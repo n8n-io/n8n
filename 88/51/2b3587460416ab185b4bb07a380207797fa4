@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.store.test.ts
+  s_d842348d080092::t_b840f27bc8562a 486-500
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "88512b3587460416ab185b4bb07a380207797fa4",
+  "prompts": {},
+  "sessions": {
+    "s_d842348d080092": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e5ff11ea-ea68-4dce-b3b9-094b483d7df4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
