@@ -8,7 +8,7 @@ import { Config, Env, positiveIntSchema } from '@n8n/config';
 const BYTES_PER_MB = 1024 * 1024;
 
 /**
- * Upload limits of the knowledge module. The defaults equal the constants in
+ * Settings of the knowledge module. The defaults of the upload limits equal the constants in
  * `@n8n/api-types`, which the editor falls back to when the module is off.
  * The limits are integer megabytes, like the agents file limits, so an
  * operator never types a byte count.
@@ -34,6 +34,14 @@ export class KnowledgeConfig {
 	 */
 	@Env('N8N_KNOWLEDGE_MAX_TOTAL_SIZE_MB', positiveIntSchema)
 	maxTotalSizeMb: number = MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB * 1024;
+
+	/**
+	 * Whether to turn on knowledge collections for this instance before n8n
+	 * rolls them out to it. Set to true to turn them on. When false, the
+	 * staged rollout decides.
+	 */
+	@Env('N8N_KNOWLEDGE_COLLECTIONS_ENABLED')
+	collectionsEnabled: boolean = false;
 
 	get maxFileSizeBytes(): number {
 		return this.maxFileSizeMb * BYTES_PER_MB;

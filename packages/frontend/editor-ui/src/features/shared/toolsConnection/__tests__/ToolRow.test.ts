@@ -164,6 +164,21 @@ describe('ToolRow', () => {
 			expect(getByTestId('tools-connection-row-main')).not.toHaveFocus();
 		});
 
+		it('shows the footer outside the row button', async () => {
+			const { getByTestId, emitted } = renderRow({
+				props: { item: skill },
+				slots: { footer: '<a href="#" data-test-id="row-footer-link">Footer link</a>' },
+				pinia: createTestingPinia(),
+			});
+
+			const link = getByTestId('row-footer-link');
+			expect(getByTestId('tools-connection-row-main')).not.toContainElement(link);
+
+			await userEvent.click(link);
+
+			expect(emitted('open-detail')).toBeUndefined();
+		});
+
 		describe('long descriptions', () => {
 			const description = 'Write every answer in a calm tone. '.repeat(20).trim();
 			const tooltipStub = {

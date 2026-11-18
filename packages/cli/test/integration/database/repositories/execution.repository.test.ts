@@ -529,4 +529,34 @@ describe('ExecutionRepository', () => {
 			expect(result).toEqual([]);
 		});
 	});
+
+	describe('hasWorkflowExecutionAmong', () => {
+		const insertExecution = async (workflowId: string, deletedAt?: Date) => {
+			const { identifiers } = await Container.get(ExecutionRepository).insert({
+				workflowId,
+				mode: 'manual',
+				startedAt: new Date(),
+				status: 'success',
+				finished: true,
+				createdAt: new Date(),
+				...(deletedAt ? { deletedAt } : {}),
+			});
+			// Postgres returns the inserted id as a number, SQLite as a string.
+			return String(identifiers[0].id);
+		};
+
+		it('finds only executions of the given workflow, including soft-deleted ones', async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const workflow = await createWorkflow();
+			const other = await createWorkflow();
+			const softDeleted = await insertExecution(workflow.id, new Date());
+			const otherId = await insertExecution(other.id);
+
+			expect(await executionRepo.hasWorkflowExecutionAmong(workflow.id, [otherId])).toBe(false);
+			expect(
+				await executionRepo.hasWorkflowExecutionAmong(workflow.id, [otherId, softDeleted]),
+			).toBe(true);
+			expect(await executionRepo.hasWorkflowExecutionAmong(workflow.id, [])).toBe(false);
+		});
+	});
 });

@@ -25,6 +25,13 @@ function startSession(toolCallId: string, isLoading = false): InstanceAiToolCall
 	return { toolCallId, toolName: 'browser_start_session', args: {}, isLoading };
 }
 
+function requestUserAction(
+	args: Record<string, unknown>,
+	isLoading = true,
+): InstanceAiToolCallState {
+	return { toolCallId: 'tc-request', toolName: 'browser_request_user_action', args, isLoading };
+}
+
 function makeRuntime(...children: InstanceAiAgentNode[][]) {
 	return reactive({
 		messages: children.map((turn, index) => ({
@@ -108,5 +115,49 @@ describe('useCloudBrowserTasks', () => {
 		const tasks = useCloudBrowserTasks(makeRuntime([makeNode({ cloudBrowserWindowChanges: 1 })]));
 
 		expect(tasks.value[0].sessionKey).toBe('');
+	});
+
+	describe('userAction', () => {
+		it('takes the reason from the loading request call', () => {
+			const tasks = useCloudBrowserTasks(
+				makeRuntime([makeNode({ toolCalls: [requestUserAction({ reason: 'Log in, please' })] })]),
+			);
+
+			expect(tasks.value[0].userAction).toEqual({ reason: 'Log in, please' });
+		});
+
+		it('is not set when the request call finished', () => {
+			const tasks = useCloudBrowserTasks(
+				makeRuntime([
+					makeNode({ toolCalls: [requestUserAction({ reason: 'Log in, please' }, false)] }),
+				]),
+			);
+
+			expect(tasks.value[0].userAction).toBeUndefined();
+		});
+
+		it.each([
+			['done', 'completed' as const],
+			['failed', 'error' as const],
+		])('is not set for a %s task', (_, status) => {
+			const tasks = useCloudBrowserTasks(
+				makeRuntime([
+					makeNode({ status, toolCalls: [requestUserAction({ reason: 'Log in, please' })] }),
+				]),
+			);
+
+			expect(tasks.value[0].userAction).toBeUndefined();
+		});
+
+		it.each([
+			['a number', { reason: 42 }],
+			['no reason', {}],
+		])('is not set when the reason is %s', (_, args) => {
+			const tasks = useCloudBrowserTasks(
+				makeRuntime([makeNode({ toolCalls: [requestUserAction(args)] })]),
+			);
+
+			expect(tasks.value[0].userAction).toBeUndefined();
+		});
 	});
 });

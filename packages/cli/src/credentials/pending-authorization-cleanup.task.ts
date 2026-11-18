@@ -22,6 +22,7 @@ export class PendingAuthorizationCleanupTask implements SystemTask {
 	readonly target = clusterTarget({
 		/** A row is either past its deadline or not, so a repeated run deletes nothing new. */
 		scheduler: { retryOnFailure: true },
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep timer scheduling while the durable scheduler is disabled.
 		leaderTimer: {
 			/** A new leader on the fallback timer sweeps at once instead of waiting an hour. */
 			runOnTakeover: true,

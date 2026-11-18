@@ -40,9 +40,11 @@ import {
 	PushProxy,
 	RoleCacheService,
 } from '@n8n/backend-services';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
+const aiPreferenceSettingsService = mockInstance(AiPreferenceSettingsService);
 const authRolesService = mockInstance(AuthRolesService);
 authRolesService.init.mockResolvedValue(undefined);
 
@@ -145,6 +147,7 @@ describe('Start - AuthRolesService initialization', () => {
 
 		// Re-register all mocks
 		Container.set(AuthRolesService, authRolesService);
+		Container.set(AiPreferenceSettingsService, aiPreferenceSettingsService);
 		Container.set(RoleCacheService, roleCacheService);
 		Container.set(LoadNodesAndCredentials, loadNodesAndCredentials);
 		Container.set(DbConnection, dbConnection);
@@ -359,6 +362,7 @@ describe('Start - AuthRolesService initialization', () => {
 
 			// @ts-expect-error - Accessing private method for testing
 			expect(start.initInstanceSettingsLoader).toHaveBeenCalledTimes(1);
+			expect(aiPreferenceSettingsService.init).toHaveBeenCalledTimes(1);
 		});
 
 		it('should NOT initialize instance settings loader when instanceType is not main', async () => {
@@ -368,6 +372,7 @@ describe('Start - AuthRolesService initialization', () => {
 
 			// @ts-expect-error - Accessing private method for testing
 			expect(start.initInstanceSettingsLoader).not.toHaveBeenCalled();
+			expect(aiPreferenceSettingsService.init).not.toHaveBeenCalled();
 		});
 	});
 
