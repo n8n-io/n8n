@@ -1,14 +1,15 @@
 import { Logger } from '@n8n/backend-common';
 import { TelemetryProxy, UrlService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
-import { preferencesSettingsUrl } from '@/modules/mcp/tools/user-preference-tool.utils';
+import { preferencesSettingsUrl } from '@/services/ai-preference-write';
 import { UserService } from '@/services/user.service';
 
-export const PREFERENCES_NOTE_MAX_IMPRESSIONS = 3;
-export const PREFERENCES_NOTE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const PREFERENCES_NOTE_MAX_IMPRESSIONS = 3;
+const PREFERENCES_NOTE_COOLDOWN_MS = Time.days.toMilliseconds;
 
 const buildNoteBlock = (settingsUrl: string) =>
 	[

@@ -184,11 +184,13 @@ export interface AssistantTurnInput {
 	turnHadFileAttachments: boolean;
 	instanceContext: InstanceContextResult;
 	contextInjection: InstanceContextInjection;
-	aiPreferencesTurn?: {
-		block: string | undefined;
-		payload: AiPreferencesAppliedPayload;
-		noneSaved?: true;
-	};
+	aiPreferencesTurn?: AiPreferencesTurn;
+}
+
+export interface AiPreferencesTurn {
+	block: string | undefined;
+	payload: AiPreferencesAppliedPayload;
+	noneSaved?: true;
 }
 
 /**
@@ -693,11 +695,7 @@ export class AssistantTurnInputBuilder {
 		project: ProjectSummary | undefined,
 		threadId: string,
 		loadHistory: () => Promise<AgentDbMessage[]>,
-	): Promise<{
-		block: string | undefined;
-		payload: AiPreferencesAppliedPayload;
-		noneSaved?: true;
-	}> {
+	): Promise<AiPreferencesTurn> {
 		const resolved = await this.bestEffort(
 			'Assistant failed to read the AI preferences for this turn',
 			{ userId },
