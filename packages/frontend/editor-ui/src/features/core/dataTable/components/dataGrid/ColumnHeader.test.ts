@@ -60,6 +60,34 @@ describe('ColumnHeader', () => {
 		expect(getByTestId('data-table-column-header-text')).toHaveTextContent('My Column');
 	});
 
+	it('marks a column that a row rule reads as a project ID', () => {
+		const params = {
+			displayName: 'team',
+			column: {
+				getColId: () => 'col-1',
+				getColDef: () => ({ cellDataType: 'string' }),
+				getSort: () => null,
+			},
+			allowMenuActions: true,
+			isTeamColumn: () => true,
+			api: {
+				getFilterModel: vi.fn().mockReturnValue({}),
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn(),
+			},
+		} as unknown as HeaderParamsWithDelete;
+
+		const { getByTestId } = renderComponent({ props: { params } });
+
+		expect(getByTestId('data-table-column-header-team')).toBeInTheDocument();
+	});
+
+	it('does not mark other columns', () => {
+		const { queryByTestId } = renderComponent();
+
+		expect(queryByTestId('data-table-column-header-team')).not.toBeInTheDocument();
+	});
+
 	it('shows actions dropdown only on hover', async () => {
 		const { getByTestId } = renderComponent();
 		const wrapper = getByTestId('data-table-column-header');

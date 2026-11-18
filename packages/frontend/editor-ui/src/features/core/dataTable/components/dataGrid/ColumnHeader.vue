@@ -4,7 +4,13 @@ import { useDataTableTypes } from '@/features/core/dataTable/composables/useData
 import { ref, computed, onMounted, onUnmounted, useTemplateRef, toValue, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { isAGGridCellType } from '@/features/core/dataTable/typeGuards';
-import { N8nActionDropdown, N8nIcon, N8nIconButton, N8nInlineTextEdit } from '@n8n/design-system';
+import {
+	N8nActionDropdown,
+	N8nIcon,
+	N8nIconButton,
+	N8nInlineTextEdit,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 
 export type HeaderParamsWithDelete = IHeaderParams & {
@@ -13,6 +19,7 @@ export type HeaderParamsWithDelete = IHeaderParams & {
 	allowMenuActions: boolean;
 	showTypeIcon?: boolean;
 	readOnly: boolean | (() => boolean);
+	isTeamColumn?: () => boolean;
 };
 
 const props = defineProps<{
@@ -239,6 +246,13 @@ onUnmounted(() => {
 			<span v-else class="ag-header-cell-text" data-test-id="data-table-column-header-text">
 				{{ props.params.displayName }}
 			</span>
+			<N8nTooltip
+				v-if="props.params.isTeamColumn?.()"
+				:content="i18n.baseText('dataTable.rowAccess.teamColumn')"
+				placement="top"
+			>
+				<N8nIcon icon="users" size="small" data-test-id="data-table-column-header-team" />
+			</N8nTooltip>
 
 			<div v-if="showSortIndicator" class="sort-indicator">
 				<N8nIcon v-if="currentSort === 'asc'" icon="arrow-up" class="sort-icon-active" />

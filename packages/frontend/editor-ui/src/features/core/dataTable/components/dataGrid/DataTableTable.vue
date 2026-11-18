@@ -81,6 +81,12 @@ const dataTableColumns = useDataTableColumns({
 	readOnly: computed(() => props.readOnly ?? false),
 	schemaReadOnly: computed(() => props.schemaReadOnly ?? false),
 	schemaReadOnlyTooltip: computed(() => props.schemaReadOnlyTooltip),
+	teamColumns: computed(
+		() =>
+			props.dataTable.rowRule?.conditions
+				.filter(({ match }) => match === 'project')
+				.map(({ column }) => column) ?? [],
+	),
 });
 
 const { onFilterChanged, currentFilterJSON } = useDataTableColumnFilters({

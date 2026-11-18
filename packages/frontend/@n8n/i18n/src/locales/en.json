@@ -6456,6 +6456,7 @@
 	"dataTable.rowAccess.conditions.add": "Add condition",
 	"dataTable.rowAccess.conditions.remove": "Remove condition",
 	"dataTable.rowAccess.projectMembersSeeAll": "Members of this project see all rows",
+	"dataTable.rowAccess.teamColumn": "Holds a project ID. Members of that project get the row.",
 	"dataTable.rowAccess.withoutUser": "Workflow runs without a signed-in person, such as schedules",
 	"dataTable.rowAccess.withoutUser.allRows": "Give them all rows",
 	"dataTable.rowAccess.withoutUser.deny": "Refuse them",
