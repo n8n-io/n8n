@@ -1,4 +1,5 @@
 import type { Readable } from 'node:stream';
+import { createHash } from 'node:crypto';
 import { Parser, type ReadEntry } from 'tar';
 
 import { isInside } from './skill-discovery';
@@ -33,8 +34,8 @@ export const DEFAULT_ARCHIVE_LIMITS: ArchiveLimits = {
 export type RepositoryArchive = {
 	paths: string[];
 	text: Map<string, string>;
-	/** Files that could be skill content but are over the size limit, so they have no text. */
-	oversized: Set<string>;
+	/** Hashes of files over the size limit. Their text is not kept. */
+	oversized: Map<string, string>;
 };
 
 /** About the bytes that an archive holds in memory, for the cache budget. */
@@ -42,6 +43,7 @@ export function archiveSize(archive: RepositoryArchive): number {
 	let bytes = 0;
 	for (const path of archive.paths) bytes += path.length;
 	for (const text of archive.text.values()) bytes += text.length;
+	for (const hash of archive.oversized.values()) bytes += hash.length;
 	return bytes;
 }
 
@@ -67,7 +69,7 @@ export async function readRepositoryArchive(
 	const { root = '', signal, limits = DEFAULT_ARCHIVE_LIMITS } = options;
 	const paths: string[] = [];
 	const text = new Map<string, string>();
-	const oversized = new Set<string>();
+	const oversized = new Map<string, string>();
 	let downloaded = 0;
 	let entries = 0;
 	let bytes = 0;
@@ -111,9 +113,14 @@ export async function readRepositoryArchive(
 				return;
 			}
 			paths.push(path);
-			if (!keepsText(path) || entry.size > limits.maxTextFileBytes) {
-				if (keepsText(path)) oversized.add(path);
+			if (!keepsText(path)) {
 				entry.resume();
+				return;
+			}
+			if (entry.size > limits.maxTextFileBytes) {
+				const hash = createHash('sha256');
+				entry.on('data', (chunk: Buffer) => hash.update(chunk));
+				entry.on('end', () => oversized.set(path, hash.digest('hex')));
 				return;
 			}
 			textBytes += entry.size;
