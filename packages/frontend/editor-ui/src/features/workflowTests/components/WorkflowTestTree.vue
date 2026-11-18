@@ -106,26 +106,7 @@ const i18n = useI18n();
 }
 
 .header {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	width: 100%;
-	min-height: var(--height--md);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border: none;
-	border-radius: var(--radius--3xs);
-	background: none;
-	color: inherit;
-	text-align: left;
-	cursor: pointer;
-
-	&:hover {
-		background-color: var(--background--subtle);
-	}
-
-	&:focus-visible {
-		outline: var(--focus--border-width) solid var(--focus--border-color);
-	}
+	composes: row from './testRow.module.scss';
 }
 
 .chevron {
@@ -148,11 +129,7 @@ const i18n = useI18n();
 }
 
 .name {
-	flex: 1;
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+	composes: name from './testRow.module.scss';
 }
 
 .statusIcon {
