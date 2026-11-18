@@ -90,6 +90,8 @@ export function createHitlToolkit(
 			metadata: {
 				sourceNodeName: hitlNode.name,
 				gatedToolNodeName: tool.metadata?.sourceNodeName as string | undefined,
+				// Preserve MCP identity so createEngineRequests can stash model-supplied keys for gated calls.
+				isMcpTool: tool.metadata?.isMcpTool === true,
 				// Keep the partner label so the agent still appends it after approval
 				attribution: tool.metadata?.attribution,
 				originalSchema: tool.schema,
