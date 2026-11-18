@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 
 import { createComponentRenderer } from '@/__tests__/render';
 
-import SortItOutButton from './SortItOutButton.vue';
+import DocumentProjectButton from './DocumentProjectButton.vue';
 
 const assistant = vi.hoisted(() => ({
 	isAvailable: { value: true },
@@ -22,11 +22,11 @@ vi.mock('../composables/useIsPageModuleActive', () => ({
 
 const toWorkflow = (index: number) => ({ id: `w${index}`, name: `Workflow ${index}` });
 
-const renderComponent = createComponentRenderer(SortItOutButton, {
+const renderComponent = createComponentRenderer(DocumentProjectButton, {
 	props: { projectId: 'p1', undocumentedWorkflows: [toWorkflow(1), toWorkflow(2)] },
 });
 
-describe('SortItOutButton', () => {
+describe('DocumentProjectButton', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		createTestingPinia();
@@ -39,32 +39,33 @@ describe('SortItOutButton', () => {
 
 		const { queryByTestId } = renderComponent();
 
-		expect(queryByTestId('page-sort-it-out-button')).not.toBeInTheDocument();
+		expect(queryByTestId('page-document-project-button')).not.toBeInTheDocument();
 	});
 
 	it('should render nothing without a project', () => {
 		const { queryByTestId } = renderComponent({ props: { projectId: undefined } });
 
-		expect(queryByTestId('page-sort-it-out-button')).not.toBeInTheDocument();
+		expect(queryByTestId('page-document-project-button')).not.toBeInTheDocument();
 	});
 
 	it('should render nothing when each workflow has a page', () => {
 		const { queryByTestId } = renderComponent({ props: { undocumentedWorkflows: [] } });
 
-		expect(queryByTestId('page-sort-it-out-button')).not.toBeInTheDocument();
+		expect(queryByTestId('page-document-project-button')).not.toBeInTheDocument();
 	});
 
 	it('should ask the assistant for pages about the workflows without a page', async () => {
 		const { getByTestId, emitted } = renderComponent();
 
-		await userEvent.click(getByTestId('page-sort-it-out-button'));
+		await userEvent.click(getByTestId('page-document-project-button'));
 
-		expect(getByTestId('page-sort-it-out-button')).toHaveTextContent('Sort it out!');
+		expect(getByTestId('page-document-project-button')).toHaveTextContent('Document me!');
 		const [projectId, message, authorship, launch] = assistant.startThread.mock.calls[0];
 		expect(projectId).toBe('p1');
 		expect(message).toContain('- [Workflow 1](/workflow/w1)');
 		expect(message).toContain('- [Workflow 2](/workflow/w2)');
 		expect(message).toContain('Choose the 2 most important');
+		expect(message).toContain('one more page with the title "Project overview"');
 		expect(message).toContain(
 			'[Open the documentation overview](/projects/p1/workflows?view=docs)',
 		);
@@ -77,7 +78,7 @@ describe('SortItOutButton', () => {
 		const workflows = [1, 2, 3, 4, 5, 6, 7].map(toWorkflow);
 		const { getByTestId } = renderComponent({ props: { undocumentedWorkflows: workflows } });
 
-		await userEvent.click(getByTestId('page-sort-it-out-button'));
+		await userEvent.click(getByTestId('page-document-project-button'));
 
 		expect(assistant.startThread.mock.calls[0][1]).toContain('Choose the 5 most important');
 	});
@@ -86,7 +87,7 @@ describe('SortItOutButton', () => {
 		assistant.startThread.mockResolvedValue('setup');
 		const { getByTestId, emitted } = renderComponent();
 
-		await userEvent.click(getByTestId('page-sort-it-out-button'));
+		await userEvent.click(getByTestId('page-document-project-button'));
 
 		expect(emitted().started).toBeUndefined();
 	});

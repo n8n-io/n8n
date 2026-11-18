@@ -66,7 +66,7 @@ export const registerComponentSlots = () => {
 	componentRegistry.register(
 		'page-overview-actions',
 		defineAsyncComponent(
-			async () => await import('@/features/pages/components/SortItOutButton.vue'),
+			async () => await import('@/features/pages/components/DocumentProjectButton.vue'),
 		),
 	);
 

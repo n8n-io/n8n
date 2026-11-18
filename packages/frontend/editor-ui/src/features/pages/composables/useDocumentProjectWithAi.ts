@@ -6,7 +6,7 @@ import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/use
 import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 
 import { useIsPageModuleActive } from './useIsPageModuleActive';
-import { OVERVIEW_MODE_QUERY_PARAMETER } from './useOverviewMode';
+import { DOCUMENTATION_OVERVIEW_MODE, OVERVIEW_MODE_QUERY_PARAMETER } from './useOverviewMode';
 
 /** A workflow that no page documents. */
 export interface UndocumentedWorkflow {
@@ -15,15 +15,15 @@ export interface UndocumentedWorkflow {
 }
 
 /** How many pages the assistant writes in one request. */
-export const SORT_IT_OUT_PAGE_COUNT = 5;
+export const DOCUMENT_PROJECT_PAGE_COUNT = 5;
 
 /**
- * Gives the "Sort it out!" action of a project.
+ * Gives the "Document me" action of a project.
  * `isAvailable` is true when this user can reach the assistant and the instance has pages.
- * `sortItOut` opens an assistant thread in the project and asks for pages about the most important workflows without a page.
+ * `documentProject` opens an assistant thread in the project and asks for pages about the most important workflows without a page, and for one general page about the project.
  * It resolves with `true` only when the thread opened. An assistant that is not set up opens its setup instead.
  */
-export function useSortItOutWithAi() {
+export function useDocumentProjectWithAi() {
 	const i18n = useI18n();
 	const isAssistantAvailable = useInstanceAiAvailable();
 	const isPageModuleActive = useIsPageModuleActive();
@@ -39,26 +39,30 @@ export function useSortItOutWithAi() {
 
 	/** Gives the instance-relative path of the documentation overview of a project. */
 	function toDocumentationOverviewPath(projectId: string): string {
-		return `/projects/${projectId}/workflows?${OVERVIEW_MODE_QUERY_PARAMETER}=docs`;
+		return `/projects/${projectId}/workflows?${OVERVIEW_MODE_QUERY_PARAMETER}=${DOCUMENTATION_OVERVIEW_MODE}`;
 	}
 
-	function toSortItOutRequest(projectId: string, workflows: UndocumentedWorkflow[]): string {
-		return i18n.baseText('page.sortItOut.prompt', {
+	function toDocumentProjectRequest(projectId: string, workflows: UndocumentedWorkflow[]): string {
+		return i18n.baseText('page.documentProject.prompt', {
 			interpolate: {
-				pageCount: Math.min(SORT_IT_OUT_PAGE_COUNT, workflows.length),
+				pageCount: Math.min(DOCUMENT_PROJECT_PAGE_COUNT, workflows.length),
 				workflowList: workflows.map(toWorkflowLine).join('\n'),
-				overviewLabel: i18n.baseText('page.sortItOut.overviewLink'),
+				generalPageTitle: i18n.baseText('page.documentProject.generalPageTitle'),
+				overviewLabel: i18n.baseText('page.documentProject.overviewLink'),
 				overviewPath: toDocumentationOverviewPath(projectId),
 			},
 		});
 	}
 
-	async function sortItOut(projectId: string, workflows: UndocumentedWorkflow[]): Promise<boolean> {
+	async function documentProject(
+		projectId: string,
+		workflows: UndocumentedWorkflow[],
+	): Promise<boolean> {
 		isStarting.value = true;
 		try {
 			const outcome = await startThread(
 				projectId,
-				toSortItOutRequest(projectId, workflows),
+				toDocumentProjectRequest(projectId, workflows),
 				{ kind: 'prefill', prefillType: 'handoff_document_project' },
 				{ source: 'page_overview_button', origin: 'internal', sourceContext: { projectId } },
 			);
@@ -68,5 +72,5 @@ export function useSortItOutWithAi() {
 		}
 	}
 
-	return { isAvailable, isStarting, sortItOut };
+	return { isAvailable, isStarting, documentProject };
 }

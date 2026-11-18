@@ -1,5 +1,5 @@
 // Loads a team project that has many workflows and no page into a local n8n instance.
-// It is the start state of the "Sort it out!" demo of the documentation overview.
+// It is the start state of the "Document me!" demo of the documentation overview.
 // A resource whose name already exists is kept, so a second run adds nothing.
 
 import { randomUUID } from 'node:crypto';

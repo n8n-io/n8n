@@ -1826,7 +1826,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `workflow_error_nudge` — nudge on a workflow error toast that opens the Assistant to fix the run
  * - `workflow_pages_button`: "Document with AI" in the pages popover of the workflow editor
  * - `page_update_button`: "Update with AI" in the header of a page
- * - `page_overview_button`: "Sort it out!" in the documentation overview of a project
+ * - `page_overview_button`: "Document me!" in the documentation overview of a project
  * - `credential_edit` — credential setup help from the credential edit modal
  * - `credentials_list` — credential setup help from the credentials list
  * - `agent_builder_page` — Instance AI hand-off from the agent builder
