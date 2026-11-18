@@ -120,7 +120,7 @@ describe('SystemAgentChannelService', () => {
 				type: 'slack',
 				credentialId: 'cred-1',
 				settings: {
-					messagingExperience: 'assistant',
+					messagingExperience: 'agent',
 					onlyRespondWhenMentioned: true,
 					teamId: 'T1',
 					botUserId: 'UBOT',

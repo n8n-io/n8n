@@ -116,7 +116,9 @@ export class SystemAgentChannelService {
 			type: SLACK,
 			credentialId,
 			settings: {
-				messagingExperience: 'assistant',
+				// The manifest enables Slack's agent view. Without this setting, a direct
+				// message has no thread, so Slack shows no "Thinking..." status.
+				messagingExperience: 'agent',
 				// A shared conversation needs a mention. A direct message does not.
 				onlyRespondWhenMentioned: true,
 				teamId: identity.team_id,
