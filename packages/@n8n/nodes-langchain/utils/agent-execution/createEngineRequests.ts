@@ -306,12 +306,10 @@ export function createEngineRequests(
 				input = { ...input };
 				delete input[INTERNAL_TOOL_ARG_STASH_KEY];
 				if (metadata.isMcpTool) {
-					const stashedArguments: IDataObject = {};
+					const stashedArguments: IDataObject = { argumentKeys: Object.keys(input) };
 					if ('tool' in input) stashedArguments.tool = input.tool;
 					if ('toolCallId' in input) stashedArguments.toolCallId = input.toolCallId;
-					if (Object.keys(stashedArguments).length > 0) {
-						input[INTERNAL_TOOL_ARG_STASH_KEY] = stashedArguments;
-					}
+					input[INTERNAL_TOOL_ARG_STASH_KEY] = stashedArguments;
 				}
 				input.tool = toolCall.tool;
 			}
