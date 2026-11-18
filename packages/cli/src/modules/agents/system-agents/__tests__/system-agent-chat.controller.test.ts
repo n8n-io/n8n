@@ -467,7 +467,7 @@ describe('SystemAgentChatController', () => {
 				agentId: AGENT_ID,
 				resourceId: 'system-chat:user-1',
 				// Uploads, and the files that the sandbox stored for the chat.
-				sources: ['system_chat', 'sandbox'],
+				sources: ['system_chat', 'sandbox', 'tool'],
 			});
 		});
 
@@ -528,7 +528,7 @@ describe('SystemAgentChatController', () => {
 			expect(attachments.listForSystemAgentThread).toHaveBeenCalledWith('thread-1', {
 				agentId: AGENT_ID,
 				resourceId: 'system-chat:user-1',
-				sources: ['system_chat', 'sandbox'],
+				sources: ['system_chat', 'sandbox', 'tool'],
 			});
 		});
 

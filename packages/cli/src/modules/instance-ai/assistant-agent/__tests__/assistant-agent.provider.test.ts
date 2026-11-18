@@ -174,6 +174,8 @@ function startTurn(
 		sessionGrants: mock<SystemAgentStartTurn['sessionGrants']>(),
 		readAttachment: vi.fn(async () => undefined),
 		readFile: vi.fn(async () => undefined),
+		readFileBinary: vi.fn(async () => undefined),
+		storeWorkflowFile: vi.fn(async () => undefined),
 		executionId: 'exec-1',
 		message: 'Build a digest',
 		attachments: [],
@@ -574,6 +576,24 @@ describe('AssistantAgentProvider', () => {
 			expect(environment.context.storedFiles?.canView?.(mimeType)).toBe(viewable);
 		});
 
+		it('lets workflow runs take and return the files of the thread through the turn', async () => {
+			const { provider, environment } = setup();
+			const binary = { id: 'filesystem-v2:a', data: 'filesystem-v2', mimeType: 'image/png' };
+			const stored = { fileId: 'out-1', fileName: 'a.png', mimeType: 'image/png', sizeBytes: 3 };
+			const turn = startTurn({
+				readFileBinary: vi.fn(async () => binary),
+				storeWorkflowFile: vi.fn(async () => stored),
+			});
+
+			await provider.prepareTurn(turn);
+
+			const { storedFiles } = environment.context;
+			await expect(storedFiles?.readBinary?.('att-1')).resolves.toBe(binary);
+			await expect(storedFiles?.storeWorkflowFile?.(binary)).resolves.toBe(stored);
+			expect(turn.readFileBinary).toHaveBeenCalledWith('att-1');
+			expect(turn.storeWorkflowFile).toHaveBeenCalledWith(binary);
+		});
+
 		describe('storing a file of outputs/', () => {
 			async function prepareWithSandbox(workspace?: Workspace) {
 				const context = setup();
@@ -648,6 +668,8 @@ describe('AssistantAgentProvider', () => {
 				checkpointStore: start.checkpointStore,
 				sessionGrants: start.sessionGrants,
 				readFile: vi.fn(async () => stored),
+				readFileBinary: vi.fn(async () => undefined),
+				storeWorkflowFile: vi.fn(async () => undefined),
 				runId: 'agent-run-1',
 				toolCallId: 'tool-call-1',
 				checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
@@ -988,6 +1010,8 @@ describe('AssistantAgentProvider', () => {
 					checkpointStore,
 					sessionGrants: start.sessionGrants,
 					readFile: vi.fn(async () => undefined),
+					readFileBinary: vi.fn(async () => undefined),
+					storeWorkflowFile: vi.fn(async () => undefined),
 					runId: 'agent-run-1',
 					toolCallId: 'tc-1',
 					checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
@@ -1122,6 +1146,8 @@ describe('AssistantAgentProvider', () => {
 					checkpointStore: start.checkpointStore,
 					sessionGrants: start.sessionGrants,
 					readFile: vi.fn(async () => undefined),
+					readFileBinary: vi.fn(async () => undefined),
+					storeWorkflowFile: vi.fn(async () => undefined),
 					runId: 'agent-run-1',
 					toolCallId: 'tc-1',
 					checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
@@ -1471,6 +1497,8 @@ describe('AssistantAgentProvider', () => {
 				checkpointStore: start.checkpointStore,
 				sessionGrants: start.sessionGrants,
 				readFile: start.readFile,
+				readFileBinary: start.readFileBinary,
+				storeWorkflowFile: start.storeWorkflowFile,
 				runId: 'agent-run-1',
 				toolCallId: 'tool-call-1',
 				checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
@@ -1620,6 +1648,8 @@ describe('AssistantAgentProvider', () => {
 					checkpointStore: start.checkpointStore,
 					sessionGrants: start.sessionGrants,
 					readFile: start.readFile,
+					readFileBinary: start.readFileBinary,
+					storeWorkflowFile: start.storeWorkflowFile,
 					runId: 'agent-run-1',
 					toolCallId: 'tool-call-1',
 					checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
@@ -1733,6 +1763,8 @@ describe('AssistantAgentProvider', () => {
 						checkpointStore: start.checkpointStore,
 						sessionGrants: start.sessionGrants,
 						readFile: start.readFile,
+						readFileBinary: start.readFileBinary,
+						storeWorkflowFile: start.storeWorkflowFile,
 						runId: 'agent-run-1',
 						toolCallId: 'tool-call-1',
 						checkpointHostMetadata: {

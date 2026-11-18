@@ -14,8 +14,17 @@ export const N8N_CHAT_PRODUCTION_SOURCE = 'n8n_chat_production' as const;
 export const SYSTEM_CHAT_SOURCE = 'system_chat' as const;
 /** File source of the files of `outputs/` that the sandbox files feature stores. */
 export const SANDBOX_FILE_SOURCE = 'sandbox' as const;
-/** File sources of a system chat: the uploads of the user, and the files from the sandbox. */
-const SYSTEM_CHAT_FILE_SOURCES: readonly string[] = [SYSTEM_CHAT_SOURCE, SANDBOX_FILE_SOURCE];
+/** File source of the files that a workflow run of an agent tool returned. */
+export const TOOL_FILE_SOURCE = 'tool' as const;
+/**
+ * File sources of a system chat: the uploads of the user, the files from the
+ * sandbox, and the files that workflow runs returned.
+ */
+const SYSTEM_CHAT_FILE_SOURCES: readonly string[] = [
+	SYSTEM_CHAT_SOURCE,
+	SANDBOX_FILE_SOURCE,
+	TOOL_FILE_SOURCE,
+];
 
 /**
  * The files of one user's system chat with one agent. Reads, downloads and
