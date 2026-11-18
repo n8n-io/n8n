@@ -554,18 +554,13 @@ const ACCOUNT_AVATAR_COLOR = 'var(--color--purple-700)';
 		justify-content: center;
 
 		// The avatar fills the circle, so the states draw a ring around it instead of a fill.
-		&:hover {
-			background: none;
-			box-shadow:
-				0 0 0 2px var(--menu--color--background),
-				0 0 0 3px var(--border-color);
-		}
-
+		// An open menu keeps the same quiet ring as hover.
+		&:hover,
 		&[data-state='open'] {
 			background: none;
 			box-shadow:
 				0 0 0 2px var(--menu--color--background),
-				0 0 0 3px var(--focus--border-color);
+				0 0 0 3px var(--border-color);
 		}
 	}
 }
