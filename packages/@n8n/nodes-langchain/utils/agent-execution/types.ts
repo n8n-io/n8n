@@ -154,6 +154,8 @@ export type HitlMetadata = {
 	toolName: string;
 	/** Original input for the gated tool */
 	originalInput: IDataObject;
+	/** Original MCP argument keys and reserved-key values, restored after approval. */
+	mcpToolArguments?: IDataObject;
 };
 
 /**
