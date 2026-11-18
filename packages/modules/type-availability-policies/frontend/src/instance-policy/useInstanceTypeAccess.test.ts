@@ -38,6 +38,8 @@ const setup = async () => {
 	useRBACStore().setGlobalScopes(['nodeTypePolicy:manage']);
 	vi.spyOn(useTypeAvailabilityPoliciesStore(), 'reload').mockResolvedValue();
 	await useInstancePolicyStore().load(['node']);
+	// The store reads the access with the policy, so only the reads after this come from the composable.
+	mocks.fetchInstanceAccess.mockClear();
 };
 
 describe('useInstanceTypeAccess', () => {

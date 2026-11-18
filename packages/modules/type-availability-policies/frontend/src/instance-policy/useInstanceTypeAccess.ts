@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, shallowReactive, shallowRef, watch } from 'vue';
 
+import { isTypeAccessEditable } from './typeAccessRule';
 import { useInstancePolicy } from './useInstancePolicy';
 import { fetchInstanceAccess, type InstancePolicyContent } from '../type-availability-policies.api';
 import type { RestrictedTypeKind } from '../type-availability-policies.constants';
@@ -14,7 +15,7 @@ export type InstanceTypeAccessRow = {
 	access: PolicyAction;
 	/** The rule that decides the access, or `null` when the default action decides it. */
 	matchedRuleId: string | null;
-	/** False when a rule leaves the type open to project opt-in, which the admin page cannot set. */
+	/** See `isTypeAccessEditable`. */
 	editable: boolean;
 };
 
@@ -53,7 +54,7 @@ export function useInstanceTypeAccess<K extends RestrictedTypeKind>(
 			name: type.name,
 			access: pending.get(type.name)?.access ?? type.access,
 			matchedRuleId: type.matchedRuleId,
-			editable: !(type.access === 'delegate' && type.matchedRuleId !== null),
+			editable: isTypeAccessEditable(type),
 		})),
 	);
 
@@ -75,7 +76,10 @@ export function useInstanceTypeAccess<K extends RestrictedTypeKind>(
 			}
 		} catch (error) {
 			if (isLatest()) {
-				toast.showError(error, i18n.baseText('typeAvailabilityPolicies.instancePolicy.loadError'));
+				toast.showError(
+					error,
+					i18n.baseText('typeAvailabilityPolicies.instancePolicy.accessLoadError'),
+				);
 			}
 		} finally {
 			if (isLatest()) loadingAccess.value = false;

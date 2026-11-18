@@ -1,10 +1,14 @@
+import type { InstanceTypeAccessResponse, PolicyAction } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
 import { shallowReactive } from 'vue';
 
+import { isTypeAccessEditable } from './typeAccessRule';
+
 import {
 	fetchInstancePolicy,
+	fetchInstanceAccess,
 	saveInstancePolicy,
 	type InstancePolicy,
 	type InstancePolicyContent,
@@ -19,9 +23,13 @@ import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.
 export type InstancePolicyLoadState = 'idle' | 'loading' | 'loaded' | 'failed';
 
 export type InstancePolicySaveResult =
-	| { status: 'saved'; warnings: PolicyRuleWarnings }
-	/** The store now holds the newer policy, and nothing was saved. */
-	| { status: 'changed' }
+	/** `accessError` is set when the policy saved but the access of its types could not be read. */
+	| { status: 'saved'; warnings: PolicyRuleWarnings; accessError?: unknown }
+	/**
+	 * The store now holds the newer policy, and nothing was saved. `accessError` is set when the
+	 * access of its types could not be read.
+	 */
+	| { status: 'changed'; accessError?: unknown }
 	/** Queued before a `changed` save of the same kind, so it was not sent. */
 	| { status: 'dropped' }
 	/**
@@ -31,7 +39,34 @@ export type InstancePolicySaveResult =
 	| { status: 'notEditable'; sent: boolean }
 	| { status: 'failed'; error: unknown };
 
+export type InstancePolicyLoadResult = { errors: unknown[]; accessErrors: unknown[] };
+
+type LoadKindResult = { error: unknown; accessError: unknown };
+
 type PolicyByKind = { [K in RestrictedTypeKind]: InstancePolicy<K> | null };
+
+/** The access of each type, read from the server for one policy version. */
+type TypeAccessSnapshot = {
+	version: number;
+	byName: ReadonlyMap<string, PolicyAction>;
+	/** The rule that decides each type, or `null` when the default action decides it. */
+	decidingRuleIds: ReadonlyMap<string, string | null>;
+	/** The types whose access the admin page cannot change. See `isTypeAccessEditable`. */
+	locked: ReadonlySet<string>;
+};
+
+function toTypeAccess(response: InstanceTypeAccessResponse): TypeAccessSnapshot {
+	return {
+		version: response.version,
+		byName: new Map(response.types.map(({ name, access }) => [name, access])),
+		decidingRuleIds: new Map(
+			response.types.map(({ name, matchedRuleId }) => [name, matchedRuleId]),
+		),
+		locked: new Set(
+			response.types.filter((type) => !isTypeAccessEditable(type)).map(({ name }) => name),
+		),
+	};
+}
 
 const isConflict = (error: unknown) =>
 	error instanceof ResponseError && error.httpStatusCode === 409;
@@ -61,6 +96,32 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 	const generations: Record<RestrictedTypeKind, number> = { node: 0, credential: 0 };
 	const loadRequests: Record<RestrictedTypeKind, number> = { node: 0, credential: 0 };
 
+	const typeAccess = shallowReactive<Record<RestrictedTypeKind, TypeAccessSnapshot | null>>({
+		node: null,
+		credential: null,
+	});
+
+	// The server evaluates the rules, so the access is read again for every new policy version.
+	async function loadTypeAccess(kind: RestrictedTypeKind): Promise<unknown> {
+		try {
+			const access = toTypeAccess(await fetchInstanceAccess(rootStore.restApiContext, kind));
+			const current = typeAccess[kind];
+			// A late answer to an older read must not replace newer access, nor fill the gap that a
+			// failed newer read left.
+			const policyVersion = policies[kind]?.version ?? -1;
+			if (access.version >= (current?.version ?? policyVersion)) typeAccess[kind] = access;
+			return null;
+		} catch (error) {
+			// Access of an older version would show a saved change as lost, so rows show none until
+			// a later policy version loads it again.
+			const policyVersion = policies[kind]?.version;
+			if (policyVersion !== undefined && (typeAccess[kind]?.version ?? -1) < policyVersion) {
+				typeAccess[kind] = null;
+			}
+			return error;
+		}
+	}
+
 	function accept<K extends RestrictedTypeKind>(kind: K, policy: InstancePolicy<K>): void {
 		const current = policies[kind];
 		// Versions only increase, so a late answer to an older request does not replace a newer policy.
@@ -74,26 +135,54 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 		}
 	}
 
-	async function loadKind<K extends RestrictedTypeKind>(kind: K): Promise<unknown> {
-		// Only the latest load of a kind sets its state, so an older load that fails late does not
-		// mark a newer loaded policy as failed.
+	/** Reads the access of the types again when it is older than the policy. Returns the read error, or `null`. */
+	async function syncTypeAccess(kind: RestrictedTypeKind): Promise<unknown> {
+		const current = policies[kind];
+		if (!current || typeAccess[kind]?.version === current.version) return null;
+		const error = await loadTypeAccess(kind);
+		// A later read, for example the read after a later save, can store the current access first.
+		return typeAccess[kind]?.version === policies[kind]?.version ? null : error;
+	}
+
+	async function loadKind<K extends RestrictedTypeKind>(kind: K): Promise<LoadKindResult> {
+		// Only the latest load of a kind sets its state and reports errors, so an older load that ends
+		// late does not mark a newer loaded policy as failed or show an outdated error.
 		const request = ++loadRequests[kind];
 		loadStates[kind] = 'loading';
 		try {
 			const policy = await fetchInstancePolicy(rootStore.restApiContext, kind);
 			accept(kind, policy);
-			if (request === loadRequests[kind]) loadStates[kind] = 'loaded';
-			return null;
+			// The server lists the installed types, which can change while the policy version stays.
+			const accessError = await loadTypeAccess(kind);
+			if (request !== loadRequests[kind]) return { error: null, accessError: null };
+
+			loadStates[kind] = 'loaded';
+			return { error: null, accessError };
 		} catch (error) {
-			if (request !== loadRequests[kind]) return null;
+			if (request !== loadRequests[kind]) return { error: null, accessError: null };
 
 			loadStates[kind] = 'failed';
-			return error;
+			return { error, accessError: null };
 		}
 	}
 
-	async function load(kinds: readonly RestrictedTypeKind[]): Promise<unknown[]> {
-		const errors = await Promise.all(kinds.map(async (kind) => await loadKind(kind)));
+	/**
+	 * Loads the policy of each kind. Returns the errors of the kinds that failed to load, and the
+	 * errors of the access reads of the kinds that loaded.
+	 */
+	async function load(kinds: readonly RestrictedTypeKind[]): Promise<InstancePolicyLoadResult> {
+		const results = await Promise.all(kinds.map(async (kind) => await loadKind(kind)));
+		return {
+			errors: results.flatMap(({ error }) => (error === null ? [] : [error])),
+			accessErrors: results.flatMap(({ accessError }) =>
+				accessError === null ? [] : [accessError],
+			),
+		};
+	}
+
+	/** Reads the access of each kind again when it is missing or older than the policy. Returns the read errors. */
+	async function loadAccess(kinds: readonly RestrictedTypeKind[]): Promise<unknown[]> {
+		const errors = await Promise.all(kinds.map(async (kind) => await syncTypeAccess(kind)));
 		return errors.filter((error) => error !== null);
 	}
 
@@ -109,7 +198,12 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 		const run = saveQueues[kind].then(async () => await runSave(kind, update, generation));
 		// A rejected save must not block the saves after it.
 		saveQueues[kind] = run.catch(() => undefined);
-		return await run;
+		const result = await run;
+		if (result.status !== 'saved' && result.status !== 'changed') return result;
+
+		// Outside the queue, so the next save does not wait for a read that its own result replaces.
+		const accessError = await syncTypeAccess(kind);
+		return accessError === null ? result : { ...result, accessError };
 	}
 
 	async function runSave<K extends RestrictedTypeKind>(
@@ -163,5 +257,5 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 		return { status: 'changed' };
 	}
 
-	return { policies, loadStates, notEditable, load, save };
+	return { policies, loadStates, notEditable, typeAccess, load, loadAccess, save };
 });

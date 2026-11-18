@@ -2982,6 +2982,7 @@
 	"typeAvailabilityPolicies.instancePolicy.back": "Node and credential policies",
 	"typeAvailabilityPolicies.backToPolicies": "Policies",
 	"typeAvailabilityPolicies.instancePolicy.loadError": "Could not load the policy",
+	"typeAvailabilityPolicies.instancePolicy.accessLoadError": "Could not load the access of the types",
 	"typeAvailabilityPolicies.instancePolicy.saveError": "Could not save the policy",
 	"typeAvailabilityPolicies.instancePolicy.notEditable.message": "This page cannot change this policy, because it uses several policy documents or a document that other scopes share. Use the API to change it.",
 	"typeAvailabilityPolicies.instancePolicy.changed.title": "The policy changed",
