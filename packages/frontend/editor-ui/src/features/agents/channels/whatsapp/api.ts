@@ -1,4 +1,8 @@
-import type { WhatsAppCredentialCheck, WhatsAppWebhookStatus } from '@n8n/api-types';
+import type {
+	WhatsAppCredentialCheck,
+	WhatsAppMetaStatus,
+	WhatsAppWebhookStatus,
+} from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 
@@ -21,8 +25,14 @@ export const getWhatsAppWebhookStatus = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
+	credentialId?: string,
 ): Promise<WhatsAppWebhookStatus> =>
-	await makeRestApiRequest(context, 'GET', `${integrationPath(projectId, agentId)}/webhook-status`);
+	await makeRestApiRequest(
+		context,
+		'GET',
+		`${integrationPath(projectId, agentId)}/webhook-status`,
+		credentialId ? { credentialId } : undefined,
+	);
 
 /** Forgets an earlier handshake, so only one that happens after this confirms the step. */
 export const resetWhatsAppWebhookStatus = async (
@@ -34,4 +44,16 @@ export const resetWhatsAppWebhookStatus = async (
 		context,
 		'DELETE',
 		`${integrationPath(projectId, agentId)}/webhook-status`,
+	);
+
+export const getWhatsAppMetaStatus = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	credentialId: string,
+): Promise<WhatsAppMetaStatus> =>
+	await makeRestApiRequest(
+		context,
+		'GET',
+		`${integrationPath(projectId, agentId)}/meta-status/${encodeURIComponent(credentialId)}`,
 	);

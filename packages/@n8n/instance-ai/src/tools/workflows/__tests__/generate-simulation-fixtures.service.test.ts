@@ -6,9 +6,10 @@ vi.mock('../../../utils/eval-agents', async () => {
 	return { ...actual, createEvalAgent: vi.fn(), extractText: vi.fn() };
 });
 
-import { SONNET_MODEL, createEvalAgent, extractText } from '../../../utils/eval-agents';
+import { createEvalAgent, extractText } from '../../../utils/eval-agents';
 import type { NodeSimulationVerdict } from '../../../workflow-loop/workflow-loop-state';
 import {
+	SIMULATION_FIXTURES_EFFORT,
 	buildPlaceholderFixtures,
 	generateSimulationFixtures,
 	withPassThroughFloor,
@@ -16,6 +17,8 @@ import {
 
 const mockCreateEvalAgent = createEvalAgent as MockedFunction<typeof createEvalAgent>;
 const mockExtractText = extractText as MockedFunction<typeof extractText>;
+
+const MAIN_MODEL = 'anthropic/claude-opus-5-5';
 
 function setupAgentMock(responseText: string) {
 	const generate = vi.fn().mockResolvedValue({ messages: [] });
@@ -77,6 +80,7 @@ describe('generateSimulationFixtures', () => {
 
 	it('returns {} when the plan has no simulate verdicts', async () => {
 		const result = await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow: wf([{ name: 'Get', type: 'n8n-nodes-base.slack' }]),
 			plan: [executeVerdict('Get')],
 		});
@@ -91,6 +95,7 @@ describe('generateSimulationFixtures', () => {
 			}),
 		);
 		const result = await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow: wf([
 				{ name: 'Send Slack', type: 'n8n-nodes-base.slack' },
 				{ name: 'Get Rows', type: 'n8n-nodes-base.dataTable' },
@@ -101,13 +106,54 @@ describe('generateSimulationFixtures', () => {
 		expect(result['Send Slack'][0]).toMatchObject({ ok: true });
 		expect(mockCreateEvalAgent).toHaveBeenCalledWith(
 			'verification-simulation-fixtures',
-			expect.objectContaining({ model: SONNET_MODEL }),
+			expect.objectContaining({
+				resolvedModel: MAIN_MODEL,
+				effort: SIMULATION_FIXTURES_EFFORT,
+			}),
+		);
+	});
+
+	it('runs on the utility model with the given transport', async () => {
+		setupAgentMock(JSON.stringify({ A: [{ json: { ok: true } }] }));
+		const utilityModel = 'anthropic/claude-haiku-5-5';
+		const modelFetch = vi.fn();
+		await generateSimulationFixtures({
+			model: MAIN_MODEL,
+			utilityModel,
+			modelFetch,
+			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
+			plan: [simulateVerdict('A')],
+		});
+		expect(mockCreateEvalAgent).toHaveBeenCalledWith(
+			'verification-simulation-fixtures',
+			expect.objectContaining({ resolvedModel: utilityModel, modelFetch }),
+		);
+	});
+
+	it('reports the token usage of the fixture call', async () => {
+		const usage = { promptTokens: 2000, completionTokens: 500, totalTokens: 2500 };
+		mockCreateEvalAgent.mockReturnValue({
+			generate: vi.fn().mockResolvedValue({ messages: [], usage }),
+		} as unknown as ReturnType<typeof createEvalAgent>);
+		mockExtractText.mockReturnValue(JSON.stringify({ A: [{ json: { ok: true } }] }));
+		const onHelperUsage = vi.fn().mockResolvedValue(undefined);
+
+		await generateSimulationFixtures({
+			model: MAIN_MODEL,
+			onHelperUsage,
+			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
+			plan: [simulateVerdict('A')],
+		});
+
+		expect(onHelperUsage).toHaveBeenCalledWith(
+			expect.objectContaining({ helper: 'verification-simulation-fixtures', usage }),
 		);
 	});
 
 	it('falls back to a placeholder for nodes the LLM omitted', async () => {
 		setupAgentMock(JSON.stringify({ A: [{ json: { id: 1 } }] }));
 		const result = await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow: wf([
 				{ name: 'A', type: 'n8n-nodes-base.slack' },
 				{ name: 'B', type: 'n8n-nodes-base.gmail' },
@@ -121,6 +167,7 @@ describe('generateSimulationFixtures', () => {
 	it('falls back to a placeholder for every node on malformed LLM output', async () => {
 		setupAgentMock('not json');
 		const result = await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
 			plan: [simulateVerdict('A')],
 		});
@@ -133,6 +180,7 @@ describe('generateSimulationFixtures', () => {
 			typeof createEvalAgent
 		>);
 		const result = await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
 			plan: [simulateVerdict('A')],
 		});
@@ -146,6 +194,7 @@ describe('generateSimulationFixtures', () => {
 		const warn = vi.fn();
 		const logger = { info: vi.fn(), warn, error: vi.fn(), debug: vi.fn() };
 		const result = await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
 			plan: [simulateVerdict('A')],
 			logger,
@@ -157,27 +206,10 @@ describe('generateSimulationFixtures', () => {
 		);
 	});
 
-	it('forwards the fallback model config to the LLM call', async () => {
-		setupAgentMock(JSON.stringify({ A: [{ json: { ok: true } }] }));
-		const fallbackModelConfig = {
-			id: 'anthropic/claude-opus-4-8' as const,
-			url: 'https://proxy.example.com/anthropic/v1',
-			apiKey: 'proxy-token',
-		};
-		await generateSimulationFixtures({
-			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
-			plan: [simulateVerdict('A')],
-			fallbackModelConfig,
-		});
-		expect(mockCreateEvalAgent).toHaveBeenCalledWith(
-			'verification-simulation-fixtures',
-			expect.objectContaining({ fallbackModelConfig }),
-		);
-	});
-
 	it('strips markdown fences around the JSON output', async () => {
 		setupAgentMock('```json\n{"A":[{"json":{"ok":true}}]}\n```');
 		const result = await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
 			plan: [simulateVerdict('A')],
 		});
@@ -200,6 +232,7 @@ describe('generateSimulationFixtures', () => {
 		};
 
 		await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow,
 			plan: [
 				{
@@ -220,6 +253,7 @@ describe('generateSimulationFixtures', () => {
 
 	it('ignores plan entries whose node is missing from the workflow', async () => {
 		const result = await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
 			plan: [simulateVerdict('Ghost')],
 		});
@@ -236,6 +270,7 @@ describe('generateSimulationFixtures', () => {
 			}),
 		);
 		const result = await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow: wf([
 				{ name: 'A', type: 'n8n-nodes-base.slack' },
 				{ name: 'B', type: 'n8n-nodes-base.gmail' },
@@ -250,6 +285,7 @@ describe('generateSimulationFixtures', () => {
 		// The old .min(1) schema rejected the WHOLE batch on one empty array.
 		setupAgentMock(JSON.stringify({ A: [], B: [{ json: { id: 1 } }] }));
 		const result = await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow: wf([
 				{ name: 'A', type: 'n8n-nodes-base.slack' },
 				{ name: 'B', type: 'n8n-nodes-base.gmail' },
@@ -275,6 +311,7 @@ describe('generateSimulationFixtures', () => {
 		};
 
 		const result = await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow,
 			plan: [simulateVerdict('AI Root')],
 			// The envelope is derived from the with-parser `__schema__` variant —
@@ -293,6 +330,7 @@ describe('generateSimulationFixtures', () => {
 		const workflow = wf([{ name: 'Send Slack', type: 'n8n-nodes-base.slack' }]);
 
 		const result = await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow,
 			plan: [simulateVerdict('Send Slack')],
 			outputSchemaLookup: () => ({
@@ -308,6 +346,7 @@ describe('generateSimulationFixtures', () => {
 		setupAgentMock(JSON.stringify({ A: [{ json: { id: 1 } }] }));
 
 		const result = await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow: wf([
 				{ name: 'A', type: 'n8n-nodes-base.slack' },
 				{ name: 'B', type: 'n8n-nodes-base.gmail' },
@@ -329,6 +368,7 @@ describe('generateSimulationFixtures', () => {
 		setupAgentMock(JSON.stringify({ A: [{ json: {} }] }));
 
 		const result = await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
 			plan: [simulateVerdict('A')],
 			outputSchemaLookup: () => ({ type: 'object', properties: { ts: { type: 'string' } } }),
@@ -341,6 +381,7 @@ describe('generateSimulationFixtures', () => {
 		setupAgentMock(JSON.stringify({ A: [{ json: {} }, { json: { id: 2 } }] }));
 
 		const result = await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
 			plan: [simulateVerdict('A')],
 		});
@@ -352,6 +393,7 @@ describe('generateSimulationFixtures', () => {
 		setupAgentMock(JSON.stringify({ A: [], B: [] }));
 
 		const result = await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow: wf([
 				{ name: 'A', type: 'n8n-nodes-base.slack' },
 				{ name: 'B', type: 'n8n-nodes-base.gmail' },
@@ -369,6 +411,7 @@ describe('generateSimulationFixtures', () => {
 		setupAgentMock('not json');
 
 		const result = await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
 			plan: [simulateVerdict('A')],
 			outputSchemaLookup: () => ({
@@ -394,6 +437,7 @@ describe('generateSimulationFixtures', () => {
 		} as unknown as WorkflowJSON['connections'];
 
 		const result = await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow,
 			plan: [simulateVerdict('Get Contact'), simulateVerdict('Send Slack')],
 			outputSchemaLookup: (node) =>
@@ -437,6 +481,7 @@ describe('generateSimulationFixtures', () => {
 		mockExtractText.mockReturnValue(JSON.stringify({ 'Route Ticket': [{ json: {} }] }));
 
 		await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow: connected(
 				[
 					{ name: 'Get Contact', type: 'n8n-nodes-base.brevo' },
@@ -470,6 +515,7 @@ describe('generateSimulationFixtures', () => {
 			.mockReturnValue({ type: 'object', properties: { ok: { type: 'boolean' } } });
 
 		await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow,
 			plan: [simulateVerdict('Send Slack')],
 			outputSchemaLookup,
@@ -498,6 +544,7 @@ describe('generateSimulationFixtures', () => {
 		mockExtractText.mockReturnValue(JSON.stringify({ A: [{ json: { ok: true } }] }));
 
 		await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
 			plan: [simulateVerdict('A')],
 		});
@@ -518,6 +565,7 @@ describe('generateSimulationFixtures', () => {
 		);
 
 		await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow: wf([{ name: 'On New Email', type: 'n8n-nodes-base.gmailTrigger' }]),
 			plan: [simulateVerdict('On New Email')],
 		});
@@ -535,6 +583,7 @@ describe('generateSimulationFixtures', () => {
 		mockExtractText.mockReturnValue(JSON.stringify({ A: [{ json: { ok: true } }] }));
 
 		await generateSimulationFixtures({
+			model: MAIN_MODEL,
 			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
 			plan: [simulateVerdict('A')],
 			outputSchemaLookup: vi.fn().mockReturnValue(undefined),

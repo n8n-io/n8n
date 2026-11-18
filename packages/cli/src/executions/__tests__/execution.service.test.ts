@@ -1,5 +1,10 @@
 import { DeleteExecutionsDto } from '@n8n/api-types';
-import type { EventService, ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import type { ModuleName, ModuleRegistry } from '@n8n/backend-common';
+import {
+	type EventService,
+	type ExecutionRedactionServiceProxy,
+	WorkflowVersionedSettingsService,
+} from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -12,18 +17,20 @@ import type {
 	Project,
 	User,
 	WorkflowHistoryRepository,
+	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import type { IRun, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
 import { ManualExecutionCancelledError, WorkflowOperationError } from 'n8n-workflow';
+import type { SecurityContext } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -36,9 +43,14 @@ import type { Job } from '@/scaling/scaling.types';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import type { WaitTracker } from '@/wait-tracker';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 const V2_EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
+
+vi.mock('@/permissions.ee/check-access', () => ({
+	userHasScopes: vi.fn().mockResolvedValue(true),
+}));
 
 describe('ExecutionService', () => {
 	const scalingService = mockInstance(ScalingService);
@@ -57,6 +69,9 @@ describe('ExecutionService', () => {
 	const eventService = mock<EventService>();
 	const engineV2ExecutionReader = mock<EngineV2ExecutionReader>();
 	const engineDataPlane = mock<EngineDataPlaneProxyService>();
+	const workflowRepository = mock<WorkflowRepository>();
+	const eligibleModules: ModuleName[] = [];
+	const moduleRegistry = mock<ModuleRegistry>({ eligibleModules });
 
 	const executionService = new ExecutionService(
 		globalConfig,
@@ -67,7 +82,7 @@ describe('ExecutionService', () => {
 		executionRepository,
 		executionPersistence,
 		workflowHistoryRepository,
-		mock(),
+		workflowRepository,
 		mock(),
 		waitTracker,
 		mock(),
@@ -79,6 +94,7 @@ describe('ExecutionService', () => {
 		ownershipService,
 		engineV2ExecutionReader,
 		engineDataPlane,
+		new WorkflowVersionedSettingsService(moduleRegistry),
 	);
 
 	beforeEach(() => {
@@ -183,7 +199,11 @@ describe('ExecutionService', () => {
 
 			await executionService.findOne(req, ['workflow-1']);
 
-			expect(engineV2ExecutionReader.findOne).toHaveBeenCalledWith(V2_EXECUTION_ID, ['workflow-1']);
+			expect(engineV2ExecutionReader.findOne).toHaveBeenCalledWith(
+				V2_EXECUTION_ID,
+				['workflow-1'],
+				{ maxDataSizeBytes: globalConfig.executions.maxDisplaySize },
+			);
 			expect(executionPersistence.findOneInWorkflows).not.toHaveBeenCalled();
 		});
 
@@ -205,6 +225,57 @@ describe('ExecutionService', () => {
 			expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(
 				execution,
 				expect.objectContaining({ redactExecutionData: true }),
+			);
+		});
+	});
+
+	describe('findOneAcrossEngines', () => {
+		const options = { includeData: true, includeAnnotation: false };
+
+		it('should read a v1 id from the control plane', async () => {
+			const execution = mock<IExecutionResponse>({ id: '123' });
+			executionPersistence.findOneInWorkflows.mockResolvedValue(execution);
+
+			const result = await executionService.findOneAcrossEngines('123', ['workflow-1'], options);
+
+			expect(result).toBe(execution);
+			expect(executionPersistence.findOneInWorkflows).toHaveBeenCalledWith(
+				'123',
+				['workflow-1'],
+				options,
+			);
+			expect(engineV2ExecutionReader.findOne).not.toHaveBeenCalled();
+		});
+
+		it('should read a v2 id from the data plane', async () => {
+			const execution = mock<IExecutionResponse>({ id: V2_EXECUTION_ID });
+			engineV2ExecutionReader.findOne.mockResolvedValue(execution);
+
+			const result = await executionService.findOneAcrossEngines(
+				V2_EXECUTION_ID,
+				['workflow-1'],
+				options,
+			);
+
+			expect(result).toBe(execution);
+			expect(engineV2ExecutionReader.findOne).toHaveBeenCalledWith(
+				V2_EXECUTION_ID,
+				['workflow-1'],
+				options,
+			);
+			expect(executionPersistence.findOneInWorkflows).not.toHaveBeenCalled();
+		});
+
+		// The metadata-only read must stay cheap on both stores.
+		it('should pass includeData through to the data plane', async () => {
+			await executionService.findOneAcrossEngines(V2_EXECUTION_ID, ['workflow-1'], {
+				includeData: false,
+			});
+
+			expect(engineV2ExecutionReader.findOne).toHaveBeenCalledWith(
+				V2_EXECUTION_ID,
+				['workflow-1'],
+				{ includeData: false },
 			);
 		});
 	});
@@ -259,6 +330,7 @@ describe('ExecutionService', () => {
 				ownershipService,
 				mock(),
 				mock(),
+				new WorkflowVersionedSettingsService(moduleRegistry),
 			);
 
 			const mockUser = mock<User>({ id: 'user-1' });
@@ -336,12 +408,13 @@ describe('ExecutionService', () => {
 				workflowRunner,
 				concurrencyControl,
 				mock(),
-				mock(),
+				eventService,
 				redactionProxy,
 				mock(),
 				ownershipService,
 				mock(),
 				mock(),
+				new WorkflowVersionedSettingsService(moduleRegistry),
 			);
 
 			workflowRunner.run.mockResolvedValue('retried-123');
@@ -357,7 +430,7 @@ describe('ExecutionService', () => {
 			);
 			redactionProxy.processExecution.mockImplementation(async (exec) => exec);
 
-			return { service, workflowRunner };
+			return { service, workflowRunner, redactionProxy };
 		};
 
 		const retryArgs = (): Parameters<ExecutionService['retry']>[0] => ({
@@ -395,6 +468,75 @@ describe('ExecutionService', () => {
 
 		const erroredRun = (error: boolean) =>
 			[{ error: error ? new Error('boom') : undefined }] as unknown as ITaskData[];
+
+		it('should return the execution data when the user can read the executions', async () => {
+			const { service } = buildRetryService();
+			executionPersistence.findWithUnflattenedData.mockResolvedValue(
+				buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }),
+			);
+
+			const retried = await service.retry(retryArgs());
+
+			expect(retried).toHaveProperty('data');
+			expect(retried).toHaveProperty('workflowData');
+		});
+
+		it('should leave out the execution data when the user cannot read the executions', async () => {
+			const { service, workflowRunner, redactionProxy } = buildRetryService();
+			executionPersistence.findWithUnflattenedData.mockResolvedValue(
+				buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }),
+			);
+
+			vi.mocked(userHasScopes).mockResolvedValueOnce(false);
+			const args = retryArgs();
+
+			const retried = await service.retry(args);
+
+			expect(userHasScopes).toHaveBeenCalledWith(args.user, ['execution:read'], false, {
+				workflowId: 'workflow-1',
+			});
+
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			expect(retried).toMatchObject({
+				id: 'retried-123',
+				workflowId: 'workflow-1',
+				retryOf: 'original-123',
+				status: 'success',
+			});
+			expect(retried).not.toHaveProperty('data');
+			expect(retried).not.toHaveProperty('workflowData');
+			expect(retried).not.toHaveProperty('customData');
+			expect(retried).not.toHaveProperty('annotation');
+			expect(redactionProxy.processExecution).not.toHaveBeenCalled();
+		});
+
+		it('should pass the login id to the workflow-executed event', async () => {
+			const { service } = buildRetryService();
+			executionPersistence.findWithUnflattenedData.mockResolvedValue(
+				buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }),
+			);
+
+			await service.retry(retryArgs(), {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			});
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-executed',
+				expect.objectContaining({ source: 'user-retry', loginId: 'login-1' }),
+			);
+		});
+
+		it('should emit no login id on the workflow-executed event without an operation context', async () => {
+			const { service } = buildRetryService();
+			executionPersistence.findWithUnflattenedData.mockResolvedValue(
+				buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }),
+			);
+
+			await service.retry(retryArgs());
+
+			const call = eventService.emit.mock.calls.find(([name]) => name === 'workflow-executed');
+			expect(call?.[1]).toMatchObject({ loginId: undefined });
+		});
 
 		it('should mark the retry as awaited to completion', async () => {
 			const { service, workflowRunner } = buildRetryService();
@@ -435,6 +577,127 @@ describe('ExecutionService', () => {
 			// No entry is created for the missing node, and unrelated run data is left intact.
 			expect(runData['Missing Node']).toBeUndefined();
 			expect(runData['Other Node']).toBe(otherNodeRun);
+		});
+
+		describe('with dynamic credentials', () => {
+			const withRuntimeData = (
+				execution: IExecutionResponse,
+				runtimeData: Record<string, unknown>,
+			) => {
+				execution.data.executionData!.runtimeData = {
+					version: 1,
+					establishedAt: Date.now(),
+					source: 'manual',
+					...runtimeData,
+				};
+				return execution;
+			};
+
+			it.each([{ loadWorkflow: false }, { loadWorkflow: true }])(
+				'should reject a retry by another user (%o)',
+				async (options) => {
+					const { service, workflowRunner } = buildRetryService();
+					executionPersistence.findWithUnflattenedData.mockResolvedValue(
+						withRuntimeData(buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }), {
+							usesDynamicCredentials: true,
+							executedByUserId: 'owner-1',
+						}),
+					);
+
+					await expect(service.retry({ ...retryArgs(), options })).rejects.toThrow(ForbiddenError);
+					expect(workflowRunner.run).not.toHaveBeenCalled();
+				},
+			);
+
+			it('should reject a retry when the run has no n8n user', async () => {
+				const { service, workflowRunner } = buildRetryService();
+				executionPersistence.findWithUnflattenedData.mockResolvedValue(
+					withRuntimeData(buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }), {
+						usesDynamicCredentials: true,
+					}),
+				);
+
+				await expect(service.retry(retryArgs())).rejects.toThrow(ForbiddenError);
+				expect(workflowRunner.run).not.toHaveBeenCalled();
+			});
+
+			it('should reject a retry by another user when only the run data flags the credential', async () => {
+				const { service, workflowRunner } = buildRetryService();
+				const runData = {
+					'Credential Node': [{ usedDynamicCredentials: true }],
+				} as unknown as IRunData;
+				executionPersistence.findWithUnflattenedData.mockResolvedValue(
+					withRuntimeData(buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData }), {
+						executedByUserId: 'owner-1',
+					}),
+				);
+
+				await expect(service.retry(retryArgs())).rejects.toThrow(ForbiddenError);
+				expect(workflowRunner.run).not.toHaveBeenCalled();
+			});
+
+			it('should drop the original identity when another user retries a run without private credentials', async () => {
+				const { service, workflowRunner } = buildRetryService();
+				executionPersistence.findWithUnflattenedData.mockResolvedValue(
+					withRuntimeData(buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }), {
+						credentials: 'encrypted-owner-identity',
+					}),
+				);
+
+				await expect(service.retry(retryArgs())).resolves.toBeDefined();
+
+				const [data] = workflowRunner.run.mock.calls[0];
+				expect(data.executionData?.executionData?.runtimeData).not.toHaveProperty('credentials');
+			});
+
+			it('should drop the trigger secrets when another user retries the run', async () => {
+				const { service, workflowRunner } = buildRetryService();
+				executionPersistence.findWithUnflattenedData.mockResolvedValue(
+					withRuntimeData(buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }), {
+						secureArtifacts: 'encrypted-artifacts',
+					}),
+				);
+
+				await expect(service.retry(retryArgs())).resolves.toBeDefined();
+
+				const [data] = workflowRunner.run.mock.calls[0];
+				expect(data.executionData?.executionData?.runtimeData).not.toHaveProperty(
+					'secureArtifacts',
+				);
+			});
+
+			it('should keep the original identity when the same user retries the run', async () => {
+				const { service, workflowRunner } = buildRetryService();
+				executionPersistence.findWithUnflattenedData.mockResolvedValue(
+					withRuntimeData(buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }), {
+						credentials: 'encrypted-user-identity',
+						secureArtifacts: 'encrypted-artifacts',
+						usesDynamicCredentials: true,
+						executedByUserId: 'user-1',
+					}),
+				);
+
+				await service.retry(retryArgs());
+
+				const [data] = workflowRunner.run.mock.calls[0];
+				expect(data.executionData?.executionData?.runtimeData).toMatchObject({
+					credentials: 'encrypted-user-identity',
+					secureArtifacts: 'encrypted-artifacts',
+				});
+			});
+
+			it('should allow the user who started the run to retry it', async () => {
+				const { service, workflowRunner } = buildRetryService();
+				executionPersistence.findWithUnflattenedData.mockResolvedValue(
+					withRuntimeData(buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }), {
+						usesDynamicCredentials: true,
+						executedByUserId: 'user-1',
+					}),
+				);
+
+				await expect(service.retry(retryArgs())).resolves.toBeDefined();
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			});
 		});
 
 		it('should remove the last run of the node when it ended in an error', async () => {
@@ -506,7 +769,15 @@ describe('ExecutionService', () => {
 			expect(result).toEqual(mockExecution);
 			expect(executionPersistence.findMultipleExecutions).toHaveBeenCalledWith(
 				{
-					select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId', 'jsonSizeBytes'],
+					select: [
+						'id',
+						'mode',
+						'createdAt',
+						'startedAt',
+						'stoppedAt',
+						'workflowId',
+						'jsonSizeBytes',
+					],
 					where: {
 						workflowId,
 						status: 'success',
@@ -524,6 +795,22 @@ describe('ExecutionService', () => {
 				user: mockUser,
 				redactExecutionData: undefined,
 			});
+		});
+
+		it('should return undefined without loading data when the user cannot read the executions', async () => {
+			const workflowId = 'workflow-123';
+			const mockUser = mock<User>();
+			vi.mocked(userHasScopes).mockResolvedValueOnce(false);
+
+			const result = await executionService.getLastSuccessfulExecution(workflowId, mockUser);
+
+			expect(userHasScopes).toHaveBeenCalledWith(mockUser, ['execution:read'], false, {
+				workflowId,
+			});
+			expect(result).toBeUndefined();
+			expect(executionPersistence.findMultipleExecutions).not.toHaveBeenCalled();
+			expect(engineV2ExecutionReader.findLatest).not.toHaveBeenCalled();
+			expect(executionRedactionServiceProxy.processExecution).not.toHaveBeenCalled();
 		});
 
 		it('should return undefined when no successful execution exists', async () => {
@@ -544,6 +831,78 @@ describe('ExecutionService', () => {
 			 */
 			expect(result).toBeUndefined();
 			expect(executionRedactionServiceProxy.processExecution).not.toHaveBeenCalled();
+		});
+
+		describe('with the engine-v2 module', () => {
+			const workflowId = 'workflow-123';
+			const mockUser = mock<User>();
+			const v1Execution = mock<IExecutionResponse>({
+				id: 'v1-execution',
+				createdAt: new Date('2025-01-15T10:00:00Z'),
+				startedAt: new Date('2025-01-15T10:00:00Z'),
+			});
+			const v2Execution = mock<IExecutionResponse>({
+				id: V2_EXECUTION_ID,
+				createdAt: new Date('2025-01-15T11:00:00Z'),
+				startedAt: new Date('2025-01-15T11:00:00Z'),
+			});
+
+			beforeEach(() => {
+				eligibleModules.push('engine-v2');
+				executionRedactionServiceProxy.processExecution.mockImplementation(
+					async (execution) => execution,
+				);
+			});
+
+			afterEach(() => {
+				eligibleModules.length = 0;
+			});
+
+			it('should return the newest success of both engines', async () => {
+				executionPersistence.findMultipleExecutions.mockResolvedValue([v1Execution]);
+				engineV2ExecutionReader.findLatest.mockResolvedValue(v2Execution);
+
+				const result = await executionService.getLastSuccessfulExecution(workflowId, mockUser);
+
+				expect(result).toBe(v2Execution);
+			});
+
+			it('should compare the engines by creation, as each engine picks its newest run', async () => {
+				const queuedV1Execution = mock<IExecutionResponse>({
+					id: 'queued-v1-execution',
+					createdAt: new Date('2025-01-15T10:00:00Z'),
+					startedAt: new Date('2025-01-15T12:00:00Z'),
+				});
+				executionPersistence.findMultipleExecutions.mockResolvedValue([queuedV1Execution]);
+				engineV2ExecutionReader.findLatest.mockResolvedValue(v2Execution);
+
+				const result = await executionService.getLastSuccessfulExecution(workflowId, mockUser);
+
+				expect(result).toBe(v2Execution);
+			});
+
+			it('should return the success of the engine that has one', async () => {
+				executionPersistence.findMultipleExecutions.mockResolvedValue([v1Execution]);
+				engineV2ExecutionReader.findLatest.mockResolvedValue(undefined);
+
+				const result = await executionService.getLastSuccessfulExecution(workflowId, mockUser);
+
+				expect(result).toBe(v1Execution);
+			});
+		});
+
+		it('should read only engine v1 without the engine-v2 module', async () => {
+			const execution = mock<IExecutionResponse>({ id: 'v1-execution' });
+			executionPersistence.findMultipleExecutions.mockResolvedValue([execution]);
+			executionRedactionServiceProxy.processExecution.mockResolvedValue(execution);
+
+			const result = await executionService.getLastSuccessfulExecution(
+				'workflow-123',
+				mock<User>(),
+			);
+
+			expect(result).toBe(execution);
+			expect(engineV2ExecutionReader.findLatest).not.toHaveBeenCalled();
 		});
 	});
 
@@ -812,14 +1171,17 @@ describe('ExecutionService', () => {
 				concurrencyControl.has.mockReturnValue(true);
 				activeExecutions.has.mockReturnValue(false);
 				waitTracker.has.mockReturnValue(false);
-				executionRepository.stopBeforeRun.mockResolvedValue(mock<IExecutionResponse>());
+				const stoppedAt = new Date();
+				executionRepository.markAsCanceled.mockResolvedValue([
+					{ id: '123', workflowId: 'wf', mode: 'trigger', startedAt: null, stoppedAt },
+				]);
 
 				const req = mock<ExecutionRequest.Stop>({ params: { id: execution.id } });
 
 				/**
 				 * Act
 				 */
-				await executionService.stop(req.params.id, [execution.id]);
+				const result = await executionService.stop(req.params.id, [execution.id]);
 
 				/**
 				 * Assert
@@ -831,6 +1193,22 @@ describe('ExecutionService', () => {
 				expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
 				expect(waitTracker.stopExecution).not.toHaveBeenCalled();
 				expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+				expect(executionRepository.markAsCanceled).toHaveBeenCalledWith(['123']);
+				expect(result).toMatchObject({ status: 'canceled', stoppedAt });
+			});
+
+			it('should return the finished run when a queued run finished before the stop', async () => {
+				const execution = mock<IExecutionResponse>({ id: '123', status: 'new', mode: 'trigger' });
+				const finished = mock<IExecutionResponse>({ id: '123', status: 'success' });
+				executionPersistence.findWithUnflattenedData
+					.mockResolvedValueOnce(execution)
+					.mockResolvedValueOnce(finished);
+				concurrencyControl.has.mockReturnValue(true);
+				executionRepository.markAsCanceled.mockResolvedValue([]);
+
+				const result = await executionService.stop('123', ['wf']);
+
+				expect(result).toMatchObject({ status: 'success' });
 			});
 		});
 
@@ -979,6 +1357,47 @@ describe('ExecutionService', () => {
 						execution,
 						{ requireStatus: 'running' },
 					);
+				});
+
+				it('should persist the canceled status before it broadcasts the stop request', async () => {
+					globalConfig.executions.mode = 'queue';
+					const execution = mock<IExecutionResponse>({
+						id: 'exec-123',
+						status: 'running',
+						data: { resultData: {} },
+					});
+					executionPersistence.findWithUnflattenedData.mockResolvedValue(execution);
+					activeExecutions.has.mockReturnValue(false);
+					waitTracker.has.mockReturnValue(false);
+					executionPersistence.updateExistingExecution.mockResolvedValue(true);
+
+					await executionService.stop(execution.id, [execution.id]);
+
+					const [updateOrder] =
+						executionPersistence.updateExistingExecution.mock.invocationCallOrder;
+					const [broadcastOrder] = executionStopService.requestStop.mock.invocationCallOrder;
+					expect(updateOrder).toBeLessThan(broadcastOrder);
+				});
+
+				it('should broadcast the stop request when persisting the canceled status fails', async () => {
+					globalConfig.executions.mode = 'queue';
+					const execution = mock<IExecutionResponse>({
+						id: 'exec-123',
+						status: 'running',
+						data: { resultData: {} },
+					});
+					executionPersistence.findWithUnflattenedData.mockResolvedValue(execution);
+					activeExecutions.has.mockReturnValue(false);
+					waitTracker.has.mockReturnValue(false);
+					executionPersistence.updateExistingExecution.mockRejectedValue(
+						new Error('database unavailable'),
+					);
+
+					await expect(executionService.stop(execution.id, [execution.id])).rejects.toThrow(
+						'database unavailable',
+					);
+
+					expect(executionStopService.requestStop).toHaveBeenCalledWith(execution.id);
 				});
 			});
 		});

@@ -166,6 +166,9 @@ vi.mock('./useExecutionNavigationCommands', () => ({
 vi.mock('./useGenericCommands', () => ({
 	useGenericCommands: () => group(genericCommands),
 }));
+vi.mock('./useContextCommands', () => ({
+	useContextCommands: () => group([]),
+}));
 vi.mock('./useChatHubCommands', () => ({
 	useChatHubCommands: () => group([]),
 }));

@@ -1,11 +1,16 @@
 import { Logger } from '@n8n/backend-common';
-import { CacheService, type OAuthDiscoveryClient, UrlService } from '@n8n/backend-services';
+import {
+	CacheService,
+	EventService,
+	type OAuthDiscoveryClient,
+	UrlService,
+} from '@n8n/backend-services';
 import { testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import {
 	AuthenticationService,
 	JwkSchema,
-	type LocalAuthorizationServer,
+	LocalAuthorizationServer,
 	trustedSourceConfigSchemaFor,
 	type Extracted,
 	type Jwk,
@@ -43,6 +48,7 @@ const client = mock<OAuthDiscoveryClient>();
 const localServer = mock<LocalAuthorizationServer>({
 	getMetadata: async () => ({ issuer: baseUrl, jwks_uri: `${baseUrl}/.well-known/jwks.json` }),
 	getJwks: async () => ({ keys: [jwk] }),
+	isAccessTokenActive: vi.fn(async () => true),
 });
 
 type Row = { id: string; issuer: string };
@@ -110,6 +116,7 @@ async function seedSystemSource(): Promise<Row> {
 		Container.get(TrustedSourceDbStore),
 		client,
 		localServer,
+		Container.get(EventService),
 	);
 	await discovery.refresh('n8n-internal');
 	return { id: 'n8n-internal', issuer: baseUrl };
@@ -131,6 +138,7 @@ beforeAll(async () => {
 
 	// `loadModules` imports the module; the bindings come from `init`.
 	Container.set(TrustedSourceDiscoveryService, mock<TrustedSourceDiscoveryService>());
+	Container.set(LocalAuthorizationServer, localServer);
 	await new InboundAuthCoreModule().init();
 	service = Container.get(AuthenticationService);
 
@@ -220,5 +228,15 @@ describe('AuthenticationService (integration)', () => {
 		expect(client.fetchOpenIdConfiguration).not.toHaveBeenCalled();
 		expect(client.fetchOAuth2ServerMetadata).not.toHaveBeenCalled();
 		expect(client.fetchJwks).not.toHaveBeenCalled();
+	});
+
+	it('rejects a token the internal server revoked, although its signature still verifies', async () => {
+		const token = await sign(baseUrl, { sub: randomUUID(), client_id: 'mcp-client', scope: 'mcp' });
+		localServer.isAccessTokenActive.mockResolvedValueOnce(false);
+
+		const result = await service.authenticate(extracted(token));
+
+		expect(result).toEqual({ ok: false, reason: 'revoked' });
+		expect(localServer.isAccessTokenActive).toHaveBeenCalledWith(token);
 	});
 });

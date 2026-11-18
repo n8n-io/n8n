@@ -84,7 +84,9 @@ async function get(path: string) {
 
 	const response = await authOwnerAgent.get(path);
 
-	expect(emit.mock.calls.filter(([event]) => event === 'public-api-invoked')).toHaveLength(1);
+	await vi.waitFor(() =>
+		expect(emit.mock.calls.filter(([event]) => event === 'public-api-invoked')).toHaveLength(1),
+	);
 	emit.mockRestore();
 
 	return response;

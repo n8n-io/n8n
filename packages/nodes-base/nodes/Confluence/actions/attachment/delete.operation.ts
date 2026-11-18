@@ -1,5 +1,5 @@
-import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeProperties, RequestPath } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { confluenceApiRequest } from '../../transport';
 import type { ConfluenceOperation } from '../router';
@@ -39,7 +39,7 @@ export const description: INodeProperties[] = [
  */
 async function trashAttachment(
 	this: IExecuteFunctions,
-	endpoint: string,
+	endpoint: RequestPath,
 	purge: boolean,
 	itemIndex: number,
 ): Promise<boolean> {
@@ -62,7 +62,7 @@ async function trashAttachment(
  * has moved it there or the trash step was assumed already done. */
 async function purgeAttachment(
 	this: IExecuteFunctions,
-	endpoint: string,
+	endpoint: RequestPath,
 	itemIndex: number,
 	trashConfirmed: boolean,
 ): Promise<void> {
@@ -108,7 +108,7 @@ export const execute: ConfluenceOperation = async function (
 	// Strict compare, not a cast: an expression can hand back the string "false",
 	// which is truthy and would permanently delete the attachment by accident
 	const purge = this.getNodeParameter('purge', itemIndex, false) === true;
-	const endpoint = `/wiki/api/v2/attachments/${encodeURIComponent(attachmentId)}`;
+	const endpoint = requestPath`/wiki/api/v2/attachments/${attachmentId}`;
 
 	const trashConfirmed = await trashAttachment.call(this, endpoint, purge, itemIndex);
 	if (purge) await purgeAttachment.call(this, endpoint, itemIndex, trashConfirmed);

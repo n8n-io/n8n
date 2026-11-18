@@ -17,10 +17,11 @@ export const IMPORT_PACKAGE_REQUEST_FORM_FIELDS = [
 	'folderId',
 	'credentialMatchingMode',
 	'credentialMissingMode',
+	'credentialConflictPolicy',
 	'bindings',
-	'workflowConflictPolicy',
-	'workflowPublishingPolicy',
-	'workflowIdPolicy',
+	'conflictPolicy',
+	'publishingPolicy',
+	'idPolicy',
 	'missingNodeTypeMode',
 	'projectConflictPolicy',
 	'folderConflictPolicy',
@@ -112,19 +113,21 @@ export class ImportPackageRequestDto extends Z.class(
 			['must-preexist', 'create-stub', 'create-with-values'],
 			'create-stub',
 		).openapi(importPackageRequestFieldDocs.credentialMissingMode),
+		credentialConflictPolicy: optionalEnum(
+			['keep-existing', 'overwrite', 'fail'],
+			'keep-existing',
+		).openapi(importPackageRequestFieldDocs.credentialConflictPolicy),
 		bindings: bindingsSchema.openapi(importPackageRequestFieldDocs.bindings),
 		// Required (unlike every other mode/policy field here), matching the legacy handler, which
 		// required it even though this schema alone would otherwise default it to `new-version`.
-		workflowConflictPolicy: z
+		conflictPolicy: z
 			.enum(['new-version', 'fail', 'skip'])
-			.openapi(importPackageRequestFieldDocs.workflowConflictPolicy),
-		workflowPublishingPolicy: optionalEnum(
+			.openapi(importPackageRequestFieldDocs.conflictPolicy),
+		publishingPolicy: optionalEnum(
 			['preserve-published-state', 'match-source', 'publish-all', 'unpublish-all'],
 			'preserve-published-state',
-		).openapi(importPackageRequestFieldDocs.workflowPublishingPolicy),
-		workflowIdPolicy: optionalEnum(['new', 'source'], 'source').openapi(
-			importPackageRequestFieldDocs.workflowIdPolicy,
-		),
+		).openapi(importPackageRequestFieldDocs.publishingPolicy),
+		idPolicy: optionalEnum(['source'], 'source').openapi(importPackageRequestFieldDocs.idPolicy),
 		missingNodeTypeMode: optionalEnum(['fail', 'import-anyway'], 'fail').openapi(
 			importPackageRequestFieldDocs.missingNodeTypeMode,
 		),
@@ -173,8 +176,8 @@ export const IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS = [
 	'selectedProjectId',
 	'selectedWorkflowIds',
 	'deletedWorkflowIds',
-	'workflowConflictPolicy',
-	'workflowIdPolicy',
+	'conflictPolicy',
+	'idPolicy',
 	'overwriteDeletionPolicy',
 ] as const;
 
@@ -237,11 +240,11 @@ export class ImportPackageSelectionRequestDto extends Z.class(
 		deletedWorkflowIds: optionalJsonStringIdArray(DELETED_WORKFLOW_IDS_ERROR_MESSAGE).openapi(
 			importPackageSelectionRequestFieldDocs.deletedWorkflowIds,
 		),
-		workflowConflictPolicy: optionalEnum(['new-version', 'fail', 'skip'], 'new-version').openapi(
-			importPackageSelectionRequestFieldDocs.workflowConflictPolicy,
+		conflictPolicy: optionalEnum(['new-version', 'fail', 'skip'], 'new-version').openapi(
+			importPackageSelectionRequestFieldDocs.conflictPolicy,
 		),
-		workflowIdPolicy: optionalEnum(['new', 'source'], 'source').openapi(
-			importPackageSelectionRequestFieldDocs.workflowIdPolicy,
+		idPolicy: optionalEnum(['source'], 'source').openapi(
+			importPackageSelectionRequestFieldDocs.idPolicy,
 		),
 		overwriteDeletionPolicy: optionalEnum(['archive', 'hard-delete'], 'archive').openapi(
 			importPackageSelectionRequestFieldDocs.overwriteDeletionPolicy,

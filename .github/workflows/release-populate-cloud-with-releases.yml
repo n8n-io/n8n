@@ -32,7 +32,8 @@ on:
         default: false
 
 jobs:
-  determine-changes:
+  populate-cloud-with-releases:
+    name: Populate cloud databases with new release
     runs-on: ubuntu-slim
     environment: release
     outputs:

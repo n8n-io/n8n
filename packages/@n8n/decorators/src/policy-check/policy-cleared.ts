@@ -1,4 +1,4 @@
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { createHash } from 'node:crypto';
 
 import { brand } from './policy-brand';

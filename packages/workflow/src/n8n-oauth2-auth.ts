@@ -129,7 +129,17 @@ export const n8nOAuth2Auth = async (
 
 	const validationResult = await context.validateN8nOAuth2Token(token, resourceUrl);
 	if (!validationResult.valid) {
-		if (validationResult.reason === 'invalid_token') {
+		const code = validationResult.reason === 'insufficient_scope' ? 403 : 401;
+		if (validationResult.reason !== 'verifier_unavailable' && validationResult.challenge) {
+			// The host built it from the issuers the resource accepts, error included. The realm
+			// is ours to add, so every challenge from this trigger carries it.
+			const challenge = validationResult.challenge.replace(
+				/^Bearer\s+/i,
+				`Bearer realm="${options.realm}", `,
+			);
+			resp.writeHead(code, { 'WWW-Authenticate': challenge });
+			resp.end();
+		} else if (validationResult.reason === 'invalid_token') {
 			sendUnauthorizedResponse(resp, 401, prmUrl, options.realm, 'invalid_token');
 		} else if (validationResult.reason === 'insufficient_scope') {
 			sendUnauthorizedResponse(resp, 403, prmUrl, options.realm, 'insufficient_scope');

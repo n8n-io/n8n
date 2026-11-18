@@ -1,0 +1,99 @@
+{
+	"name": "Sub-workflow",
+	"active": true,
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "sub-workflow-benchmark",
+				"responseMode": "responseNode",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2.1,
+			"position": [0, 0],
+			"id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c51",
+			"name": "Webhook",
+			"webhookId": "7c1e9f3a-2b4d-4e6f-8a0c-1d3e5f7a9b21"
+		},
+		{
+			"parameters": {
+				"fieldToSplitOut": "body.items",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [224, 0],
+			"id": "2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d62",
+			"name": "Split Out"
+		},
+		{
+			"parameters": {
+				"workflowId": {
+					"__rl": true,
+					"value": "SubWorkflowBenchmarkChild",
+					"mode": "id"
+				},
+				"mode": "once",
+				"options": {
+					"waitForSubWorkflow": true
+				}
+			},
+			"type": "n8n-nodes-base.executeWorkflow",
+			"typeVersion": 1.2,
+			"position": [448, 0],
+			"id": "3c4d5e6f-7a8b-4c9d-8e1f-2a3b4c5d6e73",
+			"name": "Execute Workflow"
+		},
+		{
+			"parameters": {
+				"respondWith": "allIncomingItems",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.4,
+			"position": [672, 0],
+			"id": "4d5e6f7a-8b9c-4d0e-9f2a-3b4c5d6e7f84",
+			"name": "Respond to Webhook"
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "Execute Workflow",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Execute Workflow": {
+			"main": [
+				[
+					{
+						"node": "Respond to Webhook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"settings": { "executionOrder": "v1" },
+	"staticData": null,
+	"tags": []
+}

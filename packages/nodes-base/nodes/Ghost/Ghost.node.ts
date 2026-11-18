@@ -8,7 +8,12 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	NodeOperationError,
+	decodePathValue,
+	requestPath,
+} from 'n8n-workflow';
 
 import { ghostApiRequest, ghostApiRequestAllItems, validateJSON } from './GenericFunctions';
 import { postFields, postOperations } from './PostDescription';
@@ -19,7 +24,8 @@ export class Ghost implements INodeType {
 		name: 'ghost',
 		icon: 'file:ghost.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Ghost API',
 		defaults: {
@@ -90,7 +96,12 @@ export class Ghost implements INodeType {
 			// select them easily
 			async getAuthors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const users = await ghostApiRequestAllItems.call(this, 'users', 'GET', '/admin/users');
+				const users = await ghostApiRequestAllItems.call(
+					this,
+					'users',
+					'GET',
+					requestPath`/admin/users`,
+				);
 				for (const user of users) {
 					returnData.push({
 						name: user.name,
@@ -103,7 +114,12 @@ export class Ghost implements INodeType {
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const tags = await ghostApiRequestAllItems.call(this, 'tags', 'GET', '/admin/tags');
+				const tags = await ghostApiRequestAllItems.call(
+					this,
+					'tags',
+					'GET',
+					requestPath`/admin/tags`,
+				);
 				for (const tag of tags) {
 					returnData.push({
 						name: tag.name,
@@ -125,6 +141,8 @@ export class Ghost implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 		const source = this.getNodeParameter('source', 0) as string;
+		const pathValue = (value: string) =>
+			this.getNode().typeVersion < 1.1 ? decodePathValue(value) : value;
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -133,7 +151,7 @@ export class Ghost implements INodeType {
 						if (operation === 'get') {
 							const by = this.getNodeParameter('by', i) as string;
 
-							const identifier = this.getNodeParameter('identifier', i) as string;
+							const identifier = pathValue(this.getNodeParameter('identifier', i) as string);
 
 							const options = this.getNodeParameter('options', i);
 
@@ -142,9 +160,9 @@ export class Ghost implements INodeType {
 							let endpoint;
 
 							if (by === 'slug') {
-								endpoint = `/content/posts/slug/${identifier}`;
+								endpoint = requestPath`/content/posts/slug/${identifier}`;
 							} else {
-								endpoint = `/content/posts/${identifier}`;
+								endpoint = requestPath`/content/posts/${identifier}`;
 							}
 
 							responseData = await ghostApiRequest.call(this, 'GET', endpoint, {}, qs);
@@ -163,13 +181,19 @@ export class Ghost implements INodeType {
 									this,
 									'posts',
 									'GET',
-									'/content/posts',
+									requestPath`/content/posts`,
 									{},
 									qs,
 								);
 							} else {
 								qs.limit = this.getNodeParameter('limit', 0);
-								responseData = await ghostApiRequest.call(this, 'GET', '/content/posts', {}, qs);
+								responseData = await ghostApiRequest.call(
+									this,
+									'GET',
+									requestPath`/content/posts`,
+									{},
+									qs,
+								);
 								responseData = responseData.posts;
 							}
 						}
@@ -231,7 +255,7 @@ export class Ghost implements INodeType {
 							responseData = await ghostApiRequest.call(
 								this,
 								'POST',
-								'/admin/posts',
+								requestPath`/admin/posts`,
 								{ posts: [post] },
 								qs,
 							);
@@ -239,15 +263,19 @@ export class Ghost implements INodeType {
 						}
 
 						if (operation === 'delete') {
-							const postId = this.getNodeParameter('postId', i) as string;
+							const postId = pathValue(this.getNodeParameter('postId', i) as string);
 
-							responseData = await ghostApiRequest.call(this, 'DELETE', `/admin/posts/${postId}`);
+							responseData = await ghostApiRequest.call(
+								this,
+								'DELETE',
+								requestPath`/admin/posts/${postId}`,
+							);
 						}
 
 						if (operation === 'get') {
 							const by = this.getNodeParameter('by', i) as string;
 
-							const identifier = this.getNodeParameter('identifier', i) as string;
+							const identifier = pathValue(this.getNodeParameter('identifier', i) as string);
 
 							const options = this.getNodeParameter('options', i);
 
@@ -256,9 +284,9 @@ export class Ghost implements INodeType {
 							let endpoint;
 
 							if (by === 'slug') {
-								endpoint = `/admin/posts/slug/${identifier}`;
+								endpoint = requestPath`/admin/posts/slug/${identifier}`;
 							} else {
-								endpoint = `/admin/posts/${identifier}`;
+								endpoint = requestPath`/admin/posts/${identifier}`;
 							}
 							responseData = await ghostApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.posts;
@@ -276,19 +304,25 @@ export class Ghost implements INodeType {
 									this,
 									'posts',
 									'GET',
-									'/admin/posts',
+									requestPath`/admin/posts`,
 									{},
 									qs,
 								);
 							} else {
 								qs.limit = this.getNodeParameter('limit', 0);
-								responseData = await ghostApiRequest.call(this, 'GET', '/admin/posts', {}, qs);
+								responseData = await ghostApiRequest.call(
+									this,
+									'GET',
+									requestPath`/admin/posts`,
+									{},
+									qs,
+								);
 								responseData = responseData.posts;
 							}
 						}
 
 						if (operation === 'update') {
-							const postId = this.getNodeParameter('postId', i) as string;
+							const postId = pathValue(this.getNodeParameter('postId', i) as string);
 
 							const contentFormat = this.getNodeParameter('contentFormat', i) as string;
 
@@ -325,7 +359,7 @@ export class Ghost implements INodeType {
 							const { posts } = await ghostApiRequest.call(
 								this,
 								'GET',
-								`/admin/posts/${postId}`,
+								requestPath`/admin/posts/${postId}`,
 								{},
 								{ fields: 'id, updated_at' },
 							);
@@ -347,7 +381,7 @@ export class Ghost implements INodeType {
 							responseData = await ghostApiRequest.call(
 								this,
 								'PUT',
-								`/admin/posts/${postId}`,
+								requestPath`/admin/posts/${postId}`,
 								{ posts: [post] },
 								qs,
 							);

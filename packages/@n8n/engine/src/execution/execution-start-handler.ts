@@ -1,6 +1,6 @@
 import { UnexpectedError } from '../common';
 import { findTriggerNode } from '../graph';
-import type { LifecycleEventPublisher } from '../lifecycle-events';
+import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
 import type { ExecutionEnqueuedEvent, OrchestrationMessage, WorkQueue } from '../queue';
 import type { ExecutionStore } from './execution-store';
 import { DEFAULT_TRIGGER_OUTPUTS } from './execution.types';
@@ -19,7 +19,7 @@ export class ExecutionStartHandler {
 		private readonly executionStore: ExecutionStore,
 		private readonly stepStore: StepStore,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
-		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
+		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
 	) {}
 
 	async handle(event: ExecutionEnqueuedEvent): Promise<void> {
@@ -35,7 +35,7 @@ export class ExecutionStartHandler {
 
 		// This worker won the claim, so it is the one that announces the start.
 		// After the load, because the ids it carries save consumers a round trip.
-		this.lifecycleEventPublisher.publish({
+		this.lifecycleEventPublisherFactory.create(execution).publish({
 			type: 'execution:started',
 			executionId: execution.id,
 			workflowId: execution.workflowId,

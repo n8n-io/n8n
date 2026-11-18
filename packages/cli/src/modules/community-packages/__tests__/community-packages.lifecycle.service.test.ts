@@ -1,7 +1,9 @@
 import type { CommunityNodeType } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, InstalledTypeRestrictionsProxy } from '@n8n/backend-services';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
+import type { OperationContext } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import { IncompatibleNodesApiVersionError } from '@/errors/response-errors/incompatible-nodes-api-version.error';
@@ -42,6 +44,8 @@ describe('CommunityPackagesLifecycleService', () => {
 		communityPackagesManagedByEnv: false,
 	});
 
+	const installedTypeRestrictions = mock<InstalledTypeRestrictionsProxy>();
+
 	const lifecycle = new CommunityPackagesLifecycleService(
 		logger,
 		push,
@@ -51,6 +55,7 @@ describe('CommunityPackagesLifecycleService', () => {
 		instanceSettings as never,
 		communityPackagesConfig,
 		instanceSettingsLoaderConfig,
+		installedTypeRestrictions,
 	);
 
 	const user = { id: 'user123' };
@@ -327,6 +332,48 @@ describe('CommunityPackagesLifecycleService', () => {
 			'community-package-installed',
 			expect.objectContaining({ success: false }),
 		);
+	});
+
+	describe('describePolicyRestrictions', () => {
+		const installedPackage = {
+			packageName: 'n8n-nodes-test',
+			installedNodes: [
+				mock<InstalledPackages['installedNodes'][number]>({ type: 'n8n-nodes-test.alpha' }),
+				mock<InstalledPackages['installedNodes'][number]>({ type: 'n8n-nodes-test.beta' }),
+			],
+		};
+
+		it('evaluates the node types of the installed package', async () => {
+			const restrictions = {
+				nodeTypes: [
+					{ type: 'n8n-nodes-test.alpha', blockedOn: 'instance' as const, optInAvailable: false },
+				],
+			};
+			installedTypeRestrictions.describeRestrictions.mockResolvedValue(restrictions);
+
+			await expect(lifecycle.describePolicyRestrictions(installedPackage)).resolves.toBe(
+				restrictions,
+			);
+			expect(installedTypeRestrictions.describeRestrictions).toHaveBeenCalledWith({
+				nodeTypes: ['n8n-nodes-test.alpha', 'n8n-nodes-test.beta'],
+			});
+		});
+
+		it('returns undefined when no policy was evaluated', async () => {
+			installedTypeRestrictions.describeRestrictions.mockResolvedValue(null);
+
+			await expect(lifecycle.describePolicyRestrictions(installedPackage)).resolves.toBeUndefined();
+		});
+
+		it('logs a warning and returns undefined when the evaluation fails', async () => {
+			installedTypeRestrictions.describeRestrictions.mockRejectedValue(new Error('db down'));
+
+			await expect(lifecycle.describePolicyRestrictions(installedPackage)).resolves.toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to evaluate policy restrictions for an installed package',
+				expect.objectContaining({ packageName: 'n8n-nodes-test' }),
+			);
+		});
 	});
 
 	describe('uninstall', () => {
@@ -706,5 +753,92 @@ describe('CommunityPackagesLifecycleService', () => {
 				expect.objectContaining({ type: 'removeNodeType' }),
 			);
 		});
+	});
+
+	describe('login id on the audit events', () => {
+		const parsedName = {
+			rawString: 'n8n-nodes-test',
+			packageName: 'n8n-nodes-test',
+			version: undefined,
+		};
+
+		type Case = {
+			write: string;
+			event: string;
+			act: (ctx?: OperationContext) => Promise<unknown>;
+		};
+
+		const serviceAccountCtx: OperationContext = {
+			security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+		};
+
+		const cases: Case[] = [
+			{
+				write: 'install',
+				event: 'community-package-installed',
+				act: async (ctx) => {
+					communityPackagesService.parseNpmPackageName.mockReturnValue(parsedName);
+					communityPackagesService.findInstalledPackage.mockResolvedValue(null);
+					communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
+					communityPackagesService.installPackage.mockResolvedValue(mockPackage('1.0.0'));
+					return await lifecycle.install({ name: 'n8n-nodes-test' }, user, 'publicApi', ctx);
+				},
+			},
+			{
+				write: 'install that fails',
+				event: 'community-package-installed',
+				act: async (ctx) => {
+					communityPackagesService.parseNpmPackageName.mockReturnValue(parsedName);
+					communityPackagesService.findInstalledPackage.mockResolvedValue(null);
+					communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
+					communityPackagesService.installPackage.mockRejectedValue(new Error('npm failed'));
+					return await lifecycle
+						.install({ name: 'n8n-nodes-test' }, user, 'publicApi', ctx)
+						.catch(() => undefined);
+				},
+			},
+			{
+				write: 'update',
+				event: 'community-package-updated',
+				act: async (ctx) => {
+					communityPackagesService.parseNpmPackageName.mockReturnValue(parsedName);
+					communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage('1.0.0'));
+					communityPackagesService.updatePackage.mockResolvedValue(mockPackage('2.0.0'));
+					return await lifecycle.update({ name: 'n8n-nodes-test' }, user, 'notFound', ctx);
+				},
+			},
+			{
+				write: 'uninstall',
+				event: 'community-package-deleted',
+				act: async (ctx) => {
+					communityPackagesService.parseNpmPackageName.mockReturnValue(parsedName);
+					communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage('1.0.0'));
+					communityPackagesService.removePackage.mockResolvedValue(undefined);
+					return await lifecycle.uninstall('n8n-nodes-test', user, 'notFound', ctx);
+				},
+			},
+		];
+
+		it.each(cases)(
+			'$write passes the login id of the operation context to $event',
+			async ({ act, event }) => {
+				await act(serviceAccountCtx);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					event,
+					expect.objectContaining({ loginId: 'login-1' }),
+				);
+			},
+		);
+
+		it.each(cases)(
+			'$write emits no login id without an operation context',
+			async ({ act, event }) => {
+				await act();
+
+				const call = eventService.emit.mock.calls.find(([name]) => name === event);
+				expect(call?.[1]).toMatchObject({ loginId: undefined });
+			},
+		);
 	});
 });

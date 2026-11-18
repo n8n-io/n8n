@@ -1,12 +1,16 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
+import {
+	getModelPromptCachingCapability,
+	getProviderPrefix,
+	isAzureFoundryAnthropicModel,
+	isGoogleVertexAnthropicModel,
+	splitModelId,
+} from '@n8n/ai-utilities/agent-config';
 import { isRecord } from '@n8n/utils/is-record';
 import type { ModelMessage, SystemModelMessage, ToolSet } from 'ai';
 import { createHash } from 'crypto';
 
-import { isGoogleVertexAnthropicModel } from './google-vertex';
 import type { PromptCachingConfig } from '../../types/sdk/agent';
-import type { JSONObject } from '../../types/utils/json';
 
 /** Anthropic hard-errors past this many `cacheControl` breakpoints in one request. */
 const MAX_ANTHROPIC_CACHE_BREAKPOINTS = 4;
@@ -18,7 +22,7 @@ export function mergeProviderOptions(
 	const defined = options.filter((o): o is ProviderOptions => o !== undefined);
 	if (defined.length === 0) return undefined;
 
-	const merged: Record<string, JSONObject> = {};
+	const merged: ProviderOptions = {};
 	for (const opts of defined) {
 		for (const [provider, providerOpts] of Object.entries(opts)) {
 			merged[provider] = { ...merged[provider], ...providerOpts };
@@ -42,7 +46,10 @@ export function getEffectiveAnthropicCacheTtl(
 	config: PromptCachingConfig | undefined,
 	modelId: string,
 ): '5m' | '1h' | undefined {
-	if (!isAnthropicMessagesProvider(modelId) || !isEnabledForProvider(config, 'anthropic')) {
+	if (
+		getModelPromptCachingCapability(modelId) !== 'ttl' ||
+		!isEnabledForProvider(config, 'anthropic')
+	) {
 		return undefined;
 	}
 	return getAnthropicCacheTtl(config);
@@ -62,7 +69,8 @@ export function isAnthropicMessagesProvider(modelId: string): boolean {
 	return (
 		provider === 'anthropic' ||
 		provider === 'google-vertex-anthropic' ||
-		isGoogleVertexAnthropicModel(modelId)
+		isGoogleVertexAnthropicModel(modelId) ||
+		isAzureFoundryAnthropicModel(modelId)
 	);
 }
 
@@ -94,10 +102,14 @@ function buildAnthropicCacheControl(config: PromptCachingConfig | undefined): Pr
 	};
 }
 
-/** True when `providerOptions` carries an Anthropic `cacheControl` marker. */
-function hasAnthropicCacheControl(providerOptions: ProviderOptions | undefined): boolean {
+/** True when `providerOptions` carries an Anthropic cache marker. */
+export function hasAnthropicCacheControl(providerOptions: ProviderOptions | undefined): boolean {
 	const anthropic = providerOptions?.anthropic;
-	return isRecord(anthropic) && isRecord(anthropic.cacheControl);
+	return isRecord(anthropic) && isRecord(anthropic.cacheControl ?? anthropic.cache_control);
+}
+
+export function isAnthropicToolDeferred(tool: ToolSet[string]): boolean {
+	return tool.providerOptions?.anthropic?.deferLoading === true;
 }
 
 /**
@@ -176,7 +188,47 @@ export function buildSkillInstructionCacheOptions(
 	return instructionProviderOptions;
 }
 
-/** OpenAI call-level cache options (routing key + retention). Undefined for non-OpenAI models or when disabled. */
+const HOUR_MS = 60 * 60_000;
+
+/**
+ * OpenAI keeps a cache entry for at least 30 minutes by default on GPT-5.6 and later
+ * (`prompt_cache_options.ttl`). It may keep it longer.
+ */
+const OPENAI_DEFAULT_MIN_CACHE_MS = 30 * 60_000;
+
+/**
+ * GPT-6 and later do not accept `promptCacheRetention`: the AI SDK drops it and logs
+ * a warning on every call, even when the config sets it. Unknown model names keep the
+ * retention.
+ */
+function supportsPromptCacheRetention(modelId: string): boolean {
+	const version = /^gpt-(\d+)/.exec(splitModelId(modelId).model);
+	return !version || Number(version[1]) < 6;
+}
+
+/**
+ * How long the provider keeps a prompt cache warm for this model. Anthropic uses
+ * the configured TTL. OpenAI uses its retention, 24 hours by default. GPT-6 and later
+ * take no retention, so assume the 30 minute minimum lifetime that OpenAI documents
+ * for them. Other providers cache on their own terms, so assume one hour.
+ */
+export function getPromptCacheRetentionMs(
+	config: PromptCachingConfig | undefined,
+	modelId: string,
+): number {
+	const anthropicTtl = getEffectiveAnthropicCacheTtl(config, modelId);
+	if (anthropicTtl) return anthropicTtl === '5m' ? 5 * 60_000 : HOUR_MS;
+	if (getProviderPrefix(modelId) === 'openai' && isEnabledForProvider(config, 'openai')) {
+		const openaiConfig = typeof config?.openai === 'object' ? config.openai : undefined;
+		// The retention is never sent to these models, so a configured one does not apply either.
+		if (!supportsPromptCacheRetention(modelId)) return OPENAI_DEFAULT_MIN_CACHE_MS;
+		const retention = openaiConfig?.promptCacheRetention ?? '24h';
+		return retention === '24h' ? 24 * HOUR_MS : HOUR_MS;
+	}
+	return HOUR_MS;
+}
+
+/** OpenAI call-level cache options (routing key + retention, where the model takes one). Undefined for non-OpenAI models or when disabled. */
 export function buildCallPromptCacheOptions(
 	config: PromptCachingConfig | undefined,
 	modelId: string,
@@ -187,11 +239,15 @@ export function buildCallPromptCacheOptions(
 	}
 
 	const openaiConfig = typeof config?.openai === 'object' ? config.openai : undefined;
+	// Models that reject the retention get none, even when the config sets one.
+	const retention = supportsPromptCacheRetention(modelId)
+		? (openaiConfig?.promptCacheRetention ?? '24h')
+		: undefined;
 	return {
 		openai: {
 			promptCacheKey:
 				openaiConfig?.promptCacheKey ?? createOpenAIPromptCacheKey({ ...context, modelId }),
-			promptCacheRetention: openaiConfig?.promptCacheRetention ?? '24h',
+			...(retention ? { promptCacheRetention: retention } : {}),
 		},
 	};
 }
@@ -256,7 +312,11 @@ export function applyRuntimeCacheBreakpoints(params: {
 		const staticTool = aiTools[staticToolCacheName];
 		// A caller marker on the static tool already anchors this breakpoint (and
 		// is counted in `used`); re-marking would evict the caller's cacheControl.
-		if (staticTool && !hasAnthropicCacheControl(staticTool.providerOptions)) {
+		if (
+			staticTool &&
+			!isAnthropicToolDeferred(staticTool) &&
+			!hasAnthropicCacheControl(staticTool.providerOptions)
+		) {
 			nextTools = {
 				...aiTools,
 				[staticToolCacheName]: {

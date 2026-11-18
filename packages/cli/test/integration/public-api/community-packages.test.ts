@@ -6,7 +6,8 @@ vi.mock('@/modules/community-packages/npm-utils', async () => ({
 	verifyIntegrity: vi.fn(),
 }));
 
-import type { CommunityNodeType } from '@n8n/api-types';
+import type { CommunityNodeType, PackagePolicyRestrictions } from '@n8n/api-types';
+import { InstalledTypeRestrictionsProxy } from '@n8n/backend-services';
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -36,6 +37,7 @@ const communityPackagesService = mockInstance(CommunityPackagesService);
 const communityNodeTypesService = mockInstance(CommunityNodeTypesService);
 const mockedExecuteNpmCommand = vi.mocked(executeNpmCommand);
 mockInstance(LoadNodesAndCredentials);
+const installedTypeRestrictions = mockInstance(InstalledTypeRestrictionsProxy);
 
 const mockedVettedPackage = mock<CommunityNodeType>({
 	checksum: 'test-checksum',
@@ -257,6 +259,31 @@ describe('Community packages (Public API)', () => {
 				undefined,
 				undefined,
 			);
+		});
+
+		it('should return the policy restrictions for the installed node types', async () => {
+			const packageName = mockPackageName();
+			const node = mockNode(packageName);
+			const pkg = mockPackage({ packageName, installedNodes: [node] });
+			const policyRestrictions: PackagePolicyRestrictions = {
+				nodeTypes: [{ type: node.type, blockedOn: 'projects', optInAvailable: false }],
+			};
+			communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
+			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
+			communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
+			communityPackagesService.installPackage.mockResolvedValue(pkg);
+			installedTypeRestrictions.describeRestrictions.mockResolvedValue(policyRestrictions);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/community-packages')
+				.send({ name: mockPackageName() });
+
+			expect(response.status).toBe(200);
+			expect(response.body.policyRestrictions).toStrictEqual(policyRestrictions);
+			expect(installedTypeRestrictions.describeRestrictions).toHaveBeenCalledWith({
+				nodeTypes: [node.type],
+			});
 		});
 
 		it('should return 200 when the body contains an unknown field', async () => {

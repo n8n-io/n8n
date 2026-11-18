@@ -11,7 +11,7 @@ defineProps<{
 
 <template>
 	<section class="fallback-card">
-		<N8nSpinner v-if="loading" type="ring" />
+		<N8nSpinner v-if="loading" type="brand" size="xxlarge" />
 		<N8nIcon v-else-if="icon" :icon="icon" class="fallback-icon" />
 		<h1 v-if="title">{{ title }}</h1>
 		<p v-if="description">{{ description }}</p>

@@ -38,7 +38,8 @@ export class Databricks implements INodeType {
 		name: 'databricks',
 		icon: 'file:databricks.svg',
 		group: ['transform'],
-		version: DATABRICKS_NODE_VERSION,
+		version: [1, DATABRICKS_NODE_VERSION],
+		defaultVersion: DATABRICKS_NODE_VERSION,
 		usableAsTool: true,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Interact with Databricks API',
@@ -80,6 +81,12 @@ export class Databricks implements INodeType {
 						value: 'job',
 						description:
 							'Run and inspect Databricks jobs. <a href="https://docs.databricks.com/jobs/index.html" target="_blank">Learn more</a>.',
+					},
+					{
+						name: 'Lakebase',
+						value: 'lakebase',
+						description:
+							'Read and write rows in a Lakebase Postgres database. <a href="https://docs.databricks.com/aws/en/oltp/" target="_blank">Learn more</a>.',
 					},
 					{
 						name: 'Model Serving',

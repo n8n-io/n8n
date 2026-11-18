@@ -1,11 +1,11 @@
 import type { ToolDescriptor } from '@n8n/agents';
 import { type AgentJsonConfig } from '@n8n/api-types';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentHistory } from '../../entities/agent-history.entity';
-import type { Agent } from '../../entities/agent.entity';
+import type { ProjectAgent } from '../../entities/agent.entity';
 import type { AgentHistoryRepository } from '../../repositories/agent-history.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { SubAgentSourceResolver } from '../sub-agent-source-resolver';
@@ -57,7 +57,7 @@ function makeAgentHistory(overrides: AgentHistoryFixtureOverrides = {}): AgentHi
 	} as unknown as AgentHistory;
 }
 
-function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
+function makeAgent(overrides: AgentFixtureOverrides = {}): ProjectAgent {
 	return {
 		id: agentId,
 		name: 'Helper Agent',
@@ -69,7 +69,7 @@ function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
 		activeVersionId: versionId,
 		activeVersion: makeAgentHistory(),
 		...overrides,
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 describe('SubAgentSourceResolver', () => {
@@ -198,6 +198,24 @@ describe('SubAgentSourceResolver', () => {
 		).resolves.toMatchObject({
 			source: { sourceId: agentId, versionId },
 		});
+	});
+
+	it('rejects an archived agent on the saved configuration and pinned version paths', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(makeAgentHistory());
+		const original = await resolver.resolveForRuntime({ agentId }, { projectId });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ isArchived: true }));
+		const message = 'Sub-agent "Helper Agent" is archived. Restore it before delegating to it.';
+
+		await expect(
+			resolver.resolveForRuntime(
+				{ agentId },
+				{ projectId, runtimeSnapshot: JSON.stringify(original) },
+			),
+		).rejects.toThrow(message);
+		await expect(resolver.resolveForRuntime({ agentId, versionId }, { projectId })).rejects.toThrow(
+			message,
+		);
 	});
 
 	it('resolves the published version with its assets for production runs', async () => {

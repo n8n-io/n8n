@@ -2,7 +2,10 @@ operationId: getSourceControlStatus
 tags:
   - SourceControl
 summary: Preview pending source control changes
-description: Previews the pending changes between the instance and the connected Git branch in either the `push` or `pull` direction.
+description: |-
+  Previews the pending changes between the instance and the connected Git branch in either the `push` or `pull` direction.
+
+  Requires the `sourceControl:read` API key scope.
 x-required-scope: sourceControl:read
 parameters:
   - schema:
@@ -180,3 +183,5 @@ responses:
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

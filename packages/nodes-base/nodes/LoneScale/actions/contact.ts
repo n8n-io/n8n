@@ -1,5 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { lonescaleApiRequest } from '../GenericFunctions';
 import type { ContactSourcingResponse, EnrichResponse } from '../types';
@@ -40,7 +40,7 @@ export async function enrich(this: IExecuteFunctions, i: number): Promise<INodeE
 	const responseData: EnrichResponse = await lonescaleApiRequest.call(
 		this,
 		'POST',
-		'/trigger/enrich/sync',
+		requestPath`/trigger/enrich/sync`,
 		body,
 	);
 	const contacts = responseData.contacts ?? [];
@@ -103,7 +103,7 @@ export async function source(this: IExecuteFunctions, i: number): Promise<INodeE
 	const responseData: ContactSourcingResponse = await lonescaleApiRequest.call(
 		this,
 		'POST',
-		'/trigger/contact-sourcing/sync',
+		requestPath`/trigger/contact-sourcing/sync`,
 		body,
 	);
 	const contacts = responseData.contacts ?? [];

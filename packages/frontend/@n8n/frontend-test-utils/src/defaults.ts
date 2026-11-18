@@ -75,7 +75,6 @@ export const defaultSettings: FrontendSettings = {
 	posthog: {
 		apiHost: '',
 		apiKey: '',
-		autocapture: false,
 		debug: false,
 		disableSessionRecording: false,
 		enabled: false,
@@ -209,5 +208,4 @@ export const defaultSettings: FrontendSettings = {
 		},
 	},
 	useWorkflowPublicationService: false,
-	granularCredentialSharing: false,
 };

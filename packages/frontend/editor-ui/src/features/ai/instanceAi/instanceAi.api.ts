@@ -2,10 +2,10 @@ import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	AiPreferenceScope,
-	ComputerUseChannel,
 	InstanceAiAttachment,
 	InstanceAiBrowserCreateLinkResponse,
 	InstanceAiBrowserStatusResponse,
+	InstanceAiCloudBrowserLiveViewResponse,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmRequest,
@@ -37,7 +37,7 @@ export async function postMessage(
 	handoffContext?: InstanceAiHandoffContext,
 	timeZone?: string,
 	pushRef?: string,
-	computerUseChannels?: ComputerUseChannel[],
+	browserUseAvailable?: boolean,
 	threadArtifacts?: InstanceAiThreadArtifactsContext,
 ): Promise<InstanceAiSendMessageResponse> {
 	return await makeRestApiRequest<InstanceAiSendMessageResponse>(
@@ -50,7 +50,7 @@ export async function postMessage(
 			...(handoffContext ? { context: handoffContext } : {}),
 			...(timeZone ? { timeZone } : {}),
 			...(pushRef ? { pushRef } : {}),
-			...(computerUseChannels ? { computerUseChannels } : {}),
+			...(browserUseAvailable !== undefined ? { browserUseAvailable } : {}),
 			...(threadArtifacts ? { threadArtifacts } : {}),
 		},
 	);
@@ -110,6 +110,23 @@ export async function postCancelTask(
 }
 
 /**
+ * GET /instance-ai/chat/:threadId/tasks/:taskId/cloud-browser-live-view
+ * The live view of a cloud browser task. The link lets anyone who has it control the browser,
+ * so keep it in memory only.
+ */
+export async function fetchCloudBrowserLiveView(
+	context: IRestApiContext,
+	threadId: string,
+	taskId: string,
+): Promise<InstanceAiCloudBrowserLiveViewResponse> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/instance-ai/chat/${threadId}/tasks/${taskId}/cloud-browser-live-view`,
+	);
+}
+
+/**
  * POST /instance-ai/confirm/:requestId -> 200 OK
  * Resolve a confirmation request (HITL). The request body is a discriminated
  * union on `kind`.
@@ -128,39 +145,11 @@ export async function postConfirmation(
 }
 
 /**
- * GET /instance-ai/credits -> { creditsQuota, creditsClaimed }
+ * GET /assistant/credits -> { creditsQuota, creditsClaimed }
  * Returns -1 quota when proxy is disabled.
  */
 export async function getInstanceAiCredits(context: IRestApiContext): Promise<InstanceAiCredits> {
-	return await makeRestApiRequest<InstanceAiCredits>(context, 'GET', '/instance-ai/credits');
-}
-
-/**
- * POST /instance-ai/gateway/create-link -> { token, command, expiresAt, ttlSeconds }
- * Generate a dynamic gateway token and pre-built CLI command.
- */
-export async function createGatewayLink(context: IRestApiContext): Promise<{
-	token: string;
-	command: string;
-	expiresAt: string | null;
-	ttlSeconds: number | null;
-}> {
-	return await makeRestApiRequest<{
-		token: string;
-		command: string;
-		expiresAt: string | null;
-		ttlSeconds: number | null;
-	}>(context, 'POST', '/instance-ai/gateway/create-link');
-}
-
-/**
- * POST /instance-ai/gateway/disconnect-session -> { ok }
- * Tear down the current user's gateway session so its tools are no longer
- * exposed to the agent. Does not change the user's localGatewayDisabled
- * preference.
- */
-export async function disconnectGatewaySession(context: IRestApiContext): Promise<void> {
-	await makeRestApiRequest(context, 'POST', '/instance-ai/gateway/disconnect-session');
+	return await makeRestApiRequest<InstanceAiCredits>(context, 'GET', '/assistant/credits');
 }
 
 /**
@@ -198,26 +187,6 @@ export async function getBrowserStatus(
  */
 export async function disconnectBrowserSession(context: IRestApiContext): Promise<void> {
 	await makeRestApiRequest(context, 'POST', '/instance-ai/browser/disconnect-session');
-}
-
-/**
- * GET /instance-ai/gateway/status -> { connected, connectedAt, directory, hostIdentifier, toolCategories }
- * Check whether the gateway daemon is currently connected.
- */
-export async function getGatewayStatus(context: IRestApiContext): Promise<{
-	connected: boolean;
-	connectedAt: string | null;
-	directory: string | null;
-	hostIdentifier: string | null;
-	toolCategories: Array<{ name: string; enabled: boolean; writeAccess?: boolean }>;
-}> {
-	return await makeRestApiRequest<{
-		connected: boolean;
-		connectedAt: string | null;
-		directory: string | null;
-		hostIdentifier: string | null;
-		toolCategories: Array<{ name: string; enabled: boolean; writeAccess?: boolean }>;
-	}>(context, 'GET', '/instance-ai/gateway/status');
 }
 
 /**

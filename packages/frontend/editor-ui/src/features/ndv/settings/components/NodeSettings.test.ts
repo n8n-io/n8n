@@ -4,7 +4,7 @@ import { setActivePinia } from 'pinia';
 import { defineComponent, h, ref, shallowRef } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { createRunExecutionData, type INodeTypeDescription, type IRunData } from 'n8n-workflow';
-import type { FrontendSettings, NodeTypeAvailabilityScope } from '@n8n/api-types';
+import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
@@ -19,6 +19,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
 	createWorkflowDocumentId,
 	injectWorkflowDocumentStore,
@@ -26,10 +27,17 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { getUsableCredentials } from '@/features/credentials/credentials.api';
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {
 	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
 	return { ...actual, injectWorkflowDocumentStore: vi.fn() };
+});
+
+vi.mock('@/features/credentials/credentials.api', async () => {
+	const actual = await vi.importActual('@/features/credentials/credentials.api');
+	return { ...actual, getUsableCredentials: vi.fn().mockResolvedValue([]) };
 });
 
 vi.mock('vue-router', () => ({
@@ -118,7 +126,8 @@ interface RenderOptions {
 	canvasOnly?: boolean;
 	props?: Record<string, unknown>;
 	restrictedNodeTypes?: Record<string, NodeTypeAvailabilityScope>;
-	settings?: Partial<FrontendSettings>;
+	/** Runs with the test pinia active, before the component mounts. */
+	beforeMount?: () => void;
 }
 
 const renderNodeSettings = (options: RenderOptions = {}) => {
@@ -131,7 +140,7 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 		canvasOnly = false,
 		props = {},
 		restrictedNodeTypes = {},
-		settings = {},
+		beforeMount,
 	} = options;
 	const pinia = createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
@@ -140,7 +149,7 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
-	settingsStore.settings = { ...settingsStore.settings, canvasOnly, ...settings };
+	settingsStore.settings = { ...settingsStore.settings, canvasOnly };
 	workflowsStore.setWorkflowId(workflow.id);
 	const ndvStore = useNDVStore(createWorkflowDocumentId(workflow.id));
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
@@ -174,6 +183,7 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 	vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
 		shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))),
 	);
+	beforeMount?.();
 
 	const renderResult = createComponentRenderer(NodeSettings, {
 		global: {
@@ -417,6 +427,92 @@ describe('NodeSettings', () => {
 			expect(container.querySelector('agent-ndv-referenced-summary-stub')).toBeNull();
 		});
 
+		describe('node credentials fetch', () => {
+			// Render the slot so the NodeCredentials inside the parameter list mounts.
+			const stubs = {
+				ParameterInputList: { template: '<div><slot /></div>' },
+				NodeCredentials: {
+					props: ['skipCredentialsFetch'],
+					template:
+						'<div data-test-id="node-credentials-stub" :data-skip-fetch="String(skipCredentialsFetch)" />',
+				},
+			};
+
+			it('skips the workflow-scoped fetch in inline mode', async () => {
+				const { findByTestId } = renderNodeSettings({
+					node: agentNode,
+					nodeType: agentNodeType,
+					provide: {
+						[NdvAgentConfigKey as symbol]: { mode: ref('inline') } as UseNdvAgentConfigReturn,
+					},
+					stubs,
+				});
+
+				expect((await findByTestId('node-credentials-stub')).dataset.skipFetch).toBe('true');
+			});
+
+			it('keeps the fetch in referenced mode and for other nodes', async () => {
+				const referenced = renderNodeSettings({
+					node: agentNode,
+					nodeType: agentNodeType,
+					provide,
+					stubs,
+				});
+				expect((await referenced.findByTestId('node-credentials-stub')).dataset.skipFetch).toBe(
+					'false',
+				);
+				referenced.unmount();
+
+				const other = renderNodeSettings({ provide, stubs });
+				expect((await other.findByTestId('node-credentials-stub')).dataset.skipFetch).toBe('false');
+			});
+
+			it.each([
+				{ mode: 'inline', keepsAgentScope: true },
+				{ mode: 'referenced', keepsAgentScope: false },
+			])(
+				'$mode mode: the agent scope is kept after NodeCredentials mounts: $keepsAgentScope',
+				async ({ mode, keepsAgentScope }) => {
+					const agentScope = { projectId: 'project-1', forAgent: true };
+					const { workflowDocumentStore } = renderNodeSettings({
+						node: agentNode,
+						nodeType: agentNodeType,
+						provide: {
+							[NdvAgentConfigKey as symbol]: { mode: ref(mode) } as UseNdvAgentConfigReturn,
+						},
+						stubs: {
+							ParameterInputList: { template: '<div><slot /></div>' },
+							NodeCredentials: false,
+						},
+						beforeMount: () => {
+							// A saved workflow, so NodeCredentials has a workflow scope to fetch.
+							const workflowId = useWorkflowsStore().workflowId;
+							useWorkflowsListStore().workflowsById = {
+								[workflowId]: { id: workflowId },
+							} as unknown as ReturnType<typeof useWorkflowsListStore>['workflowsById'];
+							// The inline agent controls fetch the agent scope before NodeCredentials mounts.
+							void useCredentialsStore().fetchUsableCredentials(agentScope);
+						},
+					});
+
+					await waitFor(() => {
+						expect(useCredentialsStore().hasFetchedUsableCredentials).toBe(true);
+					});
+					expect(useCredentialsStore().hasUsableCredentialsForScope(agentScope)).toBe(
+						keepsAgentScope,
+					);
+					expect(
+						vi
+							.mocked(getUsableCredentials)
+							.mock.calls.some(
+								([, scope]) =>
+									'workflowId' in scope && scope.workflowId === workflowDocumentStore.workflowId,
+							),
+					).toBe(!keepsAgentScope);
+				},
+			);
+		});
+
 		it('renders no agent surfaces for a non-agent node', async () => {
 			const { container, findByTestId } = renderNodeSettings({ provide });
 
@@ -496,6 +592,52 @@ describe('NodeSettings', () => {
 		});
 	});
 
+	it('ignores a parameter update from the event bus for a deprecated node', async () => {
+		const { findByTestId, workflowDocumentStore } = renderNodeSettings({
+			node: freshHttpNode(),
+			nodeType: { ...httpNodeType, deprecated: true },
+			props: { readOnly: false },
+		});
+		await findByTestId('tab-params');
+
+		ndvEventBus.emit('updateParameterValue', urlUpdate);
+
+		expect(workflowDocumentStore.getNodeByName(httpNode.name)?.parameters.url).toBeUndefined();
+	});
+
+	describe('sub-workflow restriction callout', () => {
+		const calloutStub = {
+			RestrictedSubWorkflowCallout: {
+				props: ['parentWorkflowId', 'node', 'enabled', 'labelOf'],
+				template:
+					'<div data-test-id="sub-workflow-callout-stub" :data-parent="parentWorkflowId" :data-enabled="String(enabled)" :data-node="node.name" />',
+			},
+		};
+
+		it('checks the active node for a builder who can update the workflow', async () => {
+			const { findByTestId, workflowDocumentStore } = renderNodeSettings({
+				stubs: calloutStub,
+				props: { readOnly: false },
+			});
+			workflowDocumentStore.setScopes(['workflow:update']);
+
+			const callout = await findByTestId('sub-workflow-callout-stub');
+			await vi.waitFor(() => expect(callout).toHaveAttribute('data-enabled', 'true'));
+			expect(callout).toHaveAttribute('data-parent', workflowDocumentStore.workflowId);
+			expect(callout).toHaveAttribute('data-node', httpNode.name);
+		});
+
+		it('does not check in a read-only panel', async () => {
+			const { findByTestId, workflowDocumentStore } = renderNodeSettings({ stubs: calloutStub });
+			workflowDocumentStore.setScopes(['workflow:update']);
+
+			expect(await findByTestId('sub-workflow-callout-stub')).toHaveAttribute(
+				'data-enabled',
+				'false',
+			);
+		});
+	});
+
 	describe('a node on a credential the user cannot use', () => {
 		const exposeReadOnlyStubs = {
 			ParameterInputList: {
@@ -514,15 +656,14 @@ describe('NodeSettings', () => {
 			testId: string,
 		) => (await findAllByTestId(testId)).map((element) => element.getAttribute('data-read-only'));
 
-		const renderOnForeignCredential = (granularCredentialSharing: boolean, readOnly = false) =>
+		const renderOnForeignCredential = (readOnly = false) =>
 			renderNodeSettings({
 				props: { readOnly, foreignCredentials: ['alice-cred'] },
-				settings: { granularCredentialSharing },
 				stubs: exposeReadOnlyStubs,
 			});
 
-		it('keeps the parameters locked but the picker usable when credential sharing is on', async () => {
-			const { findAllByTestId, getByText } = renderOnForeignCredential(true);
+		it('keeps the parameters locked but the picker usable', async () => {
+			const { findAllByTestId, getByText } = renderOnForeignCredential();
 
 			expect(new Set(await readOnlyStates(findAllByTestId, 'parameters-stub'))).toEqual(
 				new Set(['true']),
@@ -531,18 +672,8 @@ describe('NodeSettings', () => {
 			expect(getByText(/Switch to a credential you can use/)).toBeInTheDocument();
 		});
 
-		it('locks the picker with the parameters when credential sharing is off', async () => {
-			const { findAllByTestId, queryByText } = renderOnForeignCredential(false);
-
-			expect(new Set(await readOnlyStates(findAllByTestId, 'parameters-stub'))).toEqual(
-				new Set(['true']),
-			);
-			expect(await readOnlyStates(findAllByTestId, 'credentials-stub')).toEqual(['true']);
-			expect(queryByText(/Switch to a credential you can use/)).not.toBeInTheDocument();
-		});
-
-		it('locks the picker on a read-only canvas even when credential sharing is on', async () => {
-			const { findAllByTestId } = renderOnForeignCredential(true, true);
+		it('locks the picker on a read-only canvas', async () => {
+			const { findAllByTestId } = renderOnForeignCredential(true);
 
 			expect(new Set(await readOnlyStates(findAllByTestId, 'parameters-stub'))).toEqual(
 				new Set(['true']),

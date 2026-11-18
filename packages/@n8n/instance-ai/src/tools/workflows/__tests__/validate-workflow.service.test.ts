@@ -662,6 +662,27 @@ describe('validateWorkflowConfig', () => {
 			);
 		});
 
+		it('flags a node whose most recent execution failed with an error n8n redacted', async () => {
+			const context = createMockContext();
+			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(
+				makeWorkflow([makeNode({ name: 'HTTP Request' })]),
+			);
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
+				makeDescription({ credentials: [] }),
+			);
+			stubLatestRunData(context, {
+				'HTTP Request': [{ redactedError: { type: 'NodeApiError', httpCode: '404' } }],
+			});
+
+			const result = await validateWorkflowConfig(context, { workflowId: 'w1' });
+
+			expect(result.valid).toBe(false);
+			expect(result.issues['HTTP Request'].execution).toBe(true);
+			expect(result.summary).toContain(
+				'HTTP Request: execution: A previous execution of this node failed: NodeApiError error (404) (details hidden by n8n)',
+			);
+		});
+
 		it('does not flag a node whose most recent execution completed without error', async () => {
 			const context = createMockContext();
 			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(

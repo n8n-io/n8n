@@ -2,7 +2,11 @@ import { computed, effectScope } from 'vue';
 import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { McpRegistryDiscoveryResponse, McpRegistryServerResponse } from '@n8n/api-types';
+import {
+	AI_GATEWAY_MANAGED_TAG,
+	type McpRegistryDiscoveryResponse,
+	type McpRegistryServerResponse,
+} from '@n8n/api-types';
 import type { McpToolSettings } from '@/features/shared/toolsConnection/types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
@@ -81,6 +85,47 @@ describe('useAgentRegistryMcpConfig', () => {
 			fetchCatalog: vi.fn().mockResolvedValue([catalogServer]),
 			preloadCredentials: vi.fn().mockResolvedValue(undefined),
 		});
+	});
+
+	it('discovers a Gateway credits draft without a credential, and switches between Gateway credits and an own credential', async () => {
+		const modalData: AgentRegistryMcpModalData = {
+			kind: 'registryMcpServer',
+			projectId: 'project-1',
+			mcpServer: {
+				name: 'github',
+				authentication: 'none',
+				credential: AI_GATEWAY_MANAGED_TAG,
+				metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+			},
+			onConfirm: vi.fn(),
+		};
+		const scope = effectScope();
+		const config = scope.run(() =>
+			useAgentRegistryMcpConfig(
+				computed(() => modalData),
+				vi.fn(),
+			),
+		);
+		if (!config) throw new Error('Failed to create registry MCP config');
+		await flushPromises();
+
+		expect(discoverRegistry).toHaveBeenLastCalledWith({ slug: 'github', aiGateway: true });
+
+		await config.selectCredential('githubMcpOAuth2Api', 'credential-1');
+
+		expect(discoverRegistry).toHaveBeenLastCalledWith({
+			slug: 'github',
+			credentialId: 'credential-1',
+		});
+
+		await config.selectCredential('n8nConnectGithubMcpAiGatewayApi', AI_GATEWAY_MANAGED_TAG);
+
+		expect(discoverRegistry).toHaveBeenLastCalledWith({ slug: 'github', aiGateway: true });
+		// The draft no longer holds the own credential.
+		expect(config.item.value?.credentials).toEqual([
+			expect.objectContaining({ authType: 'githubMcpOAuth2Api', credentialId: undefined }),
+		]);
+		scope.stop();
 	});
 
 	it('persists the timeout when it saves a discovered server', async () => {
@@ -373,7 +418,7 @@ describe('useAgentRegistryMcpConfig', () => {
 		await flushPromises();
 
 		expect(discoverRegistry).toHaveBeenCalledOnce();
-		expect(discoverRegistry).toHaveBeenCalledWith('github', 'credential-1');
+		expect(discoverRegistry).toHaveBeenCalledWith({ slug: 'github', credentialId: 'credential-1' });
 		scope.stop();
 	});
 
@@ -407,7 +452,7 @@ describe('useAgentRegistryMcpConfig', () => {
 		credentialChangeListeners.onDeleted?.('credential-2');
 		await flushPromises();
 
-		expect(discoverRegistry).toHaveBeenCalledWith('github', 'credential-1');
+		expect(discoverRegistry).toHaveBeenCalledWith({ slug: 'github', credentialId: 'credential-1' });
 		expect(onRemove).not.toHaveBeenCalled();
 		expect(onCredentialDeleted).not.toHaveBeenCalled();
 		scope.stop();

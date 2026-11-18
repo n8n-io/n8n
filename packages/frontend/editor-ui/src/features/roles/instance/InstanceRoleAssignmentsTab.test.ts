@@ -29,9 +29,18 @@ function member(overrides: Partial<RoleMember> = {}): RoleMember {
 		lastName: 'Andreini',
 		email: 'giulio@n8n.io',
 		role: 'global:admin',
+		kind: 'person',
 		...overrides,
 	};
 }
+
+const serviceAccount = member({
+	userId: 'u-service',
+	firstName: 'Deploy bot',
+	lastName: null,
+	email: '',
+	kind: 'service',
+});
 
 function membersResponse(members: RoleMember[]): RoleMembersResponse {
 	return { members, total: members.length } as RoleMembersResponse;
@@ -87,6 +96,29 @@ describe('InstanceRoleAssignmentsTab', () => {
 		expect(getByText('Instance admin')).toBeInTheDocument();
 		expect(queryByTestId('instance-role-member-dropdown')).not.toBeInTheDocument();
 		expect(queryByTestId('instance-role-add-member')).not.toBeInTheDocument();
+	});
+
+	it('does not list a service account', async () => {
+		rolesStore.fetchRoleMembers.mockResolvedValue(membersResponse([member(), serviceAccount]));
+
+		const { getByText, queryByText, getAllByTestId } = renderComponent({
+			props: { roleSlug: 'global:admin' },
+		});
+
+		await waitFor(() => expect(getByText('giulio@n8n.io')).toBeInTheDocument());
+
+		expect(getAllByTestId('instance-role-member-row')).toHaveLength(1);
+		expect(queryByText('Deploy bot', { exact: false })).not.toBeInTheDocument();
+	});
+
+	it('shows the empty state when only service accounts hold the role', async () => {
+		rolesStore.fetchRoleMembers.mockResolvedValue(membersResponse([serviceAccount]));
+
+		const { getByText, queryByTestId } = renderComponent({ props: { roleSlug: 'global:admin' } });
+
+		await waitFor(() => expect(getByText('No users have this role yet.')).toBeInTheDocument());
+
+		expect(queryByTestId('instance-role-member-row')).not.toBeInTheDocument();
 	});
 
 	it('reloads members when the roleSlug prop changes', async () => {

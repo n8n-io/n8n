@@ -1,0 +1,231 @@
+import type { EventService } from '@n8n/backend-services';
+import {
+	Folder,
+	type FolderRepository,
+	type FolderTagMappingRepository,
+	type TransactionRunner,
+	type User,
+} from '@n8n/db';
+import { NotFoundError } from '@n8n/errors';
+import { mock } from 'vitest-mock-extended';
+import { PROJECT_ROOT } from 'n8n-workflow';
+
+import { FolderNotFoundError } from '@/errors/folder-not-found.error';
+
+import { FolderContentService, type FolderContentHandler } from '../folder-content.service';
+import { FolderService } from '../folder.service';
+import type { WorkflowFolderService } from '../workflow-folder.service';
+
+vi.mock('@/workflows/workflow.service', () => ({ WorkflowService: class {} }));
+
+describe.each(['workflow', 'agent'] as const)('%s folder operations', (resourceType) => {
+	const user = mock<User>();
+	const repository = mock<FolderRepository>();
+	const handler = mock<FolderContentHandler>();
+	const transactions = mock<TransactionRunner>();
+	const events = mock<EventService>();
+	let service: FolderService;
+
+	function folder(
+		id: string,
+		parentFolderId: string | null = null,
+		folderResourceType: 'agent' | 'workflow' = resourceType,
+	) {
+		return Object.assign(new Folder(), {
+			id,
+			name: id,
+			parentFolderId,
+			resourceType: folderResourceType,
+		});
+	}
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		const content = new FolderContentService(mock<WorkflowFolderService>());
+		content.register(resourceType, handler);
+		service = new FolderService(
+			repository,
+			mock<FolderTagMappingRepository>(),
+			events,
+			content,
+			transactions,
+		);
+		repository.findOneOrFailFolderInProject.mockResolvedValue(folder('source'));
+		repository.getAllFolderIdsInHierarchy.mockResolvedValue(['child']);
+		transactions.run.mockImplementation(async (ctx, callback) => await callback(ctx));
+	});
+
+	it('relocates direct contents and child folders in one transaction', async () => {
+		await service.deleteFolder(user, 'source', 'project', { transferToFolderId: PROJECT_ROOT });
+
+		expect(handler.assertAccess).toHaveBeenCalledWith(user, 'project', 'update');
+		expect(transactions.run).toHaveBeenCalledOnce();
+		expect(handler.relocate).toHaveBeenCalledWith('project', 'source', null, {});
+		expect(repository.relocateChildrenAndDelete).toHaveBeenCalledWith(
+			'source',
+			'project',
+			resourceType,
+			null,
+			{},
+		);
+		expect(handler.archiveContents).not.toHaveBeenCalled();
+		expect(handler.moveArchivedToRoot).not.toHaveBeenCalled();
+	});
+
+	it('keeps all folders and memberships when content archival fails', async () => {
+		handler.archiveContents.mockRejectedValue(new Error('Archive failed'));
+
+		await expect(service.deleteFolder(user, 'source', 'project', {})).rejects.toThrow(
+			'Archive failed',
+		);
+
+		expect(handler.assertAccess).toHaveBeenCalledWith(user, 'project', 'delete');
+		expect(handler.archiveContents).toHaveBeenCalledWith(user, 'project', ['source', 'child'], {});
+		expect(handler.relocate).not.toHaveBeenCalled();
+		expect(handler.moveArchivedToRoot).not.toHaveBeenCalled();
+		expect(repository.deleteFolderSubtree).not.toHaveBeenCalled();
+		expect(transactions.run).not.toHaveBeenCalled();
+		expect(events.emit).not.toHaveBeenCalled();
+	});
+
+	it('archives the subtree before moving its contents to root and deleting its folders', async () => {
+		await service.deleteFolder(user, 'source', 'project', {});
+
+		expect(repository.getAllFolderIdsInHierarchy).toHaveBeenCalledWith(
+			'source',
+			'project',
+			resourceType,
+		);
+		expect(handler.archiveContents).toHaveBeenCalledWith(user, 'project', ['source', 'child'], {});
+		expect(transactions.run).toHaveBeenCalledOnce();
+		expect(handler.moveArchivedToRoot).toHaveBeenCalledWith('project', ['source', 'child'], {});
+		expect(handler.relocate).not.toHaveBeenCalled();
+		expect(repository.deleteFolderSubtree).toHaveBeenCalledWith(
+			'source',
+			'project',
+			resourceType,
+			{},
+		);
+		expect(handler.archiveContents.mock.invocationCallOrder[0]).toBeLessThan(
+			handler.moveArchivedToRoot.mock.invocationCallOrder[0],
+		);
+		expect(handler.moveArchivedToRoot.mock.invocationCallOrder[0]).toBeLessThan(
+			repository.deleteFolderSubtree.mock.invocationCallOrder[0],
+		);
+	});
+
+	it.each(['create', 'move', 'relocate'] as const)(
+		'rejects %s into the other resource tree as not found before writes',
+		async (operation) => {
+			repository.findOneOrFailFolderInProject.mockImplementation(
+				async (id, _projectId, expectedType) => {
+					const result = folder(
+						id,
+						null,
+						id === 'target' ? (resourceType === 'agent' ? 'workflow' : 'agent') : resourceType,
+					);
+
+					if (expectedType && result.resourceType !== expectedType) {
+						throw new Error('Folder not found');
+					}
+
+					return result;
+				},
+			);
+
+			const result = (async () => {
+				if (operation === 'create') {
+					return await service.createFolder(
+						{ name: 'New folder', parentFolderId: 'target', resourceType },
+						'project',
+					);
+				}
+
+				if (operation === 'move') {
+					return await service.updateFolder('source', 'project', { parentFolderId: 'target' });
+				}
+
+				return await service.deleteFolder(user, 'source', 'project', {
+					transferToFolderId: 'target',
+				});
+			})();
+
+			await expect(result).rejects.toThrow(
+				operation === 'relocate' ? NotFoundError : FolderNotFoundError,
+			);
+
+			expect(repository.save).not.toHaveBeenCalled();
+			expect(repository.update).not.toHaveBeenCalled();
+			expect(transactions.run).not.toHaveBeenCalled();
+		},
+	);
+
+	it('rejects relocation into a descendant', async () => {
+		repository.findOneOrFailFolderInProject.mockImplementation(async (id) => folder(id));
+		repository.getAncestorPath.mockResolvedValue([folder('source'), folder('target', 'source')]);
+
+		await expect(
+			service.deleteFolder(user, 'source', 'project', { transferToFolderId: 'target' }),
+		).rejects.toThrow('descendant');
+
+		expect(transactions.run).not.toHaveBeenCalled();
+	});
+
+	it('rejects an invalid folder name before persistence', async () => {
+		await expect(
+			service.createFolder({ name: '../Folder', resourceType }, 'project'),
+		).rejects.toThrow();
+
+		expect(repository.save).not.toHaveBeenCalled();
+	});
+
+	it('counts contents across the subtree for the selected resource type', async () => {
+		handler.directCounts.mockResolvedValue(
+			new Map([
+				['source', 2],
+				['child', 3],
+			]),
+		);
+
+		expect(await service.findFolderWithContentCounts('source', 'project')).toEqual({
+			folder: folder('source'),
+			totalSubFolders: 1,
+			totalWorkflows: resourceType === 'workflow' ? 5 : 0,
+			totalAgents: resourceType === 'agent' ? 5 : 0,
+		});
+		expect(handler.directCounts).toHaveBeenCalledWith('project', ['source', 'child']);
+	});
+
+	describe('folder paths', () => {
+		it('builds the breadcrumb tree from an ordered path', async () => {
+			repository.getAncestorPath.mockResolvedValue([
+				folder('root'),
+				folder('parent', 'root'),
+				folder('leaf', 'parent'),
+			]);
+
+			expect(await service.getFolderTree('leaf', 'project')).toEqual([
+				{
+					id: 'root',
+					name: 'root',
+					children: [
+						{
+							id: 'parent',
+							name: 'parent',
+							children: [{ id: 'leaf', name: 'leaf', children: [] }],
+						},
+					],
+				},
+			]);
+		});
+
+		it.each([[], [folder('first', 'second'), folder('second', 'first')]])(
+			'keeps an empty or cyclic path out of the breadcrumb tree (%#)',
+			async (...path) => {
+				repository.getAncestorPath.mockResolvedValue(path);
+
+				expect(await service.getFolderTree('source', 'project')).toEqual([]);
+			},
+		);
+	});
+});

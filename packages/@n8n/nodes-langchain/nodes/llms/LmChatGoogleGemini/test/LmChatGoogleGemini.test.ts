@@ -1,6 +1,37 @@
-import type { IExecuteSingleFunctions, INodeExecutionData, PostReceiveAction } from 'n8n-workflow';
+import type { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { proxyFetch } from '@n8n/ai-utilities';
+import { createResultOk } from '@n8n/utils/result';
+import type {
+	IExecuteSingleFunctions,
+	INode,
+	INodeExecutionData,
+	ISupplyDataFunctions,
+	NodeEgressFilter,
+	PostReceiveAction,
+} from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
+import { mockDeep } from 'vitest-mock-extended';
 
 import { LmChatGoogleGemini } from '../LmChatGoogleGemini.node';
+
+vi.mock('@n8n/ai-utilities', async () => {
+	const actual = await vi.importActual('@n8n/ai-utilities');
+	return {
+		...(actual as Record<string, unknown>),
+		proxyFetch: vi.fn(),
+	};
+});
+
+const mockedProxyFetch = vi.mocked(proxyFetch);
+
+const nodeDef: INode = {
+	id: '1',
+	name: 'Google Gemini Chat Model',
+	typeVersion: 1.2,
+	type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+	position: [0, 0],
+	parameters: {},
+};
 
 describe('LmChatGoogleGemini', () => {
 	it('should send every model field to the provider catalog with a Gemini 3.x floor', () => {
@@ -92,5 +123,145 @@ describe('LmChatGoogleGemini', () => {
 		);
 
 		expect(result.map((option) => option.json)).toEqual([{ name: 'Unknown', value: 42 }]);
+	});
+
+	it('should send model requests through the egress filter', async () => {
+		const egressFilter: NodeEgressFilter = {
+			validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
+			validateConnectionHost: vi.fn().mockReturnValue(createResultOk(undefined)),
+			createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
+			validateRedirectSync: vi.fn(),
+		};
+		const ctx = mockDeep<ISupplyDataFunctions>();
+		ctx.getNode.mockReturnValue(nodeDef);
+		ctx.getCredentials.mockResolvedValue({
+			apiKey: 'test-key',
+			host: 'https://gemini.example.com',
+		});
+		ctx.getNodeParameter.mockImplementation((name: string) => {
+			if (name === 'modelName') return 'models/gemini-2.5-flash';
+			if (name === 'options') return {};
+			return null;
+		});
+		ctx.helpers.getSecureEgressFilter.mockReturnValue(egressFilter);
+		mockedProxyFetch.mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					candidates: [
+						{ content: { role: 'model', parts: [{ text: 'hi' }] }, finishReason: 'STOP' },
+					],
+				}),
+				{ status: 200 },
+			),
+		);
+
+		const { response } = await new LmChatGoogleGemini().supplyData.call(ctx, 0);
+		const result = await (response as ChatGoogleGenerativeAI).invoke('hello');
+
+		expect(result.content).toBe('hi');
+		expect(mockedProxyFetch).toHaveBeenCalledWith(
+			expect.objectContaining({
+				input: 'https://gemini.example.com/v1beta/models/gemini-2.5-flash:generateContent',
+				egressFilter,
+			}),
+		);
+	});
+
+	describe('when the connection fails', () => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('should retry twice and show the network cause', async () => {
+			vi.useFakeTimers();
+			const ctx = mockDeep<ISupplyDataFunctions>();
+			ctx.getNode.mockReturnValue(nodeDef);
+			ctx.getCredentials.mockResolvedValue({ apiKey: 'test-key', host: 'https://gemini.test' });
+			ctx.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'modelName') return 'models/gemini-2.5-flash';
+				if (name === 'options') return {};
+				return null;
+			});
+			mockedProxyFetch.mockReset();
+			const fetchError = new TypeError('fetch failed', {
+				cause: Object.assign(new Error('Connect Timeout Error'), {
+					code: 'UND_ERR_CONNECT_TIMEOUT',
+				}),
+			});
+			mockedProxyFetch.mockRejectedValue(fetchError);
+
+			const { response } = await new LmChatGoogleGemini().supplyData.call(ctx, 0);
+			const result = (response as ChatGoogleGenerativeAI).invoke('hello').catch((e: unknown) => e);
+			await vi.runAllTimersAsync();
+			const error = await result;
+
+			expect(mockedProxyFetch).toHaveBeenCalledTimes(3);
+			expect(error).toHaveProperty(
+				'message',
+				expect.stringContaining('fetch failed (UND_ERR_CONNECT_TIMEOUT: Connect Timeout Error)'),
+			);
+			expect(error).toHaveProperty('cause', fetchError);
+			expect(error).toHaveProperty('cause.cause.code', 'UND_ERR_CONNECT_TIMEOUT');
+		});
+	});
+
+	describe('when Gemini returns no candidates', () => {
+		const invokeWithResponse = async (body: object) => {
+			const ctx = mockDeep<ISupplyDataFunctions>();
+			ctx.getNode.mockReturnValue(nodeDef);
+			ctx.getCredentials.mockResolvedValue({ apiKey: 'test-key', host: 'https://gemini.test' });
+			ctx.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'modelName') return 'models/gemini-2.5-flash';
+				if (name === 'options') return {};
+				return null;
+			});
+			mockedProxyFetch.mockResolvedValue(new Response(JSON.stringify(body), { status: 200 }));
+
+			const { response } = await new LmChatGoogleGemini().supplyData.call(ctx, 0);
+			return await (response as ChatGoogleGenerativeAI).invoke('hello');
+		};
+
+		it('should throw the block reason', async () => {
+			const error = await invokeWithResponse({
+				promptFeedback: { blockReason: 'PROHIBITED_CONTENT', blockReasonMessage: 'Not allowed' },
+			}).catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(UserError);
+			expect(error).toMatchObject({
+				message: 'Gemini blocked the prompt (reason: PROHIBITED_CONTENT)',
+				description: 'Not allowed',
+			});
+		});
+
+		it('should throw an empty response error without a block reason', async () => {
+			const error = await invokeWithResponse({ candidates: [] }).catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(OperationalError);
+			expect(error).toHaveProperty('message', 'Gemini returned an empty response');
+		});
+
+		it('should throw an empty response error when a stream has no candidates', async () => {
+			const ctx = mockDeep<ISupplyDataFunctions>();
+			ctx.getNode.mockReturnValue(nodeDef);
+			ctx.getCredentials.mockResolvedValue({ apiKey: 'test-key', host: 'https://gemini.test' });
+			ctx.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'modelName') return 'models/gemini-2.5-flash';
+				if (name === 'options') return {};
+				return null;
+			});
+			const event = JSON.stringify({ promptFeedback: { blockReason: 'PROHIBITED_CONTENT' } });
+			mockedProxyFetch.mockResolvedValue(new Response(`data: ${event}\n\n`, { status: 200 }));
+
+			const { response } = await new LmChatGoogleGemini().supplyData.call(ctx, 0);
+			const consume = async () => {
+				for await (const _ of await (response as ChatGoogleGenerativeAI).stream('hello')) {
+					// Drain the stream.
+				}
+			};
+			const error = await consume().catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(OperationalError);
+			expect(error).toHaveProperty('message', 'Gemini returned an empty response');
+		});
 	});
 });

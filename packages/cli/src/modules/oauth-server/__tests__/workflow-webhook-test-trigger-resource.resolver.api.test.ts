@@ -20,7 +20,10 @@ import { CacheService, UrlService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 
-const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
+const testServer = setupTestServer({
+	modules: ['oauth-server', 'mcp', 'inbound-auth-core'],
+	endpointGroups: ['mcp'],
+});
 
 let owner: User;
 let member: User;
@@ -69,7 +72,7 @@ const webhookNode = ({
 });
 
 /**
- * Mirrors what `TestWebhooks.needsWebhook` registers — one row per method — when
+ * Mirrors what `TestWebhooks.registerWebhooks` registers — one row per method — when
  * the user tests a webhook trigger in the editor. The workflow does not need to
  * exist in the DB: the registration is self-contained.
  */

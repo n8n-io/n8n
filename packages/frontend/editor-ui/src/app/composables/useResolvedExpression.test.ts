@@ -225,6 +225,35 @@ describe('useResolvedExpression', () => {
 		expect(toValue(resolvedExpressionString)).toBe("End-user credential data can't be revealed");
 	});
 
+	it('shows the sub-workflow text when a sub-workflow caused the redaction', async () => {
+		mockResolveExpression().mockResolvedValue(undefined);
+		mockActiveExecution = redactedExecution({ reason: 'sub_workflow_redaction_policy' });
+
+		const { resolvedExpressionString } = await renderTestComponent({
+			expression: '={{ $json.code }}',
+		});
+
+		await nextTick();
+		expect(toValue(resolvedExpressionString)).toBe(
+			'Redacted by a sub-workflow. Reveal data first to see value',
+		);
+	});
+
+	it('shows the no-permission text for a sub-workflow redaction that cannot be revealed', async () => {
+		mockResolveExpression().mockResolvedValue(undefined);
+		mockActiveExecution = redactedExecution({
+			canReveal: false,
+			reason: 'sub_workflow_redaction_policy',
+		});
+
+		const { resolvedExpressionString } = await renderTestComponent({
+			expression: '={{ $json.code }}',
+		});
+
+		await nextTick();
+		expect(toValue(resolvedExpressionString)).toBe('No permission to reveal redacted data');
+	});
+
 	it('should debounce updates', async () => {
 		const resolveExpressionSpy = mockResolveExpression().mockResolvedValue(4);
 		const expression = ref('={{ testValue }}');

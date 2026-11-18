@@ -1,6 +1,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import { execFile, execFileSync } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -8,6 +8,7 @@ import { promisify } from 'node:util';
 
 import { startSelfSignedGitServer, TLS_VERIFICATION_ERROR } from '@test/self-signed-git-server';
 
+import { PromotionLockLostError } from '../promotion-environment-lock.service';
 import { PromotionsGitService } from '../promotions-git.service';
 import { buildHttpsGitConfig } from '../promotions-git.utils';
 
@@ -107,6 +108,7 @@ describe('Promotion Git checkout', () => {
 			repositoryFolder: path.join(rootFolder, 'repository'),
 			nextRepositoryFolder: path.join(rootFolder, 'repository-next'),
 			sshDir: path.join(rootFolder, 'ssh'),
+			trashFolder: path.join(tmpRoot, 'trash'),
 		};
 
 		await new PromotionsGitService(mockLogger()).clone({
@@ -114,12 +116,155 @@ describe('Promotion Git checkout', () => {
 			credentials,
 			paths,
 			branchName: 'main',
-			configId: 'config-1',
+			environmentId: 'environment-1',
 		});
 
 		const git = (...args: string[]) =>
 			execFileSync('git', ['-C', paths.repositoryFolder, ...args], { encoding: 'utf8' }).trim();
 		expect(git('remote', 'get-url', 'origin')).toBe(remoteUrl);
 		expect(git('symbolic-ref', '--short', 'HEAD')).toBe('main');
+	});
+
+	it('keeps the current checkout when the check before the swap throws', async () => {
+		const remotePath = path.join(tmpRoot, 'remote.git');
+		execFileSync('git', ['init', '--bare', '--quiet', remotePath]);
+		const rootFolder = path.join(tmpRoot, 'checkout');
+		const paths = {
+			rootFolder,
+			repositoryFolder: path.join(rootFolder, 'repository'),
+			nextRepositoryFolder: path.join(rootFolder, 'repository-next'),
+			sshDir: path.join(rootFolder, 'ssh'),
+			trashFolder: path.join(tmpRoot, 'trash'),
+		};
+		const operation = {
+			remoteUrl: pathToFileURL(remotePath).href,
+			credentials: { authType: 'token', username: 'git-user', password: 'git-password' } as const,
+			paths,
+			branchName: 'main',
+			environmentId: 'environment-1',
+		};
+		const gitService = new PromotionsGitService(mockLogger());
+		await gitService.clone(operation);
+		const marker = path.join(paths.repositoryFolder, 'marker');
+		await writeFile(marker, 'current');
+
+		await expect(
+			gitService.clone({
+				...operation,
+				beforeSwap: () => {
+					throw new PromotionLockLostError();
+				},
+			}),
+		).rejects.toThrow(PromotionLockLostError);
+
+		expect(await readFile(marker, 'utf8')).toBe('current');
+		await expect(stat(paths.nextRepositoryFolder)).rejects.toThrow();
+		await expect(readdir(paths.trashFolder)).resolves.toEqual([]);
+	});
+
+	it('moves the old checkout to trash and empties it after the swap', async () => {
+		const remotePath = path.join(tmpRoot, 'remote.git');
+		execFileSync('git', ['init', '--bare', '--quiet', remotePath]);
+		const rootFolder = path.join(tmpRoot, 'checkout');
+		const paths = {
+			rootFolder,
+			repositoryFolder: path.join(rootFolder, 'repository'),
+			nextRepositoryFolder: path.join(rootFolder, 'repository-next'),
+			sshDir: path.join(rootFolder, 'ssh'),
+			trashFolder: path.join(tmpRoot, 'trash'),
+		};
+		const operation = {
+			remoteUrl: pathToFileURL(remotePath).href,
+			credentials: { authType: 'token', username: 'git-user', password: 'git-password' } as const,
+			paths,
+			branchName: 'main',
+			environmentId: 'environment-1',
+		};
+		const gitService = new PromotionsGitService(mockLogger());
+		await gitService.clone(operation);
+		const marker = path.join(paths.repositoryFolder, 'marker');
+		await writeFile(marker, 'previous');
+
+		await gitService.clone(operation);
+
+		await expect(stat(marker)).rejects.toMatchObject({ code: 'ENOENT' });
+		const head = execFileSync(
+			'git',
+			['-C', paths.repositoryFolder, 'symbolic-ref', '--short', 'HEAD'],
+			{
+				encoding: 'utf8',
+			},
+		).trim();
+		expect(head).toBe('main');
+		await expect(stat(paths.nextRepositoryFolder)).rejects.toThrow();
+		await expect(readdir(paths.trashFolder)).resolves.toEqual([]);
+	});
+});
+
+describe('Promotion Git reads at a commit', () => {
+	let tmpRoot: string;
+	let repositoryFolder: string;
+	let commitSha: string;
+	const git = (...args: string[]) =>
+		execFileSync('git', ['-C', repositoryFolder, ...args], { encoding: 'utf8' }).trim();
+
+	beforeAll(async () => {
+		tmpRoot = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-tree-'));
+		repositoryFolder = path.join(tmpRoot, 'repository');
+		execFileSync('git', ['init', '--quiet', '--initial-branch=main', repositoryFolder]);
+		await mkdir(path.join(repositoryFolder, 'n8n'), { recursive: true });
+		await writeFile(path.join(repositoryFolder, 'n8n', 'a.json'), '{}');
+		await writeFile(path.join(repositoryFolder, 'n8n', 'b.json'), '{}');
+		git('add', '--all');
+		git(
+			'-c',
+			'user.name=n8n',
+			'-c',
+			'user.email=n8n@example.com',
+			'commit',
+			'--quiet',
+			'-m',
+			'Add',
+		);
+		commitSha = git('rev-parse', 'HEAD');
+	});
+
+	afterAll(async () => {
+		await rm(tmpRoot, { recursive: true, force: true });
+	});
+
+	const limits = {
+		maxEntries: 5,
+		maxEntryBytes: 1024,
+		maxUncompressedBytes: 1024,
+		maxPathLength: 100,
+	};
+
+	it.each([
+		{ limit: 'file count', lowered: { maxEntries: 1 }, error: 'Package contains too many entries' },
+		{
+			limit: 'path length',
+			lowered: { maxPathLength: 5 },
+			error: 'Package entry path exceeds the maximum allowed length',
+		},
+	])('rejects a package over the $limit limit, as Apply does', async ({ lowered, error }) => {
+		await expect(
+			new PromotionsGitService(mockLogger()).readTreeAtCommit({
+				remoteUrl: pathToFileURL(repositoryFolder).href,
+				credentials: { authType: 'token', username: 'git-user', password: 'git-password' },
+				paths: {
+					rootFolder: tmpRoot,
+					repositoryFolder,
+					nextRepositoryFolder: path.join(tmpRoot, 'next'),
+					sshDir: path.join(tmpRoot, 'ssh'),
+					trashFolder: path.join(tmpRoot, 'trash'),
+				},
+				branchName: 'main',
+				environmentId: 'environment-1',
+				commitSha,
+				directory: 'n8n',
+				limits: { ...limits, ...lowered },
+			}),
+		).rejects.toThrow(error);
 	});
 });

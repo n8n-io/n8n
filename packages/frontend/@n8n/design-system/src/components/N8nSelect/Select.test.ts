@@ -4,6 +4,7 @@ import { defineComponent, ref } from 'vue';
 
 import N8nSelect from './Select.vue';
 import { removeDynamicAttributes } from '../../utils';
+import { insideDialogBodyKey } from '../N8nDialog/dialogContext';
 import N8nOption from '../N8nOption/Option.vue';
 
 describe('components', () => {
@@ -107,5 +108,42 @@ describe('components', () => {
 
 			expect(textbox).toHaveValue('1');
 		});
+
+		it.each([
+			{ insideDialogBody: true, teleported: false, popperOptions: undefined, position: 'fixed' },
+			{
+				insideDialogBody: false,
+				teleported: false,
+				popperOptions: undefined,
+				position: 'absolute',
+			},
+			{ insideDialogBody: true, teleported: true, popperOptions: undefined, position: 'absolute' },
+			{
+				insideDialogBody: true,
+				teleported: false,
+				popperOptions: { strategy: 'absolute' as const },
+				position: 'absolute',
+			},
+		])(
+			'should position the dropdown as $position when inside dialog body is $insideDialogBody, teleported is $teleported and popperOptions is $popperOptions',
+			async ({ insideDialogBody, teleported, popperOptions, position }) => {
+				const { container } = render(N8nSelect, {
+					props: { teleported, popperOptions },
+					global: {
+						components: { 'n8n-option': N8nOption },
+						provide: { [insideDialogBodyKey]: insideDialogBody },
+					},
+					slots: { default: '<n8n-option value="1" label="1" />' },
+				});
+
+				await userEvent.click(container.querySelector('input')!);
+
+				await waitFor(() =>
+					expect(document.querySelector<HTMLElement>('.el-select__popper')?.style.position).toBe(
+						position,
+					),
+				);
+			},
+		);
 	});
 });

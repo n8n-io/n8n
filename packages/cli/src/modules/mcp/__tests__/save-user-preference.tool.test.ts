@@ -6,11 +6,13 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { CLIENT_CAPABILITIES_META_KEY } from '@modelcontextprotocol/server';
 import type { InputRequiredResult } from '@modelcontextprotocol/server';
 
-import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
+import {
+	AiPreferenceScopeFullError,
+	AiPreferenceService,
+	UrlService,
+	TelemetryProxy,
+} from '@n8n/backend-services';
 import { BadRequestError, ConflictError, ForbiddenError } from '@n8n/errors';
-import { AiPreferenceService } from '@/services/ai-preference.service';
-import { UrlService } from '@n8n/backend-services';
-import { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolHandlerResult } from '../mcp.types';
@@ -61,7 +63,7 @@ const createMocks = ({ as = user }: { as?: User } = {}) => {
 		update: vi.fn(),
 		undoWrite: vi.fn(),
 	});
-	const telemetry = mockInstance(Telemetry, { track: vi.fn() });
+	const telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 	const urlService = mockInstance(UrlService, {
 		getInstanceBaseUrl: vi.fn().mockReturnValue('https://n8n.example.com'),
 	});

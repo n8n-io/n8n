@@ -1,4 +1,5 @@
 import { Container } from '@n8n/di';
+import { resolveSampleFileMarkers } from '@n8n/instance-ai';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -85,7 +86,8 @@ export function buildInstanceAiRunPinDataPlan(args: {
 
 /**
  * Convert SDK pinData (Record<string, IDataObject[]>) to runtime format (IPinData).
- * SDK stores plain objects; runtime wraps each item in { json: item }.
+ * SDK stores plain objects; runtime wraps each item in { json: item }. Sample-file
+ * markers become real file data, so a fixture never carries hand-written bytes.
  *
  * Built with `Object.fromEntries` so every node name keeps its own entry:
  * node names are free-form, and a few of them do not survive being assigned
@@ -96,7 +98,7 @@ export function sdkPinDataToRuntime(pinData: Record<string, unknown[]> | undefin
 	return Object.fromEntries(
 		Object.entries(pinData).map(([nodeName, items]) => [
 			nodeName,
-			items.map((item) => ({ json: (item ?? {}) as IDataObject })),
+			items.map((item) => resolveSampleFileMarkers(item)),
 		]),
 	);
 }
@@ -184,7 +186,7 @@ function validateInputDataShape(node: INode, inputData: Record<string, unknown>)
 	const looksWrapped = typeof formFieldsValue === 'object' && formFieldsValue !== null;
 	if (looksWrapped) {
 		throw new Error(
-			'verify-built-workflow: inputData for a Form Trigger must be a flat field map ' +
+			'workflow_builder_verify_built_workflow: inputData for a Form Trigger must be a flat field map ' +
 				'(e.g. {name: "Alice", email: "a@b.c"}), NOT wrapped in `formFields`. ' +
 				'The production Form Trigger emits fields directly on $json, so downstream ' +
 				'expressions like $json.name are correct. Re-run with the flat shape.',

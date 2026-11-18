@@ -15,11 +15,11 @@ import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import chunk from 'lodash/chunk';
 import { Credentials, InstanceSettings } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { rm as fsRm, writeFile as fsWriteFile } from 'node:fs/promises';
 import path from 'path';
 
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { DataTableRepository } from '@n8n/backend-module-data-table';
 
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -425,16 +425,7 @@ export class SourceControlExportService {
 			const fileName = path.join(this.gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
 			sourceControlFoldersExistCheck([this.gitFolder]);
 			const tags = await this.tagRepository.find();
-
-			if (tags.length === 0) {
-				await fsWriteFile(fileName, JSON.stringify({ tags: [], mappings: [] }, null, 2));
-
-				return {
-					count: 0,
-					folder: this.gitFolder,
-					files: [{ id: '', name: fileName }],
-				};
-			}
+			const tagsById = new Map(tags.map((tag) => [tag.id, tag]));
 
 			const mappingsOfAllowedWorkflows = await this.workflowTagMappingRepository.find({
 				where:
@@ -451,18 +442,24 @@ export class SourceControlExportService {
 			const allowedWorkflowIds = new Set(allowedWorkflows.map((workflow) => workflow.id));
 
 			const existingTagsAndMapping = await readTagAndMappingsFromSourceControlFile(fileName);
+			const remoteTagsById = new Map(existingTagsAndMapping.tags.map((tag) => [tag.id, tag]));
 
-			// keep all mappings that are not accessible by the current user
-			const mappingsToKeep = existingTagsAndMapping.mappings.filter(
-				(mapping) => !allowedWorkflowIds.has(mapping.workflowId),
-			);
+			// Keep tags with remote mappings outside the user's scope.
+			const mappingsToKeep = existingTagsAndMapping.mappings.filter((mapping) => {
+				if (allowedWorkflowIds.has(mapping.workflowId)) return false;
+				if (!tagsById.has(mapping.tagId)) {
+					const remoteTag = remoteTagsById.get(mapping.tagId);
+					if (!remoteTag) return false;
+					tagsById.set(remoteTag.id, remoteTag);
+				}
+				return true;
+			});
 
 			await fsWriteFile(
 				fileName,
 				JSON.stringify(
 					{
-						// overwrite all tags
-						tags: tags.map((tag) => ({ id: tag.id, name: tag.name })),
+						tags: Array.from(tagsById.values(), (tag) => ({ id: tag.id, name: tag.name })),
 						mappings: mappingsToKeep.concat(mappingsOfAllowedWorkflows),
 					},
 					null,
@@ -470,7 +467,7 @@ export class SourceControlExportService {
 				),
 			);
 			return {
-				count: tags.length,
+				count: tagsById.size,
 				folder: this.gitFolder,
 				files: [{ id: '', name: fileName }],
 			};

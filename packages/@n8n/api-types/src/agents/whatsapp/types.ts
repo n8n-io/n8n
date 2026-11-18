@@ -19,6 +19,12 @@ export interface WhatsAppBusinessProfile {
  *
  * - `incomplete`: a required field is empty.
  * - `temporaryToken`: the access token expires soon, like the one on API Setup.
+ * - `employeeSystemUser`: the access token belongs to an Employee system user,
+ *   not an Admin one.
+ * - `missingPermissions`: the token lacks the `whatsapp_business_management` or
+ *   `whatsapp_business_messaging` permission.
+ * - `insufficientAccess`: the token cannot manage the WhatsApp account, and Meta
+ *   does not say if the user is an Employee. The user may also lack the account.
  * - `mismatch`: Meta refuses the token, the IDs, or the app secret.
  * - `unreachable`: n8n could not reach Meta.
  */
@@ -26,10 +32,56 @@ export type WhatsAppCredentialCheck =
 	| { status: 'ok'; profile: WhatsAppBusinessProfile }
 	| {
 			status: 'failed';
-			reason: 'incomplete' | 'temporaryToken' | 'mismatch' | 'unreachable';
+			reason:
+				| 'incomplete'
+				| 'temporaryToken'
+				| 'employeeSystemUser'
+				| 'missingPermissions'
+				| 'insufficientAccess'
+				| 'mismatch'
+				| 'unreachable';
 	  };
 
 /** Whether Meta has completed the webhook handshake with this agent. */
 export interface WhatsAppWebhookStatus {
 	verified: boolean;
+	/**
+	 * The handshake arrived, but the callback URL is saved in a different Meta app
+	 * than the credential's. Set only when the request names a credential.
+	 */
+	appMismatch?: boolean;
+}
+
+/**
+ * Where Meta's own review of the number, display name or business stands.
+ * Meta can take days to finish these, so the settings show the state and keep
+ * it current.
+ *
+ * - `connected`: nothing to report.
+ * - `numberUnavailable`: Meta shows the number as disconnected, banned, deleted or moved. The agent cannot send or receive.
+ * - `numberPending`: Meta has not activated the number. The agent cannot send or receive.
+ * - `dailyLimit`: the number reached its daily limit. The agent can reply, but cannot start conversations.
+ * - `nameInReviewBlocked`, `nameDeclinedBlocked`: a first display name is not approved. The agent cannot send.
+ * - `nameInReview`, `nameDeclined`: a changed display name is not approved. The agent still works on the old name.
+ * - `businessNotVerified`, `businessInReview`: the agent works, but scheduled messages stay at the 250-people-a-day tier.
+ * - `unknown`: n8n could not read the state from Meta. Show nothing.
+ */
+export type WhatsAppMetaState =
+	| 'connected'
+	| 'numberUnavailable'
+	| 'numberPending'
+	| 'dailyLimit'
+	| 'nameInReviewBlocked'
+	| 'nameDeclinedBlocked'
+	| 'nameInReview'
+	| 'nameDeclined'
+	| 'businessNotVerified'
+	| 'businessInReview'
+	| 'unknown';
+
+export interface WhatsAppMetaStatus {
+	state: WhatsAppMetaState;
+	/** The display name that the state is about, as Meta shows it. */
+	displayName?: string;
+	displayPhoneNumber?: string;
 }

@@ -1,0 +1,97 @@
+{
+	"name": "Mautic Requests (OAuth2)",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "contact",
+				"operation": "get",
+				"contactId": "34"
+			},
+			"id": "mautic-0",
+			"name": "Contact Get",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"mauticOAuth2Api": {
+					"id": "2",
+					"name": "Mautic OAuth2 account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "contactSegment",
+				"operation": "add",
+				"segmentId": "7",
+				"contactId": "34"
+			},
+			"id": "mautic-1",
+			"name": "Segment Add Contact",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"mauticOAuth2Api": {
+					"id": "2",
+					"name": "Mautic OAuth2 account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Contact Get": [
+			{
+				"json": {
+					"id": 34,
+					"fields": {
+						"all": {
+							"id": 34,
+							"firstname": "Nathan",
+							"email": "nathan@example.com"
+						}
+					}
+				}
+			}
+		],
+		"Segment Add Contact": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Contact Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Segment Add Contact",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
