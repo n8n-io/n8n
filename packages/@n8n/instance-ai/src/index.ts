@@ -795,6 +795,12 @@ export type {
 	EvaluationConfigMetricPreset,
 	UpsertEvaluationConfigInput,
 	LocalMcpServer,
+	InstanceMcpServer,
+	InstanceMcpToolDefinition,
+	InstanceMcpCallToolOptions,
+	InstanceMcpCallToolResult,
+	InstanceMcpInputRequiredResult,
+	McpJsonSchema,
 	McpServerConfig,
 	ModelConfig,
 	EndpointModelConfig,
@@ -877,6 +883,10 @@ export {
 	CONVERSATION_HISTORY_MAX_WINDOW_SIDE,
 } from './types';
 export { ASK_USER_TOOL_ID } from './tools/tool-ids';
+export {
+	createToolsFromInstanceMcpServer,
+	INSTANCE_MCP_GROUP_META_KEY,
+} from './tools/create-tools-from-instance-mcp-server';
 export type {
 	OrchestratorRunHandoffReason,
 	OrchestratorRunHandoffState,

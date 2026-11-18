@@ -32,6 +32,23 @@ interface SystemPromptOptions {
 	cloudBrowserEnabled?: boolean;
 	/** Setup panel v2 flag: `setup_workflow` announces instead of opening a card. */
 	setupPanelEnabled?: boolean;
+	/**
+	 * PoC: the instance MCP server's `instructions`, when its tools stand in for the
+	 * native domain tools. Rendered as the guidance for those tools.
+	 */
+	instanceMcpInstructions?: string;
+}
+
+function getInstanceMcpSection(instructions: string): string {
+	return `## Instance MCP tools
+
+Some n8n tools in the tool catalog come from the instance MCP server, the same server external MCP clients use. The server describes how to use them:
+
+<instance-mcp-instructions>
+${instructions.trim()}
+</instance-mcp-instructions>
+
+Where these instructions name a tool that is also in the catalog, follow them. Where they conflict with a loaded skill, the skill wins for the Assistant's own tools (approval cards, setup panel, workspace files, verification).`;
 }
 
 export function getDateTimeSection(timeZone?: string): string {
@@ -310,6 +327,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			skillManagementEnabled,
 			cloudBrowserEnabled,
 			setupPanelEnabled,
+			instanceMcpInstructions,
 		} = options;
 
 		return `You are the n8n Instance Agent — a helpful AI assistant embedded in an n8n instance. Your job is to understand the user's request and load the skills that match it. Once a skill is loaded, learn it in depth before continuing. You are also encouraged to call skills at any point in the conversation if it will help you achieve the user's goal. Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance. A single turn may need more than one skill when routing requires it. Tool descriptions carry any load-before-call gates (\`load_skill\`).
@@ -323,6 +341,7 @@ ${preferenceSavingEnabled ? getPreferenceSavingSection() : ''}
 ${SECRET_ASK_GUARDRAIL}
 ${SECRET_PASTE_GUARDRAIL}
 ${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
+${instanceMcpInstructions ? getInstanceMcpSection(instanceMcpInstructions) : ''}
 ${communicationStyleSection}
 
 ## Capability Honesty

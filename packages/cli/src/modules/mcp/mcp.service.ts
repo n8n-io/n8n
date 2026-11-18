@@ -77,6 +77,7 @@ import {
 	USER_CALLED_MCP_TOOL_EVENT,
 } from './mcp.constants';
 import { FOLDER_FEATURE_TOOLS, getAllowedToolNames } from './mcp-scopes';
+import { getMcpToolGroup, MCP_TOOL_GROUP_META_KEY } from './mcp-tool-groups';
 import {
 	areAgentToolsAvailable,
 	canReadMigrationReport,
@@ -471,10 +472,12 @@ export class McpService {
 			};
 
 			const { inputSchema, outputSchema, ...config } = tool.config;
+			const group = getMcpToolGroup(tool.name);
 			return server.registerTool(
 				tool.name,
 				{
 					...config,
+					...(group ? { _meta: { ...config._meta, [MCP_TOOL_GROUP_META_KEY]: group } } : {}),
 					...(inputSchema ? { inputSchema: shapeToStandardSchema(inputSchema) } : {}),
 					...(outputSchema ? { outputSchema: shapeToStandardSchema(outputSchema) } : {}),
 				},

@@ -54,6 +54,8 @@ import { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.se
 import { InstanceAiModelService } from '../instance-ai-model.service';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiSkillsService, type InstanceAiSkillScope } from '../instance-ai-skills.service';
+import { InstanceMcpClientFactory } from '../mcp-bridge/instance-mcp-client.factory';
+import { InstanceMcpServerAdapter } from '../mcp-bridge/instance-mcp-server';
 import {
 	InstanceAiAdapterService,
 	type InstanceAiFeatureFlags,
@@ -162,6 +164,7 @@ export class AssistantTurnEnvironmentFactory {
 		private readonly skillsService: InstanceAiSkillsService,
 		private readonly approvalModeService: InstanceAiApprovalModeService,
 		private readonly approvalReviewerFactory: InstanceAiApprovalReviewerFactory,
+		private readonly instanceMcpClientFactory: InstanceMcpClientFactory,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
@@ -347,6 +350,19 @@ export class AssistantTurnEnvironmentFactory {
 			: undefined;
 		if (browserMcpServer) {
 			context.localMcpServer = browserMcpServer;
+		}
+
+		// PoC: reach the instance MCP server as a real client, so its tools stand in for
+		// the native domain tools. A connection failure keeps the native tools.
+		try {
+			const instanceMcpClient = await this.instanceMcpClientFactory.createForUser(user);
+			context.instanceMcpServer = await InstanceMcpServerAdapter.create(instanceMcpClient);
+		} catch (error) {
+			this.logger.warn('Instance MCP server unavailable to the Assistant; native tools stay', {
+				threadId,
+				runId,
+				error: getErrorMessage(error),
+			});
 		}
 
 		context.permissions = this.settingsService.getPermissions();

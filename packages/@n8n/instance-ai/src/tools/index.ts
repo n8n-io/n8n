@@ -12,7 +12,11 @@ import {
 import { createToolRegistry } from '../tool-registry';
 import type { InstanceAiContext, InstanceAiToolRegistry, OrchestrationContext } from '../types';
 import { resolveAgentBuilderTarget } from './orchestration/agent-target-binding';
-import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from './tool-ids';
+import {
+	DOMAIN_TOOL_IDS,
+	NATIVE_TOOLS_REPLACED_BY_INSTANCE_MCP,
+	ORCHESTRATION_TOOL_IDS,
+} from './tool-ids';
 import { getSupportedWorkflowActions } from './workflows/workflow-tool-actions';
 import { getSupportedWorkspaceActions } from './workspace-tool-actions';
 
@@ -273,6 +277,11 @@ function getOrchestratorDomainToolFactories(
 			? () => loadParseFileTool().createParseStoredFileTool(storedFiles)
 			: () => loadParseFileTool().createParseFileTool(context),
 	]);
+
+	// PoC: the instance MCP server's tools stand in for these native ones.
+	if (context.instanceMcpServer) {
+		return tools.filter(([name]) => !NATIVE_TOOLS_REPLACED_BY_INSTANCE_MCP.has(name));
+	}
 
 	return tools;
 }

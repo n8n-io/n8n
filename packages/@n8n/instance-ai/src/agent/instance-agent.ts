@@ -24,6 +24,7 @@ import {
 	createOrchestrationTools,
 	getActiveOrchestratorDomainToolNames,
 } from '../tools';
+import { createToolsFromInstanceMcpServer } from '../tools/create-tools-from-instance-mcp-server';
 import { createToolsFromLocalMcpServer } from '../tools/create-tools-from-mcp-server';
 import {
 	ALWAYS_LOADED_TOOL_NAMES,
@@ -156,11 +157,32 @@ export async function createInstanceAgent(
 		? createOrchestrationTools(orchestrationContext)
 		: createToolRegistry();
 
+	// PoC: the instance MCP server's tools stand in for the native domain tools they
+	// replace (see NATIVE_TOOLS_REPLACED_BY_INSTANCE_MCP). A native tool that is not
+	// swapped keeps its name: an instance tool of the same name (e.g. the server's
+	// `validate_workflow`, which takes code) is left out until its group is swapped.
+	const activeDomainToolNames = getActiveOrchestratorDomainToolNames(domainContext);
+	const instanceMcp = context.instanceMcpServer
+		? createToolsFromInstanceMcpServer({
+				server: context.instanceMcpServer,
+				logger: context.logger,
+			})
+		: undefined;
+	const instanceMcpTools = createToolRegistry();
+	for (const [name, tool] of instanceMcp?.tools ?? []) {
+		if (activeDomainToolNames.has(name) || orchestrationTools.has(name)) {
+			context.logger.debug('Instance MCP tool kept out: a native tool owns the name', { name });
+			continue;
+		}
+		instanceMcpTools.set(name, tool);
+	}
+
 	// Keep MCP tools from shadowing domain or orchestration tools. Former split tool
 	// names stay reserved so persisted calls still resolve through their legacy actions.
 	const reservedToolNames = new Set<string>([
-		...getActiveOrchestratorDomainToolNames(domainContext),
+		...activeDomainToolNames,
 		...orchestrationTools.keys(),
+		...instanceMcpTools.keys(),
 		...Object.keys(SPLIT_BUILDER_TOOLS),
 	]);
 
@@ -187,6 +209,7 @@ export async function createInstanceAgent(
 
 	const allOrchestratorTools = mergeToolRegistries(
 		orchestratorDomainTools,
+		instanceMcpTools,
 		orchestrationTools,
 		safeLocalMcpTools,
 		safeMcpTools,
@@ -227,6 +250,8 @@ export async function createInstanceAgent(
 				orchestrationContext?.workspace && orchestrationContext.workspaceRoot
 					? orchestrationContext.workspaceRoot
 					: undefined,
+			instanceMcpInstructions:
+				instanceMcpTools.size > 0 ? context.instanceMcpServer?.instructions : undefined,
 		},
 	);
 
@@ -274,7 +299,8 @@ export async function createInstanceAgent(
 				group = getMcpToolGroup(tool.mcpServerName);
 				groupDescriptions.set(group, `tools from the ${tool.mcpServerName} MCP server`);
 			} else {
-				group = getToolGroup(name);
+				// An instance MCP tool carries its group from the server; the rest use the static map.
+				group = instanceMcp?.groups.get(name) ?? getToolGroup(name);
 				const description = group ? getToolGroupDescription(group) : undefined;
 				if (group && description) groupDescriptions.set(group, description);
 			}

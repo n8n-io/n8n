@@ -92,14 +92,14 @@ milestone proves it.
 
 | Assistant need | Protocol carries it? | Mechanism | Result |
 |---|---|---|---|
-| Discovery, input schemas | native | `tools/list`; zod → JSON Schema → zod fidelity | M0: `tools/list` carries input and output JSON Schema in-process. Fidelity after the zod round trip: M1 |
-| Typed and multimodal outputs | native | `structuredContent`, `outputSchema`, content blocks | M0: `structuredContent` arrives typed by `outputSchema`. Multimodal: M1 |
+| Discovery, input schemas | native | `tools/list`; zod → JSON Schema → zod fidelity | **yes.** M1: the bridge hands the server's JSON Schema to `@n8n/agents` unchanged (`Tool.input()` takes JSON Schema), so there is no second conversion. Only the Anthropic sanitizer (`sanitizeMcpToolSchemas`) touches it, as for every MCP tool |
+| Typed and multimodal outputs | native | `structuredContent`, `outputSchema`, content blocks | **yes.** M1: `structuredContent` goes to the model as JSON; media content blocks become model parts; `isError` becomes `{ error }` as native tools report it |
 | Cancellation, progress | native | `AbortSignal` → `ctx.mcpReq.signal`; `notifications/progress` | M0: an aborted `signal` cancels the in-flight call and reaches the handler's `signal`. Progress: open |
 | Durable approval before a write | native, modern leg only | `input_required` + `requestState` | M0: manual mode surfaces `input_required` with `inputRequests` and `requestState`; the retry with `inputResponses` completes the call. Suspend across a restart: M2 |
 | Rich approval card | extension | `_meta['n8n/approvalDetails']` | ? |
 | Session grants, admin rules, auto-approval judge | client-side | bridge answers the form from grants, policy, judge | ? |
-| Tool groups for deferral | extension | tool `_meta['n8n/group']` | ? |
-| Guidance | native | `server/discover.instructions`, resources | M0: `instructions` and resources are readable through the client. Use in the prompt: M1 |
+| Tool groups for deferral | extension | tool `_meta['n8n/group']` | **yes, with `_meta`.** M1: the registrar stamps every tool (`mcp-tool-groups.ts`); the bridge reads it and the catalog groups by it. Generic clients ignore the key |
+| Guidance | native | `server/discover.instructions`, resources | **partial.** M1: `instructions` render as a prompt section when instance tools are active. The `workflow-builder` skill still names the native tools; the model has to map them through `find_tools`. Measured in M3 |
 | Workflow artifact tab | extension | `structuredContent.workflowId` → `onArtifactChanged` | ? |
 | Thread state (file bindings, setup state, loop verdicts) | client-side | stays in Assistant orchestration tools | ? |
 | Workspace and sandbox build loop | not native | identity-keyed workspace tools (M4) | ? |
@@ -199,19 +199,28 @@ packages/cli/src/modules/instance-ai/mcp-bridge/
   instance-mcp-client.ts            # M0: v2 client, pinned 2026-07-28, manual input_required
   instance-mcp-client.factory.ts    # M0: handler from McpService.getServer for a user
   in-process-fetch.ts               # M0: Request → handler.fetch
-  instance-mcp-server.ts            # M1: LocalMcpServer seam implementation
+  instance-mcp-server.ts            # M1: InstanceMcpServer seam implementation
   __tests__/
-packages/@n8n/instance-ai/src/tools/
-  create-tools-from-instance-mcp-server.ts   # M1 bridge
+packages/@n8n/instance-ai/src/
+  types.ts                          # M1: InstanceMcpServer seam types, context.instanceMcpServer
+  tools/create-tools-from-instance-mcp-server.ts   # M1: bridge to @n8n/agents tools
+  tools/tool-ids.ts                 # M1: NATIVE_TOOLS_REPLACED_BY_INSTANCE_MCP
+  tools/index.ts                    # M1: drops the replaced native tools
+  agent/instance-agent.ts           # M1: merges, reserves names, groups by _meta
+  agent/system-prompt.ts            # M1: instance MCP instructions section
 packages/cli/src/modules/mcp/
-  tools/workflow-builder/*      # M2-M4 additive changes
+  mcp-tool-groups.ts                # M1: _meta['n8n/group'] per tool
+  mcp.service.ts                    # M1: registrar stamps the group
+  tools/workflow-builder/*          # M2-M4 additive changes
+packages/cli/src/modules/instance-ai/turn-setup/
+  assistant-turn-environment.factory.ts   # M1: connects the client per turn
 ```
 
 ## Implementation TODO
 
 - [x] M0: dependency, `InstanceMcpClient`, in-process fetch, contract test
-- [ ] M1: seam, bridge, wiring, `nodes` group swapped
-- [ ] M1: `workflows` read tools swapped, instructions in the prompt
+- [x] M1: seam, bridge, wiring, `nodes` group swapped
+- [x] M1: `workflows` read tools swapped, instructions in the prompt
 - [ ] M2: server elicitation on destructive tools, signed `requestState`
 - [ ] M2: bridge suspend/resume, grants and judge, `questions` card mapping
 - [ ] M3: build through `create_workflow_from_code`; eval delta
@@ -234,6 +243,24 @@ packages/cli/src/modules/mcp/
   envelope through `Record<string, unknown>`.
 - M0: `Client.close()` resets `instructions` and capabilities. Read them
   while the client is open.
+- M1: `Client.listTools()` answers `[]` locally when the server advertises no
+  `tools` capability. A stub server in a test needs at least one tool.
+- M1: name collisions are real. The server's `validate_workflow` takes code;
+  the Assistant's takes a workflow id. The bridge keeps an instance tool out
+  while a native tool that is not swapped owns the name. Later milestones
+  decide which one wins per name.
+- M1: the integration test server loads no node packages, so `search_nodes`
+  answers empty there. The protocol path to the real catalog handler works.
+
+## Native tools swapped so far
+
+| Native tool | Instance MCP tool(s) |
+|---|---|
+| `search_nodes`, `get_node_types`, `get_node_parameter_options` | `search_nodes`, `get_node_types`, `explore_node_resources`, `validate_node_config` |
+| `list_workflows`, `get_workflow`, `list_workflow_versions`, `get_workflow_node_usage` | `search_workflows`, `get_workflow_details`, `get_workflow_history`, `get_workflow_version`, `get_workflow_versions_diff`, `get_node_usage` |
+
+Kept native for now: `get_workflow_as_code`, `validate_workflow`, `setup_workflow`,
+`execute_node`, `search_models`, and every write (M2, M3).
 
 ## Open questions
 

@@ -1945,7 +1945,8 @@ describe('McpService', () => {
 				const server = await buildService().getServer(user, mcpFeatureFlags());
 
 				expect(registerWorkflowPreviewApp).not.toHaveBeenCalled();
-				expect(registeredCreateTool(server)?._meta).toBeUndefined();
+				// The tool group is always stamped; the app marker is what the flag controls.
+				expect(registeredCreateTool(server)?._meta).not.toHaveProperty('ui');
 			});
 
 			it('does not register the preview app when builder is disabled, even if MCP Apps is enabled', async () => {

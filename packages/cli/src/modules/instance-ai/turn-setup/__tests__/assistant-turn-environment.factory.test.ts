@@ -603,6 +603,7 @@ describe('AssistantTurnEnvironmentFactory', () => {
 				mock(),
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			expect(Reflect.get(factory, 'oauth2CallbackUrl')).toBe(

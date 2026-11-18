@@ -41,6 +41,7 @@ import type {
 	InstanceAiSetupItem,
 	InstanceAiThreadArtifact,
 	McpTool,
+	McpToolAnnotations,
 	McpToolPermissions,
 	McpToolCallRequest,
 	McpToolCallResult,
@@ -1490,6 +1491,55 @@ export interface LocalMcpServer {
 	): Promise<McpToolCallResult>;
 }
 
+// ── Instance MCP server (PoC: MCP as the shared tool layer) ─────────────────
+
+/** A JSON Schema as `@n8n/agents` accepts it for a tool input or output. */
+export type McpJsonSchema = Exclude<NonNullable<BuiltTool['inputSchema']>, z.ZodType>;
+
+/** A tool as the instance MCP server lists it, with the fields the bridge reads. */
+export interface InstanceMcpToolDefinition {
+	name: string;
+	description?: string;
+	inputSchema: McpJsonSchema;
+	outputSchema?: McpJsonSchema;
+	annotations?: McpToolAnnotations;
+	/** Server-stamped metadata, e.g. the `n8n/group` the tool belongs to. */
+	_meta?: Record<string, unknown>;
+}
+
+/**
+ * A `tools/call` answer that asks the client for input first (protocol revision
+ * 2026-07-28). The client gets the answers, then retries the same call with
+ * `inputResponses` and the `requestState` echoed verbatim.
+ */
+export interface InstanceMcpInputRequiredResult {
+	resultType: 'input_required';
+	inputRequests?: Record<string, { method: string; params?: Record<string, unknown> }>;
+	requestState?: string;
+}
+
+export type InstanceMcpCallToolResult = McpToolCallResult | InstanceMcpInputRequiredResult;
+
+export interface InstanceMcpCallToolOptions {
+	abortSignal?: AbortSignal;
+	inputResponses?: Record<string, unknown>;
+	requestState?: string;
+}
+
+/**
+ * The instance MCP server as the Assistant reaches it: a real MCP client over
+ * an in-process transport, owned by the host. Tools are listed once at connect.
+ */
+export interface InstanceMcpServer {
+	/** The server's `instructions` from `server/discover`. */
+	readonly instructions?: string;
+	getTools(): InstanceMcpToolDefinition[];
+	callTool(
+		req: McpToolCallRequest,
+		options?: InstanceMcpCallToolOptions,
+	): Promise<InstanceMcpCallToolResult>;
+}
+
 // ── Workspace shapes ────────────────────────────────────────────────────────
 
 export interface ProjectSummary {
@@ -1813,6 +1863,11 @@ export interface InstanceAiContext {
 	 * Connected local MCP server (the Browser Use session). When set, dynamic tools are created from its advertised capabilities.
 	 */
 	localMcpServer?: LocalMcpServer;
+	/**
+	 * The instance MCP server, reached as a real MCP client (PoC). When set, its tools
+	 * replace the native domain tools listed in `NATIVE_TOOLS_REPLACED_BY_INSTANCE_MCP`.
+	 */
+	instanceMcpServer?: InstanceMcpServer;
 	/** Browser Use state — drives system prompt guidance. */
 	browserUseState?: BrowserUseState;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */

@@ -154,6 +154,24 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.SKILLS,
 ]);
 
+/**
+ * Native tools that the instance MCP server's tools stand in for when the host
+ * wires `instanceMcpServer` (PoC: MCP as the shared tool layer). The list grows
+ * group by group as the PoC swaps them.
+ */
+export const NATIVE_TOOLS_REPLACED_BY_INSTANCE_MCP: ReadonlySet<string> = new Set<string>([
+	// nodes → search_nodes, get_node_types, explore_node_resources, validate_node_config
+	DOMAIN_TOOL_IDS.SEARCH_NODES,
+	DOMAIN_TOOL_IDS.GET_NODE_TYPES,
+	DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS,
+	// workflow reads → search_workflows, get_workflow_details, get_workflow_history,
+	// get_workflow_version, get_workflow_versions_diff, get_node_usage
+	DOMAIN_TOOL_IDS.LIST_WORKFLOWS,
+	DOMAIN_TOOL_IDS.GET_WORKFLOW,
+	DOMAIN_TOOL_IDS.LIST_WORKFLOW_VERSIONS,
+	DOMAIN_TOOL_IDS.GET_WORKFLOW_NODE_USAGE,
+]);
+
 const NODE_TOOL_NAMES: readonly string[] = [
 	DOMAIN_TOOL_IDS.SEARCH_NODES,
 	DOMAIN_TOOL_IDS.GET_NODE_TYPES,
