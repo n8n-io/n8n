@@ -80,7 +80,11 @@ const {
 
 const nodeHelpers = useNodeHelpers();
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
-const delightEnabled = computed(() => route.query.hackmation === 'delight');
+const delightEnabled = computed(
+	() =>
+		route.query.hackmation === 'delight' ||
+		(import.meta.env.DEV && import.meta.env.VUE_APP_CANVAS_DELIGHT === 'true'),
+);
 const sleepEligible = computed(
 	() =>
 		!isRunning.value &&

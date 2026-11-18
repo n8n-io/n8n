@@ -27,7 +27,11 @@ const emit = defineEmits<{
 const $style = useCssModule();
 const i18n = useI18n();
 const route = useRoute();
-const delightEnabled = computed(() => route?.query.hackmation === 'delight');
+const delightEnabled = computed(
+	() =>
+		route?.query.hackmation === 'delight' ||
+		(import.meta.env.DEV && import.meta.env.VUE_APP_CANVAS_DELIGHT === 'true'),
+);
 
 const { id, isSelected, isReadOnly, render, eventBus } = useCanvasNode();
 
