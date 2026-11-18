@@ -101,7 +101,10 @@ export class PolicyEnforcementService {
 			context.storedWorkflow === null
 				? workflowContentSubject(context.workflow)
 				: workflowSubject(context.workflow);
-		return await this.enforce('workflowSave', expandedSave(context), actor, subject);
+		const checked = expandedSave(context);
+		await this.implementation?.prepareWorkflowSave(checked);
+
+		return await this.enforce('workflowSave', checked, actor, subject);
 	}
 
 	async evaluateWorkflowSave(context: WorkflowSaveContext): Promise<PolicyDecision> {
@@ -118,6 +121,11 @@ export class PolicyEnforcementService {
 			actor,
 			workflowSubject(context.workflow),
 		);
+	}
+
+	/** Call only where a user publishes a new version: the step can take many seconds. */
+	async prepareWorkflowPublish(context: WorkflowPublishContext): Promise<void> {
+		await this.implementation?.prepareWorkflowPublish(context);
 	}
 
 	async evaluateWorkflowPublish(context: WorkflowPublishContext): Promise<PolicyDecision> {

@@ -1,0 +1,14 @@
+// The judges page opens from a row of the Policies page and shows a back link.
+
+@mixin layout {
+	/* The settings shell already pads the page top, so collapse the layout's own inset. */
+	padding-top: 0;
+
+	/* Pin the back link to the top-left of the settings area, apart from the centered column. */
+	> div:first-child {
+		position: absolute;
+		top: var(--spacing--lg);
+		left: var(--spacing--lg);
+		width: auto;
+	}
+}

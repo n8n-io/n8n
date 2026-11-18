@@ -1,9 +1,16 @@
 import type { PolicedWorkflow } from '@n8n/decorators';
+import type { IConnections, IWorkflowSettings } from 'n8n-workflow';
 
 import type { OwnershipService } from '@/services/ownership.service';
 
 import type { PolicyActor } from './policy-enforcement-backend';
 import type { PolicyEnforcementService } from './policy-enforcement.service';
+
+type PublishedVersion = {
+	versionId?: string;
+	/** Set only where a user publishes a new version. It runs the slow prepare step. */
+	prepareWith?: { connections: IConnections; settings?: IWorkflowSettings };
+};
 
 /**
  * Enforces the `workflowPublish` policy for a workflow. It resolves the owning project only
@@ -22,10 +29,17 @@ export async function enforceWorkflowPublishPolicy(
 	ownershipService: OwnershipService,
 	workflow: PolicedWorkflow & { id: string },
 	actor: PolicyActor,
+	version: PublishedVersion = {},
 ): Promise<void> {
 	if (!policyEnforcementService.hasChecksFor('workflowPublish')) return;
 
 	const project = await ownershipService.getWorkflowProjectCached(workflow.id);
+	const { versionId, prepareWith } = version;
+	const context = { workflow, projectId: project.id, versionId };
 
-	await policyEnforcementService.enforceWorkflowPublish({ workflow, projectId: project.id }, actor);
+	if (prepareWith) {
+		await policyEnforcementService.prepareWorkflowPublish({ ...context, ...prepareWith });
+	}
+
+	await policyEnforcementService.enforceWorkflowPublish(context, actor);
 }

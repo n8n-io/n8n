@@ -57,21 +57,26 @@ export class AgentPolicyService {
 				workflow: policedWorkflowForAgent(agentId, content),
 				storedWorkflow: stored === null ? null : policedWorkflowForAgent(agentId, stored),
 				projectId,
+				// Callers pass the whole config, which holds more than the policed part.
+				agentConfig: content,
 			},
 			actor,
 		);
 	}
 
+	/** `versionId` is the saved version to publish. A slow judge reviews it before the check. */
 	async enforcePublish(
 		projectId: string,
 		agentId: string,
 		content: PolicedAgentContent,
 		actor: PolicyActor,
+		versionId?: string,
 	): Promise<void> {
-		await this.policyEnforcementService.enforceWorkflowPublish(
-			{ workflow: policedWorkflowForAgent(agentId, content), projectId },
-			actor,
-		);
+		const context = { workflow: policedWorkflowForAgent(agentId, content), projectId, versionId };
+
+		if (versionId) await this.policyEnforcementService.prepareWorkflowPublish(context);
+
+		await this.policyEnforcementService.enforceWorkflowPublish(context, actor);
 	}
 
 	/**

@@ -73,4 +73,10 @@ export interface PolicyEnforcementBackend {
 
 	/** Whether any check would run at this point. Must agree with `enforce` and `evaluate`. */
 	hasChecksFor(point: EnforcementPoint): boolean;
+
+	/** Runs the slow `prepareWorkflowPublish` steps. Never throws and never decides. */
+	prepareWorkflowPublish(context: WorkflowPublishContext): Promise<void>;
+
+	/** Runs the slow `prepareWorkflowSave` steps. Never throws and never decides. */
+	prepareWorkflowSave(context: WorkflowSaveContext): Promise<void>;
 }

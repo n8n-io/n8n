@@ -301,6 +301,7 @@ describe('ActiveWorkflowManager', () => {
 				{
 					workflow: { id: 'wf-1', name: 'My workflow', nodes: dbWorkflow.activeVersion!.nodes },
 					projectId: 'project-1',
+					versionId: dbWorkflow.activeVersion!.versionId,
 				},
 				{ kind: 'system', reason: 'activation' },
 			);

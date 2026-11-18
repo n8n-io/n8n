@@ -68,6 +68,7 @@ export const DOMAIN_TOOL_IDS = {
 	SAVE_USER_PREFERENCE: 'save_user_preference',
 	SKILLS: 'skills',
 	APPS: 'apps',
+	PUBLISH_JUDGE: 'publish-judge',
 } as const;
 
 /** Trace-only chain-typed child run emitted by `workflow_builder_build_workflow` with the
@@ -185,6 +186,7 @@ const TOOL_GROUP_BY_NAME = new Map<string, string>([
 		name,
 		'instance',
 	]),
+	[DOMAIN_TOOL_IDS.PUBLISH_JUDGE, 'instance'],
 ]);
 
 /** One line on what each n8n tool group holds, shown next to its tool names. */
@@ -196,7 +198,7 @@ const TOOL_GROUP_DESCRIPTIONS: Readonly<Record<string, string>> = {
 	nodes: 'search node types and read their parameter definitions',
 	agents: 'build and configure standalone n8n Agents',
 	instance:
-		'list projects and tags, manage folders, tag workflows and clean up test executions in this n8n instance',
+		'list projects and tags, manage folders, tag workflows, clean up test executions and set publish judges in this n8n instance',
 };
 
 /** Returns the description of a tool group, or undefined when it has none. */

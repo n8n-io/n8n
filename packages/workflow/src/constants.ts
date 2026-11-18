@@ -66,6 +66,7 @@ export const EVALUATION_NODE_TYPE = 'n8n-nodes-base.evaluation';
 export const ERROR_TRIGGER_NODE_TYPE = 'n8n-nodes-base.errorTrigger';
 export const EXECUTE_WORKFLOW_NODE_TYPE = 'n8n-nodes-base.executeWorkflow';
 export const EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE = 'n8n-nodes-base.executeWorkflowTrigger';
+export const JUDGE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.judgeTrigger';
 export const MESSAGE_AN_AGENT_NODE_TYPE = 'n8n-nodes-base.messageAnAgent';
 export const MESSAGE_AN_AGENT_TOOL_NODE_TYPE = 'n8n-nodes-base.messageAnAgentTool';
 export const CODE_NODE_TYPE = 'n8n-nodes-base.code';

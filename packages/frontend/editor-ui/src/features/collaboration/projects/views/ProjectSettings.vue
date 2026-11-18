@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { ProjectPublishJudgeSection } from '@n8n/frontend-module-publish-judge';
 import { ProjectSelfHealingSection } from '@n8n/frontend-module-self-healing';
 import type { Role } from '@n8n/permissions';
 import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
@@ -475,6 +476,7 @@ const onIconUpdated = async () => {
 };
 
 const isWorkerPoolsEnabled = computed(() => settingsStore.isWorkerPoolsEnabled);
+const isPublishJudgeActive = computed(() => settingsStore.isModuleActive('publish-judge'));
 
 const resetPoolSettingsFormData = () => {
 	formData.value.defaultPool = projectsStore.currentProjectPoolSettings?.defaultPool ?? null;
@@ -892,6 +894,11 @@ onMounted(async () => {
 							onTextInput();
 						}
 					"
+				/>
+
+				<ProjectPublishJudgeSection
+					v-if="isPublishJudgeActive && projectsStore.currentProject"
+					:project-id="projectsStore.currentProject.id"
 				/>
 
 				<fieldset>

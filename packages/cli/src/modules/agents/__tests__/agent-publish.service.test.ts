@@ -422,6 +422,7 @@ describe('AgentPublishService', () => {
 				agentId,
 				agent.schema,
 				{ kind: 'user', user: person },
+				expect.any(String),
 			);
 			expect(agentValidationService.validateAgentEntityConfiguration).not.toHaveBeenCalled();
 			expect(agent.activeVersionId).toBeNull();
@@ -445,6 +446,7 @@ describe('AgentPublishService', () => {
 				agentId,
 				target.schema,
 				{ kind: 'user', user: person },
+				'v1',
 			);
 			expect(agent.activeVersionId).toBe('v0');
 		});

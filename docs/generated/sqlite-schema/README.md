@@ -132,6 +132,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [promotion_provider](promotion_provider.md) | 8 |  | table |
 | [promotion_review](promotion_review.md) | 10 |  | table |
 | [promotion_run](promotion_run.md) | 8 |  | table |
+| [publish_judge_review](publish_judge_review.md) | 19 |  | table |
 | [role](role.md) | 7 |  | table |
 | [role_mapping_rule](role_mapping_rule.md) | 7 |  | table |
 | [role_mapping_rule_project](role_mapping_rule_project.md) | 2 |  | table |
@@ -389,6 +390,7 @@ erDiagram
 "promotion_run" }o--o| "promotion_review" : "FOREIGN KEY (reviewId) REFERENCES promotion_review (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "promotion_run" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "promotion_run" }o--o| "promotion_environment" : "FOREIGN KEY (environmentId) REFERENCES promotion_environment (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"publish_judge_review" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "role_mapping_rule" }o--|| "role" : "FOREIGN KEY (role) REFERENCES role (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
 "role_mapping_rule_project" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "role_mapping_rule_project" |o--|| "role_mapping_rule" : "FOREIGN KEY (roleMappingRuleId) REFERENCES role_mapping_rule (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1751,6 +1753,27 @@ erDiagram
   varchar id PK
   varchar reviewId FK
   varchar_16_ type
+}
+"publish_judge_review" {
+  boolean blocked
+  datetime_3_ createdAt
+  boolean dryRun
+  INTEGER durationMs
+  varchar_32_ event
+  INTEGER id
+  varchar_36_ judgeId
+  TEXT judgeName
+  varchar_16_ judgeScope
+  varchar_16_ judgeType
+  varchar_36_ projectId FK
+  TEXT reason
+  varchar_64_ runRef
+  varchar_36_ subjectId
+  varchar_16_ subjectKind
+  TEXT subjectName
+  datetime_3_ updatedAt
+  varchar_16_ verdict
+  varchar_64_ versionId
 }
 "role" {
   datetime_3_ createdAt

@@ -164,6 +164,7 @@ describe('Instance AI skills', () => {
 			'instance-awareness',
 			'intent-recognition',
 			'n8n-docs-assistant',
+			'publish-judge',
 			'suggest-automations',
 			'v3-migration',
 			'workflow-builder',

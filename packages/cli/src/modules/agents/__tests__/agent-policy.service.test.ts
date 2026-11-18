@@ -67,6 +67,7 @@ describe('AgentPolicyService', () => {
 				},
 				storedWorkflow: { id: 'agent-1', name: 'Support agent', artifactKind: 'agent', nodes: [] },
 				projectId: 'proj-1',
+				agentConfig: agent([dateTimeTool]),
 			},
 			actor,
 		);

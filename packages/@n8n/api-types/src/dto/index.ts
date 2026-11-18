@@ -901,3 +901,22 @@ export {
 } from './scim';
 export { CreateTrustedSourceDto } from './trusted-source/create-trusted-source.dto';
 export { UpdateTrustedSourceDto } from './trusted-source/update-trusted-source.dto';
+
+export {
+	PutPublishJudgeDto,
+	DEFAULT_PUBLISH_JUDGE_EVENTS,
+	PUBLISH_JUDGE_VIOLATION_KIND,
+	publishJudgeEventSchema,
+	publishJudgeModeSchema,
+	type PublishJudgeMode,
+	type PublishJudgeReviewItem,
+	type PublishJudgeReviewSummary,
+	type PublishJudgeReviewVerdict,
+	publishJudgeOnUnavailableSchema,
+	type PublishJudgeEvent,
+	publishJudgeTypeSchema,
+	type PublishJudgeOnUnavailable,
+	type PublishJudgeType,
+	type ProjectPublishJudge,
+	type PublishJudgeSettings,
+} from './publish-judge/put-publish-judge.dto';

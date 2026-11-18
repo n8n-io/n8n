@@ -1,6 +1,6 @@
 import type { PolicyCheckFailure, PolicyViolation } from '@n8n/api-types';
 import type { Constructable } from '@n8n/di';
-import type { INode } from 'n8n-workflow';
+import type { IConnections, INode, IWorkflowSettings } from 'n8n-workflow';
 
 export type { PolicyViolation, PolicyCheckFailure };
 
@@ -70,11 +70,23 @@ export type WorkflowSaveContext = {
 	 */
 	readonly storedWorkflow: PolicedWorkflow | null;
 	readonly projectId: string | null;
+	/** Only set for `prepareWorkflowSave`, so a judge sees the whole graph. */
+	readonly connections?: IConnections;
+	/** Only set for `prepareWorkflowSave`: the error workflow and timeouts are settings. */
+	readonly settings?: IWorkflowSettings;
+	/** Only set for `prepareWorkflowSave` of an agent: the nodes leave out its instructions. */
+	readonly agentConfig?: Readonly<Record<string, unknown>>;
 };
 
 export type WorkflowPublishContext = {
 	readonly workflow: PolicedWorkflow;
 	readonly projectId: string | null;
+	/** The history version to publish. Absent for an agent. */
+	readonly versionId?: string;
+	/** Only set for `prepareWorkflowPublish`, so a judge sees the whole graph. */
+	readonly connections?: IConnections;
+	/** Only set for `prepareWorkflowPublish`: the error workflow and timeouts are settings. */
+	readonly settings?: IWorkflowSettings;
 };
 
 export type WorkflowStartContext = {
@@ -240,6 +252,15 @@ export interface RegisteredPolicyCheck {
 		signal: AbortSignal,
 	): Promise<PolicyCheckResult>;
 	onContentImport?(ctx: ContentImportContext, signal: AbortSignal): Promise<PolicyCheckResult>;
+
+	/**
+	 * Slow work before a user publishes a new version, such as asking an external judge.
+	 * May write state for `onWorkflowPublish` to read. It never decides on its own.
+	 */
+	prepareWorkflowPublish?(ctx: WorkflowPublishContext, signal: AbortSignal): Promise<void>;
+
+	/** The same slow step before a save. It runs on each save, so it must be fast. */
+	prepareWorkflowSave?(ctx: WorkflowSaveContext, signal: AbortSignal): Promise<void>;
 }
 
 /** The {@link RegisteredPolicyCheck} method for a point, e.g. `'onWorkflowSave'`. */

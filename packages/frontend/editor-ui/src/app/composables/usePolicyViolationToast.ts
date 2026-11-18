@@ -6,6 +6,7 @@ import {
 	PolicyViolationList,
 	type PolicyViolationListItem,
 } from '@n8n/frontend-module-type-availability-policies';
+import PublishJudgeFixButton from '@/features/ai/instanceAi/components/PublishJudgeFixButton.vue';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import {
 	CREDENTIAL_TYPE_SUBJECT,
@@ -61,6 +62,7 @@ export function usePolicyViolationToast() {
 		title: string,
 		refusedAction: PolicyRefusedAction,
 		documentId: WorkflowDocumentId,
+		{ onFix }: { onFix?: () => void } = {},
 	) {
 		activeToast?.handle.close();
 		const handle = toast.showMessage(
@@ -68,17 +70,26 @@ export function usePolicyViolationToast() {
 				title,
 				type: 'error',
 				duration: 0,
-				message: h(PolicyViolationList, {
-					violations,
-					labelOf,
-					isJumpable: (violation: PolicyViolationListItem) =>
-						isWorkflowDocumentOpenOnCanvas(documentId) &&
-						nodeIdsFor(violation, documentId).length > 0,
-					onJump: (violation: PolicyViolationListItem) => {
-						const ids = nodeIdsFor(violation, documentId);
-						if (ids.length > 0) canvasEventBus.emit('nodes:select', { ids, panIntoView: true });
-					},
-				}),
+				message: h('div', [
+					h(PolicyViolationList, {
+						violations,
+						labelOf,
+						isJumpable: (violation: PolicyViolationListItem) =>
+							isWorkflowDocumentOpenOnCanvas(documentId) &&
+							nodeIdsFor(violation, documentId).length > 0,
+						onJump: (violation: PolicyViolationListItem) => {
+							const ids = nodeIdsFor(violation, documentId);
+							if (ids.length > 0) canvasEventBus.emit('nodes:select', { ids, panIntoView: true });
+						},
+					}),
+					onFix &&
+						h(PublishJudgeFixButton, {
+							onFix: () => {
+								handle.close();
+								onFix();
+							},
+						}),
+				]),
 			},
 			false,
 		);

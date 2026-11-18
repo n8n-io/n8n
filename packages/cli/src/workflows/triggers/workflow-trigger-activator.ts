@@ -22,6 +22,7 @@ import type {
 import {
 	ERROR_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	JUDGE_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	Workflow,
 	WorkflowActivationError,
@@ -97,6 +98,7 @@ const PSEUDO_TRIGGER_NODE_TYPES = new Set<string>([
 	MANUAL_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	ERROR_TRIGGER_NODE_TYPE,
+	JUDGE_TRIGGER_NODE_TYPE,
 ]);
 
 /** A single trigger node that failed to (de)register during activation. */

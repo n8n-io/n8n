@@ -48,6 +48,19 @@ const posthogStore = usePostHog();
 const { canManagePolicies: canManageTypePolicies, entryRouteName: typePoliciesRouteName } =
 	usePolicyAdminAccess();
 
+// The judges page belongs to a module, so only its ids are known here.
+const JUDGES_MODULE_ID = 'publish-judge';
+const JUDGES_VIEW = 'publish-judge-settings';
+const canManageJudges = computed(
+	() =>
+		settingsStore.isModuleActive(JUDGES_MODULE_ID) &&
+		(usersStore.currentUser?.globalScopes?.includes('nodeTypePolicy:manage') ?? false),
+);
+
+function openJudges() {
+	void router.push({ name: JUDGES_VIEW });
+}
+
 function openTypePolicies() {
 	void router.push({ name: typePoliciesRouteName.value });
 }
@@ -443,6 +456,26 @@ const sharingCountText = computed(() => {
 		</N8nSettingsSection>
 
 		<ApiKeyRateLimitsSection v-if="isRateLimitSettingsEnabled" />
+
+		<N8nSettingsSection
+			v-if="canManageJudges"
+			:title="i18n.baseText('publishJudge.policiesRow.section')"
+			data-test-id="security-judges-section"
+		>
+			<N8nSettingsRowGroup>
+				<N8nSettingsRow
+					clickable
+					:title="i18n.baseText('publishJudge.policiesRow.title')"
+					:description="i18n.baseText('publishJudge.policiesRow.description')"
+					data-test-id="security-judges-row"
+					@click="openJudges"
+				>
+					<template #action>
+						<N8nSettingsRowConfigure :value="i18n.baseText('generic.configure')" />
+					</template>
+				</N8nSettingsRow>
+			</N8nSettingsRowGroup>
+		</N8nSettingsSection>
 
 		<N8nAlertDialog
 			:open="showPublishingDialog"

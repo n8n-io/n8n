@@ -23,6 +23,7 @@ import { isPromotionsEnabled } from '@/features/shared/promotions/usePromotionsE
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
+import { usePublishJudgeAssistantHandoff } from '@/features/ai/instanceAi/composables/usePublishJudgeAssistantHandoff';
 import { useSelfHealingChatHandoff } from '@/features/ai/instanceAi/composables/useSelfHealingChatHandoff';
 import { useAppAssistantHandoff } from '@/features/ai/instanceAi/composables/useAppAssistantHandoff';
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)
@@ -165,6 +166,10 @@ export const registerShellCapabilities = () => {
 	capabilityRegistry.provide(capabilities.workflowMcpAccessSync, syncWorkflowMcpAccess);
 	capabilityRegistry.provide(capabilities.mcpExposeAllOffer, mcpExposeAllOffer);
 	capabilityRegistry.provide(capabilities.createSelfHealingChatHandoff, useSelfHealingChatHandoff);
+	capabilityRegistry.provide(
+		capabilities.createPublishJudgeAssistantHandoff,
+		usePublishJudgeAssistantHandoff,
+	);
 	capabilityRegistry.provide(capabilities.projectContext, projectContext);
 	capabilityRegistry.provide(capabilities.resourceEditors, resourceEditors);
 	capabilityRegistry.provide(capabilities.environmentsSettings, environmentsSettings);

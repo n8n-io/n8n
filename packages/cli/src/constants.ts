@@ -6,6 +6,7 @@ import type { ITaskDataConnections } from 'n8n-workflow';
 import {
 	ERROR_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	JUDGE_TRIGGER_NODE_TYPE,
 	jsonParse,
 	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
 } from 'n8n-workflow';
@@ -47,6 +48,7 @@ export const STARTING_NODES = [
 export const TRIGGER_COUNT_EXCLUDED_NODES = [
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	ERROR_TRIGGER_NODE_TYPE,
+	JUDGE_TRIGGER_NODE_TYPE,
 ];
 
 export const MCP_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpTrigger';

@@ -261,6 +261,7 @@ describe('useWorkflowActivate', () => {
 				expect.any(String),
 				'publish',
 				`${WORKFLOW_ID}@latest`,
+				{ onFix: undefined },
 			);
 			expect(mockShowError).not.toHaveBeenCalled();
 			expect(mockSetWorkflowInactive).not.toHaveBeenCalled();

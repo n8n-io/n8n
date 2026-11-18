@@ -1,0 +1,11 @@
+{
+	"node": "n8n-nodes-base.judgeTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "An instance admin can set a workflow as a judge. n8n then starts that workflow to review a workflow or an agent before it is published or saved. Use the Judge Trigger node as the trigger of the judge workflow.",
+	"categories": ["Development", "Core Nodes"],
+	"resources": {},
+	"subcategories": {
+		"Core Nodes": ["Other Trigger Nodes"]
+	}
+}

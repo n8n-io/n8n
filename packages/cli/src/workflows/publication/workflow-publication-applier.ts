@@ -494,6 +494,7 @@ export class WorkflowPublicationApplier {
 				this.ownershipService,
 				{ id: workflow.id, name: workflow.name, nodes: newVersion.nodes },
 				{ kind: 'system', reason: 'publication' },
+				{ versionId: newVersion.versionId },
 			);
 
 			return null;

@@ -6,6 +6,7 @@ import type {
 	PolicyCheckResult,
 	PolicyDecision,
 	PolicyVersionRef,
+	RegisteredPolicyCheck,
 } from '@n8n/decorators';
 import { ENFORCEMENT_POINT_METHODS, PolicyCheckMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -36,6 +37,9 @@ const DEADLINES_MS = {
 	credentialDecrypt: 250,
 	contentImport: 1_000,
 } as const satisfies Record<EnforcementPoint, number>;
+
+/** Long enough for a model call. The request waits this long at most. */
+const PREPARE_DEADLINE_MS = 60_000;
 
 type CheckRunner<Point extends EnforcementPoint> = (
 	context: PolicyContext<Point>,
@@ -162,6 +166,36 @@ export class PolicyDecisionService implements PolicyEnforcementBackend {
 		const decision = decisionFrom(results);
 
 		return failures.length > 0 ? { ...decision, checkErrors: failures } : decision;
+	}
+
+	async prepareWorkflowPublish(context: PolicyContext<'workflowPublish'>): Promise<void> {
+		await this.prepare('workflowPublish', async (check, signal) => {
+			await check.prepareWorkflowPublish?.(context, signal);
+		});
+	}
+
+	async prepareWorkflowSave(context: PolicyContext<'workflowSave'>): Promise<void> {
+		await this.prepare('workflowSave', async (check, signal) => {
+			await check.prepareWorkflowSave?.(context, signal);
+		});
+	}
+
+	/** A failed step is only logged: the check that reads its result decides what a gap means. */
+	private async prepare(
+		point: EnforcementPoint,
+		step: (check: RegisteredPolicyCheck, signal: AbortSignal) => Promise<void>,
+	) {
+		const checks = this.checkMetadata.getClasses().map((checkClass) => Container.get(checkClass));
+
+		await Promise.all(
+			checks.map(async (check) => {
+				try {
+					await withDeadline(async (signal) => await step(check, signal), PREPARE_DEADLINE_MS);
+				} catch (error) {
+					this.logger.error(`Policy check "${check.id}" failed to prepare ${point}`, { error });
+				}
+			}),
+		);
 	}
 
 	/** From `runnersFor`, so this cannot disagree with what `enforce` and `evaluate` run. */

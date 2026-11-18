@@ -223,10 +223,13 @@ export class AgentPublishService {
 		// Before validation, so a refusal names the violations instead of a generic error.
 		const schema = targetHistory.schema;
 		if (schema) {
-			await this.agentPolicyService.enforcePublish(projectId, agent.id, schema, {
-				kind: 'user',
-				user,
-			});
+			await this.agentPolicyService.enforcePublish(
+				projectId,
+				agent.id,
+				schema,
+				{ kind: 'user', user },
+				targetHistory.versionId,
+			);
 		}
 
 		const credentialProvider = new AgentsCredentialProvider(

@@ -57,6 +57,7 @@ import { redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
 import { Container, Service } from '@n8n/di';
 import type {
 	InstanceAiAppService,
+	InstanceAiPublishJudgeService,
 	InstanceAiContext,
 	InstanceAiConversationHistoryReader,
 	InstanceAiWorkflowService,
@@ -714,6 +715,7 @@ export class InstanceAiAdapterService {
 				: {}),
 			skillService: this.getSkillService(user, assistantSkillsEnabled === true),
 			appService: this.createAppAdapter(user, projectId, threadId),
+			publishJudgeService: this.createPublishJudgeAdapter(user),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user, projectId),
 			templatesService: this.getTemplatesService(),
@@ -3612,6 +3614,36 @@ export class InstanceAiAdapterService {
 				await findWorkflow(workflowId, 'workflow:update');
 				await evaluationConfigService.delete(workflowId, configId);
 			},
+		};
+	}
+
+	private createPublishJudgeAdapter(user: User): InstanceAiPublishJudgeService | undefined {
+		if (!Container.get(ModuleRegistry).isActive('publish-judge')) return undefined;
+
+		const settings = async () => {
+			// The scope that the publish judge endpoints ask for.
+			if (!hasGlobalScope(user, 'nodeTypePolicy:manage')) {
+				throw new UserError('Only an instance admin can read or set a publish judge');
+			}
+			const { PublishJudgeSettingsService } = await import(
+				'@/modules/publish-judge/publish-judge-settings.service.js'
+			);
+			return Container.get(PublishJudgeSettingsService);
+		};
+
+		return {
+			get: async (projectId) => await (await settings()).get(projectId),
+			set: async (projectId, judge) =>
+				await (await settings()).set(
+					projectId,
+					judge ?? {
+						judgeType: 'workflow',
+						judgeId: null,
+						onUnavailable: 'block',
+						reviewAgents: false,
+					},
+					user,
+				),
 		};
 	}
 

@@ -13,6 +13,7 @@ import { useToolLabel } from '../toolLabels';
 // builder registries. The frontend cannot import those backend packages.
 const OTHER_INSTANCE_AI_TOOL_NAMES = [
 	'eval-config',
+	'publish-judge',
 	'workspace',
 	'research',
 	'n8n-docs',

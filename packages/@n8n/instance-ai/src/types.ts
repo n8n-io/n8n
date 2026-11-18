@@ -39,6 +39,7 @@ import type {
 	InstanceAiEvent,
 	InstanceAiFileAttachment,
 	InstanceAiPermissions,
+	PublishJudgeSettings,
 	InstanceAiSetupItem,
 	InstanceAiThreadArtifact,
 	McpTool,
@@ -1242,6 +1243,21 @@ export interface InstanceAiPreferenceService {
 	): void;
 }
 
+/** Reads and sets the publish judge of the instance (`null`) or of one project. */
+export interface InstanceAiPublishJudgeService {
+	get(projectId: string | null): Promise<PublishJudgeSettings | null>;
+	/** A `null` judge removes the judge of the scope. */
+	set(
+		projectId: string | null,
+		judge: InstanceAiPublishJudgeInput | null,
+	): Promise<PublishJudgeSettings | null>;
+}
+
+export type InstanceAiPublishJudgeInput = Pick<
+	PublishJudgeSettings,
+	'judgeType' | 'judgeId' | 'onUnavailable' | 'reviewAgents'
+>;
+
 export interface InstanceAiSkillService {
 	assistantSkillsEnabled: boolean;
 	list(options: {
@@ -1785,6 +1801,8 @@ export interface InstanceAiContext {
 	aiPreferenceService?: InstanceAiPreferenceService;
 	skillService?: InstanceAiSkillService;
 	appService?: InstanceAiAppService;
+	/** Present only when the publish judge module is active. Its absence hides the tool and the skill. */
+	publishJudgeService?: InstanceAiPublishJudgeService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */

@@ -30,6 +30,7 @@ import {
 	clearPendingActivationModal,
 } from '@/app/composables/workflowPublicationConfirmation';
 import { usePolicyViolationToast } from '@/app/composables/usePolicyViolationToast';
+import { usePublishJudgeFix } from '@/features/ai/instanceAi/composables/usePublishJudgeFix';
 import { getPolicyViolations } from '@n8n/frontend-module-type-availability-policies';
 
 export function useWorkflowActivate() {
@@ -53,6 +54,7 @@ export function useWorkflowActivate() {
 	const collaborationStore = useCollaborationStore();
 	const { errorMessage: activationErrorMessage } = useActivationError(activationErrorNodeId);
 	const { showPolicyViolationToast, closePolicyViolationToast } = usePolicyViolationToast();
+	const judgeFix = usePublishJudgeFix();
 
 	const parseWebhookConflictError = (error: ResponseError) => {
 		try {
@@ -283,12 +285,22 @@ export function useWorkflowActivate() {
 				const violations = getPolicyViolations(error);
 
 				if (violations) {
-					showPolicyViolationToast(
-						violations,
-						policyTitle,
-						'publish',
-						createWorkflowDocumentId(workflowId),
-					);
+					const documentId = createWorkflowDocumentId(workflowId);
+					const fixWithAssistant = () => {
+						const { name, homeProject } = useWorkflowDocumentStore(documentId);
+						void judgeFix.fix(
+							{
+								type: 'workflow',
+								id: workflowId,
+								name: name || undefined,
+								projectId: homeProject?.id,
+							},
+							violations,
+						);
+					};
+					showPolicyViolationToast(violations, policyTitle, 'publish', documentId, {
+						onFix: judgeFix.canFix(violations) ? fixWithAssistant : undefined,
+					});
 				} else {
 					activationErrorNodeId.value = error.meta?.nodeId as string | undefined;
 					toast.showError(error, title, {

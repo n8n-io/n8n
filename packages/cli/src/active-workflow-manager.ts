@@ -652,6 +652,7 @@ export class ActiveWorkflowManager {
 				this.ownershipService,
 				{ id: dbWorkflow.id, name: dbWorkflow.name, nodes },
 				actor,
+				{ versionId: dbWorkflow.activeVersion.versionId },
 			);
 
 			// Another version can be active by the time a forwarded command arrives, so

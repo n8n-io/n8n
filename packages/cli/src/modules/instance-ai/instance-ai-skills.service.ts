@@ -30,6 +30,7 @@ export const SKILLS = {
 	suggestAutomations: 'suggest-automations',
 	v3Migration: 'v3-migration',
 	appBuilder: 'app-builder',
+	publishJudge: 'publish-judge',
 } as const;
 
 export type SkillId = (typeof SKILLS)[keyof typeof SKILLS];
@@ -44,6 +45,8 @@ export interface InstanceAiSkillScope {
 	 */
 	agentBuildingEnabled: boolean;
 	appBuildingEnabled: boolean;
+	/** Whether the publish judge module is active on this instance. */
+	publishJudgeEnabled: boolean;
 }
 
 export interface InstanceAiRunSkills extends HubRunSkills {
@@ -74,6 +77,10 @@ const SKILL_GATES: ReadonlyArray<{
 	{
 		skills: [SKILLS.appBuilder],
 		isOpen: ({ appBuildingEnabled }) => appBuildingEnabled,
+	},
+	{
+		skills: [SKILLS.publishJudge],
+		isOpen: ({ publishJudgeEnabled }) => publishJudgeEnabled,
 	},
 ];
 

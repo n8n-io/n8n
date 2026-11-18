@@ -815,6 +815,8 @@ export class WorkflowService {
 				},
 				storedWorkflow: { id: workflow.id, name: workflow.name, nodes: workflow.nodes },
 				projectId: ownerProject.id,
+				connections: workflowUpdateData.connections ?? workflow.connections,
+				settings: workflowUpdateData.settings ?? workflow.settings,
 			},
 			{ kind: 'user', user },
 		);
@@ -1403,6 +1405,13 @@ export class WorkflowService {
 			this.ownershipService,
 			{ id: workflowId, name: workflow.name, nodes: nodesToPublish },
 			{ kind: 'user', user },
+			{
+				versionId: versionIdToActivate,
+				prepareWith:
+					versionIdToActivate !== previousActiveVersionId
+						? { connections: versionToActivate.connections, settings: workflow.settings }
+						: undefined,
+			},
 		);
 
 		// re-applying the already-published version (e.g. a settings-only update)

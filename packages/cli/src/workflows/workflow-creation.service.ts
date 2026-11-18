@@ -321,6 +321,8 @@ export class WorkflowCreationService {
 				workflow: { id: newWorkflow.id ?? null, name: newWorkflow.name, nodes: newWorkflow.nodes },
 				storedWorkflow: null,
 				projectId: effectiveProjectId,
+				connections: newWorkflow.connections,
+				settings: newWorkflow.settings,
 			},
 			{ kind: 'user', user },
 		);

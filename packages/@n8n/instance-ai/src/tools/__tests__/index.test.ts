@@ -321,6 +321,16 @@ describe('domain tool construction', () => {
 		expect(createOrchestratorDomainTools(enabled).get('eval-config')).toBeDefined();
 	});
 
+	it('gates the publish-judge tool on the host-wired publishJudgeService', () => {
+		const disabled = makeContext();
+		expect(createOrchestratorDomainTools(disabled).get('publish-judge')).toBeUndefined();
+
+		const enabled = makeContext({
+			publishJudgeService: {} as InstanceAiContext['publishJudgeService'],
+		});
+		expect(createOrchestratorDomainTools(enabled).get('publish-judge')).toBeDefined();
+	});
+
 	it('gates the mcp-servers tool on the host-wired mcpService', () => {
 		// Gates off: adapter leaves mcpService unset → tool absent.
 		const disabled = makeContext();

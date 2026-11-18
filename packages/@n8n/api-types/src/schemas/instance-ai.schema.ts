@@ -1859,6 +1859,8 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'agent_preview',
 	'self_healing_result',
 	'migration_report',
+	'publish_judge_settings',
+	'publish_judge_refusal',
 	'assistant_page',
 	'onboarding',
 	'preferences_empty_state', // Experiment cleanup (127_preferences_empty_state)
@@ -1899,6 +1901,8 @@ export type InstanceAiThreadSourcePersisted =
  *   change request, dropped into the composer
  * - `handoff_migration_report`: fix one migration report finding, from the
  *   finding row or after an automated migration left work behind
+ * - `handoff_publish_judge_fix`: change a workflow or an agent that a judge
+ *   refused, from the refusal toast
  * - `template_adjustment` — "start from this template and help me adapt it",
  *   from the in-app template preview or an n8n.io deep link
  * - `template_example` — a featured example card on the empty state
@@ -1922,6 +1926,8 @@ export const INSTANCE_AI_PREFILL_TYPES = [
 	'handoff_setup_panel_execute',
 	'handoff_agent_change_request',
 	'handoff_migration_report',
+	'handoff_publish_judge',
+	'handoff_publish_judge_fix',
 	'template_adjustment',
 	'template_example',
 	'suggestion_catalog',

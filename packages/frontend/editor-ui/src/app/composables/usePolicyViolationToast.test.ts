@@ -250,6 +250,43 @@ describe('usePolicyViolationToast', () => {
 		expect(queryByTestId('policy-violation-jump')).not.toBeInTheDocument();
 	});
 
+	it('shows no fix button when no fix handler is given', () => {
+		const { showPolicyViolationToast } = usePolicyViolationToast();
+		showPolicyViolationToast(
+			[slackViolation],
+			'Problem publishing',
+			'publish',
+			createWorkflowDocumentId('w1'),
+		);
+
+		const { queryByTestId } = render(
+			defineComponent({ render: () => showMessageSpy.mock.calls[0][0].message }),
+		);
+		expect(queryByTestId('publish-judge-fix')).not.toBeInTheDocument();
+	});
+
+	it('closes the toast, then calls the fix handler, when the fix button is clicked', async () => {
+		const onFix = vi.fn();
+		const { showPolicyViolationToast } = usePolicyViolationToast();
+		showPolicyViolationToast(
+			[slackViolation],
+			'Problem publishing',
+			'publish',
+			createWorkflowDocumentId('w1'),
+			{ onFix },
+		);
+		closeSpy.mockClear();
+
+		const { getByTestId } = render(
+			defineComponent({ render: () => showMessageSpy.mock.calls[0][0].message }),
+		);
+		await userEvent.click(getByTestId('publish-judge-fix'));
+
+		expect(onFix).toHaveBeenCalledTimes(1);
+		expect(closeSpy).toHaveBeenCalledTimes(1);
+		expect(closeSpy.mock.invocationCallOrder[0]).toBeLessThan(onFix.mock.invocationCallOrder[0]);
+	});
+
 	it('reports the backend messages to error telemetry instead of the rendered list', () => {
 		useWorkflowsStore().setWorkflowId('w-on-canvas');
 		const { showPolicyViolationToast } = usePolicyViolationToast();

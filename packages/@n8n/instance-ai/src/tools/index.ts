@@ -43,6 +43,9 @@ const loadChangeDataTablesTool = lazyMod(
 const loadEvalConfigTool = lazyMod(
 	() => require('./evals/eval-config.tool') as typeof import('./evals/eval-config.tool'),
 );
+const loadPublishJudgeTool = lazyMod(
+	() => require('./publish-judge.tool') as typeof import('./publish-judge.tool'),
+);
 const loadExecutionsTool = lazyMod(
 	() => require('./executions.tool') as typeof import('./executions.tool'),
 );
@@ -262,6 +265,14 @@ function getOrchestratorDomainToolFactories(
 
 	if (context.appService) {
 		tools.push([DOMAIN_TOOL_IDS.APPS, () => loadAppsTool().createAppsTool(context)]);
+	}
+
+	// Presence is the gate: the adapter wires the service only when the module is active.
+	if (context.publishJudgeService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.PUBLISH_JUDGE,
+			() => loadPublishJudgeTool().createPublishJudgeTool(context),
+		]);
 	}
 
 	// Registered on every turn, with or without files, so the tool list, which

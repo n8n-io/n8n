@@ -1,11 +1,20 @@
-import { ref } from 'vue';
+import { h, ref } from 'vue';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useStorage } from '@n8n/composables/useStorage';
+import {
+	getPolicyViolations,
+	PolicyViolationList,
+} from '@n8n/frontend-module-type-availability-policies';
 import { useUIStore } from '@/app/stores/ui.store';
 import { MODAL_CONFIRM } from '@/app/constants';
+import PublishJudgeFixButton from '@/features/ai/instanceAi/components/PublishJudgeFixButton.vue';
+import {
+	usePublishJudgeFix,
+	type JudgeRefusedSubject,
+} from '@/features/ai/instanceAi/composables/usePublishJudgeFix';
 import {
 	AGENT_PUBLISHED_MODAL_KEY,
 	LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION,
@@ -56,7 +65,34 @@ export function useAgentPublish() {
 	const { openAgentConfirmationModal } = useAgentConfirmationModal();
 	const { trackRevertedChangesOnAgent } = useAgentTelemetry();
 
+	const judgeFix = usePublishJudgeFix();
+
 	const publishing = ref(false);
+
+	/** A judge refusal lists its reasons and offers the Assistant. Other errors stay as they were. */
+	function showPublishError(error: unknown, subject: JudgeRefusedSubject) {
+		const title = locale.baseText('agents.publish.error.publish');
+		const violations = getPolicyViolations(error);
+		if (!violations || !judgeFix.canFix(violations)) {
+			showError(error, title);
+			return;
+		}
+
+		const handle = showMessage({
+			title,
+			type: 'error',
+			duration: 0,
+			message: h('div', [
+				h(PolicyViolationList, { violations }),
+				h(PublishJudgeFixButton, {
+					onFix: () => {
+						handle.close();
+						void judgeFix.fix(subject, violations);
+					},
+				}),
+			]),
+		});
+	}
 	const { openVersionMetadata } = useAgentVersionMetadataModal();
 
 	async function publish(
@@ -118,7 +154,12 @@ export function useAgentPublish() {
 						});
 						return true;
 					} catch (error) {
-						showError(error, locale.baseText('agents.publish.error.publish'));
+						showPublishError(error, {
+							type: 'agent',
+							id: agentId,
+							name: currentDraft?.name,
+							projectId,
+						});
 						return false;
 					}
 				},

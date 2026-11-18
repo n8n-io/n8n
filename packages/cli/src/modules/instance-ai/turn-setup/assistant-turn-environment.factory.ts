@@ -522,6 +522,7 @@ export class AssistantTurnEnvironmentFactory {
 			// The agent-building skills need the build-agent tool, which needs a builder delegate.
 			agentBuildingEnabled: context.builderDelegate !== undefined,
 			appBuildingEnabled: context.appService !== undefined,
+			publishJudgeEnabled: context.publishJudgeService !== undefined,
 		};
 		const skills = await this.skillsService.loadSkills(skillScope, {
 			user,

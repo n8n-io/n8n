@@ -18,6 +18,7 @@ const openScope: InstanceAiSkillScope = {
 	flags: { configEvalsEnabled: true, instanceContextEnabled: true },
 	agentBuildingEnabled: true,
 	appBuildingEnabled: true,
+	publishJudgeEnabled: true,
 };
 
 const gatedSkills: Array<[string, InstanceAiSkillScope, SkillId[]]> = [
@@ -37,6 +38,7 @@ const gatedSkills: Array<[string, InstanceAiSkillScope, SkillId[]]> = [
 		[SKILLS.agentBuilder, SKILLS.intentRecognition],
 	],
 	['appBuildingEnabled', { ...openScope, appBuildingEnabled: false }, [SKILLS.appBuilder]],
+	['publishJudgeEnabled', { ...openScope, publishJudgeEnabled: false }, [SKILLS.publishJudge]],
 ];
 
 describe('InstanceAiSkillsService', () => {

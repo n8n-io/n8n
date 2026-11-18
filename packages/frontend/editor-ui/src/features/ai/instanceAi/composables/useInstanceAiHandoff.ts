@@ -400,6 +400,23 @@ export async function ensurePersonalProjectId(): Promise<string | null> {
 	return projectsStore.personalProject?.id ?? null;
 }
 
+/**
+ * The home project of a resource when the user is a member of it, else their personal project.
+ * A shared resource can live in a project where the user cannot start a thread.
+ */
+export async function ensureThreadProjectId(
+	homeProjectId: string | undefined,
+): Promise<string | null> {
+	const projectsStore = useProjectsStore();
+	if (homeProjectId) {
+		if (projectsStore.myProjects.length === 0) await projectsStore.getMyProjects().catch(() => {});
+		if (projectsStore.myProjects.some((project) => project.id === homeProjectId)) {
+			return homeProjectId;
+		}
+	}
+	return await ensurePersonalProjectId();
+}
+
 /** For a user in the rollout, hand-offs start their threads on the Assistant agent. */
 function isAssistantAgentLaunch(): boolean {
 	return useInstanceAiSettingsStore().newThreadsUseAssistantAgent;

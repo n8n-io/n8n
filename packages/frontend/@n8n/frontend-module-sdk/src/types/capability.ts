@@ -69,6 +69,18 @@ export interface SelfHealingChatHandoff {
 	start(projectId: string, input: SelfHealingChatInput): Promise<SelfHealingChatStartOutcome>;
 }
 
+export type PublishJudgeAssistantOutcome = 'started' | 'busy' | 'failed' | 'unavailable';
+
+export interface PublishJudgeAssistantHandoff {
+	/** Whether the Assistant is set up. Reads reactive state, so call it in a `computed`. */
+	available: ComputedRef<boolean>;
+	/**
+	 * Opens an Assistant chat and sends a request to build a publish judge. The chat opens in
+	 * `projectId`, or in the personal project of the user when it is absent.
+	 */
+	start(request: string, projectId?: string): Promise<PublishJudgeAssistantOutcome>;
+}
+
 /** The project that the editor shows and the project lists of the sidebar. */
 export interface ProjectContext {
 	/** The project that the shell shows, or null. Reads reactive state, so call it in a `computed`. */
