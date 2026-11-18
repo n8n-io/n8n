@@ -779,6 +779,7 @@ describe('GlobalConfig', () => {
 			tracingRecordOutputs: true,
 			modules: [],
 			backgroundTasksEnabled: false,
+			subAgentSessionsEnabled: false,
 			serviceAccountsEnabled: false,
 			sandboxEnabled: false,
 			sandboxImage: 'daytonaio/sandbox:0.5.0',

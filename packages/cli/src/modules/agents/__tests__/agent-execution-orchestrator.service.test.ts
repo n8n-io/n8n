@@ -3447,9 +3447,46 @@ describe('AgentExecutionOrchestratorService', () => {
 		},
 	);
 
+	it('uses the preview runtime for a wake on a preview chat thread', async () => {
+		const { service, runtimeCacheService, executionService } = makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await service.executeForWake({
+			backgroundJobSignal,
+			agentId,
+			projectId,
+			message: '<background-jobs-settled>[]</background-jobs-settled>',
+			memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+			identity: { type: 'draft', user, principalHash: userPrincipalHash },
+			abortSignal: new AbortController().signal,
+		});
+
+		expect(executionService.canUseDraftThread).toHaveBeenCalledWith(
+			'thread-1',
+			projectId,
+			agentId,
+			user.id,
+			{ previewChat: true, sessionMode: 'existing' },
+		);
+		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
+			agentId,
+			projectId,
+			integrationType: N8N_CHAT_INTEGRATION_TYPE,
+			usePublishedVersion: false,
+			user,
+			previewChat: true,
+			sandboxPrincipalHash: userPrincipalHash,
+		});
+	});
+
 	it('runs a draft wake without a chat client and hides its input from execution history', async () => {
 		const { service, runtimeCacheService, executionService, externalHooks, wakeService, bridge } =
 			makeService();
+		// A draft thread outside the preview chat, for example a test run of the builder.
+		executionService.canUseDraftThread.mockImplementation(
+			async (_threadId, _projectId, _agentId, _userId, options) => !options?.previewChat,
+		);
 		const runtime = makeRuntime([
 			{ type: 'text-start', id: 'text-1' },
 			{ type: 'text-delta', id: 'text-1', delta: 'Handled the background result.' },

@@ -21,6 +21,8 @@ export const DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE =
 const delegateInputSchema = z.object({
 	subAgentId: z.string().min(1),
 	taskName: z.string().optional(),
+	goal: z.string().optional(),
+	context: z.string().optional(),
 	difficulty: z.enum(SUB_AGENT_TASK_DIFFICULTIES).optional(),
 });
 
@@ -30,6 +32,8 @@ const delegateOutputSchema = z.object({
 	// own error flag to render it as a failure.
 	status: z.enum(['completed', 'failed', 'suspended']).optional(),
 	answer: z.string().optional(),
+	/** The sub-agent asks a question. The parent answers with a new delegation. */
+	inputRequired: z.boolean().optional(),
 	error: z.string().optional(),
 	model: z.string().optional(),
 });

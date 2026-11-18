@@ -107,6 +107,7 @@ export const delegateSubAgentOutputSchema = z.object({
 	threadId: z.string().optional(),
 	model: z.string().optional(),
 	answer: z.string(),
+	inputRequired: z.boolean().optional(),
 	structuredOutput: z.unknown().optional(),
 	usage: z
 		.object({
@@ -241,6 +242,8 @@ export interface DelegateSubAgentToolOutput {
 	model?: string;
 	/** The child's answer — the main payload the parent acts on. */
 	answer: string;
+	/** The child asks a question. The answer field holds it, and a new delegation answers it. */
+	inputRequired?: boolean;
 	structuredOutput?: unknown;
 	/** Child token usage + cost, surfaced so the parent can account for it. */
 	usage?: Pick<TokenUsage, 'promptTokens' | 'completionTokens' | 'totalTokens' | 'cost'>;

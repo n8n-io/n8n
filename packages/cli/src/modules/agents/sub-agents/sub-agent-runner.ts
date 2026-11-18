@@ -24,6 +24,7 @@ import {
 	type TokenUsage,
 } from '@n8n/agents';
 import type {
+	AgentMessageAuthor,
 	AgentBudgetNotice,
 	AgentPlanTaskRef,
 	AgentToolOutputFile,
@@ -33,13 +34,13 @@ import type {
 	SubAgentSpawnRequest,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { AiConfig } from '@n8n/config';
+import { AgentsConfig, AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
-import { v4 as uuid } from 'uuid';
+import { v4 as uuid, v5 as uuidv5 } from 'uuid';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import {
@@ -82,6 +83,7 @@ import {
 	SubAgentSourceResolver,
 	type ResolvedSubAgentRuntimeSource,
 } from './sub-agent-source-resolver';
+import { isRequestInputCall } from './request-input-tool';
 import { SystemAgentUsageRelay } from '../system-agents/system-agent-usage-relay';
 import type { AgentTurnStatus } from '../types/agent-turn-outcome';
 
@@ -152,6 +154,8 @@ export interface SubAgentRunResult {
 	threadId: string;
 	status: 'completed' | 'failed' | 'suspended' | 'paused';
 	result: GenerateResult;
+	/** Set when the answer of a completed child is a question to its parent. */
+	inputRequired?: true;
 	/** Opaque, checkpoint-safe host context required to reconstruct this child exactly. */
 	resumeContext?: JSONValue;
 	/** Files that the child made. The parent can read them. */
@@ -189,6 +193,29 @@ type ForegroundOperation = {
 			threadId: string;
 	  }
 );
+
+const SUB_AGENT_SESSION_NAMESPACE = uuidv5('n8n-sub-agent-session', uuidv5.URL);
+
+function subAgentSessionId(parentThreadId: string, subAgentId: string): string {
+	return uuidv5(`${parentThreadId}\u0000${subAgentId}`, SUB_AGENT_SESSION_NAMESPACE);
+}
+
+/**
+ * The request of a parent to a saved sub-agent that keeps its session. The child
+ * reads it as a message in a conversation, so it has no task wrapper.
+ */
+function renderSessionDelegationPrompt(request: {
+	goal: string;
+	context?: string;
+	fileIds?: string[];
+}): string {
+	const sections = [request.goal];
+	if (request.context) sections.push(request.context);
+	if (request.fileIds?.length) {
+		sections.push(`FILES (pass these fileIds to tools):\n${request.fileIds.join('\n')}`);
+	}
+	return sections.join('\n\n');
+}
 
 @Service()
 export class SubAgentRunner {
@@ -271,6 +298,44 @@ export class SubAgentRunner {
 		await this.checkpointStorage.delete(request.childRunId, pinnedSource.agentId);
 	}
 
+	/**
+	 * A saved sub-agent keeps one session for each conversation of its parent.
+	 * An inline child and a session that is in use get a new session.
+	 */
+	private async resolveRunSession(
+		request: SubAgentSpawnRequest,
+		sourceAgentId: string,
+		parentAgentId: string,
+	): Promise<{ threadId: string; continued: boolean; keepsSession: boolean }> {
+		const fresh = { continued: false, keepsSession: false };
+		if (request.childThreadId) return { threadId: request.childThreadId, ...fresh };
+		const { parentThreadId } = request;
+		if (
+			!parentThreadId ||
+			sourceAgentId === parentAgentId ||
+			!Container.get(AgentsConfig).subAgentSessionsEnabled
+		) {
+			return { threadId: uuid(), ...fresh };
+		}
+
+		const threadId = subAgentSessionId(parentThreadId, sourceAgentId);
+		const latest = await this.executionRepository.findLatestByThreadId(threadId);
+		if (!latest) return { threadId, continued: false, keepsSession: true };
+		if (latest.status === 'running' || latest.status === 'awaiting') {
+			return { threadId: uuid(), ...fresh };
+		}
+		return { threadId, continued: true, keepsSession: true };
+	}
+
+	/** The session of a saved sub-agent shows the parent agent as the sender of each request. */
+	private async resolveParentAuthor(
+		parentAgentId: string,
+	): Promise<AgentMessageAuthor | undefined> {
+		const { AgentRepository } = await import('../repositories/agent.repository.js');
+		const parent = await Container.get(AgentRepository).findById(parentAgentId);
+		return parent ? { id: parent.id, name: parent.name } : undefined;
+	}
+
 	private async executeForeground(
 		operation: ForegroundOperation,
 		context: SubAgentRunContext,
@@ -292,8 +357,15 @@ export class SubAgentRunner {
 		// A delegated run uses the same fresh id for SDK memory and its session
 		// record. A background dispatcher supplies the id itself so the job row
 		// can reference the child before the run starts.
-		const threadId =
-			operation.type === 'run' ? (operation.request.childThreadId ?? uuid()) : operation.threadId;
+		const session =
+			operation.type === 'run'
+				? await this.resolveRunSession(
+						operation.request,
+						runtimeSource.source.sourceId,
+						context.parentAgentId,
+					)
+				: { threadId: operation.threadId, continued: false, keepsSession: false };
+		const { threadId } = session;
 		const resourceId =
 			operation.type === 'run' ? (operation.request.parentResourceId ?? threadId) : threadId;
 		const sandboxPrincipalHash = await this.resolveSandboxPrincipalHash(
@@ -311,8 +383,15 @@ export class SubAgentRunner {
 				subAgentId: runtimeSource.source.sourceId,
 			}) ?? resolvedConfig;
 		const telemetry = deriveSubAgentTelemetry(context.telemetry);
-		const userMessage =
-			operation.type === 'run' ? renderDelegateSubAgentPrompt(operation.request) : null;
+		let userMessage: string | null = null;
+		if (operation.type === 'run') {
+			userMessage = session.keepsSession
+				? renderSessionDelegationPrompt(operation.request)
+				: renderDelegateSubAgentPrompt(operation.request);
+		}
+		const author = session.keepsSession
+			? await this.resolveParentAuthor(context.parentAgentId)
+			: undefined;
 		const executionLinks = await this.resolveExecutionLinks(operation, threadId);
 		const recording: StartExecutionParams = {
 			// Saved parents supply access in the thread creation transaction.
@@ -326,6 +405,7 @@ export class SubAgentRunner {
 			resumeRunId: operation.type !== 'run' ? operation.request.childRunId : undefined,
 			sessionMode: operation.type !== 'run' ? 'existing' : 'new',
 			source: 'subagent',
+			...(author !== undefined ? { author } : {}),
 			...(executionLinks !== undefined ? { executionLinks } : {}),
 			threadMetadata: {
 				parentThreadId: operation.request.parentThreadId,
@@ -551,6 +631,7 @@ export class SubAgentRunner {
 				threadId,
 				status,
 				result,
+				...(status === 'completed' && consumed.requestedInput ? { inputRequired: true } : {}),
 				...(suspended ? { resumeContext: createResumeContext(runtimeSource.source) } : {}),
 				...returned,
 			};
@@ -762,15 +843,18 @@ async function consumeAgentStream(
 	result: GenerateResult;
 	executionError: unknown;
 	finish: FinishUsage | undefined;
+	requestedInput: boolean;
 }> {
 	const pendingSuspend: NonNullable<GenerateResult['pendingSuspend']> = [];
 	let structuredOutput: unknown;
 	let executionError: unknown;
 	let guardrail: GenerateResult['guardrail'];
 	let finish: FinishUsage | undefined;
+	let requestedInput = false;
 
 	for await (const value of streamAgentChunks(resultStream.stream)) {
 		recorder.record(value);
+		if (isRequestInputCall(value)) requestedInput = true;
 		if (value.type === 'error') executionError = value.error;
 		// Recorded before the record is read, so the label reaches the child's
 		// timeline, the parent's live stream, and the answer the parent model sees.
@@ -804,6 +888,7 @@ async function consumeAgentStream(
 	return {
 		executionError,
 		finish,
+		requestedInput,
 		result: buildGenerateResultFromRecord(
 			resultStream.runId,
 			messageRecord,

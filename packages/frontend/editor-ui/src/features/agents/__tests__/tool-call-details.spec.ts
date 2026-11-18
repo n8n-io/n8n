@@ -28,6 +28,42 @@ const writeTodosI18n: WriteTodosI18n = {
 
 describe('tool-call-details', () => {
 	describe('getToolCallDetails', () => {
+		it.each([
+			{ title: 'an answer', inputRequired: undefined, label: 'agents.chat.delegate.answer' },
+			{ title: 'a question', inputRequired: true, label: 'agents.chat.delegate.question' },
+		])(
+			'shows the request to a sub-agent above $title of the sub-agent',
+			({ inputRequired, label }) => {
+				expect(
+					getToolCallDetails(
+						{
+							tool: DELEGATE_SUB_AGENT_TOOL_NAME,
+							input: { subAgentId: 'billing', goal: 'Refund order 1042.', context: 'Gold tier.' },
+							output: { status: 'completed', answer: 'Reply text', inputRequired },
+							state: TOOL_CALL_STATE.DONE,
+						},
+						writeTodosI18n,
+					),
+				).toBe(
+					`**agents.chat.delegate.request**\n\nRefund order 1042.\n\nGold tier.\n\n**${label}**\n\nReply text`,
+				);
+			},
+		);
+
+		it('shows only the answer of a sub-agent when the call has no request text', () => {
+			expect(
+				getToolCallDetails(
+					{
+						tool: DELEGATE_SUB_AGENT_TOOL_NAME,
+						input: { subAgentId: 'billing' },
+						output: { status: 'completed', answer: 'Reply text' },
+						state: TOOL_CALL_STATE.DONE,
+					},
+					writeTodosI18n,
+				),
+			).toBe('Reply text');
+		});
+
 		it('returns undefined for running tool calls', () => {
 			expect(
 				getToolCallDetails({

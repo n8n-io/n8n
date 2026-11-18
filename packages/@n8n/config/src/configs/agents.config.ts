@@ -84,6 +84,15 @@ export class AgentsConfig {
 	backgroundTasksEnabled: boolean = false;
 
 	/**
+	 * Whether a saved sub-agent keeps one session for each conversation of its
+	 * parent agent. When enabled, a later delegation to the same sub-agent
+	 * continues that session, so the sub-agent remembers the earlier requests.
+	 * This feature is experimental.
+	 */
+	@Env('N8N_AGENTS_SUB_AGENT_SESSIONS_ENABLED')
+	subAgentSessionsEnabled: boolean = false;
+
+	/**
 	 * Whether n8n gives each new agent its own service account, so users can
 	 * share credentials and other resources with the agent. Set the same value
 	 * on every main instance.

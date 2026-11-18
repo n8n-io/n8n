@@ -19,9 +19,12 @@ import type {
 	SubAgentSpawnRequest,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { AiConfig } from '@n8n/config';
+import { AgentsConfig, type AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+
+import { AgentRepository } from '../../repositories/agent.repository';
+import { formatSubAgentToolOutput } from '../format-sub-agent-tool-output';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Mocked } from 'vitest';
 import { UserError } from '@n8n/errors';
@@ -220,6 +223,136 @@ describe('SubAgentRunner', () => {
 		});
 
 		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledTimes(1);
+	});
+
+	describe('with sub-agent sessions on', () => {
+		const context = () => ({
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'test' as const,
+		});
+		const sentMessage = (call: number) => JSON.stringify(childAgent.stream.mock.calls[call][0]);
+
+		beforeEach(() => {
+			Container.set(AgentsConfig, mock<AgentsConfig>({ subAgentSessionsEnabled: true }));
+			executionRepository.findLatestByThreadId.mockResolvedValue(null);
+			Container.set(AgentRepository, mock<AgentRepository>());
+		});
+
+		it('continues the session of a saved sub-agent in the same parent conversation', async () => {
+			const first = await runner.run(spawnRequest, context());
+			executionRepository.findLatestByThreadId.mockResolvedValue({ status: 'success' } as never);
+			const second = await runner.run({ ...spawnRequest, goal: 'Gold tier.' }, context());
+
+			expect(second.threadId).toBe(first.threadId);
+			expect(sentMessage(0)).toContain(spawnRequest.goal);
+			expect(sentMessage(0)).not.toContain('YOUR TASK');
+			expect(sentMessage(0)).not.toContain('EXPECTED OUTPUT');
+			expect(sentMessage(1)).toContain('Gold tier.');
+			expect(sentMessage(1)).not.toContain('YOUR TASK');
+		});
+
+		it('records the parent agent as the sender of the request', async () => {
+			const agentRepository = mock<AgentRepository>();
+			agentRepository.findById.mockResolvedValue({
+				id: parentAgentId,
+				name: 'Support agent',
+			} as never);
+			Container.set(AgentRepository, agentRepository);
+
+			await runner.run(spawnRequest, context());
+
+			expect(agentExecutionService.startExecutionRecording).toHaveBeenCalledWith(
+				expect.objectContaining({ author: { id: parentAgentId, name: 'Support agent' } }),
+				expect.anything(),
+			);
+		});
+
+		it('uses another session for another parent conversation', async () => {
+			const first = await runner.run(spawnRequest, context());
+			const second = await runner.run(
+				{ ...spawnRequest, parentThreadId: 'another-parent-thread' },
+				context(),
+			);
+
+			expect(second.threadId).not.toBe(first.threadId);
+		});
+
+		it.each(['running', 'awaiting'] as const)(
+			'starts a new session when the session has a %s run',
+			async (status) => {
+				const first = await runner.run(spawnRequest, context());
+				executionRepository.findLatestByThreadId.mockResolvedValue({ status } as never);
+				const second = await runner.run(spawnRequest, context());
+
+				expect(second.threadId).not.toBe(first.threadId);
+				expect(sentMessage(1)).toContain('YOUR TASK');
+			},
+		);
+
+		it('starts a new session for each inline child', async () => {
+			const inline = { ...spawnRequest, source: { agentId: parentAgentId } };
+			sourceResolver.resolveForRuntime.mockResolvedValue({
+				...runtimeSource,
+				source: { ...runtimeSource.source, sourceId: parentAgentId },
+			});
+
+			const first = await runner.run(inline, context());
+			const second = await runner.run(inline, context());
+
+			expect(second.threadId).not.toBe(first.threadId);
+		});
+	});
+
+	it('marks the answer of the child as a question when the child requests input', async () => {
+		childAgent.stream.mockResolvedValue(
+			makeStreamResult([
+				{
+					type: 'tool-call',
+					toolCallId: 'call-1',
+					toolName: 'request_input',
+					input: {},
+				},
+				...defaultStreamChunks,
+			]),
+		);
+
+		const result = await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'test',
+		});
+
+		expect(result.status).toBe('completed');
+		expect(result.inputRequired).toBe(true);
+		expect(formatSubAgentToolOutput(result)).toMatchObject({
+			status: 'completed',
+			inputRequired: true,
+			answer: 'Child answer',
+		});
+	});
+
+	it('returns no input request for a normal answer', async () => {
+		const result = await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'test',
+		});
+
+		expect(result.inputRequired).toBeUndefined();
+		expect(formatSubAgentToolOutput(result)).not.toHaveProperty('inputRequired');
+	});
+
+	it('starts a new session for each delegation when sub-agent sessions are off', async () => {
+		const context = { parentAgentId, projectId, credentialProvider, runType: 'test' as const };
+
+		const first = await runner.run(spawnRequest, context);
+		const second = await runner.run(spawnRequest, context);
+
+		expect(second.threadId).not.toBe(first.threadId);
 	});
 
 	it('sends the knowledge use of the child run when it ends', async () => {

@@ -32,7 +32,13 @@ describe('delegate-tool', () => {
 					expectedOutput: 'A table',
 					difficulty: 'high',
 				}),
-			).toEqual({ subAgentId: 'agent-1', taskName: 'research_api', difficulty: 'high' });
+			).toEqual({
+				subAgentId: 'agent-1',
+				taskName: 'research_api',
+				goal: 'Find pricing',
+				context: 'For three providers',
+				difficulty: 'high',
+			});
 		});
 
 		it('returns undefined for non-object input', () => {

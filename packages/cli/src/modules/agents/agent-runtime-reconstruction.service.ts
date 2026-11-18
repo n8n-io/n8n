@@ -107,6 +107,7 @@ import { buildToolRegistry, type ReferencedToolKind, type ToolRegistry } from '.
 import { AGENT_PLAN_TOOL_NAMES } from './plans/agent-plan.schema';
 import { BACKGROUND_JOBS_TOOL_NAME } from './background/background-job-messages';
 import { createGetEnvironmentTool, GET_ENVIRONMENT_TOOL_NAME } from './tools/environment-tool';
+import { createRequestInputTool, REQUEST_INPUT_TOOL_NAME } from './sub-agents/request-input-tool';
 import {
 	createMarkSessionFailedTool,
 	MARK_SESSION_FAILED_TOOL_NAME,
@@ -271,6 +272,7 @@ function harnessEagerToolNames(params: RuntimeDependencies): string[] {
 		WRITE_TODOS_TOOL_NAME,
 		READ_BINARY_DATA_TOOL_NAME,
 		GET_ENVIRONMENT_TOOL_NAME,
+		REQUEST_INPUT_TOOL_NAME,
 		RECALL_MEMORY_TOOL_NAME,
 		FLAG_MEMORY_TOOL_NAME,
 		...Object.values(AGENT_PLAN_TOOL_NAMES),
@@ -355,6 +357,9 @@ function toolRefName(ref: AgentJsonToolConfig): string {
 }
 
 /** The guardrail kinds whose check runs on an LLM rather than a local pattern. */
+const SUB_AGENT_SESSION_HINT =
+	'This agent keeps its session in this conversation and remembers your earlier requests. Write goal as a short direct message to it. It reads only goal and context. If its result has inputRequired: true, the answer is a question and the request is not done. Delegate to it again with only the answer to that question.';
+
 const MODEL_BASED_KINDS = new Set<AgentToolGuardrailKind>([
 	'jailbreak',
 	'nsfw',
@@ -991,6 +996,7 @@ export class AgentRuntimeReconstructionService {
 		);
 		const sourcesById: Record<string, SubAgentSource> = {};
 		const availableSubAgents: SubAgentDelegationConfig['availableSubAgents'] = [];
+		const keepsSession = Container.get(AgentsConfig).subAgentSessionsEnabled;
 
 		for (const { agentId, agent, useWhen } of await resolveUniqueSubAgents({
 			refs: configuredAgents,
@@ -1006,10 +1012,13 @@ export class AgentRuntimeReconstructionService {
 			// delegation — its current draft for test runs, its published
 			// version for production runs.
 			sourcesById[agentId] = { agentId };
+			const useWhenWithSession = keepsSession
+				? [useWhen, SUB_AGENT_SESSION_HINT].filter(Boolean).join(' ')
+				: useWhen;
 			availableSubAgents.push({
 				id: agentId,
 				name: agent.name,
-				...(useWhen ? { useWhen } : {}),
+				...(useWhenWithSession ? { useWhen: useWhenWithSession } : {}),
 			});
 		}
 
@@ -1148,6 +1157,9 @@ export class AgentRuntimeReconstructionService {
 		agent.nativeToolDeferral({ eagerToolNames: harnessEagerToolNames(params) });
 
 		agent.tool(createGetEnvironmentTool());
+		if (runtimeProfile === 'sub-agent' && Container.get(AgentsConfig).subAgentSessionsEnabled) {
+			agent.tool(createRequestInputTool());
+		}
 		const parentWorkspaceHandle = await this.attachWorkspaceAndKnowledge(params);
 		throwIfAborted(abortSignal);
 		if (runtimeProfile === 'top-level') {

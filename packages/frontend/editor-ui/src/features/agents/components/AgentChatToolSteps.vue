@@ -23,6 +23,7 @@ import { isCompactToolName, resolveToolNameForDisplay } from '../utils/toolDispl
 import {
 	getDelegateDifficultySummary,
 	isDelegateSubAgentTool,
+	parseDelegateOutput,
 	resolveSubAgentName,
 } from '../utils/delegate-tool';
 import { getToolCallDetails } from '../utils/tool-call-details';
@@ -158,6 +159,9 @@ function toolStepMetadata(tc: ToolCall): string[] {
 		return [
 			resolveSubAgentName(tc.input, subAgentNameById.value),
 			getDelegateDifficultySummary(tc.input, i18n),
+			parseDelegateOutput(tc.output)?.inputRequired
+				? i18n.baseText('agents.chat.delegate.inputRequired')
+				: undefined,
 		].filter((part): part is string => Boolean(part));
 	}
 	if (isWriteTodosTool(tc.tool)) {

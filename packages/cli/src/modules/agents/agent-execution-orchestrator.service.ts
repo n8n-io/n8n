@@ -1221,12 +1221,22 @@ export class AgentExecutionOrchestratorService {
 			}
 		}
 		if (isDraft) {
+			// The preview chat adds a policy to the instructions. A wake on a preview thread
+			// must use the same instructions, or the model rejects the reasoning of earlier turns.
+			const previewChat = await this.agentExecutionService.canUseDraftThread(
+				memory.threadId,
+				config.projectId,
+				agentId,
+				identity.user.id,
+				{ previewChat: true, sessionMode: 'existing' },
+			);
 			setup = await this.preparePreviewChat({
 				agentId,
 				projectId: config.projectId,
 				threadId: memory.threadId,
 				resourceId: memory.resourceId,
 				user: identity.user,
+				previewChat,
 				sessionMode: 'existing',
 			});
 		} else {
@@ -2047,6 +2057,7 @@ export class AgentExecutionOrchestratorService {
 					? { attributionUserId: setup.runtime.attributionUserId }
 					: {}),
 				...(setup?.runtime.user ? { user: setup.runtime.user } : {}),
+				...(setup?.runtime.previewChat ? { previewChat: true } : {}),
 				sandboxPrincipalHash: identity.principalHash,
 			},
 			{
