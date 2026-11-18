@@ -738,6 +738,7 @@ defineExpose({
 					<!-- FULL SCROLLING LIST (Shows all resources, filtering and sorting is done in this component) -->
 					<N8nRecycleScroller
 						v-if="type === 'list-full'"
+						:class="$style.listItems"
 						data-test-id="resources-list"
 						:items="filteredAndSortedResources"
 						:item-size="itemSize()"
@@ -834,9 +835,10 @@ defineExpose({
 	}
 }
 
-// Line the header cells up with the row cells below.
+// The header reaches out like the rows below, so its text lines up with the page title.
+// Its own padding matches the row border and padding.
 .columnHeader {
-	margin-inline: var(--spacing--4xs);
+	margin-inline: calc(-1 * (var(--border-width, 1px) + var(--spacing--sm)));
 }
 
 .columnContainer:has(
@@ -879,8 +881,14 @@ defineExpose({
 	--card--padding: var(--spacing--xs) var(--spacing--sm);
 	// A rounded corner bends the divider, so only the hover fill is rounded.
 	--card--radius: 0;
+	// How far the row content sits in from the list edge: the list padding, the row border
+	// and the row padding.
+	--resource-list--inset: calc(var(--spacing--4xs) + var(--border-width, 1px) + var(--spacing--sm));
 
-	width: 100%;
+	// The list reaches out by that much on both sides, so the row icons and the header text
+	// line up with the page title and the content above, and the hover fill extends past them.
+	width: calc(100% + 2 * var(--resource-list--inset));
+	margin-inline: calc(-1 * var(--resource-list--inset));
 
 	:global(.card:hover) {
 		--card--radius: var(--radius);
