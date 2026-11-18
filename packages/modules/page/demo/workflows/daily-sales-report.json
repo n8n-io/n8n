@@ -11,13 +11,41 @@
 			"parameters": {}
 		},
 		{
+			"id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+			"name": "Run now",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 200],
+			"parameters": {}
+		},
+		{
 			"id": "55555555-5555-4555-8555-555555555555",
 			"name": "Build report",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 2,
 			"position": [220, 0],
 			"parameters": {
-				"jsCode": "return items;"
+				"jsCode": "// Static sample data, so that a manual run needs no network.\nconst orders = [\n\t{ orderId: 'A-1001', amount: 120 },\n\t{ orderId: 'A-1002', amount: 80.5 },\n\t{ orderId: 'A-1003', amount: 42 },\n];\nconst total = orders.reduce((sum, order) => sum + order.amount, 0);\n\nreturn [{ json: { orderCount: orders.length, total } }];"
+			}
+		},
+		{
+			"id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
+			"name": "Update latest report",
+			"type": "n8n-nodes-base.page",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"parameters": {
+				"resource": "page",
+				"operation": "updateSection",
+				"pageId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "TyUl05NOB2u0r5Ad",
+					"cachedResultName": "Daily sales report",
+					"cachedResultUrl": "/page/TyUl05NOB2u0r5Ad"
+				},
+				"content": "=**{{ $now.toFormat('yyyy-MM-dd HH:mm') }}**: {{ $json.orderCount }} orders, total {{ $json.total }} EUR.",
+				"section": "Latest report"
 			}
 		}
 	],
@@ -27,6 +55,28 @@
 				[
 					{
 						"node": "Build report",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Run now": {
+			"main": [
+				[
+					{
+						"node": "Build report",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Build report": {
+			"main": [
+				[
+					{
+						"node": "Update latest report",
 						"type": "main",
 						"index": 0
 					}

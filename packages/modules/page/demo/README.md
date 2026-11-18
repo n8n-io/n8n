@@ -24,10 +24,11 @@ Set `N8N_BASE_URL` when the instance is not at `http://localhost:5678`.
 The script keeps a resource whose name already exists, so you can run it again.
 It replaces the ids in the files with the ids of your instance.
 The credential holds a placeholder value, and the workflows call `example.com` addresses.
-They are made to be read, not run.
+They are made to be read, not run. The workflow "Daily sales report" is the exception: "Run now" runs it without network.
 
 ## What to try
 
 1. Open the page "Orders runbook". Hover a chip, then look at "Links" under the title.
 2. Open the workflow "Sync orders to CRM". Its sticky note shows the page, and three nodes have a pages badge.
 3. Open "AI inbox assistant", select the pages button, then "Document with AI". This needs the n8n Assistant.
+4. Open the page "Daily sales report" in one tab. In another tab, run the workflow "Daily sales report" from "Run now". The section "Latest report" of the page changes without a reload.
