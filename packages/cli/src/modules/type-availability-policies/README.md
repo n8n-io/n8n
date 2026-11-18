@@ -307,8 +307,8 @@ types, and they get the verdict of their base type.
 ### Usage counts of each credential type
 
 `GET /credential-type-policies/usage` and `GET /projects/:projectId/credential-type-policies/usage`
-return Uses, Workflows and Active workflows for each credential type in use. A type that no
-workflow uses has no entry. The counts come from the `credentialId` rows of the workflow
+return Uses, Workflows, Active workflows and Projects for each credential type in use. A type that
+no workflow uses has no entry. The counts come from the `credentialId` rows of the workflow
 dependency index, joined to the credential for its type:
 
 - Every selected credential counts, also a credential left on a node after an auth mode change.
@@ -316,7 +316,9 @@ dependency index, joined to the credential for its type:
   `credentials` map, so a deny blocks that workflow too.
 - Each workflow counts in one version: the published version if it is active, the draft if not.
   Archived workflows and deleted credentials do not count.
-- The project route counts only the workflows that the project owns.
+- Projects counts the projects that own the workflows. A workflow counts only in the project that
+  owns it, also when it is shared with other projects. The project route counts only the
+  workflows that the project owns, so its Projects is 1.
 - A disabled node counts, as in [Grandfathering](#grandfathering).
 
 The check also reads some nodes that the counts leave out, so a deny can block more workflows

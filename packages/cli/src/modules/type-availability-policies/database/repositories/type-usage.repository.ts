@@ -19,7 +19,13 @@ class WorkflowDependencyTable extends BaseRepository<WorkflowDependency> {
 	}
 }
 
-type UsageRow = { type: string; uses: string; workflows: string; activeWorkflows: string };
+type UsageRow = {
+	type: string;
+	uses: string;
+	workflows: string;
+	activeWorkflows: string;
+	projects: string;
+};
 
 @Service()
 export class TypeUsageRepository {
@@ -43,6 +49,11 @@ export class TypeUsageRepository {
 			.createQueryBuilder(WorkflowDependency, 'dependency')
 			.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = dependency.workflowId')
 			.innerJoin(CredentialsEntity, 'credential', 'credential.id = dependency.dependencyKey')
+			.innerJoin(
+				SharedWorkflow,
+				'owner',
+				"owner.workflowId = dependency.workflowId AND owner.role = 'workflow:owner'",
+			)
 			.select('credential.type', 'type')
 			.addSelect('COUNT(*)', 'uses')
 			.addSelect('COUNT(DISTINCT dependency.workflowId)', 'workflows')
@@ -50,19 +61,14 @@ export class TypeUsageRepository {
 				'COUNT(DISTINCT CASE WHEN workflow.activeVersionId IS NOT NULL THEN dependency.workflowId END)',
 				'activeWorkflows',
 			)
+			.addSelect('COUNT(DISTINCT owner.projectId)', 'projects')
 			.where('dependency.dependencyType = :dependencyType', { dependencyType: 'credentialId' })
 			.andWhere(runningVersionRows('dependency', 'workflow'))
 			.andWhere('workflow.isArchived = :isArchived', { isArchived: false })
 			.groupBy('credential.type');
 
 		if (projectId !== null) {
-			query
-				.innerJoin(
-					SharedWorkflow,
-					'owner',
-					"owner.workflowId = dependency.workflowId AND owner.role = 'workflow:owner'",
-				)
-				.andWhere('owner.projectId = :projectId', { projectId });
+			query.andWhere('owner.projectId = :projectId', { projectId });
 		}
 
 		const rows = await query.getRawMany<UsageRow>();
@@ -74,6 +80,7 @@ export class TypeUsageRepository {
 					uses: Number(row.uses),
 					workflows: Number(row.workflows),
 					activeWorkflows: Number(row.activeWorkflows),
+					projects: Number(row.projects),
 				},
 			]),
 		);

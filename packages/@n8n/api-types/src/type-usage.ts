@@ -4,6 +4,8 @@ export type TypeUsage = {
 	uses: number;
 	workflows: number;
 	activeWorkflows: number;
+	/** Projects that own at least one of these workflows. */
+	projects: number;
 };
 
 /**

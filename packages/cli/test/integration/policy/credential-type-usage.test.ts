@@ -94,7 +94,7 @@ describe('GET /credential-type-policies/usage', () => {
 		const response = await testServer.authAgentFor(owner).get(INSTANCE_USAGE).expect(200);
 
 		expect(response.body.data).toEqual({
-			bitlyApi: { uses: 3, workflows: 2, activeWorkflows: 1 },
+			bitlyApi: { uses: 3, workflows: 2, activeWorkflows: 1, projects: 1 },
 		});
 	});
 
@@ -153,8 +153,26 @@ describe('GET /credential-type-policies/usage', () => {
 		const response = await testServer.authAgentFor(owner).get(INSTANCE_USAGE).expect(200);
 
 		expect(response.body.data).toEqual({
-			bitlyApi: { uses: 2, workflows: 1, activeWorkflows: 0 },
-			httpHeaderAuth: { uses: 1, workflows: 1, activeWorkflows: 0 },
+			bitlyApi: { uses: 2, workflows: 1, activeWorkflows: 0, projects: 1 },
+			httpHeaderAuth: { uses: 1, workflows: 1, activeWorkflows: 0, projects: 1 },
+		});
+	});
+
+	test('counts each project that owns a workflow once, and not a project it is shared with', async () => {
+		const bitly = await credential('bitlyApi');
+		const inA = await createWorkflow({}, projectA);
+		await indexVersion(inA, null, [bitly.id]);
+		const alsoInA = await createWorkflow({}, projectA);
+		await indexVersion(alsoInA, null, [bitly.id]);
+		const inB = await createWorkflow({}, projectB);
+		await indexVersion(inB, null, [bitly.id]);
+		const sharedOnly = await createTeamProject('Shared only');
+		await shareWorkflowWithProjects(inA, [{ project: sharedOnly }]);
+
+		const response = await testServer.authAgentFor(owner).get(INSTANCE_USAGE).expect(200);
+
+		expect(response.body.data).toEqual({
+			bitlyApi: { uses: 3, workflows: 3, activeWorkflows: 0, projects: 2 },
 		});
 	});
 
@@ -180,7 +198,7 @@ describe('GET /credential-type-policies/usage', () => {
 		const response = await testServer.authAgentFor(owner).get(INSTANCE_USAGE).expect(200);
 
 		expect(response.body.data).toEqual({
-			bitlyApi: { uses: 1, workflows: 1, activeWorkflows: 0 },
+			bitlyApi: { uses: 1, workflows: 1, activeWorkflows: 0, projects: 1 },
 		});
 	});
 
@@ -208,7 +226,7 @@ describe('GET /credential-type-policies/usage', () => {
 		const response = await testServer.authAgentFor(owner).get(INSTANCE_USAGE).expect(200);
 
 		expect(response.body.data).toEqual({
-			bitlyApi: { uses: 1, workflows: 1, activeWorkflows: 1 },
+			bitlyApi: { uses: 1, workflows: 1, activeWorkflows: 1, projects: 1 },
 		});
 	});
 
@@ -248,7 +266,7 @@ describe('GET /projects/:projectId/credential-type-policies/usage', () => {
 		const sharedProject = await agent.get(projectUsage(projectB.id)).expect(200);
 
 		expect(ownerProject.body.data).toEqual({
-			bitlyApi: { uses: 1, workflows: 1, activeWorkflows: 0 },
+			bitlyApi: { uses: 1, workflows: 1, activeWorkflows: 0, projects: 1 },
 		});
 		expect(sharedProject.body.data).toEqual({});
 	});
@@ -263,7 +281,7 @@ describe('GET /projects/:projectId/credential-type-policies/usage', () => {
 		const credentialProject = await agent.get(projectUsage(projectA.id)).expect(200);
 
 		expect(workflowProject.body.data).toEqual({
-			bitlyApi: { uses: 1, workflows: 1, activeWorkflows: 0 },
+			bitlyApi: { uses: 1, workflows: 1, activeWorkflows: 0, projects: 1 },
 		});
 		expect(credentialProject.body.data).toEqual({});
 	});
