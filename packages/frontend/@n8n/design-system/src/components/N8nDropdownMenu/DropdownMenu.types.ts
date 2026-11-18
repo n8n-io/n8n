@@ -107,9 +107,9 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	class?: VueCssClass;
 	/** Nested menu items (creates a sub-menu) */
 	children?: Array<DropdownMenuItemProps<T, D>>;
-	/** Whether to show loading state in sub-menu */
+	/** Whether to show the loading spinner in the sub-menu */
 	loading?: boolean;
-	/** Number of skeleton items to show when loading */
+	/** Existing callers pass this value. The built-in loader shows one spinner. */
 	loadingItemCount?: number;
 	/** Enable search functionality for this item's children */
 	searchable?: boolean;
@@ -162,9 +162,9 @@ export interface DropdownMenuProps<T = string, D = never> {
 	width?: string;
 	/** Overrides the max-height cap of nested sub-menu content (CSS length). */
 	subMenuMaxHeight?: string | number;
-	/** Whether to show loading state */
+	/** Whether to show the loading spinner */
 	loading?: boolean;
-	/** Number of skeleton items to show when loading */
+	/** Existing callers pass this value. The built-in loader shows one spinner. */
 	loadingItemCount?: number;
 	/** Additional CSS class for the dropdown popper */
 	extraPopperClass?: string;

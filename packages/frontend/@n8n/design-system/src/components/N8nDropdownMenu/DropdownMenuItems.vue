@@ -1,7 +1,7 @@
 <script setup lang="ts" generic="T = string, D = never">
 import { useCssModule } from 'vue';
 
-import N8nLoading from '../N8nLoading';
+import N8nSpinner from '../N8nSpinner';
 import type {
 	DropdownMenuItemProps,
 	DropdownMenuSearchMode,
@@ -56,13 +56,9 @@ const $style = useCssModule();
 	<div :class="$style['items-container']" data-menu-items>
 		<template v-if="loading">
 			<slot name="loading">
-				<N8nLoading
-					v-for="i in loadingItemCount"
-					:key="i"
-					:rows="1"
-					:class="$style['loading-item']"
-					variant="p"
-				/>
+				<div :class="$style['loading-state']">
+					<N8nSpinner size="small" />
+				</div>
 			</slot>
 		</template>
 		<template v-else-if="items.length === 0">
@@ -111,8 +107,10 @@ const $style = useCssModule();
 	padding: var(--spacing--4xs);
 }
 
-.loading-item div {
-	height: var(--spacing--xl);
+.loading-state {
+	display: flex;
+	justify-content: center;
+	padding: var(--spacing--xs);
 }
 
 .empty-state {
