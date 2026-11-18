@@ -128,6 +128,7 @@ import {
 } from './tools/instance-activity.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
 import { createUpdateCredentialDescriptionTool } from './tools/update-credential-description.tool';
+import { createGetN8nGatewayAccessTool } from './tools/get-n8n-gateway-access.tool';
 import { createListN8nGatewayServicesTool } from './tools/list-n8n-gateway-services.tool';
 import { createListTagsTool } from './tools/list-tags.tool';
 import { createMoveWorkflowsToFolderTool } from './tools/move-workflows-to-folder.tool';
@@ -735,6 +736,7 @@ export class McpService {
 		}
 
 		registerIfAllowed(listN8nGatewayServicesTool);
+		registerIfAllowed(createGetN8nGatewayAccessTool(user, this.aiGatewayService, this.telemetry));
 
 		if (!this.globalConfig.tags.disabled) {
 			const listTagsTool = createListTagsTool(user, this.tagService, this.telemetry);
