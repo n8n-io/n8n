@@ -1,6 +1,7 @@
 /**
  * list-files tool: lists the files of the thread, newest first. These are the
- * uploads of every turn and the files that came from `outputs/` of the sandbox.
+ * uploads of every turn, the files that came from `outputs/` of the sandbox, and
+ * the files that workflow runs returned.
  * The model learns a fileId from the label of the message that carried the
  * file, and memory drops that label when it compacts older messages. With this
  * tool, the model can still find a file of an earlier turn.
@@ -25,7 +26,7 @@ const listedFileSchema = z.object({
 	fileName: z.string(),
 	mimeType: z.string(),
 	sizeBytes: z.number(),
-	origin: z.enum(['upload', 'sandbox']),
+	origin: z.enum(['upload', 'sandbox', 'workflow']),
 	createdAt: z.string(),
 });
 
@@ -40,9 +41,9 @@ type ListFilesOutput = z.infer<typeof listFilesOutputSchema>;
 
 const DESCRIPTION =
 	'List the files of this conversation, newest first: the files that the user attached in any turn ' +
-	'(`origin: "upload"`) and the files from `outputs/` of your sandbox (`origin: "sandbox"`). ' +
-	'Use it to find the fileId of a file from an earlier turn, for example to import it again with `import-files` ' +
-	'or to read it with `parse-file`. ' +
+	'(`origin: "upload"`), the files from `outputs/` of your sandbox (`origin: "sandbox"`), ' +
+	'and the files that workflow runs returned (`origin: "workflow"`). ' +
+	'Use it to find the fileId of a file from an earlier turn, for example to read or import it again. ' +
 	`Returns up to ${MAX_LISTED_FILES} files.`;
 
 function toListedFile({

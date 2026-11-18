@@ -14,6 +14,7 @@ import type {
 } from '@n8n/agents';
 import type { AgentToolOutputFile } from '@n8n/api-types';
 import type { User } from '@n8n/db';
+import type { IBinaryData } from 'n8n-workflow';
 
 import type { ImportedSandboxFile } from '../agent-sandbox-files.service';
 import type { AgentTurnRequest } from '../agent-turn-execution.service';
@@ -93,6 +94,22 @@ interface SystemAgentTurnBase<TLease> {
 	 */
 	readFile(fileId: string): Promise<SystemAgentFile | undefined>;
 	/**
+	 * The binary data entry of a file of this thread, for the input of a
+	 * workflow run. It points to the stored bytes, so nothing is copied. Gives
+	 * `undefined` for a file of another thread, or when storage no longer has
+	 * the bytes.
+	 */
+	readFileBinary(fileId: string): Promise<IBinaryData | undefined>;
+	/**
+	 * Store a binary that a workflow run returned as a file of this thread, in
+	 * the system chat of the user, the same as the workflow tools of project
+	 * agents. Gives a skipped file for a file over a cap, and `undefined` when
+	 * storage fails.
+	 */
+	storeWorkflowFile(
+		binary: IBinaryData,
+	): Promise<SystemAgentStoredFile | SystemAgentSkippedFile | undefined>;
+	/**
 	 * The sandbox files of project agents, for this turn. It is set only when
 	 * the sandbox files flag is on.
 	 */
@@ -138,10 +155,19 @@ export interface SystemAgentSandboxFiles {
 /** A file that a system-agent turn stored in its thread. */
 export type SystemAgentStoredFile = AgentToolOutputFile;
 
+/** A file that a system-agent turn did not store, with the reason. */
+export interface SystemAgentSkippedFile {
+	fileName: string;
+	reason: string;
+}
+
 /** A file of a system-agent thread, as `listFiles` gives it. */
 export interface SystemAgentListedFile extends SystemAgentStoredFile {
-	/** `upload` for a file that the user attached, `sandbox` for a file that the agent stored. */
-	origin: 'upload' | 'sandbox';
+	/**
+	 * `upload` for a file that the user attached, `sandbox` for a file that the
+	 * agent stored from its sandbox, `workflow` for a file that a workflow run returned.
+	 */
+	origin: 'upload' | 'sandbox' | 'workflow';
 	/** ISO 8601 time when the file was stored. */
 	createdAt: string;
 }
