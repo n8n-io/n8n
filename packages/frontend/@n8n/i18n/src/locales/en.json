@@ -4923,6 +4923,7 @@
 	"settings.promotions.environment.menu": "Environment actions",
 	"settings.promotions.environment.remoteSummary": "{type} · {remoteUrl} · {branch}",
 	"settings.promotions.environment.testConnection": "Test connection",
+	"settings.promotions.environment.testingConnection": "Testing connection…",
 	"settings.promotions.environment.remove": "Remove",
 	"settings.promotions.environment.remove.confirm.title": "Remove environment?",
 	"settings.promotions.environment.remove.confirm.message": "This removes {name} from this instance without affecting the Git repository. If no other environment uses the same provider, n8n also deletes its connection details. This can't be undone.",

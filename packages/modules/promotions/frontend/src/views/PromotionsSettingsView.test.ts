@@ -83,6 +83,14 @@ const applyEnvironment: PromotionEnvironment = {
 
 const renderView = createComponentRenderer(PromotionsSettingsView);
 
+const menuButton = (card: HTMLElement) =>
+	within(within(card).getByTestId('promotion-environment-menu')).getByRole('button');
+
+async function testConnection(card: HTMLElement) {
+	await userEvent.click(menuButton(card));
+	await userEvent.click(await screen.findByTestId('action-connect'));
+}
+
 describe('PromotionsSettingsView', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -275,17 +283,13 @@ describe('PromotionsSettingsView', () => {
 
 		const applyCard = await screen.findByTestId('promotion-environment-card-apply');
 		const promoteCard = screen.getByTestId('promotion-environment-card-promote');
-		await userEvent.click(within(applyCard).getByTestId('promotion-environment-test-connection'));
-		await userEvent.click(within(promoteCard).getByTestId('promotion-environment-test-connection'));
+		await testConnection(applyCard);
+		await testConnection(promoteCard);
 
-		const applyMenu = within(within(applyCard).getByTestId('promotion-environment-menu')).getByRole(
-			'button',
-		);
-		const promoteMenu = within(
-			within(promoteCard).getByTestId('promotion-environment-menu'),
-		).getByRole('button');
-		await waitFor(() => expect(promoteMenu).toBeEnabled());
+		const applyMenu = menuButton(applyCard);
+		await waitFor(() => expect(menuButton(promoteCard)).toBeEnabled());
 		expect(applyMenu).toBeDisabled();
+		expect(within(applyCard).getByTestId('promotion-environment-connecting')).toBeInTheDocument();
 		finishApply();
 		await waitFor(() => expect(applyMenu).toBeEnabled());
 	});
@@ -299,7 +303,9 @@ describe('PromotionsSettingsView', () => {
 			.mockResolvedValueOnce(mock());
 		renderView();
 
-		await userEvent.click(await screen.findByRole('button', { name: 'Test connection' }));
+		const card = await screen.findByTestId('promotion-environment-card-apply');
+		expect(screen.queryByTestId('promotion-environment-retry')).not.toBeInTheDocument();
+		await testConnection(card);
 
 		expect(await screen.findByTestId('promotion-environment-connect-error')).toHaveTextContent(
 			'Authentication failed',
@@ -315,7 +321,7 @@ describe('PromotionsSettingsView', () => {
 			title: 'Connected to Development',
 			type: 'success',
 		});
-		expect(screen.getByRole('button', { name: 'Test connection' })).toBeInTheDocument();
+		expect(screen.queryByTestId('promotion-environment-retry')).not.toBeInTheDocument();
 	});
 
 	it('hides the connection test from a user who cannot connect', async () => {
@@ -323,8 +329,12 @@ describe('PromotionsSettingsView', () => {
 		api.fetchPromotionEnvironment.mockResolvedValue(applyEnvironment);
 		renderView();
 
-		await screen.findByTestId('promotion-environment-card-apply');
-		expect(screen.queryByTestId('promotion-environment-test-connection')).not.toBeInTheDocument();
+		await userEvent.click(
+			menuButton(await screen.findByTestId('promotion-environment-card-apply')),
+		);
+
+		expect(await screen.findByTestId('action-remove')).toBeInTheDocument();
+		expect(screen.queryByTestId('action-connect')).not.toBeInTheDocument();
 	});
 
 	// Each main has its own local copy, so the card must not depend on it.

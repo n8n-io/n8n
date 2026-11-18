@@ -43,8 +43,17 @@ const canRun = computed(() =>
 	props.environment.direction === 'apply' ? !!permissions.value.apply : !!permissions.value.promote,
 );
 
+// Test connection sits in the menu: it is optional, and the button row has no room for it.
 const actions = computed(() => [
 	{ label: i18n.baseText('generic.edit'), value: 'edit' as const },
+	...(props.canConnect
+		? [
+				{
+					label: i18n.baseText('settings.promotions.environment.testConnection'),
+					value: 'connect' as const,
+				},
+			]
+		: []),
 	{
 		label: i18n.baseText('settings.promotions.environment.remove'),
 		value: 'remove' as const,
@@ -61,8 +70,9 @@ async function run() {
 	dialogOpen.value = true;
 }
 
-function onAction(action: 'edit' | 'remove') {
+function onAction(action: 'edit' | 'connect' | 'remove') {
 	if (action === 'edit') emit('edit');
+	else if (action === 'connect') emit('connect');
 	else emit('remove');
 }
 </script>
@@ -108,9 +118,19 @@ function onAction(action: 'edit' | 'remove') {
 				</N8nText>
 				<!-- No status from the local checkout: each main has its own, so it differs between mains. -->
 				<N8nText
-					v-if="connectError"
+					v-if="busy === 'connect'"
+					role="status"
+					:class="$style.connectState"
+					size="small"
+					color="text-light"
+					data-test-id="promotion-environment-connecting"
+				>
+					{{ i18n.baseText('settings.promotions.environment.testingConnection') }}
+				</N8nText>
+				<N8nText
+					v-else-if="connectError"
 					role="alert"
-					:class="$style.connectError"
+					:class="$style.connectState"
 					size="small"
 					color="danger"
 					data-test-id="promotion-environment-connect-error"
@@ -126,24 +146,20 @@ function onAction(action: 'edit' | 'remove') {
 				/>
 			</template>
 		</N8nSettingsRow>
-		<!-- No info here: the buttons get the whole row. -->
-		<N8nSettingsRow :show-divider="false" :action-max-width="false">
+		<!-- No info here: the buttons get the whole row, and wrap when they do not fit. -->
+		<N8nSettingsRow :show-divider="false" action-max-width="100%">
 			<template #action>
 				<div :class="$style.actions">
 					<N8nButton
-						v-if="canConnect"
+						v-if="connectError && canConnect"
 						variant="outline"
 						size="small"
 						:loading="busy === 'connect'"
 						:disabled="busy === 'remove'"
-						data-test-id="promotion-environment-test-connection"
+						data-test-id="promotion-environment-retry"
 						@click="emit('connect')"
 					>
-						{{
-							i18n.baseText(
-								connectError ? 'generic.retry' : 'settings.promotions.environment.testConnection',
-							)
-						}}
+						{{ i18n.baseText('generic.retry') }}
 					</N8nButton>
 					<PromotionMissingProjectsButton
 						v-if="environment.direction === 'apply'"
@@ -182,12 +198,14 @@ function onAction(action: 'edit' | 'remove') {
 	overflow-wrap: anywhere;
 }
 
-.connectError {
+.connectState {
 	margin-block-start: var(--spacing--3xs);
 }
 
 .actions {
 	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
 	gap: var(--spacing--2xs);
 }
 </style>
