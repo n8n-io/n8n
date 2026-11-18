@@ -33,6 +33,7 @@ function makeStepStore(resumeDueSteps = vi.fn().mockResolvedValue([])): StepStor
 		failStep: vi.fn(),
 		failWaitingStep: vi.fn(),
 		cancelPendingSteps: vi.fn(),
+		cancelSteps: vi.fn().mockResolvedValue([]),
 		cancelStep: vi.fn(),
 		loadStepsByKeys: vi.fn().mockResolvedValue({}),
 		loadStepSummariesByKeys: vi.fn().mockResolvedValue({}),

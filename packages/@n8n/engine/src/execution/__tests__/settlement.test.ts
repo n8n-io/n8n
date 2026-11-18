@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { GraphEdge, StoredWorkflowGraph, WorkflowGraph } from '../../graph';
 import { deriveLoops, getDescendantNodeIds } from '../../graph';
 import { stepKeyId, type StepKey, type StepStatus } from '../execution.types';
-import { decideSuccessors, type SuccessorDecisions } from '../settlement';
+import { decideSuccessors, decisionKeys, type SuccessorDecisions } from '../settlement';
 import type { StepSummary } from '../step-store';
 
 function summary(
@@ -333,6 +333,53 @@ describe('decideSuccessors for a race node', () => {
 		);
 
 		expect(decisions.toRace).toEqual([{ key: keyFor('r'), winner: keyFor('a'), outputIndex: 0 }]);
+	});
+
+	describe('set to cancel the other branches', () => {
+		/** trigger -> {a -> a2, b} -> r, where r cancels the other branches. */
+		const cancelling = (cancelOtherBranches: boolean): WorkflowGraph => {
+			const graph = makeGraph([
+				{ from: 'trigger', to: 'a' },
+				{ from: 'a', to: 'a2' },
+				{ from: 'a2', to: 'r' },
+				{ from: 'trigger', to: 'b' },
+				{ from: 'b', to: 'r' },
+			]);
+			graph.nodes = graph.nodes.map((node) =>
+				node.id === 'r' ? { ...node, type: 'race', config: { cancelOtherBranches } } : node,
+			);
+			return graph;
+		};
+		const afterBWon = makeSteps(
+			summary('trigger', 'completed', [true]),
+			summary('a', 'completed', [true]),
+			summary('b', 'completed', [true]),
+			summary('r', 'completed', [true]),
+		);
+
+		it('skips a region step once the race step exists, though its input is live', () => {
+			expect(decideLoopless(cancelling(true), keyFor('a'), afterBWon)).toEqual({
+				toQueue: [],
+				toSeed: [],
+				toSkip: [keyFor('a2')],
+				toRace: [],
+			});
+		});
+
+		it('runs the region step as usual when the race does not cancel', () => {
+			expect(decideLoopless(cancelling(false), keyFor('a'), afterBWon)).toEqual({
+				toQueue: [keyFor('a2')],
+				toSeed: [],
+				toSkip: [],
+				toRace: [],
+			});
+		});
+
+		it('names the race step among the keys to load for a region candidate', () => {
+			const keys = decisionKeys(cancelling(true), [], keyFor('a'), new Map());
+
+			expect(keys).toContainEqual(keyFor('r'));
+		});
 	});
 
 	it('ignores a later arrival once the race step exists', () => {

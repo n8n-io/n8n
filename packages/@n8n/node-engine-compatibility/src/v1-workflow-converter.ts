@@ -1,5 +1,11 @@
 import { isBatchStepConfig } from '@n8n/engine';
-import type { BatchStepConfig, GraphEdge, GraphNode, WorkflowGraph } from '@n8n/engine';
+import type {
+	BatchStepConfig,
+	GraphEdge,
+	GraphNode,
+	RaceStepConfig,
+	WorkflowGraph,
+} from '@n8n/engine';
 import type { INode, INodeConnections, IWorkflowBase } from 'n8n-workflow';
 import { getChildNodes, isTriggerNodeType } from 'n8n-workflow';
 
@@ -149,7 +155,7 @@ export class V1WorkflowConverter {
 		}
 
 		if (node.type === RACE_TYPE) {
-			return { id: node.id, name: node.name, type: 'race' };
+			return { id: node.id, name: node.name, type: 'race', config: toRaceConfig(node) };
 		}
 
 		const config: V1NodeStepConfig = {
@@ -478,4 +484,16 @@ function toBatchConfig(node: INode): BatchStepConfig {
 	}
 
 	return config;
+}
+
+function toRaceConfig(node: INode): RaceStepConfig {
+	const cancelOtherBranches: unknown = node.parameters?.cancelOtherBranches ?? false;
+
+	if (typeof cancelOtherBranches !== 'boolean') {
+		throw new UnsupportedWorkflowError(
+			`Node "${node.name}" sets Cancel Other Branches from an expression. Engine v2 needs this value before the workflow runs. Use a fixed value.`,
+		);
+	}
+
+	return { cancelOtherBranches };
 }

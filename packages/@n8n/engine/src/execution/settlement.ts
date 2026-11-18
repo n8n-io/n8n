@@ -1,4 +1,11 @@
-import type { GraphEdge, StoredWorkflowGraph, WorkflowGraph, WorkflowLoop } from '../graph';
+import {
+	getCancellingRaces,
+	type CancellingRace,
+	type GraphEdge,
+	type StoredWorkflowGraph,
+	type WorkflowGraph,
+	type WorkflowLoop,
+} from '../graph';
 import { stepKeyId, isSettledStatus, type StepKey, type StepKeyId } from './execution.types';
 import { classifyEdge, sourceRow, targetKey, type EdgeClass } from './iteration-mapping';
 import { isTerminalStep } from './loop-ledger';
@@ -53,6 +60,12 @@ import type { StepSummary } from './step-store';
  * is skipped only once every source has settled dead. The engine runs no code
  * for it: the planner records it as completed with the winning edge's value.
  * Its step exists once decided, so later arrivals find it and change nothing.
+ *
+ * A race set to cancel the other branches adds one more rule. Once its step
+ * exists, every step of its cancel region at that pass is skipped, whatever
+ * its inputs. The planner that created the race step cancels the region's
+ * unsettled steps, and a cancelled step's out-edges are dead like a skipped
+ * one's, so the cascade reaches the rest of the region through this rule.
  */
 
 /** A race step to record as completed, and the live edge whose value it takes. */
@@ -97,6 +110,7 @@ export function decideSuccessors(
 		: undefined;
 	const decided = new Set<StepKeyId>();
 	const outgoingEdges = graph.edges.filter((edge) => edge.from === settled.nodeId);
+	const cancellingRaces = getCancellingRaces(graph, loops);
 
 	for (const edge of outgoingEdges) {
 		const edgeClass = classifyEdge(edge, loops);
@@ -108,6 +122,11 @@ export function decideSuccessors(
 		// Two edges into one step are one candidate, decided once.
 		if (steps[targetId] || decided.has(targetId)) continue;
 		decided.add(targetId);
+
+		if (cancellingRaces.some((race) => isCancelledBy(race, target, steps))) {
+			decisions.toSkip.push(target);
+			continue;
+		}
 
 		if (isRaceNode(graph, target.nodeId) && !seededIds.has(target.nodeId)) {
 			const race = decideRaceFate(graph, loops, target, settled, steps, terminalIterations);
@@ -176,6 +195,23 @@ function decideNodeFate(
 	if (applicable === 0) return 'outside';
 
 	return live ? 'queued' : 'skipped';
+}
+
+/**
+ * Whether a race has already cancelled the candidate. The region keeps to the
+ * race's own pass, so the race step to look for sits at the candidate's pass.
+ */
+function isCancelledBy(
+	race: CancellingRace,
+	candidate: StepKey,
+	steps: Record<StepKeyId, StepSummary>,
+): boolean {
+	if (!race.region.has(candidate.nodeId)) return false;
+	return steps[stepKeyId(raceStepKey(race, candidate))] !== undefined;
+}
+
+function raceStepKey(race: CancellingRace, candidate: StepKey): StepKey {
+	return { nodeId: race.raceNodeId, iteration: candidate.iteration };
 }
 
 function isRaceNode(graph: WorkflowGraph, nodeId: string): boolean {
@@ -268,12 +304,14 @@ function isLive(source: StepSummary, edge: GraphEdge): boolean {
  * Names every step `decideSuccessors` will read, so the caller can load them in
  * one query.
  *
- * Four kinds, and each one is read for a reason:
+ * Five kinds, and each one is read for a reason:
  *
  * - the settled step. For a batch node it says which side of the loop to decide.
  * - each candidate successor. One that already exists was decided earlier.
  * - whatever each candidate's own incoming edges read, to judge that candidate.
  * - for a candidate inside a loop, that loop's batch step at the same pass.
+ * - for a candidate in a cancelling race's region, that race's step at the same
+ *   pass. Its presence means the candidate is cancelled.
  *
  * This walks the same edges the decision walks, so the caller cannot load a
  * different set from the one read. Loading less is the dangerous mistake: a
@@ -290,10 +328,15 @@ export function decisionKeys(
 	const add = (key: StepKey) => keys.set(stepKeyId(key), key);
 
 	const outgoingEdges = graph.edges.filter((edge) => edge.from === settled.nodeId);
+	const cancellingRaces = getCancellingRaces(graph, loops);
 
 	for (const edge of outgoingEdges) {
 		const target = targetKey(edge, classifyEdge(edge, loops), settled);
 		add(target);
+
+		for (const race of cancellingRaces) {
+			if (race.region.has(target.nodeId)) add(raceStepKey(race, target));
+		}
 
 		const incomingEdges = graph.edges.filter((inEdge) => inEdge.to === target.nodeId);
 

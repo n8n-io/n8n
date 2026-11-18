@@ -122,6 +122,7 @@ function makeStepStore(
 		failWaitingStep: vi.fn(),
 		cancelStep: vi.fn(),
 		cancelPendingSteps: vi.fn(),
+		cancelSteps: vi.fn().mockResolvedValue([]),
 		// like the store: only requested keys that have rows appear
 		loadStepSummariesByKeys: vi.fn().mockImplementation(async (_: string, keys: StepKey[]) => {
 			await Promise.resolve();
@@ -171,6 +172,7 @@ function makeHandler(
 		orchestrationQueue = makeOrchestrationQueue(),
 		lifecycleEventPublisher = makeLifecycleEventPublisher(),
 		responseSender = makeResponseSender(),
+		subExecutionCanceller = { cancel: vi.fn() },
 	} = {},
 ) {
 	return {
@@ -181,12 +183,14 @@ function makeHandler(
 			orchestrationQueue,
 			new LifecycleEventPublisherFactory(lifecycleEventPublisher),
 			responseSender,
+			subExecutionCanceller,
 		),
 		executionStore,
 		stepQueue,
 		orchestrationQueue,
 		lifecycleEventPublisher,
 		responseSender,
+		subExecutionCanceller,
 	};
 }
 
@@ -376,6 +380,144 @@ describe('StepSettledHandler', () => {
 				{ nodeId: 'm', iteration: 0, status: 'completed', outputs: bOutputs },
 			]);
 		});
+	});
+
+	describe('a race successor that cancels the other branches', () => {
+		/** m races b against c on slot 0, and cancels whichever branch loses. */
+		const cancellingGraph: WorkflowGraph = {
+			nodes: graph.nodes.map((node) =>
+				node.id === 'm' ? { ...node, type: 'race', config: { cancelOtherBranches: true } } : node,
+			),
+			edges: graph.edges.map((edge) => (edge.to === 'm' ? { ...edge, inputIndex: 0 } : edge)),
+		};
+		const bOutputs: StepSlots = [[{ json: { from: 'b' } }]];
+		const settledB = { id: 'step-b', nodeId: 'b', status: 'completed' as const, outputs: bOutputs };
+		const summaries = [
+			...defaultSummaries,
+			summary('b', 'completed', [true]),
+			summary('c', 'running'),
+		];
+		const stepRow = (nodeId: string, status: StepStatus, extra: Partial<StepRecord> = {}) => ({
+			id: `step-${nodeId}`,
+			executionId: 'exec-1',
+			nodeId,
+			iteration: 0,
+			status,
+			outputs: null,
+			waitDeclaration: null,
+			resumeCause: null,
+			...extra,
+		});
+		const regionRows = (c: StepRecord) => ({
+			[stepKeyId({ nodeId: 'a', iteration: 0 })]: stepRow('a', 'completed'),
+			[stepKeyId({ nodeId: 'b', iteration: 0 })]: stepRow('b', 'completed'),
+			[stepKeyId({ nodeId: 'c', iteration: 0 })]: c,
+		});
+
+		it('cancels the unsettled steps of the losing branch and announces them settled', async () => {
+			const stepStore = makeStepStore(
+				settledB,
+				{
+					loadStepsByKeys: vi.fn().mockResolvedValue(regionRows(stepRow('c', 'running'))),
+					cancelSteps: vi.fn().mockResolvedValue(['step-c']),
+				},
+				summaries,
+			);
+			const { handler, orchestrationQueue, lifecycleEventPublisher } = makeHandler(stepStore, {
+				executionStore: makeExecutionStore({ graph: cancellingGraph }),
+			});
+
+			await handler.handle({ ...event, stepId: 'step-b' });
+
+			expect(stepStore.cancelSteps).toHaveBeenCalledExactlyOnceWith('exec-1', ['step-c']);
+			expect(lifecycleEventPublisher.publish).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'step:cancelled', stepId: 'step-c', nodeName: 'C' }),
+			);
+			expect(orchestrationQueue.publish).toHaveBeenCalledWith({
+				type: 'step:settled',
+				executionId: 'exec-1',
+				stepId: 'step-c',
+			});
+			expect(orchestrationQueue.publish).toHaveBeenCalledWith({
+				type: 'step:settled',
+				executionId: 'exec-1',
+				stepId: 'step-m',
+			});
+		});
+
+		it('announces nothing for a step another writer settled first', async () => {
+			const stepStore = makeStepStore(
+				settledB,
+				{
+					loadStepsByKeys: vi.fn().mockResolvedValue(regionRows(stepRow('c', 'running'))),
+					cancelSteps: vi.fn().mockResolvedValue([]),
+				},
+				summaries,
+			);
+			const { handler, orchestrationQueue, lifecycleEventPublisher } = makeHandler(stepStore, {
+				executionStore: makeExecutionStore({ graph: cancellingGraph }),
+			});
+
+			await handler.handle({ ...event, stepId: 'step-b' });
+
+			expect(lifecycleEventPublisher.publish).not.toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'step:cancelled' }),
+			);
+			expect(orchestrationQueue.publish).toHaveBeenCalledExactlyOnceWith({
+				type: 'step:settled',
+				executionId: 'exec-1',
+				stepId: 'step-m',
+			});
+		});
+
+		it('cancels nothing when another planner created the race step first', async () => {
+			const stepStore = makeStepStore(
+				settledB,
+				{ createSteps: vi.fn().mockResolvedValue([]) },
+				summaries,
+			);
+			const { handler } = makeHandler(stepStore, {
+				executionStore: makeExecutionStore({ graph: cancellingGraph }),
+			});
+
+			await handler.handle({ ...event, stepId: 'step-b' });
+
+			expect(stepStore.cancelSteps).not.toHaveBeenCalled();
+		});
+
+		it('cancels the sub-execution that a cancelled step waits for', async () => {
+			const waiting = stepRow('c', 'waiting', { waitDeclaration: { subExecutionId: 'child-1' } });
+			const stepStore = makeStepStore(
+				settledB,
+				{
+					loadStepsByKeys: vi.fn().mockResolvedValue(regionRows(waiting)),
+					cancelSteps: vi.fn().mockResolvedValue(['step-c']),
+				},
+				summaries,
+			);
+			const { handler, subExecutionCanceller } = makeHandler(stepStore, {
+				executionStore: makeExecutionStore({ graph: cancellingGraph }),
+			});
+
+			await handler.handle({ ...event, stepId: 'step-b' });
+
+			expect(subExecutionCanceller.cancel).toHaveBeenCalledExactlyOnceWith('child-1');
+		});
+	});
+
+	it('plans the successors of a cancelled step as dead', async () => {
+		const stepStore = makeStepStore({ status: 'cancelled' }, {}, [
+			summary('trigger', 'completed', [true]),
+			summary('a', 'cancelled'),
+		]);
+		const { handler } = makeHandler(stepStore);
+
+		await handler.handle(event);
+
+		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
+			{ nodeId: 'b', iteration: 0, status: 'skipped' },
+			{ nodeId: 'c', iteration: 0, status: 'skipped' },
+		]);
 	});
 
 	it("plans the trigger's successors like any other node's", async () => {

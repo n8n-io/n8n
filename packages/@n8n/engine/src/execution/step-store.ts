@@ -251,6 +251,17 @@ export interface StepStore {
 	cancelPendingSteps(executionId: string): Promise<void>;
 
 	/**
+	 * Cancel the given steps of a live execution because a race cancelled their
+	 * branch. Returns the ids of the steps this call changed.
+	 *
+	 * Unlike `cancelPendingSteps`, this also cancels a `running` step. Its worker
+	 * keeps running the node, but `completeStep`, `failStep` and `suspendStep`
+	 * compare-and-set on `running`, so whatever the node returns is not
+	 * recorded. A settled step keeps its status.
+	 */
+	cancelSteps(executionId: string, ids: string[]): Promise<string[]>;
+
+	/**
 	 * Step rows of the given keys within an execution, keyed by `stepKeyId`. A
 	 * key with no row yet is absent from the result — absence always means
 	 * "not planned yet", never "forgotten".

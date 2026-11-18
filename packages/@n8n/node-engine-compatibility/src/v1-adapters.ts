@@ -3,7 +3,7 @@
  * back into engine v1 artifacts (`INode`, `Workflow`, run data, node execute context).
  */
 
-import { deriveLoops, isBatchStepConfig } from '@n8n/engine';
+import { deriveLoops, isBatchStepConfig, isRaceStepConfig } from '@n8n/engine';
 import type {
 	GraphNode,
 	StepExecutionContext,
@@ -218,13 +218,15 @@ function toV1BatchNode(graphNode: GraphNode): INode {
 }
 
 function toV1RaceNode(graphNode: GraphNode): INode {
+	const config = isRaceStepConfig(graphNode.config) ? graphNode.config : undefined;
+
 	return {
 		id: graphNode.id,
 		name: graphNode.name,
 		type: RACE_TYPE,
 		typeVersion: RACE_TYPE_VERSION,
 		position: [0, 0],
-		parameters: {},
+		parameters: config ? { cancelOtherBranches: config.cancelOtherBranches } : {},
 	};
 }
 

@@ -353,6 +353,34 @@ describe('EngineLifecycleEventPushRelay', () => {
 		});
 	});
 
+	describe('step:cancelled', () => {
+		const stepCancelled: LifecycleEvent = {
+			...stepFields,
+			type: 'step:cancelled',
+			at: '2026-08-25T10:00:01.500Z',
+		};
+
+		it('ends the run as cancelled, with the start executionIndex and no data message', () => {
+			register();
+
+			relay.relay([stepStarted, stepCancelled]);
+
+			const [after] = sentOfType('nodeExecuteAfter');
+			expect(after.data.data.executionStatus).toBe('canceled');
+			expect(after.data.data.executionIndex).toBe(0);
+			expect(after.data.data.error).toBeUndefined();
+			expect(sentOfType('nodeExecuteAfterData')).toHaveLength(0);
+		});
+
+		it('ignores an outcome that arrives after the cancellation', () => {
+			register();
+
+			relay.relay([stepStarted, stepCancelled, stepCompleted]);
+
+			expect(sentOfType('nodeExecuteAfter')).toHaveLength(1);
+		});
+	});
+
 	describe('step:waiting', () => {
 		it('marks the node waiting with the start executionIndex and sends no data message', () => {
 			register();

@@ -2,15 +2,21 @@ import { UnexpectedError } from '../common';
 import {
 	deriveLoops,
 	findTriggerNode,
+	getCancellingRaces,
 	getDescendantNodeIds,
 	getSuccessorNodeIds,
 	type GraphNode,
+	type WorkflowLoop,
 } from '../graph';
 import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
 import type { ExecutionResponseSender } from '../response-channel';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
 import { countExpectedSettledSteps } from './completion';
-import type { ExecutionRecord, ExecutionStore } from './execution-store';
+import {
+	ExecutionNotFoundError,
+	type ExecutionRecord,
+	type ExecutionStore,
+} from './execution-store';
 import {
 	isLiveExecutionStatus,
 	isSettledStatus,
@@ -22,6 +28,7 @@ import {
 } from './execution.types';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { decideSuccessors, decisionKeys, type RaceDecision } from './settlement';
+import { stepEventFields } from './step-events';
 import type { StepRecord, StepStore } from './step-store';
 import {
 	collectSubExecutionResult,
@@ -29,6 +36,11 @@ import {
 	terminalNodeIds,
 } from './sub-execution-resume';
 import { validateStepContext } from './validate-step-context';
+
+/** Cancels an execution by id, as `CancelExecutionService` does. */
+export interface SubExecutionCanceller {
+	cancel(executionId: string): Promise<unknown>;
+}
 
 /**
  * Handles the `step:settled` orchestration event: decides the fate of the
@@ -50,6 +62,8 @@ export class StepSettledHandler {
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
 		private readonly responseSender: ExecutionResponseSender,
+		/** Cancels the sub-execution a cancelled step waits for. */
+		private readonly subExecutionCanceller: SubExecutionCanceller,
 	) {}
 
 	async handle(event: StepSettledEvent): Promise<void> {
@@ -71,7 +85,9 @@ export class StepSettledHandler {
 		if (!isLiveExecutionStatus(execution.status)) return;
 
 		let queued = 0;
-		if (step.status === 'completed' || step.status === 'skipped') {
+		// A step settles `cancelled` here only because a race cancelled its branch:
+		// a cancelled execution ended above. Its out-edges are dead, as a skip's.
+		if (step.status === 'completed' || step.status === 'skipped' || step.status === 'cancelled') {
 			// a failure elsewhere may still have its settled event queued behind
 			// this one, so it must end the execution here, before planning
 			if (await this.stepStore.hasFailedSteps(execution.id)) {
@@ -181,7 +197,71 @@ export class StepSettledHandler {
 		]);
 
 		this.announceRaceSteps(execution, created, raceOutputs);
+		await this.cancelLosingBranches(execution, loops, created, raceOutputs);
 		return await this.announceCreatedSteps(execution.id, created, new Set(toQueue.map(stepKeyId)));
+	}
+
+	/**
+	 * Cancels the unsettled steps of each cancel region whose race step this
+	 * planner created, so a planner that lost the insert cancels nothing. Each
+	 * step this call cancels is announced settled, and its handler skips the
+	 * rest of the region through the settlement rules.
+	 *
+	 * A crash before the announcements leaves cancelled steps whose successors
+	 * have no rows, which reconciliation re-announces (CAT-2938).
+	 */
+	private async cancelLosingBranches(
+		execution: ExecutionRecord,
+		loops: WorkflowLoop[],
+		created: Array<{ id: string } & StepKey>,
+		raceOutputs: Map<StepKeyId, { key: StepKey; outputs: StepSlots }>,
+	): Promise<void> {
+		if (raceOutputs.size === 0) return;
+		const cancellingRaces = getCancellingRaces(execution.graph, loops);
+		if (cancellingRaces.length === 0) return;
+
+		const publisher = this.lifecycleEventPublisherFactory.create(execution);
+		for (const raceStep of created) {
+			if (!raceOutputs.has(stepKeyId(raceStep))) continue;
+			const race = cancellingRaces.find(({ raceNodeId }) => raceNodeId === raceStep.nodeId);
+			if (!race || race.region.size === 0) continue;
+
+			const rows = await this.stepStore.loadStepsByKeys(
+				execution.id,
+				[...race.region].map((nodeId) => ({ nodeId, iteration: raceStep.iteration })),
+			);
+			const unsettled = Object.values(rows).filter((row) => !isSettledStatus(row.status));
+			const cancelledIds = new Set(
+				await this.stepStore.cancelSteps(
+					execution.id,
+					unsettled.map(({ id }) => id),
+				),
+			);
+
+			for (const step of unsettled.filter(({ id }) => cancelledIds.has(id))) {
+				const node = execution.graph.nodes.find(({ id }) => id === step.nodeId);
+				if (node) publisher.publish({ type: 'step:cancelled', ...stepEventFields(step, node) });
+				await this.cancelAwaitedSubExecution(step);
+				await this.orchestrationQueue.publish({
+					type: 'step:settled',
+					executionId: execution.id,
+					stepId: step.id,
+				});
+			}
+		}
+	}
+
+	/** A cancelled step no longer waits, so the sub-execution it waited for has no reader. */
+	private async cancelAwaitedSubExecution(step: StepRecord): Promise<void> {
+		const wait = step.waitDeclaration;
+		if (step.status !== 'waiting' || !wait || !('subExecutionId' in wait)) return;
+
+		try {
+			await this.subExecutionCanceller.cancel(wait.subExecutionId);
+		} catch (error) {
+			// The sub-execution was never created, so there is nothing to cancel.
+			if (!(error instanceof ExecutionNotFoundError)) throw error;
+		}
 	}
 
 	/**

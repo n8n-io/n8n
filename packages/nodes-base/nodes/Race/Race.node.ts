@@ -30,6 +30,15 @@ export class Race implements INodeType {
 				type: 'notice',
 				default: '',
 			},
+			{
+				displayName: 'Cancel Other Branches',
+				name: 'cancelOtherBranches',
+				type: 'boolean',
+				noDataExpression: true,
+				default: false,
+				description:
+					'Whether to cancel the nodes that only feed this node once one branch wins. A node that is already running finishes, but its result is ignored.',
+			},
 		],
 	};
 

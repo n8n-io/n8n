@@ -77,6 +77,11 @@ export const lifecycleEventSchema = z.discriminatedUnion('type', [
 	}),
 	/** The step paused until a deadline or a resume request. It has no outcome yet. */
 	z.object({ type: z.literal('step:waiting'), ...stepFields }),
+	/**
+	 * A race cancelled the step's branch. A step that was running may still
+	 * finish its work, but its outcome is not recorded.
+	 */
+	z.object({ type: z.literal('step:cancelled'), ...stepFields }),
 ]);
 
 /** Body of the host's lifecycle event endpoint. */

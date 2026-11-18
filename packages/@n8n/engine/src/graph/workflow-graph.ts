@@ -30,6 +30,21 @@ export function isBatchStepConfig(config: unknown): config is BatchStepConfig {
 	return typeof batchSize === 'number' && Number.isInteger(batchSize) && batchSize >= 1;
 }
 
+/**
+ * A race node's configuration. Optional: a race node without one keeps the
+ * other branches running.
+ */
+export interface RaceStepConfig {
+	/** Cancel the work that only feeds this race once one branch wins. */
+	cancelOtherBranches: boolean;
+}
+
+export function isRaceStepConfig(config: unknown): config is RaceStepConfig {
+	if (typeof config !== 'object' || config === null) return false;
+	const { cancelOtherBranches } = config as { cancelOtherBranches?: unknown };
+	return typeof cancelOtherBranches === 'boolean';
+}
+
 export interface GraphNode {
 	/** Deterministic from the source workflow, so re-converting yields the same graph. */
 	id: string;

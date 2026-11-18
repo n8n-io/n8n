@@ -693,6 +693,73 @@ describe('step execution (integration)', () => {
 		expect(execution.status).toBe('completed');
 	}
 
+	it.each<Concurrency>([
+		{ step: 2, orchestration: 1 },
+		{ step: 4, orchestration: 4 },
+	])(
+		'cancels the losing branch of a race that cancels the other branches (concurrency $step)',
+		cancelsLosingBranch,
+	);
+	async function cancelsLosingBranch(concurrency: Concurrency) {
+		// trigger -> fast -> race -> after, trigger -> slow -> slow-tail -> race.
+		// Slow is still running when fast wins, so the race cancels it.
+		const raceGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-fast', name: 'Fast', type: 'v1-node' },
+				{ id: 'node-slow', name: 'Slow', type: 'v1-node' },
+				{ id: 'node-slow-tail', name: 'Slow Tail', type: 'v1-node' },
+				{
+					id: 'node-race',
+					name: 'Race',
+					type: 'race',
+					config: { cancelOtherBranches: true },
+				},
+				{ id: 'node-after', name: 'After', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-fast', outputIndex: 0, inputIndex: 0 },
+				{ from: 'trigger', to: 'node-slow', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-slow', to: 'node-slow-tail', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-fast', to: 'node-race', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-slow-tail', to: 'node-race', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-race', to: 'node-after', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		let afterRan!: () => void;
+		const afterHasRun = new Promise<void>((resolve) => (afterRan = resolve));
+		const requests: StepExecutionRequest[] = [];
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				requests.push(request);
+				if (request.node.id === 'node-slow') await afterHasRun;
+				if (request.node.id === 'node-after') afterRan();
+				await Promise.resolve();
+				return { outputs: [[{ json: { ran: request.node.id } }]] };
+			},
+		};
+
+		const { execution, steps, events } = await runWorkflow(executor, [{}], {
+			workflowId: 'wf-race-cancel',
+			concurrency,
+			graph: raceGraph,
+		});
+
+		const statusOf = (nodeId: string) => steps.find((step) => step.nodeId === nodeId)?.status;
+		// slow finished its work, but the race had cancelled it, so its outputs are dropped
+		expect(statusOf('node-slow')).toBe('cancelled');
+		expect(steps.find(({ nodeId }) => nodeId === 'node-slow')?.outputs).toBeNull();
+		// nothing after slow ran
+		expect(statusOf('node-slow-tail')).toBe('skipped');
+		expect(requests.map(({ node }) => node.id)).not.toContain('node-slow-tail');
+		expect(statusOf('node-race')).toBe('completed');
+		expect(statusOf('node-after')).toBe('completed');
+		expect(events).toContainEqual(
+			expect.objectContaining({ type: 'step:cancelled', nodeName: 'Slow' }),
+		);
+		expect(execution.status).toBe('completed');
+	}
+
 	it.each(concurrencies)(
 		'continues after a race node on the live branch when the first to settle is dead (concurrency $step)',
 		raceIgnoresDeadBranch,

@@ -390,12 +390,40 @@ describe('V1WorkflowConverter', () => {
 				}),
 			);
 
-			expect(graph.nodes).toContainEqual({ id: 'race-uuid', name: 'Race', type: 'race' });
+			expect(graph.nodes).toContainEqual({
+				id: 'race-uuid',
+				name: 'Race',
+				type: 'race',
+				config: { cancelOtherBranches: false },
+			});
 			expect(graph.edges).toEqual(
 				expect.arrayContaining([
 					{ from: 'a-uuid', to: 'race-uuid', outputIndex: 0, inputIndex: 0 },
 					{ from: 'b-uuid', to: 'race-uuid', outputIndex: 0, inputIndex: 0 },
 				]),
+			);
+		});
+
+		const raceWorkflow = (parameters: INode['parameters']) =>
+			workflow({
+				nodes: [
+					manualTrigger,
+					node('race-uuid', 'Race', { type: 'n8n-nodes-base.race', parameters }),
+				],
+				connections: { 'When clicking Execute': { main: [[main('Race')]] } },
+			});
+
+		it('carries Cancel Other Branches into the race config', () => {
+			const graph = converter.convert(raceWorkflow({ cancelOtherBranches: true }));
+
+			expect(graph.nodes.find((n) => n.id === 'race-uuid')?.config).toEqual({
+				cancelOtherBranches: true,
+			});
+		});
+
+		it('rejects Cancel Other Branches set from an expression', () => {
+			expect(() => converter.convert(raceWorkflow({ cancelOtherBranches: '={{ true }}' }))).toThrow(
+				UnsupportedWorkflowError,
 			);
 		});
 	});

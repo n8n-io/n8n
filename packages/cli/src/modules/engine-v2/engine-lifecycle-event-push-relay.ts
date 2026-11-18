@@ -19,7 +19,8 @@ type StepUpdate = Extract<LifecycleEvent, { stepId: string }>;
  */
 type StepOutcome =
 	| { status: 'success'; outputs: INodeExecutionData[][] | undefined }
-	| { status: 'error'; error: StepError };
+	| { status: 'error'; error: StepError }
+	| { status: 'canceled' };
 
 /** What a `nodeExecuteAfter` message reports: an outcome, or a wait with none yet. */
 type StepReport = StepOutcome | { status: 'waiting' };
@@ -74,6 +75,8 @@ export class EngineLifecycleEventPushRelay {
 				return this.onStepSettled(update, session, { status: 'error', error: update.error });
 			case 'step:waiting':
 				return this.onStepWaiting(update, session);
+			case 'step:cancelled':
+				return this.onStepSettled(update, session, { status: 'canceled' });
 			case 'execution:completed':
 				return this.onExecutionFinished(update.executionId, update.workflowId, 'success', session);
 			case 'execution:failed':
@@ -261,7 +264,7 @@ export class EngineLifecycleEventPushRelay {
 			session.userId,
 		);
 
-		// No data, no second message: the step failed, waits, or its outputs were withheld.
+		// No data, no second message: the step failed, waits, was cancelled, or its outputs were withheld.
 		if (!data) return;
 
 		// TODO(CAT-2878 follow-up): redact this before sending; needs a resolved

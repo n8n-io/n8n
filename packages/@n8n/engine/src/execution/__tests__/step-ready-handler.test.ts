@@ -138,6 +138,7 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		completeStep: vi.fn().mockResolvedValue(true),
 		failStep: vi.fn().mockResolvedValue(true),
 		cancelPendingSteps: vi.fn(),
+		cancelSteps: vi.fn().mockResolvedValue([]),
 		cancelStep: vi.fn().mockResolvedValue(true),
 		loadStepsByKeys: vi
 			.fn()

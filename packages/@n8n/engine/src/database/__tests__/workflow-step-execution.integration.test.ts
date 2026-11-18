@@ -838,6 +838,63 @@ describe('workflow_step_execution table (integration)', () => {
 		expect((await store.loadStep(otherId)).status).toBe('queued');
 	});
 
+	it('TypeOrmStepStore.cancelSteps cancels the named unsettled steps and returns them', async () => {
+		const executionId = await createExecution();
+		const otherExecutionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id: queuedId } = await createStep(store, executionId, {
+			nodeId: 'a',
+			iteration: 0,
+			status: 'queued',
+		});
+		const { id: runningId } = await seedStep({
+			executionId,
+			nodeId: 'b',
+			iteration: 0,
+			status: 'running',
+		});
+		const { id: completedId } = await createStep(store, executionId, {
+			nodeId: 'c',
+			iteration: 0,
+			status: 'completed',
+			outputs: [{}],
+		});
+		const { id: waitingId } = await seedWaitingStep(
+			executionId,
+			'd',
+			new Date('2099-01-01T00:00:00.000Z'),
+		);
+		const { id: unnamedId } = await createStep(store, executionId, {
+			nodeId: 'e',
+			iteration: 0,
+			status: 'queued',
+		});
+		// the execution id scopes the call, so a step of another execution is untouched
+		const { id: otherId } = await createStep(store, otherExecutionId, {
+			nodeId: 'a',
+			iteration: 0,
+			status: 'queued',
+		});
+
+		const cancelled = await store.cancelSteps(executionId, [
+			queuedId,
+			runningId,
+			completedId,
+			waitingId,
+			otherId,
+		]);
+
+		expect(cancelled.sort()).toEqual([queuedId, runningId, waitingId].sort());
+		expect((await store.loadStep(queuedId)).status).toBe('cancelled');
+		expect((await store.loadStep(runningId)).status).toBe('cancelled');
+		expect((await store.loadStep(waitingId)).status).toBe('cancelled');
+		expect((await store.loadStep(completedId)).status).toBe('completed');
+		expect((await store.loadStep(unnamedId)).status).toBe('queued');
+		expect((await store.loadStep(otherId)).status).toBe('queued');
+		// the worker of a cancelled running step cannot record its outcome
+		expect(await store.completeStep(runningId, [[]])).toBe(false);
+	});
+
 	it('TypeOrmStepStore.resumeDueSteps ignores a wait that cancelPendingSteps cancelled', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));

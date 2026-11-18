@@ -345,6 +345,24 @@ export class TypeOrmStepStore implements StepStore {
 		);
 	}
 
+	async cancelSteps(executionId: string, ids: string[]): Promise<string[]> {
+		if (ids.length === 0) return [];
+
+		const result = await this.repo
+			.createQueryBuilder()
+			.update(WorkflowStepExecution)
+			.set({ status: 'cancelled', staleAfter: null })
+			.where({
+				executionId,
+				id: In(ids),
+				status: In(['queued', 'waiting', 'running'] satisfies StepStatus[]),
+			})
+			.returning(['id'])
+			.execute();
+
+		return (result.raw as Array<{ id: string }>).map(({ id }) => id);
+	}
+
 	async cancelStep(id: string): Promise<boolean> {
 		return await this.transition(id, 'running', 'cancelled');
 	}
