@@ -85,8 +85,8 @@ export default {
 	'codeBlock.collapse': 'Collapse code',
 	'previewBadge.preview': 'Preview',
 	'enterpriseReadinessBadge.limited': 'Limited enterprise readiness',
-	'enterpriseReadinessBadge.tooltip': "Some enterprise capabilities don't cover this feature yet.",
-	'enterpriseReadinessBadge.docsLink': 'See docs',
+	'enterpriseReadinessBadge.tooltip':
+		"Some enterprise capabilities don't cover this feature yet. See docs for details.",
 	'settingsPageHeader.docsLeadingText': 'Learn more in the ',
 	'settingsPageHeader.docsLabel': 'documentation',
 	'spinner.loading': 'Loading…',

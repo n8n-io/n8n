@@ -123,37 +123,10 @@ describe('N8nFeatureMaturityBadges', () => {
 		expect(getByText('Limited enterprise readiness').closest('.n8n-badge')).toHaveFocus();
 
 		expect(
-			await findAllByText("Some enterprise capabilities don't cover this feature yet."),
+			await findAllByText(
+				"Some enterprise capabilities don't cover this feature yet. See docs for details.",
+			),
 		).not.toHaveLength(0);
-		expect(queryByRole('link', { name: 'See docs' })).not.toBeInTheDocument();
-	});
-
-	it('links the enterprise tooltip to the feature docs', async () => {
-		const docsUrl = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant';
-		const { findByRole } = render(FeatureMaturityBadges, {
-			global: {
-				provide: {
-					[FeatureMaturityKey as symbol]: {
-						assistant: { preview: false, limitedEnterpriseSupport: true, docsUrl },
-					} satisfies FeatureMaturityCatalog,
-				},
-			},
-			props: { feature: 'assistant' },
-		});
-
-		await userEvent.tab();
-
-		const link = await findByRole('link', { name: 'See docs' });
-		expect(link).toHaveAttribute('href', docsUrl);
-		expect(link).toHaveAttribute('target', '_blank');
-		expect(link).toHaveAttribute('rel', 'noopener noreferrer');
-		expect(link.closest('p')).toHaveTextContent(
-			"Some enterprise capabilities don't cover this feature yet. See docs",
-		);
-
-		const icon = link.querySelector('[data-icon="external-link"]');
-		expect(icon).toBeInTheDocument();
-		expect(icon).toHaveAttribute('aria-hidden', 'true');
-		expect(link).toHaveAccessibleName('See docs');
+		expect(queryByRole('link')).not.toBeInTheDocument();
 	});
 });
