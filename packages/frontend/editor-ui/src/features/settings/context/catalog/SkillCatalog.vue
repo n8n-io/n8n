@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, defineAsyncComponent, ref, useTemplateRef, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import type { SkillSourceListItem } from '@n8n/api-types';
+import { useSkillScopeDisplay } from '../skills.utils';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	N8nButton,
@@ -21,8 +24,40 @@ import {
 	type SkillCatalogEntry,
 } from './skillCatalog';
 
-defineProps<{ loading?: boolean }>();
-const emit = defineEmits<{ select: [entry: SkillCatalogEntry] }>();
+const props = withDefaults(
+	defineProps<{ loading?: boolean; canAdd?: boolean; sources?: SkillSourceListItem[] }>(),
+	{ canAdd: false, sources: () => [] },
+);
+const emit = defineEmits<{ select: [entry: SkillCatalogEntry]; openInstalled: [id: string] }>();
+const SkillCatalogDetail = defineAsyncComponent(
+	async () => await import('./SkillCatalogDetail.vue'),
+);
+const route = useRoute();
+const router = useRouter();
+const catalog = useTemplateRef<HTMLElement>('catalog');
+watch(
+	() => route.query.catalogSkill,
+	() => catalog.value?.focus(),
+	{ flush: 'post' },
+);
+const selected = computed(() =>
+	SKILL_CATALOG.find((entry) => entry.id === route.query.catalogSkill),
+);
+const { scopeDisplay } = useSkillScopeDisplay();
+const installations = computed(() =>
+	props.sources.flatMap((source) =>
+		(source.skills ?? []).map((skill) => ({
+			...skill,
+			label: scopeDisplay({ ...source, scope: source.projectId ? 'project' : 'instance' }).label,
+		})),
+	),
+);
+function installed(entry: SkillCatalogEntry) {
+	return installations.value.filter((skill) => skill.webUrl === entry.url);
+}
+function openDetails(entry?: SkillCatalogEntry) {
+	void router.push({ query: { ...route.query, view: 'discover', catalogSkill: entry?.id } });
+}
 const i18n = useI18n();
 const search = ref('');
 const category = ref('all');
@@ -86,7 +121,28 @@ function installs(entry: SkillCatalogEntry) {
 </script>
 
 <template>
-	<section :class="$style.catalog" data-test-id="skill-catalog">
+	<section
+		v-if="route.query.catalogSkill"
+		ref="catalog"
+		:class="$style.catalog"
+		tabindex="-1"
+		data-test-id="skill-catalog"
+	>
+		<N8nButton variant="ghost" icon="arrow-left" :class="$style.back" @click="openDetails()">{{
+			i18n.baseText('settings.context.skills.catalog.back')
+		}}</N8nButton>
+		<SkillCatalogDetail
+			v-if="selected"
+			:key="selected.id"
+			:entry="selected"
+			:installed="installed(selected)"
+			:can-add="canAdd && !loading"
+			@add="emit('select', selected)"
+			@open-installed="emit('openInstalled', $event)"
+		/>
+		<N8nText v-else>{{ i18n.baseText('settings.context.skills.catalog.unavailable') }}</N8nText>
+	</section>
+	<section v-else ref="catalog" :class="$style.catalog" tabindex="-1" data-test-id="skill-catalog">
 		<N8nText v-if="loading" role="status">{{ i18n.baseText('generic.loading') }}</N8nText>
 		<N8nText tag="p" color="text-light">{{
 			i18n.baseText('settings.context.skills.catalog.description')
@@ -148,6 +204,18 @@ function installs(entry: SkillCatalogEntry) {
 							<N8nText tag="p" color="text-base" :class="$style.description">{{
 								i18n.baseText(entry.descriptionKey)
 							}}</N8nText>
+							<N8nText
+								v-for="item in installed(entry)"
+								:key="item.id"
+								size="small"
+								color="text-light"
+								data-test-id="skill-catalog-installed"
+								>{{
+									i18n.baseText('settings.context.skills.catalog.addedTo', {
+										interpolate: { scope: item.label },
+									})
+								}}</N8nText
+							>
 							<div :class="$style.cardFooter">
 								<N8nText
 									v-if="entry.installs !== undefined"
@@ -164,7 +232,7 @@ function installs(entry: SkillCatalogEntry) {
 									size="small"
 									data-test-id="skill-catalog-details"
 									:data-attr="`skill-catalog-details-${entry.id}`"
-									@click="emit('select', entry)"
+									@click="openDetails(entry)"
 								>
 									{{ i18n.baseText('settings.context.skills.catalog.details') }}
 									<N8nIcon icon="arrow-right" size="medium" aria-hidden="true" />
@@ -184,6 +252,9 @@ function installs(entry: SkillCatalogEntry) {
 </template>
 
 <style module lang="scss">
+.back {
+	align-self: start;
+}
 .catalog,
 .group {
 	display: flex;

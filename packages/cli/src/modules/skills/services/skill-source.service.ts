@@ -5,6 +5,7 @@ import {
 	type DiscoveredSkill,
 	type SkillSourceConnectResponse,
 	type SkillSourceDiscovery,
+	type SkillSourcePreview,
 	type SkillSourceDuplicate,
 	type SkillScanResult,
 	type SkillSourceReason,
@@ -207,24 +208,10 @@ export class SkillSourceService {
 				source: { type: source.type, ...client.describe(locator), webUrl: client.webUrl(locator) },
 				...(existingSource ? { existingSourceId: existingSource.id } : {}),
 				duplicate,
-				skills: skills.map((read): DiscoveredSkill => {
-					const preview = read.fetched
-						? skillPreview(read.fetched.content)
-						: { files: [], truncated: false };
-					return {
-						key: read.key,
-						location: client.location(read.ref),
-						name: read.skill?.name ?? read.fetched?.content.name ?? null,
-						description: read.skill?.description ?? read.fetched?.content.description ?? null,
-						skippedFiles: read.fetched?.skippedFiles ?? [],
-						previewFiles: preview.files,
-						previewTruncated: preview.truncated,
-						nameTaken: nameTaken(read),
-						error: read.error ?? null,
-						check: read.check ?? null,
-						webUrl: client.webUrl(locator, read.ref),
-					};
-				}),
+				skills: skills.map((read) => ({
+					...this.previewSkill(source, read),
+					nameTaken: nameTaken(read),
+				})),
 				truncated: discovered.truncated,
 				tooDeep: discovered.tooDeep,
 			};
@@ -235,6 +222,43 @@ export class SkillSourceService {
 			);
 			throw error;
 		}
+	}
+
+	/** All signed-in users can browse public skills, as they can read Global skills. */
+	async preview(user: User, url: string): Promise<SkillSourcePreview> {
+		await this.flagGate.assertEnabled(user);
+		const source = await this.parse({ url }, user, null);
+		const discovered = await this.discoverAll(source);
+		const skills = await this.readAll(source, discovered);
+		return {
+			source: {
+				type: source.type,
+				...source.client.describe(source.locator),
+				webUrl: source.client.webUrl(source.locator),
+			},
+			skills: skills.map((read) => this.previewSkill(source, read)),
+			truncated: discovered.truncated,
+			tooDeep: discovered.tooDeep,
+		};
+	}
+
+	private previewSkill(source: ParsedSource, read: ReadSkill): DiscoveredSkill {
+		const preview = read.fetched
+			? skillPreview(read.fetched.content)
+			: { files: [], truncated: false };
+		return {
+			key: read.key,
+			location: source.client.location(read.ref),
+			name: read.skill?.name ?? read.fetched?.content.name ?? null,
+			description: read.skill?.description ?? read.fetched?.content.description ?? null,
+			skippedFiles: read.fetched?.skippedFiles ?? [],
+			previewFiles: preview.files,
+			previewTruncated: preview.truncated,
+			nameTaken: false,
+			error: read.error ?? null,
+			check: read.check ?? null,
+			webUrl: source.client.webUrl(source.locator, read.ref),
+		};
 	}
 
 	/**
@@ -287,11 +311,12 @@ export class SkillSourceService {
 			const client = this.clients.get(source.type);
 			return client ? [{ source, client }] : [];
 		});
-		const [counts, projects, canReview, canDelete] = await Promise.all([
+		const [counts, projects, canReview, canDelete, installed] = await Promise.all([
 			this.sourceRepository.countLinksBySource(shown.map(({ source }) => source.id)),
 			this.skillRepository.findProjects(shown.flatMap(({ source }) => source.projectId ?? [])),
 			this.skillAccess.accessCheck(user, 'update'),
 			this.skillAccess.accessCheck(user, 'delete'),
+			this.sourceRepository.findInstalledSkills(shown.map(({ source }) => source.id)),
 		]);
 		const missingLinks = await this.sourceRepository.findMissingLinks(
 			shown.map(({ source }) => source.id),
@@ -311,6 +336,12 @@ export class SkillSourceService {
 				projectName: project?.name ?? null,
 				projectType: project ? (project.type === 'personal' ? 'personal' : 'team') : null,
 				projectIcon: project?.icon ?? null,
+				skills: installed
+					.filter((link) => link.sourceId === source.id)
+					.map((link) => ({
+						id: link.skillId,
+						webUrl: client.webUrl(source.locator, link.remoteRef),
+					})),
 				skillCount: count.skills,
 				updatesAvailable: canReview(source) ? count.available : 0,
 				updatesBlocked: canReview(source) ? count.blocked : 0,

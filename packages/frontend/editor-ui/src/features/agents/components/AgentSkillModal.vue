@@ -40,6 +40,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { preferenceUserName } from '@/features/settings/context/context.utils';
 import SkillScopeBadge from '@/features/settings/context/components/SkillScopeBadge.vue';
+import { useSkillSyncFlag } from '@/features/settings/context/composables/useSkillSyncFlag';
 import { parseScope } from '@/features/settings/context/skills.utils';
 import { sourceLineOf } from '@/features/settings/context/skillSourceReview.utils';
 import { useMessage } from '@/app/composables/useMessage';
@@ -360,10 +361,14 @@ const pickerItems = computed<SkillConnectionItem[]>(() =>
 );
 
 const {
-	showRecommendedSkills,
+	showRecommendedSkills: recommendedSkillsEnabled,
 	trackCardsShown: trackRecommendedSkillsShown,
 	trackSkillAdded: trackRecommendedSkillAdded,
 } = useRecommendedSkillsExperiment();
+const skillSyncEnabled = useSkillSyncFlag();
+const showRecommendedSkills = computed(
+	() => !skillSyncEnabled.value && recommendedSkillsEnabled.value,
+);
 const recommendedSkillId = ref<RecommendedSkillId>();
 const { loadRecommendedSkill } = useRecommendedSkillLoader();
 const pickerCategories = computed<ToolCategoryKey[]>(() =>
@@ -966,8 +971,15 @@ async function attachLibrarySkill(skillId: string) {
 }
 
 /** Opens Settings > Context > Skills in a new tab, so the agent and the picker stay open. */
-function onManageSkills() {
-	window.open(router.resolve({ name: VIEWS.SETTINGS_CONTEXT_SKILLS }).href, '_blank', 'noopener');
+function onManageSkills(discover = false) {
+	window.open(
+		router.resolve({
+			name: VIEWS.SETTINGS_CONTEXT_SKILLS,
+			...(discover ? { query: { view: 'discover' } } : {}),
+		}).href,
+		'_blank',
+		'noopener',
+	);
 }
 
 function onPreviewAdd() {
@@ -1779,7 +1791,15 @@ function onRemove() {
 			</N8nButton>
 		</template>
 		<template v-else-if="step === 'select'" #footerLeft>
-			<N8nButton variant="ghost" data-testid="agent-skill-picker-manage" @click="onManageSkills">
+			<N8nButton
+				v-if="skillSyncEnabled"
+				variant="ghost"
+				icon="search"
+				data-testid="agent-skill-picker-discover"
+				@click="onManageSkills(true)"
+				>{{ i18n.baseText('settings.context.skills.catalog.discoverSkills') }}</N8nButton
+			>
+			<N8nButton variant="ghost" data-testid="agent-skill-picker-manage" @click="onManageSkills()">
 				<template #icon><N8nIcon icon="settings" :size="16" /></template>
 				{{ i18n.baseText('agents.builder.skills.picker.manage') }}
 			</N8nButton>

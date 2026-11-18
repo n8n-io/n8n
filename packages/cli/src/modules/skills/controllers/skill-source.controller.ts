@@ -5,6 +5,7 @@ import {
 	ConnectSkillSourceDto,
 	MoveSkillSourceDto,
 	DiscoverSkillSourceDto,
+	PreviewSkillSourceDto,
 	ListSkillSourceCredentialsQueryDto,
 	ListSkillSourceRepositoriesQueryDto,
 	ReplaceSkillSourceCredentialDto,
@@ -61,6 +62,13 @@ export class SkillSourceController {
 		@Query query: ListSkillSourceRepositoriesQueryDto,
 	) {
 		return await this.skillSourceService.listRepositories(req.user, query);
+	}
+
+	// Public content needs a login and the flag, but no create scope or stored credential.
+	// This follows Global skill read access. Project-only roles must also be able to browse.
+	@Post('/preview')
+	async preview(req: AuthenticatedRequest, _res: Response, @Body payload: PreviewSkillSourceDto) {
+		return await this.skillSourceService.preview(req.user, payload.url);
 	}
 
 	/** Reads a link and lists its skills for the picker. Writes nothing. */

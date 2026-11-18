@@ -348,6 +348,20 @@ export class SkillSourceRepository {
 		return await this.links.managerFor(ctx).find(SkillSourceLink, { where: { sourceId } });
 	}
 
+	/** Saved folder identities, without file content or pending updates. */
+	async findInstalledSkills(sourceIds: string[]) {
+		const links: Array<Pick<SkillSourceLink, 'sourceId' | 'skillId' | 'remoteRef'>> = [];
+		for (const chunk of chunkIds(sourceIds)) {
+			links.push(
+				...(await this.links.managerFor({}).find(SkillSourceLink, {
+					select: ['sourceId', 'skillId', 'remoteRef'],
+					where: { sourceId: In(chunk) },
+				})),
+			);
+		}
+		return links;
+	}
+
 	/** Claims the reviewed update in the transaction that saves its next skill version. */
 	async acceptPending(
 		skillId: string,

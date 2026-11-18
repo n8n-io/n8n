@@ -56,6 +56,11 @@ const skillSourceTarget = {
 	credentialId: z.string().min(1).max(36).optional(),
 };
 
+/** Reads public GitHub content without a save scope or a credential. */
+export class PreviewSkillSourceDto extends Z.class({
+	url: z.string().trim().min(1).max(2048),
+}) {}
+
 /** Reads a link and lists the skills in it, for the picker. Writes nothing. */
 export class DiscoverSkillSourceDto extends Z.class({
 	...skillSourceTarget,
@@ -237,6 +242,11 @@ export type SkillSourceDiscovery = {
 	tooDeep?: number;
 };
 
+export type SkillSourcePreview = Pick<
+	SkillSourceDiscovery,
+	'source' | 'skills' | 'truncated' | 'tooDeep'
+>;
+
 export type SkillSourceConnectResponse = {
 	sourceId: string;
 	imported: Array<{ key: string; skillId: string; name: string }>;
@@ -344,6 +354,8 @@ export type SkillSourceListItem = {
 	projectName: string | null;
 	projectType: 'personal' | 'team' | null;
 	projectIcon: ProjectIcon | null;
+	/** Saved skill folders, for catalog installation badges. */
+	skills?: Array<{ id: string; webUrl: string }>;
 	/** Synced skills of the source. */
 	skillCount: number;
 	/** Updates that wait for review and that the security check did not block. */

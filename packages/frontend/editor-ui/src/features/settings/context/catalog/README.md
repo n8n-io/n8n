@@ -1,9 +1,14 @@
 # Skills catalog
 
 The catalog is a fixed selection in the editor bundle. Browsing it does not read
-Skills.sh or GitHub. A user selects a skill and reviews the GitHub content before
-import. Catalog changes ship with n8n releases. Existing source update checks
-continue to work through Skill Sync.
+Skills.sh or GitHub. Opening a detail page reads public GitHub content and runs
+the existing checks. Users can browse files before choosing a save scope.
+The import still checks the selected scope and current content. Catalog changes
+ship with n8n releases. Existing source update checks continue through Skill Sync.
+
+Installed badges use saved source folders and visible scopes. A renamed synced
+skill still matches. A manual copy or a skill that stopped syncing has no source
+link, so it has no catalog badge. The agent picker links to Discover in a new tab.
 
 ## Selection reviewed on November 17, 2026
 
@@ -72,8 +77,9 @@ copies or runtime content imports in the catalog bundle.
 
 The two new skills live under `content/` in this directory. Their catalog links
 point to these folders on n8n-io/n8n's master branch. The links become available
-when this change merges. They use the same import, scope, permission, and update
-review flows as every other catalog entry.
+when this change merges. Until then, their detail pages explain that the source
+is unavailable and keep Add disabled. They use the same import, scope, permission,
+and update review flows as every other catalog entry.
 
 The workflow-tidying skill retains the MIT notice from its guide. The memory
 skill includes the repository license. Tests read these source files locally;

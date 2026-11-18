@@ -153,6 +153,11 @@ const viewTabs = computed(() => [
 	{ value: 'discover', label: i18n.baseText('settings.context.skills.catalog.discover') },
 ]);
 
+function onViewChange(view: string) {
+	activeView.value = view;
+	void router.push({ query: { ...route.query, view, catalogSkill: undefined } });
+}
+
 function onCatalogSelect(entry: SkillCatalogEntry) {
 	if (uploadBusy.value) return;
 	dropPendingUpload();
@@ -168,6 +173,15 @@ function onCatalogSelect(entry: SkillCatalogEntry) {
 	};
 	connectOpen.value = true;
 }
+
+watch(
+	[skillSyncEnabled, () => route.query.view, () => route.query.catalogSkill],
+	([enabled, view, entry]) => {
+		activeView.value =
+			enabled && (view === 'discover' || typeof entry === 'string') ? 'discover' : 'installed';
+	},
+	{ immediate: true },
+);
 
 const movingSource = ref<SkillSourceListItem | null>(null);
 const recommendedOpen = ref(false);
@@ -209,7 +223,11 @@ const emptyState = computed<'none' | 'noSkills' | 'noResults'>(() => {
 
 watch([skillSyncEnabled, hasLoaded], ([enabled]) => {
 	if (!enabled) activeView.value = 'installed';
-	else if (emptyState.value === 'noSkills' && skillsStore.collapsedSources.length === 0) {
+	else if (
+		route.query.view !== 'installed' &&
+		emptyState.value === 'noSkills' &&
+		skillsStore.collapsedSources.length === 0
+	) {
 		activeView.value = 'discover';
 	}
 });
@@ -616,7 +634,7 @@ function failedNames(failed: FailedSkill[]): string {
 async function onSourceConnected({ response, sourceLabel, scopeLabel }: SkillSourceConnected) {
 	const failed = response.failed.length > 0 ? failedNames(response.failed) : '';
 	if (response.imported.length > 0) {
-		activeView.value = 'installed';
+		onViewChange('installed');
 		showMessage({
 			title: i18n.baseText('settings.context.skills.connect.success', {
 				interpolate: {
@@ -1038,7 +1056,7 @@ async function onSourceMoved(sourceId: string) {
 
 async function onOpenSource(sourceId: string) {
 	connectOpen.value = false;
-	activeView.value = 'installed';
+	onViewChange('installed');
 	search.value = '';
 	filters.value = { ...NO_FILTERS };
 	collapsedSourceIds.value = collapsedSourceIds.value.filter((id) => id !== sourceId);
@@ -1101,7 +1119,8 @@ onMounted(async () => {
 
 		<N8nTabs
 			v-if="skillSyncEnabled"
-			v-model="activeView"
+			:model-value="activeView"
+			@update:model-value="onViewChange"
 			:class="$style.tabs"
 			:options="viewTabs"
 			variant="modern"
@@ -1349,7 +1368,10 @@ onMounted(async () => {
 		<SkillCatalog
 			v-if="skillSyncEnabled && activeView === 'discover'"
 			:loading="uploadBusy"
+			:can-add="scopeOptions.length > 0"
+			:sources="skillsStore.sources"
 			@select="onCatalogSelect"
+			@open-installed="openEditModal({ id: $event })"
 		/>
 
 		<SkillSourceMoveDialog

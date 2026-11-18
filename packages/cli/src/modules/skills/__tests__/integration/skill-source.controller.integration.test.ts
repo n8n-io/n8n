@@ -2,6 +2,8 @@ import {
 	SKILL_SYNC_FLAG,
 	type SkillSourceConnectResponse,
 	type SkillSourceDiscovery,
+	type SkillSourcePreview,
+	type SkillSourceListItem,
 } from '@n8n/api-types';
 import { PostHogClient } from '@n8n/backend-services';
 import {
@@ -127,6 +129,70 @@ describe('SkillSourceController', () => {
 		// The flag is checked before the body, so an invalid body does not reveal the route.
 		await discover(owner, {}, 404);
 		await connect(owner, {}, 404);
+	});
+
+	describe('public preview', () => {
+		it('requires a signed-in user', async () => {
+			await server.authlessAgent.post('/skill-sources/preview').send({ url: REPO }).expect(401);
+		});
+
+		it('lets a viewer read files and checks without creating a source or choosing a save scope', async () => {
+			const response = await viewer
+				.post('/skill-sources/preview')
+				.send({ url: `${REPO}/tree/main/skills/pdf` })
+				.expect(200);
+			const { data } = response.body as Body<SkillSourcePreview>;
+			expect(data.skills).toHaveLength(1);
+			expect(data.skills[0]).toMatchObject({
+				name: 'pdf',
+				nameTaken: false,
+				skippedFiles: ['assets/form.pdf'],
+			});
+			expect(data.skills[0].previewFiles.map((file) => file.path)).toContain('references/pages.md');
+			expect(data.skills[0].check).not.toBeNull();
+			expect(await countSources()).toBe(0);
+		});
+
+		it('requires the feature flag before reading public content', async () => {
+			postHog.getFeatureFlags.mockResolvedValue({});
+			await viewer.post('/skill-sources/preview').send({}).expect(404);
+		});
+
+		it('does not use a supplied credential to preview private content', async () => {
+			github.push('acme/private', FILES, 'main', { private: true });
+			await viewer
+				.post('/skill-sources/preview')
+				.send({ url: 'https://github.com/acme/private', credentialId: 'not-used' })
+				.expect(404);
+		});
+	});
+
+	it('lists only installed folders in visible scopes', async () => {
+		const { data } = await discover(owner, { url: REPO, scope: 'instance' });
+		const result = await connect(owner, {
+			url: REPO,
+			scope: 'instance',
+			skillKeys: keysOf(data, ['docx']),
+		});
+		github.push('acme/hidden', FILES);
+		const hiddenUrl = 'https://github.com/acme/hidden';
+		const hidden = await discover(owner, {
+			url: hiddenUrl,
+			scope: 'project',
+			projectId: otherTeam.id,
+		});
+		await connect(owner, {
+			url: hiddenUrl,
+			scope: 'project',
+			projectId: otherTeam.id,
+			skillKeys: keysOf(hidden.data, ['docx']),
+		});
+		const response = await member.get('/skill-sources').expect(200);
+		const sources = (response.body as Body<SkillSourceListItem[]>).data;
+		expect(sources).toHaveLength(1);
+		expect(sources[0].skills).toEqual([
+			{ id: result.data.imported[0].skillId, webUrl: `${REPO}/tree/main/skills/docx` },
+		]);
 	});
 
 	describe('discover', () => {

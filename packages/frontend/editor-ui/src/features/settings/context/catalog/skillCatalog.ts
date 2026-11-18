@@ -11,6 +11,8 @@ export const CATALOG_CATEGORIES = [
 ] as const;
 export type SkillCatalogCategory = (typeof CATALOG_CATEGORIES)[number];
 
+export type SkillCatalogInstallation = { id: string; label: string };
+
 export interface SkillCatalogEntry {
 	location: string;
 	allowedSkippedFiles?: string[];

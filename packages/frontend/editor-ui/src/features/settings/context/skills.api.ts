@@ -22,6 +22,7 @@ import type {
 	SkillSourceConnectResponse,
 	SkillSourceCredentialOption,
 	SkillSourceDiscovery,
+	SkillSourcePreview,
 	SkillSourceRepositoryList,
 	SkillUserDto,
 	ListSkillSourceCredentialsQueryDto,
@@ -161,6 +162,19 @@ export async function discoverSkillSource(
 		'POST',
 		`${SOURCES_ENDPOINT}/discover`,
 		payload,
+	);
+}
+
+/** Reads public source content before a user chooses where to save it. */
+export async function previewSkillSource(
+	context: IRestApiContext,
+	url: string,
+): Promise<SkillSourcePreview> {
+	return await makeRestApiRequest<SkillSourcePreview>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/preview`,
+		{ url },
 	);
 }
 

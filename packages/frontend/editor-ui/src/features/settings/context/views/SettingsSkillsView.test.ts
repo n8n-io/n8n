@@ -17,7 +17,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, screen, waitFor, within } from '@testing-library/vue';
 import { mock } from 'vitest-mock-extended';
-import { nextTick, ref } from 'vue';
+import { nextTick, reactive, ref } from 'vue';
 
 import { getDropdownItems } from '@/__tests__/utils';
 import { RECOMMENDED_SKILLS_EXPERIMENT } from '@/app/constants/experiments';
@@ -30,12 +30,16 @@ import SettingsSkillsView from './SettingsSkillsView.vue';
 import { useSkillsStore } from '../skills.store';
 
 const push = vi.fn();
-const routeQuery: Record<string, string> = {};
+const routeQuery = reactive<Record<string, string>>({});
 const confirmMock = vi.fn().mockResolvedValue('confirm');
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
 const trackMock = vi.fn();
 const saveAsMock = vi.fn();
+
+vi.mock('../skills.api', () => ({
+	previewSkillSource: vi.fn().mockRejectedValue(new Error('Unavailable')),
+}));
 
 vi.mock('file-saver', () => ({ saveAs: (...args: unknown[]) => saveAsMock(...args) }));
 
@@ -160,6 +164,9 @@ describe('SettingsSkillsView', () => {
 		setPermissions();
 		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
 		push.mockClear();
+		push.mockImplementation(({ query }: { query?: Record<string, string> }) => {
+			if (query) Object.assign(routeQuery, query);
+		});
 		confirmMock.mockClear();
 		confirmMock.mockResolvedValue('confirm');
 		showMessageMock.mockClear();
@@ -1592,23 +1599,13 @@ describe('SettingsSkillsView', () => {
 			return renderView({ global: { stubs: { SkillSourceConnectDialog: ConnectDialogStub } } });
 		}
 
-		it('opens a catalog selection in the GitHub import dialog', async () => {
+		it('opens the detail page before the GitHub import dialog', async () => {
 			enableSkillSync();
 			const view = renderWithDialogStub();
-			await userEvent.click(view.getByRole('tab', { name: 'Discover' }));
 			await view.findByTestId('skill-catalog');
 			await userEvent.click(view.getAllByTestId('skill-catalog-details')[0]);
-			expect(await view.findByTestId('connect-dialog-stub')).toBeInTheDocument();
-		});
-
-		it('opens a guide-based skill in the GitHub import flow', async () => {
-			enableSkillSync();
-			const view = renderWithDialogStub();
-			await userEvent.click(view.getByRole('tab', { name: 'Discover' }));
-			const card = await view.findByTestId('skill-catalog-n8n-memory-optimization');
-			await userEvent.click(within(card).getByRole('button'));
-			expect(await view.findByTestId('connect-dialog-stub')).toBeInTheDocument();
-			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+			expect(await view.findByTestId('skill-catalog-detail')).toBeVisible();
+			expect(view.queryByTestId('connect-dialog-stub')).not.toBeInTheDocument();
 		});
 
 		it('opens catalog details without permission to create skills', async () => {
@@ -1618,10 +1615,35 @@ describe('SettingsSkillsView', () => {
 			const view = renderView();
 			await view.findByTestId('skill-catalog');
 			await userEvent.click(view.getAllByTestId('skill-catalog-details')[0]);
-			const dialog = await view.findByRole('dialog');
-			expect(within(dialog).getByText(/workflow tools/)).toBeVisible();
-			expect(within(dialog).getByText(/permission/)).toBeVisible();
-			expect(within(dialog).getByRole('button', { name: 'Review skill' })).toBeDisabled();
+			const detail = await view.findByTestId('skill-catalog-detail');
+			expect(within(detail).getByText(/workflow tools/)).toBeVisible();
+			expect(within(detail).getByText(/permission/)).toBeVisible();
+			expect(within(detail).getByRole('button', { name: 'Add skill' })).toBeDisabled();
+		});
+
+		it('opens Discover from the agent picker link on an instance with skills', async () => {
+			enableSkillSync();
+			skillsStore.count = 1;
+			routeQuery.view = 'discover';
+			const view = renderWithDialogStub();
+			expect(await view.findByRole('tab', { name: 'Discover' })).toHaveAttribute(
+				'aria-selected',
+				'true',
+			);
+			routeQuery.view = 'installed';
+			await waitFor(() =>
+				expect(view.getByRole('tab', { name: 'Your skills' })).toHaveAttribute(
+					'aria-selected',
+					'true',
+				),
+			);
+			routeQuery.view = 'discover';
+			await waitFor(() =>
+				expect(view.getByRole('tab', { name: 'Discover' })).toHaveAttribute(
+					'aria-selected',
+					'true',
+				),
+			);
 		});
 
 		it('hides Discover when Skill Sync is disabled', () => {

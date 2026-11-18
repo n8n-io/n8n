@@ -38,6 +38,10 @@ vi.mock('@n8n/i18n', () => {
 	return { useI18n: () => i18n, i18n, i18nInstance: { install: vi.fn() } };
 });
 
+const skillSync = ref(false);
+vi.mock('@/features/settings/context/composables/useSkillSyncFlag', () => ({
+	useSkillSyncFlag: () => skillSync,
+}));
 const apiCreateSpy = vi.fn();
 const { listAttachableSkills, getSkillDetail, listSkillVersions, getSkillVersion } = vi.hoisted(
 	() => ({
@@ -271,6 +275,7 @@ function renderModal({
 
 // Every suite renders an open modal with fresh stores.
 beforeEach(() => {
+	skillSync.value = false;
 	vi.clearAllMocks();
 	createTestingPinia({ stubActions: false });
 	const uiStore = mockedStore(useUIStore);
@@ -1167,6 +1172,22 @@ describe('AgentSkillModal', () => {
 			expect(resolveRoute).toHaveBeenCalledWith({ name: VIEWS.SETTINGS_CONTEXT_SKILLS });
 			expect(open).toHaveBeenCalledWith('/settings/context/skills', '_blank', 'noopener');
 			open.mockRestore();
+		});
+
+		it('offers discovery and hides the old recommendations when Skill Sync is enabled', async () => {
+			skillSync.value = true;
+			recommendedSkills.show.value = true;
+			const open = vi.spyOn(window, 'open').mockReturnValue(null);
+			const view = renderModal({ skillRefsEnabled: true, onAttach: vi.fn() });
+			await fireEvent.click(view.getByTestId('agent-skill-picker-discover'));
+			expect(resolveRoute).toHaveBeenCalledWith({
+				name: VIEWS.SETTINGS_CONTEXT_SKILLS,
+				query: { view: 'discover' },
+			});
+			expect(view.queryByText('humanizer')).not.toBeInTheDocument();
+			expect(recommendedSkills.trackCardsShown).not.toHaveBeenCalled();
+			open.mockRestore();
+			recommendedSkills.show.value = false;
 		});
 
 		it('shows the settings link only on the picker step', async () => {

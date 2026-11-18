@@ -998,7 +998,13 @@ function onInteractOutside(event: Event) {
 			<N8nButton
 				v-if="step === 'repository'"
 				:label="
-					i18n.baseText(preset ? 'settings.context.skills.connect.catalog.review' : 'generic.next')
+					i18n.baseText(
+						discovering
+							? 'settings.context.skills.catalog.loading'
+							: preset
+								? 'settings.context.skills.connect.catalog.review'
+								: 'generic.next',
+					)
 				"
 				:disabled="!canGoNext"
 				:loading="discovering"
