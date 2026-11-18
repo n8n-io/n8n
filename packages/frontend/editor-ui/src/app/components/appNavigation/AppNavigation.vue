@@ -491,6 +491,8 @@ $panel-width: 240px;
 	// With the content, the panel forms one surface above the rail.
 	border-radius: var(--app-shell--surface--radius) 0 0 var(--app-shell--surface--radius);
 	box-shadow: var(--app-shell--surface--shadow);
+	// A hairline between the panel and the content, which differ only slightly in tone.
+	border-right: var(--border-width, 1px) solid var(--border-color--subtle);
 }
 
 .floating {
