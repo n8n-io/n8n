@@ -4,7 +4,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 // SQLite table recreation of addColumns cannot cascade into other rows.
 const cursorTables = ['instance_ai_observation_cursors', 'agents_observation_cursors'];
 
-export class AddObservationWorkingSet1794930833141 implements ReversibleMigration {
+export class AddObservationWorkingSet1795024440192 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
 		for (const table of cursorTables) {
 			await addColumns(
