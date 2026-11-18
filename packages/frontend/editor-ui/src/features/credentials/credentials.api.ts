@@ -211,3 +211,24 @@ export async function probeCredential(
 ): Promise<INodeCredentialTestResult> {
 	return await makeRestApiRequest(context, 'POST', `/credentials/${credentialId}/probe`);
 }
+
+/** Mirrors the backend response of the vault entry endpoints. */
+export interface VaultStatusResponse {
+	enabled: boolean;
+}
+
+export interface VaultCaptureResponse {
+	captureUrl: string;
+	captureOrigin: string;
+}
+
+export async function getVaultStatus(context: IRestApiContext): Promise<VaultStatusResponse> {
+	return await makeRestApiRequest(context, 'GET', '/vault-credentials/status');
+}
+
+export async function startVaultCapture(
+	context: IRestApiContext,
+	credentialId: string,
+): Promise<VaultCaptureResponse> {
+	return await makeRestApiRequest(context, 'POST', `/vault-credentials/${credentialId}/capture`);
+}

@@ -35,6 +35,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useUsersStore } from '@n8n/stores/users.store';
 
 import { probeCredential } from '../credentials.api';
+import { isSecretProperty, useVaultCredentials } from './useVaultCredentials';
 import { useCredentialsStore } from '../credentials.store';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../credentials.types';
 import {
@@ -92,6 +93,7 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
 	const rootStore = useRootStore();
+	const { vaultEnabled } = useVaultCredentials();
 	const nodeHelpers = useNodeHelpers();
 	const i18n = useI18n();
 
@@ -269,6 +271,8 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 
 		const properties = type.properties.filter((propertyData: INodeProperties) => {
 			if (!displayCredentialParameter(propertyData)) return false;
+			// In vault mode a secure frame collects the secret fields, so the form does not show them.
+			if (vaultEnabled.value && isSecretProperty(propertyData)) return false;
 			return useCustomOAuth.value || !type.__overwrittenProperties?.includes(propertyData.name);
 		});
 
@@ -333,6 +337,9 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 
 	const isCredentialTestable = computed(() => {
 		if (isOAuthType.value || !requiredPropertiesFilled.value) return false;
+
+		// The form does not hold the secrets in vault mode, so a test would run without them.
+		if (vaultEnabled.value && credentialType.value?.properties.some(isSecretProperty)) return false;
 
 		if (isTemplatedAuthProbeable.value) return true;
 

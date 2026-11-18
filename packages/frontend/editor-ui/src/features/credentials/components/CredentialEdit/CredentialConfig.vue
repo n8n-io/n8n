@@ -30,6 +30,8 @@ import { useUIStore } from '@/app/stores/ui.store';
 import Banner from '@/app/components/Banner.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
+import VaultSecretEntry from './VaultSecretEntry.vue';
+import { isSecretProperty, useVaultCredentials } from '../../composables/useVaultCredentials';
 import TemplatedAuthSimpleView from './TemplatedAuthSimpleView.vue';
 import {
 	listPlaceholderTitles,
@@ -298,6 +300,15 @@ const canEdit = computed(() => {
 const canWrite = computed(() => {
 	return canCreate.value || canEdit.value;
 });
+
+// In vault mode the secret fields are entered in a secure frame served by the vault.
+const { vaultEnabled } = useVaultCredentials();
+const showVaultSecrets = computed(
+	() =>
+		vaultEnabled.value &&
+		canWrite.value &&
+		props.credentialType.properties.some((property) => isSecretProperty(property)),
+);
 
 // Switching a credential's type in either direction requires BOTH edit access
 // and the createEndUser permission — the change edits the credential and affects
@@ -798,6 +809,12 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					:show-validation-warnings="showValidationWarning"
 					@update="onDataChange"
 				/>
+				<template v-if="showVaultSecrets">
+					<VaultSecretEntry v-if="credentialId" :key="credentialId" :credential-id="credentialId" />
+					<N8nInfoTip v-else :bold="false" data-test-id="vault-secret-save-first">
+						{{ i18n.baseText('credentialEdit.vaultSecrets.saveFirst') }}
+					</N8nInfoTip>
+				</template>
 
 				<N8nText v-if="isMissingCredentials" color="text-base" size="medium">
 					{{ i18n.baseText('credentialEdit.credentialConfig.missingCredentialType') }}
