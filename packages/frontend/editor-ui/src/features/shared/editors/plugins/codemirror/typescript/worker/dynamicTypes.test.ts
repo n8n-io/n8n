@@ -62,5 +62,34 @@ describe('typescript worker dynamicTypes', () => {
 }>;
 }`);
 		});
+
+		it('quotes property names that are not valid TypeScript identifiers', () => {
+			expect(
+				schemaToTypescriptTypes(
+					{
+						type: 'object',
+						value: [
+							{
+								key: 'testing Stuff',
+								type: 'string',
+								value: '',
+								path: '.testing Stuff',
+							},
+							{
+								key: 'content-type',
+								type: 'number',
+								value: '',
+								path: '.content-type',
+							},
+						],
+						path: '',
+					},
+					'NodeName_1',
+				),
+			).toBe(`interface NodeName_1 {
+  "testing Stuff": string;
+  "content-type": number;
+}`);
+		});
 	});
 });
