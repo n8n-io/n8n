@@ -1232,7 +1232,8 @@ defineExpose({
 	width: calc(100% - var(--instance-ai-artifacts-layout-width));
 	max-width: min(var(--instance-ai-chat-max-width, 800px), 100%);
 	margin: 0 auto;
-	padding: var(--spacing--sm) var(--spacing--lg);
+	// A narrow host, such as the quick chat, can use smaller side margins.
+	padding: var(--instance-ai-message-list-padding, var(--spacing--sm) var(--spacing--lg));
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);

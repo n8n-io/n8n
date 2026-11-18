@@ -255,10 +255,18 @@ function onKeydown(event: KeyboardEvent) {
 	--instance-ai-input-padding: 0 var(--spacing--sm) var(--spacing--sm);
 	--instance-ai-conversation-background: var(--background--surface);
 	--chat-input--font-size: var(--font-size--sm);
+	// The messages use the same side margins as the composer.
+	--instance-ai-message-list-padding: var(--spacing--sm);
 
 	display: flex;
 	flex-direction: column;
 	flex: 1;
+	min-height: 0;
+}
+
+// The conversation fills the body and scrolls inside it. Without this, a flex child grows to
+// its content, and a long reply pushes the composer out of the panel.
+.body > * {
 	min-height: 0;
 }
 
