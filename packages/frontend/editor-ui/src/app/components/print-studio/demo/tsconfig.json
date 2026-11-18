@@ -1,0 +1,16 @@
+{
+	"compilerOptions": {
+		"target": "ES2022",
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"strict": true,
+		"skipLibCheck": true,
+		"resolveJsonModule": true,
+		"esModuleInterop": true,
+		"lib": ["ES2022", "DOM"],
+		"types": ["node", "vite/client"],
+		"noEmit": true
+	},
+	"include": ["../*.ts", "../*.vue", "./main.ts"],
+	"exclude": ["../*.test.ts", "../WorkflowPrintStudio.vue"]
+}
