@@ -112,6 +112,11 @@ export interface CodeNativeInput {
 	 */
 	defaultOutput?(name: string): number;
 	/**
+	 * True when v1 has output `output` of node `name` and the converter has its list: only then
+	 * `$items(name, output)` and `$('name').all(output)` have a native form for that output.
+	 */
+	outputList?(name: string, output: number): boolean;
+	/**
 	 * True when node `name` is in the workflow and has no run before this node, for example
 	 * a node of a branch that did not run. v1 then gives false for `$('name').isExecuted`,
 	 * and its error for `.all()`, `.first()` and `.last()`.
@@ -128,8 +133,11 @@ export interface Blocker {
 export interface Translation {
 	/** The user code as subset statements, the body of a function. */
 	body: string;
-	/** Names of the other nodes that the code reads, in order of first use. */
-	nodes: string[];
+	/**
+	 * The lists of other nodes that the code reads, in order of first use: the node and the
+	 * output of it that the list holds.
+	 */
+	nodes: Array<{ name: string; output: number }>;
 	/** Helper functions that the body calls (keys of `CODE_HELPERS`). */
 	helpers: Set<string>;
 	/** True when the code can change objects that it gets, so it needs copies. */
@@ -1060,7 +1068,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	const handOver = (feature: string): void => {
 		handsOver ??= feature;
 	};
-	const nodes: string[] = [];
+	const nodes: Array<{ name: string; output: number }> = [];
 	let usesFirstJson = false;
 	let nondeterministic = false;
 	/** The code draws random numbers: a second run draws other ones. */
@@ -1337,7 +1345,8 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		);
 	};
 
-	const nodeList = (name: string): string | null => {
+	/** The list of output `output` of node `name`, and the reason when the code cannot read it. */
+	const nodeListAt = (name: string, output: number, feature: string): string | null => {
 		if (!input.hasNode(name)) {
 			block(
 				'$() of a node that has not run',
@@ -1345,40 +1354,58 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			);
 			return null;
 		}
-		let k = nodes.indexOf(name);
+		// The list of the output that this node reads is there. Another output needs the list of
+		// that output, which the converter has only when v1 has that branch of the node.
+		if (
+			output !== (input.defaultOutput?.(name) ?? 0) &&
+			input.outputList?.(name, output) !== true
+		) {
+			block(feature, `The code reads output ${output} of node "${name}", which is not there.`);
+			return null;
+		}
+		let k = nodes.findIndex((list) => list.name === name && list.output === output);
 		if (k < 0) {
-			nodes.push(name);
+			nodes.push({ name, output });
 			k = nodes.length - 1;
 		}
 		return nodeVar(k);
 	};
 
+	const nodeList = (name: string, feature = "$('…')"): string | null =>
+		nodeListAt(name, input.defaultOutput?.(name) ?? 0, feature);
+
+	/** The number that an argument of `$items`, `.all()`, `.first()` or `.last()` gives, or null. */
+	const argumentNumber = (e: ts.Expression): number | null => {
+		const x = stripParens(e);
+		if (ts.isNumericLiteral(x)) return Number(x.text);
+		return ts.isPrefixUnaryExpression(x) &&
+			x.operator === ts.SyntaxKind.MinusToken &&
+			ts.isNumericLiteral(x.operand)
+			? -Number(x.operand.text)
+			: null;
+	};
+
 	/**
-	 * True when `output` and `run` (the arguments after the node name of `$items`, or the
-	 * arguments of `.all()`, `.first()` and `.last()`) name the items that the call gives
-	 * without them: the output that this node reads, and the last run. A node that runs
-	 * once has only run 0.
+	 * The list that `$items(name, output, run)` or `.all(output, run)` gives, or null when the
+	 * call names something that the code cannot read. `fallback` is the output of a call that
+	 * names none: the output that this node reads, or 0 for `$items` (v1 reads output 0 there).
+	 * v1 reads the last run of a call that names none, and a node that runs once has only run 0.
 	 */
-	const defaultItems = (
+	const itemsList = (
 		name: string,
 		output: ts.Expression | undefined,
 		run: ts.Expression | undefined,
-	): boolean => {
-		const number = (e: ts.Expression): number | null => {
-			const x = stripParens(e);
-			if (ts.isNumericLiteral(x)) return Number(x.text);
-			return ts.isPrefixUnaryExpression(x) &&
-				x.operator === ts.SyntaxKind.MinusToken &&
-				ts.isNumericLiteral(x.operand)
-				? -Number(x.operand.text)
-				: null;
-		};
-		if (output !== undefined && number(output) !== (input.defaultOutput?.(name) ?? 0)) return false;
-		if (run === undefined) return true;
-		const index = number(run);
-		return (
-			index === -1 || (index === 0 && (input.runIndex === undefined || input.runIndex === '0'))
-		);
+		fallback: number,
+		feature: string,
+	): string | null => {
+		if (run !== undefined) {
+			const index = argumentNumber(run);
+			const oneRun = input.runIndex === undefined || input.runIndex === '0';
+			if (index === null || (index !== -1 && !(index === 0 && oneRun))) return null;
+		}
+		const index = output === undefined ? fallback : argumentNumber(output);
+		if (index === null) return null;
+		return nodeListAt(name, index, feature);
 	};
 
 	/** `<list>.all() / .first() / .last() / .item / .isExecuted` of `$input` or `$('X')`. */
@@ -1391,26 +1418,41 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		const member = p.name.text;
 		const call = ts.isCallExpression(p.parent) && p.parent.expression === p ? p.parent : null;
 		if (list === null) return;
-		// \`$input.all\` of v1 takes no arguments and reads none.
-		const noArguments =
+		// \`$input.all\` of v1 takes no arguments and reads none. The arguments of \`$('X')\` name
+		// an output and a run (\`itemsList\`).
+		const named =
 			call !== null &&
 			(call.arguments.length === 0 ||
 				(own && member === 'all' && call.arguments.every((x) => ts.isNumericLiteral(x))) ||
 				(!own &&
 					call.arguments.length <= 2 &&
-					!call.arguments.some((x) => ts.isSpreadElement(x)) &&
-					defaultItems(name, call.arguments[0], call.arguments[1])));
-		if (call && noArguments) {
+					!call.arguments.some((x) => ts.isSpreadElement(x))));
+		const picked = member === 'all' || member === 'first' || member === 'last';
+		const chosen =
+			call === null || !picked
+				? list
+				: !named
+					? null
+					: own || call.arguments.length === 0
+						? list
+						: itemsList(
+								name,
+								call.arguments[0],
+								call.arguments[1],
+								input.defaultOutput?.(name) ?? 0,
+								`$('…').${member}`,
+							);
+		if (call && chosen !== null) {
 			if (member === 'all') {
-				replace(base.getStart(sf), call.getEnd(), list);
+				replace(base.getStart(sf), call.getEnd(), chosen);
 				return;
 			}
 			if (member === 'first') {
-				replace(base.getStart(sf), call.getEnd(), `${list}[0]`);
+				replace(base.getStart(sf), call.getEnd(), `${chosen}[0]`);
 				return;
 			}
 			if (member === 'last') {
-				replace(base.getStart(sf), call.getEnd(), `${list}[${list}.length - 1]`);
+				replace(base.getStart(sf), call.getEnd(), `${chosen}[${chosen}.length - 1]`);
 				return;
 			}
 		}
@@ -5632,22 +5674,20 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 					replaceNode(parent, input.itemsOfFirstOnly ? `${ITEMS}.slice(0, 1)` : ITEMS);
 					return false;
 				}
-				// \`$items(name, output, run)\` with the output and the run that \`$items(name)\` reads.
+				// \`$items(name, output, run)\`: v1 reads output 0 when the call names none, and the last
+				// run when it names none.
 				const [first, second, third] = parent.arguments;
 				const named =
-					parent.arguments.length >= 2 &&
+					parent.arguments.length >= 1 &&
 					parent.arguments.length <= 3 &&
 					!parent.arguments.some((x) => ts.isSpreadElement(x))
-						? constText(first)
-						: stringArgument(parent);
-				// v1 reads output 0 here, and not the output that this node has a connection to.
-				const nodeName =
-					named !== null &&
-					((input.defaultOutput?.(named) ?? 0) !== 0 ||
-						(parent.arguments.length >= 2 && !defaultItems(named, second, third)))
+						? (constText(first) ?? stringArgument(parent))
+						: null;
+				const list =
+					named === null
 						? null
-						: named;
-				if (nodeName === null) {
+						: itemsList(named, second, third, 0, '$items() with an output or a run');
+				if (list === null) {
 					block(
 						parent.arguments.length === 0
 							? '$items() without a node name'
@@ -5656,8 +5696,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 					);
 					return false;
 				}
-				const list = nodeList(nodeName);
-				if (list !== null) replaceNode(parent, list);
+				replaceNode(parent, list);
 				return false;
 			}
 			case 'console':

@@ -128,9 +128,14 @@ export function attemptNative(
 		dateValues?: boolean;
 		pairsByPosition?: (name: string) => boolean;
 		defaultOutput?: (name: string) => number;
+		outputList?: (name: string, output: number) => boolean;
 		notRun?: (name: string) => boolean;
 	} = {},
-): NativeAttempt & { nodes?: string[]; zones?: string[]; allNodes?: string[] } {
+): NativeAttempt & {
+	nodes?: Array<{ name: string; output: number }>;
+	zones?: string[];
+	allNodes?: string[];
+} {
 	const src = codeOf(type, parameters);
 	if (!src) return { ok: false, blockers: [{ feature: 'language', message: 'Not JavaScript.' }] };
 	// v1 fails such a node before its code runs; the host step gives that error.
@@ -452,6 +457,7 @@ export function lowerCodeNative(c: NodeContext, hostForm?: () => HostForm | null
 			// With "execute once" the node gets one input item, and the node before has more.
 			pairsByPosition: (name) => c.node.executeOnce !== true && c.pairsByPosition(name),
 			defaultOutput: (name) => c.readOutput(name),
+			outputList: (name, output) => c.outputList(name, output) !== null,
 			// As the host step: a node of the workflow without a list before this node has no run.
 			// In the engine shape a later node of a loop can have a run.
 			notRun: (name) =>
@@ -483,8 +489,8 @@ export function lowerCodeNative(c: NodeContext, hostForm?: () => HostForm | null
 		);
 		return false;
 	}
-	const lists = (attempt.nodes ?? []).map((name) => {
-		const list = c.ranBefore(name);
+	const lists = (attempt.nodes ?? []).map(({ name, output }) => {
+		const list = c.outputList(name, output);
 		if (list === null) throw new NodeFailure('code-native', `Node "${name}" has no list.`);
 		return list;
 	});

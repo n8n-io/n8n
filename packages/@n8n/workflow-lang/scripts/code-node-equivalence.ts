@@ -235,11 +235,11 @@ function main() {
 			let wfrtVerdict: Result['wfrt'];
 			for (let variant = 0; variant < 3; variant++) {
 				const input = itemsFor(inputInfo, variant);
-				const lists = tr.translation.nodes.map((x) => itemsFor(info(x), variant));
+				const lists = tr.translation.nodes.map((x) => itemsFor(info(x.name), variant));
 				const all = tr.translation.allNodes.map((x) => itemsFor(info(x), variant));
 				const nodes: Record<string, unknown[]> = {};
 				tr.translation.nodes.forEach((x, k) => {
-					nodes[x] = lists[k];
+					nodes[x.name] = lists[k];
 				});
 				tr.translation.allNodes.forEach((x, k) => {
 					nodes[x] = all[k];

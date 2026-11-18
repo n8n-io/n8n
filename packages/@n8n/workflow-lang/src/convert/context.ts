@@ -136,6 +136,11 @@ export interface NodeContext {
 	pairsByPosition(name: string): boolean;
 	/** The output of node `name` that `$('name')` reads from this node. */
 	readOutput(name: string): number;
+	/**
+	 * The list of output `index` of node `name`, or null when the code cannot read it: the node
+	 * did not run before this one, or v1 has no such branch of the node.
+	 */
+	outputList(name: string, index: number): string | null;
 	/** True in the engine shape: the node is a function that can run more than once. */
 	engine: boolean;
 	/** Code of the run index of the node (`$runIndex`). */
