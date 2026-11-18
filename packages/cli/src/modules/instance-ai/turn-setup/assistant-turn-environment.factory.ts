@@ -495,7 +495,10 @@ export class AssistantTurnEnvironmentFactory {
 		let workspaceRoot: string | undefined;
 		let fallbackWorkspaceRoot: string | undefined;
 
-		if (sandboxStatus.workflowBuilderAvailable) {
+		// PoC: while the instance MCP server builds, the Assistant has no workspace. The
+		// model otherwise writes the code to a file first, out of habit, and the file has
+		// no reader. The workspace returns as MCP tools in the next milestone.
+		if (sandboxStatus.workflowBuilderAvailable && !instanceMcpBuildsWorkflows(context)) {
 			const sandboxConfig = await this.instanceAiErrorReporter.withBoundary(
 				'instance-ai-sandbox-setup',
 				{ threadId, runId, userId: user.id, messageGroupId, tracing },

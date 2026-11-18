@@ -310,8 +310,18 @@ packages/cli/src/modules/instance-ai/turn-setup/
   shapes, publishing, error workflows) does not reach the model through the
   protocol; `get_workflow_best_practices` covers part of it.
 - The server's `validate_workflow` (code) collides with the Assistant's
-  `validate_workflow` (saved workflow issues). The native one stays; the
-  server's `create_workflow_from_code` validates anyway.
+  `validate_workflow` (saved workflow issues). First manual run: the server's
+  instructions told the model to validate code, the native tool answered
+  with an error, and the model routed around it through `find_tools`. While
+  the server builds, the server's tool now owns the name; the static check of
+  a saved workflow is a capability an external client does not have either.
+- First manual run: the model wrote the code to a workspace file before
+  calling `create_workflow_from_code` (three extra calls and a typo recovery).
+  The workspace has no job while the server builds, so the turn no longer
+  creates one; the workspace returns as MCP tools in M4.
+- First manual run (Gmail reminder on a schedule): one-shot success in about
+  a minute: SDK reference → best practices → `search_nodes` →
+  `get_node_types` → `create_workflow_from_code` → `setup_workflow`.
 - A first-party create does not set `availableInMCP`; a third-party create
   still does. `builderVariant: 'mcp'` and `source: 'n8n-mcp'` stay as the
   server writes them (metrics on this instance count Assistant builds as MCP
@@ -326,9 +336,9 @@ packages/cli/src/modules/instance-ai/turn-setup/
 | `search_nodes`, `get_node_types`, `get_node_parameter_options` | `search_nodes`, `get_node_types`, `explore_node_resources`, `validate_node_config` |
 | `list_workflows`, `get_workflow`, `list_workflow_versions`, `get_workflow_node_usage` | `search_workflows`, `get_workflow_details`, `get_workflow_history`, `get_workflow_version`, `get_workflow_versions_diff`, `get_node_usage` |
 | `publish_workflow`, `unpublish_workflow`, `archive_workflow`, `restore_workflow_version` | the same names, confirmed through multi-round-trip elicitation |
-| `workflow_builder_build_workflow`, `get_workflow_as_code` | `create_workflow_from_code`, `update_workflow` (edits confirmed through elicitation) |
+| `workflow_builder_build_workflow`, `get_workflow_as_code`, `validate_workflow` | `create_workflow_from_code`, `update_workflow` (edits confirmed through elicitation), `validate_workflow` (code) |
 
-Kept native: `validate_workflow`, `setup_workflow`, `unarchive_workflow`,
+Kept native: `setup_workflow`, `unarchive_workflow`,
 `update_workflow_version`, `execute_node`, `search_models`, executions,
 credentials, data tables, and the orchestration tools (verification has no
 build outcome to work from).

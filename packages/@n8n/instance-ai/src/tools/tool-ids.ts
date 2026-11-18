@@ -175,9 +175,12 @@ export const NATIVE_TOOL_REPLACEMENTS: ReadonlyMap<string, string> = new Map<str
 	[DOMAIN_TOOL_IDS.UNPUBLISH_WORKFLOW, 'unpublish_workflow'],
 	[DOMAIN_TOOL_IDS.ARCHIVE_WORKFLOW, 'archive_workflow'],
 	[DOMAIN_TOOL_IDS.RESTORE_WORKFLOW_VERSION, 'restore_workflow_version'],
-	// the build path: code in, workflow out; edits as operations
+	// the build path: code in, workflow out; edits as operations. The server's
+	// `validate_workflow` takes code, as its instructions say; the native one, which
+	// takes a saved workflow id, goes with the native build path.
 	[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, 'create_workflow_from_code'],
 	[DOMAIN_TOOL_IDS.GET_WORKFLOW_AS_CODE, 'update_workflow'],
+	[DOMAIN_TOOL_IDS.VALIDATE_WORKFLOW, 'validate_workflow'],
 ]);
 
 /** The native tools to drop, given the tools the instance MCP server lists. */
@@ -220,6 +223,7 @@ export const INSTANCE_MCP_TOOLS_IN_USE: ReadonlySet<string> = new Set<string>([
 	// the build path (edits confirmed through elicitation)
 	'create_workflow_from_code',
 	'update_workflow',
+	'validate_workflow',
 ]);
 
 const NODE_TOOL_NAMES: readonly string[] = [
