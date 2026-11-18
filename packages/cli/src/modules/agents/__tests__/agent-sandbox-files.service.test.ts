@@ -254,7 +254,12 @@ describe('AgentSandboxFilesService', () => {
 		const readable = (sizes: Record<string, number>) =>
 			attachmentService.getReadable.mockImplementation(async (fileId) =>
 				fileId in sizes
-					? mock<AgentChatAttachment>({ id: fileId, fileSizeBytes: sizes[fileId] })
+					? mock<AgentChatAttachment>({
+							id: fileId,
+							fileName: `${fileId}.csv`,
+							mimeType: 'text/csv',
+							fileSizeBytes: sizes[fileId],
+						})
 					: null,
 			);
 
@@ -264,7 +269,15 @@ describe('AgentSandboxFilesService', () => {
 
 			await expect(
 				service.importFiles(workspace, { 'data/./sales.csv': 'f1' }, readScope),
-			).resolves.toEqual([{ path: 'inputs/data/sales.csv', fileId: 'f1', sizeBytes: 3 }]);
+			).resolves.toEqual([
+				{
+					fileId: 'f1',
+					fileName: 'f1.csv',
+					mimeType: 'text/csv',
+					sizeBytes: 3,
+					path: 'inputs/data/sales.csv',
+				},
+			]);
 			expect(attachmentService.getReadable).toHaveBeenCalledWith('f1', readScope);
 			expect(filesystem.writeFile).toHaveBeenCalledWith(
 				'inputs/data/sales.csv',

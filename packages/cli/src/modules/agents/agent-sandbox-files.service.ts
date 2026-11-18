@@ -35,6 +35,16 @@ export interface SandboxOutputFile {
 	hash: string;
 }
 
+/** A conversation file that `import_files` copied into the workspace. */
+export interface ImportedSandboxFile {
+	fileId: string;
+	fileName: string;
+	mimeType: string;
+	sizeBytes: number;
+	/** Path in the workspace, e.g. `inputs/data/sales.csv`. */
+	path: string;
+}
+
 /** Prefix of a file reference that names a file in `outputs/` instead of a fileId. */
 export const SANDBOX_FILE_REF_PREFIX = 'sandbox:';
 
@@ -145,7 +155,7 @@ export class AgentSandboxFilesService {
 		workspace: Workspace,
 		files: Record<string, string>,
 		scope: { projectId: string; threadId: string },
-	): Promise<Array<{ path: string; fileId: string; sizeBytes: number }>> {
+	): Promise<ImportedSandboxFile[]> {
 		const filesystem = workspace.filesystem;
 		if (!filesystem) throw new UserError('This run has no workspace filesystem');
 		const entries = await Promise.all(
@@ -168,14 +178,20 @@ export class AgentSandboxFilesService {
 		if (totalBytes > maxMb * 1024 * 1024) {
 			throw new UserError(`One import copies up to ${maxMb} MB. Import fewer files at a time`);
 		}
-		const imported: Array<{ path: string; fileId: string; sizeBytes: number }> = [];
+		const imported: ImportedSandboxFile[] = [];
 		for (const { path, file } of entries) {
 			// ponytail: loads each file into memory, up to the import cap. Stream it if the cap grows.
 			await filesystem.writeFile(path, await this.attachmentService.getBuffer(file), {
 				recursive: true,
 				overwrite: true,
 			});
-			imported.push({ path, fileId: file.id, sizeBytes: file.fileSizeBytes });
+			imported.push({
+				fileId: file.id,
+				fileName: file.fileName,
+				mimeType: file.mimeType,
+				sizeBytes: file.fileSizeBytes,
+				path,
+			});
 		}
 		return imported;
 	}
