@@ -21,7 +21,7 @@ export function createEngineStepDataLoader(
 		const steps = await stepStore.loadAllSteps(context.executionId);
 
 		const byNode = new Map<string, Record<number, StepSlots>>();
-		const sourcesByNode: Record<string, Record<number, StepOutputSources>> = {};
+		const sourcesByNode = new Map<string, Record<number, StepOutputSources>>();
 		for (const step of steps) {
 			if (step.status !== 'completed' || step.outputs === null) continue;
 			let byIteration = byNode.get(step.nodeId);
@@ -31,14 +31,19 @@ export function createEngineStepDataLoader(
 			}
 			byIteration[step.iteration] = step.outputs;
 			if (step.outputSources) {
-				(sourcesByNode[step.nodeId] ??= {})[step.iteration] = step.outputSources;
+				let sourcesByIteration = sourcesByNode.get(step.nodeId);
+				if (sourcesByIteration === undefined) {
+					sourcesByIteration = {};
+					sourcesByNode.set(step.nodeId, sourcesByIteration);
+				}
+				sourcesByIteration[step.iteration] = step.outputSources;
 			}
 		}
 
 		return {
 			graph: execution.graph,
 			outputsByNode: Object.fromEntries(byNode),
-			outputSourcesByNode: sourcesByNode,
+			outputSourcesByNode: Object.fromEntries(sourcesByNode),
 		};
 	};
 }
