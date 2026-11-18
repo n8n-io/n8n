@@ -4,12 +4,13 @@ import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 
-import { useAssigneeOptions } from '../../composables/useAssigneeOptions';
+import { useActiveTaskBoard } from '../../composables/useActiveTaskBoard';
 import { useProjectResourcePermissions } from '../../composables/useProjectResourcePermissions';
 import {
+	addTaskBoardAgent,
 	createAgent,
 	fetchAgent,
 	fetchAgentConfig,
@@ -25,17 +26,19 @@ import type {
 import { applyFormValues, emptyConfig, toFormValues, toTeamAgent } from './team.utils';
 
 /**
- * The team of a project: its members and its agents. Each agent is a normal agent of the
- * agents module. Saving an agent also publishes it, because the board dispatcher runs the
- * published version only.
+ * The team of the board on screen: the members of its project and the agents of the board.
+ * Each agent is a normal agent of the agents module, and a new agent joins this board only.
+ * Saving an agent also publishes it, because the board dispatcher runs the published
+ * version only.
  */
-export function useTaskBoardTeam(projectId: MaybeRefOrGetter<string | undefined>) {
+export function useTaskBoardTeam() {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const toast = useToast();
 	const i18n = useI18n();
 	const { permissionsFor } = useProjectResourcePermissions();
-	const members = useAssigneeOptions(projectId);
+	const { boardRef, assignees: members, refreshBoard } = useActiveTaskBoard();
+	const projectId = computed(() => boardRef().projectId || undefined);
 
 	const details = ref<TaskBoardAgentDetail[]>([]);
 	const loadingAgents = ref(false);
@@ -49,7 +52,7 @@ export function useTaskBoardTeam(projectId: MaybeRefOrGetter<string | undefined>
 		details.value.map((detail) => toTeamAgent(detail, publishErrors.value[detail.id] ?? null)),
 	);
 
-	const agentPermissions = computed(() => permissionsFor(toValue(projectId))?.agent);
+	const agentPermissions = computed(() => permissionsFor(projectId.value)?.agent);
 	const canAddAgent = computed(
 		() => agentsEnabled.value && agentPermissions.value?.create === true,
 	);
@@ -58,7 +61,7 @@ export function useTaskBoardTeam(projectId: MaybeRefOrGetter<string | undefined>
 	);
 
 	async function loadDetails(list: TaskBoardAgentOption[]) {
-		const id = toValue(projectId);
+		const id = projectId.value;
 		if (!id) return;
 		loadingAgents.value = true;
 		try {
@@ -77,12 +80,12 @@ export function useTaskBoardTeam(projectId: MaybeRefOrGetter<string | undefined>
 	watch(members.agents, loadDetails, { immediate: true });
 
 	function agentEditorRoute(agentId: string): RouteLocationRaw {
-		return { name: AGENT_BUILDER_VIEW, params: { projectId: toValue(projectId), agentId } };
+		return { name: AGENT_BUILDER_VIEW, params: { projectId: projectId.value, agentId } };
 	}
 
 	/** The form values of a saved agent. Resolves null and shows a toast when the request fails. */
 	async function loadAgentForm(agentId: string): Promise<AgentFormValues | null> {
-		const id = toValue(projectId);
+		const id = projectId.value;
 		if (!id) return null;
 		try {
 			const { config } = await fetchAgentConfig(rootStore.restApiContext, id, agentId);
@@ -145,20 +148,25 @@ export function useTaskBoardTeam(projectId: MaybeRefOrGetter<string | undefined>
 
 	/** Creates or updates an agent, then publishes it. Resolves false when the save fails. */
 	async function saveAgent(values: AgentFormValues, agentId?: string): Promise<boolean> {
-		const id = toValue(projectId);
+		const id = projectId.value;
 		if (!id) return false;
 		saving.value = true;
 		try {
 			let savedId = agentId;
 			try {
-				if (savedId) await updateWithValues(id, savedId, values);
-				else savedId = await createWithValues(id, values);
+				if (savedId) {
+					await updateWithValues(id, savedId, values);
+				} else {
+					savedId = await createWithValues(id, values);
+					await addTaskBoardAgent(rootStore.restApiContext, boardRef(), savedId);
+				}
 			} catch (error) {
 				toast.showError(error, i18n.baseText('taskBoard.team.agent.saveError'));
 				return false;
 			}
 			notifyPublishResult(await tryPublish(id, savedId), values.name);
-			await members.load();
+			// The board has the ids of its agents, and the project list has their names.
+			await Promise.all([members.load(), refreshBoard()]);
 			return true;
 		} finally {
 			saving.value = false;
@@ -190,7 +198,7 @@ export function useTaskBoardTeam(projectId: MaybeRefOrGetter<string | undefined>
 
 	/** Publishes a draft agent from its row. */
 	async function publish(agent: TeamAgent) {
-		const id = toValue(projectId);
+		const id = projectId.value;
 		if (!id) return;
 		publishingId.value = agent.id;
 		try {
@@ -202,6 +210,7 @@ export function useTaskBoardTeam(projectId: MaybeRefOrGetter<string | undefined>
 	}
 
 	return {
+		projectId,
 		agentsEnabled,
 		people: members.people,
 		agents,

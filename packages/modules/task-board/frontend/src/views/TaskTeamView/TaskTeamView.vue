@@ -1,16 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-
 import TaskBoardTeamSection from '../../components/TaskBoardTeamSection/TaskBoardTeamSection.vue';
-import { useActiveTaskBoard } from '../../composables/useActiveTaskBoard';
-
-const { boardRef } = useActiveTaskBoard();
-const projectId = computed(() => boardRef().projectId);
 </script>
 
 <template>
 	<div :class="$style.page" data-test-id="task-team-view">
-		<TaskBoardTeamSection :project-id="projectId" />
+		<TaskBoardTeamSection />
 	</div>
 </template>
 

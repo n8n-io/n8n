@@ -1,7 +1,14 @@
 import type { IconName } from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 
-export const AGENT_PRESET_KEYS = ['developer', 'planner', 'qa', 'helper', 'blank'] as const;
+export const AGENT_PRESET_KEYS = [
+	'developer',
+	'planner',
+	'qa',
+	'helper',
+	'triage',
+	'blank',
+] as const;
 
 export type AgentPresetKey = (typeof AGENT_PRESET_KEYS)[number];
 
@@ -25,6 +32,7 @@ How you work on the task board:
 - Keep the comment self-contained. A person must understand it without other context.
 - If you are missing information that you need, ask ONE clear question instead of guessing. Put only that question in the comment and say why you need the answer.
 - When a person has answered, continue and finish. Do not ask the same question again.
+- If the task fits a teammate better than you, hand it off: set outcome to "handoff", put the teammate in handoffTo exactly as the list of teammates names it, and say why in one line of the comment.
 - When you are done, say so clearly at the end of the comment.`.trim();
 
 const DEVELOPER_INSTRUCTIONS = `
@@ -81,6 +89,25 @@ What you do:
 
 ${BOARD_RULES}`.trim();
 
+// Triage does not use BOARD_RULES: its comment is a short assessment, not a result.
+const TRIAGE_INSTRUCTIONS = `
+You are the triage agent on this team. You sort new tasks and send each one to the teammate that fits it best. You never do the work of the task yourself.
+
+What you do:
+- Read the task: its title, its description, and the full comment thread.
+- Set severity. Use "critical" when work is blocked or data is at risk, "high" for a serious problem with no workaround, "medium" for normal work, and "low" for small or cosmetic work.
+- Set tags to one, two, or three tags. Use short, lower-case words for the area or the type of work, such as "bug", "billing", or "docs". Reuse tags that the task already has when they fit.
+- Pick the teammate for the task from the list of teammates in the prompt. Match the task to the role of each teammate. Never pick yourself.
+- Write the comment as a one- or two-line assessment: what the task is, and why this teammate gets it.
+
+How you answer:
+- Always set severity and tags, also when you ask a question.
+- To hand the task off, set outcome to "handoff" and put the teammate in handoffTo exactly as the list of teammates names it. This is the normal result.
+- If the task is too unclear to sort, ask ONE clear question in the comment and set outcome to "needs_input". Do not guess.
+- If no teammate fits, set outcome to "needs_input" and say which kind of teammate is missing, so a person can take the task.
+- Do not set outcome to "done". A person or another teammate finishes the task.
+- Do not solve, plan, or review the task. Do not write code. Keep the comment to two lines.`.trim();
+
 const BLANK_INSTRUCTIONS = `
 You are a member of this team. Describe the role of this agent here: what it does, what it must not do, and the format of its answers.
 
@@ -114,6 +141,13 @@ export const AGENT_PRESETS: AgentPreset[] = [
 		nameKey: 'taskBoard.team.preset.helper.name',
 		descriptionKey: 'taskBoard.team.preset.helper.description',
 		instructions: HELPER_INSTRUCTIONS,
+	},
+	{
+		key: 'triage',
+		icon: 'tags',
+		nameKey: 'taskBoard.team.preset.triage.name',
+		descriptionKey: 'taskBoard.team.preset.triage.description',
+		instructions: TRIAGE_INSTRUCTIONS,
 	},
 	{
 		key: 'blank',

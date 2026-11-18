@@ -9,18 +9,14 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { toRef } from 'vue';
-
 import AgentDialog from './components/AgentDialog/AgentDialog.vue';
 import TeamAgentRow from './components/TeamAgentRow/TeamAgentRow.vue';
 import TeamPersonRow from './components/TeamPersonRow/TeamPersonRow.vue';
 import { useTaskBoardTeam } from './useTaskBoardTeam';
 
-/** The project whose team shows. On `/home/tasks` this is the personal project. */
-const props = defineProps<{ projectId: string | undefined }>();
 const i18n = useI18n();
 
-const team = useTaskBoardTeam(toRef(props, 'projectId'));
+const team = useTaskBoardTeam();
 const { dialogOpen } = team;
 </script>
 
@@ -93,7 +89,7 @@ const { dialogOpen } = team;
 
 		<AgentDialog
 			v-model:open="dialogOpen"
-			:project-id="projectId"
+			:project-id="team.projectId.value"
 			:agent-id="team.editingAgentId.value"
 			:initial-values="team.editingValues.value"
 			:saving="team.saving.value"
