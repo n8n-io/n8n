@@ -1000,6 +1000,28 @@ export {
 
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
 
+export {
+	PAGE_CONTENT_MAX_LENGTH,
+	PAGE_RESOURCE_TYPES,
+	PAGE_TITLE_MAX_LENGTH,
+	type Page,
+	type PageBacklinks,
+	type PageListItem,
+	type PageNodeReference,
+	type PageNodeReferences,
+	type PageResourceReference,
+	type PageResourceType,
+	type PageSummary,
+	type PageWorkflowPlacement,
+} from './schemas/page.schema';
+export { readShownPageId, type PageInstanceLocation } from './utils/shown-page';
+export {
+	extractResourceReferences,
+	parseResourcePath,
+	toResourcePath,
+	type PageResourceLocation,
+} from './utils/page-resource-path';
+
 export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.schema';
 export {
 	X_N8N_FEATURE_HEADER,

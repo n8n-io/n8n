@@ -515,6 +515,11 @@ export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto'
 
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
 export { UpdateDataTableDto } from './data-table/update-data-table.dto';
+export { CreatePageDto } from './page/create-page.dto';
+export { UpdatePageDto } from './page/update-page.dto';
+export { ListReferencingPagesQueryDto } from './page/list-referencing-pages-query.dto';
+export { ListAllPagesQueryDto } from './page/list-all-pages-query.dto';
+export { ListPageNodeReferencesQueryDto } from './page/list-page-node-references-query.dto';
 export {
 	ClearDataTableRowsResponsePublicDto,
 	CreateDataTableColumnPublicDto,
