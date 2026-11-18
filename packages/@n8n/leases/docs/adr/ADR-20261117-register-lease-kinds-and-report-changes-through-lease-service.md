@@ -29,15 +29,14 @@ over the defaults. The service then gives the provider the source of the kind, i
 options and its handler. `MAX_LEASE_KIND_LENGTH` and `DEFAULT_LEASE_KIND_OPTIONS` hold the limit
 and the defaults.
 
-The main reason is that the rules for a kind are in one place, for every consumer and every
-backend.
+The main reason is that consumers are not coupled to the backend contract. A backend can change,
+or be swapped for another backend, without a change to any consumer.
 
 ## Alternatives Considered
 
-1. **Consumers call the `LeaseProvider` directly.** We rejected it for two reasons. Consumers
-   would be coupled to the backend contract, so a change to the backend or a swap to another
-   backend would reach every consumer. Each consumer would also mix the rules for a kind with its
-   own logic.
+1. **Consumers call the `LeaseProvider` directly.** We rejected it because consumers would be
+   coupled to the backend contract. A change to the backend, or a swap to another backend, would
+   reach every consumer.
 2. **Each backend checks kinds and applies defaults.** We rejected it because each backend would
    repeat the rules. A consumer would get different behaviour from different backends.
 
