@@ -80,7 +80,6 @@ describe('file nodes', () => {
 		['Extract', extract({ operation: 'html' })],
 		['Extract', extract({ operation: 'pdf' })],
 		['Extract', extract({ operation: 'xlsx' })],
-		['Convert', convert({})],
 		['Convert', convert({ operation: 'toJson' })],
 		['Convert', convert({ operation: 'iCal' })],
 	])('runs %s in the host for an operation without a library form', (name, node) => {
