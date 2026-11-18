@@ -238,6 +238,14 @@ const CASES: Case[] = [
 	// The node must keep this form in the host: an option that the port does not read.
 	csv('a compression option', [{ a: 1 }], { compression: true }, { host: 'static' }),
 	csv('a sheet name option', [{ a: 1 }], { sheetName: 'S' }, { host: 'static' }),
+	{
+		// An operation that is an expression has no compiled form: the node writes one file for
+		// all items, so a call for each item would differ.
+		name: 'an operation that is an expression',
+		parameters: { operation: '={{ "csv" }}', binaryPropertyName: 'data', options: {} },
+		items: [{ a: 1 }],
+		host: 'static',
+	},
 	// The other operations keep the v1 node.
 	{
 		name: 'xlsx is in the host',

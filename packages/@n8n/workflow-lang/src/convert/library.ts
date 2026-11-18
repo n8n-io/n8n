@@ -161,12 +161,12 @@ export const ADAPTERS: Record<string, Adapter> = {
 	},
 	'n8n-nodes-base.convertToFile': (p, version) => {
 		const operation = p.operation ?? 'csv';
-		// An operation that is not a text, or that is an expression, has no compiled form: the
-		// marker is not in the `supports` list, so the node runs in the host.
+		// An operation that is not a text, or that is an expression, has no compiled form. The
+		// name `expression` is not an operation of the library node, so the `supports` list
+		// refuses the call and the node runs in the host with its own parameters.
 		if (typeof operation !== 'string' || operation.startsWith('=')) {
-			return { ...p, operation, convertHost: true };
+			return { ...p, operation: 'expression' };
 		}
-		if (typeof operation !== 'string') return { ...p, operation };
 		if (operation === 'csv') {
 			return {
 				operation,
