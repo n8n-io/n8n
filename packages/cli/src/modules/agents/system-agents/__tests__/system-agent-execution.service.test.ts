@@ -863,19 +863,25 @@ describe('SystemAgentExecutionService', () => {
 			});
 
 			it('keeps a cap error, which is for the model', async () => {
-				const { sandboxFiles, storeOutput } = await storeOutputOfTurn();
+				const { sandboxFiles, storeOutput, logger } = await storeOutputOfTurn();
 				const capError = new UserError('File "big.bin" is larger than 50 MB');
 				sandboxFiles.store.mockRejectedValue(capError);
 
 				await expect(storeOutput(workspace, 'big.bin')).rejects.toBe(capError);
+				expect(logger.warn).not.toHaveBeenCalled();
 			});
 
 			it('turns a raw sandbox error into words the model can act on', async () => {
-				const { sandboxFiles, storeOutput } = await storeOutputOfTurn();
+				const { sandboxFiles, storeOutput, logger } = await storeOutputOfTurn();
 				sandboxFiles.store.mockRejectedValue(new Error('ENOENT: no such file'));
 
 				await expect(storeOutput(workspace, 'gone.csv')).rejects.toThrow(
 					'"gone.csv" could not be read from outputs/',
+				);
+				// The model does not get the raw error, so the operator gets it in the log.
+				expect(logger.warn).toHaveBeenCalledWith(
+					'Failed to store a sandbox file of a system agent',
+					{ threadId: 'thread-1', path: 'gone.csv', error: 'ENOENT: no such file' },
 				);
 			});
 		});

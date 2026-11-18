@@ -1005,6 +1005,11 @@ export class SystemAgentExecutionService {
 						.catch((error: unknown) => {
 							// A cap or path error is for the model. A raw sandbox error, such as a missing file, is not.
 							if (error instanceof UserError || abortSignal?.aborted) throw error;
+							this.logger.warn('Failed to store a sandbox file of a system agent', {
+								threadId: thread.id,
+								path,
+								error: error instanceof Error ? error.message : String(error),
+							});
 							throw new UserError(`"${path}" could not be read from outputs/`, { cause: error });
 						});
 					return {
