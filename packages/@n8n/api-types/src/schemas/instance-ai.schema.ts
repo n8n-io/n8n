@@ -1648,6 +1648,36 @@ export const instanceAiAppTargetSchema = z.object({
 });
 export type InstanceAiAppTarget = z.infer<typeof instanceAiAppTargetSchema>;
 
+/** An app that a page hands off to a thread. A pending app has no row yet. */
+export const instanceAiAppSubjectSchema = z.object({
+	type: z.literal('app'),
+	id: z.string().uuid(),
+	projectId: z.string().min(1).max(64),
+	name: z.string().max(255).optional(),
+	/** The first build creates the app under this id. */
+	pending: z.literal(true).optional(),
+});
+export type InstanceAiAppSubject = z.infer<typeof instanceAiAppSubjectSchema>;
+
+/**
+ * An agent that a page hands off to a thread. A pending agent has no row yet.
+ * It has the same shape as the agent attachment, but only the subject binds.
+ */
+export const instanceAiAgentSubjectSchema = instanceAiAgentAttachmentSchema;
+export type InstanceAiAgentSubject = z.infer<typeof instanceAiAgentSubjectSchema>;
+
+/**
+ * The resource that a thread starts on: the agent or the app of the page that
+ * opened the thread. The Assistant agent binds it in the thread metadata, so
+ * its tools work on that resource and the page finds the thread again. Add a
+ * variant here, with its binding in `withThreadSubject`, for a new kind of page.
+ */
+export const instanceAiThreadSubjectSchema = z.discriminatedUnion('type', [
+	instanceAiAgentSubjectSchema,
+	instanceAiAppSubjectSchema,
+]);
+export type InstanceAiThreadSubject = z.infer<typeof instanceAiThreadSubjectSchema>;
+
 const instanceAiNodeRefSchema = z.object({
 	id: z.string().min(1).max(64),
 	name: z.string().max(255).optional(),
@@ -1852,6 +1882,11 @@ export class InstanceAiSendMessageRequest extends Z.class({
 	 *  user. Its device support is only visible there. Omit to advertise none.
 	 *  The backend still applies the admin switch, so this can only narrow. */
 	browserUseAvailable: z.boolean().optional(),
+	/**
+	 * The resource that a new thread starts on. The current runtime binds it
+	 * before the thread opens, so only the Assistant agent reads it.
+	 */
+	subject: instanceAiThreadSubjectSchema.optional(),
 	/** Pin a published prompt profile. Omit to use the backend experiment assignment. */
 	promptVersion: instanceAiPromptVersionSchema.optional(),
 	/** Eval override: observer threshold for THIS thread, so driving compaction
