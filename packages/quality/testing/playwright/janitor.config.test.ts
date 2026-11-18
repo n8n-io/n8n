@@ -157,6 +157,19 @@ describe('NodeDetailsViewPage scope configuration', () => {
 		expect(new ScopeLockdownRule().analyzeProject(project, [file])).toEqual([]);
 	});
 
+	test('allows the exact fullscreen editor locator outside a has filter', () => {
+		const project = new Project({ useInMemoryFileSystem: true });
+		const file = project.createSourceFile(
+			`${config.rootDir}/pages/NodeDetailsViewPage.ts`,
+			`export class NodeDetailsViewPage {
+				get container() { return this.page.getByTestId('ndv'); }
+				getControl() { return this.page.getByTestId('code-editor-fullscreen'); }
+			}`,
+		);
+
+		expect(new ScopeLockdownRule().analyzeProject(project, [file])).toEqual([]);
+	});
+
 	test.each([
 		'this.page.getByText(text)',
 		"this.page.getByRole('dialog')",
@@ -174,6 +187,25 @@ describe('NodeDetailsViewPage scope configuration', () => {
 		const violations = new ScopeLockdownRule().analyzeProject(project, [file]);
 		expect(violations).toHaveLength(1);
 		expect(violations[0].message).toContain('Unscoped locator');
+	});
+
+	test('reports the dialog and its has locator for a different editor', () => {
+		const project = new Project({ useInMemoryFileSystem: true });
+		const file = project.createSourceFile(
+			`${config.rootDir}/pages/NodeDetailsViewPage.ts`,
+			`export class NodeDetailsViewPage {
+				get container() { return this.page.getByTestId('ndv'); }
+				getCodeEditorDialog() {
+					return this.page.getByRole('dialog').filter({
+						has: this.page.getByTestId('other-editor'),
+					});
+				}
+			}`,
+		);
+
+		const violations = new ScopeLockdownRule().analyzeProject(project, [file]);
+		expect(violations).toHaveLength(2);
+		expect(violations.every(({ message }) => message.includes('Unscoped locator'))).toBe(true);
 	});
 
 	test.each([
