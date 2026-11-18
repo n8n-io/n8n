@@ -1,0 +1,41 @@
+--- a/package.json
++++ b/package.json
+@@ -51,6 +51,7 @@
+     "seed:account:check": "node scripts/instance-seeding/checkPreferenceProfile.mjs",
+     "seed:test": "node --test scripts/instance-seeding/*.test.mjs",
+     "nathan": "node scripts/nathan.mjs",
++    "dev:agent-self-healing": "node scripts/agent-self-healing-playground/start.mjs",
+     "agent:setup": "node scripts/agent-setup.mjs",
+     "agent:lint": "node scripts/agent-check.mjs lint",
+     "agent:typecheck": "node scripts/agent-check.mjs typecheck",
+--- a/packages/frontend/editor-ui/src/app/router.ts
++++ b/packages/frontend/editor-ui/src/app/router.ts
+@@ -160,6 +160,12 @@
+ };
+ 
+ export const routes: RouteRecordRaw[] = [
++	{
++		path: '/agent-self-healing-playground',
++		name: 'agent-self-healing-playground',
++		component: async () => await import('@/app/views/AgentSelfHealingPlaygroundView.vue'),
++		meta: { middleware: ['authenticated'], layout: 'default' },
++	},
+ 	{
+ 		path: '/',
+ 		// Stub component — beforeEnter always navigates away, so it is never rendered.
+--- a/packages/frontend/editor-ui/src/app/components/MainSidebar.vue
++++ b/packages/frontend/editor-ui/src/app/components/MainSidebar.vue
+@@ -84,6 +84,13 @@
+ 
+ const mainMenuItems = computed<IMenuItem[]>(() => [
+ 	{
++		id: 'agent-self-healing-playground',
++		icon: 'flask-conical',
++		label: 'Agent self-healing playground',
++		position: 'bottom',
++		route: { to: '/agent-self-healing-playground' },
++	},
++	{
+ 		// Resource Center - replaces Templates when experiment is enabled
+ 		id: 'resource-center',
+ 		icon: { type: 'icon', value: 'lightbulb', color: 'primary' },

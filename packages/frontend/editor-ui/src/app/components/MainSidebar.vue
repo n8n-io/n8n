@@ -84,6 +84,13 @@ const instanceSettingsRoute = computed(
 
 const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
+		id: 'agent-self-healing-playground',
+		icon: 'flask-conical',
+		label: 'Agent self-healing playground',
+		position: 'bottom',
+		route: { to: '/agent-self-healing-playground' },
+	},
+	{
 		// Resource Center - replaces Templates when experiment is enabled
 		id: 'resource-center',
 		icon: { type: 'icon', value: 'lightbulb', color: 'primary' },

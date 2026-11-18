@@ -161,6 +161,12 @@ const allowResourceCenterRoute = (
 
 export const routes: RouteRecordRaw[] = [
 	{
+		path: '/agent-self-healing-playground',
+		name: 'agent-self-healing-playground',
+		component: async () => await import('@/app/views/AgentSelfHealingPlaygroundView.vue'),
+		meta: { middleware: ['authenticated'], layout: 'default' },
+	},
+	{
 		path: '/',
 		// Stub component — beforeEnter always navigates away, so it is never rendered.
 		// Required because vue-router resolves `redirect` before guards run, and we need
