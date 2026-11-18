@@ -5,6 +5,7 @@ import { Service } from '@n8n/di';
 import { ForbiddenError, UserError } from '@n8n/errors';
 import {
 	type DataTable,
+	DataTableRowRuleService,
 	DataTableService,
 	orderColumnRenames,
 	pairDataTableColumns,
@@ -51,6 +52,7 @@ export class DataTableImporter {
 	constructor(
 		private readonly dataTableService: DataTableService,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly rowRuleService: DataTableRowRuleService,
 	) {}
 
 	/**
@@ -171,6 +173,7 @@ export class DataTableImporter {
 				table.id,
 				table.columns.map(({ id }) => id),
 			);
+			await this.applyRowRule(context, table);
 		}
 
 		for (const table of [...plan.updates.map(({ table }) => table), ...plan.columnAlignments]) {
@@ -178,7 +181,14 @@ export class DataTableImporter {
 				name: table.name,
 				columns: table.columns,
 			});
+			await this.applyRowRule(context, table);
 		}
+	}
+
+	/** A package without a rule keeps the target's rule, so import never widens row access. */
+	private async applyRowRule(context: ImportContext, table: SerializedDataTable) {
+		if (!table.rowRule) return;
+		await this.rowRuleService.setRowRule(table.id, context.projectId, table.rowRule);
 	}
 
 	/** Column ids are globally unique, so a package column id must not belong to another table. */

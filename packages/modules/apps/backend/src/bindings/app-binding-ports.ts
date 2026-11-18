@@ -76,6 +76,9 @@ export abstract class AppDataTablePort {
 		dataTableId: string,
 		filter: DataTableFilter,
 	): Promise<AppRow[]>;
+
+	/** Whether a row rule of any of these tables shares rows with project members. */
+	abstract sharesRowsWithTeams(projectId: string, dataTableIds: string[]): Promise<boolean>;
 }
 
 export abstract class AppWorkflowPort {

@@ -4,6 +4,7 @@ import { Container, Service } from '@n8n/di';
 import {
 	DataTableNotFoundError,
 	DataTableProxyService,
+	DataTableService,
 	dataTableNotFoundInProject,
 	isAllowedNode,
 } from '@n8n/backend-module-data-table';
@@ -18,6 +19,16 @@ import type {
 
 /** What the node says when its helpers are missing. The data plane raises the same text. */
 const MODULE_DISABLED_MESSAGE = 'Attempted to use Data table node but the module is disabled';
+const ROW_RULE_UNSUPPORTED_MESSAGE =
+	'This data table limits rows to the signed-in person, which engine v2 does not support yet';
+const ROW_CALLS = new Set<DataTableCall['kind']>([
+	'getManyRowsAndCount',
+	'insertRows',
+	'updateRows',
+	'upsertRow',
+	'deleteRows',
+	'clearRows',
+]);
 
 /**
  * Runs one data table operation for the engine v2 data plane.
@@ -92,8 +103,15 @@ export class EngineDataTablesService {
 		// The access check lives in the proxy: every operation looks the table up
 		// by id and project, and throws `DataTableNotFoundError` when the table is
 		// not in the workflow's project.
-		// An engine execution has no control plane row, so it carries no verified
-		// user. A table with a row rule treats it as a run without a user.
+		// An engine execution carries no verified user, so it must not touch the rows of
+		// a table with a row rule, not even under `runsWithoutUser: 'allRows'`.
+		if (ROW_CALLS.has(call.kind)) {
+			const { rowRule } = await Container.get(DataTableService).validateDataTableExists(
+				call.dataTableId,
+				projectId,
+			);
+			if (rowRule) throw new UserError(ROW_RULE_UNSUPPORTED_MESSAGE);
+		}
 		const table = proxy.makeDataTableOperations(projectId, call.dataTableId, {
 			kind: 'actor',
 			actor: null,

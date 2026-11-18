@@ -168,8 +168,14 @@ export class AppRuntimeController {
 	@Get('/me', routeOptions)
 	async me(req: AppRuntimeRequest, res: Response) {
 		await this.answer(res, async () => {
-			const { app, user } = this.context(req);
-			const relations = await this.projectRelations.findAllByUser(user.id, { withProject: true });
+			const { app, user, bindings } = this.context(req);
+			// Teams are listed only to an app whose tables share rows with them.
+			const tableIds = bindings.flatMap((binding) =>
+				binding.kind === 'dataTable' ? [binding.dataTableId] : [],
+			);
+			const relations = (await this.dataTables.sharesRowsWithTeams(app.projectId, tableIds))
+				? await this.projectRelations.findAllByUser(user.id, { withProject: true })
+				: [];
 			const body: AppRuntimeMeResponse = {
 				user: {
 					id: user.id,

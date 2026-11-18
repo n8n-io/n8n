@@ -68,11 +68,18 @@ export class DynamicCredentialsContextHook implements IContextEstablishmentHook 
 			hasResolvable = await this.credentialsRepository.hasResolvableCredential([...credentialIds]);
 		} catch (error) {
 			// A redaction-support query must not abort the run. On uncertainty, over-redact:
-			// hide the run from everyone and skip owner attribution.
+			// hide the run from everyone.
 			this.logger.warn('Could not check for resolvable credentials; redacting run for everyone', {
 				error,
 			});
-			return { contextUpdate: { usesDynamicCredentials: true } };
+			if (!usesDataTables) return { contextUpdate: { usesDynamicCredentials: true } };
+			// A data table row rule still needs the user, or the run would act for no user.
+			return {
+				contextUpdate: {
+					usesDynamicCredentials: true,
+					...(await this.identify(options)),
+				},
+			};
 		}
 		if (!hasResolvable && !usesDataTables) return {};
 		if (hasResolvable) contextUpdate.usesDynamicCredentials = true;
@@ -80,12 +87,15 @@ export class DynamicCredentialsContextHook implements IContextEstablishmentHook 
 		// Identify only for a run that needs the user, not for every identity run.
 		// The token is still valid at execution start, so a later view (after it
 		// expires) still finds the persisted user.
-		const credentials = options.context?.credentials;
-		if (credentials) {
-			const executedByUserId = await this.executingUserIdentifierProxy.identify(credentials);
-			if (executedByUserId) contextUpdate.executedByUserId = executedByUserId;
-		}
+		return { contextUpdate: { ...contextUpdate, ...(await this.identify(options)) } };
+	}
 
-		return { contextUpdate };
+	private async identify(
+		options: ContextEstablishmentOptions,
+	): Promise<Pick<PlaintextExecutionContext, 'executedByUserId'>> {
+		const credentials = options.context?.credentials;
+		if (!credentials) return {};
+		const executedByUserId = await this.executingUserIdentifierProxy.identify(credentials);
+		return executedByUserId ? { executedByUserId } : {};
 	}
 }

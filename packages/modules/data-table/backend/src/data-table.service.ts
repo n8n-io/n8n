@@ -11,6 +11,7 @@ import type {
 	UpsertDataTableRowDto,
 	UpdateDataTableDto,
 	UpdateDataTableRowDto,
+	DataTableRowRule,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
@@ -64,6 +65,7 @@ import { DataTableNameConflictError } from './errors/data-table-name-conflict.er
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableRowAccessError } from './errors/data-table-row-access.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
+import { pairDataTableColumns } from './utils/pair-columns';
 import { normalizeRows } from './utils/sql-utils';
 
 @Service()
@@ -348,8 +350,35 @@ export class DataTableService {
 	) {
 		const table = await this.validateDataTableExists(dataTableId, projectId);
 		if (table.name !== schema.name) await this.validateUniqueName(schema.name, projectId);
+		const rowRule = table.rowRule && (await this.ruleAfterSchemaChange(table, schema.columns));
 
 		await this.dataTableColumnRepository.replaceSchema(dataTableId, projectId, schema);
+		if (rowRule) await this.dataTableRepository.setRowRule(dataTableId, rowRule);
+	}
+
+	/** Follows renamed rule columns, and refuses a schema that drops or retypes one. */
+	private async ruleAfterSchemaChange(
+		table: DataTable,
+		columns: Array<Pick<DataTableColumn, 'name' | 'type'> & { id?: string }>,
+	): Promise<DataTableRowRule | null> {
+		const rule = table.rowRule;
+		if (!rule) return null;
+		const { pairs } = pairDataTableColumns(
+			columns,
+			await this.dataTableColumnRepository.getColumns(table.id),
+		);
+		return {
+			...rule,
+			conditions: rule.conditions.map((condition) => {
+				const pair = pairs.find(({ target }) => target.name === condition.column);
+				if (!pair || pair.source.type !== 'string') {
+					throw new DataTableValidationError(
+						`column '${condition.column}' is used by the row access rule. Remove the rule first.`,
+					);
+				}
+				return { ...condition, column: pair.source.name };
+			}),
+		};
 	}
 
 	async moveColumn(
@@ -560,13 +589,12 @@ export class DataTableService {
 		await this.validateDataTableSize();
 		const table = await this.validateDataTableExists(dataTableId, projectId);
 		const scope = await this.resolveRowScope(table, access);
+		if (scope) this.assertRowWritable(dto.data, scope);
+		const updateScope = this.scopeForUpdate(scope, dto.data);
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
-			const { data, filter } = this.validateAndTransformUpdateParams(
-				scope ? { ...dto, data: this.stampOwner(dto.data, scope) } : dto,
-				columns,
-			);
+			const { data, filter } = this.validateAndTransformUpdateParams(dto, columns);
 
 			if (dryRun) {
 				return await this.dataTableRowsRepository.dryRunUpsertRow(
@@ -575,7 +603,7 @@ export class DataTableService {
 					filter,
 					columns,
 					trx,
-					scope,
+					updateScope,
 				);
 			}
 
@@ -586,17 +614,17 @@ export class DataTableService {
 				columns,
 				true,
 				trx,
-				scope,
+				updateScope,
 			);
 
 			if (updated.length > 0) {
 				return returnData ? updated : true;
 			}
 
-			// No rows were updated, so insert a new one
+			// No rows were updated, so insert a new one. Only a new row gets the owner columns.
 			const inserted = await this.dataTableRowsRepository.insertRows(
 				dataTableId,
-				[data],
+				[scope ? this.stampOwner(data, scope) : data],
 				columns,
 				returnData ? 'all' : 'id',
 				trx,
@@ -680,6 +708,7 @@ export class DataTableService {
 		const table = await this.validateDataTableExists(dataTableId, projectId);
 		const scope = await this.resolveRowScope(table, access);
 		if (scope) this.assertRowWritable(dto.data, scope);
+		const updateScope = this.scopeForUpdate(scope, dto.data);
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
@@ -692,7 +721,7 @@ export class DataTableService {
 					filter,
 					columns,
 					trx,
-					scope,
+					updateScope,
 				);
 			}
 
@@ -703,7 +732,7 @@ export class DataTableService {
 				columns,
 				returnData,
 				trx,
-				scope,
+				updateScope,
 			);
 		});
 
@@ -864,6 +893,19 @@ export class DataTableService {
 			throw new DataTableRowAccessError(`Choose a team for this row in column ${columns}.`);
 		}
 		return stamped;
+	}
+
+	/**
+	 * A change to a rule column reaches only the rows the actor owns, when the rule
+	 * has an owner condition. A team member must not reassign a teammate's row.
+	 */
+	private scopeForUpdate(
+		scope: DataTableRowScope | null,
+		data: DataTableRow,
+	): DataTableRowScope | null {
+		if (!scope || !scope.conditions.some(({ column }) => column in data)) return scope;
+		const owned = scope.conditions.filter(({ match }) => match !== 'project');
+		return owned.length > 0 ? { conditions: owned } : scope;
 	}
 
 	/** Owner columns stay with the actor, and a team column takes only the actor's projects. */

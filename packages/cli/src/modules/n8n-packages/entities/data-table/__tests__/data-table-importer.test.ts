@@ -2,12 +2,16 @@ import type { ModuleRegistry } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { type DataTable, type DataTableService } from '@n8n/backend-module-data-table';
+import {
+	type DataTable,
+	type DataTableRowRuleService,
+	type DataTableService,
+} from '@n8n/backend-module-data-table';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { DataTableImporter } from '../data-table-importer';
-import type { DataTableImportRequest } from '../data-table.types';
+import type { DataTableImportPlan, DataTableImportRequest } from '../data-table.types';
 import type { ImportContext } from '../../../n8n-packages.types';
 
 vi.mock('@/permissions.ee/check-access', () => ({
@@ -28,7 +32,12 @@ function makeImporter() {
 	moduleRegistry.isActive.mockReturnValue(true);
 	dataTableService.findDataTablesByIds.mockResolvedValue([]);
 	dataTableService.findDataTablesByNamesInProject.mockResolvedValue([]);
-	return { importer: new DataTableImporter(dataTableService, moduleRegistry), moduleRegistry };
+	const rowRuleService = mock<DataTableRowRuleService>();
+	return {
+		importer: new DataTableImporter(dataTableService, moduleRegistry, rowRuleService),
+		moduleRegistry,
+		rowRuleService,
+	};
 }
 
 function makeRequest(overrides: Partial<DataTableImportRequest> = {}): DataTableImportRequest {
@@ -125,7 +134,11 @@ describe('DataTableImporter.plan', () => {
 		moduleRegistry.isActive.mockReturnValue(true);
 		dataTableService.findDataTablesByIds.mockResolvedValue([foreignTable]);
 		dataTableService.findDataTablesByNamesInProject.mockResolvedValue([]);
-		const importer = new DataTableImporter(dataTableService, moduleRegistry);
+		const importer = new DataTableImporter(
+			dataTableService,
+			moduleRegistry,
+			mock<DataTableRowRuleService>(),
+		);
 
 		const plan = await importer.plan(context, makeRequest());
 
@@ -133,5 +146,46 @@ describe('DataTableImporter.plan', () => {
 		expect(plan.failures).toEqual([
 			expect.objectContaining({ kind: 'id-conflict', existingProjectId: 'other-project' }),
 		]);
+	});
+});
+
+describe('DataTableImporter.apply', () => {
+	const rowRule = {
+		conditions: [{ column: 'email', match: 'email' as const }],
+		projectMembersSeeAll: false,
+		runsWithoutUser: 'deny' as const,
+	};
+	const plan = (rule?: typeof rowRule) =>
+		({
+			creations: [
+				{
+					id: 'dt1',
+					name: 'Customers',
+					columns: [{ name: 'email', type: 'string', index: 0 }],
+					...(rule ? { rowRule: rule } : {}),
+				},
+			],
+			updates: [],
+			columnAlignments: [],
+		}) as unknown as DataTableImportPlan;
+
+	beforeEach(() => {
+		userHasScopesMock.mockResolvedValue(true);
+	});
+
+	it('keeps the row rule of a created table', async () => {
+		const { importer, rowRuleService } = makeImporter();
+
+		await importer.apply(context, plan(rowRule));
+
+		expect(rowRuleService.setRowRule).toHaveBeenCalledWith('dt1', 'project-1', rowRule);
+	});
+
+	it('sets no rule for a table without one', async () => {
+		const { importer, rowRuleService } = makeImporter();
+
+		await importer.apply(context, plan());
+
+		expect(rowRuleService.setRowRule).not.toHaveBeenCalled();
 	});
 });

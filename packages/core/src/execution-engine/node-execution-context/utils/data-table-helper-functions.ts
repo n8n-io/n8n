@@ -4,6 +4,7 @@ import type {
 	IRunExecutionData,
 	Workflow,
 	IWorkflowExecuteAdditionalData,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 export function getDataTableHelperFunctions(
@@ -11,6 +12,7 @@ export function getDataTableHelperFunctions(
 	workflow: Workflow,
 	node: INode,
 	runExecutionData?: IRunExecutionData | null,
+	mode?: WorkflowExecuteMode,
 ): Partial<DataTableProxyFunctions> {
 	const dataTableProxyProvider = additionalData['data-table']?.dataTableProxyProvider;
 	if (!dataTableProxyProvider) return {};
@@ -28,7 +30,10 @@ export function getDataTableHelperFunctions(
 				dataTableId,
 				additionalData.dataTableProjectId,
 				// Read per call: the identity can be stamped after the context is built.
-				runExecutionData?.executionData?.runtimeData?.executedByUserId,
+				// An error workflow keeps the failed run's user for redaction only.
+				mode === 'error'
+					? undefined
+					: runExecutionData?.executionData?.runtimeData?.executedByUserId,
 			),
 	};
 }

@@ -1,5 +1,6 @@
 import type { DataTableRowRule, DataTableRowRuleImpact } from '@n8n/api-types';
 import {
+	SharedWorkflowRepository,
 	WorkflowDependencyRepository,
 	WorkflowHistoryRepository,
 	WorkflowRepository,
@@ -29,6 +30,7 @@ export class DataTableRowRuleService {
 		private readonly workflowDependencyRepository: WorkflowDependencyRepository,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
 
 	async setRowRule(dataTableId: string, projectId: string, rowRule: DataTableRowRule | null) {
@@ -73,13 +75,16 @@ export class DataTableRowRuleService {
 				.filter(({ nodes }) => hasTriggerWithoutUser(nodes))
 				.map(({ versionId }) => versionId),
 		);
-		const workflowIds = [
+		const candidateIds = [
 			...new Set(
 				dependencies
 					.filter(({ publishedVersionId: id }) => id && affectedVersionIds.has(id))
 					.map(({ workflowId }) => workflowId),
 			),
 		];
+		// A workflow in another project cannot use this table, and its name is not ours to show.
+		const owners = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(candidateIds);
+		const workflowIds = candidateIds.filter((id) => owners.get(id)?.id === projectId);
 		const workflows = await this.workflowRepository.findByIds(workflowIds, { fields: ['name'] });
 
 		return {

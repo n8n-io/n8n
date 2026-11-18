@@ -110,6 +110,26 @@ describe('AppDataTableAdapter', () => {
 		});
 	});
 
+	it('tells whether a bound table of the project shares rows with teams', async () => {
+		const { adapter, service } = setup();
+		const rule = (match: 'id' | 'project') => ({
+			conditions: [{ column: 'c', match }],
+			projectMembersSeeAll: false,
+			runsWithoutUser: 'deny' as const,
+		});
+		service.findDataTablesByIds.mockResolvedValue([
+			{ id: 't1', projectId: 'project-1', rowRule: rule('id') },
+			{ id: 't2', projectId: 'other-project', rowRule: rule('project') },
+		] as DataTable[]);
+
+		expect(await adapter.sharesRowsWithTeams('project-1', ['t1', 't2'])).toBe(false);
+
+		service.findDataTablesByIds.mockResolvedValue([
+			{ id: 't1', projectId: 'project-1', rowRule: rule('project') },
+		] as DataTable[]);
+		expect(await adapter.sharesRowsWithTeams('project-1', ['t1'])).toBe(true);
+	});
+
 	it('maps a refused row access to permission_denied', async () => {
 		const { adapter, service } = setup();
 		service.insertRows.mockRejectedValue(new DataTableRowAccessError('owner is set by n8n'));

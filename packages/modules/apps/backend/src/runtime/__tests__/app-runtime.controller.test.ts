@@ -372,7 +372,8 @@ describe('AppRuntimeController', () => {
 	});
 
 	it('returns the signed-in user and their team projects', async () => {
-		const { controller, projectRelations } = setup();
+		const { controller, projectRelations, dataTables } = setup();
+		dataTables.sharesRowsWithTeams.mockResolvedValue(true);
 		projectRelations.findAllByUser.mockResolvedValue([
 			{ project: { id: 'team-1', name: 'Sales EMEA', type: 'team' } },
 			{ project: { id: 'personal-1', name: 'Ada', type: 'personal' } },
@@ -387,6 +388,21 @@ describe('AppRuntimeController', () => {
 			teams: [{ id: 'team-1', name: 'Sales EMEA' }],
 			visibility: 'project',
 		});
+	});
+
+	it('lists no teams when no bound table shares rows with teams', async () => {
+		const { controller, projectRelations, dataTables } = setup();
+		dataTables.sharesRowsWithTeams.mockResolvedValue(false);
+		const res = response();
+
+		await controller.me(request(), res);
+
+		expect(dataTables.sharesRowsWithTeams).toHaveBeenCalledWith(
+			'project-1',
+			expect.arrayContaining([expect.any(String)]),
+		);
+		expect(projectRelations.findAllByUser).not.toHaveBeenCalled();
+		expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ teams: [] }));
 	});
 
 	it('lists bindings without resource IDs', async () => {

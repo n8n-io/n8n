@@ -15,6 +15,7 @@ import { z } from 'zod';
 
 import { AuthService } from '@/auth/auth.service';
 import { ExecutingUserIdentifierProxy } from '@n8n/backend-services';
+import { isAllowedNode as isDataTableNode } from '@n8n/backend-module-data-table';
 
 const EncryptedMetadataSchema = z.object({
 	encryptedMetadata: z.string(),
@@ -107,8 +108,12 @@ export class ChatHubExtractor implements IContextEstablishmentHook {
 					// DynamicCredentialsContextHook, which runs before node extractors like
 					// this one. The chat-hub identity is only available here, so attribute
 					// the run's owner now — a run that fails before the credential resolves
-					// still grants the initiating user access to their own data.
-					if (options.context?.usesDynamicCredentials) {
+					// still grants the initiating user access to their own data. A data
+					// table row rule also needs the user, for the same identity.
+					const usesDataTables = Object.values(options.workflow.nodes).some((node) =>
+						isDataTableNode(node.type),
+					);
+					if (options.context?.usesDynamicCredentials || usesDataTables) {
 						const executedByUserId = await this.executingUserIdentifierProxy.identify(credentials);
 						if (executedByUserId) contextUpdate.executedByUserId = executedByUserId;
 					}

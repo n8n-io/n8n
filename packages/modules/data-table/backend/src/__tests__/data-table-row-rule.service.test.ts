@@ -1,4 +1,6 @@
 import type {
+	Project,
+	SharedWorkflowRepository,
 	WorkflowDependencyRepository,
 	WorkflowEntity,
 	WorkflowHistoryRepository,
@@ -44,12 +46,14 @@ describe('DataTableRowRuleService.getImpact', () => {
 		const dependencies = mock<WorkflowDependencyRepository>();
 		const history = mock<WorkflowHistoryRepository>();
 		const workflows = mock<WorkflowRepository>();
+		const sharedWorkflows = mock<SharedWorkflowRepository>();
 		const service = new DataTableRowRuleService(
 			mock<DataTableService>(),
 			mock<DataTableRepository>(),
 			dependencies,
 			history,
 			workflows,
+			sharedWorkflows,
 		);
 		dependencies.findDependenciesForResources.mockResolvedValue([
 			{
@@ -70,18 +74,31 @@ describe('DataTableRowRuleService.getImpact', () => {
 				dependencyKey: 't1',
 				publishedVersionId: null,
 			},
+			{
+				workflowId: 'wf-elsewhere',
+				dependencyType: 'dataTableId',
+				dependencyKey: 't1',
+				publishedVersionId: 'v3',
+			},
 		]);
 		history.findNodesByVersionIds.mockResolvedValue([
 			{ versionId: 'v1', nodes: [node('n8n-nodes-base.scheduleTrigger')] },
 			{ versionId: 'v2', nodes: [node('n8n-nodes-base.manualTrigger')] },
+			{ versionId: 'v3', nodes: [node('n8n-nodes-base.scheduleTrigger')] },
 		]);
+		sharedWorkflows.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+			new Map([
+				['wf-schedule', { id: 'project-1' } as Project],
+				['wf-elsewhere', { id: 'project-2' } as Project],
+			]),
+		);
 		workflows.findByIds.mockResolvedValue([
 			{ id: 'wf-schedule', name: 'Nightly sync' } as WorkflowEntity,
 		]);
 
 		const impact = await service.getImpact('t1', 'project-1');
 
-		expect(history.findNodesByVersionIds).toHaveBeenCalledWith(['v1', 'v2']);
+		expect(history.findNodesByVersionIds).toHaveBeenCalledWith(['v1', 'v2', 'v3']);
 		expect(workflows.findByIds).toHaveBeenCalledWith(['wf-schedule'], { fields: ['name'] });
 		expect(impact).toEqual({ workflowsWithoutUser: [{ id: 'wf-schedule', name: 'Nightly sync' }] });
 	});

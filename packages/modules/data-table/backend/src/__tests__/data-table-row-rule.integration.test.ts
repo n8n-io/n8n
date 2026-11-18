@@ -379,6 +379,112 @@ describe('data table row rule', () => {
 			).rejects.toThrow(DataTableRowAccessError);
 		});
 
+		const rowNamed = async (name: string) => {
+			const { data } = await service.getManyRowsAndCount(tableId, project.id, managementRowAccess, {
+				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: name }] },
+			});
+			return data[0];
+		};
+		const byName = (name: string) => ({
+			type: 'and' as const,
+			filters: [{ columnName: 'name', condition: 'eq' as const, value: name }],
+		});
+
+		it('leaves the team of a teammate row unchanged', async () => {
+			const updated = await service.updateRows(
+				tableId,
+				project.id,
+				asActor(alicePerson),
+				{ filter: byName('team A'), data: { team: null } },
+				true,
+			);
+
+			expect(updated).toEqual([]);
+			expect(await rowNamed('team A')).toMatchObject({ team: teamA.id, owner: 'someone' });
+		});
+
+		it('keeps the owner of a teammate row on upsert', async () => {
+			await service.upsertRow(tableId, project.id, asActor(alicePerson), {
+				filter: byName('team A'),
+				data: { name: 'team A renamed' },
+			});
+
+			expect(await rowNamed('team A renamed')).toMatchObject({ owner: 'someone', team: teamA.id });
+		});
+
+		it('updates an existing row on upsert under a team-only rule', async () => {
+			await setRule({
+				conditions: [{ column: 'team', match: 'project' }],
+				projectMembersSeeAll: false,
+				runsWithoutUser: 'deny',
+			});
+
+			await service.upsertRow(tableId, project.id, asActor(alicePerson), {
+				filter: byName('team A'),
+				data: { name: 'team A renamed' },
+			});
+
+			expect(await rowNamed('team A renamed')).toMatchObject({ team: teamA.id });
+		});
+
+		it('previews only the rows of the actor in a dry run', async () => {
+			const preview = await service.updateRows(
+				tableId,
+				project.id,
+				asActor(alicePerson),
+				{
+					filter: { type: 'and', filters: [{ columnName: 'name', condition: 'neq', value: 'x' }] },
+					data: { name: 'changed' },
+				},
+				true,
+				true,
+			);
+
+			const before = preview.filter((row) => row.dryRunState === 'before').map((row) => row.name);
+			expect(before.sort()).toEqual(['alice own', 'team A']);
+		});
+
+		it('searches only the rows of the actor', async () => {
+			const { data } = await service.getManyRowsAndCount(
+				tableId,
+				project.id,
+				asActor(alicePerson),
+				{
+					search: 'team',
+				},
+			);
+
+			expect(data.map((row) => row.name)).toEqual(['team A']);
+		});
+
+		it('refuses a schema that drops a rule column', async () => {
+			const columns = await service.getColumns(tableId, project.id);
+
+			await expect(
+				service.replaceSchema(tableId, project.id, {
+					name: 'leads',
+					columns: columns
+						.filter(({ name }) => name !== 'team')
+						.map(({ id, name, type }) => ({ id, name, type })),
+				}),
+			).rejects.toThrow(DataTableValidationError);
+		});
+
+		it('moves the rule to a column that a schema renames', async () => {
+			const columns = await service.getColumns(tableId, project.id);
+
+			await service.replaceSchema(tableId, project.id, {
+				name: 'leads',
+				columns: columns.map(({ id, name, type }) => ({
+					id,
+					name: name === 'team' ? 'squad' : name,
+					type,
+				})),
+			});
+
+			expect(await names(asActor(alicePerson))).toEqual(['alice own', 'team A']);
+		});
+
 		it('gives every row to members of the table project when the rule says so', async () => {
 			expect(await names(asActor(carol))).toEqual(['carol own']);
 

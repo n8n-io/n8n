@@ -1,13 +1,18 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ContextEstablishmentOptions } from '@n8n/decorators';
 import type { Cipher } from 'n8n-core';
-import type { INodeExecutionData, PlaintextExecutionContext } from 'n8n-workflow';
+import type { INodeExecutionData, PlaintextExecutionContext, Workflow } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ExecutingUserIdentifierProxy } from '@n8n/backend-services';
 
 import { ChatHubExtractor } from '../chat-hub-extractor';
+
+const workflowWith = (...types: string[]) =>
+	({
+		nodes: Object.fromEntries(types.map((type, i) => [`n${i}`, { name: `n${i}`, type }])),
+	}) as unknown as Workflow;
 
 // Helper function to create trigger items
 const createTriggerItem = (data: Record<string, unknown>): INodeExecutionData => ({
@@ -35,6 +40,7 @@ describe('ChatHubExtractor', () => {
 		it('should throw error when no trigger items', async () => {
 			const options = {
 				triggerItems: [],
+				workflow: workflowWith(),
 			} as unknown as ContextEstablishmentOptions;
 
 			await expect(extractor.execute(options)).rejects.toThrow(
@@ -48,6 +54,7 @@ describe('ChatHubExtractor', () => {
 		it('should throw error when triggerItems is null', async () => {
 			const options = {
 				triggerItems: null,
+				workflow: workflowWith(),
 			} as unknown as ContextEstablishmentOptions;
 
 			await expect(extractor.execute(options)).rejects.toThrow(
@@ -75,6 +82,7 @@ describe('ChatHubExtractor', () => {
 			});
 			const options = {
 				triggerItems: [triggerItem],
+				workflow: workflowWith(),
 			} as ContextEstablishmentOptions;
 
 			const result = await extractor.execute(options);
@@ -107,6 +115,7 @@ describe('ChatHubExtractor', () => {
 			const options = {
 				triggerItems: [triggerItem],
 				context: { usesDynamicCredentials: true } as PlaintextExecutionContext,
+				workflow: workflowWith(),
 			} as ContextEstablishmentOptions;
 
 			const result = await extractor.execute(options);
@@ -132,12 +141,29 @@ describe('ChatHubExtractor', () => {
 			const options = {
 				triggerItems: [triggerItem],
 				context: { usesDynamicCredentials: false } as PlaintextExecutionContext,
+				workflow: workflowWith(),
 			} as ContextEstablishmentOptions;
 
 			const result = await extractor.execute(options);
 
 			expect(mockExecutingUserIdentifierProxy.identify).not.toHaveBeenCalled();
 			expect(result.contextUpdate?.executedByUserId).toBeUndefined();
+		});
+
+		it('attributes the owner when the workflow uses a data table', async () => {
+			mockCipher.decryptV2.mockResolvedValue(
+				JSON.stringify({ authToken: 'jwt', method: 'POST', endpoint: '/e' }),
+			);
+			mockExecutingUserIdentifierProxy.identify.mockResolvedValue('user-7');
+			const options = {
+				triggerItems: [createTriggerItem({ encryptedMetadata: 'enc' })],
+				context: { usesDynamicCredentials: false } as PlaintextExecutionContext,
+				workflow: workflowWith('n8n-nodes-base.dataTableTool'),
+			} as ContextEstablishmentOptions;
+
+			const result = await extractor.execute(options);
+
+			expect(result.contextUpdate?.executedByUserId).toBe('user-7');
 		});
 
 		it('should extract authToken without browserId', async () => {
@@ -154,6 +180,7 @@ describe('ChatHubExtractor', () => {
 			});
 			const options = {
 				triggerItems: [triggerItem],
+				workflow: workflowWith(),
 			} as ContextEstablishmentOptions;
 
 			const result = await extractor.execute(options);
@@ -190,6 +217,7 @@ describe('ChatHubExtractor', () => {
 			});
 			const options = {
 				triggerItems: [triggerItem],
+				workflow: workflowWith(),
 			} as ContextEstablishmentOptions;
 
 			await extractor.execute(options);
@@ -209,6 +237,7 @@ describe('ChatHubExtractor', () => {
 			});
 			const options = {
 				triggerItems: [triggerItem],
+				workflow: workflowWith(),
 			} as ContextEstablishmentOptions;
 
 			await expect(extractor.execute(options)).rejects.toThrow(
@@ -230,6 +259,7 @@ describe('ChatHubExtractor', () => {
 			});
 			const options = {
 				triggerItems: [triggerItem],
+				workflow: workflowWith(),
 			} as ContextEstablishmentOptions;
 
 			await expect(extractor.execute(options)).rejects.toThrow(
@@ -246,6 +276,7 @@ describe('ChatHubExtractor', () => {
 			});
 			const options = {
 				triggerItems: [triggerItem],
+				workflow: workflowWith(),
 			} as ContextEstablishmentOptions;
 
 			await expect(extractor.execute(options)).rejects.toThrow(
@@ -269,6 +300,7 @@ describe('ChatHubExtractor', () => {
 			});
 			const options = {
 				triggerItems: [triggerItem],
+				workflow: workflowWith(),
 			} as ContextEstablishmentOptions;
 
 			await expect(extractor.execute(options)).rejects.toThrow(
@@ -284,6 +316,7 @@ describe('ChatHubExtractor', () => {
 			});
 			const options = {
 				triggerItems: [triggerItem],
+				workflow: workflowWith(),
 			} as ContextEstablishmentOptions;
 
 			await expect(extractor.execute(options)).rejects.toThrow(

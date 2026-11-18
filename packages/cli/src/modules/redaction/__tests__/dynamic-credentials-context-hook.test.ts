@@ -179,6 +179,17 @@ describe('DynamicCredentialsContextHook', () => {
 			expect(result).toEqual({ contextUpdate: { executedByUserId: 'user-42' } });
 		});
 
+		it('still stamps the user when the credential lookup fails', async () => {
+			credentialsRepository.hasResolvableCredential.mockRejectedValue(new Error('db down'));
+			executingUserIdentifierProxy.identify.mockResolvedValue('user-42');
+
+			const result = await hook.execute(buildOptions({ A: dataTableNode() }, carrier()));
+
+			expect(result).toEqual({
+				contextUpdate: { usesDynamicCredentials: true, executedByUserId: 'user-42' },
+			});
+		});
+
 		it('stamps nothing when the run has no identity carrier', async () => {
 			const result = await hook.execute(buildOptions({ A: dataTableNode() }));
 

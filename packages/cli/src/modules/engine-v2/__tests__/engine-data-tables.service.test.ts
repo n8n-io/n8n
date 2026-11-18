@@ -2,7 +2,9 @@ import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
 	DataTableNotFoundError,
 	DataTableProxyService,
+	DataTableService,
 	DataTableValidationError,
+	type DataTable,
 } from '@n8n/backend-module-data-table';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -39,6 +41,7 @@ describe('EngineDataTablesService', () => {
 	let table: IDataTableProjectService;
 	let logger: Logger;
 	let service: EngineDataTablesService;
+	let dataTableService: DataTableService;
 
 	beforeEach(() => {
 		moduleRegistry = mock<ModuleRegistry>();
@@ -57,6 +60,11 @@ describe('EngineDataTablesService', () => {
 		// The service resolves the proxy lazily, so a run with the data-table
 		// module off never instantiates it.
 		Container.set(DataTableProxyService, proxyService);
+		dataTableService = mock<DataTableService>();
+		vi.mocked(dataTableService.validateDataTableExists).mockResolvedValue(
+			mock<DataTable>({ rowRule: null }),
+		);
+		Container.set(DataTableService, dataTableService);
 
 		service = new EngineDataTablesService(
 			moduleRegistry,
@@ -67,6 +75,25 @@ describe('EngineDataTablesService', () => {
 
 	afterEach(() => {
 		Container.reset();
+	});
+
+	it('refuses row operations on a table with a row rule', async () => {
+		vi.mocked(dataTableService.validateDataTableExists).mockResolvedValue(
+			mock<DataTable>({
+				rowRule: {
+					conditions: [{ column: 'owner', match: 'id' }],
+					projectMembersSeeAll: false,
+					runsWithoutUser: 'allRows',
+				},
+			}),
+		);
+
+		const outcome = await service.call(
+			requestFor({ kind: 'getManyRowsAndCount', dataTableId: 'dt-1', options: {} }),
+		);
+
+		expect(outcome).toEqual({ error: { kind: 'user', message: expect.any(String) } });
+		expect(table.getManyRowsAndCount).not.toHaveBeenCalled();
 	});
 
 	describe('call', () => {

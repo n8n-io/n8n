@@ -165,6 +165,17 @@ export class AppDataTableAdapter extends AppDataTablePort {
 		);
 	}
 
+	async sharesRowsWithTeams(projectId: string, dataTableIds: string[]) {
+		if (dataTableIds.length === 0 || !this.moduleRegistry.isActive('data-table')) return false;
+		const { service } = await dataTableModule();
+		const tables = await service.findDataTablesByIds(dataTableIds);
+		return tables.some(
+			(table) =>
+				table.projectId === projectId &&
+				table.rowRule?.conditions.some(({ match }) => match === 'project') === true,
+		);
+	}
+
 	/**
 	 * Runs a row operation for an app visitor. The table can leave the project
 	 * between two calls. A value that the columns reject is the caller's error.

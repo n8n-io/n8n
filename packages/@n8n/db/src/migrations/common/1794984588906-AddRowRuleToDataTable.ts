@@ -13,7 +13,7 @@ export class AddRowRuleToDataTable1794984588906 implements ReversibleMigration {
 
 		if (isPostgres) {
 			await runQuery(
-				`COMMENT ON COLUMN ${tableName}.${rowRule} IS 'Row rule as {column, match: id|email, runsWithoutUser: deny|allRows}. NULL means every caller sees all rows.'`,
+				`COMMENT ON COLUMN ${tableName}.${rowRule} IS 'Row rule as {conditions: [{column, match: id|email|project}], projectMembersSeeAll, runsWithoutUser: deny|allRows}. NULL means every caller sees all rows.'`,
 			);
 		}
 	}

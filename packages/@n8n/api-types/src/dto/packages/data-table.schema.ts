@@ -6,6 +6,7 @@ import {
 	dataTableColumnTypeSchema,
 	dataTableIdSchema,
 	dataTableNameSchema,
+	dataTableRowRuleSchema,
 } from '../../schemas/data-table.schema';
 
 const reservedColumnNames = new Set(
@@ -31,6 +32,8 @@ export const serializedDataTableSchema = z
 		id: dataTableIdSchema.min(1),
 		name: dataTableNameSchema,
 		columns: z.array(serializedDataTableColumnSchema),
+		// Optional, because older packages have no row rule.
+		rowRule: dataTableRowRuleSchema.optional(),
 	})
 	.strict()
 	.superRefine(({ columns }, ctx) => {

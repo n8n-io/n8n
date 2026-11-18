@@ -17,7 +17,7 @@ type DataTablePackageKeyHandling = {
 	columns: 'transform';
 	project: 'transform';
 	projectId: 'transform';
-	rowRule: 'exclude';
+	rowRule: 'copy';
 };
 
 type DataTableColumnPackageKeyHandling = {
@@ -62,6 +62,7 @@ export class DataTableSerializer {
 				id: dataTable.id,
 				name: dataTable.name,
 				columns,
+				...(dataTable.rowRule ? { rowRule: dataTable.rowRule } : {}),
 			}),
 		);
 	}
