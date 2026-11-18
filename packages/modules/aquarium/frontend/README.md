@@ -70,6 +70,14 @@ together. The choice is in the URL (`?view=projects`).
 - "Show all" fits the tanks below the page header. Personal projects show the name without the
   email address.
 
+### Small projects
+
+When there are more than `SMALL_PROJECTS.maxTanks` (50) projects, project view hides projects with
+fewer than `SMALL_PROJECTS.minCreatures` (3) creatures. Workflows and agents both count. The header
+shows how many projects are hidden. `hideSmallProjects()` in `src/engine/projects.ts` does this
+after the **My projects** filter, so a short list of member projects shows in full. One tank view
+shows all creatures.
+
 ### My projects
 
 **My projects** shows only the projects that the account is a direct member of: a project role,
@@ -91,14 +99,16 @@ opens zoomed out to show all creatures.
 - The buttons at the bottom right zoom in, zoom out, and show all creatures.
 - The zoom goes from the zoom that shows the whole world (at least `ZOOM.min`, 0.1) to
   `ZOOM.max` (12). After you zoom or pan, a new world size keeps your view.
-- Below zoom 1, the canvas stays at the screen size and the renderer scales the drawing
-  (`canvasResolutionFor()`). Zooming out does not make the canvas bigger.
+- Below `ZOOM.detail`, one canvas pixel is one device pixel and the renderer scales the drawing
+  (`canvasResolutionFor()`). Small sprites stay sharp on a high-density screen, and zooming out
+  does not make the canvas bigger than the screen.
 - The camera maths is in `src/engine/camera.ts`. The renderer draws only what the camera shows.
 - Below `ZOOM.detail` (1.5), plants and the water surface stop moving: each tank draws them from a
   cached image. A one-pixel sway is hard to see at that size, and drawing it pixel by pixel in
   hundreds of tanks was the main cost of a frame.
-- Below `ZOOM.detail`, the water is a smooth gradient and not dithered. A dither pattern shrunk
-  below 1:1 aliases into large checks.
+- Below `ZOOM.detail`, the water dither has one cell for each CSS pixel, not for each logical
+  pixel. A pattern of logical pixels shrunk below 1:1 aliases into large checks. The water is
+  painted again at the new zoom `ZOOM.settleMs` after the zoom stops changing.
 
 ## Data sources
 

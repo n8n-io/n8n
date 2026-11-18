@@ -147,6 +147,7 @@ a continuous value.
 | Motion | `src/engine/simulation.ts` |
 | Zoom, pan, world size | `src/engine/camera.ts`, `ZOOM` in `src/aquarium.constants.ts` |
 | Project tanks (size, packing, hit test) | `src/engine/layout.ts`, `PROJECT_TANK` in `src/aquarium.constants.ts` |
+| Which projects get a tank | `src/engine/projects.ts`, `SMALL_PROJECTS` in `src/aquarium.constants.ts` |
 | Tank frames (styles, colours, textures) | `src/engine/frames.ts` |
 | Background and sprite drawing | `src/engine/renderer.ts` |
 | Tooltip, hover, click | `src/components/AquariumTank.vue` |

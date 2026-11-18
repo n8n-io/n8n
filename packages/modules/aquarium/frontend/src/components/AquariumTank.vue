@@ -16,6 +16,7 @@ import {
 	canvasResolutionFor,
 	clampCamera,
 	fitCamera,
+	insetOf,
 	panBy,
 	worldSizeFor,
 	zoomAt,
@@ -101,11 +102,15 @@ let drag: { start: Point; camera: Camera; moved: boolean } | undefined;
 let suppressNextClick = false;
 let time = 0;
 
+function canvasResolution(): number {
+	return canvasResolutionFor(camera.zoom, window.devicePixelRatio);
+}
+
 function applyCamera(next: Camera) {
 	camera = clampCamera(next, viewport, world);
 	renderer?.setViewSize(
 		{ width: viewport.width / camera.zoom, height: viewport.height / camera.zoom },
-		canvasResolutionFor(camera.zoom),
+		canvasResolution(),
 	);
 	cameraVersion.value++;
 }
@@ -144,7 +149,9 @@ function layoutTanks(planned: PlannedCreature[]) {
 
 	if (props.grouping === 'single') {
 		const area = contents.get(SINGLE_TANK_ID)?.creatureArea ?? 0;
-		world = worldSizeFor(area, viewport);
+		// The free area below the page header, so the fitted tank starts below it.
+		const free = { width: viewport.width, height: viewport.height - insetOf(viewport) };
+		world = worldSizeFor(area, free);
 		regions.value = [singleRegion(SINGLE_TANK_ID, world)];
 	} else {
 		// The wall takes the shape of the free area below the page header.
@@ -232,7 +239,7 @@ function resize() {
 	viewport = {
 		width: Math.max(1, container.clientWidth),
 		height: Math.max(1, container.clientHeight),
-		insetTop: props.grouping === 'project' ? props.topInset : 0,
+		insetTop: props.topInset,
 	};
 	tankSize.value = { width: viewport.width, height: viewport.height };
 	// The viewport sets the single tank size and the wall shape, so lay out again.
@@ -285,7 +292,7 @@ function pointFrom(event: MouseEvent): Point {
 /** Logical pixels for each CSS pixel. Uses the real canvas size, which is rounded. */
 function canvasScale(): Point {
 	const canvas = canvasRef.value;
-	const resolution = canvasResolutionFor(camera.zoom);
+	const resolution = canvasResolution();
 	return {
 		x: canvas ? canvas.width / resolution / viewport.width : 1 / camera.zoom,
 		y: canvas ? canvas.height / resolution / viewport.height : 1 / camera.zoom,

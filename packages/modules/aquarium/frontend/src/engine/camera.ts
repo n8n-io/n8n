@@ -18,7 +18,7 @@ export interface Viewport extends Size {
 	insetTop?: number;
 }
 
-function insetOf(viewport: Viewport): number {
+export function insetOf(viewport: Viewport): number {
 	return Math.min(Math.max(0, viewport.insetTop ?? 0), viewport.height / 2);
 }
 
@@ -115,7 +115,10 @@ export function panBy(camera: Camera, delta: Point, viewport: Viewport, world: S
 	);
 }
 
-/** Canvas pixels for each logical pixel. Below zoom 1, the canvas stays at the screen size. */
-export function canvasResolutionFor(zoom: number): number {
-	return Math.min(1, zoom);
+/**
+ * Canvas pixels for each logical pixel. Zoomed out, one canvas pixel is one device pixel, so small
+ * sprites stay sharp on a high-density screen. Zoomed in, CSS scales up a canvas of logical pixels.
+ */
+export function canvasResolutionFor(zoom: number, devicePixelRatio = 1): number {
+	return zoom < ZOOM.detail ? zoom * Math.max(1, devicePixelRatio) : 1;
 }

@@ -16,9 +16,11 @@ import { useElementSize } from '@vueuse/core';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import { SMALL_PROJECTS } from '../aquarium.constants';
 import { useAquariumStore } from '../aquarium.store';
 import type { AquariumEntity, TankGrouping } from '../aquarium.types';
 import AquariumTank from '../components/AquariumTank.vue';
+import { hideSmallProjects } from '../engine/projects';
 import { readDatasetFile } from '../sources/dataset';
 import { hasMembership, isInMemberProject } from '../sources/membership.source';
 
@@ -56,11 +58,20 @@ const onlyMyProjects = computed<boolean>({
 
 const canFilterByMembership = computed(() => hasMembership(store.entities));
 
-const visibleEntities = computed(() =>
+const memberEntities = computed(() =>
 	onlyMyProjects.value && canFilterByMembership.value
 		? store.entities.filter(isInMemberProject)
 		: store.entities,
 );
+
+/** Only the project view hides small projects: there, each project takes a tank. */
+const smallProjects = computed(() =>
+	grouping.value === 'project'
+		? hideSmallProjects(memberEntities.value)
+		: { entities: memberEntities.value, hiddenProjects: 0 },
+);
+
+const visibleEntities = computed(() => smallProjects.value.entities);
 
 const groupingOptions = computed<Array<SegmentOption<TankGrouping>>>(() => [
 	{ label: i18n.baseText('aquarium.view.single'), value: 'single' },
@@ -76,18 +87,6 @@ async function load() {
 async function setDemo(value: string | number | boolean) {
 	await router.replace({ query: { ...route.query, demo: value === true ? 'true' : undefined } });
 }
-
-const datasetLabel = computed(() => {
-	const dataset = store.dataset;
-	if (!dataset) return '';
-	return i18n.baseText('aquarium.dataset.label', {
-		interpolate: {
-			source: dataset.source || i18n.baseText('aquarium.dataset.fallbackName'),
-			shown: String(dataset.entities.length),
-			total: String(dataset.totalEntities),
-		},
-	});
-});
 
 /** The file stays in the browser. It is not uploaded or stored. */
 async function onDatasetFile(event: Event) {
@@ -142,9 +141,6 @@ watch(isDemo, load);
 		<div ref="overlay" :class="$style.overlay">
 			<header :class="[$style.panel, $style.intro]">
 				<N8nHeading tag="h1" size="xlarge">{{ i18n.baseText('aquarium.title') }}</N8nHeading>
-				<N8nText size="small" color="text-light">{{
-					i18n.baseText('aquarium.description')
-				}}</N8nText>
 			</header>
 
 			<div :class="[$style.panel, $style.actions]">
@@ -162,7 +158,6 @@ watch(isDemo, load);
 					data-test-id="aquarium-my-projects"
 				/>
 				<template v-if="store.dataset">
-					<N8nText size="small" data-test-id="aquarium-dataset-label">{{ datasetLabel }}</N8nText>
 					<N8nButton
 						variant="ghost"
 						size="small"
@@ -215,6 +210,25 @@ watch(isDemo, load);
 			</N8nCallout>
 		</div>
 
+		<N8nText
+			v-if="smallProjects.hiddenProjects > 0"
+			:class="[$style.panel, $style.hiddenNote]"
+			size="small"
+			color="text-light"
+			:title="
+				i18n.baseText('aquarium.smallProjectsHidden.hint', {
+					interpolate: { min: String(SMALL_PROJECTS.minCreatures) },
+				})
+			"
+			data-test-id="aquarium-small-projects-hidden"
+		>
+			{{
+				i18n.baseText('aquarium.smallProjectsHidden', {
+					adjustToNumber: smallProjects.hiddenProjects,
+					interpolate: { count: String(smallProjects.hiddenProjects) },
+				})
+			}}
+		</N8nText>
 		<N8nText
 			v-if="store.hasLoaded && visibleEntities.length === 0"
 			:class="[$style.panel, $style.empty]"
@@ -282,6 +296,12 @@ watch(isDemo, load);
 
 .callout {
 	flex-basis: 100%;
+}
+
+.hiddenNote {
+	position: absolute;
+	bottom: var(--spacing--sm);
+	left: var(--spacing--sm);
 }
 
 .empty {

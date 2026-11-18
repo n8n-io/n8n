@@ -5,7 +5,7 @@ export const PIXEL_SIZE = 4;
 
 export const ZOOM = {
 	default: PIXEL_SIZE,
-	/** Below 1, the canvas stays at the screen size, so the cost grows with the tanks on screen. */
+	/** Below `detail`, the canvas has the screen's device pixels. The cost grows with the tanks on screen. */
 	min: 0.1,
 	max: 12,
 	/** Factor for one mouse wheel step. */
@@ -19,6 +19,20 @@ export const ZOOM = {
 	 * A one-pixel sway is hard to see there, and drawing it in hundreds of tanks is slow.
 	 */
 	detail: 1.5,
+	/**
+	 * Milliseconds without a zoom change before the zoomed-out water is painted again at the new
+	 * zoom. Painting each wheel step would stutter.
+	 */
+	settleMs: 200,
+} as const;
+
+/**
+ * Project view hides projects with fewer than `minCreatures` creatures when it has more than
+ * `maxTanks` projects, so the bigger tanks get the space.
+ */
+export const SMALL_PROJECTS = {
+	maxTanks: 50,
+	minCreatures: 3,
 } as const;
 
 /** Sizes of project tanks, in logical pixels. */

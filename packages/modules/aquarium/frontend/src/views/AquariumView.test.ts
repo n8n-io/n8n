@@ -60,15 +60,13 @@ describe('AquariumView', () => {
 		useAquariumStore().stopLiveUpdates();
 	});
 
-	it('loads a data set from a file and shows its label', async () => {
+	it('loads a data set from a file', async () => {
 		const { getByTestId, queryByTestId, store } = await setup();
 
 		await pickFile(getByTestId('aquarium-dataset-input'), datasetJson);
 
 		await waitFor(() => expect(store.entities.map((e) => e.name)).toEqual(['From file']));
-		expect(getByTestId('aquarium-dataset-label')).toHaveTextContent(
-			'example.app.n8n.cloud: 1 of 1 creatures',
-		);
+		expect(getByTestId('aquarium-dataset-clear')).toBeInTheDocument();
 		expect(queryByTestId('aquarium-demo-switch')).not.toBeInTheDocument();
 	});
 
@@ -81,7 +79,7 @@ describe('AquariumView', () => {
 
 		await waitFor(() => expect(store.entities.map((e) => e.name)).toContain('Slack ping'));
 		expect(store.dataset).toBeUndefined();
-		expect(queryByTestId('aquarium-dataset-label')).not.toBeInTheDocument();
+		expect(queryByTestId('aquarium-dataset-clear')).not.toBeInTheDocument();
 	});
 
 	it('keeps the current entities when the file is not a data set', async () => {

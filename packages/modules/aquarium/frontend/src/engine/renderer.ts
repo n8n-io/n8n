@@ -129,9 +129,9 @@ function context2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
 }
 
 /**
- * Draws the part of the world that the camera shows. CSS scales the canvas to the element. At zoom
- * 1 and above, one canvas pixel is one logical pixel. Below zoom 1, the canvas stays at the screen
- * size and the renderer scales the drawing, so zooming out does not grow the canvas.
+ * Draws the part of the world that the camera shows. CSS scales the canvas to the element. Zoomed
+ * in, one canvas pixel is one logical pixel. Zoomed out, one canvas pixel is one device pixel and
+ * the renderer scales the drawing. See `canvasResolutionFor()`.
  */
 export class AquariumRenderer {
 	private readonly ctx: CanvasRenderingContext2D;
@@ -167,6 +167,13 @@ export class AquariumRenderer {
 
 	/** Canvas pixels for each logical pixel. See `canvasResolutionFor()`. */
 	private resolution = 1;
+
+	/** CSS pixels for each logical pixel of the zoomed-out water. 0 until the first zoomed-out frame. */
+	private waterScale = 0;
+
+	private lastZoom = 0;
+
+	private zoomChangedAt = 0;
 
 	constructor(private readonly canvas: HTMLCanvasElement) {
 		this.ctx = context2d(canvas);
@@ -232,6 +239,7 @@ export class AquariumRenderer {
 		const bottom = top + this.canvas.height / this.resolution;
 
 		const detailed = camera.zoom >= ZOOM.detail;
+		const waterScale = this.waterScaleFor(camera.zoom);
 
 		ctx.setTransform(1, 0, 0, 1, 0, 0);
 		ctx.fillStyle = OUTSIDE_WORLD;
@@ -267,6 +275,7 @@ export class AquariumRenderer {
 					bottom: bottom - region.y,
 				},
 				detailed,
+				waterScale,
 			);
 			ctx.restore();
 
@@ -286,6 +295,7 @@ export class AquariumRenderer {
 		highlightKey: string | undefined,
 		view: { left: number; right: number; top: number; bottom: number },
 		detailed: boolean,
+		waterScale: number,
 	): void {
 		const ctx = this.ctx;
 		const sizeKey = `${region.bounds.width}x${region.bounds.height}`;
@@ -293,7 +303,9 @@ export class AquariumRenderer {
 		const health = tankHealthOf(failureShare);
 		const scale = tankScaleOf(region.bounds);
 
-		ctx.drawImage(this.backgroundFor(region.bounds, sizeKey, health, detailed), 0, 0);
+		const { width, height } = region.bounds;
+		const background = this.backgroundFor(region.bounds, sizeKey, health, waterScale);
+		ctx.drawImage(background, 0, 0, width, height);
 		const rays = this.lightRays.get(sizeKey);
 		if (rays) {
 			const pulse = 0.75 + 0.25 * Math.sin((time * 2 * Math.PI) / LIGHT_RAYS.pulseSeconds);
@@ -601,60 +613,71 @@ export class AquariumRenderer {
 	}
 
 	/**
-	 * Paints a background the first time a tank of this size has this health. Zoomed out, the
-	 * water is a smooth gradient: a dither pattern shrunk below 1:1 aliases into large checks.
+	 * Zoomed in, the water dither has one cell for each logical pixel. Zoomed out, it has one cell
+	 * for each CSS pixel: a pattern of logical pixels shrunk below 1:1 aliases into large checks.
+	 * The scale follows the zoom only after the zoom settles, so a wheel zoom does not repaint
+	 * each step.
 	 */
+	private waterScaleFor(zoom: number): number {
+		if (zoom >= ZOOM.detail) return 1;
+		const now = performance.now();
+		if (zoom !== this.lastZoom) {
+			this.lastZoom = zoom;
+			this.zoomChangedAt = now;
+		}
+		const settled = now - this.zoomChangedAt >= ZOOM.settleMs;
+		if (this.waterScale === 0 || (settled && this.waterScale !== zoom)) {
+			for (const key of this.backgrounds.keys()) {
+				const scale = Number(key.slice(key.lastIndexOf('|') + 1));
+				if (scale !== 1 && scale !== zoom) this.backgrounds.delete(key);
+			}
+			this.waterScale = zoom;
+		}
+		return this.waterScale;
+	}
+
+	/** Paints a background the first time a tank of this size has this health and water scale. */
 	private backgroundFor(
 		bounds: TankBounds,
 		sizeKey: string,
 		health: TankHealth,
-		dithered: boolean,
+		scale: number,
 	): HTMLCanvasElement {
-		const key = `${sizeKey}|${health}|${dithered ? 'dithered' : 'smooth'}`;
+		const key = `${sizeKey}|${health}|${scale}`;
 		const cached = this.backgrounds.get(key);
 		if (cached) return cached;
-		const background = this.drawBackground(bounds, health, dithered);
+		const background = this.drawBackground(bounds, health, scale);
 		this.backgrounds.set(key, background);
 		return background;
 	}
 
-	private drawBackground(
-		bounds: TankBounds,
-		health: TankHealth,
-		dithered: boolean,
-	): HTMLCanvasElement {
-		const canvas = createCanvas(bounds.width, bounds.height);
+	/** `scale` is background pixels for each logical pixel. Each background pixel is one dither cell. */
+	private drawBackground(bounds: TankBounds, health: TankHealth, scale: number): HTMLCanvasElement {
+		const width = Math.max(1, Math.round(bounds.width * scale));
+		const height = Math.max(1, Math.round(bounds.height * scale));
+		const floor = Math.min(height, Math.round(bounds.floor * scale));
+		const canvas = createCanvas(width, height);
 		const ctx = context2d(canvas);
 		const water = WATER[health].map(rgbOf);
 		const sand = SAND[health];
-		const image = ctx.createImageData(bounds.width, bounds.height);
+		const image = ctx.createImageData(width, height);
 		const put = (x: number, y: number, [r, g, b]: Rgb) => {
-			const i = (y * bounds.width + x) * 4;
+			const i = (y * width + x) * 4;
 			image.data[i] = r;
 			image.data[i + 1] = g;
 			image.data[i + 2] = b;
 			image.data[i + 3] = 255;
 		};
 
-		const deepest = Math.max(1, bounds.floor - 1);
+		const deepest = Math.max(1, floor - 1);
 		const black: Rgb = [0, 0, 0];
-		for (let y = 0; y < bounds.floor; y++) {
+		for (let y = 0; y < floor; y++) {
 			const depth = (y / deepest) ** WATER_DEPTH_CURVE * (water.length - 1);
 			const band = Math.min(water.length - 2, Math.floor(depth));
 			const mix = depth - band;
 			const upper = water[band] ?? black;
 			const lower = water[band + 1] ?? black;
-			// The blend that the dither pattern stands for, as one colour for the whole row.
-			const blended: Rgb = [
-				Math.round(upper[0] + (lower[0] - upper[0]) * mix),
-				Math.round(upper[1] + (lower[1] - upper[1]) * mix),
-				Math.round(upper[2] + (lower[2] - upper[2]) * mix),
-			];
-			for (let x = 0; x < bounds.width; x++) {
-				if (!dithered) {
-					put(x, y, blended);
-					continue;
-				}
+			for (let x = 0; x < width; x++) {
 				const threshold = ((BAYER_4[(y % 4) * 4 + (x % 4)] ?? 0) + 0.5) / 16;
 				put(x, y, mix > threshold ? lower : upper);
 			}
@@ -663,9 +686,9 @@ export class AquariumRenderer {
 		const sandBase = rgbOf(sand.base);
 		const sandLight = rgbOf(sand.light);
 		const sandSpeck = rgbOf(sand.speck);
-		for (let y = bounds.floor; y < bounds.height; y++) {
-			for (let x = 0; x < bounds.width; x++) {
-				if (y === bounds.floor) put(x, y, sandLight);
+		for (let y = floor; y < height; y++) {
+			for (let x = 0; x < width; x++) {
+				if (y === floor) put(x, y, sandLight);
 				else put(x, y, hashString(`${x},${y}`) % 7 === 0 ? sandSpeck : sandBase);
 			}
 		}

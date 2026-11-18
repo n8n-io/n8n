@@ -129,9 +129,11 @@ describe('top inset', () => {
 });
 
 describe('canvasResolutionFor', () => {
-	it('keeps the canvas at the screen size below zoom 1', () => {
+	it('uses device pixels zoomed out, and logical pixels zoomed in', () => {
 		expect(canvasResolutionFor(0.25)).toBe(0.25);
-		expect(canvasResolutionFor(1)).toBe(1);
-		expect(canvasResolutionFor(4)).toBe(1);
+		expect(canvasResolutionFor(0.25, 2)).toBe(0.5);
+		expect(canvasResolutionFor(1, 2)).toBe(2);
+		expect(canvasResolutionFor(ZOOM.detail, 2)).toBe(1);
+		expect(canvasResolutionFor(ZOOM.default, 2)).toBe(1);
 	});
 });
