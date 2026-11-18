@@ -167,6 +167,45 @@ describe('useAgentRegistryMcpConfig', () => {
 		scope.stop();
 	});
 
+	it.each([
+		['saves', 'require_approval', true],
+		['drops', 'always_allow', false],
+	] as const)('%s the review route when write permission is %s', async (_, write, keepsRoute) => {
+		const onConfirm = vi.fn();
+		const approvalRoute = { type: 'configuration' as const, configurationIds: ['review'] };
+		const modalData: AgentRegistryMcpModalData = {
+			kind: 'registryMcpServer',
+			projectId: 'project-1',
+			mcpServer: {
+				name: 'github',
+				authentication: 'githubMcpOAuth2Api',
+				credential: 'credential-1',
+				metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+			},
+			onConfirm,
+		};
+		const scope = effectScope();
+		const config = scope.run(() =>
+			useAgentRegistryMcpConfig(
+				computed(() => modalData),
+				vi.fn(),
+			),
+		);
+		if (!config) throw new Error('Failed to create registry MCP config');
+		await flushPromises();
+
+		expect(
+			config.save(
+				{ categories: { read: 'always_allow', write }, connectionTimeoutMs: 60_000 },
+				approvalRoute,
+			),
+		).toBe(true);
+		expect(onConfirm.mock.calls[0][0].approvalRoute).toEqual(
+			keepsRoute ? approvalRoute : undefined,
+		);
+		scope.stop();
+	});
+
 	it('removes approval requirements when the host cannot suspend tool calls', async () => {
 		const onConfirm = vi.fn();
 		const modalData: AgentRegistryMcpModalData = {

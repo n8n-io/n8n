@@ -273,6 +273,32 @@ or deactivation.
 
 ## Modal patterns
 
+### Fixed mode choices
+
+Use `N8nSwitch` for two fixed options in an Agent modal. Show both option labels
+beside the switch. The left option is off and the right option is on. Keep the
+selected mode clear. Use `N8nSegmentControl` for three fixed options.
+Use selects for longer lists and dynamic resources, regardless of result count.
+Human review uses a segmented control for Workflow and Channel. Keep both modes
+available even when no channel is attached.
+
+### Pill fields
+
+Use `AgentPillField` for named selections in tool and review modals. Keep the
+label inside the border on the left. Use the same medium label size as modal fields. Put an optional subtitle below
+the label with the section subtitle size and colour. Align the selected pills to the right.
+Keep a ghost plus button at the far right. Centre labels vertically beside their controls, including when pills wrap. Centre the plus
+vertically with the pills. Use the large border radius and
+standard spacing tokens. Let pills wrap without clipping their shadows or controls.
+Truncate long names and keep their full name in the title. Keep the removable pill end padding compact; the remove button already supplies its hit area.
+
+The plus opens the options menu directly. Do not nest a select or input inside it. Exclude selected items. Show the item's icon
+and name in the menu and pill. The remove button detaches only that item.
+Keep selection order. Disable adding, editing, and removing under edit locks.
+Use a leading Create human review action in the tool review menu.
+Label the tool attachment field Which tools require this review. Only show it
+when the Agent has attached tools or MCP servers. Keep its changes local until Save.
+
 ### Channel behavior settings
 
 Put optional channel behavior controls in the channel edit view after setup.
@@ -336,10 +362,19 @@ Use `full` only when the user explicitly asks for the extra workspace.
 Keep the header and footer fixed. Let the body scroll. Keep scrollbars visible
 when the body or nested content can scroll. The Agent shell is the only scroll
 owner for normal configuration forms. Do not put fixed heights or nested
-scrollbars on MCP, node, or workflow configuration content. In tool modals, set
-`stable-height` on `AgentModal` or `AgentModalMultiStep` to keep the body at a
-stable height, so expanding content scrolls without shifting the dialog. Do not
-set it on short modals, such as confirmations, descriptions, and budgets.
+scrollbars on MCP, node, or workflow configuration content. Let configuration
+modals grow with their content. The shared Agent shell limits the dialog height
+to the viewport with `--spacing--3xl` (64px) above and below.
+On narrow screens, use `--spacing--md` for these gaps. The body scrolls only when
+the dialog reaches this limit. Keep short modals sized to their content.
+Picker steps can keep a minimum height for their result list.
+
+Keep the approval toggle and its destination selector together in tool forms.
+Place Advanced settings after the approval controls. Join both sections in one
+bordered group with a divider and no gap. Keep approval controls outside the
+Advanced disclosure so they stay visible when it collapses. Use the standard
+button hover background on Advanced. Keep its header square at internal dividers
+and round only the corners that touch the outer group border.
 
 Do not add top padding or a top margin to a modal's first content wrapper. The
 shell supplies that space. Use the flush body only for a full-bleed workspace.
@@ -602,10 +637,11 @@ for the Assistant and Agent Preview. Pass the app catalog labels through
 Use the description slot to show the Agent name and the requested tool name.
 Show a node icon only when configured tool metadata identifies its node type.
 Use the localized Agent label when no name is available.
-Pass the sanitized display arguments from the backend to the shared card.
-For node tools, include the resolved node parameters and any model input.
-The card formats and shows these values inline for both surfaces. Leave space
-for the card's outline and shadow inside scrollable containers.
+Show the Agent's short approval description in the shared card. Do not show JSON
+arguments when a description is available. Saved requests without a description
+can still show sanitized arguments. Use the same request text in connected
+channel approvals. Offer only approve-once and deny there. Leave space for the
+card's outline and shadow inside scrollable containers.
 Keep approval policy and response payloads in the caller. Show the session
 option only when the backend supports it. Replace the Preview composer with
 pending tool approvals, including background child approvals. Restore the
@@ -615,6 +651,87 @@ each response. Use the existing child task order for background approvals.
 Focus each approval as it appears. Return focus to the composer after the last
 decision. Keep tool steps, questions, and display cards in the conversation.
 If a surface keeps a resolved card, show the decision without active actions.
+
+Show Human review in Settings for new and saved Agents when the module is enabled.
+Allow draft workflow review settings before the Agent is saved. Load channel
+destinations only after a saved Agent ID exists.
+
+Human review settings use `AgentChipRow` and `AgentChipButton`, as the Build
+page does. Each pill opens its configuration. Put the add action after the pills.
+Use the item context menu for removal. Do not show an Agent-wide default destination.
+
+Tools and MCP servers use `AgentPillField` for their ordered Human review pills. Show each review's
+workflow or channel icon and name. Click its name to edit it. Put a remove action
+inside each pill. Keep the plus action at the right edge of the field. Its options menu lists
+unselected reviews and a leading Create human review action. Creating a review
+appends it to this tool's sequence. Removing a pill keeps the other reviews in order.
+Always show Ask user as the first, non-removable pill. Keep it when reviewers are added.
+Add an info icon with a tooltip that explains that a chat requester confirms first,
+then the Agent contacts any other reviewers. Do not show an ordering hint. All selected reviews must approve.
+Run them in the order added. A rejection, expiry, or error stops the sequence.
+Label the row Human reviews, including for MCP servers. For MCP servers, place it after tool
+permissions. Show it when at least one
+tool or category uses Ask first. Keep Require approval inside the rounded review section. Hide the review controls when it is off. MCP servers keep their per-tool and category permissions.
+
+In a conversation, ask the requester before contacting configured reviewers.
+Explain in that request that their confirmation starts external review. Rejecting
+stops the sequence without contacting reviewers. Do not offer session approval
+for this first step when external review is configured. Workflow and scheduled
+runs skip this step because there is no chat requester. During external review,
+show a fixed waiting message with no approval actions in the requester's conversation. Name the tool that is
+waiting and include its approval description. The configured workflow or channel
+owns approver access.
+
+Generate the review name from the selected workflow name or the platform
+and destination. Prefix channel destinations with a hash. Let users override the
+name in the modal title. Keep automatic naming after Save until a user overrides
+it. Store the definitions and name
+override state in the Agent JSON.
+
+Use a segmented control for Workflow and Channel. Keep both modes enabled.
+Group the destination fields in a Settings Row Group below the method control.
+Use one descriptive label for each row, without a subtitle. Label the workflow row
+Which workflow is used to request review, and the channel row Which channel to use for review.
+Use a flat setting row for the method. Align it with section headings and leave
+`--spacing--xs` before the destination group.
+Attach an Advanced disclosure at the bottom of the same bordered group.
+Put When the review expires first, then Which tools require this review.
+Hide the tool row when the Agent has no attached tools or MCP servers.
+Expiry defaults to Never expires. Offer one hour, one day, and one week.
+Keep expiry and tool selections local until Save.
+Put labels on the left and controls on the right. Keep workflow and channel
+selects at the same width. Reserve the workflow link space in both modes so the
+select width stays stable. Use one-third of the section for controls.
+Use `padding: var(--spacing--sm) var(--spacing--md)` inside review configuration
+rows and tool approval sections. Centre labels vertically beside their controls.
+Use `--font-size--sm` for labels. Let controls set row height. Keep section
+backgrounds transparent and dividers full width. Use the standard button hover
+background on Advanced. Round only its outer bottom corners when collapsed.
+Stack labels above full-width controls in narrow modals. Embed the tool pill
+field in its settings row without another border. Keep menus outside the group clipping area.
+Keep Save disabled until the approval configuration is complete. Explain the missing
+workflow selection or channel configuration in a tooltip on hover and focus.
+Use a searchable select for the decision workflow. Put Create workflow in its menu.
+Show platform icons in the channel select. Use Select channel as its placeholder.
+Put Create channel first in its menu, including when no channels are attached.
+Open the existing channel setup modal over the review draft. Show only platforms
+that support Human review. Save a new Agent when channel setup needs its ID.
+Refresh the list after setup and select the newly connected channel. Keep the
+review draft, including its name and Advanced choices, open throughout setup.
+Use `N8nSelect2` item icons
+so saved selections keep the icon and label in the same layout after loading.
+Use the large size of the current Design System selects throughout Human review.
+Keep single-row tool selections at this height. Let the field grow when pills wrap.
+After selecting a channel, show one searchable Destination field. Combine channel
+and user results. Keep each result's destination kind in its value. Do not show a
+Destination type control. Use the same form field style for searchable destinations. Mark channel results with a hash icon and
+user results with a user icon. Keep search and pagination in the destination menu.
+Size the list to its results, up to six rows. Skip empty provider pages during
+lookup. Show Load more only with results and a continuation cursor.
+Show attached tools in the Which tools require this review pill field, with the same icons and names as Build.
+Keep attachment edits local until Save. Selecting a tool enables approval and appends this review to its sequence.
+Removing a selection detaches only this review. The other reviews keep their order.
+Removing the last external review leaves the Ask user step in place.
 
 Attach the plan card directly above the approval card. Keep both in one stack
 without a gap. Use the standard approval header with the Agent and tool names.

@@ -35,6 +35,9 @@ ${getSchemaReferenceSection()}
 
 - Follow the Config schema reference exactly; do not invent top-level fields.
 - Keep each feature in the schema path where it belongs.
+- Load \`agent-builder-human-review\` before changing \`hitlConfigurations\`,
+  \`approvalRoute\`, or tool approval rules. It explains when to use conversation,
+  connected-channel, and custom workflow review.
 - Preserve unrelated existing config unless the user asked to change it.
 - When removing or renaming a field, inspect the main instructions, tool
   definitions, and every skill attached in the latest config. Read every

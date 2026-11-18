@@ -1,3 +1,4 @@
+import type { AgentHitlContext } from '../components/agent-hitl.types';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
 import { computed, ref, type Ref } from 'vue';
@@ -106,7 +107,9 @@ function setup(
 }
 
 type ToolsModalData = {
+	tools: NonNullable<AgentJsonConfig['tools']>;
 	supportsToolApproval?: boolean;
+	approvalContext?: AgentHitlContext;
 	onConfirm: (payload: {
 		tools?: AgentJsonConfig['tools'];
 		mcpServers?: AgentJsonMcpServerConfig[];
@@ -136,6 +139,66 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 		modalData.onConfirm({ tools: [], mcpServers: [mcpServer] });
 
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ tools: [], mcpServers: [mcpServer] });
+	});
+
+	it('offers HITL configuration without an instance feature flag', () => {
+		const { uiStore, actions, localConfig } = setup({ agentId: ref('saved-agent') });
+		actions.onOpenAddToolModal();
+		const modalData = uiStore.modalsById[AGENT_TOOLS_MODAL_KEY].data as unknown as ToolsModalData;
+		expect(modalData.approvalContext?.getConfig()).toBe(localConfig.value);
+	});
+
+	it('prepares the Agent before review channel setup and refreshes the same target', async () => {
+		const beforeAgentMutation = vi.fn().mockResolvedValue(undefined);
+		const ensureAgentPersisted = vi.fn().mockResolvedValue(undefined);
+		const refreshAgentAfterMutation = vi.fn().mockResolvedValue(true);
+		const agentId = ref('saved-agent');
+		const { uiStore, actions } = setup({
+			agentId,
+			beforeAgentMutation,
+			ensureAgentPersisted,
+			refreshAgentAfterMutation,
+		});
+		actions.onOpenAddToolModal();
+		const data = uiStore.modalsById[AGENT_TOOLS_MODAL_KEY].data as unknown as ToolsModalData;
+		await data.approvalContext?.ensureAgentPersisted?.();
+		expect(beforeAgentMutation.mock.invocationCallOrder[0]).toBeLessThan(
+			ensureAgentPersisted.mock.invocationCallOrder[0],
+		);
+		await data.approvalContext?.onChannelsChanged?.();
+		expect(refreshAgentAfterMutation).toHaveBeenCalledWith('project-1', 'saved-agent');
+		agentId.value = 'another-agent';
+		await data.approvalContext?.onChannelsChanged?.();
+		expect(refreshAgentAfterMutation).toHaveBeenCalledOnce();
+	});
+
+	it('saves HITL tool attachments and keeps the open picker on the current tool config', () => {
+		const { uiStore, actions, localConfig, scheduleConfigUpdate } = setup({
+			agentId: ref('saved-agent'),
+		});
+		localConfig.value = makeConfig({ tools: [{ type: 'custom', id: 'send' }] });
+		actions.onOpenAddToolModal();
+		const modalData = uiStore.modalsById[AGENT_TOOLS_MODAL_KEY].data as unknown as ToolsModalData;
+		const configuration = {
+			id: 'review',
+			name: 'Review',
+			method: 'workflow',
+			workflowId: 'wf',
+		} as const;
+		modalData.approvalContext?.saveConfiguration(configuration, ['tool:custom:send']);
+		const tools: NonNullable<AgentJsonConfig['tools']> = [
+			{
+				type: 'custom',
+				id: 'send',
+				requireApproval: true,
+				approvalRoute: { type: 'configuration', configurationIds: ['review'] },
+			},
+		];
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith(
+			expect.objectContaining({ hitlConfigurations: [configuration], tools }),
+		);
+		localConfig.value = makeConfig({ tools: [...tools] });
+		expect(modalData.tools).toEqual(tools);
 	});
 
 	it('forwards the host approval capability into the tools modal data', () => {

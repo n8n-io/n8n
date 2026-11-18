@@ -7,7 +7,7 @@ import type {
 } from '@n8n/api-types';
 import * as nodeTypesApi from '@n8n/rest-api-client/api/nodeTypes';
 import { HTTP_REQUEST_NODE_TYPE, CREDENTIAL_ONLY_HTTP_NODE_VERSION } from '@/app/constants';
-import { getNodeGatingModule } from '@n8n/constants';
+import { getNodeGatingModule, isHumanReviewNodeType, HUMAN_REVIEW_MODULE } from '@n8n/constants';
 import { AGENTS_MODULE_NAME } from '@/features/agents/constants';
 import { STORES } from '@n8n/stores';
 import type { NodeTypesByTypeNameAndVersion } from '@/Interface';
@@ -109,7 +109,12 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	function isNodeTypeModuleDisabled(nodeTypeName: string): boolean {
 		const moduleName = getNodeGatingModule(nodeTypeName);
 		if (!moduleName) return false;
-		if (moduleName === AGENTS_MODULE_NAME) return !settingsStore.isAgentsEnabled;
+		if (moduleName === AGENTS_MODULE_NAME)
+			return (
+				!settingsStore.isAgentsEnabled ||
+				(isHumanReviewNodeType(nodeTypeName) &&
+					!settingsStore.isAgentModuleActive(HUMAN_REVIEW_MODULE))
+			);
 		return !settingsStore.isModuleActive(moduleName);
 	}
 

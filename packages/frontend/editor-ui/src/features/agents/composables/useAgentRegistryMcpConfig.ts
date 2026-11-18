@@ -1,4 +1,6 @@
+import type { AgentHitlContext } from '../components/agent-hitl.types';
 import type {
+	AgentApprovalRoute,
 	AgentJsonMcpServerConfig,
 	McpRegistryDiscoveryRequest,
 	McpRegistryDiscoveryResponse,
@@ -21,6 +23,7 @@ import type {
 } from '@/features/shared/toolsConnection/types';
 
 import { useAgentMcpDiscovery } from './useAgentMcpDiscovery';
+import { mcpPermissionsRequireApproval } from '../utils/hitlConfiguration';
 import {
 	isAiGatewayMcpEntry,
 	toMcpEntryAuth,
@@ -40,6 +43,7 @@ export type AgentRegistryMcpDraft = Pick<
 	| 'metadata'
 	| 'toolPermissions'
 	| 'connectionTimeoutMs'
+	| 'approvalRoute'
 >;
 
 export interface AgentRegistryMcpModalData {
@@ -49,6 +53,7 @@ export interface AgentRegistryMcpModalData {
 	existingToolNames?: string[];
 	isNew?: boolean;
 	supportsToolApproval?: boolean;
+	approvalContext?: AgentHitlContext;
 	onConfirm: (updatedServer: AgentJsonMcpServerConfig) => void;
 	onRemove?: () => void;
 }
@@ -247,7 +252,7 @@ export function useAgentRegistryMcpConfig(
 		await discover(credentialId);
 	}
 
-	function save(settings: McpToolSettings): boolean {
+	function save(settings: McpToolSettings, approvalRoute?: AgentApprovalRoute): boolean {
 		const result = discovery.value;
 		const { connectionTimeoutMs, ...toolPermissions } = settings;
 		if (
@@ -269,6 +274,10 @@ export function useAgentRegistryMcpConfig(
 				: toolPermissions;
 		data.value?.onConfirm({
 			...connectedServer,
+			// Drop the route when no permission needs approval, so a stale review does not stay attached.
+			approvalRoute: mcpPermissionsRequireApproval(normalizedToolPermissions)
+				? approvalRoute
+				: undefined,
 			name: normalizedTitle.value,
 			toolPermissions: normalizedToolPermissions,
 			connectionTimeoutMs,

@@ -12,6 +12,8 @@ import {
 	getAgentBudgetSpend,
 	getAgentChatQueue,
 	getAgentTaskCancellation,
+	getAgentHitlChannels,
+	getAgentHitlChannelOptions,
 	getN8nChatAgent,
 	getN8nChatThread,
 	removeAgentQueuedMessage,
@@ -718,6 +720,37 @@ describe('useAgentApi', () => {
 				{ type: 'slack', credentialId: '', settings: { channel: 'C1' } },
 				{ type: 'n8n_chat', credentialId: '' },
 			]);
+		});
+	});
+
+	describe('Human review channels', () => {
+		it('lists the review channels of an agent', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValue([]);
+			await getAgentHitlChannels(restApiContext, 'project 1', 'agent/1');
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'GET',
+				'/projects/project%201/agents/v2/agent%2F1/hitl/channels',
+			);
+		});
+
+		it('sends the destination search as query options', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValue({ options: [] });
+			const query = {
+				channel: 'discord' as const,
+				credentialId: 'bot',
+				field: 'recipient' as const,
+				query: 'approvals',
+				cursor: 'next',
+				guildId: '123',
+			};
+			await getAgentHitlChannelOptions(restApiContext, 'project-1', 'agent-1', query);
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'GET',
+				'/projects/project-1/agents/v2/agent-1/hitl/channel-options',
+				query,
+			);
 		});
 	});
 });
