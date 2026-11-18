@@ -3,6 +3,7 @@ import { defineComponent, h, reactive } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
+import { flushPromises } from '@vue/test-utils';
 import { N8nTabsRoot } from '@n8n/design-system';
 import { readFileSync } from 'node:fs';
 import { mock } from 'vitest-mock-extended';
@@ -550,7 +551,7 @@ describe('InstanceAiPreviewTabBar', () => {
 		});
 
 		it('does not load a summary for a browser tab', async () => {
-			vi.useFakeTimers({ shouldAdvanceTime: true });
+			vi.useFakeTimers();
 			try {
 				const { container } = renderComponent({
 					props: { tabs: [browserTab], activeTabId: 'browser:task-1' },
@@ -601,7 +602,8 @@ describe('InstanceAiPreviewTabBar', () => {
 		}
 
 		beforeEach(() => {
-			vi.useFakeTimers({ shouldAdvanceTime: true });
+			// Advance time explicitly so wall time cannot cross the hover deadline.
+			vi.useFakeTimers();
 		});
 
 		afterEach(() => {
@@ -646,12 +648,13 @@ describe('InstanceAiPreviewTabBar', () => {
 			const { container, rerender } = renderComponent({
 				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
 			});
-			await vi.waitFor(() => expect(mockSearchWorkflows).toHaveBeenCalled());
+			await flushPromises();
 
 			await rerender({ tabs: [{ ...workflowTab, name: 'Renamed Workflow' }], activeTabId: 'wf-1' });
 			// The refresh after the rename still returns the old name from the server.
-			await vi.waitFor(() => expect(mockSearchWorkflows).toHaveBeenCalledTimes(2));
+			await flushPromises();
 
+			expect(mockSearchWorkflows).toHaveBeenCalledTimes(2);
 			expect(container.querySelector('[data-tab-id="wf-1"]')).toHaveTextContent('Renamed Workflow');
 		});
 
@@ -728,11 +731,8 @@ describe('InstanceAiPreviewTabBar', () => {
 				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
 			});
 
-			await vi.waitFor(() => {
-				expect(container.querySelector('[data-tab-id="wf-1"]')).toHaveTextContent(
-					'Renamed Workflow',
-				);
-			});
+			await flushPromises();
+			expect(container.querySelector('[data-tab-id="wf-1"]')).toHaveTextContent('Renamed Workflow');
 			await hoverTab(container, 'wf-1');
 			expect(getHoverCard()).toHaveTextContent('Renamed Workflow');
 		});
@@ -818,11 +818,10 @@ describe('InstanceAiPreviewTabBar', () => {
 					activeVersionId: 'v1',
 				},
 			]);
-			await waitFor(() =>
-				expect(
-					document.body.querySelector('[data-test-id="instance-ai-tab-hover-card-status"]'),
-				).toHaveTextContent('Published'),
-			);
+			await flushPromises();
+			expect(
+				document.body.querySelector('[data-test-id="instance-ai-tab-hover-card-status"]'),
+			).toHaveTextContent('Published');
 			expect(getHoverCard()).toHaveTextContent('Edited');
 			expect(
 				document.body.querySelector('[data-test-id="instance-ai-tab-hover-card-placeholder"]'),
