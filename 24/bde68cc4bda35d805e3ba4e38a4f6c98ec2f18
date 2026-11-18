@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/sensitive-data-map/engine/externalNodes.ts
+  s_4ea71e2ba1183f::t_1d8766b9badef9 1-25
+packages/frontend/editor-ui/src/features/sensitive-data-map/engine/findSensitiveData.ts
+  s_4ea71e2ba1183f::t_a027906e8bc1a6 5,11,15
+  s_4ea71e2ba1183f::t_038c8d2d88328b 152-160,164-177,180,191-197,209-218,221-222,225-267
+  s_4ea71e2ba1183f::t_f7c4413268482d 268-270
+packages/frontend/editor-ui/src/features/sensitive-data-map/engine/__tests__/findSensitiveData.flow.test.ts
+  s_4ea71e2ba1183f::t_7867979b1a3de2 1-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "24bde68cc4bda35d805e3ba4e38a4f6c98ec2f18",
+  "prompts": {},
+  "sessions": {
+    "s_4ea71e2ba1183f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79c66528-1553-4a0f-a9b2-b8474eca94f5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
