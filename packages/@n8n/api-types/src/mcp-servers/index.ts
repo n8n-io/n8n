@@ -117,6 +117,9 @@ export interface McpServerOAuthConnectionDto {
 	revoked: boolean;
 }
 
+/** `idle` means no calls in the period. */
+export type McpServerHealth = 'failing' | 'attention' | 'healthy' | 'idle';
+
 export interface McpServerSummaryDto {
 	id: string;
 	slug: string;
@@ -133,6 +136,14 @@ export interface McpServerSummaryDto {
 	apiKeyCount: number;
 	calls7d: number;
 	errorRate7d: number;
+	health: McpServerHealth;
+	sessions7d: number;
+	/** Sessions that ended on a request for a missing tool. */
+	deadEnds7d: number;
+	/** Requests for missing tools that no tool can do yet. */
+	missingTools7d: number;
+	/** The tool with the most failed calls. */
+	worstTool: string | null;
 	ownerName: string;
 	updatedAt: string;
 }

@@ -2,9 +2,11 @@ import {
 	joinLabel,
 	matchTool,
 	missingCapabilities,
+	serverHealth,
 	sessionOutcomes,
 	splitLabel,
 	toLabel,
+	worstTool,
 	type InsightCall,
 } from '../mcp-server-insights';
 
@@ -106,5 +108,28 @@ describe('labels', () => {
 			label: null,
 			request: 'cancel an order: now',
 		});
+	});
+});
+
+describe('serverHealth', () => {
+	it('should grade a server by errors and dead ends', () => {
+		expect(serverHealth(0, 0, 0)).toBe('idle');
+		expect(serverHealth(10, 0.2, 0)).toBe('failing');
+		expect(serverHealth(10, 0.05, 0)).toBe('attention');
+		expect(serverHealth(10, 0, 0.5)).toBe('attention');
+		expect(serverHealth(10, 0.01, 0.1)).toBe('healthy');
+	});
+});
+
+describe('worstTool', () => {
+	it('should find the tool with the most failed calls', () => {
+		const calls = [
+			call('a', { name: 'slow_tool', status: 'error' }),
+			call('a', { name: 'bad_tool', status: 'error' }),
+			call('a', { name: 'bad_tool', status: 'error' }),
+			call('a'),
+		];
+		expect(worstTool(calls)).toBe('bad_tool');
+		expect(worstTool([call('a')])).toBeNull();
 	});
 });

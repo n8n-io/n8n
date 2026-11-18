@@ -39,7 +39,12 @@ import type {
 	McpServerToolEntity,
 } from './database/mcp-server.entities';
 import { McpServerRepository } from './database/mcp-server.repository';
-import { missingCapabilities, sessionOutcomes } from './mcp-server-insights';
+import {
+	missingCapabilities,
+	serverHealth,
+	sessionOutcomes,
+	worstTool,
+} from './mcp-server-insights';
 import {
 	McpServerTargetsService,
 	toToolName,
@@ -505,11 +510,22 @@ export class McpServerStoreService {
 			this.repository.listCallStatsSince(ids, since),
 			this.userRepository.findManyByIds([...new Set(servers.map((server) => server.ownerId))]),
 		]);
+		const resolvedTools = await this.resolveTools(tools);
 		return servers.map((server) => {
 			const serverTools = tools.filter((tool) => tool.serverId === server.id);
 			const serverResources = resources.filter((resource) => resource.serverId === server.id);
 			const serverCalls = calls.filter((call) => call.serverId === server.id);
 			const owner = owners.find((user) => user.id === server.ownerId);
+			const errorRate = serverCalls.length
+				? serverCalls.filter((call) => isError(call.status)).length / serverCalls.length
+				: 0;
+			const outcomes = sessionOutcomes(serverCalls);
+			const sessions = outcomes.completed + outcomes.failed + outcomes.deadEnd;
+			const toolNames = resolvedTools
+				.filter(
+					(tool) => tool.row.serverId === server.id && tool.row.enabled && tool.target.available,
+				)
+				.map((tool) => tool.name);
 			return {
 				id: server.id,
 				slug: server.slug,
@@ -525,9 +541,18 @@ export class McpServerStoreService {
 				resourceCount: serverResources.filter((resource) => resource.kind !== 'skill').length,
 				apiKeyCount: keys.filter((key) => key.serverId === server.id).length,
 				calls7d: serverCalls.length,
-				errorRate7d: serverCalls.length
-					? serverCalls.filter((call) => isError(call.status)).length / serverCalls.length
-					: 0,
+				errorRate7d: errorRate,
+				health: serverHealth(
+					serverCalls.length,
+					errorRate,
+					sessions ? outcomes.deadEnd / sessions : 0,
+				),
+				sessions7d: sessions,
+				deadEnds7d: outcomes.deadEnd,
+				missingTools7d: missingCapabilities(serverCalls, toolNames).filter(
+					(item) => !item.resolvedBy,
+				).length,
+				worstTool: worstTool(serverCalls),
 				ownerName: accountName(owner),
 				updatedAt: server.updatedAt.toISOString(),
 			};

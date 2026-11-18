@@ -1,4 +1,8 @@
-import type { McpServerAnalyticsDto, McpServerMissingCapabilityDto } from '@n8n/api-types';
+import type {
+	McpServerAnalyticsDto,
+	McpServerHealth,
+	McpServerMissingCapabilityDto,
+} from '@n8n/api-types';
 
 import type { McpServerCallEntity } from './database/mcp-server.entities';
 
@@ -145,4 +149,30 @@ export function missingCapabilities(
 					b.count - a.count,
 			)
 	);
+}
+
+/**
+ * One grade for a server, so that a fleet list can show the worst server first.
+ * ponytail: fixed limits. Upgrade: limits that the owner sets for each server.
+ */
+export function serverHealth(
+	calls: number,
+	errorRate: number,
+	deadEndRate: number,
+): McpServerHealth {
+	if (calls === 0) return 'idle';
+	if (errorRate >= 0.2) return 'failing';
+	if (errorRate >= 0.05 || deadEndRate >= 0.2) return 'attention';
+	return 'healthy';
+}
+
+/** The tool with the most failed calls. */
+export function worstTool(calls: InsightCall[]): string | null {
+	const errors = new Map<string, number>();
+	for (const call of calls) {
+		if (call.kind === 'tool' && call.status === 'error') {
+			errors.set(call.name, (errors.get(call.name) ?? 0) + 1);
+		}
+	}
+	return [...errors.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 }

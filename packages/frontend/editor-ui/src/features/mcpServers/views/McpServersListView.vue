@@ -21,6 +21,7 @@ import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 
 import McpServerCard from '../components/McpServerCard.vue';
+import McpServerFleet from '../components/McpServerFleet.vue';
 import { MCP_SERVER_NEW_QUERY, MCP_SERVER_VIEW } from '../constants';
 import { useMcpServersStore } from '../mcpServers.store';
 
@@ -37,6 +38,12 @@ const loading = ref(!store.serversLoaded);
 const creating = ref(false);
 const search = ref('');
 const status = ref<StatusFilter>('all');
+const view = ref<'cards' | 'fleet'>('cards');
+
+const viewOptions = computed(() => [
+	{ value: 'cards' as const, label: i18n.baseText('mcpServers.list.view.cards') },
+	{ value: 'fleet' as const, label: i18n.baseText('mcpServers.list.view.fleet') },
+]);
 
 const counts = computed(() => {
 	const active = store.servers.filter((server) => server.active).length;
@@ -154,6 +161,12 @@ onBeforeUnmount(() => {
 					data-testid="mcp-servers-status-filter"
 				/>
 				<span :class="$style.spacer" />
+				<N8nSegmentControl
+					v-model="view"
+					:options="viewOptions"
+					size="small"
+					data-testid="mcp-servers-view"
+				/>
 				<N8nButton
 					variant="brand"
 					icon="plus"
@@ -184,6 +197,8 @@ onBeforeUnmount(() => {
 			<N8nText v-else-if="filteredServers.length === 0" color="text-light" :class="$style.noMatch">
 				{{ i18n.baseText('mcpServers.list.noMatch') }}
 			</N8nText>
+
+			<McpServerFleet v-else-if="view === 'fleet'" :servers="filteredServers" @open="onOpen" />
 
 			<div v-else :class="$style.grid">
 				<McpServerCard
