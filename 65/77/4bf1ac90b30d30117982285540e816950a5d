@@ -1,0 +1,42 @@
+packages/workflow/test/ExpressionExtensions/string-extensions.test.ts
+  s_f4484042ac1c92::t_79452e97783420 316-322
+  s_f4484042ac1c92::t_53412b07e3ed78 299-300,311,341,355
+  s_f4484042ac1c92::t_f25f3044ed98f0 293-297,302-309,312-315,323-334,346-353,357-360
+  s_f4484042ac1c92::t_c6917f57d826ef 301,310,339-340,356
+  s_f4484042ac1c92::t_fb6166bdd9379e 335-338,343,345
+  s_f4484042ac1c92::t_244423cf63afac 342
+packages/@n8n/expression-runtime/src/extensions/string-extensions.ts
+  s_f4484042ac1c92::t_1dd490a3ad428e 342-344,349,352
+  s_f4484042ac1c92::t_a10b20c167c685 345-346
+  s_f4484042ac1c92::t_6b22010061e135 653-654,662-663,763-764
+  s_f4484042ac1c92::t_244423cf63afac 27
+  s_f4484042ac1c92::t_53412b07e3ed78 33
+  s_f4484042ac1c92::t_c76b49ad11a0bb 35-36
+  s_f4484042ac1c92::t_60ff067f59f423 292
+packages/workflow/src/extensions/string-extensions.ts
+  s_f4484042ac1c92::t_88fdc5d6658cc9 385-386
+  s_f4484042ac1c92::t_6b22010061e135 649-650,658-659,759-760
+  s_f4484042ac1c92::t_5a51b49f59d236 332
+  s_f4484042ac1c92::t_a5ac0274dbdd30 97-98
+  s_f4484042ac1c92::t_1dd490a3ad428e 382-384,389,392
+  s_f4484042ac1c92::t_244423cf63afac 39,57
+  s_f4484042ac1c92::t_53412b07e3ed78 85,91,95
+  s_f4484042ac1c92::t_4c17bd425cffcc 38
+  s_f4484042ac1c92::t_4dbbe7a1b96182 52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "65774bf1ac90b30d30117982285540e816950a5d",
+  "prompts": {},
+  "sessions": {
+    "s_f4484042ac1c92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a140ec45-3739-42da-ab82-0e7f8b68144b",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
