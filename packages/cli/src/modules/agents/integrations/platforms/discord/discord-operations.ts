@@ -309,9 +309,10 @@ export async function fetchDiscordAccount(params: {
 	httpClient: HttpRequestClient;
 	apiUrl: string;
 	botToken: string;
-}): Promise<{ botName?: string; workspaceNames?: string[] }> {
+}): Promise<{ botName?: string; workspaceNames?: string[]; hasMoreWorkspaces?: boolean }> {
 	const headers = { Authorization: `Bot ${params.botToken}` };
-	const [user, guilds] = await Promise.all([
+	/** Settle each request on its own, so one failure does not drop the other part. */
+	const [userResult, guildsResult] = await Promise.allSettled([
 		params.httpClient.request<unknown>({
 			method: 'GET',
 			url: `${params.apiUrl}/users/@me`,
@@ -332,18 +333,28 @@ export async function fetchDiscordAccount(params: {
 		}),
 	]);
 
+	const user = userResult.status === 'fulfilled' ? userResult.value : undefined;
+	const guilds = guildsResult.status === 'fulfilled' ? guildsResult.value : undefined;
+
 	const botName =
-		isSuccess(user.statusCode) && isRecord(user.body) && typeof user.body.username === 'string'
+		user &&
+		isSuccess(user.statusCode) &&
+		isRecord(user.body) &&
+		typeof user.body.username === 'string'
 			? user.body.username
 			: undefined;
-	const workspaceNames =
-		isSuccess(guilds.statusCode) && Array.isArray(guilds.body)
-			? guilds.body.flatMap((guild: unknown) =>
-					isRecord(guild) && typeof guild.name === 'string' ? [guild.name] : [],
-				)
+	const guildList =
+		guilds && isSuccess(guilds.statusCode) && Array.isArray(guilds.body)
+			? (guilds.body as unknown[])
 			: undefined;
+	const workspaceNames = guildList?.flatMap((guild) =>
+		isRecord(guild) && typeof guild.name === 'string' ? [guild.name] : [],
+	);
+	/** A full page means more servers can exist, so the count is only a lower bound. */
+	const hasMoreWorkspaces =
+		guildList && guildList.length >= DISCORD_GUILD_PAGE_LIMIT ? true : undefined;
 
-	return { botName, workspaceNames };
+	return { botName, workspaceNames, ...(hasMoreWorkspaces ? { hasMoreWorkspaces } : {}) };
 }
 
 function isSuccess(statusCode: number) {

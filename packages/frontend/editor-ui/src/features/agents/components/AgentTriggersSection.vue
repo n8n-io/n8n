@@ -192,6 +192,11 @@ function channelMentionLabel(channel: string): string | undefined {
 	if (!bot) {
 		return i18n.baseText('agents.builder.triggers.channel.mention');
 	}
+	if (account?.hasMoreWorkspaces) {
+		return i18n.baseText('agents.builder.triggers.channel.mention.botInManyServers', {
+			interpolate: { bot, count: String(workspaces.length) },
+		});
+	}
 	if (workspaces.length === 1) {
 		return i18n.baseText('agents.builder.triggers.channel.mention.botInWorkspace', {
 			interpolate: { bot, workspace: workspaces[0] },

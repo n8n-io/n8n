@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+	AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH,
 	AGENT_TASK_NAME_MAX_LENGTH,
 	AGENT_TASK_OBJECTIVE_MAX_LENGTH,
 	StrictTimeZoneSchema,
@@ -145,13 +146,24 @@ applyTask();
 // A pristine new-task field stays quiet until the user interacts with it.
 const initialObjectiveInvalid = isEditing.value && !objective.value.trim();
 const initialCronInvalid =
-	isEditing.value && !getNextScheduleOccurrence(cronExpression.value, timezone.value);
+	isEditing.value &&
+	(cronExpression.value.length > AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH ||
+		!getNextScheduleOccurrence(cronExpression.value, timezone.value));
 
 const cronValidator: IValidator = {
-	validate: (value: Validatable) =>
-		getNextScheduleOccurrence(typeof value === 'string' ? value : '', timezone.value)
+	validate: (value: Validatable) => {
+		const expression = typeof value === 'string' ? value : '';
+		if (expression.length > AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH) {
+			return {
+				message: i18n.baseText('agents.builder.tasks.validation.cronMaxLength' as BaseTextKey, {
+					interpolate: { max: String(AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH) },
+				}),
+			};
+		}
+		return getNextScheduleOccurrence(expression, timezone.value)
 			? false
-			: { message: i18n.baseText('agents.builder.tasks.validation.cronInvalid' as BaseTextKey) },
+			: { message: i18n.baseText('agents.builder.tasks.validation.cronInvalid' as BaseTextKey) };
+	},
 };
 
 watch(frequency, (value) => {
