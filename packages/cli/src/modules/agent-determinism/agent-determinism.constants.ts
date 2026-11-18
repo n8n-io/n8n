@@ -9,3 +9,7 @@ export const DRAFT_OUTPUT_NODE_NAME = 'Output';
 export const FALLBACK_NODE_NAME = 'Agent fallback';
 export const DRAFT_TAG_NAME = 'generated';
 export const DRAFT_NAME_SUFFIX = '(deterministic draft)';
+/** Train runs replayed to find what the first draft gets wrong. */
+export const VALIDATION_RUNS = 5;
+/** Redrafts with replay failures, as the lab script's `convert --feedback` does. */
+export const FEEDBACK_ROUNDS = 1;

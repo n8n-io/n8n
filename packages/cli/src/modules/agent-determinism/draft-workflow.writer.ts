@@ -6,6 +6,7 @@ import { NodeTypes } from '@/node-types';
 import { TagService } from '@/services/tag.service';
 import { resolveNodeWebhookIds } from '@/workflow-helpers';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 import { DRAFT_NAME_SUFFIX, DRAFT_TAG_NAME } from './agent-determinism.constants';
 import type { DeterminismSource } from './agent-determinism.contracts';
@@ -16,6 +17,7 @@ export class DraftWorkflowWriter {
 		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly tagService: TagService,
 		private readonly nodeTypes: NodeTypes,
+		private readonly workflowService: WorkflowService,
 	) {}
 
 	async write(actor: User, source: DeterminismSource, draft: WorkflowJSON) {
@@ -36,5 +38,13 @@ export class DraftWorkflowWriter {
 			projectId: source.projectId,
 			tagIds: tags.map((tag) => tag.id),
 		});
+	}
+
+	/** Replaces the nodes of a saved draft, and returns the saved version. */
+	async update(actor: User, saved: WorkflowEntity, draft: WorkflowJSON) {
+		const entity = new WorkflowEntity();
+		Object.assign(entity, { nodes: draft.nodes, connections: draft.connections });
+		resolveNodeWebhookIds(entity, this.nodeTypes);
+		return await this.workflowService.update(actor, entity, saved.id, { forceSave: true });
 	}
 }
