@@ -56,10 +56,9 @@ export function linkHeaderNext(headers: Record<string, unknown>): string | undef
 	const raw = headers.link ?? headers.Link;
 	const header = Array.isArray(raw) ? raw.join(',') : raw;
 	if (typeof header !== 'string') return undefined;
-	for (const part of header.split(',')) {
-		const match = /<([^>]*)>\s*;(.*)/.exec(part.trim());
-		const rel = match && /rel\s*=\s*"?([^";]*)"?/i.exec(match[2]);
-		if (match && rel?.[1].toLowerCase().split(/\s+/).includes('next')) return match[1];
+	for (const [, url, params] of header.matchAll(/<([^>]*)>([^<]*)/g)) {
+		const rel = /rel\s*=\s*"?([^";,]*)"?/i.exec(params);
+		if (rel?.[1].trim().toLowerCase().split(/\s+/).includes('next')) return url;
 	}
 	return undefined;
 }
