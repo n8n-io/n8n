@@ -60,7 +60,7 @@ const emit = defineEmits<{
 	reverted: [agent: AgentResource];
 	'switch-agent': [agentId: string];
 	'open-publish-timeline': [];
-	'setup-task-action': [task: SetupTask<SetupTaskId>];
+	'setup-task-action': [task: SetupTask];
 }>();
 
 const i18n = useI18n();

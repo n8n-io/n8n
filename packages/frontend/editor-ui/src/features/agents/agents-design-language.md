@@ -234,7 +234,9 @@ Agent artifacts inside an Assistant chat keep the handoff in that chat.
 
 ## Setup checklist
 
-Show `Finish setup` after the Agent exists and the Assistant finishes building it.
+In the setup header experiment, show `Finish setup` beside `Test Agent` in the
+Agent identity header. Otherwise, keep it in the top navigation bar.
+Show it after the Agent exists and the Assistant finishes building it.
 Hide it when the Agent is published, including when the draft has pending changes.
 Keep the checklist hidden while the Assistant builds or updates the Agent.
 Use this behavior in Agent artifacts and the standalone Agent Builder.
