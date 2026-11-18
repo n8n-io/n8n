@@ -17,6 +17,11 @@ import { hasExpression, OWNED_REQUEST, specialiseNode } from './specialise.ts';
 import type { FieldCheck, ParameterValidation } from './validate.ts';
 import { VERIFIED } from './verified.generated.ts';
 
+export interface SubsetChecks {
+	get: (type: string, version: number, source: string) => string[] | undefined;
+	set: (type: string, version: number, source: string, errors: string[]) => void;
+}
+
 export interface NodeSources {
 	entry: (type: string, version: number) => string | undefined;
 	readFile: (path: string) => string | undefined;
@@ -34,6 +39,8 @@ export interface NodeSources {
 	credentialEntry?: (type: string) => string | undefined;
 
 	storesResponses?: boolean;
+
+	subsetChecks?: SubsetChecks;
 
 	runsInHost?: (nodeName: string) => boolean;
 }
@@ -310,8 +317,13 @@ const MAX_ACCEPTED = 4096;
 
 const accepted = new Map<string, string[]>();
 
-function subsetErrors(type: string, version: number, source: string): string[] {
-	const known = accepted.get(source);
+function subsetErrors(
+	type: string,
+	version: number,
+	source: string,
+	kept?: SubsetChecks,
+): string[] {
+	const known = accepted.get(source) ?? kept?.get(type, version, source);
 	if (known) return known;
 	const workflow = `import { webhook, workflow } from '@n8n/workflow-lang';
 export default workflow({
@@ -325,6 +337,7 @@ export default workflow({
 	try {
 		const result = compile(workflow, { nodes: { 'nodes/compiled-check.ts': source } });
 		errors = result.diagnostics.map((d) => `${d.code}: ${d.message}`);
+		kept?.set(type, version, source, errors);
 	} catch (error) {
 		errors = [error instanceof Error ? error.message : String(error)];
 	}
@@ -609,7 +622,7 @@ export function compileNodeInstance(
 	const isEvaluated = (path: string) => evaluated.some((entry) => entry.path === path);
 	const type = `${node.type}#${hashOf(result.source)}`;
 	const source = result.retyped(type);
-	const errors = subsetErrors(type, node.version, source);
+	const errors = subsetErrors(type, node.version, source, sources.subsetChecks);
 	if (errors.length > 0) return { errors };
 	return {
 		type,

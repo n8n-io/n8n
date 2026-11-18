@@ -124,6 +124,12 @@ larger than the 16 KB connection buffer moves to one of
 `--request-big-slots` large buffers of `--max-request-mb`; their pages go
 back to the system after the request.
 
+A full table or pool delays work, it does not fail it: a request waits in
+its connection, an execution waits for a region, and a step waits for a row.
+`--target-in-flight N` (after `--profile`) sizes every table from the count
+of executions that run at one time. `--stats` and `GET /_admin/limits` give
+the fill and the wait counts of each table. See [docs/limits.md](docs/limits.md).
+
 ## Fuzzing and memory checks
 
 Fuzz targets are tests whose names start with "fuzz" in
