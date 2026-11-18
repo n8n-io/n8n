@@ -22,7 +22,8 @@ link() {
 }
 link node_modules
 for p in packages/@n8n/workflow-lang packages/@n8n/workflow-fallback-host packages/@n8n/node-engine-compatibility \
-	packages/nodes-base packages/core packages/workflow packages/cli packages/@n8n/task-runner; do
+	packages/nodes-base packages/@n8n/nodes-langchain packages/core packages/workflow packages/cli \
+	packages/@n8n/task-runner; do
 	link "$p/node_modules"
 	[ "$p" = packages/@n8n/workflow-lang ] || link "$p/dist"
 done
