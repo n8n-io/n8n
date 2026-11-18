@@ -337,6 +337,9 @@ pub const LoadedModule = struct {
     /// would outgrow at once (a grow compacts and copies the region). It
     /// changes only when regions grow, not what executions compute.
     start_class: u8 = 0,
+    /// The slot of `wf_creds` for this workflow, or `0xFFFF_FFFF` when not
+    /// cached. Set by the shell; never read in the core.
+    wf_creds_slot: u32 = 0xFFFF_FFFF,
 
     pub fn workflowId(lm: *const LoadedModule) []const u8 {
         return lm.wf_id[0..lm.wf_id_len];
@@ -541,6 +544,10 @@ pub const State = struct {
     nmodules: u32 = 0,
     routes: []Route,
     nroutes: u32 = 0,
+    /// A hash table from (method, path) to route index for static routes.
+    /// The sentinel is `0xFFFF_FFFF`. The table is sized to hold every
+    /// route without a single probe wrapping.
+    route_index: []u32 = &.{},
     schedules: []Schedule,
     nschedules: u32 = 0,
     zones: []tz.Zone,
@@ -735,6 +742,10 @@ pub const State = struct {
         s.pending_removals = 0;
         s.now_ms = 0;
         s.counters = .{};
+        // Twice the capacity: a linear-probe table never wraps at full
+        // load because only non-removed static routes are inserted.
+        s.route_index = try gpa.alloc(u32, cfg.max_routes * 2);
+        @memset(s.route_index, route_idx_none);
         return s;
     }
 
@@ -1143,13 +1154,16 @@ fn makeRoute(method: []const u8, path: []const u8, mod: u16, fixed: u8) ?Route {
 }
 
 fn putRoute(s: *State, r: Route) void {
-    for (s.routes[0..s.nroutes]) |*slot| if (slot.removed) {
+    for (s.routes[0..s.nroutes], 0..) |*slot, i| if (slot.removed) {
         slot.* = r;
+        insertRouteIndex(s, @intCast(i), slot);
         return;
     };
     if (s.nroutes == s.routes.len) return;
-    s.routes[s.nroutes] = r;
+    const idx = s.nroutes;
+    s.routes[idx] = r;
     s.nroutes += 1;
+    insertRouteIndex(s, @intCast(idx), &s.routes[idx]);
 }
 
 /// n8n: a path is dynamic when a segment starts with `:`.
@@ -1162,6 +1176,50 @@ fn segmentCount(path: []const u8) usize {
     var n: usize = 0;
     while (it.next()) |_| n += 1;
     return n;
+}
+
+/// The empty slot of the route index.
+const route_idx_none: u32 = 0xFFFF_FFFF;
+
+/// Hash the method and the path of a static route for the index.
+fn hashRoute(method: []const u8, path: []const u8) u32 {
+    var h = std.hash.Wyhash.init(0);
+    h.update(method);
+    h.update(path);
+    return @truncate(h.final());
+}
+
+/// Insert one route into the index. The route must be a live static route.
+fn insertRouteIndex(s: *State, idx: u32, r: *const Route) void {
+    if (r.removed or r.dynamic or s.route_index.len == 0) return;
+    const mask = s.route_index.len - 1;
+    var slot = hashRoute(r.method[0..r.method_len], r.path[0..r.path_len]) & mask;
+    var steps: u32 = 0;
+    while (s.route_index[slot] != route_idx_none) {
+        const existing_idx = s.route_index[slot];
+        const existing = &s.routes[existing_idx];
+        if (!existing.removed and
+            existing.method_len == r.method_len and existing.path_len == r.path_len and
+            std.mem.eql(u8, existing.method[0..existing.method_len], r.method[0..r.method_len]) and
+            std.mem.eql(u8, existing.path[0..existing.path_len], r.path[0..r.path_len]))
+        {
+            return; // Duplicate: keep the lower index.
+        }
+        slot = (slot + 1) & mask;
+        steps += 1;
+        std.debug.assert(steps < s.route_index.len); // table too full
+    }
+    s.route_index[slot] = idx;
+}
+
+/// Clear and rebuild the route index from all live static routes.
+fn rebuildRouteIndex(s: *State) void {
+    if (s.route_index.len == 0) return;
+    @memset(s.route_index, route_idx_none);
+    for (s.routes[0..s.nroutes], 0..) |*r, i| {
+        if (r.removed or r.dynamic) continue;
+        insertRouteIndex(s, @intCast(i), r);
+    }
 }
 
 fn leadingLiterals(path: []const u8) u8 {
@@ -1283,6 +1341,7 @@ fn removeTriggers(s: *State, mod: u16) void {
     for (s.routes[0..s.nroutes]) |*r| {
         if (!r.removed and r.module == mod) r.removed = true;
     }
+    rebuildRouteIndex(s);
     var w: u32 = 0;
     for (s.schedules[0..s.nschedules]) |sc| {
         if (sc.module == mod) continue;
@@ -1821,9 +1880,26 @@ fn writeDecoded(b: *@import("arena.zig").Builder, raw: []const u8, plus: bool) e
 /// all in the request; the most static segments wins, and a path of only
 /// parameters matches when nothing else does.
 pub fn findRoute(s: *const State, method: []const u8, path: []const u8) ?usize {
-    for (s.routes[0..s.nroutes], 0..) |*r, i| {
-        if (r.removed or r.dynamic) continue;
-        if (std.mem.eql(u8, r.method[0..r.method_len], method) and std.mem.eql(u8, r.path[0..r.path_len], path)) return i;
+    if (s.route_index.len > 0) {
+        const h = hashRoute(method, path);
+        const mask = s.route_index.len - 1;
+        var slot = h & mask;
+        var steps: u32 = 0;
+        while (steps < s.route_index.len) : (steps += 1) {
+            const ri = s.route_index[slot];
+            if (ri == route_idx_none) break;
+            const r = &s.routes[ri];
+            if (!r.removed and !r.dynamic and
+                r.method_len == method.len and r.path_len == path.len and
+                std.mem.eql(u8, r.method[0..r.method_len], method) and
+                std.mem.eql(u8, r.path[0..r.path_len], path)) return ri;
+            slot = (slot + 1) & mask;
+        }
+    } else {
+        for (s.routes[0..s.nroutes], 0..) |*r, i| {
+            if (r.removed or r.dynamic) continue;
+            if (std.mem.eql(u8, r.method[0..r.method_len], method) and std.mem.eql(u8, r.path[0..r.path_len], path)) return i;
+        }
     }
     // The segments stay in the path: a table of them on the stack is
     // filled on each call in a safe build.
@@ -3911,4 +3987,122 @@ test "decoded keys that are module strings become those constants" {
     var b = scratch.builder();
     _ = try json.encode(&vm, &b, v, "");
     try std.testing.expectEqualStrings(src, b.bytes());
+}
+
+/// The old `findRoute` with a linear scan for static routes. Kept as
+/// the oracle for the route index property test.
+fn findRouteOld(s: *const State, method: []const u8, path: []const u8) ?usize {
+    std.debug.assert(s.nroutes <= s.routes.len);
+    for (s.routes[0..s.nroutes], 0..) |*r, i| {
+        if (r.removed or r.dynamic) continue;
+        if (std.mem.eql(u8, r.method[0..r.method_len], method) and
+            std.mem.eql(u8, r.path[0..r.path_len], path)) return i;
+    }
+    var nsegs: usize = 0;
+    var it = std.mem.tokenizeScalar(u8, path, '/');
+    while (it.next()) |_| {
+        if (nsegs == max_route_segs) return null;
+        nsegs += 1;
+    }
+    var best: ?usize = null;
+    var best_score: usize = 0;
+    for (s.routes[0..s.nroutes], 0..) |*r, i| {
+        if (r.removed or !r.dynamic or r.nsegs != nsegs) continue;
+        if (!std.mem.eql(u8, r.method[0..r.method_len], method)) continue;
+        const score = dynamicScore(r, path) orelse continue;
+        if (score > best_score or (best == null and score == 0)) {
+            best = i;
+            best_score = score;
+        }
+    }
+    return best;
+}
+
+test "route index agrees with linear scan (property test)" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const max_routes: u32 = 64;
+    const cfg: Config = .{
+        .slots = 8,
+        .region_counts = .{ 2, 1, 1, 1 },
+        .region_sizes = .{ 1 << 10, 4 << 10, 16 << 10, 64 << 10 },
+        .max_routes = max_routes,
+        .max_schedules = 2,
+        .max_zones = 1,
+        .max_parked = 8,
+        .max_pending = 8,
+        .max_timers = 8,
+        .max_actions = 32,
+        .max_batch_events = 16,
+        .module_bytes = 1 << 12,
+        .natives_total = 1 << 8,
+        .max_modules = 2,
+    };
+    var st = try State.init(a, cfg);
+
+    var prng = std.Random.Xoshiro256.init(42);
+    const rand = prng.random();
+
+    const methods = [_][]const u8{ "GET", "POST", "PUT", "DELETE", "PATCH" };
+
+    // Run a deterministic sequence: add, check, remove, check, add more, check.
+    const add = struct {
+        fn add(stt: *State, method: []const u8, path: []const u8) void {
+            const r = makeRoute(method, path, 0, 0) orelse return;
+            putRoute(stt, r);
+        }
+    }.add;
+
+    // Phase 1: add several static and dynamic routes.
+    add(&st, "GET", "/api/users");
+    add(&st, "POST", "/api/users/:id");
+    add(&st, "GET", "/api/items");
+    add(&st, "DELETE", "/api/users/:id");
+    add(&st, "PUT", "/api/config");
+    add(&st, "PATCH", "/api/config/:key");
+
+    // Check every combination.
+    for (methods) |method| {
+        for ([_][]const u8{ "/api/users", "/api/items", "/api/config", "/api/users/42", "/api/config/x" }) |path| {
+            try std.testing.expectEqual(findRouteOld(&st, method, path), findRoute(&st, method, path));
+        }
+    }
+
+    // Phase 2: remove a static route and verify index is rebuilt.
+    for (st.routes[0..st.nroutes]) |*sr| {
+        if (!sr.removed and !sr.dynamic and std.mem.eql(u8, sr.method[0..sr.method_len], "GET") and std.mem.eql(u8, sr.path[0..sr.path_len], "/api/items")) {
+            sr.removed = true;
+            break;
+        }
+    }
+    rebuildRouteIndex(&st);
+    for (methods) |method| {
+        for ([_][]const u8{ "/api/users", "/api/items", "/api/config", "/api/users/42", "/api/config/x" }) |path| {
+            try std.testing.expectEqual(findRouteOld(&st, method, path), findRoute(&st, method, path));
+        }
+    }
+
+    // Phase 3: add a duplicate static route — the lowest index must win.
+    add(&st, "GET", "/api/users"); // duplicate of route[0]
+    add(&st, "POST", "/api/orders");
+    for (methods) |method| {
+        for ([_][]const u8{ "/api/users", "/api/items", "/api/config", "/api/users/42", "/api/config/x", "/api/orders" }) |path| {
+            try std.testing.expectEqual(findRouteOld(&st, method, path), findRoute(&st, method, path));
+        }
+    }
+
+    // Phase 4: fill the table to exercise the hash table at load.
+    var buf: [64]u8 = undefined;
+    for (0..max_routes) |ri| {
+        const s = std.fmt.bufPrint(&buf, "/r{d}", .{ri}) catch unreachable; // 64-byte buffer holds any u32
+        const method = methods[ri % methods.len];
+        const r = makeRoute(method, s, 0, 0) orelse continue;
+        putRoute(&st, r);
+        // Check a random lookup after each add.
+        const check_m = methods[rand.uintAtMost(usize, methods.len - 1)];
+        const check_p = std.fmt.bufPrint(&buf, "/r{d}", .{rand.uintAtMost(usize, max_routes - 1)}) catch unreachable; // 64-byte buffer holds any u32
+        try std.testing.expectEqual(findRouteOld(&st, check_m, check_p), findRoute(&st, check_m, check_p));
+    }
 }

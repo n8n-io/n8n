@@ -3177,24 +3177,34 @@ pub const Runner = struct {
     fn setWorkflowCreds(r: *Runner, id: []const u8, store: *creds.Store) bool {
         std.debug.assert(id.len <= core.max_id);
         r.noteStore(store);
-        if (r.findWorkflowCreds(id)) |w| {
-            r.wf_pool.?.release(w.store.?);
-            w.store = store;
-            return true;
-        }
-        for (r.wf_creds) |*w| if (w.store == null) {
-            @memcpy(w.id[0..id.len], id);
-            w.id_len = @intCast(id.len);
-            w.store = store;
-            return true;
+        const w: *WfCreds = if (r.findWorkflowCreds(id)) |existing| blk: {
+            r.wf_pool.?.release(existing.store.?);
+            existing.store = store;
+            break :blk existing;
+        } else blk: {
+            for (r.wf_creds) |*slot| if (slot.store == null) {
+                @memcpy(slot.id[0..id.len], id);
+                slot.id_len = @intCast(id.len);
+                slot.store = store;
+                break :blk slot;
+            };
+            return false;
         };
-        return false;
+        // Cache the slot on the loaded module.
+        if (r.sh.st.liveWorkflow(id)) |mod| {
+            r.sh.st.modules[mod].wf_creds_slot = @intCast((@intFromPtr(w) - @intFromPtr(r.wf_creds.ptr)) / @sizeOf(WfCreds));
+        }
+        return true;
     }
 
     fn dropWorkflowCreds(r: *Runner, id: []const u8) void {
         const w = r.findWorkflowCreds(id) orelse return;
         r.wf_pool.?.release(w.store.?);
         w.* = .{};
+        // Clear the cached slot on the loaded module.
+        if (r.sh.st.liveWorkflow(id)) |mod| {
+            r.sh.st.modules[mod].wf_creds_slot = 0xFFFF_FFFF;
+        }
     }
 
     /// The credentials of the workflow of a module: its own store, which
@@ -3208,8 +3218,23 @@ pub const Runner = struct {
     }
 
     fn credsFor(r: *Runner, mod: u16) ?*const creds.Store {
-        const lm = &r.sh.st.modules[mod];
-        if (lm.wf_id_len > 0 and r.wf_creds.len > 0) if (r.findWorkflowCreds(lm.workflowId())) |w| return w.store.?;
+        var lm = &r.sh.st.modules[mod];
+        if (lm.wf_id_len == 0 or r.wf_creds.len == 0) return r.egress.cfg.credentials;
+        // Use the cached slot when it is still valid.
+        const slot = lm.wf_creds_slot;
+        if (slot < r.wf_creds.len) {
+            const w = &r.wf_creds[slot];
+            if (w.store != null and w.id_len == lm.wf_id_len and
+                std.mem.eql(u8, w.id[0..w.id_len], lm.workflowId()))
+            {
+                return w.store.?;
+            }
+        }
+        // Slow path: find the store and cache the slot.
+        if (r.findWorkflowCreds(lm.workflowId())) |w| {
+            lm.wf_creds_slot = @intCast((@intFromPtr(w) - @intFromPtr(r.wf_creds.ptr)) / @sizeOf(WfCreds));
+            return w.store.?;
+        }
         return r.egress.cfg.credentials;
     }
 
@@ -6430,4 +6455,79 @@ test "workload classes: with shard groups each class has its own webhook port" {
     // A process for one class keeps the port that it got.
     try opts.workload.serveOnly("background");
     try std.testing.expectEqual(@as(u16, 9000), shardPort(opts, 0));
+}
+
+test "credentials of a workflow: set, replace, drop and lookup" {
+    var mod_arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer mod_arena.deinit();
+    const mods = [_][]const u8{try renewModule(mod_arena.allocator(), null, 0, false)};
+    var t: TestRunner = .{ .arena = undefined, .modules = &mods };
+    const r = try renewRunner(&t, "{\"api\":{\"data\":{}}}", 8);
+    defer t.deinit();
+
+    const a = t.arena.allocator();
+
+    // Give the loaded module a workflow id.
+    @memcpy(r.sh.st.modules[0].wf_id[0..2], "wf");
+    r.sh.st.modules[0].wf_id_len = 2;
+    const m: u16 = 0;
+
+    // Allocate wf_creds and wf_pool on the Runner so the cache is exercised.
+    const wf_creds = try a.alloc(WfCreds, 4);
+    for (wf_creds) |*w| w.* = .{};
+    const wf_pool = try creds.Pool.init(a, 8, 4096);
+    r.wf_creds = wf_creds;
+    r.wf_pool = wf_pool;
+
+    // Before set: credsFor returns the global store.
+    const global = r.egress.cfg.credentials;
+    try std.testing.expect(Runner.credsFor(r, m) == global);
+    try std.testing.expectEqual(@as(u32, 0xFFFF_FFFF), r.sh.st.modules[m].wf_creds_slot);
+
+    // Set workflow creds and verify the cache is populated.
+    var store1 = try r.wf_pool.?.parse("{\"api\":{\"data\":{}}}");
+    store1.next = global;
+    const ok = Runner.setWorkflowCreds(r, "wf", store1);
+    try std.testing.expect(ok);
+
+    const got1 = Runner.credsFor(r, m);
+    try std.testing.expect(got1 == store1);
+    try std.testing.expect(r.sh.st.modules[m].wf_creds_slot != 0xFFFF_FFFF);
+    const slot1 = r.sh.st.modules[m].wf_creds_slot;
+
+    // A second lookup uses the cached slot.
+    const got2 = Runner.credsFor(r, m);
+    try std.testing.expect(got2 == store1);
+    try std.testing.expectEqual(slot1, r.sh.st.modules[m].wf_creds_slot);
+
+    // Replace the store in place.
+    var store2 = try r.wf_pool.?.parse("{\"api\":{\"data\":{},\"renewal\":{\"oauth2\":true}}}");
+    store2.next = global;
+    const ok2 = Runner.setWorkflowCreds(r, "wf", store2);
+    try std.testing.expect(ok2);
+    const got3 = Runner.credsFor(r, m);
+    try std.testing.expect(got3 == store2);
+
+    // Drop the credentials.
+    Runner.dropWorkflowCreds(r, "wf");
+    try std.testing.expect(Runner.credsFor(r, m) == global);
+    try std.testing.expectEqual(@as(u32, 0xFFFF_FFFF), r.sh.st.modules[m].wf_creds_slot);
+
+    // Set again after a drop (a new slot).
+    var store3 = try r.wf_pool.?.parse("{\"other\":{}}");
+    store3.next = global;
+    const ok3 = Runner.setWorkflowCreds(r, "wf", store3);
+    try std.testing.expect(ok3);
+    const got4 = Runner.credsFor(r, m);
+    try std.testing.expect(got4 == store3);
+
+    // Corrupt the cached slot: the check must recover via the slow path.
+    r.sh.st.modules[m].wf_creds_slot = @intCast(wf_creds.len + 10);
+    const got5 = Runner.credsFor(r, m);
+    try std.testing.expect(got5 == store3);
+    try std.testing.expect(r.sh.st.modules[m].wf_creds_slot != wf_creds.len + 10);
+
+    // Drop and verify the slot is cleared.
+    Runner.dropWorkflowCreds(r, "wf");
+    try std.testing.expectEqual(@as(u32, 0xFFFF_FFFF), r.sh.st.modules[m].wf_creds_slot);
 }
