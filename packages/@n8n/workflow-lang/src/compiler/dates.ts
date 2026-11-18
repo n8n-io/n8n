@@ -34,6 +34,8 @@ export const DATE_CODE = 'WL013';
  * place without the type Date. `Date.of(v, method, text)` is the Date of a value of unknown
  * kind, or the TypeError of JavaScript for the call `text()` when `v` is no Date value.
  * `Date.is(v)` is true when `v` is a Date value: `v instanceof Date` of JavaScript.
+ * `Date.set(v, t)` stores the time value `t` in the Date value `v`, as a setter of JavaScript
+ * changes its Date: each reference to the value reads the new time.
  */
 export const DATE_STATICS: ReadonlySet<string> = new Set([
 	'now',
@@ -43,6 +45,7 @@ export const DATE_STATICS: ReadonlySet<string> = new Set([
 	'value',
 	'of',
 	'is',
+	'set',
 ]);
 
 const GETTERS = [
@@ -119,6 +122,7 @@ export const DATE_FUNCTIONS: ReadonlySet<string> = new Set([
 	'Date.value',
 	'Date.of',
 	'Date.is',
+	'Date.set',
 	...[...DATE_METHODS].map((m) => `Date.prototype.${m}`),
 ]);
 

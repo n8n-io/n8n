@@ -118,6 +118,7 @@ export function nativeCode(
 		hasNode: (name: string) => names.includes(name),
 		timezone: 'system',
 		itemsOfFirstOnly: false,
+		dateValues: true,
 		...options.known,
 	};
 	const t = translateCode(input);

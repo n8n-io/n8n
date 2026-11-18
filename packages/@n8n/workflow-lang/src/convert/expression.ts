@@ -1049,6 +1049,22 @@ export function translateBody(
 			],
 		};
 	};
+	// The plain form gives a Date that goes to an untyped place as its JSON text, and JavaScript
+	// has a Date there. The native form keeps the kind of a Date, or refuses the code.
+	if (!native && !plainKeepsDates(ended)) {
+		if (scope.useHelper) return translateBody(body, scope, true, luxonValue, binaryValue);
+		return {
+			ok: false,
+			issues: [
+				{
+					feature: 'Date: a Date in a place that loses its kind',
+					message:
+						'A Date goes to a place without the type Date, and the native form is not there.',
+					code: 'WL101',
+				},
+			],
+		};
+	}
 	if (native) {
 		const form = nativeExpression(ended, trimmed, scope.timezone);
 		if (!form.ok) {
@@ -1068,6 +1084,187 @@ export function translateBody(
 		return { ok: true, code: form.code, usage, guard: true, guardAll: true };
 	}
 	return plain();
+}
+
+/**
+ * True when each Date of the plain form of an expression stays in a place that keeps its kind:
+ * the receiver of a method, an operand of arithmetic or of a comparison, a text, an argument
+ * of `new Date`, `String`, `Number`, `isNaN`, `Math` or `JSON.stringify`, the start value
+ * of a constant, or the value of the expression. In each other place (a parameter, `||`,
+ * `??`, a ternary, a list that the code reads) the compiler gives the JSON text of the Date.
+ */
+export function plainKeepsDates(code: string): boolean {
+	if (!/\bnew\s+Date\b|\.\s*toJSDate\b/.test(code)) return true;
+	const sf = ts.createSourceFile('e.ts', `(${code})`, ts.ScriptTarget.ES2022, true);
+	const strip = (n: ts.Node): ts.Node => {
+		let x = n;
+		while (ts.isParenthesizedExpression(x.parent)) x = x.parent;
+		return x;
+	};
+	const isSource = (n: ts.Node): boolean =>
+		(ts.isNewExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === 'Date') ||
+		(ts.isCallExpression(n) &&
+			ts.isPropertyAccessExpression(n.expression) &&
+			n.expression.name.text === 'toJSDate');
+	const inner = (e: ts.Expression): ts.Expression => {
+		let x = e;
+		while (ts.isParenthesizedExpression(x)) x = x.expression;
+		return x;
+	};
+	/** Constants that start with a Date. Each use of the name is a Date. */
+	const dates = new Set<string>();
+	const declare = (n: ts.Node): void => {
+		if (
+			ts.isVariableDeclaration(n) &&
+			ts.isIdentifier(n.name) &&
+			n.initializer !== undefined &&
+			isSource(inner(n.initializer)) &&
+			ts.isVariableDeclarationList(n.parent) &&
+			(n.parent.flags & ts.NodeFlags.Const) !== 0
+		) {
+			dates.add(n.name.text);
+		}
+		ts.forEachChild(n, declare);
+	};
+	declare(sf);
+	/** True when the value of `n` is the value of the expression, also inside its literals. */
+	const isResult = (n: ts.Node): boolean => {
+		let x = strip(n);
+		for (;;) {
+			const p = x.parent;
+			if (ts.isExpressionStatement(p)) return true;
+			if (ts.isPropertyAssignment(p) && p.initializer === x && !ts.isComputedPropertyName(p.name)) {
+				x = strip(p.parent);
+			} else if (ts.isArrayLiteralExpression(p)) x = strip(p);
+			else return false;
+		}
+	};
+	const OPERATORS = new Set([
+		ts.SyntaxKind.PlusToken,
+		ts.SyntaxKind.MinusToken,
+		ts.SyntaxKind.AsteriskToken,
+		ts.SyntaxKind.SlashToken,
+		ts.SyntaxKind.PercentToken,
+		ts.SyntaxKind.LessThanToken,
+		ts.SyntaxKind.LessThanEqualsToken,
+		ts.SyntaxKind.GreaterThanToken,
+		ts.SyntaxKind.GreaterThanEqualsToken,
+	]);
+	const READERS = new Set(['String', 'Number', 'isNaN', 'isFinite']);
+	const keeps = (n: ts.Node): boolean => {
+		const x = strip(n);
+		const p = x.parent;
+		if (ts.isPropertyAccessExpression(p) && p.expression === x) {
+			return ts.isCallExpression(p.parent) && p.parent.expression === p;
+		}
+		if (ts.isBinaryExpression(p)) return OPERATORS.has(p.operatorToken.kind);
+		if (ts.isPrefixUnaryExpression(p)) {
+			return p.operator === ts.SyntaxKind.PlusToken || p.operator === ts.SyntaxKind.MinusToken;
+		}
+		if (ts.isTemplateSpan(p)) return true;
+		if (ts.isNewExpression(p) && p.expression !== x) return isSource(p);
+		if (ts.isCallExpression(p) && p.expression !== x) {
+			const callee = p.expression;
+			if (ts.isIdentifier(callee)) return READERS.has(callee.text);
+			return (
+				ts.isPropertyAccessExpression(callee) &&
+				ts.isIdentifier(callee.expression) &&
+				(callee.expression.text === 'Math' ||
+					(callee.expression.text === 'JSON' && callee.name.text === 'stringify'))
+			);
+		}
+		if (ts.isVariableDeclaration(p) && p.initializer === x) {
+			return ts.isIdentifier(p.name) && dates.has(p.name.text);
+		}
+		return isResult(x);
+	};
+	let ok = true;
+	const visit = (n: ts.Node): void => {
+		if (!ok) return;
+		if (isSource(n)) ok = keeps(n);
+		else if (ts.isIdentifier(n) && dates.has(n.text)) {
+			const p = n.parent;
+			const named =
+				(ts.isVariableDeclaration(p) && p.name === n) ||
+				(ts.isPropertyAccessExpression(p) && p.name === n) ||
+				(ts.isPropertyAssignment(p) && p.name === n);
+			// A shorthand member, a parameter or a pattern with the name is another value or a place
+			// that the rule does not know.
+			if (ts.isShorthandPropertyAssignment(p) || ts.isParameter(p) || ts.isBindingElement(p)) {
+				ok = false;
+			} else if (!named) ok = keeps(n);
+		}
+		ts.forEachChild(n, visit);
+	};
+	visit(sf);
+	return ok;
+}
+
+/**
+ * True when a part of a text template can write a list with a Date: a Date in a list literal, or
+ * a Date that is the result of a callback. JavaScript writes the Date of a list as its
+ * `toString` text, and the list of native code has the JSON text of the Date.
+ */
+export function listsDatesAsText(code: string): boolean {
+	if (!/\bnew\s+Date\b|\.\s*toJSDate\b/.test(code)) return false;
+	const sf = ts.createSourceFile('e.ts', `(${code})`, ts.ScriptTarget.ES2022, true);
+	const dates = new Set<string>();
+	const isSource = (n: ts.Node): boolean =>
+		(ts.isNewExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === 'Date') ||
+		(ts.isCallExpression(n) &&
+			ts.isPropertyAccessExpression(n.expression) &&
+			n.expression.name.text === 'toJSDate');
+	const declare = (n: ts.Node): void => {
+		if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer !== undefined) {
+			let x = n.initializer;
+			while (ts.isParenthesizedExpression(x)) x = x.expression;
+			if (isSource(x)) dates.add(n.name.text);
+		}
+		ts.forEachChild(n, declare);
+	};
+	declare(sf);
+	const isFunction = (n: ts.Node): n is ts.ArrowFunction | ts.FunctionExpression =>
+		ts.isArrowFunction(n) || ts.isFunctionExpression(n);
+	const inList = (n: ts.Node): boolean => {
+		let x = n;
+		for (let p = x.parent; p !== undefined; x = p, p = p.parent) {
+			if (ts.isArrayLiteralExpression(p)) return true;
+			// The receiver of a method and an operand give another value: no Date goes on.
+			if (ts.isPropertyAccessExpression(p) && p.expression === x) return false;
+			if (ts.isCallExpression(p) || ts.isNewExpression(p) || ts.isTemplateSpan(p)) return false;
+			if (ts.isBinaryExpression(p)) {
+				const op = p.operatorToken.kind;
+				const passes =
+					op === ts.SyntaxKind.BarBarToken ||
+					op === ts.SyntaxKind.AmpersandAmpersandToken ||
+					op === ts.SyntaxKind.QuestionQuestionToken ||
+					op === ts.SyntaxKind.CommaToken;
+				if (!passes) return false;
+			}
+			if (ts.isVariableDeclaration(p)) return false;
+			if (isFunction(p)) {
+				return ts.isCallExpression(p.parent) && p.parent.arguments.some((a) => a === p);
+			}
+			if (ts.isBlock(p) || ts.isExpressionStatement(p) || ts.isSourceFile(p)) {
+				// Only a `return` statement gives its value to the function.
+				if (!ts.isReturnStatement(x)) return false;
+			}
+		}
+		return false;
+	};
+	let found = false;
+	const visit = (n: ts.Node): void => {
+		if (found) return;
+		if (
+			isSource(n) ||
+			(ts.isIdentifier(n) && dates.has(n.text) && !ts.isVariableDeclaration(n.parent))
+		) {
+			found = inList(n);
+		}
+		ts.forEachChild(n, visit);
+	};
+	visit(sf);
+	return found;
 }
 
 function printFlat(code: Code): string {
@@ -1186,6 +1383,12 @@ export function neverThrows(code: Code): boolean {
 }
 
 /** True when the code cannot be `null` or `undefined`, so a template needs no `?? ''`. */
+function isFunctionValue(e: ts.Expression): boolean {
+	let x = e;
+	while (ts.isParenthesizedExpression(x)) x = x.expression;
+	return ts.isArrowFunction(x) || ts.isFunctionExpression(x);
+}
+
 function neverNullish(code: string): boolean {
 	const sf = ts.createSourceFile('e.ts', `(${code})`, ts.ScriptTarget.ES2022, true);
 	const st = sf.statements[0];
@@ -1200,9 +1403,11 @@ function neverNullish(code: string): boolean {
 		ts.isTemplateExpression(e) ||
 		ts.isNoSubstitutionTemplateLiteral(e) ||
 		// A helper of the generated source gives a value. `fromAi` gives undefined for an
-		// argument that the model does not give.
+		// argument that the model does not give. A function of the expression that the
+		// expression calls at once can give null.
 		(ts.isCallExpression(e) &&
-			!(ts.isIdentifier(e.expression) && e.expression.text === 'fromAi')) ||
+			!(ts.isIdentifier(e.expression) && e.expression.text === 'fromAi') &&
+			!isFunctionValue(e.expression)) ||
 		(ts.isBinaryExpression(e) &&
 			[
 				ts.SyntaxKind.PlusToken,
@@ -1428,6 +1633,19 @@ export function translateExpression(
 		if (part.text !== undefined) {
 			code += templateText(part.text);
 			continue;
+		}
+		if (listsDatesAsText(part.expression ?? '')) {
+			return {
+				ok: false,
+				issues: [
+					{
+						feature: 'Date: a Date in a place that loses its kind',
+						message:
+							'A text template writes a list with a Date. The Date is JSON text there in native code.',
+						code: 'WL101',
+					},
+				],
+			};
 		}
 		// A text template writes a DateTime as its text (`toString`).
 		const r = translateBody(part.expression ?? '', scope, native, 'text');

@@ -118,8 +118,8 @@ export interface ConvertOptions {
 	codeModules?: string[];
 	/**
 	 * A Date of a Code node that goes to a place without the type Date is a Date value (spec
-	 * section 4.5). Set it only when the runtime has the kind Date. The default is false: such
-	 * a Code node runs in the fallback host.
+	 * section 4.5). The default is true. Set it to false for a runtime without the kind Date:
+	 * such a Code node then runs in the fallback host.
 	 */
 	dateValues?: boolean;
 	/**
@@ -939,7 +939,7 @@ export class ModuleGenerator {
 					? 'host'
 					: 'native',
 			codeModules: this.options.codeModules,
-			dateValues: this.options.dateValues,
+			dateValues: this.options.dateValues !== false,
 			useZone: (zone) => {
 				this.zones.add(zone);
 			},

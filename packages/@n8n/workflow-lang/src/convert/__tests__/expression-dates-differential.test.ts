@@ -2,14 +2,47 @@
  * A differential test of Dates in parameter expressions. Each expression is a field of a Set
  * node: a Date (or a value that is no Date) goes to a holder, and the expression reads it in
  * several ways. The workflow runs in n8n's engine (v1) and, converted, on the reference
- * runner. The fields must be equal, or the Set node must run in the fallback host.
+ * runner and in the Zig runtime (`wfrt run`, when the binary exists). The fields must be equal,
+ * or the Set node must run in the fallback host.
  *
  * `WF_DATE_CASES` sets the number of expressions (the default is 60). `WF_DATE_SEED` sets the
- * seed.
+ * seed. `WF_DATE_REPORT` names a file for the report.
  */
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { PACKAGE_ROOT } from '../../__tests__/helpers.ts';
+import { compile } from '../../compiler/index.ts';
 import { runReference } from '../../reference/runner.ts';
 import { convertWorkflow } from '../index.ts';
 import { runOracle } from './behaviour/oracle-engine.ts';
+
+const WFRT = join(PACKAGE_ROOT, '..', '..', '..', 'workflow-runtime', 'zig-out', 'bin', 'wfrt');
+const DIR = mkdtempSync(join(tmpdir(), 'wf-expression-dates-'));
+
+/** The items of the step `S` in the Zig runtime, as JSON, or `error`. */
+function zigItems(source: string, fixture: unknown): string {
+	const compiled = compile(source, { fileName: 'workflow.ts' });
+	if (!compiled.module) return 'no module';
+	writeFileSync(join(DIR, 'm.wfm'), compiled.module);
+	writeFileSync(join(DIR, 'f.json'), JSON.stringify(fixture));
+	const out: unknown = JSON.parse(
+		execFileSync(WFRT, ['run', join(DIR, 'm.wfm'), join(DIR, 'f.json')], {
+			encoding: 'utf8',
+			maxBuffer: 1 << 28,
+		}),
+	);
+	if (typeof out !== 'object' || out === null || !('status' in out) || out.status !== 'ok') {
+		return 'error';
+	}
+	const trace = 'trace' in out && Array.isArray(out.trace) ? out.trace : [];
+	const step = trace.find(
+		(t: unknown) => typeof t === 'object' && t !== null && 'step' in t && t.step === 'S',
+	);
+	return JSON.stringify(step?.items);
+}
 
 const ITEM = {
 	t: '2024-03-07T10:20:30.000Z',
@@ -137,18 +170,23 @@ async function run(value: string): Promise<Outcome> {
 	const converted = convertWorkflow(wf, { trace: 'all' });
 	if (!converted.ok || converted.fallbackNodes.includes('S')) return 'refused';
 	const v1 = await runOracle(wf, { start: 'T', item: ITEM, mode: 'trigger', timeoutMs: 20_000 });
-	const out = await runReference(converted.source, {
+	const fixture = {
 		trigger: { body: ITEM },
 		now: 1_700_000_000_000,
 		seed: 1,
 		effects: {},
 		trace: true,
-	});
+	};
+	const out = await runReference(converted.source, fixture);
 	const native =
 		out.status === 'ok'
 			? JSON.stringify((out.trace ?? []).find((t) => t.step === 'S')?.items)
 			: 'error';
 	const host = v1.error === null ? JSON.stringify(v1.nodes.S?.[0]) : 'error';
+	if (existsSync(WFRT)) {
+		const zig = zigItems(converted.source, fixture);
+		if (zig !== native) return `wfrt ${zig} reference ${native} host ${host}`;
+	}
 	if (native === host) return 'equal';
 	if (KNOWN.some(([n, h]) => native === n && host === h)) return 'known';
 	return `native ${native} host ${host}`;
@@ -171,7 +209,9 @@ describe('Dates in expressions: the native form against v1', () => {
 			else wrong.push(`${e.name}\n    ${e.value}\n    ${outcome}`);
 		}
 		const report = `cases ${cases}; equal ${equal}; refused ${refused}; known differences without a Date ${known}; wrong ${wrong.length}`;
-		if (process.env.WF_DATE_CASES || wrong.length > 0) console.log([report, ...wrong].join('\n'));
+		const text = [`${report}; wfrt ${existsSync(WFRT)}`, ...wrong].join('\n');
+		if (process.env.WF_DATE_REPORT) writeFileSync(process.env.WF_DATE_REPORT, `${text}\n`);
+		else if (process.env.WF_DATE_CASES || wrong.length > 0) console.log(text);
 		expect(wrong).toEqual([]);
 		expect(equal).toBeGreaterThan(0);
 	}, 1_800_000);
@@ -210,5 +250,36 @@ describe('Dates in expressions: the native form against v1', () => {
 		const converted = convertWorkflow(workflow(value, 'string'));
 		expect(converted.ok).toBe(true);
 		expect(converted.fallbackNodes).toEqual(['S']);
+	});
+
+	it.each([
+		'={{ ((d) => typeof d)(new Date($json.t)) }}',
+		'={{ ((d) => +d)(new Date($json.t)) }}',
+		'={{ (() => { const d = $json.none || new Date($json.bad); return `${d}`; })() }}',
+		'=a {{ [new Date($json.ms)] }} b',
+		'=a {{ (() => { const d = new Date($json.ms); return [d]; })() }} b',
+		'=a {{ [1].map(() => new Date($json.ms)) }} b',
+	])(
+		'keeps a Date that goes to a place without the type Date in the fallback host: %s',
+		(value) => {
+			const converted = convertWorkflow(
+				workflow(value, value.startsWith('={{') ? 'object' : 'string'),
+			);
+			expect(converted.ok).toBe(true);
+			expect(converted.fallbackNodes).toEqual(['S']);
+		},
+	);
+
+	it.each([
+		'={{ new Date($json.t).getTime() }}',
+		'={{ new Date($json.ms) - 5 }}',
+		'={{ { at: new Date($json.ms), list: [new Date($json.t)] } }}',
+		'=a {{ new Date($json.ms) }} b',
+		'=a {{ (() => { const o = { d: $json.none }; return o.d; })() }} b',
+	])('gives the result of v1 for a Date in a place that keeps its kind: %s', async (value) => {
+		const wf = workflow(value, value.startsWith('={{') ? 'object' : 'string');
+		const converted = convertWorkflow(wf, { trace: 'all' });
+		expect(converted.fallbackNodes).toEqual([]);
+		expect(await run(value)).toBe('equal');
 	});
 });
