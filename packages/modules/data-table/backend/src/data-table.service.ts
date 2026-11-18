@@ -369,7 +369,7 @@ export class DataTableService {
 	async deleteColumn(dataTableId: string, projectId: string, columnId: string) {
 		const table = await this.validateDataTableExists(dataTableId, projectId);
 		const existingColumn = await this.validateColumnExists(dataTableId, columnId);
-		if (table.rowRule?.column === existingColumn.name) {
+		if (table.rowRule?.conditions.some(({ column }) => column === existingColumn.name)) {
 			throw new DataTableValidationError(
 				`column '${existingColumn.name}' is used by the row access rule. Remove the rule first.`,
 			);
@@ -396,10 +396,13 @@ export class DataTableService {
 			existingColumn,
 			dto.name,
 		);
-		if (table.rowRule?.column === existingColumn.name) {
+		const rule = table.rowRule;
+		if (rule?.conditions.some(({ column }) => column === existingColumn.name)) {
 			await this.dataTableRepository.setRowRule(dataTableId, {
-				...table.rowRule,
-				column: dto.name,
+				...rule,
+				conditions: rule.conditions.map((condition) =>
+					condition.column === existingColumn.name ? { ...condition, column: dto.name } : condition,
+				),
 			});
 		}
 		return renamed;
@@ -416,7 +419,7 @@ export class DataTableService {
 		dto: ListDataTableContentQueryDto,
 	) {
 		const table = await this.validateDataTableExists(dataTableId, projectId);
-		const scope = this.resolveRowScope(table, access);
+		const scope = await this.resolveRowScope(table, access);
 
 		// Read-only, so the pooled SQLite driver serves it from the read pool instead of
 		// the single write connection. Under WAL that also pins columns and rows to one
@@ -489,7 +492,7 @@ export class DataTableService {
 	) {
 		await this.validateDataTableSize();
 		const table = await this.validateDataTableExists(dataTableId, projectId);
-		const scope = this.resolveRowScope(table, access);
+		const scope = await this.resolveRowScope(table, access);
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
@@ -556,7 +559,7 @@ export class DataTableService {
 	) {
 		await this.validateDataTableSize();
 		const table = await this.validateDataTableExists(dataTableId, projectId);
-		const scope = this.resolveRowScope(table, access);
+		const scope = await this.resolveRowScope(table, access);
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
@@ -675,8 +678,8 @@ export class DataTableService {
 	) {
 		await this.validateDataTableSize();
 		const table = await this.validateDataTableExists(dataTableId, projectId);
-		const scope = this.resolveRowScope(table, access);
-		if (scope) this.assertOwnerUnchanged(dto.data, scope);
+		const scope = await this.resolveRowScope(table, access);
+		if (scope) this.assertRowWritable(dto.data, scope);
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
@@ -754,7 +757,7 @@ export class DataTableService {
 		dryRun: boolean = false,
 	) {
 		const table = await this.validateDataTableExists(dataTableId, projectId);
-		const scope = this.resolveRowScope(table, access);
+		const scope = await this.resolveRowScope(table, access);
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
@@ -793,7 +796,7 @@ export class DataTableService {
 		access: RowAccess,
 	): Promise<{ deletedCount: number }> {
 		const table = await this.validateDataTableExists(dataTableId, projectId);
-		const scope = this.resolveRowScope(table, access);
+		const scope = await this.resolveRowScope(table, access);
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const clearResult = await this.dataTableRowsRepository.clearRows(dataTableId, trx, scope);
@@ -806,7 +809,10 @@ export class DataTableService {
 	}
 
 	/** Returns `null` when the caller may touch every row. */
-	private resolveRowScope(table: DataTable, access: RowAccess): DataTableRowScope | null {
+	private async resolveRowScope(
+		table: DataTable,
+		access: RowAccess,
+	): Promise<DataTableRowScope | null> {
 		const rule = table.rowRule;
 		if (!rule || access.kind === 'management') return null;
 
@@ -818,26 +824,67 @@ export class DataTableService {
 			);
 		}
 
-		const value = rule.match === 'id' ? actor.id : actor.email;
-		if (!value) {
-			throw new DataTableRowAccessError(
-				`Data table '${table.name}' matches rows by email, and the current user has no email.`,
-			);
-		}
-		return { column: rule.column, value };
+		const needsProjects =
+			rule.projectMembersSeeAll || rule.conditions.some(({ match }) => match === 'project');
+		const projectIds = needsProjects
+			? ((await this.projectRelationRepository.findProjectIdsByUserIds([actor.id])).get(actor.id) ??
+				[])
+			: [];
+		if (rule.projectMembersSeeAll && projectIds.includes(table.projectId)) return null;
+
+		return {
+			conditions: rule.conditions.map(({ column, match }) => {
+				if (match === 'project') return { column, match, values: projectIds };
+				const value = match === 'id' ? actor.id : actor.email;
+				if (!value) {
+					throw new DataTableRowAccessError(
+						`Data table '${table.name}' matches rows by email, and the current user has no email.`,
+					);
+				}
+				return { column, match, values: [value] };
+			}),
+		};
 	}
 
+	/** Sets the owner columns and checks that the new row belongs to the actor. */
 	private stampOwner(row: DataTableRow, scope: DataTableRowScope): DataTableRow {
-		this.assertOwnerUnchanged(row, scope);
-		return { ...row, [scope.column]: scope.value };
+		this.assertRowWritable(row, scope);
+		const stamped = { ...row };
+		let belongsToActor = false;
+		for (const { column, match, values } of scope.conditions) {
+			if (match === 'project') {
+				belongsToActor ||= row[column] !== undefined && row[column] !== null;
+				continue;
+			}
+			stamped[column] = values[0];
+			belongsToActor = true;
+		}
+		if (!belongsToActor) {
+			const columns = scope.conditions.map(({ column }) => `'${column}'`).join(' or ');
+			throw new DataTableRowAccessError(`Choose a team for this row in column ${columns}.`);
+		}
+		return stamped;
 	}
 
-	private assertOwnerUnchanged(row: DataTableRow, scope: DataTableRowScope) {
-		const value = row[scope.column];
-		if (value !== undefined && value !== null && value !== scope.value) {
-			throw new DataTableRowAccessError(
-				`Column '${scope.column}' is set by n8n to the current user. Remove it from the data.`,
-			);
+	/** Owner columns stay with the actor, and a team column takes only the actor's projects. */
+	private assertRowWritable(row: DataTableRow, scope: DataTableRowScope) {
+		const hasOwnerCondition = scope.conditions.some(({ match }) => match !== 'project');
+		for (const { column, match, values } of scope.conditions) {
+			const value = row[column];
+			if (value === undefined) continue;
+			if (match !== 'project') {
+				if (value !== null && value !== values[0]) {
+					throw new DataTableRowAccessError(
+						`Column '${column}' is set by n8n to the current user. Remove it from the data.`,
+					);
+				}
+				continue;
+			}
+			if (value === null ? !hasOwnerCondition : !values.includes(String(value))) {
+				throw new DataTableRowAccessError(
+					`Column '${column}' must hold the ID of a project you belong to.`,
+				);
+			}
 		}
 	}
 

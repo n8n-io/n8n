@@ -230,7 +230,11 @@ describe('AppConnectionsCard', () => {
 				{
 					id: 't2',
 					name: 'Orders',
-					rowRule: { column: 'owner', match: 'id', runsWithoutUser: 'deny' },
+					rowRule: {
+						conditions: [{ column: 'owner', match: 'id' }],
+						projectMembersSeeAll: false,
+						runsWithoutUser: 'deny',
+					},
 				},
 			],
 		});

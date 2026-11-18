@@ -249,7 +249,13 @@ describe('DataTableProxyService', () => {
 
 		it('loads the email of the user for an email rule', async () => {
 			dataTableServiceMock.validateDataTableExists.mockResolvedValue(
-				mock<DataTable>({ rowRule: { column: 'owner', match: 'email', runsWithoutUser: 'deny' } }),
+				mock<DataTable>({
+					rowRule: {
+						conditions: [{ column: 'owner', match: 'email' }],
+						projectMembersSeeAll: false,
+						runsWithoutUser: 'deny',
+					},
+				}),
 			);
 			vi.mocked(personRepositoryMock.findById).mockResolvedValue(
 				Object.assign(new Person(), { id: 'user-1', email: 'ada@example.com' }),

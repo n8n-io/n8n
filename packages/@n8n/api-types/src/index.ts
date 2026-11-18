@@ -303,6 +303,7 @@ export {
 	type DataTableListOptions,
 	type DataTableListSortBy,
 	type DataTableRowRule,
+	type DataTableRowRuleCondition,
 	type DataTableRowRuleImpact,
 	dataTableRowRuleSchema,
 	dateTimeSchema,

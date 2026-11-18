@@ -131,7 +131,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	): Promise<RowAccess> {
 		if (!executedByUserId) return { kind: 'actor', actor: null };
 		// Only an email rule needs the email, so skip the lookup otherwise.
-		if (table.rowRule?.match !== 'email') {
+		if (!table.rowRule?.conditions.some(({ match }) => match === 'email')) {
 			return { kind: 'actor', actor: { id: executedByUserId, email: null } };
 		}
 		const person = await this.personRepository.findById(executedByUserId);

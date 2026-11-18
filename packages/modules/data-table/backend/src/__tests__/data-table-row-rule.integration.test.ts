@@ -1,6 +1,6 @@
 import type { DataTableRowRule } from '@n8n/api-types';
-import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import type { Project } from '@n8n/db';
+import { createTeamProject, linkUserToProject, testDb, testModules } from '@n8n/backend-test-utils';
+import type { Person, Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { DataTableRowRuleService } from '../data-table-row-rule.service';
@@ -10,6 +10,7 @@ import { managementRowAccess, type RowAccess } from '../data-table.types';
 import { DataTableRowAccessError } from '../errors/data-table-row-access.error';
 import { DataTableValidationError } from '../errors/data-table-validation.error';
 import { mockDataTableSizeValidator } from '../testing';
+import { createUser } from './fixtures/users';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-table'], {
@@ -30,6 +31,20 @@ afterAll(async () => {
 const alice: RowAccess = { kind: 'actor', actor: { id: 'alice-id', email: 'alice@example.com' } };
 const bob: RowAccess = { kind: 'actor', actor: { id: 'bob-id', email: 'bob@example.com' } };
 const noUser: RowAccess = { kind: 'actor', actor: null };
+
+const ownerRule = (
+	match: 'id' | 'email',
+	runsWithoutUser: DataTableRowRule['runsWithoutUser'],
+): DataTableRowRule => ({
+	conditions: [{ column: 'owner', match }],
+	projectMembersSeeAll: false,
+	runsWithoutUser,
+});
+
+const asActor = (user: Person): RowAccess => ({
+	kind: 'actor',
+	actor: { id: user.id, email: user.email },
+});
 
 describe('data table row rule', () => {
 	let service: DataTableService;
@@ -79,7 +94,7 @@ describe('data table row rule', () => {
 
 	describe('with a rule that matches by id', () => {
 		beforeEach(async () => {
-			await setRule({ column: 'owner', match: 'id', runsWithoutUser: 'deny' });
+			await setRule(ownerRule('id', 'deny'));
 		});
 
 		it('returns only the rows of the actor', async () => {
@@ -176,7 +191,7 @@ describe('data table row rule', () => {
 		});
 
 		it('gives every row to a run without a user when the rule allows it', async () => {
-			await setRule({ column: 'owner', match: 'id', runsWithoutUser: 'allRows' });
+			await setRule(ownerRule('id', 'allRows'));
 
 			expect(await names(noUser)).toEqual(['a1', 'a2', 'b1', 'nobody']);
 			expect(await names(alice)).toEqual(['a1', 'a2']);
@@ -185,7 +200,7 @@ describe('data table row rule', () => {
 
 	describe('with a rule that matches by email', () => {
 		beforeEach(async () => {
-			await setRule({ column: 'owner', match: 'email', runsWithoutUser: 'deny' });
+			await setRule(ownerRule('email', 'deny'));
 			await service.insertRows(tableId, project.id, managementRowAccess, [
 				{ owner: 'alice@example.com', name: 'a-mail' },
 			]);
@@ -203,7 +218,7 @@ describe('data table row rule', () => {
 	});
 
 	describe('setting the rule', () => {
-		const rule: DataTableRowRule = { column: 'owner', match: 'id', runsWithoutUser: 'deny' };
+		const rule = ownerRule('id', 'deny');
 
 		it('applies a rule on a text column', async () => {
 			await Container.get(DataTableRowRuleService).setRowRule(tableId, project.id, rule);
@@ -215,7 +230,7 @@ describe('data table row rule', () => {
 			await expect(
 				Container.get(DataTableRowRuleService).setRowRule(tableId, project.id, {
 					...rule,
-					column: 'missing',
+					conditions: [{ column: 'missing', match: 'id' }],
 				}),
 			).rejects.toThrow(DataTableValidationError);
 		});
@@ -226,7 +241,7 @@ describe('data table row rule', () => {
 			await expect(
 				Container.get(DataTableRowRuleService).setRowRule(tableId, project.id, {
 					...rule,
-					column: 'score',
+					conditions: [{ column: 'score', match: 'id' }],
 				}),
 			).rejects.toThrow(DataTableValidationError);
 		});
@@ -241,7 +256,7 @@ describe('data table row rule', () => {
 
 	describe('rule column changes', () => {
 		beforeEach(async () => {
-			await setRule({ column: 'owner', match: 'id', runsWithoutUser: 'deny' });
+			await setRule(ownerRule('id', 'deny'));
 		});
 
 		it('refuses to delete the rule column', async () => {
@@ -260,6 +275,126 @@ describe('data table row rule', () => {
 			await service.renameColumn(tableId, project.id, owner.id, { name: 'assignee' });
 
 			expect(await names(bob)).toEqual(['b1']);
+		});
+	});
+	describe('with an owner condition and a team condition', () => {
+		let teamA: Project;
+		let teamB: Project;
+		let alicePerson: Person;
+		let bobPerson: Person;
+		let carol: Person;
+		let loner: Person;
+
+		const teamRule = (projectMembersSeeAll = false): DataTableRowRule => ({
+			conditions: [
+				{ column: 'owner', match: 'id' },
+				{ column: 'team', match: 'project' },
+			],
+			projectMembersSeeAll,
+			runsWithoutUser: 'deny',
+		});
+
+		beforeEach(async () => {
+			teamA = await createTeamProject('Sales EMEA');
+			teamB = await createTeamProject('Sales US');
+			alicePerson = await createUser();
+			bobPerson = await createUser();
+			carol = await createUser();
+			loner = await createUser();
+			await linkUserToProject(alicePerson, teamA, 'project:viewer');
+			await linkUserToProject(bobPerson, teamB, 'project:editor');
+			await linkUserToProject(carol, project, 'project:editor');
+
+			await service.addColumn(tableId, project.id, { name: 'team', type: 'string' });
+			await service.insertRows(tableId, project.id, managementRowAccess, [
+				{ owner: alicePerson.id, team: null, name: 'alice own' },
+				{ owner: 'someone', team: teamA.id, name: 'team A' },
+				{ owner: 'someone', team: teamB.id, name: 'team B' },
+				{ owner: carol.id, team: null, name: 'carol own' },
+			]);
+			await setRule(teamRule());
+		});
+
+		it('returns own rows and the rows of every team of the actor', async () => {
+			expect(await names(asActor(alicePerson))).toEqual(['alice own', 'team A']);
+			expect(await names(asActor(bobPerson))).toEqual(['team B']);
+		});
+
+		it('keeps an "or" filter inside the rows of the actor', async () => {
+			const filter = {
+				type: 'or' as const,
+				filters: [
+					{ columnName: 'name', condition: 'eq' as const, value: 'team B' },
+					{ columnName: 'name', condition: 'eq' as const, value: 'team A' },
+				],
+			};
+
+			expect(await names(asActor(alicePerson), filter)).toEqual(['team A']);
+		});
+
+		it('gives no rows to an actor outside every team under a team-only rule', async () => {
+			await setRule({
+				conditions: [{ column: 'team', match: 'project' }],
+				projectMembersSeeAll: false,
+				runsWithoutUser: 'deny',
+			});
+
+			expect(await names(asActor(loner))).toEqual([]);
+		});
+
+		it('accepts a new row for a team of the actor and refuses another team', async () => {
+			await service.insertRows(tableId, project.id, asActor(alicePerson), [
+				{ team: teamA.id, name: 'new A' },
+			]);
+			await expect(
+				service.insertRows(tableId, project.id, asActor(alicePerson), [
+					{ team: teamB.id, name: 'new B' },
+				]),
+			).rejects.toThrow(DataTableRowAccessError);
+
+			expect(await names(asActor(alicePerson))).toEqual(['alice own', 'new A', 'team A']);
+		});
+
+		it('refuses a new row without a team under a team-only rule', async () => {
+			await setRule({
+				conditions: [{ column: 'team', match: 'project' }],
+				projectMembersSeeAll: false,
+				runsWithoutUser: 'deny',
+			});
+
+			await expect(
+				service.insertRows(tableId, project.id, asActor(alicePerson), [{ name: 'no team' }]),
+			).rejects.toThrow(DataTableRowAccessError);
+		});
+
+		it('refuses to move a row to a team the actor is not in', async () => {
+			await expect(
+				service.updateRows(tableId, project.id, asActor(alicePerson), {
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'name', condition: 'eq', value: 'team A' }],
+					},
+					data: { team: teamB.id },
+				}),
+			).rejects.toThrow(DataTableRowAccessError);
+		});
+
+		it('gives every row to members of the table project when the rule says so', async () => {
+			expect(await names(asActor(carol))).toEqual(['carol own']);
+
+			await setRule(teamRule(true));
+
+			expect(await names(asActor(carol))).toEqual([
+				'a1',
+				'a2',
+				'alice own',
+				'b1',
+				'carol own',
+				'nobody',
+				'team A',
+				'team B',
+			]);
+			expect(await names(asActor(alicePerson))).toEqual(['alice own', 'team A']);
 		});
 	});
 });

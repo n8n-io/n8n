@@ -35,12 +35,15 @@ export class DataTableRowRuleService {
 		await this.dataTableService.validateDataTableExists(dataTableId, projectId);
 		if (rowRule) {
 			const columns = await this.dataTableService.getColumns(dataTableId, projectId);
-			const column = columns.find(({ name }) => name === rowRule.column);
-			if (!column) throw new DataTableValidationError(`unknown column name '${rowRule.column}'`);
-			if (column.type !== 'string') {
-				throw new DataTableValidationError(
-					`the row access column '${rowRule.column}' must be a text column`,
-				);
+			for (const condition of rowRule.conditions) {
+				const column = columns.find(({ name }) => name === condition.column);
+				if (!column)
+					throw new DataTableValidationError(`unknown column name '${condition.column}'`);
+				if (column.type !== 'string') {
+					throw new DataTableValidationError(
+						`the row access column '${condition.column}' must be a text column`,
+					);
+				}
 			}
 		}
 		await this.dataTableRepository.setRowRule(dataTableId, rowRule);

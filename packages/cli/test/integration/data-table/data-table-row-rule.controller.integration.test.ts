@@ -19,7 +19,11 @@ const testServer = utils.setupTestServer({
 	modules: ['data-table'],
 });
 
-const rule = { column: 'owner', match: 'id', runsWithoutUser: 'deny' };
+const rule = {
+	conditions: [{ column: 'owner', match: 'id' }],
+	projectMembersSeeAll: false,
+	runsWithoutUser: 'deny',
+};
 
 beforeAll(async () => {
 	mockDataTableSizeValidator();
@@ -47,6 +51,26 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId/row-rule', () => {
 
 		const stored = await Container.get(DataTableRepository).findOneBy({ id: table.id });
 		expect(stored?.rowRule).toEqual(rule);
+	});
+
+	test('refuses two conditions on the same column', async () => {
+		const project = await createTeamProject(undefined, owner);
+		const table = await createDataTable(project, {
+			columns: [{ name: 'owner', type: 'string' }],
+		});
+
+		await authOwnerAgent
+			.patch(`/projects/${project.id}/data-tables/${table.id}/row-rule`)
+			.send({
+				rowRule: {
+					...rule,
+					conditions: [
+						{ column: 'owner', match: 'id' },
+						{ column: 'owner', match: 'project' },
+					],
+				},
+			})
+			.expect(400);
 	});
 
 	test('refuses a column that is not text', async () => {

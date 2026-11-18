@@ -140,7 +140,11 @@ describe('apps.api', () => {
 				{
 					id: 't2',
 					name: 'Leads',
-					rowRule: { column: 'owner', match: 'id', runsWithoutUser: 'deny' },
+					rowRule: {
+						conditions: [{ column: 'owner', match: 'id' }],
+						projectMembersSeeAll: false,
+						runsWithoutUser: 'deny',
+					},
 				},
 			],
 		});
@@ -152,7 +156,11 @@ describe('apps.api', () => {
 				{
 					id: 't2',
 					name: 'Leads',
-					rowRule: { column: 'owner', match: 'id', runsWithoutUser: 'deny' },
+					rowRule: {
+						conditions: [{ column: 'owner', match: 'id' }],
+						projectMembersSeeAll: false,
+						runsWithoutUser: 'deny',
+					},
 				},
 			],
 		});

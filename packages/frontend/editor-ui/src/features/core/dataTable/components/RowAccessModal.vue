@@ -1,9 +1,15 @@
 <script lang="ts" setup>
-import type { DataTableRowRule, DataTableRowRuleImpact } from '@n8n/api-types';
+import type {
+	DataTableRowRule,
+	DataTableRowRuleCondition,
+	DataTableRowRuleImpact,
+} from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
 	N8nCallout,
+	N8nCheckbox,
+	N8nIconButton,
 	N8nInputLabel,
 	N8nOption,
 	N8nRadioGroup,
@@ -32,8 +38,9 @@ const uiStore = useUIStore();
 const dataTableStore = useDataTableStore();
 
 const scope = ref<'all' | 'own'>('all');
-const column = ref('');
-const match = ref<DataTableRowRule['match']>('id');
+const MAX_CONDITIONS = 3;
+const conditions = ref<DataTableRowRuleCondition[]>([]);
+const projectMembersSeeAll = ref(false);
 const runsWithoutUser = ref<DataTableRowRule['runsWithoutUser']>('deny');
 const impact = ref<DataTableRowRuleImpact | null>(null);
 const saving = ref(false);
@@ -42,14 +49,35 @@ const textColumns = computed(() =>
 	props.dataTable.columns.filter((candidate) => candidate.type === 'string'),
 );
 const affectedWorkflows = computed(() => impact.value?.workflowsWithoutUser ?? []);
-const canSave = computed(() => scope.value === 'all' || column.value !== '');
+const unusedColumns = computed(() =>
+	textColumns.value.filter(({ name }) => !conditions.value.some(({ column }) => column === name)),
+);
+const canAddCondition = computed(
+	() => conditions.value.length < MAX_CONDITIONS && unusedColumns.value.length > 0,
+);
+const canSave = computed(
+	() =>
+		scope.value === 'all' ||
+		(conditions.value.length > 0 &&
+			new Set(conditions.value.map(({ column }) => column)).size === conditions.value.length),
+);
+
+function addCondition() {
+	const column = unusedColumns.value[0]?.name;
+	if (column) conditions.value.push({ column, match: 'id' });
+}
+
+function removeCondition(index: number) {
+	conditions.value.splice(index, 1);
+}
 
 /** A new rule keeps workflows without a user working until the builder chooses otherwise. */
 async function load() {
 	const rule = props.dataTable.rowRule;
 	scope.value = rule ? 'own' : 'all';
-	column.value = rule?.column ?? textColumns.value[0]?.name ?? '';
-	match.value = rule?.match ?? 'id';
+	conditions.value = rule ? rule.conditions.map((condition) => ({ ...condition })) : [];
+	if (conditions.value.length === 0) addCondition();
+	projectMembersSeeAll.value = rule?.projectMembersSeeAll ?? false;
 	runsWithoutUser.value = rule?.runsWithoutUser ?? 'deny';
 	try {
 		impact.value = await dataTableStore.fetchRowRuleImpact(
@@ -79,7 +107,11 @@ async function save() {
 			props.dataTable.projectId,
 			scope.value === 'all'
 				? null
-				: { column: column.value, match: match.value, runsWithoutUser: runsWithoutUser.value },
+				: ({
+						conditions: conditions.value,
+						projectMembersSeeAll: projectMembersSeeAll.value,
+						runsWithoutUser: runsWithoutUser.value,
+					} satisfies DataTableRowRule),
 		);
 		emit('close');
 	} catch (error) {
@@ -119,9 +151,17 @@ async function save() {
 				</N8nText>
 
 				<template v-if="scope === 'own'">
-					<div :class="$style.fields">
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('dataTable.rowAccess.conditions.hint') }}
+					</N8nText>
+					<div
+						v-for="(condition, index) in conditions"
+						:key="index"
+						:class="$style.fields"
+						:data-test-id="`row-access-condition-${index}`"
+					>
 						<N8nInputLabel :label="i18n.baseText('dataTable.rowAccess.column')" size="small">
-							<N8nSelect v-model="column" size="small" data-test-id="row-access-column">
+							<N8nSelect v-model="condition.column" size="small" data-test-id="row-access-column">
 								<N8nOption
 									v-for="option in textColumns"
 									:key="option.id"
@@ -131,15 +171,46 @@ async function save() {
 							</N8nSelect>
 						</N8nInputLabel>
 						<N8nInputLabel :label="i18n.baseText('dataTable.rowAccess.match')" size="small">
-							<N8nSelect v-model="match" size="small" data-test-id="row-access-match">
+							<N8nSelect v-model="condition.match" size="small" data-test-id="row-access-match">
 								<N8nOption value="id" :label="i18n.baseText('dataTable.rowAccess.match.id')" />
 								<N8nOption
 									value="email"
 									:label="i18n.baseText('dataTable.rowAccess.match.email')"
 								/>
+								<N8nOption
+									value="project"
+									:label="i18n.baseText('dataTable.rowAccess.match.project')"
+								/>
 							</N8nSelect>
 						</N8nInputLabel>
+						<N8nIconButton
+							icon="trash-2"
+							variant="ghost"
+							size="small"
+							:class="$style.remove"
+							:disabled="conditions.length === 1"
+							:aria-label="i18n.baseText('dataTable.rowAccess.conditions.remove')"
+							data-test-id="row-access-remove-condition"
+							@click="removeCondition(index)"
+						/>
 					</div>
+					<div>
+						<N8nButton
+							v-if="canAddCondition"
+							variant="ghost"
+							size="small"
+							icon="plus"
+							:label="i18n.baseText('dataTable.rowAccess.conditions.add')"
+							data-test-id="row-access-add-condition"
+							@click="addCondition"
+						/>
+					</div>
+
+					<N8nCheckbox
+						v-model="projectMembersSeeAll"
+						:label="i18n.baseText('dataTable.rowAccess.projectMembersSeeAll')"
+						data-test-id="row-access-project-members"
+					/>
 
 					<N8nInputLabel :label="i18n.baseText('dataTable.rowAccess.withoutUser')" size="small">
 						<N8nRadioGroup v-model="runsWithoutUser" data-test-id="row-access-without-user">
@@ -205,8 +276,13 @@ async function save() {
 
 .fields {
 	display: grid;
-	grid-template-columns: 1fr 1fr;
+	grid-template-columns: 1fr 1fr auto;
+	align-items: end;
 	gap: var(--spacing--sm);
+}
+
+.remove {
+	margin-bottom: var(--spacing--5xs);
 }
 
 .workflows {

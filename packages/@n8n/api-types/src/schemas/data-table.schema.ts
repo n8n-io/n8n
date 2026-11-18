@@ -35,9 +35,25 @@ export const dataTableColumnSchema = dataTableCreateColumnSchema.extend({
 	dataTableId: dataTableIdSchema,
 });
 
-export const dataTableRowRuleSchema = z.object({
+export const dataTableRowRuleConditionSchema = z.object({
 	column: dataTableColumnNameSchema,
-	match: z.enum(['id', 'email']),
+	/** `project`: the column holds a project id, and the row belongs to that project's members. */
+	match: z.enum(['id', 'email', 'project']),
+});
+export type DataTableRowRuleCondition = z.infer<typeof dataTableRowRuleConditionSchema>;
+
+export const dataTableRowRuleSchema = z.object({
+	/** A row belongs to the actor when any condition matches. */
+	conditions: z
+		.array(dataTableRowRuleConditionSchema)
+		.min(1)
+		.max(3)
+		.refine(
+			(conditions) => new Set(conditions.map(({ column }) => column)).size === conditions.length,
+			'Each condition needs its own column',
+		),
+	/** Members of the table's own project get every row. */
+	projectMembersSeeAll: z.boolean(),
 	runsWithoutUser: z.enum(['deny', 'allRows']),
 });
 export type DataTableRowRule = z.infer<typeof dataTableRowRuleSchema>;

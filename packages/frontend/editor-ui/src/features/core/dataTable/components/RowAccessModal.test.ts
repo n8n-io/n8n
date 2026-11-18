@@ -24,6 +24,7 @@ const dataTable: DataTable = {
 	columns: [
 		{ id: 'c1', name: 'owner', type: 'string', index: 0 },
 		{ id: 'c2', name: 'score', type: 'number', index: 1 },
+		{ id: 'c3', name: 'team', type: 'string', index: 2 },
 	],
 	rowRule: null,
 };
@@ -59,8 +60,8 @@ describe('RowAccessModal', () => {
 		await userEvent.click(getByTestId('row-access-save'));
 
 		expect(dataTableStore.setRowRule).toHaveBeenCalledWith('t1', 'p1', {
-			column: 'owner',
-			match: 'id',
+			conditions: [{ column: 'owner', match: 'id' }],
+			projectMembersSeeAll: false,
 			runsWithoutUser: 'allRows',
 		});
 	});
@@ -74,8 +75,8 @@ describe('RowAccessModal', () => {
 		await userEvent.click(getByTestId('row-access-save'));
 
 		expect(dataTableStore.setRowRule).toHaveBeenCalledWith('t1', 'p1', {
-			column: 'owner',
-			match: 'id',
+			conditions: [{ column: 'owner', match: 'id' }],
+			projectMembersSeeAll: false,
 			runsWithoutUser: 'deny',
 		});
 	});
@@ -86,7 +87,11 @@ describe('RowAccessModal', () => {
 			props: {
 				dataTable: {
 					...dataTable,
-					rowRule: { column: 'owner', match: 'email', runsWithoutUser: 'deny' },
+					rowRule: {
+						conditions: [{ column: 'owner', match: 'email' }],
+						projectMembersSeeAll: false,
+						runsWithoutUser: 'deny',
+					},
 				},
 			},
 		});
@@ -96,5 +101,37 @@ describe('RowAccessModal', () => {
 		await userEvent.click(getByTestId('row-access-save'));
 
 		expect(dataTableStore.setRowRule).toHaveBeenCalledWith('t1', 'p1', null);
+	});
+
+	it('saves an owner condition and a team condition', async () => {
+		dataTableStore.fetchRowRuleImpact.mockResolvedValue({ workflowsWithoutUser: [] });
+		const { getByTestId } = renderComponent({
+			props: {
+				dataTable: {
+					...dataTable,
+					rowRule: {
+						conditions: [
+							{ column: 'owner', match: 'id' },
+							{ column: 'team', match: 'project' },
+						],
+						projectMembersSeeAll: false,
+						runsWithoutUser: 'deny',
+					},
+				},
+			},
+		});
+
+		await waitFor(() => expect(getByTestId('row-access-condition-1')).toBeInTheDocument());
+		await userEvent.click(getByTestId('row-access-project-members'));
+		await userEvent.click(getByTestId('row-access-save'));
+
+		expect(dataTableStore.setRowRule).toHaveBeenCalledWith('t1', 'p1', {
+			conditions: [
+				{ column: 'owner', match: 'id' },
+				{ column: 'team', match: 'project' },
+			],
+			projectMembersSeeAll: true,
+			runsWithoutUser: 'deny',
+		});
 	});
 });

@@ -171,7 +171,9 @@ onScopeDispose(() => {
 						{{
 							selected.rowRule
 								? i18n.baseText('apps.configure.connections.rowAccess.own', {
-										interpolate: { column: selected.rowRule.column },
+										interpolate: {
+											columns: selected.rowRule.conditions.map(({ column }) => column).join(', '),
+										},
 									})
 								: i18n.baseText('apps.configure.connections.rowAccess.all')
 						}}

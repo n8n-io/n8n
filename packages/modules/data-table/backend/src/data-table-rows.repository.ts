@@ -716,8 +716,8 @@ export class DataTableRowsRepository {
 	}
 
 	/**
-	 * Adds the client filter as one bracketed group, then the row scope with AND.
-	 * The group keeps an `or` filter from widening the scope or a later search.
+	 * Adds the client filter and the row scope as two bracketed groups joined with AND.
+	 * The groups keep an `or` filter from widening the scope or a later search.
 	 */
 	private applyFilters<T extends ObjectLiteral>(
 		query: SelectQueryBuilder<T> | UpdateQueryBuilder<T> | DeleteQueryBuilder<T>,
@@ -748,10 +748,20 @@ export class DataTableRowsRepository {
 		}
 
 		if (scope) {
-			const columnRef = tableReference
-				? `${quoteIdentifier(tableReference, dbType)}.${quoteIdentifier(scope.column, dbType)}`
-				: quoteIdentifier(scope.column, dbType);
-			query.andWhere(`${columnRef} = :rowrule_value`, { rowrule_value: scope.value });
+			query.andWhere(
+				new Brackets((group) => {
+					scope.conditions.forEach(({ column, values }, i) => {
+						if (values.length === 0) {
+							group.orWhere('1 = 0');
+							return;
+						}
+						const columnRef = tableReference
+							? `${quoteIdentifier(tableReference, dbType)}.${quoteIdentifier(column, dbType)}`
+							: quoteIdentifier(column, dbType);
+						group.orWhere(`${columnRef} IN (:...rowrule_${i})`, { [`rowrule_${i}`]: values });
+					});
+				}),
+			);
 		}
 	}
 

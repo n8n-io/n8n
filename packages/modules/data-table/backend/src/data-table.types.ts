@@ -22,5 +22,11 @@ export type RowAccess = { kind: 'management' } | { kind: 'actor'; actor: DataTab
 
 export const managementRowAccess: RowAccess = { kind: 'management' };
 
-/** The resolved row rule: only rows where `column` equals `value`. */
-export type DataTableRowScope = { column: string; value: string };
+/**
+ * The resolved row rule: a row is visible when, for any condition, its column
+ * holds one of `values`. An owner condition (`id`/`email`) has one value; a
+ * `project` condition has the actor's project ids.
+ */
+export type DataTableRowScope = {
+	conditions: Array<{ column: string; match: 'id' | 'email' | 'project'; values: string[] }>;
+};
