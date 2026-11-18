@@ -239,35 +239,12 @@ body[data-palette='dracula'] {
 // The focus ring is thick. Status colours keep their icons, so hue is not the only signal.
 // Text is at least 7:1 on every main surface. Borders and the focus ring are at least 3:1.
 // The map holds the colours that the ramps cannot give.
-// Nothing selects these presets yet. The preset ids are not in the theme type or the menus.
-$high-contrast-dark: (
-	border-subtle: #767676,
-	border: #9a9a9a,
-	border-strong: #c4c4c4,
-	// Hover and active fills are at least 3:1 on black. White text on them stays near 7:1.
-	hover: #5a5a5a,
-	active: #005ca0,
-	primary: #71b7ff,
-	green: #56d364,
-	yellow: #f2cc60,
-	orange: #ffa657,
-	red: #ff9492,
-	purple: #d2a8ff,
-	mint: #56e0cf,
-	code-string: #a5d6ff,
-	code-regex: #7ee787,
-	code-primitive: #79c0ff,
-	code-keyword: #ff9492,
-	code-parameter: #ffa657,
-	code-function: #d2a8ff,
-	code-invalid: #ffb3b1,
-	code-comment: #b8c0c8,
-);
-
+// The dark presets below use `dark-preset` with these semantics. `THEME_FAMILIES` in `ui.utils.ts`
+// pairs `high-contrast-light` with `github-dark-high-contrast` as the high contrast family.
 $high-contrast-light: (
 	border-subtle: #707070,
 	border: #595959,
-	border-strong: #333333,
+	border-strong: #333,
 	// Hover and active fills are at least 3:1 on white. Black text on them stays near 7:1.
 	hover: #949494,
 	active: #6c90ec,
@@ -377,40 +354,52 @@ $high-contrast-light: (
 	--code--selection--color: #{color.change(map.get($c, primary), $alpha: 0.35)};
 }
 
-body[data-palette='high-contrast-dark'] {
-	$c: $high-contrast-dark;
+// A dark high contrast preset from one palette map.
+// Neutral keys, from light to dark: fg (main text), fg-subtle, fg-subtler, fg-muted (disabled text,
+// subtle icons), line (dots, guides), bg-subtle, bg-raised (nodes, popovers), bg (surface) and
+// bg-deep (canvas, code). Accent keys: primary (brand, links), purple, green, red, yellow, orange,
+// blue, mint. The `high-contrast-semantics` keys: border-*, hover, active and code-*. Optional:
+// focus, code-regex, code-variable, code-type, code-property.
+@mixin dark-preset($c) {
+	$fg: map.get($c, fg);
+	$subtle: map.get($c, fg-subtle);
+	$subtler: map.get($c, fg-subtler);
+	$muted: map.get($c, fg-muted);
+	$line: map.get($c, line);
+	$bg-subtle: map.get($c, bg-subtle);
+	$bg-deep: map.get($c, bg-deep);
+	$focus: map.get($c, focus) or $fg;
 
-	// Neutral: text steps first, then surface steps. The two main surfaces are pure black.
-	--color--neutral-white: #fff;
-	--color--neutral-50: #fff;
-	--color--neutral-100: #f5f5f5;
-	--color--neutral-125: #f0f0f0;
-	--color--neutral-150: #ebebeb;
-	--color--neutral-200: #e0e0e0;
-	--color--neutral-250: #d6d6d6;
-	--color--neutral-300: #c8c8c8;
-	--color--neutral-400: #bdbdbd;
-	--color--neutral-500: #a8a8a8;
-	--color--neutral-600: #949494;
-	--color--neutral-700: #3a3a3a;
-	--color--neutral-750: #303030;
-	--color--neutral-800: #262626;
-	--color--neutral-850: #1a1a1a;
-	--color--neutral-900: #000;
-	--color--neutral-950: #000;
+	--color--neutral-white: #{$fg};
+	--color--neutral-50: #{$fg};
+	--color--neutral-100: #{$fg};
+	--color--neutral-125: #{color.mix($fg, $subtle, 75%)};
+	--color--neutral-150: #{color.mix($fg, $subtle, 50%)};
+	--color--neutral-200: #{$subtle};
+	--color--neutral-250: #{color.mix($subtle, $subtler, 75%)};
+	--color--neutral-300: #{color.mix($subtle, $subtler, 50%)};
+	--color--neutral-400: #{$subtler};
+	--color--neutral-500: #{color.mix($subtler, $muted, 50%)};
+	--color--neutral-600: #{$muted};
+	--color--neutral-700: #{$line};
+	--color--neutral-750: #{color.mix($line, $bg-subtle, 50%)};
+	--color--neutral-800: #{$bg-subtle};
+	--color--neutral-850: #{map.get($c, bg-raised)};
+	--color--neutral-900: #{map.get($c, bg)};
+	--color--neutral-950: #{$bg-deep};
+	--color--neutral-black: #{color.mix($bg-deep, #000, 50%)};
 
-	$light: #fff;
-	$dark: #000;
 	// n8n calls the brand ramp pink. Here it holds the accent.
-	@include ramp('pink', map.get($c, primary), $light, $dark);
-	@include ramp('purple', map.get($c, purple), $light, $dark);
-	@include ramp('green', map.get($c, green), $light, $dark);
-	@include ramp('red', map.get($c, red), $light, $dark);
-	@include ramp('yellow', map.get($c, yellow), $light, $dark);
-	@include ramp('orange', map.get($c, orange), $light, $dark);
-	@include ramp('gold', map.get($c, yellow), $light, $dark);
-	@include ramp('blue', map.get($c, primary), $light, $dark);
-	@include ramp('mint', map.get($c, mint), $light, $dark);
+	@include ramp('pink', map.get($c, primary), $fg, $bg-deep);
+	@include ramp('purple', map.get($c, purple), $fg, $bg-deep);
+	@include ramp('green', map.get($c, green), $fg, $bg-deep);
+	@include ramp('red', map.get($c, red), $fg, $bg-deep);
+	@include ramp('yellow', map.get($c, yellow), $fg, $bg-deep);
+	@include ramp('orange', map.get($c, orange), $fg, $bg-deep);
+	// The warning tokens read the gold ramp. The info tokens read the blue ramp.
+	@include ramp('gold', map.get($c, yellow), $fg, $bg-deep);
+	@include ramp('blue', map.get($c, blue), $fg, $bg-deep);
+	@include ramp('mint', map.get($c, mint), $fg, $bg-deep);
 
 	@include alpha-ramp(
 		'orange',
@@ -463,30 +452,333 @@ body[data-palette='high-contrast-dark'] {
 		)
 	);
 
-	// Declare all the semantic tokens again, so that they read the ramps above.
+	// `[data-theme='dark']` declares only the dark overrides. Declare all the tokens again here.
 	@include tokens.theme;
 	@include tokens.theme-dark;
 
 	@include high-contrast-semantics($c);
-	@include high-contrast-flat(var(--border-color));
 
-	--focus--outline-color: #fff;
-	--focus--border-color: #fff;
-	--border-color--stronger: #fff;
-	--color--foreground--shade-2: #fff;
+	--focus--outline-color: #{$focus};
+	--focus--border-color: #{$focus};
+	--border-color--stronger: #{$fg};
+	--color--foreground--shade-2: #{$fg};
 
-	// The solid button and the brand fill are bright. Their labels are black.
-	--text-color--inverse: #000;
-	--icon-color--inverse: #000;
+	// The solid button and the brand fill are bright. Their labels take the deepest background.
+	--text-color--inverse: #{$bg-deep};
+	--icon-color--inverse: #{$bg-deep};
 	--background--brand--hover: var(--color--pink-400);
 	--background--brand--active: var(--color--pink-300);
-	--button--color--text--primary: #000;
-	--button--color--text--success: #000;
-	--button--color--text--warning: #000;
-	--button--color--text--danger: #000;
+	--button--color--text--primary: #{$bg-deep};
+	--button--color--text--success: #{$bg-deep};
+	--button--color--text--warning: #{$bg-deep};
+	--button--color--text--danger: #{$bg-deep};
 
-	--canvas--dot--color: #5a5a5a;
-	--dialog--overlay--color--background: #{color.change(#000, $alpha: 0.8)};
+	--canvas--dot--color: #{$line};
+	// Dark mode gives the legacy background the line step, which is too light for text.
+	// Light mode puts it next to the subtle background, so use that step.
+	--color--background: var(--color--neutral-800);
+	--dialog--overlay--color--background: #{color.change($bg-deep, $alpha: 0.8)};
+
+	// The naming rule cannot read interpolated names. The names match `_tokens.scss`.
+	/* stylelint-disable @n8n/css-var-naming */
+	@each $key,
+		$token in (code-regex: regex, code-variable: variable, code-type: type, code-property: property)
+	{
+		@if map.has-key($c, $key) {
+			--code-tags--#{$token}--color: #{map.get($c, $key)};
+		}
+	}
+	/* stylelint-enable @n8n/css-var-naming */
+}
+
+// https://primer.style/primitives/colors (dark high contrast)
+$github-dark-high-contrast: (
+	fg: #fff,
+	fg-subtle: #f0f3f6,
+	fg-subtler: #b7bdc8,
+	fg-muted: #9198a1,
+	line: #3d444d,
+	bg-subtle: #212830,
+	bg-raised: #151b23,
+	bg: #010409,
+	bg-deep: #000,
+	border-subtle: #656c76,
+	border: #9198a1,
+	border-strong: #b7bdc8,
+	hover: #3d444d,
+	// Primer selects with #194fb1. One step darker keeps the subtle text at 7:1.
+	active: #154bad,
+	focus: #409eff,
+	primary: #74b9ff,
+	purple: #d3abff,
+	green: #2bd853,
+	red: #ff9492,
+	yellow: #f0b72f,
+	orange: #fe9a2d,
+	blue: #74b9ff,
+	mint: #56e0cf,
+	code-string: #addcff,
+	code-regex: #72f088,
+	code-primitive: #91cbff,
+	code-keyword: #ff9492,
+	code-parameter: #ffb757,
+	code-variable: #ffb757,
+	code-function: #dbb7ff,
+	code-invalid: #ff9492,
+	code-comment: #9198a1,
+);
+
+// https://github.com/nyoom-engineering/oxocarbon.nvim (with IBM Carbon gray, yellow and orange)
+$oxocarbon: (
+	fg: #f2f4f8,
+	fg-subtle: #dde1e6,
+	fg-subtler: #c6c6c6,
+	fg-muted: #8d8d8d,
+	line: #525252,
+	bg-subtle: #393939,
+	bg-raised: #262626,
+	bg: #161616,
+	bg-deep: #131313,
+	border-subtle: #6f6f6f,
+	border: #8d8d8d,
+	border-strong: #c6c6c6,
+	hover: #393939,
+	active: #0043ce,
+	focus: #fff,
+	primary: #ff7eb6,
+	purple: #be95ff,
+	green: #42be65,
+	red: #ee5396,
+	yellow: #f1c21b,
+	orange: #ff832b,
+	blue: #78a9ff,
+	mint: #08bdba,
+	code-string: #be95ff,
+	code-primitive: #82cfff,
+	code-keyword: #78a9ff,
+	code-parameter: #dde1e6,
+	code-variable: #dde1e6,
+	code-function: #3ddbd9,
+	code-type: #08bdba,
+	code-invalid: #ee5396,
+	// Oxocarbon comments are #525252. That is 2.3:1, too low for this preset.
+	code-comment: #8d8d8d,
+);
+
+// https://github.com/scottmckendry/cyberdream.nvim
+$cyberdream: (
+	fg: #fff,
+	fg-subtle: color.mix(#fff, #7b8496, 80%),
+	fg-subtler: color.mix(#fff, #7b8496, 50%),
+	fg-muted: #7b8496,
+	line: #3c4048,
+	bg-subtle: color.mix(#3c4048, #1e2124, 50%),
+	bg-raised: #1e2124,
+	bg: #16181a,
+	bg-deep: color.mix(#16181a, #000, 70%),
+	border-subtle: #606673,
+	border: #7b8496,
+	border-strong: color.mix(#fff, #7b8496, 50%),
+	hover: #3c4048,
+	active: #1157ae,
+	focus: #5ef1ff,
+	primary: #5ea1ff,
+	purple: #bd5eff,
+	green: #5eff6c,
+	red: #ff6e5e,
+	yellow: #f1ff5e,
+	orange: #ffbd5e,
+	blue: #5ef1ff,
+	mint: #5ef1ff,
+	code-string: #5eff6c,
+	code-primitive: #ff5ea0,
+	code-keyword: #ffbd5e,
+	code-parameter: #5ef1ff,
+	code-variable: #fff,
+	code-function: #5ea1ff,
+	code-type: #bd5eff,
+	code-invalid: #ff6e5e,
+	code-comment: #7b8496,
+);
+
+// https://github.com/bluz71/vim-moonfly-colors
+$moonfly: (
+	fg: #e4e4e4,
+	fg-subtle: #c6c6c6,
+	fg-subtler: #b2b2b2,
+	fg-muted: #949494,
+	line: #3a3a3a,
+	bg-subtle: #262626,
+	bg-raised: #1c1c1c,
+	bg: #080808,
+	bg-deep: #000,
+	border-subtle: #626262,
+	border: #808080,
+	border-strong: #b2b2b2,
+	hover: #3a3a3a,
+	// Moonfly selects with #4d5d8d. This is the same hue, dark enough for 7:1 text.
+	active: #384775,
+	focus: #74b2ff,
+	primary: #ae81ff,
+	purple: #cf87e8,
+	green: #8cc85f,
+	red: #ff5d5d,
+	yellow: #e3c78a,
+	orange: #de935f,
+	blue: #80a0ff,
+	mint: #79dac8,
+	code-string: #c6c684,
+	code-primitive: #de935f,
+	code-keyword: #cf87e8,
+	code-parameter: #79dac8,
+	code-variable: #79dac8,
+	code-function: #74b2ff,
+	code-type: #36c692,
+	code-invalid: #ff5d5d,
+	code-comment: #949494,
+);
+
+// https://github.com/bluz71/vim-nightfly-colors
+$nightfly: (
+	fg: #d6deeb,
+	fg-subtle: #c3ccdc,
+	fg-subtler: #acb4c2,
+	fg-muted: #7c8f8f,
+	line: #334e65,
+	bg-subtle: #0e293f,
+	bg-raised: #092236,
+	bg: #011627,
+	bg-deep: color.mix(#011627, #000, 60%),
+	// Steel blue (#4b6479) is 2.97:1 on the background. This is the same hue at 3:1.
+	border-subtle: #4d667b,
+	border: #768799,
+	border-strong: #acb4c2,
+	hover: #1d3b53,
+	// Nightfly selects with #316394. This is the same hue, dark enough for 7:1 text.
+	active: #134776,
+	focus: #82aaff,
+	primary: #82aaff,
+	purple: #c792ea,
+	green: #a1cd5e,
+	red: #fc514e,
+	yellow: #e3d18a,
+	orange: #f78c6c,
+	blue: #87bcff,
+	mint: #7fdbca,
+	code-string: #ecc48d,
+	code-primitive: #f78c6c,
+	code-keyword: #c792ea,
+	code-parameter: #7fdbca,
+	code-variable: #7fdbca,
+	code-function: #82aaff,
+	code-type: #21c7a8,
+	code-invalid: #fc514e,
+	code-comment: #7c8f8f,
+);
+
+// https://github.com/morhetz/gruvbox (dark, hard contrast)
+$gruvbox-dark-hard: (
+	fg: #fbf1c7,
+	fg-subtle: #ebdbb2,
+	fg-subtler: #d5c4a1,
+	fg-muted: #a89984,
+	line: #504945,
+	bg-subtle: #3c3836,
+	bg-raised: #282828,
+	bg: #1d2021,
+	bg-deep: color.mix(#1d2021, #000, 70%),
+	border-subtle: #7c6f64,
+	border: #928374,
+	border-strong: #bdae93,
+	hover: #3c3836,
+	active: #504945,
+	focus: #fabd2f,
+	primary: #fe8019,
+	purple: #d3869b,
+	green: #b8bb26,
+	red: #fb4934,
+	yellow: #fabd2f,
+	orange: #fe8019,
+	blue: #83a598,
+	mint: #8ec07c,
+	code-string: #b8bb26,
+	code-primitive: #d3869b,
+	code-keyword: #fb4934,
+	code-parameter: #83a598,
+	code-variable: #83a598,
+	code-function: #8ec07c,
+	code-type: #fabd2f,
+	code-invalid: #fb4934,
+	code-comment: #928374,
+);
+
+// https://catppuccin.com/palette/ (Mocha)
+$catppuccin-mocha: (
+	fg: #cdd6f4,
+	fg-subtle: #bac2de,
+	fg-subtler: #a6adc8,
+	// Overlay2, not overlay1: placeholders and disabled text read this step and need 4.5:1.
+	fg-muted: #9399b2,
+	line: #45475a,
+	bg-subtle: #313244,
+	bg-raised: color.mix(#313244, #1e1e2e, 50%),
+	bg: #1e1e2e,
+	bg-deep: #11111b,
+	border-subtle: #6c7086,
+	border: #9399b2,
+	border-strong: #bac2de,
+	// Mocha hovers with surface1 (#45475a). That is 6.3:1 for text, so this is one step darker.
+	hover: #3e4053,
+	active: #1b407c,
+	focus: #b4befe,
+	primary: #cba6f7,
+	purple: #b4befe,
+	green: #a6e3a1,
+	red: #f38ba8,
+	yellow: #f9e2af,
+	orange: #fab387,
+	blue: #89b4fa,
+	mint: #94e2d5,
+	code-string: #a6e3a1,
+	code-regex: #f5c2e7,
+	code-primitive: #fab387,
+	code-keyword: #cba6f7,
+	code-parameter: #eba0ac,
+	code-variable: #cdd6f4,
+	code-function: #89b4fa,
+	code-type: #f9e2af,
+	code-property: #b4befe,
+	code-invalid: #f38ba8,
+	code-comment: #9399b2,
+);
+
+body[data-palette='github-dark-high-contrast'] {
+	@include dark-preset($github-dark-high-contrast);
+	@include high-contrast-flat(var(--border-color));
+}
+
+body[data-palette='oxocarbon'] {
+	@include dark-preset($oxocarbon);
+}
+
+body[data-palette='cyberdream'] {
+	@include dark-preset($cyberdream);
+}
+
+body[data-palette='moonfly'] {
+	@include dark-preset($moonfly);
+}
+
+body[data-palette='nightfly'] {
+	@include dark-preset($nightfly);
+}
+
+body[data-palette='gruvbox-dark-hard'] {
+	@include dark-preset($gruvbox-dark-hard);
+}
+
+body[data-palette='catppuccin-mocha'] {
+	@include dark-preset($catppuccin-mocha);
 }
 
 body[data-palette='high-contrast-light'] {

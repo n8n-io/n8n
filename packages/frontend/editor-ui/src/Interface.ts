@@ -974,11 +974,26 @@ export type ThemeMode = AppliedThemeOption | 'system';
 /** The `data-palette` values. `_palettes.scss` has one block for each value. */
 export type ThemePalette =
 	| 'catppuccin-latte'
+	| 'catppuccin-mocha'
 	| 'dracula'
 	| 'high-contrast-light'
-	| 'high-contrast-dark';
+	| 'github-dark-high-contrast'
+	| 'gruvbox-dark-hard'
+	| 'oxocarbon'
+	| 'cyberdream'
+	| 'moonfly'
+	| 'nightfly';
 /** A group of palettes. A family has a light and a dark variant, or only one of them. */
-export type ThemeFamily = 'default' | 'catppuccin' | 'dracula' | 'high-contrast';
+export type ThemeFamily =
+	| 'default'
+	| 'catppuccin'
+	| 'dracula'
+	| 'high-contrast'
+	| 'gruvbox'
+	| 'oxocarbon'
+	| 'cyberdream'
+	| 'moonfly'
+	| 'nightfly';
 export interface ThemeSelection {
 	mode: ThemeMode;
 	family: ThemeFamily;

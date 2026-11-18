@@ -21,10 +21,15 @@ export const THEME_FAMILIES: Record<
 	Partial<Record<AppliedThemeOption, ThemePalette | null>>
 > = {
 	default: { light: null, dark: null },
-	// Add `dark: 'catppuccin-mocha'` when the Mocha block exists.
-	catppuccin: { light: 'catppuccin-latte' },
+	catppuccin: { light: 'catppuccin-latte', dark: 'catppuccin-mocha' },
 	dracula: { dark: 'dracula' },
-	'high-contrast': { light: 'high-contrast-light', dark: 'high-contrast-dark' },
+	// The dark variant is the GitHub Dark High Contrast palette.
+	'high-contrast': { light: 'high-contrast-light', dark: 'github-dark-high-contrast' },
+	gruvbox: { dark: 'gruvbox-dark-hard' },
+	oxocarbon: { dark: 'oxocarbon' },
+	cyberdream: { dark: 'cyberdream' },
+	moonfly: { dark: 'moonfly' },
+	nightfly: { dark: 'nightfly' },
 };
 
 // The values of the old `N8N_THEME` key. They map to a mode and a family.

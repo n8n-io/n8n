@@ -7,31 +7,78 @@ It also adds the theme switch to Cmd+K, as the page comment asks.
 
 ## Status
 
-Last update: 2026-11-18. The changes are not committed. They are in the working tree on the
-`themes` branch.
+Last update: 2026-11-18, after `ad100c39b9b`. All work is committed on the `themes` branch, and the
+branch is in sync with `origin/themes`.
 
-**Done: Catppuccin Latte, end to end.**
+| Commit | Author | What |
+|---|---|---|
+| `128ff955100` | Ragnar | This plan |
+| `2e38933fb18` | Ragnar | Catppuccin Latte, end to end |
+| `ad100c39b9b` | Jeroen | Dracula, Cmd+K group with live preview, account menu submenu, View Transition fade, pop-out sync, high contrast palettes (not selectable) |
 
-- The user can select "Catppuccin Latte" in **Settings → Personal → Theme**. The theme applies at
-  once, persists in localStorage, and loads before the app mounts.
-- The body gets `data-theme="light"` and `data-palette="catppuccin-latte"`. `appliedTheme` stays
-  `'light'`, so the consumers of the theme do not change.
-- `_palettes.scss` remaps the neutral ramp and eight accent ramps for Latte.
-- Checks that passed: `ui.utils.test.ts` (new, 13 tests), `ui.store.test.ts`,
-  `SettingsPersonalView.test.ts` (83 tests in total), `sassDeprecations.test.ts`, stylelint, biome
-  and oxlint on the changed files. The editor-ui typecheck was not run locally. CI runs it.
+**Selectable themes now:** System, Light, Dark, Catppuccin Latte, Dracula. **Catppuccin Mocha is not
+built.** Dracula took the dark-preset slot. See the open questions.
 
-**Not verified:** nobody has looked at Latte in a browser yet. This machine has no Chrome and no
-Playwright browsers, so no screenshot was taken. The first task of the next session is a visual
-pass (step 7).
+**Where the user picks a theme:**
 
-**Next:** Mocha (steps 1, 3 and 4 for the second preset), then Cmd+K (step 5).
+- **Settings → Personal → Theme**.
+- **Account menu** (the avatar in the sidebar) → **Theme** submenu. This is new, and not in the
+  original plan.
+- **Cmd+K → "Change theme…"**. Each theme is a child item. A highlighted item previews its theme
+  live. Enter saves it. If the user closes the bar or moves away, the saved theme comes back.
+- All three menus read one list, `useThemeOptions()`. A new `ThemeOption` does not compile until it
+  has a label and an icon there.
+
+**Done since the last update (Jeroen, `ad100c39b9b`):**
+
+- Dracula preset (`dracula` → dark mode). It remaps the neutral and accent ramps, the alpha steps,
+  and the syntax colors. The solid button uses the purple accent with dark text.
+- Live preview: `N8nCommandBar` has a new `highlight` emit (this was the stretch goal). The new
+  `useThemePreview` composable listens to it in `AppCommandBar.vue`. A preview changes only the body
+  attributes. The store and localStorage keep the saved theme.
+- `applyThemeWithTransition` in `ui.utils.ts` cross-fades a theme change with the View Transitions
+  API (`_theme-transition.scss`). It applies at once without the API or with reduced motion. Boot
+  still uses `applyThemeToBody`, so there is no fade on load.
+- `applyThemeToBody` writes only the attributes that change, in one block, so a preset-to-preset
+  switch has no frame without a palette.
+- Pop-out log window: it copies and observes `data-palette` too (step 6 is done).
+- `high-contrast-dark` and `high-contrast-light` blocks in `_palettes.scss`. They are not in
+  `ThemePreset` or the menus, so nothing selects them yet.
+
+**Checks on the current branch (run 2026-11-18, after the pull):**
+
+- Passed: editor-ui `ui.utils`, `ui.store`, `SettingsPersonalView`, every `commandBar` test,
+  the `execution/logs/composables` tests and the `MainSidebar*` tests (26 files, 451 tests).
+  design-system `N8nCommandBar` and `sassDeprecations` (47 tests). Biome and oxlint are clean on the
+  changed TS and Vue files. The one oxlint warning, in `Interface.ts`, was already there.
+- **Failed: stylelint**, one error. `_palettes.scss:270` `#333333` must be `#333`
+  (`color-hex-length`, in `$high-contrast-light`). `stylelint --fix` fixes it.
+- Not run: the editor-ui typecheck. CI runs it.
+- **No new tests** came with `ad100c39b9b`. The existing tests pass, but nothing covers Dracula,
+  the preview, the transition, the account menu or the pop-out sync. See the Tests section.
+
+**Not verified in a browser:** neither Latte nor Dracula, the preview nor the fade. This machine
+has no Chrome and no Playwright browsers. The first task of the next session is a visual pass
+(step 7).
+
+**Next:**
+
+1. Fix the stylelint error.
+2. Visual pass on Latte and Dracula, with the Cmd+K preview (step 7).
+3. Decide on Mocha (see the open questions). If we keep it, follow the Dracula block, not the Latte
+   block. See "Dark presets" below.
+4. Add the missing tests.
 
 ### Local dev notes
 
 - The repo pins pnpm 12.4.2. The global pnpm is 12.21.0, which rejects the lockfile
   (`yaml` catalog mismatch). Run pnpm as `npx -y pnpm@12.4.2 …`, or run `corepack enable`.
 - The build was 3 weeks old. A full `pnpm build` took about 1.5 minutes.
+- `pnpm dev:be` does not rebuild the backend dependencies (`n8n-workflow`, `n8n-core`, `@n8n/db`,
+  ...). It uses their `dist`. After a pull or a branch switch, run
+  `pnpm turbo run build --filter='n8n^...'` first. Turbo's cache makes this fast when nothing
+  changed. The theme work so far touches only frontend packages that the editor reads from source,
+  so `ad100c39b9b` does not need a build.
 - Run the backend with `pnpm dev:be` (port 5678) and the editor with `pnpm dev:fe:editor`
   (http://localhost:8080). The logs are in `/tmp/n8n-dev-be.log` and `/tmp/n8n-dev-fe.log`.
   Stop both with `pkill -f "turbo run dev"`.
@@ -42,6 +89,7 @@ pass (step 7).
 ## Goal
 
 - A user picks one of five themes: System, Light, Dark, Catppuccin Latte, Catppuccin Mocha.
+  (Built so far: System, Light, Dark, Catppuccin Latte, Dracula. See the Status section.)
 - The user can pick the theme in **Personal settings** and in the **command bar (Cmd+K)**. The
   command bar applies the theme at once, so the user sees it on the screen they are on.
 - The selection persists in the browser (localStorage), like the current light/dark setting.
@@ -50,7 +98,8 @@ pass (step 7).
 ## Out of scope
 
 - Instance branding, the environment indicator, and admin-level settings (asks #1–#4, #7, #8).
-- A high-contrast theme, custom or user-defined themes, and more presets.
+- A high-contrast theme, custom or user-defined themes, and more presets. Note: `ad100c39b9b` went
+  past this. It added the Dracula preset and two high contrast palettes (not selectable).
 - Server-side persistence. The theme stays per browser, as today.
 - Full contrast and accessibility testing. Catppuccin is a style preset, not an accessibility mode.
 
@@ -85,23 +134,27 @@ A preset is a palette on top of a base mode. Latte uses light mode. Mocha uses d
   The ~15 consumers (themed node icons, `CodeDiff`, MCP icons, telemetry, ...) do not change.
 - The body keeps `data-theme="light|dark"`. All existing `[data-theme='dark']` selectors and
   Tailwind `dark:` classes keep working.
-- The body gets a new attribute, `data-palette="catppuccin-latte|catppuccin-mocha"`. Only the
-  palette CSS reads it.
+- The body gets a new attribute, `data-palette="<preset>"`. Only the palette CSS reads it.
 
-As built (Mocha is not added yet):
+As built:
 
 ```ts
 // Interface.ts
 export type AppliedThemeOption = 'light' | 'dark'; // unchanged: the base mode
-export type ThemePreset = 'catppuccin-latte'; // add 'catppuccin-mocha'
+export type ThemePreset = 'catppuccin-latte' | 'dracula'; // add 'catppuccin-mocha'?
 export type ThemeOption = AppliedThemeOption | 'system' | ThemePreset;
 
 // app/stores/ui.utils.ts. Only this file reads the map, so it lives here, not in app/constants.
 const THEME_PRESET_MODES: Record<ThemePreset, AppliedThemeOption> = {
 	'catppuccin-latte': 'light',
-	// 'catppuccin-mocha': 'dark',
+	dracula: 'dark',
 };
 ```
+
+To add a preset, change these places: `ThemePreset`, `THEME_PRESET_MODES`, a
+`body[data-palette='…']` block in `_palettes.scss`, `THEME_OPTION_DISPLAY` and
+`THEME_OPTION_ORDER` in `useThemeOptions.ts`, an i18n label, and the keywords of the Cmd+K
+group in `useGenericCommands.ts`.
 
 ### Override the primitive ramps, not each semantic token
 
@@ -109,14 +162,37 @@ Most semantic tokens point to a primitive ramp (`--background--surface: var(--co
 If we remap the ramps, most of the UI changes with a small file.
 
 This works because of how the tokens are scoped. A custom property resolves its `var()` on the
-element that declares it. When a theme is pinned, `_tokens.scss` declares the semantic tokens again
-on `body[data-theme]`. So they resolve against the ramps on the body, which the palette overrides.
-A preset always pins `data-theme`, so this is always true for presets.
+element that declares it. A token that is declared only on `:root` resolves against the `:root`
+ramps, and the body inherits the result. So a palette changes a token only if the token is
+declared again on the body.
+
+- **Light presets:** `[data-theme='light']` includes the full `theme` mixin on the body, so every
+  token follows the remapped ramps. The Latte block needs nothing more.
+- **Dark presets:** `[data-theme='dark']` includes only `theme-dark`, which holds the dark
+  overrides. The tokens that only `theme` declares stay on `:root` and keep the n8n colors. A dark
+  preset must declare all tokens again:
+
+  ```scss
+  @use './tokens';
+  body[data-palette='dracula'] {
+    // … ramps …
+    @include tokens.theme;
+    @include tokens.theme-dark;
+  }
+  ```
+
+  Jeroen found this while he built Dracula. A Mocha block must do the same.
+- **Shadows:** `_primitives.scss` declares `--shadow--*` on `:root`. Only dark mode declares them
+  again on the body. A light preset that changes shadow colors must declare the shadow tokens
+  again (see `high-contrast-flat`).
 
 New file `@n8n/design-system/src/css/_palettes.scss`, loaded in `index.scss` after `tokens.scss`.
 As built:
 
-- A `$latte` Sass map holds the Catppuccin hex values. Add a `$mocha` map in the same form.
+- Each preset has a Sass map of its hex values (`$latte`, `$dracula`, `$high-contrast-*`). Add a
+  `$mocha` map in the same form.
+- `@mixin alpha-ramp($name, $accent, $steps)` (added with Dracula) builds the
+  `--color--<name>-alpha-<step>` steps. Latte does not use it yet.
 - `@mixin ramp($name, $accent, $light, $dark)` builds steps 50–950 with `color.mix` at compile
   time. Steps 50–400 mix toward `$light`, 500 is the accent, and 600–950 mix toward `$dark`.
   The weights are in `$tint-weights` and `$shade-weights`.
@@ -139,8 +215,16 @@ As built:
 | purple | lavender `#7287fd` | lavender `#b4befe` |
 | mint | teal `#179299` | teal `#94e2d5` |
 
-Not remapped: `gold`, `slate`, the `*-alpha-*` steps, and `black-alpha` / `white-alpha`. Borders
-and hover states use the alpha steps, so they stay neutral gray.
+Latte does not remap `gold`, `slate`, the `*-alpha-*` steps, or `black-alpha` / `white-alpha`.
+Borders and hover states use the alpha steps, so they stay neutral gray. Dracula also remaps `gold`
+(the warning tokens read it) and the orange, green, purple, red and gold alpha steps. Consider the
+same for Latte after the visual pass.
+
+Dracula mapping, as built: brand `pink` → Dracula purple `#bd93f9`, `purple` → Dracula pink
+`#ff79c6`, `blue` → cyan `#8be9fd`, `gold` and `orange` → orange `#ffb86c`. Green, red and yellow
+use the Dracula colors of the same name. The neutral ramp runs from foreground `#f8f8f2` through
+comment `#6272a4` and current line `#44475a` to background `#282a36` and darker `#191a21`. It
+also sets the `--code-tags--*` syntax colors.
 
 The selector `body[data-palette=…]` has specificity (0,1,1). It is higher than `[data-theme=…]`
 (0,1,0), and the file loads last. Use Sass `color.mix` with hex literals, not `color-mix()` at
@@ -186,57 +270,83 @@ not edit `_tokens.scss`.
     boot path restore a preset. Return `ThemeOption` without `'system'`.
   - Add `getThemeMode(theme: Exclude<ThemeOption, 'system'>): AppliedThemeOption` and
     `isThemePreset`. `isThemePreset` uses `Object.hasOwn`, so `'toString'` is not a preset.
+  - `applyThemeToBody` computes both attributes and writes only the ones that change.
+  - `applyThemeWithTransition(theme)` (added with Dracula) wraps `applyThemeToBody` in
+    `document.startViewTransition`. A new call skips a running transition, and calls never queue.
+    Use it only for a user action, not at boot.
 - `ui.store.ts`
   - `appliedTheme` uses `getThemeMode`. Its type does not change.
-  - `setTheme` does not change.
-  - Not added: `appliedPreset`. The settings select reads `uiStore.theme`, so it is not needed
-    yet. Add it if the Cmd+K list must mark the active preset.
+  - `setTheme` calls `applyThemeWithTransition`.
+  - Not added: `appliedPreset`. The menus mark the current theme with `uiStore.theme`, so it is not
+    needed.
 - The module-level boot code in `ui.store.ts` already calls `getThemeOverride()` and
   `applyThemeToBody()` before mount, so a preset applies without a flash of the wrong theme.
 
 ### Settings UI
 
-`SettingsPersonalView.vue`: add two items to `themeItems` with the icon `palette`.
-Add i18n keys in `@n8n/i18n/src/locales/en.json`:
+As built: `app/composables/useThemeOptions.ts` holds the label, icon and order of every theme.
+Three menus read it:
+
+- `SettingsPersonalView.vue`: the Theme select.
+- `MainSidebarAccountMenu.vue`: a Theme submenu with a check on the current theme.
+- `useGenericCommands.ts`: the Cmd+K group.
+
+i18n keys in `@n8n/i18n/src/locales/en.json`:
 
 - `settings.personal.theme.catppuccinLatte`: "Catppuccin Latte" (done)
-- `settings.personal.theme.catppuccinMocha`: "Catppuccin Mocha" (to do)
+- `settings.personal.theme.dracula`: "Dracula" (done)
+- `settings.personal.theme.catppuccinMocha`: "Catppuccin Mocha" (only if we keep Mocha)
 
 ### Command bar (Cmd+K)
 
-In `useGenericCommands.ts`, add one parent item **"Change theme…"** (section General, keywords
-`theme`, `dark`, `light`, `catppuccin`, `appearance`). It uses `children` (the type already supports
-nested items) with one child for each `ThemeOption`. Each child calls `uiStore.setTheme(value)`.
-Mark the active theme with a `check` icon or a description.
+As built (`ad100c39b9b`):
 
-Stretch: preview on highlight. `N8nCommandBar` does not emit the highlighted item today. This needs
-a new `highlight` emit in the design system. Apply the theme on highlight, and restore the saved
-theme on close without a selection.
+- `useGenericCommands.ts` has one parent item, **"Change theme…"** (section General, icon
+  `palette`, keywords `theme`, `dark`, `light`, `catppuccin`, `latte`, `dracula`, `appearance`).
+  Its `children` hold one `ThemeCommandBarItem` for each option. The current theme has the
+  description "Current theme" and a `check` icon. Each child calls `uiStore.setTheme(value)`.
+- `ThemeCommandBarItem` (in `commandBar/types.ts`) adds a `theme: ThemeOption` field to
+  `CommandBarItem`.
+- Live preview (this was the stretch goal):
+  - `N8nCommandBar` emits `highlight` with the row that the user moved to, by keyboard or pointer.
+    It emits `null` for the default selection, and when the bar closes, the query changes, or the
+    tab or the breadcrumb changes.
+  - `useThemePreview()` in `AppCommandBar.vue` applies the theme of a highlighted
+    `ThemeCommandBarItem` with `applyThemeWithTransition`. It changes only the body attributes.
+  - On `null`, it waits one animation frame and then applies `uiStore.theme` again, so the saved
+    theme does not flash between two previews. After Enter, the store already holds the new theme,
+    so the restore keeps it.
+- `_theme-transition.scss` makes the cross-fade use `--duration--snappy`. It turns off pointer
+  events on the transition layers, so the command bar list keeps hover and click during a fade.
 
 ### Other places that read the theme
 
-- `usePopOutWindow.ts`: copy `data-palette` as well, and add it to the `MutationObserver` `attributeFilter`.
+- `usePopOutWindow.ts` (done): it copies `data-palette` when it opens, and the `MutationObserver`
+  watches `data-theme` and `data-palette`.
 - Telemetry (`app/plugins/telemetry/index.ts`): `theme` stays the base mode. Optional: add the
   preset as a property. If we add it, follow the `n8n:telemetry` skill.
 
 ## Steps
 
-1. [x] Types: `ThemePreset`, wider `ThemeOption`, `THEME_PRESET_MODES` (Latte only).
-   - [ ] Add `'catppuccin-mocha'` to `ThemePreset` and `THEME_PRESET_MODES`.
-2. [x] `ui.utils.ts` and `ui.store.ts` changes, with unit tests.
-3. [x] `_palettes.scss` for Latte.
-   - [ ] Add the `$mocha` map and the `body[data-palette='catppuccin-mocha']` block.
-4. [x] Settings option and i18n for Latte.
-   - [ ] Add the Mocha option and its label.
-5. [ ] Command bar "Change theme…" group.
-6. [ ] Pop-out window sync. Today the pop-out copies only `data-theme`, so it shows plain light
-   for Latte.
-7. [ ] Visual pass on the main surfaces in both presets. Fix the gaps with semantic overrides in
-   `_palettes.scss`. Latte has not been checked in a browser yet.
+1. [x] Types: `ThemePreset`, wider `ThemeOption`, `THEME_PRESET_MODES` (Latte, Dracula).
+   - [ ] Mocha, if we keep it (see the open questions).
+2. [x] `ui.utils.ts` and `ui.store.ts` changes. Unit tests cover Latte only.
+3. [x] `_palettes.scss` for Latte and Dracula, plus high contrast dark and light (not selectable).
+   - [ ] Mocha, if we keep it. Copy the Dracula structure: include `tokens.theme` and
+     `tokens.theme-dark` again.
+   - [ ] Fix the stylelint error at `_palettes.scss:270` (`#333333` → `#333`).
+4. [x] Settings option and i18n for Latte and Dracula, through `useThemeOptions`.
+   - [x] Account menu Theme submenu (not in the original plan).
+5. [x] Command bar "Change theme…" group, with live preview on highlight and a View Transition fade.
+6. [x] Pop-out window sync.
+7. [ ] Visual pass in a browser: Latte, Dracula, the Cmd+K preview and the fade. Check the workflow
+   list, the canvas, the NDV, the settings and a modal. Fix the gaps with semantic overrides in
+   `_palettes.scss`. Nothing has been checked in a browser yet.
 8. [ ] Audit hard-coded colors that skip the tokens. These are expected gaps:
    `rg -n "#[0-9a-fA-F]{3,8}\b|rgb\(|oklch\(" packages/frontend/editor-ui/src --glob '*.{vue,scss}'`.
    Likely areas: canvas background and edges, CodeMirror themes, sticky note colors, charts.
    Fix only the ones on the demo path.
+9. [ ] remove themes selection box from user profile side bar
 
 ## Tests
 
@@ -247,12 +357,26 @@ theme on close without a selection.
   - `getThemeMode` maps a preset to its mode.
   - `isValidTheme` accepts the presets and rejects `null`, `''`, `'system'`, `'toString'` and
     unknown presets.
-  - [ ] For Mocha: add the Mocha cases, and remove `'catppuccin-mocha'` from the reject list.
-- [ ] `ui.store.test.ts`: `appliedTheme` returns `light` for Latte and `dark` for Mocha. A preset in
-  localStorage is restored at boot. The existing tests pass, but there are no preset cases yet.
-- [ ] `SettingsPersonalView` test: the select shows five options, and choosing a preset calls
+  - [ ] Add Dracula cases (`data-theme="dark"`, `data-palette="dracula"`).
+  - [ ] A switch between two presets writes only the changed attributes.
+  - [ ] For Mocha, if we keep it: add the cases, and remove `'catppuccin-mocha'` from the reject
+    list.
+- [ ] `applyThemeWithTransition` (no tests): it applies at once without
+  `document.startViewTransition` or with reduced motion. It returns early when the theme is
+  already applied or pending. A second call skips the first one.
+- [ ] `ui.store.test.ts`: `appliedTheme` returns `light` for Latte and `dark` for Dracula. A preset
+  in localStorage is restored at boot. The existing tests pass, but there are no preset cases yet.
+- [ ] `useThemeOptions`: the order, and a label and an icon for each option.
+- [ ] `SettingsPersonalView` test: the select shows every option, and choosing a preset calls
   `setTheme`. The existing tests pass, but there are no preset cases yet.
-- [ ] `useGenericCommands`: the theme group has five children, and each one calls `setTheme`.
+- [ ] `MainSidebarAccountMenu`: the Theme submenu marks the current theme and calls `setTheme`.
+- [ ] `useGenericCommands`: the theme group has one child for each option, marks the current one,
+  and each child calls `setTheme`.
+- [ ] `useThemePreview`: a theme item previews without a change to the store. `null` restores the
+  saved theme after one frame. A new highlight within that frame cancels the restore. Scope
+  disposal restores.
+- [ ] `N8nCommandBar`: `highlight` fires on arrow keys and hover, and fires `null` on close, a new
+  query, a new tab and a new breadcrumb. It does not fire for the default selection.
 - [ ] `usePopOutWindow` test: `data-palette` is copied and kept in sync.
 - Run with `pnpm test <file> --maxWorkers=1` in `packages/frontend/editor-ui`.
 - Manual: switch themes with Cmd+K on the workflow list, the canvas, the NDV and settings. Reload
@@ -262,16 +386,28 @@ theme on close without a selection.
 
 | File | Change | Status |
 |---|---|---|
-| `packages/frontend/editor-ui/src/Interface.ts` | `ThemePreset`, wider `ThemeOption` | Latte done |
-| `packages/frontend/editor-ui/src/app/stores/ui.utils.ts` | `THEME_PRESET_MODES`, preset-aware apply and validate, `getThemeMode` | Latte done |
-| `packages/frontend/editor-ui/src/app/stores/ui.utils.test.ts` | New. Unit tests | Latte done |
-| `packages/frontend/editor-ui/src/app/stores/ui.store.ts` | `appliedTheme` through `getThemeMode` | Done |
-| `packages/frontend/@n8n/design-system/src/css/_palettes.scss` | New. Catppuccin ramps | Latte done |
-| `packages/frontend/@n8n/design-system/src/css/index.scss` | `@use './palettes.scss'` after tokens | Done |
-| `packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.vue` | Two options | Latte done |
-| `packages/frontend/@n8n/i18n/src/locales/en.json` | Two labels, command bar strings | Latte label done |
-| `packages/frontend/editor-ui/src/features/shared/commandBar/composables/useGenericCommands.ts` | "Change theme…" group | To do |
-| `packages/frontend/editor-ui/src/features/execution/logs/composables/usePopOutWindow.ts` | Sync `data-palette` | To do |
+All paths are under `packages/frontend/`.
+
+| File | Change | Status |
+|---|---|---|
+| `editor-ui/src/Interface.ts` | `ThemePreset`, wider `ThemeOption` | Latte, Dracula |
+| `editor-ui/src/app/stores/ui.utils.ts` | `THEME_PRESET_MODES`, apply and validate, `getThemeMode`, `applyThemeWithTransition` | Done |
+| `editor-ui/src/app/stores/ui.utils.test.ts` | New. Unit tests | Latte only |
+| `editor-ui/src/app/stores/ui.store.ts` | `appliedTheme` through `getThemeMode`, `setTheme` with transition | Done |
+| `editor-ui/src/app/composables/useThemeOptions.ts` | New. Shared label, icon and order | Done, no tests |
+| `editor-ui/src/features/core/auth/views/SettingsPersonalView.vue` | Select reads `useThemeOptions` | Done |
+| `editor-ui/src/app/components/MainSidebarAccountMenu.vue` | Theme submenu | Done, no tests |
+| `editor-ui/src/features/shared/commandBar/composables/useGenericCommands.ts` | "Change theme…" group | Done, no tests |
+| `editor-ui/src/features/shared/commandBar/composables/useThemePreview.ts` | New. Preview on highlight | Done, no tests |
+| `editor-ui/src/features/shared/commandBar/types.ts` | `ThemeCommandBarItem` | Done |
+| `editor-ui/src/app/components/app/AppCommandBar.vue` | Wires `@highlight` to `useThemePreview` | Done |
+| `editor-ui/src/features/execution/logs/composables/usePopOutWindow.ts` | Sync `data-palette` | Done, no tests |
+| `@n8n/design-system/src/components/N8nCommandBar/CommandBar.vue` | `highlight` emit | Done, no tests |
+| `@n8n/design-system/src/components/N8nCommandBar/CommandBar.stories.ts` | Logs `highlight` | Done |
+| `@n8n/design-system/src/css/_palettes.scss` | New. Latte, Dracula, high contrast dark and light | Done, 1 stylelint error |
+| `@n8n/design-system/src/css/_theme-transition.scss` | New. Cross-fade timing, no pointer events | Done |
+| `@n8n/design-system/src/css/index.scss` | `@use` palettes and theme-transition | Done |
+| `@n8n/i18n/src/locales/en.json` | Latte and Dracula labels, three `commandBar.theme.*` strings | Done |
 
 ## Risks
 
@@ -283,11 +419,25 @@ theme on close without a selection.
   green/yellow/red are close in lightness in Mocha, so check the toasts and execution states.
 - **Embed and OEM customers** set legacy `--color-primary` overrides. Presets are opt-in per user,
   so the default themes do not change.
+- **Dark presets re-declare every token.** The Dracula block includes `tokens.theme` and
+  `tokens.theme-dark` again, so it also overrides any token that an embed customer sets on
+  `:root` or `body`. This is acceptable while presets are opt-in.
+- **View Transitions:** a browser without `document.startViewTransition` switches at once. While
+  a fade runs, the transition layers do not take pointer events. Check that a fast Cmd+K arrow-key
+  scroll does not stutter.
+- **Untested commit.** `ad100c39b9b` has no tests and nobody has checked it in a browser.
 
 ## Open questions
 
 - Ship behind a PostHog flag, or keep it on the Hackmation branch only?
-- One "Change theme…" item with children, or five top-level Cmd+K items (`Theme: Catppuccin Mocha`)?
-  Top-level items are found faster by search, but they add noise to the default list.
-- Should "System" also support a preset pair (Latte by day, Mocha by night), as Postman does? It is
-  not in scope for now, but the `{ mode }` map allows it later.
+- **Mocha or Dracula?** The plan (and the Notion page) chose Catppuccin Latte + Mocha. Jeroen built
+  Dracula as the dark preset. Options: keep Dracula only, add Mocha as a third preset, or swap
+  Dracula for Mocha. Decide this before more palette work.
+- **High contrast:** the two palettes exist but nothing selects them, and the plan put high
+  contrast out of scope. Add them to the menus, or remove them from this branch until they get a
+  real accessibility check?
+- **Account menu:** keep the Theme submenu in the avatar menu? It is a third entry point, and the
+  plan had only Settings and Cmd+K.
+- Decided: Cmd+K uses one "Change theme…" item with children (built that way in `ad100c39b9b`).
+- Should "System" also support a preset pair (for example Latte by day, a dark preset by night), as
+  Postman does? It is not in scope for now, but the mode map allows it later.

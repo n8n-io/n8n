@@ -20,9 +20,24 @@ const THEME_FAMILY_LABELS: Record<ThemeFamily, BaseTextKey> = {
 	catppuccin: 'settings.personal.theme.catppuccin',
 	dracula: 'settings.personal.theme.dracula',
 	'high-contrast': 'settings.personal.theme.highContrast',
+	gruvbox: 'settings.personal.theme.gruvbox',
+	oxocarbon: 'settings.personal.theme.oxocarbon',
+	cyberdream: 'settings.personal.theme.cyberdream',
+	moonfly: 'settings.personal.theme.moonfly',
+	nightfly: 'settings.personal.theme.nightfly',
 };
 
-const THEME_FAMILY_ORDER: ThemeFamily[] = ['default', 'catppuccin', 'dracula', 'high-contrast'];
+const THEME_FAMILY_ORDER: ThemeFamily[] = [
+	'default',
+	'catppuccin',
+	'dracula',
+	'high-contrast',
+	'gruvbox',
+	'oxocarbon',
+	'cyberdream',
+	'moonfly',
+	'nightfly',
+];
 
 /** Every mode the user can pick, in display order. The mode menus share this list. */
 export function useThemeModeOptions() {
