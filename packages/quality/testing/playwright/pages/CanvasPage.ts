@@ -956,7 +956,10 @@ export class CanvasPage extends BasePage {
 
 		if (subcategory) {
 			await this.nodeCreator.navigateToSubcategory(subcategory, { exact: exactSubcategory });
-			await this.fillNodeCreatorSearchBar(childNodeName);
+
+			if (await this.nodeCreatorSearchBar().isVisible()) {
+				await this.fillNodeCreatorSearchBar(childNodeName);
+			}
 		}
 
 		if (exactMatch) {
