@@ -74,6 +74,7 @@ const renderComponent = createComponentRenderer(SettingsLayout, {
 	global: {
 		plugins: [router],
 		stubs: {
+			AppNavigation: { template: '<nav data-test-id="app-navigation" />' },
 			SettingsSidebar: {
 				template:
 					'<div data-test-id="settings-sidebar"><button data-test-id="back" @click="$emit(\'return\')">Back</button></div>',
@@ -109,6 +110,7 @@ describe('SettingsLayout', () => {
 		const { getByText } = renderComponent({
 			global: {
 				stubs: {
+					AppNavigation: { template: '<nav />' },
 					SettingsSidebar: {
 						template:
 							'<div data-test-id="settings-sidebar"><button data-test-id="back" @click="$emit(\'return\')">Back</button></div>',
@@ -123,6 +125,12 @@ describe('SettingsLayout', () => {
 			},
 		});
 		expect(getByText('Settings Content')).toBeInTheDocument();
+	});
+
+	it('keeps the navigation rail next to the settings sidebar', () => {
+		const { getByTestId } = renderComponent();
+		const sidebar = getByTestId('settings-sidebar');
+		expect(getByTestId('app-navigation').nextElementSibling).toBe(sidebar);
 	});
 
 	it('should render SettingsSidebar in sidebar slot', () => {
@@ -149,6 +157,7 @@ describe('SettingsLayout', () => {
 		const { container } = renderComponent({
 			global: {
 				stubs: {
+					AppNavigation: { template: '<nav />' },
 					SettingsSidebar: {
 						template:
 							'<div data-test-id="settings-sidebar"><button data-test-id="back" @click="$emit(\'return\')">Back</button></div>',
@@ -193,6 +202,7 @@ describe('SettingsLayout', () => {
 		const { getByText, getByTestId } = renderComponent({
 			global: {
 				stubs: {
+					AppNavigation: { template: '<nav />' },
 					SettingsSidebar: {
 						template:
 							'<div data-test-id="settings-sidebar"><button data-test-id="back" @click="$emit(\'return\')">Back</button></div>',

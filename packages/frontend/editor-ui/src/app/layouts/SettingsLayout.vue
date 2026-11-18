@@ -6,6 +6,7 @@ import { onMounted, ref } from 'vue';
 import type { HistoryState } from 'vue-router';
 import { useRouter } from 'vue-router';
 import SettingsSidebar from '@/app/components/SettingsSidebar.vue';
+import AppNavigation from '@/app/components/appNavigation/AppNavigation.vue';
 
 const router = useRouter();
 
@@ -32,7 +33,11 @@ onMounted(() => {
 <template>
 	<BaseLayout inset>
 		<template #sidebar>
-			<SettingsSidebar @return="onReturn" />
+			<!-- The rail stays, so the user can leave settings for any page. -->
+			<div :class="$style.sidebar">
+				<AppNavigation :class="$style.navigation" />
+				<SettingsSidebar :class="$style.settingsSidebar" data-surface-start @return="onReturn" />
+			</div>
 		</template>
 
 		<div :class="$style.contentContainer">
@@ -44,6 +49,28 @@ onMounted(() => {
 </template>
 
 <style lang="scss" module>
+.sidebar {
+	display: flex;
+	height: 100%;
+
+}
+
+// Looks like the docked navigation panel: it starts the surface that the content continues.
+.settingsSidebar {
+	--menu--color--background: var(--app-shell--nav-panel--color--background);
+	--sidebar--border-color: var(--border-color--subtle);
+	position: relative;
+	z-index: 1;
+	border-radius: var(--app-shell--surface--radius) 0 0 var(--app-shell--surface--radius);
+	box-shadow: var(--app-shell--surface--shadow);
+}
+
+// Lifts the floating panel of the rail above the settings sidebar.
+.navigation {
+	position: relative;
+	z-index: 2;
+}
+
 .contentContainer {
 	height: 100%;
 	width: 100%;

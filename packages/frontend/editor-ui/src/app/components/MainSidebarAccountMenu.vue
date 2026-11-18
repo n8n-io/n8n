@@ -28,7 +28,6 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useUIStore } from '@/app/stores/ui.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { useSettingsItems } from '@/app/composables/useSettingsItems';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useResourceCenterStore } from '@/experiments/resourceCenter/stores/resourceCenter.store';
 import { trackTemplatesClick, TemplateClickSource } from '@/experiments/utils';
@@ -58,7 +57,6 @@ const versionsStore = useVersionsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const templatesStore = useTemplatesStore();
 const resourceCenterStore = useResourceCenterStore();
-const { settingsItems } = useSettingsItems();
 
 const isOpen = ref(false);
 
@@ -169,15 +167,8 @@ const helpEntries = computed<HelpEntry[]>(() => [
 
 const isResourceCenterEnabled = computed(() => resourceCenterStore.isFeatureEnabled());
 
-// The user's own pages open from Personal settings; this row leads to the first page about
-// the instance. `/settings` itself is not used: it redirects to Personal settings when the
-// usage page is hidden.
-const instanceSettingsRoute = computed(
-	() => settingsItems.value.find((item) => item.section !== 'personal' && item.route)?.route,
-);
-
 type WorkspaceItem = {
-	id: 'resource-center' | 'templates' | 'settings';
+	id: 'resource-center' | 'templates';
 	label: string;
 	icon: IconName;
 	available: boolean;
@@ -219,13 +210,6 @@ const workspaceItems = computed<WorkspaceItem[]>(() =>
 					!isResourceCenterEnabled.value,
 				href: templatesStore.websiteTemplateRepositoryURL,
 			},
-			{
-				id: 'settings',
-				icon: 'wrench',
-				label: i18n.baseText('mainSidebar.instanceSettings'),
-				available: instanceSettingsRoute.value !== undefined,
-				route: instanceSettingsRoute.value?.to,
-			},
 		] satisfies WorkspaceItem[]
 	).filter((item) => item.available),
 );
@@ -234,11 +218,6 @@ function onWorkspaceItem(item: WorkspaceItem) {
 	switch (item.id) {
 		case 'templates':
 			trackTemplatesClick(TemplateClickSource.sidebarButton);
-			break;
-		case 'settings':
-			telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_CLICKED_INSTANCE_SETTINGS_LINK, {
-				sidebar_collapsed: props.isCollapsed,
-			});
 			break;
 		default:
 			break;
@@ -266,7 +245,8 @@ function onCloudConsole() {
 	void pageRedirectionHelper.goToDashboard();
 }
 
-function onPersonalSettings() {
+// One row opens all settings. The settings sidebar lists the personal and the instance pages.
+function onSettings() {
 	track('personal_settings');
 	void router.push({ name: VIEWS.PERSONAL_SETTINGS });
 }
@@ -412,12 +392,12 @@ useKeybindings({ ctrl_alt_o: () => onHelpSelect('about') });
 							</template>
 						</N8nDropdownMenuItem>
 						<N8nDropdownMenuItem
-							id="personal-settings"
-							test-id="main-sidebar-account-personal-settings"
+							id="settings"
+							test-id="main-sidebar-account-settings"
 							:divided="showCloudConsole"
-							:label="i18n.baseText('mainSidebar.personalSettings')"
-							:icon="{ type: 'icon', value: 'circle-user-round' }"
-							@select="onPersonalSettings"
+							:label="i18n.baseText('mainSidebar.settings')"
+							:icon="{ type: 'icon', value: 'settings' }"
+							@select="onSettings"
 						/>
 						<N8nDropdownMenuItem
 							v-for="(item, index) in workspaceItems"

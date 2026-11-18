@@ -22,14 +22,6 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 const routerPushMock = vi.hoisted(() => vi.fn());
 const trackMock = vi.hoisted(() => vi.fn());
 const goToDashboardMock = vi.hoisted(() => vi.fn());
-const settingsItemsMock = vi.hoisted(() => ({
-	value: [] as Array<{ id: string; section: string; route?: { to: { name: string } } }>,
-}));
-
-vi.mock('@/app/composables/useSettingsItems', () => ({
-	useSettingsItems: () => ({ settingsItems: settingsItemsMock }),
-}));
-
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push: routerPushMock, resolve: vi.fn(() => ({ meta: {} })) }),
 	useRoute: () => reactive({ params: {} }),
@@ -238,11 +230,11 @@ describe('MainSidebarAccountMenu', () => {
 		});
 	});
 
-	it('goes to personal settings and reports the row', async () => {
+	it('opens settings from one row and reports the row', async () => {
 		const { getByTestId } = renderComponent();
 		const menu = await openMenu(getByTestId('main-sidebar-account-trigger'));
 
-		await userEvent.click(within(menu).getByTestId('main-sidebar-account-personal-settings'));
+		await userEvent.click(within(menu).getByTestId('main-sidebar-account-settings'));
 
 		expect(routerPushMock).toHaveBeenCalledWith({ name: VIEWS.PERSONAL_SETTINGS });
 		expect(trackMock).toHaveBeenCalledWith(
@@ -435,10 +427,6 @@ describe('MainSidebarAccountMenu', () => {
 
 	describe('workspace rows', () => {
 		beforeEach(() => {
-			settingsItemsMock.value = [
-				{ id: 'personal', section: 'personal', route: { to: { name: VIEWS.PERSONAL_SETTINGS } } },
-				{ id: 'users', section: 'instance', route: { to: { name: VIEWS.USERS_SETTINGS } } },
-			];
 			settingsStore.isTemplatesEnabled = true;
 			settingsStore.isModuleActive = vi.fn(() => true);
 			mockedStore(useRBACStore).hasScope = vi.fn(() => true);
@@ -446,48 +434,28 @@ describe('MainSidebarAccountMenu', () => {
 			templatesStore.hasCustomTemplatesHost = true;
 		});
 
-		it('lists Templates and Instance settings after Personal settings', async () => {
+		it('lists Templates after Settings, with no separate instance settings row', async () => {
 			const { getByTestId } = renderComponent({ props: { isCollapsed: true } });
 			const menu = await openMenu(getByTestId('main-sidebar-account-trigger'));
 
-			expect(rowsOf(menu)).toEqual(
-				expect.arrayContaining([
-					'main-sidebar-account-personal-settings',
-					'main-sidebar-account-templates',
-					'main-sidebar-account-settings',
-				]),
-			);
-			// The navigation rail shows Insights.
-			expect(rowsOf(menu)).not.toContain('main-sidebar-account-insights');
 			const rows = rowsOf(menu);
+			// The navigation rail shows Insights.
+			expect(rows).not.toContain('main-sidebar-account-insights');
+			expect(rows).not.toContain('main-sidebar-account-personal-settings');
+			expect(rows.filter((row) => row === 'main-sidebar-account-settings')).toHaveLength(1);
 			expect(rows.indexOf('main-sidebar-account-templates')).toBe(
-				rows.indexOf('main-sidebar-account-personal-settings') + 1,
+				rows.indexOf('main-sidebar-account-settings') + 1,
 			);
 		});
 
-		it('opens the first instance settings page and tracks the click', async () => {
-			const { getByTestId } = renderComponent({ props: { isCollapsed: true } });
-			const menu = await openMenu(getByTestId('main-sidebar-account-trigger'));
-
-			await userEvent.click(within(menu).getByTestId('main-sidebar-account-settings'));
-
-			expect(routerPushMock).toHaveBeenCalledWith({ name: VIEWS.USERS_SETTINGS });
-			expect(trackMock).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.PLATFORM.USER_CLICKED_INSTANCE_SETTINGS_LINK,
-				{ sidebar_collapsed: true },
-			);
-		});
-
-		it('hides the rows the user cannot reach', async () => {
-			settingsItemsMock.value = [];
+		it('hides Templates when the user cannot reach them', async () => {
 			settingsStore.isTemplatesEnabled = false;
-			mockedStore(useRBACStore).hasScope = vi.fn(() => false);
 			const { getByTestId } = renderComponent();
 			const menu = await openMenu(getByTestId('main-sidebar-account-trigger'));
 
 			const rows = rowsOf(menu);
 			expect(rows).not.toContain('main-sidebar-account-templates');
-			expect(rows).not.toContain('main-sidebar-account-settings');
+			expect(rows).toContain('main-sidebar-account-settings');
 		});
 	});
 });

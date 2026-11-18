@@ -242,7 +242,8 @@ export function useAppNavigation() {
 	/** `null` on a standalone page, which no rail item owns */
 	const activeItemId = computed<string | null>(() => {
 		const name = routeName.value;
-		if (STANDALONE_ROUTES.has(name)) return null;
+		// Settings pages list their pages in the settings sidebar, next to the rail.
+		if (STANDALONE_ROUTES.has(name) || route.meta?.layout === 'settings') return null;
 		if (ASSISTANT_ROUTES.has(name)) return ASSISTANT_ITEM_ID;
 		if (isInboxRoute(route)) return INBOX_ITEM_ID;
 
