@@ -438,8 +438,8 @@ export function logWrapper<
 
 			// ========== Tool ==========
 			if (isToolsInstance(originalInstance)) {
-				if (prop === '_call' && '_call' in target && typeof target._call === 'function') {
-					const call = target._call.bind(target);
+				if (prop === '_call' && prop in target && typeof target[prop] === 'function') {
+					const call = target[prop].bind(target);
 					return async (query: string): Promise<string> => {
 						const inputData: IDataObject = { query };
 
