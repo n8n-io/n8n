@@ -1,0 +1,79 @@
+packages/cli/src/modules/agent-tool-policies/tool-policy.check.ts
+  s_6bdcca0a27f363::t_09ba0675bea4a1 1,4,11,13,24-27,31-38,52-57
+packages/@n8n/agents/src/types/sdk/pre-tool-execution.ts
+  s_6bdcca0a27f363::t_3e705cefd36923 15-20,35
+packages/frontend/editor-ui/src/features/agents/utils/tool-policy-config.ts
+  s_6bdcca0a27f363::t_4497591627e497 53,67-72,75-80,83,116-121
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_6bdcca0a27f363::t_73863f9ef7ff1f 39-56
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6bdcca0a27f363::t_4497591627e497 10114
+packages/cli/src/modules/agent-tool-policies/__tests__/tool-effect-resolver.test.ts
+  s_6bdcca0a27f363::t_7f5997a3e8f56f 1-65,68-126
+  s_6bdcca0a27f363::t_4c885dcda76668 66-67
+packages/@n8n/agents/src/index.ts
+  s_6bdcca0a27f363::t_8adcd2cc606efb 19
+packages/cli/src/modules/agents/__tests__/agent-policy.service.test.ts
+  s_6bdcca0a27f363::t_73863f9ef7ff1f 265,289-295
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_6bdcca0a27f363::t_1ac9817b5511db 253-254,774,808
+packages/@n8n/api-types/src/agents/__tests__/agent-tool-policy.schema.test.ts
+  s_6bdcca0a27f363::t_4384ec9821f3ed 452-455
+  s_6bdcca0a27f363::t_02f38e4664bfd9 4,395,403-451,456-478
+packages/cli/src/modules/policy-infrastructure/README.md
+  s_6bdcca0a27f363::t_4384ec9821f3ed 209-215
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_6bdcca0a27f363::t_4497591627e497 429
+packages/@n8n/agents/src/runtime/__tests__/tool-call-runner.test.ts
+  s_6bdcca0a27f363::t_8adcd2cc606efb 448,450-455,582-587,609-611
+packages/cli/src/modules/agent-tool-policies/tool-policy-engine.ts
+  s_6bdcca0a27f363::t_1ac9817b5511db 47-55,69-75,240,244,254-256
+packages/cli/src/modules/agent-tool-policies/tool-effect-resolver.ts
+  s_6bdcca0a27f363::t_09ba0675bea4a1 1-80
+packages/@n8n/agents/src/types/index.ts
+  s_6bdcca0a27f363::t_8adcd2cc606efb 250
+packages/cli/src/modules/agent-tool-policies/__tests__/tool-policy-enforcement.test.ts
+  s_6bdcca0a27f363::t_d75c52d2166486 16,57
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolPolicyPanel.test.ts
+  s_6bdcca0a27f363::t_4497591627e497 3
+  s_6bdcca0a27f363::t_a35fa781911428 2,11-15,18-25,35,98,100,118-196
+packages/cli/src/modules/agents/agent-policy.service.ts
+  s_6bdcca0a27f363::t_1ac9817b5511db 1,39-44
+packages/@n8n/api-types/src/agents/agent-tool-policy.schema.ts
+  s_6bdcca0a27f363::t_02f38e4664bfd9 36-41,45-47,56-63,67-68,71-72,74-87,114-117,119-120,122,163-169,285-293,300-304,320-324,326-327,333-343
+packages/@n8n/decorators/src/policy-check/policy-check.ts
+  s_6bdcca0a27f363::t_1ac9817b5511db 174-179
+packages/cli/src/modules/agent-tool-policies/__tests__/tool-policy-engine.test.ts
+  s_6bdcca0a27f363::t_73863f9ef7ff1f 173-181,390-443
+  s_6bdcca0a27f363::t_e15e00d7a4ff13 444-445
+packages/frontend/editor-ui/src/features/agents/components/AgentToolPolicyPanel.vue
+  s_6bdcca0a27f363::t_4497591627e497 27,29-30,57,59,84-117,120-126,140-143,167-174
+  s_6bdcca0a27f363::t_4bdd2d5cdb6216 118-119
+packages/cli/src/modules/agents/agent-tool-call-history.service.ts
+  s_6bdcca0a27f363::t_1ac9817b5511db 1-2,7,10-43,52
+packages/cli/src/modules/agent-tool-policies/__tests__/tool-policy.check.test.ts
+  s_6bdcca0a27f363::t_d75c52d2166486 6,8,57-58,78-79
+  s_6bdcca0a27f363::t_7f5997a3e8f56f 162-212
+packages/cli/src/modules/agents/__tests__/agent-tool-call-history.service.test.ts
+  s_6bdcca0a27f363::t_73863f9ef7ff1f 84,92,142-143,147-179
+  s_6bdcca0a27f363::t_4384ec9821f3ed 144-146
+  s_6bdcca0a27f363::t_ad73e9332d4040 180-181
+packages/@n8n/agents/src/runtime/tools/tool-call-runner.ts
+  s_6bdcca0a27f363::t_8adcd2cc606efb 34-38,107,112-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "edbfded19e50d1ba4dd58dd8ac0931b34af00d5d",
+  "prompts": {},
+  "sessions": {
+    "s_6bdcca0a27f363": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "565eb793-19a9-4a9e-85f2-146865e3826b",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

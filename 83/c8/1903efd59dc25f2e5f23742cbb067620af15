@@ -1,0 +1,59 @@
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_2fcfe6308a74d6::t_5788166c95f924 2132,2149
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/README.md
+  s_2fcfe6308a74d6::t_6e08595617a62c 32,45
+  s_2fcfe6308a74d6::t_7a8175e0a9551f 3,31,33-37,39,43,47,49,54,67,77
+  s_2fcfe6308a74d6::t_70510256d09663 5-18
+  s_2fcfe6308a74d6::t_ff5bdbe83e3bf0 44
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/demo/tsconfig.json
+  s_2fcfe6308a74d6::t_7dfc3f1b6e3b2d 21-24
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/demo/northstar-workflow.json
+  s_2fcfe6308a74d6::t_926d0221b18bd8 1-588
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/demo/Demo.vue
+  s_2fcfe6308a74d6::t_7dfc3f1b6e3b2d 2,4,14,75,80-81
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/demo/sample.ts
+  s_2fcfe6308a74d6::t_2154fa408fe313 1
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/demo/ConstellationDemoCanvas.vue
+  s_2fcfe6308a74d6::t_d713247e967fb3 1-10,44-46,59-61,69-72,79,88,97-98,104-107,111-112,167
+  s_2fcfe6308a74d6::t_7dfc3f1b6e3b2d 11-43,47-58,62-68,73-78,80-87,89-96,99-103,108-110,113-166
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/zoom.test.ts
+  s_2fcfe6308a74d6::t_6e08595617a62c 7-8,11
+  s_2fcfe6308a74d6::t_7abf0952ca3c45 1-6,9-10,12-14,23,30-33,47-49
+  s_2fcfe6308a74d6::t_42eb0b7dac3842 15-22,24-29,34-46
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/zoom.ts
+  s_2fcfe6308a74d6::t_2374f1cca65941 1-2,4-6,14-37,42,59-60
+  s_2fcfe6308a74d6::t_6e08595617a62c 3
+  s_2fcfe6308a74d6::t_42eb0b7dac3842 7-13,38-41,43-58
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/graph.test.ts
+  s_2fcfe6308a74d6::t_5a751b2df342a9 9-13
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_2fcfe6308a74d6::t_5788166c95f924 3-4,216,2187-2193,2251,2258-2259
+  s_2fcfe6308a74d6::t_7dfc3f1b6e3b2d 329-330,2252
+  s_2fcfe6308a74d6::t_b1c8a1010fe62b 2253-2257
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_2fcfe6308a74d6::t_5788166c95f924 3
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/ConstellationArtwork.vue
+  s_2fcfe6308a74d6::t_70510256d09663 14-27,124,126-133
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/CanvasConstellation.vue
+  s_2fcfe6308a74d6::t_7dfc3f1b6e3b2d 4-10,26-35,41-49,51-59,63-72,75-83,85-90,114-122
+  s_2fcfe6308a74d6::t_2374f1cca65941 1-3,11-25,36-40,50,60-62,73-74,84,91-113,123
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/WorkflowConstellation.vue
+  s_2fcfe6308a74d6::t_5788166c95f924 7,9,18
+  s_2fcfe6308a74d6::t_7dfc3f1b6e3b2d 40-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "83c81903efd59dc25f2e5f23742cbb067620af15",
+  "prompts": {},
+  "sessions": {
+    "s_2fcfe6308a74d6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ee4b-4e64-7e80-9a78-f633d225a1cf",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

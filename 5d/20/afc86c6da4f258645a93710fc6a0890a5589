@@ -1,0 +1,95 @@
+demos/canvas-delight/setup.mjs
+  s_eddc685d6a185e::t_a9c7ab68a186b2 8-12
+  s_eddc685d6a185e::t_00c4b1db77c6ca 1-7,13
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_eddc685d6a185e::t_4dc215b7b83719 2-4
+demos/canvas-delight/main.ts
+  s_eddc685d6a185e::t_36d8e57d59470b 1-5
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeDefault.vue
+  s_eddc685d6a185e::t_3ab192da245932 248
+  s_eddc685d6a185e::t_a9c7ab68a186b2 84-91
+  s_eddc685d6a185e::t_36d8e57d59470b 3,83,92-93,247,249-254
+packages/frontend/editor-ui/src/features/workflows/canvas/components/delight/useCanvasSleep.ts
+  s_eddc685d6a185e::t_a9c7ab68a186b2 35-36
+  s_eddc685d6a185e::t_c5eccebed3d1c3 19,28,46
+  s_eddc685d6a185e::t_3ab192da245932 43
+  s_eddc685d6a185e::t_2aaea2c8e2b4dc 1-18,20-27,29-34,37-42,44-45,47
+demos/canvas-delight/REPORT.md
+  s_eddc685d6a185e::t_7b2f92d0238784 54
+  s_eddc685d6a185e::t_af5d254709af48 1-53,55-63
+  s_eddc685d6a185e::t_db7f47adf9045a 64
+packages/frontend/editor-ui/src/features/workflows/canvas/components/delight/CanvasSleepEffect.vue
+  s_eddc685d6a185e::t_2aaea2c8e2b4dc 1-14,20-32,39-60,64-77,95-113,121-122,134-135
+  s_eddc685d6a185e::t_a9c7ab68a186b2 16-18,33-36,38,61-63,78-94,114-120,123-133
+  s_eddc685d6a185e::t_baf2e45749ae7b 15,19,37
+demos/canvas-delight/vite.config.ts
+  s_eddc685d6a185e::t_36d8e57d59470b 2-3,6-9,21,29
+  s_eddc685d6a185e::t_a9c7ab68a186b2 10-20,22-28
+  s_eddc685d6a185e::t_4a109257f9375b 4-5
+  s_eddc685d6a185e::t_33e488b89b8ff4 1
+demos/canvas-delight/style.css
+  s_eddc685d6a185e::t_d3a1336d7b9411 458-482
+  s_eddc685d6a185e::t_199e2c16e8d6ea 1
+  s_eddc685d6a185e::t_a9c7ab68a186b2 2-457
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeStickyNote.vue
+  s_eddc685d6a185e::t_a9c7ab68a186b2 120-135
+  s_eddc685d6a185e::t_36d8e57d59470b 10-13,28-29,115-119,136
+  s_eddc685d6a185e::t_4a109257f9375b 30
+packages/frontend/editor-ui/src/features/workflows/canvas/components/delight/CanvasOrigamiEffect.vue
+  s_eddc685d6a185e::t_a9c7ab68a186b2 5-10,14,17-25,37-40,46-53,55-69,73-85,93-100,102-133,135-141,143-152,154-156,158-161,163-175,179-214
+  s_eddc685d6a185e::t_2aaea2c8e2b4dc 1,3-4,11-13,15-16,26-36,41-44,54,70-72,86-92,101,134,142,153,157,162,176-178,215
+  s_eddc685d6a185e::t_6f8b91007742f3 45
+  s_eddc685d6a185e::t_d3a1336d7b9411 2
+demos/canvas-delight/verify-browser.py
+  s_eddc685d6a185e::t_3ab192da245932 1-86,88-91,93-101
+  s_eddc685d6a185e::t_f8a02cd3425222 87,92
+demos/canvas-delight/verify-integration.mjs
+  s_eddc685d6a185e::t_d3a1336d7b9411 5-6,13-18,21-22
+  s_eddc685d6a185e::t_68f438e741294c 1-4,7-12,19-20,23-25
+demos/canvas-delight/evidence/browser-results.json
+  s_eddc685d6a185e::t_33c6456c4031d3 1-22,24
+  s_eddc685d6a185e::t_fcc382d33fc40a 23
+demos/canvas-delight/index.html
+  s_eddc685d6a185e::t_a9c7ab68a186b2 1-12
+demos/canvas-delight/App.vue
+  s_eddc685d6a185e::t_6cffd5823b4d5c 206,232-233,248-252
+  s_eddc685d6a185e::t_36d8e57d59470b 1-12,67,96-117,127,136,190,202-203,219-224,261-263
+  s_eddc685d6a185e::t_c5eccebed3d1c3 91
+  s_eddc685d6a185e::t_a9c7ab68a186b2 13-66,68-90,92-95,118-126,128-135,137-189,191-201,204-205,207-218,225-231,234-247,253-260
+packages/frontend/editor-ui/src/features/workflows/canvas/components/delight/CanvasDelight.test.ts
+  s_eddc685d6a185e::t_815a4f9dad35c7 78,88
+  s_eddc685d6a185e::t_5cb347ae494dc2 64-66
+  s_eddc685d6a185e::t_72e855de0589eb 1-8,13,18-35,37-58,72,77,79-87,89-93,97-114
+  s_eddc685d6a185e::t_a9c7ab68a186b2 9-12,14-17,73-76,94-96
+  s_eddc685d6a185e::t_c5eccebed3d1c3 36
+  s_eddc685d6a185e::t_d3a1336d7b9411 59-63,67-71
+demos/canvas-delight/README.md
+  s_eddc685d6a185e::t_e2bf2638b0430e 1-60
+demos/canvas-delight/tsconfig.json
+  s_eddc685d6a185e::t_a9c7ab68a186b2 2-23
+  s_eddc685d6a185e::t_e34f8b31b67a86 1,24
+demos/canvas-delight/package.json
+  s_eddc685d6a185e::t_37713082b2500e 1-8
+demos/canvas-delight/pnpm-lock.yaml
+  s_eddc685d6a185e::t_1e5baf63d4b2cf 1-2214
+demos/canvas-delight/pnpm-workspace.yaml
+  s_eddc685d6a185e::t_068170409bff10 1-2
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/__snapshots__/CanvasNodeDefault.test.ts.snap
+  s_eddc685d6a185e::t_b6e4680b7d95bc 9,52,88,124,167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5d20afc86c6da4f258645a93710fc6a0890a5589",
+  "prompts": {},
+  "sessions": {
+    "s_eddc685d6a185e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ee4b-6ebe-74c2-883a-49a5d490d75f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

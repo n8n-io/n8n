@@ -1,0 +1,22 @@
+packages/cli/src/modules/agent-determinism/draft-annotation.ts
+  s_a12973ce452161::t_619172eb153c7a 40-41
+packages/cli/src/modules/agent-determinism/__tests__/draft-annotation.test.ts
+  s_a12973ce452161::t_ae16f190285047 11-17
+  s_a12973ce452161::t_1803cf275ff5cb 1-10,18-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e5fd5f3f88cc4108e3545906aaad7d74b65908db",
+  "prompts": {},
+  "sessions": {
+    "s_a12973ce452161": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "427f7e7a-df9a-4262-9a0c-6a12cb26b586",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
