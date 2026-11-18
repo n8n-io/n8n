@@ -5876,6 +5876,22 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 					visit(callee.expression);
 					return;
 				}
+				// A method that the translator does not implement on an Intl formatter must be
+				// refused. Other globals are not type-tracked, so they stay as-is for now.
+				const recv = stripParens(callee.expression);
+				if (
+					hasIntl &&
+					ts.isNewExpression(recv) &&
+					ts.isPropertyAccessExpression(recv.expression) &&
+					ts.isIdentifier(recv.expression.expression) &&
+					recv.expression.expression.text === 'Intl' &&
+					isFree(recv.expression.expression)
+				) {
+					block(
+						'Intl formatter method',
+						`\`${name}\` of an Intl formatter has no native form.`,
+					);
+				}
 				if (name === 'then' || name === 'catch' || name === 'finally') {
 					if (n.arguments.some((a) => ts.isArrowFunction(a) || ts.isFunctionExpression(a))) {
 						block('Promise', 'Promise callbacks have no native form.');
