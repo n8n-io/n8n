@@ -1,0 +1,106 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Split Out",
+		"Summarize",
+		"Respond"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"events": [
+							{
+								"group": 1,
+								"v": 10,
+								"name": "A"
+							},
+							{
+								"group": 1,
+								"v": 20,
+								"name": "B"
+							},
+							{
+								"group": 2,
+								"v": 5,
+								"name": "C"
+							}
+						]
+					}
+				}
+			]
+		],
+		"Split Out": [
+			[
+				{
+					"group": 1,
+					"v": 10,
+					"name": "A"
+				},
+				{
+					"group": 1,
+					"v": 20,
+					"name": "B"
+				},
+				{
+					"group": 2,
+					"v": 5,
+					"name": "C"
+				}
+			]
+		],
+		"Summarize": [
+			[
+				{
+					"1": {
+						"count_name": 2,
+						"sum_v": 30
+					},
+					"2": {
+						"count_name": 1,
+						"sum_v": 5
+					}
+				}
+			]
+		],
+		"Respond": [
+			[
+				{
+					"1": {
+						"count_name": 2,
+						"sum_v": 30
+					},
+					"2": {
+						"count_name": 1,
+						"sum_v": 5
+					}
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": [
+		{
+			"body": [
+				{
+					"1": {
+						"count_name": 2,
+						"sum_v": 30
+					},
+					"2": {
+						"count_name": 1,
+						"sum_v": 5
+					}
+				}
+			],
+			"headers": {},
+			"statusCode": 200
+		}
+	]
+}

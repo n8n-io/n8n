@@ -622,7 +622,9 @@ const CASES: Case[] = [
 		[{ json: { b: [104, 105] } }],
 		{ host: 'run' },
 	),
-	convert('csv is in the host', {}, [{ json: { a: 1 } }], { host: 'static' }),
+	// The CSV operation has a compiled form (`convert-to-file-csv-v1.test.ts`).
+	convert('csv', {}, [{ json: { a: 1, b: 'x' } }, { json: { a: 2, b: 'y,z' } }]),
+	convert('csv with a delimiter', { options: { delimiter: ';' } }, [{ json: { a: 'x;y', b: 1 } }]),
 ];
 
 function workflow(c: Case) {

@@ -500,6 +500,19 @@ export function lowerCode(c: NodeContext): void {
 			);
 		}
 	}
+	// $node[name].json follows pairedItem in v1; the converter uses the index of the current
+	// item, which equals the paired item only when the items pair by position.
+	const nodeAccess = user.matchAll(/\$node\s*\[\s*['"]([^'"]*)['"]\s*\]/g);
+	for (const m of nodeAccess) {
+		const name = m[1];
+		if (name && name !== c.node.name && !c.pairsByPosition(name) && c.ranBefore(name) !== null) {
+			throw new NodeFailure(
+				'code-node-reference',
+				`The code reads node "${name}" with $node, and the pairing of its items with the items of this node is not known: v1 follows the paired items of each node on the way.`,
+				codeField,
+			);
+		}
+	}
 	if (refs.length > 0 && /\.\s*pairedItem\b(?!\s*\()/.test(user)) {
 		throw new NodeFailure(
 			'code-node-reference',

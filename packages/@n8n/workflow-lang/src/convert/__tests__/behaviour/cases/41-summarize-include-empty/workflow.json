@@ -1,0 +1,114 @@
+{
+	"name": "Summarize include empty",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "summarize-empty-values",
+				"responseMode": "responseNode",
+				"options": {}
+			}
+		},
+		{
+			"id": "split-out",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"parameters": {
+				"fieldToSplitOut": "body.events",
+				"options": {}
+			}
+		},
+		{
+			"id": "summary",
+			"name": "Summarize",
+			"type": "n8n-nodes-base.summarize",
+			"typeVersion": 1.1,
+			"position": [400, 0],
+			"parameters": {
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"aggregation": "count",
+							"field": "name",
+							"includeEmpty": true
+						},
+						{
+							"aggregation": "append",
+							"field": "name",
+							"includeEmpty": true
+						},
+						{
+							"aggregation": "concatenate",
+							"field": "name"
+						},
+						{
+							"aggregation": "countUnique",
+							"field": "tag",
+							"includeEmpty": true
+						}
+					]
+				},
+				"fieldsToSplitBy": "",
+				"options": {}
+			}
+		},
+		{
+			"id": "respond",
+			"name": "Respond",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.1,
+			"position": [600, 0],
+			"parameters": {
+				"respondWith": "allIncomingItems",
+				"options": {
+					"responseCode": 200
+				}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "Summarize",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Summarize": {
+			"main": [
+				[
+					{
+						"node": "Respond",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

@@ -29,5 +29,8 @@ export const CORE_NODE_TYPES = new Set(
 		'httpRequest',
 		'splitInBatches',
 		'executeWorkflow',
+		'crypto',
+		'renameKeys',
+		'summarize',
 	].map((t) => `n8n-nodes-base.${t}`),
 );

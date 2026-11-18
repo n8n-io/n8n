@@ -1,0 +1,192 @@
+{
+	"name": "Crypto hash native",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "crypto",
+				"responseMode": "responseNode",
+				"options": {}
+			}
+		},
+		{
+			"id": "split-out",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"parameters": {
+				"fieldToSplitOut": "body.events",
+				"options": {}
+			}
+		},
+		{
+			"id": "c1",
+			"name": "Hash MD5",
+			"type": "n8n-nodes-base.crypto",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"parameters": {
+				"action": "hash",
+				"value": "={{ $json.a }}",
+				"dataPropertyName": "md5",
+				"encoding": "hex"
+			}
+		},
+		{
+			"id": "c2",
+			"name": "Hash SHA256",
+			"type": "n8n-nodes-base.crypto",
+			"typeVersion": 2,
+			"position": [600, 0],
+			"parameters": {
+				"action": "hash",
+				"value": "={{ $json.b }}",
+				"dataPropertyName": "sha256",
+				"encoding": "base64"
+			}
+		},
+		{
+			"id": "c3",
+			"name": "Hash SHA512",
+			"type": "n8n-nodes-base.crypto",
+			"typeVersion": 1,
+			"position": [800, 0],
+			"parameters": {
+				"action": "hash",
+				"type": "SHA512",
+				"value": "={{ $json.a }}",
+				"dataPropertyName": "sha512",
+				"encoding": "hex"
+			}
+		},
+		{
+			"id": "c4",
+			"name": "Hash SHA384",
+			"type": "n8n-nodes-base.crypto",
+			"typeVersion": 2,
+			"position": [1000, 0],
+			"parameters": {
+				"action": "hash",
+				"type": "SHA384",
+				"value": "={{ $json.b }}",
+				"dataPropertyName": "sha384",
+				"encoding": "base64"
+			}
+		},
+		{
+			"id": "c5",
+			"name": "Hash SHA1 dot key",
+			"type": "n8n-nodes-base.crypto",
+			"typeVersion": 1,
+			"position": [1200, 0],
+			"parameters": {
+				"action": "hash",
+				"type": "SHA1",
+				"value": "={{ $json.a }}",
+				"dataPropertyName": "dot.key",
+				"encoding": "hex"
+			}
+		},
+		{
+			"id": "respond",
+			"name": "Respond",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.1,
+			"position": [1400, 0],
+			"parameters": {
+				"respondWith": "allIncomingItems",
+				"options": {
+					"responseCode": 200
+				}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "Hash MD5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Hash MD5": {
+			"main": [
+				[
+					{
+						"node": "Hash SHA256",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Hash SHA256": {
+			"main": [
+				[
+					{
+						"node": "Hash SHA512",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Hash SHA512": {
+			"main": [
+				[
+					{
+						"node": "Hash SHA384",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Hash SHA384": {
+			"main": [
+				[
+					{
+						"node": "Hash SHA1 dot key",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Hash SHA1 dot key": {
+			"main": [
+				[
+					{
+						"node": "Respond",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

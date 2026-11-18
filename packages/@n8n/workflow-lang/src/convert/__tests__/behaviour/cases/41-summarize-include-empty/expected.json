@@ -1,0 +1,111 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Split Out",
+		"Summarize",
+		"Respond"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"events": [
+							{
+								"name": "Alice",
+								"tag": "a"
+							},
+							{
+								"name": "",
+								"tag": null
+							},
+							{
+								"name": "Bob",
+								"tag": "a"
+							},
+							{
+								"name": null,
+								"tag": ""
+							}
+						]
+					}
+				}
+			]
+		],
+		"Split Out": [
+			[
+				{
+					"name": "Alice",
+					"tag": "a"
+				},
+				{
+					"name": "",
+					"tag": null
+				},
+				{
+					"name": "Bob",
+					"tag": "a"
+				},
+				{
+					"name": null,
+					"tag": ""
+				}
+			]
+		],
+		"Summarize": [
+			[
+				{
+					"count_name": 4,
+					"appended_name": [
+						"Alice",
+						"",
+						"Bob",
+						null
+					],
+					"concatenated_name": "Alice,Bob",
+					"unique_count_tag": 3
+				}
+			]
+		],
+		"Respond": [
+			[
+				{
+					"count_name": 4,
+					"appended_name": [
+						"Alice",
+						"",
+						"Bob",
+						null
+					],
+					"concatenated_name": "Alice,Bob",
+					"unique_count_tag": 3
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": [
+		{
+			"body": [
+				{
+					"count_name": 4,
+					"appended_name": [
+						"Alice",
+						"",
+						"Bob",
+						null
+					],
+					"concatenated_name": "Alice,Bob",
+					"unique_count_tag": 3
+				}
+			],
+			"headers": {},
+			"statusCode": 200
+		}
+	]
+}

@@ -1,0 +1,135 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Split Out",
+		"Rename Keys",
+		"Respond"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"events": [
+							{
+								"userId": "u1",
+								"profile": {
+									"age": 30
+								},
+								"name": "Alice",
+								"score": 3
+							},
+							{
+								"userId": "u2",
+								"profile": {
+									"age": 25
+								},
+								"score": 9
+							},
+							{
+								"userId": "u3",
+								"name": "Bob"
+							}
+						]
+					}
+				}
+			]
+		],
+		"Split Out": [
+			[
+				{
+					"userId": "u1",
+					"profile": {
+						"age": 30
+					},
+					"name": "Alice",
+					"score": 3
+				},
+				{
+					"userId": "u2",
+					"profile": {
+						"age": 25
+					},
+					"score": 9
+				},
+				{
+					"userId": "u3",
+					"name": "Bob"
+				}
+			]
+		],
+		"Rename Keys": [
+			[
+				{
+					"profile": {},
+					"score": 3,
+					"fullName": "Alice",
+					"age": 30,
+					"id": "u1"
+				},
+				{
+					"profile": {},
+					"score": 9,
+					"age": 25,
+					"id": "u2"
+				},
+				{
+					"fullName": "Bob",
+					"id": "u3"
+				}
+			]
+		],
+		"Respond": [
+			[
+				{
+					"profile": {},
+					"score": 3,
+					"fullName": "Alice",
+					"age": 30,
+					"id": "u1"
+				},
+				{
+					"profile": {},
+					"score": 9,
+					"age": 25,
+					"id": "u2"
+				},
+				{
+					"fullName": "Bob",
+					"id": "u3"
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": [
+		{
+			"body": [
+				{
+					"profile": {},
+					"score": 3,
+					"fullName": "Alice",
+					"age": 30,
+					"id": "u1"
+				},
+				{
+					"profile": {},
+					"score": 9,
+					"age": 25,
+					"id": "u2"
+				},
+				{
+					"fullName": "Bob",
+					"id": "u3"
+				}
+			],
+			"headers": {},
+			"statusCode": 200
+		}
+	]
+}

@@ -1056,6 +1056,247 @@ function aggregateFields(
 	return out;
 }`,
 	},
+	summarizeValue: {
+		uses: ['getPath'],
+		source: `/** One field of one item, as the Summarize node reads it (lodash \`get\`, or the key itself). */
+function summarizeValue(item: Json, field: string, dot: boolean): Json {
+	if (!dot) return item[field];
+	if (field === '') return item === null || item === undefined ? undefined : item[''];
+	return getPath(item, field);
+}`,
+	},
+	summarizeUnique: {
+		uses: [],
+		source: `/** The number of distinct values, as \`Set\` counts them (reference equality for objects). */
+function summarizeUnique(values: Json[]): number {
+	const seen: Json[] = [];
+	for (const v of values) {
+		let found = false;
+		for (const s of seen) {
+			if (v === s) {
+				found = true;
+				break;
+			}
+		}
+		if (!found) seen.push(v);
+	}
+	return seen.length;
+}`,
+	},
+	summarizeEntry: {
+		uses: ['summarizeValue', 'summarizeUnique'],
+		source: `/** One aggregation of the Summarize node over the items of one group. */
+function summarizeEntry(items: Json[], entry: Json, dot: boolean): Json {
+	const agg = entry.aggregation;
+	const field = entry.field;
+	let list = items.slice();
+	if (agg === 'average' || agg === 'sum') {
+		list = list.filter((item: Json) => typeof summarizeValue(item, field, dot) === 'number');
+	}
+	if (agg === 'append') {
+		if (entry.includeEmpty !== true) {
+			list = list.filter((item: Json) => {
+				const v = summarizeValue(item, field, dot);
+				return !(v === undefined || v === null || v === '');
+			});
+		}
+		return list.map((item: Json) => summarizeValue(item, field, dot));
+	}
+	if (agg === 'concatenate') {
+		const sep = entry.separateBy === 'other' ? entry.customSeparator : entry.separateBy;
+		if (entry.includeEmpty !== true) {
+			list = list.filter((item: Json) => {
+				const v = summarizeValue(item, field, dot);
+				return !(v === undefined || v === null || v === '');
+			});
+		}
+		return list
+			.map((item: Json) => {
+				let v = summarizeValue(item, field, dot);
+				if (typeof v === 'object') v = JSON.stringify(v);
+				if (typeof v === 'undefined') v = 'undefined';
+				return v;
+			})
+			.join(sep === undefined || sep === null ? ',' : sep);
+	}
+	if (agg === 'average') {
+		if (list.length === 0) return null;
+		let sum = 0;
+		for (const item of list) sum = sum + summarizeValue(item, field, dot);
+		return sum / list.length;
+	}
+	if (agg === 'sum') {
+		let sum = 0;
+		for (const item of list) sum = sum + summarizeValue(item, field, dot);
+		return sum;
+	}
+	if (agg === 'min') {
+		let min: Json = null;
+		let found = false;
+		for (const item of list) {
+			const v = summarizeValue(item, field, dot);
+			if (v !== undefined && v !== null && v !== '') {
+				if (!found || v < min) {
+					min = v;
+					found = true;
+				}
+			}
+		}
+		return found ? min : null;
+	}
+	if (agg === 'max') {
+		let max: Json = null;
+		let found = false;
+		for (const item of list) {
+			const v = summarizeValue(item, field, dot);
+			if (v !== undefined && v !== null && v !== '') {
+				if (!found || v > max) {
+					max = v;
+					found = true;
+				}
+			}
+		}
+		return found ? max : null;
+	}
+	if (agg === 'countUnique') {
+		if (entry.includeEmpty !== true) {
+			return summarizeUnique(
+				list
+					.map((item: Json) => summarizeValue(item, field, dot))
+					.filter((v: Json) => !(v === undefined || v === null || v === '')),
+			);
+		}
+		return summarizeUnique(list.map((item: Json) => summarizeValue(item, field, dot)));
+	}
+	if (entry.includeEmpty !== true) {
+		return list.filter((item: Json) => {
+			const v = summarizeValue(item, field, dot);
+			return !(v === undefined || v === null || v === '');
+		}).length;
+	}
+	return list.length;
+}`,
+	},
+	summarizeLeaf: {
+		uses: ['summarizeEntry'],
+		source: `/** The return data of one group of the Summarize node. */
+function summarizeLeaf(items: Json[], fields: Json[], dot: boolean): Json {
+	const out: Json = {};
+	for (const entry of fields) out[entry.out] = summarizeEntry(items, entry, dot);
+	return out;
+}`,
+	},
+	summarizeGroups: {
+		uses: ['summarizeValue'],
+		source: `/** One level of grouping of the Summarize node: the items of each split value, in order. */
+function summarizeGroups(
+	items: Json[],
+	spec: Json,
+	dot: boolean,
+	toStringKeys: boolean,
+	skipEmpty: boolean,
+): Json[] {
+	const groups: Json[] = [];
+	for (const item of items) {
+		let v = summarizeValue(item, spec.field, dot);
+		if (v !== null && typeof v === 'object') v = JSON.stringify(v);
+		if (toStringKeys) v = String(v);
+		if (skipEmpty && typeof v !== 'number' && !v) continue;
+		let group: Json = null;
+		for (const g of groups) {
+			if (g.key === v) {
+				group = g;
+				break;
+			}
+		}
+		if (group === null) {
+			group = { key: v, items: [] };
+			groups.push(group);
+		}
+		group.items.push(item);
+	}
+	return groups;
+}`,
+	},
+	summarizeSplit: {
+		uses: ['summarizeLeaf', 'summarizeGroups'],
+		source: `/** The items of the Summarize node in \`separateItems\` mode, built from the leaves up. */
+function summarizeSplit(
+	items: Json[],
+	fields: Json[],
+	splits: Json[],
+	k: number,
+	dot: boolean,
+	toStringKeys: boolean,
+	skipEmpty: boolean,
+): Json[] {
+	if (k === splits.length) return [summarizeLeaf(items, fields, dot)];
+	const spec = splits[k];
+	const groups = summarizeGroups(items, spec, dot, toStringKeys, skipEmpty);
+	const out: Json[] = [];
+	for (const g of groups) {
+		const inner = summarizeSplit(g.items, fields, splits, k + 1, dot, toStringKeys, skipEmpty);
+		for (const item of inner) {
+			item[spec.out] = g.key;
+			out.push(item);
+		}
+	}
+	return out;
+}`,
+	},
+	summarizeNest: {
+		uses: ['summarizeLeaf', 'summarizeGroups'],
+		source: `/** The single item of the Summarize node in \`singleItem\` mode. */
+function summarizeNest(
+	items: Json[],
+	fields: Json[],
+	splits: Json[],
+	k: number,
+	dot: boolean,
+	toStringKeys: boolean,
+	skipEmpty: boolean,
+): Json {
+	if (k === splits.length) return summarizeLeaf(items, fields, dot);
+	const spec = splits[k];
+	const groups = summarizeGroups(items, spec, dot, toStringKeys, skipEmpty);
+	const out: Json = {};
+	for (const g of groups) {
+		out[g.key] = summarizeNest(g.items, fields, splits, k + 1, dot, toStringKeys, skipEmpty);
+	}
+	return out;
+}`,
+	},
+	summarize: {
+		uses: ['summarizeSplit', 'summarizeNest', 'summarizeValue'],
+		source: `/** The Summarize node: the items of the chosen output form, or the error of a missing field. */
+function summarize(
+	items: Json[],
+	fields: Json[],
+	splits: Json[],
+	dot: boolean,
+	toStringKeys: boolean,
+	skipEmpty: boolean,
+	single: boolean,
+	checkMissing: boolean,
+): Json[] {
+	if (checkMissing) {
+		for (const entry of fields) {
+			const field = entry.field;
+			if (field === '') continue;
+			let exist = false;
+			for (const item of items) {
+				if (summarizeValue(item, field, dot) !== undefined) {
+					exist = true;
+					break;
+				}
+			}
+			if (!exist) throw new Error("The field '" + field + "' does not exist in any items");
+		}
+	}
+	if (single) return [summarizeNest(items, fields, splits, 0, dot, toStringKeys, skipEmpty)];
+	return summarizeSplit(items, fields, splits, 0, dot, toStringKeys, skipEmpty);
+}`,
+	},
 	pickFields: {
 		uses: [],
 		source: `/** Keeps or drops top-level fields of each item; items left empty drop out. */

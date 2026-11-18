@@ -1,0 +1,248 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Split Out",
+		"Summarize",
+		"Respond"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"events": [
+							{
+								"country": "US",
+								"city": "NYC",
+								"score": 3,
+								"tag": "a",
+								"name": "Alice"
+							},
+							{
+								"country": "US",
+								"city": "LA",
+								"score": 7.5,
+								"tag": "a",
+								"name": "Bob"
+							},
+							{
+								"country": "UK",
+								"city": "London",
+								"score": 9,
+								"tag": "b",
+								"name": "Carol"
+							},
+							{
+								"country": "UK",
+								"city": "London",
+								"score": 4,
+								"tag": "a",
+								"name": "Dave"
+							},
+							{
+								"country": "US",
+								"city": "NYC",
+								"score": null,
+								"tag": "b",
+								"name": "Eve"
+							}
+						]
+					}
+				}
+			]
+		],
+		"Split Out": [
+			[
+				{
+					"country": "US",
+					"city": "NYC",
+					"score": 3,
+					"tag": "a",
+					"name": "Alice"
+				},
+				{
+					"country": "US",
+					"city": "LA",
+					"score": 7.5,
+					"tag": "a",
+					"name": "Bob"
+				},
+				{
+					"country": "UK",
+					"city": "London",
+					"score": 9,
+					"tag": "b",
+					"name": "Carol"
+				},
+				{
+					"country": "UK",
+					"city": "London",
+					"score": 4,
+					"tag": "a",
+					"name": "Dave"
+				},
+				{
+					"country": "US",
+					"city": "NYC",
+					"score": null,
+					"tag": "b",
+					"name": "Eve"
+				}
+			]
+		],
+		"Summarize": [
+			[
+				{
+					"count_name": 2,
+					"sum_score": 3,
+					"average_score": 3,
+					"min_score": 3,
+					"max_score": 3,
+					"unique_count_tag": 2,
+					"appended_name": [
+						"Alice",
+						"Eve"
+					],
+					"concatenated_name": "Alice, Eve",
+					"city": "NYC",
+					"country": "US"
+				},
+				{
+					"count_name": 1,
+					"sum_score": 7.5,
+					"average_score": 7.5,
+					"min_score": 7.5,
+					"max_score": 7.5,
+					"unique_count_tag": 1,
+					"appended_name": [
+						"Bob"
+					],
+					"concatenated_name": "Bob",
+					"city": "LA",
+					"country": "US"
+				},
+				{
+					"count_name": 2,
+					"sum_score": 13,
+					"average_score": 6.5,
+					"min_score": 4,
+					"max_score": 9,
+					"unique_count_tag": 2,
+					"appended_name": [
+						"Carol",
+						"Dave"
+					],
+					"concatenated_name": "Carol, Dave",
+					"city": "London",
+					"country": "UK"
+				}
+			]
+		],
+		"Respond": [
+			[
+				{
+					"count_name": 2,
+					"sum_score": 3,
+					"average_score": 3,
+					"min_score": 3,
+					"max_score": 3,
+					"unique_count_tag": 2,
+					"appended_name": [
+						"Alice",
+						"Eve"
+					],
+					"concatenated_name": "Alice, Eve",
+					"city": "NYC",
+					"country": "US"
+				},
+				{
+					"count_name": 1,
+					"sum_score": 7.5,
+					"average_score": 7.5,
+					"min_score": 7.5,
+					"max_score": 7.5,
+					"unique_count_tag": 1,
+					"appended_name": [
+						"Bob"
+					],
+					"concatenated_name": "Bob",
+					"city": "LA",
+					"country": "US"
+				},
+				{
+					"count_name": 2,
+					"sum_score": 13,
+					"average_score": 6.5,
+					"min_score": 4,
+					"max_score": 9,
+					"unique_count_tag": 2,
+					"appended_name": [
+						"Carol",
+						"Dave"
+					],
+					"concatenated_name": "Carol, Dave",
+					"city": "London",
+					"country": "UK"
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": [
+		{
+			"body": [
+				{
+					"count_name": 2,
+					"sum_score": 3,
+					"average_score": 3,
+					"min_score": 3,
+					"max_score": 3,
+					"unique_count_tag": 2,
+					"appended_name": [
+						"Alice",
+						"Eve"
+					],
+					"concatenated_name": "Alice, Eve",
+					"city": "NYC",
+					"country": "US"
+				},
+				{
+					"count_name": 1,
+					"sum_score": 7.5,
+					"average_score": 7.5,
+					"min_score": 7.5,
+					"max_score": 7.5,
+					"unique_count_tag": 1,
+					"appended_name": [
+						"Bob"
+					],
+					"concatenated_name": "Bob",
+					"city": "LA",
+					"country": "US"
+				},
+				{
+					"count_name": 2,
+					"sum_score": 13,
+					"average_score": 6.5,
+					"min_score": 4,
+					"max_score": 9,
+					"unique_count_tag": 2,
+					"appended_name": [
+						"Carol",
+						"Dave"
+					],
+					"concatenated_name": "Carol, Dave",
+					"city": "London",
+					"country": "UK"
+				}
+			],
+			"headers": {},
+			"statusCode": 200
+		}
+	]
+}
