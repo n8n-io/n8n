@@ -501,8 +501,11 @@ describe('AssistantAgentProvider', () => {
 			const { sandboxFiles } = on.environment.context;
 			expect(sandboxFiles?.maxImportBytes).toBe(200 * 1024 * 1024);
 			// The Assistant gives the files only. The host adds the sandbox of the turn.
-			await expect(sandboxFiles?.importFiles({ 'a.csv': 'f1' })).resolves.toEqual(imported);
-			expect(importFiles).toHaveBeenCalledWith(sandboxWorkspace, { 'a.csv': 'f1' });
+			const abortSignal = new AbortController().signal;
+			await expect(sandboxFiles?.importFiles({ 'a.csv': 'f1' }, abortSignal)).resolves.toEqual(
+				imported,
+			);
+			expect(importFiles).toHaveBeenCalledWith(sandboxWorkspace, { 'a.csv': 'f1' }, abortSignal);
 		});
 
 		it('tells the model that a conversation without a sandbox cannot import files', async () => {

@@ -969,16 +969,17 @@ export class SystemAgentExecutionService {
 		return {
 			sandboxFiles: {
 				maxImportBytes: this.sandboxFiles.maxImportBytes,
-				importFiles: async (workspace, files) =>
+				importFiles: async (workspace, files, abortSignal) =>
 					await this.sandboxFiles
 						.importFilesFrom(
 							workspace,
 							files,
 							async (fileId) => await this.findThreadAttachment(thread, resourceId, fileId),
+							abortSignal,
 						)
 						.catch((error: unknown) => {
 							// A check error is for the model. A raw storage or sandbox error is not.
-							if (error instanceof UserError) throw error;
+							if (error instanceof UserError || abortSignal?.aborted) throw error;
 							throw new UserError('The files could not be copied to inputs/', { cause: error });
 						}),
 			},

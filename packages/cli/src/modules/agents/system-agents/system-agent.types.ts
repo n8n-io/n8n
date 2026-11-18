@@ -96,9 +96,14 @@ export interface SystemAgentSandboxFiles {
 	 * value a fileId. Nothing is written when a check fails.
 	 * @throws {UserError} with a message for the model, when a file is not in
 	 * the thread, a path leaves `inputs/`, the files are over the import cap, or
-	 * the copy fails.
+	 * the copy fails. The message of a failed copy names the files that were
+	 * copied before it.
 	 */
-	importFiles(workspace: Workspace, files: Record<string, string>): Promise<ImportedSandboxFile[]>;
+	importFiles(
+		workspace: Workspace,
+		files: Record<string, string>,
+		abortSignal?: AbortSignal,
+	): Promise<ImportedSandboxFile[]>;
 }
 
 /** A stored file of a system-agent thread. */

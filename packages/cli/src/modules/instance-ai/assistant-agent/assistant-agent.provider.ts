@@ -351,10 +351,10 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			const { context } = environment;
 			context.sandboxFiles = {
 				maxImportBytes: sandboxFiles.maxImportBytes,
-				importFiles: async (files) => {
+				importFiles: async (files, abortSignal) => {
 					const { workspace } = context;
 					if (!workspace) throw new UserError('This conversation has no sandbox');
-					return await sandboxFiles.importFiles(workspace, files);
+					return await sandboxFiles.importFiles(workspace, files, abortSignal);
 				},
 			};
 		}

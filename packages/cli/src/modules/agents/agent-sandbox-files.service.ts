@@ -154,17 +154,20 @@ export class AgentSandboxFilesService {
 	 * Copy conversation files into `inputs/` of the workspace. Each key is a
 	 * path relative to `inputs/`, each value a fileId that the thread can read.
 	 * @throws {UserError} when a file is not readable, a path leaves `inputs/`,
-	 * or the files are larger than the import cap together.
+	 * the files are larger than the import cap together, or a copy fails. The
+	 * message of a failed copy names the files that were copied before it.
 	 */
 	async importFiles(
 		workspace: Workspace,
 		files: Record<string, string>,
 		scope: { projectId: string; threadId: string },
+		abortSignal?: AbortSignal,
 	): Promise<ImportedSandboxFile[]> {
 		return await this.importFilesFrom(
 			workspace,
 			files,
 			async (fileId) => await this.attachmentService.getReadable(fileId, scope),
+			abortSignal,
 		);
 	}
 
@@ -178,6 +181,7 @@ export class AgentSandboxFilesService {
 		workspace: Workspace,
 		files: Record<string, string>,
 		findFile: FindImportableFile,
+		abortSignal?: AbortSignal,
 	): Promise<ImportedSandboxFile[]> {
 		const filesystem = workspace.filesystem;
 		if (!filesystem) throw new UserError('This run has no workspace filesystem');
@@ -203,11 +207,22 @@ export class AgentSandboxFilesService {
 		}
 		const imported: ImportedSandboxFile[] = [];
 		for (const { path, file } of entries) {
-			// ponytail: loads each file into memory, up to the import cap. Stream it if the cap grows.
-			await filesystem.writeFile(path, await this.attachmentService.getBuffer(file), {
-				recursive: true,
-				overwrite: true,
-			});
+			abortSignal?.throwIfAborted();
+			try {
+				// ponytail: loads each file into memory, up to the import cap. Stream it if the cap grows.
+				await filesystem.writeFile(path, await this.attachmentService.getBuffer(file), {
+					recursive: true,
+					overwrite: true,
+					abortSignal,
+				});
+			} catch (error) {
+				if (abortSignal?.aborted) throw error;
+				// The files before this one stay in the workspace, so the model must know them.
+				const copied = imported.length
+					? `These files were copied before it: ${imported.map((entry) => entry.path).join(', ')}.`
+					: 'No file was copied.';
+				throw new UserError(`Could not copy "${file.id}" to ${path}. ${copied}`, { cause: error });
+			}
 			imported.push({
 				fileId: file.id,
 				fileName: file.fileName,

@@ -2,6 +2,7 @@ import type { Workspace, WorkspaceFilesystem, WorkspaceSandbox } from '@n8n/agen
 import type { Logger } from '@n8n/backend-common';
 import type { PostHogClient } from '@n8n/backend-services';
 import type { AgentsConfig } from '@n8n/config';
+import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import {
@@ -282,8 +283,47 @@ describe('AgentSandboxFilesService', () => {
 			expect(filesystem.writeFile).toHaveBeenCalledWith(
 				'inputs/data/sales.csv',
 				Buffer.from('a,b'),
-				{ recursive: true, overwrite: true },
+				{ recursive: true, overwrite: true, abortSignal: undefined },
 			);
+		});
+
+		it('names the files that were copied before a failed write', async () => {
+			readable({ f1: 3, f2: 3 });
+			attachmentService.getBuffer.mockResolvedValue(Buffer.from('a,b'));
+			filesystem.writeFile
+				.mockResolvedValueOnce(undefined)
+				.mockRejectedValueOnce(new Error('sandbox write failed at 10.0.0.3'));
+
+			const error = await service
+				.importFiles(workspace, { 'a.csv': 'f1', 'b.csv': 'f2' }, readScope)
+				.catch((caught: unknown) => caught);
+
+			expect(error).toBeInstanceOf(UserError);
+			expect((error as Error).message).toBe(
+				'Could not copy "f2" to inputs/b.csv. These files were copied before it: inputs/a.csv.',
+			);
+		});
+
+		it('stops a cancelled import before the next write', async () => {
+			readable({ f1: 3, f2: 3 });
+			attachmentService.getBuffer.mockResolvedValue(Buffer.from('a,b'));
+			const controller = new AbortController();
+			filesystem.writeFile.mockImplementationOnce(async () => controller.abort());
+
+			await expect(
+				service.importFiles(
+					workspace,
+					{ 'a.csv': 'f1', 'b.csv': 'f2' },
+					readScope,
+					controller.signal,
+				),
+			).rejects.not.toBeInstanceOf(UserError);
+			expect(filesystem.writeFile).toHaveBeenCalledTimes(1);
+			expect(filesystem.writeFile).toHaveBeenCalledWith('inputs/a.csv', expect.anything(), {
+				recursive: true,
+				overwrite: true,
+				abortSignal: controller.signal,
+			});
 		});
 
 		it('writes nothing when a file is not readable', async () => {

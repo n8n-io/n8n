@@ -38,7 +38,12 @@ export function createImportFilesTool({
 			// Not `files`: the chat shows the `files` of a tool result as new files, and these
 			// are copies of files that the conversation already has.
 			return {
-				imported: await sandboxFiles.importFiles(workspace, files, { projectId, threadId }),
+				imported: await sandboxFiles.importFiles(
+					workspace,
+					files,
+					{ projectId, threadId },
+					ctx.abortSignal,
+				),
 			};
 		});
 }

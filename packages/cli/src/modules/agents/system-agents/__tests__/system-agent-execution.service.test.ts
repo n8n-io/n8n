@@ -757,10 +757,14 @@ describe('SystemAgentExecutionService', () => {
 				];
 				sandboxFiles.importFilesFrom.mockResolvedValue(imported);
 
-				await expect(importFiles(workspace, { 'a.csv': 'f1' })).resolves.toEqual(imported);
+				const abortSignal = new AbortController().signal;
+				await expect(importFiles(workspace, { 'a.csv': 'f1' }, abortSignal)).resolves.toEqual(
+					imported,
+				);
 
-				const [, files, findFile] = sandboxFiles.importFilesFrom.mock.calls[0];
+				const [, files, findFile, signal] = sandboxFiles.importFilesFrom.mock.calls[0];
 				expect(files).toEqual({ 'a.csv': 'f1' });
+				expect(signal).toBe(abortSignal);
 				attachmentService.getForSystemAgent.mockResolvedValueOnce({
 					id: 'f1',
 					threadId: 'thread-1',
@@ -791,6 +795,18 @@ describe('SystemAgentExecutionService', () => {
 				sandboxFiles.importFilesFrom.mockRejectedValueOnce(new Error('ECONNRESET 10.0.0.3'));
 				await expect(importFiles(workspace, { 'a.csv': 'x' })).rejects.toThrow(
 					'The files could not be copied to inputs/',
+				);
+			});
+
+			it('keeps the error of a cancelled import', async () => {
+				const { importFiles, sandboxFiles } = await importFilesOfTurn();
+				const controller = new AbortController();
+				controller.abort();
+				const abortError = new DOMException('aborted', 'AbortError');
+				sandboxFiles.importFilesFrom.mockRejectedValueOnce(abortError);
+
+				await expect(importFiles(workspace, { 'a.csv': 'x' }, controller.signal)).rejects.toBe(
+					abortError,
 				);
 			});
 		});

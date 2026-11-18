@@ -48,7 +48,7 @@ describe('createImportFilesTool', () => {
 
 		const result = await run({ files: [{ fileId: 'file-1' }] });
 
-		expect(importFiles).toHaveBeenCalledWith({ 'sales.csv': 'file-1' });
+		expect(importFiles.mock.calls[0][0]).toEqual({ 'sales.csv': 'file-1' });
 		// Not under `files`, so the chat does not show the upload again as a new file.
 		expect(result).toEqual({
 			imported: [
@@ -86,7 +86,7 @@ describe('createImportFilesTool', () => {
 
 		await run({ files: [{ fileId: 'file-1', path }] });
 
-		expect(importFiles).toHaveBeenCalledWith({ [expected]: 'file-1' });
+		expect(importFiles.mock.calls[0][0]).toEqual({ [expected]: 'file-1' });
 	});
 
 	it('uses the base name of a file name that has directories', async () => {
@@ -94,7 +94,7 @@ describe('createImportFilesTool', () => {
 
 		await run({ files: [{ fileId: 'file-1' }] });
 
-		expect(importFiles).toHaveBeenCalledWith({ 'sales.csv': 'file-1' });
+		expect(importFiles.mock.calls[0][0]).toEqual({ 'sales.csv': 'file-1' });
 	});
 
 	it('keeps a file named inputs under its name', async () => {
@@ -102,7 +102,7 @@ describe('createImportFilesTool', () => {
 
 		await run({ files: [{ fileId: 'file-1' }] });
 
-		expect(importFiles).toHaveBeenCalledWith({ inputs: 'file-1' });
+		expect(importFiles.mock.calls[0][0]).toEqual({ inputs: 'file-1' });
 	});
 
 	it('uses the fileId when the file name is not a usable path', async () => {
@@ -110,7 +110,7 @@ describe('createImportFilesTool', () => {
 
 		await run({ files: [{ fileId: 'file-1' }] });
 
-		expect(importFiles).toHaveBeenCalledWith({ 'file-1': 'file-1' });
+		expect(importFiles.mock.calls[0][0]).toEqual({ 'file-1': 'file-1' });
 	});
 
 	it('copies nothing when one file is not in the conversation', async () => {
@@ -158,6 +158,20 @@ describe('createImportFilesTool', () => {
 			imported: [],
 			error: 'One import copies up to 200 MB. Import fewer files at a time',
 		});
+	});
+
+	it('gives the host the abort signal of the call, and rethrows when the call was cancelled', async () => {
+		const { tool, importFiles } = setup({ 'file-1': storedFile('a.csv') });
+		const controller = new AbortController();
+		importFiles.mockImplementationOnce(async () => {
+			controller.abort();
+			throw new Error('write stopped');
+		});
+
+		await expect(
+			executeTool(tool, { files: [{ fileId: 'file-1' }] }, { abortSignal: controller.signal }),
+		).rejects.toThrow('write stopped');
+		expect(importFiles).toHaveBeenCalledWith({ 'a.csv': 'file-1' }, controller.signal);
 	});
 
 	it('names the configured cap in its description', () => {

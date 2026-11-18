@@ -24,16 +24,24 @@ describe('createImportFilesTool', () => {
 		};
 		sandboxFiles.importFiles.mockResolvedValue([copy]);
 
+		const abortSignal = new AbortController().signal;
+
 		const result = await build().handler!(
 			{ files: { 'sales.csv': 'f1' } },
-			{ parentTelemetry: undefined, persistence: { threadId: 'thread-1', resourceId: 'user-1' } },
+			{
+				parentTelemetry: undefined,
+				persistence: { threadId: 'thread-1', resourceId: 'user-1' },
+				abortSignal,
+			},
 		);
 
 		expect(result).toEqual({ imported: [copy] });
+		// A cancelled run stops the copy.
 		expect(sandboxFiles.importFiles).toHaveBeenCalledWith(
 			workspace,
 			{ 'sales.csv': 'f1' },
 			{ projectId: 'project-1', threadId: 'thread-1' },
+			abortSignal,
 		);
 	});
 });

@@ -137,7 +137,7 @@ export function createImportFilesTool(
 		.description(describeTool(sandboxFiles.maxImportBytes))
 		.input(importFilesInputSchema)
 		.output(importFilesOutputSchema)
-		.handler(async ({ files }: ImportFilesInput): Promise<ImportFilesOutput> => {
+		.handler(async ({ files }: ImportFilesInput, ctx): Promise<ImportFilesOutput> => {
 			const fail = (error: string): ImportFilesOutput => ({ imported: [], error });
 
 			// The default path needs the file name, so read the metadata of each file first.
@@ -161,7 +161,10 @@ export function createImportFilesTool(
 
 			// The host checks every file, path and the cap before the first write.
 			try {
-				const imported = await sandboxFiles.importFiles(Object.fromEntries(byPath));
+				const imported = await sandboxFiles.importFiles(
+					Object.fromEntries(byPath),
+					ctx.abortSignal,
+				);
 				return {
 					imported: imported.map((file) => ({
 						...file,
@@ -171,7 +174,8 @@ export function createImportFilesTool(
 					})),
 				};
 			} catch (error) {
-				if (isAbortError(error)) throw error;
+				if (isAbortError(error) || ctx.abortSignal?.aborted) throw error;
+				// A failed copy names the files that were copied before it, so `imported` stays empty.
 				return fail(error instanceof Error ? error.message : String(error));
 			}
 		})

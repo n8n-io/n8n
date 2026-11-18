@@ -1720,9 +1720,13 @@ export interface InstanceAiSandboxFiles {
 	 * Copy conversation files into `inputs/` of the sandbox. Each key is a path
 	 * relative to `inputs/`, each value a fileId. The host checks every file,
 	 * path and the cap before the first write. Throws when a check or the copy
-	 * fails. The message is for the model.
+	 * fails. The message is for the model, and for a failed copy it names the
+	 * files that were copied before it.
 	 */
-	importFiles(files: Record<string, string>): Promise<InstanceAiImportedFile[]>;
+	importFiles(
+		files: Record<string, string>,
+		abortSignal?: AbortSignal,
+	): Promise<InstanceAiImportedFile[]>;
 }
 
 /** A conversation file that the host copied into the sandbox. */

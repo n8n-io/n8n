@@ -1352,12 +1352,14 @@ The tool reads the name of each file and picks its path in `inputs/`. Then
 this is the same code as `import_files` of project agents
 (`AgentSandboxFilesService.importFilesFrom`), but the files come from the system
 chat of the user. The host checks every file, path and the total size before
-the first write, so a failed check copies nothing.
+the first write, so a failed check copies nothing. The host then writes one
+file at a time. A cancelled turn stops the copy.
 
 The result lists each copied file under `imported`, with its absolute
-workspace path. When the copy fails, the result has no files and an `error`
-for the model. The list is not named `files`, because the chat shows the
-`files` of a tool result as new files.
+workspace path. When a check or the copy fails, the result has no files and an
+`error` for the model. A write can fail after other files were copied. These
+files stay in `inputs/`, and the `error` names them. The list is not named
+`files`, because the chat shows the `files` of a tool result as new files.
 
 ## `ask_user`
 
