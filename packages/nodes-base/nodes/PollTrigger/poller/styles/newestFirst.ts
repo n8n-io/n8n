@@ -15,12 +15,17 @@ const combine = (a: Frontier | undefined, b: Frontier | undefined): Frontier | u
 const baselineNewest = async (ctx: Ctx): Promise<Outcome> => {
 	const { config } = ctx;
 	if (config.sortKeyIsTime) {
-		return { items: [], state: { v: 2, target: { ts: config.clock() - config.skewMs, keys: [] } } };
+		return {
+			items: [],
+			state: { v: 2, target: { ts: config.clock() - config.skewMs, keys: [] } },
+			baseline: true,
+		};
 	}
 	const head = (await fetchRows(ctx, headPosition())).rows[0];
 	return {
 		items: [],
 		state: { v: 2, target: head ? { ts: head.ts, keys: [head.hash] } : emptyFrontier() },
+		baseline: true,
 	};
 };
 

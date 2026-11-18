@@ -19,6 +19,7 @@ export const pollSince = async (ctx: Ctx, state: State | undefined): Promise<Out
 		return {
 			items: [],
 			state: { v: 2, frontier: { ts: config.clock() - config.skewMs, keys: [] } },
+			baseline: true,
 		};
 	}
 	const walking = state.cursor !== undefined && state.position !== undefined;
@@ -157,6 +158,7 @@ export const pollTail = async (ctx: Ctx, state: State | undefined): Promise<Outc
 		return {
 			items: [],
 			state: { v: 2, frontier: { ts: config.clock() - config.skewMs, keys: [] } },
+			baseline: true,
 		};
 	}
 	if (!state || state.baselining) return await baselineTail(ctx, state);
