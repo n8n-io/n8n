@@ -41,8 +41,6 @@ export interface PlanHydratorDeps {
 	// Lookup tools that the gym answers first. An object that an agent created in the gym has no
 	// real copy, and a real object with the same key is another object.
 	gymFirst?: ReadonlySet<string>;
-	// Read tools that list entities with fewer fields than a lookup of one entity gives.
-	listTools?: ReadonlySet<string>;
 	// The gym takes a seed of an entity that it has and adds the new children, see SeededEntities.
 	keepParents?: boolean;
 }
@@ -63,6 +61,9 @@ interface Plan {
 const MAX_READS = 4;
 const MAX_LOOKUPS = 8;
 // Keys of a write result that hold the id of an object.
+// Tools that return one whole entity: get_issue, notion-fetch.
+const DETAIL_TOOL = /(^|[-_])(get|fetch)([-_]|$)/;
+
 const MADE_ID_KEYS: ReadonlySet<string> = new Set(['id', 'uuid', 'identifier', 'page_id']);
 const MAX_SHOWN = 6000;
 const MAX_REPAIRS: number = 2;
@@ -282,7 +283,8 @@ export class PlanHydrator implements Hydrator {
 			plan = await this.ask(fullPrompt, stats);
 		}
 		const trace: { sent?: unknown } = {};
-		const shallow = this.deps.listTools?.has(tool) === true;
+		// A read that is not a lookup of one entity (a list, a search, a query) shows fewer fields.
+		const shallow = verify !== undefined && !DETAIL_TOOL.test(tool);
 		let problem = await this.apply(plan, ctx, verify, MAX_REPAIRS === 0, trace, shallow);
 		for (let repair = 0; problem !== undefined && repair < MAX_REPAIRS; repair++) {
 			// The gym's error names a path and a rule. Cut the request line, so the rule fits.
