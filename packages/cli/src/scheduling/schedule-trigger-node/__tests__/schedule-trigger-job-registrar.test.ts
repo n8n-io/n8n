@@ -3,7 +3,6 @@ import type { Logger } from '@n8n/backend-common';
 import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import type { EntityManager } from '@n8n/db';
 import type { CronDefinition } from '@n8n/scheduler';
 import { Cron as CronNode } from 'n8n-nodes-base/nodes/Cron/Cron.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
@@ -1118,20 +1117,6 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			await makeRegistrar({ schedulerEnabled: false }).removeWorkflow(WORKFLOW_ID);
 
 			expect(jobProvisioner.deprovisionOwnerTaskType).toHaveBeenCalledWith(
-				OWNER_REF,
-				SCHEDULE_TRIGGER_TASK_TYPE,
-			);
-		});
-	});
-
-	describe('removeWorkflowInTransaction', () => {
-		it("removes the workflow's durable jobs through the caller's transaction", async () => {
-			const manager = mock<EntityManager>();
-
-			await makeRegistrar().removeWorkflowInTransaction(manager, WORKFLOW_ID);
-
-			expect(jobProvisioner.deprovisionOwnerTaskTypeInTransaction).toHaveBeenCalledWith(
-				manager,
 				OWNER_REF,
 				SCHEDULE_TRIGGER_TASK_TYPE,
 			);

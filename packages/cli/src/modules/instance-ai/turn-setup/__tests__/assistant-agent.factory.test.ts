@@ -33,23 +33,25 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 			user: User,
 			threadId: string,
 			runId: string,
-			memoryModelId?: ModelConfig,
+			utilityModelId?: ModelConfig,
 			observerThresholdTokens?: number,
 			generateTitle?: boolean,
 		) => {
 			observationalMemory: {
 				observerThresholdTokens: number;
+				reflectorThresholdTokens?: number;
 				model?: ModelConfig;
 				onTaskUsage: (report: MemoryTaskUsageReport) => Promise<void>;
+				policy?: Record<string, unknown>;
 			};
 			titleGeneration?: { model?: ModelConfig; sync?: boolean };
 		};
 		instanceAiConfig: Pick<
 			InstanceAiConfig,
 			'observerMessageTokens' | 'reflectorObservationTokens'
-		>;
-		creditService: { claimRunUsage: Mock };
-		logger: { warn: Mock };
+		> &
+			Partial<InstanceAiConfig>;
+		creditService: { claimSideCallUsage: Mock };
 	};
 
 	function buildService(): MemoryOptionsInternals {
@@ -57,8 +59,7 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 			AssistantAgentFactory.prototype,
 		) as unknown as MemoryOptionsInternals;
 		service.instanceAiConfig = { observerMessageTokens: 8_000, reflectorObservationTokens: 12_000 };
-		service.creditService = { claimRunUsage: vi.fn(async () => {}) };
-		service.logger = { warn: vi.fn() };
+		service.creditService = { claimSideCallUsage: vi.fn(async () => {}) };
 		return service;
 	}
 
@@ -70,6 +71,27 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 			'run-1',
 		).observationalMemory;
 		expect(observerThresholdTokens).toBe(8_000);
+	});
+
+	it('passes a set reflector threshold to the SDK', () => {
+		const service = buildService();
+		const { observationalMemory } = service.createAgentMemoryOptions(
+			{ id: 'user-1' } as User,
+			'thread-1',
+			'run-1',
+		);
+		expect(observationalMemory.reflectorThresholdTokens).toBe(12_000);
+	});
+
+	it('leaves the reflector threshold unset so the SDK uses the reflect share', () => {
+		const service = buildService();
+		service.instanceAiConfig = { observerMessageTokens: 8_000 };
+		const { observationalMemory } = service.createAgentMemoryOptions(
+			{ id: 'user-1' } as User,
+			'thread-1',
+			'run-1',
+		);
+		expect(observationalMemory).not.toHaveProperty('reflectorThresholdTokens');
 	});
 
 	it('passes the memory model to the memory tasks, and leaves it unset by default', () => {
@@ -129,7 +151,63 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 		expect(observerThresholdTokens).toBe(1_000);
 	});
 
-	it('claims converted usage under the orchestrator dedupe key, and skips claiming when usage is zero', async () => {
+	it('passes the configured memory policy to the observational memory options', () => {
+		const service = buildService();
+		Object.assign(service.instanceAiConfig, {
+			observationMaxWindowTokens: 0,
+			observationLogPlacement: 'message',
+			observationFailurePolicy: 'retry',
+			observerMaxBatches: 5,
+			reflectionMode: 'afterObserve',
+			historyRecall: true,
+		});
+		const { policy } = service.createAgentMemoryOptions(
+			{ id: 'user-1' } as User,
+			'thread-1',
+			'run-1',
+		).observationalMemory;
+		expect(policy).toEqual({
+			windowShares: {},
+			logPlacement: 'message',
+			failurePolicy: 'retry',
+			maxObserverBatchesAfterTurn: 5,
+			reflectionMode: 'afterObserve',
+			historyRecall: true,
+		});
+	});
+
+	it('passes the window cap with the window shares, and omits it when set to 0', () => {
+		const service = buildService();
+		Object.assign(service.instanceAiConfig, {
+			observationMaxWindowTokens: 200_000,
+		});
+		const create = () =>
+			service.createAgentMemoryOptions({ id: 'user-1' } as User, 'thread-1', 'run-1')
+				.observationalMemory.policy;
+		expect(create()?.windowShares).toEqual({ maxContextWindowTokens: 200_000 });
+
+		service.instanceAiConfig.observationMaxWindowTokens = 0;
+		expect(create()?.windowShares).toEqual({});
+	});
+
+	it('keeps the eval threshold override over window shares', () => {
+		const service = buildService();
+		Object.assign(service.instanceAiConfig, {
+			observerMaxBatches: 0,
+		});
+		const { policy, observerThresholdTokens } = service.createAgentMemoryOptions(
+			{ id: 'user-1' } as User,
+			'thread-1',
+			'run-1',
+			undefined,
+			1_000,
+		).observationalMemory;
+		expect(observerThresholdTokens).toBe(1_000);
+		expect(policy?.windowShares).toBeUndefined();
+		expect(policy?.maxObserverBatchesAfterTurn).toBe(0);
+	});
+
+	it('claims each memory task call under the orchestrator dedupe key', async () => {
 		const service = buildService();
 		const user = { id: 'user-1' } as User;
 		const { onTaskUsage } = service.createAgentMemoryOptions(
@@ -137,39 +215,21 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 			'thread-1',
 			'run-1',
 		).observationalMemory;
-
-		await onTaskUsage({
-			task: 'observer',
+		const report = {
+			task: 'observer' as const,
 			model: 'anthropic/claude-sonnet-4-5',
 			usage: { promptTokens: 100, completionTokens: 20, totalTokens: 120 },
 			reportId: 'report-1',
-		});
+		};
 
-		expect(service.creditService.claimRunUsage).toHaveBeenCalledWith(
+		await onTaskUsage(report);
+
+		expect(service.creditService.claimSideCallUsage).toHaveBeenCalledWith(
 			user,
 			'thread-1',
 			'run-1:memory:observer:report-1',
-			[
-				{
-					type: 'llmTokens',
-					model: 'anthropic/claude-sonnet-4-5',
-					uncachedInput: 0,
-					cacheRead: 0,
-					cacheWrite: 0,
-					output: 20,
-				},
-			],
-			'completed',
+			report,
 		);
-
-		await onTaskUsage({
-			task: 'reflector',
-			model: 'anthropic/claude-sonnet-4-5',
-			usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
-			reportId: 'report-2',
-		});
-
-		expect(service.creditService.claimRunUsage).toHaveBeenCalledTimes(1);
 	});
 });
 

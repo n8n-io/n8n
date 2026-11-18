@@ -73,6 +73,47 @@ export class EngineConfig {
 	databaseUrl: string = '';
 
 	/**
+	 * How many workflow steps one engine process runs at the same time, where
+	 * each step is one run of one node. In `in-process` mode, the engine process
+	 * is the n8n main process. A higher value uses more memory.
+	 *
+	 * This is in development and not ready for use.
+	 */
+	@Env('N8N_ENGINE_STEP_CONCURRENCY', positiveIntSchema)
+	stepConcurrency: number = 1;
+
+	/**
+	 * How many planning tasks one engine process runs at the same time. A planning
+	 * task starts an execution, or decides what runs next after a step finishes.
+	 * In `in-process` mode, the engine process is the n8n main process.
+	 *
+	 * This is in development and not ready for use.
+	 */
+	@Env('N8N_ENGINE_ORCHESTRATION_CONCURRENCY', positiveIntSchema)
+	orchestrationConcurrency: number = 1;
+
+	/**
+	 * Maximum number of connections in the engine's Postgres connection pool, for
+	 * each engine process. Raise it when the engine reports connection timeouts
+	 * while the database responds normally.
+	 *
+	 * This is in development and not ready for use.
+	 */
+	@Env('N8N_ENGINE_DATABASE_POOL_SIZE', positiveIntSchema)
+	databasePoolSize: number = 10;
+
+	/**
+	 * How long in milliseconds the engine waits for a Postgres connection, either
+	 * a new one or a free one from the pool. When the wait runs out, the work that
+	 * needed the connection fails. A step can fail, or an execution can stop
+	 * making progress.
+	 *
+	 * This is in development and not ready for use.
+	 */
+	@Env('N8N_ENGINE_DATABASE_CONNECTION_TIMEOUT', positiveIntSchema.max(2147483647))
+	databaseConnectionTimeoutMs: number = 20_000;
+
+	/**
 	 * Shared secret the control plane signs its identity token with and the engine
 	 * verifies against. Both planes must hold the same value.
 	 *
@@ -110,7 +151,11 @@ export class EngineConfig {
 	 * certificate. It needs the `serverAuth` and `clientAuth` key usages, and its
 	 * subject alternative name must match the host in the URL the other side
 	 * dials. Set it together with `N8N_ENGINE_TLS_KEY_FILE` and
-	 * `N8N_ENGINE_TLS_CA_FILE`.
+	 * `N8N_ENGINE_TLS_CA_FILE`. n8n reads the three files again when they
+	 * change, so a renewed certificate applies to new connections without a
+	 * restart. Mount the directory that holds the files, not single files.
+	 * Kubernetes does not update a Secret mounted with `subPath`, and a Docker
+	 * bind mount of a single file keeps the old file when the host replaces it.
 	 */
 	@Env('N8N_ENGINE_TLS_CERT_FILE')
 	tlsCertFile: string = '';

@@ -39,7 +39,12 @@ import { injectStrict } from '@/app/utils/injectStrict';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { hasNewWorkflowQuery, withoutNewWorkflowQuery } from '@/app/utils/workflowUtils';
 
-export function useWorkflowInitialization() {
+export function useWorkflowInitialization(
+	options: {
+		/** Shows a failed workflow load in place. Without it, the app opens an error page. */
+		onLoadError?: (error: unknown, workflowId: string) => void;
+	} = {},
+) {
 	const route = useRoute();
 	const router = useRouter();
 	const i18n = useI18n();
@@ -406,6 +411,10 @@ export function useWorkflowInitialization() {
 			);
 			void workflowsStore.fetchLastSuccessfulExecution();
 		} catch (error) {
+			if (options.onLoadError) {
+				options.onLoadError(error, id);
+				return;
+			}
 			if ((error as { httpStatusCode?: number }).httpStatusCode === 404) {
 				return await router.replace({
 					name: VIEWS.ENTITY_NOT_FOUND,

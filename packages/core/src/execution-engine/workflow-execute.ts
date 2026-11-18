@@ -51,11 +51,7 @@ import {
 	NodeHelpers,
 	NodeConnectionTypes,
 	ApplicationError,
-	BaseError,
 	isNodeClassInstance,
-	UnexpectedError,
-	UserError,
-	OperationalError,
 	NodeApiError,
 	TimeoutExecutionCancelledError,
 	ManualExecutionCancelledError,
@@ -65,6 +61,7 @@ import {
 	isExecutionOutputRedacted,
 	redactErrorReport,
 } from 'n8n-workflow';
+import { BaseError, UnexpectedError, UserError, OperationalError } from '@n8n/errors';
 import PCancelable, { type OnCancelFunction } from 'p-cancelable';
 
 import { ErrorReporter } from '@/errors/error-reporter';
@@ -1553,7 +1550,10 @@ export class WorkflowExecute {
 			// shares this node object (legacy `executionOrder: 'v0'` with multiple wires
 			// into the node): keeping the node enabled lets those later entries execute
 			// normally instead of passing their input through in disabled mode.
-			if (!executionStackEntry.metadata?.resumeError) {
+			if (
+				!executionStackEntry.metadata?.resumeError &&
+				executionStackEntry.metadata?.resumeMode !== 'reexecute'
+			) {
 				executionStackEntry.node.disabled = true;
 			}
 
@@ -2612,6 +2612,7 @@ export class WorkflowExecute {
 										this.additionalData,
 										this.mode,
 										this.abortController.signal,
+										subNodeExecutionResults,
 									);
 
 									nodeFailed = checkFailure(runNodeData);

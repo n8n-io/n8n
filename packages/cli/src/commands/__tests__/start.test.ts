@@ -31,12 +31,13 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
-import { JwtService, NodeTypesProxy, RoleCacheService } from '@n8n/backend-services';
+import { JwtService, NodeTypesProxy, PostHogClient, RoleCacheService } from '@n8n/backend-services';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
+const aiPreferenceSettingsService = mockInstance(AiPreferenceSettingsService);
 const authRolesService = mockInstance(AuthRolesService);
 authRolesService.init.mockResolvedValue(undefined);
 
@@ -139,6 +140,7 @@ describe('Start - AuthRolesService initialization', () => {
 
 		// Re-register all mocks
 		Container.set(AuthRolesService, authRolesService);
+		Container.set(AiPreferenceSettingsService, aiPreferenceSettingsService);
 		Container.set(RoleCacheService, roleCacheService);
 		Container.set(LoadNodesAndCredentials, loadNodesAndCredentials);
 		Container.set(DbConnection, dbConnection);
@@ -193,6 +195,7 @@ describe('Start - AuthRolesService initialization', () => {
 			},
 			cache: { backend: 'memory' },
 			taskRunners: {},
+			codeExecution: { backend: 'task-runners' },
 			outboundProxy: { mode: 'all' },
 			expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 			workflows: { useWorkflowPublicationService: false },
@@ -274,6 +277,7 @@ describe('Start - AuthRolesService initialization', () => {
 				},
 				cache: { backend: 'memory' },
 				taskRunners: {},
+				codeExecution: { backend: 'task-runners' },
 				outboundProxy: { mode: 'all' },
 				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 				workflows: { useWorkflowPublicationService: false },
@@ -313,6 +317,7 @@ describe('Start - AuthRolesService initialization', () => {
 				},
 				cache: { backend: 'memory' },
 				taskRunners: {},
+				codeExecution: { backend: 'task-runners' },
 				outboundProxy: { mode: 'all' },
 				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 				workflows: { useWorkflowPublicationService: false },
@@ -333,6 +338,7 @@ describe('Start - AuthRolesService initialization', () => {
 
 			// @ts-expect-error - Accessing private method for testing
 			expect(start.initInstanceSettingsLoader).toHaveBeenCalledTimes(1);
+			expect(aiPreferenceSettingsService.init).toHaveBeenCalledTimes(1);
 		});
 
 		it('should NOT initialize instance settings loader when instanceType is not main', async () => {
@@ -342,6 +348,7 @@ describe('Start - AuthRolesService initialization', () => {
 
 			// @ts-expect-error - Accessing private method for testing
 			expect(start.initInstanceSettingsLoader).not.toHaveBeenCalled();
+			expect(aiPreferenceSettingsService.init).not.toHaveBeenCalled();
 		});
 	});
 
@@ -362,6 +369,7 @@ describe('Start - AuthRolesService initialization', () => {
 			},
 			cache: { backend: 'memory' },
 			taskRunners: {},
+			codeExecution: { backend: 'task-runners' },
 			outboundProxy: { mode: 'all' },
 			expressionEngine: { engine: 'legacy' as const, poolSize: 1, maxCodeCacheSize: 1024 },
 			workflows: { useWorkflowPublicationService: false },

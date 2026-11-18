@@ -1,4 +1,4 @@
-import { type ContextCueSet, whileSkillActive } from '@n8n/agents';
+import { type ContextCueSet, whileSkillLoaded } from '@n8n/agents';
 
 /**
  * Context cues for the `workflow-builder` skill. They are not in
@@ -7,7 +7,7 @@ import { type ContextCueSet, whileSkillActive } from '@n8n/agents';
  */
 export const WORKFLOW_BUILDER_CUES: ContextCueSet = {
 	id: 'workflow-builder',
-	isActive: whileSkillActive('workflow-builder'),
+	isActive: whileSkillLoaded('workflow-builder'),
 	cues: [
 		{
 			id: 'if-branches-on-builder',
@@ -90,6 +90,12 @@ export const WORKFLOW_BUILDER_CUES: ContextCueSet = {
 			id: 'mock-output-raw-json',
 			text: 'SDK node mock `output` items are raw `$json` objects: write `[{ total: 42 }]`, never `[{ json: { total: 42 } }]`.',
 			appliesWhen: 'Writing mock output or sample data for nodes in workflow SDK code.',
+		},
+		{
+			id: 'mock-output-sample-files',
+			text: "Never write file bytes or base64 in mock `output` or `fixtureOverrides`. Use `{ $sampleFile: 'image/png' }` where a field holds base64 file data, or `$binary: { data: 'image/png' }` on an item for a binary property. Supported types: `image/png`, `image/jpeg`, `audio/mpeg`, `application/pdf`.",
+			appliesWhen:
+				'Writing mock output for a node that returns an image, audio, PDF or other file, either as base64 in a field or as a binary property.',
 		},
 		{
 			id: 'mock-output-all-fields',

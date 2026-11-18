@@ -21,6 +21,7 @@ import {
 	type InstanceAiElementAttachment,
 	type InstanceAiNodesAttachment,
 } from '@n8n/api-types';
+import { selfHealingLaunchTelemetry } from './assistantAgent/assistantAgentThreads';
 import { ensureThread, type InstanceAiThreadLaunchInput } from './instanceAi.api';
 import {
 	fetchThreads as fetchThreadsApi,
@@ -221,6 +222,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			...(typeof templateId === 'string' || typeof templateId === 'number'
 				? { template_id: templateId }
 				: {}),
+			...selfHealingLaunchTelemetry(launch),
 		});
 
 		const existingThread = threads.value.find((thread) => thread.id === threadId);
@@ -242,10 +244,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	 * `silent` suppresses the failure toast, for callers cleaning up after some other
 	 * failure they have already reported -- a second, unrelated "delete failed" on top of
 	 * the real error only confuses. Those callers should handle `false` themselves.
+	 * `preserveRuntime` keeps a mounted draft available after failed provisioning.
 	 */
 	async function deleteThread(
 		threadId: string,
-		options: { silent?: boolean } = {},
+		options: { silent?: boolean; preserveRuntime?: boolean } = {},
 	): Promise<boolean> {
 		// Only call API for threads that have been persisted to the backend
 		if (persistedThreadIds.has(threadId)) {
@@ -263,7 +266,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		// Remove thread from list
 		threads.value = threads.value.filter((t) => t.id !== threadId);
 		threadHistory.value.threads = threadHistory.value.threads.filter((t) => t.id !== threadId);
-		disposeRuntime(threadId);
+		if (!options.preserveRuntime) disposeRuntime(threadId);
 
 		return true;
 	}

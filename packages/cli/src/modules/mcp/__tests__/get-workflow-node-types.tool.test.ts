@@ -1,11 +1,11 @@
 import type { AiGatewayConfigDto } from '@n8n/api-types';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import { User } from '@n8n/db';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { NodeCatalogService } from '@/node-catalog';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { Telemetry } from '@/telemetry';
 
 import { createGetWorkflowNodeTypesTool } from '../tools/workflow-builder/get-workflow-node-types.tool';
 
@@ -26,13 +26,13 @@ vi.mock('@n8n/ai-workflow-builder', () => ({
 describe('get-workflow-node-types MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let nodeCatalogService: Mocked<NodeCatalogService>;
-	let telemetry: Mocked<Telemetry>;
+	let telemetry: Mocked<TelemetryProxy>;
 	let aiGatewayService: Mocked<AiGatewayService>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		nodeCatalogService = mock<NodeCatalogService>();
-		telemetry = mock<Telemetry>();
+		telemetry = mock<TelemetryProxy>();
 		aiGatewayService = mock<AiGatewayService>();
 		aiGatewayService.isAvailable.mockResolvedValue({ available: false });
 		nodeCatalogService.getNodeTypes.mockResolvedValue('typescript definitions');

@@ -15,7 +15,7 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { oldVersionNotice } from '@utils/descriptions';
 import { resolveQueryReplacementSegments } from '@utils/sql-query-parameters';
-import { getResolvables } from '@utils/utilities';
+import { resolveExpressions } from '@utils/utilities';
 
 import { createConnection, searchTables } from './GenericFunctions';
 import type { QueryValues } from '../v2/helpers/interfaces';
@@ -334,14 +334,11 @@ export class MySqlV1 implements INodeType {
 
 			try {
 				const queryQueue = items.map(async (_, index) => {
-					let rawQuery = (this.getNodeParameter('query', index) as string).trim();
-
-					for (const resolvable of getResolvables(rawQuery)) {
-						rawQuery = rawQuery.replace(
-							resolvable,
-							this.evaluateExpression(resolvable, index) as string,
-						);
-					}
+					const rawQuery = resolveExpressions(
+						(this.getNodeParameter('query', index) as string).trim(),
+						(resolvable) => this.evaluateExpression(resolvable, index),
+						{ legacy: true },
+					);
 
 					const options = this.getNodeParameter('options', index, {});
 					let queryReplacement = options.queryReplacement ?? [];

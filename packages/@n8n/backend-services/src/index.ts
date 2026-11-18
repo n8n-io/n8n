@@ -21,6 +21,12 @@ export {
 	CREDENTIAL_USABILITY_SCOPES,
 	type UnusableCredential,
 } from './credentials/credentials-finder.service';
+export {
+	CodeExecutionBackend,
+	type CodeExecutionBackendStatus,
+	type CodeTaskRequest,
+	toCodeTaskRequest,
+} from './code-execution/code-execution-backend';
 export { UncacheableValueError } from './errors/cache-errors/uncacheable-value.error';
 export { CacheService } from './services/cache/cache.service';
 export type { Hash, MaybeHash } from './services/cache/cache.types';
@@ -44,10 +50,17 @@ export {
 	type FavoriteResourceResolver,
 	type ResolvedFavoriteResourceType,
 } from './services/favorite-resource-resolver.registry';
+export { CollaborationState, type WriteLock } from './collaboration/collaboration.state';
+export {
+	AgentProjectLookupProxy,
+	type AgentProjectLookup,
+} from './collaboration/agent-project-lookup-proxy.service';
 export { WorkflowProjectService } from './services/workflow-project.service';
 export {
 	OwnershipTransferHandlerRegistry,
 	type ProjectOwnershipTransferHandler,
+	type UserDeletionActor,
+	type UserDeletionContext,
 } from './services/ownership-transfer-handler.registry';
 export {
 	WorkflowSharingService,
@@ -56,6 +69,7 @@ export {
 export { FolderFinderService } from './services/folder-finder.service';
 export { InstanceWriteAccessService } from './services/instance-write-access.service';
 export { UrlService } from './services/url.service';
+export { PostHogClient } from './services/posthog-client';
 export {
 	classifyRestError,
 	isResponseError,
@@ -96,6 +110,7 @@ export {
 	type PublishedWorkflowData,
 	type PublishedWorkflowDataForExecution,
 } from './workflows/workflow-published-data.service';
+export { WorkflowVersionedSettingsService } from './workflows/workflow-versioned-settings.service';
 
 export {
 	RuntimeCredentialProxyService,
@@ -105,8 +120,11 @@ export {
 	InstanceRegistryProxyService,
 	type InstanceRegistryProvider,
 } from './services/instance-registry-proxy.service';
+export { TelemetryProxy, type TelemetryTracker } from './services/telemetry-proxy.service';
 export { ExecutingUserIdentifierProxy } from './credentials/executing-user-identifier-proxy';
 export type { IExecutingUserIdentifier } from './credentials/executing-user-identifier.interface';
+export { ExecutionLedger, type CreatedExecution } from './executions/execution-ledger.service';
+export type * from './executions/execution-ledger-writer';
 export { ExecutionRedactionServiceProxy } from './executions/execution-redaction-proxy.service';
 export {
 	isRedactableExecution,
@@ -154,3 +172,5 @@ export {
 export { AiPreferenceScopeFullError } from './errors/response-errors/ai-preference-scope-full.error';
 export * from './auth';
 export { ProjectNotFoundError } from './errors/project-not-found.error';
+
+export { ExecutionRetentionService } from './services/execution-retention.service';

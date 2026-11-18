@@ -7,8 +7,10 @@ import type {
 	IWebhookFunctions,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 
 function getEnvironment(env: string) {
 	return {
@@ -29,16 +31,16 @@ async function getAccessToken(
 		{},
 		{ Authorization: `Basic ${data}`, 'Content-Type': 'application/x-www-form-urlencoded' },
 	);
-	const options: IRequestOptions = {
-		headers: headerWithAuthentication,
-		method: 'POST',
-		form: {
-			grant_type: 'client_credentials',
-		},
-		uri: `${env}/v1/oauth2/token`,
-		json: true,
-	};
 	try {
+		const options: WithRequestTarget<IRequestOptions, 'uri'> = {
+			headers: headerWithAuthentication,
+			method: 'POST',
+			form: {
+				grant_type: 'client_credentials',
+			},
+			uri: requestUrl`${env}/v1/oauth2/token`,
+			json: true,
+		};
 		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeOperationError(this.getNode(), error as Error);
@@ -47,7 +49,7 @@ async function getAccessToken(
 
 export async function payPalApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
-	endpoint: string,
+	endpoint: RequestPath,
 	method: IHttpRequestMethods,
 
 	body: any = {},
@@ -65,12 +67,12 @@ export async function payPalApiRequest(
 		headers: headerWithAuthentication,
 		method,
 		qs: query || {},
-		uri: uri || `${env}/v1${endpoint}`,
 		body,
 		json: true,
 	};
 	try {
-		return await this.helpers.request(options);
+		if (uri) return await this.helpers.request({ ...options, uri });
+		return await this.helpers.request({ ...options, uri: requestUrl`${env}/v1${endpoint}` });
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -92,7 +94,7 @@ function getNext(links: IDataObject[]): string | undefined {
 export async function payPalApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	endpoint: string,
+	endpoint: RequestPath,
 	method: IHttpRequestMethods,
 
 	body: any = {},

@@ -1,4 +1,4 @@
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { isQuotaExhaustedError } from '../../stream/map-chunk';
 import type { WorkspaceFileTarget } from '../workspace-files';

@@ -1,3 +1,6 @@
+import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
+
+import { USER_TYPED_MESSAGE } from '../../prefills';
 import {
 	consumePendingAssistantAgentMessage,
 	discardPendingAssistantAgentMessage,
@@ -83,7 +86,14 @@ describe('assistantAgentThreads', () => {
 	});
 
 	describe('pending first message', () => {
-		const message = { threadId: 'thread-1', text: 'hello', files: [], references: [] };
+		const message = {
+			threadId: 'thread-1',
+			text: 'hello',
+			files: [],
+			references: [],
+			authorship: USER_TYPED_MESSAGE,
+			mentionCounts: EMPTY_ASSISTANT_MENTION_COUNTS,
+		};
 
 		it('hands the message over once, to its own thread only', () => {
 			stashPendingAssistantAgentMessage(message);

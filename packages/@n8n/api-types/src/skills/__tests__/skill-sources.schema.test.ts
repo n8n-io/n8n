@@ -1,4 +1,5 @@
 import {
+	AcceptSkillSourceUpdatesDto,
 	ConnectSkillSourceDto,
 	DiscoverSkillSourceDto,
 	SKILL_SOURCE_MAX_SKILLS,
@@ -51,5 +52,59 @@ describe('DiscoverSkillSourceDto', () => {
 		});
 
 		expect(result.data?.url).toBe('https://github.com/a/b');
+	});
+});
+
+describe('AcceptSkillSourceUpdatesDto', () => {
+	const update = { skillId: 'skill-1', contentHash: 'a'.repeat(64), baseVersionId: 'version-1' };
+	it.each(['contentHash', 'baseVersionId'])('requires %s independently', (field) => {
+		expect(
+			AcceptSkillSourceUpdatesDto.safeParse({ updates: [{ ...update, [field]: undefined }] })
+				.success,
+		).toBe(false);
+	});
+	it('requires warning acknowledgment by default', () => {
+		expect(
+			AcceptSkillSourceUpdatesDto.safeParse({ updates: [update] }).data?.reviewedWarnings,
+		).toBe(false);
+	});
+	it('refuses a duplicate skill in one selection', () => {
+		expect(AcceptSkillSourceUpdatesDto.safeParse({ updates: [update, update] }).success).toBe(
+			false,
+		);
+	});
+	it('refuses an empty or oversized selection', () => {
+		expect(AcceptSkillSourceUpdatesDto.safeParse({ updates: [] }).success).toBe(false);
+		expect(
+			AcceptSkillSourceUpdatesDto.safeParse({
+				updates: keys(SKILL_SOURCE_MAX_SKILLS + 1).map((skillId) => ({ ...update, skillId })),
+			}).success,
+		).toBe(false);
+	});
+	it('allows new-only imports and skips, but refuses duplicate or oversized mixed selections', () => {
+		const newSkill = { key: 'new-skill', contentHash: 'b'.repeat(64) };
+		expect(
+			AcceptSkillSourceUpdatesDto.safeParse({ updates: [], newSkills: [newSkill] }).success,
+		).toBe(true);
+		expect(
+			AcceptSkillSourceUpdatesDto.safeParse({ updates: [], skippedNewSkills: [newSkill] }).success,
+		).toBe(true);
+		expect(
+			AcceptSkillSourceUpdatesDto.safeParse({ updates: [], newSkills: [newSkill, newSkill] })
+				.success,
+		).toBe(false);
+		expect(
+			AcceptSkillSourceUpdatesDto.safeParse({
+				updates: [],
+				newSkills: [newSkill],
+				skippedNewSkills: [newSkill],
+			}).success,
+		).toBe(false);
+		expect(
+			AcceptSkillSourceUpdatesDto.safeParse({
+				updates: [update],
+				newSkills: keys(SKILL_SOURCE_MAX_SKILLS).map((key) => ({ ...newSkill, key })),
+			}).success,
+		).toBe(false);
 	});
 });

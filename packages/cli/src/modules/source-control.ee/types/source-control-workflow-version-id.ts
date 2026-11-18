@@ -1,3 +1,5 @@
+import type { VersionedWorkflowSettings } from 'n8n-workflow';
+
 import type { StatusResourceOwner } from './resource-owner';
 
 export interface SourceControlWorkflowVersionId {
@@ -13,4 +15,6 @@ export interface SourceControlWorkflowVersionId {
 	updatedAt?: string;
 	owner?: StatusResourceOwner;
 	isRemoteArchived?: boolean;
+	/** The settings saved with each version. A missing setting has its default value. */
+	versionedSettings?: VersionedWorkflowSettings;
 }

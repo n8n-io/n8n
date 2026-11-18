@@ -6,8 +6,10 @@ import {
 	PERSONAL_SELF_HEALING_VIEW,
 } from '@n8n/frontend-constants/self-healing';
 import { VIEWS } from '@n8n/frontend-constants/views';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createMemoryHistory, createRouter, RouterView, type Router } from 'vue-router';
 
+import * as api from '../self-healing.api';
 import { useSelfHealingStore } from '../self-healing.store';
 import SelfHealingConfigView from './SelfHealingConfigView.vue';
 
@@ -23,6 +25,10 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/design-system')>()),
 	useMessage: () => ({ confirm }),
 }));
+vi.mock('../self-healing.api', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../self-healing.api')>()),
+	fetchWorkflowDependencies: vi.fn(),
+}));
 vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => ({ currentUser: { id: 'creator' } }),
 }));
@@ -34,6 +40,7 @@ const configuration: SelfHealingConfigurationDto = {
 	workflowIds: [],
 	reviewerIds: ['creator'],
 	includeAllProjectMembers: false,
+	includeSubWorkflows: false,
 	enabled: false,
 	enabledById: null,
 	lastActivity: null,
@@ -84,7 +91,26 @@ beforeEach(() => {
 		],
 	};
 	vi.spyOn(store, 'load').mockResolvedValue();
+	vi.mocked(api.fetchWorkflowDependencies).mockResolvedValue({});
 });
+
+it.each([
+	[true, 'Self-healing uses your Assistant credits each time it investigates a failed workflow.'],
+	[
+		false,
+		'Self-healing uses tokens from your AI provider each time it investigates a failed workflow.',
+	],
+])(
+	'explains the cost of investigations when the credit proxy is %s',
+	async (proxyEnabled, text) => {
+		const settingsStore = useSettingsStore();
+		settingsStore.moduleSettings = {
+			'instance-ai': { proxyEnabled },
+		} as typeof settingsStore.moduleSettings;
+		const view = await renderView('new');
+		expect(await view.findByTestId('self-healing-cost-note')).toHaveTextContent(text);
+	},
+);
 
 it('creates an enabled configuration with the creator as reviewer', async () => {
 	const store = useSelfHealingStore();
@@ -96,7 +122,7 @@ it('creates an enabled configuration with the creator as reviewer', async () => 
 	const view = await renderView('new');
 	const button = await view.findByRole('button', { name: 'Create configuration' });
 	expect(button).toBeEnabled();
-	expect(view.queryByRole('switch')).not.toBeInTheDocument();
+	expect(view.queryByRole('switch', { name: /enable/i })).not.toBeInTheDocument();
 	const reviewer = within(view.getByTestId('self-healing-selected-reviewer'));
 	expect(reviewer.getByText('Test Reviewer (you)')).toBeVisible();
 	expect(reviewer.getAllByText(/\(you\)/)).toHaveLength(1);
@@ -110,6 +136,7 @@ it('creates an enabled configuration with the creator as reviewer', async () => 
 				workflowIds: [],
 				reviewerIds: ['creator'],
 				includeAllProjectMembers: false,
+				includeSubWorkflows: true,
 				enabled: true,
 			},
 			undefined,
@@ -225,11 +252,131 @@ it.each([false, true])(
 		expect(router.currentRoute.value.path).toBe('/projects/project/settings/self-healing/1');
 		expect(save).toHaveBeenCalledWith(
 			'project',
-			{ scope: 'all', workflowIds: [], reviewerIds: ['creator'], includeAllProjectMembers: false },
+			{
+				scope: 'all',
+				workflowIds: [],
+				reviewerIds: ['creator'],
+				includeAllProjectMembers: false,
+				includeSubWorkflows: false,
+			},
 			1,
 		);
 	},
 );
+
+it('keeps the sub-workflow setting when saving edits', async () => {
+	const store = useSelfHealingStore();
+	store.configurations.project = [
+		{ ...configuration, scope: 'selected', workflowIds: ['workflow'], includeSubWorkflows: true },
+	];
+	const save = vi.spyOn(store, 'save').mockResolvedValue(configuration);
+	const view = await renderView('1');
+	await fireEvent.click(await view.findByRole('radio', { name: 'All' }));
+	await fireEvent.click(view.getByRole('button', { name: 'Save changes' }));
+
+	expect(save).toHaveBeenCalledWith(
+		'project',
+		expect.objectContaining({ scope: 'all', includeSubWorkflows: true }),
+		1,
+	);
+});
+
+it('saves the sub-workflow setting from its switch', async () => {
+	const store = useSelfHealingStore();
+	store.configurations.project = [configuration];
+	const save = vi.spyOn(store, 'save').mockResolvedValue(configuration);
+	const view = await renderView('1');
+	const toggle = await view.findByRole('switch', { name: 'Include sub-workflows' });
+	expect(toggle).not.toBeChecked();
+	await fireEvent.click(toggle);
+	await fireEvent.click(view.getByRole('button', { name: 'Save changes' }));
+
+	expect(save).toHaveBeenCalledWith(
+		'project',
+		expect.objectContaining({ scope: 'all', includeSubWorkflows: true }),
+		1,
+	);
+});
+
+describe('sub-workflow coverage', () => {
+	const dependency = (id: string, name: string) => ({ type: 'workflowCall' as const, id, name });
+
+	beforeEach(() => {
+		const store = useSelfHealingStore();
+		store.options.project.workflows = [
+			{ id: 'workflow', name: 'Production workflow' },
+			{ id: 'child', name: 'Child workflow' },
+			{ id: 'grandchild', name: 'Grandchild workflow' },
+		];
+		store.configurations.project = [
+			{ ...configuration, scope: 'selected', workflowIds: ['workflow'] },
+		];
+		vi.mocked(api.fetchWorkflowDependencies).mockImplementation(async (_context, ids) =>
+			Object.fromEntries(
+				ids.map((id) => [
+					id,
+					{
+						inaccessibleCount: 0,
+						dependencies:
+							id === 'workflow'
+								? [
+										dependency('child', 'Child workflow'),
+										dependency('external', 'Other project workflow'),
+										{ type: 'credentialId' as const, id: 'credential', name: 'Credential' },
+									]
+								: id === 'child'
+									? [dependency('grandchild', 'Grandchild workflow')]
+									: [],
+					},
+				]),
+			),
+		);
+	});
+
+	it('follows sub-workflows in this project and explains the ones a fix cannot change', async () => {
+		const view = await renderView('1');
+		const row = within(await view.findByTestId('self-healing-selected-workflow'));
+
+		expect(
+			await row.findByText(
+				"2 sub-workflows aren't covered. 1 sub-workflow in another project isn't covered.",
+			),
+		).toBeVisible();
+		expect(row.getByTestId('self-healing-sub-workflow-pill')).toHaveTextContent('3');
+		expect(api.fetchWorkflowDependencies).toHaveBeenCalledWith(expect.anything(), ['workflow']);
+		expect(api.fetchWorkflowDependencies).toHaveBeenCalledWith(expect.anything(), ['child']);
+		expect(api.fetchWorkflowDependencies).not.toHaveBeenCalledWith(
+			expect.anything(),
+			expect.arrayContaining(['external']),
+		);
+
+		await fireEvent.click(view.getByRole('switch', { name: 'Include sub-workflows' }));
+
+		expect(row.getByText("1 sub-workflow in another project isn't covered.")).toBeVisible();
+	});
+
+	it('keeps sub-workflows of another selection available in the picker', async () => {
+		const view = await renderView('1');
+		await fireEvent.click(await view.findByRole('switch', { name: 'Include sub-workflows' }));
+		await fireEvent.click(view.getAllByRole('button', { name: 'Show popup' })[0]);
+
+		expect(await view.findByRole('option', { name: 'Child workflow' })).not.toHaveAttribute(
+			'aria-disabled',
+			'true',
+		);
+	});
+
+	it('shows no coverage summary when the dependency lookup fails', async () => {
+		vi.mocked(api.fetchWorkflowDependencies).mockRejectedValue(new Error('Offline'));
+		const view = await renderView('1');
+		const row = await view.findByTestId('self-healing-selected-workflow');
+		await waitAllPromises();
+
+		expect(row).toHaveTextContent('Production workflow');
+		expect(row).not.toHaveTextContent(/covered|Checking/);
+		expect(within(row).queryByTestId('self-healing-sub-workflow-pill')).not.toBeInTheDocument();
+	});
+});
 
 it.each([
 	'/projects/project/settings',
@@ -292,6 +439,7 @@ it('selects workflow rows and reviewers before saving', async () => {
 			workflowIds: ['workflow'],
 			reviewerIds: ['creator'],
 			includeAllProjectMembers: false,
+			includeSubWorkflows: true,
 			enabled: true,
 		},
 		undefined,
@@ -456,7 +604,7 @@ describe('personal project', () => {
 
 		expect(view.queryByText('Reviewers')).not.toBeInTheDocument();
 		expect(view.queryByTestId('self-healing-reviewers')).not.toBeInTheDocument();
-		expect(view.queryByText(/who hears about it/)).not.toBeInTheDocument();
+		expect(view.queryByText(/who reviews its fixes/)).not.toBeInTheDocument();
 		await fireEvent.click(button);
 		await waitFor(() =>
 			expect(save).toHaveBeenCalledWith(
@@ -517,6 +665,26 @@ describe('personal project', () => {
 			),
 		);
 	});
+});
+
+it('lists reviewer options alphabetically after the project member group', async () => {
+	const store = useSelfHealingStore();
+	store.options.project!.reviewers.push(
+		{ id: 'zoe', email: 'zoe@example.com', firstName: 'Zoe', lastName: 'Young' },
+		{ id: 'email-only', email: 'bob@example.com', firstName: null, lastName: null },
+		{ id: 'anna', email: 'anna@example.com', firstName: 'anna', lastName: 'Smith' },
+	);
+	const view = await renderView('new');
+	await view.findByRole('button', { name: 'Create configuration' });
+
+	await fireEvent.click(view.getByRole('button', { name: 'Show popup' }));
+	await view.findByRole('option', { name: 'People from Acme project' });
+	expect(view.getAllByRole('option').map((option) => option.textContent?.trim())).toEqual([
+		'People from Acme project',
+		expect.stringContaining('anna Smith'),
+		expect.stringContaining('bob@example.com'),
+		expect.stringContaining('Zoe Young'),
+	]);
 });
 
 it('shows an email-only reviewer once and allows removal', async () => {
@@ -584,6 +752,7 @@ describe('project members', () => {
 				workflowIds: [],
 				reviewerIds: [],
 				includeAllProjectMembers: true,
+				includeSubWorkflows: true,
 				enabled: true,
 			},
 			undefined,
@@ -625,6 +794,7 @@ describe('project members', () => {
 				workflowIds: [],
 				reviewerIds: ['creator', 'maya'],
 				includeAllProjectMembers: false,
+				includeSubWorkflows: true,
 				enabled: true,
 			},
 			undefined,
@@ -670,7 +840,13 @@ describe('project members', () => {
 		await fireEvent.click(view.getByRole('button', { name: 'Save changes' }));
 		expect(save).toHaveBeenCalledWith(
 			'project',
-			{ scope: 'all', workflowIds: [], reviewerIds: ['creator'], includeAllProjectMembers: false },
+			{
+				scope: 'all',
+				workflowIds: [],
+				reviewerIds: ['creator'],
+				includeAllProjectMembers: false,
+				includeSubWorkflows: false,
+			},
 			1,
 		);
 	});
@@ -686,7 +862,13 @@ describe('project members', () => {
 
 		expect(save).toHaveBeenCalledWith(
 			'project',
-			{ scope: 'all', workflowIds: [], reviewerIds: [], includeAllProjectMembers: true },
+			{
+				scope: 'all',
+				workflowIds: [],
+				reviewerIds: [],
+				includeAllProjectMembers: true,
+				includeSubWorkflows: false,
+			},
 			1,
 		);
 	});

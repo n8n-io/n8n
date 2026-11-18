@@ -1,13 +1,19 @@
 import type { Serialized } from '@langchain/core/load/serializable';
-import type { BaseMessage } from '@langchain/core/messages';
-import { AIMessage } from '@langchain/core/messages';
+import type { BaseMessage, UsageMetadata } from '@langchain/core/messages';
+import { AIMessage, AIMessageChunk } from '@langchain/core/messages';
 import type { ChatGeneration, Generation, LLMResult } from '@langchain/core/outputs';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 
 import * as logAiEventModule from 'src/utils/log-ai-event';
-import { anthropicTokensUsageParser, N8nLlmTracing } from 'src/utils/n8n-llm-tracing';
+import type { TokensUsageParser } from 'src/utils/n8n-llm-tracing';
+import {
+	anthropicTokensUsageParser,
+	N8nLlmTracing,
+	openAiTokensUsageParser,
+	usageMetadataTokensUsageParser,
+} from 'src/utils/n8n-llm-tracing';
 import * as tokenEstimatorModule from 'src/utils/tokenizer/token-estimator';
 
 // Mock the dependencies
@@ -21,6 +27,28 @@ vi.mock('src/utils/tokenizer/token-estimator', () => ({
 
 const logAiEvent = vi.mocked(logAiEventModule.logAiEvent);
 const estimateTokensFromStringList = vi.mocked(tokenEstimatorModule.estimateTokensFromStringList);
+
+function isJsonRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Reads the json payload N8nLlmTracing emitted to addOutputData, without casting the mock call to `any`. */
+function getEmittedJson(addOutputDataMock: {
+	mock: { calls: ReadonlyArray<readonly unknown[]> };
+}): Record<string, unknown> {
+	const call = addOutputDataMock.mock.calls[0];
+	const runData: unknown = call[2];
+	if (!Array.isArray(runData) || !Array.isArray(runData[0])) {
+		throw new Error('expected emitted run data');
+	}
+
+	const entry: unknown = runData[0][0];
+	if (!isJsonRecord(entry) || !('json' in entry) || !isJsonRecord(entry.json)) {
+		throw new Error('expected an emitted json payload');
+	}
+
+	return entry.json;
+}
 
 describe('N8nLlmTracing', () => {
 	let mockExecutionFunctions: Mocked<ISupplyDataFunctions>;
@@ -942,8 +970,7 @@ describe('N8nLlmTracing', () => {
 
 			expect(customParser).toHaveBeenCalledWith(output);
 
-			const callArgs = mockExecutionFunctions.addOutputData.mock.calls[0] as any;
-			const outputData = callArgs[2][0][0].json;
+			const outputData = getEmittedJson(mockExecutionFunctions.addOutputData);
 
 			expect(outputData.tokenUsage).toEqual({
 				completionTokens: 100,
@@ -962,6 +989,56 @@ describe('N8nLlmTracing', () => {
 					'llm.cost.total': 0.0042,
 				},
 			});
+		});
+	});
+
+	describe('token usage parsed from the generation message', () => {
+		const runId = 'run-usage-metadata';
+
+		const reportedUsage = async (parser: TokensUsageParser, generation: ChatGeneration) => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions, { tokensUsageParser: parser });
+			tracer.runsMap[runId] = { index: 0, messages: ['Test'], options: {} };
+
+			await tracer.handleLLMEnd({ generations: [[generation]] }, runId);
+
+			const [, , data] = mockExecutionFunctions.addOutputData.mock.calls[0] as unknown as [
+				unknown,
+				unknown,
+				Array<Array<{ json: Record<string, unknown> }>>,
+			];
+			return data[0][0].json;
+		};
+
+		const toolCallGeneration: ChatGeneration = {
+			text: '',
+			message: new AIMessage({
+				content: [{ type: 'text', text: '' }],
+				tool_calls: [{ id: 'call-1', name: 'search', args: { q: 'n8n' }, type: 'tool_call' }],
+				usage_metadata: { input_tokens: 120, output_tokens: 45, total_tokens: 165 },
+			}),
+		};
+
+		it('reports real usage for a tool-calling turn that has no generation text', async () => {
+			const json = await reportedUsage(usageMetadataTokensUsageParser, toolCallGeneration);
+
+			expect(json.tokenUsage).toEqual({
+				promptTokens: 120,
+				completionTokens: 45,
+				totalTokens: 165,
+			});
+			expect(json).not.toHaveProperty('tokenUsageEstimate');
+		});
+
+		it('parses usage before the generation is trimmed for run data', async () => {
+			let parsedGeneration: Generation | undefined;
+			const parser = vi.fn((result: LLMResult) => {
+				parsedGeneration = result.generations[0][0];
+				return { completionTokens: 0, promptTokens: 0, totalTokens: 0 };
+			});
+
+			await reportedUsage(parser, toolCallGeneration);
+
+			expect(parsedGeneration).toHaveProperty('message');
 		});
 	});
 
@@ -1226,6 +1303,73 @@ describe('N8nLlmTracing', () => {
 			expect(tracer.runsMap['run-3']).toBeDefined();
 		});
 	});
+
+	describe('parser invariance across handleLLMEnd reorder', () => {
+		const chatGeneration = (): ChatGeneration => ({
+			text: 'Response',
+			message: new AIMessage({ content: 'Response' }),
+		});
+
+		const anthropicResult = (): LLMResult => ({
+			generations: [[chatGeneration()]],
+			llmOutput: { usage: { input_tokens: 10, output_tokens: 5 } },
+		});
+
+		const defaultResult = (): LLMResult => ({
+			generations: [[chatGeneration()]],
+			llmOutput: { tokenUsage: { promptTokens: 100, completionTokens: 40 } },
+		});
+
+		it('keeps the Anthropic parser on llmOutput.usage', () => {
+			expect(anthropicTokensUsageParser(anthropicResult())).toEqual({
+				promptTokens: 10,
+				completionTokens: 5,
+				totalTokens: 15,
+			});
+		});
+
+		it('keeps the default parser on llmOutput.tokenUsage', () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions);
+
+			expect(tracer.options.tokensUsageParser(defaultResult())).toEqual({
+				promptTokens: 100,
+				completionTokens: 40,
+				totalTokens: 140,
+			});
+		});
+
+		it('reports Anthropic usage through handleLLMEnd', async () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions, {
+				tokensUsageParser: anthropicTokensUsageParser,
+			});
+			tracer.runsMap['run-anthropic'] = { index: 0, messages: ['Test'], options: {} };
+
+			await tracer.handleLLMEnd(anthropicResult(), 'run-anthropic');
+
+			const outputData = getEmittedJson(mockExecutionFunctions.addOutputData);
+			expect(outputData.tokenUsage).toEqual({
+				promptTokens: 10,
+				completionTokens: 5,
+				totalTokens: 15,
+			});
+			expect(outputData.tokenUsageEstimate).toBeUndefined();
+		});
+
+		it('reports default-parser usage through handleLLMEnd', async () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions);
+			tracer.runsMap['run-default'] = { index: 0, messages: ['Test'], options: {} };
+
+			await tracer.handleLLMEnd(defaultResult(), 'run-default');
+
+			const outputData = getEmittedJson(mockExecutionFunctions.addOutputData);
+			expect(outputData.tokenUsage).toEqual({
+				promptTokens: 100,
+				completionTokens: 40,
+				totalTokens: 140,
+			});
+			expect(outputData.tokenUsageEstimate).toBeUndefined();
+		});
+	});
 });
 
 describe('anthropicTokensUsageParser', () => {
@@ -1260,6 +1404,266 @@ describe('anthropicTokensUsageParser', () => {
 			promptTokens: 0,
 			completionTokens: 0,
 			totalTokens: 0,
+		});
+	});
+});
+
+describe('usageMetadataTokensUsageParser', () => {
+	const usage = { input_tokens: 120, output_tokens: 45, total_tokens: 165 };
+	const real = { promptTokens: 120, completionTokens: 45, totalTokens: 165 };
+	const zeros = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+
+	const generationOf = (message: BaseMessage, text = ''): ChatGeneration => ({ text, message });
+
+	const resultOf = (message: BaseMessage, text = ''): LLMResult => ({
+		generations: [[generationOf(message, text)]],
+	});
+
+	it.each([
+		[
+			'plain text',
+			resultOf(new AIMessage({ content: 'Hello', usage_metadata: usage }), 'Hello'),
+			real,
+		],
+		[
+			'tool calls, where the generation text is empty',
+			resultOf(
+				new AIMessage({
+					content: [{ type: 'text', text: '' }],
+					tool_calls: [{ id: 'call-1', name: 'search', args: { q: 'n8n' }, type: 'tool_call' }],
+					usage_metadata: usage,
+				}),
+			),
+			real,
+		],
+		[
+			'a message without usage_metadata',
+			resultOf(new AIMessage({ content: 'Hello' }), 'Hello'),
+			zeros,
+		],
+		['a generation without a message', { generations: [[{ text: 'Hello' }]] }, zeros],
+		['no generations', { generations: [] }, zeros],
+	])('reads %s', (_, result: LLMResult, expected) => {
+		expect(usageMetadataTokensUsageParser(result)).toEqual(expected);
+	});
+
+	it('reads the usage merged into a concatenated stream chunk', () => {
+		const stream = new AIMessageChunk({ content: 'Hel' }).concat(
+			new AIMessageChunk({ content: 'lo', usage_metadata: usage }),
+		);
+
+		expect(usageMetadataTokensUsageParser(resultOf(stream, 'Hello'))).toEqual(real);
+	});
+
+	it('sums usage over every generation', () => {
+		const message = (tokens: number) =>
+			new AIMessage({
+				content: 'Hello',
+				usage_metadata: { input_tokens: tokens, output_tokens: tokens, total_tokens: tokens * 2 },
+			});
+
+		expect(
+			usageMetadataTokensUsageParser({
+				generations: [[generationOf(message(10), 'Hello')], [generationOf(message(5), 'Hello')]],
+			}),
+		).toEqual({ promptTokens: 15, completionTokens: 15, totalTokens: 30 });
+	});
+
+	it('counts one candidate for each prompt, so several candidates do not double the usage', () => {
+		const message = new AIMessage({
+			content: 'Hello',
+			usage_metadata: { input_tokens: 10, output_tokens: 10, total_tokens: 20 },
+		});
+
+		expect(
+			usageMetadataTokensUsageParser({
+				generations: [[generationOf(message, 'Hello'), generationOf(message, 'Hello')]],
+			}),
+		).toEqual({ promptTokens: 10, completionTokens: 10, totalTokens: 20 });
+	});
+
+	it('derives the total when the provider omits it', () => {
+		expect(
+			usageMetadataTokensUsageParser(
+				resultOf(
+					new AIMessage({
+						content: 'Hello',
+						usage_metadata: { input_tokens: 7, output_tokens: 3 } as UsageMetadata,
+					}),
+					'Hello',
+				),
+			),
+		).toEqual({ promptTokens: 7, completionTokens: 3, totalTokens: 10 });
+	});
+});
+
+describe('openAiTokensUsageParser', () => {
+	type UsageMetadata = {
+		input_tokens?: number;
+		output_tokens?: number;
+		total_tokens?: number;
+	};
+
+	const chatGeneration = (usageMetadata?: UsageMetadata): ChatGeneration =>
+		({
+			text: 'Response',
+			message: { usage_metadata: usageMetadata },
+		}) as unknown as ChatGeneration;
+
+	const textGeneration = (): Generation => ({ text: 'Response' });
+
+	it('reads llmOutput.tokenUsage first (Chat Completions)', () => {
+		expect(
+			openAiTokensUsageParser({
+				generations: [[chatGeneration({ input_tokens: 999, output_tokens: 999 })]],
+				llmOutput: { tokenUsage: { promptTokens: 100, completionTokens: 40, totalTokens: 140 } },
+			}),
+		).toEqual({ promptTokens: 100, completionTokens: 40, totalTokens: 140 });
+	});
+
+	it('keeps the reported cost from llmOutput.tokenUsage', () => {
+		expect(
+			openAiTokensUsageParser({
+				generations: [[textGeneration()]],
+				llmOutput: { tokenUsage: { promptTokens: 100, completionTokens: 40, totalCost: 0.5 } },
+			}),
+		).toEqual({ promptTokens: 100, completionTokens: 40, totalTokens: 140, cost: 0.5 });
+	});
+
+	it('reads message.usage_metadata when tokenUsage is absent (Responses API)', () => {
+		expect(
+			openAiTokensUsageParser({
+				generations: [
+					[chatGeneration({ input_tokens: 100, output_tokens: 40, total_tokens: 140 })],
+				],
+				llmOutput: {},
+			}),
+		).toEqual({ promptTokens: 100, completionTokens: 40, totalTokens: 140 });
+	});
+
+	it('prefers llmOutput.tokenUsage over message.usage_metadata', () => {
+		expect(
+			openAiTokensUsageParser({
+				generations: [[chatGeneration({ input_tokens: 100, output_tokens: 40 })]],
+				llmOutput: { tokenUsage: { promptTokens: 50, completionTokens: 20 } },
+			}),
+		).toEqual({ promptTokens: 50, completionTokens: 20, totalTokens: 70 });
+	});
+
+	it('recomputes the total from the input and output tokens', () => {
+		expect(
+			openAiTokensUsageParser({
+				generations: [[chatGeneration({ input_tokens: 100, output_tokens: 40 })]],
+				llmOutput: {},
+			}),
+		).toEqual({ promptTokens: 100, completionTokens: 40, totalTokens: 140 });
+	});
+
+	it('prefers a provider-reported total over input + output', () => {
+		expect(
+			openAiTokensUsageParser({
+				generations: [
+					[chatGeneration({ input_tokens: 100, output_tokens: 40, total_tokens: 999 })],
+				],
+				llmOutput: {},
+			}),
+		).toEqual({ promptTokens: 100, completionTokens: 40, totalTokens: 999 });
+	});
+
+	it('ignores a partial tokenUsage payload and falls through to the message', () => {
+		expect(
+			openAiTokensUsageParser({
+				generations: [[chatGeneration({ input_tokens: 100, output_tokens: 40 })]],
+				llmOutput: { tokenUsage: { promptTokens: 100 } },
+			}),
+		).toEqual({ promptTokens: 100, completionTokens: 40, totalTokens: 140 });
+	});
+
+	it('returns zeros when no usage is reported', () => {
+		const expected = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+
+		expect(openAiTokensUsageParser({ generations: [[textGeneration()]], llmOutput: {} })).toEqual(
+			expected,
+		);
+		expect(openAiTokensUsageParser({ generations: [], llmOutput: {} })).toEqual(expected);
+	});
+
+	it('never reads the estimatedTokenUsage key', () => {
+		expect(
+			openAiTokensUsageParser({
+				generations: [[textGeneration()]],
+				llmOutput: { estimatedTokenUsage: { promptTokens: 100, completionTokens: 40 } },
+			}),
+		).toEqual({ promptTokens: 0, completionTokens: 0, totalTokens: 0 });
+	});
+
+	it('returns zeros when tokenUsage is zeroed even if the message has usage', () => {
+		// Documents the tracer contract: handleLLMEnd must pass the raw _generate
+		// output. A post-generate() result has tokenUsage {0,0} and would mask the
+		// message usage, routing the call to the estimate branch.
+		expect(
+			openAiTokensUsageParser({
+				generations: [[chatGeneration({ input_tokens: 100, output_tokens: 40 })]],
+				llmOutput: { tokenUsage: { promptTokens: 0, completionTokens: 0 } },
+			}),
+		).toEqual({ promptTokens: 0, completionTokens: 0, totalTokens: 0 });
+	});
+
+	describe('through handleLLMEnd', () => {
+		let mockExecutionFunctions: Mocked<ISupplyDataFunctions>;
+
+		beforeEach(() => {
+			mockExecutionFunctions = {
+				getNode: vi.fn().mockReturnValue({
+					id: 'test-node',
+					name: 'OpenAI Chat Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1.3,
+					position: [0, 0],
+					parameters: {},
+				}),
+				addOutputData: vi.fn(),
+				addInputData: vi.fn().mockReturnValue({ index: 0 }),
+				getNextRunIndex: vi.fn().mockReturnValue(0),
+				setMetadata: vi.fn(),
+			} as unknown as Mocked<ISupplyDataFunctions>;
+		});
+
+		it('records reported usage instead of the estimate', async () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions, {
+				tokensUsageParser: openAiTokensUsageParser,
+			});
+			const runId = 'run-openai-responses';
+			tracer.runsMap[runId] = { index: 0, messages: ['Test'], options: {} };
+
+			await tracer.handleLLMEnd(
+				{
+					generations: [
+						[chatGeneration({ input_tokens: 100, output_tokens: 40, total_tokens: 140 })],
+					],
+					llmOutput: {},
+				},
+				runId,
+			);
+
+			const outputData = getEmittedJson(mockExecutionFunctions.addOutputData);
+
+			expect(outputData.tokenUsage).toEqual({
+				promptTokens: 100,
+				completionTokens: 40,
+				totalTokens: 140,
+			});
+			expect(outputData.tokenUsageEstimate).toBeUndefined();
+			expect(
+				(mockExecutionFunctions as unknown as { setMetadata: Mock }).setMetadata,
+			).toHaveBeenCalledWith({
+				tracing: {
+					'llm.tokens.in': 100,
+					'llm.tokens.out': 40,
+					'llm.tokens.total': 140,
+					'llm.tokens.estimated': false,
+				},
+			});
 		});
 	});
 });

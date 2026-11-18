@@ -1,6 +1,6 @@
 import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 import { execute } from '../../../../v2/actions/messageAttachment/add.operation';
 
 import * as transport from '../../../../v2/transport';
@@ -89,7 +89,7 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 
 			expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/messages/AAMkAGI2TG93AAA=/attachments',
+				requestPath`/messages/AAMkAGI2TG93AAA=/attachments`,
 				0,
 				{
 					'@odata.type': '#microsoft.graph.fileAttachment',
@@ -139,7 +139,7 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 
 			expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/messages/AAMkAGI2TG93AAA=/attachments',
+				requestPath`/messages/AAMkAGI2TG93AAA=/attachments`,
 				2,
 				{
 					'@odata.type': '#microsoft.graph.fileAttachment',
@@ -147,6 +147,42 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 					contentBytes: 'JVBERi0xLjQK',
 				},
 				{},
+			);
+		});
+
+		it('should read the binary field from the current item', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, itemIndex?: number) => {
+					if (paramName === 'binaryPropertyName') {
+						return itemIndex === 1 ? 'attachment' : 'data';
+					}
+					const params: Record<string, any> = {
+						messageId: 'AAMkAGI2TG93AAA=',
+						options: {},
+					};
+					return params[paramName];
+				},
+			);
+
+			const mockBinaryData = {
+				data: 'SGVsbG8gV29ybGQ=',
+				mimeType: 'text/plain',
+				fileName: 'attachment.txt',
+				fileExtension: 'txt',
+			};
+
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(
+				Buffer.from('Hello World'),
+			);
+			microsoftApiRequestSpy.mockResolvedValue({});
+
+			await execute.call(mockExecuteFunctions, 1, [{ json: {} }]);
+
+			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(1, 'attachment');
+			expect(mockExecuteFunctions.helpers.getBinaryDataBuffer).toHaveBeenCalledWith(
+				1,
+				'attachment',
 			);
 		});
 
@@ -225,7 +261,7 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 
 			expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/messages/AAMkAGI2TG93BBB=/attachments/createUploadSession',
+				requestPath`/messages/AAMkAGI2TG93BBB=/attachments/createUploadSession`,
 				0,
 				{
 					AttachmentItem: {

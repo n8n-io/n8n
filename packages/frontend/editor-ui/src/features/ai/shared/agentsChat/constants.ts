@@ -13,12 +13,16 @@ export type ChatMessageRole = (typeof CHAT_MESSAGE_ROLE)[keyof typeof CHAT_MESSA
  *   the user and the message has no text. A finished turn hides it.
  * - `thinking`: in the thinking block of the message, before the reasoning. A
  *   message without a thinking block shows it as a `start` event.
+ * - `tool-call`: in the tool steps, right before the step of the call that the
+ *   extension names. When the message shows no step for that call, the event
+ *   shows as a `start` event.
  */
 export const HOST_EVENT_PLACEMENT = {
 	START: 'start',
 	END: 'end',
 	TRANSIENT: 'transient',
 	THINKING: 'thinking',
+	TOOL_CALL: 'tool-call',
 } as const;
 export type HostEventPlacement = (typeof HOST_EVENT_PLACEMENT)[keyof typeof HOST_EVENT_PLACEMENT];
 

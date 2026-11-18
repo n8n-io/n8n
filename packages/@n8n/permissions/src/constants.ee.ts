@@ -13,7 +13,7 @@ export const RESOURCES = {
 	aiAssistant: ['manage'] as const,
 	// AI prompt preferences. `aiPreference`: instance-wide rows and other users' rows.
 	// `projectAiPreference`: rows of a project. A user's own rows need no scope.
-	aiPreference: [...DEFAULT_OPERATIONS] as const,
+	aiPreference: [...DEFAULT_OPERATIONS, 'manage'] as const,
 	projectAiPreference: [...DEFAULT_OPERATIONS] as const,
 	// Skills. `skill`: instance skills. `projectSkill`: the skills of a project and of
 	// its agents.
@@ -109,6 +109,8 @@ export const RESOURCES = {
 		'listProject',
 	] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'get', 'reveal'] as const,
+	executionLimit: ['read', 'update'] as const,
+	projectExecutionLimit: ['read', 'update'] as const,
 	testRun: ['read', 'list'] as const,
 	workflowTags: ['update', 'list'] as const,
 	role: ['manage', 'read', 'manageProject', 'list'] as const,
@@ -128,7 +130,17 @@ export const RESOURCES = {
 } as const;
 
 export const API_KEY_RESOURCES = {
-	agent: ['export', 'import', 'read', 'create', 'update', 'publish', 'unpublish'] as const,
+	agent: [
+		'export',
+		'import',
+		'read',
+		'list',
+		'create',
+		'update',
+		'publish',
+		'unpublish',
+		'delete',
+	] as const,
 	skill: ['create', 'update'] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
 	workflow: [...DEFAULT_OPERATIONS, 'move', 'activate', 'deactivate', 'export', 'import'] as const,

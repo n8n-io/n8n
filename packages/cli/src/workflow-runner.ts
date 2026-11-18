@@ -54,6 +54,7 @@ import {
 	getLifecycleHooksForRegularMain,
 	getLifecycleHooksForScalingWorker,
 	getLifecycleHooksForScalingMain,
+	getPushRefUserId,
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { toSaveSettings } from '@/execution-lifecycle/to-save-settings';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
@@ -242,6 +243,7 @@ export class WorkflowRunner {
 						status === 'waiting'
 							? {
 									data: createRunExecutionData({ resultData: { runData: {} } }),
+									// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 									finished: false,
 									mode: executionMode,
 									startedAt,
@@ -259,6 +261,7 @@ export class WorkflowRunner {
 											runData: {},
 										},
 									}),
+									// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 									finished: false,
 									mode: executionMode,
 									startedAt,
@@ -320,6 +323,7 @@ export class WorkflowRunner {
 					...(failedBeforeStart && { failedBeforeStart: true }),
 				},
 			}),
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 			finished: false,
 			mode: executionMode,
 			startedAt,
@@ -722,6 +726,7 @@ export class WorkflowRunner {
 
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
 				pushRef: data.pushRef,
+				userId: getPushRefUserId(data),
 			});
 
 			if (data.configureAdditionalData) {
@@ -842,6 +847,7 @@ export class WorkflowRunner {
 				executionId,
 				loadStaticData: !!loadStaticData,
 				pushRef: data.pushRef,
+				pushRefUserId: getPushRefUserId(data),
 				streamingEnabled: data.streamingEnabled,
 				callerAwaitsOutcome: data.callerAwaitsOutcome,
 				restartExecutionId,
@@ -1006,6 +1012,7 @@ export class WorkflowRunner {
 					};
 				} else {
 					runData = {
+						// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 						finished: jobResult.success,
 						mode: data.executionMode,
 						startedAt: jobResult.startedAt,

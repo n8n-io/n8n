@@ -71,7 +71,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	override needsExpressionEngine = true;
 
-	override needsTaskRunner = true;
+	override needsCodeExecution = true;
 
 	override seedsInstanceIdentity = true;
 
@@ -213,7 +213,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			scopedLogger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 
 			if (process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true') {
-				this.needsTaskRunner = false;
+				this.needsCodeExecution = false;
 			}
 		}
 
@@ -280,6 +280,11 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 			await this.initInstanceSettingsLoader();
 			this.logger.debug('Instance settings loader init complete');
+
+			const { AiPreferenceSettingsService } = await import(
+				'@/services/ai-preference-settings.service.js'
+			);
+			await Container.get(AiPreferenceSettingsService).init();
 		}
 
 		await this.initBinaryDataService();

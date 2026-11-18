@@ -1,6 +1,5 @@
 import { isObjectLiteral } from '@n8n/backend-common';
 import type { HttpRequestClient } from '@n8n/backend-network';
-import { OutboundHttp } from '@n8n/backend-network';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type {
@@ -33,7 +32,7 @@ import {
 	type ResumeOutcome,
 } from '@/services/engine-data-plane-proxy.service';
 
-import { EngineTlsMaterial } from './engine-tls-material';
+import { EngineMtls } from './engine-mtls';
 
 /** Must match the engine's `ExecutionStatus`. */
 const notCancellableDetailsSchema = z.object({
@@ -54,12 +53,10 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 
 	constructor(
 		private readonly engineConfig: EngineConfig,
-		outboundHttp: OutboundHttp,
 		private readonly instanceSettings: InstanceSettings,
-		tlsMaterial: EngineTlsMaterial,
+		mtls: EngineMtls,
 	) {
-		const { tls } = tlsMaterial;
-		this.http = outboundHttp.requests({
+		this.http = mtls.requests({
 			// Fixed, n8n-controlled host.
 			useDefaultSsrfPolicy: 'unsafe',
 			// `engineConfig.host` is a bind address, not a destination, so it is not
@@ -72,8 +69,6 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 			headers: () => ({
 				authorization: `Bearer ${mintIdentityToken(this.engineConfig.authSecret, this.caller())}`,
 			}),
-			// Explicit, so a global NODE_TLS_REJECT_UNAUTHORIZED=0 cannot turn off the peer check.
-			...(tls && { connectionPool: { agentOptions: { ...tls, rejectUnauthorized: true } } }),
 		});
 	}
 
