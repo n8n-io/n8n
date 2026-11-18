@@ -20,6 +20,7 @@ import {
 	Node,
 	AI_VENDOR_NODE_TYPES,
 	createEmptyRunExecutionData,
+	createRunExecutionData,
 	DATA_TABLE_TOOL_NODE_TYPE,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
@@ -48,6 +49,8 @@ export type EphemeralWorkflowToolLike = {
 	nodeName?: string;
 	/** Eval-only additionalData decoration (e.g. HTTP mock handler) — never set on production paths. */
 	configureAdditionalData?: (additionalData: IWorkflowExecuteAdditionalData) => void;
+	/** The verified n8n user the run acts for. A data table row rule limits rows to this user. */
+	executedByUserId?: string;
 };
 
 export interface InlineNodeExecutionRequest {
@@ -66,6 +69,8 @@ export interface InlineNodeExecutionRequest {
 	nodeName?: string;
 	/** Eval-only additionalData decoration (e.g. HTTP mock handler) — never set on production paths. */
 	configureAdditionalData?: (additionalData: IWorkflowExecuteAdditionalData) => void;
+	/** The verified n8n user the run acts for. A data table row rule limits rows to this user. */
+	executedByUserId?: string;
 }
 
 export interface NodeExecutionResult {
@@ -343,10 +348,23 @@ export class EphemeralNodeExecutor {
 			additionalData.dataTableProjectId = tool.projectId;
 		}
 		tool.configureAdditionalData?.(additionalData);
+		const mode = 'internal' as const;
 		const runExecutionData = createEmptyRunExecutionData();
+		if (tool.executedByUserId) {
+			// The Data Table node reads the user from here, as in a workflow run.
+			runExecutionData.executionData = createRunExecutionData({
+				executionData: {
+					runtimeData: {
+						version: 1,
+						establishedAt: Date.now(),
+						source: mode,
+						executedByUserId: tool.executedByUserId,
+					},
+				},
+			}).executionData;
+		}
 		const inputData: ITaskDataConnections = { main: [inputItems] };
 		const executeData: IExecuteData = { node, data: inputData, source: null };
-		const mode = 'internal' as const;
 		return {
 			node,
 			workflow,
@@ -500,6 +518,7 @@ export class EphemeralNodeExecutor {
 			credentials: mergedCredentials,
 			nodeName: request.nodeName,
 			configureAdditionalData: request.configureAdditionalData,
+			executedByUserId: request.executedByUserId,
 		};
 
 		// Native tool nodes (toolWikipedia, toolCalculator, etc.) expose their real

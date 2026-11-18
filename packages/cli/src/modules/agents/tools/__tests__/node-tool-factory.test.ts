@@ -117,6 +117,33 @@ describe('resolveNodeTool → tool name sanitization', () => {
 		);
 	});
 
+	it('runs the node as the user chatting with the agent', async () => {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const tool = await resolveNodeTool(baseToolSchema, {
+			executor: { executeInline } as unknown as EphemeralNodeExecutor,
+			projectId: 'p1',
+			userId: 'user-1',
+		});
+
+		await tool.handler!({}, {} as never);
+
+		expect(executeInline).toHaveBeenCalledWith(
+			expect.objectContaining({ executedByUserId: 'user-1' }),
+		);
+	});
+
+	it('runs the node without a user for a channel that knows none', async () => {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const tool = await resolveNodeTool(baseToolSchema, {
+			executor: { executeInline } as unknown as EphemeralNodeExecutor,
+			projectId: 'p1',
+		});
+
+		await tool.handler!({}, {} as never);
+
+		expect(executeInline.mock.calls[0][0]).not.toHaveProperty('executedByUserId');
+	});
+
 	it('derives inputSchema from $fromAI node parameters', async () => {
 		const tool = await resolveNodeTool(
 			{

@@ -1020,6 +1020,7 @@ export class AgentRuntimeReconstructionService {
 					projectId: runIdentity.projectId,
 					agentId: runIdentity.agentId,
 					instrumentToolAdditionalData,
+					userId: runIdentity.userId,
 				});
 			}
 			return null;

@@ -29,6 +29,11 @@ export interface NodeToolFactoryContext {
 	agentId?: string;
 	/** Eval-only additionalData decoration — absent on every production path. */
 	instrumentToolAdditionalData?: InstrumentToolAdditionalData;
+	/**
+	 * The verified n8n user chatting with the agent. Absent for channels that only
+	 * know an external user, so a data table row rule treats those as runs without a user.
+	 */
+	userId?: string;
 }
 
 /**
@@ -192,6 +197,7 @@ export async function resolveNodeTool(
 					{ json: input as IDataObject, ...(inputFiles && { binary: inputFiles.binary }) },
 				],
 				projectId: ctx.projectId,
+				...(ctx.userId && { executedByUserId: ctx.userId }),
 				...instrumentedExecution,
 			});
 			// A refusal is returned, not thrown: thrown errors reach the chat as plain text.

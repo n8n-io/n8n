@@ -686,6 +686,39 @@ describe('EphemeralNodeExecutor', () => {
 				expect.anything(),
 				'table-id',
 				'p-1',
+				undefined,
+			);
+		});
+
+		it('passes the user the run acts for to data table helpers', async () => {
+			const getDataTableProxy = vi.fn().mockResolvedValue({});
+			mockGetBase.mockResolvedValue({
+				'data-table': { dataTableProxyProvider: { getDataTableProxy } },
+			});
+			const execute = vi.fn(async function (this: IExecuteFunctions) {
+				await this.helpers.getDataTableProxy?.('table-id');
+				return [[{ json: { ok: true } }]];
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute,
+			} as unknown as INodeType);
+
+			await executor.executeInline({
+				nodeType: 'n8n-nodes-base.dataTableTool',
+				nodeTypeVersion: 1.1,
+				nodeParameters: {},
+				inputData: [{ json: {} }],
+				projectId: 'p-1',
+				executedByUserId: 'user-1',
+			});
+
+			expect(getDataTableProxy).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				'table-id',
+				'p-1',
+				'user-1',
 			);
 		});
 
