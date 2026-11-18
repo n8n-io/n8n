@@ -6,11 +6,11 @@ describe('workflow constellation', () => {
 	it('preserves branches and relative geometry without changing the workflow', () => {
 		const before = JSON.stringify(sampleWorkflow);
 		const graph = createConstellation(sampleWorkflow);
-		expect(graph.stars).toHaveLength(13);
-		expect(graph.connections).toHaveLength(13);
-		expect(graph.connections.filter((edge) => edge.from === 2)).toHaveLength(2);
-		const scale = (graph.stars[1].x - graph.stars[0].x) / 180;
-		expect(graph.stars[3].y - graph.stars[2].y).toBeCloseTo(-170 * scale);
+		expect(graph.stars).toHaveLength(33);
+		expect(graph.connections).toHaveLength(36);
+		expect(graph.connections.filter((edge) => edge.from === 2)).toHaveLength(4);
+		const scale = (graph.stars[1].x - graph.stars[0].x) / 220;
+		expect(graph.stars[3].y - graph.stars[2].y).toBeCloseTo(-300 * scale);
 		expect(JSON.stringify(sampleWorkflow)).toBe(before);
 	});
 

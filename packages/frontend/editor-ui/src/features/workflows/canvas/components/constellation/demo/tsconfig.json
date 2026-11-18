@@ -18,6 +18,9 @@
 		"../ConstellationArtwork.vue",
 		"../graph.ts",
 		"../graph.test.ts",
-		"../download.ts"
+		"../download.ts",
+		"../CanvasConstellation.vue",
+		"../zoom.ts",
+		"../zoom.test.ts"
 	]
 }

@@ -4,7 +4,9 @@ import { useRoute } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import ConstellationView from './ConstellationView.vue';
+import { CONSTELLATION_ZOOM_START } from './zoom';
 
+const props = defineProps<{ zoom: number }>();
 const document = injectWorkflowDocumentStore();
 const route = useRoute();
 const i18n = useI18n();
@@ -13,7 +15,7 @@ const workflow = computed(() => ({
 	connections: document.value.connectionsBySourceNode,
 }));
 const copy = computed(() => ({
-	open: i18n.baseText('hackmation.constellation.open'),
+	open: i18n.baseText('hackmation.constellation.saveArtwork'),
 	title: i18n.baseText('hackmation.constellation.title'),
 	eyebrow: i18n.baseText('hackmation.constellation.eyebrow'),
 	subtitle: i18n.baseText('hackmation.constellation.subtitle'),
@@ -35,7 +37,9 @@ const copy = computed(() => ({
 		<ConstellationView
 			:workflow="workflow"
 			:copy="copy"
-			:show-trigger="route.query.hackmation === 'constellation'"
+			:show-trigger="
+				props.zoom < CONSTELLATION_ZOOM_START || route.query.hackmation === 'constellation'
+			"
 		/>
 	</div>
 </template>

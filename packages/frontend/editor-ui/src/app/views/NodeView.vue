@@ -2129,7 +2129,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<div :class="$style.wrapper">
-		<WorkflowConstellation v-if="!isLoading" />
+		<WorkflowConstellation v-if="!isLoading" :zoom="viewportTransform.zoom" />
 		<WorkflowCanvas
 			v-if="!isLoading"
 			:id="workflowDocumentStore?.workflowId"
@@ -2146,6 +2146,7 @@ onBeforeUnmount(() => {
 			:striped-background="stripedCanvasBackground"
 			:hide-controls="hideCanvasControls"
 			:initial-viewport="workflowDocumentStore?.viewport"
+			constellation-enabled
 			@update:nodes:position="onUpdateNodesPosition"
 			@update:node:position="onUpdateNodePosition"
 			@update:node:activated="onSetNodeActivated"

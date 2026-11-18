@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import ConstellationView from '../ConstellationView.vue';
+import ConstellationDemoCanvas from './ConstellationDemoCanvas.vue';
 import { createConstellation } from '../graph';
 import { sampleWorkflow } from './sample';
 import en from '../../../../../../../../@n8n/i18n/src/locales/en.json';
@@ -9,9 +10,8 @@ import { isRecord } from '@n8n/utils/is-record';
 const workflow = ref<unknown>(sampleWorkflow);
 const name = ref(sampleWorkflow.name);
 const importError = ref('');
-const graph = computed(() => createConstellation(workflow.value));
 const copy = {
-	open: en['hackmation.constellation.open'],
+	open: en['hackmation.constellation.saveArtwork'],
 	title: en['hackmation.constellation.title'],
 	eyebrow: en['hackmation.constellation.eyebrow'],
 	subtitle: en['hackmation.constellation.subtitle'],
@@ -72,65 +72,13 @@ function reset() {
 					<span class="demo-tab-active">Editor</span><span>Executions</span><span>Evaluations</span>
 				</div>
 				<div class="demo-canvas">
-					<svg viewBox="130 100 1340 700" role="img" aria-label="Sample workflow graph">
-						<g fill="none" stroke="#697180" stroke-width="2">
-							<path
-								v-for="(edge, index) in graph.connections"
-								:key="index"
-								:d="`M${graph.stars[edge.from].x} ${graph.stars[edge.from].y} C${(graph.stars[edge.from].x + graph.stars[edge.to].x) / 2} ${graph.stars[edge.from].y}, ${(graph.stars[edge.from].x + graph.stars[edge.to].x) / 2} ${graph.stars[edge.to].y}, ${graph.stars[edge.to].x} ${graph.stars[edge.to].y}`"
-							/>
-						</g>
-						<g
-							v-for="(star, index) in graph.stars"
-							:key="index"
-							:transform="`translate(${star.x} ${star.y})`"
-						>
-							<rect
-								x="-29"
-								y="-29"
-								width="58"
-								height="58"
-								rx="12"
-								fill="#242730"
-								stroke="#575d6c"
-								stroke-width="1.5"
-							/>
-							<text
-								text-anchor="middle"
-								y="9"
-								:fill="['#f6b773', '#7bb8ff', '#b6d89c', '#bd9bea'][index % 4]"
-								font-size="25"
-							>
-								{{
-									['ϟ', '↗', '⑂', '◇', '⑂', '▤', '▤', '⋈', '✉', '◉', '≡', '⌘', '◈'][index % 13]
-								}}
-							</text>
-							<circle cx="-31" cy="0" r="3" fill="#8c93a1" />
-							<circle cx="31" cy="0" r="3" fill="#8c93a1" />
-							<text
-								text-anchor="middle"
-								y="49"
-								fill="#d4d7df"
-								font-size="12"
-								font-family="system-ui"
-							>
-								{{ star.name }}
-							</text>
-						</g>
-					</svg>
-					<div v-if="!graph.stars.length" class="demo-empty">This workflow has no nodes</div>
-					<div class="demo-canvas-bottom">
-						<span>− &nbsp; 100% &nbsp; +</span
-						><span
-							>{{ graph.stars.length }} nodes · {{ graph.connections.length }} connections</span
-						>
-					</div>
+					<ConstellationDemoCanvas :workflow="workflow" />
 				</div>
 			</section>
 			<footer class="demo-footer">
 				<div>
-					<span class="demo-spark">✧</span> Try the hidden entrance: type <kbd>stardust</kbd> on the
-					canvas
+					<span class="demo-spark">✧</span> Zoom out on the canvas to reveal the stars. Zoom back in
+					to return.
 				</div>
 				<div class="demo-actions">
 					<button type="button" @click="reset">Reset sample</button
@@ -274,11 +222,6 @@ main {
 	background-color: #17181e;
 	background-image: radial-gradient(#41414c 0.7px, transparent 0.7px);
 	background-size: var(--spacing--sm) var(--spacing--sm);
-}
-.demo-canvas svg {
-	width: 100%;
-	display: block;
-	height: clamp(300px, 41vh, 520px);
 }
 .demo-canvas-bottom {
 	display: flex;

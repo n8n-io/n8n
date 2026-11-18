@@ -11,6 +11,20 @@ defineProps<{
 	accessibleTitle: string;
 }>();
 const id = useId().replaceAll(':', '-');
+
+function labelLines(name: string) {
+	const words = name.split(' ');
+	if (words.length < 2) return [name];
+	let split = 1;
+	for (let index = 2; index < words.length; index++) {
+		if (
+			Math.abs(words.slice(0, index).join(' ').length - name.length / 2) <
+			Math.abs(words.slice(0, split).join(' ').length - name.length / 2)
+		)
+			split = index;
+	}
+	return [words.slice(0, split).join(' '), words.slice(split).join(' ')];
+}
 </script>
 
 <template>
@@ -107,9 +121,16 @@ const id = useId().replaceAll(':', '-');
 				text-anchor="middle"
 				fill="#b9c8df"
 				font-family="system-ui, sans-serif"
-				font-size="14"
+				font-size="11"
 			>
-				{{ star.name }}
+				<tspan
+					v-for="(line, lineIndex) in labelLines(star.name)"
+					:key="lineIndex"
+					x="0"
+					:dy="lineIndex ? 14 : 0"
+				>
+					{{ line }}
+				</tspan>
 			</text>
 		</g>
 		<g fill="#b6c5de" font-family="system-ui, sans-serif" text-anchor="middle">
