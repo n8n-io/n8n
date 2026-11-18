@@ -714,6 +714,9 @@ field in its settings row without another border. Keep menus outside the group c
 Keep Save disabled until the approval configuration is complete. Explain the missing
 workflow selection or channel configuration in a tooltip on hover and focus.
 Use a searchable select for the decision workflow. Put Create workflow in its menu.
+Use the same Select component for workflow and channel triggers. Put workflow
+search in the menu header. Keep Create workflow visible during search. Keep the
+selected workflow label and icon stable during filtering.
 Show platform icons in the channel select. Use Select channel as its placeholder.
 Put Create channel first in its menu, including when no channels are attached.
 Open the existing channel setup modal over the review draft. Show only platforms

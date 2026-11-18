@@ -6,10 +6,8 @@ import { v4 as uuid } from 'uuid';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import {
 	N8nButton,
-	N8nCombobox2,
 	N8nIcon,
 	N8nIconButton,
-	type ComboboxItem,
 	N8nInput,
 	N8nSettingsRowGroup,
 	N8nSelect2,
@@ -249,6 +247,22 @@ const saveDisabledReason = computed(() => {
 	return '';
 });
 const workflowSelectOpen = ref(false);
+const workflowSearch = ref('');
+watch(workflowSelectOpen, () => {
+	workflowSearch.value = '';
+});
+const selectedWorkflowName = computed(
+	() =>
+		workflows.value.find((workflow) => workflow.id === workflowId.value)?.name ?? workflowId.value,
+);
+const filteredWorkflows = computed(() =>
+	workflows.value.filter((workflow) =>
+		workflow.name.toLocaleLowerCase().includes(workflowSearch.value.trim().toLocaleLowerCase()),
+	),
+);
+function onWorkflowSearchKeydown(event: KeyboardEvent) {
+	if (!['ArrowDown', 'ArrowUp', 'Escape', 'Tab'].includes(event.key)) event.stopPropagation();
+}
 const advancedExpanded = ref(false);
 const hasTools = computed(() => hitlToolKeys(props.context.getConfig()).length > 0);
 const selectedToolKeys = ref([
@@ -258,7 +272,7 @@ const selectedToolKeys = ref([
 	]),
 ]);
 const toolSelectionChanged = ref(false);
-const workflowItems = computed<ComboboxItem[]>(() => [
+const workflowItems = computed<SelectItem[]>(() => [
 	{
 		value: '__create_hitl_workflow__',
 		label: i18n.baseText('generic.create.workflow'),
@@ -270,7 +284,7 @@ const workflowItems = computed<ComboboxItem[]>(() => [
 		},
 	},
 	{ type: 'separator' },
-	...workflows.value.map((workflow) => ({
+	...filteredWorkflows.value.map((workflow) => ({
 		value: workflow.id,
 		label: workflow.name,
 		icon: 'workflow' as const,
@@ -475,20 +489,38 @@ const rowLayout = computed(() => (fieldsWidth.value < 480 ? 'vertical' : 'horizo
 							:class="$style.sectionRow"
 						>
 							<div :class="[$style.resourceRow, { [$style.withWorkflowLink]: workflowHref }]">
-								<N8nCombobox2
+								<N8nSelect2
 									size="large"
 									:model-value="workflowId || undefined"
 									v-model:open="workflowSelectOpen"
 									:items="workflowItems"
-									:loading="loading || creating"
-									:disabled="creating"
-									:teleported="false"
+									:disabled="loading || creating"
+									:icon="workflowId ? 'workflow' : undefined"
 									:aria-label="i18n.baseText('agents.hitl.workflow')"
 									:placeholder="i18n.baseText('agents.hitl.selectWorkflow')"
-									:empty-text="i18n.baseText('agents.tools.workflow.empty.noResults')"
 									data-testid="agent-hitl-workflow"
 									@update:model-value="updateWorkflow"
-								/>
+								>
+									<template #default>
+										{{ selectedWorkflowName || i18n.baseText('agents.hitl.selectWorkflow') }}
+									</template>
+									<template #header>
+										<div :class="$style.workflowSearch">
+											<N8nInput
+												v-model="workflowSearch"
+												:placeholder="i18n.baseText('agents.tools.workflow.search.placeholder')"
+												:aria-label="i18n.baseText('agents.tools.workflow.search.placeholder')"
+												data-testid="agent-hitl-workflow-search"
+												@keydown="onWorkflowSearchKeydown"
+											/>
+										</div>
+									</template>
+									<template v-if="workflowSearch && !filteredWorkflows.length" #footer>
+										<div :class="$style.workflowSearch">
+											{{ i18n.baseText('agents.tools.workflow.empty.noResults') }}
+										</div>
+									</template>
+								</N8nSelect2>
 								<N8nIconButton
 									v-if="workflowHref"
 									icon="external-link"
@@ -685,6 +717,9 @@ const rowLayout = computed(() => (fieldsWidth.value < 480 ? 'vertical' : 'horizo
 .withWorkflowLink {
 	// Keep the select width stable, but add space only for a visible link.
 	width: calc((100cqi - 2 * var(--spacing--md)) / 3 + var(--spacing--lg) + var(--spacing--2xs));
+}
+.workflowSearch {
+	padding: var(--spacing--4xs);
 }
 .saveTrigger {
 	display: inline-flex;

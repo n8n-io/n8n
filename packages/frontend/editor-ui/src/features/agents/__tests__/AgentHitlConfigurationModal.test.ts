@@ -2,7 +2,6 @@ import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import { defineComponent, type ComponentPublicInstance } from 'vue';
 import {
 	N8nTooltip,
-	N8nCombobox2,
 	N8nSelect2,
 	N8nSegmentControl,
 	type SelectProps,
@@ -146,20 +145,31 @@ afterEach(() => vi.restoreAllMocks());
 it('searches workflows in a select and offers workflow creation', async () => {
 	const wrapper = render();
 	await flushPromises();
-	const input = wrapper.get('[data-testid="agent-hitl-workflow"] input');
-	await input.trigger('focus');
+	getSelect(wrapper, 'agent-hitl-workflow').vm.$emit('update:open', true);
 	await flushPromises();
-	expect(wrapper.find('[role="option"]').exists()).toBe(true);
-	expect(wrapper.text()).toContain('Create workflow');
-	await input.setValue('expenses');
+	const menu = document.body.querySelector('[role="listbox"]');
+	expect(menu).not.toBeNull();
+	expect(menu?.textContent).toContain('Create workflow');
+	const input = document.body.querySelector<HTMLInputElement>(
+		'input[data-testid="agent-hitl-workflow-search"]',
+	);
+	if (!input) throw new Error('Workflow search was not found');
+	input.value = 'expenses';
+	input.dispatchEvent(new Event('input', { bubbles: true }));
 	await flushPromises();
-	expect(wrapper.text()).toContain('Review expenses');
-	expect(
-		wrapper
-			.findAll('[role="option"]')
-			.filter((option) => option.isVisible())
-			.map((option) => option.text()),
-	).not.toContain('Confirm deployment');
+	expect(menu?.textContent).toContain('Review expenses');
+	expect(menu?.textContent).toContain('Create workflow');
+	expect(menu?.textContent).not.toContain('Confirm deployment');
+	const picker = getSelect(wrapper, 'agent-hitl-workflow');
+	picker.vm.$emit('update:modelValue', 'review');
+	input.value = 'no matching workflow';
+	input.dispatchEvent(new Event('input', { bubbles: true }));
+	await flushPromises();
+	expect(picker.text()).toBe('Review expenses');
+	expect(picker.find('[data-icon="workflow"]').exists()).toBe(true);
+	expect(menu?.textContent).toContain('Create workflow');
+	expect(menu?.textContent).toContain('No matching workflows');
+	wrapper.unmount();
 });
 it('explains the disabled Save on focus until a workflow is selected', async () => {
 	const wrapper = render();
@@ -172,7 +182,7 @@ it('explains the disabled Save on focus until a workflow is selected', async () 
 	const trigger = wrapper.get('[data-testid="agent-hitl-save-trigger"]');
 	expect(trigger.attributes('tabindex')).toBe('0');
 	expect(await saveHint(wrapper)).toBe('Select a workflow');
-	const picker = wrapper.getComponent(N8nCombobox2);
+	const picker = getSelect(wrapper, 'agent-hitl-workflow');
 	expect(wrapper.find('[data-testid="agent-hitl-workflow-open"]').exists()).toBe(false);
 	picker.vm.$emit('update:modelValue', 'review');
 	await wrapper.vm.$nextTick();
@@ -202,8 +212,7 @@ it('names a new workflow from the Agent and the next available number', async ()
 		{ name: 'Support Agent approval workflow 1' },
 		{ name: 'Support Agent approval workflow 3' },
 	]);
-	const create = wrapper
-		.getComponent(N8nCombobox2)
+	const create = getSelect(wrapper, 'agent-hitl-workflow')
 		.props('items')
 		?.find((item) => 'value' in item && item.value === '__create_hitl_workflow__');
 	if (create && 'onSelect' in create) create.onSelect?.(new Event('select'));
@@ -467,8 +476,7 @@ it('opens the new workflow tab before the creation requests finish', async () =>
 	mocks.open.mockReturnValue(tab);
 	const wrapper = render();
 	await flushPromises();
-	const create = wrapper
-		.getComponent(N8nCombobox2)
+	const create = getSelect(wrapper, 'agent-hitl-workflow')
 		.props('items')
 		?.find((item) => 'value' in item && item.value === '__create_hitl_workflow__');
 	if (create && 'onSelect' in create) create.onSelect?.(new Event('select'));
@@ -485,8 +493,7 @@ it('closes the blank tab when workflow creation fails', async () => {
 	mocks.create.mockRejectedValue(new Error('failed'));
 	const wrapper = render();
 	await flushPromises();
-	const create = wrapper
-		.getComponent(N8nCombobox2)
+	const create = getSelect(wrapper, 'agent-hitl-workflow')
 		.props('items')
 		?.find((item) => 'value' in item && item.value === '__create_hitl_workflow__');
 	if (create && 'onSelect' in create) create.onSelect?.(new Event('select'));
@@ -580,7 +587,7 @@ it('uses Human review for new configurations and preserves custom names', async 
 it('generates names from workflow choices and keeps automatic naming after Save', async () => {
 	const wrapper = render();
 	await flushPromises();
-	const picker = wrapper.getComponent(N8nCombobox2);
+	const picker = getSelect(wrapper, 'agent-hitl-workflow');
 	picker.vm.$emit('update:modelValue', 'review');
 	await wrapper.vm.$nextTick();
 	expect(wrapper.get('[data-testid="title"]').element).toHaveProperty('value', 'Review expenses');
@@ -592,7 +599,7 @@ it('generates names from workflow choices and keeps automatic naming after Save'
 	expect(saved.id).toMatch(/^review_[A-Za-z0-9]{16}$/);
 	const reopened = render(saved);
 	await flushPromises();
-	reopened.getComponent(N8nCombobox2).vm.$emit('update:modelValue', 'review');
+	getSelect(reopened, 'agent-hitl-workflow').vm.$emit('update:modelValue', 'review');
 	await reopened.vm.$nextTick();
 	expect(reopened.get('[data-testid="title"]').element).toHaveProperty('value', 'Review expenses');
 });
@@ -600,8 +607,7 @@ it('generates names from workflow choices and keeps automatic naming after Save'
 it('adopts the created workflow name unless the user has renamed the review', async () => {
 	const wrapper = render();
 	await flushPromises();
-	const create = wrapper
-		.getComponent(N8nCombobox2)
+	const create = getSelect(wrapper, 'agent-hitl-workflow')
 		.props('items')
 		?.find((item) => 'value' in item && item.value === '__create_hitl_workflow__');
 	if (create && 'onSelect' in create) create.onSelect?.(new Event('select'));
@@ -616,14 +622,14 @@ it('preserves a custom name when the workflow changes and the modal reopens', as
 	const wrapper = render();
 	await flushPromises();
 	await wrapper.get('[data-testid="title"]').setValue('Finance team');
-	wrapper.getComponent(N8nCombobox2).vm.$emit('update:modelValue', 'review');
+	getSelect(wrapper, 'agent-hitl-workflow').vm.$emit('update:modelValue', 'review');
 	await wrapper.vm.$nextTick();
 	await wrapper.get('[data-testid="agent-hitl-save"]').trigger('click');
 	const saved = wrapper.emitted('save')?.[0]?.[0] as AgentHitlConfiguration;
 	expect(saved).toMatchObject({ name: 'Finance team', nameOverridden: true });
 	const reopened = render(saved);
 	await flushPromises();
-	reopened.getComponent(N8nCombobox2).vm.$emit('update:modelValue', 'other');
+	getSelect(reopened, 'agent-hitl-workflow').vm.$emit('update:modelValue', 'other');
 	await reopened.vm.$nextTick();
 	expect(reopened.get('[data-testid="title"]').element).toHaveProperty('value', 'Finance team');
 });
@@ -752,7 +758,7 @@ it('configures workflow review before the Agent is saved without calling channel
 	await flushPromises();
 	expect(mocks.channels).not.toHaveBeenCalled();
 	expect(getMethod(wrapper).props('disabled')).toBe(false);
-	wrapper.getComponent(N8nCombobox2).vm.$emit('update:modelValue', 'review');
+	getSelect(wrapper, 'agent-hitl-workflow').vm.$emit('update:modelValue', 'review');
 	await wrapper.vm.$nextTick();
 	await wrapper.get('[data-testid="agent-hitl-save"]').trigger('click');
 	expect(wrapper.emitted('save')?.[0]).toEqual([
