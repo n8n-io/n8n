@@ -518,7 +518,7 @@ onMounted(() => {
 		:container-class="$style.fixedHeight"
 		@update:open="onDialogOpenUpdate"
 	>
-		<N8nDialogHeader>
+		<N8nDialogHeader :class="$style.dialogHeader">
 			<N8nDialogTitle>
 				{{ i18n.baseText('settings.sourceControl.modals.pull.title') }}
 			</N8nDialogTitle>
@@ -811,7 +811,7 @@ onMounted(() => {
 				</div>
 			</div>
 		</N8nDialogBody>
-		<N8nDialogFooter>
+		<N8nDialogFooter :class="$style.dialogFooter">
 			<N8nNotice v-if="hasModifiedCredentials" :compact="false" class="mt-0">
 				<N8nText size="small">
 					{{ i18n.baseText('settings.sourceControl.modals.pull.modifiedCredentialsNotice') }}
@@ -863,6 +863,17 @@ onMounted(() => {
 .fixedHeight {
 	height: min(80vh, 850px);
 	overflow: hidden;
+}
+
+.dialogHeader {
+	/* The close button lays the header out as a row. Keep the title above the description. */
+	flex-direction: column;
+	align-items: stretch;
+}
+
+.dialogFooter {
+	flex-direction: column;
+	align-items: stretch;
 }
 
 .filtersRow {
