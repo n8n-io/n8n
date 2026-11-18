@@ -1324,8 +1324,9 @@ export const skillUpdatePayloadSchema = z.object({
 	skillId: z.string(),
 	name: z.string().optional(),
 	version: z.string().nullable(),
+	/** `restored` also covers older events that resent a skill after compaction. */
 	change: z.enum(['updated', 'restored', 'unavailable']),
-	/** The content delivered for this response. Older events contain metadata only. */
+	/** The note the model saw. Older events contain the full skill content or nothing. */
 	content: z.string().optional(),
 });
 export type InstanceAiSkillUpdatePayload = z.infer<typeof skillUpdatePayloadSchema>;

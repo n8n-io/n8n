@@ -124,28 +124,21 @@ Keep pinned case files local while the LangTracer case-write contract does not
 carry their version field. Existing suites can use the runner's environment
 override without changing their stored cases.
 
-## Active skills and compaction
+## Loaded skills and compaction
 
-The agents SDK retains loaded skill IDs outside the conversation text. It renders
-their current bodies in a cached instruction block, so memory compaction can
-remove large tool results without removing the active instructions.
+`load_skill` returns the skill body once, as a plain tool result. The SDK does not
+track or persist active-skill state, and it does not inject the body again. The
+body stays in conversation history as the `load_skill` result. When memory compaction
+removes the tool result, the model must call `load_skill` again to get the body.
 
-Checkpoints retain the IDs. Memory backends can implement `BuiltMemory.skillState`
-to retain them across separate runs. The in-memory backend and Instance AI's
-database adapter provide this store. It is scoped by thread, resource, and agent.
-Custom memory backends need this optional store for cross-run retention after
-compaction. Resumes always load content from the selected catalog; removed skills
-are dropped, and a changed version replaces the old body.
-
-Tools that inline skill guidance should use `ToolContext.loadSkill`. This activates
-the selected skill and avoids persisting another copy of its instructions in a
-tool result. Ordinary tool output remains untrusted data for memory extraction.
+Tools that need skill guidance tell the model to call `load_skill`. They do not
+load the skill themselves.
 
 ## Roll back or remove a profile
 
 Switch the assignment to default for new user messages. Internal follow-ups keep
 their selected version until that user turn ends. New turns resolve the assignment
-again, and active IDs load their bodies from the newly selected catalog.
+again, and later `load_skill` calls read from the newly selected catalog.
 
 To retire a version, remove its profile entry after deciding whether existing
 checkpoints may use the default fallback. Remove unreferenced variants and fragments

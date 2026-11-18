@@ -150,15 +150,6 @@ export type ContentToolCall = ContentMetadata & {
 	 * assistant message. Breaks ties between results at the same position.
 	 */
 	resultOrder?: number;
-
-	/**
-	 * Skills this tool activated programmatically (via `ctx.loadSkill`), so the
-	 * skill body can re-anchor to this result on a later turn instead of falling
-	 * back to the system prompt. Metadata only — never sent to the model.
-	 */
-	activatedSkillIds?: string[];
-	/** Versions delivered by this activation. Used by skills with append updates. */
-	activatedSkillVersions?: Record<string, string>;
 } & (
 		| { state: 'pending'; suspension?: ToolCallSuspensionInfo }
 		| { state: 'resolved'; output: JSONValue; canceled?: boolean }
@@ -253,13 +244,27 @@ export interface CustomAgentMessages {
 		type: 'n8n:runtime-skill-catalog';
 		content: string;
 	};
+<<<<<<< HEAD
+=======
+	runtimeToolCatalog: {
+		type: 'n8n:runtime-tool-catalog';
+		/** The tool group lines the model last saw; empty when no tool catalog applies. */
+		toolCatalog: string;
+		/** The text the model sees, already wrapped. */
+		content: string;
+	};
+	/** Tells the model that a skill it loaded changed or became unavailable. */
+>>>>>>> 249ba522 (refactor(ai-builder): Remove active skill tracking from the agent runtime (#43569))
 	runtimeSkillUpdate: {
 		type: 'n8n:runtime-skill-update';
 		skillUpdate: {
 			skillId: string;
+			/** The skill hash this note announces. Null when the skill is unavailable. */
 			version: string | null;
+			/** The text the model sees, without the `<system-reminder>` wrapper. */
 			content: string;
 			name?: string;
+			/** `restored`: a skill that was unavailable is in the catalog again. Older threads also used it when they resent a skill after compaction. */
 			change?: 'updated' | 'restored' | 'unavailable';
 		};
 	};

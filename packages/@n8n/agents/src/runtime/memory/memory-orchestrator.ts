@@ -20,7 +20,22 @@ import {
 	type ScopedMemoryTaskResult,
 } from './scoped-memory-task-runner';
 import { settleOrphanedToolMessagesWithChanges } from './strip-orphaned-tool-messages';
+<<<<<<< HEAD
 import { filterLlmMessages, getCreatedAt } from '../../sdk/message';
+=======
+import { messageToText } from './message-text';
+import {
+	DEFAULT_MEMORY_POLICY,
+	MemoryBudget,
+	decideResume,
+	shouldStopObserving,
+} from './observation-policy';
+import { isAfterPoint, ResumeStateStore, resumeView, type ObservationPoint } from './resume-state';
+import { getModelContextWindow } from '../../sdk/catalog';
+import { getCreatedAt } from '../../sdk/message';
+import { detectLoadedSkills } from '../../skills/loaded-skills';
+import { getCatalogModelId, getModelIdString } from '../../utils/model';
+>>>>>>> 249ba522 (refactor(ai-builder): Remove active skill tracking from the agent runtime (#43569))
 import type {
 	AgentExecutionCounter,
 	BuiltMemory,
@@ -84,7 +99,34 @@ function serializeMessageForBudget(message: AgentDbMessage): string {
 			else if (content.state === 'rejected') parts.push(content.error);
 		}
 	}
+<<<<<<< HEAD
 	return parts.join('\n');
+=======
+	return latest;
+}
+
+/** Renders the current observation log instead of saved notes. */
+const LIVE_NOTES: unique symbol = Symbol('liveNotes');
+
+/**
+ * Notes for the list. `LIVE_NOTES` renders the current observation log. A
+ * string or `undefined` is sent as is.
+ */
+type ListNotes = string | undefined | typeof LIVE_NOTES;
+
+/** History and notes for a new run. */
+interface RunHistory {
+	messages: AgentDbMessage[];
+	notes: ListNotes;
+	/** Skills loaded in thread messages before the resume point. */
+	earlierLoadedSkillIds?: Set<string>;
+}
+
+/** Observer state of one run. Queued jobs keep their run's state when a new run starts. */
+interface ObserverRunState {
+	consecutiveFailures: number;
+	stopped: boolean;
+>>>>>>> 249ba522 (refactor(ai-builder): Remove active skill tracking from the agent runtime (#43569))
 }
 
 function hasSuccessfulMemoryFlag(list: AgentMessageList): boolean {
@@ -257,7 +299,15 @@ export class MemoryOrchestrator {
 				telemetry,
 				options.onSideCallUsage,
 			);
+<<<<<<< HEAD
 			const memMessages = await this.loadHistoryMessages(options.persistence, telemetry);
+=======
+			const {
+				messages: memMessages,
+				notes,
+				earlierLoadedSkillIds,
+			} = await this.loadHistoryForRun({ ...options, persistence: options.persistence }, telemetry);
+>>>>>>> 249ba522 (refactor(ai-builder): Remove active skill tracking from the agent runtime (#43569))
 
 			if (memMessages.length > 0) {
 				// Settle (not strip) so an abandoned suspension stays visible as an
@@ -268,11 +318,190 @@ export class MemoryOrchestrator {
 					await this.persistSettledHistory(changed, options.persistence, telemetry);
 				}
 			}
+<<<<<<< HEAD
+=======
+			if (earlierLoadedSkillIds) list.addEarlierLoadedSkills(earlierLoadedSkillIds);
+			await this.setListObservationLogMemory(list, options.persistence, { notes });
+			return;
+>>>>>>> 249ba522 (refactor(ai-builder): Remove active skill tracking from the agent runtime (#43569))
 		}
 
 		await this.setListObservationLogMemory(list, options?.persistence);
 	}
 
+<<<<<<< HEAD
+=======
+	/**
+	 * History for a new run. One rule decides what the model sees: the saved
+	 * notes plus the messages after the resume point, or the full thread when
+	 * there is no resume point. The resume point moves up to the cursor only
+	 * when `decideResume` says so; an over-limit thread first observes its
+	 * backlog, so the notes cover everything they replace.
+	 */
+	private async loadHistoryForRun(
+		options: RunOptions & ExecutionOptions & { persistence: AgentPersistenceOptions },
+		telemetry: BuiltTelemetry | undefined,
+	): Promise<RunHistory> {
+		const { memory, observationalMemory } = this.config;
+		const { persistence } = options;
+		if (!memory || !observationalMemory || !hasObservationLogObserverMemory(memory)) {
+			return {
+				messages: await this.loadHistoryMessages(persistence, telemetry),
+				notes: LIVE_NOTES,
+			};
+		}
+		const { threadId, resourceId } = persistence;
+		const resume = new ResumeStateStore(memory, threadId);
+		this.resume = resume;
+		const [{ cursor }, saved, all] = await Promise.all([
+			readObservationState(memory, threadId),
+			resume.load(),
+			withMemorySpan(
+				'query_memory',
+				this.config.name,
+				telemetry,
+				() => ({ types: ['session'], owners: [resourceId], ...inferMemoryStoreAttributes(memory) }),
+				async () => {
+					const messages = await memory.getMessages(threadId, { resourceId });
+					return { result: messages, attributes: this.queryResultAttributes(messages) };
+				},
+			),
+		]);
+		this.knownCursor = cursor ?? undefined;
+		const state = validResumeState(saved, cursor);
+		if (saved && !state) {
+			logger.debug('Ignoring stale observation resume point', { threadId });
+			resume.forget();
+		}
+		const withEarlierSkills = (view: { messages: AgentDbMessage[]; notes: string | undefined }) => {
+			const kept = new Set(view.messages);
+			return {
+				...view,
+				earlierLoadedSkillIds: detectLoadedSkills(all.filter((m) => !kept.has(m))),
+			};
+		};
+		const view = resumeView(all, state);
+		const budget = cursor ? await this.resolveBudget() : undefined;
+		if (!cursor || !budget) return withEarlierSkills(view);
+
+		const viewTokens = await this.sumTokens(view.messages);
+		const modelId = this.modelId();
+		const reason = decideResume({
+			// The saved size is the provider's count for the same view, so it
+			// includes the system prompt and tools that the estimate misses.
+			requestTokens: state?.lastRequestTokens ?? viewTokens,
+			budget,
+			replaceableTokens: await this.sumTokens(
+				view.messages.filter((m) => !isAfterPoint(m, cursor)),
+			),
+			now: Date.now(),
+			lastActivityAt: latestActivityAt(all),
+			cacheTtlMs: this.cacheTtlMs(),
+			modelSwitched: Boolean(state?.lastModelId && modelId) && state?.lastModelId !== modelId,
+		});
+		if (!reason) {
+			if (state?.lastRequestTokens) this.requestSize.seed(state.lastRequestTokens, viewTokens);
+			return withEarlierSkills(view);
+		}
+
+		let resumeAt: ObservationPoint = cursor;
+		if (reason === 'over-limit')
+			resumeAt = (await this.observeBacklog(options, telemetry)) ?? cursor;
+		const notes = await this.renderLiveNotes(persistence);
+		// Without notes, a resume would drop earlier messages with nothing in their
+		// place. Only an over-limit thread must shrink at that cost.
+		if (!notes && reason !== 'over-limit') return withEarlierSkills(view);
+		await resume.moveTo(resumeAt, notes, modelId);
+		logger.debug('Observation resume point moved at turn start', { threadId, reason });
+		return withEarlierSkills(resumeView(all, resume.current));
+	}
+
+	/** Run the Observer over the whole backlog and return the new cursor. */
+	private async observeBacklog(
+		options: RunOptions & ExecutionOptions & { persistence: AgentPersistenceOptions },
+		telemetry: BuiltTelemetry | undefined,
+	): Promise<ObservationPoint | undefined> {
+		const memory = this.config.memory;
+		if (!memory || !hasObservationLogObserverMemory(memory)) return undefined;
+		const handle = this.scheduleObserverTask(
+			options.persistence,
+			options.executionCounter,
+			telemetry,
+			options.onSideCallUsage,
+			{ unlimited: true },
+		);
+		if (!handle) return undefined;
+		const result = await handle.done;
+		if (!didAdvanceCursor(result)) return undefined;
+		const { cursor } = await readObservationState(memory, options.persistence.threadId);
+		this.knownCursor = cursor ?? undefined;
+		return cursor ?? undefined;
+	}
+
+	private async sumTokens(messages: AgentDbMessage[]): Promise<number> {
+		let total = 0;
+		for (const message of messages) total += await this.tokenCounter(messageToText(message));
+		return total;
+	}
+
+	private cacheTtlMs(): number {
+		const configured = this.config.observationalMemory?.cacheTtlMs;
+		if (configured !== undefined) return configured;
+		const modelId = this.modelId();
+		const retention = modelId
+			? getPromptCacheRetentionMs(this.config.promptCaching, modelId)
+			: undefined;
+		return retention ?? DEFAULT_MEMORY_POLICY.cacheTtlMs;
+	}
+
+	private modelId(): string | null {
+		// Custom model objects can carry no id; treat that as unknown.
+		const id = this.config.model ? getModelIdString(this.config.model) : undefined;
+		return typeof id === 'string' && id.length > 0 ? id : null;
+	}
+
+	/** Save the request size of this turn, so the next turn starts from a real count. */
+	private async saveRequestSize(list: AgentMessageList): Promise<void> {
+		if (!this.resume) return;
+		let tokens: number;
+		try {
+			tokens = await this.requestSize.estimate(list);
+		} catch (error) {
+			// A missing size only means the next turn estimates again.
+			logger.warn('Failed to estimate request size', { error });
+			return;
+		}
+		await this.resume.saveRequestSize(tokens, this.modelId());
+	}
+
+	/** Limits for this runtime. The model's window is looked up once. */
+	private async resolveBudget(): Promise<MemoryBudget | undefined> {
+		const observationalMemory = this.config.observationalMemory;
+		if (!observationalMemory) return undefined;
+		this.budget ??= this.lookUpModelWindow(observationalMemory).then((window) =>
+			MemoryBudget.resolve(observationalMemory, window),
+		);
+		return await this.budget;
+	}
+
+	private async lookUpModelWindow(
+		observationalMemory: NonNullable<AgentRuntimeConfig['observationalMemory']>,
+	): Promise<number | undefined> {
+		// Fixed thresholds need the window too, so the hard limit stays under it.
+		const shares = observationalMemory.windowShares;
+		if (shares?.contextWindowTokens) return shares.contextWindowTokens;
+		try {
+			const modelId = getCatalogModelId(this.config.model);
+			const window = await getModelContextWindow(modelId, this.config.modelFetch);
+			logger.debug('Resolved observation context window', { modelId, window });
+			return window ?? undefined;
+		} catch (error) {
+			logger.warn('Context window lookup failed; using the memory cap', { error });
+			return undefined;
+		}
+	}
+
+>>>>>>> 249ba522 (refactor(ai-builder): Remove active skill tracking from the agent runtime (#43569))
 	private async saveMessagesWithSpan(
 		memory: BuiltMemory,
 		threadId: string,

@@ -1,9 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import {
-	isAzureFoundryAnthropicModel,
-	isOpenRouterAnthropicModel,
-	splitModelId,
-} from '@n8n/ai-utilities/agent-config';
+import { isAzureFoundryAnthropicModel, splitModelId } from '@n8n/ai-utilities/agent-config';
 import type { LanguageModel, Output } from 'ai';
 
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
@@ -48,7 +44,6 @@ import {
 	isAnthropicToolDeferred,
 	buildCallPromptCacheOptions,
 	buildInstructionPromptCacheOptions,
-	buildSkillInstructionCacheOptions,
 	mergeProviderOptions,
 } from '../model/prompt-cache';
 import {
@@ -56,8 +51,12 @@ import {
 	PROVIDER_QUIRKS,
 	resolveDefaultMaxOutputTokens,
 } from '../model/provider-quirks';
+<<<<<<< HEAD
 import type { ActiveSkills } from '../skills/active-skills';
 import type { DeferredToolManager } from '../tools/deferred-tool-manager';
+=======
+import type { ToolCatalog } from '../tools/tool-catalog';
+>>>>>>> 249ba522 (refactor(ai-builder): Remove active skill tracking from the agent runtime (#43569))
 import { buildToolMap, toAiSdkProviderTools, toAiSdkTools } from '../tools/tool-adapter';
 
 /**
@@ -244,39 +243,23 @@ export class RuntimeContextBuilder {
 		instructionProviderOptions,
 		providerOptions,
 		hostVolatileInstructions,
-		activeSkills,
 	}: {
 		list: AgentMessageList;
 		tools: Awaited<ReturnType<RuntimeContextBuilder['buildToolLoopContext']>>;
 		instructionProviderOptions: ProviderOptions | undefined;
 		providerOptions?: ProviderOptions;
 		hostVolatileInstructions: string | undefined;
-		activeSkills: ActiveSkills | undefined;
 	}) {
 		this.synchronizeSkillCatalog(list);
 		const combinedVolatileInstructions = [tools.volatileInstructions, hostVolatileInstructions]
 			.map((value) => value?.trim())
 			.filter((value): value is string => Boolean(value))
 			.join('\n\n');
-		const skillContent = activeSkills?.instructions();
 		const { system, messages } = list.forLlm(
 			tools.effectiveInstructions,
 			instructionProviderOptions,
 			combinedVolatileInstructions || undefined,
 			supportsSplitSystemMessages(this.config.model),
-			skillContent
-				? {
-						content: skillContent,
-						cacheOptions: (messages) => {
-							if (isOpenRouterAnthropicModel(this.modelId)) return undefined;
-							return buildSkillInstructionCacheOptions(
-								instructionProviderOptions,
-								tools.aiTools,
-								messages,
-							);
-						},
-					}
-				: undefined,
 			splitModelId(this.modelId).provider,
 		);
 		const preparedMessages =
@@ -285,7 +268,7 @@ export class RuntimeContextBuilder {
 		// Cache breakpoints apply to this call only. Do not change stored messages or tools.
 		const cached = applyRuntimeCacheBreakpoints({
 			system,
-			messages: activeSkills?.modelMessages(preparedMessages, list) ?? preparedMessages,
+			messages: preparedMessages,
 			aiTools: tools.aiTools,
 			promptCaching: this.config.promptCaching,
 			modelId: this.modelId,
