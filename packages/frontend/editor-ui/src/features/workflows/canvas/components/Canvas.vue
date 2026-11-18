@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { animateStickyNoteDeletion } from './delight/stickyNoteDeletion';
 import ContextMenu from '@/features/shared/contextMenu/components/ContextMenu.vue';
 import type { ContextMenuTarget } from '@/features/shared/contextMenu/composables/useContextMenu';
 import { useContextMenu } from '@/features/shared/contextMenu/composables/useContextMenu';
@@ -1170,6 +1171,7 @@ function onDeleteSelection() {
 	const ids = selectedNodeIdsWithGroupMembers.value;
 	// Expand selected groups to their member nodes before deletion.
 	if (ids.length > 0) {
+		animateStickyNoteDeletion(viewportRef.value, ids);
 		emit('delete:nodes', ids, getDeleteWholeGroupIds());
 	}
 }
@@ -1304,6 +1306,7 @@ function onToggleNodeEnabled(id: string) {
 }
 
 function onDeleteNode(id: string) {
+	animateStickyNoteDeletion(viewportRef.value, [id]);
 	emit('delete:node', id);
 }
 
@@ -1738,6 +1741,7 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			const deleteWholeGroupIds = new Set(getDeleteWholeGroupIds());
 			if (groupId) deleteWholeGroupIds.add(groupId);
 
+			animateStickyNoteDeletion(viewportRef.value, nodeIds);
 			return emit('delete:nodes', nodeIds, [...deleteWholeGroupIds]);
 		}
 		case 'select_all':

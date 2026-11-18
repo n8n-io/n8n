@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import CanvasSleepEffect from './CanvasSleepEffect.vue';
 import CanvasOrigamiEffect from './CanvasOrigamiEffect.vue';
+import { animateStickyNoteDeletion } from './stickyNoteDeletion';
 
 beforeEach(() => {
 	vi.useFakeTimers();
@@ -82,7 +83,7 @@ describe('sticky note origami', () => {
 			wrapper.vm.fold();
 			expect(vi.getTimerCount()).toBe(1);
 			await vi.advanceTimersByTimeAsync(3400);
-			expect(wrapper.find('[data-testid="origami-bird"]').exists()).toBe(false);
+			expect(wrapper.attributes('data-folding')).toBe('false');
 			expect(wrapper.find('.origami-paper > div').element).toBe(note);
 			expect(note.textContent).toBe('Original note');
 			expect(note.getAttribute('style')).toBe(initialStyle);
@@ -110,5 +111,35 @@ describe('sticky note origami', () => {
 		await wrapper.find('button').trigger('click');
 		wrapper.unmount();
 		expect(vi.getTimerCount()).toBe(0);
+	});
+});
+
+describe('sticky deletion', () => {
+	it('lets the flight finish after deletion and does not affect an undo', async () => {
+		const canvas = document.createElement('div');
+		const node = document.createElement('div');
+		node.className = 'vue-flow__node';
+		node.dataset.id = 'sticky-1';
+		node.style.transform = 'translate(120px, 80px)';
+		canvas.append(node);
+		document.body.append(canvas);
+		const wrapper = mount(CanvasOrigamiEffect, {
+			attachTo: node,
+			props: { enabled: true, deletionOnly: true, label: 'Fold' },
+			slots: { default: '<div id="note" data-testid="sticky">Keep this text</div>' },
+		});
+		expect(wrapper.find('button').exists()).toBe(false);
+		animateStickyNoteDeletion(canvas, ['sticky-1']);
+		wrapper.unmount();
+		node.remove();
+		const ghost = canvas.querySelector('.canvas-origami-deletion');
+		expect(ghost?.textContent).toContain('Keep this text');
+		expect(ghost?.querySelector('.is-deleting')).not.toBeNull();
+		expect(ghost?.querySelector('[id], [data-testid]')).toBeNull();
+		canvas.append(node);
+		await vi.advanceTimersByTimeAsync(1700);
+		expect(canvas.querySelector('.canvas-origami-deletion')).toBeNull();
+		expect(canvas.contains(node)).toBe(true);
+		canvas.remove();
 	});
 });
