@@ -352,6 +352,16 @@ return out;`;
 		);
 	});
 
+	it('sends the options of a constant through `call` and `apply`', async () => {
+		const code = `const options = { url: items[0].json.base + '/json', json: true };
+const a = await this.helpers.httpRequest.call(this, options);
+const b = await this.helpers.httpRequest.apply(this, [options]);
+return [{ json: { a, b } }];`;
+		const n = await same(code, rows);
+		expect(n.ok).toBe(true);
+		expect(seen.map((r) => r.url)).toEqual(['/json', '/json']);
+	});
+
 	it('reads the request helper of a constant and sends its `call`', async () => {
 		const code = `const request = this.helpers.httpRequest;
 const results = [];

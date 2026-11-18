@@ -2335,14 +2335,17 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				checker.getSymbolAtLocation(x) === sym
 			) {
 				let call: ts.Node = x.parent;
-				while (ts.isParenthesizedExpression(call)) call = call.parent;
+				// The options of `apply` are the one element of its list.
+				while (ts.isParenthesizedExpression(call) || ts.isArrayLiteralExpression(call)) {
+					call = call.parent;
+				}
 				let wait: ts.Node = call.parent;
 				while (ts.isParenthesizedExpression(wait)) wait = wait.parent;
+				const form = ts.isCallExpression(call) ? requestForm(call, isRequest) : null;
 				const request =
-					ts.isCallExpression(call) &&
-					call.arguments.length === 1 &&
-					stripParens(call.arguments[0]) === x &&
-					isRequest(stripParens(call.expression)) &&
+					form !== null &&
+					typeof form !== 'string' &&
+					stripParens(form.arg) === x &&
 					ts.isAwaitExpression(wait);
 				if (!request) only = false;
 			}
