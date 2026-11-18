@@ -1,7 +1,9 @@
 import { isRecord } from '@n8n/utils/is-record';
 
-export const CONSTELLATION_ZOOM_START = 0.32;
-export const CONSTELLATION_ZOOM_FULL = 0.18;
+// Shift the reveal by four zoom-out clicks. Vue Flow divides the zoom by 1.2 per click.
+const ZOOM_DELAY = 1.2 ** 4;
+export const CONSTELLATION_ZOOM_START = 0.32 / ZOOM_DELAY;
+export const CONSTELLATION_ZOOM_FULL = 0.18 / ZOOM_DELAY;
 
 export function getConstellationProgress(zoom: number) {
 	const progress = Math.max(

@@ -4,11 +4,18 @@ import { getConstellationProgress, projectCanvasStars } from './zoom';
 describe('canvas constellation zoom', () => {
 	it('reveals the sky only at low zoom and reverses without state', () => {
 		expect(getConstellationProgress(1)).toBe(0);
-		expect(getConstellationProgress(0.32)).toBe(0);
-		expect(getConstellationProgress(0.25)).toBeCloseTo(0.5);
-		expect(getConstellationProgress(0.18)).toBe(1);
+		expect(getConstellationProgress(0.32 / 1.2 ** 4)).toBe(0);
+		expect(getConstellationProgress(0.25 / 1.2 ** 4)).toBeCloseTo(0.5);
+		expect(getConstellationProgress(0.18 / 1.2 ** 4)).toBe(1);
 		expect(getConstellationProgress(0.05)).toBe(1);
-		expect(getConstellationProgress(0.32)).toBe(0);
+		expect(getConstellationProgress(0.32 / 1.2 ** 4)).toBe(0);
+	});
+
+	it('starts on the eighth zoom-out click from 60% zoom', () => {
+		for (let clicks = 0; clicks < 8; clicks++) {
+			expect(getConstellationProgress(0.6 / 1.2 ** clicks)).toBe(0);
+		}
+		expect(getConstellationProgress(0.6 / 1.2 ** 8)).toBeGreaterThan(0);
 	});
 
 	it('keeps stars at the rendered node centers through pan and zoom', () => {
