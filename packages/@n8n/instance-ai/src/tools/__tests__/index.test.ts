@@ -325,6 +325,24 @@ describe('domain tool construction', () => {
 		});
 	});
 
+	it('leaves out parse-file when the model reads files in the sandbox', () => {
+		const storedFiles = { read: vi.fn() };
+		const workspace = {} as InstanceAiContext['workspace'];
+		const sandboxFiles = { maxImportBytes: 1024, importFiles: vi.fn(), storeOutput: vi.fn() };
+
+		const withSandboxFiles = createOrchestratorDomainTools(
+			makeContext({ storedFiles, workspace, sandboxFiles }),
+		);
+		// Without a sandbox, the feature cannot import files, so parse-file stays.
+		const withoutSandbox = createOrchestratorDomainTools(
+			makeContext({ storedFiles, sandboxFiles }),
+		);
+
+		expect(withSandboxFiles.has('parse-file')).toBe(false);
+		expect(withSandboxFiles.has('import-files')).toBe(true);
+		expect(withoutSandbox.has('parse-file')).toBe(true);
+	});
+
 	describe('import-files registration', () => {
 		const storedFiles = { read: vi.fn() };
 		const workspace = {} as InstanceAiContext['workspace'];

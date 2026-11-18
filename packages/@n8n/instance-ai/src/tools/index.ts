@@ -299,15 +299,23 @@ function getOrchestratorDomainToolFactories(
 		}
 	}
 
-	// Registered on every turn, with or without files, so the tool list, which
-	// leads the cached prompt prefix, stays the same for the whole thread.
-	const { storedFiles } = context;
-	tools.push([
-		DOMAIN_TOOL_IDS.PARSE_FILE,
-		storedFiles
-			? () => loadParseFileTool().createParseStoredFileTool(storedFiles)
-			: () => loadParseFileTool().createParseFileTool(context),
-	]);
+	// The host sets `sandboxFiles` only when the sandbox files feature is on. With
+	// stored files and the sandbox, it stays the same for the thread, so the tool list,
+	// which leads the cached prompt prefix, does too.
+	const { storedFiles, workspace, sandboxFiles } = context;
+	const sandboxFileImport = storedFiles && workspace && sandboxFiles;
+
+	// With the sandbox files feature, the model reads files in the sandbox, so
+	// parse-file is left out. Otherwise it is registered on every turn, with or
+	// without files, so the tool list stays the same for the whole thread.
+	if (!sandboxFileImport) {
+		tools.push([
+			DOMAIN_TOOL_IDS.PARSE_FILE,
+			storedFiles
+				? () => loadParseFileTool().createParseStoredFileTool(storedFiles)
+				: () => loadParseFileTool().createParseFileTool(context),
+		]);
+	}
 
 	// The host sets `list` only when the sandbox files feature is on, so it stays the same for the thread.
 	const listFiles = storedFiles?.list?.bind(storedFiles);
@@ -327,9 +335,6 @@ function getOrchestratorDomainToolFactories(
 		]);
 	}
 
-	// The host sets `sandboxFiles` only when the sandbox files feature is on. With
-	// stored files and the sandbox, it stays the same for the thread, so the tool list does too.
-	const { workspace, sandboxFiles } = context;
 	if (storedFiles && workspace && sandboxFiles) {
 		tools.push([
 			DOMAIN_TOOL_IDS.IMPORT_FILES,

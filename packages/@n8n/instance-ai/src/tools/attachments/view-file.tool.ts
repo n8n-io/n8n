@@ -44,8 +44,7 @@ const DESCRIPTION =
 	'or a file that `share-files` returned. The file is attached for you to see. ' +
 	'Use it to check an image that you made before you describe it, or to look again at a file of an earlier turn ' +
 	'that is no longer attached. Do not view a file that is already attached in the conversation. ' +
-	'Some models cannot see PDFs or images; the tool then gives an error. ' +
-	'For other file types, use `parse-file`.';
+	'It shows only the images and PDFs that your model can see, and gives an error for other files.';
 
 const MAX_MB = MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES / 1024 / 1024;
 
@@ -64,7 +63,7 @@ export function createViewFileTool(
 			// Otherwise the runtime does not attach the file, and the model sees only its name.
 			if (!storedFiles.canView(file.mimeType)) {
 				return {
-					error: `This model cannot view files of type "${file.mimeType}". To read the text of a PDF or another document, use parse-file`,
+					error: `This model cannot view files of type "${file.mimeType}"`,
 				};
 			}
 			// A viewed file stays attached, so a file that is too large makes every later model call fail.

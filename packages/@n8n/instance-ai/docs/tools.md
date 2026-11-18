@@ -1374,8 +1374,12 @@ on returned documents must cite the returned page titles and public URLs.
 ## `parse-file`
 
 Parse a user file. The registry adds the tool on every turn, with or without
-files, so the tool list stays the same and the prompt cache stays valid. It
-adds one of two versions:
+files, so the tool list stays the same and the prompt cache stays valid. When
+the turn has `import-files` (stored files, a workspace and `sandboxFiles`), the
+registry leaves `parse-file` out: the model imports files into the sandbox and
+reads them there. This is an experiment behind the instance flag
+`137_agent_sandbox_files`. The tool list still stays the same for the thread.
+Otherwise, the registry adds one of two versions:
 
 - When the host sets `storedFiles` on the context, the tool reads a stored file
   of the thread by `fileId`. The Assistant on the Agents runtime uses this
