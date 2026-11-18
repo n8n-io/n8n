@@ -254,7 +254,12 @@ describe('AgentSandboxFilesService', () => {
 		const readable = (sizes: Record<string, number>) =>
 			attachmentService.getReadable.mockImplementation(async (fileId) =>
 				fileId in sizes
-					? mock<AgentChatAttachment>({ id: fileId, fileSizeBytes: sizes[fileId] })
+					? mock<AgentChatAttachment>({
+							id: fileId,
+							fileName: `${fileId}.csv`,
+							mimeType: 'text/csv',
+							fileSizeBytes: sizes[fileId],
+						})
 					: null,
 			);
 
@@ -264,7 +269,15 @@ describe('AgentSandboxFilesService', () => {
 
 			await expect(
 				service.importFiles(workspace, { 'data/./sales.csv': 'f1' }, readScope),
-			).resolves.toEqual([{ path: 'inputs/data/sales.csv', fileId: 'f1', sizeBytes: 3 }]);
+			).resolves.toEqual([
+				{
+					fileId: 'f1',
+					fileName: 'f1.csv',
+					mimeType: 'text/csv',
+					sizeBytes: 3,
+					path: 'inputs/data/sales.csv',
+				},
+			]);
 			expect(attachmentService.getReadable).toHaveBeenCalledWith('f1', readScope);
 			expect(filesystem.writeFile).toHaveBeenCalledWith(
 				'inputs/data/sales.csv',
@@ -304,6 +317,31 @@ describe('AgentSandboxFilesService', () => {
 				service.importFiles(workspace, { 'a.bin': 'f1', 'b.bin': 'f2' }, readScope),
 			).rejects.toThrow('One import copies up to 1 MB');
 			expect(filesystem.writeFile).not.toHaveBeenCalled();
+		});
+
+		it('finds the files with the lookup of the caller', async () => {
+			const file = mock<AgentChatAttachment>({
+				id: 'f1',
+				fileName: 'sales.csv',
+				mimeType: 'text/csv',
+				fileSizeBytes: 3,
+			});
+			const findFile = vi.fn(async (fileId: string) => (fileId === 'f1' ? file : null));
+			attachmentService.getBuffer.mockResolvedValue(Buffer.from('a,b'));
+
+			await expect(
+				service.importFilesFrom(workspace, { 'sales.csv': 'f1' }, findFile),
+			).resolves.toEqual([
+				{
+					fileId: 'f1',
+					fileName: 'sales.csv',
+					mimeType: 'text/csv',
+					sizeBytes: 3,
+					path: 'inputs/sales.csv',
+				},
+			]);
+			expect(findFile).toHaveBeenCalledWith('f1');
+			expect(attachmentService.getReadable).not.toHaveBeenCalled();
 		});
 	});
 

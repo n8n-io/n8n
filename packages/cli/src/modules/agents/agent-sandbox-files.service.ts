@@ -2,6 +2,7 @@ import { CORE_WORKSPACE_TOOL_NAMES, type Workspace } from '@n8n/agents';
 import {
 	AGENT_SANDBOX_FILES_FLAG,
 	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
+	type AgentToolOutputFile,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { PostHogClient } from '@n8n/backend-services';
@@ -34,6 +35,15 @@ export interface SandboxOutputFile {
 	/** SHA-256 of the bytes, hex. */
 	hash: string;
 }
+
+/** A conversation file that `import_files` copied into the workspace. */
+export type ImportedSandboxFile = AgentToolOutputFile & {
+	/** Path relative to the workspace root, e.g. `inputs/data/sales.csv`. */
+	path: string;
+};
+
+/** Finds a conversation file that the caller can read, or `null`. */
+export type FindImportableFile = (fileId: string) => Promise<AgentChatAttachment | null>;
 
 /** Prefix of a file reference that names a file in `outputs/` instead of a fileId. */
 export const SANDBOX_FILE_REF_PREFIX = 'sandbox:';
@@ -150,7 +160,25 @@ export class AgentSandboxFilesService {
 		workspace: Workspace,
 		files: Record<string, string>,
 		scope: { projectId: string; threadId: string },
-	): Promise<Array<{ path: string; fileId: string; sizeBytes: number }>> {
+	): Promise<ImportedSandboxFile[]> {
+		return await this.importFilesFrom(
+			workspace,
+			files,
+			async (fileId) => await this.attachmentService.getReadable(fileId, scope),
+		);
+	}
+
+	/**
+	 * {@link importFiles} with the file lookup of the caller. A system chat
+	 * finds its files by the memory resource of the user, not by project.
+	 * It checks every path and file and the import cap before the first write.
+	 * @throws {UserError} as {@link importFiles} does.
+	 */
+	async importFilesFrom(
+		workspace: Workspace,
+		files: Record<string, string>,
+		findFile: FindImportableFile,
+	): Promise<ImportedSandboxFile[]> {
 		const filesystem = workspace.filesystem;
 		if (!filesystem) throw new UserError('This run has no workspace filesystem');
 		const entries = await Promise.all(
@@ -163,7 +191,7 @@ export class AgentSandboxFilesService {
 						`"${fileId}" is already in your workspace at ${SANDBOX_OUTPUTS_DIR}/${outputPath}`,
 					);
 				}
-				const file = await this.attachmentService.getReadable(fileId, scope);
+				const file = await findFile(fileId);
 				if (!file) throw new UserError(`File "${fileId}" not found in this conversation`);
 				return { path: posix.join(SANDBOX_INPUTS_DIR, relativePath), file };
 			}),
@@ -173,14 +201,20 @@ export class AgentSandboxFilesService {
 		if (totalBytes > maxMb * 1024 * 1024) {
 			throw new UserError(`One import copies up to ${maxMb} MB. Import fewer files at a time`);
 		}
-		const imported: Array<{ path: string; fileId: string; sizeBytes: number }> = [];
+		const imported: ImportedSandboxFile[] = [];
 		for (const { path, file } of entries) {
 			// ponytail: loads each file into memory, up to the import cap. Stream it if the cap grows.
 			await filesystem.writeFile(path, await this.attachmentService.getBuffer(file), {
 				recursive: true,
 				overwrite: true,
 			});
-			imported.push({ path, fileId: file.id, sizeBytes: file.fileSizeBytes });
+			imported.push({
+				fileId: file.id,
+				fileName: file.fileName,
+				mimeType: file.mimeType,
+				sizeBytes: file.fileSizeBytes,
+				path,
+			});
 		}
 		return imported;
 	}

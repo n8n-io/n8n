@@ -1,5 +1,3 @@
-import type { Workspace } from '@n8n/agents';
-
 import { executeTool, parseToolInput } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext, InstanceAiStoredFile } from '../../../types';
 import { createImportFilesTool } from '../import-files.tool';
@@ -7,49 +5,50 @@ import { createImportFilesTool } from '../import-files.tool';
 const WORKSPACE_ROOT = '/home/user/workspace';
 const MAX_BYTES = 200 * 1024 * 1024;
 
-function storedFile(
-	fileName: string,
-	content: string,
-	overrides: Partial<InstanceAiStoredFile> = {},
-): InstanceAiStoredFile {
-	const bytes = Buffer.from(content);
+function storedFile(fileName: string): InstanceAiStoredFile {
 	return {
 		fileName,
 		mimeType: 'text/csv',
-		sizeBytes: bytes.byteLength,
-		readContent: vi.fn(async () => await Promise.resolve(bytes)),
-		...overrides,
+		sizeBytes: 3,
+		readContent: vi.fn(async () => await Promise.resolve(Buffer.from('a,b'))),
 	};
 }
 
 function setup(files: Record<string, InstanceAiStoredFile>) {
-	const written = new Map<string, Buffer>();
-	const writeFile = vi.fn(async (path: string, content: string | Buffer) => {
-		written.set(path, Buffer.isBuffer(content) ? content : Buffer.from(content));
-		await Promise.resolve();
-	});
-	const workspace = { filesystem: { writeFile } } as unknown as Workspace;
 	const context = {
 		workspaceRoot: WORKSPACE_ROOT,
 		logger: { debug: vi.fn(), warn: vi.fn() },
 	} as unknown as InstanceAiContext;
 	const reader = { read: vi.fn(async (fileId: string) => await Promise.resolve(files[fileId])) };
-	const tool = createImportFilesTool(context, reader, workspace, { maxImportBytes: MAX_BYTES });
+	// The host copies the files and gives paths relative to the workspace root.
+	const importFiles = vi.fn(
+		async (byPath: Record<string, string>) =>
+			await Promise.resolve(
+				Object.entries(byPath).map(([path, fileId]) => ({
+					fileId,
+					fileName: files[fileId].fileName,
+					mimeType: files[fileId].mimeType,
+					sizeBytes: files[fileId].sizeBytes,
+					path: `inputs/${path}`,
+				})),
+			),
+	);
+	const tool = createImportFilesTool(context, reader, { maxImportBytes: MAX_BYTES, importFiles });
 	const run = async (input: unknown) =>
 		await executeTool<{
 			imported: Array<{ fileId: string; path: string; sizeBytes: number }>;
 			error?: string;
 		}>(tool, input, {});
-	return { tool, run, written, writeFile, reader };
+	return { tool, run, importFiles, reader };
 }
 
 describe('createImportFilesTool', () => {
-	it('copies a file to inputs/ under its file name', async () => {
-		const { run, written } = setup({ 'file-1': storedFile('sales.csv', 'a,b\n1,2') });
+	it('lets the host copy a file to inputs/ under its file name', async () => {
+		const { run, importFiles } = setup({ 'file-1': storedFile('sales.csv') });
 
 		const result = await run({ files: [{ fileId: 'file-1' }] });
 
-		expect(written.get('inputs/sales.csv')?.toString()).toBe('a,b\n1,2');
+		expect(importFiles).toHaveBeenCalledWith({ 'sales.csv': 'file-1' });
 		// Not under `files`, so the chat does not show the upload again as a new file.
 		expect(result).toEqual({
 			imported: [
@@ -57,72 +56,65 @@ describe('createImportFilesTool', () => {
 					fileId: 'file-1',
 					fileName: 'sales.csv',
 					mimeType: 'text/csv',
-					sizeBytes: 7,
+					sizeBytes: 3,
 					path: `${WORKSPACE_ROOT}/inputs/sales.csv`,
 				},
 			],
 		});
 	});
 
-	it('keeps binary bytes as they are', async () => {
-		const bytes = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0xff, 0x00]);
-		const { run, written } = setup({
-			'file-1': {
-				fileName: 'book.xlsx',
-				mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-				sizeBytes: bytes.byteLength,
-				readContent: async () => await Promise.resolve(bytes),
-			},
-		});
+	it('reads only the metadata of the files', async () => {
+		const file = storedFile('sales.csv');
+		const { run } = setup({ 'file-1': file });
 
 		await run({ files: [{ fileId: 'file-1' }] });
 
-		expect(written.get('inputs/book.xlsx')).toEqual(bytes);
+		expect(file.readContent).not.toHaveBeenCalled();
 	});
 
 	it.each([
-		['a path relative to inputs/', 'q3/sales.csv', 'inputs/q3/sales.csv'],
-		['a path that starts with inputs/', 'inputs/q3/sales.csv', 'inputs/q3/sales.csv'],
-		['an absolute path under the root', `${WORKSPACE_ROOT}/q3/sales.csv`, 'inputs/q3/sales.csv'],
-		['a folder path that ends with /', 'q3/', 'inputs/q3/sales.csv'],
-		['a folder path under inputs/ that ends with /', 'inputs/q3/', 'inputs/q3/sales.csv'],
-		['the inputs folder', 'inputs', 'inputs/sales.csv'],
-		['the inputs folder with a slash', 'inputs/', 'inputs/sales.csv'],
-		['an absolute folder path', `${WORKSPACE_ROOT}/inputs/q3/`, 'inputs/q3/sales.csv'],
+		['a path relative to inputs/', 'q3/sales.csv', 'q3/sales.csv'],
+		['a path that starts with inputs/', 'inputs/q3/sales.csv', 'q3/sales.csv'],
+		['an absolute path under the root', `${WORKSPACE_ROOT}/q3/sales.csv`, 'q3/sales.csv'],
+		['a folder path that ends with /', 'q3/', 'q3/sales.csv'],
+		['a folder path under inputs/ that ends with /', 'inputs/q3/', 'q3/sales.csv'],
+		['the inputs folder', 'inputs', 'sales.csv'],
+		['the inputs folder with a slash', 'inputs/', 'sales.csv'],
+		['an absolute folder path', `${WORKSPACE_ROOT}/inputs/q3/`, 'q3/sales.csv'],
 	])('accepts %s', async (_label, path, expected) => {
-		const { run, written } = setup({ 'file-1': storedFile('sales.csv', 'x') });
+		const { run, importFiles } = setup({ 'file-1': storedFile('sales.csv') });
 
 		await run({ files: [{ fileId: 'file-1', path }] });
 
-		expect([...written.keys()]).toEqual([expected]);
+		expect(importFiles).toHaveBeenCalledWith({ [expected]: 'file-1' });
 	});
 
 	it('uses the base name of a file name that has directories', async () => {
-		const { run, written } = setup({ 'file-1': storedFile('reports/2026/sales.csv', 'x') });
+		const { run, importFiles } = setup({ 'file-1': storedFile('reports/2026/sales.csv') });
 
 		await run({ files: [{ fileId: 'file-1' }] });
 
-		expect([...written.keys()]).toEqual(['inputs/sales.csv']);
+		expect(importFiles).toHaveBeenCalledWith({ 'sales.csv': 'file-1' });
 	});
 
 	it('keeps a file named inputs under its name', async () => {
-		const { run, written } = setup({ 'file-1': storedFile('inputs', 'x') });
+		const { run, importFiles } = setup({ 'file-1': storedFile('inputs') });
 
 		await run({ files: [{ fileId: 'file-1' }] });
 
-		expect([...written.keys()]).toEqual(['inputs/inputs']);
+		expect(importFiles).toHaveBeenCalledWith({ inputs: 'file-1' });
 	});
 
 	it('uses the fileId when the file name is not a usable path', async () => {
-		const { run, written } = setup({ 'file-1': storedFile('..', 'x') });
+		const { run, importFiles } = setup({ 'file-1': storedFile('..') });
 
 		await run({ files: [{ fileId: 'file-1' }] });
 
-		expect([...written.keys()]).toEqual(['inputs/file-1']);
+		expect(importFiles).toHaveBeenCalledWith({ 'file-1': 'file-1' });
 	});
 
 	it('copies nothing when one file is not in the conversation', async () => {
-		const { run, writeFile } = setup({ 'file-1': storedFile('a.csv', 'x') });
+		const { run, importFiles } = setup({ 'file-1': storedFile('a.csv') });
 
 		const result = await run({ files: [{ fileId: 'file-1' }, { fileId: 'missing' }] });
 
@@ -130,55 +122,42 @@ describe('createImportFilesTool', () => {
 			imported: [],
 			error: 'File "missing" not found in this conversation',
 		});
-		expect(writeFile).not.toHaveBeenCalled();
+		expect(importFiles).not.toHaveBeenCalled();
 	});
 
 	it('copies nothing when a path leaves the workspace', async () => {
-		const { run, writeFile } = setup({ 'file-1': storedFile('a.csv', 'x') });
+		const { run, importFiles } = setup({ 'file-1': storedFile('a.csv') });
 
 		const result = await run({ files: [{ fileId: 'file-1', path: '../../etc/passwd' }] });
 
 		expect(result.error).toContain('must stay within the workspace root');
-		expect(writeFile).not.toHaveBeenCalled();
+		expect(importFiles).not.toHaveBeenCalled();
 	});
 
 	it('copies nothing when two files go to the same path', async () => {
-		const { run, writeFile } = setup({
-			'file-1': storedFile('sales.csv', 'x'),
-			'file-2': storedFile('sales.csv', 'y'),
+		const { run, importFiles } = setup({
+			'file-1': storedFile('sales.csv'),
+			'file-2': storedFile('sales.csv'),
 		});
 
 		const result = await run({ files: [{ fileId: 'file-1' }, { fileId: 'file-2' }] });
 
-		expect(result.error).toContain('inputs/sales.csv');
-		expect(writeFile).not.toHaveBeenCalled();
+		expect(result.error).toBe('Two files go to "inputs/sales.csv". Give each file its own path.');
+		expect(importFiles).not.toHaveBeenCalled();
 	});
 
-	it('copies nothing and loads no bytes when the files are over the size cap', async () => {
-		const a = storedFile('a.csv', 'x', { sizeBytes: MAX_BYTES / 2 });
-		const b = storedFile('b.csv', 'x', { sizeBytes: MAX_BYTES / 2 + 1 });
-		const { run, writeFile } = setup({ 'file-1': a, 'file-2': b });
+	it('gives the model the error of the host', async () => {
+		const { run, importFiles } = setup({ 'file-1': storedFile('a.csv') });
+		importFiles.mockRejectedValueOnce(
+			new Error('One import copies up to 200 MB. Import fewer files at a time'),
+		);
 
-		const result = await run({ files: [{ fileId: 'file-1' }, { fileId: 'file-2' }] });
+		const result = await run({ files: [{ fileId: 'file-1' }] });
 
-		expect(result.error).toBe('One call copies up to 200 MB. Import fewer files at a time.');
-		expect(a.readContent).not.toHaveBeenCalled();
-		expect(b.readContent).not.toHaveBeenCalled();
-		expect(writeFile).not.toHaveBeenCalled();
-	});
-
-	it('reports a file whose bytes storage no longer has, with the files copied before it', async () => {
-		const { run } = setup({
-			'file-1': storedFile('a.csv', 'x'),
-			'file-2': storedFile('b.csv', 'y', {
-				readContent: async () => await Promise.resolve(undefined),
-			}),
+		expect(result).toEqual({
+			imported: [],
+			error: 'One import copies up to 200 MB. Import fewer files at a time',
 		});
-
-		const result = await run({ files: [{ fileId: 'file-1' }, { fileId: 'file-2' }] });
-
-		expect(result.imported.map((file) => file.fileId)).toEqual(['file-1']);
-		expect(result.error).toBe('File "file-2" is no longer available');
 	});
 
 	it('names the configured cap in its description', () => {

@@ -316,7 +316,7 @@ describe('domain tool construction', () => {
 	describe('import-files registration', () => {
 		const storedFiles = { read: vi.fn() };
 		const workspace = {} as InstanceAiContext['workspace'];
-		const sandboxFiles = { maxImportBytes: 1024 };
+		const sandboxFiles = { maxImportBytes: 1024, importFiles: vi.fn() };
 
 		it.each([
 			['nothing', {}],

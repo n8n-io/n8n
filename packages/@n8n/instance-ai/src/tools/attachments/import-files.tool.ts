@@ -2,13 +2,16 @@
  * import-files tool: copies stored files of the thread into `inputs/` of the
  * sandbox workspace, so the agent can work on them with the workspace tools.
  *
+ * The host does the copy (`context.sandboxFiles.importFiles`), the same way as
+ * `import_files` of project agents. This tool picks the path of each file and
+ * shapes the result for the model.
+ *
  * The registry adds the tool only when the host sets `context.storedFiles` and
  * `context.sandboxFiles`, and the turn has a workspace. Only the Assistant
  * agent on the Agents runtime sets them, and only when the sandbox files
  * feature is on.
  */
 
-import type { Workspace } from '@n8n/agents';
 import { isAbortError, Tool } from '@n8n/agents';
 import { posix } from 'node:path';
 import { z } from 'zod';
@@ -18,7 +21,6 @@ import type {
 	InstanceAiSandboxFiles,
 	InstanceAiStoredFileReader,
 } from '../../types';
-import { writeWorkspaceFile } from '../../workspace/workspace-files';
 import { joinWorkspacePath, normalizeWorkspaceRelativePath } from '../../workspace/workspace-paths';
 
 /** Directory in the workspace root that receives the imported files. */
@@ -103,18 +105,17 @@ function importNameOf(fileName: string, fileId: string, context: InstanceAiConte
 }
 
 /**
- * Where a file goes in the workspace. The path is relative to `inputs/`, and a
- * leading `inputs/` is dropped, so the model can give either form. A folder path
- * (`inputs`, or a path that ends with `/`) gets the file name, so the file keeps
- * its name and extension.
+ * Where a file goes, relative to `inputs/`. A leading `inputs/` is dropped, so
+ * the model can give either form. A folder path (`inputs`, or a path that ends
+ * with `/`) gets the file name, so the file keeps its name and extension.
  */
-function importTargetOf(
+function importPathOf(
 	path: string | undefined,
 	fileName: string,
 	fileId: string,
 	context: InstanceAiContext,
 ): string {
-	if (!path) return posix.join(IMPORT_FILES_DIR, importNameOf(fileName, fileId, context));
+	if (!path) return importNameOf(fileName, fileId, context);
 	const relative = normalizeImportPath(path, context);
 	let inDir = relative;
 	if (relative === IMPORT_FILES_DIR) inDir = '';
@@ -122,80 +123,57 @@ function importTargetOf(
 		inDir = relative.slice(IMPORT_FILES_DIR.length + 1);
 	}
 	if (inDir === '' || path.endsWith('/')) {
-		return posix.join(IMPORT_FILES_DIR, inDir, importNameOf(fileName, fileId, context));
+		return posix.join(inDir, importNameOf(fileName, fileId, context));
 	}
-	return posix.join(IMPORT_FILES_DIR, inDir);
+	return inDir;
 }
 
 export function createImportFilesTool(
 	context: InstanceAiContext,
 	reader: InstanceAiStoredFileReader,
-	workspace: Workspace,
-	{ maxImportBytes: maxBytes }: InstanceAiSandboxFiles,
+	sandboxFiles: InstanceAiSandboxFiles,
 ) {
 	return new Tool('import-files')
-		.description(describeTool(maxBytes))
+		.description(describeTool(sandboxFiles.maxImportBytes))
 		.input(importFilesInputSchema)
 		.output(importFilesOutputSchema)
-		.handler(async ({ files }: ImportFilesInput, ctx): Promise<ImportFilesOutput> => {
+		.handler(async ({ files }: ImportFilesInput): Promise<ImportFilesOutput> => {
 			const fail = (error: string): ImportFilesOutput => ({ imported: [], error });
 
-			// Check every file before the first write, so a failed call copies nothing.
-			const planned: Array<{
-				fileId: string;
-				path: string;
-				file: NonNullable<Awaited<ReturnType<InstanceAiStoredFileReader['read']>>>;
-			}> = [];
-			const paths = new Set<string>();
-			let totalBytes = 0;
+			// The default path needs the file name, so read the metadata of each file first.
+			const byPath = new Map<string, string>();
 			for (const { fileId, path } of files) {
 				const file = await reader.read(fileId);
 				if (!file) return fail(`File "${fileId}" not found in this conversation`);
 				let target: string;
 				try {
-					target = importTargetOf(path, file.fileName, fileId, context);
+					target = importPathOf(path, file.fileName, fileId, context);
 				} catch (error) {
 					return fail(error instanceof Error ? error.message : String(error));
 				}
-				if (paths.has(target)) {
-					return fail(`Two files go to "${target}". Give each file its own path.`);
+				if (byPath.has(target)) {
+					return fail(
+						`Two files go to "${IMPORT_FILES_DIR}/${target}". Give each file its own path.`,
+					);
 				}
-				paths.add(target);
-				totalBytes += file.sizeBytes;
-				planned.push({ fileId, path: target, file });
-			}
-			// Each file is loaded into memory before its write, so the cap keeps one call bounded.
-			if (totalBytes > maxBytes) {
-				return fail(`One call copies up to ${formatMb(maxBytes)}. Import fewer files at a time.`);
+				byPath.set(target, fileId);
 			}
 
-			const imported: ImportFilesOutput['imported'] = [];
-			for (const { fileId, path, file } of planned) {
-				// One file in memory at a time.
-				const content = await file.readContent();
-				if (!content) {
-					return { imported, error: `File "${fileId}" is no longer available` };
-				}
-				try {
-					await writeWorkspaceFile(workspace, path, content, {
-						logger: context.logger,
-						resourceLabel: 'Imported file',
-						abortSignal: ctx.abortSignal,
-					});
-				} catch (error) {
-					if (isAbortError(error)) throw error;
-					const reason = error instanceof Error ? error.message : String(error);
-					return { imported, error: `Could not copy "${fileId}" to ${path}: ${reason}` };
-				}
-				imported.push({
-					fileId,
-					fileName: file.fileName,
-					mimeType: file.mimeType,
-					sizeBytes: content.byteLength,
-					path: context.workspaceRoot ? joinWorkspacePath(context.workspaceRoot, path) : path,
-				});
+			// The host checks every file, path and the cap before the first write.
+			try {
+				const imported = await sandboxFiles.importFiles(Object.fromEntries(byPath));
+				return {
+					imported: imported.map((file) => ({
+						...file,
+						path: context.workspaceRoot
+							? joinWorkspacePath(context.workspaceRoot, file.path)
+							: file.path,
+					})),
+				};
+			} catch (error) {
+				if (isAbortError(error)) throw error;
+				return fail(error instanceof Error ? error.message : String(error));
 			}
-			return { imported };
 		})
 		.build();
 }

@@ -1347,11 +1347,17 @@ is on, and takes its byte cap from `N8N_AGENTS_FILES_MAX_IMPORT_MB`, like the
 | `files[].fileId` | string | yes | — | Id of a stored file of the thread |
 | `files[].path` | string | no | file name | Path relative to `inputs/`. A leading `inputs/` is dropped. A folder path (`inputs`, or a path that ends with `/`) gets the file name |
 
-The tool checks every file, path and the total size before the first write, so
-a failed check copies nothing. It then writes one file at a time. The result
-lists each copied file under `imported`, with its absolute workspace path, and
-has an `error` when a file could not be copied. The list is not named `files`,
-because the chat shows the `files` of a tool result as new files.
+The tool reads the name of each file and picks its path in `inputs/`. Then
+`sandboxFiles.importFiles` of the host copies the files. On the Agents runtime,
+this is the same code as `import_files` of project agents
+(`AgentSandboxFilesService.importFilesFrom`), but the files come from the system
+chat of the user. The host checks every file, path and the total size before
+the first write, so a failed check copies nothing.
+
+The result lists each copied file under `imported`, with its absolute
+workspace path. When the copy fails, the result has no files and an `error`
+for the model. The list is not named `files`, because the chat shows the
+`files` of a tool result as new files.
 
 ## `ask_user`
 

@@ -19,6 +19,7 @@ import type {
 import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentConfigValidationIssueCode,
+	AgentToolOutputFile,
 	AgentJsonConfig,
 	AgentSessionStatus,
 	AgentSkill,
@@ -1715,7 +1716,20 @@ export interface InstanceAiStoredFile {
 export interface InstanceAiSandboxFiles {
 	/** Most bytes that one `import-files` call copies, for all files together. */
 	maxImportBytes: number;
+	/**
+	 * Copy conversation files into `inputs/` of the sandbox. Each key is a path
+	 * relative to `inputs/`, each value a fileId. The host checks every file,
+	 * path and the cap before the first write. Throws when a check or the copy
+	 * fails. The message is for the model.
+	 */
+	importFiles(files: Record<string, string>): Promise<InstanceAiImportedFile[]>;
 }
+
+/** A conversation file that the host copied into the sandbox. */
+export type InstanceAiImportedFile = AgentToolOutputFile & {
+	/** Path relative to the workspace root, e.g. `inputs/sales.csv`. */
+	path: string;
+};
 
 export interface InstanceAiStoredFileReader {
 	/** Gives `undefined` when the thread has no such file. */

@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 
-import type { SerializableAgentState } from '@n8n/agents';
+import type { SerializableAgentState, Workspace } from '@n8n/agents';
 import type { AgentSseEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { TransactionRunner, User } from '@n8n/db';
@@ -728,6 +728,70 @@ describe('SystemAgentExecutionService', () => {
 			// The import cap of project agents, N8N_AGENTS_FILES_MAX_IMPORT_MB.
 			expect(on.provider.prepareTurn.mock.calls[0][0].sandboxFiles).toEqual({
 				maxImportBytes: 200 * 1024 * 1024,
+				importFiles: expect.any(Function),
+			});
+		});
+
+		describe('sandbox imports', () => {
+			const workspace = mock<Workspace>();
+
+			async function importFilesOfTurn() {
+				const context = setup([textChunk]);
+				context.sandboxFiles.isEnabled.mockResolvedValue(true);
+				await context.service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+				const { sandboxFiles } = context.provider.prepareTurn.mock.calls[0][0];
+				if (!sandboxFiles) throw new Error('expected sandbox files');
+				return { ...context, importFiles: sandboxFiles.importFiles };
+			}
+
+			it('copies only the files of the thread, from the system chat of its owner', async () => {
+				const { importFiles, sandboxFiles, attachmentService } = await importFilesOfTurn();
+				const imported = [
+					{
+						fileId: 'f1',
+						fileName: 'a.csv',
+						mimeType: 'text/csv',
+						sizeBytes: 1,
+						path: 'inputs/a.csv',
+					},
+				];
+				sandboxFiles.importFilesFrom.mockResolvedValue(imported);
+
+				await expect(importFiles(workspace, { 'a.csv': 'f1' })).resolves.toEqual(imported);
+
+				const [, files, findFile] = sandboxFiles.importFilesFrom.mock.calls[0];
+				expect(files).toEqual({ 'a.csv': 'f1' });
+				attachmentService.getForSystemAgent.mockResolvedValueOnce({
+					id: 'f1',
+					threadId: 'thread-1',
+				} as never);
+				await expect(findFile('f1')).resolves.toMatchObject({ id: 'f1' });
+				expect(attachmentService.getForSystemAgent).toHaveBeenCalledWith('f1', {
+					agentId: AGENT_ID,
+					resourceId: 'system-chat:user-1',
+					source: 'system_chat',
+				});
+				attachmentService.getForSystemAgent.mockResolvedValueOnce({
+					id: 'f2',
+					threadId: 'thread-2',
+				} as never);
+				await expect(findFile('f2')).resolves.toBeNull();
+			});
+
+			it('keeps a check error for the model and hides a raw error', async () => {
+				const { importFiles, sandboxFiles } = await importFilesOfTurn();
+
+				sandboxFiles.importFilesFrom.mockRejectedValueOnce(
+					new UserError('File "x" not found in this conversation'),
+				);
+				await expect(importFiles(workspace, { 'a.csv': 'x' })).rejects.toThrow(
+					'File "x" not found in this conversation',
+				);
+
+				sandboxFiles.importFilesFrom.mockRejectedValueOnce(new Error('ECONNRESET 10.0.0.3'));
+				await expect(importFiles(workspace, { 'a.csv': 'x' })).rejects.toThrow(
+					'The files could not be copied to inputs/',
+				);
 			});
 		});
 

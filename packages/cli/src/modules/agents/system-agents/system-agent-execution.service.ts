@@ -24,6 +24,7 @@ import { AgentMessageQueueService } from '../agent-message-queue.service';
 import { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 import { chatErrorCode, emitChunkEvents } from '../agent-sse-stream';
 import { AgentTurnExecutionService, type AgentTurnRequest } from '../agent-turn-execution.service';
+import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
@@ -693,7 +694,7 @@ export class SystemAgentExecutionService {
 						...this.turnStateOf(thread),
 						emitHostEvent: hostEvents.emit,
 						readFile: async (fileId) => await this.readThreadFile(thread, resourceId, fileId),
-						...(await this.sandboxFilesOf()),
+						...(await this.sandboxFilesOf(thread, resourceId)),
 						executionId: admission.executionId,
 						message: payload.message,
 						attachments,
@@ -790,7 +791,7 @@ export class SystemAgentExecutionService {
 					...this.turnStateOf(thread),
 					emitHostEvent: hostEvents.emit,
 					readFile: async (fileId) => await this.readThreadFile(thread, resourceId, fileId),
-					...(await this.sandboxFilesOf()),
+					...(await this.sandboxFilesOf(thread, resourceId)),
 					runId,
 					toolCallId: pending.toolCallId,
 					checkpointHostMetadata,
@@ -960,9 +961,42 @@ export class SystemAgentExecutionService {
 	}
 
 	/** The sandbox files of project agents, with the same flag and caps. Set only when the flag is on. */
-	private async sandboxFilesOf(): Promise<Pick<SystemAgentStartTurn, 'sandboxFiles'>> {
+	private async sandboxFilesOf(
+		thread: AgentExecutionThread,
+		resourceId: string,
+	): Promise<Pick<SystemAgentStartTurn, 'sandboxFiles'>> {
 		if (!(await this.sandboxFiles.isEnabled())) return {};
-		return { sandboxFiles: { maxImportBytes: this.sandboxFiles.maxImportBytes } };
+		return {
+			sandboxFiles: {
+				maxImportBytes: this.sandboxFiles.maxImportBytes,
+				importFiles: async (workspace, files) =>
+					await this.sandboxFiles
+						.importFilesFrom(
+							workspace,
+							files,
+							async (fileId) => await this.findThreadAttachment(thread, resourceId, fileId),
+						)
+						.catch((error: unknown) => {
+							// A check error is for the model. A raw storage or sandbox error is not.
+							if (error instanceof UserError) throw error;
+							throw new UserError('The files could not be copied to inputs/', { cause: error });
+						}),
+			},
+		};
+	}
+
+	/** A file of the thread, from the system chat of the thread's owner. `null` for a file of another thread. */
+	private async findThreadAttachment(
+		thread: AgentExecutionThread,
+		resourceId: string,
+		fileId: string,
+	): Promise<AgentChatAttachment | null> {
+		const attachment = await this.attachmentService.getForSystemAgent(fileId, {
+			agentId: thread.agentId,
+			resourceId,
+			source: SYSTEM_CHAT_SOURCE,
+		});
+		return attachment?.threadId === thread.id ? attachment : null;
 	}
 
 	/** Read an attachment of the turn, from the system chat of the thread's owner. */
@@ -981,12 +1015,8 @@ export class SystemAgentExecutionService {
 		resourceId: string,
 		fileId: string,
 	): Promise<SystemAgentFile | undefined> {
-		const attachment = await this.attachmentService.getForSystemAgent(fileId, {
-			agentId: thread.agentId,
-			resourceId,
-			source: SYSTEM_CHAT_SOURCE,
-		});
-		if (attachment?.threadId !== thread.id) return undefined;
+		const attachment = await this.findThreadAttachment(thread, resourceId, fileId);
+		if (!attachment) return undefined;
 		// The bytes load only on request, so a caller can check the size first.
 		return {
 			fileName: attachment.fileName,

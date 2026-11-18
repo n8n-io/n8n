@@ -284,8 +284,7 @@ function getOrchestratorDomainToolFactories(
 	if (storedFiles && workspace && sandboxFiles) {
 		tools.push([
 			DOMAIN_TOOL_IDS.IMPORT_FILES,
-			() =>
-				loadImportFilesTool().createImportFilesTool(context, storedFiles, workspace, sandboxFiles),
+			() => loadImportFilesTool().createImportFilesTool(context, storedFiles, sandboxFiles),
 		]);
 	}
 
