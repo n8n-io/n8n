@@ -24,7 +24,12 @@ import {
 } from './nodeViewUtils';
 import type { INode, INodeTypeDescription, INodeExecutionData, Workflow } from 'n8n-workflow';
 import type { INodeUi, XYPosition } from '@/Interface';
-import { NodeConnectionTypes, NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	NodeHelpers,
+	QUORUM_APPROVAL_NODE_TYPE,
+	SEND_AND_WAIT_OPERATION,
+} from 'n8n-workflow';
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { mock, type MockProxy } from 'vitest-mock-extended';
@@ -205,6 +210,30 @@ describe('getGenericHints', () => {
 		hasMultipleInputItems = true;
 		mockWorkflowNode.parameters.operation = SEND_AND_WAIT_OPERATION;
 		mockWorkflow.getNode.mockReturnValue({ executeOnce: false } as unknown as INode);
+
+		const hints = getGenericHints({
+			workflowNode: mockWorkflowNode,
+			node: mockNode,
+			nodeType: mockNodeType,
+			nodeOutputData: mockNodeOutputData,
+			hasMultipleInputItems,
+			hasNodeRun,
+			getNodeByName: () => null,
+			connections: {},
+		});
+
+		expect(hints).toEqual([
+			{
+				message: 'This action will run only once, for the first input item',
+				location: 'outputPane',
+			},
+		]);
+	});
+
+	it('should return a hint for Quorum Approval node with multiple input items', () => {
+		hasMultipleInputItems = true;
+		mockWorkflowNode.type = QUORUM_APPROVAL_NODE_TYPE;
+		mockWorkflowNode.parameters = {};
 
 		const hints = getGenericHints({
 			workflowNode: mockWorkflowNode,

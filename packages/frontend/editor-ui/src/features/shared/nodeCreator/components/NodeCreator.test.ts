@@ -7,6 +7,7 @@ import { OVERLAY_LAYER_SELECTOR } from '@n8n/design-system';
 import { createComponentRenderer } from '@/__tests__/render';
 import { EmbeddedCanvasElementKey } from '@/app/constants/injectionKeys';
 import NodeCreator from './NodeCreator.vue';
+import { QUORUM_APPROVAL_NODE_TYPE } from 'n8n-workflow';
 
 const mockFetchConfig = vi.fn();
 const mockNodeCreatorState = vi.hoisted(() => ({
@@ -14,6 +15,17 @@ const mockNodeCreatorState = vi.hoisted(() => ({
 	isReplacingFromSetupPanel: false,
 }));
 const mockFocusPanel = vi.hoisted(() => ({ focusPanelActive: false, focusPanelWidth: 0 }));
+const mockGenerateMergedNodesAndActions = vi.hoisted(() =>
+	vi.fn(() => ({ actions: [], mergedNodes: [] })),
+);
+const mockVisibleNodeTypes = vi.hoisted(() => ({ value: [] as Array<{ name: string }> }));
+const mockWorkflowSettings = vi.hoisted(() => ({
+	engineType: undefined as 'v1' | 'v2' | undefined,
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	injectWorkflowDocumentStore: vi.fn(() => ({ value: { settings: mockWorkflowSettings } })),
+}));
 
 vi.mock('@/app/stores/focusPanel.store', () => ({
 	useFocusPanelStore: vi.fn(() => mockFocusPanel),
@@ -47,7 +59,7 @@ vi.mock('@/features/shared/nodeCreator/composables/useKeyboardNavigation', () =>
 
 vi.mock('@/features/shared/nodeCreator/composables/useActionsGeneration', () => ({
 	useActionsGenerator: vi.fn(() => ({
-		generateMergedNodesAndActions: vi.fn(() => ({ actions: [], mergedNodes: [] })),
+		generateMergedNodesAndActions: mockGenerateMergedNodesAndActions,
 	})),
 }));
 
@@ -65,7 +77,11 @@ vi.mock('@/features/shared/nodeCreator/nodeCreator.store', () => ({
 }));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
-	useNodeTypesStore: vi.fn(() => ({})),
+	useNodeTypesStore: vi.fn(() => ({
+		get visibleNodeTypes() {
+			return mockVisibleNodeTypes.value;
+		},
+	})),
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
@@ -110,6 +126,38 @@ describe('NodeCreator', () => {
 		mockNodeCreatorState.isReplacingFromSetupPanel = false;
 		mockFocusPanel.focusPanelActive = false;
 		mockFocusPanel.focusPanelWidth = 0;
+		mockVisibleNodeTypes.value = [];
+		mockWorkflowSettings.engineType = undefined;
+	});
+
+	it('hides engine v2 only nodes when the workflow engine is not v2', () => {
+		mockVisibleNodeTypes.value = [
+			{ name: 'n8n-nodes-base.set' },
+			{ name: QUORUM_APPROVAL_NODE_TYPE },
+		];
+		mockWorkflowSettings.engineType = 'v1';
+
+		renderComponent();
+
+		expect(mockGenerateMergedNodesAndActions).toHaveBeenCalledWith(
+			[{ name: 'n8n-nodes-base.set' }],
+			undefined,
+		);
+	});
+
+	it('shows engine v2 only nodes when the workflow engine is v2', () => {
+		mockVisibleNodeTypes.value = [
+			{ name: 'n8n-nodes-base.set' },
+			{ name: QUORUM_APPROVAL_NODE_TYPE },
+		];
+		mockWorkflowSettings.engineType = 'v2';
+
+		renderComponent();
+
+		expect(mockGenerateMergedNodesAndActions).toHaveBeenCalledWith(
+			[{ name: 'n8n-nodes-base.set' }, { name: QUORUM_APPROVAL_NODE_TYPE }],
+			undefined,
+		);
 	});
 
 	it('calls fetchConfig from useAiGateway composable on mount', async () => {

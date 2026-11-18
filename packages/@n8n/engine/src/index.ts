@@ -30,6 +30,8 @@ export type {
 	StepDetail,
 } from './server';
 export type {
+	CastBallotVoteRequest,
+	CastBallotVoteResponse,
 	FindLatestExecutionRequest,
 	SearchExecutionsRequest,
 	SearchExecutionsResponse,
@@ -100,6 +102,7 @@ export type {
 } from './graph';
 
 export type {
+	BallotResume,
 	ExecutionFilesDeleter,
 	ExecutionLocation,
 	ExternalDependencies,
@@ -135,6 +138,10 @@ export {
 	stepErrorDetails,
 } from './execution';
 export type {
+	BallotDeclaration,
+	BallotDecision,
+	BallotOutcome,
+	BallotVoteResult,
 	CallerContext,
 	SubExecutionOutcome,
 	SubExecutionResult,

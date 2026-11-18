@@ -9,6 +9,7 @@ import {
 } from '@n8n/typeorm';
 
 import type {
+	BallotVotes,
 	StepError,
 	ResumeCause,
 	StepSlots,
@@ -76,6 +77,10 @@ export class WorkflowStepExecution {
 	 */
 	@Column('jsonb', { name: 'resume_cause', nullable: true })
 	resumeCause!: ResumeCause | null;
+
+	/** The votes of a ballot wait, by voter index. `null` until the first vote. */
+	@Column('jsonb', { name: 'ballot_votes', nullable: true })
+	ballotVotes!: BallotVotes | null;
 
 	/**
 	 * When the engine treats the step as stuck in `queued` or `running`. The

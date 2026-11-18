@@ -55,6 +55,7 @@ function makeStepStore(): StepStore {
 	return {
 		cancelPendingSteps: vi.fn(),
 		resumeStep: vi.fn().mockResolvedValue(true),
+		recordBallotVote: vi.fn(),
 	} as unknown as StepStore;
 }
 

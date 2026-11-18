@@ -19,7 +19,13 @@ import type {
 	NodeConnectionType,
 	NodeHint,
 } from 'n8n-workflow';
-import { jsonParse, NodeConnectionTypes, NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import {
+	jsonParse,
+	NodeConnectionTypes,
+	NodeHelpers,
+	QUORUM_APPROVAL_NODE_TYPE,
+	SEND_AND_WAIT_OPERATION,
+} from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 import type { ViewportBoundaries } from '@/features/workflows/canvas/canvas.types';
 import {
@@ -446,7 +452,10 @@ export function getGenericHints({
 	}
 
 	// add sendAndWait hint
-	if (hasMultipleInputItems && workflowNode.parameters.operation === SEND_AND_WAIT_OPERATION) {
+	const isSendAndWait =
+		workflowNode.parameters.operation === SEND_AND_WAIT_OPERATION ||
+		workflowNode.type === QUORUM_APPROVAL_NODE_TYPE;
+	if (hasMultipleInputItems && isSendAndWait) {
 		const executeOnce = getNodeByName(node.name)?.executeOnce;
 		if (!executeOnce) {
 			nodeHints.push({

@@ -1001,6 +1001,17 @@ describe('ExecuteContext', () => {
 			expect(MAX_IN_PROCESS_WAIT_MS).toBe(65_000);
 		});
 
+		it('refuses a wait that votes end, which only engine v2 supports', async () => {
+			const { context, waitRunExecutionData } = makeWaitContext();
+
+			await expect(
+				context.putExecutionToWait(new Date(Date.now() + LONG_MS), {
+					ballot: { voters: [{}], required: 1, allowDecline: true },
+				}),
+			).rejects.toThrow('This node needs engine v2');
+			expect(waitRunExecutionData.waitTill).toBeUndefined();
+		});
+
 		it('sleeps in the process when only a deadline can end a short wait', async () => {
 			const { context, waitRunExecutionData, waitAdditionalData } = makeWaitContext();
 

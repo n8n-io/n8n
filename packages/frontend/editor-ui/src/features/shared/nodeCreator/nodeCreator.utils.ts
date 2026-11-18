@@ -27,6 +27,7 @@ import {
 	DISCORD_NODE_TYPE,
 	HITL_SUBCATEGORY,
 	HUMAN_IN_THE_LOOP_CATEGORY,
+	isEngineV2OnlyNodeType,
 	MESSAGE_AN_AGENT_NODE_TYPE,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	RECOMMENDED_NODES,
@@ -52,7 +53,11 @@ import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import { getN8nAgentsNodeName } from '@/experiments/inlineAgents/useInlineAgentsExperiment';
 import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
 import type { IconName } from '@n8n/design-system';
-import type { INodeOutputConfiguration, NodeConnectionType } from 'n8n-workflow';
+import type {
+	INodeOutputConfiguration,
+	NodeConnectionType,
+	WorkflowEngineType,
+} from 'n8n-workflow';
 import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
 
@@ -307,6 +312,15 @@ export function getNodeItemRestriction(nodeTypeName: string): TypeRestriction | 
 
 export function isNodeItemRestricted(nodeTypeName: string): boolean {
 	return getNodeItemRestriction(nodeTypeName) !== undefined;
+}
+
+/** Drops the node types that the workflow engine cannot run. */
+export function filterNodeTypesForEngine<T extends { name: string }>(
+	nodeTypes: T[],
+	engineType: WorkflowEngineType | undefined,
+): T[] {
+	if (engineType === 'v2') return nodeTypes;
+	return nodeTypes.filter((nodeType) => !isEngineV2OnlyNodeType(nodeType.name));
 }
 
 type IsRestricted = (nodeTypeName: string) => boolean;

@@ -7,7 +7,13 @@ export type {
 	StartExecutionResult,
 } from './start-execution.service';
 export { stepKeyId } from './execution.types';
+export { ballotResult, evaluateBallot, MAX_BALLOT_VOTERS } from './ballot';
 export type {
+	BallotDeclaration,
+	BallotDecision,
+	BallotOutcome,
+	BallotResumeCause,
+	BallotVotes,
 	CallerContext,
 	SubExecutionOutcome,
 	SubExecutionResult,
@@ -71,6 +77,7 @@ export {
 export { ExecutionFileCleanup } from './execution-file-cleanup';
 export { ResumeRejectedError, ResumeRequestService } from './resume-request.service';
 export type {
+	BallotVoteResult,
 	ResumeHold,
 	ResumeLocation,
 	ResumeRejection,

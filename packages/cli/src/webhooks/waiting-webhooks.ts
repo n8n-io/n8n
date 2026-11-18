@@ -3,9 +3,10 @@ import { EventService } from '@n8n/backend-services';
 import { EndpointsConfig } from '@n8n/config';
 import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { ExecutionSnapshot, ResumeTargetResponse } from '@n8n/engine';
+import type { CastBallotVoteResponse, ExecutionSnapshot, ResumeTargetResponse } from '@n8n/engine';
 import { timingSafeEqual } from 'crypto';
 import type express from 'express';
+import isbot from 'isbot';
 import { InstanceSettings, WAITING_TOKEN_QUERY_PARAM, validateUrlSignature } from 'n8n-core';
 import {
 	FORM_NODE_TYPE,
@@ -72,6 +73,32 @@ function toLocateRefusal(id: string, status: number, reason: string): Error {
 	// A data plane without a resume secret, so not a wait that is over.
 	if (status === 501) return new NotImplementedError(refusal);
 	return new BadRequestError(refusal);
+}
+
+/** A ballot link carries the voter and the vote in its signed query. */
+const isBallotVoteRequest = (req: WaitingWebhookRequest): boolean =>
+	typeof req.query.voter === 'string' && typeof req.query.vote === 'string';
+
+/**
+ * A request that a bot or a link preview makes, as `sendAndWaitWebhook` detects
+ * it. The Microsoft Preview Service sends no user agent when a message is sent
+ * in Teams, and names itself when a link is pasted.
+ */
+function isPreviewRequest(userAgent: string | undefined): boolean {
+	if (!userAgent) return true;
+	if (isbot(userAgent)) return true;
+	const lowerCase = userAgent.toLowerCase();
+	return ['teams', 'skype', 'preview'].some((name) => lowerCase.includes(name));
+}
+
+/** The page that answers a vote. */
+function ballotVotePage(result: CastBallotVoteResponse): { title: string; text?: string } {
+	if (result.result !== 'closed') {
+		return { title: 'Your response is recorded', text: 'You can close this page.' };
+	}
+	if (result.outcome === 'approved') return { title: 'This request was already approved' };
+	if (result.outcome === 'declined') return { title: 'This request was already declined' };
+	return { title: 'This request is no longer active' };
 }
 
 const isLiveSnapshot = ({ status }: ExecutionSnapshot): boolean =>
@@ -475,6 +502,11 @@ export class WaitingWebhooks implements IWebhookManager {
 		const { token, webhookPath } = this.parseSignatureParam(req);
 		if (!token) return this.respondInvalidToken(res);
 
+		if (isBallotVoteRequest(req)) {
+			const answered = await this.castEngineV2BallotVote(req, res, pathId, token);
+			if (answered) return answered;
+		}
+
 		// The path names an execution or, for a step-bound URL, a step. The token
 		// says which, and the data plane reads it.
 		const located = await this.dataPlane.locateResume({
@@ -483,6 +515,11 @@ export class WaitingWebhooks implements IWebhookManager {
 			pathAndQuery: literalPathAndQuery(req.originalUrl),
 		});
 		if (!located.ok) {
+			if (located.status === 401 && isBallotVoteRequest(req)) {
+				applyFormSandboxCSP(res);
+				res.status(401).render('form-invalid-token');
+				return { noWebhookResponse: true };
+			}
 			if (located.status === 401) return this.respondInvalidToken(res);
 			throw toLocateRefusal(pathId, located.status, located.error);
 		}
@@ -526,6 +563,39 @@ export class WaitingWebhooks implements IWebhookManager {
 			suffix,
 			engineResume: { stepId: target.stepId, token },
 		});
+	}
+
+	/**
+	 * Records the vote of a ballot link, such as the links of the Quorum Approval
+	 * node. No node code runs: the data plane reads the vote from the signed
+	 * query and decides the ballot. Returns `undefined` when the link names no
+	 * ballot, so the caller resumes the wait as usual.
+	 */
+	private async castEngineV2BallotVote(
+		req: WaitingWebhookRequest,
+		res: express.Response,
+		stepId: ExecutionIdV2,
+		token: string,
+	): Promise<IWebhookResponseCallbackData | undefined> {
+		// A link preview or a mail scanner must not vote.
+		if (req.method === 'HEAD' || isPreviewRequest(req.headers['user-agent'])) {
+			res.status(200).send('');
+			return { noWebhookResponse: true };
+		}
+
+		const cast = await this.dataPlane.castBallotVote(stepId, {
+			token,
+			pathAndQuery: literalPathAndQuery(req.originalUrl),
+		});
+		if (!cast.ok) {
+			// A token for no ballot: an execution-bound token, or a step without a ballot.
+			if (cast.status === 401 || cast.status === 409) return undefined;
+			throw toLocateRefusal(stepId, cast.status, cast.error);
+		}
+
+		applyFormSandboxCSP(res);
+		res.render('quorum-approval-response', ballotVotePage(cast.value));
+		return { noWebhookResponse: true };
 	}
 
 	/**

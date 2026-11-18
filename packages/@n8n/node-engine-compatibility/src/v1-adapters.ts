@@ -22,6 +22,7 @@ import type {
 	CallbackManager,
 	ExecuteWorkflowData,
 	IConnections,
+	ExecutionWaitBallot,
 	IExecuteData,
 	IExecuteWorkflowInfo,
 	INode,
@@ -31,6 +32,7 @@ import type {
 	IRunData,
 	ISourceData,
 	ITaskDataConnections,
+	PutExecutionToWaitOptions,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { createRunExecutionData, Workflow, WorkflowExecuteModeList } from 'n8n-workflow';
@@ -322,11 +324,12 @@ export class DurableWaitExecuteContext extends ExecuteContext {
 		return await this.subWorkflowCalls.declareSubExecution(workflowInfo, inputData ?? [], options);
 	}
 
-	async putExecutionToWait(
-		waitTill: Date,
-		options?: { acceptsResumeRequest?: boolean },
-	): Promise<void> {
+	/** Set when the node asks for a wait that votes end. */
+	ballot?: ExecutionWaitBallot;
+
+	async putExecutionToWait(waitTill: Date, options?: PutExecutionToWaitOptions): Promise<void> {
 		this.acceptsResumeRequest = options?.acceptsResumeRequest ?? true;
+		this.ballot = options?.ballot;
 		this.runExecutionData.waitTill = waitTill;
 		return await Promise.resolve();
 	}

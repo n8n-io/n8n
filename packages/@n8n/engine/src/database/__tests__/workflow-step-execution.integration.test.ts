@@ -593,6 +593,86 @@ describe('workflow_step_execution table (integration)', () => {
 		});
 	});
 
+	describe('TypeOrmStepStore.recordBallotVote', () => {
+		const ballotWait: WaitDeclaration = {
+			ballot: { voters: [{}, {}, {}], required: 2, allowDecline: true },
+			resumeBinding: 'step',
+		};
+		const votedAt = new Date('2026-01-01T00:00:00.000Z');
+
+		async function seedBallot(status: StepStatus = 'waiting') {
+			const executionId = await createExecution();
+			const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+			const { id } = await seedStep({
+				executionId,
+				nodeId: 'a',
+				status,
+				waitDeclaration: ballotWait,
+			});
+			return { store, id };
+		}
+
+		it('records the votes of different voters', async () => {
+			const { store, id } = await seedBallot();
+
+			await store.recordBallotVote(id, 0, 'a', votedAt);
+			const { recorded, step } = await store.recordBallotVote(id, 2, 'd', votedAt);
+
+			expect(recorded).toBe(true);
+			expect(step.ballotVotes).toEqual({
+				'0': { decision: 'a', votedAt: votedAt.toISOString() },
+				'2': { decision: 'd', votedAt: votedAt.toISOString() },
+			});
+		});
+
+		it('keeps the first vote of a voter', async () => {
+			const { store, id } = await seedBallot();
+
+			await store.recordBallotVote(id, 1, 'a', votedAt);
+			const { recorded, step } = await store.recordBallotVote(id, 1, 'd', votedAt);
+
+			expect(recorded).toBe(false);
+			expect(step.ballotVotes).toEqual({ '1': { decision: 'a', votedAt: votedAt.toISOString() } });
+		});
+
+		it('records no vote on a step that does not wait', async () => {
+			const { store, id } = await seedBallot('queued');
+
+			const { recorded, step } = await store.recordBallotVote(id, 0, 'a', votedAt);
+
+			expect(recorded).toBe(false);
+			expect(step.ballotVotes).toBeNull();
+		});
+
+		it('records every vote when votes arrive at the same time', async () => {
+			const { store, id } = await seedBallot();
+
+			const results = await Promise.all(
+				[0, 1, 2].map(async (voter) => await store.recordBallotVote(id, voter, 'a', votedAt)),
+			);
+
+			expect(results.every(({ recorded }) => recorded)).toBe(true);
+			const { ballotVotes } = await store.loadStep(id);
+			expect(Object.keys(ballotVotes ?? {}).sort()).toEqual(['0', '1', '2']);
+			// The last vote to commit read the votes of the others.
+			expect(results.some(({ step }) => Object.keys(step.ballotVotes ?? {}).length === 3)).toBe(
+				true,
+			);
+		});
+
+		it('hands the votes back with the claim of a resumed step', async () => {
+			const { store, id } = await seedBallot();
+			await store.recordBallotVote(id, 0, 'a', votedAt);
+			await store.resumeStep(id, { kind: 'ballot', outcome: 'approved', decidedAt: 'now' });
+
+			expect(await store.claimStep(id)).toMatchObject({
+				waitDeclaration: ballotWait,
+				resumeCause: { kind: 'ballot', outcome: 'approved' },
+				ballotVotes: { '0': { decision: 'a' } },
+			});
+		});
+	});
+
 	/** A suspended row. A `waitTill` of `null` seeds a wait that only a request ends. */
 	async function seedWaitingStep(
 		executionId: string,

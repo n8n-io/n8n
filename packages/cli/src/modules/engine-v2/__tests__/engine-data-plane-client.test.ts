@@ -395,6 +395,19 @@ describe('EngineDataPlaneClient', () => {
 			);
 		});
 
+		it("posts `castBallotVote` to the step's votes route", async () => {
+			respondWith(200, { result: 'recorded' });
+			const request = { token: 't', pathAndQuery: '/webhook-waiting/step-1/n?vote=a&voter=0' };
+
+			await expect(client.castBallotVote('step-1', request)).resolves.toEqual({
+				ok: true,
+				value: { result: 'recorded' },
+			});
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({ url: '/api/step-executions/step-1/votes', body: request }),
+			);
+		});
+
 		it.each([
 			[401, 'invalid_token'],
 			[404, 'not_found'],

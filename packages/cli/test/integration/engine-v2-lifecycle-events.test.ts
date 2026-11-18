@@ -139,6 +139,7 @@ beforeAll(async () => {
 		cancelExecution: vi.fn(),
 		locateResume: vi.fn(),
 		resolveStep: vi.fn(),
+		castBallotVote: vi.fn(),
 		readApprovalCallback: vi.fn(),
 	});
 });

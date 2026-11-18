@@ -6,6 +6,7 @@ import type {
 } from '@/Interface';
 import {
 	extractAiGatewaySection,
+	filterNodeTypesForEngine,
 	finalizeItems,
 	formatTriggerActionName,
 	filterAndSearchNodes,
@@ -46,7 +47,11 @@ import { createTestingPinia } from '@pinia/testing';
 
 import { mock } from 'vitest-mock-extended';
 import type { ViewStack } from './composables/useViewStacks';
-import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	QUORUM_APPROVAL_NODE_TYPE,
+	SEND_AND_WAIT_OPERATION,
+} from 'n8n-workflow';
 import type { NodeCreatorTag } from '@n8n/design-system';
 import {
 	AGENT_NODE_TYPE,
@@ -1444,6 +1449,20 @@ describe('NodeCreator - utils', () => {
 		it('does not surface the rag starter callout unless it is enabled', () => {
 			expect(getRootSearchCallouts('rag', {}, [])).toEqual([]);
 		});
+	});
+});
+
+describe('filterNodeTypesForEngine', () => {
+	const nodeTypes = [{ name: 'n8n-nodes-base.set' }, { name: QUORUM_APPROVAL_NODE_TYPE }];
+
+	it.each([undefined, 'v1' as const])('hides engine v2 only nodes for engine %s', (engineType) => {
+		expect(filterNodeTypesForEngine(nodeTypes, engineType)).toEqual([
+			{ name: 'n8n-nodes-base.set' },
+		]);
+	});
+
+	it('keeps engine v2 only nodes for engine v2', () => {
+		expect(filterNodeTypesForEngine(nodeTypes, 'v2')).toEqual(nodeTypes);
 	});
 });
 

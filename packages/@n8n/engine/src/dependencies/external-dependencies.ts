@@ -1,4 +1,6 @@
+import type { JsonObject } from '../common';
 import type {
+	BallotOutcome,
 	CallerContext,
 	SubExecutionResumeCause,
 	ExecutionMode,
@@ -64,8 +66,18 @@ export interface StepExecutionRequest {
 	/**
 	 * Set when a sub-execution the step waited for has ended. The executor
 	 * answers the node's sub-execution call from it instead of asking for a sub-execution again.
+	 *
+	 * Or set when a ballot wait has ended. The executor must not run the node
+	 * again: it only puts `result` into the output slots of the node.
 	 */
-	resume?: SubExecutionResumeCause;
+	resume?: SubExecutionResumeCause | BallotResume;
+}
+
+/** A ballot wait ended. `result` is what `ballotResult` builds. */
+export interface BallotResume {
+	kind: 'ballot';
+	outcome: BallotOutcome;
+	result: JsonObject;
 }
 
 /**

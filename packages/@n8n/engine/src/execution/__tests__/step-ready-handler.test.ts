@@ -152,6 +152,7 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		loadFailedSteps: vi.fn().mockResolvedValue([]),
 		suspendStep: vi.fn().mockResolvedValue(true),
 		resumeStep: vi.fn().mockResolvedValue(true),
+		recordBallotVote: vi.fn(),
 		resumeDueSteps: vi.fn().mockResolvedValue([]),
 		nextWaitDeadline: vi.fn().mockResolvedValue(null),
 		findStaleQueuedSteps: vi.fn().mockResolvedValue([]),
@@ -1142,6 +1143,110 @@ describe('StepReadyHandler resumes', () => {
 				message: expect.stringContaining('captured no outputs') as string,
 			}),
 		);
+	});
+
+	describe('of a ballot wait', () => {
+		const ballotWait: WaitDeclaration = {
+			ballot: { voters: [{ approver: 'A' }, { approver: 'B' }], required: 1, allowDecline: true },
+			resumeBinding: 'step',
+			resumeAt: '2099-01-01T00:00:00.000Z',
+		};
+		const ballotVotes = { '1': { decision: 'a' as const, votedAt: '2026-01-01T00:00:00.000Z' } };
+
+		it('hands the result of the ballot to the executor when votes decided it', async () => {
+			const stepStore = makeStepStore({
+				status: 'running',
+				waitDeclaration: ballotWait,
+				resumeCause: { kind: 'ballot', outcome: 'approved', decidedAt: '2026-01-02T00:00:00.000Z' },
+				ballotVotes,
+			});
+			const executor = makeExecutor({ outputs: [[{ json: { shaped: true } }], null, null] });
+			const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
+				v1StepExecutor: executor,
+			});
+
+			await handler.handle(event);
+
+			expect(executor.execute).toHaveBeenCalledWith(
+				expect.objectContaining({
+					resume: {
+						kind: 'ballot',
+						outcome: 'approved',
+						result: expect.objectContaining({
+							decision: 'approved',
+							approvals: 1,
+							pending: 1,
+							decidedAt: '2026-01-02T00:00:00.000Z',
+						}) as unknown,
+					},
+				}),
+			);
+			expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [
+				[{ json: { shaped: true } }],
+				null,
+				null,
+			]);
+		});
+
+		it('ends the ballot as timed out at its deadline', async () => {
+			const stepStore = makeStepStore({
+				status: 'running',
+				waitDeclaration: ballotWait,
+				resumeCause: { kind: 'deadline' },
+				ballotVotes: null,
+			});
+			const executor = makeExecutor({ outputs: [null, null, [{ json: {} }]] });
+			const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
+				v1StepExecutor: executor,
+			});
+
+			await handler.handle(event);
+
+			expect(executor.execute).toHaveBeenCalledWith(
+				expect.objectContaining({
+					resume: expect.objectContaining({
+						outcome: 'timedOut',
+						result: expect.objectContaining({
+							decision: 'timedOut',
+							pending: 2,
+							decidedAt: '2099-01-01T00:00:00.000Z',
+						}) as unknown,
+					}) as unknown,
+				}),
+			);
+		});
+
+		it('suspends on a valid ballot wait without outputs for its deadline', async () => {
+			const stepStore = makeStepStore();
+			const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
+				v1StepExecutor: makeExecutor({ wait: ballotWait }),
+			});
+
+			await handler.handle(event);
+
+			expect(stepStore.suspendStep).toHaveBeenCalledWith('step-a', ballotWait);
+		});
+
+		it('fails the step when the ballot requires more approvals than it has voters', async () => {
+			const stepStore = makeStepStore();
+			const invalid: WaitDeclaration = {
+				ballot: { voters: [{}], required: 2, allowDecline: true },
+				resumeBinding: 'step',
+			};
+			const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
+				v1StepExecutor: makeExecutor({ wait: invalid }),
+			});
+
+			await handler.handle(event);
+
+			expect(stepStore.suspendStep).not.toHaveBeenCalled();
+			expect(stepStore.failStep).toHaveBeenCalledWith(
+				'step-a',
+				expect.objectContaining({
+					message: expect.stringContaining('invalid ballot wait') as string,
+				}),
+			);
+		});
 	});
 
 	it('does not treat a first dispatch as a resume', async () => {

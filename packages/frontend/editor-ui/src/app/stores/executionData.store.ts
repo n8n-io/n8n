@@ -20,6 +20,7 @@ import isEqual from 'lodash/isEqual';
 import { useI18n } from '@n8n/i18n';
 import {
 	NodeConnectionTypes,
+	QUORUM_APPROVAL_NODE_TYPE,
 	SEND_AND_WAIT_OPERATION,
 	isIndefiniteWait,
 	isTrimmedNodeExecutionData,
@@ -368,7 +369,10 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 					? i18n.baseText('node.theNodeIsWaitingWebhookCall')
 					: i18n.baseText('node.theNodeIsWaitingFormCall');
 			}
-			if (node.parameters?.operation === SEND_AND_WAIT_OPERATION) {
+			if (
+				node.parameters?.operation === SEND_AND_WAIT_OPERATION ||
+				node.type === QUORUM_APPROVAL_NODE_TYPE
+			) {
 				return i18n.baseText('node.theNodeIsWaitingUserInput');
 			}
 			if (node.type === FORM_NODE_TYPE) {

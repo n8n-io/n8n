@@ -1,4 +1,5 @@
 export type {
+	BallotResume,
 	ExecutionFilesDeleter,
 	ExecutionLocation,
 	ExternalDependencies,

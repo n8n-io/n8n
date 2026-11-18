@@ -1,5 +1,6 @@
 import { UnexpectedError, UnimplementedError, type JsonValue } from '../common';
 import type {
+	BallotResume,
 	ExternalDependencies,
 	IStepExecutor,
 	SubExecutionDeclaration,
@@ -14,6 +15,7 @@ import {
 } from '../graph';
 import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
 import { createResponseEmitter, type ExecutionResponseSender } from '../response-channel';
+import { ballotDeclarationProblem, ballotResult } from './ballot';
 import { runBatchStep } from './batch-step';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
@@ -22,6 +24,7 @@ import {
 	isLiveExecutionStatus,
 	isSettledStatus,
 	hasResumeCondition,
+	type BallotResumeCause,
 	type ResumeCause,
 	type SubExecutionResumeCause,
 	type StepError,
@@ -40,12 +43,13 @@ import { createStoreLoopReader } from './store-loop-reader';
 import { validateStepContext } from './validate-step-context';
 
 /** A resume that emits outputs the engine already holds, so no node code runs. */
-type ReplayCause = Exclude<ResumeCause, SubExecutionResumeCause>;
+type ReplayCause = Exclude<ResumeCause, SubExecutionResumeCause | BallotResumeCause>;
 
 /**
  * How a step produces its result. A replay emits recorded outputs. A batch pass
- * the engine runs itself. A run goes through an executor: a first run, or a
- * sub-execution resume, which runs the node again with the outcome.
+ * the engine runs itself. A run goes through an executor: a first run, a
+ * sub-execution resume, which runs the node again with the outcome, or the end
+ * of a ballot, which the executor turns into output slots without node code.
  */
 type Dispatch =
 	| { kind: 'replay'; cause: ReplayCause }
@@ -54,7 +58,7 @@ type Dispatch =
 			kind: 'run';
 			executor: IStepExecutor;
 			inputs: StepSlots;
-			subExecutionResult?: SubExecutionResumeCause;
+			resume?: SubExecutionResumeCause | BallotResume;
 	  };
 
 /**
@@ -285,6 +289,27 @@ export class StepReadyHandler {
 		execution: ExecutionRecord,
 	): Promise<Dispatch> {
 		const { resumeCause } = step;
+		const ballot = step.waitDeclaration?.ballot;
+		if (ballot && (resumeCause?.kind === 'ballot' || resumeCause?.kind === 'deadline')) {
+			const outcome = resumeCause.kind === 'ballot' ? resumeCause.outcome : 'timedOut';
+			const decidedAt =
+				resumeCause.kind === 'ballot'
+					? resumeCause.decidedAt
+					: (step.waitDeclaration?.resumeAt ?? new Date().toISOString());
+			return {
+				kind: 'run',
+				executor: this.executorFor(step, node),
+				inputs: await this.gatherInputs(execution, step),
+				resume: {
+					kind: 'ballot',
+					outcome,
+					result: ballotResult(ballot, step.ballotVotes ?? {}, outcome, decidedAt),
+				},
+			};
+		}
+		if (resumeCause?.kind === 'ballot') {
+			throw new UnexpectedError(`step ${step.id} resumes a ballot but declared no ballot wait`);
+		}
 		if (resumeCause !== null && resumeCause.kind !== 'subExecution') {
 			return { kind: 'replay', cause: resumeCause };
 		}
@@ -293,7 +318,7 @@ export class StepReadyHandler {
 			kind: 'run',
 			executor: this.executorFor(step, node),
 			inputs: await this.gatherInputs(execution, step),
-			...(resumeCause ? { subExecutionResult: resumeCause } : {}),
+			...(resumeCause ? { resume: resumeCause } : {}),
 		};
 	}
 
@@ -301,7 +326,7 @@ export class StepReadyHandler {
 		step: StepRecord,
 		execution: ExecutionRecord,
 		node: GraphNode,
-		{ executor, inputs, subExecutionResult }: Extract<Dispatch, { kind: 'run' }>,
+		{ executor, inputs, resume }: Extract<Dispatch, { kind: 'run' }>,
 	): Promise<StepExecutionResult> {
 		// The slots are stored without inspection: which ones fired is the
 		// settlement handler's concern. A declaration is not opaque in the same
@@ -312,8 +337,9 @@ export class StepReadyHandler {
 			node,
 			inputs,
 			// If we're resuming from a sub-execution, we pass in the result so the
-			// executor can use it to answer the sub-workflow call.
-			...(subExecutionResult ? { resume: subExecutionResult } : {}),
+			// executor can use it to answer the sub-workflow call. An ended ballot
+			// passes its result, which the executor puts into the output slots.
+			...(resume ? { resume } : {}),
 			context: {
 				executionId: execution.id,
 				stepId: step.id,
@@ -555,10 +581,20 @@ function validateWaitDeclaration(stepId: string, wait: ExecutorWaitDeclaration):
 		);
 	}
 
+	const ballotProblem = ballotDeclarationProblem(wait);
+	if (ballotProblem) {
+		throw new UnexpectedError(`step ${stepId} declares an invalid ballot wait: ${ballotProblem}`);
+	}
+
 	// The engine emits these when the deadline fires, and it never runs the step
 	// again to produce them. Without this check the wait suspends, and the sweep
-	// finds the gap at the deadline instead, with the step already `queued`.
-	if (wait.resumeAt !== undefined && wait.outputsAtDeadline === undefined) {
+	// finds the gap at the deadline instead, with the step already `queued`. A
+	// ballot builds its result at the deadline instead.
+	if (
+		wait.resumeAt !== undefined &&
+		wait.outputsAtDeadline === undefined &&
+		wait.ballot === undefined
+	) {
 		throw new UnexpectedError(
 			`step ${stepId} declares a wait with a deadline but no outputs to emit at it`,
 		);

@@ -1,4 +1,5 @@
 import type {
+	BallotVoteResult,
 	ExecutionMode,
 	ExecutionStatus,
 	ParentLink,
@@ -129,3 +130,15 @@ export interface ResolveStepResponse {
 	executionId: string;
 	stepId: string;
 }
+
+/**
+ * Body of `POST /step-executions/:id/votes`. The vote is read from
+ * `pathAndQuery` (`voter` and `vote`), which the step-bound token binds.
+ */
+export interface CastBallotVoteRequest {
+	token: string;
+	pathAndQuery: string;
+}
+
+/** What happened to a vote. */
+export type CastBallotVoteResponse = BallotVoteResult;

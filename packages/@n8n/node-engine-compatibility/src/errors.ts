@@ -98,6 +98,14 @@ export class UnsupportedWaitError extends UserError {
 	}
 }
 
+export class BallotWithoutResumeUrlsError extends UserError {
+	constructor(nodeName: string) {
+		super(
+			`Node "${nodeName}" waits for votes but built no signed resume URL, so no voter can vote`,
+		);
+	}
+}
+
 export class MissingResumeSecretError extends UserError {
 	constructor(nodeName: string) {
 		super(

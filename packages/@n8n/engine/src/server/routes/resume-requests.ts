@@ -11,7 +11,11 @@ import {
 	type ResumeRequestService,
 } from '../../execution';
 import { MAX_SLOT_INDEX } from '../../graph';
-import type { ResolveStepResponse, ResumeTargetResponse } from '../api.types';
+import type {
+	CastBallotVoteResponse,
+	ResolveStepResponse,
+	ResumeTargetResponse,
+} from '../api.types';
 import { fail } from '../error-response';
 
 const IdParams = z.object({ id: z.string().uuid() });
@@ -28,6 +32,13 @@ const ResolveStepBody = z
 	.object({
 		token: z.string().min(1),
 		outputs: z.array(jsonValueSchema).max(MAX_SLOT_INDEX + 1),
+	})
+	.strict();
+
+const CastBallotVoteBody = z
+	.object({
+		token: z.string().min(1),
+		pathAndQuery: z.string().min(1),
 	})
 	.strict();
 
@@ -97,7 +108,10 @@ export function createResumeRequestsRouter(
 	return router;
 }
 
-/** `POST /step-executions/:id/resolve`: phase two of a resume request. */
+/**
+ * `POST /step-executions/:id/resolve`: phase two of a resume request.
+ * `POST /step-executions/:id/votes`: a vote on the ballot of a waiting step.
+ */
 export function createStepExecutionsRouter(
 	resumeRequests: ResumeRequestService | undefined,
 ): RouterType {
@@ -105,8 +119,29 @@ export function createStepExecutionsRouter(
 
 	if (!resumeRequests) {
 		router.post('/:id/resolve', notConfigured);
+		router.post('/:id/votes', notConfigured);
 		return router;
 	}
+
+	router.post('/:id/votes', async (req, res) => {
+		const params = IdParams.safeParse(req.params);
+		const body = CastBallotVoteBody.safeParse(req.body);
+		if (!params.success || !body.success) {
+			fail(res, 400, { error: 'invalid_request' });
+			return;
+		}
+
+		try {
+			const response: CastBallotVoteResponse = await resumeRequests.castBallotVote(
+				params.data.id,
+				body.data.token,
+				body.data.pathAndQuery,
+			);
+			res.status(200).json(response);
+		} catch (error) {
+			if (!sendRejection(res, error)) throw error;
+		}
+	});
 
 	router.post('/:id/resolve', async (req, res) => {
 		const params = IdParams.safeParse(req.params);

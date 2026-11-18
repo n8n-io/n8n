@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.quorumApproval",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Core Nodes", "HITL"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.quorumapproval/"
+			}
+		]
+	},
+	"alias": ["quorum", "approval", "vote", "multiple approvers", "human in the loop"],
+	"subcategories": {
+		"Core Nodes": ["Flow"],
+		"HITL": ["Human in the Loop"]
+	}
+}

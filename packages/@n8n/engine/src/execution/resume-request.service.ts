@@ -3,9 +3,12 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { verifyResumeToken, type ResumeTokenClaims } from '../auth/resume-token';
 import type { StepMessage, WorkQueue } from '../queue';
 import { ExecutionNotFoundError, type ExecutionStore } from './execution-store';
+import { evaluateBallot } from './ballot';
 import {
 	isLiveExecutionStatus,
 	isSettledStatus,
+	type BallotDecision,
+	type BallotOutcome,
 	type ExecutionStatus,
 	type ResumeBinding,
 	type StepSlots,
@@ -67,10 +70,13 @@ const DEFAULT_RESUME_HOLD: ResumeHold = { attempts: 10, delayMs: 100 };
  */
 const isLive = (status: ExecutionStatus) => status === 'queued' || isLiveExecutionStatus(status);
 
+/** Whether the step waits for a resume request. Only votes end a ballot wait. */
 const waitsFor =
 	(binding: ResumeBinding) =>
 	({ status, waitDeclaration }: StepRecord) =>
-		status === 'waiting' && waitDeclaration?.resumeBinding === binding;
+		status === 'waiting' &&
+		waitDeclaration?.resumeBinding === binding &&
+		waitDeclaration.ballot === undefined;
 
 /** The waits that each kind of token can end (token record, decision 4). */
 const BINDING_OF_KIND: Record<ResumeTokenClaims['kind'], ResumeBinding> = {
@@ -78,6 +84,41 @@ const BINDING_OF_KIND: Record<ResumeTokenClaims['kind'], ResumeBinding> = {
 	'step-bound': 'step',
 	'approval-callback': 'step',
 };
+
+/** What happened to a vote. */
+export type BallotVoteResult =
+	| {
+			/** `duplicate`: the voter already voted, and the first vote stays. */
+			result: 'recorded' | 'duplicate';
+			/** Set when this vote decided the ballot. */
+			outcome?: Exclude<BallotOutcome, 'timedOut'>;
+	  }
+	| {
+			/** The ballot no longer takes votes. `inactive`: it ended without an outcome. */
+			result: 'closed';
+			outcome: BallotOutcome | 'inactive';
+	  };
+
+/** The vote in the query of a ballot link: `voter=<index>&vote=<a|d>`. */
+function parseBallotVote(
+	pathAndQuery: string,
+): { voter: number; decision: BallotDecision } | undefined {
+	const queryStart = pathAndQuery.indexOf('?');
+	if (queryStart === -1) return undefined;
+	const query = new URLSearchParams(pathAndQuery.slice(queryStart + 1));
+	const voter = query.get('voter');
+	const decision = query.get('vote');
+	if (voter === null || !/^\d{1,3}$/.test(voter)) return undefined;
+	if (decision !== 'a' && decision !== 'd') return undefined;
+	return { voter: Number(voter), decision };
+}
+
+/** How a ballot that no longer takes votes ended. */
+function closedOutcome(step: StepRecord): BallotOutcome | 'inactive' {
+	if (step.resumeCause?.kind === 'ballot') return step.resumeCause.outcome;
+	if (step.resumeCause?.kind === 'deadline') return 'timedOut';
+	return 'inactive';
+}
 
 const idOf = (claims: ResumeTokenClaims) =>
 	claims.kind === 'execution-bound' ? claims.executionId : claims.stepId;
@@ -222,6 +263,80 @@ export class ResumeRequestService {
 			stepId: step.id,
 		});
 		return step;
+	}
+
+	/**
+	 * Records a vote on the ballot of a waiting step. The token must be step
+	 * bound and bind `pathAndQuery`, and the vote is read from that bound query
+	 * (`voter` and `vote`), so the caller cannot change it. When the votes decide
+	 * the ballot, this resumes the step and announces it.
+	 *
+	 * @throws {ResumeRejectedError} `invalid_token`, `not_found` or `not_waiting`.
+	 */
+	async castBallotVote(
+		stepId: string,
+		token: string,
+		pathAndQuery: string,
+	): Promise<BallotVoteResult> {
+		const claims = verifyResumeToken(this.secret, token);
+		if (claims?.kind !== 'step-bound' || claims.stepId !== stepId) {
+			throw new ResumeRejectedError('invalid_token');
+		}
+		if (pathAndQuery !== claims.binding) throw new ResumeRejectedError('invalid_token');
+		const vote = parseBallotVote(pathAndQuery);
+		if (!vote) throw new ResumeRejectedError('invalid_token');
+
+		// The node sends its links while its step runs: hold as `locateByToken` does.
+		const { step, live } = await this.poll(async () => {
+			const loaded = await this.loadStep(stepId, 'not_found');
+			const isLiveNow = isLive(await this.loadStatus(loaded.executionId));
+			const answer = { step: loaded, live: isLiveNow };
+			return { done: !isLiveNow || loaded.status !== 'running', answer };
+		});
+
+		const ballot = step.waitDeclaration?.ballot;
+		if (!ballot) {
+			if (step.status === 'waiting' || isSettledStatus(step.status)) {
+				throw new ResumeRejectedError('not_waiting');
+			}
+			return { result: 'closed', outcome: 'inactive' };
+		}
+		if (vote.voter >= ballot.voters.length || (vote.decision === 'd' && !ballot.allowDecline)) {
+			throw new ResumeRejectedError('invalid_token');
+		}
+		if (!live || step.status !== 'waiting')
+			return { result: 'closed', outcome: closedOutcome(step) };
+
+		const recorded = await this.stepStore.recordBallotVote(
+			step.id,
+			vote.voter,
+			vote.decision,
+			new Date(),
+		);
+		if (!recorded.recorded) {
+			return recorded.step.status === 'waiting'
+				? { result: 'duplicate' }
+				: { result: 'closed', outcome: closedOutcome(recorded.step) };
+		}
+
+		const outcome = evaluateBallot(ballot, recorded.step.ballotVotes ?? {});
+		if (!outcome) return { result: 'recorded' };
+
+		const resumed = await this.stepStore.resumeStep(step.id, {
+			kind: 'ballot',
+			outcome,
+			decidedAt: new Date().toISOString(),
+		});
+		// Another vote that decided the ballot resumed the step first.
+		if (!resumed) return { result: 'recorded', outcome };
+
+		// TODO(CAT-2938): a crash here leaves the step `queued` with nothing to announce it.
+		await this.stepQueue.publish({
+			type: 'step:ready',
+			executionId: step.executionId,
+			stepId: step.id,
+		});
+		return { result: 'recorded', outcome };
 	}
 
 	private async loadStatus(executionId: string): Promise<ExecutionStatus> {

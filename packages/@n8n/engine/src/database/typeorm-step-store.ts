@@ -7,6 +7,8 @@ import {
 	SETTLED_STEP_STATUSES,
 	isLiveExecutionStatus,
 	stepKeyId,
+	type BallotDecision,
+	type BallotVotes,
 	type ExecutionStatus,
 	type ResumeCause,
 	type WaitDeclaration,
@@ -54,6 +56,7 @@ type ClaimedStepRow = {
 	iteration: number;
 	wait_declaration: WaitDeclaration | null;
 	resume_cause: ResumeCause | null;
+	ballot_votes: BallotVotes | null;
 };
 type DueStepRow = { id: string; execution_id: string };
 
@@ -185,7 +188,15 @@ export class TypeOrmStepStore implements StepStore {
 					)`,
 					{ executionId: execution.id },
 				)
-				.returning(['id', 'executionId', 'nodeId', 'iteration', 'waitDeclaration', 'resumeCause'])
+				.returning([
+					'id',
+					'executionId',
+					'nodeId',
+					'iteration',
+					'waitDeclaration',
+					'resumeCause',
+					'ballotVotes',
+				])
 				.execute();
 
 			const [row] = result.raw as ClaimedStepRow[];
@@ -200,6 +211,7 @@ export class TypeOrmStepStore implements StepStore {
 				outputs: null,
 				waitDeclaration: row.wait_declaration,
 				resumeCause: row.resume_cause,
+				ballotVotes: row.ballot_votes,
 			};
 		});
 	}
@@ -250,6 +262,31 @@ export class TypeOrmStepStore implements StepStore {
 		// `wait_till` stays as it was, so the status is the only thing that keeps
 		// the sweep from firing this row again.
 		return await this.transition(id, 'waiting', 'queued', { resumeCause });
+	}
+
+	async recordBallotVote(
+		id: string,
+		voter: number,
+		decision: BallotDecision,
+		votedAt: Date,
+	): Promise<{ recorded: boolean; step: StepRecord }> {
+		// One UPDATE, so its row lock orders concurrent votes: each one reads the
+		// votes that committed before it. The same lock orders a vote with the
+		// sweep and with `cancelPendingSteps`, which also update the row.
+		const result = await this.repo
+			.createQueryBuilder()
+			.update(WorkflowStepExecution)
+			.set({
+				ballotVotes: () =>
+					"COALESCE(ballot_votes, CAST('{}' AS jsonb)) || jsonb_build_object(CAST(:voter AS text), jsonb_build_object('decision', CAST(:decision AS text), 'votedAt', CAST(:votedAt AS text)))",
+			})
+			.where('id = :id', { id })
+			.andWhere("status = 'waiting'")
+			.andWhere("(COALESCE(ballot_votes, CAST('{}' AS jsonb)) -> CAST(:voter AS text)) IS NULL")
+			.setParameters({ voter: String(voter), decision, votedAt: votedAt.toISOString() })
+			.execute();
+
+		return { recorded: result.affected === 1, step: await this.loadStep(id) };
 	}
 
 	async resumeDueSteps(due: Date, limit: number): Promise<DueStep[]> {

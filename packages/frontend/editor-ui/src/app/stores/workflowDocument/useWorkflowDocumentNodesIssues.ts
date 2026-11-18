@@ -25,6 +25,11 @@ export type WorkflowDocumentNodesIssuesDeps = {
 	nodesById: ShallowRef<Map<string, INodeUi>>;
 	onNodesChange: (cb: (event: NodesChangeEvent) => void) => void;
 	nodeIssuesToString: (issues: INodeIssues, node?: INode) => string[];
+	/**
+	 * Issues that come from the workflow and not from the node itself, for example a
+	 * node that the selected engine cannot run. These are not stored on the node.
+	 */
+	getWorkflowNodeIssues?: (node: INodeUi) => string[];
 };
 
 /**
@@ -148,8 +153,10 @@ export function useWorkflowDocumentNodesIssues(deps: WorkflowDocumentNodesIssues
 
 	function computeValidationErrors(nodeId: string): string[] {
 		const node = deps.nodesById.value.get(nodeId);
-		if (!node?.issues) return [];
-		return deps.nodeIssuesToString(node.issues, node);
+		if (!node) return [];
+		const workflowNodeIssues = node.disabled ? [] : (deps.getWorkflowNodeIssues?.(node) ?? []);
+		if (!node.issues) return workflowNodeIssues;
+		return [...workflowNodeIssues, ...deps.nodeIssuesToString(node.issues, node)];
 	}
 
 	function applyAddEntry(nodeId: string) {

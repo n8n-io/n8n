@@ -7,6 +7,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
 import {
+	filterNodeTypesForEngine,
 	getNodeItemRestriction,
 	isNodeItemRestricted,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
@@ -56,7 +57,10 @@ export function useNodeCommands(): CommandGroup {
 	// Restricted types stay listed, like in the nodes panel: greyed, locked, last, and inert.
 	const mergedNodes = computed(() => {
 		const httpOnlyCredentials = credentialsStore.httpOnlyCredentialTypes;
-		const nodeTypes = nodeTypesStore.visibleNodeTypes;
+		const nodeTypes = filterNodeTypesForEngine(
+			nodeTypesStore.visibleNodeTypes,
+			workflowDocumentStore.value.settings.engineType,
+		);
 		const nodes = generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials).mergedNodes;
 		const restricted = new Set(nodes.filter((node) => isNodeItemRestricted(node.name)));
 		return [...nodes.filter((node) => !restricted.has(node)), ...restricted];

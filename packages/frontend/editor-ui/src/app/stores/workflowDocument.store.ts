@@ -12,6 +12,8 @@ import { useWorkflowDocumentPinData } from './workflowDocument/useWorkflowDocume
 import { useWorkflowDocumentScopes } from './workflowDocument/useWorkflowDocumentScopes';
 import { useWorkflowDocumentSettings } from './workflowDocument/useWorkflowDocumentSettings';
 import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
+import { isEngineV2OnlyNodeType } from '@/app/constants/nodeTypes';
+import { useI18n } from '@n8n/i18n';
 import { useWorkflowDocumentTags } from './workflowDocument/useWorkflowDocumentTags';
 import { useWorkflowDocumentIsArchived } from './workflowDocument/useWorkflowDocumentIsArchived';
 import { useWorkflowDocumentTimestamps } from './workflowDocument/useWorkflowDocumentTimestamps';
@@ -280,6 +282,11 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			nodesById: workflowDocumentNodes.nodesById,
 			onNodesChange: workflowDocumentNodes.onNodesChange,
 			nodeIssuesToString,
+			getWorkflowNodeIssues: (node) =>
+				isEngineV2OnlyNodeType(node.type) &&
+				workflowDocumentSettings.settings.value.engineType !== 'v2'
+					? [useI18n().baseText('nodeIssues.engine.v2Required')]
+					: [],
 		});
 		const { onStateDirty: onNodeGroupsStateDirty, ...workflowDocumentNodeGroups } =
 			useWorkflowDocumentNodeGroups();

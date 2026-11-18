@@ -1,5 +1,7 @@
 import { Service } from '@n8n/di';
 import type {
+	CastBallotVoteRequest,
+	CastBallotVoteResponse,
 	ExecutionSnapshot,
 	ExecutionStatus,
 	FindLatestExecutionRequest,
@@ -95,6 +97,15 @@ export interface EngineDataPlaneProvider {
 	): Promise<ResumeOutcome<ResolveStepResponse>>;
 
 	/**
+	 * Records a vote on the ballot of a waiting step. The data plane reads the
+	 * vote from the path and query that the token binds.
+	 */
+	castBallotVote(
+		stepId: string,
+		request: CastBallotVoteRequest,
+	): Promise<ResumeOutcome<CastBallotVoteResponse>>;
+
+	/**
 	 * The step id that an engine v2 approval callback names, or `undefined` for
 	 * any other reference. Does not verify the callback: `locateResume` does.
 	 */
@@ -175,6 +186,16 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 		if (!this.provider) return { ok: false, status: 404, error: 'not_found' };
 
 		return await this.provider.resolveStep(stepId, request);
+	}
+
+	/** As `getExecution`: no provider, no v2 execution that could wait. */
+	async castBallotVote(
+		stepId: string,
+		request: CastBallotVoteRequest,
+	): Promise<ResumeOutcome<CastBallotVoteResponse>> {
+		if (!this.provider) return { ok: false, status: 404, error: 'not_found' };
+
+		return await this.provider.castBallotVote(stepId, request);
 	}
 
 	/** No provider, no engine v2 callback. */

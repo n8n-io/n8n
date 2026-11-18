@@ -748,6 +748,80 @@ describe('V1StepExecutor', () => {
 		);
 	});
 
+	describe('a node that waits for votes', () => {
+		const input = items({});
+		const voteStep = (graph: WorkflowGraph) => {
+			const request = stepRequest(graph, 'n', input);
+			return { ...request, context: { ...request.context, stepId: 'step-1' } };
+		};
+		const voteExecutor = (graph: WorkflowGraph) =>
+			new V1StepExecutor({
+				nodeTypes: testNodeTypes,
+				additionalDataFactory: testAdditionalDataFactory,
+				loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+				resolveSubWorkflow: noSubWorkflows,
+				stepBoundResumeToken: () => 'minted',
+			});
+
+		it('declares a ballot wait with no deadline', async () => {
+			const graph = graphWith('test.asksForVotes', {});
+
+			const result = await voteExecutor(graph).execute(voteStep(graph));
+
+			expect(result.wait).toEqual({
+				ballot: {
+					voters: [{ approver: 'A' }, { approver: 'B' }],
+					required: 1,
+					allowDecline: true,
+				},
+				resumeBinding: 'step',
+			});
+		});
+
+		it('declares a ballot wait with a deadline', async () => {
+			const graph = graphWith('test.asksForVotes', { waitTill: '2026-10-01T12:00:00.000Z' });
+
+			const result = await voteExecutor(graph).execute(voteStep(graph));
+
+			expect(result.wait).toMatchObject({ resumeAt: '2026-10-01T12:00:00.000Z' });
+			expect(result.wait).not.toHaveProperty('outputsAtDeadline');
+		});
+
+		it('fails the step when the node built no vote link', async () => {
+			const graph = graphWith('test.asksForVotes', { buildLinks: false });
+
+			await expect(voteExecutor(graph).execute(voteStep(graph))).rejects.toThrow(
+				'Node "Subject" waits for votes but built no signed resume URL, so no voter can vote',
+			);
+		});
+
+		it.each([
+			['approved', 0],
+			['declined', 1],
+			['timedOut', 2],
+		] as const)('puts a %s result on output %i without running the node', async (outcome, slot) => {
+			const graph = graphWith('test.asksForVotes', {});
+			const execute = vi.fn();
+			const executor = new V1StepExecutor({
+				nodeTypes: { ...testNodeTypes, getByNameAndVersion: () => ({ execute }) as never },
+				additionalDataFactory: testAdditionalDataFactory,
+				loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+				resolveSubWorkflow: noSubWorkflows,
+			});
+			const result = { decision: outcome, approvals: 1 };
+
+			const step = await executor.execute({
+				...voteStep(graph),
+				resume: { kind: 'ballot', outcome, result },
+			});
+
+			const expected: unknown[] = [null, null, null];
+			expected[slot] = [{ json: result }];
+			expect(step.outputs).toEqual(expected);
+			expect(execute).not.toHaveBeenCalled();
+		});
+	});
+
 	it('honors onError=continueRegularOutput as passthrough', async () => {
 		const workflow = v1Workflow(
 			[

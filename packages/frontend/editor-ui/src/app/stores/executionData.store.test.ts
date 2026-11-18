@@ -3,6 +3,7 @@ import { setActivePinia, createPinia, getActivePinia } from 'pinia';
 import { isProxy, nextTick, watch } from 'vue';
 import {
 	NodeConnectionTypes,
+	QUORUM_APPROVAL_NODE_TYPE,
 	SEND_AND_WAIT_OPERATION,
 	WAIT_INDEFINITELY,
 	createRunExecutionData,
@@ -1872,6 +1873,21 @@ describe('executionData.store', () => {
 			setWaitingExecution(store, node);
 
 			expect(store.executionWaitingByNodeId.get('send-1')?.value).toBe(
+				'The node is waiting for user input',
+			);
+		});
+
+		it('returns the user-input message for Quorum Approval nodes', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const node = createTestNode({
+				id: 'quorum-1',
+				name: 'Quorum Approval',
+				type: QUORUM_APPROVAL_NODE_TYPE,
+			});
+
+			setWaitingExecution(store, node);
+
+			expect(store.executionWaitingByNodeId.get('quorum-1')?.value).toBe(
 				'The node is waiting for user input',
 			);
 		});

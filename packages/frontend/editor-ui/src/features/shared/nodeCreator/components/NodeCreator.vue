@@ -8,6 +8,8 @@ import SlideTransition from '@/app/components/transitions/SlideTransition.vue';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import { useActionsGenerator } from '../composables/useActionsGeneration';
+import { filterNodeTypesForEngine } from '../nodeCreator.utils';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import NodesListPanel from './Panel/NodesListPanel.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
@@ -52,6 +54,7 @@ const settingsStore = useSettingsStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const { setActions, setMergeNodes, consumePendingInitialViewStack } = nodeCreatorStore;
 const { generateMergedNodesAndActions } = useActionsGenerator();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const state = reactive({
 	nodeCreator: null as HTMLElement | null,
@@ -172,9 +175,13 @@ watch(
 	() => ({
 		httpOnlyCredentials: useCredentialsStore().httpOnlyCredentialTypes,
 		nodeTypes: useNodeTypesStore().visibleNodeTypes,
+		engineType: workflowDocumentStore.value.settings.engineType,
 	}),
-	({ nodeTypes, httpOnlyCredentials }) => {
-		const { actions, mergedNodes } = generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials);
+	({ nodeTypes, httpOnlyCredentials, engineType }) => {
+		const { actions, mergedNodes } = generateMergedNodesAndActions(
+			filterNodeTypesForEngine(nodeTypes, engineType),
+			httpOnlyCredentials,
+		);
 
 		setActions(actions);
 		setMergeNodes(mergedNodes);

@@ -1,4 +1,4 @@
-import { MICROSOFT_AGENT365_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { MICROSOFT_AGENT365_TRIGGER_NODE_TYPE, QUORUM_APPROVAL_NODE_TYPE } from 'n8n-workflow';
 
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
 export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
@@ -177,3 +177,10 @@ export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [
 
 export const NOT_DUPLICATABLE_NODE_TYPES = [FORM_TRIGGER_NODE_TYPE];
 export const UPDATE_WEBHOOK_ID_NODE_TYPES = [FORM_TRIGGER_NODE_TYPE];
+
+// These nodes run only on engine v2. On engine v1 they fail at run time.
+export const ENGINE_V2_ONLY_NODE_TYPES: readonly string[] = [QUORUM_APPROVAL_NODE_TYPE];
+
+export function isEngineV2OnlyNodeType(type: string): boolean {
+	return ENGINE_V2_ONLY_NODE_TYPES.includes(type);
+}

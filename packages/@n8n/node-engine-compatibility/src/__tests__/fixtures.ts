@@ -20,7 +20,7 @@ import type {
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { Node, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { Node, NodeConnectionTypes, NodeOperationError, WAIT_INDEFINITELY } from 'n8n-workflow';
 
 import type { AdditionalDataContext, SubWorkflowResolver } from '../types';
 import { V1StepExecutor } from '../v1-step-executor';
@@ -449,7 +449,38 @@ class AsksForReply implements INodeType {
 	}
 }
 
+/** Sends one vote link to each of two voters and waits for one approval, as Quorum Approval does. */
+class AsksForVotes implements INodeType {
+	description = {
+		displayName: 'Asks For Votes',
+		name: 'asksForVotes',
+		group: ['transform'],
+		version: 1,
+		description: 'Builds vote links and waits for votes',
+		defaults: { name: 'Asks For Votes' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+		properties: [
+			{ displayName: 'Wait Till', name: 'waitTill', type: 'string', default: '' },
+			{ displayName: 'Build Links', name: 'buildLinks', type: 'boolean', default: true },
+		],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const voters = [{ approver: 'A' }, { approver: 'B' }];
+		if (this.getNodeParameter('buildLinks', 0) as boolean) {
+			voters.forEach((_, voter) => this.getSignedResumeUrl({ vote: 'a', voter: String(voter) }));
+		}
+		const waitTill = (this.getNodeParameter('waitTill', 0) as string) || WAIT_INDEFINITELY;
+		await this.putExecutionToWait(new Date(waitTill), {
+			ballot: { voters, required: 1, allowDecline: true },
+		});
+		return [this.getInputData()];
+	}
+}
+
 const registry = new Map<string, INodeType>([
+	['test.asksForVotes', new AsksForVotes()],
 	['n8n-nodes-base.noOp', new NoOp()],
 	['test.echoParam', new EchoParam()],
 	['test.alwaysFails', new AlwaysFails()],

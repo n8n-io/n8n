@@ -1,10 +1,12 @@
 import type {
+	BallotResume,
+	ExecutorWaitDeclaration,
 	GraphNode,
 	IStepExecutor,
 	StepExecutionRequest,
 	StepExecutionResult,
 } from '@n8n/engine';
-import { attachStepErrorDetails } from '@n8n/engine';
+import { attachStepErrorDetails, jsonObjectSchema } from '@n8n/engine';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import type { INodeExecutionData } from 'n8n-workflow';
 import {
@@ -17,6 +19,7 @@ import {
 import { UnexpectedError } from '@n8n/errors';
 
 import {
+	BallotWithoutResumeUrlsError,
 	EngineRequestNotSupportedError,
 	InvalidWaitDateError,
 	MalformedStepConfigError,
@@ -70,6 +73,7 @@ function toStepResult(
 
 	const { waitTill } = context.runExecutionData;
 	if (waitTill === undefined) return { outputs: toStepOutputs(nodeResult) };
+	if (context.ballot) return { wait: toBallotWait(context, waitTill) };
 	if (waitTill.getTime() === WAIT_INDEFINITELY.getTime()) {
 		if (!context.acceptsResumeRequest) throw new UnendingWaitError(context.getNode().name);
 		return { wait: { resumeBinding: context.resumeBinding } };
@@ -92,6 +96,40 @@ function toStepResult(
 }
 
 /**
+ * A wait that votes end. Voters vote through step-bound resume URLs, so the
+ * node must have built at least one.
+ */
+function toBallotWait(context: DurableWaitExecuteContext, waitTill: Date): ExecutorWaitDeclaration {
+	const { ballot } = context;
+	if (!ballot || context.resumeBinding !== 'step') {
+		throw new BallotWithoutResumeUrlsError(context.getNode().name);
+	}
+	if (Number.isNaN(waitTill.getTime())) throw new InvalidWaitDateError(context.getNode().name);
+
+	return {
+		ballot: {
+			voters: ballot.voters.map((voter) => jsonObjectSchema.parse(voter)),
+			required: ballot.required,
+			allowDecline: ballot.allowDecline,
+		},
+		resumeBinding: 'step',
+		...(waitTill.getTime() === WAIT_INDEFINITELY.getTime()
+			? {}
+			: { resumeAt: waitTill.toISOString() }),
+	};
+}
+
+/** Output slots of a ballot node: approved, declined, timed out. */
+const BALLOT_OUTPUT_SLOTS = { approved: 0, declined: 1, timedOut: 2 } as const;
+
+/** The outputs of a ballot node: the result of the ballot on the slot of its outcome. */
+function toBallotOutputs({ outcome, result }: BallotResume): StepExecutionResult {
+	const slots: INodeExecutionData[][] = [[], [], []];
+	slots[BALLOT_OUTPUT_SLOTS[outcome]] = [{ json: result }];
+	return { outputs: toStepOutputs(slots) };
+}
+
+/**
  * Runs `v1-node` steps by adapting them to the v1 node runtime.
  *
  * A step is executable when its type is `v1-node`, its config is a valid
@@ -102,6 +140,9 @@ export class V1StepExecutor implements IStepExecutor {
 	constructor(private readonly deps: V1StepExecutorDeps) {}
 
 	async execute(request: StepExecutionRequest): Promise<StepExecutionResult> {
+		// The votes decided the ballot. The node already ran: only its outputs are left.
+		if (request.resume?.kind === 'ballot') return toBallotOutputs(request.resume);
+
 		this.validateExpressionEngine();
 		const stepConfig = this.validateStepConfig(request.node);
 		const nodeType = this.resolveNodeType(stepConfig);
@@ -137,7 +178,7 @@ export class V1StepExecutor implements IStepExecutor {
 			itemsByConnection: fromStepInputs(request.inputs),
 			resumeToken: this.deps.resumeToken?.({ executionId: request.context.executionId }),
 			subWorkflowCalls: new SubWorkflowCalls(node, request.context, this.deps.resolveSubWorkflow),
-			subExecutionResume: request.resume,
+			subExecutionResume: request.resume?.kind === 'subExecution' ? request.resume : undefined,
 			resumeMinters: {
 				stepBoundResumeToken: this.deps.stepBoundResumeToken,
 				approvalCallback: this.deps.approvalCallback,

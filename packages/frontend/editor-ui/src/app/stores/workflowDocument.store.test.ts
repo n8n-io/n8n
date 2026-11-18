@@ -7,7 +7,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia, getActivePinia } from 'pinia';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, QUORUM_APPROVAL_NODE_TYPE } from 'n8n-workflow';
 import type { IConnections } from 'n8n-workflow';
 import type { ITag, WorkflowHistory } from '@n8n/rest-api-client';
 import type { Scope } from '@n8n/permissions';
@@ -188,6 +188,52 @@ describe('workflowDocument.store orchestration', () => {
 				{ node: 'Fetch', type: 'parameters', value: ['Missing URL', 'Invalid URL.'] },
 				{ node: 'Fetch', type: 'credentials', value: ['Credentials not set'] },
 			]);
+		});
+	});
+
+	describe('engine v2 node issues', () => {
+		const engineIssue = 'This node needs engine v2. Change the engine in the workflow settings.';
+
+		it('shows an issue for an engine v2 only node when the engine is v1', () => {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			workflowDocumentStore.addNode(
+				createNode({ id: 'quorum', name: 'Quorum', type: QUORUM_APPROVAL_NODE_TYPE }),
+			);
+
+			expect(workflowDocumentStore.validationErrorsByNodeId.get('quorum')?.value).toEqual([
+				engineIssue,
+			]);
+		});
+
+		it('removes the issue when the engine changes to v2 and adds it again for v1', () => {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			workflowDocumentStore.addNode(
+				createNode({ id: 'quorum', name: 'Quorum', type: QUORUM_APPROVAL_NODE_TYPE }),
+			);
+
+			workflowDocumentStore.mergeSettings({ engineType: 'v2' });
+			expect(workflowDocumentStore.validationErrorsByNodeId.get('quorum')?.value).toEqual([]);
+
+			workflowDocumentStore.mergeSettings({ engineType: 'v1' });
+			expect(workflowDocumentStore.validationErrorsByNodeId.get('quorum')?.value).toEqual([
+				engineIssue,
+			]);
+		});
+
+		it('does not show the issue for other nodes or for disabled nodes', () => {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			workflowDocumentStore.setNodes([
+				createNode({ id: 'other', name: 'Other' }),
+				createNode({
+					id: 'quorum',
+					name: 'Quorum',
+					type: QUORUM_APPROVAL_NODE_TYPE,
+					disabled: true,
+				}),
+			]);
+
+			expect(workflowDocumentStore.validationErrorsByNodeId.get('other')?.value).toEqual([]);
+			expect(workflowDocumentStore.validationErrorsByNodeId.get('quorum')?.value).toEqual([]);
 		});
 	});
 

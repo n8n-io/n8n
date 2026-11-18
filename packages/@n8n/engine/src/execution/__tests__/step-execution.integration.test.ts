@@ -737,7 +737,8 @@ describe('step execution (integration)', () => {
 					};
 				}
 				if (request.node.id === 'call') {
-					const result = request.resume?.status === 'completed' ? request.resume.result : null;
+					const resume = request.resume?.kind === 'subExecution' ? request.resume : undefined;
+					const result = resume?.status === 'completed' ? resume.result : null;
 					return { outputs: [[{ json: { subExecutionResult: result } }]] };
 				}
 				return { outputs: [[{ json: { ran: request.node.id } }]] };
@@ -813,7 +814,7 @@ describe('step execution (integration)', () => {
 			execute: async (request) => {
 				await Promise.resolve();
 				if (request.node.id === 'x') throw new TypeError('sub-execution boom');
-				if (request.resume?.status === 'failed') {
+				if (request.resume?.kind === 'subExecution' && request.resume.status === 'failed') {
 					throw new Error(`sub-workflow failed: ${request.resume.error.message}`);
 				}
 				return {

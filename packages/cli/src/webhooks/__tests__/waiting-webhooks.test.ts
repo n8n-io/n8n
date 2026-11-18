@@ -2218,6 +2218,90 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 		},
 	);
 
+	describe('a ballot vote', () => {
+		const STEP_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfb';
+		const browser = { 'user-agent': 'Mozilla/5.0 (Macintosh) Chrome/120.0 Safari/537.36' };
+		const vote = (headers: Record<string, string> = browser) =>
+			request({ vote: 'a', voter: '1', [WAITING_TOKEN_QUERY_PARAM]: 'tok' }, headers, STEP_ID);
+
+		it('records the vote with the signed path and query, and renders the answer', async () => {
+			dataPlane.castBallotVote.mockResolvedValue({ ok: true, value: { result: 'recorded' } });
+			const res = response();
+
+			await expect(waitingWebhooks.executeWebhook(vote(), res)).resolves.toEqual({
+				noWebhookResponse: true,
+			});
+
+			expect(dataPlane.castBallotVote).toHaveBeenCalledWith(STEP_ID, {
+				token: 'tok',
+				pathAndQuery: `/webhook-waiting/${STEP_ID}?vote=a&voter=1`,
+			});
+			expect(res.render).toHaveBeenCalledWith('quorum-approval-response', {
+				title: 'Your response is recorded',
+				text: 'You can close this page.',
+			});
+			expect(dataPlane.locateResume).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['approved', 'This request was already approved'],
+			['declined', 'This request was already declined'],
+			['timedOut', 'This request is no longer active'],
+			['inactive', 'This request is no longer active'],
+		] as const)('tells a late voter that the ballot ended as %s', async (outcome, title) => {
+			dataPlane.castBallotVote.mockResolvedValue({
+				ok: true,
+				value: { result: 'closed', outcome },
+			});
+			const res = response();
+
+			await waitingWebhooks.executeWebhook(vote(), res);
+
+			expect(res.render).toHaveBeenCalledWith('quorum-approval-response', { title });
+		});
+
+		it.each([
+			['a bot', { 'user-agent': 'Googlebot/2.1' }],
+			['a link preview without a user agent', {}],
+			['the Teams preview', { 'user-agent': 'Mozilla/5.0 SkypeUriPreview Preview/0.5' }],
+		])('records no vote for %s', async (_, headers) => {
+			const res = response();
+
+			await waitingWebhooks.executeWebhook(vote(headers), res);
+
+			expect(dataPlane.castBallotVote).not.toHaveBeenCalled();
+			expect(res.send).toHaveBeenCalledWith('');
+		});
+
+		it('resumes the wait as usual when the step holds no ballot', async () => {
+			dataPlane.castBallotVote.mockResolvedValue({ ok: false, status: 409, error: 'not_waiting' });
+			dataPlane.locateResume.mockResolvedValue({
+				ok: true,
+				value: { execution: snapshot('waiting'), target: null },
+			});
+
+			await expect(waitingWebhooks.executeWebhook(vote(), response())).rejects.toThrow(
+				ConflictError,
+			);
+			expect(dataPlane.locateResume).toHaveBeenCalled();
+		});
+
+		it('renders the invalid token page for a tampered link', async () => {
+			dataPlane.castBallotVote.mockResolvedValue({
+				ok: false,
+				status: 401,
+				error: 'invalid_token',
+			});
+			dataPlane.locateResume.mockResolvedValue({ ok: false, status: 401, error: 'invalid_token' });
+			const res = response();
+
+			await waitingWebhooks.executeWebhook(vote(), res);
+
+			expect(res.status).toHaveBeenCalledWith(401);
+			expect(res.render).toHaveBeenCalledWith('form-invalid-token');
+		});
+	});
+
 	describe('a request to a step that already resumed', () => {
 		const sendAndWaitNode = {
 			...waitNode,

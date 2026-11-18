@@ -219,4 +219,39 @@ describe('useWorkflowDocumentNodesIssues', () => {
 			expect(publishBlockingNodes.value.map((node) => node.name)).toEqual(['Parser']);
 		});
 	});
+
+	describe('validationErrorsByNodeId', () => {
+		it('puts workflow node issues before the stored node issues', () => {
+			const node = nodeWithIssues('Node', { parameters: { url: ['URL is required'] } });
+			const { validationErrorsByNodeId } = useWorkflowDocumentNodesIssues(
+				createDeps([node], true, {
+					nodeIssuesToString: () => ['URL is required'],
+					getWorkflowNodeIssues: () => ['Engine issue'],
+				}),
+			);
+
+			expect(validationErrorsByNodeId.get(node.id)?.value).toEqual([
+				'Engine issue',
+				'URL is required',
+			]);
+		});
+
+		it('returns workflow node issues for a node without stored issues', () => {
+			const node = connectedNode();
+			const { validationErrorsByNodeId } = useWorkflowDocumentNodesIssues(
+				createDeps([node], true, { getWorkflowNodeIssues: () => ['Engine issue'] }),
+			);
+
+			expect(validationErrorsByNodeId.get(node.id)?.value).toEqual(['Engine issue']);
+		});
+
+		it('ignores workflow node issues for disabled nodes', () => {
+			const node = connectedNode({ disabled: true });
+			const { validationErrorsByNodeId } = useWorkflowDocumentNodesIssues(
+				createDeps([node], true, { getWorkflowNodeIssues: () => ['Engine issue'] }),
+			);
+
+			expect(validationErrorsByNodeId.get(node.id)?.value).toEqual([]);
+		});
+	});
 });

@@ -72,6 +72,7 @@ function setup({
 		loadWaitingSteps,
 		loadStep,
 		resumeStep: vi.fn().mockResolvedValue(resumed),
+		recordBallotVote: vi.fn(),
 	} as unknown as StepStore;
 	const executionStore = {
 		loadExecution: vi.fn(async () => {
@@ -474,5 +475,209 @@ describe('ResumeRequestService.resolve', () => {
 		const { service } = setup({ step: 'missing' });
 
 		await expect(service.resolve('s1', token, outputs)).rejects.toEqual(rejection('invalid_token'));
+	});
+});
+
+describe('ResumeRequestService.castBallotVote', () => {
+	const ballotDeclaration = {
+		voters: [{ approver: 'A' }, { approver: 'B' }, { approver: 'C' }],
+		required: 2,
+		allowDecline: true,
+	};
+	const ballotStep = (overrides: Partial<StepRecord> = {}): StepRecord =>
+		stepBound({
+			waitDeclaration: { ballot: ballotDeclaration, resumeBinding: 'step' },
+			...overrides,
+		});
+	const voteLink = (query: string) => `/webhook-waiting/${stepId}/node?${query}`;
+	const voteToken = (pathAndQuery: string) =>
+		mintStepBoundResumeToken(secret, stepId, pathAndQuery);
+
+	function setupVote(
+		options: Parameters<typeof setup>[0] & {
+			afterVote?: StepRecord;
+			recorded?: boolean;
+		} = {},
+	) {
+		const context = setup({ step: ballotStep(), ...options });
+		vi.mocked(context.stepStore.recordBallotVote).mockResolvedValue({
+			recorded: options.recorded ?? true,
+			step: options.afterVote ?? ballotStep(),
+		});
+		return context;
+	}
+
+	async function cast(service: ResumeRequestService, query: string) {
+		const pathAndQuery = voteLink(query);
+		return await service.castBallotVote(stepId, voteToken(pathAndQuery), pathAndQuery);
+	}
+
+	it('records a vote that does not decide the ballot', async () => {
+		const { service, stepStore, stepQueue } = setupVote({
+			afterVote: ballotStep({ ballotVotes: { '1': { decision: 'a', votedAt: 'now' } } }),
+		});
+
+		await expect(cast(service, 'vote=a&voter=1')).resolves.toEqual({ result: 'recorded' });
+		expect(stepStore.recordBallotVote).toHaveBeenCalledWith(stepId, 1, 'a', expect.any(Date));
+		expect(stepStore.resumeStep).not.toHaveBeenCalled();
+		expect(stepQueue.publish).not.toHaveBeenCalled();
+	});
+
+	it('resumes and announces the step when the vote decides the ballot', async () => {
+		const { service, stepStore, stepQueue } = setupVote({
+			afterVote: ballotStep({
+				ballotVotes: {
+					'0': { decision: 'a', votedAt: 'then' },
+					'1': { decision: 'a', votedAt: 'now' },
+				},
+			}),
+		});
+
+		await expect(cast(service, 'vote=a&voter=1')).resolves.toEqual({
+			result: 'recorded',
+			outcome: 'approved',
+		});
+		expect(stepStore.resumeStep).toHaveBeenCalledWith(stepId, {
+			kind: 'ballot',
+			outcome: 'approved',
+			decidedAt: expect.any(String),
+		});
+		expect(stepQueue.publish).toHaveBeenCalledWith({
+			type: 'step:ready',
+			executionId,
+			stepId,
+		});
+	});
+
+	it('declines as soon as approval can no longer be reached', async () => {
+		const { service, stepStore } = setupVote({
+			afterVote: ballotStep({
+				ballotVotes: {
+					'0': { decision: 'd', votedAt: 'then' },
+					'2': { decision: 'd', votedAt: 'now' },
+				},
+			}),
+		});
+
+		await expect(cast(service, 'vote=d&voter=2')).resolves.toMatchObject({ outcome: 'declined' });
+		expect(stepStore.resumeStep).toHaveBeenCalledWith(
+			stepId,
+			expect.objectContaining({ outcome: 'declined' }),
+		);
+	});
+
+	it('does not announce a step that another vote resumed first', async () => {
+		const { service, stepQueue } = setupVote({
+			resumed: false,
+			afterVote: ballotStep({
+				ballotVotes: {
+					'0': { decision: 'a', votedAt: 'then' },
+					'1': { decision: 'a', votedAt: 'now' },
+				},
+			}),
+		});
+
+		await expect(cast(service, 'vote=a&voter=1')).resolves.toMatchObject({ outcome: 'approved' });
+		expect(stepQueue.publish).not.toHaveBeenCalled();
+	});
+
+	it('keeps the first vote of a voter', async () => {
+		const { service } = setupVote({ recorded: false });
+
+		await expect(cast(service, 'vote=d&voter=0')).resolves.toEqual({ result: 'duplicate' });
+	});
+
+	it.each([
+		[{ kind: 'ballot', outcome: 'approved', decidedAt: 'then' }, 'approved'],
+		[{ kind: 'ballot', outcome: 'declined', decidedAt: 'then' }, 'declined'],
+		[{ kind: 'deadline' }, 'timedOut'],
+	] as const)('reports a ballot that ended with %o as %s', async (resumeCause, outcome) => {
+		const { service, stepStore } = setupVote({
+			step: ballotStep({ status: 'completed', resumeCause }),
+		});
+
+		await expect(cast(service, 'vote=a&voter=0')).resolves.toEqual({ result: 'closed', outcome });
+		expect(stepStore.recordBallotVote).not.toHaveBeenCalled();
+	});
+
+	it('reports a ballot of an ended execution as inactive', async () => {
+		const { service, stepStore } = setupVote({
+			status: 'cancelled',
+			step: ballotStep({ status: 'cancelled' }),
+		});
+
+		await expect(cast(service, 'vote=a&voter=0')).resolves.toEqual({
+			result: 'closed',
+			outcome: 'inactive',
+		});
+		expect(stepStore.recordBallotVote).not.toHaveBeenCalled();
+	});
+
+	it('holds a vote that arrives before the step suspends', async () => {
+		const { service, loadStep } = setupVote({
+			step: [ballotStep({ status: 'running', waitDeclaration: null }), ballotStep()],
+		});
+
+		await expect(cast(service, 'vote=a&voter=0')).resolves.toEqual({ result: 'recorded' });
+		expect(loadStep).toHaveBeenCalledTimes(2);
+	});
+
+	it.each([
+		['a voter the ballot does not have', 'vote=a&voter=3'],
+		['an unknown vote', 'vote=x&voter=0'],
+		['no voter', 'vote=a'],
+	])('refuses %s', async (_, query) => {
+		const { service } = setupVote();
+
+		await expect(cast(service, query)).rejects.toEqual(rejection('invalid_token'));
+	});
+
+	it('refuses a decline when the ballot allows none', async () => {
+		const { service } = setupVote({
+			step: ballotStep({
+				waitDeclaration: {
+					ballot: { ...ballotDeclaration, allowDecline: false },
+					resumeBinding: 'step',
+				},
+			}),
+		});
+
+		await expect(cast(service, 'vote=d&voter=0')).rejects.toEqual(rejection('invalid_token'));
+	});
+
+	it('refuses a query that the token does not bind', async () => {
+		const { service } = setupVote();
+		const token = voteToken(voteLink('vote=d&voter=0'));
+
+		await expect(service.castBallotVote(stepId, token, voteLink('vote=a&voter=0'))).rejects.toEqual(
+			rejection('invalid_token'),
+		);
+	});
+
+	it('refuses an approval callback', async () => {
+		const { service } = setupVote();
+
+		await expect(
+			service.castBallotVote(
+				stepId,
+				mintApprovalCallback(secret, stepId, 'a'),
+				voteLink('vote=a&voter=0'),
+			),
+		).rejects.toEqual(rejection('invalid_token'));
+	});
+
+	it('refuses a step without a ballot', async () => {
+		const { service } = setupVote({ step: stepBound() });
+
+		await expect(cast(service, 'vote=a&voter=0')).rejects.toEqual(rejection('not_waiting'));
+	});
+
+	it('is not a target of a plain resume request', async () => {
+		const { service } = setup({ step: ballotStep() });
+		const pathAndQuery = voteLink('vote=a&voter=0');
+
+		await expect(
+			service.locateByToken(stepId, voteToken(pathAndQuery), pathAndQuery),
+		).resolves.toMatchObject({ target: null });
 	});
 });

@@ -29,10 +29,12 @@ import type {
 	IExecuteFunctions,
 	ExecuteAgentWorkflowContext,
 	IDataObject,
+	PutExecutionToWaitOptions,
 	StructuredChunk,
 } from 'n8n-workflow';
 import {
 	NodeHelpers,
+	NodeOperationError,
 	NodeConnectionTypes,
 	WAIT_FOR_SUB_EXECUTION,
 	MAX_IN_PROCESS_WAIT_MS,
@@ -138,10 +140,14 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		return await this.additionalData.getRuntimeCredential(this.runExecutionData, alias);
 	}
 
-	async putExecutionToWait(
-		waitTill: Date,
-		options?: { acceptsResumeRequest?: boolean },
-	): Promise<void> {
+	async putExecutionToWait(waitTill: Date, options?: PutExecutionToWaitOptions): Promise<void> {
+		if (options?.ballot) {
+			throw new NodeOperationError(
+				this.node,
+				'This node needs engine v2. Change the workflow settings to run it on engine v2.',
+			);
+		}
+
 		const waitMs = Math.max(waitTill.getTime() - Date.now(), 0);
 
 		// Suspending a short wait costs a write and a reload, and the tracker polls too

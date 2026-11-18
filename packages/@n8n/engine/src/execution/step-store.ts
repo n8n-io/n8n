@@ -1,4 +1,6 @@
 import type {
+	BallotDecision,
+	BallotVotes,
 	StepError,
 	StepKey,
 	StepKeyId,
@@ -40,6 +42,8 @@ export interface StepRecord {
 	waitDeclaration: WaitDeclaration | null;
 	/** What resumed this step's current dispatch; `null` on a first run. */
 	resumeCause: ResumeCause | null;
+	/** The votes of a ballot wait; absent or `null` until the first vote. */
+	ballotVotes?: BallotVotes | null;
 	/** Why the step failed; absent unless it did. */
 	error?: StepError | null;
 }
@@ -158,6 +162,22 @@ export interface StepStore {
 	 * whoever accepts it, not here.
 	 */
 	resumeStep(id: string, resumeCause: ResumeCause): Promise<boolean>;
+
+	/**
+	 * Record the vote of `voter` on the ballot of a waiting step. One statement
+	 * that adds the vote only while the step waits and the voter has no vote
+	 * yet, so a voter's first vote stays. The row lock of the statement orders
+	 * concurrent votes, and orders a vote with the sweep and with cancellation.
+	 *
+	 * Returns the step as it is after the call. `recorded` is `false` when the
+	 * step does not wait or the voter already voted.
+	 */
+	recordBallotVote(
+		id: string,
+		voter: number,
+		decision: BallotDecision,
+		votedAt: Date,
+	): Promise<{ recorded: boolean; step: StepRecord }>;
 
 	/**
 	 * Resume every waiting step whose deadline has passed, up to `limit`, and

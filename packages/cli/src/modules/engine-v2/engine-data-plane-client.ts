@@ -5,6 +5,8 @@ import { Service } from '@n8n/di';
 import type {
 	AuthenticatedCaller,
 	CancelExecutionResponse,
+	CastBallotVoteRequest,
+	CastBallotVoteResponse,
 	EngineErrorResponse,
 	ExecutionSnapshot,
 	ExecutionStatus,
@@ -203,9 +205,19 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 		);
 	}
 
+	async castBallotVote(
+		stepId: string,
+		request: CastBallotVoteRequest,
+	): Promise<ResumeOutcome<CastBallotVoteResponse>> {
+		return await this.postResume<CastBallotVoteResponse>(
+			`/api/step-executions/${encodeURIComponent(stepId)}/votes`,
+			request,
+		);
+	}
+
 	private async postResume<T>(
 		url: string,
-		body: ResumeLocateRequest | ResolveStepRequest,
+		body: ResumeLocateRequest | ResolveStepRequest | CastBallotVoteRequest,
 	): Promise<ResumeOutcome<T>> {
 		const response = await this.http.request<T | EngineErrorResponse>({
 			url,

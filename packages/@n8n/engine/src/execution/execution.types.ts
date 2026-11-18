@@ -153,12 +153,24 @@ export type WaitDeclaration =
 			outputsAtDeadline: StepSlots;
 			/** Which resume request may end the wait early. If absent, none can. */
 			resumeBinding?: ResumeBinding;
+			ballot?: never;
 	  }
 	| {
 			/** No deadline, so only a resume request ends this wait. */
 			resumeAt?: never;
 			outputsAtDeadline?: never;
 			resumeBinding: ResumeBinding;
+			ballot?: never;
+	  }
+	| {
+			/**
+			 * Votes end this wait: the engine records them and resumes the step once
+			 * they decide the ballot. An optional deadline ends it as timed out.
+			 */
+			ballot: BallotDeclaration;
+			resumeAt?: string;
+			outputsAtDeadline?: never;
+			resumeBinding: 'step';
 	  }
 	| {
 			/**
@@ -169,6 +181,7 @@ export type WaitDeclaration =
 			resumeAt?: never;
 			outputsAtDeadline?: never;
 			resumeBinding?: never;
+			ballot?: never;
 	  };
 
 /**
@@ -176,6 +189,24 @@ export type WaitDeclaration =
  * engine's own: an executor asks for one with a sub-execution declaration.
  */
 export type ExecutorWaitDeclaration = Exclude<WaitDeclaration, { subExecutionId: string }>;
+
+/** A vote: `a` approves, `d` declines. */
+export type BallotDecision = 'a' | 'd';
+
+/** A wait that ends when enough voters approve, or when approval can no longer be reached. */
+export interface BallotDeclaration {
+	/** One entry for each voter. Opaque: the engine copies each entry into the result. */
+	voters: JsonObject[];
+	/** How many approvals approve the ballot. At least 1, and at most the number of voters. */
+	required: number;
+	/** Whether a voter can decline. If not, the engine refuses a `d` vote. */
+	allowDecline: boolean;
+}
+
+/** The votes recorded for a ballot, by voter index. A voter's first vote stays. */
+export type BallotVotes = Record<string, { decision: BallotDecision; votedAt: string }>;
+
+export type BallotOutcome = 'approved' | 'declined' | 'timedOut';
 
 /** What a resume request for a wait must name (ADR-20260904-a-derived-token-authorizes-a-resume-request). */
 export type ResumeBinding = 'execution' | 'step';
@@ -215,7 +246,16 @@ export type SubExecutionOutcome =
 export type ResumeCause =
 	| { kind: 'deadline' }
 	| { kind: 'request'; outputs: StepSlots }
+	| BallotResumeCause
 	| SubExecutionResumeCause;
+
+/** Votes decided a ballot wait. A deadline that ends a ballot wait is `deadline`. */
+export interface BallotResumeCause {
+	kind: 'ballot';
+	outcome: Exclude<BallotOutcome, 'timedOut'>;
+	/** ISO-8601. */
+	decidedAt: string;
+}
 
 /**
  * An executor's wait with no deadline and no resume request would never end,

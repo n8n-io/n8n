@@ -1411,6 +1411,21 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	logAiEvent(eventName: AiEvent, msg?: string): void;
 };
 
+/** A wait that votes end: see `IExecuteFunctions.putExecutionToWait`. Engine v2 only. */
+export interface ExecutionWaitBallot {
+	/** One entry for each voter. The result of the ballot copies each entry. */
+	voters: IDataObject[];
+	/** How many approvals approve the ballot. */
+	required: number;
+	/** Whether a voter can decline. */
+	allowDecline: boolean;
+}
+
+export interface PutExecutionToWaitOptions {
+	acceptsResumeRequest?: boolean;
+	ballot?: ExecutionWaitBallot;
+}
+
 // TODO: Create later own type only for Config-Nodes
 export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 	BaseExecutionFunctions & {
@@ -1447,8 +1462,11 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		 * Set `acceptsResumeRequest` to `false` when only the deadline can end the wait.
 		 * The engine then keeps a short wait in the process, so the wait does not survive
 		 * a restart. Without the option the engine suspends and persists the execution.
+		 *
+		 * Set `ballot` to end the wait by votes instead (engine v2 only). Each voter
+		 * votes through a signed resume URL with the query `voter=<index>&vote=<a|d>`.
 		 */
-		putExecutionToWait(waitTill: Date, options?: { acceptsResumeRequest?: boolean }): Promise<void>;
+		putExecutionToWait(waitTill: Date, options?: PutExecutionToWaitOptions): Promise<void>;
 		/**
 		 * Builds the signed reference that an approval button carries, for example
 		 * Telegram's `callback_data` (64 bytes at most). The reference carries the
