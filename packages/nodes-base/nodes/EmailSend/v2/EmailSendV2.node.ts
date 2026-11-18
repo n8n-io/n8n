@@ -64,11 +64,13 @@ export const versionDescription: INodeTypeDescription = {
 					name: 'Send',
 					value: 'send',
 					action: 'Send an Email',
+					annotations: { effect: 'write', destructive: false, idempotent: false },
 				},
 				{
 					name: 'Send and Wait for Response',
 					value: SEND_AND_WAIT_OPERATION,
 					action: 'Send message and wait for response',
+					annotations: { effect: 'write', destructive: false, idempotent: false },
 				},
 			],
 			displayOptions: {
