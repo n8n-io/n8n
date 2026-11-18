@@ -112,7 +112,10 @@ const onInputScroll = (event: WheelEvent) => {
 		:style="{ ...styles, ...customColorStyles }"
 		@keydown.prevent
 	>
-		<div v-show="!editMode" :class="$style.wrapper" @dblclick.stop="onDoubleClick">
+		<div v-if="$slots.default" v-show="!editMode" :class="$style.custom">
+			<slot />
+		</div>
+		<div v-else v-show="!editMode" :class="$style.wrapper" @dblclick.stop="onDoubleClick">
 			<N8nMarkdown
 				theme="sticky"
 				:content="modelValue"
@@ -188,6 +191,15 @@ const onInputScroll = (event: WheelEvent) => {
 	position: absolute;
 	padding: var(--spacing--2xs) var(--spacing--xs) 0;
 	overflow: hidden;
+}
+
+.custom {
+	width: 100%;
+	height: 100%;
+	position: absolute;
+	overflow: hidden;
+	border-radius: inherit;
+	color: var(--sticky--color--text);
 }
 
 .footer {

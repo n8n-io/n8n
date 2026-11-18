@@ -15,6 +15,10 @@ import { EditorEnabledFeaturesKey, WorkflowDocumentStoreKey } from '@/app/consta
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { usePageStore } from '@n8n/frontend-module-page';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
+import type { PageSummary } from '@n8n/api-types';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
@@ -219,6 +223,68 @@ describe('CanvasNodeToolbar', () => {
 		await userEvent.click(screen.getAllByTestId('color')[0]);
 
 		expect(emitted('update')[0]).toEqual([{ color: 1 }]);
+	});
+
+	describe('link a page to a sticky note', () => {
+		const stickyNoteProvide = () => ({
+			...createCanvasNodeProvide({
+				data: { render: { type: CanvasNodeRenderType.StickyNote, options: { color: 3 } } },
+			}),
+			...createCanvasProvide(),
+		});
+
+		function setupPageStores(pageSummaries: PageSummary[]) {
+			const testingPinia = createTestingPinia();
+			setActivePinia(testingPinia);
+			mockedStore(useSettingsStore).isModuleActive.mockReturnValue(true);
+			mockedStore(useProjectsStore).currentProjectId = 'p1';
+			mockedStore(usePageStore).pagesOf.mockReturnValue(pageSummaries);
+			mockedStore(usePageStore).fetchPages.mockResolvedValue(pageSummaries);
+			capabilityRegistry.provide(capabilities.projectPermissions, {
+				scopesFor: () => [],
+				defaultProjectId: () => 'p1',
+				isReadOnly: () => false,
+			});
+			return testingPinia;
+		}
+
+		it('should set the sticky note content to the link of the picked page', async () => {
+			const runbook: PageSummary = {
+				id: 'page-1',
+				title: 'Runbook',
+				projectId: 'p1',
+				version: 1,
+				createdAt: '2026-11-01T00:00:00.000Z',
+				updatedAt: '2026-11-01T00:00:00.000Z',
+			};
+			const { getByTestId, emitted } = renderComponent({
+				pinia: setupPageStores([runbook]),
+				global: { provide: stickyNoteProvide() },
+			});
+
+			await userEvent.click(getByTestId('sticky-link-page-button'));
+			await userEvent.click(await screen.findByText('Runbook'));
+
+			expect(emitted('update')[0]).toEqual([{ content: '/page/page-1' }]);
+		});
+
+		it('should hide the action when the page module is off', () => {
+			const { queryByTestId } = renderComponent({
+				pinia,
+				global: { provide: stickyNoteProvide() },
+			});
+
+			expect(queryByTestId('sticky-link-page-button')).not.toBeInTheDocument();
+		});
+
+		it('should hide the action on a node that is not a sticky note', () => {
+			const { queryByTestId } = renderComponent({
+				pinia: setupPageStores([]),
+				global: { provide: { ...createCanvasNodeProvide(), ...createCanvasProvide() } },
+			});
+
+			expect(queryByTestId('sticky-link-page-button')).not.toBeInTheDocument();
+		});
 	});
 
 	it('should show execute button when readOnly is true and canExecute is true', () => {

@@ -127,3 +127,30 @@ describe('N8nSticky', () => {
 		});
 	});
 });
+
+describe('N8nSticky default slot', () => {
+	it('renders the slot content instead of the markdown content', () => {
+		const wrapper = render(N8nSticky, {
+			props: { modelValue: 'Markdown content' },
+			slots: { default: '<div data-test-id="custom-content">Custom</div>' },
+		});
+
+		expect(wrapper.getByTestId('custom-content')).toBeVisible();
+		expect(wrapper.queryByText('Markdown content')).not.toBeInTheDocument();
+	});
+
+	it('hides the slot content in edit mode', () => {
+		const wrapper = render(N8nSticky, {
+			props: { modelValue: 'Markdown content', editMode: true },
+			slots: { default: '<div data-test-id="custom-content">Custom</div>' },
+		});
+
+		expect(wrapper.getByTestId('custom-content')).not.toBeVisible();
+	});
+
+	it('renders the markdown content without a slot', () => {
+		const wrapper = render(N8nSticky, { props: { modelValue: 'Markdown content' } });
+
+		expect(wrapper.getByText('Markdown content')).toBeVisible();
+	});
+});

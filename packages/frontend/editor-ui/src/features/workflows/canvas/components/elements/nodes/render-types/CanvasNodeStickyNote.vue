@@ -8,6 +8,8 @@ import type { OnResize } from '@vue-flow/node-resizer';
 import type { XYPosition } from '@vue-flow/core';
 
 import { N8nSticky } from '@n8n/design-system';
+import StickyLinkedPage from '@/features/pages/components/StickyLinkedPage.vue';
+import { useLinkedPageId } from '@/features/pages/composables/useLinkedPageId';
 defineOptions({
 	inheritAttrs: false,
 });
@@ -53,6 +55,10 @@ function onResize(event: OnResize) {
  */
 
 const isActive = ref(false);
+
+const linkedPageId = useLinkedPageId(() => renderOptions.value.content);
+// The page stays unmounted during the edit of its link, so that a half-typed link loads nothing.
+const shownPageId = computed(() => (isActive.value ? undefined : linkedPageId.value));
 
 function onInputChange(value: string) {
 	emit('update', {
@@ -120,7 +126,16 @@ onBeforeUnmount(() => {
 		@dblclick.stop="onActivate"
 		@update:model-value="onInputChange"
 		@contextmenu="openContextMenu"
-	/>
+	>
+		<template v-if="shownPageId" #default>
+			<StickyLinkedPage
+				:key="shownPageId"
+				:page-id="shownPageId"
+				:read-only="isReadOnly"
+				@edit-link="onActivate"
+			/>
+		</template>
+	</N8nSticky>
 </template>
 
 <style lang="scss" module>

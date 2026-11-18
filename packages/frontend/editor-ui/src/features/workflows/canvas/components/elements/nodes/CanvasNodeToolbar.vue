@@ -15,6 +15,10 @@ import CanvasNodeStatusIcons from './render-types/parts/CanvasNodeStatusIcons.vu
 
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import CanvasNodeStickyColorSelector from './toolbar/CanvasNodeStickyColorSelector.vue';
+import StickyPageLinkPicker from '@/features/pages/components/StickyPageLinkPicker.vue';
+import { useIsPageModuleActive } from '@/features/pages/composables/useIsPageModuleActive';
+import { useWorkflowPagesProjectId } from '@/features/pages/composables/useWorkflowPagesProjectId';
+import { toPageLink } from '@/features/pages/pageLink';
 
 const emit = defineEmits<{
 	delete: [];
@@ -78,12 +82,14 @@ const executeNodeTooltip = computed(() => {
 });
 
 const isStickyColorSelectorOpen = ref(false);
+const isStickyPageLinkPickerOpen = ref(false);
 const isHovered = ref(false);
 
 const classes = computed(() => ({
 	[$style.canvasNodeToolbar]: true,
 	[$style.readOnly]: props.readOnly,
-	[$style.forceVisible]: isHovered.value || isStickyColorSelectorOpen.value,
+	[$style.forceVisible]:
+		isHovered.value || isStickyColorSelectorOpen.value || isStickyPageLinkPickerOpen.value,
 	[$style.isExperimentalNdvActive]: isExperimentalNdvActive.value,
 }));
 
@@ -145,6 +151,18 @@ const isAddToAiVisible = computed(
 const isStickyNoteChangeColorVisible = computed(
 	() => !props.readOnly && render.value.type === CanvasNodeRenderType.StickyNote,
 );
+
+const isPageModuleActive = useIsPageModuleActive();
+const pagesProjectId = useWorkflowPagesProjectId();
+const isStickyNoteLinkPageVisible = computed(
+	() => isStickyNoteChangeColorVisible.value && isPageModuleActive.value,
+);
+
+function onLinkStickyToPage(pageId: string) {
+	emit('update', {
+		content: toPageLink(pageId),
+	});
+}
 
 function executeNode() {
 	emit('run');
@@ -252,6 +270,13 @@ function onAddToChat() {
 				v-if="isStickyNoteChangeColorVisible"
 				v-model:visible="isStickyColorSelectorOpen"
 				@update="onChangeStickyColor"
+			/>
+			<StickyPageLinkPicker
+				v-if="isStickyNoteLinkPageVisible"
+				v-model:visible="isStickyPageLinkPickerOpen"
+				:project-id="pagesProjectId"
+				:workflow-name="workflowDocumentStore.name"
+				@link="onLinkStickyToPage"
 			/>
 			<N8nTooltip v-if="isAddToAiVisible" placement="top" :content="i18n.baseText('node.addToAi')">
 				<N8nIconButton
