@@ -2,8 +2,8 @@
 
 ## Full n8n app
 
-The running n8n editor is at <http://127.0.0.1:8083/workflow/kkM8mfNMrpuVBrCm?hackmation=delight>.
-Open the tab in the **Eggs · Canvas delight** Orca worktree. That tab is signed in to the local demo account.
+The running n8n editor is at <http://canvas-delight.localhost:8083/workflow/kkM8mfNMrpuVBrCm?hackmation=delight>.
+Open the tab in the **Eggs · Canvas delight** Orca worktree. Sign in with the local demo account.
 
 This is the normal n8n app with its backend, database, workflow editor, node parameters, and sticky-note editor. The workflow is saved as **Hackmation · A quiet moment**. The instance data is in `/private/tmp/n8n-canvas-delight-instance`. It does not use your usual n8n database.
 
@@ -19,9 +19,13 @@ The running editor uses this worktree's source. The backend reuses the main chec
 For a checkout with built backend dependencies, start these commands in separate terminals:
 
 ```sh
-N8N_USER_FOLDER=/private/tmp/n8n-canvas-delight-instance N8N_PORT=5683 N8N_LISTEN_ADDRESS=127.0.0.1 N8N_DIAGNOSTICS_ENABLED=false N8N_SECURE_COOKIE=false N8N_EDITOR_BASE_URL=http://127.0.0.1:8083 pnpm start
+N8N_USER_FOLDER=/private/tmp/n8n-canvas-delight-instance N8N_PORT=5683 N8N_LISTEN_ADDRESS=127.0.0.1 N8N_DIAGNOSTICS_ENABLED=false N8N_SECURE_COOKIE=false N8N_EDITOR_BASE_URL=http://canvas-delight.localhost:8083 pnpm start
 N8N_PORT=5683 N8N_EDITOR_PORT=8083 pnpm --dir packages/frontend/editor-ui exec vite --host 127.0.0.1
 ```
+
+Use `canvas-delight.localhost` for this instance. Cookies are shared across ports on one hostname. Two n8n backends on `127.0.0.1` can clear each other’s `n8n-auth` cookie. The dedicated hostname keeps this instance separate. No hosts-file change is needed.
+
+Each idea has its own worktree. You can also stop one instance before starting another. The independent branches are `codex-hackmation-canvas-delight`, `codex-hackmation-constellation`, and `codex-hackmation-prints`.
 
 ## Standalone animation harness
 

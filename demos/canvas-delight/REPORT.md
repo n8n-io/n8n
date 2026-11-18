@@ -2,7 +2,7 @@
 
 ## Full-app verification
 
-The normal n8n app runs at <http://127.0.0.1:8083/workflow/kkM8mfNMrpuVBrCm?hackmation=delight>. The backend runs on port 5683 with a task-owned SQLite database. The editor runs from this worktree on port 8083.
+The normal n8n app runs at <http://canvas-delight.localhost:8083/workflow/kkM8mfNMrpuVBrCm?hackmation=delight>. The backend runs on port 5683 with a task-owned SQLite database. The editor runs from this worktree on port 8083.
 
 Verified on the saved workflow in the full editor:
 
@@ -15,6 +15,14 @@ Verified on the saved workflow in the full editor:
 - Browser error output was empty during these checks.
 
 Full-app evidence is in `evidence/real-app/`. Broad editor regression tests remain unrun.
+
+## Local session isolation
+
+The two running n8n backends used the same `n8n-auth` cookie on `127.0.0.1`. A request to the other backend rejected that cookie and cleared it. Switching back then required a new login.
+
+The canvas demo now uses `canvas-delight.localhost:8083`. Both Orca tabs and the restart instructions use this address. Authentication behavior is unchanged.
+
+A real HTTP cookie-jar check logged in, requested the other app, and checked the original session again. With the old hostname, the original session changed from 200 to 401. With the dedicated hostname, it stayed at 200. See `evidence/real-app/session-isolation.json`.
 
 ## Result
 

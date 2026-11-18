@@ -1,0 +1,17 @@
+{
+	"oldOrigin": "http://127.0.0.1:8083",
+	"newOrigin": "http://canvas-delight.localhost:8083",
+	"otherOrigin": "http://127.0.0.1:5184",
+	"before": {
+		"login": 200,
+		"ownSession": 200,
+		"otherInstance": 401,
+		"ownSessionAfter": 401
+	},
+	"after": {
+		"login": 200,
+		"ownSession": 200,
+		"otherInstance": 401,
+		"ownSessionAfter": 200
+	}
+}
