@@ -1,3 +1,6 @@
+import { PROP_LAYOUT } from '../aquarium.constants';
+import { isPropDead, layoutProps, tankFailureShare, type PlacedProp } from '../decor/decor';
+import type { PropDefinition } from '../decor/props';
 import { hashString } from '../species/species.registry';
 import type { PixelSprite } from '../species/species.types';
 import type { Camera, Size } from './camera';
@@ -6,12 +9,17 @@ import { FRAME_THICKNESS, paintFrame } from './frames';
 import type { TankRegion } from './layout';
 import { frameIndexOf, type Creature, type TankBounds } from './simulation';
 
-const WATER_BANDS = ['#5fb4d9', '#4aa2cc', '#3a8fbd', '#2d7aa8', '#236690', '#1b5277'];
+/** The "water shallows" palette, from the surface down. */
+const WATER = ['#0aa5bd', '#0b76bd', '#04454f'];
+/** 4x4 ordered dither, so the water fades between palette colours and keeps crisp pixels. */
+const BAYER_4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+/** Above 1, the light water reaches deeper before it turns dark. */
+const WATER_DEPTH_CURVE = 1.6;
 const SAND = { base: '#d9bd7f', speck: '#c2a160', light: '#ead29b' };
 const SEAWEED = ['#2f8f4e', '#3fa65c', '#267a42'];
 const AMBIENT_BUBBLE = 'rgba(220, 240, 255, 0.6)';
 /** Fills the view outside the tanks: the wall between project tanks, and space around the world. */
-const OUTSIDE_WORLD = '#153e5c';
+const OUTSIDE_WORLD = '#011113';
 /** Logical pixels of world width for each column of ambient bubbles. */
 const BUBBLE_COLUMN_SPACING = 80;
 /** Extra pixels around the view, so effects and highlights at the edge still draw. */
@@ -54,6 +62,11 @@ export class AquariumRenderer {
 
 	private readonly plantsByTank = new Map<string, Plant[]>();
 
+	private readonly propsByTank = new Map<string, PlacedProp[]>();
+
+	/** Keyed by sprite, so a frame finds a prop image with no string keys. */
+	private readonly propImages = new WeakMap<PixelSprite, HTMLCanvasElement>();
+
 	/** Painted once for each tank, because frame noise and colours differ for each tank. */
 	private readonly framesByTank = new Map<string, HTMLCanvasElement>();
 
@@ -83,6 +96,7 @@ export class AquariumRenderer {
 			tankIds.add(region.id);
 			if (!this.backgrounds.has(key)) this.backgrounds.set(key, this.drawBackground(region.bounds));
 			this.plantsByTank.set(region.id, this.layoutPlants(region.bounds, region.id));
+			this.propsByTank.set(region.id, layoutProps(region.bounds, region.id));
 
 			const frameKey = `${region.id}|${region.frame}|${key}`;
 			const frame = this.framesByTank.get(frameKey);
@@ -94,6 +108,7 @@ export class AquariumRenderer {
 		}
 		for (const key of this.backgrounds.keys()) if (!sizeKeys.has(key)) this.backgrounds.delete(key);
 		for (const id of this.plantsByTank.keys()) if (!tankIds.has(id)) this.plantsByTank.delete(id);
+		for (const id of this.propsByTank.keys()) if (!tankIds.has(id)) this.propsByTank.delete(id);
 		for (const key of this.framesByTank.keys())
 			if (!tankIds.has(key)) this.framesByTank.delete(key);
 	}
@@ -158,6 +173,11 @@ export class AquariumRenderer {
 		const ctx = this.ctx;
 		const background = this.backgrounds.get(`${region.bounds.width}x${region.bounds.height}`);
 		if (background) ctx.drawImage(background, 0, 0);
+		this.drawProps(
+			region.bounds,
+			this.propsByTank.get(region.id) ?? [],
+			tankFailureShare(creatures),
+		);
 		this.drawPlants(
 			region.bounds,
 			this.plantsByTank.get(region.id) ?? [],
@@ -180,6 +200,24 @@ export class AquariumRenderer {
 			}
 			if (creature.entity.key === highlightKey) this.drawHighlight(creature);
 		}
+	}
+
+	/** Props stand on the sand. A failing tank shows the dead look of more of them. */
+	private drawProps(bounds: TankBounds, props: PlacedProp[], failureShare: number): void {
+		for (const placed of props) {
+			const image = this.propImage(placed.prop, isPropDead(placed, failureShare));
+			if (image)
+				this.ctx.drawImage(image, placed.x, bounds.floor + PROP_LAYOUT.sink - image.height);
+		}
+	}
+
+	private propImage(prop: PropDefinition, dead: boolean): HTMLCanvasElement | undefined {
+		const sprite = dead ? prop.dead : prop.healthy;
+		const cached = this.propImages.get(sprite);
+		if (cached) return cached;
+		const [image] = this.spriteFrames(`prop:${prop.id}:${dead ? 'dead' : 'healthy'}`, sprite);
+		if (image) this.propImages.set(sprite, image);
+		return image;
 	}
 
 	private drawCreature(creature: Creature): void {
@@ -260,11 +298,17 @@ export class AquariumRenderer {
 		const canvas = createCanvas(bounds.width, bounds.height);
 		const ctx = context2d(canvas);
 
-		const bandHeight = Math.ceil(bounds.floor / WATER_BANDS.length);
-		WATER_BANDS.forEach((color, i) => {
-			ctx.fillStyle = color;
-			ctx.fillRect(0, i * bandHeight, bounds.width, bandHeight);
-		});
+		const deepest = Math.max(1, bounds.floor - 1);
+		for (let y = 0; y < bounds.floor; y++) {
+			const depth = (y / deepest) ** WATER_DEPTH_CURVE * (WATER.length - 1);
+			const band = Math.min(WATER.length - 2, Math.floor(depth));
+			const mix = depth - band;
+			for (let x = 0; x < bounds.width; x++) {
+				const threshold = ((BAYER_4[(y % 4) * 4 + (x % 4)] ?? 0) + 0.5) / 16;
+				ctx.fillStyle = (mix > threshold ? WATER[band + 1] : WATER[band]) ?? '#000000';
+				ctx.fillRect(x, y, 1, 1);
+			}
+		}
 
 		ctx.fillStyle = SAND.base;
 		ctx.fillRect(0, bounds.floor, bounds.width, bounds.height - bounds.floor);

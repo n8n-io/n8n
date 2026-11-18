@@ -37,6 +37,17 @@ export const DRAG_THRESHOLD = 4;
 /** Height of the sand floor, in logical pixels. */
 export const SAND_HEIGHT = 10;
 
+/** Furniture on the sand of each tank. Its look follows the health of the tank. */
+export const PROP_LAYOUT = {
+	/** Tank width for each prop. A narrow tank still gets one. */
+	spacing: 80,
+	max: 5,
+	/** Pixels that the sand under a prop sinks into the floor. */
+	sink: 3,
+	/** Runs that a tank needs before a prop can look dead. */
+	minRuns: 10,
+} as const;
+
 /** Resting speed, from the execution count of the period. Live activity adds `LIVE_SPEED`. */
 export const SWIM_SPEED = {
 	min: 2,
