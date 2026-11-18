@@ -263,12 +263,6 @@ async function toggleMCPAccess(enabled: boolean) {
 				>
 					{{ locale.baseText('agents.list.readonly') }}
 				</N8nBadge>
-				<DeterminismBadge
-					v-if="settingsStore.isModuleActive('agent-determinism') && !agent.isArchived"
-					:project-id="projectId"
-					source-type="agent"
-					:source-id="agent.id"
-				/>
 			</N8nText>
 		</template>
 		<N8nText
@@ -294,6 +288,12 @@ async function toggleMCPAccess(enabled: boolean) {
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
+				<DeterminismBadge
+					v-if="settingsStore.isModuleActive('agent-determinism') && !agent.isArchived"
+					:project-id="projectId"
+					source-type="agent"
+					:source-id="agent.id"
+				/>
 				<N8nText
 					v-if="agent.isArchived"
 					color="text-light"

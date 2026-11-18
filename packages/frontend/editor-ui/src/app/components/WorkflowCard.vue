@@ -709,12 +709,6 @@ const tags = computed(
 				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" variant="outline">
 					{{ locale.baseText('workflows.item.readonly') }}
 				</N8nBadge>
-				<DeterminismBadge
-					v-if="isDeterminismActive && data.homeProject?.id && !data.isArchived"
-					:project-id="data.homeProject.id"
-					source-type="workflow"
-					:source-id="data.id"
-				/>
 			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
@@ -765,6 +759,12 @@ const tags = computed(
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
+				<DeterminismBadge
+					v-if="isDeterminismActive && data.homeProject?.id && !data.isArchived"
+					:project-id="data.homeProject.id"
+					source-type="workflow"
+					:source-id="data.id"
+				/>
 				<DependencyPill
 					v-if="workflowHasDependencies"
 					resource-type="workflow"

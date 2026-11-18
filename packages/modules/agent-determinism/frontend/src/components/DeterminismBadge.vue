@@ -46,6 +46,6 @@ onMounted(async () => await store.ensureLoaded(props.projectId, props.sourceType
 
 <style module lang="scss">
 .badge {
-	margin-left: var(--spacing--3xs);
+	margin-right: var(--spacing--2xs);
 }
 </style>
