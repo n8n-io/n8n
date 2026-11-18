@@ -96,7 +96,7 @@ vi.mock('@/features/shared/toolsConnection/ToolsConnectionModal.vue', () => ({
 				<div v-for="item in items" :key="item.id" data-testid="agent-skill-picker-row">
 					<button data-testid="agent-skill-picker-row-open" @click="$emit('open-detail', item)">{{ item.title }}</button>
 					<span data-testid="agent-skill-picker-category">{{ item.category }}</span>
-					<a v-if="item.source" data-testid="agent-skill-picker-source" :href="item.source.url">{{ item.source.label }}</a>
+					<slot name="row-footer" :item="item" />
 					<span v-if="item.disabled" data-testid="agent-skill-picker-disabled">{{ item.disabledReason }}</span>
 					<span v-else-if="item.attached" data-testid="agent-skill-picker-added" />
 					<button v-else data-testid="agent-skill-picker-add" :aria-label="connectAriaLabel?.(item)" @click="$emit('connect', item)">{{ connectLabel?.(item) }}</button>
@@ -919,19 +919,23 @@ describe('AgentSkillModal', () => {
 				);
 			});
 
-			it('passes the source of each recommended skill to the picker', async () => {
+			it('shows the source of each recommended skill in the picker', async () => {
 				listAttachableSkills.mockResolvedValue([projectSkill]);
-				const { findAllByTestId } = renderModal({
+				const { getAllByTestId } = renderModal({
 					skillRefsEnabled: true,
 					onAttach: vi.fn(),
 				});
 
-				const sources = await findAllByTestId('agent-skill-picker-source');
-				expect(sources.map((source) => source.getAttribute('href'))).toEqual([
-					'https://github.com/blader/humanizer',
-					'https://github.com/coreyhaines31/marketingskills/tree/main/skills/cold-email',
-					'https://github.com/mattpocock/skills/tree/main/skills/engineering/research',
-				]);
+				await waitFor(() => {
+					const rowsWithSource = getAllByTestId('agent-skill-picker-row').filter((row) =>
+						row.querySelector('[data-test-id="recommended-skill-source"]'),
+					);
+					expect(
+						rowsWithSource.map(
+							(row) => within(row).getByTestId('agent-skill-picker-row-open').textContent,
+						),
+					).toEqual(['humanizer', 'cold-email', 'research']);
+				});
 			});
 
 			it('refuses a recommended skill with the name of an attached skill', async () => {

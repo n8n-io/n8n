@@ -164,28 +164,19 @@ describe('ToolRow', () => {
 			expect(getByTestId('tools-connection-row-main')).not.toHaveFocus();
 		});
 
-		it('links to the source of a skill outside the row button', async () => {
-			const { getByTestId, emitted } = renderSkill({
-				...skill,
-				source: { label: 'blader/humanizer', url: 'https://github.com/blader/humanizer' },
+		it('shows the footer outside the row button', async () => {
+			const { getByTestId, emitted } = renderRow({
+				props: { item: skill },
+				slots: { footer: '<a href="#" data-test-id="row-footer-link">Footer link</a>' },
+				pinia: createTestingPinia(),
 			});
 
-			const source = getByTestId('tools-connection-row-source');
-			const link = getByTestId('tools-connection-row-source-link');
-			expect(source).toHaveTextContent('Based on blader/humanizer');
-			expect(link).toHaveAttribute('href', 'https://github.com/blader/humanizer');
-			expect(link).toHaveAttribute('target', '_blank');
+			const link = getByTestId('row-footer-link');
 			expect(getByTestId('tools-connection-row-main')).not.toContainElement(link);
 
 			await userEvent.click(link);
 
 			expect(emitted('open-detail')).toBeUndefined();
-		});
-
-		it('shows no source when the skill has none', () => {
-			const { queryByTestId } = renderSkill(skill);
-
-			expect(queryByTestId('tools-connection-row-source')).toBeNull();
 		});
 
 		describe('long descriptions', () => {

@@ -1,16 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onMounted, ref, watch } from 'vue';
 import { useResizeObserver } from '@vueuse/core';
-import { I18nT } from 'vue-i18n';
-import {
-	N8nBadge,
-	N8nButton,
-	N8nIcon,
-	N8nLink,
-	N8nSpinner,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nBadge, N8nButton, N8nIcon, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
@@ -94,8 +85,6 @@ const placeholderIcon = computed(() => {
 });
 
 const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
-
-const skillSource = computed(() => (props.item.kind === 'skill' ? props.item.source : undefined));
 
 const serviceActionLabel = computed(() =>
 	i18n.baseText(
@@ -308,28 +297,7 @@ function handleConnect() {
 					</span>
 				</template>
 			</component>
-			<N8nText
-				v-if="skillSource"
-				:class="$style.source"
-				tag="span"
-				size="small"
-				color="text-light"
-				data-test-id="tools-connection-row-source"
-			>
-				<I18nT keypath="tools.connection.basedOn" scope="global" tag="span">
-					<template #source>
-						<N8nLink
-							:to="skillSource.url"
-							new-window
-							rel="noopener noreferrer"
-							theme="text"
-							size="small"
-							data-test-id="tools-connection-row-source-link"
-							>{{ skillSource.label }}</N8nLink
-						>
-					</template>
-				</I18nT>
-			</N8nText>
+			<slot name="footer" />
 		</div>
 
 		<div :class="$style.action">
@@ -508,7 +476,7 @@ function handleConnect() {
 	}
 }
 
-// Stacks the row button and the optional source link, which cannot sit inside the button.
+// Stacks the row button and the optional footer, which cannot sit inside the button.
 .main {
 	display: flex;
 	flex-direction: column;
@@ -612,11 +580,6 @@ function handleConnect() {
 .descriptionTooltip {
 	max-width: calc(var(--spacing--5xl) * 2);
 	white-space: pre-line;
-	overflow-wrap: anywhere;
-}
-
-.source {
-	padding-top: var(--spacing--5xs);
 	overflow-wrap: anywhere;
 }
 

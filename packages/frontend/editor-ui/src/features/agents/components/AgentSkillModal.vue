@@ -53,6 +53,7 @@ import {
 } from '@/experiments/recommendedSkills/recommendedSkills';
 import { useRecommendedSkillsExperiment } from '@/experiments/recommendedSkills/useRecommendedSkillsExperiment';
 import { useRecommendedSkillLoader } from '@/experiments/recommendedSkills/useRecommendedSkillLoader';
+import RecommendedSkillSource from '@/experiments/recommendedSkills/components/RecommendedSkillSource.vue';
 import type {
 	SkillConnectionItem,
 	ToolCategoryKey,
@@ -371,6 +372,9 @@ const pickerCategories = computed<ToolCategoryKey[]>(() =>
 		? ['all', 'project', 'global', 'recommended']
 		: ['all', 'project', 'global'],
 );
+const recommendedSkillByPickerItemId = new Map(
+	RECOMMENDED_SKILLS.map((recommended) => [`recommended:${recommended.id}`, recommended]),
+);
 const pickerItemsWithRecommended = computed<SkillConnectionItem[]>(() =>
 	showRecommendedSkills.value
 		? [
@@ -383,7 +387,6 @@ const pickerItemsWithRecommended = computed<SkillConnectionItem[]>(() =>
 						skillId: recommended.id,
 						title: recommended.name,
 						description: i18n.baseText(recommended.cardTextKey),
-						source: recommended.source,
 						category: 'recommended' as const,
 						status: 'none' as const,
 						attached: false,
@@ -1506,7 +1509,14 @@ function onRemove() {
 				@connect="onPickerItemAttach"
 				@open-detail="onPickerItemPreview"
 				@create="onPickerCreate"
-			/>
+			>
+				<template #row-footer="{ item }">
+					<RecommendedSkillSource
+						:skill="recommendedSkillByPickerItemId.get(item.id)"
+						:class="$style.recommendedSkillSource"
+					/>
+				</template>
+			</ToolsConnectionModal>
 		</div>
 		<div
 			v-if="step === 'preview' && previewSkill"
@@ -2017,6 +2027,10 @@ function onRemove() {
 		border-right: none;
 		border-bottom: var(--border);
 	}
+}
+
+.recommendedSkillSource {
+	padding-top: var(--spacing--5xs);
 }
 
 @media (max-width: 480px) {

@@ -145,8 +145,6 @@ export interface SkillConnectionItem extends BaseConnectionItem {
 	skillId: string;
 	attached: boolean;
 	attaching?: boolean;
-	/** The upstream project that the skill is based on. The row shows it as a "Based on" link. */
-	source?: { label: string; url: string };
 }
 
 export type ToolConnectionItem =
