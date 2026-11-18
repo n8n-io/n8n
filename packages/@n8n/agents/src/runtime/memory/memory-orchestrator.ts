@@ -33,6 +33,7 @@ import {
 import { isAfterPoint, ResumeStateStore, resumeView, type ObservationPoint } from './resume-state';
 import { getModelContextWindow } from '../../sdk/catalog';
 import { getCreatedAt } from '../../sdk/message';
+import { detectLoadedSkills } from '../../skills/loaded-skills';
 import { getCatalogModelId, getModelIdString } from '../../utils/model';
 import type {
 	AgentExecutionCounter,
@@ -57,6 +58,7 @@ import type { ObservationResumeState } from '../../types/sdk/observation';
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
 import { promptSizeOf } from '../loop/prompt-size-usage';
 import { computeSideCallCost } from '../loop/side-call-cost';
+import { stripEncryptedReasoning } from '../model/encrypted-reasoning';
 import type { AgentMessageList } from '../model/message-list';
 import { getPromptCacheRetentionMs } from '../model/prompt-cache';
 import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
@@ -101,6 +103,8 @@ type ListNotes = string | undefined | typeof LIVE_NOTES;
 interface RunHistory {
 	messages: AgentDbMessage[];
 	notes: ListNotes;
+	/** Skills loaded in thread messages before the resume point. */
+	earlierLoadedSkillIds?: Set<string>;
 }
 
 /** Observer state of one run. Queued jobs keep their run's state when a new run starts. */
@@ -303,10 +307,11 @@ export class MemoryOrchestrator {
 				telemetry,
 				options.onSideCallUsage,
 			);
-			const { messages: memMessages, notes } = await this.loadHistoryForRun(
-				{ ...options, persistence: options.persistence },
-				telemetry,
-			);
+			const {
+				messages: memMessages,
+				notes,
+				earlierLoadedSkillIds,
+			} = await this.loadHistoryForRun({ ...options, persistence: options.persistence }, telemetry);
 
 			if (memMessages.length > 0) {
 				// Settle (not strip) so an abandoned suspension stays visible as an
@@ -317,6 +322,7 @@ export class MemoryOrchestrator {
 					await this.persistSettledHistory(changed, options.persistence, telemetry);
 				}
 			}
+			if (earlierLoadedSkillIds) list.addEarlierLoadedSkills(earlierLoadedSkillIds);
 			await this.setListObservationLogMemory(list, options.persistence, { notes });
 			return;
 		}
@@ -366,9 +372,16 @@ export class MemoryOrchestrator {
 			logger.debug('Ignoring stale observation resume point', { threadId });
 			resume.forget();
 		}
+		const withEarlierSkills = (view: { messages: AgentDbMessage[]; notes: string | undefined }) => {
+			const kept = new Set(view.messages);
+			return {
+				...view,
+				earlierLoadedSkillIds: detectLoadedSkills(all.filter((m) => !kept.has(m))),
+			};
+		};
 		const view = resumeView(all, state);
 		const budget = cursor ? await this.resolveBudget() : undefined;
-		if (!cursor || !budget) return view;
+		if (!cursor || !budget) return withEarlierSkills(view);
 
 		const viewTokens = await this.sumTokens(view.messages);
 		const modelId = this.modelId();
@@ -387,7 +400,7 @@ export class MemoryOrchestrator {
 		});
 		if (!reason) {
 			if (state?.lastRequestTokens) this.requestSize.seed(state.lastRequestTokens, viewTokens);
-			return view;
+			return withEarlierSkills(view);
 		}
 
 		let resumeAt: ObservationPoint = cursor;
@@ -396,10 +409,10 @@ export class MemoryOrchestrator {
 		const notes = await this.renderLiveNotes(persistence);
 		// Without notes, a resume would drop earlier messages with nothing in their
 		// place. Only an over-limit thread must shrink at that cost.
-		if (!notes && reason !== 'over-limit') return view;
+		if (!notes && reason !== 'over-limit') return withEarlierSkills(view);
 		await resume.moveTo(resumeAt, notes, modelId);
 		logger.debug('Observation resume point moved at turn start', { threadId, reason });
-		return resumeView(all, resume.current);
+		return withEarlierSkills(resumeView(all, resume.current));
 	}
 
 	/** Run the Observer over the whole backlog and return the new cursor. */
@@ -584,6 +597,40 @@ export class MemoryOrchestrator {
 			logger.warn('Failed to remove rejected input', {
 				error,
 				threadId: options.persistence.threadId,
+			});
+		}
+	}
+
+	/**
+	 * Stop the replay of encrypted reasoning that the provider rejected, for this
+	 * request and for later turns. Changed history is written back once, so the
+	 * next turn does not fail first. This turn's messages are saved at its end.
+	 * Best-effort: if the write fails, the next turn strips the history again.
+	 */
+	async stripRejectedReasoning(
+		list: AgentMessageList,
+		options: (RunOptions & ExecutionOptions) | undefined,
+	): Promise<void> {
+		const changed = stripEncryptedReasoning(list.messages());
+		const turn = new Set(list.turnDelta());
+		const history = changed.filter((message) => !turn.has(message));
+		const memory = this.config.memory;
+		const persistence = options?.persistence;
+		if (!memory || !persistence || history.length === 0) return;
+		try {
+			// No host metadata: these messages belong to earlier runs.
+			await this.saveMessagesWithSpan(
+				memory,
+				persistence.threadId,
+				persistence.resourceId,
+				history,
+				this.runtimeTelemetry.resolve(options),
+				undefined,
+			);
+		} catch (error) {
+			logger.warn('Failed to persist history without rejected reasoning', {
+				error,
+				threadId: persistence.threadId,
 			});
 		}
 	}

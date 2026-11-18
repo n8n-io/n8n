@@ -89,6 +89,7 @@ const platforms = {
 		shouldConfirmDisconnect: (runtime, credentialId, { isPublished }) =>
 			isPublished && isSlackChannelRuntime(runtime) && runtime.isManagedCredential(credentialId),
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+		getListDescription: ({ text }) => text('agents.channels.slack.listDescription'),
 		presentDisconnectWarning: (warning, { text }) => {
 			if (!isSlackNotDeletedWarning(warning)) {
 				return null;
@@ -116,6 +117,7 @@ const platforms = {
 		setupComponent: AgentChannelLinearSetup,
 		editComponent: AgentChannelLinearEditView,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+		getListDescription: ({ text }) => text('agents.channels.linear.listDescription'),
 		getConnectedDescription: ({ text }) => text('agents.builder.addTrigger.connectedText.linear'),
 	},
 	telegram: {
@@ -123,6 +125,7 @@ const platforms = {
 		setupComponent: AgentChannelTelegramSetup,
 		editComponent: AgentChannelTelegramEditView,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+		getListDescription: ({ text }) => text('agents.channels.telegram.listDescription'),
 		getConnectedDescription: ({ text }) => text('agents.builder.addTrigger.connectedText.telegram'),
 	},
 	discord: {
@@ -130,18 +133,21 @@ const platforms = {
 		setupComponent: AgentChannelDiscordSetup,
 		editComponent: AgentChannelDiscordEditView,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+		getListDescription: ({ text }) => text('agents.channels.discord.listDescription'),
 	},
 	whatsapp: {
 		type: 'whatsapp',
 		setupComponent: AgentChannelWhatsAppSetup,
 		editComponent: AgentChannelWhatsAppEditView,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+		getListDescription: ({ text }) => text('agents.channels.whatsapp.listDescription'),
 		getConnectedDescription: ({ text }) => text('agents.builder.addTrigger.connectedText.whatsapp'),
 		disconnectConfirmationComponent: AgentChannelWhatsAppRemoveConfirmation,
 		shouldConfirmDisconnect: () => true,
 		// Meta keeps sending the number's messages here after the channel is gone.
-		presentDisconnectWarning: (warning, { text }) => {
-			if (!isWhatsAppNumberStillConnectedWarning(warning)) {
+		// Not on a restart: the number is gone and the new setup sets the callback URL.
+		presentDisconnectWarning: (warning, { text, restart }) => {
+			if (restart || !isWhatsAppNumberStillConnectedWarning(warning)) {
 				return null;
 			}
 			const number = warning.details?.displayPhoneNumber;
@@ -187,6 +193,7 @@ const platforms = {
 		shouldConfirmDisconnect: () => true,
 		createRuntime: useTeamsChannelRuntime,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+		getListDescription: ({ text }) => text('agents.channels.teams.listDescription'),
 		presentDisconnectWarning: (warning, { text }) => {
 			if (!isTeamsResourcesNotDeletedWarning(warning)) {
 				return null;
@@ -226,6 +233,7 @@ const platforms = {
 		setupComponent: AgentChannelWebhookSetup,
 		editComponent: AgentChannelWebhookSetup,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+		getListDescription: ({ text }) => text('agents.channels.webhook.listDescription'),
 		disconnectConfirmationComponent: AgentChannelWebhookRemoveConfirmation,
 		shouldConfirmDisconnect: () => true,
 	},
@@ -234,6 +242,7 @@ const platforms = {
 		setupComponent: AgentChannelN8nChatView,
 		editComponent: AgentChannelN8nChatView,
 		getConnectAction: ({ text }) => ({ label: text('agents.channels.n8nChat.makeAvailable') }),
+		getListDescription: ({ text }) => text('agents.channels.n8nChat.listDescription'),
 	},
 } satisfies Record<string, AgentChannelPlatform>;
 

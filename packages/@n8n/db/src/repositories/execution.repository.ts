@@ -40,10 +40,11 @@ import type {
 } from 'n8n-workflow';
 import {
 	CRASHABLE_EXECUTION_STATUSES,
+	UNFINISHED_EXECUTION_STATUSES,
 	migrateRunExecutionData,
-	UnexpectedError,
 	WAIT_FOR_SUB_EXECUTION,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import {
 	AnnotationTagEntity,
@@ -118,6 +119,11 @@ export type CrashedExecution = {
 	project?: { id: string; customTelemetryTags: Array<{ key: string; value: string }> };
 };
 
+export type CanceledExecution = Pick<
+	CrashedExecution,
+	'id' | 'workflowId' | 'workflowName' | 'mode' | 'startedAt' | 'stoppedAt'
+>;
+
 export type ResumableExecutionStatus = 'waiting' | 'new';
 
 export type ResumeAttemptClaim =
@@ -126,6 +132,8 @@ export type ResumeAttemptClaim =
 	| { outcome: 'conflict' };
 
 export interface UpdateExecutionConditions {
+	/** Match the wait that the caller read before replacing its response. */
+	requireWaitTill?: Date;
 	requireStatus?: ExecutionStatus;
 	requireStatuses?: readonly ExecutionStatus[];
 	requireNotFinished?: boolean;
@@ -449,7 +457,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 
 		for (const batch of chunk(ids, MAX_UPDATE_BATCH_SIZE)) {
 			const transitioned = await this.withOwnerProjects(
-				await this.transitionToCrashed({ id: In(batch) }),
+				await this.transitionTo('crashed', { id: In(batch) }, CRASHABLE_EXECUTION_STATUSES),
 			);
 
 			crashed.push(...transitioned);
@@ -464,7 +472,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	/** Set the workflow's in-progress executions to `crashed`. */
 	async markWorkflowExecutionsAsCrashed(workflowId: string): Promise<CrashedExecution[]> {
 		const transitioned = await this.withOwnerProjects(
-			await this.transitionToCrashed({ workflowId }),
+			await this.transitionTo('crashed', { workflowId }, CRASHABLE_EXECUTION_STATUSES),
 		);
 
 		if (transitioned.length > 0) {
@@ -487,29 +495,46 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			expectedAttempts,
 			onTransitioned,
 		}: { expectedAttempts?: number; onTransitioned?: (batch: CrashedExecution[]) => void } = {},
-	): Promise<CrashedExecution[]> {
+	): Promise<boolean> {
 		const where: FindOptionsWhere<ExecutionEntity> = { id: executionId };
 		if (expectedAttempts !== undefined) where.resumeAttempts = expectedAttempts;
 
 		const transitioned = await this.withOwnerProjects(
-			await this.transitionToCrashed(where, [status]),
+			await this.transitionTo('crashed', where, [status]),
 		);
 
-		if (transitioned.length > 0) {
-			onTransitioned?.(transitioned);
-			this.logger.info('Marked executions as `crashed`', { executionIds: [executionId] });
-		}
+		if (transitioned.length === 0) return false;
 
-		return transitioned;
+		onTransitioned?.(transitioned);
+		this.logger.info('Marked executions as `crashed`', { executionIds: [executionId] });
+		return true;
 	}
 
 	/**
-	 * Set the rows matching `where` to `crashed`. The caller's predicate selects the
+	 * Set executions to `canceled` in batches. Only rows still in `fromStatuses` change,
+	 * so a run that has finished keeps its outcome. Returns the rows this call changed.
+	 */
+	async markAsCanceled(
+		executionIds: string[],
+		fromStatuses: readonly ExecutionStatus[] = UNFINISHED_EXECUTION_STATUSES,
+	): Promise<CanceledExecution[]> {
+		const canceled: CanceledExecution[] = [];
+
+		for (const batch of chunk([...new Set(executionIds)], MAX_UPDATE_BATCH_SIZE)) {
+			canceled.push(...(await this.transitionTo('canceled', { id: In(batch) }, fromStatuses)));
+		}
+
+		return canceled;
+	}
+
+	/**
+	 * Set the rows matching `where` to `status`. The caller's predicate selects the
 	 * candidates; the status guard and the identity of the written rows are added here.
 	 */
-	private async transitionToCrashed(
+	private async transitionTo(
+		status: 'crashed' | 'canceled',
 		where: FindOptionsWhere<ExecutionEntity>,
-		fromStatuses: readonly ExecutionStatus[] = CRASHABLE_EXECUTION_STATUSES,
+		fromStatuses: readonly ExecutionStatus[],
 	): Promise<CrashedExecution[]> {
 		// `stoppedAt` doubles as a claim token, so the read below can match the rows this
 		// UPDATE wrote without `SELECT ... FOR UPDATE`, which SQLite does not support. A
@@ -517,13 +542,11 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		const stoppedAt = new Date();
 
 		return await this.runInTransaction({}, async (tx) => {
-			// Guard against overwriting executions that have since moved to a `waiting` or
-			// terminal status: recovery can race a `running` -> `waiting` transition and flag a
-			// healthy execution as dangling, but only genuinely in-progress rows should be crashed
+			// The status guard keeps a run that moved on since the caller read it.
 			const updateResult = await tx.update(
 				ExecutionEntity,
 				{ ...where, status: In(fromStatuses) },
-				{ status: 'crashed', stoppedAt, waitTill: null },
+				{ status, stoppedAt, waitTill: null },
 			);
 
 			// An unreported `affected` is unknown rather than zero, so it falls through to the read.
@@ -543,8 +566,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 					workflow: { id: true, name: true, settings: { customTelemetryTags: true } },
 				},
 				relations: { workflow: true },
-				where: { ...where, status: 'crashed', stoppedAt },
-				// The UPDATE above also crashes soft-deleted rows, so keep them in the read.
+				where: { ...where, status, stoppedAt },
+				// The UPDATE above also changes soft-deleted rows, so keep them in the read.
 				withDeleted: true,
 			});
 
@@ -625,6 +648,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	 * @param executionId - The ID of the execution to update
 	 * @param execution - Partial execution data to update
 	 * @param conditions - Optional conditions that must be met for the update to proceed.
+	 *   `requireWaitTill`: only update if the wait timestamp matches.
 	 *   `requireStatus`: only update if execution has this exact status.
 	 *   `requireStatuses`: only update if execution has one of these statuses.
 	 *   `requireNotFinished`: only update if `finished = false`.
@@ -668,6 +692,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return await this.manager.transaction(async (tx) => {
 			if (Object.keys(executionInformation).length > 0) {
 				const whereCondition: FindOptionsWhere<ExecutionEntity> = { id: executionId };
+				if (conditions?.requireWaitTill) whereCondition.waitTill = conditions.requireWaitTill;
 				if (conditions?.requireStatus) whereCondition.status = conditions.requireStatus;
 				if (conditions?.requireStatuses)
 					whereCondition.status = In([...conditions.requireStatuses]);
@@ -708,6 +733,20 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			workflowId,
 			storedAt,
 		}));
+	}
+
+	/** Whether any of `executionIds`, deleted or not, belongs to `workflowId`. */
+	async hasWorkflowExecutionAmong(workflowId: string, executionIds: string[]): Promise<boolean> {
+		for (const ids of chunkIds(executionIds)) {
+			const match = await this.createQueryBuilder('execution')
+				.withDeleted()
+				.select('execution.id')
+				.where('execution.workflowId = :workflowId', { workflowId })
+				.andWhere('execution.id IN (:...ids)', { ids })
+				.getOne();
+			if (match) return true;
+		}
+		return false;
 	}
 
 	async findExecutionsToDelete({
@@ -766,7 +805,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		}).then((executions) => executions.map(({ id }) => id));
 	}
 
-	async softDeletePrunableExecutions() {
+	async softDeletePrunableExecutions(retainedExecutionIds: string[] = []) {
 		const { pruneDataMaxAge, pruneDataMaxCount } = this.globalConfig.executions;
 
 		// Sub-query to exclude executions having annotations
@@ -810,6 +849,16 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			})
 			// Only mark executions as deleted if they are not annotated
 			.andWhere('id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
+			.andWhere(
+				isPostgres
+					? 'CAST(id AS TEXT) <> ALL(CAST(:retainedExecutionIds AS TEXT[]))'
+					: 'CAST(id AS TEXT) NOT IN (SELECT value FROM json_each(:retainedExecutionIds))',
+				{
+					retainedExecutionIds: isPostgres
+						? retainedExecutionIds
+						: JSON.stringify(retainedExecutionIds),
+				},
+			)
 			.andWhere(pruningCriteria)
 			.execute();
 	}
@@ -1167,35 +1216,6 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return await this.findSingleExecution(executionId, {
 			where: { workflowId: In(accessibleWorkflowIds) },
 		});
-	}
-
-	async stopBeforeRun(execution: IExecutionResponse) {
-		execution.status = 'canceled';
-		execution.stoppedAt = new Date();
-		execution.waitTill = null;
-
-		await this.update(
-			{ id: execution.id },
-			{ status: execution.status, stoppedAt: execution.stoppedAt, waitTill: execution.waitTill },
-		);
-
-		return execution;
-	}
-
-	async cancelMany(executionIds: string[]) {
-		await this.update(
-			{ id: In(executionIds) },
-			{ status: 'canceled', stoppedAt: new Date(), waitTill: null },
-		);
-	}
-
-	async cancelManyRunning(executionIds: string[]) {
-		await this.update(
-			// The caller's ID list is a snapshot. The status match stops an execution that
-			// reached a terminal status in the meantime from being recorded as cancelled.
-			{ id: In(executionIds), status: 'running' },
-			{ status: 'canceled', stoppedAt: new Date(), waitTill: null },
-		);
 	}
 
 	// ----------------------------------

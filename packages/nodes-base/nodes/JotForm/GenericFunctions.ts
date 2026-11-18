@@ -7,21 +7,21 @@ import type {
 	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function jotformApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('jotFormApi');
-	let options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			APIKEY: credentials.apiKey,
 			'Content-Type': 'application/x-www-form-urlencoded',
@@ -29,13 +29,12 @@ export async function jotformApiRequest(
 		method,
 		qs,
 		form: body,
-		uri: uri || `https://${credentials.apiDomain || 'api.jotform.com'}${resource}`,
+		uri: requestUrl`https://${credentials.apiDomain || 'api.jotform.com'}${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body as IDataObject).length) {
 		delete options.form;
 	}
-	options = Object.assign({}, options, option);
 
 	try {
 		return await this.helpers.request(options);

@@ -379,6 +379,12 @@ function connectAction(channelType: string) {
 	);
 }
 
+function listDescription(channelType: string): string | undefined {
+	return getAgentChannelPlatform(channelType).getListDescription?.({
+		text: (key) => i18n.baseText(key),
+	});
+}
+
 function goToSetup(channelType: string) {
 	clearIntegrationError(channelType);
 	openedFromList.value = true;
@@ -468,7 +474,12 @@ async function writeChannelConfig(): Promise<boolean> {
 	if (actionInFlight.value) return false;
 	saveAttempted.value = true;
 	const channelType = selectedChannelType.value;
-	const credentialId = currentChannelCredentialId.value;
+	// The lookup falls back to the connected credential. A channel that needs none
+	// (an API channel switched to none) must keep a cleared selection empty.
+	const credentialId =
+		channelType && channelViewRef.value?.credentialRequired === false
+			? (selectedCredentials.value[channelType] ?? '')
+			: currentChannelCredentialId.value;
 	if (!channelType || credentialMissing.value) return false;
 	if (channelViewRef.value?.validationError) return false;
 	if (!channelApprovalValid.value) return false;
@@ -677,6 +688,7 @@ watch(
 						v-for="integration in channelList"
 						:key="integration.type"
 						:integration="integration"
+						:description="listDescription(integration.type)"
 						:configured="isConfigured(integration.type)"
 						:connected="isConnected(integration.type)"
 						:not-running="hasRuntimeError(integration.type)"

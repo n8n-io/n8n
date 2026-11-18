@@ -1,0 +1,314 @@
+{
+	"name": "Venafi TLS Protect Cloud request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "7c0e1f2a-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"applicationId": "6f1e2d3c-4b5a-4968-8776-a5b4c3d2e1f0",
+				"certificateIssuingTemplateId": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+				"certificateSigningRequest": "-----BEGIN CERTIFICATE REQUEST-----\nMIIB\n-----END CERTIFICATE REQUEST-----",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.venafiTlsProtectCloud",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "7c0e1f2a-0000-4000-8000-000000000001",
+			"name": "Certificate Request > Create",
+			"credentials": {
+				"venafiTlsProtectCloudApi": {
+					"id": "1",
+					"name": "Venafi Cloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"certificateRequestId": "0b7a5f2e-9c1d-4e3f-8a6b-2d4c6e8f0a1b"
+			},
+			"type": "n8n-nodes-base.venafiTlsProtectCloud",
+			"typeVersion": 1,
+			"position": [220, 400],
+			"id": "7c0e1f2a-0000-4000-8000-000000000002",
+			"name": "Certificate Request > Get",
+			"credentials": {
+				"venafiTlsProtectCloudApi": {
+					"id": "1",
+					"name": "Venafi Cloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getMany",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.venafiTlsProtectCloud",
+			"typeVersion": 1,
+			"position": [220, 600],
+			"id": "7c0e1f2a-0000-4000-8000-000000000003",
+			"name": "Certificate Request > Get Many",
+			"credentials": {
+				"venafiTlsProtectCloudApi": {
+					"id": "1",
+					"name": "Venafi Cloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "certificate",
+				"operation": "delete",
+				"certificateId": "3c5e7a9b-1d2f-4a6c-8e0b-5f7a9c1e3d5b"
+			},
+			"type": "n8n-nodes-base.venafiTlsProtectCloud",
+			"typeVersion": 1,
+			"position": [220, 800],
+			"id": "7c0e1f2a-0000-4000-8000-000000000004",
+			"name": "Certificate > Delete",
+			"credentials": {
+				"venafiTlsProtectCloudApi": {
+					"id": "1",
+					"name": "Venafi Cloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "certificate",
+				"operation": "download",
+				"certificateId": "4d6f8b0c-2e3a-4b7d-9f1c-6a8b0d2f4e6c",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.venafiTlsProtectCloud",
+			"typeVersion": 1,
+			"position": [220, 1000],
+			"id": "7c0e1f2a-0000-4000-8000-000000000005",
+			"name": "Certificate > Download",
+			"credentials": {
+				"venafiTlsProtectCloudApi": {
+					"id": "1",
+					"name": "Venafi Cloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "certificate",
+				"operation": "download",
+				"certificateId": "5e7a9c1d-3f4b-4c8e-8a2d-7b9c1e3a5f7d",
+				"downloadItem": "keystore",
+				"keystoreType": "PEM",
+				"certificateLabel": "www",
+				"privateKeyPassphrase": "fake-passphrase"
+			},
+			"type": "n8n-nodes-base.venafiTlsProtectCloud",
+			"typeVersion": 1,
+			"position": [220, 1200],
+			"id": "7c0e1f2a-0000-4000-8000-000000000006",
+			"name": "Certificate > Download Keystore",
+			"credentials": {
+				"venafiTlsProtectCloudApi": {
+					"id": "1",
+					"name": "Venafi Cloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "certificate",
+				"operation": "get",
+				"certificateId": "6f8b0d2e-4a5c-4d9f-9b3e-8c0d2f4b6a8e"
+			},
+			"type": "n8n-nodes-base.venafiTlsProtectCloud",
+			"typeVersion": 1,
+			"position": [220, 1400],
+			"id": "7c0e1f2a-0000-4000-8000-000000000007",
+			"name": "Certificate > Get",
+			"credentials": {
+				"venafiTlsProtectCloudApi": {
+					"id": "1",
+					"name": "Venafi Cloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "certificate",
+				"operation": "getMany",
+				"limit": 2,
+				"filters": {}
+			},
+			"type": "n8n-nodes-base.venafiTlsProtectCloud",
+			"typeVersion": 1,
+			"position": [220, 1600],
+			"id": "7c0e1f2a-0000-4000-8000-000000000008",
+			"name": "Certificate > Get Many",
+			"credentials": {
+				"venafiTlsProtectCloudApi": {
+					"id": "1",
+					"name": "Venafi Cloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "certificate",
+				"operation": "renew",
+				"applicationId": "6f1e2d3c-4b5a-4968-8776-a5b4c3d2e1f0",
+				"existingCertificateId": "6f8b0d2e-4a5c-4d9f-9b3e-8c0d2f4b6a8e",
+				"certificateIssuingTemplateId": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+				"certificateSigningRequest": "-----BEGIN CERTIFICATE REQUEST-----\nMIIB\n-----END CERTIFICATE REQUEST-----",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.venafiTlsProtectCloud",
+			"typeVersion": 1,
+			"position": [220, 1800],
+			"id": "7c0e1f2a-0000-4000-8000-000000000009",
+			"name": "Certificate > Renew",
+			"credentials": {
+				"venafiTlsProtectCloudApi": {
+					"id": "1",
+					"name": "Venafi Cloud account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Certificate Request > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Certificate Request > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Certificate Request > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Certificate > Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Certificate > Download",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Certificate > Download Keystore",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Certificate > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Certificate > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Certificate > Renew",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Certificate Request > Create": [
+			{
+				"json": {
+					"id": "8e0b2d4f-6a7c-4e1a-9c5e-0d2f4b6c8a0e",
+					"status": "ISSUED"
+				}
+			}
+		],
+		"Certificate Request > Get": [
+			{
+				"json": {
+					"id": "0b7a5f2e-9c1d-4e3f-8a6b-2d4c6e8f0a1b",
+					"status": "ISSUED"
+				}
+			}
+		],
+		"Certificate Request > Get Many": [
+			{
+				"json": {
+					"id": "0b7a5f2e-9c1d-4e3f-8a6b-2d4c6e8f0a1b"
+				}
+			},
+			{
+				"json": {
+					"id": "8e0b2d4f-6a7c-4e1a-9c5e-0d2f4b6c8a0e"
+				}
+			}
+		],
+		"Certificate > Delete": [
+			{
+				"json": {
+					"id": "3c5e7a9b-1d2f-4a6c-8e0b-5f7a9c1e3d5b",
+					"certificateStatus": "DELETED"
+				}
+			}
+		],
+		"Certificate > Download": [
+			{
+				"json": {}
+			}
+		],
+		"Certificate > Download Keystore": [
+			{
+				"json": {}
+			}
+		],
+		"Certificate > Get": [
+			{
+				"json": {
+					"id": "6f8b0d2e-4a5c-4d9f-9b3e-8c0d2f4b6a8e",
+					"certificateName": "www.example.com"
+				}
+			}
+		],
+		"Certificate > Get Many": [
+			{
+				"json": {
+					"id": "6f8b0d2e-4a5c-4d9f-9b3e-8c0d2f4b6a8e"
+				}
+			},
+			{
+				"json": {
+					"id": "3c5e7a9b-1d2f-4a6c-8e0b-5f7a9c1e3d5b"
+				}
+			}
+		],
+		"Certificate > Renew": [
+			{
+				"json": {
+					"id": "9f1c3e5a-7b8d-4f2b-8d6f-1e3a5c7d9b1f",
+					"status": "REQUESTED"
+				}
+			}
+		]
+	}
+}

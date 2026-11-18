@@ -1,0 +1,599 @@
+{
+	"name": "Microsoft Outlook v1 request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "4c1d7e90-2a5b-4f3c-8d61-000000000000",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "get",
+				"messageId": "AAMkAGVmMDEzMTM4LTExMWMtNDAxYy05MWNjLWQ5YTY3NWUzNzE4ZgBGAAAAAAA_iGOFSpJvRJ8V0rRW_J9FBwBZf4De_LkrSqpPI8eyjUmAAAACEDdwAABZf4De_LkrSqpPI8eyjUmAAAFSpKecAAA=",
+				"additionalFields": {
+					"dataPropertyAttachmentsPrefixName": "attachment_"
+				}
+			},
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "4c1d7e90-2a5b-4f3c-8d61-000000000001",
+			"name": "Get Message",
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "outlook-cred-1",
+					"name": "Microsoft Outlook account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "update",
+				"messageId": "AAMkAGVmMDEzMTM4LTExMWMtNDAxYy05MWNjLWQ5YTY3NWUzNzE4ZgBGAAAAAAA_iGOFSpJvRJ8V0rRW_J9FBwBZf4De_LkrSqpPI8eyjUmAAAACEDdwAABZf4De_LkrSqpPI8eyjUmAAAFSpKecAAA=",
+				"updateFields": {
+					"subject": "Quarterly report (final)"
+				}
+			},
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"id": "4c1d7e90-2a5b-4f3c-8d61-000000000002",
+			"name": "Update Message",
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "outlook-cred-1",
+					"name": "Microsoft Outlook account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "move",
+				"messageId": "AAMkAGVmMDEzMTM4LTExMWMtNDAxYy05MWNjLWQ5YTY3NWUzNzE4ZgBGAAAAAAA_iGOFSpJvRJ8V0rRW_J9FBwBZf4De_LkrSqpPI8eyjUmAAAACEDdwAABZf4De_LkrSqpPI8eyjUmAAAFSpKecAAA=",
+				"folderId": "AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OAAuAAAAAABPLqzvT6b9RLP0CKzHiJrRAQBZf4De-LkrSqpPI8eyjUmAAAFXBAEHAAA="
+			},
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [660, 0],
+			"id": "4c1d7e90-2a5b-4f3c-8d61-000000000003",
+			"name": "Move Message",
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "outlook-cred-1",
+					"name": "Microsoft Outlook account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "reply",
+				"messageId": "AAMkAGVmMDEzMTM4LTExMWMtNDAxYy05MWNjLWQ5YTY3NWUzNzE4ZgBGAAAAAAA_iGOFSpJvRJ8V0rRW_J9FBwBZf4De_LkrSqpPI8eyjUmAAAACEDdwAABZf4De_LkrSqpPI8eyjUmAAAFSpKecAAA=",
+				"replyType": "replyAll",
+				"comment": "Thanks",
+				"send": true,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [880, 0],
+			"id": "4c1d7e90-2a5b-4f3c-8d61-000000000004",
+			"name": "Reply to Message",
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "outlook-cred-1",
+					"name": "Microsoft Outlook account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "getMime",
+				"messageId": "AAMkAGVmMDEzMTM4LTExMWMtNDAxYy05MWNjLWQ5YTY3NWUzNzE4ZgBGAAAAAAA_iGOFSpJvRJ8V0rRW_J9FBwBZf4De_LkrSqpPI8eyjUmAAAACEDdwAABZf4De_LkrSqpPI8eyjUmAAAFSpKecAAA=",
+				"binaryPropertyName": "data"
+			},
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [1100, 0],
+			"id": "4c1d7e90-2a5b-4f3c-8d61-000000000005",
+			"name": "Get MIME Content",
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "outlook-cred-1",
+					"name": "Microsoft Outlook account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "delete",
+				"messageId": "AAMkAGVmMDEzMTM4LTExMWMtNDAxYy05MWNjLWQ5YTY3NWUzNzE4ZgBGAAAAAAA_iGOFSpJvRJ8V0rRW_J9FBwBZf4De_LkrSqpPI8eyjUmAAAACEDdwAABZf4De_LkrSqpPI8eyjUmAAAFSpKecAAA="
+			},
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [1320, 0],
+			"id": "4c1d7e90-2a5b-4f3c-8d61-000000000006",
+			"name": "Delete Message",
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "outlook-cred-1",
+					"name": "Microsoft Outlook account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "messageAttachment",
+				"operation": "get",
+				"messageId": "AAMkAGVmMDEzMTM4LTExMWMtNDAxYy05MWNjLWQ5YTY3NWUzNzE4ZgBGAAAAAAA_iGOFSpJvRJ8V0rRW_J9FBwBZf4De_LkrSqpPI8eyjUmAAAACEDdwAABZf4De_LkrSqpPI8eyjUmAAAFSpKecAAA=",
+				"attachmentId": "AAMkAGVmMDEzMTM4LTExMWMtNDAxYy05MWNjLWQ5YTY3NWUzNzE4ZgBGAAAAAAA_iGOFSpJvRJ8V0rRW_J9FBwBZf4De_LkrSqpPI8eyjUmAAAACEDdwAABZf4De_LkrSqpPI8eyjUmAAAFSpKecAAABEgAQAKw7t5zN_jxDsbbpHhRYZtQ=",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [1540, 0],
+			"id": "4c1d7e90-2a5b-4f3c-8d61-000000000007",
+			"name": "Get Attachment",
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "outlook-cred-1",
+					"name": "Microsoft Outlook account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "messageAttachment",
+				"operation": "getAll",
+				"messageId": "AAMkAGVmMDEzMTM4LTExMWMtNDAxYy05MWNjLWQ5YTY3NWUzNzE4ZgBGAAAAAAA_iGOFSpJvRJ8V0rRW_J9FBwBZf4De_LkrSqpPI8eyjUmAAAACEDdwAABZf4De_LkrSqpPI8eyjUmAAAFSpKecAAA=",
+				"returnAll": true,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [1760, 0],
+			"id": "4c1d7e90-2a5b-4f3c-8d61-000000000008",
+			"name": "Get Many Attachments",
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "outlook-cred-1",
+					"name": "Microsoft Outlook account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "messageAttachment",
+				"operation": "download",
+				"messageId": "AAMkAGVmMDEzMTM4LTExMWMtNDAxYy05MWNjLWQ5YTY3NWUzNzE4ZgBGAAAAAAA_iGOFSpJvRJ8V0rRW_J9FBwBZf4De_LkrSqpPI8eyjUmAAAACEDdwAABZf4De_LkrSqpPI8eyjUmAAAFSpKecAAA=",
+				"attachmentId": "AAMkAGVmMDEzMTM4LTExMWMtNDAxYy05MWNjLWQ5YTY3NWUzNzE4ZgBGAAAAAAA_iGOFSpJvRJ8V0rRW_J9FBwBZf4De_LkrSqpPI8eyjUmAAAACEDdwAABZf4De_LkrSqpPI8eyjUmAAAFSpKecAAABEgAQAKw7t5zN_jxDsbbpHhRYZtQ=",
+				"binaryPropertyName": "data"
+			},
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [1980, 0],
+			"id": "4c1d7e90-2a5b-4f3c-8d61-000000000009",
+			"name": "Download Attachment",
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "outlook-cred-1",
+					"name": "Microsoft Outlook account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "draft",
+				"operation": "send",
+				"messageId": "AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OABGAAAAAABPLqzvT6b9RLP0CKzHiJrRBwBZf4De-LkrSqpPI8eyjUmAAAAAAAEPAABZf4De-LkrSqpPI8eyjUmAAAFXBEWwAAA=",
+				"additionalFields": {
+					"recipients": "jane.smith@contoso.com"
+				}
+			},
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [2200, 0],
+			"id": "4c1d7e90-2a5b-4f3c-8d61-000000000010",
+			"name": "Send Draft",
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "outlook-cred-1",
+					"name": "Microsoft Outlook account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "get",
+				"folderId": "AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OAAuAAAAAABPLqzvT6b9RLP0CKzHiJrRAQBZf4De-LkrSqpPI8eyjUmAAAFXBAEHAAA=",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [2420, 0],
+			"id": "4c1d7e90-2a5b-4f3c-8d61-000000000011",
+			"name": "Get Folder",
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "outlook-cred-1",
+					"name": "Microsoft Outlook account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "getChildren",
+				"folderId": "AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OAAuAAAAAABPLqzvT6b9RLP0CKzHiJrRAQBZf4De-LkrSqpPI8eyjUmAAAFXBAEHAAA=",
+				"limit": 1,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [2640, 0],
+			"id": "4c1d7e90-2a5b-4f3c-8d61-000000000012",
+			"name": "Get Folder Children",
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "outlook-cred-1",
+					"name": "Microsoft Outlook account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "update",
+				"folderId": "AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OAAuAAAAAABPLqzvT6b9RLP0CKzHiJrRAQBZf4De-LkrSqpPI8eyjUmAAAFXBAEHAAA=",
+				"updateFields": {
+					"displayName": "Invoices 2026"
+				}
+			},
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [2860, 0],
+			"id": "4c1d7e90-2a5b-4f3c-8d61-000000000013",
+			"name": "Update Folder",
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "outlook-cred-1",
+					"name": "Microsoft Outlook account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "delete",
+				"folderId": "AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OAAuAAAAAABPLqzvT6b9RLP0CKzHiJrRAQBZf4De-LkrSqpPI8eyjUmAAAFXBAEHAAA="
+			},
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [3080, 0],
+			"id": "4c1d7e90-2a5b-4f3c-8d61-000000000014",
+			"name": "Delete Folder",
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "outlook-cred-1",
+					"name": "Microsoft Outlook account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folderMessage",
+				"operation": "getAll",
+				"folderId": "AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OAAuAAAAAABPLqzvT6b9RLP0CKzHiJrRAQBZf4De-LkrSqpPI8eyjUmAAAFXBAEIAAA=",
+				"limit": 1,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [3300, 0],
+			"id": "4c1d7e90-2a5b-4f3c-8d61-000000000015",
+			"name": "Get Many Folder Messages",
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "outlook-cred-1",
+					"name": "Microsoft Outlook account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get Message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Message": {
+			"main": [
+				[
+					{
+						"node": "Update Message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update Message": {
+			"main": [
+				[
+					{
+						"node": "Move Message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Move Message": {
+			"main": [
+				[
+					{
+						"node": "Reply to Message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Reply to Message": {
+			"main": [
+				[
+					{
+						"node": "Get MIME Content",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get MIME Content": {
+			"main": [
+				[
+					{
+						"node": "Delete Message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Delete Message": {
+			"main": [
+				[
+					{
+						"node": "Get Attachment",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Attachment": {
+			"main": [
+				[
+					{
+						"node": "Get Many Attachments",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Many Attachments": {
+			"main": [
+				[
+					{
+						"node": "Download Attachment",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download Attachment": {
+			"main": [
+				[
+					{
+						"node": "Send Draft",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send Draft": {
+			"main": [
+				[
+					{
+						"node": "Get Folder",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Folder": {
+			"main": [
+				[
+					{
+						"node": "Get Folder Children",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Folder Children": {
+			"main": [
+				[
+					{
+						"node": "Update Folder",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update Folder": {
+			"main": [
+				[
+					{
+						"node": "Delete Folder",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Delete Folder": {
+			"main": [
+				[
+					{
+						"node": "Get Many Folder Messages",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Get Message": [
+			{
+				"json": {
+					"id": "AAMkAGVmMDEzMTM4LTExMWMtNDAxYy05MWNjLWQ5YTY3NWUzNzE4ZgBGAAAAAAA_iGOFSpJvRJ8V0rRW_J9FBwBZf4De_LkrSqpPI8eyjUmAAAACEDdwAABZf4De_LkrSqpPI8eyjUmAAAFSpKecAAA=",
+					"subject": "Quarterly report",
+					"hasAttachments": true
+				}
+			}
+		],
+		"Update Message": [
+			{
+				"json": {
+					"id": "AAMkAGVmMDEzMTM4LTExMWMtNDAxYy05MWNjLWQ5YTY3NWUzNzE4ZgBGAAAAAAA_iGOFSpJvRJ8V0rRW_J9FBwBZf4De_LkrSqpPI8eyjUmAAAACEDdwAABZf4De_LkrSqpPI8eyjUmAAAFSpKecAAA=",
+					"subject": "Quarterly report (final)"
+				}
+			}
+		],
+		"Move Message": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Reply to Message": [
+			{
+				"json": {
+					"id": "AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OABGAAAAAABPLqzvT6b9RLP0CKzHiJrRBwBZf4De-LkrSqpPI8eyjUmAAAAAAAEPAABZf4De-LkrSqpPI8eyjUmAAAFXBDurAAA="
+				}
+			}
+		],
+		"Get MIME Content": [
+			{
+				"json": {
+					"id": "AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OABGAAAAAABPLqzvT6b9RLP0CKzHiJrRBwBZf4De-LkrSqpPI8eyjUmAAAAAAAEPAABZf4De-LkrSqpPI8eyjUmAAAFXBDurAAA="
+				}
+			}
+		],
+		"Delete Message": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Get Attachment": [
+			{
+				"json": {
+					"id": "AAMkAGVmMDEzMTM4LTExMWMtNDAxYy05MWNjLWQ5YTY3NWUzNzE4ZgBGAAAAAAA_iGOFSpJvRJ8V0rRW_J9FBwBZf4De_LkrSqpPI8eyjUmAAAACEDdwAABZf4De_LkrSqpPI8eyjUmAAAFSpKecAAABEgAQAKw7t5zN_jxDsbbpHhRYZtQ=",
+					"name": "report.txt",
+					"contentType": "text/plain"
+				}
+			}
+		],
+		"Get Many Attachments": [
+			{
+				"json": {
+					"id": "AAMkAGVmMDEzMTM4LTExMWMtNDAxYy05MWNjLWQ5YTY3NWUzNzE4ZgBGAAAAAAA_iGOFSpJvRJ8V0rRW_J9FBwBZf4De_LkrSqpPI8eyjUmAAAACEDdwAABZf4De_LkrSqpPI8eyjUmAAAFSpKecAAABEgAQAKw7t5zN_jxDsbbpHhRYZtQ=",
+					"name": "report.txt",
+					"contentType": "text/plain"
+				}
+			}
+		],
+		"Download Attachment": [
+			{
+				"json": {
+					"id": "AAMkAGVmMDEzMTM4LTExMWMtNDAxYy05MWNjLWQ5YTY3NWUzNzE4ZgBGAAAAAAA_iGOFSpJvRJ8V0rRW_J9FBwBZf4De_LkrSqpPI8eyjUmAAAACEDdwAABZf4De_LkrSqpPI8eyjUmAAAFSpKecAAABEgAQAKw7t5zN_jxDsbbpHhRYZtQ=",
+					"name": "report.txt",
+					"contentType": "text/plain"
+				}
+			}
+		],
+		"Send Draft": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Get Folder": [
+			{
+				"json": {
+					"id": "AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OAAuAAAAAABPLqzvT6b9RLP0CKzHiJrRAQBZf4De-LkrSqpPI8eyjUmAAAFXBAEHAAA=",
+					"displayName": "Invoices"
+				}
+			}
+		],
+		"Get Folder Children": [
+			{
+				"json": {
+					"id": "AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OAAuAAAAAABPLqzvT6b9RLP0CKzHiJrRAQBZf4De-LkrSqpPI8eyjUmAAAFXBAEIAAA=",
+					"displayName": "2026"
+				}
+			}
+		],
+		"Update Folder": [
+			{
+				"json": {
+					"id": "AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OAAuAAAAAABPLqzvT6b9RLP0CKzHiJrRAQBZf4De-LkrSqpPI8eyjUmAAAFXBAEHAAA=",
+					"displayName": "Invoices 2026"
+				}
+			}
+		],
+		"Delete Folder": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Get Many Folder Messages": [
+			{
+				"json": {
+					"id": "AAMkAGVmMDEzMTM4LTExMWMtNDAxYy05MWNjLWQ5YTY3NWUzNzE4ZgBGAAAAAAA_iGOFSpJvRJ8V0rRW_J9FBwBZf4De_LkrSqpPI8eyjUmAAAACEDdwAABZf4De_LkrSqpPI8eyjUmAAAFSpKecAAA=",
+					"subject": "Quarterly report"
+				}
+			}
+		]
+	}
+}

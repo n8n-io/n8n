@@ -1202,17 +1202,19 @@ describe('workflow package import — with data tables', () => {
 		it.each([
 			{
 				caller: 'a user without the project scope',
+				scopes: 'dataTable:update',
 				importer: async () => ({ user: await memberWithoutDataTableUpdate() }),
 			},
 			{
-				caller: 'an API key without the scope',
+				caller: 'an API key with only workflow:import',
+				scopes: 'dataTable:create or dataTable:update',
 				importer: async () => ({
 					user: owner,
-					apiKeyScopes: ['workflow:import', 'dataTable:create'],
+					apiKeyScopes: ['workflow:import'],
 				}),
 			},
 		])(
-			'does not require dataTable:update from $caller when the table already matches the package',
+			'does not require $scopes from $caller when the table already matches the package',
 			async ({ importer }) => {
 				const table = await dataTableService.createDataTable(project.id, {
 					name: 'Customers',
@@ -1637,7 +1639,7 @@ describe('workflow package import — with data tables', () => {
 				dataTableSchemaConflictPolicy?: 'overwrite-non-destructive',
 			) =>
 				await service.importPackageSelection(
-					{ user: owner, packageBuffer, dataTableSchemaConflictPolicy },
+					{ user: owner, publicApi: false, packageBuffer, dataTableSchemaConflictPolicy },
 					{ selectedProjectId: 'P1', selectedWorkflowIds: ['wf-0'] },
 				);
 			const email = { name: 'email', type: 'string', index: 0 } as const;

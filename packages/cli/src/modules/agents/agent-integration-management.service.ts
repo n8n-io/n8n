@@ -8,12 +8,14 @@ import {
 	type AgentIntegrationDisconnectWarning,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { CredentialsFinderService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { runSerially } from '@n8n/utils/run-serially';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { findUsableMcpCredential } from '@/modules/mcp-registry/mcp-credential-access';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import {
@@ -58,6 +60,7 @@ export class AgentIntegrationManagementService {
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
+		private readonly credentialsFinderService: CredentialsFinderService,
 	) {}
 
 	async validateConfig(integration: unknown): Promise<AgentIntegrationConfig> {
@@ -458,7 +461,10 @@ export class AgentIntegrationManagementService {
 			{ projectId: agent.projectId, excludePersonalRoute: true, excludeResolvable: true },
 		);
 		const credential = usableCredentials.find((item) => item.id === integration.credentialId);
-		if (!credential) {
+		if (
+			!credential ||
+			!(await findUsableMcpCredential(this.credentialsFinderService, credential.id, user))
+		) {
 			throw new NotFoundError(`Credential "${integration.credentialId}" not found`);
 		}
 		if (!implementation.acceptedCredentialTypes(integration).includes(credential.type)) {

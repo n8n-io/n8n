@@ -10,6 +10,14 @@ describe('localRulesPlugin recommended config', () => {
 			],
 		).toBe('error');
 	});
+
+	it('enables the base error import ban for n8n-workflow as an error', () => {
+		expect(
+			localRulesPlugin.configs.recommended.rules[
+				'n8n-local-rules/no-base-error-import-from-workflow'
+			],
+		).toBe('error');
+	});
 });
 
 describe('frontendConfig', () => {

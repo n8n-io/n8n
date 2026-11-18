@@ -1,5 +1,5 @@
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)
-import { EventService } from '@n8n/backend-services';
+import { EventService, TelemetryProxy } from '@n8n/backend-services';
 // EOF Experiment cleanup
 import type { AgentActor, AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import type { User } from '@n8n/db';
@@ -7,8 +7,6 @@ import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import isEqual from 'lodash/isEqual';
 import { InstanceSettings } from 'n8n-core';
-
-import { Telemetry } from '@/telemetry';
 
 import { buildVectorStoreFingerprints } from './agent-knowledge-telemetry';
 import { buildAgentCapabilityTelemetryProperties } from './agent-telemetry';
@@ -202,7 +200,7 @@ function modificationProperties({
 @Service()
 export class AgentModificationTelemetryService {
 	constructor(
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly instanceSettings: InstanceSettings,
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		private readonly eventService: EventService,

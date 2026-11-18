@@ -159,8 +159,9 @@ async function executeNode(executeFunctions: IExecuteFunctions) {
 	)) as INodeExecutionData[][];
 }
 
-function requestOptions(requestWithAuthentication: Mock, callIndex = 0) {
-	return requestWithAuthentication.mock.calls[callIndex][1] as IDataObject;
+function requestOptions(requestWithAuthentication: Mock, callIndex = 0): IDataObject {
+	const options = requestWithAuthentication.mock.calls[callIndex][1] as IDataObject;
+	return { ...options, uri: String(options.uri) };
 }
 
 function expectWebDavUri(uri: unknown) {
@@ -350,6 +351,31 @@ describe('NextCloud Node', () => {
 			});
 			expectWebDavUri(requestOptions(requestWithAuthentication).uri);
 			expect(result).toEqual([[{ json: { status: 'deleted' }, pairedItem: { item: 0 } }]]);
+		});
+	});
+
+	describe('relative path segments', () => {
+		it('rejects a file path with a relative segment', async () => {
+			const { executeFunctions, requestWithAuthentication } = buildExecuteFunctions({
+				parameters: { resource: 'file', operation: 'delete', path: 'a/../../ocs/x' },
+			});
+
+			await expect(executeNode(executeFunctions)).rejects.toThrow();
+			expect(requestWithAuthentication).not.toHaveBeenCalled();
+		});
+
+		it('rejects a destination path with a relative segment', async () => {
+			const { executeFunctions, requestWithAuthentication } = buildExecuteFunctions({
+				parameters: {
+					resource: 'file',
+					operation: 'move',
+					path: '/from.txt',
+					toPath: 'a/../../ocs/x',
+				},
+			});
+
+			await expect(executeNode(executeFunctions)).rejects.toThrow();
+			expect(requestWithAuthentication).not.toHaveBeenCalled();
 		});
 	});
 

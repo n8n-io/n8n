@@ -49,16 +49,15 @@ import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
-import { CollaborationService } from '@/collaboration/collaboration.service';
-import { ConflictError, LockedError, UnexpectedError } from '@n8n/errors';
+import { ConflictError, LockedError, UnexpectedError, UserError } from '@n8n/errors';
+import { CredentialsFinderService, NodeTypesProxy, TelemetryProxy } from '@n8n/backend-services';
+import { findUsableMcpCredential } from '@/modules/mcp-registry/mcp-credential-access';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import { NodeTypesProxy } from '@n8n/backend-services';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiService } from '@/services/ai.service';
 import { FreeAiCreditsService } from '@/services/free-ai-credits.service';
-import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 
 import { AgentConfigService } from '../agent-config.service';
@@ -67,6 +66,7 @@ import { AgentIntegrationPersistenceService } from '../agent-integration-persist
 import { AgentPublishService } from '../agent-publish.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
+import { AgentWriteLockService } from '../agent-write-lock.service';
 import {
 	AgentTestRunService,
 	collectStandardApprovals,
@@ -449,10 +449,20 @@ function parseBuilderWriteConfig(incoming: unknown, currentConfig: AgentJsonConf
 	return AgentJsonConfigSchema.safeParse(sanitized);
 }
 
-/** Enable caching for supported models and preserve an explicit cache TTL. */
-function applyPromptCachingBuilderDefaults(config: AgentJsonConfig): AgentJsonConfig {
+/**
+ * Enable caching for supported models and preserve an explicit setting. A
+ * write replaces the whole config, so a write that omits `promptCaching` keeps
+ * the stored setting instead of turning caching back on.
+ */
+function applyPromptCachingBuilderDefaults(
+	config: AgentJsonConfig,
+	currentConfig: AgentJsonConfig | null,
+): AgentJsonConfig {
 	const capability = getModelPromptCachingCapability(config.model);
-	const resolved = resolvePromptCaching(config.config?.promptCaching, capability);
+	const resolved = resolvePromptCaching(
+		config.config?.promptCaching ?? currentConfig?.config?.promptCaching,
+		capability,
+	);
 
 	if (!resolved) {
 		if (!config.config || !('promptCaching' in config.config)) return config;
@@ -518,9 +528,10 @@ export class AgentsBuilderToolsService {
 		private readonly outboundHttp: OutboundHttp,
 		private readonly nodeTypes: NodeTypesProxy,
 		private readonly freeAiCreditsService: FreeAiCreditsService,
-		private readonly telemetry: Telemetry,
-		private readonly collaborationService: CollaborationService,
+		private readonly telemetry: TelemetryProxy,
+		private readonly agentWriteLockService: AgentWriteLockService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 	) {}
 
@@ -585,7 +596,7 @@ export class AgentsBuilderToolsService {
 	 */
 	private async getEditorLockFailure(agentId: string): Promise<EditorLockFailure | null> {
 		try {
-			await this.collaborationService.ensureAgentEditable(agentId);
+			await this.agentWriteLockService.ensureAgentEditable(agentId);
 			return null;
 		} catch (error) {
 			if (error instanceof LockedError) {
@@ -754,6 +765,11 @@ export class AgentsBuilderToolsService {
 			proxyFetch: createAiMcpFetch(this.outboundHttp),
 			resolveRegistryConnection: async (nodeTypeName) =>
 				await this.mcpRegistryService.getConnection(nodeTypeName),
+			assertCredentialUsable: async (credentialId) => {
+				if (!(await findUsableMcpCredential(this.credentialsFinderService, credentialId, user))) {
+					throw new UserError('Credential not found or not accessible');
+				}
+			},
 			applyCredentialToMcpServer: async (serverName, credentialId) =>
 				await this.applyCredentialToMcpServer(agentId, projectId, serverName, credentialId, user),
 		});
@@ -1461,6 +1477,7 @@ export class AgentsBuilderToolsService {
 
 		const configWithDefaults = applyPromptCachingBuilderDefaults(
 			applyNativeWebSearchDefaultOn(zodResult.data),
+			snapshot.config,
 		);
 
 		const saved = await this.agentConfigService.updateConfig(
@@ -1595,6 +1612,7 @@ export class AgentsBuilderToolsService {
 		// Save defaults explicitly so the write and read paths agree.
 		const config = applyPromptCachingBuilderDefaults(
 			applyNativeWebSearchDefaultOn(applyFreshAgentMemoryDefault(parsed.data, currentConfig)),
+			currentConfig,
 		);
 		return { ok: true, config };
 	}

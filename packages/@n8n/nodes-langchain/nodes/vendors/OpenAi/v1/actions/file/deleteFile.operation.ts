@@ -1,5 +1,5 @@
 import type { INodeProperties, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -51,7 +51,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const fileId = this.getNodeParameter('fileId', i, '', { extractValue: true });
 
-	const response = await apiRequest.call(this, 'DELETE', `/files/${fileId}`);
+	const response = await apiRequest.call(this, 'DELETE', requestPath`/files/${fileId}`);
 
 	return [
 		{

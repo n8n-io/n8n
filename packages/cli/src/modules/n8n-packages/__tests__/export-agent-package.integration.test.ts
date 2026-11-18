@@ -267,6 +267,7 @@ it.each([
 			expect(parsed[index]).toEqual({
 				...content,
 				sourceAgentId: id,
+				parentFolderId: null,
 				isArchived: false,
 				config: { ...content.config, integrations },
 				metadata: {

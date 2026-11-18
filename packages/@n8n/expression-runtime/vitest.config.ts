@@ -16,6 +16,7 @@ const ENGINE_AWARE = [
 	'**/host-fn-shadowing.test.ts',
 	'**/lazy-sync-cold-start.test.ts',
 	'**/replaced-builtins.test.ts',
+	'**/to-ascii.test.ts',
 ];
 
 export default defineConfig({

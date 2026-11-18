@@ -195,4 +195,40 @@ describe('useDependencies', () => {
 			expect(dependencies.getDependencies('wf-1', 'workflow')?.dependencies).toHaveLength(1);
 		});
 	});
+
+	describe('getDependencyCount', () => {
+		const detailsWithOneParent = {
+			'wf-1': {
+				dependencies: [{ type: 'workflowParent' as const, id: 'wf-2', name: 'Parent' }],
+				inaccessibleCount: 0,
+			},
+		};
+
+		it('uses newer counts over older details', async () => {
+			getResourceDependenciesMock.mockResolvedValueOnce(detailsWithOneParent);
+			const dependencies = useDependencies();
+			await dependencies.fetchDependencies(['wf-1'], 'workflow');
+			expect(dependencies.hasDependencies('wf-1', 'workflow')).toBe(true);
+
+			// The last dependent was removed since the details were fetched
+			getResourceDependencyCountsMock.mockResolvedValueOnce({});
+			await dependencies.fetchDependencyCounts(['wf-1'], 'workflow');
+
+			expect(dependencies.getDependencyCount('wf-1', 'workflow')).toBe(0);
+			expect(dependencies.hasDependencies('wf-1', 'workflow')).toBe(false);
+		});
+
+		it('uses newer details over older counts', async () => {
+			getResourceDependencyCountsMock.mockResolvedValueOnce({});
+			const dependencies = useDependencies();
+			await dependencies.fetchDependencyCounts(['wf-1'], 'workflow');
+			expect(dependencies.hasDependencies('wf-1', 'workflow')).toBe(false);
+
+			getResourceDependenciesMock.mockResolvedValueOnce(detailsWithOneParent);
+			await dependencies.fetchDependencies(['wf-1'], 'workflow');
+
+			expect(dependencies.getDependencyCount('wf-1', 'workflow')).toBe(1);
+			expect(dependencies.hasDependencies('wf-1', 'workflow')).toBe(true);
+		});
+	});
 });

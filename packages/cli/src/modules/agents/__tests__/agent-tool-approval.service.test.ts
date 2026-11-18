@@ -1,9 +1,8 @@
 import type { ApprovalResumePayload } from '@n8n/agents';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
-
-import type { Telemetry } from '@/telemetry';
 
 import { AgentToolApprovalService } from '../agent-tool-approval.service';
 import { buildAgentConfigurationTelemetryFromConfig } from '../agent-telemetry';
@@ -11,7 +10,7 @@ import type { AgentThreadGrantRepository } from '../repositories/agent-thread-gr
 import type { ToolRegistryEntry } from '../tool-registry';
 
 const grants = mock<AgentThreadGrantRepository>();
-const telemetry = mock<Telemetry>();
+const telemetry = mock<TelemetryProxy>();
 const service = new AgentToolApprovalService(grants, telemetry);
 const params = {
 	threadId: 'child-thread',

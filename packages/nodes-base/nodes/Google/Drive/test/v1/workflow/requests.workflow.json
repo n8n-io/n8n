@@ -1,0 +1,588 @@
+{
+	"name": "Google Drive v2 request URLs",
+	"nodes": [
+		{
+			"parameters": {
+				"notice": ""
+			},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "8d2f3e4a-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"oldVersionNotice": "",
+				"authentication": "oAuth2",
+				"resource": "drive",
+				"operation": "create",
+				"name": "Marketing",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleDrive",
+			"typeVersion": 2,
+			"position": [220, 160],
+			"id": "8d2f3e4a-0000-4000-8000-000000000001",
+			"name": "Create Shared Drive",
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "gdrive-cred-1",
+					"name": "Google Drive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"oldVersionNotice": "",
+				"authentication": "oAuth2",
+				"resource": "drive",
+				"operation": "get",
+				"driveId": {
+					"__rl": true,
+					"value": "0AJm4kQ2xYz8tUk9PVA",
+					"mode": "id"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleDrive",
+			"typeVersion": 2,
+			"position": [440, 320],
+			"id": "8d2f3e4a-0000-4000-8000-000000000002",
+			"name": "Get Shared Drive",
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "gdrive-cred-1",
+					"name": "Google Drive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"oldVersionNotice": "",
+				"authentication": "oAuth2",
+				"resource": "drive",
+				"operation": "update",
+				"driveId": {
+					"__rl": true,
+					"value": "0AJm4kQ2xYz8tUk9PVA",
+					"mode": "id"
+				},
+				"options": {
+					"name": "Marketing EU"
+				}
+			},
+			"type": "n8n-nodes-base.googleDrive",
+			"typeVersion": 2,
+			"position": [220, 480],
+			"id": "8d2f3e4a-0000-4000-8000-000000000003",
+			"name": "Update Shared Drive",
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "gdrive-cred-1",
+					"name": "Google Drive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"oldVersionNotice": "",
+				"authentication": "oAuth2",
+				"resource": "drive",
+				"operation": "delete",
+				"driveId": {
+					"__rl": true,
+					"value": "0AJm4kQ2xYz8tUk9PVA",
+					"mode": "id"
+				}
+			},
+			"type": "n8n-nodes-base.googleDrive",
+			"typeVersion": 2,
+			"position": [440, 640],
+			"id": "8d2f3e4a-0000-4000-8000-000000000004",
+			"name": "Delete Shared Drive",
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "gdrive-cred-1",
+					"name": "Google Drive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"oldVersionNotice": "",
+				"authentication": "oAuth2",
+				"resource": "drive",
+				"operation": "list",
+				"returnAll": false,
+				"limit": 1,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleDrive",
+			"typeVersion": 2,
+			"position": [220, 800],
+			"id": "8d2f3e4a-0000-4000-8000-000000000005",
+			"name": "List Shared Drives",
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "gdrive-cred-1",
+					"name": "Google Drive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"oldVersionNotice": "",
+				"authentication": "oAuth2",
+				"resource": "file",
+				"operation": "copy",
+				"fileId": {
+					"__rl": true,
+					"value": "1Hq7sLm3Nw9bVc2xZr5Tk8YpDf4Gj6UaE",
+					"mode": "id"
+				},
+				"options": {
+					"name": "Budget copy"
+				}
+			},
+			"type": "n8n-nodes-base.googleDrive",
+			"typeVersion": 2,
+			"position": [440, 960],
+			"id": "8d2f3e4a-0000-4000-8000-000000000006",
+			"name": "Copy File",
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "gdrive-cred-1",
+					"name": "Google Drive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"oldVersionNotice": "",
+				"authentication": "oAuth2",
+				"resource": "file",
+				"operation": "download",
+				"fileId": {
+					"__rl": true,
+					"value": "1Dn4Lw7Fq0Zr3Xt6Vb9Mn2Ck5Jh8Gp1Sa",
+					"mode": "id"
+				},
+				"binaryPropertyName": "data",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleDrive",
+			"typeVersion": 2,
+			"position": [220, 1120],
+			"id": "8d2f3e4a-0000-4000-8000-000000000007",
+			"name": "Download File",
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "gdrive-cred-1",
+					"name": "Google Drive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"oldVersionNotice": "",
+				"authentication": "oAuth2",
+				"resource": "file",
+				"operation": "download",
+				"fileId": {
+					"__rl": true,
+					"value": "1Ex9Pq2Rs5Tu8Vw1Xy4Za7Bc0De3Fg6Hi",
+					"mode": "id"
+				},
+				"binaryPropertyName": "data",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleDrive",
+			"typeVersion": 2,
+			"position": [440, 1280],
+			"id": "8d2f3e4a-0000-4000-8000-000000000008",
+			"name": "Export Google Doc",
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "gdrive-cred-1",
+					"name": "Google Drive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"oldVersionNotice": "",
+				"authentication": "oAuth2",
+				"resource": "file",
+				"operation": "list",
+				"useQueryString": false,
+				"limit": 1,
+				"queryFilters": {},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleDrive",
+			"typeVersion": 2,
+			"position": [220, 1440],
+			"id": "8d2f3e4a-0000-4000-8000-000000000009",
+			"name": "List Files",
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "gdrive-cred-1",
+					"name": "Google Drive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"oldVersionNotice": "",
+				"authentication": "oAuth2",
+				"resource": "file",
+				"operation": "upload",
+				"binaryData": false,
+				"fileContent": "Plain notes",
+				"name": "notes.txt",
+				"resolveData": true,
+				"parents": ["root"],
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleDrive",
+			"typeVersion": 2,
+			"position": [440, 1600],
+			"id": "8d2f3e4a-0000-4000-8000-000000000010",
+			"name": "Upload File",
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "gdrive-cred-1",
+					"name": "Google Drive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"oldVersionNotice": "",
+				"authentication": "oAuth2",
+				"resource": "file",
+				"operation": "update",
+				"fileId": {
+					"__rl": true,
+					"value": "1Up4Da7Te9Me2Ta5Da8Ta1Fi3Le6Id0Xy",
+					"mode": "id"
+				},
+				"updateFields": {},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleDrive",
+			"typeVersion": 2,
+			"position": [220, 1760],
+			"id": "8d2f3e4a-0000-4000-8000-000000000011",
+			"name": "Update File",
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "gdrive-cred-1",
+					"name": "Google Drive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"oldVersionNotice": "",
+				"authentication": "oAuth2",
+				"resource": "file",
+				"operation": "delete",
+				"fileId": {
+					"__rl": true,
+					"value": "1Rt5Yu8Io1Pa4Sd7Fg0Hj3Kl6Zx9Cv2Bn",
+					"mode": "id"
+				}
+			},
+			"type": "n8n-nodes-base.googleDrive",
+			"typeVersion": 2,
+			"position": [440, 1920],
+			"id": "8d2f3e4a-0000-4000-8000-000000000012",
+			"name": "Delete File",
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "gdrive-cred-1",
+					"name": "Google Drive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"oldVersionNotice": "",
+				"authentication": "oAuth2",
+				"resource": "file",
+				"operation": "share",
+				"fileId": {
+					"__rl": true,
+					"value": "1Sh2Ar5Ef8Il1Ei4Dx7Yw0Vu3Ts6Rq9Po",
+					"mode": "id"
+				},
+				"permissionsUi": {
+					"permissionsValues": {
+						"role": "reader",
+						"type": "user",
+						"emailAddress": "ana@example.com"
+					}
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleDrive",
+			"typeVersion": 2,
+			"position": [220, 2080],
+			"id": "8d2f3e4a-0000-4000-8000-000000000013",
+			"name": "Share File",
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "gdrive-cred-1",
+					"name": "Google Drive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"oldVersionNotice": "",
+				"authentication": "oAuth2",
+				"resource": "folder",
+				"operation": "create",
+				"name": "Invoices",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleDrive",
+			"typeVersion": 2,
+			"position": [440, 2240],
+			"id": "8d2f3e4a-0000-4000-8000-000000000014",
+			"name": "Create Folder",
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "gdrive-cred-1",
+					"name": "Google Drive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"oldVersionNotice": "",
+				"authentication": "oAuth2",
+				"resource": "folder",
+				"operation": "delete",
+				"fileId": {
+					"__rl": true,
+					"value": "1Fo5Ld8Er1De4Le7Te0Id3Ab6Cd9Ef2Gh",
+					"mode": "id"
+				}
+			},
+			"type": "n8n-nodes-base.googleDrive",
+			"typeVersion": 2,
+			"position": [220, 2400],
+			"id": "8d2f3e4a-0000-4000-8000-000000000015",
+			"name": "Delete Folder",
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "gdrive-cred-1",
+					"name": "Google Drive account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Create Shared Drive",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Shared Drive",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Shared Drive",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Shared Drive",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List Shared Drives",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Copy File",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Download File",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Export Google Doc",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List Files",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Upload File",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update File",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete File",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Share File",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Folder",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Folder",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Create Shared Drive": [
+			{
+				"json": {
+					"id": "0AJm4kQ2xYz8tUk9PVA",
+					"name": "Marketing"
+				}
+			}
+		],
+		"Get Shared Drive": [
+			{
+				"json": {
+					"id": "0AJm4kQ2xYz8tUk9PVA",
+					"name": "Marketing"
+				}
+			}
+		],
+		"Update Shared Drive": [
+			{
+				"json": {
+					"id": "0AJm4kQ2xYz8tUk9PVA",
+					"name": "Marketing EU"
+				}
+			}
+		],
+		"Delete Shared Drive": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"List Shared Drives": [
+			{
+				"json": {
+					"id": "0AJm4kQ2xYz8tUk9PVA",
+					"name": "Marketing EU"
+				}
+			}
+		],
+		"Copy File": [
+			{
+				"json": {
+					"id": "1Cp8Yb3Nm6Lk9Jh2Gf5Ds8Aq1Wz4Xe7Rt",
+					"name": "Budget copy"
+				}
+			}
+		],
+		"Download File": [
+			{
+				"json": {}
+			}
+		],
+		"Export Google Doc": [
+			{
+				"json": {}
+			}
+		],
+		"List Files": [
+			{
+				"json": {
+					"id": "1Up4Da7Te9Me2Ta5Da8Ta1Fi3Le6Id0Xy",
+					"name": "Q3 report"
+				}
+			}
+		],
+		"Upload File": [
+			{
+				"json": {
+					"id": "1Ul6Oa9Dd2Ff5Ii8Ll1Ee4Ii7Dd0Xx3Yy",
+					"name": "notes.txt",
+					"mimeType": "text/plain"
+				}
+			}
+		],
+		"Update File": [
+			{
+				"json": {
+					"id": "1Up4Da7Te9Me2Ta5Da8Ta1Fi3Le6Id0Xy",
+					"name": "Q3 report"
+				}
+			}
+		],
+		"Delete File": [
+			{
+				"json": {
+					"fileId": "1Rt5Yu8Io1Pa4Sd7Fg0Hj3Kl6Zx9Cv2Bn",
+					"success": true
+				}
+			}
+		],
+		"Share File": [
+			{
+				"json": {
+					"id": "04815162342",
+					"type": "user",
+					"role": "reader"
+				}
+			}
+		],
+		"Create Folder": [
+			{
+				"json": {
+					"id": "1Nf7Ol2De5Rr8Ii1Dd4Ee7Ff0Gg3Hh6Jj",
+					"name": "Invoices"
+				}
+			}
+		],
+		"Delete Folder": [
+			{
+				"json": {
+					"fileId": "1Fo5Ld8Er1De4Le7Te0Id3Ab6Cd9Ef2Gh",
+					"success": true
+				}
+			}
+		]
+	}
+}

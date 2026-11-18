@@ -1,5 +1,5 @@
-import type { User } from '@n8n/db';
-import { UserError } from 'n8n-workflow';
+import type { OperationContext, User } from '@n8n/db';
+import { UserError } from '@n8n/errors';
 import z from 'zod';
 
 import { WorkflowMigrationNodeError } from '@/modules/breaking-changes/breaking-changes.migration.service';
@@ -60,6 +60,7 @@ const outputSchema = {
 export const createMigrateWorkflowTool = (
 	user: User,
 	deps: MigrationReportToolDeps,
+	ctx: OperationContext = {},
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_MIGRATE_WORKFLOW_TOOL_NAME,
 	config: {
@@ -100,9 +101,13 @@ export const createMigrateWorkflowTool = (
 
 			await deps.collaborationService.ensureWorkflowEditable(workflowId);
 
-			const result = await deps.migrationService.migrateWorkflow(ruleId, workflowId, user, {
-				source: 'n8n-mcp',
-			});
+			const result = await deps.migrationService.migrateWorkflow(
+				ruleId,
+				workflowId,
+				user,
+				{ source: 'n8n-mcp' },
+				ctx,
+			);
 
 			void deps.collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
 

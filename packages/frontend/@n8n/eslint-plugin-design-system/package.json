@@ -17,15 +17,16 @@
     "clean": "rimraf dist .turbo",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint src",
-    "lint:fix": "eslint src --fix",
+    "lint": "oxlint src",
+    "lint:fix": "oxlint src --fix",
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:dev": "vitest",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@typescript-eslint/utils": "catalog:"
+    "@typescript-eslint/utils": "catalog:",
+    "@vue/compiler-dom": "catalog:frontend"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
@@ -33,6 +34,8 @@
     "@types/node": "catalog:",
     "@typescript-eslint/rule-tester": "catalog:",
     "@typescript/native": "catalog:typescript-tooling",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "rimraf": "catalog:",
     "typescript": "catalog:typescript-tooling",
     "typescript-eslint": "catalog:",

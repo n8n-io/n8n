@@ -2,7 +2,7 @@ import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DataSource, QueryFailedError } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { DbLockUnavailableError } from './db-lock-unavailable.error';
 import type { OperationContext } from './transaction';
@@ -25,6 +25,7 @@ export const enum DbLock {
 	/** Unscoped for quota reservations; scoped by app for storage mutations. */
 	APPS_STORAGE = 1010,
 	EXECUTION_LEDGER_FOLD = 1011,
+	SKILL_NAMES = 1012,
 	/** Reserved for integration tests — never use in production code */
 	TEST = 9999,
 }

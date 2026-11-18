@@ -28,10 +28,15 @@ export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lan
 				args.baseUrls.length > 1
 					? ` [lane ${String(idx + 1)}/${String(args.baseUrls.length)}]`
 					: '';
-			const client = new N8nClient(baseUrl);
+			const client = new N8nClient(baseUrl, { assistantRuntime: args.assistantRuntime });
 			logger.info(`Authenticating with ${baseUrl}...${tag}`);
 			await client.login(args.email, args.password);
 			logger.success(`Authenticated${tag}`);
+			const agents = client.assistantAgents();
+			if (agents) {
+				await agents.assertEnabled();
+				logger.info(`Driving the Assistant agent on the Agents runtime${tag}`);
+			}
 
 			logger.info(`Seeding MCP registry...${tag}`);
 			const mcpSeedResult = await seedMcpRegistry(client, logger);

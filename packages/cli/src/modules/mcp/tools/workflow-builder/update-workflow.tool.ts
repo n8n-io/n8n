@@ -1,7 +1,13 @@
 import type { ValidationWarning } from '@n8n/ai-workflow-builder';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
+import {
+	type OperationContext,
+	type User,
+	type SharedWorkflowRepository,
+	WorkflowEntity,
+} from '@n8n/db';
+import { UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import {
 	connectRequiredSubnodeInputs,
@@ -9,7 +15,14 @@ import {
 	type ClearedSubnodeInput,
 } from '@n8n/workflow-sdk';
 import isEqual from 'lodash/isEqual';
-import { NodeConnectionTypes, type IWorkflowSettings, type INodeTypes } from 'n8n-workflow';
+import { UnrecognizedNodeTypeError } from 'n8n-core';
+import {
+	NodeConnectionTypes,
+	type INode,
+	type INodeType,
+	type IWorkflowSettings,
+	type INodeTypes,
+} from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -18,8 +31,7 @@ import type { DataTableUserOperations } from '@n8n/backend-module-data-table';
 import type { McpPostSaveMetricsService } from '@/modules/mcp/mcp-post-save-metrics.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { TagService } from '@/services/tag.service';
-import type { UrlService } from '@n8n/backend-services';
-import type { Telemetry } from '@/telemetry';
+import type { UrlService, TelemetryProxy } from '@n8n/backend-services';
 import {
 	dropInvalidWorkflowGroups,
 	makeGetNodeTypeForGrouping,
@@ -942,6 +954,63 @@ async function autoAssignCredentialsForAddedNodes(
 	);
 }
 
+function createNodeTypesIgnoringUnloadedExistingTypes(
+	nodeTypes: INodeTypes,
+	existingNodes: INode[],
+): INodeTypes {
+	const existingNodeTypeNames = new Set(existingNodes.map((node) => node.type));
+
+	return {
+		getByName: (nodeType) => nodeTypes.getByName(nodeType),
+		getKnownTypes: () => nodeTypes.getKnownTypes(),
+		getByNameAndVersion: (nodeType, version) => {
+			try {
+				return nodeTypes.getByNameAndVersion(nodeType, version);
+			} catch (error) {
+				if (error instanceof UnrecognizedNodeTypeError && existingNodeTypeNames.has(nodeType)) {
+					return undefined as unknown as INodeType;
+				}
+				throw error;
+			}
+		},
+	};
+}
+
+function isUnloadedNodeType(node: INode, nodeTypes: INodeTypes): boolean {
+	try {
+		nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+	} catch (error) {
+		if (error instanceof UnrecognizedNodeTypeError) return true;
+	}
+	return false;
+}
+
+function assertAddedNodeTypesLoaded(addedNodes: INode[], nodeTypes: INodeTypes): void {
+	const unloadedNode = addedNodes.find((node) => isUnloadedNodeType(node, nodeTypes));
+	if (unloadedNode) {
+		throw Object.assign(
+			new UserError(
+				`Cannot add node '${unloadedNode.name}': this instance does not load the node type '${unloadedNode.type}'. Check the type name, or use a node type that this instance has.`,
+			),
+			{ errorCode: 'UNRECOGNIZED_NODE_TYPE' },
+		);
+	}
+}
+
+function buildUnloadedNodeTypeWarnings(
+	nodes: INode[],
+	nodeTypes: INodeTypes,
+): Array<ValidationWarning & { preExisting: true }> {
+	return nodes
+		.filter((node) => isUnloadedNodeType(node, nodeTypes))
+		.map((node) => ({
+			code: 'UNLOADED_NODE_TYPE',
+			message: `[pre-existing] This instance does not load the node type '${node.type}', so the workflow cannot run this node. Tell the user; an administrator of this instance must enable the node type, or the node must be replaced.`,
+			nodeName: node.name,
+			preExisting: true,
+		}));
+}
+
 /**
  * Validates the resulting workflow and marks the warnings that were already
  * there before this update.
@@ -966,7 +1035,7 @@ async function collectValidationWarnings(
 
 	const validator = new ParseValidateHandler({
 		generatePinData: false,
-		nodeTypesProvider: nodeTypes,
+		nodeTypesProvider: createNodeTypesIgnoringUnloadedExistingTypes(nodeTypes, existing.nodes),
 	});
 	const validate = (workflow: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>) =>
 		validator.validateJSON({
@@ -1055,7 +1124,7 @@ export const createUpdateWorkflowTool = (
 	workflowFinderService: WorkflowFinderService,
 	workflowService: WorkflowService,
 	urlService: UrlService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	nodeTypes: INodeTypes,
 	credentialsService: CredentialsService,
 	sharedWorkflowRepository: SharedWorkflowRepository,
@@ -1082,6 +1151,7 @@ export const createUpdateWorkflowTool = (
 	} = {},
 	logger: Logger,
 	postSaveMetrics: McpPostSaveMetricsService,
+	ctx: OperationContext = {},
 ): ToolDefinition<typeof inputSchema> => {
 	// Bound once: these never vary per call, so the call sites below show only
 	// what is being validated.
@@ -1169,6 +1239,11 @@ export const createUpdateWorkflowTool = (
 				if (!result.success) {
 					throw new Error(result.error);
 				}
+
+				const addedNodes = result.workflow.nodes.filter((node) =>
+					result.addedNodeNames.includes(node.name),
+				);
+				assertAddedNodeTypesLoaded(addedNodes, nodeTypes);
 
 				// Setting a parameter can make a subnode input required without wiring it.
 				// Skip inputs this batch disconnected, or removeConnection is a no-op.
@@ -1287,10 +1362,11 @@ export const createUpdateWorkflowTool = (
 
 				validationWarnings.push(
 					...(await buildUninstalledNodeWarnings(
-						workflowUpdateData.nodes.filter((node) => result.addedNodeNames.includes(node.name)),
+						addedNodes,
 						options.findUninstalledNodeTypes,
 						options.installToolAvailable,
 					)),
+					...buildUnloadedNodeTypeWarnings(workflowUpdateData.nodes, nodeTypes),
 				);
 
 				const tagIds = await resolveTagIds(result.tagNames, user, tagService);
@@ -1321,13 +1397,19 @@ export const createUpdateWorkflowTool = (
 						: undefined;
 				expectedTagNames = result.tagNames;
 				updateAttempted = true;
-				const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
-					aiBuilderAssisted: hasNonTagOperations,
-					source: 'n8n-mcp',
-					versionName: versionMetadata.name,
-					versionDescription: versionMetadata.description,
-					...(tagIds !== undefined ? { tagIds } : {}),
-				});
+				const updatedWorkflow = await workflowService.update(
+					user,
+					workflowUpdateData,
+					workflowId,
+					{
+						aiBuilderAssisted: hasNonTagOperations,
+						source: 'n8n-mcp',
+						versionName: versionMetadata.name,
+						versionDescription: versionMetadata.description,
+						...(tagIds !== undefined ? { tagIds } : {}),
+					},
+					ctx,
+				);
 
 				const baseUrl = urlService.getInstanceBaseUrl();
 				const workflowUrl = `${baseUrl}/workflow/${updatedWorkflow.id}`;

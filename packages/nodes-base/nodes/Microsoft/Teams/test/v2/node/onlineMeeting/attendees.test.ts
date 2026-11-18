@@ -7,7 +7,7 @@ import type {
 	INodePropertyCollection,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import { createExecuteContext, meetingHeaders, setParams } from '../helpers';
 import {
@@ -32,7 +32,7 @@ const JANE = '11111111-1111-1111-1111-111111111111';
 const BOB = '22222222-2222-2222-2222-222222222222';
 const ORGANIZER = '11111111-2222-3333-4444-555555555555';
 const MEETING = 'MSpkYzE3Njc0Yy04MWQ5LTRhZGItYmZi';
-const MEETINGS = '/v1.0/me/onlineMeetings';
+const MEETINGS = requestPath`/v1.0/me/onlineMeetings`;
 const JOIN_URL = 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_ZDE2Nzg0%40thread.v2/0';
 const RESOLVE_QS = { $select: 'id,displayName,userPrincipalName' };
 const FORBIDDEN_MESSAGE = 'Resolving attendees needs the User.Read.All application permission';
@@ -52,8 +52,8 @@ const entry = (id: string, upn: string, role: string) => ({
 const USERS: Record<string, IDataObject> = {
 	[`/v1.0/users/${JANE}`]: graphUser(JANE, 'Jane Smith', 'jane@example.com'),
 	[`/v1.0/users/${BOB}`]: graphUser(BOB, 'Bob Jones', 'bob@example.com'),
-	'/v1.0/users/jane%40example.com': graphUser(JANE, 'Jane Smith', 'jane@example.com'),
-	'/v1.0/users/bob%40example.com': graphUser(BOB, 'Bob Jones', 'bob@example.com'),
+	'/v1.0/users/jane@example.com': graphUser(JANE, 'Jane Smith', 'jane@example.com'),
+	'/v1.0/users/bob@example.com': graphUser(BOB, 'Bob Jones', 'bob@example.com'),
 };
 
 const createParams = {
@@ -93,7 +93,7 @@ describe('Microsoft Teams V2, onlineMeeting attendees', () => {
 	const graph = (users: Record<string, IDataObject>) => {
 		apiRequest.mockImplementation(async (_method: string, path: string) => {
 			if (path in users) return users[path];
-			if (path === '/v1.0/users') return { value: [] };
+			if (String(path) === '/v1.0/users') return { value: [] };
 			if (/^\/v1\.0\/users\/[^/]+$/.test(path)) throw notFound();
 			return { id: MEETING };
 		});
@@ -142,7 +142,12 @@ describe('Microsoft Teams V2, onlineMeeting attendees', () => {
 			{ userId: rlc('list', BOB), role: 'presenter' },
 		]);
 
-		expect(apiRequest).toHaveBeenCalledWith('GET', `/v1.0/users/${JANE}`, {}, RESOLVE_QS);
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			requestPath`/v1.0/users/${JANE}`,
+			{},
+			RESOLVE_QS,
+		);
 		expect(sentAttendees('POST')).toEqual([
 			entry(JANE, 'jane@example.com', 'attendee'),
 			entry(BOB, 'bob@example.com', 'presenter'),
@@ -165,8 +170,18 @@ describe('Microsoft Teams V2, onlineMeeting attendees', () => {
 
 		await runCreate([{ userId: JANE }, { userId: 'bob@example.com' }]);
 
-		expect(apiRequest).toHaveBeenCalledWith('GET', `/v1.0/users/${JANE}`, {}, RESOLVE_QS);
-		expect(apiRequest).toHaveBeenCalledWith('GET', '/v1.0/users/bob%40example.com', {}, RESOLVE_QS);
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			requestPath`/v1.0/users/${JANE}`,
+			{},
+			RESOLVE_QS,
+		);
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			requestPath`/v1.0/users/bob@example.com`,
+			{},
+			RESOLVE_QS,
+		);
 	});
 
 	it('falls back to a mail lookup and sends the guest principal name', async () => {
@@ -181,7 +196,7 @@ describe('Microsoft Teams V2, onlineMeeting attendees', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'GET',
-			'/v1.0/users',
+			requestPath`/v1.0/users`,
 			{},
 			{
 				$filter: "mail eq 'alex@contoso.com'",
@@ -326,7 +341,7 @@ describe('Microsoft Teams V2, onlineMeeting attendees', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'POST',
-			`${MEETINGS}/createOrGet`,
+			requestPath`${MEETINGS}/createOrGet`,
 			{
 				externalId: 'order-4711',
 				participants: { attendees: [entry(JANE, 'jane@example.com', 'attendee')] },
@@ -420,8 +435,8 @@ describe('Microsoft Teams V2, onlineMeeting attendees', () => {
 				),
 			).rejects.toThrow('Could not find the user for attendee 1');
 			expect(apiRequest.mock.calls.map((call) => call[1])).toEqual([
-				'/v1.0/users/ghost%40example.com',
-				'/v1.0/users',
+				requestPath`/v1.0/users/ghost@example.com`,
+				requestPath`/v1.0/users`,
 			]);
 		});
 
@@ -454,7 +469,7 @@ describe('Microsoft Teams V2, onlineMeeting attendees', () => {
 			expect(apiRequest).toHaveBeenCalledTimes(1);
 			expect(apiRequest).toHaveBeenCalledWith(
 				'PATCH',
-				`${MEETINGS}/${MEETING}`,
+				requestPath`${MEETINGS}/${MEETING}`,
 				{ participants: { attendees: [] } },
 				{},
 				undefined,
@@ -494,7 +509,7 @@ describe('Microsoft Teams V2, onlineMeeting attendees', () => {
 
 			expect(apiRequest).toHaveBeenCalledWith(
 				'PATCH',
-				`${MEETINGS}/${MEETING}`,
+				requestPath`${MEETINGS}/${MEETING}`,
 				{ participants: { attendees: [entry(JANE, 'jane@example.com', 'presenter')] } },
 				{},
 				undefined,

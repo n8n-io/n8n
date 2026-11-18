@@ -1,5 +1,5 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../transport';
 
@@ -14,7 +14,7 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 		}) as string,
 	);
 
-	const response = await apiRequest.call(this, 'GET', `meta/bases/${base}/tables`);
+	const response = await apiRequest.call(this, 'GET', requestPath`meta/bases/${base}/tables`);
 
 	const tableData = ((response.tables as IDataObject[]) || []).find((table: IDataObject) => {
 		return table.id === tableId;
@@ -75,7 +75,7 @@ export async function getAttachmentColumns(
 		}) as string,
 	);
 
-	const response = await apiRequest.call(this, 'GET', `meta/bases/${base}/tables`);
+	const response = await apiRequest.call(this, 'GET', requestPath`meta/bases/${base}/tables`);
 
 	const tableData = ((response.tables as IDataObject[]) || []).find((table: IDataObject) => {
 		return table.id === tableId;

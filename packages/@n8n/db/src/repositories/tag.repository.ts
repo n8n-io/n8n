@@ -4,7 +4,7 @@ import { DataSource, In } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import intersection from 'lodash/intersection';
 
-import { FolderTagMapping, TagEntity, WorkflowTagMapping } from '../entities';
+import { AgentTagMapping, FolderTagMapping, TagEntity, WorkflowTagMapping } from '../entities';
 import { BaseRepository } from './base-repository';
 import type { ITagWithCountDb, IWorkflowDb } from '../entities/types-db';
 import type { OperationContext } from '../services/transaction';
@@ -31,9 +31,19 @@ export class TagRepository extends BaseRepository<TagEntity> {
 		});
 	}
 
+	/** Tags of one agent, joined through the `agents_tags` mapping table. */
+	async findAllByAgentId(agentId: string): Promise<TagEntity[]> {
+		return await this.createQueryBuilder('tag')
+			.select(['tag.id', 'tag.name', 'tag.createdAt', 'tag.updatedAt'])
+			.innerJoin(AgentTagMapping, 'agents_tags', 'agents_tags.tagId = tag.id')
+			.where('agents_tags.agentId = :agentId', { agentId })
+			.getMany();
+	}
+
 	/**
-	 * Tags with their non-archived workflow usage count, via `loadRelationCountAndMap`
-	 * (no plain-SQL equivalent, so this stays a query builder).
+	 * Tags with their usage count across mapped entity types (non-archived
+	 * workflows, agents), via `loadRelationCountAndMap` (no plain-SQL
+	 * equivalent, so this stays a query builder).
 	 */
 	async findAllWithUsageCount(options: {
 		orderByName?: boolean;
@@ -45,11 +55,19 @@ export class TagRepository extends BaseRepository<TagEntity> {
 				qb2.leftJoin('wm.workflows', 'workflow').where('workflow.isArchived = :isArchived', {
 					isArchived: false,
 				}),
-			);
+			)
+			.loadRelationCountAndMap('tag.agentUsageCount', 'tag.agentMappings', 'am');
 		if (options.orderByName) qb.orderBy('tag.name', 'ASC');
 		if (options.limit !== undefined) qb.limit(options.limit);
 
-		return (await qb.getMany()) as unknown as ITagWithCountDb[];
+		const tags = (await qb.getMany()) as unknown as Array<
+			ITagWithCountDb & { agentUsageCount?: number }
+		>;
+		return tags.map((tag) => {
+			tag.usageCount += tag.agentUsageCount ?? 0;
+			delete tag.agentUsageCount;
+			return tag;
+		});
 	}
 
 	/**
@@ -92,7 +110,7 @@ export class TagRepository extends BaseRepository<TagEntity> {
 
 	/**
 	 * Re-keys a tag from `oldId` to `newId`, carrying its name, `createdAt`,
-	 * and every workflow and folder mapping over. The mapping FKs are
+	 * and every workflow, folder and agent mapping over. The mapping FKs are
 	 * ON UPDATE NO ACTION, so the id cannot be updated in place while mappings
 	 * exist: instead the new row is inserted first (the old row moves to a
 	 * random temporary name to free the unique name index), the mappings are
@@ -107,6 +125,7 @@ export class TagRepository extends BaseRepository<TagEntity> {
 		await tx.insert(TagEntity, { id: newId, name: oldTag.name, createdAt: oldTag.createdAt });
 		await tx.update(WorkflowTagMapping, { tagId: oldId }, { tagId: newId });
 		await tx.update(FolderTagMapping, { tagId: oldId }, { tagId: newId });
+		await tx.update(AgentTagMapping, { tagId: oldId }, { tagId: newId });
 		await tx.delete(TagEntity, { id: oldId });
 	}
 
