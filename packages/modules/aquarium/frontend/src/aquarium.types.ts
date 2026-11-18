@@ -138,8 +138,10 @@ export interface CreatureTraits {
 	 * scrambled rows. Without it, the tint stays on.
 	 */
 	glitchEverySeconds?: number;
-	/** Draws the species in bone colours with ribs. It overrides the tint. */
+	/** Draws the species in bone colours with ribs. It overrides the tint and belly-up. */
 	skeleton?: boolean;
+	/** Floats upside down at the surface. It overrides the tint. */
+	bellyUp?: boolean;
 	/** A wave of gold sweeps over the creature while its workflow runs (live activity). */
 	shimmer?: boolean;
 	/** Multiplies the whole swim speed, live boost included. Without it, the factor is 1. */

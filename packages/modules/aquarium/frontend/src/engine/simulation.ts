@@ -48,6 +48,8 @@ const MOTION = {
 
 const TURN_CHANCE = 0.25;
 const MIN_VERTICAL_SPEED = 1;
+/** Logical pixels per second at which a sleeper sinks, or a belly-up creature rises. */
+const SETTLE_SPEED = 4;
 
 function maxY(creature: Pick<Creature, 'height'>, bounds: TankBounds) {
 	return Math.max(0, bounds.floor - creature.height);
@@ -111,6 +113,7 @@ export function clampToTank(creature: Creature, bounds: TankBounds): void {
 
 /** Resting speed from the traits, plus a boost from the live start rate, times the speed factor. */
 export function targetSpeedOf(creature: Creature): number {
+	if (isAsleep(creature)) return 0;
 	const rate = creature.activity ? recentRate(creature.activity.startedPerSecond) : 0;
 	return (creature.traits.speed + liveSpeedBoostFor(rate)) * (creature.traits.speedFactor ?? 1);
 }
@@ -133,6 +136,17 @@ function pickDepth(creature: Creature, bounds: TankBounds, random: RandomFn): vo
 }
 
 /** True when live activity shows any run: started, running, paused or ended in the window. */
+/**
+ * A workflow sleeps while one of its runs waits: paused now in the live counts, or in the
+ * executions sample. Critical health (belly-up, skeleton) wins over sleep.
+ */
+export function isAsleep(creature: Creature): boolean {
+	if (creature.entity.kind !== 'workflow' || creature.traits.bellyUp || creature.traits.skeleton) {
+		return false;
+	}
+	return (creature.activity?.waiting ?? 0) > 0 || creature.entity.metrics.waitingCount > 0;
+}
+
 function hasLiveRuns(creature: Creature): boolean {
 	const activity = creature.activity;
 	if (!activity) return false;
@@ -176,6 +190,12 @@ export function stepCreature(
 		if (random() < TURN_CHANCE) creature.facing = creature.facing === 1 ? -1 : 1;
 	}
 
+	// A sleeper settles on the sand; a belly-up creature floats to the surface.
+	const settling = creature.traits.bellyUp === true || isAsleep(creature);
+	if (creature.traits.bellyUp) creature.targetY = 0;
+	else if (settling) creature.targetY = maxY(creature, bounds);
+	if (settling) creature.excursion = false;
+
 	creature.x += creature.facing * speed * motion.horizontal * dt;
 	if (creature.x <= 0) {
 		creature.x = 0;
@@ -185,9 +205,11 @@ export function stepCreature(
 		creature.facing = -1;
 	}
 
-	const verticalSpeed = creature.excursion
-		? Math.max(WANDER.excursionMinSpeed, speed * WANDER.excursionSpeedShare)
-		: Math.max(MIN_VERTICAL_SPEED, speed * motion.vertical);
+	const verticalSpeed = settling
+		? SETTLE_SPEED
+		: creature.excursion
+			? Math.max(WANDER.excursionMinSpeed, speed * WANDER.excursionSpeedShare)
+			: Math.max(MIN_VERTICAL_SPEED, speed * motion.vertical);
 	const deltaY = creature.targetY - creature.y;
 	creature.y += Math.sign(deltaY) * Math.min(Math.abs(deltaY), verticalSpeed * dt);
 	if (creature.excursion && Math.abs(creature.targetY - creature.y) < 0.5) {
@@ -201,6 +223,8 @@ export function stepCreature(
 
 /** Faster creatures also flap faster. */
 export function frameIndexOf(creature: Creature): number {
+	// Sleepers and belly-up creatures do not swim, so they hold one frame.
+	if (creature.traits.bellyUp || isAsleep(creature)) return 0;
 	const frameCount = creature.species.sprite.frames.length;
 	const tempo = 0.5 + (1.5 * creature.speed) / MAX_SWIM_SPEED;
 	return Math.floor(creature.age * creature.species.frameRate * tempo) % frameCount;

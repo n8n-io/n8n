@@ -5,6 +5,7 @@ import { emptyMetrics } from '../sources/source.utils';
 import {
 	findCreatureAt,
 	frameIndexOf,
+	isAsleep,
 	isResting,
 	spawnCreature,
 	stepCreature,
@@ -244,6 +245,36 @@ describe('simulation', () => {
 			}
 
 			expect(reachedEdge).toBe(true);
+		});
+	});
+
+	describe('sleep and belly-up', () => {
+		const settle = (metrics: Partial<AquariumEntity['metrics']>) => {
+			const sleeper = { ...entity, metrics: { ...entity.metrics, ...metrics } };
+			const creature = spawnCreature(
+				sleeper,
+				deriveTraits(sleeper),
+				minnow,
+				bounds,
+				seededRandom(),
+			);
+			for (let i = 0; i < 400; i++) stepCreature(creature, 0.05, bounds, seededRandom());
+			return creature;
+		};
+
+		it('lets a workflow with a paused run sleep on the sand', () => {
+			const creature = settle({ waitingCount: 1 });
+
+			expect(isAsleep(creature)).toBe(true);
+			expect(targetSpeedOf(creature)).toBe(0);
+			expect(Math.round(creature.y + creature.height)).toBe(bounds.floor);
+		});
+
+		it('floats a workflow whose runs mostly fail to the surface, awake', () => {
+			const creature = settle({ executionCount: 20, failedCount: 15, waitingCount: 1 });
+
+			expect(isAsleep(creature)).toBe(false);
+			expect(Math.round(creature.y)).toBe(0);
 		});
 	});
 });

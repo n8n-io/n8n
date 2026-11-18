@@ -120,6 +120,9 @@ export const SICK_SPEED_FACTOR = 0.4;
 /** A skeleton barely moves. */
 export const SKELETON_SPEED_FACTOR = 0.15;
 
+/** A belly-up creature (most runs fail) drifts at the surface and hardly moves. */
+export const BELLY_UP_SPEED_FACTOR = 0.05;
+
 /** A wave of gold that sweeps over a creature while its workflow runs. */
 export const SHIMMER = {
 	everySeconds: 1.8,

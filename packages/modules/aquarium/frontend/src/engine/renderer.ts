@@ -15,7 +15,7 @@ import type { Camera, Size } from './camera';
 import { getEffect } from './effects';
 import { FRAME_THICKNESS, paintFrame } from './frames';
 import type { TankRegion } from './layout';
-import { frameIndexOf, isResting, type Creature, type TankBounds } from './simulation';
+import { frameIndexOf, isAsleep, isResting, type Creature, type TankBounds } from './simulation';
 import { GLITCH_STAGES, glitchStageAt, shimmerProgressAt } from './glitch';
 import { toFaded } from './faded';
 import { toSkeleton } from './skeleton';
@@ -396,12 +396,15 @@ export class AquariumRenderer {
 		if (!frame) return;
 
 		const ctx = this.ctx;
+		const flipX = creature.facing === -1;
+		// Belly-up: the same sprite upside down, with a gentle 1 px bob at the surface.
+		const flipY = creature.traits.bellyUp === true;
 		let x = Math.round(creature.x) + offsetX;
-		let y = Math.round(creature.y);
-		if (creature.facing === -1) {
+		let y = Math.round(creature.y) + (flipY ? Math.round(Math.sin(creature.age * 1.5)) : 0);
+		if (flipX || flipY) {
 			ctx.save();
-			ctx.translate(x + creature.width, y);
-			ctx.scale(-1, 1);
+			ctx.translate(flipX ? x + creature.width : x, flipY ? y + creature.height : y);
+			ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
 			x = 0;
 			y = 0;
 		}
@@ -414,11 +417,12 @@ export class AquariumRenderer {
 		} else {
 			ctx.drawImage(frame, x, y, creature.width, creature.height);
 		}
-		if (creature.traits.shimmer && creature.activity && creature.activity.running > 0) {
+		const running = (creature.activity?.running ?? 0) > 0;
+		if (creature.traits.shimmer && running && !isAsleep(creature)) {
 			const progress = shimmerProgressAt(creature.age, hashString(creature.entity.id));
 			if (progress >= 0) this.drawShimmer(creature, frameIndex, x, y, progress);
 		}
-		if (creature.facing === -1) ctx.restore();
+		if (flipX || flipY) ctx.restore();
 	}
 
 	/**

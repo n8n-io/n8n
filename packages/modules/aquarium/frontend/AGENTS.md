@@ -86,10 +86,10 @@ Health comes from failures. The worse a workflow does, the less its fish acts li
 | 0% failures, with 10 or more runs | Positive | A golden glint or sparkle | Planned |
 | Under 20% failures, or fewer than 10 runs | Neutral | Normal colours | Built |
 | 20–50% failures | Negative | Sick: glitches dark green often (3 px jump, scrambled rows, a green ghost) and swims at 40% speed (`sickRule`, `glitchStageAt`) | Built |
-| Over 50% failures | Critical | Belly-up, floating at the top | Planned |
+| Over 50% failures, with 10 or more runs | Critical | Belly-up: the sprite upside down at the surface, with a 1 px bob (`bellyUpRule`). It overrides sick | Built |
 | Every run failed, with 10 or more runs | Critical | A skeleton: the species in bone colours with ribs, barely moving, with a rattle (`skeletonRule`, `toSkeleton`). It recovers when a run succeeds | Built |
 | Failures in the last 60 s | Recent health | Hooked by a fishing line | Planned |
-| A run that waits now | Paused, not broken | Asleep on the sand | Planned. The data is ready |
+| A run that waits now | Paused, not broken | Asleep: sinks to the sand, stops swimming, and "Z"s rise from its head (`isAsleep`, `zzzEffect`). Belly-up and skeleton win over sleep | Built |
 
 - `speedFactor` also cuts the live speed boost, so a sick fish is slow everywhere.
 - A fish is asleep when one or more of its runs are paused now (`metrics.waitingCount`,
@@ -103,7 +103,7 @@ health.
 | Data | Meaning | Look | Status |
 | --- | --- | --- | --- |
 | Security risk: an unprotected webhook, an expression in a SQL query, or an Execute Command or SSH node | Negative: exposed | A cat in a diving helmet watches the fish (`securityRule`, `catEffect`) | Partly: proof of concept |
-| Error workflow set (`design.hasErrorWorkflow`) | Positive: failures are handled | A remora or pilot fish companion. No error workflow stays Neutral | Planned. The data is ready |
+| Error workflow set (`design.hasErrorWorkflow`) | Positive: failures are handled | A remora trails behind the tail (`remoraRule`, `remoraEffect`). No error workflow stays Neutral | Built |
 | Build quality (`maintainabilityOf()`): big with no sub-workflows, many Code nodes, copy-pasted nodes, disabled leftovers, many If, Switch and Merge nodes | Negative: hard to maintain | A really big whale | Planned. The data is ready |
 | Redaction on | Neutral: private data | Glasses | Open |
 | Credentials used | Connected to many services | Bling | Open |

@@ -3,9 +3,11 @@ import {
 	SICK_SPEED_FACTOR,
 	SICK_TINT,
 	SKELETON_SPEED_FACTOR,
+	BELLY_UP_SPEED_FACTOR,
 } from '../aquarium.constants';
 import type { AquariumEntity } from '../aquarium.types';
 import { emptyMetrics } from '../sources/source.utils';
+import { analyzeWorkflow } from './design';
 import { failureRateOf } from './scaling';
 import { defaultTraitRules, deriveTraits, EMPTY_TRAIT_CONTEXT, type TraitRule } from './traits';
 
@@ -90,6 +92,36 @@ describe('deriveTraits', () => {
 		expect(shimmers({ executionCount: 100, failedCount: 45 })).toBe(false);
 		expect(shimmers({ executionCount: 20, failedCount: 20 })).toBe(false);
 		expect(shimmers({ executionCount: 100 }, 'agent')).toBe(false);
+	});
+
+	it('turns a creature whose runs mostly fail belly-up, over the sick look', () => {
+		const bellyUp = deriveTraits(entity({ executionCount: 20, failedCount: 15 }));
+		const sick = deriveTraits(entity({ executionCount: 20, failedCount: 8 }));
+
+		expect(bellyUp).toMatchObject({ bellyUp: true, speedFactor: BELLY_UP_SPEED_FACTOR });
+		expect(bellyUp.tint).toBeUndefined();
+		expect(bellyUp.shimmer).toBeUndefined();
+		expect(sick.bellyUp).toBeUndefined();
+	});
+
+	it('shows a skeleton, not belly-up, when every run failed', () => {
+		const traits = deriveTraits(entity({ executionCount: 20, failedCount: 20 }));
+
+		expect(traits.skeleton).toBe(true);
+		expect(traits.bellyUp).toBeUndefined();
+	});
+
+	it('gives a remora only to workflows with an error workflow', () => {
+		const handled = { ...entity({}), design: { ...analyzeWorkflow([]), hasErrorWorkflow: true } };
+		const alone = { ...entity({}), design: analyzeWorkflow([]) };
+
+		expect(deriveTraits(handled).effects).toContain('remora');
+		expect(deriveTraits(alone).effects).not.toContain('remora');
+	});
+
+	it('lets workflows fall asleep, but not agents', () => {
+		expect(deriveTraits(entity({})).effects).toContain('zzz');
+		expect(deriveTraits(entity({}, 'agent')).effects).not.toContain('zzz');
 	});
 
 	it('applies extra rules after the default rules', () => {

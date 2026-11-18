@@ -1,6 +1,6 @@
 import { MAX_SWIM_SPEED } from '../aquarium.constants';
 import { hashString } from '../species/species.registry';
-import type { Creature } from './simulation';
+import { isAsleep, type Creature } from './simulation';
 
 /** Draws extra pixels for a creature after its sprite. Must not keep state between frames. */
 export interface CreatureEffect {
@@ -59,11 +59,14 @@ const CAT_PALETTE: Record<string, string> = {
 };
 
 /** Pixels grouped by colour, so a frame sets each colour once and allocates nothing. */
-function toPixelGroups(rows: string[]): Array<{ color: string; points: Array<[number, number]> }> {
+function toPixelGroups(
+	rows: string[],
+	palette: Record<string, string> = CAT_PALETTE,
+): Array<{ color: string; points: Array<[number, number]> }> {
 	const groups = new Map<string, Array<[number, number]>>();
 	rows.forEach((row, y) => {
 		[...row].forEach((char, x) => {
-			const color = CAT_PALETTE[char];
+			const color = palette[char];
 			if (!color) return;
 			groups.set(color, [...(groups.get(color) ?? []), [x, y]]);
 		});
@@ -133,10 +136,100 @@ export const skillStrandsEffect: CreatureEffect = {
 	},
 };
 
+/** A pixel "Z", 4 x 4. */
+const ZZZ: ReadonlyArray<readonly [number, number]> = [
+	[0, 0],
+	[1, 0],
+	[2, 0],
+	[3, 0],
+	[2, 1],
+	[1, 2],
+	[0, 3],
+	[1, 3],
+	[2, 3],
+	[3, 3],
+];
+const ZZZ_COLOUR = '#e8f4ff';
+const ZZZ_SECONDS = 2.4;
+
+/** Two "Z"s rise from the head of a sleeping creature, drift a little and fade. */
+export const zzzEffect: CreatureEffect = {
+	id: 'zzz',
+	draw(ctx, creature) {
+		if (!isAsleep(creature)) return;
+		const headX =
+			creature.facing === 1
+				? creature.x + creature.width * 0.75
+				: creature.x + creature.width * 0.25;
+		ctx.fillStyle = ZZZ_COLOUR;
+		for (let i = 0; i < 2; i++) {
+			const progress = ((creature.age + (i * ZZZ_SECONDS) / 2) % ZZZ_SECONDS) / ZZZ_SECONDS;
+			const x = Math.round(headX + creature.facing * progress * 4);
+			const y = Math.round(creature.y - 5 - progress * 10);
+			ctx.globalAlpha = 1 - progress;
+			for (const [px, py] of ZZZ) ctx.fillRect(x + px, y + py, 1, 1);
+		}
+		ctx.globalAlpha = 1;
+	},
+};
+
+/** A small blue-grey companion fish, 12 x 7, facing right. Two frames: its tail flicks. */
+const REMORA_PALETTE: Record<string, string> = {
+	m: '#17252d', // outline
+	g: '#7a95a3', // back
+	b: '#d6e2e6', // belly
+	e: '#ffffff', // eye
+	k: '#0b1418', // pupil
+};
+const REMORA_FRAMES = [
+	[
+		'....mmmm....',
+		'm..mggggmm..',
+		'mmmgggggeemm',
+		'mggggggggkem',
+		'mmmbbbbbbbm.',
+		'm..mbbbbmm..',
+		'....mmmm....',
+	],
+	[
+		'....mmmm....',
+		'.m.mggggmm..',
+		'mmmgggggeemm',
+		'mggggggggkem',
+		'mmmbbbbbbbm.',
+		'.m.mbbbbmm..',
+		'....mmmm....',
+	],
+].map((rows) => toPixelGroups(rows, REMORA_PALETTE));
+const REMORA_WIDTH = 12;
+
+/**
+ * A remora trails just behind the tail of a workflow that has an error workflow. It faces the
+ * same way as its host, bobs on its own and stays with its host while it sleeps or floats.
+ */
+export const remoraEffect: CreatureEffect = {
+	id: 'remora',
+	draw(ctx, creature) {
+		const behind =
+			creature.facing === 1 ? creature.x - REMORA_WIDTH - 1 : creature.x + creature.width + 1;
+		const x = Math.round(behind);
+		const y = Math.round(creature.y + creature.height * 0.55 - 3 + Math.sin(creature.age * 3 + 1));
+		const frame = REMORA_FRAMES[Math.floor(creature.age * 6) % REMORA_FRAMES.length] ?? [];
+		for (const { color, points } of frame) {
+			ctx.fillStyle = color;
+			for (const [px, py] of points) {
+				ctx.fillRect(x + (creature.facing === 1 ? px : REMORA_WIDTH - 1 - px), y + py, 1, 1);
+			}
+		}
+	},
+};
+
 const registry = new Map<string, CreatureEffect>([
 	[bubblesEffect.id, bubblesEffect],
 	[catEffect.id, catEffect],
 	[skillStrandsEffect.id, skillStrandsEffect],
+	[zzzEffect.id, zzzEffect],
+	[remoraEffect.id, remoraEffect],
 ]);
 
 export function registerEffect(effect: CreatureEffect): void {

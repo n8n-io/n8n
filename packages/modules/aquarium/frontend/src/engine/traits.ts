@@ -6,6 +6,7 @@ import {
 	SICK_SPEED_FACTOR,
 	SICK_TINT,
 	SKELETON_SPEED_FACTOR,
+	BELLY_UP_SPEED_FACTOR,
 	TANK_HEALTH,
 } from '../aquarium.constants';
 import type { AquariumEntity, CreatureTraits } from '../aquarium.types';
@@ -100,6 +101,19 @@ export const sickRule: TraitRule = (entity, traits) =>
 			}
 		: traits;
 
+/** Most runs fail: the creature floats belly-up at the surface. It overrides the sick look. */
+export const bellyUpRule: TraitRule = (entity, traits) =>
+	entity.metrics.executionCount >= TANK_HEALTH.minRuns &&
+	failureRateOf(entity.metrics) > TANK_HEALTH.critical
+		? {
+				...traits,
+				bellyUp: true,
+				tint: undefined,
+				glitchEverySeconds: undefined,
+				speedFactor: BELLY_UP_SPEED_FACTOR,
+			}
+		: traits;
+
 /**
  * Every run failed: the creature becomes a skeleton and barely moves. It overrides the sick look.
  * It recovers as soon as one run succeeds.
@@ -109,17 +123,29 @@ export const skeletonRule: TraitRule = (entity, traits) =>
 		? {
 				...traits,
 				skeleton: true,
+				bellyUp: undefined,
 				tint: undefined,
 				glitchEverySeconds: undefined,
 				speedFactor: SKELETON_SPEED_FACTOR,
 			}
 		: traits;
 
-/** A workflow shimmers gold while it runs. Sick creatures and skeletons do not shimmer. */
+/** A workflow shimmers gold while it runs. Sick, belly-up and skeleton creatures do not. */
 export const shimmerRule: TraitRule = (entity, traits) =>
-	entity.kind === 'workflow' && !traits.skeleton && traits.glitchEverySeconds === undefined
+	entity.kind === 'workflow' &&
+	!traits.skeleton &&
+	!traits.bellyUp &&
+	traits.glitchEverySeconds === undefined
 		? { ...traits, shimmer: true }
 		: traits;
+
+/** A workflow falls asleep while one of its runs waits. The effect checks the live counts. */
+export const sleepRule: TraitRule = (entity, traits) =>
+	entity.kind === 'workflow' ? { ...traits, effects: [...traits.effects, 'zzz'] } : traits;
+
+/** A workflow with an error workflow never swims alone: a remora follows it. */
+export const remoraRule: TraitRule = (entity, traits) =>
+	entity.design?.hasErrorWorkflow ? { ...traits, effects: [...traits.effects, 'remora'] } : traits;
 
 /** A workflow with no runs at all stands still. Agents have no run data yet, so they move. */
 export const stillRule: TraitRule = (entity, traits) =>
@@ -131,8 +157,8 @@ export const stillRule: TraitRule = (entity, traits) =>
 
 /**
  * Order matters: `speciesRule` reads the tier from `sizeRule`, `turtleRule` and then
- * `penguinRule` override the species, `skeletonRule` overrides `sickRule`, and `shimmerRule`
- * reads both.
+ * `penguinRule` override the species, `bellyUpRule` overrides `sickRule`, `skeletonRule`
+ * overrides both, and `shimmerRule` reads all three.
  */
 export const defaultTraitRules: TraitRule[] = [
 	sizeRule,
@@ -144,8 +170,11 @@ export const defaultTraitRules: TraitRule[] = [
 	securityRule,
 	skillStrandsRule,
 	sickRule,
+	bellyUpRule,
 	skeletonRule,
 	shimmerRule,
+	sleepRule,
+	remoraRule,
 	stillRule,
 ];
 
