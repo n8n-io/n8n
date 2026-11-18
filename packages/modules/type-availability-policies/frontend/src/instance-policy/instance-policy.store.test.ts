@@ -160,6 +160,46 @@ describe('useInstancePolicyStore', () => {
 			expect(store.typeAccess.node?.byName.get('n8n-nodes-base.slack')).toBe('deny');
 		});
 
+		it('keeps the newer access when an older answer of the same policy version arrives late', async () => {
+			const olderAccess = createDeferredPromise<ReturnType<typeof accessResponse>>();
+			mocks.fetchInstanceAccess.mockReturnValueOnce(olderAccess.promise);
+			const store = useInstancePolicyStore();
+			const olderLoad = store.load(['node']);
+			await vi.waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(1));
+			const installed = {
+				name: 'n8n-nodes-acme.acme',
+				access: 'deny' as const,
+				matchedRuleId: null,
+			};
+			mocks.fetchInstanceAccess.mockResolvedValue({
+				...accessResponse(3),
+				types: [...accessResponse(3).types, installed],
+			});
+
+			await store.load(['node']);
+			olderAccess.resolve(accessResponse(3));
+			await olderLoad;
+
+			expect(store.typeAccess.node?.byName.get('n8n-nodes-acme.acme')).toBe('deny');
+		});
+
+		it('reports no read error for a load when a save read the current access after it', async () => {
+			const store = useInstancePolicyStore();
+			await store.load(['node']);
+			const loadRead = createDeferredPromise<ReturnType<typeof accessResponse>>();
+			mocks.fetchInstanceAccess.mockReturnValueOnce(loadRead.promise);
+			const load = store.load(['node']);
+			await vi.waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(2));
+			mocks.saveInstancePolicy.mockResolvedValue({ ...nodePolicy(4, [DENY_SLACK]), warnings: [] });
+			mocks.fetchInstanceAccess.mockResolvedValue(accessResponse(4, 'deny'));
+
+			await store.save('node', addDenySlack);
+			loadRead.reject(new Error('offline'));
+
+			expect(await load).toEqual({ errors: [], accessErrors: [] });
+			expect(store.typeAccess.node?.version).toBe(4);
+		});
+
 		it('shows no access, not the access before the save, when the read after a save fails', async () => {
 			mocks.saveInstancePolicy.mockResolvedValue({ ...nodePolicy(4, [DENY_SLACK]), warnings: [] });
 			const store = useInstancePolicyStore();

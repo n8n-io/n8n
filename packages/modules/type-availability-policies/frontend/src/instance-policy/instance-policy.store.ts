@@ -95,23 +95,27 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 	// the admin made on the old policy.
 	const generations: Record<RestrictedTypeKind, number> = { node: 0, credential: 0 };
 	const loadRequests: Record<RestrictedTypeKind, number> = { node: 0, credential: 0 };
+	// The installed types can change while the policy version stays, so only the order of the reads
+	// tells which answer is current.
+	const accessReads: Record<RestrictedTypeKind, number> = { node: 0, credential: 0 };
 
 	const typeAccess = shallowReactive<Record<RestrictedTypeKind, TypeAccessSnapshot | null>>({
 		node: null,
 		credential: null,
 	});
 
-	// The server evaluates the rules, so the access is read again for every new policy version.
+	/**
+	 * Reads the access of the types. Only the latest read of a kind stores its answer or returns its
+	 * error, so a late answer to an older read changes nothing. Returns the read error, or `null`.
+	 */
 	async function loadTypeAccess(kind: RestrictedTypeKind): Promise<unknown> {
+		const read = ++accessReads[kind];
 		try {
 			const access = toTypeAccess(await fetchInstanceAccess(rootStore.restApiContext, kind));
-			const current = typeAccess[kind];
-			// A late answer to an older read must not replace newer access, nor fill the gap that a
-			// failed newer read left.
-			const policyVersion = policies[kind]?.version ?? -1;
-			if (access.version >= (current?.version ?? policyVersion)) typeAccess[kind] = access;
+			if (read === accessReads[kind]) typeAccess[kind] = access;
 			return null;
 		} catch (error) {
+			if (read !== accessReads[kind]) return null;
 			// Access of an older version would show a saved change as lost, so rows show none until
 			// a later policy version loads it again.
 			const policyVersion = policies[kind]?.version;
@@ -135,13 +139,14 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 		}
 	}
 
-	/** Reads the access of the types again when it is older than the policy. Returns the read error, or `null`. */
+	/**
+	 * Reads the access of the types again when it is older than the policy, because the server
+	 * evaluates the rules. Returns the read error, or `null`.
+	 */
 	async function syncTypeAccess(kind: RestrictedTypeKind): Promise<unknown> {
 		const current = policies[kind];
 		if (!current || typeAccess[kind]?.version === current.version) return null;
-		const error = await loadTypeAccess(kind);
-		// A later read, for example the read after a later save, can store the current access first.
-		return typeAccess[kind]?.version === policies[kind]?.version ? null : error;
+		return await loadTypeAccess(kind);
 	}
 
 	async function loadKind<K extends RestrictedTypeKind>(kind: K): Promise<LoadKindResult> {
