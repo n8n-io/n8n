@@ -88,6 +88,25 @@ if (FANOUT) {
 	});
 }
 
+// As n8n: tell wfrt which durable events were handled, so it deletes them. Without an ack the outbox of a shard
+// fills, and wfrt refuses new work ("the event outbox is full"). One ack for each shard every 250 ms, for the last
+// event that was read.
+const last = [];
+const acked = [];
+async function ack(admin, k) {
+	const line = last[k];
+	if (!line) return;
+	const seq = /"seq":(\d+)/.exec(line);
+	const shard = /"shard":(\d+)/.exec(line);
+	if (!seq || acked[k] === seq[1]) return;
+	acked[k] = seq[1];
+	await fetch(`${admin}/_admin/events/ack`, {
+		method: 'POST',
+		headers: { ...auth, 'content-type': 'application/json' },
+		body: JSON.stringify({ acks: [{ shard: shard ? Number(shard[1]) : k, seq: Number(seq[1]) }] }),
+	}).catch(() => {});
+}
+
 /** Follows the event stream of one shard, answers its service calls, and passes every line to the local readers. It reconnects when the stream ends. */
 async function follow(admin, k) {
 	for (;;) {
@@ -100,6 +119,7 @@ async function follow(admin, k) {
 					const line = buf.slice(0, nl);
 					buf = buf.slice(nl + 1);
 					for (const r of readers[k]) r.write(`${line}\n`);
+					last[k] = line;
 					// Only service and dropped events matter here: skip the parse of the others.
 					if (!line.includes('"type":"service"') && !line.includes('"type":"dropped"')) continue;
 					let e;
@@ -120,5 +140,6 @@ async function follow(admin, k) {
 }
 
 ADMINS.forEach((admin, k) => void follow(admin, k));
+ADMINS.forEach((admin, k) => setInterval(() => void ack(admin, k), 250));
 setInterval(() => console.log(`services: ${JSON.stringify(counts)}`), 60_000);
 console.log(`services: following ${ADMINS.length} shard(s)`);
