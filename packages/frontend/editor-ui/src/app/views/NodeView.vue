@@ -14,6 +14,7 @@ import {
 import { useEditorContext } from '@/app/composables/useEditorContext';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanvas.vue';
+import WorkflowPrintStudio from '@/app/components/print-studio/WorkflowPrintStudio.vue';
 import FocusSidebar from '@/app/components/FocusSidebar.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -2195,6 +2196,12 @@ onBeforeUnmount(() => {
 		>
 			<div :class="$style.canvasTopLeftContainer">
 				<div :class="$style.canvasTopLeft">
+					<WorkflowPrintStudio
+						:workflow="{
+							nodes: workflowDocumentStore?.allNodes ?? [],
+							connections: workflowDocumentStore?.connectionsBySourceNode ?? {},
+						}"
+					/>
 					<N8nLogo
 						v-if="isCanvasOnlyLogoVisible"
 						size="small"

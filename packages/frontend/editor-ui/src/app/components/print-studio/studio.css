@@ -1,0 +1,293 @@
+/* Paper colors and editorial dimensions are specific to the print preview.
+ * Control spacing and colors use design tokens. Fallbacks support the standalone demo. */
+.print-studio {
+	color: var(--text-color, #252623);
+	background: var(--background--surface, #faf9f5);
+	font-family:
+		Inter,
+		-apple-system,
+		BlinkMacSystemFont,
+		'Segoe UI',
+		sans-serif;
+	padding: var(--spacing--2xl, 3rem);
+	box-sizing: border-box;
+}
+.print-studio * {
+	box-sizing: border-box;
+}
+.print-studio button {
+	font: inherit;
+	color: inherit;
+	cursor: pointer;
+	border: 1px solid var(--border-color, #dcded6);
+	background: transparent;
+	border-radius: var(--radius--xs, 0.5rem);
+	padding: var(--spacing--xs, 0.75rem) var(--spacing--sm, 1rem);
+}
+.print-studio button:focus-visible {
+	outline: 3px solid var(--background--brand, #ea5a4a);
+	outline-offset: 3px;
+}
+.print-studio button:disabled {
+	opacity: 0.45;
+	cursor: wait;
+}
+.ps-heading {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding-bottom: var(--spacing--xl, 2rem);
+	border-bottom: 1px solid var(--border-color, #dcded6);
+}
+.ps-eyebrow,
+.ps-preview-meta,
+.ps-dimensions,
+.ps-footer,
+.ps-index span {
+	font-family: monospace;
+	font-size: var(--font-size--2xs, 0.75rem);
+	letter-spacing: 0.06em;
+}
+.ps-eyebrow {
+	text-transform: uppercase;
+	color: var(--text-color--subtle, #6e7269);
+	margin: 0 0 var(--spacing--sm, 1rem);
+}
+.ps-heading h1 {
+	font-size: clamp(2rem, 4vw, 3.5rem);
+	letter-spacing: -0.06em;
+	line-height: 1.1;
+	font-weight: 550;
+	margin: 0;
+}
+.ps-heading h1 span {
+	color: var(--background--brand, #ea5a4a);
+	margin-left: var(--spacing--md, 1.25rem);
+	font-weight: 400;
+}
+.ps-heading p:last-child {
+	margin: var(--spacing--sm, 1rem) 0 0;
+	color: var(--text-color--subtle, #6e7269);
+}
+.ps-index {
+	font-weight: 750;
+	font-size: var(--font-size--2xl, 1.75rem);
+	text-align: right;
+}
+.ps-index span {
+	font-weight: 400;
+}
+.ps-layout {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(19rem, 23rem);
+	gap: var(--spacing--2xl, 3rem);
+	padding-top: var(--spacing--xl, 2rem);
+}
+.ps-preview-meta {
+	display: flex;
+	justify-content: space-between;
+	gap: var(--spacing--sm, 1rem);
+	color: var(--text-color--subtle, #6e7269);
+}
+.ps-paper-stage {
+	background: var(--background--subtle, #eeeee8);
+	border-radius: var(--radius--xs, 0.5rem);
+	margin-top: var(--spacing--sm, 1rem);
+	min-height: 28rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--xl, 2rem);
+	background-image: radial-gradient(#b9bcb333 1px, transparent 1px);
+	background-size: 12px 12px;
+}
+.ps-paper {
+	display: block;
+	width: min(100%, 29rem);
+	height: auto;
+	box-shadow:
+		0 12px 32px #151f2330,
+		0 2px 4px #151f231c;
+}
+.ps-dimensions {
+	color: var(--text-color--subtle, #6e7269);
+	text-align: center;
+	margin: var(--spacing--md, 1.25rem) 0;
+}
+.ps-controls {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--lg, 1.5rem);
+}
+.ps-controls h2 {
+	font-size: var(--font-size--sm, 0.875rem);
+	font-weight: 600;
+	margin: 0 0 var(--spacing--sm, 1rem);
+	display: flex;
+	gap: var(--spacing--xs, 0.75rem);
+	align-items: center;
+}
+.ps-controls h2 > span {
+	color: var(--text-color--subtle, #6e7269);
+	font: var(--font-size--2xs, 0.75rem) monospace;
+}
+.ps-style-list {
+	display: grid;
+	gap: var(--spacing--2xs, 0.5rem);
+}
+.print-studio .ps-style {
+	display: flex;
+	align-items: center;
+	text-align: left;
+	padding: var(--spacing--xs, 0.75rem);
+	gap: var(--spacing--xs, 0.75rem);
+	width: 100%;
+}
+.print-studio .ps-style.selected {
+	border-color: var(--background--brand, #ea5a4a);
+	box-shadow: inset 0 0 0 1px var(--background--brand, #ea5a4a);
+	background: color-mix(in srgb, var(--background--brand, #ea5a4a) 4%, transparent);
+}
+.ps-style strong {
+	font-size: var(--font-size--sm, 0.875rem);
+	font-weight: 600;
+	display: block;
+}
+.ps-style small {
+	display: block;
+	font-size: var(--font-size--2xs, 0.75rem);
+	margin-top: var(--spacing--4xs, 0.25rem);
+	color: var(--text-color--subtle, #6e7269);
+}
+.ps-swatch {
+	display: grid;
+	place-items: center;
+	width: var(--spacing--2xl, 3rem);
+	height: var(--spacing--2xl, 3rem);
+	border-radius: var(--radius--3xs, 0.25rem);
+	flex-shrink: 0;
+	font-size: var(--font-size--2xl, 1.75rem);
+}
+.ps-swatch.blueprint {
+	color: #e5eeff;
+	background: #113d90;
+}
+.ps-swatch.minimal {
+	color: #ee543a;
+	background: #f5edda;
+}
+.ps-swatch.circuit {
+	color: #d5bd7d;
+	background: #102e2c;
+}
+.ps-selection {
+	margin-left: auto;
+	color: var(--background--brand, #ea5a4a);
+}
+.ps-palettes {
+	display: flex;
+	gap: var(--spacing--2xs, 0.5rem);
+}
+.print-studio .ps-palettes button {
+	flex: 1;
+	padding: var(--spacing--2xs, 0.5rem);
+	font-size: var(--font-size--2xs, 0.75rem);
+}
+.print-studio .ps-palettes .selected {
+	color: var(--background--surface, #faf9f5);
+	background: var(--text-color, #252623);
+	border-color: var(--text-color, #252623);
+}
+.ps-downloads {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var(--spacing--2xs, 0.5rem);
+}
+.ps-downloads button {
+	font-size: var(--font-size--xs, 0.8125rem);
+	display: flex;
+	justify-content: space-between;
+	gap: var(--spacing--2xs, 0.5rem);
+}
+.print-studio .ps-primary {
+	background: var(--background--brand, #ea5a4a);
+	color: white;
+	border-color: var(--background--brand, #ea5a4a);
+}
+.ps-note,
+.ps-relief p {
+	font-size: var(--font-size--2xs, 0.75rem);
+	line-height: 1.65;
+	color: var(--text-color--subtle, #6e7269);
+	margin-bottom: 0;
+}
+.ps-relief {
+	padding: var(--spacing--md, 1.25rem);
+	border: 1px solid var(--border-color, #dcded6);
+	border-radius: var(--radius--xs, 0.5rem);
+}
+.ps-relief-heading {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+.ps-relief h3 {
+	font-size: var(--font-size--sm, 0.875rem);
+	margin: 0;
+	font-weight: 600;
+}
+.ps-relief-heading > span {
+	font-size: var(--font-size--2xl, 1.75rem);
+}
+.print-studio .ps-relief button {
+	margin-top: var(--spacing--sm, 1rem);
+	width: 100%;
+	text-align: left;
+	font-size: var(--font-size--xs, 0.8125rem);
+}
+.ps-relief button span {
+	float: right;
+}
+.ps-import {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs, 0.5rem);
+}
+.print-studio .ps-import button {
+	border: 0;
+	padding: 0;
+	font-size: var(--font-size--2xs, 0.75rem);
+	text-decoration: underline;
+	text-underline-offset: 0.2em;
+}
+.ps-status {
+	margin: 0;
+	font-size: var(--font-size--2xs, 0.75rem);
+	min-height: var(--spacing--sm, 1rem);
+}
+.ps-footer {
+	display: flex;
+	justify-content: space-between;
+	gap: var(--spacing--sm, 1rem);
+	border-top: 1px solid var(--border-color, #dcded6);
+	padding-top: var(--spacing--lg, 1.5rem);
+	margin-top: var(--spacing--xl, 2rem);
+	color: var(--text-color--subtle, #6e7269);
+}
+@media (max-width: 850px) {
+	.print-studio {
+		padding: var(--spacing--lg, 1.5rem);
+	}
+	.ps-layout {
+		grid-template-columns: 1fr;
+	}
+	.ps-paper {
+		width: min(100%, 23rem);
+	}
+	.ps-footer {
+		flex-direction: column;
+	}
+	.ps-index {
+		display: none;
+	}
+}
