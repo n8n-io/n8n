@@ -104,6 +104,24 @@ export function isSettledStatus(status: StepStatus): status is SettledStepStatus
 export type StepSlots = JsonValue[];
 
 /**
+ * Where `itemCount` items of a step's output slot came from: another step's
+ * output slot, read from `offset`. A loop node emits items it did not make, so
+ * it states their origin in engine terms. The v1 shim translates this into
+ * paired items. Every other step type emits what its node made, so it states
+ * nothing.
+ */
+export interface StepOutputSource {
+	nodeId: string;
+	outputIndex: number;
+	iteration: number;
+	offset: number;
+	itemCount: number;
+}
+
+/** Per output slot, in item order, the sources that fill it; `null` for a slot the step did not fill. */
+export type StepOutputSources = Array<StepOutputSource[] | null>;
+
+/**
  * The trigger step's outputs, supplied by whoever starts the execution: one
  * entry per output slot, `null` for a slot the trigger didn't fire. Same shape
  * and same opacity as any other step's `StepSlots` — a v1 host puts JSON-shaped
