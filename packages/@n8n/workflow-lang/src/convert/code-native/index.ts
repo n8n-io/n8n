@@ -18,7 +18,7 @@ import { emitWithHostForm } from '../steps.ts';
 import type { HostForm } from '../steps.ts';
 import { checkTranslation } from './check.ts';
 import type { AsyncForm } from './emit.ts';
-import { emitAsync, emitExpression, emitHelpers } from './emit.ts';
+import { emitAsync, emitExpression, emitHelpers, WAIT_STEP } from './emit.ts';
 import type { Blocker, CodeKind, CodeMode, TranslateResult } from './translate.ts';
 import { HOST_GLOBALS, translateCode } from './translate.ts';
 import { RUNS_IN_HOST } from '../helpers.ts';
@@ -96,6 +96,8 @@ export type NativeAttempt =
 			binaryNames?: string[] | 'all';
 			/** `Translation.handsOver`: the code can end with the mark of `RUNS_IN_HOST`. */
 			handsOver?: boolean;
+			/** `Translation.usesWait`: the code has a pause, a `wait` step with a name of its own. */
+			waits?: boolean;
 			/**
 			 * For code that makes requests: the declaration of its async function and the
 			 * expression of the result list. Undefined for other code.
@@ -219,7 +221,8 @@ export function attemptNative(
 		...(t.binaryNames !== undefined ? { binaryNames: t.binaryNames } : {}),
 		...(t.handsOver ? { handsOver: true } : {}),
 		helpers: (plainInput = false) => emitHelpers(t, src.mode, plainInput, traced),
-		...(t.usesHttp
+		...(t.usesWait ? { waits: true } : {}),
+		...(t.usesAsync
 			? {
 					async: (form, input, lists, allLists = [], plainInput = false) =>
 						emitAsync(t, src.mode, form, input, lists, allLists, plainInput, traced),
@@ -479,6 +482,15 @@ export function lowerCodeNative(c: NodeContext, hostForm?: () => HostForm | null
 		c.info(
 			'code-host',
 			'The code runs in the fallback host: "each item" mode with an error setting that continues.',
+			field,
+		);
+		return false;
+	}
+	// A step name is unique: no node of the workflow can have the name of the \`wait\` step.
+	if (attempt.waits === true && c.workflow.nodes.some((n) => n.name === `${c.node.name}${WAIT_STEP}`)) {
+		c.info(
+			'code-host',
+			'The code runs in the fallback host: a node of the workflow has the name of the wait step of its pause.',
 			field,
 		);
 		return false;

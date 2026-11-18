@@ -146,6 +146,16 @@ export interface Translation {
 	 * `emit` gives the code the function `__wf_http`, which runs the `http` effect.
 	 */
 	usesHttp: boolean;
+	/**
+	 * The code has a pause (`await new Promise((resolve) => setTimeout(resolve, ms))`): `emit`
+	 * gives the code the function `__wf_wait`, which runs the `wait` effect.
+	 */
+	usesWait: boolean;
+	/**
+	 * The code has the async form: `async` and `await` stay, and the node awaits a function
+	 * with a name. Only code with a request or a pause has it. Other code has no promise.
+	 */
+	usesAsync: boolean;
 	/** The code reads the clock or the random generator. */
 	nondeterministic: boolean;
 	/**
@@ -219,6 +229,7 @@ export const nodeVar = (k: number) => `${P}n${k}`;
 export const ALL_NODES = `${P}nodes`;
 export const MATCHES = `${P}matches`;
 export const HTTP = `${P}http`;
+export const WAIT = `${P}wait`;
 /** The line of the current place in a function with a name, in the traced form. */
 export const LINE = `${P}l`;
 const MARK = `${P}m`;
@@ -2107,8 +2118,143 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		!/multipart\/form-data/i.test(input.code) &&
 		// In strict mode, \`this\` of a called function is undefined.
 		!/use strict/.test(input.code);
-	/** `async` and `await` stay as they are: the code makes requests. */
-	const keepsAsync = input.nodeCode !== undefined || usesHttp;
+
+	// ---- pauses ----------------------------------------------------------------
+
+	/**
+	 * A pause: `new Promise((resolve) => setTimeout(resolve, ms))`, also with a timer callback
+	 * that only calls `resolve()`. The promise gets no value and the code has no other use
+	 * for the timer, so the pause is one `wait` effect of `ms` (`__wf_wait`). The code waits
+	 * for the promise at once (`await new Promise(…)`), or the promise is the whole result of
+	 * a function of the code with a name (`const sleep = (ms) => new Promise(…)`), which
+	 * becomes an async function. The compiler then refuses each call of it that the code does
+	 * not wait for.
+	 *
+	 * Code that also runs promises at the same time (`Promise.all`, `race`) has no such
+	 * form: the order of what follows the pauses would depend on their times.
+	 */
+	const sleeps = new Map<ts.Node, ts.Expression>();
+	/** Functions whose result is a pause: they become async functions. */
+	const sleepFunctions = new Set<ts.Node>();
+	if (
+		input.kind === 'code' &&
+		!input.nodeCode &&
+		!input.expression &&
+		/\bsetTimeout\b/.test(input.code) &&
+		!/\bPromise\s*\.\s*(?:all|allSettled|race|any)\b/.test(input.code)
+	) {
+		const plain = (f: ts.Node): f is ts.ArrowFunction | ts.FunctionExpression =>
+			(ts.isArrowFunction(f) || ts.isFunctionExpression(f)) &&
+			(f.modifiers ?? []).length === 0 &&
+			f.asteriskToken === undefined;
+		/** The one expression that a function body is, or null. */
+		const only = (body: ts.ConciseBody): ts.Expression | null => {
+			if (!ts.isBlock(body)) return stripParens(body);
+			if (body.statements.length !== 1) return null;
+			const st = body.statements[0];
+			if (ts.isExpressionStatement(st)) return stripParens(st.expression);
+			return ts.isReturnStatement(st) && st.expression ? stripParens(st.expression) : null;
+		};
+		const timeOf = (n: ts.NewExpression): ts.Expression | null => {
+			const args = n.arguments ?? [];
+			if (!ts.isIdentifier(n.expression) || n.expression.text !== 'Promise') return null;
+			if (!isFree(n.expression) || args.length !== 1) return null;
+			const executor = stripParens(args[0]);
+			if (!plain(executor) || executor.parameters.length !== 1) return null;
+			const parameter = executor.parameters[0];
+			if (!ts.isIdentifier(parameter.name) || parameter.initializer || parameter.dotDotDotToken) {
+				return null;
+			}
+			const resolve = checker.getSymbolAtLocation(parameter.name);
+			const isResolve = (e: ts.Expression): boolean => {
+				const x = stripParens(e);
+				return ts.isIdentifier(x) && checker.getSymbolAtLocation(x) === resolve;
+			};
+			const timer = only(executor.body);
+			if (
+				timer === null ||
+				!ts.isCallExpression(timer) ||
+				timer.questionDotToken !== undefined ||
+				!ts.isIdentifier(timer.expression) ||
+				timer.expression.text !== 'setTimeout' ||
+				!isFree(timer.expression) ||
+				timer.arguments.length !== 2 ||
+				timer.arguments.some((a) => ts.isSpreadElement(a))
+			) {
+				return null;
+			}
+			const [callback, time] = timer.arguments;
+			const c = stripParens(callback);
+			let resolves = isResolve(c);
+			if (!resolves && plain(c) && c.parameters.length === 0) {
+				const call = only(c.body);
+				resolves =
+					call !== null &&
+					ts.isCallExpression(call) &&
+					call.questionDotToken === undefined &&
+					call.arguments.length === 0 &&
+					isResolve(call.expression);
+			}
+			if (!resolves) return null;
+			// The time is a value of the code around the promise.
+			let free = true;
+			const reads = (x: ts.Node): void => {
+				if (ts.isIdentifier(x) && checker.getSymbolAtLocation(x) === resolve) free = false;
+				if (isFunctionNode(x) || ts.isAwaitExpression(x)) free = false;
+				ts.forEachChild(x, reads);
+			};
+			reads(time);
+			return free ? time : null;
+		};
+		const scan = (x: ts.Node): void => {
+			if (ts.isNewExpression(x)) {
+				const time = timeOf(x);
+				if (time !== null) {
+					let inner: ts.Node = x;
+					let p = x.parent;
+					while (ts.isParenthesizedExpression(p)) {
+						inner = p;
+						p = p.parent;
+					}
+					if (ts.isAwaitExpression(p)) sleeps.set(x, time);
+					else {
+						// The whole result of a function with a name.
+						const fn =
+							ts.isArrowFunction(p) && p.body === inner
+								? p
+								: ts.isReturnStatement(p) &&
+										ts.isBlock(p.parent) &&
+										p.parent.statements.length === 1 &&
+										isFunctionNode(p.parent.parent)
+									? p.parent.parent
+									: undefined;
+						const holder = fn?.parent;
+						const named =
+							fn !== undefined &&
+							fn.asteriskToken === undefined &&
+							((ts.isFunctionDeclaration(fn) && fn.name !== undefined) ||
+								((ts.isArrowFunction(fn) || ts.isFunctionExpression(fn)) &&
+									holder !== undefined &&
+									ts.isVariableDeclaration(holder) &&
+									holder.initializer === fn &&
+									ts.isIdentifier(holder.name)));
+						if (fn !== undefined && named) {
+							sleeps.set(x, time);
+							sleepFunctions.add(fn);
+						}
+					}
+					return;
+				}
+			}
+			ts.forEachChild(x, scan);
+		};
+		scan(root);
+	}
+	/** The code has a pause: it has the async form, as code that makes requests. */
+	const usesWait = sleeps.size > 0;
+	const usesAsync = usesHttp || usesWait;
+	/** `async` and `await` stay as they are: the code makes requests or has a pause. */
+	const keepsAsync = input.nodeCode !== undefined || usesAsync;
 	/**
 	 * The fallback host can run the node again from its start: the code has no effect that a
 	 * second run would repeat (no request, no static data). Then a form can be exact only for
@@ -2280,7 +2426,8 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				const fn = ts.isVariableDeclaration(d) && d.initializer ? stripParens(d.initializer) : d;
 				return (
 					(ts.isFunctionDeclaration(fn) || ts.isArrowFunction(fn) || ts.isFunctionExpression(fn)) &&
-					(fn.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.AsyncKeyword)
+					((fn.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.AsyncKeyword) ||
+						sleepFunctions.has(fn))
 				);
 			})
 		);
@@ -2368,12 +2515,14 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	}
 
 	/**
-	 * What an `await` waits for in code that makes requests: a request (`http`), a call of a
-	 * local async function or `Promise.all` (`call`), or a value that is not a promise (null).
+	 * What an `await` waits for in code with the async form: a request (`http`), a pause
+	 * (`wait`), a call of a local async function or `Promise.all` (`call`), or a value that is
+	 * not a promise (null).
 	 */
-	const awaited = (n: ts.AwaitExpression): 'http' | 'call' | null => {
-		if (!usesHttp) return null;
-		if (httpRequestOptions(n, isRequest, optionsConstant) !== null) return 'http';
+	const awaited = (n: ts.AwaitExpression): 'http' | 'call' | 'wait' | null => {
+		if (!usesAsync) return null;
+		if (sleeps.has(stripParens(n.expression))) return 'wait';
+		if (usesHttp && httpRequestOptions(n, isRequest, optionsConstant) !== null) return 'http';
 		const call = stripParens(n.expression);
 		if (!ts.isCallExpression(call)) return null;
 		const callee = stripParens(call.expression);
@@ -4175,7 +4324,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			while (ts.isParenthesizedExpression(call.parent)) call = call.parent;
 			if (
 				input.kind !== 'code' ||
-				usesHttp ||
+				usesAsync ||
 				args.length < 1 ||
 				args.length > 3 ||
 				args.some((a) => ts.isSpreadElement(a)) ||
@@ -4225,7 +4374,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		}
 		usesBuffers = true;
 		if (
-			usesHttp ||
+			usesAsync ||
 			n.questionDotToken ||
 			callee.questionDotToken ||
 			n.expression !== callee ||
@@ -4366,7 +4515,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		if (kind === null) return false;
 		if (kind === 'timingSafeEqual') {
 			const [a, b] = n.arguments;
-			if (cryptoMisuse || usesHttp || n.arguments.length !== 2 || !isBuf(a) || !isBuf(b)) {
+			if (cryptoMisuse || usesAsync || n.arguments.length !== 2 || !isBuf(a) || !isBuf(b)) {
 				block('require', '`timingSafeEqual` has a native form only for two Buffers.');
 				return true;
 			}
@@ -4392,7 +4541,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			replaceNode(n, `hashNew(${JSON.stringify(alg)})`);
 			return true;
 		}
-		if (isBuf(n.arguments[1]) && !usesHttp) {
+		if (isBuf(n.arguments[1]) && !usesAsync) {
 			usesBuffers = true;
 			helpers.add('hmacNewBytes');
 			replace(n.getStart(sf), n.arguments[1].getStart(sf), `hmacNewBytes(${JSON.stringify(alg)}, `);
@@ -4451,7 +4600,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	 */
 	const ownErrors = ((): boolean => {
 		if (
-			usesHttp ||
+			usesAsync ||
 			input.nodeCode ||
 			/itemMatching|pairedItem|\$fromAI|\$evaluateExpression/.test(input.code) ||
 			// The error of a read of a node that has not run is no Error of the code's realm.
@@ -4493,7 +4642,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	 * \`await\` (v1 runs such callbacks in turns). True when it wrote the call.
 	 */
 	const promiseCall = (n: ts.CallExpression): boolean => {
-		if (usesHttp || input.nodeCode || n.arguments.length !== 1) return false;
+		if (usesAsync || input.nodeCode || n.arguments.length !== 1) return false;
 		const callee = stripParens(n.expression);
 		if (
 			!ts.isPropertyAccessExpression(callee) ||
@@ -4573,6 +4722,17 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	};
 
 	const visit = (n: ts.Node): void => {
+		const pause = sleeps.get(n);
+		if (pause !== undefined) {
+			// \`new Promise((resolve) => setTimeout(resolve, ms))\` becomes \`__wf_wait(ms)\`.
+			const p = n.parent;
+			const awaitedHere = ts.isAwaitExpression(ts.isParenthesizedExpression(p) ? p.parent : p);
+			const o = seq;
+			replace(n.getStart(sf), pause.getStart(sf), `${awaitedHere ? '' : 'await '}${WAIT}(`);
+			closing(pause.getEnd(), n.getEnd(), ')', o);
+			visit(pause);
+			return;
+		}
 		const missing = missingRoots.get(n);
 		if (missing !== undefined) {
 			// The read of a name that the sandbox of v1 does not have: the rest does not run.
@@ -4604,7 +4764,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			const declares = ts.isVariableDeclaration(n.parent) && n.parent.name === n;
 			if (sym !== undefined && bufVars.has(sym) && !declares) {
 				usesBuffers = true;
-				if (usesHttp || !bufPlace(n)) blockBuffer();
+				if (usesAsync || !bufPlace(n)) blockBuffer();
 			}
 		}
 		const errName = errTextNodes.get(n);
@@ -4641,6 +4801,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				requests: usesHttp,
 				ownErrors,
 				notDefined: (x) => missingRoots.has(x),
+				pause: (x) => sleeps.get(x),
 			});
 			if (typeof plan === 'string') {
 				// Node code: the node compiler checks the error text against v1 (the verified list).
@@ -4734,8 +4895,11 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			}
 			annotateParameters(n);
 			const asyncMod = n.modifiers?.find((m) => m.kind === ts.SyntaxKind.AsyncKeyword);
+			// A function whose result is a pause becomes an async function that waits for it.
+			const pauses = sleepFunctions.has(n);
+			if (pauses && !asyncMod) open(n.getStart(sf), 'async ');
 			// An async function of code that makes requests keeps `async`: its result type is a promise.
-			if (!(asyncMod && keepsAsync)) annotateReturn(n);
+			if (!((asyncMod || pauses) && keepsAsync)) annotateReturn(n);
 			// No value in other native code is a promise, so an async function runs to its end at once.
 			if (asyncMod && !keepsAsync) replace(asyncMod.getStart(sf), asyncMod.getEnd() + 1, '');
 		}
@@ -6101,6 +6265,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			awaited,
 			requests: usesHttp,
 			notDefined: (x) => missingRoots.has(x),
+			pause: (x) => sleeps.get(x),
 		});
 		errorTextGap = reason;
 		if (input.traced) {
@@ -6266,7 +6431,9 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		preparesBinary,
 		handsOver: handsOver !== null,
 		usesHttp,
-		repeatable: !usesHttp && !nondeterministicRandom && !/getWorkflowStaticData/.test(input.code),
+		usesWait,
+		usesAsync,
+		repeatable: !usesAsync && !nondeterministicRandom && !/getWorkflowStaticData/.test(input.code),
 		errorTextGap,
 		readOnly,
 		usesFirstJson,

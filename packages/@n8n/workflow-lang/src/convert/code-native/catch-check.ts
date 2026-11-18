@@ -308,8 +308,10 @@ export function planBody(
 
 interface PlanKnown {
 	dateVars: Set<ts.Symbol>;
-	/** What an `await` waits for: a request, a call of a local async function, or a value. */
-	awaited?: (n: ts.AwaitExpression) => 'http' | 'call' | null;
+	/** What an `await` waits for: a request, a pause, a call of a local async function, or a value. */
+	awaited?: (n: ts.AwaitExpression) => 'http' | 'call' | 'wait' | null;
+	/** The time of a pause (\`new Promise((resolve) => setTimeout(resolve, ms))\`), or undefined. */
+	pause?: (x: ts.Node) => ts.Expression | undefined;
 	/** The code makes requests, so a caught error can be the error of a failed request. */
 	requests?: boolean;
 	/** Each error that the code can catch is an Error of the code itself (\`ownErrors\` in \`translate.ts\`). */
@@ -410,6 +412,12 @@ function planOperations(
 		// The traced form of the code wants every method check, also after a reason against.
 		if (reason !== null && !known.all) return;
 		if (known.notDefined?.(x)) return;
+		// A pause does not fail: only the expression of its time runs code.
+		const time = known.pause?.(x);
+		if (time !== undefined) {
+			check(time);
+			return;
+		}
 		if (ts.isCallExpression(x)) {
 			const c = strip(x.expression);
 			if (ts.isIdentifier(c)) {
@@ -522,6 +530,10 @@ function planOperations(
 			// The value throws before the code waits for it.
 			if (known.notDefined?.(strip(x.expression))) return;
 			const kind = known.awaited?.(x) ?? null;
+			if (kind === 'wait') {
+				check(x.expression);
+				return;
+			}
 			if (kind === 'http') {
 				// A failed request throws v1's error (`codeHttpResult`). The options are checked.
 				const call = strip(x.expression);
