@@ -33,6 +33,8 @@ Each idea has its own worktree. You can also stop one instance before starting a
 
 Open the browser DevTools console and reload the full app. A text rendering of the official n8n symbol and wordmark appears in Accent Pink (`#FF91AC`). Enable Info-level messages if the console is filtered. The greeting prints once per page load. It uses the same local `VUE_APP_CANVAS_DELIGHT=true` setting as the canvas effects.
 
+The local demo also sets `VUE_APP_CANVAS_DELIGHT_QUIET_CONSOLE=true`. This hides application console messages and clears startup noise before the logo prints. Set it to `false` in `packages/frontend/editor-ui/.env.local` to restore normal console output. Browser-generated network and security messages are outside this filter.
+
 Brand references: [Logo](https://guidelines.n8n.design/logo) and [Colors](https://guidelines.n8n.design/colors).
 
 ## Standalone animation harness
