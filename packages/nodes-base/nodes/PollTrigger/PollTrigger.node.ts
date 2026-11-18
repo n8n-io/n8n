@@ -1,5 +1,6 @@
 import {
 	attachToolExpressionVariables,
+	getCredentialAllowedDomains,
 	jsonParse,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -316,10 +317,24 @@ function createFetchPage(
 		return url;
 	};
 
+	let allowedDomains: Promise<string | undefined> | undefined;
+	const readAllowedDomains = async (type: string) =>
+		getCredentialAllowedDomains({
+			node: this.getNode(),
+			credentialData: await this.getCredentials(type),
+		});
+
 	const send = async (options: IHttpRequestOptions): Promise<FullResponse> => {
-		const response: unknown = credentialType
-			? await this.helpers.httpRequestWithAuthentication.call(this, credentialType, options)
-			: await this.helpers.httpRequest(options);
+		let response: unknown;
+		if (credentialType) {
+			allowedDomains ??= readAllowedDomains(credentialType);
+			response = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+				...options,
+				allowedDomains: await allowedDomains,
+			});
+		} else {
+			response = await this.helpers.httpRequest(options);
+		}
 		if (!isDataObject(response)) {
 			throw new NodeOperationError(this.getNode(), 'The request returned no response');
 		}
