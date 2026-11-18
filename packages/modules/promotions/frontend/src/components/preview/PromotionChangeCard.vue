@@ -400,12 +400,12 @@ const tagNote = computed(() => {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
+
 .id {
 	font-family: var(--font-family--monospace);
 	white-space: nowrap;
 }
-
-@use '@n8n/design-system/css/mixins/motion';
 
 .card {
 	display: flex;

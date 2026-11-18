@@ -70,6 +70,7 @@ import {
 import {
 	indexBlockers,
 	isBlocking,
+	isHiddenProjectId,
 	withCredentialHomes,
 	listBlockers,
 	toOperationRequest,
@@ -389,27 +390,6 @@ const details = usePromotionResourceDetails(
  * with the rights of the user.
  */
 const callerProjectNames = ref(new Map<string, string>());
-const askedCallerProjects = new Set<string>();
-watch(
-	() => (props.direction === 'promote' ? dependencies.report.value?.deletionCallers : undefined),
-	async (rows) => {
-		if (fixture.value) return;
-		const ids = new Set(
-			(rows ?? []).flatMap(({ callers }) => callers.map(({ projectId }) => projectId)),
-		);
-		for (const id of ids) {
-			if (projectNames.value.has(id) || askedCallerProjects.has(id)) continue;
-			askedCallerProjects.add(id);
-			try {
-				const { name } = await getProject(rootStore.restApiContext, id);
-				if (name) callerProjectNames.value = new Map(callerProjectNames.value).set(id, name);
-			} catch {
-				// The sentence then names no project.
-			}
-		}
-	},
-);
-
 /** The names of the projects that the page may show, by id. The report never adds one. */
 const projectNames = computed(() => {
 	const names = new Map<string, string>();
@@ -971,6 +951,31 @@ const treeResizer = useResizablePanel({
 		snap: true,
 	},
 });
+
+// Registered last: the getter reads the report at once, and the report reads the whole page state.
+const askedCallerProjects = new Set<string>();
+watch(
+	() => (props.direction === 'promote' ? dependencies.report.value?.deletionCallers : undefined),
+	async (rows) => {
+		if (fixture.value) return;
+		const ids = new Set(
+			(rows ?? []).flatMap(({ callers }) => callers.map(({ projectId }) => projectId)),
+		);
+		for (const id of ids) {
+			// A made-up id of a project that the user cannot read names nothing to ask for.
+			if (isHiddenProjectId(id) || projectNames.value.has(id) || askedCallerProjects.has(id)) {
+				continue;
+			}
+			askedCallerProjects.add(id);
+			try {
+				const { name } = await getProject(rootStore.restApiContext, id);
+				if (name) callerProjectNames.value = new Map(callerProjectNames.value).set(id, name);
+			} catch {
+				// The sentence then names no project.
+			}
+		}
+	},
+);
 </script>
 
 <template>
