@@ -44,8 +44,6 @@ export const PROP_LAYOUT = {
 	max: 5,
 	/** Pixels that the sand under a prop sinks into the floor. */
 	sink: 3,
-	/** Runs that a tank needs before a prop can look dead. */
-	minRuns: 10,
 } as const;
 
 /** Resting speed, from the execution count of the period. Live activity adds `LIVE_SPEED`. */
@@ -82,6 +80,17 @@ export const BUBBLES_MIN_EXECUTIONS = 10;
 
 /** Failure rate above which a creature looks sick. */
 export const SICK_FAILURE_RATE = 0.2;
+
+/**
+ * Health of a whole tank, from the failure share of all its workflows. The thresholds match fish
+ * health: 0% is Positive, from `negative` is Negative, and above `critical` is Critical.
+ */
+export const TANK_HEALTH = {
+	/** Runs that a tank needs before it is not Neutral. */
+	minRuns: 10,
+	negative: SICK_FAILURE_RATE,
+	critical: 0.5,
+} as const;
 
 /** One fixed colour, so the renderer caches one tinted sprite for each species. */
 export const SICK_TINT = '#7fbf3f';

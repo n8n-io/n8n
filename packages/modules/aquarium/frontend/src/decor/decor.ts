@@ -1,4 +1,4 @@
-import { PROP_LAYOUT } from '../aquarium.constants';
+import { PROP_LAYOUT, TANK_HEALTH } from '../aquarium.constants';
 import type { EntityMetrics } from '../aquarium.types';
 import type { TankBounds } from '../engine/simulation';
 import { hashString } from '../species/species.registry';
@@ -40,21 +40,32 @@ export function layoutProps(bounds: TankBounds, seed: string): PlacedProp[] {
 }
 
 /**
- * The share of failed runs over all creatures of a tank. 0 when the tank has too few runs.
- * It runs each frame, so it takes the creatures as they are and allocates nothing.
+ * The share of failed runs over all creatures of a tank. Undefined when the tank has too few
+ * runs to judge. It runs each frame, so it takes the creatures as they are and allocates nothing.
  */
 export function tankFailureShare(
 	creatures: ReadonlyArray<{ entity: { metrics: EntityMetrics } }>,
-): number {
+): number | undefined {
 	let runs = 0;
 	let failed = 0;
 	for (const { entity } of creatures) {
 		runs += entity.metrics.executionCount;
 		failed += entity.metrics.failedCount;
 	}
-	return runs < PROP_LAYOUT.minRuns ? 0 : Math.min(1, failed / runs);
+	return runs < TANK_HEALTH.minRuns ? undefined : Math.min(1, failed / runs);
 }
 
-export function isPropDead(placed: PlacedProp, failureShare: number): boolean {
-	return failureShare > placed.deathRank;
+/** The "Whole tank" states of the design principles in AGENTS.md. */
+export type TankHealth = 'positive' | 'neutral' | 'negative' | 'critical';
+
+export function tankHealthOf(failureShare: number | undefined): TankHealth {
+	if (failureShare === undefined) return 'neutral';
+	if (failureShare === 0) return 'positive';
+	if (failureShare > TANK_HEALTH.critical) return 'critical';
+	if (failureShare >= TANK_HEALTH.negative) return 'negative';
+	return 'neutral';
+}
+
+export function isPropDead(placed: PlacedProp, failureShare: number | undefined): boolean {
+	return (failureShare ?? 0) > placed.deathRank;
 }

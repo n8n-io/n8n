@@ -1,5 +1,12 @@
 import { PROP_LAYOUT } from '../aquarium.constants';
-import { isPropDead, layoutProps, tankFailureShare, type PlacedProp } from '../decor/decor';
+import {
+	isPropDead,
+	layoutProps,
+	tankFailureShare,
+	tankHealthOf,
+	type PlacedProp,
+	type TankHealth,
+} from '../decor/decor';
 import type { PropDefinition } from '../decor/props';
 import { hashString } from '../species/species.registry';
 import type { PixelSprite } from '../species/species.types';
@@ -9,8 +16,16 @@ import { FRAME_THICKNESS, paintFrame } from './frames';
 import type { TankRegion } from './layout';
 import { frameIndexOf, type Creature, type TankBounds } from './simulation';
 
-/** The "water shallows" palette, from the surface down. */
-const WATER = ['#0aa5bd', '#0b76bd', '#04454f'];
+/**
+ * Water from the surface down, for each tank health. Neutral is the "water shallows" palette.
+ * Positive is more saturated, Negative is murky green and Critical is dark and gloomy.
+ */
+const WATER: Record<TankHealth, readonly string[]> = {
+	positive: ['#12c3db', '#0c86db', '#055566'],
+	neutral: ['#0aa5bd', '#0b76bd', '#04454f'],
+	negative: ['#4b9a7c', '#36745f', '#1f4a3e'],
+	critical: ['#0f3b40', '#0a2629', '#011113'],
+};
 /** 4x4 ordered dither, so the water fades between palette colours and keeps crisp pixels. */
 const BAYER_4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 /** Above 1, the light water reaches deeper before it turns dark. */
@@ -25,26 +40,43 @@ const LIGHT_RAYS = {
 	],
 	/** Pixels to the right for each pixel down. */
 	slope: 0.55,
-	alpha: 0.16,
+	alpha: 0.2,
 	/** Alpha steps, so the fade is banded like the dithered water, not smooth. */
 	steps: 4,
 	pulseSeconds: 9,
 } as const;
-/** The bright, moving line at the top of the water. */
-const SURFACE = {
-	crest: 'rgba(255, 255, 255, 0.8)',
-	foam: 'rgba(186, 239, 238, 0.35)',
-	/** Pixels of foam above the crest at rest. */
-	depth: 2,
-} as const;
-/** Two slow waves of different lengths, so the crest never repeats the same shape. */
-function surfaceCrestAt(x: number, time: number): number {
-	return Math.round(
-		SURFACE.depth + Math.sin(x * 0.19 + time * 1.4) * 1.1 + Math.sin(x * 0.053 - time * 0.7) * 1.2,
-	);
+/** The sun fades as a tank fails. */
+const RAY_STRENGTH: Record<TankHealth, number> = {
+	positive: 1,
+	neutral: 0.75,
+	negative: 0.35,
+	critical: 0.08,
+};
+/** Pixels of foam above the surface crest at rest. */
+const SURFACE_DEPTH = 2;
+/** The moving line at the top of the water: lively when healthy, flat and dim when failing. */
+const SURFACE: Record<TankHealth, { crest: string; foam: string; calm: number }> = {
+	positive: { crest: 'rgba(255, 255, 255, 0.9)', foam: 'rgba(186, 239, 238, 0.4)', calm: 1 },
+	neutral: { crest: 'rgba(255, 255, 255, 0.8)', foam: 'rgba(186, 239, 238, 0.35)', calm: 1 },
+	negative: { crest: 'rgba(200, 220, 190, 0.55)', foam: 'rgba(150, 180, 150, 0.25)', calm: 0.6 },
+	critical: { crest: 'rgba(140, 160, 150, 0.35)', foam: 'rgba(90, 110, 100, 0.2)', calm: 0.3 },
+};
+/**
+ * Two slow waves of different lengths, so the crest never repeats the same shape. `calm` below
+ * 1 makes the waves lower and slower.
+ */
+function surfaceCrestAt(x: number, time: number, calm: number): number {
+	const wave =
+		Math.sin(x * 0.19 + time * 1.4 * calm) * 1.1 + Math.sin(x * 0.053 - time * 0.7 * calm) * 1.2;
+	return Math.round(SURFACE_DEPTH + wave * calm);
 }
 
-const SAND = { base: '#d9bd7f', speck: '#c2a160', light: '#ead29b' };
+const SAND: Record<TankHealth, { base: string; speck: string; light: string }> = {
+	positive: { base: '#e3c585', speck: '#c9a562', light: '#f2dca5' },
+	neutral: { base: '#d9bd7f', speck: '#c2a160', light: '#ead29b' },
+	negative: { base: '#b5a874', speck: '#978a5a', light: '#c7bb88' },
+	critical: { base: '#4f4a3d', speck: '#3c382e', light: '#615b4b' },
+};
 const SEAWEED = ['#2f8f4e', '#3fa65c', '#267a42'];
 const AMBIENT_BUBBLE = 'rgba(220, 240, 255, 0.6)';
 /** Fills the view outside the tanks: the wall between project tanks, and space around the world. */
@@ -126,7 +158,6 @@ export class AquariumRenderer {
 			const key = `${region.bounds.width}x${region.bounds.height}`;
 			sizeKeys.add(key);
 			tankIds.add(region.id);
-			if (!this.backgrounds.has(key)) this.backgrounds.set(key, this.drawBackground(region.bounds));
 			if (!this.lightRays.has(key)) this.lightRays.set(key, this.drawLightRays(region.bounds));
 			this.plantsByTank.set(region.id, this.layoutPlants(region.bounds, region.id));
 			this.propsByTank.set(region.id, layoutProps(region.bounds, region.id));
@@ -139,7 +170,8 @@ export class AquariumRenderer {
 			}
 			tankIds.add(frameKey);
 		}
-		for (const key of this.backgrounds.keys()) if (!sizeKeys.has(key)) this.backgrounds.delete(key);
+		for (const key of this.backgrounds.keys())
+			if (!sizeKeys.has(key.slice(0, key.indexOf('|')))) this.backgrounds.delete(key);
 		for (const key of this.lightRays.keys()) if (!sizeKeys.has(key)) this.lightRays.delete(key);
 		for (const id of this.plantsByTank.keys()) if (!tankIds.has(id)) this.plantsByTank.delete(id);
 		for (const id of this.propsByTank.keys()) if (!tankIds.has(id)) this.propsByTank.delete(id);
@@ -206,19 +238,18 @@ export class AquariumRenderer {
 	): void {
 		const ctx = this.ctx;
 		const sizeKey = `${region.bounds.width}x${region.bounds.height}`;
-		const background = this.backgrounds.get(sizeKey);
-		if (background) ctx.drawImage(background, 0, 0);
+		const failureShare = tankFailureShare(creatures);
+		const health = tankHealthOf(failureShare);
+
+		ctx.drawImage(this.backgroundFor(region.bounds, sizeKey, health), 0, 0);
 		const rays = this.lightRays.get(sizeKey);
 		if (rays) {
-			ctx.globalAlpha = 0.75 + 0.25 * Math.sin((time * 2 * Math.PI) / LIGHT_RAYS.pulseSeconds);
+			const pulse = 0.75 + 0.25 * Math.sin((time * 2 * Math.PI) / LIGHT_RAYS.pulseSeconds);
+			ctx.globalAlpha = pulse * RAY_STRENGTH[health];
 			ctx.drawImage(rays, 0, 0);
 			ctx.globalAlpha = 1;
 		}
-		this.drawProps(
-			region.bounds,
-			this.propsByTank.get(region.id) ?? [],
-			tankFailureShare(creatures),
-		);
+		this.drawProps(region.bounds, this.propsByTank.get(region.id) ?? [], failureShare);
 		this.drawPlants(
 			region.bounds,
 			this.plantsByTank.get(region.id) ?? [],
@@ -227,7 +258,7 @@ export class AquariumRenderer {
 			view.right + CULL_MARGIN,
 		);
 		this.drawAmbientBubbles(region.bounds, time);
-		this.drawSurface(region.bounds, time, view.left, view.right);
+		this.drawSurface(region.bounds, health, time, view.left, view.right);
 
 		for (const creature of creatures) {
 			const visible =
@@ -245,7 +276,11 @@ export class AquariumRenderer {
 	}
 
 	/** Props stand on the sand. A failing tank shows the dead look of more of them. */
-	private drawProps(bounds: TankBounds, props: PlacedProp[], failureShare: number): void {
+	private drawProps(
+		bounds: TankBounds,
+		props: PlacedProp[],
+		failureShare: number | undefined,
+	): void {
 		for (const placed of props) {
 			const image = this.propImage(placed.prop, isPropDead(placed, failureShare));
 			if (image)
@@ -355,44 +390,69 @@ export class AquariumRenderer {
 	}
 
 	/** A moving crest with a little foam above it. Drawn only for the visible columns. */
-	private drawSurface(bounds: TankBounds, time: number, fromX: number, toX: number): void {
+	private drawSurface(
+		bounds: TankBounds,
+		health: TankHealth,
+		time: number,
+		fromX: number,
+		toX: number,
+	): void {
 		const ctx = this.ctx;
+		const { crest, foam, calm } = SURFACE[health];
 		const start = Math.max(0, Math.floor(fromX));
 		const end = Math.min(bounds.width, Math.ceil(toX));
 
-		ctx.fillStyle = SURFACE.foam;
+		ctx.fillStyle = foam;
 		for (let x = start; x < end; x++) {
-			const crest = surfaceCrestAt(x, time);
-			if (crest > 0) ctx.fillRect(x, 0, 1, crest);
+			const crestY = surfaceCrestAt(x, time, calm);
+			if (crestY > 0) ctx.fillRect(x, 0, 1, crestY);
 		}
-		ctx.fillStyle = SURFACE.crest;
-		for (let x = start; x < end; x++) ctx.fillRect(x, Math.max(0, surfaceCrestAt(x, time)), 1, 1);
+		ctx.fillStyle = crest;
+		for (let x = start; x < end; x++) {
+			ctx.fillRect(x, Math.max(0, surfaceCrestAt(x, time, calm)), 1, 1);
+		}
 	}
 
-	private drawBackground(bounds: TankBounds): HTMLCanvasElement {
+	/** Paints a background the first time a tank of this size has this health. */
+	private backgroundFor(
+		bounds: TankBounds,
+		sizeKey: string,
+		health: TankHealth,
+	): HTMLCanvasElement {
+		const key = `${sizeKey}|${health}`;
+		const cached = this.backgrounds.get(key);
+		if (cached) return cached;
+		const background = this.drawBackground(bounds, health);
+		this.backgrounds.set(key, background);
+		return background;
+	}
+
+	private drawBackground(bounds: TankBounds, health: TankHealth): HTMLCanvasElement {
 		const canvas = createCanvas(bounds.width, bounds.height);
 		const ctx = context2d(canvas);
+		const water = WATER[health];
+		const sand = SAND[health];
 
 		const deepest = Math.max(1, bounds.floor - 1);
 		for (let y = 0; y < bounds.floor; y++) {
-			const depth = (y / deepest) ** WATER_DEPTH_CURVE * (WATER.length - 1);
-			const band = Math.min(WATER.length - 2, Math.floor(depth));
+			const depth = (y / deepest) ** WATER_DEPTH_CURVE * (water.length - 1);
+			const band = Math.min(water.length - 2, Math.floor(depth));
 			const mix = depth - band;
 			for (let x = 0; x < bounds.width; x++) {
 				const threshold = ((BAYER_4[(y % 4) * 4 + (x % 4)] ?? 0) + 0.5) / 16;
-				ctx.fillStyle = (mix > threshold ? WATER[band + 1] : WATER[band]) ?? '#000000';
+				ctx.fillStyle = (mix > threshold ? water[band + 1] : water[band]) ?? '#000000';
 				ctx.fillRect(x, y, 1, 1);
 			}
 		}
 
-		ctx.fillStyle = SAND.base;
+		ctx.fillStyle = sand.base;
 		ctx.fillRect(0, bounds.floor, bounds.width, bounds.height - bounds.floor);
-		ctx.fillStyle = SAND.light;
+		ctx.fillStyle = sand.light;
 		ctx.fillRect(0, bounds.floor, bounds.width, 1);
 		for (let x = 0; x < bounds.width; x++) {
 			for (let y = bounds.floor + 1; y < bounds.height; y++) {
 				if (hashString(`${x},${y}`) % 7 === 0) {
-					ctx.fillStyle = SAND.speck;
+					ctx.fillStyle = sand.speck;
 					ctx.fillRect(x, y, 1, 1);
 				}
 			}

@@ -6,6 +6,7 @@ const DEMO_PROJECTS = {
 	data: { id: 'demo-data', name: 'Data platform', type: 'team' },
 	ops: { id: 'demo-ops', name: 'Operations', type: 'team' },
 	support: { id: 'demo-support', name: 'Support', type: 'team' },
+	legacy: { id: 'demo-legacy', name: 'Legacy', type: 'team' },
 } as const;
 
 interface DemoExtras {
@@ -60,7 +61,8 @@ function demo(
 
 /** Fixed fake data, so you can work on the tank without real workflows. */
 export const DEMO_ENTITIES: AquariumEntity[] = [
-	demo('Slack ping', 'ops', 'workflow', 2, 50_000, 10, 200, {
+	// No failures in Operations, so its tank shows the Positive look.
+	demo('Slack ping', 'ops', 'workflow', 2, 50_000, 0, 200, {
 		design: { hasErrorWorkflow: true },
 	}),
 	// Waits for a manager to approve each contact, so many runs are paused, not broken.
@@ -94,6 +96,11 @@ export const DEMO_ENTITIES: AquariumEntity[] = [
 	demo('Webhook relay', 'ops', 'workflow', 3, 8_000, 0, 100, { securityRisks: 1 }),
 	demo('Draft', 'ops', 'workflow', 1, 0, 0, 0, { design: { disabledNodeCount: 1 } }),
 	demo('Error handler', 'ops', 'workflow', 4, 150, 0, 500),
+	// Most runs fail, so the Legacy tank shows the Critical look.
+	demo('Old FTP sync', 'legacy', 'workflow', 8, 240, 200, 6_000, {
+		design: { codeNodeCount: 3, disabledNodeCount: 2 },
+	}),
+	demo('Fax gateway', 'legacy', 'workflow', 3, 60, 40, 900),
 	demo('Support triage', 'support', 'agent', 3, 400, 12, 15_000),
 	demo('Research assistant', 'data', 'agent', 18, 60, 4, 90_000),
 	demo('Onboarding buddy', 'support', 'agent', 1, 5, 0, 5_000),

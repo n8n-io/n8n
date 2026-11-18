@@ -1,8 +1,8 @@
-import { PROP_LAYOUT } from '../aquarium.constants';
+import { PROP_LAYOUT, TANK_HEALTH } from '../aquarium.constants';
 import type { TankBounds } from '../engine/simulation';
 import { emptyMetrics } from '../sources/source.utils';
 import { spriteSize, validateSprite } from '../species/species.types';
-import { isPropDead, layoutProps, tankFailureShare } from './decor';
+import { isPropDead, layoutProps, tankFailureShare, tankHealthOf } from './decor';
 import { PROPS } from './props';
 
 const tank = (width: number): TankBounds => ({ width, height: 120, floor: 110 });
@@ -42,12 +42,25 @@ describe('layoutProps', () => {
 });
 
 describe('tankFailureShare', () => {
-	it('is 0 until the tank has enough runs', () => {
-		expect(tankFailureShare([creature(PROP_LAYOUT.minRuns - 1, 5)])).toBe(0);
+	it('is unknown until the tank has enough runs', () => {
+		expect(tankFailureShare([creature(TANK_HEALTH.minRuns - 1, 5)])).toBeUndefined();
 	});
 
 	it('adds up the runs of every creature in the tank', () => {
 		expect(tankFailureShare([creature(30, 3), creature(10, 7)])).toBeCloseTo(0.25);
+	});
+});
+
+describe('tankHealthOf', () => {
+	it.each([
+		[undefined, 'neutral'],
+		[0, 'positive'],
+		[0.1, 'neutral'],
+		[TANK_HEALTH.negative, 'negative'],
+		[0.5, 'negative'],
+		[0.51, 'critical'],
+	] as const)('gives a failure share of %s the %s state', (share, health) => {
+		expect(tankHealthOf(share)).toBe(health);
 	});
 });
 
