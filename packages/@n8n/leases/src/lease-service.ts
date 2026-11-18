@@ -18,9 +18,9 @@ function assertPositiveInteger(kind: string, option: string, value: unknown) {
 
 /** Registers lease kinds with a provider and forwards their changes to it. */
 export class LeaseService<TTransaction> {
-	private readonly kinds = new Set<string>();
+	private readonly acceptedKindNames = new Set<string>();
 
-	private readonly pending = new Set<string>();
+	private readonly kindNamesPendingRegistration = new Set<string>();
 
 	constructor(private readonly provider: LeaseProvider<TTransaction>) {}
 
@@ -35,7 +35,8 @@ export class LeaseService<TTransaction> {
 		if (name.length > MAX_LEASE_KIND_LENGTH || !LEASE_KIND_NAME_PATTERN.test(name)) {
 			throw new InvalidLeaseKindError(name);
 		}
-		if (this.kinds.has(name) || this.pending.has(name)) throw new DuplicateLeaseKindError(name);
+		if (this.acceptedKindNames.has(name) || this.kindNamesPendingRegistration.has(name))
+			throw new DuplicateLeaseKindError(name);
 
 		const {
 			leaseSeconds,
@@ -48,7 +49,7 @@ export class LeaseService<TTransaction> {
 		const options: LeaseKindOptions = { startTimeoutSeconds, maxFailedStarts };
 		if (leaseSeconds !== undefined) options.leaseSeconds = leaseSeconds;
 
-		this.pending.add(name);
+		this.kindNamesPendingRegistration.add(name);
 		try {
 			this.provider.registerSource(name, kind.source);
 			await this.provider.registerHolder(
@@ -57,9 +58,9 @@ export class LeaseService<TTransaction> {
 				async (lease) => await kind.handler.hold(lease),
 			);
 		} finally {
-			this.pending.delete(name);
+			this.kindNamesPendingRegistration.delete(name);
 		}
-		this.kinds.add(name);
+		this.acceptedKindNames.add(name);
 	}
 
 	/** Sync the leases of a registered kind, or only those with `keys`. */
@@ -76,7 +77,7 @@ export class LeaseService<TTransaction> {
 	async syncAll(): Promise<void> {
 		const failed: string[] = [];
 		const errors: unknown[] = [];
-		for (const kind of this.kinds) {
+		for (const kind of this.acceptedKindNames) {
 			try {
 				await this.provider.sync(kind);
 			} catch (error) {
@@ -96,6 +97,6 @@ export class LeaseService<TTransaction> {
 	}
 
 	private assertKnown(kind: string) {
-		if (!this.kinds.has(kind)) throw new UnknownLeaseKindError(kind);
+		if (!this.acceptedKindNames.has(kind)) throw new UnknownLeaseKindError(kind);
 	}
 }
