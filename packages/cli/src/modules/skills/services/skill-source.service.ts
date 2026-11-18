@@ -676,6 +676,7 @@ export class SkillSourceService {
 			await this.skillsTelemetry.deletedSource(
 				{
 					provider: source.type,
+					skills_kept: keepSkills,
 					status: 'failure',
 					reason: error instanceof ConflictError ? 'skills_in_use' : 'unexpected',
 				},
@@ -683,7 +684,10 @@ export class SkillSourceService {
 			);
 			throw error;
 		}
-		await this.skillsTelemetry.deletedSource({ provider: source.type, status: 'success' }, user.id);
+		await this.skillsTelemetry.deletedSource(
+			{ provider: source.type, skills_kept: keepSkills, status: 'success' },
+			user.id,
+		);
 	}
 
 	// ---------------------------------------------------------------- steps

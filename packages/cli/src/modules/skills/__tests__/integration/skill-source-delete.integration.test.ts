@@ -195,7 +195,7 @@ describe('Delete a skill source', () => {
 			expect(await sources().findById(unrelatedSource)).not.toBeNull();
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.USER_DELETED_SKILL_SOURCE,
-				{ user_id: expect.any(String), provider: 'github', status: 'success' },
+				{ user_id: expect.any(String), provider: 'github', skills_kept: false, status: 'success' },
 			);
 			await agent.delete(`/skill-sources/${sourceId}`).expect(404);
 		},
@@ -219,6 +219,10 @@ describe('Delete a skill source', () => {
 			expect(await sources().findLinksBySource(sourceId)).toEqual([]);
 			expect(await refs.findDependencies([agent.id])).toEqual(dependencies);
 			expect(await refs.findPins(agent.versionId)).toEqual(pins);
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.USER_DELETED_SKILL_SOURCE,
+				{ user_id: expect.any(String), provider: 'github', skills_kept: true, status: 'success' },
+			);
 			for (const { id } of [first, second]) {
 				const detail = await editor.get(`/skills/${id}`).expect(200);
 				expect(detail.body.data).toMatchObject({ canEdit: true, sourceId: null, syncedFrom: null });
@@ -310,7 +314,13 @@ describe('Delete a skill source', () => {
 			expect(await snapshot()).toEqual(before);
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.USER_DELETED_SKILL_SOURCE,
-				{ user_id: ownerUser.id, provider: 'github', status: 'failure', reason: 'skills_in_use' },
+				{
+					user_id: ownerUser.id,
+					provider: 'github',
+					skills_kept: false,
+					status: 'failure',
+					reason: 'skills_in_use',
+				},
 			);
 		},
 	);
