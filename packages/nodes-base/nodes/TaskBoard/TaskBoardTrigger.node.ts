@@ -8,10 +8,8 @@ import {
 	type TaskBoardEventName,
 } from 'n8n-workflow';
 
+import { TASK_BOARD_DISABLED_MESSAGE } from './constants';
 import { shouldEmit } from './shouldEmit';
-
-export const TASK_BOARD_DISABLED_MESSAGE =
-	'Task boards are not enabled on this instance (set N8N_ENABLED_MODULES=task-board)';
 
 export class TaskBoardTrigger implements INodeType {
 	description: INodeTypeDescription = {

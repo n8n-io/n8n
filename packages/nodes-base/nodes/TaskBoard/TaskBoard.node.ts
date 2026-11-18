@@ -11,8 +11,7 @@ import {
 	type TaskBoardAssigneeInput,
 } from 'n8n-workflow';
 
-const TASK_BOARD_DISABLED_MESSAGE =
-	'Task boards are not enabled on this instance (set N8N_ENABLED_MODULES=task-board)';
+import { TASK_BOARD_DISABLED_MESSAGE } from './constants';
 
 const WRITE_OPERATIONS = ['create', 'addComment', 'move', 'assign'];
 
