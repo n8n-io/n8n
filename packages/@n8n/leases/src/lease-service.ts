@@ -10,6 +10,12 @@ import type { LeaseKind, LeaseKindOptions, LeaseStatus } from './types';
 
 const LEASE_KIND_NAME_PATTERN = /^[a-z][a-z0-9-]*$/;
 
+function assertPositiveInteger(kind: string, option: string, value: unknown) {
+	if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
+		throw new InvalidLeaseKindOptionsError(kind, option, value);
+	}
+}
+
 /** Registers lease kinds with a provider and forwards their changes to it. */
 export class LeaseService<TTransaction> {
 	private readonly kinds = new Set<string>();
@@ -20,7 +26,7 @@ export class LeaseService<TTransaction> {
 
 	/**
 	 * Register a kind with the provider. Rejects when the name is invalid or already registered,
-	 * or when a numeric option is not a positive integer.
+	 * or when an option is not a positive integer.
 	 * When the provider fails, the kind is not registered and can be registered again.
 	 * Until the provider accepts the kind, `changed`, `syncAll` and `status` treat it as unknown.
 	 */
@@ -36,16 +42,9 @@ export class LeaseService<TTransaction> {
 			startTimeoutSeconds = DEFAULT_LEASE_KIND_OPTIONS.startTimeoutSeconds,
 			maxFailedStarts = DEFAULT_LEASE_KIND_OPTIONS.maxFailedStarts,
 		} = kind.options ?? {};
-		const checks: Array<[string, number | null | undefined]> = [
-			['leaseSeconds', leaseSeconds],
-			['startTimeoutSeconds', startTimeoutSeconds],
-			['maxFailedStarts', maxFailedStarts],
-		];
-		for (const [option, value] of checks) {
-			if (typeof value === 'number' && !(Number.isInteger(value) && value > 0)) {
-				throw new InvalidLeaseKindOptionsError(name, option, value);
-			}
-		}
+		if (leaseSeconds !== undefined) assertPositiveInteger(name, 'leaseSeconds', leaseSeconds);
+		assertPositiveInteger(name, 'startTimeoutSeconds', startTimeoutSeconds);
+		if (maxFailedStarts !== null) assertPositiveInteger(name, 'maxFailedStarts', maxFailedStarts);
 		const options: LeaseKindOptions = { startTimeoutSeconds, maxFailedStarts };
 		if (leaseSeconds !== undefined) options.leaseSeconds = leaseSeconds;
 

@@ -164,10 +164,15 @@ describe('LeaseService', () => {
 			['startTimeoutSeconds', Number.NaN],
 			['startTimeoutSeconds', Number.POSITIVE_INFINITY],
 			['maxFailedStarts', 0],
+			['leaseSeconds', null],
+			['startTimeoutSeconds', null],
+			['startTimeoutSeconds', '5'],
+			['maxFailedStarts', '5'],
 		] as const)('rejects %s %j', async (option, value) => {
-			await expect(
-				service.registerKind(makeKind({ options: { [option]: value } })),
-			).rejects.toThrow(InvalidLeaseKindOptionsError);
+			const options = { [option]: value } as LeaseKind<Tx>['options'];
+			await expect(service.registerKind(makeKind({ options }))).rejects.toThrow(
+				InvalidLeaseKindOptionsError,
+			);
 			expect(provider.registerSource).not.toHaveBeenCalled();
 			expect(provider.registerHolder).not.toHaveBeenCalled();
 		});
