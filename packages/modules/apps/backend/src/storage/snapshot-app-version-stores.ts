@@ -153,7 +153,9 @@ export class SnapshotAppBuildResultStore extends AppBuildResultStore {
 							'This app version cannot accept a bundle. Check its build status.',
 						);
 					}
-					this.assertBuildNotTimedOut(attempt);
+					// attachBundle atomically marks the version as succeeded. Checking the deadline
+					// after it returns could throw after that update has committed, causing the
+					// catch block to discard the artifact now referenced by the version.
 				},
 				{ subKey: appStorageLockSubKey(appId) },
 			);
