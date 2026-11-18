@@ -15,7 +15,6 @@ import { UnexpectedError, UserError } from './errors';
 import { isExpression } from './expressions/expression-helpers';
 import { isFromAIOnlyExpression } from './from-ai-parse-utils';
 import { NodeConnectionTypes } from './interfaces';
-import { safeRegex } from './safe-regex';
 import type {
 	FieldType,
 	IContextObject,
@@ -394,7 +393,9 @@ export const checkConditions = (
 				if (key === 'regex') {
 					return (
 						typeof propertyValue === 'string' &&
-						safeRegex.test(targetValue as string, propertyValue)
+						// Node-description pattern, so it does not need the timed safeRegex engine (#44319).
+						// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- node-description pattern
+						new RegExp(targetValue as string).test(propertyValue)
 					);
 				}
 				if (key === 'exists') {
@@ -1455,7 +1456,9 @@ const validateResourceLocatorParameter = (
 			if (validation && (validation as INodePropertyModeValidation).type === 'regex') {
 				const regexValidation = validation as INodePropertyRegexValidation;
 
-				if (!safeRegex.test(`^${regexValidation.properties.regex}$`, valueToValidate)) {
+				// Node-description pattern, so it does not need the timed safeRegex engine (#44319).
+				// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- node-description pattern
+				if (!new RegExp(`^${regexValidation.properties.regex}$`).test(valueToValidate)) {
 					validationErrors.push(regexValidation.properties.errorMessage);
 				}
 			}
