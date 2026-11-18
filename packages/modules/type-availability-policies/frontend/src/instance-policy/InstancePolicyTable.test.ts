@@ -1,6 +1,6 @@
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor, within } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 
@@ -174,17 +174,25 @@ describe('InstancePolicyTable', () => {
 	});
 
 	it('goes back to the first page when the search changes', async () => {
-		const many = Array.from({ length: 60 }, (_, index) =>
+		const many = Array.from({ length: 26 }, (_, index) =>
 			row(`type${index}`, `Type ${String(index).padStart(2, '0')}`),
 		);
 		const { getByTestId, getByPlaceholderText, getByRole } = setup(many);
 
 		await userEvent.click(getByRole('button', { name: /next/i }));
-		await waitFor(() => expect(rowNames(getByTestId('instance-policy-table'))[0]).toBe('Type 25'));
+		await waitFor(() =>
+			expect(rowNames(getByTestId('instance-policy-table'))).toEqual(['Type 25']),
+		);
 
-		await userEvent.type(getByPlaceholderText('Search credentials'), 'Type');
+		// Update once to avoid a table render for each key.
+		// Match all rows so page clamping cannot reset the page.
+		await fireEvent.update(getByPlaceholderText('Search credentials'), 'Type');
 
-		await waitFor(() => expect(rowNames(getByTestId('instance-policy-table'))[0]).toBe('Type 00'));
+		await waitFor(() =>
+			expect(rowNames(getByTestId('instance-policy-table'))).toEqual(
+				many.slice(0, 25).map(({ displayName }) => displayName),
+			),
+		);
 	});
 
 	it('shows the chosen number of rows from the Page size control', async () => {
