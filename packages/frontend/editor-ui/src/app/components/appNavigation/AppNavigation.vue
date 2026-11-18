@@ -360,6 +360,7 @@ onBeforeUnmount(() => {
 		<div v-if="isDocked && panelItem" :class="$style.docked" data-test-id="app-nav-docked">
 			<AppNavigationPanel
 				:title="panelItem.label"
+				:show-logo="panelItem.id === ASSISTANT_ITEM_ID"
 				:sections="panelSections"
 				:is-expanded="true"
 				@toggle="toggle"
@@ -384,6 +385,7 @@ onBeforeUnmount(() => {
 			>
 				<AppNavigationPanel
 					:title="panelItem.label"
+				:show-logo="panelItem.id === ASSISTANT_ITEM_ID"
 					:sections="panelSections"
 					:is-expanded="false"
 					@toggle="toggle"

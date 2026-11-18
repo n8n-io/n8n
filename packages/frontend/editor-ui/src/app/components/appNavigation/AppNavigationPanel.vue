@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { N8nIconButton, N8nMenuItem, N8nScrollArea, N8nText } from '@n8n/design-system';
+import {
+	N8nIconButton,
+	N8nLogo,
+	N8nMenuItem,
+	N8nScrollArea,
+	N8nText,
+} from '@n8n/design-system';
+import { VIEWS } from '@/app/constants';
 import type { IMenuItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -13,6 +20,8 @@ defineProps<{
 	sections: AppNavSection[];
 	/** The panel is part of the layout; otherwise it floats over the page. */
 	isExpanded: boolean;
+	/** Show the n8n logo, linking home, in place of the title text */
+	showLogo?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -38,7 +47,22 @@ const toMenuItem = (link: AppNavLink): IMenuItem => ({
 <template>
 	<div :class="$style.panel" data-test-id="app-nav-panel">
 		<header :class="$style.header">
-			<N8nText tag="h2" size="large" bold color="text-dark" :class="$style.title">
+			<h2 v-if="showLogo" :class="$style.title">
+				<RouterLink
+					:to="{ name: VIEWS.HOMEPAGE }"
+					:class="$style.logo"
+					data-test-id="app-nav-panel-logo"
+				>
+					<N8nLogo
+						size="small"
+						:collapsed="false"
+						:release-channel="settingsStore.settings.releaseChannel"
+					/>
+					<!-- The logo replaces the title on screen; screen readers still read the title. -->
+					<span :class="$style.visuallyHidden">{{ title }}</span>
+				</RouterLink>
+			</h2>
+			<N8nText v-else tag="h2" size="large" bold color="text-dark" :class="$style.title">
 				{{ title }}
 			</N8nText>
 			<KeyboardShortcutTooltip
@@ -172,6 +196,21 @@ const toMenuItem = (link: AppNavLink): IMenuItem => ({
 	&:focus-visible {
 		color: var(--text-color);
 	}
+}
+
+.logo {
+	display: inline-flex;
+	align-items: center;
+	color: inherit;
+}
+
+.visuallyHidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
 }
 
 .title {
