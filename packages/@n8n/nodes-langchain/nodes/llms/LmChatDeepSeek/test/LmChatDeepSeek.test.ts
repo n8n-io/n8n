@@ -41,7 +41,7 @@ describe('LmChatDeepSeek', () => {
 		});
 		ctx.getNode = vi.fn().mockReturnValue(mockNodeDef);
 		ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
-			if (paramName === 'model') return 'deepseek-chat';
+			if (paramName === 'model') return 'deepseek-flash';
 			if (paramName === 'options') return {};
 			return undefined;
 		});
@@ -57,6 +57,36 @@ describe('LmChatDeepSeek', () => {
 		vi.clearAllMocks();
 	});
 
+	describe('description', () => {
+		const modelProperties = () =>
+			new LmChatDeepSeek().description.properties.filter((property) => property?.name === 'model');
+
+		it('should offer versions 1 and 1.1', () => {
+			expect(node.description.version).toEqual([1, 1.1]);
+		});
+
+		it('should keep the version 1 default and use deepseek-flash from version 1.1', () => {
+			const defaults = modelProperties().map((property) => ({
+				default: property.default,
+				versions: property.displayOptions?.show?.['@version'],
+			}));
+
+			expect(defaults).toEqual([
+				{ default: 'deepseek-chat', versions: [1] },
+				{ default: 'deepseek-flash', versions: [{ _cnd: { gte: 1.1 } }] },
+			]);
+		});
+
+		it('should load the model list from the credential on every version', () => {
+			for (const property of modelProperties()) {
+				expect(property.typeOptions?.loadOptions?.routing?.request).toEqual({
+					method: 'GET',
+					url: '/models',
+				});
+			}
+		});
+	});
+
 	describe('supplyData', () => {
 		it('should wire the bounded aiClientFetch into ChatOpenAI', async () => {
 			const ctx = setupMockContext();
@@ -67,7 +97,7 @@ describe('LmChatDeepSeek', () => {
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
 					apiKey: 'test-deepseek-key',
-					model: 'deepseek-chat',
+					model: 'deepseek-flash',
 					configuration: expect.objectContaining({
 						fetch: mockedAiClientFetch,
 						baseURL: 'https://api.deepseek.com/v1',

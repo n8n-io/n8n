@@ -2,10 +2,10 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { setFlagsFromString } from 'node:v8';
 import { runInNewContext } from 'node:vm';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { ExpressionEvaluator } from '../../evaluator/expression-evaluator';
-import { classifyExpressionError } from '../../evaluator/error-classification';
+import { classifyExpressionError, errorOriginOf } from '../../evaluator/error-classification';
 import type { BridgeConfig, RuntimeBridge } from '../../types';
 import { HostCallError, RuntimeRestartingError } from '../../types';
 import { QuickJsBridge } from '../quickjs-bridge';
@@ -174,6 +174,112 @@ describe('QuickJsBridge after a host error in a guest call', () => {
 		bridges.push(next);
 		expect(() => next.initializeSync()).toThrow(/not loaded yet/);
 		await waitForReplacementModule();
+		expect(bridge.execute('return 1 + 1;', {})).toBe(2);
+	});
+
+	it('should record a failed rebuild as the origin of its error', async () => {
+		const bridge = await newBridge();
+		expect(() => bridge.execute(OVERFLOW, deepData)).toThrow(NATIVE_OVERFLOW);
+		await waitForReplacementModule();
+		vi.spyOn(
+			bridge as unknown as { verifyProxySystem(): void },
+			'verifyProxySystem',
+		).mockImplementationOnce(() => {
+			throw new TypeError('rebuild failed');
+		});
+
+		let rebuildError: unknown;
+		try {
+			bridge.execute('return 1 + 1;', {});
+		} catch (error) {
+			rebuildError = error;
+		}
+
+		expect(errorOriginOf(rebuildError)).toEqual({ kind: 'rebuild', errorName: 'TypeError' });
+	});
+});
+
+describe('QuickJsBridge error origin', () => {
+	let bridge: QuickJsBridge;
+
+	beforeAll(async () => {
+		bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+	});
+
+	afterAll(async () => {
+		await bridge.dispose();
+	});
+
+	const errorOf = (code: string, data: Record<string, unknown> = {}) => {
+		try {
+			bridge.execute(code, data);
+		} catch (error) {
+			return error;
+		}
+		throw new Error('expected the call to fail');
+	};
+
+	it('should keep the class of a guest error that the bridge replaces with a generic Error', () => {
+		const error = errorOf('return null.missing;');
+
+		expect(error).toMatchObject({ name: 'Error' });
+		expect(errorOriginOf(error)).toEqual({ kind: 'guest', errorName: 'TypeError' });
+	});
+
+	it('should tell an error that a host callback threw from a guest error', () => {
+		const data = {
+			$json: {
+				get broken() {
+					throw new RangeError('host failure');
+				},
+			},
+		};
+
+		expect(errorOriginOf(errorOf('return this.$json.broken;', data))).toEqual({
+			kind: 'host_callback',
+			errorName: 'RangeError',
+		});
+	});
+
+	it('should record a compile error', () => {
+		expect(errorOriginOf(errorOf('return );'))).toEqual({ kind: 'compile' });
+	});
+
+	it('should record a failed callback setup and keep its error', () => {
+		const vm = (bridge as unknown as { vm: { newFunction(): unknown } }).vm;
+		const setupError = new TypeError('setup failed');
+		vi.spyOn(vm, 'newFunction').mockImplementationOnce(() => {
+			throw setupError;
+		});
+
+		const error = errorOf('return 1;');
+
+		expect(error).toBe(setupError);
+		expect(errorOriginOf(error)).toEqual({ kind: 'callback_setup', errorName: 'TypeError' });
+	});
+
+	it('should record a failed callback cleanup and keep its error', () => {
+		const cleanupError = new RangeError('cleanup failed');
+		const internals = bridge as unknown as {
+			createCallbackHandles(resolver: unknown): Array<{ dispose(): void }>;
+		};
+		const createCallbackHandles = internals.createCallbackHandles.bind(bridge);
+		vi.spyOn(internals, 'createCallbackHandles').mockImplementationOnce((resolver) => {
+			const handles = createCallbackHandles(resolver);
+			const [first] = handles;
+			const dispose = first.dispose.bind(first);
+			first.dispose = () => {
+				dispose();
+				throw cleanupError;
+			};
+			return handles;
+		});
+
+		const error = errorOf('return 1;');
+
+		expect(error).toBe(cleanupError);
+		expect(errorOriginOf(error)).toEqual({ kind: 'callback_cleanup', errorName: 'RangeError' });
 		expect(bridge.execute('return 1 + 1;', {})).toBe(2);
 	});
 });

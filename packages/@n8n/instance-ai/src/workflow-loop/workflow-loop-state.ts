@@ -364,6 +364,7 @@ export const workflowBuildOutcomeSchema = z.object({
 	 * in the schema so build outcomes stored before the change still parse and
 	 * verify (workflow_builder_verify_built_workflow merges it under the new pin data).
 	 */
+	// oxlint-disable-next-line typescript/no-deprecated -- Read pins from older build outcomes.
 	verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
 	/**
 	 * Per-node execute-vs-simulate plan for verification. Sidecar — scoped to

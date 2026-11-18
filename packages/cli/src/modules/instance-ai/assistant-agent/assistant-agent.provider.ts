@@ -3,6 +3,7 @@ import {
 	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
 	InstanceAiConfirmRequestDto,
 	type InstanceAiAgentAttachment,
+	type InstanceAiApprovalMode,
 	type InstanceAiAttachment,
 	type InstanceAiElementAttachment,
 	type InstanceAiNodesAttachment,
@@ -38,8 +39,10 @@ import type {
 	SystemAgentTurnHandle,
 	SystemAgentTurnOptions,
 	SystemAgentTurnOutcome,
+	SystemAgentUserStopScope,
 } from '@/modules/agents/system-agents/system-agent.types';
-import { Telemetry } from '@/telemetry';
+import { TelemetryProxy } from '@n8n/backend-services';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 
 import {
@@ -166,7 +169,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		private readonly errorReporter: InstanceAiErrorReporterService,
 		private readonly userRepository: UserRepository,
 		private readonly turnOverrides: AssistantTurnOverrides,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.aiConfig = globalConfig.ai;
@@ -218,6 +221,15 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			});
 			await this.archiveTemporaryWorkflows(workflowService, markers, threadId);
 		};
+	}
+
+	/** The runtime calls this only for a stop that took effect. */
+	onUserStoppedTurn({ threadId, userId }: SystemAgentUserStopScope): void {
+		this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_STOPPED_RUN, {
+			user_id: userId,
+			thread_id: threadId,
+			runtime: 'agents',
+		});
 	}
 
 	/** A setup failure, such as the credit check before the run, gets the turn's error text. */
@@ -405,7 +417,13 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				if (chunk.type === 'error') streamErrors.add(chunk.error);
 				if (chunk.type === 'tool-call-suspended') {
 					setupRoute.observeSuspension(chunk.toolName, chunk.suspendPayload);
-					this.trackAskedForInput(user.id, thread.id, chunk.suspendPayload, askedRequestIds);
+					this.trackAskedForInput(
+						user.id,
+						thread.id,
+						chunk,
+						askedRequestIds,
+						environment.context.approvalMode,
+					);
 				}
 				// The SDK stores the input when it receives it, so the first chunk means it is accepted.
 				if (!inputAccepted && turnInput) {
@@ -468,8 +486,13 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 	private trackAskedForInput(
 		userId: string,
 		threadId: string,
-		suspendPayload: unknown,
+		{
+			toolCallId,
+			toolName,
+			suspendPayload,
+		}: { toolCallId: string; toolName: string; suspendPayload?: unknown },
 		askedRequestIds: Set<string>,
+		approvalMode: InstanceAiApprovalMode | undefined,
 	): void {
 		const payload = readAssistantConfirmationPayload(suspendPayload);
 		if (!payload || askedRequestIds.has(payload.requestId)) return;
@@ -478,8 +501,10 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			userId,
 			threadId,
 			inputThreadId: payload.requestId,
-			payload,
+			// The tool call joins the card with the Auto decision of the same call.
+			payload: { ...payload, toolCallId, toolName },
 			runtime: 'agents',
+			approvalMode,
 		});
 	}
 

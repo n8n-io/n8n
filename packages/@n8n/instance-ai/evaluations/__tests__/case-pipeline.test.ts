@@ -232,6 +232,28 @@ describe('createCasePipeline', () => {
 		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
 	});
 
+	// A full tenant quota says nothing about the agent, so the run is not graded.
+	it('keeps a build that hit the sandbox quota out of the pass rate', async () => {
+		const lane = makeLane();
+		const cached: CachedBuild = {
+			build: { ...okBuild(), success: false, sandboxQuotaExceeded: true },
+			lane,
+			buildDurationMs: 42,
+		};
+		const pipeline = createCasePipeline(makeDeps(makeOrchestrator(cached)));
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({
+			passed: false,
+			incomplete: true,
+			failureCategory: 'framework_issue',
+			attribution: 'framework_issue',
+		});
+		expect(String(output.reasoning)).toContain('tenant quota was full');
+		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
+	});
+
 	// Unlike a missing premise, a run that did not start clean still counts, so a leak
 	// shows in the pass rate. The attribution keeps it out of the builder's numbers.
 	it("fails a build that read another build's workflow as framework_issue, and counts it", async () => {

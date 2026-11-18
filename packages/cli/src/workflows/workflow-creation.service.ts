@@ -1,4 +1,4 @@
-import type { RedactionFloor } from '@n8n/api-types';
+import { isSafeObjectKey, type RedactionFloor } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService, CredentialsFinderService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
@@ -175,6 +175,11 @@ export class WorkflowCreationService {
 			versionDescription,
 			batchContext,
 		} = options;
+
+		// Callers can preset the id, so every create path applies the REST workflow id rule.
+		if (newWorkflow.id && !isSafeObjectKey(newWorkflow.id)) {
+			throw new BadRequestError('Invalid workflow id');
+		}
 
 		// Ensure workflow is created as inactive
 		// oxlint-disable-next-line typescript/no-deprecated
@@ -441,7 +446,12 @@ export class WorkflowCreationService {
 		em?: EntityManager,
 	): Promise<Folder> {
 		try {
-			return await this.folderService.findFolderInProjectOrFail(parentFolderId, projectId, em);
+			return await this.folderService.findFolderInProjectOrFail(
+				parentFolderId,
+				projectId,
+				'workflow',
+				em,
+			);
 		} catch {
 			throw new NotFoundError(`Could not find the folder: ${parentFolderId}`);
 		}

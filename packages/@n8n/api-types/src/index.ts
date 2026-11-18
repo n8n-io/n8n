@@ -12,6 +12,7 @@ export type * from './community-node-types';
 export type * from './quick-connect';
 export * from './agents/index';
 export * from './skills/index';
+export * from './knowledge/index';
 export * from './builder-tool-names';
 export * from './schemas/app.schema';
 export * from './schemas/app-binding.schema';
@@ -22,6 +23,7 @@ export type * from './worker-pools';
 export * from './node-type-availability';
 export type * from './sub-workflow-policy-check';
 export type * from './credential-type-availability';
+export type * from './instance-type-access';
 export type * from './transfer-preview';
 export type * from './transfer-result';
 export * from './redaction-enforcement';
@@ -188,7 +190,12 @@ export {
 	workflowIdParamSchema,
 	workflowVersionIdParamSchema,
 } from './schemas/public-api-path-params.schema';
-export { folderNameSchema, folderIdSchema } from './schemas/folder.schema';
+export {
+	folderNameSchema,
+	folderIdSchema,
+	folderResourceTypeSchema,
+	type FolderResourceType,
+} from './schemas/folder.schema';
 export {
 	SYSTEM_RESOLVER_ID,
 	credentialResolverSchema,
@@ -415,6 +422,7 @@ export {
 	buildUpdateWorkflowSessionGrantKey,
 	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
+	buildOwnedDataTableGrantKey,
 	buildWorkflowActionSessionGrantKey,
 	buildWorkspaceSessionGrantKey,
 	buildCleanupTestExecutionsSessionGrantKey,
@@ -498,6 +506,7 @@ export {
 	INSTANCE_AI_APPROVAL_MODES_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	INSTANCE_AI_CLOUD_BROWSER_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_CONTEXT_SURFACE_DEPTH,
 	instanceContextSurfaceSchema,
@@ -741,6 +750,7 @@ export type {
 	InstanceGatewayResourceDecision,
 	InstanceAiBrowserCreateLinkResponse,
 	InstanceAiBrowserStatusResponse,
+	InstanceAiCloudBrowserLiveViewResponse,
 	ToolCategory,
 	InstanceAiWorkflowSetupNode,
 	InstanceAiEvalNodeExecutionMode,
@@ -1022,14 +1032,17 @@ export {
 	SSO_ERROR_LOGIN_FAILED,
 } from './constants/role-mapping';
 export { SSO_LOGIN_REQUIRED_ERROR_CODE } from './constants/auth';
-export { N8N_CLIENT_HEADER, N8N_CLIENT_EDITOR_UI } from './constants/client';
+export { N8N_CLIENT_HEADER, N8N_CLIENT_EDITOR_UI, N8N_CLIENT_N8N_NODE } from './constants/client';
 
 export {
 	instanceAiApprovalDetailsSchema,
 	instanceAiApprovalModeSchema,
 	instanceAiAutoApprovalDeciderSchema,
 	autoApprovalPayloadSchema,
+	DATA_TABLE_CHANGE_SEVERITY,
+	isSessionGrantableDataTableAction,
 	type InstanceAiApprovalDetails,
+	type InstanceAiDataTableChangeDetails,
 	type InstanceAiApprovalMode,
 	type InstanceAiApprovalPreferences,
 	type InstanceAiAutoApprovalDecider,
@@ -1089,8 +1102,10 @@ export {
 	type ScimTransferTargetsResponse,
 } from './schemas/scim-config.schema';
 export {
+	DEFAULT_EXECUTION_LIMIT_SETTINGS,
 	EXECUTION_LIMIT_MAX_EXECUTIONS_CEILING,
 	EXECUTION_LIMIT_PERIOD_UNITS,
+	executionLimitMaxExecutionsSchema,
 	executionLimitSettingsSchema,
 	type ExecutionLimitPeriodUnit,
 	type ExecutionLimitSettings,

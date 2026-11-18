@@ -16,6 +16,8 @@ const scimConfig = Container.get(ScimConfig);
  * and replaced by bearer-token auth (`ScimAuthMiddleware`), since requests
  * come from the identity provider, not a browser session. The opt-in gate
  * runs first, so every route answers 404 while the opt-in is off.
+ * `ScimController` adds the request observer before route matching. The
+ * observer reports a rejected request when its response ends.
  */
 export const scimRoute: {
 	skipAuth: boolean;

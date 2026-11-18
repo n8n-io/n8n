@@ -154,6 +154,7 @@ export function createRunDebugStepHooks(
 			buffer.recordStepStart(options.runId, stepIndex, event);
 		},
 		onStepEnd,
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep the alias for callers that use the previous hook name.
 		onStepFinish: onStepEnd,
 	};
 }

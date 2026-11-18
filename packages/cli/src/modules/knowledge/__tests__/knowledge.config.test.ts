@@ -16,6 +16,7 @@ describe('KnowledgeConfig', () => {
 		delete process.env.N8N_KNOWLEDGE_MAX_FILE_SIZE_MB;
 		delete process.env.N8N_KNOWLEDGE_MAX_FILES_PER_UPLOAD;
 		delete process.env.N8N_KNOWLEDGE_MAX_TOTAL_SIZE_MB;
+		delete process.env.N8N_KNOWLEDGE_COLLECTIONS_ENABLED;
 	});
 
 	it('defaults to the limits the editor falls back to', () => {
@@ -40,6 +41,15 @@ describe('KnowledgeConfig', () => {
 		expect(config.maxFilesPerUpload).toBe(3);
 		expect(config.maxTotalSizeMb).toBe(500);
 		expect(config.maxTotalSizeBytes).toBe(500 * 1024 * 1024);
+	});
+
+	it('reads the collections override from its environment variable', () => {
+		expect(Container.get(KnowledgeConfig).collectionsEnabled).toBe(false);
+
+		Container.reset();
+		process.env.N8N_KNOWLEDGE_COLLECTIONS_ENABLED = 'true';
+
+		expect(Container.get(KnowledgeConfig).collectionsEnabled).toBe(true);
 	});
 
 	it.each(['0', '-5', 'abc', '1.5'])(

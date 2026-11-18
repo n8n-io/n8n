@@ -106,6 +106,23 @@ describe('routeApproval', () => {
 		);
 	});
 
+	it.each([
+		{ actions: ['create', 'insert-rows', 'delete'], route: 'always-ask' },
+		{ actions: ['create', 'add-column'], route: 'low-risk' },
+		{ actions: ['create', 'insert-rows'], route: 'judge' },
+		{ actions: ['delete-rows'], route: 'judge' },
+	])('routes a data table batch of $actions to $route', ({ actions, route }) => {
+		const changes = actions.map((action) => ({ action }));
+		expect(routeApproval({ toolName: 'change_data_tables', args: { changes } })).toBe(route);
+	});
+
+	it('lets the judge decide a data table batch whose changes it cannot read', () => {
+		expect(routeApproval({ toolName: 'change_data_tables', args: { changes: 'all' } })).toBe(
+			'judge',
+		);
+		expect(routeApproval({ toolName: 'change_data_tables', args: { changes: [] } })).toBe('judge');
+	});
+
 	it('sends an MCP tool to the judge even when its name matches a built-in tool', () => {
 		expect(
 			routeApproval({
