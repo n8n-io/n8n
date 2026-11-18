@@ -1,0 +1,22 @@
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_5f72bed614ce17::t_0e9aed012813f3 184
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_5f72bed614ce17::t_5c6a4f6e5fe232 42,383-388,396,400-402,405-411
+  s_5f72bed614ce17::t_730ae59fa7a944 397-399
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ef93b433e0dad2e70e5de771dcc5cb8df0ebf0b9",
+  "prompts": {},
+  "sessions": {
+    "s_5f72bed614ce17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6a1d4fcf-f66a-4d6f-831e-82eea3858884",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

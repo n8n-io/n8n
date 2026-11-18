@@ -1,0 +1,19 @@
+packages/cli/src/push/__tests__/websocket.push.test.ts
+  s_0e3f3f11685a8c::t_2d8d45dc6a703e 191,218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "420e33d0818e3883ea5eed93fb3a38e392f01edb",
+  "prompts": {},
+  "sessions": {
+    "s_0e3f3f11685a8c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "563523b5-f124-4c48-b5a1-661d3f667ed7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

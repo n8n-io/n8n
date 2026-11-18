@@ -1,0 +1,19 @@
+packages/cli/src/services/__tests__/node-resource-explorer.service.test.ts
+  s_0e037551a640a8::t_bcdc71e91c7378 919-924
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0e06d20da3e056c2880fcc2084830a7a85658233",
+  "prompts": {},
+  "sessions": {
+    "s_0e037551a640a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2f957d0c-b73e-48c5-b4df-4a12324ffab9",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

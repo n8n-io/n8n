@@ -1,0 +1,40 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_48b39defa9bc28::t_b427fd36a0b7c8 560,577,588
+packages/cli/src/modules/instance-ai/instance-ai-execution-reader.ts
+  s_48b39defa9bc28::t_d2415b9319dc34 4,35-41,43
+packages/@n8n/instance-ai/src/types.ts
+  s_48b39defa9bc28::t_d2415b9319dc34 212-216
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-execution-redaction.integration.test.ts
+  s_48b39defa9bc28::t_25f6ffaa24fe8f 169,180,187
+  s_48b39defa9bc28::t_f6216ae6fb37c8 305-308
+packages/@n8n/instance-ai/src/tools/orchestration/verification/__tests__/analyze-result.test.ts
+  s_48b39defa9bc28::t_e4311f24c0d7f1 639-668
+  s_48b39defa9bc28::t_d2415b9319dc34 611
+packages/@n8n/instance-ai/src/index.ts
+  s_48b39defa9bc28::t_2bad995b7124a5 693
+packages/@n8n/instance-ai/src/tools/orchestration/verification/__tests__/scripted-gate-run.test.ts
+  s_48b39defa9bc28::t_d2415b9319dc34 176
+packages/@n8n/instance-ai/src/tools/orchestration/verification/analyze-result.ts
+  s_48b39defa9bc28::t_d2415b9319dc34 541-545,556
+packages/cli/src/modules/instance-ai/extract-resolved-node-parameters.ts
+  s_48b39defa9bc28::t_d2415b9319dc34 31,241
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_48b39defa9bc28::t_f6216ae6fb37c8 225
+  s_48b39defa9bc28::t_d2415b9319dc34 2478,4890,4913,4980,5214-5215,5221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e3e8434109bd455b56cfd285cf5dd2f4df3fdd03",
+  "prompts": {},
+  "sessions": {
+    "s_48b39defa9bc28": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2052de3c-fef8-4f99-8611-dc61aafe00b5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

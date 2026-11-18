@@ -1,0 +1,48 @@
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_f5af8c164cba73::t_20e79d3d28b69e 276
+  s_f5af8c164cba73::t_690f3786349e17 60
+  s_f5af8c164cba73::t_3321ac2ba620a4 196-198
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_f5af8c164cba73::t_67726e732e9cfd 374-378
+  s_f1595e10a3a066::t_3bed596a330bc0 373
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_f5af8c164cba73::t_092d3f95f3085f 2340-2347,2350-2351,2369
+packages/cli/src/modules/agents/integrations/platforms/__tests__/slack/stream-delivery.test.ts
+  s_f5af8c164cba73::t_a2e5211b416ebf 207-261
+  s_f5af8c164cba73::t_092d3f95f3085f 301
+  s_f5af8c164cba73::t_f8c1dc6ea5b34c 16,262-264,269,274-277,279,281-282,285,291,293,297,299-300
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_f5af8c164cba73::t_9b75a82edaaa4b 69-72
+packages/cli/src/modules/agents/integrations/agent-chat-stream-consumer.ts
+  s_f5af8c164cba73::t_0ea122a903b015 235-237,241
+  s_f5af8c164cba73::t_7d4b33596f966d 267-295,299-300
+  s_f5af8c164cba73::t_10ac2f167c33f8 397-399,405-417,419-426,428-435
+  s_f5af8c164cba73::t_d4167a8b34924c 44-53
+  s_f5af8c164cba73::t_1bdc3c09a2391a 427,436-437
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-stream-consumer.test.ts
+  s_f5af8c164cba73::t_1282eca409a010 7,204-206,220-275,587-591
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eac45987668c1f5970dc45123ec5ca1812f34a61",
+  "prompts": {},
+  "sessions": {
+    "s_f1595e10a3a066": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cf2ac8b0-ab0d-4ccc-992e-7165304281ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_f5af8c164cba73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fde0483a-208b-4943-9c5a-fddb6937e64b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

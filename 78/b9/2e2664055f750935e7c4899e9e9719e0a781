@@ -1,0 +1,43 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatTaskControls.ts
+  s_be978965b23e19::t_e455e09e579b69 368,310
+  s_be978965b23e19::t_f3330be2ad3716 369
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_be978965b23e19::t_25c41b13acd4d2 311-313,187,308,374,257,259,261,283,287,293
+  s_82789c69de1855::t_89282135a0c4c0 397,403,414,420,437,459,466,476,478,737,740,742,745,352,294,304,310,330,339,343,345,348,369,375
+  s_be978965b23e19::t_e455e09e579b69 254
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_82789c69de1855::t_89282135a0c4c0 3100,3104,3122,4232,4239,4248
+packages/frontend/editor-ui/src/features/agents/__tests__/agent-plan.test.ts
+  s_82789c69de1855::t_89282135a0c4c0 369,371,374,382
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_be978965b23e19::t_768c306923eff8 154-156,159-160,244,367
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_82789c69de1855::t_89282135a0c4c0 227,229,232,244,246,253,660
+packages/frontend/editor-ui/src/features/agents/utils/agent-plan.ts
+  s_82789c69de1855::t_89282135a0c4c0 79,324,122,127,160,95,98,100,104,108,111,113,117,119,131,134,136,138,141,143,145,147,149,154,157,169,172,175,340
+  s_be978965b23e19::t_c8fef6cf9e47f1 121,159,164-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "78b92e2664055f750935e7c4899e9e9719e0a781",
+  "prompts": {},
+  "sessions": {
+    "s_82789c69de1855": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159bb-d082-7922-91e3-bcc90434d8c6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": null
+    },
+    "s_be978965b23e19": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "efc03c59-23c2-4305-9353-d19b0b0f18a9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

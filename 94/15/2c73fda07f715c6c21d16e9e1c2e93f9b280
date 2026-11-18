@@ -1,0 +1,266 @@
+packages/cli/src/modules/agents/builder/agent-builder-session-context.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1,18
+packages/quality/testing/playwright/tests/e2e/instance-ai/instance-ai-agent-test-layout.spec.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-72
+packages/cli/src/modules/otel/__tests__/support/otel-test-provider.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 57
+packages/cli/src/modules/otel/__tests__/execution-level-tracer.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1486-1493
+packages/@n8n/instance-ai/src/index.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 289
+packages/quality/testing/playwright/tests/e2e/agents/agent-test-layout.spec.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-48
+packages/cli/src/error-reporting/__tests__/error-reporting-boot.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-156
+packages/frontend/editor-ui/src/features/agents/components/AgentTestHeader.vue
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-170
+packages/cli/src/modules/otel/otel.service.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1,3-7,14,19-23,26,28,31-37,41-59,65-67,73-76,80,83-91,94-103,108,117,138-140,159-161,163-169,171-172,176-177,180-181,183-186,188-189,193-196,199-200,203-207,209-217,220-223,226-227,229-233,236-249,253-258,262-263,266,268,271-272
+packages/cli/package.json
+  s_f39b458558a5b9::t_fe7cba7970ec37 200-203
+scripts/lint-parity/samples.json
+  s_f39b458558a5b9::t_fe7cba7970ec37 200
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTestDock.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-775
+packages/@n8n/task-runner/src/task-runner-sentry.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 18,32
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 23,100
+packages/cli/src/expression-observability/__tests__/expression-observability.provider.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 7,41
+packages/cli/src/modules/otel/README.md
+  s_f39b458558a5b9::t_fe7cba7970ec37 4,17-18,20,22-26,28-36,38-44,152-154,156,186-188,191-192,194,199,203
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 600,674-675,680,1462,1481,1504,1558,1609,1622,1625,1805,1811,1818,1829,1837,1863,1906,1924,1953,1961,2022,2399,2407-2458,2478,2485,2504,2515,2539,2546,2561,2582,2605,2626,2631,2651,2675,2698,2744,2754,2787,2797,2969,3013,3024,3035,3057,3061,3068,3079,3112,3140,3289,4479,4751,4757,4770,4788,6708,7006,7028,7037,7043,7057,7078,7112,7130,7135,7146,7167,7172,7189,7197,7202,7209,7213
+packages/@n8n/instance-ai/src/tools/orchestration/agent-target-binding.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 17
+packages/cli/src/modules/otel/__tests__/otel.service.grpc-deps.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 2,7,11-13,56-59,77,81,86-88,92-101
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/SubagentStepTimeline.vue
+  s_f39b458558a5b9::t_fe7cba7970ec37 18,30
+packages/cli/src/expression-observability/expression-observability.provider.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 13,17,24,165,192
+packages/core/src/instance-settings/instance-settings.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 14,101
+packages/@n8n/config/test/config.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 472
+packages/cli/src/modules/agents/__tests__/agent-chat-relay.service.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 8,43
+packages/cli/src/observability/tracer-names.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-11
+packages/cli/src/modules/otel/__tests__/otel-settings.service.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 11,300-311,468-489
+  s_f39b458558a5b9::t_eb1e31c5107f24 490
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMarkdown.vue
+  s_f39b458558a5b9::t_fe7cba7970ec37 5-8,15,289,295
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiAgentTestHandoff.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-15
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/agentTestUrl.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-53
+packages/core/package.json
+  s_f39b458558a5b9::t_fe7cba7970ec37 77-78
+packages/cli/src/modules/agents/__tests__/agent-queued-test-stream.service.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-237
+packages/cli/src/observability/observability-boot.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-15
+packages/@n8n/agents/src/__tests__/langsmith-telemetry.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 134-137
+  s_f39b458558a5b9::t_745daeac277576 138-139
+packages/cli/src/modules/otel/__tests__/otel-settings.controller.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 43,59,69,72,93
+packages/@n8n/api-types/src/agents/agent-test.constants.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-2
+packages/cli/src/modules/agents/__tests__/agent-session-stop.service.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 11,23
+packages/@n8n/agents/src/integrations/langsmith.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1,324
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHeaders.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 9,72,74
+packages/cli/src/observability/swappable-pipeline.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-121
+packages/core/src/errors/error-reporter.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 6-7,57-58,83-119,216,245,268-270,275-277,294,302-304,307,317,319-332
+packages/cli/bin/n8n
+  s_f39b458558a5b9::t_fe7cba7970ec37 65-67,71-74
+packages/cli/src/modules/otel/otel-settings.controller.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 29
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/agent-test-session-binding.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-101
+packages/cli/src/modules/agents/__tests__/agent-run-tracing.service.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 2-3,9-10,12,23-28,33,38,43,48-49,54,64,97,152,162,186
+packages/@n8n/utils/src/promise/latest-wins.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-44
+packages/core/src/errors/__tests__/error-reporter.sentry-sdk.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-64
+packages/cli/src/observability/otel-sdk.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-123
+packages/cli/src/modules/agents/AGENTS.md
+  s_f39b458558a5b9::t_fe7cba7970ec37 8
+packages/core/src/instance-settings/instance-type.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-7
+packages/core/src/observability/tracing/span-sampling.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-2,49,51-52,60-63,65,71-72,133
+packages/@n8n/agents/src/sdk/telemetry.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 5,175
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_f39b458558a5b9::t_fe7cba7970ec37 38,308,472-473,495,527-529,533,536-543,573,629,697,715,812,819,831-832,928-929,1092-1093,1095
+packages/frontend/editor-ui/src/features/agents/components/AgentTestDock.vue
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-458
+packages/frontend/editor-ui/src/features/agents/components/AgentTestMoreMenu.vue
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-402
+packages/cli/src/commands/__tests__/start.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 190,252,291,340
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTaskModal.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 139
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1898-1899,1922-1923,1925-1926,2008,2019
+packages/@n8n/utils/src/promise/latest-wins.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-17
+packages/cli/src/modules/otel/otel-span-exporter.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-42
+packages/cli/src/abstract-server.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 124
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiAgentPreview.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 57,116,123,133
+.github/test-metrics/e2e-impact-map.json
+  s_f39b458558a5b9::t_fe7cba7970ec37 1
+packages/@n8n/agents/src/sdk/context-manager.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-17
+packages/cli/src/modules/instance-ai/turn-setup/assistant-agent.factory.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 28,206
+packages/frontend/editor-ui/src/features/agents/components/AgentMarkdownChunk.vue
+  s_f39b458558a5b9::t_fe7cba7970ec37 8,58
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 16,64
+packages/cli/src/modules/type-availability-policies/type-availability-policy-snapshot.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 5,114
+packages/@n8n/agents/src/__tests__/langsmith-telemetry.context.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-49
+packages/@n8n/config/src/configs/sentry.config.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 30-32,34,36-37
+packages/@n8n/config/src/index.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 115
+packages/cli/src/modules/agents/agent-chat-relay.service.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 18,35,131
+packages/cli/src/modules/agents/agent-run-tracing.service.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 5,7,52-54,58,88
+packages/cli/src/modules/instance-ai/agent-test-handoff.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-128
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/microsoft-utils.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 19
+packages/cli/src/modules/log-streaming.ee/destinations/message-event-bus-destination-sentry.ee.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 53-54
+packages/cli/src/modules/otel/__tests__/otel.service.provider.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-2,4-5,7-17,22-23,30-45,48-49,52-70,85,100-101,103-105,108-109,112-113,116,124,127-129,131-135,139-149,154-157,162,167-171,174-180,182-187,189,191-208,210,212-228,230-233,235-240,242-243,245-247,249-252,254-256,258-264,267-274,276-291,293-300,303-304,306-307,309-325,327-328,330-332,334-337,339-346,349-350,352-377,379-403,406-411,413-432
+packages/cli/src/modules/otel/otel-lifecycle-handler.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 68,70
+packages/cli/src/observability/tracer-gate.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-46
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTestButton.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-136
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentPreview.vue
+  s_f39b458558a5b9::t_fe7cba7970ec37 17,25,32,131
+packages/cli/src/modules/otel/otel-settings.service.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 26-60,183-184,186-187,197-200,202,207-208,211-212
+packages/core/src/observability/tracing/__tests__/span-sampling.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-2,17,25,62-70,83,87,92,125,133,135-136,213,244,302-307
+packages/@n8n/config/src/configs/tracing-sources.config.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-20
+packages/frontend/editor-ui/src/features/agents/components/AgentTestChatPage.vue
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-159
+packages/@n8n/instance-ai/src/tools/orchestration/agent-test-session-binding.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-73
+packages/frontend/editor-ui/src/features/agents/utils/agentTestUrl.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-64
+packages/cli/src/error-reporting/error-reporting-boot.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-57
+packages/cli/src/modules/instance-ai/__tests__/agent-test-handoff.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-227
+packages/cli/src/modules/otel/otel.module.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 6-7,40
+packages/cli/src/modules/otel/__tests__/otel.service.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-2,9,15-17,144-145,177-181,186-189,192-202,213-219,241-274,282,300,449,468,476-481,483-513,515-518,520-522,525-546,548,550-559,562-564,566-570,574,587,596-597,599,602,604,608-609,611,613-614,616-618,621-622,624-625,627-630,634-638,640-643,645-650,653-654,657,660,662,664,666-667,673,691,699-700
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTestMoreMenu.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-802
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 16,39
+packages/cli/src/modules/agents/agent-session-stop.service.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 13,26
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_f39b458558a5b9::t_fe7cba7970ec37 36,204,260
+pnpm-workspace.yaml
+  s_f39b458558a5b9::t_fe7cba7970ec37 343-346
+packages/cli/src/task-runners/task-broker/task-broker-server.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 169
+packages/@n8n/task-runner/src/js-task-runner/__tests__/js-task-runner.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 65
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 16,35
+packages/frontend/editor-ui/src/features/agents/components/AgentTestButton.vue
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-86
+packages/cli/src/modules/otel/otel-exporter.factory.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-160
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 77,868
+packages/cli/src/modules/agents/agent-queued-test-stream.service.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-163
+packages/cli/src/observability/__tests__/otel-sdk.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-288
+packages/@n8n/task-runner/src/config/sentry-config.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 10-12,14,16-17
+packages/cli/src/modules/otel/__tests__/otel-lifecycle-handler.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 4-9,11,1539,1541,1545-1557
+packages/core/src/instance-settings/__tests__/instance-type.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-11
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/__tests__/microsoft-utils.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 230-233,366-368,426-427,445
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskModal.vue
+  s_f39b458558a5b9::t_fe7cba7970ec37 39,619
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 17-18,211,525,3898,3915
+packages/cli/src/modules/instance-ai/turn-setup/assistant-turn-input.builder.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 48,302,307
+packages/core/src/instance-settings/index.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 2
+packages/core/src/errors/__tests__/error-reporter.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 4-5,27-37,55-58,467-562,575
+packages/@n8n/api-types/src/agents/index.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 10
+packages/cli/src/modules/agents/TEST_CHAT_RECOVERY.md
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-31
+packages/quality/testing/playwright/pages/InstanceAiPage.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 415-442
+OWNERS
+  s_f39b458558a5b9::t_fe7cba7970ec37 391
+packages/@n8n/task-runner/src/__tests__/task-runner-sentry.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 12,291
+packages/cli/src/modules/agents/builder/agent-builder-test-path.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 1-6
+packages/cli/src/modules/agents/__tests__/agent-run-tracing.service.otel.test.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 30,75,125,142
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_f39b458558a5b9::t_fe7cba7970ec37 67,113,166-168,214-215,239,250,440,868,1091-1092,3466,3582-3583,3666,3677,3783-3785,3787-3797,3799-3808,3810-3870,3996-3998
+  s_f39b458558a5b9::t_b57b318abdb709 3999-4000
+packages/cli/src/public-api/v1/controllers/otel.public.controller.ts
+  s_f39b458558a5b9::t_fe7cba7970ec37 83
+packages/@n8n/agents/package.json
+  s_f39b458558a5b9::t_fe7cba7970ec37 119,132,140-142
+pnpm-lock.yaml
+  s_f39b458558a5b9::t_7112246a98328a 905-906,908-909,911-912,914-915,969,1270-1272,1275,2763,3790,4235,4400,4849,4851-4853,4855,4858,4880,5362-5367,5370,5373,5376,5379,12015,12823-12828,12841-12846,12859-12864,12877-12882,12895-12900,12913-12918,12931-12936,12951-12957,12972-12978,12993-12999,13014-13020,13035-13041,13056-13062,13077-13083,13098-13104,13117-13122,13140-13145,13158-13163,13176-13181,13195-13197,14165-14179,14236-14239,14244-14247,14252-14253,14260-14262,14264-14266,14268-14270,14274-14276,14286-14292,19124-19127,21758-21761,23132-23136,29479,29495,30436-30438,30445-30447,30454-30456,30463-30465,30472-30474,30481-30483,30490-30492,30499-30501,30508-30510,30517-30519,30526-30528,30535-30537,30544-30546,30553-30555,30562-30564,30571-30573,30587-30589,30596-30598,30605-30607,30616-30617,31370-31381,31428-31429,31434,31436,31438,31442,31452,31454-31455,31458-31460,31462,31465-31474,31476,31479-31480,31482,31484-31486,31488-31490,31502,31504-31511,37325-37330,40534-40557,42259-42260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "94152c73fda07f715c6c21d16e9e1c2e93f9b280",
+  "prompts": {},
+  "sessions": {
+    "s_f39b458558a5b9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17d77-ae13-7a91-b42e-df9fcdd470b9",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/@n8n/utils/src/promise/create-event-loop-yielder.ts
+  s_2932f94fed6b20::t_12684ff52589c0 1-2,17
+packages/@n8n/utils/src/promise/create-event-loop-yielder.test.ts
+  s_2932f94fed6b20::t_12684ff52589c0 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5a1dbf0bb1fbb8d2de32cf3d873e7a50e915e431",
+  "prompts": {},
+  "sessions": {
+    "s_2932f94fed6b20": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d18d722b-8cd8-4b57-b59f-1784503287de",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

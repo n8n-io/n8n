@@ -1,0 +1,76 @@
+packages/cli/src/node-execution/execute-node.service.ts
+  s_db33480b8c9c64::t_367d647b7fa362 8-13
+  s_db33480b8c9c64::t_c1c397e70b84b5 163
+packages/core/src/execution-engine/__tests__/workflow-execute-run-node.test.ts
+  s_db33480b8c9c64::t_4e895c83c0ce20 1253-1277
+packages/core/src/nodes-loader/__tests__/directory-loader.test.ts
+  s_db33480b8c9c64::t_1694c0ba3d6737 1249
+  s_db33480b8c9c64::t_689a7eaf4ccffe 1146-1221,1254
+  s_db33480b8c9c64::t_ddbb413572240f 1222-1248,1250-1253
+packages/cli/src/__tests__/utils.test.ts
+  s_db33480b8c9c64::t_4e895c83c0ce20 267-278
+packages/core/src/execution-engine/declarative-webhook.ts
+  s_db33480b8c9c64::t_01562cef11a13e 149-151,153
+  s_db33480b8c9c64::t_33e103a4e7e07f 237
+  s_db33480b8c9c64::t_869d45cd3ecf42 21,23-24,33,39,41-45,50,57,59-61,63-69,88,92-96,152,156,158,167-172,178-187,191,208,210-213,227,231-236
+  s_db33480b8c9c64::t_b46120ca1298b4 1-14,16-20,22,25-32,34-38,40,46-49,51-56,58,62,70-87,89-91,97-101,103-139,145-148,154-155,157,159-166,173-177,188-190,192-207,209,214-226,228-230,238-244
+  s_db33480b8c9c64::t_17d15549f0d463 15
+  s_db33480b8c9c64::t_9d06285ddebfc5 102
+  s_db33480b8c9c64::t_a0e437f0f0a12d 140-144
+packages/cli/src/utils.ts
+  s_db33480b8c9c64::t_367d647b7fa362 1-6
+  s_db33480b8c9c64::t_c1c397e70b84b5 100
+packages/nodes-base/nodes/E2eTest/E2eTestDeclarativeWebhookTrigger.node.ts
+  s_db33480b8c9c64::t_33d3450a744c00 1-79
+packages/workflow/src/interfaces.ts
+  s_db33480b8c9c64::t_75a24276d8fee6 3028-3034,3036-3038,3040,3042,3044-3064,3066-3071,3073-3080,3082-3090,3331-3332,3530-3536
+  s_db33480b8c9c64::t_cafb8126318d3f 3072
+  s_db33480b8c9c64::t_ccd0aa4a2eb0da 3081,3529
+  s_db33480b8c9c64::t_34f0c6a45fea0c 3035
+  s_db33480b8c9c64::t_8abf2b0aa6a533 3039,3041,3043,3065
+packages/nodes-base/package.json
+  s_db33480b8c9c64::t_33d3450a744c00 554
+packages/core/src/execution-engine/__tests__/declarative-webhook.test.ts
+  s_db33480b8c9c64::t_5d13ad801feb0b 87-88,92,113-114,130,144-147
+  s_db33480b8c9c64::t_996a7874d8dfb2 11,89-91,93,118-122,195-202,325-338,367-387,389-416,418,425-440,446,465,471-512,571,577-593,598-614
+  s_db33480b8c9c64::t_5829910c79dff5 1-2,302-312,314-324
+  s_db33480b8c9c64::t_191ec7e6887ce9 3-10,12-18,20-86,94-112,115-117,123-129,131-143,148-194,203-301,313,339-366,388,417,419-424,441-445,447-464,466-470,513-570,572-576,594-597,615-660
+  s_db33480b8c9c64::t_719d8ba07c4afd 19
+packages/cli/src/node-execution/__tests__/execute-node.service.test.ts
+  s_db33480b8c9c64::t_bab9eb481e0bfe 141-159
+packages/nodes-base/nodes/E2eTest/E2eTestDeclarativeWebhookTrigger.node.json
+  s_db33480b8c9c64::t_33d3450a744c00 1-18
+packages/workflow/src/node-helpers.ts
+  s_db33480b8c9c64::t_8abf2b0aa6a533 1915
+  s_db33480b8c9c64::t_c1c397e70b84b5 1916,1918-1919
+  s_db33480b8c9c64::t_285f4df8716132 1917
+packages/core/src/nodes-loader/directory-loader.ts
+  s_db33480b8c9c64::t_ca009469a6e567 27-30,420-426
+  s_db33480b8c9c64::t_d8e439773bcc75 427-428
+packages/core/src/execution-engine/workflow-execute.ts
+  s_db33480b8c9c64::t_c1c397e70b84b5 1500
+  s_db33480b8c9c64::t_ccd0aa4a2eb0da 1502
+packages/cli/src/load-nodes-and-credentials.ts
+  s_db33480b8c9c64::t_33d3450a744c00 100
+packages/quality/testing/playwright/tests/e2e/webhooks/declarative-webhook-trigger.spec.ts
+  s_db33480b8c9c64::t_afb0549fd020c0 1-4,6-7,10-38,41-65,69-102
+  s_db33480b8c9c64::t_7d11cc3c80c357 5,9
+  s_db33480b8c9c64::t_6db731ce1ca65f 8,39-40
+  s_db33480b8c9c64::t_91555f64751fb6 66-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0cfd9be9dd7fba590df31373ddd10f73626d32cf",
+  "prompts": {},
+  "sessions": {
+    "s_db33480b8c9c64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a809806-fcd2-4a06-904e-42634dd34dd8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

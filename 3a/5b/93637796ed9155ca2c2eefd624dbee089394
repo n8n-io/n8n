@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/agent-threads.controller.ts
+  s_0432a9c1c81722::t_68c9f75c6ddb4b 94-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3a5b93637796ed9155ca2c2eefd624dbee089394",
+  "prompts": {},
+  "sessions": {
+    "s_0432a9c1c81722": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "42909289-4de8-464b-bf76-a2bc3863344f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

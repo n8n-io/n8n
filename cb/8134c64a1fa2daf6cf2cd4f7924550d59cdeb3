@@ -1,0 +1,25 @@
+packages/@n8n/backend-services/src/services/__tests__/workflow-project.service.test.ts
+  s_33852536738524::t_0fa7f7bbc4f540 1,7-15,29,35,38-41,52,55,88-89,96-110
+packages/@n8n/backend-services/src/services/workflow-project.service.ts
+  s_33852536738524::t_293ba23ad1525d 2,43-57
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_33852536738524::t_508eeab996cebc 1034-1035
+packages/nodes-base/nodes/Slack/test/v2/utils.test.ts
+  s_33852536738524::t_18fb4b41680855 15-19,201-205,257-261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cb8134c64a1fa2daf6cf2cd4f7924550d59cdeb3",
+  "prompts": {},
+  "sessions": {
+    "s_33852536738524": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "daf37cb4-9789-425a-abe6-81e7366ae405",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

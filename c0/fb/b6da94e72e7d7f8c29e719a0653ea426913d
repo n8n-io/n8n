@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/WorkflowToolConfigContent.test.ts
+  s_dfe3f914c8bb46::t_aa6a13f3b7d312 15,96,103-110,149-175
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_dfe3f914c8bb46::t_2a7c88e97f9104 281-284
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigForm.vue
+  s_dfe3f914c8bb46::t_7224fdc0742d6f 415-425,469
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigWorkflowContent.vue
+  s_dfe3f914c8bb46::t_3b5c1e8c0e0c6b 78
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_dfe3f914c8bb46::t_b4e0ac55ebf37d 443,577-583,589-590,605-606
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c0fbb6da94e72e7d7f8c29e719a0653ea426913d",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

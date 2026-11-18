@@ -1,0 +1,21 @@
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_82789c69de1855::t_dd65a5b4bbce26 175,182,265,272,497,505,570,577,590,592
+  s_82789c69de1855::t_7589a6fd467ac5 176-181,266-271,498-503,571-576
+  s_82789c69de1855::t_607689be150d1c 504,591
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b1729593e546916ce5a6b79133f7c62d11a3f857",
+  "prompts": {},
+  "sessions": {
+    "s_82789c69de1855": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159bb-d082-7922-91e3-bcc90434d8c6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

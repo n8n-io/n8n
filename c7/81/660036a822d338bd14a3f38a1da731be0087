@@ -1,0 +1,19 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatCohere/cohereV2Client.ts
+  s_244c960cb0b2cf::t_d15bc7a6346592 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c781660036a822d338bd14a3f38a1da731be0087",
+  "prompts": {},
+  "sessions": {
+    "s_244c960cb0b2cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a71b92fe-f3e0-49a1-aec3-436be862ac7d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

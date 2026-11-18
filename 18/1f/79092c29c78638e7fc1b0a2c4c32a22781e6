@@ -1,0 +1,33 @@
+packages/cli/package.json
+  s_71fde24149b9db::t_3abd6cf39a4385 201-203
+packages/core/src/observability/tracing/span-sampling.ts
+  s_1aa69298eb4cf0::t_1081e5708ec88e 60-61
+packages/core/src/errors/error-reporter.ts
+  s_1aa69298eb4cf0::t_1081e5708ec88e 7,83-100,269,275,335
+pnpm-lock.yaml
+  ai_agent 4822,4825,4828
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "181f79092c29c78638e7fc1b0a2c4c32a22781e6",
+  "prompts": {},
+  "sessions": {
+    "s_1aa69298eb4cf0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca44bdce-ec18-4d0c-bc10-a8d9b4963216",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    },
+    "s_71fde24149b9db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f71bd56d-a432-4323-a999-6a6b83977c41",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

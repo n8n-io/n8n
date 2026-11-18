@@ -1,0 +1,22 @@
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/apply-workflow-credentials.tool.test.ts
+  s_050e6c576e9de0::t_81c7612dcd1068 53-56,229-274
+packages/@n8n/instance-ai/src/tools/workflows/apply-workflow-credentials.tool.ts
+  s_050e6c576e9de0::t_c25bd5da777215 60-69
+  s_050e6c576e9de0::t_6ef66f912ada81 93-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e6c1d70283a82a00d64360e7c749d25dd331deff",
+  "prompts": {},
+  "sessions": {
+    "s_050e6c576e9de0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "37d0836c-2b31-4f89-817e-2618d33ecee6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

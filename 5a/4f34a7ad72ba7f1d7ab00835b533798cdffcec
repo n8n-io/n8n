@@ -1,0 +1,55 @@
+docs/generated/sqlite-schema/self_healing_investigation.md
+  ai_agent 9,25,75
+docs/generated/sqlite-schema/self_healing_result.md
+  ai_agent 127
+docs/generated/postgres-schema/public.self_healing_configuration.md
+  ai_agent 95
+docs/generated/postgres-schema/README.md
+  ai_agent 1767
+docs/generated/postgres-schema/public.user.md
+  ai_agent 440
+packages/@n8n/task-runner-python/uv.lock
+  ai_agent 7,77,79,81
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/createWorkflow.generated.yml
+  ai_agent 187-191,776-780
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowPublicDto.generated.yml
+  ai_agent 195-199
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.vue
+  ai_agent 169-171
+docs/generated/sqlite-schema/README.md
+  ai_agent 1753
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/deleteWorkflow.generated.yml
+  ai_agent 214-218
+docs/generated/sqlite-schema/user.md
+  ai_agent 444
+pnpm-lock.yaml
+  ai_agent 168-169,171-172,174-175,177-178,180-181,183-184,186-187,189-190,192-193,195-196,198-199,201-202,204-205,207-208,210-211,213-214,216-217,219-220,540-541,1197,1200,1203,1206,1209,1212,1215,1218,1221,1224,1227,1230,1233,1236,1239,1242,1245,1248,1269,1281,3144,4643,4646,4661,4664,4667,4670,4673,4676,4679,4874,4886,6953-6955,6986-6988,9090-9091,9096-9097,9102-9103,9108-9109,9114-9115,9120-9121,9126-9127,9132-9133,9138-9139,9144-9145,9150-9151,9156-9157,9162-9163,9168-9169,9174-9175,9180-9181,9184-9185,9190-9191,9196-9197,9200-9201,9204-9205,12101,12182-12183,16294-16295,25037,25039-25040,25043,25045-25048,25054,25056-25057,25060,25062-25065,25068,25070-25071,25074,25076-25077,25080,25082-25083,25087,25089-25093,25099,25101-25102,25105,25107-25108,25111,25113-25115,25118,25120-25121,25124,25126-25127,25130,25132-25133,25136,25138-25139,25142,25144,25146,25150,25152,25159,25161,25168,25172,25176,25178-25179,27305,27307-27308,27320,27322,27324,27332,27334,27341,27343,27346,27356,27358,27365,27367,27372,27380,27382-27383,27390,27392-27393,29626,29628,33953,33955-33957,34685,34695
+docs/generated/sqlite-schema/workflow_entity.md
+  ai_agent 281
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowPublishPublicDto.generated.yml
+  ai_agent 195-199
+docs/generated/postgres-schema/public.workflow_entity.md
+  ai_agent 282
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflows.generated.yml
+  ai_agent 250-254
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflow.generated.yml
+  ai_agent 223-227
+docs/generated/sqlite-schema/project.md
+  ai_agent 275
+docs/generated/postgres-schema/public.self_healing_result.md
+  ai_agent 128
+docs/generated/postgres-schema/public.self_healing_investigation.md
+  ai_agent 14,37,74
+docs/generated/postgres-schema/public.project.md
+  ai_agent 269
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  ai_agent 202-206,788-792
+docs/generated/sqlite-schema/self_healing_configuration.md
+  ai_agent 99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5a4f34a7ad72ba7f1d7ab00835b533798cdffcec",
+  "prompts": {}
+}

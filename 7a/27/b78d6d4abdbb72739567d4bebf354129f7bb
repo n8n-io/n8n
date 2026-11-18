@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/__tests__/agent-chat-relay.service.test.ts
+  s_f6ecac1d27039d::t_8b348001028565 3,13-14,51,55,115-122,124-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7a27b78d6d4abdbb72739567d4bebf354129f7bb",
+  "prompts": {},
+  "sessions": {
+    "s_f6ecac1d27039d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89b89260-50b9-4dc9-b922-745d32a048d8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

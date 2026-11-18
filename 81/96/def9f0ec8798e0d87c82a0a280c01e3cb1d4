@@ -1,0 +1,21 @@
+packages/@n8n/expression-runtime/src/bridge/quickjs-bridge.ts
+  ai_agent 479-480
+packages/@n8n/expression-runtime/src/bridge/__tests__/quickjs-bridge-load-wasm.test.ts
+  s_7e0a2e1edc748e::t_1f30561d66b69b 6,10-11,17-18,23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8196def9f0ec8798e0d87c82a0a280c01e3cb1d4",
+  "prompts": {},
+  "sessions": {
+    "s_7e0a2e1edc748e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "03525e47-aa93-42a5-bec6-418543ca3936",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

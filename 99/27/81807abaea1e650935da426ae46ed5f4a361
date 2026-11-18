@@ -1,0 +1,73 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionEnvironmentView.vue
+  s_f22a30eb938e0c::t_0bf5d841ca5a7b 61,234
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionCheckout.ts
+  s_f22a30eb938e0c::t_0bf5d841ca5a7b 19,32
+  s_f22a30eb938e0c::t_94df83b23d7c02 17
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionEntryPoints.ts
+  s_f22a30eb938e0c::t_94df83b23d7c02 27-28,45-47,51,54
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.vue
+  s_f22a30eb938e0c::t_0bf5d841ca5a7b 50,182
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionEnvironmentCard.vue
+  s_f22a30eb938e0c::t_0bf5d841ca5a7b 25,135
+  s_f22a30eb938e0c::t_94df83b23d7c02 54
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  s_f22a30eb938e0c::t_fb110320f09143 103-113
+packages/@n8n/permissions/src/constants.ee.ts
+  s_f22a30eb938e0c::t_ed3d5fa13e4be9 53,56-57,59,138,141-142,144
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_f22a30eb938e0c::t_d4985658351525 19-28
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_f22a30eb938e0c::t_dfa81b2323497c 74-84
+packages/@n8n/permissions/src/scope-information.ts
+  s_f22a30eb938e0c::t_0607b3905fe515 195,199,203,207,211,215,219,223,227,231,236
+packages/@n8n/permissions/src/utilities/__tests__/get-resource-permissions.test.ts
+  s_f22a30eb938e0c::t_de00b72ee4ceae 40,151
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_f22a30eb938e0c::t_9f059231a13213 779,785
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_f22a30eb938e0c::t_e2d8498208ca4b 95-96
+packages/cli/src/modules/promotions.ee/promotion-changes.controller.ts
+  s_f22a30eb938e0c::t_ef9f4d4e44f26f 38,57,69
+packages/cli/src/modules/promotions.ee/promotion-environments.service.ts
+  s_f22a30eb938e0c::t_91ea8ce4c497c3 285
+packages/cli/src/modules/promotions.ee/promotion-review-inbox.service.ts
+  s_f22a30eb938e0c::t_121e01bc51a5e1 157
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_f22a30eb938e0c::t_655771285b7268 89-90,108-109,133-134,152-153,175-176,195-196,226-227,261-262,282-283,311-312,332-333,355-356,378-379,400-401,423-424,441-442,470-471,497-498,523-524,527,552-553,582,585,601,619-620,647-648,651,671-672,675
+packages/cli/src/public-api/v1/openapi-gen/__tests__/generated-spec-drift.test.ts
+  s_f22a30eb938e0c::t_899371a8125fce 43-44,91-92,98
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_f22a30eb938e0c::t_4bd4b9812a6a79 1388-1390,1401,1855-1856,2260,2263,2316,2325,2327,2374,2377,2426,2439,2560,2593,2685
+packages/frontend/@n8n/stores/src/rbac.store.ts
+  s_f22a30eb938e0c::t_3d10b32c0c6aa9 32
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/__tests__/module.descriptor.test.ts
+  s_f22a30eb938e0c::t_0d2e3c5c27043f 37,85
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBanners.test.ts
+  s_f22a30eb938e0c::t_a1fd2cba14aa32 92,98,119,130-133,143,153,169,182-185,207-210,232,248,277,302
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.test.ts
+  s_f22a30eb938e0c::t_7dce16286b890e 48-51
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionEntryPoints.test.ts
+  s_f22a30eb938e0c::t_a85cc389d7dc79 52-53,59
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/module.descriptor.ts
+  s_f22a30eb938e0c::t_ffce4ee18f9a5b 41,44
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotions.constants.ts
+  s_f22a30eb938e0c::t_63d508dc5978d1 9-13
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionEnvironmentView.test.ts
+  s_f22a30eb938e0c::t_0f9c898367f306 104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "992781807abaea1e650935da426ae46ed5f4a361",
+  "prompts": {},
+  "sessions": {
+    "s_f22a30eb938e0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "089345ba-a85e-46fe-a596-b06a86f1735f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

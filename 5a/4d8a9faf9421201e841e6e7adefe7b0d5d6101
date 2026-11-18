@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_f60d4ac55ef297::t_7ab847d23c7b59 54
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_f60d4ac55ef297::t_7ab847d23c7b59 87
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_f60d4ac55ef297::t_7ab847d23c7b59 226-228,231
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_f60d4ac55ef297::t_7ab847d23c7b59 491,509
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5a4d8a9faf9421201e841e6e7adefe7b0d5d6101",
+  "prompts": {},
+  "sessions": {
+    "s_f60d4ac55ef297": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2c247a87-d94b-4616-ba4c-bf4b0860ce0b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

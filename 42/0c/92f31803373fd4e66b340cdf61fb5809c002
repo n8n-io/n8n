@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_82789c69de1855::t_298508f89beedb 1792,1812-1827,1829-1833
+  s_82789c69de1855::t_bdb33832e20e3f 2293-2301
+  s_82789c69de1855::t_047a1908772f52 2312,2321,2323,2325,2328,2335,2338,2342,2345,2357,2359,2365,2368,2370,2565,2570,2572,2575,2577,2579,2582,2584,2631,2640,2644,2646,2649,3358
+  s_82789c69de1855::t_228fb425de8566 2317-2320,2350-2355,2349
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_82789c69de1855::t_bdb33832e20e3f 573,576,578,581,495,504,506,513,517,519,525
+  s_82789c69de1855::t_54d66b9cbc7730 1604,1825-1826
+  s_82789c69de1855::t_d6b616fdf44d36 1605-1608,1613-1627,1629-1630,1638
+  s_35eec4a310924f::t_b7c49ccbf65683 1498-1500
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "420c92f31803373fd4e66b340cdf61fb5809c002",
+  "prompts": {},
+  "sessions": {
+    "s_35eec4a310924f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7cdd8b7-8742-4eb0-b7e6-bd08d27ca2d1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    },
+    "s_82789c69de1855": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159bb-d082-7922-91e3-bcc90434d8c6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": null
+    }
+  }
+}

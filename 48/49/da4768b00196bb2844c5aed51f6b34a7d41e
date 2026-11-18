@@ -1,0 +1,19 @@
+packages/workflow/test/native-evaluation-parity.test.ts
+  s_6179f4113943a1::t_ad566db1adbd9d 869,875-876
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4849da4768b00196bb2844c5aed51f6b34a7d41e",
+  "prompts": {},
+  "sessions": {
+    "s_6179f4113943a1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18c77-2d6a-77d3-b69f-81e10ca6bea2",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

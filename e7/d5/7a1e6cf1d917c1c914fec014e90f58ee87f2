@@ -1,0 +1,51 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_08690fb8a4caf5::t_e3591190c634f3 985,9206-9208,9221-9226,9431
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_08690fb8a4caf5::t_5aa5597e4ee694 209,276,3770-3804,5771-5789
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_08690fb8a4caf5::t_52fe2dcea3711f 65-73,936-991
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCard.test.ts
+  s_08690fb8a4caf5::t_b25a935315b6e4 3,8-18,228,231,235-236,240,244,248-288,293,303,336
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentsListView.test.ts
+  s_08690fb8a4caf5::t_eaf6a6cead3ed8 24,33,53-54,209-213,397-451
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentArchive.test.ts
+  s_08690fb8a4caf5::t_30bdd4dcfb2b49 1-117
+packages/frontend/editor-ui/src/features/agents/agent.types.ts
+  s_08690fb8a4caf5::t_b59ff0759ccbe8 37
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_08690fb8a4caf5::t_6ee2d19bbc3f66 13,236,271-277,279
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_08690fb8a4caf5::t_9fc9d0f52689cb 9,18,21-22,107,130,133-135,146,220-222,224-225,228,230-242,822-829
+packages/frontend/editor-ui/src/features/agents/components/AgentCard.vue
+  s_08690fb8a4caf5::t_0d11eb41cc64c2 22,41-42,55,89-111,113-115,119,154,168-186,188-194,205,225-229,235-238,267-276,278,288-291,334-343
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_08690fb8a4caf5::t_b75d9994f06e16 132,682-705
+packages/frontend/editor-ui/src/features/agents/composables/useAgentArchive.ts
+  s_08690fb8a4caf5::t_48fbdfef0d516c 1-74
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_08690fb8a4caf5::t_029074f015868e 93,289,799,801-803,808-809,817-818,1155,2818-2819,2821-2841,2844-2865,2966-2973,3620-3621
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  s_08690fb8a4caf5::t_9345d60bb2f1b7 5,76-80,113-120,138,234-256,337,370-378,390-391
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.test.ts
+  s_08690fb8a4caf5::t_9956799068a599 255-278
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  s_08690fb8a4caf5::t_d975f78db2eb38 99,111-117,281-285,316
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.ts
+  s_08690fb8a4caf5::t_8e930e2779c0dd 17,39-40,56-61,150-152,170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e7d57a1e6cf1d917c1c914fec014e90f58ee87f2",
+  "prompts": {},
+  "sessions": {
+    "s_08690fb8a4caf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33b03ae9-9b4e-49ba-ac90-ae160b5918c5",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

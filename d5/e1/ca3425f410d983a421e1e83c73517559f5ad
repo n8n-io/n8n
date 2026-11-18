@@ -1,0 +1,21 @@
+packages/@n8n/agents/src/sdk/abort.ts
+  s_e96b2a058a8d23::t_76bea5a1e40682 9-13
+packages/@n8n/agents/src/sdk/__tests__/abort.test.ts
+  s_e96b2a058a8d23::t_76bea5a1e40682 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d5e1ca3425f410d983a421e1e83c73517559f5ad",
+  "prompts": {},
+  "sessions": {
+    "s_e96b2a058a8d23": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17996-09b4-7210-950e-5df432b2f229",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

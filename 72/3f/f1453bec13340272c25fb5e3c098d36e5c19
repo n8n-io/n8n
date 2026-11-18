@@ -1,0 +1,548 @@
+packages/@n8n/instance-ai/src/runtime/__tests__/run-state-registry.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 132-141
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1241,1243-1247,1249-1250,1252,1269-1270,1273-1275,1277-1278,1299-1303,1309-1332,1461-1463
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 63,75,85-89,129,177
+packages/cli/src/modules/instance-ai/event-bus/interrupted-run-sweeper.ts
+  s_a0c92b179996b0::t_a465041bb508a7 112
+packages/cli/src/modules/instance-ai/instance-ai-checkpoint-pruning.task.ts
+  s_a0c92b179996b0::t_a465041bb508a7 12-15,20,33,36,49,54-55
+packages/@n8n/instance-ai/src/runtime/__tests__/stream-runner.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 100-101,105-110,122,133-134
+packages/cli/src/modules/instance-ai/storage/typeorm-agent-memory.ts
+  s_a0c92b179996b0::t_a465041bb508a7 10-11,571-574
+  s_a0c92b179996b0::t_b3e23261f57806 575-576
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 23-24,26,298-306,668-669,674-679
+packages/frontend/editor-ui/src/features/agents/utils/agent-change-request.ts
+  s_a0c92b179996b0::t_a465041bb508a7 10-11,58
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 88,156
+packages/@n8n/instance-ai/src/runtime/stream-runner.ts
+  s_a0c92b179996b0::t_a465041bb508a7 3-5,9,28,61
+packages/cli/src/modules/knowledge/__tests__/knowledge-availability.service.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-32
+packages/cli/src/modules/breaking-changes/breaking-changes.controller.ts
+  s_a0c92b179996b0::t_a465041bb508a7 40,145-169
+  s_a0c92b179996b0::t_14f91e167146d3 170-171
+packages/modules/apps/backend/src/app-storage-lock.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-5
+packages/cli/src/modules/instance-ai/self-healing/__tests__/candidate-workflow.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-515
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRules.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 16-28,894-942
+  s_a0c92b179996b0::t_c20236ce2a8c66 943
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a0c92b179996b0::t_a465041bb508a7 4450,4798-4799,7527,8076
+packages/cli/src/modules/agents/repositories/agent-task.repository.ts
+  s_a0c92b179996b0::t_a465041bb508a7 2,27-32
+  s_a0c92b179996b0::t_324ffa0005c39f 33-34
+packages/cli/src/modules/knowledge/AGENTS.md
+  s_a0c92b179996b0::t_a465041bb508a7 1-54
+packages/@n8n/instance-ai/src/tools/executions.tool.ts
+  s_a0c92b179996b0::t_a465041bb508a7 20,228-244,580-585,589-601
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 182
+packages/modules/apps/backend/src/__tests__/apps.config.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-37
+packages/@n8n/instance-ai/src/tools/research.tool.ts
+  s_a0c92b179996b0::t_a465041bb508a7 123,207
+packages/modules/apps/backend/src/app-version.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-153
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 257-296
+packages/modules/apps/backend/src/storage/app-blob-store.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-100
+packages/@n8n/instance-ai/src/runtime/run-state-registry.ts
+  s_a0c92b179996b0::t_a465041bb508a7 132,179
+packages/@n8n/instance-ai/src/skills/skills.ts
+  s_a0c92b179996b0::t_a465041bb508a7 26
+packages/cli/src/modules/instance-ai/self-healing/self-healing-agent.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-597
+packages/@n8n/db/src/services/__tests__/db-lock.service.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 188-198
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 94-97
+packages/@n8n/agents/docs/observation-log-storage.md
+  s_a0c92b179996b0::t_a465041bb508a7 1-39
+packages/cli/src/modules/n8n-packages/__tests__/export-agent-package.integration.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 138-142
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-subagent-workspace.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 15,86
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 251
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent-import-match.service.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-68
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-import-match.service.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 105-106,110
+packages/@n8n/instance-ai/docs/prompt-profiles.md
+  s_a0c92b179996b0::t_a465041bb508a7 8-11
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.module-init.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1,5,19,53-55,74,84-89,91-95,98,107,117-155
+  s_a0c92b179996b0::t_2128fd0860d2f8 156
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent.exporter.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 270
+packages/nodes-base/nodes/Databricks/actions/lakebase/executeFunction.operation.ts
+  s_a0c92b179996b0::t_a465041bb508a7 57-59,62
+packages/@n8n/instance-ai/src/workflow-loop/__tests__/workflow-task-service.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 137,434
+packages/cli/src/modules/instance-ai/self-healing/database/self-healing-investigation.entity.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-63
+packages/@n8n/agents/docs/episodic-memory-capture.md
+  s_a0c92b179996b0::t_a465041bb508a7 1-25
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.integration.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-10,15-18,20,26-28,36-49,54,66-282,327-558
+packages/cli/src/modules/instance-ai/workflow-suggestions/__tests__/workflow-suggestion.service.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 123,148-171
+  s_a0c92b179996b0::t_7ae12d8cd44cbc 172
+packages/cli/src/modules/instance-ai/repositories/instance-ai-event-log.repository.ts
+  s_a0c92b179996b0::t_a465041bb508a7 90-101
+packages/cli/src/modules/instance-ai/self-healing/self-healing-temporary-workflow.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-129
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-temporary-workflow.service.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-256
+packages/modules/apps/backend/src/app-retention.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-72
+packages/modules/apps/backend/src/index.ts
+  s_a0c92b179996b0::t_a465041bb508a7 3,6-15
+packages/cli/src/modules/instance-ai/workflow-suggestions/__tests__/workflow-suggestion.service.integration.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 339,352-354
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_a0c92b179996b0::t_a465041bb508a7 283-284,286,289-319,331-332,339,426
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-event-log.repository.integration.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-80
+packages/modules/apps/backend/src/__tests__/app-archive.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-245
+packages/cli/src/modules/agents/__tests__/agent-knowledge.controller.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 7-9,20,24,30,129-134,162-164
+packages/nodes-base/nodes/Databricks/test/lakebaseExecuteFunction.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 57-63,76-79,82,86-99
+  s_a0c92b179996b0::t_5f2229e9acff7c 100-101
+packages/frontend/@n8n/rest-api-client/src/utils.ts
+  s_a0c92b179996b0::t_a465041bb508a7 3-9,106,113-154,160,180,188,201-202
+packages/cli/src/modules/instance-ai/self-healing/self-healing-reconciliation.task.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-25
+packages/cli/src/modules/n8n-packages/entities/__tests__/import-id-policy.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-23
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 33-35,115,151,400-426
+  s_a0c92b179996b0::t_0c3f2714bac4d4 427-428
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 13,458-461,613-854,885,887-888,890,912,915-921,930-933,938,940-944,952-960,964-966
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  s_a0c92b179996b0::t_a465041bb508a7 26,210-226,649,651,654,676-678,706-707,709
+packages/@n8n/instance-ai/src/tools/orchestration/verification/__tests__/run-workflow-verification.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-136
+packages/@n8n/agents/src/runtime/memory/observation-log-batch.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-54
+packages/@n8n/instance-ai/src/tools/restrict-tool-actions.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-18
+packages/@n8n/instance-ai/src/tools/orchestration/verification/scripted-gate-run.ts
+  s_a0c92b179996b0::t_a465041bb508a7 19,29,69-70
+packages/modules/apps/backend/src/__tests__/app-artifact.service.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-277
+packages/@n8n/instance-ai/src/agent/self-healing-agent.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-157
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 4736,4752-4753,5950-5976
+  s_a0c92b179996b0::t_78334dc32c2399 5977-5978
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectTabs.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 5,96-97,104-105
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_a0c92b179996b0::t_a465041bb508a7 116-120
+packages/@n8n/instance-ai/src/index.ts
+  s_a0c92b179996b0::t_a465041bb508a7 7-9,35-48,121-127,147-188,686-723,738,894-927
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-investigation.repository.integration.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-120
+packages/cli/src/modules/instance-ai/workflow-json.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-47
+packages/cli/src/modules/agents/BUILT_IN_TOOLS.md
+  s_a0c92b179996b0::t_a465041bb508a7 84
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-observation.repository.integration.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1,3,9,11-12,21,27,31,45,87-255
+  s_a0c92b179996b0::t_24f3ff02381293 256
+packages/cli/src/modules/knowledge/knowledge.module.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-18
+packages/modules/apps/backend/src/__tests__/app-blob-store.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-159
+packages/cli/src/modules/instance-ai/workflow-suggestions/README.md
+  s_a0c92b179996b0::t_a465041bb508a7 5
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRules.vue
+  s_a0c92b179996b0::t_a465041bb508a7 32-33,38,87-104,261-269
+pnpm-workspace.yaml
+  s_a0c92b179996b0::t_a465041bb508a7 203
+packages/modules/apps/backend/src/app-artifact.repository.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-114
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_a0c92b179996b0::t_a465041bb508a7 244,296,354,467
+packages/@n8n/backend-network/src/http/axios/__tests__/utils.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 5,14,405-423
+  s_a0c92b179996b0::t_1ed919078fc458 424-425
+packages/cli/src/modules/instance-ai/self-healing/README.md
+  s_a0c92b179996b0::t_a465041bb508a7 1,3-115,119-140,142-145,153-169,213-214,216-217
+packages/cli/src/modules/instance-ai/storage/typeorm-observation-log-store.ts
+  s_a0c92b179996b0::t_a465041bb508a7 12-13,57-61
+  s_a0c92b179996b0::t_7e168c67ed5d38 62
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-memory.service.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 170-209,1389-1390,1395,1397
+packages/workflow/test/schemas.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1,112-139
+  s_a0c92b179996b0::t_4a8fb2aef853f6 140
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_a0c92b179996b0::t_a465041bb508a7 42-43,124-146
+  s_a0c92b179996b0::t_c36453d5354f73 147
+packages/nodes-base/utils/postgres.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 3,65-151
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-mid-run.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 327,333-336,367
+packages/modules/apps/backend/src/apps.config.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-31
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 4-7,645-654,682-826
+  s_a0c92b179996b0::t_2039856cf68528 827
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 31,178
+packages/cli/src/modules/instance-ai/self-healing/self-healing-result.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 3-5,21-22,24,28,30-31,35-41,60,93-101,103-108,111-122,124-127,129,134-156,158-184
+packages/cli/src/modules/agents/repositories/agent-memory-entry.repository.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-8,10,12,16-95
+packages/workflow/src/schemas.ts
+  s_a0c92b179996b0::t_a465041bb508a7 488-490
+packages/cli/src/modules/knowledge/__tests__/test-utils/knowledge-availability.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-20
+packages/cli/src/modules/instance-ai/self-healing/database/self-healing-investigation.repository.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-81
+packages/@n8n/db/src/migrations/common/1792578704944-CreateSelfHealingInvestigationTable.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-74
+packages/modules/apps/backend/src/apps.module.ts
+  s_a0c92b179996b0::t_a465041bb508a7 11-20,24-26
+  s_a0c92b179996b0::t_559ee33fc966d8 27-28
+packages/@n8n/instance-ai/src/tracing/__tests__/langsmith-tracing.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 454-460,504-510
+packages/nodes-base/nodes/N8n/test/N8n.structure.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 3,16-20
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_a0c92b179996b0::t_a465041bb508a7 9-10,16,1325-1326
+packages/@n8n/instance-ai/src/runtime/__tests__/resumable-stream-executor.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 102-129,133-282,337-369,371-376,451-473,475-509,584,624
+packages/cli/src/modules/agents/repositories/agent-observation.repository.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-8,10,12,15-16,18-84
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-handoff.integration.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 66-81,83-84
+packages/@n8n/instance-ai/prompts/self-healing/self-healing.md
+  s_a0c92b179996b0::t_a465041bb508a7 1-117
+packages/@n8n/backend-network/src/http/axios/__tests__/invoke.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 111-119
+packages/nodes-base/nodes/N8n/test/node/N8n.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 17-21
+packages/cli/src/modules/instance-ai/event-bus/__tests__/interrupted-run-sweeper.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 283,286
+packages/nodes-base/nodes/Databricks/actions/lakebase/upsert.operation.ts
+  s_a0c92b179996b0::t_a465041bb508a7 4-5,37,51-102
+packages/nodes-base/nodes/N8n/test/node/project.addUser.workflow.json
+  s_a0c92b179996b0::t_a465041bb508a7 1-57
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_a0c92b179996b0::t_a465041bb508a7 422-423
+packages/cli/src/modules/knowledge/knowledge-availability.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-42
+packages/@n8n/agents/src/sdk/__tests__/memory-builder-observational.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 175,190-194
+packages/@n8n/instance-ai/src/tools/workflows/prepare-workflow-for-save.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-41
+packages/cli/src/modules/instance-ai/self-healing/self-healing-investigation.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-255
+packages/@n8n/agents/src/index.ts
+  s_a0c92b179996b0::t_a465041bb508a7 107-109,428
+packages/nodes-base/nodes/Postgres/transport/index.ts
+  s_a0c92b179996b0::t_a465041bb508a7 14,138
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.module.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 7,11-14,17,22,25,30
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-temporary-workflow.repository.integration.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-193
+packages/modules/apps/backend/src/__tests__/snapshot-app-version-stores.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-235
+packages/cli/src/modules/instance-ai/suspended-run-restorer.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 235
+packages/cli/src/modules/instance-ai/instance-ai-credit.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 4,86,124,193,302-303,320-321
+packages/cli/src/modules/n8n-packages/entities/match-source-ids.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-36
+packages/nodes-base/utils/postgres.ts
+  s_a0c92b179996b0::t_a465041bb508a7 26-46,58-76,78-84
+packages/@n8n/instance-ai/src/runtime/resumable-stream-executor.ts
+  s_a0c92b179996b0::t_a465041bb508a7 101-104,203-206,211,223,229,322,371,403-405,490,504,506,544-550,557-563,573-574,588-589,598-600
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_a0c92b179996b0::t_a465041bb508a7 129
+packages/cli/src/modules/knowledge/knowledge-sandbox-provider.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-51
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_a0c92b179996b0::t_a465041bb508a7 12,73-83,86-90,224-227,252-297,305-306,312-313,319,322-323,325-330,344,348,355,360
+packages/@n8n/config/src/configs/logging.config.ts
+  s_a0c92b179996b0::t_a465041bb508a7 63
+packages/cli/src/modules/instance-ai/self-healing/self-healing-execution-reference.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1,52-82
+  s_a0c92b179996b0::t_444a83d70d0365 83-84
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-3,10-51
+packages/nodes-base/nodes/Databricks/test/lakebaseUpsert.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-8,30-53,84,86,92-95,98-101,108,119,128,135,144,160,172,187,201,216,225,233,249,255,262-388
+packages/cli/src/modules/instance-ai/__tests__/credit-counting.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 41,46,123,132,141-165,199,206,216,299,316,354,361,365
+packages/cli/src/modules/agents/agent-knowledge.controller.ts
+  s_a0c92b179996b0::t_a465041bb508a7 9-10,25,29,31
+packages/modules/apps/backend/src/__tests__/apps.module.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 7-12,34-39,47-52
+packages/cli/src/modules/agents/__tests__/agent-sandbox.controller.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 6-7,17,33-36,41
+packages/@n8n/backend-network/src/http/axios/utils.ts
+  s_a0c92b179996b0::t_a465041bb508a7 3,16,235-257
+  s_a0c92b179996b0::t_36817db244bab2 258
+packages/@n8n/agents/src/runtime/memory/episodic-memory.ts
+  s_a0c92b179996b0::t_a465041bb508a7 34
+packages/@n8n/instance-ai/src/tools/orchestration/verification/analyze-result.ts
+  s_a0c92b179996b0::t_a465041bb508a7 445-446
+packages/cli/src/modules/agents/agent-sandbox.controller.ts
+  s_a0c92b179996b0::t_a465041bb508a7 8-9,17,38
+packages/frontend/@n8n/rest-api-client/src/utils.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 6,68-121
+  s_a0c92b179996b0::t_4f5b762b851088 122-123
+packages/@n8n/instance-ai/src/self-healing.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-96
+packages/cli/src/modules/agents/agents.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 69,351-360
+  s_a0c92b179996b0::t_4ad5f4f318fb61 361
+packages/frontend/editor-ui/src/features/settings/apiKeys/apiKeys.utils.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 19-21,59,75,88-93
+packages/cli/src/modules/breaking-changes/__tests__/breaking-changes.controller.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 284-357
+packages/@n8n/instance-ai/src/__tests__/self-healing.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-54
+packages/@n8n/instance-ai/src/tools/workflows/workflow-source-generator.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-13
+packages/cli/src/modules/instance-ai/workflow-suggestions/workflow-suggestion.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 159-186
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_a0c92b179996b0::t_a465041bb508a7 51
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import-match.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-153
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import-match.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 6-7,79-83,85,87-88,92-93,97,105
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-identities.integration.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-208
+packages/@n8n/instance-ai/docs/configuration.md
+  s_a0c92b179996b0::t_a465041bb508a7 46
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/verify-built-workflow.tool.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 688-705
+packages/cli/src/modules/agents/__tests__/agent-knowledge.service.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 10-13,148-161,178,491-540
+  s_a0c92b179996b0::t_12c1a388231c11 541
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-agent.service.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-894
+packages/modules/apps/backend/package.json
+  s_a0c92b179996b0::t_a465041bb508a7 41-42,48-49,52-54,65-66
+packages/modules/apps/backend/src/__tests__/app-version.service.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-189
+packages/cli/src/modules/instance-ai/self-healing/candidate-workflow.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-177
+packages/modules/apps/backend/src/storage/snapshot-app-version-stores.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-135
+packages/modules/apps/backend/src/__tests__/app-retention.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-183
+packages/cli/src/modules/knowledge/knowledge-consumer-scope.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-18
+packages/@n8n/instance-ai/src/agent/__tests__/self-healing-agent.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-400
+packages/modules/apps/backend/src/app-storage-cleanup.task.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-43
+packages/cli/src/modules/instance-ai/repositories/instance-ai-observation.repository.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-8,10,12,15-16,18-76
+packages/@n8n/backend-network/src/http/axios/invoke.ts
+  s_a0c92b179996b0::t_a465041bb508a7 4,8-21
+packages/@n8n/backend-network/src/http/legacy-request.ts
+  s_a0c92b179996b0::t_a465041bb508a7 20,50-65
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_a0c92b179996b0::t_a465041bb508a7 230-233
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-conversation-history.repository.integration.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 324-342
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-thread-history.repository.integration.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 108-127
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_a0c92b179996b0::t_a465041bb508a7 92-94
+packages/modules/apps/backend/src/app-artifact.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-125
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 53,298,996-999
+packages/nodes-base/nodes/Postgres/test/transport/configurePostgres.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-120
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 85,902-982,1032-1077
+  s_a0c92b179996b0::t_74a3e69bc7aaf6 1078-1079
+packages/@n8n/agents/src/runtime/memory/episodic-memory-capture.ts
+  s_a0c92b179996b0::t_a465041bb508a7 344-380,399-403,411,416-417
+packages/@n8n/backend-network/src/http/__tests__/legacy-request.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 4,8,489-635
+  s_a0c92b179996b0::t_509eb533f6f832 636
+packages/cli/src/modules/agents/agents.module.ts
+  s_a0c92b179996b0::t_a465041bb508a7 232-234,241
+packages/frontend/@n8n/rest-api-client/src/api/breaking-changes.ts
+  s_a0c92b179996b0::t_a465041bb508a7 13,37-64
+  s_a0c92b179996b0::t_689d98fd33bcb8 65
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_a0c92b179996b0::t_a465041bb508a7 31-32,136-137,325-330,673-684,695-701
+packages/nodes-base/nodes/HttpRequest/GenericFunctions.ts
+  s_a0c92b179996b0::t_a465041bb508a7 16,284,292,299-300
+packages/nodes-base/nodes/N8n/N8n.node.ts
+  s_a0c92b179996b0::t_a465041bb508a7 6,63-66,84-85
+  s_a0c92b179996b0::t_eca7102c951b11 86
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 64,265-270,758-759,892,968,1527-1601,1700-1701,1711-1713,2191-2193,2229,2308-2312,2314-2326,2337-2338,2345-2346,2721-2725,7116
+packages/@n8n/instance-ai/src/tools/orchestration/verification/__tests__/scripted-gate-run.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 81-94,183-185
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-result.service.integration.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1,16,24-25,40,46-47,49-53,58,72,85,90-91,102,110,125-128,151-155,162-179,181-220,222-266,269-278,281-365,368-375,378-380,382-383,385,388-393,397-449,451-456,460-468,470,477-479,484-497,500-511,523-530,818,836,848,859,897-921,1062-1064,1087-1090
+OWNERS
+  s_a0c92b179996b0::t_a465041bb508a7 117
+packages/@n8n/instance-ai/package.json
+  s_a0c92b179996b0::t_a465041bb508a7 36
+packages/@n8n/instance-ai/src/tools/orchestration/verification/run-workflow-verification.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-47
+packages/@n8n/agents/src/runtime/memory/observation-log-store.ts
+  s_a0c92b179996b0::t_a465041bb508a7 8
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1319-1338
+packages/@n8n/instance-ai/src/tools/data-tables.tool.ts
+  s_a0c92b179996b0::t_a465041bb508a7 18,913-922,927-935
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_a0c92b179996b0::t_a465041bb508a7 58-61,69-81,84-87,92,158-160,179
+packages/cli/src/modules/knowledge/__tests__/knowledge.module.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-25
+packages/cli/src/modules/breaking-changes/__tests__/migration-report-csv.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-145
+packages/@n8n/agents/src/runtime/__tests__/observation-log-store.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 2-33,36-118
+packages/@n8n/backend-network/src/http/axios/request.ts
+  s_a0c92b179996b0::t_a465041bb508a7 17,199-209
+  s_a0c92b179996b0::t_187681e8c1fa72 210-212
+packages/cli/src/modules/agents/__tests__/agents.module.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 44-45,138-155,157-158,161-162,168
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_a0c92b179996b0::t_a465041bb508a7 42,391,414
+packages/frontend/editor-ui/src/features/settings/apiKeys/apiKeys.constants.ts
+  s_a0c92b179996b0::t_a465041bb508a7 17
+packages/modules/apps/backend/src/storage/app-archive.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-186
+packages/nodes-base/nodes/HttpRequest/test/GenericFunctions.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 3,8,135-151
+  s_a0c92b179996b0::t_25f929b35f5405 152-153
+packages/@n8n/agents/src/types/sdk/observation-log.ts
+  s_a0c92b179996b0::t_a465041bb508a7 3,45-60,165
+packages/@n8n/api-types/src/__tests__/self-healing-results.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 14-22,26-43,46,50
+packages/@n8n/instance-ai/src/tools/orchestration/verify-built-workflow.tool.ts
+  s_a0c92b179996b0::t_a465041bb508a7 15,32,335-366
+packages/cli/src/modules/knowledge/knowledge-retriever.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-40
+packages/cli/src/modules/breaking-changes/migration-report-csv.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-82
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-investigation.service.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-440
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-reconciliation.task.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-99
+packages/@n8n/db/src/services/db-lock.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 24-25,184
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_a0c92b179996b0::t_a465041bb508a7 428-429
+packages/@n8n/api-types/src/self-healing-results.ts
+  s_a0c92b179996b0::t_a465041bb508a7 8,12-19,23-24
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_a0c92b179996b0::t_a465041bb508a7 11,39-40,129-136,295-322,602,816-825
+  s_a0c92b179996b0::t_fe3468b714ca87 826-827
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_a0c92b179996b0::t_a465041bb508a7 76,446-447,492,505-509,537,842,853,2290,2325,2333-2343
+packages/@n8n/instance-ai/docs/architecture.md
+  s_a0c92b179996b0::t_a465041bb508a7 84-98
+packages/@n8n/instance-ai/src/self-healing/self-healing.prompt.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-7
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-candidate.service.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-472
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_a0c92b179996b0::t_a465041bb508a7 8-10
+packages/modules/apps/backend/src/app-artifact.entity.ts
+  s_a0c92b179996b0::t_a465041bb508a7 28-29
+packages/modules/apps/backend/src/app.repository.ts
+  s_a0c92b179996b0::t_a465041bb508a7 14,25-26,29-69,71,86-90,101-102,104
+packages/cli/src/modules/agents/agent-knowledge.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 17-18,42,51,75,82,90,115-118
+packages/frontend/@n8n/rest-api-client/src/api/__tests__/breaking-changes.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 3,5-10,54-104
+  s_a0c92b179996b0::t_c888eb89093128 105
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 20-21,289,293,311-318,631-634,1440-1455,1546-1891
+  s_a0c92b179996b0::t_96da24c8295861 1892-1893
+packages/modules/apps/backend/src/apps.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 10,14,37,47,76-81
+packages/cli/src/modules/instance-ai/self-healing/database/self-healing-temporary-workflow.repository.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-116
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-execution-reference.service.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1,17-22,211-309
+  s_a0c92b179996b0::t_133f4ca11a89eb 310
+packages/modules/apps/backend/src/storage/app-version-stores.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-34
+packages/@n8n/agents/src/types/index.ts
+  s_a0c92b179996b0::t_a465041bb508a7 143-145
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-checkpoint-pruning.task.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 7,12,17-22,29,39,46-47,49,51,56-57,67
+packages/nodes-base/nodes/N8n/ProjectDescription.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-124
+packages/modules/apps/backend/src/__tests__/apps.service.test.ts
+  s_a0c92b179996b0::t_a465041bb508a7 3,7,15-18,130,133,144,146,151,153,161-164
+packages/modules/apps/backend/src/app-version.repository.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-102
+packages/cli/src/modules/instance-ai/self-healing/self-healing-candidate.service.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-256
+packages/cli/src/modules/n8n-packages/entities/import-id-policy.ts
+  s_a0c92b179996b0::t_a465041bb508a7 1-13
+docs/generated/postgres-schema/README.md
+  s_a0c92b179996b0::t_849480f0947878 136,390-393,1717-1730
+docs/generated/postgres-schema/public.project.md
+  s_a0c92b179996b0::t_756ed8bf4c5b34 12,57,243-256
+docs/generated/postgres-schema/public.self_healing_investigation.md
+  s_a0c92b179996b0::t_380faafb4c07a8 1-146
+docs/generated/postgres-schema/public.self_healing_result.md
+  s_a0c92b179996b0::t_f14be12240de7c 13,65,104-117
+docs/generated/postgres-schema/public.user.md
+  s_a0c92b179996b0::t_9581eddd5ad18d 11,80,412-425
+docs/generated/postgres-schema/public.workflow_entity.md
+  s_a0c92b179996b0::t_b845f5b8743c91 12,81,268-281
+docs/generated/sqlite-schema/README.md
+  s_a0c92b179996b0::t_9014f9066d9462 136,372-375,1703-1716
+docs/generated/sqlite-schema/project.md
+  s_a0c92b179996b0::t_aea188e0572e46 23,63,249-262
+docs/generated/sqlite-schema/self_healing_investigation.md
+  s_a0c92b179996b0::t_bf8dcf46894844 1-148
+docs/generated/sqlite-schema/self_healing_result.md
+  s_a0c92b179996b0::t_5d784d02e6c171 24,65,104-117
+docs/generated/sqlite-schema/user.md
+  s_a0c92b179996b0::t_d135ea7766d0bc 22,86,418-431
+docs/generated/sqlite-schema/workflow_entity.md
+  s_a0c92b179996b0::t_1a743ae19af398 23,80,267-280
+pnpm-lock.yaml
+  s_a0c92b179996b0::t_f47096cfb55030 564-565,3346,7056-7061,7077-7082,7117-7119,18282-18283,36784
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "723ff1453bec13340272c25fb5e3c098d36e5c19",
+  "prompts": {},
+  "sessions": {
+    "s_a0c92b179996b0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b56759c2-2e98-4e80-abcb-5f332f8ff366",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/@n8n/telemetry/src/events/trusted-sources.ts
+  s_a073fa9d8a702c::t_ddfc37c706491e 74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3e352f4214b87535645bbfdd068b140951372e4e",
+  "prompts": {},
+  "sessions": {
+    "s_a073fa9d8a702c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "809324ae-b7ec-4c6e-a695-c965041caa84",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

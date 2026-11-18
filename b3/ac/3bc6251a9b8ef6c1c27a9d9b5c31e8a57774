@@ -1,0 +1,741 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineChart.spec.ts
+  s_e4d36e2a16e518::t_323e920b9c04e1 319-320
+  s_e4d36e2a16e518::t_5ec0e3344ee459 217-315,318,321-325,328-330
+  s_e4d36e2a16e518::t_739a9b7b4a6758 113-116,119-132,206-208
+  s_e4d36e2a16e518::t_b19f11a8038b28 326-327
+  s_b1bf05245b10d8::t_debe1db16378e1 107-110
+  s_e4d36e2a16e518::t_ecd847358ee347 117-118,147,162
+  s_e4d36e2a16e518::t_770b2caa3d7abc 316-317
+  s_c9c7becb358970::t_a33e3f6b3f9e1c 379,381,440
+packages/frontend/editor-ui/src/features/agents/components/SessionEventFilter.vue
+  s_aa3eb92f2f2d89::t_d5eb46a02b0875 105
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_78d29e37581bd4::t_dd5e663a13f100 1692-1701
+  s_b4dc3c65fda2c8::t_a1d2ce1b06512b 8626
+  s_b4dc3c65fda2c8::t_c913f966396a39 8615
+  s_b4dc3c65fda2c8::t_750c96c17d1981 8617
+  s_b4dc3c65fda2c8::t_9b08bbc8d32fb2 8616
+  s_b4dc3c65fda2c8::t_fa37f304788ea6 8618-8620
+  s_b4dc3c65fda2c8::t_e5eda531806bf8 8621-8623
+  s_c9c7becb358970::t_f24af370f1e1bb 8624
+  s_4996584e403a91::t_80c8e0f3b1a391 5
+  s_4996584e403a91::t_6f75b3b208ef15 6-8
+  s_4996584e403a91::t_07fc083a01a3d2 9-12
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineChart.vue
+  s_cd74c7fc762ac0::t_31a529f796de19 56,58,200-204,217-222,279,286-291,318
+  s_b1bf05245b10d8::t_6ac512ab229877 8,37,349
+  s_cd74c7fc762ac0::t_7e47cb69676a57 390,413-414,418,422-429,437,458,463-472,487
+  s_b1bf05245b10d8::t_5847af46e48cf8 358,495,534
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  s_a3c771baba19b4::t_4d62f8ae71e9e5 86,92,94,96,98,100-101
+  s_baf56886bb628c::t_171bddf41464a9 299
+  s_a3c771baba19b4::t_eade1aade5a854 105
+  s_a3c771baba19b4::t_3db4857073fdb3 108-110
+  s_baf56886bb628c::t_ca1394df8d03a2 361-362,387-388,423,425-433
+  s_34249b91a6eaea::t_38635b9d55c732 357
+  s_b1bf05245b10d8::t_e888a83c90e790 8-9,84,103
+  s_cd74c7fc762ac0::t_cfa88e8cff9a19 33-35,200-203,205-208
+  h_f8b427917eda26 353-355,364-365
+  s_e21e8aea334fc1::t_b3e3243d3352ec 23
+  s_34249b91a6eaea::t_e785d6264d63cf 19
+  s_cd74c7fc762ac0::t_80f466b13ac99f 177-179,182,187,192,195,197-199,204,210,213-214,305
+  s_a3c771baba19b4::t_762561512479c0 104
+  s_baf56886bb628c::t_511d738c634d72 272
+  s_c9c7becb358970::t_e39cd91685d51d 117-147
+  s_c9c7becb358970::t_0ab28cb2bf2635 29-30,111-116,148-153,190-191,215-235,279-283,285-290,293-298,319-323,325-330,333-338
+  s_c9c7becb358970::t_475e0dfb75074f 183-186,188
+  s_c9c7becb358970::t_363ad4c05d32eb 189
+  s_fa01e7d99bfb8b::t_24aca8a0ecd03f 3
+  s_fda8eaf2e03be1::t_15909a4ab39326 313
+  s_ae75cca2e8fdf3::t_b70e9295e1fe1c 4,17-18,291-292,331-332
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionMessageItem.vue
+  s_baf56886bb628c::t_4c7467d4dc31cb 12-14,21,24,51,57-59,103,110-113,121,129-130
+  s_a61f731491ef8b::t_b95272c02db2b8 43-44
+  s_e21e8aea334fc1::t_cbe29384453920 7,10,19
+  s_0b18cdb0768028::t_d4fc8f02471bd5 17-18
+  s_0b18cdb0768028::t_3d7faf1fc7c245 105-106,109,114-116
+  s_0b18cdb0768028::t_a3c03a64b86bd7 118-120,122-124
+  s_0b18cdb0768028::t_c0c8a0185c627c 183
+  s_a61f731491ef8b::t_664d09cc582e7d 70
+  s_0b18cdb0768028::t_a734ec3ef1e741 126-128,141-143
+  s_0b18cdb0768028::t_0788998db142cc 1,20,54-56,104,117,125,144,178
+  s_0b18cdb0768028::t_5dceb7c7bf490c 145,147
+  s_baf56886bb628c::t_fb8a796bd29763 65,67
+  s_baf56886bb628c::t_a4d02072820ad5 9,64
+  s_a61f731491ef8b::t_e9c15a75f6b86e 2-5,8,22-23,25,35-42,45-48,62,68-69,71-77,84-94,96-102,107-108,131-140,146,148-177
+  h_f8b427917eda26 60-61,63
+  s_9866bb04c71420::t_05a8d163b696f2 6,53
+  s_c9c7becb358970::t_e39cd91685d51d 49-51
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionHitlItem.vue
+  s_0b18cdb0768028::t_4ae641fb5cc653 1,16,23,25-26,28,86-88,146
+  s_0ff3eb2973cb44::t_a91f7ab5cec2c6 3-13,17-22,24,27,29-30,31-44,46-80,89-97,99-104,108-117,119-145,147-148,155,157-165,169-176,187-206,207-208,213-222
+  s_cf44feaefa672e::t_40169802d9cecc 105,107,118,177-186,212
+  s_b05dac0149b092::t_2bbc80563f1b34 156,166-168,209-211
+  s_9866bb04c71420::t_e2db0b419f6dee 81-85
+  s_9866bb04c71420::t_67283b7a458774 2,14-15,45
+  s_fda8eaf2e03be1::t_49ce1e523fc1cc 106
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStep/AiActivityStep.vue
+  s_c6a23ceca1f475::t_2e16b7ed43f0ed 56,63,98
+  s_22d7afc0db9243::t_36aa3a10bf9f03 118-121
+  s_7378c6c7c0771e::t_c45abb8e84ea50 40
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionCapabilityItem.test.ts
+  s_33768f37990de7::t_736ecfdd7a99f9 7-43,48-58,62,64-65,67-69,77-84,88-91,93,99,102-108,112-116,120-121
+  s_33768f37990de7::t_830384587bea68 1-6,44-47,63,85-87,94-96
+  s_c9c7becb358970::t_f199809fafd6b4 66,70-76,109-111
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_33768f37990de7::t_4052171fa6af6c 905-906
+  s_33768f37990de7::t_59568fabe4d126 549
+  s_33768f37990de7::t_6060c13e288992 865-868
+  s_33768f37990de7::t_137626f001fc22 16,550-553,674-682,821,843,845,863-864,869-871,898-904
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_34249b91a6eaea::t_0de518e982cb30 45,472
+  s_909d916c097b04::t_bb565e0c87a72d 15,450,452-456,458,516
+  h_f8b427917eda26 38,414-424,431-443,461,465,475-476,494,501,503-504,510-511,513
+  s_761eb4a01ae6f3::t_9950765ec080ae 37,428
+  s_78d29e37581bd4::t_9f1d52c26c50fd 83,138
+  s_baf56886bb628c::t_b9390325bbf5ad 459,514
+  s_e21e8aea334fc1::t_f932372fd17b52 48,473
+  s_cd74c7fc762ac0::t_903b3594ce6820 36,73,297,299,457,467
+  s_b1bf05245b10d8::t_fa23691531b720 488,500
+  s_cf44feaefa672e::t_e8728571fdedf6 462
+  s_c9c7becb358970::t_00df273d67e592 118-119,122
+  s_ae75cca2e8fdf3::t_1e26ffe110d9de 92-95,102,477
+  s_ae75cca2e8fdf3::t_e6f885ea47bb2c 2,81-84,91,96-101,103-117,308,404,478
+packages/frontend/@n8n/design-system/src/components/N8nRecycleScroller/RecycleScroller.vue
+  s_cd74c7fc762ac0::t_e09dfda4e52ed2 186,191,195,201
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  s_e21e8aea334fc1::t_12b2b8a092d307 336
+  s_34249b91a6eaea::t_f9b7a88b79da32 335
+  s_cbd5886bfc5e57::t_4db2036e654b5d 31,241-246,329
+  s_812c73ede79770::t_459fc08ea80461 222-231
+  s_0d2534c676d911::t_1200b30c6ef519 263-265,326
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionCapabilityItem.vue
+  s_c6a23ceca1f475::t_ba37dbb7135efb 5,8,11-12,14,16-17,27,30,35-36,43,51-59,73,79-89
+  s_22d7afc0db9243::t_0c3b2d9cff0c4b 159-162,164-167,178-181,183-186
+  s_2add348c74d9b2::t_3908306e87dec3 90
+  s_22d7afc0db9243::t_99c5b245763fce 28,193-194,201,203-204
+  s_ce40cfd8cdc88e::t_26f8327b8f5120 112-116
+  s_22d7afc0db9243::t_2b37bb099a0ebd 6-7,9-10,15,18-19,74-75,77,117-118,127,144-145,147-152,154-158,168-177,187-191,205-206,233-237,245-263,264-265,269-279
+  s_2add348c74d9b2::t_128aefe0bb42ee 33,92-95,97-98
+  s_ce40cfd8cdc88e::t_e7e795e54ad632 241-244
+  s_33768f37990de7::t_c57bdd7f961294 222-223
+  s_33768f37990de7::t_983093eec585a3 141
+  s_33768f37990de7::t_adc7695a28f655 39,44,60,62,64,66,76,91
+  s_daad5ab54f0b0c::t_ace4e3a840d0be 2-3,37-38,40-42,45-50,143,224-231
+  s_33768f37990de7::t_5144762bed08a8 71-72
+  s_33768f37990de7::t_55d6a67187db0a 13,61,63,65,67-69,107-111,119,121-126,131-133,135-138,140,146,153,207-221
+  s_0b18cdb0768028::t_708b965ec2283a 1,22,29,31-32,34,104-106,192
+  s_33768f37990de7::t_6530a0f24be241 134
+  s_22d7afc0db9243::t_3508a7841d78ae 280
+  s_33768f37990de7::t_0329366ddfd213 139
+  s_33768f37990de7::t_8acd849894d2c0 128,130
+  h_f8b427917eda26 232
+  s_9866bb04c71420::t_76fdf66ca337a2 96,99-101,103
+  s_9866bb04c71420::t_cd29acfec30627 102
+  s_9866bb04c71420::t_e9bf74167f3215 4,20-21,78
+  s_c9c7becb358970::t_e39cd91685d51d 70
+  s_c9c7becb358970::t_92db918ef8e1ae 23-26,120,195-200
+  s_fda8eaf2e03be1::t_58cab66e30ddd9 142
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_33768f37990de7::t_ecbcca4fc34e7f 371-438,926-941,946,948
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionExecutionErrorItem.vue
+  s_0b18cdb0768028::t_6bf9abefa3855b 1-2,4,7-14,17-23,27-29
+  s_0b18cdb0768028::t_72ac918cc28a9e 30-32
+  h_f8b427917eda26 33-36,40-51,54-55
+  s_b05dac0149b092::t_3e73e08e2329d5 37-39,52-53
+  s_9866bb04c71420::t_8a4680fd041757 5,16
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineRow.vue
+  s_0b18cdb0768028::t_41883fb7c06979 47,68,74,79,81,83
+  s_0fc3d4a43a7609::t_1ef509c9372a80 49-50,75,84
+  s_daad5ab54f0b0c::t_7305b0ef7eaf17 32
+  s_e21e8aea334fc1::t_7b2c3be8b65550 24,80
+  s_baf56886bb628c::t_985e10278061a9 44,48,51
+  s_0b18cdb0768028::t_96ff85b6e49b0a 69-71,73,78
+  s_0b18cdb0768028::t_6cf01d15444038 4-6,8-12,29-31,33-39,41-43
+  s_2add348c74d9b2::t_7e352bb461d094 19,89
+  s_34249b91a6eaea::t_143f1b8266e59d 20,72
+  s_ae75cca2e8fdf3::t_e247bc1095b7d1 2,16-17,55,57,60
+  s_23578dfeac2a25::t_851b2adad217e9 59
+  s_23578dfeac2a25::t_82a539634ef855 58
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionBackgroundJobItem.vue
+  s_0b18cdb0768028::t_e806ede857b7ef 1,15,19,21-22,24,50-52,99
+  s_0ff3eb2973cb44::t_25bdd17bbf8413 3-12,16-18,20,23,25-26,27-42,44,53-61,63-72,76-98,100-101,108,110-117,121-128,139-150,151-152,156-168
+  s_0ff3eb2973cb44::t_d0613cfe968b1e 73,75,129-138
+  s_b05dac0149b092::t_d26e4c993c951e 109,118-120,153-155
+  s_9866bb04c71420::t_7a09d646aecdac 2,13-14,43
+  s_9866bb04c71420::t_11355230ebe717 45-49
+  s_fda8eaf2e03be1::t_1dae8728d6a695 74
+packages/frontend/editor-ui/src/features/agents/session-timeline.types.ts
+  s_33768f37990de7::t_5e1283ac87762f 19,33
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStepButton/AiActivityStepButton.vue
+  s_cf44feaefa672e::t_4b8e1eeaaa1a9d 96
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStepChevron/AiActivityStepChevron.vue
+  s_cf44feaefa672e::t_9f9d47796444fb 19
+  s_c9c7becb358970::t_1cb4bb63ddfe33 29-30
+packages/frontend/editor-ui/src/features/agents/components/AgentPersonalisationIcon.vue
+  s_cf44feaefa672e::t_31c3aec97e8d6f 34-38
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionBackgroundJobItem.test.ts
+  s_0ff3eb2973cb44::t_70b75257da54d5 1-36,39-48,52-71
+  s_c9c7becb358970::t_70dba1eb9882e9 37-38,49-51
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionHitlItem.test.ts
+  s_0ff3eb2973cb44::t_faf10619aa96bf 1-82
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelineHeader.vue
+  s_26a97739d400e9::t_6bab87e8ca610e 143,148,175
+  s_cbe883eed2e26f::t_5d25b39c4ecee6 8,17,25-32,36,48,91-94,150-156,160-166,200-201,247,302-303,305-335
+  s_cbe883eed2e26f::t_781fb96fbcefbc 95-98,157-159
+  s_cbe883eed2e26f::t_5bcdf6f2955073 144-147
+  s_cbe883eed2e26f::t_47b39cc37b2da0 336
+  s_0d2534c676d911::t_0996557ed002fc 44,172-174
+  s_c9c7becb358970::t_f24af370f1e1bb 149
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHeaders.test.ts
+  s_ba0cc1f8364042::t_cb146a830158c9 236
+  s_812c73ede79770::t_c077a87a6c7a59 196
+  s_cbe883eed2e26f::t_1442bfe7f2aa57 66
+  s_cbe883eed2e26f::t_e8e62950b525f7 4,7-9,26,86,96,126-142,146-160,177,197,207,214-215,221,237,249,262-272,275-277,279-307,318-329,332-339
+  s_cbe883eed2e26f::t_4308d0cf34e307 83-85
+  s_cbe883eed2e26f::t_ccfa76a774959e 87-89,93-95
+  s_cbe883eed2e26f::t_0cef8a9039013e 97-99,123-125
+  s_cbe883eed2e26f::t_442edb690fb14a 72-75,77-82,90-92,112-122
+  s_0d2534c676d911::t_d767e5880d7b77 229,233,238-245
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelineView.spec.ts
+  s_ba0cc1f8364042::t_cf668817126d03 128,140
+  s_cbd5886bfc5e57::t_cd796d98cd8423 16-28,33,35,86,90,94,108-109,112-113,115-119,121-122,124-125,143-144,146-148,150-153,158,220,252
+  s_cbe883eed2e26f::t_71717e3d38f1e6 149
+  s_0d2534c676d911::t_bc8d537e6f2641 160,166-183
+  s_0d2534c676d911::t_506d7ba711502c 184-185
+  s_c9c7becb358970::t_a1041685e58041 157-165
+packages/frontend/editor-ui/src/features/agents/types.ts
+  s_812c73ede79770::t_c2cfd352209a75 2,14-23
+  s_812c73ede79770::t_b231c96668f5f8 24
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionBackgroundTaskItem.test.ts
+  s_d10aaed8b83324::t_d5abc4872d5b73 74,111,113-114,116,118,120-121,137-151,153-173
+  s_d10aaed8b83324::t_d5e1e58aeafa15 45
+  s_d10aaed8b83324::t_0538232a60ccad 174-176
+  s_c9c7becb358970::t_010c43d02c5c75 89-90,97-98,152
+  s_ae75cca2e8fdf3::t_98fe23457de016 2-3,20-35,41,43,46-51,53-73,77-88,91-96,99-115,117,119,122-134
+  s_ae75cca2e8fdf3::t_adb86f246a4fad 4,52
+  s_ae75cca2e8fdf3::t_8ae51e71ca4622 36-38
+  s_ae75cca2e8fdf3::t_01148ba06ed87e 135-136
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionBackgroundTaskItem.vue
+  s_b4dc3c65fda2c8::t_361652255c9a83 154
+  s_b4dc3c65fda2c8::t_ec0b7984d3a874 62-66,188-196,205,212,218,230
+  s_b4dc3c65fda2c8::t_a09cca62e57f7b 35
+  s_9866bb04c71420::t_7edc4871149313 9,39
+  s_b4dc3c65fda2c8::t_2a66626688f12e 59-61,67,184-187
+  s_b4dc3c65fda2c8::t_0e8367ebffe310 73,95,123-129,136,144-149,150-153,155-183
+  s_9866bb04c71420::t_b732ccb92e993d 8
+  s_b4dc3c65fda2c8::t_74d706242c78d9 197-199,202-204
+  s_b4dc3c65fda2c8::t_638f3c2f399924 206-211
+  s_b4dc3c65fda2c8::t_dbfc25787c199b 213-217
+  s_b4dc3c65fda2c8::t_513bb06fbd30c8 219
+  s_b4dc3c65fda2c8::t_16eb784b6001ec 231
+  s_d10aaed8b83324::t_0a760659efba59 1-2,10-14,17-20,23-34,36-38,56-58,200-201
+  s_c9c7becb358970::t_46520dc2613da7 130-135
+  s_ae75cca2e8fdf3::t_baefa6eb1fdb92 5-7,15-16,40-55,76-77,80,84,222
+  s_ae75cca2e8fdf3::t_da6c85a385f3af 81
+  s_ae75cca2e8fdf3::t_d2bd74436870f4 3
+  s_ae75cca2e8fdf3::t_3bb9fa7ac64149 68,88-94,96-122,137-143
+  s_67c77664b3c460::t_acf68897ab8275 82-83
+  s_ae75cca2e8fdf3::t_27ccd3af5bd03a 69-72,74-75,85,220-221,223-227,229
+  s_23578dfeac2a25::t_ce6b9cfcad355c 4,22,79
+  s_ae75cca2e8fdf3::t_82f33e391bf804 228
+  s_23578dfeac2a25::t_d060e5ffc16d94 21
+  s_ae75cca2e8fdf3::t_61184d81b0f45f 86-87
+  s_23578dfeac2a25::t_ead9c3f137b1ed 78
+packages/frontend/editor-ui/src/features/agents/utils/timeline-time.ts
+  s_9866bb04c71420::t_e5ba28ebb6289a 1-6
+packages/frontend/editor-ui/src/features/agents/composables/useTimelineItemExpansion.test.ts
+  s_9866bb04c71420::t_0d04ac2cec226b 1-62,116-128
+  s_9866bb04c71420::t_2be5171a5d8d25 63-115
+packages/frontend/editor-ui/src/features/agents/utils/timeline-time.test.ts
+  s_9866bb04c71420::t_c649c84ce7e6dc 1-13
+packages/frontend/editor-ui/src/features/agents/composables/useTimelineItemExpansion.ts
+  s_9866bb04c71420::t_0941140cbebe10 1-29
+packages/frontend/@n8n/design-system/src/components/N8nRecycleScroller/RecycleScroller.test.ts
+  s_c9c7becb358970::t_433ca5e3f9f36b 51,54-58
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionMessageItem.spec.ts
+  s_c9c7becb358970::t_4a2a24f7fcc0fb 1,3,30-48,50-76
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelinePill.test.ts
+  s_c9c7becb358970::t_7ac319c4c0b960 1-26
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineTable.spec.ts
+  s_c9c7becb358970::t_44caf95856071e 422-424,428-431,580-583,621,625,643-644
+  s_c9c7becb358970::t_a1c48de1132a91 584-620,622-623
+  s_c9c7becb358970::t_674c853107efc8 624
+  s_fda8eaf2e03be1::t_6c77d11ef5600a 3,201,284
+  s_fda8eaf2e03be1::t_2835f556f0fd8e 285-287
+  s_ae75cca2e8fdf3::t_45992039411801 87-107,117-142
+  s_ae75cca2e8fdf3::t_cec15d0b7278eb 108-116
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/PreferenceCard.test.ts
+  s_b479354e713f54::t_dfa2a0d589be20 230
+packages/frontend/editor-ui/src/features/agents/stubAgentSession.store.ts
+  s_4996584e403a91::t_bf51ed3b5e5a87 25,37,39,41-45,216-219,275-282,288-292,294-295,307-318,320-323,325
+  s_4996584e403a91::t_4f65e0c8fb7fa7 1
+  s_4996584e403a91::t_996c30138ebc24 298-301
+  s_4996584e403a91::t_f6a2bc5af96a01 283-287
+  s_4996584e403a91::t_f3248124741684 61-150,158-160,163-165,212-213,252
+  s_4996584e403a91::t_5a659dbd7682bf 215,222,224-226,232-233,244-246,250-251
+  s_4996584e403a91::t_a84cabacf56802 296-297,302-306
+  s_4996584e403a91::t_3808ca47c06f96 12-18,253
+  s_4996584e403a91::t_214f5082019626 2-4,7-8,11
+  s_4996584e403a91::t_53a85b55910e65 19-24
+  s_4996584e403a91::t_30b10db7ae6b49 26-28,34-36
+  s_4996584e403a91::t_16a9bdf3fcc7fb 38
+  s_4996584e403a91::t_4e848908f26fb4 46-48,58-60
+  s_4996584e403a91::t_4e60aa81c60770 151-153,155-157
+  s_4996584e403a91::t_0bc1d6faf8eedb 161-162
+  s_4996584e403a91::t_b9ea20245dac0a 166-168,209-211
+  s_4996584e403a91::t_a76abee207a41d 214
+  s_4996584e403a91::t_460f0c1e4c56eb 230-231
+  s_4996584e403a91::t_827b8cd343b820 324
+  s_4996584e403a91::t_c27d85ab27d81b 326-328
+  s_ae75cca2e8fdf3::t_f04a5d7ee66b25 5-6,9-10,40,220-221,223,234-243,254-274,293,319,337
+  s_38f7795ae2c01a::t_d82fe765f68894 173-200,227-229,247-249
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionMockControls.vue
+  s_4996584e403a91::t_b066af2537da4a 2-26
+  s_4996584e403a91::t_fefab83bda31f8 1
+  s_4996584e403a91::t_41dabb5996ad39 27-29
+  s_4996584e403a91::t_c339c8fd3548e0 30-69
+packages/frontend/editor-ui/src/features/agents/components/interactive/ApprovalCard.vue
+  s_23578dfeac2a25::t_b8d3c62df6e8aa 75-76,87-88
+  s_ae75cca2e8fdf3::t_eec4d72483a4b9 15-16,22,25,27,37-48,69
+  s_23578dfeac2a25::t_b482adf016d5c6 8,94
+  s_23578dfeac2a25::t_564c7b6454eae6 80,84,86
+  s_67c77664b3c460::t_74fd13f334a635 23-24,26,70
+  s_23578dfeac2a25::t_314ba13ff7b8f5 13-14,19,77,79
+  s_23578dfeac2a25::t_0b4930829a5ee4 5-7
+  s_23578dfeac2a25::t_a4a3b92b7b5a93 73-74
+  s_23578dfeac2a25::t_62e109b91d4e22 78
+  s_23578dfeac2a25::t_83d83e5c4d19f9 81-83
+  s_23578dfeac2a25::t_56f7bd124bcb3b 85
+  s_23578dfeac2a25::t_7702ffd05f1b31 89-90
+  s_23578dfeac2a25::t_f48067855a8777 92-93
+  s_23578dfeac2a25::t_2ab3d3954576cb 95-97
+packages/frontend/@n8n/design-system/src/components/N8nApprovalCard/ApprovalCard.test.ts
+  s_ae75cca2e8fdf3::t_954c59c934768a 44-45,48-49,51-53,62,64,66,77,80,88-89
+  s_ae75cca2e8fdf3::t_9d2a3461737b93 13-30
+  s_ae75cca2e8fdf3::t_96ff6a56f3e884 92,97-99
+  s_ae75cca2e8fdf3::t_ccef648717e672 31-38
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_ae75cca2e8fdf3::t_88b6c5353ccaf3 358-362
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelinePanel.spec.ts
+  s_ae75cca2e8fdf3::t_e67c165dee6216 3,5,15-28,60,206-207,213-259,263,266
+  s_ae75cca2e8fdf3::t_9b986b6c983d4e 260-262,264-265
+packages/frontend/@n8n/design-system/src/components/N8nApprovalCard/ApprovalCard.vue
+  s_c086648a73d2eb::t_b21aededeff43a 5,166-174,209,211-212,215
+  s_ae75cca2e8fdf3::t_0faa1d2f7f487d 148-149,152-154,195
+  s_ae75cca2e8fdf3::t_cc5231120eee4e 2,134-140,228,230,241,245-247,273-274,341-342,344,350-352,356,359-363,365,372
+  s_67c77664b3c460::t_320181a96a0055 67-68,74,158-161,268
+  s_27bd7530af8e0e::t_8c772c3e514e24 198
+  s_67c77664b3c460::t_355f19e961e746 271
+  s_67c77664b3c460::t_66e938b9838054 7,262-267,269-270,272
+  s_27bd7530af8e0e::t_daa54911b55627 280-281,318
+  s_ae75cca2e8fdf3::t_fd951fd287b633 65-66,73
+  s_ae75cca2e8fdf3::t_bbddc332c306bd 150-151
+  s_27bd7530af8e0e::t_740b9e4d4307c5 290,299,302,311-316,384
+  s_67c77664b3c460::t_2827f384064e6b 157
+  s_c086648a73d2eb::t_341ee0c0057020 175
+  s_27bd7530af8e0e::t_6e676d69db7b00 199-201
+  s_27bd7530af8e0e::t_184100aec7f910 287-289
+  s_27bd7530af8e0e::t_a4a72bd98ae8a9 291-293,296-298
+  s_27bd7530af8e0e::t_23a07b80da0d47 300-301
+  s_27bd7530af8e0e::t_ab18c2e759bd63 303-305,308-310
+  s_27bd7530af8e0e::t_2609995bcd121c 317
+  s_27bd7530af8e0e::t_921fd705639a2c 382-383
+  s_27bd7530af8e0e::t_1391e57ad299e0 385-387
+packages/frontend/@n8n/design-system/src/components/N8nApprovalCard/ApprovalCard.stories.ts
+  s_ae75cca2e8fdf3::t_3cf82403fe485f 26-27
+  s_ae75cca2e8fdf3::t_0f673a1828337a 24-25,28,30-34
+  s_ae75cca2e8fdf3::t_f1ee5b6f965398 20-23
+  s_ae75cca2e8fdf3::t_084b10ca37cf33 29
+packages/frontend/@n8n/design-system/src/css/mixins/motion.scss
+  s_27bd7530af8e0e::t_a94f611146aafb 290-313
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b3ac3bc6251a9b8ef6c1c27a9d9b5c31e8a57774",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_0b18cdb0768028": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0a512-7799-7091-92ad-2fe4f3411756",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_0d2534c676d911": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a15910-cf61-7483-a95f-1feb8d383477",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_0fc3d4a43a7609": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0a550-85cd-7611-ad7f-7547efa974fd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_0ff3eb2973cb44": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a120db-a371-77c4-990d-150490f3fdc4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": null
+    },
+    "s_21ce341ab620e8": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a158a1-258a-7155-a077-b5aa4881aa54",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_22d7afc0db9243": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0a586-d501-7611-ad7f-754f8c88017d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_23578dfeac2a25": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a16460-407b-76ed-9b86-53c7bfd426c4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_26a97739d400e9": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1253d-93f3-75e7-add4-2a75adff589a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_27bd7530af8e0e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a16473-2530-76ed-9b86-53ca5fc226d7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_2add348c74d9b2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d85f-5bb4-72f5-81b3-39cbe050501c",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_2e6779ff1ccceb": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a158f4-5135-7060-b83f-4b3b49b73195",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_33768f37990de7": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a11bf7-acbf-744b-b963-e4f102192860",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_34249b91a6eaea": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a11c45-b141-744b-b963-e500ca78f806",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_38f7795ae2c01a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a16457-3658-76ed-9b86-53c5eae74411",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_4996584e403a91": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a15dca-ad69-7733-805a-dff9ff62a08c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_67c77664b3c460": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a16434-177c-76ed-9b86-53c38c731113",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_7378c6c7c0771e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a15896-c9bc-7155-a077-b5a947b40439",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_761eb4a01ae6f3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d879-e076-72f5-81b3-39cd10e2c8b4",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_78d29e37581bd4": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a11c14-dfdd-744b-b963-e4f57b2c0c30",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_812c73ede79770": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a12549-c33f-75e7-add4-2a76b3f852e4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_909d916c097b04": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1209a-a36b-77c4-990d-14fb1495d15d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_9866bb04c71420": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a158ed-f406-7060-b83f-4b39bfc86af2",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_a3c771baba19b4": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0a568-5b6e-7611-ad7f-754b4f96f958",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_a508960c50ce74": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a120d6-0bce-77c4-990d-15036138b068",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_a61f731491ef8b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a11c3b-8635-744b-b963-e4ff23ccd682",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_aa3eb92f2f2d89": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a11054-5b0f-713f-8661-7313c12c458b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_ae75cca2e8fdf3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a163f9-3159-76ed-9b86-53bc0ea3fecc",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_b05dac0149b092": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a158b6-fa8b-7060-b83f-4b261f14b8e5",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_b1bf05245b10d8": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a120c8-ee3d-77c4-990d-15009764df6e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_b479354e713f54": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1599f-cde2-7250-ac6e-a69ada67136c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_b4dc3c65fda2c8": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a158c7-45b4-7060-b83f-4b30f592bbf0",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_ba0cc1f8364042": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a12562-7497-75e7-add4-2a7aaff3be9c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_baf56886bb628c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0a58a-ff43-705f-9aae-79a493d028d1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_c086648a73d2eb": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a16426-ec8d-76ed-9b86-53bfd3a039a1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_c6a23ceca1f475": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0a53f-ee05-705f-9aae-79a20bff72d1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_c9c7becb358970": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a15943-d3e2-7250-ac6e-a68af2619890",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_cbd5886bfc5e57": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a12576-dd51-75e7-add4-2a7c63123c8b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_cbe883eed2e26f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a158ba-6916-7060-b83f-4b29596c155b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_cd74c7fc762ac0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a120a5-b4bc-77c4-990d-14fc6a4e7e9e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_ce40cfd8cdc88e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a11c29-f5c0-744b-b963-e4f9358717de",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_cf44feaefa672e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1250d-4be8-77c4-990d-150da7e0481a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_d10aaed8b83324": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a158fd-198a-7060-b83f-4b3c0fc648ca",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_daad5ab54f0b0c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d84d-8092-7182-92c0-bd61ec558cec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_e21e8aea334fc1": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a11c2d-14db-744b-b963-e4fbb381e4d5",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_e4d36e2a16e518": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a120b4-c3e4-77c4-990d-14ff7d7c7a7d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_fa01e7d99bfb8b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a15935-fb41-7250-ac6e-a688e4da1483",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_fda8eaf2e03be1": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1597a-05bc-7250-ac6e-a6990c48d29e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

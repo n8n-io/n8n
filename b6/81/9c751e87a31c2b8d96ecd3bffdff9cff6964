@@ -1,0 +1,39 @@
+packages/cli/src/modules/agents/integrations/agent-outbound-files.service.ts
+  s_be7f812aa784b6::t_202dd413889beb 8,12,39-40,42-43,46,49,53-60,77-84,202-206,210,215-216,218-219,223-227
+  s_be7f812aa784b6::t_bafb8830ea0532 15,190
+  s_be7f812aa784b6::t_86b0eeddd25d09 36-37,48,51-52,61-63,66,70,116,119,121,135,137,147-154,158-160,162-163,167-173,176,178-180,191,197-199,209,217
+  s_be7f812aa784b6::t_9567a276b34856 38,85-86,113-114,165-166,200-201,207-208,212-214,220-222,228-229
+  s_be7f812aa784b6::t_8a9b0d99516dd5 133-134,143-144,164,175,177,181-184,186-189,192-194,196
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_be7f812aa784b6::t_bafb8830ea0532 135-136,349
+  s_be7f812aa784b6::t_cb68d5c6cf2c1f 333,337,339,343,346,350
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_be7f812aa784b6::t_4c61021f64a964 213,1467,1470-1471,1567,1570-1571,1618,1622-1623,1643,1647-1648
+  s_be7f812aa784b6::t_0c6ff9a208e965 1958-1964,1966-1987,1989-2083,2085-2118,2120-2125,2132-2134,2137-2144,2148-2151,2158-2160,2163,2169-2172,2174-2176,2180-2183,2189,2193-2195
+packages/cli/src/modules/agents/agent-file-bridge.service.ts
+  s_5f72bed614ce17::t_de2bc0a6ba0865 164-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b6819c751e87a31c2b8d96ecd3bffdff9cff6964",
+  "prompts": {},
+  "sessions": {
+    "s_5f72bed614ce17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6a1d4fcf-f66a-4d6f-831e-82eea3858884",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    },
+    "s_be7f812aa784b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a523437-47b6-4d93-bbf3-78999ede724e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

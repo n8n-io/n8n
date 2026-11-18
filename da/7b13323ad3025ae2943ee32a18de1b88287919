@@ -1,0 +1,70 @@
+packages/@n8n/agents/src/skills/types.ts
+  s_76b8e92cbb4b86::t_ef061ff5dcbb3e 193-194
+  s_76b8e92cbb4b86::t_baff3c78e564b9 213-219,221-222
+packages/@n8n/agents/src/runtime/__tests__/active-skills.test.ts
+  s_76b8e92cbb4b86::t_8477693b37e2bc 39-42,81-83,90-93,123-125,150-152,183-185,313-315,320-323,361-363,552-554
+  s_76b8e92cbb4b86::t_c7f31a96eddbc8 57,71,141,304,368,429
+packages/cli/src/modules/instance-ai/storage/__tests__/typeorm-agent-memory.test.ts
+  s_76b8e92cbb4b86::t_c7f31a96eddbc8 92,106-107
+  s_76b8e92cbb4b86::t_9a8967ec74fba3 88-91,94-100,108-110
+packages/@n8n/agents/src/runtime/skills/active-skills.ts
+  s_76b8e92cbb4b86::t_3de6c872e6158c 294-298
+  s_76b8e92cbb4b86::t_28ef730fa83dcc 18,37-39
+  s_76b8e92cbb4b86::t_8477693b37e2bc 110-111,216-221,226-228,310-311
+  s_76b8e92cbb4b86::t_91febfbe65e1ec 299-300
+  s_76b8e92cbb4b86::t_ef061ff5dcbb3e 82,277
+  s_76b8e92cbb4b86::t_40958022c1f251 43,69,73-74,81,83-85,88,91-94,109,112-114,117,130,169,276,278-293,301-309,312-318,364,366-367
+packages/@n8n/agents/src/types/runtime/message-list.ts
+  s_76b8e92cbb4b86::t_baff3c78e564b9 10
+packages/cli/src/modules/instance-ai/storage/typeorm-agent-memory.ts
+  s_76b8e92cbb4b86::t_2990b244b80748 61,202,204,209,219
+  s_76b8e92cbb4b86::t_9a8967ec74fba3 205-207
+packages/@n8n/agents/src/runtime/model/message-list.ts
+  s_76b8e92cbb4b86::t_8477693b37e2bc 493-495
+  s_76b8e92cbb4b86::t_baff3c78e564b9 123,329,335-338,486
+packages/@n8n/agents/src/index.ts
+  s_76b8e92cbb4b86::t_2990b244b80748 263
+packages/@n8n/agents/src/sdk/message.ts
+  s_76b8e92cbb4b86::t_baff3c78e564b9 24-26,35-37
+  s_76b8e92cbb4b86::t_8477693b37e2bc 27,34
+  s_76b8e92cbb4b86::t_ccf88198e89ff3 28-33
+packages/@n8n/agents/src/skills/index.ts
+  s_76b8e92cbb4b86::t_2990b244b80748 28
+packages/cli/src/modules/instance-ai/instance-ai-hub-skills.ts
+  s_76b8e92cbb4b86::t_ef061ff5dcbb3e 46,92
+  s_76b8e92cbb4b86::t_9a8967ec74fba3 93-94
+packages/@n8n/agents/src/types/sdk/message.ts
+  s_76b8e92cbb4b86::t_baff3c78e564b9 146-147,238-240
+  s_76b8e92cbb4b86::t_a0a8b287dece42 241
+packages/@n8n/agents/src/runtime/__tests__/skill-updates.test.ts
+  s_76b8e92cbb4b86::t_ef061ff5dcbb3e 13,17-18
+  s_76b8e92cbb4b86::t_65368df5b23992 62,85
+  s_76b8e92cbb4b86::t_91febfbe65e1ec 46-51
+  s_76b8e92cbb4b86::t_9627b31b4615e2 156-160,169-172
+  s_76b8e92cbb4b86::t_270cd0f9d38da1 1,3,5-12,19-31,53,55-61,63-73,77-84,86-87,91-108,114-120,138,173
+  s_76b8e92cbb4b86::t_8477693b37e2bc 14-16,32-45,74-76,88-90,109-113,121-137,139-155,161-168
+  s_76b8e92cbb4b86::t_36299bad3f8f28 2,4,52,54
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_76b8e92cbb4b86::t_8477693b37e2bc 100-101
+  s_76b8e92cbb4b86::t_2990b244b80748 12,96,103-105
+packages/@n8n/agents/src/skills/tools.ts
+  s_76b8e92cbb4b86::t_f8cd94434f0625 242-244
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-hub-skills.test.ts
+  s_76b8e92cbb4b86::t_ef061ff5dcbb3e 79-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "da7b13323ad3025ae2943ee32a18de1b88287919",
+  "prompts": {},
+  "sessions": {
+    "s_76b8e92cbb4b86": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17819-6345-7e53-9bdf-66ef0aba48cc",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

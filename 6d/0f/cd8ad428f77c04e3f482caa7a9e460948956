@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useSetupPanelState.ts
+  s_67db133f2c9cac::t_9ee4baff4de74a 88-89
+packages/frontend/editor-ui/src/features/ai/instanceAi/useResourceRegistry.ts
+  s_67db133f2c9cac::t_48f940f732167e 337
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6d0fcd8ad428f77c04e3f482caa7a9e460948956",
+  "prompts": {},
+  "sessions": {
+    "s_67db133f2c9cac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d3a4b16-b390-4dd3-984c-1e784ac6f924",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

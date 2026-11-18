@@ -1,0 +1,17 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "90e5a6b7e95dfbc69c4d53eadbebb63da65a9385",
+  "prompts": {},
+  "sessions": {
+    "s_4773ad3a8db83a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177a1-cf01-7990-9b55-9e6cefed2ccd",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

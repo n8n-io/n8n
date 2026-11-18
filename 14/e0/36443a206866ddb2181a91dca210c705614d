@@ -1,0 +1,59 @@
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-bridge-behavior.ts
+  s_fc89baa43a0d3c::t_1b8ba32b4cbe8e 76,81-85
+  s_fc89baa43a0d3c::t_4d2da4338afec3 103-110
+  s_fc89baa43a0d3c::t_84055a4c2ec55b 86-87
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_fc89baa43a0d3c::t_4aa79592559912 108-114
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_fc89baa43a0d3c::t_1b8ba32b4cbe8e 38,168-183
+  s_fc89baa43a0d3c::t_01e70ddd3ca92e 184-185
+packages/frontend/editor-ui/src/features/agents/channels/slack/AgentChannelSlackEditView.vue
+  s_fc89baa43a0d3c::t_4e1e24c0d1067c 2,4-5,21,24-32,34,36,38-44,80-82,85-95
+  s_fc89baa43a0d3c::t_183c1b243bce26 83-84
+  s_fc89baa43a0d3c::t_a96661e900722a 3,33,37
+  s_fc89baa43a0d3c::t_5be79903071983 22-23,35,65,113-116
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_fc89baa43a0d3c::t_1b8ba32b4cbe8e 624-630
+packages/@n8n/api-types/src/agents/agent-integration.schema.ts
+  s_fc89baa43a0d3c::t_1b8ba32b4cbe8e 92-93
+packages/@n8n/api-types/src/agents/__tests__/agent-integration.schema.test.ts
+  s_fc89baa43a0d3c::t_ef8411c467ea88 87-96,98-109
+  s_fc89baa43a0d3c::t_c886d81892bb27 97
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_fc89baa43a0d3c::t_4d2da4338afec3 3800-3808,3810-3848
+  s_fc89baa43a0d3c::t_ad937eed54b8db 3809
+packages/cli/src/modules/agents/integrations/platforms/__tests__/slack/synthetic-integration.test.ts
+  s_fc89baa43a0d3c::t_ef8411c467ea88 55-64,67-109,124-139,142-143,145-172,174-180
+  s_fc89baa43a0d3c::t_183c1b243bce26 65
+  s_fc89baa43a0d3c::t_8bc152e8058da2 24-42,44-54
+  s_fc89baa43a0d3c::t_a96661e900722a 66
+  s_fc89baa43a0d3c::t_a8a7d091192be2 43,173
+packages/cli/src/modules/agents/integrations/platforms/slack/SLACK_REPLY_CONTROLS.md
+  s_fc89baa43a0d3c::t_33832f06d8ebb7 1-22,25-63
+  s_fc89baa43a0d3c::t_4d2da4338afec3 23-24
+packages/cli/src/modules/agents/integrations/__tests__/helpers/slack/replay-test-context.ts
+  s_fc89baa43a0d3c::t_ef8411c467ea88 2,193,219-223
+packages/frontend/editor-ui/src/features/agents/channels/slack/AgentChannelSlackEditView.test.ts
+  s_fc89baa43a0d3c::t_eb7e42043bb324 3,5,9-27,29-49,51-56,58-60,63,67-129
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_fc89baa43a0d3c::t_1b8ba32b4cbe8e 787-795
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_fc89baa43a0d3c::t_5be79903071983 9493
+  s_fc89baa43a0d3c::t_eb7e42043bb324 9492
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "14e036443a206866ddb2181a91dca210c705614d",
+  "prompts": {},
+  "sessions": {
+    "s_fc89baa43a0d3c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15f07-c638-74e0-aed0-251af56be3fb",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

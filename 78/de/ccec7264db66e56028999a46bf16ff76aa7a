@@ -1,0 +1,23 @@
+packages/workflow/src/errors/expression.error.ts
+  s_906515f7e7106f::t_ca33faaa07da28 36-42
+packages/workflow/test/native-evaluation-parity.test.ts
+  s_906515f7e7106f::t_7cfd9eb0cd475e 336-349,354-356,358-360,362
+  s_906515f7e7106f::t_fe389608e439b0 5
+  s_906515f7e7106f::t_4265399a7e4f62 350-353,357
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "78deccec7264db66e56028999a46bf16ff76aa7a",
+  "prompts": {},
+  "sessions": {
+    "s_906515f7e7106f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea56117f-03ce-4a19-bf52-c894e7f03996",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

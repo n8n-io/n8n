@@ -1,0 +1,19 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change-gate.test.ts
+  s_ea8398b491aecc::t_844f6ab4e90358 6,54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4d7965e5f32f04bd3e45b312abf4695d80380f05",
+  "prompts": {},
+  "sessions": {
+    "s_ea8398b491aecc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79fa3697-e88c-41ac-8b49-e4829ac9b740",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

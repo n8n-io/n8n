@@ -1,0 +1,19 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_13fdf695fc0ff1::t_c3025a19ff2b34 1465-1467,1469
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b57166c750838efb96825a6868b2ab53916b1a94",
+  "prompts": {},
+  "sessions": {
+    "s_13fdf695fc0ff1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d68ad11-e5a3-42cc-a4cf-9389fb57dfde",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

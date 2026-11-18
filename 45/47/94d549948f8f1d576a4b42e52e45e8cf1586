@@ -1,0 +1,40 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceDialog.test.ts
+  s_2247ae8ef74d15::t_5ae941d31baa9b 49-57
+  s_2247ae8ef74d15::t_7c59dcd6bdbbd0 42,58
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceDialog.vue
+  s_2247ae8ef74d15::t_721e6d8617fe5a 26,54
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_2247ae8ef74d15::t_721e6d8617fe5a 4187,4198
+  s_2247ae8ef74d15::t_bef71da4df02a9 9944-9947
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.test.ts
+  s_2247ae8ef74d15::t_5ae941d31baa9b 28-33,37-45
+  s_2247ae8ef74d15::t_7c59dcd6bdbbd0 46
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionPreview.ts
+  s_2247ae8ef74d15::t_bef71da4df02a9 115
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.vue
+  s_2247ae8ef74d15::t_bef71da4df02a9 73,112-125,127-129
+  s_2247ae8ef74d15::t_721e6d8617fe5a 126
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionEnvironmentCard.vue
+  s_2247ae8ef74d15::t_721e6d8617fe5a 174,184
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  s_2247ae8ef74d15::t_7c59dcd6bdbbd0 73,163,205
+  s_2247ae8ef74d15::t_5ae941d31baa9b 164-204
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.vue
+  s_2247ae8ef74d15::t_721e6d8617fe5a 24,171-175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "454794d549948f8f1d576a4b42e52e45e8cf1586",
+  "prompts": {},
+  "sessions": {
+    "s_2247ae8ef74d15": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a168a4-7de9-7fd2-af57-2486a83f3dd7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

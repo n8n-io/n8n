@@ -1,0 +1,55 @@
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_3dd47ea0104342::t_a98485f0c12a4a 77-79
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_a18917ee43e665::t_49f716098a220c 137-148
+packages/cli/src/credentials/credentials.controller.ts
+  s_a18917ee43e665::t_063cc54b69a9d0 446
+packages/cli/src/credentials/credentials.service.ts
+  s_a18917ee43e665::t_271df3610d653a 179-183,632-637,1247-1253
+packages/cli/src/public-api/v1/controllers/credentials.public.controller.ts
+  s_a18917ee43e665::t_5ef9ca4fe1f3bf 346
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_b7b13575e78da5::t_f60d8b4f8dabfd 524-548
+packages/cli/src/workflows/workflow.service.ts
+  s_1f72d857ffd270::t_8bdb174b13020a 1365,2274-2288
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2e515d202ecd9c5130e443f0d21782741c89a3eb",
+  "prompts": {},
+  "sessions": {
+    "s_1f72d857ffd270": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a341a53502b181928",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_a18917ee43e665": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-afc6e4fc30a89dc1e",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_b7b13575e78da5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a518632057e785d0d",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

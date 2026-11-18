@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ThinkingBlock.vue
+  s_76b8e92cbb4b86::t_c692c80fa31b73 124-136
+packages/@n8n/instance-ai/src/stream/__tests__/map-chunk.test.ts
+  s_76b8e92cbb4b86::t_c692c80fa31b73 107,139
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_76b8e92cbb4b86::t_9c796580f94e90 237-240
+  s_76b8e92cbb4b86::t_c692c80fa31b73 236,241-242
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_76b8e92cbb4b86::t_c692c80fa31b73 1244-1245
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/ThinkingBlock.test.ts
+  s_76b8e92cbb4b86::t_88a8427f1db4fa 489-491,517
+  s_76b8e92cbb4b86::t_46e3ced53fa1a4 492-516
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "95295a7d2f3e61c4f9bd4b75f8dfb4681d2abc7d",
+  "prompts": {},
+  "sessions": {
+    "s_76b8e92cbb4b86": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17819-6345-7e53-9bdf-66ef0aba48cc",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

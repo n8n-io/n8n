@@ -1,0 +1,40 @@
+packages/frontend/@n8n/design-system/src/components/N8nAttachments/AttachmentGroup/AttachmentGroup.vue
+  s_cca79f6c4fe514::t_a08425a19dba19 2,42-44
+  s_cca79f6c4fe514::t_90b1bc3aa7ef1a 45
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_cca79f6c4fe514::t_009f3f1b620509 108-109,438,765-766
+  s_cca79f6c4fe514::t_fa28927823f97e 433-437,439-441
+  s_cca79f6c4fe514::t_eb1bb38ac13902 426-432,442-448,2042-2046
+  s_cca79f6c4fe514::t_c3e0bfa93acb4f 2317-2319
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_cca79f6c4fe514::t_ceae9a571a3b81 1635-1638,1642-1657
+  s_cca79f6c4fe514::t_b686deee0d6df3 1639-1641
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_cca79f6c4fe514::t_6246fc4bc73bc5 770
+  s_cca79f6c4fe514::t_758f46360db9f5 205,757,780-781
+  s_cca79f6c4fe514::t_c3e0bfa93acb4f 1108-1111
+  s_cca79f6c4fe514::t_fa28927823f97e 758-769,771-779,986-990
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiInput.attachments.test.ts
+  s_cca79f6c4fe514::t_182da06f6e5b8b 225-237,245-246,251-262,267-272
+  s_cca79f6c4fe514::t_b686deee0d6df3 238-244,247-250,263-266
+packages/frontend/@n8n/design-system/src/components/N8nAttachments/AttachmentGroup/AttachmentGroup.test.ts
+  s_cca79f6c4fe514::t_5605aa81788564 4,88,90,100,102-113
+  s_cca79f6c4fe514::t_1f0e0e18de6c15 61-70,91-99
+  s_cca79f6c4fe514::t_24a5833a0af00e 2,52-60,71-87,89,101,114-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "374849e1a7b97ef9269aa3b2d5a9006153e1160a",
+  "prompts": {},
+  "sessions": {
+    "s_cca79f6c4fe514": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1cab9-3955-76ab-b540-3a92b690bcad",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

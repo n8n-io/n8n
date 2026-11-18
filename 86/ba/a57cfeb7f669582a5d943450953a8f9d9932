@@ -1,0 +1,38 @@
+.github/workflows/release-setup-trusted-publishing.yml
+  s_1d52571436bccf::t_4eddc66e38e8b9 1,4-15,19,21-22,34,38,40-60
+  s_1d52571436bccf::t_643ee41f2a053b 36
+.github/WORKFLOWS.md
+  s_1d52571436bccf::t_4eddc66e38e8b9 446-448,801
+.github/scripts/detect-new-packages.mjs
+  s_1d52571436bccf::t_0e44743e4b2b00 77
+  s_1d52571436bccf::t_d0ca7e103d825a 50
+  s_1d52571436bccf::t_643ee41f2a053b 8-9,12,22,27,43,45,49,54-65
+  s_1d52571436bccf::t_4eddc66e38e8b9 21,23,40,81,83,88-89,93
+  s_1d52571436bccf::t_a93435e758b640 16-17,29
+.github/workflows/release-publish-new-package.yml
+  s_1d52571436bccf::t_4eddc66e38e8b9 1-2,5-13,22,25-26,49-51,54-56,59,66-86,88-96,105-114
+  s_1d52571436bccf::t_71df9945958fb8 97
+  s_1d52571436bccf::t_26601af908e10a 98-101,103-104,116-120
+  s_1d52571436bccf::t_643ee41f2a053b 38-41
+  s_1d52571436bccf::t_6a125af6520120 87,102,115
+  s_1d52571436bccf::t_f2d38e6da32270 27
+.github/scripts/workflow-validation.test.mjs
+  s_1d52571436bccf::t_6a125af6520120 288,291,298
+  s_1d52571436bccf::t_a93435e758b640 263-287,289-290,292-297,299-301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "86baa57cfeb7f669582a5d943450953a8f9d9932",
+  "prompts": {},
+  "sessions": {
+    "s_1d52571436bccf": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e3ffa9729ffefZ1DjSxFPcn28r",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

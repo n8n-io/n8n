@@ -1,24 +1,23 @@
-packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
-  s_71ad2034164515::t_e4701652a70624 60-62
-packages/cli/src/modules/n8n-packages/engine/__tests__/import-gates.test.ts
-  s_71ad2034164515::t_dcc59c34ccc6b2 6-18
-packages/cli/src/modules/n8n-packages/engine/import-gates.ts
-  s_71ad2034164515::t_dcc59c34ccc6b2 19-21
-packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
-  s_71ad2034164515::t_0ff5d963901dd3 242
-packages/cli/test/integration/public-api/n8n-packages-import.test.ts
-  s_71ad2034164515::t_3174340815109e 364
 packages/cli/src/public-api/v1/__tests__/scope-parity.test.ts
   s_71ad2034164515::t_ed3ff38de33073 35
-  s_71ad2034164515::t_f93a06f6070f15 33,38-39
-packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
-  s_71ad2034164515::t_4da994701bf750 91-92
-packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
-  s_71ad2034164515::t_49bf461651cae7 16,54,56,99,154,156
-packages/cli/src/public-api/v1/shared/spec/schemas/importResultDto.generated.yml
-  s_71ad2034164515::t_287d58161102ef 53,61,68,70,139,147,154,156,301,320-329,333-335
+  s_71ad2034164515::t_f93a06f6070f15 33
+  s_71ad2034164515::t_f79edaa7bf05a2 38-39
 packages/frontend/@n8n/i18n/src/locales/en.json
   s_71ad2034164515::t_cfa5966bc658a8 3044-3045
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
+  s_71ad2034164515::t_0ff5d963901dd3 242
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-gates.test.ts
+  s_71ad2034164515::t_dcc59c34ccc6b2 6-18
+packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
+  s_71ad2034164515::t_2e343ecfd5bd97 91-92
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_71ad2034164515::t_f7b10e2192daae 19-21
+packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
+  s_71ad2034164515::t_b9faa8031908f9 60-62
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  s_71ad2034164515::t_fb689a71f14d5d 16,99
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_71ad2034164515::t_94ccfc55e12062 364
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -30,7 +29,7 @@ packages/frontend/@n8n/i18n/src/locales/en.json
       "agent_id": {
         "tool": "codex",
         "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
-        "model": "gpt-6.1-sol"
+        "model": "gpt-6-astra"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
     }

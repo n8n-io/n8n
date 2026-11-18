@@ -1,0 +1,72 @@
+packages/cli/src/modules/instance-reporting.ee/README.md
+  s_4a3382d717bf3e::t_56f33c65a0dd4b 16-21
+packages/@n8n/db/src/repositories/license-metrics.repository.ts
+  s_4a3382d717bf3e::t_0cf661388c028d 5,34-40,58-74
+  s_4a3382d717bf3e::t_973746e518f33f 7-8,56-57
+  s_4a3382d717bf3e::t_488a6de32acc37 75-76
+packages/cli/test/integration/workflow-statistics-rollup.task.test.ts
+  s_4a3382d717bf3e::t_c0e888d7140ded 26,33-34,44-45,58,86,92-93,96,133,169-171,175-185
+  s_4a3382d717bf3e::t_dd6635f7b2122c 4-9,66-71,87-91,143-148,172-174
+  s_4a3382d717bf3e::t_25eddd28392074 149
+packages/@n8n/db/src/migrations/postgresdb/1794320806352-CreateAgentExecutionStatisticsDelta.ts
+  s_4a3382d717bf3e::t_d9a9c6c8667300 1-3,15-16,26-27
+  s_4a3382d717bf3e::t_973746e518f33f 9
+  s_4a3382d717bf3e::t_0cf661388c028d 4-8,10-14,17-25
+packages/cli/src/services/__tests__/workflow-statistics-rollup.service.test.ts
+  s_4a3382d717bf3e::t_c0e888d7140ded 23,32,111-114,123-127,129
+  s_4a3382d717bf3e::t_dd6635f7b2122c 2-6,34-42,120-122
+  s_4a3382d717bf3e::t_4b3e787859d062 9,58,74,101,110,115,119,128,130,135,141,145,151,153,159,164,172,177,184,191,197,204,210,221,231,236,243,248,252,261,266,270,277,286,311,343
+  s_4a3382d717bf3e::t_abea9e3a61f100 72-73,78-79,116-118
+packages/cli/src/services/workflow-statistics-rollup.service.ts
+  s_4a3382d717bf3e::t_dd6635f7b2122c 2-7,88,90-91
+  s_4a3382d717bf3e::t_0cf661388c028d 26,40,92-93
+  s_4a3382d717bf3e::t_973746e518f33f 84,86-87,89
+  s_4a3382d717bf3e::t_85cc7889e5500c 63
+packages/@n8n/backend-test-utils/src/test-db.ts
+  s_4a3382d717bf3e::t_0cf661388c028d 239,278-279,286
+  s_4a3382d717bf3e::t_dd6635f7b2122c 282-285
+packages/@n8n/db/src/services/__tests__/db-lock.service.test.ts
+  s_4a3382d717bf3e::t_abea9e3a61f100 219-222
+  s_4a3382d717bf3e::t_4b3e787859d062 210-218,223-225
+packages/@n8n/db/src/repositories/statistics-delta.ts
+  s_4a3382d717bf3e::t_0cf661388c028d 1-6
+packages/cli/test/migration/1794320806352-create-agent-execution-statistics-delta.test.ts
+  s_4a3382d717bf3e::t_56f33c65a0dd4b 1-31,35-44,48-53
+  s_4a3382d717bf3e::t_dd6635f7b2122c 32-34,45-47
+packages/@n8n/db/src/services/db-lock.service.ts
+  s_4a3382d717bf3e::t_973746e518f33f 189-200
+packages/cli/test/integration/license-metrics.repository.test.ts
+  s_4a3382d717bf3e::t_dd6635f7b2122c 61-72,74,77-91
+  s_4a3382d717bf3e::t_4b3e787859d062 5,75-76
+  s_4a3382d717bf3e::t_7088230318da6a 15
+  s_4a3382d717bf3e::t_abea9e3a61f100 47
+  s_4a3382d717bf3e::t_c0e888d7140ded 37,45-46,48-49,73,104,171
+  s_4a3382d717bf3e::t_cf92388d38a384 16,92
+packages/@n8n/db/src/repositories/workflow-statistics.repository.ts
+  s_4a3382d717bf3e::t_0cf661388c028d 7-8,171,177,192
+  s_4a3382d717bf3e::t_973746e518f33f 18-19,160-162
+  s_4a3382d717bf3e::t_dd6635f7b2122c 172-176
+  s_4a3382d717bf3e::t_70e1ceb9b597a6 163-164
+packages/cli/src/services/workflow-statistics-rollup.task.ts
+  s_4a3382d717bf3e::t_0cf661388c028d 11
+docs/generated/postgres-schema/README.md
+  s_4a3382d717bf3e::t_166954b11dfef8 27,691-694
+docs/generated/postgres-schema/public.agent_execution_statistics_delta.md
+  s_4a3382d717bf3e::t_dfce20353669ab 1-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f20a33ffe1e137dabc47dcfd3bf4ab72aa67b65b",
+  "prompts": {},
+  "sessions": {
+    "s_4a3382d717bf3e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c564-665d-70f2-a96c-b4cc9c552153",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

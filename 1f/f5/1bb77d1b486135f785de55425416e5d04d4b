@@ -1,0 +1,22 @@
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-agent.provider.test.ts
+  s_ab80bf3dba8421::t_708d2a966b4b83 8
+  s_ab80bf3dba8421::t_8f9a848acb5d1b 394-428
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-agent.provider.ts
+  s_ab80bf3dba8421::t_cb17d4a5ead948 26-27,145-157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1ff51bb77d1b486135f785de55425416e5d04d4b",
+  "prompts": {},
+  "sessions": {
+    "s_ab80bf3dba8421": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "622abbc5-a35f-4cfa-a072-d511338d74e1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_a0c92b179996b0::t_1a16f12a7d143d 42
+  s_a0c92b179996b0::t_7d345bf9350d96 553,558,561
+  s_a0c92b179996b0::t_336989b6c69180 144
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_a0c92b179996b0::t_fe12604de0222c 55
+  s_a0c92b179996b0::t_5e5f43462ab134 478
+packages/cli/src/modules/n8n-packages/entities/tag/tag-importer.ts
+  s_a0c92b179996b0::t_c1b996fa6bb659 59,63,66
+  s_a0c92b179996b0::t_6de819cbd21bce 99-114
+  s_a0c92b179996b0::t_3d4a5efffc3e67 98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "37a5bb6e7ccb9403b845cd4c5631b090cec4df1e",
+  "prompts": {},
+  "sessions": {
+    "s_a0c92b179996b0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b56759c2-2e98-4e80-abcb-5f332f8ff366",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

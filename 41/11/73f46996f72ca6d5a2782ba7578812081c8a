@@ -1,0 +1,26 @@
+packages/nodes-base/nodes/Postgres/transport/index.ts
+  s_d284534462903d::t_339f10492d8cd0 201-205
+packages/nodes-base/nodes/Postgres/test/transport/configurePostgres.test.ts
+  s_d284534462903d::t_c04c577a6ae5fd 172,175-184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "411173f46996f72ca6d5a2782ba7578812081c8a",
+  "prompts": {},
+  "humans": {
+    "h_434a0dd003c3fd": {
+      "author": "Jonathan <jon@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_d284534462903d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5d236d4e-159e-4181-abcf-1a554cbb87a0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/test/integration/agents/system-agent-user-deletion.test.ts
+  s_8895be2ae64871::t_1c0a83c1323843 565
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b866bad72af8e1a06e573cbdfd30c87e8e22732c",
+  "prompts": {},
+  "sessions": {
+    "s_8895be2ae64871": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "559d6182-75ac-4cf2-b85a-f63c4571b11e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

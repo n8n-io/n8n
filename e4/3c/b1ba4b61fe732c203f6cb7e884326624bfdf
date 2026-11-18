@@ -1,0 +1,53 @@
+packages/modules/promotions/frontend/src/components/dependencies/PromotionDependencyReport.vue
+  s_3dd47ea0104342::t_6a39dfcfa0a99d 1-55,63,66-67,72-111,113-256,258-315
+  s_3dd47ea0104342::t_6c072c73de1daf 112,257
+  s_3dd47ea0104342::t_f91b7f0ec80da2 56-62,64-65,68-71
+packages/modules/promotions/frontend/src/components/dependencies/PromotionApplyConfirmations.vue
+  s_3dd47ea0104342::t_b0b08ca67936e2 1-407
+packages/modules/promotions/frontend/src/components/dependencies/PromotionGapRow.vue
+  s_3dd47ea0104342::t_cb21ed2c9e12eb 281,297-298
+  s_3dd47ea0104342::t_6c072c73de1daf 51-52,106-110
+  s_3dd47ea0104342::t_4f9d4fe028aaa6 1-50,53-105,111-280,282-296,299-307
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_3dd47ea0104342::t_6c072c73de1daf 42,57,75-83,98-118,122,125,134-169,171,173-180,182,187-194,213-225,227-229,243-252,297-323,325-337,341-369,373-376,378-379,384-401,405-407,416-426,436-441,443-447,455,459,461-469,473,475,484-487,500-509,515-523,531-537
+  s_3dd47ea0104342::t_1d54d612dde811 23,26-28,34,38-40,43-47,58-64,71,74,538-540,557-559,566,568-569,572-622,644-653,767,771,775,796-818,838,858,864-882,895-906,933-938,979-980
+packages/modules/promotions/frontend/src/components/dependencies/PromotionDependencySection.vue
+  s_3dd47ea0104342::t_6c072c73de1daf 27-31
+  s_3dd47ea0104342::t_5862586d246e15 1-26,32-104
+packages/modules/promotions/frontend/src/components/dependencies/PromotionDependencyTarget.vue
+  s_3dd47ea0104342::t_90fbe7846362c9 1-90
+packages/modules/promotions/frontend/src/components/dependencies/PromotionIncompleteDialog.vue
+  s_3dd47ea0104342::t_38956ce847045b 1-200
+packages/modules/promotions/frontend/src/components/dependencies/PromotionDependencySummary.vue
+  s_3dd47ea0104342::t_53f0acaee4f3bf 1-75
+packages/modules/promotions/frontend/src/components/PromotionEnvironmentCard.vue
+  s_c75b3efff4dddf::t_5d450144ea392f 15,20,68-69,71
+packages/modules/promotions/frontend/src/components/preview/PromotionResourceTree.vue
+  s_c75b3efff4dddf::t_ff7a5e74d01f74 9,12,38-39,41,47-48,68-88,96-98,150-158,163-234,349-358
+packages/modules/promotions/frontend/src/promotions.module.ts
+  s_c75b3efff4dddf::t_4ecb076d6a56ee 10,41-42,70-76,78,80-81,143-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e43cb1ba4b61fe732c203f6cb7e884326624bfdf",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_c75b3efff4dddf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-af54370a55e032c6b",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

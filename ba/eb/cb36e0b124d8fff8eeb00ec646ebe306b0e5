@@ -1,0 +1,26 @@
+packages/cli/test/integration/public-api/rate-limit-stored-settings.test.ts
+  s_925dcfedebf0c9::t_6aa04a5742da28 1-35
+packages/cli/src/public-api/__tests__/public-api-rate-limit.test.ts
+  s_925dcfedebf0c9::t_ac2457fdf27c9e 27,69-72,324-330
+packages/cli/src/public-api/index.ts
+  s_925dcfedebf0c9::t_7e0df01885bd46 13
+  s_925dcfedebf0c9::t_5890c39e92dce8 199-200
+packages/cli/src/public-api/public-api-rate-limit.service.ts
+  s_925dcfedebf0c9::t_5890c39e92dce8 10-11,51,56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "baebcb36e0b124d8fff8eeb00ec646ebe306b0e5",
+  "prompts": {},
+  "sessions": {
+    "s_925dcfedebf0c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e954afe-0aa2-4cb1-89bb-81545b98a90a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/assistantArtifactTurns.test.ts
+  s_8158d377170616::t_8c940b8b2cd205 105-106
+  s_8158d377170616::t_a7303b57ee7854 1,6,95-104,107-145
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantArtifactTurns.ts
+  s_8158d377170616::t_8c940b8b2cd205 95-96,113,116,118,121-122,124,127-128
+  s_8158d377170616::t_68473388baf85b 94,97-98,104-105,107-108,110,112,114-115,117,125-126,129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "63023f0eeb86e31eabeacce71a31ded45a3a95b9",
+  "prompts": {},
+  "sessions": {
+    "s_8158d377170616": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "68882ec1-7c6b-41f5-aa31-8f9d3532c3bc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

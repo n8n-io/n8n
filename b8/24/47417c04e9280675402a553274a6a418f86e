@@ -1,0 +1,50 @@
+packages/cli/src/modules/mcp/mcp-scopes.ts
+  s_85c95d3931e97d::t_8c618525cf8ccc 5,152-154
+packages/cli/src/modules/mcp/__tests__/create-side-panel-view.tool.test.ts
+  s_85c95d3931e97d::t_27dae8bf489ea9 1-127
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  s_85c95d3931e97d::t_27dae8bf489ea9 263-276
+packages/cli/src/modules/mcp/mcp-protected-resource.ts
+  s_85c95d3931e97d::t_8c618525cf8ccc 29,88,93-94
+packages/cli/src/modules/mcp/mcp-tool-availability.ts
+  s_85c95d3931e97d::t_8c618525cf8ccc 82-102
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_85c95d3931e97d::t_a40d3390b96d11 914
+  s_85c95d3931e97d::t_8c618525cf8ccc 81,83,905-913,915-925
+  s_85c95d3931e97d::t_37e85731b02c41 926
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_85c95d3931e97d::t_f65ed5fea5fd5a 3267,4486
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_85c95d3931e97d::t_8a41ba3440af11 30,72,232,240,300-301,317-318,367,752-796
+  s_85c95d3931e97d::t_0dd16dee4b89b7 797-798
+packages/modules/mcp/frontend/src/mcp.constants.ts
+  s_85c95d3931e97d::t_f65ed5fea5fd5a 19,35
+packages/cli/src/modules/mcp/mcp.constants.ts
+  s_b71b24a253383d::t_d2589b68ba46cd 66
+packages/cli/src/modules/mcp/tools/create-side-panel-view.tool.ts
+  s_b71b24a253383d::t_1202f96c9c4f55 1-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b82447417c04e9280675402a553274a6a418f86e",
+  "prompts": {},
+  "sessions": {
+    "s_85c95d3931e97d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5414b146-7e78-4316-b391-228e75b753d9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_b71b24a253383d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d4de1d4-31f9-4812-ad19-e6e8bd6e9c62",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

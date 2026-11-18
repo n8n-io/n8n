@@ -1,0 +1,25 @@
+packages/@n8n/test/src/execute-workflow.ts
+  s_1a2087067112a6::t_a5c4ecdef8badb 27-87
+packages/@n8n/test/src/engine/additional-data.ts
+  s_1a2087067112a6::t_8b6ddfb5afe007 1-24
+packages/@n8n/test/src/instance-state/credentials-helper.ts
+  s_1a2087067112a6::t_62f3d08652ed23 2-56
+packages/@n8n/test/src/runtime/refusals.ts
+  s_1a2087067112a6::t_5ec7e111036091 28-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ef1af3f363911564976ea7847ce003298afc8b8c",
+  "prompts": {},
+  "sessions": {
+    "s_1a2087067112a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6300bd3e-1cc9-4e36-ad69-be897cb35d93",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

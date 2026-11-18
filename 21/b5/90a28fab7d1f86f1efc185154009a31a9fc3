@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.content.test.ts
+  s_983eea3c47ac98::t_c0c93f88f4a472 1
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/DataTableChangeDetails.vue
+  s_983eea3c47ac98::t_9b2c3d9424a9c2 9,18-20,31,67,69
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.content.ts
+  s_983eea3c47ac98::t_9b2c3d9424a9c2 139,141-145,155,161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "21b590a28fab7d1f86f1efc185154009a31a9fc3",
+  "prompts": {},
+  "sessions": {
+    "s_983eea3c47ac98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6afe657c-702d-4003-8734-85a65b043c95",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

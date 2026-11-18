@@ -1,0 +1,186 @@
+packages/cli/src/modules/agents/agents-list.controller.ts
+  s_311d5c756af82d::t_4716fefd156c05 7,28-31,35-43
+packages/frontend/editor-ui/src/features/agents/composables/useProjectAgentsList.ts
+  s_311d5c756af82d::t_4716fefd156c05 10,13-14,22,35,55,66,71,73,75,79
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  s_311d5c756af82d::t_4716fefd156c05 31-32,38,76-80,110,112,114-115,176,220-222,226-228,332,345,388
+packages/workflow/src/telemetry-helpers.ts
+  s_311d5c756af82d::t_4716fefd156c05 24-25,37,561-576
+  s_311d5c756af82d::t_4cfdd5a5f4dc82 577
+packages/@n8n/api-types/src/dto/roles/__tests__/role-project-members-response.dto.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 1-47
+packages/frontend/editor-ui/src/features/agents/components/AgentCard.vue
+  s_311d5c756af82d::t_4716fefd156c05 27,34
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ArtifactCard.vue
+  s_311d5c756af82d::t_4716fefd156c05 5,41,55
+packages/frontend/editor-ui/src/features/agents/types.ts
+  s_311d5c756af82d::t_4716fefd156c05 11,69-78,84
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_311d5c756af82d::t_4716fefd156c05 21-22,131,243,544,549
+packages/cli/src/modules/engine-v2/execution-channel/lifecycle-event-frame.ts
+  s_311d5c756af82d::t_4716fefd156c05 43-58,61-63
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPublish.ts
+  s_311d5c756af82d::t_4716fefd156c05 38
+packages/cli/src/modules/agents/__tests__/test-utils/stored-agent-config.ts
+  s_311d5c756af82d::t_4716fefd156c05 123-132
+packages/cli/src/modules/skills/services/skill-source.service.ts
+  s_311d5c756af82d::t_4716fefd156c05 55,273,276-277,289-291,297,396,407
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.ts
+  s_311d5c756af82d::t_4716fefd156c05 9,49,55,61,153
+packages/cli/src/modules/skills/utils/skipped-files.ts
+  s_311d5c756af82d::t_4716fefd156c05 1-177
+packages/cli/src/modules/engine-v2/__tests__/engine-lifecycle-event-push-relay.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 252-265
+packages/cli/src/modules/engine-v2/__tests__/lifecycle-event-channel.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 12,17,81,83,91,94-106,172-174,176,180-229,240
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreWeaviate/VectorStoreWeaviate.node.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 3-6,9-16,20-22,25-31,51,56,115-118,193-448
+packages/cli/src/modules/agents/__tests__/agent-runnable-state.service.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 42-43
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useAgentNavigationCommands.ts
+  s_311d5c756af82d::t_4716fefd156c05 16,55
+packages/cli/src/controllers/__tests__/role.controller.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 170
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentsListView.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 283,299-300
+packages/cli/src/modules/agents/agent-response.mapper.ts
+  s_311d5c756af82d::t_4716fefd156c05 1-110
+packages/@n8n/api-types/src/schemas/json-value.schema.ts
+  s_311d5c756af82d::t_4716fefd156c05 12-21
+packages/@n8n/engine/src/lifecycle-events/__tests__/lifecycle-event.schema.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 31,50-52,102,104
+packages/@n8n/telemetry/src/events/context.ts
+  s_311d5c756af82d::t_4716fefd156c05 474,497-506
+packages/cli/src/modules/engine-v2/engine-lifecycle-event-push-relay.ts
+  s_311d5c756af82d::t_4716fefd156c05 18-24,75-78,80,139,147-148,276
+  s_311d5c756af82d::t_2810c0ce065ef4 17
+packages/frontend/editor-ui/src/features/agents/__tests__/useProjectAgentsList.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 103-161
+packages/@n8n/permissions/src/index.ts
+  s_311d5c756af82d::t_4716fefd156c05 19
+packages/@n8n/permissions/src/schemas.ee.ts
+  s_311d5c756af82d::t_4716fefd156c05 92-94
+packages/cli/src/controllers/project.controller.ts
+  s_311d5c756af82d::t_4716fefd156c05 39-45
+packages/cli/src/modules/skills/__tests__/integration/skill-source.controller.integration.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 345-377,580-582
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_311d5c756af82d::t_4716fefd156c05 79
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_311d5c756af82d::t_4716fefd156c05 3046-3047,3056-3064,3067-3069
+packages/workflow/src/interfaces.ts
+  s_311d5c756af82d::t_4716fefd156c05 4411-4412
+packages/cli/src/modules/agents/__tests__/agent-draft.service.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 18,33-43,169-170,197-198,206-207
+packages/cli/src/modules/agents/agent-draft.contracts.ts
+  s_311d5c756af82d::t_4716fefd156c05 1,35-36
+packages/@n8n/api-types/src/dto/roles/role-project-members-response.dto.ts
+  s_311d5c756af82d::t_4716fefd156c05 1,7-10,13
+packages/frontend/editor-ui/src/features/agents/composables/useAgentArchive.ts
+  s_311d5c756af82d::t_4716fefd156c05 36-39,59
+packages/@n8n/api-types/src/agents/__tests__/update-agent.dto.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 1-106
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentPublish.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 131
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 166,168-169,174-175,178-183
+packages/cli/src/controllers/__tests__/project.controller.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 324,367,369-373,407-413
+packages/cli/src/modules/agents/__tests__/agent-response.mapper.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 1-162
+packages/workflow/src/constants.ts
+  s_311d5c756af82d::t_4716fefd156c05 67-68
+packages/workflow/test/telemetry-helpers.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 9-10,2078-2132
+  s_311d5c756af82d::t_995137c4780e6d 2133-2135
+packages/cli/src/modules/skills/__tests__/skipped-files.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 1-109
+packages/cli/src/modules/skills/__tests__/skills-telemetry.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 146-147
+packages/cli/test/integration/controllers/role.controller-db.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 4,9,14,16,19-24,240-248,264-323
+  s_311d5c756af82d::t_0c17b949b501e2 324
+packages/cli/src/requests.ts
+  s_311d5c756af82d::t_4716fefd156c05 8,298,311
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useRecentResources.ts
+  s_311d5c756af82d::t_4716fefd156c05 24,190
+packages/cli/src/modules/agents/agent-runnable-state.service.ts
+  s_311d5c756af82d::t_4716fefd156c05 1,18-30,41-44,57,60,62,66-77,83-84,86-88,108-109,111-113
+packages/cli/src/modules/instance-ai/eval/__tests__/thread-restore-agent-tools.integration.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 67
+packages/cli/src/modules/agents/agent-draft.service.ts
+  s_311d5c756af82d::t_4716fefd156c05 16,26,70,75-76
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 293
+packages/cli/src/modules/agents/agents.controller.ts
+  s_311d5c756af82d::t_4716fefd156c05 1-6,15,24,26,33,36,80-81,97-130,146
+packages/cli/src/modules/agents/__tests__/agents.controller.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 1,6,12-13,37,51,60,65,68,73-74,87,176-186,188,208-209,321-325,349-396,452-458,504-626
+packages/@n8n/backend-services/src/services/__tests__/role.service.assignments.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 176,184
+packages/@n8n/db/src/repositories/__tests__/role.repository.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 1-86
+packages/@n8n/engine/src/lifecycle-events/lifecycle-event.schema.ts
+  s_311d5c756af82d::t_4716fefd156c05 50-53,55
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPublishButton.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 98,106-108,113-114,117-122
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useAgentNavigationCommands.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 13,49-63
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useRecentResources.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 21,425-438
+packages/frontend/editor-ui/src/features/agents/utils/agentPublication.ts
+  s_311d5c756af82d::t_4716fefd156c05 1,6-10
+packages/@n8n/api-types/src/agents/dto.ts
+  s_311d5c756af82d::t_4716fefd156c05 15,17-22,34-35,39,279-441
+  s_311d5c756af82d::t_0a473048bc8670 442
+packages/@n8n/nodes-langchain/nodes/vector_store/shared/methods/listSearch.test.ts
+  s_311d5c756af82d::t_7a218f9ab7b7cd 2-3,5-8
+  s_311d5c756af82d::t_4716fefd156c05 27-47
+  s_311d5c756af82d::t_04fab24ffa35d3 48-49
+packages/cli/src/modules/agents/agent-publish.controller.ts
+  s_311d5c756af82d::t_4716fefd156c05 22,29,60,90,115,140,165,192
+packages/cli/src/modules/agents/__tests__/agent-publish.controller.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 9,40,132,135
+packages/frontend/editor-ui/src/features/agents/agent.types.ts
+  s_311d5c756af82d::t_4716fefd156c05 1-2,21-32,35-60
+packages/cli/src/modules/skills/utils/skill-security-rules.ts
+  s_311d5c756af82d::t_4716fefd156c05 9,74
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.vue
+  s_311d5c756af82d::t_4716fefd156c05 92
+packages/@n8n/db/src/repositories/role.repository.ts
+  s_311d5c756af82d::t_4716fefd156c05 6,8,154,162,165-170,172-182
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCard.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 5,126,131-133,138-139,144,233,416,427,438,442
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreWeaviate/Weaviate.utils.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 5-12,177-314
+packages/cli/src/modules/agents/__tests__/agents-list.controller.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 7,9,13-15,34-41
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 782-783,786-792
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 616-621,625,651,675-681,689
+packages/@n8n/permissions/src/principal.ee.ts
+  s_311d5c756af82d::t_4716fefd156c05 1-3,6
+packages/cli/test/integration/project.api.test.ts
+  s_311d5c756af82d::t_4716fefd156c05 637-679,1436,1444,1476,1484
+packages/cli/src/controllers/users.controller.ts
+  s_311d5c756af82d::t_000be2c7bd59b3 10
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_311d5c756af82d::t_4716fefd156c05 63,145-146,157-158,278-279,344-347,354
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b443be26c9d63f66987bdcb161a754779db2ab59",
+  "prompts": {},
+  "sessions": {
+    "s_311d5c756af82d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e2fc9f2fdffex3wGRacrrL72RP",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

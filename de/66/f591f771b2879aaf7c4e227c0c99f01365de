@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStepButton/AiActivityStepButton.vue
+  s_bc86e372309410::t_412a309d33d3b3 62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de66f591f771b2879aaf7c4e227c0c99f01365de",
+  "prompts": {},
+  "sessions": {
+    "s_bc86e372309410": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a182de-eb59-7340-b12d-ad41cb050d6c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

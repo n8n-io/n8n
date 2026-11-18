@@ -1,0 +1,39 @@
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_71ad2034164515::t_4a0aa9c5e41d1f 636-637
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_fb780391c8e997::t_4d0bb9012c6a9f 39,124-128,390,398-403,418-419,425,517,577-580,595
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_71ad2034164515::t_6ebe1f167df9ba 292,362-363,494
+packages/cli/src/modules/agents/agents.service.ts
+  s_fb780391c8e997::t_1a62052a14960d 399,401
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_fb780391c8e997::t_4d0bb9012c6a9f 571,1182-1183,1185
+packages/@n8n/telemetry/src/events/agents.ts
+  s_fb780391c8e997::t_4d0bb9012c6a9f 698
+packages/cli/src/modules/agents/agent-definition.service.ts
+  s_fb780391c8e997::t_4d0bb9012c6a9f 44,71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d9d494d96530ec5687666a162bb8c8e4f81de00e",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_fb780391c8e997": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17942-0858-71a1-8300-c3c5dea8152b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

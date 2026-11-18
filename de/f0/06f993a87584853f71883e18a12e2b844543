@@ -1,0 +1,25 @@
+packages/@n8n/expression-runtime/src/runtime/utils.ts
+  s_8af921e1fe09a8::t_8f009ecd6420e0 18-24
+packages/workflow/test/native-evaluation-parity.test.ts
+  s_8af921e1fe09a8::t_056592a1b7745c 939-950
+packages/@n8n/expression-runtime/src/runtime/lazy-proxy.ts
+  s_8af921e1fe09a8::t_4a44689b2e6e12 3,341-342
+packages/@n8n/expression-runtime/src/runtime/__tests__/lazy-proxy.test.ts
+  s_8af921e1fe09a8::t_4a44689b2e6e12 500
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "def006f993a87584853f71883e18a12e2b844543",
+  "prompts": {},
+  "sessions": {
+    "s_8af921e1fe09a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "58b5b7b1-a705-4e15-8627-349b6db5d142",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

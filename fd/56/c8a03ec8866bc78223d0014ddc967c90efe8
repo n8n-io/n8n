@@ -1,0 +1,102 @@
+packages/cli/src/public-api/v1/openapi.yml
+  s_3577b5c5c8d1c1::t_03e7e3f6377070 86
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_3577b5c5c8d1c1::t_ed0c558174a70b 82-84,99,119,144,165,189-190,209,241,277,299,329,351,375,399,422,446-447,466,489,519-520,547,574,604,634,664,701,730,755
+  s_3577b5c5c8d1c1::t_03e7e3f6377070 101-102,121,145-147,167-168,211-212,243-244,279-280,301-302,331-332,353-354,377-378,401-402,424-425,468-469,491-492,549-550,576-577,606-607,636-637,665-667,703-704,732-733,757-758
+  s_3577b5c5c8d1c1::t_4e59ea1a5f0a9f 25,30-31,63,66,640,650-652,660-663,668-691,780-787
+  s_3577b5c5c8d1c1::t_e498af49caf927 692-694,788-789
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_3577b5c5c8d1c1::t_dd42ba64d91e66 102-105,121-124,131-134,139-140,147,151-155,189,194,212-213
+  s_3577b5c5c8d1c1::t_77b8ec54f94f11 1-2,8,14-17
+  s_3577b5c5c8d1c1::t_03e7e3f6377070 54-94,148-150,176-188,190-193,195-201
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change.service.test.ts
+  s_3577b5c5c8d1c1::t_2b5f0ce8665a63 147-153
+packages/cli/src/modules/promotions.ee/promotion-changes.controller.ts
+  s_3577b5c5c8d1c1::t_55d2e6aecb2f3b 21,65
+packages/@n8n/api-types/src/dto/promotions/promotion-apply-check.dto.ts
+  s_3577b5c5c8d1c1::t_0328b9697430fd 56,60
+  s_3577b5c5c8d1c1::t_03e7e3f6377070 46-48,262-279
+  s_3577b5c5c8d1c1::t_c83536713e6a6e 280-281
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_3577b5c5c8d1c1::t_ee4e48fadf77b0 338,345
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_3577b5c5c8d1c1::t_70878051a50f90 296-301
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/addProjectToPromotionEnvironment.generated.yml
+  s_3577b5c5c8d1c1::t_b0e522c6235ee4 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  s_3577b5c5c8d1c1::t_98e7445333db29 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  s_3577b5c5c8d1c1::t_ae8e130fb62682 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/connectPromotionCheckout.generated.yml
+  s_3577b5c5c8d1c1::t_9010bc3918dcf5 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  s_3577b5c5c8d1c1::t_67597444841043 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  s_3577b5c5c8d1c1::t_5901c897ea77f0 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/createPromotionEnvironment.generated.yml
+  s_3577b5c5c8d1c1::t_374e448b44dd7a 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/createPromotionProvider.generated.yml
+  s_3577b5c5c8d1c1::t_e757b03e1b6352 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/deletePromotionEnvironment.generated.yml
+  s_3577b5c5c8d1c1::t_6c62d1529429ed 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/deletePromotionProvider.generated.yml
+  s_3577b5c5c8d1c1::t_5843d840e0ecfa 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/disconnectPromotionCheckout.generated.yml
+  s_3577b5c5c8d1c1::t_ed38c8b49b4ba7 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChangeDetails.generated.yml
+  s_3577b5c5c8d1c1::t_c931b7b16db730 1-87
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  s_3577b5c5c8d1c1::t_e292c6b9acd763 4-8,119-238,243-244
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironment.generated.yml
+  s_3577b5c5c8d1c1::t_15f2b95f190e81 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironmentMissingProjects.generated.yml
+  s_3577b5c5c8d1c1::t_32d0639707df4a 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironmentProjects.generated.yml
+  s_3577b5c5c8d1c1::t_68a38a8fe44d62 4-5
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironments.generated.yml
+  s_3577b5c5c8d1c1::t_d928c311da778a 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProvider.generated.yml
+  s_3577b5c5c8d1c1::t_6a8ce08e071526 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProviderRepositories.generated.yml
+  s_3577b5c5c8d1c1::t_62cbc8c257f047 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProviderRepositoryBranches.generated.yml
+  s_3577b5c5c8d1c1::t_e6f9b66468dd53 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProviders.generated.yml
+  s_3577b5c5c8d1c1::t_244fd4368dae1c 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
+  s_3577b5c5c8d1c1::t_59635c5ee56d7c 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  s_3577b5c5c8d1c1::t_acbdf32982275c 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/removeProjectFromPromotionEnvironment.generated.yml
+  s_3577b5c5c8d1c1::t_db0166f59c0b2e 4-5
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/updatePromotionEnvironment.generated.yml
+  s_3577b5c5c8d1c1::t_bdcc49ea834a21 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/updatePromotionProvider.generated.yml
+  s_3577b5c5c8d1c1::t_8f22573daee70a 4-8
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_3577b5c5c8d1c1::t_ee16d33b66f333 317-319
+packages/cli/src/public-api/v1/shared/spec/schemas/applyPackageResultDto.generated.yml
+  s_3577b5c5c8d1c1::t_62411c51320886 310
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionApplyCheck.generated.yml
+  s_3577b5c5c8d1c1::t_afcd49fca5341e 1-1330
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionResource.generated.yml
+  s_3577b5c5c8d1c1::t_ba326f867874a1 1-83
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionResourceDetail.generated.yml
+  s_3577b5c5c8d1c1::t_d9af9727c7a278 1-928
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fd56c8a03ec8866bc78223d0014ddc967c90efe8",
+  "prompts": {},
+  "sessions": {
+    "s_3577b5c5c8d1c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9385f1cb-01a1-4804-b347-ae01a2d5700b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

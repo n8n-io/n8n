@@ -1,0 +1,48 @@
+packages/cli/src/webhooks/webhook-request-sanitizer.ts
+  s_11c4529a4fcbbc::t_e23f0bbcb83a4c 48
+packages/cli/src/webhooks/webhook-response-headers.ts
+  s_11c4529a4fcbbc::t_b38525446cd881 84
+  s_11c4529a4fcbbc::t_899c40de73715f 36-38
+  s_11c4529a4fcbbc::t_fff0367bdb0e57 12-13
+  s_11c4529a4fcbbc::t_cccb848296b3e6 14-15
+  s_11c4529a4fcbbc::t_d3bb0a10f99ee2 72-73,75
+  s_11c4529a4fcbbc::t_bf8e8256bdafef 44-45,47-55
+  s_11c4529a4fcbbc::t_06b69520fd329d 74
+  s_11c4529a4fcbbc::t_68fcd380cee1c9 46,56-57
+  s_11c4529a4fcbbc::t_a7842239ac29e3 43
+  s_11c4529a4fcbbc::t_7b4beb6ee3a7fe 42
+  s_11c4529a4fcbbc::t_bda5ebe5af8a21 39-41
+packages/cli/src/webhooks/__tests__/webhook-response-headers.test.ts
+  s_11c4529a4fcbbc::t_a674a63c11165d 142,144-154
+  s_11c4529a4fcbbc::t_c7148f5edfbb00 175-184
+  s_11c4529a4fcbbc::t_76a0a72672706e 242-251
+  s_11c4529a4fcbbc::t_e3163d2bf71b22 252-261
+  s_11c4529a4fcbbc::t_645d4eecc9a225 143
+  s_11c4529a4fcbbc::t_88eeefdb87bf2a 165-174
+  s_11c4529a4fcbbc::t_fbbef770bd76c8 120-130
+  s_11c4529a4fcbbc::t_2308bac9745f06 231-241
+  s_11c4529a4fcbbc::t_d0a6dbeec27cb6 155-164
+  s_11c4529a4fcbbc::t_a25b2d49c00671 185-190,192-220
+  s_11c4529a4fcbbc::t_0e0a94de0d3c49 131-141
+  s_11c4529a4fcbbc::t_4425a87a013713 191
+  s_11c4529a4fcbbc::t_5c9f6f9e651c83 221-230
+packages/cli/src/constants.ts
+  s_11c4529a4fcbbc::t_9222ad18f98470 100,104-106
+  s_11c4529a4fcbbc::t_b88438af164204 101-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "65a35c67f0ba52c9e40cd1aad275ce33d81d6e51",
+  "prompts": {},
+  "sessions": {
+    "s_11c4529a4fcbbc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "923ac13f-8c12-4d49-82ae-c8691121d662",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

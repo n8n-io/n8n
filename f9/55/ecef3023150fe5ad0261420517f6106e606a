@@ -1,0 +1,36 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotion-environments.service.test.ts
+  s_45741ff70f27eb::t_8cf8ae65dcd625 38-39,96,107,112-120
+packages/cli/src/modules/promotions.ee/promotion-providers.service.ts
+  s_45741ff70f27eb::t_09366d4121bfc2 130-134,163-172,180-181,186-190
+packages/cli/src/modules/promotions.ee/__tests__/promotion-providers.service.test.ts
+  s_45741ff70f27eb::t_8cf8ae65dcd625 7,192,204-208,217-238,244-248,253,258-279
+  s_45741ff70f27eb::t_5235960138f446 183-185,239-243
+packages/@n8n/telemetry/src/events/promotions.ts
+  s_45741ff70f27eb::t_09366d4121bfc2 46-93
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_45741ff70f27eb::t_2762ca70425a85 5316-5401
+packages/cli/src/events/maps/relay.event-map.ts
+  s_45741ff70f27eb::t_09366d4121bfc2 1322-1350
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_45741ff70f27eb::t_09366d4121bfc2 356-359,2694-2744
+packages/cli/src/modules/promotions.ee/promotion-environments.service.ts
+  s_45741ff70f27eb::t_09366d4121bfc2 129,164-174,182-183,185-190
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_45741ff70f27eb::t_09366d4121bfc2 164,170,185,190,344,350,366,371
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f955ecef3023150fe5ad0261420517f6106e606a",
+  "prompts": {},
+  "sessions": {
+    "s_45741ff70f27eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1cbd7b03-c4ec-4087-b014-6e5f8a392673",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

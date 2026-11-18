@@ -1,0 +1,38 @@
+packages/@n8n/nodes-langchain/nodes/vector_store/ChatHubVectorStorePinecone/ChatHubVectorStorePinecone.node.ts
+  s_a1d66d64c63009::t_a1d27fcceecab9 1,14,108,142-144,147
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStorePinecone/VectorStorePinecone.node.test.ts
+  s_a1d66d64c63009::t_2ce1187866ca10 1-56
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStorePinecone/VectorStorePinecone.node.ts
+  s_a1d66d64c63009::t_a1d27fcceecab9 1,10,30-41,65,86-88,95,99,101,104-105
+packages/@n8n/nodes-langchain/nodes/vector_store/shared/pinecone.test.ts
+  s_a1d66d64c63009::t_32dffd506587f8 1-15,19-22,24-91,98-253
+  s_a1d66d64c63009::t_a580323c6ef2cf 16-18,23
+  s_a1d66d64c63009::t_fd462fbde99eb2 92-97
+packages/@n8n/nodes-langchain/nodes/vector_store/shared/pinecone.ts
+  s_a1d66d64c63009::t_3ada7256a85072 140-144,148-150,208-215
+  s_a1d66d64c63009::t_7104920f1b3801 21,194-198,201
+  s_a1d66d64c63009::t_c4900e3e0b38b6 3-20,22-34,37-139,145-147,151-193,199-200,202-207,216
+  s_a1d66d64c63009::t_048716cd5a8a74 1-2,35-36
+pnpm-lock.yaml
+  ai_agent 3864-3866,14114-14117,30878
+packages/@n8n/nodes-langchain/package.json
+  s_a1d66d64c63009::t_32820348a453be 292
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStorePineconeLoad/VectorStorePineconeLoad.node.ts
+  s_a1d66d64c63009::t_a1d27fcceecab9 14,98,100,103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "660b4892b06483d73735b25f1b3a9f30a5a13701",
+  "prompts": {},
+  "sessions": {
+    "s_a1d66d64c63009": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae3047a3-60ee-4c59-bccd-2836cb5cb5ae",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

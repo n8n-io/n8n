@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/simulation/__tests__/outbound-redaction.test.ts
+  s_16b644290ae8de::t_3ca10f6db693f9 302-308,310,349-350
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.service.test.ts
+  s_16b644290ae8de::t_d7798d6cde87e7 378
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.test.ts
+  s_16b644290ae8de::t_2139a4bfeebc9c 349,359,364,403,408
+packages/cli/src/modules/agents/simulation/outbound-redaction.ts
+  s_16b644290ae8de::t_8c3cdcb161f4e4 250-251,268-269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b504ff98854afd05c2bd78ecafa4b4573270adfb",
+  "prompts": {},
+  "sessions": {
+    "s_16b644290ae8de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a830bc42-2947-4a1f-addb-2fc71964d310",
+        "model": "unknown"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

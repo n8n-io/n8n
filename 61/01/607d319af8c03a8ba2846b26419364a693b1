@@ -1,0 +1,19 @@
+packages/@n8n/agents/src/runtime/model/__tests__/openai-stateless-responses.test.ts
+  s_6897656fff0b4a::t_a60e854ff691fb 21-25,85,88,90,103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6101607d319af8c03a8ba2846b26419364a693b1",
+  "prompts": {},
+  "sessions": {
+    "s_6897656fff0b4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8e563283-62ce-4b4a-b047-8a2343e393f0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

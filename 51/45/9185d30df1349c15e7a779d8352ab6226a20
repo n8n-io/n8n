@@ -1,0 +1,33 @@
+packages/cli/src/modules/agents/integrations/__tests__/integration-context-query-executor.test.ts
+  s_b82caf968b8c36::t_6f6dcc1ebda7ac 948,951-956,963
+packages/cli/src/modules/agents/integrations/__tests__/slack-operations.test.ts
+  s_b82caf968b8c36::t_6f6dcc1ebda7ac 78,80-85,89-103,105-134,255-265
+  s_b82caf968b8c36::t_3aa3e6adea0e57 42,44-45,50-71,77
+  s_b82caf968b8c36::t_070893fe29e8c2 46-49,86-88,104
+  s_b82caf968b8c36::t_ae3527f684e29c 79
+  s_b82caf968b8c36::t_385fad11d8286e 266
+packages/cli/src/modules/agents/integrations/integration-error-codes.ts
+  s_b82caf968b8c36::t_1058b57626b4f3 13
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-operations.ts
+  s_b82caf968b8c36::t_1058b57626b4f3 11-12,16,201,203-228,230-238
+packages/cli/src/modules/agents/integrations/integration-tool-definitions.ts
+  s_b82caf968b8c36::t_6f6dcc1ebda7ac 255
+packages/cli/src/modules/agents/BUILT_IN_TOOLS.md
+  s_b82caf968b8c36::t_6f6dcc1ebda7ac 95-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "51459185d30df1349c15e7a779d8352ab6226a20",
+  "prompts": {},
+  "sessions": {
+    "s_b82caf968b8c36": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1630e-8c2e-7cb1-ab55-c37ffdbc2763",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/AssistantAgentPanelThread.vue
+  s_b3a83dbf9bece1::t_ebb1fdf77f1fb2 278-284
+  s_b3a83dbf9bece1::t_7833a250383199 241-243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b7ad414cd9dff09e6f23947e980517344e219368",
+  "prompts": {},
+  "sessions": {
+    "s_b3a83dbf9bece1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bbc389a8-bbd3-4fe3-85da-f10c9c9e8d93",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

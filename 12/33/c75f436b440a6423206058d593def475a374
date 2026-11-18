@@ -1,0 +1,48 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/AssistantAgentPanelThread.test.ts
+  s_771457c926e571::t_2823186daa5738 183,188,191
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-agent.provider.test.ts
+  s_771457c926e571::t_8252c9a04d72fb 553-564
+  s_771457c926e571::t_7d1a850e2f2494 542,548,565-576
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantAgentThreadView.test.ts
+  s_771457c926e571::t_d9b34db389a227 1614-1618
+  s_771457c926e571::t_dbc07ea9d225f4 1599-1602
+  s_771457c926e571::t_9f15fd8653f624 1571-1598,1603-1612,1619-1634
+  s_771457c926e571::t_cd3a1e6972c8dd 1613
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantAgentThreads.ts
+  s_771457c926e571::t_69596fa8f64882 134,146-161
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/AssistantAgentPanelThread.vue
+  s_771457c926e571::t_69596fa8f64882 4-6,126
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_771457c926e571::t_cc8985082dedee 339-340,342-343,346-350,387,396
+  s_771457c926e571::t_c9fcd2eb3c62e3 5,337-338,341,344-345
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/useAssistantAgentTargets.ts
+  s_771457c926e571::t_c9fcd2eb3c62e3 51-52
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/InstanceAiChatPanel.test.ts
+  s_771457c926e571::t_2823186daa5738 13,15-17,1244-1266
+  s_771457c926e571::t_df49ae49827dd7 14,1216-1219
+  s_771457c926e571::t_7f212a835a6f1a 127
+packages/@n8n/instance-ai/evaluations/__tests__/assistant-agents-api.test.ts
+  s_771457c926e571::t_fba37ea28722ac 162-182
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-agent.provider.ts
+  s_771457c926e571::t_17dbb37ee68fb1 308-311,330
+packages/@n8n/instance-ai/evaluations/clients/assistant-agents-api.ts
+  s_771457c926e571::t_6c1f2aeeaddf6a 229-230,233
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/InstanceAiChatPanel.vue
+  s_771457c926e571::t_c2199c6746df05 53,659-665
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1233c75f436b440a6423206058d593def475a374",
+  "prompts": {},
+  "sessions": {
+    "s_771457c926e571": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad7fc79a-2f23-40ab-a02a-a0ca28c6c53c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

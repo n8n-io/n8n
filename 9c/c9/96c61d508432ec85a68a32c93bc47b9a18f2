@@ -1,0 +1,53 @@
+packages/@n8n/cli/docs/commands/package.md
+  s_3773c4b1047d3d::t_b53704e1de106d 115-116,266-267
+packages/cli/BREAKING-CHANGES.md
+  s_3773c4b1047d3d::t_2b6e27e6a492cb 33-40
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_3773c4b1047d3d::t_2c1ea625ddf2a5 1-2,2797-2886,3257-3287
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-gates.test.ts
+  s_3773c4b1047d3d::t_528b321bab2629 7,12,14,38,75-109
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_3773c4b1047d3d::t_c5d10b7c5960f3 11-14,144-166
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_3773c4b1047d3d::t_efeb56fce402b2 119,233-235
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
+  s_3773c4b1047d3d::t_19c3781741900b 76,87,97,162,233,290,337,377
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-publisher.test.ts
+  s_3773c4b1047d3d::t_6c0dc2e7a4bbba 92,105,123,142,168,177,195,216,225,248,257,279
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-publishing-policy.test.ts
+  s_3773c4b1047d3d::t_32bc1c433b549c 1-7,171-270
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import.types.ts
+  s_3773c4b1047d3d::t_b08fb84c4380d6 6,50,64-66
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_3773c4b1047d3d::t_42e9f086fb5e86 32,34,96,104-108,404
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publisher.ts
+  s_3773c4b1047d3d::t_67f5b31d7dc7e3 74,111,164
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publishing-policy.ts
+  s_3773c4b1047d3d::t_20f494aaddd178 1,59-74
+packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
+  s_3773c4b1047d3d::t_f2dd0765b3429c 59-62,117-119
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  s_3773c4b1047d3d::t_90106159422402 14
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackageSelection.generated.yml
+  s_3773c4b1047d3d::t_bf9daf15a51b61 12
+packages/cli/test/integration/public-api/n8n-packages-import-selection.test.ts
+  s_3773c4b1047d3d::t_922581b599b575 3,11,13,26,29,38-39,77,80-81,496-621
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_3773c4b1047d3d::t_f22faa31352cbe 2-7,9,11,26,35-36,63,66-67,687-900
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9cc996c61d508432ec85a68a32c93bc47b9a18f2",
+  "prompts": {},
+  "sessions": {
+    "s_3773c4b1047d3d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19b62-3774-7a81-9f65-3fd6d0a7bb8b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

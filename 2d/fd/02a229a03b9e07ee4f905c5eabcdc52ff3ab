@@ -1,0 +1,89 @@
+packages/@n8n/telemetry/src/events/expressions.ts
+  s_e24c1da51d6f4a::t_c86826dcc6bf2b 27,60
+  s_e24c1da51d6f4a::t_ecd40981067fad 31-34,36
+  s_e24c1da51d6f4a::t_021df10a2ae8b8 18-22
+  s_e24c1da51d6f4a::t_948c8eef9ed714 26,28,30,37-43,47-52
+  s_e24c1da51d6f4a::t_87d9629ec6beed 53-55
+  s_e24c1da51d6f4a::t_14cdd1108bc63e 35
+  s_e24c1da51d6f4a::t_433f253f64c5ae 56-59,61
+  s_e24c1da51d6f4a::t_166f9f3e769e12 44-46
+  s_e24c1da51d6f4a::t_e84ffb581e7802 29
+packages/frontend/editor-ui/src/experiments/quickjsExpressionShadow/init.ts
+  s_e24c1da51d6f4a::t_40c793692d00d3 57-74
+  s_e24c1da51d6f4a::t_2ba577f1af0c4c 46-47
+  s_e24c1da51d6f4a::t_aebb8a60eb3a96 216,218,220
+  s_e24c1da51d6f4a::t_2548b58e2e52d0 233,236
+  h_32d8cd6a0d6aad 33,122-124
+  s_e24c1da51d6f4a::t_7d3c80a03b699a 219
+  s_e24c1da51d6f4a::t_ac6af2311cc69c 31,36
+  s_e24c1da51d6f4a::t_433f253f64c5ae 104-112,117-119,127,142-143,231,244
+  s_22780b9bf2a757::t_0c5fd2e04e9d80 52
+  s_e24c1da51d6f4a::t_c803bb26e0816f 34
+  s_e24c1da51d6f4a::t_0b5281ec6e1710 121
+  s_e24c1da51d6f4a::t_513dd0f1bae15e 35,37,48,51,53-54,113-116,120,126,128-135,137-141,259,282,287
+  s_22780b9bf2a757::t_e830c9849ce3f0 136
+  s_e24c1da51d6f4a::t_978a43a8e1afaf 32
+  s_e24c1da51d6f4a::t_1e29dbd24e1297 283
+  s_e24c1da51d6f4a::t_58965dce521b66 297-298
+  s_e24c1da51d6f4a::t_443d40f3a696a3 18,38-45,49-50,55-56,84-103,213,217,225-226,228,230,238,240-243,252-256,260,263-276,281,286
+  s_e24c1da51d6f4a::t_752ed98db42ec1 75-83
+  s_e24c1da51d6f4a::t_7cf12b5d6ef177 125
+  s_e24c1da51d6f4a::t_8dae57f453e848 328-329
+  s_e24c1da51d6f4a::t_f7323f0f1da59a 214-215,221-224
+  s_e24c1da51d6f4a::t_6cfa7b2915e675 239
+packages/workflow/test/expression-shadow.test.ts
+  s_e24c1da51d6f4a::t_a987919fb1df6c 101-104,106-107
+  s_e24c1da51d6f4a::t_79a2d4b7c11746 105,108-109
+packages/frontend/editor-ui/src/app/init/index.test.ts
+  s_e24c1da51d6f4a::t_b726af2f48bcce 30,88,380,505
+packages/@n8n/expression-runtime/src/bridge/__tests__/quickjs-bridge-load-wasm.test.ts
+  s_e24c1da51d6f4a::t_88a46102faee31 1-27
+packages/@n8n/expression-runtime/src/bridge/quickjs-bridge.ts
+  ai_agent 548-552
+packages/workflow/src/expression.ts
+  s_e24c1da51d6f4a::t_e1b04826964362 464-469
+packages/frontend/editor-ui/src/app/init/index.ts
+  s_e24c1da51d6f4a::t_d4690f6f3e33a2 291
+  s_e24c1da51d6f4a::t_aca50d80e9cb76 44
+packages/frontend/editor-ui/src/experiments/quickjsExpressionShadow/init.test.ts
+  s_e24c1da51d6f4a::t_d884058034f5dc 323-327,331-357,374-376
+  s_e24c1da51d6f4a::t_ee0ca996dcbdbe 243
+  s_e24c1da51d6f4a::t_5401e5393bf43d 8,33,80,82-83,251,254-269,271-279,281,285-309,321-322,377-389,391-407,456-477,480-482
+  s_e24c1da51d6f4a::t_1fd826082aa63d 206-218
+  s_e24c1da51d6f4a::t_d5c46cb49c908d 280,282-284
+  s_e24c1da51d6f4a::t_5da51016a969bc 411,414-415,417-424,444,446,449-451,454-455
+  s_e24c1da51d6f4a::t_c86826dcc6bf2b 45-68,84,252-253,310-320,328-330,358-373
+  s_e24c1da51d6f4a::t_6c879e312adb9a 425-440
+  s_e24c1da51d6f4a::t_6cdb2f0239306a 483-513
+  s_e24c1da51d6f4a::t_ba49cea0bafaa5 10,390,408-410,412-413,416,441-443,445,447-448,452-453
+  s_e24c1da51d6f4a::t_cd47cb9df472d6 198-202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2dfd02a229a03b9e07ee4f905c5eabcdc52ff3ab",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_22780b9bf2a757": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18257-2ed7-79b3-ac4d-8e56c6dff8ab",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_e24c1da51d6f4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be6ffbae-ff51-4ea0-b834-06d689ab5267",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

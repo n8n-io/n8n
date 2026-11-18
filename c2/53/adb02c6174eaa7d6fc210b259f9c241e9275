@@ -1,0 +1,45 @@
+packages/cli/src/modules/mcp/tools/skills/skill-tools.service.ts
+  s_20d484677b459f::t_7cb80b97f7bb33 56
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.vue
+  s_20d484677b459f::t_7cb80b97f7bb33 304-306
+packages/cli/src/modules/skills/skill.repository.ts
+  s_20d484677b459f::t_7cb80b97f7bb33 148-149,153,171,397-402
+packages/cli/src/modules/skills/hub-assistant-skill-provider.service.ts
+  s_20d484677b459f::t_7cb80b97f7bb33 25-27,40,45
+packages/cli/src/modules/skills/__tests__/hub-assistant-skill-provider.service.test.ts
+  s_20d484677b459f::t_7cb80b97f7bb33 21,77,117,119,127-130
+  s_20d484677b459f::t_c914e5b752470e 131-138
+packages/cli/src/modules/skills/__tests__/skills.module.test.ts
+  s_20d484677b459f::t_c914e5b752470e 45
+  s_20d484677b459f::t_7cb80b97f7bb33 40
+packages/cli/src/modules/skills/skills-api.service.ts
+  s_20d484677b459f::t_7cb80b97f7bb33 131-135
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.test.ts
+  s_20d484677b459f::t_7cb80b97f7bb33 342,345,349
+packages/cli/src/modules/skills/__tests__/skills-api.service.test.ts
+  s_20d484677b459f::t_c914e5b752470e 585-593,596-599,614-617
+  s_20d484677b459f::t_d61ee3d3c11349 569-584,594-595,600-613,618-620
+packages/cli/test/integration/skills/skill.repository.test.ts
+  s_20d484677b459f::t_d61ee3d3c11349 96,107-115,117-118,122-123,125,129,155,159,161-164,166
+  s_20d484677b459f::t_c914e5b752470e 119-121
+packages/cli/test/integration/skills/skills.controller.test.ts
+  s_20d484677b459f::t_c914e5b752470e 153
+  s_20d484677b459f::t_d61ee3d3c11349 117,133-138,142,145-150,155-156
+  s_20d484677b459f::t_cd3ccc81437cc3 139-141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c253adb02c6174eaa7d6fc210b259f9c241e9275",
+  "prompts": {},
+  "sessions": {
+    "s_20d484677b459f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1541d-6ef7-7ef0-a84b-83bd91fd72c5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

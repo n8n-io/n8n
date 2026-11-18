@@ -1,0 +1,28 @@
+packages/@n8n/expression-runtime/src/bridge/quickjs-bridge.ts
+  ai_agent 29,32,45-48,57,515-516,535,1192,1196,1256-1258,1461,1463
+pnpm-lock.yaml
+  ai_agent 2983-2985,3016-3017
+packages/@n8n/expression-runtime/src/bridge/__tests__/quickjs-bridge-load-wasm.test.ts
+  s_3c1a1b61666651::t_a88d1c8df48ac0 10-13,19,24
+  s_3c1a1b61666651::t_f4a87f04bac333 6-8
+packages/@n8n/expression-runtime/src/bridge/__tests__/quickjs-bridge.test.ts
+  s_3c1a1b61666651::t_97b529a89717d3 182-183,194-195
+packages/@n8n/expression-runtime/src/index.ts
+  s_3c1a1b61666651::t_97b529a89717d3 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9df00851868c10f0232ec6125dd44ec2e8adde93",
+  "prompts": {},
+  "sessions": {
+    "s_3c1a1b61666651": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b50dbfdd-4799-4b4a-8196-5022fd975b9f",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

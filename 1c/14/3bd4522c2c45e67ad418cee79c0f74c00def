@@ -1,0 +1,29 @@
+packages/frontend/@n8n/ui-extension-runtime/src/runtime.test.ts
+  s_85c95d3931e97d::t_15a9a2b8bd6481 45
+  s_85c95d3931e97d::t_03f2ffef2417f9 34-44,46-49,76,152
+packages/modules/ui-extensions/frontend/src/components/ViewFrame.vue
+  s_85c95d3931e97d::t_ba9105983ff20f 14,53-55,61-63,70-71,129-131,160
+  s_85c95d3931e97d::t_03f2ffef2417f9 64-69
+packages/modules/ui-extensions/frontend/src/components/ViewFrame.test.ts
+  s_85c95d3931e97d::t_03f2ffef2417f9 167-196
+packages/modules/ui-extensions/frontend/src/ui-extensions.constants.ts
+  s_85c95d3931e97d::t_ba9105983ff20f 27-32
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_85c95d3931e97d::t_ba9105983ff20f 5769
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1c143bd4522c2c45e67ad418cee79c0f74c00def",
+  "prompts": {},
+  "sessions": {
+    "s_85c95d3931e97d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5414b146-7e78-4316-b391-228e75b753d9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

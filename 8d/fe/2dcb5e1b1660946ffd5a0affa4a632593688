@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_69f4cc3b345b0a::t_a583a8a474e13d 475
+  s_69f4cc3b345b0a::t_448a7a3618355c 474
+  s_555611cea2d172::t_3a9293c16d2139 461-465,981
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiConversation.test.ts
+  s_555611cea2d172::t_a47d1575f112b9 387-389,391-392,394-396,408-409,412,414
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8dfe2dcb5e1b1660946ffd5a0affa4a632593688",
+  "prompts": {},
+  "sessions": {
+    "s_555611cea2d172": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "576c48ac-02e3-4647-bddf-a48132b5abd7",
+        "model": "unknown"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_69f4cc3b345b0a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a393806-9b92-44b9-b788-dffc75be88c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

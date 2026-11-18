@@ -1,0 +1,22 @@
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_5785bc20fb92a9::t_43bd6ccff1b0e2 467-476
+  s_5785bc20fb92a9::t_e90fd54b9c5512 398,531,718
+packages/cli/src/modules/agents/agent-skill-refs.service.ts
+  s_5785bc20fb92a9::t_73fcbae19e947f 292-293
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "addf1932846a790e6f4b68b04b07e24b6de49916",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

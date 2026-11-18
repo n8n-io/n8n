@@ -1,0 +1,36 @@
+.agents/skills/public-api-live-testing/SKILL.md
+  s_9d31531ba5c1f9::t_0146db995061a9 1-131,136-162
+  s_9d31531ba5c1f9::t_749f468625278d 132-135
+.agents/skills/public-api-live-testing/scripts/parity/run.mjs
+  s_9d31531ba5c1f9::t_8af5f7965e0a7b 48-54,115-119,123-128
+  s_9d31531ba5c1f9::t_2fe9337af8f811 27-31
+  s_9d31531ba5c1f9::t_8844ef952ee9fb 2-5,11-16,26,32-34
+  s_9d31531ba5c1f9::t_41279d6a207a1a 1,6-10,17-25,35-47,55-114,120-122,129-138
+.agents/skills/public-api-live-testing/scripts/parity/corpus.mjs
+  s_9d31531ba5c1f9::t_8af5f7965e0a7b 94-101,103-135,138-145,173-176,178-193,195-206,208-219,224-231,236-250,254-265,267-274,276-290,292-310
+  s_9d31531ba5c1f9::t_41279d6a207a1a 1-93,102,136-137,146-172,177,194,207,220-223,232-235,251-253,266,275,291,311-319
+.agents/skills/public-api-live-testing/scripts/parity/sortdiff.mjs
+  s_9d31531ba5c1f9::t_41279d6a207a1a 6,12,27,38,61,71
+  s_9d31531ba5c1f9::t_8af5f7965e0a7b 89-96,104-106
+  s_9d31531ba5c1f9::t_4cc10d86e00faf 1-5,7-11,13-26,28-37,39-60,62-70,72-88,97-103,107-112
+.agents/skills/public-api/reference.md
+  s_9d31531ba5c1f9::t_da675ff4abdbe8 184-186
+.claude/plugins/n8n/skills/public-api-live-testing
+  ai_agent 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "39040a151442ec4858b690db25db5c42f66805f8",
+  "prompts": {},
+  "sessions": {
+    "s_9d31531ba5c1f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0949ac3c-8f37-450f-9366-3b1368197b66",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_5f72bed614ce17::t_de2bc0a6ba0865 260,262-264,266-268,303-315,1269,1274-1275
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_5f72bed614ce17::t_9dc8629cfefbbd 1556-1600
+packages/cli/src/modules/agents/agent-file-bridge.service.ts
+  s_5f72bed614ce17::t_de2bc0a6ba0865 159-163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5b7e7d1baa5f252a09faddf4fbf3a05b84c7be37",
+  "prompts": {},
+  "sessions": {
+    "s_5f72bed614ce17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6a1d4fcf-f66a-4d6f-831e-82eea3858884",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
