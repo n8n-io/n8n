@@ -24,7 +24,7 @@ import type {
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
+import { applyThemeToBody, getThemeMode, getThemeOverride, isValidTheme } from './ui.utils';
 import { SHELL_MODAL_INITIAL_STATE } from './defaults/modals';
 import { computed, ref, watch } from 'vue';
 import type { Connection } from '@vue-flow/core';
@@ -193,7 +193,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	);
 
 	const appliedTheme = computed(() => {
-		return theme.value === 'system' ? preferredSystemTheme.value : theme.value;
+		return theme.value === 'system' ? preferredSystemTheme.value : getThemeMode(theme.value);
 	});
 
 	const contextBasedTranslationKeys = computed(() => {

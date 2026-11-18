@@ -7608,6 +7608,7 @@
 	"settings.personal.theme.systemDefault": "System default",
 	"settings.personal.theme.light": "Light theme",
 	"settings.personal.theme.dark": "Dark theme",
+	"settings.personal.theme.catppuccinLatte": "Catppuccin Latte",
 	"settings.personal.mfa.description.disabled": "Not set up. Adds a second verification step when you sign in.",
 	"settings.personal.mfa.description.enabled": "Enabled. You'll be asked for a code from your authenticator app when you sign in.",
 	"settings.personal.mfa.button.enabled": "Enable 2FA",

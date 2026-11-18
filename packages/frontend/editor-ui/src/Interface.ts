@@ -968,7 +968,8 @@ export type ToggleNodeCreatorOptions = {
 };
 
 export type AppliedThemeOption = 'light' | 'dark';
-export type ThemeOption = AppliedThemeOption | 'system';
+export type ThemePreset = 'catppuccin-latte';
+export type ThemeOption = AppliedThemeOption | 'system' | ThemePreset;
 
 export type EnterpriseEditionFeatureKey =
 	| 'AdvancedExecutionFilters'

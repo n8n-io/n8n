@@ -1,0 +1,91 @@
+@use 'sass:color';
+@use 'sass:map';
+
+// Theme presets remap the primitive ramps on the body. The semantic tokens are declared again on
+// `body[data-theme]`, so they resolve against these values. A preset always sets `data-theme`.
+
+$tint-weights: (
+	50: 10%,
+	100: 18%,
+	150: 26%,
+	200: 34%,
+	250: 42%,
+	300: 50%,
+	400: 75%,
+);
+$shade-weights: (
+	600: 85%,
+	700: 70%,
+	800: 50%,
+	900: 32%,
+	950: 22%,
+);
+
+// Builds a 50–950 ramp around one accent: lighter steps mix toward $light, darker toward $dark.
+// The naming rule cannot read interpolated names. The output matches `_primitives.scss`.
+/* stylelint-disable @n8n/css-var-naming */
+@mixin ramp($name, $accent, $light, $dark) {
+	@each $step, $weight in $tint-weights {
+		--color--#{$name}-#{$step}: #{color.mix($accent, $light, $weight)};
+	}
+	--color--#{$name}-500: #{$accent};
+	@each $step, $weight in $shade-weights {
+		--color--#{$name}-#{$step}: #{color.mix($accent, $dark, $weight)};
+	}
+}
+/* stylelint-enable @n8n/css-var-naming */
+
+// https://catppuccin.com/palette/
+$latte: (
+	text: #4c4f69,
+	subtext1: #5c5f77,
+	subtext0: #6c6f85,
+	overlay0: #9ca0b0,
+	surface2: #acb0be,
+	surface1: #bcc0cc,
+	surface0: #ccd0da,
+	base: #eff1f5,
+	mantle: #e6e9ef,
+	crust: #dce0e8,
+	mauve: #8839ef,
+	peach: #fe640b,
+	red: #d20f39,
+	green: #40a02b,
+	yellow: #df8e1d,
+	blue: #1e66f5,
+	lavender: #7287fd,
+	teal: #179299,
+);
+
+body[data-palette='catppuccin-latte'] {
+	$c: $latte;
+
+	--color--neutral-white: #{map.get($c, base)};
+	--color--neutral-50: #{color.mix(map.get($c, base), map.get($c, mantle))};
+	--color--neutral-100: #{map.get($c, mantle)};
+	--color--neutral-125: #{color.mix(map.get($c, mantle), map.get($c, crust))};
+	--color--neutral-150: #{map.get($c, crust)};
+	--color--neutral-200: #{map.get($c, surface0)};
+	--color--neutral-250: #{color.mix(map.get($c, surface0), map.get($c, surface1))};
+	--color--neutral-300: #{map.get($c, surface1)};
+	--color--neutral-400: #{map.get($c, surface2)};
+	--color--neutral-500: #{map.get($c, overlay0)};
+	--color--neutral-600: #{map.get($c, subtext0)};
+	--color--neutral-700: #{map.get($c, subtext1)};
+	--color--neutral-750: #{color.mix(map.get($c, subtext1), map.get($c, text))};
+	--color--neutral-800: #{map.get($c, text)};
+	--color--neutral-850: #{map.get($c, text)};
+	--color--neutral-900: #{map.get($c, text)};
+	--color--neutral-950: #{map.get($c, text)};
+
+	$light: map.get($c, base);
+	$dark: #000;
+	@include ramp('pink', map.get($c, mauve), $light, $dark);
+	@include ramp('orange', map.get($c, peach), $light, $dark);
+	@include ramp('red', map.get($c, red), $light, $dark);
+	@include ramp('green', map.get($c, green), $light, $dark);
+	@include ramp('yellow', map.get($c, yellow), $light, $dark);
+	@include ramp('blue', map.get($c, blue), $light, $dark);
+	@include ramp('purple', map.get($c, lavender), $light, $dark);
+	@include ramp('mint', map.get($c, teal), $light, $dark);
+}

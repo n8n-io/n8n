@@ -5,6 +5,40 @@ Source: [Themes and visual customization in n8n](https://app.notion.com/p/n8n/Th
 one-day scope that the doc recommends: **Catppuccin Latte** (light) and **Catppuccin Mocha** (dark).
 It also adds the theme switch to Cmd+K, as the page comment asks.
 
+## Status
+
+Last update: 2026-11-18. The changes are not committed. They are in the working tree on the
+`themes` branch.
+
+**Done: Catppuccin Latte, end to end.**
+
+- The user can select "Catppuccin Latte" in **Settings → Personal → Theme**. The theme applies at
+  once, persists in localStorage, and loads before the app mounts.
+- The body gets `data-theme="light"` and `data-palette="catppuccin-latte"`. `appliedTheme` stays
+  `'light'`, so the consumers of the theme do not change.
+- `_palettes.scss` remaps the neutral ramp and eight accent ramps for Latte.
+- Checks that passed: `ui.utils.test.ts` (new, 13 tests), `ui.store.test.ts`,
+  `SettingsPersonalView.test.ts` (83 tests in total), `sassDeprecations.test.ts`, stylelint, biome
+  and oxlint on the changed files. The editor-ui typecheck was not run locally. CI runs it.
+
+**Not verified:** nobody has looked at Latte in a browser yet. This machine has no Chrome and no
+Playwright browsers, so no screenshot was taken. The first task of the next session is a visual
+pass (step 7).
+
+**Next:** Mocha (steps 1, 3 and 4 for the second preset), then Cmd+K (step 5).
+
+### Local dev notes
+
+- The repo pins pnpm 12.4.2. The global pnpm is 12.21.0, which rejects the lockfile
+  (`yaml` catalog mismatch). Run pnpm as `npx -y pnpm@12.4.2 …`, or run `corepack enable`.
+- The build was 3 weeks old. A full `pnpm build` took about 1.5 minutes.
+- Run the backend with `pnpm dev:be` (port 5678) and the editor with `pnpm dev:fe:editor`
+  (http://localhost:8080). The logs are in `/tmp/n8n-dev-be.log` and `/tmp/n8n-dev-fe.log`.
+  Stop both with `pkill -f "turbo run dev"`.
+- The editor resolves `@n8n/design-system/css/*` to `src`, so changes to `_palettes.scss` hot
+  reload. Reload the page after changes to `en.json`.
+- The local owner is `ragnar.hardarson+local-direct@n8n.io` in `~/.n8n/database.sqlite`.
+
 ## Goal
 
 - A user picks one of five themes: System, Light, Dark, Catppuccin Latte, Catppuccin Mocha.
@@ -54,16 +88,18 @@ A preset is a palette on top of a base mode. Latte uses light mode. Mocha uses d
 - The body gets a new attribute, `data-palette="catppuccin-latte|catppuccin-mocha"`. Only the
   palette CSS reads it.
 
+As built (Mocha is not added yet):
+
 ```ts
 // Interface.ts
 export type AppliedThemeOption = 'light' | 'dark'; // unchanged: the base mode
-export type ThemePreset = 'catppuccin-latte' | 'catppuccin-mocha';
+export type ThemePreset = 'catppuccin-latte'; // add 'catppuccin-mocha'
 export type ThemeOption = AppliedThemeOption | 'system' | ThemePreset;
 
-// app/constants (new)
-export const THEME_PRESETS: Record<ThemePreset, { mode: AppliedThemeOption }> = {
-	'catppuccin-latte': { mode: 'light' },
-	'catppuccin-mocha': { mode: 'dark' },
+// app/stores/ui.utils.ts. Only this file reads the map, so it lives here, not in app/constants.
+const THEME_PRESET_MODES: Record<ThemePreset, AppliedThemeOption> = {
+	'catppuccin-latte': 'light',
+	// 'catppuccin-mocha': 'dark',
 };
 ```
 
@@ -77,50 +113,65 @@ element that declares it. When a theme is pinned, `_tokens.scss` declares the se
 on `body[data-theme]`. So they resolve against the ramps on the body, which the palette overrides.
 A preset always pins `data-theme`, so this is always true for presets.
 
-New file `@n8n/design-system/src/css/_palettes.scss`, loaded in `index.scss` after `tokens.scss`:
+New file `@n8n/design-system/src/css/_palettes.scss`, loaded in `index.scss` after `tokens.scss`.
+As built:
 
-```scss
-@use 'sass:color';
+- A `$latte` Sass map holds the Catppuccin hex values. Add a `$mocha` map in the same form.
+- `@mixin ramp($name, $accent, $light, $dark)` builds steps 50–950 with `color.mix` at compile
+  time. Steps 50–400 mix toward `$light`, 500 is the accent, and 600–950 mix toward `$dark`.
+  The weights are in `$tint-weights` and `$shade-weights`.
+- The Latte block uses `$light: base` and `$dark: #000`. For Mocha, try `$dark: crust` and check
+  the light steps against the dark surfaces.
+- Quote the ramp names (`ramp('pink', …)`). Sass reads `pink` and `red` without quotes as colors,
+  and prints a warning.
+- The `@n8n/css-var-naming` rule cannot read interpolated names (`--color--#{$name}-#{$step}`).
+  A `stylelint-disable` / `stylelint-enable` pair wraps only the mixin. `_tokens.scss` uses the
+  same pattern.
 
-// Builds a 50–950 ramp from one accent at compile time (no runtime color-mix).
-@mixin ramp($name, $accent, $light, $dark) { /* --color--#{$name}-50 … -950 via color.mix */ }
+| n8n ramp | Latte color | Mocha color (to do) |
+|---|---|---|
+| pink (brand) | mauve `#8839ef` | mauve `#cba6f7` |
+| orange | peach `#fe640b` | peach `#fab387` |
+| red | red `#d20f39` | red `#f38ba8` |
+| green | green `#40a02b` | green `#a6e3a1` |
+| yellow | yellow `#df8e1d` | yellow `#f9e2af` |
+| blue | blue `#1e66f5` | blue `#89b4fa` |
+| purple | lavender `#7287fd` | lavender `#b4befe` |
+| mint | teal `#179299` | teal `#94e2d5` |
 
-body[data-palette='catppuccin-latte'] {
-	--color--neutral-white: #eff1f5; // base
-	// … neutral ramp mapping (table below)
-	@include ramp(pink, #8839ef, #eff1f5, #4c4f69);   // brand → mauve
-	@include ramp(orange, #fe640b, …);                // peach
-	@include ramp(green, #40a02b, …);
-	@include ramp(red, #d20f39, …);
-	@include ramp(yellow, #df8e1d, …);
-	@include ramp(blue, #1e66f5, …);
-	@include ramp(purple, #7287fd, …);                // lavender
-}
-
-body[data-palette='catppuccin-mocha'] { /* same, with Mocha values */ }
-```
+Not remapped: `gold`, `slate`, the `*-alpha-*` steps, and `black-alpha` / `white-alpha`. Borders
+and hover states use the alpha steps, so they stay neutral gray.
 
 The selector `body[data-palette=…]` has specificity (0,1,1). It is higher than `[data-theme=…]`
 (0,1,0), and the file loads last. Use Sass `color.mix` with hex literals, not `color-mix()` at
 runtime. `_primitives.scss` notes that Lightning CSS has limits with some color functions.
 
-Starting neutral mapping (tune it by eye during the day):
+Neutral mapping. Latte is as built. Mocha is the starting point. Tune both by eye:
 
-| n8n neutral | Latte (light mode) | Mocha (dark mode) |
+| n8n neutral | Latte (light mode, built) | Mocha (dark mode, to do) |
 |---|---|---|
 | white | base `#eff1f5` | text `#cdd6f4` |
-| 50 / 100 | mantle `#e6e9ef` | text `#cdd6f4` |
+| 50 | mix(base, mantle) | text `#cdd6f4` |
+| 100 | mantle `#e6e9ef` | text `#cdd6f4` |
+| 125 | mix(mantle, crust) | subtext1 `#bac2de` |
 | 150 | crust `#dce0e8` | subtext1 `#bac2de` |
-| 200 / 250 | surface0 `#ccd0da` | subtext1 `#bac2de` |
+| 200 | surface0 `#ccd0da` | subtext1 `#bac2de` |
+| 250 | mix(surface0, surface1) | subtext1 `#bac2de` |
 | 300 | surface1 `#bcc0cc` | subtext0 `#a6adc8` |
 | 400 | surface2 `#acb0be` | overlay2 `#9399b2` |
 | 500 | overlay0 `#9ca0b0` | overlay1 `#7f849c` |
 | 600 | subtext0 `#6c6f85` | overlay0 `#6c7086` |
 | 700 | subtext1 `#5c5f77` | surface2 `#585b70` |
+| 750 | mix(subtext1, text) | mix(surface2, surface0) |
 | 800 | text `#4c4f69` | surface0 `#313244` |
+| 850 | text `#4c4f69` | mix(surface0, base) |
 | 900 | text `#4c4f69` | base `#1e1e2e` |
 | 950 | text `#4c4f69` | mantle `#181825` |
-| black | text `#4c4f69` | crust `#11111b` |
+| black | not changed | crust `#11111b` |
+
+The primary button text uses `--color--neutral-white`, so in Latte it becomes base `#eff1f5` on
+mauve. In Mocha, `neutral-white` becomes the light text color, and the brand is a light mauve.
+Check the contrast of the brand button text in Mocha.
 
 If a ramp step looks wrong on one surface, add a small semantic override (for example
 `--background--surface`, `--menu--color--background`, the canvas background) in the same block. Do
@@ -133,21 +184,23 @@ not edit `_tokens.scss`.
     to the preset. For other values, remove `data-palette`, then keep today's behavior.
   - `isValidTheme`: accept `'light' | 'dark'` and the preset keys, so that localStorage and the
     boot path restore a preset. Return `ThemeOption` without `'system'`.
-  - Add `getThemeMode(theme: ThemeOption, systemMode): AppliedThemeOption` and `isThemePreset`.
+  - Add `getThemeMode(theme: Exclude<ThemeOption, 'system'>): AppliedThemeOption` and
+    `isThemePreset`. `isThemePreset` uses `Object.hasOwn`, so `'toString'` is not a preset.
 - `ui.store.ts`
   - `appliedTheme` uses `getThemeMode`. Its type does not change.
-  - Add `appliedPreset: ThemePreset | null` for the UI that shows the current selection.
   - `setTheme` does not change.
+  - Not added: `appliedPreset`. The settings select reads `uiStore.theme`, so it is not needed
+    yet. Add it if the Cmd+K list must mark the active preset.
 - The module-level boot code in `ui.store.ts` already calls `getThemeOverride()` and
   `applyThemeToBody()` before mount, so a preset applies without a flash of the wrong theme.
 
 ### Settings UI
 
-`SettingsPersonalView.vue`: add two items to `themeItems` (icon `palette`, or a small swatch).
+`SettingsPersonalView.vue`: add two items to `themeItems` with the icon `palette`.
 Add i18n keys in `@n8n/i18n/src/locales/en.json`:
 
-- `settings.personal.theme.catppuccinLatte`: "Catppuccin Latte"
-- `settings.personal.theme.catppuccinMocha`: "Catppuccin Mocha"
+- `settings.personal.theme.catppuccinLatte`: "Catppuccin Latte" (done)
+- `settings.personal.theme.catppuccinMocha`: "Catppuccin Mocha" (to do)
 
 ### Command bar (Cmd+K)
 
@@ -168,48 +221,57 @@ theme on close without a selection.
 
 ## Steps
 
-1. Types and constants: `ThemePreset`, `THEME_PRESETS`, widen `ThemeOption`.
-2. `ui.utils.ts` and `ui.store.ts` changes, with unit tests.
-3. `_palettes.scss` with the Mocha ramps first (dark mode has the most custom surfaces), then Latte.
-4. Settings options and i18n.
-5. Command bar "Change theme…" group.
-6. Pop-out window sync.
-7. Visual pass on the main surfaces in both presets. Fix the gaps with semantic overrides in
-   `_palettes.scss`.
-8. Audit hard-coded colors that skip the tokens. These are expected gaps:
+1. [x] Types: `ThemePreset`, wider `ThemeOption`, `THEME_PRESET_MODES` (Latte only).
+   - [ ] Add `'catppuccin-mocha'` to `ThemePreset` and `THEME_PRESET_MODES`.
+2. [x] `ui.utils.ts` and `ui.store.ts` changes, with unit tests.
+3. [x] `_palettes.scss` for Latte.
+   - [ ] Add the `$mocha` map and the `body[data-palette='catppuccin-mocha']` block.
+4. [x] Settings option and i18n for Latte.
+   - [ ] Add the Mocha option and its label.
+5. [ ] Command bar "Change theme…" group.
+6. [ ] Pop-out window sync. Today the pop-out copies only `data-theme`, so it shows plain light
+   for Latte.
+7. [ ] Visual pass on the main surfaces in both presets. Fix the gaps with semantic overrides in
+   `_palettes.scss`. Latte has not been checked in a browser yet.
+8. [ ] Audit hard-coded colors that skip the tokens. These are expected gaps:
    `rg -n "#[0-9a-fA-F]{3,8}\b|rgb\(|oklch\(" packages/frontend/editor-ui/src --glob '*.{vue,scss}'`.
    Likely areas: canvas background and edges, CodeMirror themes, sticky note colors, charts.
    Fix only the ones on the demo path.
 
 ## Tests
 
-- `ui.utils.test.ts`
-  - `applyThemeToBody('catppuccin-mocha')` sets `data-theme="dark"` and `data-palette="catppuccin-mocha"`.
-  - `applyThemeToBody('light')` and `('system')` remove `data-palette`.
-  - `isValidTheme` accepts the presets and rejects unknown strings.
-- `ui.store.test.ts`: `appliedTheme` returns `light` for Latte and `dark` for Mocha. A preset in
-  localStorage is restored at boot.
-- `SettingsPersonalView` test: the select shows five options, and choosing a preset calls `setTheme`.
-- `useGenericCommands`: the theme group has five children, and each one calls `setTheme`.
-- `usePopOutWindow` test: `data-palette` is copied and kept in sync.
+- [x] `ui.utils.test.ts` (new, 13 tests)
+  - `applyThemeToBody('catppuccin-latte')` sets `data-theme="light"` and
+    `data-palette="catppuccin-latte"`.
+  - `applyThemeToBody('light' | 'dark' | 'system')` removes `data-palette`.
+  - `getThemeMode` maps a preset to its mode.
+  - `isValidTheme` accepts the presets and rejects `null`, `''`, `'system'`, `'toString'` and
+    unknown presets.
+  - [ ] For Mocha: add the Mocha cases, and remove `'catppuccin-mocha'` from the reject list.
+- [ ] `ui.store.test.ts`: `appliedTheme` returns `light` for Latte and `dark` for Mocha. A preset in
+  localStorage is restored at boot. The existing tests pass, but there are no preset cases yet.
+- [ ] `SettingsPersonalView` test: the select shows five options, and choosing a preset calls
+  `setTheme`. The existing tests pass, but there are no preset cases yet.
+- [ ] `useGenericCommands`: the theme group has five children, and each one calls `setTheme`.
+- [ ] `usePopOutWindow` test: `data-palette` is copied and kept in sync.
 - Run with `pnpm test <file> --maxWorkers=1` in `packages/frontend/editor-ui`.
 - Manual: switch themes with Cmd+K on the workflow list, the canvas, the NDV and settings. Reload
   the page and check that the preset stays and does not flash.
 
 ## Files
 
-| File | Change |
-|---|---|
-| `packages/frontend/editor-ui/src/Interface.ts` | `ThemePreset`, wider `ThemeOption` |
-| `packages/frontend/editor-ui/src/app/constants/*` | `THEME_PRESETS` |
-| `packages/frontend/editor-ui/src/app/stores/ui.utils.ts` | Preset-aware apply and validate, `getThemeMode` |
-| `packages/frontend/editor-ui/src/app/stores/ui.store.ts` | `appliedTheme` through `getThemeMode`, `appliedPreset` |
-| `packages/frontend/@n8n/design-system/src/css/_palettes.scss` | New. Catppuccin ramps |
-| `packages/frontend/@n8n/design-system/src/css/index.scss` | `@use './palettes.scss'` after tokens |
-| `packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.vue` | Two options |
-| `packages/frontend/@n8n/i18n/src/locales/en.json` | Two labels, command bar strings |
-| `packages/frontend/editor-ui/src/features/shared/commandBar/composables/useGenericCommands.ts` | "Change theme…" group |
-| `packages/frontend/editor-ui/src/features/execution/logs/composables/usePopOutWindow.ts` | Sync `data-palette` |
+| File | Change | Status |
+|---|---|---|
+| `packages/frontend/editor-ui/src/Interface.ts` | `ThemePreset`, wider `ThemeOption` | Latte done |
+| `packages/frontend/editor-ui/src/app/stores/ui.utils.ts` | `THEME_PRESET_MODES`, preset-aware apply and validate, `getThemeMode` | Latte done |
+| `packages/frontend/editor-ui/src/app/stores/ui.utils.test.ts` | New. Unit tests | Latte done |
+| `packages/frontend/editor-ui/src/app/stores/ui.store.ts` | `appliedTheme` through `getThemeMode` | Done |
+| `packages/frontend/@n8n/design-system/src/css/_palettes.scss` | New. Catppuccin ramps | Latte done |
+| `packages/frontend/@n8n/design-system/src/css/index.scss` | `@use './palettes.scss'` after tokens | Done |
+| `packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.vue` | Two options | Latte done |
+| `packages/frontend/@n8n/i18n/src/locales/en.json` | Two labels, command bar strings | Latte label done |
+| `packages/frontend/editor-ui/src/features/shared/commandBar/composables/useGenericCommands.ts` | "Change theme…" group | To do |
+| `packages/frontend/editor-ui/src/features/execution/logs/composables/usePopOutWindow.ts` | Sync `data-palette` | To do |
 
 ## Risks
 
