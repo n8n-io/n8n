@@ -5,6 +5,7 @@ import {
 	type JSONObject,
 	type SerializableAgentState,
 } from '@n8n/agents';
+import type { LanguageModel } from 'ai';
 import type {
 	AgentBackgroundJobSignal,
 	AgentMessageAuthor,
@@ -95,6 +96,8 @@ import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { resolveAgentRunSource } from './utils/agent-published-snapshot';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
+import type { AgentExecution } from './entities/agent-execution.entity';
+import { encodeChatHistoryCursor, type ChatHistoryPageRequest } from './utils/chat-history-page';
 
 /** Written on a manual task run so a later approval can rebuild that starter's runtime. */
 const TASK_RUN_STARTER_USER_KEY = 'n8nTaskRunStarterUserId';
@@ -103,6 +106,12 @@ function taskRunStarterUserId(hostMetadata: JSONObject | undefined): string | un
 	const value = hostMetadata?.[TASK_RUN_STARTER_USER_KEY];
 	return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
+
+/** User-visible history of a chat thread, or of one page of its turns. */
+export type ConversationHistory = Pick<
+	AgentChatMessagesResponse,
+	'messages' | 'activeExecutionId' | 'nextCursor'
+>;
 
 export interface AgentMemoryScope {
 	threadId: string;
@@ -277,6 +286,8 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 	modelCredentialGatewayManaged?: boolean;
 	/** Saved tool guardrails from the reconstructed runtime. Absent when the config has none. */
 	toolGuardrails?: AgentToolGuardrailConfig[];
+	/** Model instance for the model-based guardrail kinds. Absent when none is configured. */
+	guardrailModel?: LanguageModel;
 	/** See `AgentRuntime.mcpServerAttributions`. */
 	mcpServerAttributions: Map<string, string>;
 	userId?: string;
@@ -412,8 +423,25 @@ export class AgentExecutionOrchestratorService {
 		projectId: string;
 		agentId: string;
 		userId: string;
-	}): Promise<Pick<AgentChatMessagesResponse, 'messages' | 'activeExecutionId'> | null> {
-		const { threadId, projectId, agentId, userId } = params;
+		/** One page of turns. Without it, the history holds the whole thread. */
+		page?: ChatHistoryPageRequest;
+	}): Promise<ConversationHistory | null> {
+		const { threadId, projectId, agentId, userId, page } = params;
+		if (page) {
+			const detail = await this.agentExecutionService.getThreadDetailPage(
+				threadId,
+				projectId,
+				agentId,
+				userId,
+				page,
+			);
+			if (!detail) return null;
+			const oldest = detail.executions[0];
+			return {
+				...this.toConversationHistory(detail.executions),
+				nextCursor: detail.hasOlder && oldest ? encodeChatHistoryCursor(oldest) : null,
+			};
+		}
 		const detail = await this.agentExecutionService.getThreadDetail(
 			threadId,
 			projectId,
@@ -421,10 +449,14 @@ export class AgentExecutionOrchestratorService {
 			userId,
 		);
 		if (!detail) return null;
+		return this.toConversationHistory(detail.executions);
+	}
+
+	private toConversationHistory(executions: AgentExecution[]): ConversationHistory {
 		return {
-			messages: executionsToMessagesDto(detail.executions),
+			messages: executionsToMessagesDto(executions),
 			activeExecutionId:
-				detail.executions.findLast((execution) => execution.status === 'running')?.id ?? null,
+				executions.findLast((execution) => execution.status === 'running')?.id ?? null,
 		};
 	}
 
@@ -932,6 +964,7 @@ export class AgentExecutionOrchestratorService {
 					budget: runtime.budget,
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					toolGuardrails: runtime.toolGuardrails,
+					guardrailModel: runtime.guardrailModel,
 					agentId,
 					message,
 					modelMessage,
@@ -1014,6 +1047,7 @@ export class AgentExecutionOrchestratorService {
 					budget: runtime.budget,
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					toolGuardrails: runtime.toolGuardrails,
+					guardrailModel: runtime.guardrailModel,
 					agentId,
 					projectId,
 					message,
@@ -1076,6 +1110,7 @@ export class AgentExecutionOrchestratorService {
 					budget: runtime.budget,
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					toolGuardrails: runtime.toolGuardrails,
+					guardrailModel: runtime.guardrailModel,
 					agentId,
 					message,
 					memory,
@@ -1136,6 +1171,7 @@ export class AgentExecutionOrchestratorService {
 					budget: runtime.budget,
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					toolGuardrails: runtime.toolGuardrails,
+					guardrailModel: runtime.guardrailModel,
 					agentId,
 					userId: user.id,
 					message,
@@ -1519,7 +1555,11 @@ export class AgentExecutionOrchestratorService {
 							: {}),
 					},
 				),
-				{ toolGuardrails: runtime.toolGuardrails, toolRegistry: runtime.toolRegistry },
+				{
+					toolGuardrails: runtime.toolGuardrails,
+					toolRegistry: runtime.toolRegistry,
+					guardrailModel: runtime.guardrailModel,
+				},
 			),
 			recording: this.createResumeRecording(config, checkpoint, runtime, executionSource),
 		};
@@ -1813,6 +1853,7 @@ export class AgentExecutionOrchestratorService {
 			budget: runtime.budget,
 			modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 			toolGuardrails: runtime.toolGuardrails,
+			guardrailModel: runtime.guardrailModel,
 			agentId,
 			userId: user.id,
 			message,
@@ -1936,7 +1977,11 @@ export class AgentExecutionOrchestratorService {
 							: {}),
 					},
 				),
-				{ toolGuardrails: config.toolGuardrails, toolRegistry: config.toolRegistry },
+				{
+					toolGuardrails: config.toolGuardrails,
+					toolRegistry: config.toolRegistry,
+					guardrailModel: config.guardrailModel,
+				},
 			),
 			recording: this.createChatRecording(config),
 		};
@@ -2039,6 +2084,7 @@ export class AgentExecutionOrchestratorService {
 			budget: runtime.budget,
 			modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 			toolGuardrails: runtime.toolGuardrails,
+			guardrailModel: runtime.guardrailModel,
 			agentId,
 			...(access.ownerId ? { userId: access.ownerId } : {}),
 			message,

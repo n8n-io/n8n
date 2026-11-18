@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn, useLocalStorage } from '@vueuse/core';
@@ -117,7 +118,13 @@ const message = useMessage();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const skillsStore = useSkillsStore();
-const { isEnabled: assistantSkillsEnabled } = useAssistantSkillsExperiment();
+const settingsStore = useSettingsStore();
+const { isEnabled: assistantSkillsExperimentEnabled } = useAssistantSkillsExperiment();
+const assistantSkillsEnabled = computed(
+	() =>
+		assistantSkillsExperimentEnabled.value &&
+		settingsStore.moduleSettings['instance-ai']?.enabled === true,
+);
 const posthogStore = usePostHog();
 const { deleteBlockedReason } = useSkillDeleteRule();
 const telemetry = useTelemetry();
@@ -1386,8 +1393,9 @@ onMounted(async () => {
 	text-align: center;
 }
 
+// Wide enough to keep the "Based on" source of each card on one line.
 .recommended {
-	max-width: 48rem;
+	max-width: 58rem;
 	margin: var(--spacing--xs) 0;
 }
 </style>

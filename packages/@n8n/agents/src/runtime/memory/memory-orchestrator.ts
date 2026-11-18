@@ -33,6 +33,7 @@ import {
 import { isAfterPoint, ResumeStateStore, resumeView, type ObservationPoint } from './resume-state';
 import { getModelContextWindow } from '../../sdk/catalog';
 import { getCreatedAt } from '../../sdk/message';
+import { detectLoadedSkills } from '../../skills/loaded-skills';
 import { getCatalogModelId, getModelIdString } from '../../utils/model';
 import type {
 	AgentExecutionCounter,
@@ -102,6 +103,8 @@ type ListNotes = string | undefined | typeof LIVE_NOTES;
 interface RunHistory {
 	messages: AgentDbMessage[];
 	notes: ListNotes;
+	/** Skills loaded in thread messages before the resume point. */
+	earlierLoadedSkillIds?: Set<string>;
 }
 
 /** Observer state of one run. Queued jobs keep their run's state when a new run starts. */
@@ -304,10 +307,11 @@ export class MemoryOrchestrator {
 				telemetry,
 				options.onSideCallUsage,
 			);
-			const { messages: memMessages, notes } = await this.loadHistoryForRun(
-				{ ...options, persistence: options.persistence },
-				telemetry,
-			);
+			const {
+				messages: memMessages,
+				notes,
+				earlierLoadedSkillIds,
+			} = await this.loadHistoryForRun({ ...options, persistence: options.persistence }, telemetry);
 
 			if (memMessages.length > 0) {
 				// Settle (not strip) so an abandoned suspension stays visible as an
@@ -318,6 +322,7 @@ export class MemoryOrchestrator {
 					await this.persistSettledHistory(changed, options.persistence, telemetry);
 				}
 			}
+			if (earlierLoadedSkillIds) list.addEarlierLoadedSkills(earlierLoadedSkillIds);
 			await this.setListObservationLogMemory(list, options.persistence, { notes });
 			return;
 		}
@@ -367,9 +372,16 @@ export class MemoryOrchestrator {
 			logger.debug('Ignoring stale observation resume point', { threadId });
 			resume.forget();
 		}
+		const withEarlierSkills = (view: { messages: AgentDbMessage[]; notes: string | undefined }) => {
+			const kept = new Set(view.messages);
+			return {
+				...view,
+				earlierLoadedSkillIds: detectLoadedSkills(all.filter((m) => !kept.has(m))),
+			};
+		};
 		const view = resumeView(all, state);
 		const budget = cursor ? await this.resolveBudget() : undefined;
-		if (!cursor || !budget) return view;
+		if (!cursor || !budget) return withEarlierSkills(view);
 
 		const viewTokens = await this.sumTokens(view.messages);
 		const modelId = this.modelId();
@@ -388,7 +400,7 @@ export class MemoryOrchestrator {
 		});
 		if (!reason) {
 			if (state?.lastRequestTokens) this.requestSize.seed(state.lastRequestTokens, viewTokens);
-			return view;
+			return withEarlierSkills(view);
 		}
 
 		let resumeAt: ObservationPoint = cursor;
@@ -397,10 +409,10 @@ export class MemoryOrchestrator {
 		const notes = await this.renderLiveNotes(persistence);
 		// Without notes, a resume would drop earlier messages with nothing in their
 		// place. Only an over-limit thread must shrink at that cost.
-		if (!notes && reason !== 'over-limit') return view;
+		if (!notes && reason !== 'over-limit') return withEarlierSkills(view);
 		await resume.moveTo(resumeAt, notes, modelId);
 		logger.debug('Observation resume point moved at turn start', { threadId, reason });
-		return resumeView(all, resume.current);
+		return withEarlierSkills(resumeView(all, resume.current));
 	}
 
 	/** Run the Observer over the whole backlog and return the new cursor. */

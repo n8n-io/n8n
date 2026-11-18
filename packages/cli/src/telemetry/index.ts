@@ -98,7 +98,8 @@ export class Telemetry implements TelemetryTracker {
 
 	private userCloudId?: string;
 
-	private executionCountsBuffer: IExecutionsBuffer = {};
+	// No prototype, so every workflow id is an own key.
+	private executionCountsBuffer: IExecutionsBuffer = Object.create(null);
 
 	private apiInvocationsBuffer: IApiInvocationsBuffer = {};
 
@@ -289,7 +290,7 @@ export class Telemetry implements TelemetryTracker {
 			});
 		}
 
-		this.executionCountsBuffer = {};
+		this.executionCountsBuffer = Object.create(null);
 	}
 
 	trackWorkflowExecution(properties: IExecutionTrackProperties) {
