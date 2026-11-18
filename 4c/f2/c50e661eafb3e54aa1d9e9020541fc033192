@@ -1,0 +1,72 @@
+packages/frontend/editor-ui/src/app/components/print-studio/REPORT.md
+  s_6f62d2c95a156d::t_97e8e0a881cf4e 75
+  s_6f62d2c95a156d::t_27a30157a1ccba 1-74
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_6f62d2c95a156d::t_ee96fcbddc80dc 2200-2203
+  s_6f62d2c95a156d::t_f453088d401aa3 17,2199,2204
+packages/frontend/editor-ui/src/app/components/print-studio/relief.ts
+  s_6f62d2c95a156d::t_6040c6922edf77 1-6,14-18,48,52-56,59,75-77
+  s_6f62d2c95a156d::t_6e6e5826fc945e 7-13,19-47,49-51,57-58,60-74
+packages/frontend/editor-ui/src/app/components/print-studio/demo/vitest.config.ts
+  s_6f62d2c95a156d::t_657e24dfc48f95 1
+  s_6f62d2c95a156d::t_ce7462397c4574 2-4
+packages/frontend/editor-ui/src/app/components/print-studio/demo/tsconfig.json
+  s_6f62d2c95a156d::t_6b0075fc2f0c42 1-9,13,16
+  s_6f62d2c95a156d::t_3f3271d0350236 10-11,14-15
+  s_6f62d2c95a156d::t_90abd12dbe5abe 12
+packages/frontend/editor-ui/src/app/components/print-studio/art.ts
+  s_6f62d2c95a156d::t_6e6e5826fc945e 3-10,14-15,19-27,30-38,53-58,72-75,77-83,87-101,110-116,118-120,122-133,135-147,149-159,161-167,170-174,184-185,189-194,200-202
+  s_6f62d2c95a156d::t_420be225a36837 1-2,11-13,16-18,28-29,39-52,59-71,76,84-86,102-109,117,121,134,148,160,168-169,175-183,186-188,195-199,203-204
+packages/frontend/editor-ui/src/app/components/print-studio/sample.ts
+  s_6f62d2c95a156d::t_6e6e5826fc945e 15-27
+  s_6f62d2c95a156d::t_6040c6922edf77 1-14,28-29
+packages/frontend/editor-ui/src/app/components/print-studio/WorkflowPrintStudio.vue
+  s_6f62d2c95a156d::t_ee96fcbddc80dc 16-20
+  s_6f62d2c95a156d::t_6b0075fc2f0c42 34
+  s_6f62d2c95a156d::t_ce7462397c4574 31-33,35-40,44-45
+  s_6f62d2c95a156d::t_f453088d401aa3 1-2,4-15,21-30,46
+  s_6f62d2c95a156d::t_90abd12dbe5abe 3,41-43
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6f62d2c95a156d::t_6040c6922edf77 11437-11471
+  s_6f62d2c95a156d::t_6b0075fc2f0c42 11472-11473
+packages/frontend/editor-ui/src/app/components/print-studio/demo/vite.config.ts
+  s_6f62d2c95a156d::t_f453088d401aa3 1-10
+packages/frontend/editor-ui/src/app/components/print-studio/studio.css
+  s_6f62d2c95a156d::t_6b0075fc2f0c42 1-2,4,28,53,64,70,90,93,113,131,147-149,160,185,198-199,213,215,221,275
+  s_6f62d2c95a156d::t_ee96fcbddc80dc 3,5-27,29-52,54-63,65-69,71-89,91-92,94-112,114-130,132-146,150-159,161-184,186-197,200-212,214,216-220,222-274,276-293
+packages/frontend/editor-ui/src/app/components/print-studio/README.md
+  s_6f62d2c95a156d::t_57107e6d92fa53 1-66
+packages/frontend/editor-ui/src/app/components/print-studio/PrintStudio.vue
+  s_6f62d2c95a156d::t_ee96fcbddc80dc 19-23,25,27-32,43-45,54-59,62-66,73-77,82-92,96-97,99-129,131-152,154-157,159-177,181-182,184
+  s_6f62d2c95a156d::t_6b0075fc2f0c42 50,60,183
+  s_6f62d2c95a156d::t_1d8e7eec6fa697 1-18,24,26,33-42,46-49,51-53,61,67-72,78-81,93-95,98,130,153,158,178-180,185-186
+packages/frontend/editor-ui/src/app/components/print-studio/copy.ts
+  s_6f62d2c95a156d::t_6e6e5826fc945e 1-36,38,40-42
+  s_6f62d2c95a156d::t_1d8e7eec6fa697 39,43
+  s_6f62d2c95a156d::t_6b0075fc2f0c42 37
+  s_6f62d2c95a156d::t_6040c6922edf77 44
+packages/frontend/editor-ui/src/app/components/print-studio/demo/main.ts
+  s_6f62d2c95a156d::t_6e6e5826fc945e 7-11
+  s_6f62d2c95a156d::t_f453088d401aa3 1-6
+packages/frontend/editor-ui/src/app/components/print-studio/demo/index.html
+  s_6f62d2c95a156d::t_f453088d401aa3 1
+packages/frontend/editor-ui/src/app/components/print-studio/art.test.ts
+  s_6f62d2c95a156d::t_ce7462397c4574 9-16,23-28,33-35,39-46,49-55,69-70,72-78,80-83,85-92,96-98,100-101,104-105
+  s_6f62d2c95a156d::t_657e24dfc48f95 1-8,17-22,29-32,36-38,47-48,56-68,71,79,84,93-95,99,102-103,106-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4cf2c50e661eafb3e54aa1d9e9020541fc033192",
+  "prompts": {},
+  "sessions": {
+    "s_6f62d2c95a156d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ee4b-68ba-74a3-ba20-bd363d94c5e6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
