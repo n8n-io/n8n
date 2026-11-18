@@ -6,9 +6,12 @@ import { VIEWS } from '@/app/constants';
 
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 
-import { OVERVIEW_MODE_QUERY_PARAMETER, useOverviewMode } from '../composables/useOverviewMode';
+import {
+	DOCUMENTATION_OVERVIEW_MODE,
+	OVERVIEW_MODE_QUERY_PARAMETER,
+	useOverviewMode,
+} from '../composables/useOverviewMode';
 import { usePagePeekStore } from '../pagePeek.store';
-import OverviewModeSwitch from './OverviewModeSwitch.vue';
 
 /**
  * Shows the documentation board as the overview of the open project, or of all projects when the route has no project.
@@ -26,7 +29,7 @@ async function openProjectDocumentation(selectedProjectId: string): Promise<void
 	await router.push({
 		name: VIEWS.PROJECTS_WORKFLOWS,
 		params: { projectId: selectedProjectId },
-		query: { [OVERVIEW_MODE_QUERY_PARAMETER]: 'docs' },
+		query: { [OVERVIEW_MODE_QUERY_PARAMETER]: DOCUMENTATION_OVERVIEW_MODE },
 	});
 }
 </script>
@@ -34,7 +37,6 @@ async function openProjectDocumentation(selectedProjectId: string): Promise<void
 <template>
 	<div :class="$style.view" data-test-id="project-documentation-overview">
 		<ProjectHeader />
-		<OverviewModeSwitch />
 		<div :class="$style.board">
 			<PageOverviewBoard
 				:key="projectId"

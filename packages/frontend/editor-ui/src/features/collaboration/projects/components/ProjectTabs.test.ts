@@ -7,6 +7,15 @@ import { within } from '@testing-library/vue';
 import { useProjectsStore } from '../projects.store';
 import type { Project } from '../projects.types';
 
+const documentation = vi.hoisted(() => ({
+	hasDocumentation: { value: false },
+	loadDocumentation: vi.fn(),
+}));
+
+vi.mock('@/features/pages/composables/useProjectDocumentation', () => ({
+	useProjectDocumentation: () => documentation,
+}));
+
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
 	const params = {};
@@ -33,6 +42,32 @@ describe('ProjectTabs', () => {
 		setActivePinia(createPinia());
 		projectsStore = mockedStore(useProjectsStore);
 		vi.spyOn(projectsStore, 'currentProject', 'get').mockReturnValue(null);
+		documentation.hasDocumentation.value = false;
+	});
+
+	it('should render no documentation tab while no workflow has a page', () => {
+		const { queryByText } = renderComponent();
+
+		expect(queryByText('Documentation')).not.toBeInTheDocument();
+	});
+
+	it('should render the documentation tab first when a workflow has a page', () => {
+		documentation.hasDocumentation.value = true;
+
+		const { getByTestId } = renderComponent();
+
+		const labels = within(getByTestId('project-tabs'))
+			.getAllByText(/Documentation|Workflows/)
+			.map((tab) => tab.textContent?.trim());
+		expect(labels).toEqual(['Documentation', 'Workflows']);
+	});
+
+	it('should render no documentation tab for the workflows that other users shared', () => {
+		documentation.hasDocumentation.value = true;
+
+		const { queryByText } = renderComponent({ props: { pageType: 'shared' } });
+
+		expect(queryByText('Documentation')).not.toBeInTheDocument();
 	});
 
 	it('should render home tabs, keeping variables while the project is still loading', async () => {

@@ -13,6 +13,14 @@ import { N8nTabs } from '@n8n/design-system';
 import { useProjectsStore } from '../projects.store';
 import { ProjectTypes } from '../projects.types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useProjectDocumentation } from '@/features/pages/composables/useProjectDocumentation';
+import {
+	DOCUMENTATION_OVERVIEW_MODE,
+	OVERVIEW_MODE_QUERY_PARAMETER,
+} from '@/features/pages/composables/useOverviewMode';
+
+/** The value of the tab that shows the documentation board. It is not a route name. */
+const DOCUMENTATION_TAB = 'documentation';
 type Props = {
 	showSettings?: boolean;
 	showExecutions?: boolean;
@@ -31,6 +39,7 @@ const locale = useI18n();
 const route = useRoute();
 const projectStore = useProjectsStore();
 const telemetry = useTelemetry();
+const { hasDocumentation, loadDocumentation } = useProjectDocumentation();
 
 const selectedTab = ref<RouteRecordName | null | undefined>('');
 
@@ -41,6 +50,27 @@ const projectId = computed(() => {
 		? route.params.projectId[0]
 		: route?.params?.projectId;
 });
+
+const WORKFLOW_LIST_ROUTES: RouteRecordName[] = [VIEWS.WORKFLOWS, VIEWS.PROJECTS_WORKFLOWS];
+
+/** True when the open view is the documentation board, which shares the route of the workflow list. */
+const isDocumentationOpen = computed(
+	() =>
+		route.name !== null &&
+		route.name !== undefined &&
+		WORKFLOW_LIST_ROUTES.includes(route.name) &&
+		route.query?.[OVERVIEW_MODE_QUERY_PARAMETER] === DOCUMENTATION_OVERVIEW_MODE,
+);
+
+/**
+ * The tab shows only when a workflow has a page, and while the board is open.
+ * The documentation board has no meaning for the workflows that other users shared.
+ */
+const showsDocumentationTab = computed(
+	() => props.pageType !== 'shared' && (hasDocumentation.value || isDocumentationOpen.value),
+);
+
+watch(projectId, loadDocumentation, { immediate: true });
 
 const isPublicProject = computed(() => projectStore.currentProject?.type === ProjectTypes.Public);
 
@@ -102,7 +132,20 @@ const createTab = (
 // Generate the tabs configuration
 const options = computed<Array<TabOptions<string>>>(() => {
 	const routes = getRouteConfigs();
+	const documentationTabs: Array<TabOptions<string>> = showsDocumentationTab.value
+		? [
+				{
+					label: locale.baseText('page.overview.tab'),
+					value: DOCUMENTATION_TAB,
+					to: {
+						...routes.workflows,
+						query: { [OVERVIEW_MODE_QUERY_PARAMETER]: DOCUMENTATION_OVERVIEW_MODE },
+					},
+				},
+			]
+		: [];
 	const tabs = [
+		...documentationTabs,
 		createTab('mainSidebar.workflows', 'workflows', routes),
 		createTab('mainSidebar.credentials', 'credentials', routes),
 	];
@@ -142,11 +185,15 @@ const options = computed<Array<TabOptions<string>>>(() => {
 });
 
 watch(
-	() => route?.name,
+	[() => route?.name, isDocumentationOpen],
 	() => {
-		// Select workflows tab if folders tab is selected
-		selectedTab.value =
-			route.name === VIEWS.PROJECTS_FOLDERS ? VIEWS.PROJECTS_WORKFLOWS : route.name;
+		if (isDocumentationOpen.value) {
+			selectedTab.value = DOCUMENTATION_TAB;
+		} else {
+			// Select workflows tab if folders tab is selected
+			selectedTab.value =
+				route.name === VIEWS.PROJECTS_FOLDERS ? VIEWS.PROJECTS_WORKFLOWS : route.name;
+		}
 	},
 	{ immediate: true },
 );
