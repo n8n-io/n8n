@@ -7,6 +7,7 @@ import type { Lowerer, NodeContext } from './context.ts';
 import { isNativeDateTime, lowerDateTime } from './date-time.ts';
 import { libraryNodeTypes, lowerHttpRequest, lowerLibrary, NATIVE_ROOTS } from './library.ts';
 import { lowerSplitInBatches } from './loops.ts';
+import { lowerRenameKeys } from './transform-nodes.ts';
 import {
 	isNativeExecutionData,
 	isNativeTimeSaved,
@@ -60,12 +61,13 @@ export const NATIVE: Record<string, Lowerer> = {
 	[`${BASE}aiTransform`]: lowerCode,
 	[`${BASE}httpRequest`]: lowerHttpRequest,
 	[`${BASE}splitInBatches`]: lowerSplitInBatches,
+	[`${BASE}renameKeys`]: lowerRenameKeys,
 	[`${BASE}executeWorkflow`]: lowerExecuteWorkflow,
 };
 
 /** Native nodes with one output that the fallback host can run when their expressions do not translate. */
 export const HOST_CAPABLE = new Set(
-	['set', 'filter', 'limit', 'sort', 'splitOut', 'aggregate', 'removeDuplicates', 'noOp'].map(
+	['set', 'filter', 'limit', 'sort', 'splitOut', 'aggregate', 'removeDuplicates', 'noOp', 'renameKeys'].map(
 		(t) => `${BASE}${t}`,
 	),
 );
@@ -79,7 +81,7 @@ export const HOST_UNSUPPORTED: Record<string, string> = {
 
 /** Node types whose output item i comes from input item i. */
 export const ONE_TO_ONE = new Set(
-	['set', 'noOp', 'wait', 'respondToWebhook', 'dateTime', 'crypto', 'markdown', 'stopAndError'].map(
+	['set', 'noOp', 'wait', 'respondToWebhook', 'dateTime', 'crypto', 'markdown', 'stopAndError', 'renameKeys'].map(
 		(t) => `${BASE}${t}`,
 	),
 );
@@ -90,7 +92,9 @@ export const ONE_TO_ONE = new Set(
  * one after the other.
  */
 export const ITEM_WISE = new Set(
-	['set', 'noOp', 'if', 'filter', 'switch', 'splitOut'].map((t) => `${BASE}${t}`),
+	['set', 'noOp', 'if', 'filter', 'switch', 'splitOut', 'renameKeys'].map(
+		(t) => `${BASE}${t}`,
+	),
 );
 
 /** Core node types that become code without effects. */
@@ -109,6 +113,7 @@ export const PURE = new Set(
 		'removeDuplicates',
 		'splitInBatches',
 		'stickyNote',
+		'renameKeys',
 	]
 		.map((t) => `${BASE}${t}`)
 		.concat(['n8n-nodes-testing.testData']),

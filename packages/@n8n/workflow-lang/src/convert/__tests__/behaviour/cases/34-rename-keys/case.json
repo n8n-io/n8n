@@ -1,0 +1,28 @@
+{
+	"description": "Rename Keys with dot paths, missing and empty fields",
+	"trigger": {
+		"body": {
+			"events": [
+				{
+					"userId": "u1",
+					"profile": {
+						"age": 30
+					},
+					"name": "Alice",
+					"score": 3
+				},
+				{
+					"userId": "u2",
+					"profile": {
+						"age": 25
+					},
+					"score": 9
+				},
+				{
+					"userId": "u3",
+					"name": "Bob"
+				}
+			]
+		}
+	}
+}
