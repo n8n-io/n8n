@@ -495,8 +495,18 @@ describe.skipIf(!taskRunnerAvailable())('the views of the input items against n8
 	beforeAll(async () => await startRunner(), 120_000);
 
 	it.each(CROSS_VIEW)('gives the result of v1 for %s', async (_name, mode, code) => {
-		const runner = await runnerCode(code, mode, rows.map(({ $binary: _b, ...json }) => ({ json })));
-		expect(nativeCode(code, mode, rows.map(({ $binary: _b, ...json }) => ({ json })))).toEqual(runner);
+		const runner = await runnerCode(
+			code,
+			mode,
+			rows.map(({ $binary: _b, ...json }) => ({ json })),
+		);
+		expect(
+			nativeCode(
+				code,
+				mode,
+				rows.map(({ $binary: _b, ...json }) => ({ json })),
+			),
+		).toEqual(runner);
 	});
 
 	it.each(VIEW_WRITES)('keeps a write through %s in the host', (_name, code) => {

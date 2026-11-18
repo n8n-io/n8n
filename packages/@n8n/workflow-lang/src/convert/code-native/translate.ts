@@ -933,7 +933,9 @@ function proveReadOnly(root: ts.Node, checker: ts.TypeChecker, mode: CodeMode): 
 		const x = stripParens(e);
 		if (ts.isIdentifier(x)) {
 			if (free(x)) {
-				return x.text === '$input' || x.text === '$json' || x.text === '$items' || x.text === '$binary';
+				return (
+					x.text === '$input' || x.text === '$json' || x.text === '$items' || x.text === '$binary'
+				);
 			}
 			const sym = checker.getSymbolAtLocation(x);
 			return sym !== undefined && viewVars.has(sym);
@@ -1530,9 +1532,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			call !== null &&
 			(call.arguments.length === 0 ||
 				(own && member === 'all' && call.arguments.every((x) => ts.isNumericLiteral(x))) ||
-				(!own &&
-					call.arguments.length <= 2 &&
-					!call.arguments.some((x) => ts.isSpreadElement(x))));
+				(!own && call.arguments.length <= 2 && !call.arguments.some((x) => ts.isSpreadElement(x))));
 		const picked = member === 'all' || member === 'first' || member === 'last';
 		const chosen =
 			call === null || !picked
@@ -3074,7 +3074,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		}
 		if (!isInputValue(x, 0)) return false;
 		inputsStay ??= readOnlyProof().readOnly;
-		return inputsStay === true;
+		return inputsStay;
 	};
 
 	/**
@@ -6393,7 +6393,12 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	// take a change only for themselves, and \`items\` and \`item\` give the items themselves. So a
 	// change through the first is not seen through the second. Native code has one list:
 	// code that uses both and can change an item stays in the host.
-	if (!input.nodeCode && input.kind === 'code' && readOnlyProof().viewWrite && usesBothItemViews(root, checker)) {
+	if (
+		!input.nodeCode &&
+		input.kind === 'code' &&
+		readOnlyProof().viewWrite &&
+		usesBothItemViews(root, checker)
+	) {
 		blockers.push({
 			feature: 'items and $input in code that changes items',
 			message:

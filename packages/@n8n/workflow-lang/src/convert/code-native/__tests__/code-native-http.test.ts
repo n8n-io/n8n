@@ -367,10 +367,11 @@ return [{ json: { results } }];`;
 		['two elements of `apply`', 'request.apply(this, [{ url: url }, 1])'],
 		['a spread list of `apply`', 'request.apply(this, list)'],
 	])('keeps the request of %s in the host', (_, form) => {
-		const code = `const list = [{ url: URL }]; const r = await ${form}; return [{ json: { r } }];`.replace(
-			'URL',
-			"'http://127.0.0.1/x'",
-		);
+		const code =
+			`const list = [{ url: URL }]; const r = await ${form}; return [{ json: { r } }];`.replace(
+				'URL',
+				"'http://127.0.0.1/x'",
+			);
 		const t = translateCode({ code, mode: 'all', kind: 'code', hasNode: () => false });
 		expect(t.ok).toBe(false);
 	});

@@ -271,7 +271,10 @@ const OUTPUT_CASES: Case[] = [
 	{ name: '$items(name, 0)', code: 'return $items("If", 0).map((i) => ({ json: i.json }));' },
 	{ name: '$items(name, 1)', code: 'return $items("If", 1).map((i) => ({ json: i.json }));' },
 	{ name: '$items(name, 1, 0)', code: 'return $items("If", 1, 0).map((i) => ({ json: i.json }));' },
-	{ name: '$items(name, 1, -1)', code: 'return $items("If", 1, -1).map((i) => ({ json: i.json }));' },
+	{
+		name: '$items(name, 1, -1)',
+		code: 'return $items("If", 1, -1).map((i) => ({ json: i.json }));',
+	},
 	{ name: '.all(1)', code: 'return $("If").all(1).map((i) => ({ json: i.json }));' },
 	{ name: '.all(1, -1)', code: 'return $("If").all(1, -1).map((i) => ({ json: i.json }));' },
 	{
@@ -375,7 +378,10 @@ const BRANCH_CODE =
 	'return [{ json: { no: $items("If", 1).map((i) => i.json.n), yes: $("If").all(0).map((i) => i.json.n) } }];';
 
 /** Converts and runs the workflow of `afterIf` and gives the items of the Code node and of v1. */
-async function convertedAfterIf(code: string, options: { engine?: 'always'; second?: boolean } = {}) {
+async function convertedAfterIf(
+	code: string,
+	options: { engine?: 'always'; second?: boolean } = {},
+) {
 	const wf = afterIf(code);
 	if (options.second === true) {
 		wf.nodes.push({
@@ -392,7 +398,12 @@ async function convertedAfterIf(code: string, options: { engine?: 'always'; seco
 			],
 		};
 	}
-	const v1 = await runOracle(wf as never, { start: 'T', item: {}, mode: 'trigger', timeoutMs: 20_000 });
+	const v1 = await runOracle(wf as never, {
+		start: 'T',
+		item: {},
+		mode: 'trigger',
+		timeoutMs: 20_000,
+	});
 	expect(v1.error).toBeNull();
 	const converted = convertWorkflow(wf as never, { trace: 'all', engine: options.engine });
 	expect(converted.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
@@ -431,9 +442,9 @@ describe('reads of another output in a converted workflow', () => {
 		const out = convertWorkflow(afterIf(BRANCH_CODE) as never, { trace: 'all', engine: 'always' });
 		// The host has the items of one output of the last run only, and v1 has both here.
 		expect(out.ok).toBe(false);
-		expect(
-			out.diagnostics.filter((d) => d.severity === 'error').map((d) => d.code),
-		).toEqual(['code-global']);
+		expect(out.diagnostics.filter((d) => d.severity === 'error').map((d) => d.code)).toEqual([
+			'code-global',
+		]);
 	});
 });
 
