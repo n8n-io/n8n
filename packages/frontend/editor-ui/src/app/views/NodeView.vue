@@ -101,6 +101,7 @@ import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
+import { useWorkflowRulesStore, useWorkflowRulesSync } from '@n8n/frontend-module-workflow-rules';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useUsersStore } from '@n8n/stores/users.store';
 
@@ -1870,6 +1871,35 @@ const workflowProjectId = computed(
 );
 
 useTypeAvailability(workflowProjectId);
+
+// Live Workflow Rules findings: the same engine the server runs on publish.
+useWorkflowRulesSync({
+	projectId: workflowProjectId,
+	workflowId: computed(() => workflowDocumentStore?.value?.workflowId),
+	workflow: computed(() => {
+		const document = workflowDocumentStore?.value;
+		if (!document) return undefined;
+		return {
+			id: document.workflowId,
+			name: document.name ?? '',
+			description: document.description ?? null,
+			nodes: document.allNodes,
+			connections: document.connectionsBySourceNode,
+			settings: document.settings,
+		};
+	}),
+	getDefaultNodeName: (node) =>
+		nodeTypesStore.getNodeType(node.type, node.typeVersion)?.defaults?.name ?? undefined,
+});
+
+const workflowRulesStore = useWorkflowRulesStore();
+watch(
+	() => workflowRulesStore.panelRequests,
+	() => {
+		focusPanelStore.openFocusPanel();
+		focusPanelStore.setSelectedTab('rules');
+	},
+);
 
 watch(
 	() => {

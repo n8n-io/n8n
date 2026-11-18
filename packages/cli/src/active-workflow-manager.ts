@@ -646,12 +646,21 @@ export class ActiveWorkflowManager {
 			);
 
 			// Trigger and poller nodes run code at registration, so this gates startup
-			// and leadership change too, not just the activate button.
+			// and leadership change too, not just the activate button. The version is
+			// already the published one here; the caller checked it as a new version.
 			await enforceWorkflowPublishPolicy(
 				this.policyEnforcementService,
 				this.ownershipService,
-				{ id: dbWorkflow.id, name: dbWorkflow.name, nodes },
+				{
+					id: dbWorkflow.id,
+					name: dbWorkflow.name,
+					nodes,
+					connections,
+					settings: dbWorkflow.settings ?? null,
+					description: dbWorkflow.description ?? null,
+				},
 				actor,
+				true,
 			);
 
 			// Another version can be active by the time a forwarded command arrives, so

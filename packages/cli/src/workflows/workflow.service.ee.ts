@@ -1027,8 +1027,16 @@ export class EnterpriseWorkflowService {
 			this.policyEnforcementService.evaluateWorkflowTransfer({ workflow, targetProjectId }),
 			activeVersion
 				? this.policyEnforcementService.evaluateWorkflowPublish({
-						workflow: { id: workflow.id, name: workflow.name, nodes: activeVersion.nodes },
+						workflow: {
+							id: workflow.id,
+							name: workflow.name,
+							nodes: activeVersion.nodes,
+							connections: activeVersion.connections,
+							settings: workflow.settings ?? null,
+							description: workflow.description ?? null,
+						},
 						projectId: targetProjectId,
+						republish: true,
 					})
 				: emptyDecision(),
 		]);

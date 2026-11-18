@@ -65,6 +65,8 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'sourceControl:push',
 	'nodeTypePolicy:manage',
 	'credentialTypePolicy:manage',
+	'workflowRules:read',
+	'workflowRules:manage',
 	'projectExecutionLimit:read',
 	'dataTable:create',
 	'dataTable:delete',

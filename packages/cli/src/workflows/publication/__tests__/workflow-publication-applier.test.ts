@@ -406,12 +406,14 @@ describe('WorkflowPublicationApplier', () => {
 
 			expect(policyEnforcementService.enforceWorkflowPublish).toHaveBeenCalledExactlyOnceWith(
 				{
-					workflow: {
+					workflow: expect.objectContaining({
 						id: 'wf-1',
 						name: 'My workflow',
 						nodes: versionWithNodes.nodes,
-					},
+						connections: versionWithNodes.connections,
+					}),
 					projectId: 'project-1',
+					republish: expect.any(Boolean),
 				},
 				{ kind: 'system', reason: 'publication' },
 			);

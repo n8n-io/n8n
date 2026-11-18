@@ -1401,8 +1401,16 @@ export class WorkflowService {
 		await enforceWorkflowPublishPolicy(
 			this.policyEnforcementService,
 			this.ownershipService,
-			{ id: workflowId, name: workflow.name, nodes: nodesToPublish },
+			{
+				id: workflowId,
+				name: workflow.name,
+				nodes: nodesToPublish,
+				connections: versionToActivate.connections,
+				settings: workflow.settings ?? null,
+				description: workflow.description ?? null,
+			},
 			{ kind: 'user', user },
+			versionIdToActivate === previousActiveVersionId,
 		);
 
 		// re-applying the already-published version (e.g. a settings-only update)

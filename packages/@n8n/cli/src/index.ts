@@ -82,6 +82,8 @@ import WorkflowList from './commands/workflow/list';
 import WorkflowTags from './commands/workflow/tags';
 import WorkflowTransfer from './commands/workflow/transfer';
 import WorkflowUpdate from './commands/workflow/update';
+import WorkflowRulesCheck from './commands/workflow-rules/check';
+import WorkflowRulesExport from './commands/workflow-rules/export';
 
 export const commands = {
 	login: Login,
@@ -181,6 +183,9 @@ export const commands = {
 	'package:export': PackageExport,
 	'package:import': PackageImport,
 	'package:import-selection': PackageImportSelection,
+
+	'workflow-rules:check': WorkflowRulesCheck,
+	'workflow-rules:export': WorkflowRulesExport,
 
 	audit: Audit,
 };

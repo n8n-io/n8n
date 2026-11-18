@@ -433,6 +433,22 @@ paths:
       $ref: ./handlers/variables/spec/paths/updateVariable.generated.yml
     delete:
       $ref: ./handlers/variables/spec/paths/deleteVariable.generated.yml
+  /workflow-rules:
+    get:
+      $ref: ./handlers/workflow-rules/spec/paths/getInstanceWorkflowRules.generated.yml
+    put:
+      $ref: ./handlers/workflow-rules/spec/paths/putInstanceWorkflowRules.generated.yml
+  /workflow-rules/projects/{projectId}:
+    get:
+      $ref: ./handlers/workflow-rules/spec/paths/getProjectWorkflowRules.generated.yml
+    put:
+      $ref: ./handlers/workflow-rules/spec/paths/putProjectWorkflowRules.generated.yml
+  /workflow-rules/export:
+    get:
+      $ref: ./handlers/workflow-rules/spec/paths/exportWorkflowRules.generated.yml
+  /workflow-rules/check:
+    post:
+      $ref: ./handlers/workflow-rules/spec/paths/checkWorkflowRules.generated.yml
   /workflows:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflows.generated.yml

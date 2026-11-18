@@ -140,6 +140,10 @@ tags:
     x-displayName: Workflows
     x-parent: BuildAndRun
     description: Operations about workflows
+  - name: WorkflowRules
+    x-displayName: Workflow Rules
+    x-parent: InstanceSettings
+    description: Preview — breaking changes may still occur without major version bump.
   # Parent tags (alphabetically sorted)
   - name: AccessAndOrganization
     x-displayName: Access and organization

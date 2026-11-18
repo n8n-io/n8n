@@ -1,0 +1,33 @@
+operationId: getProjectWorkflowRules
+tags:
+  - WorkflowRules
+summary: 'Preview: Retrieve the Workflow Rules of a project'
+description: |-
+  **Preview** — breaking changes may still occur without major version bump. Needs `N8N_ENABLED_MODULES=workflow-rules`.
+
+  Returns the rules that one project adds on top of the instance rules.
+
+  Requires the `workflowRules:read` API key scope.
+x-required-scope: workflowRules:read
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the project.
+    name: projectId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/workflowRuleSetPublicDto.generated.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

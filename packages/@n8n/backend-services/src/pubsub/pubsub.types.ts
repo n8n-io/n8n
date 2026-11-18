@@ -101,6 +101,7 @@ export namespace PubSub {
 		export type RedactionFloorChanged = ToCommand<'redaction-floor-changed'>;
 		export type ReloadTypeAvailabilityPolicies = ToCommand<'reload-type-availability-policies'>;
 		export type ReloadExecutionLimits = ToCommand<'reload-execution-limits'>;
+		export type ReloadWorkflowRules = ToCommand<'reload-workflow-rules'>;
 		export type PromotionEnvironmentChanged = ToCommand<'promotion-environment-changed'>;
 	}
 
@@ -164,6 +165,7 @@ export namespace PubSub {
 		| Commands.RedactionFloorChanged
 		| Commands.ReloadTypeAvailabilityPolicies
 		| Commands.ReloadExecutionLimits
+		| Commands.ReloadWorkflowRules
 		| Commands.PromotionEnvironmentChanged;
 
 	// ----------------------------------

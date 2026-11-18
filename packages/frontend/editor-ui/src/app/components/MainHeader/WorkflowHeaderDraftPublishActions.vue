@@ -43,6 +43,10 @@ import {
 	collectRestrictedNodeTypes,
 } from '@n8n/frontend-module-type-availability-policies';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	WorkflowRulesStatusButton,
+	useWorkflowRulesStore,
+} from '@n8n/frontend-module-workflow-rules';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowVersionFormModalEventBusEvents } from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
@@ -194,8 +198,18 @@ const restrictedNodeTypes = computed(() =>
 
 const hasRestrictedNodeTypes = computed(() => restrictedNodeTypes.value.length > 0);
 
+const workflowRulesStore = useWorkflowRulesStore();
+/** Blocking Workflow Rules findings. The server refuses the same publish, so stop it here first. */
+const blockingRuleFindingCount = computed(() =>
+	workflowRulesStore.isEnabled ? workflowRulesStore.blockingFindings.length : 0,
+);
+
 const isWorkflowPublishable = computed(
-	() => containsTrigger.value && !hasNodeIssues.value && !hasRestrictedNodeTypes.value,
+	() =>
+		containsTrigger.value &&
+		!hasNodeIssues.value &&
+		!hasRestrictedNodeTypes.value &&
+		blockingRuleFindingCount.value === 0,
 );
 
 /** Why publishing is blocked, or '' when it is not. Also the Publish tooltip. */
@@ -203,6 +217,12 @@ const publishBlockedReason = computed(() => {
 	if (isWorkflowPublishable.value) return '';
 	if (!containsTrigger.value) return i18n.baseText('workflows.publishModal.noTriggerMessage');
 	if (hasRestrictedNodeTypes.value) return describeRestrictedNodeTypes(restrictedNodeTypes.value);
+	if (blockingRuleFindingCount.value > 0 && !hasNodeIssues.value) {
+		return i18n.baseText('workflowRules.publish.blocked', {
+			interpolate: { count: blockingRuleFindingCount.value },
+			adjustToNumber: blockingRuleFindingCount.value,
+		});
+	}
 
 	return i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
 		interpolate: { count: nodesWithValidationIssues.value.length },
@@ -827,6 +847,7 @@ onBeforeUnmount(() => {
 <template>
 	<div :class="$style.container">
 		<CollaborationPane v-if="!isNewWorkflow" />
+		<WorkflowRulesStatusButton v-if="!isNewWorkflow" />
 		<N8nButton
 			v-if="showSaveButton && !isArchived && workflowPermissions.update"
 			:loading="isSaving"

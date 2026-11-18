@@ -2430,12 +2430,14 @@ describe('WorkflowService', () => {
 
 				expect(policyEnforcementServiceMock.enforceWorkflowPublish).toHaveBeenCalledExactlyOnceWith(
 					{
-						workflow: {
+						workflow: expect.objectContaining({
 							id: WORKFLOW_ID,
 							name: workflow.name,
 							nodes: versionToActivate.nodes,
-						},
+							connections: versionToActivate.connections,
+						}),
 						projectId: 'project-1',
+						republish: false,
 					},
 					{ kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
 				);

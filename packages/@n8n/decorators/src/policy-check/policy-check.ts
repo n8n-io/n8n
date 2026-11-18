@@ -1,6 +1,6 @@
 import type { PolicyCheckFailure, PolicyViolation } from '@n8n/api-types';
 import type { Constructable } from '@n8n/di';
-import type { INode } from 'n8n-workflow';
+import type { IConnections, INode, IWorkflowSettings } from 'n8n-workflow';
 
 export type { PolicyViolation, PolicyCheckFailure };
 
@@ -43,6 +43,22 @@ export type PolicedWorkflow = {
 	 * points, with one node for each node tool, so every check covers agents unchanged.
 	 */
 	readonly artifactKind?: PolicedArtifactKind;
+	/**
+	 * How many of `nodes` belong to the host. Expansion appends inline agent tool nodes after
+	 * them. Absent means every node is a host node.
+	 */
+	readonly hostNodeCount?: number;
+};
+
+/**
+ * The rest of the workflow, for checks that read more than node types. Publish and import
+ * carry it. Nullable rather than optional, so a host cannot leave it out by accident.
+ */
+export type PolicedWorkflowContent = {
+	/** The workflow's live settings. Error workflow, timeout and caller policy are not stored per version. */
+	readonly settings: Readonly<IWorkflowSettings> | null;
+	readonly connections: Readonly<IConnections> | null;
+	readonly description: string | null;
 };
 
 /** Something made of nodes that the workflow points police. */
@@ -73,8 +89,14 @@ export type WorkflowSaveContext = {
 };
 
 export type WorkflowPublishContext = {
-	readonly workflow: PolicedWorkflow;
+	readonly workflow: PolicedWorkflow & PolicedWorkflowContent;
 	readonly projectId: string | null;
+	/**
+	 * True when the version is already the published one: a restart, a leader change, a
+	 * re-add after a transfer, or a settings-only save. A refusal there silently unregisters a
+	 * live workflow, so a check may choose to judge only new versions.
+	 */
+	readonly republish: boolean;
 };
 
 export type WorkflowStartContext = {
@@ -145,7 +167,10 @@ export type ContentImportTransport = 'cli' | 'source-control' | 'package' | 'git
 export type ContentImportContext = {
 	readonly projectId: string | null;
 	readonly transport: ContentImportTransport;
-} & ({ readonly workflow: PolicedWorkflow } | { readonly credential: PolicedCredential });
+} & (
+	| { readonly workflow: PolicedWorkflow & PolicedWorkflowContent }
+	| { readonly credential: PolicedCredential }
+);
 
 /** A policy version a check read, recorded on the audit log. */
 export type PolicyVersionRef = {

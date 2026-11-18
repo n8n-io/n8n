@@ -29,7 +29,7 @@ import { sleep } from '@n8n/utils/sleep';
 import glob from 'fast-glob';
 import isEqual from 'lodash/isEqual';
 import { Credentials, ErrorReporter, InstanceSettings } from 'n8n-core';
-import type { AutoPublishMode, INode } from 'n8n-workflow';
+import type { AutoPublishMode } from 'n8n-workflow';
 import {
 	shouldAutoPublishWorkflow,
 	jsonParse,
@@ -108,6 +108,7 @@ import type {
 import type { ExportableFolder } from './types/exportable-folders';
 import type { ExportableProject, ExportableProjectWithFileName } from './types/exportable-project';
 import type { ExportableTags } from './types/exportable-tags';
+import type { ExportableWorkflow } from './types/exportable-workflow';
 import { ExportableVariable } from './types/exportable-variable';
 import type { CredentialImportResult, WorkflowImportResult } from './types/import-result';
 import type {
@@ -136,10 +137,18 @@ const toStatusOwner = (project: Project | undefined): StatusResourceOwner | unde
 
 /** Shared by the pull and its preview, so both evaluate the same input. */
 const workflowImportPolicyContext = (
-	workflow: { id: string; name: string; nodes: INode[] },
+	workflow: Pick<ExportableWorkflow, 'id' | 'name' | 'nodes'> &
+		Partial<Pick<ExportableWorkflow, 'connections' | 'settings' | 'description'>>,
 	projectId: string,
 ): ContentImportContext => ({
-	workflow: { id: workflow.id, name: workflow.name, nodes: workflow.nodes },
+	workflow: {
+		id: workflow.id,
+		name: workflow.name,
+		nodes: workflow.nodes,
+		connections: workflow.connections ?? null,
+		settings: workflow.settings ?? null,
+		description: workflow.description ?? null,
+	},
 	projectId,
 	transport: 'source-control',
 });
@@ -925,7 +934,14 @@ export class SourceControlImportService {
 		try {
 			cleared = await this.policyEnforcementService.enforceContentImport(
 				workflowImportPolicyContext(
-					{ id, name: importedWorkflow.name, nodes },
+					{
+						id,
+						name: importedWorkflow.name,
+						nodes,
+						connections,
+						settings,
+						description: importedWorkflow.description,
+					},
 					targetOwnerProject.id,
 				),
 				{ kind: 'user', user: { id: userId } },
@@ -1162,14 +1178,19 @@ export class SourceControlImportService {
 		};
 
 		await mapInBatches(workflows, SOURCE_CONTROL_READ_FILE_BATCH_SIZE, async (file) => {
-			const { id, versionId, name, nodes, connections, owner } = await this.parseWorkflowFromFile(
-				file.file,
-			);
+			const { id, versionId, name, nodes, connections, owner, settings, description } =
+				await this.parseWorkflowFromFile(file.file);
 			// The import skips a file missing these before the policy runs.
 			if (!id || !versionId || !nodes || !connections) return;
 
 			const projectId = await targetProjectId(owner);
-			await evaluate(file, workflowImportPolicyContext({ id, name, nodes }, projectId));
+			await evaluate(
+				file,
+				workflowImportPolicyContext(
+					{ id, name, nodes, connections, settings, description },
+					projectId,
+				),
+			);
 		});
 
 		await mapInBatches(credentials, SOURCE_CONTROL_READ_FILE_BATCH_SIZE, async (file) => {

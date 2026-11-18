@@ -65,6 +65,7 @@ n8n-cli --url=https://my-n8n.app.n8n.cloud --api-key=n8n_api_xxxxx workflow list
 | `source-control` | `pull` |
 | `package` | `export`, `import` _(beta)_, `import-selection` _(beta)_ |
 | `skill` | `install` |
+| `workflow-rules` | `check`, `export` _(preview)_ |
 | `audit` | _(top-level)_ |
 | `login` / `logout` | _(top-level)_ |
 
@@ -78,6 +79,9 @@ both Agents and workflows. `--conflict-policy` also applies to the skills of
 imported Agents. Only `source` is supported for `--id-policy`.
 See [package commands](docs/commands/package.md)
 for scopes, defaults, and examples. Agent packages use the ordinary import command.
+
+Use `workflow-rules check` in CI to fail a build when a workflow file breaks a
+blocking Workflow Rule. See [workflow-rules commands](docs/commands/workflow-rules.md).
 
 ## Output formats
 

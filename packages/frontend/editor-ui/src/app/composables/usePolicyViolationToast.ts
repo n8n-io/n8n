@@ -24,12 +24,16 @@ import {
 
 type PolicyRefusedAction = 'save' | 'publish' | 'execute';
 
+const WORKFLOW_RULE_NODE_SUBJECT = 'node';
+
 let activeToast: { handle: NotificationHandle; refusedAction: PolicyRefusedAction } | undefined;
 
 const NODE_MATCHER: Record<string, ((subject: string) => (node: INodeUi) => boolean) | undefined> =
 	{
 		[NODE_TYPE_SUBJECT]: (subject) => (node) => node.type === subject,
 		[CREDENTIAL_TYPE_SUBJECT]: (subject) => (node) => hasNodeCredentialFilled(node, subject),
+		// Workflow Rules name the node itself, so a refusal can jump to it.
+		[WORKFLOW_RULE_NODE_SUBJECT]: (subject) => (node) => node.name === subject,
 	};
 
 export function isWorkflowDocumentOpenOnCanvas(documentId: WorkflowDocumentId): boolean {

@@ -417,6 +417,8 @@ packages/modules/type-availability-policies/            @n8n-io/governance-and-o
 packages/cli/src/modules/type-availability-policies/    @n8n-io/governance-and-observability
 packages/modules/execution-limits/                      @n8n-io/governance-and-observability
 packages/modules/otel/                                  @n8n-io/governance-and-observability
+packages/modules/workflow-rules/                        @n8n-io/governance-and-observability
+packages/@n8n/workflow-rules/                           @n8n-io/governance-and-observability
 packages/cli/src/modules/otel/                          @n8n-io/governance-and-observability
 packages/cli/src/observability/                         @n8n-io/governance-and-observability
 packages/cli/src/public-api/v1/controllers/otel.public.controller.ts @n8n-io/governance-and-observability

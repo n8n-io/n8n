@@ -3,6 +3,7 @@ import type {
 	ContentImportTransport,
 	CredentialDecryptContext,
 	PolicedWorkflow,
+	PolicedWorkflowContent,
 } from '@n8n/decorators';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -29,7 +30,13 @@ const slackCredentialFor = (nodeType: string | null): CredentialDecryptContext =
 const node = (type: string, name = type, disabled = false): INode =>
 	({ id: name, name, type, typeVersion: 1, position: [0, 0], parameters: {}, disabled }) as INode;
 
-const workflow = (nodes: INode[], id: string | null = 'wf-1'): PolicedWorkflow => ({
+const workflow = (
+	nodes: INode[],
+	id: string | null = 'wf-1',
+): PolicedWorkflow & PolicedWorkflowContent => ({
+	settings: null,
+	connections: null,
+	description: null,
 	id,
 	name: 'My workflow',
 	nodes,
@@ -159,6 +166,7 @@ describe('NodeTypePolicyCheck', () => {
 			const result = await check.onWorkflowPublish({
 				workflow: workflow(nodes),
 				projectId: 'project-1',
+				republish: false,
 			});
 
 			expect(result.violations.map((violation) => violation.subject)).toEqual([SLACK, GMAIL]);

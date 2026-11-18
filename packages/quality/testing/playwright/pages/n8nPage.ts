@@ -37,6 +37,7 @@ import { OAuthConsentPage } from './OAuthConsentPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
 import { SecretsProviderSettingsPage } from './SecretsProviderSettingsPage';
 import { SecuritySettingsPage } from './SecuritySettingsPage';
+import { WorkflowRulesPage } from './workflow-rules-page';
 import { SettingsEnvironmentPage } from './SettingsEnvironmentPage';
 import { SettingsLogStreamingPage } from './SettingsLogStreamingPage';
 import { SettingsSkillsPage } from './settings-skills-page';
@@ -135,6 +136,7 @@ export class n8nPage {
 	readonly settingsEnvironment: SettingsEnvironmentPage;
 	readonly secretsProviderSettings: SecretsProviderSettingsPage;
 	readonly securitySettings: SecuritySettingsPage;
+	readonly workflowRules: WorkflowRulesPage;
 
 	// Modals
 	readonly workflowActivationModal: WorkflowActivationModal;
@@ -217,6 +219,7 @@ export class n8nPage {
 		this.settingsEnvironment = new SettingsEnvironmentPage(page);
 		this.secretsProviderSettings = new SecretsProviderSettingsPage(page);
 		this.securitySettings = new SecuritySettingsPage(page);
+		this.workflowRules = new WorkflowRulesPage(page);
 
 		this.settingsUsers = new SettingsUsersPage(page);
 		this.settingsSso = new SettingsSsoPage(page);

@@ -483,6 +483,12 @@ export type PubSubCommandMap = {
 	 */
 	'reload-execution-limits': never;
 
+	/**
+	 * Reload the Workflow Rules held in memory. Published after a rule set or exemption write
+	 * commits. The writing process reloads its own copy, so this is not a self-send command.
+	 */
+	'reload-workflow-rules': never;
+
 	// #endregion
 };
 

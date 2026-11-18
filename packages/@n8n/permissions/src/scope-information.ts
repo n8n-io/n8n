@@ -134,6 +134,15 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		description:
 			'Allows managing which credential types are available, on the instance or in a project.',
 	},
+	'workflowRules:read': {
+		displayName: 'Read Workflow Rules',
+		description: 'Allows reading the Workflow Rules and checking workflows against them.',
+	},
+	'workflowRules:manage': {
+		displayName: 'Manage Workflow Rules',
+		description:
+			'Allows changing the Workflow Rules and exemptions, on the instance or in a project.',
+	},
 	'encryptionKey:manage': {
 		displayName: 'Manage Encryption Keys',
 		description: 'Allows listing and rotating instance encryption keys.',

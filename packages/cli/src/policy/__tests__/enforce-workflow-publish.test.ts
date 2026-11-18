@@ -10,7 +10,14 @@ import type { PolicyEnforcementService } from '../policy-enforcement.service';
 describe('enforceWorkflowPublishPolicy', () => {
 	const policyEnforcementService = mock<PolicyEnforcementService>();
 	const ownershipService = mock<OwnershipService>();
-	const workflow = { id: 'workflow-1', name: 'Test Workflow', nodes: [] };
+	const workflow = {
+		id: 'workflow-1',
+		name: 'Test Workflow',
+		nodes: [],
+		settings: null,
+		connections: null,
+		description: null,
+	};
 	const actor: PolicyActor = { kind: 'user', user: { id: 'user-1' } };
 
 	beforeEach(() => {
@@ -22,7 +29,13 @@ describe('enforceWorkflowPublishPolicy', () => {
 	it('skips the project lookup and the check when nothing is registered for workflowPublish', async () => {
 		policyEnforcementService.hasChecksFor.mockReturnValue(false);
 
-		await enforceWorkflowPublishPolicy(policyEnforcementService, ownershipService, workflow, actor);
+		await enforceWorkflowPublishPolicy(
+			policyEnforcementService,
+			ownershipService,
+			workflow,
+			actor,
+			false,
+		);
 
 		expect(policyEnforcementService.hasChecksFor).toHaveBeenCalledWith('workflowPublish');
 		expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
@@ -32,14 +45,38 @@ describe('enforceWorkflowPublishPolicy', () => {
 	it('enforces with the owning project and the actor when a check is registered', async () => {
 		policyEnforcementService.hasChecksFor.mockReturnValue(true);
 
-		await enforceWorkflowPublishPolicy(policyEnforcementService, ownershipService, workflow, actor);
+		await enforceWorkflowPublishPolicy(
+			policyEnforcementService,
+			ownershipService,
+			workflow,
+			actor,
+			false,
+		);
 
 		expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('workflow-1');
 		expect(policyEnforcementService.enforceWorkflowPublish).toHaveBeenCalledWith(
 			{
 				workflow,
 				projectId: 'project-1',
+				republish: false,
 			},
+			actor,
+		);
+	});
+
+	it('passes the republish flag to the checks', async () => {
+		policyEnforcementService.hasChecksFor.mockReturnValue(true);
+
+		await enforceWorkflowPublishPolicy(
+			policyEnforcementService,
+			ownershipService,
+			workflow,
+			actor,
+			true,
+		);
+
+		expect(policyEnforcementService.enforceWorkflowPublish).toHaveBeenCalledWith(
+			expect.objectContaining({ republish: true }),
 			actor,
 		);
 	});
@@ -50,7 +87,13 @@ describe('enforceWorkflowPublishPolicy', () => {
 		ownershipService.getWorkflowProjectCached.mockRejectedValue(new Error('no owner row'));
 
 		await expect(
-			enforceWorkflowPublishPolicy(policyEnforcementService, ownershipService, workflow, actor),
+			enforceWorkflowPublishPolicy(
+				policyEnforcementService,
+				ownershipService,
+				workflow,
+				actor,
+				false,
+			),
 		).rejects.toThrow('no owner row');
 
 		expect(policyEnforcementService.enforceWorkflowPublish).not.toHaveBeenCalled();

@@ -31,4 +31,5 @@ import './sso-saml.public.controller';
 import './tags.public.controller';
 import './users.public.controller';
 import './variables.public.controller';
+import './workflow-rules.public.controller';
 import './workflows.public.controller';
