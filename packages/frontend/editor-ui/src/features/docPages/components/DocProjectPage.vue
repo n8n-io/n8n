@@ -195,8 +195,6 @@ async function summarize() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
-	// Keeps lines at a readable length, like the doc page. No design token covers this width.
-	max-width: 48rem;
 }
 
 .toolbar {
