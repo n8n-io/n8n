@@ -205,17 +205,6 @@ function codeEachItems(results: Json[]): Json[] {
 	return out;
 }`,
 	},
-	codeTimerMs: {
-		uses: [],
-		source: `/**
- * The time of a timer as Node.js reads it (\`setTimeout\`): the number of the value, and 1
- * for each number that is not from 1 to 2147483647.
- */
-function codeTimerMs(value: Json): number {
-	const n: number = typeof value === 'number' ? value : Number(String(value));
-	return n >= 1 && n <= 2147483647 ? Math.trunc(n) : 1;
-}`,
-	},
 	codeNotDefined: {
 		uses: [],
 		source: `/**

@@ -19,7 +19,6 @@ import {
 	MATCHES,
 	FIRST_JSON,
 	HTTP,
-	WAIT,
 	INDEX,
 	ITEM,
 	ITEMS,
@@ -60,7 +59,6 @@ export function emitHelpers(
 		out.add('codeHttpArgs');
 		out.add('codeHttpResult');
 	}
-	if (t.usesWait) out.add('codeTimerMs');
 	return [...out];
 }
 
@@ -84,10 +82,7 @@ function localHelpers(
 	return codeHelperSources(wanted);
 }
 
-/** The end of the name of the \`wait\` step of a pause of the code of a node. */
-export const WAIT_STEP = ' (wait)';
-
-/** Code that makes requests or has a pause is an async function with a name: the workflow awaits its call. */
+/** Code that makes requests is an async function with a name: the workflow awaits its call. */
 export interface AsyncForm {
 	/** The name of the function. */
 	fn: string;
@@ -135,18 +130,7 @@ function emitParts(
 		return out;
 	};
 	const head = values(sharesInput(t, plainInput) ? `${P}in` : `codeClone(${P}in)`);
-	if (step !== null && t.usesWait) {
-		// A pause of the code: one \`wait\` effect, with the time as Node.js reads it.
-		head.push(
-			[
-				`const ${WAIT} = async (${P}ms: Json): Promise<Json> => {`,
-				`\t\tawait ctx.wait({ name: ${JSON.stringify(`${step}${WAIT_STEP}`)}, duration: codeTimerMs(${P}ms) });`,
-				'\t\treturn undefined;',
-				'\t};',
-			].join('\n'),
-		);
-	}
-	if (step !== null && t.usesHttp) {
+	if (step !== null) {
 		// \`this.helpers.httpRequest\` of v1: one \`http\` step with the name of the node. The
 		// helpers make the request from the options and the result from the response.
 		head.push(

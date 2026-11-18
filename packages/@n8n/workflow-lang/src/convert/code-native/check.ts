@@ -20,8 +20,8 @@ export function harnessSource(
 ): string {
 	const lists = t.nodes.map((_, k) => `trigger.body.nodes[${k}]`);
 	const all = t.allNodes.map((_, k) => `trigger.body.all[${k}]`);
-	// Code that makes requests or has a pause is an async function; its \`http\` step has the name \`code\`.
-	const parts = t.usesAsync
+	// Code that makes requests is an async function; its \`http\` step has the name \`code\`.
+	const parts = t.usesHttp
 		? emitAsync(
 				t,
 				mode,
