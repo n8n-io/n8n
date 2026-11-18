@@ -31,7 +31,6 @@ onMounted(async () => await store.ensureLoaded(props.projectId, props.sourceType
 			variant="success"
 			leading-icon="sparkles"
 			clickable
-			:class="$style.badge"
 			data-test-id="determinism-badge"
 			@click.stop="onClick"
 		>
@@ -43,9 +42,3 @@ onMounted(async () => await store.ensureLoaded(props.projectId, props.sourceType
 		</N8nBadge>
 	</N8nTooltip>
 </template>
-
-<style module lang="scss">
-.badge {
-	margin-right: var(--spacing--2xs);
-}
-</style>
