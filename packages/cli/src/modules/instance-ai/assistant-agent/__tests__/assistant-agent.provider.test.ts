@@ -11,6 +11,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type {
 	SystemAgentResumeTurn,
+	SystemAgentSandboxFiles,
 	SystemAgentStartTurn,
 } from '@/modules/agents/system-agents/system-agent.types';
 import type { TelemetryProxy } from '@n8n/backend-services';
@@ -139,6 +140,19 @@ function setup() {
 		input,
 		agent,
 		archiveIfAiTemporary,
+	};
+}
+
+/** The sandbox files that a turn has when the sandbox files flag is on. */
+function turnSandboxFiles(
+	overrides: Partial<SystemAgentSandboxFiles> = {},
+): SystemAgentSandboxFiles {
+	return {
+		maxImportBytes: 200 * 1024 * 1024,
+		importFiles: vi.fn(),
+		storeOutput: vi.fn(),
+		listFiles: vi.fn(async () => []),
+		...overrides,
 	};
 }
 
@@ -495,11 +509,7 @@ describe('AssistantAgentProvider', () => {
 				},
 			];
 			const importFiles = vi.fn(async () => imported);
-			await on.provider.prepareTurn(
-				startTurn({
-					sandboxFiles: { maxImportBytes: 200 * 1024 * 1024, importFiles, storeOutput: vi.fn() },
-				}),
-			);
+			await on.provider.prepareTurn(startTurn({ sandboxFiles: turnSandboxFiles({ importFiles }) }));
 			const { sandboxFiles } = on.environment.context;
 			expect(sandboxFiles?.maxImportBytes).toBe(200 * 1024 * 1024);
 			// The Assistant gives the files only. The host adds the sandbox of the turn.
@@ -513,14 +523,35 @@ describe('AssistantAgentProvider', () => {
 		it('tells the model that a conversation without a sandbox cannot import files', async () => {
 			const { provider, environment } = setup();
 			const importFiles = vi.fn();
-			await provider.prepareTurn(
-				startTurn({ sandboxFiles: { maxImportBytes: 1, importFiles, storeOutput: vi.fn() } }),
-			);
+			await provider.prepareTurn(startTurn({ sandboxFiles: turnSandboxFiles({ importFiles }) }));
 
 			await expect(
 				environment.context.sandboxFiles?.importFiles({ 'a.csv': 'f1' }),
 			).rejects.toThrow('This conversation has no sandbox');
 			expect(importFiles).not.toHaveBeenCalled();
+		});
+
+		it('lists the files of the thread for the model only when the sandbox files flag is on', async () => {
+			const off = setup();
+			await off.provider.prepareTurn(startTurn());
+			expect(off.environment.context.storedFiles?.list).toBeUndefined();
+
+			const on = setup();
+			const files = [
+				{
+					fileId: 'out-1',
+					fileName: 'report.csv',
+					mimeType: 'text/csv',
+					sizeBytes: 3,
+					origin: 'sandbox' as const,
+					createdAt: '2026-11-18T10:00:00.000Z',
+				},
+			];
+			await on.provider.prepareTurn(
+				startTurn({ sandboxFiles: turnSandboxFiles({ listFiles: vi.fn(async () => files) }) }),
+			);
+
+			await expect(on.environment.context.storedFiles?.list?.()).resolves.toEqual(files);
 		});
 
 		describe('storing a file of outputs/', () => {
@@ -534,9 +565,7 @@ describe('AssistantAgentProvider', () => {
 					sizeBytes: 3,
 				}));
 				await context.provider.prepareTurn(
-					startTurn({
-						sandboxFiles: { maxImportBytes: 1, importFiles: vi.fn(), storeOutput: turnStoreOutput },
-					}),
+					startTurn({ sandboxFiles: turnSandboxFiles({ storeOutput: turnStoreOutput }) }),
 				);
 				const sandboxFiles = context.environment.context.sandboxFiles;
 				if (!sandboxFiles) throw new Error('expected the sandbox files of the turn');

@@ -342,11 +342,13 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			// and parse-file reads them by id through `storedFiles`.
 			fileAttachments: [],
 		});
-		environment.context.storedFiles = {
-			read: async (fileId) => await turn.readFile(fileId),
-		};
 		// The turn has the sandbox files of project agents only when their flag is on.
 		const { sandboxFiles } = turn;
+		environment.context.storedFiles = {
+			read: async (fileId) => await turn.readFile(fileId),
+			// The files list of the chat has the same flag.
+			...(sandboxFiles ? { list: async () => await sandboxFiles.listFiles() } : {}),
+		};
 		if (sandboxFiles) {
 			const { context } = environment;
 			// Read the sandbox when a tool runs: it belongs to the turn, not to this setup.

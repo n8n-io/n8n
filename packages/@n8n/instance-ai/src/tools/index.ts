@@ -28,6 +28,9 @@ const loadImportFilesTool = lazyMod(
 	() =>
 		require('./attachments/import-files.tool') as typeof import('./attachments/import-files.tool'),
 );
+const loadListFilesTool = lazyMod(
+	() => require('./attachments/list-files.tool') as typeof import('./attachments/list-files.tool'),
+);
 const loadShareFilesTool = lazyMod(
 	() =>
 		require('./attachments/share-files.tool') as typeof import('./attachments/share-files.tool'),
@@ -281,6 +284,15 @@ function getOrchestratorDomainToolFactories(
 			? () => loadParseFileTool().createParseStoredFileTool(storedFiles)
 			: () => loadParseFileTool().createParseFileTool(context),
 	]);
+
+	// The host sets `list` only when the sandbox files feature is on, so it stays the same for the thread.
+	const listFiles = storedFiles?.list?.bind(storedFiles);
+	if (listFiles) {
+		tools.push([
+			DOMAIN_TOOL_IDS.LIST_FILES,
+			() => loadListFilesTool().createListFilesTool(listFiles),
+		]);
+	}
 
 	// The host sets `sandboxFiles` only when the sandbox files feature is on. With
 	// stored files and the sandbox, it stays the same for the thread, so the tool list does too.

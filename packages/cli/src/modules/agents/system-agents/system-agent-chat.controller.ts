@@ -5,6 +5,7 @@ import {
 	type AgentChatMessagesResponse,
 	AgentChatQueueReorderDto,
 	type AgentChatQueueResponse,
+	type AgentSessionFilesResponse,
 	AgentChatQueueSteerDto,
 	AgentChatQueueUpdateDto,
 	AgentChatResumeDto,
@@ -283,6 +284,27 @@ export class SystemAgentChatController {
 		}
 		await this.systemAgents.getUsableThread(agentId, req.user, attachment.threadId);
 		await this.chatRelay.streamAttachment(attachment, res);
+	}
+
+	/**
+	 * The files of one of the user's own threads, for the session files list:
+	 * uploads and files from the sandbox. A new session has no thread before its
+	 * first message, so it has no files. The list uses the scope of the download
+	 * route, so each listed file can be downloaded.
+	 */
+	@Get('/:agentId/chat/:threadId/files')
+	async getSessionFiles(
+		req: AuthenticatedRequest<{ agentId: string; threadId: string }>,
+	): Promise<AgentSessionFilesResponse> {
+		const { agentId, threadId } = req.params;
+		const thread = await this.systemAgents.findUsableThread(agentId, req.user, threadId);
+		if (!thread) return { files: [] };
+		const files = await this.attachments.listForSystemAgentThread(thread.id, {
+			agentId,
+			resourceId: this.systemAgents.resourceIdFor(req.user),
+			sources: SYSTEM_CHAT_FILE_SOURCES,
+		});
+		return { files };
 	}
 
 	/** System agents do not run Agents background jobs. */

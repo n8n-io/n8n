@@ -1,6 +1,6 @@
 /**
  * share-files tool: stores files of `outputs/` in the sandbox workspace as
- * conversation files, so the chat shows them to the user under the step.
+ * conversation files, so the chat shows them to the user in the reply.
  *
  * The registry adds the tool only when the host sets `context.sandboxFiles`
  * and the turn has a workspace. Only the Assistant agent on the Agents runtime

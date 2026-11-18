@@ -1486,14 +1486,31 @@ describe('AgentChatPanel', () => {
 			getSessionFilesMock.mockResolvedValue({ files: [file] });
 		});
 
-		it('shows the toggle only for a preview or n8n Chat session', () => {
+		it('shows the toggle for a session on every channel', () => {
 			expect(mountPanel({ continueSessionId: 't1' }).find(toggle).exists()).toBe(true);
 			expect(
 				mountPanel({ continueSessionId: 't1', channel: 'n8n-chat' }).find(toggle).exists(),
 			).toBe(true);
-			expect(mountPanel().find(toggle).exists()).toBe(false);
 			expect(mountPanel({ continueSessionId: 't1', channel: 'system' }).find(toggle).exists()).toBe(
-				false,
+				true,
+			);
+			expect(mountPanel().find(toggle).exists()).toBe(false);
+		});
+
+		it('lists system agent files with links to the system download route', async () => {
+			const wrapper = mountPanel({ continueSessionId: 't1', channel: 'system' });
+
+			await open(wrapper);
+
+			expect(getSessionFilesMock).toHaveBeenCalledWith(
+				{ baseUrl: '/rest' },
+				'p1',
+				'a1',
+				't1',
+				'system',
+			);
+			expect(wrapper.find('[data-test-id="session-file-link"]').attributes('href')).toContain(
+				'/agents/system/a1/chat/attachments/f-1',
 			);
 		});
 

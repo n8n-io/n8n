@@ -38,6 +38,27 @@ describe('getSystemPrompt — sandbox workspace', () => {
 		expect(withSharing).toContain('Keep scratch files out of `outputs/`');
 	});
 
+	it('tells the model to import a file again when the workspace was reset', () => {
+		const withImport = getSystemPrompt({
+			workspaceRoot: '/home/user/workspace',
+			fileImportEnabled: true,
+		});
+
+		expect(withImport).toContain('The workspace can be reset between turns.');
+		expect(withImport).toContain('import it again when it is missing');
+	});
+
+	it('names list-files only when the tool is wired', () => {
+		const without = getSystemPrompt({ workspaceRoot: '/home/user/workspace' });
+		const withListing = getSystemPrompt({
+			workspaceRoot: '/home/user/workspace',
+			fileListingEnabled: true,
+		});
+
+		expect(without).not.toContain('list-files');
+		expect(withListing).toContain('call `list-files`');
+	});
+
 	it('leaves out the import guidance without a workspace', () => {
 		expect(getSystemPrompt({ fileImportEnabled: true })).not.toContain('import-files');
 	});

@@ -5,7 +5,7 @@ import {
 	createOrchestratorDomainTools,
 	getActiveOrchestratorDomainToolNames,
 } from '..';
-import type { InstanceAiContext, OrchestrationContext } from '../../types';
+import type { InstanceAiContext, InstanceAiListedFile, OrchestrationContext } from '../../types';
 import { ALWAYS_LOADED_TOOL_NAMES, getMcpToolGroup, getToolGroup } from '../tool-ids';
 
 vi.mock('../attachments/parse-file.tool', () => ({
@@ -15,6 +15,10 @@ vi.mock('../attachments/parse-file.tool', () => ({
 
 vi.mock('../attachments/import-files.tool', () => ({
 	createImportFilesTool: vi.fn(() => ({ id: 'import-files' })),
+}));
+
+vi.mock('../attachments/list-files.tool', () => ({
+	createListFilesTool: vi.fn((list: unknown) => ({ id: 'list-files', list })),
 }));
 
 vi.mock('../attachments/share-files.tool', () => ({
@@ -339,6 +343,38 @@ describe('domain tool construction', () => {
 				id: 'import-files',
 			});
 			expect(ALWAYS_LOADED_TOOL_NAMES.has('import-files')).toBe(true);
+		});
+	});
+
+	describe('list-files registration', () => {
+		it.each([
+			['nothing', {}],
+			['a file reader without a list', { storedFiles: { read: vi.fn() } }],
+		])('leaves the tool out with %s', (_label, overrides) => {
+			expect(createOrchestratorDomainTools(makeContext(overrides)).has('list-files')).toBe(false);
+		});
+
+		it('registers the tool when the file reader can list the files', async () => {
+			const files: InstanceAiListedFile[] = [
+				{
+					fileId: 'file-1',
+					fileName: 'report.csv',
+					mimeType: 'text/csv',
+					sizeBytes: 3,
+					origin: 'sandbox',
+					createdAt: '2026-11-18T10:00:00.000Z',
+				},
+			];
+			const storedFiles = { read: vi.fn(), list: vi.fn(async () => await Promise.resolve(files)) };
+			const context = makeContext({ storedFiles });
+
+			const tool = createOrchestratorDomainTools(context).get('list-files') as unknown as {
+				list: () => Promise<unknown>;
+			};
+
+			// The list keeps the reader as `this`.
+			await expect(tool.list()).resolves.toBe(files);
+			expect(ALWAYS_LOADED_TOOL_NAMES.has('list-files')).toBe(true);
 		});
 	});
 

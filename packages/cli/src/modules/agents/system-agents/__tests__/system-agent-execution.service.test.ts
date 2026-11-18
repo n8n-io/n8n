@@ -733,6 +733,7 @@ describe('SystemAgentExecutionService', () => {
 				maxImportBytes: 200 * 1024 * 1024,
 				importFiles: expect.any(Function),
 				storeOutput: expect.any(Function),
+				listFiles: expect.any(Function),
 			});
 		});
 
@@ -975,6 +976,33 @@ describe('SystemAgentExecutionService', () => {
 				await expect(file?.readContent()).resolves.toEqual(Buffer.from('a,b'));
 				// Files that the sandbox stored for the thread are readable too.
 				expect(attachmentService.getForSystemAgent).toHaveBeenCalledWith('att-earlier', {
+					agentId: AGENT_ID,
+					resourceId: 'system-chat:user-1',
+					sources: ['system_chat', 'sandbox'],
+				});
+			});
+
+			it('lists the files of the thread in the scope that a read by id uses, with their origin', async () => {
+				const { service, provider, sandboxFiles, attachmentService } = setup([textChunk]);
+				sandboxFiles.isEnabled.mockResolvedValue(true);
+				await service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+				const turnFiles = provider.prepareTurn.mock.calls[0][0].sandboxFiles;
+				const file = {
+					fileName: 'earlier.csv',
+					mimeType: 'text/csv',
+					sizeBytes: 3,
+					createdAt: '2026-11-18T10:00:00.000Z',
+				};
+				attachmentService.listForSystemAgentThread.mockResolvedValue([
+					{ ...file, fileId: 'out-1', source: 'sandbox' },
+					{ ...file, fileId: 'up-1', source: 'system_chat' },
+				]);
+
+				await expect(turnFiles?.listFiles()).resolves.toEqual([
+					{ ...file, fileId: 'out-1', origin: 'sandbox' },
+					{ ...file, fileId: 'up-1', origin: 'upload' },
+				]);
+				expect(attachmentService.listForSystemAgentThread).toHaveBeenCalledWith('thread-1', {
 					agentId: AGENT_ID,
 					resourceId: 'system-chat:user-1',
 					sources: ['system_chat', 'sandbox'],

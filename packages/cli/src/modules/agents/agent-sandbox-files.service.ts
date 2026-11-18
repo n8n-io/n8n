@@ -21,6 +21,7 @@ import {
 } from './agent-chat-attachment.service';
 import type { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
 import type { TimelineEvent } from './execution-recorder';
+import { SANDBOX_FILE_SOURCE } from './utils/agent-thread-access';
 import { resolveInboundMimeType } from './utils/inbound-attachments';
 
 /** Directory in the workspace root where an agent puts the files that it makes. */
@@ -433,7 +434,7 @@ export class AgentSandboxFilesService {
 		return await this.attachmentService.storeInbound({
 			...scope,
 			id,
-			source: 'sandbox',
+			source: SANDBOX_FILE_SOURCE,
 			fileName,
 			mimeType,
 			data,

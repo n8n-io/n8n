@@ -1361,10 +1361,33 @@ workspace path. When a check or the copy fails, the result has no files and an
 files stay in `inputs/`, and the `error` names them. The list is not named
 `files`, because the chat shows the `files` of a tool result as new files.
 
+The sandbox of a thread can be reset between turns. The prompt section tells the
+model to check that a file in `inputs/` from an earlier turn is there, and to
+import it again when it is missing.
+
+## `list-files`
+
+List the stored files of the thread, newest first: the uploads of every turn
+and the files from `outputs/` of the sandbox. The model learns a `fileId` from
+the label of the message that carried the file, and memory drops these labels
+when it compacts older messages. With this tool, the model can still find the
+files of earlier turns. The registry adds the tool only when the host sets
+`list` on `storedFiles`. The Assistant on the Agents runtime sets it only when
+the instance flag `137_agent_sandbox_files` is on. The host lists the files in
+the same scope as `read`, so `parse-file` and `import-files` can read each
+listed file. The chat files list of the Assistant uses the same query. When the
+tool is present, the `## Sandbox workspace` prompt section names it.
+
+The tool takes no input. The result lists up to 50 files under
+`conversationFiles`, with `fileId`, `fileName`, `mimeType`, `sizeBytes`,
+`origin` (`upload` or `sandbox`) and `createdAt`. `omitted` counts the older
+files that the list leaves out. The list is not named `files`, because the chat
+shows the `files` of a tool result as new files.
+
 ## `share-files`
 
 Store files of `outputs/` in the sandbox workspace as conversation files, so
-the chat shows them under the step and the user can download them. The registry
+the chat shows them in the reply and the user can download them. The registry
 adds the tool when the host sets `sandboxFiles` on the context and the turn has
 a workspace. The host stores each file with `storeOutput`. A file whose name and
 bytes did not change keeps its `fileId`. When the tool is present, the
