@@ -783,7 +783,7 @@ describe('SystemAgentExecutionService', () => {
 			});
 
 			it('keeps a check error for the model and hides a raw error', async () => {
-				const { importFiles, sandboxFiles } = await importFilesOfTurn();
+				const { importFiles, sandboxFiles, logger } = await importFilesOfTurn();
 
 				sandboxFiles.importFilesFrom.mockRejectedValueOnce(
 					new UserError('File "x" not found in this conversation'),
@@ -791,10 +791,16 @@ describe('SystemAgentExecutionService', () => {
 				await expect(importFiles(workspace, { 'a.csv': 'x' })).rejects.toThrow(
 					'File "x" not found in this conversation',
 				);
+				expect(logger.warn).not.toHaveBeenCalled();
 
 				sandboxFiles.importFilesFrom.mockRejectedValueOnce(new Error('ECONNRESET 10.0.0.3'));
 				await expect(importFiles(workspace, { 'a.csv': 'x' })).rejects.toThrow(
 					'The files could not be copied to inputs/',
+				);
+				// The model does not get the raw error, so the operator gets it in the log.
+				expect(logger.warn).toHaveBeenCalledWith(
+					'Failed to import files into the sandbox of a system agent',
+					{ threadId: 'thread-1', error: 'ECONNRESET 10.0.0.3' },
 				);
 			});
 

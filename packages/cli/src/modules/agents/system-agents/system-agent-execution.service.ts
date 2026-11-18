@@ -980,6 +980,10 @@ export class SystemAgentExecutionService {
 						.catch((error: unknown) => {
 							// A check error is for the model. A raw storage or sandbox error is not.
 							if (error instanceof UserError || abortSignal?.aborted) throw error;
+							this.logger.warn('Failed to import files into the sandbox of a system agent', {
+								threadId: thread.id,
+								error: error instanceof Error ? error.message : String(error),
+							});
 							throw new UserError('The files could not be copied to inputs/', { cause: error });
 						}),
 			},

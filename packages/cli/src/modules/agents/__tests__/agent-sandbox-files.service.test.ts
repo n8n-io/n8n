@@ -23,8 +23,9 @@ describe('AgentSandboxFilesService', () => {
 	const workspace = mock<Workspace>({ filesystem, sandbox });
 	const agentsConfig = mock<AgentsConfig>({ maxImportMb: 1 });
 	const postHogClient = mock<PostHogClient>();
+	const logger = mock<Logger>();
 	const service = new AgentSandboxFilesService(
-		mock<Logger>(),
+		logger,
 		attachmentService,
 		agentsConfig,
 		postHogClient,
@@ -302,6 +303,12 @@ describe('AgentSandboxFilesService', () => {
 			expect((error as Error).message).toBe(
 				'Could not copy "f2" to inputs/b.csv. These files were copied before it: inputs/a.csv.',
 			);
+			// The model does not get the cause, so the operator gets it in the log.
+			expect(logger.warn).toHaveBeenCalledWith('Failed to import a file into an agent sandbox', {
+				fileId: 'f2',
+				path: 'inputs/b.csv',
+				error: 'sandbox write failed at 10.0.0.3',
+			});
 		});
 
 		it('stops a cancelled import before the next write', async () => {
@@ -338,6 +345,8 @@ describe('AgentSandboxFilesService', () => {
 			await expect(
 				service.importFiles(workspace, { 'a.csv': 'f1' }, readScope, controller.signal),
 			).rejects.toBe(writeError);
+			// A cancel is not a failure.
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
 		it('writes nothing when a file is not readable', async () => {

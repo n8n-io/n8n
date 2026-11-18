@@ -217,6 +217,12 @@ export class AgentSandboxFilesService {
 				});
 			} catch (error) {
 				if (abortSignal?.aborted) throw error;
+				// The model gets a message without the cause, so log the cause for the operator.
+				this.logger.warn('Failed to import a file into an agent sandbox', {
+					fileId: file.id,
+					path,
+					error: error instanceof Error ? error.message : String(error),
+				});
 				// The files before this one stay in the workspace, so the model must know them.
 				const copied = imported.length
 					? `These files were copied before it: ${imported.map((entry) => entry.path).join(', ')}.`
