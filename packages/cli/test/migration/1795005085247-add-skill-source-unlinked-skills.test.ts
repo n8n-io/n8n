@@ -9,7 +9,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const migration = 'AddSkillSourceUnlinkedSkills1794991781000';
+const migration = 'AddSkillSourceUnlinkedSkills1795005085247';
 
 describe('Skill source unlinked skills migration', () => {
 	let context: TestMigrationContext;
