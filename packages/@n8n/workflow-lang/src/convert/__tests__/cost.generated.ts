@@ -48,6 +48,8 @@ export const CONVERT_COST: Record<string, [ops: number, allocations: number]> = 
 	"convert/40-summarize-single": [1414, 72],
 	"convert/41-summarize-include-empty": [1484, 70],
 	"convert/42-summarize-options": [1153, 72],
+	"convert/43-filter-paired-read": [1851, 132],
+	"convert/44-if-paired-read": [1031, 91],
 	"convert/small": [126, 14],
 	"corpus/01-order-approval": [160, 17],
 	"corpus/02-loops": [265, 13],
