@@ -382,22 +382,23 @@ test "regression: full parked and pending tables do not stop the shard (load tes
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const a = arena.allocator();
-    const cfg: core.Config = .{ .slots = 8, .region_counts = .{ 8, 2, 1, 1 }, .region_sizes = .{ 4 << 10, 64 << 10, 256 << 10, 1 << 20 }, .max_parked = 2, .max_timers = 16, .max_pending = 3, .max_actions = 128, .max_batch_events = 16, .module_bytes = 1 << 14, .natives_total = 1 << 10, .max_modules = 2, .max_routes = 2, .max_schedules = 2, .max_zones = 2 };
+    const cfg: core.Config = .{ .slots = 8, .region_counts = .{ 8, 2, 1, 1 }, .region_sizes = .{ 4 << 10, 64 << 10, 256 << 10, 1 << 20 }, .max_parked = 2, .max_timers = 16, .max_pending = 2, .max_actions = 128, .max_batch_events = 16, .module_bytes = 1 << 14, .natives_total = 1 << 10, .max_modules = 2, .max_routes = 2, .max_schedules = 2, .max_zones = 2 };
     var h: Harness = .{ .st = try core.State.init(a, cfg), .scratch = Arena.init(try a.alloc(u8, 1 << 20)), .gpa = a };
     const m = try module(a, "{}", 1, true);
     _ = try h.tick(&.{.{ .kind = .load_module, .payload = m }});
-    // Six approvals: two park, one more waits in memory, the rest end
-    // with `limit` because the pending table is full.
+    // Six approvals: the pending table holds 2, the wait list fills up.
+    // Four wait for a pending row; none fail at a limit.
     var evs: [6]core.Event = @splat(.{ .kind = .start, .aux = 0, .payload = "{}" });
     const acts = try h.tick(&evs);
     try core.checkInvariants(&h.st);
     try testing.expectEqual(@as(u32, 2), h.st.parkedCount());
+    try testing.expectEqual(@as(u32, 4), h.st.npending_wait);
     var limits: u32 = 0;
     for (acts) |act| {
         if (act.kind == .finished and act.aux == @backingInt(heap.ExecStatus.limit)) limits += 1;
     }
-    try testing.expectEqual(@as(u32, 3), limits);
-    try testing.expectEqual(@as(u32, 1), h.st.liveExecutions());
+    try testing.expectEqual(@as(u32, 0), limits);
+    try testing.expectEqual(@as(u64, 4), h.st.counters.pending_waits);
 }
 
 test "regression: a full module table says why and frees when parked executions end (gym)" {

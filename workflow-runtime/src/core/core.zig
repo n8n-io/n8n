@@ -462,6 +462,9 @@ pub const Counters = struct {
     too_large: u64 = 0,
     /// Effects that found the table of effects in flight full.
     pending_full: u64 = 0,
+    /// Effects that began to wait for a row in the table of effects in
+    /// flight. The execution waits and retries when one is free.
+    pending_waits: u64 = 0,
 };
 
 /// What waits in `State.held` for a slot or a region.
@@ -522,6 +525,8 @@ pub const Limits = struct {
     held_bytes_max: u32,
     held_bytes_high: u32,
     held_starts: u32,
+    /// Executions that wait for a row in the table of effects in flight.
+    pending_wait: u32,
 };
 
 const SlotId = u32;
@@ -608,6 +613,10 @@ pub const State = struct {
     slot_held: []u16,
     /// A region or a slot went back since the last `serveHeld`.
     region_freed: bool = false,
+    /// Executions that wait for a row in the table of effects in flight.
+    /// One entry for each waiting slot, allocated at startup.
+    pending_wait_slots: []SlotId,
+    npending_wait: u32 = 0,
 
     /// Execution id → slot, without tombstones (`exec_index.zig`).
     by_exec: exec_index.ExecIndex(SlotId) = .empty,
@@ -702,6 +711,8 @@ pub const State = struct {
         @memset(s.slot_run_wait, false);
         s.slot_held = try gpa.alloc(u16, cfg.slots);
         @memset(s.slot_held, 0);
+        s.pending_wait_slots = try gpa.alloc(SlotId, cfg.slots);
+        s.npending_wait = 0;
         s.region_freed = false;
         s.by_exec = .empty;
         try s.by_exec.ensureTotalCapacity(gpa, cfg.slots);
@@ -850,6 +861,7 @@ pub const State = struct {
             .held_bytes_max = @intCast(s.held.bytes.len),
             .held_bytes_high = s.held.high_bytes,
             .held_starts = s.held_starts,
+            .pending_wait = s.npending_wait,
         };
     }
 
@@ -906,6 +918,9 @@ pub fn step(s: *State, now_ms: i64, events: []const Event, scratch: *Arena) Step
     // Work that waits for memory goes first: the regions that the events
     // of this batch gave back, then those that the runs give back.
     try serveHeld(s, scratch);
+    // Executions that wait for a row in the pending table: the events of
+    // this batch removed some, so try again.
+    servePendingWaits(s);
     try runReady(s, scratch);
     try serveHeld(s, scratch);
     debugCheckRoots(s, "serveHeld");
@@ -2066,6 +2081,8 @@ fn releaseSlot(s: *State, slot: SlotId) void {
         if (r.active > 0) r.active -= 1;
     }
     if (s.slot_run_wait[slot] or s.slot_held[slot] > 0) dropHeldOf(s, slot);
+    // The execution waited for a pending row: remove it from the list.
+    if (s.npending_wait > 0) dropPendingWait(s, slot);
     s.slot_state[slot] = .free;
     s.free_slots[s.nfree_slots] = slot;
     s.nfree_slots += 1;
@@ -2439,6 +2456,17 @@ fn waitForRegion(s: *State, slot: SlotId, result: ?Event) bool {
     return true;
 }
 
+/// Take `slot` out of `pending_wait_slots` when it ends while it waits.
+fn dropPendingWait(s: *State, slot: SlotId) void {
+    for (s.pending_wait_slots[0..s.npending_wait], 0..) |w, i| {
+        if (w == slot) {
+            std.mem.copyForwards(SlotId, s.pending_wait_slots[i .. s.npending_wait - 1], s.pending_wait_slots[i + 1 .. s.npending_wait]);
+            s.npending_wait -= 1;
+            return;
+        }
+    }
+}
+
 /// Take the entries of the execution in `slot` out of `held`: it ended.
 fn dropHeldOf(s: *State, slot: SlotId) void {
     const id = s.slot_exec[slot];
@@ -2541,6 +2569,25 @@ fn serveHeldSlot(s: *State, i: u32, scratch: *Arena) StepError!bool {
     return true;
 }
 
+/// Executions that wait for a row in the table of effects in flight.
+/// When the table has room, the oldest one goes back to ready.
+fn servePendingWaits(s: *State) void {
+    if (s.npending_wait == 0) return;
+    const cap = s.cfg.max_pending;
+    var kept: u32 = 0;
+    for (s.pending_wait_slots[0..s.npending_wait]) |slot| {
+        if (s.pending.count() < cap) {
+            // The execution goes back to ready: the interpreter retries the
+            // SUSPEND that could not be dispatched before.
+            markReady(s, slot);
+        } else {
+            s.pending_wait_slots[kept] = slot;
+            kept += 1;
+        }
+    }
+    s.npending_wait = kept;
+}
+
 // ---- running --------------------------------------------------------------------------
 
 fn runReady(s: *State, scratch: *Arena) StepError!void {
@@ -2583,13 +2630,7 @@ fn debugCheckRoots(s: *const State, where: []const u8) void {
 fn runOne(s: *State, slot: SlotId, scratch: *Arena) StepError!void {
     if (s.slot_state[slot] == .free) return;
     if (mem.enabled) noteRun(s, slot);
-    if (std.debug.runtime_safety) {
-        // Not `exec()`: it asserts the magic before this can report it.
-        const e = s.regions[slot].at(heap.Exec, 0);
-        if (e.magic != heap.exec_magic or e.nfibres == 0 or e.exec_id != s.slot_exec[slot]) {
-            std.debug.panic("slot {d} (class {d}, region {d}, used {d}) has no valid execution root: magic {x}, nfibres {d}, exec {d} vs {d}", .{ slot, s.slot_class[slot], s.slot_region_idx[slot], s.regions[slot].used, e.magic, e.nfibres, e.exec_id, s.slot_exec[slot] });
-        }
-    }
+    debugCheckSlot(s, slot);
     var fuel: u64 = s.cfg.fuel_per_exec_batch;
     const start_fuel = fuel;
     defer s.counters.instructions += start_fuel - fuel;
@@ -2602,9 +2643,12 @@ fn runOne(s: *State, slot: SlotId, scratch: *Arena) StepError!void {
         switch (out) {
             .effect => |req| {
                 fulls = 0;
+                const nwaits_before = s.npending_wait;
                 const keep = try handleEffect(s, slot, &vm, req, scratch);
                 if (!keep) t.end();
                 if (s.slot_state[slot] == .free) return;
+                // The step waits for a row in the table of effects in flight.
+                if (!keep and s.npending_wait > nwaits_before) return;
                 // The only fibre waits on this effect (a respond completes at
                 // once): one more `run` would only find the execution idle.
                 if (req.only_fibre and req.kind != .respond) {
@@ -2613,7 +2657,6 @@ fn runOne(s: *State, slot: SlotId, scratch: *Arena) StepError!void {
                 }
             },
             .trace => |req| {
-                // The action payload lives in scratch until the batch ends.
                 fulls = 0;
                 try traceAction(s, slot, &vm, req, scratch);
             },
@@ -2629,7 +2672,6 @@ fn runOne(s: *State, slot: SlotId, scratch: *Arena) StepError!void {
             },
             .region_full => {
                 t.end();
-                // Compact, then move up a class; with none free, the run waits.
                 const grow = growFor(s, slot, fulls);
                 fulls += 1;
                 if (grow == .wait and waitForRegion(s, slot, null)) return;
@@ -2638,6 +2680,15 @@ fn runOne(s: *State, slot: SlotId, scratch: *Arena) StepError!void {
             },
             .limit => return finishLimit(s, slot, scratch),
         }
+    }
+}
+
+/// Debug builds: a slot with a valid execution root.
+fn debugCheckSlot(s: *const State, slot: SlotId) void {
+    if (!std.debug.runtime_safety) return;
+    const e = s.regions[slot].at(heap.Exec, 0);
+    if (e.magic != heap.exec_magic or e.nfibres == 0 or e.exec_id != s.slot_exec[slot]) {
+        std.debug.panic("slot {d} (class {d}, region {d}, used {d}) has no valid execution root: magic {x}, nfibres {d}, exec {d} vs {d}", .{ slot, s.slot_class[slot], s.slot_region_idx[slot], s.regions[slot].used, e.magic, e.nfibres, e.exec_id, s.slot_exec[slot] });
     }
 }
 
@@ -2659,30 +2710,24 @@ fn handleEffect(s: *State, slot: SlotId, vm: *ops.Vm, req: interp.EffectReq, scr
         try emit(s, .{ .kind = .trace, .exec_id = exec_id, .seq = req.seq, .step = req.step, .effect_kind = req.kind, .module = s.slot_module[slot], .payload = args });
     }
     switch (req.kind) {
-        .respond => {
-            try respondNow(s, slot, vm, req.args, scratch);
-            // The canvas shows the Respond node like any step: started with
-            // its args, then completed at once.
-            if (stepWatched(s, slot, .started)) {
-                const data = s.regions[slot].exec().flags & heap.exec_flag_data != 0;
-                const args = if (data) try encodeJson(vm, req.args, scratch) else "";
-                try statusEvent(s, slot, req.step, .started, args, 0);
-                try statusEvent(s, slot, req.step, .completed, "", 0);
-            }
-            interp.resumeEffect(vm, req.fibre, value.undef, false);
-            return true;
-        },
+        .respond => return try handleRespond(s, slot, vm, req, scratch),
         .wait => {
             try startWait(s, slot, vm, req);
-            // The trace payload lives in scratch until the batch ends.
             return s.cfg.trace_effects;
         },
         else => {},
     }
-    // A full table of effects in flight ends this execution with `limit`,
-    // not the shard.
+    // A full table of effects in flight: the step waits for a row, or
+    // fails at the limit when the wait list itself is full.
     if (s.pending.count() >= s.cfg.max_pending) {
         s.counters.pending_full += 1;
+        if (s.npending_wait < s.pending_wait_slots.len) {
+            interp.unparkForRetry(vm, req.fibre);
+            s.pending_wait_slots[s.npending_wait] = slot;
+            s.npending_wait += 1;
+            s.counters.pending_waits += 1;
+            return false;
+        }
         try finishLimit(s, slot, scratch);
         return true;
     }
@@ -2704,6 +2749,18 @@ fn handleEffect(s: *State, slot: SlotId, vm: *ops.Vm, req: interp.EffectReq, scr
     idempotencyKey(exec_id, vm.m.str(st.id), req.occurrence, &a.key);
     try emit(s, a);
     try statusEvent(s, slot, req.step, .started, payload, 0);
+    return true;
+}
+
+fn handleRespond(s: *State, slot: SlotId, vm: *ops.Vm, req: interp.EffectReq, scratch: *Arena) StepError!bool {
+    try respondNow(s, slot, vm, req.args, scratch);
+    if (stepWatched(s, slot, .started)) {
+        const data = s.regions[slot].exec().flags & heap.exec_flag_data != 0;
+        const args = if (data) try encodeJson(vm, req.args, scratch) else "";
+        try statusEvent(s, slot, req.step, .started, args, 0);
+        try statusEvent(s, slot, req.step, .completed, "", 0);
+    }
+    interp.resumeEffect(vm, req.fibre, value.undef, false);
     return true;
 }
 

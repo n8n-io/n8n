@@ -4682,7 +4682,7 @@ pub const Runner = struct {
             try limitPart(b, "{s}{{\"bytes\":{d},\"used\":{d},\"max\":{d},\"empty\":{d}}}", .{ if (c == 0) "" else ",", st.cfg.region_sizes[c], l.regions_used[c], l.region_counts[c], st.pool_empty[c] });
         }
         try limitPart(b, "],\"held\":{{\"used\":{d},\"max\":{d},\"high\":{d},\"bytes\":{d},\"bytes_max\":{d},\"bytes_high\":{d},\"run_waits\":{d},\"result_waits\":{d},\"refused\":{d}}},", .{ l.held, l.held_max, l.held_high, l.held_bytes, l.held_bytes_max, l.held_bytes_high, k.run_waits, k.result_waits, k.held_refused });
-        try limitPart(b, "\"executions\":{{\"limit\":{d}}},\"pending\":{{\"used\":{d},\"max\":{d},\"full\":{d}}},", .{ k.limit_finished, l.pending, l.pending_max, k.pending_full });
+        try limitPart(b, "\"executions\":{{\"limit\":{d}}},\"pending\":{{\"used\":{d},\"max\":{d},\"full\":{d},\"waits\":{d},\"waiting\":{d}}},", .{ k.limit_finished, l.pending, l.pending_max, k.pending_full, k.pending_waits, l.pending_wait });
         try limitPart(b, "\"timers\":{{\"used\":{d},\"max\":{d}}},\"parked\":{{\"used\":{d},\"max\":{d}}},", .{ l.timers, l.timers_max, l.parked, l.parked_max });
         try limitPart(b, "\"events\":{{\"used\":{d},\"max\":{d},\"lost\":{d}}},\"batch_bytes\":{{\"used\":{d},\"max\":{d}}},", .{ r.events.items.len, r.events.capacity, r.nlost, r.batch.used, r.batch.buf.len });
         try limitPart(b, "\"egress\":{{\"used\":{d},\"max\":{d},\"waiting\":{d},\"waits\":{d},\"queue_full\":{d}}},", .{ eg.active, r.opts.max_egress, w.waiting(.http_row), w.waited[kind(.http_row)], ek.queue_full });
@@ -4693,8 +4693,13 @@ pub const Runner = struct {
         try limitPart(b, "\"service\":{{\"used\":{d},\"max\":{d},\"waiting\":{d},\"waits\":{d},\"host_refused\":{d}}},", .{ svc_used, r.opts.max_service_calls, w.waiting(.service), w.waited[kind(.service)], r.lim.host_service_refused });
         try limitPart(b, "\"renewals\":{{\"used\":{d},\"max\":{d},\"waiting\":{d},\"waits\":{d}}},", .{ ren_used, r.opts.max_renewals, w.waiting(.renewal), w.waited[kind(.renewal)] });
         var wait_refused: u64 = 0;
-        for (w.refused) |n| wait_refused += n;
-        try limitPart(b, "\"step_wait\":{{\"max\":{d},\"refused\":{d}}},", .{ w.cap, wait_refused });
+        var wait_high: u32 = 0;
+        for (w.refused, w.high) |n, h| {
+            wait_refused += n;
+            wait_high = @max(wait_high, h);
+        }
+        try limitPart(b, "\"step_wait\":{{\"max\":{d},\"high\":{d},\"refused\":{d}}}", .{ w.cap, wait_high, wait_refused });
+        try limitPart(b, ",\"step_wait_http\":{{\"high\":{d}}},\"step_wait_big\":{{\"high\":{d}}},\"step_wait_service\":{{\"high\":{d}}},\"step_wait_renewal\":{{\"high\":{d}}},", .{ w.high[kind(.http_row)], w.high[kind(.http_big)], w.high[kind(.service)], w.high[kind(.renewal)] });
         const ob: outbox.Status = if (r.ob) |*o| o.status() else .{ .first = 0, .last = 0, .acked = 0, .bytes = 0, .max_bytes = 0 };
         try limitPart(b, "\"host\":{{\"used\":{d},\"max\":{d},\"waiting\":{d},\"refused\":{d}}},\"outbox\":{{\"bytes\":{d},\"max\":{d}}}}}", .{ r.fb_inflight.count(), fb_max_inflight, r.fb_waiting_n, r.stats.host_refused.load(.monotonic), ob.bytes, ob.max_bytes });
     }
@@ -5051,6 +5056,42 @@ test "back-pressure: with every connection slot in use a new connection gets 503
     try std.testing.expect(std.mem.startsWith(u8, buf[0..n], "HTTP/1.1 503"));
     try std.testing.expect(std.mem.indexOf(u8, buf[0..n], "--max-conns") != null);
     try std.testing.expectEqual(@as(u64, 1), r.lim.conn_full);
+}
+
+test "request big pool: the free list keeps order and releases back to the waiters" {
+    var t: TestRunner = .{ .arena = undefined };
+    try t.start();
+    defer t.deinit();
+    const r = t.r;
+    // The pool has one large request buffer.
+    try std.testing.expectEqual(@as(usize, 1), r.req_big_free.items.len);
+    const b0 = r.req_big_free.pop().?;
+    try std.testing.expectEqual(@as(usize, 0), r.req_big_free.items.len);
+    // Two connections arrive with bodies that need a large buffer.
+    // Write only the headers first: the body stays in the socket until
+    // the large buffer is available (the small buffer fills).
+    const ma = t.arena.allocator();
+    const head = "POST /w HTTP/1.1\r\nhost: a\r\ncontent-length: 20000\r\n\r\n";
+    const a = try t.client(try ma.dupe(u8, head));
+    defer sys.close(a.fd);
+    // Fill the rest of the small buffer with more bytes, then send the rest.
+    var fill: [16384]u8 = @splat('x');
+    @memcpy(fill[0..head.len], head);
+    // The small buffer is now full; the body needs a large buffer.
+    // But the pool is empty: the request waits for one.
+    // `client` called readConn which read what was available and paused.
+    try std.testing.expectEqual(@as(u64, 1), r.lim.request_big_waits);
+    // The second request also waits, behind the first.
+    const b = try t.client(try ma.dupe(u8, head));
+    defer sys.close(b.fd);
+    try std.testing.expectEqual(@as(u64, 2), r.lim.request_big_waits);
+    try std.testing.expectEqual(@as(u32, 2), r.npaused);
+    // Release the buffer: the first waiting request gets it.
+    r.req_big_free.appendAssumeCapacity(b0);
+    r.resumePaused();
+    try std.testing.expectEqual(@as(u32, 1), r.npaused);
+    try std.testing.expectEqual(@as(usize, 0), r.req_big_free.items.len);
+    try std.testing.expectEqual(@as(u64, 0), r.lim.request_refused);
 }
 
 /// `run(t) { return await Call({ url: 'nowhere', credential: 'api', ...extra }) }`,
