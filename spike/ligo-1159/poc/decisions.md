@@ -1007,3 +1007,57 @@ proof of concept adds no event, so the move of an Apply writes none either.
 - A `workflow-forbidden` conflict of a move has `missingScope`.
 - A `broken-on-source` warning of a Promote has `cause` when the user can read
   the target.
+
+## Decisions of the final regression run (stream R)
+
+### R1. An Apply request to the owner stays open before the consumer exists
+
+- The check that closes a request read the project of the consumer workflow on
+  the destination. Before the first Apply of the consumer, the destination
+  does not hold it, and the request closed at once as "satisfied".
+- The request now stays open until the destination holds the consumer and its
+  project can use the credential. A recipient can dismiss it.
+- The request names the credential as the destination names it. The
+  recipients own it there.
+
+### R2. The client sends the row ids of the deletion callers, not the flag
+
+- `confirmedDeletionCallerIds` holds `deletionCallers[].id`. The server
+  refuses the id of the deleted workflow.
+- The client sends the flag `confirmDeletionCallers` only when a row has no
+  id, which is a server of an earlier version.
+
+### R3. A project page always sends `credentialIds` on Apply
+
+- The project routes take `credentialIds` (K5), so the workaround U4 is gone:
+  a project page stays on the project route and sends the revision of its
+  preview.
+- On Apply the page sends the list also when it is empty. Without the list,
+  the server applies each credential of the project that the instance holds,
+  also one that the user cleared.
+- The list holds the credentials that the user selected directly. A credential
+  that comes with a selected workflow is not in it, as on the changes view.
+
+### R4. A data table of another project is not shown as included
+
+- The preview links a workflow to each data table that it uses with
+  `included: true`. The client reads `resourceWarnings` and shows such a table
+  as "Not copied", not selected.
+- The server still sends `included: true` for it. The client corrects one
+  place, and the five server places that build a preview stay as they are.
+
+### R5. A reader counts the changes that the reader can read
+
+- The read-only view (F1) has no selectable row, so the tab and the group
+  header read "0" and "No changes" next to the cards of the changes.
+- The tab and the header of a read-only project now count the listed changes.
+
+### R6. Texts for the new report fields
+
+- `resourceWarnings` rows are in the "warnings" section, with the owner
+  project when the report holds it. A table without a name reads "Data table"
+  with its id.
+- `livePlaceholderWorkflows` is a warning at the top of the Apply result.
+- A `broken-on-source` warning adds the sentence of its `cause`.
+- A home choice without a candidate shows the sentence of `noCandidateReason`
+  in place of an empty selector. This case was not run.
