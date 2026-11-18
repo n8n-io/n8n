@@ -226,6 +226,18 @@ describe('AssistantAgentProvider', () => {
 		expect(provider.normalizeResumeData({ other: 'shape' })).toEqual({ other: 'shape' });
 	});
 
+	it('tracks a user stop on the Agents runtime', () => {
+		const { provider, telemetry } = setup();
+
+		provider.onUserStoppedTurn({ agentId: 'assistant', threadId: 'thread-1', userId: 'user-1' });
+
+		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.INSTANCE_AI.USER_STOPPED_RUN, {
+			user_id: 'user-1',
+			thread_id: 'thread-1',
+			runtime: 'agents',
+		});
+	});
+
 	describe('onBeforeThreadDeletion', () => {
 		function deletionScope(workflowIds?: string[]) {
 			const memory = mock<SystemAgentStartTurn['memory']>({

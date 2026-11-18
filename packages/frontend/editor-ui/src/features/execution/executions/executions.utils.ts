@@ -16,6 +16,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
+	WorkflowEngineType,
 } from 'n8n-workflow';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { WorkflowObjectAccessors } from '@/app/types/workflow';
@@ -63,6 +64,7 @@ export function getDefaultExecutionFilters(): ExecutionFilterType {
 		metadata: [],
 		vote: 'all',
 		workflowVersionId: 'all',
+		engine: 'all',
 	};
 }
 
@@ -84,6 +86,10 @@ export const executionFilterToQueryFilter = (
 
 	if (filter.workflowVersionId !== 'all') {
 		queryFilter.workflowVersionId = filter.workflowVersionId;
+	}
+
+	if (filter.engine && filter.engine !== 'all') {
+		queryFilter.engine = filter.engine;
 	}
 
 	if (!isEmpty(filter.metadata)) {
@@ -242,6 +248,11 @@ export function hasTrimmedRunData(runData: IRunData) {
  */
 export function isEngineV2ExecutionId(executionId: string): boolean {
 	return UUID_V7_PATTERN.test(executionId);
+}
+
+/** The engine that ran an execution, read from its ID. */
+export function getExecutionEngine(executionId: string): WorkflowEngineType {
+	return isEngineV2ExecutionId(executionId) ? 'v2' : 'v1';
 }
 
 export function executionRetryMessage(executionStatus: ExecutionStatus):

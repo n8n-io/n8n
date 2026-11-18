@@ -132,6 +132,8 @@ export type ResumeAttemptClaim =
 	| { outcome: 'conflict' };
 
 export interface UpdateExecutionConditions {
+	/** Match the wait that the caller read before replacing its response. */
+	requireWaitTill?: Date;
 	requireStatus?: ExecutionStatus;
 	requireStatuses?: readonly ExecutionStatus[];
 	requireNotFinished?: boolean;
@@ -646,6 +648,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	 * @param executionId - The ID of the execution to update
 	 * @param execution - Partial execution data to update
 	 * @param conditions - Optional conditions that must be met for the update to proceed.
+	 *   `requireWaitTill`: only update if the wait timestamp matches.
 	 *   `requireStatus`: only update if execution has this exact status.
 	 *   `requireStatuses`: only update if execution has one of these statuses.
 	 *   `requireNotFinished`: only update if `finished = false`.
@@ -689,6 +692,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return await this.manager.transaction(async (tx) => {
 			if (Object.keys(executionInformation).length > 0) {
 				const whereCondition: FindOptionsWhere<ExecutionEntity> = { id: executionId };
+				if (conditions?.requireWaitTill) whereCondition.waitTill = conditions.requireWaitTill;
 				if (conditions?.requireStatus) whereCondition.status = conditions.requireStatus;
 				if (conditions?.requireStatuses)
 					whereCondition.status = In([...conditions.requireStatuses]);
@@ -729,6 +733,20 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			workflowId,
 			storedAt,
 		}));
+	}
+
+	/** Whether any of `executionIds`, deleted or not, belongs to `workflowId`. */
+	async hasWorkflowExecutionAmong(workflowId: string, executionIds: string[]): Promise<boolean> {
+		for (const ids of chunkIds(executionIds)) {
+			const match = await this.createQueryBuilder('execution')
+				.withDeleted()
+				.select('execution.id')
+				.where('execution.workflowId = :workflowId', { workflowId })
+				.andWhere('execution.id IN (:...ids)', { ids })
+				.getOne();
+			if (match) return true;
+		}
+		return false;
 	}
 
 	async findExecutionsToDelete({
@@ -787,7 +805,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		}).then((executions) => executions.map(({ id }) => id));
 	}
 
-	async softDeletePrunableExecutions() {
+	async softDeletePrunableExecutions(retainedExecutionIds: string[] = []) {
 		const { pruneDataMaxAge, pruneDataMaxCount } = this.globalConfig.executions;
 
 		// Sub-query to exclude executions having annotations
@@ -831,6 +849,16 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			})
 			// Only mark executions as deleted if they are not annotated
 			.andWhere('id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
+			.andWhere(
+				isPostgres
+					? 'CAST(id AS TEXT) <> ALL(CAST(:retainedExecutionIds AS TEXT[]))'
+					: 'CAST(id AS TEXT) NOT IN (SELECT value FROM json_each(:retainedExecutionIds))',
+				{
+					retainedExecutionIds: isPostgres
+						? retainedExecutionIds
+						: JSON.stringify(retainedExecutionIds),
+				},
+			)
 			.andWhere(pruningCriteria)
 			.execute();
 	}

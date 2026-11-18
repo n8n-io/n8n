@@ -48,6 +48,9 @@ export const POLICY_MANAGE_SCOPE = {
 export const POLICIES_LANDING_VIEW = 'TypeAvailabilityPoliciesView';
 export const INSTANCE_POLICY_VIEW = 'TypeAvailabilityInstancePolicyView';
 
+export const INSTANCE_POLICY_DOCS_URL =
+	'https://docs.n8n.io/administer/manage-users-and-access/control-node-availability';
+
 /** The order of the tabs on the instance policy page. */
 export const POLICY_KINDS = ['node', 'credential'] as const satisfies RestrictedTypeKind[];
 

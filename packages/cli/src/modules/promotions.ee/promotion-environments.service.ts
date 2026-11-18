@@ -372,9 +372,9 @@ export class PromotionEnvironmentsService {
 	}
 
 	/**
-	 * Reads whether this instance holds a usable checkout for the environment. A
-	 * package operation needs a checkout that was cloned from the current remote and
-	 * branch, so the flags let the UI show Connect, Reconnect, or Connected.
+	 * Reads whether this instance holds a usable checkout for the environment. An
+	 * operation clones on demand, so the flags describe a local cache only. They do
+	 * not say that the environment is connected.
 	 */
 	private async checkoutStateFor(
 		environment: PromotionEnvironment,
