@@ -15,6 +15,7 @@ import {
 } from '@n8n/api-types';
 import type { ExecutionToolAction, InstanceAiApprovalDetails } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
+import type { IBinaryKeyData } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -85,6 +86,15 @@ const runAction = z.object({
 		.max(MAX_TIMEOUT_MS)
 		.optional()
 		.describe('Max wait time in milliseconds (default 300000, max 600000)'),
+	// Only when the host can pass files to workflow runs. See `createExecutionTool`.
+	files: z
+		.record(z.string(), z.string())
+		.optional()
+		.describe(
+			'Files of this conversation to give the trigger as binary data. ' +
+				'Key = binary property name (usually "data"), value = fileId, such as the fileId of a user upload ' +
+				'or of a file from `share-files`. Files that the last node returns come back under `files`.',
+		),
 });
 
 const runStepAction = z.object({
@@ -223,6 +233,17 @@ const ACTION_SCHEMAS = {
 
 type Input = z.infer<(typeof ACTION_SCHEMAS)[ExecutionToolAction]>;
 
+/**
+ * The file reads and writes that let a workflow run take conversation files
+ * and return its files. Only hosts that store conversation files set them.
+ */
+function workflowFilesOf(context: InstanceAiContext) {
+	const { storedFiles } = context;
+	const readBinary = storedFiles?.readBinary?.bind(storedFiles);
+	const storeWorkflowFile = storedFiles?.storeWorkflowFile?.bind(storedFiles);
+	return readBinary && storeWorkflowFile ? { readBinary, storeWorkflowFile } : undefined;
+}
+
 interface ExecutionsToolOptions {
 	allowedActions?: readonly ExecutionToolAction[];
 }
@@ -352,10 +373,28 @@ async function handleRun(
 	}
 
 	// Approved or always_allow — execute
+	const workflowFiles = workflowFilesOf(context);
+	let binary: IBinaryKeyData | undefined;
+	if (workflowFiles && input.files && Object.keys(input.files).length > 0) {
+		binary = {};
+		for (const [key, fileId] of Object.entries(input.files)) {
+			const entry = await workflowFiles.readBinary(fileId);
+			if (!entry) {
+				return {
+					executionId: '',
+					status: 'error' as const,
+					error: `File "${fileId}" not found in this conversation`,
+				};
+			}
+			binary[key] = entry;
+		}
+	}
 	const result = await context.executionService.run(workflowId, input.inputData, {
 		timeout: input.timeout,
 		triggerNodeName: input.triggerNodeName,
 		abortSignal,
+		...(binary ? { binary } : {}),
+		...(workflowFiles ? { storeOutputFile: workflowFiles.storeWorkflowFile } : {}),
 	});
 	// A live test is the evidence verification cannot produce itself. Record it
 	// so the publish gate stops disclosing simulations that this run replaced.
@@ -578,7 +617,10 @@ const neverSuspend = async (): Promise<never> => {
 /** Builds the tool for one execution action. */
 export function createExecutionTool(context: InstanceAiContext, action: ExecutionToolAction) {
 	const name = EXECUTION_TOOL_NAME_BY_ACTION[action];
-	const schema: z.ZodDiscriminatedUnionOption<'action'> = ACTION_SCHEMAS[action];
+	const schema: z.ZodDiscriminatedUnionOption<'action'> =
+		action === 'run' && !workflowFilesOf(context)
+			? runAction.omit({ files: true })
+			: ACTION_SCHEMAS[action];
 	const tool = new Tool(name)
 		.description(getActionDescription(action))
 		.input(sanitizeInputSchema(schema.omit({ action: true })));

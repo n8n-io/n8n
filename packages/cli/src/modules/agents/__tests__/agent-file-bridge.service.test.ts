@@ -266,6 +266,27 @@ describe('AgentFileBridge', () => {
 		});
 	});
 
+	describe('adoptBinary', () => {
+		it('stores one binary as a tool file', async () => {
+			await expect(bridge.adoptBinary(pngBinary, scope)).resolves.toEqual({
+				fileId: 'aid-1',
+				fileName: 'cat.png',
+				mimeType: 'image/png',
+				sizeBytes: PNG.byteLength,
+			});
+			expect(attachmentService.storeInbound).toHaveBeenCalledWith(
+				expect.objectContaining({ ...scope, source: 'tool', fileName: 'cat.png' }),
+			);
+		});
+
+		it('reports a binary over the limit as skipped and does not store it', async () => {
+			await expect(
+				bridge.adoptBinary({ ...pngBinary, bytes: MAX_GENERATED_FILE_BYTES + 1 }, scope),
+			).resolves.toEqual({ fileName: 'cat.png', reason: 'larger than 50 MB' });
+			expect(attachmentService.storeInbound).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('toBinary', () => {
 		const readScope = { projectId: 'project-1', threadId: 'thread-1' };
 		const inputFile = {

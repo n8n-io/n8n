@@ -44,6 +44,32 @@ describe('Instance AI run pin-data planning', () => {
 		]);
 	});
 
+	it('gives binary data to the trigger item, also without input data', () => {
+		const triggerNode = makeTriggerNode(WEBHOOK_NODE_TYPE, 'Webhook');
+		const binary = {
+			data: { id: 'filesystem-v2:a', data: 'filesystem-v2', mimeType: 'image/png' },
+		};
+
+		const withInput = buildInstanceAiRunPinDataPlan({
+			workflowPinData: {},
+			inputData: { body: { size: 'large' } },
+			binary,
+			triggerNode,
+		});
+		const withoutInput = buildInstanceAiRunPinDataPlan({
+			workflowPinData: {},
+			binary,
+			triggerNode,
+		});
+
+		expect(withInput.triggerItems).toEqual([
+			{ json: { headers: {}, query: {}, params: {}, body: { size: 'large' } }, binary },
+		]);
+		expect(withoutInput.startNodeName).toBe('Webhook');
+		expect(withoutInput.mockDataSources).toContain('trigger_input');
+		expect(withoutInput.triggerItems?.[0]).toMatchObject({ binary });
+	});
+
 	it('merges workflow pins, verification pins, and trigger input into one run plan', () => {
 		const triggerNode = makeTriggerNode(WEBHOOK_NODE_TYPE, 'Webhook');
 		const workflowPinData: IPinData = {

@@ -1141,4 +1141,70 @@ describe('execution tools', () => {
 			expect(result).toEqual(stopResult);
 		});
 	});
+
+	describe('files of a run', () => {
+		const pngBinary = { id: 'filesystem-v2:a', data: 'filesystem-v2', mimeType: 'image/png' };
+
+		function contextWithFiles() {
+			const storedFiles = {
+				read: vi.fn(),
+				readBinary: vi.fn(async (fileId: string) => (fileId === 'file-1' ? pngBinary : undefined)),
+				storeWorkflowFile: vi.fn(),
+			};
+			const context = createMockContext({ permissions: {}, storedFiles });
+			vi.mocked(context.executionService.run).mockResolvedValue({
+				executionId: 'exec-1',
+				status: 'success',
+			});
+			return { context, storedFiles };
+		}
+
+		const inputShape = (context: InstanceAiContext) =>
+			(createExecutionTool(context, 'run').inputSchema as z.AnyZodObject).shape;
+
+		it('takes files only when the host can pass files to workflow runs', () => {
+			expect(inputShape(createMockContext())).not.toHaveProperty('files');
+			expect(inputShape(createMockContext({ storedFiles: { read: vi.fn() } }))).not.toHaveProperty(
+				'files',
+			);
+			expect(inputShape(contextWithFiles().context)).toHaveProperty('files');
+		});
+
+		it('gives the files to the trigger as binary data and stores the output files', async () => {
+			const { context, storedFiles } = contextWithFiles();
+
+			await executeTool(
+				createExecutionToolRouter(context),
+				{ action: 'run' as const, workflowId: 'wf-1', files: { image: 'file-1' } },
+				createAgentCtx({ resumeData: { approved: true } }) as never,
+			);
+
+			expect(storedFiles.readBinary).toHaveBeenCalledWith('file-1');
+			expect(context.executionService.run).toHaveBeenCalledWith(
+				'wf-1',
+				undefined,
+				expect.objectContaining({
+					binary: { image: pngBinary },
+					storeOutputFile: expect.any(Function),
+				}),
+			);
+		});
+
+		it('does not run the workflow with a file that the conversation does not have', async () => {
+			const { context } = contextWithFiles();
+
+			const result = await executeTool(
+				createExecutionToolRouter(context),
+				{ action: 'run' as const, workflowId: 'wf-1', files: { data: 'other' } },
+				createAgentCtx({ resumeData: { approved: true } }) as never,
+			);
+
+			expect(result).toEqual({
+				executionId: '',
+				status: 'error',
+				error: 'File "other" not found in this conversation',
+			});
+			expect(context.executionService.run).not.toHaveBeenCalled();
+		});
+	});
 });
