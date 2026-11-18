@@ -167,3 +167,10 @@ $--mode-selector-width: 92px;
 	width: 25px !important;
 	justify-content: flex-end;
 }
+
+.rowAccess {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	margin-top: var(--spacing--4xs);
+}

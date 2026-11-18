@@ -287,6 +287,32 @@ const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
 	return props.modelValue?.value ?? '';
 });
 
+/** The data table this parameter names, when it names one by a literal id. */
+const selectedDataTable = computedAsync(async () => {
+	if (!isDataTableParameter.value || isValueEmpty.value) return null;
+	if (selectedMode.value !== 'id' && !isListMode.value) return null;
+	// Use the resolved value for expressions, but only if it's a concrete id —
+	// an unresolved template (still containing `{{ }}`) can't identify a table.
+	// In list mode `valueToDisplay` holds the table name, so read the raw value.
+	const raw = props.isValueExpression
+		? props.expressionComputedValue
+		: isListMode.value && typeof props.modelValue === 'object'
+			? props.modelValue?.value
+			: valueToDisplay.value;
+	const id = typeof raw === 'string' ? raw.trim() : '';
+	if (!id || id.includes('{{') || id.includes('}}')) return null;
+	// Reuse a table the store already holds before asking the API. A failed
+	// request only means there is no table to show.
+	return (
+		dataTableStore.dataTables.find((dataTable) => dataTable.id === id) ??
+		(await dataTableStore.fetchDataTableById(id).catch(() => null))
+	);
+}, null);
+
+const dataTableRowRuleColumns = computed(
+	() => selectedDataTable.value?.rowRule?.conditions.map(({ column }) => column).join(', ') ?? '',
+);
+
 const urlValue = computedAsync(async () => {
 	if (isValueEmpty.value) return null;
 	if (isListMode.value && typeof props.modelValue === 'object') {
@@ -313,21 +339,7 @@ const urlValue = computedAsync(async () => {
 	// Data table parameters have no url template, so resolve a link from the id by
 	// looking the table up — only link it when it actually exists for the user.
 	if (isDataTableParameter.value && (selectedMode.value === 'id' || isListMode.value)) {
-		// Use the resolved value for expressions, but only if it's a concrete id —
-		// an unresolved template (still containing `{{ }}`) can't identify a table.
-		// In list mode `valueToDisplay` holds the table name, so read the raw value.
-		const raw = props.isValueExpression
-			? props.expressionComputedValue
-			: isListMode.value && typeof props.modelValue === 'object'
-				? props.modelValue?.value
-				: valueToDisplay.value;
-		const id = typeof raw === 'string' ? raw.trim() : '';
-		if (!id || id.includes('{{') || id.includes('}}')) return null;
-		// Reuse a table the store already holds before asking the API. A failed
-		// request only means there is no link to show.
-		const table =
-			dataTableStore.dataTables.find((dataTable) => dataTable.id === id) ??
-			(await dataTableStore.fetchDataTableById(id).catch(() => null));
+		const table = selectedDataTable.value;
 		// Resolve via the router so the link honours the configured base path (N8N_PATH).
 		return table
 			? router.resolve({
@@ -1331,6 +1343,20 @@ function removeOverride() {
 			:is-read-only="isReadOnly"
 			@update="(x: IUpdateInformation) => onInputChange(x.value?.toString())"
 		/>
+		<N8nText
+			v-if="dataTableRowRuleColumns"
+			size="small"
+			color="text-light"
+			:class="$style.rowAccess"
+			data-test-id="rlc-data-table-row-access"
+		>
+			<N8nIcon icon="user-lock" size="small" />
+			{{
+				i18n.baseText('dataTable.rowAccess.nodeNotice', {
+					interpolate: { columns: dataTableRowRuleColumns },
+				})
+			}}
+		</N8nText>
 	</div>
 </template>
 

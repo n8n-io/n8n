@@ -1488,7 +1488,7 @@ describe('ResourceLocator', () => {
 			expect(windowOpenSpy).toHaveBeenCalledWith(TABLE_URL, '_blank', 'noopener,noreferrer');
 		});
 
-		it('uses the cached url of a list value without a lookup', async () => {
+		it('uses the cached url of a list value', async () => {
 			// Differs from the url a lookup would build, so the test shows which one is used.
 			const cachedUrl = `/projects/cached-project/datatables/${TABLE_ID}`;
 			const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
@@ -1503,7 +1503,33 @@ describe('ResourceLocator', () => {
 			await userEvent.click(link);
 
 			expect(windowOpenSpy).toHaveBeenCalledWith(cachedUrl, '_blank', 'noopener,noreferrer');
-			expect(dataTableStore.fetchDataTableById).not.toHaveBeenCalled();
+		});
+
+		it('says that a table with row access limits rows to the person who runs the workflow', async () => {
+			dataTableStore.fetchDataTableById.mockResolvedValue({
+				id: TABLE_ID,
+				projectId: 'project-1',
+				rowRule: {
+					conditions: [{ column: 'owner', match: 'id' }],
+					projectMembersSeeAll: false,
+					runsWithoutUser: 'deny',
+				},
+			} as DataTable);
+			const { getByTestId } = renderDataTableLocator({ mode: 'id', value: TABLE_ID });
+
+			expect(await waitFor(() => getByTestId('rlc-data-table-row-access'))).toHaveTextContent(
+				'owner',
+			);
+		});
+
+		it('says nothing about row access for a table without a rule', async () => {
+			const { getByTestId, queryByTestId } = renderDataTableLocator({
+				mode: 'id',
+				value: TABLE_ID,
+			});
+
+			await waitFor(() => getByTestId('rlc-open-resource-link'));
+			expect(queryByTestId('rlc-data-table-row-access')).not.toBeInTheDocument();
 		});
 
 		it('links an id value on an Evaluation node', async () => {

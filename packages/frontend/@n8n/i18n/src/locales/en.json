@@ -6453,6 +6453,7 @@
 	"dataTable.rowAccess.match.id": "n8n user ID",
 	"dataTable.rowAccess.match.email": "Email",
 	"dataTable.rowAccess.match.project": "Team (project ID)",
+	"dataTable.rowAccess.nodeNotice": "Rows are limited to the person who runs this workflow, by {columns}",
 	"dataTable.rowAccess.conditions.hint": "A person sees a row when any of these match.",
 	"dataTable.rowAccess.pickPerson": "Choose a person",
 	"dataTable.rowAccess.pickTeam": "Choose a team",
