@@ -1,0 +1,22 @@
+packages/modules/promotions/frontend/src/components/PromotionEnvironmentCard.vue
+  s_c491b763173894::t_e9ca8d8cfd33dc 163,167
+packages/modules/promotions/frontend/src/views/PromotionsSettingsView.test.ts
+  s_c491b763173894::t_e9ca8d8cfd33dc 294-307,313-320
+  s_c491b763173894::t_9f7635fe220d24 308-312
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5f29f59227e8400ca9acaa5f211b9ed01765f008",
+  "prompts": {},
+  "sessions": {
+    "s_c491b763173894": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "30665cc2-afa4-48d7-81c6-1f903841602e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
