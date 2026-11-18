@@ -582,7 +582,7 @@ const onSelect = (action: string, source: CreateSource) => {
 							>
 								{{ projectName }}
 							</RouterLink>
-							<N8nIcon icon="chevron-right" size="large" :class="$style.pagePathSeparator" />
+							<N8nIcon icon="chevron-right-12" :size="12" :class="$style.pagePathSeparator" />
 							<N8nHeading
 								:class="$style.projectName"
 								:title="currentPage.label"
