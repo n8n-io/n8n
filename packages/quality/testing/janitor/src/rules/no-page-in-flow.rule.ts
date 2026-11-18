@@ -1,8 +1,8 @@
 import { AstRule } from '@n8n/rules-engine/ast';
 import type { AstProjectConfig } from '@n8n/rules-engine/ast';
-import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
+import { SyntaxKind, type Project, type PropertyAccessExpression, type SourceFile } from 'ts-morph';
 
-import { getConfig, ruleAllows } from '../config.js';
+import { getConfig } from '../config.js';
 import type { Violation } from '../types.js';
 import { LOCATOR_METHODS } from '../utils/ast-helpers.js';
 import { getRelativePath } from '../utils/paths.js';
@@ -86,29 +86,36 @@ export class NoPageInFlowRule extends AstRule<{ rootDir: string }> {
 					const methodName = propAccess
 						.getFirstAncestorByKind(SyntaxKind.MethodDeclaration)
 						?.getName();
-					const context = `${getRelativePath(file.getFilePath()).replaceAll('\\', '/')}:${className}.${methodName}: ${text}`;
-					if (ruleAllows(this.id, text) || ruleAllows(this.id, context)) {
+					const context = `${getRelativePath(file.getFilePath()).replaceAll('\\', '/')}:${className}.${methodName}`;
+					if (this.isAllowed(propAccess, context)) {
 						continue;
 					}
 
-					const startLine = propAccess.getStartLineNumber();
-					const startColumn = propAccess.getStart() - propAccess.getStartLinePos();
-					const posKey = `${startLine}:${startColumn}`;
+					const posKey = String(propAccess.getStart());
 
 					if (flaggedPositions.has(posKey)) {
 						continue;
 					}
 					flaggedPositions.add(posKey);
 
-					const pageMethodName = match[1];
+					const operation =
+						[
+							propAccess,
+							...propAccess.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression),
+						].find(
+							(access) =>
+								access.getStart() === propAccess.getStart() &&
+								LOCATOR_METHODS.includes(access.getName()),
+						) ?? propAccess;
+					const nameNode = operation.getNameNode();
 
 					violations.push(
 						this.fileViolation(
 							file,
-							startLine,
-							startColumn,
-							`Direct page access in ${flowLayerName}: this.${fixtureName}.page.${pageMethodName}`,
-							this.getSuggestion(pageMethodName),
+							nameNode.getStartLineNumber(),
+							nameNode.getStart() - nameNode.getStartLinePos(),
+							`Direct page access in ${flowLayerName}: ${operation.getText()}`,
+							this.getSuggestion(operation.getName()),
 						),
 					);
 				}
@@ -116,6 +123,31 @@ export class NoPageInFlowRule extends AstRule<{ rootDir: string }> {
 		}
 
 		return violations;
+	}
+
+	private isAllowed(propAccess: PropertyAccessExpression, context: string): boolean {
+		const allowPatterns = getConfig().rules[this.id]?.allowPatterns ?? [];
+		let access: PropertyAccessExpression | undefined = propAccess;
+
+		while (access) {
+			const text = access.getText();
+			const candidates = [text, `${context}: ${text}`];
+			if (
+				allowPatterns.some((pattern) =>
+					candidates.some((candidate) => {
+						const match = new RegExp(pattern).exec(candidate);
+						return match !== null && match.index + match[0].length === candidate.length;
+					}),
+				)
+			) {
+				return true;
+			}
+
+			// Allow members such as keyboard.press, but do not cross calls or element access.
+			access = access.getExpression().asKind(SyntaxKind.PropertyAccessExpression);
+		}
+
+		return false;
 	}
 
 	/**

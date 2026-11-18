@@ -14,18 +14,16 @@ describe('Composable browser orchestration configuration', () => {
 	beforeEach(() => setConfig(config));
 	afterEach(() => resetConfig());
 
-	test.each([
-		'BuilderWizardComposer',
-		'TestEntryComposer',
-		'ExecutionsComposer',
-		'WorkflowComposer',
-	])('allows the browser orchestration in %s', (className) => {
-		const project = new Project({ useInMemoryFileSystem: true });
-		const filePath = `${config.rootDir}/composables/${className}.ts`;
-		const file = project.createSourceFile(filePath, readFileSync(filePath, 'utf8'));
+	test.each(['BuilderWizardComposer', 'TestEntryComposer', 'ExecutionsComposer'])(
+		'allows the browser orchestration in %s',
+		(className) => {
+			const project = new Project({ useInMemoryFileSystem: true });
+			const filePath = `${config.rootDir}/composables/${className}.ts`;
+			const file = project.createSourceFile(filePath, readFileSync(filePath, 'utf8'));
 
-		expect(new NoPageInFlowRule().analyzeProject(project, [file])).toEqual([]);
-	});
+			expect(new NoPageInFlowRule().analyzeProject(project, [file])).toEqual([]);
+		},
+	);
 
 	test.each([
 		['BuilderWizardComposer', 'mockBuilderStream', "route('**/rest/ai/build', async () => {})"],

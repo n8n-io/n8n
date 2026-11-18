@@ -51,11 +51,14 @@ export class WorkflowComposer {
 		});
 	}
 
-	test('keeps raw expression allow patterns', ({ project, createFile }) => {
+	test('keeps raw expression allow patterns and keyboard members', ({ project, createFile }) => {
 		const file = createFile(
 			'/composables/WorkflowComposer.ts',
 			`export class WorkflowComposer {
-				async setup() { await this.n8n.page.waitForURL('/home/workflows'); }
+				async setup() {
+					await this.n8n.page.waitForURL('/home/workflows');
+					await this.n8n.page.keyboard.press('Enter');
+				}
 			}`,
 		);
 
@@ -215,38 +218,65 @@ export class WorkflowComposer {
 		expect(violations[0].message).toContain('page.context');
 	});
 
-	test('does not allow DOM access after an allowed prefix or inside its arguments', ({
-		project,
-		createFile,
-	}) => {
-		setConfig({
-			...getConfig(),
-			rules: {
-				'no-page-in-flow': {
-					allowPatterns: [
-						/^composables\/EntryComposer\.ts:EntryComposer\.setup: this\.n8n\.page\.(context|route)$/,
-					],
+	for (const { name, allowPatterns } of [
+		{
+			name: 'anchored scoped',
+			allowPatterns: [
+				/^composables\/EntryComposer\.ts:EntryComposer\.setup: this\.n8n\.page\.(context|route)$/,
+			],
+		},
+		{
+			name: 'unanchored scoped',
+			allowPatterns: [
+				/^composables\/EntryComposer\.ts:EntryComposer\.setup: this\.n8n\.page\.(context|route)/,
+			],
+		},
+		{
+			name: 'unanchored raw',
+			allowPatterns: [/\.page\.(context|route)/],
+		},
+	]) {
+		test(`limits ${name} patterns to the allowed operation`, ({ project, createFile }) => {
+			setConfig({
+				...getConfig(),
+				rules: {
+					'no-page-in-flow': {
+						allowPatterns,
+					},
 				},
-			},
-		});
-		const file = createFile(
-			'/composables/EntryComposer.ts',
-			`export class EntryComposer {
+			});
+			const file = createFile(
+				'/composables/EntryComposer.ts',
+				`export class EntryComposer {
 				async setup() {
 					this.n8n.page.context();
 					this.n8n.page.context().pages()[0].getByTestId('button').click();
+					this.n8n.page.context().newPage().locator('button').click();
 					await this.n8n.page.route('**/rest/example', async () => {
 						await this.n8n.page.getByTestId('button').click();
 					});
 				}
 			}`,
-		);
+			);
 
-		const violations = rule.analyzeProject(project, [file]);
-		expect(violations.map(({ line }) => line)).toEqual([4, 6]);
-		expect(violations.map(({ message }) => message)).toEqual([
-			'Direct page access in composable: this.n8n.page.context',
-			'Direct page access in composable: this.n8n.page.getByTestId',
-		]);
-	});
+			const violations = rule.analyzeProject(project, [file]);
+			expect(violations.map(({ line }) => line)).toEqual([4, 5, 7]);
+			expect(violations.map(({ message }) => message)).toEqual([
+				'Direct page access in composable: this.n8n.page.context().pages()[0].getByTestId',
+				'Direct page access in composable: this.n8n.page.context().newPage().locator',
+				'Direct page access in composable: this.n8n.page.getByTestId',
+			]);
+			expect(
+				violations.every(
+					({ suggestion }) => suggestion === 'Use page object methods instead of direct locators',
+				),
+			).toBe(true);
+			const lines = file.getFullText().split('\n');
+			expect(violations.map(({ line, column }) => lines[line - 1].slice(column))).toEqual([
+				"getByTestId('button').click();",
+				"locator('button').click();",
+				"getByTestId('button').click();",
+			]);
+		});
+	}
 });
