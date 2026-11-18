@@ -326,6 +326,9 @@ catalogs:
     '@microsoft/opentelemetry':
       specifier: 1.5.0
       version: 1.5.0
+    '@modelcontextprotocol/client':
+      specifier: 2.3.0
+      version: 2.3.0
     '@modelcontextprotocol/ext-apps':
       specifier: 1.3.2
       version: 1.3.2
@@ -5038,6 +5041,9 @@ importers:
       '@microsoft/opentelemetry':
         specifier: 'catalog:'
         version: 1.5.0(supports-color@8.1.1)
+      '@modelcontextprotocol/client':
+        specifier: 'catalog:'
+        version: 2.3.0
       '@modelcontextprotocol/node':
         specifier: 'catalog:'
         version: 2.1.0(@modelcontextprotocol/server@2.3.0)(hono@4.13.11)
@@ -13198,6 +13204,10 @@ packages:
 
   '@mixmark-io/domino@2.2.0':
     resolution: {integrity: sha512-Y28PR25bHXUg88kCV7nivXrP2Nj2RueZ3/l/jdx6J9f8J4nsEGcgX0Qe6lt7Pa+J79+kPiJU3LguR6O/6zrLOw==}
+
+  '@modelcontextprotocol/client@2.3.0':
+    resolution: {integrity: sha512-pbHtGj6EeFCHngFE8gtNPaKrsj8Mb1IMw45BLcaPML/m2WTxI7pyYmeNQvaux88Lw8BSO5r7nyRbUyIkICmGrg==}
+    engines: {node: '>=20'}
 
   '@modelcontextprotocol/core@2.3.0':
     resolution: {integrity: sha512-09BHFaNVBe5pB2AhzCfLj0cqmsKLERvZQ4FblzP90UMGLaXVqdZPByFjURwsUYCmxonUW2yAwgTTvle+8O2/8w==}
@@ -31426,7 +31436,7 @@ snapshots:
       mongodb: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.9)
       mysql2: 3.23.1(@types/node@20.19.41)
       pdf-parse: 2.4.5(patch_hash=3827ce0d19ea8a667a03b05afe753b3d8a7a5a837ccfc4b8f5516e738e6cea82)
-      pg: 8.21.0(pg-native@3.8.0)
+      pg: 8.21.0
       playwright: 1.62.1
       puppeteer: 24.41.0(bufferutil@4.0.9)(supports-color@8.1.1)(typescript@7.0.2)(utf-8-validate@5.0.10)
       redis: 4.6.14
@@ -32050,6 +32060,16 @@ snapshots:
       - utf-8-validate
 
   '@mixmark-io/domino@2.2.0': {}
+
+  '@modelcontextprotocol/client@2.3.0':
+    dependencies:
+      '@modelcontextprotocol/core': 2.3.0
+      cross-spawn: 7.0.6
+      eventsource: 3.0.6
+      eventsource-parser: 3.0.8
+      jose: 6.2.9
+      pkce-challenge: 5.0.0(patch_hash=651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90)
+      zod: 3.25.76
 
   '@modelcontextprotocol/core@2.3.0':
     dependencies:
@@ -44320,9 +44340,14 @@ snapshots:
       libpq: 1.11.0
       pg-types: 2.2.0
 
-  pg-pool@3.14.0(pg@8.21.0):
+  pg-pool@3.14.0(pg@8.21.0(pg-native@3.8.0)):
     dependencies:
       pg: 8.21.0(pg-native@3.8.0)
+
+  pg-pool@3.14.0(pg@8.21.0):
+    dependencies:
+      pg: 8.21.0
+    optional: true
 
   pg-promise@11.9.1(pg-native@3.8.0):
     dependencies:
@@ -44348,10 +44373,21 @@ snapshots:
       postgres-date: 1.0.7
       postgres-interval: 1.2.0
 
-  pg@8.21.0(pg-native@3.8.0):
+  pg@8.21.0:
     dependencies:
       pg-connection-string: 2.14.0
       pg-pool: 3.14.0(pg@8.21.0)
+      pg-protocol: 1.15.0
+      pg-types: 2.2.0
+      pgpass: 1.0.5
+    optionalDependencies:
+      pg-cloudflare: 1.4.0
+    optional: true
+
+  pg@8.21.0(pg-native@3.8.0):
+    dependencies:
+      pg-connection-string: 2.14.0
+      pg-pool: 3.14.0(pg@8.21.0(pg-native@3.8.0))
       pg-protocol: 1.15.0
       pg-types: 2.2.0
       pgpass: 1.0.5
