@@ -1206,5 +1206,50 @@ describe('execution tools', () => {
 			});
 			expect(context.executionService.run).not.toHaveBeenCalled();
 		});
+
+		describe('files of a node output', () => {
+			const nodeOutputShape = (context: InstanceAiContext) =>
+				(createExecutionTool(context, 'get-node-output').inputSchema as z.AnyZodObject).shape;
+
+			it('offers to store files only when the host can store them', () => {
+				expect(nodeOutputShape(createMockContext())).not.toHaveProperty('storeFiles');
+				expect(nodeOutputShape(contextWithFiles().context)).toHaveProperty('storeFiles');
+			});
+
+			it('stores the files of the returned items when asked', async () => {
+				const { context, storedFiles } = contextWithFiles();
+
+				await executeTool(
+					createExecutionToolRouter(context),
+					{
+						action: 'get-node-output' as const,
+						executionId: 'exec-1',
+						nodeName: 'Edit Image',
+						storeFiles: true,
+					},
+					{} as never,
+				);
+
+				const options = vi.mocked(context.executionService.getNodeOutput).mock.calls[0][2];
+				await options?.storeFile?.(pngBinary);
+				expect(storedFiles.storeWorkflowFile).toHaveBeenCalledWith(pngBinary);
+			});
+
+			it('stores nothing without storeFiles', async () => {
+				const { context } = contextWithFiles();
+
+				await executeTool(
+					createExecutionToolRouter(context),
+					{ action: 'get-node-output' as const, executionId: 'exec-1', nodeName: 'Edit Image' },
+					{} as never,
+				);
+
+				expect(context.executionService.getNodeOutput).toHaveBeenCalledWith(
+					'exec-1',
+					'Edit Image',
+					{ startIndex: undefined, maxItems: undefined },
+				);
+			});
+		});
 	});
 });

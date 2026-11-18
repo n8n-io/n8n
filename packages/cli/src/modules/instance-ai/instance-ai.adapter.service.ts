@@ -115,6 +115,8 @@ import type {
 	McpRegistryServerSummary,
 	ModelConfig,
 	FolderResolutionFailure,
+	InstanceAiConversationFile,
+	InstanceAiSkippedFile,
 } from '@n8n/instance-ai';
 import {
 	wrapUntrustedData,
@@ -149,6 +151,7 @@ import {
 	type WorkflowExecuteMode,
 	type ExecutionError,
 	type IBinaryData,
+	type IBinaryKeyData,
 	type IRunData,
 	type ITaskData,
 	NodeConnectionTypes,
@@ -5238,6 +5241,44 @@ function foldToolExecutorRun(
 /** Most output files that one run stores, so a large batch cannot flood the conversation. */
 export const MAX_RUN_OUTPUT_FILES = 10;
 
+type StoreOutputFile = (
+	binary: IBinaryData,
+) => Promise<InstanceAiConversationFile | InstanceAiSkippedFile | undefined>;
+
+/**
+ * Store the files of some execution items as conversation files, one time for
+ * each binary and at most `MAX_RUN_OUTPUT_FILES` of them.
+ */
+async function storeItemFiles(
+	items: Iterable<{ binary?: IBinaryKeyData }>,
+	storeOutputFile: StoreOutputFile,
+	limitReason: string,
+): Promise<{ files?: InstanceAiConversationFile[]; skippedFiles?: InstanceAiSkippedFile[] }> {
+	const files: InstanceAiConversationFile[] = [];
+	const skippedFiles: InstanceAiSkippedFile[] = [];
+	const seen = new Set<IBinaryData | string>();
+	for (const item of items) {
+		for (const [key, binary] of Object.entries(item.binary ?? {})) {
+			// Nodes pass the same stored binary on, so store it one time.
+			const identity = binary.id ?? binary;
+			if (seen.has(identity)) continue;
+			seen.add(identity);
+			if (files.length >= MAX_RUN_OUTPUT_FILES) {
+				skippedFiles.push({ fileName: binary.fileName ?? key, reason: limitReason });
+				continue;
+			}
+			const stored = await storeOutputFile(binary);
+			if (!stored) continue;
+			if ('reason' in stored) skippedFiles.push(stored);
+			else files.push(stored);
+		}
+	}
+	return {
+		...(files.length > 0 ? { files } : {}),
+		...(skippedFiles.length > 0 ? { skippedFiles } : {}),
+	};
+}
+
 /**
  * Store each file that the last node of a run returned as a conversation file,
  * one time for each binary, as the workflow tools of project agents do. A
@@ -5245,40 +5286,16 @@ export const MAX_RUN_OUTPUT_FILES = 10;
  */
 export async function storeRunOutputFiles(
 	execution: IExecutionResponse,
-	storeOutputFile: NonNullable<
-		NonNullable<Parameters<InstanceAiExecutionService['run']>[2]>['storeOutputFile']
-	>,
+	storeOutputFile: StoreOutputFile,
 ): Promise<Pick<ExecutionResult, 'files' | 'skippedFiles'>> {
 	const runData = execution.data?.resultData?.runData;
 	if (!runData || getExecutionRedaction(execution)) return {};
-	const files: NonNullable<ExecutionResult['files']> = [];
-	const skippedFiles: NonNullable<ExecutionResult['skippedFiles']> = [];
-	const seen = new Set<IBinaryData | string>();
-	for (const items of Object.values(collectResultItems(runData, false))) {
-		for (const item of items) {
-			for (const [key, binary] of Object.entries(item.binary ?? {})) {
-				// Nodes pass the same stored binary on, so store it one time.
-				const identity = binary.id ?? binary;
-				if (seen.has(identity)) continue;
-				seen.add(identity);
-				if (files.length >= MAX_RUN_OUTPUT_FILES) {
-					skippedFiles.push({
-						fileName: binary.fileName ?? key,
-						reason: `one run returns at most ${MAX_RUN_OUTPUT_FILES} files`,
-					});
-					continue;
-				}
-				const stored = await storeOutputFile(binary);
-				if (!stored) continue;
-				if ('reason' in stored) skippedFiles.push(stored);
-				else files.push(stored);
-			}
-		}
-	}
-	return {
-		...(files.length > 0 ? { files } : {}),
-		...(skippedFiles.length > 0 ? { skippedFiles } : {}),
-	};
+	const items = Object.values(collectResultItems(runData, false)).flat();
+	return await storeItemFiles(
+		items,
+		storeOutputFile,
+		`one run returns at most ${MAX_RUN_OUTPUT_FILES} files`,
+	);
 }
 
 /**
@@ -5653,7 +5670,7 @@ function resolveOutputNames(workflow: Workflow | undefined, nodeName: string): s
 export async function extractNodeOutput(
 	execution: IExecutionResponse,
 	nodeName: string,
-	options?: { startIndex?: number; maxItems?: number },
+	options?: { startIndex?: number; maxItems?: number; storeFile?: StoreOutputFile },
 	nodeTypes?: INodeTypes,
 ): Promise<NodeOutputResult> {
 	const executionId = execution.id;
@@ -5718,6 +5735,8 @@ export async function extractNodeOutput(
 	let index = 0;
 	let returnedCount = 0;
 	const outputs: NodeOutputBranch[] = [];
+	// The model sees only the JSON of an item, so the result counts the files apart.
+	const returnedItemsWithFiles: Array<{ binary: IBinaryKeyData }> = [];
 	for (let outputIndex = 0; outputIndex < outputCount; outputIndex++) {
 		const collected: unknown[] = [];
 		let itemsOnOutput = 0;
@@ -5733,6 +5752,9 @@ export async function extractNodeOutput(
 							`node:${nodeName}${call}[${outputIndex}][${itemsOnOutput}]`,
 						),
 					);
+					if (item.binary && Object.keys(item.binary).length > 0) {
+						returnedItemsWithFiles.push({ binary: item.binary });
+					}
 					returnedCount++;
 				}
 				index++;
@@ -5748,12 +5770,27 @@ export async function extractNodeOutput(
 		});
 	}
 
+	const binaryFileCount = returnedItemsWithFiles.reduce(
+		(count, item) => count + Object.keys(item.binary).length,
+		0,
+	);
+	const storedFiles =
+		options?.storeFile && binaryFileCount > 0
+			? await storeItemFiles(
+					returnedItemsWithFiles,
+					options.storeFile,
+					`one call stores at most ${MAX_RUN_OUTPUT_FILES} files; page with startIndex and maxItems`,
+				)
+			: {};
+
 	return {
 		nodeName,
 		outputs,
 		totalItems: index,
 		returned: { from: startIndex, to: startIndex + returnedCount },
 		...(nodeRuns.length > 1 ? { totalRuns: nodeRuns.length } : {}),
+		...(binaryFileCount > 0 ? { binaryFileCount } : {}),
+		...storedFiles,
 	};
 }
 
