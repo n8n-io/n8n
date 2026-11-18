@@ -1,6 +1,6 @@
 import { RunWorkflowTestDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Post, ProjectScope, RestController } from '@n8n/decorators';
+import { Body, GlobalScope, Post, RestController } from '@n8n/decorators';
 
 import { WorkflowTestRunService } from './workflow-test-run.service';
 
@@ -9,7 +9,7 @@ export class WorkflowTestsController {
 	constructor(private readonly workflowTestRunService: WorkflowTestRunService) {}
 
 	@Post('/:workflowId/tests/run')
-	@ProjectScope('workflow:execute')
+	@GlobalScope('workflow:execute')
 	run(
 		req: AuthenticatedRequest<{ workflowId: string }>,
 		_res: unknown,

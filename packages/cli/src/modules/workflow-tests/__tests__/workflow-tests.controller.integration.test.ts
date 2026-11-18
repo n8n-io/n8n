@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 import path from 'node:path';
 
 import { Push } from '@/push';
-import { createOwner } from '@test-integration/db/users';
+import { createMember, createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 import { WorkflowTestsConfig } from '../workflow-tests.config';
@@ -83,9 +83,11 @@ async function runTests(body: object) {
 test('runs the test file against the exported workflow and sends each result', async () => {
 	const source = `
 import { expect, test } from 'vitest';
+import nock from 'nock';
 import { executeWorkflow, loadPackage } from '@n8n/test';
 
 test('passes the input through', async () => {
+	expect(nock.isActive()).toBe(true);
 	const workflows = await loadPackage('./package');
 	const result = await executeWorkflow(workflows.get('${workflow.id}'), { input: { greeting: 'hi' } });
 	expect(result.output).toEqual([{ greeting: 'hi' }]);
@@ -128,4 +130,15 @@ test('sends a run error when the workflow has no published version', async () =>
 			errors: [expect.stringContaining('no published version')],
 		},
 	]);
+});
+
+test('refuses a member, even on their own workflow', async () => {
+	const member = await createMember();
+	const memberWorkflow = await createWorkflow({}, member);
+
+	await server
+		.authAgentFor(member)
+		.post(`/workflows/${memberWorkflow.id}/tests/run`)
+		.send({ source: 'export {}' })
+		.expect(403);
 });

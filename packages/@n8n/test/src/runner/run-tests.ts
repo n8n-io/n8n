@@ -24,6 +24,7 @@ async function runTests(directory: string) {
 			resolve: {
 				alias: {
 					'@n8n/test': path.resolve(__dirname, '..', 'index.js'),
+					nock: require.resolve('nock'),
 				},
 			},
 		},
