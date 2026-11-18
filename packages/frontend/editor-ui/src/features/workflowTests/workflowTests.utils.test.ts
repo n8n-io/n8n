@@ -1,6 +1,29 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseTestNames } from './workflowTests.utils';
+import { extractTestSource, parseTestNames } from './workflowTests.utils';
+
+describe('extractTestSource', () => {
+	const source = `import { test } from 'vitest';
+
+test('first', async () => {
+	const text = 'a ) } quote';
+	expect(fn({ a: [1] })).toBe(\`)\`); // )
+});
+
+test('second', () => {});
+`;
+
+	it('returns the whole call, with brackets inside strings and comments', () => {
+		expect(extractTestSource(source, 'first')).toBe(
+			"test('first', async () => {\n\tconst text = 'a ) } quote';\n\texpect(fn({ a: [1] })).toBe(`)`); // )\n});",
+		);
+		expect(extractTestSource(source, 'second')).toBe("test('second', () => {});");
+	});
+
+	it('returns undefined for an unknown name', () => {
+		expect(extractTestSource(source, 'third')).toBeUndefined();
+	});
+});
 
 describe('parseTestNames', () => {
 	it('reads the names of test and it calls in order', () => {

@@ -80,6 +80,17 @@ describe('useWorkflowTestsStore', () => {
 		expect(api.getWorkflowTests).toHaveBeenCalledTimes(1);
 	});
 
+	it('keeps a finished live run when a reload returns no stored run yet', async () => {
+		const store = useWorkflowTestsStore();
+		await store.fetchFile('wf-1');
+
+		push('assistant-run', { type: 'testFinished', name: 'a', status: 'passed', durationMs: 1 });
+		push('assistant-run', { type: 'runFinished', status: 'passed', errors: [] });
+		await store.fetchFile('wf-1');
+
+		expect(store.runs['wf-1']).toMatchObject({ runId: 'assistant-run', status: 'passed' });
+	});
+
 	it('shows the stored last run after a load', async () => {
 		vi.mocked(api.getWorkflowTests).mockResolvedValue([
 			{

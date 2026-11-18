@@ -49,8 +49,14 @@ export function threadTargetsSubject(
 ): boolean {
 	if (subject.type === 'workflow') {
 		// TODO(AGENT-810 follow-up): workflows have no thread-metadata binding key
-		// yet (see plan §7 / NodeView host) — always excluded until that lands.
-		return false;
+		// yet (see plan §7 / NodeView host). Until then only the Tests tab binds a
+		// thread to a workflow, through the launch context that it writes.
+		const sourceContext = metadata?.sourceContext;
+		return (
+			metadata?.source === 'workflow_tests' &&
+			isRecord(sourceContext) &&
+			sourceContext.workflowId === subject.id
+		);
 	}
 	if (subject.type === 'app') {
 		if (getPendingAppTargetFromThreadMetadata(metadata)?.appId === subject.id) return true;

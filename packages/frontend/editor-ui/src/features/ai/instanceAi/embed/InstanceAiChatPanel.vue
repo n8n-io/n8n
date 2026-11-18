@@ -346,10 +346,13 @@ function setPrefill(prefill: InstanceAiPrefillPayload) {
 /**
  * Sends a prompt to the assistant right away, without staging it in the
  * composer first. The host (e.g. the agent builder) owns the wording and the
- * pre-fill tag. A no-op while no thread is mounted yet.
+ * pre-fill tag. Returns `false`, and sends nothing, while no thread is mounted yet.
  */
-function submitSuggestion(payload: SuggestionSelectionPayload) {
-	activeChat.value?.submitSuggestion(payload);
+function submitSuggestion(payload: SuggestionSelectionPayload): boolean {
+	const chat = activeChat.value;
+	if (!chat) return false;
+	chat.submitSuggestion(payload);
+	return true;
 }
 
 defineExpose({

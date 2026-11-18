@@ -20,6 +20,8 @@ export type WorkflowTestRunState = {
 	tests: WorkflowTestResult[];
 	errors: string[];
 	finishedAt?: string;
+	/** `true` for a run that this page followed by push. A stored run must not replace it. */
+	live?: boolean;
 };
 
 function fromStoredRun(run: WorkflowTestRunResult): WorkflowTestRunState {
@@ -38,7 +40,9 @@ export const useWorkflowTestsStore = defineStore('workflowTests', () => {
 		const [file] = await api.getWorkflowTests(rootStore.restApiContext, workflowId);
 		files.value[workflowId] = file ?? null;
 		const current = runs.value[workflowId];
-		if (current?.status !== 'running') {
+		// The server stores the result only after the run ends, so a reload during or right
+		// after a live run can still return the previous run, or none.
+		if (!current?.live) {
 			runs.value[workflowId] = file?.lastRun ? fromStoredRun(file.lastRun) : undefined;
 		}
 		return file ?? null;
@@ -60,6 +64,7 @@ export const useWorkflowTestsStore = defineStore('workflowTests', () => {
 			status: 'running',
 			tests: [],
 			errors: [],
+			live: true,
 		};
 		try {
 			const { runId } = await api.runWorkflowTests(rootStore.restApiContext, workflowId, file.id);
@@ -81,7 +86,7 @@ export const useWorkflowTestsStore = defineStore('workflowTests', () => {
 		if (run && run.runId === null && run.status === 'running') {
 			run.runId = runId;
 		} else if (!run || run.runId !== runId) {
-			run = { runId, status: 'running', tests: [], errors: [] };
+			run = { runId, status: 'running', tests: [], errors: [], live: true };
 			runs.value[workflowId] = run;
 			// Another client (usually the Assistant) started this run, maybe after it saved a new source.
 			void fetchFile(workflowId).catch(() => {});
