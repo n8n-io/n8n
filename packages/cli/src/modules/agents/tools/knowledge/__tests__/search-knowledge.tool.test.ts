@@ -84,7 +84,7 @@ describe('createKnowledgeRetrievalTools', () => {
 			persistence: { threadId: 'thread-1', resourceId: 'integration:slack:U123' },
 		});
 
-		expect(retriever.searchText).toHaveBeenCalledWith(scope, input);
+		expect(retriever.searchText).toHaveBeenCalledWith(scope, input, expect.any(Object));
 	});
 
 	it('reads with the agent scope regardless of the memory resource', async () => {
@@ -104,7 +104,7 @@ describe('createKnowledgeRetrievalTools', () => {
 			persistence: { threadId: 'thread-1', resourceId: 'integration:slack:U123' },
 		});
 
-		expect(retriever.readFile).toHaveBeenCalledWith(scope, input);
+		expect(retriever.readFile).toHaveBeenCalledWith(scope, input, expect.any(Object));
 	});
 
 	it.each([
@@ -285,6 +285,81 @@ describe('createKnowledgeRetrievalTools', () => {
 		await getToolHandler(tool)({ file: 'notes.txt' }, { runId: 'run-1' });
 
 		expect(finishToolCall).toHaveBeenCalledWith({ failed: true });
+	});
+
+	describe('waiting times to prepare the sandbox and the mirror', () => {
+		const wait = { sandboxWaitMs: 3000, mirrorWaitMs: 850 };
+
+		it('passes the wait that the retriever reports for a search_text call', async () => {
+			const { startToolCall, finishToolCall } = mockToolCallTracking();
+			const retriever = mock<KnowledgeRetriever>();
+			retriever.searchText.mockImplementation(async (_scope, _request, observer) => {
+				observer?.onPreparationWait?.(wait);
+				return { outputMode: 'content', matches: [], limit: 10, hasMore: false, truncated: false };
+			});
+			const tool = buildTool(retriever, 'search_text', startToolCall);
+
+			await getToolHandler(tool)({ pattern: 'refund' }, { runId: 'run-1' });
+
+			expect(finishToolCall).toHaveBeenCalledWith(
+				expect.objectContaining({
+					failed: false,
+					searchDurationMs: expect.any(Number),
+					preparationWait: wait,
+				}),
+			);
+		});
+
+		it('passes the wait that the retriever reports for a read_file call', async () => {
+			const { startToolCall, finishToolCall } = mockToolCallTracking();
+			const retriever = mock<KnowledgeRetriever>();
+			retriever.readFile.mockImplementation(async (_scope, _request, observer) => {
+				observer?.onPreparationWait?.(wait);
+				return {
+					file: 'notes.txt',
+					fileId: 'file-1',
+					displayName: 'notes.txt',
+					createdAt: '2026-10-01T00:00:00.000Z',
+					ranges: [],
+					truncated: false,
+				};
+			});
+			const tool = buildTool(retriever, 'read_file', startToolCall);
+
+			await getToolHandler(tool)({ file: 'notes.txt' }, { runId: 'run-1' });
+
+			expect(finishToolCall).toHaveBeenCalledWith(
+				expect.objectContaining({
+					readFile: { fileId: 'file-1', uploadedAt: '2026-10-01T00:00:00.000Z' },
+					preparationWait: wait,
+				}),
+			);
+		});
+
+		it('keeps the wait of a call that fails after the sandbox step', async () => {
+			const { startToolCall, finishToolCall } = mockToolCallTracking();
+			const retriever = mock<KnowledgeRetriever>();
+			retriever.readFile.mockImplementation(async (_scope, _request, observer) => {
+				observer?.onPreparationWait?.(wait);
+				throw new Error('mirror sync failed');
+			});
+			const tool = buildTool(retriever, 'read_file', startToolCall);
+
+			await getToolHandler(tool)({ file: 'notes.txt' }, { runId: 'run-1' });
+
+			expect(finishToolCall).toHaveBeenCalledWith({ failed: true, preparationWait: wait });
+		});
+
+		it('passes no wait when the call ends before the sandbox step', async () => {
+			const { startToolCall, finishToolCall } = mockToolCallTracking();
+			const retriever = mock<KnowledgeRetriever>();
+			retriever.readFile.mockRejectedValue(new Error('Unknown knowledge file'));
+			const tool = buildTool(retriever, 'read_file', startToolCall);
+
+			await getToolHandler(tool)({ file: 'missing.txt' }, { runId: 'run-1' });
+
+			expect(finishToolCall).toHaveBeenCalledWith({ failed: true });
+		});
 	});
 
 	it('counts a call before the knowledge retriever answers', async () => {

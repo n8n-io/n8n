@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -75,6 +76,7 @@ describe('ExecutionLedgerFoldService', () => {
 			Container.get(DbLockService),
 			repository,
 			registry,
+			mock<EventService>(),
 		);
 	});
 

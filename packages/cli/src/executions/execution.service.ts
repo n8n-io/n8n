@@ -159,24 +159,17 @@ export class ExecutionService {
 
 		const { id: executionId } = req.params;
 		let execution: IExecutionResponse | IExecutionBase | undefined;
-		// A v2 execution has no control-plane row.
-		if (isExecutionIdV2(executionId)) {
-			execution = await this.engineV2ExecutionReader.findOne(executionId, sharedWorkflowIds);
-		} else {
-			try {
-				execution = await this.executionPersistence.findOneInWorkflows(
-					executionId,
-					sharedWorkflowIds,
-					{ maxDataSizeBytes: this.globalConfig.executions.maxDisplaySize },
+		try {
+			execution = await this.findOneAcrossEngines(executionId, sharedWorkflowIds, {
+				maxDataSizeBytes: this.globalConfig.executions.maxDisplaySize,
+			});
+		} catch (error) {
+			if (error instanceof MissingExecutionDataError) {
+				throw new NotFoundError(
+					'Data for this execution is unavailable. It may have already been deleted based on your data retention settings.',
 				);
-			} catch (error) {
-				if (error instanceof MissingExecutionDataError) {
-					throw new NotFoundError(
-						'Data for this execution is unavailable. It may have already been deleted based on your data retention settings.',
-					);
-				}
-				throw error;
 			}
+			throw error;
 		}
 
 		if (!execution) {
@@ -701,7 +694,7 @@ export class ExecutionService {
 	private async stopInRegularMode(execution: IExecutionResponse) {
 		if (this.concurrencyControl.has(execution.id)) {
 			this.concurrencyControl.remove({ mode: execution.mode, executionId: execution.id });
-			return await this.executionRepository.stopBeforeRun(execution);
+			return await this.stopBeforeRun(execution);
 		}
 
 		if (this.activeExecutions.has(execution.id)) {
@@ -744,6 +737,24 @@ export class ExecutionService {
 		}
 	}
 
+	private async stopBeforeRun(execution: IExecutionResponse): Promise<IExecutionResponse> {
+		const [canceled] = await this.executionRepository.markAsCanceled([execution.id]);
+		if (canceled) {
+			return { ...execution, status: 'canceled', stoppedAt: canceled.stoppedAt, waitTill: null };
+		}
+
+		// Nothing changed, so the run finished first and its own outcome is the answer.
+		return await this.findCurrentOrThrow(execution);
+	}
+
+	private async findCurrentOrThrow(execution: IExecutionResponse) {
+		const current = await this.executionPersistence.findWithUnflattenedData(execution.id, [
+			execution.workflowId,
+		]);
+		if (!current) throw new MissingExecutionStopError(execution.id);
+		return current;
+	}
+
 	private async stopDuringRun(execution: IExecutionResponse): Promise<IExecutionResponse> {
 		const expectedStatus = execution.status;
 		const error = new ManualExecutionCancelledError(execution.id);
@@ -764,10 +775,7 @@ export class ExecutionService {
 			{ requireStatus: expectedStatus },
 		);
 		if (!stopped) {
-			const current = await this.executionPersistence.findWithUnflattenedData(execution.id, [
-				execution.workflowId,
-			]);
-			if (!current) throw new MissingExecutionStopError(execution.id);
+			const current = await this.findCurrentOrThrow(execution);
 			if (current.status === 'canceled') return current;
 			this.assertStoppable(current);
 			return this.globalConfig.executions.mode === 'regular'
@@ -817,11 +825,35 @@ export class ExecutionService {
 	}
 
 	/**
+	 * Load an execution from engine v1 or v2, based on the shape of the id.
+	 * Returns `undefined` if the execution does not belong to one of `workflowIds`.
+	 * A v2 execution has no annotations, retries or `waitTill`.
+	 */
+	async findOneAcrossEngines(
+		executionId: string,
+		workflowIds: string[],
+		options: {
+			includeData?: boolean;
+			includeAnnotation?: boolean;
+			maxDataSizeBytes?: number;
+		} = {},
+	): Promise<IExecutionResponse | IExecutionBase | undefined> {
+		if (isExecutionIdV2(executionId)) {
+			// The data plane stores no annotation and caps no data size, so it
+			// reads only `includeData` off the options.
+			return await this.engineV2ExecutionReader.findOne(executionId, workflowIds, options);
+		}
+
+		return await this.executionPersistence.findOneInWorkflows(executionId, workflowIds, options);
+	}
+
+	/**
 	 * Load one execution scoped to `workflowIds` as a domain entity.
 	 * Options control data/annotation inclusion; no redaction or flatting.
 	 *
-	 * Prefer this for public API and service-to-service loads. For the editor
-	 * flatted response, use {@link findOne}.
+	 * Control-plane only. For an id that may come from either engine, use
+	 * {@link findOneAcrossEngines}. For the editor flatted response, use
+	 * {@link findOne}.
 	 */
 	async findOneInWorkflows(
 		executionId: string,
