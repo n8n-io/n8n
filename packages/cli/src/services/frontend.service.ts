@@ -277,6 +277,7 @@ export class FrontendService {
 				smtpSetup: this.mailer.isEmailSetUp,
 				authenticationMethod: getCurrentAuthenticationMethod(),
 				passwordMinLength: this.globalConfig.userManagement.password.minLength,
+				avatarUploadsEnabled: !this.globalConfig.userManagement.avatarUploadsDisabled,
 			},
 			sso: {
 				managedByEnv: this.globalConfig.instanceSettingsLoader.ssoManagedByEnv,

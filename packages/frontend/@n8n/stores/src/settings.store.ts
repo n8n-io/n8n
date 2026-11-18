@@ -52,6 +52,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		smtpSetup: false,
 		authenticationMethod: AuthenticationMethod.Email,
 		passwordMinLength: 8,
+		avatarUploadsEnabled: true,
 	});
 	const templatesEndpointHealthy = ref(false);
 	const api = ref({

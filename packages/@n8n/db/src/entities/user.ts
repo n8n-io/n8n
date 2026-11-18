@@ -20,6 +20,7 @@ import type { ProjectRelation } from './project-relation';
 import { Role } from './role';
 import type { SharedCredentials } from './shared-credentials';
 import type { SharedWorkflow } from './shared-workflow';
+import type { UserAvatarRecord } from './types-db';
 
 const SECRET_COLUMNS = new Set(['password', 'mfaSecret', 'mfaRecoveryCodes']);
 
@@ -53,6 +54,10 @@ export class User extends WithTimestamps implements AuthPrincipal {
 	 */
 	@Column({ type: 'varchar', length: 16, default: 'person', update: false })
 	readonly kind: UserKind = 'person';
+
+	/** See {@link UserAvatarRecord}. Null until the user sets a picture or one arrives through SSO. */
+	@JsonColumn({ nullable: true })
+	avatar: UserAvatarRecord | null;
 
 	@ManyToOne(() => Role)
 	@JoinColumn({ name: 'roleSlug', referencedColumnName: 'slug' })

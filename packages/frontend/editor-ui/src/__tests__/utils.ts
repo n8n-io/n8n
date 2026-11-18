@@ -28,6 +28,7 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 		authenticationMethod: AuthenticationMethod.Email,
 		quota: defaultSettings.userManagement.quota,
 		passwordMinLength: 8,
+		avatarUploadsEnabled: true,
 	},
 	templatesEndpointHealthy: false,
 	api: {

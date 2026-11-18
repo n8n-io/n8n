@@ -290,6 +290,30 @@ export {
 } from './schemas/user.schema';
 
 export {
+	USER_AVATAR_BACKGROUNDS,
+	USER_AVATAR_VARIANTS,
+	USER_AVATAR_SOURCES,
+	USER_AVATAR_MIME_TYPES,
+	USER_AVATAR_MAX_FILE_SIZE_BYTES,
+	USER_AVATAR_IMAGE_SIZE,
+	GENERATED_AVATAR_COLOR_COUNT,
+	GENERATED_AVATAR_SEED_MAX_LENGTH,
+	userAvatarBackgroundSchema,
+	userAvatarVariantSchema,
+	userAvatarSourceSchema,
+	generatedAvatarRecipeSchema,
+	generatedAvatarSchema,
+	userAvatarSchema,
+	type UserAvatarBackground,
+	type UserAvatarVariant,
+	type UserAvatarSource,
+	type UserAvatarMimeType,
+	type GeneratedAvatarRecipe,
+	type GeneratedAvatar,
+	type UserAvatar,
+} from './schemas/user-avatar.schema';
+
+export {
 	ChangeEmailResponseSchema,
 	type ChangeEmailResponse,
 } from './schemas/change-email-response';

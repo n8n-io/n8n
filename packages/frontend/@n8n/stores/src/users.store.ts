@@ -1,4 +1,5 @@
 import {
+	type AvatarUpdateRequestDto,
 	type ChangeEmailRequestDto,
 	type ChangeEmailResponse,
 	type ConfirmEmailChangeRequestDto,
@@ -381,6 +382,25 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		await usersApi.updateCurrentUserPassword(rootStore.restApiContext, params);
 	};
 
+	// The server omits `avatar` once the user has no picture; `addUsers` would keep the old one.
+	const applyAvatarResponse = (user: CurrentUserResponse) => {
+		addUsers([{ ...user, avatar: user.avatar ?? null }]);
+	};
+
+	const uploadCurrentUserAvatar = async (picture: Blob, options?: usersApi.AvatarUploadOptions) => {
+		applyAvatarResponse(
+			await usersApi.uploadCurrentUserAvatar(rootStore.restApiContext, picture, options),
+		);
+	};
+
+	const updateCurrentUserAvatar = async (params: AvatarUpdateRequestDto) => {
+		applyAvatarResponse(await usersApi.updateCurrentUserAvatar(rootStore.restApiContext, params));
+	};
+
+	const deleteCurrentUserAvatar = async (kind: 'upload' | 'generated') => {
+		applyAvatarResponse(await usersApi.deleteCurrentUserAvatar(rootStore.restApiContext, kind));
+	};
+
 	const deleteUser = async (params: { id: string; transferId?: string }) => {
 		await usersApi.deleteUser(rootStore.restApiContext, params);
 		deleteUserById(params.id);
@@ -556,6 +576,9 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		updateUserSettings,
 		updateOtherUserSettings,
 		updateCurrentUserPassword,
+		uploadCurrentUserAvatar,
+		updateCurrentUserAvatar,
+		deleteCurrentUserAvatar,
 		deleteUser,
 		fetchUsers,
 		inviteUsers,

@@ -22,5 +22,22 @@ describe('components', () => {
 				expect(container.querySelector('svg')).not.toBeInTheDocument();
 			}
 		});
+
+		it('keeps the initials on a user-designed artwork', () => {
+			const { container, getByText } = render(N8nAvatar, {
+				props: { firstName: 'Jan', lastName: 'Oster', seed: 'k3j9d0a1bc' },
+			});
+
+			expect(container.querySelector('svg')).toBeVisible();
+			expect(getByText('JO')).toBeVisible();
+		});
+
+		it('drops the initials when a picture is shown', () => {
+			const { queryByText } = render(N8nAvatar, {
+				props: { firstName: 'Jan', lastName: 'Oster', src: 'blob:picture' },
+			});
+
+			expect(queryByText('JO')).toBeNull();
+		});
 	});
 });

@@ -31,7 +31,7 @@ const usersListSortByValidator = z
 	.optional();
 
 const userSelectSchema = z.array(
-	z.enum(['id', 'firstName', 'lastName', 'email', 'disabled', 'mfaEnabled', 'role']),
+	z.enum(['id', 'firstName', 'lastName', 'email', 'disabled', 'mfaEnabled', 'role', 'avatar']),
 );
 
 /**

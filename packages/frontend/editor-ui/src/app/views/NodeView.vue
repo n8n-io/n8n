@@ -2279,6 +2279,7 @@ onBeforeUnmount(() => {
 				:is-another-tab="isWriterAnotherTab"
 				:first-name="collaborationStore.currentWriter.user.firstName"
 				:last-name="collaborationStore.currentWriter.user.lastName"
+				:avatar="usersStore.usersById[collaborationStore.currentWriter.user.id]?.avatar"
 				@button-click="onAcquireEditingClick"
 			/>
 

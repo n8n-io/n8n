@@ -103,6 +103,7 @@ describe('UserService', () => {
 		scimSwitchReader,
 		transactions,
 		serviceAccountUsageProxy,
+		mock(),
 	);
 
 	const commonMockPerson = Object.assign(new Person(), {

@@ -1,4 +1,5 @@
 import type {
+	AvatarUpdateRequestDto,
 	ChangeEmailRequestDto,
 	ChangeEmailResponse,
 	ConfirmEmailChangeRequestDto,
@@ -10,6 +11,7 @@ import type {
 	UserUpdateRequestDto,
 	UsersList,
 	User,
+	UserAvatarBackground,
 } from '@n8n/api-types';
 import type { AssignableGlobalRole, Scope } from '@n8n/permissions';
 import type {
@@ -194,6 +196,40 @@ export async function updateCurrentUserPassword(
 	params: PasswordUpdateRequestDto,
 ): Promise<void> {
 	return await makeRestApiRequest(context, 'PATCH', '/me/password', params);
+}
+
+export interface AvatarUploadOptions {
+	fileName?: string;
+	/** Backdrop for a picture with transparent pixels; saved in the same request. */
+	background?: UserAvatarBackground;
+}
+
+/** Uploads a picture and makes it the shown one. Expects a still JPEG, PNG, or WebP of 1 MB or less. */
+export async function uploadCurrentUserAvatar(
+	context: IRestApiContext,
+	picture: Blob,
+	{ fileName = 'avatar', background }: AvatarUploadOptions = {},
+): Promise<CurrentUserResponse> {
+	const formData = new FormData();
+	formData.append('picture', picture, fileName);
+	if (background) formData.append('background', background);
+	return await makeRestApiRequest(context, 'PUT', '/me/avatar', formData);
+}
+
+/** Switches the shown picture, saves a generated avatar, or changes the backdrop. */
+export async function updateCurrentUserAvatar(
+	context: IRestApiContext,
+	params: AvatarUpdateRequestDto,
+): Promise<CurrentUserResponse> {
+	return await makeRestApiRequest(context, 'PATCH', '/me/avatar', params);
+}
+
+/** Forgets the uploaded picture or the generated avatar. */
+export async function deleteCurrentUserAvatar(
+	context: IRestApiContext,
+	kind: 'upload' | 'generated',
+): Promise<CurrentUserResponse> {
+	return await makeRestApiRequest(context, 'DELETE', `/me/avatar/${kind}`);
 }
 
 export async function deleteUser(

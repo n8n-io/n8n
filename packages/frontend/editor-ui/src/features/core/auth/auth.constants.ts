@@ -3,6 +3,7 @@ import type {
 	MfaModalClosedEventPayload,
 } from './auth.eventBus';
 
+export const AVATAR_EDIT_MODAL_KEY = 'avatarEdit';
 export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
 export const CONFIRM_PASSWORD_MODAL_KEY = 'confirmPassword';
 export const MFA_SETUP_MODAL_KEY = 'mfaSetup';

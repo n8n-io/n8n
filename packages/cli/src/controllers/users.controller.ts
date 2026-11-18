@@ -22,12 +22,14 @@ import {
 } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
+import { Readable } from 'node:stream';
 
 import { AuthService } from '@/auth/auth.service';
-import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { UserRequest } from '@/requests';
 import { JwtService, RoleService, UrlService } from '@n8n/backend-services';
 import { UserService } from '@/services/user.service';
+import { UserAvatarStore } from '@/user-avatar/user-avatar-store';
 
 /**
  * The details a caller without `user:create` sees for its own user. The
@@ -44,6 +46,7 @@ export class UsersController {
 		private readonly jwtService: JwtService,
 		private readonly urlService: UrlService,
 		private readonly roleService: RoleService,
+		private readonly userAvatarStore: UserAvatarStore,
 	) {}
 
 	private removeSupplementaryFields(
@@ -127,6 +130,43 @@ export class UsersController {
 			items: this.removeSupplementaryFields(publicUsers, listQueryOptions, req.user),
 			statusCounts,
 		});
+	}
+
+	/**
+	 * The bytes of one of a user's pictures. Any signed-in user may read any
+	 * user's picture: it is shown wherever a name is, such as sharing dialogs.
+	 * URLs carry the content hash, so responses are cached for a year.
+	 */
+	@Get('/:id/avatar/:kind')
+	async getAvatarImage(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('id') id: string,
+		@Param('kind') kind: string,
+	) {
+		if (kind !== 'upload' && kind !== 'sso') {
+			throw new BadRequestError('Picture kind must be "upload" or "sso"');
+		}
+
+		const user = await this.personRepository.findById(id);
+		const image = user?.avatar?.[kind];
+		if (!image) throw new NotFoundError('Picture not found');
+
+		const etag = `"${image.hash}"`;
+		res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
+		res.setHeader('ETag', etag);
+		if (req.headers['if-none-match'] === etag) {
+			res.status(304).end();
+			return;
+		}
+
+		const data = await this.userAvatarStore.read(image);
+		if (!data) throw new NotFoundError('Picture not found');
+
+		res.setHeader('Content-Type', image.mimeType);
+		res.setHeader('Content-Length', data.length);
+		res.setHeader('X-Content-Type-Options', 'nosniff');
+		return Readable.from([data]);
 	}
 
 	@Get('/:id/password-reset-link')

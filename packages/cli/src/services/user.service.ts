@@ -60,6 +60,8 @@ import type { PublicApiCaller } from '@/public-api/public-api-client';
 import type { UserRequest } from '@/requests';
 import { ScimSwitchReader } from '@/sso.ee/scim-switch-reader';
 import { isSamlOrOidcLoginEnabled, isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
+import { UserAvatarStore } from '@/user-avatar/user-avatar-store';
+import { storedAvatarImages, toPublicAvatar } from '@/user-avatar/user-avatar.utils';
 import { UserManagementMailer } from '@/user-management/email';
 
 export const CHANGE_ROLE_ERROR_MESSAGES = {
@@ -99,6 +101,7 @@ export class UserService {
 		private readonly scimSwitchReader: ScimSwitchReader,
 		private readonly txRunner: TransactionRunner,
 		private readonly serviceAccountUsage: ServiceAccountUsageProxy,
+		private readonly userAvatarStore: UserAvatarStore,
 	) {}
 
 	/** Updates the profile or password of a person. A service account id is a no-op. */
@@ -169,6 +172,8 @@ export class UserService {
 	) {
 		let publicUser: PublicUser = {
 			...this.publicFields(user),
+			// Storage details stay server-side; clients get URLs.
+			avatar: toPublicAvatar(this.globalConfig, user),
 			role: user.role?.slug,
 			isOwner: user.role.slug === 'global:owner',
 		};
@@ -200,8 +205,16 @@ export class UserService {
 	/** The fields of the account without its secrets. */
 	private publicFields(user: User): Omit<PublicUser, 'role' | 'isOwner'> {
 		if (isPerson(user)) {
-			const { password, updatedAt, authIdentities, mfaRecoveryCodes, mfaSecret, role, ...rest } =
-				user;
+			const {
+				password,
+				updatedAt,
+				authIdentities,
+				mfaRecoveryCodes,
+				mfaSecret,
+				role,
+				avatar,
+				...rest
+			} = user;
 			return { ...rest, signInType: authIdentities?.[0]?.providerType ?? 'email' };
 		}
 
@@ -797,6 +810,16 @@ export class UserService {
 			);
 			await this.userRepository.deleteAccount(userToDelete.id, personalProjectToDelete.id, ctx);
 		});
+
+		// Best effort: an orphaned picture is a waste of bytes, not a broken account.
+		try {
+			await this.userAvatarStore.delete(storedAvatarImages(userToDelete.avatar));
+		} catch (error) {
+			this.logger.warn('Failed to delete the profile pictures of a deleted user', {
+				userId: userToDelete.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 
 		this.eventService.emit('user-deleted', {
 			// No user acts in a system deletion, so the event names the system.

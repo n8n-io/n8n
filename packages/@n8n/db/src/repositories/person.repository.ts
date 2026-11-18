@@ -13,7 +13,7 @@ import {
 } from './user.repository';
 import { GLOBAL_OWNER_ROLE } from '../constants';
 import { Person, Project, ProjectRelation, type User } from '../entities';
-import type { IPersonalizationSurveyAnswers } from '../entities/types-db';
+import type { IPersonalizationSurveyAnswers, UserAvatarRecord } from '../entities/types-db';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
@@ -201,6 +201,11 @@ export class PersonRepository {
 		answers: Partial<IPersonalizationSurveyAnswers>,
 	): Promise<void> {
 		await this.table.update({ id }, { personalizationAnswers: answers });
+	}
+
+	/** Null clears the picture, so the account falls back to its name-based default. */
+	async saveAvatar(id: string, avatar: UserAvatarRecord | null): Promise<void> {
+		await this.table.update({ id }, { avatar });
 	}
 
 	async disableMfa(id: string): Promise<void> {

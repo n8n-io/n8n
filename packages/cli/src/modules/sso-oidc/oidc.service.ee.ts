@@ -33,6 +33,7 @@ import {
 	reloadAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
+import { UserAvatarService } from '@/user-avatar/user-avatar.service';
 
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE, OIDC_PREFERENCES_DB_KEY } from './constants';
 
@@ -104,6 +105,7 @@ export class OidcService {
 		private readonly provisioningService: ProvisioningService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly personRepository: PersonRepository,
+		private readonly userAvatarService: UserAvatarService,
 	) {}
 
 	async init() {
@@ -357,6 +359,7 @@ export class OidcService {
 			}
 
 			await this.applySsoProvisioning(openidUser.user, claims, userInfo);
+			await this.syncProfilePicture(openidUser.user, userInfo);
 
 			return { user: openidUser.user, idToken: tokens.id_token };
 		}
@@ -380,6 +383,7 @@ export class OidcService {
 
 			await this.authIdentityRepository.save(id);
 			await this.applySsoProvisioning(foundPerson, claims, userInfo);
+			await this.syncProfilePicture(foundPerson, userInfo);
 
 			return { user: foundPerson, idToken: tokens.id_token };
 		}
@@ -409,8 +413,23 @@ export class OidcService {
 		});
 
 		await this.applySsoProvisioning(user, claims, userInfo);
+		await this.syncProfilePicture(user, userInfo);
 
 		return { user, idToken: tokens.id_token };
+	}
+
+	/**
+	 * Keeps the user's picture from the identity provider current. The standard
+	 * `picture` claim is a URL; the provider's own host is trusted the same way
+	 * its discovery endpoint is. Failures are logged by the avatar service and
+	 * never affect the sign-in.
+	 */
+	private async syncProfilePicture(user: Person, userInfo: Record<string, unknown>) {
+		const { hostname } = this.oidcConfig.discoveryEndpoint;
+		await this.userAvatarService.syncSsoPicture(user, userInfo.picture, {
+			allowHostname: hostname,
+			provider: hostname,
+		});
 	}
 
 	/**

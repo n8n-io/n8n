@@ -1,6 +1,7 @@
 import type { ModalDefinition } from '@n8n/frontend-module-sdk';
 
 import {
+	AVATAR_EDIT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
 	MFA_SETUP_MODAL_KEY,
@@ -9,6 +10,11 @@ import {
 
 /** Phase 1 — registered eagerly; see `app/modals.manifest.ts` for why. */
 export const AUTH_MODALS: ModalDefinition[] = [
+	{
+		key: AVATAR_EDIT_MODAL_KEY,
+		component: async () => await import('./components/avatar/AvatarEditDialog.vue'),
+		initialState: { open: false },
+	},
 	{
 		key: CHANGE_PASSWORD_MODAL_KEY,
 		component: async () => await import('./components/ChangePasswordModal.vue'),

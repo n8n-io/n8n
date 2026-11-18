@@ -156,6 +156,14 @@ export class UserManagementConfig {
 	@Env('N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS')
 	jwtRefreshTimeoutHours: number = 0;
 
+	/**
+	 * Whether users may upload a custom profile picture. Pictures that arrive
+	 * through SSO and generated avatars are unaffected. Pictures uploaded before
+	 * the setting was turned on are kept but can no longer be changed.
+	 */
+	@Env('N8N_USER_AVATAR_UPLOADS_DISABLED')
+	avatarUploadsDisabled: boolean = false;
+
 	sanitize() {
 		if (this.jwtRefreshTimeoutHours >= this.jwtSessionDurationHours) {
 			console.warn(INVALID_JWT_REFRESH_TIMEOUT_WARNING);

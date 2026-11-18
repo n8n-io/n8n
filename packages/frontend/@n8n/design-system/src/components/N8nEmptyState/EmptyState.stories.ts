@@ -58,6 +58,24 @@ EmptyStateWithIcon.args = {
 	buttonText: 'Create Workflow',
 };
 
+export const EmptyStateSmall = DefaultTemplate.bind({});
+EmptyStateSmall.args = {
+	size: 'small',
+	heading: 'Drop a picture here',
+	description: 'JPEG, PNG, or WebP up to 12 MB. Square pictures work best.',
+	buttonText: 'Choose a picture',
+	buttonVariant: 'outline',
+	buttonIcon: 'upload',
+};
+EmptyStateSmall.parameters = {
+	docs: {
+		description: {
+			story:
+				'`size="small"` draws the heading, description, button and spacing a step tighter, for an empty state that sits inside a panel or a dialog rather than filling a page.',
+		},
+	},
+};
+
 // Demonstrates that the side cards accept custom Vue components alongside icon names.
 const DemoBrandMark: Component = markRaw({
 	name: 'DemoBrandMark',

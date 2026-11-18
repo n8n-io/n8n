@@ -83,6 +83,7 @@ erDiagram
   varchar_36_ versionId
 }
 "user" {
+  TEXT avatar
   datetime_3_ createdAt
   boolean disabled
   varchar_255_ email

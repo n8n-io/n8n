@@ -2,6 +2,8 @@
 import { computed, useCssModule } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
+import type { UserAvatarDescriptor } from '../../types/user';
+import { getAvatarAppearance } from '../../utils/avatar';
 import N8nAvatar from '../N8nAvatar';
 import N8nBadge from '../N8nBadge';
 import N8nText from '../N8nText';
@@ -19,14 +21,18 @@ export interface UsersInfoProps {
 	mfaEnabled?: boolean;
 	/** Hide the avatar and show only the name and email. */
 	hideAvatar?: boolean;
+	avatar?: UserAvatarDescriptor | null;
 }
 
 const props = withDefaults(defineProps<UsersInfoProps>(), {
 	disabled: false,
 	hideAvatar: false,
+	avatar: null,
 });
 
 const { t } = useI18n();
+
+const avatarAppearance = computed(() => getAvatarAppearance(props.avatar));
 
 const $style = useCssModule();
 const classes = computed(
@@ -46,7 +52,7 @@ const fullName = computed(() =>
 <template>
 	<div :class="classes">
 		<div v-if="!hideAvatar" :class="$style.avatarContainer" data-test-id="user-avatar">
-			<N8nAvatar :first-name="firstName" :last-name="lastName" />
+			<N8nAvatar :first-name="firstName" :last-name="lastName" v-bind="avatarAppearance" />
 		</div>
 
 		<div v-if="isPendingUser" :class="$style.pendingUser">

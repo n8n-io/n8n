@@ -117,6 +117,7 @@ export const defaultSettings: FrontendSettings = {
 		authenticationMethod: 'email',
 		quota: 10,
 		passwordMinLength: 8,
+		avatarUploadsEnabled: true,
 	},
 	versionCli: '',
 	nodeJsVersion: '',

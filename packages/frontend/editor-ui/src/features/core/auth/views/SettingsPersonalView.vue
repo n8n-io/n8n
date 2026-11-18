@@ -8,6 +8,7 @@ import type { ThemeOption } from '@/Interface';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { MFA_DOCS_URL, VALID_EMAIL_REGEX } from '@/app/constants';
 import {
+	AVATAR_EDIT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
 	MFA_SETUP_MODAL_KEY,
@@ -30,9 +31,11 @@ import { useSSOStore } from '@/features/settings/sso/sso.store';
 
 import type { SelectOptionBase, SelectValue } from '@n8n/design-system';
 import {
+	getAvatarAppearance,
 	N8nAvatar,
 	N8nButton,
 	N8nExternalLink,
+	N8nIcon,
 	N8nInput,
 	N8nNotice,
 	N8nSelect2,
@@ -371,6 +374,10 @@ function openPasswordModal() {
 	uiStore.openModal(CHANGE_PASSWORD_MODAL_KEY);
 }
 
+function openAvatarModal() {
+	uiStore.openModal(AVATAR_EDIT_MODAL_KEY);
+}
+
 async function onMfaEnableClick() {
 	if (!settingsStore.isCloudDeployment || !usersStore.isInstanceOwner) {
 		uiStore.openModal(MFA_SETUP_MODAL_KEY);
@@ -444,12 +451,26 @@ onBeforeUnmount(() => {
 					data-test-id="personal-profile-picture-row"
 				>
 					<template #action>
-						<N8nAvatar
-							:first-name="currentUser.firstName"
-							:last-name="currentUser.lastName"
-							size="medium"
-							data-test-id="current-user-avatar"
-						/>
+						<N8nTooltip :content="i18n.baseText('settings.personal.profilePicture.edit')">
+							<button
+								type="button"
+								:class="$style.avatarButton"
+								:aria-label="i18n.baseText('settings.personal.profilePicture.edit')"
+								data-test-id="current-user-avatar-edit"
+								@click="openAvatarModal"
+							>
+								<N8nAvatar
+									:first-name="currentUser.firstName"
+									:last-name="currentUser.lastName"
+									v-bind="getAvatarAppearance(currentUser.avatar)"
+									size="medium"
+									data-test-id="current-user-avatar"
+								/>
+								<span :class="$style.avatarOverlay" aria-hidden="true">
+									<N8nIcon icon="pencil" size="small" />
+								</span>
+							</button>
+						</N8nTooltip>
 					</template>
 				</N8nSettingsRow>
 				<N8nSettingsRow
@@ -628,9 +649,45 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/focus';
+
 /* Collapse the layout's own top inset; the settings shell already pads the page top. */
 .layout {
 	padding-top: 0;
+}
+
+/* The avatar is the button; a pencil fades in over it on hover and focus. */
+.avatarButton {
+	position: relative;
+	display: inline-flex;
+	padding: 0;
+	border: none;
+	border-radius: 50%;
+	background: transparent;
+	cursor: pointer;
+
+	&:hover .avatarOverlay,
+	&:focus-visible .avatarOverlay {
+		opacity: 1;
+	}
+
+	@include focus.focus-visible-ring-offset;
+}
+
+.avatarOverlay {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	/* The scrim and blur together push the initials back far enough for the pencil to read on any palette. */
+	background: rgba(0, 0, 0, 0.6);
+	backdrop-filter: blur(4px);
+	color: var(--color--neutral-white);
+	opacity: 0;
+	transition: opacity var(--duration--snappy) var(--easing--ease-out);
+	pointer-events: none;
 }
 
 /* Read-only value of a locked field; long emails truncate instead of pushing the row wider. */

@@ -52,6 +52,7 @@ import { NodeTypes } from '@/node-types';
 import { POLICY_MODULES } from '@/policy/policy-modules';
 import { instanceSystemTasks } from '@/scheduling/system-tasks/instance-system-tasks';
 import { ShutdownService } from '@/shutdown/shutdown.service';
+import { UserAvatarStore } from '@/user-avatar/user-avatar-store';
 
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;
@@ -526,10 +527,9 @@ export abstract class BaseCommand<F = never> {
 		const objectStoreService = Container.get(ObjectStoreService);
 		await objectStoreService.init();
 
-		Container.get(ExecutionDataJsonStore).registerByteStore(
-			's3',
-			new S3ByteStore(objectStoreService),
-		);
+		const s3ByteStore = new S3ByteStore(objectStoreService);
+		Container.get(ExecutionDataJsonStore).registerByteStore('s3', s3ByteStore);
+		Container.get(UserAvatarStore).registerByteStore('s3', s3ByteStore);
 
 		return objectStoreService;
 	}
@@ -541,10 +541,9 @@ export abstract class BaseCommand<F = never> {
 		const azureBlobService = Container.get(AzureBlobService);
 		await azureBlobService.init();
 
-		Container.get(ExecutionDataJsonStore).registerByteStore(
-			'az',
-			new AzureByteStore(azureBlobService),
-		);
+		const azureByteStore = new AzureByteStore(azureBlobService);
+		Container.get(ExecutionDataJsonStore).registerByteStore('az', azureByteStore);
+		Container.get(UserAvatarStore).registerByteStore('az', azureByteStore);
 
 		return azureBlobService;
 	}

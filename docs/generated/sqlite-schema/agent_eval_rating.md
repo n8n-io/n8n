@@ -60,6 +60,7 @@ erDiagram
   varchar_8_ vote
 }
 "user" {
+  TEXT avatar
   datetime_3_ createdAt
   boolean disabled
   varchar_255_ email

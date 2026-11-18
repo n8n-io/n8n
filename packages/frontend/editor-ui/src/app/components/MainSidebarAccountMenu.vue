@@ -8,6 +8,7 @@ import {
 	N8nIcon,
 	N8nText,
 	N8nTooltip,
+	getAvatarAppearance,
 	type DropdownMenuItemProps,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -243,6 +244,7 @@ useKeybindings({ ctrl_alt_o: () => onHelpSelect('about') });
 							<N8nAvatar
 								:first-name="user?.firstName"
 								:last-name="user?.lastName"
+								v-bind="getAvatarAppearance(user?.avatar)"
 								:size="isCollapsed ? 'small' : 'xxsmall'"
 							/>
 							<span
@@ -262,7 +264,12 @@ useKeybindings({ ctrl_alt_o: () => onHelpSelect('about') });
 
 				<template #content>
 					<div :class="$style.header" data-test-id="main-sidebar-account-header">
-						<N8nAvatar :first-name="user?.firstName" :last-name="user?.lastName" size="small" />
+						<N8nAvatar
+							:first-name="user?.firstName"
+							:last-name="user?.lastName"
+							v-bind="getAvatarAppearance(user?.avatar)"
+							size="small"
+						/>
 						<div :class="$style.identity">
 							<!-- Name at the menu's item size; the email one step down, as a caption. -->
 							<N8nTooltip

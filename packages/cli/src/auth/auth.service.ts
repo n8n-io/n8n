@@ -144,6 +144,9 @@ export class AuthService {
 			// Skip browser ID check for Instance AI SSE endpoint — EventSource can't send custom headers
 			`/${restEndpoint}/instance-ai/events/:threadId`,
 
+			// Profile pictures render via <img> tags, which can't send the browser-id header
+			`/${restEndpoint}/users/:id/avatar/:kind`,
+
 			// Agent chat attachments render via <img> tags, which can't send the
 			// browser-id header. The controller prefix carries a resolved
 			// :projectId in req.baseUrl, so this one needs a pattern. It covers

@@ -66,6 +66,7 @@ erDiagram
   varchar_36_ workflowReviewRequestId FK
 }
 "user" {
+  TEXT avatar
   datetime_3_ createdAt
   boolean disabled
   varchar_255_ email

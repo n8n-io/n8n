@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { computed } from 'vue';
+
 import EmptyStateIconCards from './EmptyStateIconCards.vue';
 import type { EmptyStateIconCards as EmptyStateIconCardsIcon } from './types';
 import type { ButtonVariant } from '../../types/button';
@@ -22,17 +24,32 @@ interface EmptyStateProps {
 	calloutText?: string;
 	calloutTheme?: CalloutTheme;
 	calloutIcon?: IconName;
+	/**
+	 * `medium` fills a page or a section of one; `small` draws everything a
+	 * step tighter, for an empty state that sits inside a panel or a dialog.
+	 */
+	size?: 'small' | 'medium';
 }
 
 defineOptions({ name: 'N8nEmptyState' });
-withDefaults(defineProps<EmptyStateProps>(), {
+const props = withDefaults(defineProps<EmptyStateProps>(), {
 	calloutTheme: 'info',
 	buttonIcon: undefined,
+	size: 'medium',
 });
+
+const scale = computed(() =>
+	props.size === 'small'
+		? ({ icon: 32, heading: 'medium', text: 'small', button: 'small' } as const)
+		: ({ icon: 40, heading: 'xlarge', text: 'medium', button: 'large' } as const),
+);
 </script>
 
 <template>
-	<div :class="['n8n-empty-state', $style.container]" data-test-id="empty-state">
+	<div
+		:class="['n8n-empty-state', $style.container, { [$style.small]: size === 'small' }]"
+		data-test-id="empty-state"
+	>
 		<div v-if="icon" :class="$style.icon">
 			<EmptyStateIconCards
 				v-if="icon.type === 'cards'"
@@ -43,7 +60,7 @@ withDefaults(defineProps<EmptyStateProps>(), {
 			<N8nIcon
 				v-else-if="icon.type === 'icon'"
 				:icon="icon.value"
-				:size="40"
+				:size="scale.icon"
 				:stroke-width="1.5"
 				color="foreground-xdark"
 			/>
@@ -51,7 +68,7 @@ withDefaults(defineProps<EmptyStateProps>(), {
 		</div>
 		<div v-if="heading || $slots.heading || description" :class="$style.text">
 			<div v-if="heading || $slots.heading" :class="$style.heading">
-				<N8nHeading size="xlarge" align="center">
+				<N8nHeading :size="scale.heading" align="center">
 					<slot name="heading">{{ heading }}</slot>
 				</N8nHeading>
 			</div>
@@ -60,7 +77,7 @@ withDefaults(defineProps<EmptyStateProps>(), {
 				:class="$style.description"
 				@click="$emit('descriptionClick', $event)"
 			>
-				<N8nText color="text-base">
+				<N8nText color="text-base" :size="scale.text">
 					<slot name="description">
 						<span v-n8n-html="description"></span>
 					</slot>
@@ -76,7 +93,7 @@ withDefaults(defineProps<EmptyStateProps>(), {
 				:variant="buttonVariant"
 				:disabled="buttonDisabled"
 				:icon="buttonIcon"
-				size="large"
+				:size="scale.button"
 				role="button"
 				@click="$emit('click:button', $event)"
 			/>
@@ -108,8 +125,17 @@ withDefaults(defineProps<EmptyStateProps>(), {
 	padding: var(--spacing--3xl) var(--spacing--xl);
 }
 
+.small {
+	gap: var(--spacing--sm);
+	padding: var(--spacing--lg) var(--spacing--md);
+}
+
 .icon {
 	font-size: 40px;
+
+	.small & {
+		font-size: 32px;
+	}
 }
 
 .text {
@@ -117,6 +143,10 @@ withDefaults(defineProps<EmptyStateProps>(), {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	max-width: 32rem;
+
+	.small & {
+		gap: var(--spacing--3xs);
+	}
 }
 
 .heading {

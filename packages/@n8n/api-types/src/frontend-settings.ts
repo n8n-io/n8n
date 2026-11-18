@@ -46,6 +46,8 @@ export interface IUserManagementSettings {
 	smtpSetup: boolean;
 	authenticationMethod: AuthenticationMethod;
 	passwordMinLength: number;
+	/** False when the instance owner disabled custom profile pictures with `N8N_USER_AVATAR_UPLOADS_DISABLED`. */
+	avatarUploadsEnabled: boolean;
 }
 
 export interface IEnterpriseSettings {

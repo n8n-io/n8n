@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 
 import type { IUser, UserStackGroups } from '../../types';
+import { getAvatarAppearance } from '../../utils/avatar';
 import N8nAvatar from '../N8nAvatar';
 import { AVATAR_SIZES, type AvatarSize } from '../N8nAvatar/avatarSizes';
 import N8nHoverCard from '../N8nHoverCard';
@@ -76,6 +77,7 @@ const menuHeight = computed(() => {
 						:key="user.id"
 						:first-name="user.firstName"
 						:last-name="user.lastName"
+						v-bind="getAvatarAppearance(user.avatar)"
 						:class="$style.avatar"
 						:data-test-id="`user-stack-avatar-${user.id}`"
 						:size="size"

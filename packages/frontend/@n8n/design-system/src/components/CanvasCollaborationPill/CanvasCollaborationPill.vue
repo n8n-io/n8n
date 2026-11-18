@@ -2,6 +2,8 @@
 import { computed } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
+import type { UserAvatarDescriptor } from '../../types/user';
+import { getAvatarAppearance } from '../../utils/avatar';
 import N8nCanvasPill from '../CanvasPill';
 import N8nAvatar from '../N8nAvatar';
 import N8nButton from '../N8nButton';
@@ -13,8 +15,11 @@ defineOptions({
 const props = defineProps<{
 	firstName: string;
 	lastName?: string;
+	avatar?: UserAvatarDescriptor | null;
 	isAnotherTab?: boolean;
 }>();
+
+const avatarAppearance = computed(() => getAvatarAppearance(props.avatar));
 
 const emit = defineEmits<{
 	buttonClick: [];
@@ -40,7 +45,13 @@ const handleButtonClick = () => {
 <template>
 	<N8nCanvasPill>
 		<template #icon>
-			<N8nAvatar v-if="!isAnotherTab" :first-name="firstName" :last-name="lastName" size="small" />
+			<N8nAvatar
+				v-if="!isAnotherTab"
+				:first-name="firstName"
+				:last-name="lastName"
+				v-bind="avatarAppearance"
+				size="small"
+			/>
 		</template>
 		<span :class="$style.content">
 			{{ message }}

@@ -34,6 +34,7 @@ import { type ProvisioningService } from '@/modules/provisioning.ee/provisioning
 import { Publisher } from '@n8n/backend-services';
 import type { JwtService, UrlService } from '@n8n/backend-services';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
+import type { UserAvatarService } from '@/user-avatar/user-avatar.service';
 
 import { OIDC_PREFERENCES_DB_KEY } from '../constants';
 import { OidcService } from '../oidc.service.ee';
@@ -51,6 +52,7 @@ describe('OidcService', () => {
 	let personRepository: PersonRepository;
 	let authIdentityRepository: AuthIdentityRepository;
 	let outboundHttp: Mocked<OutboundHttp>;
+	let userAvatarService: Mocked<UserAvatarService>;
 	let customFetch: Mock;
 
 	const mockOidcConfig = {
@@ -107,6 +109,7 @@ describe('OidcService', () => {
 		authIdentityRepository = mock<AuthIdentityRepository>();
 		customFetch = vi.fn();
 		outboundHttp = mock<OutboundHttp>();
+		userAvatarService = mock<UserAvatarService>();
 		outboundHttp.transport.mockReturnValue(
 			mock<HttpTransport>({ asCustomFetch: () => customFetch }),
 		);
@@ -127,6 +130,7 @@ describe('OidcService', () => {
 			provisioningService,
 			outboundHttp,
 			personRepository,
+			userAvatarService,
 		);
 
 		await oidcService.init();
@@ -1185,6 +1189,7 @@ describe('OidcService', () => {
 				provisioningService,
 				realOutboundHttp,
 				personRepository,
+				userAvatarService,
 			);
 		});
 

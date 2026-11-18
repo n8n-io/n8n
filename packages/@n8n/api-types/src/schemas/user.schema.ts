@@ -2,6 +2,7 @@ import { projectRoleSchema } from '@n8n/permissions';
 import { z } from 'zod';
 
 import { projectIconSchema } from './project.schema';
+import { userAvatarSchema } from './user-avatar.schema';
 import { userSettingsSchema } from './user-settings.schema';
 
 export const ROLE = {
@@ -30,6 +31,8 @@ export const userBaseSchema = z.object({
 	lastName: z.string().nullable().optional(),
 	email: z.string().email().nullable().optional(),
 	role: roleSchema.optional(),
+	/** Absent when the user has never set a picture: clients draw the name-based default. */
+	avatar: userAvatarSchema.nullable().optional(),
 });
 
 export const userDetailSchema = userBaseSchema.extend({

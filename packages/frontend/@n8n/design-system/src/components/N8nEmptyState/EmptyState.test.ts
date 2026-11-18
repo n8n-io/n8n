@@ -42,6 +42,28 @@ describe('N8nEmptyState', () => {
 		expect(wrapper.html()).toMatchSnapshot();
 	});
 
+	it('draws everything a step tighter when small', () => {
+		const { container } = render(N8nEmptyState, {
+			props: {
+				size: 'small',
+				icon: { type: 'icon', value: 'plus' },
+				heading: 'Drop a picture here',
+				description: 'Square pictures work best.',
+				buttonText: 'Choose a picture',
+			},
+			global: {
+				// The tooltip is left real so that the button inside its slot renders.
+				stubs: ['N8nHeading', 'N8nText', 'N8nButton', 'N8nCallout', 'N8nIcon'],
+			},
+		});
+
+		expect(container.querySelector('.n8n-empty-state')).toHaveClass('small');
+		expect(container.querySelector('n8n-icon-stub')).toHaveAttribute('size', '32');
+		expect(container.querySelector('n8n-heading-stub')).toHaveAttribute('size', 'medium');
+		expect(container.querySelector('n8n-text-stub')).toHaveAttribute('size', 'small');
+		expect(container.querySelector('n8n-button-stub')).toHaveAttribute('size', 'small');
+	});
+
 	describe('icon cards variant', () => {
 		beforeEach(() => {
 			vi.useFakeTimers();

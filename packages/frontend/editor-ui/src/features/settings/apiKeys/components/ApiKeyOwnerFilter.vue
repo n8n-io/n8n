@@ -3,7 +3,15 @@ import { computed, ref, watch } from 'vue';
 
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from '@n8n/design-system';
-import { N8nAvatar, N8nBadge, N8nCheckbox, N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
+import {
+	N8nAvatar,
+	N8nBadge,
+	N8nCheckbox,
+	N8nIcon,
+	N8nPopover,
+	N8nText,
+	getAvatarAppearance,
+} from '@n8n/design-system';
 
 import { getApiKeyOwnerDisplayName } from '../apiKeys.utils';
 
@@ -154,6 +162,7 @@ watch(open, (isOpen, wasOpen) => {
 						v-if="singleSelectedUser"
 						:first-name="singleSelectedUser.firstName"
 						:last-name="singleSelectedUser.lastName"
+						v-bind="getAvatarAppearance(singleSelectedUser.avatar)"
 						size="xsmall"
 					/>
 					<N8nIcon v-else icon="users" :class="$style.triggerIcon" />
@@ -225,7 +234,12 @@ watch(open, (isOpen, wasOpen) => {
 									aria-hidden="true"
 									tabindex="-1"
 								/>
-								<N8nAvatar :first-name="user.firstName" :last-name="user.lastName" size="xsmall" />
+								<N8nAvatar
+									:first-name="user.firstName"
+									:last-name="user.lastName"
+									v-bind="getAvatarAppearance(user.avatar)"
+									size="xsmall"
+								/>
 								<span :class="$style.personText">
 									<N8nText :class="$style.personName" color="text-dark">
 										{{ displayName(user) }}

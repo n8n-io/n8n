@@ -420,6 +420,12 @@
 	--switch--border-color: transparent;
 	--switch--toggle--color: var(--color--neutral-white);
 
+	// Slider (range input)
+	--slider--track--color: var(--color--neutral-200);
+	--slider--range--color: var(--color--neutral-900);
+	--slider--thumb--color: var(--color--neutral-white);
+	--slider--thumb--border-color: var(--color--neutral-900);
+
 	// Feature Request
 	--feature-request--color--text: var(--color--neutral-white);
 
@@ -1023,6 +1029,12 @@
 	--switch--color--background: var(--color--neutral-950);
 	--switch--border-color: var(--color--neutral-700);
 	--switch--toggle--color: var(--color--neutral-125);
+
+	// Slider (range input)
+	--slider--track--color: var(--color--neutral-700);
+	--slider--range--color: var(--color--neutral-125);
+	--slider--thumb--color: var(--color--neutral-125);
+	--slider--thumb--border-color: var(--color--neutral-125);
 
 	// Action Dropdown
 	--action-dropdown--item--color--background--active: var(--color--background--light-3);

@@ -57,6 +57,7 @@ erDiagram
   uuid userId FK
 }
 "public.user" {
+  json avatar
   timestamp_3__with_time_zone createdAt
   boolean disabled
   varchar_255_ email

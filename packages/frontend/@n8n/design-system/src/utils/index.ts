@@ -1,3 +1,4 @@
+export * from './avatar';
 export * from './colorUtils';
 export * from './form-event-bus';
 export * from './markdown';

@@ -1,3 +1,10 @@
+import type {
+	GeneratedAvatar,
+	UserAvatar,
+	UserAvatarBackground,
+	UserAvatarMimeType,
+	UserAvatarSource,
+} from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 import type { FindOperator } from '@n8n/typeorm';
 import type express from 'express';
@@ -130,11 +137,42 @@ export interface IExecutionResponse extends IExecutionBase {
 	dataTooLargeToDisplay?: boolean;
 }
 
+/** Where the bytes of one stored profile picture live. */
+export interface StoredUserAvatarImage {
+	storedAt: ExecutionDataStorageLocation;
+	storageKey: string;
+	mimeType: UserAvatarMimeType;
+	/** Content hash; doubles as the cache buster in picture URLs. */
+	hash: string;
+}
+
+/**
+ * The `user.avatar` column. `source` names the picture that is shown; the
+ * optional members are every picture the user can switch back to. `null`
+ * (or an absent column) means the user never set a picture and clients draw
+ * the name-based default.
+ */
+export interface UserAvatarRecord {
+	source: UserAvatarSource;
+	background: UserAvatarBackground;
+	upload?: StoredUserAvatarImage;
+	sso?: StoredUserAvatarImage & {
+		/** The identity provider URL the picture was fetched from, so re-syncs can skip unchanged pictures. */
+		sourceUrl: string;
+		syncedAt: string;
+		/** Host of the identity provider, e.g. `accounts.google.com`, so the UI can say where the picture is from. */
+		provider?: string;
+	};
+	generated?: GeneratedAvatar;
+}
+
 export interface PublicUser {
 	id: string;
 	email?: string;
 	firstName?: string;
 	lastName?: string;
+	/** Omitted (not null) when the user has no picture, so clients fall back to the default. */
+	avatar?: UserAvatar;
 	personalizationAnswers?: IPersonalizationSurveyAnswers | null;
 	password?: string;
 	passwordResetToken?: string;

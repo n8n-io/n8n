@@ -4,6 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| avatar | json |  | true |  |  | Profile picture: active source, backdrop, and storage references for each available picture |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | disabled | boolean | false | false |  |  |  |
 | email | varchar(255) |  | true |  |  |  |
@@ -107,6 +108,7 @@ erDiagram
 "public.user" }o--|| "public.role" : "FOREIGN KEY (#quot;roleSlug#quot;) REFERENCES role(slug)"
 
 "public.user" {
+  json avatar
   timestamp_3__with_time_zone createdAt
   boolean disabled
   varchar_255_ email

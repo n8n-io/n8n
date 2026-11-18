@@ -60,5 +60,11 @@ describe('AuthService Browser ID Whitelist', () => {
 
 			expect(skipEndpoints).toContain('/rest/credentials/:id/authorize');
 		});
+
+		it('should include the profile picture endpoint, which renders via <img> tags', () => {
+			const skipEndpoints = (authService as any).skipBrowserIdCheckEndpoints;
+
+			expect(skipEndpoints).toContain('/rest/users/:id/avatar/:kind');
+		});
 	});
 });

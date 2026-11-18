@@ -163,6 +163,7 @@ export { RoleChangeRequestDto } from './user/role-change-request.dto';
 export { SettingsUpdateRequestDto } from './user/settings-update-request.dto';
 export { UserSelfSettingsUpdateRequestDto } from './user/user-self-settings-update-request.dto';
 export { UserUpdateRequestDto } from './user/user-update-request.dto';
+export { AvatarUpdateRequestDto } from './user/avatar-update-request.dto';
 export { ChangeEmailRequestDto } from './user/change-email-request.dto';
 export { ResolveChangeEmailTokenQueryDto } from './user/resolve-change-email-token-query.dto';
 export { ConfirmEmailChangeRequestDto } from './user/confirm-email-change-request.dto';

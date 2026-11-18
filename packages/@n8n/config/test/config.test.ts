@@ -156,6 +156,7 @@ describe('GlobalConfig', () => {
 			jwtSecret: '',
 			jwtSessionDurationHours: 168,
 			jwtRefreshTimeoutHours: 0,
+			avatarUploadsDisabled: false,
 			password: {
 				minLength: 8,
 			},
