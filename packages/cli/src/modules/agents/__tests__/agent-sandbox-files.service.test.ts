@@ -310,20 +310,34 @@ describe('AgentSandboxFilesService', () => {
 			const controller = new AbortController();
 			filesystem.writeFile.mockImplementationOnce(async () => controller.abort());
 
-			await expect(
-				service.importFiles(
-					workspace,
-					{ 'a.csv': 'f1', 'b.csv': 'f2' },
-					readScope,
-					controller.signal,
-				),
-			).rejects.not.toBeInstanceOf(UserError);
+			const error = await service
+				.importFiles(workspace, { 'a.csv': 'f1', 'b.csv': 'f2' }, readScope, controller.signal)
+				.catch((caught: unknown) => caught);
+
+			// The reason of the abort, not a message for the model.
+			expect(error).toBe(controller.signal.reason);
+			expect(error).toBeInstanceOf(DOMException);
 			expect(filesystem.writeFile).toHaveBeenCalledTimes(1);
 			expect(filesystem.writeFile).toHaveBeenCalledWith('inputs/a.csv', expect.anything(), {
 				recursive: true,
 				overwrite: true,
 				abortSignal: controller.signal,
 			});
+		});
+
+		it('rethrows the error of a write that a cancel stopped', async () => {
+			readable({ f1: 3 });
+			attachmentService.getBuffer.mockResolvedValue(Buffer.from('a,b'));
+			const controller = new AbortController();
+			const writeError = new Error('write stopped');
+			filesystem.writeFile.mockImplementationOnce(async () => {
+				controller.abort();
+				throw writeError;
+			});
+
+			await expect(
+				service.importFiles(workspace, { 'a.csv': 'f1' }, readScope, controller.signal),
+			).rejects.toBe(writeError);
 		});
 
 		it('writes nothing when a file is not readable', async () => {
