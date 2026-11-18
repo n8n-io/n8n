@@ -36,10 +36,26 @@ export function extractHitlMetadata(
 ): HitlMetadata | undefined {
 	if (!hasGatedToolNodeName(metadata)) return undefined;
 
+	const originalInput = toolInput.toolParameters as IDataObject;
+	const mcpToolArguments =
+		metadata.isMcpTool &&
+		originalInput !== null &&
+		typeof originalInput === 'object' &&
+		!Array.isArray(originalInput)
+			? {
+					argumentKeys: Object.keys(originalInput),
+					...(Object.hasOwn(originalInput, 'tool') && { tool: originalInput.tool }),
+					...(Object.hasOwn(originalInput, 'toolCallId') && {
+						toolCallId: originalInput.toolCallId,
+					}),
+				}
+			: undefined;
+
 	return {
 		gatedToolNodeName: metadata.gatedToolNodeName,
 		toolName,
-		originalInput: toolInput.toolParameters as IDataObject,
+		originalInput,
+		...(mcpToolArguments && { mcpToolArguments }),
 	};
 }
 
