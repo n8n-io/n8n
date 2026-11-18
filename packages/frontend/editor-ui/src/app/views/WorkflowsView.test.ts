@@ -167,6 +167,19 @@ describe('WorkflowsView', () => {
 			expect(within(emptyState).getByText('Create your first automation')).toBeVisible();
 		});
 
+		it('without the archived hint while the list is still loading', async () => {
+			foldersStore.totalWorkflowCount = 3;
+			foldersStore.fetchTotalWorkflowsAndFoldersCount.mockResolvedValue(3);
+			// The stored count is known, but the rows are still on their way.
+			workflowsListStore.fetchWorkflowsPage.mockReturnValue(new Promise(() => {}));
+
+			const { queryByTestId } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(queryByTestId('show-archived-link')).not.toBeInTheDocument();
+			expect(queryByTestId('empty-resources-list')).not.toBeInTheDocument();
+		});
+
 		describe('when onboardingExperiment -> False', () => {
 			it('for readOnlyEnvironment', async () => {
 				const sourceControl = mockedStore(useSourceControlStore);

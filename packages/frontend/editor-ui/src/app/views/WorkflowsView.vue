@@ -747,6 +747,9 @@ const hasFilters = computed(() => {
 // inform the user how to reveal them
 const showArchivedOnlyHint = computed(() => {
 	return (
+		// Only a finished load can tell that everything here is archived. While the list
+		// loads, no rows are known yet but the stored count already is.
+		!loading.value &&
 		workflowsAndFolders.value.length === 0 &&
 		automationAgents.agents.value.length === 0 &&
 		!hasFilters.value &&
