@@ -578,6 +578,41 @@ describe('ToolCallRunner preToolExecution', () => {
 		});
 	});
 
+	it('describes a call that the model provider ran, although the runtime has no such tool', async () => {
+		const tool: BuiltTool = { name: 'send_message', description: '', handler: makeHandler() };
+		const call = makeCall([tool], { toolName: tool.name });
+		const list = new AgentMessageList();
+		list.addResponse(
+			fromAiMessages([
+				{
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'call-0',
+							toolName: 'anthropic.tool_search',
+							input: { query: 'mail' },
+							providerExecuted: true,
+						},
+						{ type: 'tool-call', toolCallId: 'call-1', toolName: tool.name, input: {} },
+					],
+				},
+			]),
+		);
+		let runToolCalls: ReturnType<PreToolExecutionContext['runToolCalls']> = [];
+		const hook: PreToolExecution = async (ctx) => {
+			runToolCalls = ctx.runToolCalls();
+			return await allow(ctx);
+		};
+
+		await makeRunner(hook).processToolCall({ ...call, list });
+
+		expect(runToolCalls[0]).toMatchObject({
+			toolCallId: 'call-0',
+			tool: { name: 'anthropic.tool_search', metadata: { kind: 'provider' } },
+		});
+	});
+
 	it('lists the tool calls of the run so far', async () => {
 		const tool: BuiltTool = {
 			name: 'send_message',

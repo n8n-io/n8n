@@ -111,8 +111,14 @@ function toolCallsOf(list: AgentMessageList, toolMap: Map<string, BuiltTool>): R
 		.filter((c): c is ContentToolCall => c.type === 'tool-call')
 		.map((c) => {
 			const target = resolveToolCallTarget(toolMap, c.toolName, c.input);
-			// The runtime has no tool of this name any more, so the call stays as it was stored.
-			if (!target) return { ...c };
+			if (!target) {
+				// A tool that the model provider runs is not in the tool map, but it is a known tool.
+				if (c.providerExecuted) {
+					return { ...c, tool: { name: c.toolName, metadata: { kind: 'provider' } } };
+				}
+				// The runtime has no tool of this name any more, so the call stays as it was stored.
+				return { ...c };
+			}
 			return {
 				...c,
 				...(target.dispatchedBy && {

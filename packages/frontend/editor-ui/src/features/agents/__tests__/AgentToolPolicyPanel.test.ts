@@ -6,6 +6,7 @@ import type { ToolPolicy, ToolPolicyTemplate } from '@n8n/api-types';
 import { N8nInput } from '@n8n/design-system';
 
 import AgentToolPolicyPanel from '../components/AgentToolPolicyPanel.vue';
+import AgentToolPolicyToolField from '../components/AgentToolPolicyToolField.vue';
 import type { AgentJsonConfig } from '../types';
 
 const MCP_CLIENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
@@ -38,6 +39,7 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.toolPolicy.rule.warning.missingTools': 'Missing: {tools}',
 				'agents.toolPolicy.rule.title': 'Rule {index}',
 				'agents.toolPolicy.rule.warning.overlap': 'Overlap: {tools}',
+				'agents.toolPolicy.rule.covers': 'Covers {count}: {tools}',
 			};
 			const template = copy[key] ?? key;
 			const values = options?.interpolate ?? {};
@@ -93,6 +95,10 @@ const stubs = {
 		props: ['value', 'label'],
 		template: '<span>{{ label }}</span>',
 	},
+	N8nPopover: {
+		name: 'N8nPopover',
+		template: '<div><slot name="trigger" /><slot name="content" /></div>',
+	},
 };
 
 function render(config: AgentJsonConfig, disabled = false, projectId?: string) {
@@ -103,10 +109,17 @@ function render(config: AgentJsonConfig, disabled = false, projectId?: string) {
 }
 
 function select(wrapper: VueWrapper, testId: string, index = 0) {
-	const found = wrapper
-		.findAllComponents({ name: 'N8nSelect' })
-		.filter((component) => component.attributes('data-testid') === testId);
+	const found = [
+		...wrapper.findAllComponents({ name: 'N8nSelect' }),
+		...wrapper.findAllComponents(AgentToolPolicyToolField),
+	].filter((component) => component.attributes('data-testid') === testId);
 	return found[index];
+}
+
+/** The labels of the options that a tool field offers. */
+function optionLabels(wrapper: VueWrapper, testId: string): string[] {
+	const options = select(wrapper, testId).props('options') as Array<{ label: string }>;
+	return options.map((option) => option.label);
 }
 
 function lastPolicy(wrapper: VueWrapper): ToolPolicy | undefined {
@@ -130,9 +143,7 @@ describe('AgentToolPolicyPanel', () => {
 			rules: [{ id: 'r1', action: 'deny', tools }],
 		});
 		const toolLabels = (wrapper: VueWrapper) =>
-			select(wrapper, 'agent-tool-policy-rule-tools')
-				.findAllComponents({ name: 'N8nOption' })
-				.map((option) => option.props('label'));
+			optionLabels(wrapper, 'agent-tool-policy-rule-tools');
 
 		it('lists each tool after its server once the list is loaded', async () => {
 			loadMcpTools.mockResolvedValue([
@@ -237,9 +248,7 @@ describe('AgentToolPolicyPanel', () => {
 			}),
 		);
 
-		const labels = select(wrapper, 'agent-tool-policy-rule-tools')
-			.findAllComponents({ name: 'N8nOption' })
-			.map((option) => option.props('label'));
+		const labels = optionLabels(wrapper, 'agent-tool-policy-rule-tools');
 		expect(labels).toEqual([
 			'agents.toolPolicy.category.sendsDataOut',
 			'agents.toolPolicy.category.readsData',
@@ -290,7 +299,8 @@ describe('AgentToolPolicyPanel', () => {
 			}),
 		);
 
-		wrapper.findComponent(N8nInput).vm.$emit('update:modelValue', '  Not now  ');
+		// The pickers have a search input each. The message input comes after them.
+		wrapper.findAllComponents(N8nInput).at(-1)?.vm.$emit('update:modelValue', '  Not now  ');
 		await nextTick();
 		expect(lastPolicy(wrapper)?.rules[0].message).toBe('Not now');
 
@@ -531,6 +541,81 @@ describe('AgentToolPolicyPanel', () => {
 		await nextTick();
 
 		expect(lastPolicy(wrapper)?.rules.map((rule) => rule.id)).toEqual(['rule-2', 'rule-3']);
+	});
+
+	describe('rule as a sentence', () => {
+		const rule = {
+			id: 'r1',
+			action: 'deny',
+			tools: [sendEmail],
+			when: { toolUsed: [readDb] },
+		} as const;
+
+		it('says which tools of the agent each tool field covers', () => {
+			const wrapper = render(makeConfig({ defaultAction: 'allow', rules: [rule] }));
+
+			expect(wrapper.find('[data-testid="agent-tool-policy-rule-covers"]').text()).toBe(
+				'Covers 1: Send Email',
+			);
+			expect(wrapper.find('[data-testid="agent-tool-policy-rule-used-covers"]').text()).toBe(
+				'Covers 1: Read Customer DB',
+			);
+		});
+
+		it('says nothing about coverage while a field has no tools', async () => {
+			const wrapper = render(makeConfig());
+			await wrapper.find('[data-testid="agent-tool-policy-add-rule"]').trigger('click');
+
+			expect(wrapper.find('[data-testid="agent-tool-policy-rule-covers"]').exists()).toBe(false);
+		});
+
+		it('collapses a rule to one line that reads like the rule', async () => {
+			const wrapper = render(makeConfig({ defaultAction: 'allow', rules: [rule] }));
+			expect(wrapper.find('[data-testid="agent-tool-policy-rule-summary"]').exists()).toBe(false);
+
+			await wrapper.find('[data-testid="agent-tool-policy-rule-toggle"]').trigger('click');
+
+			const summary = wrapper.find('[data-testid="agent-tool-policy-rule-summary"]');
+			expect(summary.text()).toMatch(
+				/^agents\.toolPolicy\.action\.deny\s*Send Email\s*agents\.toolPolicy\.applies\.after\s*Read Customer DB\s*agents\.toolPolicy\.applies\.after\.tail$/,
+			);
+			expect(select(wrapper, 'agent-tool-policy-rule-tools')).toBeUndefined();
+
+			await wrapper.find('[data-testid="agent-tool-policy-rule-toggle"]').trigger('click');
+			expect(select(wrapper, 'agent-tool-policy-rule-tools')).toBeDefined();
+		});
+
+		it('shows a rule that always applies without a condition', async () => {
+			const always = { id: 'r1', action: 'deny', tools: [sendEmail] } as const;
+			const wrapper = render(makeConfig({ defaultAction: 'allow', rules: [always] }));
+
+			expect(select(wrapper, 'agent-tool-policy-rule-tool-used')).toBeUndefined();
+			await wrapper.find('[data-testid="agent-tool-policy-rule-toggle"]').trigger('click');
+			expect(wrapper.find('[data-testid="agent-tool-policy-rule-summary"]').text()).toMatch(
+				/^agents\.toolPolicy\.action\.deny\s*Send Email\s*agents\.toolPolicy\.applies\.always$/,
+			);
+		});
+	});
+
+	it('shows that the tools of a server did not load, and loads them again on retry', async () => {
+		const wrapper = render(
+			makeConfig({
+				defaultAction: 'allow',
+				rules: [{ id: 'r1', action: 'deny', tools: [sendEmail] }],
+			}),
+		);
+		await flushPromises();
+		const field = select(wrapper, 'agent-tool-policy-rule-tools');
+		expect(field.props('serverStates')).toEqual({ crm: 'failed' });
+
+		loadMcpTools.mockResolvedValue([{ name: 'Send mail', value: 'send_mail' }]);
+		field.vm.$emit('retry', 'crm');
+		await flushPromises();
+
+		expect(select(wrapper, 'agent-tool-policy-rule-tools').props('serverStates')).toEqual({});
+		expect(optionLabels(wrapper, 'agent-tool-policy-rule-tools')).toContain(
+			'send_mail (crm MCP tool)',
+		);
 	});
 
 	it('does not emit changes when disabled', async () => {

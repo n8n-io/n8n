@@ -424,6 +424,22 @@ describe('evaluateToolCall', () => {
 			expect(identify).toHaveBeenCalledWith(sendEmail);
 		});
 
+		it('does not take a tool that the model provider ran for an MCP tool', async () => {
+			const afterNotion: ToolPolicyRule = {
+				id: 'after-notion',
+				action: 'deny',
+				tools: [ref('Send Email')],
+				when: { toolUsed: [notion] },
+			};
+			const toolSearch = used({ name: 'anthropic.tool_search', metadata: { kind: 'provider' } });
+
+			const { decision } = await decide([own([afterNotion])], sendEmail, [toolSearch], {
+				describe: undefined,
+			});
+
+			expect(decision.action).toBe('allow');
+		});
+
 		it('denies one tool of an MCP server and leaves its other tools', async () => {
 			const noNotionCreate: ToolPolicyRule = {
 				id: 'no-notion-create',

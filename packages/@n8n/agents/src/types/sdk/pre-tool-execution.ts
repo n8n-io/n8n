@@ -14,7 +14,8 @@ export type ToolCallTarget = Pick<
 
 /**
  * A tool call in the message list of a run. `tool` describes the tool that the call ran or
- * will run. It is absent when the runtime no longer has a tool of that name.
+ * will run. It is absent when the runtime no longer has a tool of that name. A tool that the
+ * model provider ran has its name and `metadata.kind: 'provider'`.
  */
 export type RunToolCall = ContentToolCall & { readonly tool?: ToolCallTarget };
 

@@ -16,6 +16,7 @@ import {
 	N8nCallout,
 	N8nIconButton,
 	N8nInlineTextEdit,
+	N8nIcon,
 	N8nInput,
 	N8nOption,
 	N8nSelect,
@@ -47,7 +48,14 @@ import {
 	type ToolPolicyOptionSource,
 	type ToolPolicyRuleDraft,
 } from '../utils/tool-policy-config';
+import {
+	coveredAgentTools,
+	toolPolicyChips,
+	type ToolPickerOption,
+} from '../utils/tool-policy-picker';
 import AgentPanel from './AgentPanel.vue';
+import AgentToolPolicyChips from './AgentToolPolicyChips.vue';
+import AgentToolPolicyToolField from './AgentToolPolicyToolField.vue';
 import shared from '../styles/agent-panel.module.scss';
 
 const props = withDefaults(
@@ -83,6 +91,13 @@ function edit(change: () => void) {
 
 /** The tool names of each MCP server whose list is loaded, by server name. */
 const mcpServerTools = ref<Record<string, string[]>>({});
+/** The servers whose list is loading or did not load. */
+const mcpServerStates = ref<Record<string, 'loading' | 'failed'>>({});
+
+function setServerState(name: string, state?: 'loading' | 'failed') {
+	const { [name]: _, ...rest } = mcpServerStates.value;
+	mcpServerStates.value = state ? { ...rest, [name]: state } : rest;
+}
 
 /**
  * Asks an MCP server for its tools, the same way as the approval setting of an MCP tool. A
@@ -95,6 +110,7 @@ async function loadMcpServerTools(server: AgentJsonMcpServerConfig) {
 	if (!nodeType) return;
 
 	const node = mcpServerToNode(server, nodeType);
+	setServerState(server.name, 'loading');
 	try {
 		const tools = await nodeTypesStore.getNodeParameterOptions({
 			nodeTypeAndVersion: { name: node.type, version: node.typeVersion },
@@ -108,9 +124,16 @@ async function loadMcpServerTools(server: AgentJsonMcpServerConfig) {
 			...mcpServerTools.value,
 			[server.name]: tools.map((tool) => String(tool.value)),
 		};
+		setServerState(server.name);
 	} catch {
 		// Rules for the whole server still work, and a saved rule for one tool stays selected.
+		setServerState(server.name, 'failed');
 	}
+}
+
+function retryMcpServerTools(serverName: string) {
+	const server = props.config?.mcpServers?.find((candidate) => candidate.name === serverName);
+	if (server) void loadMcpServerTools(server);
 }
 
 // When the panel opens, and when the builder adds or changes a server.
@@ -177,18 +200,13 @@ function fallbackLabel(selector: ToolPolicySelector): string {
 	});
 }
 
-interface SelectOption {
-	key: string;
-	label: string;
-	selector: ToolPolicySelector;
-}
-
 /** The agent options, plus the selected ones that the agent no longer has. */
-function selectOptions(selected: ToolPolicySelector[]): SelectOption[] {
-	const list: SelectOption[] = options.value.map((option) => ({
+function selectOptions(selected: ToolPolicySelector[]): ToolPickerOption[] {
+	const list: ToolPickerOption[] = options.value.map((option) => ({
 		key: option.key,
 		label: sourceLabel(option.source),
 		selector: option.selector,
+		source: option.source,
 	}));
 	for (const selector of selected) {
 		const key = toolPolicySelectorKey(selector);
@@ -213,11 +231,53 @@ const actionOptions = computed<Array<{ value: ToolPolicyAction; label: string }>
 	{ value: 'deny', label: i18n.baseText('agents.toolPolicy.action.deny') },
 ]);
 
+// The rule reads as a sentence, so these are its connecting words.
 const appliesOptions = computed<Array<{ value: ToolPolicyAppliesMode; label: string }>>(() => [
 	{ value: 'always', label: i18n.baseText('agents.toolPolicy.applies.always') },
 	{ value: 'after', label: i18n.baseText('agents.toolPolicy.applies.after') },
 	{ value: 'afterAll', label: i18n.baseText('agents.toolPolicy.applies.afterAll') },
 ]);
+
+function appliesLabel(applies: ToolPolicyAppliesMode): string {
+	return appliesOptions.value.find((option) => option.value === applies)?.label ?? '';
+}
+
+/** The words after the used tools: "was used" or "were used". */
+function appliesTail(applies: ToolPolicyAppliesMode): string {
+	return i18n.baseText(
+		applies === 'afterAll'
+			? 'agents.toolPolicy.applies.afterAll.tail'
+			: 'agents.toolPolicy.applies.after.tail',
+	);
+}
+
+function actionLabel(action: ToolPolicyAction): string {
+	return i18n.baseText(`agents.toolPolicy.action.${action}`);
+}
+
+/** The rules that the builder collapsed to one line. */
+const collapsedRuleIds = ref<string[]>([]);
+
+function toggleRule(rule: ToolPolicyRuleDraft) {
+	collapsedRuleIds.value = collapsedRuleIds.value.includes(rule.id)
+		? collapsedRuleIds.value.filter((id) => id !== rule.id)
+		: [...collapsedRuleIds.value, rule.id];
+}
+
+function chipsOf(selectors: ToolPolicySelector[]) {
+	return toolPolicyChips(selectors.map(toolPolicySelectorKey), selectOptions(selectors));
+}
+
+/** Which tools of this agent a tool field covers. Empty while nothing is selected. */
+function coversText(selectors: ToolPolicySelector[]): string {
+	if (selectors.length === 0) return '';
+	const covered = coveredAgentTools(props.config, selectors);
+	if (covered.length === 0) return i18n.baseText('agents.toolPolicy.rule.covers.none');
+	return i18n.baseText('agents.toolPolicy.rule.covers', {
+		adjustToNumber: covered.length,
+		interpolate: { count: covered.length, tools: covered.join(', ') },
+	});
+}
 
 function isAction(value: unknown): value is ToolPolicyAction {
 	return value === 'allow' || value === 'deny';
@@ -366,6 +426,19 @@ function ruleWarnings(rule: ToolPolicyRuleDraft): Array<{ key: string; text: str
 				data-testid="agent-tool-policy-rule"
 			>
 				<div :class="$style.ruleHeader">
+					<button
+						type="button"
+						:class="$style.ruleToggle"
+						:aria-expanded="!collapsedRuleIds.includes(rule.id)"
+						:aria-label="i18n.baseText('agents.toolPolicy.rule.toggle')"
+						data-testid="agent-tool-policy-rule-toggle"
+						@click="toggleRule(rule)"
+					>
+						<N8nIcon
+							:icon="collapsedRuleIds.includes(rule.id) ? 'chevron-right' : 'chevron-down'"
+							size="small"
+						/>
+					</button>
 					<N8nInlineTextEdit
 						:model-value="rule.name"
 						:placeholder="
@@ -374,8 +447,9 @@ function ruleWarnings(rule: ToolPolicyRuleDraft): Array<{ key: string; text: str
 							})
 						"
 						:max-length="TOOL_POLICY_NAME_MAX_LENGTH"
+						max-width="100%"
 						:disabled="disabled"
-						:class="shared.dataEntryLabel"
+						:class="[shared.dataEntryLabel, $style.ruleName]"
 						data-testid="agent-tool-policy-rule-name"
 						@update:model-value="(value: string) => edit(() => (rule.name = value))"
 					/>
@@ -390,130 +464,126 @@ function ruleWarnings(rule: ToolPolicyRuleDraft): Array<{ key: string; text: str
 					/>
 				</div>
 
-				<div :class="shared.settingRow">
-					<div :class="shared.settingLabel">
-						<N8nText step="sm" :class="shared.dataEntryLabel">
-							{{ i18n.baseText('agents.toolPolicy.rule.action.label') }}
-						</N8nText>
-					</div>
-					<N8nSelect
-						:model-value="rule.action"
-						size="small"
-						:disabled="disabled"
-						:class="shared.settingControlShort"
-						data-testid="agent-tool-policy-rule-action"
-						@update:model-value="onRuleAction(rule, $event)"
-					>
-						<N8nOption
-							v-for="option in actionOptions"
-							:key="option.value"
-							:value="option.value"
-							:label="option.label"
-						/>
-					</N8nSelect>
+				<!-- One line that reads like the rule, for a collapsed rule. -->
+				<div
+					v-if="collapsedRuleIds.includes(rule.id)"
+					:class="$style.summary"
+					data-testid="agent-tool-policy-rule-summary"
+				>
+					<span :class="[$style.action, rule.action === 'deny' && $style.actionDeny]">
+						{{ actionLabel(rule.action) }}
+					</span>
+					<AgentToolPolicyChips :chips="chipsOf(rule.tools)" />
+					<template v-if="rule.applies !== 'advanced'">
+						<span :class="$style.words">{{ appliesLabel(rule.applies) }}</span>
+						<template v-if="needsToolUsed(rule.applies)">
+							<AgentToolPolicyChips :chips="chipsOf(rule.toolUsed)" />
+							<span :class="$style.words">{{ appliesTail(rule.applies) }}</span>
+						</template>
+					</template>
 				</div>
 
-				<div :class="shared.settingRow">
-					<div :class="shared.settingLabel">
-						<N8nText step="sm" :class="shared.dataEntryLabel">
-							{{ i18n.baseText('agents.toolPolicy.rule.tools.label') }}
-						</N8nText>
-					</div>
-					<N8nSelect
-						:model-value="rule.tools.map(toolPolicySelectorKey)"
-						multiple
-						filterable
-						size="small"
-						:disabled="disabled"
-						:placeholder="i18n.baseText('agents.toolPolicy.rule.tools.placeholder')"
-						:class="shared.settingControlWide"
-						data-testid="agent-tool-policy-rule-tools"
-						@update:model-value="onRuleTools(rule, $event)"
-					>
-						<N8nOption
-							v-for="option in selectOptions(rule.tools)"
-							:key="option.key"
-							:value="option.key"
-							:label="option.label"
+				<template v-else>
+					<div :class="$style.line">
+						<N8nSelect
+							:model-value="rule.action"
+							size="small"
+							:disabled="disabled"
+							:class="$style.word"
+							data-testid="agent-tool-policy-rule-action"
+							@update:model-value="onRuleAction(rule, $event)"
+						>
+							<N8nOption
+								v-for="option in actionOptions"
+								:key="option.value"
+								:value="option.value"
+								:label="option.label"
+							/>
+						</N8nSelect>
+						<AgentToolPolicyToolField
+							:model-value="rule.tools.map(toolPolicySelectorKey)"
+							:options="selectOptions(rule.tools)"
+							:server-states="mcpServerStates"
+							:disabled="disabled"
+							data-testid="agent-tool-policy-rule-tools"
+							@update:model-value="onRuleTools(rule, $event)"
+							@retry="retryMcpServerTools"
 						/>
-					</N8nSelect>
-				</div>
-
-				<div :class="shared.settingRow">
-					<div :class="shared.settingLabel">
-						<N8nText step="sm" :class="shared.dataEntryLabel">
-							{{ i18n.baseText('agents.toolPolicy.rule.applies.label') }}
-						</N8nText>
 					</div>
 					<N8nText
-						v-if="rule.applies === 'advanced'"
+						v-if="coversText(rule.tools)"
 						size="small"
-						:class="shared.dataEntrySubLabel"
-						data-testid="agent-tool-policy-rule-advanced"
+						:class="[shared.dataEntrySubLabel, $style.covers]"
+						data-testid="agent-tool-policy-rule-covers"
 					>
-						{{ i18n.baseText('agents.toolPolicy.applies.advanced') }}
+						{{ coversText(rule.tools) }}
 					</N8nText>
-					<N8nSelect
-						v-else
-						:model-value="rule.applies"
-						size="small"
-						:disabled="disabled"
-						:class="shared.settingControlWide"
-						data-testid="agent-tool-policy-rule-applies"
-						@update:model-value="onRuleApplies(rule, $event)"
-					>
-						<N8nOption
-							v-for="option in appliesOptions"
-							:key="option.value"
-							:value="option.value"
-							:label="option.label"
-						/>
-					</N8nSelect>
-				</div>
 
-				<div v-if="needsToolUsed(rule.applies)" :class="shared.settingRow">
-					<div :class="shared.settingLabel">
+					<div :class="$style.line">
+						<N8nText
+							v-if="rule.applies === 'advanced'"
+							size="small"
+							:class="shared.dataEntrySubLabel"
+							data-testid="agent-tool-policy-rule-advanced"
+						>
+							{{ i18n.baseText('agents.toolPolicy.applies.advanced') }}
+						</N8nText>
+						<N8nSelect
+							v-else
+							:model-value="rule.applies"
+							size="small"
+							:disabled="disabled"
+							:class="$style.wordWide"
+							data-testid="agent-tool-policy-rule-applies"
+							@update:model-value="onRuleApplies(rule, $event)"
+						>
+							<N8nOption
+								v-for="option in appliesOptions"
+								:key="option.value"
+								:value="option.value"
+								:label="option.label"
+							/>
+						</N8nSelect>
+						<template v-if="needsToolUsed(rule.applies)">
+							<AgentToolPolicyToolField
+								:model-value="rule.toolUsed.map(toolPolicySelectorKey)"
+								:options="selectOptions(rule.toolUsed)"
+								:server-states="mcpServerStates"
+								:disabled="disabled"
+								data-testid="agent-tool-policy-rule-tool-used"
+								@update:model-value="onRuleToolUsed(rule, $event)"
+								@retry="retryMcpServerTools"
+							/>
+							<span :class="[$style.words, $style.tail]">{{ appliesTail(rule.applies) }}</span>
+						</template>
+					</div>
+					<N8nText
+						v-if="needsToolUsed(rule.applies) && coversText(rule.toolUsed)"
+						size="small"
+						:class="[shared.dataEntrySubLabel, $style.covers]"
+						data-testid="agent-tool-policy-rule-used-covers"
+					>
+						{{ coversText(rule.toolUsed) }}
+					</N8nText>
+
+					<div v-if="rule.action === 'deny'" :class="$style.message">
 						<N8nText step="sm" :class="shared.dataEntryLabel">
-							{{ i18n.baseText('agents.toolPolicy.rule.toolUsed.label') }}
+							{{ i18n.baseText('agents.toolPolicy.rule.message.label') }}
+						</N8nText>
+						<N8nInput
+							:model-value="rule.message"
+							size="small"
+							:disabled="disabled"
+							:maxlength="TOOL_POLICY_MESSAGE_MAX_LENGTH"
+							:placeholder="DEFAULT_TOOL_POLICY_DENY_MESSAGE"
+							data-testid="agent-tool-policy-rule-message"
+							@update:model-value="onRuleMessage(rule, String($event ?? ''))"
+						/>
+						<N8nText size="small" :class="shared.dataEntrySubLabel">
+							{{ i18n.baseText('agents.toolPolicy.rule.message.hint') }}
 						</N8nText>
 					</div>
-					<N8nSelect
-						:model-value="rule.toolUsed.map(toolPolicySelectorKey)"
-						multiple
-						filterable
-						size="small"
-						:disabled="disabled"
-						:placeholder="i18n.baseText('agents.toolPolicy.rule.tools.placeholder')"
-						:class="shared.settingControlWide"
-						data-testid="agent-tool-policy-rule-tool-used"
-						@update:model-value="onRuleToolUsed(rule, $event)"
-					>
-						<N8nOption
-							v-for="option in selectOptions(rule.toolUsed)"
-							:key="option.key"
-							:value="option.key"
-							:label="option.label"
-						/>
-					</N8nSelect>
-				</div>
-
-				<div v-if="rule.action === 'deny'" :class="$style.message">
-					<N8nText step="sm" :class="shared.dataEntryLabel">
-						{{ i18n.baseText('agents.toolPolicy.rule.message.label') }}
-					</N8nText>
-					<N8nInput
-						:model-value="rule.message"
-						size="small"
-						:disabled="disabled"
-						:maxlength="TOOL_POLICY_MESSAGE_MAX_LENGTH"
-						:placeholder="DEFAULT_TOOL_POLICY_DENY_MESSAGE"
-						data-testid="agent-tool-policy-rule-message"
-						@update:model-value="onRuleMessage(rule, String($event ?? ''))"
-					/>
-					<N8nText size="small" :class="shared.dataEntrySubLabel">
-						{{ i18n.baseText('agents.toolPolicy.rule.message.hint') }}
-					</N8nText>
-				</div>
+				</template>
 
 				<N8nText
 					v-if="!isToolPolicyRuleComplete(rule)"
@@ -591,8 +661,71 @@ function ruleWarnings(rule: ToolPolicyRuleDraft): Array<{ key: string; text: str
 .ruleHeader {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
+	gap: var(--spacing--2xs);
+}
+
+.ruleToggle {
+	display: inline-flex;
+	flex: none;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: var(--text-color--subtler);
+	cursor: pointer;
+}
+
+.ruleName {
+	flex: 1 1 0;
+	min-width: 0;
+}
+
+// One part of the sentence: a connecting word, then the tools that it is about.
+.line {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
 	gap: var(--spacing--xs);
+}
+
+.word {
+	flex: none;
+	width: calc(var(--spacing--3xl) + var(--spacing--sm));
+}
+
+.wordWide {
+	flex: none;
+	width: calc(var(--spacing--4xl) + var(--spacing--sm));
+}
+
+.words {
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--sm);
+	white-space: nowrap;
+}
+
+.tail {
+	flex: none;
+	line-height: var(--spacing--xl);
+}
+
+.covers {
+	margin-top: calc(var(--spacing--2xs) * -1);
+}
+
+.summary {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.action {
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--bold);
+}
+
+.actionDeny {
+	color: var(--callout--color--text--warning);
 }
 
 .message {
