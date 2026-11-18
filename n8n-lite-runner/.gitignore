@@ -1,0 +1,25 @@
+# Cargo build output
+/target/
+
+# Runners from scripts/build-runners.sh
+/dist/
+
+# rustfmt backups
+**/*.rs.bk
+
+# Debug symbols on Windows
+*.pdb
+
+# Local environment and secrets
+.env
+.env.*
+
+# Editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+
+# macOS
+.DS_Store

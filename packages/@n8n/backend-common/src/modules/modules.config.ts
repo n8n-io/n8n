@@ -51,6 +51,7 @@ export const MODULE_NAMES = [
 	'knowledge',
 	'execution-limits',
 	'execution-ledger',
+	'n8n-lite',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

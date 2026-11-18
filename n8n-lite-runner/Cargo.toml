@@ -1,0 +1,23 @@
+[package]
+name = "n8n-mini"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+async-trait = "0.1.92"
+axum = "0.8.9"
+clap = { version = "4.6.8", features = ["derive", "env"] }
+humantime = "2.4.0"
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "query", "rustls"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+serde_path_to_error = "0.1.20"
+serde_urlencoded = "0.7.1"
+thiserror = "2.0.21"
+tokio = { version = "1.54.1", features = ["sync", "rt", "rt-multi-thread", "macros", "net", "signal"] }
+
+[dev-dependencies]
+http-body-util = "0.1.5"
+tempfile = "3.27.0"
+tokio = { version = "1.54.1", features = ["io-util", "macros", "process", "rt", "rt-multi-thread", "time"] }
+tower = { version = "0.5.3", features = ["util"] }
