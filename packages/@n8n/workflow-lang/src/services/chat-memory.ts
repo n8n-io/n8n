@@ -27,6 +27,8 @@ const MESSAGE_BYTES = 16;
 interface ChatMessage {
 	ai: boolean;
 	text: string;
+	toolCalls?: Array<{ id: string; name: string; arguments: string }>;
+	toolCallId?: string;
 }
 
 interface Session {
@@ -49,6 +51,12 @@ export interface ChatMemoryOptions {
 
 function utf8Length(text: string): number {
 	return Buffer.byteLength(text, 'utf8');
+}
+
+function isMessage(value: unknown): value is ChatMessage {
+	if (typeof value !== 'object' || value === null) return false;
+	const m = value as Record<string, unknown>;
+	return typeof m.ai === 'boolean' && typeof m.text === 'string';
 }
 
 export class ChatMemoryStore {
@@ -86,6 +94,7 @@ export class ChatMemoryStore {
 	 *   fallback host.
 	 * - `load { sessionKey }`: answers `{ messages }`, the last `2 * window` messages.
 	 * - `save { sessionKey, input, output }`: adds the two messages.
+	 * - `save { sessionKey, messages }`: adds the messages as they are (for tool calls).
 	 *
 	 * A `load` or `save` of a session that is not in the store reads nothing and keeps
 	 * nothing: the process started again after the `open`, and v1 has lost the session then.
@@ -109,8 +118,16 @@ export class ChatMemoryStore {
 		if (call.op === 'save') {
 			const session = this.sessions.get(key);
 			if (session) {
-				this.add(session, false, String(args.input ?? ''));
-				this.add(session, true, String(args.output ?? ''));
+				const list = args.messages;
+				if (Array.isArray(list)) {
+					for (const item of list) {
+						if (!isMessage(item)) continue;
+						this.addItem(session, item);
+					}
+				} else {
+					this.addItem(session, { ai: false, text: String(args.input ?? '') });
+					this.addItem(session, { ai: true, text: String(args.output ?? '') });
+				}
 			}
 			return { ok: true, result: {} };
 		}
@@ -146,9 +163,9 @@ export class ChatMemoryStore {
 		return {};
 	}
 
-	private add(session: Session, ai: boolean, text: string): void {
-		session.messages.push({ ai, text });
-		const bytes = MESSAGE_BYTES + utf8Length(text);
+	private addItem(session: Session, message: ChatMessage): void {
+		session.messages.push(message);
+		const bytes = MESSAGE_BYTES + utf8Length(message.text);
 		session.bytes += bytes;
 		this.used += bytes;
 	}

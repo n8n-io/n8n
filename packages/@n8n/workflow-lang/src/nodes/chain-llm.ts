@@ -34,7 +34,13 @@
  * The chain also takes the Structured Output Parser of versions 1.2 and 1.3 without
  * auto-fixing (`outputParser`): the converter gives the format instructions that v1 adds to
  * the prompt, and the shape that zod checks the answer with.
- * Not supported (the converter keeps these in the fallback host): tools, other output
+ * The agent takes the same parser: it gives the model the schema as the tool
+ * `format_final_json_response`, and the parser reads the arguments of that call, or the text
+ * of an answer without a call (`docs/compiler-plan.md`, "Output parser of the agent").
+ * The agent of versions 1.6 to 1.9 asks the model for a stream: the node reads the text of
+ * the server-sent events (`streamedCompletion`). A stream with more than text gives
+ * `{ host: true }`, and the converted source then runs the cluster in the fallback host.
+ * Not supported (the converter keeps these in the fallback host): other output
  * parsers, a fallback model, image messages, the JSON response format, the reasoning
  * effort, built-in tools, a custom base URL of the model node, and other model providers.
  */
@@ -82,6 +88,8 @@ interface OutputParser {
 	instructions?: string;
 	shape?: OutputShape;
 	outputRequired?: boolean;
+	/** The agent: the JSON Schema of the tool `format_final_json_response`. */
+	schema?: unknown;
 }
 
 /** The parameters of the root for one input item. */
@@ -103,10 +111,14 @@ interface AiMemory {
 	window?: number;
 }
 
-/** One message of a session: the prompt of the user, or the answer of the agent. */
+/** One message of a session: a prompt, an answer, a tool call or a tool result. */
 interface StoredMessage {
 	ai: boolean;
 	text: string;
+	/** A tool call of the assistant (an `AIMessage` with `tool_calls` of LangChain). */
+	toolCalls?: Array<{ id: string; name: string; arguments: string }>;
+	/** The id of the matching call for a tool result (a `ToolMessage` of LangChain). */
+	toolCallId?: string;
 }
 
 /** One argument of a tool: a `$fromAI` call of the tool node (`src/convert/from-ai.ts`). */
@@ -214,6 +226,8 @@ interface Outcome {
 	description?: string;
 	/** The agent of version 3: the answer calls a tool, so the engine runs the node again. */
 	again?: boolean;
+	/** The answer has a form without a proof: the cluster runs in the fallback host. */
+	host?: boolean;
 }
 
 /** The request of one item: the body, and true when it goes to the Responses API. */
@@ -230,7 +244,9 @@ interface ModelRequest {
 
 interface ChatMessage {
 	role: string;
-	content: string;
+	content: unknown;
+	tool_calls?: unknown[];
+	tool_call_id?: string;
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -284,15 +300,42 @@ function chatMessages(
 	const out: ChatMessage[] = [];
 	if (agent) {
 		const system = parameters.systemMessage;
-		if (system) {
+		// With an output parser, the text about the tool of the parser follows the system message.
+		if (system || instructions !== undefined) {
+			const own = system ? (typeof system === 'string' ? system : String(system)) : undefined;
 			out.push({
 				role: reasoning ? 'developer' : 'system',
-				content: typeof system === 'string' ? system : String(system),
+				content:
+					own === undefined
+						? (instructions ?? '')
+						: instructions === undefined
+							? own
+							: `${own}\n\n${instructions}`,
 			});
 		}
 		// The chat history of the memory comes after the system message.
 		for (const message of history) {
-			out.push({ role: message.ai ? 'assistant' : 'user', content: message.text });
+			if (message.ai) {
+				// An assistant message with tool calls, or a simple text answer.
+				out.push(
+					message.toolCalls !== undefined
+						? {
+								role: 'assistant',
+								content: message.text,
+								tool_calls: message.toolCalls.map((call) => ({
+									id: call.id,
+									type: 'function',
+									function: { name: call.name, arguments: call.arguments },
+								})),
+							}
+						: { role: 'assistant', content: message.text },
+				);
+			} else if (message.toolCallId !== undefined) {
+				// A tool result message.
+				out.push({ role: 'tool', content: message.text, tool_call_id: message.toolCallId });
+			} else {
+				out.push({ role: 'user', content: message.text });
+			}
 		}
 		out.push({ role: 'user', content: promptText(parameters.text) });
 		return out;
@@ -604,6 +647,127 @@ function answerToolCalls(request: ModelRequest, data: unknown): string | undefin
 	return undefined;
 }
 
+/** The tool that the agent gives the model for an output parser (`getTools` of v1). */
+const FORMAT_TOOL = 'format_final_json_response';
+const FORMAT_TOOL_DESCRIPTION =
+	'Use this tool to format your final response to the user in a structured JSON format. This tool validates your output against a schema to ensure it meets the required format. ONLY use this tool when you have completed all necessary reasoning and are ready to provide your final answer. Do not use this tool for intermediate steps or for asking questions. The output from this tool will be directly returned to the user.';
+/** The text that the agent adds to the system message for an output parser. */
+const FORMAT_INSTRUCTIONS =
+	'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.';
+
+/** Adds the tool of the output parser to the request of an agent, in the form of the provider. */
+function addFormatTool(request: ModelRequest, provider: string | undefined, schema: unknown): void {
+	const body = request.body;
+	if (request.anthropic === true) {
+		body.tools = [
+			{ name: FORMAT_TOOL, description: FORMAT_TOOL_DESCRIPTION, input_schema: schema },
+		];
+	} else if (request.gemini === true) {
+		body.tools = [
+			{
+				functionDeclarations: [
+					{ name: FORMAT_TOOL, description: FORMAT_TOOL_DESCRIPTION, parameters: schema },
+				],
+			},
+		];
+	} else if (request.responses) {
+		body.tools = [
+			{
+				type: 'function',
+				name: FORMAT_TOOL,
+				parameters: schema,
+				description: FORMAT_TOOL_DESCRIPTION,
+				strict: false,
+			},
+		];
+	} else if (provider === 'openAi') {
+		body.tools = [
+			{
+				type: 'function',
+				function: {
+					name: FORMAT_TOOL,
+					description: FORMAT_TOOL_DESCRIPTION,
+					parameters: schema,
+					strict: false,
+				},
+			},
+		];
+	} else {
+		// The client of the OpenRouter model sends no `strict`.
+		body.tools = [
+			{
+				type: 'function',
+				function: { name: FORMAT_TOOL, description: FORMAT_TOOL_DESCRIPTION, parameters: schema },
+			},
+		];
+	}
+}
+
+/**
+ * The tool calls of an answer that LangChain reads (calls whose arguments are JSON), for
+ * each provider. `asked` is true when the answer has a call, also one that is not JSON.
+ */
+function modelCalls(
+	request: ModelRequest,
+	data: unknown,
+	parts: Array<Record<string, unknown>>,
+): { asked: boolean; calls: Array<{ name: string; raw: unknown }> } {
+	const calls: Array<{ name: string; raw: unknown }> = [];
+	if (request.anthropic === true) {
+		for (const part of parts) {
+			if (part.type === 'tool_use') calls.push({ name: String(part.name), raw: part.input });
+		}
+		return { asked: calls.length > 0, calls };
+	}
+	if (request.gemini === true) {
+		for (const part of parts) {
+			const call = part.functionCall;
+			if (part.type === 'functionCall' && isObject(call)) {
+				calls.push({ name: String(call.name), raw: call.args });
+			}
+		}
+		return { asked: calls.length > 0, calls };
+	}
+	if (request.responses) {
+		let asked = false;
+		const output = isObject(data) && Array.isArray(data.output) ? data.output : [];
+		for (const item of output) {
+			if (!isObject(item) || item.type !== 'function_call') continue;
+			asked = true;
+			if (typeof item.arguments !== 'string') continue;
+			let raw: unknown;
+			try {
+				raw = JSON.parse(item.arguments);
+			} catch {
+				continue;
+			}
+			calls.push({ name: String(item.name), raw });
+		}
+		return { asked, calls };
+	}
+	const read = answerCalls(data);
+	for (const call of read.calls) calls.push({ name: call.name, raw: call.raw });
+	return { asked: read.asked, calls };
+}
+
+/**
+ * The text that the output parser of the agent reads for an answer without a tool call
+ * (`getAgentStepsParser` of v1): JSON that is not `{ output }` goes into `{ output }`.
+ */
+function parserInputOf(text: string): string {
+	let json: unknown;
+	try {
+		json = JSON.parse(text);
+	} catch {
+		return text;
+	}
+	if (isObject(json)) {
+		const keys = Object.keys(json);
+		if (keys.length === 1 && keys[0] === 'output') return JSON.stringify(json);
+	}
+	return JSON.stringify({ output: json });
+}
+
 const BAD_FORMAT = "Model output doesn't fit required format";
 const BAD_FORMAT_DESCRIPTION =
 	"To continue the execution when this happens, change the 'On Error' parameter in the root node's settings";
@@ -784,6 +948,80 @@ function stepOf(call: ToolCall, result: ToolResult, text: string | undefined): A
 	return { action, observation: observationOf(result) };
 }
 
+/** The system message of the agent before version 1.9, when the option has no value. */
+const SYSTEM_MESSAGE = 'You are a helpful assistant';
+
+/**
+ * The answer of a Chat Completions request with `stream: true` (server-sent events), as the
+ * answer of a request without a stream. The agent before version 2 asks for a stream, and
+ * LangChain joins the text of the chunks. Undefined for a stream that has more than text
+ * (a tool call, an event name, a chunk that is not JSON, no chunk): that form has no proof.
+ *
+ * As the OpenAI client reads the stream: an empty line ends an event, a line that starts
+ * with `:` is a comment, `[DONE]` ends the stream. As LangChain reads a chunk: the first
+ * choice only, a chunk without a choice or without a delta is skipped (the usage chunk),
+ * and so is a delta whose content is not text.
+ */
+function streamedCompletion(body: unknown): unknown {
+	if (typeof body !== 'string') return undefined;
+	let content = '';
+	let chunks = 0;
+	let data: string | undefined;
+	let done = false;
+	for (const raw of body.split('\n')) {
+		const line = raw.endsWith('\r') ? raw.slice(0, raw.length - 1) : raw;
+		if (line.includes('\r')) return undefined;
+		if (line !== '') {
+			if (line.startsWith(':')) continue;
+			// A second data line of one event, and each other field, have no proof.
+			if (!line.startsWith('data:') || data !== undefined) return undefined;
+			data = line.slice(5);
+			if (data.startsWith(' ')) data = data.slice(1);
+			continue;
+		}
+		if (data === undefined) continue;
+		const text = data;
+		data = undefined;
+		if (done) continue;
+		if (text.startsWith('[DONE]')) {
+			done = true;
+			continue;
+		}
+		let chunk: unknown;
+		try {
+			chunk = JSON.parse(text);
+		} catch {
+			return undefined;
+		}
+		if (!isObject(chunk) || chunk.error) return undefined;
+		if (chunk.choices === undefined || chunk.choices === null) continue;
+		if (!Array.isArray(chunk.choices)) return undefined;
+		const choice: unknown = chunk.choices[0];
+		if (choice === undefined || choice === null) continue;
+		if (!isObject(choice)) return undefined;
+		const delta = choice.delta;
+		if (delta === undefined || delta === null) continue;
+		if (!isObject(delta)) return undefined;
+		// The first chunk names the role; a chunk without a role has the role of the last chunk.
+		const role = delta.role;
+		if (
+			chunks === 0
+				? role !== 'assistant'
+				: role !== undefined && role !== null && role !== 'assistant'
+		) {
+			return undefined;
+		}
+		if (delta.function_call || delta.tool_calls || delta.audio) return undefined;
+		chunks++;
+		const part = delta.content;
+		if (typeof part === 'string') content += part;
+		else if (part !== undefined && part !== null) continue;
+	}
+	// An event without the empty line after it is not read by the client.
+	if (data !== undefined || chunks === 0) return undefined;
+	return { choices: [{ message: { role: 'assistant', content } }] };
+}
+
 /** The wait of LangChain's caller before try `attempt + 1` (p-retry with `randomize`). */
 function retryWait(random: number, attempt: number): number {
 	let factor = 1;
@@ -880,11 +1118,15 @@ function callsTool(data: unknown, responses: boolean): boolean {
  * text as it is. A Responses answer is a list of parts: the text parts joined and trimmed,
  * or else the thinking parts.
  */
-function agentOutput(parts: Array<Record<string, unknown>>, responses: boolean): string {
+function agentOutput(
+	parts: Array<Record<string, unknown>>,
+	responses: boolean,
+	textOnly = false,
+): string {
 	if (!responses) return String(parts[0]?.text ?? '');
 	let text = '';
 	for (const part of parts) if (part.type === 'text' && part.text) text += String(part.text);
-	if (text.trim() !== '') return text.trim();
+	if (text.trim() !== '' || textOnly) return text.trim();
 	let thinking = '';
 	for (const part of parts) {
 		if (part.type === 'thinking' && part.thinking) thinking += String(part.thinking);
@@ -1183,6 +1425,8 @@ export default defineNode<ChainParameters>({
 		// The runs of the output parser sub-node: one for each answer that it parses.
 		const parserRuns: Array<{ error: string | null }> = [];
 		const parser = parameters.kind === 'agent' ? undefined : parameters.outputParser;
+		// The agent gives the model the schema of the parser as a tool, and parses the answer.
+		const agentParser = parameters.kind === 'agent' ? parameters.outputParser : undefined;
 		// The OpenRouter model is the same LangChain client with another credential type, which
 		// injects the key only, and without the header of the OpenAI nodes.
 		const openAi = ai.provider === 'openAi';
@@ -1202,6 +1446,8 @@ export default defineNode<ChainParameters>({
 		const step = batched ? size : 1;
 		const maxIterations = parameters.maxIterations ?? 10;
 		const tries = (ai.options?.maxRetries ?? 2) + 1;
+		// The agent before version 2 asks the model for a stream.
+		const streams = agent && version < 2;
 		const memoryRuns: Array<{ error: string | null }> = [];
 		// The memory sub-node gives its session once for the run, before the first item.
 		let session: string | undefined;
@@ -1243,6 +1489,16 @@ export default defineNode<ChainParameters>({
 				service: 'chatMemory',
 				op: 'save',
 				args: { sessionKey: session, input, output },
+			});
+		};
+		/** The agent with tools keeps the messages of a turn in the session. */
+		const rememberMessages = async (messages: StoredMessage[]): Promise<void> => {
+			if (session === undefined || messages.length === 0) return;
+			memoryRuns.push({ error: null });
+			await ctx.service({
+				service: 'chatMemory',
+				op: 'save',
+				args: { sessionKey: session, messages },
 			});
 		};
 
@@ -1343,7 +1599,9 @@ export default defineNode<ChainParameters>({
 		 * One call of the model, with the tries of LangChain's caller. It records the run of the
 		 * model sub-node when the request starts, and gives the body of the answer or the error.
 		 */
-		const send = async (request: ModelRequest): Promise<{ data?: unknown; error?: string }> => {
+		const send = async (
+			request: ModelRequest,
+		): Promise<{ data?: unknown; error?: string; host?: boolean }> => {
 			const run: { error: string | null } = { error: null };
 			runs.push(run);
 			if (request.refused !== undefined) {
@@ -1376,7 +1634,11 @@ export default defineNode<ChainParameters>({
 					// The request has no answer (a network failure). LangChain tries it again.
 					transport = messageOf(error);
 				}
-				if (status > 0 && status < 400) return { data: body };
+				if (status > 0 && status < 400) {
+					if (!streams) return { data: body };
+					const data = streamedCompletion(body);
+					return data === undefined ? { host: true } : { data };
+				}
 				const final = status === 429 || NO_RETRY.includes(status);
 				if (final || attempt >= tries) {
 					run.error = status > 0 ? failure(status, body) : connectionMessage(transport);
@@ -1384,6 +1646,26 @@ export default defineNode<ChainParameters>({
 				}
 				await ctx.wait({ duration: retryWait(ctx.random(), attempt) });
 			}
+		};
+
+		/**
+		 * The output parser of the agent for one answer: the item, or the error of the parser.
+		 * `steps` are the tool calls of the item so far.
+		 */
+		const parseAnswer = (input: unknown, steps: AgentStep[]): Outcome => {
+			const parserRun: { error: string | null } = { error: null };
+			parserRuns.push(parserRun);
+			const parsed = parseStructured(
+				typeof input === 'string' ? input : JSON.stringify(input),
+				agentParser ?? {},
+			);
+			if (parsed.value !== undefined) {
+				const output: Item = parsed.value;
+				if (parameters.returnIntermediateSteps === true) output.intermediateSteps = steps;
+				return { item: output };
+			}
+			parserRun.error = parsed.error ?? null;
+			return { error: parsed.error, description: parsed.description };
 		};
 
 		/**
@@ -1416,9 +1698,25 @@ export default defineNode<ChainParameters>({
 				});
 				history = loaded.messages ?? [];
 			}
-			const request = requestOf(item, ai, agent, history, parser?.instructions);
+			// Before version 1.9 the agent has a system message when the option has no value.
+			const noSystem = item.systemMessage === undefined || item.systemMessage === null;
+			const request = requestOf(
+				agent && version < 1.9 && noSystem
+					? { text: item.text, systemMessage: SYSTEM_MESSAGE }
+					: item,
+				ai,
+				agent,
+				history,
+				agentParser !== undefined ? FORMAT_INSTRUCTIONS : parser?.instructions,
+			);
+			if (agentParser !== undefined) addFormatTool(request, ai.provider, agentParser.schema);
+			if (streams) {
+				request.body.stream = true;
+				request.body.stream_options = { include_usage: true };
+			}
 			for (let turn = 1; ; turn++) {
 				const answer = await send(request);
+				if (answer.host === true) return { host: true };
 				if (answer.error !== undefined) return { error: answer.error };
 				const run = runs[runs.length - 1];
 				let parts: Array<Record<string, unknown>> = [];
@@ -1432,12 +1730,28 @@ export default defineNode<ChainParameters>({
 					return { error: run.error };
 				}
 				if (agent) {
+					let unread = false;
+					if (agentParser !== undefined) {
+						const asked = modelCalls(request, answer.data, parts);
+						if (asked.asked && asked.calls.length === 0) {
+							// No call has arguments that are JSON. The Responses client drops such
+							// calls, and the answer is its text. The other clients refuse the answer.
+							if (!request.responses) {
+								return { error: BAD_FORMAT, description: BAD_FORMAT_DESCRIPTION };
+							}
+							unread = true;
+						}
+						// A call of the tool of the parser is the answer, also next to other calls.
+						for (const call of asked.calls) {
+							if (call.name === FORMAT_TOOL) return parseAnswer(call.raw, []);
+						}
+					}
 					const calls =
 						request.anthropic === true
 							? parts.some((part) => part.type === 'tool_use')
 							: request.gemini === true
 								? parts.some((part) => part.type === 'functionCall')
-								: callsTool(answer.data, request.responses);
+								: !unread && callsTool(answer.data, request.responses);
 					if (calls) {
 						// The agent has no tools. Version 3 gives the calls to the engine, which has no
 						// tool to run and runs the agent again. Version 2 answers each call itself.
@@ -1453,6 +1767,10 @@ export default defineNode<ChainParameters>({
 					// One text part of Gemini is a text answer; more parts are a list of blocks.
 					const single = request.gemini === true && parts.length === 1 && parts[0].type === 'text';
 					const blocks = request.responses || request.anthropic === true || request.gemini === true;
+					if (agentParser !== undefined) {
+						// The parser reads the text parts only: an answer without text is empty.
+						return parseAnswer(parserInputOf(agentOutput(parts, blocks && !single, true)), []);
+					}
 					const text = agentOutput(parts, blocks && !single);
 					await remember(promptText(item.text), text);
 					const output: Item = { output: text };
@@ -1486,27 +1804,98 @@ export default defineNode<ChainParameters>({
 		const tools = agent ? parameters.tools : undefined;
 		if (tools !== undefined) {
 			const fail = (error: string | undefined, description?: string) => [
-				{ items: [], runs, error: error ?? '', description: description ?? '' },
+				{ items: [], runs, memoryRuns, parserRuns, error: error ?? '', description: description ?? '' },
 			];
 			const toolOf = (name: string): ToolSpec | undefined => {
 				for (const tool of tools) if (tool.name === name) return tool;
 				return undefined;
 			};
+			/** Convert messages from the `added` list to the stored form for the memory. */
+			const storedOf = (added: unknown[]): StoredMessage[] => {
+				const out: StoredMessage[] = [];
+				for (const msg of added) {
+					if (!isObject(msg)) continue;
+					const role = typeof msg.role === 'string' ? msg.role : '';
+					if (role === 'assistant') {
+						const tool_calls = msg.tool_calls;
+						if (Array.isArray(tool_calls)) {
+							out.push({
+								ai: true,
+								text: typeof msg.content === 'string' ? msg.content : '',
+								toolCalls: tool_calls.map((raw) => {
+									const c = isObject(raw) ? raw : {};
+									return {
+										id: String(c.id ?? ''),
+										name: isObject(c.function) ? String(c.function.name ?? '') : '',
+										arguments: isObject(c.function) ? String(c.function.arguments ?? '') : '',
+									};
+								}),
+							});
+						} else {
+							out.push({ ai: true, text: typeof msg.content === 'string' ? msg.content : '' });
+						}
+					} else if (role === 'tool') {
+						out.push({
+							ai: false,
+							text: typeof msg.content === 'string' ? msg.content : '',
+							toolCallId: typeof msg.tool_call_id === 'string' ? msg.tool_call_id : undefined,
+						});
+					} else {
+						out.push({ ai: false, text: typeof msg.content === 'string' ? msg.content : '' });
+					}
+				}
+				return out;
+			};
+			/** Load the memory of one item, and save its prompt, tool calls and answer. */
+			const loadSave = async (
+				item: ItemParameters,
+				added: unknown[],
+				answer?: string,
+			) => {
+				if (session === undefined) return;
+				const input = promptText(item.text);
+				const output = answer ?? '';
+				if (version >= 3 && (input === '' || output === '')) return;
+				await rememberMessages([
+					{ ai: false, text: input },
+					...storedOf(added),
+					{ ai: true, text: output },
+				]);
+			};
+			// The chat history of the memory, loaded once per item.
+			let history: StoredMessage[] = [];
 			/** The request of an item: the tools, then the messages with the calls and results so far. */
 			const toolRequest = (item: ItemParameters, added: unknown[]): ModelRequest => {
-				const request = requestOf(item, ai, true, []);
+				const request = requestOf(
+					item,
+					ai,
+					true,
+					history,
+					agentParser !== undefined ? FORMAT_INSTRUCTIONS : undefined,
+				);
 				const body: Record<string, unknown> = {};
 				for (const key of Object.keys(request.body)) {
 					if (key === 'messages') {
-						body.tools = tools.map((tool) => ({
+						// The client of the OpenRouter model sends no `strict`.
+						const sentTools: unknown[] = tools.map((tool) => ({
 							type: 'function',
-							function: {
-								name: tool.name,
-								description: tool.description,
-								parameters: tool.schema,
-								strict: false,
-							},
+							function: openAi
+								? {
+										name: tool.name,
+										description: tool.description,
+										parameters: tool.schema,
+										strict: false,
+									}
+								: { name: tool.name, description: tool.description, parameters: tool.schema },
 						}));
+						// The tool of the output parser is the last tool.
+						if (agentParser !== undefined) {
+							const format: ModelRequest = { responses: false, body: {} };
+							addFormatTool(format, ai.provider, agentParser.schema);
+							const made = format.body.tools;
+							if (Array.isArray(made)) for (const tool of made) sentTools.push(tool);
+						}
+						body.tools = sentTools;
 						const messages: unknown[] = [];
 						const sent = request.body.messages;
 						if (Array.isArray(sent)) for (const message of sent) messages.push(message);
@@ -1527,6 +1916,8 @@ export default defineNode<ChainParameters>({
 				description?: string;
 				text?: string;
 				calls?: Array<{ id: unknown; name: string; raw: unknown }>;
+				/** With an output parser: the answer that the parser reads. */
+				parse?: { input: unknown };
 			}> => {
 				const request = toolRequest(item, added);
 				if (request.responses || request.anthropic === true || request.gemini === true) {
@@ -1545,9 +1936,17 @@ export default defineNode<ChainParameters>({
 					return { error: run.error };
 				}
 				const asked = answerCalls(answer.data);
-				if (!asked.asked) return { text };
+				if (!asked.asked) {
+					return agentParser === undefined ? { text } : { parse: { input: parserInputOf(text) } };
+				}
 				if (asked.calls.length === 0) {
 					return { error: BAD_FORMAT, description: BAD_FORMAT_DESCRIPTION };
+				}
+				if (agentParser !== undefined) {
+					// A call of the tool of the parser is the answer: the other calls do not run.
+					for (const call of asked.calls) {
+						if (call.name === FORMAT_TOOL) return { parse: { input: call.raw } };
+					}
 				}
 				return { text: asked.text, calls: asked.calls };
 			};
@@ -1571,6 +1970,16 @@ export default defineNode<ChainParameters>({
 					const items: Item[] = [];
 					const calls: ToolCall[] = [];
 					let carried: AgentStep[] | undefined;
+					// Load the chat history from the memory, once for the execution.
+					if (iteration === 0 && session !== undefined) {
+						memoryRuns.push({ error: null });
+						const loaded = await ctx.service<{ messages?: StoredMessage[] }>({
+							service: 'chatMemory',
+							op: 'load',
+							args: { sessionKey: session },
+						});
+						history = loaded.messages ?? [];
+					}
 					for (let i = 0; i < batch.length; i++) {
 						const item = batch[i];
 						if (item.text === undefined) return fail('No prompt specified');
@@ -1623,7 +2032,12 @@ export default defineNode<ChainParameters>({
 						}
 						const turn = await turnOf(item, added);
 						if (turn.error !== undefined) return fail(turn.error, turn.description);
-						if (turn.calls !== undefined) {
+						if (turn.parse !== undefined) {
+							const outcome = parseAnswer(turn.parse.input, steps);
+							if (outcome.item === undefined) return fail(outcome.error, outcome.description);
+							items.push(outcome.item);
+							await loadSave(item, added, JSON.stringify(turn.parse.input));
+						} else if (turn.calls !== undefined) {
 							if (carried === undefined) carried = steps;
 							const text =
 								turn.text !== undefined && turn.text.trim() !== '' ? turn.text : undefined;
@@ -1654,14 +2068,15 @@ export default defineNode<ChainParameters>({
 							const output: Item = { output: turn.text ?? '' };
 							if (parameters.returnIntermediateSteps === true) output.intermediateSteps = steps;
 							items.push(output);
+							await loadSave(item, added, turn.text ?? '');
 						}
 						if (i + 1 < batch.length && delay > 0) await ctx.wait({ duration: delay });
 					}
-					if (carried === undefined) return [{ items, runs }];
+					if (carried === undefined) return [{ items, runs, memoryRuns, parserRuns }];
 					iteration++;
 					previous = carried;
 					if (calls.length > 0) {
-						return [{ items: [], runs, calls, state: { iteration, previous, calls } }];
+						return [{ items: [], runs, memoryRuns, parserRuns, calls, state: { iteration, previous, calls } }];
 					}
 					// The agent has none of the tools that the model calls: the engine has no step
 					// to run, and runs the node again.
@@ -1679,6 +2094,16 @@ export default defineNode<ChainParameters>({
 			for (let i = state.index ?? 0; i < batch.length; i++) {
 				const item = batch[i];
 				if (item.text === undefined) return fail('No prompt specified');
+				// Load the chat history from the memory, once for the item.
+				if (!resumed && session !== undefined) {
+					memoryRuns.push({ error: null });
+					const loaded = await ctx.service<{ messages?: StoredMessage[] }>({
+						service: 'chatMemory',
+						op: 'load',
+						args: { sessionKey: session },
+					});
+					history = loaded.messages ?? [];
+				}
 				for (let round = 0; ; round++) {
 					let stop = false;
 					if (resumed) {
@@ -1698,8 +2123,16 @@ export default defineNode<ChainParameters>({
 					if (!stop) {
 						const turn = await turnOf(item, added);
 						if (turn.error !== undefined) return fail(turn.error, turn.description);
+						if (turn.parse !== undefined) {
+							const outcome = parseAnswer(turn.parse.input, []);
+							if (outcome.item === undefined) return fail(outcome.error, outcome.description);
+							items.push(outcome.item);
+							await loadSave(item, added, JSON.stringify(turn.parse.input));
+							break;
+						}
 						if (turn.calls === undefined) {
 							items.push({ output: turn.text ?? '' });
+							await loadSave(item, added, turn.text ?? '');
 							break;
 						}
 						turnCount++;
@@ -1738,6 +2171,7 @@ export default defineNode<ChainParameters>({
 								{
 									items: [],
 									runs,
+									parserRuns,
 									started,
 									error: refused,
 									description: 'Original error: ToolInputParsingException',
@@ -1750,6 +2184,7 @@ export default defineNode<ChainParameters>({
 								{
 									items: [],
 									runs,
+									parserRuns,
 									calls: steps,
 									state: { index: i, items, added, turn: turnCount, calls },
 								},
@@ -1774,7 +2209,7 @@ export default defineNode<ChainParameters>({
 				turnCount = 0;
 				if (i + 1 < batch.length && delay > 0) await ctx.wait({ duration: delay });
 			}
-			return [{ items, runs }];
+			return [{ items, runs, memoryRuns, parserRuns }];
 		}
 
 		for (let iteration = 0; ; iteration++) {
@@ -1787,6 +2222,8 @@ export default defineNode<ChainParameters>({
 					outcomes.push(await one(item, iteration));
 				}
 				for (const outcome of outcomes) {
+					// The fallback host runs the cluster: it gives the runs of the sub-nodes.
+					if (outcome.host === true) return [{ items: [], runs: [], host: true }];
 					if (outcome.again === true) {
 						again = true;
 					} else if (outcome.item !== undefined) {

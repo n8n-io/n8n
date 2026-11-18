@@ -24,7 +24,14 @@ import type { Fixture } from '../../reference/runner.ts';
 import { runReference } from '../../reference/runner.ts';
 import { ChatMemoryStore } from '../../services/chat-memory.ts';
 import { runModule } from '../../testing/vm.ts';
-import { ENGINE_CASES, AI_HOST_CASES, TOOL_PENDING_CASES, TOOL_PROBE_CASES } from './ai-cases.ts';
+import {
+	ENGINE_CASES,
+	AI_HOST_CASES,
+	BINARY_HOST_CASES,
+	STREAM_HOST_CASES,
+	TOOL_PENDING_CASES,
+	TOOL_PROBE_CASES,
+} from './ai-cases.ts';
 import { ERROR_ITEM_CASES } from './equivalence-cases.ts';
 import type { EquivalenceCase, NormalRequest, Recording } from './equivalence.ts';
 import {
@@ -35,9 +42,11 @@ import {
 } from './equivalence.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const recordings: Record<string, Recording> = JSON.parse(
-	readFileSync(join(here, 'v1-requests.json'), 'utf8'),
-);
+// A recording that is made after `v1-requests.json` got its largest size is in the second file.
+const recordings: Record<string, Recording> = {
+	...JSON.parse(readFileSync(join(here, 'v1-requests.json'), 'utf8')),
+	...JSON.parse(readFileSync(join(here, 'v1-requests-added.json'), 'utf8')),
+};
 const typesBuilt = existsSync(join(DEFAULT_NODE_PACKAGES[0], 'dist/known/credentials.json'));
 
 const NODE = 'Node';
@@ -434,15 +443,18 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 			],
 			[
 				'output parser',
-				[
-					model,
-					{
-						...model,
-						name: 'P',
-						type: `${LC}outputParserStructured`,
-						connection: 'ai_outputParser',
-					},
-				],
+				['P', 'Q'].reduce(
+					(subs, name) => [
+						...subs,
+						{
+							...model,
+							name,
+							type: `${LC}outputParserStructured`,
+							connection: 'ai_outputParser',
+						},
+					],
+					[model],
+				),
 			],
 			[
 				'memory memoryPostgresChat',
@@ -454,6 +466,20 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 			['memory version 2', [model, memory(custom, 2)]],
 		])('gives the reason "%s"', (reason, subs) => {
 			expect(nativeCluster(root, parameters, subs)).toBe(reason);
+		});
+
+		it('keeps tools with a memory in the host before version 3', () => {
+			const tool = {
+				name: 'Tool',
+				type: 'n8n-nodes-base.httpRequestTool',
+				typeVersion: 4.2,
+				parameters: { toolDescription: 'Reads', url: 'https://example.com', options: {} },
+				connection: 'ai_tool',
+			};
+			const older = { ...root, typeVersion: 2.2 };
+			expect(nativeCluster(older, parameters, [model, memory(custom), tool])).toBe(
+				'tools with a memory before version 3',
+			);
 		});
 
 		it('keeps a memory in the host when the client does not answer the service', () => {
@@ -645,6 +671,61 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 			expect(convertWorkflow(manager, { trace: 'all', chatMemory: true }).fallbackNodes).toContain(
 				NODE,
 			);
+		});
+	});
+
+	describe.each(BINARY_HOST_CASES.map((c) => ({ ...c, label: c.name })))('$label', (c) => {
+		it('runs the agent in the fallback host, because v1 gives the model the files of the item', async () => {
+			const result = converted(c);
+			expect(result.fallbackNodes ?? []).not.toContain(NODE);
+			const compiled = compile(result.source);
+			expect(compiled.diagnostics).toEqual([]);
+			const hostStep = `${NODE} (fallback host)`;
+			const answer = [{ json: { output: 'from the host' } }];
+			const fixture: Fixture = {
+				...fixtureOf(c, result),
+				effects: { [hostStep]: [[{ items: answer }, { subRuns: { Model: [{ error: null }] } }]] },
+			};
+			const out = await runReference(result.source, fixture);
+			expect(out.status).toBe('ok');
+			// The library node does not run: no request goes to the model from the module.
+			expect(out.effects.filter((e) => e.step === NODE)).toEqual([]);
+			const host = out.effects.filter((e) => e.step === hostStep);
+			expect(host.map((e) => e.kind)).toEqual(['node']);
+			const args = isRecord(host[0].args) ? host[0].args : {};
+			expect(args.type).toBe(c.type);
+			expect(traced(out.trace ?? [], NODE).outputs).toEqual([answer]);
+			const bytecode = runModule(decodeModule(compiled.module ?? new Uint8Array()), fixture);
+			expect(JSON.stringify(bytecode)).toBe(JSON.stringify(out));
+		});
+	});
+
+	describe.each(STREAM_HOST_CASES.map((c) => ({ ...c, label: c.name })))('$label', (c) => {
+		it('gives the cluster to the fallback host, because the stream has more than text', async () => {
+			const result = converted(c);
+			expect(result.fallbackNodes ?? []).not.toContain(NODE);
+			const compiled = compile(result.source);
+			expect(compiled.diagnostics).toEqual([]);
+			const hostStep = `${NODE} (fallback host)`;
+			const answer = [{ json: { output: 'from the host' } }];
+			const base = fixtureOf(c, result);
+			const fixture: Fixture = {
+				...base,
+				effects: {
+					...base.effects,
+					[hostStep]: [[{ items: answer }, { subRuns: { Model: [{ error: null }] } }]],
+				},
+			};
+			const out = await runReference(result.source, fixture);
+			expect(out.status).toBe('ok');
+			// One request goes to the model. The host then runs the cluster as v1 does.
+			expect(out.effects.filter((e) => e.step === NODE).map((e) => e.kind)).toEqual(['http']);
+			expect(out.effects.filter((e) => e.step === hostStep).map((e) => e.kind)).toEqual(['node']);
+			expect(traced(out.trace ?? [], NODE).outputs).toEqual([answer]);
+			// The run data has the runs of the model that the host gives, and no other run.
+			expect(traced(out.trace ?? [], 'Model').subRuns).toEqual([{ error: null }]);
+			const bytecode = runModule(decodeModule(compiled.module ?? new Uint8Array()), fixture);
+			expect(JSON.stringify(bytecode)).toBe(JSON.stringify(out));
 		});
 	});
 

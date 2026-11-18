@@ -28,6 +28,10 @@ if (!recorderAvailable()) {
 }
 const only = process.argv[2];
 const file = join(root, 'src/nodes/__tests__/v1-requests.json');
+// `v1-requests.json` is at the largest size that the format check reads. With a filter, the
+// recording of a case that is not in that file goes to `v1-requests-added.json`.
+const addedFile = join(root, 'src/nodes/__tests__/v1-requests-added.json');
+const added: Record<string, Recording> = JSON.parse(readFileSync(addedFile, 'utf8'));
 // With a filter, record only the matching cases and keep the other recordings.
 const out: Record<string, Recording> = only ? JSON.parse(readFileSync(file, 'utf8')) : {};
 for (const testCase of EQUIVALENCE_CASES) {
@@ -38,18 +42,23 @@ for (const testCase of EQUIVALENCE_CASES) {
 	for (const request of recording.requests) {
 		if (request.url === 'https://oauth2.googleapis.com/token') request.body = '<token request>';
 	}
-	out[testCase.name] = recording;
+	if (testCase.name in added || (only && !(testCase.name in out))) added[testCase.name] = recording;
+	else out[testCase.name] = recording;
 	const status = recording.error
 		? `error: ${recording.error}`
 		: `${recording.requests.length} request(s)`;
 	console.log(`${testCase.name}: ${status}`);
 }
 await disposeRecorder();
-// The order of the cases, then recordings of cases that no longer exist.
-const ordered: Record<string, Recording> = {};
-for (const testCase of EQUIVALENCE_CASES) {
-	if (testCase.name in out) ordered[testCase.name] = out[testCase.name];
+if (only) {
+	// With a filter, each file keeps its order: a new recording goes to the end.
+	writeFileSync(file, `${JSON.stringify(out, null, '\t')}\n`);
+} else {
+	// The order of the cases.
+	const ordered: Record<string, Recording> = {};
+	for (const testCase of EQUIVALENCE_CASES) {
+		if (testCase.name in out) ordered[testCase.name] = out[testCase.name];
+	}
+	writeFileSync(file, `${JSON.stringify(ordered, null, '\t')}\n`);
 }
-if (only)
-	for (const [name, rec] of Object.entries(out)) if (!(name in ordered)) ordered[name] = rec;
-writeFileSync(file, `${JSON.stringify(ordered, null, '\t')}\n`);
+writeFileSync(addedFile, `${JSON.stringify(added, null, '\t')}\n`);
