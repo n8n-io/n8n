@@ -8813,18 +8813,12 @@ importers:
       '@n8n/i18n':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/i18n
-      '@n8n/permissions':
-        specifier: workspace:*
-        version: link:../../../@n8n/permissions
       '@n8n/rest-api-client':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/rest-api-client
       '@n8n/stores':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/stores
-      n8n-workflow:
-        specifier: workspace:*
-        version: link:../../../workflow
       pinia:
         specifier: catalog:frontend
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
@@ -8876,10 +8870,10 @@ importers:
         version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       stylelint:
         specifier: 'catalog:'
         version: 16.23.0(supports-color@8.1.1)(typescript@6.0.2)
