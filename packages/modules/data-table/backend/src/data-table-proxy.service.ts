@@ -1,5 +1,5 @@
 import type { DataTableListOptions, ListDataTableQueryDto } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
 	InstanceWriteAccessService,
 	ProjectScopeService,
@@ -73,6 +73,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly personRepository: PersonRepository,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -124,11 +125,16 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		return this.makeDataTableOperations(projectId, dataTableId, access);
 	}
 
-	/** A workflow acts for the user its run carries. Without one, it acts for no user. */
+	/**
+	 * A workflow acts for the user its run carries. Without one, it acts for no user.
+	 * Row access in workflows needs the run's verified user, which the licensed
+	 * dynamic-credentials module provides. Without it, workflows keep full access.
+	 */
 	private async workflowRowAccess(
 		table: DataTableEntity,
 		executedByUserId?: string,
 	): Promise<RowAccess> {
+		if (!this.moduleRegistry.isActive('dynamic-credentials')) return managementRowAccess;
 		if (!executedByUserId) return { kind: 'actor', actor: null };
 		// Only an email rule needs the email, so skip the lookup otherwise.
 		if (!table.rowRule?.conditions.some(({ match }) => match === 'email')) {

@@ -104,18 +104,21 @@ export class EngineDataTablesService {
 		// by id and project, and throws `DataTableNotFoundError` when the table is
 		// not in the workflow's project.
 		// An engine execution carries no verified user, so it must not touch the rows of
-		// a table with a row rule, not even under `runsWithoutUser: 'allRows'`.
-		if (ROW_CALLS.has(call.kind)) {
+		// a table with a row rule, not even under `runsWithoutUser: 'allRows'`. Without the
+		// dynamic-credentials module, row access does not apply to workflows at all.
+		const rowAccessApplies = this.moduleRegistry.isActive('dynamic-credentials');
+		if (rowAccessApplies && ROW_CALLS.has(call.kind)) {
 			const { rowRule } = await Container.get(DataTableService).validateDataTableExists(
 				call.dataTableId,
 				projectId,
 			);
 			if (rowRule) throw new UserError(ROW_RULE_UNSUPPORTED_MESSAGE);
 		}
-		const table = proxy.makeDataTableOperations(projectId, call.dataTableId, {
-			kind: 'actor',
-			actor: null,
-		});
+		const table = proxy.makeDataTableOperations(
+			projectId,
+			call.dataTableId,
+			rowAccessApplies ? { kind: 'actor', actor: null } : { kind: 'management' },
+		);
 
 		switch (call.kind) {
 			case 'updateDataTable':

@@ -5,6 +5,7 @@ import type {
 	DataTableRowRuleImpact,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	N8nButton,
 	N8nCallout,
@@ -47,6 +48,7 @@ const i18n = useI18n();
 const toast = useToast();
 const uiStore = useUIStore();
 const dataTableStore = useDataTableStore();
+const settingsStore = useSettingsStore();
 
 const scope = ref<'all' | 'own'>('all');
 const conditions = ref<EditableCondition[]>([]);
@@ -58,6 +60,8 @@ const saving = ref(false);
 const textColumns = computed(() =>
 	props.dataTable.columns.filter((candidate) => candidate.type === 'string'),
 );
+/** Row access in workflows needs the run's verified user, which only Enterprise provides. */
+const appliesToWorkflows = computed(() => settingsStore.isModuleActive('dynamic-credentials'));
 const affectedWorkflows = computed(() => impact.value?.workflowsWithoutUser ?? []);
 const createsColumn = computed(() => conditions.value.some(({ create }) => create));
 const canAddCondition = computed(() => conditions.value.length < MAX_CONDITIONS);
@@ -122,6 +126,7 @@ async function load() {
 	if (conditions.value.length === 0) addCondition();
 	projectMembersSeeAll.value = rule?.projectMembersSeeAll ?? false;
 	runsWithoutUser.value = rule?.runsWithoutUser ?? 'deny';
+	if (!appliesToWorkflows.value) return;
 	try {
 		impact.value = await dataTableStore.fetchRowRuleImpact(
 			props.dataTable.id,
@@ -290,7 +295,19 @@ async function save() {
 						data-test-id="row-access-project-members"
 					/>
 
-					<N8nInputLabel :label="i18n.baseText('dataTable.rowAccess.withoutUser')" size="small">
+					<N8nCallout
+						v-if="!appliesToWorkflows"
+						theme="info"
+						data-test-id="row-access-workflows-enterprise"
+					>
+						{{ i18n.baseText('dataTable.rowAccess.workflowsEnterprise') }}
+					</N8nCallout>
+
+					<N8nInputLabel
+						v-if="appliesToWorkflows"
+						:label="i18n.baseText('dataTable.rowAccess.withoutUser')"
+						size="small"
+					>
 						<N8nRadioGroup v-model="runsWithoutUser" data-test-id="row-access-without-user">
 							<N8nRadioGroupItem
 								value="allRows"
@@ -304,7 +321,7 @@ async function save() {
 					</N8nInputLabel>
 
 					<N8nCallout
-						v-if="affectedWorkflows.length > 0"
+						v-if="appliesToWorkflows && affectedWorkflows.length > 0"
 						:theme="runsWithoutUser === 'deny' ? 'warning' : 'info'"
 						data-test-id="row-access-impact"
 					>
