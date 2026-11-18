@@ -357,6 +357,14 @@ function onTabChange(tab: string) {
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 
+	:is(h1, h2, h3, h4, h5, h6, p:has(> strong:only-child)) {
+		margin-bottom: 0;
+
+		& + :is(p, ul, ol) {
+			margin-top: var(--spacing--4xs);
+		}
+	}
+
 	:is(h1, h2, h3, h4, h5, h6) {
 		margin-top: calc(var(--markdown--spacing) * 2);
 		font-size: var(--font-size--sm);
