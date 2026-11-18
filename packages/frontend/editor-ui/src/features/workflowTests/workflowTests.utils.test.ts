@@ -32,7 +32,7 @@ void webhook;
 						kind: 'test',
 						name: 'passes the order',
 						fullName: 'a) mocked > passes the order',
-						code: "test('passes the order', async () => {\n\t\tconst text = 'a ) } ] quote';\n\t\texpect(fn({ a: [1] })).toBe(`)`); // ) }\n\t});",
+						line: 6,
 					},
 					{
 						kind: 'describe',
@@ -43,7 +43,7 @@ void webhook;
 								kind: 'test',
 								name: 'skips',
 								fullName: 'a) mocked > nested > skips',
-								code: "it.skip('skips', () => {});",
+								line: 12,
 							},
 						],
 					},
@@ -53,7 +53,7 @@ void webhook;
 				kind: 'test',
 				name: 'top level',
 				fullName: 'top level',
-				code: "test('top level', () => {});",
+				line: 16,
 			},
 		]);
 	});

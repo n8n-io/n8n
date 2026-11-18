@@ -3,27 +3,37 @@ import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
 	N8nCallout,
-	N8nHeading,
 	N8nIcon,
 	N8nIconButton,
 	N8nLoading,
+	N8nResizeWrapper,
 	N8nSegmentControl,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@n8n/stores/rbac.store';
-import { useEventListener } from '@vueuse/core';
-import { computed, inject, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { useElementSize, useEventListener } from '@vueuse/core';
+import {
+	computed,
+	inject,
+	onBeforeUnmount,
+	onMounted,
+	ref,
+	shallowRef,
+	useTemplateRef,
+	watch,
+} from 'vue';
 import { useRouter } from 'vue-router';
 
 import { VIEWS } from '@/app/constants';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useUIStore } from '@/app/stores/ui.store';
 import InstanceAiChatPanel from '@/features/ai/instanceAi/embed/InstanceAiChatPanel.vue';
-import JsEditor from '@/features/shared/editors/components/JsEditor/JsEditor.vue';
 
 import WorkflowTestTree from '../components/WorkflowTestTree.vue';
+import WorkflowTestsEditor from '../components/WorkflowTestsEditor.vue';
+import WorkflowTestsEmptyState from '../components/WorkflowTestsEmptyState.vue';
 import WorkflowTestsSummary from '../components/WorkflowTestsSummary.vue';
 import { useWorkflowTestsAssistant } from '../useWorkflowTestsAssistant';
 import {
@@ -56,6 +66,7 @@ type Mode = 'results' | 'code';
 
 const isLoading = ref(true);
 const isSaving = ref(false);
+const isWriting = ref(false);
 const mode = ref<Mode>('results');
 const draft = ref('');
 const file = computed(() => testsStore.files[props.workflowId] ?? null);
@@ -64,11 +75,31 @@ const isRunning = computed(() => run.value?.status === 'running');
 const isDirty = computed(() => draft.value !== (file.value?.source ?? ''));
 const canRun = computed(() => rbacStore.hasScope('workflow:execute'));
 const workflowHasUnsavedChanges = computed(() => uiStore.stateIsDirty);
+const showEmptyState = computed(() => !file.value && !isWriting.value);
 
 const modeOptions = computed(() => [
 	{ label: i18n.baseText('workflowTests.view.results'), value: 'results' as const },
 	{ label: i18n.baseText('workflowTests.view.code'), value: 'code' as const },
 ]);
+
+const runLabel = computed(() => {
+	if (isRunning.value) return i18n.baseText('workflowTests.running');
+	if (isDirty.value) return i18n.baseText('workflowTests.saveAndRun');
+	return i18n.baseText('workflowTests.runAll');
+});
+
+// ── Layout ───────────────────────────────────────────────────────────────────────
+
+/** Below this width of the main column, the results and the editor do not fit side by side. */
+const SPLIT_MIN_WIDTH = 720;
+
+const mainRef = useTemplateRef<HTMLElement>('mainRef');
+const { width: mainWidth } = useElementSize(mainRef);
+const isNarrow = computed(() => mainWidth.value > 0 && mainWidth.value < SPLIT_MIN_WIDTH);
+const showResults = computed(() => !isNarrow.value || mode.value === 'results');
+const showEditor = computed(() => !isNarrow.value || mode.value === 'code');
+
+// ── Results ──────────────────────────────────────────────────────────────────────
 
 const tree = computed(() =>
 	buildTestTree(parseTestFile(file.value?.source ?? ''), run.value?.tests ?? [], isRunning.value),
@@ -88,6 +119,32 @@ function isExpanded(item: WorkflowTestTreeItem) {
 function toggle(fullName: string, value: boolean) {
 	expanded.value[fullName] = value;
 }
+
+const editorRef = useTemplateRef<InstanceType<typeof WorkflowTestsEditor>>('editorRef');
+const resultsRef = useTemplateRef<HTMLElement>('resultsRef');
+const selected = shallowRef<WorkflowTestRow>();
+
+function revealSelected() {
+	const line = selected.value?.line;
+	if (line !== undefined && showEditor.value) editorRef.value?.revealLine(line);
+}
+
+function selectTest(row: WorkflowTestRow) {
+	selected.value = row;
+	if (row.error) toggle(row.fullName, !isExpanded(row));
+	revealSelected();
+}
+
+watch(mode, revealSelected, { flush: 'post' });
+
+watch(
+	() => run.value?.status,
+	(status) => {
+		if (status !== 'failed') return;
+		resultsRef.value?.querySelector('[data-status="failed"]')?.scrollIntoView({ block: 'nearest' });
+	},
+	{ flush: 'post' },
+);
 
 function nodeId(name: string) {
 	return workflowDocumentStore?.value?.getNodeByName(name)?.id;
@@ -129,7 +186,14 @@ watch(
 	},
 );
 
-watch(() => props.workflowId, load);
+watch(
+	() => props.workflowId,
+	() => {
+		isWriting.value = false;
+		selected.value = undefined;
+		void load();
+	},
+);
 onMounted(load);
 
 // ── Actions ──────────────────────────────────────────────────────────────────────
@@ -139,14 +203,17 @@ async function save() {
 	try {
 		await testsStore.saveFile(props.workflowId, draft.value);
 		toast.showMessage({ title: i18n.baseText('workflowTests.saved'), type: 'success' });
+		return true;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowTests.error.save'));
+		return false;
 	} finally {
 		isSaving.value = false;
 	}
 }
 
 async function runAll() {
+	if (isDirty.value && !(await save())) return;
 	mode.value = 'results';
 	try {
 		await testsStore.runFile(props.workflowId);
@@ -155,12 +222,33 @@ async function runAll() {
 	}
 }
 
+function startWriting() {
+	isWriting.value = true;
+	mode.value = 'code';
+}
+
 // ── Assistant panel ────────────────────────────────────────────────────────────────
+
+const PANEL_DEFAULT_WIDTH = 420;
+const PANEL_MIN_WIDTH = 320;
+const PANEL_MAX_WIDTH = 720;
 
 const panelRef = useTemplateRef<InstanceType<typeof InstanceAiChatPanel>>('panelRef');
 const isPanelOpen = ref(true);
+const panelWidth = ref(PANEL_DEFAULT_WIDTH);
 const threadId = ref<string>();
+const isAssistantWorking = ref(false);
 const showPanel = computed(() => assistant.available.value && assistant.subject.value !== null);
+const panelToggleLabel = computed(() =>
+	isPanelOpen.value
+		? i18n.baseText('workflowTests.assistant.hide')
+		: i18n.baseText('workflowTests.assistant.show'),
+);
+
+// The Assistant saves the file on the server. The tab shows it when the Assistant stops.
+watch(isAssistantWorking, (working) => {
+	if (!working && !isDirty.value) void load();
+});
 
 const SUBMIT_RETRY_MS = 300;
 const SUBMIT_MAX_TRIES = 40;
@@ -206,32 +294,48 @@ function fixTest(row: WorkflowTestRow) {
 	);
 }
 
-function startWriting() {
-	mode.value = 'code';
+function fixRun() {
+	askAssistant(
+		i18n.baseText('workflowTests.fixRun.prompt', {
+			interpolate: { error: run.value?.errors.join('\n') ?? '' },
+		}),
+		'workflow-tests-fix',
+	);
 }
 </script>
 
 <template>
 	<div :class="$style.layout" data-testid="workflow-tests-view">
-		<main :class="$style.main">
-			<N8nLoading v-if="isLoading" :rows="5" />
+		<main ref="mainRef" :class="$style.main">
+			<div v-if="isLoading" :class="$style.panes">
+				<div :class="[$style.pane, $style.resultsPane]"><N8nLoading :rows="6" /></div>
+				<div :class="[$style.pane, $style.editorPane]"><N8nLoading :rows="10" /></div>
+			</div>
 
-			<div v-else-if="!file && mode === 'results'" :class="$style.empty">
-				<span :class="$style.emptyIcon"><N8nIcon icon="flask-conical" size="xlarge" /></span>
-				<N8nHeading tag="h2" size="large">{{
-					i18n.baseText('workflowTests.empty.title')
-				}}</N8nHeading>
-				<N8nText color="text-light" align="center">
-					{{ i18n.baseText('workflowTests.empty.description') }}
-				</N8nText>
-				<div :class="$style.actions">
-					<N8nTooltip
-						:disabled="showPanel"
-						:content="i18n.baseText('workflowTests.generate.unavailable')"
-					>
+			<WorkflowTestsEmptyState
+				v-else-if="showEmptyState"
+				:is-assistant-working="isAssistantWorking"
+				:can-generate="showPanel"
+				@generate="generate"
+				@write="startWriting"
+			/>
+
+			<template v-else>
+				<WorkflowTestsSummary :run="run" :test-counts="testCounts">
+					<template #actions>
+						<N8nSegmentControl v-if="isNarrow" v-model="mode" :options="modeOptions" size="small" />
+						<span
+							v-if="!canRun"
+							:class="$style.noPermission"
+							data-testid="workflow-tests-no-permission"
+						>
+							<N8nIcon icon="lock" size="small" />
+							<N8nText size="small">{{ i18n.baseText('workflowTests.runOwnerOnly') }}</N8nText>
+						</span>
 						<N8nButton
-							variant="brand"
-							:disabled="!showPanel"
+							v-if="showPanel"
+							variant="ghost"
+							size="small"
 							data-testid="workflow-tests-generate"
 							data-attr="workflow-tests-generate"
 							@click="generate"
@@ -239,127 +343,104 @@ function startWriting() {
 							<template #icon><N8nIcon icon="sparkles" /></template>
 							{{ i18n.baseText('workflowTests.generate') }}
 						</N8nButton>
-					</N8nTooltip>
-					<N8nButton variant="outline" data-testid="workflow-tests-write" @click="startWriting">
-						{{ i18n.baseText('workflowTests.empty.write') }}
-					</N8nButton>
-				</div>
-			</div>
-
-			<template v-else>
-				<div :class="$style.toolbar">
-					<N8nSegmentControl v-model="mode" :options="modeOptions" size="small" />
-					<div :class="$style.spacer" />
-					<N8nButton
-						v-if="isDirty"
-						variant="outline"
-						size="small"
-						:loading="isSaving"
-						data-testid="workflow-tests-save"
-						@click="save"
-					>
-						{{ i18n.baseText('workflowTests.save') }}
-					</N8nButton>
-					<N8nButton
-						v-if="showPanel"
-						variant="outline"
-						size="small"
-						data-testid="workflow-tests-generate"
-						data-attr="workflow-tests-generate"
-						@click="generate"
-					>
-						<template #icon><N8nIcon icon="sparkles" /></template>
-						{{ i18n.baseText('workflowTests.generate') }}
-					</N8nButton>
-					<N8nTooltip
-						:disabled="canRun && !isDirty"
-						:content="
-							canRun
-								? i18n.baseText('workflowTests.unsaved')
-								: i18n.baseText('workflowTests.runOwnerOnly')
-						"
-					>
 						<N8nButton
 							size="small"
 							:loading="isRunning"
-							:disabled="!file || isDirty || !canRun"
+							:disabled="!canRun || (!file && !isDirty)"
 							data-testid="workflow-tests-run-all"
 							data-attr="workflow-tests-run-all"
 							@click="runAll"
 						>
 							<template #icon><N8nIcon icon="play" /></template>
-							{{
-								isRunning
-									? i18n.baseText('workflowTests.running')
-									: i18n.baseText('workflowTests.runAll')
-							}}
+							{{ runLabel }}
 						</N8nButton>
-					</N8nTooltip>
-					<N8nTooltip
-						v-if="showPanel"
-						:content="
-							isPanelOpen
-								? i18n.baseText('workflowTests.assistant.hide')
-								: i18n.baseText('workflowTests.assistant.show')
-						"
-					>
-						<N8nIconButton
-							icon="panel-right"
-							variant="ghost"
-							size="small"
-							:aria-label="
-								isPanelOpen
-									? i18n.baseText('workflowTests.assistant.hide')
-									: i18n.baseText('workflowTests.assistant.show')
-							"
-							data-testid="workflow-tests-toggle-assistant"
-							@click="isPanelOpen = !isPanelOpen"
-						/>
-					</N8nTooltip>
-				</div>
+						<N8nTooltip v-if="showPanel" :content="panelToggleLabel">
+							<N8nIconButton
+								icon="panel-right"
+								variant="ghost"
+								size="small"
+								:aria-label="panelToggleLabel"
+								data-testid="workflow-tests-toggle-assistant"
+								@click="isPanelOpen = !isPanelOpen"
+							/>
+						</N8nTooltip>
+					</template>
+				</WorkflowTestsSummary>
 
 				<N8nCallout v-if="workflowHasUnsavedChanges" theme="warning" slim>
 					{{ i18n.baseText('workflowTests.workflowUnsaved') }}
 				</N8nCallout>
 
-				<template v-if="mode === 'results'">
-					<WorkflowTestsSummary :run="run" :test-counts="testCounts" />
-
-					<N8nCallout
-						v-if="run?.status === 'error'"
-						theme="danger"
-						data-testid="workflow-tests-run-error"
+				<div :class="$style.panes">
+					<section
+						v-show="showResults"
+						ref="resultsRef"
+						:class="[$style.pane, $style.resultsPane]"
+						data-testid="workflow-tests-results"
 					>
-						<pre :class="$style.runError">{{ run.errors.join('\n') }}</pre>
-					</N8nCallout>
+						<div
+							v-if="run?.status === 'error'"
+							:class="$style.runError"
+							data-testid="workflow-tests-run-error"
+						>
+							<pre :class="$style.runErrorMessage">{{ run.errors.join('\n') }}</pre>
+							<div v-if="showPanel">
+								<N8nButton
+									size="small"
+									variant="outline"
+									data-testid="workflow-tests-run-fix"
+									data-attr="workflow-tests-run-fix"
+									@click="fixRun"
+								>
+									<template #icon><N8nIcon icon="sparkles" /></template>
+									{{ i18n.baseText('workflowTests.row.fixWithAssistant') }}
+								</N8nButton>
+							</div>
+						</div>
 
-					<N8nText v-if="testCounts.total === 0" color="text-light">
-						{{ i18n.baseText('workflowTests.noTestsFound') }}
-					</N8nText>
+						<N8nText v-if="testCounts.total === 0" size="small" color="text-light">
+							{{ i18n.baseText('workflowTests.noTestsFound') }}
+						</N8nText>
 
-					<WorkflowTestTree
-						:items="tree"
-						:is-expanded="isExpanded"
-						:can-open-node="canOpenNode"
-						:can-fix="showPanel"
-						@toggle="toggle"
-						@fix="fixTest"
-						@show-code="mode = 'code'"
-						@open-node="openNode"
+						<WorkflowTestTree
+							:items="tree"
+							:is-expanded="isExpanded"
+							:can-open-node="canOpenNode"
+							:can-fix="showPanel"
+							:selected-name="selected?.fullName"
+							@toggle="toggle"
+							@select="selectTest"
+							@fix="fixTest"
+							@open-node="openNode"
+						/>
+					</section>
+
+					<WorkflowTestsEditor
+						v-show="showEditor"
+						ref="editorRef"
+						v-model="draft"
+						:class="$style.editorPane"
+						:is-dirty="isDirty"
+						:is-saving="isSaving"
+						@save="save"
 					/>
-				</template>
-
-				<div v-else :class="$style.editor" data-testid="workflow-tests-editor">
-					<JsEditor v-model="draft" fill-parent />
 				</div>
 			</template>
 		</main>
 
-		<aside
+		<N8nResizeWrapper
 			v-if="showPanel && assistant.subject.value"
 			v-show="isPanelOpen"
 			:class="$style.assistant"
+			:width="panelWidth"
+			:default-width="PANEL_DEFAULT_WIDTH"
+			:min-width="PANEL_MIN_WIDTH"
+			:max-width="PANEL_MAX_WIDTH"
+			:supported-directions="['left']"
+			:grid-size="8"
+			role="complementary"
 			data-testid="workflow-tests-assistant"
+			@resize="panelWidth = $event.width"
 		>
 			<InstanceAiChatPanel
 				ref="panelRef"
@@ -369,8 +450,9 @@ function startWriting() {
 				:visible="isPanelOpen"
 				:show-open-full-assistant="true"
 				@close="isPanelOpen = false"
+				@update:working="isAssistantWorking = $event"
 			/>
-		</aside>
+		</N8nResizeWrapper>
 	</div>
 </template>
 
@@ -393,63 +475,65 @@ function startWriting() {
 }
 
 .assistant {
-	// No size token fits a side panel. This matches the width of a chat column.
-	flex: 0 0 min(40%, 30rem);
-	min-width: 0;
+	flex-shrink: 0;
+	min-height: 0;
+	width: calc(v-bind(panelWidth) * 1px);
+	max-width: 50%;
 	border-left: var(--border);
 	background-color: var(--background--surface);
 }
 
-.empty {
+.noPermission {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	color: var(--color--text--tint-1);
+}
+
+.panes {
+	display: flex;
+	gap: var(--spacing--sm);
+	flex: 1;
+	min-height: 0;
+}
+
+.pane {
 	display: flex;
 	flex-direction: column;
-	align-items: center;
-	gap: var(--spacing--sm);
-	max-width: 32rem;
-	margin: var(--spacing--3xl) auto 0;
-	text-align: center;
-}
-
-.emptyIcon {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: var(--spacing--3xl);
-	height: var(--spacing--3xl);
-	border-radius: 50%;
-	color: var(--color--primary);
-	background-color: color-mix(in srgb, var(--color--primary) 10%, transparent);
-}
-
-.actions {
-	display: flex;
 	gap: var(--spacing--xs);
-	margin-top: var(--spacing--xs);
+	min-width: 0;
+	padding: var(--spacing--2xs);
+	border: var(--border);
+	border-radius: var(--radius);
+	background-color: var(--background--surface);
+	overflow: auto;
 }
 
-.toolbar {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
+.resultsPane {
+	flex: 2 1 0;
 }
 
-.spacer {
-	flex: 1;
+.editorPane {
+	flex: 3 1 0;
 }
 
 .runError {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs) var(--spacing--sm);
+	border-left: var(--border-width) solid var(--color--danger);
+	border-radius: var(--radius--3xs);
+	background-color: color-mix(in srgb, var(--color--danger) 6%, transparent);
+}
+
+.runErrorMessage {
 	margin: 0;
 	white-space: pre-wrap;
 	word-break: break-word;
 	font-family: var(--font-family--monospace);
 	font-size: var(--font-size--2xs);
-}
-
-.editor {
-	flex: 1;
-	min-height: 0;
-	border: var(--border);
-	border-radius: var(--radius);
-	overflow: hidden;
+	line-height: var(--line-height--xl);
+	color: var(--color--text--shade-1);
 }
 </style>

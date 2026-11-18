@@ -115,8 +115,19 @@ const focus = () => {
 	}
 };
 
+const revealLine = (line: number) => {
+	const view = editor.value;
+	if (!view) return;
+	const { from } = view.state.doc.line(Math.min(Math.max(line, 1), view.state.doc.lines));
+	view.dispatch({
+		selection: { anchor: from },
+		effects: EditorView.scrollIntoView(from, { y: 'start' }),
+	});
+};
+
 defineExpose({
 	focus,
+	revealLine,
 });
 </script>
 

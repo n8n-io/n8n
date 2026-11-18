@@ -1,5 +1,4 @@
 import type { WorkflowTestResult } from '@n8n/api-types';
-import type { BadgeVariant } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { BaseTextKey } from '@n8n/i18n';
 
@@ -17,8 +16,8 @@ export type WorkflowTestRow = {
 	status: WorkflowTestRowStatus;
 	durationMs?: number;
 	error?: WorkflowTestResult['error'];
-	/** The source of the test call, when the file still has it. */
-	code?: string;
+	/** The 1-based line of the test call, when the file still has it. */
+	line?: number;
 };
 
 export type WorkflowTestCounts = Record<WorkflowTestRowStatus, number> & { total: number };
@@ -79,14 +78,14 @@ export function buildTestTree(
 	const byName = new Map(results.map((result) => [result.name, result]));
 	const used = new Set<string>();
 
-	const toRow = (name: string, fullName: string, code?: string): WorkflowTestRow => {
+	const toRow = (name: string, fullName: string, line?: number): WorkflowTestRow => {
 		const result = byName.get(fullName);
 		if (result) used.add(fullName);
 		return {
 			kind: 'test',
 			name,
 			fullName,
-			code,
+			line,
 			// While the run is live, a test without a result is running or waiting for its turn.
 			status: result?.status ?? (isRunning ? 'running' : 'notRun'),
 			durationMs: result?.durationMs,
@@ -96,7 +95,7 @@ export function buildTestTree(
 
 	const build = (items: TestFileNode[]): WorkflowTestTreeItem[] =>
 		items.map((node) => {
-			if (node.kind === 'test') return toRow(node.name, node.fullName, node.code);
+			if (node.kind === 'test') return toRow(node.name, node.fullName, node.line);
 			const children = build(node.children);
 			const counts = countTests(children);
 			return {
@@ -116,15 +115,16 @@ export function buildTestTree(
 	return tree;
 }
 
+/** The runner does not report the active test, so a test that waits has no spinner. */
 export const TEST_STATUS_DISPLAY: Record<
 	WorkflowTestRowStatus,
-	{ icon: IconName; badge: BadgeVariant; label: BaseTextKey }
+	{ icon: IconName; label: BaseTextKey }
 > = {
-	passed: { icon: 'circle-check', badge: 'success', label: 'workflowTests.status.passed' },
-	failed: { icon: 'circle-x', badge: 'danger', label: 'workflowTests.status.failed' },
-	skipped: { icon: 'circle-minus', badge: 'filled', label: 'workflowTests.status.skipped' },
-	running: { icon: 'loader-circle', badge: 'info', label: 'workflowTests.status.running' },
-	notRun: { icon: 'circle-dashed-filled', badge: 'outline', label: 'workflowTests.status.notRun' },
+	passed: { icon: 'circle-check', label: 'workflowTests.status.passed' },
+	failed: { icon: 'circle-x', label: 'workflowTests.status.failed' },
+	skipped: { icon: 'circle-minus', label: 'workflowTests.status.skipped' },
+	running: { icon: 'circle-dashed-filled', label: 'workflowTests.status.running' },
+	notRun: { icon: 'circle-dashed-filled', label: 'workflowTests.status.notRun' },
 };
 
 export function formatTestDuration(durationMs: number): string {

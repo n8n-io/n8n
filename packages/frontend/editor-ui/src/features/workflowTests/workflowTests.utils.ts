@@ -4,7 +4,7 @@ export const FULL_NAME_SEPARATOR = ' > ';
 /** A `describe` block or a test, as the file declares it. */
 export type TestFileNode =
 	| { kind: 'describe'; name: string; fullName: string; children: TestFileNode[] }
-	| { kind: 'test'; name: string; fullName: string; code: string };
+	| { kind: 'test'; name: string; fullName: string; line: number };
 
 /**
  * Matches the start of a `describe`, `test` or `it` call with a literal name,
@@ -56,7 +56,7 @@ function callEnd(source: string, open: number): number {
 /**
  * Reads the `describe` blocks and tests of a test file without running it, so
  * the Tests tab can list tests that have not run yet and group them. Each test
- * has the full name that the runner reports, and its own source. A name with
+ * has the full name that the runner reports, and its 1-based line. A name with
  * a template expression is skipped: only the runner knows it.
  */
 export function parseTestFile(source: string): TestFileNode[] {
@@ -98,7 +98,10 @@ export function parseTestFile(source: string): TestFileNode[] {
 			}
 
 			const end = callEnd(source, source.indexOf('(', index));
-			if (known) parent.push({ kind: 'test', name, fullName, code: source.slice(index, end) });
+			if (known) {
+				const line = source.slice(0, index).split('\n').length;
+				parent.push({ kind: 'test', name, fullName, line });
+			}
 			index = end;
 			continue;
 		}

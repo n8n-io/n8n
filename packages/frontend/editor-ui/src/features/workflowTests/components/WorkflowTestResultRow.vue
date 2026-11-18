@@ -1,12 +1,5 @@
 <script setup lang="ts">
-import {
-	N8nBadge,
-	N8nButton,
-	N8nCodeBlock,
-	N8nCollapsiblePanel,
-	N8nIcon,
-	N8nText,
-} from '@n8n/design-system';
+import { N8nBadge, N8nButton, N8nIcon, N8nText, N8nVisuallyHidden } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
@@ -18,16 +11,16 @@ import {
 
 const props = defineProps<{
 	row: WorkflowTestRow;
+	expanded: boolean;
+	selected: boolean;
 	/** Whether the workflow has the node that the error names, so the row can open it. */
 	canOpenNode: boolean;
 	canFix: boolean;
 }>();
 
-const expanded = defineModel<boolean>('expanded', { default: false });
-
 const emit = defineEmits<{
+	select: [];
 	fix: [];
-	showCode: [];
 	openNode: [node: string];
 }>();
 
@@ -46,29 +39,18 @@ const hint = computed(() => {
 </script>
 
 <template>
-	<N8nCollapsiblePanel
-		v-model="expanded"
-		:show-actions-on-hover="false"
-		:class="[$style.row, $style[row.status]]"
-		data-testid="workflow-tests-row"
-	>
-		<template #title>
-			<span :class="$style.title">
-				<N8nIcon
-					:icon="display.icon"
-					:spin="row.status === 'running'"
-					:class="$style.statusIcon"
-					size="medium"
-				/>
-				<N8nText size="small" :bold="row.status === 'failed'" :class="$style.name">
-					{{ row.name }}
-				</N8nText>
-			</span>
-		</template>
-		<template #actions>
-			<N8nBadge v-if="row.error?.code" variant="outline" size="xsmall" :class="$style.codeBadge">
-				{{ row.error.code }}
-			</N8nBadge>
+	<div :class="$style[row.status]" :data-status="row.status" data-testid="workflow-tests-row">
+		<button
+			type="button"
+			:class="[$style.summary, { [$style.selected]: selected }]"
+			:aria-expanded="row.error ? expanded : undefined"
+			@click="emit('select')"
+		>
+			<N8nIcon :key="row.status" :icon="display.icon" :class="$style.statusIcon" size="medium" />
+			<N8nVisuallyHidden>{{ i18n.baseText(display.label) }}</N8nVisuallyHidden>
+			<N8nText size="small" :bold="row.status === 'failed'" :class="$style.name" :title="row.name">
+				{{ row.name }}
+			</N8nText>
 			<N8nText
 				v-if="row.durationMs !== undefined"
 				size="xsmall"
@@ -77,52 +59,46 @@ const hint = computed(() => {
 			>
 				{{ formatTestDuration(row.durationMs) }}
 			</N8nText>
-			<N8nBadge :variant="display.badge" size="xsmall">
-				{{ i18n.baseText(display.label) }}
-			</N8nBadge>
-		</template>
+			<N8nIcon
+				v-if="row.error"
+				icon="chevron-right"
+				size="small"
+				:class="[$style.chevron, { [$style.open]: expanded }]"
+			/>
+		</button>
 
-		<div :class="$style.details">
-			<N8nText v-if="row.status === 'notRun'" size="small" color="text-light">
-				{{ i18n.baseText('workflowTests.row.notRun') }}
-			</N8nText>
-
-			<section v-if="row.error" :class="$style.errorSection" data-testid="workflow-tests-row-error">
-				<div :class="$style.errorHeader">
-					<N8nText size="small" bold>{{ i18n.baseText('workflowTests.row.error') }}</N8nText>
-					<N8nBadge
-						v-if="row.error.node"
-						:clickable="canOpenNode"
-						:disabled="!canOpenNode"
-						variant="subtle"
-						size="small"
-						leading-icon="box"
-						:trailing-icon="canOpenNode ? 'external-link' : undefined"
-						:aria-label="
-							i18n.baseText('workflowTests.row.openNode', { interpolate: { node: row.error.node } })
-						"
-						@click="canOpenNode && row.error.node && emit('openNode', row.error.node)"
-					>
-						{{ row.error.node }}
-					</N8nBadge>
-				</div>
-				<pre :class="$style.message">{{ row.error.message }}</pre>
-				<div v-if="hint" :class="$style.hint">
-					<N8nIcon icon="lightbulb" size="small" />
-					<N8nText size="small">{{ hint }}</N8nText>
-				</div>
-			</section>
-
-			<section v-if="row.code">
-				<N8nText size="small" bold tag="p" :class="$style.sectionTitle">
-					{{ i18n.baseText('workflowTests.row.code') }}
-				</N8nText>
-				<N8nCodeBlock :code="row.code" language="typescript" :max-height="240" />
-			</section>
-
-			<div :class="$style.actions">
+		<section
+			v-if="row.error && expanded"
+			:class="$style.error"
+			data-testid="workflow-tests-row-error"
+		>
+			<div v-if="row.error.code || row.error.node" :class="$style.errorHeader">
+				<N8nBadge v-if="row.error.code" variant="outline" size="xsmall" :class="$style.codeBadge">
+					{{ row.error.code }}
+				</N8nBadge>
+				<N8nBadge
+					v-if="row.error.node"
+					:clickable="canOpenNode"
+					:disabled="!canOpenNode"
+					variant="subtle"
+					size="small"
+					leading-icon="box"
+					:trailing-icon="canOpenNode ? 'external-link' : undefined"
+					:aria-label="
+						i18n.baseText('workflowTests.row.openNode', { interpolate: { node: row.error.node } })
+					"
+					@click="canOpenNode && row.error.node && emit('openNode', row.error.node)"
+				>
+					{{ row.error.node }}
+				</N8nBadge>
+			</div>
+			<pre :class="$style.message">{{ row.error.message }}</pre>
+			<div v-if="hint" :class="$style.hint">
+				<N8nIcon icon="lightbulb" size="small" />
+				<N8nText size="small">{{ hint }}</N8nText>
+			</div>
+			<div v-if="canFix">
 				<N8nButton
-					v-if="row.status === 'failed' && canFix"
 					size="small"
 					variant="outline"
 					data-testid="workflow-tests-row-fix"
@@ -132,48 +108,60 @@ const hint = computed(() => {
 					<template #icon><N8nIcon icon="sparkles" /></template>
 					{{ i18n.baseText('workflowTests.row.fixWithAssistant') }}
 				</N8nButton>
-				<N8nButton size="small" variant="ghost" @click="emit('showCode')">
-					<template #icon><N8nIcon icon="code" /></template>
-					{{ i18n.baseText('workflowTests.row.showInCode') }}
-				</N8nButton>
 			</div>
-		</div>
-	</N8nCollapsiblePanel>
+		</section>
+	</div>
 </template>
 
 <style module lang="scss">
-.row {
-	background-color: var(--background--surface);
+@use '@n8n/design-system/css/mixins/motion';
 
-	// N8nCollapsiblePanel keeps its title at full width. A long test name must
-	// shrink instead, so the duration and the status stay in the row.
-	> div:first-child > button > span {
-		flex-shrink: 1;
-		min-width: 0;
+.summary {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	width: 100%;
+	min-height: var(--height--md);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border: none;
+	border-radius: var(--radius--3xs);
+	background: none;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+
+	&:hover {
+		background-color: var(--background--subtle);
+	}
+
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--border-color);
 	}
 }
 
-.duration {
-	white-space: nowrap;
-}
-
-.title {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-	min-width: 0;
-	padding: var(--spacing--3xs) 0;
+.selected,
+.selected:hover {
+	background-color: color-mix(in srgb, var(--color--primary) 8%, transparent);
 }
 
 .name {
+	flex: 1;
+	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
+.duration {
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
 .statusIcon {
 	flex-shrink: 0;
 	color: var(--color--text--tint-1);
+
+	@include motion.fade-in;
 }
 
 .passed .statusIcon {
@@ -185,34 +173,43 @@ const hint = computed(() => {
 }
 
 .running .statusIcon {
-	color: var(--color--primary);
+	@include motion.opacity-pulse;
 }
 
-.codeBadge {
-	font-family: var(--font-family--monospace);
+.chevron {
+	flex-shrink: 0;
+	color: var(--color--text--tint-1);
+	transition: transform var(--duration--snappy) var(--easing--ease-out);
+
+	@include motion.reduced-motion;
 }
 
-.details {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	padding-top: var(--spacing--2xs);
+.open {
+	transform: rotate(90deg);
 }
 
-.errorSection {
+.error {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+	margin: var(--spacing--4xs) 0 var(--spacing--2xs) var(--spacing--lg);
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-left: var(--border-width) solid var(--color--danger);
-	border-radius: var(--radius);
+	border-radius: var(--radius--3xs);
 	background-color: color-mix(in srgb, var(--color--danger) 6%, transparent);
+
+	@include motion.fade-in;
 }
 
 .errorHeader {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--2xs);
+}
+
+.codeBadge {
+	font-family: var(--font-family--monospace);
 }
 
 .message {
@@ -230,14 +227,5 @@ const hint = computed(() => {
 	align-items: flex-start;
 	gap: var(--spacing--3xs);
 	color: var(--color--text--tint-1);
-}
-
-.sectionTitle {
-	margin-bottom: var(--spacing--3xs);
-}
-
-.actions {
-	display: flex;
-	gap: var(--spacing--2xs);
 }
 </style>

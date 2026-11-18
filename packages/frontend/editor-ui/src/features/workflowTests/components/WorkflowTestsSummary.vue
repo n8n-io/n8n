@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nBadge, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
@@ -9,17 +9,13 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import type { WorkflowTestRunState } from '../workflowTests.store';
 import { formatTestDuration, type WorkflowTestCounts } from '../workflowTests.display';
 
+/** The status line of the Tests tab: one icon, one sentence, the counts, and the bar. */
 const props = defineProps<{
 	run: WorkflowTestRunState | undefined;
 	testCounts: WorkflowTestCounts;
 }>();
 
 const i18n = useI18n();
-
-const counts = computed(() => ({
-	...props.testCounts,
-	pending: props.testCounts.running + props.testCounts.notRun,
-}));
 
 type SummaryState = 'passed' | 'failed' | 'error' | 'running' | 'notRun';
 
@@ -40,8 +36,8 @@ const title = computed(() => {
 		case 'failed':
 			return i18n.baseText('workflowTests.summary.title.failed', {
 				interpolate: {
-					failed: String(counts.value.failed),
-					total: String(counts.value.total),
+					failed: String(props.testCounts.failed),
+					total: String(props.testCounts.total),
 				},
 			});
 		case 'error':
@@ -53,17 +49,53 @@ const title = computed(() => {
 	}
 });
 
+const pending = computed(() => props.testCounts.running + props.testCounts.notRun);
+
+const progress = computed(() =>
+	i18n.baseText('workflowTests.summary.progress', {
+		interpolate: {
+			done: String(props.testCounts.total - pending.value),
+			total: String(props.testCounts.total),
+		},
+	}),
+);
+
+const total = computed(() =>
+	i18n.baseText('workflowTests.summary.total', {
+		adjustToNumber: props.testCounts.total,
+		interpolate: { count: String(props.testCounts.total) },
+	}),
+);
+
+const COUNT_LABELS = {
+	passed: 'workflowTests.summary.passed',
+	failed: 'workflowTests.summary.failed',
+	skipped: 'workflowTests.summary.skipped',
+	notRun: 'workflowTests.summary.notRun',
+} as const;
+
+const countItems = computed(() =>
+	(['passed', 'failed', 'skipped', 'notRun'] as const)
+		.filter((status) => props.testCounts[status] > 0)
+		.map((status) => ({
+			status,
+			text: i18n.baseText(COUNT_LABELS[status], {
+				interpolate: { count: String(props.testCounts[status]) },
+			}),
+		})),
+);
+
 const totalDuration = computed(() => {
-	const total = (props.run?.tests ?? []).reduce((sum, test) => sum + test.durationMs, 0);
-	return total > 0 ? formatTestDuration(total) : undefined;
+	const duration = (props.run?.tests ?? []).reduce((sum, test) => sum + test.durationMs, 0);
+	return duration > 0 ? formatTestDuration(duration) : undefined;
 });
 
 /** Each segment of the bar, as a share of all tests. */
 const segments = computed(() => {
-	const { total } = counts.value;
-	if (total === 0) return [];
+	const counts = { ...props.testCounts, pending: pending.value };
+	if (counts.total === 0) return [];
 	return (['passed', 'failed', 'skipped', 'pending'] as const)
-		.map((status) => ({ status, share: counts.value[status] / total }))
+		.map((status) => ({ status, share: counts[status] / counts.total }))
 		.filter(({ share }) => share > 0);
 });
 </script>
@@ -74,50 +106,40 @@ const segments = computed(() => {
 			<span :class="$style.stateIcon">
 				<N8nIcon :icon="STATE_ICONS[state]" :spin="state === 'running'" size="large" />
 			</span>
-			<div :class="$style.text">
+			<div :class="$style.text" role="status">
 				<N8nHeading tag="h2" size="medium" bold>{{ title }}</N8nHeading>
-				<N8nText v-if="state === 'notRun'" size="small" color="text-light">
-					{{ i18n.baseText('workflowTests.summary.notRunDescription') }}
-				</N8nText>
-				<N8nText v-else size="small" color="text-light" :class="$style.meta">
-					<span v-if="run?.finishedAt">
-						<TimeAgo :date="run.finishedAt" capitalize live />
-					</span>
-					<span v-if="totalDuration">
-						{{
-							i18n.baseText('workflowTests.summary.duration', {
-								interpolate: { duration: totalDuration },
-							})
-						}}
-					</span>
-					<span>{{ i18n.baseText('workflowTests.summary.version') }}</span>
+				<N8nText size="small" color="text-light" :class="$style.meta">
+					<span v-if="state === 'notRun'">{{ total }}</span>
+					<template v-else-if="state === 'running'">
+						<span v-if="testCounts.total > 0">{{ progress }}</span>
+					</template>
+					<template v-else>
+						<span
+							v-for="item in countItems"
+							:key="item.status"
+							:class="$style[`count-${item.status}`]"
+						>
+							{{ item.text }}
+						</span>
+						<span v-if="totalDuration">
+							{{
+								i18n.baseText('workflowTests.summary.duration', {
+									interpolate: { duration: totalDuration },
+								})
+							}}
+						</span>
+						<span v-if="run?.finishedAt">
+							<TimeAgo :date="run.finishedAt" capitalize live />
+						</span>
+						<span>{{ i18n.baseText('workflowTests.summary.version') }}</span>
+					</template>
 				</N8nText>
 			</div>
-			<div :class="$style.badges">
-				<N8nBadge v-if="counts.passed" variant="success" size="small" leading-icon="circle-check">
-					{{
-						i18n.baseText('workflowTests.summary.passed', {
-							interpolate: { count: String(counts.passed) },
-						})
-					}}
-				</N8nBadge>
-				<N8nBadge v-if="counts.failed" variant="danger" size="small" leading-icon="circle-x">
-					{{
-						i18n.baseText('workflowTests.summary.failed', {
-							interpolate: { count: String(counts.failed) },
-						})
-					}}
-				</N8nBadge>
-				<N8nBadge v-if="counts.skipped" variant="filled" size="small" leading-icon="circle-minus">
-					{{
-						i18n.baseText('workflowTests.summary.skipped', {
-							interpolate: { count: String(counts.skipped) },
-						})
-					}}
-				</N8nBadge>
+			<div :class="$style.actions">
+				<slot name="actions" />
 			</div>
 		</div>
-		<div v-if="segments.length" :class="$style.bar" aria-hidden="true">
+		<div :class="$style.bar" aria-hidden="true">
 			<span
 				v-for="segment in segments"
 				:key="segment.status"
@@ -129,20 +151,19 @@ const segments = computed(() => {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
+
 .summary {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--md);
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	background-color: var(--background--surface);
+	gap: var(--spacing--xs);
 }
 
 .head {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--xs);
 }
 
 .stateIcon {
@@ -150,11 +171,16 @@ const segments = computed(() => {
 	align-items: center;
 	justify-content: center;
 	flex-shrink: 0;
-	width: var(--spacing--2xl);
-	height: var(--spacing--2xl);
-	border-radius: 50%;
+	width: var(--spacing--xl);
+	height: var(--spacing--xl);
+	border-radius: var(--radius--full);
 	color: var(--color--text--tint-1);
-	background-color: var(--color--foreground--tint-2);
+	background-color: var(--background--subtle);
+	transition:
+		color var(--duration--snappy) var(--easing--ease-out),
+		background-color var(--duration--snappy) var(--easing--ease-out);
+
+	@include motion.reduced-motion;
 }
 
 .passed .stateIcon {
@@ -176,39 +202,54 @@ const segments = computed(() => {
 .text {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--4xs);
-	flex: 1;
+	gap: var(--spacing--5xs);
+	// The basis lets the actions wrap below the text in a narrow column.
+	flex: 1 1 var(--spacing--5xl);
 	min-width: 0;
 }
 
 .meta {
 	display: flex;
 	flex-wrap: wrap;
+	font-variant-numeric: tabular-nums;
 
 	> span + span::before {
 		content: '·';
 		padding: 0 var(--spacing--3xs);
+		color: var(--color--text--tint-1);
 	}
 }
 
-.badges {
+.count-passed {
+	color: var(--text-color--success);
+}
+
+.count-failed {
+	color: var(--text-color--danger);
+}
+
+.actions {
 	display: flex;
 	flex-wrap: wrap;
-	gap: var(--spacing--3xs);
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .bar {
 	display: flex;
 	gap: var(--spacing--5xs);
-	height: var(--spacing--3xs);
+	height: var(--spacing--4xs);
 	overflow: hidden;
-	border-radius: var(--radius--lg);
+	border-radius: var(--radius--full);
+	background-color: var(--background--subtle);
 }
 
 .segment {
 	flex-basis: 0;
-	border-radius: var(--radius--sm);
+	border-radius: var(--radius--full);
 	transition: flex-grow var(--duration--base) var(--easing--ease-out);
+
+	@include motion.reduced-motion;
 }
 
 .segment-passed {
