@@ -157,7 +157,7 @@ describe.runIf(typesBuilt)('request equivalence with v1 nodes', () => {
 	const registry = registryOf(loadCredentialTypes().types);
 
 	// The cases with sub-nodes or node settings of the AI nodes run through the converter
-	// (`ai-cluster.test.ts`).
+	// (`ai-cluster.shared.ts`).
 	const cases = EQUIVALENCE_CASES.filter(
 		(c) =>
 			!ENGINE_CASES.includes(c) && !TOOL_PENDING_CASES.includes(c) && !ERROR_ITEM_CASES.includes(c),

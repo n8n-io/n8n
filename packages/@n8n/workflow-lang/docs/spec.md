@@ -2365,7 +2365,7 @@ node versions 2 to 2.5: `executeQuery`, `select`, `insert`, `update`,
   recording harness converts them with
   `ConvertOptions.mysqlRecordFirst`.
 
-The equivalence test (`src/nodes/__tests__/mysql-equivalence.test.ts`)
+The equivalence test (`src/nodes/__tests__/mysql-equivalence.shared.ts`)
 runs each case on the v1 node with its real driver and on the library
 node with a reference client (`mysql-reference.ts`). It compares the
 output or the error, and the tables after the run.

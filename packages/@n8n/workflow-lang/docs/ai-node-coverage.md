@@ -7,7 +7,7 @@ are numbers of workflows. Disabled nodes are not counted.
 ## What is native now
 
 "Native" means: the converter writes the node as a library node (`src/nodes/`), and the
-equivalence cases prove that shape against the v1 node in n8n's engine (`ai-cluster.test.ts`,
+equivalence cases prove that shape against the v1 node in n8n's engine (`ai-cluster.shared.ts` and its shards,
 `equivalence.test.ts`). The counts come from the parameter check of the converter on each
 workflow; an expression that does not translate can still send a node to the host.
 

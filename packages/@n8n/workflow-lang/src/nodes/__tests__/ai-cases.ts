@@ -3,7 +3,7 @@
  *
  * `AI_CASES` run as the other cases do (`equivalence.test.ts`): one node, no settings.
  * `AI_ENGINE_CASES` have sub-nodes (`subNodes`) or node settings. The recorder runs them in
- * n8n's engine. `ai-cluster.test.ts` converts a workflow with the node and compares the run
+ * n8n's engine. `ai-cluster.shared.ts` converts a workflow with the node and compares the run
  * of the converted source with the recording: requests, outputs, errors, and the runs of
  * the sub-nodes.
  */
@@ -3812,7 +3812,7 @@ const withFile = (mimeType: string, fileName: string) => ({
 /**
  * An input item with binary data. v1 gives the model an image and a text file of the item
  * (`passthroughBinaryImages`, default on). The library node has no form of that: the cluster
- * runs in the fallback host (`ai-cluster.test.ts`). The recordings are the facts of v1.
+ * runs in the fallback host (`ai-cluster.shared.ts`). The recordings are the facts of v1.
  */
 export const BINARY_HOST_CASES: EquivalenceCase[] = [
 	...[2.2, 3.1].map((version) =>
@@ -4024,7 +4024,7 @@ const STREAM_CASES: EquivalenceCase[] = [
 
 /**
  * Streams that the library node does not read: it gives the cluster to the fallback host
- * (`ai-cluster.test.ts`).
+ * (`ai-cluster.shared.ts`).
  */
 export const STREAM_HOST_CASES: EquivalenceCase[] = [
 	agent('1.7 stream, tool call', 1.7, gpt, [

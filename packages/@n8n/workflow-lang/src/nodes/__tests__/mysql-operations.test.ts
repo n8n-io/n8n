@@ -3,7 +3,7 @@
  * error settings that have no recording yet, without a database. A made-up answer of the
  * `sql` effect stands for the database. The expected texts are written by hand from the
  * source of the v1 node. The equivalence with v1 is the task of
- * `mysql-equivalence.test.ts`.
+ * `mysql-equivalence.shared.ts`.
  */
 import { compile } from '../../compiler/index.ts';
 import { decodeModule } from '../../compiler/decode.ts';
