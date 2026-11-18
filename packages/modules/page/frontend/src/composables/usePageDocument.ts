@@ -1,12 +1,13 @@
 import type { Page } from '@n8n/api-types';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import { ResponseError } from '@n8n/rest-api-client';
-import { ref, shallowRef, watch } from 'vue';
+import { onScopeDispose, ref, shallowRef, watch } from 'vue';
 
 import {
 	HTTP_STATUS_CONFLICT,
 	HTTP_STATUS_NOT_FOUND,
 	PAGE_AUTOSAVE_DEBOUNCE_MS,
+	PAGE_REFRESH_INTERVAL_MS,
 } from '../page.constants';
 import { usePageStore } from '../page.store';
 
@@ -32,10 +33,23 @@ function httpStatusOf(error: unknown): number | undefined {
 	return error instanceof ResponseError ? error.httpStatusCode : undefined;
 }
 
+function isDocumentVisible(): boolean {
+	return document.visibilityState === 'visible';
+}
+
+/** Calls `refresh` at a fixed interval, until the scope of the caller stops. */
+function refreshPeriodically(refresh: () => Promise<void>): void {
+	const timer = setInterval(() => {
+		void refresh();
+	}, PAGE_REFRESH_INTERVAL_MS);
+	onScopeDispose(() => clearInterval(timer), true);
+}
+
 /**
  * Holds the draft of one page and saves it a short time after the last change.
  * A save that the server rejects as stale reloads the latest version and drops the draft.
  * When another editor of the same page saves, an editor without local changes shows that version.
+ * A loaded page without local changes also asks the server for a newer version every few seconds.
  */
 export function usePageDocument(options: PageDocumentOptions) {
 	const { pageId, projectId } = options;
@@ -189,6 +203,25 @@ export function usePageDocument(options: PageDocumentOptions) {
 	}
 
 	watch(() => pageStore.pagesById[pageId], showNewerVersion);
+
+	function canRefresh(): boolean {
+		return (
+			loadStatus.value === 'ready' && isDocumentVisible() && !isSaving.value && !hasDraftChanges()
+		);
+	}
+
+	/**
+	 * Reads the page again, so that a version that was saved elsewhere shows.
+	 * Does nothing while the page is hidden, not loaded, in a save, or has local changes.
+	 * A failed read keeps the version that shows.
+	 */
+	async function refresh(): Promise<void> {
+		if (canRefresh()) {
+			await fetchLatest().catch(() => undefined);
+		}
+	}
+
+	refreshPeriodically(refresh);
 
 	return { base, title, content, loadStatus, saveStatus, load, setTitle, setContent, flush };
 }

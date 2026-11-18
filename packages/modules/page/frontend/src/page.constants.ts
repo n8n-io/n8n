@@ -6,6 +6,9 @@ export const PAGE_SHORT_LINK_VIEW = 'PageShortLink';
 
 export const PAGE_AUTOSAVE_DEBOUNCE_MS = 800;
 
+/** How often an open page asks the server for a version that was saved elsewhere. */
+export const PAGE_REFRESH_INTERVAL_MS = 3000;
+
 export const RESOURCE_SEARCH_DEBOUNCE_MS = 150;
 
 /** How many results of each resource type the `@` menu shows. */

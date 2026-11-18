@@ -1,8 +1,9 @@
 import { ResponseError } from '@n8n/rest-api-client';
+import { effectScope } from 'vue';
 
 import { usePageDocument } from './usePageDocument';
 import { createPage } from '../__tests__/fixtures';
-import { PAGE_AUTOSAVE_DEBOUNCE_MS } from '../page.constants';
+import { PAGE_AUTOSAVE_DEBOUNCE_MS, PAGE_REFRESH_INTERVAL_MS } from '../page.constants';
 import { usePageStore } from '../page.store';
 
 const api = vi.hoisted(() => ({
@@ -35,6 +36,7 @@ describe('usePageDocument', () => {
 
 	afterEach(() => {
 		vi.useRealTimers();
+		vi.restoreAllMocks();
 	});
 
 	it('loads the page', async () => {
@@ -182,5 +184,107 @@ describe('usePageDocument', () => {
 		await vi.advanceTimersByTimeAsync(0);
 
 		expect(document.content.value).toBe('My draft');
+	});
+
+	describe('refresh', () => {
+		const appended = createPage({ content: 'Hello\n\nAppended', version: 2 });
+
+		async function waitForRefresh() {
+			await vi.advanceTimersByTimeAsync(PAGE_REFRESH_INTERVAL_MS);
+		}
+
+		it('shows a newer server version when it has no draft', async () => {
+			const { document, events } = createDocument();
+			await document.load();
+			api.getPage.mockResolvedValue(appended);
+
+			await waitForRefresh();
+
+			expect(document.content.value).toBe('Hello\n\nAppended');
+			expect(document.base.value).toEqual(appended);
+			expect(document.saveStatus.value).toBe('idle');
+			expect(events.onConflict).not.toHaveBeenCalled();
+		});
+
+		it('keeps the same content object when the server version is not newer', async () => {
+			const { document } = createDocument();
+			await document.load();
+			const shown = document.base.value;
+
+			await waitForRefresh();
+
+			expect(api.getPage).toHaveBeenCalledTimes(2);
+			expect(document.base.value).toBe(shown);
+		});
+
+		it('does not read the server while it has a draft, and keeps the draft', async () => {
+			api.updatePage.mockReturnValue(new Promise(() => {}));
+			const { document } = createDocument();
+			await document.load();
+			api.getPage.mockResolvedValue(appended);
+			document.setContent('My draft');
+
+			await waitForRefresh();
+
+			expect(api.getPage).toHaveBeenCalledTimes(1);
+			expect(document.content.value).toBe('My draft');
+		});
+
+		it('keeps a draft that the user starts while the server answers', async () => {
+			const { document } = createDocument();
+			await document.load();
+			const answer = Promise.withResolvers<typeof appended>();
+			api.getPage.mockReturnValue(answer.promise);
+			await waitForRefresh();
+
+			document.setTitle('My title');
+			answer.resolve(appended);
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(document.title.value).toBe('My title');
+			expect(document.content.value).toBe('Hello');
+		});
+
+		it('does not read the server while the page is hidden', async () => {
+			vi.spyOn(window.document, 'visibilityState', 'get').mockReturnValue('hidden');
+			const { document } = createDocument();
+			await document.load();
+
+			await waitForRefresh();
+
+			expect(api.getPage).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not read the server before the page has loaded', async () => {
+			api.getPage.mockRejectedValue(new ResponseError('Not found', { httpStatusCode: 404 }));
+			const { document } = createDocument();
+			await document.load();
+
+			await waitForRefresh();
+
+			expect(api.getPage).toHaveBeenCalledTimes(1);
+		});
+
+		it('keeps the version that shows when the read fails', async () => {
+			const { document } = createDocument();
+			await document.load();
+			api.getPage.mockRejectedValue(new Error('Network down'));
+
+			await waitForRefresh();
+
+			expect(document.loadStatus.value).toBe('ready');
+			expect(document.content.value).toBe('Hello');
+		});
+
+		it('stops when the scope of the document stops', async () => {
+			const scope = effectScope();
+			const { document } = scope.run(() => createDocument())!;
+			await document.load();
+
+			scope.stop();
+			await waitForRefresh();
+
+			expect(api.getPage).toHaveBeenCalledTimes(1);
+		});
 	});
 });
