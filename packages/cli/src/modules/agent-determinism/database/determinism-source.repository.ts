@@ -49,13 +49,15 @@ export class DeterminismSourceRepository {
 			const row = await manager.findOneBy(DeterminismSourceEntity, key);
 
 			if (!row) {
-				await manager.insert(DeterminismSourceEntity, {
-					...key,
-					projectId: source.projectId,
-					versionHash: source.versionHash,
-					runsSinceAnalysis: 1,
-					analysisStatus: 'idle',
-				});
+				await manager.save(
+					manager.create(DeterminismSourceEntity, {
+						...key,
+						projectId: source.projectId,
+						versionHash: source.versionHash,
+						runsSinceAnalysis: 1,
+						analysisStatus: 'idle',
+					}),
+				);
 				return { runsSinceAnalysis: 1, versionChanged: false, analyzedVersionHash: null };
 			}
 

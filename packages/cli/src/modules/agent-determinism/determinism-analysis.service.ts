@@ -1,3 +1,4 @@
+import type { ModelConfig } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { UserRepository, WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -22,7 +23,7 @@ import { DeterminismModelResolver } from './determinism-model.resolver';
 import { scoreDraft, type ReplayedRun } from './determinism-score';
 import { DraftReplayRunner } from './draft-replay.runner';
 import { matchOutput, type TextJudge } from './output-match';
-import { prepareRuns, redactJson } from './run-preparation';
+import { redactJson, splitRuns } from './run-preparation';
 import { classifyRunDataSteps, sumRunDataTokens } from './step-classification';
 
 @Service()
@@ -58,7 +59,8 @@ export class DeterminismAnalysisService {
 		try {
 			await this.analyze(source, userId);
 		} catch (error) {
-			this.logger.warn('Determinism analysis failed', { sourceId: source.id, error });
+			const reason = error instanceof Error ? error.message : String(error);
+			this.logger.warn(`Determinism analysis failed: ${reason}`, { sourceId: source.id });
 			await this.sourceRepository.markFailed(source.type, source.id);
 		}
 	}
@@ -67,30 +69,31 @@ export class DeterminismAnalysisService {
 		const actor = await this.resolveActor(source, userId);
 		if (!actor) throw new Error('No user can act for this source');
 
-		const { train, holdout, total } = prepareRuns(
-			await this.collector.collect(source, MAX_COLLECTED_RUNS),
+		const succeeded = (await this.collector.collect(source, MAX_COLLECTED_RUNS)).filter(
+			(run) => run.succeeded,
 		);
-		const [cluster] = this.clusterer.cluster(train);
+		const [cluster] = this.clusterer.cluster(succeeded);
 		if (!cluster) throw new Error('No repeated tool sequence among the recorded runs');
+		const { train, holdout } = splitRuns(cluster.runs);
 
 		const translated = await this.translator.translate({
 			actor,
 			source,
 			cluster,
-			trainRuns: cluster.runs,
+			trainRuns: train,
 		});
 		const draft = annotateDraft(
-			wrapWithGuards(translated, cluster.runs, await this.buildFallback(source)),
+			wrapWithGuards(translated, train, await this.buildFallback(source)),
 		);
 		const saved = await this.draftWriter.write(actor, source, draft);
 
-		const model = await this.modelResolver.resolve(actor, source.projectId);
-		if (!model) throw new Error('No model credential is available in the project');
-
+		let model: ModelConfig | null = null;
 		const replayed: ReplayedRun[] = [];
 		for (const run of holdout) {
 			const { runData, output } = await this.replayRunner.replay(saved, run, actor.id);
 			const judge: TextJudge = async (expected, actual) => {
+				model ??= await this.modelResolver.resolve(actor, source.projectId);
+				if (!model) throw new Error('No model credential is available to judge text answers');
 				const verdict = await judgeWithModel(
 					model,
 					{
@@ -112,7 +115,7 @@ export class DeterminismAnalysisService {
 			});
 		}
 
-		const result = scoreDraft(replayed, total, cluster.trafficShare);
+		const result = scoreDraft(replayed, succeeded.length, cluster.trafficShare);
 		this.logger.info('Determinism analysis finished', {
 			sourceId: source.id,
 			draftWorkflowId: saved.id,
@@ -132,9 +135,9 @@ export class DeterminismAnalysisService {
 		source: DeterminismSource,
 		userId: string | null,
 	): Promise<User | null> {
-		const user = userId
-			? await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] })
-			: null;
-		return user ?? (await this.ownershipService.getPersonalProjectOwnerCached(source.projectId));
+		const actorId =
+			userId ?? (await this.ownershipService.getPersonalProjectOwnerCached(source.projectId))?.id;
+		if (!actorId) return null;
+		return await this.userRepository.findOne({ where: { id: actorId }, relations: ['role'] });
 	}
 }

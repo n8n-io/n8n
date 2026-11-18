@@ -25,6 +25,11 @@ function asObject(value: JSONValue): JSONObject {
 	return value !== null && typeof value === 'object' && !Array.isArray(value) ? value : { value };
 }
 
+function agentAnswer(json: JSONValue): JSONValue {
+	const object = asObject(json);
+	return typeof object.output === 'string' ? object.output : json;
+}
+
 @Service()
 export class StubRunCollector extends RunCollector {
 	constructor(
@@ -127,7 +132,9 @@ export class StubRunCollector extends RunCollector {
 			id: execution.id,
 			succeeded: execution.status === 'success',
 			input: asObject(toJsonValue(runData[trigger.name]?.[0]?.data?.main?.[0]?.[0]?.json ?? {})),
-			output: toJsonValue(runData[agent.name]?.at(-1)?.data?.main?.[0]?.[0]?.json ?? null),
+			output: agentAnswer(
+				toJsonValue(runData[agent.name]?.at(-1)?.data?.main?.[0]?.[0]?.json ?? null),
+			),
 			toolCalls,
 			steps: classifyRunDataSteps(runData, execution.workflowData),
 			totalTokens: sumRunDataTokens(runData),

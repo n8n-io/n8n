@@ -55,16 +55,6 @@ export function findTrigger(draft: Pick<WorkflowJSON, 'nodes' | 'connections'>) 
 	);
 }
 
-function retarget(connections: Connections, from: string, to: string) {
-	for (const outputs of Object.values(connections)) {
-		for (const branch of outputs.main ?? []) {
-			for (const connection of branch ?? []) {
-				if (connection.node === from) connection.node = to;
-			}
-		}
-	}
-}
-
 export function wrapWithGuards(
 	draft: WorkflowJSON,
 	trainRuns: RecordedRun[],
@@ -90,20 +80,19 @@ export function wrapWithGuards(
 	const outputCheck = booleanCheck(
 		OUTPUT_CHECK_NODE_NAME,
 		`Object.keys($json).length > 0 && ${JSON.stringify(outputKeys)}.every((key) => key in $json)`,
-		[output.position[0] - 200, output.position[1] + 200],
+		[output.position[0] + 200, output.position[1]],
 	);
 
-	retarget(connections, DRAFT_OUTPUT_NODE_NAME, OUTPUT_CHECK_NODE_NAME);
 	const triggerTargets = connections[trigger.name]?.main ?? [];
 	connections[trigger.name] = { main: [[{ node: INPUT_CHECK_NODE_NAME, type: 'main', index: 0 }]] };
 	connections[INPUT_CHECK_NODE_NAME] = {
 		main: [triggerTargets[0] ?? [], [{ node: fallback.entryNodeName, type: 'main', index: 0 }]],
 	};
+	connections[DRAFT_OUTPUT_NODE_NAME] = {
+		main: [[{ node: OUTPUT_CHECK_NODE_NAME, type: 'main', index: 0 }]],
+	};
 	connections[OUTPUT_CHECK_NODE_NAME] = {
-		main: [
-			[{ node: DRAFT_OUTPUT_NODE_NAME, type: 'main', index: 0 }],
-			[{ node: fallback.entryNodeName, type: 'main', index: 0 }],
-		],
+		main: [[], [{ node: fallback.entryNodeName, type: 'main', index: 0 }]],
 	};
 
 	return {

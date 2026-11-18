@@ -86,7 +86,9 @@ export class AgentDeterminismListener {
 		try {
 			await handler();
 		} catch (error) {
-			this.logger.warn('Counting a run for determinism analysis failed', { error });
+			this.logger.warn('Counting a run for determinism analysis failed', {
+				error: error instanceof Error ? error.message : String(error),
+			});
 		}
 	}
 }

@@ -32,14 +32,12 @@ function redactRun(run: RecordedRun): RecordedRun {
 	};
 }
 
-export function prepareRuns(runs: RecordedRun[]) {
-	const succeeded = runs.filter((run) => run.succeeded);
+export function splitRuns(runs: RecordedRun[]) {
 	const holdoutEvery = Math.round(1 / HOLDOUT_SHARE);
 	const isHoldout = (index: number) => index % holdoutEvery === holdoutEvery - 1;
 
 	return {
-		train: succeeded.filter((_, index) => !isHoldout(index)).map(redactRun),
-		holdout: succeeded.filter((_, index) => isHoldout(index)),
-		total: succeeded.length,
+		train: runs.filter((_, index) => !isHoldout(index)).map(redactRun),
+		holdout: runs.filter((_, index) => isHoldout(index)),
 	};
 }
