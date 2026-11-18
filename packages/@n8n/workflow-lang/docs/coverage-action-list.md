@@ -82,3 +82,36 @@ the last verification.
 The tools are not in the repository, because they read real workflows.
 The census gives one record for each workflow with its host nodes (node type, class, diagnostic).
 The ranking applies the items in order and counts the workflows that have no blocker left.
+
+## The order by marginal unlock (census of 18 November 2026, late)
+
+Tip `71fb4d3e558`, verified list of 3,656 operations: 2,432 of 4,876 sampled workflows compile fully (49.9%). 2,444 are
+blocked by 557 distinct reasons. A group that is large is not always worth much: most workflows with a common blocker have
+a second one. This list is a greedy order: at each step, the one reason that completes the most workflows once it is closed.
+Make it again after each merge: `node unlock.mjs <census file>` (scratch tool; it prints aggregates only).
+
+| # | Workflows it completes | Coverage after | Blocker |
+|---|---|---|---|
+| 1 | 442 | 58.9% | A Code node reads the paired item of another node on a path that is not one-to-one |
+| 2 | 144 | 61.9% | HTTP Request with a predefined or OAuth credential under a continue setting (the error item of v1) |
+| 3 | 63 | 63.2% | Send Email: the SMTP effect exists and is off |
+| 4 | 57 | 64.4% | Notion operations that are not verified (the time zone of a date property) |
+| 5 | 46 | 65.3% | Google BigQuery through the HTTP node of the Google API helper |
+| 6 | 46 | 66.2% | Code node: a member of a value that can be a Date value |
+| 7 | 40 | 67.1% | Code node: `require` |
+| 8 | 39 | 67.9% | MySQL: the client of the runtime exists and is off |
+| 9 | 26 | 68.4% | Code node: `catch` reads the error |
+| 10 | 26 | 68.9% | Microsoft SQL: the package of the node has no compiled form |
+| 11 | 25 | 69.4% | Gmail: the mail composer package |
+| 12 | 24 | 69.9% | Code node: a global that the translator does not know |
+| 13 | 23 | 70.4% | Snowflake: the package of the node has no compiled form |
+| 14 | 20 | 70.8% | HTTP Request: an expression pairs items of another node by position |
+| 15 | 17 | 71.2% | Extract From File: spreadsheet forms |
+| 16 | 21 | 71.6% | Gmail: the parser of a raw message |
+| 17 | 18 | 72.0% | Google Drive: the upload of a file (multipart form) |
+| 18 | 17 | 72.3% | HubSpot: an expression of a parameter that can fail is not checked |
+| 19 | 17 | 72.7% | Code node: a native kind is lost |
+| 20 | 17 | 73.0% | Code node: `this.helpers` |
+
+Measured cost of a parity fix: the refusal of row 2 took 260 workflows out of the fully compiled set on the day it was
+made. Measure the coverage of each candidate before the merge (`cov.sh`, scratch tool) so such a cost is known at once.
