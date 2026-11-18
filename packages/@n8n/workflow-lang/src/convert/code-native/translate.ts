@@ -6750,6 +6750,92 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			for (const c of plan.checks) lineChecks.set(c.receiver, { method: c.method, text: c.text });
 		}
 	}
+	/**
+	 * An Error that the code makes is a plain object in native code. Its text (`String(e)`, a
+	 * template, `+`, `toString`) and its JSON differ from v1, which keeps the message and the
+	 * name out of the JSON of an Error (`JSON.stringify`). A throw, a read of `message` or
+	 * `name`, and `instanceof Error` are exact. Each other use keeps the node in the host.
+	 */
+	if (!input.nodeCode && !input.expression && root.body) {
+		const MADE_ERRORS = new Set([
+			'Error',
+			'TypeError',
+			'RangeError',
+			'SyntaxError',
+			'ReferenceError',
+		]);
+		const makesError = (e: ts.Expression): boolean => {
+			const x = stripParens(e);
+			return (
+				ts.isNewExpression(x) &&
+				ts.isIdentifier(x.expression) &&
+				MADE_ERRORS.has(x.expression.text) &&
+				isFree(x.expression)
+			);
+		};
+		const holdsError = (e: ts.Expression): boolean => {
+			const x = stripParens(e);
+			if (makesError(x)) return true;
+			if (!ts.isIdentifier(x)) return false;
+			const sym = ts.isShorthandPropertyAssignment(x.parent)
+				? checker.getShorthandAssignmentValueSymbol(x.parent)
+				: checker.getSymbolAtLocation(x);
+			return (sym?.declarations ?? []).some(
+				(d) => ts.isVariableDeclaration(d) && d.initializer !== undefined && makesError(d.initializer),
+			);
+		};
+		const writes = (n: ts.Node): boolean =>
+			ts.isBinaryExpression(n.parent) &&
+			n.parent.left === n &&
+			n.parent.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+			n.parent.operatorToken.kind <= ts.SyntaxKind.LastAssignment;
+		let gap = false;
+		const scan = (x: ts.Node): void => {
+			if (gap) return;
+			if (ts.isNewExpression(x) && makesError(x)) {
+				let n: ts.Node = x;
+				while (ts.isParenthesizedExpression(n.parent)) n = n.parent;
+				const p = n.parent;
+				if (
+					!ts.isThrowStatement(p) &&
+					!(ts.isVariableDeclaration(p) && p.initializer === n) &&
+					!writes(n) &&
+					!(ts.isBinaryExpression(p) && p.left === n && p.operatorToken.kind === ts.SyntaxKind.InstanceOfKeyword)
+				) {
+					gap = true;
+					return;
+				}
+			}
+			if (ts.isIdentifier(x) && !isNameOf(x) && holdsError(x)) {
+				const p = x.parent;
+				const declared =
+					(ts.isVariableDeclaration(p) && p.name === x) ||
+					(ts.isBindingElement(p) && p.name === x) ||
+					(ts.isParameter(p) && p.name === x);
+				const read =
+					ts.isPropertyAccessExpression(p) &&
+					p.expression === x &&
+					(p.name.text === 'message' || p.name.text === 'name') &&
+					!(ts.isCallExpression(p.parent) && p.parent.expression === p) &&
+					!isAssignmentTarget(p);
+				const tested =
+					ts.isBinaryExpression(p) &&
+					p.left === x &&
+					p.operatorToken.kind === ts.SyntaxKind.InstanceOfKeyword;
+				if (!declared && !read && !tested && !ts.isThrowStatement(p) && !writes(x)) {
+					gap = true;
+					return;
+				}
+			}
+			ts.forEachChild(x, scan);
+		};
+		scan(root.body);
+		if (gap)
+			block(
+				'error as a value',
+				'An Error that the code makes has the text and the JSON of v1 only in a throw, a write, and a read of `message`, `name` or `instanceof Error`.',
+			);
+	}
 	if (input.traced && root.body) traceLines(root.body);
 	if (root.body) for (const st of root.body.statements) visit(st);
 	// V8's text of an error is certain only for the operations that \`catch-check.ts\` knows.
