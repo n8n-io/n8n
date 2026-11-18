@@ -103,7 +103,9 @@ export class WorkflowSerializer {
 		// Clone so the live entity keeps its names for requirement extraction.
 		const copy = structuredClone(nodes);
 		visitWorkflowCredentials(copy, (_type, details) => {
-			if (details.name === undefined) return false;
+			if (typeof details !== 'object' || details === null || details.name === undefined) {
+				return false;
+			}
 			const mutable: { name?: string } = details;
 			delete mutable.name;
 			return true;

@@ -1,5 +1,6 @@
 import type { SerializedWorkflow } from '@n8n/api-types';
 import { WorkflowEntity } from '@n8n/db';
+import { UnprocessableRequestError } from '@n8n/errors';
 
 import { WorkflowSerializer } from '../workflow.serializer';
 
@@ -168,5 +169,26 @@ describe('WorkflowSerializer.serializeMetadata', () => {
 		const neverPublished = workflow({ activeVersionId: null });
 
 		expect(serializer.serializeMetadata(neverPublished).publishedVersionId).toBeNull();
+	});
+});
+
+describe('WorkflowSerializer.serializeForExport', () => {
+	const serializer = new WorkflowSerializer();
+
+	it('reports a null credential reference as an invalid field instead of crashing', () => {
+		const workflow = Object.assign(new WorkflowEntity(), {
+			id: 'wf-bad',
+			name: 'Bad',
+			nodes: [{ ...wire().nodes[0], credentials: { someApi: null } }],
+			connections: {},
+			isArchived: false,
+		});
+
+		expect(() => serializer.serializeForExport(workflow, { includeTags: false })).toThrow(
+			UnprocessableRequestError,
+		);
+		expect(() => serializer.serializeForExport(workflow, { includeTags: false })).toThrow(
+			'nodes.0.credentials.someApi',
+		);
 	});
 });
