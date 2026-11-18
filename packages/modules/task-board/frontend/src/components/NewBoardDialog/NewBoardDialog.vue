@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { TaskBoardTemplateKey } from '@n8n/api-types';
 import {
+	N8nBadge,
 	N8nButton,
 	N8nCard,
 	N8nDialog,
@@ -14,7 +15,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { computed, ref, watch } from 'vue';
 
-import { TASK_BOARD_TEMPLATES } from '../../task-board.constants';
+import { TASK_BOARD_TEMPLATES, UPCOMING_TASK_BOARD_TEMPLATES } from '../../task-board.constants';
 import type { CreateTaskBoardPayload } from '../../task-board.types';
 
 const props = defineProps<{ creating: boolean }>();
@@ -72,6 +73,29 @@ function onSubmit() {
 					</template>
 					<template #header>
 						<N8nText bold>{{ i18n.baseText(`taskBoard.template.${template.key}.name`) }}</N8nText>
+					</template>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText(`taskBoard.template.${template.key}.description`) }}
+					</N8nText>
+				</N8nCard>
+			</div>
+			<div :class="$style.templates">
+				<N8nCard
+					v-for="template in UPCOMING_TASK_BOARD_TEMPLATES"
+					:key="template.key"
+					:class="[$style.template, $style.upcoming]"
+					data-test-id="task-board-upcoming-template"
+				>
+					<template #prepend>
+						<N8nIcon :icon="template.icon" size="xlarge" />
+					</template>
+					<template #header>
+						<div :class="$style.upcomingHeader">
+							<N8nText bold>{{ i18n.baseText(`taskBoard.template.${template.key}.name`) }}</N8nText>
+							<N8nBadge variant="subtle" size="xsmall">
+								{{ i18n.baseText('taskBoard.create.comingSoon') }}
+							</N8nBadge>
+						</div>
 					</template>
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText(`taskBoard.template.${template.key}.description`) }}
@@ -136,6 +160,17 @@ function onSubmit() {
 	&:focus-visible {
 		border-color: var(--focus--border-color);
 	}
+}
+
+.upcoming {
+	cursor: default;
+	opacity: 0.6;
+}
+
+.upcomingHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .selected {
