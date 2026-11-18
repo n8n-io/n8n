@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddSkillSourceUnlinkedSkills1794830944706 implements ReversibleMigration {
+export class AddSkillSourceUnlinkedSkills1794991781000 implements ReversibleMigration {
 	async up({ escape, runQuery, isPostgres }: MigrationContext) {
 		// ADD COLUMN keeps the incoming skill links on SQLite.
 		await runQuery(
