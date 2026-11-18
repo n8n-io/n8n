@@ -1,0 +1,33 @@
+packages/modules/promotions/frontend/src/views/PromotionsSettingsView.vue
+  s_09f48064523a45::t_7d80637da8bdfb 106-115,221
+  s_09f48064523a45::t_58da955383b908 77
+packages/quality/testing/playwright/tests/e2e/settings/environments/promotion-environments.spec.ts
+  s_09f48064523a45::t_1439e6045735a5 54
+packages/modules/promotions/frontend/src/views/PromotionsSettingsView.test.ts
+  s_09f48064523a45::t_1439e6045735a5 45,53,252,260,278-279,293-313,318-330,332,335,355-356
+  s_09f48064523a45::t_b4437f73d2c3e2 314-317
+packages/cli/src/modules/promotions.ee/promotion-environments.service.ts
+  s_09f48064523a45::t_457323cef469a0 375-377
+packages/modules/promotions/frontend/src/components/PromotionEnvironmentCard.vue
+  s_09f48064523a45::t_7d80637da8bdfb 23,29,109-119,134,137,139-140,144,185
+packages/modules/promotions/frontend/src/components/PromotionMissingProjectsButton.vue
+  s_09f48064523a45::t_7d80637da8bdfb 62
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_09f48064523a45::t_7d80637da8bdfb 4925,4936
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e43b6094ef7538e7e0c25e659cda4ef784c3cc03",
+  "prompts": {},
+  "sessions": {
+    "s_09f48064523a45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1f0ad21-a6e8-47c6-b6ff-f4243b44d3a8",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
