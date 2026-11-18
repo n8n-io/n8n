@@ -1,0 +1,52 @@
+packages/cli/src/modules/agents/approval/__tests__/agent-channel-approval-response.test.ts
+  s_33852536738524::t_2c6da159be8ca6 12,30-31,110,148,208,255
+packages/cli/src/modules/agents/approval/agent-channel-hitl.service.ts
+  s_33852536738524::t_9c19d60b1001dc 94,96
+packages/cli/src/modules/agents/approval/README.md
+  s_dfe3f914c8bb46::t_aac2e00427622b 105-110
+packages/cli/test/integration/agents/agent-channel-approval.integration.test.ts
+  s_dfe3f914c8bb46::t_baa1847f1d7f78 14,21-22,27,134,169,174,446-453,462-484
+packages/core/src/execution-engine/__tests__/workflow-execute.test.ts
+  s_dfe3f914c8bb46::t_79db84dd0ff59e 2601
+  s_dfe3f914c8bb46::t_d3ca820fc1b298 2602,2605
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_33852536738524::t_9fb2be900af53c 1043,1048
+packages/cli/src/modules/redaction/executions/strategies/__tests__/full-item-redaction.strategy.test.ts
+  s_33852536738524::t_d33eb20fe8a45d 686-689,691,694,696,698-700
+packages/cli/src/modules/redaction/executions/strategies/full-item-redaction.strategy.ts
+  s_33852536738524::t_dff813a1ca49ac 59-61
+packages/cli/src/workflow-helpers.ts
+  s_33852536738524::t_3b96a2d51fbfd0 495,510,522,603,612
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  s_33852536738524::t_c61c9d12889dc4 478-482,488-489,500-505,514-522
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_33852536738524::t_079584290f339e 66-70,72-74,280-288,391
+packages/core/src/execution-engine/workflow-execute.ts
+  s_33852536738524::t_d4293dd2eab12d 1555
+packages/workflow/src/interfaces.ts
+  s_33852536738524::t_03b09275018827 3672-3677
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1dafc0dc960c807a0f41a582c4df13ddc0266705",
+  "prompts": {},
+  "sessions": {
+    "s_33852536738524": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "daf37cb4-9789-425a-abe6-81e7366ae405",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "unknown"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
