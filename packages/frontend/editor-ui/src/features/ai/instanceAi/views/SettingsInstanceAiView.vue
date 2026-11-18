@@ -751,20 +751,14 @@ const { isLoading: isSavingModelTraining, executeImmediate: handleModelTrainingT
 
 			<N8nSettingsSection
 				v-if="isEnabled"
-				:title="
-					i18n.baseText(
-						store.isModelTrainingOptOutAvailable
-							? 'settings.n8nAgent.dataSharing.modelTraining.title'
-							: 'settings.n8nAgent.dataSharing.title',
-					)
-				"
+				:title="i18n.baseText('settings.n8nAgent.dataSharing.title')"
 			>
 				<template #description>
 					<N8nText size="small" color="text-base">
 						{{
 							i18n.baseText(
 								store.isModelTrainingOptOutAvailable
-									? 'settings.n8nAgent.dataSharing.modelTraining.description'
+									? 'settings.n8nAgent.dataSharing.description.withModelTraining'
 									: 'settings.n8nAgent.dataSharing.description',
 							)
 						}}
@@ -823,7 +817,15 @@ const { isLoading: isSavingModelTraining, executeImmediate: handleModelTrainingT
 						{{ i18n.baseText('settings.ai.allowSendingParameterValues.deprecated.envVar') }}
 					</template>
 				</N8nCallout>
-				<N8nSettingsRowGroup v-if="store.isModelTrainingOptOutAvailable">
+			</N8nSettingsSection>
+
+			<!-- A separate section, so the data sent to the model does not read as training data. -->
+			<N8nSettingsSection
+				v-if="isEnabled && store.isModelTrainingOptOutAvailable"
+				:title="i18n.baseText('settings.n8nAgent.modelTraining.title')"
+				data-test-id="n8n-agent-model-training-section"
+			>
+				<N8nSettingsRowGroup>
 					<N8nSettingsRow
 						:title="i18n.baseText('settings.n8nAgent.modelTraining.label')"
 						:description="i18n.baseText('settings.n8nAgent.modelTraining.description')"

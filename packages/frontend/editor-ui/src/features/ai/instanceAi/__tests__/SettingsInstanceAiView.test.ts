@@ -953,15 +953,24 @@ describe('SettingsInstanceAiView', () => {
 			const { getByText, queryByTestId } = renderComponent();
 
 			expect(getByText('settings.n8nAgent.dataSharing.title')).toBeVisible();
-			expect(queryByTestId('n8n-agent-model-training-row')).toBeNull();
+			expect(getByText(/settings\.n8nAgent\.dataSharing\.description$/)).toBeVisible();
+			expect(queryByTestId('n8n-agent-model-training-section')).toBeNull();
 		});
 
-		it('shows the training copy and switch when the opt-out is available', () => {
+		it('shows the switch in its own section, apart from the data sent to the model', () => {
 			enableOptOut();
 
-			const { getByText, getByTestId } = renderComponent();
+			const { getByText, getByTestId, queryByText } = renderComponent();
 
-			expect(getByText('settings.n8nAgent.dataSharing.modelTraining.title')).toBeVisible();
+			expect(getByText('settings.n8nAgent.dataSharing.title')).toBeVisible();
+			expect(
+				getByText(/settings\.n8nAgent\.dataSharing\.description\.withModelTraining/),
+			).toBeVisible();
+			expect(queryByText(/settings\.n8nAgent\.dataSharing\.description$/)).toBeNull();
+
+			const section = getByTestId('n8n-agent-model-training-section');
+			expect(section).toHaveTextContent('settings.n8nAgent.modelTraining.title');
+			expect(section).not.toContainElement(getByTestId('n8n-agent-data-sharing-values-row'));
 			expect(getByTestId('n8n-agent-model-training-toggle')).toHaveAttribute(
 				'aria-checked',
 				'true',
