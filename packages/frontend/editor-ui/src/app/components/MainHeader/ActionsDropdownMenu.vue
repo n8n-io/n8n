@@ -36,6 +36,7 @@ import { telemetry } from '@/app/plugins/telemetry';
 import router from '@/app/router';
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import saveAs from 'file-saver';
+import * as n8nLiteApi from '@n8n/rest-api-client/api/n8n-lite';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { FolderShortInfo, WorkflowListEventMap } from '@/features/core/folders/folders.types';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -72,7 +73,13 @@ const props = defineProps<{
 const importFileRef = ref<HTMLInputElement | undefined>();
 const productionChecklistRef =
 	useTemplateRef<InstanceType<typeof WorkflowProductionChecklist>>('productionChecklist');
+const menuPortal = useTemplateRef<HTMLDivElement>('menuPortal');
 const toast = useToast();
+const LITE_TARGETS: Partial<Record<string, n8nLiteApi.LiteTarget>> = {
+	[WORKFLOW_MENU_ACTIONS.DOWNLOAD_LITE_LINUX_ARM64]: 'linux-arm64',
+	[WORKFLOW_MENU_ACTIONS.DOWNLOAD_LITE_LINUX_X64]: 'linux-x64',
+	[WORKFLOW_MENU_ACTIONS.DOWNLOAD_LITE_DARWIN_ARM64]: 'darwin-arm64',
+};
 const locale = useI18n();
 const route = useRoute();
 const projectsStore = useProjectsStore();
@@ -265,6 +272,35 @@ const workflowMenuItems = computed<WorkflowMenuItem[]>(() => {
 		});
 	}
 
+	const lite: WorkflowMenuItem[] = [
+		{
+			id: WORKFLOW_MENU_ACTIONS.DOWNLOAD_LITE,
+			label: locale.baseText('menuActions.downloadLiteBinary'),
+			icon: { type: 'icon', value: 'box' },
+			disabled: !props.id,
+			children: [
+				{
+					id: WORKFLOW_MENU_ACTIONS.DOWNLOAD_LITE_LINUX_ARM64,
+					label: locale.baseText('menuActions.downloadLiteBinary.linuxArm64'),
+				},
+				{
+					id: WORKFLOW_MENU_ACTIONS.DOWNLOAD_LITE_LINUX_X64,
+					label: locale.baseText('menuActions.downloadLiteBinary.linuxX64'),
+				},
+				{
+					id: WORKFLOW_MENU_ACTIONS.DOWNLOAD_LITE_DARWIN_ARM64,
+					label: locale.baseText('menuActions.downloadLiteBinary.darwinArm64'),
+				},
+			],
+		},
+		{
+			id: WORKFLOW_MENU_ACTIONS.DEPLOY_LAMBDA,
+			label: locale.baseText('menuActions.deployLambda'),
+			icon: { type: 'icon', value: 'cloud-arrow-up' },
+			disabled: !props.id,
+		},
+	];
+
 	const importExport: WorkflowMenuItem[] = [
 		{
 			id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
@@ -368,9 +404,14 @@ const workflowMenuItems = computed<WorkflowMenuItem[]>(() => {
 		}
 	}
 
-	const groups = [nameAndMetadata, organization, importExport, workflowTools, lifecycle].filter(
-		(group) => group.length > 0,
-	);
+	const groups = [
+		nameAndMetadata,
+		organization,
+		lite,
+		importExport,
+		workflowTools,
+		lifecycle,
+	].filter((group) => group.length > 0);
 
 	// A separator above the first item of every group but the first.
 	return groups
@@ -487,6 +528,23 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS | string): Pro
 				telemetry.track('User exported workflow', { workflow_id: workflowData.id });
 				saveAs(blob, name + '.json');
 			});
+			break;
+		}
+		case WORKFLOW_MENU_ACTIONS.DOWNLOAD_LITE_LINUX_ARM64:
+		case WORKFLOW_MENU_ACTIONS.DOWNLOAD_LITE_LINUX_X64:
+		case WORKFLOW_MENU_ACTIONS.DOWNLOAD_LITE_DARWIN_ARM64: {
+			const target = LITE_TARGETS[action];
+			if (!target || !props.id) break;
+			try {
+				const { blob, filename } = await n8nLiteApi.downloadLiteBinary(
+					rootStore.restApiContext,
+					props.id,
+					target,
+				);
+				saveAs(blob, filename);
+			} catch (error) {
+				toast.showError(error, locale.baseText('menuActions.downloadLiteBinary.error'));
+			}
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL: {
@@ -630,6 +688,7 @@ defineExpose({
 			placement="bottom-start"
 			max-height="var(--reka-dropdown-menu-content-available-height)"
 			:sub-menu-max-height="384"
+			:portal-target="menuPortal ?? undefined"
 			@select="onWorkflowMenuSelect"
 			@update:model-value="onWorkflowMenuToggle"
 		>
@@ -643,6 +702,10 @@ defineExpose({
 				/>
 			</template>
 		</N8nDropdownMenu>
+		<!-- Holds the menu and its sub-menus so the shadow below reaches both -->
+		<Teleport to="body">
+			<div ref="menuPortal" :class="$style.menuPortal" />
+		</Teleport>
 	</div>
 </template>
 <style lang="scss" module>
@@ -656,5 +719,11 @@ defineExpose({
 }
 .hiddenInput {
 	display: none;
+}
+.menuPortal :global([role='menu']) {
+	box-shadow:
+		0 16px 40px var(--color--black-alpha-700),
+		0 4px 12px var(--color--black-alpha-500),
+		0 0 0 1px var(--color--white-alpha-200);
 }
 </style>

@@ -98,6 +98,7 @@ export class ModuleRegistry {
 		'scim',
 		'type-availability-policies',
 		'execution-limits',
+		'n8n-lite',
 	];
 
 	private readonly activeModules: string[] = [];

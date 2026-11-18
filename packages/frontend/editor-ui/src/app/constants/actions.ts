@@ -1,6 +1,11 @@
 export const enum WORKFLOW_MENU_ACTIONS {
 	DUPLICATE = 'duplicate',
 	DOWNLOAD = 'download',
+	DOWNLOAD_LITE = 'download-lite',
+	DOWNLOAD_LITE_LINUX_ARM64 = 'download-lite-linux-arm64',
+	DOWNLOAD_LITE_LINUX_X64 = 'download-lite-linux-x64',
+	DOWNLOAD_LITE_DARWIN_ARM64 = 'download-lite-darwin-arm64',
+	DEPLOY_LAMBDA = 'deploy-lambda',
 	IMPORT = 'import',
 	IMPORT_FROM_URL = 'import-from-url',
 	IMPORT_FROM_FILE = 'import-from-file',
