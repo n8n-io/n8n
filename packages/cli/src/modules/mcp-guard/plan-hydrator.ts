@@ -382,10 +382,29 @@ export class PlanHydrator implements Hydrator {
 		return text;
 	}
 
+	// Seeds are applied one at a time. Two calls that seed at once would both leave out, or both
+	// send, the same entity.
+	private applying: Promise<unknown> = Promise.resolve();
+
 	// Seeds the plan and checks it. Returns the problem for the model, or undefined when all is well.
 	// Text that the real data does not contain goes back to the model once. On the last try it is
 	// removed and the rest is seeded.
 	private async apply(
+		plan: Plan,
+		ctx: PointerContext,
+		verify: Verify | undefined,
+		last: boolean,
+		trace: { sent?: unknown } = {},
+		shallow = false,
+	): Promise<string | undefined> {
+		const turn = this.applying.then(
+			async () => await this.applyPlan(plan, ctx, verify, last, trace, shallow),
+		);
+		this.applying = turn.catch(() => undefined);
+		return await turn;
+	}
+
+	private async applyPlan(
 		plan: Plan,
 		ctx: PointerContext,
 		verify: Verify | undefined,

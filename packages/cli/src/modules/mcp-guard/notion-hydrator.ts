@@ -127,8 +127,12 @@ export class NotionHydrator implements Hydrator {
 			add(parent.page_id);
 			add(parent.data_source_id, true);
 			add(parent.database_id, true);
-		} else if (tool === 'notion-update-page' || tool === 'notion-create-comment') {
+		} else if (tool === 'notion-update-page') {
 			add(args.page_id);
+		} else if (tool === 'notion-create-comment') {
+			// The page is `parent.page_id`, or `page_id` at the top level.
+			const parent = isRecord(args.parent) ? args.parent : {};
+			add(parent.page_id ?? args.page_id);
 		}
 		return ids.map((id) => ({ id }));
 	}

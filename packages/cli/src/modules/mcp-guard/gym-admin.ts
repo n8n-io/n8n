@@ -1,5 +1,12 @@
+import { OperationalError, UnexpectedError } from 'n8n-workflow';
+
 export class GymAdmin {
-	constructor(private readonly baseUrl: string) {}
+	private readonly baseUrl: string;
+
+	constructor(baseUrl: string) {
+		// Admin paths start with a slash. A trailing slash in the setting would double it.
+		this.baseUrl = baseUrl.replace(/\/+$/, '');
+	}
 
 	private async call(method: string, path: string, body?: unknown): Promise<unknown> {
 		const res = await fetch(this.baseUrl + path, {
@@ -10,12 +17,14 @@ export class GymAdmin {
 			// Name the target and the cause. A bare "fetch failed" does not say which gym is down.
 			const cause =
 				error instanceof Error && error.cause instanceof Error ? error.cause.message : '';
-			throw new Error(`gym ${method} ${this.baseUrl}${path} unreachable: ${cause}`);
+			throw new OperationalError(`gym ${method} ${this.baseUrl}${path} unreachable: ${cause}`);
 		});
 		const text = await res.text();
 		// Do not put the request body in the error.
 		if (!res.ok)
-			throw new Error(`gym ${method} ${path} failed: ${res.status} ${text.slice(0, 700)}`);
+			throw new OperationalError(
+				`gym ${method} ${path} failed: ${res.status} ${text.slice(0, 700)}`,
+			);
 		try {
 			return JSON.parse(text);
 		} catch {
@@ -51,7 +60,7 @@ export class GymAdmin {
 			service,
 		});
 		const token = dig(res, ['credential', 'data', ...field.split('.')]);
-		if (typeof token !== 'string') throw new Error(`gym credential has no ${field}`);
+		if (typeof token !== 'string') throw new UnexpectedError(`gym credential has no ${field}`);
 		return token;
 	}
 

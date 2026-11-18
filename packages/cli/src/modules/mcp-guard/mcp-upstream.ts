@@ -1,3 +1,4 @@
+import https from 'node:https';
 import http from 'node:http';
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -49,7 +50,7 @@ const hostFetch: typeof fetch = async (input, init) => {
 	new Headers(init?.headers).forEach((v, k) => (headers[k] = v));
 	const body = typeof init?.body === 'string' ? init.body : undefined;
 	return await new Promise<Response>((resolve, reject) => {
-		const req = http.request(
+		const req = (url.protocol === 'https:' ? https : http).request(
 			{
 				host: url.hostname,
 				port: url.port,

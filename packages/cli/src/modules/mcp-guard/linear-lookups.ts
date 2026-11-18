@@ -153,15 +153,17 @@ export function notionLookups(tool: string, args: Record<string, unknown>): Look
 	return urls.map((id) => ({ tool: 'notion-fetch', args: { id } }));
 }
 
-// The issues of a real result: a list of them, or one issue.
+// The issues of a real result: a list of them, one issue, or one issue in an `issue` field.
 function issuesIn(result: unknown): Array<Record<string, unknown>> {
 	if (isRecord(result) && Array.isArray(result.issues)) return result.issues.filter(isRecord);
+	if (isRecord(result) && isRecord(result.issue)) return [result.issue];
 	return isRecord(result) && text(result.id) ? [result] : [];
 }
 
 /**
  * A model may leave out the description of an issue when the prompt shows it cut. The real result
- * has it whole. Fill it in by code, for the issue with the same number.
+ * has it whole. Fill it in by code, for the issue with the same identifier (team key and number).
+ * An issue whose team key is not known matches by number, only when one real issue has that number.
  */
 export function withIssueDescriptions(
 	overlay: Record<string, unknown>,
@@ -171,17 +173,25 @@ export function withIssueDescriptions(
 	if (!isRecord(native) || !isRecord(native.linear) || !Array.isArray(native.linear.issues)) {
 		return overlay;
 	}
-	const described = new Map<number, string>();
+	// Identifier in lower case -> description.
+	const described = new Map<string, string>();
 	for (const issue of issuesIn(result)) {
-		const issueNumber = Number(/-(\d+)$/.exec(text(issue.id) ?? '')?.[1]);
+		const identifier = text(issue.id)?.toLowerCase();
 		const description = text(issue.description);
-		if (Number.isInteger(issueNumber) && description)
-			described.set(issueNumber, issue.description as string);
+		if (identifier && description) described.set(identifier, issue.description as string);
 	}
 	if (described.size === 0) return overlay;
+	const teams = Array.isArray(native.linear.teams) ? native.linear.teams.filter(isRecord) : [];
+	const keyOfTeam = (ref: unknown): string | undefined =>
+		text(teams.find((team) => team.ref === ref || team.id === ref)?.key)?.toLowerCase();
 	const issues = native.linear.issues.map((item: unknown) => {
 		if (!isRecord(item) || text(item.description) || typeof item.number !== 'number') return item;
-		const description = described.get(item.number);
+		const issueNumber = item.number;
+		const key = keyOfTeam(item.team);
+		const matches = [...described].filter(([identifier]) =>
+			key ? identifier === `${key}-${issueNumber}` : identifier.endsWith(`-${issueNumber}`),
+		);
+		const description = !key && matches.length !== 1 ? undefined : matches[0]?.[1];
 		return description ? { ...item, description } : item;
 	});
 	return { ...overlay, native: { ...native, linear: { ...native.linear, issues } } };

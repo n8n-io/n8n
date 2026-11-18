@@ -36,10 +36,11 @@ export class RunRegistry {
 	async getOrCreate(runId: string, token: string, model?: HydrationModel): Promise<Run> {
 		const existing = this.runs.get(runId);
 		if (existing) {
+			// Mark the run as used before the check, so the idle cleanup does not delete it meanwhile.
+			existing.lastUsed = Date.now();
 			// Someone can delete the tenant in the gym. Then build the run again.
 			if (await this.cfg.admin.tenantExists(existing.tenant)) {
 				existing.tokenRef.value = token;
-				existing.lastUsed = Date.now();
 				return existing;
 			}
 			this.runs.delete(runId);

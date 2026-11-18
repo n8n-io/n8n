@@ -12,9 +12,12 @@ const GUARDED_HOSTS: ReadonlySet<string> = new Set(GUARD_PROFILES.map((p) => p.h
 /** How long a guarded tool call may take. A call can wait for a hydration, which can need several model turns. */
 export const GUARDED_CALL_TIMEOUT_MS = 5 * 60 * 1000;
 
+// `mcp.linear.app.` (trailing dot) and `MCP.LINEAR.APP` name the same server. Compare the canonical host.
+const canonicalHost = (hostname: string): string => hostname.toLowerCase().replace(/\.+$/, '');
+
 export const isGuardedUrl = (url: string): boolean => {
 	try {
-		return GUARDED_HOSTS.has(new URL(url).hostname);
+		return GUARDED_HOSTS.has(canonicalHost(new URL(url).hostname));
 	} catch {
 		return false;
 	}
@@ -35,24 +38,18 @@ export function withMcpGuard<T extends FetchFn>(
 	return async (input, init) => {
 		const req = new Request(input, init);
 		const url = new URL(req.url);
-		if (!GUARDED_HOSTS.has(url.hostname)) return await baseFetch(input, init);
+		const host = canonicalHost(url.hostname);
+		if (!GUARDED_HOSTS.has(host)) return await baseFetch(input, init);
+		// `/mcp/` is the same endpoint as `/mcp`.
+		const path = url.pathname.replace(/\/+$/, '') || '/';
 		// The SSE transport has no guard. Refuse it, so a call cannot reach the real server.
-		if (
-			url.pathname === '/sse' ||
-			url.pathname.startsWith('/sse/') ||
-			url.pathname === '/messages'
-		) {
+		if (path === '/sse' || path.startsWith('/sse/') || path === '/messages') {
 			return new Response('mcp-guard: the SSE transport is not supported in test runs', {
 				status: 403,
 			});
 		}
 		// OAuth and discovery requests of the same host go to the real server.
-		if (url.pathname !== '/mcp') return await baseFetch(input, init);
-		return await Container.get(McpGuardService).handleMcp(
-			url.hostname,
-			chatRunId(runId),
-			req,
-			model,
-		);
+		if (path !== '/mcp') return await baseFetch(input, init);
+		return await Container.get(McpGuardService).handleMcp(host, chatRunId(runId), req, model);
 	};
 }

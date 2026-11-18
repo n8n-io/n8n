@@ -48,6 +48,8 @@ export function fillPointers(value: unknown, ctx: PointerContext): unknown {
 const UUID = /[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}/gi;
 const KEY = /\b[A-Z][A-Z0-9]+-\d+\b/g;
 
+// An issue key without its dash: trust1209.
+const KEY_ID = /^[a-z][a-z0-9]{1,30}\d$/;
 const squash = (s: string): string => s.toLowerCase().replace(/-/g, '');
 
 /** The ids a call names in its args: UUIDs (also inside urls) and issue keys such as TRUST-1209. */
@@ -67,7 +69,15 @@ export function idsInArgs(args: unknown): string[] {
 /** The ids of `ids` that the text does not show. Dashes and case do not matter. */
 export function missingIds(ids: string[], text: string): string[] {
 	const haystack = squash(text);
-	return ids.filter((id) => !haystack.includes(id));
+	// An issue key must match whole: TRUST-1209 does not show TRUST-120.
+	const keys = new Set(
+		[...text.toLowerCase().matchAll(/(?<![a-z0-9])[a-z][a-z0-9]*-\d+(?![a-z0-9])/g)].map((m) =>
+			squash(m[0]),
+		),
+	);
+	return ids.filter(
+		(id) => !(id.length < 32 && KEY_ID.test(id) ? keys.has(id) : haystack.includes(id)),
+	);
 }
 
 const ID_KEYS: ReadonlySet<string> = new Set(['id', 'data_source_id']);
