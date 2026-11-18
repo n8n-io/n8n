@@ -4759,6 +4759,7 @@
 	"experiments.recommendedSkills.use": "Select",
 	"experiments.recommendedSkills.useAriaLabel": "Select {name}",
 	"experiments.recommendedSkills.loadError": "Couldn't load the skill. Reload the page and try again.",
+	"experiments.recommendedSkills.basedOn": "Based on {source}",
 	"experiments.recommendedSkills.humanizer.cardText": "Rewrites text so it doesn't sound like AI wrote it. Use it when your agents write emails, posts, or documents.",
 	"experiments.recommendedSkills.coldEmail.cardText": "Writes short sales emails and follow-ups that people reply to. Use it when your agents contact new leads.",
 	"experiments.recommendedSkills.research.cardText": "Answers questions from official sources and links each fact to its source. The agent needs a web search tool or an HTTP Request tool.",

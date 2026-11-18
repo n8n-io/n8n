@@ -96,6 +96,7 @@ vi.mock('@/features/shared/toolsConnection/ToolsConnectionModal.vue', () => ({
 				<div v-for="item in items" :key="item.id" data-testid="agent-skill-picker-row">
 					<button data-testid="agent-skill-picker-row-open" @click="$emit('open-detail', item)">{{ item.title }}</button>
 					<span data-testid="agent-skill-picker-category">{{ item.category }}</span>
+					<slot name="row-footer" :item="item" />
 					<span v-if="item.disabled" data-testid="agent-skill-picker-disabled">{{ item.disabledReason }}</span>
 					<span v-else-if="item.attached" data-testid="agent-skill-picker-added" />
 					<button v-else data-testid="agent-skill-picker-add" :aria-label="connectAriaLabel?.(item)" @click="$emit('connect', item)">{{ connectLabel?.(item) }}</button>
@@ -231,7 +232,7 @@ function renderModal({
 				AgentModal: AgentModalTestStub,
 				I18nT: {
 					props: ['keypath'],
-					template: '<span>{{ keypath }} <slot name="repo" /></span>',
+					template: '<span>{{ keypath }} <slot name="repo" /><slot name="source" /></span>',
 				},
 				MarkdownEditor: {
 					props: ['modelValue'],
@@ -916,6 +917,49 @@ describe('AgentSkillModal', () => {
 				expect(recommendedSkills.trackCardsShown).toHaveBeenCalledExactlyOnceWith(
 					'agent_skill_modal',
 				);
+			});
+
+			it('shows the source of each recommended skill in the picker', async () => {
+				listAttachableSkills.mockResolvedValue([projectSkill]);
+				const { getAllByTestId } = renderModal({
+					skillRefsEnabled: true,
+					onAttach: vi.fn(),
+				});
+
+				await waitFor(() => {
+					const sources = getAllByTestId('agent-skill-picker-row').flatMap((row) => {
+						const link = row.querySelector('[data-test-id="recommended-skill-source-link"]');
+						if (!link) return [];
+						return [
+							{
+								skill: within(row).getByTestId('agent-skill-picker-row-open').textContent,
+								label: link.textContent?.trim(),
+								href: link.getAttribute('href'),
+								target: link.getAttribute('target'),
+							},
+						];
+					});
+					expect(sources).toEqual([
+						{
+							skill: 'humanizer',
+							label: 'blader/humanizer',
+							href: 'https://github.com/blader/humanizer',
+							target: '_blank',
+						},
+						{
+							skill: 'cold-email',
+							label: 'coreyhaines31/marketingskills',
+							href: 'https://github.com/coreyhaines31/marketingskills/tree/main/skills/cold-email',
+							target: '_blank',
+						},
+						{
+							skill: 'research',
+							label: 'mattpocock/skills',
+							href: 'https://github.com/mattpocock/skills/tree/main/skills/engineering/research',
+							target: '_blank',
+						},
+					]);
+				});
 			});
 
 			it('refuses a recommended skill with the name of an attached skill', async () => {
