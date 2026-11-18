@@ -254,6 +254,7 @@ function installs(entry: SkillCatalogEntry) {
 <style module lang="scss">
 .back {
 	align-self: start;
+	margin-inline-start: calc(-1 * var(--spacing--xs));
 }
 .catalog,
 .group {

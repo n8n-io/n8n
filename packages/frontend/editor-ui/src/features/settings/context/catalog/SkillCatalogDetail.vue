@@ -4,7 +4,14 @@ import type { DiscoveredSkill } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { ResponseError } from '@n8n/rest-api-client';
-import { N8nButton, N8nCallout, N8nExternalLink, N8nHeading, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nExternalLink,
+	N8nHeading,
+	N8nIcon,
+	N8nText,
+} from '@n8n/design-system';
 
 import SkillSourceFilesView from '../components/SkillSourceFilesView.vue';
 import { previewSkillSource } from '../skills.api';
@@ -83,50 +90,60 @@ const checkDetails = computed(() => {
 
 <template>
 	<section :class="$style.detail" data-test-id="skill-catalog-detail">
-		<div :class="$style.header">
+		<header :class="$style.header">
 			<div :class="$style.identity">
-				<N8nHeading tag="h2" size="large" bold>{{ i18n.baseText(entry.nameKey) }}</N8nHeading>
-				<N8nText color="text-light"
-					>{{ entry.publisher }} · {{ i18n.baseText('settings.context.skills.catalog.license') }}:
-					{{ entry.license }}</N8nText
-				>
+				<N8nHeading tag="h1" size="xlarge" bold>{{ i18n.baseText(entry.nameKey) }}</N8nHeading>
+				<N8nText tag="p">{{ i18n.baseText(entry.descriptionKey) }}</N8nText>
+				<div :class="$style.metadata">
+					<N8nText size="small" color="text-light"
+						>{{ entry.publisher }} · {{ i18n.baseText('settings.context.skills.catalog.license') }}:
+						{{ entry.license }}</N8nText
+					>
+					<N8nExternalLink :href="entry.url" inline size="small">{{
+						i18n.baseText('settings.context.skills.sources.openInGitHub')
+					}}</N8nExternalLink>
+				</div>
 			</div>
-			<N8nButton
-				:disabled="!canAdd || loading || !skill || blocked"
-				data-test-id="skill-catalog-add"
-				@click="emit('add')"
-			>
-				{{ i18n.baseText('settings.context.skills.catalog.add') }}
-			</N8nButton>
-		</div>
-		<N8nText v-if="!canAdd" color="text-light">{{
+			<div :class="$style.actions">
+				<N8nButton
+					v-for="item in installed"
+					:key="item.id"
+					variant="ghost"
+					size="small"
+					@click="emit('openInstalled', item.id)"
+				>
+					{{
+						i18n.baseText('settings.context.skills.catalog.viewInstalled', {
+							interpolate: { scope: item.label },
+						})
+					}}
+				</N8nButton>
+				<N8nButton
+					:disabled="!canAdd || loading || !skill || blocked"
+					data-test-id="skill-catalog-add"
+					@click="emit('add')"
+				>
+					{{ i18n.baseText('settings.context.skills.catalog.add') }}
+				</N8nButton>
+			</div>
+		</header>
+		<N8nText v-if="!canAdd" size="small" color="text-light">{{
 			i18n.baseText('settings.context.skills.catalog.noPermission')
 		}}</N8nText>
-		<div v-if="installed.length" :class="$style.installed">
-			<N8nButton
-				v-for="item in installed"
-				:key="item.id"
-				variant="outline"
-				size="small"
-				@click="emit('openInstalled', item.id)"
-			>
-				{{
-					i18n.baseText('settings.context.skills.catalog.viewInstalled', {
-						interpolate: { scope: item.label },
-					})
-				}}
-			</N8nButton>
-		</div>
-		<N8nText tag="p">{{ i18n.baseText(entry.descriptionKey) }}</N8nText>
-		<div :class="$style.identity">
-			<N8nHeading tag="h3" size="medium" bold>{{
+		<section :class="$style.requirements">
+			<N8nHeading tag="h2" size="small" bold>{{
 				i18n.baseText('settings.context.skills.catalog.requirements')
 			}}</N8nHeading>
-			<N8nText>{{ i18n.baseText(entry.requirementsKey) }}</N8nText>
-			<N8nExternalLink :href="entry.url" inline size="small" :class="$style.source">{{
-				i18n.baseText('settings.context.skills.sources.openInGitHub')
-			}}</N8nExternalLink>
-		</div>
+			<N8nText size="small" color="text-light">{{ i18n.baseText(entry.requirementsKey) }}</N8nText>
+			<div
+				v-if="skill && !blocked && !warnings"
+				:class="$style.check"
+				data-test-id="skill-catalog-check"
+			>
+				<N8nIcon icon="circle-check" size="small" color="text-light" aria-hidden="true" />
+				<N8nText size="small" color="text-light">{{ checkLabel }}</N8nText>
+			</div>
+		</section>
 		<N8nText v-if="loading" role="status">{{
 			i18n.baseText('settings.context.skills.catalog.loading')
 		}}</N8nText>
@@ -138,16 +155,19 @@ const checkDetails = computed(() => {
 		</template>
 		<template v-else-if="skill">
 			<N8nCallout
-				:theme="blocked ? 'danger' : warnings ? 'warning' : 'info'"
+				v-if="blocked || warnings"
+				:theme="blocked ? 'danger' : 'warning'"
 				data-test-id="skill-catalog-check"
 			>
 				<N8nText bold>{{ checkLabel }}</N8nText>
 				<N8nText v-if="checkDetails" tag="p">{{ checkDetails }}</N8nText>
 			</N8nCallout>
-			<N8nHeading tag="h3" size="medium" bold>{{
-				i18n.baseText('settings.context.skills.catalog.contents')
-			}}</N8nHeading>
-			<SkillSourceFilesView :skill="skill" />
+			<section :class="$style.contents">
+				<N8nHeading tag="h2" size="medium" bold>{{
+					i18n.baseText('settings.context.skills.catalog.contents')
+				}}</N8nHeading>
+				<SkillSourceFilesView :skill="skill" sidebar :class="$style.files" />
+			</section>
 		</template>
 	</section>
 </template>
@@ -156,29 +176,62 @@ const checkDetails = computed(() => {
 .detail {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--md);
+	gap: var(--spacing--lg);
 	min-width: 0;
 }
 .header {
+	width: 100%;
 	display: flex;
 	justify-content: space-between;
 	align-items: start;
 	flex-wrap: wrap;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--md);
 }
 .identity {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+.metadata {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs) var(--spacing--sm);
+}
+.actions {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+}
+.requirements {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm);
+	border: var(--border);
+	border-radius: var(--radius);
+	background: var(--background--surface);
+}
+.check {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+.contents {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
 	min-width: 0;
 }
-.installed {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--spacing--xs);
-}
-.source {
-	align-self: start;
+.detail .files {
+	/* A viewport-relative reader keeps long files inside the preview. No height token covers this. */
+	height: 60vh;
+	border: var(--border);
+	border-radius: var(--radius);
+	background: var(--background--surface);
+	overflow: hidden;
 }
 .retry {
 	align-self: start;

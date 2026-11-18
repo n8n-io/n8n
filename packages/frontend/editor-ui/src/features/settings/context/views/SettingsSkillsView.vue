@@ -148,6 +148,9 @@ const {
 const connectOpen = ref(false);
 const catalogPreset = ref<SkillSourcePreset>();
 const activeView = ref('installed');
+const catalogDetailOpen = computed(
+	() => skillSyncEnabled.value && activeView.value === 'discover' && !!route.query.catalogSkill,
+);
 const viewTabs = computed(() => [
 	{ value: 'installed', label: i18n.baseText('settings.context.skills.catalog.installed') },
 	{ value: 'discover', label: i18n.baseText('settings.context.skills.catalog.discover') },
@@ -1106,19 +1109,20 @@ onMounted(async () => {
 	<N8nSettingsLayout
 		:class="$style.layout"
 		full-width
-		show-back
+		:show-back="!catalogDetailOpen"
 		:back-label="i18n.baseText('settings.context.skills.back')"
 		data-test-id="settings-skills-view"
 		@back="goBack"
 	>
 		<N8nSettingsPageHeader
+			v-if="!catalogDetailOpen"
 			:title="i18n.baseText('settings.context.skills.title')"
 			:description="i18n.baseText('settings.context.skills.description')"
 			:show-docs-link="false"
 		/>
 
 		<N8nTabs
-			v-if="skillSyncEnabled"
+			v-if="skillSyncEnabled && !catalogDetailOpen"
 			:model-value="activeView"
 			@update:model-value="onViewChange"
 			:class="$style.tabs"

@@ -7,7 +7,11 @@ import NodeDiff from '@/features/workflows/workflowDiff/NodeDiff.vue';
 
 import { useSkillSourceReasons } from '../skills.utils';
 
-const props = defineProps<{ skill: DiscoveredSkill; diffFiles?: SkillUpdateFile[] }>();
+const props = defineProps<{
+	skill: DiscoveredSkill;
+	diffFiles?: SkillUpdateFile[];
+	sidebar?: boolean;
+}>();
 
 const i18n = useI18n();
 const { ruleText } = useSkillSourceReasons();
@@ -135,7 +139,7 @@ const unplacedFindings = computed(() => {
 </script>
 
 <template>
-	<div :class="$style.pane" data-test-id="skill-source-preview">
+	<div :class="[$style.pane, { [$style.sidebar]: sidebar }]" data-test-id="skill-source-preview">
 		<nav
 			v-if="files.length > 1"
 			:class="$style.fileIndex"
@@ -256,11 +260,30 @@ const unplacedFindings = computed(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
 .pane {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
 	min-height: 0;
+}
+
+.sidebar {
+	@include breakpoints.breakpoint('md-and-up') {
+		flex-direction: row;
+
+		.fileIndex {
+			flex: 0 0 25%;
+			min-width: 0;
+			max-height: none;
+			border-right: var(--border);
+			border-bottom: 0;
+		}
+	}
+
+	.content {
+		min-width: 0;
+	}
 }
 
 .fileIndex {
