@@ -101,6 +101,12 @@ describe('source mappers', () => {
 		});
 	});
 
+	it('reads the creation time of a workflow', () => {
+		const entity = toWorkflowEntity({ id: 'w', name: 'W', createdAt: '2025-01-01T00:00:00.000Z' });
+
+		expect(entity.createdAt).toBe('2025-01-01T00:00:00.000Z');
+	});
+
 	it('reads the owning project of a workflow and an agent', () => {
 		const project = { id: 'p1', name: 'Sales', type: 'team' };
 

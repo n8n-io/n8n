@@ -114,3 +114,8 @@ export function panBy(camera: Camera, delta: Point, viewport: Viewport, world: S
 		world,
 	);
 }
+
+/** Canvas pixels for each logical pixel. Below zoom 1, the canvas stays at the screen size. */
+export function canvasResolutionFor(zoom: number): number {
+	return Math.min(1, zoom);
+}

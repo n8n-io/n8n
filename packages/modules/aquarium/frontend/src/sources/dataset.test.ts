@@ -108,6 +108,20 @@ describe('parseDataset', () => {
 		expect(dataset?.entities.map((e) => e.project?.isMember)).toEqual([true, false]);
 	});
 
+	it('reads the creation time, and ignores a broken one', () => {
+		const dataset = parseDataset({
+			entities: [
+				workflow('1', 5, { createdAt: '2024-01-02T03:04:05.000Z' }),
+				workflow('2', 3, { createdAt: 'yesterday-ish' }),
+			],
+		});
+
+		expect(dataset?.entities.map((e) => e.createdAt)).toEqual([
+			'2024-01-02T03:04:05.000Z',
+			undefined,
+		]);
+	});
+
 	it('names a project that the file does not list by its id', () => {
 		const dataset = parseDataset({ entities: [workflow('1', 1, { projectId: 'p-missing' })] });
 

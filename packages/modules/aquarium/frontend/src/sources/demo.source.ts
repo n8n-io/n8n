@@ -17,7 +17,11 @@ interface DemoExtras {
 	design?: Partial<WorkflowDesign>;
 	/** Security checks that the workflow fails. */
 	securityRisks?: number;
+	/** Days since the workflow was made. Defaults to 30. */
+	ageDays?: number;
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function demo(
 	name: string,
@@ -47,7 +51,9 @@ function demo(
 		kind,
 		name,
 		project: DEMO_PROJECTS[project],
-		...(kind === 'workflow' ? { design } : {}),
+		...(kind === 'workflow'
+			? { design, createdAt: new Date(Date.now() - (extras.ageDays ?? 30) * DAY_MS).toISOString() }
+			: {}),
 		metrics: {
 			complexity,
 			executionCount,
@@ -77,6 +83,7 @@ export const DEMO_ENTITIES: AquariumEntity[] = [
 		design: { waitNodeCount: 2, hasErrorWorkflow: true },
 	}),
 	demo('Weekly report', 'data', 'workflow', 9, 12, 1, 45_000, {
+		ageDays: 400,
 		waiting: 2,
 		design: { waitNodeCount: 1, branchNodeCount: 2 },
 	}),
@@ -96,13 +103,14 @@ export const DEMO_ENTITIES: AquariumEntity[] = [
 	}),
 	demo('Webhook relay', 'ops', 'workflow', 3, 8_000, 0, 100, { securityRisks: 1 }),
 	demo('Draft', 'ops', 'workflow', 1, 0, 0, 0, { design: { disabledNodeCount: 1 } }),
-	demo('Error handler', 'ops', 'workflow', 4, 150, 0, 500),
+	demo('Error handler', 'ops', 'workflow', 4, 150, 0, 500, { ageDays: 200 }),
 	// Most runs fail, so the Legacy tank shows the Critical look.
 	demo('Old FTP sync', 'legacy', 'workflow', 8, 240, 200, 6_000, {
+		ageDays: 1400,
 		design: { codeNodeCount: 3, disabledNodeCount: 2 },
 	}),
 	// Every run fails, so it shows as a skeleton.
-	demo('Fax gateway', 'legacy', 'workflow', 3, 60, 60, 900),
+	demo('Fax gateway', 'legacy', 'workflow', 3, 60, 60, 900, { ageDays: 2100 }),
 	demo('Support triage', 'support', 'agent', 3, 400, 12, 15_000),
 	demo('Research assistant', 'data', 'agent', 18, 60, 4, 90_000),
 	demo('Onboarding buddy', 'support', 'agent', 1, 5, 0, 5_000),

@@ -13,6 +13,7 @@ import type {
 	TankGrouping,
 } from '../aquarium.types';
 import {
+	canvasResolutionFor,
 	clampCamera,
 	fitCamera,
 	panBy,
@@ -40,7 +41,13 @@ import {
 	updateCreature,
 	type Creature,
 } from '../engine/simulation';
-import { defaultTraitRules, deriveTraits, type TraitRule } from '../engine/traits';
+import { oldWorkflowKeys } from '../engine/age';
+import {
+	defaultTraitRules,
+	deriveTraits,
+	type TraitContext,
+	type TraitRule,
+} from '../engine/traits';
 import { getSpecies } from '../species/species.registry';
 import { spriteSize, type SpeciesDefinition } from '../species/species.types';
 
@@ -95,10 +102,10 @@ let time = 0;
 
 function applyCamera(next: Camera) {
 	camera = clampCamera(next, viewport, world);
-	renderer?.setViewSize({
-		width: viewport.width / camera.zoom,
-		height: viewport.height / camera.zoom,
-	});
+	renderer?.setViewSize(
+		{ width: viewport.width / camera.zoom, height: viewport.height / camera.zoom },
+		canvasResolutionFor(camera.zoom),
+	);
 	cameraVersion.value++;
 }
 
@@ -154,8 +161,10 @@ function syncCreatures() {
 	const previousRegions = regionsById;
 	const planned: PlannedCreature[] = [];
 
+	const context: TraitContext = { oldWorkflowKeys: oldWorkflowKeys(props.entities, Date.now()) };
+
 	for (const entity of props.entities) {
-		const traits = deriveTraits(entity, props.rules);
+		const traits = deriveTraits(entity, props.rules, context);
 		const species = getSpecies(traits.speciesId);
 		if (!species) continue;
 		const size = spriteSize(species.sprite);
@@ -272,9 +281,10 @@ function pointFrom(event: MouseEvent): Point {
 /** Logical pixels for each CSS pixel. Uses the real canvas size, which is rounded. */
 function canvasScale(): Point {
 	const canvas = canvasRef.value;
+	const resolution = canvasResolutionFor(camera.zoom);
 	return {
-		x: canvas ? canvas.width / viewport.width : 1 / camera.zoom,
-		y: canvas ? canvas.height / viewport.height : 1 / camera.zoom,
+		x: canvas ? canvas.width / resolution / viewport.width : 1 / camera.zoom,
+		y: canvas ? canvas.height / resolution / viewport.height : 1 / camera.zoom,
 	};
 }
 
@@ -428,6 +438,12 @@ function designRows(entity: AquariumEntity): Array<[string, string]> {
 		rows.push([
 			i18n.baseText('aquarium.tooltip.pausedRuns'),
 			entity.metrics.waitingCount.toLocaleString(),
+		]);
+	}
+	if (entity.createdAt) {
+		rows.push([
+			i18n.baseText('aquarium.tooltip.created'),
+			new Date(entity.createdAt).toLocaleDateString(),
 		]);
 	}
 	const { design } = entity;

@@ -13,6 +13,7 @@ interface WorkflowListItem {
 	name: string;
 	nodes?: AnalyzedNode[];
 	settings?: unknown;
+	createdAt?: string;
 	/** Present when the list selects `ownedBy`. */
 	homeProject?: { id: string; name: string; type: string } | null;
 }
@@ -35,6 +36,7 @@ export function toWorkflowEntity(workflow: WorkflowListItem): AquariumEntity {
 				}
 			: {}),
 		design: analyzeWorkflow(workflow.nodes ?? [], workflow.settings),
+		...(workflow.createdAt ? { createdAt: workflow.createdAt } : {}),
 		metrics: { ...emptyMetrics(), complexity: nodeCount },
 	};
 }
@@ -48,7 +50,7 @@ export const workflowsSource: EntitySource = {
 			'/workflows',
 			{
 				filter: { isArchived: false },
-				select: JSON.stringify(['id', 'name', 'nodes', 'settings', 'ownedBy']),
+				select: JSON.stringify(['id', 'name', 'createdAt', 'nodes', 'settings', 'ownedBy']),
 				sortBy: 'updatedAt:desc',
 				take: MAX_WORKFLOWS,
 			},

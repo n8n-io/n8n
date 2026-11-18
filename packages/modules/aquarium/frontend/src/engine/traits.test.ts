@@ -104,4 +104,28 @@ describe('deriveTraits', () => {
 		expect(traits.tint).toBe('#00ff00');
 		expect(traits.speciesId).toBe('minnow');
 	});
+
+	it('makes an old workflow a turtle, and a big old workflow a bigger turtle', () => {
+		const small = entity({ complexity: 1 });
+		const big = { ...entity({ complexity: 50 }), key: 'workflow:big' };
+		const context = { oldWorkflowKeys: new Set([small.key, big.key]) };
+
+		expect(deriveTraits(small, defaultTraitRules, context)).toMatchObject({
+			speciesId: 'turtle',
+			scale: 1,
+		});
+		expect(deriveTraits(big, defaultTraitRules, context)).toMatchObject({
+			speciesId: 'turtle',
+			scale: 2,
+		});
+		expect(deriveTraits(small).speciesId).toBe('minnow');
+	});
+
+	it('makes a workflow that never ran still, but not an agent or a workflow with runs', () => {
+		expect(deriveTraits(entity({ executionCount: 0 })).still).toBe(true);
+		expect(deriveTraits(entity({ executionCount: 0 }, 'agent')).still).toBeUndefined();
+		expect(deriveTraits(entity({ executionCount: 3 })).still).toBeUndefined();
+		// Paused runs are runs.
+		expect(deriveTraits(entity({ executionCount: 0, waitingCount: 1 })).still).toBeUndefined();
+	});
 });

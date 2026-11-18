@@ -5,6 +5,7 @@ import { emptyMetrics } from '../sources/source.utils';
 import {
 	findCreatureAt,
 	frameIndexOf,
+	isResting,
 	spawnCreature,
 	stepCreature,
 	targetSpeedOf,
@@ -150,6 +151,99 @@ describe('simulation', () => {
 
 			expect(creature.speed).toBeGreaterThan(deriveTraits(entity).speed);
 			expect(creature.speed).toBeLessThan(target);
+		});
+	});
+
+	describe('still creatures', () => {
+		const neverRan: AquariumEntity = { ...entity, metrics: { ...emptyMetrics() } };
+
+		it('does not move, turn or animate a workflow that never ran', () => {
+			const random = seededRandom();
+			const creature = spawnCreature(neverRan, deriveTraits(neverRan), minnow, bounds, random);
+			const before = { x: creature.x, y: creature.y, facing: creature.facing, age: creature.age };
+
+			for (let i = 0; i < 500; i++) stepCreature(creature, 0.05, bounds, random);
+
+			expect(isResting(creature)).toBe(true);
+			expect({ x: creature.x, y: creature.y, facing: creature.facing, age: creature.age }).toEqual(
+				before,
+			);
+			expect(creature.speed).toBe(0);
+		});
+
+		it('wakes up when live activity shows a run', () => {
+			const random = seededRandom();
+			const creature = spawnCreature(neverRan, deriveTraits(neverRan), minnow, bounds, random);
+			creature.x = 20;
+			creature.facing = 1;
+			creature.activity = {
+				running: 1,
+				started: 1,
+				succeeded: 0,
+				failed: 0,
+				waiting: 0,
+				paused: 0,
+				startedPerSecond: [1],
+				lastEventAt: 0,
+			};
+
+			for (let i = 0; i < 20; i++) stepCreature(creature, 0.05, bounds, random);
+
+			expect(isResting(creature)).toBe(false);
+			expect(creature.x).not.toBe(20);
+		});
+	});
+
+	describe('depth', () => {
+		const tank: TankBounds = { width: 300, height: 160, floor: 150 };
+		const fish = (i: number): AquariumEntity => ({
+			...entity,
+			key: `workflow:${i}`,
+			metrics: { ...emptyMetrics(), executionCount: 10 ** (i % 4) },
+		});
+
+		it('spreads creatures over the height: about 12% at each edge, 25% in each middle band', () => {
+			const random = seededRandom(7);
+			const creatures = Array.from({ length: 120 }, (_, i) =>
+				spawnCreature(fish(i), deriveTraits(fish(i)), minnow, tank, random),
+			);
+			const bands = [0, 0, 0, 0, 0];
+
+			// Three minutes, sampled after the first minute.
+			for (let step = 0; step < 1800; step++) {
+				for (const creature of creatures) stepCreature(creature, 0.1, tank, random);
+				if (step < 600 || step % 10 !== 0) continue;
+				for (const creature of creatures) {
+					const depth = creature.y / (tank.floor - creature.height);
+					bands[Math.min(4, Math.floor(depth * 5))]++;
+				}
+			}
+
+			const total = bands.reduce((sum, count) => sum + count, 0);
+			const shares = bands.map((count) => count / total);
+			for (const edge of [shares[0], shares[4]]) {
+				expect(edge).toBeGreaterThan(0.06);
+				expect(edge).toBeLessThan(0.18);
+			}
+			for (const middle of shares.slice(1, 4)) {
+				expect(middle).toBeGreaterThan(0.17);
+				expect(middle).toBeLessThan(0.34);
+			}
+		});
+
+		it('sometimes makes a quick trip to the top or bottom, then goes home', () => {
+			const random = seededRandom(11);
+			const creature = spawnCreature(fish(1), deriveTraits(fish(1)), minnow, tank, random);
+			creature.homeDepth = 0.5;
+			let reachedEdge = false;
+
+			for (let step = 0; step < 6000 && !reachedEdge; step++) {
+				stepCreature(creature, 0.1, tank, random);
+				const depth = creature.y / (tank.floor - creature.height);
+				if (creature.excursion && (depth < 0.2 || depth > 0.8)) reachedEdge = true;
+			}
+
+			expect(reachedEdge).toBe(true);
 		});
 	});
 });

@@ -1,5 +1,6 @@
 import { ZOOM } from '../aquarium.constants';
 import {
+	canvasResolutionFor,
 	clampCamera,
 	fitCamera,
 	fitZoom,
@@ -124,5 +125,13 @@ describe('top inset', () => {
 
 	it('does not fit a small world below the inset when it has none', () => {
 		expect(fitCamera(viewport, world).y).toBeLessThanOrEqual(0);
+	});
+});
+
+describe('canvasResolutionFor', () => {
+	it('keeps the canvas at the screen size below zoom 1', () => {
+		expect(canvasResolutionFor(0.25)).toBe(0.25);
+		expect(canvasResolutionFor(1)).toBe(1);
+		expect(canvasResolutionFor(4)).toBe(1);
 	});
 });

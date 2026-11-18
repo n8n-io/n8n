@@ -3,10 +3,14 @@ import { minnow } from './creatures/minnow';
 import { seahorse } from './creatures/seahorse';
 import { shark } from './creatures/shark';
 import { tetra } from './creatures/tetra';
+import { turtle } from './creatures/turtle';
 import { whale } from './creatures/whale';
 import type { SpeciesDefinition } from './species.types';
 
-/** Add a new creature here. The registry picks it for matching kinds and size tiers. */
+/**
+ * Add a new creature here. The registry picks it for matching kinds and size tiers. A species
+ * with no kinds, like the turtle, is never picked: only a trait rule sets it.
+ */
 export const builtinSpecies: SpeciesDefinition[] = [
 	minnow,
 	tetra,
@@ -14,4 +18,5 @@ export const builtinSpecies: SpeciesDefinition[] = [
 	shark,
 	whale,
 	seahorse,
+	turtle,
 ];

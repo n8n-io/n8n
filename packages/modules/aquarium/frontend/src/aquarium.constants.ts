@@ -5,8 +5,8 @@ export const PIXEL_SIZE = 4;
 
 export const ZOOM = {
 	default: PIXEL_SIZE,
-	/** Below 1, the canvas has more pixels than the screen. Lower values cost more to draw. */
-	min: 0.5,
+	/** Below 1, the canvas stays at the screen size, so the cost grows with the tanks on screen. */
+	min: 0.1,
 	max: 12,
 	/** Factor for one mouse wheel step. */
 	wheelStep: 1.15,
@@ -14,6 +14,11 @@ export const ZOOM = {
 	buttonStep: 1.5,
 	/** Share of the world that creature sprites cover. Lower spreads creatures out more. */
 	creatureCoverage: 0.1,
+	/**
+	 * Below this zoom, plants and the water surface stop moving and come from a cached image.
+	 * A one-pixel sway is hard to see there, and drawing it in hundreds of tanks is slow.
+	 */
+	detail: 1.5,
 } as const;
 
 /** Sizes of project tanks, in logical pixels. */
@@ -135,3 +140,26 @@ export const DATASET_MAX_AGENTS = 500;
 
 /** Window of the execution counts when a data set does not say. Insights use a week. */
 export const DATASET_DEFAULT_WINDOW_SECONDS = 7 * 24 * 60 * 60;
+
+/** A workflow is old when it is at least this old and among the oldest share of all workflows. */
+export const OLD_WORKFLOW = {
+	minAgeDays: 90,
+	/** Share of workflows, oldest first, that can count as old. */
+	oldestShare: 0.02,
+} as const;
+
+/** How creatures choose their depth. Shares are of the tank height above the sand. */
+export const WANDER = {
+	/** Home depths are spread evenly between these, so fewer creatures live at the edges. */
+	homeMin: 0.1,
+	homeMax: 0.9,
+	/** Each creature wanders this far above and below its own home depth. */
+	homeSpread: 0.15,
+	/** Chance that a new target is a quick trip to the top or bottom of the tank. */
+	excursionChance: 0.15,
+	/** Excursions end in the top or bottom share of the tank. */
+	edgeShare: 0.2,
+	/** Vertical speed of an excursion: the faster of this and a share of the swim speed. */
+	excursionMinSpeed: 4,
+	excursionSpeedShare: 0.8,
+} as const;

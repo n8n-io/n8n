@@ -6,6 +6,9 @@ A pixel-art aquarium. Each workflow and each agent is a sea creature:
 - **Swim speed** is a resting speed from the execution count, plus a live boost from the runs
   per second right now.
 - Busy creatures blow **bubbles**.
+- **Old workflows are turtles**: at least 90 days old and among the oldest 2% of the workflows
+  shown (`OLD_WORKFLOW`). In a young instance nothing is old. A large or huge old workflow is a
+  bigger turtle.
 - Creatures that fail more than 20% of the time are **sick**: they blink green and swim at 40% of
   their speed.
 
@@ -86,9 +89,16 @@ opens zoomed out to show all creatures.
 
 - The mouse wheel zooms around the pointer. Drag to pan. A drag does not pin a popup.
 - The buttons at the bottom right zoom in, zoom out, and show all creatures.
-- The zoom goes from the zoom that shows the whole world (at least `ZOOM.min`, 0.5) to
+- The zoom goes from the zoom that shows the whole world (at least `ZOOM.min`, 0.1) to
   `ZOOM.max` (12). After you zoom or pan, a new world size keeps your view.
+- Below zoom 1, the canvas stays at the screen size and the renderer scales the drawing
+  (`canvasResolutionFor()`). Zooming out does not make the canvas bigger.
 - The camera maths is in `src/engine/camera.ts`. The renderer draws only what the camera shows.
+- Below `ZOOM.detail` (1.5), plants and the water surface stop moving: each tank draws them from a
+  cached image. A one-pixel sway is hard to see at that size, and drawing it pixel by pixel in
+  hundreds of tanks was the main cost of a frame.
+- Below `ZOOM.detail`, the water is a smooth gradient and not dithered. A dither pattern shrunk
+  below 1:1 aliases into large checks.
 
 ## Data sources
 
@@ -180,6 +190,13 @@ Sick creatures multiply the sum by `SICK_SPEED_FACTOR` (0.4).
 The creature eases toward the target speed (`SPEED_EASING_SECONDS`), so it does not jump at each
 poll. After a change in traffic, the speed settles in about 6 to 8 seconds: up to 5 seconds for the
 rate window, up to 2 seconds for the poll, and the easing.
+
+### Depth
+
+Each creature has a home depth, spread evenly over the middle 80% of the tank, and wanders a
+little above and below it. About 12% of creatures are in the top fifth, 25% in each of the three
+middle fifths, and 12% in the bottom fifth. Sometimes it makes a quick trip to the top or the bottom, then goes home. Random targets
+anywhere in the tank would pull the creatures into the middle. The numbers are in `WANDER`.
 
 The backend counts every run of the main instance that serves the request: production, manual and
 sub-workflow runs, saved or not. Read `../backend/README.md` for the limits.

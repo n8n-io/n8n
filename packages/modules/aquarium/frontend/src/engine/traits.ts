@@ -8,6 +8,7 @@ import {
 	TANK_HEALTH,
 } from '../aquarium.constants';
 import type { AquariumEntity, CreatureTraits } from '../aquarium.types';
+import { turtle } from '../species/creatures/turtle';
 import { pickSpecies } from '../species/species.registry';
 import { complexityScore, failureRateOf, sizeTierFor, swimSpeedFor } from './scaling';
 
@@ -15,7 +16,22 @@ import { complexityScore, failureRateOf, sizeTierFor, swimSpeedFor } from './sca
  * One step of the trait pipeline. A rule gets the traits of the previous rules and
  * returns new traits. Add a rule to change how a metric shows in the tank.
  */
-export type TraitRule = (entity: AquariumEntity, traits: CreatureTraits) => CreatureTraits;
+export type TraitRule = (
+	entity: AquariumEntity,
+	traits: CreatureTraits,
+	context: TraitContext,
+) => CreatureTraits;
+
+/**
+ * Facts about all entities, worked out once for each update. A rule that compares an entity with
+ * the others reads them here, because a rule sees one entity at a time.
+ */
+export interface TraitContext {
+	/** Keys of workflows that are old compared with the rest. See `oldWorkflowKeys()`. */
+	oldWorkflowKeys: ReadonlySet<string>;
+}
+
+export const EMPTY_TRAIT_CONTEXT: TraitContext = { oldWorkflowKeys: new Set() };
 
 export const sizeRule: TraitRule = (entity, traits) => {
 	const sizeTier = sizeTierFor(complexityScore(entity.metrics));
@@ -26,6 +42,16 @@ export const speciesRule: TraitRule = (entity, traits) => {
 	const species = pickSpecies(entity.kind, traits.sizeTier, entity.id);
 	return species ? { ...traits, speciesId: species.id } : traits;
 };
+
+/** Old workflows are turtles. A large or huge one is a bigger turtle, so size still shows. */
+export const turtleRule: TraitRule = (entity, traits, context) =>
+	context.oldWorkflowKeys.has(entity.key)
+		? {
+				...traits,
+				speciesId: turtle.id,
+				scale: traits.sizeTier === 'large' || traits.sizeTier === 'huge' ? 2 : 1,
+			}
+		: traits;
 
 export const speedRule: TraitRule = (entity, traits) => ({
 	...traits,
@@ -79,13 +105,22 @@ export const shimmerRule: TraitRule = (entity, traits) =>
 		? { ...traits, shimmer: true }
 		: traits;
 
+/** A workflow with no runs at all stands still. Agents have no run data yet, so they move. */
+export const stillRule: TraitRule = (entity, traits) =>
+	entity.kind === 'workflow' &&
+	entity.metrics.executionCount === 0 &&
+	entity.metrics.waitingCount === 0
+		? { ...traits, still: true }
+		: traits;
+
 /**
- * Order matters: `speciesRule` reads the tier from `sizeRule`, `skeletonRule` overrides
- * `sickRule`, and `shimmerRule` reads both.
+ * Order matters: `speciesRule` reads the tier from `sizeRule`, `turtleRule` overrides the species,
+ * `skeletonRule` overrides `sickRule`, and `shimmerRule` reads both.
  */
 export const defaultTraitRules: TraitRule[] = [
 	sizeRule,
 	speciesRule,
+	turtleRule,
 	speedRule,
 	bubblesRule,
 	securityRule,
@@ -93,6 +128,7 @@ export const defaultTraitRules: TraitRule[] = [
 	sickRule,
 	skeletonRule,
 	shimmerRule,
+	stillRule,
 ];
 
 const BASE_TRAITS: CreatureTraits = {
@@ -106,6 +142,7 @@ const BASE_TRAITS: CreatureTraits = {
 export function deriveTraits(
 	entity: AquariumEntity,
 	rules: TraitRule[] = defaultTraitRules,
+	context: TraitContext = EMPTY_TRAIT_CONTEXT,
 ): CreatureTraits {
-	return rules.reduce((traits, rule) => rule(entity, traits), BASE_TRAITS);
+	return rules.reduce((traits, rule) => rule(entity, traits, context), BASE_TRAITS);
 }

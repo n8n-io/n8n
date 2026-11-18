@@ -68,6 +68,8 @@ export interface AquariumEntity {
 	project?: EntityProject;
 	/** Only for workflows, when the source has their nodes. */
 	design?: WorkflowDesign;
+	/** ISO timestamp. Only when the source knows it. */
+	createdAt?: string;
 	metrics: EntityMetrics;
 }
 
@@ -144,4 +146,9 @@ export interface CreatureTraits {
 	speedFactor?: number;
 	/** Ids of effects in the effect registry. */
 	effects: string[];
+	/**
+	 * The entity has never run: the creature does not move or animate, until live activity shows a
+	 * run. Unset for agents, whose run count is not known yet.
+	 */
+	still?: boolean;
 }

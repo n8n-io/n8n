@@ -1,4 +1,4 @@
-import { PROP_LAYOUT, SHIMMER } from '../aquarium.constants';
+import { PROP_LAYOUT, SHIMMER, ZOOM } from '../aquarium.constants';
 import {
 	isPropDead,
 	layoutProps,
@@ -66,6 +66,17 @@ const SURFACE: Record<TankHealth, { crest: string; foam: string; calm: number }>
 	negative: { crest: 'rgba(200, 220, 190, 0.55)', foam: 'rgba(150, 180, 150, 0.25)', calm: 0.6 },
 	critical: { crest: 'rgba(140, 160, 150, 0.35)', foam: 'rgba(90, 110, 100, 0.2)', calm: 0.3 },
 };
+
+type Rgb = [number, number, number];
+
+function rgbOf(hex: string): Rgb {
+	return [
+		parseInt(hex.slice(1, 3), 16),
+		parseInt(hex.slice(3, 5), 16),
+		parseInt(hex.slice(5, 7), 16),
+	];
+}
+
 /**
  * Two slow waves of different lengths, so the crest never repeats the same shape. `calm` below
  * 1 makes the waves lower and slower.
@@ -117,8 +128,9 @@ function context2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
 }
 
 /**
- * Draws the part of the world that the camera shows. The canvas holds the visible area in logical
- * pixels, and CSS scales it to the element, so the zoom is the CSS size over the canvas size.
+ * Draws the part of the world that the camera shows. CSS scales the canvas to the element. At zoom
+ * 1 and above, one canvas pixel is one logical pixel. Below zoom 1, the canvas stays at the screen
+ * size and the renderer scales the drawing, so zooming out does not grow the canvas.
  */
 export class AquariumRenderer {
 	private readonly ctx: CanvasRenderingContext2D;
@@ -133,6 +145,9 @@ export class AquariumRenderer {
 
 	private readonly plantsByTank = new Map<string, Plant[]>();
 
+	/** Keyed by tank, size and health. Used when the zoom is below `ZOOM.detail`. */
+	private readonly stillOverlays = new Map<string, HTMLCanvasElement>();
+
 	private readonly propsByTank = new Map<string, PlacedProp[]>();
 
 	/** Bone versions of the species sprites, made the first time a species dies. */
@@ -146,14 +161,21 @@ export class AquariumRenderer {
 
 	private regions: TankRegion[] = [];
 
+	/** Canvas pixels for each logical pixel. See `canvasResolutionFor()`. */
+	private resolution = 1;
+
 	constructor(private readonly canvas: HTMLCanvasElement) {
 		this.ctx = context2d(canvas);
 	}
 
-	/** Sets the visible area in logical pixels. Call it when the zoom or the element size changes. */
-	setViewSize(size: Size): void {
-		const width = Math.max(1, Math.round(size.width));
-		const height = Math.max(1, Math.round(size.height));
+	/**
+	 * Sets the visible area in logical pixels, and the canvas pixels for each logical pixel. Call it
+	 * when the zoom or the element size changes.
+	 */
+	setViewSize(size: Size, resolution = 1): void {
+		this.resolution = resolution;
+		const width = Math.max(1, Math.round(size.width * resolution));
+		const height = Math.max(1, Math.round(size.height * resolution));
 		if (this.canvas.width === width && this.canvas.height === height) return;
 		this.canvas.width = width;
 		this.canvas.height = height;
@@ -187,6 +209,10 @@ export class AquariumRenderer {
 		for (const id of this.propsByTank.keys()) if (!tankIds.has(id)) this.propsByTank.delete(id);
 		for (const key of this.framesByTank.keys())
 			if (!tankIds.has(key)) this.framesByTank.delete(key);
+		for (const key of this.stillOverlays.keys()) {
+			const [id, size] = key.split('|');
+			if (!tankIds.has(id) || !sizeKeys.has(size)) this.stillOverlays.delete(key);
+		}
 	}
 
 	render(
@@ -198,12 +224,15 @@ export class AquariumRenderer {
 		const ctx = this.ctx;
 		const left = Math.round(camera.x);
 		const top = Math.round(camera.y);
-		const right = left + this.canvas.width;
-		const bottom = top + this.canvas.height;
+		const right = left + this.canvas.width / this.resolution;
+		const bottom = top + this.canvas.height / this.resolution;
+
+		const detailed = camera.zoom >= ZOOM.detail;
 
 		ctx.setTransform(1, 0, 0, 1, 0, 0);
 		ctx.fillStyle = OUTSIDE_WORLD;
 		ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+		ctx.setTransform(this.resolution, 0, 0, this.resolution, 0, 0);
 		ctx.translate(-left, -top);
 
 		for (const region of this.regions) {
@@ -222,12 +251,19 @@ export class AquariumRenderer {
 			ctx.beginPath();
 			ctx.rect(0, 0, width, height);
 			ctx.clip();
-			this.drawTank(region, creaturesByTank.get(region.id) ?? [], time, highlightKey, {
-				left: left - region.x,
-				right: right - region.x,
-				top: top - region.y,
-				bottom: bottom - region.y,
-			});
+			this.drawTank(
+				region,
+				creaturesByTank.get(region.id) ?? [],
+				time,
+				highlightKey,
+				{
+					left: left - region.x,
+					right: right - region.x,
+					top: top - region.y,
+					bottom: bottom - region.y,
+				},
+				detailed,
+			);
 			ctx.restore();
 
 			// After the water, so the porthole plate covers the corners of the window.
@@ -245,6 +281,7 @@ export class AquariumRenderer {
 		time: number,
 		highlightKey: string | undefined,
 		view: { left: number; right: number; top: number; bottom: number },
+		detailed: boolean,
 	): void {
 		const ctx = this.ctx;
 		const sizeKey = `${region.bounds.width}x${region.bounds.height}`;
@@ -252,7 +289,7 @@ export class AquariumRenderer {
 		const health = tankHealthOf(failureShare);
 		const scale = tankScaleOf(region.bounds);
 
-		ctx.drawImage(this.backgroundFor(region.bounds, sizeKey, health), 0, 0);
+		ctx.drawImage(this.backgroundFor(region.bounds, sizeKey, health, detailed), 0, 0);
 		const rays = this.lightRays.get(sizeKey);
 		if (rays) {
 			const pulse = 0.75 + 0.25 * Math.sin((time * 2 * Math.PI) / LIGHT_RAYS.pulseSeconds);
@@ -261,15 +298,21 @@ export class AquariumRenderer {
 			ctx.globalAlpha = 1;
 		}
 		this.drawProps(region.bounds, this.propsByTank.get(region.id) ?? [], failureShare);
-		this.drawPlants(
-			region.bounds,
-			this.plantsByTank.get(region.id) ?? [],
-			time,
-			view.left - CULL_MARGIN,
-			view.right + CULL_MARGIN,
-		);
-		this.drawAmbientBubbles(region.bounds, time);
-		this.drawSurface(region.bounds, health, scale, time, view.left, view.right);
+		if (detailed) {
+			this.drawPlants(
+				ctx,
+				region.bounds,
+				this.plantsByTank.get(region.id) ?? [],
+				time,
+				view.left - CULL_MARGIN,
+				view.right + CULL_MARGIN,
+			);
+			this.drawAmbientBubbles(region.bounds, time);
+			this.drawSurface(ctx, region.bounds, health, scale, time, view.left, view.right);
+		} else {
+			// Same layers, at rest: plants and surface sit above the props and the light rays.
+			ctx.drawImage(this.stillOverlayFor(region, health), 0, 0);
+		}
 
 		for (const creature of creatures) {
 			const visible =
@@ -506,9 +549,9 @@ export class AquariumRenderer {
 		return canvas;
 	}
 
-	/** A moving crest with a little foam above it. Drawn only for the visible columns. */
 	/** In a big tank, each wave pixel is a `scale` block, so the waves grow instead of repeating. */
 	private drawSurface(
+		ctx: CanvasRenderingContext2D,
 		bounds: TankBounds,
 		health: TankHealth,
 		scale: number,
@@ -516,7 +559,6 @@ export class AquariumRenderer {
 		fromX: number,
 		toX: number,
 	): void {
-		const ctx = this.ctx;
 		const { crest, foam, calm } = SURFACE[health];
 		const start = Math.max(0, Math.floor(fromX / scale));
 		const end = Math.min(Math.ceil(bounds.width / scale), Math.ceil(toX / scale));
@@ -533,55 +575,108 @@ export class AquariumRenderer {
 		}
 	}
 
-	/** Paints a background the first time a tank of this size has this health. */
+	/**
+	 * Paints a background the first time a tank of this size has this health. Zoomed out, the
+	 * water is a smooth gradient: a dither pattern shrunk below 1:1 aliases into large checks.
+	 */
 	private backgroundFor(
 		bounds: TankBounds,
 		sizeKey: string,
 		health: TankHealth,
+		dithered: boolean,
 	): HTMLCanvasElement {
-		const key = `${sizeKey}|${health}`;
+		const key = `${sizeKey}|${health}|${dithered ? 'dithered' : 'smooth'}`;
 		const cached = this.backgrounds.get(key);
 		if (cached) return cached;
-		const background = this.drawBackground(bounds, health);
+		const background = this.drawBackground(bounds, health, dithered);
 		this.backgrounds.set(key, background);
 		return background;
 	}
 
-	private drawBackground(bounds: TankBounds, health: TankHealth): HTMLCanvasElement {
+	private drawBackground(
+		bounds: TankBounds,
+		health: TankHealth,
+		dithered: boolean,
+	): HTMLCanvasElement {
 		const canvas = createCanvas(bounds.width, bounds.height);
 		const ctx = context2d(canvas);
-		const water = WATER[health];
+		const water = WATER[health].map(rgbOf);
 		const sand = SAND[health];
+		const image = ctx.createImageData(bounds.width, bounds.height);
+		const put = (x: number, y: number, [r, g, b]: Rgb) => {
+			const i = (y * bounds.width + x) * 4;
+			image.data[i] = r;
+			image.data[i + 1] = g;
+			image.data[i + 2] = b;
+			image.data[i + 3] = 255;
+		};
 
 		const deepest = Math.max(1, bounds.floor - 1);
+		const black: Rgb = [0, 0, 0];
 		for (let y = 0; y < bounds.floor; y++) {
 			const depth = (y / deepest) ** WATER_DEPTH_CURVE * (water.length - 1);
 			const band = Math.min(water.length - 2, Math.floor(depth));
 			const mix = depth - band;
+			const upper = water[band] ?? black;
+			const lower = water[band + 1] ?? black;
+			// The blend that the dither pattern stands for, as one colour for the whole row.
+			const blended: Rgb = [
+				Math.round(upper[0] + (lower[0] - upper[0]) * mix),
+				Math.round(upper[1] + (lower[1] - upper[1]) * mix),
+				Math.round(upper[2] + (lower[2] - upper[2]) * mix),
+			];
 			for (let x = 0; x < bounds.width; x++) {
-				const threshold = ((BAYER_4[(y % 4) * 4 + (x % 4)] ?? 0) + 0.5) / 16;
-				ctx.fillStyle = (mix > threshold ? water[band + 1] : water[band]) ?? '#000000';
-				ctx.fillRect(x, y, 1, 1);
-			}
-		}
-
-		ctx.fillStyle = sand.base;
-		ctx.fillRect(0, bounds.floor, bounds.width, bounds.height - bounds.floor);
-		ctx.fillStyle = sand.light;
-		ctx.fillRect(0, bounds.floor, bounds.width, 1);
-		for (let x = 0; x < bounds.width; x++) {
-			for (let y = bounds.floor + 1; y < bounds.height; y++) {
-				if (hashString(`${x},${y}`) % 7 === 0) {
-					ctx.fillStyle = sand.speck;
-					ctx.fillRect(x, y, 1, 1);
+				if (!dithered) {
+					put(x, y, blended);
+					continue;
 				}
+				const threshold = ((BAYER_4[(y % 4) * 4 + (x % 4)] ?? 0) + 0.5) / 16;
+				put(x, y, mix > threshold ? lower : upper);
 			}
 		}
 
+		const sandBase = rgbOf(sand.base);
+		const sandLight = rgbOf(sand.light);
+		const sandSpeck = rgbOf(sand.speck);
+		for (let y = bounds.floor; y < bounds.height; y++) {
+			for (let x = 0; x < bounds.width; x++) {
+				if (y === bounds.floor) put(x, y, sandLight);
+				else put(x, y, hashString(`${x},${y}`) % 7 === 0 ? sandSpeck : sandBase);
+			}
+		}
+
+		ctx.putImageData(image, 0, 0);
 		return canvas;
 	}
 
-	/** `seed` gives each tank its own plants. */
+	/** Plants and the water surface at rest, for tanks that are too small on screen to animate. */
+	private stillOverlayFor(region: TankRegion, health: TankHealth): HTMLCanvasElement {
+		const key = `${region.id}|${region.bounds.width}x${region.bounds.height}|${health}`;
+		const cached = this.stillOverlays.get(key);
+		if (cached) return cached;
+		const canvas = createCanvas(region.bounds.width, region.bounds.height);
+		const ctx = context2d(canvas);
+		this.drawPlants(
+			ctx,
+			region.bounds,
+			this.plantsByTank.get(region.id) ?? [],
+			0,
+			0,
+			region.bounds.width,
+		);
+		this.drawSurface(
+			ctx,
+			region.bounds,
+			health,
+			tankScaleOf(region.bounds),
+			0,
+			0,
+			region.bounds.width,
+		);
+		this.stillOverlays.set(key, canvas);
+		return canvas;
+	}
+
 	/** Big tanks get thicker, taller and fewer plants, not more of the small ones. */
 	private layoutPlants(bounds: TankBounds, seed: string): Plant[] {
 		const scale = tankScaleOf(bounds);
@@ -601,13 +696,13 @@ export class AquariumRenderer {
 	}
 
 	private drawPlants(
+		ctx: CanvasRenderingContext2D,
 		bounds: TankBounds,
 		plants: Plant[],
 		time: number,
 		fromX: number,
 		toX: number,
 	): void {
-		const ctx = this.ctx;
 		for (const plant of plants) {
 			if (plant.x < fromX || plant.x > toX) continue;
 			ctx.fillStyle = plant.color;

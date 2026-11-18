@@ -1,4 +1,4 @@
-import { MAX_SWIM_SPEED, SPEED_EASING_SECONDS } from '../aquarium.constants';
+import { MAX_SWIM_SPEED, SPEED_EASING_SECONDS, WANDER } from '../aquarium.constants';
 import type { AquariumEntity, CreatureTraits, EntityActivity } from '../aquarium.types';
 import { spriteSize, type SpeciesDefinition } from '../species/species.types';
 import { liveSpeedBoostFor, recentRate } from './scaling';
@@ -20,6 +20,13 @@ export interface Creature {
 	height: number;
 	facing: 1 | -1;
 	targetY: number;
+	/**
+	 * The depth the creature lives at, 0 (top) to 1 (just above the sand). Homes are spread evenly,
+	 * so the creatures do not gather in the middle of the tank.
+	 */
+	homeDepth: number;
+	/** On a quick trip to the top or bottom. It ends at the target, and the creature goes home. */
+	excursion: boolean;
 	/** Seconds until the creature picks a new depth, and maybe turns. */
 	wanderIn: number;
 	/** Seconds alive. Drives the animation. */
@@ -64,7 +71,8 @@ export function spawnCreature(
 	tankId = '',
 ): Creature {
 	const size = sizeOf(traits, species);
-	const y = random() * maxY(size, bounds);
+	const homeDepth = WANDER.homeMin + random() * (WANDER.homeMax - WANDER.homeMin);
+	const y = homeDepth * maxY(size, bounds);
 	return {
 		entity,
 		traits,
@@ -74,6 +82,8 @@ export function spawnCreature(
 		y,
 		facing: random() < 0.5 ? 1 : -1,
 		targetY: y,
+		homeDepth,
+		excursion: false,
 		wanderIn: random() * 4,
 		age: random() * 10,
 		speed: traits.speed * (traits.speedFactor ?? 1),
@@ -105,6 +115,41 @@ export function targetSpeedOf(creature: Creature): number {
 	return (creature.traits.speed + liveSpeedBoostFor(rate)) * (creature.traits.speedFactor ?? 1);
 }
 
+/**
+ * A new target depth: usually near home, sometimes a quick trip to the top or bottom. Targets near
+ * home keep the creatures spread over the tank; random targets anywhere pull them to the middle.
+ */
+function pickDepth(creature: Creature, bounds: TankBounds, random: RandomFn): void {
+	const lowest = maxY(creature, bounds);
+	if (random() < WANDER.excursionChance) {
+		creature.excursion = true;
+		const edge = random() * WANDER.edgeShare;
+		creature.targetY = (random() < 0.5 ? edge : 1 - edge) * lowest;
+		return;
+	}
+	creature.excursion = false;
+	const offset = (random() * 2 - 1) * WANDER.homeSpread;
+	creature.targetY = Math.min(1, Math.max(0, creature.homeDepth + offset)) * lowest;
+}
+
+/** True when live activity shows any run: started, running, paused or ended in the window. */
+function hasLiveRuns(creature: Creature): boolean {
+	const activity = creature.activity;
+	if (!activity) return false;
+	return (
+		activity.started > 0 ||
+		activity.running > 0 ||
+		activity.waiting > 0 ||
+		activity.succeeded > 0 ||
+		activity.failed > 0
+	);
+}
+
+/** A creature that has never run stays where it is, until a live run wakes it. */
+export function isResting(creature: Creature): boolean {
+	return creature.traits.still === true && !hasLiveRuns(creature);
+}
+
 /** Moves the creature for `dt` seconds. Mutates it to save allocations in the frame loop. */
 export function stepCreature(
 	creature: Creature,
@@ -112,6 +157,12 @@ export function stepCreature(
 	bounds: TankBounds,
 	random: RandomFn = Math.random,
 ): void {
+	if (isResting(creature)) {
+		// No speed, drift, turns or animation: the age drives the frames and the effects.
+		creature.speed = 0;
+		return;
+	}
+
 	const motion = MOTION[creature.species.motion];
 	const easing = 1 - Math.exp(-dt / SPEED_EASING_SECONDS);
 	creature.speed += (targetSpeedOf(creature) - creature.speed) * easing;
@@ -121,7 +172,7 @@ export function stepCreature(
 	creature.wanderIn -= dt;
 	if (creature.wanderIn <= 0) {
 		creature.wanderIn = 2 + random() * 4;
-		creature.targetY = random() * maxY(creature, bounds);
+		pickDepth(creature, bounds, random);
 		if (random() < TURN_CHANCE) creature.facing = creature.facing === 1 ? -1 : 1;
 	}
 
@@ -134,9 +185,16 @@ export function stepCreature(
 		creature.facing = -1;
 	}
 
-	const verticalStep = Math.max(MIN_VERTICAL_SPEED, speed * motion.vertical) * dt;
+	const verticalSpeed = creature.excursion
+		? Math.max(WANDER.excursionMinSpeed, speed * WANDER.excursionSpeedShare)
+		: Math.max(MIN_VERTICAL_SPEED, speed * motion.vertical);
 	const deltaY = creature.targetY - creature.y;
-	creature.y += Math.sign(deltaY) * Math.min(Math.abs(deltaY), verticalStep);
+	creature.y += Math.sign(deltaY) * Math.min(Math.abs(deltaY), verticalSpeed * dt);
+	if (creature.excursion && Math.abs(creature.targetY - creature.y) < 0.5) {
+		// Arrived: the next pick takes the creature home again.
+		creature.excursion = false;
+		creature.wanderIn = Math.min(creature.wanderIn, 1 + random() * 2);
+	}
 
 	clampToTank(creature, bounds);
 }

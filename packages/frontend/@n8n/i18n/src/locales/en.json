@@ -505,6 +505,7 @@
 	"aquarium.tooltip.runningNow": "Running now",
 	"aquarium.tooltip.pausedNow": "Paused now",
 	"aquarium.tooltip.pausedRuns": "Paused runs",
+	"aquarium.tooltip.created": "Created",
 	"aquarium.tooltip.state": "State",
 	"aquarium.state.allPaused": "All runs paused, not broken",
 	"aquarium.tooltip.maintainability": "Maintainability",

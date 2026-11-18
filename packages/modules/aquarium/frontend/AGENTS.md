@@ -69,6 +69,7 @@ The species says what an entity is and how big it is. Speed says how busy it is.
 | --- | --- | --- | --- |
 | Node count, plus a little for run time | How complex the workflow is | Species by size: minnow, tetra, angelfish, shark, whale | Built. Open: size from node count only |
 | Execution count | How busy it is | Resting swim speed on a log scale. Bubbles from 10 runs | Built |
+| No runs and no paused runs | Not in use | Stands still with no animation until a live run starts (`stillRule`, `isResting`). Agents still move | Built |
 | Live run rate | Busy right now | Faster swimming, fins and bubbles. A wave of gold sweeps over it while a run is in progress (`shimmerRule`, `shimmerProgressAt`) | Built |
 | Small workflow with many runs | A busy little helper | A fast minnow. Planned: a school of fish | Partly |
 | Agent | It exists, with a number of skills | A seahorse that holds one seaweed strand for each skill (`skillStrandsEffect`), coloured by the agent id | Built |
@@ -106,6 +107,7 @@ health.
 | Build quality (`maintainabilityOf()`): big with no sub-workflows, many Code nodes, copy-pasted nodes, disabled leftovers, many If, Switch and Merge nodes | Negative: hard to maintain | A really big whale | Planned. The data is ready |
 | Redaction on | Neutral: private data | Glasses | Open |
 | Credentials used | Connected to many services | Bling | Open |
+| Created 90 or more days ago, and among the oldest 2% | Old | A turtle. A large or huge workflow is a bigger turtle (`turtleRule`, `oldWorkflowKeys`) | Built |
 | Many saved versions | Changed a lot | A turtle | Open |
 | Published or draft | Live, or not yet | To decide | Open |
 | Sticky notes | Neutral: documentation | No look | Planned |
@@ -275,6 +277,21 @@ cover parts of the tank, like the porthole corners.
 
 ## Rules
 
+### Rules that compare entities
+
+A rule sees one entity. When a trait depends on the others, for example "among the oldest 2%",
+work the fact out once in `TraitContext` and read it in the rule:
+
+1. Add a field to `TraitContext` in `src/engine/traits.ts`.
+2. Compute it in a pure function, like `oldWorkflowKeys()` in `src/engine/age.ts`, over all
+   entities.
+3. Set it where `AquariumTank.vue` builds the context, before it calls `deriveTraits`.
+4. Read `context` in the rule. Rules that do not need it can leave out the argument.
+
+The context covers the entities that the tank shows, so a filter such as "My projects" changes it.
+
+A species with `kinds: []`, like the turtle, is never picked by `pickSpecies`. Only a rule sets it.
+
 ### Rule order
 
 Each rule gets the traits of the rules before it. `speciesRule` reads `sizeTier` from `sizeRule`.
@@ -290,6 +307,16 @@ Each rule gets the traits of the rules before it. `speciesRule` reads `sizeTier`
   keep state in an effect. Calculate it from `time` and the creature.
 - The renderer caches sprites by species id and tint. Use a small fixed set of tint colours.
   A tint from a continuous value makes a new cache entry for each value.
+
+### Drawing cost
+
+- Per-frame cost grows with the number of visible tanks. Something drawn pixel by pixel in each
+  tank each frame, like the wave crest, is cheap in one tank and slow in 500.
+- Below `ZOOM.detail`, draw animated scenery from a cached still image. See `stillOverlayFor()` in
+  `renderer.ts`.
+- Paint cached images through `ImageData`, not one `fillRect` for each pixel. Tank sizes from the
+  treemap are almost all different, so a cache by size helps little.
+- Measure in the browser with the internal data set in project view before and after a change.
 
 ### Pixel grid and camera
 

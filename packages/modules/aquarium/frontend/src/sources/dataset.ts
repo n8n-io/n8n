@@ -81,6 +81,10 @@ function toEntity(raw: unknown, projects: Map<string, EntityProject>): AquariumE
 		? (projects.get(projectId) ?? { id: projectId, name: projectId })
 		: undefined;
 	const design = kind === 'workflow' ? designOf(raw.design) : undefined;
+	const createdAt =
+		typeof raw.createdAt === 'string' && !Number.isNaN(Date.parse(raw.createdAt))
+			? raw.createdAt
+			: undefined;
 	return {
 		key: entityKey(kind, id),
 		id,
@@ -88,6 +92,7 @@ function toEntity(raw: unknown, projects: Map<string, EntityProject>): AquariumE
 		name,
 		...(project ? { project } : {}),
 		...(design ? { design } : {}),
+		...(createdAt ? { createdAt } : {}),
 		metrics: {
 			complexity: Math.max(1, count(metrics.complexity)),
 			executionCount,
