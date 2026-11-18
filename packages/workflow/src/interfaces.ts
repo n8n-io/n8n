@@ -1309,6 +1309,111 @@ export type DataTableProxyFunctions = {
 	getDataTableProxy?(dataTableId: string): Promise<IDataTableProjectService>;
 };
 
+export type TaskBoardActor = {
+	type: 'user' | 'agent' | 'workflow';
+	id: string;
+};
+
+export type TaskBoardEventName = 'task.created' | 'task.assigned' | 'task.moved' | 'task.commented';
+
+export type TaskBoardEvent = {
+	event: TaskBoardEventName;
+	projectId: string;
+	boardId: string;
+	taskId: string;
+	actor: TaskBoardActor;
+	commentId?: string;
+	fromColumnId?: string;
+	toColumnId?: string;
+};
+
+// The shapes below mirror the response types in @n8n/api-types. They are
+// duplicated because n8n-workflow must not depend on @n8n/api-types.
+export type TaskBoardNamedRef = {
+	type: 'user' | 'agent' | 'workflow';
+	id: string;
+	name: string;
+};
+
+export type TaskBoardColumnData = {
+	id: string;
+	boardId: string;
+	name: string;
+	position: number;
+	role: 'backlog' | 'todo' | 'in_progress' | 'needs_input' | 'done' | null;
+};
+
+export type TaskBoardTaskData = {
+	id: string;
+	boardId: string;
+	columnId: string;
+	number: number;
+	title: string;
+	description: string;
+	assignee: { type: 'user' | 'agent'; id: string; name: string } | null;
+	createdBy: TaskBoardNamedRef;
+	position: number;
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type TaskBoardCommentData = {
+	id: string;
+	taskId: string;
+	author: TaskBoardNamedRef;
+	body: string;
+	createdAt: string;
+};
+
+export type TaskBoardTaskContext = {
+	task: TaskBoardTaskData;
+	board: { id: string; name: string; workflowId: string | null };
+	columns: TaskBoardColumnData[];
+	assignee: { type: 'user' | 'agent'; id: string; name: string } | null;
+	comments: TaskBoardCommentData[];
+	/** The task title, description and comments as one plain-text thread. */
+	threadText: string;
+};
+
+export type TaskBoardAssigneeInput = { type: 'user' | 'agent'; id: string };
+
+export interface ITaskBoardProxy {
+	/** Subscribe to task events. Returns an unsubscribe function. */
+	onEvent(cb: (event: TaskBoardEvent) => void): () => void;
+	getTaskContext(taskId: string): Promise<TaskBoardTaskContext>;
+	createTask(
+		input: {
+			boardId: string;
+			title: string;
+			description?: string;
+			columnId?: string;
+			columnRole?: string;
+			assignee?: TaskBoardAssigneeInput;
+		},
+		actor: TaskBoardActor,
+	): Promise<TaskBoardTaskData>;
+	addComment(taskId: string, body: string, actor: TaskBoardActor): Promise<TaskBoardCommentData>;
+	moveTask(
+		taskId: string,
+		target: { columnId?: string; columnRole?: string },
+		actor: TaskBoardActor,
+	): Promise<TaskBoardTaskData>;
+	assignTask(
+		taskId: string,
+		assignee: TaskBoardAssigneeInput | null,
+		actor: TaskBoardActor,
+	): Promise<TaskBoardTaskData>;
+}
+
+export type TaskBoardProxyProvider = {
+	getTaskBoardProxy(workflow: Workflow, node: INode): Promise<ITaskBoardProxy>;
+};
+
+export type TaskBoardProxyFunctions = {
+	// Optional to account for situations where the task-board module is disabled
+	getTaskBoardProxy?(): Promise<ITaskBoardProxy>;
+};
+
 /** What a node may ask of a trusted source: the surface it is used on and the capability it needs. */
 export type TrustedSourceFilter = {
 	surface: 'trigger';
@@ -1492,6 +1597,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			FileSystemHelperFunctions &
 			SSHTunnelFunctions &
 			DataTableProxyFunctions &
+			TaskBoardProxyFunctions &
 			CredentialCheckProxyFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 				constructExecutionMetaData(
@@ -1682,6 +1788,7 @@ export interface ITriggerFunctions
 		BinaryHelperFunctions &
 		SSHTunnelFunctions &
 		SchedulingFunctions &
+		TaskBoardProxyFunctions &
 		ExpressionIsolateFunctions;
 }
 

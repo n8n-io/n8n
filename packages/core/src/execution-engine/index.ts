@@ -9,6 +9,7 @@ import type {
 	INodeExecutionData,
 	IWorkflowSettings,
 	OauthJweProxyProvider,
+	TaskBoardProxyProvider,
 	TrustedSourceDirectory,
 } from 'n8n-workflow';
 
@@ -62,6 +63,7 @@ declare module 'n8n-workflow' {
 		/** Eval only: answers for non-HTTP nodes at run time. Never present in normal executions. */
 		evalNodeMockHandler?: EvalNodeMockHandler;
 		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
+		'task-board'?: { taskBoardProxyProvider: TaskBoardProxyProvider };
 		'dynamic-credentials'?: { credentialCheckProxy: DynamicCredentialCheckProxyProvider };
 		'oauth-jwe'?: { oauthJweProxyProvider: OauthJweProxyProvider };
 		'inbound-auth-core'?: { trustedSourceDirectory: TrustedSourceDirectory };
