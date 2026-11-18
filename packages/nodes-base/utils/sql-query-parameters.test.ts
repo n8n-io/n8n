@@ -105,16 +105,41 @@ describe('isInsideQuotes', () => {
 			expected: false,
 		},
 		{
-			label: 'comments are not recognized without bracketIdentifiers (unbalanced [ is no quote)',
+			label: 'comments are skipped without bracketIdentifiers (unbalanced [ is no quote)',
 			text: '-- note [\nSELECT * FROM t WHERE id = $1',
 			target: '$1',
 			expected: false,
 		},
 		{
-			label: 'comments are not recognized without bracketIdentifiers (apostrophe opens a string)',
+			label: 'default path skips a -- comment, so an apostrophe in it does not open a string',
 			text: "-- don't\nSELECT * FROM t WHERE id = $1",
 			target: '$1',
+			expected: false,
+		},
+		{
+			label: 'default path skips a -- comment ending in a quote before a later placeholder',
+			text: "-- note '\nSELECT * FROM t WHERE id = $1",
+			target: '$1',
+			expected: false,
+		},
+		{
+			label: 'default path skips a /* */ comment containing a quote',
+			text: "/* ' */ WHERE id = $1",
+			target: '$1',
+			expected: false,
+		},
+		{
+			label: 'default path: -- without trailing whitespace is not a comment (MySQL 5--1)',
+			text: "SELECT 5--1, '$1'",
+			target: '$1',
 			expected: true,
+		},
+		{
+			label: 'bracketIdentifiers: any -- is a comment (SQL Server 5--1)',
+			text: "SELECT 5--1, '$1'",
+			target: '$1',
+			options: { bracketIdentifiers: true },
+			expected: false,
 		},
 		{
 			label: 'a -- inside a single-quoted string does not start a comment',
