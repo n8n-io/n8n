@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { TransactionRunner } from '@n8n/db';
@@ -106,6 +107,7 @@ describe('AgentExecutionService', () => {
 	let n8nMemory: Mocked<N8nMemory>;
 	let memoryBackend: Mocked<N8nMemoryImplementation>;
 	let telemetry: Mocked<AgentUsageTelemetryService>;
+	let eventService: Mocked<EventService>;
 	let agentExecutionLogStore: Mocked<AgentExecutionLogStore>;
 	let storageConfig: Mocked<StorageConfig>;
 	let errorReporter: Mocked<ErrorReporter>;
@@ -136,6 +138,7 @@ describe('AgentExecutionService', () => {
 		memoryBackend = mock<N8nMemoryImplementation>();
 		n8nMemory.getImplementation.mockReturnValue(memoryBackend);
 		telemetry = mock<AgentUsageTelemetryService>();
+		eventService = mock<EventService>();
 		agentExecutionLogStore = mock<AgentExecutionLogStore>();
 		storageConfig = mock<StorageConfig>({ modeTag: 'db' });
 		errorReporter = mock<ErrorReporter>();
@@ -160,6 +163,7 @@ describe('AgentExecutionService', () => {
 			messageRepository,
 			new SystemAgentRegistry(),
 			projectDeletion,
+			eventService,
 		);
 	});
 
@@ -976,6 +980,7 @@ describe('AgentExecutionService', () => {
 				messageRepository,
 				new SystemAgentRegistry(),
 				projectDeletion,
+				eventService,
 			);
 
 			const record = makeMessageRecord({
@@ -1083,6 +1088,7 @@ describe('AgentExecutionService', () => {
 					messageRepository,
 					new SystemAgentRegistry(),
 					projectDeletion,
+					eventService,
 				);
 
 				const record = makeMessageRecord({
@@ -1358,6 +1364,10 @@ describe('AgentExecutionService', () => {
 				},
 			});
 
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'agent-execution-finished',
+				expect.objectContaining({ agentId: 'agent-1', status: 'success', runType: 'test' }),
+			);
 			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith({
 				agent_id: 'agent-1',
 				thread_id: 'thread-1',
@@ -1597,6 +1607,10 @@ describe('AgentExecutionService', () => {
 				undefined,
 			);
 			expect(telemetry.trackAgentTurnFinished).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'agent-execution-finished',
+				expect.anything(),
+			);
 		});
 
 		it('keeps a channel approval suspension as success', async () => {
@@ -1783,6 +1797,7 @@ describe('AgentExecutionService', () => {
 				messageRepository,
 				new SystemAgentRegistry(),
 				projectDeletion,
+				eventService,
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);

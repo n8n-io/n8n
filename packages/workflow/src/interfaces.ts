@@ -22,6 +22,7 @@ import type {
 	BINARY_MODE_COMBINED,
 	BINARY_MODE_SEPARATE,
 	WORKFLOW_ENGINE_TYPES,
+	GeneratedFromSourceType,
 } from './constants';
 
 import type {
@@ -4269,6 +4270,13 @@ export interface WorkflowFEMeta {
 	templateId?: string;
 	instanceId?: string;
 	templateCredsSetupCompleted?: boolean;
+	generatedFrom?: WorkflowGeneratedFrom;
+}
+
+export interface WorkflowGeneratedFrom {
+	type: GeneratedFromSourceType;
+	id: string;
+	versionHash: string;
 }
 
 export interface WorkflowTestData {

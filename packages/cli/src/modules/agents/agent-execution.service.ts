@@ -8,6 +8,7 @@ import type {
 	AgentSessionStatus,
 	AgentTokenUsage,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { Logger } from '@n8n/backend-common';
 import type { StorageLocation } from '@n8n/blob-storage';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
@@ -217,6 +218,7 @@ export class AgentExecutionService {
 		private readonly messageRepository: AgentMessageRepository,
 		private readonly systemAgents: SystemAgentRegistry,
 		private readonly projectDeletion: AgentProjectDeletionRepository,
+		private readonly eventService: EventService,
 	) {}
 
 	async startExecutionRecording(
@@ -666,6 +668,7 @@ export class AgentExecutionService {
 		await this.updateThreadAfterExecution(params, executionId);
 
 		this.trackFinishedTurn(params, status);
+		this.emitFinishedTurn(params, executionId, status);
 		this.logger.debug('Recorded agent execution', {
 			executionId,
 			threadId,
@@ -1485,6 +1488,22 @@ export class AgentExecutionService {
 				error,
 			});
 		}
+	}
+
+	private emitFinishedTurn(
+		params: RecordMessageParams,
+		executionId: string,
+		status: AgentExecutionStatus,
+	): void {
+		if (status === 'awaiting') return;
+		this.eventService.emit('agent-execution-finished', {
+			agentId: params.agentId,
+			projectId: params.projectId,
+			executionId,
+			status,
+			runType: params.telemetry?.runType ?? null,
+			userId: params.telemetry?.userId ?? null,
+		});
 	}
 
 	private trackFinishedTurn(params: RecordMessageParams, status: AgentExecutionStatus): void {
