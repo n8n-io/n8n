@@ -23,6 +23,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import InstanceAiChatPanel from '@/features/ai/instanceAi/embed/InstanceAiChatPanel.vue';
 
 import WorkflowTestTree from '../components/WorkflowTestTree.vue';
+import WorkflowTestsCallers from '../components/WorkflowTestsCallers.vue';
 import WorkflowTestsCanvas from '../components/WorkflowTestsCanvas.vue';
 import WorkflowTestsEditor from '../components/WorkflowTestsEditor.vue';
 import WorkflowTestsEmptyState from '../components/WorkflowTestsEmptyState.vue';
@@ -446,6 +447,8 @@ function fixRun() {
 							@fix="fixTest"
 							@open-node="openNode"
 						/>
+
+						<WorkflowTestsCallers :workflow-id="workflowId" :can-run="canRun" />
 					</section>
 
 					<WorkflowTestsCanvas

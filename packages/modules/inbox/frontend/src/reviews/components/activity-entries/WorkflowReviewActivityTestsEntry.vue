@@ -56,14 +56,22 @@ const content = computed(() => {
 				}),
 			},
 		}),
+		caller: data.caller
+			? i18n.baseText('workflowReviews.detail.activity.testsCompleted.caller', {
+					interpolate: { workflowName: data.caller.name },
+				})
+			: null,
 		status: STATUS_ICON[data.status],
 		failures: data.failures,
 		hiddenFailures: Math.max(0, data.failed - data.failures.length),
 		errors: data.errors,
-		// Only a workflow that the review still covers has a Tests tab to open.
-		testsLink: linked
-			? { name: VIEWS.WORKFLOW_TESTS, params: { workflowId: data.workflowId } }
-			: null,
+		// A caller's entry opens the caller. Otherwise only a workflow that the review
+		// still covers has a Tests tab to open.
+		testsLink: data.caller
+			? { name: VIEWS.WORKFLOW_TESTS, params: { workflowId: data.caller.workflowId } }
+			: linked
+				? { name: VIEWS.WORKFLOW_TESTS, params: { workflowId: data.workflowId } }
+				: null,
 	};
 });
 
@@ -85,6 +93,15 @@ const hasDetails = computed(
 			<div :class="$style.headline">
 				<N8nText size="medium" color="text-dark" :class="$style.line">
 					{{ content.headline }}
+				</N8nText>
+				<N8nText
+					v-if="content.caller"
+					size="medium"
+					color="text-light"
+					:class="$style.line"
+					data-test-id="workflow-review-activity-tests-caller"
+				>
+					{{ content.caller }}
 				</N8nText>
 				<N8nText size="medium" color="text-light" :class="$style.line">
 					{{ content.version }}

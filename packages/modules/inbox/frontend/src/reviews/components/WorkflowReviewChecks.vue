@@ -67,9 +67,31 @@ function describe(check: WorkflowReviewCheck) {
 	}
 }
 
-function canRun(check: WorkflowReviewCheck) {
-	return isOpen.value && check.viewerCanRun && check.status !== 'running';
+function title(check: WorkflowReviewCheck) {
+	if (check.id !== 'workflow-caller-tests') {
+		return i18n.baseText('workflowReviews.checks.tests.title');
+	}
+	return check.testWorkflowName === null
+		? i18n.baseText('workflowReviews.checks.callerTests.titleUnknown')
+		: i18n.baseText('workflowReviews.checks.callerTests.title', {
+				interpolate: { workflowName: check.testWorkflowName },
+			});
 }
+
+/** A caller that the viewer cannot read has no Tests tab to open. */
+function canOpen(check: WorkflowReviewCheck) {
+	return check.id !== 'workflow-caller-tests' || check.testWorkflowName !== null;
+}
+
+/** One run starts every check of the review, so the card has one button. */
+const canRun = computed(
+	() =>
+		isOpen.value &&
+		props.review.checks.some((check) => check.viewerCanRun) &&
+		!props.review.checks.some((check) => check.status === 'running'),
+);
+
+const hasPending = computed(() => props.review.checks.some((check) => check.status === 'pending'));
 
 async function refresh() {
 	await detailStore.fetchDetail(props.review.id);
@@ -110,8 +132,8 @@ async function runTests() {
 <template>
 	<div v-if="review.checks.length > 0" :class="$style.card" data-test-id="workflow-review-checks">
 		<div
-			v-for="check in review.checks"
-			:key="`${check.id}:${check.workflowId}`"
+			v-for="(check, index) in review.checks"
+			:key="`${check.id}:${check.workflowId}:${check.testWorkflowId}`"
 			:class="$style.check"
 			:data-test-id="`workflow-review-check-${check.status}`"
 		>
@@ -123,7 +145,7 @@ async function runTests() {
 			/>
 			<div :class="$style.text">
 				<N8nText tag="h3" bold color="text-dark" size="medium">
-					{{ i18n.baseText('workflowReviews.checks.tests.title') }}
+					{{ title(check) }}
 				</N8nText>
 				<N8nText color="text-base" size="medium" :class="$style.description">
 					{{ describe(check) }}
@@ -131,7 +153,8 @@ async function runTests() {
 			</div>
 			<div :class="$style.actions">
 				<N8nLink
-					:to="{ name: VIEWS.WORKFLOW_TESTS, params: { workflowId: check.workflowId } }"
+					v-if="canOpen(check)"
+					:to="{ name: VIEWS.WORKFLOW_TESTS, params: { workflowId: check.testWorkflowId } }"
 					theme="text"
 					size="medium"
 					data-test-id="workflow-review-check-open-tests"
@@ -139,7 +162,7 @@ async function runTests() {
 					{{ i18n.baseText('workflowReviews.checks.tests.open') }}
 				</N8nLink>
 				<N8nButton
-					v-if="canRun(check)"
+					v-if="index === 0 && canRun"
 					variant="outline"
 					size="small"
 					:loading="starting"
@@ -150,7 +173,7 @@ async function runTests() {
 						<N8nIcon icon="refresh-cw" />
 					</template>
 					{{
-						check.status === 'pending'
+						hasPending
 							? i18n.baseText('workflowReviews.checks.tests.run')
 							: i18n.baseText('workflowReviews.checks.tests.runAgain')
 					}}
