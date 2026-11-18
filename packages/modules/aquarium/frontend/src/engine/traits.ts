@@ -7,12 +7,15 @@ import {
 	SICK_TINT,
 	SKELETON_SPEED_FACTOR,
 	BELLY_UP_SPEED_FACTOR,
+	BIG_WHALE,
 	TANK_HEALTH,
 } from '../aquarium.constants';
 import type { AquariumEntity, CreatureTraits } from '../aquarium.types';
 import { penguin } from '../species/creatures/penguin';
 import { turtle } from '../species/creatures/turtle';
+import { whale } from '../species/creatures/whale';
 import { pickSpecies } from '../species/species.registry';
+import { maintainabilityOf } from './design';
 import { complexityScore, failureRateOf, sizeTierFor, swimSpeedFor } from './scaling';
 
 /**
@@ -78,6 +81,23 @@ export const speedRule: TraitRule = (entity, traits) => ({
 export const bubblesRule: TraitRule = (entity, traits) =>
 	entity.metrics.executionCount >= BUBBLES_MIN_EXECUTIONS
 		? { ...traits, effects: [...traits.effects, 'bubbles'] }
+		: traits;
+
+/**
+ * A workflow that is hard to maintain becomes a really big, slow whale that looks around, whatever
+ * its size. It overrides the turtle and the penguin: the build says more than age or speed.
+ */
+export const bigWhaleRule: TraitRule = (entity, traits) =>
+	entity.kind === 'workflow' &&
+	entity.design !== undefined &&
+	maintainabilityOf(entity.design).score < BIG_WHALE.belowScore
+		? {
+				...traits,
+				speciesId: whale.id,
+				scale: BIG_WHALE.scale,
+				speedFactor: BIG_WHALE.speedFactor,
+				lookAround: true,
+			}
 		: traits;
 
 /** A cat watches a creature that fails a security check. */
@@ -156,8 +176,8 @@ export const stillRule: TraitRule = (entity, traits) =>
 		: traits;
 
 /**
- * Order matters: `speciesRule` reads the tier from `sizeRule`, `turtleRule` and then
- * `penguinRule` override the species, `bellyUpRule` overrides `sickRule`, `skeletonRule`
+ * Order matters: `speciesRule` reads the tier from `sizeRule`. `turtleRule`, `penguinRule` and
+ * then `bigWhaleRule` override the species. `bellyUpRule` overrides `sickRule`, `skeletonRule`
  * overrides both, and `shimmerRule` reads all three.
  */
 export const defaultTraitRules: TraitRule[] = [
@@ -165,6 +185,7 @@ export const defaultTraitRules: TraitRule[] = [
 	speciesRule,
 	turtleRule,
 	penguinRule,
+	bigWhaleRule,
 	speedRule,
 	bubblesRule,
 	securityRule,

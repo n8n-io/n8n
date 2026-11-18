@@ -1,4 +1,4 @@
-import { MAX_SWIM_SPEED, SPEED_EASING_SECONDS, WANDER } from '../aquarium.constants';
+import { BIG_WHALE, MAX_SWIM_SPEED, SPEED_EASING_SECONDS, WANDER } from '../aquarium.constants';
 import type { AquariumEntity, CreatureTraits, EntityActivity } from '../aquarium.types';
 import { spriteSize, type SpeciesDefinition } from '../species/species.types';
 import { liveSpeedBoostFor, recentRate } from './scaling';
@@ -188,6 +188,11 @@ export function stepCreature(
 		creature.wanderIn = 2 + random() * 4;
 		pickDepth(creature, bounds, random);
 		if (random() < TURN_CHANCE) creature.facing = creature.facing === 1 ? -1 : 1;
+	}
+
+	// A lost creature turns to look the other way every few seconds.
+	if (creature.traits.lookAround) {
+		creature.facing = Math.floor(creature.age / BIG_WHALE.lookAroundSeconds) % 2 === 0 ? 1 : -1;
 	}
 
 	// A sleeper settles on the sand; a belly-up creature floats to the surface.

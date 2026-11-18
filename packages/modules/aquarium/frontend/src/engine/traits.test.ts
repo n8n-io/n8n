@@ -4,6 +4,7 @@ import {
 	SICK_TINT,
 	SKELETON_SPEED_FACTOR,
 	BELLY_UP_SPEED_FACTOR,
+	BIG_WHALE,
 } from '../aquarium.constants';
 import type { AquariumEntity } from '../aquarium.types';
 import { emptyMetrics } from '../sources/source.utils';
@@ -122,6 +123,24 @@ describe('deriveTraits', () => {
 	it('lets workflows fall asleep, but not agents', () => {
 		expect(deriveTraits(entity({})).effects).toContain('zzz');
 		expect(deriveTraits(entity({}, 'agent')).effects).not.toContain('zzz');
+	});
+
+	it('turns a workflow that is hard to maintain into a really big, slow whale that looks around', () => {
+		const tangled = {
+			...entity({ complexity: 22, executionCount: 2_000 }),
+			design: { ...analyzeWorkflow([]), nodeCount: 22, duplicateNodeCount: 4, branchNodeCount: 9 },
+		};
+		const tidy = {
+			...entity({ complexity: 22, executionCount: 2_000 }),
+			design: analyzeWorkflow([]),
+		};
+
+		expect(deriveTraits(tangled)).toMatchObject({
+			speciesId: 'whale',
+			scale: BIG_WHALE.scale,
+			lookAround: true,
+		});
+		expect(deriveTraits(tidy).lookAround).toBeUndefined();
 	});
 
 	it('applies extra rules after the default rules', () => {

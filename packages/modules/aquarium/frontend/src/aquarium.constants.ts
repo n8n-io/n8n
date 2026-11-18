@@ -120,6 +120,17 @@ export const SICK_SPEED_FACTOR = 0.4;
 /** A skeleton barely moves. */
 export const SKELETON_SPEED_FACTOR = 0.15;
 
+/**
+ * A workflow that is hard to maintain (`maintainabilityOf()` below `belowScore`) becomes a really
+ * big whale: it swims slowly and turns to look around every `lookAroundSeconds`, as if lost.
+ */
+export const BIG_WHALE = {
+	belowScore: 70,
+	scale: 2,
+	speedFactor: 0.3,
+	lookAroundSeconds: 3,
+} as const;
+
 /** A belly-up creature (most runs fail) drifts at the surface and hardly moves. */
 export const BELLY_UP_SPEED_FACTOR = 0.05;
 

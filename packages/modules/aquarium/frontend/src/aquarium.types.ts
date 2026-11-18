@@ -142,6 +142,8 @@ export interface CreatureTraits {
 	skeleton?: boolean;
 	/** Floats upside down at the surface. It overrides the tint. */
 	bellyUp?: boolean;
+	/** Turns to look the other way every few seconds, as if lost. */
+	lookAround?: boolean;
 	/** A wave of gold sweeps over the creature while its workflow runs (live activity). */
 	shimmer?: boolean;
 	/** Multiplies the whole swim speed, live boost included. Without it, the factor is 1. */

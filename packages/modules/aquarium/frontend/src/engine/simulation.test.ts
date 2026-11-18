@@ -277,4 +277,16 @@ describe('simulation', () => {
 			expect(Math.round(creature.y)).toBe(0);
 		});
 	});
+
+	it('turns a lost creature to look the other way every few seconds', () => {
+		const creature = spawnCreature(entity, deriveTraits(entity), whale, bounds, seededRandom());
+		creature.traits = { ...creature.traits, lookAround: true };
+		const facings = new Set<number>();
+		for (let i = 0; i < 160; i++) {
+			stepCreature(creature, 0.05, bounds, seededRandom());
+			facings.add(creature.facing);
+		}
+
+		expect(facings).toEqual(new Set([1, -1]));
+	});
 });

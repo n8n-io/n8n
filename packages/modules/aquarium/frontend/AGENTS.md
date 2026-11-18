@@ -104,7 +104,7 @@ health.
 | --- | --- | --- | --- |
 | Security risk: an unprotected webhook, an expression in a SQL query, or an Execute Command or SSH node | Negative: exposed | A cat in a diving helmet watches the fish (`securityRule`, `catEffect`) | Partly: proof of concept |
 | Error workflow set (`design.hasErrorWorkflow`) | Positive: failures are handled | A remora trails behind the tail (`remoraRule`, `remoraEffect`). No error workflow stays Neutral | Built |
-| Build quality (`maintainabilityOf()`): big with no sub-workflows, many Code nodes, copy-pasted nodes, disabled leftovers, many If, Switch and Merge nodes | Negative: hard to maintain | A really big whale | Planned. The data is ready |
+| Build quality (`maintainabilityOf()`): big with no sub-workflows, many Code nodes, copy-pasted nodes, disabled leftovers, many If, Switch and Merge nodes | Negative: hard to maintain | A really big whale: the whale at 2×, at 30% speed, turning to look around every 3 s, below a score of 70 (`bigWhaleRule`, `BIG_WHALE`) | Built |
 | Redaction on | Neutral: private data | Glasses | Open |
 | Credentials used | Connected to many services | Bling | Open |
 | Created 90 or more days ago, and among the oldest 2% | Old | A turtle. A large or huge workflow is a bigger turtle (`turtleRule`, `oldWorkflowKeys`) | Built |
