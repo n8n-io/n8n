@@ -8,6 +8,12 @@ import { NotFoundError } from '@n8n/errors';
 import type { GeneratedFromSourceType } from 'n8n-workflow';
 
 import {
+	MIN_GAIN_POINTS,
+	MIN_HOLDOUT_RUNS,
+	MIN_MATCH_RATE,
+	MIN_RUNS_FOR_ANALYSIS,
+} from './agent-determinism.constants';
+import {
 	DeterminismSourceRepository,
 	type DeterminismSourceRow,
 } from './database/determinism-source.repository';
@@ -15,7 +21,15 @@ import {
 function toSuggestion(row: DeterminismSourceRow): DeterminismSuggestion | null {
 	const { result, draftWorkflowId } = row;
 	const isCurrent = row.analyzedVersionHash === row.versionHash;
-	if (!result?.showCta || !draftWorkflowId || row.dismissedAt || !isCurrent) return null;
+	// The bar is checked when shown, so changing it needs no new analysis.
+	const passes =
+		result !== null &&
+		result !== undefined &&
+		result.totalRuns >= MIN_RUNS_FOR_ANALYSIS &&
+		result.holdoutRuns >= MIN_HOLDOUT_RUNS &&
+		result.matchRate >= MIN_MATCH_RATE &&
+		result.gainPoints >= MIN_GAIN_POINTS;
+	if (!passes || !draftWorkflowId || row.dismissedAt || !isCurrent) return null;
 
 	return {
 		draftWorkflowId,

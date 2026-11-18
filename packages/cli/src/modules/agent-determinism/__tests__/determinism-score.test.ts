@@ -49,10 +49,10 @@ describe('scoreDraft', () => {
 
 	it.each([
 		[
-			'the match rate is below 90%',
+			'the match rate is below 80%',
 			10,
 			20,
-			[true, true, true, true, true, true, true, true, false, false],
+			[true, true, true, true, true, true, true, false, false, false],
 		],
 		['fewer than 20 runs were analysed', 4, 19, [true, true, true, true]],
 	])('shows no call to action when %s', (_, count, totalRuns, matches) => {
