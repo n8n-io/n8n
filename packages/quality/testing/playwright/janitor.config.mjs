@@ -57,6 +57,15 @@ export default defineConfig({
 			enabled: true,
 			severity: 'error',
 			allowPatterns: [
+				// These entry buttons render in the workflow overlay and canvas controls.
+				/^pages\/AIAssistantPage\.ts:AIAssistantPage: this\.page\.getByTestId\('ask-assistant-floating-button'\)$/,
+				/^pages\/AIAssistantPage\.ts:AIAssistantPage: this\.page\.getByTestId\('ask-assistant-canvas-action-button'\)$/,
+				// Error help starts in the node error view, outside the assistant sidebar.
+				/^pages\/AIAssistantPage\.ts:AIAssistantPage: this\.page\.getByTestId\('node-error-view-ask-assistant-button'\)\.locator\('button'\)\.first\(\)$/,
+				// The new-session modal appends to the body.
+				/^pages\/AIAssistantPage\.ts:AIAssistantPage: this\.page\.getByTestId\('new-assistant-session-modal'\)$/,
+				// Credential help starts in the credential editor, outside the assistant sidebar.
+				/^pages\/AIAssistantPage\.ts:AIAssistantPage: this\.page\.getByTestId\('credential-edit-ask-assistant-button'\)\.locator\('button'\)$/,
 				// The error-workflow list is teleported outside the settings content.
 				/^pages\/WorkflowSettingsModal\.ts:WorkflowSettingsModal: this\.page\.getByRole\('listbox'\)\.filter\(\{ visible: true \}\)$/,
 				// The save button is in the footer, outside the settings content slot.
