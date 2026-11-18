@@ -175,6 +175,7 @@ export interface WorkflowResponse {
 	nodes: WorkflowNodeResponse[];
 	connections: Record<string, unknown>;
 	nodeGroups?: WorkflowNodeGroupResponse[];
+	settings?: Record<string, unknown>;
 	pinData?: Record<string, unknown>;
 }
 

@@ -79,4 +79,50 @@ describe('buildWorkflowContextBlock', () => {
 			expect(block).toContain('**Node groups:**\n\n(none)');
 		}
 	});
+
+	it('states "(none set)" when the workflow has no settings', () => {
+		for (const wf of [workflow('wf-1'), workflow('wf-2', { settings: {} })]) {
+			expect(buildWorkflowContextBlock(wf)).toContain(
+				'**Workflow settings** (an absent or "DEFAULT" value means the instance default):\n\n(none set)',
+			);
+		}
+	});
+
+	it('renders every workflow setting', () => {
+		const settings = { executionOrder: 'v1', timezone: 'Europe/Berlin', executionTimeout: 600 };
+		const block = buildWorkflowContextBlock(workflow('wf-1', { settings }));
+
+		expect(block).toContain(['```json', JSON.stringify(settings, null, 2), '```'].join('\n'));
+	});
+
+	it('renders every saved node field except the id and the canvas position', () => {
+		// `notes` is not on WorkflowNodeResponse: a field the harness does not
+		// know about must still reach the judge.
+		const saved = {
+			...node('id-a', 'Fetch Data'),
+			position: [240, 300],
+			retryOnFail: true,
+			notes: 'Retries the flaky API',
+		} as WorkflowNodeResponse;
+
+		const block = buildWorkflowContextBlock(workflow('wf-1', { nodes: [saved] }));
+
+		expect(block).toContain(
+			JSON.stringify(
+				[
+					{
+						name: 'Fetch Data',
+						type: 'n8n-nodes-base.set',
+						retryOnFail: true,
+						notes: 'Retries the flaky API',
+						parameters: {},
+					},
+				],
+				null,
+				2,
+			),
+		);
+		expect(block).not.toContain('id-a');
+		expect(block).not.toContain('240');
+	});
 });
