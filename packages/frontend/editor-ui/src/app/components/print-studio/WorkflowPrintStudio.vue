@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { HACKMATION_DEMO } from '@/app/hackmation';
 import { defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue';
 import { N8nButton, N8nDialog, N8nDialogBody } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -10,7 +11,8 @@ defineProps<{ workflow: unknown }>();
 const i18n = useI18n();
 const copy = studioCopy((key) => i18n.baseText(key));
 const open = ref(false);
-const demo = new URLSearchParams(window.location.search).get('hackmation') === 'prints';
+const demo =
+	HACKMATION_DEMO || new URLSearchParams(window.location.search).get('hackmation') === 'prints';
 function onShortcut(event: KeyboardEvent) {
 	const target = event.target;
 	if (

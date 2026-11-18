@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { HACKMATION_DEMO } from '@/app/hackmation';
 import { computed, ref, useCssModule, watch } from 'vue';
 import CanvasSleepEffect from '../../../delight/CanvasSleepEffect.vue';
 import { useNodeConnections } from '@/app/composables/useNodeConnections';
@@ -82,6 +83,7 @@ const nodeHelpers = useNodeHelpers();
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
 const delightEnabled = computed(
 	() =>
+		HACKMATION_DEMO ||
 		route.query.hackmation === 'delight' ||
 		(import.meta.env.DEV && import.meta.env.VUE_APP_CANVAS_DELIGHT === 'true'),
 );

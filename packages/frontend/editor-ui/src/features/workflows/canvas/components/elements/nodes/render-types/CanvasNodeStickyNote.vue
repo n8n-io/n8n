@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { HACKMATION_DEMO } from '@/app/hackmation';
 /* eslint-disable vue/no-multiple-template-root */
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import type { CanvasNodeStickyNoteRender } from '../../../../canvas.types';
@@ -29,6 +30,7 @@ const i18n = useI18n();
 const route = useRoute();
 const delightEnabled = computed(
 	() =>
+		HACKMATION_DEMO ||
 		route?.query.hackmation === 'delight' ||
 		(import.meta.env.DEV && import.meta.env.VUE_APP_CANVAS_DELIGHT === 'true'),
 );
