@@ -2,7 +2,7 @@ import { computed } from 'vue';
 import type { IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
-import type { ThemeFamily, ThemeMode } from '@/Interface';
+import type { AppliedThemeOption, ThemeFamily, ThemeMode } from '@/Interface';
 import { useUIStore } from '@/app/stores/ui.store';
 import { hasThemeVariant } from '@/app/stores/ui.utils';
 
@@ -81,4 +81,28 @@ export function useThemeFamilyOptions() {
 			}),
 		),
 	);
+}
+
+/**
+ * One option for each variant of each family. The variants of the current mode come first,
+ * then the variants of the other mode.
+ */
+export function useThemeVariantOptions() {
+	const i18n = useI18n();
+	const uiStore = useUIStore();
+
+	return computed(() => {
+		const current = uiStore.appliedTheme;
+		const modes: AppliedThemeOption[] = current === 'dark' ? ['dark', 'light'] : ['light', 'dark'];
+
+		return modes.flatMap((mode) =>
+			THEME_FAMILY_ORDER.filter((value) => hasThemeVariant(value, mode)).map((value) => ({
+				mode,
+				value,
+				isCurrentMode: mode === current,
+				label: i18n.baseText(THEME_FAMILY_LABELS[value]),
+				modeLabel: i18n.baseText(THEME_MODE_DISPLAY[mode].label),
+			})),
+		);
+	});
 }

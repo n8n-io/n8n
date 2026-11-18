@@ -353,12 +353,11 @@ export function useCommandBar() {
 
 	function buildSections(): CommandBarSection[] {
 		if (scope.value) {
-			return [
-				{
-					id: `scope:${scope.value.id}`,
-					items: rankItems(scope.value.children ?? [], query.value),
-				},
-			];
+			const scopeId = `scope:${scope.value.id}`;
+			const items = rankItems(scope.value.children ?? [], query.value);
+			const grouped = groupBySection(items, scopeId);
+			// Children that share one section show no header. Only mixed children get section headers.
+			return grouped.length > 1 ? grouped : [{ id: scopeId, items }];
 		}
 
 		if (activeTab.value === ACTIONS_TAB) {

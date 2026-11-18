@@ -8,8 +8,8 @@ import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
 import { useBugReporting } from '@/app/composables/useBugReporting';
 import {
 	useActiveThemeFamily,
-	useThemeFamilyOptions,
 	useThemeModeOptions,
+	useThemeVariantOptions,
 } from '@/app/composables/useThemeOptions';
 import type { CommandGroup, CommandBarItem, ThemeCommandBarItem } from '../types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
@@ -44,8 +44,7 @@ export function useGenericCommands(): CommandGroup {
 	const templatesStore = useTemplatesStore();
 	const { getReportingURL } = useBugReporting();
 	const modeOptions = useThemeModeOptions();
-	// The list only has the families that fit the current mode. The saved family can be missing from it.
-	const familyOptions = useThemeFamilyOptions();
+	const variantOptions = useThemeVariantOptions();
 	const activeFamily = useActiveThemeFamily();
 
 	const modeCommands = computed<ThemeCommandBarItem[]>(() =>
@@ -72,19 +71,34 @@ export function useGenericCommands(): CommandGroup {
 		}),
 	);
 
+	const sortedVariantOptions = computed(() => {
+		const options = variantOptions.value;
+		const index = options.findIndex(
+			(option) => option.isCurrentMode && option.value === activeFamily.value,
+		);
+		if (index <= 0) return options;
+		return [options[index], ...options.slice(0, index), ...options.slice(index + 1)];
+	});
+
 	const themeCommands = computed<ThemeCommandBarItem[]>(() =>
-		familyOptions.value.map((option): ThemeCommandBarItem => {
-			const isCurrent = activeFamily.value === option.value;
+		sortedVariantOptions.value.map((option): ThemeCommandBarItem => {
+			const isCurrent = option.isCurrentMode && activeFamily.value === option.value;
 
 			return {
-				id: `${ITEM_ID.THEME}-${option.value}`,
-				// The command bar previews this family, in the saved mode, while the item is highlighted.
-				theme: { family: option.value },
+				id: `${ITEM_ID.THEME}-${option.mode}-${option.value}`,
+				// A row of the other mode previews its mode too, so the whole look changes.
+				theme: option.isCurrentMode
+					? { family: option.value }
+					: { mode: option.mode, family: option.value },
 				title: option.label,
+				section: option.modeLabel,
+				keywords: [option.label.toLowerCase(), option.modeLabel.toLowerCase()],
 				description: isCurrent ? i18n.baseText('commandBar.theme.current') : undefined,
 				descriptionIcon: isCurrent ? { type: 'icon', value: 'check' } : undefined,
 				handler: () => {
+					// Family first: the family has a variant for the new mode, so setThemeMode keeps it.
 					uiStore.setThemeFamily(option.value);
+					if (!option.isCurrentMode) uiStore.setThemeMode(option.mode);
 				},
 			};
 		}),
