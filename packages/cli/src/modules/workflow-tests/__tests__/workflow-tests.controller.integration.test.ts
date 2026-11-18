@@ -100,6 +100,7 @@ test('finds no missing node', async () => {
 	const events = await runTests({ source });
 
 	expect(events).toEqual([
+		{ type: 'runStarted' },
 		{ type: 'testStarted', name: 'passes the input through' },
 		expect.objectContaining({
 			type: 'testFinished',

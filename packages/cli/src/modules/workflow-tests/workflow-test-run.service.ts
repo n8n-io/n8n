@@ -145,7 +145,12 @@ export class WorkflowTestRunService {
 	}
 }
 
-const RUN_EVENT_TYPES = new Set<unknown>(['testStarted', 'testFinished', 'runFinished']);
+const RUN_EVENT_TYPES = new Set<unknown>([
+	'runStarted',
+	'testStarted',
+	'testFinished',
+	'runFinished',
+]);
 
 function isRunEvent(value: unknown): value is WorkflowTestRunEvent {
 	return isRecord(value) && RUN_EVENT_TYPES.has(value.type);

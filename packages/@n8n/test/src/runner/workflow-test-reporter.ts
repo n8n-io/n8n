@@ -14,6 +14,10 @@ type RunStatus = Extract<WorkflowTestRunEvent, { type: 'runFinished' }>['status'
 export class WorkflowTestReporter implements Reporter {
 	constructor(private readonly send: (event: WorkflowTestRunEvent) => Promise<void>) {}
 
+	async onTestRunStart() {
+		await this.send({ type: 'runStarted' });
+	}
+
 	async onTestCaseReady(testCase: TestCase) {
 		await this.send({ type: 'testStarted', name: testCase.fullName });
 	}

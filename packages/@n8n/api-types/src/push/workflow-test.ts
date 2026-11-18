@@ -1,4 +1,5 @@
 export type WorkflowTestRunEvent =
+	| { type: 'runStarted' }
 	| { type: 'testStarted'; name: string }
 	| {
 			type: 'testFinished';
