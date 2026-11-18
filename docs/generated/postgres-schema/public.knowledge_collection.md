@@ -20,7 +20,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_knowledge_collection_owner | CHECK | CHECK (((("agentId" IS NULL) <> ("ownerProjectId" IS NULL)) AND (("agentId" IS NULL) OR ("isGlobal" = false)))) |
+| CHK_knowledge_collection_owner | CHECK | CHECK (((("agentId" IS NULL) <> ("ownerProjectId" IS NULL)) AND (((kind)::text = 'agent'::text) = ("agentId" IS NOT NULL)) AND (("agentId" IS NULL) OR ("isGlobal" = false)))) |
 | FK_2db6cab650ebf156debd84c3772 | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
 | FK_3dbb6554cfa9ce504a94274c64f | FOREIGN KEY | FOREIGN KEY ("createdById") REFERENCES "user"(id) ON DELETE SET NULL |
 | FK_9a2316d690a0d7beac2fce60fc6 | FOREIGN KEY | FOREIGN KEY ("ownerProjectId") REFERENCES project(id) ON DELETE CASCADE |

@@ -38,9 +38,12 @@ export class CreateKnowledgeCollectionTables1794937304000 implements ReversibleM
 		escape,
 		isSqlite,
 	}: MigrationContext) {
-		const [agentId, ownerProjectId, isGlobal] = ['agentId', 'ownerProjectId', 'isGlobal'].map(
-			(columnName) => escape.columnName(columnName),
-		);
+		const [kind, agentId, ownerProjectId, isGlobal] = [
+			'kind',
+			'agentId',
+			'ownerProjectId',
+			'isGlobal',
+		].map((columnName) => escape.columnName(columnName));
 		const falseValue = isSqlite ? '0' : 'FALSE';
 
 		await createTable(collectionTable)
@@ -55,8 +58,8 @@ export class CreateKnowledgeCollectionTables1794937304000 implements ReversibleM
 					.notNull.comment(
 						'Tool-safe identifier, unique on the instance. Set at creation and never changed',
 					),
-				// No CHECK on the values: the service validates them and sets the kind to
-				// agree with the owner columns.
+				// No CHECK on the list of values: the service validates them. The owner
+				// CHECK below ties 'agent' to agentId.
 				column('kind')
 					.varchar(16)
 					.notNull.comment(
@@ -94,11 +97,11 @@ export class CreateKnowledgeCollectionTables1794937304000 implements ReversibleM
 				columnName: 'id',
 				onDelete: 'SET NULL',
 			})
-			// A collection has exactly one owner, a project or an agent. A private
-			// collection is not global.
+			// A collection has exactly one owner, a project or an agent. Only a collection
+			// that an agent owns has the kind 'agent'. A private collection is not global.
 			.withCheck(
 				`CHK_${tablePrefix}knowledge_collection_owner`,
-				`((${agentId} IS NULL) <> (${ownerProjectId} IS NULL)) AND (${agentId} IS NULL OR ${isGlobal} = ${falseValue})`,
+				`((${agentId} IS NULL) <> (${ownerProjectId} IS NULL)) AND ((${kind} = 'agent') = (${agentId} IS NOT NULL)) AND (${agentId} IS NULL OR ${isGlobal} = ${falseValue})`,
 			);
 	}
 

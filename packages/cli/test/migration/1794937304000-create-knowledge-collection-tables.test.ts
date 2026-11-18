@@ -284,6 +284,11 @@ describe('CreateKnowledgeCollectionTables migration', () => {
 				],
 				['a collection without a project or an agent', () => ({ kind: 'shared' })],
 				[
+					'an agent collection that a project owns',
+					({ projectId }) => ({ kind: 'agent', ownerProjectId: projectId }),
+				],
+				['a shared collection that an agent owns', ({ agentId }) => ({ kind: 'shared', agentId })],
+				[
 					'a global agent collection',
 					({ agentId }) => ({ kind: 'agent', agentId, isGlobal: true }),
 				],

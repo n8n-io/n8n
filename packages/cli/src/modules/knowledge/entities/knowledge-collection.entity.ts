@@ -7,8 +7,8 @@ import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8
  * (`kind = 'agent'`) belongs to one agent.
  *
  * The check `CHK_knowledge_collection_owner` gives each collection exactly one
- * owner, a project or an agent. The database does not check `kind`: the service
- * sets it to agree with the owner columns.
+ * owner, a project or an agent, and gives the kind 'agent' only to a collection
+ * that an agent owns. The database does not check the other values of `kind`.
  */
 @Entity({ name: 'knowledge_collection' })
 @Index(['slug'], { unique: true })

@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "knowledge_collection" ("id" varchar(16) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "description" text, "slug" varchar(24) NOT NULL, "kind" varchar(16) NOT NULL, "ownerProjectId" varchar(36), "agentId" varchar(36), "isGlobal" boolean NOT NULL DEFAULT (false), "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_knowledge_collection_owner" CHECK ((("agentId" IS NULL) <> ("ownerProjectId" IS NULL)) AND ("agentId" IS NULL OR "isGlobal" = 0)), CONSTRAINT "FK_9a2316d690a0d7beac2fce60fc6" FOREIGN KEY ("ownerProjectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_2db6cab650ebf156debd84c3772" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_3dbb6554cfa9ce504a94274c64f" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "knowledge_collection" ("id" varchar(16) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "description" text, "slug" varchar(24) NOT NULL, "kind" varchar(16) NOT NULL, "ownerProjectId" varchar(36), "agentId" varchar(36), "isGlobal" boolean NOT NULL DEFAULT (false), "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_knowledge_collection_owner" CHECK ((("agentId" IS NULL) <> ("ownerProjectId" IS NULL)) AND (("kind" = 'agent') = ("agentId" IS NOT NULL)) AND ("agentId" IS NULL OR "isGlobal" = 0)), CONSTRAINT "FK_9a2316d690a0d7beac2fce60fc6" FOREIGN KEY ("ownerProjectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_2db6cab650ebf156debd84c3772" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_3dbb6554cfa9ce504a94274c64f" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -31,7 +31,7 @@ CREATE TABLE "knowledge_collection" ("id" varchar(16) PRIMARY KEY NOT NULL, "nam
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ((("agentId" IS NULL) <> ("ownerProjectId" IS NULL)) AND ("agentId" IS NULL OR "isGlobal" = 0)) |
+| - | CHECK | CHECK ((("agentId" IS NULL) <> ("ownerProjectId" IS NULL)) AND (("kind" = 'agent') = ("agentId" IS NOT NULL)) AND ("agentId" IS NULL OR "isGlobal" = 0)) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (ownerProjectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
