@@ -8,6 +8,7 @@ import { useToast } from '@n8n/composables/useToast';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 
+import DocProjectPage from '../components/DocProjectPage.vue';
 import DocTable from '../components/DocTable.vue';
 import { groupByKind } from '../docPages.utils';
 import { useDocPagesStore } from '../docPages.store';
@@ -46,6 +47,11 @@ watch(projectId, load, { immediate: true });
 		</template>
 
 		<div :class="$style.content" data-testid="project-docs">
+			<DocProjectPage
+				v-if="projectId"
+				:project-id="projectId"
+				:can-summarize="!loading && items.length > 0"
+			/>
 			<N8nLoading v-if="loading" :rows="6" />
 			<N8nEmptyState
 				v-else-if="groups.length === 0"

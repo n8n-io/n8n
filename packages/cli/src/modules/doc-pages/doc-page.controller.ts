@@ -41,6 +41,15 @@ export class DocPageController {
 		return await this.docPageService.listForProject(req.user, projectId);
 	}
 
+	@Post('/projects/:projectId/page')
+	async ensureProjectPage(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('projectId') projectId: string,
+	) {
+		return await this.docPageService.ensureProjectPage(req.user, projectId);
+	}
+
 	@Post('/ensure')
 	async ensure(req: AuthenticatedRequest, _res: unknown, @Body body: EnsureDocPageDto) {
 		return await this.docPageService.ensure(req.user, body);

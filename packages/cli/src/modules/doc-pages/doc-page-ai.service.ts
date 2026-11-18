@@ -37,8 +37,19 @@ const TEMPLATES: Record<DocPageKind, string[]> = {
 	agent: ['Overview', 'Channels', 'How to Talk to It', 'Tools', 'Limits', 'Example Conversations'],
 };
 
+const PROJECT_TEMPLATE = [
+	'Overview (what the project is for, in two or three sentences)',
+	'Entry Points (a table: name, type, how to call or when it runs)',
+	'How It Fits Together',
+	'Where to Start',
+];
+
+// ponytail: fixed caps keep the prompt small. Summarize each page first if projects outgrow them.
+const PROJECT_ITEMS_MAX = 40;
+const PROJECT_ITEM_TEXT_MAX = 1200;
+
 const RULES = [
-	'You write internal documentation pages for n8n workflows and agents.',
+	'You write internal documentation pages for n8n workflows, agents and projects.',
 	'Rules:',
 	'- Write GitHub markdown only. Use the template headings as `##` headings, in order. Start with the first heading, not a title.',
 	'- Keep sections short. Use tables for parameters. Give real example requests.',
@@ -88,6 +99,10 @@ export class DocPageAiService {
 
 	/** Writes the page of the resource with the LLM. No access check: callers do that. */
 	async generateForPage(user: User, pageId: string, resource: DocResource) {
+		if (resource.type === 'project') {
+			await this.generateForProject(user, pageId, resource);
+			return;
+		}
 		const kind = resource.kind;
 		if (!kind || !resource.published) {
 			throw new BadRequestError('Publish the workflow or agent before you generate its page');
@@ -99,6 +114,46 @@ export class DocPageAiService {
 			`Template headings: ${TEMPLATES[kind].join('; ')}`,
 			'',
 			await this.describe(resource),
+		].join('\n');
+
+		const result = await agent.generate(prompt, {
+			abortSignal: AbortSignal.timeout(GENERATE_TIMEOUT_MS),
+		});
+		const parsed = generateSchema.safeParse(result.structuredOutput);
+		if (!parsed.success) throw new OperationalError('The model returned no page');
+
+		await this.docPageService.saveGenerated(pageId, resource, parsed.data.markdown, user.id);
+	}
+
+	/** Writes the project home page from the pages of its workflows and agents. */
+	private async generateForProject(user: User, pageId: string, resource: DocResource) {
+		const items = await this.docPageService.projectContents(user, resource.id);
+		if (items.length === 0) {
+			throw new BadRequestError('Publish a workflow or agent in this project first');
+		}
+
+		const sections = items
+			.slice(0, PROJECT_ITEMS_MAX)
+			.map((item) =>
+				[
+					`### ${item.name} (${item.resourceType}, ${item.kind}${item.isPublished ? '' : ', unpublished'})`,
+					item.properties ? `Facts: ${JSON.stringify(item.properties)}` : '',
+					item.text ? item.text.slice(0, PROJECT_ITEM_TEXT_MAX) : '(No page written yet.)',
+				]
+					.filter(Boolean)
+					.join('\n'),
+			);
+
+		const agent = await this.createAgent(user, GENERATE_SYSTEM_PROMPT, generateSchema);
+		const prompt = [
+			'Write the home page of this n8n project. It introduces the project to a new team member.',
+			'Link the reader to the workflows and agents by name. Do not repeat their full pages.',
+			`Template headings: ${PROJECT_TEMPLATE.join('; ')}`,
+			'',
+			`Project name: ${resource.name}`,
+			'',
+			'Workflows and agents of the project, with their documentation pages:',
+			...sections,
 		].join('\n');
 
 		const result = await agent.generate(prompt, {

@@ -28,7 +28,8 @@ import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 
 import DocPageEditor from '../components/DocPageEditor.vue';
 import DocProperties from '../components/DocProperties.vue';
-import { DOC_AUTOSAVE_DEBOUNCE_MS, DOC_PAGE_VIEW, PROJECT_DOCS_VIEW } from '../constants';
+import { DOC_PAGE_VIEW, PROJECT_DOCS_VIEW } from '../constants';
+import { useDocAutosave } from '../composables/useDocAutosave';
 import { useDocPagesStore } from '../docPages.store';
 
 const props = defineProps<{
@@ -70,38 +71,10 @@ const resourceLabel = computed(() =>
 		: i18n.baseText('docPages.resource.workflow'),
 );
 
-// Autosave: keep the latest content and send it after a quiet period.
-const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle');
-let pendingSave: { id: string; content: Record<string, unknown> } | null = null;
-let saveTimer: ReturnType<typeof setTimeout> | undefined;
+const { saveStatus, queue: queueSave, flush: flushSave, drop: dropPendingSave } = useDocAutosave();
 
 function onContentUpdate(content: Record<string, unknown>) {
-	if (!page.value) return;
-	pendingSave = { id: page.value.id, content };
-	clearTimeout(saveTimer);
-	saveTimer = setTimeout(() => {
-		void flushSave();
-	}, DOC_AUTOSAVE_DEBOUNCE_MS);
-}
-
-async function flushSave() {
-	clearTimeout(saveTimer);
-	if (!pendingSave) return;
-	const { id, content } = pendingSave;
-	pendingSave = null;
-	saveStatus.value = 'saving';
-	try {
-		await docPagesStore.updatePage(id, { content });
-		saveStatus.value = pendingSave ? 'saving' : 'saved';
-	} catch (error) {
-		saveStatus.value = 'idle';
-		toast.showError(error, i18n.baseText('docPages.save.error'));
-	}
-}
-
-function dropPendingSave() {
-	clearTimeout(saveTimer);
-	pendingSave = null;
+	if (page.value) queueSave(page.value.id, content);
 }
 
 async function loadPage(id: string) {

@@ -5,6 +5,7 @@ import type {
 	DocPageKind,
 	DocPageProperties,
 	DocPageResourceType,
+	DocPageRootType,
 	DocPageSummary,
 	EnsureDocPageDto,
 	UpdateDocPageDto,
@@ -12,6 +13,7 @@ import type {
 import type { User } from '@n8n/db';
 import {
 	isUniqueConstraintError,
+	ProjectRepository,
 	StatisticsNames,
 	WorkflowRepository,
 	WorkflowStatisticsRepository,
@@ -44,9 +46,9 @@ const OVERVIEW_ITEMS = 4;
 
 type Access = 'read' | 'update';
 
-/** The workflow or agent behind a root page. */
+/** The workflow, agent or project behind a root page. */
 export type DocResource = {
-	type: DocPageResourceType;
+	type: DocPageRootType;
 	id: string;
 	projectId: string;
 	name: string;
@@ -80,6 +82,7 @@ export class DocPageService {
 		private readonly agentRepository: AgentRepository,
 		private readonly agentThreadRepository: AgentExecutionThreadRepository,
 		private readonly projectService: ProjectService,
+		private readonly projectRepository: ProjectRepository,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly urlService: UrlService,
 		private readonly globalConfig: GlobalConfig,
@@ -103,7 +106,23 @@ export class DocPageService {
 		});
 	}
 
-	async loadResource(type: DocPageResourceType, id: string): Promise<DocResource | null> {
+	async loadResource(type: DocPageRootType, id: string): Promise<DocResource | null> {
+		if (type === 'project') {
+			const project = await this.projectRepository.findOneBy({ id });
+			if (!project) return null;
+			return {
+				type,
+				id,
+				projectId: id,
+				name: project.name,
+				kind: null,
+				activeVersionId: null,
+				isPublished: true,
+				published: null,
+				properties: null,
+			};
+		}
+
 		if (type === 'workflow') {
 			const workflow = await this.workflowRepository.findById(id);
 			const projectId = workflow?.shared?.find((s) => s.role === 'workflow:owner')?.projectId;
@@ -144,7 +163,13 @@ export class DocPageService {
 		resource: Pick<DocResource, 'type' | 'id' | 'projectId'>,
 		access: Access,
 	) {
-		const scope: Scope = `${resource.type}:${access}`;
+		// Project editors cannot update the project itself, but they can write its docs.
+		const scope: Scope =
+			resource.type === 'project'
+				? access === 'read'
+					? 'project:read'
+					: 'workflow:update'
+				: `${resource.type}:${access}`;
 		return await userHasScopes(
 			user,
 			[scope],
@@ -195,7 +220,7 @@ export class DocPageService {
 	async ensureForResource(resource: DocResource, userId: string | null) {
 		const existing = await this.docPageRepository.findByResource(resource.type, resource.id);
 		if (existing) return existing;
-		if (!resource.kind) return null;
+		if (!resource.kind && resource.type !== 'project') return null;
 
 		try {
 			return await this.docPageRepository.insert({
@@ -217,6 +242,26 @@ export class DocPageService {
 			if (!isUniqueConstraintError(error)) throw error;
 			return await this.docPageRepository.findByResource(resource.type, resource.id);
 		}
+	}
+
+	/** Returns the page of the project. Creates an empty one on the first visit. */
+	async ensureProjectPage(user: User, projectId: string): Promise<DocPage> {
+		const resource = await this.loadResource('project', projectId);
+		if (!resource || !(await this.hasAccess(user, resource, 'read'))) {
+			throw new NotFoundError('Project not found');
+		}
+		const page = await this.ensureForResource(resource, user.id);
+		if (!page) throw new NotFoundError('Project not found');
+		return await this.get(user, page.id);
+	}
+
+	/** Root pages of the project that the user can read, with their full text. For the LLM. */
+	async projectContents(user: User, projectId: string) {
+		const items = await this.listForProject(user, projectId);
+		const texts = new Map(
+			(await this.docPageRepository.listByProject(projectId)).map((p) => [p.id, p.contentText]),
+		);
+		return items.map((item) => ({ ...item, text: (item.id && texts.get(item.id)) || '' }));
 	}
 
 	async get(user: User, pageId: string): Promise<DocPage> {
@@ -296,11 +341,11 @@ export class DocPageService {
 		);
 	}
 
-	async hasPage(type: DocPageResourceType, id: string) {
+	async hasPage(type: DocPageRootType, id: string) {
 		return (await this.docPageRepository.findByResource(type, id)) !== null;
 	}
 
-	async deleteByResource(type: DocPageResourceType, id: string) {
+	async deleteByResource(type: DocPageRootType, id: string) {
 		await this.docPageRepository.deleteByResource(type, id);
 	}
 
@@ -325,7 +370,10 @@ export class DocPageService {
 			isPublished: resource.isPublished,
 			properties: page.parentId === null ? resource.properties : null,
 			canEdit: await this.hasAccess(user, resource, 'update'),
-			breadcrumb: ancestors.map(({ id, title }) => ({ id, title })),
+			// The project page is the Docs tab itself, so the breadcrumb leaves it out.
+			breadcrumb: ancestors
+				.filter((a) => a.resourceType !== 'project')
+				.map(({ id, title }) => ({ id, title })),
 			children: children.map(({ id, title }) => ({ id, title })),
 			updatedAt: page.updatedAt.toISOString(),
 		};
@@ -464,7 +512,8 @@ export class DocPageService {
 		);
 
 		return pages.flatMap((page) => {
-			if (!page.resourceType || !page.resourceId || !page.kind) return [];
+			if (!page.resourceType || page.resourceType === 'project' || !page.resourceId || !page.kind)
+				return [];
 			const head =
 				page.resourceType === 'workflow'
 					? workflows.get(page.resourceId)

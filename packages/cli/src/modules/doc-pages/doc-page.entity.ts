@@ -1,9 +1,9 @@
-import type { DocPageKind, DocPageProperties, DocPageResourceType } from '@n8n/api-types';
+import type { DocPageKind, DocPageProperties, DocPageRootType } from '@n8n/api-types';
 import { JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index } from '@n8n/typeorm';
 
 /**
- * A documentation page. A root page belongs to one workflow or agent. A child
+ * A documentation page. A root page belongs to one workflow, agent or project. A child
  * page has a `parentId` and no resource.
  */
 @Entity({ name: 'doc_page' })
@@ -18,7 +18,7 @@ export class DocPageEntity extends WithTimestampsAndStringId {
 	parentId: string | null;
 
 	@Column({ type: 'varchar', length: 16, nullable: true })
-	resourceType: DocPageResourceType | null;
+	resourceType: DocPageRootType | null;
 
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	resourceId: string | null;

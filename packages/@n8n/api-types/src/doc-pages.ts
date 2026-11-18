@@ -8,6 +8,9 @@ export type DocPageKind = z.infer<typeof docPageKindSchema>;
 export const docPageResourceTypeSchema = z.enum(['workflow', 'agent']);
 export type DocPageResourceType = z.infer<typeof docPageResourceTypeSchema>;
 
+/** What a root page documents: a workflow, an agent, or a whole project. */
+export type DocPageRootType = DocPageResourceType | 'project';
+
 /** One schedule rule of a Schedule Trigger node. */
 export type DocScheduleRule =
 	| {
@@ -35,7 +38,7 @@ export type DocPageTrigger = { nodeName: string; nodeType: string; typeVersion: 
 			auth: 'none' | 'basicAuth' | 'headerAuth' | 'jwtAuth';
 	  }
 	| { type: 'form'; url: string; auth: 'none' | 'basicAuth' }
-	| { type: 'chat'; /** Set when the chat is public. */ url: string | null }
+	| { type: 'chat' /** Set when the chat is public. */; url: string | null }
 	| { type: 'schedule'; rules: DocScheduleRule[] }
 	| { type: 'event' }
 );
@@ -71,7 +74,7 @@ export type DocPage = {
 	id: string;
 	projectId: string;
 	parentId: string | null;
-	resourceType: DocPageResourceType | null;
+	resourceType: DocPageRootType | null;
 	resourceId: string | null;
 	kind: DocPageKind | null;
 	title: string;

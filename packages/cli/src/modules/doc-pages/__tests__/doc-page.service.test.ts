@@ -1,7 +1,7 @@
 import type { DocPageSummary } from '@n8n/api-types';
 import type { UrlService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
-import type { User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import type { Project, ProjectRepository, User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
@@ -58,6 +58,7 @@ const workflow = mock<WorkflowEntity>({
 describe('DocPageService', () => {
 	const docPageRepository = mock<DocPageRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
+	const projectRepository = mock<ProjectRepository>();
 	const service = new DocPageService(
 		docPageRepository,
 		workflowRepository,
@@ -66,6 +67,7 @@ describe('DocPageService', () => {
 		mock(),
 		mock(),
 		mock(),
+		projectRepository,
 		mock(),
 		mock<UrlService>({ getWebhookBaseUrl: () => 'https://n8n.example.com/' }),
 		mock<GlobalConfig>({
@@ -125,6 +127,26 @@ describe('DocPageService', () => {
 			expect(result.breadcrumb).toEqual([{ id: 'page1', title: 'Absence API' }]);
 			expect(result.canEdit).toBe(true);
 			expect(result.properties).toBeNull();
+		});
+
+		it('lets project editors write the project page and hides it in the breadcrumb', async () => {
+			const projectPage = page({ resourceType: 'project', resourceId: 'project1', kind: null });
+			docPageRepository.findById.mockResolvedValue(
+				page({ id: 'child', parentId: 'page1', resourceType: null, resourceId: null, kind: null }),
+			);
+			docPageRepository.findAncestors.mockResolvedValue([projectPage]);
+			projectRepository.findOneBy.mockResolvedValue(mock<Project>({ id: 'project1', name: 'HR' }));
+			vi.mocked(userHasScopes).mockImplementation(
+				async (_u, [scope]) => scope === 'project:read' || scope === 'workflow:update',
+			);
+
+			const result = await service.get(user, 'child');
+
+			expect(userHasScopes).toHaveBeenCalledWith(user, ['workflow:update'], false, {
+				projectId: 'project1',
+			});
+			expect(result.canEdit).toBe(true);
+			expect(result.breadcrumb).toEqual([]);
 		});
 
 		it('does not delete a root page', async () => {

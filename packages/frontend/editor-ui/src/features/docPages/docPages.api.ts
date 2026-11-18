@@ -19,6 +19,9 @@ export const searchPages = async (context: IRestApiContext, q: string) =>
 export const listProjectPages = async (context: IRestApiContext, projectId: string) =>
 	await makeRestApiRequest<DocPageSummary[]>(context, 'GET', `${BASE}/projects/${projectId}`);
 
+export const ensureProjectPage = async (context: IRestApiContext, projectId: string) =>
+	await makeRestApiRequest<DocPage>(context, 'POST', `${BASE}/projects/${projectId}/page`);
+
 export const ensurePage = async (
 	context: IRestApiContext,
 	resourceType: DocPageResourceType,

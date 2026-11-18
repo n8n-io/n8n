@@ -27,6 +27,9 @@ export const useDocPagesStore = defineStore('docPages', () => {
 	const ensurePage = async (resourceType: DocPageResourceType, resourceId: string) =>
 		await api.ensurePage(ctx(), resourceType, resourceId);
 
+	const ensureProjectPage = async (projectId: string) =>
+		await api.ensureProjectPage(ctx(), projectId);
+
 	const loadPage = async (id: string) => {
 		currentPage.value = await api.getPage(ctx(), id);
 		return currentPage.value;
@@ -68,6 +71,7 @@ export const useDocPagesStore = defineStore('docPages', () => {
 		search,
 		fetchProjectPages,
 		ensurePage,
+		ensureProjectPage,
 		loadPage,
 		updatePage,
 		createChildPage,

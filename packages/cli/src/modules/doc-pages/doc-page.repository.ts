@@ -1,4 +1,4 @@
-import type { DocPageProperties, DocPageResourceType } from '@n8n/api-types';
+import type { DocPageProperties, DocPageRootType } from '@n8n/api-types';
 import {
 	BaseRepository,
 	escapeLike,
@@ -68,7 +68,7 @@ export class DocPageRepository {
 	}
 
 	async findByResource(
-		resourceType: DocPageResourceType,
+		resourceType: DocPageRootType,
 		resourceId: string,
 		ctx: OperationContext = {},
 	) {
@@ -135,7 +135,7 @@ export class DocPageRepository {
 	}
 
 	async updatePropertiesByResource(
-		resourceType: DocPageResourceType,
+		resourceType: DocPageRootType,
 		resourceId: string,
 		properties: DocPageProperties | null,
 		ctx: OperationContext = {},
@@ -151,7 +151,7 @@ export class DocPageRepository {
 
 	/** The FK cascade removes the child pages. */
 	async deleteByResource(
-		resourceType: DocPageResourceType,
+		resourceType: DocPageRootType,
 		resourceId: string,
 		ctx: OperationContext = {},
 	) {
