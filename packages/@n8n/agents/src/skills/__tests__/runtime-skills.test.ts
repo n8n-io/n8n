@@ -124,6 +124,21 @@ Follow the workflow-building process.`);
 		});
 	});
 
+	it('ignores the removed policy.lifetime field', () => {
+		const result = parseRuntimeSkillMarkdown(`---
+name: router
+description: Route requests.
+policy:
+  lifetime: turn
+---
+
+Route it.`);
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.skill).not.toHaveProperty('policy');
+	});
+
 	it('rejects invalid SKILL.md frontmatter contract fields', () => {
 		const result = parseRuntimeSkillMarkdown(`---
 name: Workflow Builder
@@ -144,36 +159,6 @@ Body`);
 				expect.objectContaining({ code: 'unknown_field', field: 'interface.unknown' }),
 			]),
 		);
-	});
-
-	it('parses a turn lifetime from the skill policy', () => {
-		const result = parseRuntimeSkillMarkdown(`---
-name: router
-description: Route requests.
-policy:
-  lifetime: turn
----
-
-Pick a route.`);
-
-		expect(result.ok && result.skill.policy).toEqual({ lifetime: 'turn' });
-	});
-
-	it('rejects an unknown skill lifetime', () => {
-		const result = parseRuntimeSkillMarkdown(`---
-name: router
-description: Route requests.
-policy:
-  lifetime: forever
----
-
-Pick a route.`);
-
-		expect(result.ok).toBe(false);
-		if (result.ok) throw new Error('Expected skill validation to fail');
-		expect(result.errors).toEqual([
-			expect.objectContaining({ code: 'invalid_field', field: 'policy.lifetime' }),
-		]);
 	});
 
 	it('rejects SKILL.md files without instruction content', () => {
@@ -656,15 +641,10 @@ Use the workflow SDK.`,
 			sha256: 'guide-hash',
 		}));
 		const tool = createSkillLoadTool(source);
-		const activation = await tool.handler?.(
-			{ skillId: 'deferred' },
-			{ loadSkill: source.loadSkill },
-		);
+		const activation = await tool.handler?.({ skillId: 'deferred' }, {});
 		if (!isZodSchema(tool.outputSchema)) throw new Error('Expected Zod output schema');
 		expect(tool.outputSchema.safeParse(activation).success).toBe(true);
-		expect(activation).toMatchObject({
-			linkedFiles: { references: [{ path: 'references/guide.md' }] },
-		});
+		expect(skillLoadText(activation)).toContain('references/guide.md');
 		expect(source.loadFile).not.toHaveBeenCalled();
 		const file = await tool.handler?.({ skillId: 'deferred', filePath: 'references/guide.md' }, {});
 		expect(tool.outputSchema.safeParse(file).success).toBe(true);
@@ -1058,26 +1038,6 @@ describe('reference skills', () => {
 
 		const agents = skillLoadText(await loadTool.handler?.({ skillId: 'agents' }, {}));
 		expect(agents).toContain('- "models": "Load before choosing a model."');
-	});
-
-	it('returns the activation acknowledgement, version, and reference paths', async () => {
-		writeBuilderWithReferences();
-		const source = loadRuntimeSkillSourceFromDirectory(root);
-		const loadTool = createSkillLoadTool(source);
-
-		const result = await loadTool.handler?.(
-			{ skillId: 'builder' },
-			{ loadSkill: async (skillId: string) => await source.loadSkill(skillId) },
-		);
-
-		expect(result).toMatchObject({
-			success: true,
-			skillId: 'builder',
-			hash: source.registry.skills.find((skill) => skill.id === 'builder')?.hash,
-			content: 'The skill instructions are active. Follow them for this task.',
-			references: [{ skillId: 'models', description: 'Load before choosing a model.' }],
-			linkedFiles: { references: [expect.objectContaining({ path: 'references/notes.md' })] },
-		});
 	});
 
 	it('loads a reference by id or by its owner file path', async () => {

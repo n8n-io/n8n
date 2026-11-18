@@ -8,7 +8,7 @@ import {
 import { TELEMETRY_EVENT, type AssistantRuntime } from '@n8n/telemetry';
 import { isRecord } from '@n8n/utils/is-record';
 
-import type { Telemetry } from '@/telemetry';
+import type { TelemetryProxy } from '@n8n/backend-services';
 
 export interface BuilderAskedForInput {
 	userId: string;
@@ -33,7 +33,7 @@ function toTelemetryInputType(inputType: string): string {
  * classification of a card stays the same.
  */
 export function trackBuilderAskedForInput(
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	{ userId, threadId, inputThreadId, payload, runtime, approvalMode }: BuilderAskedForInput,
 ): void {
 	const inputType = typeof payload.inputType === 'string' ? payload.inputType : undefined;

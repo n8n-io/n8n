@@ -321,30 +321,41 @@ describe('folder shell import', () => {
 		).rejects.toBeInstanceOf(ConflictError);
 	});
 
-	it('rejects a package with folders when folders are not licensed', async () => {
+	const folderWithWorkflowPackage = async () =>
+		await buildEntityPackageBuffer({
+			folders: [{ target: 'folders/f', folder: serializedFolder({ id: 'F1', name: 'f' }) }],
+			workflows: [
+				{ target: 'folders/f/workflows/triage', workflow: serializedWorkflow({ id: 'WF' }) },
+			],
+		});
+
+	it('rejects a package that creates a folder when folders are not licensed', async () => {
 		licenseMocker.disable('feat:folders');
-		const packageBuffer = await buildEntityPackageBuffer({
-			folders: [{ target: 'folders/f', folder: serializedFolder({ id: 'F1', name: 'f' }) }],
-		});
-
-		await expect(
-			importFolders({ user: owner, projectId: project.id, packageBuffer }),
-		).rejects.toBeInstanceOf(ForbiddenError);
-	});
-
-	it('rejects a folders package when the API key lacks the folder:create scope', async () => {
-		const packageBuffer = await buildEntityPackageBuffer({
-			folders: [{ target: 'folders/f', folder: serializedFolder({ id: 'F1', name: 'f' }) }],
-		});
 
 		await expect(
 			importFolders({
 				user: owner,
 				projectId: project.id,
-				packageBuffer,
+				packageBuffer: await folderWithWorkflowPackage(),
+			}),
+		).rejects.toBeInstanceOf(ForbiddenError);
+
+		expect(await findFolder('F1')).toBeNull();
+		expect(await Container.get(WorkflowRepository).count()).toBe(0);
+	});
+
+	it('rejects a package that creates a folder when the API key lacks the folder:create scope', async () => {
+		await expect(
+			importFolders({
+				user: owner,
+				projectId: project.id,
+				packageBuffer: await folderWithWorkflowPackage(),
 				apiKeyScopes: ['workflow:import'],
 			}),
 		).rejects.toBeInstanceOf(ForbiddenError);
+
+		expect(await findFolder('F1')).toBeNull();
+		expect(await Container.get(WorkflowRepository).count()).toBe(0);
 	});
 
 	it('reports the real parent for a nested folder reused on re-import', async () => {
@@ -389,7 +400,13 @@ describe('folder shell import', () => {
 			],
 		});
 
-		const result = await importFolders({ user: owner, projectId: project.id, packageBuffer });
+		// An API key needs no folder:update to create a folder.
+		const result = await importFolders({
+			user: owner,
+			projectId: project.id,
+			packageBuffer,
+			apiKeyScopes: ['workflow:import', 'folder:create'],
+		});
 
 		expect(result.folders[0]).toMatchObject({ sourceFolderId: 'F1', status: 'created' });
 		const summary = result.workflows.find((w) => w.sourceWorkflowId === 'WF');
@@ -430,8 +447,8 @@ describe('folder shell import', () => {
 		expect((await findWorkflow(playground.localId))?.parentFolder?.id).toBe('C');
 	});
 
-	it('reuses the folder and updates the nested workflow on re-import', async () => {
-		const pkg = async () =>
+	it('reuses the folder and updates the nested workflow on re-import without folder access', async () => {
+		const pkg = async (workflowName: string) =>
 			await buildEntityPackageBuffer({
 				folders: [
 					{
@@ -442,7 +459,7 @@ describe('folder shell import', () => {
 				workflows: [
 					{
 						target: 'folders/in_progress/workflows/triage',
-						workflow: serializedWorkflow({ id: 'WF', name: 'triage' }),
+						workflow: serializedWorkflow({ id: 'WF', name: workflowName }),
 					},
 				],
 			});
@@ -450,17 +467,21 @@ describe('folder shell import', () => {
 		const first = await importFolders({
 			user: owner,
 			projectId: project.id,
-			packageBuffer: await pkg(),
+			packageBuffer: await pkg('triage'),
 		});
 		const localId = first.workflows[0].localId;
 
+		// The folder exists, so the re-import needs neither the folders license nor folder scopes.
+		licenseMocker.disable('feat:folders');
 		const second = await importFolders({
 			user: owner,
 			projectId: project.id,
-			packageBuffer: await pkg(),
+			packageBuffer: await pkg('triage v2'),
+			apiKeyScopes: ['workflow:import'],
 		});
 
 		expect(second.workflows[0]).toMatchObject({ status: 'updated', localId, parentFolderId: 'F1' });
+		expect((await findWorkflow(localId))?.name).toBe('triage v2');
 		expect(await Container.get(FolderRepository).countBy({ id: 'F1' })).toBe(1);
 		expect(await Container.get(WorkflowRepository).countBy({ id: localId })).toBe(1);
 	});

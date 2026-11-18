@@ -1,4 +1,4 @@
-import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
+import type { InstanceTypeAccessResponse, NodeTypeAvailabilityScope } from '@n8n/api-types';
 import { EventService, loginIdOf } from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -26,7 +26,12 @@ import {
 	type ProjectEffectivePolicy,
 } from './effective-policy';
 import { loadedCheckFor, packageResolverFor, policedTypeFor } from './package-resolver';
-import { evaluateComposedType, orderedAttachments, type ComposedVerdict } from './policy-evaluator';
+import {
+	evaluateComposedType,
+	evaluateRules,
+	orderedAttachments,
+	type ComposedVerdict,
+} from './policy-evaluator';
 import type { PolicyAction, PolicyAttachment, PolicyRule } from './policy-rule.types';
 import { lintPolicyRules, type PolicyRuleWarning } from './policy-rule-lint';
 import { TypeAvailabilityPolicySnapshot } from './type-availability-policy-snapshot';
@@ -824,6 +829,35 @@ export class TypeAvailabilityPolicyService {
 			version: result.scopeAfter.version,
 			rules: [...result.documentAfter.rules],
 			warnings,
+		};
+	}
+
+	/**
+	 * What the instance policy alone decides for each type, evaluated against one read so that
+	 * `version` matches the verdicts. Uncached for the reason on `getEffectivePolicy`.
+	 */
+	async getInstanceAccess(
+		kind: string,
+		typeNames: readonly string[],
+	): Promise<InstanceTypeAccessResponse> {
+		const effective = await this.getEffectivePolicy(kind, null);
+		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
+		const policedType = policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials);
+
+		return {
+			scopeId: effective.scopeId,
+			version: effective.version,
+			defaultAction: effective.defaultAction,
+			types: typeNames.map((name) => {
+				const { action, matchedRuleId } = evaluateRules(
+					effective.rules,
+					effective.defaultAction,
+					policedType(name),
+					resolvePackage,
+				);
+
+				return { name, access: action, matchedRuleId };
+			}),
 		};
 	}
 

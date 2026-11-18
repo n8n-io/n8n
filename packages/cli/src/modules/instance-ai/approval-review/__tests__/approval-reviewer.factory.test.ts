@@ -11,7 +11,7 @@ vi.mock('@n8n/instance-ai', async (importOriginal) => ({
 	judgeApproval,
 }));
 
-import type { Telemetry } from '@/telemetry';
+import type { TelemetryProxy } from '@n8n/backend-services';
 
 import type { InstanceAiCreditService } from '../../instance-ai-credit.service';
 import { InstanceAiApprovalReviewerFactory } from '../approval-reviewer.factory';
@@ -30,7 +30,7 @@ describe('InstanceAiApprovalReviewerFactory', () => {
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 	const creditService = mock<InstanceAiCreditService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const factory = new InstanceAiApprovalReviewerFactory(logger, creditService, telemetry);
 
 	const eventBus = mock<InstanceAiEventBus>();

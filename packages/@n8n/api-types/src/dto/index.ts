@@ -111,7 +111,10 @@ export { DeleteProjectDto } from './project/delete-project.dto';
 export { AddUsersToProjectDto } from './project/add-users-to-project.dto';
 export { ChangeUserRoleInProject } from './project/change-user-role-in-project.dto';
 export { TransferPreviewQueryDto } from './project/transfer-preview-query.dto';
-export { ListProjectsQueryDto } from './project/list-projects-query.dto';
+export {
+	ListProjectsQueryDto,
+	ListSharingCandidatesQueryDto,
+} from './project/list-projects-query.dto';
 export {
 	projectPublicSchema,
 	ProjectPublicDto,
@@ -839,10 +842,12 @@ export {
 	ContinueApplySelectionDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
+	PromoteSelectionResultDto,
 	applyPackageCountsSchema,
 	applyPackageResultSchema,
 	promotePackageCountsSchema,
 	promotePackageResultSchema,
+	promoteSelectionResultSchema,
 	promotionGitResultSchema,
 	promotionPromoteWarningSchema,
 	type PromotionPromoteWarning,

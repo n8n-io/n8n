@@ -230,6 +230,7 @@ export class N8nPackagesService {
 		const allFoldersBeforeAutoInclude = [
 			...(folderExportResult?.entries ?? []),
 			...(projectExportResult?.folderEntries ?? []),
+			...(agentExportResult?.folderEntries ?? []),
 		];
 		const allProjectsBeforeAutoInclude = [
 			...(projectExportResult?.entries ?? []),
@@ -464,6 +465,7 @@ export class N8nPackagesService {
 						includeTags,
 						versionPolicy,
 						includeArchived,
+						includeAgentFolders: request.includeAgents !== false,
 					})
 				: undefined;
 
@@ -494,6 +496,7 @@ export class N8nPackagesService {
 						includeTags,
 						versionPolicy,
 						includeArchived,
+						includeAgentFolders: request.includeAgents !== false,
 					})
 				: undefined;
 
@@ -504,12 +507,17 @@ export class N8nPackagesService {
 						user: request.user,
 						writer,
 						agentIds: request.agentIds,
+						folderIds: folderExportResult?.entries.map(({ id }) => id),
 						projectIds,
 						projectWorkflowIds: request.projectWorkflowIds,
 						versionPolicy,
 						dependencyPolicy,
 						includeArchived,
 						projectTargetsById: projectExportResult?.projectTargetsById,
+						existingFolderEntries: [
+							...(projectExportResult?.folderEntries ?? []),
+							...(folderExportResult?.entries ?? []),
+						],
 					});
 
 		return { folderExportResult, workflowExportResult, projectExportResult, agentExportResult };
@@ -606,10 +614,24 @@ export class N8nPackagesService {
 			if (!allowAgents) {
 				throw new BadRequestError('Agent packages require the ordinary archive import endpoint.');
 			}
+
 			if (!this.moduleRegistry.isActive('agents')) {
 				throw new BadRequestError('The Agents module is not enabled.');
 			}
 		}
+
+		if (!allowAgents && manifest.folders?.length) {
+			const prefixes = ['', ...(manifest.projects ?? []).map(({ target }) => `${target}/`)];
+
+			for (const prefix of prefixes) {
+				const folders = await this.packageParser.getFolders(reader, prefix);
+
+				if (folders.some((folder) => folder.resourceType === 'agent')) {
+					throw new BadRequestError('Agent folders require the ordinary archive import endpoint.');
+				}
+			}
+		}
+
 		return manifest;
 	}
 

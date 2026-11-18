@@ -13,7 +13,7 @@ import {
 	type WorkflowSuggestionBaseline,
 	type WorkflowSuggestionProposalDetail,
 } from '@n8n/api-types';
-import { RoleService } from '@n8n/backend-services';
+import { RoleService, TelemetryProxy } from '@n8n/backend-services';
 import {
 	SharedWorkflowRepository,
 	TransactionRunner,
@@ -29,7 +29,6 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import sortBy from 'lodash/sortBy';
 import uniqBy from 'lodash/uniqBy';
 
-import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { InboxSourceQuery } from '../../inbox/inbox-source.registry';
@@ -83,7 +82,7 @@ export class SelfHealingResultService {
 		private readonly configurationService: SelfHealingConfigurationService,
 		private readonly dependencies: WorkflowDependencyRepository,
 		private readonly workflowFinder: WorkflowFinderService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 	) {}
 
 	private trackState(

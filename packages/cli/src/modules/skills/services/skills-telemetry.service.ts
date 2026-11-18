@@ -1,9 +1,8 @@
 import { Logger } from '@n8n/backend-common';
+import { TelemetryProxy } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-
-import { Telemetry } from '@/telemetry';
 
 import type { Skill, SkillSource } from '../database/entities/skill.entity';
 import { SkillRepository } from '../database/repositories/skill.repository';
@@ -60,13 +59,13 @@ type SkillTelemetryTarget = Pick<Skill, 'id' | 'projectId'>;
 export type SkillTelemetryRef = SkillTelemetryTarget | string;
 
 /**
- * Skills telemetry. Callers emit only once the write commits, and only while the agents
- * module is on (`SkillsGate.isEnabled`). An emit never fails the write: an error is logged and dropped.
+ * Skills telemetry. Callers emit only once the write commits, and only while skills
+ * are on (`SkillsGate.isEnabled`). An emit never fails the write: an error is logged and dropped.
  */
 @Service()
 export class SkillsTelemetry {
 	constructor(
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly skillRepository: SkillRepository,
 		private readonly logger: Logger,
 	) {}

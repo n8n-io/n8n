@@ -96,6 +96,10 @@ describe('TelemetryEventRelay', () => {
 		versionNotifications: {
 			enabled: true,
 		},
+		publicApi: {
+			disabled: false,
+			swaggerUiDisabled: true,
+		},
 		executions: {
 			mode: 'regular',
 			timeout: -1,
@@ -2079,6 +2083,7 @@ describe('TelemetryEventRelay', () => {
 				packageNodeNames: ['CustomNode1', 'CustomNode2'],
 				packageAuthor: 'John Smith',
 				packageAuthorEmail: 'john@example.com',
+				source: 'mcp',
 			};
 
 			eventService.emit('community-package-installed', event);
@@ -2093,6 +2098,7 @@ describe('TelemetryEventRelay', () => {
 				package_author: 'John Smith',
 				package_author_email: 'john@example.com',
 				failure_reason: undefined,
+				source: 'mcp',
 			});
 		});
 
@@ -4556,6 +4562,8 @@ describe('TelemetryEventRelay', () => {
 					n8n_binary_data_mode: 'default',
 					n8n_deployment_type: 'default',
 					n8n_deployment_artifact: 'helm-chart/1.14.0',
+					public_api_disabled: false,
+					public_api_swagger_ui_disabled: true,
 					saml_enabled: false,
 					smtp_set_up: true,
 					system_info: {
