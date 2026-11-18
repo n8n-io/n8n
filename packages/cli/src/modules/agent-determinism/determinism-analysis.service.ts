@@ -14,6 +14,7 @@ import {
 	type DeterminismSource,
 } from './agent-determinism.contracts';
 import { DeterminismSourceRepository } from './database/determinism-source.repository';
+import { annotateDraft } from './draft-annotation';
 import { wrapWithGuards } from './draft-guards';
 import { DraftWorkflowWriter } from './draft-workflow.writer';
 import { buildAgentFallback, buildWorkflowFallback } from './fallback-node';
@@ -78,7 +79,9 @@ export class DeterminismAnalysisService {
 			cluster,
 			trainRuns: cluster.runs,
 		});
-		const draft = wrapWithGuards(translated, cluster.runs, await this.buildFallback(source));
+		const draft = annotateDraft(
+			wrapWithGuards(translated, cluster.runs, await this.buildFallback(source)),
+		);
 		const saved = await this.draftWriter.write(actor, source, draft);
 
 		const model = await this.modelResolver.resolve(actor, source.projectId);
