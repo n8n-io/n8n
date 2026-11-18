@@ -80,6 +80,16 @@ export class TaskBoardTemplateService {
 			columns: TEMPLATES[dto.templateKey].columns,
 		});
 
+		// The fallback agent takes tasks of the board, so it is on the team.
+		if (dto.agentId !== undefined) {
+			try {
+				await this.taskBoardService.addBoardAgent(projectId, board.id, dto.agentId);
+			} catch (error) {
+				await this.taskBoardService.deleteBoard(projectId, board.id);
+				throw error;
+			}
+		}
+
 		const workflowId = await this.createDispatcherWorkflow({
 			projectId,
 			boardId: board.id,

@@ -13,6 +13,7 @@ import {
 	Patch,
 	Post,
 	ProjectScope,
+	Put,
 	RestController,
 } from '@n8n/decorators';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
@@ -81,6 +82,20 @@ export class TaskBoardController {
 	async deleteBoard(req: ProjectRequest, _res: Response, @Param('boardId') boardId: string) {
 		await handleErrors(
 			async () => await this.taskBoardService.deleteBoard(req.params.projectId, boardId),
+		);
+		return true;
+	}
+
+	@Put('/:boardId/agents/:agentId')
+	@ProjectScope('workflow:update')
+	async addAgent(
+		req: ProjectRequest,
+		_res: Response,
+		@Param('boardId') boardId: string,
+		@Param('agentId') agentId: string,
+	) {
+		await handleErrors(
+			async () => await this.taskBoardService.addBoardAgent(req.params.projectId, boardId, agentId),
 		);
 		return true;
 	}

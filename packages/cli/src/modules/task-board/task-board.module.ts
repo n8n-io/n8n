@@ -25,7 +25,15 @@ export class TaskBoardModule implements ModuleInterface {
 			'./database/entities/task-board-comment.entity.js'
 		);
 
-		return [TaskBoardEntity, TaskBoardColumnEntity, TaskBoardTaskEntity, TaskBoardCommentEntity];
+		const { TaskBoardAgentEntity } = await import('./database/entities/task-board-agent.entity.js');
+
+		return [
+			TaskBoardEntity,
+			TaskBoardColumnEntity,
+			TaskBoardTaskEntity,
+			TaskBoardCommentEntity,
+			TaskBoardAgentEntity,
+		];
 	}
 
 	async context() {

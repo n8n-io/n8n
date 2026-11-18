@@ -15,6 +15,15 @@ const UNKNOWN_NAMES: Record<TaskBoardActorType, string> = {
 
 type AgentSummary = { id: string; name: string; projectId: string };
 
+/** An agent that a task of the project can have as assignee. */
+export type TaskBoardProjectAgent = {
+	id: string;
+	name: string;
+	description: string;
+	/** A dispatcher workflow can run only a published agent. */
+	isPublished: boolean;
+};
+
 /**
  * Resolves display names of users, agents and workflows. Agents live in the agents module,
  * which can be disabled, so agent lookups load it lazily and fall back to a generic name.
@@ -79,6 +88,31 @@ export class TaskBoardActorResolver {
 		if (!this.moduleRegistry.isActive('agents')) return undefined;
 		const [agent] = await this.findAgents([agentId]);
 		return agent?.projectId ?? null;
+	}
+
+	/**
+	 * The agents of the project that are not archived. Empty when the agents module is not
+	 * active. The description comes from the published version, which is the version that a
+	 * dispatcher workflow runs.
+	 */
+	async findProjectAgents(projectId: string): Promise<TaskBoardProjectAgent[]> {
+		if (!this.moduleRegistry.isActive('agents')) return [];
+		try {
+			const { AgentRepository } = await import('../agents/repositories/agent.repository.js');
+			const agents = await Container.get(AgentRepository).findByProjectId(projectId);
+			return agents
+				.filter((agent) => !agent.isArchived)
+				.map((agent) => ({
+					id: agent.id,
+					name: agent.name,
+					description: (agent.activeVersion?.schema ?? agent.schema)?.description?.trim() ?? '',
+					isPublished: agent.activeVersionId !== null,
+				}))
+				.sort((a, b) => a.name.localeCompare(b.name));
+		} catch (error) {
+			this.logger.warn('Could not list the agents of a task board project', { error });
+			return [];
+		}
 	}
 
 	async userExists(userId: string) {

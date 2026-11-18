@@ -44,6 +44,21 @@ export class TaskBoardProxyService implements TaskBoardProxyProvider {
 			async createTask(input, actor) {
 				return await service.createTask(projectId, input, actor);
 			},
+			async updateTask(taskId, fields, actor) {
+				const { title, description, severity, tags } = fields;
+				return await service.editTask(
+					projectId,
+					taskId,
+					{ title, description, severity, tags },
+					actor,
+				);
+			},
+			async handoffTask(taskId, to, actor) {
+				return await service.handoffTask(projectId, taskId, to, actor);
+			},
+			async recordUsage(taskId, usage) {
+				return await service.recordUsage(projectId, taskId, usage);
+			},
 			async addComment(taskId, body, actor) {
 				return await service.addComment(projectId, taskId, body, actor);
 			},
