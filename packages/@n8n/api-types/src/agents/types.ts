@@ -176,6 +176,8 @@ export interface AgentIntegrationAccountResponse {
 	botName?: string;
 	/** The workspaces or servers where the bot is installed. */
 	workspaceNames?: string[];
+	/** True when the platform has more workspaces than `workspaceNames` lists. */
+	hasMoreWorkspaces?: boolean;
 }
 
 export interface AgentIntegrationDraftEntry {

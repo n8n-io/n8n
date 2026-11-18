@@ -261,13 +261,7 @@ defineExpose({ onSetupTaskAction });
 					</template>
 
 					<AgentPanel
-						:header="
-							i18n.baseText(
-								isTriggerRedesignEnabled
-									? 'agents.builder.channel.title'
-									: 'agents.builder.triggers.title',
-							)
-						"
+						:header="i18n.baseText('agents.builder.triggers.title')"
 						:description="i18n.baseText('agents.builder.triggers.description')"
 						data-testid="agent-triggers-panel"
 					>
@@ -276,9 +270,11 @@ defineExpose({ onSetupTaskAction });
 								:disabled-reason="props.previewDisabledReason"
 								:icon-only="!isTriggerRedesignEnabled"
 								:is-runnable="props.agent?.isRunnable === true"
+								:is-preview-open="isTriggerRedesignEnabled && props.isPreviewOpen"
 								:validation-issues="props.configValidationIssues ?? []"
 								test-id="agent-triggers-preview-chat-button"
 								@open-preview="emit('open-preview', 'icon')"
+								@close-preview="emit('close-preview')"
 							/>
 						</template>
 						<AgentTriggersSection

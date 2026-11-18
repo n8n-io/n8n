@@ -311,11 +311,36 @@ describe('fetchDiscordAccount', () => {
 		).toBe(true);
 	});
 
-	it('leaves out each part whose request fails', async () => {
+	it.each([
+		{
+			failing: '/users/@me',
+			mode: 'http',
+			expected: { botName: undefined, workspaceNames: [GUILD_A.name] },
+		},
+		{
+			failing: '/users/@me/guilds',
+			mode: 'http',
+			expected: { botName: 'n8n-bot', workspaceNames: undefined },
+		},
+		{
+			failing: '/users/@me',
+			mode: 'transport',
+			expected: { botName: undefined, workspaceNames: [GUILD_A.name] },
+		},
+		{
+			failing: '/users/@me/guilds',
+			mode: 'transport',
+			expected: { botName: 'n8n-bot', workspaceNames: undefined },
+		},
+	])('leaves out $failing when its request fails ($mode)', async ({ failing, mode, expected }) => {
 		const stub = createHttpClientStub(({ url }) => {
 			const path = url.pathname.replace(/^\/api\/v\d+/, '');
 			const apiCall = { method: `GET ${path}`, body: {} };
-			if (path === '/users/@me') return { apiCall, responseBody: { message: 'no' }, status: 401 };
+			if (path === failing) {
+				if (mode === 'transport') throw new Error('socket hang up');
+				return { apiCall, responseBody: { message: 'no' }, status: 401 };
+			}
+			if (path === '/users/@me') return { apiCall, responseBody: { username: 'n8n-bot' } };
 			return { apiCall, responseBody: [GUILD_A] };
 		});
 
@@ -325,6 +350,28 @@ describe('fetchDiscordAccount', () => {
 			botToken: BOT_TOKEN,
 		});
 
-		expect(account).toEqual({ botName: undefined, workspaceNames: [GUILD_A.name] });
+		expect(account).toEqual(expected);
+	});
+
+	it('marks the server list as partial when Discord returns a full page', async () => {
+		const guilds = Array.from({ length: 200 }, (_, index) => ({
+			id: String(index),
+			name: `Server ${index}`,
+		}));
+		const stub = createHttpClientStub(({ url }) => {
+			const path = url.pathname.replace(/^\/api\/v\d+/, '');
+			const apiCall = { method: `GET ${path}`, body: {} };
+			if (path === '/users/@me') return { apiCall, responseBody: { username: 'n8n-bot' } };
+			return { apiCall, responseBody: guilds };
+		});
+
+		const account = await fetchDiscordAccount({
+			httpClient: stub.httpClient,
+			apiUrl: API_URL,
+			botToken: BOT_TOKEN,
+		});
+
+		expect(account.workspaceNames).toHaveLength(200);
+		expect(account.hasMoreWorkspaces).toBe(true);
 	});
 });
