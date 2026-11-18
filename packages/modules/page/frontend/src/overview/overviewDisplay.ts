@@ -35,37 +35,12 @@ export const TRIGGER_LABELS: Record<WorkflowTriggerCategory, BaseTextKey> = {
 	manual: 'page.overview.trigger.manual',
 };
 
-const PROJECT_ICON: IconName = 'layers';
-const CONNECTION_ICON: IconName = 'key-round';
-const NO_CONNECTION_ICON: IconName = 'unplug';
-
-/** How the header of a section shows. `accent` names a class of the accent styles. */
-export type SectionDisplay = { icon: IconName; label: string; accent: string };
-
-/**
- * Gives the icon, the label and the accent of a section.
- * A project section shows the name of its project. A connection section shows the name of its credential type.
- */
-export function toSectionDisplay(
+/** Gives the label of a section: the name of its project, or the name of its category. */
+export function toSectionLabel(
 	section: OverviewSection,
 	translate: (key: BaseTextKey) => string,
-): SectionDisplay {
-	switch (section.kind) {
-		case 'project':
-			return { icon: PROJECT_ICON, label: section.projectName, accent: section.kind };
-		case 'category':
-			return {
-				icon: CATEGORY_ICONS[section.category],
-				label: translate(CATEGORY_LABELS[section.category]),
-				accent: section.category,
-			};
-		case 'connection':
-			return { icon: CONNECTION_ICON, label: section.credentialType, accent: section.kind };
-		case 'noConnection':
-			return {
-				icon: NO_CONNECTION_ICON,
-				label: translate('page.overview.section.noConnection'),
-				accent: section.kind,
-			};
-	}
+): string {
+	return section.kind === 'project'
+		? section.projectName
+		: translate(CATEGORY_LABELS[section.category]);
 }

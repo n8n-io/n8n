@@ -1,6 +1,6 @@
 import type { PageOverviewTrigger } from '@n8n/api-types';
 
-import { toTriggerFact, type Translate } from './triggerFact';
+import { toTriggerFactText, type Translate } from './triggerFact';
 
 const TEXTS: Record<string, string> = {
 	'page.overview.fact.schedule.everyMinute': 'Every minute',
@@ -20,14 +20,13 @@ const translate: Translate = (key, interpolate = {}) =>
 		TEXTS[key] ?? key,
 	);
 
-const textOf = (trigger: PageOverviewTrigger | undefined) =>
-	toTriggerFact(trigger, translate)?.text;
+const textOf = (trigger: PageOverviewTrigger | undefined) => toTriggerFactText(trigger, translate);
 
-describe('toTriggerFact', () => {
+describe('toTriggerFactText', () => {
 	it('should show the method and the path of a webhook with one leading slash', () => {
-		expect(
-			toTriggerFact({ kind: 'webhook', method: 'POST', path: 'acme/orders' }, translate),
-		).toEqual({ icon: 'link', text: 'POST /acme/orders' });
+		expect(textOf({ kind: 'webhook', method: 'POST', path: 'acme/orders' })).toBe(
+			'POST /acme/orders',
+		);
 		expect(textOf({ kind: 'webhook', method: 'GET', path: '/orders' })).toBe('GET /orders');
 	});
 
@@ -66,7 +65,7 @@ describe('toTriggerFact', () => {
 		['a day that does not exist', { kind: 'schedule', field: 'weeks', triggerAtDay: [7] }],
 		['a cron rule without an expression', { kind: 'schedule', field: 'cronExpression' }],
 	])('should show nothing for %s', (_case, trigger) => {
-		expect(toTriggerFact(trigger, translate)).toBeUndefined();
+		expect(textOf(trigger)).toBeUndefined();
 	});
 
 	it('should show the title of a form and the events of an app trigger', () => {
@@ -77,6 +76,6 @@ describe('toTriggerFact', () => {
 	});
 
 	it('should show nothing without a trigger', () => {
-		expect(toTriggerFact(undefined, translate)).toBeUndefined();
+		expect(textOf(undefined)).toBeUndefined();
 	});
 });

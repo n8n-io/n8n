@@ -64,12 +64,21 @@ async function renderBoard(
 		props,
 		global: { plugins: [router] },
 	});
-	await wrapper.findByTestId('page-overview-coverage');
+	await waitFor(() =>
+		expect(
+			[
+				...wrapper.queryAllByTestId('page-overview-section'),
+				...wrapper.queryAllByTestId('page-overview-no-workflows'),
+			].length,
+		).toBeGreaterThan(0),
+	);
 	return { wrapper, router };
 }
 
 const sectionLabels = (wrapper: Awaited<ReturnType<typeof renderBoard>>['wrapper']) =>
-	wrapper.getAllByTestId('page-overview-section-label').map((label) => label.textContent);
+	wrapper
+		.getAllByTestId('page-overview-section')
+		.map((section) => section.getAttribute('aria-label'));
 
 const cardNames = (wrapper: Awaited<ReturnType<typeof renderBoard>>['wrapper']) =>
 	wrapper.getAllByTestId('page-overview-card-name').map((name) => name.textContent);
@@ -87,124 +96,30 @@ describe('PageOverviewBoard', () => {
 		vi.useRealTimers();
 	});
 
-	it('loads the overview of the project and tells how many workflows are documented', async () => {
+	it('loads the overview of the project and groups the workflows by how they start', async () => {
 		const { wrapper } = await renderBoard([manual, webhook, scheduled]);
 
 		expect(api.getPageOverview).toHaveBeenCalledWith(expect.anything(), 'project-1');
-		expect(wrapper.getByText('Documentation')).toBeInTheDocument();
-		expect(wrapper.getByTestId('page-overview-coverage')).toHaveTextContent(
-			'1 of 3 workflows documented',
-		);
-		expect(wrapper.getByTestId('page-overview-progress')).toHaveAttribute('aria-valuenow', '33');
-	});
-
-	it('groups the workflows by how they start, in the fixed order', async () => {
-		const { wrapper } = await renderBoard([manual, webhook, scheduled]);
-
 		expect(sectionLabels(wrapper)).toEqual(['Scheduled', 'API and webhooks', 'Manual']);
 		expect(cardNames(wrapper)).toEqual(['Daily report', 'Refund API', 'Fix data']);
-		expect(wrapper.getAllByTestId('page-overview-section')[0]).toHaveTextContent('Scheduled1');
-		expect(
-			wrapper.getAllByTestId('page-overview-group-by').map((option) => option.textContent),
-		).toEqual(['Trigger', 'Connection']);
 	});
 
-	it('offers one filter for each category that has workflows, and keeps one active', async () => {
-		const { wrapper } = await renderBoard([manual, webhook, scheduled]);
-		const filters = wrapper.getAllByTestId('page-overview-filter');
-
-		expect(filters.map((filter) => filter.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
-			'All 3',
-			'Scheduled 1',
-			'API and webhooks 1',
-			'Manual 1',
-			'Not documented 2',
-		]);
-		expect(filters[0]).toHaveAttribute('aria-pressed', 'true');
-
-		await fireEvent.click(filters[2]);
-
-		expect(cardNames(wrapper)).toEqual(['Refund API']);
-		expect(
-			wrapper
-				.getAllByTestId('page-overview-filter')
-				.filter((filter) => filter.getAttribute('aria-pressed') === 'true'),
-		).toHaveLength(1);
-
-		await fireEvent.click(wrapper.getAllByTestId('page-overview-filter')[4]);
-
-		expect(cardNames(wrapper)).toEqual(['Refund API', 'Fix data']);
-	});
-
-	it('tells when no workflow matches the filter', async () => {
-		const { wrapper } = await renderBoard([scheduled]);
-
-		await fireEvent.click(wrapper.getAllByTestId('page-overview-filter')[2]);
-
-		expect(wrapper.getByTestId('page-overview-no-match')).toBeInTheDocument();
-	});
-
-	it('groups the workflows by connection on request', async () => {
-		const { wrapper } = await renderBoard([manual, webhook, scheduled]);
-		const [byTrigger, byConnection] = wrapper.getAllByTestId('page-overview-group-by');
-		expect(byTrigger).toHaveAttribute('aria-pressed', 'true');
-
-		await fireEvent.click(byConnection);
-
-		expect(sectionLabels(wrapper)).toEqual(['slackApi', 'stripeApi', 'No connection']);
-		expect(cardNames(wrapper)).toEqual(['Refund API', 'Daily report', 'Refund API', 'Fix data']);
-	});
-
-	it('searches the workflow name, the page title, the excerpt and the project name', async () => {
-		const { wrapper } = await renderBoard([
-			manual,
-			{ ...webhook, projectName: 'Finance' },
-			scheduled,
-		]);
-		const search = wrapper.getByPlaceholderText('Search workflows and pages');
-		expect(wrapper.getByTestId('page-overview-search')).toBeInTheDocument();
-
-		await fireEvent.update(search, 'FIX');
-		expect(cardNames(wrapper)).toEqual(['Fix data']);
-
-		await fireEvent.update(search, 'runbook');
-		expect(cardNames(wrapper)).toEqual(['Daily report']);
-
-		await fireEvent.update(search, 'how it works');
-		expect(cardNames(wrapper)).toEqual(['Daily report']);
-
-		await fireEvent.update(search, 'finance');
-		expect(cardNames(wrapper)).toEqual(['Refund API']);
-
-		await fireEvent.update(search, 'nothing like this');
-		expect(wrapper.getByTestId('page-overview-no-match')).toBeInTheDocument();
-	});
-
-	it('combines the search with the filter', async () => {
+	it('shows no heading above the sections of a project', async () => {
 		const { wrapper } = await renderBoard([manual, webhook, scheduled]);
 
-		await fireEvent.update(wrapper.getByPlaceholderText('Search workflows and pages'), 'r');
-		expect(cardNames(wrapper)).toEqual(['Daily report', 'Refund API']);
-
-		await fireEvent.click(wrapper.getAllByTestId('page-overview-filter')[4]);
-		expect(cardNames(wrapper)).toEqual(['Refund API']);
+		expect(wrapper.getAllByTestId('page-overview-section')).toHaveLength(3);
+		expect(wrapper.queryByTestId('page-overview-section-label')).not.toBeInTheDocument();
+		expect(wrapper.queryByTestId('page-overview-section-toggle')).not.toBeInTheDocument();
 	});
 
-	it('collapses and expands the cards of a section', async () => {
-		const { wrapper } = await renderBoard([manual, webhook, scheduled]);
-		const [firstToggle, secondToggle] = wrapper.getAllByTestId('page-overview-section-toggle');
-		expect(firstToggle).toHaveAttribute('aria-expanded', 'true');
+	it('shows only the sections and their cards', async () => {
+		const { wrapper } = await renderBoard([manual]);
 
-		await fireEvent.click(firstToggle);
-
-		expect(firstToggle).toHaveAttribute('aria-expanded', 'false');
-		expect(secondToggle).toHaveAttribute('aria-expanded', 'true');
-		expect(sectionLabels(wrapper)).toEqual(['Scheduled', 'API and webhooks', 'Manual']);
-		expect(cardNames(wrapper)).toEqual(['Refund API', 'Fix data']);
-
-		await fireEvent.click(firstToggle);
-
-		expect(cardNames(wrapper)).toEqual(['Daily report', 'Refund API', 'Fix data']);
+		expect(wrapper.getByTestId('page-overview-board').children).toHaveLength(1);
+		expect(wrapper.queryByRole('heading', { level: 2 })).not.toBeInTheDocument();
+		expect(wrapper.queryByRole('progressbar')).not.toBeInTheDocument();
+		expect(wrapper.queryByRole('textbox')).not.toBeInTheDocument();
+		expect(wrapper.queryByRole('switch')).not.toBeInTheDocument();
 	});
 
 	describe('without a project', () => {
@@ -225,23 +140,34 @@ describe('PageOverviewBoard', () => {
 			page: runbook,
 		});
 
-		it('spans every readable project and groups by project by default', async () => {
+		it('spans every readable project and groups by project', async () => {
 			const { wrapper } = await renderBoard(
 				[...inProject('sales', 'Sales', 2), ...inProject('ops', 'Ops', 1)],
 				{},
 			);
 
 			expect(api.getPageOverview).toHaveBeenCalledWith(expect.anything(), undefined);
-			expect(
-				wrapper.getAllByTestId('page-overview-group-by').map((option) => option.textContent),
-			).toEqual(['Project', 'Trigger', 'Connection']);
-			expect(wrapper.getAllByTestId('page-overview-group-by')[0]).toHaveAttribute(
-				'aria-pressed',
-				'true',
-			);
 			expect(sectionLabels(wrapper)).toEqual(['Ops', 'Sales']);
-			expect(wrapper.queryByTestId('page-overview-card-project')).not.toBeInTheDocument();
 			expect(wrapper.queryByTestId('page-overview-view-all')).not.toBeInTheDocument();
+		});
+
+		it('collapses and expands the cards of a project', async () => {
+			const { wrapper } = await renderBoard(
+				[...inProject('sales', 'Sales', 1), ...inProject('ops', 'Ops', 1)],
+				{},
+			);
+			const [firstToggle, secondToggle] = wrapper.getAllByTestId('page-overview-section-toggle');
+			expect(firstToggle).toHaveAttribute('aria-expanded', 'true');
+
+			await fireEvent.click(firstToggle);
+
+			expect(firstToggle).toHaveAttribute('aria-expanded', 'false');
+			expect(secondToggle).toHaveAttribute('aria-expanded', 'true');
+			expect(cardNames(wrapper)).toEqual(['Sales 0']);
+
+			await fireEvent.click(firstToggle);
+
+			expect(cardNames(wrapper)).toEqual(['Ops 0', 'Sales 0']);
 		});
 
 		it('shows at most 4 cards of a project, the documented first, then a tile for the rest', async () => {
@@ -257,16 +183,6 @@ describe('PageOverviewBoard', () => {
 			expect(wrapper.emitted('select-project')).toEqual([['ops']]);
 			expect(wrapper.emitted('select-page')).toBeUndefined();
 		});
-
-		it('names the project of each card in the other groupings, and shows every card', async () => {
-			const { wrapper } = await renderBoard(inProject('ops', 'Ops', 5), {});
-
-			await fireEvent.click(wrapper.getAllByTestId('page-overview-group-by')[1]);
-
-			expect(cardNames(wrapper)).toHaveLength(5);
-			expect(wrapper.getAllByTestId('page-overview-card-project')[0]).toHaveTextContent('Ops');
-			expect(wrapper.queryByTestId('page-overview-view-all')).not.toBeInTheDocument();
-		});
 	});
 
 	describe('a documented card', () => {
@@ -278,12 +194,7 @@ describe('PageOverviewBoard', () => {
 			expect(within(card).getByTestId('page-overview-card-excerpt')).toHaveTextContent(
 				'How it works.',
 			);
-			expect(within(card).getByTestId('page-overview-card-active')).toHaveTextContent('Active');
-			expect(within(card).getByTestId('page-overview-card-more-pages')).toHaveTextContent(
-				'+2 more',
-			);
 			expect(within(card).getByTestId('page-overview-card-nodes').children).toHaveLength(2);
-			expect(within(card).queryByTestId('page-overview-card-project')).not.toBeInTheDocument();
 			expect(within(card).getByTestId('page-overview-card-trigger')).toHaveTextContent('Schedule');
 			expect(within(card).queryByTestId('page-overview-card-fact')).not.toBeInTheDocument();
 		});
@@ -308,42 +219,13 @@ describe('PageOverviewBoard', () => {
 			).toEqual(['Schedule', 'API', 'Manual']);
 		});
 
-		it('asks the host to show the page on a click on the card or on Read', async () => {
+		it('asks the host to show the page on a click on the card', async () => {
 			const { wrapper } = await renderBoard([scheduled]);
 
 			await fireEvent.click(wrapper.getByTestId('page-overview-card'));
-			await fireEvent.click(wrapper.getByTestId('page-overview-card-read'));
 
-			expect(wrapper.getByTestId('page-overview-card-read')).toHaveTextContent('Read');
-			expect(wrapper.emitted('select-page')).toEqual([['page-1'], ['page-1']]);
-		});
-
-		it('starts the tour of the page on the workflow', async () => {
-			const { wrapper, router } = await renderBoard([scheduled]);
-
-			await fireEvent.click(wrapper.getByTestId('page-overview-card-tour'));
-
-			await waitFor(() =>
-				expect(router.currentRoute.value.fullPath).toBe('/workflow/wf-report?pageTour=page-1'),
-			);
-			expect(wrapper.emitted('select-page')).toBeUndefined();
-		});
-
-		it('hides the tour of a page that links to no node of the workflow', async () => {
-			const { wrapper } = await renderBoard([{ ...scheduled, page: runbook }]);
-
-			expect(wrapper.queryByTestId('page-overview-card-tour')).not.toBeInTheDocument();
-		});
-
-		it('links to the workflow without a request to show the page', async () => {
-			const { wrapper, router } = await renderBoard([scheduled]);
-			const link = wrapper.getByTestId('page-overview-card-open-workflow');
-
-			expect(link).toHaveAttribute('href', '/workflow/wf-report');
-			await fireEvent.click(link);
-
-			await waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/workflow/wf-report'));
-			expect(wrapper.emitted('select-page')).toBeUndefined();
+			expect(wrapper.emitted('select-page')).toEqual([['page-1']]);
+			expect(within(wrapper.getByTestId('page-overview-card')).queryByRole('button')).toBeNull();
 		});
 
 		it('marks a page that is older than its workflow', async () => {
@@ -359,7 +241,7 @@ describe('PageOverviewBoard', () => {
 			expect(stickers[0]).toHaveAttribute('aria-label', 'The workflow changed after this page');
 		});
 
-		it('shows the result of the last execution and offers the runbook after a failure', async () => {
+		it('shows the result of the last execution', async () => {
 			const { wrapper } = await renderBoard([
 				{
 					...scheduled,
@@ -374,25 +256,21 @@ describe('PageOverviewBoard', () => {
 			]);
 
 			const [failed, succeeded] = wrapper.getAllByTestId('page-overview-health');
-			const [failedRead, succeededRead] = wrapper.getAllByTestId('page-overview-card-read');
 
 			expect(wrapper.getAllByTestId('page-overview-health')).toHaveLength(2);
 			expect(failed).toHaveAttribute('aria-label', 'The last execution failed');
 			expect(failed).toHaveAttribute('data-status', 'error');
 			expect(succeeded).toHaveAttribute('aria-label', 'The last execution succeeded');
-			expect(failedRead).toHaveTextContent('Open runbook');
-			expect(succeededRead).toHaveTextContent('Read');
 		});
 	});
 
 	describe('a card of a workflow without a page', () => {
-		it('creates a page that links to the workflow, then asks the host to show it', async () => {
+		it('creates a page that links to the workflow on a click on the card, then asks the host to show it', async () => {
 			api.createPage.mockResolvedValue(createPage({ id: 'page-9', title: 'Refund API' }));
 			const { wrapper } = await renderBoard([webhook]);
 			const card = wrapper.getByTestId('page-overview-card-undocumented');
-			expect(card).toHaveTextContent('No page yet');
 
-			await fireEvent.click(within(card).getByTestId('page-overview-card-write'));
+			await fireEvent.click(card);
 
 			await waitFor(() => expect(wrapper.emitted('select-page')).toEqual([['page-9']]));
 			expect(api.createPage).toHaveBeenCalledWith(expect.anything(), 'project-1', {
@@ -402,20 +280,22 @@ describe('PageOverviewBoard', () => {
 			expect(api.getPageOverview).toHaveBeenCalledTimes(2);
 		});
 
-		it('does not ask for a page on a click on the card', async () => {
+		it('shows no excerpt', async () => {
 			const { wrapper } = await renderBoard([webhook]);
 
-			await fireEvent.click(wrapper.getByTestId('page-overview-card-undocumented'));
-
-			expect(wrapper.emitted('select-page')).toBeUndefined();
-			expect(wrapper.queryByTestId('page-overview-card-read')).not.toBeInTheDocument();
+			expect(wrapper.queryByTestId('page-overview-card-excerpt')).not.toBeInTheDocument();
 		});
 
-		it('hides the creation from a user who cannot create a page', async () => {
+		it('opens the workflow for a user who cannot create a page', async () => {
 			provideScopes(['page:list', 'page:read']);
-			const { wrapper } = await renderBoard([webhook]);
+			const { wrapper, router } = await renderBoard([webhook]);
 
 			expect(wrapper.queryByTestId('page-overview-card-write')).not.toBeInTheDocument();
+			await fireEvent.click(wrapper.getByTestId('page-overview-card-undocumented'));
+
+			await waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/workflow/wf-refund'));
+			expect(api.createPage).not.toHaveBeenCalled();
+			expect(wrapper.emitted('select-page')).toBeUndefined();
 		});
 	});
 
@@ -423,7 +303,7 @@ describe('PageOverviewBoard', () => {
 		const { wrapper } = await renderBoard([]);
 
 		expect(wrapper.getByTestId('page-overview-no-workflows')).toBeInTheDocument();
-		expect(wrapper.queryByTestId('page-overview-filter')).not.toBeInTheDocument();
+		expect(wrapper.queryByTestId('page-overview-section')).not.toBeInTheDocument();
 	});
 
 	it('gives the undocumented workflows to the actions of the shell', async () => {

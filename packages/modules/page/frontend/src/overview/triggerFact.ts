@@ -1,21 +1,10 @@
 import type { PageOverviewTrigger } from '@n8n/api-types';
-import type { IconName } from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 
 type ScheduleTrigger = Extract<PageOverviewTrigger, { kind: 'schedule' }>;
 
 /** Gives the text of a key, with the values that the text names. */
 export type Translate = (key: BaseTextKey, interpolate?: Record<string, string>) => string;
-
-/** The key fact of a trigger, ready to show. */
-export type TriggerFact = { icon: IconName; text: string };
-
-const FACT_ICONS: Record<PageOverviewTrigger['kind'], IconName> = {
-	webhook: 'link',
-	schedule: 'calendar',
-	form: 'file-text',
-	appEvent: 'zap',
-};
 
 const WEEKDAY_KEYS: BaseTextKey[] = [
 	'page.overview.fact.weekday.0',
@@ -126,15 +115,13 @@ function toFactText(trigger: PageOverviewTrigger, translate: Translate): string 
 }
 
 /**
- * Gives the key fact of a trigger as an icon and a text.
+ * Gives the key fact of a trigger as a text.
  * Returns `undefined` for no trigger and for a trigger that it cannot describe.
  */
-export function toTriggerFact(
+export function toTriggerFactText(
 	trigger: PageOverviewTrigger | undefined,
 	translate: Translate,
-): TriggerFact | undefined {
+): string | undefined {
 	const text = trigger === undefined ? undefined : toFactText(trigger, translate);
-	return trigger === undefined || text === undefined || text === ''
-		? undefined
-		: { icon: FACT_ICONS[trigger.kind], text };
+	return text === '' ? undefined : text;
 }

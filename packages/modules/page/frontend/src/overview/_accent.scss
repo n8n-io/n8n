@@ -1,4 +1,4 @@
-// The accent colors of the documentation overview. They reuse the sticky note colors,
+// The accent colors of the trigger categories. They reuse the sticky note colors,
 // which have a light and a dark value.
 $accents: (
 	'schedule': 5,
@@ -8,19 +8,20 @@ $accents: (
 	'appEvent': 3,
 	'subWorkflow': 1,
 	'manual': 7,
-	'project': 7,
-	'connection': 5,
-	'noConnection': 7,
 );
 
-/// Declares one class for each accent. A class sets the accent variables for its subtree.
+/// Declares one class for each category. A class sets the accent variables for its subtree.
 @mixin classes {
 	@each $name, $variant in $accents {
 		.#{$name} {
 			--page-overview--accent--color--background: var(
 				--sticky--color--background--variant-#{$variant}
 			);
-			--page-overview--accent--border-color: var(--sticky--border-color--variant-#{$variant});
+			--page-overview--accent--color--text: color-mix(
+				in oklch,
+				var(--sticky--border-color--variant-#{$variant}) 55%,
+				var(--text-color)
+			);
 		}
 	}
 }
