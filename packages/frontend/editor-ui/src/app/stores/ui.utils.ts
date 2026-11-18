@@ -21,7 +21,7 @@ export const THEME_FAMILIES: Record<
 	Partial<Record<AppliedThemeOption, ThemePalette | null>>
 > = {
 	default: { light: null, dark: null },
-	catppuccin: { light: 'catppuccin-latte', dark: 'catppuccin-mocha' },
+	catppuccin: { dark: 'catppuccin-mocha' },
 	dracula: { dark: 'dracula' },
 	// The dark variant is the GitHub Dark High Contrast palette.
 	'high-contrast': { light: 'high-contrast-light', dark: 'github-dark-high-contrast' },
@@ -37,7 +37,8 @@ const LEGACY_THEMES: Record<string, ThemeSelection> = {
 	system: { mode: 'system', family: 'default' },
 	light: { mode: 'light', family: 'default' },
 	dark: { mode: 'dark', family: 'default' },
-	'catppuccin-latte': { mode: 'light', family: 'catppuccin' },
+	// Catppuccin has no light variant any more. Keep the light mode.
+	'catppuccin-latte': { mode: 'light', family: 'default' },
 	dracula: { mode: 'dark', family: 'dracula' },
 	'high-contrast-light': { mode: 'light', family: 'high-contrast' },
 	'high-contrast-dark': { mode: 'dark', family: 'high-contrast' },

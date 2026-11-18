@@ -973,7 +973,6 @@ export type AppliedThemeOption = 'light' | 'dark';
 export type ThemeMode = AppliedThemeOption | 'system';
 /** The `data-palette` values. `_palettes.scss` has one block for each value. */
 export type ThemePalette =
-	| 'catppuccin-latte'
 	| 'catppuccin-mocha'
 	| 'dracula'
 	| 'high-contrast-light'

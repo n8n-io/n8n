@@ -322,7 +322,6 @@ export function useGenericCommands(): CommandGroup {
 			keywords: [
 				'theme',
 				'catppuccin',
-				'latte',
 				'mocha',
 				'dracula',
 				'high contrast',
