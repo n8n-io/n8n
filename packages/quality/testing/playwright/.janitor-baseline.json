@@ -1,7 +1,5 @@
 {
 	"version": 1,
-	"generated": "2026-11-18T00:13:57.018Z",
-	"totalViolations": 49,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
