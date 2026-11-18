@@ -55,6 +55,9 @@ const loadActivityTool = lazyMod(
 const loadSaveUserPreferenceTool = lazyMod(
 	() => require('./save-user-preference.tool') as typeof import('./save-user-preference.tool'),
 );
+const loadCreatePageTool = lazyMod(
+	() => require('./create-page.tool') as typeof import('./create-page.tool'),
+);
 const loadSkillsTool = lazyMod(() => require('./skills.tool') as typeof import('./skills.tool'));
 const loadN8nDocsTool = lazyMod(
 	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
@@ -254,6 +257,13 @@ function getOrchestratorDomainToolFactories(
 
 	if (context.appService) {
 		tools.push([DOMAIN_TOOL_IDS.APPS, () => loadAppsTool().createAppsTool(context)]);
+	}
+
+	if (context.pageService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.CREATE_PAGE,
+			() => loadCreatePageTool().createCreatePageTool(context),
+		]);
 	}
 
 	// Registered on every turn, with or without files, so the tool list, which

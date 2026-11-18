@@ -24,6 +24,17 @@ export function isSmallPayload(detail: unknown): boolean {
 	return JSON.stringify(detail).length <= PARAMETERS_INLINE_LIMIT_BYTES;
 }
 
+/** The id of a node, next to the name that the structure shows. */
+export interface NodeIdEntry {
+	name: string;
+	id: string;
+}
+
+/** Lists the id of each node by name. A node without an id is left out. */
+export function indexNodeIds(nodes: WorkflowNode[]): NodeIdEntry[] {
+	return nodes.flatMap(({ name, id }) => (id === undefined ? [] : [{ name, id }]));
+}
+
 const CONNECTION_TYPES = new Set<string>(Object.values(NodeConnectionTypes));
 
 function isConnection(value: unknown): value is IConnection {

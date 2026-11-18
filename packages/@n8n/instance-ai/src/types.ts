@@ -152,6 +152,8 @@ export interface WorkflowDetail extends WorkflowSummary {
 }
 
 export interface WorkflowNode {
+	/** The id that the editor path of the node uses. Absent in a past version. */
+	id?: string;
 	name: string;
 	type: string;
 	typeVersion?: number;
@@ -1315,6 +1317,25 @@ export interface InstanceAiDataTableService {
 	): Promise<{ deletedCount: number; dataTableId: string; tableName: string; projectId: string }>;
 }
 
+/** A page that the assistant wrote. */
+export interface InstanceAiCreatedPage {
+	id: string;
+	title: string;
+	projectId: string;
+}
+
+export interface InstanceAiPageService {
+	/**
+	 * Creates a markdown page. Without a `projectId`, the page goes to the project of the thread.
+	 * Fails when the user cannot create pages in the project, or when the project is not the one of the thread.
+	 */
+	createPage(input: {
+		title: string;
+		content: string;
+		projectId?: string;
+	}): Promise<InstanceAiCreatedPage>;
+}
+
 export interface InstanceAiAppService {
 	createApp(input: {
 		name: string;
@@ -1785,6 +1806,8 @@ export interface InstanceAiContext {
 	aiPreferenceService?: InstanceAiPreferenceService;
 	skillService?: InstanceAiSkillService;
 	appService?: InstanceAiAppService;
+	/** Present only when the page module is active. Its absence hides the `create_page` tool. */
+	pageService?: InstanceAiPageService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */

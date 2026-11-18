@@ -1111,6 +1111,26 @@ describe('workflows tool', () => {
 			updatedAt: '2024-01-01',
 		};
 
+		it('should list the node ids of a large workflow next to its structure', async () => {
+			const context = createMockContext();
+			(context.workflowService.get as Mock).mockResolvedValue({
+				...detail,
+				nodes: detail.nodes.map((node, index) => ({ ...node, id: `node-${index}` })),
+			});
+
+			const result = await executeTool<{ nodeIds: unknown }>(
+				createWorkflowToolRouter(context),
+				{ action: 'get', workflowId: 'wf1' },
+				{} as never,
+			);
+
+			expect(result.nodeIds).toEqual([
+				{ name: 'Webhook', id: 'node-0' },
+				{ name: 'IF', id: 'node-1' },
+				{ name: 'Set', id: 'node-2' },
+			]);
+		});
+
 		it('should return the structure as SDK code for large workflows', async () => {
 			const context = createMockContext();
 			(context.workflowService.get as Mock).mockResolvedValue(detail);
@@ -1128,6 +1148,7 @@ describe('workflows tool', () => {
 				createdAt: '2024-01-01',
 				updatedAt: '2024-01-01',
 				nodeCount: 3,
+				nodeIds: [],
 				structure: '// generated code',
 				note: STRUCTURE_ONLY_NOTE,
 			});

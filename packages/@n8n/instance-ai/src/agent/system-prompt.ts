@@ -27,6 +27,8 @@ interface SystemPromptOptions {
 	conversationHistoryEnabled?: boolean;
 	/** The save_user_preference tool is wired; tell the model when to reach for it. */
 	preferenceSavingEnabled?: boolean;
+	/** The create_page tool is wired. Tell the model when to write a page. */
+	pageWritingEnabled?: boolean;
 	skillManagementEnabled?: boolean;
 	/** The start-cloud-browser-task tool is wired; tell the model when and how to delegate to it. */
 	cloudBrowserEnabled?: boolean;
@@ -149,6 +151,7 @@ Before treating a request as a build, work out whether it points at a workflow t
   - Agent: \`[Support Agent](/projects/<projectId>/agents/<agentId>)\`
   - App: \`[Order Portal](/projects/<projectId>/apps/<appId>)\`
   - Credential: \`[Gmail account](/projects/<projectId>/credentials/<credentialId>)\`
+  - Page: \`[Invoice Sync runbook](/page/<pageId>)\`
   - Skill: \`[Tone guide](/settings/context/skills?skillId=<skillId>)\`
 
   Take each id from a tool result or \`<project-context>\`, never from memory or a guess. If you are missing an id, write the name without a link. Do not show a bare id like "(ID 234)" in its place.
@@ -191,6 +194,13 @@ function getPreferenceSavingSection(): string {
 ## Saving Preferences
 
 When the user's own words describe a lasting rule, choice, or thing to avoid for future work, not only for the current task, call \`save_user_preference\` and save it. Do not save a one-off instruction for the current task, and do not save casual chat. Do not tell the user you saved a preference until the tool returns a success. Tell them they can edit or undo it from the card in the chat. If the tool refuses the text as too long, shorten it to the limit the result names and call it once more. On any other refusal, tell the user why nothing was saved and do not call it again in this turn.`;
+}
+
+function getPageWritingSection(): string {
+	return `
+## Writing Pages
+
+A page is a Markdown document that the team keeps in a project. When the user asks you to document a workflow, to explain it in writing, or to write a runbook or notes for it, write a page with \`create_page\`. First read the workflow with \`get_workflow\` through \`call_tool\`, so that the page states only what the workflow does and links its real node ids. Do not put the full text of the page in your reply. Answer with one or two sentences and a link to the page, from the \`url\` that the tool returns. Do not tell the user that the page exists until the tool returns it.`;
 }
 
 /** Which browser to use when the user's own browser is offered too. */
@@ -307,6 +317,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			workspaceRoot,
 			conversationHistoryEnabled,
 			preferenceSavingEnabled,
+			pageWritingEnabled,
 			skillManagementEnabled,
 			cloudBrowserEnabled,
 			setupPanelEnabled,
@@ -320,6 +331,7 @@ ${getExistingResourcesSection()}
 ${getPreviewTabsSection()}
 ${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${preferenceSavingEnabled ? getPreferenceSavingSection() : ''}
+${pageWritingEnabled ? getPageWritingSection() : ''}
 ${SECRET_ASK_GUARDRAIL}
 ${SECRET_PASTE_GUARDRAIL}
 ${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}

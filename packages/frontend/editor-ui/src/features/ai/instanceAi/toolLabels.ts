@@ -164,6 +164,7 @@ export function getToolIcon(rawToolName: string): IconName {
 		return 'table';
 	if (toolName === 'activity') return 'history';
 	if (toolName === 'conversation-history') return 'message-square';
+	if (toolName === 'create_page') return 'file-text';
 	if (toolName === 'mcp-servers') return 'plug';
 	if (
 		WORKFLOW_TOOL_NAMES.includes(toolName) ||

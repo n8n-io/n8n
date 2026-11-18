@@ -8,6 +8,7 @@ export const resourceIcons: Record<string, InstanceType<typeof ResourceIcon>['$p
 	assistant: 'message-circle',
 	skill: 'graduation-cap',
 	app: 'layout-grid',
+	page: 'file-text',
 };
 export const INTERNAL_ROUTE_PATTERNS = [
 	{ pattern: /^\/workflow\/([a-zA-Z0-9]+)/, type: 'workflow' },
@@ -18,6 +19,8 @@ export const INTERNAL_ROUTE_PATTERNS = [
 	{ pattern: /^\/projects\/[^/]+\/datatables(?:\/|$)/, type: 'data-table' },
 	{ pattern: /^\/projects\/[^/]+\/agents(?:\/|$)/, type: 'agent' },
 	{ pattern: /^\/projects\/[^/]+\/apps(?:\/|$)/, type: 'app' },
+	{ pattern: /^\/page\/[^/]+$/, type: 'page' },
+	{ pattern: /^\/projects\/[^/]+\/pages\/[^/]+$/, type: 'page' },
 ];
 
 export function getResourceLinkIcon(href: string, origin = window.location.origin) {

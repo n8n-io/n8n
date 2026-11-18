@@ -3,6 +3,7 @@ import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-util
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	CreateAppDto,
+	CreatePageDto,
 	ListAppsQueryDto,
 	SetAppBindingsDto,
 	AI_ASSISTANT_AT_MENTIONS_FLAG,
@@ -57,6 +58,7 @@ import { redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
 import { Container, Service } from '@n8n/di';
 import type {
 	InstanceAiAppService,
+	InstanceAiPageService,
 	InstanceAiContext,
 	InstanceAiConversationHistoryReader,
 	InstanceAiWorkflowService,
@@ -714,6 +716,7 @@ export class InstanceAiAdapterService {
 				: {}),
 			skillService: this.getSkillService(user, assistantSkillsEnabled === true),
 			appService: this.createAppAdapter(user, projectId, threadId),
+			pageService: this.createPageAdapter(user, projectId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user, projectId),
 			templatesService: this.getTemplatesService(),
@@ -3615,6 +3618,33 @@ export class InstanceAiAdapterService {
 		};
 	}
 
+	/** Returns the page writer of this run, or undefined when the page module is inactive. */
+	private createPageAdapter(
+		user: User,
+		boundProjectId?: string,
+	): InstanceAiPageService | undefined {
+		if (!Container.get(ModuleRegistry).isActive('page')) return undefined;
+		const { resolveProjectId, assertInBoundProject } = this.createProjectScopeHelpers(
+			user,
+			boundProjectId,
+		);
+
+		return {
+			createPage: async ({ title, content, projectId }) => {
+				this.assertInstanceNotReadOnly('pages');
+				const pageProjectId = await resolveProjectId(['page:create'], projectId);
+				assertInBoundProject(pageProjectId);
+				const { PageService } = await import('@n8n/backend-module-page');
+				const page = await Container.get(PageService).createPage(
+					pageProjectId,
+					user,
+					CreatePageDto.parse({ title, content }),
+				);
+				return { id: page.id, title: page.title, projectId: page.projectId };
+			},
+		};
+	}
+
 	private createAppAdapter(
 		user: User,
 		projectId?: string,
@@ -6040,6 +6070,7 @@ function toWorkflowDetail(
 		updatedAt: workflow.updatedAt.toISOString(),
 		nodes: (workflow.nodes ?? []).map(
 			(n): WorkflowNode => ({
+				id: n.id,
 				name: n.name,
 				type: n.type,
 				typeVersion: n.typeVersion,

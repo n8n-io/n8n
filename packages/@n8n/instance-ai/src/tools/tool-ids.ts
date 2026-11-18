@@ -75,6 +75,7 @@ export const DOMAIN_TOOL_IDS = {
 	SAVE_USER_PREFERENCE: 'save_user_preference',
 	SKILLS: 'skills',
 	APPS: 'apps',
+	CREATE_PAGE: 'create_page',
 } as const;
 
 /** Trace-only chain-typed child run emitted by `workflow_builder_build_workflow` with the
@@ -156,6 +157,10 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// can react, which is exactly the moment it does not. Registered only when the
 	// preferences service is wired, so an instance without the feature pays nothing.
 	DOMAIN_TOOL_IDS.SAVE_USER_PREFERENCE,
+	// Its description holds the page link formats and the writing rules. A deferred entry
+	// shows the model the name only, so the first page would be written without them.
+	// Registered only when the page module is active.
+	DOMAIN_TOOL_IDS.CREATE_PAGE,
 	'web-search',
 	'fetch-url',
 	DOMAIN_TOOL_IDS.SKILLS,

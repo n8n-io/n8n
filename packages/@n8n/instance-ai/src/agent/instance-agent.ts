@@ -219,6 +219,7 @@ export async function createInstanceAgent(
 			// for flagged-in users on project-bound runs.
 			conversationHistoryEnabled: Boolean(context.conversationHistoryService),
 			preferenceSavingEnabled: Boolean(context.aiPreferenceService),
+			pageWritingEnabled: Boolean(context.pageService),
 			skillManagementEnabled: Boolean(context.skillService),
 			// The host only sets `startCloudBrowserTask` when the cloud browser is enabled for the instance.
 			cloudBrowserEnabled: Boolean(orchestrationContext?.startCloudBrowserTask),

@@ -71,6 +71,7 @@ import {
 import {
 	exceedsFullPayloadLimit,
 	FULL_PAYLOAD_TOO_LARGE_NOTE,
+	indexNodeIds,
 	isSmallPayload,
 	STRUCTURE_ONLY_NOTE,
 	summarizeWorkflowStructure,
@@ -706,6 +707,7 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 		return {
 			...meta,
 			nodeCount: nodes.length,
+			nodeIds: indexNodeIds(nodes),
 			structure: await summarizeWorkflowStructure(meta.name, nodes, connections),
 			note: input.full ? FULL_PAYLOAD_TOO_LARGE_NOTE : STRUCTURE_ONLY_NOTE,
 		};

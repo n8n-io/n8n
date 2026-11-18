@@ -120,6 +120,8 @@ describe('ChatResourceLink', () => {
 		['/projects/p1/credentials/abc', 'credential'],
 		['/home/datatables', 'data-table'],
 		['/projects/p1/agents/abc', 'agent'],
+		['/page/abc', 'page'],
+		['/projects/p1/pages/abc', 'page'],
 		['https://example.org/workflow/abc', undefined],
 		['//example.org/home/agents', undefined],
 		['relative/path', undefined],

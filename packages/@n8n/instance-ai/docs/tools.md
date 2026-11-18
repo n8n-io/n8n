@@ -101,7 +101,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `agent-context` | 13 lookup types |
 | `skills` | 5 |
 | `apps` | 6 |
-| `workflow_builder_build_workflow`, `ask_user`, `parse-file`, `search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
+| `workflow_builder_build_workflow`, `ask_user`, `create_page`, `parse-file`, `search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
 
 ## Orchestration Tools
 
@@ -351,6 +351,11 @@ data. Large workflows return a structural summary unless `full` is true.
 
 **Returns**: the workflow detail, a structure-only summary, a version response,
 or a structured not-found response.
+
+Each node of the current draft carries its `id`. The structure-only summary
+omits the nodes, so it lists the ids in `nodeIds` (`{ name, id }` for each
+node). A link to a node needs this id: `/workflow/<workflowId>/<nodeId>`. A
+historical version does not return node ids.
 
 `activeVersionId` is `null` when the workflow is unpublished.
 
@@ -1349,6 +1354,44 @@ those cases. The model relays a rejection in its own words and never says
 The system prompt carries the judgment of *when* to call it (see
 `getPreferenceSavingSection` in `agent/system-prompt.ts`); the description
 carries *what* it does.
+
+---
+
+## `create_page` *(conditional)*
+
+Write a Markdown page in a project. Present only when the page module is active
+(the adapter wires `pageService`). Always loaded, because its description holds
+the page link formats and the writing rules, and a deferred tool shows the model
+its name only.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `title` | string | yes | Page title, at most `PAGE_TITLE_MAX_LENGTH` characters |
+| `content` | string | yes | Page body in Markdown |
+| `projectId` | string | no | Target project. Defaults to the project of the thread |
+
+**Returns**: `{ pageId, title, url }`. `url` is the instance-relative path
+`/page/<pageId>`. The model uses it as the link to the page in its reply.
+
+The tool does not suspend and has no approval step: a new page is additive and
+the user can edit or delete it. The adapter requires the `page:create` scope in
+the target project, refuses a project other than the one of the thread, and
+refuses a read-only instance.
+
+A Markdown link to an instance path is a reference. The page module indexes it,
+so the page shows on the resource that it links:
+
+| Resource | Link destination |
+|----------|------------------|
+| Workflow | `/workflow/<workflowId>` |
+| Node | `/workflow/<workflowId>/<nodeId>` |
+| Page | `/page/<pageId>` |
+| Credential | `/projects/<projectId>/credentials/<credentialId>` |
+| Data table | `/projects/<projectId>/datatables/<dataTableId>` |
+
+The description carries these formats and the structure of a workflow page. The
+system prompt carries the judgment of *when* to call it (see
+`getPageWritingSection` in `agent/system-prompt.ts`).
 
 ---
 
