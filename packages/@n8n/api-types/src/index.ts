@@ -1009,6 +1009,10 @@ export {
 	type PageListItem,
 	type PageNodeReference,
 	type PageNodeReferences,
+	type PageOverview,
+	type PageOverviewExecution,
+	type PageOverviewPage,
+	type PageOverviewWorkflow,
 	type PageResourceReference,
 	type PageResourceType,
 	type PageSummary,
@@ -1028,6 +1032,16 @@ export {
 	type PageTour,
 	type PageTourStep,
 } from './utils/page-tour';
+export {
+	WORKFLOW_TRIGGER_CATEGORIES,
+	isTriggerNodeType,
+	toPageExcerpt,
+	toTriggerCategory,
+	toWorkflowTrigger,
+	type PageOverviewTrigger,
+	type TriggerNodeInput,
+	type WorkflowTriggerCategory,
+} from './utils/page-overview';
 
 export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.schema';
 export {

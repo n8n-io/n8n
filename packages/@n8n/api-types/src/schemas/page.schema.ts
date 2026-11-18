@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import type { PageOverviewTrigger, WorkflowTriggerCategory } from '../utils/page-overview';
+
 export const PAGE_RESOURCE_TYPES = ['workflow', 'node', 'page', 'credential', 'dataTable'] as const;
 
 export type PageResourceType = (typeof PAGE_RESOURCE_TYPES)[number];
@@ -49,3 +51,42 @@ export type PageWorkflowPlacement = {
 
 /** Where a page is used: the pages that link to it, and the sticky notes that show it. */
 export type PageBacklinks = { pages: PageSummary[]; workflows: PageWorkflowPlacement[] };
+
+/** The page that documents a workflow on the documentation overview. */
+export type PageOverviewPage = {
+	id: string;
+	title: string;
+	/** The plain text of the first paragraph of the page. */
+	excerpt: string;
+	/** True when the page links to at least one node of the workflow. */
+	hasTour: boolean;
+	/** True when the workflow was updated after the page. */
+	outdated: boolean;
+};
+
+/** The most recent finished execution of a workflow that succeeded or failed. */
+export type PageOverviewExecution = { status: 'success' | 'error'; finishedAt: string };
+
+/** One workflow of a project, with the page that documents it. */
+export type PageOverviewWorkflow = {
+	id: string;
+	name: string;
+	projectId: string;
+	projectName: string;
+	active: boolean;
+	category: WorkflowTriggerCategory;
+	/** The key fact of the trigger. Absent when the category has none or when it cannot be read. */
+	trigger?: PageOverviewTrigger;
+	/** The distinct node type names in the order of the workflow, the triggers first. At most 6. */
+	nodeTypes: string[];
+	/** The distinct credential type names of the nodes, in the order of the workflow. At most 4. */
+	credentialTypes: string[];
+	/** The page of the same project with the most links to the workflow or its nodes. The newest wins a tie. */
+	page?: PageOverviewPage;
+	/** How many pages of the same project link to the workflow or its nodes. */
+	pageCount: number;
+	lastExecution?: PageOverviewExecution;
+};
+
+/** The workflows that are not archived, by name. */
+export type PageOverview = { workflows: PageOverviewWorkflow[] };

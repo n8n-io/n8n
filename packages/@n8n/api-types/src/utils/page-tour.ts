@@ -53,7 +53,7 @@ function addLine(scan: BlockScan, line: string): BlockScan {
  * Splits a markdown text into its blocks: one heading, one paragraph, one list item,
  * one quote line or one table row each. Code blocks are left out.
  */
-function splitIntoBlocks(markdown: string): string[] {
+export function splitIntoBlocks(markdown: string): string[] {
 	return markdown
 		.split(/\r?\n/)
 		.reduce<BlockScan>(addLine, { blocks: [], isBlockOpen: false, isInCode: false }).blocks;
@@ -78,7 +78,7 @@ function toLinkText(label: string, destination: string, toNodeName: NodeNameLook
 }
 
 /** Turns a markdown block into the text that a reader sees, without markdown syntax. */
-function toPlainText(block: string, toNodeName: NodeNameLookup): string {
+export function toPlainText(block: string, toNodeName: NodeNameLookup): string {
 	return block
 		.replace(BLOCK_MARKER, '')
 		.replace(MARKDOWN_LINK, (_link, label: string, destination: string) =>
