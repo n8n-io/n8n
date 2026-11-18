@@ -48,6 +48,7 @@ export const LOG_SCOPES = [
 	'expression-engine',
 	'encryption-key-manager',
 	'oauth-jwe',
+	'task-board',
 	'mcp-registry',
 	'workflow-publication',
 	'poll-trigger',

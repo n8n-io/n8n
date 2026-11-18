@@ -152,6 +152,10 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.skill_source_link](public.skill_source_link.md) | 14 |  | BASE TABLE |
 | [public.skill_version](public.skill_version.md) | 12 |  | BASE TABLE |
 | [public.tag_entity](public.tag_entity.md) | 4 |  | BASE TABLE |
+| [public.task_board](public.task_board.md) | 8 |  | BASE TABLE |
+| [public.task_board_column](public.task_board_column.md) | 7 |  | BASE TABLE |
+| [public.task_board_comment](public.task_board_comment.md) | 7 |  | BASE TABLE |
+| [public.task_board_task](public.task_board_task.md) | 13 |  | BASE TABLE |
 | [public.test_case_execution](public.test_case_execution.md) | 14 |  | BASE TABLE |
 | [public.test_run](public.test_run.md) | 16 |  | BASE TABLE |
 | [public.token_exchange_jti](public.token_exchange_jti.md) | 3 |  | BASE TABLE |
@@ -439,6 +443,12 @@ erDiagram
 "public.skill_source_link" }o--|| "public.skill_source" : "FOREIGN KEY (#quot;sourceId#quot;) REFERENCES skill_source(id) ON DELETE CASCADE"
 "public.skill_version" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.skill_version" }o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id) ON DELETE CASCADE"
+"public.task_board" }o--o| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE SET NULL"
+"public.task_board" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.task_board_column" }o--|| "public.task_board" : "FOREIGN KEY (#quot;boardId#quot;) REFERENCES task_board(id) ON DELETE CASCADE"
+"public.task_board_comment" }o--|| "public.task_board_task" : "FOREIGN KEY (#quot;taskId#quot;) REFERENCES task_board_task(id) ON DELETE CASCADE"
+"public.task_board_task" }o--|| "public.task_board" : "FOREIGN KEY (#quot;boardId#quot;) REFERENCES task_board(id) ON DELETE CASCADE"
+"public.task_board_task" }o--|| "public.task_board_column" : "FOREIGN KEY (#quot;columnId#quot;) REFERENCES task_board_column(id) ON DELETE CASCADE"
 "public.test_case_execution" }o--o| "public.execution_entity" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES execution_entity(id) ON DELETE SET NULL"
 "public.test_case_execution" }o--|| "public.test_run" : "FOREIGN KEY (#quot;testRunId#quot;) REFERENCES test_run(id) ON DELETE CASCADE"
 "public.test_run" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
@@ -1962,6 +1972,49 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   varchar_24_ name
+  timestamp_3__with_time_zone updatedAt
+}
+"public.task_board" {
+  timestamp_3__with_time_zone createdAt
+  text description
+  varchar_36_ id
+  varchar_128_ name
+  varchar_36_ projectId FK
+  varchar_32_ templateKey
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
+}
+"public.task_board_column" {
+  varchar_36_ boardId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  varchar_128_ name
+  integer position
+  varchar_16_ role
+  timestamp_3__with_time_zone updatedAt
+}
+"public.task_board_comment" {
+  varchar_36_ authorId
+  varchar_16_ authorType
+  text body
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  varchar_36_ taskId FK
+  timestamp_3__with_time_zone updatedAt
+}
+"public.task_board_task" {
+  varchar_36_ assigneeId
+  varchar_16_ assigneeType
+  varchar_36_ boardId FK
+  varchar_36_ columnId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ createdById
+  varchar_16_ createdByType
+  text description
+  varchar_36_ id
+  integer number
+  integer position
+  varchar_255_ title
   timestamp_3__with_time_zone updatedAt
 }
 "public.test_case_execution" {
