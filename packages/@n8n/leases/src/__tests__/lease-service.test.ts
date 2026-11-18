@@ -81,6 +81,26 @@ describe('LeaseService', () => {
 			expect(provider.registerHolder).toHaveBeenCalledTimes(1);
 		});
 
+		it('treats the kind as unknown until registerHolder resolves', async () => {
+			let resolveHolder!: () => void;
+			provider.registerHolder.mockReturnValueOnce(
+				new Promise<void>((resolve) => {
+					resolveHolder = resolve;
+				}),
+			);
+			const registration = service.registerKind(makeKind());
+
+			await expect(service.changed('kind-name')).rejects.toThrow(UnknownLeaseKindError);
+			await expect(service.status('kind-name', ['a'])).rejects.toThrow(UnknownLeaseKindError);
+			await service.syncAll();
+			expect(provider.sync).not.toHaveBeenCalled();
+
+			resolveHolder();
+			await registration;
+			await service.changed('kind-name');
+			expect(provider.sync).toHaveBeenCalledWith('kind-name');
+		});
+
 		it('unregisters the kind when registerHolder rejects, so it can be registered again', async () => {
 			const providerError = new Error('provider failed');
 			provider.registerHolder.mockRejectedValueOnce(providerError);

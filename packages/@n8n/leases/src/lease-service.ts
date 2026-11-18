@@ -9,18 +9,21 @@ const LEASE_KIND_NAME_PATTERN = /^[a-z][a-z0-9-]*$/;
 export class LeaseService<TTransaction> {
 	private readonly kinds = new Set<string>();
 
+	private readonly pending = new Set<string>();
+
 	constructor(private readonly provider: LeaseProvider<TTransaction>) {}
 
 	/**
 	 * Register a kind with the provider. Rejects when the name is invalid or already registered.
 	 * When the provider fails, the kind is not registered and can be registered again.
+	 * Until the provider accepts the kind, `changed`, `syncAll` and `status` treat it as unknown.
 	 */
 	async registerKind(kind: LeaseKind<TTransaction>): Promise<void> {
 		const { name } = kind;
 		if (name.length > MAX_LEASE_KIND_LENGTH || !LEASE_KIND_NAME_PATTERN.test(name)) {
 			throw new InvalidLeaseKindError(name);
 		}
-		if (this.kinds.has(name)) throw new DuplicateLeaseKindError(name);
+		if (this.kinds.has(name) || this.pending.has(name)) throw new DuplicateLeaseKindError(name);
 
 		const {
 			leaseSeconds,
@@ -30,7 +33,7 @@ export class LeaseService<TTransaction> {
 		const options: LeaseKindOptions = { startTimeoutSeconds, maxFailedStarts };
 		if (leaseSeconds !== undefined) options.leaseSeconds = leaseSeconds;
 
-		this.kinds.add(name);
+		this.pending.add(name);
 		try {
 			this.provider.registerSource(name, kind.source);
 			await this.provider.registerHolder(
@@ -38,10 +41,10 @@ export class LeaseService<TTransaction> {
 				options,
 				async (lease) => await kind.handler.hold(lease),
 			);
-		} catch (error) {
-			this.kinds.delete(name);
-			throw error;
+		} finally {
+			this.pending.delete(name);
 		}
+		this.kinds.add(name);
 	}
 
 	/** Sync the leases of a registered kind, or only those with `keys`. */
