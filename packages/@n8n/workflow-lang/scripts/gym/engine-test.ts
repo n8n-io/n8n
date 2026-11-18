@@ -19,7 +19,10 @@
  * GYM_PORT_MAP (`443=47443,5432=56432,3306=53306`), ENGINE_TEST_KEEP (`all`
  * keeps the scratch folder `/tmp/wfrt-<id>-*` of each bundle, `failed` keeps it
  * when the run does not succeed; by default the adapter deletes it), ENGINE_TEST_SCRATCH (the
- * folder of these scratch folders; default `/tmp`).
+ * folder of these scratch folders; default `/tmp`), ENGINE_TEST_NODE_COMPILER (the path of the load
+ * test's `lib/node-compiler.mjs`: with it, a node whose operation is on the verified list runs
+ * compiled from its source, and each credential gets its derived values and flags, as n8n does at
+ * publish; without it, such a node runs in the fallback host).
  */
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -37,7 +40,7 @@ import { credentialRegistry } from './credentials.ts';
 import type { Engine } from './processes.ts';
 import { GYM_ADDR, gymHosts, startEngine, stopAll } from './processes.ts';
 import type { JsonRecord } from './sample.ts';
-import { isRecord, packageRoot } from './sample.ts';
+import { isRecord, packageRoot, repoRoot } from './sample.ts';
 import { resolveCredentialData } from './v1-credentials.ts';
 import type { ServiceHandler, WfrtEvent } from './wfrt.ts';
 import { WfrtClient } from './wfrt.ts';
@@ -98,6 +101,39 @@ interface Running {
 }
 
 /** The folder of the scratch, engine and data-table folders (`ENGINE_TEST_SCRATCH`, default `/tmp`). */
+type ConvertOptions = NonNullable<Parameters<typeof convertWorkflow>[1]>;
+type Converted = ReturnType<typeof convertWorkflow>;
+
+/** The node compiler of the load test (`bench/loadtest/lib/node-compiler.mjs`). */
+interface NodeCompiler {
+	convert: (wf: JsonRecord, options: ConvertOptions, bundle: Bundle) => Converted;
+	derived: (derivations: unknown, data: JsonRecord) => JsonRecord;
+}
+
+let nodeCompilerLoad: Promise<NodeCompiler | null> | undefined;
+
+async function nodeCompiler(): Promise<NodeCompiler | null> {
+	nodeCompilerLoad ??= (async () => {
+		const file = process.env.ENGINE_TEST_NODE_COMPILER;
+		if (!file) return null;
+		const loaded: unknown = await import(pathToFileURL(file).href);
+		if (!isRecord(loaded) || typeof loaded.nodeCompiler !== 'function')
+			throw new Error(`ENGINE_TEST_NODE_COMPILER: ${file} does not export nodeCompiler`);
+		const made: unknown = await loaded.nodeCompiler(repoRoot);
+		if (!isRecord(made) || typeof made.convert !== 'function' || typeof made.derived !== 'function')
+			throw new Error(`ENGINE_TEST_NODE_COMPILER: ${file} gave no node compiler`);
+		const { convert, derived } = made;
+		return {
+			convert: (wf, options, bundle) => convert(convertWorkflow, wf, options, bundle),
+			derived: (derivations, data) => {
+				const out: unknown = derived(derivations, data);
+				return isRecord(out) ? out : {};
+			},
+		};
+	})();
+	return await nodeCompilerLoad;
+}
+
 const SCRATCH_ROOT = process.env.ENGINE_TEST_SCRATCH ?? '/tmp';
 
 let running: Promise<Running> | undefined;
@@ -493,6 +529,8 @@ function runDataOf(wf: JsonRecord, trigger: string, events: WfrtEvent[]): JsonRe
 function credentialsFor(
 	slots: Record<string, { id: string | null; type: string }>,
 	bundle: Bundle,
+	nc: NodeCompiler | null = null,
+	derivations: Record<string, unknown> = {},
 ): CredentialsFile {
 	const file: CredentialsFile = {};
 	for (const [slot, { id, type }] of Object.entries(slots)) {
@@ -507,6 +545,16 @@ function credentialsFor(
 			mappings: new Map([[slot, slot]]),
 			registry: credentialRegistry(),
 		});
+		// Values and flags that compiled nodes take from the credential: n8n computes them where the credential is.
+		const entry = built.file[slot];
+		const list = derivations[slot];
+		if (nc && Array.isArray(list) && list.length > 0 && entry) {
+			const derived = nc.derived(list, data);
+			if (Object.keys(derived).length > 0) {
+				const existing = entry.data.n8nDerived;
+				entry.data.n8nDerived = { ...(isRecord(existing) ? existing : {}), ...derived };
+			}
+		}
 		Object.assign(file, built.file);
 	}
 	return file;
@@ -632,7 +680,8 @@ export async function execute(bundle: Bundle): Promise<unknown> {
 	const workflowId = `et-${executionId}`;
 	try {
 		const { wfrt, engine } = await engineUp();
-		const converted = convertWorkflow(wf, {
+		const nc = await nodeCompiler();
+		const options: ConvertOptions = {
 			name: typeof bundle.meta.name === 'string' ? bundle.meta.name : bundle.meta.id,
 			resolveWorkflow: (id) => (id === STUB_ID ? bundle.resources.subworkflow : undefined),
 			trace: 'all',
@@ -646,19 +695,28 @@ export async function execute(bundle: Bundle): Promise<unknown> {
 			instance: INSTANCE,
 			// `ENGINE_TEST_SERVICES=0`: the Data Table node runs in the host, as before `ctx.service`.
 			services: process.env.ENGINE_TEST_SERVICES !== '0',
-		});
+		};
+		const converted = nc ? nc.convert(wf, options, bundle) : convertWorkflow(wf, options);
 		log('workflow.ts', converted.source);
 		if (!converted.ok) {
 			const why =
 				converted.diagnostics.find((d) => d.severity === 'error')?.message ?? 'convert failed';
 			return await summarise(wf, 'error', { runData: {}, error: { message: `convert: ${why}` } });
 		}
-		const compiled = compile(converted.source, { fileName: '/workflow.ts' });
+		const compiled = compile(converted.source, {
+			fileName: '/workflow.ts',
+			...(converted.nodes ? { extraNodes: converted.nodes } : {}),
+		});
 		if (!compiled.ok || !compiled.module) {
 			const why = compiled.diagnostics[0]?.message ?? 'compile failed';
 			return await summarise(wf, 'error', { runData: {}, error: { message: `compile: ${why}` } });
 		}
-		let credentials = credentialsFor(converted.credentials ?? {}, bundle);
+		let credentials = credentialsFor(
+			converted.credentials ?? {},
+			bundle,
+			nc,
+			converted.credentialDerivations ?? {},
+		);
 		mkdirSync(scratch, { recursive: true });
 		writeFileSync(join(scratch, 'credentials.json'), JSON.stringify(credentials), { mode: 0o600 });
 		// `wfrt` does not refresh OAuth2 tokens, and the stored tokens of a snapshot can have
