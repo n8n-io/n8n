@@ -13,6 +13,7 @@ export {
 } from './page.api';
 export { getPagePermissions, type PagePermissions } from './page.permissions';
 export { default as PageEditor } from './components/PageEditor.vue';
+export { default as PageOverviewBoard } from './components/PageOverviewBoard.vue';
 export type { PageSaveStatus } from './composables/usePageDocument';
 export { default as ResourceChip } from './resources/ResourceChip.vue';
 export { usePageResourceStore, type ResourceResolution } from './resources/resource.store';

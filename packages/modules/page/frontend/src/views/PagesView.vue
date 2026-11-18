@@ -6,6 +6,7 @@ import {
 	N8nAlertDialog,
 	N8nButton,
 	N8nEmptyState,
+	N8nIcon,
 	N8nIconButton,
 	N8nLoading,
 	N8nText,
@@ -20,6 +21,7 @@ import { useRoute, useRouter } from 'vue-router';
 import PageBacklinks from '../components/PageBacklinks.vue';
 import PageEditor from '../components/PageEditor.vue';
 import PageList from '../components/PageList.vue';
+import PageOverviewBoard from '../components/PageOverviewBoard.vue';
 import PageWritingTips from '../components/PageWritingTips.vue';
 import { useInstanceLocation } from '../composables/useInstanceLocation';
 import { usePageBacklinks } from '../composables/usePageBacklinks';
@@ -60,6 +62,14 @@ const pages = computed(() => (projectId.value ? pageStore.pagesOf(projectId.valu
 const { backlinks, refresh: refreshBacklinks } = usePageBacklinks(selectedPageId);
 const { canStartTour, startTour } = usePageTourStart(selectedPageId);
 const isListLoading = ref(true);
+
+/** True when the project is known to have no page and no workflow. */
+const hasNothingToDocument = computed(
+	() =>
+		pages.value.length === 0 &&
+		projectId.value !== undefined &&
+		pageStore.overviewOf(projectId.value)?.workflows.length === 0,
+);
 const permissions = computed(() =>
 	projectId.value ? getPagePermissions(projectId.value) : undefined,
 );
@@ -83,11 +93,15 @@ async function openPage(pageId: string | undefined, navigate = router.push): Pro
 	});
 }
 
-/** Opens the newest page when the address selects none. */
-async function openNewestPageByDefault(): Promise<void> {
-	const newest = pages.value.at(0);
-	if (selectedPageId.value === undefined && newest !== undefined) {
-		await openPage(newest.id, router.replace);
+/**
+ * Loads the overview when the project shows no page, to tell an empty project from one with workflows.
+ * A failed load keeps the board, which reports the failure itself.
+ */
+async function loadOverviewOfEmptyProject(): Promise<void> {
+	const isNeeded =
+		projectId.value !== undefined && selectedPageId.value === undefined && pages.value.length === 0;
+	if (isNeeded) {
+		await pageStore.fetchOverview(projectId.value).catch(() => undefined);
 	}
 }
 
@@ -96,7 +110,7 @@ async function loadPages(id: string | undefined): Promise<void> {
 		isListLoading.value = !pageStore.isListLoaded(id);
 		try {
 			await pageStore.fetchPages(id);
-			await openNewestPageByDefault();
+			await loadOverviewOfEmptyProject();
 		} catch (error) {
 			toast.showError(error, i18n.baseText('page.list.loadError'));
 		} finally {
@@ -155,7 +169,7 @@ async function deleteSelectedPage(): Promise<void> {
 watch(projectId, loadPages, { immediate: true });
 watch(selectedPageId, () => {
 	saveStatus.value = 'idle';
-	void openNewestPageByDefault();
+	void loadOverviewOfEmptyProject();
 });
 </script>
 
@@ -164,7 +178,7 @@ watch(selectedPageId, () => {
 		<component :is="ProjectHeader" v-if="ProjectHeader" main-button="page" />
 		<N8nLoading v-if="isListLoading" :rows="4" />
 		<N8nEmptyState
-			v-else-if="pages.length === 0 && !selectedPageId"
+			v-else-if="hasNothingToDocument && !selectedPageId"
 			:class="$style.empty"
 			:icon="{ type: 'icon', value: 'file-text' }"
 			:heading="i18n.baseText('page.empty.heading')"
@@ -180,6 +194,16 @@ watch(selectedPageId, () => {
 		</N8nEmptyState>
 		<div v-else :class="$style.columns">
 			<aside :class="$style.sidebar">
+				<button
+					type="button"
+					:class="[$style.overviewButton, selectedPageId ? '' : $style.overviewButtonActive]"
+					:aria-current="selectedPageId ? undefined : 'page'"
+					data-test-id="page-overview-button"
+					@click="openPage(undefined)"
+				>
+					<N8nIcon icon="grid-2x2" size="medium" />
+					{{ i18n.baseText('page.overview.button') }}
+				</button>
 				<N8nButton
 					v-if="permissions?.canCreate"
 					variant="outline"
@@ -257,6 +281,9 @@ watch(selectedPageId, () => {
 						</div>
 					</div>
 				</template>
+				<div v-else :class="$style.editorScroll">
+					<PageOverviewBoard :project-id="projectId" @select-page="openPage" />
+				</div>
 			</section>
 		</div>
 		<N8nAlertDialog
@@ -302,6 +329,37 @@ watch(selectedPageId, () => {
 	width: calc(var(--spacing--5xl) + var(--spacing--2xl));
 	padding: var(--spacing--sm) var(--spacing--sm) var(--spacing--sm) 0;
 	border-right: var(--border);
+}
+
+.overviewButton {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	width: 100%;
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	border: 0;
+	border-radius: var(--radius--md);
+	background-color: transparent;
+	color: var(--text-color);
+	font-family: inherit;
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
+	text-align: left;
+	cursor: pointer;
+	transition: background-color var(--duration--snappy) var(--easing--ease-out);
+
+	&:hover {
+		background-color: var(--background--hover);
+	}
+
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--border-color);
+	}
+}
+
+.overviewButtonActive,
+.overviewButtonActive:hover {
+	background-color: var(--background--active);
 }
 
 .createButton {

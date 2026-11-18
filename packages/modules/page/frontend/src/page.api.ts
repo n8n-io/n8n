@@ -4,6 +4,7 @@ import type {
 	PageBacklinks,
 	PageListItem,
 	PageNodeReferences,
+	PageOverview,
 	PageResourceReference,
 	PageSummary,
 	UpdatePageDto,
@@ -100,4 +101,19 @@ export async function getPageBacklinks(
 	pageId: string,
 ): Promise<PageBacklinks> {
 	return await makeRestApiRequest(context, 'GET', `/pages/${pageId}/backlinks`);
+}
+
+/**
+ * Reads the documentation overview: each workflow with the page that documents it.
+ * Without `projectId` the overview spans every project where the user can list pages.
+ */
+export async function getPageOverview(
+	context: IRestApiContext,
+	projectId?: string,
+): Promise<PageOverview> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		projectId === undefined ? '/pages/overview' : `/projects/${projectId}/pages/overview`,
+	);
 }

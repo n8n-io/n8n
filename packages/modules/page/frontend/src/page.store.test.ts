@@ -1,4 +1,4 @@
-import { createPage } from './__tests__/fixtures';
+import { createOverviewWorkflow, createPage } from './__tests__/fixtures';
 import { usePageStore } from './page.store';
 
 const api = vi.hoisted(() => ({
@@ -12,6 +12,7 @@ const api = vi.hoisted(() => ({
 	listAllPages: vi.fn(),
 	listNodeReferences: vi.fn(),
 	getPageBacklinks: vi.fn(),
+	getPageOverview: vi.fn(),
 }));
 
 vi.mock('./page.api', () => api);
@@ -158,5 +159,23 @@ describe('usePageStore', () => {
 
 		expect(await store.backlinksOf('page-1')).toEqual(backlinks);
 		expect(api.getPageBacklinks).toHaveBeenCalledWith(context, 'page-1');
+	});
+
+	it('keeps the overview of a project apart from the overview of every project', async () => {
+		const projectOverview = { workflows: [createOverviewWorkflow()] };
+		const fullOverview = { workflows: [] };
+		api.getPageOverview.mockImplementation(async (_context: unknown, projectId?: string) =>
+			projectId === undefined ? fullOverview : projectOverview,
+		);
+		const store = usePageStore();
+
+		expect(store.overviewOf('project-1')).toBeUndefined();
+		await store.fetchOverview('project-1');
+		await store.fetchOverview();
+
+		expect(api.getPageOverview).toHaveBeenCalledWith(context, 'project-1');
+		expect(api.getPageOverview).toHaveBeenCalledWith(context, undefined);
+		expect(store.overviewOf('project-1')).toEqual(projectOverview);
+		expect(store.overviewOf()).toEqual(fullOverview);
 	});
 });

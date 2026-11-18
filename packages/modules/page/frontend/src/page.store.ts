@@ -3,6 +3,7 @@ import type {
 	PageBacklinks,
 	PageListItem,
 	PageNodeReferences,
+	PageOverview,
 	PageResourceReference,
 	PageSummary,
 } from '@n8n/api-types';
@@ -26,6 +27,14 @@ function upsertSummary(summaries: PageSummary[], summary: PageSummary): PageSumm
 		: [summary, ...summaries];
 }
 
+/** The key of the overview that spans every readable project. A project id is never empty. */
+const ALL_PROJECTS_OVERVIEW_KEY = '';
+
+/** Gives the key that holds the overview of a project. No project means every readable project. */
+function toOverviewKey(projectId: string | undefined): string {
+	return projectId ?? ALL_PROJECTS_OVERVIEW_KEY;
+}
+
 export const usePageStore = defineStore('page', () => {
 	const rootStore = useRootStore();
 
@@ -34,6 +43,20 @@ export const usePageStore = defineStore('page', () => {
 
 	/** The latest version of each page that this client read or wrote. */
 	const pagesById = ref<Record<string, Page>>({});
+
+	/** The latest documentation overview that was loaded, by overview key. */
+	const overviewsByKey = ref<Record<string, PageOverview>>({});
+
+	/** `undefined` means that the overview was not loaded. No project means every readable project. */
+	function overviewOf(projectId?: string): PageOverview | undefined {
+		return overviewsByKey.value[toOverviewKey(projectId)];
+	}
+
+	async function fetchOverview(projectId?: string): Promise<PageOverview> {
+		const overview = await pageApi.getPageOverview(rootStore.restApiContext, projectId);
+		overviewsByKey.value = { ...overviewsByKey.value, [toOverviewKey(projectId)]: overview };
+		return overview;
+	}
 
 	function pagesOf(projectId: string): PageSummary[] {
 		return summariesByProjectId.value[projectId] ?? [];
@@ -141,5 +164,7 @@ export const usePageStore = defineStore('page', () => {
 		listAll,
 		listNodeReferences,
 		backlinksOf,
+		overviewOf,
+		fetchOverview,
 	};
 });

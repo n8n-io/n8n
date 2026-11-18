@@ -30,6 +30,8 @@ import type { IWorkflowSettings } from 'n8n-workflow';
  * `node-icon` is the icon of a node type, by its name. It shows a generic icon while the node
  * types load and when the instance does not know the type.
  * `page-actions` holds the actions that the shell adds to the header of a page.
+ * `page-overview-actions` holds the actions that the shell adds to the header of the
+ * documentation overview. It can emit `started` after an action started.
  */
 export type ModuleComponentSlot =
 	| 'project-filter'
@@ -41,7 +43,8 @@ export type ModuleComponentSlot =
 	| 'insights-summary'
 	| 'resources-list-layout'
 	| 'node-icon'
-	| 'page-actions';
+	| 'page-actions'
+	| 'page-overview-actions';
 
 /**
  * The `v-model` value of the `project-filter` slot. `null` means "all projects".
@@ -85,6 +88,13 @@ export type SlotWorkflowDiffPlaceholderProps = {
 
 export type SlotPageActionsProps = {
 	pageId: string;
+};
+
+export type SlotPageOverviewActionsProps = {
+	/** The project of the overview. Absent when the overview spans every readable project. */
+	projectId?: string;
+	/** The workflows of the overview that no page documents. */
+	undocumentedWorkflows: Array<{ id: string; name: string }>;
 };
 
 export type SlotNodeIconProps = {

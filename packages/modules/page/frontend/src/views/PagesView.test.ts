@@ -5,7 +5,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
 import PagesView from './PagesView.vue';
-import { createPage } from '../__tests__/fixtures';
+import { createOverviewWorkflow, createPage } from '../__tests__/fixtures';
 import { PAGE_AUTOSAVE_DEBOUNCE_MS, PROJECT_PAGES_VIEW } from '../page.constants';
 
 const api = vi.hoisted(() => ({
@@ -16,6 +16,7 @@ const api = vi.hoisted(() => ({
 	updatePage: vi.fn(),
 	deletePage: vi.fn(),
 	getPageBacklinks: vi.fn(),
+	getPageOverview: vi.fn(),
 }));
 
 vi.mock('../page.api', () => api);
@@ -40,6 +41,11 @@ const ALL_PAGE_SCOPES: Scope[] = [
 
 const runbook = createPage();
 const notes = createPage({ id: 'page-2', title: 'Notes', content: 'Second page' });
+
+const documentedWorkflow = createOverviewWorkflow({
+	pageCount: 1,
+	page: { id: notes.id, title: 'Notes', excerpt: 'Second page', hasTour: false, outdated: false },
+});
 
 function toSummary({ content: _content, ...summary }: ReturnType<typeof createPage>) {
 	return summary;
@@ -80,22 +86,76 @@ describe('PagesView', () => {
 		);
 		api.getPageById.mockRejectedValue(new Error('Not needed'));
 		api.getPageBacklinks.mockResolvedValue({ pages: [], workflows: [] });
+		api.getPageOverview.mockResolvedValue({ workflows: [] });
 	});
 
 	afterEach(() => {
 		capabilityRegistry.clear();
 	});
 
-	it('lists the pages of the project and opens the newest one', async () => {
+	it('lists the pages of the project and shows the overview board when no page is selected', async () => {
+		api.getPageOverview.mockResolvedValue({ workflows: [documentedWorkflow] });
 		const { wrapper, router } = await renderView();
 
 		await waitFor(() => expect(wrapper.getAllByTestId('page-list-item')).toHaveLength(2));
-		await waitFor(() =>
-			expect(router.currentRoute.value.fullPath).toBe('/projects/project-1/pages/page-1'),
-		);
+		expect(await wrapper.findByTestId('page-overview-card')).toHaveTextContent('Sync orders');
 
-		expect(await wrapper.findByTestId('page-editor-title')).toHaveValue('Runbook');
-		expect(wrapper.getAllByTestId('page-list-item')[0]).toHaveAttribute('aria-current', 'page');
+		expect(api.getPageOverview).toHaveBeenCalledWith(expect.anything(), 'project-1');
+		expect(router.currentRoute.value.fullPath).toBe('/projects/project-1/pages');
+		expect(wrapper.getByTestId('page-overview-button')).toHaveAttribute('aria-current', 'page');
+		expect(wrapper.queryByTestId('page-editor-title')).not.toBeInTheDocument();
+	});
+
+	it('opens the page of a card of the board', async () => {
+		api.getPageOverview.mockResolvedValue({ workflows: [documentedWorkflow] });
+		const { wrapper, router } = await renderView();
+
+		await fireEvent.click(await wrapper.findByTestId('page-overview-card'));
+
+		await waitFor(() =>
+			expect(router.currentRoute.value.fullPath).toBe('/projects/project-1/pages/page-2'),
+		);
+		await waitFor(() => expect(wrapper.getByTestId('page-editor-title')).toHaveValue('Notes'));
+		expect(wrapper.getByTestId('page-overview-button')).not.toHaveAttribute('aria-current');
+	});
+
+	it('returns to the board with the overview button and loads the overview again', async () => {
+		api.getPageOverview.mockResolvedValue({ workflows: [documentedWorkflow] });
+		const { wrapper, router } = await renderView('/projects/project-1/pages/page-1');
+		await wrapper.findByTestId('page-editor-title');
+		expect(api.getPageOverview).not.toHaveBeenCalled();
+
+		await fireEvent.click(wrapper.getByTestId('page-overview-button'));
+
+		await waitFor(() =>
+			expect(router.currentRoute.value.fullPath).toBe('/projects/project-1/pages'),
+		);
+		expect(await wrapper.findByTestId('page-overview-card')).toBeInTheDocument();
+		expect(api.getPageOverview).toHaveBeenCalledWith(expect.anything(), 'project-1');
+	});
+
+	it('shows the board for a project that has workflows and no page', async () => {
+		api.listPages.mockResolvedValue([]);
+		api.getPageOverview.mockResolvedValue({ workflows: [createOverviewWorkflow()] });
+		const { wrapper } = await renderView();
+
+		expect(await wrapper.findByTestId('page-overview-card-undocumented')).toBeInTheDocument();
+		expect(wrapper.queryByTestId('pages-empty-state')).not.toBeInTheDocument();
+	});
+
+	it('opens the page that the board creates for a workflow', async () => {
+		const created = createPage({ id: 'page-3', title: 'Sync orders', content: '' });
+		api.listPages.mockResolvedValue([]);
+		api.getPageOverview.mockResolvedValue({ workflows: [createOverviewWorkflow()] });
+		api.createPage.mockResolvedValue(created);
+		api.getPage.mockResolvedValue(created);
+		const { wrapper, router } = await renderView();
+
+		await fireEvent.click(await wrapper.findByTestId('page-overview-card-write'));
+
+		await waitFor(() =>
+			expect(router.currentRoute.value.fullPath).toBe('/projects/project-1/pages/page-3'),
+		);
 	});
 
 	it('opens the page that the user selects', async () => {

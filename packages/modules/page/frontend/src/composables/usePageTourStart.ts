@@ -5,7 +5,7 @@ import { useRouter, type RouteLocationRaw } from 'vue-router';
 import { usePageStore } from '../page.store';
 
 /** Builds the address that opens a workflow and starts the tour of a page on its canvas. */
-function toPageTourRoute(workflowId: string, pageId: string): RouteLocationRaw {
+export function toPageTourRoute(workflowId: string, pageId: string): RouteLocationRaw {
 	return {
 		path: toResourcePath({ resourceType: 'workflow', resourceId: workflowId }),
 		query: { [PAGE_TOUR_QUERY_PARAMETER]: pageId },
