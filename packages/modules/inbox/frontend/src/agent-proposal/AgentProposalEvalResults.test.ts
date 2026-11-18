@@ -105,7 +105,7 @@ describe('AgentProposalEvalResults', () => {
 	});
 
 	it('should show the input and the checks one time and one column for each version', async () => {
-		const { getByTestId, getAllByTestId } = render([
+		const { getByTestId, getAllByTestId, queryByTestId } = render([
 			result(
 				'tools',
 				arm('fail', {
@@ -142,6 +142,9 @@ describe('AgentProposalEvalResults', () => {
 		await userEvent.click(toggle);
 
 		expect(toggle).toHaveAttribute('aria-expanded', 'true');
+		// The checklist shows first. The answers and the usage show after the version toggle.
+		expect(queryByTestId('agent-proposal-eval-answer')).not.toBeInTheDocument();
+		await userEvent.click(getAllByTestId('agent-proposal-eval-version-toggle')[0]);
 		expect(getAllByTestId('agent-proposal-eval-input')).toHaveLength(1);
 		expect(getByTestId('agent-proposal-eval-input')).toHaveTextContent('Input of tools');
 		expect(getByTestId('agent-proposal-eval-rule')).toHaveTextContent(
@@ -182,7 +185,7 @@ describe('AgentProposalEvalResults', () => {
 		expect(proposed.getByTestId('agent-proposal-eval-check-rule')).toHaveTextContent(
 			'Follows the rule',
 		);
-		expect(proposed.getByTestId('agent-proposal-eval-check-rule')).toHaveTextContent(
+		expect(proposed.getByTestId('agent-proposal-eval-check-rule')).not.toHaveTextContent(
 			'The agent found the order.',
 		);
 		expect(
@@ -218,6 +221,7 @@ describe('AgentProposalEvalResults', () => {
 			),
 		]);
 		await userEvent.click(getByTestId('agent-proposal-eval-case-toggle'));
+		await userEvent.click(getByTestId('agent-proposal-eval-version-toggle'));
 
 		await userEvent.click(getByRole('button', { name: /lookup_order/ }));
 
@@ -234,6 +238,7 @@ describe('AgentProposalEvalResults', () => {
 			),
 		]);
 		await userEvent.click(getByTestId('agent-proposal-eval-case-toggle'));
+		await userEvent.click(getByTestId('agent-proposal-eval-version-toggle'));
 
 		await userEvent.click(getByRole('button', { name: /send_email/ }));
 
@@ -277,6 +282,7 @@ describe('AgentProposalEvalResults', () => {
 		await userEvent.click(getAllByTestId('agent-proposal-eval-case-toggle')[0]);
 
 		expect(getByTestId('agent-proposal-eval-version-current')).toHaveTextContent('Current agent');
+		await userEvent.click(getByTestId('agent-proposal-eval-version-toggle'));
 		expect(getByTestId('agent-proposal-eval-version-current')).toHaveTextContent('The fail answer');
 		expect(queryByTestId('agent-proposal-eval-version-published')).not.toBeInTheDocument();
 		expect(queryByTestId('agent-proposal-eval-version-proposed')).not.toBeInTheDocument();

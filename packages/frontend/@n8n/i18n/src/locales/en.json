@@ -212,6 +212,8 @@
 	"inbox.agentProposal.evals.detail.toolFailed": "The tool call failed.",
 	"inbox.agentProposal.evals.detail.toolInput": "Input",
 	"inbox.agentProposal.evals.detail.toolOutput": "Output",
+	"inbox.agentProposal.evals.detail.showDetails": "Show answer and tool calls",
+	"inbox.agentProposal.evals.detail.hideDetails": "Hide answer and tool calls",
 	"inbox.agentProposal.evals.check.called": "Called {tool}",
 	"inbox.agentProposal.evals.check.missing": "Did not call {tool}, which it must call",
 	"inbox.agentProposal.evals.check.notCalled": "Did not call {tool}",

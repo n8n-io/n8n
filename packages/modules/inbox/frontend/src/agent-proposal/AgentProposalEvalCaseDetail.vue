@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { AgentProposalCaseArm, AgentProposalCaseResult } from '@n8n/api-types';
-import { N8nAiActivityStep, N8nIcon, N8nText, type IconName } from '@n8n/design-system';
+import { N8nAiActivityStep, N8nButton, N8nIcon, N8nText, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 import AgentProposalArmStatus from './AgentProposalArmStatus.vue';
 import {
@@ -16,6 +16,9 @@ import {
 const props = defineProps<{ result: AgentProposalCaseResult }>();
 
 const i18n = useI18n();
+
+/* One toggle opens both versions, so their answers stay side by side. */
+const expanded = ref(false);
 
 const costFormat = new Intl.NumberFormat(undefined, {
 	style: 'currency',
@@ -65,7 +68,7 @@ function toColumn(key: 'published' | 'proposed' | 'current', arm: AgentProposalC
 		label: i18n.baseText(`inbox.agentProposal.evals.version.${key}`),
 		arm,
 		status: armStatus(arm),
-		checks: armChecks(props.result, arm).map(toCheckRow),
+		checks: arm.status === 'error' ? [runErrorRow()] : armChecks(props.result, arm).map(toCheckRow),
 		forbiddenCalls: forbidden,
 		/* The checklist already lists the expected tools, so only the calls that went wrong show here. */
 		flaggedCalls: arm.toolCalls.filter((call) => call.failed || forbidden.has(call.tool)),
@@ -112,6 +115,16 @@ const ruleTones: Record<Extract<AgentProposalArmCheck, { kind: 'rule' }>['state'
 	error: 'warning',
 };
 
+function runErrorRow() {
+	return {
+		key: 'run',
+		tone: 'warning' satisfies CheckTone,
+		icon: checkIcons.warning,
+		label: i18n.baseText('inbox.agentProposal.evals.detail.runError'),
+		detail: null,
+	};
+}
+
 function toolCheckLabel(check: Extract<AgentProposalArmCheck, { kind: 'tool' }>) {
 	const interpolate = { tool: check.tool };
 	if (check.expectation === 'required') {
@@ -141,7 +154,8 @@ function toCheckRow(check: AgentProposalArmCheck) {
 		tone,
 		icon: checkIcons[tone],
 		label: i18n.baseText(`inbox.agentProposal.evals.check.rule.${check.state}`),
-		detail: check.reasoning,
+		// A passing rule needs no explanation. A failing rule shows why it failed.
+		detail: check.state === 'fail' ? check.reasoning : null,
 	};
 }
 </script>
@@ -210,83 +224,103 @@ function toCheckRow(check: AgentProposalArmCheck) {
 					</li>
 				</ul>
 
-				<div :class="$style.conversation">
-					<div
-						v-if="column.flaggedCalls.length > 0"
-						:class="$style.toolCalls"
-						data-test-id="agent-proposal-eval-tool-calls"
-					>
-						<!-- The error text of a tool call is internal, so a failed call shows a generic label. -->
-						<N8nAiActivityStep
-							v-for="(call, index) in column.flaggedCalls"
-							:key="index"
-							:label="call.tool"
-							:error="
-								call.failed
-									? i18n.baseText('inbox.agentProposal.evals.detail.toolFailed')
-									: undefined
-							"
-							:has-content="call.failed || call.input !== undefined || call.output !== undefined"
-							data-test-id="agent-proposal-eval-tool-call"
+				<template v-if="expanded">
+					<div :class="$style.conversation">
+						<div
+							v-if="column.flaggedCalls.length > 0"
+							:class="$style.toolCalls"
+							data-test-id="agent-proposal-eval-tool-calls"
 						>
-							<template v-if="column.forbiddenCalls.has(call.tool)" #prefix>
-								<N8nIcon
-									icon="circle-x"
-									color="danger"
-									size="small"
-									:aria-label="i18n.baseText('inbox.agentProposal.evals.check.forbiddenStep')"
-									data-test-id="agent-proposal-eval-tool-call-forbidden"
-								/>
-							</template>
-							<div v-if="call.input !== undefined" :class="$style.toolData">
-								<N8nText step="2xs" color="text-light">
-									{{ i18n.baseText('inbox.agentProposal.evals.detail.toolInput') }}
-								</N8nText>
-								<pre :class="$style.pre">{{ formatToolData(call.input) }}</pre>
-							</div>
-							<div v-if="call.output !== undefined" :class="$style.toolData">
-								<N8nText step="2xs" color="text-light">
-									{{ i18n.baseText('inbox.agentProposal.evals.detail.toolOutput') }}
-								</N8nText>
-								<pre :class="$style.pre">{{ formatToolData(call.output) }}</pre>
-							</div>
-						</N8nAiActivityStep>
+							<!-- The error text of a tool call is internal, so a failed call shows a generic label. -->
+							<N8nAiActivityStep
+								v-for="(call, index) in column.flaggedCalls"
+								:key="index"
+								:label="call.tool"
+								:error="
+									call.failed
+										? i18n.baseText('inbox.agentProposal.evals.detail.toolFailed')
+										: undefined
+								"
+								:has-content="call.failed || call.input !== undefined || call.output !== undefined"
+								data-test-id="agent-proposal-eval-tool-call"
+							>
+								<template v-if="column.forbiddenCalls.has(call.tool)" #prefix>
+									<N8nIcon
+										icon="circle-x"
+										color="danger"
+										size="small"
+										:aria-label="i18n.baseText('inbox.agentProposal.evals.check.forbiddenStep')"
+										data-test-id="agent-proposal-eval-tool-call-forbidden"
+									/>
+								</template>
+								<div v-if="call.input !== undefined" :class="$style.toolData">
+									<N8nText step="2xs" color="text-light">
+										{{ i18n.baseText('inbox.agentProposal.evals.detail.toolInput') }}
+									</N8nText>
+									<pre :class="$style.pre">{{ formatToolData(call.input) }}</pre>
+								</div>
+								<div v-if="call.output !== undefined" :class="$style.toolData">
+									<N8nText step="2xs" color="text-light">
+										{{ i18n.baseText('inbox.agentProposal.evals.detail.toolOutput') }}
+									</N8nText>
+									<pre :class="$style.pre">{{ formatToolData(call.output) }}</pre>
+								</div>
+							</N8nAiActivityStep>
+						</div>
+
+						<div :class="[$style.bubble, $style.agentBubble]">
+							<N8nText
+								v-if="column.arm.answer"
+								tag="p"
+								step="xs"
+								color="text-dark"
+								:class="$style.text"
+								data-test-id="agent-proposal-eval-answer"
+							>
+								{{ column.arm.answer }}
+							</N8nText>
+							<N8nText v-else step="xs" color="text-light">
+								{{
+									i18n.baseText(
+										column.arm.status === 'error'
+											? 'inbox.agentProposal.evals.detail.runError'
+											: 'inbox.agentProposal.evals.detail.noAnswer',
+									)
+								}}
+							</N8nText>
+						</div>
 					</div>
 
-					<div :class="[$style.bubble, $style.agentBubble]">
-						<N8nText
-							v-if="column.arm.answer"
-							tag="p"
-							step="xs"
-							color="text-dark"
-							:class="$style.text"
-							data-test-id="agent-proposal-eval-answer"
+					<dl v-if="column.usage.length > 0" :class="$style.usage">
+						<div
+							v-for="row in column.usage"
+							:key="row.key"
+							:class="$style.usageRow"
+							:data-test-id="`agent-proposal-eval-usage-${row.key}`"
 						>
-							{{ column.arm.answer }}
-						</N8nText>
-						<N8nText v-else step="xs" color="text-light">
-							{{
-								i18n.baseText(
-									column.arm.status === 'error'
-										? 'inbox.agentProposal.evals.detail.runError'
-										: 'inbox.agentProposal.evals.detail.noAnswer',
-								)
-							}}
-						</N8nText>
-					</div>
-				</div>
+							<N8nText tag="dt" step="2xs" color="text-light">{{ row.label }}</N8nText>
+							<N8nText tag="dd" step="2xs" color="text-dark">{{ row.value }}</N8nText>
+						</div>
+					</dl>
+				</template>
 
-				<dl v-if="column.usage.length > 0" :class="$style.usage">
-					<div
-						v-for="row in column.usage"
-						:key="row.key"
-						:class="$style.usageRow"
-						:data-test-id="`agent-proposal-eval-usage-${row.key}`"
-					>
-						<N8nText tag="dt" step="2xs" color="text-light">{{ row.label }}</N8nText>
-						<N8nText tag="dd" step="2xs" color="text-dark">{{ row.value }}</N8nText>
-					</div>
-				</dl>
+				<N8nButton
+					variant="ghost"
+					size="small"
+					:class="$style.toggle"
+					:aria-expanded="expanded"
+					data-test-id="agent-proposal-eval-version-toggle"
+					@click="expanded = !expanded"
+				>
+					{{
+						i18n.baseText(
+							expanded
+								? 'inbox.agentProposal.evals.detail.hideDetails'
+								: 'inbox.agentProposal.evals.detail.showDetails',
+						)
+					}}
+					<N8nIcon :icon="expanded ? 'chevron-up' : 'chevron-down'" size="small" />
+				</N8nButton>
 			</section>
 		</div>
 	</div>
@@ -385,6 +419,10 @@ function toCheckRow(check: AgentProposalArmCheck) {
 	display: flex;
 	flex: 1;
 	flex-direction: column;
+	padding-top: var(--spacing--xs);
+	border-top: var(--border);
+	/* The answers of the two versions end on the same line, next to the usage. */
+	justify-content: flex-end;
 	gap: var(--spacing--xs);
 }
 
@@ -398,8 +436,7 @@ function toCheckRow(check: AgentProposalArmCheck) {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	margin: 0;
-	padding: 0 0 var(--spacing--xs);
-	border-bottom: var(--border);
+	padding: 0;
 	list-style: none;
 }
 
@@ -462,6 +499,11 @@ function toCheckRow(check: AgentProposalArmCheck) {
 	font-size: var(--font-size--2xs);
 	white-space: pre-wrap;
 	overflow-wrap: anywhere;
+}
+
+.toggle {
+	align-self: flex-start;
+	margin-top: auto;
 }
 
 .usage {
