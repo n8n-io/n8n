@@ -232,7 +232,7 @@ function renderModal({
 				AgentModal: AgentModalTestStub,
 				I18nT: {
 					props: ['keypath'],
-					template: '<span>{{ keypath }} <slot name="repo" /></span>',
+					template: '<span>{{ keypath }} <slot name="repo" /><slot name="source" /></span>',
 				},
 				MarkdownEditor: {
 					props: ['modelValue'],
@@ -927,14 +927,38 @@ describe('AgentSkillModal', () => {
 				});
 
 				await waitFor(() => {
-					const rowsWithSource = getAllByTestId('agent-skill-picker-row').filter((row) =>
-						row.querySelector('[data-test-id="recommended-skill-source"]'),
-					);
-					expect(
-						rowsWithSource.map(
-							(row) => within(row).getByTestId('agent-skill-picker-row-open').textContent,
-						),
-					).toEqual(['humanizer', 'cold-email', 'research']);
+					const sources = getAllByTestId('agent-skill-picker-row').flatMap((row) => {
+						const link = row.querySelector('[data-test-id="recommended-skill-source-link"]');
+						if (!link) return [];
+						return [
+							{
+								skill: within(row).getByTestId('agent-skill-picker-row-open').textContent,
+								label: link.textContent?.trim(),
+								href: link.getAttribute('href'),
+								target: link.getAttribute('target'),
+							},
+						];
+					});
+					expect(sources).toEqual([
+						{
+							skill: 'humanizer',
+							label: 'blader/humanizer',
+							href: 'https://github.com/blader/humanizer',
+							target: '_blank',
+						},
+						{
+							skill: 'cold-email',
+							label: 'coreyhaines31/marketingskills',
+							href: 'https://github.com/coreyhaines31/marketingskills/tree/main/skills/cold-email',
+							target: '_blank',
+						},
+						{
+							skill: 'research',
+							label: 'mattpocock/skills',
+							href: 'https://github.com/mattpocock/skills/tree/main/skills/engineering/research',
+							target: '_blank',
+						},
+					]);
 				});
 			});
 
