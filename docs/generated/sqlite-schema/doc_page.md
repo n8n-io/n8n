@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "doc_page" ("id" varchar(36) PRIMARY KEY NOT NULL, "projectId" varchar(36) NOT NULL, "parentId" varchar(36), "resourceType" varchar(16), "resourceId" varchar(36), "kind" varchar(16), "title" varchar(255) NOT NULL, "content" text, "markdown" text, "contentText" text NOT NULL, "writtenAgainstVersionId" varchar(36), "updatedById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_doc_page_resourceType" CHECK ("resourceType" IN ('workflow', 'agent')), CONSTRAINT "CHK_doc_page_kind" CHECK ("kind" IN ('api', 'schedule', 'event', 'agent')), CONSTRAINT "FK_57d75493c80a2cc512480d17937" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_2cc7479939efa30ee8f84f008b1" FOREIGN KEY ("parentId") REFERENCES "doc_page" ("id") ON DELETE CASCADE, CONSTRAINT "FK_e1d897d1f9c55b1782b37fb7aab" FOREIGN KEY ("updatedById") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "doc_page" ("id" varchar(36) PRIMARY KEY NOT NULL, "projectId" varchar(36) NOT NULL, "parentId" varchar(36), "resourceType" varchar(16), "resourceId" varchar(36), "kind" varchar(16), "title" varchar(255) NOT NULL, "content" text, "markdown" text, "contentText" text NOT NULL, "writtenAgainstVersionId" varchar(36), "updatedById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "properties" JSON, CONSTRAINT "CHK_doc_page_resourceType" CHECK ("resourceType" IN ('workflow', 'agent')), CONSTRAINT "CHK_doc_page_kind" CHECK ("kind" IN ('api', 'schedule', 'event', 'agent')), CONSTRAINT "FK_57d75493c80a2cc512480d17937" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_2cc7479939efa30ee8f84f008b1" FOREIGN KEY ("parentId") REFERENCES "doc_page" ("id") ON DELETE CASCADE, CONSTRAINT "FK_e1d897d1f9c55b1782b37fb7aab" FOREIGN KEY ("updatedById") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -23,6 +23,7 @@ CREATE TABLE "doc_page" ("id" varchar(36) PRIMARY KEY NOT NULL, "projectId" varc
 | markdown | TEXT |  | true |  |  |  |
 | parentId | varchar(36) |  | true |  | [doc_page](doc_page.md) |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
+| properties | JSON |  | true |  |  |  |
 | resourceId | varchar(36) |  | true |  |  |  |
 | resourceType | varchar(16) |  | true |  |  |  |
 | title | varchar(255) |  | false |  |  |  |
@@ -69,6 +70,7 @@ erDiagram
   TEXT markdown
   varchar_36_ parentId FK
   varchar_36_ projectId FK
+  JSON properties
   varchar_36_ resourceId
   varchar_16_ resourceType
   varchar_255_ title

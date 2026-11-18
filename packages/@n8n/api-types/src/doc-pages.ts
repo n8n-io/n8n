@@ -8,6 +8,47 @@ export type DocPageKind = z.infer<typeof docPageKindSchema>;
 export const docPageResourceTypeSchema = z.enum(['workflow', 'agent']);
 export type DocPageResourceType = z.infer<typeof docPageResourceTypeSchema>;
 
+/** One schedule rule of a Schedule Trigger node. */
+export type DocScheduleRule =
+	| {
+			every: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months';
+			interval: number;
+			/** 0 to 23. Not set for seconds and minutes. */
+			hour?: number;
+			/** 0 to 59. Not set for seconds and minutes. */
+			minute?: number;
+			/** 0 is Sunday. Only for weeks. */
+			weekdays?: number[];
+			/** 1 to 31. Only for months. */
+			dayOfMonth?: number;
+	  }
+	| { cron: string };
+
+/** One enabled entry point of a workflow. Never holds credential data. */
+export type DocPageTrigger = { nodeName: string; nodeType: string; typeVersion: number } & (
+	| {
+			type: 'webhook';
+			/** One or more HTTP methods. */
+			methods: string[];
+			/** The production URL. */
+			url: string;
+			auth: 'none' | 'basicAuth' | 'headerAuth' | 'jwtAuth';
+	  }
+	| { type: 'form'; url: string; auth: 'none' | 'basicAuth' }
+	| { type: 'chat'; /** Set when the chat is public. */ url: string | null }
+	| { type: 'schedule'; rules: DocScheduleRule[] }
+	| { type: 'event' }
+);
+
+/**
+ * Facts that n8n reads from the published workflow or Agent. The LLM does not write them.
+ * Child pages have none.
+ */
+export type DocPageProperties = {
+	triggers: DocPageTrigger[];
+	agent: { model: string | null; channels: string[] } | null;
+};
+
 export type DocPageSummary = {
 	/** Null when the resource has no page yet. */
 	id: string | null;
@@ -21,6 +62,7 @@ export type DocPageSummary = {
 	excerpt: string;
 	isStale: boolean;
 	isPublished: boolean;
+	properties: DocPageProperties | null;
 };
 
 export type DocPageLink = { id: string; title: string };
@@ -38,6 +80,7 @@ export type DocPage = {
 	markdown: string | null;
 	isStale: boolean;
 	isPublished: boolean;
+	properties: DocPageProperties | null;
 	canEdit: boolean;
 	/** Root first. The page itself is not in the list. */
 	breadcrumb: DocPageLink[];

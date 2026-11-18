@@ -1,4 +1,4 @@
-import type { DocPageKind, DocPageResourceType } from '@n8n/api-types';
+import type { DocPageKind, DocPageProperties, DocPageResourceType } from '@n8n/api-types';
 import { JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index } from '@n8n/typeorm';
 
@@ -39,6 +39,10 @@ export class DocPageEntity extends WithTimestampsAndStringId {
 
 	@Column({ type: 'text' })
 	contentText: string;
+
+	/** Facts from the published resource. The publish listener refreshes them. Null on child pages. */
+	@JsonColumn({ nullable: true })
+	properties: DocPageProperties | null;
 
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	writtenAgainstVersionId: string | null;

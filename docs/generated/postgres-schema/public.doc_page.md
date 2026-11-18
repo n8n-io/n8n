@@ -12,6 +12,7 @@
 | markdown | text |  | true |  |  | LLM output that waits for the editor to convert it |
 | parentId | varchar(36) |  | true |  | [public.doc_page](public.doc_page.md) | Parent page. Set only on child pages |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
+| properties | json |  | true |  |  | Facts from the published workflow or agent, such as triggers, URLs and model. Null on child pages |
 | resourceId | varchar(36) |  | true |  |  | Id of the workflow or agent. Null on child pages |
 | resourceType | varchar(16) |  | true |  |  | Type of the documented resource. Null on child pages |
 | title | varchar(255) |  | false |  |  |  |
@@ -63,6 +64,7 @@ erDiagram
   text markdown
   varchar_36_ parentId FK
   varchar_36_ projectId FK
+  json properties
   varchar_36_ resourceId
   varchar_16_ resourceType
   varchar_255_ title

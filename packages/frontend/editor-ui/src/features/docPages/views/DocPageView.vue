@@ -27,6 +27,7 @@ import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 
 import DocPageEditor from '../components/DocPageEditor.vue';
+import DocProperties from '../components/DocProperties.vue';
 import { DOC_AUTOSAVE_DEBOUNCE_MS, DOC_PAGE_VIEW, PROJECT_DOCS_VIEW } from '../constants';
 import { useDocPagesStore } from '../docPages.store';
 
@@ -369,6 +370,8 @@ function onApply(finding: DocCheckFinding, index: number) {
 						</N8nBadge>
 					</div>
 				</header>
+
+				<DocProperties v-if="isRootPage && page.properties" :properties="page.properties" />
 
 				<N8nCallout
 					v-if="isRootPage && page.isStale"

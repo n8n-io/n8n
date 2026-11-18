@@ -22,11 +22,16 @@ function isTrigger(type: string) {
 	return /trigger$/i.test(type) || OTHER_TRIGGER_TYPES.has(type);
 }
 
+/** The enabled trigger nodes that start the workflow from outside, in node order. */
+export function entryPoints<T extends Pick<INode, 'type' | 'disabled'>>(nodes: T[]): T[] {
+	return nodes.filter(
+		(node) => !node.disabled && isTrigger(node.type) && !NOT_ENTRY_POINTS.has(node.type),
+	);
+}
+
 /** The page template for a workflow, from its enabled trigger nodes. `null` means no page. */
 export function detectKind(nodes: Array<Pick<INode, 'type' | 'disabled'>>): DocPageKind | null {
-	const types = nodes
-		.filter((node) => !node.disabled && isTrigger(node.type) && !NOT_ENTRY_POINTS.has(node.type))
-		.map((node) => node.type);
+	const types = entryPoints(nodes).map((node) => node.type);
 
 	if (types.some((type) => API_TYPES.has(type))) return 'api';
 	if (types.some((type) => AGENT_TYPES.has(type))) return 'agent';

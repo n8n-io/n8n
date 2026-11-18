@@ -21,10 +21,10 @@ export class DocPageListener {
 
 	init() {
 		this.eventService.on('workflow-activated', async ({ workflowId, user }) => {
-			await this.onFirstPublish('workflow', workflowId, user.id);
+			await this.onPublish('workflow', workflowId, user.id);
 		});
 		this.eventService.on('agent-published', async ({ agentId, user }) => {
-			await this.onFirstPublish('agent', agentId, user.id);
+			await this.onPublish('agent', agentId, user.id);
 		});
 		this.eventService.on('workflow-deleted', async ({ workflowId }) => {
 			await this.run('delete page', async () => {
@@ -38,12 +38,19 @@ export class DocPageListener {
 		});
 	}
 
-	/** On the first publish, creates the page and writes it with the LLM. Later publishes do nothing. */
-	async onFirstPublish(type: DocPageResourceType, id: string, userId: string) {
-		await this.run('generate page', async () => {
+	/**
+	 * On the first publish, creates the page and writes it with the LLM.
+	 * Later publishes only refresh the page properties.
+	 */
+	async onPublish(type: DocPageResourceType, id: string, userId: string) {
+		await this.run('update page on publish', async () => {
 			const resource = await this.docPageService.loadResource(type, id);
-			if (!resource?.kind) return;
-			if (await this.docPageService.hasPage(type, id)) return;
+			if (!resource) return;
+			if (await this.docPageService.hasPage(type, id)) {
+				await this.docPageService.refreshProperties(resource);
+				return;
+			}
+			if (!resource.kind) return;
 
 			const page = await this.docPageService.ensureForResource(resource, userId);
 			const user = await this.userRepository.findByIdWithRole(userId);

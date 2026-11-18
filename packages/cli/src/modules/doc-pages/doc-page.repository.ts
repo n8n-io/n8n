@@ -1,4 +1,4 @@
-import type { DocPageResourceType } from '@n8n/api-types';
+import type { DocPageProperties, DocPageResourceType } from '@n8n/api-types';
 import {
 	BaseRepository,
 	escapeLike,
@@ -47,6 +47,7 @@ export type NewDocPageRow = Pick<
 	| 'content'
 	| 'markdown'
 	| 'contentText'
+	| 'properties'
 	| 'writtenAgainstVersionId'
 	| 'updatedById'
 >;
@@ -131,6 +132,17 @@ export class DocPageRepository {
 
 	async save(page: DocPageEntity, ctx: OperationContext = {}) {
 		return await this.table.managerFor(ctx).save(DocPageEntity, page);
+	}
+
+	async updatePropertiesByResource(
+		resourceType: DocPageResourceType,
+		resourceId: string,
+		properties: DocPageProperties | null,
+		ctx: OperationContext = {},
+	) {
+		await this.table
+			.managerFor(ctx)
+			.update(DocPageEntity, { resourceType, resourceId }, { properties });
 	}
 
 	async deleteById(id: string, ctx: OperationContext = {}) {

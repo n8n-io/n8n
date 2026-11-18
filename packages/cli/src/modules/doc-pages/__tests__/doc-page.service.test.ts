@@ -1,4 +1,6 @@
 import type { DocPageSummary } from '@n8n/api-types';
+import type { UrlService } from '@n8n/backend-services';
+import type { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
@@ -26,6 +28,7 @@ const page = (overrides: Partial<DocPageEntity> = {}) =>
 		content: null,
 		markdown: null,
 		contentText: '',
+		properties: null,
 		writtenAgainstVersionId: 'v1',
 		updatedAt: new Date(),
 		...overrides,
@@ -36,7 +39,19 @@ const workflow = mock<WorkflowEntity>({
 	name: 'Absence API',
 	isArchived: false,
 	activeVersionId: 'v1',
-	activeVersion: { nodes: [{ type: 'n8n-nodes-base.webhook' }], connections: {} },
+	activeVersion: {
+		nodes: [
+			{
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 2,
+				webhookId: 'hook1',
+				disabled: false,
+				parameters: { path: 'absence', httpMethod: 'POST' },
+			},
+		],
+		connections: {},
+	},
 	shared: [{ role: 'workflow:owner', projectId: 'project1' }],
 });
 
@@ -52,6 +67,11 @@ describe('DocPageService', () => {
 		mock(),
 		mock(),
 		mock(),
+		mock<UrlService>({ getWebhookBaseUrl: () => 'https://n8n.example.com/' }),
+		mock<GlobalConfig>({
+			endpoints: { webhook: 'webhook', form: 'form' },
+			chatTrigger: { disablePublicChat: false },
+		}),
 	);
 
 	beforeEach(() => {
@@ -104,6 +124,7 @@ describe('DocPageService', () => {
 			expect(workflowRepository.findById).toHaveBeenCalledWith('wf1');
 			expect(result.breadcrumb).toEqual([{ id: 'page1', title: 'Absence API' }]);
 			expect(result.canEdit).toBe(true);
+			expect(result.properties).toBeNull();
 		});
 
 		it('does not delete a root page', async () => {
@@ -113,6 +134,35 @@ describe('DocPageService', () => {
 			await expect(service.deleteChild(user, 'page1')).rejects.toThrow(BadRequestError);
 			expect(docPageRepository.deleteById).not.toHaveBeenCalled();
 		});
+	});
+
+	it('returns the live properties of the published workflow on a root page', async () => {
+		docPageRepository.findById.mockResolvedValue(page());
+		vi.mocked(userHasScopes).mockResolvedValue(true);
+
+		const result = await service.get(user, 'page1');
+
+		expect(result.properties).toEqual({
+			triggers: [
+				expect.objectContaining({
+					type: 'webhook',
+					methods: ['POST'],
+					url: 'https://n8n.example.com/webhook/absence',
+				}),
+			],
+			agent: null,
+		});
+	});
+
+	it('stores the properties when it creates a page', async () => {
+		docPageRepository.findByResource.mockResolvedValue(null);
+		docPageRepository.insert.mockImplementation(async (row) => page(row));
+		const resource = await service.loadResource('workflow', 'wf1');
+
+		await service.ensureForResource(resource!, 'user1');
+
+		expect(docPageRepository.insert.mock.calls[0][0].properties).toEqual(resource!.properties);
+		expect(resource!.properties?.triggers).toHaveLength(1);
 	});
 
 	it('saving content clears the markdown and stores the plain text', async () => {

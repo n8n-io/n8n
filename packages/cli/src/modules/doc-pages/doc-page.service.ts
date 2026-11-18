@@ -3,6 +3,7 @@ import type {
 	DocOverviewProject,
 	DocPage,
 	DocPageKind,
+	DocPageProperties,
 	DocPageResourceType,
 	DocPageSummary,
 	EnsureDocPageDto,
@@ -16,6 +17,8 @@ import {
 	WorkflowStatisticsRepository,
 } from '@n8n/db';
 import { ModuleRegistry } from '@n8n/backend-common';
+import { UrlService } from '@n8n/backend-services';
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
@@ -28,6 +31,7 @@ import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { detectKind } from './doc-page-kind';
+import { agentProperties, workflowProperties } from './doc-page-properties';
 import { extractText } from './doc-page-text';
 import type { DocPageEntity } from './doc-page.entity';
 import { DocPageRepository } from './doc-page.repository';
@@ -51,6 +55,8 @@ export type DocResource = {
 	isPublished: boolean;
 	/** Input for the LLM: the published workflow, or the published agent configuration. */
 	published: { nodes: INode[]; connections: IConnections } | { config: unknown } | null;
+	/** Facts from the published version. Null when nothing is published. */
+	properties: DocPageProperties | null;
 };
 
 /** Resource fields that summaries and staleness need. */
@@ -75,6 +81,8 @@ export class DocPageService {
 		private readonly agentThreadRepository: AgentExecutionThreadRepository,
 		private readonly projectService: ProjectService,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly urlService: UrlService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	/** Agent tables exist only while the agents module runs. */
@@ -83,6 +91,17 @@ export class DocPageService {
 	}
 
 	// ---- resources ----
+
+	private workflowProperties(workflowId: string, nodes: INode[]) {
+		// The webhook base URL ends with a slash.
+		const base = this.urlService.getWebhookBaseUrl();
+		const { endpoints, chatTrigger } = this.globalConfig;
+		return workflowProperties(workflowId, nodes, {
+			webhook: `${base}${endpoints.webhook}`,
+			form: `${base}${endpoints.form}`,
+			publicChat: !chatTrigger.disablePublicChat,
+		});
+	}
 
 	async loadResource(type: DocPageResourceType, id: string): Promise<DocResource | null> {
 		if (type === 'workflow') {
@@ -100,6 +119,7 @@ export class DocPageService {
 				activeVersionId: workflow.activeVersionId,
 				isPublished,
 				published: version ? { nodes: version.nodes, connections: version.connections } : null,
+				properties: version ? this.workflowProperties(id, version.nodes) : null,
 			};
 		}
 
@@ -115,6 +135,7 @@ export class DocPageService {
 			activeVersionId: agent.activeVersionId,
 			isPublished: agent.activeVersionId !== null,
 			published: agent.activeVersion ? { config: agent.activeVersion.schema } : null,
+			properties: agent.activeVersion ? agentProperties(agent) : null,
 		};
 	}
 
@@ -187,6 +208,7 @@ export class DocPageService {
 				content: null,
 				markdown: null,
 				contentText: '',
+				properties: resource.properties,
 				writtenAgainstVersionId: resource.activeVersionId,
 				updatedById: userId,
 			});
@@ -227,6 +249,7 @@ export class DocPageService {
 			content: null,
 			markdown: null,
 			contentText: '',
+			properties: null,
 			writtenAgainstVersionId: null,
 			updatedById: user.id,
 		});
@@ -264,6 +287,15 @@ export class DocPageService {
 		return await this.docPageRepository.save(page);
 	}
 
+	/** Stores the current facts of the resource on its page, if it has one. */
+	async refreshProperties(resource: DocResource) {
+		await this.docPageRepository.updatePropertiesByResource(
+			resource.type,
+			resource.id,
+			resource.properties,
+		);
+	}
+
 	async hasPage(type: DocPageResourceType, id: string) {
 		return (await this.docPageRepository.findByResource(type, id)) !== null;
 	}
@@ -291,6 +323,7 @@ export class DocPageService {
 			markdown: page.markdown,
 			isStale: isStale(page, resource),
 			isPublished: resource.isPublished,
+			properties: page.parentId === null ? resource.properties : null,
 			canEdit: await this.hasAccess(user, resource, 'update'),
 			breadcrumb: ancestors.map(({ id, title }) => ({ id, title })),
 			children: children.map(({ id, title }) => ({ id, title })),
@@ -307,9 +340,15 @@ export class DocPageService {
 			pages.map((page) => [`${page.resourceType}:${page.resourceId}`, page]),
 		);
 		const summaries = new Map<string, DocPageSummary>();
-		const add = (type: DocPageResourceType, id: string, kind: DocPageKind, head: ResourceHead) => {
+		const add = (
+			type: DocPageResourceType,
+			id: string,
+			kind: DocPageKind,
+			head: ResourceHead,
+			properties: DocPageProperties | null = null,
+		) => {
 			const page = pageByResource.get(`${type}:${id}`) ?? null;
-			summaries.set(`${type}:${id}`, toSummary(page, type, id, projectId, kind, head));
+			summaries.set(`${type}:${id}`, toSummary(page, type, id, projectId, kind, head, properties));
 		};
 
 		// Workflows: published ones with a kind, plus the ones that already have a page.
@@ -326,7 +365,13 @@ export class DocPageService {
 		for (const workflow of published) {
 			const kind = detectKind(workflow.nodes);
 			if (!kind || !readable.has(workflow.id)) continue;
-			add('workflow', workflow.id, kind, { ...workflow, isPublished: true });
+			add(
+				'workflow',
+				workflow.id,
+				kind,
+				{ ...workflow, isPublished: true },
+				this.workflowProperties(workflow.id, workflow.nodes),
+			);
 		}
 		const unlisted = pagedWorkflowIds.filter(
 			(id) => readable.has(id) && !summaries.has(`workflow:${id}`),
@@ -449,6 +494,8 @@ function toSummary(
 	projectId: string,
 	kind: DocPageKind,
 	head: ResourceHead,
+	/** Used when the page has no stored properties. */
+	fallbackProperties: DocPageProperties | null = null,
 ): DocPageSummary {
 	return {
 		id: page?.id ?? null,
@@ -460,6 +507,7 @@ function toSummary(
 		excerpt: (page?.contentText ?? '').slice(0, EXCERPT_LENGTH),
 		isStale: page ? isStale(page, head) : false,
 		isPublished: head.isPublished,
+		properties: page?.properties ?? fallbackProperties,
 	};
 }
 

@@ -207,6 +207,7 @@ erDiagram
   text markdown
   varchar_36_ parentId FK
   varchar_36_ projectId FK
+  json properties
   varchar_36_ resourceId
   varchar_16_ resourceType
   varchar_255_ title

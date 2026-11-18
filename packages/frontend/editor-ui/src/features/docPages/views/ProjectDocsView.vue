@@ -1,25 +1,21 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import type { DocPageSummary } from '@n8n/api-types';
-import { N8nBadge, N8nEmptyState, N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nEmptyState, N8nHeading, N8nLoading } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 
-import DocKindBadge from '../components/DocKindBadge.vue';
-import { DOC_PAGE_VIEW } from '../constants';
+import DocTable from '../components/DocTable.vue';
 import { groupByKind } from '../docPages.utils';
 import { useDocPagesStore } from '../docPages.store';
-import { useOpenDocPage } from '../composables/useOpenDocPage';
 
 const i18n = useI18n();
 const route = useRoute();
-const router = useRouter();
 const toast = useToast();
 const docPagesStore = useDocPagesStore();
-const { openDocPage } = useOpenDocPage();
 
 const loading = ref(true);
 const items = ref<DocPageSummary[]>([]);
@@ -38,17 +34,6 @@ async function load(id: string) {
 	} finally {
 		loading.value = false;
 	}
-}
-
-async function openItem(item: DocPageSummary) {
-	if (item.id) {
-		await router.push({
-			name: DOC_PAGE_VIEW,
-			params: { projectId: item.projectId, pageId: item.id },
-		});
-		return;
-	}
-	await openDocPage(item.resourceType, item.resourceId);
 }
 
 watch(projectId, load, { immediate: true });
@@ -76,33 +61,13 @@ watch(projectId, load, { immediate: true });
 					:class="$style.group"
 					:data-testid="`project-docs-group-${group.kind}`"
 				>
-					<N8nHeading tag="h2" size="small" bold color="text-light">
-						{{ i18n.baseText(`docPages.group.${group.kind}`) }}
-					</N8nHeading>
-					<ul :class="$style.list">
-						<li v-for="item in group.items" :key="`${item.resourceType}-${item.resourceId}`">
-							<button
-								type="button"
-								:class="$style.item"
-								data-testid="project-docs-item"
-								@click="openItem(item)"
-							>
-								<span :class="$style.itemTitle">
-									<N8nText bold>{{ item.name }}</N8nText>
-									<DocKindBadge :kind="item.kind" />
-									<N8nBadge v-if="!item.isPublished" variant="outline" size="xsmall">
-										{{ i18n.baseText('docPages.unpublished') }}
-									</N8nBadge>
-									<N8nBadge v-if="item.isStale" variant="warning" size="xsmall">
-										{{ i18n.baseText('docPages.stale.badge') }}
-									</N8nBadge>
-								</span>
-								<N8nText size="small" color="text-light" :class="$style.excerpt">
-									{{ item.excerpt || i18n.baseText('docPages.noExcerpt') }}
-								</N8nText>
-							</button>
-						</li>
-					</ul>
+					<div :class="$style.groupHeader">
+						<N8nHeading tag="h2" size="medium" bold>
+							{{ i18n.baseText(`docPages.group.${group.kind}`) }}
+						</N8nHeading>
+						<span :class="$style.count">{{ group.items.length }}</span>
+					</div>
+					<DocTable :kind="group.kind" :items="group.items" />
 				</section>
 			</template>
 		</div>
@@ -120,52 +85,23 @@ watch(projectId, load, { immediate: true });
 .group {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--xs);
 }
 
-.list {
-	display: flex;
-	flex-direction: column;
-	margin: 0;
-	padding: 0;
-	list-style: none;
-	border: var(--border);
-	border-radius: var(--radius);
-	background-color: var(--background--surface);
-	overflow: hidden;
-
-	li + li {
-		border-top: var(--border);
-	}
-}
-
-.item {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	width: 100%;
-	padding: var(--spacing--sm) var(--spacing--md);
-	border: none;
-	background: none;
-	text-align: left;
-	cursor: pointer;
-	color: var(--text-color);
-
-	&:hover,
-	&:focus-visible {
-		background-color: var(--background--hover);
-	}
-}
-
-.itemTitle {
+.groupHeader {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
 }
 
-.excerpt {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+.count {
+	padding: 0 var(--spacing--3xs);
+	border-radius: var(--radius--full);
+	background: var(--background--hover);
+	color: var(--text-color--subtle);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--medium);
+	line-height: var(--line-height--xl);
+	font-variant-numeric: tabular-nums;
 }
 </style>

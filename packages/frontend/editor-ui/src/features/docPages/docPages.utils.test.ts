@@ -28,6 +28,7 @@ describe('groupByKind', () => {
 		excerpt: '',
 		isStale: false,
 		isPublished: true,
+		properties: null,
 	});
 
 	it('groups in the fixed kind order, sorts by name and drops empty groups', () => {

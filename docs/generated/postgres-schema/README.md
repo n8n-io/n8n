@@ -70,7 +70,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.data_table](public.data_table.md) | 5 |  | BASE TABLE |
 | [public.data_table_column](public.data_table_column.md) | 7 |  | BASE TABLE |
 | [public.deployment_key](public.deployment_key.md) | 7 |  | BASE TABLE |
-| [public.doc_page](public.doc_page.md) | 14 |  | BASE TABLE |
+| [public.doc_page](public.doc_page.md) | 15 |  | BASE TABLE |
 | [public.dynamic_credential_entry](public.dynamic_credential_entry.md) | 6 |  | BASE TABLE |
 | [public.dynamic_credential_resolver](public.dynamic_credential_resolver.md) | 6 |  | BASE TABLE |
 | [public.dynamic_credential_user_entry](public.dynamic_credential_user_entry.md) | 6 |  | BASE TABLE |
@@ -1195,6 +1195,7 @@ erDiagram
   text markdown
   varchar_36_ parentId FK
   varchar_36_ projectId FK
+  json properties
   varchar_36_ resourceId
   varchar_16_ resourceType
   varchar_255_ title

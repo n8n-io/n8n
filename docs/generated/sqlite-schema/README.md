@@ -70,7 +70,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [data_table](data_table.md) | 5 |  | table |
 | [data_table_column](data_table_column.md) | 7 |  | table |
 | [deployment_key](deployment_key.md) | 7 |  | table |
-| [doc_page](doc_page.md) | 14 |  | table |
+| [doc_page](doc_page.md) | 15 |  | table |
 | [dynamic_credential_entry](dynamic_credential_entry.md) | 6 |  | table |
 | [dynamic_credential_resolver](dynamic_credential_resolver.md) | 6 |  | table |
 | [dynamic_credential_user_entry](dynamic_credential_user_entry.md) | 6 |  | table |
@@ -1181,6 +1181,7 @@ erDiagram
   TEXT markdown
   varchar_36_ parentId FK
   varchar_36_ projectId FK
+  JSON properties
   varchar_36_ resourceId
   varchar_16_ resourceType
   varchar_255_ title

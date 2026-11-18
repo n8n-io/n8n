@@ -27,6 +27,7 @@ const row = (overrides: Partial<NewDocPageRow>): NewDocPageRow => ({
 	content: null,
 	markdown: null,
 	contentText: '',
+	properties: null,
 	writtenAgainstVersionId: null,
 	updatedById: null,
 	...overrides,
@@ -90,6 +91,13 @@ describe('DocPageRepository', () => {
 
 		expect(first?.id).toBe(second?.id);
 		expect(first?.writtenAgainstVersionId).toBe(workflow.activeVersionId);
+		expect(first?.properties?.triggers).toEqual([
+			expect.objectContaining({ type: 'schedule', rules: [] }),
+		]);
+
+		const properties = { triggers: [], agent: null };
+		await repository.updatePropertiesByResource('workflow', workflow.id, properties);
+		expect((await repository.findById(first!.id))?.properties).toEqual(properties);
 	});
 
 	it('reads published workflows and agents of a project', async () => {
