@@ -9,6 +9,8 @@ import { ProjectTypes } from '../projects.types';
 import { useProjectsStore } from '../projects.store';
 import { canConfigureSelfHealing, selfHealingLocation } from '../projects.utils';
 import ProjectTabs from './ProjectTabs.vue';
+import { useIsPageModuleActive } from '@/features/pages/composables/useIsPageModuleActive';
+import { useNewPageAction } from '@/features/pages/composables/useNewPageAction';
 import ProjectIcon from './ProjectIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
@@ -195,6 +197,7 @@ const ACTION_TYPES = {
 	AGENT: 'agent',
 	APP: 'app',
 	SELF_HEALING: 'selfHealing',
+	PAGE: 'page',
 } as const satisfies Record<string, SlotProjectHeaderMainButton | 'folder'>;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
@@ -267,6 +270,18 @@ const createSelfHealingButton = computed(() => ({
 	disabled: sourceControlStore.preferences.branchReadOnly || !personalSelfHealingTab.value,
 }));
 
+const isPageModuleActive = useIsPageModuleActive();
+const { createUntitledPageAndOpenIt } = useNewPageAction();
+const createPageButton = computed(() => ({
+	value: ACTION_TYPES.PAGE,
+	label: i18n.baseText('page.create'),
+	icon: sourceControlStore.preferences.branchReadOnly ? ('lock' as IconName) : undefined,
+	size: 'mini' as const,
+	disabled:
+		sourceControlStore.preferences.branchReadOnly ||
+		!getResourcePermissions(homeProject.value?.scopes).page?.create,
+}));
+
 const selectedMainButtonType = computed(() => {
 	if (props.mainButton === ACTION_TYPES.AGENT && !settingsStore.isAgentsEnabled) {
 		return ACTION_TYPES.WORKFLOW;
@@ -291,6 +306,8 @@ const mainButtonConfig = computed(() => {
 			return createAgentButton.value;
 		case ACTION_TYPES.APP:
 			return createAppButton.value;
+		case ACTION_TYPES.PAGE:
+			return createPageButton.value;
 		case ACTION_TYPES.WORKFLOW:
 		default:
 			return createWorkflowButton.value;
@@ -372,6 +389,14 @@ const menu = computed(() => {
 			value: ACTION_TYPES.APP,
 			label: i18n.baseText('projects.header.create.app'),
 			disabled: !canCreateApp.value,
+		});
+	}
+
+	if (isPageModuleActive.value && selectedMainButtonType.value !== ACTION_TYPES.PAGE) {
+		items.push({
+			value: ACTION_TYPES.PAGE,
+			label: createPageButton.value.label,
+			disabled: createPageButton.value.disabled,
 		});
 	}
 
@@ -464,6 +489,9 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 	},
 	[ACTION_TYPES.APP]: (projectId) => {
 		createApp(projectId);
+	},
+	[ACTION_TYPES.PAGE]: (projectId) => {
+		void createUntitledPageAndOpenIt(projectId);
 	},
 } as const;
 

@@ -37,6 +37,7 @@ import { useRecentResources } from './useRecentResources';
 import { useChatHubCommands } from './useChatHubCommands';
 import { useInstanceAiCommands } from './useInstanceAiCommands';
 import { useAgentNavigationCommands } from './useAgentNavigationCommands';
+import { usePageNavigationCommands } from '@/features/pages/composables/usePageNavigationCommands';
 import { rankItems } from '../commandBar.utils';
 import type {
 	CommandBarItem,
@@ -133,6 +134,7 @@ export function useCommandBar() {
 	const executionNavigationGroup = useExecutionNavigationCommands();
 	const projectNavigationGroup = useProjectNavigationCommands();
 	const agentNavigationGroup = useAgentNavigationCommands({ currentProjectName });
+	const pageNavigationGroup = usePageNavigationCommands({ currentProjectName });
 	const genericCommandGroup = useGenericCommands();
 	const contextCommandGroup = useContextCommands();
 	const recentResourcesGroup = useRecentResources();
@@ -174,6 +176,7 @@ export function useCommandBar() {
 			projectNavigationGroup,
 			credentialNavigationGroup,
 			dataTableNavigationGroup,
+			pageNavigationGroup,
 		];
 		const leading = leadingNavigationGroup.value;
 		return leading ? [leading, ...groups.filter((group) => group !== leading)] : groups;

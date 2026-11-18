@@ -23,6 +23,8 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { mock } from 'vitest-mock-extended';
 import type { IUser } from '@n8n/rest-api-client';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
+import { PROJECT_PAGES_VIEW, usePageStore } from '@n8n/frontend-module-page';
+import type { Page } from '@n8n/api-types';
 
 const mockPush = vi.fn();
 const createAppMock = vi.fn();
@@ -706,6 +708,34 @@ describe('ProjectHeader', () => {
 			const appId = createAppMock.mock.calls.at(-1)?.[0]?.appId;
 			expect(appId).toEqual(expect.any(String));
 			expect(createAppMock).toHaveBeenCalledWith({ projectId: project.id, appId });
+		});
+
+		it('should create a page and open it when page is the main button', async () => {
+			const project = createTestProject({ scopes: ['page:create'] });
+			projectsStore.currentProject = project;
+			projectsStore.personalProject = project;
+			const pageStore = mockedStore(usePageStore);
+			pageStore.createPage.mockResolvedValue({ id: 'new-page' } as Page);
+			const { getByTestId } = renderComponent({ props: { mainButton: 'page' } });
+
+			await userEvent.click(getByTestId('add-resource-page'));
+
+			expect(pageStore.createPage).toHaveBeenCalledWith(project.id, { title: 'Untitled' });
+			await waitFor(() =>
+				expect(mockPush).toHaveBeenCalledWith({
+					name: PROJECT_PAGES_VIEW,
+					params: { projectId: project.id, pageId: 'new-page' },
+				}),
+			);
+		});
+
+		it('should disable the page main button without the permission', () => {
+			const project = createTestProject({ scopes: [] });
+			projectsStore.currentProject = project;
+
+			const { getByTestId } = renderComponent({ props: { mainButton: 'page' } });
+
+			expect(getByTestId('add-resource-page')).toBeDisabled();
 		});
 
 		it('should render workflow button as main by default', () => {
