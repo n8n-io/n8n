@@ -134,7 +134,6 @@ export { ExecutionDataWriteError } from './executions/execution-data/execution-d
 export {
 	createExecutionRef,
 	isExecutionDataPayload,
-	toWorkflowDocument,
 	toWorkflowSnapshot,
 	type BlobStorageLocation,
 	type BundleWorkflowSnapshot,
