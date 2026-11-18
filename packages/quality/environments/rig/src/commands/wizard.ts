@@ -144,6 +144,15 @@ export async function wizard(givenName?: string): Promise<TopologyInput | undefi
 		},
 	]);
 	if (tunnel) topology.tunnel = { provider: 'cloudflare' };
+	const mail = await select('Email', [
+		{ value: false, label: 'Off', hint: 'n8n sends no emails' },
+		{
+			value: true,
+			label: 'Mailpit',
+			hint: 'catches invites and password resets, shows them in a web UI',
+		},
+	]);
+	if (mail) topology.mail = { provider: 'mailpit' };
 	const sharing = slotsInUse().get(0);
 	if (sharing) {
 		const slot = freeSlot();

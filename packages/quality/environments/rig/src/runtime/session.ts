@@ -287,10 +287,12 @@ export class Session {
 	private printHelp(full = false): void {
 		const url = this.editorUrl();
 		const publicUrl = this.env.tunnelUrl();
+		const mailUrl = this.env.mailUrl();
 		const keys = isInteractive()
 			? [
 					url ? `${pc.bold('[o]')} open ${url}` : undefined,
 					publicUrl ? `${pc.bold('[p]')} open ${publicUrl}` : undefined,
+					mailUrl ? `${pc.bold('[m]')} open mail ${mailUrl}` : undefined,
 					`${pc.bold('[r]')} restart drifted`,
 					`${pc.bold('[R]')} restart all`,
 					full || this.targets.length > 1
@@ -364,6 +366,15 @@ export class Session {
 		this.open(url).catch(printError);
 	}
 
+	private openMail(): void {
+		const url = this.env.mailUrl();
+		if (!url) {
+			ui.warn('This environment has no mail server. Set `mail: mailpit` in env.yaml.');
+			return;
+		}
+		this.open(url).catch(printError);
+	}
+
 	private openEditor(): void {
 		const url = this.editorUrl();
 		if (!url) {
@@ -412,6 +423,7 @@ export class Session {
 		if (key === '\u0003' || key === 'q') this.quit();
 		else if (key === 'o') this.openEditor();
 		else if (key === 'p') this.openPublicUrl();
+		else if (key === 'm') this.openMail();
 		else if (key === 'r') this.restartDrifted().catch(printError);
 		else if (key === 'R') this.restartTargets(this.targets.map((t) => t.name)).catch(printError);
 		else if (/^[1-9]$/.test(key)) this.toggleFilter(Number(key) - 1);

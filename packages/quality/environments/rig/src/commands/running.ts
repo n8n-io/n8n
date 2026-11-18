@@ -385,9 +385,22 @@ export const openCommand = defineCommand({
 		...envArg,
 		target: { type: 'positional', required: false, description: 'Main component, default main-1' },
 		public: { type: 'boolean', description: 'Open the public HTTPS URL of the tunnel' },
+		mail: { type: 'boolean', description: 'Open the Mailpit UI with the emails of n8n' },
 	},
 	async run({ args }) {
 		const env = loadEnv(args.env);
+		if (args.mail) {
+			const url = env.mailUrl();
+			if (!url) {
+				throw new RigError(
+					'This environment has no mail server.',
+					'Set `mail: mailpit` in env.yaml.',
+				);
+			}
+			await openUrl(url);
+			ui.info(url);
+			return;
+		}
 		const publicUrl = args.public ? env.tunnelUrl() : undefined;
 		if (args.public && !publicUrl) {
 			throw new RigError(

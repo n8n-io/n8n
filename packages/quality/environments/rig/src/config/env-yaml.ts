@@ -54,6 +54,29 @@ const tunnelSchema = z.preprocess(
 
 export type TunnelConfig = z.infer<typeof tunnelSchema>;
 
+export const MAILPIT_SMTP_PORT = 1025;
+export const MAILPIT_UI_PORT = 8025;
+
+/**
+ * A local mail server that catches every email of n8n. `mail: mailpit` is the
+ * short form of `mail: { provider: mailpit }`. rig points the SMTP settings of
+ * n8n at it. The Mailpit UI shows the emails.
+ */
+const mailSchema = z.preprocess(
+	(value) => (typeof value === 'string' ? { provider: value } : value),
+	z
+		.object({
+			provider: z.enum(['off', 'mailpit']).default('off'),
+			image: z.string().default('auto'),
+			smtpPort: z.number().int().min(1).max(65535).default(MAILPIT_SMTP_PORT),
+			uiPort: z.number().int().min(1).max(65535).default(MAILPIT_UI_PORT),
+		})
+		.strict()
+		.default({}),
+);
+
+export type MailConfig = z.infer<typeof mailSchema>;
+
 export const topologySchema = z
 	.object({
 		name: z.string().regex(ENV_NAME_PATTERN, 'use lowercase letters, digits, and dashes'),
@@ -78,6 +101,7 @@ export const topologySchema = z
 		/** With `engine: remote`: mutual TLS between the main and the engine, with certificates from rig. */
 		engineTls: z.boolean().default(false),
 		tunnel: tunnelSchema,
+		mail: mailSchema,
 		/**
 		 * Port slot. Slot k adds 1000 * k to every n8n port and k to the service
 		 * ports, so environments with different slots can run at the same time.
@@ -129,7 +153,7 @@ export function saveTopology(file: string, topology: Topology): void {
 	writeFileSync(file, header + stringify(topology));
 }
 
-export type ServiceName = 'postgres' | 'redis' | 'tunnel';
+export type ServiceName = 'postgres' | 'redis' | 'tunnel' | 'mailpit';
 
 /** Services the topology needs. */
 export function requiredServices(topology: Topology): ServiceName[] {
@@ -137,13 +161,30 @@ export function requiredServices(topology: Topology): ServiceName[] {
 	if (topology.db === 'postgres') services.push('postgres');
 	if (topology.queue || topology.engine === 'remote') services.push('redis');
 	if (topology.tunnel.provider === 'cloudflare') services.push('tunnel');
+	if (topology.mail.provider === 'mailpit') services.push('mailpit');
 	return services;
 }
 
-/** The host port of a service, with the slot. The tunnel publishes only its metrics port. */
+/**
+ * The main host port of a service, with the slot. The tunnel publishes only
+ * its metrics port. For Mailpit it is the SMTP port.
+ */
 export function servicePort(topology: Topology, service: ServiceName): number {
-	const port = service === 'tunnel' ? topology.tunnel.metricsPort : topology.services[service].port;
-	return port + topology.slot;
+	if (service === 'tunnel') return topology.tunnel.metricsPort + topology.slot;
+	if (service === 'mailpit') return topology.mail.smtpPort + topology.slot;
+	return topology.services[service].port + topology.slot;
+}
+
+/** The host port of the Mailpit UI and API, with the slot. */
+export function mailpitUiPort(topology: Topology): number {
+	return topology.mail.uiPort + topology.slot;
+}
+
+/** Every host port that a service publishes, with the slot. */
+export function servicePorts(topology: Topology, service: ServiceName): number[] {
+	const ports = [servicePort(topology, service)];
+	if (service === 'mailpit') ports.push(mailpitUiPort(topology));
+	return ports;
 }
 
 export function describeTopology(topology: Topology): string {
@@ -166,6 +207,7 @@ export function describeTopology(topology: Topology): string {
 	if (topology.tunnel.provider === 'cloudflare') {
 		parts.push(`tunnel: ${topology.tunnel.hostname ?? 'cloudflare quick tunnel'}`);
 	}
+	if (topology.mail.provider === 'mailpit') parts.push('mail: mailpit');
 	if (topology.slot > 0) parts.push(`slot ${topology.slot}`);
 	return parts.join(' · ');
 }

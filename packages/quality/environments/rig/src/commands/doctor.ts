@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { defineCommand } from 'citty';
 import pc from 'picocolors';
 
-import { requiredServices, servicePort } from '../config/env-yaml';
+import { requiredServices, servicePorts } from '../config/env-yaml';
 import { CONTAINER_RUNTIMES, loadGlobalConfig } from '../config/global-config';
 import { RigEnv } from '../environment';
 import { RigError } from '../errors';
@@ -143,7 +143,7 @@ function runtimeChecks(): Check[] {
 					: 'neither Docker nor Podman is installed',
 			hint: selected
 				? undefined
-				: 'Install Docker Desktop, OrbStack, or Podman. Postgres, Redis, and tunnels run in containers.',
+				: 'Install Docker Desktop, OrbStack, or Podman. Postgres, Redis, tunnels, and Mailpit run in containers.',
 		},
 	];
 	for (const runtime of CONTAINER_RUNTIMES) {
@@ -324,9 +324,10 @@ async function portChecks(env: RigEnv): Promise<Check[]> {
 	);
 	for (const service of requiredServices(env.topology)) {
 		if (running.has(service)) continue;
-		const port = servicePort(env.topology, service);
-		if (await isPortFree(port)) continue;
-		conflicts.push(`${port} (${service}) is used by ${portOwner(port) ?? 'another process'}`);
+		for (const port of servicePorts(env.topology, service)) {
+			if (await isPortFree(port)) continue;
+			conflicts.push(`${port} (${service}) is used by ${portOwner(port) ?? 'another process'}`);
+		}
 	}
 	if (conflicts.length === 0) {
 		checks.push({ status: 'ok', label: 'Ports', detail: 'free, or used by this environment' });

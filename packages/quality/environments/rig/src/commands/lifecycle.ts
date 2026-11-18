@@ -95,6 +95,7 @@ interface TopologyFlags {
 	languages?: string;
 	engine?: string;
 	tunnel?: boolean;
+	mail?: boolean;
 	'engine-tls'?: boolean;
 	slot?: string;
 }
@@ -136,6 +137,7 @@ function inputFromFlags(name: string, args: TopologyFlags): TopologyInput {
 		if (engine !== 'off' && input.db === undefined) input.db = 'postgres';
 	}
 	if (args.tunnel) input.tunnel = { provider: 'cloudflare' };
+	if (args.mail) input.mail = { provider: 'mailpit' };
 	if (args['engine-tls']) input.engineTls = true;
 	const slot = parseSlot(args.slot, name);
 	if (slot !== undefined) input.slot = slot;
@@ -216,6 +218,10 @@ export const createCommand = defineCommand({
 			type: 'boolean',
 			description: 'Add a public HTTPS URL through a Cloudflare quick tunnel',
 		},
+		mail: {
+			type: 'boolean',
+			description: 'Send the emails of n8n to a local Mailpit server',
+		},
 		'engine-tls': {
 			type: 'boolean',
 			description: 'With --engine remote: mutual TLS between the main and the engine',
@@ -236,6 +242,7 @@ export const createCommand = defineCommand({
 			args.languages,
 			args.engine,
 			args.tunnel,
+			args.mail,
 			args['engine-tls'],
 			args.slot,
 		].some((value) => value !== undefined);

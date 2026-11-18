@@ -69,7 +69,7 @@ function pick(installed: ContainerRuntime[]): ContainerRuntime {
 
 function noRuntimeError(): RigError {
 	return new RigError(
-		'rig needs Docker or Podman for Postgres, Redis, and tunnels.',
+		'rig needs Docker or Podman for Postgres, Redis, tunnels, and Mailpit.',
 		'Install Docker Desktop, OrbStack, or Podman (https://podman.io), then run rig again.',
 	);
 }

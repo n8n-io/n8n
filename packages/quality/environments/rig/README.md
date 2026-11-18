@@ -2,8 +2,8 @@
 
 `rig` creates and runs local n8n environments. An environment has a fixed
 topology: SQLite or Postgres, regular or queue mode, one or more mains,
-workers, task runners through the launcher, and engine v2. Postgres and Redis
-run in containers. n8n runs as local processes from your checkout or worktree.
+workers, task runners through the launcher, and engine v2. Postgres, Redis,
+and the optional Mailpit server run in containers. n8n runs as local processes from your checkout or worktree.
 
 ## Setup
 
@@ -13,7 +13,7 @@ checks all of it.
 
 ### Docker or Podman
 
-Postgres, Redis, and tunnels run as containers. The first time `rig` needs
+Postgres, Redis, tunnels, and Mailpit run as containers. The first time `rig` needs
 them, it checks which of Docker and Podman is installed. With one, it uses that
 one. With both, it asks which one to use. It saves the choice in the global
 config:
@@ -108,6 +108,7 @@ each component (`●` ready, `◌` starting, `✖` exited, `⟳` env drift). Key
 |---|---|
 | `o` | Open the editor in the browser |
 | `p` | Open the public URL (see below) |
+| `m` | Open the Mailpit UI (see [Email](#email)) |
 | `r` / `R` | Restart the components with changed env vars / all components |
 | `1`–`9`, `0` | Show only the logs of the numbered components (a key adds or removes one), `0` shows all |
 | `?` | Show the keys |
@@ -145,6 +146,34 @@ tunnel:
 ```
 
 `pnpm rig status` shows the URL. `pnpm rig open --public` opens it.
+
+## Email
+
+[Mailpit](https://mailpit.axllent.org/) catches every email that n8n sends,
+for example user invites and password resets. No email leaves your machine.
+Create the environment with `--mail`, choose it in the wizard, or add it to
+`env.yaml`:
+
+```yaml
+mail: mailpit
+```
+
+Mailpit runs as a container next to Postgres and Redis. `rig` sets
+`N8N_EMAIL_MODE=smtp` and points the `N8N_SMTP_*` variables of the mains and
+workers at it. The emails stay when you stop the services. `pnpm rig reset`
+and `pnpm rig destroy` delete them with the database.
+
+Open the Mailpit UI with `m` in `rig up`, or with `pnpm rig open --mail`
+(default `http://127.0.0.1:8025`). To test the Send Email node, create an SMTP
+credential with host `127.0.0.1`, port `1025`, and SSL/TLS off. Mailpit
+accepts any user and password. `pnpm rig status` shows both ports.
+
+```yaml
+mail:
+  provider: mailpit
+  smtpPort: 1025          # optional, the SMTP port on the host
+  uiPort: 8025            # optional, the port of the UI and the API
+```
 
 ## Run components in separate terminals
 
@@ -190,7 +219,7 @@ keeps the inspector. `rig status` shows the inspector port.
 
 Each environment has a port slot (`slot` in env.yaml, default 0). Slot `k`
 adds `1000 * k` to the n8n ports, `10 * k` to the engine ports, and `k` to the
-Postgres, Redis, and tunnel ports. Environments with different slots run at the
+Postgres, Redis, tunnel, and Mailpit ports. Environments with different slots run at the
 same time. `rig create --slot auto` and `rig clone` pick a free slot. When a
 port is in use by another environment, `rig` names it and suggests a free slot.
 

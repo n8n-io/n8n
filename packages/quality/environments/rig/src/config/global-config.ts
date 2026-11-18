@@ -33,7 +33,7 @@ const globalConfigSchema = z
 		editor: z.string().min(1).optional(),
 		container: z
 			.object({
-				/** The runtime for Postgres, Redis, and tunnels. rig sets it on the first use. */
+				/** The runtime for Postgres, Redis, tunnels, and Mailpit. rig sets it on the first use. */
 				runtime: z.enum(CONTAINER_RUNTIMES).optional(),
 			})
 			.strict()

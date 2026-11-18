@@ -30,6 +30,7 @@ import {
 import { RigError } from './errors';
 import { launcherSource, type LauncherSource } from './launcher/binary';
 import { buildLauncherConfig, type LauncherConfig } from './launcher/config';
+import { mailpitUrl } from './services/compose';
 import { readTunnelUrl } from './services/tunnel';
 import { type ResolvedSource, resolveSource } from './source';
 import {
@@ -180,6 +181,11 @@ export class RigEnv {
 	/** The public HTTPS URL of the tunnel. Read on every call: the tunnel can start or stop at any time. */
 	tunnelUrl(): string | undefined {
 		return readTunnelUrl(this.paths, this.topology);
+	}
+
+	/** The URL of the Mailpit UI, when the environment has `mail: mailpit`. */
+	mailUrl(): string | undefined {
+		return this.topology.mail.provider === 'mailpit' ? mailpitUrl(this.topology) : undefined;
 	}
 
 	processes(): ProcessComponent[] {

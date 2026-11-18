@@ -5,7 +5,15 @@ import { TEST_CONTAINER_IMAGES } from 'n8n-containers/test-containers';
 import { stringify } from 'yaml';
 import { z } from 'zod';
 
-import { requiredServices, type ServiceName, servicePort, type Topology } from '../config/env-yaml';
+import {
+	MAILPIT_SMTP_PORT,
+	MAILPIT_UI_PORT,
+	mailpitUiPort,
+	requiredServices,
+	type ServiceName,
+	servicePort,
+	type Topology,
+} from '../config/env-yaml';
 import type { EnvPaths } from '../config/paths';
 import {
 	ENGINE_DATABASE,
@@ -118,6 +126,33 @@ export function buildCompose(envName: string, topology: Topology): Record<string
 			// Docker Desktop, OrbStack, and Podman define this host. Docker on Linux needs the mapping.
 			extra_hosts: ['host.docker.internal:host-gateway'],
 		};
+	}
+
+	if (needed.includes('mailpit')) {
+		services.mailpit = {
+			image: image(topology.mail.image, TEST_CONTAINER_IMAGES.mailpit),
+			container_name: containerName(envName, 'mailpit'),
+			labels,
+			environment: {
+				// The emails stay after a stop, like the Postgres data.
+				MP_DATABASE: '/data/mailpit.db',
+				// The Send Email node can use any SMTP credentials.
+				MP_SMTP_AUTH_ACCEPT_ANY: 'true',
+				MP_SMTP_AUTH_ALLOW_INSECURE: 'true',
+			},
+			ports: [
+				`127.0.0.1:${servicePort(topology, 'mailpit')}:${MAILPIT_SMTP_PORT}`,
+				`127.0.0.1:${mailpitUiPort(topology)}:${MAILPIT_UI_PORT}`,
+			],
+			volumes: ['mailpit:/data'],
+			healthcheck: {
+				test: ['CMD', '/mailpit', 'readyz'],
+				interval: '1s',
+				timeout: '3s',
+				retries: 60,
+			},
+		};
+		volumes.mailpit = { name: `${projectName(envName)}-mailpit`, labels };
 	}
 
 	const compose: Record<string, unknown> = { name: projectName(envName), services };
@@ -339,8 +374,16 @@ export function execInService(envName: string, service: ServiceName, command: st
 	return result.status ?? 1;
 }
 
+/** The URL of the Mailpit UI, where the emails of n8n show. */
+export function mailpitUrl(topology: Topology): string {
+	return `http://127.0.0.1:${mailpitUiPort(topology)}`;
+}
+
 /** Where a service answers: a local port, or the public URL of the tunnel. */
 export function serviceAddress(topology: Topology, paths: EnvPaths, service: ServiceName): string {
+	if (service === 'mailpit') {
+		return `SMTP 127.0.0.1:${servicePort(topology, 'mailpit')} · UI ${mailpitUrl(topology)}`;
+	}
 	if (service !== 'tunnel') return `127.0.0.1:${servicePort(topology, service)}`;
 	const url = readTunnelUrl(paths, topology);
 	return `${url ?? 'no URL yet'} → ${topology.tunnel.target}`;

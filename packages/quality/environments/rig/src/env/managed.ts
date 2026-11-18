@@ -67,6 +67,19 @@ function redisEnv(topology: Topology): Record<string, string> {
 	};
 }
 
+/** SMTP settings that send the emails of n8n, such as invites and password resets, to Mailpit. */
+function mailEnv(topology: Topology): Record<string, string> {
+	if (topology.mail.provider !== 'mailpit') return {};
+	return {
+		N8N_EMAIL_MODE: 'smtp',
+		N8N_SMTP_HOST: '127.0.0.1',
+		N8N_SMTP_PORT: String(servicePort(topology, 'mailpit')),
+		N8N_SMTP_SSL: 'false',
+		N8N_SMTP_STARTTLS: 'false',
+		N8N_SMTP_SENDER: 'n8n@rig.local',
+	};
+}
+
 function engineDatabaseUrl(topology: Topology): string {
 	const port = servicePort(topology, 'postgres');
 	return `postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@127.0.0.1:${port}/${ENGINE_DATABASE}`;
@@ -133,6 +146,8 @@ export function managedProcessEnv(
 			...redisEnv(topology),
 		};
 	}
+
+	Object.assign(env, mailEnv(topology));
 
 	if (topology.db === 'sqlite') {
 		env.DB_TYPE = 'sqlite';
