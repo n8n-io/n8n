@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.test.ts
+  ai_agent 26-27,713-738
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  ai_agent 12-13,200,273-284,309-310,395-402,493-494
+packages/frontend/editor-ui/src/features/pages/composables/usePageNavigationCommands.ts
+  ai_agent 1-119
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useCommandBar.ts
+  ai_agent 40,137,179
+packages/frontend/editor-ui/src/features/pages/composables/useNewPageAction.ts
+  ai_agent 1-26
+packages/frontend/editor-ui/src/features/pages/composables/usePageNavigationCommands.test.ts
+  ai_agent 1-170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6a3cebc6d7b8325bf338cab1f2a62157ef6eed0e",
+  "prompts": {}
+}

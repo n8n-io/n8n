@@ -1,0 +1,26 @@
+packages/cli/src/modules/agents/integrations/relative-link-rewriter.ts
+  s_b83c2cc9d859ec::t_f6722386d95fc3 1-40
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_b83c2cc9d859ec::t_e42020304529bc 1324-1332,1336-1342,1348,1352
+  s_b83c2cc9d859ec::t_973d2e6e38fbf2 89
+packages/cli/src/modules/agents/integrations/__tests__/relative-link-rewriter.test.ts
+  s_b83c2cc9d859ec::t_aacb58a049ecd4 1-65
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.system-agent.test.ts
+  s_b83c2cc9d859ec::t_d9416e3cd0c573 525-541
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "160218a2c802fe794ac7de9b15e40575f1fb1135",
+  "prompts": {},
+  "sessions": {
+    "s_b83c2cc9d859ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b90adbb-dcfe-439f-a7eb-7c74a20d13cc",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/testing/playwright/tests/ui/building-blocks/02-canvas-actions.spec.ts
+  s_c431d11b594141::t_9f6473ae1ce17f 45,47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "41c7ad39277854a6ba5015f6f541e45499eac77a",
+  "prompts": {},
+  "sessions": {
+    "s_c431d11b594141": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34a84aab-c44d-4d66-86f6-9f16dfee3129",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_ff02cb585a0470::t_432bd3821f04e8 1498
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "49251771ec3782855e2737d9e0a72d73e12b9579",
+  "prompts": {},
+  "sessions": {
+    "s_ff02cb585a0470": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5002596e-f38f-4102-ae5d-6df0ace96fbd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

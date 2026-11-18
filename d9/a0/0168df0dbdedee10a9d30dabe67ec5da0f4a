@@ -1,0 +1,25 @@
+packages/cli/src/modules/workflow-tests/__tests__/workflow-tests.controller.integration.test.ts
+  s_b6a90f73377b2b::t_c99dfbc575e8f7 103
+packages/@n8n/test/src/runner/workflow-test-reporter.ts
+  s_b6a90f73377b2b::t_8382f1b44c002e 17-20
+packages/@n8n/api-types/src/push/workflow-test.ts
+  s_b6a90f73377b2b::t_d028cb661f8b05 2
+packages/cli/src/modules/workflow-tests/workflow-test-run.service.ts
+  s_b6a90f73377b2b::t_c99dfbc575e8f7 148-153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d9a00168df0dbdedee10a9d30dabe67ec5da0f4a",
+  "prompts": {},
+  "sessions": {
+    "s_b6a90f73377b2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "978893ef-109c-4252-81d2-d747a3c43297",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}
