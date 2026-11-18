@@ -1,0 +1,14 @@
+packages/cli/src/controllers/project-environment.controller.ts
+  h_c63dce324dfc7b 42,49,60,72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "68c20bd6b33b8a3c16fd570084199f9bccbfca8d",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

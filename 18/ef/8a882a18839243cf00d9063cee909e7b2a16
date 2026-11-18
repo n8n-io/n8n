@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiPreviewTabBar.vue
+  s_2cab8240c3562e::t_f352041429fb48 228
+  s_2cab8240c3562e::t_7da5ad8c49aaba 188-189,193,203-207,224-226,229,266
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiPreviewTabBar.test.ts
+  s_2cab8240c3562e::t_e4e741145912fe 533-547,550-553
+  s_2cab8240c3562e::t_7da5ad8c49aaba 548-549
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "18ef8a882a18839243cf00d9063cee909e7b2a16",
+  "prompts": {},
+  "sessions": {
+    "s_2cab8240c3562e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f2237e2a-a459-4b79-9fdd-1033158227e6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

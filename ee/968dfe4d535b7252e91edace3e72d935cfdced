@@ -1,0 +1,45 @@
+packages/cli/src/utils/__tests__/ai-service-retry.test.ts
+  s_6a655b33bee10c::t_b5108048251b09 68-91
+packages/@n8n/backend-network/src/ssrf/ssrf-blocked-ip.error.ts
+  s_6a655b33bee10c::t_a5ed620662ab91 26
+  s_6a655b33bee10c::t_107efc8159ca72 3-4
+packages/@n8n/backend-network/src/ssrf/ssrf-blocked-hostname.error.ts
+  s_6a655b33bee10c::t_4a6073f4766ed1 25
+  s_6a655b33bee10c::t_e99f9ac20568ad 3-4
+packages/@n8n/backend-network/src/http/__tests__/retryability.test.ts
+  s_6a655b33bee10c::t_5720a6a0e672ae 3,5
+  s_6a655b33bee10c::t_4780554782f552 31-34,45-52,125-129
+  s_6a655b33bee10c::t_7212f0831bf544 191-225
+  s_6a655b33bee10c::t_0bf439b2ebe52a 1-2,4,6-30,35-44,53-124,130-190,226-284
+packages/@n8n/backend-network/src/http/index.ts
+  s_6a655b33bee10c::t_e85ed36784ba11 22
+packages/@n8n/backend-network/src/http/retryability.ts
+  s_6a655b33bee10c::t_d8aa805b8ab51e 4-5,9-12,17,21-23,25-42,44-45,59-62,65-68,71,78-81,95,98,129-132,152,166,178,200-201,214
+  s_6a655b33bee10c::t_d440449b2bcd51 1-3,6-8,13-16,18-20,24,43,46-58,63-64,69-70,72-77,82-94,96-97,99-128,133-151,153-165,167-177,179-199,202-213,215-220
+packages/cli/src/utils/ai-service-retry.ts
+  s_6a655b33bee10c::t_0e35e0b99880b1 1
+  s_6a655b33bee10c::t_86e66a0eb14bb7 59
+  s_6a655b33bee10c::t_8977c3152a3717 60
+  s_6a655b33bee10c::t_ae06ce824d041d 55-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ee968dfe4d535b7252e91edace3e72d935cfdced",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6a655b33bee10c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3bb2a31c-e1c2-4481-80da-3a541528d64d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

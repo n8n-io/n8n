@@ -1,0 +1,19 @@
+packages/frontend/AGENTS.md
+  s_7a87d748dca0a4::t_10e8567168f941 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "8a2d7ff63823ee6fd3f34763e6d3e24e9e78029c",
+  "prompts": {},
+  "sessions": {
+    "s_7a87d748dca0a4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "760507e5-27dc-45e2-8806-fe454105390b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

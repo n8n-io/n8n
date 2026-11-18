@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineTable.spec.ts
+  s_305955daf24d02::t_0b4a8639b5b98d 151,162-168,174-176
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_305955daf24d02::t_c5c0a156646213 277,303
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionDetailPanel.spec.ts
+  s_305955daf24d02::t_0ff6d3bbdb6951 12-16,204-205,211,216,219-221
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_305955daf24d02::t_c5c0a156646213 393
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0c4fab183dadc64c0b91e394478cb53bc978541b",
+  "prompts": {},
+  "sessions": {
+    "s_305955daf24d02": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffb56-d72e-7fb2-bb76-81cc38f4e9a6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

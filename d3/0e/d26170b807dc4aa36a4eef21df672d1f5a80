@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/roles/components/RoleHoverPopover.vue
+  s_6e9d05fe426f88::t_d044ba2effcb4a 80,82-120
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersRoleCell.vue
+  s_6e9d05fe426f88::t_b635c0d8dfeb10 127,130
+  s_6e9d05fe426f88::t_e02f7f944d27f8 6,18
+  s_6e9d05fe426f88::t_759922ee9c6b42 62-63
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersRoleCell.test.ts
+  s_6e9d05fe426f88::t_6bc3a1e5925209 218,221-230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "d30ed26170b807dc4aa36a4eef21df672d1f5a80",
+  "prompts": {},
+  "sessions": {
+    "s_6e9d05fe426f88": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a01638a7-2cdd-4261-92d3-bc9d47311423",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

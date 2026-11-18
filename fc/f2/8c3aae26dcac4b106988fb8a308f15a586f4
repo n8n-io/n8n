@@ -1,0 +1,25 @@
+packages/cli/src/posthog/index.ts
+  s_5be157f6e91b85::t_65427902cd5e92 174,211
+packages/testing/playwright/pages/CanvasPage.ts
+  s_5be157f6e91b85::t_d096a450a5f356 1187-1188,1193-1199
+packages/testing/playwright/tests/framework/harness-contract.test.ts
+  s_5be157f6e91b85::t_8e78f262dcbc06 4,33,46-47
+packages/cli/src/posthog/__tests__/posthog.test.ts
+  s_5be157f6e91b85::t_f75f1a74a579a8 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fcf28c3aae26dcac4b106988fb8a308f15a586f4",
+  "prompts": {},
+  "sessions": {
+    "s_5be157f6e91b85": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ae78-4d49-7f60-886d-eb5d6b02f635",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

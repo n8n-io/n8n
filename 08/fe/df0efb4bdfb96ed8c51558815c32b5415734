@@ -1,0 +1,19 @@
+packages/@n8n/nodes-langchain/nodes/agents/OpenAiAssistant/test/OpenAiAssistant.test.ts
+  s_686a719dabc59f::t_6596267428554f 102-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "08fedf0efb4bdfb96ed8c51558815c32b5415734",
+  "prompts": {},
+  "sessions": {
+    "s_686a719dabc59f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "05586da7-f526-45fe-be04-6e4f1f240987",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

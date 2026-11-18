@@ -1,0 +1,63 @@
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_dde4b160feca22::t_8f523e515a3680 20-21,97-98
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_dde4b160feca22::t_e873554022e4f1 1598-1626
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_dde4b160feca22::t_8f523e515a3680 11,53,59,103
+packages/@n8n/api-types/src/dto/packages/credential.schema.ts
+  s_dde4b160feca22::t_7e4cf378ccd251 32-33
+packages/cli/src/credentials/credentials.service.ts
+  s_dde4b160feca22::t_8f523e515a3680 2171,2183-2185
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.serializer.ts
+  s_dde4b160feca22::t_9992fe1d877b0c 20,45,82-83,131-132
+packages/cli/src/modules/n8n-packages/engine/package-layout.ts
+  s_dde4b160feca22::t_053218c8fc311c 58-60
+packages/@n8n/api-types/src/dto/packages/workflow.schema.ts
+  s_dde4b160feca22::t_bed9ec6bd52096 55-56
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionResourceDetail.generated.yml
+  ai_agent 188-190,333-335,507-509,534-536
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential.serializer.test.ts
+  s_dde4b160feca22::t_b6884fd87daf96 39-60
+packages/cli/src/modules/n8n-packages/__tests__/import-credential-conflict.integration.test.ts
+  s_dde4b160feca22::t_0e2b5a232f515e 62,1199-1201,1213
+  s_dde4b160feca22::t_86fd2741f7cc5f 1,30,1196-1198,1202-1212,1214-1325
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.serializer.test.ts
+  s_dde4b160feca22::t_b6884fd87daf96 94-101,104-139
+  s_dde4b160feca22::t_f57e3df4b695fc 102-103
+packages/@n8n/api-types/src/dto/packages/__tests__/credential.schema.test.ts
+  s_dde4b160feca22::t_cc896383a46f4b 10-21
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_dde4b160feca22::t_8f523e515a3680 149,166-168,173-177,179,258-263,281-283,320-321,328,379-384,392-401,411-416,423-429
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-conflict-policy.test.ts
+  s_dde4b160feca22::t_b6884fd87daf96 114,124,134,151,161,171,179-180,412-436
+  s_dde4b160feca22::t_e873554022e4f1 248-256
+packages/cli/src/modules/n8n-packages/entities/credential/credential-conflict-policy.ts
+  s_dde4b160feca22::t_8f523e515a3680 75-78,81-83,86-92,100-104
+packages/cli/src/modules/n8n-packages/engine/package-import-preflight.ts
+  s_dde4b160feca22::t_bf6c817fb62134 48,62
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_dde4b160feca22::t_75882388f870bc 350-375
+packages/cli/src/modules/n8n-packages/entities/credential/credential.serializer.ts
+  s_dde4b160feca22::t_8f523e515a3680 16,39-48,55
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential.exporter.test.ts
+  s_dde4b160feca22::t_b6884fd87daf96 9,63-71
+  s_dde4b160feca22::t_e873554022e4f1 138-167
+packages/@n8n/api-types/src/dto/packages/__tests__/workflow.schema.test.ts
+  s_dde4b160feca22::t_cc896383a46f4b 22-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f65bcb01c19138cd11ba3abd283c32ed8e7ccdd8",
+  "prompts": {},
+  "sessions": {
+    "s_dde4b160feca22": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e527f496-4a61-4be2-9be7-62b23df9f325",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

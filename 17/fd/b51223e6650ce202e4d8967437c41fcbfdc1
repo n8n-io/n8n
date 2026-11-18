@@ -1,0 +1,47 @@
+packages/@n8n/instance-ai/evaluations/system-prompts/mock-execution-verify.ts
+  s_77eed0cf11f1b6::t_9eadd33fda2b3f 14
+packages/@n8n/workflow-sdk/src/codegen/emit-instance-ai.test.ts
+  s_77eed0cf11f1b6::t_19be333f0df24c 267,272
+packages/@n8n/workflow-sdk/src/mock-data/context.ts
+  s_77eed0cf11f1b6::t_a23dfe81f16837 1-10,13-14,19-20,26,32-39,46,49-51,53,60-61,66-188,239-241
+packages/@n8n/workflow-sdk/src/mock-data/index.ts
+  s_77eed0cf11f1b6::t_36ad36a91874a0 7-8,30-34
+packages/@n8n/workflow-sdk/src/mock-data/mock-data.test.ts
+  s_77eed0cf11f1b6::t_51262bf17d33b0 6-8,337-585
+packages/@n8n/workflow-sdk/src/mock-data/parse.ts
+  s_77eed0cf11f1b6::t_abe2aa5df0a02d 2,94-107,110-112
+packages/@n8n/workflow-sdk/src/mock-data/prompt.ts
+  s_77eed0cf11f1b6::t_88f2f9eaca6338 1-2,47,64-76
+packages/@n8n/workflow-sdk/src/mock-data/types.ts
+  s_77eed0cf11f1b6::t_0741653bccfb8f 34-56,66-68
+packages/@n8n/workflow-sdk/src/mock-data/validate.ts
+  s_77eed0cf11f1b6::t_d6cf213f5e2d6e 1-110
+packages/cli/src/modules/instance-ai/eval/__tests__/execution.service.test.ts
+  s_77eed0cf11f1b6::t_f977ea993ebdf5 20,22,49-50,106,122,218-219,254-255,1491-1584
+packages/cli/src/modules/instance-ai/eval/__tests__/pin-data-generator.test.ts
+  s_77eed0cf11f1b6::t_ef58e565d37503 109-163
+packages/cli/src/modules/instance-ai/eval/__tests__/workflow-analysis.test.ts
+  s_77eed0cf11f1b6::t_3335892ba4c229 17,21,52-80
+packages/cli/src/modules/instance-ai/eval/execution.service.ts
+  s_77eed0cf11f1b6::t_4d36299963bdca 12,44,47,66,103-104,291-292,308,337-403
+packages/cli/src/modules/instance-ai/eval/pin-data-generator.ts
+  s_77eed0cf11f1b6::t_e57ca0e7950862 19,23,26,58-62,76,87-92,106-135,137-138,140-149,151,155
+packages/cli/src/modules/instance-ai/eval/workflow-analysis.ts
+  s_77eed0cf11f1b6::t_aa95e823bc3368 97-102,112-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "17fdb51223e6650ce202e4d8967437c41fcbfdc1",
+  "prompts": {},
+  "sessions": {
+    "s_77eed0cf11f1b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3829dd7e-eb4a-4209-91f3-521c94707b03",
+        "model": "unknown"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

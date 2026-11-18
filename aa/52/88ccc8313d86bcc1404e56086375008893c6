@@ -1,0 +1,21 @@
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_f852290535f45d::t_3972b2b06d54e4 208
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionConnections.generated.yml
+  s_f852290535f45d::t_ee2c1a3c2bd600 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aa5288ccc8313d86bcc1404e56086375008893c6",
+  "prompts": {},
+  "sessions": {
+    "s_f852290535f45d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61f002ba-f2a9-443b-87ef-67c1ef49038c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

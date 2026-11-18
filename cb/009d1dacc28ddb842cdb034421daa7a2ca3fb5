@@ -1,0 +1,33 @@
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_78c3e5a4bf30cf::t_048a795ff4cb4d 406,432,2848,2886
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_78c3e5a4bf30cf::t_a65338e61abfcc 1361,1364,1378,1396
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_78c3e5a4bf30cf::t_31b9c7b1b2e537 280-295,612-614,617,623,629,966,968,971-974,982-1026,1694,1700-1703,1712,1714,1720,1723-1724,1730,1734,1736
+  s_78c3e5a4bf30cf::t_a17ddce9a7a42f 222
+  s_78c3e5a4bf30cf::t_e98fad1091eae5 299-302,562,580,610
+  s_78c3e5a4bf30cf::t_143156c498223b 474,476,481-484,492,494-524,526,528,534,536,544,549-552,558-561,563-575,577-579,581-582,590,592,596
+  ai_agent 296-298
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_78c3e5a4bf30cf::t_21b991774c891a 714
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_78c3e5a4bf30cf::t_048a795ff4cb4d 728,741
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_78c3e5a4bf30cf::t_21b991774c891a 280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cb009d1dacc28ddb842cdb034421daa7a2ca3fb5",
+  "prompts": {},
+  "sessions": {
+    "s_78c3e5a4bf30cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "30b3ec57-f09e-4935-84a8-8400a4eac71d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

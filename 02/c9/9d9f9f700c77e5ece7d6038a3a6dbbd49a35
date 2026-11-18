@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-ai/__tests__/extract-resolved-node-parameters.test.ts
+  s_10ad0c9ebfd991::t_469f239dd47288 558
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "02c99d9f9f700c77e5ece7d6038a3a6dbbd49a35",
+  "prompts": {},
+  "sessions": {
+    "s_10ad0c9ebfd991": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64382267-fe92-4223-8ffa-c2a782cd0a7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

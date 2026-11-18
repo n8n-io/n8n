@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/DataTableTable.vue
+  s_08e3f2a35f1cb4::t_48a0b2243e7049 30,200,234
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/DataTableTable.loading.test.ts
+  s_08e3f2a35f1cb4::t_50be6fa360ecc7 53-66,68-74,76-85
+  s_08e3f2a35f1cb4::t_6601fbd1203c97 6,26-52,67,75,86
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiDataTablePreview.test.ts
+  s_08e3f2a35f1cb4::t_6601fbd1203c97 40-43,52-78,80-126,131-134
+  s_08e3f2a35f1cb4::t_d433b9b6367050 79
+  s_08e3f2a35f1cb4::t_50be6fa360ecc7 127-130
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/DataTableLoadingIndicator.vue
+  s_08e3f2a35f1cb4::t_0e745d66c40002 29-30
+  s_08e3f2a35f1cb4::t_50be6fa360ecc7 18
+  s_08e3f2a35f1cb4::t_48a0b2243e7049 1-17,19-28,31-38
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiDataTablePreview.vue
+  s_08e3f2a35f1cb4::t_48a0b2243e7049 6,39,84,90,125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "271736073806a4ac76a7a270aa2a4a9a162a229e",
+  "prompts": {},
+  "sessions": {
+    "s_08e3f2a35f1cb4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f1a1-65ca-7090-a540-e14230f0b85c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

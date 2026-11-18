@@ -1,0 +1,35 @@
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_f980ac44ded4bf::t_fe594795f1cf31 766
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiQuestions.vue
+  s_f980ac44ded4bf::t_fe594795f1cf31 12,19
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_f980ac44ded4bf::t_fe594795f1cf31 204-205,3974,3977-3979,4068
+packages/cli/src/modules/instance-ai/onboarding-opening.ts
+  s_f980ac44ded4bf::t_8e0cc7dfcdad6c 3
+  s_f980ac44ded4bf::t_c070c1409ded61 30-70
+  s_f980ac44ded4bf::t_fa5beff483bd0e 1-2,4-29,71-75
+packages/@n8n/instance-ai/src/stream/map-chunk.ts
+  s_f980ac44ded4bf::t_bc6b5d5ccc8030 17
+  s_f980ac44ded4bf::t_fe594795f1cf31 4,331
+packages/cli/src/modules/instance-ai/onboarding.ts
+  s_f980ac44ded4bf::t_9047cc6ce045d5 152-155,165-168
+  s_f980ac44ded4bf::t_fe594795f1cf31 1-5,28,41,55,113-115,117-118,125,151,161,180,204,206,246
+packages/@n8n/api-types/src/index.ts
+  s_f980ac44ded4bf::t_fe594795f1cf31 553
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "99b795693cb78d3671dc628fa09b068153347e2c",
+  "prompts": {},
+  "sessions": {
+    "s_f980ac44ded4bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5d1b4866-0d69-4a9d-a98d-573c3a451c2a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

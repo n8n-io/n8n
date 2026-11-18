@@ -1,0 +1,23 @@
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/test/EmbeddingsGoogleVertex.test.ts
+  s_29be25dc060527::t_d39ec9c2518edd 13-14
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/EmbeddingsGoogleVertex.node.ts
+  s_29be25dc060527::t_92ec5825e2c93d 4,27,138
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node.ts
+  s_29be25dc060527::t_8375654fa3c55d 9,115,143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "16eb14da2499186af6ed41404595f2d11eed151f",
+  "prompts": {},
+  "sessions": {
+    "s_29be25dc060527": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10608e31-7f99-4a05-8562-045e9294db88",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

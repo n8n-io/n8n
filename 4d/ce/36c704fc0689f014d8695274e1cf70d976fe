@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewInbox.store.ts
+  s_0a635d825f0f02::t_9ac9d03fda9f57 285-299
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4dce36c704fc0689f014d8695274e1cf70d976fe",
+  "prompts": {},
+  "sessions": {
+    "s_0a635d825f0f02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a97f06c3-1189-4008-be01-73ca3c0798bc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

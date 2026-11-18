@@ -1,0 +1,45 @@
+packages/cli/src/webhooks/hitl-interaction-webhooks.ts
+  s_d5e1010fcb3d34::t_69843b0e5fed0f 73-75
+packages/nodes-base/nodes/Telegram/tests/node/telegramHitlWebhook.test.ts
+  s_d5e1010fcb3d34::t_63dfcba72a3e77 91-92,94-98,100-120
+  s_d5e1010fcb3d34::t_94f65b71c338ef 2-4,6
+  s_d5e1010fcb3d34::t_2af98440fe8301 99
+  s_d5e1010fcb3d34::t_18ed6ac884257b 63-64
+  s_d5e1010fcb3d34::t_c36105f539b1c8 5,93
+packages/core/src/utils/hitl-callback-reference.ts
+  s_d5e1010fcb3d34::t_1c42970b5dfef8 44-45,48-64
+  s_d5e1010fcb3d34::t_4d2f26f52ff929 46-47
+packages/cli/src/webhooks/telegram-interaction-webhooks.ts
+  s_d5e1010fcb3d34::t_bdaefd2994b6f6 3
+  s_d5e1010fcb3d34::t_981af3aa10cd1c 36
+  s_d5e1010fcb3d34::t_178320cfd34276 33-35,37-40
+packages/cli/src/webhooks/__tests__/telegram-interaction-webhooks.test.ts
+  s_d5e1010fcb3d34::t_6c5b44317508ed 211-213
+  s_d5e1010fcb3d34::t_48c7106a4cada7 176-206,208-210,215-222,224-225
+  s_d5e1010fcb3d34::t_26ed923209463f 255-292
+  s_d5e1010fcb3d34::t_d818049b4eccff 4,207,214,223
+packages/cli/src/webhooks/__tests__/slack-interaction-webhooks.test.ts
+  s_d5e1010fcb3d34::t_203655af2474dd 260-272
+packages/nodes-base/nodes/Telegram/hitl/webhook.ts
+  s_d5e1010fcb3d34::t_47f8b21c6e223b 2
+  s_d5e1010fcb3d34::t_b0447cffb463e4 98
+  s_d5e1010fcb3d34::t_80db92b0138ecc 99
+  s_d5e1010fcb3d34::t_51c14b7db275e0 85-86
+  s_d5e1010fcb3d34::t_11bdb686d0b217 100-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a768c84bf619bf870de1dcd1ca5a289115519476",
+  "prompts": {},
+  "sessions": {
+    "s_d5e1010fcb3d34": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b254c801-ef6a-437f-9190-b59b22f9ef2a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

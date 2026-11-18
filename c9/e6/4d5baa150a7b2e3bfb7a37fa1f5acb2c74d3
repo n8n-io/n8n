@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Airtop/test/workflow/requestUrls.workflow.test.ts
+  s_2e1fa95fc44f8f::t_8fa5f651641f95 1-127
+packages/nodes-base/nodes/Airtop/test/workflow/requestUrls.workflow.json
+  s_d4aa19c4b0d84c::t_aef4cc086abbd0 1-609
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c9e64d5baa150a7b2e3bfb7a37fa1f5acb2c74d3",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_d4aa19c4b0d84c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9c7dabca6f9fa82c",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

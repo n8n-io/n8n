@@ -1,0 +1,28 @@
+packages/@n8n/ai-utilities/src/__tests__/utils/http-proxy-agent.test.ts
+  s_c3f63bfec03d56::t_5fe1256f749b27 63,74,80-81,87,102,104,113,122,132,140,149,158,167,176,186-193,201-208,217,223-231,239,242,258
+packages/@n8n/ai-utilities/src/suppliers/supplyModel.ts
+  s_c3f63bfec03d56::t_1ba90792f5cf10 33-38
+  s_c3f63bfec03d56::t_a3b7f371551ff4 39-41
+packages/@n8n/ai-utilities/src/__tests__/suppliers/supplyModel.test.ts
+  s_c3f63bfec03d56::t_cd9f5bef7fb679 193-200
+packages/@n8n/ai-utilities/src/utils/http-proxy-agent.ts
+  s_c3f63bfec03d56::t_20ee6f63dcf0da 63
+  s_c3f63bfec03d56::t_0aa9e3f2c5525b 76-79
+  s_c3f63bfec03d56::t_8acb034da4c86e 90-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9cd6e34b552ca69af01cd9c885831215bc5f63fd",
+  "prompts": {},
+  "sessions": {
+    "s_c3f63bfec03d56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ec50217-81ad-4e71-9979-cd76e8a8e85d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

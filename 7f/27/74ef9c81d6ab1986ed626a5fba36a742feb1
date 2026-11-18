@@ -1,0 +1,27 @@
+packages/cli/src/modules/agents/__tests__/agent-checkpoint-pruning.task.test.ts
+  s_274bb09dbc56ad::t_3259bbfd895c66 43-45,48
+packages/cli/test/integration/agents/agent-checkpoint-pruning.task.integration.test.ts
+  s_274bb09dbc56ad::t_3259bbfd895c66 159-161,211
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_274bb09dbc56ad::t_3259bbfd895c66 758-776
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_274bb09dbc56ad::t_3259bbfd895c66 450-451,459-461
+packages/cli/src/modules/agents/agent-checkpoint-pruning.task.ts
+  s_274bb09dbc56ad::t_3259bbfd895c66 29-31,43,45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7f2774ef9c81d6ab1986ed626a5fba36a742feb1",
+  "prompts": {},
+  "sessions": {
+    "s_274bb09dbc56ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b18c1fc7-57ce-43c2-8f32-b9d771a637ac",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

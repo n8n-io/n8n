@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/Facebook/FacebookTrigger.node.ts
+  s_a69518ff4a6a1d::t_7100edc3efac09 14,226,267,284
+packages/nodes-base/nodes/Facebook/GenericFunctions.ts
+  s_a69518ff4a6a1d::t_1a023a09b3f4b9 12-13,15,20,51,59
+packages/nodes-base/nodes/Facebook/__tests__/GenericFunctions.test.ts
+  s_f6669199f59940::t_ec5bf793113fcd 2,61,73,76-78,85,106,133,146,153,155,159-160,164-165,178,185,187-189,196,208,222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "07c409052b8a3ba386d679e1bbbc225aed36ebb7",
+  "prompts": {},
+  "sessions": {
+    "s_a69518ff4a6a1d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a35268d1980961846",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_f6669199f59940": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aa88f70a84bdd4fb1",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewDock.test.ts
+  s_2d0acf98679717::t_16cc841f55abbd 9,19-20
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHeaders.test.ts
+  s_2d0acf98679717::t_4a7586da81f420 66,85,112
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_2d0acf98679717::t_9d5ce0457c432b 1593
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_2d0acf98679717::t_96c7bd6804df8e 72-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a20e412bd34f9525b57817b3633af4eada2b7229",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_2d0acf98679717": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7511553b-ef45-430c-a3d3-8f80407b4832",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

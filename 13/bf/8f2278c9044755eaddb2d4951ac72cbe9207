@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Aws/S3/test/regression/requests.test.ts
+  s_2e1fa95fc44f8f::t_a51264d7209972 349-354,447-456
+  s_2e1fa95fc44f8f::t_1d4c4cc75dc303 371-377,379-396,398-407,409,411-426,428-436,458-474,478-481
+  s_2e1fa95fc44f8f::t_4dc218e036c8cb 71,346-348,437-442,475
+  s_2e1fa95fc44f8f::t_dc0350d48273b6 443-446,457
+  s_2e1fa95fc44f8f::t_679ba7bb5e5613 476
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "13bf8f2278c9044755eaddb2d4951ac72cbe9207",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

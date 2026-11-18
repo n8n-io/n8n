@@ -1,0 +1,14 @@
+packages/cli/src/public-api/v1/__tests__/openapi-tags.test.ts
+  h_5d40c27a8fdfd1 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c4ec928432a8fa98a75543978bdb3e236f4cf180",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

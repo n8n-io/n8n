@@ -1,0 +1,31 @@
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_be7f812aa784b6::t_0c6ff9a208e965 1851-1860,1986-1988,2015-2022,2026-2029,2036-2038,2041,2047-2049,2052,2059-2061,2071-2073,1861-1863,1865,1868-1870,1950-1955,1957-1959,1991-1994,1998-2003,2010-2012,2050,2053-2054,2058,2067,1871-1947
+  s_be7f812aa784b6::t_4c61021f64a964 1375,1475,1501,1526,213
+packages/cli/src/modules/agents/integrations/integration-message-context.ts
+  s_be7f812aa784b6::t_80dfcf2c39dd0c 71,76-81
+packages/cli/src/modules/agents/integrations/integration-tool-types.ts
+  s_be7f812aa784b6::t_80dfcf2c39dd0c 64-65
+packages/cli/src/modules/agents/integrations/__tests__/integration-message-context.test.ts
+  s_be7f812aa784b6::t_3b75c079e94688 1-25
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_be7f812aa784b6::t_cb68d5c6cf2c1f 421,480-481,423-424,461-462
+  s_be7f812aa784b6::t_80dfcf2c39dd0c 255,273,298,366,463,467,470,472,272,425-460
+  s_be7f812aa784b6::t_202dd413889beb 12,478
+  s_be7f812aa784b6::t_86b0eeddd25d09 477
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fd4914479b8c46971f66c232bbae36b75126b668",
+  "prompts": {},
+  "sessions": {
+    "s_be7f812aa784b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a523437-47b6-4d93-bbf3-78999ede724e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionEnvironmentView.vue
+  ai_agent 36,321
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotions.constants.ts
+  ai_agent 6
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.vue
+  ai_agent 40,167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b064e4f80cfb866d08b29cc9c7b6132fc62f637a",
+  "prompts": {}
+}

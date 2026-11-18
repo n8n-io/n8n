@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_e709738dce3464::t_d9c71c76df7659 244
+  s_e709738dce3464::t_acb0873a3d9adb 224-226
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_e709738dce3464::t_54a4a21210451a 151
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_e709738dce3464::t_2a96c595c912b7 145-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "293a495af28fef8d937df9e4cf8c66c0fd734e81",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e709738dce3464": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "026ea3e9-01fb-48cb-9f02-6495f17bb8ee",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

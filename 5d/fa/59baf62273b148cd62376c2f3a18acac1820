@@ -1,0 +1,30 @@
+packages/cli/src/abstract-server.ts
+  s_9f70c458b91a62::t_525af9855f5ad4 253,259
+  s_9f70c458b91a62::t_244cfa0322242a 271,275
+  s_9f70c458b91a62::t_9cfa86100c3d85 247
+packages/cli/src/webhooks/webhook-request-handler.ts
+  s_9f70c458b91a62::t_546f355873f152 235-237,242,265
+  h_c63dce324dfc7b 259
+  s_9f70c458b91a62::t_e3b0715a90edfc 238-241,248,258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "5dfa59baf62273b148cd62376c2f3a18acac1820",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_9f70c458b91a62": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8876a316-f544-4100-bbcd-1a6bf20cb04a",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

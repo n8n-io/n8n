@@ -1,0 +1,31 @@
+packages/cli/src/modules/source-control.ee/source-control-git.service.ee.ts
+  s_1198235f768cec::t_419bec8e8f06a5 25
+  s_1198235f768cec::t_f68800bc92fc35 467-486
+  s_1198235f768cec::t_0ea4ce3165dd6f 408-413,421-424,432-433,435,437-442,444-445,447-465,487-499,501-511
+  s_1198235f768cec::t_77adae50ac941f 466
+packages/cli/src/modules/source-control.ee/__tests__/source-control-git.service.integration.test.ts
+  s_1198235f768cec::t_a2446cba1c1bce 139-176
+packages/cli/src/modules/source-control.ee/__tests__/source-control-git.service.test.ts
+  s_1198235f768cec::t_25b38d949641a4 52,59-61,71-74,85-93,97-117,119-149,152,154-155,157,163,167
+  s_1198235f768cec::t_477eb0f22942af 153
+  s_1198235f768cec::t_b61bf99f6b58ed 173-175,184,189-191,195,200-202,212-214,218
+  s_1198235f768cec::t_e33d7d35173ecc 7
+packages/cli/src/modules/source-control.ee/constants.ts
+  s_1198235f768cec::t_617079fcd61d29 11-12,17-19,24-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ac0878b28023fa2b0f45b3bd6cf121e62cadb2bb",
+  "prompts": {},
+  "sessions": {
+    "s_1198235f768cec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b8f2363-963f-4915-baf5-e91a59bd71f7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

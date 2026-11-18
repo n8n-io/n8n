@@ -1,0 +1,30 @@
+packages/nodes-base/nodes/Slack/V2/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_c5a3201b7b76a7 150
+  s_2e1fa95fc44f8f::t_f768852880f646 149,151-153
+packages/nodes-base/nodes/Slack/V1/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_eb47a52a57ca76 42-46
+packages/nodes-base/nodes/Slack/SlackTriggerHelpers.ts
+  s_2e1fa95fc44f8f::t_eb717c126ba150 36-37,41,43-44
+packages/nodes-base/nodes/Slack/test/SlackTriggerHelpers.test.ts
+  s_2e1fa95fc44f8f::t_ad7d4129087b5d 220,233-235
+packages/nodes-base/nodes/Slack/test/v1/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_3a5f2887808ad0 1,42-59
+packages/nodes-base/nodes/Slack/test/v2/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_0a3c1a2b7b507b 1,55-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a596486a0a006ec4ea133420463d21cfa49d8616",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

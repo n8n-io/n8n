@@ -1,0 +1,22 @@
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_72883980e695b4::t_30cc529a75e848 1,431-432,439-442
+  s_72883980e695b4::t_8400e830e6a79e 443
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_72883980e695b4::t_f8f0ea8e6e247b 1-6,164-170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "da417ea99945513d3896feac8ad2545ffc206696",
+  "prompts": {},
+  "sessions": {
+    "s_72883980e695b4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a633-5e0a-71a2-b539-e987a28949da",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigNodeContent.vue
+  s_7b16f513886b0b::t_cebe914479ae5b 50
+packages/frontend/editor-ui/src/features/agents/__tests__/InteractiveCard.test.ts
+  s_7b16f513886b0b::t_572f7d3c9674c9 71,88-90
+packages/frontend/editor-ui/src/features/agents/components/interactive/ApprovalCard.vue
+  s_7b16f513886b0b::t_717b4ff20d1249 24,26
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigModal.vue
+  s_7b16f513886b0b::t_3f06d3d5f05c8b 328-331
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolConfigModal.test.ts
+  s_7b16f513886b0b::t_c032510f2df63c 29-30,55,259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "4605af1ef3dfcf5d1695d18dd76f8ea36c4967dc",
+  "prompts": {},
+  "sessions": {
+    "s_7b16f513886b0b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e9304-76d7-74f1-b63c-5a944947c0e0",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

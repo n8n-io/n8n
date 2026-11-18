@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectSharing.vue
+  s_ddf1755e8be68c::t_67e5598fbd3cdf 111-113,116
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectSharing.test.ts
+  s_ddf1755e8be68c::t_8a371a3398250e 253-291
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "9ad6140a4a73a31731aaa9c20644d09304d2d5eb",
+  "prompts": {},
+  "sessions": {
+    "s_ddf1755e8be68c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa698824-5c4e-482d-b23f-32c55e5a40c7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Marc Littlemore <marc@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+packages/testing/playwright/services/dynamic-credential-api-helper.ts
+  s_285d81337de3de::t_05df4624f3aa4d 206-224
+packages/testing/playwright/workflows/mcp-trigger/mcp-trigger-n8n-oauth2-private-cred.json
+  s_285d81337de3de::t_dbe6be6575a1d8 1-66
+packages/testing/playwright/services/mcp-api-helper.ts
+  s_285d81337de3de::t_dbe6be6575a1d8 558,570,633,644
+packages/testing/playwright/services/mcp-oauth-api-helper.ts
+  s_285d81337de3de::t_dbe6be6575a1d8 72-80,240-245,251,268,288
+packages/testing/playwright/tests/e2e/dynamic-credentials/mcp-trigger-credential-gate.spec.ts
+  s_285d81337de3de::t_41c6365d20d704 101-106
+  s_285d81337de3de::t_dc6e79e9a8ced6 2-53,55-100,107-219,221-246
+  s_285d81337de3de::t_1482961f57a9ef 54
+  s_285d81337de3de::t_66a3375a22fe5f 1
+  s_285d81337de3de::t_7fe5a5842c33fd 220
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "4c2118eb162ddc29eccc79f849d54a717afcc5fc",
+  "prompts": {},
+  "sessions": {
+    "s_285d81337de3de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77c356f6-5fdf-4a81-8369-0300207b2baf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

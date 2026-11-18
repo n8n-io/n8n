@@ -1,0 +1,19 @@
+packages/cli/src/modules/promotions.ee/promotion-binding-preflight.service.ts
+  s_e9d4f9e371b4bb::t_a49665b88a92dc 90-101,114,116-122,186,188-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ab1a5ce23b9dd0c04e1687fa7dae8582e565b257",
+  "prompts": {},
+  "sessions": {
+    "s_e9d4f9e371b4bb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a481-36cc-7000-82d3-ce1bf91cdc42",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

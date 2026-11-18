@@ -1,0 +1,94 @@
+packages/cli/src/modules/agents/builder/builder-model-live-lookup.service.ts
+  s_db23049c32d561::t_d1e32698f07ddc 138-139
+  s_db23049c32d561::t_e235f935039aeb 1-5,16,29-35,57,102,115-137,140-168
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_db23049c32d561::t_3f3c9af2df6ba8 413,423-424,433,448-449,471
+  s_db23049c32d561::t_02b619a070cafc 437
+packages/cli/src/modules/agents/azure-foundry-deployments.service.ts
+  s_db23049c32d561::t_afc2504ab5ccf5 1-105
+packages/@n8n/ai-utilities/src/model-discovery/__tests__/azure.test.ts
+  s_db23049c32d561::t_538b9de8e9df8e 3-7,104-108,115-135,195
+  s_db23049c32d561::t_02b619a070cafc 109-114
+packages/cli/src/modules/agents/__tests__/azure-foundry-deployments.service.test.ts
+  s_db23049c32d561::t_338ac04b09948f 1-21,28-139
+  s_db23049c32d561::t_32f80b1da30324 22-27
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_db23049c32d561::t_1c6a59c2140bdc 6087-6092
+  s_db23049c32d561::t_a6c116670e9884 8754
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_db23049c32d561::t_bc4c0ad5c65a70 326-332,412,453-455,830-835,842,849,853-855
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  s_db23049c32d561::t_3d4d5c1e3130ee 848
+packages/frontend/editor-ui/src/features/agents/model-providers.ts
+  s_db23049c32d561::t_899e3e7898cb21 1-5,29-30
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_db23049c32d561::t_d85eb2029876b9 8
+  s_db23049c32d561::t_6710c9645a1e49 10
+packages/frontend/editor-ui/src/features/agents/__tests__/useModelCatalog.test.ts
+  s_db23049c32d561::t_e78e6ead7c16a1 138-164
+packages/cli/src/modules/agents/agent-model-catalog.service.ts
+  s_db23049c32d561::t_b0e7cf24dadeb9 5,17,48-50,67-82,84-98,100-106,109,111,125-126,128-129,136-142,153-159
+packages/frontend/editor-ui/src/features/agents/components/AgentValidationTooltip.vue
+  s_db23049c32d561::t_a6c116670e9884 37
+  s_db23049c32d561::t_50b1fc56eb5ece 38
+packages/@n8n/instance-ai/evaluations/discovery/agent-builder.json
+  s_db23049c32d561::t_5187c142371de4 839
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_db23049c32d561::t_178228a1715815 647,649-650,661
+packages/cli/src/modules/agents/json-config/model-config.ts
+  s_db23049c32d561::t_6ede6568f8e915 50
+packages/cli/src/modules/agents/agent-config-preparation.service.ts
+  s_db23049c32d561::t_69569c3ddec0f2 266-270
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_db23049c32d561::t_6499633d07d955 278,642-660
+  s_db23049c32d561::t_d574d80bb6af35 662-663
+  s_db23049c32d561::t_63dc6d664b3760 661
+  s_db23049c32d561::t_a6916ef0fbda36 664-665
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_db23049c32d561::t_1c6a59c2140bdc 52-70,74-77,429,607-617
+  s_db23049c32d561::t_35a28133e8295e 10,18-22,44,71-73,78
+  s_db23049c32d561::t_379f79e81abea8 79,618
+packages/@n8n/api-types/src/agents/model-providers.ts
+  s_db23049c32d561::t_705c239385bc00 77-88,106-107
+packages/frontend/editor-ui/src/features/agents/composables/useModelCatalog.ts
+  s_db23049c32d561::t_899e3e7898cb21 3,36,132-135,172,179,194
+packages/cli/src/modules/agent-evals/agent-eval-case-generation.service.ts
+  s_db23049c32d561::t_02b619a070cafc 330
+packages/cli/src/modules/agents/builder/__tests__/builder-model-live-lookup.service.test.ts
+  s_db23049c32d561::t_13be449b7f8974 11,37,44,46-52,68-123
+  s_db23049c32d561::t_f6e1847d71a62e 124-125
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_db23049c32d561::t_326f9051962412 308,313,326-329,426,434-437,439,442-443,445,448-449,452-458,461,479
+packages/@n8n/ai-utilities/src/model-discovery/index.ts
+  s_db23049c32d561::t_55ced4a32d5f09 67
+packages/@n8n/ai-utilities/src/model-discovery/providers/azure.ts
+  s_db23049c32d561::t_5ff59fe733e754 26-39,45,49-56,93,106-108
+packages/cli/src/modules/agents/__tests__/agent-model-catalog.service.test.ts
+  s_38d78cd106326f::t_c633c3c123274c 509-582
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_db23049c32d561::t_5c7e7b58029435 645-651,654-656,658-661
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "19778e618c9ad080249466db6752d21af3d8ff81",
+  "prompts": {},
+  "sessions": {
+    "s_38d78cd106326f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72f82e0e-bc8a-42f7-9266-687432dab6a9",
+        "model": "unknown"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_db23049c32d561": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9a3ce8b-c177-449e-974c-d77f50f50c5b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

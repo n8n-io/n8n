@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiMarkdown.test.ts
+  s_19c108ca02ed6d::t_fbf4acb0bd1155 336-356
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMarkdown.vue
+  s_19c108ca02ed6d::t_8f241b1378a04d 13
+  s_19c108ca02ed6d::t_fe2693e61ff5ce 3-5,7,279-291,339,388
+  s_19c108ca02ed6d::t_5e683aa082b534 6
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/SubagentStepTimeline.vue
+  s_19c108ca02ed6d::t_fe2693e61ff5ce 164-167,175-178,180-184
+  s_19c108ca02ed6d::t_8f241b1378a04d 18,30
+packages/frontend/editor-ui/src/features/agents/utils/agentPreviewUrl.ts
+  s_19c108ca02ed6d::t_fe2693e61ff5ce 24-28
+  s_19c108ca02ed6d::t_8f241b1378a04d 3,6-8
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentSection.vue
+  s_19c108ca02ed6d::t_fe2693e61ff5ce 26-31,81-86,89-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "fc39fc324ce6878dbec026ca3a09e826bc091145",
+  "prompts": {},
+  "sessions": {
+    "s_19c108ca02ed6d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c92-b5f8-7720-8bf6-29b2466e189a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

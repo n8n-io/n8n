@@ -1,0 +1,21 @@
+packages/@n8n/engine/docs/adr/ADR-20260902-steps-declare-waits.md
+  s_13d0f2e1be0144::t_4fbb153772dea7 68-69,166-168
+packages/@n8n/engine/docs/adr/ADR-20260904-resume-urls-carry-a-derived-token.md
+  s_13d0f2e1be0144::t_4fbb153772dea7 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "cc40b0f9b14037fafc39e8b192d7cbab72b3d2f1",
+  "prompts": {},
+  "sessions": {
+    "s_13d0f2e1be0144": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46caa7f3-0057-4c97-8c31-ca17c936adc0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

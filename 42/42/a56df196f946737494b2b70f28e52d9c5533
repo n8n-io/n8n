@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Onfleet/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_355d3839f62dbf 6-35,39
+packages/nodes-base/nodes/Onfleet/test/workflow/Onfleet.workflow.test.ts
+  s_2e1fa95fc44f8f::t_30e6dda808d82b 51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4242a56df196f946737494b2b70f28e52d9c5533",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

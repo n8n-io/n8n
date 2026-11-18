@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/docs/sandboxing.md
+  s_8661479fcacbbd::t_ba8e2462a14db7 140-143
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_8661479fcacbbd::t_ba8e2462a14db7 1190-1191
+packages/@n8n/instance-ai/src/skills/__tests__/materialize-runtime-skills.test.ts
+  s_8661479fcacbbd::t_ba8e2462a14db7 429-431,435-442
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bc5ff2e78e79c294d6b71ffe99492d59ce4fbdc1",
+  "prompts": {},
+  "sessions": {
+    "s_8661479fcacbbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2dfa2039-345b-4ff7-9ade-5eebd300fbec",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

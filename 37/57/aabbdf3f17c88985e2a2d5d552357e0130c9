@@ -1,0 +1,48 @@
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStepGroup/AiActivityStepGroup.test.ts
+  s_a1f3204f753ed2::t_975f182c4ba029 7-20
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_a1f3204f753ed2::t_69b2a516e32148 153-158
+  s_a1f3204f753ed2::t_2c35fc02445546 142-152,159-163,234,248
+  s_a1f3204f753ed2::t_a52d50c2daf8df 271-276,278-293,295-300,302-319,321-342,344-361,363-368,370-371
+  s_a1f3204f753ed2::t_8eb7f0e986c240 22,369
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_a1f3204f753ed2::t_69b2a516e32148 91-93
+  s_a1f3204f753ed2::t_975f182c4ba029 79-90,97-111
+  s_a1f3204f753ed2::t_8eb7f0e986c240 94-96
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_a1f3204f753ed2::t_5523c5a93c3fdf 234-235,237
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_a1f3204f753ed2::t_5523c5a93c3fdf 82,371-372,376,379,386,411-412,425-426,433,965,971,981,985,988
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_a1f3204f753ed2::t_560904edc579ab 17,268-272,274-275
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_a1f3204f753ed2::t_560904edc579ab 41-45,91-97
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_a1f3204f753ed2::t_cc883763dcd44b 218-221,227-264,630-635
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStepGroup/AiActivityStepGroup.vue
+  s_a1f3204f753ed2::t_560904edc579ab 50,53
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  h_7555c3ee6524cf 277,280,284
+  s_a1f3204f753ed2::t_560904edc579ab 285
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3757aabbdf3f17c88985e2a2d5d552357e0130c9",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a1f3204f753ed2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09fc3-7946-7571-8e49-3446e00ed07d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

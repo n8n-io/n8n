@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/descriptions/rlc.description.ts
+  s_f696297063fd8b::t_75462ae5b767f9 139
+  s_f696297063fd8b::t_233f62012bb1a1 229
+  s_f696297063fd8b::t_98848081059f52 14
+  s_f696297063fd8b::t_b891b08b78b8b3 81-82
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/descriptions/__snapshots__/rlc.description.test.ts.snap
+  s_f696297063fd8b::t_f64a358f13b20c 142,257,318,379,481,520
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "86114af2f97e913fc5c7659117ca76ea93a3b54b",
+  "prompts": {},
+  "sessions": {
+    "s_f696297063fd8b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "474e13af-3640-4bf7-84cc-b16de114a0f4",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+docs/generated/postgres-schema/public.scheduled_job.md
+  ai_agent 29,47,61,104,127
+docs/generated/sqlite-schema/README.md
+  ai_agent 124-125,1531,1554
+docs/generated/sqlite-schema/scheduled_task.md
+  ai_agent 9,36,42,84,109
+docs/generated/postgres-schema/README.md
+  ai_agent 124-125,1545,1568
+docs/generated/sqlite-schema/scheduled_job.md
+  ai_agent 9,40,49,100,123
+docs/generated/postgres-schema/public.scheduled_task.md
+  ai_agent 25,33,47,86,111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "35f8caf566ead9662617030f43a6dfb11691bae6",
+  "prompts": {}
+}

@@ -1,0 +1,21 @@
+packages/@n8n/ai-utilities/src/utils/__tests__/strip-non-x-headers.test.ts
+  s_20cb622bfe13cb::t_15622ae18d5164 9,15-18
+packages/@n8n/ai-utilities/src/utils/strip-non-x-headers.ts
+  s_20cb622bfe13cb::t_2575b93e343d5b 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "7d0e3d136a0ff240e586c87a8b2a60524e38bbf8",
+  "prompts": {},
+  "sessions": {
+    "s_20cb622bfe13cb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ce5c4d6d-70f6-4634-a2cc-f2a83357671f",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

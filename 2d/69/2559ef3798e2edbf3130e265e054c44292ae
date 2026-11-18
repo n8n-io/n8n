@@ -1,0 +1,26 @@
+packages/nodes-base/nodes/Github/__tests__/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_71dc32cd24c5c9 4,8-1927,1929-1930
+  s_2e1fa95fc44f8f::t_5107eae8e70ba2 1-3,5-7,1928,1931-1940
+packages/nodes-base/nodes/Github/__tests__/workflow/Github.workflow.test.ts
+  s_2e1fa95fc44f8f::t_a0d9afcc2824c1 13-16
+  s_2e1fa95fc44f8f::t_908852ecd1c45c 1-12,17-22,27-51,56-60,69,74-75,84,93-98,101-108
+  s_2e1fa95fc44f8f::t_71dc32cd24c5c9 23-26,52-55,61-68,70-73,76-83,85-92
+  s_2e1fa95fc44f8f::t_596d0fd2140dce 99
+  s_2e1fa95fc44f8f::t_2048b2a9663be3 100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d692559ef3798e2edbf3130e265e054c44292ae",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

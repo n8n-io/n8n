@@ -1,0 +1,43 @@
+packages/@n8n/agents/scripts/observer-format-eval/prompts/after.txt
+  ai_agent 1-110
+packages/@n8n/agents/scripts/observer-format-eval/prompts/before.txt
+  ai_agent 1-98
+packages/@n8n/agents/scripts/observer-format-eval/gen.ts
+  s_6db4640dd6f2e0::t_a954d8fd118fa9 1-2,4-5,8-11,13-14,16,19,22,38,40,45,48,51,57-61,69
+  s_6db4640dd6f2e0::t_51c3092633713a 3,6-7,12,15,17-18,20-21,23-37,39,41-44,46-47,49-50,52-56,62-68,70
+packages/@n8n/agents/scripts/observer-format-eval/malformed.ts
+  s_6db4640dd6f2e0::t_811691bb066ef7 15-18,21-24,30-46,48-50
+  s_6db4640dd6f2e0::t_51c3092633713a 2-14,19-20,25-29,47,51-53
+  s_6db4640dd6f2e0::t_d41fbbbcbea2bf 1
+packages/@n8n/agents/scripts/observer-format-eval/README.md
+  s_6db4640dd6f2e0::t_1bdbe5510ea7c2 1-65
+packages/@n8n/agents/scripts/observer-format-eval/run.ts
+  s_6db4640dd6f2e0::t_51c3092633713a 1-11,16-18,22-25,37,45-47,53-60,67-69,75,80-87,91,95-101,111,126,130-137,160-165,169-179,184-186,194,202-204,208-214,220-221,231-232,236-244
+  s_6db4640dd6f2e0::t_811691bb066ef7 12-15,19-21,26-36,38-44,48-52,61-66,70-74,76-79,88-90,92-94,102-110,112-125,127-129,138-159,166-168,180-183,187-193,195-201,205-207,215-219,222-230,233-235
+packages/@n8n/agents/scripts/observer-format-eval/show.ts
+  s_6db4640dd6f2e0::t_51c3092633713a 3,5
+  s_6db4640dd6f2e0::t_d41fbbbcbea2bf 1-2,4,6-18
+packages/@n8n/agents/scripts/observer-format-eval/which.ts
+  s_6db4640dd6f2e0::t_d41fbbbcbea2bf 1
+  s_6db4640dd6f2e0::t_51c3092633713a 2-8
+packages/@n8n/agents/scripts/observer-format-eval/.gitignore
+  s_6db4640dd6f2e0::t_51c3092633713a 1-3
+packages/@n8n/agents/scripts/observer-format-eval/ev.sh
+  s_6db4640dd6f2e0::t_51c3092633713a 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "678fe98b4c698f26cd661733d27f40b9a1058f9c",
+  "prompts": {},
+  "sessions": {
+    "s_6db4640dd6f2e0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3ca5318d-7ed8-4e67-bea9-97bf0be7a4bc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

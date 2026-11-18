@@ -1,0 +1,35 @@
+packages/@n8n/instance-ai/src/tools/activity.tool.ts
+  s_c6542a835c36e8::t_f111766a81a111 31,125
+packages/cli/test/integration/execution-run-summaries.test.ts
+  s_c6542a835c36e8::t_121c2376a72574 21-22,43,68,87,102,118,132,151,172,188,195-223,232
+packages/cli/src/modules/instance-ai/__tests__/internal-messages.test.ts
+  s_c6542a835c36e8::t_f111766a81a111 113
+packages/@n8n/instance-ai/skills/instance-awareness/SKILL.md
+  s_c6542a835c36e8::t_f111766a81a111 52-56,67-73
+packages/cli/src/modules/instance-ai/__tests__/instance-context.service.test.ts
+  s_c6542a835c36e8::t_f111766a81a111 33
+  s_c6542a835c36e8::t_0825dc4133643f 327,329-331,340-347,352-376,387-391
+  s_c6542a835c36e8::t_8dd5825a517792 396-398
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_c6542a835c36e8::t_429dfca25334b6 691-694,696-697,742-743
+packages/cli/src/modules/instance-ai/instance-context.service.ts
+  s_c6542a835c36e8::t_0522fcae454776 306-307,310,313-328,354,363-370,372,378
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_c6542a835c36e8::t_7666c1da3321ae 4166-4185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4fc8421ba07ed31fd4275e2123c6d308eff14fae",
+  "prompts": {},
+  "sessions": {
+    "s_c6542a835c36e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "952fe7f2-30d3-40e1-833a-f7eb7386f5a6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

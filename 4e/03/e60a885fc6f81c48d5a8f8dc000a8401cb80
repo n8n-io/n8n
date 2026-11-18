@@ -1,0 +1,46 @@
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentNodes.test.ts
+  s_ffbc8e9db47e5d::t_f24eeb1923819e 24,122-128,130-135
+  s_ffbc8e9db47e5d::t_99cb76afa5ed52 129
+  s_b546ae58430a9b::t_eb3ebd48d7ea40 136-137
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasLayout.test.ts
+  s_60a1bf18578394::t_0a99ed40f8da9a 397-399,442-447,449-455
+  s_60a1bf18578394::t_5bc69140f77706 448
+  s_b546ae58430a9b::t_55acf3d2301e69 456-457
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasLayout.ts
+  s_60a1bf18578394::t_ac1744fd0bac03 636-637
+  s_60a1bf18578394::t_5c3048fc2b36a0 638-639
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_b546ae58430a9b::t_c51ba743afcf57 697-713,715-719,721-722,724-728
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "4e03e60a885fc6f81c48d5a8f8dc000a8401cb80",
+  "prompts": {},
+  "sessions": {
+    "s_60a1bf18578394": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "41dd1698-5315-4b99-80ea-03be86a5c97a",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_b546ae58430a9b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e6b9133c-c03b-4562-ac44-9ae47aad6eee",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_ffbc8e9db47e5d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "249e1df2-153b-47ec-ab13-30ff2eb5cf52",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

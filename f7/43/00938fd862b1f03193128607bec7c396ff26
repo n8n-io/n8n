@@ -1,0 +1,46 @@
+packages/cli/src/modules/inbound-auth-core/trusted-source.store.ts
+  s_5b85161403cb3c::t_8b8f5dd2acc584 19,52-56,93-94,98-99,102-110,113-115,118-119,121-123,129,133,185
+packages/@n8n/db/src/migrations/common/1790795921000-AddMetadataToTrustedSource.ts
+  s_5b85161403cb3c::t_73545acc79e418 6-8,14-18,24-26
+packages/cli/src/modules/inbound-auth-core/__tests__/trusted-source-discovery.service.test.ts
+  s_5b85161403cb3c::t_63209069d4f6eb 15,22,100,124,129,248,320,336-337,339,343,345,350,375,379,388
+  s_5b85161403cb3c::t_2dca1b2098686b 338,344
+packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source.repository.ts
+  s_5b85161403cb3c::t_2c8ac471e9f65f 55-58,73-77
+  s_5b85161403cb3c::t_37e00e89cc2d3c 1-8,10,49,54,59-65,70-72,79,94-120,134,137-138,141,144-154,158,161-162,167-176
+packages/cli/src/modules/inbound-auth-core/trusted-source-discovery.service.ts
+  s_5b85161403cb3c::t_8b8f5dd2acc584 17-18,43-44,59-61
+packages/cli/test/integration/inbound-auth-core/trusted-source.store.integration.test.ts
+  s_5b85161403cb3c::t_9030d28d1172b7 61,74-81,335,340,346,355,364,401,409-417,419-422,425,428,430,441,446,449,451,464,467,473,482,500,502-503,508-528,530-533
+  s_5b85161403cb3c::t_2c8ac471e9f65f 475-479,504-507
+packages/cli/src/modules/inbound-auth-core/database/entities/trusted-source.entity.ts
+  s_5b85161403cb3c::t_73545acc79e418 45-49
+docs/generated/postgres-schema/README.md
+  s_5b85161403cb3c::t_f35c0fc71db388 132,1616
+docs/generated/postgres-schema/public.trusted_source.md
+  s_5b85161403cb3c::t_46147d3dd16bc0 10,58
+docs/generated/postgres-schema/public.trusted_source_identity.md
+  s_5b85161403cb3c::t_9c52390bd1587e 60
+docs/generated/sqlite-schema/README.md
+  s_5b85161403cb3c::t_e0d646107965a4 132,1604
+docs/generated/sqlite-schema/trusted_source.md
+  s_5b85161403cb3c::t_57fb169be09ced 9,21,60
+docs/generated/sqlite-schema/trusted_source_identity.md
+  s_5b85161403cb3c::t_c729c6f33b9e3d 66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f74300938fd862b1f03193128607bec7c396ff26",
+  "prompts": {},
+  "sessions": {
+    "s_5b85161403cb3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10dcb3c0-c4f9-4155-9b96-4af4ab2eb20d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

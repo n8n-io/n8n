@@ -1,0 +1,21 @@
+packages/cli/test/migration/1794930041563-create-page-tables.test.ts
+  s_f27bda1bd0c713::t_5949a9caf83f54 41-135
+packages/@n8n/db/src/migrations/common/1794930041563-CreatePageTables.ts
+  s_f27bda1bd0c713::t_a54a92839d1f7a 3-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f0960ac5dc48bbaa5ee932ea71d78a7b282a6ffc",
+  "prompts": {},
+  "sessions": {
+    "s_f27bda1bd0c713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e884d7e-3c84-4428-98db-a0c5cff39be6",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

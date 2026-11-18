@@ -1,0 +1,21 @@
+packages/@n8n/agents/src/runtime/model/__tests__/native-tool-deferral.test.ts
+  s_23fd60228fbb58::t_f1e613f9367cc2 386,392
+packages/@n8n/agents/src/runtime/model/native-tool-deferral.ts
+  s_23fd60228fbb58::t_f1e613f9367cc2 7,84-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9ad725d2fed5a561824b80246ebbcdfdbcc22831",
+  "prompts": {},
+  "sessions": {
+    "s_23fd60228fbb58": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95c13e9b-0726-4252-a257-46830ea1b72b",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

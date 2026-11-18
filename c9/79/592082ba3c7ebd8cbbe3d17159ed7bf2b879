@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/app/utils/expressions.ts
+  s_bd05efa6545a84::t_22d27add4509ac 17
+packages/frontend/editor-ui/src/features/shared/editors/composables/useRedactionHint.ts
+  s_bd05efa6545a84::t_347998848aedf7 22-23,26-28
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/resolvableHighlighter.ts
+  s_bd05efa6545a84::t_83f5a420c285f7 37
+packages/frontend/editor-ui/src/features/shared/editors/composables/useExpressionEditor.test.ts
+  s_bd05efa6545a84::t_ff3365c0e6c102 357-382
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AssignmentCollection/Assignment.vue
+  s_bd05efa6545a84::t_62ff6664558a29 268
+packages/frontend/editor-ui/src/app/stores/executionData.store.ts
+  s_bd05efa6545a84::t_9efc2f7e6ef3cc 616
+packages/workflow/src/run-execution-data/run-execution-data.v1.ts
+  s_bd05efa6545a84::t_bb5c0dcc47eabc 24-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c979592082ba3c7ebd8cbbe3d17159ed7bf2b879",
+  "prompts": {},
+  "sessions": {
+    "s_bd05efa6545a84": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "279d6961-129d-4cfb-b8fa-66b26147d76d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

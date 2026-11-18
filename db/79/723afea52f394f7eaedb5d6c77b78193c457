@@ -1,0 +1,172 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_0853a3eb029ed7::t_83f8b61753d46d 979
+  s_0853a3eb029ed7::t_c1e332664e6524 957
+  s_0853a3eb029ed7::t_ed1c1e8cff642e 976
+  s_0853a3eb029ed7::t_59ebc34ffb0705 999
+  s_0853a3eb029ed7::t_f05f5a7c34602f 732-733
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentsListView.test.ts
+  s_0853a3eb029ed7::t_ea04564a295a84 316-322
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_0853a3eb029ed7::t_7b86110537845c 1013-1017
+  s_0853a3eb029ed7::t_a836d02ebfa71c 1050
+  s_0853a3eb029ed7::t_e27b1761fe5099 490,495
+  s_0853a3eb029ed7::t_286aace59940a9 368,373
+  s_0853a3eb029ed7::t_f4ec3f7b2c754d 1085-1087
+  s_0853a3eb029ed7::t_7985c5832b3e87 744
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentToolTelemetry.test.ts
+  s_0853a3eb029ed7::t_8fff5c837f6b4c 5
+packages/cli/src/modules/agents/agents-config.controller.ts
+  s_0853a3eb029ed7::t_4bc5b85e508f2d 70-72
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.test.ts
+  s_0853a3eb029ed7::t_506ff3ed18c9f4 176,181,188,195-198
+packages/frontend/editor-ui/src/features/ai/instanceAi/constants.ts
+  s_0853a3eb029ed7::t_c237b3b6e4091c 7-12
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  s_0853a3eb029ed7::t_939e78dd9fbe1f 24
+  s_0853a3eb029ed7::t_f7dd5afd976ab9 386-388
+packages/@n8n/telemetry/src/events/agents.ts
+  s_0853a3eb029ed7::t_dc0cc898993d7c 321
+  s_0853a3eb029ed7::t_baf8d7c26b49ae 233,235-238,248-254
+  s_0853a3eb029ed7::t_0e494cddc44e65 16-26
+  s_0853a3eb029ed7::t_861706672c70fc 255-278
+  s_0853a3eb029ed7::t_ab062ebf23713d 94-135
+  s_0853a3eb029ed7::t_9e5e44f5ae44ee 239-247
+  s_0853a3eb029ed7::t_7344ff94857436 52
+  s_0853a3eb029ed7::t_d5325190b22e37 385-386,389
+  s_0853a3eb029ed7::t_30c1f75cd5202d 49-51
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_0853a3eb029ed7::t_41ba7df0004922 526-527
+  s_0853a3eb029ed7::t_0422c90ae4c4cf 1099
+  s_0853a3eb029ed7::t_05f4006f366a4e 1074
+  s_0853a3eb029ed7::t_d6dbc17bf3a141 1267-1269
+  s_0853a3eb029ed7::t_e9b9cdba13a693 1169-1171
+  s_0853a3eb029ed7::t_b2d1342f269d4a 538
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_0853a3eb029ed7::t_b41452b6efe5b3 122-123
+  s_0853a3eb029ed7::t_2fd0f20798d39a 269-276
+  s_0853a3eb029ed7::t_f498e3968f37d0 49
+  s_0853a3eb029ed7::t_a0ed0f55368036 221-228
+  s_0853a3eb029ed7::t_75317453fb9325 18-22
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_0853a3eb029ed7::t_d50ec4e2d2e07a 27,31-33
+  s_0853a3eb029ed7::t_5ce0110d277fde 73-74,87,103
+  s_0853a3eb029ed7::t_4c0d07339aa8cf 192,198-203
+  s_0853a3eb029ed7::t_0e0b4bdfef2907 7
+  s_0853a3eb029ed7::t_831673bdbea765 146-168
+  s_0853a3eb029ed7::t_3ed77526f77062 124,184,213-215,224-226
+packages/cli/src/modules/agents/agents.service.ts
+  s_0853a3eb029ed7::t_c4635b43b77959 34-37
+  s_0853a3eb029ed7::t_55dc8560e3df39 65-76
+  s_0853a3eb029ed7::t_3209677c5160b1 111-112,118,123-155
+  s_0853a3eb029ed7::t_b3bbaef6f755a8 53
+  s_0853a3eb029ed7::t_a535b4b49e070c 14
+  s_0853a3eb029ed7::t_eeb52ddce17cfd 156-157
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_0853a3eb029ed7::t_2e3c973f2bde77 3924,3927
+  s_0853a3eb029ed7::t_9aee769785fedd 3948,3956,3959,3961
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  s_0853a3eb029ed7::t_1bdbb2d3a2929a 168-169,171
+  s_0853a3eb029ed7::t_c7643ce1193838 27
+packages/frontend/editor-ui/src/features/agents/__tests__/NewAgentView.test.ts
+  s_0853a3eb029ed7::t_a1a991c7f09ff4 62-89
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolTelemetry.ts
+  s_0853a3eb029ed7::t_7345207d242480 5,9
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_0853a3eb029ed7::t_ce26252490e5c1 383-384
+  s_0853a3eb029ed7::t_11d2efef608eb1 366-367
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderTelemetry.ts
+  s_0853a3eb029ed7::t_3cf9822c0a4161 1-2,9,15,21,114
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_0853a3eb029ed7::t_3fe8196ceec0b4 149
+packages/frontend/editor-ui/src/features/ai/instanceAi/createAgentRoute.test.ts
+  s_0853a3eb029ed7::t_a16fdce844dd50 11-17
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_0853a3eb029ed7::t_b3f4d11a3a054b 678-685,687-689,693-702
+  s_0853a3eb029ed7::t_9eb3cfef535c1f 336
+  s_0853a3eb029ed7::t_f1982501ffad82 734-743
+  s_0853a3eb029ed7::t_0918303fc9c281 529-542,545-547
+  s_0853a3eb029ed7::t_6343734511c9f8 283-289
+  s_0853a3eb029ed7::t_60306a107b3b91 72
+  s_0853a3eb029ed7::t_e84c2a511c283d 651-663,665-667
+  s_0853a3eb029ed7::t_5a04df2b086e2a 711-717
+  s_0853a3eb029ed7::t_bf0228e4683ca1 356-374
+  s_0853a3eb029ed7::t_a41b14730af80b 581-587
+  s_0853a3eb029ed7::t_d2a55a31e67a8f 750-906
+  s_0853a3eb029ed7::t_d252e86acda3ac 111-113
+  s_0853a3eb029ed7::t_f24e2f90f72f00 418-438
+  s_0853a3eb029ed7::t_eaddaa3dbfdbe8 455-466,469-495
+  s_0853a3eb029ed7::t_5669edf35a7dc9 264-270
+  s_0853a3eb029ed7::t_b087b88ea71ce4 312-313
+  s_0853a3eb029ed7::t_91fd07224e51da 228-238
+  s_0853a3eb029ed7::t_7b735c354df699 4,13
+  s_0853a3eb029ed7::t_725598e71b99c6 91
+  s_0853a3eb029ed7::t_fbdeeaf9b69dea 24-25
+  s_0853a3eb029ed7::t_fe56e98f06d394 628-629
+packages/cli/src/modules/agents/agents.controller.ts
+  s_0853a3eb029ed7::t_52cd723aea00a4 36-40
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentTelemetry.test.ts
+  s_0853a3eb029ed7::t_84f15eced74aac 20-21,24,30,33
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTelemetry.ts
+  s_0853a3eb029ed7::t_479f3d9030453d 26-31
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.test.ts
+  s_0853a3eb029ed7::t_8ef31aae23361b 333
+  s_0853a3eb029ed7::t_734ba7911bc49c 322
+packages/cli/src/modules/agents/builder/__tests__/builder-config-telemetry.test.ts
+  s_0853a3eb029ed7::t_606b2637e64bde 34,54
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_0853a3eb029ed7::t_9386a7edda7ff6 572-573
+  s_0853a3eb029ed7::t_3ed4bb46964ecd 528-529
+  s_0853a3eb029ed7::t_4b8eb96d4d860b 639-640
+  s_0853a3eb029ed7::t_ddceeff613a4a3 1013-1014
+  s_0853a3eb029ed7::t_dbcebc000307bc 1192-1193,1230-1231,1276-1277,1324-1325
+  s_0853a3eb029ed7::t_6599649483656d 1755,1757-1758
+  s_0853a3eb029ed7::t_024917bd547f04 1111-1112
+  s_0853a3eb029ed7::t_a6edf153c1ecec 453-459,602-607,768-774,817-823,860-866,905-911
+packages/cli/src/modules/agents/agent-modification-telemetry.service.ts
+  s_0853a3eb029ed7::t_9e1fc4efed8471 1-3,5-31,34-40,42-44,48-50,52-57,63,65-88,91-98,100-128
+  s_0853a3eb029ed7::t_18615de6b742be 32-33,41,45,58-62
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_0853a3eb029ed7::t_3120d8c7cdb953 354-357
+packages/frontend/editor-ui/src/features/ai/instanceAi/createAgentRoute.ts
+  s_0853a3eb029ed7::t_a200fcab2bafb1 3,5-9,14
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_0853a3eb029ed7::t_def9e9a2ecbed2 438
+  s_0853a3eb029ed7::t_cff357bf2f3117 707-708
+  s_0853a3eb029ed7::t_df6e055a7c1817 715
+  s_0853a3eb029ed7::t_83683a59d866b1 1326
+  s_0853a3eb029ed7::t_54707ac9dd28d8 606
+  s_0853a3eb029ed7::t_7a177fe4a0355f 401
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_0853a3eb029ed7::t_2358981fee3d26 115-119
+packages/frontend/editor-ui/src/features/agents/views/NewAgentView.vue
+  s_0853a3eb029ed7::t_86c70d845688b7 10,17-18
+  s_0853a3eb029ed7::t_96555b090eaf6a 42-50
+  s_0853a3eb029ed7::t_939ea656788b7c 19
+packages/frontend/editor-ui/src/app/components/layouts/EmptyStateLayout.vue
+  s_0853a3eb029ed7::t_68ea80fc563aa0 16
+  s_0853a3eb029ed7::t_cc9d9bf4f2f403 78-79,81-84
+packages/frontend/editor-ui/src/app/components/layouts/EmptyStateLayout.test.ts
+  s_0853a3eb029ed7::t_af477a958dcda5 169
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_0853a3eb029ed7::t_35f80a233198d8 258
+  s_0853a3eb029ed7::t_8d2b2fa67a9c6c 42
+  s_0853a3eb029ed7::t_3bf651f4bb7267 317
+packages/cli/src/modules/agents/builder/builder-config-telemetry.ts
+  s_0853a3eb029ed7::t_eab792709e26ee 15-20,28-31,34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "db79723afea52f394f7eaedb5d6c77b78193c457",
+  "prompts": {},
+  "sessions": {
+    "s_0853a3eb029ed7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0a75f873-f071-48f0-9c39-57ac1c149353",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

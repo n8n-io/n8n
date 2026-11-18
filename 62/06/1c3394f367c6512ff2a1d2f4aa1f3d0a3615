@@ -1,0 +1,39 @@
+packages/cli/src/modules/agents/__tests__/agent-checkpoint-pruning.task.test.ts
+  s_0a1a804042c15b::t_5861e02f4e6e0d 5,9
+packages/cli/src/modules/agents/agent-checkpoint-pruning.task.ts
+  s_0a1a804042c15b::t_ef02c387e9cd1c 6,28-31,35
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_0a1a804042c15b::t_30df91d6f1dedc 80,93-96,164-165,175-187,210,218-223,252-253,259-261
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_0a1a804042c15b::t_4afec33d37aa3e 341,350-353,355,360-361,376,383
+packages/cli/src/modules/agents/background/__tests__/sub-agent-background-runner.test.ts
+  s_0a1a804042c15b::t_936af75c139df0 91,132-136,149,160,176,191,197,203-205,251
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_0a1a804042c15b::t_b0978dcde1e8b1 7-8,40-43,227,287,292,313,335-350,358,362-426,438-442,459,556,598-601,768-777,780,898-901
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_0a1a804042c15b::t_b6da16954d9dd2 11,277,283-290,297-322
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_0a1a804042c15b::t_9af2f11bb75801 12,259,265,279,325-329,342
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_0a1a804042c15b::t_9d524abe019b1b 142-153,312-322,348,360,363-369,375-477,504-505
+packages/cli/test/integration/agents/agent-checkpoint-pruning.task.integration.test.ts
+  s_0a1a804042c15b::t_8acb4f1fbfa8be 14-15,65,131,133-151,161-162,201-204
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_0a1a804042c15b::t_60b3aab8c5e277 4,8,17-21,25,99-106,131-274
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "62061c3394f367c6512ff2a1d2f4aa1f3d0a3615",
+  "prompts": {},
+  "sessions": {
+    "s_0a1a804042c15b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f809-8653-78a0-a76c-4b8db92d8a2b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

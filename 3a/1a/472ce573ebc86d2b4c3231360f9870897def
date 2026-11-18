@@ -1,0 +1,19 @@
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_56bde62e56d3b1::t_e1dacbc5f268c1 1266,1291,1321,1356,1394,1427,1476,1508,1542
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3a1a472ce573ebc86d2b4c3231360f9870897def",
+  "prompts": {},
+  "sessions": {
+    "s_56bde62e56d3b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47f70e36-dfda-42d7-823e-0114e1b2de01",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

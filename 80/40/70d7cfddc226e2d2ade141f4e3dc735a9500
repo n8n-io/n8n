@@ -1,0 +1,48 @@
+packages/@n8n/agents/src/runtime/memory/episodic-memory.ts
+  s_a87ab30323b2bf::t_dcc02390931938 31-34,195-199,204-205,211-213,216-228
+packages/cli/src/modules/agents/__tests__/agent-memory-query-embedder.test.ts
+  s_a87ab30323b2bf::t_9d3992e12bd23d 89,101
+packages/cli/src/modules/agents/agent-memory-entries.service.ts
+  s_a87ab30323b2bf::t_9d3992e12bd23d 95,105,110-111,116-119,121
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_a87ab30323b2bf::t_3d7e1d379a3e19 119-121,125,129,134,138-140,146-155,157-159,164-166,172,174,177-178,180
+  s_a87ab30323b2bf::t_1d90938fcdf160 576-587
+  s_a87ab30323b2bf::t_6eed47e4846f0f 141-145
+  s_a87ab30323b2bf::t_8de2c356dfe4e4 33-34,65-68,392,417-421,437-443,461,573,742,1095,1199,1237
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_a87ab30323b2bf::t_e830326714f86d 181-182
+  s_a87ab30323b2bf::t_9bed01e9e6def2 180
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_a87ab30323b2bf::t_8de2c356dfe4e4 8328
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-similar-customer-cases-distinct-during-cross-session-recall.json
+  s_a87ab30323b2bf::t_28292930c910ef 84,88,91,94,97,99,103-104,106,108,274,277,316,427,434,635,651,653,885
+  s_a87ab30323b2bf::t_0dbcf7b5e10fda 142,146,159,172,176,190,195,200,264,267-268,271,276,279,283-284,286,288,313,317,329,415,418-419,422,425,428,430,435,437,439,477,480,490,493,503,506,516,519,534,539,544,549,613,617,620,623,626,628,632-633,637,650,652,658,663,666-667,676,679,698,701-702,711,714,733,736-737,749,835,839,842,845,848,850,854-855,857,859,882,886,898,930,946-947,1010,1014,1017,1020,1023,1025,1029-1030,1032,1034
+packages/cli/src/modules/agents/agent-memory-query-embedder.ts
+  s_a87ab30323b2bf::t_9d3992e12bd23d 35,88
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_a87ab30323b2bf::t_6eed47e4846f0f 143-144
+  s_a87ab30323b2bf::t_9bed01e9e6def2 142,703
+packages/cli/src/modules/agents/__tests__/agent-memory-entries.service.test.ts
+  s_a87ab30323b2bf::t_e830326714f86d 154,158,170,173
+packages/@n8n/agents/src/runtime/memory/episodic-memory-capture.ts
+  s_a87ab30323b2bf::t_ecb8fb8c05af00 225
+  s_a87ab30323b2bf::t_a9bdca8cf467cc 446,513-525,560
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.integration.test.ts
+  s_a87ab30323b2bf::t_099734400ddc85 424,466
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "804070d7cfddc226e2d2ade141f4e3dc735a9500",
+  "prompts": {},
+  "sessions": {
+    "s_a87ab30323b2bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9f44e6d-79e1-4a2e-976f-3b0df0cd5b7f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

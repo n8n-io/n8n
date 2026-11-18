@@ -1,0 +1,51 @@
+packages/cli/test/integration/public-api/n8n-packages-import-selection.test.ts
+  s_ceea518ec91e06::t_8f492f7cde7b2a 8,73-95
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_ceea518ec91e06::t_c6debd8b9fc8a1 567,599-602
+  s_ceea518ec91e06::t_7579c483f4814c 603-605
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-remover.ts
+  s_ceea518ec91e06::t_e9d015def342dd 92-93
+  s_ceea518ec91e06::t_c6debd8b9fc8a1 36,80,102-118,131,147
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-removal.types.ts
+  s_ceea518ec91e06::t_c6debd8b9fc8a1 7,43
+packages/cli/src/modules/n8n-packages/__tests__/import-package-selection.integration.test.ts
+  s_ceea518ec91e06::t_92208ec5c950ce 10,19,403-446,450-516
+  s_ceea518ec91e06::t_7089728a3636b0 447-449
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_ceea518ec91e06::t_8f492f7cde7b2a 7-26
+packages/@n8n/cli/docs/commands/package.md
+  s_ceea518ec91e06::t_e9d015def342dd 134-137
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importBlockingIssue.yml
+  s_ceea518ec91e06::t_8f492f7cde7b2a 4-22
+  s_ceea518ec91e06::t_15d4755ed3ba22 2-3
+packages/@n8n/cli/src/commands/package/package-error.ts
+  s_ceea518ec91e06::t_8f492f7cde7b2a 19-23,79-80
+  s_ceea518ec91e06::t_fb2045426a4200 18
+  s_ceea518ec91e06::t_359348f1ab9338 81
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-remover.test.ts
+  s_ceea518ec91e06::t_7089728a3636b0 351
+  s_ceea518ec91e06::t_aad9a7e69417e3 220-267
+  s_ceea518ec91e06::t_69baa6a0fd9854 211,406
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_ceea518ec91e06::t_c6debd8b9fc8a1 431-433
+packages/cli/src/modules/n8n-packages/engine/import-blocked.error.ts
+  s_ceea518ec91e06::t_c6debd8b9fc8a1 20
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import-selection.yml
+  s_ceea518ec91e06::t_8f492f7cde7b2a 23-24,62-63,97-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5872de6a1dc44f5e8f53c62e969a93ac97c242d1",
+  "prompts": {},
+  "sessions": {
+    "s_ceea518ec91e06": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d6c8-dc68-7ef2-9d12-e19ee76a253d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

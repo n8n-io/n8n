@@ -1,0 +1,38 @@
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_b04c58447561ba::t_0b8f0430206139 1003,1397
+  s_b04c58447561ba::t_620c0071a83243 364-365
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_b04c58447561ba::t_cd280d344a1561 455-456
+  s_b04c58447561ba::t_18e8bfe1556f18 1227-1229,1232-1233,1242,1248,1256
+  s_b04c58447561ba::t_d8b987803e8c4a 1068
+  s_b04c58447561ba::t_52f5a4f00a19cb 559
+packages/cli/src/modules/agents/agent-thread-turn-coordinator.ts
+  s_b04c58447561ba::t_23bc295e632c5c 4,32,36,38,45-46,48,55,63,65,67,77,79,81,90,94-95,101-102
+packages/cli/src/modules/agents/__tests__/test-utils/turn-coordinator.ts
+  s_b04c58447561ba::t_49f584682fab61 9,13,19
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_b04c58447561ba::t_6c11061c6b9715 237-240,243
+packages/cli/src/modules/agents/__tests__/agent-thread-turn-coordinator.test.ts
+  s_b04c58447561ba::t_199798e11050a5 123-124,137-139,146-153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5e81e44f5e0279051159a960b883f11d15bc040f",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b04c58447561ba": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3df8d2d-7a5d-4b4e-82c4-2e70a7479fe8",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

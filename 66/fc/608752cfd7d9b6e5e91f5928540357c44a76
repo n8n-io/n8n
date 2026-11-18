@@ -1,0 +1,32 @@
+packages/@n8n/client-oauth2/src/client-assertion.ts
+  s_863ef8b0566038::t_36af6df66e2474 18
+  s_863ef8b0566038::t_cb03eb9bf5c8bf 5-7,10-11,16,21,23,29,31,33-35,39
+  s_863ef8b0566038::t_4c9d3e6f2b5fb0 14-15
+  s_863ef8b0566038::t_e5ec97edbbed27 2,8-9,12-13,19-20,22,24-28,30,32,36-38,40-43,45-46
+  s_863ef8b0566038::t_d235cc6963c0e6 17
+  s_863ef8b0566038::t_74aad0b480c461 1
+  s_863ef8b0566038::t_ad79414ffdb087 3
+  s_863ef8b0566038::t_3ea0a618afc1be 44
+packages/@n8n/client-oauth2/test/client-assertion.test.ts
+  s_863ef8b0566038::t_4f9882990296a0 1,14
+  s_863ef8b0566038::t_b3e49d91890835 3,13,17-19,22-23,26-34,36-45
+  s_863ef8b0566038::t_c526fab65ec314 47-68
+  s_863ef8b0566038::t_60bc232f351f87 2,5-12,15-16,20-21,24-25,35,46,69
+  s_863ef8b0566038::t_11aaf453d0841f 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "66fc608752cfd7d9b6e5e91f5928540357c44a76",
+  "prompts": {},
+  "sessions": {
+    "s_863ef8b0566038": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96074e9a-5fc0-4251-ad73-6755b86613cb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

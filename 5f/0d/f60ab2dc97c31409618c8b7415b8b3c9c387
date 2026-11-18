@@ -1,0 +1,107 @@
+packages/cli/src/modules/instance-reporting/__tests__/instance-report-task-handler.test.ts
+  s_eeeebf4357b002::t_f1ea6036e2b950 1-3,6-34
+  s_eeeebf4357b002::t_be53a6c8703218 4-5
+packages/cli/src/modules/instance-reporting/instance-reporting.config.ts
+  s_eeeebf4357b002::t_f1ea6036e2b950 4,8-11
+  s_eeeebf4357b002::t_5c0e25e461558e 12-13
+packages/cli/src/modules/instance-reporting/instance-report-task-handler.ts
+  s_eeeebf4357b002::t_f1ea6036e2b950 1-3,5-10,14-25
+  s_eeeebf4357b002::t_287f8825a6c149 4,11-13
+packages/@n8n/backend-test-utils/src/test-db.ts
+  s_eeeebf4357b002::t_e4cad1bcc7235c 159
+packages/cli/src/modules/instance-reporting/instance-reporting.service.ts
+  s_eeeebf4357b002::t_0f34ca6f312403 35,40-41,47-69,79
+  s_eeeebf4357b002::t_d2999a160f334b 44
+  s_eeeebf4357b002::t_85e80ad2c639fe 70,72,203
+  s_eeeebf4357b002::t_eead88d76fa8f5 77-78
+  s_eeeebf4357b002::t_7d10ce01c0603f 1-2,9,12-13
+  s_eeeebf4357b002::t_f1ea6036e2b950 3,6,8,14,17,19-26,31-34,82-106,110-124,127-130,134,139,143,153-158,160-162,164-166,169-193,195-202,204,207-209
+  s_eeeebf4357b002::t_8b52c06dbd68d0 18
+packages/cli/src/modules/instance-reporting/database/repositories/__tests__/central-instance-monitoring-report.repository.integration.test.ts
+  s_eeeebf4357b002::t_f42506e8029a4b 18
+  s_eeeebf4357b002::t_f1ea6036e2b950 1-17,19-109
+packages/cli/src/scheduling/__tests__/durable-job-provisioner.test.ts
+  s_eeeebf4357b002::t_ed8e813497d236 1000-1088
+  s_eeeebf4357b002::t_bfeebf9a778ecd 1089-1091
+packages/cli/src/modules/instance-reporting/instance-reporting-settings.service.ts
+  s_eeeebf4357b002::t_f1ea6036e2b950 1-6,8-47,49-183
+  s_eeeebf4357b002::t_22c4b41addf823 7
+  s_eeeebf4357b002::t_d2999a160f334b 48
+packages/cli/src/modules/instance-reporting/__tests__/instance-reporting-settings.service.test.ts
+  s_eeeebf4357b002::t_be53a6c8703218 6-8
+  s_eeeebf4357b002::t_f1ea6036e2b950 1-5,9-182
+packages/@n8n/config/src/configs/logging.config.ts
+  s_eeeebf4357b002::t_b19472b562a76d 58
+packages/cli/src/modules/instance-reporting/__tests__/instance-reporting.service.test.ts
+  s_eeeebf4357b002::t_be53a6c8703218 16-19,21
+  s_eeeebf4357b002::t_2c4cf4800c56dc 160
+  s_eeeebf4357b002::t_7a79c32540a9e8 148-153,156-159,161,163-168,170-171,174-183
+  s_eeeebf4357b002::t_cc868cfe614685 23-26
+  s_eeeebf4357b002::t_f1ea6036e2b950 4-5,12,22,27-29,33,36,39-40,64-66,71-85,87,90-102,104-110,113,117-120,123-125,130-131,142-144,184-214,222,224,233-245,250,252,255-258,262,265-266,270-279,282-283,285,287,290-292,295-296,298-303,306-308,319-332,335-381
+  s_eeeebf4357b002::t_070c0331a23d9f 86,88-89,103,122,127,134-141
+  s_eeeebf4357b002::t_670ab9d46a2053 2-3
+  s_eeeebf4357b002::t_a5083ea6a42e69 7,11,13,20
+packages/cli/src/scheduling/durable-job-provisioner.ts
+  s_eeeebf4357b002::t_d9be2e7dd9d7a8 266
+  s_eeeebf4357b002::t_35d6f612ca8049 7-12,22
+  s_eeeebf4357b002::t_6f4f8b001522cd 314
+  s_eeeebf4357b002::t_3b343dac5b48a0 243
+  s_eeeebf4357b002::t_6177214238b6cd 214-229,232
+  s_eeeebf4357b002::t_0a926af298bdbd 37-38,45-64,66-72
+  s_eeeebf4357b002::t_dcd9b80bacaf49 346
+  s_eeeebf4357b002::t_9c4c33aa0b4f30 426-430,436-437
+  s_eeeebf4357b002::t_bd6101ea6ce3b2 154-163,165-167,172-175,177-179,185-188
+  s_eeeebf4357b002::t_443f24fcdc5ed1 164,168-171,176
+  s_eeeebf4357b002::t_6781a6715c133f 189
+packages/@n8n/db/src/migrations/common/1787766944676-CreateCentralInstanceMonitoringReportTable.ts
+  s_eeeebf4357b002::t_d7a6cc16087941 1-10,14-23,28-32
+  s_eeeebf4357b002::t_0a0e99d5d76d29 11-13
+  s_eeeebf4357b002::t_84b7271e3a363a 24-27
+packages/cli/src/modules/instance-reporting/database/entities/central-instance-monitoring-report.ts
+  s_eeeebf4357b002::t_f1ea6036e2b950 1-37
+packages/cli/src/modules/instance-reporting/database/repositories/central-instance-monitoring-report.repository.ts
+  s_eeeebf4357b002::t_f1ea6036e2b950 1-59
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_eeeebf4357b002::t_15cc8615521c4d 132-140,270
+  s_eeeebf4357b002::t_21cb097b569ce8 271-278
+packages/cli/src/commands/__tests__/start.test.ts
+  s_eeeebf4357b002::t_86895d5ff75ab8 158,214,250,297
+packages/cli/src/modules/instance-reporting/instance-reporting.module.ts
+  s_eeeebf4357b002::t_3bce9f0b9f1b79 1-33
+packages/cli/src/commands/start.ts
+  s_eeeebf4357b002::t_0d8dae511eaa1e 18
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_eeeebf4357b002::t_585479903e3d64 41
+packages/cli/src/modules/instance-reporting/instance-reporting.constants.ts
+  s_eeeebf4357b002::t_f1ea6036e2b950 1-6,8-14
+  s_eeeebf4357b002::t_a45f16dca9cf71 7
+docs/generated/postgres-schema/README.md
+  s_eeeebf4357b002::t_a4a8733b88035f 42,690-698
+docs/generated/postgres-schema/public.central_instance_monitoring_report.md
+  s_eeeebf4357b002::t_bcaf9c701f17e9 1-51
+docs/generated/sqlite-schema/README.md
+  s_eeeebf4357b002::t_acdbb1d7c9cf64 42,677-685
+docs/generated/sqlite-schema/central_instance_monitoring_report.md
+  s_eeeebf4357b002::t_5634de3f67b3c5 1-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "5f0df60ab2dc97c31409618c8b7415b8b3c9c387",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_eeeebf4357b002": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dab58082-7d4a-4188-ac5d-ef827c5194e3",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,52 @@
+packages/nodes-base/nodes/Databricks/actions/job/runState.ts
+  s_4410279ccd224c::t_0c986abd7d4b9c 1-5,7-33
+  s_4410279ccd224c::t_922b7f89b0122a 6
+packages/nodes-base/nodes/Databricks/resources/job/operations.ts
+  s_4410279ccd224c::t_0c986abd7d4b9c 15-19
+  s_4410279ccd224c::t_d4f6a737c8470b 14
+packages/nodes-base/nodes/Databricks/resources/job/parameters.ts
+  s_4410279ccd224c::t_0c986abd7d4b9c 6,15,17
+packages/nodes-base/nodes/Databricks/actions/job/Job.resource.ts
+  s_4410279ccd224c::t_0c986abd7d4b9c 1
+packages/nodes-base/nodes/Databricks/methods/listSearch.ts
+  s_4410279ccd224c::t_a1cc7332d2deeb 14,483,546
+  s_4410279ccd224c::t_0c986abd7d4b9c 25,30,444,448-459,508,554
+packages/nodes-base/nodes/Databricks/actions/job/run.operation.ts
+  s_4410279ccd224c::t_0c986abd7d4b9c 15-16,81
+packages/nodes-base/nodes/Databricks/test/job-get-run.workflow.json
+  s_4410279ccd224c::t_0c986abd7d4b9c 1-74
+packages/nodes-base/nodes/Databricks/test/Databricks.node.test.ts
+  s_4410279ccd224c::t_0c986abd7d4b9c 635-666,742-746,748-759,761-762
+  s_4410279ccd224c::t_5da8853c67ecd6 741,747,760,765
+  s_4410279ccd224c::t_38d947a87cde0d 764,825-849
+  s_4410279ccd224c::t_01a1659b1d22ee 16
+  s_4410279ccd224c::t_f4f04f8cf623ee 763
+  s_4410279ccd224c::t_2e5e294945031d 766
+packages/nodes-base/nodes/Databricks/actions/job/getRun.operation.ts
+  s_4410279ccd224c::t_318e72f8958785 27-28
+  s_4410279ccd224c::t_0c986abd7d4b9c 1-26,29-46
+packages/nodes-base/nodes/Databricks/actions/router.ts
+  s_4410279ccd224c::t_bebe2c7274d843 76
+  s_4410279ccd224c::t_7e5314d5cbb699 7
+packages/nodes-base/nodes/Databricks/actions/helpers.ts
+  s_4410279ccd224c::t_0c986abd7d4b9c 92-94,106,114-117,137
+  s_4410279ccd224c::t_b8ea9dc7b42343 95-105
+packages/nodes-base/nodes/Databricks/test/getRun.test.ts
+  s_4410279ccd224c::t_0c986abd7d4b9c 1-210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b15cff6e208e4b311a4b506e2ffac403414f4fc6",
+  "prompts": {},
+  "sessions": {
+    "s_4410279ccd224c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "13e2727e-5262-4313-be17-5cbc36a25dfe",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/cli/src/workflows/publication/workflow-publication-outbox-consumer.ts
+  s_0eada7bdc56a88::t_06d768f4caf264 132-142,144-148
+packages/cli/src/workflows/publication/published-workflow-trigger-deactivator.ts
+  s_0eada7bdc56a88::t_7d2e677f6e3001 5,10,24,33,36
+packages/cli/src/workflows/publication/__tests__/published-workflow-trigger-deactivator.test.ts
+  s_0eada7bdc56a88::t_fd804d7500f34a 4,38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d124057b0a8532fd4bc88f539f54606f45a0836b",
+  "prompts": {},
+  "sessions": {
+    "s_0eada7bdc56a88": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2cf824c0-32f3-4435-9a22-a33cba0b997e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

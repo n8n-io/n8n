@@ -1,0 +1,30 @@
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/mlflow/trace-writer.ts
+  s_e3165c863402e2::t_4f298805e03cc4 137,229
+  s_e3165c863402e2::t_2e13ad0fedf9f6 66-67
+  s_e3165c863402e2::t_f5b79ec2353d0d 3
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/DatabricksAiAgent.node.ts
+  s_e3165c863402e2::t_e9f957cb83b961 98,117
+  s_e3165c863402e2::t_d177628c593c5f 1,23-29
+  s_e3165c863402e2::t_e0103f45b2234e 30
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/mlflow/__tests__/trace-writer.test.ts
+  s_e3165c863402e2::t_e7b2283f6ada27 193-210
+  s_e3165c863402e2::t_e61af95df21e1b 1
+  s_e3165c863402e2::t_b84576c7ff694f 181
+  s_e3165c863402e2::t_837c483be17f66 284-290
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fc7d09e0c9ba1ab06a7a613feba35a0c6788b841",
+  "prompts": {},
+  "sessions": {
+    "s_e3165c863402e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b5e1478d-485b-47e5-9f38-ab6fe27c5ade",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionGitHostSelect.vue
+  s_20bc5da4e9fe52::t_fc16ba97b54b7c 3,104,113,134-141
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionEnvironmentCard.vue
+  s_20bc5da4e9fe52::t_782c5001651739 92-104,181-184
+  s_20bc5da4e9fe52::t_84e5eded869785 71,113,177
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.vue
+  s_20bc5da4e9fe52::t_20b36c2e173e25 5,56,131-132,170-189,191-212,232-252
+packages/frontend/@n8n/design-system/src/components/N8nVisuallyHidden/VisuallyHidden.vue
+  s_20bc5da4e9fe52::t_282122ab53ce90 10
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionEnvironmentView.vue
+  s_20bc5da4e9fe52::t_a240e31c3920f0 320,367,393,404,423
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionProviderDialog.vue
+  s_20bc5da4e9fe52::t_a240e31c3920f0 279,510-513
+  s_20bc5da4e9fe52::t_7d9b1997554da9 437,452,459
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "55b85c4db7deb50187b400d54e5c469efc83cdb0",
+  "prompts": {},
+  "sessions": {
+    "s_20bc5da4e9fe52": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed82ce47-8b0e-4087-9761-908513e3887f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

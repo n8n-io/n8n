@@ -1,0 +1,29 @@
+packages/@n8n/db/src/services/__tests__/typeorm-transaction.test.ts
+  s_2b2954a4956f3a::t_dd4241d2792c3e 88
+packages/@n8n/db/src/repositories/base-repository.ts
+  s_2b2954a4956f3a::t_49ee374f7e51c4 19-20
+  s_2b2954a4956f3a::t_2148fcdb9660bf 22-23
+packages/cli/src/modules/oauth-server/database/repositories/oauth-refresh-token.repository.ts
+  s_2b2954a4956f3a::t_5c521090973fc1 24,34
+  s_2b2954a4956f3a::t_c388498b991064 44
+packages/@n8n/db/src/utils/transaction.ts
+  s_2b2954a4956f3a::t_d7a8247077428f 5-14
+packages/cli/src/modules/oauth-server/database/repositories/oauth-access-token.repository.ts
+  s_2b2954a4956f3a::t_88e1d9ac4e0444 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "5d0b1a8de2d18d3864071fca9a26ab2ccba277e6",
+  "prompts": {},
+  "sessions": {
+    "s_2b2954a4956f3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "293ec869-ab9a-4cc9-a9cd-047924821740",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

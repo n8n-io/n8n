@@ -1,0 +1,108 @@
+packages/cli/src/modules/agents/integrations/integration-tools.ts
+  s_6e06771097abf4::t_aa4e657a81b8aa 54-62,65
+  s_6e06771097abf4::t_11fcbc6783acb1 905-908
+  s_6e06771097abf4::t_2a8eda86ae8966 4
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_6e06771097abf4::t_ef1aa163422bb8 112,125-126
+  s_6e06771097abf4::t_4b0e9222f8ab8d 41
+  s_6e06771097abf4::t_1f2a15007ff66b 250-251,254
+  s_6e06771097abf4::t_11d7e0d3c465f1 79-98,140
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_6e06771097abf4::t_fb1a67f861e757 268-276
+  s_6e06771097abf4::t_e15943236b29cb 253-267,277-280,294-296
+packages/cli/src/modules/agents/agents.module.ts
+  s_6e06771097abf4::t_0b8ba4676ceda4 39,44
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_6e06771097abf4::t_897e27aaa0b73a 101-107,112-114
+  s_6e06771097abf4::t_6579dc76a3c18e 218,227
+  s_6e06771097abf4::t_6c24cc3a9311d1 219,228
+  s_6e06771097abf4::t_e5f53277706faf 108-111
+  s_6e06771097abf4::t_88dcf09feb3340 263-267
+packages/cli/src/modules/agents/integrations/integration-context-query-executor.ts
+  s_6e06771097abf4::t_44756e90504ca5 36-41,43-58,61
+  s_6e06771097abf4::t_47ba8ffeed5c53 33-35,42,65,73
+packages/cli/src/modules/agents/agents.service.ts
+  s_6e06771097abf4::t_86c7cf36bfd82f 1150-1156
+  s_6e06771097abf4::t_119e73cf09a294 13
+  s_6e06771097abf4::t_5b7625558c2c57 230
+  s_6e06771097abf4::t_a2428d2a4ed5dd 69
+  s_6e06771097abf4::t_78d59a268d4d36 362
+  s_6e06771097abf4::t_77008e56dd0bc8 296
+  s_6e06771097abf4::t_2af0eaec9e8f78 1143-1149,1157-1162
+packages/cli/src/modules/agents/__tests__/messages-envelope.test.ts
+  s_6e06771097abf4::t_eb359f9849be2b 1-35
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_6e06771097abf4::t_49cbd809224331 384
+  s_6e06771097abf4::t_b9d8fb33fdb2f7 355
+  s_6e06771097abf4::t_ce1c516b35f517 381,383,389,399-416
+  s_6e06771097abf4::t_aac645e393492f 11-13
+packages/cli/src/modules/agents/utils/messages-envelope.ts
+  s_6e06771097abf4::t_a3d05e339d368e 20-22
+  s_6e06771097abf4::t_fd6fc472ed4fef 1-19,23-26,28-29
+packages/cli/src/modules/agents/integrations/platforms/n8n-chat-integration.ts
+  s_6e06771097abf4::t_0f08afbb0bd017 121
+  s_6e06771097abf4::t_43428ed60a2bb1 2-3,11
+  s_6e06771097abf4::t_06e99a7002aad1 1,4-10,12-83,87-90,92-120,122-128
+  s_6e06771097abf4::t_815172c3ca5ee0 84-86,91
+packages/cli/src/modules/agents/__tests__/agents.controller.test.ts
+  s_6e06771097abf4::t_34d46362439aee 1052
+  s_6e06771097abf4::t_c0a27ebee967ff 1093
+  s_6e06771097abf4::t_a8ef31a37a0979 1037,1054,1058-1072
+  s_6e06771097abf4::t_bdb42e9e930b2d 1120-1180
+  s_6e06771097abf4::t_cc6d132a7a66b7 1098
+  s_6e06771097abf4::t_0dce9c61dbe432 1038
+  s_6e06771097abf4::t_e0dbfb0f0146a5 1020,1023,1034
+  s_6e06771097abf4::t_f32df664c2d88a 1091-1092,1094-1097,1099-1118
+packages/cli/src/modules/agents/integrations/platforms/linear-integration.ts
+  s_6e06771097abf4::t_4e0193fce4c623 11
+  s_6e06771097abf4::t_2661096fd557fe 88,97
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_6e06771097abf4::t_6b13642ad294fc 72-82
+  s_6e06771097abf4::t_aa5ab7b18bf2f3 501,507-517
+  s_6e06771097abf4::t_9c0872beab016e 9-15
+  s_6e06771097abf4::t_21c7e6b2b54cc7 33-36,39
+  s_6e06771097abf4::t_18035be5055e6f 460,464-473,476-481,484-500,502-506,518-524
+packages/cli/src/modules/agents/__tests__/agents-service-sync.test.ts
+  s_6e06771097abf4::t_3fd56dbbaf142c 68
+packages/cli/src/modules/agents/agents.controller.ts
+  s_6e06771097abf4::t_fc9f6837b0a82a 6
+  s_6e06771097abf4::t_06efc4bafbda7b 713,715
+  s_6e06771097abf4::t_10c3498f7056ef 694-695,697
+  s_6e06771097abf4::t_af14568a32f1be 679,698
+  s_6e06771097abf4::t_53f9d8cc140faa 754
+  s_6e06771097abf4::t_3daca3b71d2309 749,755-758
+  s_6e06771097abf4::t_47ed6d5caf8e45 8
+  s_6e06771097abf4::t_a83ff5f79b63ef 660
+  s_6e06771097abf4::t_d713906e81862a 65-66
+packages/cli/src/modules/agents/integrations/platforms/slack-integration.ts
+  s_6e06771097abf4::t_098484dbf34e6a 11
+  s_6e06771097abf4::t_90283a5c5e4bac 81,90
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_6e06771097abf4::t_2d83420af88f92 212
+packages/cli/src/modules/agents/integrations/__tests__/n8n-chat-integration.test.ts
+  s_6e06771097abf4::t_c80a468248a603 5-9,11
+  s_6e06771097abf4::t_041d5ff44d926d 3-4,12-32,34-38,40-42,46-70,113-143,145-155
+  s_6e06771097abf4::t_1dec1d37f8d222 33,39,43-45
+  s_6e06771097abf4::t_be06b476ffbc8d 1
+  s_6e06771097abf4::t_43428ed60a2bb1 2
+  s_6e06771097abf4::t_a87eea7e20cd36 144
+  s_6e06771097abf4::t_5c39c4177667b3 71-112
+  s_6e06771097abf4::t_98c8ff8377c144 186-197
+  s_6e06771097abf4::t_7b0b574d744478 156-185,198-214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "30bfa59d5849c870fbad0e10f75381f80196596d",
+  "prompts": {},
+  "sessions": {
+    "s_6e06771097abf4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b3c7bb4-2a4f-497e-966d-6b2a50495f9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

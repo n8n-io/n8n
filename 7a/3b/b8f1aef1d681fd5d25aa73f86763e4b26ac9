@@ -1,0 +1,36 @@
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_907853c6014ba7::t_2131cfe949088d 1686-1747
+packages/cli/test/integration/environments/source-control-import.service.test.ts
+  s_907853c6014ba7::t_8ae59620ad039a 45
+  s_907853c6014ba7::t_966e20d8091c2a 2179,2183,2212-2221
+  s_907853c6014ba7::t_69d154b4346f9c 2168-2178,2180-2182,2184-2211,2222-2223
+  s_907853c6014ba7::t_0e174ddd88e040 119-123,138
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_907853c6014ba7::t_f14a8de5e2f1ca 321-341
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  s_907853c6014ba7::t_970c91bb794eb5 155-156,3224-3246,3248-3249,3256,3904-3905,3913,3921,3926-3945,3960,3987,4019,4036
+  s_907853c6014ba7::t_a544d16272228a 8
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_907853c6014ba7::t_0065d0cd96bc9d 1855-1857
+  s_907853c6014ba7::t_c218ef06668290 1914,1921-1928
+packages/cli/src/credentials/credentials.service.ts
+  s_907853c6014ba7::t_f4a6f9b6d76669 1477-1495
+packages/cli/src/modules/source-control.ee/source-control.service.ee.ts
+  s_907853c6014ba7::t_372f86ba80f605 709-712
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a3bb8f1aef1d681fd5d25aa73f86763e4b26ac9",
+  "prompts": {},
+  "sessions": {
+    "s_907853c6014ba7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3970609d-e56a-4e03-ae46-66310d750b8d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

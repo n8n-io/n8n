@@ -1,0 +1,14 @@
+.github/OWNERS
+  h_d333f1a9f56237 6,40-48,109-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "0b116fcae48c92cab802d6268b6b83961f325fd8",
+  "prompts": {},
+  "humans": {
+    "h_d333f1a9f56237": {
+      "author": "Marc Littlemore <marc@n8n.io>"
+    }
+  }
+}

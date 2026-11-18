@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/__tests__/AgentN8nChatView.test.ts
+  s_f3d2ec4529fb2a::t_ad1e7195dd3723 340-342,344
+  s_f3d2ec4529fb2a::t_746a91dd748069 333-337,339,343,345-351
+  s_f3d2ec4529fb2a::t_e9007a03dae8b0 338
+  s_f3d2ec4529fb2a::t_67bc9e42e2d2ab 2
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_f3d2ec4529fb2a::t_746a91dd748069 2004
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "552a5a0f2988bf1c7430b68ef77a424fc0c7f0a1",
+  "prompts": {},
+  "sessions": {
+    "s_f3d2ec4529fb2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c28c4414-1c5b-4167-98ad-d5188b3d2601",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

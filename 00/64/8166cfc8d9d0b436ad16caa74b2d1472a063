@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Airtable/test/v2/node/record/get.test.ts
+  s_2e1fa95fc44f8f::t_89f572ae7e81c2 97-113
+packages/nodes-base/nodes/Airtable/test/AirtableTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_6fe67f3ff6ab7d 49-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "00648166cfc8d9d0b436ad16caa74b2d1472a063",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/cli/src/public-api/v1/controllers/credentials.public.controller.ts
+  s_88cc169ecc0820::t_75f490634f8ab1 146
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/deleteCredential.generated.yml
+  s_88cc169ecc0820::t_b53434afa099f3 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "47d7213e8369c08b11d690edb73fa22d06980509",
+  "prompts": {},
+  "sessions": {
+    "s_88cc169ecc0820": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27938eab-e3d4-4c66-a7c0-ce8536c33b68",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

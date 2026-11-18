@@ -1,0 +1,50 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentSetupTasks/AgentSetupTasks.vue
+  s_5aa07e322dcaff::t_d87dc8045b9596 4-7
+  s_5aa07e322dcaff::t_e47e6c7b6c4ff1 1-3
+  s_5aa07e322dcaff::t_078eb1d9c2f7c3 8-10
+  s_5aa07e322dcaff::t_2576f803405c64 11-17
+packages/frontend/editor-ui/src/features/agents/components/AgentSetupTasks/useAgentSetupTasks.ts
+  s_5aa07e322dcaff::t_15eb45506cfdcb 17-19,22
+  s_5aa07e322dcaff::t_d0ec72610e2b92 10
+  s_5aa07e322dcaff::t_06fa36c950834f 8,15-16,20-21
+  s_5aa07e322dcaff::t_221c78fee26613 9,13
+  s_5aa07e322dcaff::t_c9c302c35b0c29 5-7
+  s_5aa07e322dcaff::t_964004141c5997 11-12
+  s_5aa07e322dcaff::t_ccd0f6e813a6e0 14
+  s_5aa07e322dcaff::t_f9f64de0334c52 23-25
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_5aa07e322dcaff::t_239a01d24fe63c 724-730
+  s_5aa07e322dcaff::t_8d149671ce568f 90,122
+  s_5aa07e322dcaff::t_58f42646e6111e 723
+  s_5aa07e322dcaff::t_1a4554e7469b67 731
+  s_5aa07e322dcaff::t_c24ad4f7cc7532 2902
+packages/frontend/editor-ui/src/features/agents/components/AgentSetupTasks/agentSetupTasks.registry.ts
+  s_5aa07e322dcaff::t_5d9b56c140b126 37
+  s_5aa07e322dcaff::t_93e8ffe6f8f999 6-11,31-32,43,45-48,50-58
+  s_5aa07e322dcaff::t_b68aaba78ce519 13-14,22,33,35-36
+  s_5aa07e322dcaff::t_408f678be1cd28 15-20,23-26,34,49
+  s_5aa07e322dcaff::t_ae656618758224 3-5
+  s_5aa07e322dcaff::t_de20018935970a 12
+  s_5aa07e322dcaff::t_1e863788709c3b 21
+  s_5aa07e322dcaff::t_e0b498798ffe50 27-30
+  s_5aa07e322dcaff::t_0309188e9dff02 38-42
+  s_5aa07e322dcaff::t_1b4d2393565311 44
+  s_5aa07e322dcaff::t_9b096980a88d0b 59-60
+  s_5aa07e322dcaff::t_b9a03f8e633d2d 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4ac1daa4ce607249354c2a1386f9a1eaf2ed86c6",
+  "prompts": {},
+  "sessions": {
+    "s_5aa07e322dcaff": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ed03-d0ab-7058-b887-ac75fc8f7e1b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

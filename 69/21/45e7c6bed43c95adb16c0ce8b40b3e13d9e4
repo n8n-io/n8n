@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/integrations/platforms/discord-operations.ts
+  s_50d665da9945ec::t_7d998665899a67 40-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "692145e7c6bed43c95adb16c0ce8b40b3e13d9e4",
+  "prompts": {},
+  "sessions": {
+    "s_50d665da9945ec": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4797df27-1553-4fbe-87ea-cabb3758597d",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/workflow/test/request-target.test.ts
+  s_2e1fa95fc44f8f::t_d63b6456f30a4e 100-101
+  s_2e1fa95fc44f8f::t_27d68a4c010642 92-99
+packages/workflow/src/request-target.ts
+  s_2e1fa95fc44f8f::t_e3f1dbb80e0990 50-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8f21d5a336dcc6e4a670838251b0a4831d3ff3e8",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

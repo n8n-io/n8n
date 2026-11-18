@@ -1,0 +1,22 @@
+packages/@n8n/agents/src/sdk/agent.ts
+  s_2aa332997f69a5::t_259fbf83babcb2 1173-1177
+packages/@n8n/agents/src/sdk/__tests__/delegate-sub-agent-routing.test.ts
+  s_2aa332997f69a5::t_bd42aefc9b04d6 311,314
+  s_2aa332997f69a5::t_31feb3caeac428 295-310,312-313,315-318
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "49073f1f6f1476532b3e1bfe454ce172e6b9a9fa",
+  "prompts": {},
+  "sessions": {
+    "s_2aa332997f69a5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb33c-e258-7363-982f-32182e1f30e6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

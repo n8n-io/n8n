@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/model-providers.ts
+  s_db547d1f734bf2::t_f82bedff3a25ef 44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d0819ba9ceb4641d460ae50e57c6e1dc1104486d",
+  "prompts": {},
+  "sessions": {
+    "s_db547d1f734bf2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd28e799-2a21-45a0-b4f6-a0697e5725e2",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

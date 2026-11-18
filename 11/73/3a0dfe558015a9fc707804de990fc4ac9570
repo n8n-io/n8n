@@ -1,0 +1,39 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_f3d2ec4529fb2a::t_02675366579b18 222
+  s_f3d2ec4529fb2a::t_cf80b121893b49 1985,1989,1994,1996,2003
+  s_f3d2ec4529fb2a::t_d2df20d5638ff2 1986-1988,1990-1993,1995,1997-2002,2004-2006
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/__tests__/AgentN8nChatView.test.ts
+  s_f3d2ec4529fb2a::t_b8804b0366422f 107
+  s_f3d2ec4529fb2a::t_759d7ed9593e1e 280-292
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_f3d2ec4529fb2a::t_84fc64cde55fef 135-136
+  s_f3d2ec4529fb2a::t_14fda28f20f7b6 184
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_f3d2ec4529fb2a::t_97114e1c6f5956 1231
+  s_f3d2ec4529fb2a::t_3a99d283d4a9df 1232
+  s_f3d2ec4529fb2a::t_b3a5f61fe7eca2 83-84
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_f3d2ec4529fb2a::t_ec451f318b5d56 245-248,250
+  s_f3d2ec4529fb2a::t_0c3b4e31754e8e 74
+  s_f3d2ec4529fb2a::t_187c339d48d473 2499,2502
+  s_f3d2ec4529fb2a::t_e6466415c6b2e8 2500-2501,2503-2506
+  s_f3d2ec4529fb2a::t_907d01b6f3df24 322
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/AgentN8nChatView.vue
+  s_f3d2ec4529fb2a::t_bf1d30ec3487af 230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "11733a0dfe558015a9fc707804de990fc4ac9570",
+  "prompts": {},
+  "sessions": {
+    "s_f3d2ec4529fb2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c28c4414-1c5b-4167-98ad-d5188b3d2601",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

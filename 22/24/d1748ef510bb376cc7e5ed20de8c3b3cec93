@@ -1,0 +1,26 @@
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_36c0d5ff4dea1e::t_df623213c3d58d 1764-1765,1777,1780
+  h_5d40c27a8fdfd1 1717
+  s_36c0d5ff4dea1e::t_bff0ee47c1aaca 1729,1735
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2224d1748ef510bb376cc7e5ed20de8c3b3cec93",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_36c0d5ff4dea1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "37cea1df-cd00-485a-be0a-e7f7d1662e46",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,62 @@
+packages/nodes-base/nodes/Databricks/actions/job/getRunOutput.operation.ts
+  s_463d9fd5a8df13::t_62e916cddb1156 7-9
+  s_463d9fd5a8df13::t_93595148f51715 1-6,10-98
+packages/nodes-base/nodes/Databricks/resources/job/parameters.ts
+  s_463d9fd5a8df13::t_dcb22ee594e7e4 6,9-46
+packages/nodes-base/nodes/Databricks/test/job-get-run-output.workflow.json
+  s_463d9fd5a8df13::t_dfb1c2b2071446 1-75
+packages/nodes-base/nodes/Databricks/resources/job/operations.ts
+  s_463d9fd5a8df13::t_8a646c7c9cca7b 15-19
+packages/nodes-base/nodes/Databricks/actions/helpers.ts
+  s_463d9fd5a8df13::t_32e3143baea6ab 171
+  s_463d9fd5a8df13::t_1e4c35627bbd0f 98-100
+  s_463d9fd5a8df13::t_7ee322ec010a4b 137
+  s_463d9fd5a8df13::t_1ab1ea2c4e050b 1,10-15,19-55,67-72,79,86-97,101-103
+  s_463d9fd5a8df13::t_a08554df929adf 133-136,138-140,148-151
+packages/nodes-base/nodes/Databricks/actions/router.ts
+  s_463d9fd5a8df13::t_c2b287bd876389 76
+  s_463d9fd5a8df13::t_c292368b8ea3f9 7
+packages/nodes-base/nodes/Databricks/actions/job/Job.resource.ts
+  s_463d9fd5a8df13::t_410aa2093945dc 1
+packages/nodes-base/nodes/Databricks/actions/interfaces.ts
+  s_463d9fd5a8df13::t_f9f4e46b9d9175 57-62,84-90,94-98
+  s_463d9fd5a8df13::t_42447643d965a5 91-93
+  s_463d9fd5a8df13::t_67ee58871e9e11 1-2
+packages/nodes-base/nodes/Databricks/constants.ts
+  s_463d9fd5a8df13::t_22b14053da1a2b 7-13
+packages/nodes-base/nodes/Databricks/methods/listSearch.ts
+  s_463d9fd5a8df13::t_c549aa3950c126 513
+  s_463d9fd5a8df13::t_1ce5ec5a420ad0 529,533-534
+  s_463d9fd5a8df13::t_1d1ffa581e172d 14,24,29
+  s_463d9fd5a8df13::t_0f0b80a1bc0d03 493
+  s_463d9fd5a8df13::t_d4c66026314c03 492,494-512,514-528,530-532,535-577
+  s_463d9fd5a8df13::t_69d62bf0def8a2 444-455
+packages/nodes-base/nodes/Databricks/test/helpers.test.ts
+  s_463d9fd5a8df13::t_c7809dbc73740a 127-197,200,202-205,208-241
+  s_463d9fd5a8df13::t_0c01a33b20d2cc 1-3,8-18
+  s_463d9fd5a8df13::t_44c215addaeec1 198-199,201,206-207
+packages/nodes-base/nodes/Databricks/test/Databricks.node.test.ts
+  s_463d9fd5a8df13::t_6732d9868cd5ad 1542
+  s_463d9fd5a8df13::t_e041ad25eeb76f 1558
+  s_463d9fd5a8df13::t_4ec3c9f0d4d378 1569
+  s_463d9fd5a8df13::t_dd49cc731be6c1 636-669
+  s_463d9fd5a8df13::t_4340ace8f53763 16-17,19
+  s_463d9fd5a8df13::t_ab088b2018cad7 710-736
+  s_463d9fd5a8df13::t_567556608e5132 1361-1541,1543-1557,1559-1568,1570-1615
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "575d3b356dfa99305e34a52d46d7c0c1998ed0bd",
+  "prompts": {},
+  "sessions": {
+    "s_463d9fd5a8df13": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2f0c372-4775-4361-8d23-84e65ba11bb2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

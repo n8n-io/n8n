@@ -1,0 +1,138 @@
+packages/cli/src/modules/agents/integrations/__tests__/discord-gateway-lifecycle.test.ts
+  s_a8422958d7afce::t_1e7c3b66f290c1 8-11,14-16
+  s_fc69070693f223::t_7be6ab44327779 30,34,56-59
+  s_a8422958d7afce::t_f807575df0dba1 94
+  s_a8422958d7afce::t_a0a185869b2fbf 173-177,179-200,205,208-209
+  s_03ed46083a9f56::t_c8e477ac6a00b0 178
+  s_5dd9c6fea0cd88::t_1ac78485673d31 223-234
+  s_ff115ff5ced5d0::t_9064ad58e27fd5 157-172
+  s_a8422958d7afce::t_6898f6c4d6cc2a 206-207
+  s_a8422958d7afce::t_173a1dff83e90a 201-204
+  s_065515fc4c17af::t_f2d5a8407cb8cf 255-286
+  s_b63cb813d72fb7::t_8383fc0cc9a44b 101-104
+  s_851092fbe47ebb::t_967301be079b64 1-7,12-13,17-29,31-33,35-55,60-93,95-100,105-155,287
+  s_fc69070693f223::t_ac13d78b5826ed 156,210-222,235-254
+  s_f35e98570d6579::t_70c8b26ea05031 288-291
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_5dd9c6fea0cd88::t_58c94229a2731f 217
+  s_5dd9c6fea0cd88::t_b2f6c426b157d9 221-222
+  s_851092fbe47ebb::t_de5e994f2c9cad 277-286
+  s_5dd9c6fea0cd88::t_368767d9f6c2d4 216,218-220,223
+  s_f35e98570d6579::t_ea3fbbfb60cd48 224-226,287-289
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_03ed46083a9f56::t_fc3a2b3fa626b4 817-837
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_fc69070693f223::t_9ff03026dd81ef 319-321,333
+  s_fc69070693f223::t_482dd09f7004b1 294-318,322-332,334-349
+packages/cli/src/modules/agents/integrations/platforms/discord-gateway.ts
+  s_ff115ff5ced5d0::t_a74df451440c91 5
+  s_54d886c14e1a6a::t_c22da6af0c41a0 1-2
+  s_54d886c14e1a6a::t_e905124fc10909 3-4,6-117,123-158,163-259
+  s_ff115ff5ced5d0::t_be57dffde6bb6e 118-122
+  s_f35e98570d6579::t_a872b89ff180f7 159-162
+packages/cli/src/modules/agents/integrations/platforms/discord-operations.ts
+  s_b63cb813d72fb7::t_c5e69465b1b0ec 130
+  s_b63cb813d72fb7::t_00ec07b2be6e40 3
+  s_fc69070693f223::t_846b8d8c8e7fe0 54-57
+packages/cli/src/modules/agents/integrations/__tests__/discord-integration.test.ts
+  s_b63cb813d72fb7::t_83f1e08606640a 129,132
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_03ed46083a9f56::t_dc2957fc6e9038 245-254
+packages/cli/src/modules/agents/integrations/platforms/discord-integration.ts
+  s_fc69070693f223::t_f6cb2e4bfde244 304-305
+  s_54d886c14e1a6a::t_a58e961ced14af 25-29,134-135,139,141,143,179-180,186,191
+  s_f35e98570d6579::t_3edc952327ca14 195,203,209,306-309
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "fcf7217c357a3c15a25257aa06a73d812c3da6bd",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_03ed46083a9f56": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "85716ec6-b05b-4dab-9119-f4618bf2913c",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_065515fc4c17af": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c18f6d11-57ef-4f36-ae84-fc9a11f61b35",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_54d886c14e1a6a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c2a608a0-7198-498e-99d6-5ce60c1e367c",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_5dd9c6fea0cd88": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7183a5bb-cfce-4829-83c3-39d91dd3035e",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_851092fbe47ebb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3a34208a-bef8-4d34-ac4f-f78561972342",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_a8422958d7afce": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8146b22f-79cf-4c8b-a3cd-85fe6d38fd48",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_b63cb813d72fb7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "53b77725-bc83-4331-8f1c-e5e3798040f9",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_f35e98570d6579": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1c151d1f-ed33-443b-9372-01a177422d31",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_fc69070693f223": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8758cfde-5504-4b01-b237-f0e3d2b5d8c8",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_ff115ff5ced5d0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "62dea75f-66e9-4983-af53-5e7f587e4d3f",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

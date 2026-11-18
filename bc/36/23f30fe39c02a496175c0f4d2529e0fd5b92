@@ -1,0 +1,27 @@
+packages/cli/src/workflows/triggers/webhook-trigger-registrar.ts
+  s_cebe0f5823d4d7::t_5434ca108b464d 1,3-9,11-18,22-27,39-50,52,66-74,76-78,81-99,101-134,136-140,142-154,156-169,192-193
+  s_cebe0f5823d4d7::t_7e63fd735e3c70 10
+  s_cebe0f5823d4d7::t_69a1d0d859f2a6 28-35,51,53-59,75,141,155,172,179-183,191
+  s_cebe0f5823d4d7::t_07caf63b6184ab 135
+  s_cebe0f5823d4d7::t_b09d47d01dd757 173
+  ai_agent 19-21,60-65
+  s_cebe0f5823d4d7::t_9febc260a9c857 36-38
+  s_cebe0f5823d4d7::t_4a93860ba41b8b 2,80,178,189-190
+  s_cebe0f5823d4d7::t_5fc5bc4b2229cb 185-188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bc3623f30fe39c02a496175c0f4d2529e0fd5b92",
+  "prompts": {},
+  "sessions": {
+    "s_cebe0f5823d4d7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eb7f9-01df-7a20-aa2d-c142caed6ce2",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

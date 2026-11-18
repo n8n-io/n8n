@@ -1,0 +1,53 @@
+packages/@n8n/instance-ai/src/tools/evals/evals.tool.ts
+  s_db4e4ca9649dbd::t_ddedf04b1a68c0 537-539
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  ai_agent 226
+  s_db4e4ca9649dbd::t_de469db5a33069 229-235
+  s_db4e4ca9649dbd::t_040d8b6f7c14d8 221-225,227-228,236-237
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_db4e4ca9649dbd::t_9e43d3032e3e03 989
+  ai_agent 871
+packages/@n8n/instance-ai/docs/tools.md
+  s_db4e4ca9649dbd::t_7d0511716ea6fc 354-356
+packages/@n8n/instance-ai/src/tools/evals/__tests__/evals.tool.test.ts
+  s_db4e4ca9649dbd::t_80dbfe5c48ec21 950-952
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_db4e4ca9649dbd::t_d7990c3d82705d 35-36,57-60,69,89,95-115
+  s_db4e4ca9649dbd::t_8d0fa7f4e0e06b 61-68,70-88,127
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_db4e4ca9649dbd::t_8d05c6a66cc6b2 76-79,86-88
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_db4e4ca9649dbd::t_9de5ff990852e6 2356-2364,2369
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_db4e4ca9649dbd::t_735de850c4be59 172-174,740,1275-1277
+packages/@n8n/instance-ai/src/types.ts
+  s_db4e4ca9649dbd::t_273020124adb1b 352-358,361,363-364,368
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_db4e4ca9649dbd::t_2b9c7825d5e14e 168-169,3968-3979,3983
+  s_db4e4ca9649dbd::t_4eac7feb0aa2dc 712-715,5073-5082,5084-5100
+  s_db4e4ca9649dbd::t_b311e37c25fd08 5083
+packages/cli/src/modules/instance-ai/__tests__/internal-messages.test.ts
+  s_db4e4ca9649dbd::t_179b3ee7894f11 6-7,251-298,300-301
+  ai_agent 299
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "face21e15dfb48c7f40a63714f02d1b96f5794d7",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_db4e4ca9649dbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d2532f3-e59d-4759-b709-81da45ae514d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

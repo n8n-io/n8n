@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/app/composables/useStorage.ts
+  s_c01e192af023c4::t_e836e276e3cee3 1
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/prompts.ts
+  s_c01e192af023c4::t_f82e23d65ac738 1-15,17-30
+  s_c01e192af023c4::t_240247240cd5f8 16
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/generate.ts
+  s_c01e192af023c4::t_b71c5745bd52a2 1-35,41-98,103-111
+  s_c01e192af023c4::t_c1cd64ae1a0d1c 36-40,99-102
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/workflowGenerativeUi.store.ts
+  s_c01e192af023c4::t_c16d1adb623a33 1,3-35,38-102,105-126,128-131,135-143,145-154,159-164,167-173,175-237
+  s_c01e192af023c4::t_be019ccf12ac96 2,36-37,144
+  s_c01e192af023c4::t_2c8abc4f350215 103-104,127,132-134,155-158,165-166,174
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/generate.test.ts
+  s_c01e192af023c4::t_afee991acbd8c7 11-14
+  s_c01e192af023c4::t_6035ca8e5cfc32 1-10,15-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fe5ba0a512f89577a6cb28d9b6419c6a157d5cb1",
+  "prompts": {},
+  "sessions": {
+    "s_c01e192af023c4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4f9631e0-0ae8-4cb3-b529-86e1d9e72fd8",
+        "model": "gpt-5.6-sol-medium"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

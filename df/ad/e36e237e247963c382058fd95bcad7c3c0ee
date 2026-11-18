@@ -1,0 +1,19 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_abd3fc1bf6c600::t_bbeed8697a2274 3503,3507,3557,3566,3590
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dfade36e237e247963c382058fd95bcad7c3c0ee",
+  "prompts": {},
+  "sessions": {
+    "s_abd3fc1bf6c600": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159d3-cf3d-7b71-b4b0-2342b28c13dc",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

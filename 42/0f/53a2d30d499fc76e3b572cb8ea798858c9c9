@@ -1,0 +1,59 @@
+packages/workflow/vitest.config.ts
+  ai_agent 13
+packages/@n8n/expression-runtime/src/bridge/__tests__/guest-transfer.test.ts
+  s_dcb66980fc596f::t_1a1af6b701d825 1-186
+packages/workflow/test/native-evaluation-parity.test.ts
+  ai_agent 181,479-491,867-917
+packages/@n8n/expression-runtime/src/__tests__/integration.test.ts
+  s_dcb66980fc596f::t_1a1af6b701d825 233-248,364-384,387-388,390
+packages/@n8n/expression-runtime/src/runtime/transfer-codec.ts
+  s_dcb66980fc596f::t_1a1af6b701d825 3-15,27-35
+packages/workflow/test/expression-error-item-engine-parity.test.ts
+  ai_agent 1-290
+packages/@n8n/expression-runtime/src/runtime/__tests__/transfer-codec.test.ts
+  s_dcb66980fc596f::t_1a1af6b701d825 3,5,8-11
+packages/@n8n/expression-runtime/src/runtime/context.ts
+  s_dcb66980fc596f::t_1a1af6b701d825 15,111-113,372-373
+packages/@n8n/expression-runtime/src/bridge/guest-transfer.ts
+  s_dcb66980fc596f::t_1a1af6b701d825 1-142
+packages/@n8n/expression-runtime/src/bridge/host-functions.ts
+  s_dcb66980fc596f::t_1a1af6b701d825 9,119-122,170-171,174-177
+packages/@n8n/expression-runtime/src/runtime/lazy-proxy.ts
+  s_dcb66980fc596f::t_1a1af6b701d825 2,181-182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "420f53a2d30d499fc76e3b572cb8ea798858c9c9",
+  "prompts": {},
+  "sessions": {
+    "s_dcb66980fc596f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0ba4176f-684d-4f17-aa53-522371a339b5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
+
+packages/workflow/test/native-evaluation-parity.test.ts
+  s_2a512efce24140::t_6cdd97247e6c29 479,484,487,872,874,877-894,896-914,918
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "420f53a2d30d499fc76e3b572cb8ea798858c9c9",
+  "prompts": {},
+  "sessions": {
+    "s_2a512efce24140": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f86a88b-090a-4f94-8295-7f4643828485",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+packages/cli/src/events/maps/relay.event-map.ts
+  s_af62986d6ef75e::t_f16583603fb747 204
+packages/cli/src/execution-lifecycle/execution-lifecycle-hooks.ts
+  s_af62986d6ef75e::t_be4a671bd69c0a 164,170
+  s_af62986d6ef75e::t_bfc5331327ebe3 208
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_af62986d6ef75e::t_942df671c53eb0 339,347,357
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_af62986d6ef75e::t_a4247ee41e9bd2 619-656
+packages/cli/src/execution-lifecycle/__tests__/execution-lifecycle-hooks.test.ts
+  s_af62986d6ef75e::t_439b5a7728a126 277
+  s_af62986d6ef75e::t_69afcd34e4873a 278-283,290,307,309-321
+  s_af62986d6ef75e::t_474ada8821f530 308
+  s_af62986d6ef75e::t_bd2d08bc37685c 322-324
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "048b5e4f5085e2542ab7fc74f4dac77e84748860",
+  "prompts": {},
+  "sessions": {
+    "s_af62986d6ef75e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "137c8e00-b0af-4ad4-8af5-45842a28f12e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

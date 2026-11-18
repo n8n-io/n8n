@@ -1,0 +1,71 @@
+packages/cli/src/services/role-authorization.ts
+  s_21eed011adaaf5::t_44ff5bcdb6af03 3
+  s_21eed011adaaf5::t_95ca19ed847716 15,21,36,38
+  s_21eed011adaaf5::t_f654a80ad7dfe1 23-34
+  s_21eed011adaaf5::t_daf248de966553 2,4,6,8,50-52,54
+  h_5d40c27a8fdfd1 5,7,16-20,35,37,39-42,44-49,53
+  s_21eed011adaaf5::t_9513dd10f7a0df 43
+packages/cli/src/public-api/v1/controllers/roles.public.controller.ts
+  s_21eed011adaaf5::t_ff6008bde3eec1 188-208,217,219,221-231
+  s_21eed011adaaf5::t_a9032def237905 3,20
+  h_5d40c27a8fdfd1 34,136-140,173-178,209-216,218,220
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_21eed011adaaf5::t_f4b098054c8b2b 18-19
+  s_21eed011adaaf5::t_7e980d69924adb 20
+packages/cli/test/integration/public-api/roles.test.ts
+  h_5d40c27a8fdfd1 10,39,354,358-360,607-609,815-817,833,855,878
+  s_21eed011adaaf5::t_f6454fb5150a46 597-606,610-611
+  s_21eed011adaaf5::t_2e8e1294f5616d 32-38,40-48
+  s_21eed011adaaf5::t_e26254b19ba756 739-801,803-804,820-832,834-854,856-877,879-981
+  s_21eed011adaaf5::t_13b5436e5a910c 6-9,11
+  s_21eed011adaaf5::t_b052920af8dfc8 806-814,818-819
+  s_21eed011adaaf5::t_5c3712110a3290 345-353,355-357,361-362
+  s_21eed011adaaf5::t_9eb2509010b52e 802
+  s_21eed011adaaf5::t_cc073037e1aa1d 805
+packages/cli/src/services/role.service.ts
+  s_21eed011adaaf5::t_ca7a2e7bc7b9ea 144-152,183-190
+packages/cli/test/integration/controllers/role.controller.test.ts
+  s_21eed011adaaf5::t_c44d8b97c1615c 1168,1209
+  s_21eed011adaaf5::t_47a841166be432 1165-1167,1169
+  s_21eed011adaaf5::t_5d4af768e85837 1206-1208,1210
+  s_21eed011adaaf5::t_f4084c8f49d487 18,25
+packages/cli/src/controllers/__tests__/role.controller.test.ts
+  s_21eed011adaaf5::t_5025f5435609cd 64-68,88-92,115-119,142-146
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/deleteRole.generated.yml
+  s_21eed011adaaf5::t_e76cfcf02aa944 1-42
+packages/cli/src/controllers/role.controller.ts
+  s_21eed011adaaf5::t_95d3cd7cb5472f 17,30
+  h_5d40c27a8fdfd1 33,66-69,81-84,119-122,139-143,158,160-161
+  s_21eed011adaaf5::t_f5922d771feaf7 159
+  s_21eed011adaaf5::t_0bf92d5d1001e9 144-146
+packages/cli/src/services/__tests__/role-authorization.test.ts
+  s_21eed011adaaf5::t_972894a4d67b8f 35,70
+  h_5d40c27a8fdfd1 38,44,54,64
+  s_21eed011adaaf5::t_a6929bf2934fd1 12-14,16-21,23-25,27-32,39-43,45-53,55-63,65-68,71-74
+  s_21eed011adaaf5::t_f8977055c61936 69
+packages/cli/test/integration/services/role.service.test.ts
+  s_21eed011adaaf5::t_619c9e3bdc37dc 1275-1278,1307-1310,1335-1340,1354-1359,1385-1390,1418-1423,1448-1452,1478-1482,1504-1508,1522-1528,1543-1547,1590-1595,1609-1612
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_21eed011adaaf5::t_7dd405edb1b47d 19-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "edf21dcbac5eed229618e2c6c8ad43c6bcc34b80",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_21eed011adaaf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51920706-527a-41fb-a18a-2dcc579506d4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/core/src/execution-engine/active-workflow-triggers.ts
+  s_72c806d61e12d2::t_035f8dab9c4548 449-451,468
+packages/core/src/execution-engine/__tests__/active-workflow-triggers.test.ts
+  s_72c806d61e12d2::t_c6164fed3a08c1 1216,1218-1219,1226
+  s_72c806d61e12d2::t_03d260e281b1d9 786-787
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "606f46e6437abf8e5e5d765a8c6c5fb3c6a67b89",
+  "prompts": {},
+  "sessions": {
+    "s_72c806d61e12d2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3454581-e439-4779-af65-52bc313bbe43",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

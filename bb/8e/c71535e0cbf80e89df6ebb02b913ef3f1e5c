@@ -1,0 +1,31 @@
+spike/ligo-1159/review/final/consolidated-solution.md
+  s_b96853d39d5647::t_bf4a57050fb98d 554,756,799
+spike/ligo-1159/spec/index.html
+  s_b96853d39d5647::t_bf4a57050fb98d 178
+spike/ligo-1159/review/final/solution-condensed-notion.md
+  s_b96853d39d5647::t_bf4a57050fb98d 66
+spike/ligo-1159/visual/solution.html
+  s_b96853d39d5647::t_bf4a57050fb98d 719,815
+spike/ligo-1159/review/final/solution-condensed.md
+  s_b96853d39d5647::t_bf4a57050fb98d 99
+spike/ligo-1159/review/final/solution.md
+  s_b96853d39d5647::t_bf4a57050fb98d 562,710,747,749
+spike/ligo-1159/spec/apply-deletions.feature
+  s_b96853d39d5647::t_bf4a57050fb98d 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bb8ec71535e0cbf80e89df6ebb02b913ef3f1e5c",
+  "prompts": {},
+  "sessions": {
+    "s_b96853d39d5647": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "548253a9-ded2-4798-b243-5b263d4aca37",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

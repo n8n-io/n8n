@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionIdleTimeoutField.vue
+  s_7e2dce6e36a356::t_929a15b495cf04 16
+packages/frontend/editor-ui/src/features/shared/nodeCreator/composables/useKeyboardNavigation.ts
+  s_7e2dce6e36a356::t_e14bbd6470ce63 62-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4f861ff6b5bc48a12a4e9059c0b37c0456b28280",
+  "prompts": {},
+  "sessions": {
+    "s_7e2dce6e36a356": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9b73ae5-be87-4be8-951c-faff19b46011",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

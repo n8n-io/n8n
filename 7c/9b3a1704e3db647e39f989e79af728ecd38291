@@ -1,0 +1,21 @@
+packages/@n8n/nodes-langchain/utils/agent-execution/test/serializeIntermediateSteps.test.ts
+  s_b7e23f6534e799::t_b0fe518ff307b0 2,104
+packages/@n8n/nodes-langchain/nodes/agents/Agent/test/ToolsAgent/ToolsAgentV3.test.ts
+  s_b7e23f6534e799::t_34b6658594b77f 12-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7c9b3a1704e3db647e39f989e79af728ecd38291",
+  "prompts": {},
+  "sessions": {
+    "s_b7e23f6534e799": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f9f5d35-5f3e-45ac-973b-669490e0d1e8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

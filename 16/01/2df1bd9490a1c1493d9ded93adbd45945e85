@@ -1,0 +1,47 @@
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_da9c576ab02e31::t_9140af7425e29f 26
+  s_da9c576ab02e31::t_89907b814595c2 279-286,291,293,304
+  s_da9c576ab02e31::t_c61e434bfb622c 71
+  s_da9c576ab02e31::t_0bfd19f858ed09 372
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.update.service.test.ts
+  s_da9c576ab02e31::t_87aade1e1b25ca 77
+  s_da9c576ab02e31::t_56bc6b67d6b1df 19
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.decide.service.test.ts
+  s_da9c576ab02e31::t_32387c2a188c60 74
+  s_da9c576ab02e31::t_56608dd5add214 18
+packages/@n8n/db/src/repositories/shared-workflow.repository.ts
+  s_da9c576ab02e31::t_7c18a646f27ef5 8
+  s_da9c576ab02e31::t_2ac8764fccb732 16,19,22
+  s_da9c576ab02e31::t_1dd85def297f64 141-146,148
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  s_da9c576ab02e31::t_edab8762124ea4 23
+  s_da9c576ab02e31::t_e674bb92e8a9d4 66-67
+  s_da9c576ab02e31::t_baf25cd367a147 91
+  s_da9c576ab02e31::t_8a0db1b9deeb05 153
+  s_da9c576ab02e31::t_d7a944c2564d93 238
+  s_da9c576ab02e31::t_9497699187056f 123-124
+  s_da9c576ab02e31::t_fb82abc85202d4 257,266-287
+  s_da9c576ab02e31::t_5415e23aeb5c2f 288
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_da9c576ab02e31::t_ce0b416333a133 16
+  s_da9c576ab02e31::t_0905881a927edb 85-101
+  s_da9c576ab02e31::t_283c528e780a8d 64
+  s_da9c576ab02e31::t_e08762208cc7d2 4
+  s_da9c576ab02e31::t_a9a442cb8e62cd 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "16012df1bd9490a1c1493d9ded93adbd45945e85",
+  "prompts": {},
+  "sessions": {
+    "s_da9c576ab02e31": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61fb0afd-696a-408b-a6e4-73e55205620f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

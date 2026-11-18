@@ -1,0 +1,27 @@
+packages/@n8n/config/src/configs/deployment.config.ts
+  s_4972e6e3ce6944::t_50e8fd733e83db 8-14
+packages/@n8n/config/test/config.test.ts
+  s_4972e6e3ce6944::t_23141789a2f76b 68
+packages/@n8n/telemetry/src/events/instance.ts
+  s_4972e6e3ce6944::t_a883d88b7fcd52 51-56
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_4972e6e3ce6944::t_44f13be96d59a3 67,3532,3555
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_4972e6e3ce6944::t_5916913ead5f34 1816,1893
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "65bc834dfc1bb7994cc7bc8c4d284a3935bae837",
+  "prompts": {},
+  "sessions": {
+    "s_4972e6e3ce6944": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1fc53b3f-a524-45af-999e-1340e4eb4ddd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

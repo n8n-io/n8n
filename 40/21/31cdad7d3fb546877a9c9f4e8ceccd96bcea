@@ -1,0 +1,30 @@
+packages/@n8n/agents/src/__tests__/workspace/workspace-tools.test.ts
+  s_dbd53a456efb79::t_c2c4eaeb31c184 347-348
+  s_dbd53a456efb79::t_abd26cca216992 349-354,357-370
+  s_dbd53a456efb79::t_4eed2b95494d09 355-356
+packages/@n8n/agents/src/workspace/tools/read-tool-result.ts
+  s_dbd53a456efb79::t_3736c8cb8d9f32 373-378,381
+  s_dbd53a456efb79::t_29267a41d896ee 350,354,356,359,361-365,367,372,379-380,382
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-persist-input.test.ts
+  s_dbd53a456efb79::t_abd26cca216992 305
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_dbd53a456efb79::t_abd26cca216992 11224,11456
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_dbd53a456efb79::t_b4e291ae66eb4c 41-42,213-214,217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "402131cdad7d3fb546877a9c9f4e8ceccd96bcea",
+  "prompts": {},
+  "sessions": {
+    "s_dbd53a456efb79": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "29d6f88b-2a11-423e-8201-28fe25ce4be2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,92 @@
+packages/@n8n/db/src/repositories/__tests__/project.repository.test.ts
+  s_4415ff58b73db6::t_fdb92a00f74fc2 1-31
+packages/@n8n/db/src/repositories/shared-credentials.repository.ts
+  s_4415ff58b73db6::t_ff9c5c0c9ecc7a 27-38
+  s_4415ff58b73db6::t_af8310ca0b1c89 7
+packages/cli/src/services/ownership.service.ts
+  s_4415ff58b73db6::t_0b3bcebde30d01 238
+packages/@n8n/db/src/repositories/__tests__/shared-workflow.repository.test.ts
+  s_4415ff58b73db6::t_585694d4a3bff0 199-222
+packages/@n8n/db/src/repositories/test-run.repository.ee.ts
+  s_4415ff58b73db6::t_76d63c6d1d50d1 101-116
+packages/@n8n/db/src/repositories/project.repository.ts
+  s_4415ff58b73db6::t_6c82296146297b 291-296
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_4415ff58b73db6::t_5c240c597e4dbb 1429-1437
+packages/@n8n/db/src/repositories/__tests__/shared-credentials.repository.test.ts
+  s_4415ff58b73db6::t_660dfb478c7fdc 111-112
+  s_4415ff58b73db6::t_27f8fcefc2e03a 6
+  s_4415ff58b73db6::t_aad5ba9364e205 101-110,113-126
+packages/cli/src/services/__tests__/ownership.service.test.ts
+  s_4415ff58b73db6::t_9dd468190a47bb 302,316,343,370,394
+packages/cli/src/eventbus/message-event-bus/message-event-bus.ts
+  s_4415ff58b73db6::t_2526e17a9afd73 384,386
+  s_4415ff58b73db6::t_2bb57aace68354 358
+packages/@n8n/db/src/repositories/__tests__/execution.repository.test.ts
+  s_4415ff58b73db6::t_fbe51818662323 257-270
+packages/@n8n/db/src/repositories/__tests__/test-run.repository.ee.test.ts
+  s_4415ff58b73db6::t_15548f57e8e2f0 1-37
+packages/cli/src/evaluation.ee/evaluation-collection.service.ts
+  s_4415ff58b73db6::t_fbfd4bda9cddcb 520-523
+packages/cli/src/services/__tests__/tag.service.test.ts
+  s_4415ff58b73db6::t_26d6d2d55db6b7 27-28,33-36,42-43,47-50
+packages/cli/src/services/folder-finder.service.ts
+  s_4415ff58b73db6::t_70b17581506f55 2
+  s_4415ff58b73db6::t_5e98bb2c1438a9 70-71,73-78
+packages/cli/src/eventbus/message-event-bus/__tests__/message-event-bus.test.ts
+  s_4415ff58b73db6::t_7a55c0d1665259 70
+packages/cli/src/evaluation.ee/__tests__/evaluation-collection.service.test.ts
+  s_4415ff58b73db6::t_6d0ca324e5a939 879,927
+  s_4415ff58b73db6::t_aa4737c1a0248c 961,1002,1022,1026,1031,1068
+packages/@n8n/db/src/repositories/tag.repository.ts
+  s_4415ff58b73db6::t_321f8ffb72621b 45-47
+  s_4415ff58b73db6::t_846e662a8ededa 34
+  s_4415ff58b73db6::t_6be2f3a06de859 35-44,48-54
+  s_4415ff58b73db6::t_070019301022dc 9
+packages/@n8n/db/src/repositories/__tests__/user.repository.test.ts
+  s_4415ff58b73db6::t_be5f50c5455398 1-41
+packages/@n8n/db/src/repositories/shared-workflow.repository.ts
+  s_4415ff58b73db6::t_ce677b73be3f20 56-67
+packages/cli/src/services/__tests__/folder-finder.service.test.ts
+  s_4415ff58b73db6::t_664b5935d42001 25,40,52-61,64-68,71,73-74,96-99,109,122,130,141,149-151,160-161,168-170,181
+packages/@n8n/db/src/repositories/user.repository.ts
+  s_4415ff58b73db6::t_94ae1903d555ec 128-142
+  s_4415ff58b73db6::t_134606f8c8874f 13
+packages/@n8n/db/src/repositories/__tests__/folder.repository.test.ts
+  s_4415ff58b73db6::t_4ccf830a6f688e 42-95
+packages/cli/src/commands/ldap/reset.ts
+  s_4415ff58b73db6::t_2e1620ea470ff9 108
+  s_4415ff58b73db6::t_a9c92ac64423dd 106-107,111
+  s_4415ff58b73db6::t_3894ca0df37d74 127
+packages/@n8n/db/src/repositories/__tests__/tag.repository.test.ts
+  s_4415ff58b73db6::t_abc545d1c6196d 48-65
+  s_4415ff58b73db6::t_961dc5a6c0e1a5 1-2,4-15,17-47,66-79
+  s_4415ff58b73db6::t_32750fefbc1eba 3,16
+packages/cli/src/services/tag.service.ts
+  s_4415ff58b73db6::t_51632132067847 67-70
+packages/cli/eslint.config.mjs
+  s_4415ff58b73db6::t_7dac918b170e79 259
+packages/@n8n/db/src/repositories/folder.repository.ts
+  s_4415ff58b73db6::t_c49e584104fb5f 28-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8e36ac2d164fcc207c79ca3ef26ae1ea4a11d471",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4415ff58b73db6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f50c7c58bfferL6GEjsJV15lO8",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": null
+    }
+  }
+}

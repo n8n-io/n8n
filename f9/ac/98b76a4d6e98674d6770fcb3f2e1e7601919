@@ -1,0 +1,34 @@
+packages/nodes-base/nodes/Baserow/Baserow.node.ts
+  s_2e1fa95fc44f8f::t_7a68fe352e8a67 185,187
+  s_2e1fa95fc44f8f::t_aeac9d85127d97 190,206,268,324,359,411,435,474,521,545
+  s_2e1fa95fc44f8f::t_374784159a86b3 171
+  s_2e1fa95fc44f8f::t_55cd608a6e794c 9-10
+packages/nodes-base/nodes/Baserow/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_610d590079143d 98-108
+  s_2e1fa95fc44f8f::t_5eeff60bac94a7 76
+  s_2e1fa95fc44f8f::t_7fe34f2f995e13 2
+  s_2e1fa95fc44f8f::t_c0c9fc457d1363 41,49
+  s_2e1fa95fc44f8f::t_88b7405500e9e7 59
+packages/nodes-base/nodes/Baserow/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_e1b923da7d0104 8-9,11
+  s_2e1fa95fc44f8f::t_fcccdec5606d9e 206
+  s_2e1fa95fc44f8f::t_b44ef4bd0e87a2 238
+  s_2e1fa95fc44f8f::t_a6c8bf0cd8facc 136,144,148
+  s_2e1fa95fc44f8f::t_86d369a7cdd931 173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f9ac98b76a4d6e98674d6770fcb3f2e1e7601919",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

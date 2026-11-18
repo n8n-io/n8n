@@ -1,0 +1,27 @@
+packages/@n8n/instance-ai/src/agent/computer-use-prompt.ts
+  h_44f8d1c0f2f8c4 87
+packages/@n8n/instance-ai/src/agent/__tests__/computer-use-prompt.test.ts
+  s_2a64d569f7fd95::t_bcfe389e0d5efd 360-370,372-383
+  s_2a64d569f7fd95::t_2d005dbeed3c4a 371
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "3baa4c5778e7ae65e515f870ab4b15afa1587b3c",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_2a64d569f7fd95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ee9bcf49-2aeb-4b3f-b6cb-15acc1d3f9e1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,99 @@
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.history.yml
+  s_bcad48c2962531::t_a28a0696977268 10,19
+  s_bcad48c2962531::t_e897fe327fea91 11
+  s_bcad48c2962531::t_96ad5a12fcf0cb 12
+  s_bcad48c2962531::t_622c9a14834e16 2
+packages/cli/src/public-api/v1/handlers/discover/discover.service.ts
+  s_bcad48c2962531::t_072bc757948de2 6-8,10-13,92,101,103-105,108,113-114,123-136,139-143,145,147,150
+  s_bcad48c2962531::t_0b37d45adf9947 115-117
+  s_bcad48c2962531::t_48eef49037c7c2 9,106-107,109-112,158
+  s_bcad48c2962531::t_b2c0376d959fd8 146,148-149
+  s_bcad48c2962531::t_ab485fabfe9c15 122
+  s_bcad48c2962531::t_5068c98489f638 157
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_bcad48c2962531::t_b63b5a6edb0bd0 934,936,962,970-971,1016-1017
+  s_bcad48c2962531::t_c27b8f878637e9 982-1006
+  s_bcad48c2962531::t_b4cc33d01329c9 914,935,947,959,963,966-967,972-979
+  s_bcad48c2962531::t_42d977af581b6f 980-981
+packages/cli/src/public-api/v1/__tests__/scope-parity.test.ts
+  s_c3ea9f0ce3a3c0::t_bfd8f0f584949e 10
+  s_bcad48c2962531::t_a1a6fbd291ba88 48-53,57
+  s_bcad48c2962531::t_edb61dbc4e90aa 135,137-138,140
+  s_bcad48c2962531::t_030bfb2bb72623 7-9,11-14,29,34,47,58,66,79,95,99,116,130-134,136,139,141,146
+  s_c3ea9f0ce3a3c0::t_eaf49c35f81982 120-129,143,148-149
+  s_c3ea9f0ce3a3c0::t_bdb01fc1a873b7 82-90
+  s_c3ea9f0ce3a3c0::t_594e8abb06f78a 144
+packages/cli/src/public-api/v1/shared/public-api-scope-lookup.ts
+  s_bcad48c2962531::t_8fe7f595c9f5d4 9,19,24,27,30,34,40-41,48-49,51,54-55,65-66,72-73,75-82
+  s_bcad48c2962531::t_250f141d886b62 1-8,10-18,20-23,25-26,28-29,31-33,35-39,42-47,50,52-53,56-64,67-71,74,83
+packages/@n8n/api-types/src/dto/workflow-history/list-workflow-history-query.dto.ts
+  s_bcad48c2962531::t_a6c4efe6df9ade 1-6,8-9
+  s_bcad48c2962531::t_dd4f779a85be31 7
+packages/cli/src/public-api/index.ts
+  s_bcad48c2962531::t_da9989b81bf660 146-147,152-155,161-173,175-185,194,198,203-214,217-228
+  s_bcad48c2962531::t_78b5b3615c603c 195-196
+  s_bcad48c2962531::t_bbd0c04241df59 174
+  s_bcad48c2962531::t_530d7b5e7a25f3 23
+  s_bcad48c2962531::t_06008c29a39498 193,197
+  s_bcad48c2962531::t_0c4452115dd1d1 284-285,289
+  s_bcad48c2962531::t_ad8a0e64cb85eb 286-288
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_bcad48c2962531::t_e6351b2cfd371c 1-7
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/workflowVersionHistoryList.yml
+  s_bcad48c2962531::t_8f03d5ea3551cb 1-14
+packages/@n8n/api-types/src/dto/workflow-history/workflow-version-history-public.dto.ts
+  h_ed1b2d65e81e8e 4
+  s_bcad48c2962531::t_a6f9a3f61cc8b6 1-2,9
+  s_bcad48c2962531::t_fae2797f32cded 5,10,12
+  s_bcad48c2962531::t_e1c25a86190500 6-8
+  s_bcad48c2962531::t_b719e152c9c152 13
+  s_bcad48c2962531::t_8116940dd93450 3,11,14
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_bcad48c2962531::t_3da55f614b68a7 37
+  s_bcad48c2962531::t_8bcb73716b6529 1-4,17,20,35,38-53,55,58-59,61-71
+  s_bcad48c2962531::t_ace683f5de81ae 5-16,18-19,21-34,54,56-57,60,72-76
+  s_bcad48c2962531::t_294fe1e290e9e0 36
+.agents/skills/public-api/SKILL.md
+  s_bcad48c2962531::t_b4b02b4b512477 5,12,28,49-51,69-71,80-82,111,113-115
+  h_ed1b2d65e81e8e 14-15
+  s_bcad48c2962531::t_1c9e970264183e 56-59,61-65
+  s_bcad48c2962531::t_e750e4345e4f42 34-35
+packages/@n8n/api-types/src/dto/workflow-history/workflow-history-list-item.dto.ts
+  s_bcad48c2962531::t_49117007ae9ab5 1-8,10-17,19
+  s_bcad48c2962531::t_4625f19091dde3 9,18,20-22
+packages/cli/src/public-api/v1/handlers/tags/spec/paths/tags.yml
+  s_bcad48c2962531::t_d64d4859834dd4 30
+packages/@n8n/api-types/src/dto/index.ts
+  s_bcad48c2962531::t_ebc0585feaf060 270,276-278
+  s_bcad48c2962531::t_2dc6a63b4fefac 271-273,275
+  s_bcad48c2962531::t_0085220924852d 274
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "90130a90ae945a364a677080d5b55587b8e41ba2",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_bcad48c2962531": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b7164d4e-821a-434c-97d3-b5dc64c728c1",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    },
+    "s_c3ea9f0ce3a3c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "68dc78fc-2d84-4fd9-99e5-b2edf9cb918a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

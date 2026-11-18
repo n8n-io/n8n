@@ -1,0 +1,18 @@
+packages/@n8n/config/src/configs/endpoints.config.ts
+  h_32d8cd6a0d6aad 147-148
+packages/core/src/binary-data/blob.manager.ts
+  h_32d8cd6a0d6aad 83
+packages/cli/src/scaling/webhook-response-relay.ts
+  h_32d8cd6a0d6aad 108,111-113,117,137,239-240,254,271-272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0d7e212d0c981c524dc03afc52e4cfcd5f13ea94",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

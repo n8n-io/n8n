@@ -1,0 +1,22 @@
+packages/cli/src/modules/sso-oidc/__tests__/oidc.service.ee.test.ts
+  s_39c63fa4bc1d68::t_bd8cad86275886 844
+packages/cli/test/integration/oidc/oidc.service.ee.test.ts
+  s_39c63fa4bc1d68::t_bd8cad86275886 226,260,291,338,468,555,586
+  s_39c63fa4bc1d68::t_0617eed8c111a5 1380-1459
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e0ade85e060aa98e9c778789642515cd567474a8",
+  "prompts": {},
+  "sessions": {
+    "s_39c63fa4bc1d68": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "76b0b0f0-0129-4ab1-af8f-5cb316d14642",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

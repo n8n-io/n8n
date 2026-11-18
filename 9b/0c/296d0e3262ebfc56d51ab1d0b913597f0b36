@@ -1,0 +1,21 @@
+packages/cli/src/modules/inbound-auth-core/__tests__/external-identity.test.ts
+  s_60f5633681e4e3::t_ffeefb9212712d 207
+packages/cli/src/modules/inbound-auth-core/identity/external-identity.ts
+  s_60f5633681e4e3::t_5a91165404b62c 55-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9b0c296d0e3262ebfc56d51ab1d0b913597f0b36",
+  "prompts": {},
+  "sessions": {
+    "s_60f5633681e4e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "233f5aab-347d-4e5c-a26e-befd59b0253f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

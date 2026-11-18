@@ -1,0 +1,35 @@
+packages/n8n-test/src/index.ts
+  s_157f08ca3b0299::t_6658212b07fc9a 2
+packages/n8n-test/src/mock-node.ts
+  s_157f08ca3b0299::t_8befbaf29682c2 1-95
+packages/n8n-test/demo/setup.ts
+  s_157f08ca3b0299::t_ddcd72a1f59dbf 5-6,13-16
+packages/n8n-test/demo/workflow-with-subworkflow.json
+  s_157f08ca3b0299::t_91e8d7dba3326b 1-102
+packages/n8n-test/demo/workflow-with-subworkflow.test.ts
+  s_157f08ca3b0299::t_82d81531be63b1 1-25
+packages/n8n-test/src/run-workflow.ts
+  s_157f08ca3b0299::t_1e9e1a59454971 20-21
+  s_157f08ca3b0299::t_163e59778b5b22 73-79,84-88,92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5b540b776235c0fb6da46c31460d9400747bba3c",
+  "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_157f08ca3b0299": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8158bab5-b092-4dee-bd6c-3fef6d0146f8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

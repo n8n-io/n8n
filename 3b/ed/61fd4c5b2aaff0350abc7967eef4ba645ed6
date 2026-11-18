@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentSetupTasks/AgentSetupTasks.vue
+  s_8df4463f3c6a3c::t_2bf712f4e03250 6,28-29,33-36,78,111,174-176,178
+  s_8df4463f3c6a3c::t_1d9b47d69fac5b 2-3
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSetupTasks.test.ts
+  s_8df4463f3c6a3c::t_9eaa5414ccaba2 1,74-75,77-78,80-105,108,111-113,116,118,121,124-127,130,132-137,139
+  s_8df4463f3c6a3c::t_72900153b8f3c9 138
+packages/frontend/editor-ui/src/features/agents/components/AgentSetupTasks/agentSetupTasks.registry.test.ts
+  s_8df4463f3c6a3c::t_1e29278844d269 1-39
+packages/frontend/editor-ui/src/features/agents/components/AgentSetupTasks/agentSetupTasks.registry.ts
+  s_8df4463f3c6a3c::t_b6483bfe97917e 135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3bed61fd4c5b2aaff0350abc7967eef4ba645ed6",
+  "prompts": {},
+  "sessions": {
+    "s_8df4463f3c6a3c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a11137-790b-7795-b004-edb76428f7aa",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

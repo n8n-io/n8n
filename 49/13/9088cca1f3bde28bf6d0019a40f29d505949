@@ -1,0 +1,9 @@
+scripts/preview.mjs
+  ai_agent 273-276
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "49139088cca1f3bde28bf6d0019a40f29d505949",
+  "prompts": {}
+}

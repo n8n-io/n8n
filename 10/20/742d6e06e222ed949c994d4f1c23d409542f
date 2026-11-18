@@ -1,0 +1,21 @@
+packages/@n8n/scheduler/src/core/reconciliation/__tests__/reconcile.test.ts
+  s_aeb8767c6711c5::t_173337208da297 344,418-422,617
+packages/@n8n/scheduler/src/core/reconciliation/reconcile.ts
+  s_aeb8767c6711c5::t_173337208da297 35-36,123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1020742d6e06e222ed949c994d4f1c23d409542f",
+  "prompts": {},
+  "sessions": {
+    "s_aeb8767c6711c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ee3ca96c-243a-447f-b721-9220b07c2646",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

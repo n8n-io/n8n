@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Brevo/AttributeDescription.ts
+  s_2e1fa95fc44f8f::t_b203e3d0f2f615 28,65,76
+packages/nodes-base/nodes/Brevo/test/Brevo.node.test.ts
+  s_2e1fa95fc44f8f::t_d4cff4cc91a0dc 1-99
+packages/nodes-base/nodes/Brevo/ContactDescription.ts
+  s_2e1fa95fc44f8f::t_ac583df13579e8 327,350,458
+packages/nodes-base/nodes/Brevo/SenderDescrition.ts
+  s_2e1fa95fc44f8f::t_00479a65e85d2b 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b2895c2eaadac05c6956531ec3b428fdd9f9784f",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

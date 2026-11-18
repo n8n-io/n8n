@@ -1,0 +1,49 @@
+packages/cli/src/modules/agents/__tests__/agent-knowledge.service.test.ts
+  s_701c3478d6707a::t_eaaf44e24687f9 247,249-252
+  s_701c3478d6707a::t_3f91a8ff3b0e4b 148,150-153
+  s_701c3478d6707a::t_3721697c814de6 396-397
+  s_701c3478d6707a::t_dfa1cb96aa5db4 88
+  s_701c3478d6707a::t_4ae09e7f2c4132 68
+  s_701c3478d6707a::t_4c74178e7a655a 273
+  s_701c3478d6707a::t_36f0ba805ae64f 362
+packages/cli/src/modules/agents/__tests__/agent-knowledge-commands.test.ts
+  s_701c3478d6707a::t_165f2c0e094a20 23
+packages/cli/src/modules/agents/agent-knowledge-sandbox.service.ts
+  s_701c3478d6707a::t_f50be1f6978566 652
+  s_701c3478d6707a::t_4901d7688ba7aa 563
+packages/cli/src/modules/agents/agent-knowledge-retrieval.ts
+  s_701c3478d6707a::t_f49dd6cc6e8121 193
+packages/cli/src/modules/agents/entities/agent-file.entity.ts
+  s_701c3478d6707a::t_b536b853b5eab3 10
+  s_701c3478d6707a::t_da6cb9b72c1af8 26-33
+packages/cli/src/modules/agents/agent-knowledge.service.ts
+  s_701c3478d6707a::t_5de720473b1982 203
+  s_701c3478d6707a::t_f40899cbd56b50 127
+  s_701c3478d6707a::t_1b83e96341a1cb 171,176-177
+  s_701c3478d6707a::t_ede238153aaa2c 107
+  s_701c3478d6707a::t_39c59dc787b102 151,157,159
+packages/cli/src/modules/agents/__tests__/agent-knowledge-sandbox.service.test.ts
+  s_701c3478d6707a::t_8484e623257ff5 149
+packages/cli/src/modules/agents/__tests__/agent-knowledge-file-store.test.ts
+  s_701c3478d6707a::t_585e6f2fd28432 45,50-53,57-69,83-85,87-88,93
+  s_701c3478d6707a::t_23955aad9088f1 94-96
+  s_701c3478d6707a::t_1b52944f17dd9d 100,106-108,112-113,117
+packages/cli/src/modules/agents/agent-knowledge-file-store.ts
+  s_701c3478d6707a::t_f5563b567e9269 13-14,31-33,66,69-73,76-77,80-81,83-87,100,105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "97363cc4e26fa0e131670c480c29cc910bee4ff8",
+  "prompts": {},
+  "sessions": {
+    "s_701c3478d6707a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ff033f2c-41d7-434c-b328-ad4b53b50d81",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

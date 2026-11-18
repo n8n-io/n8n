@@ -1,0 +1,16 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  h_f8b427917eda26 393-394,396-404
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  h_f8b427917eda26 232-234,243-244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "540ee49050817752f27e245a77918407167c9f5a",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

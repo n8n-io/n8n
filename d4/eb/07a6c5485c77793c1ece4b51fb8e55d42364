@@ -1,0 +1,9 @@
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatAgentPicker.vue
+  ai_agent 187,197,282-283,287-293
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d4eb07a6c5485c77793c1ece4b51fb8e55d42364",
+  "prompts": {}
+}

@@ -1,0 +1,19 @@
+packages/@n8n/engine/src/database/typeorm-execution-view-store.ts
+  s_3f1901cb9f8f1f::t_157ff36f435a49 68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fbec2ea9fd1ca1e527b21142ab19a51b08cfc48c",
+  "prompts": {},
+  "sessions": {
+    "s_3f1901cb9f8f1f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33f39876-9bdf-496d-9ded-ee0b9fa1cdfe",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

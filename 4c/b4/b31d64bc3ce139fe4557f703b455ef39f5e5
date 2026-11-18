@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Eventbrite/EventbriteTrigger.node.ts
+  s_2e1fa95fc44f8f::t_91ab5311fe417d 16,331-338
+packages/nodes-base/nodes/Eventbrite/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_a43fc717d7c5f3 13,16-17,23-30,39,44
+packages/nodes-base/nodes/Eventbrite/__tests__/EventbriteTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_591461a40b03c9 120-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4cb4b31d64bc3ce139fe4557f703b455ef39f5e5",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

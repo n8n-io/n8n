@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/review/PromotionResourceTree.vue
+  s_983eea3c47ac98::t_0fd3c0f61d72e2 119,199
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/review/PromotionFieldChanges.vue
+  s_983eea3c47ac98::t_3d60e9749dba4c 53
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionReview.tree.test.ts
+  s_983eea3c47ac98::t_0fd3c0f61d72e2 26-30
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionReview.tree.ts
+  s_983eea3c47ac98::t_0fd3c0f61d72e2 13,20-21,138,140,142-143,145
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/review/PromotionChangeCard.vue
+  s_983eea3c47ac98::t_93569e8d06cca6 199,208,280-281,287-288,292-299
+  s_983eea3c47ac98::t_3d60e9749dba4c 210,289-291
+  s_983eea3c47ac98::t_2b3775629c2ccc 198,200-207
+  s_983eea3c47ac98::t_af50b670d88d80 300
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b276d1482241a082186b346023381f14b3580d10",
+  "prompts": {},
+  "sessions": {
+    "s_983eea3c47ac98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6afe657c-702d-4003-8734-85a65b043c95",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

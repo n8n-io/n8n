@@ -1,0 +1,14 @@
+packages/cli/src/modules/agents/agent-definition.service.ts
+  h_7555c3ee6524cf 41,48,70,80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b825e60cf4df322c2fd1b66efa2d05aee47a83d2",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

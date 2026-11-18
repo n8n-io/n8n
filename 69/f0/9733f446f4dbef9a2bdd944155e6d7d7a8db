@@ -1,0 +1,19 @@
+packages/@n8n/db/src/migrations/common/1793204018114-StoreAgentMemoryEmbeddingsAsBinary.ts
+  s_7a118b07ee147d::t_f1c7cef4aaf601 1,10,15,17-18,21,25,28,31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "69f09733f446f4dbef9a2bdd944155e6d7d7a8db",
+  "prompts": {},
+  "sessions": {
+    "s_7a118b07ee147d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e0ec06a-e91b-466d-8b5a-495d558044e2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

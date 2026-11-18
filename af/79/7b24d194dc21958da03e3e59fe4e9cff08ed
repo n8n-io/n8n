@@ -1,0 +1,28 @@
+packages/cli/src/workflows/__tests__/catalog.service.test.ts
+  s_5e1597e8ea25b2::t_7159933b0ff97e 5,34
+packages/cli/src/workflows/catalog.service.ts
+  s_5e1597e8ea25b2::t_c43ad390318022 4
+docs/workflow-catalog-handoff.md
+  s_5e1597e8ea25b2::t_3022c49239eec3 71,92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "af797b24d194dc21958da03e3e59fe4e9cff08ed",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5e1597e8ea25b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3addddf2-b534-4e10-93c7-b150ce8b013e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

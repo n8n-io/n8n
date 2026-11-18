@@ -1,0 +1,38 @@
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integration.test.ts
+  s_d46ca4db5f4801::t_d44a295827d093 704-729,736
+packages/cli/src/modules/n8n-packages/entities/skill/skill-import.types.ts
+  s_d46ca4db5f4801::t_ab976a1fcb3c14 18-19,74,76,79-83,85
+packages/cli/test/integration/public-api/n8n-packages-import-agents.test.ts
+  s_d46ca4db5f4801::t_a359df7df2858c 63
+  s_d46ca4db5f4801::t_952aef47f1dad1 353-358,372
+packages/cli/src/modules/n8n-packages/entities/skill/skill-importer.ts
+  s_d46ca4db5f4801::t_01790e87b70286 5,30,32-33,36-41,60,79,166-167,173-174,176-178,182-183,188-193,195-196,203,300,302,304,312,314,333-349,388-390,392-393
+  s_d46ca4db5f4801::t_ab976a1fcb3c14 75,359-365
+  s_d46ca4db5f4801::t_b1979082f0cbaf 184-187,194,197-202
+  s_d46ca4db5f4801::t_77f5f9941482d1 204
+  s_d46ca4db5f4801::t_ac06053150c42c 350
+packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
+  s_d46ca4db5f4801::t_01790e87b70286 100,302-308
+  s_d46ca4db5f4801::t_5e45bae5441b77 309-310
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_d46ca4db5f4801::t_d44a295827d093 471,480-483,486-487,489-492,496-508,517-518
+  s_d46ca4db5f4801::t_28c165cf5adcff 509,511-513,516
+  s_d46ca4db5f4801::t_43ba1be2c12fd3 493-495
+  s_d46ca4db5f4801::t_a77f73d21bb547 514-515
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d69f63187f1c3c1188168ba4c56bbf14c7fe096c",
+  "prompts": {},
+  "sessions": {
+    "s_d46ca4db5f4801": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df22eceb-2c62-4533-8e79-e90ec5a427bb",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+packages/cli/src/modules/agents/agents.controller.ts
+  s_430ac380725bfe::t_659db2e1d9d10b 892-899,901,903-906
+packages/cli/src/modules/agents/__tests__/agents.controller.test.ts
+  s_430ac380725bfe::t_4e0a15573bc84a 504,535-536
+  s_430ac380725bfe::t_2d884b11919e77 562-568,570-584,587,591-604
+packages/cli/src/modules/agents/integrations/slack-app-setup.service.ts
+  s_430ac380725bfe::t_c17d705c1506a3 148,218,258-261,268-270,272
+  s_430ac380725bfe::t_41fdd713582c56 275
+packages/cli/src/modules/agents/integrations/__tests__/slack-app-setup.service.test.ts
+  s_430ac380725bfe::t_1a93f6bc4f8fbb 287
+  s_430ac380725bfe::t_dc06b30cce6cb0 24-29,38-50,118,225-234,239-254,280,372-376,379-380,384-401,420-426
+  s_430ac380725bfe::t_99b86e9762e989 224,235-238,290,346-366,371,402-407,409-419
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "ec3e3282b712baef3eae2c10ebc0a2cc24dc7695",
+  "prompts": {},
+  "humans": {
+    "h_23d60aac2fe72e": {
+      "author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_430ac380725bfe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea75b-aa56-7fb1-b52c-db2f3dcf052f",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/cli/test/integration/database/repositories/agent-memory-entry-candidate.repository.test.ts
+  s_abe416d94b4232::t_4e7cfc6958c8f9 159-165,167
+  s_abe416d94b4232::t_2803ada86c75c4 166
+  s_abe416d94b4232::t_4825fcf1da7bc8 157-158,171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bdece48ee082133333aedcb09f70113f3394d2da",
+  "prompts": {},
+  "sessions": {
+    "s_abe416d94b4232": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19c1e-ab9b-7db2-b5b6-6f22b848d545",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

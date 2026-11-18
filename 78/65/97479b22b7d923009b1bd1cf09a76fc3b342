@@ -1,0 +1,41 @@
+packages/@n8n/instance-ai/src/index.ts
+  s_5be157f6e91b85::t_f4126a0b088860 529
+packages/@n8n/instance-ai/src/runtime/run-state-registry.ts
+  s_5be157f6e91b85::t_f4126a0b088860 18,64
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_5be157f6e91b85::t_7b03b4aaba083e 82,4354-4359,4382,4384,5129,5138-5141,5188,5687-5689,5711,5713,6485,6706-6728
+  s_5be157f6e91b85::t_f4126a0b088860 6729
+packages/@n8n/telemetry/src/events/instance-ai.ts
+  s_5be157f6e91b85::t_f4126a0b088860 449
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5be157f6e91b85::t_fe5ca83f46431c 300
+packages/@n8n/instance-ai/src/stream/__tests__/instance-context-reach.test.ts
+  s_5be157f6e91b85::t_f4126a0b088860 36
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_5be157f6e91b85::t_c964b26dac6882 3724-3726,3728,6456-6459,6465
+  s_5be157f6e91b85::t_9635b348cbf774 6455,6460-6464,6466-6481,6484-6487,6490-6495,6533,6537,6539-6553,6564,6569,6574-6578,6582-6586,6604,6607,6618-6619
+  s_5be157f6e91b85::t_13c1d50b50a35e 241-244,502-505,509,511-512,531,533-537,636-637,658-662,666,3698-3699,3720-3723,3727,3729-3748
+  s_5be157f6e91b85::t_f4126a0b088860 35,296-299,506-508,6449,6534-6536,6557-6558,6587-6603,6605-6606,6608-6617
+packages/@n8n/instance-ai/src/stream/instance-context-reach.ts
+  s_5be157f6e91b85::t_f4126a0b088860 6
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceContextStep.test.ts
+  s_5be157f6e91b85::t_bbf03eddf3b2dd 121-122
+packages/@n8n/instance-ai/src/runtime/instance-context-state.ts
+  s_5be157f6e91b85::t_f4126a0b088860 1-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "786597479b22b7d923009b1bd1cf09a76fc3b342",
+  "prompts": {},
+  "sessions": {
+    "s_5be157f6e91b85": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ae78-4d49-7f60-886d-eb5d6b02f635",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

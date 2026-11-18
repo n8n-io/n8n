@@ -1,0 +1,65 @@
+packages/frontend/editor-ui/src/features/promotions/components/NewPromotionDialog.vue
+  s_0805c7cbac772a::t_593fadb28d717d 86-88
+packages/cli/src/modules/promotions/trackers/github-pr.tracker.ts
+  s_0805c7cbac772a::t_77e4b78f4a5e32 7,17-18,21-27,32-36,40-42,49,57-58,62,70-73,75-76,78,82,88,90-91,95-108
+packages/frontend/editor-ui/src/features/promotions/components/PromotionStateBadge.vue
+  s_0805c7cbac772a::t_7f2390e95b380d 73-76
+  s_0805c7cbac772a::t_4b9371eec43fce 11-18
+packages/cli/src/modules/promotions/models/branch-pr.model.ts
+  s_0805c7cbac772a::t_9158b60fad9a59 72
+  s_0805c7cbac772a::t_5874de8fa77dca 1-7,9-71,73-357
+packages/frontend/editor-ui/src/features/branch-sync/module.descriptor.ts
+  s_0805c7cbac772a::t_bfd08c4925929b 3-4,8-9,15-18,35-43,45-57
+packages/cli/src/modules/promotions/promotions.module.ts
+  s_0805c7cbac772a::t_2d0ec0ab3c2ff2 15,22
+packages/frontend/editor-ui/src/features/branch-sync/branchSync.api.ts
+  s_0805c7cbac772a::t_f1506ac1ff0f61 33-42
+packages/frontend/editor-ui/src/features/environments/components/BranchPrDetail.vue
+  s_0805c7cbac772a::t_74c908295312f4 1-8,10-133,135-156
+packages/frontend/editor-ui/src/features/environments/constants.ts
+  s_0805c7cbac772a::t_fff4ae69b91abd 1-4
+packages/cli/src/modules/promotions/promotion.mapper.ts
+  s_0805c7cbac772a::t_c741b4220e724c 17-20
+packages/frontend/editor-ui/src/features/environments/views/ProjectEnvironmentsView.vue
+  s_0805c7cbac772a::t_93c9e428865e06 271-282
+  s_0805c7cbac772a::t_1d5eaa27980fd7 1-237,239-270,283-359,370-400
+  s_0805c7cbac772a::t_037bb4ac04a297 238
+  s_0805c7cbac772a::t_1334966ad06f65 360-369
+packages/cli/src/modules/branch-sync/branch-sync.controller.ts
+  s_0805c7cbac772a::t_b0dc132265af64 26,35-41
+  s_0805c7cbac772a::t_c17bd2abdff611 4-5
+  s_0805c7cbac772a::t_9c8765e027098d 8
+packages/cli/src/modules/source-control.ee/multi-repo/source-control-sync.service.ts
+  s_0805c7cbac772a::t_ccdddc402a3f24 29-30
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_0805c7cbac772a::t_612ac6fcea0fd5 4-10,12,36-37,48,55,62,77
+packages/@n8n/api-types/src/promotion.ts
+  s_0805c7cbac772a::t_2fbc67c77eec17 18-21
+packages/cli/src/modules/promotions/models/package-transport.ts
+  s_0805c7cbac772a::t_e20c7fc73db96d 63-64
+packages/cli/src/modules/branch-sync/connection-link.service.ts
+  s_0805c7cbac772a::t_426b2def13faba 1-109
+packages/cli/src/modules/promotions/promotion-github-context.ts
+  s_0805c7cbac772a::t_c5205a68385c26 1-36
+packages/frontend/editor-ui/src/features/branch-sync/branchSync.store.ts
+  s_0805c7cbac772a::t_663ed263bb9cec 59-67
+  s_0805c7cbac772a::t_be32d504bcc440 145
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_0805c7cbac772a::t_cb5b623d21b4dd 5680-5722
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "213f245004e6a5a4a06f3241890f36f90c7d2e71",
+  "prompts": {},
+  "sessions": {
+    "s_0805c7cbac772a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a7014bf-3742-438d-bb69-9a88d951a929",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

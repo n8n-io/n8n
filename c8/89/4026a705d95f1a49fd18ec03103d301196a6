@@ -1,0 +1,22 @@
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_71ad2034164515::t_d0ef454e3aab63 31,365-378
+  s_71ad2034164515::t_ee6bf18259b9e1 379-385
+packages/cli/src/modules/agents/agent-save-completion.service.ts
+  s_71ad2034164515::t_80fdfd976e46a2 30-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c8894026a705d95f1a49fd18ec03103d301196a6",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

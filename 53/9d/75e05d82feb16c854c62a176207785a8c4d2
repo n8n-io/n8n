@@ -1,0 +1,22 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_5559fdd2304f2e::t_110be8970f8779 149-153,1093-1147,1149-1150,1152-1160,1162-1163,1165-1166,1169,1171-1210,1212-1223,1225-1230,1232,1234-1281
+  s_5559fdd2304f2e::t_68247a0a0d11b4 1148,1151,1161,1164,1167-1168,1170
+  s_5559fdd2304f2e::t_0795c504ba422e 1211,1224
+  s_5559fdd2304f2e::t_c87659899e3717 1231,1233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "539d75e05d82feb16c854c62a176207785a8c4d2",
+  "prompts": {},
+  "sessions": {
+    "s_5559fdd2304f2e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "492e1e0d-a9ae-4612-8137-824241a1b6ec",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

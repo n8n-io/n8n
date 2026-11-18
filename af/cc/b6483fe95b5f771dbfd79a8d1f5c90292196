@@ -1,0 +1,37 @@
+packages/frontend/@n8n/stores/src/users.store.ts
+  s_65ef45bd984286::t_c33cc4cf01764b 90-91,93-94,98-100
+  s_65ef45bd984286::t_9721493518c5a2 528-529
+  s_65ef45bd984286::t_97820654cc8bb0 167
+  s_65ef45bd984286::t_6b5a80c0761600 423-424
+packages/frontend/editor-ui/src/features/settings/users/users.types.ts
+  s_65ef45bd984286::t_141ea4f1d22c65 10
+packages/frontend/editor-ui/src/app/init.test.ts
+  s_65ef45bd984286::t_4d3d9561fc5d2b 38-39
+packages/frontend/@n8n/stores/src/modalOpeners.ts
+  s_65ef45bd984286::t_32ebc4e13f7a12 3
+packages/frontend/@n8n/stores/src/users.store.test.ts
+  s_65ef45bd984286::t_1064699a922a3c 337,348
+  s_65ef45bd984286::t_13ca33d64e4249 366
+packages/frontend/editor-ui/src/features/settings/users/users.store.ts
+  s_65ef45bd984286::t_c08347f42798ea 3-4
+packages/frontend/editor-ui/src/app/init.ts
+  s_65ef45bd984286::t_f9f9a47a1925e8 139-142
+packages/frontend/editor-ui/src/Interface.ts
+  s_65ef45bd984286::t_d94552b78693c1 656-657
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "afccb6483fe95b5f771dbfd79a8d1f5c90292196",
+  "prompts": {},
+  "sessions": {
+    "s_65ef45bd984286": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6bf14eab-a3f1-4625-a3fc-3465f0697e9a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

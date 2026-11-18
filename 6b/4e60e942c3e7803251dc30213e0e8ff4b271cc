@@ -1,0 +1,29 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5e1597e8ea25b2::t_f41c17587ae45e 5668
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.vue
+  s_5e1597e8ea25b2::t_2b8258f06ed2d2 119-133
+  s_5e1597e8ea25b2::t_ffbcfbf4b40cc9 201-206
+  s_5e1597e8ea25b2::t_36b5465f243148 15
+  s_5e1597e8ea25b2::t_9b26276f78a79a 200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6b4e60e942c3e7803251dc30213e0e8ff4b271cc",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5e1597e8ea25b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3addddf2-b534-4e10-93c7-b150ce8b013e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

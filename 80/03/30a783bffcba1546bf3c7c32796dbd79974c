@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/canvasNodeAgentChips.utils.ts
+  s_6e0e8168b15a08::t_99ca6aff8ddd5a 7,50-55,110
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/canvasNodeAgentChips.utils.test.ts
+  s_6e0e8168b15a08::t_49c5b823bda392 153
+  s_6e0e8168b15a08::t_99ca6aff8ddd5a 36,38,43,133,159,172
+packages/@n8n/api-types/src/agents/sanitize-agent-tool-name.ts
+  s_6e0e8168b15a08::t_99ca6aff8ddd5a 7,12-13
+packages/@n8n/api-types/src/agents/__tests__/sanitize-agent-tool-name.test.ts
+  s_6e0e8168b15a08::t_99ca6aff8ddd5a 11-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "800330a783bffcba1546bf3c7c32796dbd79974c",
+  "prompts": {},
+  "sessions": {
+    "s_6e0e8168b15a08": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a00185-b743-71c2-9839-c445afe0fdb8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

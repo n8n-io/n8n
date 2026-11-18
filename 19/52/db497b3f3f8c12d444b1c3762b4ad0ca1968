@@ -1,0 +1,45 @@
+packages/@n8n/backend-services/src/services/auth-strategy.types.ts
+  s_171483a61c0a5f::t_9759eec436b73a 11-13,34-39
+  s_171483a61c0a5f::t_a97585a93c7c1f 18
+  s_171483a61c0a5f::t_894c6197df399e 40-41
+packages/cli/src/modules/inbound-auth-core/public-api-oauth.strategy.ts
+  s_171483a61c0a5f::t_9759eec436b73a 22,49-57,69,83-85
+  s_171483a61c0a5f::t_75cc6de9c075f8 86
+packages/@n8n/backend-services/src/services/auth-strategy.registry.ts
+  s_171483a61c0a5f::t_33b243ed4e889c 34-35,56-57,61-65,68-77,80-85
+  s_171483a61c0a5f::t_9759eec436b73a 1,19-21
+  s_171483a61c0a5f::t_32993768922a02 86-96
+packages/@n8n/backend-services/src/services/__tests__/auth-strategy.registry.test.ts
+  s_171483a61c0a5f::t_b5e2e790882ace 42,44-45,81-82,95-97,110-112,133-135,159-160,194,208-209,222
+  s_171483a61c0a5f::t_aca98c5f2e5ffb 132
+  s_171483a61c0a5f::t_b4b92c4230086f 260,273
+  s_171483a61c0a5f::t_a3c4d56a907414 1,15,18-19,158,170,172-190
+  s_171483a61c0a5f::t_321c384ab9a230 25-30,35-37,94,109,113,115-118,128-129,136,141-143,151,153-155,161-169,171,191-193,195-207,210,212,218
+packages/cli/test/integration/public-api/oauth-bearer.test.ts
+  s_171483a61c0a5f::t_aca98c5f2e5ffb 107-117,128,136
+packages/cli/src/modules/inbound-auth-core/__tests__/public-api-oauth.strategy.test.ts
+  s_171483a61c0a5f::t_58a685111d2055 271,278-281
+  s_171483a61c0a5f::t_aca98c5f2e5ffb 84,87,108-110,112-115,285-307
+  s_171483a61c0a5f::t_b691bf08c8639f 308
+packages/cli/src/modules/inbound-auth-core/resource-admission.ts
+  s_171483a61c0a5f::t_9759eec436b73a 83-87
+  s_171483a61c0a5f::t_96f73f08ec8844 70
+packages/cli/src/modules/inbound-auth-core/__tests__/resource-admission.test.ts
+  s_171483a61c0a5f::t_aca98c5f2e5ffb 86,91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1952db497b3f3f8c12d444b1c3762b4ad0ca1968",
+  "prompts": {},
+  "sessions": {
+    "s_171483a61c0a5f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "434f5545-fc22-4bca-a08c-d5c23af2706b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

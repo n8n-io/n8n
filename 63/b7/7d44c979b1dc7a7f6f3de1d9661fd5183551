@@ -1,0 +1,24 @@
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_a08ef9c37d7ab1::t_ecc68188ff8427 2065-2067,2071-2076
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_a08ef9c37d7ab1::t_ecc68188ff8427 405,428
+  s_a08ef9c37d7ab1::t_306a879b0629ad 14
+packages/cli/src/modules/agents/__tests__/agent-task-cancellation.service.test.ts
+  s_a08ef9c37d7ab1::t_ecc68188ff8427 166-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "63b77d44c979b1dc7a7f6f3de1d9661fd5183551",
+  "prompts": {},
+  "sessions": {
+    "s_a08ef9c37d7ab1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a298321e-559e-4d55-a6c8-e77fcef5f088",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

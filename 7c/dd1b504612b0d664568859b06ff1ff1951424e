@@ -1,0 +1,23 @@
+packages/frontend/@n8n/stores/src/notifications.store.ts
+  s_13481c28b6e1bd::t_4d8e9a12e2816f 1,13
+packages/frontend/@n8n/composables/src/useToast.test.ts
+  s_13481c28b6e1bd::t_4d8e9a12e2816f 9
+packages/frontend/@n8n/composables/src/useToast.ts
+  s_13481c28b6e1bd::t_4d8e9a12e2816f 12,21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "7cdd1b504612b0d664568859b06ff1ff1951424e",
+  "prompts": {},
+  "sessions": {
+    "s_13481c28b6e1bd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b36db4b-e768-44d8-9154-61f5a7ad79f4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

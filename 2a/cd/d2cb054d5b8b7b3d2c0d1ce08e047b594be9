@@ -1,0 +1,24 @@
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_b3df909994b475::t_06f70d228a1aab 58,2045-2067
+packages/cli/src/modules/agents/integrations/__tests__/integration-message-context.test.ts
+  s_b3df909994b475::t_06f70d228a1aab 1-4,30-31,33-44
+  ai_agent 5,32
+packages/cli/src/modules/agents/integrations/integration-message-context.ts
+  s_b3df909994b475::t_06f70d228a1aab 50-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2acdd2cb054d5b8b7b3d2c0d1ce08e047b594be9",
+  "prompts": {},
+  "sessions": {
+    "s_b3df909994b475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ecbb022-eecd-4d86-a9e8-f27685592a87",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

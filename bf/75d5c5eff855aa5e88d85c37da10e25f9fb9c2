@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindingCreation.ts
+  s_6f5f2699e39bdc::t_d5aeccb82737c4 11,68,90
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindingCreation.test.ts
+  s_6f5f2699e39bdc::t_d5aeccb82737c4 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bf75d5c5eff855aa5e88d85c37da10e25f9fb9c2",
+  "prompts": {},
+  "sessions": {
+    "s_6f5f2699e39bdc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "897d8036-2f58-40e8-85de-79d06d0839c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

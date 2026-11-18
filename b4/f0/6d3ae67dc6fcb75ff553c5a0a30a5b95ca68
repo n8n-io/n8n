@@ -1,0 +1,32 @@
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/__tests__/microsoft-utils.test.ts
+  s_e5011bcb285def::t_06cbbbef489fc7 8-9,93-112,1496-1520
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/MicrosoftAgent365Trigger.node.test.ts
+  s_e5011bcb285def::t_5cf4884d295686 14,17-19,32-44,186-207,211-223
+  s_e5011bcb285def::t_c82c44bd2c73d0 208-210
+packages/@n8n/config/test/config.test.ts
+  s_e5011bcb285def::t_0a9cadb8a26f1c 685
+packages/@n8n/config/src/configs/__tests__/ai.config.test.ts
+  s_e5011bcb285def::t_0a9cadb8a26f1c 32-41
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/MicrosoftAgent365Trigger.node.ts
+  s_e5011bcb285def::t_e0d2df74f7d964 11-13,21,250-258
+packages/@n8n/config/src/configs/ai.config.ts
+  s_e5011bcb285def::t_0a9cadb8a26f1c 56-64
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/microsoft-utils.ts
+  s_e5011bcb285def::t_e0d2df74f7d964 44,339,591-601
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b4f06d3ae67dc6fcb75ff553c5a0a30a5b95ca68",
+  "prompts": {},
+  "sessions": {
+    "s_e5011bcb285def": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2a94661-efbd-4c97-8dee-3e429a963594",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

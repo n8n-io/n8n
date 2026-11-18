@@ -1,0 +1,67 @@
+packages/nodes-base/nodes/Paddle/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_73b5f36ff08f97 1-28
+packages/nodes-base/nodes/PhilipsHue/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_e613d5562663c9 1-29
+packages/nodes-base/nodes/Phantombuster/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_04d5f5218d600b 1-24
+packages/nodes-base/nodes/Paddle/GenericFunctions.ts
+  s_0b340cbcd99bee::t_f6aa960633c3a6 10-11,13,17,30,35,58
+packages/nodes-base/nodes/Paddle/Paddle.node.ts
+  s_0b340cbcd99bee::t_763b85b39196f9 12,112,139,237,249,336,391,409,417,433,442,456,501
+packages/nodes-base/nodes/PagerDuty/GenericFunctions.ts
+  s_78ae36a6ed1ed6::t_b6fd1f53063bf3 11-12,14,19,27,34,69
+packages/nodes-base/nodes/PagerDuty/PagerDuty.node.ts
+  s_0b340cbcd99bee::t_29291e781381e1 12,127,147,169,258,268-272,297,303-309,365,385,400,409,424,439,445-451,460-464
+packages/nodes-base/nodes/PagerDuty/test/GenericFunctions.test.ts
+  s_a0636544721003::t_a8a1f5012de746 2,4,59,76,92,99-117
+packages/nodes-base/nodes/Peekalink/Peekalink.node.ts
+  s_0b340cbcd99bee::t_0e575c3a327b08 9,81-82
+packages/nodes-base/nodes/Phantombuster/GenericFunctions.ts
+  s_0b340cbcd99bee::t_1ac0c27922e0e3 9-11,13,20,26,31,65,73-83,158,172-176
+packages/nodes-base/nodes/Phantombuster/Phantombuster.node.ts
+  s_0b340cbcd99bee::t_7238686defb324 11,74-78,131-138,149,169,178,194-198,274,283,292,315
+packages/nodes-base/nodes/PhilipsHue/GenericFunctions.ts
+  s_0b340cbcd99bee::t_2f714d6c0e59fa 8-9,11,16,22,29,55-61,69-72
+packages/nodes-base/nodes/PhilipsHue/PhilipsHue.node.ts
+  s_0b340cbcd99bee::t_b7f5008eee75c1 10,65-69,71-75,140,158,166-170,187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8558a07c9a4dfc5f224cb526caac9085aa21dca5",
+  "prompts": {},
+  "sessions": {
+    "s_0b340cbcd99bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac6763e23459042a2",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_78ae36a6ed1ed6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5ccb36d1c1a8da49",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_a0636544721003": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a51f9d63c321eaefa",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,66 @@
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_db74c72b258827::t_e33570da7e6b7b 201-202,279,284,306,308,312,314,463
+  s_db74c72b258827::t_ad87a4bf0274fc 35
+packages/cli/src/modules/instance-ai/__tests__/assistant-agent.provider.test.ts
+  s_db74c72b258827::t_7685a72115a872 69-75
+packages/cli/src/modules/agents/agent-chat-attachment.service.ts
+  s_db74c72b258827::t_8ff84b83a67bae 133-140
+packages/cli/src/modules/agents/agents.module.ts
+  s_db74c72b258827::t_940463a662e4c6 29
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_db74c72b258827::t_ad1a0c480490f0 368,531,553,576,597,616,631,692,743,804,836,857
+  s_db74c72b258827::t_6cdc050820c912 33,75,107,123,136,170,242,278,302,472,848
+  s_db74c72b258827::t_fad0be889cbe50 47
+packages/cli/src/modules/agents/agent-message-steering.service.ts
+  s_db74c72b258827::t_cef846ad12f28e 17
+  s_db74c72b258827::t_e33570da7e6b7b 179-180
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_db74c72b258827::t_e728d409b80c30 23,197
+packages/cli/src/modules/agents/system-agents/system-agent-chat.controller.ts
+  s_db74c72b258827::t_8feb30a9222050 1-11,13-50,52-55,57-63,65-183,188-299
+  s_db74c72b258827::t_8ff84b83a67bae 12,56,64,184-187
+  s_db74c72b258827::t_fad0be889cbe50 51
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_db74c72b258827::t_e728d409b80c30 26,89,95-105,258,301,477
+  s_db74c72b258827::t_8ff84b83a67bae 82-86,439-440,445-448,453-458,464,469
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  ai_agent 68
+  s_db74c72b258827::t_e2ec1b0353d273 6-7,32-33,161,174-177,179,199,570-644
+packages/cli/src/modules/agents/system-agents/system-agent-access.ts
+  s_db74c72b258827::t_e728d409b80c30 1-21
+packages/cli/src/modules/agents/types/agent-queued-message.ts
+  s_db74c72b258827::t_e33570da7e6b7b 18-21,23,74-75,79
+  ai_agent 76-78
+packages/cli/src/modules/agents/agent-chat-relay.service.ts
+  s_db74c72b258827::t_6cdc050820c912 1-205
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_db74c72b258827::t_ce9f00cb4587ca 105
+  s_db74c72b258827::t_3fbf0f6437d510 37
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_db74c72b258827::t_e2ec1b0353d273 460-473,504-519
+packages/cli/src/modules/agents/repositories/agent-chat-attachment.repository.ts
+  s_db74c72b258827::t_8ff84b83a67bae 28-32
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-chat.controller.test.ts
+  s_db74c72b258827::t_af6b4e508496ce 1-166
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_db74c72b258827::t_e33570da7e6b7b 76-81
+  s_db74c72b258827::t_cef846ad12f28e 8
+packages/cli/src/modules/instance-ai/assistant-agent.provider.ts
+  s_db74c72b258827::t_7685a72115a872 53-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "72a1e54777a45b7377d6242357fb22fd68cc45dd",
+  "prompts": {},
+  "sessions": {
+    "s_db74c72b258827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "623f2f12-b478-4119-a5b9-9b84971b2bbe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,63 @@
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_dff57e7b253b23::t_8745ceea81ee14 117,134
+packages/cli/src/modules/instance-ai/repositories/index.ts
+  s_dff57e7b253b23::t_8745ceea81ee14 12
+packages/cli/src/modules/instance-ai/entities/instance-ai-thread-tabs.entity.ts
+  s_dff57e7b253b23::t_ca44c752e54259 1-35
+docs/generated/postgres-schema/public.instance_ai_thread_tabs.md
+  ai_agent 1-78
+docs/generated/sqlite-schema/README.md
+  ai_agent 89,287-288,1195-1197
+docs/generated/sqlite-schema/instance_ai_threads.md
+  ai_agent 19,59,197-199
+docs/generated/sqlite-schema/user.md
+  ai_agent 22,73,300-302
+packages/@n8n/api-types/src/dto/index.ts
+  s_dff57e7b253b23::t_7c6242783f4057 37
+packages/cli/test/integration/instance-ai/instance-ai-thread-tabs.integration.test.ts
+  s_dff57e7b253b23::t_cfe11a082ec2cd 1-98
+packages/cli/src/modules/instance-ai/entities/index.ts
+  s_dff57e7b253b23::t_8745ceea81ee14 11
+packages/@n8n/api-types/src/index.ts
+  s_dff57e7b253b23::t_7c6242783f4057 452-454,662-665
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_dff57e7b253b23::t_7c6242783f4057 1628-1658
+packages/@n8n/api-types/src/dto/instance-ai/instance-ai-thread-tabs-request.dto.ts
+  s_dff57e7b253b23::t_7c6242783f4057 1-3
+  ai_agent 4-6
+docs/generated/postgres-schema/README.md
+  ai_agent 89,305-306,1209-1211
+docs/generated/postgres-schema/public.instance_ai_threads.md
+  ai_agent 8,53,191-193
+docs/generated/sqlite-schema/instance_ai_thread_tabs.md
+  ai_agent 1-86
+docs/generated/postgres-schema/public.user.md
+  ai_agent 11,67,294-296
+packages/cli/src/modules/instance-ai/repositories/instance-ai-thread-tabs.repository.ts
+  ai_agent 20-24
+  s_dff57e7b253b23::t_8745ceea81ee14 1-19,25-27
+packages/@n8n/db/src/migrations/common/1790342771626-CreateInstanceAiThreadTabsTable.ts
+  s_dff57e7b253b23::t_cffa9c8fbb9b4d 1-2,5,27-28,31-32
+  s_dff57e7b253b23::t_ca44c752e54259 3-4,6-26,29-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8e512346ebe0de1da399394c74efe0977120330d",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_dff57e7b253b23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a1b4b03-5790-4a03-a686-790045e59397",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

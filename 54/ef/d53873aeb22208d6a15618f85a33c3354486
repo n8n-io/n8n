@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Salesforce/Salesforce.node.ts
+  s_2e1fa95fc44f8f::t_e40e39f2e29d67 35
+  s_2e1fa95fc44f8f::t_477778c8cb4034 122,1245-1248,1620-1623,1910-1913,2119-2122,2394-2397
+packages/nodes-base/nodes/Salesforce/__test__/Salesforce.node.test.ts
+  s_2e1fa95fc44f8f::t_66bff503082ff5 1655-1662
+  s_2e1fa95fc44f8f::t_4b2122d267b66a 1663-1676,1678,1680,1682-1686
+packages/nodes-base/nodes/Salesforce/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_8e31dada21ce47 17,31-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "54efd53873aeb22208d6a15618f85a33c3354486",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

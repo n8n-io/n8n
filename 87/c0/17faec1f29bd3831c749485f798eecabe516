@@ -1,0 +1,64 @@
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_3ea8dc5f5b0c85::t_a6cea1bea996b6 169-171,1025-1026,1028-1033,1035-1062,1154-1155,1163-1173
+  s_3ea8dc5f5b0c85::t_cb4e61a2326fd5 215,1063-1068,1072-1073,1075-1080,1082-1084,1086
+  s_3ea8dc5f5b0c85::t_51aa7a9aacf9b2 1157-1162
+  s_3ea8dc5f5b0c85::t_f6026b37f30918 1174-1177
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_3ea8dc5f5b0c85::t_21b204a3e08913 1691-1705
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_3ea8dc5f5b0c85::t_fd82f650b6b4a9 52
+  s_3ea8dc5f5b0c85::t_27d1a27770be74 932
+packages/cli/src/modules/agents/__tests__/queued-message-id.test.ts
+  s_3ea8dc5f5b0c85::t_cb4e61a2326fd5 3-6
+  s_3ea8dc5f5b0c85::t_8e8777b12fb0e9 10
+  s_3ea8dc5f5b0c85::t_7a2b373a39e2da 42-47
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_3ea8dc5f5b0c85::t_15fcf40962095a 31,33-35,37-38,44,51-55,58-59,105-107,129,180,183,185,187-188,192,208,212,233-235,239,286,288,298-300,432
+  s_3ea8dc5f5b0c85::t_a65adb0e209579 36,292-294
+  s_3ea8dc5f5b0c85::t_a7b0c6da55f8ce 56-57,143,181,214,241,267
+  s_3ea8dc5f5b0c85::t_5452cbba7b086e 170-171
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_3ea8dc5f5b0c85::t_4f4e0758695e50 11,36,117,183-214
+  s_3ea8dc5f5b0c85::t_761c01483ce2cf 217-241
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_3ea8dc5f5b0c85::t_27d1a27770be74 4,10,246-259
+packages/cli/src/modules/agents/utils/agent-thread-access.ts
+  s_3ea8dc5f5b0c85::t_bc16e450ea3a2e 36-43,45-47
+  s_3ea8dc5f5b0c85::t_27d1a27770be74 44
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_3ea8dc5f5b0c85::t_a7e87b952a19da 727,733
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_3ea8dc5f5b0c85::t_afb684bbe26040 1624,1704,1839,1893,1990,2237,2309
+  s_3ea8dc5f5b0c85::t_03a4bcbd176054 2185,2188-2200,2202-2233
+  s_3ea8dc5f5b0c85::t_cb4e61a2326fd5 2376-2383
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_3ea8dc5f5b0c85::t_11758f74724102 13,41,100,137,140,184,254-277
+  s_3ea8dc5f5b0c85::t_5452cbba7b086e 139,148
+  s_3ea8dc5f5b0c85::t_51aa7a9aacf9b2 159-162
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_3ea8dc5f5b0c85::t_f8dc9881e06b27 9,49-53
+  s_3ea8dc5f5b0c85::t_9b2b77697efea9 169,177,183-193,198-206,213,219-221,225,227,233-238,248-249,256,259-262,267,270,273,275-282,284-285,368,378,381,390,393-394,398-412,414-415,625,645,658-662,677,684,698,701,717
+  s_3ea8dc5f5b0c85::t_94605c1295b817 194-197,207-212,214,224,226,228-231,297-298,321-323,334
+  s_3ea8dc5f5b0c85::t_321c607b03fc1d 600-624,626-644,646-648
+packages/cli/src/modules/agents/utils/queued-message-id.ts
+  s_3ea8dc5f5b0c85::t_6278fb1d088d6f 13,17
+packages/cli/src/modules/agents/types/agent-queued-message.ts
+  s_3ea8dc5f5b0c85::t_8e8777b12fb0e9 18-20
+  s_3ea8dc5f5b0c85::t_6278fb1d088d6f 38,42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "87c017faec1f29bd3831c749485f798eecabe516",
+  "prompts": {},
+  "sessions": {
+    "s_3ea8dc5f5b0c85": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9f52ac9-504a-4a4a-b221-e1ca1ab87e6b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

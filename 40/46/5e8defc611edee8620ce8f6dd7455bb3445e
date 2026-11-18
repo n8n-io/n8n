@@ -1,0 +1,21 @@
+packages/@n8n/agents/src/runtime/memory/observation-log-renderer.ts
+  s_1389ed5ff32164::t_f1273b95794cd3 30-34,57-97,109-116,119-131,137-138,144,147
+packages/@n8n/agents/src/runtime/__tests__/observation-log-renderer.test.ts
+  s_1389ed5ff32164::t_5ae1796320094a 197-219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "40465e8defc611edee8620ce8f6dd7455bb3445e",
+  "prompts": {},
+  "sessions": {
+    "s_1389ed5ff32164": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0afb5-5cd8-7dd1-ab29-acad02c48f33",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

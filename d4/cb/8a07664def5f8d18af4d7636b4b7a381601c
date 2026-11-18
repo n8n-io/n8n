@@ -1,0 +1,30 @@
+packages/cli/src/node-execution/execute-node.service.ts
+  s_988a5e0f59cdb0::t_b54328dec4e9d0 5
+  h_44f8d1c0f2f8c4 212
+  s_988a5e0f59cdb0::t_4f2de01518e84c 215-219,223,227-231
+  s_988a5e0f59cdb0::t_3b38621c504977 214
+  s_988a5e0f59cdb0::t_b8a8fd0994e0ad 232-233
+packages/cli/src/node-execution/__tests__/execute-node.service.test.ts
+  s_988a5e0f59cdb0::t_8c6884e52f7415 335-352
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d4cb8a07664def5f8d18af4d7636b4b7a381601c",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_988a5e0f59cdb0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf349829-8374-4c71-9ec2-094de61ed6a4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

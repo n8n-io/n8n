@@ -1,0 +1,20 @@
+.github/workflows/ci-pull-requests.yml
+  s_e1665bdc45fb63::t_01b5e24792138f 192
+  s_e1665bdc45fb63::t_6fed05e177b334 168,171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9e103c7132d535e1e4ead53244e4cd7fce049016",
+  "prompts": {},
+  "sessions": {
+    "s_e1665bdc45fb63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01ec11c4-a4fb-48c0-b0aa-a8bf866b9d30",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

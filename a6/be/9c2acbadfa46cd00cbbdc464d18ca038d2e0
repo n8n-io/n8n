@@ -1,0 +1,25 @@
+packages/@n8n/instance-ai/evaluations/data/workflows/user-self-corrects.json
+  s_49774f0fb0b969::t_351ea71d2fe6da 1-31
+packages/@n8n/instance-ai/evaluations/data/workflows/user-impatient.json
+  s_49774f0fb0b969::t_351ea71d2fe6da 1-25
+packages/@n8n/instance-ai/evaluations/data/workflows/user-gives-wrong-answer.json
+  s_49774f0fb0b969::t_351ea71d2fe6da 1-25
+packages/@n8n/instance-ai/evaluations/data/workflows/user-requests-post-build-change.json
+  s_49774f0fb0b969::t_351ea71d2fe6da 1-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a6be9c2acbadfa46cd00cbbdc464d18ca038d2e0",
+  "prompts": {},
+  "sessions": {
+    "s_49774f0fb0b969": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "058ef848-ef42-44ad-bc5c-fa740d82f66f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

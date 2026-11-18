@@ -1,0 +1,20 @@
+packages/nodes-base/nodes/Aws/S3/test/regression/requests.test.ts
+  s_47f0117b5251d9::t_3736da57b670ff 349,352
+  s_47f0117b5251d9::t_de836175109f3b 465
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "743cc583df400af4a3b9ee6c80716f053a9c7f83",
+  "prompts": {},
+  "sessions": {
+    "s_47f0117b5251d9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e1c8d5bb3ffehvwol53FulUjgi",
+        "model": "moonshotai/kimi-k3.1-pro"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

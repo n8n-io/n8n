@@ -1,0 +1,21 @@
+docker/images/node-pc/Dockerfile
+  s_acb7dd0e5c50b6::t_9813c19d592eff 13,93
+.github/workflows/build-node-pc-image.yml
+  s_acb7dd0e5c50b6::t_9813c19d592eff 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e3f592fe53f4d6bc69beb93e2a24e4512b9d788c",
+  "prompts": {},
+  "sessions": {
+    "s_acb7dd0e5c50b6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ea1fc0bd0ffe8WXs7znTkFdQLf",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

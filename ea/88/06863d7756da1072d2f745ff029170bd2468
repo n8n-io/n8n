@@ -1,0 +1,18 @@
+packages/frontend/@n8n/design-system/src/components/N8nCard/Card.vue
+  h_f8b427917eda26 50-52,95,99
+packages/frontend/@n8n/design-system/src/css/_primitives.scss
+  h_f8b427917eda26 317
+packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+  h_f8b427917eda26 652
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ea8806863d7756da1072d2f745ff029170bd2468",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

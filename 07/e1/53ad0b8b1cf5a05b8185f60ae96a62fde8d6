@@ -1,0 +1,32 @@
+packages/@n8n/api-types/src/agents/index.ts
+  s_fce43c77479185::t_16e55519791cd5 34,40
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_fce43c77479185::t_d706ff37ef11e6 80-81
+  s_fce43c77479185::t_16e55519791cd5 2-7,82
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_fce43c77479185::t_16e55519791cd5 2,250
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_fce43c77479185::t_16e55519791cd5 15-20,1261,1271,1273
+packages/@n8n/api-types/src/agent-sse.ts
+  s_fce43c77479185::t_16e55519791cd5 191
+  s_fce43c77479185::t_3ef2932af86016 178-179,187-190,192-196
+  s_fce43c77479185::t_d706ff37ef11e6 197-198
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_fce43c77479185::t_16e55519791cd5 1,295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "07e153ad0b8b1cf5a05b8185f60ae96a62fde8d6",
+  "prompts": {},
+  "sessions": {
+    "s_fce43c77479185": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f6acc7c-506d-4d84-967f-8684bf6cf30b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

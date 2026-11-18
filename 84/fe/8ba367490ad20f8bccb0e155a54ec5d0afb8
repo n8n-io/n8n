@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPlan.vue
+  s_dec5c78640a338::t_83afca7206908d 5-11,97-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "84fe8ba367490ad20f8bccb0e155a54ec5d0afb8",
+  "prompts": {},
+  "sessions": {
+    "s_dec5c78640a338": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1587d-24b6-7269-9a37-962fd04c1978",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

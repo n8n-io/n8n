@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Xero/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_51b9cd21ad0aad 12,70-72
+packages/nodes-base/nodes/Xero/Xero.node.ts
+  s_2e1fa95fc44f8f::t_946d11dc808916 16,27-28,224,421,432,593,741
+packages/nodes-base/nodes/Xero/test/Xero.node.test.ts
+  s_2e1fa95fc44f8f::t_054a875168da83 12,15,139-158,160,162-167,169-171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ba22985b9e23f0d6974d42727a2b385c40f47bc0",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

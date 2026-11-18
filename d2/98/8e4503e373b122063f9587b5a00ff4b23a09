@@ -1,0 +1,57 @@
+packages/@n8n/agents/src/runtime/__tests__/tool-adapter.test.ts
+  s_2aa332997f69a5::t_1d3d92d1426c77 263-269,271-284,286-287
+  s_2aa332997f69a5::t_70fa3b2834b382 52-56,270,285
+packages/@n8n/agents/src/sdk/__tests__/agent-isolated-runtime.test.ts
+  s_2aa332997f69a5::t_cab83c9f90dce5 300-309,342-347
+  s_2aa332997f69a5::t_bd0d2979c4db1d 7-12,15,49-52,78-93,348,381-473,483-522,524-536
+  s_2aa332997f69a5::t_bfade556ab37a3 474-482,523
+  s_2aa332997f69a5::t_1d3d92d1426c77 3,6,38-44,94-112,143-267,275,277,279,287,289,291-299,310-341
+  s_2aa332997f69a5::t_faaf7e7806f437 268,270,276,278,280,282,288,290
+  s_2aa332997f69a5::t_27dc525ab201f7 269,271-274,281,283-286
+  s_2aa332997f69a5::t_1778d9d7d0350a 349,537
+packages/@n8n/agents/src/types/index.ts
+  s_2aa332997f69a5::t_aa9f298fe44ff5 44,67
+packages/@n8n/agents/src/runtime/tools/tool-adapter.ts
+  s_2aa332997f69a5::t_cab83c9f90dce5 128
+  s_2aa332997f69a5::t_d3867236ad81b5 143
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_2aa332997f69a5::t_aa9f298fe44ff5 11,177-181,183-186
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_2aa332997f69a5::t_38a1bf5c509365 737
+packages/@n8n/agents/src/sdk/agent.ts
+  s_2aa332997f69a5::t_ecfc1de3ed2815 1402
+  s_2aa332997f69a5::t_1ffb0223080590 886-899
+  s_2aa332997f69a5::t_faaf7e7806f437 27,1094,1124,1189-1195,1198,1200
+  s_2aa332997f69a5::t_d3002119ad1922 52,736,738-740,742,753,755-757,759,783-785,787,789,794,796,813-816,818,878-885,900-902,904-908
+  s_2aa332997f69a5::t_27dc525ab201f7 903
+  s_2aa332997f69a5::t_e582a3fdb5c382 1059,1140,1156,1210,1266-1268,1386-1392,1394-1399,1410-1413,1415-1417
+  s_2aa332997f69a5::t_22a40a9ef9b7fa 1393,1400-1401,1403-1404,1406-1409
+  s_2aa332997f69a5::t_53502ab4c5e769 1405
+  s_2aa332997f69a5::t_cab83c9f90dce5 1414
+  s_2aa332997f69a5::t_54e59653ab400e 909-910
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_2aa332997f69a5::t_cab83c9f90dce5 621,814
+  s_2aa332997f69a5::t_9ca760286d4ca5 270,345,479,506,796
+  s_2aa332997f69a5::t_30eded66ff29a4 119,139
+packages/@n8n/agents/src/index.ts
+  s_2aa332997f69a5::t_aa9f298fe44ff5 77-78
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_2aa332997f69a5::t_aa9f298fe44ff5 13-14,49-50,80-81,157-160
+  s_2aa332997f69a5::t_964b516bb11b8f 161-162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "d2988e4503e373b122063f9587b5a00ff4b23a09",
+  "prompts": {},
+  "sessions": {
+    "s_2aa332997f69a5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb33c-e258-7363-982f-32182e1f30e6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

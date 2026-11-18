@@ -1,0 +1,21 @@
+packages/@n8n/eslint-config/src/rules/no-defaulted-item-index.ts
+  s_716c5144ea2746::t_89d68257f02a90 22,25
+packages/@n8n/eslint-config/src/rules/no-defaulted-item-index.test.ts
+  s_716c5144ea2746::t_5778c7b3131d4d 38-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "70e3e453666185035d1d789a1294e18eadde60c6",
+  "prompts": {},
+  "sessions": {
+    "s_716c5144ea2746": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e10bd622-3863-483b-8737-b0d99bd0c883",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

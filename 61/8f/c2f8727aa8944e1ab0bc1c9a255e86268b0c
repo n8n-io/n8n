@@ -1,0 +1,32 @@
+packages/cli/src/metrics/prometheus/system-task-metrics.service.ts
+  s_b3aec4ad3e85d7::t_c910c90f4bcc0b 251,253
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  h_32d8cd6a0d6aad 161,165,173
+  s_b3aec4ad3e85d7::t_c910c90f4bcc0b 159-160,162,166,170-172,174
+packages/cli/src/metrics/prometheus/__tests__/system-task-metrics.service.test.ts
+  s_b3aec4ad3e85d7::t_b73da13d0e0ef2 375,377-382,416
+  s_b3aec4ad3e85d7::t_ba846a4eeb082a 376
+packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
+  s_b3aec4ad3e85d7::t_a10e1b4af186b6 137-139,147-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "618fc2f8727aa8944e1ab0bc1c9a255e86268b0c",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b3aec4ad3e85d7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d959f1d-92cb-458c-9d27-c290824ced9e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

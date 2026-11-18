@@ -1,0 +1,33 @@
+packages/cli/src/public-api/__tests__/public-api-rate-limit.test.ts
+  s_925dcfedebf0c9::t_65ee88247a7929 2,19-21,31,38-39,42-48,77-79,81-112,114-115,117-130
+  s_925dcfedebf0c9::t_b0c013e9a719a2 22,49-55,75-76,80,592,605
+  s_925dcfedebf0c9::t_70bb6eb25bd39a 56-59,61-72
+  s_925dcfedebf0c9::t_fc4a030de3f81f 132-139,141-145,147-151,153-157,159-166,169-174,177-198,200-220,222-224,226-227,396,398-399
+  s_925dcfedebf0c9::t_e8c294a11eab57 534-591,593-604,606-618
+  s_925dcfedebf0c9::t_46850c98edd081 60,73-74
+packages/cli/src/public-api/public-api-rate-limit-store.factory.ts
+  s_925dcfedebf0c9::t_3a8f0450875fe4 5,7-8,10-11,13-55,58-77,84-98,100-107
+  s_925dcfedebf0c9::t_d09754e9f1385d 1-4,6,9,12,56-57,78-83,99,108-109
+packages/cli/src/public-api/public-api-rate-limit.service.ts
+  s_925dcfedebf0c9::t_7008761573b77a 6,10-11,18,53,60-68,74,123-128,135-139,175,180
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_925dcfedebf0c9::t_7008761573b77a 249-250,252-253
+  s_925dcfedebf0c9::t_53e4169de8fdbf 251
+  s_925dcfedebf0c9::t_5bf63b0ff7ee00 83-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e66dea34bb80ca9fa44640111486c76be583b54b",
+  "prompts": {},
+  "sessions": {
+    "s_925dcfedebf0c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e954afe-0aa2-4cb1-89bb-81545b98a90a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

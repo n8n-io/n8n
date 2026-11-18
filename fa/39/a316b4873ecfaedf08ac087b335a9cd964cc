@@ -1,0 +1,19 @@
+packages/@n8n/config/src/configs/deployment.config.ts
+  s_a83d2cf6f7bdca::t_eb20aac0c16bbd 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fa39a316b4873ecfaedf08ac087b335a9cd964cc",
+  "prompts": {},
+  "sessions": {
+    "s_a83d2cf6f7bdca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0cbed283-342a-4bad-b590-212620c02319",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

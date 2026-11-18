@@ -1,0 +1,70 @@
+packages/@n8n/api-types/src/dto/roles/update-role-mapping-rule-public.dto.ts
+  s_d64d432ee2bd9a::t_31d6f05cb0b46b 9
+  s_d64d432ee2bd9a::t_b1d576e67a2f51 1-8,10-11
+packages/@n8n/api-types/src/dto/index.ts
+  s_d64d432ee2bd9a::t_67a00047c000c2 235
+packages/cli/src/public-api/v1/controllers/role-mapping-rules.public.controller.ts
+  s_d64d432ee2bd9a::t_98d861a09628e3 7
+  s_d64d432ee2bd9a::t_b28df58d49b84d 20,23
+  s_d64d432ee2bd9a::t_281afee1a3830f 137-140,142,143-144,146-153,160-163
+  s_d64d432ee2bd9a::t_3a4c621ff3d575 145
+  s_d64d432ee2bd9a::t_e1e772fb40dd0c 154-159
+  s_d64d432ee2bd9a::t_a33501e951184b 141
+packages/cli/src/modules/provisioning.ee/__tests__/role-mapping-rule.service.ee.test.ts
+  s_d64d432ee2bd9a::t_d7dc4b17c2c783 1047-1049,1055-1056
+  s_d64d432ee2bd9a::t_2a52f7ce844ea3 624-629,636-643
+  s_d64d432ee2bd9a::t_163a1b9cbdfb27 749-754
+  s_d64d432ee2bd9a::t_bc1d6185d93dae 631-632
+  s_d64d432ee2bd9a::t_9f3a3888e8929a 668-673
+  s_d64d432ee2bd9a::t_dff7c82ed906d6 701-708
+  s_d64d432ee2bd9a::t_1383af6f519522 658-662
+  s_d64d432ee2bd9a::t_60be7237674f54 1050-1054
+  s_d64d432ee2bd9a::t_7da98ee5f2a3ad 709-710
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_d64d432ee2bd9a::t_6e23b88c470da0 53-55
+packages/cli/test/integration/public-api/role-mapping-rules.test.ts
+  s_d64d432ee2bd9a::t_5db24751ae6526 355,557-660,731-801,813-969
+  s_d64d432ee2bd9a::t_28bcfbf941a99f 662-664,666-673,675-677,679-685,687-704,707-730
+  s_d64d432ee2bd9a::t_b4271f66b0f375 661
+  s_d64d432ee2bd9a::t_191e904a08029b 802-812
+  s_d64d432ee2bd9a::t_6c8418a827e1ee 686,705-706
+  s_d64d432ee2bd9a::t_342ab2600cf12b 665,674,678
+  s_d64d432ee2bd9a::t_277cf168c8d3fa 970-972
+  s_c4380fad56171a::t_1a7cacd3420a28 556
+packages/cli/src/modules/provisioning.ee/role-mapping-rule.controller.ee.ts
+  s_d64d432ee2bd9a::t_36b5f28131764d 99-103
+packages/@n8n/permissions/src/constants.ee.ts
+  s_d64d432ee2bd9a::t_5e9ab917105af1 121
+packages/cli/src/modules/provisioning.ee/role-mapping-rule.service.ee.ts
+  s_d64d432ee2bd9a::t_47a44f8780e557 262-264,266-271
+  s_d64d432ee2bd9a::t_d7c5e402e38b11 265
+  s_d64d432ee2bd9a::t_5c9743bf318a9c 181-191
+packages/cli/src/modules/provisioning.ee/__tests__/role-mapping-rule.controller.ee.test.ts
+  s_d64d432ee2bd9a::t_77f4c507c5e5a6 152-157
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_d64d432ee2bd9a::t_d4f656e56053e0 103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b9c7c8afef1a7646bc2326ede491683ca9739b1d",
+  "prompts": {},
+  "sessions": {
+    "s_c4380fad56171a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4cded8a6-fdd9-4474-92c8-611d255c86bf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    },
+    "s_d64d432ee2bd9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2dd4d14-a5c2-4343-994f-5e116c36149d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

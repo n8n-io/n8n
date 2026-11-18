@@ -1,0 +1,21 @@
+packages/cli/src/eventbus/message-event-bus/event-bus-unsent-message-flush.task.ts
+  s_91a55814de9bfb::t_43f7d421548cd9 1-36
+packages/cli/src/eventbus/message-event-bus/__tests__/event-bus-unsent-message-flush.task.test.ts
+  s_91a55814de9bfb::t_676b1190a59820 27-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "46ac0106c1b0174c17d3c6c3d430d4d3fb0f107e",
+  "prompts": {},
+  "sessions": {
+    "s_91a55814de9bfb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "13032cd9-a2b1-4f00-b33f-176f7c711974",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/test/integration/workflows/teams-trigger-subscription-refused.test.ts
+  s_eaf07a577bcc8d::t_0d713ad5be40bb 43-45,50-54,121,176,191,194,225,236-242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c24c7516e53e75fd86e75f447709c0b177c10423",
+  "prompts": {},
+  "sessions": {
+    "s_eaf07a577bcc8d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53afa069-bfb3-439b-93d4-161825d80123",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

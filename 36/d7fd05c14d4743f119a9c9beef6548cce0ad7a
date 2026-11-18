@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_14bbae78eb49a2::t_3fbac9e30c3078 267-270
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_14bbae78eb49a2::t_3fbac9e30c3078 921-936
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_14bbae78eb49a2::t_3fbac9e30c3078 177,305,314,365,1057
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_14bbae78eb49a2::t_3fbac9e30c3078 262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "36d7fd05c14d4743f119a9c9beef6548cce0ad7a",
+  "prompts": {},
+  "sessions": {
+    "s_14bbae78eb49a2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c2f9-97aa-73d1-bf6a-7b613bf7132f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

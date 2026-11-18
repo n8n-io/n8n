@@ -1,0 +1,45 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  ai_agent 171
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  ai_agent 63-70,73-74,106-110,282-283,340,687-760,1122-1340,1386-1387,1399-1404,1408-1411,1476-1488,1514-1539
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  ai_agent 272-290
+packages/frontend/editor-ui/src/features/agents/components/AgentChatToolSteps.vue
+  ai_agent 58,117,179-188,190
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  ai_agent 1,887,903,955-993
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/displayGroups.ts
+  ai_agent 210-216
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBackgroundJobs.ts
+  ai_agent 25,44-50
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 8115-8124
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTaskCancellation.ts
+  ai_agent 1-101
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  ai_agent 19,73,154-155,191-249,252-267,319-323,479-531,533,535-553,558-560,565-570,573-599,607,788,1098,1482,1487,1493-1501,1508-1521,1573,1577-1584,1605-1666,1737
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatToolSteps.test.ts
+  ai_agent 63,119-147
+packages/frontend/editor-ui/src/features/agents/utils/agent-plan.ts
+  ai_agent 24
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBackgroundJobs.test.ts
+  ai_agent 141-158
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPlan.test.ts
+  ai_agent 31-47,156-187,413-495
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentTaskCancellation.test.ts
+  ai_agent 1-115
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPlan.vue
+  ai_agent 5,11-29,45,56-60,64-68,71-74,78,85-89,95,103,107,122,125-129,135,164-166,170-171,177-183,189-191,195-196,202-208,215,235-252,255-260,331-337,339
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  ai_agent 240-266
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  ai_agent 3,449-473,1858
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMessageQueue.vue
+  ai_agent 176-180,213-216,218,220-233,235-248,250-262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "528b0407f3d0c6980aa0bbcf5b71c226ff14b0ee",
+  "prompts": {}
+}

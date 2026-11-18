@@ -1,0 +1,43 @@
+packages/nodes-base/nodes/Databricks/transport/client.ts
+  s_1f1ec980d9998c::t_a892c01d5d92e8 1-11,19-22,24-26,30,33,36-51
+packages/nodes-base/nodes/Databricks/transport/converters.ts
+  s_1f1ec980d9998c::t_9666875ae7669d 1-34
+packages/nodes-base/nodes/Databricks/transport/core.ts
+  s_1f1ec980d9998c::t_865aa75e84c336 1-151
+packages/nodes-base/nodes/Databricks/transport/index.ts
+  s_1f1ec980d9998c::t_7a993d8e3e0291 1-4,11
+packages/nodes-base/nodes/Databricks/transport/resources/files.ts
+  s_1f1ec980d9998c::t_2e1a2e2eb25f6c 1-98
+packages/nodes-base/nodes/Databricks/transport/resources/genie.ts
+  s_1f1ec980d9998c::t_42f515a5c59baf 1-75
+packages/nodes-base/nodes/Databricks/transport/resources/modelServing.ts
+  s_1f1ec980d9998c::t_f1a8cca427e84b 1-46
+packages/nodes-base/nodes/Databricks/transport/resources/pipelines.ts
+  s_1f1ec980d9998c::t_6bd0c7a221f8af 1-16
+packages/nodes-base/nodes/Databricks/transport/resources/unityCatalog.ts
+  s_1f1ec980d9998c::t_6df2a44e45dd3f 1-103
+packages/nodes-base/nodes/Databricks/transport/resources/vectorSearch.ts
+  s_1f1ec980d9998c::t_74b896ad8a2714 1-33
+packages/nodes-base/nodes/Databricks/transport/types.ts
+  s_1f1ec980d9998c::t_880b2e251c61c0 1-25
+packages/nodes-base/nodes/Databricks/transport/resources/jobs.ts
+  s_1f1ec980d9998c::t_fcbc6cec7d3427 1-108
+packages/nodes-base/nodes/Databricks/transport/resources/sql.ts
+  s_1f1ec980d9998c::t_fc70647fa99373 1-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6f43f8fed52ce594187e946628f6a3cdcbcc7fcb",
+  "prompts": {},
+  "sessions": {
+    "s_1f1ec980d9998c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6ca6cf34-09a9-48ed-b0de-28e10a1d85ba",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

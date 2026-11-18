@@ -1,0 +1,61 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPromptInspiration.test.ts
+  s_1a1d05f52b9356::t_c1b776f460923c 1-103
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_1a1d05f52b9356::t_712b5a551f6d03 58-67
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_1a1d05f52b9356::t_c875c607268e1a 712-719
+  s_1a1d05f52b9356::t_712b5a551f6d03 99,185,709,720,1373
+  s_1a1d05f52b9356::t_eeef50a53144b0 1374
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPromptInspiration.ts
+  s_1a1d05f52b9356::t_c1b776f460923c 1-63
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/AssistantAgentPanelThread.test.ts
+  s_1a1d05f52b9356::t_c875c607268e1a 109-110,112-118
+  s_1a1d05f52b9356::t_60261427ef5333 111
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_1a1d05f52b9356::t_7adcbf6a22cb69 748-755
+  s_1a1d05f52b9356::t_c875c607268e1a 3992-4017
+  s_1a1d05f52b9356::t_a991bbaa814d37 4018-4019
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/InstanceAiChatPanel.vue
+  s_1a1d05f52b9356::t_712b5a551f6d03 101,601,604,710,717
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_1a1d05f52b9356::t_712b5a551f6d03 162,324
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_1a1d05f52b9356::t_712b5a551f6d03 2,3483-3497,3676-3677,3679,3682
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_1a1d05f52b9356::t_cf524e4de12446 483-493
+  s_1a1d05f52b9356::t_c875c607268e1a 435,494-507
+  s_1a1d05f52b9356::t_bc69896354143a 508
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiInput.test.ts
+  s_1a1d05f52b9356::t_c875c607268e1a 283-299
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_1a1d05f52b9356::t_712b5a551f6d03 109,467,481-487,1017
+  s_1a1d05f52b9356::t_c875c607268e1a 83-104
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/AssistantAgentPanelThread.vue
+  s_1a1d05f52b9356::t_712b5a551f6d03 70,239-240,243
+  s_1a1d05f52b9356::t_60261427ef5333 52-64
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/InstanceAiChatPanel.test.ts
+  s_1a1d05f52b9356::t_cf524e4de12446 1005-1010
+  s_1a1d05f52b9356::t_c875c607268e1a 92-93,112-113,194,197,203-205
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiConversation.test.ts
+  s_1a1d05f52b9356::t_7adcbf6a22cb69 165-167
+  s_1a1d05f52b9356::t_c875c607268e1a 14,100,138-164,168-169
+  s_1a1d05f52b9356::t_043822900a2f12 170
+packages/frontend/editor-ui/src/app/constants/durations.ts
+  s_1a1d05f52b9356::t_712b5a551f6d03 69-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6121c8efd5cc5646321e127e1e29f17da07b35b6",
+  "prompts": {},
+  "sessions": {
+    "s_1a1d05f52b9356": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18d73-69b0-7c73-b6c4-f227fd07fe3f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

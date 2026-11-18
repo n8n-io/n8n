@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.ts
+  s_04fffcad4fa449::t_5e14cfc140bfa7 233-237,242,249
+  s_04fffcad4fa449::t_1bf73585f0b8dc 129-133
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.ts
+  s_04fffcad4fa449::t_806851d8a2a8a4 112-114
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.test.ts
+  s_04fffcad4fa449::t_2ec908f6e91382 211-243
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.test.ts
+  s_04fffcad4fa449::t_33ef77f7f93963 38,40-42,44-45,47,50,52
+  s_04fffcad4fa449::t_c81c6ffc7d2898 5,13-15
+  s_04fffcad4fa449::t_b39aae064a42a7 98-105
+  s_04fffcad4fa449::t_9da0a5a10974f4 94-97,106-161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "548979d8a7ce0e61a0423d4df72fb801a1c18e89",
+  "prompts": {},
+  "sessions": {
+    "s_04fffcad4fa449": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25d4fc9b-6cc9-41b7-974b-09cf8a5f5a93",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

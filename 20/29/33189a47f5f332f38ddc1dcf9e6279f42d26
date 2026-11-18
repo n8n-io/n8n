@@ -1,0 +1,77 @@
+packages/cli/test/migration/1791540050944-create-idempotency-key-table.test.ts
+  s_97b2e2a4f3d080::t_652989d97ec234 1-216
+packages/@n8n/db/src/migrations/common/1791540050944-CreateIdempotencyKeyTable.ts
+  s_97b2e2a4f3d080::t_652989d97ec234 1-47
+docs/generated/postgres-schema/README.md
+  s_97b2e2a4f3d080::t_c1b23bdfedcbce 13-14,22,106,130,140,167-168,333-335,363-367,421,461-470,558,1391-1399,1616-1632,1717-1718,1724,1979-1982,1991,1998
+docs/generated/postgres-schema/public.activity_event.md
+  s_97b2e2a4f3d080::t_4a83f089fc0de1 38
+docs/generated/postgres-schema/public.agent_chat_subscriptions.md
+  s_97b2e2a4f3d080::t_0b759941223c30 18
+docs/generated/postgres-schema/public.agent_eval_rating.md
+  s_97b2e2a4f3d080::t_40975268a7df70 88
+docs/generated/postgres-schema/public.agent_eval_result.md
+  s_97b2e2a4f3d080::t_e0986ce6f6c530 22,68
+docs/generated/postgres-schema/public.agent_eval_run.md
+  s_97b2e2a4f3d080::t_d358e617af4871 114
+docs/generated/postgres-schema/public.project.md
+  s_97b2e2a4f3d080::t_ff5feb4a1e1ae4 12,56,227-243,290-293,302
+docs/generated/postgres-schema/public.promotion_provider.md
+  s_97b2e2a4f3d080::t_b32c104466ee6e 13,21
+docs/generated/postgres-schema/public.trusted_source.md
+  s_97b2e2a4f3d080::t_83d4d0f254d6f2 10-11,17,58-59,65
+docs/generated/postgres-schema/public.trusted_source_identity.md
+  s_97b2e2a4f3d080::t_0ba040480fee97 60-61,67
+docs/generated/postgres-schema/public.user.md
+  s_97b2e2a4f3d080::t_fe6a2dde854476 11,69-70,77-78,92,320-328,384-400,489-492,501,506-514
+docs/generated/postgres-schema/public.workflow_entity.md
+  s_97b2e2a4f3d080::t_ac918008eaa980 12,78,81,242-250,267-283,377-380,389
+docs/generated/postgres-schema/public.workflow_suggestion.md
+  s_97b2e2a4f3d080::t_b70c2a6d6b9254 7-10,16,19,28,30,42,63,69-72,81,103-119,122
+docs/generated/postgres-schema/public.workflow_suggestion_activity.md
+  s_97b2e2a4f3d080::t_fc82b1a0209fc4 8,22,36,44,49,56-72,74-77,86
+docs/generated/sqlite-schema/README.md
+  s_97b2e2a4f3d080::t_4652a6ad7ce2bb 13-14,22,106,130,140,166-167,315-317,345-349,405-407,447-456,544,1377-1385,1602-1618,1705-1706,1712,1959-1962,1971,1978
+docs/generated/sqlite-schema/activity_event.md
+  s_97b2e2a4f3d080::t_6f3b15a4a3d2fd 43
+docs/generated/sqlite-schema/agent_chat_subscriptions.md
+  s_97b2e2a4f3d080::t_8b381190e345ca 9,29
+docs/generated/sqlite-schema/agent_eval_rating.md
+  s_97b2e2a4f3d080::t_ee6893046bce35 95
+docs/generated/sqlite-schema/agent_eval_result.md
+  s_97b2e2a4f3d080::t_de3142f86b4086 9,33,75
+docs/generated/sqlite-schema/agent_eval_run.md
+  s_97b2e2a4f3d080::t_0b74139652ad8c 120
+docs/generated/sqlite-schema/project.md
+  s_97b2e2a4f3d080::t_a4ccb5ae6f3d29 23,62,233-249,296-299,308
+docs/generated/sqlite-schema/promotion_provider.md
+  s_97b2e2a4f3d080::t_f59ecbe4c9ed55 9,31-32
+docs/generated/sqlite-schema/trusted_source.md
+  s_97b2e2a4f3d080::t_c5214231a27093 9,21-22,28,60-61,67
+docs/generated/sqlite-schema/trusted_source_identity.md
+  s_97b2e2a4f3d080::t_ceb84a909c8399 66-67,73
+docs/generated/sqlite-schema/user.md
+  s_97b2e2a4f3d080::t_efa14438f29680 22,75-76,83-84,98,326-334,390-406,495-498,507,512-520
+docs/generated/sqlite-schema/workflow_entity.md
+  s_97b2e2a4f3d080::t_12ca17c92c767e 23,77,80,241-249,266-282,368-371,380
+docs/generated/sqlite-schema/workflow_suggestion.md
+  s_97b2e2a4f3d080::t_78e0564c0ab8b2 9,18-21,27,30,39-43,45,65,71-74,83,105-121,124
+docs/generated/sqlite-schema/workflow_suggestion_activity.md
+  s_97b2e2a4f3d080::t_ed62c9432903c0 9,19,30-33,42,50,55,62-78,80-83,92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "202933189a47f5f332f38ddc1dcf9e6279f42d26",
+  "prompts": {},
+  "sessions": {
+    "s_97b2e2a4f3d080": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ac7b07c7-7d74-41fb-80d6-220b6bac9b5a",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

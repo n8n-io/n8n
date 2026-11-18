@@ -1,0 +1,147 @@
+packages/nodes-base/utils/microsoft/test/transport.test.ts
+  s_2e1fa95fc44f8f::t_f950fad849c579 702
+  s_2e1fa95fc44f8f::t_f5a50583aceee7 720,722,727-747,932,935
+  s_2e1fa95fc44f8f::t_5468c645eafda1 2,118,124,136,150,177,191,204,214,222,228,251,258,266,268,278,283,326,362,374,399,412,432,590,602,615,617-618,631,647,662,721,773,799,826,847,862,877,901,911,931,933-934,956-957
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/onlineMeeting/attendees.test.ts
+  s_2e1fa95fc44f8f::t_8101067785a2ee 96
+  s_2e1fa95fc44f8f::t_eae6fd172c757c 10,35,55-56,145-150,173-184,199,344,438-439,472,512
+packages/nodes-base/utils/microsoft/transport.ts
+  s_2e1fa95fc44f8f::t_e0bdf826a56afc 313,319,326
+  s_2e1fa95fc44f8f::t_6078109371bcf7 145,147-148,150-153
+  s_2e1fa95fc44f8f::t_237f06c3458e86 12-17
+  s_2e1fa95fc44f8f::t_aa551f888708e9 138-140
+  s_2e1fa95fc44f8f::t_d396b20b4d6734 10
+  s_2e1fa95fc44f8f::t_616aef3fdc6a4c 9
+  s_2e1fa95fc44f8f::t_1b542da6143dd8 149
+  s_2e1fa95fc44f8f::t_7f98cbe3bdd720 298
+  s_2e1fa95fc44f8f::t_e382156bf5e18b 127-134
+  s_2e1fa95fc44f8f::t_516905adb8d1b9 11
+  s_7cfdda65c751ad::t_f17af1c11f00db 219,221,425
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/create.perItem.test.ts
+  s_2e1fa95fc44f8f::t_8101067785a2ee 292
+  s_2e1fa95fc44f8f::t_4eef3bef367726 2,22-23,121,157,210-213,254-257,271-272,293
+packages/nodes-base/nodes/Microsoft/Teams/test/trigger/MicrosoftTeamTrigger.test.ts
+  s_2e1fa95fc44f8f::t_517e3ff1f29fe3 1,118,180
+packages/nodes-base/nodes/Microsoft/Teams/test/trigger/utiles-trigger.test.ts
+  s_2e1fa95fc44f8f::t_6fbdd957b9b432 3,58,89,154
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/activityNotification/send.error.test.ts
+  s_2e1fa95fc44f8f::t_04480d6422e296 7,32
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/activityNotification/send.validation.test.ts
+  s_2e1fa95fc44f8f::t_be47be6d3121fe 2,21,78
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/messageActions.validation.test.ts
+  s_2e1fa95fc44f8f::t_4f3e1de95355bf 2,23,30,73-76,87
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chat/create.validation.test.ts
+  s_2e1fa95fc44f8f::t_376572cf1dfb58 6,8,55-56,122,224-229
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chat/getAll.clamp.test.ts
+  s_2e1fa95fc44f8f::t_1609c3a1cd018d 2,66
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chatMember/add.body.test.ts
+  s_2e1fa95fc44f8f::t_f6e8582b9dcae6 3,69-78,90-99,116,126-134,149-157,176-184,202-210
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chatMessage/messageActions.validation.test.ts
+  s_2e1fa95fc44f8f::t_0318068509e7fc 2,27,33-39
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chatMessage/sendAndWait.test.ts
+  s_2e1fa95fc44f8f::t_6abe4a3ec90db9 3-8,67
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/onlineMeeting/createOrGet.validation.test.ts
+  s_2e1fa95fc44f8f::t_8b3c7bc06dad9d 4,21
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/onlineMeeting/get.validation.test.ts
+  s_2e1fa95fc44f8f::t_cbf1cc4cb44831 4,54,76,132
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/onlineMeeting/servicePrincipal.test.ts
+  s_2e1fa95fc44f8f::t_c70b8c292849db 4,24,63-70,75,139,158,173,260,283-284,316
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/onlineMeeting/update.validation.test.ts
+  s_2e1fa95fc44f8f::t_dfa63c8e1eeb7f 4,22,108
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/servicePrincipal.test.ts
+  s_2e1fa95fc44f8f::t_d681be80dbcf03 9,176,178-179,207,247,337,393
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/task/getAll.memberMode.test.ts
+  s_2e1fa95fc44f8f::t_0d364fffaf126e 5,71,75
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/utils.test.ts
+  s_2e1fa95fc44f8f::t_655c2b71a4b046 9,273,287,300-305,340,418,523,593,601-606,624-627
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/onlineMeeting/shared.ts
+  s_2e1fa95fc44f8f::t_cb16d090effc53 2-7,95,122,125-128,139
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/task/getAll.operation.ts
+  s_2e1fa95fc44f8f::t_9363690851fd6d 2,94-96,102,112
+packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/utils.ts
+  s_2e1fa95fc44f8f::t_8bb31111650df1 8-13,107,247
+packages/nodes-base/nodes/Microsoft/Teams/v2/methods/listSearch.ts
+  s_2e1fa95fc44f8f::t_ee928f47452d13 3,68-76,192
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/methods/getTags.test.ts
+  s_2e1fa95fc44f8f::t_73d215d3c16a74 6,66-70
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/methods/listSearch.test.ts
+  s_2e1fa95fc44f8f::t_0ce14815505540 1-7,108,273,291,308,324,428
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/transport/index.test.ts
+  s_2e1fa95fc44f8f::t_fc8162cf68f5f8 53,59,131-133,135,179
+packages/nodes-base/nodes/Microsoft/Teams/v2/transport/index.ts
+  s_2e1fa95fc44f8f::t_beecfd4d13509a 1-7,60,62-63
+packages/nodes-base/nodes/Microsoft/Teams/MicrosoftTeamsTrigger.node.ts
+  s_db455c2703d3f2::t_793923647ce9b6 13,365,458
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chat/create.group.test.ts
+  s_110005f762b90a::t_379f8fbc54209e 26,56
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chat/create.oneOnOne.test.ts
+  s_110005f762b90a::t_3d9a0ce0fc2266 18
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/activityNotification/shared.ts
+  s_1e40aa4fd40693::t_a6c6e8f1fb9c52 1-2,33,36
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chat/create.operation.ts
+  s_1e40aa4fd40693::t_1de43a3b4358ec 6,157,259
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chat/getAll.operation.ts
+  s_1e40aa4fd40693::t_43584d9d02a42f 2,49
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chatMessage/messageActions.ts
+  s_1e40aa4fd40693::t_ebec302b4df878 2,26
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/task/create.operation.ts
+  s_1e40aa4fd40693::t_dbb81a3cb2bbbf 3,137
+packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/utils-trigger.ts
+  s_c188bef911fee8::t_b5db937492e38f 3,65,129,146,186,204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1676233679bc764a56a203fbbdc60c7535044d3f",
+  "prompts": {},
+  "sessions": {
+    "s_110005f762b90a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a004a1c7a9419a27f",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_1e40aa4fd40693": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a8ad62b5b0ae7c207",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_7cfdda65c751ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9defdf3b8c9471ba",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_c188bef911fee8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a8d07fd80c4321377",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_db455c2703d3f2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a11e59ca0dc1c2ac2",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

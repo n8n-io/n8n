@@ -1,0 +1,51 @@
+packages/cli/src/modules/agents/__tests__/agent-document.test.ts
+  s_dfe3f914c8bb46::t_13f7ade6ecff40 1-2,34-81
+  s_dfe3f914c8bb46::t_bd8972ac3ebb64 82-83
+packages/@n8n/api-types/src/agents/agent-hitl.schema.ts
+  s_dfe3f914c8bb46::t_13f7ade6ecff40 2,15-16,19,69-74
+  s_dfe3f914c8bb46::t_1f0a5900e9fac4 75
+packages/cli/src/modules/agents/approval/agent-decision-workflow.service.ts
+  s_dfe3f914c8bb46::t_d5b5a7e4c3f238 2,89,93
+  s_dfe3f914c8bb46::t_1ef42708de94ad 292
+packages/frontend/editor-ui/src/features/agents/components/AgentHitlConfigurationModal.vue
+  s_dfe3f914c8bb46::t_d5b5a7e4c3f238 54-55,124-150
+  s_dfe3f914c8bb46::t_7867ddfac20bce 151-153,330
+packages/@n8n/api-types/src/agents/__tests__/agent-hitl.schema.test.ts
+  s_dfe3f914c8bb46::t_2bca2bb41d226d 33,39-52
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_dfe3f914c8bb46::t_a9e4b8ce342423 485
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_dfe3f914c8bb46::t_65033a9a5499c8 193,198-200,215-225,236
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_dfe3f914c8bb46::t_7cfc05d23516dd 376,416
+packages/cli/src/modules/agents/approval/SPIKE.md
+  s_dfe3f914c8bb46::t_613f24b0dc2b3d 1,8,22,25-34
+packages/cli/src/modules/agents/approval/__tests__/agent-decision-workflow.service.test.ts
+  s_dfe3f914c8bb46::t_c4ace45c959928 403,406-411,436-441,443-444,476,490-491,521,558-572
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dfe3f914c8bb46::t_72efdba84cb2f4 2,7,23,30-33,47-48,50
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentApprovalRouteSelect.test.ts
+  s_dfe3f914c8bb46::t_b7810404a669ed 56,59-60,66,68-71,83-85,88,95,101,109,113,133
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlConfigurationModal.test.ts
+  s_dfe3f914c8bb46::t_1c0b4d362669e4 3,316,319-321,455,460,471-559
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_dfe3f914c8bb46::t_21c92c6bf5a79c 494,496,498-499,501-502,504-514,519,521,525
+packages/frontend/editor-ui/src/features/agents/components/AgentApprovalRouteSelect.vue
+  s_dfe3f914c8bb46::t_16900bdbb9f89a 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ecdcfb3dd5ddd11378e9513c8a67128ec91bb22c",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

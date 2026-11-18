@@ -1,0 +1,97 @@
+packages/@n8n/telemetry/src/events/credentials.ts
+  s_5f5efe371ad2e2::t_e0c880a2abcaff 4,48
+packages/@n8n/telemetry/src/events/workflow.ts
+  s_5f5efe371ad2e2::t_8308daa5e1b331 4,110
+packages/@n8n/telemetry/src/schemas.ts
+  s_5f5efe371ad2e2::t_319eddf709e08e 6-11
+packages/cli/src/events/__tests__/activity-event-relay.test.ts
+  s_5f5efe371ad2e2::t_1beb3e5f62979f 477
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_5f5efe371ad2e2::t_c81fb9702bf51f 1460,1473,1490,2157,2183
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_5f5efe371ad2e2::t_514b9c73c9843e 595,600,610,666,674,687,713,720,732,2029,2037,2050,2059,2222-2234,2236,2263,2872,2886,3046,3057
+packages/cli/src/events/maps/relay.event-map.ts
+  s_5f5efe371ad2e2::t_5f2dc4e7e86a13 58,152,210,216,222,228,239,247,354,364,418,424,429,434,439,444,449,454,459,490,499,504,510,537,550,602,619,852,872,881
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_5f5efe371ad2e2::t_644e454f1815b6 807,840,855-862
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_5f5efe371ad2e2::t_e9c0c3ee56d2c7 63,215-224,550,590,608,1125,1134,1144,1237,1549,1565,1577,1585,1656,1675,1881,2523,2530,2537,2544,2554,2561,2571,2581,2615,2640,2702,2714
+packages/cli/src/modules/source-control.ee/__tests__/source-control-status.service.test.ts
+  s_5f5efe371ad2e2::t_f6fa57446f122a 896,909,914,919,923,936,941,946
+packages/cli/src/modules/source-control.ee/__tests__/source-control.service.test.ts
+  s_5f5efe371ad2e2::t_b1fa6c96fe29a7 687-703
+packages/cli/src/modules/source-control.ee/source-control-status.service.ee.ts
+  s_5f5efe371ad2e2::t_626b54ee6d8d0d 199
+packages/cli/src/modules/source-control.ee/source-control.service.ee.ts
+  s_5f5efe371ad2e2::t_69661057d9b7a4 15,315,322,336,342,381,395,519,533,536,543,551
+packages/cli/src/modules/source-control.ee/types/source-control-get-status.ts
+  s_5f5efe371ad2e2::t_a1a6c504edf588 4-5,65,75-76
+packages/cli/src/public-api/public-api-client.ts
+  s_5f5efe371ad2e2::t_51b936c0d47a85 2,6-17
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_5f5efe371ad2e2::t_13638dadc5df98 47,352-355,365
+packages/cli/src/public-api/v1/controllers/__tests__/users.public.controller.test.ts
+  s_5f5efe371ad2e2::t_1f85ae118a6193 4,9,20-23,90,160
+packages/cli/src/public-api/v1/controllers/__tests__/workflows.public.controller.test.ts
+  s_5f5efe371ad2e2::t_c65e41af37e2d6 7,34
+packages/cli/src/public-api/v1/controllers/credentials.public.controller.ts
+  s_5f5efe371ad2e2::t_9dcb8a7120cba0 63,220,253
+packages/cli/src/public-api/v1/controllers/executions.public.controller.ts
+  s_5f5efe371ad2e2::t_6e4cee3cf7ebb5 54,111,160,177,218,399,423
+packages/cli/src/public-api/v1/controllers/projects.public.controller.ts
+  s_5f5efe371ad2e2::t_0cc6e64f92270a 47,163,168-170,217,224-229
+packages/cli/src/public-api/v1/controllers/source-control.public.controller.ts
+  s_5f5efe371ad2e2::t_a956587d7b313b 34,57,71,98,115,146,158-162
+packages/cli/src/public-api/v1/controllers/users.public.controller.ts
+  s_5f5efe371ad2e2::t_3d525ca27cebeb 14,43,88,109,127,141,154,158,169,174,186,191
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_5f5efe371ad2e2::t_193418e87160b9 84,248,287,331,344,365,387,426,447,477,481-485,507,511-515,534,538-542,655,665,682,688,711,729,793,820,929,944
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_5f5efe371ad2e2::t_007991d2814566 197-201,215-219,238-246,254,269-276,286,304-308
+packages/cli/src/services/__tests__/user.service.test.ts
+  s_5f5efe371ad2e2::t_a9b052cb64dd60 977-981,1050-1054
+packages/cli/src/services/project.service.ee.ts
+  s_5f5efe371ad2e2::t_3b66c062892878 42,150-153,225,617,624,644-654,685,750
+packages/cli/src/services/user.service.ts
+  s_5f5efe371ad2e2::t_19da6bc5b74bb5 57,238,276,290,299,321,376,560,605,619-624,706,737,749-754,790
+packages/cli/src/user-management/email/__tests__/user-management-mailer.test.ts
+  s_5f5efe371ad2e2::t_3243527ba92318 1,72,78,369,390,394-398
+packages/cli/src/user-management/email/user-management-mailer.ts
+  s_5f5efe371ad2e2::t_d049b10acc3439 25,275,283,313,324,425,430,458
+packages/cli/src/workflows/__tests__/workflow-creation.service.test.ts
+  s_5f5efe371ad2e2::t_15a84d252e5b4f 254,1151
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_5f5efe371ad2e2::t_4a5748cda64cc8 31,156
+packages/cli/src/workflows/workflow.service.ts
+  s_5f5efe371ad2e2::t_85ca8c9edf5638 97,134,1013,1023,1070,1133,1200,1205,1414,1466,1475,1479,1745,1854,1915,1950-1955,1958-1963,1966-1970,1972
+packages/cli/test/integration/project.service.integration.test.ts
+  s_5f5efe371ad2e2::t_52d6fcd4d424dd 229-233,252-256,494-498
+packages/cli/test/integration/public-api/projects.test.ts
+  s_5f5efe371ad2e2::t_16b52f91002f9c 4,24,495,514-517,1157-1158,1169-1175
+packages/cli/test/integration/public-api/source-control.test.ts
+  s_5f5efe371ad2e2::t_a75c166c6b566a 119-123,347,379,536,600
+packages/cli/test/integration/public-api/users.test.ts
+  s_5f5efe371ad2e2::t_45fe8e4d82a390 1,4,290,295-299,358-359,364-372,485,493-497
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_5f5efe371ad2e2::t_4231338f8949a1 1,1609,1614-1616,1620,1677,1682-1686,1917,1922-1926
+packages/cli/test/integration/services/project.service.test.ts
+  s_5f5efe371ad2e2::t_96c81427cfd7b3 300-304,332-336
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_5f5efe371ad2e2::t_15fa4f2d3c2a04 297,315,322-326,357,384,389-390
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a5a76d3c729681031941112dd563fad890368c5a",
+  "prompts": {},
+  "sessions": {
+    "s_5f5efe371ad2e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea9eb03b-1625-4e8a-aa9d-f5838b441133",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,71 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBackgroundJobs.test.ts
+  s_82789c69de1855::t_d229d7a0c82ba4 177-199
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTaskCancellation.ts
+  s_82789c69de1855::t_d229d7a0c82ba4 1-123
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_82789c69de1855::t_d229d7a0c82ba4 3001-3048,4100-4125
+packages/frontend/editor-ui/src/features/agents/__tests__/agent-plan.test.ts
+  s_82789c69de1855::t_b85d66d12df70c 3
+  s_82789c69de1855::t_d229d7a0c82ba4 57-60,164-229
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_82789c69de1855::t_d229d7a0c82ba4 3-10,14,16,78,89-90,194,199,239,624,852-880,911-918,1017-1019,1123-1135
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_82789c69de1855::t_d229d7a0c82ba4 51,150-251,488-503
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPlan.ts
+  s_82789c69de1855::t_d229d7a0c82ba4 1-76
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_82789c69de1855::t_d229d7a0c82ba4 1,3,1015,1031,1083-1121
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPlan.test.ts
+  s_82789c69de1855::t_d229d7a0c82ba4 14-15,21-80,92-126,139,145-146,163-213,310-341,354-356,368,435,542,573,578-680
+packages/frontend/editor-ui/src/features/agents/utils/agent-plan.ts
+  s_82789c69de1855::t_d229d7a0c82ba4 17,19-23,34-35,73-83,219-220
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_82789c69de1855::t_d229d7a0c82ba4 163
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_82789c69de1855::t_d229d7a0c82ba4 69,90-91,253,283-353,562-634,639-641,646-651,654-685,693,877-920,922-926,1713-1715,1724-1761,1844,1849,1855,1862-1875,1946-1955,2243-2251
+  s_82789c69de1855::t_b85d66d12df70c 1695
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentPlan.test.ts
+  s_82789c69de1855::t_d229d7a0c82ba4 1-131
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_82789c69de1855::t_d229d7a0c82ba4 353-402
+packages/frontend/editor-ui/src/features/agents/__tests__/fixtures/agent-plan.ts
+  s_82789c69de1855::t_d229d7a0c82ba4 1,27,48-66
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_82789c69de1855::t_d229d7a0c82ba4 24,80-101,137-140,303,311,412-413,1183-1219,1607-1911,1915,1920,1936,1939,1953,1959-1960,1972-1980,1984,1989,1997,1999,2003-2005,2055-2067,2086,2093-2107,2405-2433,2473-2493
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_82789c69de1855::t_d229d7a0c82ba4 368
+packages/frontend/editor-ui/src/features/agents/components/AgentChatToolSteps.vue
+  s_82789c69de1855::t_d229d7a0c82ba4 64,125,192-201,203
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_82789c69de1855::t_d229d7a0c82ba4 8738-8748,8753
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatToolSteps.test.ts
+  s_82789c69de1855::t_d229d7a0c82ba4 103,173-199
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/displayGroups.ts
+  s_82789c69de1855::t_d229d7a0c82ba4 146,241-247
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentTaskCancellation.test.ts
+  s_82789c69de1855::t_d229d7a0c82ba4 1-185
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_82789c69de1855::t_d229d7a0c82ba4 609,618,657,928,1074,1086,1318-1321,1329,1356,1497,1503,1513,1595-1606,1991
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBackgroundJobs.ts
+  s_82789c69de1855::t_d229d7a0c82ba4 47-51
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_82789c69de1855::t_d229d7a0c82ba4 322
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPlan.vue
+  s_82789c69de1855::t_d229d7a0c82ba4 8-9,20-37,44-45,49-58,70-71,82-90,94-98,101-109,113-117,119,122,130,135,138,143-151,225-227,230-232,241,244,264-266,269-271,279,282,293-332,347-350,354-365
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cbb573c2acc6ea89a3f8dd6ef63f581f90860bf4",
+  "prompts": {},
+  "sessions": {
+    "s_82789c69de1855": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159bb-d082-7922-91e3-bcc90434d8c6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/CustomerIo/CustomerIo.node.ts
+  s_2e1fa95fc44f8f::t_d563842165e4c1 14,23-24,85,155,197,205,209,221,262
+packages/nodes-base/nodes/CustomerIo/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_31cedfb08c60a8 11,40-42
+packages/nodes-base/nodes/CustomerIo/test/CustomerIo.node.test.ts
+  s_2e1fa95fc44f8f::t_855e3b3f4333aa 1-45
+packages/nodes-base/nodes/CustomerIo/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_58148e6390b157 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8f7a8ec124cddc5b1298e01fdaa27852d29b8616",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

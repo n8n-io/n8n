@@ -1,0 +1,33 @@
+packages/cli/src/modules/promotions.ee/branch-placement.ts
+  s_2635341d65672f::t_7bc622130c1cf2 42,75
+  s_2635341d65672f::t_a5c3998a2f4cea 5-7,9
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_2635341d65672f::t_37f78c2ffe6926 887-923
+  s_2635341d65672f::t_1f3e18e6e952e8 30,179,188,199,203,209,219,231,239,248,259,272,280,288,296,304,456,1129
+  s_2635341d65672f::t_4b7af8d6fc5384 1014
+  s_2635341d65672f::t_51a7338d1844c4 980
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_2635341d65672f::t_a7dfe3123f7997 364-368
+  s_2635341d65672f::t_1666a1a1fa6e90 16,31,100,106,112,149,161,219,245,282,382
+  s_2635341d65672f::t_78e2779764600b 279-281
+  s_2635341d65672f::t_9b364e3a514986 429-430,439,443-446,454-456,458-460,463-464,467,472-473
+  s_2635341d65672f::t_6e778e5a45680c 431-437,442,457,466,468-469
+  s_2635341d65672f::t_0ba1cd89e27e02 315
+  s_2635341d65672f::t_6dd677dd1c2e9a 312-314,316-317,322-323
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d2a36d0581f277696756a1c7ff281e8a86aab1be",
+  "prompts": {},
+  "sessions": {
+    "s_2635341d65672f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "adaa899d-c18d-4ff6-ac9a-5ffa8b01a628",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

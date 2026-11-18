@@ -1,0 +1,25 @@
+.agents/skills/nathan/SKILL.md
+  s_08c8f2d6047d07::t_272c616afd0dc7 16
+  s_08c8f2d6047d07::t_c25a77ef1b128d 17-20
+scripts/nathan.mjs
+  s_08c8f2d6047d07::t_72ee24254ce043 17,206-207,209-211,215-222,225,245
+  s_08c8f2d6047d07::t_2253de54aa81b5 41,231-232,236-241,253-254
+  s_08c8f2d6047d07::t_018ac1d798d093 233,235
+  s_08c8f2d6047d07::t_35e34ad12e68d9 213-214,223-224,226-228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "03b588dd6a5e0074c5b778d57043fa81ecf0da93",
+  "prompts": {},
+  "sessions": {
+    "s_08c8f2d6047d07": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f320abed8ffeBT8IGYUgD8SGLm",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

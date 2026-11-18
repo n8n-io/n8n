@@ -1,0 +1,25 @@
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  h_c63dce324dfc7b 2165-2167,2213-2215
+  s_e9c529bc021bde::t_d0c52a4867bc22 75-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "b33c12cf852badcaf2e18c33ccb0c2b14e910ed6",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e9c529bc021bde": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae9416bc-e70f-42cb-b97a-2550e15ac748",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

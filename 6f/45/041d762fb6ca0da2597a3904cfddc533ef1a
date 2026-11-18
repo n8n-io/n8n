@@ -1,0 +1,91 @@
+packages/frontend/@n8n/chat/package.json
+  s_1fbc71f79b33c2::t_3b9eae78b20a8c 16-17,75
+packages/frontend/editor-ui/package.json
+  s_1fbc71f79b33c2::t_3b9eae78b20a8c 15-16,172
+pnpm-workspace.yaml
+  s_1fbc71f79b33c2::t_a74afc8256c484 248
+packages/frontend/editor-ui/vize.config.ts
+  s_1fbc71f79b33c2::t_d0933a46d84f19 4-8,10-27
+  s_1fbc71f79b33c2::t_8dcee6de1b60dd 9
+  s_1fbc71f79b33c2::t_3449ec1668f7d1 1-3
+packages/quality/policy/code-health/src/rules/lint-config-layering.rule.test.ts
+  s_1fbc71f79b33c2::t_0258e3ee90717e 135
+packages/@n8n/mcp-browser-extension/package.json
+  s_1fbc71f79b33c2::t_3b9eae78b20a8c 12-13,39-40
+packages/modules/insights/frontend/package.json
+  s_1fbc71f79b33c2::t_3b9eae78b20a8c 16-17,71
+packages/modules/type-availability-policies/frontend/package.json
+  s_1fbc71f79b33c2::t_3b9eae78b20a8c 16-17,54
+packages/@n8n/oxlint-config/src/configs/vue.ts
+  s_1fbc71f79b33c2::t_a499048328b3ef 10,12-13,17
+packages/@n8n/module-cli/src/frontend.mjs
+  s_1fbc71f79b33c2::t_52fc15f454f5d3 47
+packages/modules/otel/frontend/package.json
+  s_1fbc71f79b33c2::t_3b9eae78b20a8c 15-16,58
+packages/@n8n/mcp-apps/package.json
+  s_1fbc71f79b33c2::t_3b9eae78b20a8c 31-32,66
+scripts/lint-parity/oxlint-gap.json
+  s_1fbc71f79b33c2::t_dd79534544e951 49,59
+packages/@n8n/oxlint-config/src/configs/vize.ts
+  s_1fbc71f79b33c2::t_8dcee6de1b60dd 12,19,84
+  s_1fbc71f79b33c2::t_66881c556760bd 2-11,13-18,20-83,85-86
+  s_1fbc71f79b33c2::t_c039e2ec1b41b7 1
+packages/frontend/@n8n/design-system/vize.config.ts
+  s_1fbc71f79b33c2::t_622c7cc23d1c73 4-13
+  s_1fbc71f79b33c2::t_ca2e28ad435c68 1-3
+packages/@n8n/module-cli/src/templates/frontend/vize.config.ts.template
+  s_1fbc71f79b33c2::t_52fc15f454f5d3 1-4
+packages/@n8n/module-cli/frontend-module-guide.md
+  s_1fbc71f79b33c2::t_dd79534544e951 114-115,602
+packages/frontend/@n8n/design-system/package.json
+  s_1fbc71f79b33c2::t_3b9eae78b20a8c 48-49,91
+packages/extensions/insights/package.json
+  s_1fbc71f79b33c2::t_3b9eae78b20a8c 34-35,65
+packages/frontend/editor-ui/oxlint.config.mts
+  s_1fbc71f79b33c2::t_344ed0a673b2ce 7-8
+AGENTS.md
+  s_1fbc71f79b33c2::t_dd79534544e951 263-268
+packages/@n8n/oxlint-config/package.json
+  s_1fbc71f79b33c2::t_a74afc8256c484 23-26,62
+packages/@n8n/module-cli/src/frontend.test.mjs
+  s_1fbc71f79b33c2::t_52fc15f454f5d3 112
+scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md
+  s_1fbc71f79b33c2::t_dd79534544e951 3,80,82-83,87,91-93,96-98,102-103,143
+packages/@n8n/mcp-apps/eslint.config.mjs
+  s_1fbc71f79b33c2::t_772219ab87d49d 6
+  s_1fbc71f79b33c2::t_c6218a59abb41a 7-12
+packages/@n8n/module-cli/src/templates/frontend/package.json.template
+  s_1fbc71f79b33c2::t_52fc15f454f5d3 15-16,56
+packages/@n8n/mcp-apps/vize.config.ts
+  s_1fbc71f79b33c2::t_45fa3d807e2fa6 1-4
+packages/@n8n/mcp-browser-extension/vize.config.ts
+  s_1fbc71f79b33c2::t_ec018cdd426854 1-4
+packages/extensions/insights/vize.config.ts
+  s_1fbc71f79b33c2::t_923cdb7c018d65 1-4
+packages/frontend/@n8n/chat/vize.config.ts
+  s_1fbc71f79b33c2::t_cd18df7476dc34 1-4
+packages/modules/insights/frontend/vize.config.ts
+  s_1fbc71f79b33c2::t_b14856ec365969 1-4
+packages/modules/otel/frontend/vize.config.ts
+  s_1fbc71f79b33c2::t_5e589b9d8e4655 1-4
+packages/modules/type-availability-policies/frontend/vize.config.ts
+  s_1fbc71f79b33c2::t_c9eefec35b7f54 1-4
+pnpm-lock.yaml
+  s_1fbc71f79b33c2::t_19a627fd994253 779-781,3430-3432,3570-3572,4090,4092,5620-5622,5726-5728,6040-6042,7030-7032,7226-7228,7402-7404,7502-7504,12713-12834,15709-15712,21615-21617,24561-24573,30880-30936,33967-33977,41245,41247-41265,44910-44935
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6f45041d762fb6ca0da2597a3904cfddc533ef1a",
+  "prompts": {},
+  "sessions": {
+    "s_1fbc71f79b33c2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c988040-403b-424c-802c-d40c9ab5ecf3",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

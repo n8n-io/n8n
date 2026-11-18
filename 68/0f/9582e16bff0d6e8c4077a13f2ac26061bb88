@@ -1,0 +1,32 @@
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-task-handler.ts
+  s_cc52d4d80ec002::t_5746233ba8b5c0 76-80
+  ai_agent 230
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-task-handler.test.ts
+  s_cc52d4d80ec002::t_5746233ba8b5c0 49,159,172,187,209,220,231,240,249-250,253-254,256-260,265,275,288-290,304,320,365,387,398,418,447,462,483,503,520,530,551,564,595,610,629,640,654,671,686,702,716,732,742,751,764
+  ai_agent 312-314
+  s_5614fe25678684::t_a3ed42b5520789 513,584
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "680f9582e16bff0d6e8c4077a13f2ac26061bb88",
+  "prompts": {},
+  "sessions": {
+    "s_5614fe25678684": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fd0a-cb45-7481-96f9-d72826656d72",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_cc52d4d80ec002": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14df1071-d247-4331-af4e-4ce488ddaae0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

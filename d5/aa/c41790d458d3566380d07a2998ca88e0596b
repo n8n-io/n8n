@@ -1,0 +1,23 @@
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-selection-request.dto.test.ts
+  s_8631ec10eb1199::t_3c6a04926d74f1 5
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_8631ec10eb1199::t_3c6a04926d74f1 5
+packages/@n8n/api-types/src/dto/packages/__tests__/with-package-file.ts
+  s_8631ec10eb1199::t_b7b32c85732724 1-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d5aac41790d458d3566380d07a2998ca88e0596b",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

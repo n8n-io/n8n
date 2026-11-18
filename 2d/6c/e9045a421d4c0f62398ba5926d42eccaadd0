@@ -1,0 +1,19 @@
+packages/@n8n/cli/src/__tests__/package-import.test.ts
+  s_71ad2034164515::t_014031d9d5c8fe 141,150,154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d6ce9045a421d4c0f62398ba5926d42eccaadd0",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

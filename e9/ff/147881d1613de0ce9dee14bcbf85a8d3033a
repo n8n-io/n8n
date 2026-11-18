@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupCard.test.ts
+  s_e5eb138ee1927f::t_8d6c4716bcf0cf 144,149,155-158
+packages/@n8n/instance-ai/skills/post-build-flow/SKILL.md
+  s_e5eb138ee1927f::t_92b205f97e07e0 79-89,91-93,96,117-118
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  ai_agent 94
+packages/nodes-base/credentials/HttpTemplatedCustomAuth.credentials.ts
+  s_e5eb138ee1927f::t_f8e0331a173e3e 31,47-48,59-67,73-76
+  s_e5eb138ee1927f::t_0ba1daaa3dc53f 36-37,40
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupCard.vue
+  s_e5eb138ee1927f::t_d5559a481345e9 51-56,62-68,70,109-115
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_e5eb138ee1927f::t_5dd01d3789f578 274-279,532-539,695-701
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e9ff147881d1613de0ce9dee14bcbf85a8d3033a",
+  "prompts": {},
+  "sessions": {
+    "s_e5eb138ee1927f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87369f71-7cd7-4171-b908-682eacaab3f4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_1747720b27f70c::t_406468d0810a00 1192-1219
+packages/@n8n/db/src/repositories/shared-workflow.repository.ts
+  s_1747720b27f70c::t_3fff7af35aa302 31,41
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-remover.ts
+  s_1747720b27f70c::t_3fff7af35aa302 111,115
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-remover.test.ts
+  s_1747720b27f70c::t_114a5b1db8e4d1 24,26-29,297,328,386-409
+  s_1747720b27f70c::t_3f69c2df58aba0 410
+packages/cli/src/modules/n8n-packages/__tests__/import-package-selection.integration.test.ts
+  s_1747720b27f70c::t_114a5b1db8e4d1 591-616
+packages/cli/test/integration/workflows/workflow-finder.service.test.ts
+  s_1747720b27f70c::t_114a5b1db8e4d1 64-83
+packages/@n8n/cli/docs/commands/package.md
+  s_1747720b27f70c::t_0cbdca1297700c 157,170
+packages/@n8n/db/src/repositories/__tests__/shared-workflow.repository.test.ts
+  s_1747720b27f70c::t_114a5b1db8e4d1 78-95
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_1747720b27f70c::t_3fff7af35aa302 275-279,283
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import-selection.yml
+  s_1747720b27f70c::t_0cbdca1297700c 22,63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "362289ea0a0038053a35031e20fccdeadd695868",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1747720b27f70c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "629d19b8-94ca-4c40-8b9d-0fa71d87f340",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/@n8n/nodes-langchain/nodes/llms/LMOpenAi/test/LmOpenAi.node.test.ts
+  s_2e1fa95fc44f8f::t_f4291135807681 1-46
+packages/@n8n/nodes-langchain/nodes/llms/LMOpenAi/LmOpenAi.node.ts
+  s_2e1fa95fc44f8f::t_6256edde7eacef 8
+  s_2e1fa95fc44f8f::t_dd85c730718634 226
+  s_2e1fa95fc44f8f::t_f6c28faf4a0750 216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c64ca4dcc96f6ffb5f8a23284973f7bc51413dcf",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

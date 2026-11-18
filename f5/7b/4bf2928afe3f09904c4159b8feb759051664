@@ -1,0 +1,376 @@
+packages/@n8n/api-types/src/dto/index.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 156,158,163-170
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 43,216
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 170,180-188,216,302-313
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 909-931
+packages/cli/src/modules/instance-ai/event-bus/durable-event-log.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 41,164,172-243,666-668
+packages/cli/src/modules/instance-ai/event-bus/__tests__/in-process-event-bus.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 30,78,561,570,573,585,594-629,653,656-659,661-665,668,671
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 106,204,213,216
+packages/@n8n/instance-ai/src/index.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 230-233
+packages/cli/src/public-api/v1/openapi-gen/__tests__/error-response-descriptions.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-22
+packages/cli/src/modules/mcp/tools/search-folders.tool.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 54
+packages/@n8n/instance-ai/docs/configuration.md
+  s_c1a030d93659ad::t_e32e18bb9ec440 199-202
+packages/@n8n/telemetry/src/events/workflow.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-24
+packages/cli/src/modules/agents/__tests__/agent-sandbox-principal.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 17-18
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 211,1945,1988-1990,2471-2487,4542,4560-4562,4587-4628
+packages/frontend/@n8n/eslint-plugin-design-system/README.md
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-21
+packages/@n8n/api-types/src/dto/workflows/workflow-public.dto.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 139-142
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/require-teleported-tooltip-in-dropdown.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-70
+packages/cli/src/modules/agents/integrations/__tests__/slack-methods.service.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 2,5,20,26,32,36,40-57,72,95-151
+packages/cli/test/integration/workflows/workflow-publication-outbox-consumer.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 8-13,26,43,46,247-311
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 34
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 29,71,92,1209-1214,1255-1257,1260,1264-1268,1270,1277,1279-1284,1287-1291,1294,1304-1305,1307-1311
+packages/cli/src/modules/agents/agent-sandbox-principal.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 13,87-88
+packages/cli/src/services/folder-finder.service.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 32-67
+packages/@n8n/config/test/decorators.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 3,67,87-127
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 121-122,130-143,145-153,646-647,686-687,699-701,984-985,1192-1193
+packages/cli/test/integration/executions/poll-cursor-atomicity.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-2,50-54
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 30-31,469,507,555,599,646,693
+packages/nodes-base/nodes/Confluence/test/actions/page/append.operation.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-254
+packages/nodes-base/nodes/Confluence/test/actions/page/delete.operation.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-15,18-41,44-45,48,51,54-61,64-76,78-79,81-87,90,92-94,96-98,100,102-132,134-140,142-144,146-150,152,154-157,159,161-163,165-166,169-171,173,175-178,182-184,186,188-191,193,195-198,200-201,203-204,206-208
+packages/testing/playwright/pages/CanvasPage.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 932-963
+scripts/dockerize-n8n.mjs
+  s_c1a030d93659ad::t_e32e18bb9ec440 145-147
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 65-70
+packages/cli/src/modules/mcp/tools/search-workflows.tool.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1,3,17,19,22,27-32,49-62,89-94,101-104,108-109,114,121,138-139,141,149-162,190-207,214-246,250-259,263-268,278,289,312,325
+packages/cli/src/public-api/v1/handlers/workflows/workflows.handler.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 46-47
+docker/images/runners/Dockerfile
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-2,14-22,116-117,143-146
+packages/cli/src/modules/instance-ai/event-bus/in-process-event-bus.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 15-24,76-78,98-105,145-150,153-163,336-343,368-380,383,389,391-393,397-401,403,421-424,474-492
+packages/@n8n/instance-ai/src/tracing/langsmith-tracing.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 688-692,706,1646-1652
+packages/@n8n/telemetry/src/telemetry-events.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 8,17
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_c1a030d93659ad::t_e32e18bb9ec440 79,181-193,207,218,306,315-320,324-328,330,334-359,361,377-391,394,402,450,457-459,551,553,656,666,674-675
+packages/cli/src/workflows/publication/publication-result.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 8-20
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  ai_agent 32,40-59,189,221-222,229-242
+packages/cli/src/modules/agents/builder/builder-model-live-lookup.service.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 5,8,37,81-104,106-111,141-143
+packages/cli/src/executions/execution.service.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 810-811,827-828
+packages/frontend/@n8n/eslint-plugin-design-system/eslint.config.mjs
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-8
+packages/@n8n/api-types/src/dto/workflows/publish-workflow-public.dto.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-21
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1344-1352,1354-1360
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 3,6-14,113,125-129,131,133-139,144,148-149,174-209,211,221-222,232,234,236
+packages/frontend/@n8n/eslint-plugin-design-system/package.json
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-48
+packages/@n8n/api-types/src/dto/workflows/__tests__/workflow-publish-blocked-error-public.dto.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-34
+packages/cli/test/integration/mcp/search-workflows.tool.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1,3-5,7,10,12,14-22,24,26-27,30-33,35-46,51-70,77-81,84-89,91-96,98-103,105-108,112-116,119-121,123-126,128-159,161,163-164
+packages/@n8n/config/src/configs/__tests__/security.config.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 22-23,25-31,33
+packages/cli/src/scheduling/poll-trigger-node/durable-poller-chain.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-21
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1,8,37-41,132,143-155
+packages/cli/src/modules/instance-ai/browser/instance-ai-browser-session.service.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 10,34-35,53,123-131,139,204,239-245
+packages/cli/src/modules/instance-ai/instance-ai-terminal-outcome.service.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 375
+packages/@n8n/mcp-browser-extension/src/background.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 27-33,434
+packages/cli/src/modules/agents/integrations/__tests__/slack-app-setup.service.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 2,187
+packages/cli/src/modules/instance-ai/browser/browser-use-ws.constants.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 8-19
+packages/cli/src/executions/execution-data/types.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 21,25-28,30-33
+docker/images/runners/Dockerfile.distroless
+  s_c1a030d93659ad::t_e32e18bb9ec440 15-16,29-37
+packages/@n8n/config/src/decorators.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 26-28,30,33,39-42,61,92
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/publishWorkflow.generated.yml
+  ai_agent 1-580
+packages/cli/src/response-helper.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 99
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/index.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-7
+packages/frontend/@n8n/eslint-plugin-design-system/vite.config.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-5
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-liveness.service.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 237-259
+packages/cli/src/policy/__tests__/policy-violation.error.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-91
+packages/cli/src/policy/policy-enforcement.service.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-11,13-14,16-18,20-31,34-40,43-44,46-52,55-56,59-61,63-67,69-123,125-126,128-138
+packages/@n8n/engine/src/execution/settlement.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1,3-4,8-11,14-17,21-24,29-31,33,37-49,53,55,60-65,69,72,75-94,96,100-113,116,119-146,149-156,159-213
+packages/cli/src/modules/n8n-packages/spec/serialized/workflow.schema.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 44-50,56
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-task-handler.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 57-70,161-164
+packages/cli/src/policy/__tests__/policy-enforcement.service.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-45,47-72,74-76,78-81,83-86,88-93,95-98,100,102-104,107,109,111-114,116-118,120,122-124,126-129,132-134,136-138,140-141,144-150,152,154-156,159-165,167-168,170,172-173,175-178,181,184-185,187-191,193-194,197-203,205-206,208,211-216,219
+packages/@n8n/api-types/src/dto/workflows/workflow-publish-blocked-error-public.dto.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-13
+packages/cli/src/modules/instance-ai/tracing/index.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 4
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.project.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1,4-5,34-38
+packages/cli/src/workflows/publication/__tests__/publication-status-reporter.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 137-144,146-156
+packages/cli/src/workflows/triggers/poll-cursor.service.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-2,14,22,27-28,30-45,80
+packages/nodes-base/nodes/Confluence/actions/page/delete.operation.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-97
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 4,8-9,80,687-834
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1343,1351,1353-1354,1358-1365,1394,1419,1449,1485,1525,1531-1565,1567-1644,1671,1734,1767,1802
+packages/cli/src/services/__tests__/folder-finder.service.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 195-227
+pnpm-workspace.yaml
+  s_c1a030d93659ad::t_e32e18bb9ec440 50,243
+packages/cli/src/modules/instance-ai/__tests__/run-trace-metadata.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 64-99
+packages/frontend/@n8n/design-system/src/components/N8nAiModelSelectorDropdown/AiModelSelectorDropdown.vue
+  s_c1a030d93659ad::t_e32e18bb9ec440 213
+packages/cli/src/modules/instance-ai/tracing/instance-ai-tracing.service.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1,9,60-68,78,112,122,206,231,294,298,307-323,326-329
+packages/nodes-base/nodes/Confluence/actions/router.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 27-29,33-35,39-40
+packages/testing/playwright/composables/CanvasComposer.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 45-46,82-86,92,94,96-97,99
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 432
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/unpublishWorkflow.generated.yml
+  ai_agent 1-18,22-28
+packages/@n8n/eslint-config/src/configs/frontend.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 5,17
+packages/@n8n/engine/src/execution/loop-ledger.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-72
+packages/@n8n/instance-ai/src/tools/orchestration/tracing-utils.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 6,15-27,101-103,122
+packages/@n8n/api-types/src/dto/workflows/__tests__/workflow-public.dto.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1,131-137
+packages/@n8n/engine/src/execution/completion.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-42
+packages/@n8n/instance-ai/src/tracing/__tests__/langsmith-tracing.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 442,470-471,486-513
+packages/@n8n/mcp-browser-extension/src/background.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 371-384
+packages/cli/src/__tests__/response-helper.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1,3-4,7-8,10-11,60-97
+packages/cli/src/workflows/triggers/__tests__/poll-cursor.service.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-2,19,26-33,40,45-49,68-115
+packages/@n8n/engine/src/database/typeorm-step-store.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 23-42,236,242,250-270
+packages/cli/src/public-api/v1/openapi-gen/__tests__/decorator-routes.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 27,30,198-278
+packages/cli/src/workflow-execute-additional-data.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 402,424-425
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 48-62,72,313-411
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_c1a030d93659ad::t_e32e18bb9ec440 8239
+packages/nodes-base/nodes/Confluence/actions/page/pageWrite.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-2,4-5,7-12,14-19,21-28,30-36,38-49,51-56,58-76,78-83,86-123
+pnpm-lock.yaml
+  ai_agent 112-113,597-598,1011,1044,1139,1142,1145,1148,1151,1175,1245,1248,1251,1254,1257,1299,1302,2347,2354-2356,2649,2658,2700,2746,3193,3211,3214,3217,3220,3223,3226,3229,3232,3235,3238,3241,3244,3247,3250,3253,3256,3259,3262,3265,3268,3271,3274,3277,3280,3283,3286,3292,3322,3331,3397,3424,3736,4152,4161,4314,4440,4744,4777,4816,4819,4822,5417-5462,6016,6523,7118,7225,7286,7596-7599,7616-7619,7652-7655,7668-7671,7680-7683,7692-7695,7700-7703,7712-7715,7724-7727,7736-7739,7748-7751,7760-7761,7764,7814-7817,7842-7845,7863-7866,7872-7875,7892-7895,7951-7954,7959-7962,8860-8864,8866-8867,8869-8870,10812-10815,10826-10837,10856-10861,10868-10873,10880-10885,10892-10897,10904-10909,10916-10921,10928-10933,10940-10945,10958-10963,10970-10981,10988-10989,11012-11017,11030-11035,11042-11047,11060-11071,11084-11089,11114-11125,11144-11155,11168-11173,11180-11185,11190-11193,12108-12113,12172-12174,12180-12187,12234-12241,12246-12247,12251,12334-12337,12342-12345,12373-12376,12433-12436,12477-12480,12497-12500,12601-12603,16477-16483,21824-21831,23574-23577,24076-24083,24273-24286,24601-24611,24638-24645,24672-24681,24719-24734,24748-24756,24791-24804,24823-24830,24857-24866,24890-24898,24930,24932-24934,25044-25052,25178-25188,25220-25226,25232-25240,25274-25278,25354-25358,25361-25362,26355,26362,26703,26710,26712-26723,26726-26732,26742,26744-26745,26747,26750,26752,27163,27171-27172,27175,27177,27185-27186,27602,27605,27608,27614,27618,27620-27622,27632,27643,27645,27652,27654,27656-27658,27663,27665,27670-27671,27674,27680,27691,27701,27710,27712,27714-27716,27721,27723,27728-27730,27733-27734,27736,27739-27740,27743,27746,27748,27750,27752,27758,27764,27769-27771,27780,27785,27796,27798-27830,27833,27835,27841,27844,27847,27849,27854,27856,27861,27863,27866,27868,27870,27876,27880,27882,27892,27894,27904,27906-27908,27917,27919-27921,27930,27932-27934,27944,27946-27948,27958,27960-27961,27971,27973,27977,27979,27990,27992,27996,27998,28000,28008,28010,28012,28020,28022,28029,28031,28037,28039,28042,28044,28047,28049,28283,28285,28287,28293,28295,28307,28310,28317,28319-28323,28325,28328,28344,28346-28347,28362,28367,28376,28381,28519,28535,28852-28855,28864-28873,28893-28900,28910-28916,28928-28934,28947-28953,28963-28971,28982-28988,28997-29004,29016-29023,29042-29048,29058-29072,29081,29085-29086,29118-29126,29139-29144,29153-29160,29183-29197,29208-29213,29242-29255,29299-29339,29354-29360,29368-29374,29377-29379,29381-29382,30057,30059,30061-30062,30064,30066-30071,30131,30135-30143,30151,30156,30160,30165,30173,30188,30192,30197-30206,30215,30217-30219,30334-30338,30347-30352,30396-30401,30493-30498,30564-30569,30592-30595,30730-30731,35272-35285,37705,37707-37710,37724,37726-37729,37743,37745-37748,37761,37768-37798,39774,39776,39780-39787,41918-41935,44074
+packages/cli/src/modules/mcp/mcp.types.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 95-96,108,115
+packages/@n8n/eslint-config/package.json
+  s_c1a030d93659ad::t_e32e18bb9ec440 62-65
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/executions.yml
+  s_c1a030d93659ad::t_e32e18bb9ec440 40-55,65-66
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 13,17-19,25-26,68-70,131-133,367-429
+packages/@n8n/engine/src/execution/step-settled-handler.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 2,4,7-9,16,57,73-93,133-135,137,140-155,157,163,170
+packages/cli/src/modules/mcp/__tests__/search-workflows.tool.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 4,9,14-15,26-38,61,113-118,131,143,165-172,188-195,206-213,224-233,248-253,263-270,280-287,304-309,317-487,500,515
+packages/cli/src/public-api/public-api-route-resolver.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 7,58
+packages/cli/src/workflows/publication/publication-status-reporter.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 19,29-34,70,228,231
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 232-273
+packages/nodes-base/nodes/Confluence/actions/page/bodyEnvelope.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 12,14,36-37,50,61,71,137-142,155-165
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/tracing-utils.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 44-45,66,70-114
+packages/nodes-base/nodes/Confluence/actions/page/index.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 3,5,7,9,23-28,35-40,47-52,56,58,60
+packages/cli/src/modules/instance-ai/event-bus/__tests__/durable-event-log.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 38-43,45,62,172-175,177-180,538,547,555-635
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-task-handler.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 133-142,148,150-160
+packages/nodes-base/nodes/Confluence/test/Confluence.node.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 16,22,24,26
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 52-62
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 5,10-11,57-60,362-366,369,395-453
+packages/@n8n/config/test/config.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 875
+packages/cli/src/workflows/workflow.service.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 28,1135-1145,1161,1164-1174,1202,1204
+packages/@n8n/engine/src/execution/step-store.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 142-148,150-153,157-161
+packages/cli/src/public-api/v1/handlers/executions/executions.handler.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 138-139,157-158
+packages/testing/playwright/services/mcp-api-helper.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 81-92,104,108,967
+packages/@n8n/db/src/repositories/__tests__/execution.repository.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 6-7,157-228
+packages/@n8n/engine/src/execution/__tests__/completion.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-78
+packages/nodes-base/nodes/Confluence/test/actions/page/update.operation.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-247
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 880-885,901-903,906-907,3688-3690,3709,3722,4278-4280,4358,4434-4436,5206,5621,5708,5785,6460,6792-6798,6800-6803,6830,6832
+.github/workflows/docker-build-smoke.yml
+  s_c1a030d93659ad::t_e32e18bb9ec440 11-16,53
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 28-31,904-937
+packages/@n8n/engine/src/execution/__tests__/settlement.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 4,6,25-33,61,73,90,118,124,130,153,156,166,188,206,285,347-511
+packages/@n8n/api-types/src/index.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 395-397
+packages/@n8n/decorators/src/controller/types.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 18-23,78
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 311-387
+packages/cli/src/policy/policy-enforcement-backend.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 2-10,12-20,22,24-41
+packages/@n8n/engine/src/execution/__tests__/loop-ledger.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-121
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.serializer.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 25,42,71,93
+packages/@n8n/decorators/src/controller/__tests__/api-error-response.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 30,45-92
+packages/cli/src/policy/__tests__/policy-cleared.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-22,25-40,43-51,54-78
+packages/cli/test/integration/public-api/executions.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 727-855
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-tracing.service.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 2,22,55,62-64,82,88,98-149
+packages/cli/src/executions/execution-persistence.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 32-38,40,606-607,782-788,809,831-836,839-851,853-855,860
+packages/cli/src/modules/instance-ai/liveness/instance-ai-liveness.service.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 105-116,138,248-255,260,263-275
+packages/cli/src/public-api/__tests__/public-api-route-resolver.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 321
+packages/cli/src/executions/execution-data/db-store.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 71-81
+packages/cli/src/executions/execution-data/unreadable-run-data.error.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-15
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-job-provider.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 59-60
+packages/@n8n/api-types/src/dto/workflows/__tests__/publish-workflow-public.dto.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1,3-5,7-8,10-15,17-18,20-25
+packages/frontend/@n8n/eslint-plugin-design-system/src/plugin.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-31
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 12,15-18,22,32-34,43-45,831-946
+packages/cli/src/executions/__tests__/execution-persistence.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 25-26,752,770-801,824,836-855,984-999,2274,2357
+packages/cli/src/modules/instance-ai/run-trace-metadata.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 65-71
+packages/cli/src/public-api/v1/handlers/workflows/__tests__/workflow-publish-blocked.openapi.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 9-14,24-35,37,54
+.github/CODEOWNERS
+  s_c1a030d93659ad::t_e32e18bb9ec440 7
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-browser-session.service.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 47,56,66,70-73,289-370
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.serializer.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 65-82
+packages/cli/src/policy/policy-violation.error.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-47
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/require-teleported-tooltip-in-dropdown.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-78
+packages/nodes-base/nodes/Confluence/actions/page/update.operation.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-95
+packages/frontend/@n8n/eslint-plugin-design-system/tsconfig.json
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-9
+packages/nodes-base/nodes/Confluence/test/actions/router.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 52-67,99-116
+packages/@n8n/decorators/src/controller/api-error-response.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 4,9-11,14-17,23-26
+packages/@n8n/decorators/src/controller/index.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 24
+packages/cli/src/policy/policy-cleared.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-82
+packages/cli/src/workflows/triggers/enabled-trigger-nodes.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1,6-15,43
+packages/cli/src/modules/n8n-packages/__tests__/workflow-node-groups.integration.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-6,8-10,12-16,18-19,21,23-31,33-38,41-46,48-62,64-66,68-69,72-118,122-138,140-141,143-144,146-151,153-157,159-175,177-226
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 677,688-703,705
+packages/cli/src/public-api/types.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 52-53
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-methods.service.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 6,66,220-229,234-269
+packages/cli/src/scheduling/poll-trigger-node/poll-job-provider.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 6,28
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.vue
+  s_c1a030d93659ad::t_e32e18bb9ec440 289-301,303-305,307-316,515-516,524-528,531-538,541-547,550-557,562-563,565-566,569-570,574-578
+packages/nodes-base/nodes/Confluence/actions/page/append.operation.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1-2,4-7,9,11-24,26-39,41-49,51-55,57,59-63,65-67,69-71,75,77-78,80-83,85-87,91-95
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 1461-1469,1665-1677
+packages/cli/src/modules/agents/builder/__tests__/builder-model-live-lookup.service.test.ts
+  s_c1a030d93659ad::t_e32e18bb9ec440 3-4,8,19-24,30,39,43,55-56,61,65,96,100,121,125,141,145,158,162,221,225-228,246-274,276,280,316,338,340
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f57b4bf2928afe3f09904c4159b8feb759051664",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_c1a030d93659ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e82d52f5-14de-4ee5-8cc6-c03277ed746b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ndv/shared/ndv.store.test.ts
+  s_4367c29be9a1f1::t_8fd2e97cc85359 86,94-95,110
+packages/frontend/editor-ui/src/features/ndv/runData/composables/useRunDataDisplayModes.test.ts
+  s_4367c29be9a1f1::t_8fd2e97cc85359 80-81,84-89,93-94,98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0168ded9adebb557f35dd55e7437836f8caf0cb7",
+  "prompts": {},
+  "sessions": {
+    "s_4367c29be9a1f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8991c965-9f30-4180-a501-051ae3861442",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jani Jez <jani.jez@n8n.io>"
+    }
+  }
+}

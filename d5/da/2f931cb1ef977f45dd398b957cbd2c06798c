@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/module.descriptor.test.ts
+  s_ffb7ac8df0495d::t_5c2111a94f3b28 25,31
+  s_ffb7ac8df0495d::t_e3295ef90aac6e 1-5,7-8,12-24,26-30,32-35
+  s_ffb7ac8df0495d::t_ae8188fcfe83f0 6,9-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d5da2f931cb1ef977f45dd398b957cbd2c06798c",
+  "prompts": {},
+  "sessions": {
+    "s_ffb7ac8df0495d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ee688f2-038b-4dd8-b18a-b5a89d24c066",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

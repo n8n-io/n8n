@@ -1,0 +1,44 @@
+packages/cli/src/executions/__tests__/execution-id.test.ts
+  s_060f8d9d66ff96::t_b5199c6d5678ec 11
+packages/cli/src/services/__tests__/engine-data-plane-proxy.service.test.ts
+  s_060f8d9d66ff96::t_b5199c6d5678ec 47
+packages/cli/src/services/engine-data-plane-proxy.service.ts
+  s_060f8d9d66ff96::t_b5199c6d5678ec 50
+packages/cli/test/integration/executions.controller.test.ts
+  s_94548fa3ce9c02::t_1224af94e03aea 227-228,235-241
+  s_060f8d9d66ff96::t_b5199c6d5678ec 182,188,211
+packages/cli/src/executions/executions.controller.ts
+  s_060f8d9d66ff96::t_b5199c6d5678ec 156
+packages/cli/src/executions/execution.service.ts
+  s_060f8d9d66ff96::t_b5199c6d5678ec 173
+packages/cli/src/executions/engine-v2-execution-reader.service.ts
+  s_060f8d9d66ff96::t_b5199c6d5678ec 12,21,28-29,38,43-44,48,61,74
+packages/cli/src/executions/execution-id.ts
+  s_060f8d9d66ff96::t_b5199c6d5678ec 1,4,7
+packages/cli/src/executions/__tests__/executions.controller.test.ts
+  s_94548fa3ce9c02::t_f74ecb7b8187f9 55,61-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8a9b5cbd2948387269eec4287e1f632043847d66",
+  "prompts": {},
+  "sessions": {
+    "s_060f8d9d66ff96": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e13189d1-5719-4577-8b8e-4f889185ccbf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_94548fa3ce9c02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7e4a814-3038-40bb-a6a5-9cfa2081e977",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

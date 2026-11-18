@@ -1,0 +1,25 @@
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-tools/provider-tool-executes-without-interruption-while-a-mixed-in-interruptible-tool-suspends.json
+  s_a55786a50e57d3::t_fb5f72182aba77 55,60,63,66,69,72,77-78,81
+  s_a55786a50e57d3::t_2838924190eb4d 116-197,201,204,217,252,256-257,260,263,265-266,269,274-275,278
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "7f5984527c387b329479c7787e0270cc240c7a78",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a55786a50e57d3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "db696bc5-00ab-49ae-be41-4a4e7ee9fd89",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

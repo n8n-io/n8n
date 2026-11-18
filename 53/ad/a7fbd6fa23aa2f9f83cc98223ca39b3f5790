@@ -1,0 +1,41 @@
+packages/nodes-base/nodes/Raindrop/__tests__/Raindrop.workflow.test.ts
+  s_2e1fa95fc44f8f::t_7ed616d2e2333d 1-49
+packages/nodes-base/nodes/Reddit/__tests__/Reddit.workflow.test.ts
+  s_2e1fa95fc44f8f::t_c21219979a97d8 1-29,31-66
+  s_2e1fa95fc44f8f::t_85fc095e06f21f 30
+  s_2e1fa95fc44f8f::t_06cf4276f49afe 67-69
+  s_a0636544721003::t_2ded8d0d2149b5 70-75
+packages/nodes-base/nodes/Rundeck/__tests__/Rundeck.workflow.test.ts
+  s_2e1fa95fc44f8f::t_f05c31818d283f 1-15,17-29
+  s_2e1fa95fc44f8f::t_da122087d172d5 16
+packages/nodes-base/nodes/Raindrop/__tests__/requests.workflow.json
+  s_a0636544721003::t_5380b473e4a09f 1-512
+packages/nodes-base/nodes/Reddit/__tests__/requests.workflow.json
+  s_a0636544721003::t_0bd8aa91e5f8f6 1-389
+packages/nodes-base/nodes/Rundeck/__tests__/requests.workflow.json
+  s_a0636544721003::t_54cbc4ee0522cc 1-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "53ada7fbd6fa23aa2f9f83cc98223ca39b3f5790",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_a0636544721003": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a51f9d63c321eaefa",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

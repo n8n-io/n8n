@@ -1,0 +1,23 @@
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/image/analyze.operation.ts
+  s_a82b90cd60e3b1::t_fc2e78a37843a4 81
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/__schema__/v2.0.0/image/analyze.json
+  s_a82b90cd60e3b1::t_f3ef5fdae83f1a 28,32-36
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/__schema__/v2.0.0/image/analyze.simplify-false.json
+  s_a82b90cd60e3b1::t_b24da29b780f43 49,53-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5c8ffb52b89ab70049534937076da678f89c9839",
+  "prompts": {},
+  "sessions": {
+    "s_a82b90cd60e3b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72117c39-b48e-4ab1-9bf0-e6225664a8dd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

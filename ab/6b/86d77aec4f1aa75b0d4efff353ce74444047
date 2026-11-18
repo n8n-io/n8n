@@ -1,0 +1,58 @@
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_5cff78ced0afbf::t_777c4714a7e19b 1059-1062
+  s_5cff78ced0afbf::t_b502427c82bf36 683,691-697
+  s_5cff78ced0afbf::t_7e0bf40d71631f 698-709,711,714,716,718,738-742,746
+  s_2bbf72e932cfe3::t_36c1c477a8c656 720,724-729,732-737,743-744,1140
+  s_5cff78ced0afbf::t_3b2b9d6e81a69c 1141-1158
+  s_5cff78ced0afbf::t_864c8e7bd1cad0 745,1058,1066,1068
+packages/cli/src/modules/agents/integrations/integration-tool-types.ts
+  s_5cff78ced0afbf::t_d353eba0a1b119 41-43
+packages/cli/src/modules/agents/integrations/integration-tool-execution.ts
+  s_5cff78ced0afbf::t_691f15c314d0dd 270-279,286-288
+packages/cli/src/modules/agents/integrations/agent-chat-message-context.ts
+  s_5cff78ced0afbf::t_22af28d97bc56b 40-44,48,54-60
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_2bbf72e932cfe3::t_8b1233c185d219 198,200-203,224
+  s_2bbf72e932cfe3::t_e4e8ffe672efb6 223,225-229
+  s_5cff78ced0afbf::t_25a2ece93e4f17 197,199,204,252
+  s_5cff78ced0afbf::t_e7b6217b3cb0de 222,248-251,436,438
+packages/cli/src/modules/agents/integrations/integration-tool-schema.ts
+  s_5cff78ced0afbf::t_862d855f95d754 150,171-175,179-182
+packages/cli/src/modules/agents/integrations/__tests__/integration-tools.test.ts
+  s_5cff78ced0afbf::t_bb91dba420b890 513,518,525-533,535-536,547-550,552,556-560,564
+  s_5cff78ced0afbf::t_159e0fe446b7fa 534,551,561-563
+  s_5cff78ced0afbf::t_23a053be8d309c 886-915
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_5cff78ced0afbf::t_339dbf5a2c653c 1655-1663
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_5cff78ced0afbf::t_1272329af30cac 65-70,78-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "ab6b86d77aec4f1aa75b0d4efff353ce74444047",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_2bbf72e932cfe3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "bad199bb-e591-4550-8370-809665bbc5b2",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_5cff78ced0afbf": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "371811f4-d448-4155-b88e-2991c0c201de",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.module.ts
+  h_c63dce324dfc7b 98
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.service.ts
+  h_c63dce324dfc7b 101
+  h_c63dce324dfc7b 93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e6b5e17d3777b4339c8c532037a01ca4e388fef2",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

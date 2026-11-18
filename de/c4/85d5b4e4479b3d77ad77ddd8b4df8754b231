@@ -1,0 +1,21 @@
+packages/cli/src/auth/auth.service.ts
+  s_fb30b1b6ca962d::t_0c94bab61c9b6a 221-223
+packages/cli/src/auth/__tests__/auth.service.test.ts
+  s_fb30b1b6ca962d::t_0c94bab61c9b6a 533
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "dec485d5b4e4479b3d77ad77ddd8b4df8754b231",
+  "prompts": {},
+  "sessions": {
+    "s_fb30b1b6ca962d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab82555b-e176-4374-88ff-89b386ef524e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/@n8n/instance-ai/skills/config-evals/references/config-eval-playbook.md
+  s_5d6be4e6bc70a6::t_a960b914042241 19-24,63,89
+packages/@n8n/instance-ai/skills/config-evals/SKILL.md
+  s_5d6be4e6bc70a6::t_a960b914042241 32,43-47
+packages/@n8n/instance-ai/src/tools/evals/eval-config.tool.ts
+  s_5d6be4e6bc70a6::t_a960b914042241 74-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "948127454001d43a54549071f0ae62bfe7a1ea40",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5d6be4e6bc70a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb91e704-f9b6-4b87-ab07-501eb950fe7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

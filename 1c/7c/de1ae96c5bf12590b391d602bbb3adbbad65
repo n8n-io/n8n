@@ -1,0 +1,29 @@
+packages/cli/src/workflows/__tests__/catalog.service.test.ts
+  s_8a60b387177b0b::t_0f05a7ad9c5b7f 1,3-8,16-72,81-98
+  s_8a60b387177b0b::t_e5cfe2c7051a82 73-80
+  s_8a60b387177b0b::t_b6d65a6295145c 14
+  s_8a60b387177b0b::t_a64719dfa9ec98 2,9-13,15
+packages/cli/src/workflows/catalog.controller.ts
+  s_8a60b387177b0b::t_9a10b1786a9253 24,29-37
+  s_8a60b387177b0b::t_ecee5d010d2cf3 3,8
+  s_8a60b387177b0b::t_1687035259e734 38
+packages/cli/src/workflows/catalog.service.ts
+  s_8a60b387177b0b::t_ce799710e74552 45,48-51
+  s_8a60b387177b0b::t_80d6ab841151dc 1-44,46-47,52-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "1c7cde1ae96c5bf12590b391d602bbb3adbbad65",
+  "prompts": {},
+  "sessions": {
+    "s_8a60b387177b0b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6036dc6f-cbd9-4e33-aeb8-df572d6fed3b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

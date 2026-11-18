@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/settings/environments.ee/environments.store.ts
+  s_5c35d177356075::t_1d9b9769be079e 80
+  s_5c35d177356075::t_bd9c0960741cb0 10
+packages/workflow/src/common/index.ts
+  s_5c35d177356075::t_8d9abbf8aae1a5 7
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_5c35d177356075::t_d9e4f5841ded55 92-96
+  s_5c35d177356075::t_0515d3781a3b15 38-39,48
+packages/frontend/editor-ui/src/features/settings/environments.ee/environments.test.ts
+  s_5c35d177356075::t_4f866c8a67a0e9 150-189
+packages/workflow/test/resolve-variables.test.ts
+  s_5c35d177356075::t_63827bd0ff21cd 1-54
+packages/workflow/src/common/resolve-variables.ts
+  s_5c35d177356075::t_62553069d34256 1-42
+packages/cli/src/workflow-helpers.ts
+  s_5c35d177356075::t_d03e2a0a3a37ce 501
+  s_5c35d177356075::t_1688217c57d866 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "6b6258d2a299c6d5a908cc3526de1d1dd6bab46f",
+  "prompts": {},
+  "sessions": {
+    "s_5c35d177356075": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3ff78f92-0199-441e-b7d3-222653b09312",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Marc Littlemore <marc@n8n.io>"
+    }
+  }
+}

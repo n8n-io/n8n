@@ -1,0 +1,33 @@
+packages/@n8n/engine/src/response-channel/index.ts
+  s_71c6da2ee47cd3::t_d67313882bd806 1-2
+  s_71c6da2ee47cd3::t_7914db3e7b1dc8 3-4,6-9
+  s_71c6da2ee47cd3::t_0cee0633057f64 5
+packages/@n8n/engine/src/index.ts
+  s_71c6da2ee47cd3::t_613cff5051c1db 37-40,42,44-45,47
+  s_71c6da2ee47cd3::t_7914db3e7b1dc8 41,48,51
+  s_71c6da2ee47cd3::t_0cee0633057f64 46
+packages/@n8n/engine/src/response-channel/__tests__/execution-response-channel.test.ts
+  s_71c6da2ee47cd3::t_4c8a66733e8771 1-6,10-17,19,21-31,33-36,38,43-47,94,96-98,101-111,123-124,132,141-150,152-158
+  s_71c6da2ee47cd3::t_fa016bb36a11bb 159-161,163-175,177-187,189
+  s_71c6da2ee47cd3::t_4e714ff987f823 191-194,197-204,206
+packages/cli/src/modules/engine-v2/engine-v2.module.ts
+  s_71c6da2ee47cd3::t_219e2dfcd3c658 5,21-22,40,42-44,48,50
+packages/@n8n/config/src/configs/engine.config.ts
+  s_71c6da2ee47cd3::t_11151294bf63cb 66,77-81,83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "acfc5dcb0a00937d360cf7d8a482c572c9756728",
+  "prompts": {},
+  "sessions": {
+    "s_71c6da2ee47cd3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34058f20-f9c0-4c61-a303-3490fd47e9b8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

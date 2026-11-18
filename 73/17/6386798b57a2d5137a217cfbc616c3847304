@@ -1,0 +1,19 @@
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_be3f8258e2d85a::t_5190d2e7fee137 591-602
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "73176386798b57a2d5137a217cfbc616c3847304",
+  "prompts": {},
+  "sessions": {
+    "s_be3f8258e2d85a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b10d-1c63-7e21-ad1a-e9b00d28cea2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

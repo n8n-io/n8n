@@ -1,0 +1,43 @@
+packages/cli/src/modules/instance-ai/__tests__/agent-preview-handoff.test.ts
+  s_58620fba057bad::t_954d8815cdf36f 1-4,11,17,20,32
+packages/cli/src/modules/agents/__tests__/instance-ai-agent-context.adapter.test.ts
+  s_58620fba057bad::t_954d8815cdf36f 4-8,12-14,17-29,31,33-40,44-46,49-57,59
+packages/cli/src/modules/agents/builder/__tests__/format-preview-context.test.ts
+  s_58620fba057bad::t_cac49fa2452ec7 1-6,13,19,22,33,129
+packages/cli/src/modules/agents/builder/format-preview-context.ts
+  s_58620fba057bad::t_954d8815cdf36f 3-8,52,88,114,116,135,159-160
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.agent-context.test.ts
+  s_58620fba057bad::t_23d4d8ae128cef 124
+  s_58620fba057bad::t_954d8815cdf36f 7-8,20,64-123
+packages/cli/src/modules/agents/__tests__/agent-context.service.test.ts
+  s_58620fba057bad::t_954d8815cdf36f 1-19,21-79,81-277,279-433
+  s_58620fba057bad::t_957db1e7671e0e 20,80,278
+packages/cli/src/modules/instance-ai/agent-preview-handoff.ts
+  s_58620fba057bad::t_954d8815cdf36f 8,42-47
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_58620fba057bad::t_954d8815cdf36f 279,2996,3000,3003,3047,3049,4190-4191,4197-4198
+packages/cli/src/modules/agents/agent-context.contracts.ts
+  s_58620fba057bad::t_954d8815cdf36f 1-81
+packages/cli/src/modules/agents/agent-session-read.ts
+  s_58620fba057bad::t_954d8815cdf36f 1-41
+packages/cli/src/modules/agents/instance-ai-agent-context.adapter.ts
+  s_58620fba057bad::t_954d8815cdf36f 3,5,11,14,17-18,20-22,25-27
+packages/cli/src/modules/agents/agent-context.service.ts
+  s_58620fba057bad::t_954d8815cdf36f 1-316
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f309268ba39492e9a875e4a9f7d8acc3f40dc213",
+  "prompts": {},
+  "sessions": {
+    "s_58620fba057bad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13f8e-afeb-7511-82e8-d8246a12076c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

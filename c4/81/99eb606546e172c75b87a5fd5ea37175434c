@@ -1,0 +1,32 @@
+packages/cli/src/telemetry/index.ts
+  s_86b834392d23cd::t_88d4acffb56e58 29,33
+  s_86b834392d23cd::t_ee3385135db9f1 259
+packages/@n8n/api-types/src/instance-registry-types.ts
+  s_86b834392d23cd::t_ee3385135db9f1 18-21
+packages/cli/src/telemetry/cluster-footprint.ts
+  s_86b834392d23cd::t_ee3385135db9f1 1-18,20-32
+  s_86b834392d23cd::t_79ff68039013fa 19
+packages/cli/src/telemetry/__tests__/cluster-footprint.test.ts
+  s_86b834392d23cd::t_63b338fc6b8fa5 46-50
+  s_86b834392d23cd::t_ee3385135db9f1 1-45,51-58
+packages/cli/src/modules/instance-registry/instance-registry.service.ts
+  s_86b834392d23cd::t_ee3385135db9f1 10,129-130
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_86b834392d23cd::t_7ce6f95c309e5f 18,1377-1382,1425-1452
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c48199eb606546e172c75b87a5fd5ea37175434c",
+  "prompts": {},
+  "sessions": {
+    "s_86b834392d23cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0f3963e-ef06-4c95-96df-251da96845e1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

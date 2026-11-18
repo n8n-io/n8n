@@ -1,0 +1,62 @@
+packages/@n8n/node-engine-compatibility/src/index.ts
+  s_418a585878115f::t_623419f9ad0a55 4
+packages/cli/src/modules/engine-v2/engine-lifecycle-event.controller.ts
+  s_df2154257c6c06::t_6d789bb568a40a 11
+packages/cli/src/services/__tests__/engine-v2-push-registry.service.test.ts
+  s_418a585878115f::t_29e7c0edc30a84 1-69,72-92
+packages/cli/src/services/engine-v2-push-registry.service.ts
+  s_418a585878115f::t_90e94e44b459fe 1,10-19,43
+  s_418a585878115f::t_9620a41bee2780 2-5,9,20,33,35,37,41-42,44-47,52-61,69-79,85-92
+packages/cli/src/modules/engine-v2/__tests__/engine-lifecycle-event.controller.test.ts
+  ai_agent 9,31,33,50
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_418a585878115f::t_1b59106606f1d1 13,37,69,74,78-79,83,88-100,103-109,187,198-205
+packages/cli/src/modules/engine-v2/__tests__/engine-control-plane-server.test.ts
+  s_eda1948fcdabb8::t_4e444fcbf7e647 3,98
+  s_92c7d6d2cdac3a::t_f13f739fb6b170 8
+  s_eda1948fcdabb8::t_f02f550fb1abf3 13-21,23-24,26-31,33-37,40-68,84-97,106
+packages/cli/src/services/__tests__/engine-v2-dispatcher.service.test.ts
+  s_418a585878115f::t_ea3f2258ef4c8c 20
+  s_418a585878115f::t_1005825f279fbc 76,84
+  s_418a585878115f::t_ac3e228ea05ea2 322-364
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "be5df53b861a539f109c6a7523d15bebc42c944a",
+  "prompts": {},
+  "sessions": {
+    "s_418a585878115f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc9cce59-9af8-424d-b051-abdf3c7acaab",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_92c7d6d2cdac3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "19104439-5c1f-42e1-94ee-b95100207656",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_df2154257c6c06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7853da0-f7c4-42cf-84e1-e6d6ee640dcc",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_eda1948fcdabb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f08a0677-fc8d-48bd-92e6-ce1c9bc1cd53",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

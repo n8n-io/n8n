@@ -1,0 +1,22 @@
+packages/frontend/@n8n/design-system/src/components/N8nSpinner/Spinner.stories.ts
+  h_f8b427917eda26 11,40,47
+packages/frontend/@n8n/design-system/src/components/N8nSpinner/Spinner.test.ts
+  h_f8b427917eda26 18,22-27,30-34,36-57,64,68
+packages/frontend/@n8n/design-system/src/components/N8nSpinner/Spinner.vue
+  h_f8b427917eda26 8,31,37-41
+packages/frontend/@n8n/design-system/src/components/N8nSpinner/index.d.ts
+  h_f8b427917eda26 1-2,7
+packages/frontend/editor-ui/src/app/views/LoadingView.vue
+  h_f8b427917eda26 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "04e8e8adbaaa2604d3c0c6ec642266dfcf675404",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

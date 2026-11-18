@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/settings/sso/components/OidcSettingsForm.vue
+  s_74e34418cb9013::t_874ba3fde01fe9 425-426
+packages/testing/playwright/pages/SettingsSsoPage.ts
+  s_74e34418cb9013::t_a01dce45ad82bf 48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "764a40582034582b091047913a219e8ab6f6a642",
+  "prompts": {},
+  "sessions": {
+    "s_74e34418cb9013": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "29b95d73-3a92-4d74-81cd-1a5ef75dadfd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useSetupPanelActions.test.ts
+  s_b0e06f9d9140a8::t_9276c5e4cbab54 246-296
+  s_b0e06f9d9140a8::t_f0b6cba99d901f 153-176
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useSetupPanelActions.ts
+  s_b0e06f9d9140a8::t_cc92798f46db68 202,218-224
+  s_b0e06f9d9140a8::t_2449cb910aa5fa 128-133,140-153
+  s_b0e06f9d9140a8::t_a797ae02a4fe9a 253
+  s_b0e06f9d9140a8::t_afd8e9fe8f2050 289-295
+  s_b0e06f9d9140a8::t_d94d0320b77faf 271
+  s_b0e06f9d9140a8::t_c1ca2735b301e5 154
+  s_b0e06f9d9140a8::t_7b65fb3e4df47a 225
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_b0e06f9d9140a8::t_7100cfe0933ec3 1371
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_b0e06f9d9140a8::t_2dd5cd997d7b69 1083-1091
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b49f160d4cd83fa334b5b2966c6785b299f942d6",
+  "prompts": {},
+  "sessions": {
+    "s_b0e06f9d9140a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b9d2e9f-79b9-45e5-ae63-64c961832ac6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

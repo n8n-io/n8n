@@ -1,0 +1,40 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupCollectionWizard/SetupCollectionWizard.vue
+  s_f2915c51dc39ca::t_de7b5c38130893 78-80
+  s_f2915c51dc39ca::t_3f83b7289581c5 482-483
+  s_f2915c51dc39ca::t_5c032bd7383d30 361,364,367,369
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/EvalCollectionsListView.test.ts
+  s_f2915c51dc39ca::t_fc1e6744b5258d 159-174
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/EvalCollectionsListView/CollectionCard.vue
+  s_f2915c51dc39ca::t_f518afaf0e6c48 4,6
+  s_f2915c51dc39ca::t_b7b97979989515 136-143,145-149,151-158
+  s_f2915c51dc39ca::t_c98ba404dc99c0 162
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/EvalCollectionsListView.vue
+  s_f2915c51dc39ca::t_de29a08c04fa88 67
+  s_f2915c51dc39ca::t_2a0303800e41d5 51-56
+  s_f2915c51dc39ca::t_388378a598e9e9 83-89,92,98,104
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evalCollections.store.test.ts
+  s_f2915c51dc39ca::t_d898ab094a350b 212-233
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evalCollections.store.ts
+  s_f2915c51dc39ca::t_9269d1769e3f71 146-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c506e40357f438a1aa725772e70dc9cd7f62b631",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f2915c51dc39ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd01e2e1-3aa7-490e-83f2-bbd9b41bcfc4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

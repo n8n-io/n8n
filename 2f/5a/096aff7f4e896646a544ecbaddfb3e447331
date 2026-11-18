@@ -1,0 +1,19 @@
+packages/cli/src/public-api/v1/openapi-gen/untyped-nullable.ts
+  s_98cef00a091648::t_5f551ed02aa8c1 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2f5a096aff7f4e896646a544ecbaddfb3e447331",
+  "prompts": {},
+  "sessions": {
+    "s_98cef00a091648": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "434a4e02-9901-43d4-86cd-6ac7855e0588",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

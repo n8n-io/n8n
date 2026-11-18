@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_2a3266abda2433 19,103-108
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__test__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_f640086ce031c9 266-279
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__test__/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_76667300698935 72-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1aa1a50e91327ef11d1b6e905642f2fec37c2f5a",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/evaluations/discovery/agent-builder.json
+  s_db23049c32d561::t_002cf4925328a1 839
+packages/cli/src/modules/agents/builder/interactive/__tests__/resolve-llm.tool.test.ts
+  s_db23049c32d561::t_df09c71f04647a 779-868
+packages/cli/src/modules/agents/builder/prompts/config-rules.prompt.ts
+  s_db23049c32d561::t_41e2b811221a02 55-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "76e9c17582cb7c5e791089ffff5e8f2c19c76cf1",
+  "prompts": {},
+  "sessions": {
+    "s_db23049c32d561": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9a3ce8b-c177-449e-974c-d77f50f50c5b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

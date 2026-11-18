@@ -1,0 +1,46 @@
+AGENTS.md
+  s_118808642078e7::t_87a5cd5ecc1803 257-258,271-273,280-282
+packages/cli/src/modules/inbound-auth-core/__tests__/trusted-source.gate.test.ts
+  s_118808642078e7::t_d9d19b8ef03195 79
+packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source-identity.repository.ts
+  s_118808642078e7::t_5a5c6098c60911 45,53,63,76,82,87,100
+  s_118808642078e7::t_5904bdd4bfa742 108
+packages/cli/test/integration/inbound-auth-core/system-trusted-source.seeder.integration.test.ts
+  s_118808642078e7::t_ba8c360ccdf89c 37-44
+packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source.repository.ts
+  s_118808642078e7::t_5a5c6098c60911 78,82,86,97,118,129,141,145,154,178
+packages/@n8n/db/src/repositories/base-repository.ts
+  s_118808642078e7::t_87a5cd5ecc1803 34-37
+packages/cli/AGENTS.md
+  s_118808642078e7::t_87a5cd5ecc1803 46-48
+packages/cli/src/modules/oauth-server/__tests__/oauth-flow.service.api.test.ts
+  s_118808642078e7::t_be5e56a99d57eb 244
+  s_118808642078e7::t_e6f6efc0230edc 238-243,245-247
+scripts/backend-module/backend-module-guide.md
+  s_118808642078e7::t_87a5cd5ecc1803 296,300,370
+  s_118808642078e7::t_37196ee3904a08 371
+packages/cli/src/modules/inbound-auth-core/trusted-source.gate.ts
+  s_118808642078e7::t_be5e56a99d57eb 40
+packages/cli/test/integration/inbound-auth-core/trusted-source-identity.service.integration.test.ts
+  s_118808642078e7::t_be5e56a99d57eb 480,482
+packages/cli/src/modules/inbound-auth-core/trusted-source.store.ts
+  s_118808642078e7::t_ba8c360ccdf89c 112-119,145-154,163-177,237-252,270-279
+  s_118808642078e7::t_8afc357ccf7c83 84
+  s_118808642078e7::t_be5e56a99d57eb 92,131,222,233,254,264,283,292,328
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "160bfdccddbd5066886068dfb7fcc7d82321f40d",
+  "prompts": {},
+  "sessions": {
+    "s_118808642078e7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5fcd85bb-4b1f-48c3-b9f5-989b5e013af0",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

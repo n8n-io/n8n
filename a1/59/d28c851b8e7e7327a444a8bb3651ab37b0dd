@@ -1,0 +1,37 @@
+packages/@n8n/instance-ai/src/tools/filesystem/create-tools-from-mcp-server.ts
+  s_ece17ffed4e460::t_16e06aa267bd7f 5-7,177,179,393,403
+packages/@n8n/agents/src/runtime/__tests__/mcp-tool-resolver.test.ts
+  s_ece17ffed4e460::t_5d62369487b661 1-67
+packages/@n8n/agents/src/runtime/mcp/mcp-content.ts
+  s_ece17ffed4e460::t_b343f0199cb60f 1-59,61-90,92
+  s_ece17ffed4e460::t_92a49c3da5e954 60,91
+packages/@n8n/agents/src/runtime/model/messages.ts
+  s_ece17ffed4e460::t_85dabc40a4e8d4 124-137
+packages/@n8n/agents/src/index.ts
+  s_ece17ffed4e460::t_b43bc0da5655c8 226-231
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_ece17ffed4e460::t_b0db6c3a66bca8 7681,7689-7693,7716-7782,8029-8077
+packages/@n8n/agents/src/runtime/mcp/mcp-tool-resolver.ts
+  s_ece17ffed4e460::t_1de4df34a0e04b 134,136
+  s_ece17ffed4e460::t_33467116a5df71 6-10,12,52-54,62,141,143,149-150,152
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_ece17ffed4e460::t_a9ee295ec99f17 68-70,102,104-107,109-120,122-127,129-134
+  s_ece17ffed4e460::t_20fa9be8b6700e 12,67,103,108,121,128
+  s_ece17ffed4e460::t_e096d12ee42bb7 135-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "a159d28c851b8e7e7327a444a8bb3651ab37b0dd",
+  "prompts": {},
+  "sessions": {
+    "s_ece17ffed4e460": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "22d978b8-8b22-4f9a-9c5a-69b99c6c85c0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

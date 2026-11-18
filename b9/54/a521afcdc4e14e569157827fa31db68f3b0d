@@ -1,0 +1,46 @@
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_ea8398b491aecc::t_dd80e5aecb18d4 77,363,397-404,559-560
+  s_ea8398b491aecc::t_cd672a30ca4313 639,644-645,675,688-701,713,722,727,729-738,776,781-783,843,847
+  s_ea8398b491aecc::t_312769727efd16 24,63
+  s_ea8398b491aecc::t_c16e7f7e0fe245 36
+  s_ea8398b491aecc::t_cca4285172b4a2 1423-1428,1430-1431,1437,1439,1441,1443-1448,1450-1453,1455,1457,1459-1464
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_ea8398b491aecc::t_491edbe45386fc 182-187,190-191,215-217,223-224,231,233-235,237-238,240-241,243-248,251-253,255-256,548-553,555,561
+  s_ea8398b491aecc::t_8f5119fa95f6e3 69
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_ea8398b491aecc::t_3efa731542bb05 326
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_ea8398b491aecc::t_0c48d7299ff4a4 131-134
+  s_ea8398b491aecc::t_d1a7024c9b5cee 391-404
+  s_ea8398b491aecc::t_73626cd4ff2b93 1135-1184
+packages/cli/src/modules/promotions.ee/promotions-selective-push.error.ts
+  s_ea8398b491aecc::t_a1562185e2f6b9 10-12,14,18
+packages/cli/src/errors/__tests__/rest-error-response.test.ts
+  s_ea8398b491aecc::t_73626cd4ff2b93 33
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_ea8398b491aecc::t_a1562185e2f6b9 14,315-318
+packages/cli/src/modules/promotions.ee/branch-placement.ts
+  s_ea8398b491aecc::t_8bf60747c6b079 24-29
+packages/cli/src/modules/n8n-packages/entities/folder/folder-remover.ts
+  s_ea8398b491aecc::t_3efa731542bb05 156
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionBlockers.vue
+  s_ea8398b491aecc::t_fcc3ac306efad5 121-148,174-175
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
+  s_ea8398b491aecc::t_11a020957e95d0 481-485,503,508,514,531
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b954a521afcdc4e14e569157827fa31db68f3b0d",
+  "prompts": {},
+  "sessions": {
+    "s_ea8398b491aecc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79fa3697-e88c-41ac-8b49-e4829ac9b740",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+packages/cli/src/modules/operator-console/operator-console.controller.ts
+  s_63fb8ae124025a::t_e3cf392808ad30 15,47,100,108
+packages/cli/src/modules/operator-console/consumer/log-consumer.service.ts
+  s_63fb8ae124025a::t_0d576049ae7100 1-8,10-28,30-37,39-45,47-52,54-89,91-92,114,117-120,123-124,127-128,130-141,144-148
+  s_63fb8ae124025a::t_48eb8b08dc89a3 9,142-143
+  s_63fb8ae124025a::t_250dc46eae7e27 29,38,46,53
+  s_63fb8ae124025a::t_50ba86f7529d04 90,93-113,115-116,121-122,125-126,129
+packages/cli/src/modules/operator-console/capture/log-capture.service.ts
+  s_63fb8ae124025a::t_e296b5f5206d98 193
+  s_63fb8ae124025a::t_4788d0fc630480 58-82
+packages/cli/src/modules/operator-console/operator-console.module.ts
+  s_63fb8ae124025a::t_d31ed928dce5b9 76,81
+packages/cli/src/modules/operator-console/__tests__/log-consumer.service.test.ts
+  s_63fb8ae124025a::t_084c15b2da554b 1-142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "31bdb0a83af8975362a3be42187a23418d23afb1",
+  "prompts": {},
+  "sessions": {
+    "s_63fb8ae124025a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5cf8404-b5d2-4900-b9d5-47b84d4533a8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

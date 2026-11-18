@@ -1,0 +1,21 @@
+packages/cli/src/modules/instance-ai/self-healing/self-healing-candidate.service.ts
+  s_40c8cc69054fba::t_e620fec99ef880 156
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-candidate.service.test.ts
+  s_40c8cc69054fba::t_6d60132ead9cc2 269,272,274,278-280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c916d9b3a47fdcc79a021f16a445d2fe6224bf68",
+  "prompts": {},
+  "sessions": {
+    "s_40c8cc69054fba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d9dee350-1bec-4a62-bb42-bdec8fd39ab5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

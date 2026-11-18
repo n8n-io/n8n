@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/features/ai/chatHub/ChatView.test.ts
+  s_5cc7c7f4b64512::t_25404264d5cc41 2
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/views/WorkflowHistory.test.ts
+  s_5cc7c7f4b64512::t_25404264d5cc41 21
+packages/frontend/editor-ui/src/app/init/index.test.ts
+  s_5cc7c7f4b64512::t_25404264d5cc41 1-430
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/views/SettingsSourceControl.test.ts
+  s_5cc7c7f4b64512::t_25404264d5cc41 11
+packages/frontend/editor-ui/src/features/shared/banners/components/BannersStack.test.ts
+  s_5cc7c7f4b64512::t_25404264d5cc41 15
+packages/frontend/editor-ui/src/app/composables/useToast.ts
+  s_5cc7c7f4b64512::t_25404264d5cc41 8
+packages/frontend/editor-ui/src/app/composables/useToast.test.ts
+  s_5cc7c7f4b64512::t_25404264d5cc41 8
+packages/frontend/editor-ui/src/app/init/index.ts
+  s_5cc7c7f4b64512::t_25404264d5cc41 11-322
+  s_5cc7c7f4b64512::t_b1d7852e77ca75 1-10
+packages/frontend/editor-ui/src/app/init/toastNotifier.test.ts
+  s_5cc7c7f4b64512::t_25404264d5cc41 1-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d3c7f623c8fec8774324f9631ffbd6627c8d5a4e",
+  "prompts": {},
+  "sessions": {
+    "s_5cc7c7f4b64512": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "615e3317-a85f-4350-b176-a6b2259b0e9c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

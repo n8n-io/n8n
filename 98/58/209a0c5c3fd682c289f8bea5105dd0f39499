@@ -1,0 +1,23 @@
+packages/cli/src/workflows/run-as/__tests__/workflow-run-as-binding.service.test.ts
+  s_af62986d6ef75e::t_7ed4a921163f5d 1-4,9-35,39-93
+  s_af62986d6ef75e::t_b8d5aae01c6842 5-8
+  s_af62986d6ef75e::t_1449d6dfc95a80 36-38
+packages/cli/src/workflows/run-as/workflow-run-as-binding.service.ts
+  s_af62986d6ef75e::t_6371c92aa4022f 1-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9858209a0c5c3fd682c289f8bea5105dd0f39499",
+  "prompts": {},
+  "sessions": {
+    "s_af62986d6ef75e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "137c8e00-b0af-4ad4-8af5-45842a28f12e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

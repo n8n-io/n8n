@@ -1,0 +1,26 @@
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-environment-project.repository.ts
+  s_94656d667b5d5c::t_361a39d086d3c7 52-53
+packages/cli/src/modules/promotions.ee/database/entities/promotion-environment.entity.ts
+  s_94656d667b5d5c::t_361a39d086d3c7 23,63
+  s_94656d667b5d5c::t_58d8154592d4df 57-58
+packages/@n8n/api-types/src/dto/promotions/promotion-environment.dto.ts
+  s_94656d667b5d5c::t_361a39d086d3c7 14
+packages/cli/src/modules/promotions.ee/database/entities/promotion-environment-project.entity.ts
+  s_94656d667b5d5c::t_361a39d086d3c7 16-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1ac21b328ee76986974dd0a2d1ae1616e6add312",
+  "prompts": {},
+  "sessions": {
+    "s_94656d667b5d5c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d9efc452-e997-4e58-ac9d-601ed3e76ac7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

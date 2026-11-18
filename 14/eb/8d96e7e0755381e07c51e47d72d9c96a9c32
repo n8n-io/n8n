@@ -1,0 +1,9 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.utils.test.ts
+  ai_agent 199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "14eb8d96e7e0755381e07c51e47d72d9c96a9c32",
+  "prompts": {}
+}

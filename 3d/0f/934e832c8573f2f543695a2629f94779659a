@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewStatus.store.test.ts
+  s_d842348d080092::t_a4a9371b0dd513 35
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequiredToggle.test.ts
+  s_d842348d080092::t_a4a9371b0dd513 143
+packages/@n8n/api-types/src/dto/workflow-reviews/list-workflow-review-requests-query.dto.ts
+  s_d842348d080092::t_b1bd01e6c3a0dc 3,39-43
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-status.controller.integration.test.ts
+  s_d842348d080092::t_e23294d507fff6 6,81,304,324,379-421
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request-status.service.ts
+  s_d842348d080092::t_b1bd01e6c3a0dc 20,31,47,56,62
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_d842348d080092::t_7546379adaba58 240-244
+  s_d842348d080092::t_a4a9371b0dd513 598,1649,1676
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowUpdateReviewDialog.test.ts
+  s_d842348d080092::t_19192b3e7a7f55 558
+  s_d842348d080092::t_7546379adaba58 85-89,92-96
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request-status.service.test.ts
+  s_d842348d080092::t_d8fb6664d7ab9c 19,44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3d0f934e832c8573f2f543695a2629f94779659a",
+  "prompts": {},
+  "sessions": {
+    "s_d842348d080092": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e5ff11ea-ea68-4dce-b3b9-094b483d7df4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

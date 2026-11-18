@@ -1,0 +1,45 @@
+packages/cli/src/modules/encryption-key-manager/encryption-key.controller.ts
+  s_f066b827a9b0f9::t_a068c72cc70e95 12
+packages/cli/src/commands/base-command.ts
+  s_f066b827a9b0f9::t_e54b2ffeeac1f4 205-209
+  s_f066b827a9b0f9::t_f3d2ad633722c5 35
+packages/cli/src/encryption/__tests__/key-rotation-cycle.integration.test.ts
+  s_f066b827a9b0f9::t_507129cb75311d 5
+packages/cli/src/modules/encryption-key-manager/__tests__/encryption-key.controller.test.ts
+  s_f066b827a9b0f9::t_c08cc3ded7f72b 7
+packages/cli/src/encryption/__tests__/key-manager.service.test.ts
+  s_f066b827a9b0f9::t_0dbe6887d60df8 10
+packages/core/src/encryption/__tests__/cipher.test.ts
+  s_f066b827a9b0f9::t_af8b280632dd14 307,309-314,322
+  s_f066b827a9b0f9::t_c93ec99861e945 336-342
+  s_f066b827a9b0f9::t_4a709650a910ac 238-243,245,247
+packages/cli/src/modules/encryption-key-manager/encryption-key-manager.module.ts
+  s_f066b827a9b0f9::t_946fd64452e796 9-13,22
+packages/core/src/encryption/cipher.ts
+  s_f066b827a9b0f9::t_9799fa57875780 104-113,115
+  s_f066b827a9b0f9::t_73391aac663b7f 64-76,78,82-87
+  s_f066b827a9b0f9::t_29348b0b98dc56 88-90
+  s_f066b827a9b0f9::t_55c8e012d72cf0 116
+packages/core/src/encryption/encryption-key-proxy.ts
+  s_f066b827a9b0f9::t_12d1f5f72aa7e6 13-16
+packages/core/src/__tests__/credentials.test.ts
+  s_f066b827a9b0f9::t_8d7bd4667a39cf 95
+  s_f066b827a9b0f9::t_73521a91d77eca 19,24,28-40
+  s_f066b827a9b0f9::t_cc355c09aa40b0 41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "f9ba8efdbb3c90681d5d1634872335b5bc5c99e1",
+  "prompts": {},
+  "sessions": {
+    "s_f066b827a9b0f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc3555f6-1b6b-44de-bbc8-4ba05333a891",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

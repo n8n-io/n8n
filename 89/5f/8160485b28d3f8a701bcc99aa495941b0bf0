@@ -1,0 +1,26 @@
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/copy.test.ts
+  s_c10e563f7c2f73::t_bab4a846d7cd0f 46-56,68-78
+  s_c10e563f7c2f73::t_ee5646094bfe3f 1-45,57-67,79-86
+packages/nodes-base/nodes/Microsoft/OneDrive/MicrosoftOneDrive.node.ts
+  s_c10e563f7c2f73::t_f7ea136043a05f 610-611
+  s_c10e563f7c2f73::t_7eadd2b1942e88 197,209-210,214
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/app-only-ops.test.ts
+  s_c10e563f7c2f73::t_bab4a846d7cd0f 69-89
+  s_c10e563f7c2f73::t_3bc5d8fd5d6250 64-68,90-91,93-100,102,107-111,115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "895f8160485b28d3f8a701bcc99aa495941b0bf0",
+  "prompts": {},
+  "sessions": {
+    "s_c10e563f7c2f73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db403f6c-3898-4d9e-af22-6e4e17cbd6c8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

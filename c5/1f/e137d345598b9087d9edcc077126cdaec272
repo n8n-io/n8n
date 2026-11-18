@@ -1,0 +1,27 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-terminal-outcome.service.test.ts
+  s_ef1105a184535e::t_955980ede959b0 355-367,372
+  s_ef1105a184535e::t_2af671f4352926 368-371
+  s_ef1105a184535e::t_f60db342808b9b 277-293
+packages/cli/src/modules/instance-ai/instance-ai-terminal-outcome.service.ts
+  s_ef1105a184535e::t_36994c34b0d264 343,345,354-355,357
+  s_ef1105a184535e::t_9b67c74c1a0623 385-392,396-397,400-401,410-415
+  s_ef1105a184535e::t_ed49f747ee73b3 442-464,473
+packages/@n8n/db/src/migrations/common/1787816860559-DropInstanceAiRunSnapshotsTable.ts
+  s_ef1105a184535e::t_149089416b8df1 5-114,121-125,131-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "c51fe137d345598b9087d9edcc077126cdaec272",
+  "prompts": {},
+  "sessions": {
+    "s_ef1105a184535e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9d6b5b5-949d-423d-a866-9b30325ee660",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

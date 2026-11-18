@@ -1,0 +1,81 @@
+packages/cli/src/modules/instance-ai/__tests__/browser-use-server.test.ts
+  s_2a64d569f7fd95::t_bf079bdf4b2aef 1,4-9,11-22,32-34,42,47-49,51-62,64-76,78-85,93,95-110
+  s_2a64d569f7fd95::t_3a8f50f7a4aa6e 3
+  s_2a64d569f7fd95::t_8db963594fe2b0 35,40-41
+  s_2a64d569f7fd95::t_4202245290e5c2 36-39,50
+  s_2a64d569f7fd95::t_f4a3503af134f9 2,23,25-31,43-46,63,77,86-92,94
+  s_2a64d569f7fd95::t_006b243e6ecd09 24
+packages/cli/src/modules/instance-ai/browser/composite-local-mcp-server.ts
+  h_44f8d1c0f2f8c4 19-20,22-24,26,30,34-40,44-45,52,55-57,59-66,70
+packages/cli/src/modules/instance-ai/browser/instance-ai-browser-session.service.ts
+  s_2a64d569f7fd95::t_dd5bca7200fa58 7,30-34,38-39,42-43,45,47-48,61,71,83,107,121-152,159,167-171,175-182,194,197,206,274-275,286-294,313-316,318-319,325
+  s_2a64d569f7fd95::t_9c706c3a5e0b47 153
+  h_44f8d1c0f2f8c4 301-303
+packages/cli/src/modules/instance-ai/browser/browser-use-server.ts
+  s_2a64d569f7fd95::t_415dd71e09b633 35-37
+  s_2a64d569f7fd95::t_4536603757ed59 1-34,38-67
+packages/@n8n/mcp-browser/src/__tests__/cdp-relay-attach.test.ts
+  s_2a64d569f7fd95::t_39f789cbdce38c 1-89
+packages/@n8n/mcp-browser/src/cdp-relay.ts
+  s_2a64d569f7fd95::t_60b60b1224d6ee 154-159,168
+  s_2a64d569f7fd95::t_c067e1b3d454d2 163-165,167
+  s_2a64d569f7fd95::t_db41b83b0432e6 59-60
+  s_2a64d569f7fd95::t_3ad08cab624438 186-187
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  h_44f8d1c0f2f8c4 3001
+packages/cli/src/modules/instance-ai/browser/browser-local-mcp-server.ts
+  h_44f8d1c0f2f8c4 53
+packages/cli/src/server.ts
+  s_2a64d569f7fd95::t_4a5a3a3c7873b4 1
+  s_2a64d569f7fd95::t_6c9b29bb2ed65c 506-508
+  s_2a64d569f7fd95::t_120b0fb7e74cfd 73
+packages/cli/package.json
+  h_44f8d1c0f2f8c4 80
+packages/@n8n/mcp-browser/src/connection.ts
+  s_2a64d569f7fd95::t_64e5bb09c73137 47-48,55-56
+  s_2a64d569f7fd95::t_705bcc625febbf 214-218
+  s_2a64d569f7fd95::t_c483511f3dd4f8 32-39
+packages/@n8n/mcp-browser/src/adapters/playwright.ts
+  s_2a64d569f7fd95::t_0ec8c5a63d4de5 101-102
+  s_2a64d569f7fd95::t_f34cdb0fe935b4 73-76
+  s_2a64d569f7fd95::t_64fc859729b639 118
+  s_2a64d569f7fd95::t_a7ac2a2d220a52 88-89
+  s_2a64d569f7fd95::t_911d3a511abec4 168-170
+packages/cli/src/modules/instance-ai/__tests__/composite-local-mcp-server.test.ts
+  s_2a64d569f7fd95::t_1a2c1989bfbc01 1-105
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-browser-session.service.test.ts
+  s_2a64d569f7fd95::t_40ecfd7bf79289 42,50
+  s_2a64d569f7fd95::t_83dff4f6c6cfa2 19
+  s_2a64d569f7fd95::t_da0539edaca58d 1-11,13-18,20-41,43-49,51-121,125-265
+packages/@n8n/mcp-browser/src/adapters/playwright.remote.test.ts
+  s_2a64d569f7fd95::t_1acf677d0b5211 1-47,49-54,56-69
+  s_2a64d569f7fd95::t_c671eb939ce8c5 48,55
+packages/@n8n/mcp-browser/src/adapters/agent-browser.test.ts
+  s_2a64d569f7fd95::t_008769f3fccf1b 59
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_2a64d569f7fd95::t_64a3412fb9f7d6 59
+  s_2a64d569f7fd95::t_3373c47cb955db 105
+packages/cli/src/modules/instance-ai/browser/browser-use-ws.constants.ts
+  s_2a64d569f7fd95::t_fdd694943b89c9 1-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "473964c38715b4223dae89fead238cd95f8ea88c",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_2a64d569f7fd95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ee9bcf49-2aeb-4b3f-b6cb-15acc1d3f9e1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

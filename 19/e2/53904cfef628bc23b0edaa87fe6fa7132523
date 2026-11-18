@@ -1,0 +1,52 @@
+packages/@n8n/api-types/src/dto/packages/__tests__/export-package-request.dto.test.ts
+  s_1e5b97159db84f::t_1e0f31e0066c59 30-62
+packages/cli/src/modules/n8n-packages/spec/serialized/__tests__/folder.schema.test.ts
+  s_1e5b97159db84f::t_8535a31ddf629a 1-38
+packages/cli/src/modules/n8n-packages/__tests__/export-folder.integration.test.ts
+  s_1e5b97159db84f::t_8535a31ddf629a 1-49,51-77,79-87,89-109,111-138,140-159,161-187,189-195
+  s_1e5b97159db84f::t_948a450a2298e1 50,78,88,110,139,160,188
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder.exporter.test.ts
+  s_1e5b97159db84f::t_5904f322665cf4 2
+  s_1e5b97159db84f::t_8535a31ddf629a 1,3-139
+packages/cli/src/modules/n8n-packages/spec/__tests__/manifest.schema.test.ts
+  s_1e5b97159db84f::t_8535a31ddf629a 48-68
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder.serializer.test.ts
+  s_1e5b97159db84f::t_8535a31ddf629a 1-61
+packages/cli/src/modules/n8n-packages/spec/serialized/folder.schema.ts
+  s_1e5b97159db84f::t_8535a31ddf629a 1-14
+packages/@n8n/api-types/src/dto/packages/export-package-request.dto.ts
+  s_1e5b97159db84f::t_f2705a9a776749 7
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_1e5b97159db84f::t_8535a31ddf629a 1-147
+packages/cli/test/integration/shared/db/folders.ts
+  s_1e5b97159db84f::t_8535a31ddf629a 24
+packages/cli/src/services/__tests__/folder-finder.service.test.ts
+  s_1e5b97159db84f::t_8535a31ddf629a 1,3-93
+  s_1e5b97159db84f::t_e49a221ec16383 2
+packages/cli/src/services/folder-finder.service.ts
+  s_1e5b97159db84f::t_8535a31ddf629a 1-80
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_1e5b97159db84f::t_f5559ce1b9d2bb 96,101-117,122
+  s_1e5b97159db84f::t_175943de3f6899 34
+  s_1e5b97159db84f::t_094754bb52e4c7 154-163
+  s_1e5b97159db84f::t_f7e7d1d984b85b 180
+  s_1e5b97159db84f::t_3a70476b8da553 203,207-222
+packages/cli/src/modules/n8n-packages/entities/folder/folder.serializer.ts
+  s_1e5b97159db84f::t_8535a31ddf629a 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "19e253904cfef628bc23b0edaa87fe6fa7132523",
+  "prompts": {},
+  "sessions": {
+    "s_1e5b97159db84f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1487900-c5ed-4f06-8fe0-6903d96b0335",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

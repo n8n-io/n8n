@@ -1,0 +1,156 @@
+packages/@n8n/db/src/migrations/common/1794511143370-AddSimulationToAgentExecutions.ts
+  s_9af1b09aa006a5::t_c1854e3f6ea6de 3-33
+  s_9af1b09aa006a5::t_4af4d39e376bd3 1-2,34-39
+docs/generated/postgres-schema/README.md
+  s_9af1b09aa006a5::t_bd7204599eae8b 24,26,672,703
+docs/generated/postgres-schema/public.agent_background_job.md
+  s_9af1b09aa006a5::t_29c1a2fd1fbbf2 154
+docs/generated/postgres-schema/public.agent_execution.md
+  s_9af1b09aa006a5::t_ba00e0a5fe13da 25,51,97,168
+docs/generated/postgres-schema/public.agent_execution_message_links.md
+  s_9af1b09aa006a5::t_c1bbcb22830389 69
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_9af1b09aa006a5::t_8216b758af34a6 18,88,137
+docs/generated/postgres-schema/public.agent_history.md
+  s_9af1b09aa006a5::t_d7949e801aa5fc 114
+docs/generated/postgres-schema/public.agent_message_queue.md
+  s_9af1b09aa006a5::t_9e5bd5b513aa5e 88,126
+docs/generated/postgres-schema/public.agent_plan.md
+  s_9af1b09aa006a5::t_130543f4cc1a89 107
+docs/generated/postgres-schema/public.agent_thread_grants.md
+  s_9af1b09aa006a5::t_79d3a9c16b4e98 54
+docs/generated/postgres-schema/public.agents.md
+  s_9af1b09aa006a5::t_0f827a405c6088 221
+docs/generated/postgres-schema/public.project.md
+  s_9af1b09aa006a5::t_9f9c380eb328c1 141
+docs/generated/postgres-schema/public.user.md
+  s_9af1b09aa006a5::t_bcfdb98eca218f 189
+docs/generated/sqlite-schema/README.md
+  s_9af1b09aa006a5::t_cdd13d99c3c9d5 24,26,658,689
+docs/generated/sqlite-schema/agent_background_job.md
+  s_9af1b09aa006a5::t_f109222ceb0a6d 156
+docs/generated/sqlite-schema/agent_execution.md
+  s_9af1b09aa006a5::t_a64b76d0d95f4f 9,36,100,171
+docs/generated/sqlite-schema/agent_execution_message_links.md
+  s_9af1b09aa006a5::t_40f1c0cb2979e0 77
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_9af1b09aa006a5::t_0123b7f315ea01 9,29,88,137
+docs/generated/sqlite-schema/agent_history.md
+  s_9af1b09aa006a5::t_56d8005f1209bc 121
+docs/generated/sqlite-schema/agent_message_queue.md
+  s_9af1b09aa006a5::t_b1156d4d78d416 91,129
+docs/generated/sqlite-schema/agent_plan.md
+  s_9af1b09aa006a5::t_957b24c882a77e 112
+docs/generated/sqlite-schema/agent_thread_grants.md
+  s_9af1b09aa006a5::t_93511b91d77ae8 63
+docs/generated/sqlite-schema/agents.md
+  s_9af1b09aa006a5::t_1b718bdaa2702c 221
+docs/generated/sqlite-schema/project.md
+  s_9af1b09aa006a5::t_ca0f9854bb0824 147
+docs/generated/sqlite-schema/user.md
+  s_9af1b09aa006a5::t_e8972f9f20ca25 193
+packages/@n8n/agents/src/index.ts
+  s_9af1b09aa006a5::t_781ed6a07212a0 27-28
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_9af1b09aa006a5::t_8a1b40da26040d 19-24,12736-12798
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_9af1b09aa006a5::t_4a517e82a235be 296
+packages/@n8n/agents/src/runtime/tools/tool-call-runner.ts
+  s_9af1b09aa006a5::t_79441618ca9a88 429-430,444-448
+packages/@n8n/agents/src/sdk/__tests__/inline-sub-agent-tools.test.ts
+  s_9af1b09aa006a5::t_a065fbc196bb2f 572-591
+packages/@n8n/agents/src/sdk/agent.ts
+  s_9af1b09aa006a5::t_a9458e0c0ee879 73,244-245,653-661,1289-1291,1455-1458
+packages/@n8n/agents/src/types/index.ts
+  s_9af1b09aa006a5::t_457fd1d85c0145 77-78
+packages/@n8n/agents/src/types/runtime/agent-runtime.ts
+  s_9af1b09aa006a5::t_1d65fe624526a9 27,124-125
+packages/@n8n/agents/src/types/runtime/tool-execution.ts
+  s_9af1b09aa006a5::t_6bb46e282905e2 17,157
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_9af1b09aa006a5::t_88cadcb49f5649 94-111
+packages/@n8n/api-types/src/agent-sse.ts
+  s_9af1b09aa006a5::t_16d7e235a69c48 29,145-146
+packages/@n8n/api-types/src/index.ts
+  s_9af1b09aa006a5::t_89910abc04ed0b 1088-1106
+packages/@n8n/api-types/src/schemas/agent-safe-testing.schema.ts
+  s_9af1b09aa006a5::t_0b7b32fb904847 1-76
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_9af1b09aa006a5::t_2f88bfdf280d9c 54,95
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_9af1b09aa006a5::t_ca53fa0e029bad 93-94,1702,1821,2281-2305
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_9af1b09aa006a5::t_8823db4fa6bd3a 21,145-175
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_9af1b09aa006a5::t_a90c844d01fa7d 633-657
+packages/cli/src/modules/agents/__tests__/agent-test-run.controller.test.ts
+  s_9af1b09aa006a5::t_b27fdd1482a29d 1-37
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_9af1b09aa006a5::t_66f0395b1400da 19-20,77-78,90,96,561-677
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_9af1b09aa006a5::t_5455ba9a2e5707 92,125-130,158-159,230-231,325-332,617,619-623,861-862,1465,1772,2067-2074
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_9af1b09aa006a5::t_2bbad7b19d903b 30,55-59,144-145,324,359
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_9af1b09aa006a5::t_6dc60212dc47c1 833-835
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_9af1b09aa006a5::t_f5047678b21e13 161,222
+packages/cli/src/modules/agents/agent-test-run.controller.ts
+  s_9af1b09aa006a5::t_fcefce297ee76a 1-24
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_9af1b09aa006a5::t_0a3938f40ad4d9 8,24-25,48,61-73,137,179,241,248,255-259,271,276,286,388-413,418-422,426,432-433,440-441,448,453-460,492-520
+packages/cli/src/modules/agents/agents.module.ts
+  s_9af1b09aa006a5::t_90987614ede833 38
+packages/cli/src/modules/agents/entities/agent-execution-thread.entity.ts
+  s_9af1b09aa006a5::t_ef7009a6ee42b2 7,28-34
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_9af1b09aa006a5::t_bfc8d993e0ce9f 154-157
+packages/cli/src/modules/agents/evaluation/agent-evaluation.contracts.ts
+  s_9af1b09aa006a5::t_d8e23be34fef5b 1,45-46,78-82
+packages/cli/src/modules/agents/simulation/__tests__/simulated-write-sends-nothing.test.ts
+  s_9af1b09aa006a5::t_49b77a95a23a09 1-184
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.service.test.ts
+  s_9af1b09aa006a5::t_9cef54f3e61046 1-247
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.test.ts
+  s_9af1b09aa006a5::t_97532b03094c4a 1-338
+packages/cli/src/modules/agents/simulation/non-http-node-types.ts
+  s_9af1b09aa006a5::t_b1fcb62df3851c 1-47
+packages/cli/src/modules/agents/simulation/safe-testing-flag-gate.ts
+  s_9af1b09aa006a5::t_0332b6a7ade6ec 1-25
+packages/cli/src/modules/agents/simulation/simulation-backend-registry.ts
+  s_9af1b09aa006a5::t_5190d9694277fa 1-21
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_9af1b09aa006a5::t_b408ebbd6d4da0 1-246
+packages/cli/src/modules/agents/simulation/simulation-session.ts
+  s_9af1b09aa006a5::t_cb0869ec6b9a14 1-398
+packages/cli/src/modules/agents/simulation/tool-simulation.contracts.ts
+  s_9af1b09aa006a5::t_ea9a42491a7d7b 1-116
+packages/cli/src/modules/agents/types/agent-steering.ts
+  s_9af1b09aa006a5::t_e275db5b837bfc 2,6-14
+packages/cli/src/modules/instance-ai/eval/__tests__/llm-mock-simulation-backend.test.ts
+  s_9af1b09aa006a5::t_6d928f68e96576 1-187
+packages/cli/src/modules/instance-ai/eval/llm-mock-simulation-backend.ts
+  s_9af1b09aa006a5::t_bccaf3d8ac7fb0 1-208
+packages/cli/src/modules/instance-ai/eval/workflow-analysis.ts
+  s_9af1b09aa006a5::t_9f5cb5a67681e9 20-21,107
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_9af1b09aa006a5::t_efc847c8ffcffd 87-88,105-118
+packages/quality/policy/code-health/src/rules/agents-instance-ai-boundary.rule.ts
+  s_9af1b09aa006a5::t_32c49768c76980 29-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4f37731d45ce6358636c4efd662a0b388cb50d47",
+  "prompts": {},
+  "sessions": {
+    "s_9af1b09aa006a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1eb6b7e9-1b4b-40b6-a96a-2131e0d0c9cf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/frontend/@n8n/design-system/src/components/N8nHoverCard/component-hover-card.md
+  s_e5c0e7c946ea00::t_ac41bf18f604d2 94
+packages/frontend/@n8n/design-system/src/components/N8nHoverCard/HoverCard.stories.ts
+  s_e5c0e7c946ea00::t_ac41bf18f604d2 39,338
+packages/frontend/@n8n/design-system/src/components/N8nDialog/Dialog.stories.ts
+  s_e5c0e7c946ea00::t_ac41bf18f604d2 59,231,273,323
+  s_e5c0e7c946ea00::t_755bc52b5ccbcd 233
+packages/frontend/editor-ui/src/features/agents/components/settings/AgentBuilderModelSection.vue
+  s_e5c0e7c946ea00::t_ac41bf18f604d2 225
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestsPanel.vue
+  s_e5c0e7c946ea00::t_755bc52b5ccbcd 227
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/components/SourceControlPullResultModal.vue
+  s_e5c0e7c946ea00::t_755bc52b5ccbcd 156
+packages/frontend/@n8n/design-system/src/components/N8nPopover/Popover.stories.ts
+  s_e5c0e7c946ea00::t_755bc52b5ccbcd 68,85,112,207
+  s_e5c0e7c946ea00::t_ac41bf18f604d2 86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "290fde373e644d502974da71cdad60117d724ba4",
+  "prompts": {},
+  "sessions": {
+    "s_e5c0e7c946ea00": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fccd0-9d73-72f3-a803-e1a2bf45ef80",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    }
+  }
+}

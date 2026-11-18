@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/__tests__/module.descriptor.test.ts
+  s_983eea3c47ac98::t_95e581983530d5 86-87
+  s_983eea3c47ac98::t_206cb405d6d5b6 1-2,30-33,39-40,79-85
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionReviewView.vue
+  s_983eea3c47ac98::t_ff7f3e15a50f01 231
+  s_983eea3c47ac98::t_09f0a142d39ef2 161,166-168,171
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/module.descriptor.ts
+  s_983eea3c47ac98::t_8147faf4689079 29
+  s_983eea3c47ac98::t_f79dcb5a899c5d 31-42
+  s_983eea3c47ac98::t_ed74f3f03adfb8 3
+  s_983eea3c47ac98::t_0b61b33ffd655d 30
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionReview.ts
+  s_983eea3c47ac98::t_1e88d6c7f8723e 61,63-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8fb7a812dcdc22eb8c2dffc7beb99ca1371f6cdb",
+  "prompts": {},
+  "sessions": {
+    "s_983eea3c47ac98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6afe657c-702d-4003-8734-85a65b043c95",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/@n8n/cli/docs/commands/promotions.md
+  s_3dd47ea0104342::t_c4f4b9311e0878 304-306,396-401,475-478,534-545
+packages/@n8n/cli/src/commands/promotion-environment/apply-continue.ts
+  s_3dd47ea0104342::t_c4f4b9311e0878 22
+packages/@n8n/cli/src/commands/promotion-environment/apply-command.ts
+  s_3dd47ea0104342::t_c4f4b9311e0878 6,34-38,40,44-51,102-104,119-127,140-144
+packages/@n8n/cli/src/client.ts
+  s_3dd47ea0104342::t_c4f4b9311e0878 168-171,174-189,194-196,215
+  s_3dd47ea0104342::t_6901cc82ab4c0a 190-193
+packages/@n8n/cli/src/commands/promotion-environment/apply-environment-selection.ts
+  s_3dd47ea0104342::t_c4f4b9311e0878 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b0d2774ea649f9db41c57f4a7e27051a88324751",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

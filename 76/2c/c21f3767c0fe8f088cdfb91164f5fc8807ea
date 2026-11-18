@@ -1,0 +1,20 @@
+packages/@n8n/api-types/src/agents/types.ts
+  s_6e06771097abf4::t_a674dcabf174f6 206-207
+  s_6e06771097abf4::t_d8d255e185a5a7 196-205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "762cc21f3767c0fe8f088cdfb91164f5fc8807ea",
+  "prompts": {},
+  "sessions": {
+    "s_6e06771097abf4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b3c7bb4-2a4f-497e-966d-6b2a50495f9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

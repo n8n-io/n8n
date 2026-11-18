@@ -1,0 +1,23 @@
+packages/cli/src/modules/ldap.ee/ldap.service.ee.ts
+  s_1c953e0b08c977::t_c99847f1c6c093 6
+  s_1c953e0b08c977::t_179689e2ee0bae 580-586
+packages/cli/src/modules/ldap.ee/__tests__/ldap.service.test.ts
+  s_1c953e0b08c977::t_22796fb34c1263 1755-1797
+  s_1c953e0b08c977::t_07c04d0500a09c 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "61fbe85b07af6c9a2bc727193cb69230627708b8",
+  "prompts": {},
+  "sessions": {
+    "s_1c953e0b08c977": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "271de31e-c31a-4998-89ef-c1c819906c18",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_3a3b3ff32fc21f::t_df6043c5079be3 3396
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "07237b9313f373d37b6175866fec2460ceca6f06",
+  "prompts": {},
+  "sessions": {
+    "s_3a3b3ff32fc21f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74804703-b0db-4d20-87a5-1b19b2b22f32",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+.github/WORKFLOWS.md
+  h_52a137d26d774c 518-519
+.github/workflows/release-populate-cloud-with-releases.yml
+  h_52a137d26d774c 71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "744d8885598bf5f6be4034b92c773b0001f983ab",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

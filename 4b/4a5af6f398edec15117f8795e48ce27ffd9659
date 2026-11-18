@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_a920087afe8f0c::t_7ffb12cce11f96 1291-1292
+  s_a920087afe8f0c::t_3c9b108f188cb2 1285-1290,1293-1297,2464
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a920087afe8f0c::t_9626513dc4d130 1953,5081
+packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+  s_a920087afe8f0c::t_d28ef5a9726efb 73,110,242-253,468-470,483-499
+  s_a920087afe8f0c::t_0ecb86de226f58 500-501
+packages/frontend/editor-ui/src/app/components/WorkflowCard.test.ts
+  s_a920087afe8f0c::t_516bbc6ad55fef 1374,1376-1394,1396-1406,1408-1418,1420-1431,1433-1447,1449-1469,1471-1491,1493-1502
+  s_a920087afe8f0c::t_3ba79151424210 1375,1395,1407,1419,1432,1448,1470,1492
+  s_a920087afe8f0c::t_93efad477cea76 69,73
+  s_a920087afe8f0c::t_e66aaa96ff0bc0 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4b4a5af6f398edec15117f8795e48ce27ffd9659",
+  "prompts": {},
+  "sessions": {
+    "s_a920087afe8f0c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0cda8-3480-74ed-a4a8-6f21c2d9dfa1",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

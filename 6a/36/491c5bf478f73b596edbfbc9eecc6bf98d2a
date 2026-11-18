@@ -1,0 +1,31 @@
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_5785bc20fb92a9::t_2761d3bd94f7d4 43,249,334,596-598,626
+  s_5785bc20fb92a9::t_edb8347917531e 272-273,281-286
+  s_5785bc20fb92a9::t_3e9162a9fe9e38 1249-1250,1254
+  s_5785bc20fb92a9::t_5975314ee1f911 1365,1478
+  s_5785bc20fb92a9::t_f87a7ff0607e61 1381,1484
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_5785bc20fb92a9::t_edb8347917531e 568,570
+  h_7555c3ee6524cf 569,584
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6a36491c5bf478f73b596edbfbc9eecc6bf98d2a",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,66 @@
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/upsert.operation.ts
+  s_37e451fff42af7::t_d91a87fa97ee7c 217-219
+  s_37e451fff42af7::t_37ec01f9670030 231,245,262,356,372
+  s_37e451fff42af7::t_34f81a3ad25b3c 14,21,24
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/getColumns.operation.ts
+  s_37e451fff42af7::t_3d3c9a3ff6dfac 116-118
+  s_37e451fff42af7::t_dac370c14ea2a6 134,143
+  s_37e451fff42af7::t_e9126d66ce0d45 10,12,15
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/lookup.operation.ts
+  s_37e451fff42af7::t_d8ee56d63eb58d 89-91
+  s_37e451fff42af7::t_1598cf34039271 12,14,17
+  s_37e451fff42af7::t_0caaa61c07e860 100,111
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/convertToRange.operation.ts
+  s_37e451fff42af7::t_66937e2836111b 45-47,51
+  s_37e451fff42af7::t_6532a836e65425 10,12,14
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/append.operation.ts
+  s_37e451fff42af7::t_62022cfd557519 259
+  s_37e451fff42af7::t_267be470970728 157-159
+  s_37e451fff42af7::t_03e8995528a259 165
+  s_37e451fff42af7::t_e0a9352f679b0c 12,14,17
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/addTable.operation.ts
+  s_37e451fff42af7::t_2d243ecfcdcca7 85-87
+  s_37e451fff42af7::t_ca2d4d10c8dd87 97,111
+  s_37e451fff42af7::t_468e334f7dc0ef 10,12,15
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/update.operation.ts
+  s_37e451fff42af7::t_deeda741f22d40 14,20,23
+  s_37e451fff42af7::t_e05ecf24f4c8c2 265-267
+  s_37e451fff42af7::t_1bd1a8600ca5bb 279,293,310,367
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/workbook/addWorksheet.operation.ts
+  s_37e451fff42af7::t_bed25d14194d0f 69,75,84
+  s_37e451fff42af7::t_4350b053f14ac5 58-60
+  s_37e451fff42af7::t_ea14dc29ce05fc 10,12,15
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/append.operation.ts
+  s_37e451fff42af7::t_1af6051efb7640 175-177
+  s_37e451fff42af7::t_11ec40270a0fc2 11,13,16
+  s_37e451fff42af7::t_6f9e96cb7a847f 184,247,253,262
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/workbook/deleteWorkbook.operation.ts
+  s_37e451fff42af7::t_71870d66ad717d 6,8,10
+  s_37e451fff42af7::t_0fa81b9d742f20 32-34,36
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/deleteTable.operation.ts
+  s_37e451fff42af7::t_a7b890e9d0cc4d 40-42,46
+  s_37e451fff42af7::t_af66824f00f96e 5,7,9
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/deleteWorksheet.operation.ts
+  s_37e451fff42af7::t_32e6db00cdc981 5,7,9
+  s_37e451fff42af7::t_91d08216368378 36-38,42
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/clear.operation.ts
+  s_37e451fff42af7::t_29e5144d7d4a36 84-86
+  s_37e451fff42af7::t_33de8b12c71c98 5,7,10
+  s_37e451fff42af7::t_0f8fea8e0f1eaf 94,102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "dcefb2cb4d2cc7ca4f78e8105daf8aa75c048288",
+  "prompts": {},
+  "sessions": {
+    "s_37e451fff42af7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9285862-7af0-4e1d-89ba-8bd58c2f345d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

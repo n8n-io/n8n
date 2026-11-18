@@ -1,0 +1,40 @@
+packages/@n8n/instance-ai/evaluations/harness/stub-services.ts
+  s_cee4e828ffcc82::t_8f39a48b130afc 135
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_cee4e828ffcc82::t_364d9633ed7cfa 1206-1213,1369
+  s_cee4e828ffcc82::t_2d0297e8cc9307 131-160
+packages/@n8n/instance-ai/src/workflow-loop/__tests__/render-claim.test.ts
+  s_cee4e828ffcc82::t_233b0da2df9a32 1-5
+  s_cee4e828ffcc82::t_b65a6d3a74ea62 6-90
+packages/@n8n/instance-ai/src/tools/orchestration/verify-built-workflow.tool.ts
+  s_cee4e828ffcc82::t_9d00dcb30de4ae 42-45
+packages/@n8n/instance-ai/src/workflow-loop/render-claim.ts
+  s_cee4e828ffcc82::t_dd5fbf538bf433 6,41-45,51,83-87
+packages/@n8n/instance-ai/skills/debugging-executions/SKILL.md
+  s_cee4e828ffcc82::t_ca728a72737ea8 41-45
+packages/@n8n/instance-ai/src/workflow-loop/guidance.ts
+  s_cee4e828ffcc82::t_9d00dcb30de4ae 21-24,28,110-115
+packages/@n8n/instance-ai/src/tools/executions.tool.ts
+  s_cee4e828ffcc82::t_88e528ace11840 33-35,52-58
+packages/@n8n/instance-ai/src/workflow-loop/__tests__/guidance.test.ts
+  s_cee4e828ffcc82::t_f4ed340b8006b0 106,155-157
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_cee4e828ffcc82::t_d634bc94a0b929 262,287,299
+  s_cee4e828ffcc82::t_676dda4829bdde 257-261,263-286,288-298,300-315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "774aeaebe879cbae620de261a0fb302924aa0a4e",
+  "prompts": {},
+  "sessions": {
+    "s_cee4e828ffcc82": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3f04aa7-b442-4926-accf-09cf2f8803d0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

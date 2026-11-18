@@ -1,0 +1,29 @@
+packages/@n8n/instance-ai/skills/suggest-automations/SKILL.md
+  s_2ed659fa6b1ae7::t_64c68328df1652 6-7,23-28,46-58,61
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_2ed659fa6b1ae7::t_f9e5d12ae30fc4 576-577,579
+packages/cli/src/modules/instance-ai/onboarding.ts
+  s_2ed659fa6b1ae7::t_2f6df3a5e7e03d 116-117,120-126,160-161,197,202,208-211,217,248,258-275,279-281,283,288-290,302,304-306,308-338,340-357,359
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_2ed659fa6b1ae7::t_56d83da8456a59 385-387,393,408
+packages/@n8n/instance-ai/onboarding/cloud-form.yaml
+  s_2ed659fa6b1ae7::t_31f24cb2cde4fd 4-8,11-17,34
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_2ed659fa6b1ae7::t_3f99bddd5f1197 836-839
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a18bc133a8460dcf3d769ab224721a918e027ba5",
+  "prompts": {},
+  "sessions": {
+    "s_2ed659fa6b1ae7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3f128a4-3e8f-4275-b045-49313edd5a2e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

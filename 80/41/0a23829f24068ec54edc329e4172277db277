@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHeaders.test.ts
+  s_2d0acf98679717::t_b570b0e48e76be 48
+  s_2d0acf98679717::t_5b2d1196f7f51c 67-69,88,115,123,128
+packages/cli/src/modules/agents/__tests__/agent-session-langsmith-export.service.test.ts
+  s_2d0acf98679717::t_bb6be3361c9eaf 311
+packages/cli/src/modules/agents/agent-session-langsmith-export.service.ts
+  s_2d0acf98679717::t_1b3fd012a0b1d9 1,30-35,92,201,209,448,453,456-463
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentSessionLangSmithExport.spec.ts
+  s_2d0acf98679717::t_c86b539155c8c7 90-91,101
+packages/@n8n/agents/src/sdk/guardrails/redactor.ts
+  s_2d0acf98679717::t_5af36675d10b95 19-20,153-154,172-184,195,206
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewDock.test.ts
+  s_2d0acf98679717::t_581c076c18b899 9,22,178,182
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  s_2d0acf98679717::t_1c94423821a16b 216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "80410a23829f24068ec54edc329e4172277db277",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_2d0acf98679717": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7511553b-ef45-430c-a3d3-8f80407b4832",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

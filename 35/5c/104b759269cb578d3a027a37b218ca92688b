@@ -1,0 +1,29 @@
+packages/cli/src/modules/promotions.ee/promotion-binding-preflight.service.ts
+  s_de87d9c835c651::t_fec85978528047 63-74
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_de87d9c835c651::t_ad6ec1c1e3ed29 489
+  s_de87d9c835c651::t_8b34e897a74844 22-25
+  s_de87d9c835c651::t_3539eeb03f1150 583-588
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_de87d9c835c651::t_cba102adc6bb25 1480-1486,1495,1501,1532,1544,1570,1586,1599,1610
+  s_de87d9c835c651::t_5a583be9160561 1459-1464,1471,1502,1600
+packages/cli/src/modules/promotions.ee/__tests__/promotion-binding-preflight.service.test.ts
+  s_de87d9c835c651::t_5a047c38a723ac 242-248,253-268
+  s_de87d9c835c651::t_0efc36df1ccb0d 249-252
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "355c104b759269cb578d3a027a37b218ca92688b",
+  "prompts": {},
+  "sessions": {
+    "s_de87d9c835c651": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ddc0b17e-b4c7-4112-b4e8-aa7b7b8a0b8f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

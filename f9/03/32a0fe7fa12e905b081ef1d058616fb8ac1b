@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useIsAgentWorking.ts
+  s_fe62292551adf8::t_85ab1086b44ed2 17-20,22-23
+  s_fe62292551adf8::t_7b4a8a97e92294 4
+packages/frontend/editor-ui/src/features/agents/agentEvals.store.ts
+  s_fe62292551adf8::t_50dd5e261163cd 51-58,60-61
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_fe62292551adf8::t_0a4d4a244e36c8 1429-1450
+  s_fe62292551adf8::t_5fb696447804cf 1521
+packages/frontend/editor-ui/src/features/agents/__tests__/agentEvals.store.test.ts
+  s_fe62292551adf8::t_40e432f95fac57 167,172-179
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_fe62292551adf8::t_785fe4707e5fd4 211-212,216-220,225
+  ai_agent 221-224
+  s_fe62292551adf8::t_1af95c93e01a73 705-709
+  s_fe62292551adf8::t_0647cca236e34e 180-182,190-206
+  s_fe62292551adf8::t_dd89870e1b6e1a 82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f90332a0fe7fa12e905b081ef1d058616fb8ac1b",
+  "prompts": {},
+  "sessions": {
+    "s_fe62292551adf8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dcdf49db-29c9-47f8-91d3-ac72251be9a6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

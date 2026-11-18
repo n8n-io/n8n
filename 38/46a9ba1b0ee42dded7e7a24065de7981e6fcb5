@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.vue
+  s_3ef284ec4e912a::t_87b0878a031e26 413-414,416-418
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.test.ts
+  s_3ef284ec4e912a::t_944d327da34398 629-650
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3846a9ba1b0ee42dded7e7a24065de7981e6fcb5",
+  "prompts": {},
+  "sessions": {
+    "s_3ef284ec4e912a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b138e788-474c-4896-a1e4-df3d332d4d7e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

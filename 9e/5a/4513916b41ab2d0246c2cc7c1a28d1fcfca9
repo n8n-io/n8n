@@ -1,0 +1,34 @@
+packages/@n8n/instance-ai/src/tools/apps/__tests__/app-workspace.test.ts
+  s_5631b188ce818f::t_7dd357b79df0aa 22,39-41,46-47,51-63
+packages/@n8n/instance-ai/src/tools/apps/__tests__/apps.tool.test.ts
+  s_5631b188ce818f::t_7dd357b79df0aa 53-58
+  s_5631b188ce818f::t_253388687f2321 202
+packages/@n8n/instance-ai/docs/tools.md
+  s_5631b188ce818f::t_c8a24a92758938 1305-1309,1318,1322-1323
+packages/@n8n/instance-ai/skills/app-builder/SKILL.md
+  s_5631b188ce818f::t_c8a24a92758938 74-75
+packages/@n8n/instance-ai/src/tools/apps/app-workspace.ts
+  s_5631b188ce818f::t_e41f172b3f4e86 52,64,74,76,78-84
+packages/@n8n/instance-ai/src/tools/apps/apps.tool.ts
+  s_5631b188ce818f::t_23f278cb5e5e7e 109
+packages/cli/src/modules/instance-ai/turn-setup/__tests__/assistant-turn-environment.factory.test.ts
+  s_5631b188ce818f::t_bafa37297e5b69 176,184,190
+packages/cli/src/modules/instance-ai/turn-setup/assistant-turn-environment.factory.ts
+  s_5631b188ce818f::t_c41872d575c79b 445,451
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9e5a4513916b41ab2d0246c2cc7c1a28d1fcfca9",
+  "prompts": {},
+  "sessions": {
+    "s_5631b188ce818f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84992bfe-521e-4b79-80af-ca4ae976b51f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

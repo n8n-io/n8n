@@ -1,0 +1,55 @@
+packages/@n8n/instance-ai/tsconfig.json
+  s_939a48207b5108::t_bc9d8ab2ab3a09 16-21
+packages/@n8n/instance-ai/src/workspace/__tests__/pack-workspace-sdk.test.ts
+  s_939a48207b5108::t_5e97f73c3f79cc 40-55,57-59
+  s_939a48207b5108::t_93367a3283a7e7 56
+packages/@n8n/instance-ai/src/workspace/pack-workspace-sdk.ts
+  s_939a48207b5108::t_93367a3283a7e7 176
+  s_939a48207b5108::t_08f05f83062948 166-175,177-188,198,218
+packages/@n8n/instance-ai/src/workspace/snapshot-manager.ts
+  s_939a48207b5108::t_08f05f83062948 26-33,55-58,202,216-223,225-228
+  s_939a48207b5108::t_93367a3283a7e7 224
+packages/@n8n/instance-ai/package.json
+  s_939a48207b5108::t_738bbd6b12b21f 13
+packages/@n8n/instance-ai/scripts/build-snapshot.cjs
+  s_939a48207b5108::t_08f05f83062948 105-107
+packages/@n8n/instance-ai/src/workspace/__tests__/sandbox-setup.test.ts
+  s_939a48207b5108::t_5e97f73c3f79cc 278-307
+packages/@n8n/instance-ai/scripts/verify-snapshot-packages.ts
+  s_939a48207b5108::t_870229c5ba0807 92-95
+  s_939a48207b5108::t_93367a3283a7e7 55-57,77-79
+  s_939a48207b5108::t_bc9d8ab2ab3a09 45-53,63-64,66
+  s_939a48207b5108::t_06eeaa1bbdc25d 61-62
+  s_939a48207b5108::t_68fabbc0671c6e 1-44,54,58,70-76,80-91
+  s_939a48207b5108::t_3bc26c4a97ab62 59-60,65,67-69
+packages/@n8n/instance-ai/src/workspace/__tests__/snapshot-manager.test.ts
+  s_939a48207b5108::t_5e97f73c3f79cc 55-59,147-150,197-222
+  s_939a48207b5108::t_93367a3283a7e7 10-18,20-24,26-44,46-48
+  s_939a48207b5108::t_e65d446afbbd47 223
+packages/@n8n/instance-ai/docs/sandboxing.md
+  s_939a48207b5108::t_fe36f95ceab3af 133-145
+packages/@n8n/instance-ai/src/workspace/snapshot-image-context.ts
+  s_939a48207b5108::t_08f05f83062948 32,39,49
+packages/@n8n/instance-ai/src/workspace/sandbox-setup.ts
+  s_939a48207b5108::t_c463206ac8cee5 198-201,205,226,230,233
+  s_939a48207b5108::t_93367a3283a7e7 225
+  s_939a48207b5108::t_08f05f83062948 227-229,231-232,234-235
+packages/@n8n/instance-ai/src/workspace/__tests__/snapshot-image-context.test.ts
+  s_939a48207b5108::t_5e97f73c3f79cc 22,25,37-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b5393ec184d9415b7426118537770cec5da82ca3",
+  "prompts": {},
+  "sessions": {
+    "s_939a48207b5108": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e366ccd96ffeMbZge3MQBa6Tn6",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

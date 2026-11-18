@@ -1,0 +1,20 @@
+packages/cli/test/integration/public-api/roles.test.ts
+  s_0718d436029abd::t_852c34c791381e 2-3,5
+  s_0718d436029abd::t_81e29fcc89072a 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2bcf42992f488662b1d84939e052d704682ddfd3",
+  "prompts": {},
+  "sessions": {
+    "s_0718d436029abd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "706bc314-a29a-4ab3-a604-d8a15a14e12d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

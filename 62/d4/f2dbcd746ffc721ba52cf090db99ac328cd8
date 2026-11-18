@@ -1,0 +1,9 @@
+packages/@n8n/db/scripts/schema-docs.mjs
+  ai_agent 116,135-144,148-150,152-154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "62d4f2dbcd746ffc721ba52cf090db99ac328cd8",
+  "prompts": {}
+}

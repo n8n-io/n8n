@@ -1,0 +1,79 @@
+packages/frontend/editor-ui/src/features/roles/composables/useRoleDeletion.ts
+  s_3d1fe0ab84d1d3::t_34d7667d196038 118-121
+  s_3d1fe0ab84d1d3::t_bbd5bb40f96025 6
+  s_3d1fe0ab84d1d3::t_3d671cf1617727 38
+  s_3d1fe0ab84d1d3::t_d4cbe03a3176c1 122
+packages/frontend/@n8n/design-system/src/components/N8nActionToggle/ActionToggle.vue
+  s_3d1fe0ab84d1d3::t_4afd01392eaa59 143-168
+  s_3d1fe0ab84d1d3::t_60b40e62d2edd5 9-10
+  s_3d1fe0ab84d1d3::t_1933a1c25ec28e 16-17
+packages/frontend/editor-ui/src/features/roles/composables/useRolesListActions.ts
+  s_3d1fe0ab84d1d3::t_ad874b00cf586b 84,90-92,95
+  s_3d1fe0ab84d1d3::t_5794abecd8e293 35
+  s_3d1fe0ab84d1d3::t_48ece4764022c4 85-87,93-94
+  s_3d1fe0ab84d1d3::t_88217984f9064b 7
+  s_3d1fe0ab84d1d3::t_671ae3e3352927 83
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleView.vue
+  s_3d1fe0ab84d1d3::t_39288750b600d8 13
+  s_3d1fe0ab84d1d3::t_e59cec9279751d 256-257,260-264
+  s_3d1fe0ab84d1d3::t_c749423d92a740 23
+  s_3d1fe0ab84d1d3::t_afaed0f5f8be03 73-76,78
+  s_3d1fe0ab84d1d3::t_83aef67b1902e9 258
+  s_3d1fe0ab84d1d3::t_ecd218f8c8163c 7
+  s_3d1fe0ab84d1d3::t_9f7fd265868c0f 77,79
+  s_3d1fe0ab84d1d3::t_af630f5872c052 259
+  s_3d1fe0ab84d1d3::t_7293d9c76236fc 288-294
+packages/frontend/editor-ui/src/features/roles/components/RolesTable.vue
+  s_3d1fe0ab84d1d3::t_5206db1e284443 14
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRolesView.test.ts
+  s_3d1fe0ab84d1d3::t_686eeaa3f2bbda 6
+  s_3d1fe0ab84d1d3::t_8b37267d2d882a 91,101-103,105
+  s_3d1fe0ab84d1d3::t_40295307d93a48 188-202
+  s_3d1fe0ab84d1d3::t_354ec6f68aef6c 90,100,104
+  s_3d1fe0ab84d1d3::t_b086537c447910 7
+  s_3d1fe0ab84d1d3::t_fa955e157b0e09 173-187
+packages/frontend/editor-ui/src/features/roles/composables/useRoleDeletion.test.ts
+  s_3d1fe0ab84d1d3::t_d85ee7afb3da74 106,116
+  s_3d1fe0ab84d1d3::t_0b5ca8e1eab35f 94-105
+  s_3d1fe0ab84d1d3::t_ff9a54add2a853 6
+  s_3d1fe0ab84d1d3::t_ddcbc471c845cd 5
+  s_3d1fe0ab84d1d3::t_3a222ce9e13c13 62,70-72,74
+  s_3d1fe0ab84d1d3::t_b9cd22a8cb03d4 107-115,117-119
+  s_3d1fe0ab84d1d3::t_f33222b1c4937b 61,69,73
+packages/frontend/@n8n/design-system/src/components/N8nActionToggle/ActionToggle.stories.ts
+  s_3d1fe0ab84d1d3::t_b7f108d7f32c00 58-73
+packages/@n8n/api-types/src/dto/roles/role-delete-query.dto.ts
+  s_3d1fe0ab84d1d3::t_6a80c6d167c215 1,8-10,13
+packages/cli/src/controllers/role.controller.ts
+  s_3d1fe0ab84d1d3::t_9891186cfabc84 50-66
+  s_3d1fe0ab84d1d3::t_0ddf30e3aa2314 157-160
+packages/frontend/editor-ui/src/features/roles/composables/useRoleDeleteGuard.ts
+  s_3d1fe0ab84d1d3::t_5d82d4834e06d1 1-37
+packages/cli/test/integration/controllers/role.controller.test.ts
+  s_3d1fe0ab84d1d3::t_4350a86916f620 1131,1136,1144-1146,1159-1195
+packages/frontend/@n8n/design-system/src/components/N8nActionToggle/ActionToggle.test.ts
+  s_3d1fe0ab84d1d3::t_d4d2b85757659a 1-5,7-32
+  s_3d1fe0ab84d1d3::t_1eb250eabd7829 6
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3d1fe0ab84d1d3::t_cdb7a6f77940e8 2857
+  s_3d1fe0ab84d1d3::t_1679a930d8f54b 2856
+packages/cli/src/controllers/__tests__/role.controller.test.ts
+  s_3d1fe0ab84d1d3::t_06566925b82001 80-127,129-145,149-173
+  s_3d1fe0ab84d1d3::t_d422df1887116c 174-176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "3e782b720db7cf34568f63389568990f1b85ff40",
+  "prompts": {},
+  "sessions": {
+    "s_3d1fe0ab84d1d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2eeec93-66d6-4786-8506-d6c465accc4f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

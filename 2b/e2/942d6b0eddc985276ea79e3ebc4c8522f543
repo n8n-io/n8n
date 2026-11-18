@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/Discourse/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_b76c72acebbe6e 1-576
+packages/nodes-base/nodes/Discourse/test/workflow/Discourse.workflow.test.ts
+  s_2e1fa95fc44f8f::t_17c26a624e5a99 1-63
+  s_2e1fa95fc44f8f::t_41e23c19212387 64-66
+  s_6082a1b9696fe7::t_ec034f2dfa28d3 67-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2be2942d6b0eddc985276ea79e3ebc4c8522f543",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_6082a1b9696fe7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aced4535e855cb6de",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

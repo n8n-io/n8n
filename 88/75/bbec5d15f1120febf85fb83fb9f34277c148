@@ -1,0 +1,87 @@
+docs/generated/postgres-schema/public.agent_execution.md
+  ai_agent 17,62,93-117,150
+docs/generated/postgres-schema/public.agent_history.md
+  ai_agent 106
+docs/generated/sqlite-schema/agent_thread_grants.md
+  ai_agent 64
+docs/generated/sqlite-schema/project.md
+  ai_agent 139
+docs/generated/postgres-schema/public.agent_thread_grants.md
+  ai_agent 55
+docs/generated/postgres-schema/public.project.md
+  ai_agent 133
+docs/generated/sqlite-schema/agent_history.md
+  ai_agent 113
+packages/cli/src/modules/agents/entities/agent-background-job.entity.ts
+  s_fbba0b32ee6f59::t_2f9c13b8a0d877 1-2,5,20-21,27-48
+packages/@n8n/db/src/migrations/common/1792083059437-AddTaskStopToAgentExecutionThreads.ts
+  s_fbba0b32ee6f59::t_2f9c13b8a0d877 1-28
+docs/generated/postgres-schema/public.agents.md
+  ai_agent 118-119,122,204
+packages/cli/test/migration/1792083059654-add-plan-task-to-agent-background-job.test.ts
+  s_fbba0b32ee6f59::t_2f9c13b8a0d877 1-134
+docs/generated/postgres-schema/public.agent_background_job.md
+  ai_agent 19-20,23,37-38,59-60,72-73,88-89,92,116-149
+docs/generated/sqlite-schema/README.md
+  ai_agent 12,26,182-183,457-458,461,629
+docs/generated/sqlite-schema/agent_plan.md
+  ai_agent 22,50,64-88,110
+docs/generated/sqlite-schema/agent_background_job.md
+  ai_agent 9,30-31,34,48-50,61-62,74-75,90-91,94,118-151
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  ai_agent 19,88
+packages/cli/src/modules/agents/entities/agent-execution-thread.entity.ts
+  s_fbba0b32ee6f59::t_2f9c13b8a0d877 2,7,24-26
+packages/@n8n/api-types/src/agents/task-cancellation.ts
+  s_fbba0b32ee6f59::t_2f9c13b8a0d877 1-59
+packages/@n8n/db/src/migrations/common/1792083059203-AddSourceExecutionToAgentBackgroundJob.ts
+  s_fbba0b32ee6f59::t_2f9c13b8a0d877 1-28
+packages/@n8n/db/src/migrations/common/1792083059654-AddPlanTaskToAgentBackgroundJob.ts
+  s_fbba0b32ee6f59::t_2f9c13b8a0d877 1-31
+packages/cli/src/modules/agents/types/agent-task-stop.ts
+  s_fbba0b32ee6f59::t_2f9c13b8a0d877 1-28
+docs/generated/postgres-schema/public.agent_plan.md
+  ai_agent 11,45,59-83,105
+packages/@n8n/api-types/src/agents/background-job.ts
+  s_fbba0b32ee6f59::t_2f9c13b8a0d877 1-2,6
+docs/generated/postgres-schema/public.user.md
+  ai_agent 178
+docs/generated/sqlite-schema/user.md
+  ai_agent 184
+packages/@n8n/api-types/src/agents/dto.ts
+  s_fbba0b32ee6f59::t_2f9c13b8a0d877 460-463
+docs/generated/postgres-schema/public.agent_message_queue.md
+  ai_agent 121
+docs/generated/sqlite-schema/agent_message_queue.md
+  ai_agent 124
+packages/@n8n/api-types/src/agents/index.ts
+  s_fbba0b32ee6f59::t_2f9c13b8a0d877 51-52
+docs/generated/sqlite-schema/agent_execution_threads.md
+  ai_agent 9,30,88
+docs/generated/sqlite-schema/agent_execution.md
+  ai_agent 28,66,97-121,154
+docs/generated/sqlite-schema/agents.md
+  ai_agent 120-121,124,206
+packages/cli/test/migration/1792083059203-add-source-execution-to-agent-background-job.test.ts
+  s_fbba0b32ee6f59::t_2f9c13b8a0d877 1-128
+packages/cli/test/migration/1792083059437-add-task-stop-to-agent-execution-threads.test.ts
+  s_fbba0b32ee6f59::t_2f9c13b8a0d877 1-122
+docs/generated/postgres-schema/README.md
+  ai_agent 12,26,201-202,471-472,475,643
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8875bbec5d15f1120febf85fb83fb9f34277c148",
+  "prompts": {},
+  "sessions": {
+    "s_fbba0b32ee6f59": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10c3a-c169-7050-86b8-0b78c91b308c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

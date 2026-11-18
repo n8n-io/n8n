@@ -1,0 +1,83 @@
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableDetailsView.vue
+  s_51377107c6724f::t_9ca63ce619a4c4 21,50,52-54,183,229,238-239
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/DataTableTable.vue
+  s_51377107c6724f::t_4539a054b19b48 38,40-42,47-48,82-83,132,234
+packages/frontend/editor-ui/src/features/core/dataTable/components/DataTableCard.test.ts
+  s_51377107c6724f::t_90c2118e7c2cf2 47,103-104,106,109
+packages/frontend/editor-ui/src/features/core/dataTable/components/DataTableActions.test.ts
+  s_51377107c6724f::t_6557d38a01da56 82,116,119,127-159,265,284,305,318,337,353
+packages/frontend/editor-ui/src/features/core/dataTable/composables/useDataTableColumns.test.ts
+  s_51377107c6724f::t_a089bce28a26a0 622-673
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/sourceControl.utils.ts
+  s_51377107c6724f::t_43f3e05a3f5db5 12,18-24
+  s_51377107c6724f::t_88c74ee6509133 25
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiDataTablePreview.vue
+  s_51377107c6724f::t_025b94a0bc4814 10,51-54,125-127
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/AddColumnButton.test.ts
+  s_51377107c6724f::t_85c283ccae3284 137-178
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/DataTableTable.test.ts
+  s_51377107c6724f::t_f996ec87f19b48 18-26,265-291
+  s_51377107c6724f::t_9dcd4d511361f6 17
+  s_51377107c6724f::t_d99a5acb055cb8 292
+packages/frontend/editor-ui/src/features/core/dataTable/components/DataTableActions.vue
+  s_51377107c6724f::t_405787dcdbf406 18,27-28,33,60-61,65,82-83,90-91
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/sourceControl.utils.test.ts
+  s_51377107c6724f::t_dc116ea4a4e3c1 5,16,27-33
+  s_51377107c6724f::t_fbd7af82d39609 34-36
+packages/frontend/editor-ui/src/features/core/dataTable/composables/useDataTableOperations.ts
+  s_51377107c6724f::t_106e3e90ffffac 53-54,82,118,133,161,211,237
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableDetailsView.test.ts
+  s_51377107c6724f::t_5e4aa047742781 11,172,185-190,194-195,200-208,212-213,216-218
+  s_51377107c6724f::t_012d9b94597de4 173-184,191-193,196-199,209-211,214-215
+  s_51377107c6724f::t_ea0791820f5d59 219-220
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableView.test.ts
+  s_51377107c6724f::t_68beb433770d97 16-17,89-92,299-340
+  s_51377107c6724f::t_a861a15455aa38 341-342
+packages/frontend/editor-ui/src/features/core/dataTable/components/DataTableBreadcrumbs.vue
+  s_51377107c6724f::t_405787dcdbf406 19-20,40,131,140
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiDataTablePreview.test.ts
+  s_51377107c6724f::t_d82a3ad2ee61fa 298-333
+packages/frontend/editor-ui/src/app/components/MainSidebarHeader.vue
+  s_51377107c6724f::t_1bb8fc55a1e507 18
+  s_51377107c6724f::t_9dcd4d511361f6 82
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/sourceControl.constants.ts
+  s_51377107c6724f::t_43f3e05a3f5db5 8-10
+packages/frontend/editor-ui/src/features/core/dataTable/composables/useDataTableOperations.test.ts
+  s_51377107c6724f::t_106e3e90ffffac 135,137-138,154,158,162,343-345,361,367,376
+packages/frontend/editor-ui/src/features/core/dataTable/composables/useDataTableColumns.ts
+  s_51377107c6724f::t_dfe06c164fbc0b 47-48,55,57-59,62,84,215-220
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/AddColumnButton.vue
+  s_51377107c6724f::t_4539a054b19b48 37,42-43,53-55
+  s_51377107c6724f::t_7afcccc7d8d7fc 58-63,166
+  s_51377107c6724f::t_69343947bf6d30 56
+packages/frontend/editor-ui/src/features/core/dataTable/components/DataTableCard.vue
+  s_51377107c6724f::t_cbb4d211a7954d 11,19-20,31,138
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableView.vue
+  s_51377107c6724f::t_dea8a37ce90805 180-185,187-189,245
+packages/frontend/editor-ui/src/features/core/dataTable/components/DataTableBreadcrumbs.test.ts
+  s_6a4371a6a39df5::t_2ccab2ef9da9ed 76,214-223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a73297c32c5b8f2bd7759fb13c392cef3ea9aa25",
+  "prompts": {},
+  "sessions": {
+    "s_51377107c6724f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b6f764b-f4cc-4a2e-84e0-e78a10703b30",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_6a4371a6a39df5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "563914c5-949a-4305-b339-b6adb55de42a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

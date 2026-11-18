@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/evaluations/data/workflows/recovers-from-external-workflow-modification.json
+  s_ae00d8808d8447::t_8d45c246a9af51 1-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "270613299ba8b25909755a918608d26041770714",
+  "prompts": {},
+  "sessions": {
+    "s_ae00d8808d8447": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c06aede3-a708-47dc-a92b-0d8715b8d978",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

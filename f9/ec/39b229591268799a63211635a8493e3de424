@@ -1,0 +1,19 @@
+packages/@n8n/workflow-sdk/src/workflow-builder/workflow-import.ts
+  s_04de9bba1e1713::t_908da00f38ff5b 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f9ec39b229591268799a63211635a8493e3de424",
+  "prompts": {},
+  "sessions": {
+    "s_04de9bba1e1713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "baae81c3-30b7-4a88-a02c-609425de8d74",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

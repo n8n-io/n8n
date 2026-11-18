@@ -1,0 +1,19 @@
+packages/cli/src/modules/promotions.ee/__tests__/utils/promotion-fixtures.ts
+  s_ff45a7d9223bfa::t_53b4e24272ffdd 3,27-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ad48d34394a12010ef9cdea39d2a7597ef4e5e47",
+  "prompts": {},
+  "sessions": {
+    "s_ff45a7d9223bfa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18394-cfb2-7020-b04f-e51e4e8b1a24",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

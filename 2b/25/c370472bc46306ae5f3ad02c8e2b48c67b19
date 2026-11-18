@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Mailgun/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_217e0e46de8cbd 1-47
+packages/nodes-base/nodes/Mailgun/test/workflow/Mailgun.workflow.test.ts
+  s_2e1fa95fc44f8f::t_cf0dc573083d01 1-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2b25c370472bc46306ae5f3ad02c8e2b48c67b19",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/@n8n/engine/src/database/entities/workflow-step-execution.entity.ts
+  s_13d0f2e1be0144::t_a7870e6851e4a2 57-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c7a764dd20f97f6db477cd35e853110598282262",
+  "prompts": {},
+  "sessions": {
+    "s_13d0f2e1be0144": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46caa7f3-0057-4c97-8c31-ca17c936adc0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

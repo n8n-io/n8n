@@ -1,0 +1,30 @@
+packages/nodes-base/utils/atlassian.ts
+  s_2e1fa95fc44f8f::t_c83f40c96013cb 11,56
+packages/nodes-base/utils/__tests__/atlassian.test.ts
+  s_2e1fa95fc44f8f::t_a88f89c00e725d 51-54
+packages/nodes-base/nodes/Confluence/actions/attachment/getMany.operation.ts
+  s_2e1fa95fc44f8f::t_afc082a4c5c783 111
+  s_2e1fa95fc44f8f::t_37ee1688b4ce74 1-6,63-71
+packages/nodes-base/nodes/Confluence/test/actions/attachment/getMany.operation.test.ts
+  s_2e1fa95fc44f8f::t_3db6f215fd492d 184-201
+packages/nodes-base/nodes/Confluence/test/transport/index.test.ts
+  s_2e1fa95fc44f8f::t_47d58702aa4ba9 398
+packages/nodes-base/nodes/Confluence/transport/index.ts
+  s_2e1fa95fc44f8f::t_a774b10b72af19 200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e959eaa67850a108cd09c45c9a9bc39536c04bcd",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

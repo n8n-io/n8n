@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/Google/Calendar/test/workflow/event.workflow.json
+  s_2e1fa95fc44f8f::t_41bff304560f58 1-202
+packages/nodes-base/nodes/Google/Calendar/test/workflow/event.workflow.test.ts
+  s_2e1fa95fc44f8f::t_b11da91fd7e31c 1-54
+  s_2e1fa95fc44f8f::t_1a4d52442f4ad7 55-57
+  s_05559abf24e2df::t_c7639ae70644bd 58-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3144e0b824a0db3ae57a34625c6c1e09b70543a9",
+  "prompts": {},
+  "sessions": {
+    "s_05559abf24e2df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9129d9169435392b",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

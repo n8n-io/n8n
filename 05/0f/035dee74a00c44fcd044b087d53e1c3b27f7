@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_5e6f76689cfb12::t_06abcdab6230dd 74-76
+  s_5e6f76689cfb12::t_7f7f0b3a38bbf1 34
+  s_5e6f76689cfb12::t_13fa66d155bee0 236
+  s_5e6f76689cfb12::t_39b23d53cbb682 826
+  s_5e6f76689cfb12::t_87e101d8a8541d 674
+  s_5e6f76689cfb12::t_3781ef1e67939c 804
+  s_5e6f76689cfb12::t_cc8d6fc10e4f78 808
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_5e6f76689cfb12::t_474cd14b793c24 1166-1208
+  s_5e6f76689cfb12::t_f581f1781ac5af 1009-1012
+  s_5e6f76689cfb12::t_63cdfb14616e99 1041,1049,1051
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "050f035dee74a00c44fcd044b087d53e1c3b27f7",
+  "prompts": {},
+  "sessions": {
+    "s_5e6f76689cfb12": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "37c8f369-6a0a-4bbf-b83b-9af7e7ae5798",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

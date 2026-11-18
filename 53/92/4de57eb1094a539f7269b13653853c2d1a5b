@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Aws/SQS/AwsSqs.node.ts
+  s_2e1fa95fc44f8f::t_7b59454d1d3173 261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "53924de57eb1094a539f7269b13653853c2d1a5b",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,86 @@
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  s_782619aac31c26::t_bf9baa120d2c80 15,17,449-531
+  s_782619aac31c26::t_7c95f6ffd2c7f1 532-533
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_782619aac31c26::t_84ed79ad172e19 850-863
+  s_782619aac31c26::t_91d41897273a7a 144-147
+  s_782619aac31c26::t_f2447da705e93f 26
+  s_782619aac31c26::t_0110775a4fc37e 828-832,836
+  s_782619aac31c26::t_a69de73c4383a1 849
+packages/cli/src/modules/agents/agent-conversation-state.service.ts
+  s_782619aac31c26::t_67c82a4e70c8cb 8,10-13,17-22
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_782619aac31c26::t_fa93030b71c04d 43,1477-1492
+  s_782619aac31c26::t_3618120eacba92 1493
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  s_782619aac31c26::t_2ae3fa7d779443 20,94-96
+  s_782619aac31c26::t_c61d7f81118799 492-528
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_782619aac31c26::t_98bd4371e09f71 285
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_782619aac31c26::t_17a5935364f9de 17,655-674
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_782619aac31c26::t_98bd4371e09f71 248
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_782619aac31c26::t_e5c8571606db5c 30
+  s_782619aac31c26::t_1e1c06f63e6074 263
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_782619aac31c26::t_a888064696c648 14,91,322,330-331,383-403,420-422
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
+  s_782619aac31c26::t_395234bb9b4fc5 157
+  s_782619aac31c26::t_6f081c7598e7b0 1,85
+  s_782619aac31c26::t_0481ec6cc1e10a 128-131,152-156,158
+  s_782619aac31c26::t_a1f4690044504e 78-83,108-109
+  s_782619aac31c26::t_d02ed5aa2cf010 2-4,76-77,84,86-107,110-127,132-151,159-161
+  s_782619aac31c26::t_5bb01e2af5e350 162
+packages/cli/src/modules/agents/agent-workflow-tool-resume.service.ts
+  s_782619aac31c26::t_bcfd96989c2319 14,16
+  s_782619aac31c26::t_df474de199caf7 137-138,140-141,151-152,154,157,160-162,165-169,171-176,181-183
+  s_782619aac31c26::t_a094f707e60088 153,159,163-164
+  s_782619aac31c26::t_bf64fce2c328e3 139,147
+  s_782619aac31c26::t_9454eef4442ecc 28-35
+  s_782619aac31c26::t_0481ec6cc1e10a 142-146
+  s_782619aac31c26::t_e337a06cdc7df2 148-150
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_782619aac31c26::t_67c82a4e70c8cb 18,170,174,192,194-195
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_782619aac31c26::t_e337a06cdc7df2 1802
+  s_782619aac31c26::t_d02ed5aa2cf010 1824
+  s_782619aac31c26::t_a888064696c648 3146,3161,3223-3224,3234-3236
+  s_782619aac31c26::t_381e99f5a0ae1a 33,1800-1801,1803-1823,1825-1827
+  s_782619aac31c26::t_449e618934a95f 1828-1829
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_782619aac31c26::t_2ae3fa7d779443 16,157-158
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_782619aac31c26::t_90e3ebb30c9912 20,405-417
+  s_782619aac31c26::t_0210b9a968584d 418
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_782619aac31c26::t_774fadd4eacdda 219-221,224-225,232,235-240,242,244-252,254-266,268-271,275-283
+  s_782619aac31c26::t_db7efd59b309c2 20-22,26-29
+  s_782619aac31c26::t_e2296879841afb 88
+  s_c1d605301f4e10::t_76820433b10c3a 30,284
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a87d107688954bb7a17463b0e90ad1e2637d63db",
+  "prompts": {},
+  "sessions": {
+    "s_782619aac31c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6889b3f-b5e6-4aa7-a6ff-cca974b94b72",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_c1d605301f4e10": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cdb6-6613-7723-9c6a-43d256574ecb",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

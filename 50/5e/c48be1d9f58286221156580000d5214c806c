@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_0c3fffed4845c5::t_2fd0eb74681a61 548,563,568
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_0c3fffed4845c5::t_2fd0eb74681a61 206-207,212
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_0c3fffed4845c5::t_eca7138e06f624 249-258
+  s_0c3fffed4845c5::t_78eb2c6993d9da 17,216-248,259-265
+  s_0c3fffed4845c5::t_2f883b2eba896c 266-267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "505ec48be1d9f58286221156580000d5214c806c",
+  "prompts": {},
+  "sessions": {
+    "s_0c3fffed4845c5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11000-e30e-7262-bcfb-858e1be2c386",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

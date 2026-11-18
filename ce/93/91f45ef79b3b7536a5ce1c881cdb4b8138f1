@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.ts
+  s_f3039407b71bd6::t_cde1756f17ab0c 203
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionWorkflowSideLabel.vue
+  s_f3039407b71bd6::t_cde1756f17ab0c 26-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ce9391f45ef79b3b7536a5ce1c881cdb4b8138f1",
+  "prompts": {},
+  "sessions": {
+    "s_f3039407b71bd6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d1d42e2-0ae1-44cd-9118-b0182793683b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

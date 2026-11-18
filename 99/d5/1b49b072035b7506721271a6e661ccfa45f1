@@ -1,0 +1,39 @@
+packages/@n8n/agents/src/runtime/model/__tests__/openai-stateless-responses.test.ts
+  s_6897656fff0b4a::t_a0d30e30232f11 31,43,74-109
+packages/@n8n/agents/src/runtime/model/provider-quirks.ts
+  s_6897656fff0b4a::t_65826bd7f35055 30-31,168-173
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/suspends-a-tool-call-and-resumes-it-only-for-the-session-owner.json
+  s_6897656fff0b4a::t_afcd247d9f60c9 8,18
+packages/@n8n/agents/src/__tests__/integration/cassettes/thinking/works-with-a-reasoning-model-when-reasoning-is-enabled.json
+  s_6897656fff0b4a::t_afcd247d9f60c9 32
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-tools/openai-image-generation-provider-tool-can-be-attached-and-does-not-use-hitl-suspension.json
+  s_6897656fff0b4a::t_6f48e8bd5420ca 33
+packages/@n8n/agents/src/runtime/model/messages.ts
+  s_6897656fff0b4a::t_65826bd7f35055 536,545,583,604,623-626,629-634
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/streams-the-published-instructions-and-records-a-private-production-session.json
+  s_6897656fff0b4a::t_afcd247d9f60c9 8,28
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-tools/openai-web-search-provider-tool-can-be-attached-without-suspending.json
+  s_6897656fff0b4a::t_6f48e8bd5420ca 34
+packages/@n8n/agents/src/__tests__/integration/cassettes/usage/returns-token-usage-and-cost-on-generate-result.json
+  s_6897656fff0b4a::t_6f48e8bd5420ca 26
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/allows-only-the-session-owner-to-cancel-a-suspended-run.json
+  s_6897656fff0b4a::t_afcd247d9f60c9 8
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/sends-an-image-to-the-model-and-reloads-the-stored-attachment.json
+  s_6897656fff0b4a::t_afcd247d9f60c9 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "99d51b49b072035b7506721271a6e661ccfa45f1",
+  "prompts": {},
+  "sessions": {
+    "s_6897656fff0b4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8e563283-62ce-4b4a-b047-8a2343e393f0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

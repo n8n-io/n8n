@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/requestUrls.workflow.json
+  s_2e1fa95fc44f8f::t_4e9df09e2e10e0 1-239
+  s_2e1fa95fc44f8f::t_4a825e235b4d05 240-242
+  s_ac8bf4c37d7de0::t_1426f5c99905cf 243-273
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/requestUrls.test.ts
+  s_2e1fa95fc44f8f::t_2195e6151196e9 1-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b0193a64901934b629ef33496bc7e47430528fca",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_ac8bf4c37d7de0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a103f653b6de3db0e",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

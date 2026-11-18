@@ -1,0 +1,32 @@
+packages/cli/src/modules/instance-ai/instance-ai-credit-display.ts
+  h_2f80f0e06f710c 10
+packages/cli/src/modules/instance-ai/repositories/instance-ai-message.repository.ts
+  h_2f80f0e06f710c 16-17
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  h_2f80f0e06f710c 198-199
+packages/@n8n/api-types/src/frontend-settings.ts
+  h_2f80f0e06f710c 355
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-activation-lock.test.ts
+  s_602a3b182a34ac::t_b2aad7ed0e385b 53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f0444fdc22e377012341a1df090062c765f3a12e",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_602a3b182a34ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97601b8f-6173-4856-9e57-5368d6791be1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

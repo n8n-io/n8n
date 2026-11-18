@@ -1,0 +1,41 @@
+packages/cli/src/modules/otel/otel.service.ts
+  s_ada8159a3486db::t_962711e10e9af5 81-83
+  s_ada8159a3486db::t_b5c0caf182e870 70-73
+  s_ada8159a3486db::t_187cfb0c29bad6 271-301
+  s_ada8159a3486db::t_6d92cad0da1263 376,379
+  s_ada8159a3486db::t_62e0c508173006 48
+  s_ada8159a3486db::t_5155f6f24d4106 24,36-37
+  s_ada8159a3486db::t_0299b37e74a492 108-109,114,119-128
+  s_ada8159a3486db::t_562c54b4f37b4e 322-325,327-328,330,333-335,340
+  s_ada8159a3486db::t_3519730f78e1e0 361
+  s_ada8159a3486db::t_40c61c0481fcea 152
+  s_ada8159a3486db::t_87cb83ddd33c99 374-375,377-378,380-381,384
+  s_ada8159a3486db::t_87c1e23d057e28 2
+  s_ada8159a3486db::t_3d4fa7fca97373 69,74-80,84,86-102,104-107
+packages/cli/src/modules/otel/__tests__/otel.service.test.ts
+  s_ada8159a3486db::t_2c9f46dda41638 468-469,471-498,505-508
+  s_ada8159a3486db::t_dc9f43243da366 470,748
+  s_ada8159a3486db::t_be62ee89f5fb1d 596-627
+  s_ada8159a3486db::t_410ce90fb2cf72 747,749-756
+  s_ada8159a3486db::t_be84d1ba9acf9c 499-504
+  s_ada8159a3486db::t_3d3dbf8b768462 39
+  s_ada8159a3486db::t_e53a98292d7af7 364-366,372-383,388-398
+  s_ada8159a3486db::t_b1176f10c36f65 642-676
+  s_ada8159a3486db::t_7c45f9604825e0 384-387,399-401
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d2ea265163c1e2c14bd5a937982e1801f4e90a5b",
+  "prompts": {},
+  "sessions": {
+    "s_ada8159a3486db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fd1def4-bd8c-4649-8a4a-834550604347",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    }
+  }
+}

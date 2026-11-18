@@ -1,0 +1,25 @@
+packages/cli/src/public-api/v1/controllers/users.public.controller.ts
+  s_e2203a10d11968::t_6ff1d490bde2be 167
+  s_e2203a10d11968::t_bb8efb99e293d9 150
+  s_e2203a10d11968::t_24072b272d47b3 10
+packages/cli/src/public-api/v1/handlers/users/spec/paths/changeRole.generated.yml
+  s_e2203a10d11968::t_709e6f482d0411 14
+packages/cli/src/public-api/v1/handlers/users/spec/paths/deleteUser.generated.yml
+  s_e2203a10d11968::t_f9bee905f93bd7 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "612912a8f0c0fff93e3cf29f96bcd52c88ce9d97",
+  "prompts": {},
+  "sessions": {
+    "s_e2203a10d11968": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed3d6309-066a-42ef-9973-7caa9371790f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

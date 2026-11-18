@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/TravisCi/TravisCi.node.ts
+  s_2e1fa95fc44f8f::t_91165f2fd6313e 8,11,20-21,58,166
+packages/nodes-base/nodes/TravisCi/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_3d46c9282dfd0e 5
+packages/nodes-base/nodes/TravisCi/test/TravisCi.node.test.ts
+  s_2e1fa95fc44f8f::t_c0b7389b1008fc 1-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "92f7ec7270c6240f91bb16396caa46c565e64e56",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

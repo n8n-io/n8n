@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/app/router.test.ts
+  h_52a137d26d774c 178-182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4516041a326946ea176925282e25c3bfbec90c34",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

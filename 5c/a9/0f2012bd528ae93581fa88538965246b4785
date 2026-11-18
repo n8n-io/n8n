@@ -1,0 +1,33 @@
+packages/cli/src/workflows/publication/__tests__/workflow-publication-status.service.test.ts
+  s_64b1474b546f7a::t_c3489cb3044ef5 328-331,336
+  s_64b1474b546f7a::t_f631ca3444f290 306,309,312-313,319-327
+packages/cli/src/services/active-workflows.service.ts
+  s_64b1474b546f7a::t_c3489cb3044ef5 75
+  s_64b1474b546f7a::t_e6c2d50ed55b75 76-78
+packages/cli/src/workflows/publication/publication-status-reporter.ts
+  s_64b1474b546f7a::t_c3489cb3044ef5 161,209
+packages/cli/src/services/__tests__/active-workflows.service.test.ts
+  s_64b1474b546f7a::t_c3489cb3044ef5 127-140,184-189
+  s_64b1474b546f7a::t_af46dcad6ab6af 190-191
+packages/cli/src/workflows/publication/workflow-publication-status.service.ts
+  s_64b1474b546f7a::t_c3489cb3044ef5 81,91-92
+  s_64b1474b546f7a::t_e6c2d50ed55b75 95
+packages/cli/test/integration/workflows/teams-trigger-subscription-refused.test.ts
+  s_64b1474b546f7a::t_c3489cb3044ef5 228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5ca90f2012bd528ae93581fa88538965246b4785",
+  "prompts": {},
+  "sessions": {
+    "s_64b1474b546f7a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "503d7f17-adb2-4e67-8a69-0bf341cdf5fa",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

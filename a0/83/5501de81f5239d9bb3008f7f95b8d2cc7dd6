@@ -1,0 +1,39 @@
+packages/nodes-base/nodes/Gitlab/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_48c8b83e79945e 56-63
+packages/nodes-base/nodes/Gitlab/Gitlab.node.ts
+  s_01cb885e0ad060::t_8972da38d4dbab 12,1502,1515,1534,1552
+packages/nodes-base/nodes/Gitlab/__tests__/GenericFunctions.test.ts
+  s_4de36876c2d7be::t_14fb250be16b61 5,33-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a0835501de81f5239d9bb3008f7f95b8d2cc7dd6",
+  "prompts": {},
+  "sessions": {
+    "s_01cb885e0ad060": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a7ddd85cc749261b8",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_4de36876c2d7be": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-acab3e3b4ca422544",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

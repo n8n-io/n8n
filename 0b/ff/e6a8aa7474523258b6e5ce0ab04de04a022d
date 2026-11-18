@@ -1,0 +1,39 @@
+.github/workflows/ci-pull-requests.yml
+  s_eed349f600d367::t_d218782062c6e0 105
+packages/frontend/editor-ui/eslint.config.mjs
+  s_eed349f600d367::t_e314db82f5f954 253-256,268-269,278-281
+packages/frontend/editor-ui/src/app/__tests__/fixtures/exampleFeature/modals.ts
+  s_f6945ec489dbea::t_72e76c6a7a5e3f 5
+packages/frontend/editor-ui/src/app/__tests__/modal-fragment.contract.test.ts
+  s_f6945ec489dbea::t_22d54a24f06af1 15,17-22,37-39,54,74-75
+packages/frontend/editor-ui/src/app/__tests__/modal-key-ratchet.test.ts
+  s_f6945ec489dbea::t_7d565eae171c16 5-6,8-9,11-15,18
+packages/frontend/editor-ui/src/app/constants/modals.ts
+  s_f6945ec489dbea::t_0458b6b31b2da0 2
+packages/testing/playwright/tests/dev-server-smoke/dev-server-boots.spec.ts
+  s_eed349f600d367::t_5f8523049458e7 14,30-31,33-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0bffe6a8aa7474523258b6e5ce0ab04de04a022d",
+  "prompts": {},
+  "sessions": {
+    "s_eed349f600d367": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94825324-10c8-4944-a953-2990cd376305",
+        "model": "unknown"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_f6945ec489dbea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7866479a-d77a-4173-8879-141c6af75006",
+        "model": "unknown"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

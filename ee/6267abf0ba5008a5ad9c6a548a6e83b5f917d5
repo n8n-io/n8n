@@ -1,0 +1,99 @@
+packages/@n8n/workflow-sdk/src/codegen/node-type-utils.ts
+  s_5db5c2f06b4ea1::t_e59099374ebff6 5-6,13-15
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/inbound-trigger-auth-defaults.ts
+  s_5db5c2f06b4ea1::t_5b657b2c50f3b1 3,10
+  s_5db5c2f06b4ea1::t_3e0458ba8acbb7 20-33,57-59,62
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_5db5c2f06b4ea1::t_45687ad2d17927 139
+  s_5db5c2f06b4ea1::t_1f169eac5ffe24 1023-1054
+  s_5db5c2f06b4ea1::t_927d3ae99fdeea 1055-1056
+packages/workflow/test/node-helpers.test.ts
+  s_5db5c2f06b4ea1::t_00483080f9a0aa 7342
+packages/@n8n/instance-ai/src/tools/workflows/plan-verification-simulation.ts
+  s_5db5c2f06b4ea1::t_e154f5d18f17d9 31,90
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/inbound-trigger-auth-defaults.test.ts
+  s_5db5c2f06b4ea1::t_43ec222e194e55 1,3,5-9,11,28-30,35-61,95-96
+  s_5db5c2f06b4ea1::t_212a410adaaa49 10,12-14,16-22,24-27,31-34,62-94
+  s_5db5c2f06b4ea1::t_b084303aebc063 2,4,15,23
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/verify-built-workflow.tool.test.ts
+  s_5db5c2f06b4ea1::t_32f969e3dbaaa1 2011-2033
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/has-start-node.test.ts
+  s_5db5c2f06b4ea1::t_43ec222e194e55 1-32
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/all-nodes-connected.test.ts
+  s_5db5c2f06b4ea1::t_43ec222e194e55 1-29
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/all-nodes-connected.ts
+  s_5db5c2f06b4ea1::t_71250cc9874714 3,11
+packages/@n8n/instance-ai/src/tools/workflows/workflow-json-utils.ts
+  s_5db5c2f06b4ea1::t_8f93647a626eea 11,36,53-58
+  s_5db5c2f06b4ea1::t_57a2039aecc076 59-60
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  s_5db5c2f06b4ea1::t_9eab9c82b9bc92 17-20,811-812
+packages/workflow/src/node-helpers.ts
+  s_5db5c2f06b4ea1::t_00483080f9a0aa 1998
+packages/@n8n/instance-ai/src/tools/orchestration/verify-built-workflow.tool.ts
+  s_5db5c2f06b4ea1::t_95f7d7ec700840 269-270
+  s_5db5c2f06b4ea1::t_32f969e3dbaaa1 44
+packages/@n8n/workflow-sdk/src/codegen/node-type-utils.test.ts
+  s_5db5c2f06b4ea1::t_e59099374ebff6 19-22
+packages/@n8n/instance-ai/evaluations/data/subagent/webpage-signed-in-only.json
+  s_5db5c2f06b4ea1::t_0788fc98506110 1-2,4-5
+  s_5db5c2f06b4ea1::t_73a58fa0c698f1 3
+packages/nodes-base/nodes/Webpage/Webpage.node.ts
+  s_5db5c2f06b4ea1::t_9692ccccc3e70e 90,106
+  s_5db5c2f06b4ea1::t_cc14c70d4d81ba 25-28,60-64,88-89,91,104-105,107-108
+packages/@n8n/instance-ai/evaluations/binaryChecks/utils.ts
+  s_5db5c2f06b4ea1::t_6dd323e74d89a3 20-21,37
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_5db5c2f06b4ea1::t_5883b3808553fe 144
+  s_5db5c2f06b4ea1::t_b084303aebc063 5118-5122,5138,5163,5165-5167,5169
+packages/@n8n/instance-ai/evaluations/data/subagent/webpage-landing-page.json
+  s_5db5c2f06b4ea1::t_73a58fa0c698f1 3
+  s_5db5c2f06b4ea1::t_0788fc98506110 1-2,4-5
+packages/@n8n/workflow-sdk/src/validation/validate-workflow-builder.test.ts
+  s_5db5c2f06b4ea1::t_84eef432c9482f 64-78
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_5db5c2f06b4ea1::t_a6fae961d68a29 5635-5648,5704
+  s_5db5c2f06b4ea1::t_be1b407b33093a 5687-5702
+  s_5db5c2f06b4ea1::t_7224cf20099e2a 5703
+packages/@n8n/instance-ai/src/skills/runtime-skills.ts
+  s_5db5c2f06b4ea1::t_b994437c375347 20-24,43-46
+  s_5db5c2f06b4ea1::t_f911fdc380b7f4 18-19
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_5db5c2f06b4ea1::t_e154f5d18f17d9 81,1479
+packages/@n8n/instance-ai/skills/webpage-builder/SKILL.md
+  s_5db5c2f06b4ea1::t_c9913446811f8b 1-40,48-52,89-91,96-123
+  s_5db5c2f06b4ea1::t_aebe82bb5976e2 41-47,53-88,92-95,124-132
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-workflow.service.test.ts
+  s_5db5c2f06b4ea1::t_9eab9c82b9bc92 240-252
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  s_5db5c2f06b4ea1::t_06a8eedeb1e7dd 14,24-28,277-298,634-643
+  s_5db5c2f06b4ea1::t_511961809c0e49 644-645
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/plan-verification-simulation.test.ts
+  s_5db5c2f06b4ea1::t_2f8db8cfbbf52e 117,126
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/has-start-node.ts
+  s_5db5c2f06b4ea1::t_6a90e5c1488432 2,36-40
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-json-utils.test.ts
+  s_5db5c2f06b4ea1::t_e779ba25bbeac4 10,33-40,53-80
+packages/@n8n/workflow-sdk/src/utils/trigger-detection.ts
+  s_5db5c2f06b4ea1::t_f0f5ea2b63ac28 18
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/serializers/json-serializer.test.ts
+  s_5db5c2f06b4ea1::t_4ebb1fc26f7189 116-132
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/serializers/json-serializer.ts
+  s_5db5c2f06b4ea1::t_5a396eed20fef7 41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ee6267abf0ba5008a5ad9c6a548a6e83b5f917d5",
+  "prompts": {},
+  "sessions": {
+    "s_5db5c2f06b4ea1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d572c3e7-d213-4d7e-b48c-199fda4de48e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

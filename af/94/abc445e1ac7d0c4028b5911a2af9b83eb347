@@ -1,0 +1,29 @@
+packages/cli/src/executions/pre-execution-checks/credentials-permission-checker.ts
+  s_6e5e6dade5599e::t_f3469c9988118d 190-228,361,370,385
+  s_6e5e6dade5599e::t_69f1921d84da4b 1,229,362-369,371-384,386
+packages/cli/src/credentials/credentials-finder.service.ts
+  s_6e5e6dade5599e::t_2bc50bb692ca47 348-351,356,360,369-371
+  s_6e5e6dade5599e::t_28bdb07095bc2a 52-55,194,402,411-414,442-465
+packages/cli/src/executions/pre-execution-checks/__tests__/credentials-permission-checker.test.ts
+  s_6e5e6dade5599e::t_eea9884b41971c 1046-1109
+  s_6e5e6dade5599e::t_8528faa1b8aab4 774-826,1045,1110-1111
+packages/cli/src/services/__tests__/credentials-finder.service.test.ts
+  s_6e5e6dade5599e::t_a6125bdd0de339 917-919,954,1013-1015,1028,1141-1172
+  s_6e5e6dade5599e::t_a5113683321ea8 43,453-460,874,915-916,920-953,955,1011-1012,1016-1027,1029
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "af94abc445e1ac7d0c4028b5911a2af9b83eb347",
+  "prompts": {},
+  "sessions": {
+    "s_6e5e6dade5599e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "877ad200-a326-4a16-a593-edd12c995d4b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

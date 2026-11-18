@@ -1,0 +1,37 @@
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAzureOpenAi/EmbeddingsAzureOpenAi.node.ts
+  s_db547d1f734bf2::t_5e3e165b8e245a 165
+packages/@n8n/nodes-langchain/nodes/embeddings/test/EmbeddingsAzureOpenAi.test.ts
+  s_db547d1f734bf2::t_e07e40630cfefe 176
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.ts
+  s_db547d1f734bf2::t_e7064bd6cab9c8 173,177,233-235
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/__tests__/LmChatAzureOpenAi.node.test.ts
+  s_db547d1f734bf2::t_e14b600998f3a9 503
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/api-key.ts
+  s_db547d1f734bf2::t_a30653783d806b 28
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/requireFoundryEndpoint.ts
+  s_db547d1f734bf2::t_2261b6f097e6a6 15
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/requireTenantId.ts
+  s_db547d1f734bf2::t_a41d1621ae16a1 26
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/methods/searchModels.test.ts
+  s_db547d1f734bf2::t_7b7191eeb570d3 63,77
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/methods/searchModels.ts
+  s_db547d1f734bf2::t_021cb2828f4178 30
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/properties.ts
+  s_db547d1f734bf2::t_90e52539be678f 57,68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "be7a6cca1d45255961ce8fbcaefd63ba46d839fe",
+  "prompts": {},
+  "sessions": {
+    "s_db547d1f734bf2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd28e799-2a21-45a0-b4f6-a0697e5725e2",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

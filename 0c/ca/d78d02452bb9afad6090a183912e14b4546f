@@ -1,0 +1,32 @@
+packages/quality/policy/code-health/src/single-instance/explain-duplicates.test.ts
+  s_05b78bc80227e1::t_606e56e2780657 283-291
+packages/cli/package.json
+  s_05b78bc80227e1::t_6e35a4fc600d3a 202
+pnpm-workspace.yaml
+  s_05b78bc80227e1::t_9e09142058d139 470
+  s_05b78bc80227e1::t_6e35a4fc600d3a 127
+packages/@n8n/agents/package.json
+  s_05b78bc80227e1::t_6e35a4fc600d3a 120
+packages/quality/policy/code-health/src/single-instance/verify-npm-install.ts
+  s_05b78bc80227e1::t_6e35a4fc600d3a 39-40,511-515
+packages/quality/policy/code-health/src/single-instance/explain-duplicates.ts
+  s_05b78bc80227e1::t_6e35a4fc600d3a 253-257,338,374-380,400
+pnpm-lock.yaml
+  s_05b78bc80227e1::t_9d6ed89021b1a4 362-364,1057,1279-1280,1295,4702,4851-4852,4987,27743
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0ccad78d02452bb9afad6090a183912e14b4546f",
+  "prompts": {},
+  "sessions": {
+    "s_05b78bc80227e1": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e8389c9a1ffenqwshS91TZY8sP",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

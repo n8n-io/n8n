@@ -1,0 +1,42 @@
+packages/@n8n/agents/src/runtime/__tests__/mcp-connection.test.ts
+  s_60e43f07473cd0::t_4d63702d918022 228,240-246
+  s_60e43f07473cd0::t_ffe5bb3455fad5 223-227,229-239,247-248
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_60e43f07473cd0::t_6142f5a4b1ac43 125-126
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_60e43f07473cd0::t_ffe5bb3455fad5 1813-1822,1826
+packages/cli/src/modules/agents/builder/__tests__/verify-mcp-server.tool.test.ts
+  s_60e43f07473cd0::t_65a3183897163a 52-62
+  s_60e43f07473cd0::t_4d63702d918022 87-110
+packages/cli/src/modules/agents/builder/skills/__tests__/index.test.ts
+  s_60e43f07473cd0::t_1a21fb33cce714 9-27
+packages/@n8n/agents/src/runtime/mcp/mcp-connection.ts
+  s_60e43f07473cd0::t_6142f5a4b1ac43 173
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_60e43f07473cd0::t_1e4d927b379d27 203-214,238-239
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_60e43f07473cd0::t_48b9fff925d86d 232
+  s_60e43f07473cd0::t_16e9d9e1aa5766 231
+packages/cli/src/modules/agents/builder/verify-mcp-server.tool.ts
+  s_60e43f07473cd0::t_6142f5a4b1ac43 118,142
+  s_60e43f07473cd0::t_16e9d9e1aa5766 81-82
+packages/@n8n/agents/src/runtime/mcp/mcp-tool-resolver.ts
+  s_60e43f07473cd0::t_6142f5a4b1ac43 47
+  s_60e43f07473cd0::t_16e9d9e1aa5766 5,22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "9ec1881b02d80fdf3b3ddc11bfaeed1f9c2b172a",
+  "prompts": {},
+  "sessions": {
+    "s_60e43f07473cd0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8fe1-c76f-71c3-8e47-b42265a08f6b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

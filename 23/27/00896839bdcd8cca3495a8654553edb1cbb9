@@ -1,0 +1,45 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiViewHeader.vue
+  s_889bce01179c0c::t_b76f4c1d0743b1 27
+  s_889bce01179c0c::t_41eecdb972757c 86-89
+  s_889bce01179c0c::t_755ba7839df730 4,93
+  s_889bce01179c0c::t_5ca25aa9fcdcff 135
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_889bce01179c0c::t_49e5684d83c219 646,688
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_889bce01179c0c::t_0cce0cd845d5aa 704
+  s_889bce01179c0c::t_c58751e144eeef 731
+  s_889bce01179c0c::t_0ab53c3c5b9ef8 702-703
+  s_889bce01179c0c::t_21fa25858e88f1 705
+  s_889bce01179c0c::t_84c801735731c1 733-739,752-766
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_889bce01179c0c::t_87d8becd573b14 489-490,492-499,501-502,537-538
+  s_889bce01179c0c::t_26c1cae97a29a4 5,503-504,506,508-509,512-516,518-521,523-524,526-527,530-534
+  s_889bce01179c0c::t_6636ad88c82dac 505,510-511,522,525,529,535-536
+  s_889bce01179c0c::t_1b1c14eb40a22d 491,500,507,517,528
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiViewHeader.test.ts
+  s_889bce01179c0c::t_d0b60e68d813d1 48,52,56-57
+  s_889bce01179c0c::t_5135496bc62c1a 1-38,40-42,44-47,49-50,59
+  s_889bce01179c0c::t_884a67e787a3b6 39,51,53,55,58
+  s_889bce01179c0c::t_93f1b5055f3be6 43,54
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/InstanceAiChatPanel.test.ts
+  s_889bce01179c0c::t_94ec9da20143fa 436-437,439-443
+  s_889bce01179c0c::t_8dc88253a3f371 438
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_889bce01179c0c::t_998f4836f9a8c5 319-322,347,398,400
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "232700896839bdcd8cca3495a8654553edb1cbb9",
+  "prompts": {},
+  "sessions": {
+    "s_889bce01179c0c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0c4f2-b92f-7596-9320-d358b8bbcf24",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

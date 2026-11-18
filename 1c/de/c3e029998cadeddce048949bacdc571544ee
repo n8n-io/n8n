@@ -1,0 +1,85 @@
+AGENTS.md
+  s_b370a35485f958::t_fe41c29491525b 44-48
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_b370a35485f958::t_0e2a4ba7a3b639 1
+packages/@n8n/agents/src/skills/__tests__/runtime-skills.test.ts
+  s_b370a35485f958::t_f5e5f14d076b3f 551-552
+packages/@n8n/agents/src/skills/tools.ts
+  s_b370a35485f958::t_5a0d476431cf01 1,293
+packages/@n8n/ai-utilities/src/utils/__tests__/redact-headers.test.ts
+  s_b370a35485f958::t_dc90629c7342e0 1-33
+packages/@n8n/ai-utilities/src/utils/redact-headers.ts
+  s_b370a35485f958::t_30e6b8c7f1f4bd 4,20
+packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/evaluators/credentials.test.ts
+  s_b370a35485f958::t_837db8846fcc54 118-137
+packages/@n8n/ai-workflow-builder.ee/src/validation/checks/credentials.ts
+  s_b370a35485f958::t_7fef129969996f 1,25
+packages/@n8n/instance-ai/evaluations/harness/redact.ts
+  s_b370a35485f958::t_11cd9a09321c41 10
+packages/@n8n/instance-ai/src/__tests__/error-formatting.test.ts
+  s_b370a35485f958::t_0dc9fbb9453feb 23-24,39-40,51-52,63
+packages/@n8n/instance-ai/src/debug/__tests__/sanitize-debug-snapshot.test.ts
+  s_b370a35485f958::t_64d92be8c1abe0 1-35
+packages/@n8n/instance-ai/src/debug/sanitize-debug-snapshot.ts
+  s_b370a35485f958::t_8ce29cbf467ed2 2,21,44
+packages/@n8n/instance-ai/src/error-formatting.ts
+  s_b370a35485f958::t_f1f77ecf0b3d1b 2,39-44,54
+packages/@n8n/instance-ai/src/tracing/trace-payloads.ts
+  s_b370a35485f958::t_7e86fab375e60f 8-9,187,233
+packages/@n8n/mcp-apps/src/telemetry/sanitize.ts
+  s_b370a35485f958::t_f2da7d1761fe36 2,14
+packages/@n8n/utils/package.json
+  s_b370a35485f958::t_2af5741d3fec46 52
+packages/@n8n/utils/src/redaction/redact-text.test.ts
+  s_b370a35485f958::t_0be3fd83d71b1e 54-62
+packages/@n8n/utils/src/redaction/redact-text.ts
+  s_b370a35485f958::t_78c418c866fee9 3,49-56,177
+packages/@n8n/utils/src/redaction/sanitize-error-detail.property.test.ts
+  s_b370a35485f958::t_071715c1843f7d 1-31
+packages/@n8n/utils/src/redaction/sanitize-error-detail.test.ts
+  s_b370a35485f958::t_9cf703a075ce12 1-32
+packages/@n8n/utils/src/redaction/sanitize-error-detail.ts
+  s_b370a35485f958::t_45417dc4cdf9ba 1-16
+packages/@n8n/utils/src/redaction/sensitive-headers.ts
+  s_b370a35485f958::t_43ea56f73e55fa 1-15
+packages/@n8n/utils/src/redaction/sensitive-key.ts
+  s_b370a35485f958::t_e740528ed511bb 1-9
+packages/@n8n/utils/src/scrub-secrets.property.test.ts
+  s_b370a35485f958::t_6cd8723a93a2a5 1-121
+packages/@n8n/utils/src/scrub-secrets.test.ts
+  s_b370a35485f958::t_951f3dcc0cbdd3 21-30,71,87-95,99-113,131,135-137,176-194,215-216
+packages/@n8n/utils/src/scrub-secrets.ts
+  s_b370a35485f958::t_3b5b7718e715d7 16-28,36-42,49-50,68-70,74,86,89-96,98,112
+packages/cli/src/modules/agents/agent-knowledge-commands.ts
+  s_b370a35485f958::t_d6209df1be2d41 1
+packages/cli/src/modules/agents/agent-sandbox-runtime.service.ts
+  s_b370a35485f958::t_194d0edad50873 16
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_b370a35485f958::t_9932c2b73badf0 9,190
+packages/cli/src/modules/agents/integrations/recording/channel-integration-recorder.ts
+  s_b370a35485f958::t_c014f8cd0c66f1 1,43
+packages/cli/src/modules/instance-ai/eval/request-sanitizer.ts
+  s_b370a35485f958::t_a59defe50f7a08 11
+packages/cli/src/modules/instance-ai/instance-ai-verification.service.ts
+  s_b370a35485f958::t_94939f808ab91a 17,41
+packages/frontend/editor-ui/src/features/ai/instanceAi/onboarding/sanitizeFailureDetail.ts
+  s_b370a35485f958::t_2e2dad9ba973cb 1,13
+pnpm-lock.yaml
+  s_b370a35485f958::t_d63b4d3a5890e0 4065-4067
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "1cdec3e029998cadeddce048949bacdc571544ee",
+  "prompts": {},
+  "sessions": {
+    "s_b370a35485f958": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4448ea0b-13a4-4a91-af25-f141488e5900",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

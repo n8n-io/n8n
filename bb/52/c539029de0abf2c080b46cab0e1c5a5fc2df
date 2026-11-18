@@ -1,0 +1,84 @@
+packages/nodes-base/nodes/AcuityScheduling/test/AcuitySchedulingTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_fc02bc6929022d 2
+  s_2e1fa95fc44f8f::t_50bab394d07904 95-99
+packages/nodes-base/nodes/ActionNetwork/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_c139b29af98b7d 1-21
+packages/nodes-base/nodes/AcuityScheduling/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_e13a70c676df40 1-25
+packages/nodes-base/nodes/Affinity/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_72b82a4f15b59a 1-24
+packages/nodes-base/nodes/Asana/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_d92d5768c427a9 1-24
+packages/nodes-base/nodes/ActionNetwork/ActionNetwork.node.ts
+  s_097953de0a96e2::t_af69f117a998b9 8,153,163,172,198,206-210,216,244,255,262-266,286-291,316-321,329,336,359,386,396,405,427,446,454,460,479,489
+packages/nodes-base/nodes/ActionNetwork/GenericFunctions.ts
+  s_097953de0a96e2::t_ef81a8b13cc9b8 9-10,12,27,31,35,69,83,227-234,248
+packages/nodes-base/nodes/AcuityScheduling/AcuitySchedulingTrigger.node.ts
+  s_22eea66365bbbb::t_b02ea1e02d8a65 9,126,141,152,185
+packages/nodes-base/nodes/AcuityScheduling/GenericFunctions.ts
+  s_199a9f7ff6ef60::t_db0787632aa896 10-11,13,18,25,33
+packages/nodes-base/nodes/Affinity/Affinity.node.ts
+  s_097953de0a96e2::t_471becdec537b7 10,88,109,129,155-161,166,186,197,211,220,234,255,274-279,291,311,317-323,333,352-357,376,390,410,416-422,432
+packages/nodes-base/nodes/Affinity/AffinityTrigger.node.ts
+  s_097953de0a96e2::t_1080fcd9e9bda5 9,159,192,213,242-246
+packages/nodes-base/nodes/Affinity/GenericFunctions.ts
+  s_22eea66365bbbb::t_340918c831d832 10-11,13,18,28,36,56
+packages/nodes-base/nodes/ApiTemplateIo/ApiTemplateIo.node.ts
+  s_097953de0a96e2::t_b7c324c02db3ea 10,385-389,460-466,553
+packages/nodes-base/nodes/ApiTemplateIo/GenericFunctions.ts
+  s_22eea66365bbbb::t_6373a4dfb3d033 7-8,10,15,19,23,57
+packages/nodes-base/nodes/Asana/Asana.node.ts
+  s_097953de0a96e2::t_0aa2fe8fd5819b 13,1730,1773,1815-1820,1835,1872,1880-1886,1923,1994,2028,2054,2065,2079,2115-2121,2125,2143,2160,2182,2213,2231,2252,2272,2297,2317,2333-2339,2351,2382,2395-2401,2415,2442-2448,2452-2458,2494
+packages/nodes-base/nodes/Asana/AsanaTrigger.node.ts
+  s_097953de0a96e2::t_6c6d1637949d6d 11,123-129,160,184-189
+packages/nodes-base/nodes/Asana/GenericFunctions.ts
+  s_011c996fdfa425::t_8270f51f084ae4 10,12,21,28,41-50,56,84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bb52c539029de0abf2c080b46cab0e1c5a5fc2df",
+  "prompts": {},
+  "sessions": {
+    "s_011c996fdfa425": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab6cdd889fabef339",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_097953de0a96e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aac90f73f2622c71a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_199a9f7ff6ef60": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a64717f2a861fc6a3",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_22eea66365bbbb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a16673bfa31c94f40",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

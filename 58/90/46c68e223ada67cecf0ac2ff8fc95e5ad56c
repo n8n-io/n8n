@@ -1,0 +1,27 @@
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_658c3c04b321fe::t_596dc24afd3242 2447-2467
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_658c3c04b321fe::t_91d125907ab3ec 1568-1569,1571-1583
+  s_658c3c04b321fe::t_e702d941fd01ae 1570
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_658c3c04b321fe::t_f7d5b4e39d1a5c 49,113-114,365,382-386,453-454
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_658c3c04b321fe::t_436bea3dcb2281 128-135,137-143
+  s_658c3c04b321fe::t_224394c7151308 136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "589046c68e223ada67cecf0ac2ff8fc95e5ad56c",
+  "prompts": {},
+  "sessions": {
+    "s_658c3c04b321fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "685e3749-5431-4076-af1d-db56a2ab1bea",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

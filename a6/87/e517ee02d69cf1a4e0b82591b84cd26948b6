@@ -1,0 +1,26 @@
+packages/cli/src/modules/agents/tools/workflow-context-tool.ts
+  s_bb17b049fc2e2d::t_d95dff5e53bd71 78
+packages/cli/src/modules/agents/tools/__tests__/workflow-context-tool.test.ts
+  s_bb17b049fc2e2d::t_c919cc0f0298d8 129
+  s_bb17b049fc2e2d::t_2743418515b309 171,178-185
+  s_bb17b049fc2e2d::t_440a26fa02f5d0 104-112,114-115,118
+  s_bb17b049fc2e2d::t_fb2305bace4a5f 146,155-165
+  s_bb17b049fc2e2d::t_3fec0df011223d 60
+  s_bb17b049fc2e2d::t_3d6d5a1cdcf50d 91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a687e517ee02d69cf1a4e0b82591b84cd26948b6",
+  "prompts": {},
+  "sessions": {
+    "s_bb17b049fc2e2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ce0c93e-11a0-4d60-b602-af5cd3c86750",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

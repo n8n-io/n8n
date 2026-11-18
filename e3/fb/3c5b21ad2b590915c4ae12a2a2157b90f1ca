@@ -1,0 +1,31 @@
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_4a1820556b083c::t_590bf4a932d553 71-77
+  s_4a1820556b083c::t_5a2b394996d6d2 70,78,80-101,104
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_4a1820556b083c::t_5a2b394996d6d2 19,388
+packages/@n8n/agents/src/runtime/__tests__/model-token-counter.test.ts
+  s_4a1820556b083c::t_590bf4a932d553 1,18-25,29-33,35-37
+  s_4a1820556b083c::t_517a610c951179 26-28,34
+  s_4a1820556b083c::t_4931a03199e2c0 38
+packages/@n8n/agents/src/runtime/model/model-token-counter.ts
+  s_4a1820556b083c::t_5461e472df6929 1-2,8-10,16-18,22-42
+  s_4a1820556b083c::t_8ad1ea8a98eef5 43
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_4a1820556b083c::t_590bf4a932d553 588-630
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e3fb3c5b21ad2b590915c4ae12a2a2157b90f1ca",
+  "prompts": {},
+  "sessions": {
+    "s_4a1820556b083c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e5fc4f33-dbd5-42bc-b8cd-3b19bc5cb197",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

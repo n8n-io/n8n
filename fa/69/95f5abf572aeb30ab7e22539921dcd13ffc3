@@ -1,0 +1,73 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-credit-display.test.ts
+  s_602a3b182a34ac::t_261e05c01845e0 31
+  s_602a3b182a34ac::t_8b4f5cfccebc32 45-65
+packages/cli/src/services/ai.service.ts
+  h_2f80f0e06f710c 102
+packages/@n8n/api-types/src/push/instance-ai.ts
+  h_2f80f0e06f710c 26
+  s_602a3b182a34ac::t_dae0bf833e8be2 27
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/CreditWarningBanner.vue
+  s_602a3b182a34ac::t_f5357c7feb1a39 26-29,41-47
+  s_602a3b182a34ac::t_8c9f33037305c8 14
+  s_602a3b182a34ac::t_6675f96c101bad 71-76,91
+  s_602a3b182a34ac::t_bd776dc12e469a 77-82
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_602a3b182a34ac::t_8224ca4b87c33a 91,96,1046
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_602a3b182a34ac::t_8224ca4b87c33a 120,126,534,571,606
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMessage.vue
+  h_2f80f0e06f710c 55
+packages/cli/src/modules/instance-ai/instance-ai-settings.service.ts
+  h_2f80f0e06f710c 1315
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_602a3b182a34ac::t_ddff30f77664b1 379-380
+packages/cli/src/modules/instance-ai/instance-ai-credit.service.ts
+  s_602a3b182a34ac::t_ab417f4f632d69 108-122
+packages/cli/src/modules/instance-ai/__tests__/credit-counting.test.ts
+  s_602a3b182a34ac::t_3374a7f3c41106 194
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_602a3b182a34ac::t_fdd860bc7543dc 868-870
+  h_2f80f0e06f710c 2154
+packages/cli/src/modules/instance-ai/instance-ai-model.service.ts
+  s_602a3b182a34ac::t_614efdb31e33d7 147-149
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.store.test.ts
+  s_602a3b182a34ac::t_8f481b9110a670 220-243,245-267
+  h_2f80f0e06f710c 244
+  s_602a3b182a34ac::t_5c4291201230d3 7
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.api.ts
+  s_602a3b182a34ac::t_eb5d730d046f5f 121-123,127-132
+packages/cli/src/modules/instance-ai/instance-ai-credit-display.ts
+  s_602a3b182a34ac::t_1aaec1554c99a9 3,10-13,15-19,28-32
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/CreditWarningBanner.test.ts
+  s_602a3b182a34ac::t_fecb4e10e4956e 90,95
+  h_2f80f0e06f710c 62
+  s_602a3b182a34ac::t_ebb6af5d9b413b 60-61,63-89,91-94,96-97
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  h_2f80f0e06f710c 40
+  s_602a3b182a34ac::t_6fea3af128fe2b 154
+  s_602a3b182a34ac::t_50bb4d8f11ca29 111-117
+  s_602a3b182a34ac::t_e3b5034a46fc94 41
+  s_602a3b182a34ac::t_181d5da113cc2a 129
+  s_602a3b182a34ac::t_b47ff37f1cc85f 296-297
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fa6995f5abf572aeb30ab7e22539921dcd13ffc3",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_602a3b182a34ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97601b8f-6173-4856-9e57-5368d6791be1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

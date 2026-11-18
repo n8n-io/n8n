@@ -1,0 +1,43 @@
+packages/nodes-base/nodes/Google/Task/test/tasks.workflow.test.ts
+  s_2e1fa95fc44f8f::t_a00f62ecfdd760 1-43
+packages/nodes-base/nodes/Google/Translate/test/translate.workflow.json
+  s_2e1fa95fc44f8f::t_7cacf808c27bf1 1-45
+packages/nodes-base/nodes/Google/Task/test/tasks.workflow.json
+  s_2e1fa95fc44f8f::t_658ded3a97bcc6 1-169
+packages/nodes-base/nodes/Google/Perspective/test/perspective.workflow.test.ts
+  s_2e1fa95fc44f8f::t_5906e2c54fc4bf 1-29
+packages/nodes-base/nodes/Google/Slides/test/slides.workflow.json
+  s_2e1fa95fc44f8f::t_7c764d3d331719 1-198
+packages/nodes-base/nodes/Google/Slides/test/slides.workflow.test.ts
+  s_2e1fa95fc44f8f::t_6f11ef4b9c4e20 1-40
+  s_2e1fa95fc44f8f::t_ca32ac9d47232b 41-43
+  s_768442b837c256::t_ba22375c79001d 44
+packages/nodes-base/nodes/Google/Perspective/test/perspective.workflow.json
+  s_2e1fa95fc44f8f::t_9a44e9854da2c2 1-57
+packages/nodes-base/nodes/Google/Translate/test/translate.workflow.test.ts
+  s_2e1fa95fc44f8f::t_fe22dda226e544 1-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c686f5f5390ddcb09e6f85fdfed023140d52cca9",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_768442b837c256": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a37cacb013e37b4c4",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

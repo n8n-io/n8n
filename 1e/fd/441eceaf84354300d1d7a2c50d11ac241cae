@@ -1,0 +1,116 @@
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/stream-preserves-discovery-approval-history-and-cache-store-true.json
+  s_dd171702c7a424::t_1dc7059615dc7d 1
+  s_dd171702c7a424::t_ec6d00fb8c5021 2-572
+packages/@n8n/agents/src/runtime/model/__tests__/native-tool-deferral.test.ts
+  s_dd171702c7a424::t_d9d1b3c5f63a55 259-264
+  s_dd171702c7a424::t_43596552de54a6 21-25,81-84,137-156,174-176,178-189,193-196,202-213,234-237,242-249,266-271
+  s_dd171702c7a424::t_d219d429f2830c 1-20,26-52,60-62,65,72,75,78,80,85-92,95-130,135-136,157,159-161,165-173,177,190-192,197-201,214-233,238-241,250-258,265,272-278
+  s_dd171702c7a424::t_b47218b3065ab8 53-55
+  s_dd171702c7a424::t_eef7cfc3c8364f 56-59,63-64,66-71,73-74,76-77,79,93-94
+  s_dd171702c7a424::t_9360cc26a7b9ba 131-134
+  s_dd171702c7a424::t_bf3a1b68b484af 158
+  s_dd171702c7a424::t_6b5d9d415c15e0 162-164
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/generate-preserves-discovery-approval-history-and-cache-store-true.json
+  s_dd171702c7a424::t_ec6d00fb8c5021 2-564
+  s_dd171702c7a424::t_43596552de54a6 1
+packages/@n8n/agents/src/types/index.ts
+  s_dd171702c7a424::t_286adfbff12305 66
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/stream-preserves-discovery-approval-history-and-cache-store-undefined.json
+  s_dd171702c7a424::t_ec6d00fb8c5021 2-774
+  s_dd171702c7a424::t_a8e56fe3dac42c 1
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_dd171702c7a424::t_286adfbff12305 34,78-79,96-98,139,147-150,152-154,166,178,217-218,220-222,233
+  s_dd171702c7a424::t_43596552de54a6 27-31
+  s_dd171702c7a424::t_5c5c302c5ecbc8 151
+packages/@n8n/agents/src/__tests__/integration/native-tool-deferral.test.ts
+  s_dd171702c7a424::t_978b460614176e 1-14,16,22,24-31,33-57,59,62-64,71-76,79-83,85-93,95-97,102-105,108-109,111-112,123,140-141,145-147,156-160,174,176,186,198,200,212-218,221-225,232-233
+  s_dd171702c7a424::t_8dacf98f1036e7 17,19,65-68,84,94,110,113-114,121-122,148-155,210-211,229
+  s_dd171702c7a424::t_29f1b21511e36c 23
+  s_dd171702c7a424::t_dc8eba67f2e5b0 58,60-61,124,128
+  s_dd171702c7a424::t_43596552de54a6 18,20,32,69-70,77-78,98-101,106-107,115-120,125-127,129-139,142-144,161-173,177-185,187-197,201-209,219-220,226-228,230-231
+  s_dd171702c7a424::t_d9d1b3c5f63a55 15
+  s_dd171702c7a424::t_9e1daf87f42abe 21,175,199
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-subagent-workspace.test.ts
+  s_dd171702c7a424::t_29f1b21511e36c 123-126,128-129
+  s_dd171702c7a424::t_b02a3a7632f405 127
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/generate-preserves-discovery-approval-history-and-cache-store-undefined.json
+  s_dd171702c7a424::t_ec6d00fb8c5021 2-750
+  s_dd171702c7a424::t_2fb9f966a9a9ec 1
+packages/@n8n/agents/src/index.ts
+  s_dd171702c7a424::t_286adfbff12305 97
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime-conversion.test.ts
+  s_dd171702c7a424::t_43596552de54a6 22-49,52-67
+  s_dd171702c7a424::t_4a270dfe4252f0 50-51
+  s_dd171702c7a424::t_cf001e945a8dbe 18,68
+packages/cli/src/modules/agents/BUILT_IN_TOOLS.md
+  s_dd171702c7a424::t_70709cb60302b5 9,15-16,25-47
+  s_dd171702c7a424::t_6e29b7485acca0 17-24
+  s_dd171702c7a424::t_61358994dca8ce 48
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_dd171702c7a424::t_286adfbff12305 3,874-876
+packages/@n8n/agents/src/runtime/model/prompt-cache.ts
+  s_dd171702c7a424::t_43596552de54a6 258-262
+  s_dd171702c7a424::t_286adfbff12305 93,98-101
+packages/@n8n/agents/src/types/sdk/message.ts
+  s_dd171702c7a424::t_286adfbff12305 137-139
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/generate-preserves-discovery-approval-history-and-cache-store-false.json
+  s_dd171702c7a424::t_ec6d00fb8c5021 2-714
+  s_dd171702c7a424::t_647f9bce2e440a 1
+packages/@n8n/agents/src/types/sdk/agent-builder.ts
+  s_dd171702c7a424::t_286adfbff12305 1,25
+packages/@n8n/agents/src/runtime/model/__tests__/prompt-cache.test.ts
+  s_dd171702c7a424::t_43596552de54a6 293-297
+  s_dd171702c7a424::t_1564fbd79eba21 290-292,298-302
+packages/@n8n/agents/docs/prompt-caching.md
+  s_dd171702c7a424::t_70709cb60302b5 49-51,54-67,88-97,100,110-112,205-212,271-273
+  s_dd171702c7a424::t_6e29b7485acca0 52-53,68-87
+  s_dd171702c7a424::t_5170e5b196024f 98-99
+packages/@n8n/agents/src/sdk/agent.ts
+  s_dd171702c7a424::t_43596552de54a6 1324
+  s_dd171702c7a424::t_286adfbff12305 76,152,188-189,325-330,748,1176
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_dd171702c7a424::t_29f1b21511e36c 462-473
+  s_dd171702c7a424::t_b0d1cdbe671ed6 413
+packages/@n8n/agents/src/types/runtime/agent-runtime.ts
+  s_dd171702c7a424::t_43596552de54a6 27-32
+  s_dd171702c7a424::t_286adfbff12305 57
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/stream-preserves-discovery-approval-history-and-cache-store-false.json
+  s_dd171702c7a424::t_ec6d00fb8c5021 2-722
+  s_dd171702c7a424::t_f44ff3cecb1e8b 1
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_dd171702c7a424::t_286adfbff12305 299-303
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_dd171702c7a424::t_43596552de54a6 3691-3723,5761,5778,5780-5782,9489-9508,9510-9518,9520-9526,9528-9529,9531-9532,9534-9538,9540-9554
+  s_dd171702c7a424::t_e851663a3997e2 57-58,83-84,1764,1778,1780-1782,3690
+packages/@n8n/agents/src/runtime/model/messages.ts
+  s_dd171702c7a424::t_286adfbff12305 279,294,304,537
+packages/@n8n/agents/src/runtime/model/native-tool-deferral.ts
+  s_dd171702c7a424::t_6e29b7485acca0 12-20,22-30,43,45
+  s_dd171702c7a424::t_286adfbff12305 1-11,21,31-40,42,46-92,99-106,118,132,135,137-138,140-142,144-145,147-148,153-162,165-210
+  s_dd171702c7a424::t_c723e6faee9ad9 44
+  s_dd171702c7a424::t_d9d1b3c5f63a55 93-98,114,139
+  s_dd171702c7a424::t_43596552de54a6 108-112,163-164
+  s_dd171702c7a424::t_46340bf2a052fc 41,107,113,115-117,119-131,133-134,136,143,146,149-152
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_dd171702c7a424::t_286adfbff12305 212,973,1057
+packages/@n8n/agents/src/sdk/__tests__/inline-sub-agent-tools.test.ts
+  s_dd171702c7a424::t_dd5a053e1756a2 15,150,158,281,296
+packages/@n8n/agents/vitest.integration.setup.ts
+  s_dd171702c7a424::t_69945020769335 128-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1efd441eceaf84354300d1d7a2c50d11ac241cae",
+  "prompts": {},
+  "sessions": {
+    "s_dd171702c7a424": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11a3d-30e8-73a3-9e06-925aae6a1701",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

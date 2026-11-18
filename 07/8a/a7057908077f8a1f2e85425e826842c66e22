@@ -1,0 +1,117 @@
+packages/@n8n/api-types/src/dto/index.ts
+  s_67c97f429fea17::t_9aa344cac33c5d 841,846
+packages/modules/promotions/frontend/src/composables/usePromotionOperation.ts
+  s_67c97f429fea17::t_6b9bf747cf8885 28-29,112,117,119-123
+packages/cli/src/modules/promotions.ee/promotion-review-changes.service.ts
+  s_67c97f429fea17::t_14fc00729ecb8c 31-36
+  s_67c97f429fea17::t_1e1788d2d3885e 30
+packages/@n8n/cli/src/client.ts
+  s_67c97f429fea17::t_0e493c9bb1b2f5 116-120,493,495,497,499
+packages/cli/src/modules/promotions.ee/promote-preview.service.ts
+  s_67c97f429fea17::t_2237e854de3225 1-151
+packages/cli/src/modules/promotions.ee/__tests__/utils/promotion-fixtures.ts
+  s_67c97f429fea17::t_8d9184c3d56cde 3,58-63
+  s_67c97f429fea17::t_d6eb22c0620e74 64
+packages/@n8n/cli/src/__tests__/promotion-environment-operations.test.ts
+  s_67c97f429fea17::t_08cb7cd20c1b80 36-37,406,423,430,440,456-461,463-487,489,493-495
+  s_67c97f429fea17::t_9206e2c6d7ed96 462
+  s_67c97f429fea17::t_1964951bbbf5d9 490-492
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_67c97f429fea17::t_89becdbc8008ad 21-26,143,376,636,673,689,722
+  s_67c97f429fea17::t_894a8ea3116de5 916-950
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_67c97f429fea17::t_fd75c99ee2e128 624,648,668-676,679-687,730,738-739,749,1303-1304,1306-1308,1310,1776-1791
+  s_67c97f429fea17::t_1914c4156293ec 677-678,1302,1305,1309,1311,1627,1634
+  s_67c97f429fea17::t_454831f1051d8f 12,77,177,469
+  s_67c97f429fea17::t_2a16e242ddf035 1792-1793
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  s_67c97f429fea17::t_6b9e166dc75ed0 2,4-5,11,30,496-522
+  s_67c97f429fea17::t_1e1788d2d3885e 10,18-22,28,523-542
+packages/cli/BREAKING-CHANGES.md
+  s_67c97f429fea17::t_0353d47b286ecb 59-64
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_67c97f429fea17::t_601a02c19ef564 268-273,353
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_67c97f429fea17::t_998ea298c630a1 80-84
+  s_67c97f429fea17::t_1e1788d2d3885e 18,29,32-38,41,63
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_67c97f429fea17::t_92d59d3b9c2931 11055
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_67c97f429fea17::t_9aa344cac33c5d 11-15,69-83
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_67c97f429fea17::t_503ee891dbb6cc 17,648
+  s_67c97f429fea17::t_aafbf0acce45cb 709,712,723
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_67c97f429fea17::t_1964951bbbf5d9 848-851
+  s_67c97f429fea17::t_a3747bd1683b74 844-847,852-890
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_67c97f429fea17::t_8d9184c3d56cde 3198,3232,3279,3539
+  s_67c97f429fea17::t_4b1f7d659a99b9 94,114,236
+  s_67c97f429fea17::t_807d2f1cd330c8 519,3677-3678,3683-3685
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change-gate.test.ts
+  s_67c97f429fea17::t_1964951bbbf5d9 48-52
+  s_67c97f429fea17::t_807d2f1cd330c8 10,77
+packages/modules/promotions/frontend/src/__tests__/preview.fixtures.ts
+  s_67c97f429fea17::t_89becdbc8008ad 5-6,95
+packages/modules/promotions/frontend/src/composables/usePromotionChangeCount.test.ts
+  s_67c97f429fea17::t_450710369fda45 31
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_67c97f429fea17::t_9aa344cac33c5d 131-132,134,136
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  s_67c97f429fea17::t_6b9e166dc75ed0 170
+  s_67c97f429fea17::t_de06d5865e0440 36,43
+packages/@n8n/api-types/src/dto/promotions/promotion-common.dto.ts
+  s_67c97f429fea17::t_9aa344cac33c5d 1-2,36-46
+packages/@n8n/cli/src/commands/promotion-environment/promote-selection.ts
+  s_67c97f429fea17::t_0e493c9bb1b2f5 3-4,8,14,36,46,48-61
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_67c97f429fea17::t_9aa344cac33c5d 7-11,24
+packages/@n8n/cli/src/commands/promotion-environment/expected-source.ts
+  s_67c97f429fea17::t_0e493c9bb1b2f5 60,64
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_67c97f429fea17::t_4b1f7d659a99b9 60,244
+  s_67c97f429fea17::t_8d9184c3d56cde 1471,1531,1576
+packages/cli/src/modules/promotions.ee/apply-preview.ts
+  s_67c97f429fea17::t_6b9e166dc75ed0 34
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change.service.test.ts
+  s_67c97f429fea17::t_807d2f1cd330c8 130
+packages/@n8n/telemetry/src/events/promotions.ts
+  s_67c97f429fea17::t_1964951bbbf5d9 129-152,164-166
+  s_67c97f429fea17::t_7cae98056641c0 123,125
+packages/@n8n/cli/src/__tests__/promotion-environment-list-changes.test.ts
+  s_67c97f429fea17::t_08cb7cd20c1b80 39
+packages/@n8n/cli/docs/commands/promotions.md
+  s_67c97f429fea17::t_601a02c19ef564 356-358,371-372,380-385
+packages/cli/src/events/maps/relay.event-map.ts
+  s_67c97f429fea17::t_9167ce9a2ee275 1559,1562,1575
+packages/modules/promotions/frontend/src/promotions.api.ts
+  s_67c97f429fea17::t_6b9bf747cf8885 6,67
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_67c97f429fea17::t_89b4374a329be3 2320,2380
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  s_67c97f429fea17::t_05454dda50c278 60
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  s_67c97f429fea17::t_3bb848f72779ed 61
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  s_67c97f429fea17::t_09e1698d4588e3 8,170,176
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
+  s_67c97f429fea17::t_e91b83d0291267 41-114
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  s_67c97f429fea17::t_6d54a6ec219c5a 8,44-47,55-148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "078aa7057908077f8a1f2e85425e826842c66e22",
+  "prompts": {},
+  "sessions": {
+    "s_67c97f429fea17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92bd8bd1-2ee3-4ea4-a171-82d907e29660",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_4cc3ac41c369cf::t_92efbf461c4755 313-315
+  s_4cc3ac41c369cf::t_8f4650e7b59487 4772-4786
+  s_4cc3ac41c369cf::t_11471f2b6e746a 5337-5355
+packages/cli/src/modules/instance-ai/suspended-run-restorer.service.ts
+  s_4cc3ac41c369cf::t_5b9bc4381473fa 66-67
+  s_4cc3ac41c369cf::t_b49fb873882b8c 145-160
+packages/cli/src/modules/instance-ai/__tests__/suspended-run-restorer.service.test.ts
+  s_4cc3ac41c369cf::t_601ebb899b7689 154-199
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_4cc3ac41c369cf::t_1d400d215447e6 1872
+  s_4cc3ac41c369cf::t_f365bc36aa20be 2884-2950
+  s_4cc3ac41c369cf::t_5f19e460d6310e 2586-2602
+  s_4cc3ac41c369cf::t_39325384211e94 1910
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1af9ba0432efe701a7413c999750a0f1f97df9a1",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4cc3ac41c369cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2862856f-00b9-4de0-9ada-4a2ac54b4900",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

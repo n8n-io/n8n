@@ -1,0 +1,23 @@
+packages/modules/apps/frontend/src/components/configure/AppConfigureTabBasics.test.ts
+  s_b6d332c56aa1c5::t_22d7b8f929a4e8 106,112-115,117,119-123,127-151
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b6d332c56aa1c5::t_3af1c5014874dc 355
+packages/modules/apps/frontend/src/components/configure/AppConfigureTabBasics.vue
+  s_b6d332c56aa1c5::t_3af1c5014874dc 20-38,51,54-61,81,100-110,140-143,149-156,159,161,163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2b8f8aaf83cd842e08f0813450c7d7e3034bd6f5",
+  "prompts": {},
+  "sessions": {
+    "s_b6d332c56aa1c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f6b2437c-b582-4a87-95e4-7349acfdcb64",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

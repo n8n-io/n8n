@@ -1,0 +1,311 @@
+packages/frontend/@n8n/design-system/src/types/button.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 4
+packages/frontend/editor-ui/src/features/integrations/secretsProviders.ee/components/SecretsProviderConnectionModal.ee.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 36
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useCommandBar.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 6
+packages/frontend/@n8n/design-system/src/components/N8nBreadcrumbs/index.ts
+  s_7b4d6a9d1b32c8::t_1e66bab7e56813 3
+packages/frontend/@n8n/design-system/src/components/N8nButton/Button.vue
+  s_7b4d6a9d1b32c8::t_c308ad652bdf95 113
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 12
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.constants.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 4
+packages/frontend/@n8n/design-system/src/index.ts
+  s_7b4d6a9d1b32c8::t_352e2c4984b98a 9
+packages/frontend/editor-ui/src/features/ai/chatHub/components/SuggestedPromptsEditor.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 4
+packages/frontend/@n8n/design-system/src/v2/components/Pagination/Pagination.types.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 3
+packages/frontend/editor-ui/src/features/settings/users/views/SettingsUsersView.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 11
+  s_7b4d6a9d1b32c8::t_0102d40a8b7fc5 33
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStepGroup/AiActivityStepGroup.stories.ts
+  s_7b4d6a9d1b32c8::t_c308ad652bdf95 88-90,110-112
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 10
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 21
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectSharingInfo.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 5
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 20
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettingsHint.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 5
+packages/frontend/editor-ui/src/features/shared/commandBar/types.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 1
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ProjectSelect.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 5
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectMembersTable.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 3-4
+packages/frontend/editor-ui/src/features/ndv/runData/components/VirtualSchemaItem.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 3
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 25-26
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/AgentsTable.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 6
+packages/frontend/@n8n/design-system/src/components/N8nDialog/DialogClose.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 4
+packages/frontend/editor-ui/src/features/ndv/panel/components/NDVEmptyState.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 2
+packages/frontend/editor-ui/src/app/composables/useNodeExecution.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 4
+packages/frontend/@n8n/design-system/src/components/N8nAlertDialog/AlertDialog.stories.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 4-5
+packages/frontend/editor-ui/src/features/settings/security/DataRedactionSection.vue
+  s_7b4d6a9d1b32c8::t_af084ddca880e2 14
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectIcon.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 2
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectCardBadge.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 9
+packages/frontend/@n8n/design-system/src/v2/components/Tree/Tree.vue
+  s_7b4d6a9d1b32c8::t_c308ad652bdf95 206
+packages/frontend/@n8n/design-system/src/v2/components/Pagination/Pagination.vue
+  s_7b4d6a9d1b32c8::t_c308ad652bdf95 21-22
+packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsListItem.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 15
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatSidebarLink.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 3
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AssignmentCollection/constants.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 2
+packages/frontend/@n8n/design-system/src/v2/components/Tree/TreeNodeDefault.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 6-7
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyTable.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 6
+packages/frontend/editor-ui/src/app/constants/parameters.ts
+  s_7b4d6a9d1b32c8::t_e299bcbc7ec72e 2
+packages/frontend/@n8n/design-system/src/components/N8nIcon/Icon.vue
+  s_7b4d6a9d1b32c8::t_c308ad652bdf95 145
+packages/frontend/editor-ui/src/features/agents/components/SessionDetailPanel.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 15
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.types.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 3
+packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 33
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.vue
+  s_7b4d6a9d1b32c8::t_c308ad652bdf95 20-21
+packages/frontend/editor-ui/src/features/roles/components/RoleSelectDropdown.vue
+  s_7b4d6a9d1b32c8::t_af084ddca880e2 11
+packages/frontend/editor-ui/src/features/settings/orchestration.ee/components/WorkerAccordion.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 4
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelineHeader.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 4
+packages/frontend/editor-ui/src/features/core/dataTable/components/DataTableBreadcrumbs.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 5
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 20
+packages/frontend/@n8n/design-system/src/components/N8nUserInfo/index.ts
+  s_7b4d6a9d1b32c8::t_623204e878a89c 4
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 60
+packages/frontend/editor-ui/src/app/composables/useDataSchema.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 27
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelsSection.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 4
+packages/frontend/editor-ui/src/features/execution/logs/components/MessageOptionAction.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 3
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiArtifactsPanel.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 4-5
+packages/frontend/editor-ui/src/features/execution/insights/components/tables/InsightsTableWorkflows.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 10
+packages/frontend/editor-ui/src/features/shared/banners/components/banners/BaseBanner.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 7
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 23
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelListItem.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 4
+packages/frontend/editor-ui/src/features/core/folders/folders.store.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 19
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 5
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.utils.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 1
+packages/frontend/@n8n/design-system/src/components/N8nFormInput/FormInput.vue
+  s_7b4d6a9d1b32c8::t_c308ad652bdf95 220,245
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectSharing.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 2
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 28
+packages/frontend/editor-ui/src/features/ai/gateway/views/SettingsAiGatewayView.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 13
+packages/frontend/@n8n/design-system/src/components/N8nInput/Input.vue
+  s_7b4d6a9d1b32c8::t_c308ad652bdf95 6
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useNodeCommands.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 9
+packages/frontend/@n8n/design-system/src/v2/components/Select/SelectItem.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 15
+packages/frontend/@n8n/design-system/src/v2/components/Tree/TreeNode.vue
+  s_7b4d6a9d1b32c8::t_c308ad652bdf95 93,101
+packages/frontend/editor-ui/src/features/ai/chatHub/components/AgentEditorModal.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 31
+packages/frontend/editor-ui/src/features/core/folders/folders.types.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 1
+packages/frontend/editor-ui/src/features/core/folders/components/FolderCard.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 10
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/components/WorkflowHistoryPublishedTooltip.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 6
+packages/frontend/@n8n/design-system/src/v2/components/TagsInput/TagsInput.vue
+  s_7b4d6a9d1b32c8::t_c308ad652bdf95 20
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowDetails.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 22
+packages/frontend/@n8n/design-system/src/components/N8nInput/Input.stories.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 6-7
+  s_7b4d6a9d1b32c8::t_3e89721639a5cf 8
+packages/frontend/editor-ui/src/features/shared/commandBar/components/CommandBarItemTitle.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 2
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/AskAssistantBuild.test.ts
+  s_7b4d6a9d1b32c8::t_afe3c91afac206 69-71
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/canvasNodeAgentChips.utils.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 2
+packages/frontend/editor-ui/src/features/ndv/parameters/components/FilterConditions/types.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 1
+packages/frontend/editor-ui/src/features/settings/encryption-keys/views/SettingsEncryptionKeys.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 20
+packages/frontend/@n8n/design-system/src/components/N8nToggle/Toggle.vue
+  s_7b4d6a9d1b32c8::t_c308ad652bdf95 9
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useWorkflowNavigationCommands.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 20
+packages/frontend/editor-ui/src/features/settings/communityNodes/components/NodesInWorkflowTable.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 3
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatAgentAvatar.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 6
+packages/frontend/editor-ui/src/features/ai/chatHub/chat.utils.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 23
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenuItem.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 14-15
+  s_7b4d6a9d1b32c8::t_c308ad652bdf95 23
+packages/frontend/editor-ui/src/features/setupPanel/components/TriggerExecuteButton.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 4
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/WizardSidepanel/CheckResultCard.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 3
+packages/frontend/editor-ui/src/features/settings/environments.ee/components/VariableModal.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 26
+packages/frontend/editor-ui/src/features/settings/apiKeys/apiKeys.store.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 15
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskModal.vue
+  s_7b4d6a9d1b32c8::t_3071d91be4942a 14-15
+packages/frontend/editor-ui/src/features/core/folders/components/ProjectBreadcrumb.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 5
+packages/frontend/editor-ui/src/features/agents/components/AgentChipButton.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 3
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.constants.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 1
+packages/frontend/@n8n/design-system/src/components/N8nDialog/Dialog.stories.ts
+  s_7b4d6a9d1b32c8::t_c308ad652bdf95 13
+  s_7b4d6a9d1b32c8::t_5c48469e808643 12
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 22
+packages/frontend/@n8n/design-system/src/components/N8nAlertDialog/AlertDialog.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 4-10
+packages/frontend/editor-ui/src/features/agents/components/AgentIdentityHeader.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 5
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_7b4d6a9d1b32c8::t_0d2450d4c7a91b 66
+  s_7b4d6a9d1b32c8::t_ccb88b53d2eaec 141
+  s_7b4d6a9d1b32c8::t_780c2118d3c49a 149
+  s_7b4d6a9d1b32c8::t_726d7ff30ce5fb 6
+  s_7b4d6a9d1b32c8::t_e6d3d3a7863453 152
+  s_7b4d6a9d1b32c8::t_6c56d5aad72c01 129
+packages/frontend/editor-ui/src/app/components/DependencyPill.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 8
+packages/frontend/@n8n/design-system/src/v2/components/Select/Select.vue
+  s_7b4d6a9d1b32c8::t_c308ad652bdf95 38-40
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_7b4d6a9d1b32c8::t_3a09e12fd37e36 44,47
+packages/frontend/editor-ui/src/features/agents/components/AgentAdvancedPanel.vue
+  s_7b4d6a9d1b32c8::t_719621e31b789c 10-17
+packages/frontend/@n8n/design-system/src/v2/components/InputNumber/InputNumber.stories.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 5
+packages/frontend/editor-ui/src/features/integrations/secretsProviders.ee/components/SecretsProviderConnectionCard.ee.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 21
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.stories.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 6-10
+  s_7b4d6a9d1b32c8::t_c308ad652bdf95 5
+packages/frontend/editor-ui/src/app/components/NodeExecuteButton.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 6
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/WizardSidepanel/CheckHeader.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 3
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderPreviewHeader.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 11
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 46
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 9
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPAgentsView.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 11
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatProvidersTable.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 4
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillViewer.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 21
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 49
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsInfoAccordion.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 15-16
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPWorkflowsView.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 11
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectVariables.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 46
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 12
+packages/frontend/@n8n/design-system/src/v2/components/Select/Select.stories.ts
+  s_7b4d6a9d1b32c8::t_c308ad652bdf95 7
+packages/frontend/@n8n/design-system/src/v2/components/Tree/Tree.types.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 4
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenuItems.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 4
+packages/frontend/editor-ui/src/features/core/folders/components/FolderBreadcrumbs.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 6
+packages/frontend/@n8n/design-system/src/components/N8nNotice/Notice.test.ts
+  s_7b4d6a9d1b32c8::t_c308ad652bdf95 5
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectExternalSecrets.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 23
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/EvaluationsEmptyState/EvaluationsEmptyState.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 4
+packages/frontend/@n8n/design-system/src/components/N8nTooltip/Tooltip.stories.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 6-7
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/PlanModeSelector.vue
+  s_7b4d6a9d1b32c8::t_af084ddca880e2 5
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 91
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/WizardSidepanel/CheckCard.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 3
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 24
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.constants.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 1
+packages/frontend/@n8n/design-system/src/v2/components/TagsInput/TagsInput.stories.ts
+  s_7b4d6a9d1b32c8::t_c308ad652bdf95 6
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 11
+packages/frontend/@n8n/design-system/src/v2/components/Checkbox/Checkbox.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 7
+packages/frontend/@n8n/design-system/src/components/N8nInfoAccordion/index.ts
+  s_7b4d6a9d1b32c8::t_c49f938224d381 4
+packages/frontend/@n8n/design-system/src/v2/components/Tree/TreeNodeDefault.stories.ts
+  s_7b4d6a9d1b32c8::t_c308ad652bdf95 6
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/ChatVersionCard.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 9
+packages/frontend/editor-ui/src/app/components/KeyboardShortcutTooltip.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 3
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersTable.vue
+  s_7b4d6a9d1b32c8::t_5c48469e808643 5,12
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectMembersTable.test.ts
+  s_7b4d6a9d1b32c8::t_5c48469e808643 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "777e5c28848935490b2a6ff8069785f6fb6a5243",
+  "prompts": {},
+  "sessions": {
+    "s_7b4d6a9d1b32c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac01b011-a537-4c88-9260-157599fc8231",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

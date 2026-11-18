@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_081d6f325925c9::t_27615496b12080 858-860,884-885
+  s_081d6f325925c9::t_a3ae3d823e58c7 861-876,878-883
+  s_081d6f325925c9::t_7f1957771c712f 828-856
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7699157e29558e7ba81e0d75125b36c7938cb6af",
+  "prompts": {},
+  "sessions": {
+    "s_081d6f325925c9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a14556-73fa-7410-b968-ee927d435114",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

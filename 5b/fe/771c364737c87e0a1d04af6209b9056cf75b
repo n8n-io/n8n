@@ -1,0 +1,69 @@
+packages/@n8n/blob-storage/src/index.ts
+  s_1359802a9ac02a::t_311270e159b9f0 11
+packages/cli/src/modules/agents/entities/agent-file.entity.ts
+  s_1359802a9ac02a::t_67d91a997e6d9e 6-11
+packages/cli/src/modules/agents/agent-knowledge-file-store.ts
+  s_1359802a9ac02a::t_1a077ecc0acccf 63
+  s_1359802a9ac02a::t_d61ad0571a2605 135-138
+  s_1359802a9ac02a::t_e007bad71f3f9e 4,6,23-28,50,56,59,71,89,98,114-116,120,122,125,130-134,139-162
+  s_1359802a9ac02a::t_7fb1f11a7ef250 163
+packages/@n8n/db/src/migrations/common/1785186578138-AddAgentFileStorageColumns.ts
+  s_1359802a9ac02a::t_911d1733b2e454 95-97,99
+  s_1359802a9ac02a::t_0e3a9dde99b337 3-10
+  s_1359802a9ac02a::t_6b030faabb616b 36
+  s_1359802a9ac02a::t_ab7417536fe68c 13-33,35,37,54,56-65,67-84,86-94,98,100-121
+  s_1359802a9ac02a::t_667b50392d2334 66
+  s_1359802a9ac02a::t_1bcf659e237aa9 85
+packages/@n8n/blob-storage/src/json-store.ts
+  s_1359802a9ac02a::t_258c8abd948e4c 17,20,24,32
+  s_1359802a9ac02a::t_ca47d9c6985a19 48
+  s_1359802a9ac02a::t_a29c7d591281e9 81
+  s_1359802a9ac02a::t_67271c84c0ab54 4
+  s_1359802a9ac02a::t_6732963adee718 61
+packages/cli/test/migration/1785186578138-add-agent-file-storage-columns.test.ts
+  s_1359802a9ac02a::t_8e4c49312e5ec8 201
+  s_1359802a9ac02a::t_dab62adb7d7087 12-170,179,184-185,187,191-193,200,204-277,280,282,287
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_1359802a9ac02a::t_f0fe4b13fc1021 226
+  s_1359802a9ac02a::t_4f80265e7b142e 453
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_1359802a9ac02a::t_19aa5e39b4b9d5 234
+  s_1359802a9ac02a::t_7f79b9f983f1b6 471
+packages/@n8n/blob-storage/src/byte-store-registry.ts
+  s_1359802a9ac02a::t_43ee481eee2813 1-42
+packages/cli/src/modules/agents/__tests__/agent-knowledge-file-store.test.ts
+  s_1359802a9ac02a::t_1419d21ce0af67 2,4,6,17-19,23,25,28-37,43,47,49-50,58,85,87,93-97,110-122,129,131,137,155-162,164-168
+docs/generated/postgres-schema/README.md
+  s_1359802a9ac02a::t_9d680152e72b5a 19,444
+docs/generated/postgres-schema/public.agent_files.md
+  s_1359802a9ac02a::t_a2cea8b46aff05 8,40,53
+docs/generated/postgres-schema/public.agents.md
+  s_1359802a9ac02a::t_244bb8318db322 142
+docs/generated/sqlite-schema/README.md
+  s_1359802a9ac02a::t_2e84a934333a5d 19,431
+docs/generated/sqlite-schema/agent_files.md
+  s_1359802a9ac02a::t_1a8bc5dfdcb805 9,19,33,43,56
+docs/generated/sqlite-schema/agents.md
+  s_1359802a9ac02a::t_74b54fd84b1b7d 145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "5bfe771c364737c87e0a1d04af6209b9056cf75b",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1359802a9ac02a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7141adee-2030-4e92-a8ca-d8a4ed67fe12",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

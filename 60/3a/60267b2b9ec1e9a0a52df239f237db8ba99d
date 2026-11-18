@@ -1,0 +1,19 @@
+packages/frontend/@n8n/composables/src/__tests__/packageBoundary.test.ts
+  s_c2ae102bb661c1::t_3ad75a260d89c2 75-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "603a60267b2b9ec1e9a0a52df239f237db8ba99d",
+  "prompts": {},
+  "sessions": {
+    "s_c2ae102bb661c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1d5f7e0-d32a-4b3d-ade9-82419962c33f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

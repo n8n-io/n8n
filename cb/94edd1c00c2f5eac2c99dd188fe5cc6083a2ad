@@ -1,0 +1,90 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTelemetry.ts
+  s_9a6001e67297f0::t_9ea11913164830 1,6,21-24
+  s_9a6001e67297f0::t_bc902b771e26df 20
+  s_9a6001e67297f0::t_3aedbcf7873e8f 204-226,256-257
+  s_9a6001e67297f0::t_f5c958f518b9df 7,16
+  s_9a6001e67297f0::t_0b37a09e810a46 227,231
+  s_9a6001e67297f0::t_94c97396c5d4bf 228-230,232-240
+  s_9a6001e67297f0::t_2f981cd1f8f447 258
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/useMergedChatHistory.ts
+  s_9a6001e67297f0::t_103059d33437c5 3-5,7-11,15,32-33,35-36,46,73-82,91,93-96,98-100,102-105,107-111,113-114,119-131
+  s_9a6001e67297f0::t_dcccd74200f53f 12
+  s_e3560b551eac11::t_8be2277bd8b855 16,34
+  s_e3560b551eac11::t_d7b2d2935e78eb 17,19,28-29
+  s_9a6001e67297f0::t_75a680b36b1224 31,83-90
+packages/frontend/editor-ui/src/features/agents/constants.ts
+  ai_agent 14-17
+  s_9a6001e67297f0::t_ba853283a054c2 18
+  s_e3560b551eac11::t_e1fe1dd3a62b73 19,53,56
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentTelemetry.test.ts
+  s_9a6001e67297f0::t_aaad042fe04bec 1,5
+  s_9a6001e67297f0::t_9750fa671811f5 139-152,154-184,186-187,189-190,192,195-199,201-202,204-205,207,211-215,218,220
+  s_9a6001e67297f0::t_5db0cc72d57470 153
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/AgentN8nChatView.vue
+  ai_agent 1-2,4-10,16-21,24-33,35-98,100-104,118-146,148-149,151-152,154-157,159-189,193-197,201-202,204,206-216,219-220,222-224,226-240,242-251,109,192
+  s_e3560b551eac11::t_e49e6472b76e64 3,147,150,153,198-200,205
+  s_e3560b551eac11::t_be9d0b7fac2c72 99,105-106,217-218,221,252,261-264,116-117
+  s_e3560b551eac11::t_88f7975da7b113 190,241
+  s_9a6001e67297f0::t_9cd237417a2698 191
+  s_e3560b551eac11::t_55307f734bca7e 203,253-260,114
+  s_9a6001e67297f0::t_73284eaf8b288d 22
+  s_9a6001e67297f0::t_dbda8ab10a9511 158,225
+  s_9a6001e67297f0::t_6c5246ba3e437b 11-15,23
+  s_9a6001e67297f0::t_2fbb46236d00c0 34
+  s_9a6001e67297f0::t_5aaefa9bdeec9b 107-108,110,112-113,115
+  s_9a6001e67297f0::t_1f1a92e1b04aa5 111
+packages/@n8n/telemetry/src/events/agents.ts
+  s_9a6001e67297f0::t_ad2ef5c550cff7 665-667,669-670,673-682,684-685
+  s_9a6001e67297f0::t_0589ad09996aa3 686,687-693,695-699,701-704
+  s_9a6001e67297f0::t_c93cff7b731097 155-159
+  s_9a6001e67297f0::t_76939bd74d3e82 672,683,694,700
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  ai_agent 6,52-83,124-132,135,726,731,742,747,774,779,794,804,809,813-822,852,857,867,872,138,145,152,164,170,179,187,202
+  s_9a6001e67297f0::t_96b8656302ae21 133,171-178,190,197-200
+  s_9a6001e67297f0::t_30b27a8e2f36f5 134,144,146,150,162-163,165-169,180-186,188-189,191-194,196,201
+  s_9a6001e67297f0::t_0722a6be8de6af 7
+  s_9a6001e67297f0::t_f87191dabc388f 136-137,139-143,151,153-155,157,159-161
+  s_9a6001e67297f0::t_fefeb1272a3320 147-149,156,158
+  s_9a6001e67297f0::t_adc049c2968504 22,35
+  s_9a6001e67297f0::t_9d3e74d511ba0a 37
+  s_9a6001e67297f0::t_d282cb08dbebef 38
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  ai_agent 7,11,145-146,173-208,276
+  s_9a6001e67297f0::t_5b450e3afedd89 19
+  s_9a6001e67297f0::t_2b2bdc3ffc5b83 212,215-216,218,220,222-225,227-232,239,243-247,249-253
+  s_9a6001e67297f0::t_6cbc4792ddb0d9 213,221,236-237,240,242,248
+  s_9a6001e67297f0::t_cdc206dc0c631f 214,217,219,226,233-235,238,241,254-256,259,269,271,273,277-279,282,284-286
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/__tests__/AgentN8nChatView.test.ts
+  ai_agent 1-17,19-51,53-88,90-101,103,105-127,130-161,163-169,171-276,280-286,291,104,316,328
+  s_e3560b551eac11::t_e49e6472b76e64 52,162,170
+  s_e3560b551eac11::t_be9d0b7fac2c72 89
+  s_e3560b551eac11::t_88f7975da7b113 102
+  s_9a6001e67297f0::t_7b59cb0ffd0c2d 128-129
+  s_9a6001e67297f0::t_359225e70d9d35 277,287
+  s_9a6001e67297f0::t_74f46878a5e248 290,292,293-315,317-327,329
+  s_9a6001e67297f0::t_8c11286202abcb 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cb94edd1c00c2f5eac2c99dd188fe5cc6083a2ad",
+  "prompts": {},
+  "sessions": {
+    "s_9a6001e67297f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f72ae404-381c-4905-9080-63d9e62dffe6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_e3560b551eac11": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7b46ea8-2f97-424a-81d9-bb9c3745b1ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

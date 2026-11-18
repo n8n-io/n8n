@@ -1,0 +1,19 @@
+scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md
+  s_1fbc71f79b33c2::t_c1823515681473 80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "86223215904123c57daa25c041f354d5a1be4e93",
+  "prompts": {},
+  "sessions": {
+    "s_1fbc71f79b33c2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c988040-403b-424c-802c-d40c9ab5ecf3",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

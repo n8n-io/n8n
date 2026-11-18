@@ -1,0 +1,92 @@
+packages/cli/src/modules/identity/database/repositories/token-exchange-jti.repository.ts
+  s_16453cac85f858::t_336453ed0cd334 1-126
+packages/cli/src/modules/identity/services/jti-store.service.ts
+  s_16453cac85f858::t_a664aa40091a45 1-38
+packages/cli/test/integration/token-exchange/token-exchange-jti.repository.integration.test.ts
+  s_16453cac85f858::t_336453ed0cd334 10
+  s_16453cac85f858::t_d3bd41e724a2d8 4
+packages/@n8n/config/src/configs/logging.config.ts
+  s_16453cac85f858::t_99f0e55028b385 40
+packages/cli/src/modules/token-exchange/services/identity-resolution.service.ts
+  s_16453cac85f858::t_d3bd41e724a2d8 21
+packages/cli/test/integration/token-exchange/identity-resolution.service.test.ts
+  s_16453cac85f858::t_d3bd41e724a2d8 16
+packages/cli/test/integration/token-exchange/token-exchange.controller.test.ts
+  s_16453cac85f858::t_a218f20c38cde1 87
+  s_16453cac85f858::t_d3bd41e724a2d8 9
+  s_16453cac85f858::t_d60faa35379585 10,74
+packages/cli/src/modules/token-exchange/services/token-exchange.service.ts
+  s_16453cac85f858::t_d3bd41e724a2d8 24-25
+packages/cli/src/modules/identity/database/repositories/trusted-key.repository.ts
+  s_16453cac85f858::t_336453ed0cd334 1-19
+packages/cli/test/integration/token-exchange/embed-auth.api.test.ts
+  s_16453cac85f858::t_9cdcabe7a606e0 45
+  s_16453cac85f858::t_e62d164f400cf3 12,53
+packages/cli/src/modules/token-exchange/services/__tests__/token-exchange.service.test.ts
+  s_16453cac85f858::t_d3bd41e724a2d8 13,15
+packages/cli/src/modules/identity/identity.schemas.ts
+  s_16453cac85f858::t_0a604922523919 1-135
+packages/cli/src/modules/token-exchange/token-exchange.module.ts
+  s_16453cac85f858::t_5c6ad145a3c1eb 16-17
+packages/cli/src/modules/identity/database/entities/trusted-key-source.entity.ts
+  s_16453cac85f858::t_a664aa40091a45 1-25
+packages/cli/src/modules/identity/database/repositories/trusted-key-source.repository.ts
+  s_16453cac85f858::t_336453ed0cd334 1-11
+packages/cli/src/modules/identity/services/__tests__/jwks-resolver.test.ts
+  s_16453cac85f858::t_6f6a1273aa9d46 1-422
+packages/cli/src/modules/identity/services/__tests__/jti-cleanup.service.test.ts
+  s_16453cac85f858::t_6f6a1273aa9d46 1-149
+packages/cli/src/modules/identity/services/jwks-resolver.ts
+  s_16453cac85f858::t_84418e67855863 130
+  s_16453cac85f858::t_a664aa40091a45 1-129,131-287
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_16453cac85f858::t_62a6f53611b7c0 12
+packages/cli/src/modules/identity/services/__tests__/trusted-key.service.test.ts
+  s_16453cac85f858::t_6f6a1273aa9d46 1-334
+packages/cli/eslint.config.mjs
+  s_16453cac85f858::t_d8618136bc0184 290-291
+packages/cli/test/integration/shared/types.ts
+  s_16453cac85f858::t_315d4410354a4d 66
+packages/cli/test/integration/token-exchange/trusted-key.repository.integration.test.ts
+  s_16453cac85f858::t_d3bd41e724a2d8 4-5
+  s_16453cac85f858::t_336453ed0cd334 46
+packages/cli/src/modules/identity/identity.module.ts
+  s_16453cac85f858::t_e46cb090609c40 1-33
+packages/cli/src/modules/identity/database/entities/trusted-key.entity.ts
+  s_16453cac85f858::t_336453ed0cd334 1-24
+packages/cli/src/modules/token-exchange/services/__tests__/identity-resolution.service.test.ts
+  s_16453cac85f858::t_d3bd41e724a2d8 21
+packages/cli/src/modules/identity/database/entities/token-exchange-jti.entity.ts
+  s_16453cac85f858::t_336453ed0cd334 1-14
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_16453cac85f858::t_2c5ca5bad16122 48-50
+packages/cli/src/modules/identity/services/jti-cleanup.service.ts
+  s_16453cac85f858::t_84418e67855863 24
+  s_16453cac85f858::t_a664aa40091a45 1-23,25-69
+packages/cli/test/integration/token-exchange/trusted-key.service.integration.test.ts
+  s_16453cac85f858::t_6b5a4832ab467a 11,101,112
+  s_16453cac85f858::t_d3bd41e724a2d8 6-10
+packages/cli/src/modules/identity/identity.config.ts
+  s_16453cac85f858::t_0f15b15e3c3abc 1-32
+packages/cli/src/modules/token-exchange/token-exchange.schemas.ts
+  s_16453cac85f858::t_58a069958832d6 6-24
+packages/cli/src/modules/identity/services/trusted-key.service.ts
+  s_16453cac85f858::t_a664aa40091a45 1-87,89-654
+  s_16453cac85f858::t_84418e67855863 88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ca382971c62a541b1af19ba88f27a071395197ea",
+  "prompts": {},
+  "sessions": {
+    "s_16453cac85f858": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "398bf54f-42db-4a1a-8d95-4f932ca49cf1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

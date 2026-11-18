@@ -1,0 +1,56 @@
+packages/@n8n/cli/docs/commands/package.md
+  s_81f9da72a79c26::t_868ff9cf14ffca 20
+  s_81f9da72a79c26::t_825726dffdd788 30
+  ai_agent 74,82
+  s_f2e7acc401d88b::t_36556e3aecbf82 75,84
+  s_66be2eb681ad3c::t_2328eb86702348 83
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importBlockingIssue.yml
+  s_66be2eb681ad3c::t_e1559eaea58a28 192-195,203-225,227,232-234,239-240,242-245
+  s_f2e7acc401d88b::t_80fcd4dde673a6 196-202
+  s_66be2eb681ad3c::t_417098eda099b4 226,228-231
+  s_f2e7acc401d88b::t_79874b0cdb520e 235-238
+  ai_agent 241
+  s_f2e7acc401d88b::t_3ba49ad854039c 246-248
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  ai_agent 14-15
+  s_66be2eb681ad3c::t_73aace70922557 239-248,251-268
+  s_66be2eb681ad3c::t_6eb23e1e1d4054 249-250
+  s_f2e7acc401d88b::t_4944ceb17a22b3 269-274
+  s_66be2eb681ad3c::t_c061b5814e25f3 290
+  s_66be2eb681ad3c::t_dc360211046e4b 514-522,524-546,555-562
+  s_f2e7acc401d88b::t_a2072a966a5f16 523
+  s_f2e7acc401d88b::t_f58c84df070339 547-554
+  s_66be2eb681ad3c::t_a42e272181b935 587-589
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "25f29687a237719d83e99a9048c312de667a174d",
+  "prompts": {},
+  "sessions": {
+    "s_66be2eb681ad3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1aa571d-8f2d-424c-9096-7fd9537761e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_81f9da72a79c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a321b0c-ac1c-4e36-9f78-68ffe9f657a1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_f2e7acc401d88b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc81e09b-56c0-4298-980d-617e84f5e6aa",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

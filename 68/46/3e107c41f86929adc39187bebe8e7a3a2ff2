@@ -1,0 +1,22 @@
+packages/nodes-base/nodes/Confluence/test/workflow/workflow.test.ts
+  s_2e1fa95fc44f8f::t_f432528028c26b 45
+  s_2e1fa95fc44f8f::t_0a501a64a35210 1-44,46-81
+packages/nodes-base/nodes/Confluence/test/workflow/workflow.json
+  s_2e1fa95fc44f8f::t_6c13cf984f9e3e 1-627
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "68463e107c41f86929adc39187bebe8e7a3a2ff2",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

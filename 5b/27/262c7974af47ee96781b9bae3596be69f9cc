@@ -1,0 +1,106 @@
+packages/cli/test/integration/executions/execution-list.test.ts
+  s_67a3eb0dc39e49::t_4b8dda1c315aad 50
+packages/cli/src/services/__tests__/engine-data-plane-proxy.service.test.ts
+  s_67a3eb0dc39e49::t_480a5f375cd677 18
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_67a3eb0dc39e49::t_d7bf8b7181cb6e 114-115
+packages/cli/src/modules/engine-v2/__tests__/engine-lifecycle-event-push-relay.test.ts
+  s_67a3eb0dc39e49::t_9e949d2f0958b4 29
+packages/@n8n/engine/src/execution/execution.types.ts
+  s_67a3eb0dc39e49::t_7221811a14982b 28
+packages/cli/src/executions/engine-v2-execution-reader.service.ts
+  s_67a3eb0dc39e49::t_7221811a14982b 116
+  s_67a3eb0dc39e49::t_9c80d4f59741f2 131,178
+packages/@n8n/engine/src/database/entities/workflow-execution.entity.ts
+  s_67a3eb0dc39e49::t_fd2c2e861f9c38 46
+packages/cli/src/modules/engine-v2/__tests__/engine-data-plane-client.test.ts
+  s_67a3eb0dc39e49::t_480a5f375cd677 26
+  s_67a3eb0dc39e49::t_a131acc50b539c 66
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_67a3eb0dc39e49::t_fd2c2e861f9c38 50
+packages/@n8n/engine/src/lifecycle-events/__tests__/lifecycle-event.schema.test.ts
+  s_67a3eb0dc39e49::t_512bbd286a25ef 24-25,34,40-42
+  s_67a3eb0dc39e49::t_ed1df605c5d16e 43
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  s_67a3eb0dc39e49::t_05af3964ceb2d6 226-228
+  s_67a3eb0dc39e49::t_480a5f375cd677 66
+  s_67a3eb0dc39e49::t_512bbd286a25ef 223,243-244
+packages/@n8n/engine/src/database/typeorm-execution-view-store.ts
+  s_67a3eb0dc39e49::t_7221811a14982b 82,84
+  s_67a3eb0dc39e49::t_9c80d4f59741f2 18,55,83,141
+  s_67a3eb0dc39e49::t_d7bf8b7181cb6e 19
+packages/@n8n/engine/src/execution/execution-start-handler.ts
+  s_67a3eb0dc39e49::t_ed1df605c5d16e 43
+packages/@n8n/engine/src/database/__tests__/workflow-execution.integration.test.ts
+  s_67a3eb0dc39e49::t_fd2c2e861f9c38 44,59,76,92,156,169
+  s_67a3eb0dc39e49::t_ab877ecbdd6832 111
+  s_67a3eb0dc39e49::t_480a5f375cd677 126
+packages/cli/src/executions/__tests__/engine-v2-execution-reader.service.test.ts
+  s_67a3eb0dc39e49::t_9c418864493706 241-243,248,250-252
+  s_67a3eb0dc39e49::t_fd2c2e861f9c38 44
+  s_67a3eb0dc39e49::t_a131acc50b539c 69-71
+  s_67a3eb0dc39e49::t_512bbd286a25ef 244-246
+packages/@n8n/engine/src/server/api.types.ts
+  s_67a3eb0dc39e49::t_9c80d4f59741f2 39-40
+packages/cli/src/modules/engine-v2/__tests__/engine-lifecycle-event.controller.test.ts
+  s_67a3eb0dc39e49::t_9e949d2f0958b4 17
+packages/@n8n/engine/src/execution/execution-view-store.ts
+  s_67a3eb0dc39e49::t_9c80d4f59741f2 21-22,52-53
+  s_67a3eb0dc39e49::t_7221811a14982b 31
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_67a3eb0dc39e49::t_480a5f375cd677 71,156
+packages/@n8n/engine/src/execution/__tests__/start-execution.service.test.ts
+  s_67a3eb0dc39e49::t_480a5f375cd677 51,64,104,124,148,170
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  s_67a3eb0dc39e49::t_480a5f375cd677 60
+packages/@n8n/engine/src/server/__tests__/workflow-executions.integration.test.ts
+  s_67a3eb0dc39e49::t_b99add34530d34 63,312-316
+  s_67a3eb0dc39e49::t_a131acc50b539c 141,148
+  s_67a3eb0dc39e49::t_069f390f31b316 128-133,140,142,147,474-479,483
+  s_67a3eb0dc39e49::t_480a5f375cd677 200
+  s_67a3eb0dc39e49::t_1c2679c08e272d 134,136,139
+  s_67a3eb0dc39e49::t_98f63a24894739 270-279
+  s_67a3eb0dc39e49::t_512bbd286a25ef 98-107,143-146,496
+packages/@n8n/engine/src/lifecycle-events/lifecycle-event.schema.ts
+  s_67a3eb0dc39e49::t_ed1df605c5d16e 34-35
+packages/@n8n/engine/src/server/routes/workflow-executions.handlers.ts
+  s_67a3eb0dc39e49::t_7221811a14982b 31
+  s_67a3eb0dc39e49::t_2a866e4c8dc09b 83
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.module.test.ts
+  s_67a3eb0dc39e49::t_480a5f375cd677 54
+packages/cli/src/executions/engine-v2-mapping.ts
+  s_67a3eb0dc39e49::t_05af3964ceb2d6 1
+  h_8fb27e0cdf6d1e 4,6,18-20,26
+  s_67a3eb0dc39e49::t_d7bf8b7181cb6e 3,5,7
+  s_67a3eb0dc39e49::t_491e04178fdaef 2,27-29
+packages/@n8n/engine/src/execution/__tests__/execution-start.integration.test.ts
+  s_67a3eb0dc39e49::t_480a5f375cd677 106,153
+packages/cli/test/integration/executions.controller.test.ts
+  s_67a3eb0dc39e49::t_4b8dda1c315aad 286
+packages/@n8n/engine/src/server/routes/workflow-executions.ts
+  s_67a3eb0dc39e49::t_7221811a14982b 59
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_67a3eb0dc39e49::t_9e949d2f0958b4 158
+  s_67a3eb0dc39e49::t_480a5f375cd677 114,189,406
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5b27262c7974af47ee96781b9bae3596be69f9cc",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_67a3eb0dc39e49": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c7df-613a-71a0-9948-02c443f85d3d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

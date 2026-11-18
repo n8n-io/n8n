@@ -1,0 +1,297 @@
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 452-455
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useSetupPanelActions.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 9,63-68,460-464
+packages/@n8n/eslint-config/src/configs/functional-guardrails.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 1-35
+packages/cli/test/integration/commands/credentials.cmd.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 318-368,433-476
+  s_5f0b8b63fb02ca::t_db56e89e1e5b9d 477
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewSuggestions.vue
+  s_5f0b8b63fb02ca::t_918baaa7577744 8,17,99
+packages/cli/src/errors/unsupported-end-user-credential-trigger.error.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 1-13
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 173-176,259-262,306-309
+packages/core/src/execution-engine/node-execution-context/__tests__/load-options-context.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 101
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/examples.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 2,11
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 31-37,96-101,169-182,210-212,215-248,356,407,472,509,533,556-561,597-601
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5f0b8b63fb02ca::t_918baaa7577744 7714-7718
+packages/cli/test/integration/executions/execution-list.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 1-247
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 30,48,1232-1235,1252-1253,1258-1262,1321-1324,1327-1332,1334,1341
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_5f0b8b63fb02ca::t_918baaa7577744 21-26,44-45,57-62,113-120,141-146,200-213,226,332,340,343-360,389-396,401,403-413,415,421-430,440-448,457-461,472-479,484-486,493,507,543-544,641-645
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 6-10,208,541-593
+  s_5f0b8b63fb02ca::t_a1fd4171430d9e 594
+packages/cli/src/modules/engine-v2/__tests__/engine-data-plane-client.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 65-86
+packages/cli/src/services/__tests__/engine-data-plane-proxy.service.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 54-71
+packages/cli/src/executions/__tests__/execution-list.service.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 1-2,5,9-13,16-17,20-40,42-50,53-59,62-87,90-96,98-99,101-124,128-135,137-140,142,144-145,147-175
+packages/cli/src/executions/__tests__/execution-list-v1.service.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 2,6-7,10,14-34,36-38,42-67,69-70,72,74-79,82-83,85,90-92,95-97,99-104,106,108-110,112-114,117-122,124-126,131-132,134-137,145-148,150-154,156-159
+packages/@n8n/api-types/src/push/agents.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 1-2,27-28
+packages/cli/src/executions/execution-list.service.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 2,5,9,15,18-19,27,33-56,61,63-69,97-104
+  s_5f0b8b63fb02ca::t_df7dba8fd6d684 105
+packages/@n8n/api-types/src/index.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 491-492,501-502
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 5030-5034
+packages/@n8n/db/src/repositories/execution-list.repository.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 1-76
+packages/core/src/execution-engine/node-execution-context/poll-context.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 74-78,80
+packages/cli/src/commands/import/credentials.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 134-135,284-285,313
+packages/cli/src/executions/execution.types.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 1,5-6,10,35
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/__tests__/useInstanceAiHandoffCapability.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 76
+packages/cli/src/modules/agents/agent-modification-telemetry.service.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 1,19
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 54,72,90-94,101,798-805,1393-1401
+  s_5f0b8b63fb02ca::t_e3f7c8e5a12ffc 1402-1403
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiPromptSuggestions.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 68,77,104
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 8,19
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoffCapability.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 29,121-125,138,205-216
+packages/frontend/editor-ui/src/features/ai/instanceAi/prefills.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 1-91
+packages/cli/src/executions/__tests__/engine-v2-execution-reader.service.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 7-10,59-167
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 324-327
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiCredentialHelp.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 49
+packages/@n8n/engine/src/execution/execution-view-store.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 27
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 356-359,365-373,980-983,989-990,1057-1062,1144-1147,2191-2192,2254-2421,2777-2792,2796-2832
+packages/cli/src/modules/agents/agent-integration-management.service.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 21,39,63,74,87,96,123,160,229-234
+packages/cli/src/services/engine-data-plane-proxy.service.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 2-8,20,54-56
+  s_5f0b8b63fb02ca::t_e89518896dda82 57-58
+packages/frontend/editor-ui/src/experiments/openWorkflowInAssistant/launchWorkflowThread.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 86
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiWorkflowPreview.vue
+  s_5f0b8b63fb02ca::t_918baaa7577744 190-194
+packages/cli/src/executions/__tests__/merge-execution-pages.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 1-60
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 489-491
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewSuggestions.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 45
+packages/@n8n/telemetry/src/events/instance-ai.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 1-6,46-53,353-382
+  s_5f0b8b63fb02ca::t_7a22811810185d 383-384
+packages/cli/src/modules/mcp/tools/search-executions.tool.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 121,127-128,138
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 40,48,1139-1251
+  s_5f0b8b63fb02ca::t_d2ef332513672a 1252
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/prefills.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 1-101
+packages/@n8n/db/src/repositories/index.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 37
+packages/cli/src/modules/engine-v2/engine-data-plane-client.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 12-13,110-122
+  s_5f0b8b63fb02ca::t_c9bb5c615a20fa 123-124
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 39
+packages/cli/src/executions/engine-v2-execution-reader.service.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 4-8,13-14,16,20-21,25-51,62-139,178-179
+  s_5f0b8b63fb02ca::t_788e84895b3c22 3
+packages/cli/src/modules/agents/agent-custom-tools.service.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 78-81,134-137
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 94,103,192,194,213
+packages/cli/package.json
+  s_5f0b8b63fb02ca::t_918baaa7577744 20-23,77,121-122
+packages/cli/src/executions/execution-list-v1.service.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 8,24,38-46,49,55,93,97-99,112-120
+packages/cli/src/executions/execution-recovery.service.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 3-10
+packages/cli/test/integration/execution.service.integration.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 19,24
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useSetupPanelActions.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 536-540
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_5f0b8b63fb02ca::t_918baaa7577744 5-12,23,39,276-291,293-298,1340-1384,1433-1441,1907,2147-2170,2314,2371-2407
+  s_5f0b8b63fb02ca::t_c7c7bc97357c2f 2408
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiCredentialSetup.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 363
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 1493-1550
+packages/cli/src/modules/agents/__tests__/agent-update-broadcaster.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 12
+packages/nodes-base/nodes/S3/__tests__/GenericFunctions.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 81-160
+packages/cli/src/executions/__tests__/execution-cursor.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 1,3,7-30
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 258-284
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 7-11,178-180,183-185,188-191,196-205,267-275,278,281-283,286,379-382,715-720,803-808,817-825,831,840-862,1113-1116,1151-1157,1165-1166,1172,1199-1202,1265-1269,1274,1319-1323,1328,1339-1343,1348,1400-1402,1411-1413,1419-1421,1430-1432,1440-1445,1478-1480,1488-1490,1524-1529,1543-1546,1563-1568,2743-2748
+packages/frontend/editor-ui/src/features/ai/instanceAi/module.descriptor.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 108
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiPromptSuggestions.vue
+  s_5f0b8b63fb02ca::t_918baaa7577744 11,18,151,261
+packages/cli/eslint.guardrails.config.mjs
+  s_5f0b8b63fb02ca::t_918baaa7577744 1-44
+packages/cli/src/executions/execution-list-v2.service.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 1-231
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/components/InstanceAiPersonalizedPromptSuggestions.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 110,191
+packages/cli/src/executions/__tests__/parse-range-query.middleware.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 16-33,41,46,50,55,61,71-72,83,92,101-102,114-115,124,133,141-142,146,151-155,159-160,164-180
+packages/cli/oxlint.config.mts
+  s_5f0b8b63fb02ca::t_918baaa7577744 1-432
+packages/frontend/editor-ui/src/experiments/instanceAiPromptSuggestionsV2/components/InstanceAiPromptSuggestionsV2.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 234
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/SuggestionList.vue
+  s_5f0b8b63fb02ca::t_918baaa7577744 51
+packages/workflow/src/interfaces.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 258-262,311,4258
+packages/cli/test/integration/engine-v2-webhooks.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 71-75
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/components/InstanceAiPersonalizedPromptSuggestions.vue
+  s_5f0b8b63fb02ca::t_918baaa7577744 11,23,95
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 228,361,506,560
+packages/cli/src/executions/__tests__/executions.controller.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 8,26-27,98-137
+packages/frontend/editor-ui/src/experiments/instanceAiPromptSuggestionsV2/components/InstanceAiPromptSuggestionsV2.vue
+  s_5f0b8b63fb02ca::t_918baaa7577744 5,24,140
+packages/nodes-base/credentials/common/aws/utils.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 1707-1714
+packages/cli/src/modules/instance-ai/eval/eval-mocked-credentials-helper.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 12,111,138
+packages/@n8n/eslint-config/package.json
+  s_5f0b8b63fb02ca::t_918baaa7577744 23-26
+packages/cli/src/modules/agents/__tests__/agent-integration-management.service.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 4,13,47,70,77,112-113,115-119,121-130,150-156,160,169,174,184,470-471,490,494-497,500-503,508,530-533,540-547,562,569,581
+packages/cli/test/integration/commands/import.cmd.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 192,273-363,405
+packages/core/src/execution-engine/node-execution-context/__tests__/hook-context.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 118
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 52,74
+packages/core/src/execution-engine/node-execution-context/__tests__/poll-context.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 4,52-55,107,122-150
+packages/cli/src/executions/execution-cursor.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 6,14-31,36,42-44,47-48
+packages/core/src/execution-engine/node-execution-context/node-execution-context.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 10,330,349-351,479,493,495-501
+packages/cli/src/executions/engine-v2-mapping.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 1-38
+packages/core/src/execution-engine/node-execution-context/__tests__/webhook-context.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 159
+packages/cli/src/commands/import/workflow.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 146,174-179,198,211
+packages/frontend/editor-ui/src/experiments/openWorkflowInAssistant/launchWorkflowThread.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 55-59
+packages/cli/src/modules/mcp/__tests__/search-executions.tool.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 29-30,37-41,169-176,178,180-183,185,206
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_5f0b8b63fb02ca::t_918baaa7577744 146
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/SuggestionList.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 107,126
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 14,20,28-29
+packages/@n8n/api-types/src/agents/types.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 7-8
+packages/cli/src/executions/executions.controller.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 29,38,49
+.code-health-baseline.json
+  s_5f0b8b63fb02ca::t_918baaa7577744 2199-2314
+packages/cli/src/executions/parse-range-query.middleware.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 50-51,64
+packages/cli/src/modules/agents/agent-skills.service.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 123-126,199-202,254-257
+packages/cli/src/modules/agents/runtime/agent-isolate-pool.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 328,362
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 3,166,328-333,335-357,359,369-372,374-387,903-912,1135-1139,1156-1160,1378-1403
+  s_5f0b8b63fb02ca::t_a39b18ab008401 1404-1405
+packages/nodes-base/credentials/common/aws/utils.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 422-423,425-429,448-450
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 55,1619-1642,1785-1896,1898-1901,1917,1925,1927-1930,1942,1944-1945
+packages/core/src/execution-engine/node-execution-context/trigger-context.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 67-71,73
+packages/core/src/execution-engine/node-execution-context/__tests__/node-execution-context.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 259,312-314,400
+packages/cli/test/integration/engine-v2-active-triggers.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 36,91-95
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_5f0b8b63fb02ca::t_918baaa7577744 81,83,146,767-768,867-872,953-960,975-977,992,1029-1034,1037,1080-1083,1181
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTriggersSection.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 2,4-8,12-31,35-40,107-165
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiHandoff.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 1,159-170,172-175,177-184,200-203,208-211,236-239,246-249,261-311,313-316,326,365-371,398-401,421-427,460-465
+packages/cli/src/executions/__tests__/execution-list-v2.service.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 1-305
+packages/core/src/execution-engine/node-execution-context/__tests__/trigger-context.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 6,52-55,84,99-133
+packages/@n8n/telemetry/package.json
+  s_5f0b8b63fb02ca::t_918baaa7577744 26
+packages/frontend/editor-ui/src/app/constants/durations.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 47-48
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_5f0b8b63fb02ca::t_918baaa7577744 27,545-551,555,608,610-612,619-621,628,653,664-668,671,712,716
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiInput.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 5,96,181,221-254,519-524,643-785,819,1010,1046
+packages/nodes-base/nodes/S3/GenericFunctions.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 18-19,57-59
+packages/frontend/editor-ui/src/features/workflows/templates/views/TemplatesWorkflowView.vue
+  s_5f0b8b63fb02ca::t_918baaa7577744 72
+packages/cli/src/modules/agents/__tests__/agent-skills.service.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 306
+packages/cli/src/modules/instance-ai/eval/__tests__/eval-mocked-credentials-helper.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 731,737,745-748,751-760
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupSectionBody.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 447
+packages/cli/src/credentials-helper.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 4,27,36,56,527-550,562,600-604,610-634
+packages/cli/test/integration/executions.controller.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 22,100-179,232-236
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiAgentPreviewHandoff.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 93-96,117-119
+  s_5f0b8b63fb02ca::t_5cc43854bbe4d8 120
+packages/cli/src/executions/merge-execution-pages.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 1-72
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_5f0b8b63fb02ca::t_918baaa7577744 15-16,1088-1090,1109-1110,1112-1137,1156,1158-1169,1184,1186-1197,1206-1269,1273-1276,1302-1305,1328,1353,1363-1365,1384-1386,1632,1728,2601-2603
+pnpm-lock.yaml
+  s_5f0b8b63fb02ca::t_423782fff4290b 3852-3854,4634-4636,4772-4777
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8ff99388166a3b50e6d180bf1ff3228f05eed061",
+  "prompts": {},
+  "sessions": {
+    "s_5f0b8b63fb02ca": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a540-b6f2-7653-aeb8-9213c2e9e6df",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,79 @@
+packages/nodes-base/nodes/Medium/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_498a475d26823c 1-25
+packages/nodes-base/nodes/Matrix/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_948bf15eaaffa7 1-28
+packages/nodes-base/nodes/Mindee/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_35ed1c0ec46066 1-25
+packages/nodes-base/nodes/MessageBird/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_f780ced3201c7d 1-24
+packages/nodes-base/nodes/Misp/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_4fb9e0f537d433 1-29
+packages/nodes-base/nodes/Matrix/GenericFunctions.ts
+  s_01cb885e0ad060::t_b1945281518e1e 8-9,11,17,21,26-44,65,79,82,85,92,101,123,148,169,182-186,214,233,248
+packages/nodes-base/nodes/Matrix/Matrix.node.ts
+  s_01cb885e0ad060::t_d8a8786970b441 10,95-99,107
+packages/nodes-base/nodes/Medium/GenericFunctions.ts
+  s_4de36876c2d7be::t_8ddfb6e924ea71 9-10,12,17,24,32
+packages/nodes-base/nodes/Medium/Medium.node.ts
+  s_01cb885e0ad060::t_327db263020d33 10,362,369,467,472-478,484,502,509
+packages/nodes-base/nodes/MessageBird/GenericFunctions.ts
+  s_7b26599724280c::t_c3c02b59f3076f 8-9,11,20,26,34
+packages/nodes-base/nodes/MessageBird/MessageBird.node.ts
+  s_7b26599724280c::t_52b138821b6c8f 9,296,312,370,380
+packages/nodes-base/nodes/Mindee/GenericFunctions.ts
+  s_0c8ab979236670::t_3d5758514b7984 8-9,11,16,19,35-36,38
+packages/nodes-base/nodes/Mindee/Mindee.node.ts
+  s_0c8ab979236670::t_74cb79c77a4d7b 8,205,220,239,279,298,317
+packages/nodes-base/nodes/Misp/GenericFunctions.ts
+  s_0c8ab979236670::t_689b5bf1a101ac 8-9,11,19,25,29,70,113
+packages/nodes-base/nodes/Misp/Misp.node.ts
+  s_01cb885e0ad060::t_ce51f32299d2e8 9,152,161,170-174,182,224,233,241,249,270,297,305,313,322,335,344,360,376,386,415,424,432,440-444,451,474-479,493,501,509-512,528,536-539,575,584,592,600-603,618,647,655-659,665-669,698-703,727-732,740,748,756-759,774,789,797
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "671f1f1fc658cf3c41b70fa15a666051a0f0f087",
+  "prompts": {},
+  "sessions": {
+    "s_01cb885e0ad060": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a7ddd85cc749261b8",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_0c8ab979236670": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5725a58c20a2e923",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_4de36876c2d7be": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-acab3e3b4ca422544",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_7b26599724280c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9db2cf491b2086aa",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

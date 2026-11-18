@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useCommandBar.test.ts
+  s_8e657ed96597bc::t_579f9c69f1309e 203
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useWorkflowNavigationCommands.ts
+  s_8e657ed96597bc::t_2915d17bbf2fad 114-121,128,135,143,149,155,159-162
+packages/frontend/editor-ui/src/features/credentials/credentials.api.test.ts
+  s_8e657ed96597bc::t_f10372ced4d763 4-8,58-82
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useWorkflowNavigationCommands.test.ts
+  s_8e657ed96597bc::t_8564d7e74a9863 307,328,333-335,337-341,343-347,351-365
+packages/frontend/@n8n/design-system/src/components/N8nCommandBar/CommandBarItem.vue
+  s_8e657ed96597bc::t_579f9c69f1309e 37,66-71,85
+packages/frontend/editor-ui/src/app/components/app/AppCommandBar.vue
+  s_8e657ed96597bc::t_579f9c69f1309e 35-40
+packages/frontend/@n8n/design-system/src/components/N8nCommandBar/CommandBar.test.ts
+  s_8e657ed96597bc::t_6a96d5432b238a 124-133,135,140-141
+  s_8e657ed96597bc::t_4b99d295634743 134,138-139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ad81bc8410b623372892eb99009e45693c9aba9f",
+  "prompts": {},
+  "sessions": {
+    "s_8e657ed96597bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "beceef78-98c1-4119-bb42-ef1a026730e3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

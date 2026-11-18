@@ -1,0 +1,34 @@
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_beb5e38a8cd68a::t_1f266cbe37dcb9 2406,2430,2458
+  s_beb5e38a8cd68a::t_b43f806c726c84 2447
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.security.test.ts
+  s_beb5e38a8cd68a::t_1f266cbe37dcb9 637
+packages/cli/src/modules/mcp/tools/workflow-builder/mcp-instructions.ts
+  s_beb5e38a8cd68a::t_4bbdaab98cf731 135
+packages/@n8n/ai-utilities/src/utils/credential-description.ts
+  s_beb5e38a8cd68a::t_1f266cbe37dcb9 4,12
+packages/cli/src/modules/agents/__tests__/agents-credential-provider.test.ts
+  s_beb5e38a8cd68a::t_e06d216f33b0f3 51,211
+packages/cli/src/modules/agents/__tests__/agent-vector-stores.service.test.ts
+  s_beb5e38a8cd68a::t_e06d216f33b0f3 67
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_beb5e38a8cd68a::t_1f266cbe37dcb9 2764,2775
+packages/cli/src/credentials/credentials.service.ts
+  s_beb5e38a8cd68a::t_1f266cbe37dcb9 187,687
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "67dc4360c7b65cf9aa93ebc373f4487a9c1f6d60",
+  "prompts": {},
+  "sessions": {
+    "s_beb5e38a8cd68a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0af97-a9b5-7b41-8bf0-be4b1c2a8068",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

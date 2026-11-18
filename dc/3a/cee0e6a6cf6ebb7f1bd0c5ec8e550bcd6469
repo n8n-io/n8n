@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/agents/composables/useCreateAgent.ts
+  s_8aad20ae51f6b5::t_21eca06772fe86 3,10-11,20-24
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_8aad20ae51f6b5::t_3d459963370782 1024-1042
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentsListView.test.ts
+  s_8aad20ae51f6b5::t_cc7e746fb644d8 7-12
+  s_8aad20ae51f6b5::t_b00ddd9c6fcba1 441-445
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff.ts
+  s_8aad20ae51f6b5::t_fb9cdb1eba1ef1 3-6
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_8aad20ae51f6b5::t_100afa925c4563 2408,2491
+  s_8aad20ae51f6b5::t_d2a6421ff762be 75
+  s_8aad20ae51f6b5::t_2148bb59022bc8 1305-1311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dc3acee0e6a6cf6ebb7f1bd0c5ec8e550bcd6469",
+  "prompts": {},
+  "sessions": {
+    "s_8aad20ae51f6b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bbcfc8f3-8687-4435-97d7-2d886ab72a3b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

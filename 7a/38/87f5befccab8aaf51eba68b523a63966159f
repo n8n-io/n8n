@@ -1,0 +1,33 @@
+packages/modules/page/backend/src/__tests__/page.service.integration.test.ts
+  s_f27bda1bd0c713::t_9c2eae729de135 13,17-18,23,92-94,96-97,100-108,113-116,401-435,439-568,570-585,587-596
+  s_f27bda1bd0c713::t_a444b8119a5ac5 371-400
+  s_f27bda1bd0c713::t_65653a5c505b51 436-438,569,586
+packages/modules/page/backend/src/page.service.ts
+  s_f27bda1bd0c713::t_7d0f4750d6167c 24,36-38,65-76,140-188,300-315
+packages/modules/page/backend/src/errors/page-append-conflict.error.ts
+  ai_agent 1-8
+packages/modules/page/backend/src/__tests__/page-section.test.ts
+  s_f27bda1bd0c713::t_a444b8119a5ac5 1-43
+packages/modules/page/backend/src/page-section.ts
+  s_f27bda1bd0c713::t_7d0f4750d6167c 1-45
+packages/modules/page/backend/src/errors/page-content-too-long.error.ts
+  ai_agent 1-7
+packages/modules/page/backend/src/page-append.ts
+  ai_agent 1-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7a3887f5befccab8aaf51eba68b523a63966159f",
+  "prompts": {},
+  "sessions": {
+    "s_f27bda1bd0c713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e884d7e-3c84-4428-98db-a0c5cff39be6",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

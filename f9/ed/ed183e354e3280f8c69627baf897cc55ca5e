@@ -1,0 +1,321 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentArchive.test.ts
+  s_08690fb8a4caf5::t_4e04a479158f57 1-65
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_08690fb8a4caf5::t_758f0304c7732e 1727
+  s_ed957431c0723c::t_a2e7e832a594c7 1739-1740
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCard.test.ts
+  s_08690fb8a4caf5::t_4e04a479158f57 3
+  s_08690fb8a4caf5::t_4692e51c75a906 8-18,228,231,235-236,240,244,248-288,293,303,336
+packages/cli/src/modules/agents/agents.service.ts
+  s_08690fb8a4caf5::t_fadc543fa06abb 43,569,752-757,763-764
+  s_08690fb8a4caf5::t_85a2673caea511 765
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_08690fb8a4caf5::t_3e5537dc7b144b 983,9185-9187,9200-9205,9410
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_08690fb8a4caf5::t_3d86391df0ae59 215,379-381,620,622-623,809-819
+  s_08690fb8a4caf5::t_d710a0926244bd 145-148,150,152-155
+  s_ed957431c0723c::t_a2e7e832a594c7 822-825,831,836-840
+  s_ed957431c0723c::t_cdf8d201f17a9f 820-821
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_08690fb8a4caf5::t_758f0304c7732e 24,83
+packages/cli/src/events/maps/relay.event-map.ts
+  s_08690fb8a4caf5::t_758f0304c7732e 177
+  s_08690fb8a4caf5::t_fadc543fa06abb 1316-1327
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_08690fb8a4caf5::t_999f155b6c6825 508
+  s_08690fb8a4caf5::t_758f0304c7732e 95,178,218,225,437,448,454,464,493
+packages/@n8n/telemetry/src/events/agents.ts
+  s_08690fb8a4caf5::t_fadc543fa06abb 680-697
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_08690fb8a4caf5::t_3e5537dc7b144b 13,276-277,279
+  s_08690fb8a4caf5::t_f132f741324cef 271-275
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-identities.integration.test.ts
+  s_ed957431c0723c::t_98f03f3bcd1c8b 24-29
+packages/cli/src/public-api/v1/controllers/n8n-packages.public.controller.ts
+  s_ed957431c0723c::t_a2e7e832a594c7 259
+packages/cli/test/integration/public-api/n8n-packages-export.test.ts
+  s_08690fb8a4caf5::t_758f0304c7732e 248
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_08690fb8a4caf5::t_4692e51c75a906 279
+  s_08690fb8a4caf5::t_758f0304c7732e 280
+packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
+  s_08690fb8a4caf5::t_999f155b6c6825 10,36,48,199,203,246-257,259,272-283
+  s_08690fb8a4caf5::t_c73b3b04267004 284-285
+packages/@n8n/api-types/src/dto/packages/__tests__/export-package-request.dto.test.ts
+  s_08690fb8a4caf5::t_758f0304c7732e 208-209,212,222,237
+  s_ed957431c0723c::t_a2e7e832a594c7 225-231
+  s_ed957431c0723c::t_1c317858a3b367 223-224
+packages/@n8n/api-types/src/dto/packages/export-package-request.openapi.ts
+  s_ed957431c0723c::t_d4252ac55fdf45 51-52
+  s_ed957431c0723c::t_a2e7e832a594c7 50,53-54
+  s_08690fb8a4caf5::t_758f0304c7732e 45
+  s_08690fb8a4caf5::t_4692e51c75a906 47
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent.exporter.test.ts
+  s_08690fb8a4caf5::t_2446203cc41abe 58
+packages/cli/src/modules/n8n-packages/entities/agent/agent.serializer.ts
+  s_08690fb8a4caf5::t_d710a0926244bd 25,72
+  s_ed957431c0723c::t_a2e7e832a594c7 92
+packages/cli/src/modules/n8n-packages/entities/agent/agent-selection.exporter.ts
+  s_08690fb8a4caf5::t_999f155b6c6825 118-120
+packages/@n8n/api-types/src/agents/dto.ts
+  s_08690fb8a4caf5::t_3d86391df0ae59 84
+packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
+  s_08690fb8a4caf5::t_758f0304c7732e 27,156,169
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_08690fb8a4caf5::t_069be246861424 529
+  s_08690fb8a4caf5::t_758f0304c7732e 520,523-524
+packages/cli/src/modules/agents/agents.controller.ts
+  s_08690fb8a4caf5::t_fadc543fa06abb 128-130
+packages/cli/src/modules/agents/entities/agent.entity.ts
+  s_08690fb8a4caf5::t_3d86391df0ae59 77-80
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.ts
+  s_08690fb8a4caf5::t_55415959b18d23 60
+  s_08690fb8a4caf5::t_d882c2bb496a6b 17,39-40,56-59,61,150-152,170
+packages/cli/src/modules/agents/agent-integration-persistence.service.ts
+  s_08690fb8a4caf5::t_e9d92bdb18ab66 281
+packages/cli/src/modules/n8n-packages/entities/agent/agent.exporter.ts
+  s_08690fb8a4caf5::t_d710a0926244bd 39-40
+packages/cli/src/modules/promotions.ee/instance-package.ts
+  s_08690fb8a4caf5::t_758f0304c7732e 41,62
+packages/cli/src/modules/n8n-packages/spec/serialized/agent.schema.ts
+  s_ed957431c0723c::t_a2e7e832a594c7 52-53
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent-requirements.extractor.test.ts
+  s_ed957431c0723c::t_1768c67ef42f89 32
+packages/@n8n/db/src/migrations/sqlite/1794305119000-AddIsArchivedToAgents.ts
+  s_08690fb8a4caf5::t_c3108df719206f 1-9
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  s_08690fb8a4caf5::t_d882c2bb496a6b 99,111,117,311
+  s_ed957431c0723c::t_97ab290f65d390 112-116
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_08690fb8a4caf5::t_fadc543fa06abb 2098-2100
+packages/cli/src/public-api/v1/controllers/__tests__/n8n-packages.public.controller.test.ts
+  s_ed957431c0723c::t_a2e7e832a594c7 362,371-374
+  s_08690fb8a4caf5::t_758f0304c7732e 41,375-384
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integration.test.ts
+  s_08690fb8a4caf5::t_1a8b396b8eb0b9 113
+packages/@n8n/api-types/src/dto/packages/export-package-request.dto.ts
+  s_08690fb8a4caf5::t_758f0304c7732e 53,56
+  s_ed957431c0723c::t_a2e7e832a594c7 57-59
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_08690fb8a4caf5::t_758f0304c7732e 233
+  s_08690fb8a4caf5::t_fadc543fa06abb 92-93,304-318
+  s_08690fb8a4caf5::t_dcd8711e765a72 319
+packages/@n8n/cli/src/client.ts
+  s_08690fb8a4caf5::t_758f0304c7732e 797
+packages/cli/src/modules/agents/utils/agent-draft.utils.ts
+  s_08690fb8a4caf5::t_3d86391df0ae59 4
+  s_08690fb8a4caf5::t_999f155b6c6825 26,28-30
+packages/frontend/editor-ui/src/features/agents/components/AgentCard.vue
+  s_08690fb8a4caf5::t_3e5537dc7b144b 22,41-42,55,89-111,113-115,119,154,168-186,188-194,205,225-229,235-238,267-276,278,288-291,334-342
+  s_08690fb8a4caf5::t_31df1efebf7393 343
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentsListView.test.ts
+  s_08690fb8a4caf5::t_4692e51c75a906 23,52,383-402
+  s_08690fb8a4caf5::t_5c90264c321705 403-404
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_08690fb8a4caf5::t_2bf970875b5b5c 883-910
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_08690fb8a4caf5::t_758f0304c7732e 3778
+packages/@n8n/cli/src/__tests__/package-export.test.ts
+  s_08690fb8a4caf5::t_758f0304c7732e 23,228,232,243
+packages/cli/src/modules/agents/agent-publish.controller.ts
+  s_08690fb8a4caf5::t_fadc543fa06abb 96-145
+packages/frontend/editor-ui/src/features/agents/agent.types.ts
+  s_08690fb8a4caf5::t_3e5537dc7b144b 37
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_08690fb8a4caf5::t_fadc543fa06abb 118-119
+packages/@n8n/cli/docs/commands/package.md
+  s_ed957431c0723c::t_8bde9e16b5bc59 34
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_08690fb8a4caf5::t_3e5537dc7b144b 132,682-704
+  s_08690fb8a4caf5::t_fa4f55df120dd4 705
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_08690fb8a4caf5::t_fadc543fa06abb 19,145,293,296-305,313-357
+  s_ed957431c0723c::t_a2e7e832a594c7 269,279,294-295,306-312,739,747
+  s_ed957431c0723c::t_c9af6d037b3c9c 358
+packages/cli/src/modules/agents/agent-context.service.ts
+  s_08690fb8a4caf5::t_069be246861424 215-219
+  s_08690fb8a4caf5::t_a061b3bbb3eacc 212-214
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_08690fb8a4caf5::t_758f0304c7732e 499
+packages/cli/src/modules/n8n-packages/entities/project/__tests__/project.exporter.test.ts
+  s_08690fb8a4caf5::t_758f0304c7732e 108,131,151,168,185,201,242,306,341,380,402,427
+packages/cli/src/modules/agents/sub-agents/sub-agent-source-resolver.ts
+  s_08690fb8a4caf5::t_c8a1b3a5dfbb95 108-113
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  s_08690fb8a4caf5::t_3e5537dc7b144b 3,5,77-81,99-106,124,220-242,323,356-364,376-377
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_08690fb8a4caf5::t_afb63be28d1946 929-938,940-941
+  s_08690fb8a4caf5::t_069be246861424 939
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_08690fb8a4caf5::t_758f0304c7732e 219
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder.exporter.test.ts
+  s_08690fb8a4caf5::t_758f0304c7732e 54,73,115,175,223,246
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
+  s_08690fb8a4caf5::t_999f155b6c6825 13,17-18,85-86
+  s_ed957431c0723c::t_1768c67ef42f89 50-52
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_08690fb8a4caf5::t_cfddd9a2f4561b 5734-5752
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_ed957431c0723c::t_a2e7e832a594c7 1716,1724-1727
+  s_ed957431c0723c::t_e834730f859bd0 1693-1695
+  s_08690fb8a4caf5::t_3f60d3cb7fecba 1715,1717-1723,1728-1775
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_08690fb8a4caf5::t_ab05910fd8c098 107,237
+  s_08690fb8a4caf5::t_d882c2bb496a6b 9,18,21-22,130,133-135,146,221,224,226-236,238-240,820-827
+packages/cli/src/modules/n8n-packages/entities/agent/agent-export.types.ts
+  s_08690fb8a4caf5::t_999f155b6c6825 31-32
+packages/@n8n/cli/src/commands/package/export.ts
+  s_ed957431c0723c::t_a2e7e832a594c7 111-112
+  s_08690fb8a4caf5::t_758f0304c7732e 106,127,152,163
+  s_08690fb8a4caf5::t_4692e51c75a906 108
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_08690fb8a4caf5::t_e7ea1e5ef2e902 69
+  s_08690fb8a4caf5::t_683f0d6fb2f655 65-68,70-73,936-964
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_08690fb8a4caf5::t_999f155b6c6825 103-104,149-151
+packages/cli/src/modules/n8n-packages/__tests__/export-agent-package.integration.test.ts
+  s_ed957431c0723c::t_d55a4eddbe2313 270
+  s_08690fb8a4caf5::t_cfddd9a2f4561b 362-393
+packages/@n8n/db/src/migrations/common/1794305119000-AddIsArchivedToAgents.ts
+  s_08690fb8a4caf5::t_c3108df719206f 1-19
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_08690fb8a4caf5::t_3e5537dc7b144b 93,289,799,801-803,808-809,817-818,1155,2818-2837,2839-2850,2852-2854,2856-2860,2962-2969,3616-3617
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_ed957431c0723c::t_a2e7e832a594c7 217
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_08690fb8a4caf5::t_758f0304c7732e 629,1229
+packages/cli/src/modules/agents/__tests__/agent.repository.test.ts
+  s_08690fb8a4caf5::t_bbd374f5ab9cb9 160-163
+  s_08690fb8a4caf5::t_2446203cc41abe 143-145,149,388,395
+packages/cli/src/modules/agents/utils/agent-published-snapshot.ts
+  s_08690fb8a4caf5::t_c8a1b3a5dfbb95 48,50
+  s_08690fb8a4caf5::t_5c9485ded60d44 49
+packages/frontend/editor-ui/src/features/agents/composables/useAgentArchive.ts
+  s_08690fb8a4caf5::t_1e7aceead4f3a9 1-62
+docs/generated/postgres-schema/README.md
+  s_08690fb8a4caf5::t_e4ae55d6a67079 41,836
+docs/generated/postgres-schema/public.agent_background_job.md
+  s_08690fb8a4caf5::t_5d2ee9333388cf 110
+docs/generated/postgres-schema/public.agent_channel_status.md
+  s_08690fb8a4caf5::t_c19d1bbcf760b5 69
+docs/generated/postgres-schema/public.agent_chat_attachments.md
+  s_08690fb8a4caf5::t_8fa01f91a50257 80
+docs/generated/postgres-schema/public.agent_chat_subscriptions.md
+  s_08690fb8a4caf5::t_622e9d0e757572 55
+docs/generated/postgres-schema/public.agent_checkpoints.md
+  s_08690fb8a4caf5::t_d7280c0a343fe1 57
+docs/generated/postgres-schema/public.agent_credential_dependency.md
+  s_08690fb8a4caf5::t_74ce6b9f6893ce 48
+docs/generated/postgres-schema/public.agent_eval_dataset.md
+  s_08690fb8a4caf5::t_fdbb384abdcf83 68
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_08690fb8a4caf5::t_3128602798d2db 103
+docs/generated/postgres-schema/public.agent_files.md
+  s_08690fb8a4caf5::t_846882f4fbee63 69
+docs/generated/postgres-schema/public.agent_history.md
+  s_08690fb8a4caf5::t_4492c6512a3400 71
+docs/generated/postgres-schema/public.agent_publish_history.md
+  s_08690fb8a4caf5::t_1eb962964e91c7 66
+docs/generated/postgres-schema/public.agent_skill_dependency.md
+  s_08690fb8a4caf5::t_bf36e25f2031ce 52
+docs/generated/postgres-schema/public.agent_task_definition.md
+  s_08690fb8a4caf5::t_4b582f624bc435 60
+docs/generated/postgres-schema/public.agent_task_run_lock.md
+  s_08690fb8a4caf5::t_51ded40019567b 54
+docs/generated/postgres-schema/public.agent_workflow_dependency.md
+  s_08690fb8a4caf5::t_f06a082bf25e5f 48
+docs/generated/postgres-schema/public.agents.md
+  s_08690fb8a4caf5::t_d1fae72971f14c 12,38,91
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  s_08690fb8a4caf5::t_b799555580d2d0 81
+docs/generated/postgres-schema/public.agents_memory_entry_candidates.md
+  s_08690fb8a4caf5::t_fc7ad68ae3ea59 90
+docs/generated/postgres-schema/public.agents_memory_entry_locks.md
+  s_08690fb8a4caf5::t_869da7918a07a9 57
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  s_08690fb8a4caf5::t_a51b3e21dfba9f 79
+docs/generated/postgres-schema/public.agents_observation_cursors.md
+  s_08690fb8a4caf5::t_92d7e98c6640ea 57
+docs/generated/postgres-schema/public.agents_observation_locks.md
+  s_08690fb8a4caf5::t_83bfacc4d182e2 61
+docs/generated/postgres-schema/public.agents_observations.md
+  s_08690fb8a4caf5::t_b6c650da78f8f7 80
+docs/generated/postgres-schema/public.project.md
+  s_08690fb8a4caf5::t_e3843ed32b2c72 156
+docs/generated/sqlite-schema/README.md
+  s_08690fb8a4caf5::t_9792ef1b2d9e3e 41,246,822
+docs/generated/sqlite-schema/agent_background_job.md
+  s_08690fb8a4caf5::t_971060af1e17ac 112
+docs/generated/sqlite-schema/agent_channel_status.md
+  s_08690fb8a4caf5::t_c0887e57739220 76
+docs/generated/sqlite-schema/agent_chat_attachments.md
+  s_08690fb8a4caf5::t_9f13e328d28787 81
+docs/generated/sqlite-schema/agent_chat_subscriptions.md
+  s_08690fb8a4caf5::t_cfbc9c3fa3f292 64
+docs/generated/sqlite-schema/agent_checkpoints.md
+  s_08690fb8a4caf5::t_6f4b7ff7a47947 65
+docs/generated/sqlite-schema/agent_credential_dependency.md
+  s_08690fb8a4caf5::t_11bab7a61a7915 58
+docs/generated/sqlite-schema/agent_eval_dataset.md
+  s_08690fb8a4caf5::t_c5bda205d963d6 73
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_08690fb8a4caf5::t_87d99e1b7d8a8d 103
+docs/generated/sqlite-schema/agent_files.md
+  s_08690fb8a4caf5::t_9bc9a417c3af40 72
+docs/generated/sqlite-schema/agent_history.md
+  s_08690fb8a4caf5::t_a6c5081df32ddf 78
+docs/generated/sqlite-schema/agent_publish_history.md
+  s_08690fb8a4caf5::t_1ff84dbc61b8e9 70
+docs/generated/sqlite-schema/agent_skill_dependency.md
+  s_08690fb8a4caf5::t_41e528865aad67 62
+docs/generated/sqlite-schema/agent_task_definition.md
+  s_08690fb8a4caf5::t_9e0fd95dcd5a68 65
+docs/generated/sqlite-schema/agent_task_run_lock.md
+  s_08690fb8a4caf5::t_c1507e584f8f9f 61
+docs/generated/sqlite-schema/agent_workflow_dependency.md
+  s_08690fb8a4caf5::t_7c5ea9d929c656 58
+docs/generated/sqlite-schema/agents.md
+  s_08690fb8a4caf5::t_0c9615fc0caabe 9,23,40-43,91
+docs/generated/sqlite-schema/agents_memory_entries.md
+  s_08690fb8a4caf5::t_4955d7b57388fe 84
+docs/generated/sqlite-schema/agents_memory_entry_candidates.md
+  s_08690fb8a4caf5::t_16b70e5f8579d2 89
+docs/generated/sqlite-schema/agents_memory_entry_locks.md
+  s_08690fb8a4caf5::t_df59308c9869d9 64
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  s_08690fb8a4caf5::t_925adb255234cc 83
+docs/generated/sqlite-schema/agents_observation_cursors.md
+  s_08690fb8a4caf5::t_ef809e2c97c475 64
+docs/generated/sqlite-schema/agents_observation_locks.md
+  s_08690fb8a4caf5::t_0051911ab5a894 68
+docs/generated/sqlite-schema/agents_observations.md
+  s_08690fb8a4caf5::t_83abc2be6a0e73 83
+docs/generated/sqlite-schema/project.md
+  s_08690fb8a4caf5::t_4d8c35066a35bf 162
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/exportPackage.generated.yml
+  s_ed957431c0723c::t_469cebe0d56340 115,118,120-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f9eded183e354e3280f8c69627baf897cc55ca5e",
+  "prompts": {},
+  "sessions": {
+    "s_08690fb8a4caf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33b03ae9-9b4e-49ba-ac90-ae160b5918c5",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_ed957431c0723c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "67e5d763-9b2d-4852-85a0-8fe6923412c8",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

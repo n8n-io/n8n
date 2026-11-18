@@ -1,0 +1,23 @@
+packages/cli/src/webhooks/waiting-forms.ts
+  s_9c30e64d236bdf::t_b72d3d05634c4c 9,63-83
+packages/cli/src/webhooks/waiting-webhooks.ts
+  s_9c30e64d236bdf::t_05b75ae01fcc4f 354-379,391-392,394,396,399-401,445,447
+packages/testing/playwright/tests/e2e/api/waiting-endpoint-security.spec.ts
+  s_9c30e64d236bdf::t_b3662e7e32f1fe 19-26,28-31,33-34,36-39,41-45,47-48,50-52,54-56,58-60,62-65,67-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3fa3871b634ec0ad304ba704ab5e33f3e86db4ec",
+  "prompts": {},
+  "sessions": {
+    "s_9c30e64d236bdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f103e602-540f-4c9e-a1e6-ff3bee67124c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

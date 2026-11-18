@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/position-roundtrip.test.ts
+  s_f4f3f37a98d31a::t_89734c0ee7d360 121
+packages/@n8n/workflow-sdk/src/codegen/emit-instance-ai.test.ts
+  s_f4f3f37a98d31a::t_11fbb64a103e6c 255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a86d94f5ea406f0c3d905e9bf5ff2945de078ce0",
+  "prompts": {},
+  "sessions": {
+    "s_f4f3f37a98d31a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f0f3eae-3f41-4e57-9468-7c570d305e15",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

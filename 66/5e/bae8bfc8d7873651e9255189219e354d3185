@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/app/composables/useFreeAiCredits.ts
+  s_4020d04e2543bc::t_a3ace1586b5424 3,14-19,53-56,58,64,73,78,84-87,95
+packages/cli/src/modules/agents/builder/interactive/llm-provider-defaults.ts
+  s_4020d04e2543bc::t_a3ace1586b5424 52
+packages/frontend/editor-ui/src/app/composables/useFreeAiCredits.test.ts
+  s_4020d04e2543bc::t_e03e5dd30d9a34 1-95
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_4020d04e2543bc::t_c676ace3f2288b 2,7-14,16-24,38-39,60,63,68-71,134-143,147-152,157-158,167-168,192-201,203,213-239
+  s_4020d04e2543bc::t_392f85a58e2710 202,204-212
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_4020d04e2543bc::t_a3ace1586b5424 11,31-32,37,72-73,151-155,157-158,205-222,263-269,362,379-387
+  s_4020d04e2543bc::t_b16478f4fa312e 156
+packages/cli/src/modules/agents/builder/interactive/__tests__/resolve-llm.tool.test.ts
+  s_4020d04e2543bc::t_c676ace3f2288b 22,31-32,34
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4020d04e2543bc::t_a3ace1586b5424 4750-4751
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "665ebae8bfc8d7873651e9255189219e354d3185",
+  "prompts": {},
+  "sessions": {
+    "s_4020d04e2543bc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efa1a-08d6-74e2-9f1c-4e770dfded86",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

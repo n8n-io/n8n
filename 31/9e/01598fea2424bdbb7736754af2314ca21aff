@@ -1,0 +1,24 @@
+packages/cli/test/integration/public-api/projects.test.ts
+  s_3677f957a91dcb::t_95c1078411cfed 36,66,68,70,73,75,78,80-83,85,89,94-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "319e01598fea2424bdbb7736754af2314ca21aff",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_3677f957a91dcb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95231e92-f4f3-4b42-8291-188b28eb4b0b",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

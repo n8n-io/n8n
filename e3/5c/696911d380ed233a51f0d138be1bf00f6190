@@ -1,0 +1,37 @@
+packages/cli/src/modules/agents/builder/agent-builder-session-context.ts
+  s_482f48320b007f::t_c8df3e762a0049 7,17
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_482f48320b007f::t_c8df3e762a0049 90-92
+packages/frontend/editor-ui/src/features/agents/components/AgentValidationTooltip.vue
+  s_482f48320b007f::t_c8df3e762a0049 183-190,192,270-285,313-320
+  s_482f48320b007f::t_acb9beca5a89b1 246-254
+  s_482f48320b007f::t_0d0b50192248af 321
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentValidationTooltip.test.ts
+  s_482f48320b007f::t_acb9beca5a89b1 57
+  s_482f48320b007f::t_b0690276c4ef91 48,59-84,87-95,127,233-235
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-model-recommendations.test.ts
+  s_482f48320b007f::t_c8df3e762a0049 172,180
+  s_482f48320b007f::t_b0690276c4ef91 181-182
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_482f48320b007f::t_c8df3e762a0049 69,189,318,687-688
+  s_482f48320b007f::t_d84b2e5133eaa9 192-193
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_482f48320b007f::t_d84b2e5133eaa9 9475-9477,9484-9485,9489-9492,9494-9495
+  s_482f48320b007f::t_c8df3e762a0049 9496-9497
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e35c696911d380ed233a51f0d138be1bf00f6190",
+  "prompts": {},
+  "sessions": {
+    "s_482f48320b007f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a163de-1528-7382-879b-fbc784061690",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,122 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiThreadList.test.ts
+  ai_agent 44-46
+  s_adb5d982725a9c::t_5615ba7defa56c 95,99-105
+  s_adb5d982725a9c::t_0807e50b7c7168 146
+  s_adb5d982725a9c::t_835ad1add22777 2
+  s_adb5d982725a9c::t_dbf510a479a7c7 125-129
+  s_adb5d982725a9c::t_8ce67d88efee90 1,3-10,12,16,18-29,31,50-65,73-92,94,106-122,130-136,139,141-142,149-150,153-155
+  s_adb5d982725a9c::t_eabeca2bd7a5b1 11,13-15,17,30
+  s_adb5d982725a9c::t_2e1265ab31e253 93,96-98
+  s_adb5d982725a9c::t_9c2772dcfc2cdb 137,144,151
+  s_adb5d982725a9c::t_4b6424993e7e80 66,72
+  s_adb5d982725a9c::t_6b77826504a68c 138,143,145,147-148,152
+  s_adb5d982725a9c::t_07da37adeea0ac 140
+  s_adb5d982725a9c::t_89fe8fd1464ea7 67-71
+  s_adb5d982725a9c::t_91b2dde5c84e39 32-43,47-49
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/__tests__/useAgentMutationRefresh.test.ts
+  s_adb5d982725a9c::t_27a06a895d1329 10
+  s_adb5d982725a9c::t_6a82530b2bd8e6 93
+  s_adb5d982725a9c::t_267e2a1ec564f5 1-9,11-72,74-92,94-100
+  s_adb5d982725a9c::t_2d4b2202173c61 73
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiView.test.ts
+  s_adb5d982725a9c::t_47c81f84280b13 52,54,57-59,63
+  s_adb5d982725a9c::t_fc53cc727e263d 97
+  s_adb5d982725a9c::t_892271904e29d0 53
+  s_adb5d982725a9c::t_a50f84501312b4 75,82-86,96,98-106,108-114,116-118
+  s_adb5d982725a9c::t_e0b238feaac4d2 115
+  s_adb5d982725a9c::t_f7a13378a85541 4,7,9
+  s_adb5d982725a9c::t_49e227d819154c 107
+  s_adb5d982725a9c::t_0658eb8461fa7f 55-56
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useAgentMutationRefresh.ts
+  s_adb5d982725a9c::t_620e50781fd9c8 1-36
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiView.vue
+  s_adb5d982725a9c::t_ad9700c21c92c0 100-103,105-106,108-112
+  s_adb5d982725a9c::t_bbf53129eef6eb 17
+  s_adb5d982725a9c::t_a5db8aa14e7fd5 104,107
+  s_adb5d982725a9c::t_2a1696b4ae326b 231,233,235-237
+  s_adb5d982725a9c::t_5f9940c0917f16 234
+  s_adb5d982725a9c::t_11d3af7f45b563 232
+  s_adb5d982725a9c::t_546c5994b9f0bd 96-99
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_adb5d982725a9c::t_1a303fbc8a0718 726
+  s_adb5d982725a9c::t_9951ad17b83613 2,40,43-44,53,85,93-95,98-99,256,272-275,414-422,650,663-666,817-848,1087
+  s_adb5d982725a9c::t_4a36dcdc01b773 21
+  s_adb5d982725a9c::t_894d219454f45b 87-91
+  s_adb5d982725a9c::t_6452ff09c13da7 97
+  s_adb5d982725a9c::t_5dc7aa6b6e8b73 625
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/AgentBuildingIndicator.test.ts
+  s_adb5d982725a9c::t_078df8cb6aa210 1-14
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiViewHeader.vue
+  s_adb5d982725a9c::t_a29c111b1ddb17 11,13-15
+  s_adb5d982725a9c::t_c3edc076281cc3 12,25
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_adb5d982725a9c::t_4389abf2157b9f 78-79
+  s_adb5d982725a9c::t_b43f6991dbd599 1-77,80-311,313-315,317-320,322-329,331-340,343-344,346-353,355-362,364-467,470-473,475-486,488-493,495-510,512-527,530-543,545-564,570-573,577-868
+  s_adb5d982725a9c::t_508fc6cda4930f 468-469,474,487,494,511,528-529,544
+  s_adb5d982725a9c::t_7007cf4a463e90 565-569,574
+  s_adb5d982725a9c::t_a9d0fdb20ed51c 575-576
+  s_adb5d982725a9c::t_fb60ba731b07d7 312,316,321,330,341-342,345,354,363
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiConversation.test.ts
+  s_adb5d982725a9c::t_a6722178449701 63,70-73,75-77,80-81,88-95,97-113,118-120,132-135,141-142
+  s_adb5d982725a9c::t_30bb26b6f6d220 153
+  s_adb5d982725a9c::t_a07b7a7c663dfc 3,15-16,116,145-146,148-152,154-156,158-171
+  s_adb5d982725a9c::t_4fd65f60f538f3 140,143
+  s_adb5d982725a9c::t_1f051e2996a5b4 74,78
+  s_adb5d982725a9c::t_f8c6c425a58c24 1,4-7,14,18-62,64-69,79,82-87,96,114-115,117,121-123,125-131,136-139,144,157,172-174
+  s_adb5d982725a9c::t_5b399917a4b2e5 2
+  s_adb5d982725a9c::t_d7836b237ded48 8-13,17
+  s_adb5d982725a9c::t_c8748e9e16d38b 124
+  s_adb5d982725a9c::t_b9a24ba9809279 147
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_adb5d982725a9c::t_53ada229bff7a8 16
+  s_adb5d982725a9c::t_f837ed6167d82c 442
+  s_adb5d982725a9c::t_59b9a807874dee 2,35-43
+  s_adb5d982725a9c::t_9ea407468e9080 405
+  s_adb5d982725a9c::t_a47e2adf973478 967-969
+  s_adb5d982725a9c::t_001dc0512044cd 962-966,970-971
+  s_adb5d982725a9c::t_af46b2f1a35015 134
+  s_adb5d982725a9c::t_2ed0dbbd47c51e 55
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/createThreadComponentRenderer.ts
+  s_adb5d982725a9c::t_42a951a23b5f90 1-2,5,9-185
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentPreview.vue
+  s_adb5d982725a9c::t_0d764a56037294 114
+  s_adb5d982725a9c::t_f2f1c5c7876f34 18
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_adb5d982725a9c::t_4acb5f9050c144 67,73,109,125
+  s_adb5d982725a9c::t_9865acaf94d2de 25-26,33
+  s_adb5d982725a9c::t_1b1a909be7aea2 215-216,224-233
+  s_adb5d982725a9c::t_7f7edbb57fea5e 173,175-182
+  s_adb5d982725a9c::t_86220bcd47ea06 90,197
+  s_adb5d982725a9c::t_9caec3a53ad7d9 15
+  s_adb5d982725a9c::t_709d0784004fd9 94
+  s_adb5d982725a9c::t_98a16660881504 161,174
+  s_adb5d982725a9c::t_3ccf43fd172c02 367-374
+  s_adb5d982725a9c::t_27ba66505e566c 12,19-24,27-32,34,41
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiViewHeader.test.ts
+  s_adb5d982725a9c::t_e3c7df343fbf01 13-15
+  s_adb5d982725a9c::t_816cf421dff38f 36,40,46
+  s_adb5d982725a9c::t_3342e93646fb54 6,9
+  s_adb5d982725a9c::t_7b156017038f6e 11-12,16-23,31-35,37,41,43,47,49
+  s_adb5d982725a9c::t_bb9a8e82e51c44 1-5,7-8,10,24-30,38-39,42,44-45,48,50-51
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentBuildingIndicator.vue
+  s_adb5d982725a9c::t_b6f79e43e112fa 1-74
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_adb5d982725a9c::t_98bf691220eb86 14
+  s_adb5d982725a9c::t_b72429af0fbc01 510
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "acb627444ed38a234d78cf42c2a327cc3e5d3ffe",
+  "prompts": {},
+  "sessions": {
+    "s_adb5d982725a9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84758071-25ce-404a-9e8a-c2f810ded075",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": null
+    }
+  }
+}

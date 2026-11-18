@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/app/components/MainHeader/MainHeader.vue
+  s_23ac9e46ab1748::t_83d65608945073 6
+pnpm-lock.yaml
+  s_23ac9e46ab1748::t_ff97074db077e8 22474-22475,29394,42040
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "3857169878c8e5c59f439b571f2deeb94f8a97b7",
+  "prompts": {},
+  "sessions": {
+    "s_23ac9e46ab1748": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b113851a-c3ab-49d5-8c97-0a2c96719d51",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

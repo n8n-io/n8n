@@ -1,0 +1,30 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_a71582cc5ed9a5::t_8d70d1308e7cfe 314-316,329-330
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_a71582cc5ed9a5::t_7a1735b78285bd 60
+  s_a71582cc5ed9a5::t_8d70d1308e7cfe 106-107,135,654
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_a71582cc5ed9a5::t_846c224b0b7a6b 915
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_a71582cc5ed9a5::t_6b7cd7ce137430 2593
+  s_a71582cc5ed9a5::t_4ecbcebe470b45 2398
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_a71582cc5ed9a5::t_3bdf5249ea32b4 1904
+  s_a71582cc5ed9a5::t_deef06184bd51a 1874-1876,1899-1900,1902-1903,1905-1907,1913,1921-1940
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "13cedb65a00a4b8da0ff5246336591f30599ad60",
+  "prompts": {},
+  "sessions": {
+    "s_a71582cc5ed9a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7099578e-2731-4a72-8a89-f81257062489",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

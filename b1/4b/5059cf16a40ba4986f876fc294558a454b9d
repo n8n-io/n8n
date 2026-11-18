@@ -1,0 +1,19 @@
+packages/@n8n/backend-network/src/http/client-request-error.ts
+  s_8382d73e391ca2::t_667ad3476d7b6f 23-24,33-34,41-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b14b5059cf16a40ba4986f876fc294558a454b9d",
+  "prompts": {},
+  "sessions": {
+    "s_8382d73e391ca2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b904c39-af99-4e51-8a52-760bc3dbf659",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

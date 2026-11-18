@@ -1,0 +1,41 @@
+packages/@n8n/db/src/utils/dialect-time.ts
+  s_6c0c44bc795f66::t_6aba4391d028cd 70-88
+packages/cli/src/workflows/triggers/__tests__/poll-backoff-policy.test.ts
+  s_6c0c44bc795f66::t_79a78c11a9ee24 7,130,286,295,301,306,312,318,324,328,334,338,344,351,357,366,372,377,383
+packages/cli/src/workflows/triggers/poll-backoff-policy.ts
+  s_6c0c44bc795f66::t_55161e9ffe55c6 101-102,110,114-115,120
+packages/cli/test/integration/scheduling/poll-trigger-job-registrar.test.ts
+  s_6c0c44bc795f66::t_e6f95e755b3985 81,84-85,112-113,124
+packages/cli/src/workflows/triggers/poll-backoff.service.ts
+  s_6c0c44bc795f66::t_cb25fb6b59b32a 10,90-92,106
+packages/@n8n/db/src/repositories/poller-state.repository.ts
+  s_6c0c44bc795f66::t_5ed469410051e0 13,170-173,178,185-187,189-190
+packages/cli/src/workflows/triggers/__tests__/poll-backoff.service.test.ts
+  s_6c0c44bc795f66::t_3348ffd33ca0e9 190-191,215,228
+  s_6c0c44bc795f66::t_1dc7d82db310bc 8,172,180,261,269
+packages/cli/test/integration/database/repositories/poller-state.repository.test.ts
+  s_6c0c44bc795f66::t_089df05a10fb9c 46-59,247-248,252,263-264,266-269
+  s_6c0c44bc795f66::t_eee58dacfed342 385,397,420
+  s_6c0c44bc795f66::t_7064b17981bc4c 278-279,286,288,290,292-294,302,311,319-320,326,328-329,331,333-347,351,358,370
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "736e0f5ea7b7a48fbfe4ef358b21b32611163145",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6c0c44bc795f66": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06c531a0-fad6-4323-910f-33f766866753",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

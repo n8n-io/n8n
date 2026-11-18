@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/integrations/__tests__/channel-integration-contract.test.ts
+  s_80066dfdfb6d0b::t_7c2d9f19a5587b 15-25
+packages/cli/src/modules/agents/integrations/platforms/__tests__/linear/recorded-integration.test.ts
+  s_80066dfdfb6d0b::t_2d2b886d59f8c5 12-22
+packages/cli/src/modules/agents/integrations/platforms/__tests__/slack/synthetic-integration.test.ts
+  s_80066dfdfb6d0b::t_35ba4df693f6ff 12-22
+packages/cli/src/modules/agents/integrations/platforms/__tests__/slack/recorded-integration.test.ts
+  s_80066dfdfb6d0b::t_770b12bc6d061e 11-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a61b094d4e8f8e7ead77bb62c5bcf6ff485e2864",
+  "prompts": {},
+  "sessions": {
+    "s_80066dfdfb6d0b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "25ee2724-ef80-4eff-a940-d4997d32f797",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

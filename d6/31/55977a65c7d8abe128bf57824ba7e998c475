@@ -1,0 +1,44 @@
+packages/cli/test/migration/1790605116208-add-agent-queue-message-references.test.ts
+  s_af512eb7b46141::t_169a8d6a120e7e 14-22,31-32,37-39,45-56,59,61-63,77,81,91-169,171-218,223,225,228-271,275-280,282-284,286-288,291-295,297-312,314-323,326-327,340,343,345-351,355-356,359,361,363,365-366,368-372,374-412
+  s_af512eb7b46141::t_7380aa226f8429 10,24-26,272-274,281,285,289-290,296,313
+  s_af512eb7b46141::t_802efac4dd5f52 23
+packages/@n8n/db/src/migrations/common/1790605116208-AddAgentQueueMessageReferences.ts
+  s_af512eb7b46141::t_6caeb224bd5b02 67
+  s_af512eb7b46141::t_bf28ca2d3aee8e 97-101,141-143,160-164,184-187,204-208,215-222,224-229
+  s_af512eb7b46141::t_6078748a3cb0b6 58,81,240,264-284
+  s_af512eb7b46141::t_9df947627429ab 2-3,7-49,53,57,59-60,82-91,93-96,102-140,144-159,165-183,188-203,209-214,223,230,255
+  s_af512eb7b46141::t_6bcea87c207130 68-76,92,242,249-251
+  s_af512eb7b46141::t_af6f3946d95b1b 252-254
+docs/generated/sqlite-schema/README.md
+  s_af512eb7b46141::t_d3551429bdc4d1 189-190
+docs/generated/sqlite-schema/agent_message_queue.md
+  s_af512eb7b46141::t_3d59120eba97ef 9,30,32
+packages/@n8n/db/src/migrations/common/1790241069212-CreateAgentMessageQueue.ts
+  s_c5954c3047b5ed::t_b974208cf43ef2 1-47
+packages/cli/test/migration/1790241069212-create-agent-message-queue.test.ts
+  s_c5954c3047b5ed::t_b974208cf43ef2 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d63155977a65c7d8abe128bf57824ba7e998c475",
+  "prompts": {},
+  "sessions": {
+    "s_af512eb7b46141": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e88e-bb31-7051-b944-98f8227e2e34",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

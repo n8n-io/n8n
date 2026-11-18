@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/settings/security/DataRedactionSection.vue
+  s_1d9ef3fe77cd3e::t_5b483a98f144f5 149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "1783833c361041294867489f95594d5674c95663",
+  "prompts": {},
+  "sessions": {
+    "s_1d9ef3fe77cd3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cef90b4f-33ea-4920-8fda-54498fce8114",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

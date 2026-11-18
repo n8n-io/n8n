@@ -1,0 +1,20 @@
+packages/@n8n/db/src/entities/scheduled-task.ts
+  h_32d8cd6a0d6aad 31
+packages/@n8n/db/src/entities/execution-entity.ts
+  h_32d8cd6a0d6aad 37
+packages/@n8n/scheduler/src/core/reaper/reap.ts
+  h_32d8cd6a0d6aad 133-136
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-task-handler.ts
+  h_32d8cd6a0d6aad 72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8aa7402a0a56668d2acce593bc06d484e6f4b636",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

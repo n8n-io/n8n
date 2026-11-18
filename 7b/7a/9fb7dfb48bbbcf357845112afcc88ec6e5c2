@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Telegram/TelegramTrigger.node.ts
+  s_60ce6e746ce9d3::t_931b4f6e8648cd 37-38
+  s_60ce6e746ce9d3::t_082f13862d4e00 30
+  s_60ce6e746ce9d3::t_eab83364cc0d3b 305-332,337-342
+  s_60ce6e746ce9d3::t_9cb9eea5e4e01f 2,14,18-29
+  s_60ce6e746ce9d3::t_72834823142217 333-336
+  s_60ce6e746ce9d3::t_53f3df60d3810a 238-245
+  s_60ce6e746ce9d3::t_110d91da8a1341 343
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "7b7a9fb7dfb48bbbcf357845112afcc88ec6e5c2",
+  "prompts": {},
+  "sessions": {
+    "s_60ce6e746ce9d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d84124d3-ce9c-4a73-9716-80eb657f790d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

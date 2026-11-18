@@ -1,0 +1,19 @@
+packages/cli/src/modules/source-control.ee/__tests__/source-control-git.service.integration.test.ts
+  s_26539691738467::t_b02e0d057dec53 1-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1effae389cf582dafff93263e99d90fa843e4bb6",
+  "prompts": {},
+  "sessions": {
+    "s_26539691738467": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c451a462-203e-4d98-849b-716a05b47d80",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

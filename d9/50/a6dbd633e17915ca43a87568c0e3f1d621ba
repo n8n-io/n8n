@@ -1,0 +1,59 @@
+packages/cli/src/modules/engine-v2/__tests__/engine-data-plane-client.test.ts
+  s_19f9f03a4b2b7f::t_3a0b16cd1d175e 34-35,44-45,48-51,73-82
+packages/cli/src/services/__tests__/import.service.test.ts
+  s_19f9f03a4b2b7f::t_a3a5f4d348a1cc 6-7
+packages/cli/src/services/import.service.ts
+  s_19f9f03a4b2b7f::t_a3a5f4d348a1cc 16
+packages/cli/src/modules/engine-v2/engine-v2.runtime.ts
+  s_19f9f03a4b2b7f::t_e5c5fa3093ce17 73-75
+packages/@n8n/config/src/configs/engine.config.ts
+  s_19f9f03a4b2b7f::t_d11c8ed28f34bd 14-26
+packages/cli/src/services/__tests__/tag.service.test.ts
+  s_19f9f03a4b2b7f::t_a3a5f4d348a1cc 3
+packages/cli/src/services/frontend.service.ts
+  s_19f9f03a4b2b7f::t_a3a5f4d348a1cc 36-38
+packages/cli/src/services/sandbox-settings.service.ts
+  s_19f9f03a4b2b7f::t_a3a5f4d348a1cc 2
+packages/cli/src/services/pruning/workflow-history-compaction.service.ts
+  s_19f9f03a4b2b7f::t_a3a5f4d348a1cc 9
+packages/cli/src/services/__tests__/ai-workflow-builder.service.test.ts
+  s_19f9f03a4b2b7f::t_a3a5f4d348a1cc 12-13
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  s_19f9f03a4b2b7f::t_a3a5f4d348a1cc 7-8,22
+packages/cli/src/services/__tests__/workflow-statistics-rollup.service.test.ts
+  s_19f9f03a4b2b7f::t_a3a5f4d348a1cc 7,10
+packages/cli/src/services/__tests__/workflow-statistics.service.integration.test.ts
+  s_19f9f03a4b2b7f::t_a3a5f4d348a1cc 26-27
+packages/cli/src/services/node-resource-explorer.service.ts
+  s_19f9f03a4b2b7f::t_a3a5f4d348a1cc 2,375
+packages/cli/src/services/pruning/executions-pruning.service.ts
+  s_19f9f03a4b2b7f::t_a3a5f4d348a1cc 8
+packages/cli/src/services/__tests__/node-resource-explorer.service.test.ts
+  s_19f9f03a4b2b7f::t_a3a5f4d348a1cc 4-5
+packages/cli/src/services/role.service.ts
+  ai_agent 453
+packages/cli/src/modules/engine-v2/engine-data-plane-client.ts
+  s_19f9f03a4b2b7f::t_73df0994b0834c 24,26-29
+packages/cli/src/services/__tests__/user.service.test.ts
+  ai_agent 4
+  s_19f9f03a4b2b7f::t_a3a5f4d348a1cc 17,26
+packages/cli/src/services/__tests__/dynamic-node-parameters.service.test.ts
+  ai_agent 6
+  s_19f9f03a4b2b7f::t_a3a5f4d348a1cc 34-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d950a6dbd633e17915ca43a87568c0e3f1d621ba",
+  "prompts": {},
+  "sessions": {
+    "s_19f9f03a4b2b7f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a01f3661-f3e4-4a3e-921d-b926c8c92801",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

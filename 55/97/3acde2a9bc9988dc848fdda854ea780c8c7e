@@ -1,0 +1,19 @@
+packages/testing/code-health/src/rules/lint-config-layering.rule.ts
+  ai_agent 1-217
+packages/testing/code-health/src/rules/lint-config-layering.rule.test.ts
+  ai_agent 1-230
+.code-health-baseline.json
+  ai_agent 1313-2210
+.agents/review-rules/qa-dx/ratchets-and-allowlists.md
+  ai_agent 18,37-44
+packages/testing/code-health/src/index.ts
+  ai_agent 8,20,60-66,148
+AGENTS.md
+  ai_agent 283-285
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "55973acde2a9bc9988dc848fdda854ea780c8c7e",
+  "prompts": {}
+}

@@ -1,0 +1,9 @@
+packages/quality/testing/playwright/pages/n8nPage.ts
+  ai_agent 44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "30cdd3b9f3ee4baefcef0f26cd827de8384872f0",
+  "prompts": {}
+}

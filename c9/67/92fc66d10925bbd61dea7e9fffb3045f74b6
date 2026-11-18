@@ -1,0 +1,19 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_1a2087067112a6::t_ee0477c7496fd0 1,6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c96792fc66d10925bbd61dea7e9fffb3045f74b6",
+  "prompts": {},
+  "sessions": {
+    "s_1a2087067112a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6300bd3e-1cc9-4e36-ad69-be897cb35d93",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

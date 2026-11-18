@@ -1,0 +1,49 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-sandbox.service.test.ts
+  s_8661479fcacbbd::t_d01512ca2771d9 532-539,541-553
+packages/@n8n/instance-ai/src/skills/__tests__/materialize-runtime-skills.test.ts
+  s_8661479fcacbbd::t_563156962eaab1 322-356
+packages/@n8n/instance-ai/src/workspace/prebaked-workspace-bundle.ts
+  s_8661479fcacbbd::t_29613932af028b 12-14,16,20,38-43,49,56,60,106,117,174
+packages/@n8n/instance-ai/src/workspace/__tests__/prebaked-workspace-bundle.test.ts
+  s_8661479fcacbbd::t_563156962eaab1 4,107-108,133-134,237,258-261,265,271,291,293,295,299,304-305,308,315,317,321,324,331,333,336,339,341,343,346,357,359,361
+packages/@n8n/instance-ai/src/workspace/__tests__/sandbox-setup.test.ts
+  s_8661479fcacbbd::t_563156962eaab1 406,436,441
+  s_8661479fcacbbd::t_892f22357c19f5 450
+packages/@n8n/instance-ai/src/workspace/sandbox-setup.ts
+  s_8661479fcacbbd::t_29613932af028b 42,475,481,500,518,545
+packages/@n8n/instance-ai/src/index.ts
+  s_8661479fcacbbd::t_29613932af028b 537
+packages/@n8n/instance-ai/src/workspace/create-workspace.ts
+  ai_agent 99
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_8661479fcacbbd::t_d01512ca2771d9 1178-1182,1184,1187
+packages/@n8n/instance-ai/src/knowledge-base/materialize-knowledge-base.ts
+  s_8661479fcacbbd::t_29613932af028b 28,104,312,349
+packages/@n8n/instance-ai/src/knowledge-base/__tests__/materialize-knowledge-base.test.ts
+  s_8661479fcacbbd::t_92068da21b6cc5 302,316
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_8661479fcacbbd::t_f2a2c5e44fba5b 2922
+packages/@n8n/instance-ai/docs/sandboxing.md
+  s_8661479fcacbbd::t_2889ad510206ef 134-136
+packages/@n8n/instance-ai/src/skills/materialize-runtime-skills.ts
+  s_8661479fcacbbd::t_29613932af028b 23,74,83-84,394,406,601,618,653,683-684
+  s_8661479fcacbbd::t_892f22357c19f5 622-628
+packages/cli/src/modules/instance-ai/sandbox/instance-ai-sandbox.service.ts
+  s_8661479fcacbbd::t_f2a2c5e44fba5b 17,40-41,426,449,453,489
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "44aea7503f06fa2d90d49d748131a403aee13f85",
+  "prompts": {},
+  "sessions": {
+    "s_8661479fcacbbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2dfa2039-345b-4ff7-9ade-5eebd300fbec",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

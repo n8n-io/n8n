@@ -1,0 +1,22 @@
+packages/cli/src/services/__tests__/credentials-tester.service.test.ts
+  s_3adc5e3b9c1c50::t_c255dfd0682ce7 400-417
+packages/cli/src/services/credentials-tester.service.ts
+  s_3adc5e3b9c1c50::t_c255dfd0682ce7 335,367-368
+  s_3adc5e3b9c1c50::t_aea3ea4af59e70 369-370
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "60acae60a81a27c9526d8d7b23d0ce0590afabc7",
+  "prompts": {},
+  "sessions": {
+    "s_3adc5e3b9c1c50": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb348-412f-7363-a731-817990745551",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

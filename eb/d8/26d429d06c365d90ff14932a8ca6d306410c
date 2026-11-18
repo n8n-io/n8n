@@ -1,0 +1,30 @@
+packages/nodes-base/nodes/Tapfiliate/test/Tapfiliate.node.test.ts
+  s_2e1fa95fc44f8f::t_7327cd5c07b254 28
+  s_2e1fa95fc44f8f::t_9dcb62e49e4c2a 1-27,29-41
+packages/nodes-base/nodes/Tapfiliate/Tapfiliate.node.ts
+  s_3baabec30b7c0e::t_654b5138b15709 10-15,31-32,108-109,211,224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ebd826d429d06c365d90ff14932a8ca6d306410c",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_3baabec30b7c0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a8480c24e37386aa1",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

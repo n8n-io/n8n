@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Currents/CurrentsTriggerHelpers.ts
+  s_22eea66365bbbb::t_a86ef22997d1d3 2,53,82,105,123
+packages/nodes-base/nodes/Currents/test/CurrentsTriggerHelpers.test.ts
+  s_4b13c6fdeedfcb::t_0e8085e2b34ac9 193,312,345,390-392,426,459-461
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3b383316167a026becd6979e1cab12bdad04fa28",
+  "prompts": {},
+  "sessions": {
+    "s_22eea66365bbbb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a16673bfa31c94f40",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_4b13c6fdeedfcb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac95db28d7dd57bdd",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

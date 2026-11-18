@@ -1,0 +1,30 @@
+packages/@n8n/instance-ai/evaluations/README.md
+  s_fd6e130ca898c8::t_8afe7c062bf111 591-593
+packages/@n8n/instance-ai/evaluations/routing/__tests__/grade.test.ts
+  s_fd6e130ca898c8::t_3bb686c9a94a67 85-87,225,244,261,271
+  s_fd6e130ca898c8::t_c36404e4973e96 6-7,242-243,245-260,329,341-346,348
+  s_fd6e130ca898c8::t_d265e380026bb1 347
+packages/@n8n/instance-ai/evaluations/discovery/cli.ts
+  s_fd6e130ca898c8::t_d5bd1bca18a167 42-43,47
+  s_fd6e130ca898c8::t_a913cc67a30265 315,320,348,359-393
+packages/@n8n/instance-ai/evaluations/discovery/__tests__/seeded-turn.test.ts
+  s_fd6e130ca898c8::t_e780631ca17e7d 79,83,86-91
+packages/@n8n/instance-ai/evaluations/routing/grade.ts
+  s_fd6e130ca898c8::t_7ca5276c133308 9-11,33,37-57,110-111,116,119,150-152,166-167,169,206-209,213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ae07a89ceab9bf21fec4a562f4386462190bd709",
+  "prompts": {},
+  "sessions": {
+    "s_fd6e130ca898c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ed1908b-631c-440c-bb45-2628551c070a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
