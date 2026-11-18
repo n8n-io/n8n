@@ -4,7 +4,9 @@ import type {
 	InstanceAiEvent,
 	InstanceAiQuestion,
 } from '@n8n/api-types';
+import { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
+import { accountSummary } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ASK_USER_TOOL_ID, orchestratorAgentId } from '@n8n/instance-ai';
 import { redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -13,7 +15,6 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
 import { BadRequestError } from '@n8n/errors';
-import { Telemetry } from '@/telemetry';
 
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
@@ -137,7 +138,7 @@ export class InstanceAiOnboardingService {
 		private readonly eventBus: InProcessEventBus,
 		private readonly eventLog: DurableEventLog,
 		private readonly pendingConfirmationRepo: InstanceAiPendingConfirmationRepository,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 	) {}
 
 	async ensureThread(
@@ -160,7 +161,7 @@ export class InstanceAiOnboardingService {
 
 		const greeting = ONBOARDING_OPENING.greeting.replace(
 			'{{firstName}}',
-			user.firstName?.trim() || 'there',
+			accountSummary(user).firstName?.trim() || 'there',
 		);
 		try {
 			// The LLM history needs the greeting as an assistant turn; the card lives in the event log.

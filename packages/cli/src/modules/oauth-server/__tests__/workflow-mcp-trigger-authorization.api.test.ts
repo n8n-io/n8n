@@ -8,6 +8,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WebhookRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 import type { INode } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
@@ -18,7 +19,7 @@ import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
 import { CacheService, UrlService, JwtService } from '@n8n/backend-services';
 
-import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
+import { OAuthClient } from '../database/entities/oauth-client.entity';
 import type { OAuthSessionPayload } from '../oauth-session.service';
 import { sessionCookieFor, TEST_FLOW_ID } from './oauth-flow-test-utils';
 
@@ -38,7 +39,7 @@ let adminWithGlobalAccess: User;
 
 let tokenService: OAuthTokenService;
 let jwtService: JwtService;
-let oauthClientRepository: OAuthClientRepository;
+let oauthClientRepository: Repository<OAuthClient>;
 let mcpEndpoint: string;
 
 const webhookBaseUrl = () => Container.get(UrlService).getWebhookBaseUrl().replace(/\/$/, '');
@@ -126,7 +127,7 @@ beforeAll(async () => {
 
 	tokenService = Container.get(OAuthTokenService);
 	jwtService = Container.get(JwtService);
-	oauthClientRepository = Container.get(OAuthClientRepository);
+	oauthClientRepository = Container.get(DataSource).getRepository(OAuthClient);
 	mcpEndpoint = Container.get(GlobalConfig).endpoints.mcp;
 });
 

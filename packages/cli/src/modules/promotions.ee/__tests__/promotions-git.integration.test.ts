@@ -1,6 +1,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import { execFile, execFileSync } from 'node:child_process';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -8,8 +8,12 @@ import { promisify } from 'node:util';
 
 import { startSelfSignedGitServer, TLS_VERIFICATION_ERROR } from '@test/self-signed-git-server';
 
+import { STALE_GIT_LOCK_AGE_MS } from '../constants';
+import { PromotionLockLostError } from '../promotion-environment-lock.service';
+import { PromotionGitError } from '../promotions-git.error';
 import { PromotionsGitService } from '../promotions-git.service';
 import { buildHttpsGitConfig } from '../promotions-git.utils';
+import { createGitRemoteSeed, type TestRemote } from './utils/git-remote-fixture';
 
 describe('Promotion Git credentials', () => {
 	it.each([
@@ -107,6 +111,7 @@ describe('Promotion Git checkout', () => {
 			repositoryFolder: path.join(rootFolder, 'repository'),
 			nextRepositoryFolder: path.join(rootFolder, 'repository-next'),
 			sshDir: path.join(rootFolder, 'ssh'),
+			trashFolder: path.join(tmpRoot, 'trash'),
 		};
 
 		await new PromotionsGitService(mockLogger()).clone({
@@ -121,6 +126,81 @@ describe('Promotion Git checkout', () => {
 			execFileSync('git', ['-C', paths.repositoryFolder, ...args], { encoding: 'utf8' }).trim();
 		expect(git('remote', 'get-url', 'origin')).toBe(remoteUrl);
 		expect(git('symbolic-ref', '--short', 'HEAD')).toBe('main');
+	});
+
+	it('keeps the current checkout when the check before the swap throws', async () => {
+		const remotePath = path.join(tmpRoot, 'remote.git');
+		execFileSync('git', ['init', '--bare', '--quiet', remotePath]);
+		const rootFolder = path.join(tmpRoot, 'checkout');
+		const paths = {
+			rootFolder,
+			repositoryFolder: path.join(rootFolder, 'repository'),
+			nextRepositoryFolder: path.join(rootFolder, 'repository-next'),
+			sshDir: path.join(rootFolder, 'ssh'),
+			trashFolder: path.join(tmpRoot, 'trash'),
+		};
+		const operation = {
+			remoteUrl: pathToFileURL(remotePath).href,
+			credentials: { authType: 'token', username: 'git-user', password: 'git-password' } as const,
+			paths,
+			branchName: 'main',
+			environmentId: 'environment-1',
+		};
+		const gitService = new PromotionsGitService(mockLogger());
+		await gitService.clone(operation);
+		const marker = path.join(paths.repositoryFolder, 'marker');
+		await writeFile(marker, 'current');
+
+		await expect(
+			gitService.clone({
+				...operation,
+				beforeSwap: () => {
+					throw new PromotionLockLostError();
+				},
+			}),
+		).rejects.toThrow(PromotionLockLostError);
+
+		expect(await readFile(marker, 'utf8')).toBe('current');
+		await expect(stat(paths.nextRepositoryFolder)).rejects.toThrow();
+		await expect(readdir(paths.trashFolder)).resolves.toEqual([]);
+	});
+
+	it('moves the old checkout to trash and empties it after the swap', async () => {
+		const remotePath = path.join(tmpRoot, 'remote.git');
+		execFileSync('git', ['init', '--bare', '--quiet', remotePath]);
+		const rootFolder = path.join(tmpRoot, 'checkout');
+		const paths = {
+			rootFolder,
+			repositoryFolder: path.join(rootFolder, 'repository'),
+			nextRepositoryFolder: path.join(rootFolder, 'repository-next'),
+			sshDir: path.join(rootFolder, 'ssh'),
+			trashFolder: path.join(tmpRoot, 'trash'),
+		};
+		const operation = {
+			remoteUrl: pathToFileURL(remotePath).href,
+			credentials: { authType: 'token', username: 'git-user', password: 'git-password' } as const,
+			paths,
+			branchName: 'main',
+			environmentId: 'environment-1',
+		};
+		const gitService = new PromotionsGitService(mockLogger());
+		await gitService.clone(operation);
+		const marker = path.join(paths.repositoryFolder, 'marker');
+		await writeFile(marker, 'previous');
+
+		await gitService.clone(operation);
+
+		await expect(stat(marker)).rejects.toMatchObject({ code: 'ENOENT' });
+		const head = execFileSync(
+			'git',
+			['-C', paths.repositoryFolder, 'symbolic-ref', '--short', 'HEAD'],
+			{
+				encoding: 'utf8',
+			},
+		).trim();
+		expect(head).toBe('main');
+		await expect(stat(paths.nextRepositoryFolder)).rejects.toThrow();
+		await expect(readdir(paths.trashFolder)).resolves.toEqual([]);
 	});
 });
 
@@ -180,6 +260,7 @@ describe('Promotion Git reads at a commit', () => {
 					repositoryFolder,
 					nextRepositoryFolder: path.join(tmpRoot, 'next'),
 					sshDir: path.join(tmpRoot, 'ssh'),
+					trashFolder: path.join(tmpRoot, 'trash'),
 				},
 				branchName: 'main',
 				environmentId: 'environment-1',
@@ -188,5 +269,120 @@ describe('Promotion Git reads at a commit', () => {
 				limits: { ...limits, ...lowered },
 			}),
 		).rejects.toThrow(error);
+	});
+});
+
+describe('Promotion Git lock files left by a stopped Git process', () => {
+	let tmpRoot: string;
+	let remote: TestRemote;
+	let gitService: PromotionsGitService;
+	let operation: Parameters<PromotionsGitService['clone']>[0];
+	let movedSha: string;
+
+	const trackingRefLock = () =>
+		path.join(operation.paths.repositoryFolder, '.git', 'refs', 'remotes', 'origin', 'main.lock');
+
+	const writeTrackingRefLock = async (ageMs: number) => {
+		// A new clone keeps its refs in `packed-refs`, so the ref folder can be missing.
+		await mkdir(path.dirname(trackingRefLock()), { recursive: true });
+		await writeFile(trackingRefLock(), '');
+		const modified = new Date(Date.now() - ageMs);
+		await utimes(trackingRefLock(), modified, modified);
+	};
+
+	const commitOnRemote = async (message: string) => {
+		await writeFile(path.join(remote.workingDir, 'README.md'), `${message}\n`);
+		await remote.git.add(['README.md']);
+		await remote.git.commit(message);
+		return (await remote.git.revparse(['HEAD'])).trim();
+	};
+
+	beforeEach(async () => {
+		tmpRoot = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-locks-'));
+		remote = await createGitRemoteSeed(tmpRoot);
+		const rootFolder = path.join(tmpRoot, 'checkout');
+		operation = {
+			remoteUrl: pathToFileURL(remote.bareDir).href,
+			credentials: { authType: 'token', username: 'git-user', password: 'git-password' },
+			paths: {
+				rootFolder,
+				repositoryFolder: path.join(rootFolder, 'repository'),
+				nextRepositoryFolder: path.join(rootFolder, 'repository-next'),
+				sshDir: path.join(rootFolder, 'ssh'),
+				trashFolder: path.join(tmpRoot, 'trash'),
+			},
+			branchName: 'main',
+			environmentId: 'environment-1',
+		};
+		gitService = new PromotionsGitService(mockLogger());
+		await gitService.clone(operation);
+
+		// A fetch that stops before it updates the tracking ref leaves its lock file.
+		// The branch then moves, so the next fetch must update that ref.
+		movedSha = await commitOnRemote('Moved');
+		await remote.git.push('origin', 'main');
+	});
+
+	afterEach(async () => {
+		await rm(tmpRoot, { recursive: true, force: true });
+	});
+
+	it('removes an old lock file, so Promote resets to the moved branch and pushes', async () => {
+		await writeTrackingRefLock(STALE_GIT_LOCK_AGE_MS + 60_000);
+
+		const prepared = await gitService.prepareCheckoutForPromotion(operation);
+		expect(prepared.commitSha).toBe(movedSha);
+
+		await mkdir(path.join(operation.paths.repositoryFolder, 'n8n'), { recursive: true });
+		await writeFile(path.join(operation.paths.repositoryFolder, 'n8n', 'manifest.json'), '{}');
+		const { commitSha } = await gitService.commitAndPush({
+			...operation,
+			author: { name: 'n8n', email: 'n8n@example.com' },
+			commitMessage: 'Promote',
+			force: false,
+			stagePathspec: 'n8n',
+			onCheckoutRestored: async () => {},
+		});
+
+		expect(
+			(await remote.git.raw(['ls-remote', remote.bareDir, 'refs/heads/main'])).split('\t')[0],
+		).toBe(commitSha);
+		await expect(stat(trackingRefLock())).rejects.toMatchObject({ code: 'ENOENT' });
+	});
+
+	it('removes an old lock file, so Apply and the change list read the moved branch', async () => {
+		await writeTrackingRefLock(STALE_GIT_LOCK_AGE_MS + 60_000);
+
+		const { commitSha } = await gitService.listBranchTree({ ...operation, pathspecs: ['n8n'] });
+
+		expect(commitSha).toBe(movedSha);
+		await expect(stat(trackingRefLock())).rejects.toMatchObject({ code: 'ENOENT' });
+	});
+
+	it('removes an old lock file, so the review diff fetches the moved target branch', async () => {
+		await remote.git.checkoutLocalBranch('review');
+		const reviewSha = await commitOnRemote('Review');
+		await remote.git.push('origin', 'review');
+		await writeTrackingRefLock(STALE_GIT_LOCK_AGE_MS + 60_000);
+
+		const { baselineCommitSha } = await gitService.fetchReviewCommits({
+			...operation,
+			headRef: 'refs/heads/review',
+			headCommitSha: reviewSha,
+			baseline: { targetBranchName: 'main' },
+		});
+
+		expect(baselineCommitSha).toBe(movedSha);
+		await expect(stat(trackingRefLock())).rejects.toMatchObject({ code: 'ENOENT' });
+	});
+
+	it('keeps a recent lock file, which a running Git command on another main can hold', async () => {
+		await writeTrackingRefLock(0);
+
+		await expect(gitService.listBranchTree({ ...operation, pathspecs: ['n8n'] })).rejects.toThrow(
+			PromotionGitError,
+		);
+
+		await expect(stat(trackingRefLock())).resolves.toBeDefined();
 	});
 });

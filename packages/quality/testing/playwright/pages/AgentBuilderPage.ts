@@ -122,11 +122,14 @@ export class AgentBuilderPage extends BasePage {
 	}
 
 	getTestAttachment(name: string): Locator {
-		return this.getComposerFrame('test').getByText(name, { exact: true });
+		return this.getComposerFrame('test').getByTitle(name, { exact: true });
 	}
 
 	async removeTestAttachment(): Promise<void> {
-		await this.getPreviewDock().getByTestId('chat-file-remove').click();
+		const removeButton = this.getPreviewDock().getByTestId('attachment-remove');
+		/** The toolbar ignores pointer events until the attachment has hover or focus. */
+		await removeButton.focus();
+		await removeButton.click();
 	}
 
 	async isComposerScrollable(mode: 'build' | 'test'): Promise<boolean> {

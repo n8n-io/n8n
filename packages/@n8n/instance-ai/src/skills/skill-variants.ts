@@ -3,7 +3,7 @@ import {
 	filterRuntimeSkillSource,
 	type RuntimeSkillSource,
 } from '@n8n/agents';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 export interface SkillVariant {
 	id: string;
@@ -81,17 +81,13 @@ export async function composeSkillVariants(
 				};
 			}),
 	);
-	const availableSkills = skills.map((skill) => {
+	for (const skill of skills) {
 		const disabled = skill.dependencies?.tools?.find((tool) => disabledTools.has(tool));
 		if (disabled)
 			throw new UnexpectedError(`Skill "${skill.id}" requires disabled tool "${disabled}"`);
-		const recommended = skill.recommendedTools?.filter((tool) => !disabledTools.has(tool));
-		return recommended?.length !== skill.recommendedTools?.length
-			? { ...skill, recommendedTools: recommended }
-			: skill;
-	});
+	}
 	return {
-		source: filterRuntimeSkillSource({ ...source, ...createRuntimeSkillSource(availableSkills) }, [
+		source: filterRuntimeSkillSource({ ...source, ...createRuntimeSkillSource(skills) }, [
 			...excluded,
 		]),
 		disabledTools: [...disabledTools].sort(),

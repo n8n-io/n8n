@@ -52,6 +52,9 @@ export type PublicFrontendSettings = {
 	/** Used to bypass authentication on the workflows/demo page */
 	previewMode: FrontendSettings['previewMode'];
 
+	/** Lets the editor load its expression engine before the user signs in */
+	expressionEngine: FrontendSettings['expressionEngine'];
+
 	authCookie: {
 		/** Blocks insecure access incompatible with the authentication cookie. */
 		secure: FrontendSettings['authCookie']['secure'];
@@ -104,6 +107,9 @@ export type PublicFrontendSettings = {
 	};
 	/** Used to fetch community nodes on preview instance */
 	communityNodesEnabled: FrontendSettings['communityNodesEnabled'];
+
+	/** Lets the editor know the active backend modules before its first request */
+	activeModules: FrontendSettings['activeModules'];
 
 	mfa?: {
 		enabled: boolean;
@@ -252,12 +258,12 @@ export class FrontendService {
 				},
 			},
 			instanceId: this.instanceSettings.instanceId,
+			installId: this.instanceSettings.installId,
 			telemetry: telemetrySettings,
 			posthog: {
 				enabled: this.globalConfig.diagnostics.enabled,
 				apiHost: this.globalConfig.diagnostics.posthogConfig.apiHost,
 				apiKey: this.globalConfig.diagnostics.posthogConfig.apiKey,
-				autocapture: false,
 				disableSessionRecording: this.globalConfig.deployment.type !== 'cloud',
 				proxy: `${instanceBaseUrl}/${restEndpoint}/ph`,
 				debug: this.globalConfig.logging.level === 'debug',
@@ -384,6 +390,7 @@ export class FrontendService {
 			banners: {
 				dismissed: [],
 			},
+			// oxlint-disable-next-line typescript/no-deprecated -- The AI Transform node still uses this setting.
 			askAi: {
 				enabled: false,
 			},
@@ -732,6 +739,8 @@ export class FrontendService {
 			enterprise: { saml, ldap, oidc },
 			mfa,
 			communityNodesEnabled,
+			activeModules,
+			expressionEngine,
 		} = await this.getSettings();
 		const publicSettings: PublicFrontendSettings = {
 			settingsMode: 'public',
@@ -756,6 +765,8 @@ export class FrontendService {
 			previewMode,
 			enterprise: { saml, ldap, oidc },
 			communityNodesEnabled,
+			activeModules,
+			expressionEngine,
 		};
 		if (includeMfaSettings) {
 			publicSettings.mfa = mfa;

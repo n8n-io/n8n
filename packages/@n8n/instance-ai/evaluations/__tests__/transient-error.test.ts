@@ -1,6 +1,7 @@
 import {
 	extractErrorMessage,
 	findProviderOutage,
+	hitSandboxQuota,
 	isRequestAbort,
 	isServerBudgetStop,
 	isTransientNetworkError,
@@ -223,5 +224,26 @@ describe('throwIfFrameworkIssue', () => {
 			throwIfFrameworkIssue({ success: false, errors: ['Node "Slack": channel_not_found'] }),
 		).not.toThrow();
 		expect(() => throwIfFrameworkIssue({ success: true, errors: [] })).not.toThrow();
+	});
+});
+
+describe('hitSandboxQuota', () => {
+	it('finds the refusal in a tool error and in a tool result', () => {
+		expect(hitSandboxQuota([{ error: 'SandboxServiceError: tenant sandbox quota exceeded' }])).toBe(
+			true,
+		);
+		expect(
+			hitSandboxQuota([
+				{
+					result: { errors: ['Failed to write file: tenant sandbox quota exceeded; status: 403'] },
+				},
+			]),
+		).toBe(true);
+	});
+
+	it('ignores tool calls that failed for another reason', () => {
+		expect(hitSandboxQuota([{ error: 'Node "Slack": channel_not_found' }, { result: 'ok' }])).toBe(
+			false,
+		);
 	});
 });

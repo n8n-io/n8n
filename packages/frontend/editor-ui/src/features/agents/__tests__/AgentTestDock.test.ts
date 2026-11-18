@@ -25,7 +25,8 @@ vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
 	}),
 }));
 
-vi.mock('@n8n/i18n', () => ({
+vi.mock('@n8n/i18n', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/i18n')>()),
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
@@ -102,7 +103,7 @@ const AgentTestChatPageStub = {
 	setup(_props: unknown, { expose }: { expose: (exposed: Record<string, unknown>) => void }) {
 		expose({
 			focusInput: vi.fn(),
-			getConversationMarkdown: () => '**User:**\n\nHello',
+			getConversationMarkdown: async () => '**User:**\n\nHello',
 			clearBudgetStops: chatPageClearBudgetStopsMock,
 		});
 	},

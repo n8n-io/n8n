@@ -47,8 +47,11 @@ export { ExecutionListRepository } from './execution-list.repository';
 export { ExecutionMetadataRepository } from './execution-metadata.repository';
 export {
 	ExecutionRepository,
+	type CanceledExecution,
 	type CrashedExecution,
 	type ExecutionDeletionCriteria,
+	type ResumableExecutionStatus,
+	type ResumeAttemptClaim,
 	type UpdateExecutionConditions,
 } from './execution.repository';
 export { FolderRepository } from './folder.repository';
@@ -118,6 +121,7 @@ export {
 export {
 	WorkflowPublishedVersionRepository,
 	type PublishedWorkflowDataForExecution,
+	type PublishedVersionForExecution,
 } from './workflow-published-version.repository';
 export {
 	WorkflowPublishHistoryRepository,

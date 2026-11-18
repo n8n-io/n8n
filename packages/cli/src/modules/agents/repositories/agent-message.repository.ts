@@ -10,7 +10,7 @@ import {
 import { Service } from '@n8n/di';
 import { DataSource, In } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 
@@ -202,6 +202,28 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 			}
 		}
 		return inputs;
+	}
+
+	/**
+	 * Whether `executionId` continues `predecessorId`. A continuation, such as
+	 * a resume after a suspension, reuses the input messages of the execution
+	 * that it continues. The check is symmetric, so the order of the two
+	 * executions does not matter.
+	 */
+	async continuesExecution(executionId: string, predecessorId: string): Promise<boolean> {
+		return await this.manager
+			.createQueryBuilder(AgentExecutionMessageLink, 'link')
+			.innerJoin(
+				AgentExecutionMessageLink,
+				'predecessor',
+				'predecessor.messageId = link.messageId AND predecessor.executionId = :predecessorId AND predecessor.direction = :direction',
+				{ predecessorId, direction: 'input' },
+			)
+			.where('link.executionId = :executionId AND link.direction = :direction', {
+				executionId,
+				direction: 'input',
+			})
+			.getExists();
 	}
 
 	async saveRuntimeMessages(

@@ -474,7 +474,7 @@ describe('FullItemRedactionStrategy', () => {
 			});
 
 			it('sets httpCode: null for post-DB plain-object NodeApiError with null httpCode', async () => {
-				// Exercises the `?? null` fallback in redactError when httpCode is null or absent.
+				// Exercises the `null` fallback in redactExecutionError when httpCode is null or absent.
 				const execution = makeExecution({
 					NodeA: [
 						{
@@ -681,4 +681,22 @@ describe('FullItemRedactionStrategy', () => {
 			});
 		});
 	});
+});
+
+it('removes temporary Agent results from node context without changing other state', async () => {
+	const execution = makeExecution({});
+	execution.data.executionData!.contextData = {
+		'node:Agent': {
+			agentInvocations: {
+				runIndex: 0,
+				items: [{ threadId: 'thread', result: { response: 'private response' } }],
+			},
+			otherState: 'preserved',
+		},
+	};
+	await new FullItemRedactionStrategy().apply(execution, makeContext());
+	expect(execution.data.executionData!.contextData['node:Agent']).toEqual({
+		otherState: 'preserved',
+	});
+	expect(JSON.stringify(execution.data)).not.toContain('private response');
 });

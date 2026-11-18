@@ -32,6 +32,7 @@ import type {
 	AnnotationVote,
 	ExecutionStatus,
 	ExecutionSummary,
+	ExecutionTracingContext,
 	IRunExecutionData,
 	IRunExecutionDataAll,
 	IWorkflowSettings,
@@ -39,10 +40,11 @@ import type {
 } from 'n8n-workflow';
 import {
 	CRASHABLE_EXECUTION_STATUSES,
+	UNFINISHED_EXECUTION_STATUSES,
 	migrateRunExecutionData,
-	UnexpectedError,
 	WAIT_FOR_SUB_EXECUTION,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import {
 	AnnotationTagEntity,
@@ -76,6 +78,33 @@ class PostgresLiveRowsRetrievalError extends UnexpectedError {
 	}
 }
 
+const MAX_REPORTED_INVALID_EXECUTIONS = 20;
+
+const REPORTED_ROW_FIELDS = [
+	'id',
+	'storedAt',
+	'status',
+	'mode',
+	'finished',
+	'createdAt',
+	'startedAt',
+	'stoppedAt',
+	'jsonSizeBytes',
+	'deletedAt',
+	'retryOf',
+] as const;
+
+/** Row fields that tell which kind of execution lost its data. Leaves out fields the query did not load. */
+function toReportedRow(execution: ExecutionEntity) {
+	const row: Record<string, unknown> = {};
+	for (const field of REPORTED_ROW_FIELDS) {
+		const value: unknown = execution[field];
+		if (value === undefined || value === null) continue;
+		row[field] = value instanceof Date ? value.toISOString() : value;
+	}
+	return row;
+}
+
 export type CrashedExecution = {
 	id: string;
 	workflowId: string;
@@ -83,15 +112,30 @@ export type CrashedExecution = {
 	mode: WorkflowExecuteMode;
 	startedAt: Date | null;
 	stoppedAt: Date;
-	tracingContext?: { traceparent: string; tracestate?: string; identity?: Record<string, string> };
+	tracingContext?: ExecutionTracingContext;
 	workflowVersionId?: string;
 	retryOf?: string;
 	workflowCustomTelemetryTags?: IWorkflowSettings['customTelemetryTags'];
 	project?: { id: string; customTelemetryTags: Array<{ key: string; value: string }> };
 };
 
+export type CanceledExecution = Pick<
+	CrashedExecution,
+	'id' | 'workflowId' | 'workflowName' | 'mode' | 'startedAt' | 'stoppedAt'
+>;
+
+export type ResumableExecutionStatus = 'waiting' | 'new';
+
+export type ResumeAttemptClaim =
+	| { outcome: 'claimed'; attempts: number }
+	| { outcome: 'exhausted'; attempts: number; jsonSizeBytes: number }
+	| { outcome: 'conflict' };
+
 export interface UpdateExecutionConditions {
+	/** Match the wait that the caller read before replacing its response. */
+	requireWaitTill?: Date;
 	requireStatus?: ExecutionStatus;
+	requireStatuses?: readonly ExecutionStatus[];
 	requireNotFinished?: boolean;
 	requireNotCanceled?: boolean;
 	/** Also update a soft-deleted execution. */
@@ -271,6 +315,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			new UnexpectedError('Found executions without executionData', {
 				extra: {
 					executionIds: executions.map(({ id }) => id),
+					executions: executions.slice(0, MAX_REPORTED_INVALID_EXECUTIONS).map(toReportedRow),
 				},
 			}),
 		);
@@ -412,7 +457,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 
 		for (const batch of chunk(ids, MAX_UPDATE_BATCH_SIZE)) {
 			const transitioned = await this.withOwnerProjects(
-				await this.transitionToCrashed({ id: In(batch) }),
+				await this.transitionTo('crashed', { id: In(batch) }, CRASHABLE_EXECUTION_STATUSES),
 			);
 
 			crashed.push(...transitioned);
@@ -427,7 +472,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	/** Set the workflow's in-progress executions to `crashed`. */
 	async markWorkflowExecutionsAsCrashed(workflowId: string): Promise<CrashedExecution[]> {
 		const transitioned = await this.withOwnerProjects(
-			await this.transitionToCrashed({ workflowId }),
+			await this.transitionTo('crashed', { workflowId }, CRASHABLE_EXECUTION_STATUSES),
 		);
 
 		if (transitioned.length > 0) {
@@ -440,11 +485,56 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	}
 
 	/**
-	 * Set the rows matching `where` to `crashed`. The caller's predicate selects the
+	 * Set a `waiting` or `new` execution to `crashed`, which `markAsCrashed` skips on purpose.
+	 * With `expectedAttempts`, the row is left alone if its count changed since it was read.
+	 */
+	async markAsCrashedFrom(
+		executionId: string,
+		status: ResumableExecutionStatus,
+		{
+			expectedAttempts,
+			onTransitioned,
+		}: { expectedAttempts?: number; onTransitioned?: (batch: CrashedExecution[]) => void } = {},
+	): Promise<boolean> {
+		const where: FindOptionsWhere<ExecutionEntity> = { id: executionId };
+		if (expectedAttempts !== undefined) where.resumeAttempts = expectedAttempts;
+
+		const transitioned = await this.withOwnerProjects(
+			await this.transitionTo('crashed', where, [status]),
+		);
+
+		if (transitioned.length === 0) return false;
+
+		onTransitioned?.(transitioned);
+		this.logger.info('Marked executions as `crashed`', { executionIds: [executionId] });
+		return true;
+	}
+
+	/**
+	 * Set executions to `canceled` in batches. Only rows still in `fromStatuses` change,
+	 * so a run that has finished keeps its outcome. Returns the rows this call changed.
+	 */
+	async markAsCanceled(
+		executionIds: string[],
+		fromStatuses: readonly ExecutionStatus[] = UNFINISHED_EXECUTION_STATUSES,
+	): Promise<CanceledExecution[]> {
+		const canceled: CanceledExecution[] = [];
+
+		for (const batch of chunk([...new Set(executionIds)], MAX_UPDATE_BATCH_SIZE)) {
+			canceled.push(...(await this.transitionTo('canceled', { id: In(batch) }, fromStatuses)));
+		}
+
+		return canceled;
+	}
+
+	/**
+	 * Set the rows matching `where` to `status`. The caller's predicate selects the
 	 * candidates; the status guard and the identity of the written rows are added here.
 	 */
-	private async transitionToCrashed(
+	private async transitionTo(
+		status: 'crashed' | 'canceled',
 		where: FindOptionsWhere<ExecutionEntity>,
+		fromStatuses: readonly ExecutionStatus[],
 	): Promise<CrashedExecution[]> {
 		// `stoppedAt` doubles as a claim token, so the read below can match the rows this
 		// UPDATE wrote without `SELECT ... FOR UPDATE`, which SQLite does not support. A
@@ -452,13 +542,11 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		const stoppedAt = new Date();
 
 		return await this.runInTransaction({}, async (tx) => {
-			// Guard against overwriting executions that have since moved to a `waiting` or
-			// terminal status: recovery can race a `running` -> `waiting` transition and flag a
-			// healthy execution as dangling, but only genuinely in-progress rows should be crashed
+			// The status guard keeps a run that moved on since the caller read it.
 			const updateResult = await tx.update(
 				ExecutionEntity,
-				{ ...where, status: In(CRASHABLE_EXECUTION_STATUSES) },
-				{ status: 'crashed', stoppedAt, waitTill: null },
+				{ ...where, status: In(fromStatuses) },
+				{ status, stoppedAt, waitTill: null },
 			);
 
 			// An unreported `affected` is unknown rather than zero, so it falls through to the read.
@@ -478,8 +566,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 					workflow: { id: true, name: true, settings: { customTelemetryTags: true } },
 				},
 				relations: { workflow: true },
-				where: { ...where, status: 'crashed', stoppedAt },
-				// The UPDATE above also crashes soft-deleted rows, so keep them in the read.
+				where: { ...where, status, stoppedAt },
+				// The UPDATE above also changes soft-deleted rows, so keep them in the read.
 				withDeleted: true,
 			});
 
@@ -560,11 +648,13 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	 * @param executionId - The ID of the execution to update
 	 * @param execution - Partial execution data to update
 	 * @param conditions - Optional conditions that must be met for the update to proceed.
+	 *   `requireWaitTill`: only update if the wait timestamp matches.
 	 *   `requireStatus`: only update if execution has this exact status.
+	 *   `requireStatuses`: only update if execution has one of these statuses.
 	 *   `requireNotFinished`: only update if `finished = false`.
 	 *   `requireNotCanceled`: only update if `status != 'canceled'`.
-	 *   Note: `requireStatus` and `requireNotCanceled` both constrain the `status` column,
-	 *   so combining them is not supported.
+	 *   Note: `requireStatus`, `requireStatuses`, and `requireNotCanceled` all constrain the
+	 *   `status` column, so combining them is not supported.
 	 * @returns true if update succeeded, false if no rows matched (execution not found or conditions not met)
 	 */
 	async updateExistingExecution(
@@ -572,6 +662,14 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		execution: Partial<IExecutionResponse>,
 		conditions?: UpdateExecutionConditions,
 	): Promise<boolean> {
+		const statusConstraintCount =
+			(conditions?.requireStatus !== undefined ? 1 : 0) +
+			(conditions?.requireStatuses !== undefined ? 1 : 0) +
+			(conditions?.requireNotCanceled ? 1 : 0);
+		if (statusConstraintCount > 1) {
+			throw new UnexpectedError('Only one `status` constraint can be applied per update');
+		}
+
 		const {
 			id,
 			data,
@@ -594,7 +692,10 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return await this.manager.transaction(async (tx) => {
 			if (Object.keys(executionInformation).length > 0) {
 				const whereCondition: FindOptionsWhere<ExecutionEntity> = { id: executionId };
+				if (conditions?.requireWaitTill) whereCondition.waitTill = conditions.requireWaitTill;
 				if (conditions?.requireStatus) whereCondition.status = conditions.requireStatus;
+				if (conditions?.requireStatuses)
+					whereCondition.status = In([...conditions.requireStatuses]);
 				// oxlint-disable-next-line typescript/no-deprecated
 				if (conditions?.requireNotFinished) whereCondition.finished = false;
 				if (conditions?.requireNotCanceled) whereCondition.status = Not('canceled');
@@ -632,6 +733,20 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			workflowId,
 			storedAt,
 		}));
+	}
+
+	/** Whether any of `executionIds`, deleted or not, belongs to `workflowId`. */
+	async hasWorkflowExecutionAmong(workflowId: string, executionIds: string[]): Promise<boolean> {
+		for (const ids of chunkIds(executionIds)) {
+			const match = await this.createQueryBuilder('execution')
+				.withDeleted()
+				.select('execution.id')
+				.where('execution.workflowId = :workflowId', { workflowId })
+				.andWhere('execution.id IN (:...ids)', { ids })
+				.getOne();
+			if (match) return true;
+		}
+		return false;
 	}
 
 	async findExecutionsToDelete({
@@ -690,7 +805,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		}).then((executions) => executions.map(({ id }) => id));
 	}
 
-	async softDeletePrunableExecutions() {
+	async softDeletePrunableExecutions(retainedExecutionIds: string[] = []) {
 		const { pruneDataMaxAge, pruneDataMaxCount } = this.globalConfig.executions;
 
 		// Sub-query to exclude executions having annotations
@@ -734,6 +849,16 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			})
 			// Only mark executions as deleted if they are not annotated
 			.andWhere('id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
+			.andWhere(
+				isPostgres
+					? 'CAST(id AS TEXT) <> ALL(CAST(:retainedExecutionIds AS TEXT[]))'
+					: 'CAST(id AS TEXT) NOT IN (SELECT value FROM json_each(:retainedExecutionIds))',
+				{
+					retainedExecutionIds: isPostgres
+						? retainedExecutionIds
+						: JSON.stringify(retainedExecutionIds),
+				},
+			)
 			.andWhere(pruningCriteria)
 			.execute();
 	}
@@ -793,6 +918,61 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 
 	async deleteByIds(executionIds: string[]) {
 		return await this.delete({ id: In(executionIds) });
+	}
+
+	/**
+	 * Count one resume attempt before the load, so a load that kills the process stays
+	 * counted. `conflict` means the row is no longer in `status`.
+	 */
+	async claimResumeAttempt(
+		executionId: string,
+		status: ResumableExecutionStatus,
+		maxAttempts: number,
+	): Promise<ResumeAttemptClaim> {
+		const execution = await this.findOne({
+			select: ['id', 'resumeAttempts', 'jsonSizeBytes'],
+			where: { id: executionId, status },
+		});
+		if (!execution) return { outcome: 'conflict' };
+
+		const { resumeAttempts: attempts, jsonSizeBytes } = execution;
+		if (attempts >= maxAttempts) return { outcome: 'exhausted', attempts, jsonSizeBytes };
+
+		// The count just read is part of the predicate, so two processes cannot take the same attempt.
+		const result = await this.update(
+			{ id: executionId, status, resumeAttempts: attempts },
+			{ resumeAttempts: attempts + 1 },
+		);
+		if ((result.affected ?? 0) === 0) return { outcome: 'conflict' };
+
+		return { outcome: 'claimed', attempts: attempts + 1 };
+	}
+
+	/**
+	 * Give back an attempt. `attempts` is the count the claim returned, so a newer claim by
+	 * another process is not undone.
+	 */
+	async releaseResumeAttempt(
+		executionId: string,
+		status: ResumableExecutionStatus,
+		attempts: number,
+	): Promise<boolean> {
+		const result = await this.update(
+			{ id: executionId, status, resumeAttempts: attempts },
+			{ resumeAttempts: attempts - 1 },
+		);
+
+		return (result.affected ?? 0) > 0;
+	}
+
+	async findEnqueuedIds(): Promise<string[]> {
+		const rows = await this.find({
+			select: ['id'],
+			where: { status: 'new' },
+			order: { id: 'ASC' },
+		});
+
+		return rows.map(({ id }) => id);
 	}
 
 	async getWaitingExecutions() {
@@ -1036,35 +1216,6 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return await this.findSingleExecution(executionId, {
 			where: { workflowId: In(accessibleWorkflowIds) },
 		});
-	}
-
-	async stopBeforeRun(execution: IExecutionResponse) {
-		execution.status = 'canceled';
-		execution.stoppedAt = new Date();
-		execution.waitTill = null;
-
-		await this.update(
-			{ id: execution.id },
-			{ status: execution.status, stoppedAt: execution.stoppedAt, waitTill: execution.waitTill },
-		);
-
-		return execution;
-	}
-
-	async cancelMany(executionIds: string[]) {
-		await this.update(
-			{ id: In(executionIds) },
-			{ status: 'canceled', stoppedAt: new Date(), waitTill: null },
-		);
-	}
-
-	async cancelManyRunning(executionIds: string[]) {
-		await this.update(
-			// The caller's ID list is a snapshot. The status match stops an execution that
-			// reached a terminal status in the meantime from being recorded as cancelled.
-			{ id: In(executionIds), status: 'running' },
-			{ status: 'canceled', stoppedAt: new Date(), waitTill: null },
-		);
 	}
 
 	// ----------------------------------

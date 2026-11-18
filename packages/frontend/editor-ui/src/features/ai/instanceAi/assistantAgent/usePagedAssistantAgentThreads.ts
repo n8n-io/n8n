@@ -5,7 +5,7 @@ import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import { listSystemAgentThreads } from '@/features/agents/composables/useAgentApi';
 
 import { ASSISTANT_AGENT_ID } from './assistantAgentThreads';
-import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
+import { useAssistantAgentThreadsStore, withRenamedTitle } from './assistantAgentThreads.store';
 
 export type UsePagedAssistantAgentThreadsOptions = {
 	/** Server-side title search. A change resets paging. */
@@ -22,10 +22,25 @@ export function usePagedAssistantAgentThreads(options: UsePagedAssistantAgentThr
 
 	// Paging keys off the unfiltered list, so a deleted row never shifts the cursor.
 	const rawItems = ref<SystemAgentThreadSummary[]>([]);
-	const items = computed(() =>
-		rawItems.value.filter((thread) => !threadsStore.deletedThreadIds.has(thread.id)),
-	);
 	const hasMore = ref(true);
+	const items = computed(() => {
+		const byId = new Map(rawItems.value.map((thread) => [thread.id, thread]));
+		// The pages load once, so a thread created or retitled since then is only in the
+		// store. Skip the store during a search, and past the loaded range, where its
+		// threads could break the newest-first order that the merge relies on.
+		if (!toValue(options.search)) {
+			const oldest = rawItems.value.at(-1)?.updatedAt;
+			for (const thread of threadsStore.knownThreads) {
+				if (hasMore.value && (oldest === undefined || thread.updatedAt < oldest)) continue;
+				const loaded = byId.get(thread.id);
+				if (!loaded || thread.updatedAt >= loaded.updatedAt) byId.set(thread.id, thread);
+			}
+		}
+		return [...byId.values()]
+			.filter((thread) => !threadsStore.deletedThreadIds.has(thread.id))
+			.map((thread) => withRenamedTitle(thread, threadsStore.renamedTitles))
+			.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+	});
 	const isLoading = ref(false);
 	const error = ref(false);
 

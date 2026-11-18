@@ -81,7 +81,7 @@ export class InstanceAiPage extends BasePage {
 	async mockSearchVerification(
 		response: { ok: true; resultCount: number } | { ok: false; failure: string },
 	): Promise<void> {
-		await this.page.route('**/rest/instance-ai/settings/verify/search', async (route) => {
+		await this.page.route('**/rest/assistant/settings/verify/search', async (route) => {
 			await route.fulfill({ json: { data: response } });
 		});
 	}
@@ -239,19 +239,15 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	getAttachmentsAt(messageIndex: number): Locator {
-		return this.getUserMessages().nth(messageIndex).getByTestId('chat-file');
+		return this.getUserMessages().nth(messageIndex).locator('.n8n-attachment');
 	}
 
 	/**
-	 * Files staged in the composer but not yet sent, counted via each preview's remove
-	 * control. Two markers are needed: `AttachmentPreview` renders
-	 * `attachment-preview-remove` for image thumbnails, while non-image files fall
-	 * through to `ChatFile`, whose control is `chat-file-remove`. Matching only the
-	 * first would silently count 0 for a staged PDF or CSV.
+	 * Staged files and resource chips expose different remove controls.
 	 */
 	getComposerAttachments(): Locator {
 		return this.getContainer().locator(
-			'[data-test-id="attachment-preview-remove"], [data-test-id="chat-file-remove"]',
+			'[data-test-id="attachment-remove"], [data-test-id^="attachment-preview-remove-"]',
 		);
 	}
 
@@ -290,8 +286,9 @@ export class InstanceAiPage extends BasePage {
 		await this.getChatInput().press('ArrowRight');
 	}
 
+	// Scoped to the composer: a sent message renders the same chips for its attachments.
 	getComposerWorkflowChip(name: string | RegExp): Locator {
-		return this.container.getByTestId('attachment-preview-resource').filter({ hasText: name });
+		return this.getComposer().getByTestId('attachment-preview-resource').filter({ hasText: name });
 	}
 
 	getComposerWorkflowRemoveButton(name: string | RegExp): Locator {
@@ -301,11 +298,11 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	getComposerNodeChip(name: string | RegExp): Locator {
-		return this.container.getByTestId('nodes-chip-node').filter({ hasText: name });
+		return this.getComposer().getByTestId('nodes-chip-node').filter({ hasText: name });
 	}
 
 	getComposerGroupChip(name: string | RegExp): Locator {
-		return this.container.getByTestId('nodes-chip-group').filter({ hasText: name });
+		return this.getComposer().getByTestId('nodes-chip-group').filter({ hasText: name });
 	}
 
 	getUserMessageByText(text: string | RegExp): Locator {
@@ -360,7 +357,7 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	getConfirmationText(text: string): Locator {
-		return this.page.getByText(text, { exact: false });
+		return this.container.getByText(text, { exact: false });
 	}
 
 	/**

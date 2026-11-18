@@ -542,6 +542,84 @@ describe('useContextMenu', () => {
 			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
 			expect(byId.add_node?.disabled).toBe(true);
 			expect(byId.add_sticky?.disabled).toBe(true);
+			expect(byId.paste?.disabled).toBe(true);
+		});
+
+		it('offers an enabled paste action in the empty-selection menu', () => {
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [] });
+
+			const paste = actions.value.find((action) => action.id === 'paste');
+			expect(paste?.disabled).toBe(false);
+		});
+
+		describe('with clipboard access', () => {
+			function mockClipboard(state: PermissionState, text: string) {
+				Object.defineProperty(window.navigator, 'permissions', {
+					value: { query: vi.fn().mockResolvedValue({ state }) },
+					configurable: true,
+				});
+				Object.defineProperty(window.navigator, 'clipboard', {
+					value: { readText: vi.fn().mockResolvedValue(text) },
+					configurable: true,
+				});
+			}
+
+			afterEach(() => {
+				Reflect.deleteProperty(window.navigator, 'permissions');
+				Reflect.deleteProperty(window.navigator, 'clipboard');
+			});
+
+			const pasteDisabled = (actions: ReturnType<typeof useContextMenu>['actions']) =>
+				actions.value.find((action) => action.id === 'paste')?.disabled;
+
+			it('disables paste when the clipboard has no workflow data', async () => {
+				mockClipboard('granted', 'just some text');
+				const { open, actions } = useContextMenu();
+				open(mockEvent, { source: 'canvas', nodeIds: [] });
+
+				await vi.waitFor(() => expect(pasteDisabled(actions)).toBe(true));
+			});
+
+			it('keeps paste enabled when the clipboard has workflow data', async () => {
+				mockClipboard('granted', JSON.stringify({ nodes: [], connections: {} }));
+				const { open, actions } = useContextMenu();
+				open(mockEvent, { source: 'canvas', nodeIds: [] });
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+				expect(pasteDisabled(actions)).toBe(false);
+			});
+
+			it('ignores a clipboard result that arrives after the menu was reopened', async () => {
+				let resolveRead: (text: string) => void = () => {};
+				mockClipboard('granted', '');
+				vi.mocked(navigator.clipboard.readText)
+					.mockImplementationOnce(
+						async () => await new Promise<string>((resolve) => (resolveRead = resolve)),
+					)
+					.mockImplementationOnce(async () => await new Promise<string>(() => {}));
+				const { open, close, actions } = useContextMenu();
+
+				open(mockEvent, { source: 'canvas', nodeIds: [] });
+				close();
+				open(mockEvent, { source: 'canvas', nodeIds: [] });
+				// Let both permission checks finish so both reads have started
+				await vi.waitFor(() => expect(navigator.clipboard.readText).toHaveBeenCalledTimes(2));
+				resolveRead('just some text');
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+				expect(pasteDisabled(actions)).toBe(false);
+			});
+
+			it('keeps paste enabled and does not read the clipboard without permission', async () => {
+				mockClipboard('prompt', 'just some text');
+				const { open, actions } = useContextMenu();
+				open(mockEvent, { source: 'canvas', nodeIds: [] });
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+				expect(pasteDisabled(actions)).toBe(false);
+				expect(navigator.clipboard.readText).not.toHaveBeenCalled();
+			});
 		});
 
 		it('leaves out add sticky when the sticky note type is not loaded', () => {

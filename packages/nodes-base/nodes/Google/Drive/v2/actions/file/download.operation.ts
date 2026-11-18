@@ -5,6 +5,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -199,14 +200,14 @@ export async function execute(
 	const requestOptions = {
 		useStream: true,
 		returnFullResponse: true,
-		encoding: 'arraybuffer',
+		encoding: 'arraybuffer' as const,
 		json: false,
 	};
 
 	const file = await googleApiRequest.call(
 		this,
 		'GET',
-		`/drive/v3/files/${fileId}`,
+		requestPath`/drive/v3/files/${fileId}`,
 		{},
 		{ fields: 'mimeType,name', supportsTeamDrives: true, supportsAllDrives: true },
 	);
@@ -240,7 +241,7 @@ export async function execute(
 		response = await googleApiRequest.call(
 			this,
 			'GET',
-			`/drive/v3/files/${fileId}/export`,
+			requestPath`/drive/v3/files/${fileId}/export`,
 			{},
 			{ mimeType: mime, supportsAllDrives: true },
 			undefined,
@@ -250,7 +251,7 @@ export async function execute(
 		response = await googleApiRequest.call(
 			this,
 			'GET',
-			`/drive/v3/files/${fileId}`,
+			requestPath`/drive/v3/files/${fileId}`,
 			{},
 			{ alt: 'media', supportsAllDrives: true },
 			undefined,

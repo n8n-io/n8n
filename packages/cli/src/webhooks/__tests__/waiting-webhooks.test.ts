@@ -21,7 +21,7 @@ import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-r
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { WaitingForms } from '@/webhooks/waiting-forms';
-import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
+import { literalPathAndQuery, WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WaitingWebhookRequest } from '@/webhooks/webhook.types';
@@ -81,7 +81,7 @@ describe('WaitingWebhooks', () => {
 		 * Act
 		 */
 		const promise = waitingWebhooks.executeWebhook(
-			mock<WaitingWebhookRequest>(),
+			mock<WaitingWebhookRequest>({ params: { path: '123', suffix: undefined } }),
 			mock<express.Response>(),
 		);
 
@@ -89,6 +89,27 @@ describe('WaitingWebhooks', () => {
 		 * Assert
 		 */
 		await expect(promise).rejects.toThrowError(NotFoundError);
+	});
+
+	describe('execution id that cannot name a v1 row', () => {
+		it.each(['abc', '1.5', '-1', '12abc', 'NaN', '2147483648'])(
+			'throws NotFoundError for "%s" without querying the database',
+			async (executionId) => {
+				const req = mock<WaitingWebhookRequest>({
+					params: { path: executionId, suffix: undefined },
+				});
+
+				await expect(
+					waitingWebhooks.executeWebhook(req, mock<express.Response>()),
+				).rejects.toThrowError(NotFoundError);
+				expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
+			},
+		);
+
+		it('returns no webhook methods without querying the database', async () => {
+			await expect(waitingWebhooks.getWebhookMethods('abc')).resolves.toEqual([]);
+			expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('getWebhookMethods', () => {
@@ -127,7 +148,7 @@ describe('WaitingWebhooks', () => {
 			] as any);
 			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
 
-			await expect(waitingWebhooks.getWebhookMethods('execution-id')).resolves.toEqual(['POST']);
+			await expect(waitingWebhooks.getWebhookMethods('123')).resolves.toEqual(['POST']);
 		});
 	});
 
@@ -144,7 +165,7 @@ describe('WaitingWebhooks', () => {
 		);
 
 		const promise = waitingWebhooks.executeWebhook(
-			mock<WaitingWebhookRequest>(),
+			mock<WaitingWebhookRequest>({ params: { path: '123', suffix: undefined } }),
 			mock<express.Response>(),
 		);
 
@@ -163,7 +184,7 @@ describe('WaitingWebhooks', () => {
 		 * Act
 		 */
 		const promise = waitingWebhooks.executeWebhook(
-			mock<WaitingWebhookRequest>(),
+			mock<WaitingWebhookRequest>({ params: { path: '123', suffix: undefined } }),
 			mock<express.Response>(),
 		);
 
@@ -191,7 +212,7 @@ describe('WaitingWebhooks', () => {
 		 * Act
 		 */
 		const promise = waitingWebhooks.executeWebhook(
-			mock<WaitingWebhookRequest>(),
+			mock<WaitingWebhookRequest>({ params: { path: '123', suffix: undefined } }),
 			mock<express.Response>(),
 		);
 
@@ -373,9 +394,9 @@ describe('WaitingWebhooks', () => {
 			});
 			// Request has wrong signature
 			const req = mock<WaitingWebhookRequest>({
-				params: { path: 'execution-id', suffix: nodeId },
+				params: { path: '123', suffix: nodeId },
 				method: 'GET',
-				url: `/webhook/execution-id/${nodeId}?${WAITING_TOKEN_QUERY_PARAM}=wrong-signature`,
+				url: `/webhook/123/${nodeId}?${WAITING_TOKEN_QUERY_PARAM}=wrong-signature`,
 				headers: { host: 'example.com' },
 			});
 
@@ -437,9 +458,9 @@ describe('WaitingWebhooks', () => {
 			});
 			// Request has wrong signature
 			const req = mock<WaitingWebhookRequest>({
-				params: { path: 'execution-id', suffix: 'wait-node-id' },
+				params: { path: '123', suffix: 'wait-node-id' },
 				method: 'GET',
-				url: `/webhook/execution-id/wait-node-id?${WAITING_TOKEN_QUERY_PARAM}=wrong-signature`,
+				url: `/webhook/123/wait-node-id?${WAITING_TOKEN_QUERY_PARAM}=wrong-signature`,
 				headers: { host: 'example.com' },
 			});
 
@@ -531,9 +552,9 @@ describe('WaitingWebhooks', () => {
 			const res = buildRes();
 			// No route suffix; the node id is carried in the signature query value (old URL format).
 			const req = mock<WaitingWebhookRequest>({
-				params: { path: 'execution-id', suffix: undefined },
+				params: { path: '123', suffix: undefined },
 				method: 'GET',
-				url: `/webhook-waiting/execution-id?approved=true&${WAITING_TOKEN_QUERY_PARAM}=${resumeToken}%2F${nodeId}`,
+				url: `/webhook-waiting/123?approved=true&${WAITING_TOKEN_QUERY_PARAM}=${resumeToken}%2F${nodeId}`,
 				headers: { host: 'example.com' },
 			});
 
@@ -572,13 +593,13 @@ describe('WaitingWebhooks', () => {
 				);
 
 			const res = buildRes();
-			const signedPath = `/webhook-waiting/execution-id/${nodeId}?approved=true`;
+			const signedPath = `/webhook-waiting/123/${nodeId}?approved=true`;
 			const signature = require('crypto')
 				.createHmac('sha256', TEST_HMAC_SECRET)
 				.update(signedPath)
 				.digest('hex');
 			const req = mock<WaitingWebhookRequest>({
-				params: { path: 'execution-id', suffix: nodeId },
+				params: { path: '123', suffix: nodeId },
 				method: 'GET',
 				url: `${signedPath}&${WAITING_TOKEN_QUERY_PARAM}=${signature}`,
 				headers: { host: 'example.com' },
@@ -673,9 +694,9 @@ describe('WaitingWebhooks', () => {
 				);
 
 			const req = mock<WaitingWebhookRequest>({
-				params: { path: 'execution-id', suffix: undefined },
+				params: { path: '123', suffix: undefined },
 				method: 'GET',
-				url: `/webhook-waiting/execution-id?${WAITING_TOKEN_QUERY_PARAM}=${resumeToken}&foo=bar`,
+				url: `/webhook-waiting/123?${WAITING_TOKEN_QUERY_PARAM}=${resumeToken}&foo=bar`,
 				headers: { host: 'example.com' },
 			});
 			req.query = { [WAITING_TOKEN_QUERY_PARAM]: resumeToken, foo: 'bar' };
@@ -689,7 +710,7 @@ describe('WaitingWebhooks', () => {
 			expect((calledReq as express.Request).query).not.toHaveProperty(WAITING_TOKEN_QUERY_PARAM);
 			expect((calledReq as express.Request).query).toEqual({ foo: 'bar' });
 			expect((calledReq as express.Request).url).not.toContain(resumeToken);
-			expect((calledReq as express.Request).url).toBe('/webhook-waiting/execution-id?foo=bar');
+			expect((calledReq as express.Request).url).toBe('/webhook-waiting/123?foo=bar');
 		});
 	});
 
@@ -759,14 +780,14 @@ describe('WaitingWebhooks', () => {
 			);
 			const res = buildRes();
 			const req = mock<WaitingWebhookRequest>({
-				params: { path: 'exec-id', suffix: undefined },
+				params: { path: '123', suffix: undefined },
 				method: 'GET',
-				originalUrl: '/webhook-waiting/exec-id?signature=abc',
+				originalUrl: '/webhook-waiting/123?signature=abc',
 			});
 
 			const result = await waitingWebhooks.executeWebhook(req, res);
 
-			expect(res.redirect).toHaveBeenCalledWith(307, '/form-waiting/exec-id?signature=abc');
+			expect(res.redirect).toHaveBeenCalledWith(307, '/form-waiting/123?signature=abc');
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
@@ -776,17 +797,14 @@ describe('WaitingWebhooks', () => {
 			);
 			const res = buildRes();
 			const req = mock<WaitingWebhookRequest>({
-				params: { path: 'exec-id', suffix: 'my-suffix' },
+				params: { path: '123', suffix: 'my-suffix' },
 				method: 'POST',
-				originalUrl: '/webhook-waiting/exec-id/my-suffix?signature=abc',
+				originalUrl: '/webhook-waiting/123/my-suffix?signature=abc',
 			});
 
 			const result = await waitingWebhooks.executeWebhook(req, res);
 
-			expect(res.redirect).toHaveBeenCalledWith(
-				307,
-				'/form-waiting/exec-id/my-suffix?signature=abc',
-			);
+			expect(res.redirect).toHaveBeenCalledWith(307, '/form-waiting/123/my-suffix?signature=abc');
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
@@ -816,9 +834,9 @@ describe('WaitingWebhooks', () => {
 			);
 			const res = buildRes();
 			const req = mock<WaitingWebhookRequest>({
-				params: { path: 'exec-id', suffix: undefined },
+				params: { path: '123', suffix: undefined },
 				method: 'GET',
-				originalUrl: '/webhook-waiting/exec-id?signature=abc',
+				originalUrl: '/webhook-waiting/123?signature=abc',
 			});
 
 			await waitingWebhooks.executeWebhook(req, res);
@@ -849,9 +867,9 @@ describe('WaitingWebhooks', () => {
 			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
 			const res = buildRes();
 			const req = mock<WaitingWebhookRequest>({
-				params: { path: 'exec-id', suffix: undefined },
+				params: { path: '123', suffix: undefined },
 				method: 'GET',
-				originalUrl: '/webhook-waiting/exec-id?signature=abc',
+				originalUrl: '/webhook-waiting/123?signature=abc',
 			});
 
 			await expect(webhooksWithIdenticalEndpoints.executeWebhook(req, res)).rejects.toThrowError(
@@ -950,7 +968,7 @@ describe('WaitingWebhooks', () => {
 			/**
 			 * Arrange
 			 */
-			const executionId = 'test-execution-id';
+			const executionId = '123';
 			const lastNodeExecuted = 'HitlToolNode';
 
 			const mockExecution = mock<IExecutionResponse>({
@@ -1073,7 +1091,7 @@ describe('WaitingWebhooks', () => {
 		});
 
 		it('rejects (does not hang) when executeWebhook throws before invoking the callback', async () => {
-			const executionId = 'test-execution-id';
+			const executionId = '123';
 			const lastNodeExecuted = 'WaitNode';
 
 			const mockExecution = mock<IExecutionResponse>({
@@ -1163,7 +1181,7 @@ describe('WaitingWebhooks', () => {
 			/**
 			 * Arrange
 			 */
-			const executionId = 'test-execution-id';
+			const executionId = '123';
 			const lastNodeExecuted = 'TestNode';
 			const inputOverrideData = [{ json: { test: 'data' } }] as any;
 
@@ -1298,7 +1316,7 @@ describe('WaitingWebhooks', () => {
 			/**
 			 * Arrange
 			 */
-			const executionId = 'test-execution-id';
+			const executionId = '123';
 			const lastNodeExecuted = 'HitlToolNode';
 			const inputOverrideData = [{ json: { toolInput: 'test' } }] as any;
 
@@ -1434,7 +1452,7 @@ describe('WaitingWebhooks', () => {
 			/**
 			 * Arrange
 			 */
-			const executionId = 'test-execution-id';
+			const executionId = '123';
 			const lastNodeExecuted = 'TestNode';
 
 			const mockExecution = mock<IExecutionResponse>({
@@ -1564,7 +1582,7 @@ describe('WaitingWebhooks', () => {
 			/**
 			 * Arrange
 			 */
-			const executionId = 'test-execution-id';
+			const executionId = '123';
 			const lastNodeExecuted = 'WaitNode';
 
 			const mockExecution = mock<IExecutionResponse>({
@@ -1700,7 +1718,7 @@ describe('WaitingWebhooks', () => {
 		}) {
 			const { nodeType, nodeName, nodeId, typeVersion = 1, nodeParameters = {} } = overrides;
 			return mock<IExecutionResponse>({
-				id: 'test-execution-id',
+				id: '123',
 				status: 'waiting',
 				finished: false,
 				mode: 'manual',
@@ -1800,7 +1818,7 @@ describe('WaitingWebhooks', () => {
 			);
 
 			const mockReq = mock<WaitingWebhookRequest>({
-				params: { path: 'test-execution-id', suffix: undefined },
+				params: { path: '123', suffix: undefined },
 				method: 'POST',
 			});
 			vi.useFakeTimers({ toFake: ['Date'] });
@@ -1815,7 +1833,7 @@ describe('WaitingWebhooks', () => {
 			expect(mockEventService.emit).toHaveBeenCalledWith(
 				'execution-resumed',
 				expect.objectContaining({
-					executionId: 'test-execution-id',
+					executionId: '123',
 					workflowId: 'workflow-id',
 					responseAt,
 				}),
@@ -1844,7 +1862,7 @@ describe('WaitingWebhooks', () => {
 			);
 
 			const mockReq = mock<WaitingWebhookRequest>({
-				params: { path: 'test-execution-id', suffix: undefined },
+				params: { path: '123', suffix: undefined },
 				method: 'POST',
 			});
 			await expect(waitingWebhooks.executeWebhook(mockReq, createMockRes())).rejects.toThrow(
@@ -1861,7 +1879,7 @@ describe('WaitingWebhooks', () => {
 			mockWebhookService.getNodeWebhooks.mockReturnValue([]);
 
 			const mockReq = mock<WaitingWebhookRequest>({
-				params: { path: 'test-execution-id', suffix: undefined },
+				params: { path: '123', suffix: undefined },
 				method: 'POST',
 			});
 			await expect(waitingWebhooks.executeWebhook(mockReq, createMockRes())).rejects.toThrowError(
@@ -1887,7 +1905,7 @@ describe('WaitingWebhooks', () => {
 			mockWebhookService.getNodeWebhooks.mockReturnValue([]);
 
 			const mockReq = mock<WaitingWebhookRequest>({
-				params: { path: 'test-execution-id', suffix: sendAndWaitNodeId },
+				params: { path: '123', suffix: sendAndWaitNodeId },
 				method: 'POST',
 			});
 			const result = await waitingWebhooks.executeWebhook(mockReq, createMockRes());
@@ -1910,9 +1928,9 @@ describe('WaitingWebhooks', () => {
 			);
 
 			const mockReq = mock<WaitingWebhookRequest>({
-				params: { path: 'test-execution-id', suffix: undefined },
+				params: { path: '123', suffix: undefined },
 				method: 'GET',
-				originalUrl: '/webhook-waiting/test-execution-id?signature=abc',
+				originalUrl: '/webhook-waiting/123?signature=abc',
 			});
 			await waitingWebhooks.executeWebhook(mockReq, createMockRes());
 
@@ -1956,7 +1974,7 @@ describe('WaitingWebhooks', () => {
 			);
 
 			const mockReq = mock<WaitingWebhookRequest>({
-				params: { path: 'test-execution-id', suffix: sendAndWaitNodeId },
+				params: { path: '123', suffix: sendAndWaitNodeId },
 				method: 'POST',
 			});
 			await waitingWebhooks.executeWebhook(mockReq, createMockRes());
@@ -2010,7 +2028,7 @@ describe('WaitingWebhooks', () => {
 
 			await waitingForms.executeWebhook(
 				mock<WaitingWebhookRequest>({
-					params: { path: 'test-execution-id', suffix: undefined },
+					params: { path: '123', suffix: undefined },
 					method: 'POST',
 				}),
 				createMockRes(),
@@ -2031,13 +2049,14 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 	const executionReader = mock<EngineV2ExecutionReader>();
 	const webhookService = mock<WebhookService>();
 	const executionPersistence = mock<ExecutionPersistence>();
+	const eventService = mock<EventService>();
 	const waitingWebhooks = new WaitingWebhooks(
 		mock(),
 		mock(),
 		executionPersistence,
 		webhookService,
 		mock<InstanceSettings>(),
-		mock<EventService>(),
+		eventService,
 		mock<EndpointsConfig>({ webhookWaiting: 'webhook-waiting', formWaiting: 'form-waiting' }),
 		dataPlane,
 		executionReader,
@@ -2055,11 +2074,15 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 	const snapshot = (status: ExecutionSnapshot['status']) =>
 		({ id: EXECUTION_ID, status, workflow: { nodes: [waitNode] } }) as unknown as ExecutionSnapshot;
 	const target = { stepId: 'step-1', nodeId: 'wait-id' };
-	const request = (query: Record<string, string>, headers: Record<string, string> = {}) => {
-		const url = `/webhook-waiting/${EXECUTION_ID}?${new URLSearchParams(query).toString()}`;
+	const request = (
+		query: Record<string, string>,
+		headers: Record<string, string> = {},
+		pathId: string = EXECUTION_ID,
+	) => {
+		const url = `/webhook-waiting/${pathId}?${new URLSearchParams(query).toString()}`;
 		return mock<WaitingWebhookRequest>({
 			method: 'GET',
-			params: { path: EXECUTION_ID, suffix: undefined },
+			params: { path: pathId, suffix: undefined },
 			query,
 			url,
 			originalUrl: url,
@@ -2078,7 +2101,7 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 		path = '',
 		runData = {},
 	}: { node?: INode; path?: string; runData?: IRunData } = {}) => {
-		dataPlane.locateResumeTarget.mockResolvedValue({
+		dataPlane.locateResume.mockResolvedValue({
 			ok: true,
 			value: { execution: snapshot('waiting'), target },
 		});
@@ -2132,11 +2155,11 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 
 		expect(res.status).toHaveBeenCalledWith(401);
 		expect(res.json).toHaveBeenCalledWith({ error: 'Invalid token' });
-		expect(dataPlane.locateResumeTarget).not.toHaveBeenCalled();
+		expect(dataPlane.locateResume).not.toHaveBeenCalled();
 	});
 
 	it("relays the data plane's refusal of the token as 401, without its reason", async () => {
-		dataPlane.locateResumeTarget.mockResolvedValue({
+		dataPlane.locateResume.mockResolvedValue({
 			ok: false,
 			status: 401,
 			error: 'invalid_token',
@@ -2145,13 +2168,15 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 
 		await waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 'bad' }), res);
 
-		expect(dataPlane.locateResumeTarget).toHaveBeenCalledWith(EXECUTION_ID, { token: 'bad' });
+		expect(dataPlane.locateResume).toHaveBeenCalledWith(
+			expect.objectContaining({ id: EXECUTION_ID, token: 'bad' }),
+		);
 		expect(res.status).toHaveBeenCalledWith(401);
 		expect(res.json).toHaveBeenCalledWith({ error: 'Invalid token' });
 	});
 
 	it('answers 404 for an execution the data plane does not have', async () => {
-		dataPlane.locateResumeTarget.mockResolvedValue({ ok: false, status: 404, error: 'not_found' });
+		dataPlane.locateResume.mockResolvedValue({ ok: false, status: 404, error: 'not_found' });
 
 		await expect(
 			waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), response()),
@@ -2163,7 +2188,7 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 		[501, 'unimplemented', NotImplementedError],
 		[400, 'invalid_request', BadRequestError],
 	])("answers the data plane's %s refusal with its own status", async (status, error, expected) => {
-		dataPlane.locateResumeTarget.mockResolvedValue({ ok: false, status, error });
+		dataPlane.locateResume.mockResolvedValue({ ok: false, status, error });
 
 		await expect(
 			waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), response()),
@@ -2178,7 +2203,7 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 	] as const)(
 		'answers 409 when no step accepts the request and the execution is %s',
 		async (status, message) => {
-			dataPlane.locateResumeTarget.mockResolvedValue({
+			dataPlane.locateResume.mockResolvedValue({
 				ok: true,
 				value: { execution: snapshot(status), target: null },
 			});
@@ -2193,6 +2218,118 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 		},
 	);
 
+	describe('a request to a step that already resumed', () => {
+		const sendAndWaitNode = {
+			...waitNode,
+			id: 'slack-id',
+			name: 'Slack',
+			type: 'n8n-nodes-base.slack',
+			parameters: { operation: SEND_AND_WAIT_OPERATION },
+		};
+		const settled = (status: ExecutionSnapshot['status'], waitingAt: string[] = []) =>
+			({
+				id: EXECUTION_ID,
+				status,
+				workflow: { nodes: [waitNode, sendAndWaitNode] },
+				steps: waitingAt.map((nodeId) => ({ nodeId, status: 'waiting' })),
+			}) as unknown as ExecutionSnapshot;
+		const toNode = (nodeId: string) => {
+			const req = request({ approved: 'true', [WAITING_TOKEN_QUERY_PARAM]: 't' });
+			req.params.suffix = nodeId;
+			return req;
+		};
+
+		it.each([
+			['a completed execution', settled('completed')],
+			['an execution that waits at another node', settled('waiting', ['wait-id'])],
+		])(
+			'renders the no-action page for a send-and-wait node of %s, as v1 does',
+			async (_, execution) => {
+				dataPlane.locateResume.mockResolvedValue({
+					ok: true,
+					value: { execution, target: null },
+				});
+				const res = response();
+
+				await expect(waitingWebhooks.executeWebhook(toNode('slack-id'), res)).resolves.toEqual({
+					noWebhookResponse: true,
+				});
+
+				expect(res.render).toHaveBeenCalledWith('send-and-wait-no-action-required', {
+					isTestWebhook: false,
+				});
+				expect(res.status).not.toHaveBeenCalled();
+				expect(res.setHeader).toHaveBeenCalledWith(
+					'Content-Security-Policy',
+					expect.stringContaining('sandbox'),
+				);
+			},
+		);
+
+		// v1 links name the execution, so v1 resumes the new wait. An engine v2 link
+		// names a settled step and cannot resume it.
+		it('renders the no-action page for a spent link while its node waits again', async () => {
+			dataPlane.locateResume.mockResolvedValue({
+				ok: true,
+				value: { execution: settled('waiting', ['slack-id']), target: null },
+			});
+			const res = response();
+
+			await expect(waitingWebhooks.executeWebhook(toNode('slack-id'), res)).resolves.toEqual({
+				noWebhookResponse: true,
+			});
+
+			expect(res.render).toHaveBeenCalledWith('send-and-wait-no-action-required', {
+				isTestWebhook: false,
+			});
+		});
+
+		it.each([
+			['runs', settled('running'), 'is running already'],
+			['failed', settled('failed'), 'has finished already'],
+			['was cancelled', settled('cancelled'), 'has finished already'],
+		])(
+			'answers 409 for a send-and-wait node of an execution that %s, as v1 does',
+			async (_, execution, message) => {
+				dataPlane.locateResume.mockResolvedValue({ ok: true, value: { execution, target: null } });
+				const res = response();
+
+				await expect(waitingWebhooks.executeWebhook(toNode('slack-id'), res)).rejects.toThrow(
+					`The execution "${EXECUTION_ID}" ${message}.`,
+				);
+				expect(res.render).not.toHaveBeenCalled();
+			},
+		);
+
+		it('names the execution, not the step in the path, when it answers 409', async () => {
+			const STEP_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfb';
+			dataPlane.locateResume.mockResolvedValue({
+				ok: true,
+				value: { execution: settled('running'), target: null },
+			});
+
+			await expect(
+				waitingWebhooks.executeWebhook(
+					request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }, {}, STEP_ID),
+					response(),
+				),
+			).rejects.toThrow(`The execution "${EXECUTION_ID}" is running already.`);
+		});
+
+		it('answers 409 for a node that does not send and wait', async () => {
+			dataPlane.locateResume.mockResolvedValue({
+				ok: true,
+				value: { execution: settled('completed'), target: null },
+			});
+			const res = response();
+
+			await expect(waitingWebhooks.executeWebhook(toNode('wait-id'), res)).rejects.toThrow(
+				`The execution "${EXECUTION_ID}" has finished already.`,
+			);
+			expect(res.render).not.toHaveBeenCalled();
+		});
+	});
+
 	it('runs the waiting node under its own execution id, with the step and token the data plane named', async () => {
 		const { executeWebhookSpy } = acceptResume();
 		const req = request({ [WAITING_TOKEN_QUERY_PARAM]: 'token' });
@@ -2201,7 +2338,9 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 			noWebhookResponse: true,
 		});
 
-		expect(dataPlane.locateResumeTarget).toHaveBeenCalledWith(EXECUTION_ID, { token: 'token' });
+		expect(dataPlane.locateResume).toHaveBeenCalledWith(
+			expect.objectContaining({ id: EXECUTION_ID, token: 'token' }),
+		);
 		const [, , , startNode, , , runExecutionData, executionId, calledReq, , , , options] =
 			executeWebhookSpy.mock.calls[0];
 		expect(executionId).toBe(EXECUTION_ID);
@@ -2216,6 +2355,31 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 		expect(calledReq.params).toEqual({});
 	});
 
+	it('locates a step-bound URL by the step id and the literal path and query, and resumes under the execution id', async () => {
+		const STEP_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfb';
+		const { executeWebhookSpy } = acceptResume();
+		const req = request({ approved: 'true', [WAITING_TOKEN_QUERY_PARAM]: 'token' }, {}, STEP_ID);
+		req.url = req.originalUrl = `/webhook-waiting/${STEP_ID}?approved=true&q=a%20b&signature=token`;
+
+		await waitingWebhooks.executeWebhook(req, response());
+
+		expect(dataPlane.locateResume).toHaveBeenCalledWith({
+			id: STEP_ID,
+			token: 'token',
+			pathAndQuery: `/webhook-waiting/${STEP_ID}?approved=true&q=a%20b`,
+		});
+		const [, , , , , , , executionId, , , , , options] = executeWebhookSpy.mock.calls[0];
+		expect(executionId).toBe(EXECUTION_ID);
+		expect(options).toEqual(
+			expect.objectContaining({ engineResume: { stepId: 'step-1', token: 'token' } }),
+		);
+		options?.onResume?.();
+		expect(eventService.emit).toHaveBeenCalledWith(
+			'execution-resumed',
+			expect.objectContaining({ executionId: EXECUTION_ID }),
+		);
+	});
+
 	it('reads the webhook path that follows the token in the query', async () => {
 		acceptResume({ path: 'my-suffix' });
 
@@ -2226,7 +2390,9 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 			),
 		).resolves.toEqual({ noWebhookResponse: true });
 
-		expect(dataPlane.locateResumeTarget).toHaveBeenCalledWith(EXECUTION_ID, { token: 'token' });
+		expect(dataPlane.locateResume).toHaveBeenCalledWith(
+			expect.objectContaining({ id: EXECUTION_ID, token: 'token' }),
+		);
 	});
 
 	it('answers 404 when the reader cannot map the snapshot to an execution', async () => {
@@ -2300,5 +2466,27 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 
 		expect(execution.data.executionData?.nodeExecutionStack[0].node.disabled).toBe(true);
 		expect(execution.workflowData.nodes[0].disabled).toBeUndefined();
+	});
+});
+
+describe('literalPathAndQuery', () => {
+	it.each([
+		['/webhook-waiting/s/n', '/webhook-waiting/s/n'],
+		['/webhook-waiting/s/n?signature=t', '/webhook-waiting/s/n'],
+		['/webhook-waiting/s/n?approved=true&signature=t', '/webhook-waiting/s/n?approved=true'],
+		['/webhook-waiting/s/n?signature=t&approved=true', '/webhook-waiting/s/n?approved=true'],
+		['/webhook-waiting/s/n?a=1&signature=t&b=2', '/webhook-waiting/s/n?a=1&b=2'],
+		['/webhook-waiting/s/n?xsignature=1&signature=t', '/webhook-waiting/s/n?xsignature=1'],
+		['/webhook-waiting/s/n?q=a%20b&signature=t', '/webhook-waiting/s/n?q=a%20b'],
+	])('cuts the token out of %s as a substring', (url, expected) => {
+		expect(literalPathAndQuery(url)).toBe(expected);
+	});
+
+	// The data plane then refuses the request, because the string differs from the binding.
+	it.each([
+		['/webhook-waiting/s/n?signature=a&signature=b', '/webhook-waiting/s/n?signature=b'],
+		['/webhook-waiting/s/n?%73ignature=t', '/webhook-waiting/s/n?%73ignature=t'],
+	])('keeps a second or an encoded token parameter in %s', (url, expected) => {
+		expect(literalPathAndQuery(url)).toBe(expected);
 	});
 });

@@ -1,4 +1,11 @@
-import type { Agent as RuntimeAgent, SideCallUsageReport, StreamChunk } from '@n8n/agents';
+import type {
+	AgentDbMessage,
+	Agent as RuntimeAgent,
+	ExecutionOptions,
+	SideCallUsageReport,
+	StreamChunk,
+	Workspace,
+} from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
@@ -11,8 +18,10 @@ import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import { AgentTurnExecutionService, type AgentTurnRequest } from '../agent-turn-execution.service';
 import { SESSION_STOPPED_REASON } from '../agent-session-stop-reason';
 import type { ExecutionRecorder } from '../execution-recorder';
+import { EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
 import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import type { AgentTurnFinalizeOutcome } from '../types/agent-turn-outcome';
+import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 
 it('ends a preview turn stopped during preparation without recording an error', async () => {
 	const executions = mock<AgentExecutionService>();
@@ -28,6 +37,7 @@ it('ends a preview turn stopped during preparation without recording an error', 
 		mock<AgentMessageSteeringService>(),
 		mock<AgentToolApprovalService>(),
 		mock<AgentKnowledgeUsageTracker>(),
+		mock<AgentSandboxFilesService>(),
 	);
 	const controller = new AbortController();
 	const turn: AgentTurnRequest = {
@@ -82,12 +92,14 @@ describe('onBeforeFinalize', () => {
 			beforeStream?: () => void;
 			streamError?: Error;
 			expectedError?: Error;
+			workspace?: Workspace;
 		} = {},
 	) {
 		const executions = mock<AgentExecutionService>();
 		executions.finalizeExecution.mockResolvedValue('exec-1');
 		executions.getAbortSignal.mockReturnValue(new AbortController().signal);
 		const chatExecutions = mock<AgentChatExecutionService>();
+		const sandboxFiles = mock<AgentSandboxFilesService>();
 		const service = new AgentTurnExecutionService(
 			mock<Logger>(),
 			executions,
@@ -96,8 +108,10 @@ describe('onBeforeFinalize', () => {
 			mock<AgentMessageSteeringService>(),
 			mock<AgentToolApprovalService>(),
 			mock<AgentKnowledgeUsageTracker>(),
+			sandboxFiles,
 		);
 		const agentInstance = mock<RuntimeAgent>();
+		agentInstance.getWorkspace.mockReturnValue(options.workspace);
 		agentInstance.stream.mockImplementation(async () => {
 			options.beforeStream?.();
 			if (options.streamError) throw options.streamError;
@@ -128,8 +142,43 @@ describe('onBeforeFinalize', () => {
 		};
 		if (options.expectedError) await expect(collect()).rejects.toBe(options.expectedError);
 		else await collect();
-		return { onBeforeFinalize, executions, chatExecutions, chunks: outputChunks };
+		return { onBeforeFinalize, executions, chatExecutions, sandboxFiles, chunks: outputChunks };
 	}
+
+	describe('sandbox outputs', () => {
+		const toolChunks = (toolName: string): StreamChunk[] => [
+			{ type: 'tool-call', toolCallId: 'call-1', toolName, input: {} },
+			{ type: 'tool-result', toolCallId: 'call-1', toolName, output: 'ok' },
+			{ type: 'finish', finishReason: 'stop' },
+		];
+
+		it('stores the outputs of a turn that used the workspace before the hook runs', async () => {
+			const workspace = mock<Workspace>();
+			const { sandboxFiles, onBeforeFinalize } = await runTurn(
+				toolChunks('workspace_execute_command'),
+				{
+					workspace,
+				},
+			);
+
+			expect(sandboxFiles.syncOutputs).toHaveBeenCalledWith(workspace, {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+			});
+			expect(sandboxFiles.syncOutputs.mock.invocationCallOrder[0]).toBeLessThan(
+				onBeforeFinalize.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('does not sync a turn that did not use the workspace', async () => {
+			const { sandboxFiles } = await runTurn(toolChunks('read_binary_data'), {
+				workspace: mock<Workspace>(),
+			});
+
+			expect(sandboxFiles.syncOutputs).not.toHaveBeenCalled();
+		});
+	});
 
 	it('broadcasts server duration with each model turn before finalization', async () => {
 		vi.useFakeTimers();
@@ -371,6 +420,7 @@ describe('onSideCallUsage', () => {
 			mock<AgentMessageSteeringService>(),
 			mock<AgentToolApprovalService>(),
 			mock<AgentKnowledgeUsageTracker>(),
+			mock<AgentSandboxFilesService>(),
 		);
 		const emptyStream = () =>
 			new ReadableStream<StreamChunk>({
@@ -476,4 +526,220 @@ describe('onSideCallUsage', () => {
 			expect((await delivered).error).toEqual(new Error('claim failed'));
 		},
 	);
+});
+
+describe('admitted start turns', () => {
+	async function startTurn(persistence: { threadId: string; resourceId: string }) {
+		const executions = mock<AgentExecutionService>();
+		executions.finalizeExecution.mockResolvedValue('exec-1');
+		executions.getAbortSignal.mockReturnValue(new AbortController().signal);
+		const service = new AgentTurnExecutionService(
+			mock<Logger>(),
+			executions,
+			mock<AgentChatExecutionService>(),
+			mock<AgentMessageQueueService>(),
+			mock<AgentMessageSteeringService>(),
+			mock<AgentToolApprovalService>(),
+			mock<AgentKnowledgeUsageTracker>(),
+			mock<AgentSandboxFilesService>(),
+		);
+		const agentInstance = mock<RuntimeAgent>();
+		agentInstance.stream.mockResolvedValue({
+			stream: new ReadableStream<StreamChunk>({
+				start(controller) {
+					controller.enqueue({ type: 'finish', finishReason: 'stop' });
+					controller.close();
+				},
+			}),
+		} as never);
+		const recording = { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' };
+		const turn = {
+			type: 'start',
+			input: 'hello',
+			options: { abortSignal: new AbortController().signal, persistence },
+			recording,
+		} as unknown as AgentTurnRequest;
+		for await (const _chunk of service.execute({
+			admittedExecution: { executionId: 'exec-1', startedAt: new Date(), inputMessageIds: [] },
+			agentInstance,
+			toolRegistry: new Map(),
+			mcpServerAttributions: new Map(),
+			context: recording,
+			prepare: async () => turn,
+		})) {
+			// Read the stream to the end.
+		}
+		return agentInstance;
+	}
+
+	it('lets the runtime write back abandoned tool calls that it settles in history', async () => {
+		const agentInstance = await startTurn({ threadId: 'thread-1', resourceId: 'user-1' });
+
+		expect(agentInstance.stream).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({
+				persistence: expect.objectContaining({
+					threadId: 'thread-1',
+					persistSettledSuspensions: true,
+					hostMetadata: expect.objectContaining({ [EXECUTION_METADATA_KEY]: 'exec-1' }),
+				}),
+			}),
+		);
+	});
+});
+
+describe('host instructions at the completing boundary', () => {
+	type Boundary = Parameters<NonNullable<ExecutionOptions['onInputBoundary']>>[0];
+
+	const instruction = { reason: 'workflow_setup', content: 'Open the setup card.' };
+
+	async function captureBoundaryHandler(options: {
+		onCompletingBoundary?: () => Promise<typeof instruction | undefined>;
+		steered?: (boundary: Boundary) => AgentDbMessage[];
+	}) {
+		const executions = mock<AgentExecutionService>();
+		executions.finalizeExecution.mockResolvedValue('exec-1');
+		executions.getAbortSignal.mockReturnValue(new AbortController().signal);
+		const chatExecutions = mock<AgentChatExecutionService>();
+		chatExecutions.withTurnLock.mockImplementation(
+			async (_threadId, action) => await action(new AbortController().signal),
+		);
+		const steering = mock<AgentMessageSteeringService>();
+		steering.consume.mockImplementation(async (_context, boundary) => ({
+			messages: options.steered?.(boundary) ?? [],
+			events: [],
+			stopped: false,
+		}));
+		const service = new AgentTurnExecutionService(
+			mock<Logger>(),
+			executions,
+			chatExecutions,
+			mock<AgentMessageQueueService>(),
+			steering,
+			mock<AgentToolApprovalService>(),
+			mock<AgentKnowledgeUsageTracker>(),
+			mock<AgentSandboxFilesService>(),
+		);
+		let handler: ExecutionOptions['onInputBoundary'];
+		const agentInstance = mock<RuntimeAgent>();
+		agentInstance.stream.mockImplementation(async (_input, runOptions) => {
+			handler = runOptions?.onInputBoundary;
+			return {
+				stream: new ReadableStream<StreamChunk>({
+					start(controller) {
+						controller.enqueue({ type: 'finish', finishReason: 'stop' });
+						controller.close();
+					},
+				}),
+			} as never;
+		});
+		const recording = {
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			agentName: 'Agent',
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			userMessage: 'hello',
+			source: 'chat',
+			access: { accessScope: 'user' as const, ownerId: 'user-1' },
+		};
+		const turn: AgentTurnRequest = {
+			type: 'start',
+			input: 'hello',
+			options: { abortSignal: new AbortController().signal },
+			recording,
+		};
+		for await (const _chunk of service.execute({
+			admittedExecution: { executionId: 'exec-1', startedAt: new Date(), inputMessageIds: [] },
+			agentInstance,
+			toolRegistry: new Map(),
+			mcpServerAttributions: new Map(),
+			context: recording,
+			chatSurface: 'system',
+			...(options.onCompletingBoundary
+				? { onCompletingBoundary: options.onCompletingBoundary }
+				: {}),
+			prepare: async () => turn,
+		})) {
+			// Read the stream to the end.
+		}
+		if (!handler) throw new Error('The turn has no input boundary handler');
+		return { handler, steering };
+	}
+
+	const boundary = (overrides: Partial<Boundary> = {}): Boundary => ({
+		messages: [],
+		lastCreatedAt: 1_000,
+		completing: true,
+		canContinue: true,
+		...overrides,
+	});
+
+	it('adds the instruction once per turn and closes steering at the next stop', async () => {
+		const hook = vi.fn().mockResolvedValue(instruction);
+		const { handler, steering } = await captureBoundaryHandler({ onCompletingBoundary: hook });
+
+		const first = await handler(boundary());
+		const second = await handler(boundary({ lastCreatedAt: 2_000 }));
+
+		expect(first).toEqual([
+			expect.objectContaining({
+				type: 'custom',
+				data: { type: 'n8n:host-instruction', ...instruction },
+			}),
+		]);
+		expect(first[0].createdAt.getTime()).toBeGreaterThan(1_000);
+		expect(second).toEqual([]);
+		expect(hook).toHaveBeenCalledTimes(1);
+		// The first stop keeps steering open; only the real end of the turn closes it.
+		expect(steering.consume.mock.calls.map(([, b]) => b.completing)).toEqual([false, true]);
+	});
+
+	it('lets steered input go first and asks the hook again at the next stop', async () => {
+		const steeredMessage: AgentDbMessage = {
+			id: 'steered-1',
+			createdAt: new Date(),
+			role: 'user',
+			content: [{ type: 'text', text: 'Also add Slack' }],
+		};
+		let steeredOnce = false;
+		const hook = vi.fn().mockResolvedValue(instruction);
+		const { handler } = await captureBoundaryHandler({
+			onCompletingBoundary: hook,
+			steered: () => {
+				if (steeredOnce) return [];
+				steeredOnce = true;
+				return [steeredMessage];
+			},
+		});
+
+		expect(await handler(boundary())).toEqual([steeredMessage]);
+		expect(hook).not.toHaveBeenCalled();
+		expect(await handler(boundary())).toHaveLength(1);
+		expect(hook).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([
+		['the stop is not a completing one', { completing: false }],
+		['the turn cannot continue', { canContinue: false }],
+	])('does not ask the hook when %s', async (_name, overrides) => {
+		const hook = vi.fn().mockResolvedValue(instruction);
+		const { handler } = await captureBoundaryHandler({ onCompletingBoundary: hook });
+
+		expect(await handler(boundary(overrides))).toEqual([]);
+		expect(hook).not.toHaveBeenCalled();
+	});
+
+	it('ends the turn when the hook fails', async () => {
+		const hook = vi.fn().mockRejectedValue(new Error('storage down'));
+		const { handler, steering } = await captureBoundaryHandler({ onCompletingBoundary: hook });
+
+		expect(await handler(boundary())).toEqual([]);
+		expect(steering.consume).toHaveBeenLastCalledWith(
+			expect.anything(),
+			expect.objectContaining({ completing: true }),
+			expect.anything(),
+			expect.anything(),
+		);
+	});
 });

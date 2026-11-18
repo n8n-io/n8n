@@ -1,4 +1,25 @@
-import type { RuntimeSkillRegistry } from './types';
+import type { RuntimeSkillRegistry, RuntimeSkillSource } from './types';
+
+export function renderDynamicSkillCatalog(source: RuntimeSkillSource | undefined): string {
+	const dynamicIds = new Set(source?.dynamicCatalog?.skillIds);
+	const catalog = source
+		? renderSkillCatalogPrompt({
+				...source.registry,
+				skills: source.registry.skills.filter(
+					(skill) =>
+						dynamicIds.has(skill.id) || skill.parents?.some((parentId) => dynamicIds.has(parentId)),
+				),
+			})
+		: '';
+	return [
+		'This is the current dynamic skill catalogue from the runtime. It is not a new user request.',
+		'This snapshot replaces earlier dynamic skill catalogues, including those in memory. Only the dynamic skills listed here are available. Do not use earlier copies of removed skills. Skills listed in the system instructions remain available.',
+		source?.dynamicCatalog?.notice,
+		catalog ? `Available dynamic skills:\n${catalog}` : 'No dynamic skills are available.',
+	]
+		.filter(Boolean)
+		.join('\n\n');
+}
 
 export interface RenderSkillCatalogOptions {
 	includeProtocol?: boolean;
@@ -25,8 +46,8 @@ export function renderSkillCatalogPrompt(
 							`  id: ${promptString(skill.id)}`,
 						]),
 				...(skill.category ? [`  category: ${promptString(skill.category)}`] : []),
-				...(skill.recommendedTools?.length
-					? [`  recommendedTools: ${promptStringArray(skill.recommendedTools)}`]
+				...(skill.recommendedToolGroups?.length
+					? [`  recommendedToolGroups: ${promptStringArray(skill.recommendedToolGroups)}`]
 					: []),
 			].join('\n'),
 		)
@@ -49,7 +70,6 @@ When deciding whether to load a skill:
 - A loaded skill can list references with a description of when each applies. Load a reference with \`{ "skillId": "<reference id>" }\` only when its description matches the current step.`
 			: ''
 	}
-- If the relevant skill was already loaded for this request, do not call load_skill again.
 - If no skill clearly matches, do not call load_skill.
 - Do not load a skill just because it is listed here.`;
 }

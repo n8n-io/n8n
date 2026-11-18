@@ -5,7 +5,7 @@ import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { mapCredentialForProvider } from '@/credentials/credential-field-mapping';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';

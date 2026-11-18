@@ -2,6 +2,7 @@ import type { AuthenticatedRequest, User } from '@n8n/db';
 import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentSessionStopService } from '../agent-session-stop.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentMemoryTraceService } from '../agent-memory-trace.service';
@@ -30,6 +31,7 @@ describe('AgentThreadsController route access scopes', () => {
 	it.each([
 		['listThreads', 'get', '/:agentId/threads'],
 		['getThread', 'get', '/:agentId/threads/:threadId'],
+		['resumeTaskApproval', 'post', '/:agentId/threads/:threadId/approval'],
 		['exportThreadToLangSmith', 'post', '/:agentId/threads/:threadId/langsmith-export'],
 		['stopSession', 'post', '/:agentId/threads/:threadId/stop'],
 		['deleteThread', 'delete', '/:agentId/threads/:threadId'],
@@ -40,6 +42,7 @@ describe('AgentThreadsController route access scopes', () => {
 	it.each([
 		['listThreads', 'agent:read'],
 		['getThread', 'agent:read'],
+		['resumeTaskApproval', 'agent:execute'],
 		['exportThreadToLangSmith', 'agent:read'],
 		['stopSession', 'agent:execute'],
 		['deleteThread', 'agent:update'],
@@ -56,6 +59,7 @@ describe('AgentThreadsController route access scopes', () => {
 			agentExecutionService,
 			memoryTraceService,
 			mock<AgentSessionLangSmithExportService>(),
+			mock<AgentExecutionOrchestratorService>(),
 			new SystemAgentRegistry(),
 			mock<AgentSessionStopService>(),
 		);
@@ -89,6 +93,43 @@ describe('AgentThreadsController route access scopes', () => {
 	});
 });
 
+describe('AgentThreadsController task approval', () => {
+	it('passes the posted tool call id to the resume', async () => {
+		const orchestrator = mock<AgentExecutionOrchestratorService>();
+		const controller = new AgentThreadsController(
+			mock<AgentExecutionService>(),
+			mock<AgentMemoryTraceService>(),
+			mock<AgentSessionLangSmithExportService>(),
+			orchestrator,
+			new SystemAgentRegistry(),
+			mock<AgentSessionStopService>(),
+		);
+		const user = mock<User>({ id: 'user-1' });
+		const req = mock<
+			AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>
+		>({
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+			user,
+		});
+		const response = { toolCallId: 'from-response', resumeData: { approved: false } };
+
+		const result = await controller.resumeTaskApproval(req, response as never, {
+			toolCallId: 'call-1',
+			resumeData: { approved: true },
+		});
+
+		expect(result).toEqual({ success: true });
+		expect(orchestrator.resumeTaskApproval).toHaveBeenCalledWith({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+			user,
+			toolCallId: 'call-1',
+			resumeData: { approved: true },
+		});
+	});
+});
+
 describe('AgentThreadsController session details', () => {
 	it.each([
 		['private root', 'user', null, 'chat', true],
@@ -106,6 +147,7 @@ describe('AgentThreadsController session details', () => {
 				service,
 				mock<AgentMemoryTraceService>(),
 				mock<AgentSessionLangSmithExportService>(),
+				mock<AgentExecutionOrchestratorService>(),
 				new SystemAgentRegistry(),
 				mock<AgentSessionStopService>(),
 			);
@@ -150,6 +192,7 @@ describe('AgentThreadsController deleteThread', () => {
 			service,
 			mock<AgentMemoryTraceService>(),
 			mock<AgentSessionLangSmithExportService>(),
+			mock<AgentExecutionOrchestratorService>(),
 			registry,
 			mock<AgentSessionStopService>(),
 		);
@@ -190,6 +233,7 @@ describe('AgentThreadsController stopSession', () => {
 			mock<AgentExecutionService>(),
 			mock<AgentMemoryTraceService>(),
 			mock<AgentSessionLangSmithExportService>(),
+			mock<AgentExecutionOrchestratorService>(),
 			new SystemAgentRegistry(),
 			stopService,
 		);

@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
+import type { UrlService } from '@n8n/backend-services';
 import type { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { NotFoundError } from '@n8n/errors';
@@ -7,6 +8,8 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentCredentialLookupService } from '../../../agent-credential-lookup.service';
 import {
+	isNumberNotFoundError,
+	isPermissionError,
 	resolveWhatsAppMetaState,
 	type WhatsAppMetaSignals,
 } from '../../whatsapp/whatsapp-meta-status';
@@ -29,8 +32,9 @@ describe('resolveWhatsAppMetaState', () => {
 		],
 		['a number that Meta disconnected', { numberStatus: 'DISCONNECTED' }, 'numberUnavailable'],
 		['a number that Meta banned', { numberStatus: 'BANNED' }, 'numberUnavailable'],
-		['a number that was deleted', { numberStatus: 'DELETED' }, 'numberUnavailable'],
-		['a number that moved to another account', { numberStatus: 'MIGRATED' }, 'numberUnavailable'],
+		// Meta gives an error for a deleted number, so this status does not come back.
+		['a DELETED status', { numberStatus: 'DELETED' }, 'connected'],
+		['a number that moved to another account', { numberStatus: 'MIGRATED' }, 'numberMigrated'],
 		[
 			'a number that cannot send, over a name in review',
 			{ numberStatus: 'BANNED', nameStatus: 'PENDING_REVIEW' },
@@ -116,6 +120,34 @@ describe('resolveWhatsAppMetaState', () => {
 	});
 });
 
+describe('isNumberNotFoundError', () => {
+	it.each<[string, unknown, boolean]>([
+		['code 100 with subcode 33', { error: { code: 100, error_subcode: 33 } }, true],
+		['code 100 without a subcode', { error: { code: 100 } }, false],
+		['code 100 with another subcode', { error: { code: 100, error_subcode: 2018001 } }, false],
+		['another code with subcode 33', { error: { code: 190, error_subcode: 33 } }, false],
+		['a body with no error', { status: 'CONNECTED' }, false],
+		['no body', undefined, false],
+	])('gives the right answer for %s', (_label, body, expected) => {
+		expect(isNumberNotFoundError(body)).toBe(expected);
+	});
+});
+
+describe('isPermissionError', () => {
+	it.each<[string, unknown, boolean]>([
+		['code 10', { error: { code: 10 } }, true],
+		['code 200', { error: { code: 200 } }, true],
+		['code 299', { error: { code: 299 } }, true],
+		['code 300', { error: { code: 300 } }, false],
+		['code 190, a bad token', { error: { code: 190 } }, false],
+		['code 100 with subcode 33', { error: { code: 100, error_subcode: 33 } }, false],
+		['a code that is not a number', { error: { code: '10' } }, false],
+		['no body', undefined, false],
+	])('gives the right answer for %s', (_label, body, expected) => {
+		expect(isPermissionError(body)).toBe(expected);
+	});
+});
+
 describe('WhatsAppCredentialCheckService.getMetaStatus', () => {
 	const user = mock<User>({ id: 'user-1' });
 	const credential = {
@@ -153,6 +185,7 @@ describe('WhatsAppCredentialCheckService.getMetaStatus', () => {
 			outboundHttp,
 			mock<Logger>(),
 			mock<AgentsConfig>(),
+			mock<UrlService>(),
 		);
 	});
 
@@ -194,8 +227,65 @@ describe('WhatsAppCredentialCheckService.getMetaStatus', () => {
 		expect((await service.getMetaStatus(user, 'project-1', 'cred-1')).state).toBe('dailyLimit');
 	});
 
+	it('gives numberNotFound when Meta does not find the number', async () => {
+		// The reply Meta gives for a phone number ID that does not exist.
+		request.mockImplementation(async ({ url }: { url: string }) =>
+			url.endsWith('/222')
+				? { statusCode: 400, body: {} }
+				: {
+						statusCode: 400,
+						body: {
+							error: {
+								message:
+									"Unsupported get request. Object with ID '111' does not exist, cannot be loaded due to missing permissions, or does not support this operation.",
+								type: 'GraphMethodException',
+								code: 100,
+								error_subcode: 33,
+								fbtrace_id: 'trace',
+							},
+						},
+					},
+		);
+
+		expect(await service.getMetaStatus(user, 'project-1', 'cred-1')).toEqual({
+			state: 'numberNotFound',
+		});
+	});
+
+	it.each([
+		['code 10', 10],
+		['code 200', 200],
+	])(
+		'gives numberNotFound when Meta refuses the number for a permission, %s',
+		async (_label, code) => {
+			request.mockImplementation(async ({ url }: { url: string }) =>
+				url.endsWith('/222')
+					? { statusCode: 400, body: {} }
+					: { statusCode: 403, body: { error: { code, message: 'Permission denied' } } },
+			);
+
+			expect(await service.getMetaStatus(user, 'project-1', 'cred-1')).toEqual({
+				state: 'numberNotFound',
+			});
+		},
+	);
+
 	it.each([
 		['Meta refuses the number request', async () => ({ statusCode: 400, body: {} })],
+		[
+			'the token is not valid',
+			async () => ({
+				statusCode: 401,
+				body: { error: { code: 190, error_subcode: 463, message: 'Session has expired' } },
+			}),
+		],
+		[
+			'Meta refuses the number request for another reason',
+			async () => ({
+				statusCode: 400,
+				body: { error: { code: 100, message: 'Tried accessing nonexisting field' } },
+			}),
+		],
 		[
 			'Meta cannot be reached',
 			async () => {

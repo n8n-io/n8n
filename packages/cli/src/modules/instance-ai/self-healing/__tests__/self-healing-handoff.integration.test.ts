@@ -71,7 +71,6 @@ async function savedResult() {
 			projectId: ownerProject.id,
 			backgroundUserId: backgroundUser.id,
 			executionId: execution.id,
-			suggestionId: null,
 			usage: {
 				credits: 1,
 				turns: 2,

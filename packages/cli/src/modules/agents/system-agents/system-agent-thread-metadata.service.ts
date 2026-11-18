@@ -28,6 +28,44 @@ export class SystemAgentThreadMetadataService {
 	}
 
 	/**
+	 * The working project and the whole metadata of the thread, for a module
+	 * that owns several related keys. The metadata is `undefined` before the
+	 * first turn.
+	 */
+	async readThread(
+		agentId: string,
+		user: User,
+		threadId: string,
+	): Promise<{ projectId: string; metadata: Record<string, unknown> | undefined }> {
+		const { projectId } = await this.systemAgents.getUsableThread(agentId, user, threadId);
+		const thread = await this.n8nMemory.getImplementation(agentId).getThread(threadId);
+		return { projectId, metadata: thread?.metadata };
+	}
+
+	/**
+	 * Change several keys on the locked thread row in one write. `change` gets
+	 * the whole metadata and returns the whole new metadata, or `undefined` to
+	 * write nothing. Returns the stored metadata, or `undefined` when the thread
+	 * has no row yet.
+	 */
+	async patch(
+		agentId: string,
+		user: User,
+		threadId: string,
+		change: (metadata: Record<string, unknown>) => Record<string, unknown> | undefined,
+	): Promise<Record<string, unknown> | undefined> {
+		await this.systemAgents.getUsableThread(agentId, user, threadId);
+		const updated = await this.n8nMemory.getImplementation(agentId).patchThread({
+			threadId,
+			update: ({ metadata }) => {
+				const next = change(metadata ?? {});
+				return next === undefined ? null : { metadata: next };
+			},
+		});
+		return updated?.metadata;
+	}
+
+	/**
 	 * Change `key` on the locked thread row. The other keys stay. `change` gets
 	 * the current value, and returns the new value, or `undefined` to write nothing.
 	 */

@@ -1,8 +1,7 @@
-import { createRuntimeSkillSource } from '../../../skills/registry';
+import type { BuiltMemory, BuiltTool } from '../../../types';
 import type { ModelConfig } from '../../../types/sdk/agent';
+import { READ_HISTORY_TOOL_NAME } from '../../memory/history-recall-tool';
 import { getCatalogModelId, getModelIdString } from '../../../utils/model';
-import { AgentMessageList } from '../../model/message-list';
-import { ActiveSkills } from '../../skills/active-skills';
 import { RuntimeContextBuilder } from '../runtime-context';
 
 describe('getModelIdString', () => {
@@ -52,50 +51,50 @@ describe('getCatalogModelId', () => {
 	});
 });
 
-describe('OpenRouter recovered skills', () => {
-	it('keeps the caller instruction marker without copying it to recovered skills', async () => {
-		const marker = { anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } } };
-		const builder = new RuntimeContextBuilder(
+describe('read_history wiring', () => {
+	const persistence = { threadId: 't-1', resourceId: 'r-1' };
+	const memory = { getMessages: vi.fn(async () => []) } as unknown as BuiltMemory;
+
+	function build(historyRecall: boolean, tools: BuiltTool[] = []) {
+		return new RuntimeContextBuilder(
 			{
 				name: 'test',
-				model: 'openrouter/anthropic/claude-sonnet-4.5',
+				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Base instructions',
-				instructionProviderOptions: marker,
-				promptCaching: { enabled: true },
+				memory,
+				observationalMemory: { historyRecall },
+				tools,
 			},
 			undefined,
 		);
-		const list = new AgentMessageList();
-		list.addInput([{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }]);
-		const source = createRuntimeSkillSource([
-			{
-				id: 'notes',
-				name: 'Notes',
-				description: 'Summarize notes.',
-				instructions: 'Extract decisions.',
-			},
-		]);
-		const activeSkills = new ActiveSkills(source, 'test');
-		await activeSkills.restore(list);
-		await activeSkills.load('notes');
-		const before = list.serialize();
+	}
 
-		const prompt = builder.buildModelPrompt({
-			list,
-			tools: await builder.buildToolLoopContext({}),
-			instructionProviderOptions: builder.buildInstructionProviderOptions(),
-			providerOptions: { openrouter: { user: 'test-user' } },
-			hostVolatileInstructions: 'Current context',
-			activeSkills,
-		});
+	it('adds read_history when history recall is enabled', () => {
+		const names = build(true)
+			.getCurrentTools(persistence)
+			.map((tool) => tool.name);
+		expect(names).toContain(READ_HISTORY_TOOL_NAME);
+	});
 
-		expect(prompt.system).toHaveLength(3);
-		expect(JSON.stringify(prompt.system).match(/"cacheControl":/g)).toHaveLength(1);
-		expect(prompt.system).toContainEqual(expect.objectContaining({ providerOptions: marker }));
-		expect(prompt.providerOptions).toEqual({
-			openrouter: { user: 'test-user', cacheControl: { type: 'ephemeral', ttl: '1h' } },
-		});
-		expect(list.serialize()).toEqual(before);
+	it('leaves read_history out when history recall is off', () => {
+		const names = build(false)
+			.getCurrentTools(persistence)
+			.map((tool) => tool.name);
+		expect(names).not.toContain(READ_HISTORY_TOOL_NAME);
+	});
+
+	it('leaves read_history out without persistence', () => {
+		const names = build(true)
+			.getCurrentTools()
+			.map((tool) => tool.name);
+		expect(names).not.toContain(READ_HISTORY_TOOL_NAME);
+	});
+
+	it('rejects a user tool with the reserved name', () => {
+		const userTool = { name: READ_HISTORY_TOOL_NAME } as BuiltTool;
+		expect(() => build(true, [userTool]).getCurrentTools(persistence)).toThrow(
+			'is reserved while history recall is enabled',
+		);
 	});
 });
 

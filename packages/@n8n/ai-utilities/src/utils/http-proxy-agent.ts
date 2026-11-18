@@ -30,7 +30,7 @@ import {
 import type { AgentOptions } from 'node:https';
 import { pipeline, type Readable, Transform } from 'node:stream';
 import type { Dispatcher } from 'undici';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 /**
  * Options for configuring HTTP agent timeouts.

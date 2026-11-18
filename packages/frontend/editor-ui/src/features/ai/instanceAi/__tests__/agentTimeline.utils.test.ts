@@ -485,6 +485,33 @@ describe('buildTimelineBlocks', () => {
 		expect(blocks.map((block) => block.type)).toEqual(['thinking', 'mcp-connect']);
 	});
 
+	test('an app blueprint renders as a standalone block', () => {
+		const blocks = blocksOf(
+			[toolEntry('tc-1', 'r1')],
+			[
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'apps',
+					confirmation: {
+						requestId: 'req-1',
+						severity: 'info',
+						message: 'Review the app blueprint',
+						inputType: 'app-blueprint',
+						appBlueprint: {
+							name: 'Planner',
+							namespace: 'planner',
+							visibility: 'project',
+							description: 'Plan weekly tasks.',
+							theme: 'both',
+						},
+					},
+				}),
+			],
+		);
+
+		expect(blocks.map((block) => block.type)).toEqual(['app-blueprint']);
+	});
+
 	test('an in-flight connect call stays a trace row until its payload arrives', () => {
 		const blocks = blocksOf(
 			[reasoning('r1'), toolEntry('tc-1', 'r1')],
@@ -806,6 +833,21 @@ describe('buildTimelineBlocks', () => {
 		]);
 	});
 
+	test('leaves out a cloud browser sub-agent', () => {
+		const backgroundChild = makeAgentNode({
+			agentId: 'browser-1',
+			role: 'cloud-browser',
+			kind: 'cloud-browser',
+			taskId: 'task-1',
+		});
+
+		const blocks = blocksOf([{ type: 'child', agentId: 'browser-1' }], [], 'completed', [
+			backgroundChild,
+		]);
+
+		expect(blocks).toEqual([]);
+	});
+
 	test('does not hide unrelated trace tools when child is not a builder', () => {
 		const childEntry = (agentId: string, responseId?: string): InstanceAiTimelineEntry => ({
 			type: 'child',
@@ -1079,20 +1121,4 @@ describe('buildTimelineBlocks — instance context', () => {
 
 		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
 	});
-});
-
-test('keeps an automatic skill update in the trace before the answer', () => {
-	const update: InstanceAiTimelineEntry = {
-		type: 'skill-update',
-		runId: 'run-1',
-		skillId: 'hub:1',
-		name: 'Writing',
-		version: 'v2',
-		change: 'updated',
-	};
-	const answer: InstanceAiTimelineEntry = { type: 'text', content: 'Here is the answer.' };
-	expect(buildTimelineBlocks([update, answer], {}, {}, 'completed')).toEqual([
-		{ type: 'thinking', key: 'thinking-0', entries: [update], active: false },
-		{ type: 'text', key: 'text-1', entry: answer },
-	]);
 });

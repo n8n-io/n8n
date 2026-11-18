@@ -13,6 +13,45 @@ union when the host has not wired them. Some tools instead keep an unavailable
 action or fallback tool surface and return an error or empty result. Tool ids
 live in `src/tools/tool-ids.ts`.
 
+### Approval modes
+
+Each user picks an approval mode in the chat. Auto needs the PostHog flag
+`144_instance_ai_approval_modes`. Without it, every run is Manual and the chat
+shows no selector. With it, a user without a saved choice gets Auto. The judge
+uses `N8N_INSTANCE_AI_APPROVAL_JUDGE_MODEL`, or the utility model when that is
+empty or can't be resolved. The mode is stored in `user.settings.instanceAi.approvalMode` through
+`PUT /assistant/preferences`. Auto mode is not part of the Agent Builder: a
+thread that builds or edits an agent, or a message that attaches an agent,
+runs in Manual mode.
+
+Every action passes two checks in order:
+
+1. **Rules.** The admin value in Settings applies first. Block stops the
+   action, Allow runs it, and a thread grant from "Always allow" counts as
+   Allow. Tools behind the SDK approval gate (MCP tools) save their "Always
+   allow" grants as thread grants too (`createThreadApprovalContext`). In Auto, a user's MCP tool permissions can only make the admin's MCP
+   permissions stricter. Manual keeps a user's MCP permissions as they are.
+2. **Mode.** An action set to Ask first suspends for approval. Manual shows the
+   card. Auto reviews the suspension first, in `src/approval-review/`:
+   - fixed rules in `pending-approval.ts` decide first: actions that remove,
+     stop or replace something always show the card, small additions run, and
+     an MCP call too long for the judge to read in full shows the card;
+   - every other plain approval, including web fetches, web searches and MCP
+     tool calls, goes to the judge model, which approves or asks. An error or
+     a timeout shows the card.
+
+Tools need no code for Auto mode. The wrapper in `approval-review.ts` calls a
+tool with a probe `suspend()` and, when the review approves, again with
+`{ approved: true }`. Cards that need input (setup, credentials, questions,
+resource decisions) always show. An approved call emits `auto-approval`, its
+judge tokens are claimed from the user's credits, and a tool keeps the grant
+that its approval gives, as "Allow once" does in Manual mode. Telemetry that
+the probe tracks is sent only when the card shows. `approval-judge.ts`
+describes what the judge reads and how it cuts long input.
+
+The judge sees the user's messages, the user's answers in question cards, and
+the Assistant's text.
+
 ### Approval copy
 
 An approval card has a title and a description. The title names the asset without
@@ -39,17 +78,16 @@ show a generic description such as `Save the changes to this workflow`.
 Data-table approvals build the description from the tool input: columns, row
 counts, and filter conditions. Insert previews show up to three rows, five columns
 per row, and 100 characters per JSON-formatted value, including quotes. The card states how many rows or columns
-the preview omits. Pass `dataTableName` and `currentColumnName` when known
-so the card shows names instead of IDs. No tool looks up names only for the
-card. These messages do not change approval permissions or group separate tool
-calls. Bare `like` and `ilike` values use contains matching: the data-table
+the preview omits. One `change_data_tables` call shows one card that lists
+every change of the batch. These messages do not change approval permissions. Bare `like` and `ilike` values use contains matching: the data-table
 service adds `%` before and after a value when it has no `%`. Values with `%`
 keep their explicit pattern. `like` matches case; `ilike` ignores case.
 
 | Tool | Actions |
 |------|---------|
 | `list_workflows`, `get_workflow_node_usage`, `get_workflow`, `get_workflow_as_code`, `archive_workflow`, `unarchive_workflow`, `setup_workflow`, `validate_workflow`, `publish_workflow`, `unpublish_workflow`, `list_workflow_versions`, `restore_workflow_version`, `update_workflow_version` | single-purpose |
-| `list_data_tables`, `get_data_table_schema`, `query_data_table`, `create_data_table`, `delete_data_table`, `add_data_table_column`, `delete_data_table_column`, `rename_data_table_column`, `insert_data_table_rows`, `update_data_table_rows`, `delete_data_table_rows` | single-purpose |
+| `list_data_tables`, `get_data_table_schema`, `query_data_table` | single-purpose |
+| `change_data_tables` | 8 change actions in one batch |
 | `list_projects`, `list_tags`, `tag_workflow`, `cleanup_test_executions`, `list_folders`, `create_folder`, `delete_folder`, `move_workflow_to_folder` | single-purpose |
 | `workflow_builder_executions` | 8 |
 | `list_credentials`, `search_credential_types`, `setup_credentials`, `test_credential`, `delete_credential`, `update_credential_description` | single-purpose |
@@ -966,13 +1004,13 @@ returns `nodes`.
 
 ### `get_node_types`
 
-Get TypeScript definitions for one to ten node types, including exact
+Get TypeScript definitions for one or more node types, including exact
 parameters, credentials, display conditions, builder annotations, Gateway
 credits metadata, and webhook or trigger details.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `nodeTypes` | array | yes | One to ten node requests. Each entry is a node type string or `{ nodeType, version?, resource?, operation?, mode? }` |
+| `nodeTypes` | array | yes | One or more node requests. Each entry is a node type string or `{ nodeType, version?, resource?, operation?, mode? }` |
 
 **Returns**: `{ definitions }`. A definition that cannot load carries an
 `error` field.
@@ -1102,39 +1140,50 @@ one caller stops its wait without cancelling a refresh shared with other callers
 
 ---
 
-## Data table tools (11 tools)
+## Data table tools (4 tools)
 
-Full CRUD suite for n8n data tables. Each operation is a separate tool. System
-columns (`id`, `createdAt`, `updatedAt`) are reserved and auto-managed. The
-read tools never suspend. The write tools ask for approval unless the
-permission allows them. Stored calls of the former `data_tables` tool still
-resolve to the matching tool.
+Three read tools and one write tool. System columns (`id`, `createdAt`,
+`updatedAt`) are reserved and auto-managed. The read tools never suspend.
 
-### Table operations
+### Read tools
 
 | Tool | Description |
 |------|-------------|
 | `list_data_tables` | List data tables |
-| `create_data_table` | Create a data table with columns |
-| `delete_data_table` | Delete a data table after confirmation |
 | `get_data_table_schema` | Get the table columns |
-
-### Column operations
-
-| Tool | Description |
-|------|-------------|
-| `add_data_table_column` | Add a column to a table |
-| `delete_data_table_column` | Remove a column from a table |
-| `rename_data_table_column` | Rename a column |
-
-### Row operations
-
-| Tool | Description |
-|------|-------------|
 | `query_data_table` | Query rows with optional filters |
-| `insert_data_table_rows` | Insert one or more rows |
-| `update_data_table_rows` | Update rows matching a filter |
-| `delete_data_table_rows` | Delete rows matching a non-empty filter after confirmation |
+
+### `change_data_tables`
+
+Input: `{ projectId?, changes: [{ action, ... }] }`, with 1 to 50 changes.
+
+| Action | Description |
+|--------|-------------|
+| `create` | Create a table with typed columns |
+| `delete` | Delete a table and all its rows |
+| `add-column` | Add a column |
+| `delete-column` | Remove a column |
+| `rename-column` | Rename a column |
+| `insert-rows` | Insert 1 to 100 rows |
+| `update-rows` | Update rows that match a filter |
+| `delete-rows` | Delete rows that match a non-empty filter |
+
+- `table` accepts a table ID or name. A later change can name a table that an
+  earlier change in the batch creates. `column` accepts a column name, or an ID
+  for `delete-column` and `rename-column`.
+- The tool checks the whole batch before it runs a change. Then it runs the
+  changes in order and stops at the first failure. Earlier changes stay
+  applied. The result lists `applied`, `failed`, and `skipped` changes.
+- The user approves the whole batch on one card. A change needs no approval
+  when the permission is `always_allow`, when a session approval covers its
+  action, or when it changes columns or rows of a table that the thread
+  created. Session approvals never cover destructive actions. An approval
+  applies only to the tables that the card showed. If one of them changed, the
+  tool shows a new card.
+- The former write tools (`create_data_table`, `insert_data_table_rows`, and
+  the others) and the former `data_tables` tool are legacy names. A suspended
+  call under such a name still resumes through `change_data_tables`. A new call
+  under such a name fails as an unknown tool.
 
 ---
 
@@ -1237,14 +1286,23 @@ when the supplied credential or node context is enough. `intent` is one of
 Results include registry metadata and can include a hint or error. Answers based
 on returned documents must cite the returned page titles and public URLs.
 
-## `parse-file` *(conditional)*
+## `parse-file`
 
-Parse an attachment from the current user message. The registry adds this tool
-only when the current turn contains a parseable attachment.
+Parse a user file. The registry adds the tool on every turn, with or without
+files, so the tool list stays the same and the prompt cache stays valid. It
+adds one of two versions:
+
+- When the host sets `storedFiles` on the context, the tool reads a stored file
+  of the thread by `fileId`. The Assistant on the Agents runtime uses this
+  version. The model gets each `fileId` from the file attachment label in the
+  conversation.
+- Otherwise, the tool reads an attachment of the current user message by
+  `attachmentIndex`. On a turn without files, it returns an error.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `attachmentIndex` | number | no | 0 | Zero-based attachment index |
+| `fileId` | string | yes (stored-file version) | — | Id of a stored file of the thread |
+| `attachmentIndex` | number | no (current-message version) | 0 | Zero-based attachment index |
 | `format` | enum | no | detected | `csv`, `tsv`, `json`, `xlsx`, `text`, `markdown`, `html`, `pdf`, or `docx` |
 | `hasHeader` | boolean | no | true | Treat the first CSV or TSV row as headers |
 | `delimiter` | string | no | — | One-character CSV delimiter override |
@@ -1309,8 +1367,8 @@ carries *what* it does.
 Build n8n Apps. Present only when the apps module is active, the run has a
 bound project and the sandbox is available. The adapter wires `appService`, and
 the turn setup removes it without a sandbox, so the tool, the `app-builder`
-skill and the `<app-targets>` block share one gate. Deferred: the skill lists
-the tool in `recommended_tools`.
+skill and the `<app-targets>` block share one gate. Deferred: the tool is in the
+default `tools` tool group, which the skill lists in `recommended_tool_groups`.
 
 | Action | Scope | Description |
 |--------|-------|-------------|
@@ -1580,7 +1638,9 @@ The orchestrator receives the safe native domain tools and orchestration tools
 from `src/tools/index.ts`. Its workflow tool omits raw workflow JSON reads and
 full-definition replacements. It receives the four node tools: `search_nodes`, `get_node_types`, `get_node_parameter_options`, and `execute_node`.
 External and local MCP tools are added after their names are checked against the
-native tools active for the current request.
+native tools active for the current request. "Always allow" on their approval cards
+saves a thread grant, the same grant that built-in tools use
+(`createThreadApprovalContext`).
 
 The embedded Agent Builder uses the agents-module builder's own tool surface
 through `agent_builder_build_agent`. It does not receive the Instance AI domain registry. It
@@ -1614,7 +1674,7 @@ existing domain.
 4. Register it in `src/tools/index.ts` with `createOrchestratorDomainTools` or
    `createOrchestrationTools`
 5. Decide whether it belongs in `ALWAYS_LOADED_TOOL_NAMES`. Everything not in
-   that set is normally reached through `search_tools` + `load_tool`. Deferral is the right default, but a tool whose job is to reveal
+   that set is listed by name in the tool catalog and run through `call_tool`. Deferral is the right default, but a tool whose job is to reveal
    an absence, or to redirect the model's attention, cannot be found by
    searching for it
 6. For HITL tools, define `suspendSchema` and `resumeSchema` — `@n8n/agents` handles

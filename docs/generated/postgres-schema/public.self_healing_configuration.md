@@ -9,6 +9,7 @@
 | enabledById | uuid |  | true |  | [public.user](public.user.md) | User whose access authorizes future investigations |
 | id | integer |  | false | [public.self_healing_configuration_reviewer](public.self_healing_configuration_reviewer.md) [public.self_healing_configuration_workflow](public.self_healing_configuration_workflow.md) [public.self_healing_investigation](public.self_healing_investigation.md) [public.self_healing_result](public.self_healing_result.md) |  |  |
 | includeAllProjectMembers | boolean | false | false |  |  |  |
+| includeSubWorkflows | boolean | false | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
 | scope | varchar(16) |  | false |  |  | All project workflows or explicit selections |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -25,6 +26,7 @@
 | self_healing_configuration_enabled_not_null | n | NOT NULL enabled |
 | self_healing_configuration_id_not_null | n | NOT NULL id |
 | self_healing_configuration_includeAllProjectMembers_not_null | n | NOT NULL "includeAllProjectMembers" |
+| self_healing_configuration_includeSubWorkflows_not_null | n | NOT NULL "includeSubWorkflows" |
 | self_healing_configuration_projectId_not_null | n | NOT NULL "projectId" |
 | self_healing_configuration_scope_not_null | n | NOT NULL scope |
 | self_healing_configuration_updatedAt_not_null | n | NOT NULL "updatedAt" |
@@ -56,6 +58,7 @@ erDiagram
   uuid enabledById FK
   integer id
   boolean includeAllProjectMembers
+  boolean includeSubWorkflows
   varchar_36_ projectId FK
   varchar_16_ scope
   timestamp_3__with_time_zone updatedAt
@@ -107,14 +110,12 @@ erDiagram
   timestamp_3__with_time_zone completedAt
   integer configurationId FK
   timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone dismissedAt
-  uuid dismissedById FK
   varchar_36_ executionId
   varchar_36_ id
   varchar_16_ outcome
   varchar_36_ projectId FK
   text report
-  varchar_36_ suggestionId FK
+  varchar_16_ reviewState
   text summary
   timestamp_3__with_time_zone updatedAt
   json usage

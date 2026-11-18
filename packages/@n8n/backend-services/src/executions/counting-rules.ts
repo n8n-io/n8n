@@ -1,3 +1,8 @@
+import type {
+	ExecutionLedgerEntityType,
+	ExecutionLedgerEvent,
+	ExecutionLedgerOutcome,
+} from '@n8n/db';
 import {
 	isTerminalExecutionStatus,
 	type ExecutionStatus,
@@ -5,10 +10,10 @@ import {
 	type WorkflowExecutionSource,
 } from 'n8n-workflow';
 
-export type LedgerEntityType = 'workflow' | 'agent';
-export type LedgerEvent = 'started' | 'ended';
+export type LedgerEntityType = ExecutionLedgerEntityType;
+export type LedgerEvent = ExecutionLedgerEvent;
 /** `none` for `started` rows. `blocked`: the run stopped before its first node. */
-export type LedgerOutcome = 'none' | 'success' | 'error' | 'crashed' | 'canceled' | 'blocked';
+export type LedgerOutcome = ExecutionLedgerOutcome;
 export type LedgerSource = WorkflowExecutionSource | 'none';
 
 /** The ledger row columns that decide whether a run counts. */
@@ -146,11 +151,11 @@ const executionLimit = {
 		trigger: true,
 		webhook: true,
 		evaluation: true,
-		internal: true,
 		agent: true,
 
 		integrated: false,
 		error: false,
+		internal: false,
 		manual: false,
 		chat: false,
 	},

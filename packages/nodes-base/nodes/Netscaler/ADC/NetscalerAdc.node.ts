@@ -1,6 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	NodeConnectionTypes,
+	requestPath,
 	type IDataObject,
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -71,7 +72,7 @@ export class NetscalerAdc implements INodeType {
 						const fileLocation = this.getNodeParameter('fileLocation', i) as string;
 						const binaryProperty = this.getNodeParameter('binaryProperty', i);
 						const options = this.getNodeParameter('options', i);
-						const endpoint = '/config/systemfile';
+						const endpoint = requestPath`/config/systemfile`;
 
 						const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
 						const buffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
@@ -96,11 +97,10 @@ export class NetscalerAdc implements INodeType {
 						const fileName = this.getNodeParameter('fileName', i) as string;
 						const fileLocation = this.getNodeParameter('fileLocation', i) as string;
 
-						const endpoint = `/config/systemfile?args=filename:${fileName},filelocation:${encodeURIComponent(
-							fileLocation,
-						)}`;
+						const endpoint = requestPath`/config/systemfile`;
+						const qs = { args: `filename:${fileName},filelocation:${fileLocation}` };
 
-						await netscalerADCApiRequest.call(this, 'DELETE', endpoint);
+						await netscalerADCApiRequest.call(this, 'DELETE', endpoint, {}, qs);
 						responseData = { success: true };
 					}
 					if (operation === 'download') {
@@ -108,11 +108,10 @@ export class NetscalerAdc implements INodeType {
 						const fileLocation = this.getNodeParameter('fileLocation', i) as string;
 						const binaryProperty = this.getNodeParameter('binaryProperty', i);
 
-						const endpoint = `/config/systemfile?args=filename:${fileName},filelocation:${encodeURIComponent(
-							fileLocation,
-						)}`;
+						const endpoint = requestPath`/config/systemfile`;
+						const qs = { args: `filename:${fileName},filelocation:${fileLocation}` };
 
-						const { systemfile } = await netscalerADCApiRequest.call(this, 'GET', endpoint);
+						const { systemfile } = await netscalerADCApiRequest.call(this, 'GET', endpoint, {}, qs);
 
 						const file = systemfile[0];
 
@@ -184,7 +183,7 @@ export class NetscalerAdc implements INodeType {
 							};
 						}
 
-						const endpoint = '/config/sslcert?action=create';
+						const endpoint = requestPath`/config/sslcert?action=create`;
 
 						await netscalerADCApiRequest.call(this, 'POST', endpoint, { sslcert: body });
 
@@ -224,7 +223,7 @@ export class NetscalerAdc implements INodeType {
 							});
 						}
 
-						const endpoint = '/config/sslcertkey';
+						const endpoint = requestPath`/config/sslcertkey`;
 
 						await netscalerADCApiRequest.call(this, 'POST', endpoint, { sslcertkey: body });
 
