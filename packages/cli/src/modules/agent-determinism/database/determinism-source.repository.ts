@@ -96,7 +96,6 @@ export class DeterminismSourceRepository {
 				analyzedVersionHash: source.versionHash,
 				draftWorkflowId,
 				result,
-				dismissedAt: null,
 			},
 		);
 	}

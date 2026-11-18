@@ -22,6 +22,7 @@ function toSuggestion(row: DeterminismSourceRow): DeterminismSuggestion | null {
 		gainPoints: result.gainPoints,
 		matchRate: result.matchRate,
 		holdoutRuns: result.holdoutRuns,
+		trafficShare: result.clusterTrafficShare,
 		tokenDelta: result.tokenDelta,
 	};
 }
@@ -36,9 +37,9 @@ export class DeterminismService {
 		sourceId: string,
 	): Promise<DeterminismSummaryDto> {
 		const row = await this.sourceRepository.findBySource(sourceType, sourceId);
-		if (!row || row.projectId !== projectId) return { suggestion: null };
+		if (!row || row.projectId !== projectId) return { suggestion: null, status: null };
 
-		return { suggestion: toSuggestion(row) };
+		return { suggestion: toSuggestion(row), status: row.analysisStatus };
 	}
 
 	async listSuggestions(

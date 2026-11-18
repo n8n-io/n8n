@@ -134,6 +134,7 @@ export class TraceRunCollector extends RunCollector {
 					toolCalls,
 					steps: { llmDecided: toolCalls.length + 1, codeDecided: 0 },
 					totalTokens: execution.totalTokens,
+					startedAt: execution.startedAt?.toISOString(),
 				});
 			}
 			if (runs.length >= limit) break;
@@ -228,6 +229,7 @@ export class TraceRunCollector extends RunCollector {
 			toolCalls,
 			steps: classifyRunDataSteps(runData, execution.workflowData),
 			totalTokens: sumRunDataTokens(runData),
+			startedAt: execution.startedAt?.toISOString(),
 		};
 	}
 }

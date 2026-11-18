@@ -1,5 +1,6 @@
 import {
 	MIN_GAIN_POINTS,
+	MIN_HOLDOUT_RUNS,
 	MIN_MATCH_RATE,
 	MIN_RUNS_FOR_ANALYSIS,
 } from './agent-determinism.constants';
@@ -56,7 +57,7 @@ export function scoreDraft(
 		clusterTrafficShare,
 		showCta:
 			totalRuns >= MIN_RUNS_FOR_ANALYSIS &&
-			runs.length > 0 &&
+			runs.length >= MIN_HOLDOUT_RUNS &&
 			matchRate >= MIN_MATCH_RATE &&
 			gainPoints >= MIN_GAIN_POINTS,
 	};

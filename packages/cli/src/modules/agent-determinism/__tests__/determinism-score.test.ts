@@ -11,16 +11,25 @@ const agentRun = (overrides: Partial<ReplayedRun> = {}): ReplayedRun => ({
 
 describe('scoreDraft', () => {
 	it('scores the draft share for an agent when every run matches', () => {
-		const result = scoreDraft([agentRun(), agentRun(), agentRun(), agentRun()], 20, 0.8);
+		const result = scoreDraft(
+			[agentRun(), agentRun(), agentRun(), agentRun(), agentRun()],
+			20,
+			0.8,
+		);
 
 		expect(result).toMatchObject({
 			baselinePct: 0,
 			effectivePct: 75,
 			gainPoints: 75,
 			matchRate: 1,
-			tokenDelta: -800,
 			showCta: true,
 		});
+	});
+
+	it('shows no badge with fewer than 5 held-out runs, even when all match', () => {
+		const result = scoreDraft([agentRun(), agentRun(), agentRun(), agentRun()], 20, 0.8);
+
+		expect(result).toMatchObject({ matchRate: 1, showCta: false });
 	});
 
 	it('counts an unmatched run at its baseline', () => {

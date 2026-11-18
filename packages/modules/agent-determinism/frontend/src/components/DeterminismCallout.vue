@@ -3,7 +3,7 @@ import type { DeterminismSuggestion } from '@n8n/api-types';
 import { N8nButton, N8nCallout } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { onMounted, ref, watch } from 'vue';
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import {
@@ -19,14 +19,20 @@ const i18n = useI18n();
 const router = useRouter();
 const rootStore = useRootStore();
 const suggestion = ref<DeterminismSuggestion | null>(null);
+const analysing = ref(false);
+let poll: ReturnType<typeof setTimeout> | undefined;
 
 async function load() {
 	try {
 		const summary = await getDeterminismSummary(rootStore.restApiContext, props);
 		suggestion.value = summary.suggestion;
+		analysing.value = summary.status === 'running';
 	} catch {
 		suggestion.value = null;
+		analysing.value = false;
 	}
+	clearTimeout(poll);
+	if (analysing.value) poll = setTimeout(load, 5000);
 }
 
 async function onReview() {
@@ -41,12 +47,22 @@ async function onDismiss() {
 }
 
 onMounted(load);
+onBeforeUnmount(() => clearTimeout(poll));
 watch(() => props.sourceId, load);
 </script>
 
 <template>
 	<N8nCallout
-		v-if="suggestion"
+		v-if="!suggestion && analysing"
+		theme="secondary"
+		icon="refresh-cw"
+		data-test-id="determinism-callout-analysing"
+		:class="$style.callout"
+	>
+		{{ i18n.baseText('agentDeterminism.cta.analysing') }}
+	</N8nCallout>
+	<N8nCallout
+		v-else-if="suggestion"
 		theme="info"
 		icon="sparkles"
 		data-test-id="determinism-callout"
@@ -62,6 +78,7 @@ watch(() => props.sourceId, load);
 				interpolate: {
 					matched: String(Math.round(suggestion.matchRate * suggestion.holdoutRuns)),
 					total: String(suggestion.holdoutRuns),
+					share: String(Math.round(suggestion.trafficShare * 100)),
 				},
 			})
 		}}

@@ -34,6 +34,8 @@ export type RecordedRun = {
 	toolCalls: RecordedToolCall[];
 	steps: StepCounts;
 	totalTokens: number | null;
+	/** When the run started (ISO). Replays read it as the current time instead of the replay's own clock. */
+	startedAt?: string;
 };
 
 export type RunCluster = {
@@ -44,7 +46,13 @@ export type RunCluster = {
 };
 
 /** A train run that the previous draft got wrong in replay, with what the draft did. */
-export type ReplayFailure = { run: RecordedRun; got: JSONValue | null };
+/** `steps`: what each draft node put out in the replay, so the next draft can see where it went wrong. */
+export type ReplayFailure = {
+	run: RecordedRun;
+	got: JSONValue | null;
+	steps?: string;
+	why?: string;
+};
 
 export type TranslateRequest = {
 	actor: User;
@@ -64,6 +72,8 @@ export type DeterminismResult = {
 	tokenDelta: number | null;
 	clusterTrafficShare: number;
 	showCta: boolean;
+	/** Hash of the draft as the analysis saved it: a different hash later means a person edited it. */
+	draftHash?: string;
 };
 
 export abstract class RunCollector {
@@ -76,4 +86,6 @@ export abstract class RunClusterer {
 
 export abstract class WorkflowTranslator {
 	abstract translate(request: TranslateRequest): Promise<WorkflowJSON>;
+	/** The agent's instructions: what a correct run does. */
+	abstract instructions(source: DeterminismSource): Promise<string>;
 }

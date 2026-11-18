@@ -51,17 +51,35 @@ const MODEL_NODES: Record<string, { type: string; typeVersion: number; credentia
 const RULES = `You turn an AI agent's repeated behaviour into a deterministic n8n workflow. You get the agent's instructions, the workflow mined from its traces, and sample runs.
 Fill in only what the workflow leaves open, using n8n expressions ({{ ... }}, $json, $('Node name').first().json, $('Node name').all(), $now).
 Where the agent made mistakes in a run, write what its instructions say, not what it did.
-Any time or date rule must use the time given in the request when there is one, not $now.
+For "now" in any time or date rule, use the first that exists: 1) a time the request itself carries (a field such as now, timestamp or date on the trigger item, or a time stated in its message: the request's time wins over every clock); 2) only if the request carries none, the run's start time: DateTime.fromISO($('Trigger').first().json.runAt ?? $now.toISO()). Never use $now or Date.now() on their own.
 - filter_conditions: boolean n8n expressions that must all be true for an item to pass the "Pick items" Filter node (each item is one element after the Split Out node, or the previous node's output); [] if there is no such node.
 - branch_conditions: if there is a "Which path?" Switch node, one boolean n8n expression per output (1 for path 1, 2 for path 2), deciding from the data available at that point; [] otherwise.
 - fills: for every TODO(<id>) marker left in the nodes, one JavaScript expression (no {{ }}) that computes the value from the data at that point (todo = the id inside the parentheses).
 - text_templates: for each "Write ..." node other than "${REPLY_NODE_NAME}", an n8n expression that builds the text without a model, matching what the agent wrote; "" to keep the model when it needs judgement.
 - reply_prompt: the prompt for the "${REPLY_NODE_NAME}" node, if there is one: how to answer this kind of request from the data, in the agent's style. Keep the request and data expressions of the current prompt in it verbatim. "" if there is no such node.
 - match_description: for the "${MATCH_NODE_NAME}" classifier, if there is one: which requests this workflow handles and which it must leave to the agent. "" if there is none.
+- insert_nodes: steps the workflow is missing, each placed right after an existing node (it takes over that node's outgoing connections). Use them when the data does not have the shape the next node expects, e.g. a "Split Out" when a tool returns a list inside an object (or pages of them) but the next node reads single items, such as the "Pick items" filter. parameters_json is the node's parameters as a JSON string. [] if nothing is missing.
 - changes: what you changed since the previous version and why (or "first version").
 When replay failures are given, they come from running the previous version on past runs: fix every one.`;
 
+/** Node types a draft may gain: no side effects, so replay stays safe. */
+const INSERTABLE = {
+	splitOut: { type: 'n8n-nodes-base.splitOut', typeVersion: 1 },
+	set: { type: 'n8n-nodes-base.set', typeVersion: 3.4 },
+	code: { type: 'n8n-nodes-base.code', typeVersion: 2 },
+	filter: { type: 'n8n-nodes-base.filter', typeVersion: 2.2 },
+} as const;
+
 const refineSchema = z.object({
+	insert_nodes: z.array(
+		z.object({
+			after: z.string(),
+			name: z.string(),
+			kind: z.enum(['splitOut', 'set', 'code', 'filter']),
+			parameters_json: z.string(),
+			why: z.string(),
+		}),
+	),
 	filter_conditions: z.array(z.object({ expression: z.string(), why: z.string() })),
 	branch_conditions: z.array(z.object({ output: z.number().int(), expression: z.string() })),
 	fills: z.array(z.object({ todo: z.string(), value: z.string() })),
@@ -115,9 +133,34 @@ function fillTodo(value: unknown, id: string, fill: string): unknown {
 	return value;
 }
 
+/** Puts a node right after `after`: it takes over `after`'s main outputs. Skips bad inserts. */
+export function insertNode(workflow: WorkflowJSON, insert: Refinement['insert_nodes'][number]) {
+	const anchor = workflow.nodes.find((node) => node.name === insert.after);
+	if (!anchor || workflow.nodes.some((node) => node.name === insert.name)) return;
+	let parameters: IDataObject;
+	try {
+		parameters = JSON.parse(insert.parameters_json) as IDataObject;
+	} catch {
+		return;
+	}
+	const [x, y] = anchor.position ?? [0, 0];
+	workflow.nodes.push({
+		id: randomUUID(),
+		name: insert.name,
+		...INSERTABLE[insert.kind],
+		position: [x + 120, y + 160],
+		parameters,
+		notes: insert.why,
+	} as NodeJSON);
+	const outputs = (workflow.connections[insert.after] ??= {});
+	workflow.connections[insert.name] = { main: outputs.main ?? [[]] };
+	outputs.main = [[{ node: insert.name, type: 'main', index: 0 }]];
+}
+
 /** Applies the model's answer to the draft, as the lab script's `refine` does. */
 export function applyRefinement(workflow: WorkflowJSON, meta: DraftMeta, refined: Refinement) {
 	const byName = (name: string | null) => workflow.nodes.find((node) => node.name === name);
+	for (const insert of refined.insert_nodes) insertNode(workflow, insert);
 	const filter = byName(meta.pickNode);
 	if (filter?.parameters && refined.filter_conditions.length > 0) {
 		filter.parameters = {
@@ -196,6 +239,9 @@ export function applyRefinement(workflow: WorkflowJSON, meta: DraftMeta, refined
  */
 @Service()
 export class TraceWorkflowTranslator extends WorkflowTranslator {
+	// ponytail: in-memory, per process; fine because one analysis runs start to end in one process.
+	private readonly inserted = new Map<string, Refinement['insert_nodes']>();
+
 	constructor(
 		private readonly modelResolver: DeterminismModelResolver,
 		private readonly agentRepository: AgentRepository,
@@ -205,6 +251,10 @@ export class TraceWorkflowTranslator extends WorkflowTranslator {
 	) {
 		super();
 		this.logger = logger.scoped('agent-determinism');
+	}
+
+	async instructions(source: DeterminismSource) {
+		return (await this.loadDefinition(source)).instructions;
 	}
 
 	async translate({ actor, source, cluster, trainRuns, feedback }: TranslateRequest) {
@@ -224,12 +274,26 @@ export class TraceWorkflowTranslator extends WorkflowTranslator {
 			.instructions(RULES)
 			.structuredOutput(refineSchema);
 		const result = await agent.generate(
-			this.prompt(definition, workflow, meta, score.runs, feedback),
+			this.prompt(
+				definition,
+				workflow,
+				meta,
+				score.runs,
+				feedback,
+				feedback ? (this.inserted.get(source.id) ?? []) : [],
+			),
 			{
 				abortSignal: AbortSignal.timeout(REFINE_TIMEOUT_MS),
 			},
 		);
 		const refined = refineSchema.parse(result.structuredOutput);
+		// A redraft starts from the skeleton again: keep the steps earlier rounds added, or their fixes are lost.
+		const earlier = feedback ? (this.inserted.get(source.id) ?? []) : [];
+		refined.insert_nodes = [
+			...earlier,
+			...refined.insert_nodes.filter((n) => !earlier.some((e) => e.name === n.name)),
+		];
+		this.inserted.set(source.id, refined.insert_nodes);
 		this.logger.info('Determinism draft refined', {
 			sourceId: source.id,
 			changes: refined.changes,
@@ -243,6 +307,7 @@ export class TraceWorkflowTranslator extends WorkflowTranslator {
 		meta: DraftMeta,
 		runs: MinedRun[],
 		feedback: ReplayFailure[] = [],
+		kept: Refinement['insert_nodes'] = [],
 	) {
 		const samples = meta.paths.flatMap((path) =>
 			runs.filter((run) => run.path === path && run.run.succeeded).slice(0, SAMPLE_RUNS),
@@ -253,16 +318,26 @@ export class TraceWorkflowTranslator extends WorkflowTranslator {
 					`- ${node.name} [${node.type.split('.').pop()}]${node.notes ? ` (${node.notes})` : ''}: ${clip(node.parameters, 700)}`,
 			)
 			.join('\n');
+		const wiring = Object.entries(workflow.connections)
+			.flatMap(([from, outputs]) =>
+				(outputs.main ?? []).flatMap((targets) =>
+					(targets ?? []).map((t) => `${from} -> ${t.node}`),
+				),
+			)
+			.join('\n');
 		const todos = [...new Set(JSON.stringify(workflow.nodes).match(/TODO\([^)]+\)/g) ?? [])];
-		const failures = feedback.slice(0, FEEDBACK_SAMPLES).map(({ run, got }) => {
+		const failures = feedback.slice(0, FEEDBACK_SAMPLES).map(({ run, got, steps, why }) => {
 			const [mined] = scoreGroup('feedback', [run], 1).runs;
-			return `${runText(mined)}\nworkflow gave: ${clip(got, 500)}`;
+			return `${runText(mined)}\nworkflow gave: ${clip(got, 500)}${steps ? `\nwhat each workflow step put out:\n${steps}` : ''}${why ? `\nwhy it was graded wrong: ${why}` : ''}`;
 		});
 		return [
 			`Agent instructions:\n${definition.instructions || '(not available)'}`,
 			`Workflow nodes:\n${nodes}`,
+			`Connections:\n${wiring}`,
 			`TODOs to fill: ${JSON.stringify(todos)}`,
 			`Sample runs:\n${samples.map(runText).join('\n')}`,
+			kept.length > 0 &&
+				`Steps added in earlier versions, which are kept and inserted again for you (do not list them again):\n${kept.map((n) => `- ${n.name} (${n.kind}) after ${n.after}: ${n.why}`).join('\n')}`,
 			failures.length > 0 && `Replay failures of the previous version:\n${failures.join('\n')}`,
 		]
 			.filter(Boolean)

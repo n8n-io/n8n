@@ -2,6 +2,9 @@ import type { ModelConfig } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { UserRepository, WorkflowRepository, type User, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { JSONValue } from '@n8n/utils/json/to-json-value';
+import { createHash } from 'node:crypto';
+import type { IRunData } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
 import { judgeWithModel } from '@/modules/agent-evals/agent-eval-judge';
@@ -28,16 +31,65 @@ import { buildAgentFallback, buildWorkflowFallback } from './fallback-node';
 import { DeterminismModelResolver } from './determinism-model.resolver';
 import { scoreDraft, type ReplayedRun } from './determinism-score';
 import { DraftReplayRunner } from './draft-replay.runner';
-import { matchOutput, type TextJudge } from './output-match';
+import { toolNameOf } from './output-match';
 import { redactJson, splitRuns } from './run-preparation';
-import { classifyRunDataSteps, sumRunDataTokens } from './step-classification';
 import { SCHEDULE_TRIGGER } from './trace-mining';
+import { classifyRunDataSteps, sumRunDataTokens } from './step-classification';
+
+/** What the draft does, ignoring layout: nodes by name, their parameters, and the wiring. */
+export function hashDraft(draft: Pick<WorkflowEntity, 'nodes' | 'connections'>) {
+	const nodes = [...draft.nodes]
+		.map(({ name, type, parameters }) => ({ name, type, parameters }))
+		.sort((a, b) => a.name.localeCompare(b.name));
+	return createHash('sha256')
+		.update(JSON.stringify({ nodes, connections: draft.connections }))
+		.digest('hex');
+}
+
+/** Drops ids, timestamps, urls and empty values so a tool result fits the judge's prompt. */
+function compact(value: JSONValue): JSONValue {
+	if (Array.isArray(value)) return value.map(compact);
+	if (value === null || typeof value !== 'object') return value;
+	return Object.fromEntries(
+		Object.entries(value)
+			.filter(([key, v]) => v !== null && v !== '' && !/(^id$|_id$|Id$|_at$|url$|^src$)/i.test(key))
+			.map(([key, v]) => [key, compact(v ?? null)]),
+	);
+}
+
+// ponytail: fixed per-call cap; a large catalogue gets cut and the judge may miss items past it. Upgrade: grade structurally first, judge only disagreements.
+const JUDGE_TOOL_CHARS = 8_000;
+
+const clip = (value: unknown, max: number) => {
+	const text = JSON.stringify(value) ?? 'undefined';
+	return text.length > max ? `${text.slice(0, max)}…` : text;
+};
+
+/** One line per node that ran: items out and the first `max` items, clipped. */
+function describeSteps(runData: IRunData, max = 1) {
+	return Object.entries(runData)
+		.flatMap(([name, tasks]) => {
+			const outputs = tasks.at(-1)?.data?.main ?? [];
+			// Each output on its own line: a Filter's output 2 is what it dropped, not what it passed on.
+			return outputs.map((output, index) => {
+				const items = output ?? [];
+				const label = outputs.length > 1 ? ` [output ${index + 1}]` : '';
+				const shown = items
+					.slice(0, max)
+					.map((item) => `    ${JSON.stringify(redactJson(item.json as JSONValue)).slice(0, 300)}`);
+				return [`- ${name}${label}: ${items.length} items out`, ...shown].join('\n');
+			});
+		})
+		.join('\n');
+}
 
 @Service()
 export class DeterminismAnalysisService {
 	private readonly queue = pLimit(1);
 
 	private judgeModel: ModelConfig | null = null;
+
+	private instructionsText: string | null = null;
 
 	constructor(
 		private readonly sourceRepository: DeterminismSourceRepository,
@@ -85,6 +137,7 @@ export class DeterminismAnalysisService {
 		if (!cluster) throw new Error('No repeated tool sequence among the recorded runs');
 		const { train, holdout } = splitRuns(cluster.runs);
 		this.judgeModel = null;
+		this.instructionsText = null;
 		const fallback = await this.buildFallback(source);
 		const draftFor = async (feedback?: ReplayFailure[]) =>
 			annotateDraft(
@@ -94,7 +147,22 @@ export class DeterminismAnalysisService {
 					fallback,
 				),
 			);
-		let saved = await this.draftWriter.write(actor, source, await draftFor());
+		// One draft per source: a new analysis overwrites the last one, unless a person edited it.
+		const row = await this.sourceRepository.findBySource(source.type, source.id);
+		const previous = row?.draftWorkflowId
+			? await this.workflowRepository.findById(row.draftWorkflowId)
+			: null;
+		const edited = previous !== null && hashDraft(previous) !== row?.result?.draftHash;
+		if (edited) {
+			this.logger.info('Determinism draft was edited: writing a new draft next to it', {
+				sourceId: source.id,
+				draftWorkflowId: previous.id,
+			});
+		}
+		let saved =
+			previous && !edited
+				? await this.draftWriter.update(actor, previous, await draftFor())
+				: await this.draftWriter.write(actor, source, await draftFor());
 
 		// Feedback: replay a few train runs and redraft with the ones the draft got wrong,
 		// as the lab script's `convert --feedback` does. The holdout stays unseen.
@@ -103,8 +171,20 @@ export class DeterminismAnalysisService {
 		for (let round = 0; round < FEEDBACK_ROUNDS; round++) {
 			const failures: ReplayFailure[] = [];
 			for (const run of validation) {
-				const { matched, output } = await this.replayAndJudge(saved, run, actor, source);
-				if (!matched) failures.push({ run, got: output });
+				const { matched, output, runData, why } = await this.replayAndJudge(
+					saved,
+					run,
+					actor,
+					source,
+				);
+				if (!matched) failures.push({ run, got: output, steps: describeSteps(runData), why });
+				this.logger.info('Determinism validation graded', {
+					sourceId: source.id,
+					runId: run.id,
+					round,
+					matched,
+					why,
+				});
 			}
 			this.logger.info('Determinism draft validated', {
 				sourceId: source.id,
@@ -119,7 +199,13 @@ export class DeterminismAnalysisService {
 
 		const replayed: ReplayedRun[] = [];
 		for (const run of holdout) {
-			const { matched, runData } = await this.replayAndJudge(saved, run, actor, source);
+			const { matched, runData, why } = await this.replayAndJudge(saved, run, actor, source);
+			this.logger.info('Determinism holdout graded', {
+				sourceId: source.id,
+				runId: run.id,
+				matched,
+				why,
+			});
 			replayed.push({
 				recorded: run.steps,
 				draft: classifyRunDataSteps(runData, saved),
@@ -129,7 +215,10 @@ export class DeterminismAnalysisService {
 			});
 		}
 
-		const result = scoreDraft(replayed, succeeded.length, cluster.trafficShare);
+		const result = {
+			...scoreDraft(replayed, succeeded.length, cluster.trafficShare),
+			draftHash: hashDraft(saved),
+		};
 		this.logger.info('Determinism analysis finished', {
 			sourceId: source.id,
 			draftWorkflowId: saved.id,
@@ -146,27 +235,71 @@ export class DeterminismAnalysisService {
 		source: DeterminismSource,
 	) {
 		const { runData, output, actionsMatch } = await this.replayRunner.replay(draft, run, actor.id);
-		const judge: TextJudge = async (expected, actual) => {
-			this.judgeModel ??= await this.modelResolver.resolve(actor, source.projectId);
-			if (!this.judgeModel) {
-				throw new Error('No model credential is available to judge text answers');
-			}
-			const verdict = await judgeWithModel(
+		this.judgeModel ??= await this.modelResolver.resolve(actor, source.projectId);
+		if (!this.judgeModel) {
+			// No model to grade with: fall back to "did the draft do what the agent did".
+			return { matched: actionsMatch, output, runData, why: undefined };
+		}
+		// Graded on correctness, not on copying: the agent's own actions are a reference and can be wrong.
+		this.instructionsText ??= await this.translator.instructions(source);
+		// Keep the agent's actions apart from the workflow's: the judge must not credit one with the other.
+		const toolNames = new Set(run.toolCalls.map((call) => call.name));
+		const isTool = (name: string) => toolNames.has(toolNameOf(name));
+		const toolData = run.toolCalls
+			.map(
+				(call) =>
+					`${call.name} returned: ${call.output === undefined ? '(not recorded)' : clip(compact(redactJson(call.output)), JUDGE_TOOL_CHARS)}`,
+			)
+			.join('\n');
+		const agentDid = run.toolCalls
+			.map((call) => `${call.name}(${clip(redactJson(call.input ?? null), 800)})`)
+			.join('\n');
+		const workflowSteps = Object.fromEntries(
+			Object.entries(runData).filter(([name]) => !isTool(name)),
+		);
+		const workflowCalls = Object.entries(runData)
+			.filter(([name]) => isTool(name))
+			.map(([name, tasks]) => {
+				const from = tasks.at(-1)?.source?.[0];
+				const sent = from
+					? (runData[from.previousNode]?.at(-1)?.data?.main?.[from.previousNodeOutput ?? 0] ?? [])
+					: [];
+				const items = sent
+					.slice(0, 30)
+					.map((item) => `    ${JSON.stringify(item.json).slice(0, 300)}`);
+				return [`- ${toolNameOf(name)}: called with ${sent.length || 1} item(s)`, ...items].join(
+					'\n',
+				);
+			})
+			.join('\n');
+		// A judge reply with no clear verdict is not a fail: ask again, up to twice.
+		let verdict: Awaited<ReturnType<typeof judgeWithModel>> | undefined;
+		for (let attempt = 0; attempt < 3 && verdict?.status !== 'completed'; attempt++) {
+			verdict = await judgeWithModel(
 				this.judgeModel,
 				{
-					input: JSON.stringify(redactJson(run.input)),
-					output: actual,
-					criteria: null,
-					expectedOutput: expected,
+					input: [
+						`Request: ${clip(redactJson(run.input), 1500)}`,
+						`Data the tools returned (the same for agent and workflow):\n${toolData}`,
+						`REFERENCE ONLY, NOT THE WORKFLOW: what the agent did (it can be wrong):\n${agentDid}\nAgent answer: ${clip(redactJson(run.output), 1500)}`,
+					].join('\n\n'),
+					output: [
+						`Tool calls the WORKFLOW made (any tool not listed here was NOT called by the workflow):\n${workflowCalls || '(none)'}`,
+						`Workflow's other steps (a "Pick items" filter's output 2 is the items it dropped):\n${describeSteps(workflowSteps, 30)}`,
+						`Workflow answer: ${clip(output === null ? null : redactJson(output), 1500)}`,
+					].join('\n\n'),
+					criteria: `${this.instructionsText || '(no instructions)'}
+
+	Grade ONLY the workflow's tool calls and answer against the instructions above, for this request and this tool data. Never count the agent's actions as the workflow's.
+	Pass if the workflow called the tools the instructions require, on the right items and no others, and, when the request needs an answer, its answer states the same facts a correct agent would give. Wording does not matter. Not calling a tool is correct when the instructions say nothing should be done.
+	Fail if it skipped a required call, acted on wrong or extra items, or stated a wrong fact. Say which item or fact was wrong.${run.trigger === SCHEDULE_TRIGGER ? '\nThis was a scheduled run: nobody reads its answer, so grade only the tool calls and ignore the answer.' : ''}`,
+					expectedOutput: null,
 				},
 				this.logger,
 			);
-			return verdict.status === 'completed' && verdict.outcome === 'pass';
-		};
-		const matched =
-			actionsMatch &&
-			(run.trigger === SCHEDULE_TRIGGER || (await matchOutput(run.output, output, judge)));
-		return { matched, output, runData };
+		}
+		const matched = verdict?.status === 'completed' && verdict.outcome === 'pass';
+		return { matched, output, runData, why: verdict?.reasoning ?? undefined };
 	}
 
 	private async buildFallback(source: DeterminismSource) {
