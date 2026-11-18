@@ -158,6 +158,31 @@ const OPEN_SINKS: Array<[string, string, string]> = [
 	['an output item through the response', '', 'response.key = k;'],
 ];
 
+const MOVES_THROUGH_ASSIGN: Array<[string, string]> = [
+	[
+		'an object that a call assigns into',
+		'let qs = {}; qs = Object.assign({ api_key: k }, qs); v = qs;',
+	],
+	[
+		'a header object that a call assigns into',
+		"const h = Object.assign({}, { Authorization: 'Basic ' + k }); v = h;",
+	],
+	[
+		'an object in a variable that a call assigns into',
+		'const t = {}; Object.assign(t, { k }); v = t;',
+	],
+	[
+		'a request option object that a call assigns into',
+		'const options = Object.assign({}, { qs: { v: k } }); v = JSON.stringify(options);',
+	],
+];
+
+const READS_THROUGH_ASSIGN: Array<[string, string]> = [
+	['a key of the result of a call', 'v = Object.assign({}, { k }).k;'],
+	['keys of the result of a call', 'v = Object.keys(Object.assign({}, { k })).length;'],
+	['a method on a key of the result of a call', 'v = Object.assign({}, { k }).k.trim();'],
+];
+
 describe('reads of a secret credential field in node code', () => {
 	it.each(OPEN)('%s compiles: an open difference', (_name, form) => {
 		const result = compileWith(node(form));
@@ -199,5 +224,15 @@ describe('reads of a secret credential field in node code', () => {
 							.slice(0, 300)}`
 					: 'no marker';
 		expect(kind).toBe('refused');
+	});
+
+	it.each(MOVES_THROUGH_ASSIGN)('a credential field in %s moves', (_name, form) => {
+		const result = compileWith(node(form));
+		expect(result.errors).toEqual([]);
+	});
+
+	it.each(READS_THROUGH_ASSIGN)('%s is refused', (_name, form) => {
+		const result = compileWith(node(form));
+		expect(result.errors.length).toBeGreaterThan(0);
 	});
 });

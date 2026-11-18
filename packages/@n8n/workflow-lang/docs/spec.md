@@ -526,7 +526,11 @@ code reads it back. `Date.of(v, method, text)` gives the Date of the Date
 value `v`. For another value it throws the TypeError of JavaScript for the
 call `text()`: `Cannot read properties of null (reading 'getTime')` for null
 or undefined, else `<text> is not a function`. `Date.is(v)` is true when `v`
-is a Date value: `v instanceof Date` of JavaScript.
+is a Date value: `v instanceof Date` of JavaScript. `Date.set(v, t)` stores
+the time value `t` (clipped as `setTime` clips it) in the Date value `v` and
+gives the stored time value: a Date value is one object that can change, so
+each reference to it reads the new time. For a value that is no Date value
+it throws the TypeError `this is not a Date object.`
 
 Each operation reads a Date value as JavaScript reads a Date:
 
@@ -550,27 +554,51 @@ do for an operand that is not a number or a string, so code without a Date
 value runs the same instructions with the same cost. `TYPEOF`, `NOT`, `JT`,
 `JF`, `SEQ` and `SNE` need no change: a Date value is a reference that is
 not a closure. The new library names of `CALLN` are `Date.value`,
-`Date.of` and `Date.is`.
+`Date.of`, `Date.is` and `Date.set`.
 
 The reference runner has JavaScript Dates, so a Date is its own Date value
 there. The test VM holds a Date value as a JavaScript Date. The Zig runtime
 has the heap kind `date` (`DateObj`: the header and one f64, a leaf for the
 copy and the snapshot) behind a `ref` value, the Date arm of `toNumber`,
 `appendScalarString`, `toPrimitiveForCompare` and the two JSON writers, and
-the three library functions.
+the four library functions. `Date.set` writes the f64 of the `DateObj` in
+place.
 
-The translation of Code nodes makes Date values only with the option
-`dateValues` (`ConvertOptions.dateValues`), which is off until one
-verification runs converted Code nodes with Date values on the Zig runtime
-against v1. With the option, code that could see two objects for one Date
-stays in the host: a variable gives one Date value only, it must be a
-constant that starts with `new Date`, and no code calls a setter of a Date
-variable. A method of a Date that the code reads as a value, and a helper
-of the translation that is not proven to read a Date value as JavaScript
-does (`DATE_VALUE_HELPERS`), stay in the host too. A Date of JavaScript
-takes members and a Date value has none (the Zig runtime ignores the write,
-and `in` throws), so code that writes, deletes or tests a member of a value
-that can be a Date value stays in the host.
+The translation of Code nodes makes Date values with the option
+`dateValues` (`ConvertOptions.dateValues`), which is on by default. The
+test `code-native-dates-executors.test.ts` runs generated Code nodes with
+Date values in the test VM and in the Zig runtime against n8n's task runner.
+The translation gives the code in the first of three forms that is exact, in
+the order of their cost (`translateDateForms`):
+
+1. No Date value. A Date is a number in each place with the type Date, and
+   its JSON text in a place that no code reads back.
+2. Typed Dates with Date values. A Date that goes to a place without the
+   type Date is a Date value there. Code that could see two objects for one
+   Date has no such form: a variable gives one Date value only, it must be a
+   constant that starts with `new Date`, and no code calls a setter of a Date
+   variable.
+3. Date objects (`dateObjects`). Each Date that the code holds is a Date
+   value: `new Date(...)` becomes `Date.value(new Date(...))`, and no
+   variable, parameter or result has the type Date. A Date is then one object
+   in each place, as in JavaScript, so `typeof`, a condition, `===`, an alias
+   and a setter through a second reference are those of JavaScript. A Date
+   method call becomes `Date.of(v, method, text).method()`, with the text
+   that V8 writes for the callee. A setter becomes a call of the helper
+   `dateSetter`, which evaluates the arguments, makes the Date of the value,
+   applies the setter and stores the result with `Date.set`.
+
+In each form with Date values, `toLocaleString` of a value of unknown kind
+tests the kind at run time, `valueOf()` and `toJSON()` of such a value call
+the method of a Date value or of the value as JavaScript does, and
+`toLocaleDateString` and `toLocaleTimeString` take the Date of a Date value
+or throw the TypeError of JavaScript. A method of a Date that the code reads
+as a value, a call of a Date method name that the code also defines as a
+member, and a helper of the translation that is not proven to read a Date
+value as JavaScript does (`DATE_VALUE_HELPERS`), stay in the host. A Date of
+JavaScript takes members and a Date value has none (the Zig runtime ignores
+the write, and `in` throws), so code that writes, deletes or tests a member
+of a value that can be a Date value stays in the host too.
 
 **Setters.** A setter stores the new time value back into its variable:
 `d.setHours(0)` becomes `d = Date.prototype.setHours(d, 0)`. Because a

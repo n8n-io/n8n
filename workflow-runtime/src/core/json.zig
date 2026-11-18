@@ -298,6 +298,16 @@ test "a Date value reads as a Date of JavaScript in each operation" {
     try std.testing.expectEqualStrings("v.getTime is not a function", vm.str(vm.objGet(value.payload(vm.thrown), "message")));
     try std.testing.expectError(error.Throw, lib.callNative(vm, of, &.{ value.null_, method, callee }));
     try std.testing.expectEqualStrings("Cannot read properties of null (reading 'getTime')", vm.str(vm.objGet(value.payload(vm.thrown), "message")));
+    // A setter changes the Date value itself: each reference reads the new time.
+    const set = lib.nativeId("Date.set").?;
+    try std.testing.expectEqual(@as(f64, 5), value.asNum(try lib.callNative(vm, set, &.{ d, value.num(5) })));
+    try std.testing.expectEqual(@as(f64, 5), try vm.toNumber(d));
+    try std.testing.expectEqual(time, try vm.toNumber(same_time));
+    try std.testing.expect(vm.strictEquals(d, d));
+    try std.testing.expect(std.math.isNan(value.asNum(try lib.callNative(vm, set, &.{ d, value.num(8.64e15 + 1) }))));
+    try std.testing.expectEqualStrings("Invalid Date", vm.str(try vm.toStr(d)));
+    try std.testing.expectError(error.Throw, lib.callNative(vm, set, &.{ method, value.num(5) }));
+    try std.testing.expectEqualStrings("this is not a Date object.", vm.str(vm.objGet(value.payload(vm.thrown), "message")));
 }
 
 test "json: large containers move to the region in parts" {

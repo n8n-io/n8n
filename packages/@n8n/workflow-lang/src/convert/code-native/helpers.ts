@@ -13,6 +13,7 @@ import { BUFFER_HELPERS } from './buffer-helpers.ts';
 const RUNS_IN_HOST = '(no request to repeat: the fallback host runs the node)';
 import { LOCALE_HELPERS } from './locale-helpers.ts';
 import { LUXON_HELPERS } from './luxon-helpers.ts';
+import { TYPED_ARRAY_HELPERS } from './typed-array-helpers.ts';
 
 export interface CodeHelperSource {
 	uses: string[];
@@ -25,6 +26,7 @@ export const CODE_HELPERS: Record<string, CodeHelperSource> = {
 	...LUXON_HELPERS,
 	// Buffer values (\`buffer-helpers.ts\`).
 	...BUFFER_HELPERS,
+	...TYPED_ARRAY_HELPERS,
 	codeClone: {
 		uses: [],
 		source: `/** A JSON copy of an item list, as the fallback host gets it. */
@@ -1303,6 +1305,8 @@ function collPlainIso(v: Json): Json {
 function collPlain(v: Json): Json {
 	if (v === null || typeof v !== 'object') return v;
 	if (v.$coll !== undefined) return {};
+	// A Date value writes its ISO text, or null when it is invalid.
+	if (Date.is(v)) return v;
 	// A Luxon DateTime writes its ISO text (toJSON), or null when it is invalid.
 	if (v.$lux === true) return v.invalid === null ? collPlainIso(v) : null;
 	if (Array.isArray(v)) return v.map((x: Json): Json => collPlain(x));
@@ -1341,7 +1345,8 @@ function hasOwnOf(x: Json, k: Json): boolean {
 		const i = Number(key);
 		return String(i) === key && Number.isInteger(i) && i >= 0 && i < x.length;
 	}
-	if (typeof x !== 'object' || !(key in x)) return false;
+	// A Date value has no key of its own.
+	if (typeof x !== 'object' || Date.is(x) || !(key in x)) return false;
 	// \`in\` is also true for the names of \`Object.prototype\`, which are own keys only when the object has them.
 	return key.length < 7 || Object.keys(x).includes(key);
 }`,
@@ -1358,7 +1363,8 @@ function hasOwnNamedOf(x: Json, key: string): boolean {
 		const i = Number(key);
 		return String(i) === key && Number.isInteger(i) && i >= 0 && i < x.length;
 	}
-	return typeof x === 'object' && key in x;
+	// A Date value has no key of its own.
+	return typeof x === 'object' && !Date.is(x) && key in x;
 }`,
 	},
 	objectPrototypeName: {
@@ -2219,6 +2225,8 @@ function mcheck(v: Json, name: string, text: string): Json {
 		methods = ['add', 'clear', 'delete', 'entries', 'forEach', 'has', 'keys', 'values'];
 	} else if (isColl(v, 'Map')) {
 		methods = ['clear', 'delete', 'entries', 'forEach', 'get', 'has', 'keys', 'set', 'values'];
+	} else if (Date.is(v)) {
+		methods = ['getDate', 'getDay', 'getFullYear', 'getHours', 'getMilliseconds', 'getMinutes', 'getMonth', 'getSeconds', 'getTime', 'getTimezoneOffset', 'getUTCDate', 'getUTCDay', 'getUTCFullYear', 'getUTCHours', 'getUTCMilliseconds', 'getUTCMinutes', 'getUTCMonth', 'getUTCSeconds', 'getYear', 'hasOwnProperty', 'isPrototypeOf', 'propertyIsEnumerable', 'setDate', 'setFullYear', 'setHours', 'setMilliseconds', 'setMinutes', 'setMonth', 'setSeconds', 'setTime', 'setUTCDate', 'setUTCFullYear', 'setUTCHours', 'setUTCMilliseconds', 'setUTCMinutes', 'setUTCMonth', 'setUTCSeconds', 'setYear', 'toDateString', 'toGMTString', 'toISOString', 'toJSON', 'toLocaleDateString', 'toLocaleString', 'toLocaleTimeString', 'toString', 'toTimeString', 'toUTCString', 'valueOf'];
 	} else if (v.$lux === true || v.$dur === true) {
 		return v;
 	} else if (typeof v.$hash === 'string' && (name === 'update' || name === 'digest')) {
@@ -2273,6 +2281,88 @@ function looseEq(a: Json, b: Json): boolean {
 	if (ta === 'object' && tb !== 'function') return looseEq(String(a), b);
 	if (tb === 'object' && ta !== 'function') return looseEq(a, String(b));
 	return false;
+}`,
+	},
+	dateSetter: {
+		uses: [],
+		source: `/**
+ * A setter of a Date value: \`v.setHours(...a)\`. The Date value takes the new time, so each
+ * reference to it reads the change. The result is the new time value. A value that is no Date
+ * gives the TypeError of JavaScript for the call \`text()\`, after the arguments ran.
+ */
+function dateSetter(name: string, text: string, v: Json, a: Json[]): number {
+	let d = new Date(Date.of(v, name, text));
+	const n = a.length;
+	if (name === 'setTime') d.setTime(a[0]);
+	else if (name === 'setMilliseconds') d.setMilliseconds(a[0]);
+	else if (name === 'setUTCMilliseconds') d.setUTCMilliseconds(a[0]);
+	else if (name === 'setDate') d.setDate(a[0]);
+	else if (name === 'setUTCDate') d.setUTCDate(a[0]);
+	else if (name === 'setSeconds') {
+		if (n > 1) d.setSeconds(a[0], a[1]);
+		else d.setSeconds(a[0]);
+	} else if (name === 'setUTCSeconds') {
+		if (n > 1) d.setUTCSeconds(a[0], a[1]);
+		else d.setUTCSeconds(a[0]);
+	} else if (name === 'setMonth') {
+		if (n > 1) d.setMonth(a[0], a[1]);
+		else d.setMonth(a[0]);
+	} else if (name === 'setUTCMonth') {
+		if (n > 1) d.setUTCMonth(a[0], a[1]);
+		else d.setUTCMonth(a[0]);
+	} else if (name === 'setMinutes') {
+		if (n > 2) d.setMinutes(a[0], a[1], a[2]);
+		else if (n > 1) d.setMinutes(a[0], a[1]);
+		else d.setMinutes(a[0]);
+	} else if (name === 'setUTCMinutes') {
+		if (n > 2) d.setUTCMinutes(a[0], a[1], a[2]);
+		else if (n > 1) d.setUTCMinutes(a[0], a[1]);
+		else d.setUTCMinutes(a[0]);
+	} else if (name === 'setFullYear') {
+		if (n > 2) d.setFullYear(a[0], a[1], a[2]);
+		else if (n > 1) d.setFullYear(a[0], a[1]);
+		else d.setFullYear(a[0]);
+	} else if (name === 'setUTCFullYear') {
+		if (n > 2) d.setUTCFullYear(a[0], a[1], a[2]);
+		else if (n > 1) d.setUTCFullYear(a[0], a[1]);
+		else d.setUTCFullYear(a[0]);
+	} else if (name === 'setHours') {
+		if (n > 3) d.setHours(a[0], a[1], a[2], a[3]);
+		else if (n > 2) d.setHours(a[0], a[1], a[2]);
+		else if (n > 1) d.setHours(a[0], a[1]);
+		else d.setHours(a[0]);
+	} else {
+		if (n > 3) d.setUTCHours(a[0], a[1], a[2], a[3]);
+		else if (n > 2) d.setUTCHours(a[0], a[1], a[2]);
+		else if (n > 1) d.setUTCHours(a[0], a[1]);
+		else d.setUTCHours(a[0]);
+	}
+	return Date.set(v, d.getTime());
+}`,
+	},
+	valueOfOf: {
+		uses: [],
+		source: `/** \`v.valueOf()\`: the time value of a Date value, the result of a function of the value, else the value. */
+function valueOfOf(v: Json, text: string): Json {
+	if (Date.is(v)) return Date.of(v, 'valueOf', text).getTime();
+	if (v === undefined || v === null) {
+		throw new TypeError('Cannot read properties of ' + v + " (reading 'valueOf')");
+	}
+	const f: Json = typeof v === 'object' ? v.valueOf : undefined;
+	return typeof f === 'function' ? f() : v;
+}`,
+	},
+	toJsonOf: {
+		uses: [],
+		source: `/** \`v.toJSON()\`: the ISO text of a Date value (null for an invalid Date), or the result of a function of the value. */
+function toJsonOf(v: Json, text: string): Json {
+	if (Date.is(v)) return Date.of(v, 'toJSON', text).toJSON();
+	if (v === undefined || v === null) {
+		throw new TypeError('Cannot read properties of ' + v + " (reading 'toJSON')");
+	}
+	const f: Json = typeof v === 'object' ? v.toJSON : undefined;
+	if (typeof f !== 'function') throw new TypeError(text + ' is not a function');
+	return f();
 }`,
 	},
 	toStringOf: {

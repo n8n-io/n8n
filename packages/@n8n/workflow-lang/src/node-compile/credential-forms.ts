@@ -255,6 +255,16 @@ const CARRIER_METHODS = new Set(['push', 'unshift', 'set', 'append']);
 
 const helperName = (text: string): string => text.replace(/^(__[A-Za-z]+)_[0-9a-z]+$/, '$1');
 
+function isCallToObjectAssign(n: ts.Node): n is ts.CallExpression {
+	return (
+		ts.isCallExpression(n) &&
+		ts.isPropertyAccessExpression(n.expression) &&
+		ts.isIdentifier(n.expression.expression) &&
+		n.expression.expression.text === 'Object' &&
+		n.expression.name.text === 'assign'
+	);
+}
+
 function insideRequest(n: ts.Node): boolean {
 	for (let cur = n.parent; cur; cur = cur.parent) {
 		if (!ts.isCallExpression(cur)) continue;
@@ -294,7 +304,8 @@ export function credentialValueMoves(n: ts.Node, isUnit: (name: string) => boole
 			ts.isObjectLiteralExpression(parent) ||
 			ts.isArrayLiteralExpression(parent) ||
 			ts.isSpreadAssignment(parent) ||
-			ts.isSpreadElement(parent);
+			ts.isSpreadElement(parent) ||
+			(isCallToObjectAssign(parent) && parent.arguments.some((argument) => argument === subject));
 		if (!joins) break;
 	}
 	if (!parent) return true;
