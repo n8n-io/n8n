@@ -489,6 +489,9 @@ export function wholeNodeOutputs(node: N8nNode): number | undefined {
 		case `${BASE}splitOut`:
 		case `${BASE}aggregate`:
 		case `${BASE}noOp`:
+		case `${BASE}renameKeys`:
+		case `${BASE}crypto`:
+		case `${BASE}summarize`:
 		case `${BASE}compareDatasets`:
 			return node.type === `${BASE}compareDatasets` ? 4 : 1;
 		case `${LANGCHAIN_PREFIX}textClassifier`: {

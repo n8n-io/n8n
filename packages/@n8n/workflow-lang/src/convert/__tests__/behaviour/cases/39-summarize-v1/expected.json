@@ -1,0 +1,140 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Split Out",
+		"Summarize",
+		"Respond"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"events": [
+							{
+								"group": 1,
+								"profile": {
+									"age": 30
+								},
+								"name": "A"
+							},
+							{
+								"group": 1,
+								"profile": {
+									"age": 20
+								},
+								"name": "B"
+							},
+							{
+								"group": 2,
+								"profile": {
+									"age": 40
+								},
+								"name": "C"
+							},
+							{
+								"group": 2,
+								"profile": {},
+								"name": "D"
+							}
+						]
+					}
+				}
+			]
+		],
+		"Split Out": [
+			[
+				{
+					"group": 1,
+					"profile": {
+						"age": 30
+					},
+					"name": "A"
+				},
+				{
+					"group": 1,
+					"profile": {
+						"age": 20
+					},
+					"name": "B"
+				},
+				{
+					"group": 2,
+					"profile": {
+						"age": 40
+					},
+					"name": "C"
+				},
+				{
+					"group": 2,
+					"profile": {},
+					"name": "D"
+				}
+			]
+		],
+		"Summarize": [
+			[
+				{
+					"count_name": 2,
+					"sum_profile_age": 50,
+					"average_profile_age": 25,
+					"count_profile_age": 2,
+					"group": "1"
+				},
+				{
+					"count_name": 2,
+					"sum_profile_age": 40,
+					"average_profile_age": 40,
+					"count_profile_age": 1,
+					"group": "2"
+				}
+			]
+		],
+		"Respond": [
+			[
+				{
+					"count_name": 2,
+					"sum_profile_age": 50,
+					"average_profile_age": 25,
+					"count_profile_age": 2,
+					"group": "1"
+				},
+				{
+					"count_name": 2,
+					"sum_profile_age": 40,
+					"average_profile_age": 40,
+					"count_profile_age": 1,
+					"group": "2"
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": [
+		{
+			"body": [
+				{
+					"count_name": 2,
+					"sum_profile_age": 50,
+					"average_profile_age": 25,
+					"count_profile_age": 2,
+					"group": "1"
+				},
+				{
+					"count_name": 2,
+					"sum_profile_age": 40,
+					"average_profile_age": 40,
+					"count_profile_age": 1,
+					"group": "2"
+				}
+			],
+			"headers": {},
+			"statusCode": 200
+		}
+	]
+}

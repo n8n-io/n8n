@@ -1,0 +1,44 @@
+{
+	"description": "Summarize with all aggregations, split by two fields, floats and missing values",
+	"trigger": {
+		"body": {
+			"events": [
+				{
+					"country": "US",
+					"city": "NYC",
+					"score": 3,
+					"tag": "a",
+					"name": "Alice"
+				},
+				{
+					"country": "US",
+					"city": "LA",
+					"score": 7.5,
+					"tag": "a",
+					"name": "Bob"
+				},
+				{
+					"country": "UK",
+					"city": "London",
+					"score": 9,
+					"tag": "b",
+					"name": "Carol"
+				},
+				{
+					"country": "UK",
+					"city": "London",
+					"score": 4,
+					"tag": "a",
+					"name": "Dave"
+				},
+				{
+					"country": "US",
+					"city": "NYC",
+					"score": null,
+					"tag": "b",
+					"name": "Eve"
+				}
+			]
+		}
+	}
+}

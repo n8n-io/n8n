@@ -1,0 +1,119 @@
+{
+	"name": "Crypto hash UTF-8 and empty value",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "crypto-utf8",
+				"responseMode": "responseNode",
+				"options": {}
+			}
+		},
+		{
+			"id": "split-out",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"parameters": {
+				"fieldToSplitOut": "body.events",
+				"options": {}
+			}
+		},
+		{
+			"id": "c1",
+			"name": "Hash UTF-8",
+			"type": "n8n-nodes-base.crypto",
+			"typeVersion": 2,
+			"position": [400, 0],
+			"parameters": {
+				"action": "hash",
+				"type": "MD5",
+				"value": "={{ $json.v }}",
+				"dataPropertyName": "md5",
+				"encoding": "hex"
+			}
+		},
+		{
+			"id": "c2",
+			"name": "Hash Empty",
+			"type": "n8n-nodes-base.crypto",
+			"typeVersion": 2,
+			"position": [600, 0],
+			"parameters": {
+				"action": "hash",
+				"type": "SHA256",
+				"value": "={{ $json.w }}",
+				"dataPropertyName": "sha256",
+				"encoding": "base64"
+			}
+		},
+		{
+			"id": "respond",
+			"name": "Respond",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.1,
+			"position": [800, 0],
+			"parameters": {
+				"respondWith": "allIncomingItems",
+				"options": {
+					"responseCode": 200
+				}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "Hash UTF-8",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Hash UTF-8": {
+			"main": [
+				[
+					{
+						"node": "Hash Empty",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Hash Empty": {
+			"main": [
+				[
+					{
+						"node": "Respond",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
