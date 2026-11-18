@@ -17,6 +17,7 @@ import type { ProjectListItem } from '../projects.types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
+import { useProjectHomeLocation } from '@/features/pages/composables/useProjectHomeLocation';
 import {
 	INSTANCE_AI_THREADS_VIEW,
 	INSTANCE_AI_THREAD_VIEW,
@@ -69,6 +70,7 @@ const isAgentsN8nChatFlag = useAgentsN8nChatFlag();
 const assistantAgentThreadsStore = useAssistantAgentThreadsStore();
 const instanceAiSettingsStore = useInstanceAiSettingsStore();
 const agentTelemetry = useAgentTelemetry();
+const toProjectHome = useProjectHomeLocation();
 
 const {
 	favoriteGroups,
@@ -165,10 +167,7 @@ const getProjectMenuItem = (project: ProjectListItem): IMenuItem => ({
 	label: project.name ?? '',
 	icon: (project.icon ?? DEFAULT_PROJECT_ICON) as IMenuItem['icon'],
 	route: {
-		to: {
-			name: VIEWS.PROJECTS_WORKFLOWS,
-			params: { projectId: project.id },
-		},
+		to: toProjectHome(project.id),
 	},
 });
 
@@ -177,10 +176,7 @@ const personalProject = computed<IMenuItem>(() => ({
 	label: locale.baseText('projects.menu.personal'),
 	icon: 'user',
 	route: {
-		to: {
-			name: VIEWS.PROJECTS_WORKFLOWS,
-			params: { projectId: projectsStore.personalProject?.id },
-		},
+		to: toProjectHome(projectsStore.personalProject?.id),
 	},
 }));
 

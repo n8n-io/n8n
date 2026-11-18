@@ -8,7 +8,7 @@ Sample content to try the page module on a local instance.
 - `pages/`: two pages in Markdown. They link the workflows, their nodes, a credential and a data table.
 - `manifest.json`: the ids that the files use, and the credential and the data table to create.
 - `seed.mjs`: loads all of it into the personal project of a user.
-- `seed-undocumented.mjs`: loads a team project "Acme Operations" with 15 workflows, 5 credentials and no page.
+- `seed-undocumented.mjs`: loads a team project "Solstice Festival" with 15 workflows, 5 credentials and no page. The workflows run a music festival: gates, stages, food trucks and volunteers.
 
 ## Load the demo
 
@@ -42,6 +42,6 @@ This needs the n8n Assistant and team projects.
 node packages/modules/page/demo/seed-undocumented.mjs
 ```
 
-1. Open the project "Acme Operations". Its tab "Documentation" shows an empty state with the button "Write it for me".
+1. Open the project "Solstice Festival". Its tab "Documentation" shows an empty state with the button "Write it for me".
 2. Select "Write it for me". The assistant writes pages for the most important workflows and the summary of the project.
 3. Open the tab "Documentation" again. It shows the summary, then one card for each workflow. Workflows without a page show with a dashed border.

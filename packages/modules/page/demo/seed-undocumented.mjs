@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 
 const BASE_URL = process.env.N8N_BASE_URL ?? 'http://localhost:5678';
 const REST_URL = `${BASE_URL}/rest`;
-const PROJECT_NAME = process.env.N8N_DEMO_PROJECT ?? 'Acme Operations';
+const PROJECT_NAME = process.env.N8N_DEMO_PROJECT ?? 'Solstice Festival';
 const NODE_SPACING = 220;
 
 const BASE = 'n8n-nodes-base.';
@@ -14,25 +14,30 @@ const LANGCHAIN = '@n8n/n8n-nodes-langchain.';
 
 /** The credentials of the project. The values are placeholders, so no workflow can reach a real service. */
 const CREDENTIALS = [
-	{ key: 'slack', name: 'Acme Slack', type: 'slackApi', data: { accessToken: 'demo-value' } },
+	{ key: 'slack', name: 'Festival Slack', type: 'slackApi', data: { accessToken: 'demo-value' } },
 	{
 		key: 'postgres',
-		name: 'Acme warehouse',
+		name: 'Festival database',
 		type: 'postgres',
-		data: { host: 'db.example.com', database: 'acme', user: 'demo', password: 'demo-value' },
+		data: { host: 'db.example.com', database: 'festival', user: 'demo', password: 'demo-value' },
 	},
 	{
-		key: 'crm',
-		name: 'Acme CRM API key',
+		key: 'api',
+		name: 'Festival API key',
 		type: 'httpHeaderAuth',
 		data: { name: 'X-Api-Key', value: 'demo-value' },
 	},
-	{ key: 'stripe', name: 'Acme Stripe', type: 'stripeApi', data: { secretKey: 'demo-value' } },
 	{
-		key: 'github',
-		name: 'Acme GitHub',
-		type: 'githubApi',
-		data: { server: 'https://api.github.com', user: 'acme-bot', accessToken: 'demo-value' },
+		key: 'stripe',
+		name: 'Box office Stripe',
+		type: 'stripeApi',
+		data: { secretKey: 'demo-value' },
+	},
+	{
+		key: 'telegram',
+		name: 'Backstage Telegram bot',
+		type: 'telegramApi',
+		data: { accessToken: 'demo-value' },
 	},
 ];
 
@@ -64,7 +69,7 @@ const http = (name, url, method = 'GET') => ({
 		authentication: 'genericCredentialType',
 		genericAuthType: 'httpHeaderAuth',
 	},
-	credential: 'crm',
+	credential: 'api',
 });
 const code = (name, jsCode) => ({
 	name,
@@ -109,189 +114,206 @@ const manual = (name) => ({ name, type: `${BASE}manualTrigger`, typeVersion: 1, 
 /** The workflows of the project. The nodes of each workflow run in one line, in this order. */
 const WORKFLOWS = [
 	{
-		name: 'Nightly warehouse export',
+		name: 'Morning weather watch',
 		nodes: [
-			schedule('Every night at 2am', 'days', { triggerAtHour: 2 }),
-			postgres(
-				'Read orders of the day',
-				"SELECT * FROM orders WHERE created_at >= now() - interval '1 day'",
+			schedule('Every day at 7am', 'days', { triggerAtHour: 7 }),
+			http(
+				'Get the forecast for the site',
+				'https://weather.example.com/v1/forecast?site=solstice',
 			),
-			code(
-				'Build CSV rows',
-				'return items.map((item) => ({ json: { line: Object.values(item.json).join(",") } }));',
-			),
-			http('Upload to data lake', 'https://lake.example.com/v1/uploads', 'POST'),
-			slack('Tell the data team', '#data', 'Nightly export done: {{ $items().length }} orders'),
-		],
-	},
-	{
-		name: 'Weekly revenue digest',
-		nodes: [
-			schedule('Every Monday at 8am', 'weeks', { triggerAtDay: [1], triggerAtHour: 8 }),
-			postgres(
-				'Sum revenue by product',
-				'SELECT product, sum(amount) AS revenue FROM orders GROUP BY product',
-			),
-			code(
-				'Write the digest',
-				'return [{ json: { text: items.map((i) => `${i.json.product}: ${i.json.revenue}`).join("\\n") } }];',
-			),
-			slack('Post to leadership', '#leadership', '={{ $json.text }}'),
-		],
-	},
-	{
-		name: 'Stale deals reminder',
-		nodes: [
-			schedule('Every weekday at 9am', 'days', { triggerAtHour: 9 }),
-			http('List open deals', 'https://crm.example.com/api/deals?status=open'),
-			filter('No activity for 14 days?', '={{ $json.daysSinceLastActivity }}', 'gt', 14),
+			filter('Wind over 60 km/h?', '={{ $json.windKmh }}', 'gt', 60),
 			slack(
-				'Remind the owner',
-				'#sales',
-				'Deal {{ $json.name }} has had no activity for {{ $json.daysSinceLastActivity }} days',
+				'Warn the stage crew',
+				'#stage-crew',
+				'Wind of {{ $json.windKmh }} km/h today: lower the screens of the main stage',
 			),
 		],
 	},
 	{
-		name: 'Demo: revenue snapshot',
+		name: 'Hourly crowd count',
+		nodes: [
+			schedule('Every hour', 'hours'),
+			postgres(
+				'Count the people on site',
+				"SELECT zone, count(*) AS people FROM gate_scans WHERE direction = 'in' GROUP BY zone",
+			),
+			code(
+				'Compare with the capacity of each zone',
+				'return items.map((item) => ({ json: { ...item.json, fillRate: Math.round((item.json.people / 5000) * 100) } }));',
+			),
+			filter('Zone over 90% full?', '={{ $json.fillRate }}', 'gt', 90),
+			slack(
+				'Tell security to close the zone',
+				'#security',
+				'{{ $json.zone }} is {{ $json.fillRate }}% full',
+			),
+		],
+	},
+	{
+		name: 'Monday lineup newsletter',
+		nodes: [
+			schedule('Every Monday at 10am', 'weeks', { triggerAtDay: [1], triggerAtHour: 10 }),
+			postgres(
+				'Read the lineup changes of the week',
+				"SELECT artist, stage, starts_at FROM lineup WHERE updated_at >= now() - interval '7 days'",
+			),
+			code(
+				'Write the newsletter',
+				'return [{ json: { text: items.map((i) => `${i.json.artist} plays the ${i.json.stage} stage`).join("\\n") } }];',
+			),
+			http('Send it to the ticket holders', 'https://mail.example.com/api/campaigns', 'POST'),
+		],
+	},
+	{
+		name: 'Demo: set times of tonight',
 		runnable: true,
 		nodes: [
 			manual('Run now'),
 			code(
-				'Build snapshot from sample data',
-				'return [{ json: { revenue: 48210, orders: 312, date: new Date().toISOString().slice(0, 10) } }];',
+				'Build the set times from sample data',
+				'return [{ json: { artist: "The Night Owls", stage: "Main", minutesLate: 12 } }, { json: { artist: "DJ Pamplemousse", stage: "Forest", minutesLate: 0 } }];',
 			),
 			code(
-				'Format the numbers',
-				'return items.map((item) => ({ json: { ...item.json, average: Math.round(item.json.revenue / item.json.orders) } }));',
+				'Mark the late sets',
+				'return items.map((item) => ({ json: { ...item.json, status: item.json.minutesLate > 10 ? "late" : "on time" } }));',
 			),
 		],
 	},
 	{
-		name: 'Checkout API: create order',
+		name: 'Gate API: scan ticket',
 		active: false,
 		nodes: [
-			webhook('POST /orders', 'acme/orders'),
+			webhook('POST /scan', 'festival/scan'),
 			code(
-				'Validate the payload',
-				'if (!$json.body?.items?.length) { throw new Error("The order has no item"); }\nreturn items;',
+				'Check the ticket code',
+				'if (!$json.body?.ticketCode) { throw new Error("The scan has no ticket code"); }\nreturn items;',
 			),
 			postgres(
-				'Insert the order',
-				'INSERT INTO orders (customer_id, amount) VALUES ($1, $2) RETURNING id',
+				'Mark the ticket as used',
+				'UPDATE tickets SET used_at = now() WHERE code = $1 AND used_at IS NULL RETURNING id',
 			),
-			http('Create the invoice in the CRM', 'https://crm.example.com/api/invoices', 'POST'),
-			respond('Answer with the order id'),
+			http('Open the turnstile', 'https://gates.example.com/api/turnstiles/open', 'POST'),
+			respond('Answer the scanner'),
 		],
 	},
 	{
-		name: 'Partner API: stock levels',
+		name: 'Food truck API: queue times',
 		nodes: [
-			webhook('GET /stock', 'acme/stock', 'GET'),
-			postgres('Read stock by SKU', 'SELECT sku, quantity FROM stock WHERE sku = $1'),
-			respond('Answer with the stock'),
+			webhook('GET /queues', 'festival/queues', 'GET'),
+			postgres(
+				'Read the queue of each food truck',
+				'SELECT truck, minutes_to_wait FROM food_truck_queues ORDER BY minutes_to_wait',
+			),
+			respond('Answer with the queue times'),
 		],
 	},
 	{
-		name: 'Stripe payment failed follow-up',
+		name: 'Rain refund follow-up',
 		nodes: [
 			{
-				name: 'On payment failed',
+				name: 'On ticket refunded',
 				type: `${BASE}stripeTrigger`,
 				typeVersion: 1,
-				parameters: { events: ['invoice.payment_failed'] },
+				parameters: { events: ['charge.refunded'] },
 				credential: 'stripe',
 			},
 			http(
-				'Find the customer in the CRM',
-				'https://crm.example.com/api/customers?stripeId={{ $json.data.object.customer }}',
+				'Find the ticket holder',
+				'https://tickets.example.com/api/holders?stripeId={{ $json.data.object.customer }}',
 			),
-			filter('Third failure?', '={{ $json.failedPayments }}', 'gte', 3),
-			slack('Alert the finance team', '#finance', 'Payment failed 3 times for {{ $json.name }}'),
+			filter('Refund over 200?', '={{ $json.refundAmount }}', 'gte', 200),
+			slack(
+				'Tell the box office',
+				'#box-office',
+				'Refund of {{ $json.refundAmount }} for {{ $json.name }}: offer a ticket for next year',
+			),
 		],
 	},
 	{
-		name: 'GitHub release announcer',
+		name: 'Artist arrival check-in',
 		nodes: [
 			{
-				name: 'On new release',
-				type: `${BASE}githubTrigger`,
-				typeVersion: 1,
-				parameters: {
-					owner: { __rl: true, mode: 'name', value: 'acme' },
-					repository: { __rl: true, mode: 'name', value: 'storefront' },
-					events: ['release'],
-				},
-				credential: 'github',
+				name: 'On message to the backstage bot',
+				type: `${BASE}telegramTrigger`,
+				typeVersion: 1.2,
+				parameters: { updates: ['message'] },
+				credential: 'telegram',
 			},
 			code(
-				'Shorten the release notes',
-				'return [{ json: { notes: String($json.body.release.body).slice(0, 500), tag: $json.body.release.tag_name } }];',
+				'Read the artist name from the message',
+				'return [{ json: { artist: String($json.message.text).replace(/^arrived\\s+/i, "") } }];',
+			),
+			postgres(
+				'Mark the artist as on site',
+				'UPDATE lineup SET arrived_at = now() WHERE artist = $1',
 			),
 			slack(
-				'Announce in #releases',
-				'#releases',
-				'Storefront {{ $json.tag }} is out\n{{ $json.notes }}',
+				'Tell the backstage team',
+				'#backstage',
+				'{{ $json.artist }} is on site: bring the rider to the dressing room',
 			),
 		],
 	},
 	{
-		name: 'Customer feedback form',
+		name: 'Lost and found form',
 		nodes: [
 			{
-				name: 'Feedback form',
+				name: 'Lost item form',
 				type: `${BASE}formTrigger`,
 				typeVersion: 2.2,
 				parameters: {
-					formTitle: 'Tell us how we did',
+					formTitle: 'Did you lose something?',
 					formFields: {
 						values: [
+							{ fieldLabel: 'What did you lose', fieldType: 'text', requiredField: true },
+							{ fieldLabel: 'Where did you see it last', fieldType: 'text' },
 							{ fieldLabel: 'Email', fieldType: 'email', requiredField: true },
-							{ fieldLabel: 'Score from 1 to 10', fieldType: 'number', requiredField: true },
-							{ fieldLabel: 'Comment', fieldType: 'textarea' },
 						],
 					},
 				},
 			},
 			postgres(
-				'Save the answer',
-				'INSERT INTO feedback (email, score, comment) VALUES ($1, $2, $3)',
+				'Save the lost item',
+				'INSERT INTO lost_items (description, last_seen, email) VALUES ($1, $2, $3)',
 			),
-			filter('Score under 6?', '={{ $json["Score from 1 to 10"] }}', 'lt', 6),
 			slack(
-				'Ask support to call back',
-				'#support',
-				'Low score from {{ $json.Email }}: {{ $json.Comment }}',
+				'Ask the info desk to look',
+				'#info-desk',
+				'Lost: {{ $json["What did you lose"] }}, last seen {{ $json["Where did you see it last"] }}',
 			),
 		],
 	},
 	{
-		name: 'Time off request form',
+		name: 'Volunteer shift swap form',
 		nodes: [
 			{
-				name: 'Time off form',
+				name: 'Shift swap form',
 				type: `${BASE}formTrigger`,
 				typeVersion: 2.2,
 				parameters: {
-					formTitle: 'Request time off',
+					formTitle: 'Swap a volunteer shift',
 					formFields: {
 						values: [
-							{ fieldLabel: 'First day', fieldType: 'date', requiredField: true },
-							{ fieldLabel: 'Last day', fieldType: 'date', requiredField: true },
+							{ fieldLabel: 'Shift to give away', fieldType: 'date', requiredField: true },
+							{ fieldLabel: 'Shift that you can take', fieldType: 'date', requiredField: true },
 						],
 					},
 				},
 			},
-			http('Create the request in the HR tool', 'https://hr.example.com/api/time-off', 'POST'),
+			http(
+				'Create the swap in the planning tool',
+				'https://planning.example.com/api/swaps',
+				'POST',
+			),
 			slack(
-				'Ask the manager to approve',
-				'#people',
-				'New time off request: {{ $json["First day"] }} to {{ $json["Last day"] }}',
+				'Ask the volunteers for a taker',
+				'#volunteers',
+				'Shift of {{ $json["Shift to give away"] }} needs a taker',
 			),
 		],
 	},
 	{
-		name: 'Internal docs chatbot',
+		name: 'Festival guide chatbot',
 		nodes: [
 			{
 				name: 'When a chat message arrives',
@@ -300,17 +322,17 @@ const WORKFLOWS = [
 				parameters: { public: false },
 			},
 			http(
-				'Search the handbook',
-				'https://handbook.example.com/api/search?q={{ $json.chatInput }}',
+				'Search the programme and the site map',
+				'https://guide.example.com/api/search?q={{ $json.chatInput }}',
 			),
 			code(
-				'Write the answer with sources',
-				'return [{ json: { output: items.map((i) => `${i.json.title}: ${i.json.url}`).join("\\n") } }];',
+				'Write the answer with the stage and the time',
+				'return [{ json: { output: items.map((i) => `${i.json.title}: ${i.json.stage}, ${i.json.time}`).join("\\n") } }];',
 			),
 		],
 	},
 	{
-		name: 'Shared: normalize customer record',
+		name: 'Shared: find the nearest first aid post',
 		nodes: [
 			{
 				name: 'When called by another workflow',
@@ -319,17 +341,17 @@ const WORKFLOWS = [
 				parameters: { inputSource: 'passthrough' },
 			},
 			code(
-				'Trim and lowercase the email',
-				'return items.map((item) => ({ json: { ...item.json, email: String(item.json.email).trim().toLowerCase() } }));',
+				'Measure the distance to each post',
+				'const posts = [{ name: "Main gate", x: 0, y: 0 }, { name: "Forest stage", x: 400, y: 250 }];\nreturn posts.map((post) => ({ json: { ...post, distance: Math.hypot(post.x - $json.x, post.y - $json.y) } }));',
 			),
 			code(
-				'Split the full name',
-				'return items.map((item) => { const [firstName, ...rest] = String(item.json.name).split(" "); return { json: { ...item.json, firstName, lastName: rest.join(" ") } }; });',
+				'Keep the nearest post',
+				'return [items.reduce((nearest, item) => (item.json.distance < nearest.json.distance ? item : nearest))];',
 			),
 		],
 	},
 	{
-		name: 'Shared: send incident alert',
+		name: 'Shared: call the stage manager',
 		nodes: [
 			{
 				name: 'When called by another workflow',
@@ -337,32 +359,39 @@ const WORKFLOWS = [
 				typeVersion: 1.1,
 				parameters: { inputSource: 'passthrough' },
 			},
-			slack('Post in #incidents', '#incidents', '={{ $json.severity }}: {{ $json.title }}'),
-			http('Open a ticket', 'https://tickets.example.com/api/tickets', 'POST'),
+			slack(
+				'Post in #stage-managers',
+				'#stage-managers',
+				'={{ $json.stage }}: {{ $json.message }}',
+			),
+			http('Send the message to the radios', 'https://radio.example.com/api/messages', 'POST'),
 		],
 	},
 	{
-		name: 'Backfill customer segments',
+		name: 'Assign camping pitches',
 		nodes: [
 			manual('Run by hand'),
 			postgres(
-				'Read customers without segment',
-				'SELECT id, total_spent FROM customers WHERE segment IS NULL',
+				'Read the campers without a pitch',
+				'SELECT id, tent_size FROM campers WHERE pitch IS NULL',
 			),
 			code(
-				'Pick a segment',
-				'return items.map((item) => ({ json: { id: item.json.id, segment: item.json.total_spent > 1000 ? "vip" : "standard" } }));',
+				'Pick a field for the tent size',
+				'return items.map((item) => ({ json: { id: item.json.id, pitch: item.json.tent_size > 4 ? "family field" : "quiet field" } }));',
 			),
-			postgres('Save the segment', 'UPDATE customers SET segment = $2 WHERE id = $1'),
+			postgres('Save the pitch', 'UPDATE campers SET pitch = $2 WHERE id = $1'),
 		],
 	},
 	{
-		name: 'Demo: broken currency rates',
+		name: 'Demo: broken sound check',
 		runnable: true,
 		nodes: [
 			manual('Run now'),
-			code('Read the rates', 'throw new Error("The rates service answered with status 503");'),
-			code('Convert the prices', 'return items;'),
+			code(
+				'Read the levels of the mixing desk',
+				'throw new Error("The mixing desk answered with status 503");',
+			),
+			code('Compare the levels with the limit', 'return items;'),
 		],
 	},
 ];
@@ -427,7 +456,7 @@ async function seedProject(api) {
 		async () =>
 			await api('POST', '/projects', {
 				name: PROJECT_NAME,
-				icon: { type: 'icon', value: 'layers' },
+				icon: { type: 'icon', value: 'tent' },
 			}),
 	);
 }

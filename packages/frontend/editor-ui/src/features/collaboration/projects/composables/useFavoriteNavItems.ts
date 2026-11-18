@@ -8,6 +8,7 @@ import type { Project } from '../projects.types';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
 import type { FavoriteResourceType } from '@/app/api/favorites';
 import { AGENT_BUILDER_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
+import { useProjectHomeLocation } from '@/features/pages/composables/useProjectHomeLocation';
 
 export type FavoriteGroupItem = {
 	menuItem: IMenuItem;
@@ -23,6 +24,7 @@ export type FavoriteGroup = {
 export function useFavoriteNavItems() {
 	const favoritesStore = useFavoritesStore();
 	const projectsStore = useProjectsStore();
+	const toProjectHome = useProjectHomeLocation();
 
 	const favoriteWorkflowItems = computed<FavoriteGroupItem[]>(() =>
 		favoritesStore.favorites
@@ -49,7 +51,7 @@ export function useFavoriteNavItems() {
 						id: f.resourceId,
 						label: f.resourceName,
 						icon: (project?.icon ?? DEFAULT_PROJECT_ICON) as IMenuItem['icon'],
-						route: { to: { name: VIEWS.PROJECTS_WORKFLOWS, params: { projectId: f.resourceId } } },
+						route: { to: toProjectHome(f.resourceId) },
 					},
 					resourceId: f.resourceId,
 					resourceType: 'project',
