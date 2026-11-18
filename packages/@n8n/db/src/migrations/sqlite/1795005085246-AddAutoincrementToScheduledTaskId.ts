@@ -1,10 +1,10 @@
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const table = 'scheduled_task';
 
-export class AddAutoincrementToScheduledTaskId1794485247511 implements ReversibleMigration {
+export class AddAutoincrementToScheduledTaskId1795005085246 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		// Claim guards match on (id, leaseEpoch) and leaseEpoch restarts per row, so a deleted row's ID must never be reused.
 		await setIdAutoincrement(context, true);
