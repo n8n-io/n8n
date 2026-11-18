@@ -191,6 +191,13 @@
 	--node--icon--color--violet: #9b6dd5;
 	--node--icon--color--lavender: #8287eb;
 	--node--icon--color--crimson: #724;
+	// From the n8n brand palette (guidelines.n8n.design/colors): the accent pink, the deep
+	// pinks of its scale, and the dark neutrals.
+	--node--icon--color--brand-pink: #ff91ac;
+	--node--icon--color--brand-berry: #87003c;
+	--node--icon--color--brand-plum: #5a0026;
+	--node--icon--color--brand-charcoal: #464646;
+	--node--icon--color--brand-black: #191919;
 
 	// Expressions, autocomplete, infobox
 	--expression-editor--resolvable--color--foreground--valid: var(--color--green-600);
@@ -843,6 +850,12 @@
 	--node--icon--color--violet: #b48de6;
 	--node--icon--color--lavender: #a8acff;
 	--node--icon--color--crimson: #f188a2;
+	// On a dark surface the deep tones turn into the light ones of the same scales.
+	--node--icon--color--brand-pink: #ff91ac;
+	--node--icon--color--brand-berry: #ffbcca;
+	--node--icon--color--brand-plum: #ffd0d9;
+	--node--icon--color--brand-charcoal: #bfbfbf;
+	--node--icon--color--brand-black: #fafafa;
 
 	// Expressions, autocomplete, infobox
 	--expression-editor--resolvable--color--foreground--valid: var(--color--green-300);

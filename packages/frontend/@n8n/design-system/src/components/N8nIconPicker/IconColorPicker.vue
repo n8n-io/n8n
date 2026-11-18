@@ -30,7 +30,33 @@ const isOpen = ref(false);
 
 const DEFAULT_COLOR_VARIABLE = '--node--icon--color--neutral';
 
+// The n8n brand colors come first, one row of five.
 const colors = [
+	{
+		name: 'brand-pink',
+		variable: '--node--icon--color--brand-pink',
+		labelKey: 'iconPicker.colorPicker.brandPink',
+	},
+	{
+		name: 'brand-berry',
+		variable: '--node--icon--color--brand-berry',
+		labelKey: 'iconPicker.colorPicker.brandBerry',
+	},
+	{
+		name: 'brand-plum',
+		variable: '--node--icon--color--brand-plum',
+		labelKey: 'iconPicker.colorPicker.brandPlum',
+	},
+	{
+		name: 'brand-charcoal',
+		variable: '--node--icon--color--brand-charcoal',
+		labelKey: 'iconPicker.colorPicker.brandCharcoal',
+	},
+	{
+		name: 'brand-black',
+		variable: '--node--icon--color--brand-black',
+		labelKey: 'iconPicker.colorPicker.brandBlack',
+	},
 	{ name: 'blue', variable: '--node--icon--color--blue', labelKey: 'iconPicker.colorPicker.blue' },
 	{
 		name: 'light-blue',
