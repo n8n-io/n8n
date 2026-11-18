@@ -56,6 +56,7 @@ import type {
 } from './types';
 import {
 	emptyRun,
+	linkLoopOutputs,
 	nodeNamesById,
 	toSourceLineage,
 	toSourcesAt,
@@ -136,18 +137,46 @@ function toV1RunData(
 			? activeIteration
 			: Math.max(...iterations);
 
+		const loop = lineage.loops.find((loop) => loop.batchNodeId === completedNodeId);
+		const loopNode = graph.nodes.find((node) => node.id === loop?.batchNodeId);
+
 		// A pass the node was skipped on gets an empty run rather than a gap.
 		runData[nodeName] = Array.from({ length: lastShown + 1 }, (_, iteration) => {
 			const source = toSourcesAt(lineage, completedNodeId, iteration);
 			const outputs = outputsByIteration[iteration];
 			if (outputs === undefined) return emptyRun(iteration, source);
 
+			let main: INodeExecutionData[][];
+			if (loop && loopNode) {
+				if (!isBatchStepConfig(loopNode.config)) {
+					throw new UnexpectedError(`Loop node ${loopNode.name} has no batch size`);
+				}
+				const batchSize = loopNode.config.batchSize;
+				const backEdge = loop.backEdges[0];
+				const counts = Array.from({ length: iteration }, (_, p) => {
+					const items = outputsByNode[backEdge.from]?.[p]?.[backEdge.outputIndex];
+					return Array.isArray(items) ? items.length : 0;
+				});
+
+				main =
+					// to be implemented
+					linkLoopOutputs(
+						fromStepInputs(outputs),
+						iteration,
+						batchSize,
+						backEdge,
+						counts,
+						lineage.namesById,
+					);
+			} else {
+				main = fromStepInputs(outputs);
+			}
 			return {
 				startTime: 0,
 				executionTime: 0,
 				executionIndex: iteration,
 				source,
-				data: { [MAIN_CONNECTION_TYPE]: fromStepInputs(outputs) },
+				data: { [MAIN_CONNECTION_TYPE]: main },
 			};
 		});
 	}

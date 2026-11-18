@@ -5,10 +5,18 @@
  * iteration.
  */
 
-import type { StepDetail, StepError, StepStatus, WorkflowGraph } from '@n8n/engine';
+import {
+	isBatchStepConfig,
+	type StepDetail,
+	type StepError,
+	type StepStatus,
+	type WorkflowGraph,
+} from '@n8n/engine';
+import { UnexpectedError } from '@n8n/errors';
 import type {
 	ExecutionError,
 	ExecutionStatus,
+	INodeExecutionData,
 	IPinData,
 	IRunData,
 	ISourceData,
@@ -19,7 +27,13 @@ import { createRunExecutionData } from 'n8n-workflow';
 import { MAIN_CONNECTION_TYPE } from './constants';
 import { fromStepInputs } from './io';
 import { fromV1ErrorDetails } from './v1-error-details';
-import { emptyRun, toSourceLineage, toSourcesAt, type SourceLineage } from './v1-run-data';
+import {
+	emptyRun,
+	linkLoopOutputs,
+	toSourceLineage,
+	toSourcesAt,
+	type SourceLineage,
+} from './v1-run-data';
 
 /**
  * Only a step that ran gets an entry. v1 reports a node that did not run by
@@ -99,6 +113,27 @@ function toStepRuns(graph: WorkflowGraph, steps: StepDetail[]): StepRun[] {
 		// v1 keys run data by node name only.
 		if (nodeName === undefined) continue;
 
+		const loop = lineage.loops.find((loop) => loop.batchNodeId === step.nodeId);
+		const loopNode = graph.nodes.find((node) => node.id === loop?.batchNodeId);
+		let main = step.outputs === null ? null : fromStepInputs(step.outputs);
+		if (main !== null && loop && loopNode) {
+			if (!isBatchStepConfig(loopNode.config)) {
+				throw new UnexpectedError(`Loop node ${loopNode.name} has no batch size`);
+			}
+
+			const batchSize = loopNode.config.batchSize;
+			const backEdge = loop.backEdges[0];
+			const counts = Array.from({ length: step.iteration }, (_, iteration) => {
+				const backEdgeStep = steps.find(
+					(other) => other.nodeId === backEdge.from && other.iteration === iteration,
+				);
+				const items = backEdgeStep?.outputs?.[backEdge.outputIndex];
+				return Array.isArray(items) ? items.length : 0;
+			});
+
+			main = linkLoopOutputs(main, step.iteration, batchSize, backEdge, counts, lineage.namesById);
+		}
+
 		runs.push({
 			step,
 			nodeName,
@@ -107,6 +142,7 @@ function toStepRuns(graph: WorkflowGraph, steps: StepDetail[]): StepRun[] {
 				executionStatus,
 				runs.length,
 				toSourcesAt(lineage, step.nodeId, step.iteration),
+				main,
 			),
 		});
 	}
@@ -134,6 +170,7 @@ function toTaskData(
 	executionStatus: ExecutionStatus,
 	executionIndex: number,
 	source: Array<ISourceData | null>,
+	main: INodeExecutionData[][] | null,
 ): ITaskData {
 	// TODO(CAT-4234): report real run timing. Row timestamps include queue time.
 	const startTime = Date.parse(step.createdAt);
@@ -145,9 +182,7 @@ function toTaskData(
 		source,
 		executionStatus,
 		// Every output slot is `main`: no other connection type exists here.
-		...(step.outputs === null
-			? {}
-			: { data: { [MAIN_CONNECTION_TYPE]: fromStepInputs(step.outputs) } }),
+		...(main === null ? {} : { data: { [MAIN_CONNECTION_TYPE]: main } }),
 		...(step.error === null ? {} : { error: toV1Error(step.error) }),
 	};
 }

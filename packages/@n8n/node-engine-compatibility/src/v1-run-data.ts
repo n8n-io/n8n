@@ -6,7 +6,8 @@
  */
 
 import { deriveLoops, type GraphEdge, type WorkflowGraph, type WorkflowLoop } from '@n8n/engine';
-import type { ISourceData, ITaskData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
+import type { INodeExecutionData, ISourceData, ITaskData } from 'n8n-workflow';
 
 import { MAIN_CONNECTION_TYPE } from './constants';
 
@@ -50,6 +51,53 @@ export function toSourcesAt(
 	return toSourceSlots(lineage.incomingEdgesByNodeId.get(nodeId) ?? [], lineage.namesById, (edge) =>
 		toPreviousNodeRun(lineage, edge, iteration),
 	);
+}
+
+export function linkLoopOutputs(
+	nodeExecutionData: INodeExecutionData[][],
+	iteration: number,
+	batchSize: number,
+	backEdge: GraphEdge,
+	counts: number[],
+	namesById: Map<string, string>,
+): INodeExecutionData[][] {
+	// The done slot holds what came back on each earlier iteration, in order.
+	const previousNode = namesById.get(backEdge.from);
+	if (previousNode === undefined) {
+		throw new UnexpectedError(
+			`A back edge starts at node ${backEdge.from}, which the graph does not contain`,
+		);
+	}
+	const doneLinks = counts.flatMap((count, run) =>
+		Array.from({ length: count }, (_, position) => ({
+			item: position,
+			sourceOverwrite: {
+				previousNode,
+				previousNodeOutput: backEdge.outputIndex,
+				previousNodeRun: run,
+			},
+		})),
+	);
+
+	return nodeExecutionData.map((items, slot) => {
+		// The loop slot hands out the next batch of the loop's input.
+		if (slot === 1) {
+			return items.map((item, position) => ({
+				...item,
+				pairedItem: { item: iteration * batchSize + position },
+			}));
+		}
+		if (slot === 0) {
+			// The done slot is empty until the last iteration, which holds all the items.
+			if (items.length > 0 && items.length !== doneLinks.length) {
+				throw new UnexpectedError(
+					`The done slot at iteration ${iteration} holds ${items.length} items, but the earlier iterations returned ${doneLinks.length}`,
+				);
+			}
+			return items.map((item, position) => ({ ...item, pairedItem: doneLinks[position] }));
+		}
+		return items;
+	});
 }
 
 /**
