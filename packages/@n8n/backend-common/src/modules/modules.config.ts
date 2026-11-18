@@ -51,6 +51,7 @@ export const MODULE_NAMES = [
 	'knowledge',
 	'execution-limits',
 	'execution-ledger',
+	'workflow-tests',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

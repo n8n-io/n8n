@@ -258,6 +258,7 @@ export { TransferWorkflowPublicDto } from './workflows/transfer-workflow-public.
 export { ActivateWorkflowDto } from './workflows/activate-workflow.dto';
 export { DeactivateWorkflowDto } from './workflows/deactivate-workflow.dto';
 export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
+export { RunWorkflowTestDto } from './workflows/run-workflow-test.dto';
 export { GetResourceDependencyCountsDto } from './workflows/get-resource-dependency-counts.dto';
 export { GetResourceDependenciesDto } from './workflows/get-resource-dependencies.dto';
 export {
