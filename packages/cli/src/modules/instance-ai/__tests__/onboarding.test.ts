@@ -1,11 +1,11 @@
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import { Person } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { describe, expect, it } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@n8n/errors';
-import type { Telemetry } from '@/telemetry';
 
 import type { InstanceAiPendingConfirmation } from '../entities/instance-ai-pending-confirmation.entity';
 import type { DurableEventLog } from '../event-bus/durable-event-log';
@@ -23,7 +23,7 @@ const urlSurvey = { survey: { what_team_are_you_on: 'Marketing' }, surveySource:
 function setup(sourceContext?: Record<string, unknown>) {
 	const memoryService = mock<InstanceAiMemoryService>();
 	const pendingConfirmationRepo = mock<InstanceAiPendingConfirmationRepository>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const eventBus = mock<InProcessEventBus>();
 	memoryService.ensureThread.mockResolvedValue({
 		thread: {

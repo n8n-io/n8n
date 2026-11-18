@@ -126,6 +126,130 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 		expect(await repo.findByWorkflowId(workflow.id)).toHaveLength(0);
 	});
 
+	describe('findByWorkflowIds', () => {
+		it('returns every trigger row for the requested workflows only', async () => {
+			await repo.replaceForWorkflow(wfAllOk.id, [
+				{
+					nodeId: 'schedule',
+					versionId: versionId1,
+					status: 'activated',
+					errorMessage: null,
+					triggerKind: 'in-memory',
+				},
+				{
+					nodeId: 'webhook',
+					versionId: versionId1,
+					status: 'failed',
+					errorMessage: 'Webhook registration failed',
+					triggerKind: 'persisted',
+				},
+			]);
+			await repo.replaceForWorkflow(wfPartial.id, [
+				{
+					nodeId: 'schedule',
+					versionId: versionId2,
+					status: 'failed',
+					errorMessage: 'Invalid interval',
+					triggerKind: 'in-memory',
+				},
+			]);
+			await repo.replaceForWorkflow(workflow.id, [
+				{
+					nodeId: 'excluded',
+					versionId: 'v1',
+					status: 'activated',
+					errorMessage: null,
+					triggerKind: 'in-memory',
+				},
+			]);
+
+			const rows = await repo.findByWorkflowIds([
+				wfAllOk.id,
+				wfPartial.id,
+				wfNone.id,
+				'unknown-workflow',
+			]);
+
+			expect(rows).toHaveLength(3);
+			expect(rows).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						workflowId: wfAllOk.id,
+						nodeId: 'schedule',
+						versionId: versionId1,
+						status: 'activated',
+						errorMessage: null,
+						triggerKind: 'in-memory',
+					}),
+					expect.objectContaining({
+						workflowId: wfAllOk.id,
+						nodeId: 'webhook',
+						versionId: versionId1,
+						status: 'failed',
+						errorMessage: 'Webhook registration failed',
+						triggerKind: 'persisted',
+					}),
+					expect.objectContaining({
+						workflowId: wfPartial.id,
+						nodeId: 'schedule',
+						versionId: versionId2,
+						status: 'failed',
+						errorMessage: 'Invalid interval',
+						triggerKind: 'in-memory',
+					}),
+				]),
+			);
+		});
+
+		it('returns no rows for an empty id list when stored rows exist', async () => {
+			await repo.replaceForWorkflow(workflow.id, [
+				{
+					nodeId: 'schedule',
+					versionId: 'v1',
+					status: 'activated',
+					errorMessage: null,
+					triggerKind: 'in-memory',
+				},
+			]);
+
+			expect(await repo.findByWorkflowIds([])).toEqual([]);
+		});
+
+		it('returns rows from both ends of an id list larger than database parameter limits', async () => {
+			await repo.replaceForWorkflow(wfAllOk.id, [
+				{
+					nodeId: 'first',
+					versionId: versionId1,
+					status: 'activated',
+					errorMessage: null,
+					triggerKind: 'in-memory',
+				},
+			]);
+			await repo.replaceForWorkflow(wfPartial.id, [
+				{
+					nodeId: 'last',
+					versionId: versionId2,
+					status: 'failed',
+					errorMessage: 'Invalid interval',
+					triggerKind: 'in-memory',
+				},
+			]);
+			const workflowIds = Array.from({ length: 65_536 }, (_, index) => `missing-${index}`);
+			workflowIds[0] = wfAllOk.id;
+			workflowIds[workflowIds.length - 1] = wfPartial.id;
+
+			const rows = await repo.findByWorkflowIds(workflowIds);
+
+			expect(rows).toHaveLength(2);
+			expect(rows).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ workflowId: wfAllOk.id, nodeId: 'first', status: 'activated' }),
+					expect.objectContaining({ workflowId: wfPartial.id, nodeId: 'last', status: 'failed' }),
+				]),
+			);
+		});
+	});
+
 	it('FK CASCADE deletes trigger status rows when parent workflow is deleted', async () => {
 		const ownWorkflow = await createWorkflow();
 		await seedVersions(ownWorkflow, ['v-wf-cascade']);

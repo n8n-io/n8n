@@ -1647,6 +1647,201 @@ describe('TypeAvailabilityPolicyService', () => {
 		);
 	});
 
+	describe('getInstanceAccess', () => {
+		const SLACK = 'n8n-nodes-base.slack';
+		const NOTION = 'n8n-nodes-base.notion';
+		const GMAIL = 'n8n-nodes-base.gmail';
+
+		function givenInstanceRules(
+			rules: PolicyRule[],
+			scope: Partial<TypeAvailabilityPolicyScope> = {},
+		) {
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(
+				makeScope({ projectId: null, ...scope }),
+			);
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+				{ policyId: 'p1', rules, priority: 0, isFloor: false },
+			]);
+		}
+
+		it('reports the instance verdict, the matched rule and the version for every type', async () => {
+			givenInstanceRules(
+				[
+					{ id: 'deny-slack', action: 'deny', selector: { kind: 'name', value: SLACK } },
+					{ id: 'delegate-notion', action: 'delegate', selector: { kind: 'name', value: NOTION } },
+				],
+				{ version: 7 },
+			);
+
+			const result = await service.getInstanceAccess(KIND, [SLACK, NOTION, GMAIL]);
+
+			expect(result).toEqual({
+				scopeId: 'scope-1',
+				version: 7,
+				defaultAction: 'allow',
+				types: [
+					{ name: SLACK, access: 'deny', matchedRuleId: 'deny-slack' },
+					{ name: NOTION, access: 'delegate', matchedRuleId: 'delegate-notion' },
+					{ name: GMAIL, access: 'allow', matchedRuleId: null },
+				],
+			});
+		});
+
+		it('reports the default action with no rule when the scope is unconfigured', async () => {
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(null);
+
+			const result = await service.getInstanceAccess(KIND, [SLACK]);
+
+			expect(result).toEqual({
+				scopeId: null,
+				version: 0,
+				defaultAction: 'allow',
+				types: [{ name: SLACK, access: 'allow', matchedRuleId: null }],
+			});
+		});
+
+		it('reports a deny default action for a type that no rule names', async () => {
+			givenInstanceRules([], { defaultAction: 'deny' });
+
+			const result = await service.getInstanceAccess(KIND, [GMAIL]);
+
+			expect(result.types).toEqual([{ name: GMAIL, access: 'deny', matchedRuleId: null }]);
+		});
+
+		it('applies floor attachments before normal ones', async () => {
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(makeScope({ projectId: null }));
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+				{
+					policyId: 'normal',
+					rules: [{ id: 'allow-slack', action: 'allow', selector: { kind: 'name', value: SLACK } }],
+					priority: 0,
+					isFloor: false,
+				},
+				{
+					policyId: 'floor',
+					rules: [
+						{
+							id: 'deny-package',
+							action: 'deny',
+							selector: { kind: 'package', value: 'n8n-nodes-base' },
+						},
+					],
+					priority: 0,
+					isFloor: true,
+				},
+			]);
+
+			const result = await service.getInstanceAccess(KIND, [SLACK]);
+
+			expect(result.types).toEqual([
+				{ name: SLACK, access: 'deny', matchedRuleId: 'deny-package' },
+			]);
+		});
+
+		it('judges a generated tool variant by its base type', async () => {
+			const GMAIL_TOOL = 'n8n-nodes-base.gmailTool';
+			nodeTypes.resolveBaseName.mockImplementation((name) => ({
+				baseName: name === GMAIL_TOOL ? GMAIL : name,
+				isSyntheticTool: name === GMAIL_TOOL,
+			}));
+			givenInstanceRules([
+				{ id: 'deny-gmail', action: 'deny', selector: { kind: 'name', value: GMAIL } },
+			]);
+
+			const result = await service.getInstanceAccess(KIND, [GMAIL_TOOL]);
+
+			expect(result.types).toEqual([
+				{ name: GMAIL_TOOL, access: 'deny', matchedRuleId: 'deny-gmail' },
+			]);
+		});
+
+		it('reads the database, not the snapshot', async () => {
+			givenInstanceRules([]);
+
+			await service.getInstanceAccess(KIND, [SLACK]);
+
+			expect(snapshot.read).not.toHaveBeenCalled();
+			expect(scopeRepository.findScopeByKindAndProject).toHaveBeenCalledWith(KIND, null, ROOT);
+		});
+
+		describe('credential types', () => {
+			beforeEach(() => {
+				Object.defineProperty(loadNodesAndCredentials, 'knownCredentials', {
+					configurable: true,
+					value: {
+						oAuth2Api: { className: '', sourcePath: '' },
+						googleOAuth2Api: { className: '', sourcePath: '', extends: ['oAuth2Api'] },
+						googleSheetsOAuth2Api: {
+							className: '',
+							sourcePath: '',
+							extends: ['googleOAuth2Api'],
+						},
+						slackApi: { className: '', sourcePath: '' },
+					},
+				});
+			});
+
+			afterEach(() => {
+				delete (loadNodesAndCredentials as { knownCredentials?: unknown }).knownCredentials;
+			});
+
+			it('gives every type that extends a parent, at any depth, the access of the extends rule', async () => {
+				givenInstanceRules(
+					[
+						{
+							id: 'deny-oauth2',
+							action: 'deny',
+							selector: { kind: 'extends', value: 'oAuth2Api' },
+						},
+					],
+					{ kind: CREDENTIAL_TYPES_KIND },
+				);
+
+				const result = await service.getInstanceAccess(CREDENTIAL_TYPES_KIND, [
+					'oAuth2Api',
+					'googleOAuth2Api',
+					'googleSheetsOAuth2Api',
+					'slackApi',
+				]);
+
+				expect(result.types).toEqual([
+					{ name: 'oAuth2Api', access: 'deny', matchedRuleId: 'deny-oauth2' },
+					{ name: 'googleOAuth2Api', access: 'deny', matchedRuleId: 'deny-oauth2' },
+					{ name: 'googleSheetsOAuth2Api', access: 'deny', matchedRuleId: 'deny-oauth2' },
+					{ name: 'slackApi', access: 'allow', matchedRuleId: null },
+				]);
+			});
+
+			it('lets an earlier name rule decide a type that an extends rule also covers', async () => {
+				givenInstanceRules(
+					[
+						{
+							id: 'allow-sheets',
+							action: 'allow',
+							selector: { kind: 'name', value: 'googleSheetsOAuth2Api' },
+						},
+						{
+							id: 'deny-oauth2',
+							action: 'deny',
+							selector: { kind: 'extends', value: 'oAuth2Api' },
+						},
+					],
+					{ kind: CREDENTIAL_TYPES_KIND },
+				);
+
+				const result = await service.getInstanceAccess(CREDENTIAL_TYPES_KIND, [
+					'googleSheetsOAuth2Api',
+					'googleOAuth2Api',
+				]);
+
+				expect(result.types).toEqual([
+					{ name: 'googleSheetsOAuth2Api', access: 'allow', matchedRuleId: 'allow-sheets' },
+					{ name: 'googleOAuth2Api', access: 'deny', matchedRuleId: 'deny-oauth2' },
+				]);
+			});
+		});
+	});
+
 	describe('evaluateComposedType', () => {
 		const PROJECT_ID = 'project-1';
 		const TYPE = 'n8n-nodes-base.slack';

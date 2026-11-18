@@ -492,7 +492,7 @@ describe('GET /projects/:projectId/folders', () => {
 			name: 'an unknown select field',
 			query: { select: JSON.stringify(['unknownField']) },
 			message:
-				'request/query/select Invalid select fields. Valid fields are: id, name, createdAt, updatedAt, project, tags, parentFolder, workflowCount, subFolderCount, path',
+				'request/query/select Invalid select fields. Valid fields are: id, name, createdAt, updatedAt, project, tags, parentFolder, workflowCount, agentCount, resourceType, subFolderCount, path',
 		},
 		{
 			name: 'a take that is not a number',

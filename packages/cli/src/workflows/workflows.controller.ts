@@ -242,7 +242,8 @@ export class WorkflowsController {
 
 			const enterpriseWorkflowService = this.enterpriseWorkflowService;
 
-			const workflowWithMetaData = enterpriseWorkflowService.addOwnerAndSharings(workflow);
+			const workflowWithMetaData =
+				await enterpriseWorkflowService.addOwnerSharingsAndAccountKinds(workflow);
 
 			await enterpriseWorkflowService.addCredentialsToWorkflow(workflowWithMetaData, req.user);
 

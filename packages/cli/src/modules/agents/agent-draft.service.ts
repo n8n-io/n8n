@@ -68,6 +68,16 @@ export class AgentDraftService {
 			creationResult = await this.createPendingDraft(user, projectId, options);
 		}
 		const { agent, adopted } = creationResult;
+
+		if (
+			adopted &&
+			options.parentFolderId !== undefined &&
+			agent.parentFolderId !== options.parentFolderId
+		) {
+			await this.agents.move(agent.id, projectId, options.parentFolderId);
+			agent.parentFolderId = options.parentFolderId;
+		}
+
 		return {
 			id: agent.id,
 			name: agent.name,
@@ -92,6 +102,7 @@ export class AgentDraftService {
 			user,
 			createdBy: 'user',
 			id: options.id,
+			...(options.parentFolderId !== undefined ? { parentFolderId: options.parentFolderId } : {}),
 			adoptOnCollision: options.adoptOnCollision,
 			config: options.config,
 			pushRef: options.pushRef,
@@ -103,6 +114,6 @@ export class AgentDraftService {
 		if (!(await userHasScopes(user, ['agent:delete'], false, { projectId }))) {
 			throw new ForbiddenError('You do not have permission to access agents in this project.');
 		}
-		await this.agents.delete(agentId, projectId);
+		await this.agents.delete(agentId, user, projectId);
 	}
 }

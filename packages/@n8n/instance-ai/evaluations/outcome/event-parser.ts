@@ -4,6 +4,7 @@
 
 import {
 	AGENT_BUILDER_TOOL_NAMES,
+	CHANGE_DATA_TABLES_TOOL_NAME,
 	getExecutionCallAction,
 	isFormerDataTablesTool,
 	REMOVED_BUILDER_TOOL_NAMES,
@@ -624,6 +625,25 @@ function extractResourceIds(
 		const id = table ? extractIdFromRecord(table, ['id']) : undefined;
 		if (id) dataTableIds.push(id);
 	}
+
+	if (toolName === CHANGE_DATA_TABLES_TOOL_NAME) {
+		dataTableIds.push(...extractBatchCreatedTableIds(result));
+	}
+}
+
+/**
+ * Ids of the tables that a `change_data_tables` batch created. A batch that
+ * fails later keeps its earlier changes, so a failed batch still counts.
+ */
+function extractBatchCreatedTableIds(result: unknown): string[] {
+	const applied = toResultRecord(result)?.applied;
+	if (!Array.isArray(applied)) return [];
+	return applied.flatMap((change: unknown) => {
+		if (!isRecord(change) || change.action !== 'create') return [];
+		const table = getRecord(change, 'table');
+		const id = table ? extractIdFromRecord(table, ['id']) : undefined;
+		return id ? [id] : [];
+	});
 }
 
 /** Normalize a tool result (object or stringified JSON) to a record. */

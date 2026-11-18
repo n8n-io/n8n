@@ -1,6 +1,7 @@
 import { settleAbandonedToolCallsInMemory } from '@n8n/agents';
 import type { Message, ScopedMemoryTaskEvent } from '@n8n/agents';
 import {
+	type InstanceAiApprovalMode,
 	type InstanceAiAttachment,
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
@@ -24,7 +25,7 @@ import {
 	WORKFLOW_BUILDER_TOOL_NAMES,
 } from '@n8n/api-types';
 import { getN8nVersion, Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService, Publisher } from '@n8n/backend-services';
+import { EventService, Publisher, TelemetryProxy } from '@n8n/backend-services';
 import { GlobalConfig, type AiConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
 import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
@@ -105,12 +106,13 @@ import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-d
 import { trackBuilderAskedForInput } from './builder-input-telemetry';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { AiService } from '@/services/ai.service';
-import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
 
 import { buildPreferencesAppliedTelemetry } from './ai-preferences-telemetry';
 import { InstanceAiSkillTelemetry } from './instance-ai-skill-telemetry';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
+import { InstanceAiCloudBrowserTaskService } from './browser/instance-ai-cloud-browser-task.service';
+import { InstanceAiCloudBrowserService } from './browser/instance-ai-cloud-browser.service';
 import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { DurableEventLog } from './event-bus/durable-event-log';
@@ -136,6 +138,7 @@ import {
 import {
 	AUTO_FOLLOW_UP_MESSAGE,
 	cleanStoredUserMessage,
+	buildRunStoppedMessage,
 	extractStoredMessageText,
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
@@ -430,6 +433,8 @@ export class InstanceAiService {
 
 	private readonly terminalOutcome: InstanceAiTerminalOutcomeService;
 
+	private readonly cloudBrowserTaskService: InstanceAiCloudBrowserTaskService;
+
 	private readonly liveness: InstanceAiLivenessService<SuspendedRunState<User>>;
 
 	/** Owns DB persistence of suspended runs + orphan-confirmation restoration. */
@@ -475,6 +480,7 @@ export class InstanceAiService {
 		private readonly interruptedRunSweeper: InterruptedRunSweeper,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
+		private readonly cloudBrowserService: InstanceAiCloudBrowserService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly agentMemory: TypeORMAgentMemory,
 		private readonly checkpointStore: TypeORMAgentCheckpointStore,
@@ -484,7 +490,7 @@ export class InstanceAiService {
 		private readonly observationRepo: InstanceAiObservationRepository,
 		private readonly observationCursorRepo: InstanceAiObservationCursorRepository,
 		private readonly eventLogRepository: InstanceAiEventLogRepository,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly userRepository: UserRepository,
 		private readonly temporaryWorkflowService: InstanceAiTemporaryWorkflowService,
 		private readonly errorReporter: ErrorReporter,
@@ -579,6 +585,36 @@ export class InstanceAiService {
 				if (!ownerId) return { userId: 'system' };
 				const { tracingProxyConfig } = await this.createProxyRunConfig({ id: ownerId });
 				return { userId: ownerId, proxyConfig: tracingProxyConfig };
+			},
+		});
+		this.cloudBrowserTaskService = new InstanceAiCloudBrowserTaskService({
+			logger: this.logger,
+			eventBus: this.eventBus,
+			backgroundTaskManager: this.backgroundTasks,
+			cloudBrowserService: this.cloudBrowserService,
+			creditService: this.creditService,
+			tracing: this.tracing,
+			resolveTracingProxyConfig: async (user) =>
+				(await this.createProxyRunConfig(user)).tracingProxyConfig,
+			createRunDebugStepHooks: ({ taskId, threadId, title }) => {
+				if (!this.isRunDebugEnabled()) return undefined;
+				this.runDebugBuffer.ensure(taskId, threadId, `cloud browser: ${title}`);
+				return createRunDebugStepHooks(this.runDebugBuffer, { runId: taskId, threadId });
+			},
+			agentMemory: this.agentMemory,
+			runState: this.runState,
+			suspendedThreads: this.suspendedThreads,
+			startFollowUpRun: async (user, threadId, message, messageGroupId) => {
+				// The task can end long after the user lost access. No run starts for that user.
+				const activeUser = await this.revalidateActiveUser(user.id);
+				if (!activeUser) return '';
+				return await this.startInternalFollowUpRun(
+					activeUser,
+					threadId,
+					message,
+					messageGroupId,
+					'background_task_completed',
+				);
 			},
 		});
 		this.terminalOutcome = new InstanceAiTerminalOutcomeService({
@@ -1252,10 +1288,14 @@ export class InstanceAiService {
 		}
 	}
 
-	cancelRun(threadId: string, reason = 'user_cancelled'): void {
+	cancelRun(
+		threadId: string,
+		reason = 'user_cancelled',
+		options: { skipTasksDetachedFromTurn?: boolean } = {},
+	): void {
 		const quotaStop = reason === 'quota_exhausted';
 		const abortReason = quotaStop ? assistantCreditsExhaustedError() : undefined;
-		const cancelledTasks = this.backgroundTasks.cancelThread(threadId, abortReason);
+		const cancelledTasks = this.backgroundTasks.cancelThread(threadId, abortReason, options);
 		for (const task of cancelledTasks) {
 			void this.tracing.finalizeBackgroundTaskTracing(task, 'cancelled');
 			if (quotaStop) {
@@ -1273,6 +1313,7 @@ export class InstanceAiService {
 				type: 'agent-completed',
 				runId: task.runId,
 				agentId: task.agentId,
+				...(task.detachedFromTurn ? { detachedFromTurn: true } : {}),
 				payload: {
 					role: task.role,
 					result: '',
@@ -1286,6 +1327,7 @@ export class InstanceAiService {
 		const { active, suspended } = this.runState.cancelThread(threadId);
 		if (active) {
 			if (reason === INSTANCE_AI_RUN_TIMEOUT_REASON) this.liveness.markRunTimedOut(active.runId);
+			if (reason === 'user_cancelled') active.stoppedByUser = true;
 			active.abortController.abort(abortReason);
 			// inline-kind rows are dropped via the resolve-callback fired by
 			// runState.cancelThread; suspended-kind rows (no in-memory
@@ -1357,6 +1399,7 @@ export class InstanceAiService {
 			type: 'agent-completed',
 			runId: task.runId,
 			agentId: task.agentId,
+			...(task.detachedFromTurn ? { detachedFromTurn: true } : {}),
 			payload: { role: task.role, result: '', status: 'cancelled' },
 		});
 
@@ -1413,7 +1456,9 @@ export class InstanceAiService {
 			}
 			case 'cancel-thread':
 				// A thread's run + tasks can be spread across mains, so always fan out.
-				this.cancelRun(threadId);
+				// The user stopped the reply. A task detached from its turn runs next to the chat, and
+				// the user stops it from its own card.
+				this.cancelRun(threadId, 'user_cancelled', { skipTasksDetachedFromTurn: true });
 				return false;
 			case 'clear-thread':
 				await this.clearThreadState(threadId, userId);
@@ -1709,6 +1754,7 @@ export class InstanceAiService {
 
 	async shutdown(): Promise<void> {
 		this.liveness.shutdown();
+		this.cloudBrowserTaskService.shutdown();
 
 		const { activeRuns, suspendedRuns, pendingThreadIds } = this.runState.shutdown();
 		const threadsWithPendingHitl = new Set(pendingThreadIds);
@@ -2092,6 +2138,11 @@ export class InstanceAiService {
 			touchBackgroundTask: (taskId) => this.backgroundTasks.touchTask(threadId, taskId),
 			sendCorrectionToTask: (taskId, correction) =>
 				this.sendCorrectionToTask(threadId, taskId, correction),
+			cloudBrowser: {
+				isAvailable: async () => await this.cloudBrowserService.isAvailable(),
+				startTask: async (input, runOptions) =>
+					await this.cloudBrowserTaskService.startTask(input, runOptions),
+			},
 		};
 	}
 
@@ -2193,6 +2244,25 @@ export class InstanceAiService {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Delivers pending cloud browser task results to the thread's orchestrator after a run ends.
+	 * This handles tasks that finished while the run was active. Every run calls this method when
+	 * it ends, but the method skips delivery if the cloud browser is disabled or unavailable.
+	 * It logs errors without propagating them to the calling run.
+	 */
+	async maybeDeliverCloudBrowserTaskResults(user: User, threadId: string): Promise<void> {
+		try {
+			if (!this.settingsService.isCloudBrowserEnabled()) return;
+			if (!(await this.cloudBrowserService.isAvailable())) return;
+			await this.cloudBrowserTaskService.deliverPendingResults(user, threadId);
+		} catch (error) {
+			this.logger.error('Failed to deliver the cloud browser task results', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+		}
 	}
 
 	/**
@@ -2403,6 +2473,37 @@ export class InstanceAiService {
 			this.logger.warn('Failed to persist user message on cancel', {
 				threadId,
 				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	/**
+	 * Tell later runs that the user stopped this one, so the run that reports a finished cloud
+	 * browser task does not resume the stopped work. Only for threads with such a task: no other
+	 * run starts after a stop. Runs after the SDK has saved the partial reply, so the note comes
+	 * after it.
+	 */
+	private async persistRunStoppedNote(threadId: string, userId: string): Promise<void> {
+		try {
+			if (!this.settingsService.isCloudBrowserEnabled()) return;
+			if (!(await this.cloudBrowserTaskService.hasPendingTasks(threadId))) return;
+			await this.agentMemory.saveMessages({
+				threadId,
+				resourceId: userId,
+				messages: [
+					{
+						id: nanoid(),
+						createdAt: new Date(),
+						type: 'llm',
+						role: 'user',
+						content: [{ type: 'text', text: buildRunStoppedMessage() }],
+					},
+				],
+			});
+		} catch (error) {
+			this.logger.warn('Failed to persist the run-stopped note', {
+				threadId,
+				error: getErrorMessage(error),
 			});
 		}
 	}
@@ -2945,7 +3046,12 @@ export class InstanceAiService {
 				if (signal.aborted && !this.shouldPreserveHitlOnShutdown(runId)) return;
 
 				if (result.confirmationEvent) {
-					this.trackConfirmationRequest(user.id, threadId, result.confirmationEvent);
+					this.trackConfirmationRequest(
+						user.id,
+						threadId,
+						result.confirmationEvent,
+						context.approvalMode,
+					);
 					this.eventBus.publish(threadId, result.confirmationEvent);
 				}
 
@@ -3242,6 +3348,9 @@ export class InstanceAiService {
 				},
 			);
 		} finally {
+			const active = this.runState.getActiveRun(threadId);
+			const stoppedByUser = active?.runId === runId && active.stoppedByUser === true;
+			if (stoppedByUser) await this.persistRunStoppedNote(threadId, user.id);
 			this.runState.clearActiveRun(threadId);
 			const segmentSuspended = messageTraceFinalization?.status === 'suspended';
 			// Note: don't delete threadPushRef here. Follow-up runs start later in
@@ -3267,12 +3376,15 @@ export class InstanceAiService {
 			// Post-run wiring (only when the run is actually ending, not when it
 			// merely suspended for HITL): project task states to the client even
 			// on a stop, and start a setup follow-up unless the run was stopped.
+			// Cloud browser results are delivered even on a stop, see below.
 			if (!segmentSuspended && !this.runState.hasSuspendedRun(threadId)) {
 				const reschedule = !signal.aborted && !blockedForQuota;
 				await this.taskProjector.syncFromWorkflowLoop(threadId, runId);
-				if (reschedule) {
-					await this.maybeStartWorkflowSetupFollowUp(user, threadId);
-				}
+				if (reschedule) await this.maybeStartWorkflowSetupFollowUp(user, threadId);
+				// Even after a stop: a stop does not stop cloud browser tasks, so their results
+				// still have to reach the user. The run-stopped note keeps the delivery run from
+				// resuming the stopped work.
+				if (!blockedForQuota) await this.maybeDeliverCloudBrowserTaskResults(user, threadId);
 			}
 			if (errorReporterExecutionToken) {
 				this.instanceAiErrorReporter.endRun(runId, errorReporterExecutionToken);
@@ -4024,7 +4136,12 @@ export class InstanceAiService {
 				if (opts.signal.aborted && !this.shouldPreserveHitlOnShutdown(opts.runId)) return;
 
 				if (result.confirmationEvent) {
-					this.trackConfirmationRequest(opts.user.id, opts.threadId, result.confirmationEvent);
+					this.trackConfirmationRequest(
+						opts.user.id,
+						opts.threadId,
+						result.confirmationEvent,
+						opts.orchestrationContext?.domainContext?.approvalMode,
+					);
 					this.eventBus.publish(opts.threadId, result.confirmationEvent);
 				}
 
@@ -4354,6 +4471,11 @@ export class InstanceAiService {
 				},
 			);
 		} finally {
+			const active = this.runState.getActiveRun(opts.threadId);
+			const stoppedByUser = active?.runId === opts.runId && active.stoppedByUser === true;
+			if (stoppedByUser && !skipPostRunCleanup) {
+				await this.persistRunStoppedNote(opts.threadId, opts.user.id);
+			}
 			this.runState.clearActiveRun(opts.threadId, opts.resumeExecutionToken);
 			const segmentSuspended = messageTraceFinalization?.status === 'suspended';
 			// See note in executeRun's finally — keep threadPushRef alive for
@@ -4392,8 +4514,9 @@ export class InstanceAiService {
 					await this.markWorkflowSetupHandled(opts.threadId, completedSetupWorkflowId, opts.runId);
 				}
 				await this.taskProjector.syncFromWorkflowLoop(opts.threadId, opts.runId);
-				if (reschedule) {
-					await this.maybeStartWorkflowSetupFollowUp(opts.user, opts.threadId);
+				if (reschedule) await this.maybeStartWorkflowSetupFollowUp(opts.user, opts.threadId);
+				if (!blockedForQuota) {
+					await this.maybeDeliverCloudBrowserTaskResults(opts.user, opts.threadId);
 				}
 			}
 			if (errorReporterExecutionToken) {
@@ -4593,6 +4716,7 @@ export class InstanceAiService {
 		userId: string,
 		threadId: string,
 		confirmationEvent: { payload: Record<string, unknown> },
+		approvalMode: InstanceAiApprovalMode | undefined,
 	): void {
 		const payload = confirmationEvent.payload;
 		const inputThreadId = nanoid();
@@ -4603,6 +4727,7 @@ export class InstanceAiService {
 			inputThreadId,
 			payload,
 			runtime: 'instance-ai',
+			approvalMode,
 		});
 	}
 
@@ -4612,6 +4737,9 @@ export class InstanceAiService {
 	): Promise<void> {
 		// Covers the stop button and the confirmation timeout of the liveness service.
 		void this.settleCancelledSuspension(suspended.threadId, suspended.user.id);
+		if (reason === 'user_cancelled') {
+			await this.persistRunStoppedNote(suspended.threadId, suspended.user.id);
+		}
 		const runTimeout =
 			reason === INSTANCE_AI_RUN_TIMEOUT_REASON
 				? this.liveness.consumeRunTimeout(suspended.runId)
@@ -4655,6 +4783,8 @@ export class InstanceAiService {
 		});
 
 		void this.suspendedThreads.dropPendingConfirmation(suspended.requestId);
+		// Results that came in while the run waited at its card. No run end delivers them.
+		await this.maybeDeliverCloudBrowserTaskResults(suspended.user, suspended.threadId);
 	}
 
 	private publishRunFinish(

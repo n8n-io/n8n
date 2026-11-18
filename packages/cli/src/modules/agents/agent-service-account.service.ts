@@ -1,9 +1,14 @@
 import { AgentsConfig } from '@n8n/config';
-import { type OperationContext, TransactionRunner } from '@n8n/db';
+import { type OperationContext, TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError } from '@n8n/errors';
 
+import type {
+	AccountProject,
+	ServiceAccountProjectSource,
+} from '@/services/service-account-projects';
 import { ServiceAccountService } from '@/services/service-account.service';
+import type { SystemDeletionActor } from '@/services/user.service';
 
 import type { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
@@ -13,7 +18,7 @@ class IdentityAlreadyLinkedError extends Error {}
 
 /** Links an agent to the service account that acts for it. */
 @Service()
-export class AgentServiceAccountService {
+export class AgentServiceAccountService implements ServiceAccountProjectSource {
 	constructor(
 		private readonly agentsConfig: AgentsConfig,
 		private readonly serviceAccountService: ServiceAccountService,
@@ -36,6 +41,23 @@ export class AgentServiceAccountService {
 	}
 
 	/**
+	 * Deletes the service account of an agent that is being deleted, with its
+	 * personal project and the shares to that project. With `transferId`, the work
+	 * of the personal project moves to that project. Runs also when agent service
+	 * accounts are off, so that an account made earlier is not left behind.
+	 */
+	async deleteForAgent(
+		agent: Pick<Agent, 'identityId'>,
+		actor: User | SystemDeletionActor,
+		transferId?: string,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		if (!agent.identityId) return;
+
+		await this.serviceAccountService.remove(agent.identityId, actor, transferId, ctx);
+	}
+
+	/**
 	 * Gives an instance agent a service account when it has none. Instance agents
 	 * register on every start, so this also covers the ones created earlier. When
 	 * two mains start together, only one links its account and the other rolls back.
@@ -55,5 +77,15 @@ export class AgentServiceAccountService {
 			if (error instanceof IdentityAlreadyLinkedError) return;
 			throw error;
 		}
+	}
+
+	/** The project of each agent, by the ID of its service account. */
+	async findProjectsOfAccounts(accountIds: string[]): Promise<Map<string, AccountProject>> {
+		return await this.agentRepository.findProjectsByIdentityIds(accountIds);
+	}
+
+	/** The service accounts of the agents in these projects. */
+	async findAccountIdsInProjects(projectIds: string[]): Promise<string[]> {
+		return await this.agentRepository.findIdentityIdsInProjects(projectIds);
 	}
 }
