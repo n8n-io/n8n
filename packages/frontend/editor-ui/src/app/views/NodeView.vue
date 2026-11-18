@@ -170,6 +170,10 @@ const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/features/shared/nodeCreator/views/NodeCreation.vue'),
 );
 
+const LazyCompositeNodeLookInsideDialog = defineAsyncComponent(
+	async () => await import('@/features/workflows/compositeNodes/CompositeNodeLookInsideDialog.vue'),
+);
+
 const LazyNodeDetailsView = defineAsyncComponent(
 	async () => await import('@/features/ndv/shared/views/NodeDetailsView.vue'),
 );
@@ -2312,6 +2316,7 @@ onBeforeUnmount(() => {
 					@replace-node="onClickReplaceNode"
 				/>
 			</Suspense>
+			<LazyCompositeNodeLookInsideDialog v-if="!isDemoRoute" />
 		</WorkflowCanvas>
 		<FocusSidebar
 			v-if="

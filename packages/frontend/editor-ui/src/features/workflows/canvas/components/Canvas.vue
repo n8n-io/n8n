@@ -114,6 +114,7 @@ import { NodeGroupDescriptionVisibilityKey } from '../composables/useCanvasNodeG
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
+import { useCompositeNodeLookInsideStore } from '@/features/workflows/compositeNodes/compositeNodeLookInside.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useCanvasAgentNodeGeometry } from '../composables/useCanvasAgentNodeGeometry';
@@ -244,6 +245,7 @@ const renderData = toRef(props, 'renderData');
 provide(CanvasRenderDataKey, renderData);
 const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
+const compositeNodeLookInsideStore = useCompositeNodeLookInsideStore();
 const chatPanelStore = useChatPanelStore();
 const setupPanelStore = useSetupPanelStore();
 const { addSelectedNodesToChat, isNodeContextEnabled } = useAddNodesToChat();
@@ -1814,6 +1816,11 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			return onSetGroupDescriptionVisible(groupId, false);
 		case 'open_sub_workflow': {
 			return emit('open:sub-workflow', nodeIds[0]);
+		}
+		case 'look_inside': {
+			const node = workflowDocumentStore.value.getNodeById(nodeIds[0]);
+			if (node) void compositeNodeLookInsideStore.open(node, workflowDocumentStore.value);
+			return;
 		}
 		case 'focus_ai_on_selected': {
 			focusedNodesStore.confirmNodes(nodeIds, 'context_menu');

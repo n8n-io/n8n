@@ -3,6 +3,7 @@ import {
 	NOT_DUPLICATABLE_NODE_TYPES,
 	STICKY_NODE_TYPE,
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
+	VIEWS,
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -16,6 +17,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { getEmptyGroupAnchor, NodeHelpers, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { computed, type ComputedRef, type Ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { isPresent } from '@/app/utils/typesUtils';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 import { usePinnedData } from '@/app/composables/usePinnedData';
@@ -43,6 +45,7 @@ export type ContextMenuAction =
 	| 'add_sticky'
 	| 'change_color'
 	| 'open_sub_workflow'
+	| 'look_inside'
 	| 'tidy_up'
 	| 'extract_sub_workflow'
 	| 'group_nodes'
@@ -98,6 +101,7 @@ export function useContextMenuItems(
 	const { resolveGroupableNodeIds, isSubworkflowConversionDisabled } = useSelectionValidation();
 	const groupView = injectContextMenuGroupView();
 	const i18n = useI18n();
+	const route = useRoute();
 
 	// Per-editor host overrides (already ANDed with the instance-wide store
 	// flags) — e.g. the Instance AI artifact preview supersedes the AI
@@ -154,6 +158,11 @@ export function useContextMenuItems(
 	};
 
 	const isRestricted = (node: INode): boolean => isNodeTypeRestricted(node.type);
+
+	// The demo preview has no "Look inside" dialog, and its workflow is not stored.
+	const isCompositeNode = (node: INode): boolean =>
+		route?.name !== VIEWS.DEMO &&
+		nodeTypesStore.getNodeType(node.type, node.typeVersion)?.isComposite === true;
 
 	const canDuplicateNode = (node: INode): boolean => {
 		if (isRestricted(node)) return false;
@@ -614,6 +623,13 @@ export function useContextMenuItems(
 								disabled: isReadOnly.value,
 							},
 						];
+
+				if (isCompositeNode(nodes[0])) {
+					singleNodeActions.push({
+						id: 'look_inside',
+						label: i18n.baseText('contextMenu.lookInside'),
+					});
+				}
 
 				if (NodeHelpers.isNodeWithWorkflowSelector(nodes[0])) {
 					singleNodeActions.push({

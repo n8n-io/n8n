@@ -3243,6 +3243,7 @@
 	"contextMenu.test": "Execute step",
 	"contextMenu.rename": "Rename",
 	"contextMenu.openSubworkflow": "Go to Sub-workflow",
+	"contextMenu.lookInside": "Look inside",
 	"contextMenu.copy": "Copy | Copy {subject}",
 	"contextMenu.paste": "Paste",
 	"contextMenu.deactivate": "Deactivate | Deactivate {subject}",

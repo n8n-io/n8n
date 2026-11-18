@@ -162,6 +162,46 @@ describe('useContextMenu', () => {
 
 	const mockEvent = new MouseEvent('contextmenu', { clientX: 500, clientY: 300 });
 
+	describe('look_inside', () => {
+		const COMPOSITE_TYPE = 'n8n-nodes-base.pollUntilDone';
+
+		const setNodeType = (isComposite: boolean) => {
+			nodeTypesStore.setNodeTypes([
+				{
+					name: COMPOSITE_TYPE,
+					displayName: 'Poll Until Done',
+					version: 1,
+					group: ['transform'],
+					description: '',
+					defaults: {},
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+					properties: [],
+					isComposite,
+				},
+			]);
+		};
+
+		const openOn = (node: INodeUi) => {
+			workflowDocumentStore.setNodes([node]);
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'node-right-click', nodeId: node.id });
+			return actions.value.map((action) => action.id);
+		};
+
+		it('offers "Look inside" on a composite node', () => {
+			setNodeType(true);
+
+			expect(openOn(nodeFactory({ type: COMPOSITE_TYPE }))).toContain('look_inside');
+		});
+
+		it('does not offer "Look inside" on other nodes', () => {
+			setNodeType(false);
+
+			expect(openOn(nodeFactory({ type: COMPOSITE_TYPE }))).not.toContain('look_inside');
+		});
+	});
+
 	describe('focus_ai_on_selected gating', () => {
 		beforeEach(() => {
 			editorContextFlags.aiAssistant = true;
