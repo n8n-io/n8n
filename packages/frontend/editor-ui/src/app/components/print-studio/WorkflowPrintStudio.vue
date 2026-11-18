@@ -30,7 +30,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onShortcut));
 </script>
 
 <template>
-	<div>
+	<div :class="$style.entry">
 		<N8nButton
 			v-if="demo"
 			variant="outline"
@@ -46,3 +46,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onShortcut));
 		</N8nDialog>
 	</div>
 </template>
+
+<style module>
+.entry {
+	pointer-events: auto;
+}
+</style>
