@@ -2,6 +2,7 @@
 import BaseLayout from '@/app/layouts/BaseLayout.vue';
 import AppModals from '@/app/components/app/AppModals.vue';
 import AppCommandBar from '@/app/components/app/AppCommandBar.vue';
+import { useQuickChat } from '@/features/ai/instanceAi/quickChat/useQuickChat';
 import AppLayout from '@/app/components/app/AppLayout.vue';
 import AppChatPanel from '@/app/components/app/AppChatPanel.vue';
 import E2ETestModeMarker from '@/app/components/app/E2ETestModeMarker.vue';
@@ -27,7 +28,7 @@ import { setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
 import { useRootStore } from '@n8n/stores/useRootStore';
 import axios from 'axios';
-import { computed, onMounted, provide, ref, shallowRef, watch } from 'vue';
+import { computed, defineAsyncComponent, onMounted, provide, ref, shallowRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStyles } from '@n8n/composables/useStyles';
 import { useExposeCssVar } from '@/app/composables/useExposeCssVar';
@@ -124,6 +125,19 @@ watch(
 	{ immediate: true },
 );
 
+// Quick chat loads the Assistant conversation, so it loads and mounts on its first open.
+const QuickChat = defineAsyncComponent(
+	async () => await import('@/features/ai/instanceAi/quickChat/QuickChat.vue'),
+);
+const quickChat = useQuickChat();
+const hasOpenedQuickChat = ref(false);
+watch(
+	() => quickChat.state.open,
+	(open) => {
+		if (open) hasOpenedQuickChat.value = true;
+	},
+);
+
 const layoutRef = ref<Element | null>(null);
 
 const setLayoutRef = (el: Element) => {
@@ -144,6 +158,7 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 		</AppLayout>
 		<AppModals />
 		<AppCommandBar />
+		<QuickChat v-if="hasOpenedQuickChat" />
 		<template #overlays>
 			<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
 			<E2ETestModeMarker />

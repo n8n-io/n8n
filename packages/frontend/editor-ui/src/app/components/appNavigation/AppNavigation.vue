@@ -34,6 +34,7 @@ import { AGENT_N8N_CHAT_RECENT_THREADS_LIMIT } from '@/features/agents/constants
 import { useAgentsN8nChatFlag } from '@/features/agents/composables/useAgentsN8nChatFlag';
 import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
 import { useAgentN8nChatThreadsStore } from '@/features/agents/n8nChatPage/n8nChatThreads.store';
+import { useQuickChat } from '@/features/ai/instanceAi/quickChat/useQuickChat';
 import AppNavigationPanel from './AppNavigationPanel.vue';
 import { ASSISTANT_ITEM_ID, useAppNavigation, type AppNavLink } from './useAppNavigation';
 import { useNavigationPeek } from './useNavigationPeek';
@@ -121,7 +122,19 @@ function toggle() {
 	if (!isExpanded.value) uiStore.toggleSidebarMenuCollapse();
 }
 
-function onRailItemClick(itemId: string) {
+const quickChat = useQuickChat();
+
+function onRailItemClick(itemId: string, event: MouseEvent) {
+	if (itemId === ASSISTANT_ITEM_ID && event.altKey) {
+		// Alt-click opens Quick chat next to the item instead of the Assistant page. The
+		// browser would download the link on Alt-click, so stop that too.
+		event.preventDefault();
+		peek.close();
+		const target = event.currentTarget instanceof Element ? event.currentTarget : null;
+		const rect = target?.getBoundingClientRect();
+		quickChat.toggle(rect ? { right: rect.right, top: rect.top } : null);
+		return;
+	}
 	if (itemId === ASSISTANT_ITEM_ID) agentTelemetry.trackClickedSidebarItem({ item: 'new_chat' });
 }
 
@@ -262,7 +275,7 @@ onBeforeUnmount(() => {
 							:data-item-id="item.id"
 							@mouseenter="peek.onItemEnter(item.id)"
 							@focus="peek.onItemEnter(item.id)"
-							@click="onRailItemClick(item.id)"
+							@click="onRailItemClick(item.id, $event)"
 						>
 							<ProjectIcon
 								:icon="railIcon(item.icon, item.id === activeItemId)"

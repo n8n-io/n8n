@@ -71,6 +71,11 @@ vi.mock('./useAppNavigation', async (importOriginal) => ({
 	}),
 }));
 
+const quickChatToggle = vi.hoisted(() => vi.fn());
+vi.mock('@/features/ai/instanceAi/quickChat/useQuickChat', () => ({
+	useQuickChat: () => ({ toggle: quickChatToggle }),
+}));
+
 const createProject = vi.hoisted(() => vi.fn());
 vi.mock('@/app/composables/useGlobalEntityCreation', async () => {
 	const { computed } = await import('vue');
@@ -193,6 +198,46 @@ describe('AppNavigation', () => {
 		await fireEvent.click(unstar);
 
 		expect(mockedStore(useFavoritesStore).toggleFavorite).toHaveBeenCalledWith('wf-1', 'workflow');
+	});
+
+	describe('quick chat', () => {
+		const assistantItem: AppNavRailItem = {
+			id: 'assistant',
+			label: 'Assistant',
+			icon: { type: 'icon', value: 'n8n-assistant' },
+			to: '/overview',
+			group: 'main',
+			testId: 'app-nav-assistant',
+		};
+
+		beforeEach(() => {
+			railItems.unshift(assistantItem);
+			quickChatToggle.mockClear();
+		});
+
+		afterEach(() => {
+			railItems.splice(railItems.indexOf(assistantItem), 1);
+		});
+
+		it('opens Quick chat next to the Assistant item on Alt-click, without following the link', async () => {
+			const { getByTestId } = setup({ collapsed: true });
+			const event = new MouseEvent('click', { bubbles: true, cancelable: true, altKey: true });
+
+			getByTestId('app-nav-assistant').dispatchEvent(event);
+
+			expect(event.defaultPrevented).toBe(true);
+			expect(quickChatToggle).toHaveBeenCalledWith(
+				expect.objectContaining({ right: expect.any(Number), top: expect.any(Number) }),
+			);
+		});
+
+		it('opens the Assistant page on a plain click', async () => {
+			const { getByTestId } = setup({ collapsed: true });
+
+			await fireEvent.click(getByTestId('app-nav-assistant'));
+
+			expect(quickChatToggle).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('create project', () => {

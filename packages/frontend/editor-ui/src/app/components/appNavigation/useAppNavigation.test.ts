@@ -61,7 +61,14 @@ const favorite = (
 	resourceType: UserFavorite['resourceType'],
 	resourceName: string,
 	resourceProjectId?: string,
-): UserFavorite => ({ id: 1, userId: 'u1', resourceId, resourceType, resourceName, resourceProjectId });
+): UserFavorite => ({
+	id: 1,
+	userId: 'u1',
+	resourceId,
+	resourceType,
+	resourceName,
+	resourceProjectId,
+});
 
 function setup() {
 	const scope = effectScope();
@@ -145,9 +152,7 @@ describe('useAppNavigation', () => {
 		});
 
 		it('puts starred team projects first, each group by name', () => {
-			mockedStore(useFavoritesStore).favorites = [
-				favorite('team-b', 'project', 'Beta'),
-			];
+			mockedStore(useFavoritesStore).favorites = [favorite('team-b', 'project', 'Beta')];
 			const { nav } = setup();
 
 			expect(nav.railItems.value.map((item) => item.id).slice(3)).toEqual([
