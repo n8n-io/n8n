@@ -66,6 +66,22 @@ export default defineConfig({
 				/^pages\/AIAssistantPage\.ts:AIAssistantPage: this\.page\.getByTestId\('new-assistant-session-modal'\)$/,
 				// Credential help starts in the credential editor, outside the assistant sidebar.
 				/^pages\/AIAssistantPage\.ts:AIAssistantPage: this\.page\.getByTestId\('credential-edit-ask-assistant-button'\)\.locator\('button'\)$/,
+				// Setup and opt-in dialogs render outside the Assistant container.
+				/^pages\/InstanceAiPage\.ts:InstanceAiPage: this\.page\.getByRole\('dialog', \{ name: 'Set up n8n Assistant' \}\)$/,
+				/^pages\/InstanceAiPage\.ts:InstanceAiPage: this\.page\.getByRole\('dialog'\)\.filter\(\{ hasText: 'Try new n8n Assistant' \}\)$/,
+				// Chat history and composer menus render in portals.
+				/^pages\/InstanceAiPage\.ts:InstanceAiPage: this\.page\.getByTestId\('instance-ai-thread-list'\)$/,
+				/^pages\/InstanceAiPage\.ts:InstanceAiPage: this\.page\.getByRole\('menuitem', \{ name: 'Connect services', exact: true \}\)\.click\(\)$/,
+				// The Connectors dialog and its credential popover render outside the chat.
+				/^pages\/InstanceAiPage\.ts:InstanceAiPage: this\.page\.getByRole\('dialog', \{ name: 'Connectors', exact: true \}\)$/,
+				// Playwright evaluates this `has` locator relative to each visible popover.
+				/^pages\/InstanceAiPage\.ts:InstanceAiPage: this\.page\.getByTestId\('tool-credential-picker-search'\)$/,
+				/^pages\/InstanceAiPage\.ts:InstanceAiPage: this\.page\.getByTestId\('tool-credential-picker-create'\)$/,
+				// Mention menus and their submenus use separate portals.
+				/^pages\/InstanceAiPage\.ts:InstanceAiPage: this\.page\.getByTestId\('instance-ai-mention-menu-content'\)$/,
+				/^pages\/InstanceAiPage\.ts:InstanceAiPage: this\.page\.getByRole\('menuitem', \{ name \}\)$/,
+				// The preview NDV teleports to #app-modals, outside the chat and canvas.
+				/^pages\/InstanceAiPage\.ts:InstanceAiPage: this\.page\.getByRole\('dialog'\)\.getByTestId\('output-panel'\)$/,
 				// The error-workflow list is teleported outside the settings content.
 				/^pages\/WorkflowSettingsModal\.ts:WorkflowSettingsModal: this\.page\.getByRole\('listbox'\)\.filter\(\{ visible: true \}\)$/,
 				// The save button is in the footer, outside the settings content slot.
