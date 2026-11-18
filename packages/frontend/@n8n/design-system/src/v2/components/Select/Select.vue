@@ -459,6 +459,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 												v-bind="item"
 												:class="$style.selectItem"
 												:stroke-width="iconStrokeWidth()"
+												@highlight="emit('highlight', $event ? item.value : undefined)"
 											>
 												<template #item-leading="{ ui }">
 													<slot name="item-leading" :item="item" :ui="ui" />

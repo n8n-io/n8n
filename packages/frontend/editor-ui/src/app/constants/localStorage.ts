@@ -6,7 +6,10 @@ export const LOCAL_STORAGE_ACTIVE_MODAL = 'N8N_ACTIVE_MODAL';
 // The old key held one theme. It is only read once, to migrate to the mode and family keys.
 export const LOCAL_STORAGE_THEME = 'N8N_THEME';
 export const LOCAL_STORAGE_THEME_MODE = 'N8N_THEME_MODE';
+// The old single family. It is only read once, to migrate to the light and dark family keys.
 export const LOCAL_STORAGE_THEME_FAMILY = 'N8N_THEME_FAMILY';
+export const LOCAL_STORAGE_THEME_LIGHT_FAMILY = 'N8N_THEME_LIGHT_FAMILY';
+export const LOCAL_STORAGE_THEME_DARK_FAMILY = 'N8N_THEME_DARK_FAMILY';
 export const LOCAL_STORAGE_EXPERIMENT_OVERRIDES = 'N8N_EXPERIMENT_OVERRIDES';
 export const LOCAL_STORAGE_LOGS_PANEL_OPEN = 'N8N_LOGS_PANEL_OPEN';
 export const LOCAL_STORAGE_TURN_OFF_WORKFLOW_SUGGESTIONS = 'N8N_TURN_OFF_WORKFLOW_SUGGESTIONS';

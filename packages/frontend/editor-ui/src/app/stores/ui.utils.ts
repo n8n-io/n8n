@@ -1,6 +1,8 @@
 import {
 	LOCAL_STORAGE_THEME,
+	LOCAL_STORAGE_THEME_DARK_FAMILY,
 	LOCAL_STORAGE_THEME_FAMILY,
+	LOCAL_STORAGE_THEME_LIGHT_FAMILY,
 	LOCAL_STORAGE_THEME_MODE,
 } from '@/app/constants';
 import type {
@@ -8,10 +10,16 @@ import type {
 	ThemeFamily,
 	ThemeMode,
 	ThemePalette,
+	ThemePreferences,
 	ThemeSelection,
 } from '@/Interface';
 
 export const DEFAULT_THEME_SELECTION: ThemeSelection = { mode: 'system', family: 'default' };
+export const DEFAULT_THEME_PREFERENCES: ThemePreferences = {
+	mode: 'system',
+	light: 'default',
+	dark: 'default',
+};
 
 // The palette of each family for each resolved mode. `null` means no palette: n8n's own light or dark.
 // A missing mode means that the family has no variant. It falls back to the default theme.
@@ -70,6 +78,29 @@ export function resolveTheme(
 		mode === 'system' ? (prefersDark ? 'dark' : 'light') : mode;
 
 	return { mode: resolvedMode, palette: THEME_FAMILIES[family][resolvedMode] ?? null };
+}
+
+export function resolveThemeMode(
+	mode: ThemeMode,
+	prefersDark: boolean = getPrefersDark(),
+): AppliedThemeOption {
+	return mode === 'system' ? (prefersDark ? 'dark' : 'light') : mode;
+}
+
+/** The family for one resolved mode. A family with no variant for the mode falls back to the default. */
+export function familyForMode(family: unknown, mode: AppliedThemeOption): ThemeFamily {
+	return isThemeFamily(family) && hasThemeVariant(family, mode) ? family : 'default';
+}
+
+/** The selection to apply: the saved mode, and the family of the slot for the resolved mode. */
+export function toThemeSelection(
+	preferences: ThemePreferences,
+	prefersDark: boolean = getPrefersDark(),
+): ThemeSelection {
+	return {
+		mode: preferences.mode,
+		family: preferences[resolveThemeMode(preferences.mode, prefersDark)],
+	};
 }
 
 /** The body attributes of a theme. `null` means that the attribute is absent. */
@@ -151,10 +182,20 @@ export function applyThemeWithTransition(selection: ThemeSelection) {
 }
 
 /**
+ * Applies a theme preview at once, without a cross-fade.
+ * A running view transition sends pointer events to the root, so a click on an open menu would miss.
+ */
+export function applyThemeInstantly(selection: ThemeSelection) {
+	++latestRequest;
+	pendingThemeKey = null;
+	applyThemeToBody(selection);
+}
+
+/**
  * Reads the saved mode and family. If the new keys are missing, it maps the old `N8N_THEME` value once
  * and writes the new keys. The old key stays, so an older version can still read it.
  */
-function readStoredTheme(): ThemeSelection {
+function readStoredSelection(): ThemeSelection {
 	const storedMode = localStorage.getItem(LOCAL_STORAGE_THEME_MODE);
 	const storedFamily = localStorage.getItem(LOCAL_STORAGE_THEME_FAMILY);
 	if (storedMode === null && storedFamily === null) {
@@ -162,7 +203,6 @@ function readStoredTheme(): ThemeSelection {
 		if (legacy !== null && Object.hasOwn(LEGACY_THEMES, legacy)) {
 			const migrated = LEGACY_THEMES[legacy];
 			localStorage.setItem(LOCAL_STORAGE_THEME_MODE, migrated.mode);
-			localStorage.setItem(LOCAL_STORAGE_THEME_FAMILY, migrated.family);
 			return migrated;
 		}
 	}
@@ -173,8 +213,35 @@ function readStoredTheme(): ThemeSelection {
 	};
 }
 
+/**
+ * Reads the saved mode and the light and dark families. If the family keys are missing, it puts the
+ * old single family into each slot that it has a variant for, once. The other slots get the default.
+ */
+function readStoredTheme(): ThemePreferences {
+	const storedLight = localStorage.getItem(LOCAL_STORAGE_THEME_LIGHT_FAMILY);
+	const storedDark = localStorage.getItem(LOCAL_STORAGE_THEME_DARK_FAMILY);
+	const { mode, family } = readStoredSelection();
+
+	if (storedLight === null && storedDark === null) {
+		const migrated: ThemePreferences = {
+			mode,
+			light: familyForMode(family, 'light'),
+			dark: familyForMode(family, 'dark'),
+		};
+		localStorage.setItem(LOCAL_STORAGE_THEME_LIGHT_FAMILY, migrated.light);
+		localStorage.setItem(LOCAL_STORAGE_THEME_DARK_FAMILY, migrated.dark);
+		return migrated;
+	}
+
+	return {
+		mode,
+		light: familyForMode(storedLight, 'light'),
+		dark: familyForMode(storedDark, 'dark'),
+	};
+}
+
 // The query param `theme=light|dark` overrides the mode for the demo view in a preview iframe without flickering.
-export function getSavedTheme(): ThemeSelection {
+export function getSavedTheme(): ThemePreferences {
 	const stored = readStoredTheme();
 	const override = getQueryParam('theme');
 

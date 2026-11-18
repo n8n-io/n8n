@@ -96,8 +96,8 @@ export function useGenericCommands(): CommandGroup {
 				description: isCurrent ? i18n.baseText('commandBar.theme.current') : undefined,
 				descriptionIcon: isCurrent ? { type: 'icon', value: 'check' } : undefined,
 				handler: () => {
-					// Family first: the family has a variant for the new mode, so setThemeMode keeps it.
-					uiStore.setThemeFamily(option.value);
+					// A current-mode row keeps `system`. An other-mode row pins that mode.
+					uiStore.setThemeFamily(option.value, option.mode);
 					if (!option.isCurrentMode) uiStore.setThemeMode(option.mode);
 				},
 			};

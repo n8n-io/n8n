@@ -84,6 +84,8 @@ export type SelectProps<M extends boolean = false> = Omit<
 export type SelectEmits<M extends boolean = false> = Omit<SelectRootEmits, 'update:modelValue'> & {
 	'update:modelValue': [value: SelectModelValue<M> | undefined];
 	clear: [];
+	/** The keyboard or pointer highlight moved. `undefined` when no item is highlighted. */
+	highlight: [value: SelectValue | undefined];
 };
 
 export type SelectItemUi = { class: string; strokeWidth?: number };

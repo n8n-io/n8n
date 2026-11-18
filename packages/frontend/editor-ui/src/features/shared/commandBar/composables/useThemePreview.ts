@@ -1,6 +1,11 @@
 import { onScopeDispose } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { applyThemeWithTransition, isThemeFamily, isThemeMode } from '@/app/stores/ui.utils';
+import {
+	applyThemeInstantly,
+	isThemeFamily,
+	isThemeMode,
+	toThemeSelection,
+} from '@/app/stores/ui.utils';
 import type { ThemeSelection } from '@/Interface';
 import type { CommandBarItem, ThemeCommandBarItem } from '../types';
 
@@ -17,7 +22,7 @@ function isThemeCommandBarItem(item: CommandBarItem): item is ThemeCommandBarIte
 
 /**
  * Previews the theme of the highlighted command bar item.
- * A mode preview keeps the saved family. A family preview keeps the saved mode.
+ * A mode preview uses the saved family of the slot for that mode. A family preview keeps the saved mode.
  * A preview only changes the body attributes. The store and localStorage keep the saved theme,
  * so the select handler of the item is the only place that saves a theme.
  */
@@ -41,7 +46,7 @@ export function useThemePreview() {
 		if (!isPreviewing) return;
 		isPreviewing = false;
 		// After a select, the store already holds the new theme, so this does not undo it.
-		applyThemeWithTransition(savedSelection());
+		applyThemeInstantly(savedSelection());
 	}
 
 	// The bar can report no highlight before the next row. Wait one frame,
@@ -51,18 +56,32 @@ export function useThemePreview() {
 		restoreFrame = requestAnimationFrame(restore);
 	}
 
-	function highlight(item: CommandBarItem | null) {
-		if (item && isThemeCommandBarItem(item)) {
+	/** Previews a theme. `null` restores the saved theme after one frame. */
+	function preview(theme: Partial<ThemeSelection> | null) {
+		if (theme) {
 			cancelRestore();
 			isPreviewing = true;
-			applyThemeWithTransition({ ...savedSelection(), ...item.theme });
+			const mode = theme.mode ?? uiStore.themeMode;
+			applyThemeInstantly(
+				theme.family
+					? { mode, family: theme.family }
+					: toThemeSelection({
+							mode,
+							light: uiStore.lightThemeFamily,
+							dark: uiStore.darkThemeFamily,
+						}),
+			);
 			return;
 		}
 		scheduleRestore();
 	}
 
+	function highlight(item: CommandBarItem | null) {
+		preview(item && isThemeCommandBarItem(item) ? item.theme : null);
+	}
+
 	// The bar can unmount while it is open.
 	onScopeDispose(restore);
 
-	return { highlight };
+	return { highlight, preview };
 }

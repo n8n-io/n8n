@@ -1,4 +1,4 @@
-import { computed } from 'vue';
+import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 import type { IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -39,6 +39,24 @@ const THEME_FAMILY_ORDER: ThemeFamily[] = [
 	'nightfly',
 ];
 
+const THEME_MODE_SUFFIXED_LABELS: Record<AppliedThemeOption, BaseTextKey> = {
+	light: 'settings.personal.theme.withLightMode',
+	dark: 'settings.personal.theme.withDarkMode',
+};
+
+/** The name of a family in one mode. Only a family with both variants gets the mode in its name. */
+function useThemeFamilyLabel() {
+	const i18n = useI18n();
+
+	return (family: ThemeFamily, mode: AppliedThemeOption) => {
+		const name = i18n.baseText(THEME_FAMILY_LABELS[family]);
+		const hasBothVariants = hasThemeVariant(family, 'light') && hasThemeVariant(family, 'dark');
+		return hasBothVariants
+			? i18n.baseText(THEME_MODE_SUFFIXED_LABELS[mode], { interpolate: { name } })
+			: name;
+	};
+}
+
 /** Every mode the user can pick, in display order. The mode menus share this list. */
 export function useThemeModeOptions() {
 	const i18n = useI18n();
@@ -52,35 +70,30 @@ export function useThemeModeOptions() {
 	);
 }
 
-/**
- * The family that the screen shows. The store resets a saved family that has no variant for a new mode.
- * This is a safety net for a saved family that is stale at boot, for example after an OS change.
- */
+/** The family that the screen shows: the slot for the resolved mode. */
 export function useActiveThemeFamily() {
 	const uiStore = useUIStore();
 
-	return computed<ThemeFamily>(() =>
-		hasThemeVariant(uiStore.themeFamily, uiStore.appliedTheme) ? uiStore.themeFamily : 'default',
-	);
+	return computed<ThemeFamily>(() => uiStore.themeFamily);
 }
 
 /**
- * The theme families that have a variant for the current mode, in display order.
- * The mode is the resolved mode, so `system` follows the OS. The theme menus share this list.
- * The rows have no icon.
+ * The theme families that have a variant for a mode, in display order. The mode defaults to the
+ * resolved mode, so `system` follows the OS. The theme menus share this list. The rows have no icon.
  */
-export function useThemeFamilyOptions() {
-	const i18n = useI18n();
+export function useThemeFamilyOptions(mode?: MaybeRefOrGetter<AppliedThemeOption>) {
+	const familyLabel = useThemeFamilyLabel();
 	const uiStore = useUIStore();
 
-	return computed(() =>
-		THEME_FAMILY_ORDER.filter((value) => hasThemeVariant(value, uiStore.appliedTheme)).map(
+	return computed(() => {
+		const targetMode = mode === undefined ? uiStore.appliedTheme : toValue(mode);
+		return THEME_FAMILY_ORDER.filter((value) => hasThemeVariant(value, targetMode)).map(
 			(value) => ({
 				value,
-				label: i18n.baseText(THEME_FAMILY_LABELS[value]),
+				label: familyLabel(value, targetMode),
 			}),
-		),
-	);
+		);
+	});
 }
 
 /**
@@ -89,6 +102,7 @@ export function useThemeFamilyOptions() {
  */
 export function useThemeVariantOptions() {
 	const i18n = useI18n();
+	const familyLabel = useThemeFamilyLabel();
 	const uiStore = useUIStore();
 
 	return computed(() => {
@@ -100,7 +114,7 @@ export function useThemeVariantOptions() {
 				mode,
 				value,
 				isCurrentMode: mode === current,
-				label: i18n.baseText(THEME_FAMILY_LABELS[value]),
+				label: familyLabel(value, mode),
 				modeLabel: i18n.baseText(THEME_MODE_DISPLAY[mode].label),
 			})),
 		);

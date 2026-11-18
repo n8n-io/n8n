@@ -998,6 +998,12 @@ export interface ThemeSelection {
 	mode: ThemeMode;
 	family: ThemeFamily;
 }
+/** The saved theme: the mode, and one family for each resolved mode. */
+export interface ThemePreferences {
+	mode: ThemeMode;
+	light: ThemeFamily;
+	dark: ThemeFamily;
+}
 
 export type EnterpriseEditionFeatureKey =
 	| 'AdvancedExecutionFilters'

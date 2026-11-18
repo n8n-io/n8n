@@ -18,6 +18,10 @@ type SelectItemComponentProps = SelectOptionBase & {
 
 const props = defineProps<SelectItemComponentProps>();
 defineSlots<SelectItemSlots>();
+const emit = defineEmits<{
+	/** Reka moves DOM focus to the highlighted item, so focus and blur follow the highlight. */
+	highlight: [highlighted: boolean];
+}>();
 const $style = useCssModule();
 
 const leadingProps = computed(() => ({
@@ -41,6 +45,8 @@ const typeaheadText = computed(() => props.textValue ?? props.label);
 		:text-value="typeaheadText"
 		:class="props.class"
 		@select="props.onSelect?.($event)"
+		@focus="emit('highlight', true)"
+		@blur="emit('highlight', false)"
 	>
 		<slot name="item-leading" :item="props" :ui="leadingProps">
 			<Icon v-if="props.icon" :icon="props.icon" color="text-base" v-bind="leadingProps" />

@@ -4,12 +4,9 @@ import { ROLE, type Role, type ChangeEmailRequestDto } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import {
-	useActiveThemeFamily,
-	useThemeFamilyOptions,
-	useThemeModeOptions,
-} from '@/app/composables/useThemeOptions';
-import type { ThemeFamily, ThemeMode } from '@/Interface';
+import { useThemeFamilyOptions, useThemeModeOptions } from '@/app/composables/useThemeOptions';
+import { useThemePreview } from '@/features/shared/commandBar/composables/useThemePreview';
+import type { AppliedThemeOption, ThemeFamily, ThemeMode } from '@/Interface';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { MFA_DOCS_URL, VALID_EMAIL_REGEX } from '@/app/constants';
 import {
@@ -248,14 +245,61 @@ function onModeChange(value: SelectValue | undefined) {
 	if (item && item.value !== uiStore.themeMode) uiStore.setThemeMode(item.value);
 }
 
-const familyOptions = useThemeFamilyOptions();
-const themeItems = computed((): Array<SelectOptionBase<ThemeFamily>> => familyOptions.value);
-// The list only has the families that fit the current mode. The saved family can be missing from it.
-const activeFamily = useActiveThemeFamily();
+const lightFamilyOptions = useThemeFamilyOptions('light');
+const darkFamilyOptions = useThemeFamilyOptions('dark');
 
-function onThemeChange(value: SelectValue | undefined) {
-	const item = themeItems.value.find((option) => option.value === value);
-	if (item && item.value !== uiStore.themeFamily) uiStore.setThemeFamily(item.value);
+type ThemeRow = {
+	slot: AppliedThemeOption;
+	title: string;
+	description: string;
+	items: Array<SelectOptionBase<ThemeFamily>>;
+	value: ThemeFamily;
+};
+
+// System mode has one select for each slot. A pinned mode only has the select of its own slot.
+const themeRows = computed((): ThemeRow[] => {
+	const light: ThemeRow = {
+		slot: 'light',
+		title: i18n.baseText('settings.personal.theme.lightTheme'),
+		description: i18n.baseText('settings.personal.theme.lightTheme.description'),
+		items: lightFamilyOptions.value,
+		value: uiStore.lightThemeFamily,
+	};
+	const dark: ThemeRow = {
+		slot: 'dark',
+		title: i18n.baseText('settings.personal.theme.darkTheme'),
+		description: i18n.baseText('settings.personal.theme.darkTheme.description'),
+		items: darkFamilyOptions.value,
+		value: uiStore.darkThemeFamily,
+	};
+	if (uiStore.themeMode === 'system') return [light, dark];
+
+	const pinned = uiStore.themeMode === 'dark' ? dark : light;
+	return [
+		{
+			...pinned,
+			title: i18n.baseText('settings.personal.theme'),
+			description: i18n.baseText('settings.personal.theme.description'),
+		},
+	];
+});
+
+function onThemeChange(row: ThemeRow, value: SelectValue | undefined) {
+	const item = row.items.find((option) => option.value === value);
+	if (item && item.value !== row.value) uiStore.setThemeFamily(item.value, row.slot);
+}
+
+// Like Cmd+K: the highlighted option previews on the body, closing without a select restores.
+const themePreview = useThemePreview();
+
+// The option previews in the mode of its slot, also when the OS has the other mode.
+function onThemeHighlight(row: ThemeRow, value: SelectValue | undefined) {
+	const item = row.items.find((option) => option.value === value);
+	themePreview.preview(item ? { mode: row.slot, family: item.value } : null);
+}
+
+function onThemeSelectOpen(open: boolean) {
+	if (!open) themePreview.preview(null);
 }
 
 onMounted(() => {
@@ -629,23 +673,27 @@ onBeforeUnmount(() => {
 					</template>
 				</N8nSettingsRow>
 				<N8nSettingsRow
-					:title="i18n.baseText('settings.personal.theme')"
-					:description="i18n.baseText('settings.personal.theme.description')"
+					v-for="row in themeRows"
+					:key="row.slot"
+					:title="row.title"
+					:description="row.description"
 				>
 					<template #action>
 						<N8nSelect2
-							:model-value="activeFamily"
-							:items="themeItems"
+							:model-value="row.value"
+							:items="row.items"
 							size="medium"
-							:aria-label="i18n.baseText('settings.personal.theme')"
-							data-test-id="theme-select"
-							@update:model-value="onThemeChange"
+							:aria-label="row.title"
+							:data-test-id="themeRows.length > 1 ? `theme-select-${row.slot}` : 'theme-select'"
+							@update:model-value="(value) => onThemeChange(row, value)"
+							@highlight="(value) => onThemeHighlight(row, value)"
+							@update:open="onThemeSelectOpen"
 						>
 							<!-- Every label shares one grid cell, so the trigger is as wide as the widest theme whichever one is chosen. -->
 							<template #default="{ modelValue }">
 								<span :class="$style.themeValue">
 									<span
-										v-for="item in themeItems"
+										v-for="item in row.items"
 										:key="item.value"
 										:class="[
 											$style.themeLabel,

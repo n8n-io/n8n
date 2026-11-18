@@ -1,7 +1,8 @@
 import {
 	VIEWS,
 	LOCAL_STORAGE_THEME_MODE,
-	LOCAL_STORAGE_THEME_FAMILY,
+	LOCAL_STORAGE_THEME_LIGHT_FAMILY,
+	LOCAL_STORAGE_THEME_DARK_FAMILY,
 	LOCAL_STORAGE_SIDEBAR_WIDTH,
 } from '@/app/constants';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
@@ -22,6 +23,7 @@ import type {
 	NewCredentialsModal,
 	ThemeFamily,
 	ThemeMode,
+	ThemePreferences,
 	ThemeSelection,
 	ModalState,
 	ModalKey,
@@ -34,12 +36,13 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	applyThemeToBody,
 	applyThemeWithTransition,
-	DEFAULT_THEME_SELECTION,
+	DEFAULT_THEME_PREFERENCES,
+	familyForMode,
 	getSavedTheme,
 	hasThemeVariant,
-	isThemeFamily,
 	isThemeMode,
-	resolveTheme,
+	resolveThemeMode,
+	toThemeSelection,
 } from './ui.utils';
 import { SHELL_MODAL_INITIAL_STATE } from './defaults/modals';
 import { computed, ref, watch } from 'vue';
@@ -56,12 +59,12 @@ import {
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { showsPlaceholderPage } from '@/app/moduleInitializer/placeholderPage';
 
-let savedTheme: ThemeSelection = DEFAULT_THEME_SELECTION;
+let savedTheme: ThemePreferences = DEFAULT_THEME_PREFERENCES;
 
 // Apply the saved theme before the app mounts, with no animation.
 try {
 	savedTheme = getSavedTheme();
-	applyThemeToBody(savedTheme);
+	applyThemeToBody(toThemeSelection(savedTheme));
 } catch (e) {}
 
 type UiStore = ReturnType<typeof useUIStore>;
@@ -125,13 +128,23 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			write: identity,
 		},
 	});
-	const themeFamily = useLocalStorage<ThemeFamily>(LOCAL_STORAGE_THEME_FAMILY, savedTheme.family, {
-		writeDefaults: false,
-		serializer: {
-			read: (value) => (isThemeFamily(value) ? value : savedTheme.family),
-			write: identity,
+	// One family per resolved mode. Each slot only holds a family with a variant for its mode.
+	const lightThemeFamily = useLocalStorage<ThemeFamily>(
+		LOCAL_STORAGE_THEME_LIGHT_FAMILY,
+		savedTheme.light,
+		{
+			writeDefaults: false,
+			serializer: { read: (value) => familyForMode(value, 'light'), write: identity },
 		},
-	});
+	);
+	const darkThemeFamily = useLocalStorage<ThemeFamily>(
+		LOCAL_STORAGE_THEME_DARK_FAMILY,
+		savedTheme.dark,
+		{
+			writeDefaults: false,
+			serializer: { read: (value) => familyForMode(value, 'dark'), write: identity },
+		},
+	);
 
 	/** This store instance's copy of the shell catalogue (`ownedCopyOf`). */
 	const shellModalDefaults = ownedCopyOf(SHELL_MODAL_INITIAL_STATE);
@@ -210,26 +223,28 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const isDarkThemePreferred = useMediaQuery('(prefers-color-scheme: dark)');
 
-	const savedThemeSelection = (): ThemeSelection => ({
+	const themePreferences = (): ThemePreferences => ({
 		mode: themeMode.value,
-		family: themeFamily.value,
+		light: lightThemeFamily.value,
+		dark: darkThemeFamily.value,
 	});
 
+	const savedThemeSelection = (): ThemeSelection =>
+		toThemeSelection(themePreferences(), isDarkThemePreferred.value);
+
 	// The resolved mode. The consumers of the theme (icons, diffs, telemetry) only need light or dark.
-	const appliedTheme = computed<AppliedThemeOption>(
-		() => resolveTheme(savedThemeSelection(), isDarkThemePreferred.value).mode,
+	const appliedTheme = computed<AppliedThemeOption>(() =>
+		resolveThemeMode(themeMode.value, isDarkThemePreferred.value),
 	);
 
-	// A family can have no variant for the new resolved mode. Then the saved family is the default one.
-	// A command bar preview does not reach this code. It only changes the body attributes.
-	const resetUnavailableFamily = (): void => {
-		if (!hasThemeVariant(themeFamily.value, appliedTheme.value)) themeFamily.value = 'default';
-	};
+	// The family of the slot for the resolved mode.
+	const themeFamily = computed<ThemeFamily>(() =>
+		appliedTheme.value === 'dark' ? darkThemeFamily.value : lightThemeFamily.value,
+	);
 
-	// The OS preference can change while the app is open. Only a pinned theme needs a new apply.
+	// The OS preference can change while the app is open. In system mode, the other slot applies.
 	watch(isDarkThemePreferred, () => {
 		if (themeMode.value !== 'system') return;
-		resetUnavailableFamily();
 		applyThemeWithTransition(savedThemeSelection());
 	});
 
@@ -369,12 +384,20 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const setThemeMode = (mode: ThemeMode): void => {
 		themeMode.value = mode;
-		resetUnavailableFamily();
 		applyThemeWithTransition(savedThemeSelection());
 	};
 
-	const setThemeFamily = (family: ThemeFamily): void => {
-		themeFamily.value = family;
+	/** Sets the family of one slot. The slot defaults to the resolved mode. */
+	const setThemeFamily = (
+		family: ThemeFamily,
+		mode: AppliedThemeOption = appliedTheme.value,
+	): void => {
+		if (!hasThemeVariant(family, mode)) return;
+		if (mode === 'dark') {
+			darkThemeFamily.value = family;
+		} else {
+			lightThemeFamily.value = family;
+		}
 		applyThemeWithTransition(savedThemeSelection());
 	};
 
@@ -711,7 +734,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		sidebarMenuCollapsed,
 		sidebarWidth,
 		themeMode: computed(() => themeMode.value),
-		themeFamily: computed(() => themeFamily.value),
+		themeFamily,
+		lightThemeFamily: computed(() => lightThemeFamily.value),
+		darkThemeFamily: computed(() => darkThemeFamily.value),
 		modalsById,
 		modalStateById,
 		currentView,
