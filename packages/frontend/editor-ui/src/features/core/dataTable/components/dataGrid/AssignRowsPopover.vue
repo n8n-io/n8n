@@ -63,7 +63,6 @@ function assign() {
 					<N8nSelect
 						:model-value="column"
 						size="small"
-						:teleported="false"
 						data-test-id="data-table-assign-rows-column"
 						@update:model-value="chooseColumn"
 					>
@@ -74,7 +73,6 @@ function assign() {
 					v-model="value"
 					size="small"
 					filterable
-					:teleported="false"
 					:placeholder="
 						i18n.baseText(
 							ruleColumns[column] === 'project'

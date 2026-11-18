@@ -49,7 +49,11 @@ defineExpose({
 </script>
 
 <template>
-	<div :style="{ width: `${width}px` }" data-test-id="data-table-row-rule-editor">
+	<div
+		:style="{ width: `${width}px` }"
+		class="data-table-row-rule-editor"
+		data-test-id="data-table-row-rule-editor"
+	>
 		<N8nSelect
 			ref="selectRef"
 			:model-value="value"
@@ -78,3 +82,26 @@ defineExpose({
 		</N8nSelect>
 	</div>
 </template>
+
+<style lang="scss">
+// The editor sits in AG Grid's popup, outside the theme scope of the page, so set
+// the input colors here as the date editor does.
+.data-table-row-rule-editor {
+	.el-select__wrapper,
+	.el-select__wrapper.is-focused,
+	.el-select__wrapper.is-hovering {
+		min-height: var(--ag-row-height);
+		background-color: var(--color--background--light-2);
+		box-shadow: none;
+		border: var(--grid--cell--border-color--editing);
+		border-radius: 0;
+	}
+
+	.el-select__input,
+	.el-select__selected-item,
+	.el-select__placeholder:not(.is-transparent) {
+		background-color: transparent;
+		color: var(--color--text);
+	}
+}
+</style>
