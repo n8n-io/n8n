@@ -35,6 +35,7 @@ export const LOG_SCOPES = [
 	'source-control',
 	'promotions',
 	'dynamic-credentials',
+	'vault-credentials',
 	'workflow-history-compaction',
 	'data-table-csv-import',
 	'ssrf-protection',
@@ -157,6 +158,7 @@ export class LoggingConfig {
 	 * - `workflow-activation`
 	 * - `insights`
 	 * - `chat-hub`
+	 * - `vault-credentials`
 	 *
 	 * @example
 	 * `N8N_LOG_SCOPES=license`

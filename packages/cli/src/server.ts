@@ -66,6 +66,7 @@ import '@/controllers/security-settings.controller';
 import '@/controllers/public-api-rate-limit-settings.controller';
 import '@/credentials/credentials.controller';
 import '@/credentials/credential-options.controller';
+import '@/credentials/vault/vault-credentials.controller';
 import '@/events/events.controller';
 import '@/executions/executions.controller';
 import '@/node-execution/ephemeral-node-executor';

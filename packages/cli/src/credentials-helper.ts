@@ -50,6 +50,7 @@ import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
+import { VaultCredentialResolver } from './credentials/vault/vault-credential-resolver';
 import { createMockNodeTypes } from './credentials/mock-node-types';
 import { CredentialMissingIdError } from './errors/credential-missing-id.error';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
@@ -130,6 +131,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		private readonly externalSecretsConfig: ExternalSecretsConfig,
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly vaultCredentialResolver: VaultCredentialResolver,
 	) {
 		super();
 	}
@@ -693,6 +695,25 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		if (raw === true) {
 			return this.trackStoredData(decryptedDataOriginal, credentialsEntity);
+		}
+
+		// A credential kept in a vault stores only a reference. The secret is fetched per run.
+		if (this.vaultCredentialResolver.isVaultReference(decryptedDataOriginal)) {
+			decryptedDataOriginal = await this.vaultCredentialResolver.resolve({
+				credentialId: credentialsEntity.id,
+				data: decryptedDataOriginal,
+				workflowId: additionalData.workflowId,
+				executionId: additionalData.executionId,
+				mode: effectiveMode,
+				credentialName: credentialsEntity.name,
+				nodeName: consumerNode?.name,
+				// A run started in the editor also shows each step in the browser console.
+				onStep: (text) =>
+					additionalData.sendDataToUI?.('sendConsoleMessage', {
+						source: '[Vault]',
+						messages: [text],
+					}),
+			});
 		}
 
 		if (
