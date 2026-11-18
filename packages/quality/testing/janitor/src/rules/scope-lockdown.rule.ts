@@ -141,9 +141,17 @@ export class ScopeLockdownRule extends AstRule<{ rootDir: string }> {
 
 				// For classes with container, check for unscoped locator calls
 				const calls = getCallExpressions(classDecl);
-				// Each call in a locator chain has the same start. Keep nested arguments independent.
+				// Match only full chains. Calls in a chain share a start, but nested arguments do not.
 				const allowedStarts = new Set(
 					calls
+						.filter(
+							(call) =>
+								!call.getFirstAncestor(
+									(ancestor) =>
+										ancestor.getKind() === SyntaxKind.CallExpression &&
+										ancestor.getStart() === call.getStart(),
+								),
+						)
 						.filter((call) =>
 							ruleAllows(
 								this.id,

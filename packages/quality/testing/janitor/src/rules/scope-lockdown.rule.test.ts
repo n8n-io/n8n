@@ -139,6 +139,50 @@ export class SettingsModal {
 		expect(rule.analyzeProject(project, [file])).toHaveLength(3);
 	});
 
+	test.for([
+		{
+			name: 'single-call',
+			pattern:
+				/^pages\/SettingsModal\.ts:SettingsModal: this\.page\.getByTestId\('settings-save'\)$/,
+			locator: "this.page.getByTestId('settings-save')",
+		},
+		{
+			name: 'chained',
+			pattern:
+				/^pages\/SettingsModal\.ts:SettingsModal: this\.page\.getByTestId\('settings-save'\)\.getByRole\('button'\)$/,
+			locator: "this.page.getByTestId('settings-save').getByRole('button')",
+		},
+	])(
+		'requires the full $name locator to match an exception',
+		({ pattern, locator }, { project, createFile }) => {
+			const config = getConfig();
+			setConfig({
+				...config,
+				rules: {
+					...config.rules,
+					'scope-lockdown': { allowPatterns: [pattern] },
+				},
+			});
+			const file = createFile(
+				'/pages/SettingsModal.ts',
+				`export class SettingsModal {
+  get container() { return this.page.getByTestId('settings-content'); }
+  getSaveButton() {
+    return ${locator};
+  }
+  getInput() {
+    return ${locator}.locator('input');
+  }
+}`,
+			);
+
+			const violations = rule.analyzeProject(project, [file]);
+			expect(violations).toHaveLength(1);
+			expect(violations[0].line).toBe(7);
+			expect(violations[0].message).toContain('Unscoped locator');
+		},
+	);
+
 	test('checks page locators inside arguments of an allowed chain', ({ project, createFile }) => {
 		const config = getConfig();
 		setConfig({
