@@ -41,17 +41,39 @@ const JSON_HEADERS = { 'content-type': 'application/json' };
 const JSON_BODY = '{"error":"nope","code":7}';
 
 /** The kinds of a failed request. Each runs under both "continue" settings. */
-const KINDS: Array<{ name: string; path: string; options?: Record<string, unknown>; error?: string }> = [
+const KINDS: Array<{
+	name: string;
+	path: string;
+	options?: Record<string, unknown>;
+	error?: string;
+}> = [
 	{ name: '400 with a JSON body', path: '/s400' },
 	{ name: '404 with a text body', path: '/s404text' },
 	{ name: '500 with an empty body', path: '/s500empty' },
 	{ name: '401', path: '/s401' },
-	{ name: 'invalid JSON with the JSON format', path: '/invalid', options: { response: { response: { responseFormat: 'json' } } } },
+	{
+		name: 'invalid JSON with the JSON format',
+		path: '/invalid',
+		options: { response: { response: { responseFormat: 'json' } } },
+	},
 	{ name: 'refused connection', path: '/refused' },
-	{ name: 'timeout', path: '/slow', options: { timeout: 300 }, error: 'http: the request timed out after 300 ms' },
-	{ name: 'redirect loop', path: '/loop', options: { redirect: { redirect: { maxRedirects: 3 } } } },
+	{
+		name: 'timeout',
+		path: '/slow',
+		options: { timeout: 300 },
+		error: 'http: the request timed out after 300 ms',
+	},
+	{
+		name: 'redirect loop',
+		path: '/loop',
+		options: { redirect: { redirect: { maxRedirects: 3 } } },
+	},
 	{ name: 'never error', path: '/s404', options: { response: { response: { neverError: true } } } },
-	{ name: 'full response', path: '/s404', options: { response: { response: { fullResponse: true } } } },
+	{
+		name: 'full response',
+		path: '/s404',
+		options: { response: { response: { fullResponse: true } } },
+	},
 ];
 
 const CASES: Case[] = [4.2, 4.3, 4.4].flatMap((version) =>
@@ -198,7 +220,8 @@ function listsOf(out: Awaited<ReturnType<typeof runReference>>): unknown[][] {
 function refusedMessage(nodes: Record<string, unknown[][]>): string {
 	for (const list of nodes.H ?? []) {
 		for (const item of list) {
-			const message = (item as { error?: { message?: unknown } } | null | undefined)?.error?.message;
+			const message = (item as { error?: { message?: unknown } } | null | undefined)?.error
+				?.message;
 			if (typeof message === 'string') return message;
 		}
 	}
@@ -206,49 +229,57 @@ function refusedMessage(nodes: Record<string, unknown[][]>): string {
 }
 
 describe('HTTP Request error item and v1', () => {
-	it.each(CASES.map((c) => ({ ...c, label: c.name })))('$label', async (c) => {
-		log = [];
-		const v1 = await runOracle(workflow(c), {
-			start: 'T',
-			item: {},
-			mode: 'trigger',
-			timeoutMs: 20_000,
-		});
-		// A request that v1 stopped still gets its answer from the server a moment later.
-		if (c.error?.startsWith('http: the request timed out')) {
-			await new Promise((resolve) => setTimeout(resolve, 2300));
-		}
-		const converted = convertWorkflow(workflow(c), { trace: 'all' });
-		expect(converted.ok).toBe(true);
-		expect(converted.fallbackNodes ?? []).toEqual([]);
-		const failure =
-			c.path === '/refused' ? refusedMessage(v1.nodes) : c.error;
-		const out = await runReference(converted.source, {
-			trigger: { body: {} },
-			now: 0,
-			seed: 1,
-			effects: {
-				H:
-					failure !== undefined
-						? [{ $error: failure }]
-						: log.map((s) => ({ status: s.status, headers: s.headers, body: s.body })),
-			},
-			trace: true,
-		});
-		expect(out.status).toBe('ok');
-		expect(comparable(listsOf(out))).toEqual(comparable(v1.nodes.H ?? []));
-	}, 40_000);
-});
-
-describe('HTTP Request error item of two items and v1', () => {
-	it.each([4.2, 4.3, 4.4].flatMap((version) => ['continueRegularOutput', 'continueErrorOutput'].map((onError) => ({ version, onError: onError as OnError, label: `two items where the second fails, version ${version}, ${onError}` }))))(
+	it.each(CASES.map((c) => ({ ...c, label: c.name })))(
 		'$label',
 		async (c) => {
 			log = [];
-			const data = JSON.stringify([
-				{ url: `${base}/ok` },
-				{ url: `${base}/s404` },
-			]);
+			const v1 = await runOracle(workflow(c), {
+				start: 'T',
+				item: {},
+				mode: 'trigger',
+				timeoutMs: 20_000,
+			});
+			// A request that v1 stopped still gets its answer from the server a moment later.
+			if (c.error?.startsWith('http: the request timed out')) {
+				await new Promise((resolve) => setTimeout(resolve, 2300));
+			}
+			const converted = convertWorkflow(workflow(c), { trace: 'all' });
+			expect(converted.ok).toBe(true);
+			expect(converted.fallbackNodes ?? []).toEqual([]);
+			const failure = c.path === '/refused' ? refusedMessage(v1.nodes) : c.error;
+			const out = await runReference(converted.source, {
+				trigger: { body: {} },
+				now: 0,
+				seed: 1,
+				effects: {
+					H:
+						failure !== undefined
+							? [{ $error: failure }]
+							: log.map((s) => ({ status: s.status, headers: s.headers, body: s.body })),
+				},
+				trace: true,
+			});
+			expect(out.status).toBe('ok');
+			expect(comparable(listsOf(out))).toEqual(comparable(v1.nodes.H ?? []));
+		},
+		40_000,
+	);
+});
+
+describe('HTTP Request error item of two items and v1', () => {
+	it.each(
+		[4.2, 4.3, 4.4].flatMap((version) =>
+			['continueRegularOutput', 'continueErrorOutput'].map((onError) => ({
+				version,
+				onError: onError as OnError,
+				label: `two items where the second fails, version ${version}, ${onError}`,
+			})),
+		),
+	)(
+		'$label',
+		async (c) => {
+			log = [];
+			const data = JSON.stringify([{ url: `${base}/ok` }, { url: `${base}/s404` }]);
 			const wf = {
 				name: 'HTTP two items',
 				nodes: [
