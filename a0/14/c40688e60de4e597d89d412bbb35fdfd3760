@@ -1,0 +1,40 @@
+packages/cli/src/modules/agents/system-agents/system-agent-channel.service.ts
+  s_b83c2cc9d859ec::t_f94d562337b25e 122-123
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-stop-event.ts
+  s_b83c2cc9d859ec::t_5a721e0156a0d3 1-27
+packages/cli/src/modules/agents/system-agents/system-agent-channels.controller.ts
+  s_b83c2cc9d859ec::t_5a721e0156a0d3 7,13,31,46,55-72
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-methods.service.ts
+  s_b83c2cc9d859ec::t_f94d562337b25e 127-129,135,168
+packages/cli/src/modules/agents/integrations/channel-webhook-handler.ts
+  s_b83c2cc9d859ec::t_e558e32c9112ce 10-11,21,29,64,67,144
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.system-agent.test.ts
+  s_b83c2cc9d859ec::t_b1c4c192322b77 93,109-111,503-604
+  s_b83c2cc9d859ec::t_222012350b8640 38
+  s_b83c2cc9d859ec::t_6bc9e6617b1e34 605
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-channels.controller.test.ts
+  s_b83c2cc9d859ec::t_49b9fc598a8a68 1,5,27,82-141
+  s_b83c2cc9d859ec::t_8853792305e1c0 142
+packages/cli/src/modules/agents/integrations/__tests__/slack-stop-event.test.ts
+  s_b83c2cc9d859ec::t_b1c4c192322b77 1-49
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_b83c2cc9d859ec::t_e558e32c9112ce 1047,1123-1170,1173
+  s_b83c2cc9d859ec::t_f94d562337b25e 1038-1039,1042,1048-1049
+  s_b83c2cc9d859ec::t_7242616f177a26 1171-1172,1174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a014c40688e60de4e597d89d412bbb35fdfd3760",
+  "prompts": {},
+  "sessions": {
+    "s_b83c2cc9d859ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b90adbb-dcfe-439f-a7eb-7c74a20d13cc",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
