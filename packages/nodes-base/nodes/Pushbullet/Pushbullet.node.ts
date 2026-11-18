@@ -404,7 +404,7 @@ export class Pushbullet implements INodeType {
 						}
 
 						if (type === 'file') {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
