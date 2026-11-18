@@ -1,14 +1,6 @@
 {
 	"version": 1,
 	"violations": {
-		"pages/NodeDetailsViewPage.ts": [
-			{
-				"rule": "scope-lockdown",
-				"line": 354,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			}
-		],
 		"tests/e2e/chat-hub/chat-hub-attachment.spec.ts": [
 			{
 				"rule": "selector-purity",
