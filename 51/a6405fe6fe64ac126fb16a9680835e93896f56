@@ -34,6 +34,9 @@ packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlConfiguration
   s_dfe3f914c8bb46::t_7ebc626068220d 16,71,77-82,94-95,97-99,369,374-379,381-386,389,392-400,402-404,406-412,414-424,426-430,695-696,698-701,705,711,714-716,719-723,725-732,745-746
   s_dfe3f914c8bb46::t_040881bffe16c7 96,401,413
   s_dfe3f914c8bb46::t_b2d7176fa1a3cd 702-704,706-710
+  s_dfe3f914c8bb46::t_ce0f5a72c1dce0 425
+  s_dfe3f914c8bb46::t_cb00364157d532 112-115,241,307,373,391,405,640,660,738,754
+  s_dfe3f914c8bb46::t_50ac0f009a0522 3-10,110
 packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
   s_dfe3f914c8bb46::t_af2df97a786495 40-42,123-127,670
 packages/frontend/editor-ui/src/features/agents/__tests__/AgentApprovalRouteSelect.test.ts
