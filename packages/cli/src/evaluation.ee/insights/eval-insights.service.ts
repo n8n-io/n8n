@@ -128,6 +128,7 @@ export class EvalInsightsService {
 		const config = await this.evalConfigRepo.findByIdAndWorkflowId(
 			detail.collection.evaluationConfigId,
 			workflowId,
+			{},
 		);
 		// Default scales from the current config (name-based heuristic when gone).
 		// Each run overrides these with its own frozen snapshot below, so a later
