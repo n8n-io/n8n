@@ -1,0 +1,52 @@
+{
+	"status": "ok",
+	"result": {
+		"before": "{\"first\":\"2024-02-29T12:00:00.000Z\",\"all\":[\"2024-02-29T12:00:00.000Z\",\"1970-01-01T00:00:00.000Z\",\"1970-01-01T00:00:00.005Z\",\"2026-11-12T00:00:00.123Z\",\"1970-01-01T00:00:00.077Z\"]}",
+		"results": [1709182800000, 86400000, null, null, 1],
+		"holder": {
+			"first": "2024-02-29T05:00:00.000Z",
+			"all": [
+				"2024-02-29T05:00:00.000Z",
+				"1970-01-02T00:00:00.000Z",
+				null,
+				null,
+				"1970-01-01T00:00:00.001Z"
+			]
+		},
+		"same": [true, true, false],
+		"text": "Thu Feb 29 2024 05:00:00 GMT+0000 (Coordinated Universal Time)",
+		"time": 1709182800000,
+		"afterWait": [1709182800000, 86400000, null, null, 1],
+		"errors": [
+			"this is not a Date object.",
+			"this is not a Date object.",
+			"this is not a Date object.",
+			"this is not a Date object.",
+			"this is not a Date object.",
+			"this is not a Date object."
+		]
+	},
+	"effects": [
+		{
+			"step": "Store",
+			"kind": "http",
+			"args": {
+				"name": "Store",
+				"method": "POST",
+				"url": "https://example.test/store",
+				"body": {
+					"holder": {
+						"first": "2024-02-29T05:00:00.000Z",
+						"all": [
+							"2024-02-29T05:00:00.000Z",
+							"1970-01-02T00:00:00.000Z",
+							null,
+							null,
+							"1970-01-01T00:00:00.001Z"
+						]
+					}
+				}
+			}
+		}
+	]
+}

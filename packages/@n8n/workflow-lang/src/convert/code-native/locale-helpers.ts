@@ -190,8 +190,9 @@ function zoneOffsetOf(zone: Json, t: number): number {
  * \\\`x.toLocaleString(...)\\\`, \\\`toLocaleDateString\\\` and \\\`toLocaleTimeString\\\`:
  * a Date with \\\`date\\\`, a number with \\\`num\\\` (null when the method has none).
  */
-function localeFormat(x: Json, date: Json, num: Json, zone: Json, isDate: boolean): Json {
-	if (isDate) {
+function localeFormat(x: Json, date: Json, num: Json, zone: Json, isDate: Json): Json {
+	// null: the value has its kind at run time, and a Date value is a Date.
+	if (isDate === true || (isDate === null && Date.is(x))) {
 		const t = typeof x === 'number' ? x : new Date(x).getTime();
 		if (isNaN(t)) return 'Invalid Date';
 		return partsText(dateParts(date, t, zoneOffsetOf(zone, t)));

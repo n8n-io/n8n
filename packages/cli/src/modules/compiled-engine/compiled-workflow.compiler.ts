@@ -54,8 +54,9 @@ const STICKY_NOTE = 'n8n-nodes-base.stickyNote';
 /**
  * The form of a stored artifact. It is part of the cache key: an artifact of an older form
  * is not read. Form 2: the guard of a node with conditions on its credential names the node.
+ * Form 4: a Date of a Code node is a Date value (`dateValues`).
  */
-const ARTIFACT_FORM = 3;
+const ARTIFACT_FORM = 4;
 
 function isTriggerType(type: string) {
 	return /trigger$/i.test(type) || type === 'n8n-nodes-base.webhook';
@@ -431,6 +432,8 @@ export class CompiledWorkflowCompiler {
 			},
 			// Native Code nodes load only the built-in modules that n8n allows (NODE_FUNCTION_ALLOW_BUILTIN).
 			codeModules: codeNodeModules().builtin,
+			// `wfrt` has the kind Date: a Date of a Code node keeps its kind in each place.
+			dateValues: true,
 			// `wfrt` runs the `sql` effect: a Postgres node that the library node has runs there.
 			sql: true,
 			// `wfrt` runs the dialect `mysql` only with `--sql-mysql` (N8N_COMPILED_ENGINE_SQL_MYSQL).

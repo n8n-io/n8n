@@ -39,6 +39,12 @@ export function dateOf(v: unknown, method: string, text: string): Date {
 	throw new TypeError(`${text} is not a function`);
 }
 
+/** Stores the time value `time` in a Date value, and gives the stored time value. */
+export function dateSet(v: unknown, time: number): number {
+	if (!(v instanceof Date)) throw new TypeError('this is not a Date object.');
+	return v.setTime(time);
+}
+
 /** Calls the Date library function `name`. Returns undefined for other names. */
 export function callDate(name: string, args: unknown[]): { value: unknown } | undefined {
 	if (process.env.TZ !== 'UTC') process.env.TZ = 'UTC';
@@ -64,6 +70,8 @@ export function callDate(name: string, args: unknown[]): { value: unknown } | un
 			return { value: dateOf(args[0], String(args[1]), String(args[2])).getTime() };
 		case 'Date.is':
 			return { value: args[0] instanceof Date };
+		case 'Date.set':
+			return { value: dateSet(args[0], Number(args[1])) };
 		case 'Date.json':
 			return { value: typeof args[0] === 'number' ? new Date(args[0]).toJSON() : args[0] };
 		case 'Date.text':

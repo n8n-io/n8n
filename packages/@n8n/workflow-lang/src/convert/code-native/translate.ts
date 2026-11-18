@@ -26,11 +26,12 @@
  */
 import ts from 'typescript';
 
+import { DATE_SETTERS } from '../../compiler/dates.ts';
 import { isKnownTimezone } from '../../compiler/triggers.ts';
 import { localTimeIsUtc } from '../node-identity.ts';
 import { DEFAULT_TIMEZONE } from '../triggers.ts';
 import { LOCALE_NAMES } from './locale-data.generated.ts';
-import { planBody, planCatch } from './catch-check.ts';
+import { calleeText, planBody, planCatch } from './catch-check.ts';
 import { localeEntry } from './locale-entry.ts';
 import { formatSupported as luxonFormatSupported } from './luxon-expression.ts';
 import { checkRegex } from './regex-syntax.ts';
@@ -99,6 +100,13 @@ export interface CodeNativeInput {
 	 * Only a runtime that has the kind Date can run the result.
 	 */
 	dateValues?: boolean;
+	/**
+	 * With \`dateValues\`: each Date that the code holds is a Date value, and no variable,
+	 * parameter or result has the type Date. A Date is then one object in each place, as in
+	 * JavaScript: code can test its kind and its identity, and a setter changes the Date that
+	 * each reference reads. It is the form for code that the forms with typed Dates refuse.
+	 */
+	dateObjects?: boolean;
 	/**
 	 * True when v1 pairs input item k of this node with item k of node `name`: the node is
 	 * before this one on a path of nodes with one input that give one item for each item.
@@ -463,8 +471,76 @@ const DATE_READERS = new Set([
 	'toUTCString',
 ]);
 
-/** Helpers that read a Date value as JavaScript reads a Date (the differential test of Dates). */
-const DATE_VALUE_HELPERS: ReadonlySet<string> = new Set(['toStringOf']);
+/**
+ * Helpers that read a Date value as JavaScript reads a Date. The test
+ * \`code-native-dates-executors.test.ts\` gives a Date value to each of them (the uses of
+ * \`dates-cases.ts\`) and compares the result with n8n's task runner.
+ */
+const DATE_VALUE_HELPERS: ReadonlySet<string> = new Set([
+	'toStringOf',
+	'codeAt',
+	'mcheck',
+	'isRegex',
+	'isColl',
+	'dateSetter',
+	'valueOfOf',
+	'toJsonOf',
+	'localeFormat',
+	'iterOf',
+	'toIntegerOrInfinity',
+	'isFiniteValue',
+	'numberIsNaN',
+	'numberIsSafeInteger',
+	'mathMaxOf',
+	'mathMinOf',
+	'mathImul',
+	'assignInto',
+	'fromEntries',
+	'arrayFrom',
+	'arrayOfLength',
+	'arrayFill',
+	'pushAll',
+	'spliceOf',
+	'lastIndexOfOf',
+	'substrOf',
+	'applyList',
+	'fromCharCodes',
+	'codePointText',
+	'toStringRadix',
+	'localeCaseOf',
+	'encodeUriComponent',
+	'encodeUri',
+	'decodeUriComponent',
+	'decodeUri',
+	'regexOf',
+	'regexNew',
+	'regexFrom',
+	'regexTestOf',
+	'regexExecOf',
+	'strMatch',
+	'strMatchAll',
+	'strSearch',
+	'strReplace',
+	'strSplit',
+	'matchProp',
+	'collNew',
+	'collAdd',
+	'collSet',
+	'collGet',
+	'collHas',
+	'collDelete',
+	'collClear',
+	'collList',
+	'collForEach',
+	'collKeysOf',
+	'collJson',
+	'hasOwnOf',
+	'hasOwnNamedOf',
+	'looseEq',
+	'optCall',
+	'intlOf',
+	'intlFormat',
+]);
 
 /** Options of \`toLocaleString\` that only the format of a date reads. */
 const DATE_FORMAT_OPTIONS = new Set([
@@ -978,6 +1054,8 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	const block = (feature: string, message: string) => {
 		if (!blockers.some((b) => b.feature === feature)) blockers.push({ feature, message });
 	};
+	/** Each Date that the code holds is a Date value (\`CodeNativeInput.dateObjects\`). */
+	const objects = input.dateObjects === true && input.dateValues === true;
 	if (HOST_PRAGMA.test(input.code)) {
 		block('host pragma', 'The code has the `@n8n-host` comment, which keeps the host step.');
 	}
@@ -1069,6 +1147,42 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		const f = stripParens(d.initializer);
 		return ts.isArrowFunction(f) || ts.isFunctionExpression(f) ? f : undefined;
 	};
+	/** Names of members that the code gives a value: a call of such a member can be a function of the code. */
+	let ownMembers: Set<string> | undefined;
+	const definesMember = (name: string): boolean => {
+		if (ownMembers === undefined) {
+			const names = new Set<string>();
+			const collect = (n: ts.Node): void => {
+				if (
+					(ts.isPropertyAssignment(n) ||
+						ts.isShorthandPropertyAssignment(n) ||
+						ts.isMethodDeclaration(n) ||
+						ts.isPropertyDeclaration(n) ||
+						ts.isGetAccessorDeclaration(n)) &&
+					(ts.isIdentifier(n.name) || ts.isStringLiteralLike(n.name))
+				) {
+					names.add(n.name.text);
+				} else if (
+					ts.isBinaryExpression(n) &&
+					n.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+					n.operatorToken.kind <= ts.SyntaxKind.LastAssignment
+				) {
+					const target = stripParens(n.left);
+					if (ts.isPropertyAccessExpression(target)) names.add(target.name.text);
+					else if (
+						ts.isElementAccessExpression(target) &&
+						ts.isStringLiteralLike(target.argumentExpression)
+					) {
+						names.add(target.argumentExpression.text);
+					}
+				}
+				ts.forEachChild(n, collect);
+			};
+			collect(root);
+			ownMembers = names;
+		}
+		return ownMembers.has(name);
+	};
 	const isDateValue = (e: ts.Expression): boolean => {
 		const x = stripParens(e);
 		if (isNewDate(x)) return true;
@@ -1082,6 +1196,8 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	};
 	/** The start value of a variable that holds a Date: \`isDateInit\`, or a call of a Date function. */
 	const isDateStart = (e: ts.Expression | undefined): boolean => {
+		// No variable has the type Date in the form with Date objects.
+		if (objects) return false;
 		if (isDateInit(e)) return true;
 		if (e === undefined) return false;
 		const x = stripParens(e);
@@ -1262,7 +1378,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			if (!changed) break;
 		}
 	};
-	if (!input.nodeCode && !input.expression) inferDates(input.plainDates !== true);
+	if (!input.nodeCode && !input.expression && !objects) inferDates(input.plainDates !== true);
 
 	const isFree = (id: ts.Identifier): boolean => {
 		const sym = checker.getSymbolAtLocation(id);
@@ -2656,9 +2772,45 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			while (p && !isFunctionNode(p)) p = p.parent;
 			return p;
 		};
+		/** True when an operation reads the Date \`e\` at once: the Date needs no Date value. */
+		const readsAtOnce = (e: ts.Expression): boolean => {
+			const p = e.parent;
+			if (ts.isPropertyAccessExpression(p) && p.expression === e) {
+				return ts.isCallExpression(p.parent) && p.parent.expression === p;
+			}
+			if (ts.isBinaryExpression(p)) {
+				const op = p.operatorToken.kind;
+				return (
+					ARITHMETIC.has(op) ||
+					op === ts.SyntaxKind.PlusToken ||
+					op === ts.SyntaxKind.LessThanToken ||
+					op === ts.SyntaxKind.LessThanEqualsToken ||
+					op === ts.SyntaxKind.GreaterThanToken ||
+					op === ts.SyntaxKind.GreaterThanEqualsToken
+				);
+			}
+			if (ts.isPrefixUnaryExpression(p)) {
+				return p.operator === ts.SyntaxKind.PlusToken || p.operator === ts.SyntaxKind.MinusToken;
+			}
+			if (ts.isTemplateSpan(p)) return true;
+			if (ts.isNewExpression(p) && p.expression !== e) return isNewDate(p);
+			if (ts.isCallExpression(p) && p.expression !== e) {
+				const g = globalCall(p);
+				if (g === 'JSON.stringify') return p.arguments.indexOf(e) === 0;
+				return (
+					g !== null &&
+					(['String', 'Number', 'isNaN', 'isFinite'].includes(g) || g.startsWith('Math.'))
+				);
+			}
+			return false;
+		};
 		const place = (e: ts.Expression, kind: 'date' | 'part'): void => {
 			const p = e.parent;
 			const typed = kind === 'date';
+			if (objects) {
+				if (!(typed && readsAtOnce(e))) refuse('The code holds a Date.');
+				return;
+			}
 			if (ts.isVariableDeclaration(p)) {
 				if (!isDateStart(e)) refuse('A variable gets a value that can be a Date.');
 				return;
@@ -2701,6 +2853,16 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 					return;
 				}
 				if (!typed) refuse('An operator gets a value that can be a Date.');
+				// `==` and `!=` of a Date value and a non-Date value (e.g. a string) differ from
+				// v1 JavaScript: `looseEq` compares the time value. A Date value form gives the
+				// JavaScript result.
+				if (
+					(op === ts.SyntaxKind.EqualsEqualsToken ||
+						op === ts.SyntaxKind.ExclamationEqualsToken) &&
+					kindOf(p.left) !== kindOf(p.right)
+				) {
+					refuse('An operator gets a value that can be a Date.');
+				}
 				return;
 			}
 			if (ts.isCallExpression(p) && p.expression !== e) {
@@ -3111,6 +3273,26 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	};
 	if (makesDates || usesLuxon) guardDates();
 
+	// The engine of v1 gives an item with an \`error\` member the message of that member as its
+	// \`json\`. The code for each item keeps only \`json\`, \`binary\` and \`pairedItem\`.
+	if (input.mode === 'all' && input.kind === 'code' && !input.nodeCode && !input.expression) {
+		const named = (o: ts.ObjectLiteralExpression, name: string): boolean =>
+			o.properties.some(
+				(p) =>
+					(ts.isPropertyAssignment(p) || ts.isShorthandPropertyAssignment(p)) &&
+					(ts.isIdentifier(p.name) || ts.isStringLiteralLike(p.name)) &&
+					p.name.text === name,
+			);
+		const findError = (n: ts.Node): void => {
+			if (ts.isObjectLiteralExpression(n) && named(n, 'json') && named(n, 'error')) {
+				block('item with an error member', 'An item of the result has an `error` member.');
+				return;
+			}
+			ts.forEachChild(n, findError);
+		};
+		findError(root);
+	}
+
 	/**
 	 * True when the code reads local time of a \`Date\`: a getter or a setter of local fields,
 	 * the text of a Date, a Date from fields or from a text without a zone, or a format in the
@@ -3305,7 +3487,19 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		const entry = tableEntry(name, a);
 		const typedDate = isDateValue(recv);
 		const isDate = name !== 'toLocaleString' || typedDate;
-		if (!isDate && !isNotDate(recv, 0) && (makesDates || usesLuxon)) {
+		// With Date values, a value has its kind at run time: \`localeFormat\` tests it.
+		const byKind = input.dateValues === true && !usesLuxon && !isDate && !isNotDate(recv, 0);
+		// A Date method of a value of unknown kind: the Date of a Date value, or the TypeError of JavaScript.
+		const text = calleeText(callee);
+		const checkedDate =
+			input.dateValues === true &&
+			!usesLuxon &&
+			isDate &&
+			!typedDate &&
+			text !== null &&
+			!ts.isOptionalChain(callee) &&
+			!definesMember(name);
+		if (!byKind && !isDate && !isNotDate(recv, 0) && (makesDates || usesLuxon)) {
 			// A Date that went through an untyped place is text in native code, and the text of
 			// \`toLocaleString\` of text is the text itself. So the value must be no Date for
 			// certain (\`isNotDate\`), or the code must make no Date at all.
@@ -3315,7 +3509,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			);
 			return true;
 		}
-		if (!isDate && Object.keys(a.options).some((k) => DATE_FORMAT_OPTIONS.has(k))) {
+		if (!byKind && !isDate && Object.keys(a.options).some((k) => DATE_FORMAT_OPTIONS.has(k))) {
 			// The options are those of a date, but the value has no known kind: a Date that went
 			// through an untyped place is text in native code, and text has no date format.
 			block(
@@ -3324,7 +3518,11 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			);
 			return true;
 		}
-		if (!entry || (isDate && !entry.date) || (!isDate && !entry.num && !entry.date)) {
+		if (
+			!entry ||
+			((isDate || byKind) && !entry.date) ||
+			(!isDate && !entry.num && !entry.date)
+		) {
 			block(
 				'locale formatting outside the table',
 				`\`${name}\` with these options is not in the locale table.`,
@@ -3338,10 +3536,15 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		if (a.zone) zones.add(a.zone);
 		helpers.add('localeFormat');
 		const o = seq;
-		open(recv.getStart(sf), 'localeFormat(');
+		open(recv.getStart(sf), checkedDate ? 'localeFormat(Date.of(' : 'localeFormat(');
 		const zone = a.zone === null ? 'null' : JSON.stringify(a.zone);
-		const tail = `, ${specCode(entry.date)}, ${specCode(entry.num)}, ${zone}, ${isDate})`;
-		closing(recv.getEnd(), n.getEnd(), (typedDate ? '.getTime()' : '') + tail, o);
+		const tail = `, ${specCode(entry.date)}, ${specCode(entry.num)}, ${zone}, ${byKind ? 'null' : isDate})`;
+		const time = checkedDate
+			? `, ${JSON.stringify(name)}, ${JSON.stringify(text)}).getTime()`
+			: typedDate
+				? '.getTime()'
+				: '';
+		closing(recv.getEnd(), n.getEnd(), time + tail, o);
 		visit(recv);
 		return true;
 	};
@@ -4746,19 +4949,84 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 					return;
 				}
 				if (MUTATING_METHODS.has(name)) noteMutation(callee.expression);
+				if (
+					input.dateValues === true &&
+					DATE_SETTERS.has(name) &&
+					!isDateValue(callee.expression) &&
+					!usesLuxon
+				) {
+					const text = calleeText(callee);
+					if (!objects) {
+						// The Date value can be the Date of a variable with the type Date: two objects.
+						block(
+							'Date: setter on a shared Date',
+							`\`${name}\` changes a Date that is not a variable of the code.`,
+						);
+					} else if (
+						text === null ||
+						ts.isOptionalChain(callee) ||
+						definesMember(name) ||
+						n.arguments.some((a) => ts.isSpreadElement(a))
+					) {
+						block(
+							'Date: method of a value of unknown kind',
+							`\`${name}\` is a Date method, and the call has no checked form.`,
+						);
+					} else {
+						// The Date value takes the new time: each reference to it reads the change.
+						helpers.add('dateSetter');
+						const o = seq;
+						open(
+							callee.expression.getStart(sf),
+							`dateSetter(${JSON.stringify(name)}, ${JSON.stringify(text)}, `,
+						);
+						if (n.arguments.length === 0) {
+							closing(callee.expression.getEnd(), n.getEnd(), ', [])', o);
+						} else {
+							closing(callee.expression.getEnd(), n.arguments[0].getStart(sf), ', [', o);
+							closing(n.getEnd() - 1, n.getEnd(), '])', o);
+						}
+						visit(callee.expression);
+						for (const a of n.arguments) visit(a);
+						return;
+					}
+				}
+				if (
+					input.dateValues === true &&
+					(name === 'valueOf' || name === 'toJSON') &&
+					n.arguments.length === 0 &&
+					!isDateValue(callee.expression) &&
+					!usesLuxon &&
+					!usesBuffers &&
+					!ts.isOptionalChain(callee)
+				) {
+					const text = calleeText(callee);
+					if (text !== null) {
+						// The method of a Date value, or of another value as JavaScript calls it.
+						toHelper(
+							n,
+							callee,
+							name === 'valueOf' ? 'valueOfOf' : 'toJsonOf',
+							`, ${JSON.stringify(text)}`,
+						);
+						visit(callee.expression);
+						return;
+					}
+				}
 				if (DATE_READERS.has(name) && !isDateValue(callee.expression)) {
 					const receiver = stripParens(callee.expression);
 					const fromLuxon =
 						ts.isCallExpression(receiver) &&
 						ts.isPropertyAccessExpression(receiver.expression) &&
 						receiver.expression.name.text === 'toJSDate';
-					const text = callee.getText(sf);
-					// V8 writes a chain of names and members in the text of its TypeError as the code has it.
+					// V8 writes the callee in the text of its TypeError (\`calleeText\`).
+					const text = calleeText(callee);
 					const checked =
 						input.dateValues === true &&
 						!fromLuxon &&
 						!ts.isOptionalChain(callee) &&
-						/^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*|\[(\d+|[A-Za-z_$][\w$]*)\])*$/.test(text);
+						text !== null &&
+						!definesMember(name);
 					if (!checked && !fromLuxon && !inDeadDateBranch(n, receiver)) {
 						// No value of the code is a Date here: JavaScript throws a TypeError.
 						block(
@@ -4773,7 +5041,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 						closing(
 							callee.expression.getEnd(),
 							callee.expression.getEnd(),
-							`, ${JSON.stringify(name)}, ${JSON.stringify(text)})`,
+							`, ${JSON.stringify(name)}, ${JSON.stringify(text ?? '')})`,
 							o,
 						);
 					} else {
@@ -5817,7 +6085,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	const unproven = madeValues ? [...helpers].filter((h) => !DATE_VALUE_HELPERS.has(h)) : [];
 	if (unproven.length > 0) {
 		blockers.push({
-			feature: 'Date: a Date value with a helper that is not proven',
+			feature: process.env.WF_DATE_HELPER_NAMES ? `Date: unproven helper ${unproven.join(',')}` : 'Date: a Date value with a helper that is not proven',
 			message: `The code has a Date value and the helper \`${unproven[0]}\`, which is not proven to read a Date value as JavaScript does.`,
 		});
 	}
