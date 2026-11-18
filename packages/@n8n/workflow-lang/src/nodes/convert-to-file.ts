@@ -1,23 +1,29 @@
 /**
  * Compiled library node: a hand port of `n8n-nodes-base.convertToFile` (versions 1 to 1.2)
- * for the operations that need no file format library: `toText`, `toBinary`, and `toJson`
- * with one file for each item. `createBinaryFromJson` of `nodes-base/utils/binary.ts` gives
- * the bytes; the `store` call of the `binaryData` service of n8n makes the binary entry with
- * `prepareBinaryData` of n8n-core, so the metadata and the place of the bytes are those of v1
- * in each binary data mode.
+ * for the operations that need no reader of a file format: `toText`, `toBinary`, `toJson` with
+ * one file for each item, and `csv`. `createBinaryFromJson` of `nodes-base/utils/binary.ts`
+ * gives the bytes of the first three; the `spreadsheet.operation.ts` of the v1 node gives the
+ * CSV text with the `xlsx` package, and this port writes that text itself. The `store` call of
+ * the `binaryData` service of n8n makes the binary entry with `prepareBinaryData` of n8n-core,
+ * so the metadata and the place of the bytes are those of v1 in each binary data mode.
  *
  * What has no exact form ends with the mark `RUNS_IN_HOST`: the workflow then runs the v1
  * node in the fallback host, in the same run. That is: more than 262,144 bytes, an encoding
  * other than UTF-8, a source property that lodash reads as a path, a data URI, bytes as an
- * array or a Buffer object, and text that is not well-formed UTF-16.
+ * array or a Buffer object, text that is not well-formed UTF-16, and a CSV option that this
+ * port does not read.
  */
 import { defineNode, operationError, type Item } from '@n8n/workflow-lang';
 
 interface ConvertOptions {
 	addBOM?: boolean;
 	dataIsBase64?: boolean;
+	/** The characters between the cells of a CSV file. */
+	delimiter?: string;
 	encoding?: string;
 	fileName?: string;
+	/** `false`: a CSV file has no row of column names. */
+	headerRow?: boolean;
 	mimeType?: string;
 	format?: boolean;
 }
@@ -78,11 +84,106 @@ function strictBase64(encoded: string): string | null {
 	return text;
 }
 
+/** `flattenObject` of the v1 node: the nested keys of an item as dotted keys. */
+function flatten(data: object): Json {
+	const out: Json = {};
+	for (const [key, value] of Object.entries(data)) {
+		if (value !== null && typeof value === 'object') {
+			for (const [inner, innerValue] of Object.entries(flatten(value))) {
+				if (innerValue === undefined) continue;
+				out[`${key}.${inner}`] = innerValue;
+			}
+		} else {
+			out[key] = value;
+		}
+	}
+	return out;
+}
+
+/** The text of one cell, as the writer of the v1 node gives it. */
+function cellText(value: unknown): string {
+	if (value === null || value === undefined) return '';
+	if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
+	if (typeof value === 'number') {
+		// A 32-bit integer is its own text. Every other number needs the "General" format of the
+		// writer of the v1 node, which takes `toPrecision` and `toExponential`: the workflow
+		// language has neither, so the node hands the item to the host.
+		if ((value | 0) === value) return value.toString(10);
+		throw inHost('a number is not a 32-bit integer');
+	}
+	if (typeof value === 'string') return value;
+	throw inHost('an item holds a value that is not JSON');
+}
+
+/** A cell with the quotes that the CSV format needs. */
+function quoteCell(text: string, delimiter: number): string {
+	for (let i = 0; i < text.length; i++) {
+		const c = text.charCodeAt(i);
+		if (c === delimiter || c === 10 || c === 34) return `"${text.split('"').join('""')}"`;
+	}
+	return text;
+}
+
+/** True when the text has a surrogate that is not a pair. */
+function loneSurrogate(text: string): boolean {
+	for (let i = 0; i < text.length; i++) {
+		const c = text.charCodeAt(i);
+		if (c < 0xd800 || c > 0xdfff) continue;
+		const next = i + 1 < text.length ? text.charCodeAt(i + 1) : 0;
+		if (c <= 0xdbff && next >= 0xdc00 && next <= 0xdfff) {
+			i++;
+			continue;
+		}
+		if (c >= 0xdc00) {
+			const before = i > 0 ? text.charCodeAt(i - 1) : 0;
+			if (before >= 0xd800 && before <= 0xdbff) continue;
+		}
+		return true;
+	}
+	return false;
+}
+
+/** The CSV file of the items: a byte order mark, then one line for each row. */
+function csvText(items: Json[], options: ConvertOptions): string {
+	const header: string[] = [];
+	const rows: Json[] = [];
+	for (const item of items) {
+		const flat = flatten(item);
+		rows.push(flat);
+		for (const key of Object.keys(flat)) {
+			if (!header.includes(key)) header.push(key);
+		}
+	}
+	const given = options.delimiter;
+	const delimiter = typeof given === 'string' && given.length > 0 ? given : ',';
+	const width = delimiter.charCodeAt(0);
+	const lines: string[] = [];
+	if (options.headerRow !== false) {
+		const cells = header.map((name) => quoteCell(name, width));
+		// The v1 node quotes an `ID` in the first cell of the file, so that a reader does not
+		// take the column for a name of a column of its own format.
+		if (cells.length > 0 && cells[0] === 'ID') cells[0] = '"ID"';
+		lines.push(cells.join(delimiter));
+	}
+	for (const row of rows) {
+		lines.push(header.map((name) => quoteCell(cellText(row[name]), width)).join(delimiter));
+	}
+	return `\uFEFF${lines.join('\n')}`;
+}
+
 export default defineNode<ConvertParameters>({
 	type: 'n8n-nodes-base.convertToFile',
 	version: 1,
 	supports: {
 		operations: {
+			csv: [
+				'binaryPropertyName',
+				'nodeVersion',
+				'options',
+				'options.delimiter',
+				'options.fileName',
+				'options.headerRow',
+			],
 			toText: ['sourceProperty', 'binaryPropertyName', 'options', 'nodeVersion'],
 			toBinary: ['sourceProperty', 'binaryPropertyName', 'options', 'nodeVersion'],
 			toJson: ['mode="each"', 'binaryPropertyName', 'options', 'nodeVersion'],
@@ -100,6 +201,41 @@ export default defineNode<ConvertParameters>({
 		const options = parameters.options ?? {};
 		const version = parameters.nodeVersion ?? 1;
 		const field = parameters.binaryPropertyName ?? 'data';
+		if (operation === 'csv') {
+			const rows: Json[] = [];
+			for (const item of list) {
+				const input: Json = {};
+				for (const [name, value] of Object.entries(item)) {
+					// The runtime keeps a file in `$binary`; the JSON of the v1 item has no such key.
+					if (name !== '$binary') input[name] = value;
+				}
+				rows.push(input);
+			}
+			const text = csvText(rows, options);
+			if (loneSurrogate(text)) throw inHost('a text is not well-formed UTF-16');
+			const fileName = options.fileName === undefined ? 'File.csv' : options.fileName;
+			if (typeof fileName !== 'string') throw inHost('the file name is not a text');
+			let data: string;
+			try {
+				data = Base64.encodeUtf8(text);
+			} catch (error) {
+				throw inHost('the text is not well-formed');
+			}
+			if (data.length > MAX_BASE64) throw inHost(`the file has more than ${MAX_BYTES} bytes`);
+			// Without a MIME type, `prepareBinaryData` of n8n-core takes it from the file name, as
+			// the v1 node does.
+			const args: Json = { data, limit: MAX_BYTES, fileName };
+			let stored: StoreAnswer;
+			try {
+				stored = await ctx.service<StoreAnswer>({ service: 'binaryData', op: 'store', args });
+			} catch (error) {
+				throw inHost('the binaryData service gave no answer');
+			}
+			if (typeof stored.host === 'string') throw inHost(stored.host);
+			const csvEntry = stored.entry;
+			if (csvEntry === undefined) throw inHost('the binaryData service gave no entry');
+			return [{ $binary: { [field]: csvEntry } }];
+		}
 		const sourceKey = operation === 'toJson' ? '' : (parameters.sourceProperty ?? '');
 		if (!plainKey(sourceKey)) throw inHost('the source property is a path');
 
