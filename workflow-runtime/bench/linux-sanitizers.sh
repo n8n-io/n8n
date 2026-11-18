@@ -58,6 +58,19 @@ if ls "$OUT"/tsan.* > /dev/null 2>&1; then
 fi
 echo "ok   serve (4 shards, load: $(grep -o 'ok=[0-9]* .*rate=[0-9]*/s' "$OUT/tsan-load.txt" | tail -1)), bench-w1 4 threads"
 
+# Second serve run: log offload on its own writer thread.
+rm -rf "$OUT/tsan-log2" && mkdir -p "$OUT/tsan-log2"
+$NICE $T serve --port "$BASE" --shards 4 --module "$OUT/w2.wfm" --route "POST /w2" --log-dir "$OUT/tsan-log2" --log-offload on --stats > "$OUT/tsan-serve2.txt" 2>&1 & PIDS+=($!)
+SERVE2=$!
+for _ in $(seq 1 100); do grep -q "wfrt serving" "$OUT/tsan-serve2.txt" && break; sleep 0.1; done
+$NICE zig-out/debug/bin/wfrt load --port "$BASE" --conns 64 --seconds 5 --path /w2 --threads 4 > "$OUT/tsan-load2.txt" 2>&1 || true
+kill -TERM "$SERVE2"; wait "$SERVE2" || true
+grep -q "ok=[1-9]" "$OUT/tsan-load2.txt" || { echo "FAIL the log-offload load sent no request:"; cat "$OUT/tsan-load2.txt"; exit 1; }
+if ls "$OUT"/tsan.* > /dev/null 2>&1; then
+  echo "FAIL thread sanitizer reports (log offload):"; head -60 "$OUT"/tsan.*; exit 1
+fi
+echo "ok   serve with --log-offload on (load: $(grep -o 'ok=[0-9]* .*rate=[0-9]*/s' "$OUT/tsan-load2.txt" | tail -1))"
+
 echo "== sanitize-c build"
 zig build -Dsanitize-c=true --prefix zig-out/ubsan
 zig-out/ubsan/bin/wfrt corpus "$CORPUS" | tail -1

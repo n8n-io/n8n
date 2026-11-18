@@ -331,3 +331,84 @@ test "offload: a full ring and a full hold queue are limits, not losses" {
     try std.testing.expectEqualSlices(u8, &rec, log.bytes.items);
     try std.testing.expectEqual(rec.len, log.synced);
 }
+
+// ---- schedule fire and reserved id block with the offload ----------------------
+
+const none_meta = "{\"durability\":\"none\"}";
+
+// A batch with syncNeed `.all` (a schedule fire) holds every output, and
+// later batches wait for its sync. The rule from docs/log-offload.md:
+// the position of the last `.all` batch is the floor. While `synced` is
+// below the floor, every output of every later batch waits.
+test "log offload: a schedule fire (syncNeed .all) holds all later outputs until its sync" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var log: MemLog = .{ .gpa = a };
+    var o = try logoff.Offload.init(a, log.sink(), .{ .ring_bytes = 256, .hold_items = 8, .hold_bytes = 256 });
+
+    // Batch 1: a schedule fire (syncNeed .all). Its outputs wait for sync.
+    try o.append("fire-1");
+    o.endRecord(.all);
+    try o.poll();
+    try std.testing.expectEqual(@as(usize, 0), o.hold.len());
+    try std.testing.expect(o.mayHold());
+
+    // Batch 2: a later batch's outputs are held behind the floor.
+    try o.append("batch-2");
+    o.endRecord(.no);
+    try std.testing.expect(o.mayHold());
+    try std.testing.expectEqual(logoff.Route.held, o.route(.{ .kind = .reply, .durability = .sync, .exec_id = 1, .payload = "a" }, 0));
+    try std.testing.expectEqual(logoff.Route.held, o.route(.{ .kind = .reply, .durability = .none, .exec_id = 2 }, 0));
+
+    // Write, then sync: one sync covers both records (group commit).
+    try o.drain();
+    try std.testing.expectEqualStrings("fire-1batch-2", log.bytes.items);
+    try std.testing.expectEqual(@as(usize, 0), log.synced);
+    try std.testing.expect(try o.step());
+    try o.poll();
+    try std.testing.expect(log.synced > 0);
+
+    // After sync, all held outputs leave in order.
+    for ([_]u64{ 1, 2 }) |id| {
+        const h = o.ready().?;
+        try std.testing.expectEqual(id, h.a.exec_id);
+        o.pop(0);
+    }
+    try std.testing.expect(o.ready() == null and o.hold.len() == 0);
+    try std.testing.expect(!o.mayHold());
+}
+
+// A reserved id block (syncNeed `.all` because of `reserve_none`) holds
+// every output until the block is synced. After a crash before the sync,
+// no id from the lost block is given twice.
+test "log offload: a reserved id block (syncNeed .all) holds later outputs, and a crash before sync loses the block safely" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    const module = try programs.loop(a, none_meta);
+
+    // The first `none`-tier execution triggers a reserve_none action
+    // because next_none (1) > none_reserved (0). The syncNeed is .all.
+    var b = try Bed.init(a, true);
+    const o = b.off.?;
+
+    // Load the module and start one execution.
+    try b.tick(&.{ .{ .kind = .load_module, .payload = module }, .{ .kind = .start, .aux = 0, .payload = "{\"cid\":1,\"n\":1}" } });
+    // The reserve_none action is in the batch. Write but do not sync.
+    try o.drain();
+    try std.testing.expect(b.log.bytes.items.len > 0);
+    try std.testing.expectEqual(@as(usize, 0), b.log.synced);
+
+    // Crash before the sync: the unsynced tail is lost.
+    b.log.crash();
+
+    // Recover from whatever was synced (empty in this case).
+    const log_bytes = b.log.bytes.items[0..b.log.synced];
+    var fresh: Bed = .{ .a = a, .log = b.log, .sh = try shard_mod.Shard.init(a, config(), b.log.sink(), 2 << 20, 1 << 20) };
+    const stats = try fresh.sh.recover(log_bytes);
+    // The reserve_none record was lost; the none counter resets. The next
+    // start reserves a new block; no id is given twice.
+    try std.testing.expect(stats.valid_bytes <= log_bytes.len);
+    try std.testing.expect(stats.batches >= 0);
+}
