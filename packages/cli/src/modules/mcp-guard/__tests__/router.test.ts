@@ -124,8 +124,8 @@ describe('GuardRouter read of an object that only the gym has', () => {
 		const res = await router.callTool('list_milestones', {});
 		expect(res.isError).toBe(true);
 		expect(JSON.stringify(res)).toContain('401 Unauthorized');
-		// The gym saw only the first check of a read that the gym may refuse.
-		expect(gymCalls).toBeLessThanOrEqual(1);
+		// The gym saw the check of a read that the gym may refuse, and nothing after the real failure.
+		expect(gymCalls).toBe(1);
 	});
 });
 
