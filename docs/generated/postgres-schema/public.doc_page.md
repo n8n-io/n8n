@@ -25,7 +25,7 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_doc_page_kind | CHECK | CHECK (((kind)::text = ANY ((ARRAY['api'::character varying, 'schedule'::character varying, 'event'::character varying, 'agent'::character varying])::text[]))) |
-| CHK_doc_page_resourceType | CHECK | CHECK ((("resourceType")::text = ANY ((ARRAY['workflow'::character varying, 'agent'::character varying])::text[]))) |
+| CHK_doc_page_resourceType | CHECK | CHECK ((("resourceType")::text = ANY ((ARRAY['workflow'::character varying, 'agent'::character varying, 'project'::character varying])::text[]))) |
 | FK_2cc7479939efa30ee8f84f008b1 | FOREIGN KEY | FOREIGN KEY ("parentId") REFERENCES doc_page(id) ON DELETE CASCADE |
 | FK_57d75493c80a2cc512480d17937 | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | FK_e1d897d1f9c55b1782b37fb7aab | FOREIGN KEY | FOREIGN KEY ("updatedById") REFERENCES "user"(id) ON DELETE SET NULL |

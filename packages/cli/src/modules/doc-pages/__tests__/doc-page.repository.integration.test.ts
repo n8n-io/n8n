@@ -77,6 +77,18 @@ describe('DocPageRepository', () => {
 		expect(await repository.findById(child.id)).toBeNull();
 	});
 
+	it('stores a project page next to pages with properties', async () => {
+		const project = await createTeamProject();
+		const properties = { triggers: [], agent: null };
+		await repository.insert(row({ projectId: project.id, resourceId: 'wf1', properties }));
+		const projectPage = await repository.insert(
+			row({ projectId: project.id, resourceType: 'project', resourceId: project.id, kind: null }),
+		);
+
+		expect((await repository.findByResource('project', project.id))?.id).toBe(projectPage.id);
+		expect((await repository.findByResource('workflow', 'wf1'))?.properties).toEqual(properties);
+	});
+
 	it('creates one page per resource when two callers race', async () => {
 		const project = await createTeamProject();
 		const workflow = await createActiveWorkflow({}, project);

@@ -311,9 +311,9 @@ erDiagram
 "credentials_entity" }o--o| "dynamic_credential_resolver" : "FOREIGN KEY (resolverId) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "data_table" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "data_table_column" }o--|| "data_table" : "FOREIGN KEY (dataTableId) REFERENCES data_table (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"doc_page" }o--o| "user" : "FOREIGN KEY (updatedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"doc_page" }o--o| "doc_page" : "FOREIGN KEY (parentId) REFERENCES doc_page (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "doc_page" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"doc_page" }o--o| "doc_page" : "FOREIGN KEY (parentId) REFERENCES doc_page (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"doc_page" }o--o| "user" : "FOREIGN KEY (updatedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "dynamic_credential_entry" |o--|| "dynamic_credential_resolver" : "FOREIGN KEY (resolver_id) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "dynamic_credential_entry" |o--|| "credentials_entity" : "FOREIGN KEY (credential_id) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "dynamic_credential_user_entry" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1181,7 +1181,7 @@ erDiagram
   TEXT markdown
   varchar_36_ parentId FK
   varchar_36_ projectId FK
-  JSON properties
+  json properties
   varchar_36_ resourceId
   varchar_16_ resourceType
   varchar_255_ title

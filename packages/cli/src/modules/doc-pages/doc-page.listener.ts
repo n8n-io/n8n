@@ -36,11 +36,6 @@ export class DocPageListener {
 				await this.docPageService.deleteByResource('agent', agentId);
 			});
 		});
-		this.eventService.on('team-project-deleted', async ({ projectId }) => {
-			await this.run('delete page', async () => {
-				await this.docPageService.deleteByResource('project', projectId);
-			});
-		});
 	}
 
 	/**
