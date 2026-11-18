@@ -363,7 +363,7 @@ describe('ExecutionRepository', () => {
 		});
 	});
 
-	describe('cancelManyRunning', () => {
+	describe('markAsCanceled', () => {
 		const createExecution = async (status: ExecutionStatus, extra: { waitTill?: Date } = {}) => {
 			const workflow = await createWorkflow();
 			const { identifiers } = await Container.get(ExecutionRepository).insert({
@@ -375,7 +375,7 @@ describe('ExecutionRepository', () => {
 				createdAt: new Date(),
 				...extra,
 			});
-			return identifiers[0].id as string;
+			return String(identifiers[0].id);
 		};
 
 		it('should cancel a running execution and clear its waitTill', async () => {
@@ -384,9 +384,10 @@ describe('ExecutionRepository', () => {
 				waitTill: new Date(Date.now() + 1000 * 60 * 60),
 			});
 
-			await executionRepo.cancelManyRunning([runningId]);
+			const canceled = await executionRepo.markAsCanceled([runningId], ['running']);
 
 			const runningExec = await executionRepo.findOneBy({ id: runningId });
+			expect(canceled).toEqual([expect.objectContaining({ id: runningId })]);
 			expect(runningExec?.status).toBe('canceled');
 			expect(runningExec?.stoppedAt).toBeInstanceOf(Date);
 			expect(runningExec?.waitTill).toBeNull();
@@ -398,7 +399,7 @@ describe('ExecutionRepository', () => {
 			const errorId = await createExecution('error');
 			const crashedId = await createExecution('crashed');
 
-			await executionRepo.cancelManyRunning([successId, errorId, crashedId]);
+			const canceled = await executionRepo.markAsCanceled([successId, errorId, crashedId]);
 
 			const [successExec, errorExec, crashedExec] = await Promise.all([
 				executionRepo.findOneBy({ id: successId }),
@@ -406,9 +407,37 @@ describe('ExecutionRepository', () => {
 				executionRepo.findOneBy({ id: crashedId }),
 			]);
 
+			expect(canceled).toEqual([]);
 			expect(successExec?.status).toBe('success');
 			expect(errorExec?.status).toBe('error');
 			expect(crashedExec?.status).toBe('crashed');
+		});
+
+		it('should cancel every unfinished status by default and return the changed rows', async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const ids = await Promise.all(
+				(['new', 'running', 'unknown', 'waiting'] as const).map(
+					async (status) => await createExecution(status),
+				),
+			);
+			const successId = await createExecution('success');
+
+			const canceled = await executionRepo.markAsCanceled([...ids, successId]);
+
+			expect(canceled.map(({ id }) => id).sort()).toEqual([...ids].sort());
+			expect((await executionRepo.findOneBy({ id: successId }))?.status).toBe('success');
+		});
+
+		it('should return a row once when two cancels race', async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const runningId = await createExecution('running');
+
+			const [first, second] = await Promise.all([
+				executionRepo.markAsCanceled([runningId]),
+				executionRepo.markAsCanceled([runningId]),
+			]);
+
+			expect(first.length + second.length).toBe(1);
 		});
 
 		it('should cancel only the running executions in a mixed batch', async () => {
@@ -418,7 +447,7 @@ describe('ExecutionRepository', () => {
 			const waitingId = await createExecution('waiting', { waitTill });
 			const successId = await createExecution('success');
 
-			await executionRepo.cancelManyRunning([runningId, waitingId, successId]);
+			await executionRepo.markAsCanceled([runningId, waitingId, successId], ['running']);
 
 			const [runningExec, waitingExec, successExec] = await Promise.all([
 				executionRepo.findOneBy({ id: runningId }),
@@ -498,6 +527,36 @@ describe('ExecutionRepository', () => {
 			);
 
 			expect(result).toEqual([]);
+		});
+	});
+
+	describe('hasWorkflowExecutionAmong', () => {
+		const insertExecution = async (workflowId: string, deletedAt?: Date) => {
+			const { identifiers } = await Container.get(ExecutionRepository).insert({
+				workflowId,
+				mode: 'manual',
+				startedAt: new Date(),
+				status: 'success',
+				finished: true,
+				createdAt: new Date(),
+				...(deletedAt ? { deletedAt } : {}),
+			});
+			// Postgres returns the inserted id as a number, SQLite as a string.
+			return String(identifiers[0].id);
+		};
+
+		it('finds only executions of the given workflow, including soft-deleted ones', async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const workflow = await createWorkflow();
+			const other = await createWorkflow();
+			const softDeleted = await insertExecution(workflow.id, new Date());
+			const otherId = await insertExecution(other.id);
+
+			expect(await executionRepo.hasWorkflowExecutionAmong(workflow.id, [otherId])).toBe(false);
+			expect(
+				await executionRepo.hasWorkflowExecutionAmong(workflow.id, [otherId, softDeleted]),
+			).toBe(true);
+			expect(await executionRepo.hasWorkflowExecutionAmong(workflow.id, [])).toBe(false);
 		});
 	});
 });

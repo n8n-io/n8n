@@ -405,7 +405,7 @@ export class MicrosoftOneDrive implements INodeType {
 						const fileName = this.getNodeParameter('fileName', i) as string;
 
 						if (isBinaryData) {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 
 							// Resolve the effective file name following each version's precedence:

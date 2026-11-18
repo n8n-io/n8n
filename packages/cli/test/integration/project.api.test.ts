@@ -479,6 +479,55 @@ describe('Project members endpoints', () => {
 		);
 	});
 
+	test.each([
+		['owner', createOwner],
+		['admin', createAdmin],
+	])(
+		'POST /projects/:projectId/users returns 403 when an instance %s adds a member to their personal project',
+		async (_label, createActor) => {
+			const actor = await createActor();
+			const member = await createMember();
+			const personalProject = await getPersonalProject(actor);
+
+			const res = await testServer
+				.authAgentFor(actor)
+				.post(`/projects/${personalProject.id}/users`)
+				.send({ relations: [{ userId: member.id, role: 'project:editor' }] });
+
+			expect(res.status).toBe(403);
+			expect(res.body.message).toBe("Personal projects can't have members.");
+			const relations = await getProjectRelations({ projectId: personalProject.id });
+			expect(relations.map((r) => r.userId)).toEqual([actor.id]);
+		},
+	);
+
+	test('PATCH /projects/:projectId returns 403 when the owner updates their personal project', async () => {
+		const owner = await createOwner();
+		const personalProject = await getPersonalProject(owner);
+
+		const res = await testServer
+			.authAgentFor(owner)
+			.patch(`/projects/${personalProject.id}`)
+			.send({ name: 'New Name' });
+
+		expect(res.status).toBe(403);
+		expect(res.body.message).toBe("Personal projects can't be updated.");
+		expect((await findProject(personalProject.id)).name).not.toBe('New Name');
+	});
+
+	test('POST /projects/:projectId/users returns 404 for an unknown project', async () => {
+		const owner = await createOwner();
+		const member = await createMember();
+
+		const res = await testServer
+			.authAgentFor(owner)
+			.post('/projects/unknown-project-id/users')
+			.send({ relations: [{ userId: member.id, role: 'project:editor' }] });
+
+		expect(res.status).toBe(404);
+		expect(res.body.message).toBe('Could not find project with ID: unknown-project-id');
+	});
+
 	test("PATCH /projects/:projectId/users/:userId changes a member's role", async () => {
 		const owner = await createOwner();
 		const member = await createUser();
@@ -1286,7 +1335,8 @@ describe('PATCH /projects/:projectId', () => {
 		const resp = await ownerAgent
 			.patch(`/projects/${personalProject.id}`)
 			.send({ name: 'New Name' });
-		expect(resp.status).toBe(404);
+		expect(resp.status).toBe(403);
+		expect(resp.body.message).toBe("Personal projects can't be updated.");
 
 		const updatedProject = await findProject(personalProject.id);
 		expect(updatedProject.name).not.toEqual('New Name');

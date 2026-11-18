@@ -53,6 +53,7 @@ import type {
 	SystemAgentTurnHandle,
 	SystemAgentTurnOptions,
 	SystemAgentTurnOutcome,
+	SystemAgentUserStopScope,
 	SystemAgentWorkspaceScope,
 	SuspendedToolCall,
 } from './system-agent.types';
@@ -342,6 +343,31 @@ export class SystemAgentExecutionService {
 	async deleteThread(agentId: string, user: User, threadId: string): Promise<void> {
 		const thread = await this.getThread(agentId, user, threadId);
 		await this.deleteOwnedThread(thread, user.id);
+	}
+
+	/**
+	 * The thread of a suspended run that the user owns, from its checkpoint.
+	 * Read it before the cancel, which clears the checkpoint state.
+	 */
+	async findThreadIdOfRun(agentId: string, user: User, runId: string): Promise<string | undefined> {
+		const status = await this.checkpointStorage.getStatus(runId, agentId);
+		const persistence = status.status === 'not-found' ? undefined : status.checkpoint?.persistence;
+		if (persistence?.resourceId !== this.resourceIdFor(user)) return undefined;
+		return persistence.threadId;
+	}
+
+	/** Tell the provider that the user stopped a turn. A failure is logged. */
+	async reportUserStoppedTurn(scope: SystemAgentUserStopScope): Promise<void> {
+		const provider = this.registry.get(scope.agentId);
+		if (!provider?.onUserStoppedTurn) return;
+		try {
+			await provider.onUserStoppedTurn(scope);
+		} catch (error) {
+			this.logger.warn('System agent stop callback failed', {
+				...scope,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	/** Stop running system-agent turns and discard queued turns before account cleanup. */

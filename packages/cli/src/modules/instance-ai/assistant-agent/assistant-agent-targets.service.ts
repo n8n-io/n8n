@@ -85,7 +85,7 @@ export class AssistantAgentTargetsService {
 	async persistPendingAgent(
 		user: User,
 		threadId: string,
-		{ projectId, agentId, name, config }: InstanceAiPersistPendingAgentRequest,
+		{ projectId, agentId, name, config, parentFolderId }: InstanceAiPersistPendingAgentRequest,
 		pushRef?: string,
 	) {
 		const thread = await this.threadMetadata.readThread(ASSISTANT_AGENT_ID, user, threadId);
@@ -98,6 +98,7 @@ export class AssistantAgentTargetsService {
 			id: agentId,
 			name,
 			adoptOnCollision: adoptable,
+			...(parentFolderId !== undefined ? { parentFolderId } : {}),
 			config,
 			pushRef,
 		});

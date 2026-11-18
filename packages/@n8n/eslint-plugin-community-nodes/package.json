@@ -58,7 +58,7 @@
   },
   "peerDependencies": {
     "eslint": "catalog:",
-    "n8n-workflow": ">=2"
+    "n8n-workflow": "^2.36.0"
   },
   "eslint-doc-generator": {
     "configEmoji": [

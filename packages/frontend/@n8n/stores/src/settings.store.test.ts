@@ -8,6 +8,26 @@ import { mock } from 'vitest-mock-extended';
 import { useSettingsStore } from './settings.store';
 
 it.each([
+	{ activeModules: ['engine-v2'], expected: true },
+	{ activeModules: ['data-table'], expected: false },
+])(
+	'gates engine v2 on its module (activeModules=$activeModules)',
+	({ activeModules, expected }) => {
+		setActivePinia(createPinia());
+		const store = useSettingsStore();
+		store.settings.activeModules = activeModules;
+
+		expect(store.isEngineV2Enabled).toBe(expected);
+	},
+);
+
+it('keeps engine v2 off before the settings load', () => {
+	setActivePinia(createPinia());
+
+	expect(useSettingsStore().isEngineV2Enabled).toBe(false);
+});
+
+it.each([
 	{ active: true, enabled: true, expected: true },
 	{ active: true, enabled: undefined, expected: true },
 	{ active: true, enabled: false, expected: false },
