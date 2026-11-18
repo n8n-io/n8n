@@ -10,13 +10,17 @@ import {
 import { GLOBAL_OWNER_ROLE, ProjectRepository, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import type { INode, Workflow } from 'n8n-workflow';
 import { setTimeout as wait } from 'node:timers/promises';
 
 import { createUser } from './fixtures/users';
+import { PageAppendConflictError } from '../errors/page-append-conflict.error';
+import { PageContentTooLongError } from '../errors/page-content-too-long.error';
 import { PageNotFoundError } from '../errors/page-not-found.error';
 import { PageProjectNotFoundError } from '../errors/page-project-not-found.error';
 import { PageVersionConflictError } from '../errors/page-version-conflict.error';
 import { PageReferenceEntity } from '../page-reference.entity';
+import { PageProxyService } from '../page-proxy.service';
 import { PageEntity } from '../page.entity';
 import { PageService } from '../page.service';
 
@@ -85,8 +89,29 @@ describe('PageService', () => {
 			{ updatedAt: new Date(Date.now() + minutesFromNow * 60_000) },
 		);
 
+	/** Makes another writer save the page right after each of the first `times` reads. */
+	const saveElsewhereAfterReads = (times: number) => {
+		const readPage = pageService.getPage.bind(pageService);
+		let disturbedReads = 0;
+		vi.spyOn(pageService, 'getPage').mockImplementation(async (projectId, pageId) => {
+			const page = await readPage(projectId, pageId);
+			if (disturbedReads < times) {
+				disturbedReads += 1;
+				await pageService.updatePage(projectId, pageId, {
+					content: `${page.content}Other writer. `,
+					baseVersion: page.version,
+				});
+			}
+			return page;
+		});
+	};
+
 	beforeAll(() => {
 		pageService = Container.get(PageService);
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
 	});
 
 	beforeEach(async () => {
@@ -340,6 +365,235 @@ describe('PageService', () => {
 			await pageService.updatePage(project.id, created.id, { content: '', baseVersion: 1 });
 
 			expect(await storedReferences(created.id)).toEqual([]);
+		});
+	});
+
+	describe('updatePageSection', () => {
+		it('should replace the text of the section and keep the rest of the page', async () => {
+			const created = await pageService.createPage(project.id, owner, {
+				title: 'Report',
+				content: '# Report\n\n## Latest report\n\nOld total\n\n## Related\n\nNotes',
+			});
+
+			const updated = await pageService.updatePageSection(
+				project.id,
+				created.id,
+				'Latest report',
+				'Total: 3',
+			);
+
+			expect(updated).toMatchObject({
+				content: '# Report\n\n## Latest report\n\nTotal: 3\n\n## Related\n\nNotes',
+				version: 2,
+			});
+		});
+
+		it('should not update a section through another project', async () => {
+			const created = await pageService.createPage(project.id, owner, { title: 'Report' });
+			const otherProject = await createTeamProject();
+
+			await expect(
+				pageService.updatePageSection(otherProject.id, created.id, 'Latest report', 'Text'),
+			).rejects.toThrow(PageNotFoundError);
+		});
+	});
+
+	describe('appendToPage', () => {
+		it('should add the text as a new block after the content', async () => {
+			const created = await pageService.createPage(project.id, owner, {
+				title: 'Report',
+				content: '# Report\n',
+			});
+
+			const appended = await pageService.appendToPage(project.id, created.id, 'Total: 3');
+
+			expect(appended).toMatchObject({ content: '# Report\n\nTotal: 3', version: 2 });
+			expect(await pageService.getPage(project.id, created.id)).toEqual(appended);
+		});
+
+		it('should store the text alone in an empty page', async () => {
+			const created = await pageService.createPage(project.id, owner, { title: 'Report' });
+
+			const appended = await pageService.appendToPage(project.id, created.id, 'Total: 3');
+
+			expect(appended.content).toBe('Total: 3');
+		});
+
+		it('should store the references of the appended text', async () => {
+			const created = await pageService.createPage(project.id, owner, { title: 'Report' });
+
+			await pageService.appendToPage(project.id, created.id, 'See [Sync](/workflow/wf1).');
+
+			expect(await storedReferences(created.id)).toEqual([
+				{ resourceType: 'workflow', resourceId: 'wf1', parentResourceId: null },
+			]);
+		});
+
+		it('should not append to a page through another project', async () => {
+			const otherProject = await createTeamProject();
+			const created = await pageService.createPage(project.id, owner, { title: 'Report' });
+
+			await expect(pageService.appendToPage(otherProject.id, created.id, 'Text')).rejects.toThrow(
+				PageNotFoundError,
+			);
+			expect((await pageService.getPage(project.id, created.id)).version).toBe(1);
+		});
+
+		it('should append to the latest content when another writer saves first', async () => {
+			const created = await pageService.createPage(project.id, owner, { title: 'Report' });
+			saveElsewhereAfterReads(2);
+
+			const appended = await pageService.appendToPage(project.id, created.id, 'Total: 3');
+
+			expect(appended).toMatchObject({
+				content: 'Other writer. Other writer.\n\nTotal: 3',
+				version: 4,
+			});
+		});
+
+		it('should fail after 3 attempts when another writer saves first each time', async () => {
+			const created = await pageService.createPage(project.id, owner, { title: 'Report' });
+			saveElsewhereAfterReads(3);
+
+			const append = pageService.appendToPage(project.id, created.id, 'Total: 3');
+
+			await expect(append).rejects.toThrow(PageAppendConflictError);
+			await expect(append).rejects.toMatchObject({
+				message: 'The page changed too often to append to it',
+				meta: { pageId: created.id, attempts: 3 },
+			});
+			expect(await pageService.getPage(project.id, created.id)).toMatchObject({
+				content: 'Other writer. Other writer. Other writer. ',
+				version: 4,
+			});
+		});
+
+		it('should reject a text that makes the page too long', async () => {
+			const created = await pageService.createPage(project.id, owner, { title: 'Report' });
+
+			await expect(
+				pageService.appendToPage(project.id, created.id, 'x'.repeat(500_001)),
+			).rejects.toThrow(PageContentTooLongError);
+		});
+	});
+
+	describe('replacePageContent', () => {
+		it('should save the content as the next version, whatever the stored version is', async () => {
+			const created = await pageService.createPage(project.id, owner, {
+				title: 'Report',
+				content: 'Old',
+			});
+			await pageService.updatePage(project.id, created.id, { title: 'Renamed', baseVersion: 1 });
+
+			const replaced = await pageService.replacePageContent(project.id, created.id, 'New');
+
+			expect(replaced).toMatchObject({ title: 'Renamed', content: 'New', version: 3 });
+		});
+
+		it('should not replace the content of a page through another project', async () => {
+			const otherProject = await createTeamProject();
+			const created = await pageService.createPage(project.id, owner, { title: 'Report' });
+
+			await expect(
+				pageService.replacePageContent(otherProject.id, created.id, 'New'),
+			).rejects.toThrow(PageNotFoundError);
+		});
+	});
+
+	describe('searchProjectPages', () => {
+		it('should list only the pages of the project that match the title query', async () => {
+			const otherProject = await createTeamProject();
+			await pageService.createPage(project.id, owner, { title: 'Daily sales report' });
+			await pageService.createPage(project.id, owner, { title: 'Runbook' });
+			await pageService.createPage(otherProject.id, owner, { title: 'Sales of the other team' });
+
+			const found = await pageService.searchProjectPages(project.id, 'SALES');
+			const all = await pageService.searchProjectPages(project.id);
+
+			expect(found.map(({ title }) => title)).toEqual(['Daily sales report']);
+			expect(all.map(({ title }) => title).sort()).toEqual(['Daily sales report', 'Runbook']);
+		});
+	});
+
+	describe('PageProxyService', () => {
+		const pageNode = { name: 'Page', type: 'n8n-nodes-base.page' } as INode;
+
+		const proxyOfWorkflowIn = async (workflowProject: Project) => {
+			const workflow = await createWorkflow({ name: 'Report' }, workflowProject);
+			return await Container.get(PageProxyService).getPageProxy(
+				{ id: workflow.id } as Workflow,
+				pageNode,
+			);
+		};
+
+		it('should read and write the pages of the project that owns the workflow', async () => {
+			const created = await pageService.createPage(project.id, owner, {
+				title: 'Report',
+				content: 'Hello',
+			});
+			const proxy = await proxyOfWorkflowIn(project);
+
+			const appended = await proxy.appendToPage(created.id, 'Total: 3');
+			const replaced = await proxy.replacePageContent(created.id, 'New');
+
+			expect(proxy.getProjectId()).toBe(project.id);
+			expect(appended).toEqual({
+				id: created.id,
+				title: 'Report',
+				content: 'Hello\n\nTotal: 3',
+				version: 2,
+				updatedAt: expect.any(String),
+				url: `/page/${created.id}`,
+			});
+			expect(replaced).toMatchObject({ content: 'New', version: 3 });
+			expect(await proxy.getPage(created.id)).toEqual(replaced);
+		});
+
+		it('should hide the pages of another project', async () => {
+			const otherProject = await createTeamProject();
+			const foreign = await pageService.createPage(otherProject.id, owner, { title: 'Foreign' });
+			const own = await pageService.createPage(project.id, owner, { title: 'Own' });
+			const proxy = await proxyOfWorkflowIn(project);
+
+			expect(await proxy.listPages()).toEqual([
+				{
+					id: own.id,
+					title: 'Own',
+					version: 1,
+					updatedAt: own.updatedAt,
+					url: `/page/${own.id}`,
+				},
+			]);
+			await expect(proxy.getPage(foreign.id)).rejects.toThrow(PageNotFoundError);
+			await expect(proxy.appendToPage(foreign.id, 'Text')).rejects.toThrow(PageNotFoundError);
+			await expect(proxy.replacePageContent(foreign.id, 'Text')).rejects.toThrow(PageNotFoundError);
+			expect(await pageService.getPage(otherProject.id, foreign.id)).toMatchObject({
+				content: '',
+				version: 1,
+			});
+		});
+
+		it('should use the given project in place of the project of the workflow', async () => {
+			const otherProject = await createTeamProject();
+			const page = await pageService.createPage(otherProject.id, owner, { title: 'Other' });
+
+			const proxy = await Container.get(PageProxyService).getPageProxy(
+				{ id: 'unsaved' } as Workflow,
+				pageNode,
+				otherProject.id,
+			);
+
+			expect((await proxy.listPages({ titleQuery: 'oth' })).map(({ id }) => id)).toEqual([page.id]);
+		});
+
+		it('should refuse a node that is not a Page node', async () => {
+			await expect(
+				Container.get(PageProxyService).getPageProxy(
+					{ id: 'workflow-1' } as Workflow,
+					{ name: 'Code', type: 'n8n-nodes-base.code' } as INode,
+					project.id,
+				),
+			).rejects.toThrow('This proxy is only available for Page nodes');
 		});
 	});
 

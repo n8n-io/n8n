@@ -10,13 +10,18 @@ import type {
 	PageWorkflowPlacement,
 	UpdatePageDto,
 } from '@n8n/api-types';
+import { PAGE_CONTENT_MAX_LENGTH } from '@n8n/api-types';
 import { ProjectScopeService, WorkflowSharingService } from '@n8n/backend-services';
 import { OperationContext, ProjectRepository, TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import { PageAppendConflictError } from './errors/page-append-conflict.error';
+import { PageContentTooLongError } from './errors/page-content-too-long.error';
 import { PageNotFoundError } from './errors/page-not-found.error';
 import { PageProjectNotFoundError } from './errors/page-project-not-found.error';
 import { PageVersionConflictError } from './errors/page-version-conflict.error';
+import { appendMarkdownBlock } from './page-append';
+import { replaceMarkdownSection } from './page-section';
 import { toWorkflowPlacements } from './page-placements';
 import { PageReferenceRepository } from './page-reference.repository';
 import { toReferenceRows } from './page-references';
@@ -27,6 +32,9 @@ import { PageRepository, type PageRowChanges } from './page.repository';
 
 /** The most pages that the list across projects returns. */
 const ALL_PAGES_LIST_LIMIT = 200;
+
+/** How many times an append reads the page and tries to save, before it fails. */
+const APPEND_MAX_ATTEMPTS = 3;
 
 /** Keeps only the fields that the client sent. */
 function toRowChanges({ title, content }: UpdatePageDto): PageRowChanges {
@@ -51,6 +59,18 @@ export class PageService {
 	/** Lists the pages of a project, the most recently updated first. */
 	async listPages(projectId: string): Promise<PageSummary[]> {
 		const rows = await this.pageRepository.listSummariesByProject(projectId, {});
+		return rows.map(toPageSummary);
+	}
+
+	/**
+	 * Lists the pages of one project, the most recently updated first.
+	 * Returns at most 200 pages. `titleQuery` keeps the titles that contain it. The case does not count.
+	 */
+	async searchProjectPages(projectId: string, titleQuery?: string): Promise<PageSummary[]> {
+		const rows = await this.pageRepository.listRecentWithProjectName(
+			{ projectIds: [projectId], titleQuery, limit: ALL_PAGES_LIST_LIMIT },
+			{},
+		);
 		return rows.map(toPageSummary);
 	}
 
@@ -115,6 +135,55 @@ export class PageService {
 			);
 			return toPage(page);
 		});
+	}
+
+	/**
+	 * Adds the text as a new markdown block after the latest content of the page.
+	 * Reads the page again when another writer saves first, at most 3 attempts.
+	 * @throws {PageNotFoundError} when the page is not in the project
+	 * @throws {PageContentTooLongError} when the new content is longer than a page can hold
+	 * @throws {PageAppendConflictError} when another writer saved first on each attempt
+	 */
+	async appendToPage(projectId: string, pageId: string, text: string): Promise<Page> {
+		return await this.editWithAttempts(
+			projectId,
+			pageId,
+			(content) => appendMarkdownBlock(content, text),
+			APPEND_MAX_ATTEMPTS,
+		);
+	}
+
+	/**
+	 * Replaces the text under a heading of the latest content of the page.
+	 * A page with no such heading gets a new section at its end.
+	 * Reads the page again when another writer saves first, at most 3 attempts.
+	 * @throws {PageNotFoundError} when the page is not in the project
+	 * @throws {PageContentTooLongError} when the new content is longer than a page can hold
+	 * @throws {PageAppendConflictError} when another writer saved first on each attempt
+	 */
+	async updatePageSection(
+		projectId: string,
+		pageId: string,
+		sectionTitle: string,
+		text: string,
+	): Promise<Page> {
+		return await this.editWithAttempts(
+			projectId,
+			pageId,
+			(content) => replaceMarkdownSection(content, sectionTitle, text),
+			APPEND_MAX_ATTEMPTS,
+		);
+	}
+
+	/**
+	 * Saves the content as the next version of the page, whatever the stored version is.
+	 * @throws {PageNotFoundError} when the page is not in the project
+	 * @throws {PageContentTooLongError} when the content is longer than a page can hold
+	 */
+	async replacePageContent(projectId: string, pageId: string, content: string): Promise<Page> {
+		this.assertContentFits(content);
+		const latest = await this.getPage(projectId, pageId);
+		return await this.updatePage(projectId, pageId, { baseVersion: latest.version, content });
 	}
 
 	/** @throws {PageNotFoundError} when the page is not in the project */
@@ -226,6 +295,35 @@ export class PageService {
 			candidates.filter((workflow) => readableIds.has(workflow.id)),
 			pageId,
 		);
+	}
+
+	/** Applies `edit` to the latest content and saves the result. A version conflict uses one attempt. */
+	private async editWithAttempts(
+		projectId: string,
+		pageId: string,
+		edit: (content: string) => string,
+		attemptsLeft: number,
+	): Promise<Page> {
+		const latest = await this.getPage(projectId, pageId);
+		const content = edit(latest.content);
+		this.assertContentFits(content);
+		try {
+			return await this.updatePage(projectId, pageId, { baseVersion: latest.version, content });
+		} catch (error) {
+			const isConflict = error instanceof PageVersionConflictError;
+			if (isConflict && attemptsLeft > 1) {
+				return await this.editWithAttempts(projectId, pageId, edit, attemptsLeft - 1);
+			}
+			throw isConflict
+				? new PageAppendConflictError({ pageId, attempts: APPEND_MAX_ATTEMPTS })
+				: error;
+		}
+	}
+
+	private assertContentFits(content: string): void {
+		if (content.length > PAGE_CONTENT_MAX_LENGTH) {
+			throw new PageContentTooLongError();
+		}
 	}
 
 	private async assertProjectExists(projectId: string): Promise<void> {
