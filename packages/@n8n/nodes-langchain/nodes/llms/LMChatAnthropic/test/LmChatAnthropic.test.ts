@@ -98,6 +98,20 @@ describe('LmChatAnthropic', () => {
 			});
 		});
 
+		it('should default v1.3 to Claude Sonnet 4.6', () => {
+			const modelProperty = lmChatAnthropic.description.properties.find(
+				(property) =>
+					property.name === 'model' &&
+					property.displayOptions?.show?.['@version']?.includes(1.3),
+			);
+
+			expect(modelProperty?.default).toEqual({
+				mode: 'list',
+				value: 'claude-sonnet-4-6',
+				cachedResultName: 'Claude Sonnet 4.6',
+			});
+		});
+
 		it('should have correct credentials configuration', () => {
 			expect(lmChatAnthropic.description.credentials).toEqual([
 				{
