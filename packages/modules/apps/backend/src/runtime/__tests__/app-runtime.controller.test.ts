@@ -1,7 +1,7 @@
 import type { AgentSseEvent, AppBinding } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
-import { Person } from '@n8n/db';
+import { Person, type ProjectRelation, type ProjectRelationRepository } from '@n8n/db';
 import { NotFoundError } from '@n8n/errors';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
@@ -133,6 +133,8 @@ function setup({ host = 'published' }: { host?: 'published' | 'preview' } = {}) 
 	const workflows = mock<AppWorkflowPort>();
 	const agents = mock<AppAgentPort>();
 	const events = mock<EventService>();
+	const projectRelations = mock<ProjectRelationRepository>();
+	projectRelations.findAllByUser.mockResolvedValue([]);
 	const controller = new AppRuntimeController(
 		auth,
 		preview,
@@ -143,8 +145,19 @@ function setup({ host = 'published' }: { host?: 'published' | 'preview' } = {}) 
 		agents,
 		mock<Logger>(),
 		events,
+		projectRelations,
 	);
-	return { controller, auth, preview, versions, dataTables, workflows, agents, events };
+	return {
+		controller,
+		auth,
+		preview,
+		versions,
+		dataTables,
+		workflows,
+		agents,
+		events,
+		projectRelations,
+	};
 }
 
 describe('AppRuntimeController', () => {
@@ -358,14 +371,20 @@ describe('AppRuntimeController', () => {
 		});
 	});
 
-	it('returns the signed-in user', async () => {
-		const { controller } = setup();
+	it('returns the signed-in user and their team projects', async () => {
+		const { controller, projectRelations } = setup();
+		projectRelations.findAllByUser.mockResolvedValue([
+			{ project: { id: 'team-1', name: 'Sales EMEA', type: 'team' } },
+			{ project: { id: 'personal-1', name: 'Ada', type: 'personal' } },
+		] as ProjectRelation[]);
 		const res = response();
 
 		await controller.me(request(), res);
 
+		expect(projectRelations.findAllByUser).toHaveBeenCalledWith('user-1', { withProject: true });
 		expect(res.json).toHaveBeenCalledWith({
 			user: { id: 'user-1', email: 'a@b.c', firstName: 'Ada', lastName: null },
+			teams: [{ id: 'team-1', name: 'Sales EMEA' }],
 			visibility: 'project',
 		});
 	});

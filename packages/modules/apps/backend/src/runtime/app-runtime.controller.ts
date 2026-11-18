@@ -25,7 +25,7 @@ import {
 	Post,
 	RootLevelController,
 } from '@n8n/decorators';
-import { principalFromUser } from '@n8n/db';
+import { principalFromUser, ProjectRelationRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 import type { Principal } from '@n8n/permissions';
@@ -135,6 +135,7 @@ export class AppRuntimeController {
 		private readonly agents: AppAgentPort,
 		private readonly logger: Logger,
 		private readonly events: EventService,
+		private readonly projectRelations: ProjectRelationRepository,
 	) {}
 
 	/** App hosts bypass the main server middleware, so this parses cookies and bodies itself. */
@@ -166,8 +167,9 @@ export class AppRuntimeController {
 
 	@Get('/me', routeOptions)
 	async me(req: AppRuntimeRequest, res: Response) {
-		await this.answer(res, () => {
+		await this.answer(res, async () => {
 			const { app, user } = this.context(req);
+			const relations = await this.projectRelations.findAllByUser(user.id, { withProject: true });
 			const body: AppRuntimeMeResponse = {
 				user: {
 					id: user.id,
@@ -175,6 +177,9 @@ export class AppRuntimeController {
 					firstName: user.firstName ?? null,
 					lastName: user.lastName ?? null,
 				},
+				teams: relations
+					.filter(({ project }) => project?.type === 'team')
+					.map(({ project }) => ({ id: project.id, name: project.name })),
 				visibility: app.visibility,
 			};
 			return body;

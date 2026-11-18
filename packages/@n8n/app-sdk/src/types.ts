@@ -35,8 +35,15 @@ export interface AppUser {
 	lastName: string | null;
 }
 
+export interface AppTeam {
+	id: string;
+	name: string;
+}
+
 export interface MeResponse {
 	user: AppUser;
+	/** The visitor's team projects. A data table row rule can share rows with them. */
+	teams: AppTeam[];
 	visibility: 'project' | 'instance';
 }
 

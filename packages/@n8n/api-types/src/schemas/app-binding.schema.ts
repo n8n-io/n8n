@@ -132,6 +132,8 @@ export type AppRuntimeMeResponse = {
 		firstName: string | null;
 		lastName: string | null;
 	};
+	/** The visitor's team projects. A data table row rule can share rows with them. */
+	teams: Array<{ id: string; name: string }>;
 	visibility: AppVisibility;
 };
 
