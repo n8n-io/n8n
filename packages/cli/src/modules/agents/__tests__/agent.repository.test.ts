@@ -27,11 +27,7 @@ describe('AgentRepository', () => {
 		repository = new AgentRepository(
 			mockDataSource as never,
 			mock<TransactionRunner>(),
-<<<<<<< HEAD
-=======
-			globalConfig,
 			folderRepository,
->>>>>>> 24f9f2d0cbca37bbde0d85d4cb576701e84a15f1
 			mock<ServiceAccountRepository>(),
 		);
 	});
@@ -506,11 +502,7 @@ describe('AgentRepository', () => {
 			const repository = new AgentRepository(
 				mockDataSource as never,
 				transactionRunner,
-<<<<<<< HEAD
-=======
-				globalConfig,
 				folderRepository,
->>>>>>> 24f9f2d0cbca37bbde0d85d4cb576701e84a15f1
 				mock<ServiceAccountRepository>(),
 			);
 
@@ -531,11 +523,7 @@ describe('AgentRepository', () => {
 			const repository = new AgentRepository(
 				mockDataSource as never,
 				makeTransactionRunner(),
-<<<<<<< HEAD
-=======
-				globalConfig,
 				folderRepository,
->>>>>>> 24f9f2d0cbca37bbde0d85d4cb576701e84a15f1
 				mock<ServiceAccountRepository>(),
 			);
 

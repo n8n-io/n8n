@@ -56,7 +56,12 @@ The CLI `promotion-environment list-changes` command shows the changed resources
 It no longer accepts `--search`, `--sort` and `--order`.
 It needs an n8n instance with this change.
 
-<<<<<<< HEAD
+The selective promote endpoint `POST /api/v1/promotions/projects/{projectId}/promote` now returns a `status`.
+`promoted` means that the push succeeded. Only this status has `counts` and `git`.
+`preview-changed` means that nothing was pushed. It occurs only when the request sends `expectedPreviewRevision`.
+Read `status` before you read `counts` and `git`.
+The change preview now always returns `revision`, also for `promote`.
+
 # 3.0.0
 
 ### What changed?
@@ -122,13 +127,6 @@ The `$evaluateExpression()` helper was removed from the Code node. A Code node t
 ### When is action necessary?
 
 If your Code nodes call `$evaluateExpression()`. Evaluate the expression in a node field instead, for example in an Edit Fields (Set) node before the Code node, and read the result from the input item. Code nodes on a secure-mode task runner, the default since 2.0, already failed on this call.
-=======
-The selective promote endpoint `POST /api/v1/promotions/projects/{projectId}/promote` now returns a `status`.
-`promoted` means that the push succeeded. Only this status has `counts` and `git`.
-`preview-changed` means that nothing was pushed. It occurs only when the request sends `expectedPreviewRevision`.
-Read `status` before you read `counts` and `git`.
-The change preview now always returns `revision`, also for `promote`.
->>>>>>> 24f9f2d0cbca37bbde0d85d4cb576701e84a15f1
 
 # 2.0.0
 

@@ -6,12 +6,6 @@ import type {
 	PromotionResourceChange,
 	PromotionVariableScope,
 } from '@n8n/api-types';
-<<<<<<< HEAD
-import { createHash } from 'node:crypto';
-=======
-import { isRecord } from '@n8n/utils/is-record';
-import { jsonParse } from 'n8n-workflow';
->>>>>>> 24f9f2d0cbca37bbde0d85d4cb576701e84a15f1
 
 import type { PackageImportPlan } from '@/modules/n8n-packages/engine/project-package-importer';
 import type {

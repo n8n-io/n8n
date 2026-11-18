@@ -90,11 +90,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 	constructor(
 		dataSource: DataSource,
 		transactionRunner: TransactionRunner,
-<<<<<<< HEAD
-=======
-		private readonly globalConfig: GlobalConfig,
 		private readonly folderRepository: FolderRepository,
->>>>>>> 24f9f2d0cbca37bbde0d85d4cb576701e84a15f1
 		private readonly serviceAccountRepository: ServiceAccountRepository,
 	) {
 		super(Agent, dataSource.manager, transactionRunner);

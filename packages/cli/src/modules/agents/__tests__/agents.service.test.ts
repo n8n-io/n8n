@@ -10,11 +10,6 @@ import {
 } from '@n8n/api-types';
 import type { LicenseState } from '@n8n/backend-common';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-<<<<<<< HEAD
-import type { Telemetry } from '@/telemetry';
-=======
-import type { GlobalConfig } from '@n8n/config';
->>>>>>> 24f9f2d0cbca37bbde0d85d4cb576701e84a15f1
 import { AgentConfigPreparationService } from '../agent-config-preparation.service';
 import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentSaveCompletionService } from '../agent-save-completion.service';

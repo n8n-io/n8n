@@ -1,11 +1,7 @@
 {
   "name": "@n8n/composables",
   "type": "module",
-<<<<<<< HEAD
   "version": "2.3.0",
-=======
-  "version": "1.39.0",
->>>>>>> 24f9f2d0cbca37bbde0d85d4cb576701e84a15f1
   "files": [
     "dist"
   ],

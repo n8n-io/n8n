@@ -41,11 +41,7 @@ import {
 	type ImportSelectionRequest,
 } from '@/modules/n8n-packages/n8n-packages.types';
 
-<<<<<<< HEAD
-import { plannedChanges, previewRevision, toPreviewCheck } from './apply-preview';
-=======
-import { plannedChanges, toPreviewCheck, withoutTagIds, withoutTags } from './apply-preview';
->>>>>>> 24f9f2d0cbca37bbde0d85d4cb576701e84a15f1
+import { plannedChanges, toPreviewCheck } from './apply-preview';
 import { PACKAGE_SUBFOLDER } from './constants';
 import { crossProjectMoves, foldersInScope, type CrossProjectMoves } from './cross-project-moves';
 import { GitCommitPackageReader } from './git-commit-package-reader';
@@ -184,32 +180,12 @@ export class ApplyPreviewService {
 		const check = plan
 			? this.check(plan, inventory, selection, moves)
 			: projectNotOnBranch(projectId, instance);
-<<<<<<< HEAD
-		const { resources, dependencies } = buildPreview({
-			operation: { direction: 'apply', planned: plan && plannedChanges(plan) },
-			projectIds: [projectId],
-			base: {
-				manifest: instance.manifest,
-				blobByPath: new Map(instance.files.map(({ path, blobSha }) => [path, blobSha])),
-			},
-			desired: {
-				manifest: plan?.manifest ?? (await reader.readManifest()),
-				blobByPath: new Map(
-					[...files].map(([path, content]) => [
-						`${PACKAGE_SUBFOLDER}/${path}`,
-						gitBlobSha(content),
-					]),
-				),
-			},
-=======
 		const { resources, dependencies } = compareWithBranch({
 			operation: { direction: 'apply', planned: plan && plannedChanges(plan) },
 			projectIds: [projectId],
 			instance,
 			files,
 			manifest: plan?.manifest ?? (await reader.readManifest()),
-			tagsDisabled: this.globalConfig.tags.disabled,
->>>>>>> 24f9f2d0cbca37bbde0d85d4cb576701e84a15f1
 		});
 		return await this.finish(resources, dependencies, check);
 	}
@@ -259,7 +235,6 @@ export class ApplyPreviewService {
 			instance,
 			files,
 			manifest: plan.manifest,
-			tagsDisabled: this.globalConfig.tags.disabled,
 		});
 		// What a deleted project owns but no listed workflow uses is not in the comparison.
 		const listed = new Set(resources.map(({ key }) => key));
@@ -402,7 +377,6 @@ export class ApplyPreviewService {
 	}
 }
 
-/** The workflows and folders that the plan removes from the projects that Apply keeps. */
 /** Compares this instance with the package files at the branch commit, by the rules of the operation. */
 function compareWithBranch({
 	operation,
@@ -410,18 +384,11 @@ function compareWithBranch({
 	instance,
 	files,
 	manifest,
-	tagsDisabled,
 }: Pick<Parameters<typeof buildPreview>[0], 'operation' | 'projectIds'> & {
 	instance: InstancePackage;
 	files: ReadonlyMap<string, Buffer>;
 	manifest: PreviewSide['manifest'];
-	tagsDisabled: boolean;
 }) {
-	const workflowPaths = new Set(
-		tagsDisabled
-			? (manifest?.workflows ?? []).map(({ target }) => entityFilePath('workflows', target))
-			: [],
-	);
 	return buildPreview({
 		operation,
 		projectIds,
@@ -430,17 +397,15 @@ function compareWithBranch({
 			blobByPath: new Map(instance.files.map(({ path, blobSha }) => [path, blobSha])),
 		},
 		desired: {
-			manifest: manifest && tagsDisabled ? withoutTags(manifest) : manifest,
+			manifest,
 			blobByPath: new Map(
-				[...files].map(([path, content]) => [
-					`${PACKAGE_SUBFOLDER}/${path}`,
-					gitBlobSha(workflowPaths.has(path) ? withoutTagIds(content.toString()) : content),
-				]),
+				[...files].map(([path, content]) => [`${PACKAGE_SUBFOLDER}/${path}`, gitBlobSha(content)]),
 			),
 		},
 	});
 }
 
+/** The workflows and folders that the plan removes from the projects that Apply keeps. */
 function plannedRemovals(plan: PackageImportPlan): string[] {
 	return plan.scopes.flatMap(({ plan: scope }) => [
 		...scope.removalPlan.removals.map(({ id }) => resourceKey('workflow', id)),

@@ -48,14 +48,10 @@ mockInstance(LicenseState);
 mockInstance(StorageConfig, { mode: 'database' });
 mockInstance(AzureBlobConfig, { containerName: '' });
 const logger = mockInstance(Logger);
-<<<<<<< HEAD
+// Keep one shared license mock so every test uses the same instance.
 const license = mockInstance(License);
 const binaryDataConfig = mockInstance(BinaryDataConfig);
 const objectStoreConfig = mockInstance(ObjectStoreConfig);
-=======
-// One shared mock: a second mockInstance(License) in another describe would replace this one for every test.
-const license = mockInstance(License);
->>>>>>> 24f9f2d0cbca37bbde0d85d4cb576701e84a15f1
 
 afterEach(() => {
 	vi.resetAllMocks();
@@ -130,13 +126,6 @@ describe('logError', () => {
 });
 
 describe('initBinaryDataService', () => {
-<<<<<<< HEAD
-=======
-	const binaryDataConfig = mockInstance(BinaryDataConfig, { mode: 's3' });
-	const binaryDataService = mockInstance(BinaryDataService);
-	mockInstance(DatabaseManager);
-
->>>>>>> 24f9f2d0cbca37bbde0d85d4cb576701e84a15f1
 	it('should exit before the store starts when the write mode is not licensed', async () => {
 		binaryDataConfig.mode = 's3';
 		license.isLicensed.mockReturnValue(false);
