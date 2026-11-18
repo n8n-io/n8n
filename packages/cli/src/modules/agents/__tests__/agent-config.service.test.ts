@@ -1,9 +1,11 @@
+import { AgentsConfig } from '@n8n/config';
 import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore a type-only EventService import; keep the import.
 import type { CredentialsFinderService, EventService, TelemetryProxy } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import {
 	DEFAULT_AGENT_PERSONALISATION,
+	type AgentHitlConfiguration,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
@@ -22,6 +24,7 @@ import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { runInBuilderTelemetrySession } from '../builder/builder-telemetry-session';
 import { AgentConfigPreparationService } from '../agent-config-preparation.service';
@@ -48,6 +51,7 @@ import type { AgentRepository } from '../repositories/agent.repository';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
 import type { CompleteAgentDefinition } from '../utils/agent-definition';
 import { AgentPolicyService } from '../agent-policy.service';
+import { AgentTaskService } from '../agent-task.service';
 import {
 	composeStoredJsonConfig,
 	createAgentSkillRefsService,
@@ -126,9 +130,16 @@ function makeService() {
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
 	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([]);
 
+	const workflowFinderService = mock<WorkflowFinderService>();
+	workflowFinderService.findWorkflowIdsWithScopeForUser.mockImplementation(
+		async (ids) => new Set(ids),
+	);
+
 	const transactionRunner = mock<TransactionRunner>();
 	transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 	Container.set(AgentRuntimeCacheService, runtimeCacheService);
+	Container.set(WorkflowFinderService, workflowFinderService);
+	Container.set(AgentTaskService, mock<AgentTaskService>());
 	Container.set(AgentPolicyService, agentPolicyService);
 	const configPreparation = new AgentConfigPreparationService(
 		credentialsService,
@@ -179,6 +190,7 @@ function makeService() {
 		agentValidationService,
 		telemetry,
 		agentUpdateBroadcaster,
+		workflowFinderService,
 	};
 }
 
@@ -381,6 +393,297 @@ describe('AgentConfigService', () => {
 	});
 
 	describe('updateConfig', () => {
+		describe('Human review', () => {
+			beforeEach(() => {
+				vi.spyOn(Container.get(AgentsConfig), 'humanReviewEnabled', 'get').mockReturnValue(true);
+			});
+			const configurations: AgentHitlConfiguration[] = [
+				{
+					id: 'workflow-review',
+					name: 'Workflow review',
+					method: 'workflow',
+					workflowId: 'review',
+				},
+				{
+					id: 'channel-review',
+					name: 'Channel review',
+					method: 'channel',
+					channel: 'telegram',
+					credentialId: 'bot',
+					recipient: { kind: 'user', id: '12345' },
+				},
+			];
+
+			it('refuses a new human review while the module is disabled', async () => {
+				vi.spyOn(Container.get(AgentsConfig), 'humanReviewEnabled', 'get').mockReturnValue(false);
+				const { service, agentRepository } = makeService();
+				const agent = makeAgent();
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+				await expect(
+					service.updateConfig(
+						agentId,
+						projectId,
+						{ ...baseConfig, hitlConfigurations: [configurations[0]] },
+						user,
+						fencedOn(agent),
+					),
+				).rejects.toThrow('not enabled');
+				expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			});
+
+			it('removes saved review settings while the module is disabled', async () => {
+				vi.spyOn(Container.get(AgentsConfig), 'humanReviewEnabled', 'get').mockReturnValue(false);
+				const { service, agentRepository } = makeService();
+				const agent = makeAgent({
+					schema: { ...baseConfig, hitlConfigurations: [configurations[0]] },
+				});
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+				const result = await service.updateConfig(agentId, projectId, baseConfig, user, {
+					...fencedOn(agent),
+					clearOmittedOptionalFields: true,
+				});
+				expect(result.config.hitlConfigurations).toBeUndefined();
+				expect(agentRepository.saveDraftFenced).toHaveBeenCalled();
+			});
+
+			it.each(configurations)(
+				'saves and updates a $method destination in the returned config',
+				async (configuration) => {
+					const { service, agentRepository, credentialsService } = makeService();
+					mockAccessibleCredentials(credentialsService, ['bot']);
+					const agent = makeAgent();
+					agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+					const added = await service.updateConfig(
+						agentId,
+						projectId,
+						{ ...baseConfig, hitlConfigurations: [configuration] },
+						user,
+						fencedOn(agent),
+					);
+					expect(added.config.hitlConfigurations).toEqual([configuration]);
+					expect(agentRepository.saveDraftFenced).toHaveBeenCalled();
+					expect(agent.schema?.hitlConfigurations).toEqual([configuration]);
+					expect((await service.getConfig(agentId, projectId)).hitlConfigurations).toEqual([
+						configuration,
+					]);
+					const updated = {
+						...configuration,
+						name: 'Administrator review',
+						nameOverridden: true,
+						expirySeconds: 3600 as const,
+					};
+					const changed = await service.updateConfig(
+						agentId,
+						projectId,
+						{ ...baseConfig, hitlConfigurations: [updated] },
+						user,
+						fencedOn(agent),
+					);
+					expect(changed.config.hitlConfigurations).toEqual([updated]);
+					expect(changed.configHash).not.toBe(added.configHash);
+				},
+			);
+
+			it.each([false, true])(
+				'handles omitted destinations with clearOmittedOptionalFields=%s',
+				async (clearOmittedOptionalFields) => {
+					const { service, agentRepository } = makeService();
+					const agent = makeAgent({
+						schema: { ...baseConfig, hitlConfigurations: configurations },
+					});
+					agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+					const result = await service.updateConfig(agentId, projectId, baseConfig, user, {
+						...fencedOn(agent),
+						clearOmittedOptionalFields,
+					});
+					expect(result.config.hitlConfigurations).toEqual(
+						clearOmittedOptionalFields ? undefined : configurations,
+					);
+				},
+			);
+
+			describe('while the module is disabled', () => {
+				const route = { type: 'configuration' as const, configurationIds: ['workflow-review'] };
+				const reviewedConfig: AgentJsonConfig = {
+					...baseConfig,
+					hitlConfigurations: [configurations[0]],
+					tools: [{ type: 'custom', id: 'tool_1', approvalRoute: route }],
+				};
+
+				beforeEach(() => {
+					vi.spyOn(Container.get(AgentsConfig), 'humanReviewEnabled', 'get').mockReturnValue(false);
+				});
+
+				it('keeps stored review settings during an unrelated edit', async () => {
+					const { service, agentRepository } = makeService();
+					const agent = makeAgent({ schema: reviewedConfig, tools: storedCustomTool });
+					agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+					const result = await service.updateConfig(
+						agentId,
+						projectId,
+						{ ...reviewedConfig, instructions: 'Help users quickly' },
+						user,
+						fencedOn(agent),
+					);
+
+					expect(result.config.instructions).toBe('Help users quickly');
+					expect(agentRepository.saveDraftFenced).toHaveBeenCalled();
+				});
+
+				it.each([
+					[
+						'a changed destination',
+						{
+							...reviewedConfig,
+							hitlConfigurations: [{ ...configurations[0], name: 'Other review' }],
+						},
+					],
+					[
+						'a changed tool route',
+						{
+							...reviewedConfig,
+							tools: [
+								{
+									type: 'custom' as const,
+									id: 'tool_1',
+									approvalRoute: { type: 'configuration' as const, configurationIds: ['other'] },
+								},
+							],
+						},
+					],
+				])('rejects %s', async (_label, config) => {
+					const { service, agentRepository } = makeService();
+					const agent = makeAgent({ schema: reviewedConfig, tools: storedCustomTool });
+					agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+					await expect(
+						service.updateConfig(agentId, projectId, config, user, fencedOn(agent)),
+					).rejects.toThrow('not enabled');
+					expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+				});
+
+				it('rejects review settings in a complete definition without a stored config', async () => {
+					const { configPreparation } = makeService();
+					const definition: CompleteAgentDefinition = {
+						name: baseConfig.name,
+						config: { ...baseConfig, hitlConfigurations: [configurations[0]] },
+						tools: {},
+						tasks: new Map(),
+					};
+
+					await expect(configPreparation.validateDefinition(agentId, definition)).rejects.toThrow(
+						'not enabled',
+					);
+				});
+
+				it('accepts unchanged review settings in a complete definition', async () => {
+					const { configPreparation } = makeService();
+					const config: AgentJsonConfig = {
+						...baseConfig,
+						hitlConfigurations: [configurations[0]],
+					};
+					const definition: CompleteAgentDefinition = {
+						name: baseConfig.name,
+						config: { ...config, instructions: 'Help users quickly' },
+						tools: {},
+						tasks: new Map(),
+					};
+
+					const result = await configPreparation.validateDefinition(agentId, definition, config);
+
+					expect(result.config?.hitlConfigurations).toEqual([configurations[0]]);
+				});
+
+				it('passes the stored config from a complete save to the review check', async () => {
+					const { configPreparation } = makeService();
+					const definition: CompleteAgentDefinition = {
+						name: baseConfig.name,
+						config: { ...baseConfig, hitlConfigurations: [configurations[0]] },
+						tools: {},
+						tasks: new Map(),
+					};
+					const validate = vi
+						.spyOn(configPreparation, 'validateDefinition')
+						.mockResolvedValue({ ...definition, config: null });
+
+					await configPreparation.prepareDefinition(
+						agentId,
+						definition,
+						projectId,
+						user,
+						{},
+						reviewedConfig,
+					);
+
+					expect(validate).toHaveBeenCalledWith(agentId, definition, reviewedConfig);
+				});
+			});
+
+			it('rejects a review workflow that the user cannot read in the project', async () => {
+				const { service, agentRepository, workflowFinderService } = makeService();
+				workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
+				const agent = makeAgent();
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+				await expect(
+					service.updateConfig(
+						agentId,
+						projectId,
+						{ ...baseConfig, hitlConfigurations: [configurations[0]] },
+						user,
+						fencedOn(agent),
+					),
+				).rejects.toThrow('Workflow "review" is missing or inaccessible.');
+				expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledWith(
+					['review'],
+					user,
+					['workflow:read'],
+					projectId,
+				);
+				expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			});
+
+			it('keeps a stored review workflow without a new access check', async () => {
+				const { service, agentRepository, workflowFinderService } = makeService();
+				workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
+				const agent = makeAgent({
+					schema: { ...baseConfig, hitlConfigurations: [configurations[0]] },
+				});
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+				await service.updateConfig(
+					agentId,
+					projectId,
+					{
+						...baseConfig,
+						instructions: 'Help users quickly',
+						hitlConfigurations: [configurations[0]],
+					},
+					user,
+					fencedOn(agent),
+				);
+
+				expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
+				expect(agentRepository.saveDraftFenced).toHaveBeenCalled();
+			});
+
+			it('clears all destinations when the submitted list is empty', async () => {
+				const { service, agentRepository } = makeService();
+				const agent = makeAgent({ schema: { ...baseConfig, hitlConfigurations: configurations } });
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+				const result = await service.updateConfig(
+					agentId,
+					projectId,
+					{ ...baseConfig, hitlConfigurations: [] },
+					user,
+					fencedOn(agent),
+				);
+				expect(result.config.hitlConfigurations).toEqual([]);
+				expect((await service.getConfig(agentId, projectId)).hitlConfigurations).toEqual([]);
+			});
+		});
+
 		it('rejects an update based on a stale config without mutating the agent', async () => {
 			const { service, agentRepository, eventService, telemetry } = makeService();
 			const agent = makeAgent();

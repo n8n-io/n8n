@@ -1031,7 +1031,8 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — check
 			'production',
 		);
 
-		expect(n8nCheckpointStorage.getStorage).toHaveBeenCalledWith('agent-1');
+		// The definition hash lets a pending approval detect a changed Agent.
+		expect(n8nCheckpointStorage.getStorage).toHaveBeenCalledWith('agent-1', expect.any(String));
 		expect(builtAgent.checkpoint).toHaveBeenCalledWith(scopedStorage);
 	});
 });

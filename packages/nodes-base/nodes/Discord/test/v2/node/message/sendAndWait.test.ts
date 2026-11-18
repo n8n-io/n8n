@@ -1,6 +1,11 @@
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
-import { SEND_AND_WAIT_OPERATION, requestPath, type IExecuteFunctions } from 'n8n-workflow';
+import {
+	SEND_AND_WAIT_OPERATION,
+	requestPath,
+	type IExecuteFunctions,
+	type INode,
+} from 'n8n-workflow';
 
 import { versionDescription } from '../../../../v2/actions/versionDescription';
 import { DiscordV2 } from '../../../../v2/DiscordV2.node';
@@ -97,6 +102,49 @@ describe('Test DiscordV2, message => sendAndWait', () => {
 				],
 			},
 		);
+	});
+
+	it('uses the context approval reference for Agent approval buttons', async () => {
+		setupErrorParameters();
+		mockExecuteFunctions.getNode.mockReturnValue(
+			mock<INode>({ parameters: { agentApproval: true } }),
+		);
+		mockExecuteFunctions.getApprovalCallbackReference.mockImplementation(
+			(decision) => `n8n-hitl:${decision}`,
+		);
+		mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('http://localhost/waiting-webhook');
+		mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('nodeID');
+
+		await discord.execute.call(mockExecuteFunctions);
+
+		expect(mockExecuteFunctions.getApprovalCallbackReference).toHaveBeenCalledWith('approve');
+		expect(transport.discordApiRequest).toHaveBeenCalledWith(
+			'POST',
+			requestPath`/channels/channelID/messages`,
+			expect.objectContaining({
+				components: [
+					{
+						components: [{ label: 'Approve', style: 1, type: 2, custom_id: 'n8n-hitl:approve' }],
+						type: 1,
+					},
+				],
+			}),
+		);
+	});
+
+	it('fails when the context cannot build an approval reference', async () => {
+		setupErrorParameters();
+		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
+		mockExecuteFunctions.getNode.mockReturnValue(
+			mock<INode>({ parameters: { agentApproval: true } }),
+		);
+		mockExecuteFunctions.getApprovalCallbackReference.mockImplementation(() => {
+			throw new Error('Agent approval needs the default execution engine');
+		});
+
+		await expect(discord.execute.call(mockExecuteFunctions)).rejects.toThrow();
+		expect(transport.discordApiRequest).not.toHaveBeenCalled();
+		expect(mockExecuteFunctions.putExecutionToWait).not.toHaveBeenCalled();
 	});
 
 	const setupErrorParameters = () => {

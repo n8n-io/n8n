@@ -5,6 +5,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { agentApprovalProperty } from '../../../../../utils/sendAndWait/descriptions';
 import { configureWaitTillDate } from '../../../../../utils/sendAndWait/configureWaitTillDate.util';
 import { getSendAndWaitProperties } from '../../../../../utils/sendAndWait/utils';
 import {
@@ -17,7 +18,7 @@ import { sendToProperties } from '../common.description';
 export const description: INodeProperties[] = getSendAndWaitProperties(
 	sendToProperties,
 	'message',
-	undefined,
+	[agentApprovalProperty],
 	{
 		noButtonStyle: true,
 		defaultApproveLabel: '✓ Approve',

@@ -1,4 +1,4 @@
-import type { AgentJsonConfig } from '@n8n/api-types';
+import type { AgentJsonConfig, AgentIntegrationConfig } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { createHash } from 'node:crypto';
 
@@ -23,6 +23,15 @@ export function getAgentConfigHash(config: AgentJsonConfig | null): string | nul
 export function getAgentConfigHash(config: AgentJsonConfig | null): string | null {
 	if (!config) return null;
 	return getHash(config);
+}
+
+/** Keep pending approvals bound to the same authored definition and tool implementations. */
+export function getAgentRuntimeDefinitionHash(
+	config: AgentJsonConfig,
+	toolCodeByName: Record<string, string> = {},
+	integrations: AgentIntegrationConfig[] = [],
+): string {
+	return getHash({ config, toolCodeByName, integrations });
 }
 
 export function isSameAgentConfig(a: unknown, b: unknown): boolean {

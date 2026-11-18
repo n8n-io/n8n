@@ -1,3 +1,4 @@
+import { AgentApprovalCleanupService } from './approval/agent-approval-cleanup.service';
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import {
 	DEFAULT_AGENT_PERSONALISATION,
@@ -188,6 +189,7 @@ export class AgentsService {
 		private readonly setupCompletion: AgentSetupCompletionService,
 		private readonly n8nChatFlag: N8nChatFlagService,
 		private readonly definitionService: AgentDefinitionService,
+		private readonly approvalCleanup: AgentApprovalCleanupService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly tagService: TagService,
 		private readonly folderService: FolderService,
@@ -1039,9 +1041,17 @@ export class AgentsService {
 		// (no `projectId` argument) cleans up the same as the project-scoped one.
 		const { projectId: agentProjectId } = agent;
 
-		// Remove the account before any cleanup that cannot be undone. If the
+		// Check approval blockers before any step that cannot be undone. This check
+		// makes no changes, so a pending approval leaves the agent as it was.
+		await this.approvalCleanup.assertCanCleanupAgent(agentId);
+		// Stop pending approvals before the account goes. If a resume wins the race,
+		// cleanup throws and the account stays. The agent is archived, so stopped
+		// approvals are the only effect if the account removal then fails.
+		await this.approvalCleanup.cleanupAgent(agentId, agentProjectId, agent.approvalWorkflowId);
+
+		// Remove the account before the other cleanup that cannot be undone. If the
 		// removal fails, for example because a policy blocks the transfer of its
-		// work, the agent stays as it was.
+		// work, the files, logs and memory stay.
 		await this.agentServiceAccount.deleteForAgent(agent, actor, agentProjectId, ctx);
 
 		await this.deleteKnowledgeFiles(agentProjectId, agentId);
@@ -1059,7 +1069,7 @@ export class AgentsService {
 
 		await this.agentExecutionService.deleteMemoryThreadsForAgent(agentId);
 
-		await this.agentRepository.remove(agent);
+		await this.agentRepository.removeAfterApprovalCleanup(agentId, agentProjectId);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
