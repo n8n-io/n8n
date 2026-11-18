@@ -7,7 +7,7 @@ import type {
 import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { sleep } from '@n8n/utils/sleep';
-import { getResolvables, updateDisplayOptions } from '@utils/utilities';
+import { resolveExpressions, updateDisplayOptions } from '@utils/utilities';
 
 import type { ResponseWithJobReference } from '../../helpers/interfaces';
 import { prepareOutput } from '../../helpers/utils';
@@ -232,7 +232,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 	for (let i = 0; i < length; i++) {
 		try {
-			let sqlQuery = this.getNodeParameter('sqlQuery', i) as string;
+			const rawSqlQuery = this.getNodeParameter('sqlQuery', i) as string;
 
 			const options = this.getNodeParameter('options', i) as {
 				defaultDataset?: string;
@@ -252,9 +252,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				extractValue: true,
 			});
 
-			for (const resolvable of getResolvables(sqlQuery)) {
-				sqlQuery = sqlQuery.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
-			}
+			const sqlQuery = resolveExpressions(
+				rawSqlQuery,
+				(resolvable) => this.evaluateExpression(resolvable, i),
+				{ legacy: this.getNode().typeVersion < 2.2 },
+			);
 
 			let rawOutput = false;
 			let includeSchema = false;

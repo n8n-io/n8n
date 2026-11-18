@@ -1,0 +1,15 @@
+// Shared by the policy settings sub-pages, which open from a row and show a back link.
+
+@mixin layout {
+	/* The settings shell already pads the page top, so collapse the layout's own inset. */
+	padding-top: 0;
+
+	/* Pin the back link to the top-left of the settings area (the shell's content container is
+	   position: relative), apart from the centered column. */
+	> div:first-child {
+		position: absolute;
+		top: var(--spacing--lg);
+		left: var(--spacing--lg);
+		width: auto;
+	}
+}

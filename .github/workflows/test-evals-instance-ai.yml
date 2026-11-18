@@ -235,16 +235,27 @@ jobs:
           HOSTED_SANDBOX_API_KEY: ${{ secrets.N8N_SANDBOX_SERVICE_API_KEY }}
         run: |
           if [ -n "$HOSTED_SANDBOX_URL" ]; then
-            # Authenticated so a revoked key fails here rather than mid-eval;
-            # /healthz is unauthenticated and would pass with a bad key.
-            if curl -fsS -m 10 -o /dev/null \
-              -H "X-Api-Key: $HOSTED_SANDBOX_API_KEY" \
-              "${HOSTED_SANDBOX_URL%/}/sandboxes"; then
+            # Create and delete one sandbox. A list request answers 200 for a
+            # tenant whose quota is full, and then every build fails on its
+            # first sandbox. The probe is ephemeral, so the service removes it
+            # if the delete fails.
+            base="${HOSTED_SANDBOX_URL%/}"
+            rm -f /tmp/sandbox-probe.json
+            status=$(curl -sS -m 30 -o /tmp/sandbox-probe.json -w '%{http_code}' \
+              -X POST -H "X-Api-Key: $HOSTED_SANDBOX_API_KEY" \
+              -H 'Content-Type: application/json' -d '{"ephemeral":true}' \
+              "$base/sandboxes" || true)
+            probe_id=$(jq -r '.id // empty' /tmp/sandbox-probe.json 2>/dev/null || true)
+            if [[ "$status" == 2* ]] && [ -n "$probe_id" ]; then
+              curl -fsS -m 10 -o /dev/null -X DELETE \
+                -H "X-Api-Key: $HOSTED_SANDBOX_API_KEY" "$base/sandboxes/$probe_id" \
+                || echo "::warning::Could not delete probe sandbox $probe_id."
               echo "Hosted sandbox service healthy — skipping the local stack."
               echo "SANDBOX_HOSTED_OK=true" >> "$GITHUB_ENV"
               exit 0
             fi
-            echo "::warning::Hosted sandbox service is not usable — falling back to the local sandbox stack."
+            reason=$(head -c 200 /tmp/sandbox-probe.json 2>/dev/null | tr -d '\r\n' || true)
+            echo "::warning::Hosted sandbox service is not usable (HTTP $status $reason). Falling back to the local sandbox stack."
           fi
           pnpm --filter n8n-containers services --services sandbox --network n8n-eval-net --name n8n-svc-sandbox
 

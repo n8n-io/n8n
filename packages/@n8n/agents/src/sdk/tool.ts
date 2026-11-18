@@ -1,7 +1,12 @@
 import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
-import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../types';
+import type {
+	BuiltTool,
+	InterruptibleToolContext,
+	LegacyCallConverter,
+	ToolContext,
+} from '../types';
 import { AgentEvent } from '../types/runtime/event';
 import type { AgentMessage } from '../types/sdk/message';
 import type { ToolDescriptor } from '../types/sdk/tool-descriptor';
@@ -267,6 +272,8 @@ export class Tool<
 
 	private legacyActionsValue?: Record<string, string[]>;
 
+	private legacyResumeOnlyValue?: { convert: LegacyCallConverter };
+
 	constructor(name: string) {
 		this.name = name;
 	}
@@ -291,6 +298,16 @@ export class Tool<
 			...this.legacyActionsValue,
 			[legacyName]: [...current, ...actions],
 		};
+		return this;
+	}
+
+	/**
+	 * Keep the former names and former actions for resume only. A suspended
+	 * call under a former name resumes here with `convert(formerName, input)`
+	 * as its input. A new model call under a former name fails as an unknown tool.
+	 */
+	legacyForResumeOnly(convert: LegacyCallConverter): this {
+		this.legacyResumeOnlyValue = { convert };
 		return this;
 	}
 
@@ -477,6 +494,7 @@ export class Tool<
 			name: this.name,
 			...(this.legacyNamesValue?.length ? { legacyNames: this.legacyNamesValue } : {}),
 			...(this.legacyActionsValue ? { legacyActions: this.legacyActionsValue } : {}),
+			...(this.legacyResumeOnlyValue ? { legacyResumeOnly: this.legacyResumeOnlyValue } : {}),
 			description: this.desc,
 			systemInstruction: this.systemInstructionText,
 			suspendSchema: this.suspendSchemaValue,

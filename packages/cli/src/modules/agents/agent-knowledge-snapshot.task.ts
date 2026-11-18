@@ -1,9 +1,8 @@
+import { TelemetryProxy } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import { clusterTarget, intervalFromSeconds, SystemTask } from '@n8n/decorators';
 import type { SystemTaskSchedule } from '@n8n/decorators';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-
-import { Telemetry } from '@/telemetry';
 
 import { AgentKnowledgeSnapshotService } from './agent-knowledge-snapshot.service';
 
@@ -33,7 +32,7 @@ export class AgentKnowledgeSnapshotTask implements SystemTask {
 
 	constructor(
 		private readonly snapshotService: AgentKnowledgeSnapshotService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 	) {}
 
 	async run(signal: AbortSignal): Promise<void> {

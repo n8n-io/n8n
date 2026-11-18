@@ -8,6 +8,7 @@ import { ASSISTANT_AGENT_PROJECT_ID } from '../assistantAgentThreads';
 import AssistantConfirmationCard from '../AssistantConfirmationCard.vue';
 import type { AssistantConfirmationInput } from '../assistantConfirmation';
 import { ASSISTANT_AGENT_THREAD_ID } from '../assistantAgentThreads';
+import { ASSISTANT_AGENT_SETUP_SAVED } from '../useAssistantAgentSetupSavedTelemetry';
 
 const { telemetryTrack } = vi.hoisted(() => ({ telemetryTrack: vi.fn() }));
 
@@ -65,7 +66,7 @@ vi.mock('../../workflowSetup/InstanceAiWorkflowSetup.vue', () => ({
 		props: ['projectId', 'threadId', 'inputThreadId', 'outcome'],
 		template: `<div>
 			<button data-test-id="stub-workflow-setup" :data-project-id="projectId" @click="$emit('defer')" />
-			<button data-test-id="stub-workflow-setup-apply" @click="$emit('apply', { nodeCredentials: { Slack: { slackApi: 'cred-1' } } })" />
+			<button data-test-id="stub-workflow-setup-apply" @click="$emit('apply', { nodeCredentials: { Slack: { slackApi: 'cred-1' } } }, [{ id: 'section-1' }])" />
 			<span data-test-id="stub-workflow-setup-outcome">{{ outcome?.state }}</span>
 		</div>`,
 	},
@@ -370,6 +371,33 @@ describe('AssistantConfirmationCard', () => {
 		expect(getByTestId('stub-workflow-setup-outcome')).toHaveTextContent('applied');
 	});
 
+	it('expects the setup tool result only after the server accepts the apply', async () => {
+		const expectSetupResult = vi.fn();
+		const { getByTestId, emitted } = renderComponent({
+			props: {
+				input: {
+					requestId: 'req-w',
+					message: 'Set up the workflow',
+					workflowId: 'wf-1',
+					setupRequests: [{ node: { name: 'Slack' } }],
+				} as unknown as AssistantConfirmationInput,
+			},
+			global: { provide: { [ASSISTANT_AGENT_SETUP_SAVED as symbol]: expectSetupResult } },
+		});
+
+		await fireEvent.click(getByTestId('stub-workflow-setup-apply'));
+		expect(expectSetupResult).not.toHaveBeenCalled();
+
+		const [[, onAccepted]] = emitted().submit as Array<[unknown, (() => void) | undefined]>;
+		onAccepted?.();
+
+		expect(expectSetupResult).toHaveBeenCalledWith({
+			requestId: 'req-w',
+			workflowId: 'wf-1',
+			sections: [{ id: 'section-1' }],
+		});
+	});
+
 	it('submits a gateway resource decision', async () => {
 		const { getByTestId, emitted } = renderComponent({
 			props: {
@@ -474,6 +502,18 @@ describe('AssistantConfirmationCard', () => {
 				],
 				skipped_inputs: [],
 			});
+		});
+
+		it('uses the request id as input id when the card has none, as the backend does', async () => {
+			const { getByTestId, accept } = renderInThread({ ...runApproval, inputThreadId: undefined });
+
+			await fireEvent.click(getByTestId('approval-card-allow-once'));
+			accept();
+
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				'User finished providing input',
+				expect.objectContaining({ input_thread_id: 'req-aa' }),
+			);
 		});
 
 		it('tracks always allow as approve_always', async () => {
