@@ -145,6 +145,13 @@ export async function decisionsPreSend(
 		body.questions = Object.fromEntries(questions);
 	}
 
+	if (Object.keys((body.questions ?? {}) as IDataObject).length === 0) {
+		throw new NodeOperationError(this.getNode(), 'Add at least one question', {
+			description:
+				'The Decisions API needs at least one question. Add a question, or provide one in Questions (JSON).',
+		});
+	}
+
 	if (hasReservedKey(body.questions)) {
 		throw new NodeOperationError(
 			this.getNode(),

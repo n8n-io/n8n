@@ -243,43 +243,35 @@ describe('Perplexity Node - Decisions', () => {
 		},
 	});
 
-	harness.setupTest({
-		description: 'should reject duplicate question names before sending a request',
-		input: {
-			workflowData: workflow({
-				state: review,
-				questions: {
-					values: [
-						{ name: 'defect', type: 'noul', instructions: 'Does the review report a defect?' },
-						{ name: 'defect', type: 'noul', instructions: 'Is the product broken?' },
-					],
-				},
-			}),
-		},
-		output: { nodeData: {}, error: 'Question names must be unique' },
-		credentials,
-	});
-
-	harness.setupTest({
-		description: 'should reject criteria that are not valid JSON before sending a request',
-		input: {
-			workflowData: workflow({
-				state: review,
-				questions: {
-					values: [{ name: 'sentiment', type: 'choice', instructions: '', criteria: '{positive' }],
-				},
-			}),
-		},
-		output: { nodeData: {}, error: "Input 'Criteria'  must contain a valid JSON" },
-		credentials,
-	});
-
 	const defect = { name: 'defect', type: 'noul', instructions: 'Does the review report a defect?' };
 	const reservedQuestionKey =
 		'Question names and criteria keys cannot be __proto__, constructor or prototype';
 	const reservedStateKey = 'State keys cannot be named __proto__, constructor or prototype';
 
-	const reservedKeyCases: Array<{ rejects: string; parameters: IDataObject; error: string }> = [
+	const rejectCases: Array<{ rejects: string; parameters: IDataObject; error: string }> = [
+		{
+			rejects: 'duplicate question names',
+			parameters: { state: review, questions: { values: [defect, defect] } },
+			error: 'Question names must be unique',
+		},
+		{
+			rejects: 'criteria that are not valid JSON',
+			parameters: {
+				state: review,
+				questions: { values: [{ name: 'sentiment', type: 'choice', criteria: '{positive' }] },
+			},
+			error: "Input 'Criteria'  must contain a valid JSON",
+		},
+		{
+			rejects: 'an empty list of questions defined with fields',
+			parameters: { state: review, questions: { values: [] } },
+			error: 'Add at least one question',
+		},
+		{
+			rejects: 'an empty questions object defined as JSON',
+			parameters: { state: review, defineQuestions: 'json', questionsJson: '{}' },
+			error: 'Add at least one question',
+		},
 		...['__proto__', 'constructor', 'prototype'].flatMap((name) => [
 			{
 				rejects: `a question named ${name} defined with fields`,
@@ -328,7 +320,7 @@ describe('Perplexity Node - Decisions', () => {
 		},
 	];
 
-	for (const { rejects, parameters, error } of reservedKeyCases) {
+	for (const { rejects, parameters, error } of rejectCases) {
 		harness.setupTest({
 			description: `should reject ${rejects} before sending a request`,
 			input: { workflowData: workflow(parameters) },
