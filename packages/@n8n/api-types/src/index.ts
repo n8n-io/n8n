@@ -1021,6 +1021,13 @@ export {
 	toResourcePath,
 	type PageResourceLocation,
 } from './utils/page-resource-path';
+export {
+	PAGE_TOUR_QUERY_PARAMETER,
+	extractTourSteps,
+	type NodeNameLookup,
+	type PageTour,
+	type PageTourStep,
+} from './utils/page-tour';
 
 export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.schema';
 export {
