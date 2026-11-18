@@ -11,7 +11,8 @@ import type {
 } from './aquarium.types';
 import { demoEntitySources, liveEntitySources, liveMetricsSources } from './sources';
 import { fetchActivity } from './sources/activity.source';
-import { demoActivity } from './sources/demo-activity';
+import type { AquariumDataset } from './sources/dataset';
+import { datasetActivity, demoActivity } from './sources/demo-activity';
 import { loadFromSources } from './sources/source.utils';
 
 export interface AquariumLoadOptions {
@@ -30,12 +31,27 @@ export const useAquariumStore = defineStore('aquarium', () => {
 	const isLoading = ref(false);
 	const hasLoaded = ref(false);
 
+	/** A data set from a file replaces the live and the demo entities while it is loaded. */
+	const dataset = shallowRef<AquariumDataset>();
+
 	const activity = shallowRef<ActivitySnapshot>(EMPTY_ACTIVITY);
 	const hasActivityError = ref(false);
 	let pollTimer: ReturnType<typeof setTimeout> | undefined;
 	let pollGeneration = 0;
+	let loadGeneration = 0;
 
+	/** The newest call wins. A slower, older call does not overwrite its result. */
 	async function load(options: AquariumLoadOptions = {}): Promise<void> {
+		const generation = ++loadGeneration;
+		if (dataset.value) {
+			isLoading.value = false;
+			entities.value = dataset.value.entities;
+			failedSources.value = [];
+			isPartial.value = false;
+			hasLoaded.value = true;
+			return;
+		}
+
 		const entitySources: EntitySource[] = options.demo ? demoEntitySources : liveEntitySources;
 		const metricsSources: MetricsSource[] = options.demo ? [] : liveMetricsSources;
 
@@ -46,6 +62,7 @@ export const useAquariumStore = defineStore('aquarium', () => {
 				entitySources,
 				metricsSources,
 			);
+			if (generation !== loadGeneration) return;
 			entities.value = result.entities;
 			failedSources.value = result.failedSources;
 			const failed = new Set(result.failedSources);
@@ -54,12 +71,18 @@ export const useAquariumStore = defineStore('aquarium', () => {
 			isPartial.value = allFailed(entitySources) || allFailed(metricsSources);
 			hasLoaded.value = true;
 		} finally {
-			isLoading.value = false;
+			if (generation === loadGeneration) isLoading.value = false;
 		}
 	}
 
 	/** Keeps the last snapshot when a poll fails, so creatures do not flicker on a network error. */
 	async function refreshActivity(options: AquariumLoadOptions = {}): Promise<void> {
+		if (dataset.value) {
+			const { entities: datasetEntities, windowSeconds } = dataset.value;
+			activity.value = datasetActivity(datasetEntities, windowSeconds, Date.now());
+			hasActivityError.value = false;
+			return;
+		}
 		if (options.demo) {
 			activity.value = demoActivity(entities.value, Date.now());
 			hasActivityError.value = false;
@@ -87,6 +110,10 @@ export const useAquariumStore = defineStore('aquarium', () => {
 		void tick();
 	}
 
+	function setDataset(value: AquariumDataset | undefined): void {
+		dataset.value = value;
+	}
+
 	function stopLiveUpdates(): void {
 		pollGeneration++;
 		clearTimeout(pollTimer);
@@ -102,6 +129,8 @@ export const useAquariumStore = defineStore('aquarium', () => {
 		hasLoaded,
 		activity,
 		hasActivityError,
+		dataset,
+		setDataset,
 		load,
 		refreshActivity,
 		startLiveUpdates,

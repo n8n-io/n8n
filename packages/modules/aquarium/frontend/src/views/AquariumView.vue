@@ -1,19 +1,23 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useToast } from '@n8n/composables/useToast';
 import { N8nButton, N8nCallout, N8nHeading, N8nIcon, N8nSwitch, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { useAquariumStore } from '../aquarium.store';
 import type { AquariumEntity } from '../aquarium.types';
 import AquariumTank from '../components/AquariumTank.vue';
+import { readDatasetFile } from '../sources/dataset';
 
 const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
 const store = useAquariumStore();
 const documentTitle = useDocumentTitle();
+const toast = useToast();
+const fileInput = ref<HTMLInputElement>();
 
 const isDemo = computed(() => route.query.demo === 'true');
 
@@ -25,6 +29,41 @@ async function load() {
 
 async function setDemo(value: string | number | boolean) {
 	await router.replace({ query: { ...route.query, demo: value === true ? 'true' : undefined } });
+}
+
+const datasetLabel = computed(() => {
+	const dataset = store.dataset;
+	if (!dataset) return '';
+	return i18n.baseText('aquarium.dataset.label', {
+		interpolate: {
+			source: dataset.source || i18n.baseText('aquarium.dataset.fallbackName'),
+			shown: String(dataset.entities.length),
+			total: String(dataset.totalEntities),
+		},
+	});
+});
+
+/** The file stays in the browser. It is not uploaded or stored. */
+async function onDatasetFile(event: Event) {
+	const input = event.target;
+	if (!(input instanceof HTMLInputElement)) return;
+	const file = input.files?.[0];
+	// Clear the value, so picking the same file again still fires `change`.
+	input.value = '';
+	if (!file) return;
+
+	const dataset = await readDatasetFile(file);
+	if (!dataset) {
+		toast.showMessage({ type: 'error', title: i18n.baseText('aquarium.dataset.invalid') });
+		return;
+	}
+	store.setDataset(dataset);
+	await load();
+}
+
+async function clearDataset() {
+	store.setDataset(undefined);
+	await load();
 }
 
 async function onSelect(entity: AquariumEntity) {
@@ -57,11 +96,42 @@ watch(isDemo, load);
 			</header>
 
 			<div :class="[$style.panel, $style.actions]">
-				<N8nSwitch
-					:model-value="isDemo"
-					:label="i18n.baseText('aquarium.demo')"
-					data-test-id="aquarium-demo-switch"
-					@update:model-value="setDemo"
+				<template v-if="store.dataset">
+					<N8nText size="small" data-test-id="aquarium-dataset-label">{{ datasetLabel }}</N8nText>
+					<N8nButton
+						variant="ghost"
+						size="small"
+						data-test-id="aquarium-dataset-clear"
+						@click="clearDataset"
+					>
+						<template #icon><N8nIcon icon="x" size="small" /></template>
+						{{ i18n.baseText('aquarium.dataset.clear') }}
+					</N8nButton>
+				</template>
+				<template v-else>
+					<N8nSwitch
+						:model-value="isDemo"
+						:label="i18n.baseText('aquarium.demo')"
+						data-test-id="aquarium-demo-switch"
+						@update:model-value="setDemo"
+					/>
+					<N8nButton
+						variant="outline"
+						size="small"
+						data-test-id="aquarium-dataset-load"
+						@click="fileInput?.click()"
+					>
+						<template #icon><N8nIcon icon="upload" size="small" /></template>
+						{{ i18n.baseText('aquarium.dataset.load') }}
+					</N8nButton>
+				</template>
+				<input
+					ref="fileInput"
+					type="file"
+					accept=".json,application/json"
+					:class="$style.fileInput"
+					data-test-id="aquarium-dataset-input"
+					@change="onDatasetFile"
 				/>
 				<N8nButton
 					variant="outline"
@@ -138,6 +208,10 @@ watch(isDemo, load);
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--sm);
+}
+
+.fileInput {
+	display: none;
 }
 
 .callout {

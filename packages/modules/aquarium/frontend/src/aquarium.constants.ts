@@ -52,3 +52,10 @@ export const SICK_SPEED_FACTOR = 0.4;
 
 /** Delay between two polls of the live activity endpoint. */
 export const ACTIVITY_POLL_MS = 2_000;
+
+/** A data set can hold thousands of entities. The tank shows the most-run ones. */
+export const DATASET_MAX_WORKFLOWS = 100;
+export const DATASET_MAX_AGENTS = 10;
+
+/** Window of the execution counts when a data set does not say. Insights use a week. */
+export const DATASET_DEFAULT_WINDOW_SECONDS = 7 * 24 * 60 * 60;

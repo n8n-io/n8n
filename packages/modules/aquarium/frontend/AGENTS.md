@@ -20,6 +20,8 @@ extend the module, and which rules to obey.
 | Page header, demo switch, warnings | `src/views/AquariumView.vue` |
 | Sidebar link (in the shell) | `packages/frontend/editor-ui/src/app/components/MainSidebar.vue` |
 | Fake data for development | `src/sources/demo.source.ts` |
+| Data set files (parse, limits) | `src/sources/dataset.ts`, `src/aquarium.constants.ts` |
+| Simulated activity (demo and data set) | `src/sources/demo-activity.ts` |
 | Live activity (polling, demo activity) | `src/aquarium.store.ts`, `src/sources/activity.source.ts`, `src/sources/demo-activity.ts` |
 | Live activity (backend counts) | `../backend/src/` |
 
@@ -42,19 +44,16 @@ The same entity always gets the same species.
 
 ### Show a new metric
 
-Use failure rate as the model. `failedCount` and `executionCount` are already loaded, and
-`failureRateOf()` is in `scaling.ts`.
+`sickRule` in `src/engine/traits.ts` is a worked example: a failure rate over
+`SICK_FAILURE_RATE` gives a blinking green tint and a lower `speedFactor`. Copy its shape.
 
 1. If no source gives the value, add a field to `EntityMetrics`. Set its default in
    `emptyMetrics()` in `src/sources/source.utils.ts`. Set the value in a source mapper.
 2. If the mapping is numeric, put it in `scaling.ts` as a pure function, with its limits in
    `aquarium.constants.ts`.
-3. Write a `TraitRule` in `src/engine/traits.ts`:
-
-   ```ts
-   export const sickRule: TraitRule = (entity, traits) =>
-   	failureRateOf(entity.metrics) > 0.2 ? { ...traits, tint: '#7fbf3f' } : traits;
-   ```
+3. Write a `TraitRule` in `src/engine/traits.ts`. Put its limits and colours in
+   `aquarium.constants.ts`. A rule can set `tint`, `tintBlinkSeconds`, `speedFactor`, the species
+   or `effects`.
 
 4. Add the rule to `defaultTraitRules`. See "Rule order" below.
 5. Add a row to the tooltip in `AquariumTank.vue` if a user must see the number.
@@ -65,8 +64,8 @@ Use failure rate as the model. `failedCount` and `executionCount` are already lo
 
 Live activity is on `creature.activity` (`EntityActivity`): `running`, `started`, `succeeded`,
 `failed`, `startedPerSecond` and `lastEventAt`. Swim speed already uses `startedPerSecond`, through
-`targetSpeedOf()` in `simulation.ts`. Read `creature.speed`, not `creature.traits.speed`, for the
-current speed. It is `undefined` when the workflow had no runs in the window.
+`targetSpeedOf()` in `simulation.ts`. `creature.activity` is `undefined` when the workflow had no
+runs in the window. Read `creature.speed`, not `creature.traits.speed`, for the current speed.
 
 1. Read `creature.activity` in an effect or in `stepCreature`. Do not read it in a trait rule:
    rules run only when the entity list changes, not when activity changes.
@@ -150,6 +149,15 @@ Each rule gets the traits of the rules before it. `speciesRule` reads `sizeTier`
 - The store polls only while `AquariumView` is mounted. Call `stopLiveUpdates()` when you add
   another view that starts the polling.
 - A failed poll keeps the last snapshot and sets `hasActivityError`. Do not clear the creatures.
+
+### Data sets
+
+- Never commit a data set file. A scrape of a real instance can contain customer names. Keep it in
+  `.context/` or another ignored folder.
+- `parseDataset()` returns `undefined` for a file it cannot use. Do not throw from it: the view
+  shows one translated message for all bad files.
+- `store.load()` lets the newest call win. Keep that when you add a new source of entities, or a
+  slow live load can overwrite a data set.
 
 ### Module boundaries
 

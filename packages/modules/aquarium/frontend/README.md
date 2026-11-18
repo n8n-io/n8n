@@ -6,6 +6,8 @@ A pixel-art aquarium. Each workflow and each agent is a sea creature:
 - **Swim speed** is a resting speed from the execution count, plus a live boost from the runs
   per second right now.
 - Busy creatures blow **bubbles**.
+- Creatures that fail more than 20% of the time are **sick**: they blink green and swim at 40% of
+  their speed.
 
 The backend module (`../backend`) is on by default. When you turn it off with
 `N8N_DISABLED_MODULES=aquarium`, the sidebar link and the `/aquarium` page are hidden.
@@ -55,6 +57,24 @@ rules.
 
 `insights` comes after `executions`, so its values win when both are available.
 
+## Data sets
+
+**Load data set** in the page header reads a JSON file, for example a scrape of another instance.
+The file stays in the browser: it is not uploaded or stored, and a reload clears it. While a data
+set is loaded, it replaces the live and the demo entities, and the page sends no requests.
+
+- The format is `{ meta?, entities: [...] }`. Each entity has `id`, `kind` (`workflow` or `agent`),
+  `name` and `metrics`, as in `AquariumEntity`. Other fields are ignored. `null` metrics become 0.
+- `meta.instance` is shown in the label. `meta.executionWindow` (`approxHours`, or `from` and `to`)
+  says how long the execution counts cover. Without it, the counts are taken as one week.
+- The tank shows the `DATASET_MAX_WORKFLOWS` (100) most-run workflows and `DATASET_MAX_AGENTS` (10)
+  agents.
+- Live activity is simulated from each workflow's real rate: execution count over the window, with
+  a wave between 0.4 and 1.6 times that rate. "Running now" is the rate times the average run time.
+- Entities from a data set have no route, so their popup has no **Open** button.
+
+The parser is `src/sources/dataset.ts`.
+
 ## Live activity
 
 The store polls `GET /rest/aquarium/activity` every 2 seconds while the page is open and the tab
@@ -75,6 +95,8 @@ is visible. For each workflow with recent runs it gives:
 - **Live boost** (`LIVE_SPEED`, up to 36): from the mean starts per second over the last 5 full
   seconds, on a log scale. For example, 5 runs per second gives about 16 and 15 runs per second
   gives about 25.
+
+Sick creatures multiply the sum by `SICK_SPEED_FACTOR` (0.4).
 
 The creature eases toward the target speed (`SPEED_EASING_SECONDS`), so it does not jump at each
 poll. After a change in traffic, the speed settles in about 6 to 8 seconds: up to 5 seconds for the

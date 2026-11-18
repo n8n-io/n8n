@@ -73,7 +73,7 @@ export function spawnCreature(
 		targetY: y,
 		wanderIn: random() * 4,
 		age: random() * 10,
-		speed: traits.speed,
+		speed: traits.speed * (traits.speedFactor ?? 1),
 	};
 }
 

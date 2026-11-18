@@ -92,4 +92,66 @@ describe('useAquariumStore', () => {
 			expect(store.activity.windowSeconds).toBe(60);
 		});
 	});
+
+	describe('data set', () => {
+		const dataset = {
+			source: 'example.app.n8n.cloud',
+			totalEntities: 1,
+			windowSeconds: 3600,
+			entities: [
+				{
+					key: 'workflow:x',
+					id: 'x',
+					kind: 'workflow' as const,
+					name: 'From file',
+					metrics: { complexity: 2, executionCount: 3600, failedCount: 0, averageRunTimeMs: 1000 },
+				},
+			],
+		};
+
+		it('replaces live and demo entities, and sends no request', async () => {
+			const load = vi.spyOn(sourceUtils, 'loadFromSources');
+			const fetch = vi.spyOn(activitySource, 'fetchActivity');
+			const store = useAquariumStore();
+
+			store.setDataset(dataset);
+			await store.load({ demo: true });
+			await store.refreshActivity();
+
+			expect(store.entities).toBe(dataset.entities);
+			expect(store.activity.byKey.has('workflow:x')).toBe(true);
+			expect(load).not.toHaveBeenCalled();
+			expect(fetch).not.toHaveBeenCalled();
+		});
+
+		it('is not overwritten by a slower live load that started before it', async () => {
+			let finishLiveLoad: (value: sourceUtils.LoadResult) => void = () => {};
+			vi.spyOn(sourceUtils, 'loadFromSources').mockReturnValueOnce(
+				new Promise((resolve) => {
+					finishLiveLoad = resolve;
+				}),
+			);
+			const store = useAquariumStore();
+
+			const liveLoad = store.load();
+			store.setDataset(dataset);
+			await store.load();
+			finishLiveLoad({ entities: DEMO_ENTITIES, failedSources: [] });
+			await liveLoad;
+
+			expect(store.entities).toBe(dataset.entities);
+			expect(store.isLoading).toBe(false);
+		});
+
+		it('goes back to the demo entities when cleared', async () => {
+			const store = useAquariumStore();
+			store.setDataset(dataset);
+			await store.load({ demo: true });
+
+			store.setDataset(undefined);
+			await store.load({ demo: true });
+
+			expect(store.entities).toEqual(DEMO_ENTITIES);
+		});
+	});
 });

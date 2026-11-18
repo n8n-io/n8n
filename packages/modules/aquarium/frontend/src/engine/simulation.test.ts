@@ -132,6 +132,13 @@ describe('simulation', () => {
 			expect(targetSpeedOf(creature)).toBeCloseTo(full * 0.4);
 		});
 
+		it('spawns a slowed creature at its slowed speed', () => {
+			const traits = { ...deriveTraits(entity), speedFactor: 0.4 };
+			const creature = spawnCreature(entity, traits, minnow, bounds, seededRandom());
+
+			expect(creature.speed).toBeCloseTo(traits.speed * 0.4);
+		});
+
 		it('eases toward a new target instead of jumping', () => {
 			const creature = spawnCreature(entity, deriveTraits(entity), minnow, bounds, seededRandom());
 			creature.activity = activityAt(15);
