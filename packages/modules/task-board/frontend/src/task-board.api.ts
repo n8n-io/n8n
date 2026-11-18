@@ -71,6 +71,15 @@ export async function deleteTaskBoard(context: IRestApiContext, ref: TaskBoardRe
 	await makeRestApiRequest(context, 'DELETE', boardPath(ref));
 }
 
+/** Puts an agent of the project on the team of the board. */
+export async function addTaskBoardAgent(
+	context: IRestApiContext,
+	ref: TaskBoardRef,
+	agentId: string,
+): Promise<void> {
+	await makeRestApiRequest(context, 'PUT', `${boardPath(ref)}/agents/${agentId}`);
+}
+
 export async function createTask(
 	context: IRestApiContext,
 	ref: TaskBoardRef,

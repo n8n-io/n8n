@@ -17,17 +17,25 @@ function personName(member: ProjectRelation): string {
 }
 
 /**
- * The people and agents a task in the project can have as assignee.
- * People are the project members. Agents come from the agents module. When that module is
- * off or its request fails, the picker shows people only.
+ * The people and agents a task of the board can have as assignee.
+ * People are the project members. Agents are the agents of the project that are on the team
+ * of the board (`boardAgentIds`). When the agents module is off or its request fails, the
+ * picker shows people only.
  */
-export function useAssigneeOptions(projectId: MaybeRefOrGetter<string | undefined>) {
+export function useAssigneeOptions(
+	projectId: MaybeRefOrGetter<string | undefined>,
+	boardAgentIds: MaybeRefOrGetter<string[]>,
+) {
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
 	const i18n = useI18n();
 
 	const people = ref<TaskBoardPersonOption[]>([]);
-	const agents = ref<TaskBoardAgentOption[]>([]);
+	const projectAgents = ref<TaskBoardAgentOption[]>([]);
+	const agents = computed(() => {
+		const onBoard = new Set(toValue(boardAgentIds));
+		return projectAgents.value.filter((agent) => onBoard.has(agent.id));
+	});
 
 	async function loadPeople(id: string) {
 		try {
@@ -45,17 +53,17 @@ export function useAssigneeOptions(projectId: MaybeRefOrGetter<string | undefine
 
 	async function loadAgents(id: string) {
 		if (!settingsStore.isAgentsEnabled) {
-			agents.value = [];
+			projectAgents.value = [];
 			return;
 		}
 		try {
 			const list = await fetchProjectAgents(rootStore.restApiContext, id);
-			agents.value = list
+			projectAgents.value = list
 				.filter((agent) => !agent.isArchived)
 				.map((agent) => ({ id: agent.id, name: agent.name }));
 		} catch {
 			// Agents are optional here: the picker shows people only.
-			agents.value = [];
+			projectAgents.value = [];
 		}
 	}
 

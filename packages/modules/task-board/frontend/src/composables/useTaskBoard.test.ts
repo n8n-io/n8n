@@ -60,4 +60,48 @@ describe('useTaskBoard', () => {
 		expect(task?.id).toBe('t2');
 		expect(store.findTask('t2')?.title).toBe('New');
 	});
+
+	it('shows an edit of severity and tags at once, and sends only those fields', async () => {
+		const { taskBoard, store } = await loadBoard([createTask({ title: 'Keep me' })]);
+		const request = createDeferredPromise<TaskBoardTask>();
+		vi.mocked(updateTask).mockReturnValue(request.promise);
+
+		const edit = taskBoard.editTask('t1', { severity: 'high', tags: ['bug'] });
+
+		expect(store.findTask('t1')).toMatchObject({
+			title: 'Keep me',
+			severity: 'high',
+			tags: ['bug'],
+		});
+
+		request.resolve(createTask({ severity: 'high', tags: ['bug'] }));
+		await edit;
+
+		expect(updateTask).toHaveBeenCalledWith(
+			expect.anything(),
+			{ ...boardRef, taskId: 't1' },
+			{ severity: 'high', tags: ['bug'] },
+		);
+	});
+
+	it('removes the severity when the edit sets it to null', async () => {
+		const { taskBoard, store } = await loadBoard([createTask({ severity: 'critical' })]);
+		vi.mocked(updateTask).mockResolvedValue(createTask({ severity: null }));
+
+		await taskBoard.editTask('t1', { severity: null });
+
+		expect(updateTask).toHaveBeenCalledWith(expect.anything(), expect.anything(), {
+			severity: null,
+		});
+		expect(store.findTask('t1')?.severity).toBeNull();
+	});
+
+	it('puts the old task back when an edit fails', async () => {
+		const { taskBoard, store } = await loadBoard([createTask({ tags: ['old'] })]);
+		vi.mocked(updateTask).mockRejectedValue(new Error('No connection'));
+
+		await taskBoard.editTask('t1', { tags: ['new'] });
+
+		expect(store.findTask('t1')?.tags).toEqual(['old']);
+	});
 });

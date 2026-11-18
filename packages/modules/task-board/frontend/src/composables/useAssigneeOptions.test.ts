@@ -25,8 +25,9 @@ async function loadOptions() {
 	vi.mocked(fetchProjectAgents).mockResolvedValue([
 		{ id: 'a1', name: 'Dev agent', isArchived: false },
 		{ id: 'a2', name: 'Old agent', isArchived: true },
+		{ id: 'a3', name: 'Agent of another board', isArchived: false },
 	]);
-	const options = withSetup(() => useAssigneeOptions('p1'));
+	const options = withSetup(() => useAssigneeOptions('p1', ['a1', 'a2']));
 	await waitAllPromises();
 	return options;
 }
@@ -34,7 +35,7 @@ async function loadOptions() {
 describe('useAssigneeOptions', () => {
 	beforeEach(() => vi.resetAllMocks());
 
-	it('offers "Unassigned", the project members and the agents that are not archived', async () => {
+	it('offers "Unassigned", the project members and the agents of the board that are not archived', async () => {
 		const options = await loadOptions();
 
 		expect(options.items.value).toEqual([

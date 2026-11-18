@@ -1,19 +1,24 @@
 import {
 	TASK_BOARD_ASSIGNEE_TYPES,
+	TASK_BOARD_MAX_TAGS,
+	TASK_BOARD_SEVERITIES,
+	TASK_BOARD_TAG_MAX_LENGTH,
 	type TaskBoardAssigneeRef,
 	type TaskBoardAssigneeType,
 	type TaskBoardColumn,
 	type TaskBoardDetail,
+	type TaskBoardSeverity,
 	type TaskBoardTask,
 } from '@n8n/api-types';
 import type { SelectGroupItem } from '@n8n/design-system';
 
-import { UNASSIGNED_VALUE } from './task-board.constants';
+import { NO_SEVERITY_VALUE, UNASSIGNED_VALUE } from './task-board.constants';
 import type {
 	AssigneeChange,
 	AssigneeValue,
 	BoardToOpenOptions,
 	TaskBoardListItem,
+	VisibleTags,
 } from './task-board.types';
 
 export type PersonName = {
@@ -55,6 +60,51 @@ export function decodeAssignee(value: AssigneeValue | undefined): AssigneeChange
 	return { type, id };
 }
 
+export function encodeSeverity(severity: TaskBoardSeverity | null): string {
+	return severity ?? NO_SEVERITY_VALUE;
+}
+
+/** The inverse of `encodeSeverity`. An unknown value means "no severity". */
+export function decodeSeverity(value: string | undefined): TaskBoardSeverity | null {
+	return TASK_BOARD_SEVERITIES.find((severity) => severity === value) ?? null;
+}
+
+/** One tag in the form that the backend stores: trimmed, lower case, and not too long. */
+export function normalizeTag(tag: string): string {
+	return tag.trim().toLowerCase().slice(0, TASK_BOARD_TAG_MAX_LENGTH).trim();
+}
+
+/** The tags that a request can carry: normalized, without duplicates, and within the limit. */
+export function normalizeTags(tags: string[]): string[] {
+	const unique = new Set(tags.map(normalizeTag).filter((tag) => tag.length > 0));
+	return [...unique].slice(0, TASK_BOARD_MAX_TAGS);
+}
+
+export function sameTags(a: string[], b: string[]): boolean {
+	return a.length === b.length && a.every((tag, index) => tag === b[index]);
+}
+
+/** Splits the tags of a card into the tags that it shows and a count of the rest. */
+export function splitVisibleTags(tags: string[], limit: number): VisibleTags {
+	return { shown: tags.slice(0, limit), hiddenCount: Math.max(tags.length - limit, 0) };
+}
+
+/**
+ * The tags of the board that a task does not have yet, for the tags input. The tags that
+ * the most tasks use come first.
+ */
+export function suggestTags(tasks: TaskBoardTask[], selected: string[], limit: number): string[] {
+	const counts = new Map<string, number>();
+	for (const task of tasks) {
+		for (const tag of task.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+	}
+	return [...counts.entries()]
+		.filter(([tag]) => !selected.includes(tag))
+		.sort(([tagA, countA], [tagB, countB]) => countB - countA || tagA.localeCompare(tagB))
+		.slice(0, limit)
+		.map(([tag]) => tag);
+}
+
 /** `N8nAvatar` takes first and last name. The board only has a display name. */
 export function splitName(name: string): PersonName {
 	const [firstName = '', ...rest] = name.trim().split(/\s+/);
@@ -65,17 +115,28 @@ export function splitName(name: string): PersonName {
  * The tasks that wait for a reply from this user: they are in a "needs input" column, and
  * the user created them or is their assignee. A task that an agent works on keeps the
  * agent as its assignee, so the creator must count too.
+ *
+ * A task that a workflow or an agent created, and that no person is the assignee of, has
+ * no person to wait for. With `includeUnowned`, each such task counts too.
  */
-export function inboxTasks(board: TaskBoardDetail | null, userId: string | null): TaskBoardTask[] {
+export function inboxTasks(
+	board: TaskBoardDetail | null,
+	userId: string | null,
+	{ includeUnowned = false }: { includeUnowned?: boolean } = {},
+): TaskBoardTask[] {
 	if (!board || !userId) return [];
 	const waiting = new Set(
 		board.columns.filter((column) => column.role === 'needs_input').map((column) => column.id),
 	);
-	const isUser = (actor: Pick<TaskBoardTask['createdBy'], 'type' | 'id'> | null) =>
-		actor?.type === 'user' && actor.id === userId;
+	type Actor = Pick<TaskBoardTask['createdBy'], 'type' | 'id'> | null;
+	const isUser = (actor: Actor) => actor?.type === 'user' && actor.id === userId;
+	const isUnowned = (task: TaskBoardTask) =>
+		task.assignee?.type !== 'user' && task.createdBy.type !== 'user';
 	return board.tasks
 		.filter(
-			(task) => waiting.has(task.columnId) && (isUser(task.assignee) || isUser(task.createdBy)),
+			(task) =>
+				waiting.has(task.columnId) &&
+				(isUser(task.assignee) || isUser(task.createdBy) || (includeUnowned && isUnowned(task))),
 		)
 		.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }

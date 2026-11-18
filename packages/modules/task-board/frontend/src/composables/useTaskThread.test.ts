@@ -1,7 +1,7 @@
 import { waitAllPromises } from '@n8n/frontend-test-utils';
 
 import { useTaskThread } from './useTaskThread';
-import { createTask, withSetup } from '../__tests__/fixtures';
+import { createTaskDetail, withSetup } from '../__tests__/fixtures';
 import { createTaskComment, fetchTask } from '../task-board.api';
 
 vi.mock('../task-board.api');
@@ -12,7 +12,7 @@ describe('useTaskThread', () => {
 	beforeEach(() => vi.resetAllMocks());
 
 	it('posts the draft, shows the new comment in the thread and clears the draft', async () => {
-		vi.mocked(fetchTask).mockResolvedValue({ ...createTask(), comments: [] });
+		vi.mocked(fetchTask).mockResolvedValue(createTaskDetail());
 		vi.mocked(createTaskComment).mockResolvedValue({
 			id: 'c1',
 			taskId: 't1',

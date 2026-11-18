@@ -13,6 +13,7 @@ import type {
 	AssigneeChange,
 	CreateTaskPayload,
 	TaskBoardRef,
+	TaskEdit,
 	UpdateTaskPayload,
 } from '../task-board.types';
 
@@ -106,5 +107,19 @@ export function useTaskBoard(boardRef: MaybeRefOrGetter<TaskBoardRef>) {
 		await changeTask(taskId, { assignee }, { ...task, assignee: optimistic });
 	}
 
-	return { board, loading, loadFailed, load, addTask, moveTask, assignTask };
+	/** Changes the fields that the user edits in place: title, description, severity and tags. */
+	async function editTask(taskId: string, edit: TaskEdit) {
+		const task = store.findTask(taskId);
+		if (!task) return;
+		await changeTask(taskId, edit, {
+			...task,
+			title: edit.title ?? task.title,
+			description: edit.description ?? task.description,
+			// `null` is a value here: it removes the severity.
+			severity: edit.severity === undefined ? task.severity : edit.severity,
+			tags: edit.tags ?? task.tags,
+		});
+	}
+
+	return { board, loading, loadFailed, load, refresh, addTask, moveTask, assignTask, editTask };
 }

@@ -13,12 +13,14 @@ import type {
 export type CreateTaskBoardPayload = Pick<CreateTaskBoardFromTemplateDto, 'templateKey' | 'name'>;
 export type CreateTaskPayload = Pick<
 	CreateTaskBoardTaskDto,
-	'title' | 'description' | 'columnId' | 'assignee'
+	'title' | 'description' | 'columnId' | 'assignee' | 'severity' | 'tags'
 >;
 export type UpdateTaskPayload = Pick<
 	UpdateTaskBoardTaskDto,
-	'title' | 'description' | 'columnId' | 'assignee'
+	'title' | 'description' | 'columnId' | 'assignee' | 'severity' | 'tags'
 >;
+/** The fields of a task that the user edits in place. A move and an assignment have their own actions. */
+export type TaskEdit = Pick<UpdateTaskPayload, 'title' | 'description' | 'severity' | 'tags'>;
 export type CreateCommentPayload = Pick<CreateTaskBoardCommentDto, 'body'>;
 
 /** The address of one board. Every board request needs both ids. */
@@ -30,6 +32,12 @@ export type TaskBoardRef = {
 /** The address of one task. */
 export type TaskRef = TaskBoardRef & {
 	taskId: string;
+};
+
+/** The tags of a card that fit, and the count of the tags that do not. */
+export type VisibleTags = {
+	shown: string[];
+	hiddenCount: number;
 };
 
 /** A board card, with the name of its project for the overview page. */
