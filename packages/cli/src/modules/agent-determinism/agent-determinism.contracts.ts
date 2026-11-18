@@ -1,5 +1,7 @@
+import type { User } from '@n8n/db';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import type { GeneratedFromSourceType, JsonObject, JsonValue } from 'n8n-workflow';
+import type { JSONObject, JSONValue } from '@n8n/utils/json/to-json-value';
+import type { GeneratedFromSourceType } from 'n8n-workflow';
 
 export type DeterminismSource = {
 	type: GeneratedFromSourceType;
@@ -11,13 +13,13 @@ export type DeterminismSource = {
 
 export type StepCounts = { llmDecided: number; codeDecided: number };
 
-export type RecordedToolCall = { name: string; input: JsonValue; output: JsonValue };
+export type RecordedToolCall = { name: string; input: JSONValue; output: JSONValue };
 
 export type RecordedRun = {
 	id: string;
 	succeeded: boolean;
-	input: JsonObject;
-	output: JsonValue;
+	input: JSONObject;
+	output: JSONValue;
 	toolCalls: RecordedToolCall[];
 	steps: StepCounts;
 	totalTokens: number | null;
@@ -31,6 +33,7 @@ export type RunCluster = {
 };
 
 export type TranslateRequest = {
+	actor: User;
 	source: DeterminismSource;
 	cluster: RunCluster;
 	trainRuns: RecordedRun[];

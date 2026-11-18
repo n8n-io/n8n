@@ -84,7 +84,7 @@ export class DeterminismSourceRepository {
 	async saveResult(
 		source: DeterminismSource,
 		draftWorkflowId: string,
-		result: DeterminismResult,
+		result: DeterminismResult | null,
 	): Promise<void> {
 		await this.table.managerFor({}).update(
 			DeterminismSourceEntity,
