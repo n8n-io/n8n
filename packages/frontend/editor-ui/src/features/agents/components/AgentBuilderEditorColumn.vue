@@ -133,6 +133,13 @@ const i18n = useI18n();
 const agentTelemetry = useAgentTelemetry();
 const testButtonPrimaryColorExperiment = useTestButtonPrimaryColorExperiment();
 
+// AGENT-1437 scopes the treatment to the standalone agent page. The same
+// component also renders inside the Assistant artifact builder, which must
+// keep the existing outlined button.
+const showPrimaryColorTestButton = computed(
+	() => !props.artifactMode && testButtonPrimaryColorExperiment.isEnabled.value,
+);
+
 const agentInfoPanel = ref<InstanceType<typeof AgentInfoPanel>>();
 const agentTriggersSection = ref<InstanceType<typeof AgentTriggersSection>>();
 
@@ -202,7 +209,7 @@ defineExpose({ onSetupTaskAction });
 						:is-runnable="props.agent?.isRunnable === true"
 						:is-preview-open="props.isPreviewOpen"
 						:validation-issues="props.configValidationIssues ?? []"
-						:variant="testButtonPrimaryColorExperiment.isEnabled.value ? 'solid' : 'outline'"
+						:variant="showPrimaryColorTestButton ? 'solid' : 'outline'"
 						test-id="agent-header-preview-btn"
 						@open-preview="emit('open-preview', 'primary')"
 						@close-preview="emit('close-preview')"
