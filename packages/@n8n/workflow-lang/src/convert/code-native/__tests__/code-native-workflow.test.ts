@@ -90,7 +90,7 @@ describe('native Code nodes in a workflow', () => {
 			],
 			connections: chain(['Hook', 'Dates']),
 		};
-		expect(convertWorkflow(wf).fallbackNodes).toEqual(['Dates']);
+		expect(convertWorkflow(wf, { dateValues: false }).fallbackNodes).toEqual(['Dates']);
 	});
 
 	it('shares the workflow static data between the nodes of an execution', async () => {
