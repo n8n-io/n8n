@@ -200,7 +200,8 @@ const needsRefresh = (m) => Object.values(m.credentials).some((c) => c.data?.oau
 async function put(key, m) {
 	const credentials = structuredClone(m.credentials);
 	if (needsRefresh(m)) refreshed[key] = await refreshOAuth(credentials, CA);
-	const body = JSON.stringify({ versionId: 'v1', module: m.module, active: true, webhookPrefix: m.prefix ?? '/webhook', credentials });
+	// LT_SAVE_DATA: step events carry arguments and results, as when n8n saves the data of an execution.
+	const body = JSON.stringify({ versionId: 'v1', module: m.module, active: true, webhookPrefix: m.prefix ?? '/webhook', ...(process.env.LT_SAVE_DATA ? { saveData: true } : {}), credentials });
 	const res = await fetch(`${shards[m.owner].admin}/_admin/workflows/${key}`, { method: 'PUT', headers: auth, body });
 	if (!res.ok) throw new Error(`load: ${res.status} ${(await res.text()).slice(0, 200)}`);
 }
