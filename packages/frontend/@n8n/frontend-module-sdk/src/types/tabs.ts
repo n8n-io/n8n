@@ -14,6 +14,8 @@ export type DynamicTabOptions = TabOptions<string> & {
 	 * If unset (or no match is found at render time), the tab is appended at the end.
 	 */
 	insertAfter?: string;
+	/** Insert this tab immediately before the tab whose `value` matches. Wins over `insertAfter`. */
+	insertBefore?: string;
 	/**
 	 * Hide the tab when this returns `false`. Receives the current project id, or `undefined`
 	 * on the overview and shared pages. Called inside a `computed`, so reactive reads update the tab.

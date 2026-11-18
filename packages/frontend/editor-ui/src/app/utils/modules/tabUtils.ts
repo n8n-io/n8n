@@ -2,7 +2,10 @@ import type { DynamicTabOptions } from '@n8n/frontend-module-sdk';
 import type { RouteLocationRaw } from 'vue-router';
 import type { TabOptions } from '@n8n/design-system';
 
-export type ProcessedDynamicTab = TabOptions<string> & { insertAfter?: string };
+export type ProcessedDynamicTab = TabOptions<string> & {
+	insertAfter?: string;
+	insertBefore?: string;
+};
 
 /**
  * Process dynamic route configuration for tabs

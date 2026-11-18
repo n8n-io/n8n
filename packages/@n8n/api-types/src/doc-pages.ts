@@ -95,6 +95,8 @@ export type DocOverviewProject = {
 	project: { id: string; name: string; type: string };
 	/** The top 4 items of the project. */
 	items: DocPageSummary[];
+	/** The project page. Null when nobody wrote it yet. */
+	page: Pick<DocPage, 'id' | 'content' | 'markdown'> | null;
 };
 
 export const docCheckFindingSchema = z.object({

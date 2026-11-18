@@ -454,14 +454,24 @@ export class DocPageService {
 		const summaries = (await this.summarize(user, pages)).filter((s) => s.isPublished);
 		const ranks = await this.rank(summaries);
 
+		// Every user can read the page of a project that they can access.
+		const projectPages = new Map(
+			pages.flatMap((p) =>
+				p.resourceType === 'project' && (p.content !== null || p.markdown !== null)
+					? [[p.projectId, { id: p.id, content: p.content, markdown: p.markdown }]]
+					: [],
+			),
+		);
+
 		return projects.flatMap((project) => {
 			const items = topItems(
 				summaries.filter((s) => s.projectId === project.id),
 				ranks,
 				OVERVIEW_ITEMS,
 			);
-			if (items.length === 0) return [];
-			return [{ project: { id: project.id, name: project.name, type: project.type }, items }];
+			const page = projectPages.get(project.id) ?? null;
+			if (items.length === 0 && !page) return [];
+			return [{ project: { id: project.id, name: project.name, type: project.type }, items, page }];
 		});
 	}
 

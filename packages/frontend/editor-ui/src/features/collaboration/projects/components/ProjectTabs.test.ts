@@ -131,6 +131,20 @@ describe('ProjectTabs', () => {
 		]);
 	});
 
+	it('inserts an additional tab right before the matching base tab when insertBefore is set', () => {
+		const { container } = renderComponent({
+			props: {
+				pageType: 'overview',
+				additionalTabs: [
+					{ label: 'Agents', value: 'agents', insertAfter: 'WorkflowsView' },
+					{ label: 'Docs', value: 'docs', insertBefore: 'WorkflowsView' },
+				],
+			},
+		});
+
+		expect(getTabValuesInOrder(container).slice(0, 3)).toEqual(['docs', 'WorkflowsView', 'agents']);
+	});
+
 	it('appends the additional tab when insertAfter does not match any base tab', () => {
 		const { container } = renderComponent({
 			props: {

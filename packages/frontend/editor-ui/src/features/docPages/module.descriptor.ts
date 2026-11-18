@@ -38,7 +38,7 @@ export const DocPagesModule = defineFrontendModule({
 			{
 				label: i18n.baseText('docPages.tab'),
 				value: PROJECT_DOCS_VIEW,
-				insertAfter: VIEWS.PROJECTS_WORKFLOWS,
+				insertBefore: VIEWS.PROJECTS_WORKFLOWS,
 				dynamicRoute: {
 					name: PROJECT_DOCS_VIEW,
 					includeProjectId: true,

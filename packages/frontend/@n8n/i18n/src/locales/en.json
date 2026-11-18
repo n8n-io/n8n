@@ -1910,6 +1910,7 @@
 	"docPages.resourceType.agent": "Agent",
 	"docPages.overview.allWorkflows": "All workflows",
 	"docPages.overview.viewAll": "View all docs",
+	"docPages.overview.readMore": "Read more",
 	"docPages.overview.empty.heading": "No docs yet",
 	"docPages.overview.empty.description": "Publish a workflow with a trigger, or publish an Agent. n8n then writes its doc page.",
 	"docPages.project.error": "Could not load the docs of this project",

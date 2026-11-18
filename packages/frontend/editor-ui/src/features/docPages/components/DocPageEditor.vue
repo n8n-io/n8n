@@ -19,7 +19,8 @@ const props = defineProps<{
 	markdown: string | null;
 	editable: boolean;
 	projectId: string;
-	createChildPage: (title: string) => Promise<{ id: string; title: string }>;
+	/** Not needed when the editor is read-only. */
+	createChildPage?: (title: string) => Promise<{ id: string; title: string }>;
 }>();
 
 const emit = defineEmits<{
@@ -33,6 +34,7 @@ const slashMenu = ref<SlashMenuState | null>(null);
 
 const addChildPage = async (editor: Editor) => {
 	try {
+		if (!props.createChildPage) return;
 		const page = await props.createChildPage(i18n.baseText('docPages.editor.untitledPage'));
 		editor
 			.chain()

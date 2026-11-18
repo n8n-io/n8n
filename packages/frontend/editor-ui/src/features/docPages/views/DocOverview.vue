@@ -20,6 +20,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 
 import DocList from '../components/DocList.vue';
+import DocProjectPreview from '../components/DocProjectPreview.vue';
 import DocSearch from '../components/DocSearch.vue';
 import { PROJECT_DOCS_VIEW } from '../constants';
 import { useDocPagesStore } from '../docPages.store';
@@ -130,18 +131,28 @@ onMounted(async () => {
 							<span :class="$style.count">{{ entry.items.length }}</span>
 						</button>
 
-						<DocList v-show="!collapsed.has(entry.project.id)" :items="entry.items">
-							<template #footer>
-								<RouterLink
-									:to="{ name: PROJECT_DOCS_VIEW, params: { projectId: entry.project.id } }"
-									:class="$style.viewAll"
-									data-testid="doc-overview-view-all"
-								>
-									{{ i18n.baseText('docPages.overview.viewAll') }}
-									<N8nIcon icon="arrow-right" size="xsmall" />
-								</RouterLink>
-							</template>
-						</DocList>
+						<div
+							v-show="!collapsed.has(entry.project.id)"
+							:class="[$style.sectionBody, { [$style.withPage]: entry.page }]"
+						>
+							<DocProjectPreview
+								v-if="entry.page"
+								:project-id="entry.project.id"
+								:page="entry.page"
+							/>
+							<DocList v-if="entry.items.length > 0" :items="entry.items">
+								<template #footer>
+									<RouterLink
+										:to="{ name: PROJECT_DOCS_VIEW, params: { projectId: entry.project.id } }"
+										:class="$style.viewAll"
+										data-testid="doc-overview-view-all"
+									>
+										{{ i18n.baseText('docPages.overview.viewAll') }}
+										<N8nIcon icon="arrow-right" size="xsmall" />
+									</RouterLink>
+								</template>
+							</DocList>
+						</div>
 					</section>
 				</div>
 			</template>
@@ -181,6 +192,24 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+	container-type: inline-size;
+}
+
+// The project page and the top docs sit side by side when there is room.
+.sectionBody {
+	display: grid;
+	gap: var(--spacing--lg);
+	align-items: start;
+}
+
+.withPage {
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+@container (max-width: 56rem) {
+	.withPage {
+		grid-template-columns: minmax(0, 1fr);
+	}
 }
 
 /* Section header: a toggle row, like a Notion group heading. */
