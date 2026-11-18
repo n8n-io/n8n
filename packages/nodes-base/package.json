@@ -755,6 +755,7 @@
       "dist/nodes/Orbit/Orbit.node.js",
       "dist/nodes/Oura/Oura.node.js",
       "dist/nodes/Paddle/Paddle.node.js",
+      "dist/nodes/Page/Page.node.js",
       "dist/nodes/PagerDuty/PagerDuty.node.js",
       "dist/nodes/PayPal/PayPal.node.js",
       "dist/nodes/PayPal/PayPalTrigger.node.js",

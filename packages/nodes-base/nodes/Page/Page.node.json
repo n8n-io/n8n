@@ -1,0 +1,12 @@
+{
+	"node": "n8n-nodes-base.page",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "Read and write the pages of the project",
+	"categories": ["Core Nodes"],
+	"resources": {},
+	"alias": ["page", "pages", "document", "doc", "note", "notes", "markdown", "wiki", "runbook"],
+	"subcategories": {
+		"Core Nodes": ["Helpers"]
+	}
+}
