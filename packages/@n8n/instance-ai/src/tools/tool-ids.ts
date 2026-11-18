@@ -172,6 +172,29 @@ export const NATIVE_TOOLS_REPLACED_BY_INSTANCE_MCP: ReadonlySet<string> = new Se
 	DOMAIN_TOOL_IDS.GET_WORKFLOW_NODE_USAGE,
 ]);
 
+/**
+ * The instance MCP tools the Assistant takes from the server's list. The server
+ * lists many more (writes, executions, data tables, agents); those stay out
+ * until their milestone gives them an approval path, so no unreviewed write
+ * can reach the model through the bridge.
+ */
+export const INSTANCE_MCP_TOOLS_IN_USE: ReadonlySet<string> = new Set<string>([
+	// nodes
+	'search_nodes',
+	'get_node_types',
+	'explore_node_resources',
+	'validate_node_config',
+	'get_workflow_sdk_reference',
+	'get_workflow_best_practices',
+	// workflow reads
+	'search_workflows',
+	'get_workflow_details',
+	'get_workflow_history',
+	'get_workflow_version',
+	'get_workflow_versions_diff',
+	'get_node_usage',
+]);
+
 const NODE_TOOL_NAMES: readonly string[] = [
 	DOMAIN_TOOL_IDS.SEARCH_NODES,
 	DOMAIN_TOOL_IDS.GET_NODE_TYPES,

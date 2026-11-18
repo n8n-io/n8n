@@ -262,6 +262,10 @@ packages/cli/src/modules/instance-ai/turn-setup/
 Kept native for now: `get_workflow_as_code`, `validate_workflow`, `setup_workflow`,
 `execute_node`, `search_models`, and every write (M2, M3).
 
+The bridge takes only the tools in `INSTANCE_MCP_TOOLS_IN_USE`
+(`tools/tool-ids.ts`). The server lists many more; a write without an
+approval path must not reach the model before its milestone.
+
 ## Open questions
 
 - Which `McpCallerAuth` to report for the Assistant. The type allows only

@@ -31,6 +31,7 @@ import {
 	getMcpToolGroup,
 	getToolGroup,
 	getToolGroupDescription,
+	INSTANCE_MCP_TOOLS_IN_USE,
 } from '../tools/tool-ids';
 import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
 import {
@@ -170,11 +171,15 @@ export async function createInstanceAgent(
 		: undefined;
 	const instanceMcpTools = createToolRegistry();
 	for (const [name, tool] of instanceMcp?.tools ?? []) {
+		if (!INSTANCE_MCP_TOOLS_IN_USE.has(name)) continue;
 		if (activeDomainToolNames.has(name) || orchestrationTools.has(name)) {
 			context.logger.debug('Instance MCP tool kept out: a native tool owns the name', { name });
 			continue;
 		}
 		instanceMcpTools.set(name, tool);
+	}
+	if (instanceMcp) {
+		context.logger.debug('Instance MCP tools in use', { names: [...instanceMcpTools.keys()] });
 	}
 
 	// Keep MCP tools from shadowing domain or orchestration tools. Former split tool
