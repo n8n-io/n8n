@@ -1,0 +1,108 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Split Out",
+		"Summarize",
+		"Respond"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"events": [
+							{
+								"grp": "x",
+								"a.b": 1
+							},
+							{
+								"grp": "x",
+								"a.b": 2
+							},
+							{
+								"a.b": 3
+							},
+							{
+								"grp": "y",
+								"a.b": 4
+							},
+							{
+								"grp": "",
+								"a.b": 5
+							}
+						]
+					}
+				}
+			]
+		],
+		"Split Out": [
+			[
+				{
+					"grp": "x",
+					"a.b": 1
+				},
+				{
+					"grp": "x",
+					"a.b": 2
+				},
+				{
+					"a.b": 3
+				},
+				{
+					"grp": "y",
+					"a.b": 4
+				},
+				{
+					"grp": "",
+					"a.b": 5
+				}
+			]
+		],
+		"Summarize": [
+			[
+				{
+					"sum_a_b": 3,
+					"grp": "x"
+				},
+				{
+					"sum_a_b": 4,
+					"grp": "y"
+				}
+			]
+		],
+		"Respond": [
+			[
+				{
+					"sum_a_b": 3,
+					"grp": "x"
+				},
+				{
+					"sum_a_b": 4,
+					"grp": "y"
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": [
+		{
+			"body": [
+				{
+					"sum_a_b": 3,
+					"grp": "x"
+				},
+				{
+					"sum_a_b": 4,
+					"grp": "y"
+				}
+			],
+			"headers": {},
+			"statusCode": 200
+		}
+	]
+}

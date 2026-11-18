@@ -1,0 +1,25 @@
+{
+	"description": "Summarize without a split, with include empty and the default separator",
+	"trigger": {
+		"body": {
+			"events": [
+				{
+					"name": "Alice",
+					"tag": "a"
+				},
+				{
+					"name": "",
+					"tag": null
+				},
+				{
+					"name": "Bob",
+					"tag": "a"
+				},
+				{
+					"name": null,
+					"tag": ""
+				}
+			]
+		}
+	}
+}

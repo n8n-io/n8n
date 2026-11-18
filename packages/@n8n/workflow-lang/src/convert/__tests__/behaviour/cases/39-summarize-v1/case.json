@@ -1,0 +1,35 @@
+{
+	"description": "Summarize version 1: dot path field and a numeric split key that becomes a string",
+	"trigger": {
+		"body": {
+			"events": [
+				{
+					"group": 1,
+					"profile": {
+						"age": 30
+					},
+					"name": "A"
+				},
+				{
+					"group": 1,
+					"profile": {
+						"age": 20
+					},
+					"name": "B"
+				},
+				{
+					"group": 2,
+					"profile": {
+						"age": 40
+					},
+					"name": "C"
+				},
+				{
+					"group": 2,
+					"profile": {},
+					"name": "D"
+				}
+			]
+		}
+	}
+}

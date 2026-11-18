@@ -1,0 +1,28 @@
+{
+	"description": "Summarize with disable dot notation and skip empty split fields",
+	"trigger": {
+		"body": {
+			"events": [
+				{
+					"grp": "x",
+					"a.b": 1
+				},
+				{
+					"grp": "x",
+					"a.b": 2
+				},
+				{
+					"a.b": 3
+				},
+				{
+					"grp": "y",
+					"a.b": 4
+				},
+				{
+					"grp": "",
+					"a.b": 5
+				}
+			]
+		}
+	}
+}

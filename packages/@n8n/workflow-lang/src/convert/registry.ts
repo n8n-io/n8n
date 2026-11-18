@@ -9,6 +9,7 @@ import { libraryNodeTypes, lowerHttpRequest, lowerLibrary, NATIVE_ROOTS } from '
 import { lowerSplitInBatches } from './loops.ts';
 import { lowerCrypto } from './crypto.ts';
 import { lowerRenameKeys } from './transform-nodes.ts';
+import { lowerSummarize } from './summarize.ts';
 import {
 	isNativeExecutionData,
 	isNativeTimeSaved,
@@ -64,12 +65,13 @@ export const NATIVE: Record<string, Lowerer> = {
 	[`${BASE}splitInBatches`]: lowerSplitInBatches,
 	[`${BASE}renameKeys`]: lowerRenameKeys,
 	[`${BASE}crypto`]: lowerCrypto,
+	[`${BASE}summarize`]: lowerSummarize,
 	[`${BASE}executeWorkflow`]: lowerExecuteWorkflow,
 };
 
 /** Native nodes with one output that the fallback host can run when their expressions do not translate. */
 export const HOST_CAPABLE = new Set(
-	['set', 'filter', 'limit', 'sort', 'splitOut', 'aggregate', 'removeDuplicates', 'noOp', 'renameKeys', 'crypto'].map(
+	['set', 'filter', 'limit', 'sort', 'splitOut', 'aggregate', 'removeDuplicates', 'noOp', 'renameKeys', 'crypto', 'summarize'].map(
 		(t) => `${BASE}${t}`,
 	),
 );
@@ -117,6 +119,7 @@ export const PURE = new Set(
 		'stickyNote',
 		'renameKeys',
 		'crypto',
+		'summarize',
 	]
 		.map((t) => `${BASE}${t}`)
 		.concat(['n8n-nodes-testing.testData']),

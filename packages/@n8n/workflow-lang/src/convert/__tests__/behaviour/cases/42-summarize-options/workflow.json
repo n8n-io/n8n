@@ -1,0 +1,102 @@
+{
+	"name": "Summarize options",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "summarize-options",
+				"responseMode": "responseNode",
+				"options": {}
+			}
+		},
+		{
+			"id": "split-out",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"parameters": {
+				"fieldToSplitOut": "body.events",
+				"options": {}
+			}
+		},
+		{
+			"id": "summary",
+			"name": "Summarize",
+			"type": "n8n-nodes-base.summarize",
+			"typeVersion": 1.1,
+			"position": [400, 0],
+			"parameters": {
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"aggregation": "sum",
+							"field": "a.b"
+						}
+					]
+				},
+				"fieldsToSplitBy": "grp",
+				"options": {
+					"disableDotNotation": true,
+					"skipEmptySplitFields": true
+				}
+			}
+		},
+		{
+			"id": "respond",
+			"name": "Respond",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.1,
+			"position": [600, 0],
+			"parameters": {
+				"respondWith": "allIncomingItems",
+				"options": {
+					"responseCode": 200
+				}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "Summarize",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Summarize": {
+			"main": [
+				[
+					{
+						"node": "Respond",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

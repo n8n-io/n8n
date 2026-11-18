@@ -1,0 +1,24 @@
+{
+	"description": "Summarize singleItem output with a numeric split key",
+	"trigger": {
+		"body": {
+			"events": [
+				{
+					"group": 1,
+					"v": 10,
+					"name": "A"
+				},
+				{
+					"group": 1,
+					"v": 20,
+					"name": "B"
+				},
+				{
+					"group": 2,
+					"v": 5,
+					"name": "C"
+				}
+			]
+		}
+	}
+}
