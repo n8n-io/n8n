@@ -1,0 +1,68 @@
+packages/modules/page/frontend/src/__tests__/fixtures.ts
+  s_f27bda1bd0c713::t_b561a50723d63a 1,15-28
+packages/frontend/@n8n/frontend-module-sdk/src/types/component.ts
+  s_f27bda1bd0c713::t_b561a50723d63a 33-34,46-47,93-97
+packages/modules/page/frontend/src/views/PagesView.test.ts
+  s_f27bda1bd0c713::t_1a94898e5a063f 8,19,45-49,89,96-97,101-129,131,133-152,154-158
+packages/modules/page/frontend/src/page.store.ts
+  s_f27bda1bd0c713::t_b561a50723d63a 6,30-37,47-60,167-168
+packages/modules/page/frontend/src/overview/pageOverviewSections.test.ts
+  s_f27bda1bd0c713::t_b3f6f79f97c959 3,5-6,81-152
+  s_f27bda1bd0c713::t_b561a50723d63a 1-2,4,7-80,153-162
+packages/modules/page/frontend/src/page.api.ts
+  s_f27bda1bd0c713::t_b561a50723d63a 7,105-118
+packages/modules/page/frontend/src/composables/usePageOverview.ts
+  s_f27bda1bd0c713::t_b561a50723d63a 1-60,64-71
+  s_f27bda1bd0c713::t_8279458ea0db96 61-63
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 3463-3520
+packages/modules/page/frontend/src/views/PagesView.vue
+  ai_agent 9,24,65-72,96-104,113,172,181,197-206,284-286,334-362
+packages/modules/page/frontend/src/overview/triggerFact.test.ts
+  s_f27bda1bd0c713::t_fff8ffb4b476e7 1-22,25-27,31-38,46-82
+  s_f27bda1bd0c713::t_b3f6f79f97c959 23-24,28-30,39-45
+packages/modules/page/frontend/src/overview/pageOverviewSections.ts
+  s_f27bda1bd0c713::t_b561a50723d63a 1-10,12,14-15,28-85,134-135,159-161,167-179,185-186,192-199,209-219
+  s_f27bda1bd0c713::t_fff8ffb4b476e7 11,13,16-27,86-133,136-158,162-166,180-184,187-191,200-208
+packages/modules/page/frontend/src/components/PageOverviewCard.vue
+  s_f27bda1bd0c713::t_fff8ffb4b476e7 11-12,61,63-64,123-126,155-158,285,289,296-311,316,318,359,415-433
+  s_f27bda1bd0c713::t_b3f6f79f97c959 62
+  s_f27bda1bd0c713::t_60744989d2654a 1-10,13-60,65-122,127-154,159-284,286-288,290-295,312-315,317,319-358,360-414,434-502
+packages/modules/page/frontend/src/composables/usePageTourStart.ts
+  s_f27bda1bd0c713::t_b561a50723d63a 8
+packages/modules/page/frontend/src/components/PageOverviewBoard.test.ts
+  s_f27bda1bd0c713::t_b3f6f79f97c959 107-109,156-269,287-308
+  s_f27bda1bd0c713::t_1a94898e5a063f 1-22,30-106,110-155,270-286,309-364,369-463,468-484
+  s_f27bda1bd0c713::t_60744989d2654a 23-29,365-368,464-467
+packages/modules/page/frontend/src/overview/triggerFact.ts
+  s_f27bda1bd0c713::t_fff8ffb4b476e7 1-30,38-140
+  s_f27bda1bd0c713::t_b3f6f79f97c959 31-37
+packages/modules/page/frontend/src/index.ts
+  s_f27bda1bd0c713::t_b561a50723d63a 16
+packages/modules/page/frontend/src/overview/_accent.scss
+  s_f27bda1bd0c713::t_fff8ffb4b476e7 1-26
+packages/modules/page/frontend/src/overview/overviewDisplay.ts
+  s_f27bda1bd0c713::t_fff8ffb4b476e7 1-71
+packages/modules/page/frontend/src/page.store.test.ts
+  s_f27bda1bd0c713::t_b561a50723d63a 1,15,163-179
+packages/modules/page/frontend/src/components/PageOverviewBoard.vue
+  s_f27bda1bd0c713::t_b3f6f79f97c959 4,15,18,29,44,67,70-72,94-102,106,112-121,123-135,209-216,218-226,228-245,247-262,279-294,299,301,306,311-324,399-408,486-506,532-562
+  s_f27bda1bd0c713::t_1a94898e5a063f 1-3,5-14,16-17,19-28,30-43,45-61,65-66,68-69,73,79-93,103-105,107-111,122,136-208,217,227,246,263-264,270-278,295-298,300,302-305,307-310,325-398,409-485,507-531,563-564
+  s_f27bda1bd0c713::t_60744989d2654a 62-64,74-78,265-269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9c9bcd8c1ff5fcc80ebb9361396b4ea450df67be",
+  "prompts": {},
+  "sessions": {
+    "s_f27bda1bd0c713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e884d7e-3c84-4428-98db-a0c5cff39be6",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
