@@ -10,6 +10,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
+import type { RouteLocationRaw } from 'vue-router';
 
 import { TASK_DRAG_TYPE } from '../../task-board.constants';
 import { isAgentWorking } from '../../task-board.utils';
@@ -19,6 +20,8 @@ defineProps<{
 	column: TaskBoardColumn;
 	tasks: TaskBoardTask[];
 	selectedTaskId: string | undefined;
+	/** Gives the page of a task. With it, the number on each card is a link. */
+	taskLocation?: (taskId: string) => RouteLocationRaw;
 }>();
 const emit = defineEmits<{ select: [taskId: string]; dropTask: [taskId: string] }>();
 const i18n = useI18n();
