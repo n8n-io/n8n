@@ -161,7 +161,20 @@ export const ADAPTERS: Record<string, Adapter> = {
 	},
 	'n8n-nodes-base.convertToFile': (p, version) => {
 		const operation = p.operation ?? 'csv';
+		// An operation that is not a text, or that is an expression, has no compiled form: the
+		// marker is not in the `supports` list, so the node runs in the host.
+		if (typeof operation !== 'string' || operation.startsWith('=')) {
+			return { ...p, operation, convertHost: true };
+		}
 		if (typeof operation !== 'string') return { ...p, operation };
+		if (operation === 'csv') {
+			return {
+				operation,
+				binaryPropertyName: p.binaryPropertyName ?? 'data',
+				...pick(p, ['options']),
+				nodeVersion: version,
+			};
+		}
 		if (!['toText', 'toBinary', 'toJson'].includes(operation)) return { ...p, operation };
 		return {
 			operation,
@@ -1485,7 +1498,10 @@ export function lowerLibrary(c: NodeContext): void {
 		const inHost = (to: NodeContext) => lowerHostNode(to, 1, [['host', raw("'fallback'")]]);
 		const hostForm = hostFormOf(c, inHost);
 		if (hostForm === null) return inHost(c);
-		const call = nodeCall(c, type, parameters, c.credential(), true);
+		// The CSV operation of Convert To File writes one file for all items. Each other operation
+		// of these nodes writes a file for each item.
+		const once = type === 'n8n-nodes-base.convertToFile' && adapted.operation === 'csv';
+		const call = nodeCall(c, type, parameters, c.credential(), !once);
 		emitWithHostForm(
 			c,
 			c.node.onError === 'continueErrorOutput',
