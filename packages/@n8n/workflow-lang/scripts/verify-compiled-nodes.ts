@@ -35,11 +35,12 @@ import { COST } from '../src/node-compile/cost.generated.ts';
 import type { ErrorMode, NodeSources } from '../src/node-compile/convert.ts';
 import { evaluateInSandbox } from '../src/node-compile/evaluate-node.ts';
 import type { Variant } from '../src/node-compile/variants.ts';
-import { parameterVariants, withVariant } from '../src/node-compile/variants.ts';
+import { parameterVariants, filledGroups, withVariant } from '../src/node-compile/variants.ts';
 import type { Json, WalkNode, WalkProperty as Property } from '../src/node-compile/walk.ts';
 import {
 	credentialOf,
 	fakeCredentialData,
+	locatorWithoutSample,
 	operationsOf,
 	requiredParameters,
 	resolveParameters,
@@ -411,6 +412,15 @@ const OPERATION_ANSWERS: Record<string, OperationAnswers> = {
 	},
 };
 
+const NO_COMPILE = 'does not compile: ';
+
+const OTHER_OPERATIONS: Record<string, Json[]> = {
+	'n8n-nodes-base.notion': [
+		{ resource: 'databasePage', operation: 'append' },
+		{ resource: 'database', operation: 'append' },
+	],
+};
+
 const EVALUATED_VALUES: unknown[][] = [
 	['one', 7, 'a$&b'],
 	[['p', 'q'], { k: 1 }, null],
@@ -650,22 +660,47 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 	for (const version of versions) {
 		const node = nodeOf(type, version);
 		if (!node || sources.entry(type, version) === undefined) continue;
-		for (const usual of operations(node)) {
+		const shownOperations = operations(node);
+		const otherOperations = (OTHER_OPERATIONS[type] ?? []).filter(
+			(other) =>
+				!shownOperations.some(
+					(shown) => shown.resource === other.resource && shown.operation === other.operation,
+				),
+		);
+		for (const usual of [...shownOperations, ...otherOperations]) {
 			for (const start of [usual, ...otherAuthentications(node, version, usual)]) {
 				const other = start !== usual;
 				if (!other) tried++;
-				const parameters = required(node, version, start);
-				const credential = credentialOf(node, resolve(node, version, parameters));
+				const fieldsOf = (name: string | undefined) =>
+					name
+						? {
+								[name]: publicCredential(
+									registry.get(name),
+									credentialAsGiven(name, fakeCredential(name)),
+								),
+							}
+						: {};
+				const credentialFor = (p: Json) => credentialOf(node, resolve(node, version, p));
+				const plainStart = required(node, version, start);
+				const withGroups = filledGroups(node, version, plainStart, itemFieldExpression);
+				const compilesWith = (p: Json) =>
+					!(
+						'errors' in
+						compileForCheck(sources, { type, version, parameters: p }, fieldsOf(credentialFor(p)))
+					);
+				const parameters =
+					withGroups !== undefined && !compilesWith(plainStart) && compilesWith(withGroups)
+						? withGroups
+						: plainStart;
+				const credential = credentialFor(parameters);
 				const weight = weightOf(type, parameters);
+				const unfit = locatorWithoutSample(node, version, parameters);
+				if (unfit !== undefined) {
+					if (!other) why(`no sample value fits the rule of the locator '${unfit}'`, weight);
+					continue;
+				}
 				const instance = { type, version, parameters };
-				const fields = credential
-					? {
-							[credential]: publicCredential(
-								registry.get(credential),
-								credentialAsGiven(credential, fakeCredential(credential)),
-							),
-						}
-					: {};
+				const fields = fieldsOf(credential);
 				const compiled = compileForCheck(sources, instance, fields);
 				if (other && 'errors' in compiled) continue;
 				if (other && !('errors' in compiled) && compiled.mints.length > 0) mintedTried++;
@@ -686,16 +721,20 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					p: Json,
 					responses: EquivalenceCase['responses'],
 					items: EquivalenceCase['items'] = readsFiles ? FILE_ITEMS : undefined,
-					data: Json | undefined = credential ? fakeCredential(credential) : undefined,
-				): EquivalenceCase => ({
-					name: `${type}@${version} ${label}`,
-					type,
-					typeVersion: version,
-					parameters: p,
-					...(items ? { items } : {}),
-					...(credential && data ? { credential: { type: credential, data } } : {}),
-					responses,
-				});
+					given: Json | undefined = credential ? fakeCredential(credential) : undefined,
+				): EquivalenceCase => {
+					const own = credentialFor(p);
+					const data = own === credential ? given : own ? fakeCredential(own) : undefined;
+					return {
+						name: `${type}@${version} ${label}`,
+						type,
+						typeVersion: version,
+						parameters: p,
+						...(items ? { items } : {}),
+						...(own && data ? { credential: { type: own, data } } : {}),
+						responses,
+					};
+				};
 				const makesFiles = compiled.source.includes('__prepareBinary(');
 				const answers =
 					OPERATION_ANSWERS[
@@ -821,7 +860,11 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					const widerAgrees = names !== compiled.changed;
 					const settled = parameters;
 					const agreesWith = async (label: string, p: Json): Promise<string[] | string> => {
-						const c = compileForCheck(sources, { type, version, parameters: p }, fields);
+						const c = compileForCheck(
+							sources,
+							{ type, version, parameters: p },
+							fieldsOf(credentialFor(p)),
+						);
 						if ('errors' in c) return `does not compile: ${c.errors[0]}`;
 						if (c.mints.length !== compiled.mints.length)
 							return 'the tokens of the credential differ';
@@ -848,6 +891,7 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					);
 					const agreed: Variant[] = [];
 					const added: string[] = [];
+					const unsettled = new Set<string>();
 					for (const variant of variants) {
 						const changed: string[] = [];
 						let all = true;
@@ -858,6 +902,8 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 							);
 							if (typeof found === 'string') {
 								all = false;
+								const safe = variant.settled === true && found.startsWith(NO_COMPILE);
+								if (variant.settled && !safe) unsettled.add(variant.name);
 								if (!other) {
 									const text = found.slice(0, 110);
 									aloneReasons[text] = (aloneReasons[text] ?? 0) + 1;
@@ -866,6 +912,7 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 											`${verifiedKey(type, version, compiled.resolved)} with ${variant.condition}: ${found.slice(0, 200)}`,
 										);
 								}
+								if (safe) continue;
 								break;
 							}
 							changed.push(...found);
@@ -882,6 +929,8 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						agreed.length < 2 ||
 						typeof (await agreesWith('alone, together', together)) !== 'string';
 					if (combined) names = [...new Set([...names, ...added])];
+					else for (const variant of variants) if (variant.settled) unsettled.add(variant.name);
+					names = names.filter((name) => !unsettled.has(name));
 					const variantForms = combined ? agreed.filter((variant) => variant.form) : [];
 					if (!other) {
 						add(expressions, {
@@ -1311,8 +1360,11 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						}
 					}
 					if (failingForm && !other) expressions.failing = (expressions.failing ?? 0) + 1;
-					const rejectedEach = new Set<string>();
-					for (const variant of combined ? agreed : []) {
+					const rejectedEach = new Set<string>(unsettled);
+					const settledApart = variants.filter(
+						(variant) => variant.settled && !(combined && agreed.includes(variant)),
+					);
+					for (const variant of [...(combined ? agreed : []), ...settledApart]) {
 						if (!variant.rejected) continue;
 						const tested: ExpressionForm = {
 							name: variant.name,
@@ -1332,6 +1384,7 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 							checking,
 						);
 						if (difference === undefined) continue;
+						if (variant.settled && difference.startsWith(NO_COMPILE)) continue;
 						rejectedEach.add(variant.condition);
 						rejectedEach.add(variant.name);
 						if (!other) {

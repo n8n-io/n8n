@@ -395,6 +395,7 @@ function kindOf(property: unknown): ParameterKind | undefined {
 	}
 	if (property.type !== 'resourceLocator') return kind;
 	if (!Array.isArray(property.modes)) return undefined;
+	if (typeof property.displayName === 'string') kind.label = property.displayName;
 	const modes: NonNullable<ParameterKind['modes']> = {};
 	for (const mode of property.modes) {
 		if (!isRecord(mode) || typeof mode.name !== 'string' || mode.name in modes) return undefined;
@@ -415,8 +416,15 @@ function kindOf(property: unknown): ParameterKind | undefined {
 export function parameterKindOf(
 	description: NodeDescription,
 	name: string,
+	parameters: Record<string, unknown>,
+	version: number,
 ): ParameterKind | undefined {
-	const kinds = description.properties.filter((p) => p.name === name).map(kindOf);
+	const defined = description.properties.filter((p) => p.name === name);
+	const shown = defined.find((property) =>
+		displayParameter(parameters, property, version, description, parameters),
+	);
+	if (shown !== undefined) return kindOf(shown);
+	const kinds = defined.map(kindOf);
 	const first = kinds[0];
 	if (first === undefined) return undefined;
 	const text = JSON.stringify(first);
@@ -567,7 +575,7 @@ export function compileNodeInstance(
 		readFile: routed?.readFile ?? sources.readFile,
 		parameters,
 		aliases: sources.aliases,
-		parameterKind: (name: string) => parameterKindOf(description, name),
+		parameterKind: (name: string) => parameterKindOf(description, name, parameters, node.version),
 		validation: (name: string) =>
 			parameterValidationOf(description, parameters, node.version, name),
 		evaluate: sources.evaluate,
