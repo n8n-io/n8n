@@ -17,7 +17,7 @@ import { computed, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStorage } from '@n8n/composables/useStorage';
 import { agentsEventBus } from '../agents.eventBus';
-import { N8N_CHAT_HINT_DISMISSED_STORAGE_KEYS } from '../constants';
+import { AGENT_SCHEDULE_VIEW_TYPE, N8N_CHAT_HINT_DISMISSED_STORAGE_KEYS } from '../constants';
 import {
 	agentChannelPlatforms,
 	createAgentChannelRuntime,
@@ -33,6 +33,7 @@ import {
 } from '../composables/useAgentIntegrationAccounts';
 import { useAgentTriggerRedesignFlag } from '../composables/useAgentTriggerRedesignFlag';
 import { resolveAgentValidationIssueMessageKey } from '../utils/agentValidationIssueMessages';
+import type { AgentTaskRow } from '../composables/useAgentTasks';
 import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
 import AgentChipButton from './AgentChipButton.vue';
 import { metaTitleKey, presentWhatsAppMetaState } from '../channels/whatsapp/metaStatus';
@@ -222,6 +223,20 @@ watch(channelModalOpen, (open, wasOpen) => {
 	if (wasOpen && !open) refreshWhatsAppMetaStatus();
 });
 const channelModalView = ref<ChannelView>('list');
+/** The task that the channel modal edits. Only set with the trigger redesign flag. */
+const channelModalTask = ref<AgentTaskRow | null>(null);
+const triggersListRef = ref<InstanceType<typeof AgentTriggersList>>();
+
+function openTaskEdit(task: AgentTaskRow) {
+	channelModalTask.value = task;
+	channelModalView.value = `${AGENT_SCHEDULE_VIEW_TYPE}_edit`;
+	channelModalOpen.value = true;
+}
+
+function handleTasksChanged() {
+	void triggersListRef.value?.reloadTasks();
+	emit('tasks-changed');
+}
 
 function isIconName(icon: unknown): icon is IconName {
 	return typeof icon === 'string' && icon in updatedIconSet;
@@ -344,6 +359,7 @@ onBeforeUnmount(() => {
 });
 
 function openChannelModal() {
+	channelModalTask.value = null;
 	channelModalView.value = 'list';
 	channelModalOpen.value = true;
 }
@@ -415,6 +431,7 @@ function handleChannelDisconnected(channelType: string) {
 	>
 		<AgentTriggersList
 			v-if="isTriggerRedesignEnabled"
+			ref="triggersListRef"
 			:channels="channelRows"
 			:project-id="props.projectId"
 			:agent-id="props.agentId"
@@ -430,6 +447,7 @@ function handleChannelDisconnected(channelType: string) {
 			:preview-disabled-reason="props.previewDisabledReason"
 			@open-channel="openChannelEdit($event.type, $event.connected)"
 			@add-channel="openChannelModal"
+			@open-task="openTaskEdit"
 			@toggle-task="emit('toggle-task', $event)"
 			@tasks-changed="emit('tasks-changed')"
 			@preview-task="emit('preview-task', $event)"
@@ -511,6 +529,14 @@ function handleChannelDisconnected(channelType: string) {
 			:ensure-agent-persisted="ensureAgentPersisted"
 			:saved-description="savedDescription"
 			:save-description="saveDescription"
+			:show-schedule="isTriggerRedesignEnabled"
+			:task="channelModalTask"
+			:task-enabled="channelModalTask?.enabled ?? true"
+			:is-runnable="isRunnable"
+			:validation-issues="validationIssues"
+			:preview-disabled-reason="previewDisabledReason"
+			@tasks-changed="handleTasksChanged"
+			@preview-task="emit('preview-task', $event)"
 			@channel-connected="handleChannelConnected"
 			@channel-disconnected="handleChannelDisconnected"
 			@agent-changed="emit('agent-changed')"

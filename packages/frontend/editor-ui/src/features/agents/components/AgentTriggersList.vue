@@ -1,16 +1,7 @@
 <script setup lang="ts">
 import type { AgentConfigValidationIssue, AgentJsonTaskConfig } from '@n8n/api-types';
-import {
-	N8nButton,
-	N8nDropdownMenu,
-	N8nIcon,
-	N8nSwitch2,
-	N8nText,
-	N8nTooltip,
-	type DropdownMenuItemProps,
-} from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nSwitch2, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
 import { useAgentTasks, type AgentTaskRow } from '../composables/useAgentTasks';
 import { describeSchedule, summarizeSchedule } from '../utils/scheduleBuilder';
 import type { AgentTriggerChannelItem } from './AgentTriggersList.types';
@@ -48,11 +39,12 @@ const emit = defineEmits<{
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'tasks-changed': [];
 	'preview-task': [instructions: string];
+	'open-task': [task: AgentTaskRow];
 }>();
 
 const i18n = useI18n();
 
-const { taskRows, taskErrorMessage, removingTaskId, toggleTask, openTaskModal } = useAgentTasks({
+const { taskRows, taskErrorMessage, removingTaskId, toggleTask, reloadTasks } = useAgentTasks({
 	projectId: () => props.projectId,
 	agentId: () => props.agentId,
 	taskRefs: () => props.taskRefs,
@@ -68,26 +60,6 @@ const { taskRows, taskErrorMessage, removingTaskId, toggleTask, openTaskModal } 
 	onChanged: () => emit('tasks-changed'),
 	onPreview: (instructions) => emit('preview-task', instructions),
 });
-
-type AddTriggerAction = 'channel' | 'schedule';
-
-const addTriggerItems = computed<Array<DropdownMenuItemProps<AddTriggerAction>>>(() => [
-	{
-		id: 'channel',
-		label: i18n.baseText('agents.builder.channel.add'),
-		icon: { type: 'icon', value: 'message-square' },
-	},
-	{
-		id: 'schedule',
-		label: i18n.baseText('agents.builder.tasks.add'),
-		icon: { type: 'icon', value: 'clock' },
-	},
-]);
-
-function onAddTriggerSelect(action: AddTriggerAction) {
-	if (action === 'channel') emit('add-channel');
-	else openTaskModal(null);
-}
 
 /**
  * How users reach the agent leads when the channel has a mention model. Else the
@@ -117,6 +89,8 @@ function scheduleTitle(task: AgentTaskRow) {
 	}
 	return describeSchedule(task.cronExpression) ?? task.name;
 }
+
+defineExpose({ reloadTasks });
 </script>
 
 <template>
@@ -198,7 +172,7 @@ function scheduleTitle(task: AgentTaskRow) {
 					]"
 					:disabled="props.disabled || removingTaskId === task.id"
 					data-testid="agent-triggers-schedule"
-					@click="openTaskModal(task)"
+					@click="emit('open-task', task)"
 				>
 					<N8nIcon icon="clock" :size="16" :class="$style.icon" />
 					<span :class="$style.text">
@@ -238,28 +212,19 @@ function scheduleTitle(task: AgentTaskRow) {
 			</li>
 		</ul>
 
-		<N8nDropdownMenu
-			:items="addTriggerItems"
-			placement="bottom-start"
+		<N8nButton
+			:class="$style.addButton"
+			variant="ghost"
+			size="medium"
 			:disabled="props.disabled"
-			data-testid="agent-triggers-add-menu"
-			@select="onAddTriggerSelect"
+			data-testid="agent-triggers-add-trigger"
+			@click="emit('add-channel')"
 		>
-			<template #trigger>
-				<N8nButton
-					:class="$style.addButton"
-					variant="ghost"
-					size="medium"
-					:disabled="props.disabled"
-					data-testid="agent-triggers-add-trigger"
-				>
-					<template #icon>
-						<N8nIcon icon="plus" :size="16" />
-					</template>
-					{{ i18n.baseText('agents.builder.triggers.add') }}
-				</N8nButton>
+			<template #icon>
+				<N8nIcon icon="plus" :size="16" />
 			</template>
-		</N8nDropdownMenu>
+			{{ i18n.baseText('agents.builder.channel.add') }}
+		</N8nButton>
 	</div>
 </template>
 

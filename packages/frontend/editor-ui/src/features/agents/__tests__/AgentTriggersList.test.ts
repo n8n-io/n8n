@@ -2,7 +2,6 @@ import type { AgentConfigValidationIssue, AgentJsonTaskConfig, AgentTaskDto } fr
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AGENT_TASK_MODAL_KEY } from '../constants';
 import AgentTriggersList from '../components/AgentTriggersList.vue';
 import type { AgentTriggerChannelItem } from '../components/AgentTriggersList.types';
 
@@ -33,13 +32,6 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 			props: ['modelValue', 'disabled'],
 			emits: ['update:modelValue'],
 			template: '<input type="checkbox" />',
-		}),
-		N8nDropdownMenu: defineComponent({
-			name: 'N8nDropdownMenu',
-			props: ['items'],
-			emits: ['select'],
-			template:
-				'<div><slot name="trigger" /><button v-for="item in items" :key="item.id" :data-testid="\'add-trigger-item-\' + item.id" @click="$emit(\'select\', item.id)" /></div>',
 		}),
 	};
 });
@@ -222,55 +214,28 @@ describe('AgentTriggersList', () => {
 			expect(wrapper.find('[data-testid="agent-triggers-schedule"]').exists()).toBe(false);
 		});
 
-		it('opens the task modal for an existing task and reloads after save', async () => {
+		it('emits open-task for an existing task', async () => {
 			getAgentTasksSpy.mockResolvedValue([makeTask()]);
 			const wrapper = mountList();
 			await flushPromises();
 
 			await wrapper.get('[data-testid="agent-triggers-schedule"]').trigger('click');
 
-			expect(openModalWithDataSpy).toHaveBeenCalledWith(
-				expect.objectContaining({
-					name: AGENT_TASK_MODAL_KEY,
-					data: expect.objectContaining({
-						task: expect.objectContaining({ id: 'task-1' }),
-						taskState: { enabled: true },
-					}),
-				}),
+			expect(wrapper.emitted('open-task')?.[0]?.[0]).toEqual(
+				expect.objectContaining({ id: 'task-1', enabled: true }),
 			);
-
-			const { data } = openModalWithDataSpy.mock.calls[0][0];
-			data.onSaved();
-			await flushPromises();
-
-			expect(getAgentTasksSpy).toHaveBeenCalledTimes(2);
-			expect(wrapper.emitted('tasks-changed')).toHaveLength(1);
+			expect(openModalWithDataSpy).not.toHaveBeenCalled();
 		});
 	});
 
-	describe('add trigger menu', () => {
-		it('emits add-channel when "Add channel" is selected', async () => {
+	describe('add trigger button', () => {
+		it('emits add-channel on click', async () => {
 			const wrapper = mountList();
 
-			await wrapper.get('[data-testid="add-trigger-item-channel"]').trigger('click');
+			await wrapper.get('[data-testid="agent-triggers-add-trigger"]').trigger('click');
 
 			expect(wrapper.emitted('add-channel')).toHaveLength(1);
 			expect(openModalWithDataSpy).not.toHaveBeenCalled();
-		});
-
-		it('opens the task modal for a new task when "Add schedule" is selected', async () => {
-			const ensureAgentPersisted = vi.fn();
-			const wrapper = mountList({ ensureAgentPersisted });
-
-			await wrapper.get('[data-testid="add-trigger-item-schedule"]').trigger('click');
-
-			expect(openModalWithDataSpy).toHaveBeenCalledWith(
-				expect.objectContaining({
-					name: AGENT_TASK_MODAL_KEY,
-					data: expect.objectContaining({ task: null, ensureAgentPersisted }),
-				}),
-			);
-			expect(wrapper.emitted('add-channel')).toBeUndefined();
 		});
 	});
 });
