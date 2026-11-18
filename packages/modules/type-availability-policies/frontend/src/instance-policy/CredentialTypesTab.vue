@@ -16,6 +16,8 @@ import {
 
 const NO_USAGE: TypeUsage = { uses: 0, workflows: 0, activeWorkflows: 0, projects: 0 };
 
+const emit = defineEmits<{ open: [name: string] }>();
+
 const i18n = useI18n();
 const rootStore = useRootStore();
 const theme = useAppliedTheme();
@@ -76,6 +78,7 @@ onMounted(async () => {
 		"
 		data-test-id="credential-types-tab"
 		@change="changeAccess"
+		@open="(name) => emit('open', name)"
 	>
 		<template #toolbar-start>
 			<slot name="toolbar-start" />
