@@ -11,6 +11,7 @@ import type {
 	TokenUsage,
 	Workspace,
 } from '@n8n/agents';
+import type { AgentToolOutputFile } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 
 import type { ImportedSandboxFile } from '../agent-sandbox-files.service';
@@ -118,12 +119,7 @@ export interface SystemAgentSandboxFiles {
 }
 
 /** A file that a system-agent turn stored in its thread. */
-export interface SystemAgentStoredFile {
-	fileId: string;
-	fileName: string;
-	mimeType: string;
-	sizeBytes: number;
-}
+export type SystemAgentStoredFile = AgentToolOutputFile;
 
 /** A stored file of a system-agent thread. */
 export interface SystemAgentFile {

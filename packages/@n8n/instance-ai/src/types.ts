@@ -1713,12 +1713,7 @@ export interface InstanceAiStoredFile {
 }
 
 /** A conversation file, as the chat shows it. */
-export interface InstanceAiConversationFile {
-	fileId: string;
-	fileName: string;
-	mimeType: string;
-	sizeBytes: number;
-}
+export type InstanceAiConversationFile = AgentToolOutputFile;
 
 /** The sandbox files feature of the host: conversation files in and out of the sandbox. */
 export interface InstanceAiSandboxFiles {

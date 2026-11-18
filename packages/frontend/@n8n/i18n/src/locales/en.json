@@ -8832,6 +8832,7 @@
 	"instanceAi.cloudBrowserConfirmation.credentialPrompt": "Allow n8n Assistant to save a credential from the \"{task}\" browser?",
 	"instanceAi.askUser.placeholder": "Type your answer...",
 	"instanceAi.askUser.submit": "Submit",
+	"instanceAi.assistantAgent.sharedFiles.failed": "Couldn't share {path}",
 	"instanceAi.assistantAgent.trace.copy": "Copy trace",
 	"instanceAi.assistantAgent.trace.copied": "Trace copied",
 	"instanceAi.assistantAgent.trace.copyError": "Couldn't copy the trace",
