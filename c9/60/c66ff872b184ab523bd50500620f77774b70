@@ -1,0 +1,35 @@
+packages/@n8n/api-types/src/dto/promotions/promotion-apply-check.dto.ts
+  s_a18917ee43e665::t_a86cf278872cd8 93-94
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_a18917ee43e665::t_0436ae38f56ff1 34,64,115-119,123-124,153-157,160,365-370,372,374,377-378,386-389,459,473-478,484-500
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_b7b13575e78da5::t_e6dab9a22796bf 40-44,66-70,80-81,117-118,123
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_b7b13575e78da5::t_b596ccbf090702 73,359,727-732
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_b7b13575e78da5::t_a9626183cb481d 280-284,338-353
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c960c66ff872b184ab523bd50500620f77774b70",
+  "prompts": {},
+  "sessions": {
+    "s_a18917ee43e665": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-afc6e4fc30a89dc1e",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_b7b13575e78da5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a518632057e785d0d",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

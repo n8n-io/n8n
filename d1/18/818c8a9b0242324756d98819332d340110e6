@@ -1,0 +1,48 @@
+packages/@n8n/cli/src/client.ts
+  s_3dd47ea0104342::t_14636d728b7462 9,118-119,123,125-128,135-146,199-213,514-517,521-530,537,542,557,564,573,580,590,597,630,638-648
+  s_3dd47ea0104342::t_bfbc47ba8a1537 649-652
+packages/@n8n/cli/src/commands/promotion-environment/promote-environment-selection.ts
+  s_3dd47ea0104342::t_14636d728b7462 4,6,31,45-48,65
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection-continue.ts
+  s_3dd47ea0104342::t_14636d728b7462 4,40,56
+packages/@n8n/cli/src/commands/promotion-environment/promote-selection.ts
+  s_3dd47ea0104342::t_14636d728b7462 3-4,6-19,23,52,63,65-70,85-88
+packages/@n8n/cli/src/commands/promotion-environment/promote.ts
+  s_3dd47ea0104342::t_14636d728b7462 3,8,28,37,39-42
+packages/@n8n/cli/src/commands/promotion-environment/list-environment-changes.ts
+  s_3dd47ea0104342::t_14636d728b7462 5,49-53
+  s_3dd47ea0104342::t_991a081a7c8b2f 54
+packages/@n8n/cli/src/commands/promotion-environment/apply-command.ts
+  s_3dd47ea0104342::t_14636d728b7462 1,36-47,71-79,81,83-89
+packages/@n8n/cli/src/commands/promotion-environment/apply-environment-selection.ts
+  s_3dd47ea0104342::t_14636d728b7462 4,37,50
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection.ts
+  s_3dd47ea0104342::t_14636d728b7462 4,38,50
+packages/@n8n/cli/src/commands/promotion-environment/list-changes.ts
+  s_3dd47ea0104342::t_14636d728b7462 4,45-49
+  s_3dd47ea0104342::t_a1594101004693 50
+packages/@n8n/cli/src/commands/promotion-environment/apply.ts
+  s_3dd47ea0104342::t_14636d728b7462 4,22,28-32
+packages/@n8n/cli/docs/commands/promotions.md
+  s_3dd47ea0104342::t_ccfd345cbb78c4 651-684
+packages/@n8n/cli/src/commands/promotion-environment/dependency-report.ts
+  s_3dd47ea0104342::t_0123ed85079fe0 1-233
+packages/@n8n/cli/src/commands/promotion-environment/apply-continue.ts
+  s_3dd47ea0104342::t_14636d728b7462 4,26,39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d118818c8a9b0242324756d98819332d340110e6",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+packages/cli/src/credentials/vault/vault-capture.service.ts
+  s_293d023a29dd97::t_4489ea920fb2c0 1-141
+packages/cli/src/credentials/vault/__tests__/vault-credential-resolver.test.ts
+  s_293d023a29dd97::t_4489ea920fb2c0 1-272
+packages/cli/src/server.ts
+  s_293d023a29dd97::t_4489ea920fb2c0 69
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_293d023a29dd97::t_4489ea920fb2c0 45,99,199,246,334,379,460,521,614,731,774,1456,1899,1946,1995,2045,2096,2371,2790,3600
+packages/cli/src/credentials/vault/__tests__/vault-capture.service.test.ts
+  s_293d023a29dd97::t_4489ea920fb2c0 1-215
+packages/cli/src/credentials/vault/vault-credentials.config.ts
+  s_293d023a29dd97::t_4489ea920fb2c0 1-42
+packages/cli/src/credentials/vault/vault-credentials.controller.ts
+  s_293d023a29dd97::t_4489ea920fb2c0 1-49
+packages/@n8n/config/src/configs/logging.config.ts
+  s_293d023a29dd97::t_4489ea920fb2c0 38,161
+packages/cli/src/credentials-helper.ts
+  s_293d023a29dd97::t_4489ea920fb2c0 53,134,700-716
+packages/cli/src/credentials/vault/vault-credential-resolver.ts
+  s_293d023a29dd97::t_4489ea920fb2c0 1-203
+packages/cli/src/credentials/vault/__tests__/vault-workflow-definition.service.test.ts
+  s_293d023a29dd97::t_4489ea920fb2c0 1-161
+packages/cli/src/oauth/__tests__/oauth.service.managed-version.test.ts
+  s_293d023a29dd97::t_4489ea920fb2c0 14,103
+packages/cli/src/credentials/vault/vault-workflow-definition.service.ts
+  s_293d023a29dd97::t_4489ea920fb2c0 1-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c92636870f6d5538c66b5133065bbd43661c6067",
+  "prompts": {},
+  "sessions": {
+    "s_293d023a29dd97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20ed4163-15ff-44f2-a2f6-48db5f846d4f",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
