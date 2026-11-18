@@ -368,7 +368,7 @@ describe('WorkflowHistory', () => {
 					expect(pendingButton).toHaveTextContent('Actions');
 					expect(pendingButton).toBeDisabled();
 					expect(pendingButton).toHaveAttribute('aria-busy', 'true');
-					expect(pendingButton.querySelector('[data-spinner="grid"]')).toBeInTheDocument();
+					expect(pendingButton.querySelector('.n8n-spinner')).toBeInTheDocument();
 				});
 				const pendingActions = await openListActions(getAllByTestId, 2);
 				for (const action of slowActions) {

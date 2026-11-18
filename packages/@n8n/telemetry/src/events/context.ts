@@ -116,6 +116,18 @@ const preferenceExampleId = z
 		'The example card on the empty preferences page that filled the text (experiment 127). Absent when the text box opened empty',
 	);
 
+const recommendedSkillsVariant = z
+	.enum(['variant'])
+	.describe(
+		'Variant of the 143_recommended_skills feature flag. Only the treatment shows the cards',
+	);
+
+const recommendedSkillsEntryPoint = z
+	.enum(['empty_state', 'create_menu', 'agent_skill_modal'])
+	.describe(
+		'`empty_state` is the Skills page with no skills. `create_menu` is the entry in the "Create skills" menu, which shows the cards in a dialog. `agent_skill_modal` is the "Recommended" tab of the skill picker of an agent',
+	);
+
 export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_VIEWED_PREFERENCES: {
 		name: 'User viewed preferences',
@@ -430,6 +442,30 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			scope_changed: z.boolean().describe('Whether the same save moved the skill to another scope'),
 		}),
 	},
+	USER_VIEWED_RECOMMENDED_SKILLS: {
+		name: 'User viewed recommended skills',
+		description:
+			'The recommended skills of experiment 143 appeared: as cards on the Skills settings page (in the empty state or in the dialog of the "Create skills" menu), or in the skill picker of an agent. Fires each time the cards appear, and each time the skill picker opens.',
+		properties: z.object({
+			entry_point: recommendedSkillsEntryPoint,
+			variant: recommendedSkillsVariant,
+			'$feature/143_recommended_skills': recommendedSkillsVariant,
+		}),
+	},
+	USER_ADDED_RECOMMENDED_SKILL: {
+		name: 'User added recommended skill',
+		description:
+			'A user saved a skill that a recommended skill card of experiment 143 filled in. Fires once the create succeeds, so a card click that the user cancels reports nothing.',
+		properties: z.object({
+			recommended_skill_id: z
+				.enum(['humanizer', 'cold-email', 'research'])
+				.describe('The recommended skill that filled the create form'),
+			skill_id: skillId.optional().describe('Not set for the agent skill picker'),
+			entry_point: recommendedSkillsEntryPoint,
+			variant: recommendedSkillsVariant,
+			'$feature/143_recommended_skills': recommendedSkillsVariant,
+		}),
+	},
 	MCP_LISTED_SKILLS: {
 		name: 'MCP listed skills',
 		description:
@@ -457,6 +493,21 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			...skillOrigin,
 		}),
 	},
+	USER_CHANGED_SKILL_SOURCE_SCOPE: {
+		name: 'User changed skill source scope',
+		description:
+			'A source scope move committed or failed. Read-only previews do not emit this event.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			from_scope_type: skillSourceScopeType,
+			to_scope_type: skillSourceScopeType,
+			skill_count: z.number(),
+			status: skillSourceStatus,
+			reason: z.enum([...SKILL_SOURCE_REASONS, 'agent_in_use', 'unexpected']).optional(),
+		}),
+	},
+
 	USER_CONNECTED_SKILL_SOURCE: {
 		name: 'User connected skill source',
 		description:
@@ -570,6 +621,21 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'True when the source was checked less than a minute ago, so n8n did not check it again',
 				),
+			status: skillSourceStatus,
+			reason: skillSourceReason,
+		}),
+	},
+	USER_REVIEWED_SKILL_UPDATE: {
+		name: 'User reviewed skill update',
+		description:
+			'A user reviewed a pending skill update. Fires for each selected skill after the transaction succeeds or fails.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			kind: z.literal('update').describe('An update to an existing synced skill'),
+			action: z.enum(['accept', 'skip']),
+			verdict: z.enum(['pass', 'needs_review', 'blocked']),
+			bulk: z.boolean().describe('Whether the request selected more than one skill'),
 			status: skillSourceStatus,
 			reason: skillSourceReason,
 		}),

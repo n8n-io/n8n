@@ -21,6 +21,7 @@ const configs = {
 		},
 		rules: {
 			'@n8n/community-nodes/ai-node-package-json': 'error',
+			'@n8n/community-nodes/class-name-matches-filename': 'error',
 			'@n8n/community-nodes/no-restricted-globals': 'error',
 			'@n8n/community-nodes/no-restricted-imports': 'error',
 			'@n8n/community-nodes/credential-password-field': 'error',
@@ -39,6 +40,7 @@ const configs = {
 			'@n8n/community-nodes/no-forbidden-lifecycle-scripts': 'error',
 			'@n8n/community-nodes/no-hardcoded-secrets': 'error',
 			'@n8n/community-nodes/no-http-request-with-manual-auth': 'error',
+			'@n8n/community-nodes/no-mcp-protocol-client': 'error',
 			'@n8n/community-nodes/no-overrides-field': 'error',
 			'@n8n/community-nodes/no-runtime-dependencies': 'error',
 			'@n8n/community-nodes/no-silent-error-swallowing': 'error',
@@ -79,6 +81,7 @@ const configs = {
 		},
 		rules: {
 			'@n8n/community-nodes/ai-node-package-json': 'error',
+			'@n8n/community-nodes/class-name-matches-filename': 'error',
 			'@n8n/community-nodes/credential-password-field': 'error',
 			'@n8n/community-nodes/credential-unnecessary-password': 'warn',
 			'@n8n/community-nodes/n8n-object-validation': 'error',
@@ -95,6 +98,7 @@ const configs = {
 			'@n8n/community-nodes/no-forbidden-lifecycle-scripts': 'error',
 			'@n8n/community-nodes/no-hardcoded-secrets': 'error',
 			'@n8n/community-nodes/no-http-request-with-manual-auth': 'error',
+			'@n8n/community-nodes/no-mcp-protocol-client': 'error',
 			'@n8n/community-nodes/no-overrides-field': 'error',
 			'@n8n/community-nodes/no-runtime-dependencies': 'error',
 			'@n8n/community-nodes/no-silent-error-swallowing': 'error',

@@ -47,6 +47,10 @@ export class CredentialsPage extends BasePage {
 		await this.getResourcesListSearch().clear();
 	}
 
+	async search(query: string) {
+		await this.getResourcesListSearch().fill(query);
+	}
+
 	async sortByNameDescending() {
 		await this.page.getByTestId('resources-list-sort').click();
 		await this.page.getByText('Name (Z-A)').click();

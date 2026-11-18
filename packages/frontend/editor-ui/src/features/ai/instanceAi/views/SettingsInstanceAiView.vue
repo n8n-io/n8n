@@ -36,6 +36,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import DefaultEditorSetting from '@/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue';
+import { useInstanceAiCloudBrowserExperiment } from '@/experiments/instanceAiCloudBrowser';
 import { isContextSkillsEnabled } from '@/features/settings/context/context.utils';
 import { useInstanceAiConfiguration } from '../composables/useInstanceAiConfiguration';
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
@@ -63,6 +64,8 @@ const {
 	searchState,
 } = useInstanceAiConfiguration();
 
+const { isEnabled: isCloudBrowserExperimentEnabled } = useInstanceAiCloudBrowserExperiment();
+
 const DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant';
 const DATA_SHARING_DOCS_URL =
 	'https://docs.n8n.io/build/ways-of-building-workflows/use-the-ai-assistant#ai-usage-settings';
@@ -72,6 +75,13 @@ const isEnabled = computed(
 	() => store.settings?.enabled ?? settingsStore.moduleSettings?.['instance-ai']?.enabled ?? false,
 );
 const isOff = computed(() => !isEnabled.value);
+const showCloudBrowserRow = computed(
+	() =>
+		isCloudBrowserExperimentEnabled.value &&
+		settingsStore.isAiGatewayEnabled &&
+		settingsStore.isAiGatewayCloudUbbEnabled &&
+		!settingsStore.isMultiMain,
+);
 const isMcpAccessEnabled = computed(() => store.settings?.mcpAccessEnabled ?? true);
 const isSelfManaged = computed(() => !store.isProxyEnabled && !store.isCloudManaged);
 const showCredentialsRows = computed(() => isAdmin.value && isSelfManaged.value);
@@ -184,7 +194,7 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 	{
 		id: 'dataTables',
 		labelKey: 'settings.n8nAgent.permissions.group.dataTables',
-		keys: ['createDataTable', 'mutateDataTableSchema', 'mutateDataTableRows'],
+		keys: ['createDataTable', 'mutateDataTableSchema', 'mutateDataTableRows', 'deleteDataTable'],
 	},
 	{
 		id: 'credentials',
@@ -358,9 +368,18 @@ async function enableEnvironmentSandboxIfNeeded(): Promise<boolean> {
 
 useSetupPageViewTelemetry('settings');
 
+// With approval modes on, Ask first can be confirmed by the automatic check of Auto mode.
+const permissionsDescription = computed(() => {
+	const description = i18n.baseText('settings.n8nAgent.permissions.description');
+	return store.approvalModesAvailable
+		? `${description} ${i18n.baseText('settings.n8nAgent.permissions.askFirst.description')}`
+		: description;
+});
+
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.n8nAgent'));
 	void store.fetch();
+	void store.fetchPreferences();
 	void credentialsStore.fetchCredentialTypes(false);
 });
 
@@ -398,6 +417,11 @@ async function confirmDisable() {
 
 function handleBrowserUseToggle(value: boolean) {
 	store.setField('browserUseEnabled', value);
+	void store.save();
+}
+
+function handleCloudBrowserToggle(value: boolean) {
+	store.setField('cloudBrowserEnabled', value);
 	void store.save();
 }
 
@@ -607,6 +631,23 @@ async function handleDataSharingToggle(value: boolean) {
 							/>
 						</template>
 					</N8nSettingsRow>
+
+					<N8nSettingsRow
+						v-if="showCloudBrowserRow"
+						:class="{ [$style.dim]: isOff }"
+						:title="i18n.baseText('settings.n8nAgent.cloudBrowser.label')"
+						:description="i18n.baseText('settings.n8nAgent.cloudBrowser.description')"
+					>
+						<template #action>
+							<N8nSwitch
+								:model-value="!isOff && (store.settings?.cloudBrowserEnabled ?? true)"
+								:disabled="store.isSaving || isOff"
+								:aria-label="i18n.baseText('settings.n8nAgent.cloudBrowser.label')"
+								data-test-id="n8n-agent-cloud-browser-toggle"
+								@update:model-value="handleCloudBrowserToggle"
+							/>
+						</template>
+					</N8nSettingsRow>
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
 
@@ -636,7 +677,7 @@ async function handleDataSharingToggle(value: boolean) {
 			<N8nSettingsSection
 				v-if="isEnabled"
 				:title="i18n.baseText('settings.n8nAgent.permissions.title')"
-				:description="i18n.baseText('settings.n8nAgent.permissions.description')"
+				:description="permissionsDescription"
 			>
 				<N8nSettingsRowGroup>
 					<N8nSettingsRow

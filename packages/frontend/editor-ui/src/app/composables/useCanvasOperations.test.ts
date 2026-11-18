@@ -154,7 +154,12 @@ vi.mock('@n8n/rest-api-client/api/workflowHistory', () => ({
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import * as workflowHelpersModule from '@/app/composables/useWorkflowHelpers';
 import * as nodeGroupOperationGuards from '@/features/workflows/canvas/composables/useCanvasNodeGroupOperationGuards';
-import { DEFAULT_NODE_SIZE, GRID_SIZE, HORIZONTAL_NODE_STEP } from '@/app/utils/nodeViewUtils';
+import {
+	DEFAULT_NODE_SIZE,
+	GRID_SIZE,
+	HORIZONTAL_NODE_STEP,
+	isPositionBlocked,
+} from '@/app/utils/nodeViewUtils';
 import { DEFAULT_AGENT_HEIGHT, DEFAULT_AGENT_WIDTH } from '@/features/agents/utils/agentNode';
 
 /** Merge v3 computes its main inputs from the `numberInputs` parameter. */
@@ -447,6 +452,26 @@ describe('useCanvasOperations', () => {
 				result.id,
 				result.position[1] + DEFAULT_AGENT_HEIGHT / 2,
 			);
+		});
+
+		it('places an agent card added at the last click clear of a node and keeps its top-left', () => {
+			const geometryStore = mockedStore(useAgentNodeCanvasGeometryStore);
+			workflowDocumentStoreInstance.allNodes = [
+				createTestNode({ id: 'E', name: 'E', type: SET_NODE_TYPE, position: [400, 0] }),
+			];
+
+			const { addNode, lastClickPosition } = useCanvasOperations();
+			lastClickPosition.value = [250, 10];
+			const result = addNode(
+				{ type: MESSAGE_AN_AGENT_NODE_TYPE, typeVersion: 2 },
+				mockNodeTypeDescription({ name: MESSAGE_AN_AGENT_NODE_TYPE, version: 2 }),
+			);
+
+			// The 320 × 128 card at the snapped click [256, 16] touches E, so it moves diagonally
+			expect(result.position).toEqual([352, 112]);
+			// No pending center: when the card measures (for example 206 px), it grows down
+			// from this top-left and does not move back onto E
+			expect(geometryStore.setPendingCenterY).not.toHaveBeenCalled();
 		});
 
 		it('should not assign credentials when multiple credentials are available', () => {
@@ -749,6 +774,44 @@ describe('useCanvasOperations', () => {
 
 			// 112 + HORIZONTAL_NODE_STEP (224) = 336, matching the auto-layout step
 			expect(position).toEqual([336, 112]);
+		});
+
+		it('should place the node clear of a tall agent card next to the last interacted with node', () => {
+			const uiStore = mockedStore(useUIStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const geometryStore = mockedStore(useAgentNodeCanvasGeometryStore);
+
+			const nodeA = createTestNode({ id: 'A', name: 'A', type: SET_NODE_TYPE, position: [0, 0] });
+			const agent = createTestNode({
+				id: 'agent',
+				name: 'Agent',
+				type: MESSAGE_AN_AGENT_NODE_TYPE,
+				typeVersion: 2,
+				position: [224, -64],
+			});
+			const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE });
+			const nodesById = new Map([nodeA, agent].map((n) => [n.id, n as INodeUi]));
+
+			workflowDocumentStoreInstance.allNodes = [nodeA, agent];
+			uiStore.lastInteractedWithNodeId = nodeA.id;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id: string) =>
+				nodesById.get(id),
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(nodeA as INodeUi);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			geometryStore.getNodeHeight.mockImplementation((_canvasId, nodeId) =>
+				nodeId === agent.id ? 224 : undefined,
+			);
+
+			const { resolveNodePosition } = useCanvasOperations();
+			const position = resolveNodePosition(
+				{ ...createTestNode({ id: 'new', type: SET_NODE_TYPE }), position: undefined },
+				nodeTypeDescription,
+			);
+
+			// The slot [224, 0] is inside the 320 × 224 card, so the node moves diagonally
+			// until it is one grid cell below the card
+			expect(position).toEqual([416, 192]);
 		});
 
 		it('should place the node clear of the agent card when added after a message an agent node', () => {
@@ -6581,6 +6644,97 @@ describe('useCanvasOperations', () => {
 			]);
 		});
 
+		it('keeps a pasted wide group in place when no node is in its rectangle', async () => {
+			workflowDocumentStoreInstance.allNodes = [
+				createTestNode({ id: 'E', name: 'E', position: [0, 0] }),
+			];
+			const nodes = [
+				createTestNode({ name: 'First', position: [0, 0] }),
+				createTestNode({ name: 'Last', position: [1344, 0] }),
+			];
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(importedNodes, connections) =>
+					createTestWorkflowObject({ nodes: importedNodes, connections }),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			canvasOperations.lastClickPosition.value = [784, -48];
+			const result = await canvasOperations.importWorkflowData(
+				{ nodes, connections: {} },
+				'paste',
+				{ trackEvents: false },
+			);
+
+			// The 1440 × 96 group starts right of E, so it does not move
+			expect(result.nodes?.map((node) => node.position)).toEqual([
+				[784, -48],
+				[2128, -48],
+			]);
+		});
+
+		it('centers a pasted agent card in the viewport by its rendered size', async () => {
+			const nodes = [
+				createTestNode({
+					name: 'Agent',
+					type: MESSAGE_AN_AGENT_NODE_TYPE,
+					typeVersion: 2,
+					position: [100, 100],
+				}),
+			];
+			const nodeTypes = createMockNodeTypes({
+				[MESSAGE_AN_AGENT_NODE_TYPE]: mockLoadedNodeType(MESSAGE_AN_AGENT_NODE_TYPE),
+			});
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(importedNodes, connections) =>
+					createTestWorkflowObject({ nodes: importedNodes, connections, nodeTypes }),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			const result = await canvasOperations.importWorkflowData(
+				{ nodes, connections: {} },
+				'paste',
+				{ viewport: { xMin: 0, yMin: 0, xMax: 1000, yMax: 1000 }, trackEvents: false },
+			);
+
+			// (1000 - 320) / 2 = 340 and (1000 - 128) / 2 = 436, snapped to the grid
+			expect(result.nodes?.[0].position).toEqual([336, 432]);
+		});
+
+		it('moves a pasted sticky clear of an agent card in the viewport center', async () => {
+			workflowDocumentStoreInstance.allNodes = [
+				createTestNode({
+					id: 'agent',
+					name: 'Agent',
+					type: MESSAGE_AN_AGENT_NODE_TYPE,
+					typeVersion: 2,
+					position: [336, 432],
+				}),
+			];
+			const nodes = [
+				createTestNode({
+					name: 'Sticky',
+					type: STICKY_NODE_TYPE,
+					position: [0, 0],
+					parameters: { width: 600, height: 400 },
+				}),
+			];
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(importedNodes, connections) =>
+					createTestWorkflowObject({ nodes: importedNodes, connections }),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			const result = await canvasOperations.importWorkflowData(
+				{ nodes, connections: {} },
+				'paste',
+				{ viewport: { xMin: 0, yMin: 0, xMax: 1000, yMax: 1000 }, trackEvents: false },
+			);
+
+			// The centered 600 × 400 sticky at [208, 304] covers the 320 × 128 card at
+			// [336, 432], so it moves diagonally until it is one grid cell below the card
+			expect(result.nodes?.[0].position).toEqual([496, 592]);
+		});
+
 		describe('restricted node types', () => {
 			const RESTRICTED_NODE_TYPE = 'n8n-nodes-base.code';
 			const toast = useToast();
@@ -7693,6 +7847,52 @@ describe('useCanvasOperations', () => {
 			expect(duplicatedNodeIds).not.toContain('2');
 		});
 
+		it('places a duplicated node clear of the agent card under the last click', async () => {
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: SET_NODE_TYPE }) },
+			};
+
+			const agent = createTestNode({
+				id: 'agent',
+				name: 'Agent',
+				type: MESSAGE_AN_AGENT_NODE_TYPE,
+				typeVersion: 2,
+				position: [0, 0],
+			});
+			const setNode = createTestNode({
+				id: 'set',
+				name: 'Edit Fields',
+				type: SET_NODE_TYPE,
+				position: [-400, 400],
+			});
+			workflowDocumentStoreInstance.allNodes = [agent, setNode];
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue([setNode]);
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(importedNodes, connections) =>
+					createTestWorkflowObject({ nodes: importedNodes, connections }),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			// The last canvas click is on the 320 × 128 card
+			canvasOperations.lastClickPosition.value = [200, 50];
+			await canvasOperations.duplicateNodes([setNode.id]);
+
+			const copy = vi
+				.mocked(workflowDocumentStoreInstance.addNode)
+				.mock.calls.map(([node]) => node)
+				.find((node) => node.type === SET_NODE_TYPE);
+			expect(copy?.position).toEqual([304, 144]);
+			const [x, y] = copy?.position ?? [0, 0];
+			expect(
+				isPositionBlocked(
+					{ x, y, width: DEFAULT_NODE_SIZE[0], height: DEFAULT_NODE_SIZE[1] },
+					{ x: 0, y: 0, width: DEFAULT_AGENT_WIDTH, height: DEFAULT_AGENT_HEIGHT },
+				),
+			).toBe(false);
+		});
+
 		it('should not duplicate empty groups when the feature is disabled', async () => {
 			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
 			const nodeTypesStore = useNodeTypesStore();
@@ -8494,6 +8694,43 @@ describe('useCanvasOperations', () => {
 		});
 		afterEach(() => {
 			// Mock cleanup handled automatically by test isolation
+		});
+
+		it('aligns the main handle of a new agent card with the node it replaces', () => {
+			const geometryStore = mockedStore(useAgentNodeCanvasGeometryStore);
+			const previous = createTestNode({
+				id: 'previous',
+				name: 'Previous',
+				type: SET_NODE_TYPE,
+				position: [400, 96],
+			});
+			const card = createTestNode({
+				id: 'card',
+				name: 'Agent',
+				type: MESSAGE_AN_AGENT_NODE_TYPE,
+				typeVersion: 2,
+				position: [800, 800],
+			});
+			const nodesById = new Map([previous, card].map((n) => [n.id, n as INodeUi]));
+			workflowDocumentStoreInstance.allNodes = [previous, card];
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id: string) =>
+				nodesById.get(id),
+			);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+			nodeTypesStore.getNodeType = vi
+				.fn()
+				.mockReturnValue(mockNodeTypeDescription({ name: SET_NODE_TYPE }));
+
+			const { replaceNode } = useCanvasOperations();
+			replaceNode(previous.id, card.id, { trackHistory: false });
+
+			// The handle of the 96 px node sits 48 px below its top
+			expect(geometryStore.setPendingCenterY).toHaveBeenCalledWith(
+				workflowDocumentStoreInstance.workflowId,
+				card.id,
+				96 + DEFAULT_NODE_SIZE[1] / 2,
+			);
 		});
 
 		describe('common cases', () => {
@@ -9607,6 +9844,27 @@ describe('useCanvasOperations', () => {
 			insertOnConnection(source, target, [source, target]);
 
 			expect(target.position).toEqual([336, 0]);
+		});
+
+		it('should make room when a node touches the new node from below', () => {
+			const source = createTestNode({ id: 's', name: 'S', type: SET_NODE_TYPE, position: [0, 0] });
+			const target = createTestNode({
+				id: 't',
+				name: 'T',
+				type: SET_NODE_TYPE,
+				position: [448, 0],
+			});
+			const below = createTestNode({
+				id: 'b',
+				name: 'B',
+				type: SET_NODE_TYPE,
+				position: [224, 96],
+			});
+
+			insertOnConnection(source, target, [source, target, below]);
+
+			// The new node at [224, 0] has no gap to B, so the space check fails
+			expect(target.position).toEqual([672, 0]);
 		});
 
 		it('should stretch a sticky note to the grid with a padding of two grid cells', () => {

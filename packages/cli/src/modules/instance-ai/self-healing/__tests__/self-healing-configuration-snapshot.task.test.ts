@@ -1,14 +1,14 @@
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
-import type { Telemetry } from '@/telemetry';
+import type { TelemetryProxy } from '@n8n/backend-services';
 
 import type { SelfHealingConfigurationRepository } from '../database/self-healing-configuration.repository';
 import { SelfHealingConfigurationSnapshotTask } from '../self-healing-configuration-snapshot.task';
 
 describe('SelfHealingConfigurationSnapshotTask', () => {
 	const event = TELEMETRY_EVENT.SELF_HEALING.INSTANCE_REPORTED_SELF_HEALING_CONFIGURATION;
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const configurations = mock<SelfHealingConfigurationRepository>();
 	const task = new SelfHealingConfigurationSnapshotTask(configurations, telemetry);
 

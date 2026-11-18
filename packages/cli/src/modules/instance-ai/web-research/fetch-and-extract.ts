@@ -45,7 +45,11 @@ function loadTurndownGfm(): typeof JoplinTurndownGfm.gfm {
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_TIMEOUT_MS = 120_000;
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024; // 5 MB
-const DEFAULT_MAX_CONTENT_LENGTH = 30_000;
+/**
+ * Keep the whole page by default. The research tool slices it per call and the
+ * fetch cache keeps it for later offsets, so this limit only bounds memory.
+ */
+const DEFAULT_MAX_CONTENT_LENGTH = 500_000;
 
 export interface FetchAndExtractOptions {
 	maxContentLength?: number;

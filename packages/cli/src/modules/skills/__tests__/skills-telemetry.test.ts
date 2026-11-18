@@ -1,8 +1,7 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
-
-import type { Telemetry } from '@/telemetry';
 
 import type { Skill } from '../database/entities/skill.entity';
 import type { SkillRepository } from '../database/repositories/skill.repository';
@@ -13,7 +12,7 @@ function skill(id: string, target: Partial<Pick<Skill, 'projectId'>> = {}): Skil
 }
 
 describe('SkillsTelemetry', () => {
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const repository = mock<SkillRepository>();
 	const service = new SkillsTelemetry(telemetry, repository, mockLogger());
 	const skills = [skill('skill_instance'), skill('skill_project', { projectId: 'project-1' })];
@@ -192,5 +191,32 @@ describe('SkillsTelemetry', () => {
 			undefined,
 		);
 		expect(telemetry.track).not.toHaveBeenCalled();
+	});
+	it('reports update review outcomes without content or agent names', async () => {
+		await service.reviewedUpdate(
+			{
+				provider: 'github',
+				kind: 'update',
+				action: 'accept',
+				verdict: 'needs_review',
+				bulk: true,
+				status: 'failure',
+				reason: 'stale',
+			},
+			'user-1',
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.USER_REVIEWED_SKILL_UPDATE,
+			{
+				user_id: 'user-1',
+				provider: 'github',
+				kind: 'update',
+				action: 'accept',
+				verdict: 'needs_review',
+				bulk: true,
+				status: 'failure',
+				reason: 'stale',
+			},
+		);
 	});
 });

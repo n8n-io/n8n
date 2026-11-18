@@ -61,6 +61,7 @@ import { InstanceAiSkillsService, SKILLS } from '../instance-ai-skills.service';
 import {
 	asStoredThreadContextSection,
 	buildAppTargetsBlock,
+	buildAutoApprovalModeBlock,
 	buildCurrentDateTimeBlock,
 	buildInstanceUrlsBlock,
 	buildOnboardingSkillBlock,
@@ -510,6 +511,9 @@ export class AssistantTurnInputBuilder {
 				: undefined,
 			pastConversationsSection ? buildPastConversationsBlock(pastConversationsSection) : undefined,
 			aiPreferencesTurn?.block,
+			resumeReason === undefined && context.approvalReviewer
+				? buildAutoApprovalModeBlock()
+				: undefined,
 			buildCurrentDateTimeBlock(getDateTimeSection(timeZone ?? this.defaultTimeZone)),
 		]);
 		const fullMessage = [handoffContextBlock, setupStateBlock, threadContextBlock, messageBody]

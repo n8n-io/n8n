@@ -1,10 +1,12 @@
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import type { AgentStarter } from '../agentTemplates';
 import {
 	AGENT_BUILDER_VIEW,
 	PENDING_AGENT_ID_STATE,
 	PENDING_AGENT_STARTER_STATE,
+	PROJECT_AGENTS,
 } from '../constants';
 import { useAgentTelemetry, type AgentCreateSource } from './useAgentTelemetry';
 
@@ -25,9 +27,16 @@ export const unsavedAgentIds = new Set<string>();
  */
 export function useCreateAgent() {
 	const router = useRouter();
+	const route = useRoute();
+	const settingsStore = useSettingsStore();
 	const agentTelemetry = useAgentTelemetry();
 
-	function createAgent(source: AgentCreateSource, projectId: string, starter?: AgentStarter): void {
+	function createAgent(
+		source: AgentCreateSource,
+		projectId: string,
+		starter?: AgentStarter,
+		parentFolderId?: string,
+	): void {
 		const agentId = generateNanoId();
 		unsavedAgentIds.add(agentId);
 		const templateId = starter?.kind === 'template' ? starter.templateId : undefined;
@@ -36,9 +45,20 @@ export function useCreateAgent() {
 		} else {
 			agentTelemetry.trackClickedNewAgent(source, agentId);
 		}
+
+		const folderId =
+			parentFolderId ??
+			(settingsStore.isFoldersFeatureEnabled &&
+			route?.name === PROJECT_AGENTS &&
+			route.params.projectId === projectId &&
+			typeof route.query.folderId === 'string'
+				? route.query.folderId
+				: undefined);
+
 		void router.push({
 			name: AGENT_BUILDER_VIEW,
 			params: { projectId, agentId },
+			...(folderId ? { query: { folderId } } : {}),
 			state: {
 				[PENDING_AGENT_ID_STATE]: agentId,
 				...(starter ? { [PENDING_AGENT_STARTER_STATE]: starter } : {}),
