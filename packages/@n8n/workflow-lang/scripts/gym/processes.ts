@@ -18,7 +18,8 @@ import { join } from 'node:path';
 import { packageRoot, repoRoot } from './sample.ts';
 import { gymSource } from './services.ts';
 
-export const GYM_ADDR = '10.255.0.53';
+// GYM_ADDR in the environment names a gym on another machine (the load test bed).
+export const GYM_ADDR = process.env.GYM_ADDR ?? '10.255.0.53';
 export const HARNESS_TOKEN = 'harness';
 
 export async function freePort(): Promise<number> {
