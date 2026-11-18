@@ -59,6 +59,90 @@ describe('AIAssistantPage scope configuration', () => {
 	});
 });
 
+describe('InstanceAiPage scope configuration', () => {
+	beforeEach(() => setConfig(config));
+	afterEach(() => resetConfig());
+
+	test('allows the external and relative locators in InstanceAiPage', () => {
+		const project = new Project({ useInMemoryFileSystem: true });
+		const file = project.createSourceFile(
+			`${config.rootDir}/pages/InstanceAiPage.ts`,
+			readFileSync(`${config.rootDir}/pages/InstanceAiPage.ts`, 'utf8'),
+		);
+
+		expect(new ScopeLockdownRule().analyzeProject(project, [file])).toEqual([]);
+	});
+
+	test.each([
+		{ fileName: 'InstanceAiPage.ts', className: 'InstanceAiPage', expectedViolations: 0 },
+		{ fileName: 'OtherPage.ts', className: 'InstanceAiPage', expectedViolations: 1 },
+		{ fileName: 'InstanceAiPage.ts', className: 'OtherPage', expectedViolations: 1 },
+	])(
+		'limits the sidebar entry exception to $fileName:$className',
+		({ fileName, className, expectedViolations }) => {
+			const project = new Project({ useInMemoryFileSystem: true });
+			const file = project.createSourceFile(
+				`${config.rootDir}/pages/${fileName}`,
+				`export class ${className} {
+				get container() { return this.page.getByTestId('instance-ai-container'); }
+				getNewThreadButton() {
+					return this.page.getByTestId('project-instance-ai-menu-item').getByRole('menuitem', { name: 'Assistant', exact: true });
+				}
+			}`,
+			);
+
+			expect(new ScopeLockdownRule().analyzeProject(project, [file])).toHaveLength(
+				expectedViolations,
+			);
+		},
+	);
+
+	test.each([
+		"this.page.getByTestId('instance-ai-send-button')",
+		'this.page.getByText(text, { exact: false })',
+		"this.page.getByRole('dialog')",
+		"this.page.getByRole('menuitem', { name: 'Other action', exact: true }).click()",
+		"this.page.getByTestId('instance-ai-thread-list').getByRole('button')",
+		"this.page.getByRole('dialog').getByTestId('input-panel')",
+		"this.page.getByTestId('tool-credential-picker-search').getByRole('textbox')",
+		"this.page.getByTestId('project-instance-ai-menu-item')",
+		"this.page.getByTestId('project-instance-ai-menu-item').getByRole('menuitem', { name: 'Other action', exact: true })",
+		"this.page.getByTestId('other-menu-item').getByRole('menuitem', { name: 'Assistant', exact: true })",
+		"this.page.getByTestId('project-instance-ai-menu-item').getByRole('menuitem', { name: 'Assistant', exact: true }).getByRole('button')",
+	])('reports an unscoped Assistant control: %s', (locator) => {
+		const project = new Project({ useInMemoryFileSystem: true });
+		const file = project.createSourceFile(
+			`${config.rootDir}/pages/InstanceAiPage.ts`,
+			`export class InstanceAiPage {
+				get container() { return this.page.getByTestId('instance-ai-container'); }
+				getControl() { return ${locator}; }
+			}`,
+		);
+
+		const violations = new ScopeLockdownRule().analyzeProject(project, [file]);
+		expect(violations).toHaveLength(1);
+		expect(violations[0].message).toContain('Unscoped locator');
+	});
+
+	test.each([
+		{ fileName: 'OtherPage.ts', className: 'InstanceAiPage' },
+		{ fileName: 'InstanceAiPage.ts', className: 'OtherPage' },
+	])('keeps external locators scoped to $fileName:$className', ({ fileName, className }) => {
+		const project = new Project({ useInMemoryFileSystem: true });
+		const file = project.createSourceFile(
+			`${config.rootDir}/pages/${fileName}`,
+			readFileSync(`${config.rootDir}/pages/InstanceAiPage.ts`, 'utf8').replace(
+				'export class InstanceAiPage',
+				`export class ${className}`,
+			),
+		);
+
+		const violations = new ScopeLockdownRule().analyzeProject(project, [file]);
+		expect(violations).toHaveLength(10);
+		expect(violations.every(({ message }) => message.includes('Unscoped locator'))).toBe(true);
+	});
+});
+
 describe('SidebarPage scope configuration', () => {
 	beforeEach(() => setConfig(config));
 	afterEach(() => resetConfig());
