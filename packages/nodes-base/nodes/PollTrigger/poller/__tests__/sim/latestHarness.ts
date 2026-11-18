@@ -234,6 +234,11 @@ export async function runLatest(poll: Poll, sc: LScenario): Promise<LResult> {
 				recs.map((x) => x.seq),
 			);
 		for (const x of recs) {
+			if (!baseline && !x.afterBaseline) {
+				if (!why.has('deletions') && firstPageKeys.size < Math.min(cfg.seenLimit, 5000))
+					fail('L2', `emitted baseline item #${x.seq}`, [x.seq]);
+				else log(`baseline #${x.seq} emitted (deletions or seen set exceeded)`, [x.seq]);
+			}
 			x.emits.push(p);
 			if (x.emits.length === 2) {
 				if (firstPageKeys.size < Math.min(cfg.seenLimit, 5000))
