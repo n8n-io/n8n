@@ -1324,6 +1324,15 @@ export interface InstanceAiCreatedPage {
 	projectId: string;
 }
 
+/** A page as the assistant reads it. `content` is Markdown. `updatedAt` is an ISO 8601 date. */
+export interface InstanceAiPage {
+	id: string;
+	title: string;
+	content: string;
+	projectId: string;
+	updatedAt: string;
+}
+
 export interface InstanceAiPageService {
 	/**
 	 * Creates a markdown page. Without a `projectId`, the page goes to the project of the thread.
@@ -1334,6 +1343,11 @@ export interface InstanceAiPageService {
 		content: string;
 		projectId?: string;
 	}): Promise<InstanceAiCreatedPage>;
+	/**
+	 * Reads a page from its id.
+	 * Fails when the page does not exist, or when the user cannot read pages in its project.
+	 */
+	getPage(pageId: string): Promise<InstanceAiPage>;
 }
 
 export interface InstanceAiAppService {
@@ -1806,7 +1820,7 @@ export interface InstanceAiContext {
 	aiPreferenceService?: InstanceAiPreferenceService;
 	skillService?: InstanceAiSkillService;
 	appService?: InstanceAiAppService;
-	/** Present only when the page module is active. Its absence hides the `create_page` tool. */
+	/** Present only when the page module is active. Its absence hides the `create_page` and `get_page` tools. */
 	pageService?: InstanceAiPageService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always

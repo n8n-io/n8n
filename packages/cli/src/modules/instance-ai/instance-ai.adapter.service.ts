@@ -3618,7 +3618,7 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	/** Returns the page writer of this run, or undefined when the page module is inactive. */
+	/** Returns the page reader and writer of this run, or undefined when the page module is inactive. */
 	private createPageAdapter(
 		user: User,
 		boundProjectId?: string,
@@ -3641,6 +3641,17 @@ export class InstanceAiAdapterService {
 					CreatePageDto.parse({ title, content }),
 				);
 				return { id: page.id, title: page.title, projectId: page.projectId };
+			},
+			getPage: async (pageId) => {
+				const { PageService } = await import('@n8n/backend-module-page');
+				const page = await Container.get(PageService).getReadablePage(user, pageId);
+				return {
+					id: page.id,
+					title: page.title,
+					content: page.content,
+					projectId: page.projectId,
+					updatedAt: page.updatedAt,
+				};
 			},
 		};
 	}

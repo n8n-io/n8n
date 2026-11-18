@@ -10,10 +10,17 @@ describe('system prompt: writing pages', () => {
 		expect(prompt).toContain('a link to the page');
 	});
 
+	it('tells the model to read a page before it answers, and to cite it as a link', () => {
+		const prompt = getSystemPrompt({ pageWritingEnabled: true });
+		expect(prompt).toContain('read the page with `get_page` before you answer');
+		expect(prompt).toContain('cite it as a Markdown link');
+	});
+
 	it('says nothing about writing pages when the feature is off', () => {
 		const prompt = getSystemPrompt({ pageWritingEnabled: false });
 		expect(prompt).not.toContain('## Writing Pages');
 		expect(prompt).not.toContain('create_page');
+		expect(prompt).not.toContain('get_page');
 	});
 
 	it('lists the page link format with the other resource links', () => {

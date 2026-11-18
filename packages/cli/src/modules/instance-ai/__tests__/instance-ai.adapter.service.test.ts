@@ -9611,6 +9611,58 @@ describe('createContext: pageService', () => {
 		await expect(context.pageService?.createPage({ title: ' ', content: '' })).rejects.toThrow();
 		expect(pages.createPage).not.toHaveBeenCalled();
 	});
+
+	it('reads a page that the user can read, with its content and its date', async () => {
+		const pages = mockPageModule(true);
+		pages.getReadablePage.mockResolvedValue({
+			id: 'page-1',
+			projectId: 'project-2',
+			title: 'Orders runbook',
+			content: 'Rotate the API key first.',
+			version: 3,
+			createdAt: '2026-01-01T00:00:00.000Z',
+			updatedAt: '2026-02-01T00:00:00.000Z',
+		});
+		const { context, mockUser } = createDataTableAdapterForTests({ projectId: 'project-1' });
+
+		const page = await context.pageService?.getPage('page-1');
+
+		expect(pages.getReadablePage).toHaveBeenCalledWith(mockUser, 'page-1');
+		expect(page).toEqual({
+			id: 'page-1',
+			title: 'Orders runbook',
+			content: 'Rotate the API key first.',
+			projectId: 'project-2',
+			updatedAt: '2026-02-01T00:00:00.000Z',
+		});
+	});
+
+	it('reads a page on a read-only instance', async () => {
+		const pages = mockPageModule(true);
+		pages.getReadablePage.mockResolvedValue({
+			id: 'page-1',
+			projectId: 'project-1',
+			title: 'Orders runbook',
+			content: '',
+			version: 1,
+			createdAt: '2026-01-01T00:00:00.000Z',
+			updatedAt: '2026-01-01T00:00:00.000Z',
+		});
+		const { context } = createDataTableAdapterForTests({
+			projectId: 'project-1',
+			branchReadOnly: true,
+		});
+
+		await expect(context.pageService?.getPage('page-1')).resolves.toMatchObject({ id: 'page-1' });
+	});
+
+	it('passes on the refusal of a page that the user cannot read', async () => {
+		const pages = mockPageModule(true);
+		pages.getReadablePage.mockRejectedValue(new Error('Page not found'));
+		const { context } = createDataTableAdapterForTests({ projectId: 'project-1' });
+
+		await expect(context.pageService?.getPage('page-9')).rejects.toThrow('Page not found');
+	});
 });
 
 describe('createContext: appService', () => {

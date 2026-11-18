@@ -85,6 +85,10 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('create_page')).toBe('file-text');
 	});
 
+	test('returns the page icon for get_page', () => {
+		expect(getToolIcon('get_page')).toBe('file-text');
+	});
+
 	test('returns share for resolve_integration', () => {
 		expect(getToolIcon('resolve_integration')).toBe('share');
 	});

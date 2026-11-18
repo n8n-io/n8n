@@ -101,7 +101,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `agent-context` | 13 lookup types |
 | `skills` | 5 |
 | `apps` | 6 |
-| `workflow_builder_build_workflow`, `ask_user`, `create_page`, `parse-file`, `search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
+| `workflow_builder_build_workflow`, `ask_user`, `create_page`, `get_page`, `parse-file`, `search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
 
 ## Orchestration Tools
 
@@ -1392,6 +1392,30 @@ so the page shows on the resource that it links:
 The description carries these formats and the structure of a workflow page. The
 system prompt carries the judgment of *when* to call it (see
 `getPageWritingSection` in `agent/system-prompt.ts`).
+
+---
+
+## `get_page` *(conditional)*
+
+Read a Markdown page. Present only when the page module is active (the adapter
+wires `pageService`). Always loaded, so that the model reads a page that a
+message links in one call.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `page` | string | yes | Page id, or the instance-relative path `/page/<pageId>` |
+
+**Returns**: `{ pageId, title, content, projectId, updatedAt, url }`. `content`
+is Markdown. `url` is the instance-relative path `/page/<pageId>`. The model
+cites the page with it.
+
+The tool only reads. The adapter requires the `page:read` scope in the project
+of the page. A thread that is bound to a project can read a page of another
+project. A page that does not exist and a page that the user cannot read give
+the same not-found error.
+
+The system prompt tells the model to read a page before it answers a question
+about it (see `getPageWritingSection` in `agent/system-prompt.ts`).
 
 ---
 
