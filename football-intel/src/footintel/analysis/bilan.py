@@ -74,9 +74,13 @@ def settle(key: str, hg: int, ag: int, goals: list[str] | None) -> int | None:
     # DC1UP / DC2UP: the double chance on the final score, or a covered side leading by `need`.
     if res in sel:
         return 1
+    covered = {"1X": "H", "X2": "A", "12": "HA"}[sel]
+    # A side can never lead by more goals than it scored: without the goal order, the final
+    # score alone settles the leg when no covered side scored `need` goals (e.g. 1-1 for 2UP).
+    if all((hg if s == "H" else ag) < need for s in covered):
+        return 0
     if goals is None or len(goals) != hg + ag:
         return None
-    covered = {"1X": "H", "X2": "A", "12": "HA"}[sel]
     return int(any(_best_lead(goals, s) >= need for s in covered))
 
 

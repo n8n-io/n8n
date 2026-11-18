@@ -1101,6 +1101,9 @@ def test_bilan_settles_every_ticket_market():
     assert settle("1UP_1", 1, 2, ["H", "A", "A"]) == 1  # led 1-0, paid early
     assert settle("2UP_1", 2, 2, ["H", "H", "A", "A"]) == 1 and settle("2UP_1", 2, 2, ["H", "A", "H", "A"]) == 0
     assert settle("DC1UP_X2", 2, 1, ["A", "H", "H"]) == 1 and settle("DC2UP_X2", 2, 1, ["A", "H", "H"]) == 0
+    # D88: without the goal order, a side that never scored enough goals cannot have led enough.
+    assert settle("DC2UP_12", 1, 1, None) == 0 and settle("DC1UP_X2", 3, 0, None) == 0
+    assert settle("DC1UP_X2", 1, 0, None) == 0 and settle("DC1UP_X2", 2, 1, None) is None
 
 
 def test_lecture_keeps_checked_texts_and_rejects_invented_figures(tmp_path):
