@@ -1,4 +1,4 @@
-import type { RunAgentPublicDto } from '@n8n/api-types';
+import type { RunAgentPublicDto, StoppedAgentExecutionPublicDto } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NotFoundError, UnexpectedError, UnprocessableRequestError } from '@n8n/errors';
@@ -85,7 +85,11 @@ export class AgentPublicRunService {
 		};
 	}
 
-	async stop(user: User, agentId: string, executionId: string) {
+	async stop(
+		user: User,
+		agentId: string,
+		executionId: string,
+	): Promise<StoppedAgentExecutionPublicDto> {
 		const execution = await this.executionRepository.findExecution(executionId);
 		if (!execution) throw new NotFoundError('Not Found');
 

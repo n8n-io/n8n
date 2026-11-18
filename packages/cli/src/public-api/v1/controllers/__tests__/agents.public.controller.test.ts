@@ -682,7 +682,7 @@ describe('AgentsPublicController run and stop', () => {
 	});
 
 	it('delegates a stop to the public run service', async () => {
-		const body = { executionId: 'execution-1', status: 'cancel_requested' };
+		const body = { executionId: 'execution-1', status: 'cancel_requested' as const };
 		agentPublicRunService.stop.mockResolvedValue(body);
 
 		await expect(controller.stopAgentExecution(req, res, 'agent-1', 'execution-1')).resolves.toBe(
