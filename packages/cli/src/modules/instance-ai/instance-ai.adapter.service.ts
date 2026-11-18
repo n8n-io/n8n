@@ -1890,6 +1890,7 @@ export class InstanceAiAdapterService {
 					nodes: [] as INode[],
 					connections: {},
 					settings,
+					// oxlint-disable-next-line typescript/no-deprecated -- Initialize the legacy active column for the unpublished workflow.
 					active: false,
 					versionId: randomUUID(),
 				} as Partial<WorkflowEntity>);

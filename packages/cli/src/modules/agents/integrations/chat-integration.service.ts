@@ -1263,7 +1263,7 @@ export class ChatIntegrationService {
 		// The `chat` variable is returned by `new Chat(...)` from the ESM-only
 		// package. Its runtime shape matches our local `ChatInstance` interface.
 		// We validate the required methods exist before storing.
-		return { chat: chat as ChatInstance, bridge };
+		return { chat, bridge };
 	}
 
 	private async createChatBridge(
