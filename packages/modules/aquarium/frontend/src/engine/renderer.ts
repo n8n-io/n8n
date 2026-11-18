@@ -15,6 +15,35 @@ const WATER = ['#0aa5bd', '#0b76bd', '#04454f'];
 const BAYER_4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 /** Above 1, the light water reaches deeper before it turns dark. */
 const WATER_DEPTH_CURVE = 1.6;
+/** Sun through the surface: diagonal bands from the top left that fade with depth. */
+const LIGHT_RAYS = {
+	/** Left edge of each ray at the surface, and its width, as shares of the tank width. */
+	rays: [
+		{ at: 0.06, width: 0.035 },
+		{ at: 0.13, width: 0.055 },
+		{ at: 0.22, width: 0.025 },
+	],
+	/** Pixels to the right for each pixel down. */
+	slope: 0.55,
+	alpha: 0.16,
+	/** Alpha steps, so the fade is banded like the dithered water, not smooth. */
+	steps: 4,
+	pulseSeconds: 9,
+} as const;
+/** The bright, moving line at the top of the water. */
+const SURFACE = {
+	crest: 'rgba(255, 255, 255, 0.8)',
+	foam: 'rgba(186, 239, 238, 0.35)',
+	/** Pixels of foam above the crest at rest. */
+	depth: 2,
+} as const;
+/** Two slow waves of different lengths, so the crest never repeats the same shape. */
+function surfaceCrestAt(x: number, time: number): number {
+	return Math.round(
+		SURFACE.depth + Math.sin(x * 0.19 + time * 1.4) * 1.1 + Math.sin(x * 0.053 - time * 0.7) * 1.2,
+	);
+}
+
 const SAND = { base: '#d9bd7f', speck: '#c2a160', light: '#ead29b' };
 const SEAWEED = ['#2f8f4e', '#3fa65c', '#267a42'];
 const AMBIENT_BUBBLE = 'rgba(220, 240, 255, 0.6)';
@@ -60,6 +89,9 @@ export class AquariumRenderer {
 	/** Keyed by tank size, so tanks of the same size share one background. */
 	private readonly backgrounds = new Map<string, HTMLCanvasElement>();
 
+	/** Light rays, keyed by tank size like the backgrounds. Drawn each frame with a slow pulse. */
+	private readonly lightRays = new Map<string, HTMLCanvasElement>();
+
 	private readonly plantsByTank = new Map<string, Plant[]>();
 
 	private readonly propsByTank = new Map<string, PlacedProp[]>();
@@ -95,6 +127,7 @@ export class AquariumRenderer {
 			sizeKeys.add(key);
 			tankIds.add(region.id);
 			if (!this.backgrounds.has(key)) this.backgrounds.set(key, this.drawBackground(region.bounds));
+			if (!this.lightRays.has(key)) this.lightRays.set(key, this.drawLightRays(region.bounds));
 			this.plantsByTank.set(region.id, this.layoutPlants(region.bounds, region.id));
 			this.propsByTank.set(region.id, layoutProps(region.bounds, region.id));
 
@@ -107,6 +140,7 @@ export class AquariumRenderer {
 			tankIds.add(frameKey);
 		}
 		for (const key of this.backgrounds.keys()) if (!sizeKeys.has(key)) this.backgrounds.delete(key);
+		for (const key of this.lightRays.keys()) if (!sizeKeys.has(key)) this.lightRays.delete(key);
 		for (const id of this.plantsByTank.keys()) if (!tankIds.has(id)) this.plantsByTank.delete(id);
 		for (const id of this.propsByTank.keys()) if (!tankIds.has(id)) this.propsByTank.delete(id);
 		for (const key of this.framesByTank.keys())
@@ -171,8 +205,15 @@ export class AquariumRenderer {
 		view: { left: number; right: number; top: number; bottom: number },
 	): void {
 		const ctx = this.ctx;
-		const background = this.backgrounds.get(`${region.bounds.width}x${region.bounds.height}`);
+		const sizeKey = `${region.bounds.width}x${region.bounds.height}`;
+		const background = this.backgrounds.get(sizeKey);
 		if (background) ctx.drawImage(background, 0, 0);
+		const rays = this.lightRays.get(sizeKey);
+		if (rays) {
+			ctx.globalAlpha = 0.75 + 0.25 * Math.sin((time * 2 * Math.PI) / LIGHT_RAYS.pulseSeconds);
+			ctx.drawImage(rays, 0, 0);
+			ctx.globalAlpha = 1;
+		}
 		this.drawProps(
 			region.bounds,
 			this.propsByTank.get(region.id) ?? [],
@@ -186,6 +227,7 @@ export class AquariumRenderer {
 			view.right + CULL_MARGIN,
 		);
 		this.drawAmbientBubbles(region.bounds, time);
+		this.drawSurface(region.bounds, time, view.left, view.right);
 
 		for (const creature of creatures) {
 			const visible =
@@ -292,6 +334,39 @@ export class AquariumRenderer {
 
 		this.spriteCache.set(cacheKey, frames);
 		return frames;
+	}
+
+	private drawLightRays(bounds: TankBounds): HTMLCanvasElement {
+		const canvas = createCanvas(bounds.width, bounds.height);
+		const ctx = context2d(canvas);
+		ctx.fillStyle = '#ffffff';
+		for (const ray of LIGHT_RAYS.rays) {
+			const left = bounds.width * ray.at;
+			const width = Math.max(2, Math.round(bounds.width * ray.width));
+			for (let y = 0; y < bounds.floor; y++) {
+				const fade = 1 - y / bounds.floor;
+				// Banded alpha keeps the fade in a few flat steps, like pixel art.
+				ctx.globalAlpha =
+					(LIGHT_RAYS.alpha * Math.ceil(fade * LIGHT_RAYS.steps)) / LIGHT_RAYS.steps;
+				ctx.fillRect(Math.round(left + y * LIGHT_RAYS.slope), y, width, 1);
+			}
+		}
+		return canvas;
+	}
+
+	/** A moving crest with a little foam above it. Drawn only for the visible columns. */
+	private drawSurface(bounds: TankBounds, time: number, fromX: number, toX: number): void {
+		const ctx = this.ctx;
+		const start = Math.max(0, Math.floor(fromX));
+		const end = Math.min(bounds.width, Math.ceil(toX));
+
+		ctx.fillStyle = SURFACE.foam;
+		for (let x = start; x < end; x++) {
+			const crest = surfaceCrestAt(x, time);
+			if (crest > 0) ctx.fillRect(x, 0, 1, crest);
+		}
+		ctx.fillStyle = SURFACE.crest;
+		for (let x = start; x < end; x++) ctx.fillRect(x, Math.max(0, surfaceCrestAt(x, time)), 1, 1);
 	}
 
 	private drawBackground(bounds: TankBounds): HTMLCanvasElement {
