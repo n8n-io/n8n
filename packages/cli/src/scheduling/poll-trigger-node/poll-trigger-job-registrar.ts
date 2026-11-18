@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ScheduledJobMisfirePolicy } from '@n8n/constants';
+import { PollerStateRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { DesiredJob, Schedule } from '@n8n/scheduler';
 import { computeFirstRunAt } from '@n8n/scheduler';
@@ -34,6 +35,7 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 		private readonly jobProvisioner: DurableJobProvisioner,
 		private readonly pollBackoffService: PollBackoffService,
 		private readonly owner: WorkflowScheduledJobOwner,
+		private readonly pollerStateRepository: PollerStateRepository,
 	) {
 		super();
 		this.defaultTimezone = globalConfig.generic.timezone;
@@ -115,6 +117,10 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 	/** Delete the node's poll jobs on deactivation. No-op when none exist. */
 	async remove(workflowId: string, nodeId: string): Promise<void> {
 		await this.jobProvisioner.deprovisionOwnerMember(this.owner.member(workflowId, nodeId));
+	}
+
+	async removeCursor(workflowId: string, nodeId: string): Promise<void> {
+		await this.pollerStateRepository.deleteNodeCursor(workflowId, nodeId);
 	}
 
 	/**

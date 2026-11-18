@@ -155,6 +155,15 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		return result.affected ?? 0;
 	}
 
+	/** Removes the node's stored cursor row. No-op when the node has none. */
+	async deleteNodeCursor(
+		workflowId: string,
+		nodeId: string,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.managerFor(ctx).delete(PollerState, { workflowId, nodeId });
+	}
+
 	/** The node's cursor plus failure counters, or `null` if it has no stored row. */
 	async findState(
 		workflowId: string,

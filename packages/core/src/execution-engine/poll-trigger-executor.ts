@@ -122,10 +122,10 @@ export class PollTriggerExecutor {
 
 							if (pollResponse !== null) {
 								pollFunctions.__emit(pollResponse);
-							} else if (!testingTrigger) {
+							} else if (!testingTrigger || this.persistsActivationCursor(workflow, node)) {
 								// A poll with no items may still have moved its cursor, committed here
 								// on its own. Left out for the activation poll, which persists nothing
-								// when it emits nothing.
+								// when it emits nothing, unless the node type opts in.
 								try {
 									await commitStagedCursor(pollFunctions);
 								} catch (error) {
@@ -170,5 +170,10 @@ export class PollTriggerExecutor {
 				},
 			);
 		};
+	}
+
+	private persistsActivationCursor(workflow: Workflow, node: INode) {
+		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		return nodeType?.description.persistActivationCursor === true;
 	}
 }

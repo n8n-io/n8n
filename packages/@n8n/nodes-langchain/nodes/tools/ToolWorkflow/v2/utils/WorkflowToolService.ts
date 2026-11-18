@@ -20,6 +20,7 @@ import type {
 	ResourceMapperValue,
 } from 'n8n-workflow';
 import {
+	getToolExpressionVariables,
 	jsonParse,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -124,6 +125,7 @@ export class WorkflowToolService {
 					context = this.baseContext.cloneWith({
 						runIndex: localRunIndex,
 						inputData: [[{ json: { query } }]],
+						expressionVariables: getToolExpressionVariables(query),
 					});
 				}
 

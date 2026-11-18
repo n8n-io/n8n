@@ -16,6 +16,7 @@ import type {
 	IRunExecutionData,
 	ISupplyDataFunctions,
 	ITaskDataConnections,
+	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
 	NodeConnectionType,
 	NodeOutput,
@@ -27,6 +28,7 @@ import {
 	ExecutionBaseError,
 	NodeConnectionTypes,
 	NodeOperationError,
+	getToolExpressionVariables,
 	isHitlToolType,
 } from 'n8n-workflow';
 import { UnexpectedError, UserError } from '@n8n/errors';
@@ -34,7 +36,7 @@ import z, { ZodType } from 'zod';
 
 import { StructuredToolkit, type SupplyDataToolResponse } from './ai-tool-types';
 import { createNodeAsTool, getSchema } from './create-node-as-tool';
-import type { ExecuteContext, WebhookContext } from '../../node-execution-context';
+import type { ExecuteContext, PollContext, WebhookContext } from '../../node-execution-context';
 import type { SupplyDataContext } from '../../node-execution-context/supply-data-context';
 import { isEngineRequest } from '../../requests-response';
 
@@ -232,7 +234,10 @@ function mapResult(result?: NodeOutput) {
 }
 
 export function makeHandleToolInvocation(
-	contextFactory: (runIndex: number) => ISupplyDataFunctions,
+	contextFactory: (
+		runIndex: number,
+		expressionVariables?: IWorkflowDataProxyAdditionalKeys,
+	) => ISupplyDataFunctions,
 	node: INode,
 	nodeType: INodeType,
 	runExecutionData: IRunExecutionData,
@@ -261,7 +266,7 @@ export function makeHandleToolInvocation(
 		for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
 			// Increment the runIndex for the next invocation
 			const localRunIndex = runIndex++;
-			const context = contextFactory(localRunIndex);
+			const context = contextFactory(localRunIndex, getToolExpressionVariables(toolArgs));
 
 			// Get abort signal from context for cancellation support
 			const abortSignal = context.getExecutionCancelSignal?.();
@@ -340,7 +345,7 @@ export function makeHandleToolInvocation(
 }
 
 function validateInputConfiguration(
-	context: ExecuteContext | WebhookContext | SupplyDataContext,
+	context: ExecuteContext | WebhookContext | PollContext | SupplyDataContext,
 	connectionType: NodeConnectionType,
 	nodeInputs: INodeInputConfiguration[],
 	connectedNodes: INode[],
@@ -392,7 +397,7 @@ export function extendResponseMetadata(response: unknown, connectedNode: INode) 
 }
 
 export async function getInputConnectionData(
-	this: ExecuteContext | WebhookContext | SupplyDataContext,
+	this: ExecuteContext | WebhookContext | PollContext | SupplyDataContext,
 	supplyDataContextClass: typeof SupplyDataContext,
 	workflow: Workflow,
 	runExecutionData: IRunExecutionData,
@@ -471,7 +476,11 @@ export async function getInputConnectionData(
 			connectedNode.type,
 			connectedNode.typeVersion,
 		);
-		const contextFactory = (runIndex: number, inputData: ITaskDataConnections) =>
+		const contextFactory = (
+			runIndex: number,
+			inputData: ITaskDataConnections,
+			expressionVariables?: IWorkflowDataProxyAdditionalKeys,
+		) =>
 			new supplyDataContextClass(
 				workflow,
 				connectedNode,
@@ -486,6 +495,7 @@ export async function getInputConnectionData(
 				closeFunctions,
 				abortSignal,
 				parentNode,
+				expressionVariables,
 			);
 
 		if (!connectedNodeType.supplyData) {
@@ -494,7 +504,7 @@ export async function getInputConnectionData(
 					node: connectedNode,
 					nodeType: connectedNodeType,
 					handleToolInvocation: makeHandleToolInvocation(
-						(i) => contextFactory(i, {}),
+						(i, expressionVariables) => contextFactory(i, {}, expressionVariables),
 						connectedNode,
 						connectedNodeType,
 						runExecutionData,

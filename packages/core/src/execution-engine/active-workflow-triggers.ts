@@ -426,6 +426,18 @@ export class ActiveWorkflowTriggers {
 							`Could not deprovision scheduled job of workflow "${workflowId}" node "${node.id}" after failed activation because of error: "${reportedError.message}"`,
 						);
 					}
+					const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+					if (nodeType?.description.persistActivationCursor === true) {
+						try {
+							await pollJobManager.removeCursor(workflowId, node.id);
+						} catch (removeError) {
+							const reportedError = ensureError(removeError);
+							this.errorReporter.error(reportedError, { extra: { workflowId, nodeId: node.id } });
+							this.logger.error(
+								`Could not remove poll cursor of workflow "${workflowId}" node "${node.id}" after failed activation because of error: "${reportedError.message}"`,
+							);
+						}
+					}
 					throw error;
 				}
 			}

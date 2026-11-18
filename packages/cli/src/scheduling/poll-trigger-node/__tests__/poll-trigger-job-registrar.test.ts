@@ -2,6 +2,7 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { GlobalConfig } from '@n8n/config';
+import type { PollerStateRepository } from '@n8n/db';
 import type { CronDefinition } from '@n8n/scheduler';
 import type { CronExpression, INode, TriggerTime } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -49,6 +50,7 @@ describe('PollTriggerJobRegistrar', () => {
 			jobProvisioner,
 			pollBackoffService,
 			owner,
+			mock<PollerStateRepository>(),
 		);
 
 	const lastRequest = () => jobProvisioner.provision.mock.calls.at(-1)![0];

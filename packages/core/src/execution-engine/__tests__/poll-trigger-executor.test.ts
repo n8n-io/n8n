@@ -1,5 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
-import type { INode, INodeExecutionData, IPollFunctions, Workflow } from 'n8n-workflow';
+import type {
+	INode,
+	INodeExecutionData,
+	INodeType,
+	INodeTypes,
+	IPollFunctions,
+	Workflow,
+} from 'n8n-workflow';
 import { LoggerProxy } from 'n8n-workflow';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import type { Mock } from 'vitest';
@@ -28,6 +35,7 @@ describe('PollTriggerExecutor', () => {
 	let workflow: Workflow;
 	let acquireIsolate: Mock;
 	let releaseIsolate: Mock;
+	let nodeTypes: ReturnType<typeof mock<INodeTypes>>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -35,7 +43,8 @@ describe('PollTriggerExecutor', () => {
 		pollFunctions.__runPoll.mockImplementation(async (poll) => await poll());
 		acquireIsolate = vi.fn().mockResolvedValue(undefined);
 		releaseIsolate = vi.fn().mockResolvedValue(undefined);
-		workflow = mock<Workflow>({ id: 'wf-id', name: 'My Workflow' });
+		nodeTypes = mock<INodeTypes>();
+		workflow = mock<Workflow>({ id: 'wf-id', name: 'My Workflow', nodeTypes });
 		// @ts-expect-error -- minimal expression stub for isolate-acquisition tests
 		workflow.expression = { acquireIsolate, releaseIsolate };
 		executor = new PollTriggerExecutor(logger, triggersAndPollers, tracing, errorReporter);
@@ -228,6 +237,7 @@ describe('PollTriggerExecutor', () => {
 					testingTrigger: boolean;
 					poll: (supersede: () => void) => Promise<INodeExecutionData[][] | null>;
 					commits: number;
+					persistActivationCursor?: boolean;
 				},
 			]
 		> = [
@@ -264,22 +274,41 @@ describe('PollTriggerExecutor', () => {
 				'commits nothing for an empty activation poll',
 				{ testingTrigger: true, poll: async () => null, commits: 0 },
 			],
+			[
+				'commits on its own for an empty activation poll when the node type persists its activation cursor',
+				{ testingTrigger: true, poll: async () => null, commits: 1, persistActivationCursor: true },
+			],
+			[
+				'commits nothing for an empty activation poll when the node type does not persist its activation cursor',
+				{
+					testingTrigger: true,
+					poll: async () => null,
+					commits: 0,
+					persistActivationCursor: false,
+				},
+			],
 		];
 
-		it.each(cases)('%s', async (_name, { testingTrigger, poll, commits }) => {
-			let isCurrent = true;
-			triggersAndPollers.runPollFunction.mockImplementationOnce(
-				async () =>
-					await poll(() => {
-						isCurrent = false;
-					}),
-			);
+		it.each(cases)(
+			'%s',
+			async (_name, { testingTrigger, poll, commits, persistActivationCursor }) => {
+				nodeTypes.getByNameAndVersion.mockReturnValue(
+					mock<INodeType>({ description: { persistActivationCursor } }),
+				);
+				let isCurrent = true;
+				triggersAndPollers.runPollFunction.mockImplementationOnce(
+					async () =>
+						await poll(() => {
+							isCurrent = false;
+						}),
+				);
 
-			const execute = executor.create(workflow, node, pollFunctions, () => isCurrent);
-			await execute(testingTrigger);
+				const execute = executor.create(workflow, node, pollFunctions, () => isCurrent);
+				await execute(testingTrigger);
 
-			expect(pollFunctions.__commitCursor).toHaveBeenCalledTimes(commits);
-		});
+				expect(pollFunctions.__commitCursor).toHaveBeenCalledTimes(commits);
+			},
+		);
 	});
 
 	describe('staged cursor scope', () => {
