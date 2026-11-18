@@ -37,16 +37,13 @@ or be swapped for another backend, without a change to any consumer.
 1. **Consumers call the `LeaseProvider` directly.** We rejected it because consumers would be
    coupled to the backend contract. A change to the backend, or a swap to another backend, would
    reach every consumer.
-2. **Each backend checks kinds and applies defaults.** We rejected it because each backend would
-   repeat the rules. A consumer would get different behaviour from different backends.
 
 ## Consequences
 
 1. A backend gets only valid names and valid, complete options. It does not check them again.
-2. A change to the name rule or to a default changes one class.
-3. `LeaseService` rejects a call for a kind that is not registered, before the call reaches the
+2. `LeaseService` rejects a call for a kind that is not registered, before the call reaches the
    backend.
-4. `LeaseService` keeps the registered kinds in memory. Each process registers its kinds when it
+3. `LeaseService` keeps the registered kinds in memory. Each process registers its kinds when it
    starts.
 
 ## Links
