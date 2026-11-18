@@ -115,9 +115,17 @@ export async function fetchProjectWithMembers(
 	return await getProject(context, projectId);
 }
 
+// The agents and skills modules own the endpoints below. The Team section stores each team
+// member as a normal agent, so it uses the same endpoints as the agent editor
+// (`editor-ui/src/features/agents/composables/useAgentApi.ts`).
+
+function agentsPath(projectId: string) {
+	return `/projects/${projectId}/agents/v2`;
+}
+
 export type TaskBoardAgentListItem = Pick<AgentListItemDto, 'id' | 'name' | 'isArchived'>;
 
-/** The agents of a project. The agents module owns the endpoint. */
+/** The agents of a project. */
 export async function fetchProjectAgents(
 	context: IRestApiContext,
 	projectId: string,
@@ -125,18 +133,10 @@ export async function fetchProjectAgents(
 	const { data } = await getFullApiResponse<TaskBoardAgentListItem[]>(
 		context,
 		'GET',
-		`/projects/${projectId}/agents/v2`,
+		agentsPath(projectId),
 		{ offset: 0, limit: AGENTS_PAGE_LIMIT },
 	);
 	return data;
-}
-
-// The agents and skills modules own the endpoints below. The Team section stores each team
-// member as a normal agent, so it uses the same endpoints as the agent editor
-// (`editor-ui/src/features/agents/composables/useAgentApi.ts`).
-
-function agentsPath(projectId: string) {
-	return `/projects/${projectId}/agents/v2`;
 }
 
 /** One agent with its draft config and its publish state. */

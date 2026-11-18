@@ -83,6 +83,8 @@ export function useAssigneeOptions(projectId: MaybeRefOrGetter<string | undefine
 		})),
 	);
 
+	const options = computed(() => [...peopleOptions.value, ...agentOptions.value]);
+
 	const items = computed<SelectItem[]>(() => {
 		const result: SelectItem[] = [
 			{ value: UNASSIGNED_VALUE, label: i18n.baseText('taskBoard.assignee.unassigned') },
@@ -111,10 +113,7 @@ export function useAssigneeOptions(projectId: MaybeRefOrGetter<string | undefine
 	function itemsFor(current: TaskBoardAssigneeRef | null): SelectItem[] {
 		if (!current) return items.value;
 		const value = encodeAssignee(current);
-		const known = [...peopleOptions.value, ...agentOptions.value].some(
-			(option) => option.value === value,
-		);
-		if (known) return items.value;
+		if (options.value.some((option) => option.value === value)) return items.value;
 		return [
 			...items.value,
 			{ value, label: current.name, icon: current.type === 'user' ? 'user' : 'bot' },
@@ -123,10 +122,7 @@ export function useAssigneeOptions(projectId: MaybeRefOrGetter<string | undefine
 
 	/** The display name of an encoded assignee, for an optimistic update. */
 	function labelFor(value: string): string {
-		return (
-			[...peopleOptions.value, ...agentOptions.value].find((option) => option.value === value)
-				?.label ?? ''
-		);
+		return options.value.find((option) => option.value === value)?.label ?? '';
 	}
 
 	return { items, people, agents, load, itemsFor, labelFor };

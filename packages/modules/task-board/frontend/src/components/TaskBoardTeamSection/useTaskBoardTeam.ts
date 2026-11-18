@@ -1,14 +1,14 @@
 import { useToast } from '@n8n/composables/useToast';
 import { AGENT_BUILDER_VIEW } from '@n8n/frontend-constants/agents';
-import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
-import { getResourcePermissions } from '@n8n/permissions';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 
 import { useAssigneeOptions } from '../../composables/useAssigneeOptions';
+import { useProjectResourcePermissions } from '../../composables/useProjectResourcePermissions';
 import {
 	createAgent,
 	fetchAgent,
@@ -24,12 +24,6 @@ import type {
 } from '../../task-board.types';
 import { applyFormValues, emptyConfig, toFormValues, toTeamAgent } from './team.utils';
 
-export type TeamPerson = ReturnType<typeof useAssigneeOptions>['people']['value'][number];
-
-function errorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
-
 /**
  * The team of a project: its members and its agents. Each agent is a normal agent of the
  * agents module. Saving an agent also publishes it, because the board dispatcher runs the
@@ -40,7 +34,7 @@ export function useTaskBoardTeam(projectId: MaybeRefOrGetter<string | undefined>
 	const settingsStore = useSettingsStore();
 	const toast = useToast();
 	const i18n = useI18n();
-	const permissions = capabilityRegistry.use(capabilities.projectPermissions);
+	const { permissionsFor } = useProjectResourcePermissions();
 	const members = useAssigneeOptions(projectId);
 
 	const details = ref<TaskBoardAgentDetail[]>([]);
@@ -51,16 +45,11 @@ export function useTaskBoardTeam(projectId: MaybeRefOrGetter<string | undefined>
 	const publishErrors = ref<Record<string, string>>({});
 
 	const agentsEnabled = computed(() => settingsStore.isAgentsEnabled);
-	const people = computed<TeamPerson[]>(() => members.people.value);
 	const agents = computed<TeamAgent[]>(() =>
 		details.value.map((detail) => toTeamAgent(detail, publishErrors.value[detail.id] ?? null)),
 	);
 
-	const agentPermissions = computed(() => {
-		const id = toValue(projectId);
-		if (!id || permissions.isReadOnly()) return undefined;
-		return getResourcePermissions(permissions.scopesFor(id)).agent;
-	});
+	const agentPermissions = computed(() => permissionsFor(toValue(projectId))?.agent);
 	const canAddAgent = computed(
 		() => agentsEnabled.value && agentPermissions.value?.create === true,
 	);
@@ -138,7 +127,7 @@ export function useTaskBoardTeam(projectId: MaybeRefOrGetter<string | undefined>
 			publishErrors.value = rest;
 			return true;
 		} catch (error) {
-			publishErrors.value = { ...publishErrors.value, [agentId]: errorMessage(error) };
+			publishErrors.value = { ...publishErrors.value, [agentId]: getErrorMessage(error) };
 			return false;
 		}
 	}
@@ -214,7 +203,7 @@ export function useTaskBoardTeam(projectId: MaybeRefOrGetter<string | undefined>
 
 	return {
 		agentsEnabled,
-		people,
+		people: members.people,
 		agents,
 		loadingAgents,
 		saving,

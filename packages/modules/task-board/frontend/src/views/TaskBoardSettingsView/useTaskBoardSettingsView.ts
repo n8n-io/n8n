@@ -1,13 +1,12 @@
 import { useToast } from '@n8n/composables/useToast';
 import { useMessage } from '@n8n/design-system';
-import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
-import { getResourcePermissions } from '@n8n/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { storeToRefs } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
+import { useProjectResourcePermissions } from '../../composables/useProjectResourcePermissions';
 import { deleteTaskBoard } from '../../task-board.api';
 import { TASK_BOARDS_VIEW } from '../../task-board.constants';
 import { useTaskBoardStore } from '../../task-board.store';
@@ -20,16 +19,14 @@ export function useTaskBoardSettingsView() {
 	const toast = useToast();
 	const message = useMessage();
 	const i18n = useI18n();
-	const permissions = capabilityRegistry.use(capabilities.projectPermissions);
+	const { permissionsFor } = useProjectResourcePermissions();
 
 	const deleting = ref(false);
 
 	// The endpoint needs the workflow delete scope, as a board owns a workflow.
-	const canDelete = computed(() => {
-		if (!board.value || permissions.isReadOnly()) return false;
-		const scopes = permissions.scopesFor(board.value.projectId);
-		return getResourcePermissions(scopes).workflow?.delete === true;
-	});
+	const canDelete = computed(
+		() => permissionsFor(board.value?.projectId)?.workflow?.delete === true,
+	);
 
 	/** Asks first. After the delete, the Tasks area opens another board. */
 	async function deleteBoard() {

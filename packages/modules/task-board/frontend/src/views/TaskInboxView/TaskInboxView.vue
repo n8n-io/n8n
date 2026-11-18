@@ -2,12 +2,14 @@
 import { N8nEmptyState, N8nHeading, N8nScrollArea, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
-import { useTaskInboxView } from './useTaskInboxView';
 import TaskCard from '../../components/TaskCard/TaskCard.vue';
 import TaskPanelLayout from '../../components/TaskPanelLayout/TaskPanelLayout.vue';
+import { useTaskInbox } from '../../composables/useTaskInbox';
+import { useTaskSelection } from '../../composables/useTaskSelection';
 
 const i18n = useI18n();
-const { tasks, selectedTaskId, selectTask } = useTaskInboxView();
+const { tasks } = useTaskInbox();
+const { selectedTaskId, selectTask } = useTaskSelection();
 </script>
 
 <template>

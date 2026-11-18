@@ -2,12 +2,12 @@ import type { TaskBoardSummary } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
-import { getResourcePermissions } from '@n8n/permissions';
 import type { ProjectSharingData } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, toValue, type MaybeRefOrGetter } from 'vue';
 import { useRouter } from 'vue-router';
 
+import { useProjectResourcePermissions } from './useProjectResourcePermissions';
 import {
 	createTaskBoardFromTemplate,
 	fetchAllTaskBoards,
@@ -26,6 +26,7 @@ export function useTaskBoards(projectId: MaybeRefOrGetter<string | undefined>) {
 	const i18n = useI18n();
 	const router = useRouter();
 	const permissions = capabilityRegistry.use(capabilities.projectPermissions);
+	const { permissionsFor } = useProjectResourcePermissions();
 
 	const boards = ref<TaskBoardSummary[]>([]);
 	const projects = ref<ProjectSharingData[]>([]);
@@ -42,11 +43,9 @@ export function useTaskBoards(projectId: MaybeRefOrGetter<string | undefined>) {
 	);
 
 	// A board owns a dispatcher workflow, so creating one needs the workflow create scope.
-	const canCreate = computed(() => {
-		const id = targetProjectId.value;
-		if (!id || permissions.isReadOnly()) return false;
-		return getResourcePermissions(permissions.scopesFor(id)).workflow?.create === true;
-	});
+	const canCreate = computed(
+		() => permissionsFor(targetProjectId.value)?.workflow?.create === true,
+	);
 
 	const items = computed<TaskBoardListItem[]>(() =>
 		boards.value.map((board) => ({

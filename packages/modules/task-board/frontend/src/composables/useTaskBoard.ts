@@ -25,7 +25,7 @@ export function useTaskBoard(boardRef: MaybeRefOrGetter<TaskBoardRef>) {
 	const store = useTaskBoardStore();
 	const toast = useToast();
 	const i18n = useI18n();
-	const { board, columns, tasksByColumnId } = storeToRefs(store);
+	const { board } = storeToRefs(store);
 
 	const loading = ref(true);
 	const loadFailed = ref(false);
@@ -106,16 +106,5 @@ export function useTaskBoard(boardRef: MaybeRefOrGetter<TaskBoardRef>) {
 		await changeTask(taskId, { assignee }, { ...task, assignee: optimistic });
 	}
 
-	return {
-		board,
-		columns,
-		tasksByColumnId,
-		loading,
-		loadFailed,
-		load,
-		findTask: store.findTask,
-		addTask,
-		moveTask,
-		assignTask,
-	};
+	return { board, loading, loadFailed, load, addTask, moveTask, assignTask };
 }
