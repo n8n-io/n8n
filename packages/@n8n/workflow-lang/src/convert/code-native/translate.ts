@@ -6789,6 +6789,24 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			n.parent.left === n &&
 			n.parent.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
 			n.parent.operatorToken.kind <= ts.SyntaxKind.LastAssignment;
+		/** True when the code writes the value itself or a member of it (`e.name = …`). */
+		const writtenThrough = (id: ts.Identifier): boolean => {
+			let n: ts.Node = id;
+			while (
+				(ts.isPropertyAccessExpression(n.parent) && n.parent.expression === n) ||
+				(ts.isElementAccessExpression(n.parent) && n.parent.expression === n)
+			) {
+				n = n.parent;
+			}
+			return isAssignmentTarget(n);
+		};
+		/** True when the code returns the value from a function inside the node's body. */
+		const inFunction = (n: ts.Node): boolean => {
+			for (let a = n.parent; a !== undefined && a !== root.body; a = a.parent) {
+				if (ts.isFunctionLike(a)) return true;
+			}
+			return false;
+		};
 		let gap = false;
 		const scan = (x: ts.Node): void => {
 			if (gap) return;
@@ -6800,7 +6818,8 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 					!ts.isThrowStatement(p) &&
 					!(ts.isVariableDeclaration(p) && p.initializer === n) &&
 					!writes(n) &&
-					!(ts.isBinaryExpression(p) && p.left === n && p.operatorToken.kind === ts.SyntaxKind.InstanceOfKeyword)
+					!(ts.isBinaryExpression(p) && p.left === n && p.operatorToken.kind === ts.SyntaxKind.InstanceOfKeyword) &&
+					!(ts.isReturnStatement(p) && inFunction(n))
 				) {
 					gap = true;
 					return;
@@ -6822,7 +6841,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 					ts.isBinaryExpression(p) &&
 					p.left === x &&
 					p.operatorToken.kind === ts.SyntaxKind.InstanceOfKeyword;
-				if (!declared && !read && !tested && !ts.isThrowStatement(p) && !writes(x)) {
+				if (!declared && !read && !tested && !ts.isThrowStatement(p) && !writtenThrough(x)) {
 					gap = true;
 					return;
 				}

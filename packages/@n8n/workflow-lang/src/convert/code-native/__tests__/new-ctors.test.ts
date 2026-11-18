@@ -64,6 +64,18 @@ const CONSTRUCTORS: Array<[string, string]> = [
 		"const r = new RegExp(items[0].json.a === 1 ? 'ab' : 'g', 'g'); return [{ json: { t: r.test('xaby'), g: r.flags } }];",
 	],
 	[
+		'a made Error with a written member, thrown',
+		"const e = new Error('named');\ne.name = 'Custom';\ne.code = 'E1';\nthrow e;",
+	],
+	[
+		'a made Error returned from a function, then thrown',
+		"function make(m) {\n  return new Error(m);\n}\nconst e = make('made in fn');\nthrow e;",
+	],
+	[
+		'a made Error with a message write, thrown',
+		"const e = new TypeError('one');\ne.message = 'two';\nthrow e;",
+	],
+	[
 		'a Map and a Set built from an item',
 		'const m = new Map([[items[0].json.a, 1]]); const s = new Set([items[0].json.a]); return [{ json: { m: m.get(items[0].json.a), has: s.has(items[0].json.a), size: s.size } }];',
 	],
