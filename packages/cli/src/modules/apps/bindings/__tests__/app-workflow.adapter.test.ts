@@ -23,6 +23,7 @@ const ctx: AppCallContext = {
 	projectId: 'project-1',
 	bindingKey: 'submit',
 	userId: 'user-1',
+	userEmail: null,
 };
 
 const nodes = [

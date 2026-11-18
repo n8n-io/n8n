@@ -401,7 +401,13 @@ describe('AppRuntimeController', () => {
 			);
 
 			expect(dataTables.listRows).toHaveBeenCalledWith(
-				expect.objectContaining({ appId: 'app-1', projectId: 'project-1', bindingKey: 'tasks' }),
+				expect.objectContaining({
+					appId: 'app-1',
+					projectId: 'project-1',
+					bindingKey: 'tasks',
+					userId: 'user-1',
+					userEmail: 'a@b.c',
+				}),
 				'table-1',
 				expect.objectContaining({ filter, take: 5 }),
 			);

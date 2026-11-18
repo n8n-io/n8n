@@ -29,6 +29,7 @@ const userCtx: AppCallContext = {
 	projectId: 'project-1',
 	bindingKey: 'support',
 	userId: 'user-1',
+	userEmail: null,
 };
 
 async function collect(events: AsyncIterable<AgentSseEvent>) {

@@ -452,6 +452,7 @@ export class AppRuntimeController {
 				projectId: app.projectId,
 				bindingKey: key,
 				userId: user.id,
+				userEmail: user.email ?? null,
 			},
 		};
 	}

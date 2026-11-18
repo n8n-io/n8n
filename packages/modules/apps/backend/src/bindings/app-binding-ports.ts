@@ -32,6 +32,8 @@ export interface AppCallContext {
 	bindingKey: string;
 	/** The signed-in visitor. */
 	userId: string;
+	/** The visitor's email, which a row rule can match on. */
+	userEmail: string | null;
 }
 
 export type AppRow = Record<string, unknown>;

@@ -3,6 +3,7 @@ import type { AppCallContext } from '@n8n/backend-module-apps';
 import {
 	type DataTable,
 	DataTableNotFoundError,
+	DataTableRowAccessError,
 	DataTableService,
 	DataTableValidationError,
 } from '@n8n/backend-module-data-table';
@@ -19,6 +20,7 @@ const ctx: AppCallContext = {
 	projectId: 'project-1',
 	bindingKey: 'tasks',
 	userId: 'user-1',
+	userEmail: 'user-1@example.com',
 };
 const user = mock<User>();
 
@@ -84,7 +86,7 @@ describe('AppDataTableAdapter', () => {
 		});
 	});
 
-	it('acts as the app project', async () => {
+	it('acts as the visitor', async () => {
 		const { adapter, service } = setup();
 		service.getManyRowsAndCount.mockResolvedValue({ count: 0, data: [] });
 
@@ -93,7 +95,7 @@ describe('AppDataTableAdapter', () => {
 		expect(service.getManyRowsAndCount).toHaveBeenCalledWith(
 			't1',
 			'project-1',
-			{ kind: 'management' },
+			{ kind: 'actor', actor: { id: 'user-1', email: 'user-1@example.com' } },
 			{ take: 10 },
 		);
 	});
@@ -105,6 +107,16 @@ describe('AppDataTableAdapter', () => {
 		await expect(adapter.insertRows(ctx, 't1', [{ x: 1 }])).rejects.toMatchObject({
 			status: 400,
 			code: 'invalid_input',
+		});
+	});
+
+	it('maps a refused row access to permission_denied', async () => {
+		const { adapter, service } = setup();
+		service.insertRows.mockRejectedValue(new DataTableRowAccessError('owner is set by n8n'));
+
+		await expect(adapter.insertRows(ctx, 't1', [{ owner: 'someone' }])).rejects.toMatchObject({
+			status: 403,
+			code: 'permission_denied',
 		});
 	});
 

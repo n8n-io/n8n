@@ -21,17 +21,26 @@ import type { DataTableColumnType } from 'n8n-workflow';
 
 /** Lazy, so the data-table module loads only when it is active. */
 async function dataTableModule() {
-	const { DataTableService, DataTableNotFoundError, DataTableValidationError } = await import(
-		'@n8n/backend-module-data-table'
-	);
+	const {
+		DataTableService,
+		DataTableNotFoundError,
+		DataTableRowAccessError,
+		DataTableValidationError,
+	} = await import('@n8n/backend-module-data-table');
 	return {
 		service: Container.get(DataTableService),
 		DataTableNotFoundError,
+		DataTableRowAccessError,
 		DataTableValidationError,
 	};
 }
 
 type DataTableModule = Awaited<ReturnType<typeof dataTableModule>>;
+
+/** The table's row rule applies to the visitor, never to the app project. */
+function visitorAccess(ctx: AppCallContext) {
+	return { kind: 'actor', actor: { id: ctx.userId, email: ctx.userEmail } } as const;
+}
 
 /** Dates leave the API as ISO strings. Every user column can hold `null`. */
 function columnSchema(type: DataTableColumnType): AppJsonSchema {
@@ -54,7 +63,7 @@ function rowSchema(columns: Array<{ name: string; type: DataTableColumnType }>):
 	};
 }
 
-/** Data table access for app bindings. Every call acts as the app project. */
+/** Data table access for app bindings. Every row call acts as the visitor. */
 @Service()
 export class AppDataTableAdapter extends AppDataTablePort {
 	constructor(private readonly moduleRegistry: ModuleRegistry) {
@@ -104,12 +113,7 @@ export class AppDataTableAdapter extends AppDataTablePort {
 	async listRows(ctx: AppCallContext, dataTableId: string, query: ListDataTableContentQueryDto) {
 		return await this.call(
 			async (service) =>
-				await service.getManyRowsAndCount(
-					dataTableId,
-					ctx.projectId,
-					{ kind: 'management' },
-					query,
-				),
+				await service.getManyRowsAndCount(dataTableId, ctx.projectId, visitorAccess(ctx), query),
 		);
 	}
 
@@ -120,7 +124,7 @@ export class AppDataTableAdapter extends AppDataTablePort {
 	): Promise<AppRow[]> {
 		return await this.call(
 			async (service) =>
-				await service.insertRows(dataTableId, ctx.projectId, { kind: 'management' }, rows, 'all'),
+				await service.insertRows(dataTableId, ctx.projectId, visitorAccess(ctx), rows, 'all'),
 		);
 	}
 
@@ -135,7 +139,7 @@ export class AppDataTableAdapter extends AppDataTablePort {
 				await service.updateRows(
 					dataTableId,
 					ctx.projectId,
-					{ kind: 'management' },
+					visitorAccess(ctx),
 					{ filter, data },
 					true,
 					false,
@@ -153,7 +157,7 @@ export class AppDataTableAdapter extends AppDataTablePort {
 				await service.deleteRows(
 					dataTableId,
 					ctx.projectId,
-					{ kind: 'management' },
+					visitorAccess(ctx),
 					{ filter },
 					true,
 					false,
@@ -169,12 +173,16 @@ export class AppDataTableAdapter extends AppDataTablePort {
 		if (!this.moduleRegistry.isActive('data-table')) {
 			throw new AppRuntimeError(404, 'resource_missing', 'Data tables are not enabled.');
 		}
-		const { service, DataTableNotFoundError, DataTableValidationError } = await dataTableModule();
+		const { service, DataTableNotFoundError, DataTableRowAccessError, DataTableValidationError } =
+			await dataTableModule();
 		try {
 			return await operation(service);
 		} catch (error) {
 			if (error instanceof DataTableValidationError) {
 				throw new AppRuntimeError(400, 'invalid_input', error.message);
+			}
+			if (error instanceof DataTableRowAccessError) {
+				throw new AppRuntimeError(403, 'permission_denied', error.message);
 			}
 			if (error instanceof DataTableNotFoundError) {
 				throw new AppRuntimeError(
