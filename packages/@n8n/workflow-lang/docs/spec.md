@@ -1287,6 +1287,28 @@ answers that the library node received:
 * The answer of the HTTP request whose body was over `--binary-max-file-mb`
   is not in the list (the runtime did not keep the body): the v1 node sends
   that one request again.
+* An ordered list: a list with a request that is not a GET or HEAD request.
+  The HTTP Request node makes one when a page of a paged request with the
+  response format `autodetect` is a file, and the method is not GET. The
+  entry has the method of the request. A second copy of such a request can
+  change data a second time, so these rules replace the rules above:
+  * The requests of the v1 node get the entries in the order of the list.
+    Request k must have the method, the URL and the query of entry k. The
+    host does not compare the body.
+  * A request that is not the next entry does not go out. The step fails
+    with an error that names the request and ends with `(limit: replay)`.
+    This is also the rule for an entry that the host cannot read, and for
+    each request after entry 1,024.
+  * After the last entry, a request goes to the network: the library node
+    did not send it.
+  * The library node sends such pages for one input item only. v1 sends the
+    pages of several input items at the same time, so the order of its
+    requests is not the order of the list. With more input items the library
+    node sends no request, and the host runs the node.
+  * The library node never empties an ordered list. With more than 256
+    answers before the page that is a file, and for a response over a limit
+    of the runtime, the node fails: the host cannot run it without a second
+    copy of the requests.
 
 **Fallback host connections (protocol version 2).** A frame is a 4-byte
 little-endian length, then JSON. `wfrt` starts each connection with

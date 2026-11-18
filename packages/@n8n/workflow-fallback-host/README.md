@@ -234,7 +234,15 @@ large for the runtime). The node step then has `replay`: the answers that the
 library node received. The host gives each answer once to the v1 node for the
 same GET request (method, URL and query), in the order of the list, and sends
 each other request. So the requests are on the network once, as in n8n's v1
-engine. `src/http-replay.ts` has the rules; the specification of the runtime
+engine.
+
+A list with a request that is not a GET or HEAD request is an ordered list (a
+paged POST of the HTTP Request node). The host gives the answers in the order
+of the list. A request that is not the next entry does not go out, and the
+step fails with an error that names the request: a second POST can change data
+a second time. After the last entry, a request goes to the network.
+
+`src/http-replay.ts` has the rules; the specification of the runtime
 (`@n8n/workflow-lang`, `docs/spec.md`, "Answers of a library node") has the
 format and the limits.
 

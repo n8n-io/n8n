@@ -1,17 +1,28 @@
 /**
- * Answers of GET requests that a compiled library node received before it handed the
- * node over to the host (`replay` of a node step).
+ * Answers of requests that a compiled library node received before it handed the node
+ * over to the host (`replay` of a node step).
  *
- * A library node can find, after it sent GET requests, that only the v1 node gives the
- * exact result. The host then runs the v1 node, and the v1 node sends the same requests.
- * n8n's v1 engine sends each of them once. So the step carries the answers that the
- * library node received, and the host gives each one to the v1 node instead of a second
- * request on the network.
+ * A library node can find, after it sent requests, that only the v1 node gives the exact
+ * result. The host then runs the v1 node, and the v1 node sends the same requests. n8n's
+ * v1 engine sends each of them once. So the step carries the answers that the library node
+ * received, and the host gives each one to the v1 node instead of a second request on the
+ * network.
  *
+ * A list of GET and HEAD requests only:
  * - An entry answers one request with the same method, URL and query, in the order of
  *   the list. A request that no free entry matches goes to the network as usual. A second
  *   identical request gets the next entry with that URL, or goes to the network.
  * - Only GET and HEAD requests without a body get an answer from the list.
+ *
+ * A list with a request of another method (an ordered list). A second POST can change data
+ * a second time, so the host never sends a request that the library node sent before:
+ * - The requests of the v1 node get the entries in the order of the list. Request k must
+ *   have the method, URL and query of entry k. The body of the request is not compared.
+ * - A request that is not the next entry does not go out, and the step fails with an error
+ *   that names the request. This is also the rule for an entry that the host cannot read.
+ * - After the last entry, a request goes to the network: the library node did not send it.
+ *
+ * For each list:
  * - The match is where n8n-core's request helpers send: `http.request` and
  *   `https.request` (as `http-pool.ts`). The request goes to a server of this process on
  *   the loopback interface, which writes the status, the headers and the body of the
@@ -50,6 +61,10 @@ export interface ReplayEntry {
 	status: number;
 	headers: Record<string, string>;
 	body: Buffer | StoredBody;
+	/** The entry is a part of an ordered list: a list with a request that is not GET or HEAD. */
+	ordered?: true;
+	/** An entry of an ordered list that the host cannot read: it answers no request. */
+	unreadable?: true;
 }
 
 /** Reads the bytes of a stored body, or undefined when the store does not have them. */
@@ -62,12 +77,28 @@ interface Answer {
 	headers: Record<string, string>;
 	body: Buffer;
 	used: boolean;
+	unreadable: boolean;
 }
 
 interface ReplayState {
 	answers: Answer[];
 	tokens: string[];
+	/** The list is ordered: a request that is not the next entry does not go out. */
+	ordered: boolean;
+	/** The error of the first request that the host did not send. */
+	refused?: string;
 }
+
+/** The error of a step whose v1 node made a request that the host did not send. */
+export class ReplayRefusal extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'ReplayRefusal';
+	}
+}
+
+/** The methods of a request that the host can send a second time. */
+const REPEATABLE = new Set(['GET', 'HEAD']);
 
 const scope = new AsyncLocalStorage<ReplayState>();
 
@@ -142,37 +173,78 @@ function readBody(value: JsonValue | undefined): Buffer | StoredBody {
 	return Buffer.from(JSON.stringify(value), 'utf8');
 }
 
+/** An entry of an ordered list that answers no request: the request at its place does not go out. */
+const UNREADABLE: ReplayEntry = {
+	method: '',
+	key: '',
+	status: 0,
+	headers: {},
+	body: Buffer.alloc(0),
+	ordered: true,
+	unreadable: true,
+};
+
+/** The method of an entry that the host can send a second time, or undefined. */
+function methodOf(entry: JsonValue): string | undefined {
+	return isJsonObject(entry) && typeof entry.method === 'string'
+		? entry.method.toUpperCase()
+		: undefined;
+}
+
+/** One entry of the list, or undefined when the host cannot read it. */
+function readEntry(entry: JsonValue, ordered: boolean): ReplayEntry | undefined {
+	if (!isJsonObject(entry) || !isJsonObject(entry.response)) return undefined;
+	const { url, qs, body, response } = entry;
+	if (typeof entry.method !== 'string' || typeof url !== 'string') return undefined;
+	let method = entry.method;
+	if (ordered) {
+		method = method.toUpperCase();
+		if (!/^[A-Z]+$/.test(method)) return undefined;
+	} else if (!REPEATABLE.has(method) || (body !== undefined && body !== null)) return undefined;
+	const { status } = response;
+	if (typeof status !== 'number' || !Number.isInteger(status) || status < 200 || status > 599) {
+		return undefined;
+	}
+	let target: URL;
+	try {
+		target = new URL(url);
+	} catch {
+		return undefined;
+	}
+	return {
+		method,
+		key: requestKey(method, target, isJsonObject(qs) ? qs : {}),
+		status,
+		headers: readHeaders(response.headers),
+		body: readBody(response.body),
+		...(ordered ? { ordered: true as const } : {}),
+	};
+}
+
 /**
  * The entries of `replay` of a node step: `{ method, url, qs, body, response: { status,
- * headers, body } }` for each request that the library node sent. Entries that the host
- * cannot answer (a request with a body, another method, a bad URL) are left out.
+ * headers, body } }` for each request that the library node sent.
+ *
+ * A list of GET and HEAD requests: entries that the host cannot answer (a request with a
+ * body, a bad URL) are left out, and the v1 node sends those requests.
+ *
+ * A list with a request of another method is ordered: each entry keeps its place, also an
+ * entry that the host cannot read. A list that is longer than the host reads ends with an
+ * entry that answers nothing, so no request goes out after it.
  */
 export function readReplay(value: JsonValue | undefined): ReplayEntry[] {
 	if (!Array.isArray(value)) return [];
+	const ordered = value.some((entry) => {
+		const method = methodOf(entry);
+		return method !== undefined && !REPEATABLE.has(method);
+	});
 	const entries: ReplayEntry[] = [];
 	for (const entry of value.slice(0, MAX_REPLAY_ENTRIES)) {
-		if (!isJsonObject(entry) || !isJsonObject(entry.response)) continue;
-		const { method, url, qs, body, response } = entry;
-		if (method !== 'GET' && method !== 'HEAD') continue;
-		if (typeof url !== 'string' || (body !== undefined && body !== null)) continue;
-		const { status } = response;
-		if (typeof status !== 'number' || !Number.isInteger(status) || status < 200 || status > 599) {
-			continue;
-		}
-		let target: URL;
-		try {
-			target = new URL(url);
-		} catch {
-			continue;
-		}
-		entries.push({
-			method,
-			key: requestKey(method, target, isJsonObject(qs) ? qs : {}),
-			status,
-			headers: readHeaders(response.headers),
-			body: readBody(response.body),
-		});
+		const read = readEntry(entry, ordered);
+		if (read !== undefined) entries.push(read);
+		else if (ordered) entries.push(UNREADABLE);
 	}
+	if (ordered && value.length > MAX_REPLAY_ENTRIES) entries.push(UNREADABLE);
 	return entries;
 }
 
@@ -189,16 +261,19 @@ async function replayServer(): Promise<number> {
 				return;
 			}
 			pending.delete(request.url ?? '');
-			response.sendDate = answer.headers.date === undefined;
-			const empty = request.method === 'HEAD' || answer.status === 204 || answer.status === 304;
-			response.writeHead(answer.status, {
-				...answer.headers,
-				...(answer.status === 204 || answer.status === 304
-					? {}
-					: { 'content-length': String(answer.body.length) }),
-				connection: 'close',
+			// The answer goes out after the body of the request: the v1 node writes all of it.
+			request.once('end', () => {
+				response.sendDate = answer.headers.date === undefined;
+				const empty = request.method === 'HEAD' || answer.status === 204 || answer.status === 304;
+				response.writeHead(answer.status, {
+					...answer.headers,
+					...(answer.status === 204 || answer.status === 304
+						? {}
+						: { 'content-length': String(answer.body.length) }),
+					connection: 'close',
+				});
+				response.end(empty ? undefined : answer.body);
 			});
-			response.end(empty ? undefined : answer.body);
 		});
 		listener.once('error', reject);
 		listener.listen(0, '127.0.0.1', () => {
@@ -227,19 +302,26 @@ function headerOf(headers: unknown, name: string): unknown {
 	return undefined;
 }
 
-/** The method and URL of a call of `http.request`, or undefined when the call can send a body. */
-function requestOf(
-	args: unknown[],
-	defaultProtocol: string,
-): { key: string; at: number } | undefined {
+interface SentRequest {
+	key: string;
+	/** `METHOD origin/path`: the name of the request in an error. It has no query. */
+	name: string;
+	at: number;
+	/** A GET or HEAD request without a body: the host can send it a second time. */
+	repeatable: boolean;
+}
+
+/** The method and URL of a call of `http.request`, or undefined when the host cannot read them. */
+function requestOf(args: unknown[], defaultProtocol: string): SentRequest | undefined {
 	const first = args[0];
 	const at = isRecord(first) && !(first instanceof URL) ? 0 : 1;
 	const options = isRecord(args[at]) ? args[at] : {};
 	const method = typeof options.method === 'string' ? options.method.toUpperCase() : 'GET';
-	if (method !== 'GET' && method !== 'HEAD') return undefined;
 	const length = headerOf(options.headers, 'content-length');
-	if (length !== undefined && length !== 0 && length !== '0') return undefined;
-	if (headerOf(options.headers, 'transfer-encoding') !== undefined) return undefined;
+	const repeatable =
+		REPEATABLE.has(method) &&
+		(length === undefined || length === 0 || length === '0') &&
+		headerOf(options.headers, 'transfer-encoding') === undefined;
 	if (options.socketPath !== undefined) return undefined;
 	try {
 		let url: URL;
@@ -259,7 +341,12 @@ function requestOf(
 				`${protocol}//${host.includes(':') && !host.startsWith('[') ? host : `${host}${port}`}${path}`,
 			);
 		}
-		return { key: requestKey(method, url), at };
+		return {
+			key: requestKey(method, url),
+			name: `${method} ${url.origin}${url.pathname}`,
+			at,
+			repeatable,
+		};
 	} catch {
 		return undefined;
 	}
@@ -288,7 +375,20 @@ function patch(
 		const state = scope.getStore();
 		if (state === undefined) return Reflect.apply(original, this, args);
 		const sent = requestOf(args, protocol);
-		const answer = sent && state.answers.find((entry) => !entry.used && entry.key === sent.key);
+		let answer: Answer | undefined;
+		if (state.ordered) {
+			const next = state.answers.find((entry) => !entry.used);
+			// After the last entry: a request that the library node did not send.
+			if (next === undefined) return Reflect.apply(original, this, args);
+			if (!sent || next.unreadable || next.key !== sent.key) {
+				const message = `The fallback host did not send the request "${sent?.name ?? 'to an address that it cannot read'}": the compiled node sent requests that are not GET requests, and this request is not the next one in the list of their answers (limit: replay)`;
+				state.refused ??= message;
+				throw new ReplayRefusal(message);
+			}
+			answer = next;
+		} else if (sent?.repeatable) {
+			answer = state.answers.find((entry) => !entry.used && entry.key === sent.key);
+		}
 		if (!sent || !answer) return Reflect.apply(original, this, args);
 		answer.used = true;
 		const token = `/${randomBytes(16).toString('hex')}`;
@@ -327,6 +427,7 @@ export async function withReplay<T>(
 	readStored: ReadStoredBody,
 	run: () => Promise<T>,
 ): Promise<T> {
+	const ordered = entries.some((entry) => entry.ordered === true);
 	const answers: Answer[] = [];
 	for (const entry of entries) {
 		let body: Buffer | undefined;
@@ -338,22 +439,42 @@ export async function withReplay<T>(
 				body = undefined;
 			}
 		}
-		// Without its bytes, the entry answers nothing: the request goes to the network.
-		if (body === undefined) continue;
-		answers.push({ ...entry, body, used: false });
+		const unreadable = entry.unreadable === true || body === undefined;
+		// Without its bytes, the entry answers nothing: the request goes to the network. In an
+		// ordered list the entry keeps its place, and the request does not go out.
+		if (unreadable && !ordered) continue;
+		answers.push({
+			method: entry.method,
+			key: entry.key,
+			status: entry.status,
+			headers: entry.headers,
+			body: body ?? Buffer.alloc(0),
+			used: false,
+			unreadable,
+		});
 	}
 	if (answers.length === 0) return await run();
+	const state: ReplayState = { answers, tokens: [], ordered };
 	try {
 		port = await replayServer();
 	} catch {
 		server = undefined;
-		return await run();
+		// Without the server no entry has an answer. For an ordered list no request goes out.
+		if (!ordered) return await run();
+		for (const answer of answers) answer.unreadable = true;
 	}
 	install();
-	const state: ReplayState = { answers, tokens: [] };
+	let result: T;
 	try {
-		return await scope.run(state, run);
+		result = await scope.run(state, run);
+	} catch (error) {
+		// The v1 node can catch the error of its request ("continue on fail"): the step fails
+		// with the error of the host, not with what the node made of it.
+		if (state.refused !== undefined) throw new ReplayRefusal(state.refused);
+		throw error;
 	} finally {
 		for (const token of state.tokens) pending.delete(token);
 	}
+	if (state.refused !== undefined) throw new ReplayRefusal(state.refused);
+	return result;
 }

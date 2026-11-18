@@ -152,7 +152,8 @@ export function localTimeIsUtc(consumer: 'process' | 'runner'): boolean {
  */
 export function targetIsProcess(): boolean {
 	const own = processIdentity();
-	const wanted = targetNode();
+	// The zones are no part of this comparison: do not read them (`Intl` is slow in a hot path).
+	const wanted = target ?? own;
 	return FIELDS.every((name) => own[name] !== '?' && own[name] === wanted[name]);
 }
 
