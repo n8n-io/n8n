@@ -676,10 +676,17 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 					(item) => item.executionIndex === data.executionIndex,
 				);
 
-				// For waiting nodes always replace the last item as executionIndex differs.
-				const hasWaitingItems = tasksData.some((it) => it.executionStatus === 'waiting');
+				// A run that resumes from a wait in engine v1 has a new executionIndex,
+				// so it replaces the last waiting run. Engine v2 keeps the index, and
+				// several runs of one node can wait at once in a parallel loop, so a
+				// match by executionIndex comes first.
+				const lastWaitingIndex = tasksData.findLastIndex((it) => it.executionStatus === 'waiting');
 				const index =
-					existingRunIndex > -1 && !hasWaitingItems ? existingRunIndex : tasksData.length - 1;
+					existingRunIndex > -1
+						? existingRunIndex
+						: lastWaitingIndex > -1
+							? lastWaitingIndex
+							: tasksData.length - 1;
 				const status = tasksData[index]?.executionStatus ?? 'unknown';
 
 				if (status === 'waiting' || status === 'running' || tasksData[existingRunIndex]) {

@@ -252,6 +252,80 @@ describe('executionData.store', () => {
 			});
 		});
 
+		describe('with several runs of one node waiting at the same time', () => {
+			const item = (n: number) => ({ json: { n } });
+			const taskData = (executionIndex: number, executionStatus: 'waiting' | 'success') => ({
+				executionStatus,
+				executionIndex,
+				startTime: executionIndex,
+				executionTime: 0,
+				source: [],
+				hints: [],
+			});
+
+			function waitFor(store: ReturnType<typeof useExecutionDataStore>, executionIndex: number) {
+				store.updateNodeExecutionStatus({
+					executionId: 'exec-1',
+					nodeName: 'Wait',
+					data: taskData(executionIndex, 'waiting'),
+					itemCountByConnectionType: {},
+				} as never);
+			}
+
+			/** The resumed run keeps its `executionIndex`, as engine v2 reports it. */
+			function resume(store: ReturnType<typeof useExecutionDataStore>, executionIndex: number) {
+				store.updateNodeExecutionStatus({
+					executionId: 'exec-1',
+					nodeName: 'Wait',
+					data: { ...taskData(executionIndex, 'success'), data: { main: [[{ json: {} }]] } },
+					itemCountByConnectionType: { main: [1] },
+				} as never);
+				store.updateNodeExecutionRunData({
+					executionId: 'exec-1',
+					nodeName: 'Wait',
+					data: {
+						...taskData(executionIndex, 'success'),
+						data: { main: [[item(executionIndex)]] },
+					},
+					itemCountByConnectionType: { main: [1] },
+				} as never);
+			}
+
+			it('replaces each waiting run with its own outcome, whatever order they resume in', () => {
+				const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+				store.setExecution(createTestExecution());
+
+				for (const executionIndex of [1, 2, 3]) waitFor(store, executionIndex);
+				for (const executionIndex of [2, 1, 3]) resume(store, executionIndex);
+
+				const runs = store.execution?.data?.resultData.runData.Wait ?? [];
+				expect(runs.map((run) => [run.executionIndex, run.executionStatus])).toEqual([
+					[1, 'success'],
+					[2, 'success'],
+					[3, 'success'],
+				]);
+				expect(runs.map((run) => run.data?.main[0])).toEqual([[item(1)], [item(2)], [item(3)]]);
+			});
+
+			it('replaces the waiting run when the resumed run has a new executionIndex', () => {
+				const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+				store.setExecution(createTestExecution());
+
+				waitFor(store, 1);
+				store.updateNodeExecutionStatus({
+					executionId: 'exec-1',
+					nodeName: 'Wait',
+					data: taskData(5, 'success'),
+					itemCountByConnectionType: {},
+				} as never);
+
+				const runs = store.execution?.data?.resultData.runData.Wait ?? [];
+				expect(runs.map((run) => [run.executionIndex, run.executionStatus])).toEqual([
+					[5, 'success'],
+				]);
+			});
+		});
+
 		it('does nothing when execution.data is null', () => {
 			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
 			store.setExecution(createTestExecution({ data: undefined }));
