@@ -1,4 +1,6 @@
 import { loadReplayedMessages, type AgentDbMessage, type Message } from '@n8n/agents';
+import { INSTANCE_AI_MCP_SERVER_TARGET_METADATA_KEY } from '@n8n/api-types';
+import { buildMcpServerTargetBlock } from '@/modules/mcp-servers/mcp-server-assistant.adapter';
 import type {
 	AiPreferencesAppliedPayload,
 	InstanceAiAgentAttachment,
@@ -488,6 +490,13 @@ export class AssistantTurnInputBuilder {
 			resumeReason === undefined
 				? await this.resolveAppTargetsBlock(context, thread?.metadata ?? {})
 				: '';
+		const mcpServerTarget = (thread?.metadata ?? {})[INSTANCE_AI_MCP_SERVER_TARGET_METADATA_KEY];
+		const mcpServerTargetBlock =
+			resumeReason === undefined &&
+			isRecord(mcpServerTarget) &&
+			typeof mcpServerTarget.serverId === 'string'
+				? await buildMcpServerTargetBlock(mcpServerTarget.serverId)
+				: '';
 		const [boundProject, pastConversationsSection] = await Promise.all([
 			this.resolveBoundProject(context),
 			isOpeningTurn ? conversationHistory?.getPastConversationsSection() : undefined,
@@ -508,6 +517,7 @@ export class AssistantTurnInputBuilder {
 			onboardingSkill ? buildOnboardingSkillBlock(onboardingSkill) : undefined,
 			threadArtifactsBlock,
 			appTargetsBlock,
+			mcpServerTargetBlock,
 			projectSection ? buildProjectContextBlock(projectSection) : undefined,
 			resumeReason === undefined
 				? buildInstanceUrlsBlock({

@@ -2,6 +2,7 @@ import { useRouter } from 'vue-router';
 import { captureException } from '@sentry/vue';
 import { v4 as uuidv4 } from 'uuid';
 import {
+	INSTANCE_AI_MCP_SERVER_TARGET_METADATA_KEY,
 	instanceAiAgentAttachmentSchema,
 	instanceAiNodesAttachmentSchema,
 	instanceAiWorkflowAttachmentSchema,
@@ -563,6 +564,13 @@ export async function provisionSubjectThread(
 		targetMetadata = subject.pending
 			? { [INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: target }
 			: { [INSTANCE_AI_APP_TARGETS_METADATA_KEY]: [target] };
+	} else if (subject.type === 'mcpServer') {
+		targetMetadata = {
+			[INSTANCE_AI_MCP_SERVER_TARGET_METADATA_KEY]: {
+				serverId: subject.id,
+				...(subject.name ? { name: subject.name } : {}),
+			},
+		};
 	}
 
 	try {

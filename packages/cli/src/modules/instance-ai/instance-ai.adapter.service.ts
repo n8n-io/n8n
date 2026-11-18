@@ -1,4 +1,5 @@
 import type { FetchFn } from '@n8n/agents';
+import { createMcpServerBuilderService } from '@/modules/mcp-servers/mcp-server-assistant.adapter';
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
 	AI_GATEWAY_MANAGED_TAG,
@@ -710,6 +711,7 @@ export class InstanceAiAdapterService {
 				: {}),
 			skillService: this.getSkillService(user, assistantSkillsEnabled === true),
 			appService: this.createAppAdapter(user, projectId, threadId),
+			mcpServerBuilderService: this.createMcpServerBuilderAdapter(user),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user, projectId),
 			workflowTemplateService: this.createWorkflowTemplateAdapter(),
@@ -3605,6 +3607,12 @@ export class InstanceAiAdapterService {
 				await evaluationConfigService.delete(workflowId, configId);
 			},
 		};
+	}
+
+	/** MCP Servers (hack): present while the module is active. */
+	private createMcpServerBuilderAdapter(user: User) {
+		if (!Container.get(ModuleRegistry).isActive('mcp-servers')) return undefined;
+		return createMcpServerBuilderService(user);
 	}
 
 	private createAppAdapter(

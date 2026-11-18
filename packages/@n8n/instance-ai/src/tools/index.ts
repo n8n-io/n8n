@@ -30,6 +30,9 @@ const loadCredentialsTool = lazyMod(
 const loadConversationHistoryTool = lazyMod(
 	() => require('./conversation-history.tool') as typeof import('./conversation-history.tool'),
 );
+const loadMcpServerBuilderTool = lazyMod(
+	() => require('./mcp-server-builder.tool') as typeof import('./mcp-server-builder.tool'),
+);
 const loadAppsTool = lazyMod(
 	() => require('./apps/apps.tool') as typeof import('./apps/apps.tool'),
 );
@@ -262,6 +265,13 @@ function getOrchestratorDomainToolFactories(
 
 	if (context.appService) {
 		tools.push([DOMAIN_TOOL_IDS.APPS, () => loadAppsTool().createAppsTool(context)]);
+	}
+
+	if (context.mcpServerBuilderService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.MCP_SERVER_BUILDER,
+			() => loadMcpServerBuilderTool().createMcpServerBuilderTool(context),
+		]);
 	}
 
 	// Registered on every turn, with or without files, so the tool list, which

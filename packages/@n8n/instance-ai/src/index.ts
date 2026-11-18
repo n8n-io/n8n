@@ -763,6 +763,7 @@ export type {
 	InstanceAiCredentialService,
 	InstanceAiNodeService,
 	InstanceAiAppService,
+	InstanceAiMcpServerBuilderService,
 	InstanceAiDataTableService,
 	DataTableSummary,
 	DataTableColumnInfo,
