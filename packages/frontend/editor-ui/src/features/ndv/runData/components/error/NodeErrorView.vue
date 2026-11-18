@@ -29,6 +29,7 @@ import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
+import ErrorRunbook from '@/features/pages/components/ErrorRunbook.vue';
 import {
 	N8nInlineAskAssistantButton,
 	N8nButton,
@@ -536,6 +537,17 @@ async function onInstanceAiHandoffClick() {
 			</div>
 		</div>
 
+		<ErrorRunbook
+			v-if="node"
+			class="node-error-view__runbook"
+			:workflow-id="workflowId"
+			:node-id="node.id"
+			:node-name="node.name"
+			:error-message="getErrorMessage()"
+			:error-description="error.description ?? undefined"
+			:execution-id="executionId"
+		/>
+
 		<div v-if="showDetails" class="node-error-view__info">
 			<div class="node-error-view__info-header">
 				<p class="node-error-view__info-title">
@@ -741,6 +753,14 @@ async function onInstanceAiHandoffClick() {
 		.node-error-view_compact & {
 			margin: 0 auto var(--spacing--2xs) auto;
 			border-radius: var(--radius);
+		}
+	}
+
+	&__runbook {
+		margin-bottom: var(--spacing--sm);
+
+		.node-error-view_compact & {
+			margin-bottom: var(--spacing--2xs);
 		}
 	}
 

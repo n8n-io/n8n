@@ -118,6 +118,31 @@ describe('NodeErrorView.vue', () => {
 		expect(errorMessage).toHaveTextContent('Unexpected identifier [line 1]');
 	});
 
+	it('hands the failed node, its workflow and the error message to the runbook', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				error: {
+					node: error.node,
+					message: 'Unexpected identifier [line 1]',
+					description: 'Check the code',
+				} as NodeError,
+			},
+			global: {
+				stubs: {
+					ErrorRunbook: {
+						props: ['workflowId', 'nodeId', 'nodeName', 'errorMessage', 'errorDescription'],
+						template:
+							'<div data-test-id="error-runbook-stub">{{ workflowId }}|{{ nodeId }}|{{ nodeName }}|{{ errorMessage }}|{{ errorDescription }}</div>',
+					},
+				},
+			},
+		});
+
+		expect(getByTestId('error-runbook-stub')).toHaveTextContent(
+			'test-workflow-id|d1ce5dc9-f9ae-4ac6-84e5-0696ba175dd9|ErrorCode|Unexpected identifier [line 1]|Check the code',
+		);
+	});
+
 	it('renders an Error with a message string', () => {
 		const { getByTestId } = renderComponent({
 			props: {

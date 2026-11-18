@@ -35,6 +35,7 @@ import {
 	type DropdownMenuExposed,
 } from '@n8n/design-system';
 import VoteButtons from './VoteButtons.vue';
+import ExecutionRunbookHint from '@/features/pages/components/ExecutionRunbookHint.vue';
 
 const props = defineProps<{
 	execution?: ExecutionSummary;
@@ -413,6 +414,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 						</RouterLink>
 					</N8nText>
 				</div>
+				<ExecutionRunbookHint :execution="execution" />
 				<WorkflowExecutionAnnotationTags
 					v-if="isAnnotationEnabled && execution"
 					:execution="execution"
