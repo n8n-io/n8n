@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/SettingsInstanceAiView.test.ts
+  s_95bfe39bb3e379::t_71d8e938e7a8b9 956-957,960,963,965-973
+packages/frontend/editor-ui/src/features/ai/instanceAi/views/SettingsInstanceAiView.vue
+  s_95bfe39bb3e379::t_a368ed6853e558 754,761
+  s_95bfe39bb3e379::t_ca2464163449fa 820-828
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_c370d2f16ebe1f::t_9edb8dd09063e9 6924-6925
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a8820c4345f244540ef6e7c34dd4fa165e900fbf",
+  "prompts": {},
+  "sessions": {
+    "s_95bfe39bb3e379": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef9b81f8-ba5a-4f3b-b102-ea87734cbdb4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_c370d2f16ebe1f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72ea96bc-d405-4ddb-90a5-89855d53356f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

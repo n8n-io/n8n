@@ -1,0 +1,195 @@
+packages/frontend/editor-ui/src/features/workflows/jsonEditor/workflowJsonDraft.store.ts
+  s_7ae6e88d2e646d::t_e32c12579dc206 14-18
+  s_7ae6e88d2e646d::t_a678c58f0c572e 1,3-13,19-35,37
+  s_7ae6e88d2e646d::t_ddf8700cee0997 36
+  s_7ae6e88d2e646d::t_e2de6ad4e67e21 2
+packages/frontend/editor-ui/src/features/workflows/jsonEditor/composables/useWorkflowJsonApply.ts
+  s_7ae6e88d2e646d::t_39eb4f856e3025 22,24-27,66,68,70-74,86-92,126-134,138,149-150,152,154,156,158-160,165-167,169-183,227-234
+  s_7ae6e88d2e646d::t_48fa82877dfe18 117-120,140-145,236-241
+  s_7ae6e88d2e646d::t_0b05abbbf29331 2
+  s_7ae6e88d2e646d::t_7315d65e1fa79d 15
+  s_7ae6e88d2e646d::t_a7464336e916f1 1,3-14,16-21,23,28-65,67,69,75-85,93-100,102-116,121-125,135-137,139,146-148,151,153,155,157,161-164,168,184-226,235,242-281
+  s_7ae6e88d2e646d::t_237271959bb28c 101
+packages/frontend/editor-ui/src/features/workflows/jsonEditor/composables/useWorkflowJsonEditorDeps.test.ts
+  s_7ae6e88d2e646d::t_6e99b75536b1c0 1-57
+packages/frontend/editor-ui/src/features/workflows/jsonEditor/workflowJsonValidation.ts
+  s_7ae6e88d2e646d::t_2fbf63dc995837 194-198
+  s_7ae6e88d2e646d::t_055781a71af5cf 565-578,580
+  s_7ae6e88d2e646d::t_ed3db66e63c448 5-6,12,28-29,31,43-47,60-63,111,129-130,141-151,281-301,304-308,354,378-380,384-410,412,415,589,612-613,636-637,687,691-693,705,712,751-757,769-775
+  s_7ae6e88d2e646d::t_4c05b8cdc6165a 911-914
+  s_7ae6e88d2e646d::t_07d77543274671 1-4,7-11,13-27,30,32-42,48-59,64-94,110,112-128,131-140,152-193,199-249,253-280,302-303,309-353,355-377,381-383,411,413-414,416-443,448-547,550-564,579,581-588,590-602,616-635,638-686,688-690,694-704,706-711,713-750,758-768,776-783,787-796,803-904,908-910,915-969
+  s_7ae6e88d2e646d::t_4bc6ca08cc5b58 95-109,250-252,444-447,548-549,603-611,614-615,784-786,797-802,905-907
+packages/frontend/editor-ui/src/features/workflows/jsonEditor/workflowJsonHighlight.ts
+  s_7ae6e88d2e646d::t_1e2fa3b782ba59 1-38
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_7ae6e88d2e646d::t_db999bfde7d5a4 2293
+  s_7ae6e88d2e646d::t_6042a2d42e700d 861-862
+  s_7ae6e88d2e646d::t_64d3645c6f27ef 1226-1229
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_7ae6e88d2e646d::t_7c2275af5d60be 187
+  s_7ae6e88d2e646d::t_f18a85a5781433 568
+packages/frontend/editor-ui/src/features/workflows/jsonEditor/composables/useWorkflowJsonEditorDeps.ts
+  s_7ae6e88d2e646d::t_6898e48b793d55 1-2,8,33-45,48
+  s_7ae6e88d2e646d::t_9d63a46d286279 3,6-7,9-14,16,27-31,46-47,49
+  s_7ae6e88d2e646d::t_a6f7050dccab7b 4-5,15,17-26,32
+packages/frontend/editor-ui/src/features/workflows/jsonEditor/workflowJsonCompletions.ts
+  s_7ae6e88d2e646d::t_9aaedaf0d49a44 93-96,277-278,815
+  s_7ae6e88d2e646d::t_b83dd2e4f34553 106-108,210-235,241-244,276,279-280,282,286,309,312-314,345,775,782,785,788-794,796,798,801,804-813,816,824,835,837,853
+  s_7ae6e88d2e646d::t_17f0973628f20a 1029-1034,1038-1041
+  s_7ae6e88d2e646d::t_a6e73a2ca25961 1-92,97-105,109-130,132-209,236-240,245-275,281,283,293-308,310-311,315-344,346-752,754-774,776-781,783-784,786-787,795,797,799-800,802-803,814,817-823,825-834,836,838-852,854-1028,1035-1037,1042-1061
+  s_7ae6e88d2e646d::t_8c918b38d8bdcc 131,284-285,287-292,753
+packages/frontend/editor-ui/src/features/setupPanel/components/FocusSidebarTabs.vue
+  s_7ae6e88d2e646d::t_72a3f3d78f7f75 25
+  s_7ae6e88d2e646d::t_d913c2eaf15b0a 58-61
+packages/frontend/editor-ui/src/app/stores/focusPanel.store.ts
+  s_7ae6e88d2e646d::t_1449318cad3b7c 266
+  s_7ae6e88d2e646d::t_cd0136a81fefae 178-181
+  s_7ae6e88d2e646d::t_e0905025136d8b 199-207
+  s_7ae6e88d2e646d::t_94eb20521a88c7 160-161
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/NodeCreation.vue
+  s_7ae6e88d2e646d::t_e0578e2a3dc231 250-264
+packages/frontend/editor-ui/src/features/workflows/jsonEditor/callbackCommand.ts
+  s_7ae6e88d2e646d::t_c94628c9c78ef1 1-27
+packages/frontend/editor-ui/src/features/workflows/jsonEditor/workflowJsonLint.test.ts
+  s_7ae6e88d2e646d::t_3ffc799d5431fe 1-33,38-112,117-135
+  s_7ae6e88d2e646d::t_4bc6ca08cc5b58 34-37,113-116
+packages/frontend/editor-ui/src/app/components/FocusSidebar.vue
+  s_7ae6e88d2e646d::t_3e49e0f027b3b2 19-20
+  s_7ae6e88d2e646d::t_ef515c15df2a68 82-89
+  s_7ae6e88d2e646d::t_cc64f5a76524e9 194-198,200
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_7ae6e88d2e646d::t_4aeff05586cb88 3067
+  s_7ae6e88d2e646d::t_78b1911141d094 7716-7717,7731,7747-7748,7754-7755
+  s_7ae6e88d2e646d::t_deeaf6144bb48e 7659
+  s_7ae6e88d2e646d::t_2f76f151467189 7712-7713
+  s_7ae6e88d2e646d::t_e944864e0bb343 7660-7697
+  s_7ae6e88d2e646d::t_8c4ddcb60e3c9e 7698-7699
+  s_7ae6e88d2e646d::t_1684e41b720548 7700-7705
+  s_7ae6e88d2e646d::t_e6e11000513663 7706-7711,7714-7715,7718-7730,7732-7746,7749-7753,7756-7760
+packages/frontend/editor-ui/src/app/models/history.ts
+  s_7ae6e88d2e646d::t_48fa82877dfe18 147-149
+packages/frontend/editor-ui/src/features/workflows/jsonEditor/workflowJsonPaths.ts
+  s_7ae6e88d2e646d::t_cc264edebfc6b8 1-124,126-146,152-154
+  s_7ae6e88d2e646d::t_48fa82877dfe18 125
+  s_7ae6e88d2e646d::t_e5ad11081b003d 147-151
+packages/frontend/editor-ui/src/features/setupPanel/types.ts
+  s_7ae6e88d2e646d::t_ee0de6db585443 1
+packages/frontend/editor-ui/src/features/workflows/jsonEditor/workflowJsonChanges.ts
+  s_7ae6e88d2e646d::t_345a02240b9b7c 6,39,53-54,87,104,117-118,121-124,136-141,144,202-208,210,224-229,239-241,247-250,263,265-273,295-297,301,305-306,309,311,316,325,327-328,339,349,351-356,360-364,372,381-386,388,409
+  s_7ae6e88d2e646d::t_3aabd898986d97 131,133-135
+  s_7ae6e88d2e646d::t_e8870bff936913 147,150-159
+  s_7ae6e88d2e646d::t_c0bbfa5d6dfe6e 126-130,132
+  s_7ae6e88d2e646d::t_d7cedad52cbb8a 1-5,7-38,40-52,55-86,88-103,105-116,119-120,125,142-143,145-146,148-149,160-201,209,211-223,230-238,242-246,251-262,264,274-276,292-294,298,302-304,307-308,310,312-315,317-324,329-338,340-348,350,357-359,365-371,373-380,387,389-408,410-411
+  s_7ae6e88d2e646d::t_e6fb48c492eb93 277-291,299-300
+  s_7ae6e88d2e646d::t_48fa82877dfe18 326
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_7ae6e88d2e646d::t_cfcdd05cfdc020 1377-1378
+packages/frontend/editor-ui/src/app/components/FocusPanel.vue
+  s_7ae6e88d2e646d::t_1c488641835ac8 328-329
+packages/frontend/editor-ui/src/features/workflows/jsonEditor/composables/useCanvasSelectionBridge.ts
+  s_7ae6e88d2e646d::t_9bec33e86af309 3-5,10-18,27-28,30-39,49,51
+  s_7ae6e88d2e646d::t_8299823796d9d5 1-2,19-26,29,40-48,50
+  s_7ae6e88d2e646d::t_48fa82877dfe18 6-9
+packages/frontend/editor-ui/src/features/workflows/jsonEditor/components/WorkflowJsonReviewDialog.vue
+  s_7ae6e88d2e646d::t_8e8074f0297401 172-176
+  s_7ae6e88d2e646d::t_35ac761b1e11b2 146
+  s_7ae6e88d2e646d::t_1e1bcae68beb11 312
+  s_7ae6e88d2e646d::t_2f0bf636d23afb 77-79,280-283
+  s_7ae6e88d2e646d::t_1f51c177d22847 1,3-18,20-36,39-46,55,98-145,147-171,177-250,252-266,268-279,284-311,313-374,376-377,379-412
+  s_7ae6e88d2e646d::t_e2928020296090 19
+  s_7ae6e88d2e646d::t_ef7d080fbbd935 37-38,47-54
+  s_7ae6e88d2e646d::t_3511e4bcb6d57d 56-76,80-97
+  s_7ae6e88d2e646d::t_9e15cdb7462b32 2
+  s_7ae6e88d2e646d::t_ce7e2f0ba53d5b 251
+  s_7ae6e88d2e646d::t_aa064a98e1c6dd 267
+  s_7ae6e88d2e646d::t_922c8e6fd724ef 375,378
+packages/frontend/editor-ui/src/features/workflows/jsonEditor/workflowJsonLint.ts
+  s_7ae6e88d2e646d::t_38cd1443f38969 1-93
+packages/frontend/editor-ui/src/features/workflows/jsonEditor/workflowJsonValidation.test.ts
+  s_7ae6e88d2e646d::t_cc4419d734e41c 3-8
+  s_7ae6e88d2e646d::t_228f7e15bdb625 17-20,108,123-125,135-145,153-156,206-229,239,244-269,277-306,396-421,423-426,520,530,532-562
+  s_7ae6e88d2e646d::t_4bc6ca08cc5b58 186-189
+  s_7ae6e88d2e646d::t_8058178ad0f1c5 231-238
+  s_7ae6e88d2e646d::t_8709465c114436 353-365
+  s_7ae6e88d2e646d::t_b918029c586224 240-243
+  s_7ae6e88d2e646d::t_6c1ead5d432343 504-505,511
+  s_7ae6e88d2e646d::t_4ac95299c4e1a2 1-2,9-16,21-107,109-122,126-134,146-152,157-185,190-205,270-276,307-352,366-395,422,427-503,506-510,512-519,521-529,531,563-575
+  s_7ae6e88d2e646d::t_9d54be33bbe38b 230
+packages/frontend/editor-ui/src/app/composables/useBeforeUnload.ts
+  s_7ae6e88d2e646d::t_cd1448513ef4cc 3
+  s_7ae6e88d2e646d::t_665171736e0ae3 36
+  s_7ae6e88d2e646d::t_330b7222685b0d 19
+packages/frontend/editor-ui/src/features/workflows/jsonEditor/workflowJsonDocument.ts
+  s_7ae6e88d2e646d::t_5f8d08ccd1bb91 11-20,22,24,28
+  s_7ae6e88d2e646d::t_a06142f47d7081 1-10,21,23,26-27,29-31
+  s_7ae6e88d2e646d::t_bf2dd6d989076e 25
+packages/frontend/editor-ui/src/features/workflows/jsonEditor/workflowJson.types.ts
+  s_7ae6e88d2e646d::t_44457b08c2d629 1-22
+packages/frontend/editor-ui/src/features/workflows/jsonEditor/workflowJsonReferences.ts
+  s_7ae6e88d2e646d::t_291007a6c21eca 1-34
+packages/frontend/editor-ui/src/features/workflows/jsonEditor/components/WorkflowJsonPanel.vue
+  s_7ae6e88d2e646d::t_57d8615dd85903 228,231-234
+  s_7ae6e88d2e646d::t_46e1ec554d36c2 226-227,229-230,235-237
+  s_7ae6e88d2e646d::t_151da9607c77a8 146-148
+  s_7ae6e88d2e646d::t_3f2526b13e893b 62-63,69-78
+  s_7ae6e88d2e646d::t_0e4179ee17346e 23
+  s_7ae6e88d2e646d::t_8db629ccbcfcfc 30,33
+  s_7ae6e88d2e646d::t_8fb71ee741a758 112-118,120
+  s_7ae6e88d2e646d::t_0a2bbc7c379743 136-137,143
+  s_7ae6e88d2e646d::t_db8085fbfffe81 438
+  s_7ae6e88d2e646d::t_e828cb28f7e63c 4-13,16,18,20-21,24,27,29,34-35,37,39,43-46,49,51,53,56,60-61,64,79,83-99,106-110,119,121-135,138-142,144-145,149-152,164-180,183-210,212-215,239,241-306,308,316-317,319-362,368-373,375-382,390-403,418-429,433-434,436,439,442-474,477-483,485-486,512-515,526,528,531-536
+  s_7ae6e88d2e646d::t_2f0bf636d23afb 80-82
+  s_7ae6e88d2e646d::t_41e9e73e558e39 153-163
+  s_7ae6e88d2e646d::t_dcbaff4b5c506d 31-32
+  s_7ae6e88d2e646d::t_665e4b1033c175 1,14-15,17,19,22,25-26,28,36,38,40-42,47-48,50,52,57-59,65-68,100-105,211,216-225,238,240,307,363-367,374,383-389,404-417,430-432,435,437,440-441,475-476,487-511,516-525,527,529-530,537-538
+  s_7ae6e88d2e646d::t_4e2d13ce742a10 54
+  s_7ae6e88d2e646d::t_acfef511fe0a3b 309-315,318
+  s_7ae6e88d2e646d::t_76ba5639f66bff 111
+  s_7ae6e88d2e646d::t_5bf91041ca158a 181-182
+  s_7ae6e88d2e646d::t_b067973cffe080 2-3
+  s_7ae6e88d2e646d::t_cd81dd56b1739c 484
+  s_7ae6e88d2e646d::t_0b05abbbf29331 55
+packages/frontend/editor-ui/src/features/workflows/jsonEditor/workflowJsonCompletions.test.ts
+  s_7ae6e88d2e646d::t_c3e1446ea7ad05 613-622,639,643-646
+  s_7ae6e88d2e646d::t_4624d86ea7515a 221
+  s_7ae6e88d2e646d::t_8c918b38d8bdcc 56,135-136,374-376,393-397,415-419,519-522,532-533,541-547
+  s_7ae6e88d2e646d::t_8154a68789ab9e 171-191,194-220,222-230
+  s_7ae6e88d2e646d::t_403b857d939062 398-403
+  s_7ae6e88d2e646d::t_b9a80348488fee 354-355,357
+  s_7ae6e88d2e646d::t_f61c0498227b8b 623-638,641-642
+  s_7ae6e88d2e646d::t_d406fe4c716238 298,300-304,306
+  s_7ae6e88d2e646d::t_90d62f7e970aa2 6,13-14,16-17
+  s_7ae6e88d2e646d::t_0161e9e422411f 241-245
+  s_7ae6e88d2e646d::t_31008e5d881f58 256-264
+  s_7ae6e88d2e646d::t_37273ad2652aa4 446-450,506-518,523-524
+  s_7ae6e88d2e646d::t_c4bb9502f70eee 612,640,647-664
+  s_7ae6e88d2e646d::t_fef0472ac8d55f 1-5,7-12,15,18-55,57-134,137-170,231-240,246-255,265-297,299,305,307-353,356,358-373,377-392,404-414,420-445,525-531,534-540,548-611,665
+  s_7ae6e88d2e646d::t_a40125c4f4f5a6 451-505
+  s_7ae6e88d2e646d::t_ab99809e2aadd8 192-193
+packages/frontend/editor-ui/src/features/workflows/jsonEditor/components/WorkflowJsonEditor.vue
+  s_7ae6e88d2e646d::t_532103c6c84fdb 27
+  s_7ae6e88d2e646d::t_62a4f6d0784df1 112-115,117-122,124-127
+  s_7ae6e88d2e646d::t_7049707ff2e230 1-22,26,28-47,49-54,72-111,116,123,128-141,149-156,159-178,180-199,201-240,242-290
+  s_7ae6e88d2e646d::t_12f8a166668039 200
+  s_7ae6e88d2e646d::t_f3660a77905234 179
+  s_7ae6e88d2e646d::t_a0526d63acae76 23-25
+  s_7ae6e88d2e646d::t_6ef9e2955deddd 48,55-71
+  s_7ae6e88d2e646d::t_2ff5ee64388954 241
+  s_7ae6e88d2e646d::t_5cc520a9e15230 142-148,157-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cb7eca5fdf7557e3d30f1216ce001264c14e3ab1",
+  "prompts": {},
+  "sessions": {
+    "s_7ae6e88d2e646d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f5f92f4-b90f-4b89-a741-6823744049e6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}
