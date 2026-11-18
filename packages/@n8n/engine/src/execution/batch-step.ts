@@ -16,31 +16,42 @@ export interface LoopReader {
 	readArrivals(iteration: number): Promise<JsonValue[]>;
 }
 
+export interface BatchStepResult {
+	outputs: StepSlots;
+	/** How many data passes the loop has. Only a parallel loop records it, for admission. */
+	loopPassCount?: number;
+}
+
 /**
  * Hands the loop body its next few items, or ends the loop once they run out.
  *
  * A pass derives its share from its own number, so it never counts what earlier
- * passes did and so re-running one is safe.
+ * passes did and so re-running one is safe. The same holds in a parallel loop,
+ * where passes run in any order: the terminal pass still reads what each pass
+ * returned in pass order.
  */
 export async function runBatchStep(
 	config: BatchStepConfig,
 	iteration: number,
 	reader: LoopReader,
-): Promise<StepSlots> {
+): Promise<BatchStepResult> {
 	const originalItems = asList(await reader.readOriginalItems(), 'the batch node input');
 	const start = iteration * config.batchSize;
 	const slice = originalItems.slice(start, start + config.batchSize);
+	const extras = config.parallel
+		? { loopPassCount: Math.ceil(originalItems.length / config.batchSize) }
+		: {};
 
-	if (slice.length > 0) return slot(LOOP_SLOT, slice);
+	if (slice.length > 0) return { outputs: slot(LOOP_SLOT, slice), ...extras };
 
 	const arrivals = await reader.readArrivals(iteration);
 	const accumulated = arrivals.flatMap((arrival, index) =>
 		asList(arrival, `arrival ${index} of the batch node`),
 	);
 
-	if (accumulated.length === 0) return [null, null];
+	if (accumulated.length === 0) return { outputs: [null, null], ...extras };
 
-	return slot(DONE_SLOT, accumulated);
+	return { outputs: slot(DONE_SLOT, accumulated), ...extras };
 }
 
 function slot(filled: number, value: JsonValue[]): StepSlots {

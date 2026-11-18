@@ -44,7 +44,7 @@ import {
 	toV1ExecuteContext,
 	toV1Execution,
 	toV1Node,
-	toV1Sources,
+	toV1StepSources,
 	toV1Workflow,
 } from './v1-adapters';
 
@@ -131,7 +131,7 @@ export class V1StepExecutor implements IStepExecutor {
 			node,
 			workflow,
 			execution,
-			source: toV1Sources(stepData.graph).get(node.id) ?? [],
+			source: toV1StepSources(stepData.graph, node.id, request.context.iteration),
 			additionalData,
 			stepContext: request.context,
 			itemsByConnection: fromStepInputs(request.inputs),

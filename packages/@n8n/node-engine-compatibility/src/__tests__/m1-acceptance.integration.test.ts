@@ -452,6 +452,74 @@ describe('M1 acceptance (integration)', () => {
 		expect(at('after', 0)?.status).toBe('skipped');
 	});
 
+	describe('a parallel loop', () => {
+		/**
+		 * trigger -> Loop (v4, parallel) -[1]-> First -> Second -(back)-> Loop
+		 *                                 -[0]-> After
+		 */
+		const parallelLoopV1Workflow = (secondValue: string) =>
+			v1Workflow(
+				[
+					TRIGGER,
+					{
+						id: 'loop',
+						name: 'Loop',
+						type: 'n8n-nodes-base.splitInBatches',
+						typeVersion: 4,
+						parameters: { batchSize: 1, runInParallel: true, maxConcurrency: 2 },
+					},
+					setNode('first', 'First', [
+						{ name: 'tenfold', value: '={{ $json.n * 10 }}', type: 'number' },
+					]),
+					setNode('second', 'Second', [{ name: 'value', value: secondValue, type: 'number' }]),
+					setNode('after', 'After', [{ name: 'ran', value: 'yes', type: 'string' }]),
+				],
+				{
+					'When clicking Execute': mainTo('Loop'),
+					Loop: {
+						main: [
+							[{ node: 'After', type: 'main' as const, index: 0 }],
+							[{ node: 'First', type: 'main' as const, index: 0 }],
+						],
+					},
+					First: mainTo('Second'),
+					Second: mainTo('Loop'),
+				},
+			);
+		const items = [{ json: { n: 1 } }, { json: { n: 2 } }, { json: { n: 3 } }];
+
+		it('runs each pass on its own batch and collects them in item order', async () => {
+			const graph = converter.convert(
+				parallelLoopV1Workflow("={{ $('First').item.json.tenfold }}"),
+			);
+			const { execution, steps } = await runWorkflow(graph, [items]);
+
+			const at = (nodeId: string, iteration: number) =>
+				steps.find((step) => step.nodeId === nodeId && step.iteration === iteration);
+
+			expect(execution.status).toBe('completed');
+			expect(at('loop', 3)?.outputs).toMatchObject([
+				[{ json: { value: 10 } }, { json: { value: 20 } }, { json: { value: 30 } }],
+				null,
+			]);
+			expect(at('after', 0)?.status).toBe('completed');
+		});
+
+		it('fails loudly when a node reads another pass of the loop', async () => {
+			const graph = converter.convert(
+				parallelLoopV1Workflow("={{ $('First').all(0, 0)[0].json.tenfold }}"),
+			);
+			const { execution, steps } = await runWorkflow(graph, [items]);
+
+			const failed = steps.find((step) => step.status === 'failed');
+
+			expect(execution.status).toBe('failed');
+			expect(failed?.nodeId).toBe('second');
+			expect(failed?.iteration).toBeGreaterThan(0);
+			expect(failed?.error?.message).toContain('"Loop" runs its batches in parallel');
+		});
+	});
+
 	// No cancellation mechanism exists yet (discussed during CAT-2905, needs an
 	// API to request it and a hard-stop story for in-flight steps).
 	it.todo('stops cleanly on a cancel request mid-flight');

@@ -69,9 +69,9 @@ export const engineRefusals: EngineRefusal[] = [
 		check: { code: 'MERGE_MODE_EXPRESSION' },
 	},
 	{
-		name: 'a Split In Batches node has a version other than 3',
+		name: 'a Split In Batches node has a version other than 3 or 4',
 		workflow: batchNode({ batchSize: 1 }, 2),
-		engineError: 'only version 3 is supported',
+		engineError: 'only versions 3 and 4 are supported',
 		check: { code: 'SPLIT_IN_BATCHES_VERSION' },
 	},
 	{
@@ -97,6 +97,24 @@ export const engineRefusals: EngineRefusal[] = [
 		workflow: batchNode({ batchSize: 0 }),
 		engineError: 'must be a whole number of at least 1',
 		check: { code: 'SPLIT_IN_BATCHES_BATCH_SIZE' },
+	},
+	{
+		name: 'a Split In Batches v4 node sets "Run in Parallel" from an expression',
+		workflow: batchNode({ batchSize: 1, runInParallel: '={{ true }}' }, 4),
+		engineError: /sets "Run in Parallel" from an expression\. .*Use a fixed value\./,
+		check: { code: 'SPLIT_IN_BATCHES_PARALLEL' },
+	},
+	{
+		name: 'a parallel Split In Batches v4 node sets its max concurrency from an expression',
+		workflow: batchNode({ batchSize: 1, runInParallel: true, maxConcurrency: '={{ 2 }}' }, 4),
+		engineError: /sets its max concurrency from an expression\. .*Use a fixed max concurrency\./,
+		check: { code: 'SPLIT_IN_BATCHES_MAX_CONCURRENCY' },
+	},
+	{
+		name: 'a parallel Split In Batches v4 node has a max concurrency below 1',
+		workflow: batchNode({ batchSize: 1, runInParallel: true, maxConcurrency: 0 }, 4),
+		engineError: 'each must be a whole number of at least 1',
+		check: { code: 'SPLIT_IN_BATCHES_MAX_CONCURRENCY' },
 	},
 	{
 		// The converter checks only connections that leave a node the trigger reaches.

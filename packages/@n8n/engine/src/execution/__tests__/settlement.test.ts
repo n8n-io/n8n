@@ -540,4 +540,47 @@ describe('decideSuccessors over loop iterations', () => {
 		);
 		expect(decide(key('x', 0), second)).toEqual({ toQueue: [key('B', 1)], toSeed: [], toSkip: [] });
 	});
+
+	describe('in a parallel loop', () => {
+		const parallelGraph: StoredWorkflowGraph = {
+			...graph,
+			seeded: [],
+			nodes: graph.nodes.map((node) =>
+				node.id === 'B'
+					? { ...node, config: { batchSize: 1, parallel: { maxConcurrency: 2 } } }
+					: node,
+			),
+		};
+		const parallelLoops = deriveLoops(parallelGraph);
+		const decideParallel = (settled: StepKey, steps: Record<string, StepSummary>) =>
+			decideSuccessors(parallelGraph, parallelLoops, settled, steps, new Map());
+
+		it('does not advance the loop across the return edge', () => {
+			const steps = makeSteps(
+				at('B', 0, 'completed', [false, true]),
+				at('x', 0, 'completed', [true]),
+			);
+
+			expect(decideParallel(key('x', 0), steps)).toEqual({ toQueue: [], toSeed: [], toSkip: [] });
+		});
+
+		it('does not skip the next pass when the body returns nothing', () => {
+			const steps = makeSteps(
+				at('B', 0, 'completed', [false, true]),
+				at('x', 0, 'completed', [false]),
+			);
+
+			expect(decideParallel(key('x', 0), steps)).toEqual({ toQueue: [], toSeed: [], toSkip: [] });
+		});
+
+		it('still queues the body of each pass from its batch row', () => {
+			const steps = makeSteps(at('B', 3, 'completed', [false, true]));
+
+			expect(decideParallel(key('B', 3), steps)).toEqual({
+				toQueue: [key('x', 3)],
+				toSeed: [],
+				toSkip: [],
+			});
+		});
+	});
 });

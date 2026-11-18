@@ -146,3 +146,33 @@ describe('sourceRow', () => {
 		});
 	});
 });
+
+describe('a parallel loop', () => {
+	const parallel: WorkflowGraph = {
+		...loop,
+		nodes: loop.nodes.map((node) =>
+			node.type === 'batch'
+				? { ...node, config: { batchSize: 1, parallel: { maxConcurrency: 2 } } }
+				: node,
+		),
+	};
+	const parallelLoops = deriveLoops(parallel);
+
+	it('classifies its return edge as a join, and leaves the other edges as they are', () => {
+		expect(classifyEdge(edge('x', 'B'), parallelLoops)).toBe('join');
+		expect(classifyEdge(edge('trigger', 'B'), parallelLoops)).toBe('entry');
+		expect(classifyEdge(edge('B', 'x'), parallelLoops)).toBe('intra');
+		expect(classifyEdge(edge('B', 'd'), parallelLoops)).toBe('exit');
+	});
+
+	it('connects no single row through the join edge', () => {
+		for (const iteration of [0, 1, 5]) {
+			expect(sourceRow(edge('x', 'B'), 'join', { nodeId: 'B', iteration })).toEqual({
+				kind: 'none',
+			});
+		}
+		expect(() => targetKey(edge('x', 'B'), 'join', { nodeId: 'x', iteration: 0 })).toThrow(
+			/no single target row/,
+		);
+	});
+});

@@ -5,10 +5,11 @@ import { getChildNodes, isTriggerNodeType } from 'n8n-workflow';
 
 import {
 	DEFAULT_BATCH_SIZE,
+	DEFAULT_MAX_CONCURRENCY,
 	MAIN_CONNECTION_TYPE,
 	MERGE_TYPE,
 	SPLIT_IN_BATCHES_TYPE,
-	SPLIT_IN_BATCHES_TYPE_VERSION,
+	SUPPORTED_SPLIT_IN_BATCHES_VERSIONS,
 } from './constants';
 import {
 	AmbiguousTriggerError,
@@ -434,9 +435,9 @@ function rootAt(workflow: IWorkflowBase, trigger: INode): IWorkflowBase {
 }
 
 function toBatchConfig(node: INode): BatchStepConfig {
-	if (node.typeVersion !== SPLIT_IN_BATCHES_TYPE_VERSION) {
+	if (!SUPPORTED_SPLIT_IN_BATCHES_VERSIONS.includes(node.typeVersion)) {
 		throw new UnsupportedWorkflowError(
-			`Node "${node.name}" is a Split In Batches of version ${node.typeVersion}, and only version ${SPLIT_IN_BATCHES_TYPE_VERSION} is supported.`,
+			`Node "${node.name}" is a Split In Batches of version ${node.typeVersion}, and only versions ${SUPPORTED_SPLIT_IN_BATCHES_VERSIONS.join(' and ')} are supported.`,
 		);
 	}
 
@@ -464,13 +465,37 @@ function toBatchConfig(node: INode): BatchStepConfig {
 		);
 	}
 
-	const config = { batchSize };
+	const config = { batchSize, ...toParallelConfig(node) };
 
 	if (!isBatchStepConfig(config)) {
 		throw new UnsupportedWorkflowError(
-			`Node "${node.name}" has a batch size of ${String(batchSize)}, and it must be a whole number of at least 1.`,
+			config.parallel
+				? `Node "${node.name}" has a batch size of ${String(batchSize)} and a max concurrency of ${String(config.parallel.maxConcurrency)}, and each must be a whole number of at least 1.`
+				: `Node "${node.name}" has a batch size of ${String(batchSize)}, and it must be a whole number of at least 1.`,
 		);
 	}
 
 	return config;
+}
+
+/** The parallel part of a batch config. Only version 4 has it. */
+function toParallelConfig(node: INode): { parallel?: { maxConcurrency: unknown } } {
+	if (node.typeVersion < 4) return {};
+
+	const runInParallel: unknown = node.parameters?.runInParallel ?? false;
+	if (typeof runInParallel === 'string') {
+		throw new UnsupportedWorkflowError(
+			`Node "${node.name}" sets "Run in Parallel" from an expression. Engine v2 needs it before the workflow runs. Use a fixed value.`,
+		);
+	}
+	if (runInParallel !== true) return {};
+
+	const maxConcurrency: unknown = node.parameters?.maxConcurrency ?? DEFAULT_MAX_CONCURRENCY;
+	if (typeof maxConcurrency === 'string') {
+		throw new UnsupportedWorkflowError(
+			`Node "${node.name}" sets its max concurrency from an expression. Engine v2 needs the max concurrency before the workflow runs. Use a fixed max concurrency.`,
+		);
+	}
+
+	return { parallel: { maxConcurrency } };
 }

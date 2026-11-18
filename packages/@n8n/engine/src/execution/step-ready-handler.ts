@@ -14,7 +14,7 @@ import {
 } from '../graph';
 import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
 import { createResponseEmitter, type ExecutionResponseSender } from '../response-channel';
-import { runBatchStep } from './batch-step';
+import { runBatchStep, type BatchStepResult } from './batch-step';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import {
@@ -35,7 +35,7 @@ import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { InvalidParentLinkError, type StartExecutionService } from './start-execution.service';
 import { stepErrorDetails } from './step-error-details';
 import { announceStepFailed, stepEventFields } from './step-events';
-import type { StepRecord, StepStore } from './step-store';
+import type { CompletedStepExtras, StepRecord, StepStore } from './step-store';
 import { createStoreLoopReader } from './store-loop-reader';
 import { validateStepContext } from './validate-step-context';
 
@@ -117,16 +117,19 @@ export class StepReadyHandler {
 		// Only a failure to run the step fails it. A store error propagates instead —
 		// recording `failed` on a step whose side effects happened would be a lie.
 		let run:
-			| { kind: 'outputs'; outputs: StepSlots }
+			| { kind: 'outputs'; outputs: StepSlots; extras?: CompletedStepExtras }
 			| { kind: 'wait'; wait: ExecutorWaitDeclaration }
 			| { kind: 'subExecution'; subExecution: SubExecutionDeclaration }
 			| { kind: 'error'; error: StepError };
 		try {
 			let result: StepExecutionResult;
+			let extras: CompletedStepExtras | undefined;
 			if (dispatch.kind === 'replay') {
 				result = { outputs: recordedOutputs(step, dispatch.cause) };
 			} else if (dispatch.kind === 'batch') {
-				result = { outputs: await this.runBatchNode(step, execution, node) };
+				const { outputs, loopPassCount } = await this.runBatchNode(step, execution, node);
+				result = { outputs };
+				if (loopPassCount !== undefined) extras = { loopPassCount };
 			} else {
 				result = await this.runStep(step, execution, node, dispatch);
 			}
@@ -135,7 +138,7 @@ export class StepReadyHandler {
 			} else if (result.subExecution) {
 				run = { kind: 'subExecution', subExecution: result.subExecution };
 			} else {
-				run = { kind: 'outputs', outputs: result.outputs };
+				run = { kind: 'outputs', outputs: result.outputs, ...(extras ? { extras } : {}) };
 			}
 		} catch (error) {
 			run = { kind: 'error', error: toStepError(error) };
@@ -156,7 +159,9 @@ export class StepReadyHandler {
 
 		let recorded: boolean;
 		if (run.kind === 'outputs') {
-			recorded = await this.stepStore.completeStep(event.stepId, run.outputs);
+			recorded = run.extras
+				? await this.stepStore.completeStep(event.stepId, run.outputs, run.extras)
+				: await this.stepStore.completeStep(event.stepId, run.outputs);
 		} else if (run.kind === 'wait') {
 			recorded = await this.stepStore.suspendStep(event.stepId, run.wait);
 		} else {
@@ -336,7 +341,7 @@ export class StepReadyHandler {
 		step: StepRecord,
 		execution: ExecutionRecord,
 		node: GraphNode,
-	): Promise<StepSlots> {
+	): Promise<BatchStepResult> {
 		if (!isBatchStepConfig(node.config)) {
 			throw new UnexpectedError(
 				`step ${step.id} runs batch node ${step.nodeId}, whose config has no whole batch size of at least 1`,

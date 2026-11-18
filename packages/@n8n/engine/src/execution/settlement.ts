@@ -47,6 +47,9 @@ import type { StepSummary } from './step-store';
  *   the body into a further iteration, and on forever. The exclusion lives in
  *   `decideNodeFate`, so anything recomputing fates reaches the same answer,
  *   reconciliation included.
+ *
+ * A parallel loop replaces the return edge with admission
+ * (`loop-admission.ts`). This file skips its `join` edges.
  */
 
 export interface SuccessorDecisions {
@@ -83,6 +86,8 @@ export function decideSuccessors(
 
 	for (const edge of outgoingEdges) {
 		const edgeClass = classifyEdge(edge, loops);
+		// Admission plans the passes of a parallel loop, not the return edge.
+		if (edgeClass === 'join') continue;
 		if (batchStep && !batchStepDecides(edgeClass, batchStep)) continue;
 
 		const target = targetKey(edge, edgeClass, settled);
@@ -204,7 +209,9 @@ export function decisionKeys(
 	const outgoingEdges = graph.edges.filter((edge) => edge.from === settled.nodeId);
 
 	for (const edge of outgoingEdges) {
-		const target = targetKey(edge, classifyEdge(edge, loops), settled);
+		const edgeClass = classifyEdge(edge, loops);
+		if (edgeClass === 'join') continue;
+		const target = targetKey(edge, edgeClass, settled);
 		add(target);
 
 		const incomingEdges = graph.edges.filter((inEdge) => inEdge.to === target.nodeId);

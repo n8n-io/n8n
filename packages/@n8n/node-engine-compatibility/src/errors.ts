@@ -1,4 +1,5 @@
 import { UnexpectedError, UserError } from '@n8n/errors';
+import { ExpressionError } from 'n8n-workflow';
 
 const quote = (names: string[]) => names.map((name) => `"${name}"`).join(', ');
 
@@ -148,4 +149,22 @@ export class InvalidWaitDateError extends UserError {
 	constructor(nodeName: string) {
 		super(`Node "${nodeName}" asked to wait until a date that is not valid`);
 	}
+}
+
+/**
+ * A node in a parallel loop read data from another pass of that loop. The passes
+ * run at the same time, so that data may not exist yet and its value would
+ * depend on timing.
+ *
+ * A plain `ExpressionError`: expression evaluation turns every other error into
+ * an empty value, and it recognizes the error by name after the error crosses
+ * the isolate boundary, so a subclass would be lost.
+ */
+export function parallelLoopPassReadError(nodeName: string, loopName: string): ExpressionError {
+	return new ExpressionError(
+		`Cannot read data of node "${nodeName}" from another batch, because "${loopName}" runs its batches in parallel`,
+		{
+			description: `Nodes inside a loop that runs in parallel can only read data from their own batch. Turn off "Run in Parallel" on "${loopName}" to read data from other batches.`,
+		},
+	);
 }

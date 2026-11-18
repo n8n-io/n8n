@@ -507,6 +507,107 @@ describe('step execution (integration)', () => {
 		expect(execution.finishedAt).toBeInstanceOf(Date);
 	});
 
+	describe('a parallel loop', () => {
+		/** trigger -> Loop, loop slot -> X, X returns to Loop, done slot -> D. */
+		const parallelLoopGraph = (maxConcurrency: number): WorkflowGraph => ({
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{
+					id: 'loop',
+					name: 'Loop',
+					type: 'batch',
+					config: { batchSize: 1, parallel: { maxConcurrency } },
+				},
+				{ id: 'x', name: 'X', type: 'v1-node' },
+				{ id: 'd', name: 'D', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'loop', outputIndex: 0, inputIndex: 0 },
+				{ from: 'loop', to: 'x', outputIndex: 1, inputIndex: 0 },
+				{ from: 'x', to: 'loop', outputIndex: 0, inputIndex: 0, isBackEdge: true },
+				{ from: 'loop', to: 'd', outputIndex: 0, inputIndex: 0 },
+			],
+		});
+		const items = [1, 2, 3, 4, 5, 6, 7].map((n) => ({ json: { n } }));
+
+		/**
+		 * X takes longer for earlier items, so the passes finish out of order. X
+		 * drops item 4 and fails on `failOn`.
+		 */
+		function makeLoopExecutor({ failOn }: { failOn?: number } = {}) {
+			let running = 0;
+			let maxRunning = 0;
+			let doneInput: unknown;
+			const executor: IStepExecutor = {
+				execute: async (request) => {
+					if (request.node.id === 'd') {
+						doneInput = request.inputs[0];
+						return { outputs: [[{ json: { ok: true } }]] };
+					}
+					const [item] = request.inputs[0] as Array<{ json: { n: number } }>;
+					running += 1;
+					maxRunning = Math.max(maxRunning, running);
+					await new Promise((resolve) => setTimeout(resolve, 5 * (8 - item.json.n)));
+					running -= 1;
+					if (item.json.n === failOn) throw new Error(`X failed on ${failOn}`);
+					return { outputs: [item.json.n === 4 ? null : [{ json: { doubled: item.json.n * 2 } }]] };
+				},
+			};
+			return { executor, maxRunning: () => maxRunning, doneInput: () => doneInput };
+		}
+
+		it.each([1, 3])(
+			'runs at most %i bodies at a time and collects their outputs in item order',
+			async (maxConcurrency) => {
+				const { executor, maxRunning, doneInput } = makeLoopExecutor();
+
+				const { execution, steps } = await runWorkflow(executor, [items], {
+					workflowId: 'wf-parallel-loop',
+					graph: parallelLoopGraph(maxConcurrency),
+					concurrency: { step: 8, orchestration: 4 },
+				});
+
+				expect(execution.status).toBe('completed');
+				// exact peak depends on timing, but the limit must hold and bodies must overlap
+				expect(maxRunning()).toBeLessThanOrEqual(maxConcurrency);
+				if (maxConcurrency > 1) expect(maxRunning()).toBeGreaterThan(1);
+				expect(doneInput()).toEqual([1, 2, 3, 5, 6, 7].map((n) => ({ json: { doubled: n * 2 } })));
+				// seven data passes and the terminal pass, one body per data pass
+				expect(steps.filter((step) => step.nodeId === 'loop')).toHaveLength(8);
+				expect(steps.filter((step) => step.nodeId === 'x')).toHaveLength(7);
+				expect(
+					steps.find((step) => step.nodeId === 'loop' && step.iteration === 0)?.loopPassCount,
+				).toBe(7);
+			},
+		);
+
+		it('fails the execution when one body fails', async () => {
+			const { executor } = makeLoopExecutor({ failOn: 2 });
+
+			const { execution, steps } = await runWorkflow(executor, [items], {
+				workflowId: 'wf-parallel-loop-failure',
+				graph: parallelLoopGraph(3),
+				concurrency: { step: 8, orchestration: 4 },
+			});
+
+			expect(execution.status).toBe('failed');
+			expect(steps.some((step) => step.nodeId === 'd')).toBe(false);
+		});
+
+		it('ends at once on an empty list, firing neither slot', async () => {
+			const { executor } = makeLoopExecutor();
+
+			const { execution, steps } = await runWorkflow(executor, [[]], {
+				workflowId: 'wf-parallel-loop-empty',
+				graph: parallelLoopGraph(3),
+			});
+
+			expect(execution.status).toBe('completed');
+			expect(steps.filter((step) => step.nodeId === 'loop')).toHaveLength(1);
+			expect(steps.find((step) => step.nodeId === 'd')?.status).toBe('skipped');
+		});
+	});
+
 	it('records a seeded node with its outputs when the run reaches it, and runs what follows on them', async () => {
 		const chainGraph: WorkflowGraph = {
 			nodes: [

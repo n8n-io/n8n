@@ -134,6 +134,7 @@ function makeStepStore(
 		}),
 		loadStepsByKeys: vi.fn().mockResolvedValue({}),
 		loadLatestStepSummaries: vi.fn().mockResolvedValue({}),
+		loadParallelLoopProgress: vi.fn().mockResolvedValue({ createdPasses: 0, settledBodies: 0 }),
 		loadAllSteps: vi.fn().mockResolvedValue([]),
 		loadStepsByNodeIds: vi.fn().mockResolvedValue([]),
 		loadWaitingSteps: vi.fn().mockResolvedValue([]),
@@ -607,6 +608,124 @@ describe('StepSettledHandler', () => {
 		// 'a' fanned out to b and c, so the execution is provably unfinished
 		expect(stepStore.countSettledSteps).not.toHaveBeenCalled();
 		expect(executionStore.finishExecution).not.toHaveBeenCalled();
+	});
+});
+
+describe('StepSettledHandler in a parallel loop', () => {
+	/** trigger -> B, B loop slot -> x, x returns to B, B done slot -> d. */
+	const loopGraph: WorkflowGraph = {
+		nodes: [
+			{ id: 'trigger', name: 'T', type: 'trigger' },
+			{
+				id: 'B',
+				name: 'Loop',
+				type: 'batch',
+				config: { batchSize: 1, parallel: { maxConcurrency: 3 } },
+			},
+			{ id: 'x', name: 'X', type: 'v1-node' },
+			{ id: 'd', name: 'D', type: 'v1-node' },
+		],
+		edges: [
+			{ from: 'trigger', to: 'B', outputIndex: 0, inputIndex: 0 },
+			{ from: 'B', to: 'x', outputIndex: 1, inputIndex: 0 },
+			{ from: 'x', to: 'B', outputIndex: 0, inputIndex: 0, isBackEdge: true },
+			{ from: 'B', to: 'd', outputIndex: 0, inputIndex: 0 },
+		],
+	};
+
+	const at = (
+		nodeId: string,
+		iteration: number,
+		status: StepStatus,
+		filledOutputSlots: boolean[] = [],
+	): StepSummary => ({
+		id: `step-${nodeId}-${iteration}`,
+		nodeId,
+		iteration,
+		status,
+		filledOutputSlots,
+	});
+
+	it('queues the body of pass 0 and fills the concurrency window', async () => {
+		const stepStore = makeStepStore(
+			{ id: 'step-B', nodeId: 'B' },
+			{
+				loadParallelLoopProgress: vi.fn().mockResolvedValue({
+					firstPass: { status: 'completed', loopPassCount: 10 },
+					createdPasses: 1,
+					settledBodies: 0,
+				}),
+			},
+			[at('B', 0, 'completed', [false, true])],
+		);
+		const { handler, stepQueue } = makeHandler(stepStore, {
+			executionStore: makeExecutionStore({ graph: loopGraph }),
+		});
+
+		await handler.handle({ ...event, stepId: 'step-B' });
+
+		expect(stepStore.loadParallelLoopProgress).toHaveBeenCalledExactlyOnceWith('exec-1', 'B', 'x');
+		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
+			{ nodeId: 'x', iteration: 0, status: 'queued' },
+			{ nodeId: 'B', iteration: 1, status: 'queued' },
+			{ nodeId: 'B', iteration: 2, status: 'queued' },
+		]);
+		expect(stepQueue.publish).toHaveBeenCalledTimes(3);
+	});
+
+	it('admits the next pass when a body finishes, not the pass after it', async () => {
+		const stepStore = makeStepStore(
+			{ id: 'step-x', nodeId: 'x', iteration: 0 },
+			{
+				loadParallelLoopProgress: vi.fn().mockResolvedValue({
+					firstPass: { status: 'completed', loopPassCount: 10 },
+					createdPasses: 3,
+					settledBodies: 1,
+				}),
+			},
+			[at('B', 0, 'completed', [false, true]), at('x', 0, 'completed', [true])],
+		);
+		const { handler } = makeHandler(stepStore, {
+			executionStore: makeExecutionStore({ graph: loopGraph }),
+		});
+
+		await handler.handle({ ...event, stepId: 'step-x' });
+
+		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
+			{ nodeId: 'B', iteration: 3, status: 'queued' },
+		]);
+	});
+
+	it('queues the terminal pass once the last body finishes', async () => {
+		const stepStore = makeStepStore(
+			{ id: 'step-x', nodeId: 'x', iteration: 1 },
+			{
+				loadParallelLoopProgress: vi.fn().mockResolvedValue({
+					firstPass: { status: 'completed', loopPassCount: 3 },
+					createdPasses: 3,
+					settledBodies: 3,
+				}),
+			},
+			[at('x', 1, 'skipped')],
+		);
+		const { handler } = makeHandler(stepStore, {
+			executionStore: makeExecutionStore({ graph: loopGraph }),
+		});
+
+		await handler.handle({ ...event, stepId: 'step-x' });
+
+		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
+			{ nodeId: 'B', iteration: 3, status: 'queued' },
+		]);
+	});
+
+	it('reads no loop progress for a node that cannot advance the loop', async () => {
+		const stepStore = makeStepStore();
+		const { handler } = makeHandler(stepStore);
+
+		await handler.handle(event);
+
+		expect(stepStore.loadParallelLoopProgress).not.toHaveBeenCalled();
 	});
 });
 

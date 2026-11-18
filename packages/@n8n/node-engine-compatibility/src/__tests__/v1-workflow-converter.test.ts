@@ -754,6 +754,43 @@ describe('V1WorkflowConverter', () => {
 			]);
 		});
 
+		it('maps a parallel Split In Batches v4 node to a parallel batch step', () => {
+			const convertLoop = (parameters: INode['parameters']) =>
+				converter
+					.convert(
+						workflow({
+							nodes: [
+								manualTrigger,
+								node('loop-uuid', 'Loop', {
+									type: 'n8n-nodes-base.splitInBatches',
+									typeVersion: 4,
+									parameters,
+								}),
+								node('body-uuid', 'Body'),
+							],
+							connections: {
+								'When clicking Execute': { main: [[main('Loop')]] },
+								Loop: { main: [[], [main('Body')]] },
+								Body: { main: [[main('Loop')]] },
+							},
+						}),
+					)
+					.nodes.find((n) => n.id === 'loop-uuid')?.config;
+
+			expect(convertLoop({ batchSize: 2, runInParallel: true, maxConcurrency: 3 })).toEqual({
+				batchSize: 2,
+				parallel: { maxConcurrency: 3 },
+			});
+			// the node's default max concurrency applies when the parameter is unset
+			expect(convertLoop({ batchSize: 2, runInParallel: true })).toEqual({
+				batchSize: 2,
+				parallel: { maxConcurrency: 5 },
+			});
+			expect(convertLoop({ batchSize: 2, runInParallel: false, maxConcurrency: 3 })).toEqual({
+				batchSize: 2,
+			});
+		});
+
 		it('marks both back edges of nested loops, but not the loop-entry edge', () => {
 			// ┌───────┐    ┌─────┐ o0    ┌───┐
 			// │trigger├───►│     ├──────►│End│

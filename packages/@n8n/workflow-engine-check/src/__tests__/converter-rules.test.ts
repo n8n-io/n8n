@@ -122,6 +122,24 @@ describe('converter rules', () => {
 			kind: 'invalid',
 		},
 		{
+			shape: 'a Split In Batches v4 node with "Run in Parallel" from an expression',
+			target: splitInBatches({ runInParallel: '={{ true }}' }, 4),
+			code: 'SPLIT_IN_BATCHES_PARALLEL',
+			kind: 'permanent',
+		},
+		{
+			shape: 'a parallel Split In Batches v4 node with a max concurrency expression',
+			target: splitInBatches({ runInParallel: true, maxConcurrency: '={{ 2 }}' }, 4),
+			code: 'SPLIT_IN_BATCHES_MAX_CONCURRENCY',
+			kind: 'permanent',
+		},
+		{
+			shape: 'a parallel Split In Batches v4 node with a max concurrency of 0',
+			target: splitInBatches({ runInParallel: true, maxConcurrency: 0 }, 4),
+			code: 'SPLIT_IN_BATCHES_MAX_CONCURRENCY',
+			kind: 'invalid',
+		},
+		{
 			shape: 'a reachable node with a non-main connection',
 			target: node({}),
 			connections: toolConnection,
@@ -235,6 +253,17 @@ describe('converter rules', () => {
 		expect(
 			checkEngineV2Eligibility({ nodes: [target], connections: {}, settings: {} }).reasons,
 		).toEqual([expect.objectContaining({ code: 'CONTINUE_ERROR_OUTPUT', nodeName: 'Node' })]);
+	});
+
+	it('accepts a Split In Batches v4 node, parallel or not', () => {
+		expect(check(splitInBatches({ batchSize: 2 }, 4)).reasons).toEqual([]);
+		expect(
+			check(splitInBatches({ batchSize: 2, runInParallel: true, maxConcurrency: 3 }, 4)).reasons,
+		).toEqual([]);
+		// the default max concurrency applies when the parameter is unset
+		expect(check(splitInBatches({ runInParallel: true }, 4)).reasons).toEqual([]);
+		// a version 3 node has no parallel option, so its max concurrency is never read
+		expect(check(splitInBatches({ maxConcurrency: 0 })).reasons).toEqual([]);
 	});
 
 	it('reports only the version for a Split In Batches node of another version', () => {

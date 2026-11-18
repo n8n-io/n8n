@@ -1,3 +1,4 @@
+import { UnexpectedError } from '../common';
 import type { GraphEdge, WorkflowLoop } from '../graph';
 import type { StepKey } from './execution.types';
 
@@ -15,8 +16,11 @@ import type { StepKey } from './execution.types';
  * - `exit`: leaves a loop from the batch node's done slot. Its source is the
  *   loop's terminal row, whatever iteration that is, and its target sits at
  *   iteration 0.
+ * - `join`: the marked return edge of a parallel loop. It connects no single
+ *   pair of rows. Passes start through admission, and the terminal pass waits
+ *   for the source row of every pass. `loop-admission.ts` decides both.
  */
-export type EdgeClass = 'plain' | 'entry' | 'intra' | 'back' | 'exit';
+export type EdgeClass = 'plain' | 'entry' | 'intra' | 'back' | 'join' | 'exit';
 
 /**
  * The source row an edge has at a given target iteration. The two empty cases
@@ -33,7 +37,10 @@ export type EdgeClass = 'plain' | 'entry' | 'intra' | 'back' | 'exit';
 export type SourceRow = { kind: 'row'; key: StepKey } | { kind: 'none' } | { kind: 'pending' };
 
 export function classifyEdge(edge: GraphEdge, loops: WorkflowLoop[]): EdgeClass {
-	if (edge.isBackEdge) return 'back';
+	if (edge.isBackEdge) {
+		const loop = loops.find((l) => l.batchNodeId === edge.to);
+		return loop?.parallel ? 'join' : 'back';
+	}
 
 	const sourceLoop = loops.find((loop) => loop.memberIds.has(edge.from));
 	const targetLoop = loops.find((loop) => loop.memberIds.has(edge.to));
@@ -47,9 +54,16 @@ export function classifyEdge(edge: GraphEdge, loops: WorkflowLoop[]): EdgeClass 
 	return 'plain';
 }
 
-/** The target row, given the source row. */
+/**
+ * The target row, given the source row. A `join` edge has no single target row,
+ * so callers must not ask for one.
+ */
 export function targetKey(edge: GraphEdge, edgeClass: EdgeClass, source: StepKey): StepKey {
 	switch (edgeClass) {
+		case 'join':
+			throw new UnexpectedError(
+				`edge ${edge.from} -> ${edge.to} joins a parallel loop and has no single target row`,
+			);
 		case 'back':
 			return { nodeId: edge.to, iteration: source.iteration + 1 };
 		case 'exit':
@@ -75,6 +89,8 @@ export function sourceRow(
 	switch (edgeClass) {
 		case 'back':
 			return target.iteration === 0 ? { kind: 'none' } : row(target.iteration - 1);
+		case 'join':
+			return { kind: 'none' };
 		case 'entry':
 			return target.iteration > 0 ? { kind: 'none' } : row(0);
 		case 'exit':

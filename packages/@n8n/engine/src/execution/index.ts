@@ -45,7 +45,9 @@ export type {
 export { StepNotFoundError } from './step-store';
 export { announceStepFailed } from './step-events';
 export { validateStepContext } from './validate-step-context';
+export type { ParallelLoopProgress } from './loop-admission';
 export type {
+	CompletedStepExtras,
 	DueStep,
 	NewStepRecord,
 	StaleQueuedStep,

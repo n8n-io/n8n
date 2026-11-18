@@ -37,6 +37,7 @@ function makeStepStore(resumeDueSteps = vi.fn().mockResolvedValue([])): StepStor
 		loadStepsByKeys: vi.fn().mockResolvedValue({}),
 		loadStepSummariesByKeys: vi.fn().mockResolvedValue({}),
 		loadLatestStepSummaries: vi.fn().mockResolvedValue({}),
+		loadParallelLoopProgress: vi.fn().mockResolvedValue({ createdPasses: 0, settledBodies: 0 }),
 		loadAllSteps: vi.fn().mockResolvedValue([]),
 		loadStepsByNodeIds: vi.fn().mockResolvedValue([]),
 		loadWaitingSteps: vi.fn().mockResolvedValue([]),

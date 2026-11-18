@@ -22,6 +22,13 @@ function makeGraph(
 	};
 }
 
+function withBatchConfig(graph: WorkflowGraph, config: unknown): WorkflowGraph {
+	return {
+		...graph,
+		nodes: graph.nodes.map((node) => (node.type === 'batch' ? { ...node, config } : node)),
+	};
+}
+
 /**
  * The canonical shape: entry into B, body x, return to B, exit from B's done slot.
  *
@@ -61,6 +68,16 @@ describe('deriveLoops', () => {
 		]);
 		expect(loop.entryEdges).toEqual([{ from: 'trigger', to: 'B', outputIndex: 0, inputIndex: 0 }]);
 		expect(loop.exitEdges).toEqual([{ from: 'B', to: 'd', outputIndex: 0, inputIndex: 0 }]);
+	});
+
+	it('carries the parallel config of the batch node', () => {
+		const parallelLoop = withBatchConfig(simpleLoop, {
+			batchSize: 1,
+			parallel: { maxConcurrency: 4 },
+		});
+
+		expect(deriveLoops(parallelLoop)[0].parallel).toEqual({ maxConcurrency: 4 });
+		expect(deriveLoops(simpleLoop)[0]).not.toHaveProperty('parallel');
 	});
 
 	it('derives a self-loop as a single-member loop', () => {
@@ -589,6 +606,18 @@ describe('validateLoops', () => {
 		graph.nodes = graph.nodes.map((node) => (node.id === 'B' ? { ...node, config: {} } : node));
 
 		expect(() => validateLoops(graph)).toThrow(/no batch size/);
+	});
+
+	it('accepts a parallel batch node', () => {
+		const graph = withBatchConfig(simpleLoop, { batchSize: 2, parallel: { maxConcurrency: 3 } });
+
+		expect(() => validateLoops(graph)).not.toThrow();
+	});
+
+	it('rejects a parallel batch node without a whole max concurrency', () => {
+		const graph = withBatchConfig(simpleLoop, { batchSize: 2, parallel: { maxConcurrency: 0 } });
+
+		expect(() => validateLoops(graph)).toThrow(/"B" runs in parallel with no max concurrency/);
 	});
 
 	it('rejects a trigger inside a loop, which could never start', () => {

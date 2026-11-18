@@ -1,6 +1,12 @@
 import { UnimplementedError } from '../common';
 import { GraphValidationError } from './graph-validation.error';
-import { isBatchStepConfig, type GraphEdge, type WorkflowGraph } from './workflow-graph';
+import {
+	hasValidBatchSize,
+	isBatchStepConfig,
+	type GraphEdge,
+	type ParallelBatchConfig,
+	type WorkflowGraph,
+} from './workflow-graph';
 import { createNodeLabeler } from './workflow-graph-queries';
 
 /** A loop, derived from the graph's marked back-edges. */
@@ -15,6 +21,8 @@ export interface WorkflowLoop {
 	entryEdges: GraphEdge[];
 	/** Forward edges from a member to a node outside the loop. */
 	exitEdges: GraphEdge[];
+	/** Set when the passes run at the same time. The back-edge then joins them. */
+	parallel?: ParallelBatchConfig;
 }
 
 /** One loop per back-edge target, members from the full graph's SCCs. */
@@ -26,7 +34,10 @@ export function deriveLoops(graph: WorkflowGraph): WorkflowLoop[] {
 
 	return backEdgeTargets.map((batchNodeId) => {
 		const memberIds = sccByNode.get(batchNodeId) ?? new Set([batchNodeId]);
+		const config = graph.nodes.find((node) => node.id === batchNodeId)?.config;
+		const parallel = isBatchStepConfig(config) ? config.parallel : undefined;
 		return {
+			...(parallel ? { parallel } : {}),
 			batchNodeId,
 			memberIds,
 			backEdges: graph.edges.filter((e) => e.isBackEdge && e.to === batchNodeId),
@@ -181,6 +192,11 @@ export function validateLoops(graph: WorkflowGraph): void {
 		}
 
 		const batchNode = graph.nodes.find((node) => node.id === batchNodeId);
+		if (hasValidBatchSize(batchNode?.config) && !isBatchStepConfig(batchNode?.config)) {
+			throw new GraphValidationError(
+				`Batch node ${name(batchNodeId)} runs in parallel with no max concurrency, and it must be a whole number of at least 1`,
+			);
+		}
 		if (!isBatchStepConfig(batchNode?.config)) {
 			throw new GraphValidationError(
 				`Batch node ${name(batchNodeId)} has no batch size, and it must be a whole number of at least 1`,

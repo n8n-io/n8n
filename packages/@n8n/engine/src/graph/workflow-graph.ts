@@ -22,12 +22,33 @@ export type StepConfig = unknown;
 export interface BatchStepConfig {
 	/** How many items each pass takes. At least 1, so every pass makes progress. */
 	batchSize: number;
+	/**
+	 * Runs the passes of the loop at the same time instead of one after another.
+	 * Absent means sequential. See `loop-admission.ts`.
+	 */
+	parallel?: ParallelBatchConfig;
+}
+
+export interface ParallelBatchConfig {
+	/** How many passes of the loop body can run at the same time. At least 1. */
+	maxConcurrency: number;
+}
+
+function isPositiveInteger(value: unknown): value is number {
+	return typeof value === 'number' && Number.isInteger(value) && value >= 1;
+}
+
+export function hasValidBatchSize(config: unknown): boolean {
+	if (typeof config !== 'object' || config === null) return false;
+	return isPositiveInteger((config as { batchSize?: unknown }).batchSize);
 }
 
 export function isBatchStepConfig(config: unknown): config is BatchStepConfig {
-	if (typeof config !== 'object' || config === null) return false;
-	const { batchSize } = config as { batchSize?: unknown };
-	return typeof batchSize === 'number' && Number.isInteger(batchSize) && batchSize >= 1;
+	if (!hasValidBatchSize(config)) return false;
+	const { parallel } = config as { parallel?: unknown };
+	if (parallel === undefined) return true;
+	if (typeof parallel !== 'object' || parallel === null) return false;
+	return isPositiveInteger((parallel as { maxConcurrency?: unknown }).maxConcurrency);
 }
 
 export interface GraphNode {

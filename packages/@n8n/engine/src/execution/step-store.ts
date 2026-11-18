@@ -7,6 +7,7 @@ import type {
 	StepStatus,
 	WaitDeclaration,
 } from './execution.types';
+import type { ParallelLoopProgress } from './loop-admission';
 
 /**
  * A new step to persist. `id` and timestamps are assigned by the store.
@@ -24,6 +25,15 @@ export type NewStepRecord = { nodeId: string; iteration: number } & (
 	| { status: Extract<StepStatus, 'queued' | 'skipped'>; outputs?: never }
 	| { status: Extract<StepStatus, 'completed'>; outputs: StepSlots }
 );
+
+/** What a completed step can record beside its outputs. */
+export interface CompletedStepExtras {
+	/**
+	 * How many data passes a parallel loop has. Written by its batch node, and
+	 * read by admission from pass 0.
+	 */
+	loopPassCount?: number;
+}
 
 /**
  * Type of what running and settling a step needs of its row
@@ -136,7 +146,7 @@ export interface StepStore {
 	 * longer holds the claim — the outcome and the status are written together,
 	 * so they can't be observed apart.
 	 */
-	completeStep(id: string, outputs: StepSlots): Promise<boolean>;
+	completeStep(id: string, outputs: StepSlots, extras?: CompletedStepExtras): Promise<boolean>;
 
 	/**
 	 * Record a wait: persist `wait_declaration` and move the step to `waiting`. A
@@ -283,6 +293,17 @@ export interface StepStore {
 		executionId: string,
 		nodeIds: string[],
 	): Promise<Record<string, StepSummary>>;
+
+	/**
+	 * Counts that decide which passes a parallel loop can start, in one query.
+	 * `tailNodeId` is the source of the loop's return edge. See
+	 * `ParallelLoopProgress` for what each count means.
+	 */
+	loadParallelLoopProgress(
+		executionId: string,
+		batchNodeId: string,
+		tailNodeId: string,
+	): Promise<ParallelLoopProgress>;
 
 	/**
 	 * Every step of the execution, at every iteration.

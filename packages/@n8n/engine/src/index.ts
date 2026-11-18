@@ -90,6 +90,7 @@ export type { JsonObject, JsonValue } from './common';
 export { deriveLoops, isBatchStepConfig, validateExecutableGraph } from './graph';
 export type {
 	BatchStepConfig,
+	ParallelBatchConfig,
 	GraphEdge,
 	GraphNode,
 	StepConfig,
@@ -148,6 +149,8 @@ export type {
 	ExecutionView,
 	NewExecutionRecord,
 	NewStepRecord,
+	CompletedStepExtras,
+	ParallelLoopProgress,
 	ParentLink,
 	InvalidParentLinkReason,
 	StartExecutionRequest,

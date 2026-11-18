@@ -1,8 +1,15 @@
 import type { StepExecutionContext, WorkflowGraph } from '@n8n/engine';
+import { ExpressionError } from 'n8n-workflow';
 import { describe, expect, it } from 'vitest';
 
 import type { V1NodeStepConfig } from '../types';
-import { toV1ExecuteMode, toV1Execution, toV1Node, toV1Sources } from '../v1-adapters';
+import {
+	toV1ExecuteMode,
+	toV1Execution,
+	toV1Node,
+	toV1Sources,
+	toV1StepSources,
+} from '../v1-adapters';
 import { V1WorkflowConverter } from '../v1-workflow-converter';
 import { items, v1Workflow } from './fixtures';
 
@@ -203,6 +210,65 @@ describe('toV1Execution', () => {
 			const execution = toV1Execution(graph, outputs, 'body', 2);
 
 			expect(execution.runData.B).toBeUndefined();
+		});
+
+		it('names the active pass as the source run of an edge inside the loop', () => {
+			const execution = toV1Execution(graph, outputs, 'body', 2);
+
+			expect(execution.runData.Body[2].source).toEqual([
+				{ previousNode: 'Loop', previousNodeOutput: 1, previousNodeRun: 2 },
+			]);
+			expect(toV1StepSources(graph, 'body', 2)).toEqual([
+				{ previousNode: 'Loop', previousNodeOutput: 1, previousNodeRun: 2 },
+			]);
+			// the edge into the loop comes from outside it, so it reads run 0
+			expect(toV1StepSources(graph, 'loop', 2)).toEqual([
+				{ previousNode: 'B', previousNodeOutput: 0 },
+			]);
+		});
+	});
+
+	describe('run data in a parallel loop', () => {
+		const parallelGraph = {
+			...graph,
+			nodes: graph.nodes.map((node) =>
+				node.type === 'batch'
+					? { ...node, config: { batchSize: 1, parallel: { maxConcurrency: 2 } } }
+					: node,
+			),
+		};
+		const outputs = {
+			a: { 0: items({ from: 'a' }) },
+			body: { 0: items({ pass: 0 }), 2: items({ pass: 2 }) },
+		};
+
+		it('shows a member its own pass', () => {
+			const execution = toV1Execution(parallelGraph, outputs, 'body', 2);
+
+			expect(execution.runData.Body).toHaveLength(3);
+			expect(execution.runData.Body[2].data!.main[0]).toEqual([{ json: { pass: 2 } }]);
+		});
+
+		it('fails loudly when a member reads another pass of the loop', () => {
+			const execution = toV1Execution(parallelGraph, outputs, 'body', 2);
+
+			expect(() => execution.runData.Body[0].data).toThrow(ExpressionError);
+			expect(() => execution.runData.Body[1].data).toThrow(
+				'Cannot read data of node "Body" from another batch, because "Loop" runs its batches in parallel',
+			);
+		});
+
+		it('leaves the other passes out when run data is copied or serialized', () => {
+			const execution = toV1Execution(parallelGraph, outputs, 'body', 2);
+
+			expect(() => JSON.stringify(execution.runData)).not.toThrow();
+			expect(structuredClone(execution.runData).Body[0]).not.toHaveProperty('data');
+		});
+
+		it('shows every pass to a node outside the loop', () => {
+			const execution = toV1Execution(parallelGraph, outputs, 'a', 0);
+
+			expect(execution.runData.Body[0].data!.main[0]).toEqual([{ json: { pass: 0 } }]);
 		});
 	});
 });

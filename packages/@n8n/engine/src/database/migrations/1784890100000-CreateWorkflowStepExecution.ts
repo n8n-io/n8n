@@ -63,6 +63,13 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 							'When the engine treats a queued or running step as stuck. Written at each transition into those statuses. NULL in every other status.',
 					},
 					{
+						name: 'loop_pass_count',
+						type: 'int',
+						isNullable: true,
+						comment:
+							'How many data passes a parallel loop has. Written by its batch node steps. NULL on every other step.',
+					},
+					{
 						name: 'created_at',
 						type: 'timestamptz',
 						precision: 3,

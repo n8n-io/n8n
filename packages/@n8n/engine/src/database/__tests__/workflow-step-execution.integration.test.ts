@@ -1250,6 +1250,53 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(await store.loadLatestStepSummaries(executionId, [])).toEqual({});
 	});
 
+	it('TypeOrmStepStore.loadParallelLoopProgress counts the passes and the settled bodies', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+
+		expect(await store.loadParallelLoopProgress(executionId, 'B', 'x')).toEqual({
+			createdPasses: 0,
+			settledBodies: 0,
+		});
+
+		await store.createSteps(executionId, [{ nodeId: 'B', iteration: 0, status: 'queued' }]);
+		const [first] = await store.loadStepsByNodeIds(executionId, ['B']);
+		await store.claimStep(first.id);
+		expect(await store.completeStep(first.id, [null, [{ json: {} }]], { loopPassCount: 3 })).toBe(
+			true,
+		);
+		await store.createSteps(executionId, [
+			{ nodeId: 'B', iteration: 1, status: 'queued' },
+			{ nodeId: 'B', iteration: 2, status: 'queued' },
+			{ nodeId: 'x', iteration: 0, status: 'completed', outputs: [[{ json: {} }]] },
+			{ nodeId: 'x', iteration: 1, status: 'skipped' },
+			{ nodeId: 'x', iteration: 2, status: 'queued' },
+		]);
+
+		expect(await store.loadParallelLoopProgress(executionId, 'B', 'x')).toEqual({
+			firstPass: { status: 'completed', loopPassCount: 3 },
+			createdPasses: 3,
+			settledBodies: 2,
+		});
+	});
+
+	it('TypeOrmStepStore.loadParallelLoopProgress leaves out the terminal pass of a self-loop', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		await store.createSteps(executionId, [{ nodeId: 'B', iteration: 0, status: 'queued' }]);
+		const [first] = await store.loadStepsByNodeIds(executionId, ['B']);
+		await store.claimStep(first.id);
+		await store.completeStep(first.id, [null, [{ json: {} }]], { loopPassCount: 1 });
+		await store.createSteps(executionId, [
+			{ nodeId: 'B', iteration: 1, status: 'completed', outputs: [null, null] },
+		]);
+
+		expect(await store.loadParallelLoopProgress(executionId, 'B', 'B')).toMatchObject({
+			createdPasses: 2,
+			settledBodies: 1,
+		});
+	});
+
 	describe('stale_after', () => {
 		const staleness = { queuedMs: 10_000, runningStepMs: 50_000 };
 

@@ -144,6 +144,7 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 			.mockResolvedValue({ [at('trigger')]: stepRow('trigger', 'completed', [{}]) }),
 		loadStepSummariesByKeys: vi.fn().mockResolvedValue({}),
 		loadLatestStepSummaries: vi.fn().mockResolvedValue({}),
+		loadParallelLoopProgress: vi.fn().mockResolvedValue({ createdPasses: 0, settledBodies: 0 }),
 		loadAllSteps: vi.fn().mockResolvedValue([]),
 		loadStepsByNodeIds: vi.fn().mockResolvedValue([]),
 		loadWaitingSteps: vi.fn().mockResolvedValue([]),
@@ -1789,6 +1790,40 @@ describe('StepReadyHandler over loop iterations', () => {
 		]);
 		expect(executor.execute).toHaveBeenCalledWith(
 			expect.objectContaining({ inputs: [[{ json: { done: true } }]] }),
+		);
+	});
+
+	it('records the pass count when a parallel batch node runs a pass', async () => {
+		const parallelGraph: WorkflowGraph = {
+			...loopGraph,
+			nodes: loopGraph.nodes.map((node) =>
+				node.id === 'B'
+					? { ...node, config: { batchSize: 2, parallel: { maxConcurrency: 2 } } }
+					: node,
+			),
+		};
+		const items = [1, 2, 3].map((n) => ({ json: { n } }));
+		const stepStore = makeStepStore(
+			{ id: 'step-B-1', nodeId: 'B', iteration: 1 },
+			{
+				loadStepsByKeys: vi.fn().mockResolvedValue({
+					[stepKeyId({ nodeId: 'trigger', iteration: 0 })]: rowAt('trigger', 0, [items]),
+				}),
+			},
+		);
+		const handler = makeHandler(
+			makeExecutionStore({ graph: parallelGraph }),
+			stepStore,
+			makeQueue(),
+			{},
+		);
+
+		await handler.handle({ ...event, stepId: 'step-B-1' });
+
+		expect(stepStore.completeStep).toHaveBeenCalledExactlyOnceWith(
+			'step-B-1',
+			[null, [{ json: { n: 3 } }]],
+			{ loopPassCount: 2 },
 		);
 	});
 

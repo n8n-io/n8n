@@ -5,11 +5,13 @@
 
 import { deriveLoops, isBatchStepConfig } from '@n8n/engine';
 import type {
+	GraphEdge,
 	GraphNode,
 	StepExecutionContext,
 	StepSlots,
 	SubExecutionResumeCause,
 	WorkflowGraph,
+	WorkflowLoop,
 } from '@n8n/engine';
 import {
 	buildResumeUrlSuffix,
@@ -30,6 +32,7 @@ import type {
 	INodeTypes,
 	IRunData,
 	ISourceData,
+	ITaskData,
 	ITaskDataConnections,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -44,7 +47,7 @@ import {
 	SPLIT_IN_BATCHES_TYPE,
 	SPLIT_IN_BATCHES_TYPE_VERSION,
 } from './constants';
-import { MissingResumeSecretError } from './errors';
+import { MissingResumeSecretError, parallelLoopPassReadError } from './errors';
 import { isTriggerStepConfig, isV1NodeStepConfig } from './guards';
 import { fromStepInputs } from './io';
 import type {
@@ -116,8 +119,10 @@ function toV1RunData(
 	activeIteration: number,
 ): IRunData {
 	const namesById = nodeNamesById(graph);
-	const sourcesByNodeId = toV1Sources(graph);
-	const activeLoop = deriveLoops(graph).find((loop) => loop.memberIds.has(activeNodeId));
+	const edgesByTarget = forwardEdgesByTarget(graph);
+	const loops = deriveLoops(graph);
+	const activeLoop = loops.find((loop) => loop.memberIds.has(activeNodeId));
+	const loopName = activeLoop ? (namesById.get(activeLoop.batchNodeId) ?? '') : '';
 
 	const runData: IRunData = {};
 	for (const [completedNodeId, outputsByIteration] of Object.entries(outputsByNode)) {
@@ -136,10 +141,22 @@ function toV1RunData(
 			lastShown = 0;
 		}
 
-		const source = sourcesByNodeId.get(completedNodeId) ?? [];
+		const sourceAt = (iteration: number) =>
+			stepSources(edgesByTarget, namesById, loops, completedNodeId, iteration);
+		// The passes of a parallel loop run at the same time, so a member can read
+		// only its own pass. Reading another one fails instead of seeing data that
+		// depends on timing.
+		const isOtherParallelPass = (iteration: number) =>
+			activeLoop?.parallel !== undefined &&
+			activeLoop.memberIds.has(completedNodeId) &&
+			iteration !== activeIteration;
 
 		// A pass the node was skipped on gets an empty run rather than a gap.
 		runData[nodeName] = Array.from({ length: lastShown + 1 }, (_, iteration) => {
+			const source = sourceAt(iteration);
+			if (isOtherParallelPass(iteration)) {
+				return otherParallelPassRun(iteration, source, nodeName, loopName);
+			}
 			const outputs = outputsByIteration[iteration];
 			if (outputs === undefined) return emptyRun(iteration, source);
 
@@ -156,7 +173,62 @@ function toV1RunData(
 	return runData;
 }
 
-/** The execute path reports one pass, so no source names a `previousNodeRun`. */
+/**
+ * A run of a parallel loop member at another pass. Its `data` throws on read, so
+ * an expression that names another pass fails loudly.
+ *
+ * `data` is not enumerable, so code that copies or serializes run data, such as
+ * the task runner request, skips it instead of throwing.
+ */
+function otherParallelPassRun(
+	executionIndex: number,
+	source: Array<ISourceData | null>,
+	nodeName: string,
+	loopName: string,
+): ITaskData {
+	const run: ITaskData = { startTime: 0, executionTime: 0, executionIndex, source };
+	Object.defineProperty(run, 'data', {
+		enumerable: false,
+		get() {
+			throw parallelLoopPassReadError(nodeName, loopName);
+		},
+	});
+	return run;
+}
+
+/**
+ * The input provenance of one step. An edge from a member of the same loop reads
+ * the same pass, as v1 records it. Without the run index, paired item lookups
+ * would read pass 0 instead.
+ */
+export function toV1StepSources(
+	graph: WorkflowGraph,
+	nodeId: string,
+	iteration: number,
+): Array<ISourceData | null> {
+	return stepSources(
+		forwardEdgesByTarget(graph),
+		nodeNamesById(graph),
+		deriveLoops(graph),
+		nodeId,
+		iteration,
+	);
+}
+
+function stepSources(
+	edgesByTarget: Map<string, GraphEdge[]>,
+	namesById: Map<string, string>,
+	loops: WorkflowLoop[],
+	nodeId: string,
+	iteration: number,
+): Array<ISourceData | null> {
+	const loop = loops.find((l) => l.memberIds.has(nodeId));
+	return toSourceSlots(edgesByTarget.get(nodeId) ?? [], namesById, (edge) =>
+		loop?.memberIds.has(edge.from) ? iteration : 0,
+	);
+}
+
+/** Every node's provenance at pass 0, so no source names a `previousNodeRun`. */
 export function toV1Sources(graph: WorkflowGraph): Map<string, Array<ISourceData | null>> {
 	const namesById = nodeNamesById(graph);
 

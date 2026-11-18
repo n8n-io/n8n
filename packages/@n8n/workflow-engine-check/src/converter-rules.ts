@@ -11,8 +11,9 @@ import { makeReason } from './reason';
 import type { EngineV2Reason, EngineV2ReasonCode } from './types';
 
 const SPLIT_IN_BATCHES_NODE_TYPE = 'n8n-nodes-base.splitInBatches';
-const SUPPORTED_SPLIT_IN_BATCHES_VERSION = 3;
+const SUPPORTED_SPLIT_IN_BATCHES_VERSIONS = [3, 4];
 const DEFAULT_BATCH_SIZE = 1;
+const DEFAULT_MAX_CONCURRENCY = 5;
 
 /**
  * Mirrors the node-level refusals of `V1WorkflowConverter` in
@@ -71,7 +72,7 @@ function findMergeReasons(node: INode): EngineV2Reason[] {
 
 function findSplitInBatchesReasons(node: INode): EngineV2Reason[] {
 	// Other versions name their parameters differently, so only the version counts.
-	if (node.typeVersion !== SUPPORTED_SPLIT_IN_BATCHES_VERSION) {
+	if (!SUPPORTED_SPLIT_IN_BATCHES_VERSIONS.includes(node.typeVersion)) {
 		return [
 			temporaryReason(
 				node,
@@ -125,7 +126,52 @@ function findSplitInBatchesReasons(node: INode): EngineV2Reason[] {
 		);
 	}
 
+	if (node.typeVersion >= 4) reasons.push(...findParallelReasons(node));
+
 	return reasons;
+}
+
+/** Version 4 can run its passes in parallel. Engine v2 needs both settings before the run. */
+function findParallelReasons(node: INode): EngineV2Reason[] {
+	const runInParallel = node.parameters.runInParallel ?? false;
+	if (typeof runInParallel === 'string') {
+		return [
+			finalReason(
+				node,
+				'SPLIT_IN_BATCHES_PARALLEL',
+				'permanent',
+				`The "${node.name}" node sets "Run in Parallel" with an expression. Engine v2 needs it before the workflow runs. Use a fixed value.`,
+			),
+		];
+	}
+	if (runInParallel !== true) return [];
+
+	const maxConcurrency = node.parameters.maxConcurrency ?? DEFAULT_MAX_CONCURRENCY;
+	if (typeof maxConcurrency === 'string') {
+		return [
+			finalReason(
+				node,
+				'SPLIT_IN_BATCHES_MAX_CONCURRENCY',
+				'permanent',
+				`The "${node.name}" node sets its max concurrency with an expression. Engine v2 needs it before the workflow runs. Use a fixed max concurrency.`,
+			),
+		];
+	}
+	if (
+		typeof maxConcurrency !== 'number' ||
+		!Number.isInteger(maxConcurrency) ||
+		maxConcurrency < 1
+	) {
+		return [
+			finalReason(
+				node,
+				'SPLIT_IN_BATCHES_MAX_CONCURRENCY',
+				'invalid',
+				`The "${node.name}" node needs a max concurrency that is a whole number of at least 1.`,
+			),
+		];
+	}
+	return [];
 }
 
 /** Checks the type of each output group and of each connection in it, as the converter does. */

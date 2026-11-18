@@ -16,9 +16,11 @@ import {
 	type StepSlots,
 	type StepStatus,
 } from '../execution/execution.types';
+import type { ParallelLoopProgress } from '../execution/loop-admission';
 import { DEFAULT_STALENESS_THRESHOLDS, type StalenessThresholds } from '../execution/staleness';
 import {
 	StepNotFoundError,
+	type CompletedStepExtras,
 	type DueStep,
 	type NewStepRecord,
 	type StaleQueuedStep,
@@ -56,6 +58,12 @@ type ClaimedStepRow = {
 	resume_cause: ResumeCause | null;
 };
 type DueStepRow = { id: string; execution_id: string };
+type ParallelLoopProgressRow = {
+	first_pass_status: StepStatus | null;
+	loop_pass_count: number | null;
+	created_passes: number;
+	settled_bodies: number;
+};
 
 /**
  * `(node_id, iteration) IN ((:n0, :i0), ...)` as a fragment + parameters, since
@@ -204,8 +212,15 @@ export class TypeOrmStepStore implements StepStore {
 		});
 	}
 
-	async completeStep(id: string, outputs: StepSlots): Promise<boolean> {
-		return await this.transition(id, 'running', 'completed', { outputs });
+	async completeStep(
+		id: string,
+		outputs: StepSlots,
+		extras: CompletedStepExtras = {},
+	): Promise<boolean> {
+		return await this.transition(id, 'running', 'completed', {
+			outputs,
+			...(extras.loopPassCount === undefined ? {} : { loopPassCount: extras.loopPassCount }),
+		});
 	}
 
 	async suspendStep(id: string, waitDeclaration: WaitDeclaration): Promise<boolean> {
@@ -398,6 +413,7 @@ export class TypeOrmStepStore implements StepStore {
 			waitDeclaration?: WaitDeclaration;
 			waitTill?: Date | null;
 			resumeCause?: ResumeCause;
+			loopPassCount?: number;
 		} = {},
 		manager: EntityManager = this.repo.manager,
 	): Promise<boolean> {
@@ -466,6 +482,44 @@ export class TypeOrmStepStore implements StepStore {
 			.getRawMany();
 
 		return Object.fromEntries(rows.map((row) => [row.nodeId, row]));
+	}
+
+	async loadParallelLoopProgress(
+		executionId: string,
+		batchNodeId: string,
+		tailNodeId: string,
+	): Promise<ParallelLoopProgress> {
+		// One statement, so the three counts come from one snapshot.
+		const [row] = await this.repo.manager.query<Array<ParallelLoopProgressRow | undefined>>(
+			`WITH first_pass AS (
+				SELECT status, loop_pass_count FROM workflow_step_execution
+				WHERE execution_id = $1 AND node_id = $2 AND iteration = 0
+			)
+			SELECT
+				(SELECT status FROM first_pass) AS first_pass_status,
+				(SELECT loop_pass_count FROM first_pass) AS loop_pass_count,
+				(SELECT COUNT(*) FROM workflow_step_execution
+				 WHERE execution_id = $1 AND node_id = $2)::int AS created_passes,
+				(SELECT COUNT(*) FROM workflow_step_execution
+				 WHERE execution_id = $1 AND node_id = $3
+				   AND status = ANY($4)
+				   AND iteration < COALESCE((SELECT loop_pass_count FROM first_pass), 0))::int
+				 AS settled_bodies`,
+			[executionId, batchNodeId, tailNodeId, [...SETTLED_STEP_STATUSES]],
+		);
+
+		return {
+			...(row?.first_pass_status
+				? {
+						firstPass: {
+							status: row.first_pass_status,
+							loopPassCount: row.loop_pass_count,
+						},
+					}
+				: {}),
+			createdPasses: row?.created_passes ?? 0,
+			settledBodies: row?.settled_bodies ?? 0,
+		};
 	}
 
 	async loadAllSteps(executionId: string): Promise<StepRecord[]> {

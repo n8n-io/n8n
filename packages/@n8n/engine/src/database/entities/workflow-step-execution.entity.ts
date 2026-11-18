@@ -85,6 +85,13 @@ export class WorkflowStepExecution {
 	@Column({ name: 'stale_after', type: 'timestamptz', precision: 3, nullable: true })
 	staleAfter!: Date | null;
 
+	/**
+	 * How many data passes a parallel loop has. Written by each pass of its
+	 * batch node. Admission reads it from pass 0. NULL on every other step.
+	 */
+	@Column('int', { name: 'loop_pass_count', nullable: true })
+	loopPassCount!: number | null;
+
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz', precision: 3 })
 	createdAt!: Date;
 
