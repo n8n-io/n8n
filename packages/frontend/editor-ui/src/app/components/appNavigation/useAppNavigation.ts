@@ -8,6 +8,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { INBOX_VIEW, isInboxRoute } from '@n8n/frontend-module-inbox';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useSettingsItems } from '@/app/composables/useSettingsItems';
 import { processDynamicTabs } from '@/app/utils/modules/tabUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
@@ -44,15 +45,18 @@ export type AppNavRailItem = {
 	label: string;
 	icon: IconOrEmoji;
 	to: RouteLocationRaw;
-	/** `main` items sit above the divider, `project` items below it. */
-	group: 'main' | 'project';
+	/**
+	 * `main` items sit above the divider, `project` items below it, and `footer` items at the
+	 * bottom of the rail, above the account menu.
+	 */
+	group: 'main' | 'project' | 'footer';
 	testId: string;
 };
 
 export type AppNavLink = {
 	id: string;
 	label: string;
-	icon: IconName;
+	icon: IconName | (string & {});
 	to: RouteLocationRaw;
 	active: boolean;
 	preview?: boolean;
@@ -76,7 +80,16 @@ type NavProject = { id: string; type?: string; scopes?: Scope[] };
 export const ASSISTANT_ITEM_ID = 'assistant';
 export const OVERVIEW_ITEM_ID = 'overview';
 export const INBOX_ITEM_ID = 'inbox';
+export const SETTINGS_ITEM_ID = 'settings';
 export const PROJECT_ITEM_PREFIX = 'project:';
+
+type SettingsItemIcon = ReturnType<typeof useSettingsItems>['settingsItems']['value'][number]['icon'];
+
+/** The panel shows icons only, so an emoji or a missing icon falls back to the settings icon. */
+function settingsIcon(icon: SettingsItemIcon): string {
+	if (typeof icon === 'string') return icon;
+	return icon?.type === 'icon' ? icon.value : 'settings';
+}
 
 const ASSISTANT_ROUTES = new Set<string>([
 	INSTANCE_AI_VIEW,
@@ -152,6 +165,7 @@ export function useAppNavigation() {
 	const route = useRoute();
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
+	const { settingsSections } = useSettingsItems();
 	const projectsStore = useProjectsStore();
 	const isAssistantAvailable = useInstanceAiAvailable();
 	const { recentChats } = useRecentChats();
@@ -231,6 +245,16 @@ export function useAppNavigation() {
 				testId: 'app-nav-project',
 			});
 		}
+		if (settingsSections.value.length > 0) {
+			items.push({
+				id: SETTINGS_ITEM_ID,
+				label: i18n.baseText('mainSidebar.settings'),
+				icon: { type: 'icon', value: 'settings' },
+				to: { name: VIEWS.SETTINGS },
+				group: 'footer',
+				testId: 'app-nav-settings',
+			});
+		}
 		return items;
 	});
 
@@ -242,8 +266,8 @@ export function useAppNavigation() {
 	/** `null` on a standalone page, which no rail item owns */
 	const activeItemId = computed<string | null>(() => {
 		const name = routeName.value;
-		// Settings pages list their pages in the settings sidebar, next to the rail.
-		if (STANDALONE_ROUTES.has(name) || route.meta?.layout === 'settings') return null;
+		if (STANDALONE_ROUTES.has(name)) return null;
+		if (route.meta?.layout === 'settings') return SETTINGS_ITEM_ID;
 		if (ASSISTANT_ROUTES.has(name)) return ASSISTANT_ITEM_ID;
 		if (isInboxRoute(route)) return INBOX_ITEM_ID;
 
@@ -478,6 +502,7 @@ export function useAppNavigation() {
 	function sectionsFor(itemId: string | null | undefined): AppNavSection[] {
 		if (!itemId) return [];
 		if (itemId === ASSISTANT_ITEM_ID) return assistantSections();
+		if (itemId === SETTINGS_ITEM_ID) return settingsPanelSections();
 		if (itemId === OVERVIEW_ITEM_ID) {
 			return [{ id: 'overview-pages', links: pageLinks('overview') }, favoritesSection()];
 		}
@@ -489,6 +514,31 @@ export function useAppNavigation() {
 			return [{ id: `${itemId}-pages`, links: pageLinks('project', project) }];
 		}
 		return [];
+	}
+
+	/** The settings pages, under the headings of the settings sidebar */
+	function settingsPanelSections(): AppNavSection[] {
+		const matchedNames = new Set(route.matched.map((match) => match.name));
+		return settingsSections.value.map((section) => ({
+			id: `settings-${section.id}`,
+			title: section.title,
+			// A row without a route, such as the cloud credits top-up, needs the settings page.
+			links: section.items.flatMap((item) => {
+				const to = item.route?.to;
+				if (!to) return [];
+				const name = typeof to === 'object' && 'name' in to ? to.name : undefined;
+				return [
+					{
+						id: item.id,
+						label: item.label,
+						icon: settingsIcon(item.icon),
+						to,
+						active: name !== undefined && matchedNames.has(name),
+						preview: item.preview,
+					},
+				];
+			}),
+		}));
 	}
 
 	const railItemById = (itemId: string | null | undefined) =>

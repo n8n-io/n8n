@@ -20,6 +20,7 @@ import {
 	ASSISTANT_ITEM_ID,
 	INBOX_ITEM_ID,
 	OVERVIEW_ITEM_ID,
+	SETTINGS_ITEM_ID,
 	projectItemId,
 	useAppNavigation,
 } from './useAppNavigation';
@@ -29,6 +30,8 @@ const route = vi.hoisted(() => ({
 		name: string;
 		params: Record<string, string>;
 		query: Record<string, string>;
+		meta?: Record<string, string>;
+		matched?: Array<{ name: string }>;
 	},
 }));
 
@@ -45,6 +48,16 @@ vi.mock('@/features/collaboration/projects/projects.api', () => ({
 const assistantAvailable = ref(true);
 vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', () => ({
 	useInstanceAiAvailable: () => assistantAvailable,
+}));
+
+type SettingsSectionsMock = Array<{
+	id: string;
+	title?: string;
+	items: Array<{ id: string; label: string; icon?: string; route?: { to: { name: string } } }>;
+}>;
+const settingsSections = ref<SettingsSectionsMock>([]);
+vi.mock('@/app/composables/useSettingsItems', () => ({
+	useSettingsItems: () => ({ settingsSections }),
 }));
 
 const recentChats = ref<RecentChatItem[]>([]);
@@ -85,6 +98,7 @@ describe('useAppNavigation', () => {
 		route.current = reactive({ name: VIEWS.WORKFLOWS, params: {}, query: {} });
 		assistantAvailable.value = true;
 		recentChats.value = [];
+		settingsSections.value = [];
 
 		projectsStore = mockedStore(useProjectsStore);
 		projectsStore.isTeamProjectFeatureEnabled = true;
@@ -370,6 +384,49 @@ describe('useAppNavigation', () => {
 
 			expect(favorites.links).toEqual([]);
 			expect(favorites.emptyText).toBeTruthy();
+		});
+
+		it('lists the settings pages under their headings, and marks the current one', () => {
+			settingsSections.value = [
+				{
+					id: 'people',
+					title: 'People',
+					items: [
+						{
+							id: 'users',
+							label: 'Users',
+							icon: 'user-round',
+							route: { to: { name: VIEWS.USERS_SETTINGS } },
+						},
+						// A row without a route opens a dialog on the settings page, so the panel leaves it out.
+						{ id: 'credits', label: 'Credits', icon: 'circles' },
+					],
+				},
+			];
+			route.current = reactive({
+				name: VIEWS.USERS_SETTINGS,
+				params: {},
+				query: {},
+				meta: { layout: 'settings' },
+				matched: [{ name: VIEWS.SETTINGS }, { name: VIEWS.USERS_SETTINGS }],
+			});
+			const { nav } = setup();
+
+			expect(nav.activeItemId.value).toBe(SETTINGS_ITEM_ID);
+			expect(nav.railItems.value.at(-1)).toMatchObject({ id: SETTINGS_ITEM_ID, group: 'footer' });
+			expect(nav.sectionsFor(SETTINGS_ITEM_ID)).toEqual([
+				{
+					id: 'settings-people',
+					title: 'People',
+					links: [
+						expect.objectContaining({
+							id: 'users',
+							to: { name: VIEWS.USERS_SETTINGS },
+							active: true,
+						}),
+					],
+				},
+			]);
 		});
 
 		it('gives the Inbox no links, because its panel shows the Inbox list', () => {

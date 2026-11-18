@@ -142,10 +142,8 @@ onMounted(() => {
 		box-shadow: var(--app-shell--surface--shadow);
 	}
 
-	// A docked navigation panel, or the settings sidebar, starts the surface, so the content
-	// needs no corners of its own.
-	&:has(:global(#side-menu[data-docked='true'])) .content,
-	&:has(:global([data-surface-start])) .content {
+	// A docked navigation panel starts the surface, so the content needs no corners of its own.
+	&:has(:global(#side-menu[data-docked='true'])) .content {
 		border-radius: 0;
 		box-shadow: none;
 	}

@@ -1,43 +1,13 @@
 <script lang="ts" setup>
 import BaseLayout from './BaseLayout.vue';
-import { VIEWS } from '@/app/constants';
-import { isRouteLocationRaw } from '@/app/utils/typeGuards';
-import { onMounted, ref } from 'vue';
-import type { HistoryState } from 'vue-router';
-import { useRouter } from 'vue-router';
-import SettingsSidebar from '@/app/components/SettingsSidebar.vue';
 import AppNavigation from '@/app/components/appNavigation/AppNavigation.vue';
-
-const router = useRouter();
-
-const previousRoute = ref<HistoryState[string] | undefined>();
-
-function onReturn() {
-	const resolvedSettingsRoute = router.resolve({ name: VIEWS.SETTINGS });
-	const resolvedPreviousRoute = isRouteLocationRaw(previousRoute.value)
-		? router.resolve(previousRoute.value)
-		: null;
-	const backRoute =
-		!resolvedPreviousRoute || resolvedPreviousRoute.path.startsWith(resolvedSettingsRoute.path)
-			? { name: VIEWS.HOMEPAGE }
-			: resolvedPreviousRoute;
-
-	void router.push(backRoute);
-}
-
-onMounted(() => {
-	previousRoute.value = router.options.history.state.back;
-});
 </script>
 
 <template>
+	<!-- The navigation panel lists the settings pages, as it lists the pages of other rail items. -->
 	<BaseLayout inset>
 		<template #sidebar>
-			<!-- The rail stays, so the user can leave settings for any page. -->
-			<div :class="$style.sidebar">
-				<AppNavigation :class="$style.navigation" />
-				<SettingsSidebar :class="$style.settingsSidebar" data-surface-start @return="onReturn" />
-			</div>
+			<AppNavigation />
 		</template>
 
 		<div :class="$style.contentContainer">
@@ -49,28 +19,6 @@ onMounted(() => {
 </template>
 
 <style lang="scss" module>
-.sidebar {
-	display: flex;
-	height: 100%;
-
-}
-
-// Looks like the docked navigation panel: it starts the surface that the content continues.
-.settingsSidebar {
-	--menu--color--background: var(--app-shell--nav-panel--color--background);
-	--sidebar--border-color: var(--border-color--subtle);
-	position: relative;
-	z-index: 1;
-	border-radius: var(--app-shell--surface--radius) 0 0 var(--app-shell--surface--radius);
-	box-shadow: var(--app-shell--surface--shadow);
-}
-
-// Lifts the floating panel of the rail above the settings sidebar.
-.navigation {
-	position: relative;
-	z-index: 2;
-}
-
 .contentContainer {
 	height: 100%;
 	width: 100%;

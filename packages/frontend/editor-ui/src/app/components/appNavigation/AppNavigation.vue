@@ -115,6 +115,7 @@ const panelSections = computed(() => sectionsFor(panelItem.value?.id));
 
 const mainItems = computed(() => railItems.value.filter((item) => item.group === 'main'));
 const projectItems = computed(() => railItems.value.filter((item) => item.group === 'project'));
+const footerItems = computed(() => railItems.value.filter((item) => item.group === 'footer'));
 
 /** The active item shows the solid twin of its icon, when the icon set has one */
 function railIcon(icon: IconOrEmoji, isActive: boolean): IconOrEmoji {
@@ -352,6 +353,39 @@ onBeforeUnmount(() => {
 				</N8nTooltip>
 			</div>
 			<div :class="$style.account">
+				<N8nTooltip
+					v-for="item in footerItems"
+					:key="item.id"
+					:content="item.label"
+					placement="right"
+					:disabled="!isDocked"
+					:show-after="300"
+				>
+					<RouterLink
+						:to="item.to"
+						:class="[
+							$style.railItem,
+							{
+								[$style.railItemActive]: item.id === activeItemId,
+								[$style.railItemPeeked]: !isDocked && item.id === peek.peekItemId.value,
+							},
+						]"
+						:aria-label="item.label"
+						:aria-current="item.id === activeItemId ? 'page' : undefined"
+						:data-test-id="item.testId"
+						:data-item-id="item.id"
+						@mouseenter="peek.onItemEnter(item.id)"
+						@focus="peek.onItemEnter(item.id)"
+						@click="onRailItemClick(item.id, $event)"
+					>
+						<ProjectIcon
+							:icon="railIcon(item.icon, item.id === activeItemId)"
+							size="small"
+							border-less
+							color="text-dark"
+						/>
+					</RouterLink>
+				</N8nTooltip>
 				<N8nTooltip
 					v-if="isInsightsAvailable"
 					:content="i18n.baseText('mainSidebar.insights')"
