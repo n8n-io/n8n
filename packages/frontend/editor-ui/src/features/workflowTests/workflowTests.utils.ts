@@ -1,10 +1,28 @@
 /** Vitest joins the names of the enclosing `describe` blocks and the test name with this. */
 export const FULL_NAME_SEPARATOR = ' > ';
 
+/** What a test does to one node, read from the source of the test. */
+export type TestNodeMark = {
+	kind: 'input' | 'mocked' | 'asserted';
+	/** The node name. An input mark has none when the test does not name the trigger. */
+	node?: string;
+	line: number;
+	/** The source line, trimmed. */
+	text: string;
+};
+
 /** A `describe` block or a test, as the file declares it. */
 export type TestFileNode =
 	| { kind: 'describe'; name: string; fullName: string; children: TestFileNode[] }
-	| { kind: 'test'; name: string; fullName: string; line: number };
+	| {
+			kind: 'test';
+			name: string;
+			fullName: string;
+			line: number;
+			marks: TestNodeMark[];
+			/** The number of `nock` calls. A `nock` call mocks a URL, not a node. */
+			httpMocks: number;
+	  };
 
 /**
  * Matches the start of a `describe`, `test` or `it` call with a literal name,
@@ -53,10 +71,79 @@ function callEnd(source: string, open: number): number {
 	return source.length;
 }
 
+const NODE_REFERENCE = /\.node\(\s*(['"`])((?:\\.|(?!\1)[^\\])*)\1\s*\)/g;
+const MOCK_CALL_BEFORE = /\bmockNode\s*\(\s*[\w$.]*(?:\([^()]*\))?$/;
+const EXECUTE_CALL = /\bexecuteWorkflow\s*\(/;
+const INPUT_OPTION = /\binput\b\s*[:,}]/;
+const TRIGGER_OPTION = /\btrigger\s*:\s*(?:[\w$.]+\.node\(\s*)?(['"])((?:\\.|(?!\1)[^\\])*)\1/;
+const HTTP_MOCK_CALL = /\bnock\s*\(/g;
+
+function unescapeName(rawName: string): string {
+	return rawName.replace(/\\(.)/g, '$1');
+}
+
+function lineAt(source: string, index: number): number {
+	return source.slice(0, index).split('\n').length;
+}
+
+/** The source with each comment replaced by spaces, so the positions stay the same. */
+function maskComments(source: string): string {
+	let masked = '';
+	let index = 0;
+	while (index < source.length) {
+		const end = skipLiteral(source, index);
+		if (end === index) {
+			masked += source[index++];
+			continue;
+		}
+		const literal = source.slice(index, end);
+		masked += source[index] === '/' ? literal.replace(/[^\n]/g, ' ') : literal;
+		index = end;
+	}
+	return masked;
+}
+
+/**
+ * Reads the nodes that one test mocks and asserts on, and its trigger input.
+ * A mock is a `mockNode(x.node('Name'), …)` call before `executeWorkflow`. Each
+ * `.node('Name')` after `executeWorkflow` reads the result, so it is an assertion.
+ */
+function readTestMarks(source: string, start: number, end: number) {
+	const code = maskComments(source.slice(start, end));
+	const toMark = (kind: TestNodeMark['kind'], offset: number, node?: string): TestNodeMark => {
+		const line = lineAt(source, start + offset);
+		return { kind, node, line, text: source.split('\n')[line - 1].trim() };
+	};
+
+	const marks: TestNodeMark[] = [];
+	const execute = EXECUTE_CALL.exec(code);
+	const executeStart = execute?.index ?? code.length;
+	const executeEnd = execute ? callEnd(code, code.indexOf('(', execute.index)) : code.length;
+
+	const options = code.slice(executeStart, executeEnd);
+	const input = INPUT_OPTION.exec(options);
+	if (input) {
+		const trigger = TRIGGER_OPTION.exec(options);
+		const triggerName = trigger ? unescapeName(trigger[2]) : undefined;
+		marks.push(toMark('input', executeStart + input.index, triggerName));
+	}
+
+	for (const match of code.matchAll(NODE_REFERENCE)) {
+		const [, quote, rawName] = match;
+		if (quote === '`' && /\$\{/.test(rawName)) continue;
+		const isMock = match.index < executeStart && MOCK_CALL_BEFORE.test(code.slice(0, match.index));
+		if (isMock) marks.push(toMark('mocked', match.index, unescapeName(rawName)));
+		if (match.index >= executeEnd)
+			marks.push(toMark('asserted', match.index, unescapeName(rawName)));
+	}
+
+	return { marks, httpMocks: [...code.matchAll(HTTP_MOCK_CALL)].length };
+}
+
 /**
  * Reads the `describe` blocks and tests of a test file without running it, so
  * the Tests tab can list tests that have not run yet and group them. Each test
- * has the full name that the runner reports, and its 1-based line. A name with
+ * has the full name that the runner reports, its 1-based line, and its marks. A name with
  * a template expression is skipped: only the runner knows it.
  */
 export function parseTestFile(source: string): TestFileNode[] {
@@ -78,7 +165,7 @@ export function parseTestFile(source: string): TestFileNode[] {
 			const [text, kind, quote, rawName] = match;
 			const parent = open.at(-1)?.node.children ?? root;
 			const path = open.map(({ node }) => node.name);
-			const name = rawName.replace(/\\(.)/g, '$1');
+			const name = unescapeName(rawName);
 			const known = !(quote === '`' && /\$\{/.test(rawName));
 			const fullName = [...path, name].join(FULL_NAME_SEPARATOR);
 
@@ -99,8 +186,13 @@ export function parseTestFile(source: string): TestFileNode[] {
 
 			const end = callEnd(source, source.indexOf('(', index));
 			if (known) {
-				const line = source.slice(0, index).split('\n').length;
-				parent.push({ kind: 'test', name, fullName, line });
+				parent.push({
+					kind: 'test',
+					name,
+					fullName,
+					line: lineAt(source, index),
+					...readTestMarks(source, index, end),
+				});
 			}
 			index = end;
 			continue;

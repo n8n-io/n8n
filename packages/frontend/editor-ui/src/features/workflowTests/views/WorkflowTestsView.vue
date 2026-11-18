@@ -14,16 +14,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useElementSize, useEventListener } from '@vueuse/core';
-import {
-	computed,
-	inject,
-	onBeforeUnmount,
-	onMounted,
-	ref,
-	shallowRef,
-	useTemplateRef,
-	watch,
-} from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { VIEWS } from '@/app/constants';
@@ -32,6 +23,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import InstanceAiChatPanel from '@/features/ai/instanceAi/embed/InstanceAiChatPanel.vue';
 
 import WorkflowTestTree from '../components/WorkflowTestTree.vue';
+import WorkflowTestsCanvas from '../components/WorkflowTestsCanvas.vue';
 import WorkflowTestsEditor from '../components/WorkflowTestsEditor.vue';
 import WorkflowTestsEmptyState from '../components/WorkflowTestsEmptyState.vue';
 import WorkflowTestsSummary from '../components/WorkflowTestsSummary.vue';
@@ -39,6 +31,7 @@ import { useWorkflowTestsAssistant } from '../useWorkflowTestsAssistant';
 import {
 	buildTestTree,
 	countTests,
+	flattenTests,
 	type WorkflowTestRow,
 	type WorkflowTestTreeItem,
 } from '../workflowTests.display';
@@ -62,12 +55,12 @@ const workflow = computed(() => ({
 }));
 const assistant = useWorkflowTestsAssistant(workflow);
 
-type Mode = 'results' | 'code';
+type View = 'results' | 'workflow' | 'code';
 
 const isLoading = ref(true);
 const isSaving = ref(false);
 const isWriting = ref(false);
-const mode = ref<Mode>('results');
+const view = ref<View>('results');
 const draft = ref('');
 const file = computed(() => testsStore.files[props.workflowId] ?? null);
 const run = computed(() => testsStore.runs[props.workflowId]);
@@ -77,9 +70,13 @@ const canRun = computed(() => rbacStore.hasScope('workflow:execute'));
 const workflowHasUnsavedChanges = computed(() => uiStore.stateIsDirty);
 const showEmptyState = computed(() => !file.value && !isWriting.value);
 
-const modeOptions = computed(() => [
-	{ label: i18n.baseText('workflowTests.view.results'), value: 'results' as const },
+const centreOptions = computed(() => [
+	{ label: i18n.baseText('workflowTests.view.workflow'), value: 'workflow' as const },
 	{ label: i18n.baseText('workflowTests.view.code'), value: 'code' as const },
+]);
+const narrowOptions = computed(() => [
+	{ label: i18n.baseText('workflowTests.view.results'), value: 'results' as const },
+	...centreOptions.value,
 ]);
 
 const runLabel = computed(() => {
@@ -96,8 +93,19 @@ const SPLIT_MIN_WIDTH = 720;
 const mainRef = useTemplateRef<HTMLElement>('mainRef');
 const { width: mainWidth } = useElementSize(mainRef);
 const isNarrow = computed(() => mainWidth.value > 0 && mainWidth.value < SPLIT_MIN_WIDTH);
-const showResults = computed(() => !isNarrow.value || mode.value === 'results');
-const showEditor = computed(() => !isNarrow.value || mode.value === 'code');
+const showResults = computed(() => !isNarrow.value || view.value === 'results');
+const showEditor = computed(() => view.value === 'code');
+const showCanvas = computed(
+	() => !showEditor.value && (!isNarrow.value || view.value === 'workflow'),
+);
+
+/** The centre pane of the wide layout. The results have their own pane there. */
+const centreView = computed({
+	get: () => (view.value === 'code' ? 'code' : 'workflow'),
+	set: (value) => {
+		view.value = value;
+	},
+});
 
 // ── Results ──────────────────────────────────────────────────────────────────────
 
@@ -122,20 +130,37 @@ function toggle(fullName: string, value: boolean) {
 
 const editorRef = useTemplateRef<InstanceType<typeof WorkflowTestsEditor>>('editorRef');
 const resultsRef = useTemplateRef<HTMLElement>('resultsRef');
-const selected = shallowRef<WorkflowTestRow>();
+const selectedName = ref<string>();
+const lineToReveal = ref<number>();
 
-function revealSelected() {
-	const line = selected.value?.line;
-	if (line !== undefined && showEditor.value) editorRef.value?.revealLine(line);
+const allRows = computed(() => flattenTests(tree.value));
+const selectedRow = computed(() =>
+	allRows.value.find((row) => row.fullName === selectedName.value),
+);
+const canvasRows = computed(() => (selectedRow.value ? [selectedRow.value] : allRows.value));
+
+function revealLine() {
+	if (lineToReveal.value !== undefined && showEditor.value) {
+		editorRef.value?.revealLine(lineToReveal.value);
+	}
 }
 
+/** A second click on the selected test shows all tests again. */
 function selectTest(row: WorkflowTestRow) {
-	selected.value = row;
-	if (row.error) toggle(row.fullName, !isExpanded(row));
-	revealSelected();
+	const isSelected = selectedName.value === row.fullName;
+	selectedName.value = isSelected ? undefined : row.fullName;
+	if (row.error) toggle(row.fullName, !isSelected);
+	lineToReveal.value = row.line;
+	revealLine();
 }
 
-watch(mode, revealSelected, { flush: 'post' });
+function showInCode(line: number) {
+	lineToReveal.value = line;
+	view.value = 'code';
+	revealLine();
+}
+
+watch(view, revealLine, { flush: 'post' });
 
 watch(
 	() => run.value?.status,
@@ -190,7 +215,8 @@ watch(
 	() => props.workflowId,
 	() => {
 		isWriting.value = false;
-		selected.value = undefined;
+		selectedName.value = undefined;
+		lineToReveal.value = undefined;
 		void load();
 	},
 );
@@ -214,7 +240,7 @@ async function save() {
 
 async function runAll() {
 	if (isDirty.value && !(await save())) return;
-	mode.value = 'results';
+	if (isNarrow.value) view.value = 'results';
 	try {
 		await testsStore.runFile(props.workflowId);
 	} catch (error) {
@@ -224,7 +250,7 @@ async function runAll() {
 
 function startWriting() {
 	isWriting.value = true;
-	mode.value = 'code';
+	view.value = 'code';
 }
 
 // ── Assistant panel ────────────────────────────────────────────────────────────────
@@ -323,7 +349,12 @@ function fixRun() {
 			<template v-else>
 				<WorkflowTestsSummary :run="run" :test-counts="testCounts">
 					<template #actions>
-						<N8nSegmentControl v-if="isNarrow" v-model="mode" :options="modeOptions" size="small" />
+						<N8nSegmentControl
+							v-if="isNarrow"
+							v-model="view"
+							:options="narrowOptions"
+							size="small"
+						/>
 						<span
 							v-if="!canRun"
 							:class="$style.noPermission"
@@ -407,13 +438,26 @@ function fixRun() {
 							:is-expanded="isExpanded"
 							:can-open-node="canOpenNode"
 							:can-fix="showPanel"
-							:selected-name="selected?.fullName"
+							:selected-name="selectedName"
 							@toggle="toggle"
 							@select="selectTest"
 							@fix="fixTest"
 							@open-node="openNode"
 						/>
 					</section>
+
+					<WorkflowTestsCanvas
+						v-if="showCanvas"
+						:class="$style.editorPane"
+						:rows="canvasRows"
+						:selected-name="selectedRow?.fullName"
+						@show-in-code="showInCode"
+						@clear-selection="selectedName = undefined"
+					>
+						<template v-if="!isNarrow" #switch>
+							<N8nSegmentControl v-model="centreView" :options="centreOptions" size="small" />
+						</template>
+					</WorkflowTestsCanvas>
 
 					<WorkflowTestsEditor
 						v-show="showEditor"
@@ -423,7 +467,11 @@ function fixRun() {
 						:is-dirty="isDirty"
 						:is-saving="isSaving"
 						@save="save"
-					/>
+					>
+						<template v-if="!isNarrow" #switch>
+							<N8nSegmentControl v-model="centreView" :options="centreOptions" size="small" />
+						</template>
+					</WorkflowTestsEditor>
 				</div>
 			</template>
 		</main>

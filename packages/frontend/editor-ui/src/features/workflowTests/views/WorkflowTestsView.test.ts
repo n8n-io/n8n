@@ -44,6 +44,19 @@ vi.mock('@/features/shared/editors/components/JsEditor/JsEditor.vue', () => ({
 	}),
 }));
 
+vi.mock('../components/WorkflowTestsCanvas.vue', () => ({
+	default: defineComponent({
+		props: { rows: { type: Array<{ fullName: string }>, required: true } },
+		emits: ['showInCode'],
+		setup(props, { emit }) {
+			return () =>
+				h('button', { 'aria-label': 'canvas', onClick: () => emit('showInCode', 7) }, [
+					props.rows.map((row) => row.fullName).join(', '),
+				]);
+		},
+	}),
+}));
+
 const file: WorkflowTestFile = {
 	id: 'file-1',
 	workflowId: 'wf-1',
@@ -97,21 +110,37 @@ describe('WorkflowTestsView', () => {
 		expect(getByRole('button', { name: 'Run all' })).toBeDisabled();
 	});
 
-	it('shows the last run, opens the failure, and reveals a selected test in the editor', async () => {
-		const { findByText, getByText } = renderView({ pinia });
+	it('shows the last run, and the selected test on the workflow', async () => {
+		const { findByText, getByLabelText, getByText } = renderView({ pinia });
 
 		expect(await findByText('1 of 2 tests failed')).toBeVisible();
 		expect(getByText('expected 1 to be 2')).toBeVisible();
+		expect(getByLabelText('canvas')).toHaveTextContent('orders > accepts, orders > rejects');
 
 		await userEvent.click(getByText('accepts'));
 
-		expect(revealLine).toHaveBeenCalledWith(2);
+		expect(getByLabelText('canvas')).toHaveTextContent(/^orders > accepts$/);
+	});
+
+	it('reveals the selected test, and the line of a mark, in the code', async () => {
+		const { findByText, getByLabelText, getByText } = renderView({ pinia });
+
+		await userEvent.click(await findByText('accepts'));
+		await userEvent.click(getByText('Code'));
+		await waitFor(() => expect(revealLine).toHaveBeenLastCalledWith(2));
+
+		await userEvent.click(getByText('Workflow'));
+		await userEvent.click(getByLabelText('canvas'));
+
+		await waitFor(() => expect(revealLine).toHaveBeenLastCalledWith(7));
+		expect(getByLabelText('editor')).toBeVisible();
 	});
 
 	it('saves the edited file before it runs the tests', async () => {
-		const { findByLabelText, getByRole } = renderView({ pinia });
+		const { findByText, getByLabelText, getByRole } = renderView({ pinia });
 
-		await userEvent.type(await findByLabelText('editor'), '// edit');
+		await userEvent.click(await findByText('Code'));
+		await userEvent.type(getByLabelText('editor'), '// edit');
 		await userEvent.click(getByRole('button', { name: 'Save and run' }));
 
 		await waitFor(() => expect(api.runWorkflowTests).toHaveBeenCalled());

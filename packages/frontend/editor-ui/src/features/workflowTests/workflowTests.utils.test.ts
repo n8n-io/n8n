@@ -33,6 +33,8 @@ void webhook;
 						name: 'passes the order',
 						fullName: 'a) mocked > passes the order',
 						line: 6,
+						marks: [],
+						httpMocks: 0,
 					},
 					{
 						kind: 'describe',
@@ -44,6 +46,8 @@ void webhook;
 								name: 'skips',
 								fullName: 'a) mocked > nested > skips',
 								line: 12,
+								marks: [],
+								httpMocks: 0,
 							},
 						],
 					},
@@ -54,6 +58,8 @@ void webhook;
 				name: 'top level',
 				fullName: 'top level',
 				line: 16,
+				marks: [],
+				httpMocks: 0,
 			},
 		]);
 	});
@@ -61,6 +67,39 @@ void webhook;
 	it('keeps escaped quotes in a name', () => {
 		expect(parseTestFile("test('the customer\\'s plan', () => {})")).toMatchObject([
 			{ name: "the customer's plan" },
+		]);
+	});
+
+	it('reads the input, the mocks and the assertions of a test', () => {
+		const source = `
+test('sends an enterprise signup to sales', async () => {
+	const workflow = (await loadPackage('./package')).get('wf-1');
+	mockNode(workflow.node('Get customer'), [{ id: 42 }]);
+	// mockNode(workflow.node('Old mock'), []);
+	nock('https://crm.example.com').get('/customers/42').reply(200, {});
+
+	const result = await executeWorkflow(workflow, {
+		input: { body: { customerId: 42 } },
+		trigger: 'Webhook',
+	});
+
+	expect(result.node('Run sales workflow').input).toEqual([{ id: 42 }]);
+});
+`;
+		expect(parseTestFile(source)).toMatchObject([
+			{
+				httpMocks: 1,
+				marks: [
+					{ kind: 'input', node: 'Webhook', line: 9 },
+					{
+						kind: 'mocked',
+						node: 'Get customer',
+						line: 4,
+						text: "mockNode(workflow.node('Get customer'), [{ id: 42 }]);",
+					},
+					{ kind: 'asserted', node: 'Run sales workflow', line: 13 },
+				],
+			},
 		]);
 	});
 

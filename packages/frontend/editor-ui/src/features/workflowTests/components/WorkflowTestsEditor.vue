@@ -34,6 +34,7 @@ defineExpose({
 		@keydown.ctrl.s.prevent.stop="saveIfDirty"
 	>
 		<header :class="$style.header">
+			<slot name="switch" />
 			<div :class="$style.file">
 				<N8nIcon icon="file-code" size="small" :class="$style.fileIcon" />
 				<N8nText size="small" bold>{{ i18n.baseText('workflowTests.editor.title') }}</N8nText>
