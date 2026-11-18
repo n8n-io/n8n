@@ -164,7 +164,8 @@ jobs:
     # full suite becomes ~5 h; +2 h buffer for provider backoff). Plain
     # comparison (not fromJSON): coerces the string input to a number;
     # malformed NaN falls back to the 90-minute guard instead of erroring.
-    timeout-minutes: ${{ (inputs['model-key'] || '') == 'baseten' && 600 || ((inputs.iterations || '3') >= 5 && 240 || 90) }}
+    # PoC branch: the full suite at N=3 needs ~100 min, so N>=3 gets the long ceiling.
+    timeout-minutes: ${{ (inputs['model-key'] || '') == 'baseten' && 600 || ((inputs.iterations || '3') >= 3 && 240 || 90) }}
     env:
       # Contiguous ports from 5678; 5678..5688 avoids Node fetch()'s blocked-
       # port list (max 11 lanes). Defaults: 10 lanes / c=32 for Anthropic;
