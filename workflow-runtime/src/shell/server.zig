@@ -22,6 +22,7 @@ const my_call = @import("my_call.zig");
 const creds = @import("creds.zig");
 const admin = @import("admin.zig");
 const renew = @import("renew.zig");
+const step_wait = @import("step_wait.zig");
 const triggers = @import("triggers.zig");
 const binary_store = @import("binary_store.zig");
 const blob_store = @import("blob_store.zig");
@@ -198,6 +199,63 @@ pub const Options = struct {
     gym: ?*const @import("gym.zig").Gym = null,
     gym_dns: ?[:0]const u8 = null,
 
+    /// The executions that the pools of an execution are sized for: the
+    /// regions of each class and the queue of work that waits for one
+    /// (`regionCounts`, `heldBytes`). 0: the count of connections.
+    /// `--target-in-flight` sets it with the other tables.
+    in_flight: u32 = 0,
+    /// Tests only: the regions of each class, to make a pool run out.
+    test_region_counts: ?[4]u32 = null,
+
+    /// The figure that the pools of an execution are sized for.
+    pub fn inFlight(o: *const Options) u32 {
+        return if (o.in_flight > 0) o.in_flight else o.max_conns;
+    }
+
+    /// The regions of each class (4 KB, 64 KB, 1 MB, 32 MB). Every
+    /// execution has a region of the first class or a larger one. A real
+    /// workflow with a trigger or an answer of some kilobytes needs the
+    /// second class, so that class has one region for each execution in
+    /// flight. The memory is reserved, and a page is used only after an
+    /// execution wrote to it. An execution that finds no region waits.
+    pub fn regionCounts(o: *const Options) [4]u32 {
+        if (o.test_region_counts) |counts| return counts;
+        const f = o.inFlight();
+        std.debug.assert(f >= 1 and o.slots >= 1);
+        return .{ o.slots, @max(256, f), @max(16, f / 8), std.math.clamp(f / 128, 2, 32) };
+    }
+
+    /// The bytes of the triggers and results that wait for a region: 64 KB
+    /// for each execution in flight. Reserved memory: a page is used only
+    /// while work waits there.
+    fn heldBytes(o: *const Options) u32 {
+        return std.math.clamp(o.inFlight(), 512, 16 << 10) * (64 << 10);
+    }
+
+    /// `--target-in-flight N`: every table and pool on the path of an
+    /// execution, from the count of executions that run at one time. Flags
+    /// after it change single sizes. `sizingLine` says what it reserves.
+    pub fn applyInFlight(o: *Options, target: u32) void {
+        const n = std.math.clamp(target, 64, 1 << 16);
+        // A target below what the profile gives makes no pool smaller.
+        o.in_flight = @max(n, o.inFlight());
+        // A webhook holds a connection while its execution runs; some more
+        // for the connections whose request waits.
+        o.max_conns = @max(o.max_conns, n + n / 4 + 64);
+        // Executions can go on after the reply, and schedules start more.
+        o.slots = @max(o.slots, 4 * n);
+        // Some outbound requests for each execution in flight.
+        o.max_egress = @max(o.max_egress, 4 * n);
+        o.egress.max_conns = @max(o.egress.max_conns, 2 * n);
+        o.egress.h2_conns = @max(o.egress.h2_conns, std.math.clamp(n / 4, 64, 1024));
+        // Bodies above 16 KB: one execution in 16 at one time, and in 64 for
+        // requests above the read buffer. The steps beyond that wait.
+        o.egress_big_slots = @max(o.egress_big_slots, std.math.clamp(n / 16, 8, 128));
+        o.request_big_slots = @max(o.request_big_slots, std.math.clamp(n / 64, 4, 32));
+        o.max_service_calls = @max(o.max_service_calls, std.math.clamp(n / 2, 256, 1024));
+        o.max_renewals = @max(o.max_renewals, std.math.clamp(n, 256, 1 << 14));
+    }
+
     /// `--profile embedded`: sizes for one n8n instance, not a benchmark.
     pub fn applyEmbedded(o: *Options) void {
         o.embedded = true;
@@ -211,7 +269,9 @@ pub const Options = struct {
         // An origin without an HTTP/2 state speaks HTTP/1.1, one connection
         // for each request: 64 states ran out with a few hundred vendor hosts.
         o.egress.h2_conns = 256;
-        o.egress_big_slots = 2;
+        // Reserved memory: a large buffer uses pages only while a body is in it.
+        o.egress_big_slots = 8;
+        o.request_big_slots = 4;
         o.event_queue_bytes = 32 << 20;
         o.snap_bytes = 128 << 20;
         o.max_modules = 256;
@@ -237,6 +297,7 @@ fn appendJsonStringBounded(w: *std.ArrayList(u8), s: []const u8) error{OutOfMemo
 const FbKey = struct { exec_id: u64, seq: u32, send: bool };
 /// An effect error that waits for room. `msg` is a static text.
 const EgressLost = struct { exec_id: u64, seq: u32, msg: []const u8 };
+const wait_resend_msg = "the step waited for a free row of its table and its execution left memory; the step can run again (retryable)";
 const renew_resend_msg = "credentials: the request could not go again after the credential renewal; the step can run again (retryable)";
 const egress_lost_msg = "http: the result found no room in the event queue; the step can run again (retryable)";
 /// A host step that failed in the shell, with a static message. `lost`: the
@@ -459,6 +520,45 @@ const Conn = struct {
     send_busy: bool = false,
     /// io_uring: the multishot recv of this connection is armed.
     recv_armed: bool = false,
+    /// The request at the front of the buffer waits for room (`pauseConn`).
+    paused: Pause = .no,
+    /// The poller does not watch the connection: its buffer is full while
+    /// the request waits, so the rest stays in the socket.
+    unpolled: bool = false,
+};
+
+/// Why the request at the front of a connection's buffer is not read on.
+const Pause = enum(u8) {
+    no,
+    /// The shard has no room to start it: no slot, region, event or batch
+    /// memory, or an older start still waits.
+    room,
+    /// Its body needs a large request buffer and all are in use.
+    big,
+};
+
+/// The answer to a connection that finds every connection slot in use.
+const conn_full_response = "HTTP/1.1 503 Service Unavailable\r\ncontent-type: application/json\r\nretry-after: 1\r\nconnection: close\r\ncontent-length: 53\r\n\r\n" ++
+    "{\"error\":\"too many connections (--max-conns); retry\"}";
+
+/// How often work waited at a full table or pool of the shell, and how
+/// often it failed at one (`writeLimits`).
+const LimitCounters = struct {
+    /// Connections that came while every connection slot was in use (503).
+    conn_full: u64 = 0,
+    /// Requests that began to wait for room in the shard, and for a large buffer.
+    start_waits: u64 = 0,
+    request_big_waits: u64 = 0,
+    /// Requests refused with 503: no large buffer (io_uring), or a full
+    /// buffer while the request waited (io_uring).
+    request_refused: u64 = 0,
+    /// Replies larger than the connection buffer that found no large buffer (500).
+    reply_big_refused: u64 = 0,
+    /// Service calls of host steps that found the table of calls full: the
+    /// host step gets the error.
+    host_service_refused: u64 = 0,
+    /// The most connections that waited at one time.
+    paused_high: u32 = 0,
 };
 
 const no_big = std.math.maxInt(u32);
@@ -515,6 +615,8 @@ fn gauge(v: *std.atomic.Value(u64), by: i2) void {
 
 /// The time between two copies of the egress numbers to `Stats`.
 const egress_stats_gap_ms = 250;
+/// The time between two `limits:` lines of `--stats`.
+const limit_stats_gap_ms = 1000;
 
 /// The log file. Records collect in a buffer (reserved at startup) and go
 /// to the file in one write when the shard syncs: at once for the `sync`
@@ -598,6 +700,21 @@ pub const Runner = struct {
     conns: []Conn,
     free_conns: std.ArrayList(u32),
     dirty: std.ArrayList(u32),
+    /// The connections whose front request waits for room, oldest first
+    /// (`Conn.paused`): one entry for each connection at most.
+    paused: []u32 = &.{},
+    npaused: u32 = 0,
+    /// Room may be there for a request that waits: a batch ran, or a large
+    /// request buffer went back.
+    resume_due: bool = false,
+    /// `resumePaused` runs: it owns the order of `paused`.
+    in_resume: bool = false,
+    /// Starts in `events` that the core did not see yet (`startRoom`).
+    starts_queued: u32 = 0,
+    lim: LimitCounters = .{},
+    limit_stats_ms: i64 = 0,
+    /// Steps that wait for a row of a full table or for a large buffer.
+    waits: step_wait.Queues,
     egress: *egress.Client,
     sql: *pg.Client,
     /// The MySQL client of the `sql` effect (`dialect: mysql`). It has the limits of `opts.sql`.
@@ -749,12 +866,16 @@ pub const Runner = struct {
             .slots = opts.slots,
             // The largest class holds a trigger with a 16 MB upload in base64.
             .region_sizes = .{ 4 << 10, 64 << 10, 1 << 20, 32 << 20 },
-            .region_counts = if (small) .{ opts.slots, 256, 16, 2 } else .{ opts.slots, 1024, 64, 4 },
-            .max_pending = if (small) 1 << 14 else 1 << 17,
-            .max_actions = if (small) 1 << 15 else 1 << 17,
+            .region_counts = opts.regionCounts(),
+            // A start, a run or a result that finds no region waits here.
+            .held_entries = @max(1024, opts.inFlight() + opts.slots / 4),
+            .held_bytes = opts.heldBytes(),
+            // Some effects in flight for each execution, and the actions of them.
+            .max_pending = @max(@as(u32, if (small) 1 << 14 else 1 << 17), std.math.ceilPowerOfTwoAssert(u32, 4 * opts.slots)),
+            .max_actions = @max(@as(u32, if (small) 1 << 15 else 1 << 17), std.math.ceilPowerOfTwoAssert(u32, 8 * opts.slots)),
             // Room for the result of every outbound request in flight, twice.
             .max_batch_events = @max(@as(u32, if (small) 1 << 13 else 1 << 15), std.math.ceilPowerOfTwoAssert(u32, 2 * @max(opts.max_egress, 1))),
-            .max_timers = if (small) 1 << 14 else 1 << 17,
+            .max_timers = @max(@as(u32, if (small) 1 << 14 else 1 << 17), std.math.ceilPowerOfTwoAssert(u32, 4 * opts.slots)),
             .max_parked = if (small) 1 << 16 else 1 << 18,
             .max_zones = opts.max_zones,
             .max_static_data = opts.max_static_data,
@@ -844,6 +965,15 @@ pub const Runner = struct {
         try r.free_conns.ensureTotalCapacity(gpa, opts.max_conns);
         r.dirty = .empty;
         try r.dirty.ensureTotalCapacity(gpa, opts.max_conns);
+        r.paused = try gpa.alloc(u32, opts.max_conns);
+        r.npaused = 0;
+        r.resume_due = false;
+        r.in_resume = false;
+        r.starts_queued = 0;
+        r.lim = .{};
+        r.limit_stats_ms = 0;
+        // A place for each effect in flight: the queue is never the first limit.
+        r.waits = try step_wait.Queues.init(gpa, cfg.max_pending);
         for (r.conns, 0..) |*cn, i| {
             cn.* = .{ .rbuf = try reserve(gpa, u8, opts.rbuf), .wbuf = try reserve(gpa, u8, opts.wbuf) };
             r.free_conns.appendAssumeCapacity(@intCast(opts.max_conns - 1 - i));
@@ -1164,6 +1294,8 @@ pub const Runner = struct {
         const cpu_start_ns = sys.threadCpuNs();
         // `--stats`: the CPU time of this thread, to compare it for each execution.
         defer if (r.opts.stats) sys.note("shard {d}: thread_cpu_us={d} finished={d}\n", .{ r.id, (sys.threadCpuNs() - cpu_start_ns) / 1000, r.stats.finished.load(.monotonic) });
+        // The last `limits:` line has the counts of the whole run.
+        defer if (r.opts.stats) r.noteLimits(sys.nowMs());
         try r.startOffload();
         defer r.stopOffload();
         var has_ready = r.start_out.has_ready;
@@ -1208,6 +1340,7 @@ pub const Runner = struct {
             r.serviceFallback(now);
             r.expireServiceCalls(now);
             r.resumeRenewed(now);
+            r.serveStepWaits(now);
             const timer_due = if (next_timer) |t| t <= now else false;
             // A full outbox refuses new work: the shard skips due schedules
             // and the loop refuses webhooks and manual runs (spec 9.2).
@@ -1230,6 +1363,11 @@ pub const Runner = struct {
                 const rest = r.events.items.len - consumed;
                 std.mem.copyForwards(core.Event, r.events.items[0..rest], r.events.items[consumed..]);
                 r.events.shrinkRetainingCapacity(rest);
+                // The core saw the starts of this batch. The requests that
+                // wait for room can have what the batch gave back.
+                r.starts_queued = 0;
+                for (r.events.items) |ev| r.starts_queued += @intFromBool(ev.kind == .http_request);
+                r.resume_due = true;
                 r.flushStream();
                 // Events that wait keep their payloads: batch and carry
                 // memory reset only when every event was taken.
@@ -1242,6 +1380,8 @@ pub const Runner = struct {
                 _ = r.stats.batches.fetchAdd(1, .monotonic);
                 r.stats.log_bytes.store(r.sh.counters.log_bytes, .monotonic);
             }
+            if (r.npaused > 0 and r.resume_due) r.resumePaused();
+            if (r.opts.stats and now - r.limit_stats_ms >= limit_stats_gap_ms) r.noteLimits(now);
             // Batched tier: sync the log every few milliseconds.
             if (r.sh.unsynced and now - r.last_sync_ms >= r.opts.batched_sync_ms) {
                 try r.sh.syncLog();
@@ -1261,6 +1401,9 @@ pub const Runner = struct {
             .conn => {
                 const cn = &r.conns[idx];
                 if (cn.fd < 0 or (cn.gen & 0xFFFFFF) != gen) return;
+                // The client of a request that waits went away: with a full
+                // buffer no read would see it.
+                if (ev.eof and cn.paused != .no) return r.closeConn(idx);
                 if (ev.writable) r.flushConn(idx);
                 if (ev.readable) try r.readConn(idx);
             },
@@ -1410,6 +1553,12 @@ pub const Runner = struct {
             if (cn.fd < 0 or cn.close_after) return;
             const buf = r.inBuf(idx);
             const k = @min(buf.len - cn.rlen, rest.len);
+            // The request at the front waits and the buffer is full: these
+            // bytes have no place, and the kernel does not keep them.
+            if (k == 0 and cn.paused != .no) {
+                r.lim.request_refused += 1;
+                return r.refuseRequest(idx, 503, "{\"error\":\"busy\"}");
+            }
             @memcpy(buf[cn.rlen..][0..k], rest[0..k]);
             cn.rlen += k;
             cn.rbig_high = @max(cn.rbig_high, cn.rlen);
@@ -1444,9 +1593,13 @@ pub const Runner = struct {
     }
 
     /// Take a new connection. False when every connection slot is in use:
-    /// the connection is closed (a limit).
+    /// the client gets a 503 and the connection is closed (a limit). This
+    /// is the one bound on new work: a request on a connection that has a
+    /// slot waits for room, it is not refused.
     fn adoptConn(r: *Runner, fd: c_int) bool {
         const idx = r.free_conns.pop() orelse {
+            r.lim.conn_full += 1;
+            _ = sys.writeSome(fd, conn_full_response); // The answer is a courtesy: the connection closes with or without it.
             sys.close(fd);
             return false;
         };
@@ -1461,6 +1614,8 @@ pub const Runner = struct {
         cn.close_after = false;
         cn.send_busy = false;
         cn.recv_armed = false;
+        cn.paused = .no;
+        cn.unpolled = false;
         if (r.ring) |ring| {
             cn.recv_armed = ring.recvMultishot(token(.ring_recv, cn.gen, idx), fd);
             if (!cn.recv_armed) r.closeConn(idx);
@@ -1486,6 +1641,7 @@ pub const Runner = struct {
                 return;
             }
         } else r.poller.remove(cn.fd);
+        r.unpauseConn(idx);
         r.dropBig(idx);
         r.releaseReqBig(idx);
         sys.close(cn.fd);
@@ -1521,9 +1677,103 @@ pub const Runner = struct {
                     .closed => return r.closeConn(idx),
                 }
             }
+            if (cn.paused != .no) return r.holdRead(idx);
             if (r.settle(idx)) continue;
             return;
         }
+    }
+
+    /// The request at the front of connection `idx` waits for room, and
+    /// what the socket had is in the buffer. With a full buffer the poller
+    /// stops to watch the connection for reads: the rest stays in the
+    /// socket, and the client's sends wait (back-pressure). A write that
+    /// waits for the socket keeps its watch.
+    fn holdRead(r: *Runner, idx: u32) void {
+        const cn = &r.conns[idx];
+        std.debug.assert(cn.paused != .no and cn.fd >= 0 and r.ring == null);
+        if (cn.rlen < r.inBuf(idx).len) return;
+        r.poller.watch(cn.fd, token(.conn, cn.gen, idx), false, cn.write_armed);
+        cn.unpolled = true;
+    }
+
+    /// The request at the front of connection `idx` waits: for room in the
+    /// shard, or for a large request buffer. It stays in the buffer of the
+    /// connection, and `resumePaused` reads it again when room can be there.
+    fn pauseConn(r: *Runner, idx: u32, why: Pause) void {
+        const cn = &r.conns[idx];
+        std.debug.assert(why != .no and cn.fd >= 0);
+        if (cn.paused == .no) {
+            if (why == .room) r.lim.start_waits += 1 else r.lim.request_big_waits += 1;
+            // `resumePaused` keeps the entry of the connection that it tries.
+            if (!r.in_resume) {
+                std.debug.assert(r.npaused < r.paused.len);
+                r.paused[r.npaused] = idx;
+                r.npaused += 1;
+                r.lim.paused_high = @max(r.lim.paused_high, r.npaused);
+            }
+        }
+        cn.paused = why;
+        if (r.ring == null) r.holdRead(idx);
+    }
+
+    /// Connection `idx` waits no more: it closes, or its request is refused.
+    fn unpauseConn(r: *Runner, idx: u32) void {
+        const cn = &r.conns[idx];
+        if (cn.paused == .no) return;
+        cn.paused = .no;
+        // `resumePaused` drops the entries of connections that wait no more.
+        if (r.in_resume) return;
+        const at = std.mem.indexOfScalar(u32, r.paused[0..r.npaused], idx) orelse return;
+        std.mem.copyForwards(u32, r.paused[at .. r.npaused - 1], r.paused[at + 1 .. r.npaused]);
+        r.npaused -= 1;
+    }
+
+    /// Read on the requests that wait, oldest first, now that room can be
+    /// there. A request that still finds no room keeps its place, and the
+    /// requests behind it that wait for the same thing are not tried.
+    fn resumePaused(r: *Runner) void {
+        std.debug.assert(!r.in_resume and r.npaused <= r.paused.len);
+        r.resume_due = false;
+        r.in_resume = true;
+        defer r.in_resume = false;
+        var blocked = [2]bool{ false, false };
+        var kept: u32 = 0;
+        for (r.paused[0..r.npaused]) |idx| {
+            const cn = &r.conns[idx];
+            // The connection closed while it waited.
+            if (cn.paused == .no) continue;
+            if (!blocked[@backingInt(cn.paused) - 1]) {
+                cn.paused = .no;
+                r.retryConn(idx);
+                if (cn.paused != .no) blocked[@backingInt(cn.paused) - 1] = true;
+            }
+            if (cn.paused == .no) continue;
+            r.paused[kept] = idx;
+            kept += 1;
+        }
+        r.npaused = kept;
+    }
+
+    /// Read connection `idx` again after its request waited.
+    fn retryConn(r: *Runner, idx: u32) void {
+        const cn = &r.conns[idx];
+        std.debug.assert(cn.fd >= 0 and cn.paused == .no);
+        if (r.ring != null) {
+            _ = r.settle(idx); // The ring gives the bytes of a request that moved to a large buffer.
+            return;
+        }
+        if (cn.unpolled) {
+            cn.unpolled = false;
+            r.poller.watch(cn.fd, token(.conn, cn.gen, idx), true, cn.write_armed);
+        }
+        // A read that fails ends the connection, as in `onReady`.
+        r.readConn(idx) catch r.closeConn(idx);
+    }
+
+    /// True when the shard has room to start the request: the core has a
+    /// slot and a region for it, and no older start waits there.
+    fn startRoom(r: *const Runner, req: http.Request) bool {
+        return r.sh.st.startRoom(req.body.len, r.starts_queued);
     }
 
     /// Parse and queue the complete requests in the connection's buffer.
@@ -1539,16 +1789,23 @@ pub const Runner = struct {
         }
         // A request whose body does not fit the small buffer moves to a
         // large one, and reading goes on there.
-        if (cn.rbig == no_big and cn.rlen > 0 and !cn.close_after) {
+        if (cn.rbig == no_big and cn.rlen > 0 and !cn.close_after and cn.paused == .no) {
             switch (r.needLarge(idx)) {
                 .no => {},
                 .moved => return true,
                 .too_large => r.refuseRequest(idx, 413, "{\"error\":\"request too large\"}"),
-                .busy => r.refuseRequest(idx, 503, "{\"error\":\"no buffer for a large request; try again\"}"),
+                // The request waits for a large buffer. With io_uring the
+                // kernel gives the bytes of the body at once, and they have
+                // no place: the request is refused.
+                .busy => if (r.ring == null) r.pauseConn(idx, .big) else {
+                    r.lim.request_refused += 1;
+                    r.refuseRequest(idx, 503, "{\"error\":\"no buffer for a large request; try again\"}");
+                },
             }
         }
         if (cn.rbig != no_big and cn.rlen == 0) r.releaseReqBig(idx);
-        if (cn.rlen == r.inBuf(idx).len) r.refuseRequest(idx, 413, "{\"error\":\"request too large\"}");
+        // A request that waits can fill the buffer: the rest stays in the socket.
+        if (cn.paused == .no and cn.rlen == r.inBuf(idx).len) r.refuseRequest(idx, 413, "{\"error\":\"request too large\"}");
         return false;
     }
 
@@ -1561,26 +1818,40 @@ pub const Runner = struct {
                 if (e == error.TooLarge) r.refuseRequest(idx, 413, "{\"error\":\"request too large\"}") else r.refuseRequest(idx, 400, "{\"error\":\"bad request\"}");
                 return 0;
             } orelse break;
-            off += req.consumed;
-            if (!req.keep_alive) cn.close_after = true;
+            const is_resume = std.mem.startsWith(u8, req.target, "/resume/");
             // New work waits while the outbox is full; a resume still goes on
             // (the events of a running execution must reach the outbox).
-            if (r.outboxFull() and !std.mem.startsWith(u8, req.target, "/resume/")) {
+            if (r.outboxFull() and !is_resume) {
+                off += req.consumed;
+                if (!req.keep_alive) cn.close_after = true;
                 r.replyRaw(idx, 503, outbox_full_body);
                 continue;
             }
+            // New work waits for a slot and a region, and it leaves room for
+            // the results of work in flight. The request stays in the buffer
+            // of its connection (back-pressure): it is not refused.
+            if ((!is_resume and !r.startRoom(req)) or r.events.items.len + r.resultReserve() >= r.events.capacity) {
+                r.pauseConn(idx, .room);
+                break;
+            }
             // "METHOD TARGET\n", the headers as JSON, "\n", then the body,
-            // copied into batch memory.
+            // copied into batch memory. With no room there, the request waits
+            // for the batch to end. One that is larger than the batch memory
+            // can never fit.
             const p = requestPayload(&r.batch, req) catch {
-                r.replyRaw(idx, 503, "{\"error\":\"busy\"}");
+                if (r.batch.used > 0) {
+                    r.pauseConn(idx, .room);
+                    break;
+                }
+                off += req.consumed;
+                cn.close_after = true;
+                r.replyRaw(idx, 413, "{\"error\":\"request too large\"}");
                 continue;
             };
-            // New work leaves room for the results of work in flight.
-            if (r.events.items.len + r.resultReserve() >= r.events.capacity) {
-                r.replyRaw(idx, 503, "{\"error\":\"busy\"}");
-                continue;
-            }
+            off += req.consumed;
+            if (!req.keep_alive) cn.close_after = true;
             r.events.appendAssumeCapacity(.{ .kind = .http_request, .conn = token(.conn, cn.gen, idx) + 0, .payload = p });
+            r.starts_queued += @intFromBool(!is_resume);
             _ = r.stats.requests.fetchAdd(1, .monotonic);
         }
         return off;
@@ -1589,6 +1860,7 @@ pub const Runner = struct {
     /// Answer and close after the reply; drop what was read.
     fn refuseRequest(r: *Runner, idx: u32, status: u32, body: []const u8) void {
         const cn = &r.conns[idx];
+        r.unpauseConn(idx);
         r.replyRaw(idx, status, body);
         cn.close_after = true;
         cn.rlen = 0;
@@ -1619,6 +1891,8 @@ pub const Runner = struct {
         cn.rbig_high = 0;
         r.req_big_free.appendAssumeCapacity(cn.rbig);
         cn.rbig = no_big;
+        // A request that waits for a large buffer can have this one.
+        r.resume_due = true;
     }
 
     fn requestPayload(arena: *Arena, req: http.Request) error{ArenaFull}![]const u8 {
@@ -1705,6 +1979,8 @@ pub const Runner = struct {
                 cn.big = b;
                 break :blk http.writeResponseTyped(big[cn.wlen..], status, content_type, extra, body);
             };
+            // No large buffer is free, or the reply is larger than one: a limit.
+            r.lim.reply_big_refused += 1;
             break :blk null;
         } orelse http.writeResponse(r.outBuf(idx)[cn.wlen..], 500, "{\"error\":\"the reply is too large\"}") orelse {
             cn.close_after = true;
@@ -1998,14 +2274,94 @@ pub const Runner = struct {
 
     fn startEgress(r: *Runner, a: core.Action) void {
         _ = r.stats.egress.fetchAdd(1, .monotonic);
+        r.sendEgress(a, sys.nowMs());
+    }
+
+    /// Start the outbound request of dispatch `a`, now or after a renewal.
+    fn sendEgress(r: *Runner, a: core.Action, now: i64) void {
         const store = r.credsFor(a.module);
-        const now = sys.nowMs();
         // The one comparison of a request whose credential values are
         // valid: the clock against the first expiry of the document, which
         // is maxInt when no value has one. The request has no row and no
         // copy of its args (`renew.zig`).
         if (store) |s| if (now >= s.renew_at_ms and r.renewBeforeStart(a, s, now)) return;
-        r.egress.start(a.exec_id, a.seq, a.payload, if (a.idempotent) &a.key else null, store, a.attempt, r.workflowKey(a.module), now);
+        r.egressStart(a, store, now);
+    }
+
+    /// Give the request of dispatch `a` to the egress client. With no free
+    /// row or large buffer there, the step waits for one (`step_wait.zig`).
+    fn egressStart(r: *Runner, a: core.Action, store: ?*const creds.Store, now: i64) void {
+        switch (r.egress.tryStart(a.exec_id, a.seq, a.payload, if (a.idempotent) &a.key else null, store, a.attempt, r.workflowKey(a.module), now)) {
+            .started => {},
+            .row => r.stepWait(.http_row, .{ .exec_id = a.exec_id, .seq = a.seq }, "http: too many requests wait for a row of the request table (--egress-max-requests); the step can run again (limit)"),
+            .big => r.stepWait(.http_big, .{ .exec_id = a.exec_id, .seq = a.seq }, "http: too many requests wait for a large buffer (--egress-big-slots); the step can run again (limit)"),
+        }
+    }
+
+    // ---- steps that wait for a row or a buffer (step_wait.zig) -----------------
+
+    /// The step waits for a row of its table or for a large buffer. `full`
+    /// is the static error of the step when the wait queue itself is full.
+    fn stepWait(r: *Runner, kind: step_wait.Kind, step: step_wait.Step, full: []const u8) void {
+        if (r.waits.push(kind, step)) return;
+        r.effectError(step.exec_id, step.seq, full);
+    }
+
+    /// True when the table that steps of `kind` wait for has a free row.
+    fn waitRoom(r: *const Runner, kind: step_wait.Kind) bool {
+        return switch (kind) {
+            .http_row => r.egress.freeRequests() > 0,
+            .http_big => r.egress.freeRequests() > 0 and r.egress.freeBig() > 0,
+            .service => if (r.svc) |*t| t.count < t.calls.len else true,
+            .renewal => if (r.renewals) |*t| t.count < t.entries.len else true,
+        };
+    }
+
+    /// Start the steps that wait, oldest first, while their tables have
+    /// free rows and the event list has room for a result.
+    fn serveStepWaits(r: *Runner, now: i64) void {
+        if (r.waits.total() == 0) return;
+        const all = [_]step_wait.Kind{ .http_row, .http_big, .service, .renewal };
+        for (all) |kind| {
+            var left = r.waits.waiting(kind);
+            while (left > 0 and r.waitRoom(kind) and r.events.items.len + r.resultReserve() < r.events.capacity) : (left -= 1) {
+                const step = r.waits.pop(kind) orelse break;
+                if (r.startWaiting(kind, step, now)) continue;
+                // No batch memory for its args now: it keeps its place.
+                r.waits.unpop(kind, step);
+                break;
+            }
+        }
+    }
+
+    /// Start a step that waited. The core gives its args again. False when
+    /// the batch memory has no room for them.
+    fn startWaiting(r: *Runner, kind: step_wait.Kind, step: step_wait.Step, now: i64) bool {
+        std.debug.assert(!r.in_perform and r.events.items.len < r.events.capacity);
+        if (!r.sh.st.effectWaits(step.exec_id, step.seq)) {
+            // The execution ended, or it left memory for a long wait of
+            // another branch: then the step runs again when it is back.
+            if (r.sh.evicted(step.exec_id)) {
+                r.events.appendAssumeCapacity(.{ .kind = .effect_err, .exec_id = step.exec_id, .seq = step.seq, .payload = wait_resend_msg });
+            }
+            return true;
+        }
+        if (kind == .renewal) {
+            const t = if (r.renewals) |*t| t else return true;
+            if (t.find(step.exec_id, step.seq) != null) return true;
+            // The credentials changed while the step waited: no renewal now.
+            if (!r.renewAfterResponse(t, step.exec_id, step.seq, step.aux)) r.effectError(step.exec_id, step.seq, renew.full_text);
+            return true;
+        }
+        // The args stay in the batch memory until the batch ends: a request
+        // that fails at once has its error there too.
+        const a = r.sh.st.pendingDispatch(step.exec_id, step.seq, &r.batch) orelse return false;
+        switch (a.effect_kind) {
+            .http => r.sendEgress(a, now),
+            .service => r.startService(a),
+            else => unreachable, // `pendingDispatch` gives only these kinds.
+        }
+        return true;
     }
 
     // ---- credential renewal (renew.zig) ---------------------------------------
@@ -2122,8 +2478,8 @@ pub const Runner = struct {
         const i = row orelse {
             // No row for the renewal that v1 would make. The step does not
             // get the response of the expired value as if the service gave
-            // it: it fails with a limit that names the flag, and can run again.
-            r.effectError(exec_id, seq, renew.full_text);
+            // it: it waits for a row, and the renewal runs then.
+            r.stepWait(.renewal, .{ .exec_id = exec_id, .seq = seq, .aux = status }, renew.full_text);
             return true;
         };
         switch (t.onResponse(i, status)) {
@@ -2174,7 +2530,7 @@ pub const Runner = struct {
                 continue;
             };
             // A request that fails at once gives its row back in `egressDone`.
-            r.egress.start(a.exec_id, a.seq, a.payload, if (a.idempotent) &a.key else null, r.credsFor(a.module), a.attempt, r.workflowKey(a.module), now);
+            r.egressStart(a, r.credsFor(a.module), now);
         }
     }
 
@@ -2516,11 +2872,13 @@ pub const Runner = struct {
     /// Event payloads live in the batch arena until the batch ends.
     fn handleAdmin(r: *Runner, idx: u32, req: http.Request) void {
         if (!admin.authorized(req.head, r.opts.admin_secret)) return r.adminReply(idx, 401, "{\"error\":\"unauthorized\"}");
-        if (r.events.items.len + 64 + r.resultReserve() > r.events.capacity) return r.adminReply(idx, 503, "{\"error\":\"busy\"}");
+        const route = admin.route(req.method, req.target);
+        // The limits are of most use while the shard is busy: no event needed.
+        if (route != .get_limits and r.events.items.len + 64 + r.resultReserve() > r.events.capacity) return r.adminReply(idx, 503, "{\"error\":\"busy\"}");
         const conn = r.adminToken(idx);
         var fba = r.batchFba();
         const a = fba.allocator();
-        switch (admin.route(req.method, req.target)) {
+        switch (route) {
             .put_workflow => |id| {
                 const p = admin.loadPayload(a, id, req.body) catch |e| return r.adminReply(idx, switch (e) {
                     error.OutOfMemory => 503,
@@ -2579,6 +2937,13 @@ pub const Runner = struct {
                 defer t.end();
                 var b = r.batch.builder();
                 r.listClasses(&b) catch return r.adminReply(idx, 503, busy_body);
+                r.adminReply(idx, 200, b.bytes());
+            },
+            .get_limits => {
+                const t = r.batch.begin();
+                defer t.end();
+                var b = r.batch.builder();
+                r.writeLimits(&b) catch return r.adminReply(idx, 503, busy_body);
                 r.adminReply(idx, 200, b.bytes());
             },
             .list_workflows => {
@@ -4121,11 +4486,10 @@ pub const Runner = struct {
         const m = r.sh.st.moduleAt(a.module);
         const workflow = r.sh.st.modules[a.module].workflowId();
         const deadline = sys.nowMs() + r.opts.service_timeout_ms;
-        const i = t.add(a.exec_id, a.seq, a.attempt, workflow, m.str(m.steps[a.step].name), a.payload, deadline) catch |e| {
-            return r.effectError(a.exec_id, a.seq, switch (e) {
-                error.Full => svc_full,
-                error.TooLarge => svc_big,
-            });
+        const i = t.add(a.exec_id, a.seq, a.attempt, workflow, m.str(m.steps[a.step].name), a.payload, deadline) catch |e| switch (e) {
+            // Every row is in use: the call waits for one (`serveStepWaits`).
+            error.Full => return r.stepWait(.service, .{ .exec_id = a.exec_id, .seq = a.seq }, svc_full),
+            error.TooLarge => return r.effectError(a.exec_id, a.seq, svc_big),
         };
         r.publish(.{ .service = .{ .line = t.line(i) } });
     }
@@ -4210,6 +4574,7 @@ pub const Runner = struct {
         const workflow = r.sh.st.modules[e.module].workflowId();
         const deadline = sys.nowMs() + r.opts.service_timeout_ms;
         const i = t.addSub(exec_id, seq, sub, ci, e.attempt, workflow, m.str(m.steps[e.step].name), frame, deadline) catch |err| {
+            r.lim.host_service_refused += @intFromBool(err == error.Full);
             const msg = switch (err) {
                 error.Full => "\"" ++ svc_full ++ "\"",
                 error.TooLarge => "\"" ++ svc_big ++ "\"",
@@ -4284,6 +4649,71 @@ pub const Runner = struct {
         return ob.ackedSeq();
     }
 
+    /// One member of the limits document: `"name":{...},` from a format.
+    fn limitPart(b: *core_lib.arena.Builder, comptime fmt: []const u8, args: anytype) error{ArenaFull}!void {
+        var buf: [384]u8 = @splat(0);
+        try b.append(std.fmt.bufPrint(&buf, fmt, args) catch unreachable); // Numbers only: the longest line fits.
+    }
+
+    /// `GET /_admin/limits`, and the `limits:` line of `--stats`: each
+    /// bounded table and pool on the path of an execution, with what is in
+    /// use now and its size, how often work waited for it (`waits`), and how
+    /// often work failed at it (`refused`, `full`, `limit`). A count of
+    /// waits says that the table was full and the work went on later: raise
+    /// its flag, or `--target-in-flight`, when latency matters. A count of
+    /// refusals is work that the caller must send again.
+    fn writeLimits(r: *const Runner, b: *core_lib.arena.Builder) error{ArenaFull}!void {
+        const st = &r.sh.st;
+        const l = st.limits();
+        const k = &st.counters;
+        const w = &r.waits;
+        const eg = r.egress.gauges();
+        const ek = &r.egress.counters;
+        const kind = struct {
+            fn of(q: step_wait.Kind) usize {
+                return @backingInt(q);
+            }
+        }.of;
+        try limitPart(b, "{{\"shard\":{d},\"conns\":{{\"used\":{d},\"max\":{d},\"waiting\":{d},\"waiting_high\":{d},\"refused\":{d}}},", .{ r.id, r.conns.len - r.free_conns.items.len, r.conns.len, r.npaused, r.lim.paused_high, r.lim.conn_full });
+        try limitPart(b, "\"request_big\":{{\"used\":{d},\"max\":{d},\"waits\":{d},\"refused\":{d}}},", .{ r.opts.request_big_slots - r.req_big_free.items.len, r.opts.request_big_slots, r.lim.request_big_waits, r.lim.request_refused });
+        try limitPart(b, "\"starts\":{{\"waits\":{d},\"held\":{d},\"held_waits\":{d},\"too_large\":{d}}},", .{ r.lim.start_waits, l.held_starts, k.start_waits, k.too_large });
+        try limitPart(b, "\"slots\":{{\"used\":{d},\"max\":{d},\"empty\":{d}}},\"regions\":[", .{ l.slots_used, l.slots, k.no_slot });
+        for (0..4) |c| {
+            try limitPart(b, "{s}{{\"bytes\":{d},\"used\":{d},\"max\":{d},\"empty\":{d}}}", .{ if (c == 0) "" else ",", st.cfg.region_sizes[c], l.regions_used[c], l.region_counts[c], st.pool_empty[c] });
+        }
+        try limitPart(b, "],\"held\":{{\"used\":{d},\"max\":{d},\"high\":{d},\"bytes\":{d},\"bytes_max\":{d},\"bytes_high\":{d},\"run_waits\":{d},\"result_waits\":{d},\"refused\":{d}}},", .{ l.held, l.held_max, l.held_high, l.held_bytes, l.held_bytes_max, l.held_bytes_high, k.run_waits, k.result_waits, k.held_refused });
+        try limitPart(b, "\"executions\":{{\"limit\":{d}}},\"pending\":{{\"used\":{d},\"max\":{d},\"full\":{d},\"waits\":{d},\"waiting\":{d}}},", .{ k.limit_finished, l.pending, l.pending_max, k.pending_full, k.pending_waits, l.pending_wait });
+        try limitPart(b, "\"timers\":{{\"used\":{d},\"max\":{d}}},\"parked\":{{\"used\":{d},\"max\":{d}}},", .{ l.timers, l.timers_max, l.parked, l.parked_max });
+        try limitPart(b, "\"events\":{{\"used\":{d},\"max\":{d},\"lost\":{d}}},\"batch_bytes\":{{\"used\":{d},\"max\":{d}}},", .{ r.events.items.len, r.events.capacity, r.nlost, r.batch.used, r.batch.buf.len });
+        try limitPart(b, "\"egress\":{{\"used\":{d},\"max\":{d},\"waiting\":{d},\"waits\":{d},\"queue_full\":{d}}},", .{ eg.active, r.opts.max_egress, w.waiting(.http_row), w.waited[kind(.http_row)], ek.queue_full });
+        try limitPart(b, "\"egress_conns\":{{\"used\":{d},\"max\":{d},\"no_socket\":{d}}},", .{ eg.conns, r.opts.egress.max_conns, ek.no_socket });
+        try limitPart(b, "\"egress_big\":{{\"used\":{d},\"max\":{d},\"waiting\":{d},\"request_waits\":{d},\"response_waits\":{d},\"refused\":{d},\"reply_refused\":{d}}},", .{ r.opts.egress_big_slots - r.egress.freeBig(), r.opts.egress_big_slots, w.waiting(.http_big), w.waited[kind(.http_big)], ek.big_waits, ek.big_refused, r.lim.reply_big_refused });
+        const svc_used: u32 = if (r.svc) |*t| t.count else 0;
+        const ren_used: u32 = if (r.renewals) |*t| t.count else 0;
+        try limitPart(b, "\"service\":{{\"used\":{d},\"max\":{d},\"waiting\":{d},\"waits\":{d},\"host_refused\":{d}}},", .{ svc_used, r.opts.max_service_calls, w.waiting(.service), w.waited[kind(.service)], r.lim.host_service_refused });
+        try limitPart(b, "\"renewals\":{{\"used\":{d},\"max\":{d},\"waiting\":{d},\"waits\":{d}}},", .{ ren_used, r.opts.max_renewals, w.waiting(.renewal), w.waited[kind(.renewal)] });
+        var wait_refused: u64 = 0;
+        var wait_high: u32 = 0;
+        for (w.refused, w.high) |n, h| {
+            wait_refused += n;
+            wait_high = @max(wait_high, h);
+        }
+        try limitPart(b, "\"step_wait\":{{\"max\":{d},\"high\":{d},\"refused\":{d}}}", .{ w.cap, wait_high, wait_refused });
+        try limitPart(b, ",\"step_wait_http\":{{\"high\":{d}}},\"step_wait_big\":{{\"high\":{d}}},\"step_wait_service\":{{\"high\":{d}}},\"step_wait_renewal\":{{\"high\":{d}}},", .{ w.high[kind(.http_row)], w.high[kind(.http_big)], w.high[kind(.service)], w.high[kind(.renewal)] });
+        const ob: outbox.Status = if (r.ob) |*o| o.status() else .{ .first = 0, .last = 0, .acked = 0, .bytes = 0, .max_bytes = 0 };
+        try limitPart(b, "\"host\":{{\"used\":{d},\"max\":{d},\"waiting\":{d},\"refused\":{d}}},\"outbox\":{{\"bytes\":{d},\"max\":{d}}}}}", .{ r.fb_inflight.count(), fb_max_inflight, r.fb_waiting_n, r.stats.host_refused.load(.monotonic), ob.bytes, ob.max_bytes });
+    }
+
+    /// The `limits:` line of `--stats`: the document of `writeLimits`.
+    fn noteLimits(r: *Runner, now: i64) void {
+        r.limit_stats_ms = now;
+        var buf: [4096]u8 = @splat(0);
+        var a = Arena.init(&buf);
+        var b = a.builder();
+        r.writeLimits(&b) catch |e| return sys.note("limits: {s}\n", .{@errorName(e)});
+        sys.note("limits: {s}\n", .{b.bytes()});
+    }
+
     /// `GET /_admin/outbox` (spec 9.2).
     fn outboxStatus(r: *const Runner, b: *core_lib.arena.Builder) error{ArenaFull}!void {
         const st: outbox.Status = if (r.ob) |*o| o.status() else .{
@@ -4319,6 +4749,10 @@ const TestRunner = struct {
     fallback_wait_ms: ?i64 = null,
     /// The workload classes (`--classes` and its flags).
     workload: workload.Classes = workload.single,
+    /// The webhook routes of the modules (`--route`).
+    routes: []const RouteArg = &.{},
+    /// The regions of each class, to make a pool run out; null keeps the default.
+    region_counts: ?[4]u32 = null,
     stats: Stats = .{},
     stop: std.atomic.Value(bool) = .init(false),
     r: *Runner = undefined,
@@ -4347,6 +4781,8 @@ const TestRunner = struct {
         opts.modules = t.modules;
         opts.fallback = t.fallback;
         opts.workload = t.workload;
+        opts.routes = t.routes;
+        opts.test_region_counts = t.region_counts;
         if (t.fallback_wait_ms) |ms| opts.fallback_wait_ms = ms;
         var p: u16 = 36000 + @as(u16, @intCast(@mod(std.c.getpid(), 2000)));
         while (p < 39000) : (p += 1) {
@@ -4453,18 +4889,209 @@ test "inbound requests leave room for the results of outbound requests" {
     try t.start();
     defer t.deinit();
     const r = t.r;
-    // Fill the queue up to the reserve: a new request is refused with 503.
+    // Fill the queue up to the reserve: a new request waits in its
+    // connection for the batch that takes the events. It is not refused.
     const free = r.events.capacity - r.resultReserve() - r.events.items.len;
     for (0..free) |_| r.events.appendAssumeCapacity(.{ .kind = .cancel, .exec_id = 1 });
     const c = try t.client("POST /x HTTP/1.1\r\nhost: a\r\ncontent-length: 0\r\n\r\n");
     defer sys.close(c.fd);
-    var buf: [4096]u8 = undefined;
-    try std.testing.expect(std.mem.startsWith(u8, t.response(c.fd, &buf), "HTTP/1.1 503"));
+    try std.testing.expectEqual(@as(u32, 1), r.npaused);
+    try std.testing.expect(r.conns[c.idx].paused == .room);
+    try std.testing.expectEqual(@as(usize, 0), r.conns[c.idx].wlen);
     try std.testing.expectEqual(r.events.capacity - r.resultReserve(), r.events.items.len);
     // Every outbound request in flight still finds room for its result.
     for (0..r.resultReserve()) |i| Runner.egressDone(r, i + 1, 0, .{ .err = "http: test" });
     try std.testing.expectEqual(r.events.capacity, r.events.items.len);
     try std.testing.expectEqual(@as(usize, 0), r.nlost);
+    // A batch took the events: the request that waited is read on.
+    r.events.clearRetainingCapacity();
+    r.resumePaused();
+    try std.testing.expectEqual(@as(u32, 0), r.npaused);
+    try std.testing.expectEqual(@as(usize, 1), r.events.items.len);
+    try std.testing.expect(r.events.items[0].kind == .http_request);
+}
+
+const TestEffect = struct { exec: u64, seq: u32 };
+
+/// One batch of the events that wait, as `loop` runs it, without the
+/// dispatches: an execution that sends a step waits until the test gives
+/// the result. The effect of the dispatch of the batch, when it has one.
+fn testBatch(r: *Runner) !?TestEffect {
+    const tk = try r.sh.tick(sys.nowMs(), r.events.items);
+    r.events.clearRetainingCapacity();
+    var sent: ?TestEffect = null;
+    r.in_perform = true;
+    for (tk.actions) |a| {
+        if (a.kind == .dispatch) sent = .{ .exec = a.exec_id, .seq = a.seq } else try r.performOne(a);
+    }
+    r.in_perform = false;
+    r.flushConns();
+    r.sh.endBatch();
+    r.batch.reset();
+    r.starts_queued = 0;
+    r.resume_due = true;
+    if (r.npaused > 0) r.resumePaused();
+    return sent;
+}
+
+/// `POST /w` with a JSON body of `bytes` bytes.
+fn postOf(gpa: std.mem.Allocator, bytes: usize) ![]u8 {
+    const head = try std.fmt.allocPrint(gpa, "POST /w HTTP/1.1\r\nhost: a\r\ncontent-type: application/json\r\ncontent-length: {d}\r\n\r\n", .{bytes});
+    const req = try gpa.alloc(u8, head.len + bytes);
+    @memcpy(req[0..head.len], head);
+    const body = req[head.len..];
+    @memset(body, 'x');
+    const open = "{\"id\":1,\"pad\":\"";
+    @memcpy(body[0..open.len], open);
+    @memcpy(body[bytes - 2 ..], "\"}");
+    return req;
+}
+
+test "back-pressure: a request that finds no region waits in its connection, in arrival order, and starts when one is free" {
+    var mod_arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer mod_arena.deinit();
+    const ma = mod_arena.allocator();
+    // A webhook that calls one `http` step and answers with its status.
+    const mods = [_][]const u8{try programs.webhookReply(ma, "{\"durability\":\"none\",\"triggerHeaders\":false}", .http)};
+    const routes = [_]RouteArg{.{ .module = 0, .method = "POST", .path = "/w" }};
+    // One region for an execution whose trigger is above 4 KB.
+    var t: TestRunner = .{ .arena = undefined, .modules = &mods, .routes = &routes, .region_counts = .{ 64, 1, 0, 0 } };
+    try t.start();
+    defer t.deinit();
+    const r = t.r;
+    const req = try postOf(ma, 6000);
+    const answer = "{\"status\":200,\"headers\":{}}";
+    var buf: [4096]u8 = undefined;
+
+    const a = try t.client(req);
+    defer sys.close(a.fd);
+    try std.testing.expectEqual(@as(usize, 1), r.events.items.len);
+    const first = (try testBatch(r)).?;
+    // The second and the third find no region: they wait. No reply, no event.
+    const b = try t.client(req);
+    defer sys.close(b.fd);
+    const c = try t.client(req);
+    defer sys.close(c.fd);
+    try std.testing.expectEqual(@as(u32, 2), r.npaused);
+    try std.testing.expect(r.conns[b.idx].paused == .room and r.conns[c.idx].paused == .room);
+    try std.testing.expectEqual(@as(usize, 0), r.events.items.len);
+    try std.testing.expectEqual(@as(usize, 0), r.conns[b.idx].wlen);
+    try std.testing.expectEqual(@as(u64, 2), r.lim.start_waits);
+    // A batch without a release changes nothing.
+    try std.testing.expect((try testBatch(r)) == null);
+    try std.testing.expectEqual(@as(u32, 2), r.npaused);
+
+    // The first execution ends: the oldest request that waits is read on, and only that one.
+    r.events.appendAssumeCapacity(.{ .kind = .effect_ok, .exec_id = first.exec, .seq = first.seq, .payload = answer });
+    try std.testing.expect((try testBatch(r)) == null);
+    try std.testing.expect(std.mem.startsWith(u8, t.response(a.fd, &buf), "HTTP/1.1 200"));
+    try std.testing.expectEqual(@as(u32, 1), r.npaused);
+    try std.testing.expectEqual(c.idx, r.paused[0]);
+    try std.testing.expectEqual(@as(usize, 1), r.events.items.len);
+    const second = (try testBatch(r)).?;
+    try std.testing.expectEqual(@as(u32, 1), r.npaused);
+
+    r.events.appendAssumeCapacity(.{ .kind = .effect_ok, .exec_id = second.exec, .seq = second.seq, .payload = answer });
+    try std.testing.expect((try testBatch(r)) == null);
+    try std.testing.expect(std.mem.startsWith(u8, t.response(b.fd, &buf), "HTTP/1.1 200"));
+    try std.testing.expectEqual(@as(u32, 0), r.npaused);
+    const third = (try testBatch(r)).?;
+    r.events.appendAssumeCapacity(.{ .kind = .effect_ok, .exec_id = third.exec, .seq = third.seq, .payload = answer });
+    try std.testing.expect((try testBatch(r)) == null);
+    try std.testing.expect(std.mem.startsWith(u8, t.response(c.fd, &buf), "HTTP/1.1 200"));
+    // No execution ended at a limit, and no start waited in the core: the shell held them back.
+    try std.testing.expectEqual(@as(u64, 0), r.sh.st.counters.limit_finished);
+    try std.testing.expectEqual(@as(u64, 0), r.sh.st.counters.start_waits);
+    try std.testing.expectEqual(@as(u32, 0), r.sh.st.liveExecutions());
+}
+
+test "sizing: --target-in-flight scales every pool on the path of an execution, and makes none smaller" {
+    var o: Options = .{};
+    o.applyEmbedded();
+    const profile = o;
+    // A target below the profile changes no pool of an execution.
+    o.applyInFlight(100);
+    try std.testing.expectEqual(profile.max_conns, o.max_conns);
+    try std.testing.expectEqual(profile.slots, o.slots);
+    try std.testing.expectEqual(profile.regionCounts(), o.regionCounts());
+    try std.testing.expectEqual(profile.heldBytes(), o.heldBytes());
+    try std.testing.expectEqual(profile.max_egress, o.max_egress);
+    // A target above it scales each one.
+    o.applyInFlight(4000);
+    try std.testing.expectEqual(@as(u32, 5064), o.max_conns);
+    try std.testing.expectEqual(@as(u32, 16_000), o.slots);
+    try std.testing.expectEqual([4]u32{ 16_000, 4000, 500, 31 }, o.regionCounts());
+    try std.testing.expectEqual(@as(u32, 4000 * (64 << 10)), o.heldBytes());
+    try std.testing.expectEqual(@as(u32, 16_000), o.max_egress);
+    try std.testing.expectEqual(@as(u32, 8000), o.egress.max_conns);
+    try std.testing.expectEqual(@as(u32, 128), o.egress_big_slots);
+    try std.testing.expectEqual(@as(u32, 32), o.request_big_slots);
+    try std.testing.expectEqual(@as(u32, 1024), o.max_service_calls);
+    try std.testing.expectEqual(@as(u32, 4000), o.max_renewals);
+    // A shard starts with these sizes: the result of every outbound request has room.
+    try std.testing.expect(o.max_egress <= std.math.ceilPowerOfTwoAssert(u32, 2 * o.max_egress) / 2);
+}
+
+test "back-pressure: with every connection slot in use a new connection gets 503 (the bound on new work)" {
+    var t: TestRunner = .{ .arena = undefined };
+    try t.start();
+    defer t.deinit();
+    const r = t.r;
+    var fds: [test_max_conns]c_int = @splat(-1);
+    defer for (fds) |fd| if (fd >= 0) sys.close(fd);
+    for (0..r.conns.len) |i| fds[i] = (try t.client("")).fd;
+    try std.testing.expectEqual(@as(usize, 0), r.free_conns.items.len);
+    const fd = try sys.connectTcp(.{ 127, 0, 0, 1 }, t.port);
+    defer sys.close(fd);
+    var buf: [512]u8 = undefined;
+    var n: usize = 0;
+    var tries: u32 = 0;
+    while (n == 0 and tries < 1000) : (tries += 1) {
+        r.acceptAll();
+        switch (sys.readSome(fd, &buf)) {
+            .n => |k| n = k,
+            .again, .closed => napTest(),
+        }
+    }
+    try std.testing.expect(std.mem.startsWith(u8, buf[0..n], "HTTP/1.1 503"));
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..n], "--max-conns") != null);
+    try std.testing.expectEqual(@as(u64, 1), r.lim.conn_full);
+}
+
+test "request big pool: the free list keeps order and releases back to the waiters" {
+    var t: TestRunner = .{ .arena = undefined };
+    try t.start();
+    defer t.deinit();
+    const r = t.r;
+    // The pool has one large request buffer.
+    try std.testing.expectEqual(@as(usize, 1), r.req_big_free.items.len);
+    const b0 = r.req_big_free.pop().?;
+    try std.testing.expectEqual(@as(usize, 0), r.req_big_free.items.len);
+    // Two connections arrive with bodies that need a large buffer.
+    // Write only the headers first: the body stays in the socket until
+    // the large buffer is available (the small buffer fills).
+    const ma = t.arena.allocator();
+    const head = "POST /w HTTP/1.1\r\nhost: a\r\ncontent-length: 20000\r\n\r\n";
+    const a = try t.client(try ma.dupe(u8, head));
+    defer sys.close(a.fd);
+    // Fill the rest of the small buffer with more bytes, then send the rest.
+    var fill: [16384]u8 = @splat('x');
+    @memcpy(fill[0..head.len], head);
+    // The small buffer is now full; the body needs a large buffer.
+    // But the pool is empty: the request waits for one.
+    // `client` called readConn which read what was available and paused.
+    try std.testing.expectEqual(@as(u64, 1), r.lim.request_big_waits);
+    // The second request also waits, behind the first.
+    const b = try t.client(try ma.dupe(u8, head));
+    defer sys.close(b.fd);
+    try std.testing.expectEqual(@as(u64, 2), r.lim.request_big_waits);
+    try std.testing.expectEqual(@as(u32, 2), r.npaused);
+    // Release the buffer: the first waiting request gets it.
+    r.req_big_free.appendAssumeCapacity(b0);
+    r.resumePaused();
+    try std.testing.expectEqual(@as(u32, 1), r.npaused);
+    try std.testing.expectEqual(@as(usize, 0), r.req_big_free.items.len);
+    try std.testing.expectEqual(@as(u64, 0), r.lim.request_refused);
 }
 
 /// `run(t) { return await Call({ url: 'nowhere', credential: 'api', ...extra }) }`,
@@ -4590,7 +5217,7 @@ test "a renewal that n8n refuses fails the step with the message of n8n" {
     try std.testing.expectEqual(@as(u32, 0), rt.count);
 }
 
-test "a renewal without a row fails the step with a limit, and the args have no size limit" {
+test "a renewal without a row waits for one and starts when it is free, and the args have no size limit" {
     var mod_arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer mod_arena.deinit();
     const mods = [_][]const u8{try renewModule(mod_arena.allocator(), null, 0, false)};
@@ -4604,12 +5231,23 @@ test "a renewal without a row fails the step with a limit, and the args have no 
     const two = try startRenewRun(r);
     Runner.egressDone(r, one.exec, one.seq, statusResult(401));
     try std.testing.expectEqual(@as(u32, 1), rt.count);
-    // The table is full: the step does not get the 401 of the expired value.
+    // The table is full: the step does not get the 401 of the expired
+    // value, and it does not fail. It waits for a row.
     Runner.egressDone(r, two.exec, two.seq, statusResult(401));
-    try std.testing.expectEqual(@as(usize, 1), r.events.items.len);
-    try std.testing.expect(r.events.items[0].kind == .effect_err);
-    try std.testing.expectEqualStrings(renew.full_text, r.events.items[0].payload);
+    try std.testing.expectEqual(@as(usize, 0), r.events.items.len);
+    try std.testing.expectEqual(@as(u32, 1), r.waits.waiting(.renewal));
     try std.testing.expectEqual(@as(u64, 1), rt.counters.full);
+    // No row is free: the step waits on, first in its queue.
+    r.serveStepWaits(sys.nowMs());
+    try std.testing.expectEqual(@as(u32, 1), r.waits.waiting(.renewal));
+    try std.testing.expect(rt.find(two.exec, two.seq) == null);
+    // The row of the first request goes back: the renewal of the second starts.
+    rt.release(rt.find(one.exec, one.seq).?);
+    r.serveStepWaits(sys.nowMs());
+    try std.testing.expectEqual(@as(u32, 0), r.waits.waiting(.renewal));
+    try std.testing.expect(rt.find(two.exec, two.seq) != null);
+    try std.testing.expectEqual(@as(u32, 1), rt.count);
+    try std.testing.expectEqual(@as(usize, 0), r.events.items.len);
     // A row has room for names only: 1 KB here, whatever the args are.
     try std.testing.expectEqual(@as(usize, 1024), rt.room_bytes);
 }

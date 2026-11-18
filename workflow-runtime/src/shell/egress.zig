@@ -290,6 +290,12 @@ pub const Counters = struct {
     /// Idle HTTP/2 connections closed to give their HTTP/2 state to
     /// another origin (`--egress-h2-conns` is too small when this grows).
     h2_reclaimed: u64 = 0,
+    /// HTTP/1.1 responses that waited for a large buffer (`pauseBig`), and
+    /// responses that failed because none was free (HTTP/2, which cannot
+    /// stop one stream of a connection; `--egress-big-slots` is too small
+    /// when this grows).
+    big_waits: u64 = 0,
+    big_refused: u64 = 0,
 };
 
 /// What the client holds now, for `--stats`.
@@ -575,6 +581,8 @@ const Conn = struct {
     got_bytes: bool = false,
     /// In `Client.read_list`: TLS may hold decrypted bytes for it.
     read_queued: bool = false,
+    /// In `Client.big_wait`: the response waits for a large buffer (`pauseBig`).
+    wait_big: bool = false,
     /// The HTTP/2 state slot, held from `open` while h2 is possible.
     h2: u32 = none,
     h2_prev: u32 = none,
@@ -687,6 +695,12 @@ pub const Client = struct {
     nread: u32 = 0,
     /// Connections in the state `paused`.
     npaused: u32 = 0,
+    /// The paused connections whose response waits for a large buffer,
+    /// oldest first (`pauseBig`): one entry for each connection at most.
+    big_wait: []u32 = &.{},
+    nbig_wait: u32 = 0,
+    /// `build` found no large buffer for the body of a request (`tryStart`).
+    build_no_big: bool = false,
     /// HTTP/2 streams with `s_pending`.
     nh2_pending: u32 = 0,
     /// Request bodies with stored files: the rows, the free ones, and the
@@ -745,6 +759,7 @@ pub const Client = struct {
             // While the list drains, a connection can be in the part being
             // drained and again in the new part: twice at most.
             .read_list = try gpa.alloc(u32, cfg.max_conns * 2),
+            .big_wait = try gpa.alloc(u32, cfg.max_conns),
             .flush_list = try gpa.alloc(u32, cfg.max_conns),
             .wheel = try gpa.alloc(u32, wheel_len),
         };
@@ -817,9 +832,30 @@ pub const Client = struct {
     /// `attempt`: the step's attempt, 0 for the first.
     /// `workflow_key`: an id of the workflow, for `--egress-pool workflow`.
     pub fn start(c: *Client, exec_id: u64, seq: u32, args: []const u8, idem_key: ?[]const u8, store: ?*const creds.Store, attempt: u32, workflow_key: u64, now_ms: i64) void {
+        switch (c.tryStart(exec_id, seq, args, idem_key, store, attempt, workflow_key, now_ms)) {
+            .started => {},
+            .row => c.sinkErr(exec_id, seq, "http: too many requests in flight ({d}, --egress-max-requests); the step can run again (limit)", .{c.cfg.max_reqs}),
+            .big => c.sinkErr(exec_id, seq, "http: the request is larger than the small buffer and all {d} large buffers are in use (--egress-big-slots); the step can run again (limit)", .{c.cfg.big_slots}),
+        }
+    }
+
+    /// What `tryStart` did with a request.
+    pub const Started = enum {
+        /// The request has a row. The sink gets its result, now or later.
+        started,
+        /// Every row of the table of requests is in use. Nothing was done.
+        row,
+        /// The request needs a large buffer and all are in use. Nothing was done.
+        big,
+    };
+
+    /// `start` for a caller that lets the step wait when a table is full
+    /// (`step_wait.zig`): the sink gets no result for `row` and `big`, and
+    /// the caller starts the request again when a row or a buffer is free.
+    pub fn tryStart(c: *Client, exec_id: u64, seq: u32, args: []const u8, idem_key: ?[]const u8, store: ?*const creds.Store, attempt: u32, workflow_key: u64, now_ms: i64) Started {
         c.now_ms = now_ms;
         const st = store orelse c.cfg.credentials;
-        if (c.nrfree == 0) return c.sinkErr(exec_id, seq, "http: too many requests in flight ({d}, --egress-max-requests); the step can run again (limit)", .{c.cfg.max_reqs});
+        if (c.nrfree == 0) return .row;
         c.nrfree -= 1;
         const ri = c.rfree[c.nrfree];
         const r = &c.reqs[ri];
@@ -845,17 +881,31 @@ pub const Client = struct {
         r.on_wire = false;
         r.refusals = 0;
         c.resetStream(ri);
-        if (!c.build(ri, args, st, idem_key)) return;
+        c.build_no_big = false;
+        if (!c.build(ri, args, st, idem_key)) return if (c.build_no_big) .big else .started;
         // The one branch that a request without `responseBinary` pays for it
         // at its start. Its response pays one more: the kind of the body
         // over HTTP/1.1 (`startBody`), a test of the row over HTTP/2 (`onHeaders`).
-        if (r.built.stores and !c.reserveStored(ri, args)) return;
+        if (r.built.stores and !c.reserveStored(ri, args)) return .started;
         r.state = .active;
         c.active += 1;
         c.parseReqUrl(ri);
         // A body with stored files: their sizes come first (`upStart`).
-        if (r.built.cl_at != 0) return c.upStart(ri);
+        if (r.built.cl_at != 0) {
+            c.upStart(ri);
+            return .started;
+        }
         c.route(ri) catch {};
+        return .started;
+    }
+
+    /// Free rows of the table of requests, and free large buffers.
+    pub fn freeRequests(c: *const Client) u32 {
+        return c.nrfree;
+    }
+
+    pub fn freeBig(c: *const Client) u32 {
+        return c.nbig_free;
     }
 
     // ---- a request body with stored files (blob_store.zig sources) --------------------
@@ -1281,7 +1331,8 @@ pub const Client = struct {
         const blobs = c.cfg.blobs orelse unreachable; // A paused response has a handle of it.
         std.debug.assert(c.npaused > 0);
         for (c.conns, 0..) |*cn, i| {
-            if (cn.state != .paused) continue;
+            // A response that waits for a large buffer has its own list (`resumeBig`).
+            if (cn.state != .paused or cn.wait_big) continue;
             if (!blobs.hasRoom(c.reqs[cn.req].stored)) continue;
             const ci: u32 = @intCast(i);
             cn.state = .reading;
@@ -1383,7 +1434,10 @@ pub const Client = struct {
             }
             // Too large for the small buffer: build it again in a large one.
             r.big = c.bigAcquire() orelse {
-                c.failFree(ri, "http: the request is larger than the small buffer and all large buffers are in use");
+                // The row goes back without a result: `tryStart` says `big`.
+                c.build_no_big = true;
+                c.rfree[c.nrfree] = ri;
+                c.nrfree += 1;
                 return false;
             };
             break :blk request.buildFilesAs(args, st, idem_key, c.bigSlice(r.big), diag, c.files_tmp, c.cfg.user_agent) catch |e2| {
@@ -1446,7 +1500,8 @@ pub const Client = struct {
         }
         std.mem.copyForwards(u32, c.read_list[0 .. c.nread - n], c.read_list[n..c.nread]);
         c.nread -= n;
-        if (c.npaused > 0) c.resumeStored();
+        if (c.npaused > c.nbig_wait) c.resumeStored();
+        if (c.nbig_wait > 0 and c.nbig_free > 0) c.resumeBig();
         if (c.nh2_pending > 0) c.h2ResumeStored();
         if (c.nup_poll > 0) c.upPoll();
         if (now_ms >= c.wake_ms) {
@@ -1487,7 +1542,7 @@ pub const Client = struct {
 
     /// True when `afterEvents` has work now and the loop must not sleep.
     pub fn hasWork(c: *const Client) bool {
-        return c.pending_pump or c.nread > 0 or c.nflush > 0 or c.resolver.hasDone();
+        return c.pending_pump or c.nread > 0 or c.nflush > 0 or c.resolver.hasDone() or (c.nbig_wait > 0 and c.nbig_free > 0);
     }
 
     /// The longest the loop may sleep before `afterEvents` has timed work
@@ -2505,6 +2560,9 @@ pub const Client = struct {
         const cn = &c.conns[ci];
         std.debug.assert(cn.big == none);
         const b = c.bigAcquire() orelse {
+            // The response waits for a large buffer; its bytes stay in the socket.
+            if (cn.state == .reading and c.nbig_wait < c.big_wait.len) return c.pauseBig(ci);
+            c.counters.big_refused += 1;
             c.connFailFmt(ci, "the response from {s} needs a large buffer and all {d} are in use", .{ c.hostPort(ci), c.cfg.big_slots });
             return false;
         };
@@ -2513,6 +2571,52 @@ pub const Client = struct {
         cn.big = b;
         cn.body_buf = dst;
         return true;
+    }
+
+    /// Every large buffer is in use: the HTTP/1.1 response of connection
+    /// `ci` waits for one, in arrival order, and the socket is not read
+    /// until then (back-pressure). The time-out of the request still holds.
+    fn pauseBig(c: *Client, ci: u32) bool {
+        const cn = &c.conns[ci];
+        std.debug.assert(cn.state == .reading and cn.fd >= 0 and !cn.wait_big);
+        cn.state = .paused;
+        c.npaused += 1;
+        cn.wait_big = true;
+        c.big_wait[c.nbig_wait] = ci;
+        c.nbig_wait += 1;
+        c.counters.big_waits += 1;
+        c.poller.watch(cn.fd, sys.makeToken(c.kind_conn, cn.gen, ci), false, cn.write_armed);
+        return false;
+    }
+
+    /// Large buffers are free again: the responses that wait for one go
+    /// on, oldest first.
+    fn resumeBig(c: *Client) void {
+        var left: u32 = c.nbig_wait;
+        while (left > 0 and c.nbig_wait > 0 and c.nbig_free > 0) : (left -= 1) {
+            const ci = c.big_wait[0];
+            const cn = &c.conns[ci];
+            std.debug.assert(cn.state == .paused and cn.wait_big);
+            c.dropBigWait(ci);
+            cn.state = .reading;
+            c.npaused -= 1;
+            cn.last_io_ms = c.now_ms;
+            c.poller.watch(cn.fd, sys.makeToken(c.kind_conn, cn.gen, ci), true, cn.write_armed);
+            const moved = c.moveToBig(ci);
+            std.debug.assert(moved);
+            // The bytes that waited go first; then a read, for the rest.
+            if (c.advanceBody(ci)) c.queueRead(ci);
+        }
+    }
+
+    /// Connection `ci` waits for a large buffer no more.
+    fn dropBigWait(c: *Client, ci: u32) void {
+        const cn = &c.conns[ci];
+        std.debug.assert(cn.wait_big and c.nbig_wait > 0);
+        cn.wait_big = false;
+        const at = std.mem.indexOfScalar(u32, c.big_wait[0..c.nbig_wait], ci) orelse return;
+        std.mem.copyForwards(u32, c.big_wait[at .. c.nbig_wait - 1], c.big_wait[at + 1 .. c.nbig_wait]);
+        c.nbig_wait -= 1;
     }
 
     fn onEof(c: *Client, ci: u32) void {
@@ -2751,6 +2855,7 @@ pub const Client = struct {
         std.debug.assert(cn.state != .free);
         if (cn.state == .idle) c.unlinkIdle(ci);
         if (cn.state == .paused) c.npaused -= 1;
+        if (cn.wait_big) c.dropBigWait(ci);
         const o = &c.origins[cn.origin];
         if (cn.h2 != none) {
             // Opening lasts until the server's SETTINGS arrive.
@@ -3614,6 +3719,7 @@ pub const Client = struct {
         const r = &c.reqs[ri];
         var b: [400]u8 = undefined;
         const hp = c.hostPort(r.conn);
+        c.counters.big_refused += @intFromBool(r.resp_fail == .no_big or r.resp_fail == .headers_no_big);
         const msg = switch (r.resp_fail) {
             // `h2EndSlow` sends only failures here.
             .none, .storing => unreachable,
