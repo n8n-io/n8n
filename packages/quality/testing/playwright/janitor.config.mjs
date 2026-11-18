@@ -84,6 +84,10 @@ export default defineConfig({
 				/^pages\/InstanceAiPage\.ts:InstanceAiPage: this\.page\.getByRole\('menuitem', \{ name \}\)$/,
 				// The preview NDV teleports to #app-modals, outside the chat and canvas.
 				/^pages\/InstanceAiPage\.ts:InstanceAiPage: this\.page\.getByRole\('dialog'\)\.getByTestId\('output-panel'\)$/,
+				// The fullscreen code editor dialog teleports outside the NDV.
+				/^pages\/NodeDetailsViewPage\.ts:NodeDetailsViewPage: this\.page\.getByRole\('dialog'\)\.filter\(\{\s*has: this\.page\.getByTestId\('code-editor-fullscreen'\),\s*\}\)$/,
+				// Playwright evaluates this `has` locator relative to each dialog.
+				/^pages\/NodeDetailsViewPage\.ts:NodeDetailsViewPage: this\.page\.getByTestId\('code-editor-fullscreen'\)$/,
 				// The error-workflow list is teleported outside the settings content.
 				/^pages\/WorkflowSettingsModal\.ts:WorkflowSettingsModal: this\.page\.getByRole\('listbox'\)\.filter\(\{ visible: true \}\)$/,
 				// The save button is in the footer, outside the settings content slot.
