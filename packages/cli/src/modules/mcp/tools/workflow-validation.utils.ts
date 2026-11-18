@@ -5,6 +5,7 @@ import type { Scope } from '@n8n/permissions';
 
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { isMcpAvailabilityGateBypassed } from '../mcp-caller-policy';
 import { WorkflowAccessError } from '../mcp.errors';
 import {
 	CODE_BUILDER_VALIDATE_TOOL,
@@ -75,7 +76,8 @@ export function validateMcpWorkflow<
 		);
 	}
 
-	if (!workflow.settings?.availableInMCP) {
+	// A first-party caller reads what its user can read; the switch is for third-party clients.
+	if (!workflow.settings?.availableInMCP && !isMcpAvailabilityGateBypassed()) {
 		throw new WorkflowAccessError(
 			`Workflow is not available in MCP. Enable MCP access from the workflow card in the workflows list, or from the workflow settings: ${getWorkflowSettingsUrl(workflow.id)}`,
 			'not_available_in_mcp',

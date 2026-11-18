@@ -7,6 +7,7 @@ import { parseExecutionCursor } from '@/executions/execution-cursor';
 import type { ExecutionListService } from '@/executions/execution-list.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { isMcpAvailabilityGateBypassed } from '../mcp-caller-policy';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
@@ -136,7 +137,9 @@ export const createSearchExecutionsTool = (
 				...(startedAfter ? { startedAfter } : {}),
 				...(startedBefore ? { startedBefore } : {}),
 				isArchived: false,
-				workflowBooleanSettings: [{ key: 'availableInMCP', value: true }],
+				...(isMcpAvailabilityGateBypassed()
+					? {}
+					: { workflowBooleanSettings: [{ key: 'availableInMCP', value: true }] }),
 			};
 
 			const { results, count, estimated, nextCursor } =

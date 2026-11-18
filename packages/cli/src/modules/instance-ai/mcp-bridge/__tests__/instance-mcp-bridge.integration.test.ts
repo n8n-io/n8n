@@ -78,6 +78,19 @@ describe('Assistant over the instance MCP server', () => {
 		});
 	});
 
+	// The workflow is not "available in MCP": a third-party client is refused, the
+	// first-party Assistant reads it as its native tools did.
+	it('opens a workflow that is not available in MCP, as a first-party client', async () => {
+		const workflow = await createWorkflow({ name: 'Not exposed' }, owner);
+
+		const result = await callBridged(tools, 'get_workflow_details', { workflowId: workflow.id });
+
+		expect(isRecord(result) && result.isError).toBeFalsy();
+		expect(isRecord(result) ? result.structuredContent : undefined).toMatchObject({
+			workflow: expect.objectContaining({ id: workflow.id, name: 'Not exposed' }),
+		});
+	});
+
 	// The test server loads no node packages, so the search answers empty; the point
 	// is that the call reaches the real catalog-backed handler without an error.
 	it('runs a node search through a bridged tool', { timeout: 120_000 }, async () => {

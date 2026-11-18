@@ -84,7 +84,11 @@ const outputSchema = {
 						.number()
 						.nullable()
 						.describe('The number of triggers associated with the workflow'),
-					availableInMCP: z.boolean().describe('Whether the workflow is visible to MCP tools'),
+					availableInMCP: z
+						.boolean()
+						.describe(
+							'Whether the workflow is exposed to third-party MCP clients. The n8n Assistant reads every workflow its user can read, whatever this value.',
+						),
 					parentFolderId: z
 						.string()
 						.nullable()

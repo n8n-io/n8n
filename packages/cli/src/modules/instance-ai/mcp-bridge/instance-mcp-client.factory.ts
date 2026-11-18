@@ -14,8 +14,9 @@ import { ASSISTANT_MCP_CLIENT_INFO, InstanceMcpClient } from './instance-mcp-cli
  * Connects the Assistant to the instance MCP server as a modern client. The
  * server is the same per-request `McpServer` the public endpoint builds, so
  * tool availability, scope filtering, the read-only block, and tool-call
- * telemetry all apply. The Assistant presents every instance scope and is
- * told apart in telemetry by its `clientInfo`.
+ * telemetry all apply. The Assistant presents every instance scope, is marked
+ * first-party so the per-workflow "Available in MCP" switch does not limit it,
+ * and is told apart in telemetry by its `clientInfo`.
  */
 @Service()
 export class InstanceMcpClientFactory {
@@ -29,7 +30,8 @@ export class InstanceMcpClientFactory {
 			async () => await import('@modelcontextprotocol/server'),
 		);
 		const featureFlags = await this.mcpService.resolveFeatureFlags(user);
-		const auth: McpAuthContext = { grantedScopes: [...MCP_INSTANCE_SCOPES] };
+		// First-party: the per-workflow "Available in MCP" switch is for third-party clients.
+		const auth: McpAuthContext = { grantedScopes: [...MCP_INSTANCE_SCOPES], firstParty: true };
 		const handler = createMcpHandler(
 			async () =>
 				await this.mcpService.getServer(user, featureFlags, ASSISTANT_MCP_CLIENT_INFO, auth, ctx),

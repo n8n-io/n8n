@@ -49,7 +49,7 @@ describe('InstanceMcpClientFactory', () => {
 				user,
 				featureFlags,
 				ASSISTANT_MCP_CLIENT_INFO,
-				{ grantedScopes: [...MCP_INSTANCE_SCOPES] },
+				{ grantedScopes: [...MCP_INSTANCE_SCOPES], firstParty: true },
 				ctx,
 			]);
 		}

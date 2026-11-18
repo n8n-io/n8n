@@ -76,6 +76,7 @@ import {
 	MCP_SKILLS_EXTENSION_FLAG,
 	USER_CALLED_MCP_TOOL_EVENT,
 } from './mcp.constants';
+import { runWithMcpCallerPolicy, type McpCallerPolicy } from './mcp-caller-policy';
 import { FOLDER_FEATURE_TOOLS, getAllowedToolNames } from './mcp-scopes';
 import { getMcpToolGroup, MCP_TOOL_GROUP_META_KEY } from './mcp-tool-groups';
 import {
@@ -402,10 +403,15 @@ export class McpService {
 		const caller = auth?.caller;
 		const telemetryCaller = caller?.authType === 'api_key' ? { authType: caller.authType } : caller;
 		// EOF Experiment cleanup
+		const callerPolicy: McpCallerPolicy = { bypassAvailabilityGate: auth?.firstParty === true };
 		return (tool: ToolDefinition<z.ZodRawShape, ToolHandlerResult>) => {
 			// `ToolHandler` is a union of 1- and 2-arity signatures, so we invoke it
 			// through a generic callable and narrow the result back to a tool result.
-			const invoke = tool.handler as (...handlerArgs: unknown[]) => Promise<ToolHandlerResult>;
+			const invokeHandler = tool.handler as (
+				...handlerArgs: unknown[]
+			) => Promise<ToolHandlerResult>;
+			const invoke = async (...handlerArgs: unknown[]) =>
+				await runWithMcpCallerPolicy(callerPolicy, async () => await invokeHandler(...handlerArgs));
 
 			const instrumentedHandler = async (...handlerArgs: unknown[]) => {
 				const workflowId = getWorkflowId(handlerArgs[0]);

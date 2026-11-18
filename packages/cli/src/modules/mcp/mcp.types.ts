@@ -180,6 +180,12 @@ export type McpAuthContext = {
 	 */
 	grantedScopes: string[] | undefined;
 	caller?: McpCallerAuth;
+	/**
+	 * A first-party client of this instance (the n8n Assistant, in-process). Set
+	 * by the host that builds the server, never read off a request. The
+	 * per-workflow "Available in MCP" switch does not apply to it.
+	 */
+	firstParty?: boolean;
 };
 
 export type McpAppsTelemetryVariant = 'env_override' | 'variant' | 'control' | 'unassigned';

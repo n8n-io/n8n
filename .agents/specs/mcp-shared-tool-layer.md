@@ -104,7 +104,7 @@ milestone proves it.
 | Thread state (file bindings, setup state, loop verdicts) | client-side | stays in Assistant orchestration tools | ? |
 | Workspace and sandbox build loop | not native | identity-keyed workspace tools (M4) | ? |
 | Legacy tool names in persisted threads | client-side | alias map; out of scope | - |
-| Auth, scopes, rate limits | native over HTTP; bypassed in-process | scopes passed to `getServer` | ? |
+| Auth, scopes, rate limits | native over HTTP; bypassed in-process | scopes passed to `getServer` | **partial.** M1: scopes work as for OAuth clients. Per-resource exposure (`availableInMCP`) is a third-party policy the protocol has no word for; the server needs a trusted first-party marker on the auth context (`firstParty`), set by the host |
 | Telemetry attribution | native | `clientInfo.name = 'n8n-assistant'` | ? |
 
 ## Milestones
@@ -251,6 +251,16 @@ packages/cli/src/modules/instance-ai/turn-setup/
   decide which one wins per name.
 - M1: the integration test server loads no node packages, so `search_nodes`
   answers empty there. The protocol path to the real catalog handler works.
+- M1 (manual test): the per-workflow "Available in MCP" switch refused the
+  Assistant's reads (`not_available_in_mcp` from `validateMcpWorkflow`). The
+  switch is a policy for third-party clients. The fix: the host marks the
+  Assistant's auth context `firstParty: true`; the registrar runs every call
+  under an `AsyncLocalStorage` caller policy (`mcp-caller-policy.ts`, the
+  pattern of `builder-telemetry-session.ts`); the gate and the executions
+  filter read it. The policy comes from the server-side auth context, never
+  from a client claim. Matrix row: "Auth, scopes" → the server also needs a
+  notion of first-party vs third-party caller, which the protocol does not
+  carry; `clientInfo` is a claim and cannot be it.
 
 ## Native tools swapped so far
 
