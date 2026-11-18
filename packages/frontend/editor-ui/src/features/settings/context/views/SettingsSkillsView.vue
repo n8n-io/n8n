@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -140,7 +139,6 @@ const { failedSkillReason, reasonText } = useSkillSourceReasons();
 const skillSyncFlagEnabled = useSkillSyncFlag();
 const skillSyncEnabled = useSkillSyncEnabled();
 const rbacStore = useRBACStore();
-const settingsStore = useSettingsStore();
 const canManageSkillSync = computed(
 	() => skillSyncFlagEnabled.value && rbacStore.hasScope('skill:manage'),
 );
