@@ -2950,7 +2950,7 @@ export const TOOL_CASES = ALL_TOOL_CASES.filter((c) => !TOOL_INPUT_GAPS.includes
 
 /** The Tools Agent with tools and a memory: a simple tool and a conversation of one item. */
 export const TOOL_MEMORY_CASES: EquivalenceCase[] = [
-	...[2.2, 3.1].map((version) =>
+	...[3.1].map((version) =>
 		agent(
 			`tools memory, version ${version}`,
 			version,

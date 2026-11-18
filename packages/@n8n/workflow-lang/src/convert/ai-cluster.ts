@@ -723,6 +723,9 @@ function toolsAgent(
 		// The proof of the loop is for the node that stops, one item at a time, on the
 		// Chat Completions API of OpenAI, with or without a memory.
 		if (!stops) return 'tools with an error setting';
+		// Before version 3 the memory node runs once for each turn of the executor. The
+		// library node has one proof of that run data on version 3 and 3.1 only.
+		if (aiMemory !== undefined && version < 3) return 'tools with a memory before version 3';
 		if (size !== 1) return 'tools with batches';
 		if (aiModel.provider !== 'openAi' && aiModel.provider !== 'openRouter') {
 			return 'tools with this chat model';

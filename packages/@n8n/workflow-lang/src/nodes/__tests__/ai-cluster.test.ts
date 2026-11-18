@@ -468,6 +468,20 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 			expect(nativeCluster(root, parameters, subs)).toBe(reason);
 		});
 
+		it('keeps tools with a memory in the host before version 3', () => {
+			const tool = {
+				name: 'Tool',
+				type: 'n8n-nodes-base.httpRequestTool',
+				typeVersion: 4.2,
+				parameters: { toolDescription: 'Reads', url: 'https://example.com', options: {} },
+				connection: 'ai_tool',
+			};
+			const older = { ...root, typeVersion: 2.2 };
+			expect(nativeCluster(older, parameters, [model, memory(custom), tool])).toBe(
+				'tools with a memory before version 3',
+			);
+		});
+
 		it('keeps a memory in the host when the client does not answer the service', () => {
 			const c = ENGINE_CASES.find((x) => x.name === 'agent memory, version 3.1');
 			const result = convertWorkflow(c ? workflowOf(c) : {}, { trace: 'all' });

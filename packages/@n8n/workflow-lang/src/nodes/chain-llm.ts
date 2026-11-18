@@ -1822,11 +1822,14 @@ export default defineNode<ChainParameters>({
 							out.push({
 								ai: true,
 								text: typeof msg.content === 'string' ? msg.content : '',
-								toolCalls: tool_calls.map((c: Record<string, unknown>) => ({
-									id: String(c.id ?? ''),
-									name: isObject(c.function) ? String(c.function?.name ?? '') : '',
-									arguments: isObject(c.function) ? String(c.function?.arguments ?? '') : '',
-								})),
+								toolCalls: tool_calls.map((raw) => {
+									const c = isObject(raw) ? raw : {};
+									return {
+										id: String(c.id ?? ''),
+										name: isObject(c.function) ? String(c.function.name ?? '') : '',
+										arguments: isObject(c.function) ? String(c.function.arguments ?? '') : '',
+									};
+								}),
 							});
 						} else {
 							out.push({ ai: true, text: typeof msg.content === 'string' ? msg.content : '' });
@@ -1968,7 +1971,7 @@ export default defineNode<ChainParameters>({
 					const calls: ToolCall[] = [];
 					let carried: AgentStep[] | undefined;
 					// Load the chat history from the memory, once for the execution.
-					if (session !== undefined) {
+					if (iteration === 0 && session !== undefined) {
 						memoryRuns.push({ error: null });
 						const loaded = await ctx.service<{ messages?: StoredMessage[] }>({
 							service: 'chatMemory',
