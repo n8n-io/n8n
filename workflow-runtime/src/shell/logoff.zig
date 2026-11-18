@@ -228,6 +228,10 @@ pub const Offload = struct {
     /// A writer thread runs. Without one (tests, the simulation) the shard
     /// thread does the writer's work when it must wait: the blocking path.
     threaded: bool = false,
+    /// Test only: the writer sleeps this long before it writes a record, so
+    /// that the window between "record queued" and "record durable" is wide.
+    /// Read from `WFRT_LOG_SYNC_DELAY_MS` once, by the writer thread.
+    sync_delay_ms: u32 = 0,
     to_writer: ?sys.Wake = null,
     to_exec: ?sys.Wake = null,
     // The fields below belong to the shard thread.
@@ -433,6 +437,11 @@ pub const Offload = struct {
         // The request first, then the bytes: the bytes cover the request.
         const sync_due = o.want_sync.load(.seq_cst) > o.synced.load(.monotonic);
         if (!sync_due and o.ring.used() < o.ring.buf.len / 2) return false;
+        // Test only, and only on the writer thread: hold the record back
+        // before it reaches the file, so that the window between "record
+        // queued" and "record durable" is wide (a crash test). A reply that
+        // left in that window has no record at all after the kill.
+        if (o.threaded and o.sync_delay_ms > 0) sys.sleepMs(o.sync_delay_ms);
         try o.drain();
         if (sync_due) {
             const written = o.ring.tail.load(.monotonic);
@@ -459,6 +468,8 @@ pub const Offload = struct {
     /// wakes it for a sync request or a ring that is half full.
     pub fn run(o: *Offload) void {
         std.debug.assert(o.threaded and o.to_writer != null);
+        // Test only: a wide window between queued and durable records.
+        if (sys.getenv("WFRT_LOG_SYNC_DELAY_MS")) |text| o.sync_delay_ms = std.fmt.parseInt(u32, text, 10) catch 0;
         while (!o.stop.load(.acquire)) {
             const worked = o.step() catch return o.fail();
             if (worked) continue;
