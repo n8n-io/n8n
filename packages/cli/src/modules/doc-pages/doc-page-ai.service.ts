@@ -39,7 +39,6 @@ const TEMPLATES: Record<DocPageKind, string[]> = {
 
 const PROJECT_TEMPLATE = [
 	'Overview (what the project is for, in two or three sentences)',
-	'Entry Points (a table: name, type, how to call or when it runs)',
 	'How It Fits Together',
 	'Where to Start',
 ];
@@ -148,6 +147,8 @@ export class DocPageAiService {
 		const prompt = [
 			'Write the home page of this n8n project. It introduces the project to a new team member.',
 			'Link the reader to the workflows and agents by name. Do not repeat their full pages.',
+			'The page already shows tables of all workflows and agents with their URLs, schedules and triggers.',
+			'Do not list them again, and do not add a table or list of entry points.',
 			`Template headings: ${PROJECT_TEMPLATE.join('; ')}`,
 			'',
 			`Project name: ${resource.name}`,
