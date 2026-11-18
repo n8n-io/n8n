@@ -13,7 +13,11 @@ import {
 	InstanceAiThreadMessagesQuery,
 	InstanceAiThreadHistoryQuery,
 } from '@n8n/api-types';
-import type { InstanceAiEvent, AssistantThreadTabsResponse } from '@n8n/api-types';
+import type {
+	InstanceAiCloudBrowserLiveViewResponse,
+	InstanceAiEvent,
+	AssistantThreadTabsResponse,
+} from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -42,6 +46,7 @@ import {
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
+import { InstanceAiCloudBrowserService } from './browser/instance-ai-cloud-browser.service';
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { DurableLogMetrics } from './event-bus/durable-log-metrics';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
@@ -56,7 +61,7 @@ import { InstanceAiOnboardingService, startsOnboardingFirstTurn } from './onboar
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ProjectService } from '@/services/project.service.ee';
-import { Telemetry } from '@/telemetry';
+import { TelemetryProxy } from '@n8n/backend-services';
 
 type FlushableResponse = Response & { flush?: () => void };
 
@@ -87,7 +92,8 @@ export class InstanceAiController {
 		private readonly preferenceCardService: InstanceAiPreferenceCardService,
 		globalConfig: GlobalConfig,
 		private readonly threadTabsService: InstanceAiThreadTabsService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
+		private readonly cloudBrowserService: InstanceAiCloudBrowserService,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
 	}
@@ -359,6 +365,8 @@ export class InstanceAiController {
 		// Background tasks — each may belong to a different group
 		for (const task of threadStatus.backgroundTasks) {
 			if (task.status !== 'running' || !task.messageGroupId) continue;
+			// The task's turn has ended, so we don't need to mark it as live.
+			if (task.detachedFromTurn) continue;
 			if (!liveGroups.has(task.messageGroupId)) {
 				liveGroups.set(task.messageGroupId, {
 					runIds: this.instanceAiService.getRunIdsForMessageGroup(task.messageGroupId),
@@ -634,6 +642,20 @@ export class InstanceAiController {
 		return { ok: true };
 	}
 
+	/** The live view of a cloud browser task. The link is never stored, so the client asks again. */
+	@Get('/chat/:threadId/tasks/:taskId/cloud-browser-live-view')
+	@GlobalScope('instanceAi:message')
+	async cloudBrowserLiveView(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('taskId') taskId: string,
+	): Promise<InstanceAiCloudBrowserLiveViewResponse> {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return await this.cloudBrowserService.getLiveView(req.user.id, threadId, taskId);
+	}
+
 	@Post('/chat/:threadId/tasks/:taskId/correct')
 	@GlobalScope('instanceAi:message')
 	async correctTask(
@@ -858,10 +880,12 @@ export class InstanceAiController {
 
 		// ?raw=true returns the old format for the thread inspector
 		if (query.raw === 'true') {
-			return await this.memoryService.getThreadMessages(req.user.id, threadId, {
+			const rawMessages = await this.memoryService.getThreadMessages(req.user.id, threadId, {
 				limit: query.limit,
 				page: query.page,
 			});
+			void this.instanceAiService.maybeDeliverCloudBrowserTaskResults(req.user, threadId);
+			return rawMessages;
 		}
 
 		// Exclude snapshots for active/suspended runs — they have no matching
@@ -881,6 +905,8 @@ export class InstanceAiController {
 		}
 		for (const t of threadStatus.backgroundTasks) {
 			if (t.status !== 'running') continue;
+			// The turn is already saved and no longer live, so we don't exclude it from history.
+			if (t.detachedFromTurn) continue;
 			if (t.runId) excludeRunIds.push(t.runId);
 			if (t.messageGroupId) excludeMessageGroupIds.push(t.messageGroupId);
 		}
@@ -908,6 +934,8 @@ export class InstanceAiController {
 		// would move the cursor past a fact the payload never saw.
 		const nextEventId = await this.eventLog.getNextEventId(threadId);
 		const appliedPreferences = await this.eventLog.getLastAppliedPreferences(threadId);
+		// Triggered after the cursor read, so the client receives the follow-up run's events over SSE.
+		void this.instanceAiService.maybeDeliverCloudBrowserTaskResults(req.user, threadId);
 		return {
 			...result,
 			nextEventId,

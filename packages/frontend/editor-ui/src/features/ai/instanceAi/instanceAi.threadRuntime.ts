@@ -33,7 +33,7 @@ import {
 import { isRecord } from '@n8n/utils/is-record';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { buildAlwaysAllowKey } from './alwaysAllow';
+import { buildAlwaysAllowKeys } from './alwaysAllow';
 import {
 	redactTelemetryProperties,
 	TELEMETRY_EVENT,
@@ -960,11 +960,9 @@ export function createThreadRuntime(
 		args: Record<string, unknown>,
 		confirmationWorkflowId?: string,
 	): void {
-		const key = buildAlwaysAllowKey(toolName, args, confirmationWorkflowId);
-		if (key === null) return;
-		const next = new Set(sessionAlwaysAllowKeys.value);
-		next.add(key);
-		sessionAlwaysAllowKeys.value = next;
+		const keys = buildAlwaysAllowKeys(toolName, args, confirmationWorkflowId);
+		if (keys.length === 0) return;
+		sessionAlwaysAllowKeys.value = new Set([...sessionAlwaysAllowKeys.value, ...keys]);
 	}
 
 	/** False when Always allow cannot be scoped (e.g. workflow edit with no workflow ID). */
@@ -973,7 +971,7 @@ export function createThreadRuntime(
 		args: Record<string, unknown>,
 		confirmationWorkflowId?: string,
 	): boolean {
-		return buildAlwaysAllowKey(toolName, args, confirmationWorkflowId) !== null;
+		return buildAlwaysAllowKeys(toolName, args, confirmationWorkflowId).length > 0;
 	}
 
 	function isGenericApprovalEligible(item: PendingConfirmationItem): boolean {
@@ -995,12 +993,13 @@ export function createThreadRuntime(
 	function hasSessionAlwaysAllowGrant(item: PendingConfirmationItem): boolean {
 		if (!isGenericApprovalEligible(item)) return false;
 		const confirmation = item.toolCall.confirmation;
-		const key = buildAlwaysAllowKey(
+		const keys = buildAlwaysAllowKeys(
 			item.toolCall.toolName,
 			item.toolCall.args ?? {},
 			confirmation.workflowId,
 		);
-		return key !== null && sessionAlwaysAllowKeys.value.has(key);
+		// A batch needs a grant for every action it contains.
+		return keys.length > 0 && keys.every((key) => sessionAlwaysAllowKeys.value.has(key));
 	}
 
 	// In-flight guard for the auto-approve watcher. We can't rely on

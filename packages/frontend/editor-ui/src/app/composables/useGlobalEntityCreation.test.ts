@@ -1,3 +1,4 @@
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createTestingPinia } from '@pinia/testing';
 import { i18n, i18nInstance } from '@n8n/i18n';
 import { setActivePinia } from 'pinia';
@@ -231,6 +232,10 @@ describe('useGlobalEntityCreation', () => {
 				expect.objectContaining({ inputValidator: expect.any(Function) }),
 			);
 			expect(foldersStore.createFolder).toHaveBeenCalledWith('New folder', 'team-project');
+			expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.PLATFORM.USER_CREATED_FOLDER, {
+				folder_id: 'folder-1',
+				resource_type: 'workflow',
+			});
 		});
 
 		it('creates a folder in Personal when no project is selected', async () => {

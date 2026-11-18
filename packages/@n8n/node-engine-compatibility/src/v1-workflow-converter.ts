@@ -445,7 +445,7 @@ function toBatchConfig(node: INode): BatchStepConfig {
 	const options: unknown = node.parameters?.options;
 	if (typeof options === 'string') {
 		throw new UnsupportedWorkflowError(
-			`Node "${node.name}" sets its options from an expression, which is not supported yet.`,
+			`Node "${node.name}" sets its options from an expression. Engine v2 needs the options before the workflow runs. Use fixed options.`,
 		);
 	}
 
@@ -460,7 +460,7 @@ function toBatchConfig(node: INode): BatchStepConfig {
 
 	if (typeof batchSize === 'string') {
 		throw new UnsupportedWorkflowError(
-			`Node "${node.name}" sets its batch size from an expression, which is not supported yet.`,
+			`Node "${node.name}" sets its batch size from an expression. Engine v2 needs the batch size before the workflow runs. Use a fixed batch size.`,
 		);
 	}
 

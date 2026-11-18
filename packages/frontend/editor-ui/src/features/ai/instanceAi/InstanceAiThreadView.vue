@@ -32,6 +32,11 @@ import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useAssistantAwayTelemetry } from './composables/useAssistantAwayTelemetry';
 import { getCurrentTurn } from './assistantTurn';
+import { CloudBrowserTasksKey, useCloudBrowserTasks } from './composables/useCloudBrowserTasks';
+import {
+	CloudBrowserLiveViewsKey,
+	useCloudBrowserLiveViews,
+} from './composables/useCloudBrowserLiveViews';
 import { fetchThreadTabs, saveThreadTabs } from './instanceAi.memory.api';
 import { buildInstanceAiAgentPreviewHandoffContext } from './composables/useInstanceAiHandoff';
 import { INSTANCE_AI_APP_ID_QUERY } from './constants';
@@ -360,6 +365,15 @@ provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('showMentionedWorkflow', preview.showMentionedWorkflow);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
+const cloudBrowserTasks = useCloudBrowserTasks(thread);
+provide(CloudBrowserTasksKey, cloudBrowserTasks);
+const runningCloudBrowserTasks = computed(() =>
+	cloudBrowserTasks.value.filter((task) => task.state === 'running'),
+);
+provide(
+	CloudBrowserLiveViewsKey,
+	useCloudBrowserLiveViews(runningCloudBrowserTasks, () => props.threadId),
+);
 provide('openAgentChatPreview', openAgentChatPreview);
 provide('openSkillPreview', preview.openSkillPreview);
 provide('openAppPreview', preview.openAppPreview);

@@ -91,11 +91,11 @@ import { PromotionRunRepository } from '../database/repositories/promotion-run.r
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import type { GitHostClients } from '../git-hosts/git-host-clients';
 import { ApplyPreviewService } from '../apply-preview.service';
+import { PromotePreviewService } from '../promote-preview.service';
 import { LocalPackageEntities } from '../local-package-entities.service';
 import { PromotionChangeService } from '../promotion-change.service';
 import { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
 import { PromotionProvidersService } from '../promotion-providers.service';
-import { PromotionReviewGateService } from '../promotion-review-gate.service';
 import { PromotionReviewsService } from '../promotion-reviews.service';
 import { PromotionCheckoutCleanupService } from '../promotion-checkout-cleanup.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
@@ -111,7 +111,7 @@ import {
 	createGitRemoteSeed,
 	type TestRemote,
 } from './utils/git-remote-fixture';
-import { writeInstancePromotionPackage } from './utils/promotion-fixtures';
+import { expectPushed, writeInstancePromotionPackage } from './utils/promotion-fixtures';
 
 beforeAll(async () => await testModules.loadModules(['agents']));
 const testServer = setupTestServer({
@@ -233,6 +233,7 @@ beforeEach(async () => {
 		Container.get(FolderService),
 		packagesService,
 		Container.get(ApplyPreviewService),
+		Container.get(PromotePreviewService),
 		Container.get(PackageDirectoryInventoryReader),
 		Container.get(PackageImportConfig),
 		Container.get(PromotionRunRepository),
@@ -515,10 +516,10 @@ function changeService() {
 		service,
 		packagesService,
 		Container.get(ApplyPreviewService),
-		Container.get(SharedWorkflowRepository),
+		Container.get(PromotePreviewService),
 		Container.get(LocalPackageEntities),
 		Container.get(PromotionEnvironmentResolver),
-		Container.get(PromotionReviewGateService),
+		Container.get(ProjectRepository),
 	);
 }
 
@@ -1075,7 +1076,7 @@ describe('Promote and Apply', () => {
 		await expect(createFixtureGit(bareDir).raw(['show-ref', '--heads'])).resolves.toBe('');
 	});
 
-	it('applies the package and matches the managed target scope', async () => {
+	it('previews the whole-instance Apply and applies only the reviewed state', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
 		await service.clone(environments.apply.id, owner);
@@ -1113,8 +1114,54 @@ describe('Promote and Apply', () => {
 			targetProject,
 		);
 		const removedProject = await createTeamProject('Removed from Git', owner);
+		const removedWorkflow = await createWorkflow(
+			{ name: 'Old report', nodes: [], connections: {} },
+			removedProject,
+		);
+		// No workflow uses it, so only the project deletion removes it.
+		const unusedCredential = await saveCredential(
+			{ name: 'Old report token', type: 'httpHeaderAuth', data: {} },
+			{ project: removedProject, role: 'credential:owner' },
+		);
 
-		const blocked = await service.apply(environments.apply.id, owner);
+		const reviewed = await changeService().getInstanceApplyPreview(owner, environments.apply.id);
+		expect(reviewed.commitSha).toBe(remoteHead);
+		expect(
+			reviewed.resources
+				.filter(({ change }) => change === 'deleted')
+				.map(({ key }) => key)
+				.sort(),
+		).toEqual(
+			[
+				`project:${removedProject.id}`,
+				`workflow:${removedWorkflow.id}`,
+				`credential:${unusedCredential.id}`,
+				`folder:${targetOnlyFolder.id}`,
+				`workflow:${targetOnlyWorkflow.id}`,
+			].sort(),
+		);
+		const expectedSource = {
+			environmentId: reviewed.source.environmentId,
+			commitSha: remoteHead,
+			branchName: 'main',
+		};
+
+		// A project created after the review would be deleted too, so the reviewed confirmation stops.
+		const lateProject = await createTeamProject('Created after review', owner);
+		const stale = await service.continueApply(environments.apply.id, owner, {
+			expectedSource,
+			expectedPreviewRevision: reviewed.revision,
+			confirmDestructiveChanges: true,
+		});
+		expect(stale.status).toBe('preview-changed');
+		expect(await projectRepository.findOneBy({ id: removedProject.id })).not.toBeNull();
+		await projectService.deleteProject(owner, lateProject.id);
+
+		const fresh = await changeService().getInstanceApplyPreview(owner, environments.apply.id);
+		const blocked = await service.apply(environments.apply.id, owner, {
+			expectedSource,
+			expectedPreviewRevision: fresh.revision,
+		});
 		assert(blocked.status === 'blocked');
 		expect(blocked.check.conflicts).toEqual([
 			{
@@ -1125,12 +1172,14 @@ describe('Promote and Apply', () => {
 		]);
 		expect(await projectRepository.findOneBy({ id: removedProject.id })).not.toBeNull();
 
+		// The confirmed policy plans differently, but the unconfirmed preview revision still matches.
 		const deleteProject = vi.spyOn(projectService, 'deleteProject');
 		const result = await service.continueApply(
 			environments.apply.id,
 			owner,
 			{
-				expectedSource: { environmentId: blocked.environmentId, ...blocked.git },
+				expectedSource,
+				expectedPreviewRevision: fresh.revision,
 				confirmDestructiveChanges: true,
 			},
 			'editor_ui',
@@ -1431,7 +1480,7 @@ describe('Promote and Apply', () => {
 		await commitAndPushRemote(remote, 'Update description');
 		const source = { environmentId: reviewed.environmentId, ...reviewed.git };
 
-		const moved = await service.apply(environments.apply.id, owner, source);
+		const moved = await service.apply(environments.apply.id, owner, { expectedSource: source });
 		expect(moved).toEqual({
 			status: 'source-changed',
 			environmentId: reviewed.environmentId,
@@ -1439,7 +1488,9 @@ describe('Promote and Apply', () => {
 		});
 		expect(await snapshotApplyState()).toEqual(before);
 
-		const current = await service.apply(environments.apply.id, owner, { ...source, ...moved.git });
+		const current = await service.apply(environments.apply.id, owner, {
+			expectedSource: { ...source, ...moved.git },
+		});
 		expect(current.status).toBe('blocked');
 		expect(await snapshotApplyState()).toEqual(before);
 	});
@@ -3198,6 +3249,7 @@ describe('Promote a project selection — branch effects', () => {
 			commitMessage: 'Add w1',
 			canExportVariableValues: true,
 		});
+		expectPushed(result);
 
 		const remoteGit = createFixtureGit(remote.bareDir);
 		expect((await remoteGit.revparse([`${result.git.branchName}^`])).trim()).toBe(baseCommit);
@@ -3231,6 +3283,7 @@ describe('Promote a project selection — branch effects', () => {
 			commitMessage: 'Add w4',
 			canExportVariableValues: true,
 		});
+		expectPushed(result);
 
 		const { dir } = await inspectBranch(remote.bareDir);
 		const onBranch = await readBranchEntities(dir, 'workflow.json');
@@ -3277,6 +3330,7 @@ describe('Promote a project selection — branch effects', () => {
 			commitMessage: 'Add w3',
 			canExportVariableValues: true,
 		});
+		expectPushed(result);
 
 		const remoteGit = createFixtureGit(remote.bareDir);
 		expect(result.git.branchName).toMatch(
@@ -3536,6 +3590,7 @@ describe('Promote a project selection', () => {
 			workflowIds: [w3.id],
 			canExportVariableValues: true,
 		});
+		expectPushed(result);
 
 		const remoteHead = (await createFixtureGit(remote.bareDir).revparse(['main'])).trim();
 		expect(result.git).toEqual({ commitSha: remoteHead, branchName: 'main' });
@@ -3673,12 +3728,15 @@ describe('Promote from a clean checkout', () => {
 		return { started, resume, spy };
 	};
 
-	const promoteSelection = async (projectId: string, workflowId: string, commitMessage: string) =>
-		await service.promoteProjectSelection(projectId, owner, {
+	const promoteSelection = async (projectId: string, workflowId: string, commitMessage: string) => {
+		const result = await service.promoteProjectSelection(projectId, owner, {
 			workflowIds: [workflowId],
 			commitMessage,
 			canExportVariableValues: true,
 		});
+		expectPushed(result);
+		return result;
+	};
 
 	const committedPaths = async (bareDir: string, commitSha: string) =>
 		(await createFixtureGit(bareDir).raw(['show', '--name-only', '--format=', commitSha]))
