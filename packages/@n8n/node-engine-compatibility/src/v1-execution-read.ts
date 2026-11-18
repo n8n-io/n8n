@@ -161,7 +161,6 @@ function toTaskData(
 	};
 }
 
-/** The outputs as v1 items, with the paired items a loop node states. */
 function toMainOutputs(step: StepDetail, namesById: Map<string, string>): INodeExecutionData[][] {
 	return linkOutputSources(fromStepInputs(step.outputs ?? []), step.outputSources, namesById);
 }

@@ -6,8 +6,6 @@ import { runBatchStep, type LoopReader } from '../batch-step';
 
 const item = (n: number) => ({ json: { n } });
 
-// The reader names where each list came from, as the store reader does: the
-// original items from the entry node's slot 0, each arrival from the body's slot 0 at its pass.
 function makeReader(originalItems: JsonValue, arrivals: JsonValue[] = []): LoopReader {
 	return {
 		readOriginalItems: vi.fn().mockResolvedValue({

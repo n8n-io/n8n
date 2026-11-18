@@ -20,7 +20,7 @@ export function nodeNamesById(graph: WorkflowGraph): Map<string, string> {
 	return new Map(graph.nodes.map((node) => [node.id, node.name]));
 }
 
-/** What a node's input lineage needs, prepared once for a whole execution. */
+/** What a node's input lineage needs. */
 export interface SourceLineage {
 	namesById: Map<string, string>;
 	/** Forward edges into each node, by the node's id. */
@@ -74,9 +74,8 @@ function toPreviousNodeRun(lineage: SourceLineage, edge: GraphEdge, iteration: n
 }
 
 /**
- * Forward edges into each node, by the node's id. A back edge's source is the
- * previous pass, a lineage v1 cannot express, so it reads the forward edge into
- * the loop entry instead.
+ * Forward edges into each node, by the node's id. Back edges are left out, so a
+ * loop node's source names its entry edge on every iteration.
  */
 export function incomingEdgesByNodeId(graph: WorkflowGraph): Map<string, GraphEdge[]> {
 	const byNodeId = new Map<string, GraphEdge[]>();
@@ -96,8 +95,7 @@ export function incomingEdgesByNodeId(graph: WorkflowGraph): Map<string, GraphEd
  * with no input, `null` for an unconnected slot.
  *
  * @param edges The forward edges into the node.
- * @param previousNodeRun Which run of the predecessor fed this one. Left out
- * when the caller reports a single pass, since v1 reads a missing value as 0.
+ * @param previousNodeRun Which run of the predecessor fed this one.
  */
 export function toSourceSlots(
 	edges: GraphEdge[],
@@ -149,9 +147,8 @@ export function emptyRun(
  * Returns the output items of a step with the paired item the engine states for
  * them. The engine says "these `itemCount` items came from node X, slot s, pass
  * p, from `offset` on"; v1's data proxy reads the same fact as
- * `pairedItem.sourceOverwrite` plus the item's index in that slot. Nothing
- * here derives anything: a step that states no source keeps its items as they
- * are.
+ * `pairedItem.sourceOverwrite` plus the item's index in that slot. A step that
+ * states no source keeps its items as they are.
  */
 export function linkOutputSources(
 	slots: INodeExecutionData[][],

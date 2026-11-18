@@ -37,7 +37,7 @@ export interface StepRecord {
 	status: StepStatus;
 	/** Outputs of a completed step, indexed by output slot; `null` until it completes. */
 	outputs: StepSlots | null;
-	/** Where the outputs' items came from, stated by a loop node; `null` for every other step. */
+	/** Where the outputs' items came from. Only a loop node that ran states it. Otherwise `null`. */
 	outputSources: StepOutputSources | null;
 	/** The wait this step declared; `null` unless it has suspended. */
 	waitDeclaration: WaitDeclaration | null;

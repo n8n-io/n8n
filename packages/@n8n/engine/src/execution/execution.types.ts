@@ -107,13 +107,14 @@ export type StepSlots = JsonValue[];
  * Where `itemCount` items of a step's output slot came from: another step's
  * output slot, read from `offset`. A loop node emits items it did not make, so
  * it states their origin in engine terms. The v1 shim translates this into
- * paired items. Every other step type emits what its node made, so it states
- * nothing.
+ * paired items. Every other step type states nothing.
  */
 export interface StepOutputSource {
 	nodeId: string;
 	outputIndex: number;
+	/** The iteration of the source step. */
 	iteration: number;
+	/** The index of the first item in the source slot. */
 	offset: number;
 	itemCount: number;
 }

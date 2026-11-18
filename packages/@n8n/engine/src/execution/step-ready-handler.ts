@@ -124,7 +124,6 @@ export class StepReadyHandler {
 			| { kind: 'error'; error: StepError };
 		try {
 			if (dispatch.kind === 'batch') {
-				// A loop node emits items other steps made, and states where they came from.
 				run = { kind: 'outputs', ...(await this.runBatchNode(step, execution, node)) };
 			} else {
 				const result: StepExecutionResult =
