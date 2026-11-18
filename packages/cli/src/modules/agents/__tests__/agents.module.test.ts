@@ -6,6 +6,7 @@ import { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { AiService } from '@/services/ai.service';
+import { FolderContentService } from '@/services/folder-content.service';
 import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
 import { AgentProjectLookupProxy, FavoriteResourceResolverRegistry } from '@n8n/backend-services';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
@@ -15,6 +16,7 @@ import { KnowledgeSandboxProviderProxy } from '@/modules/knowledge/knowledge-san
 import { SkillUsageProxy } from '@/modules/skills';
 import { ServiceAccountUsageProxy } from '@/services/service-account-usage-proxy.service';
 
+import { AgentFolderService } from '../agent-folder.service';
 import { AgentChannelMediaRetentionTask } from '../agent-channel-media-retention.task';
 import { AgentKnowledgeSnapshotTask } from '../agent-knowledge-snapshot.task';
 import { AgentCheckpointPruningTask } from '../agent-checkpoint-pruning.task';
@@ -57,6 +59,8 @@ import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/
  * executes.
  */
 function setUpContainerForInit() {
+	Container.set(FolderContentService, mock<FolderContentService>());
+	Container.set(AgentFolderService, mock<AgentFolderService>());
 	Container.set(SandboxSettingsService, mock<SandboxSettingsService>());
 	Container.set(AgentsService, mock<AgentsService>());
 	Container.set(AgentDependencyIndexListener, mock<AgentDependencyIndexListener>());

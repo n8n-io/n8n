@@ -2,9 +2,14 @@ import { expectPollTriggerFires } from './poll-trigger-helpers';
 import { makePollTriggerWorkflow } from './poll-trigger-workflow';
 import { test } from '../../../fixtures/base';
 
-// With the durable scheduler disabled (the default), poll triggers must still
-// fire via the legacy in-memory cron.
-test.use({ capability: 'proxy' });
+// With durable poll triggers disabled, poll triggers must still fire via the
+// legacy in-memory cron.
+test.use({
+	capability: {
+		services: ['proxy'],
+		env: { N8N_SCHEDULER_POLL_TRIGGERS_ENABLED: 'false' },
+	},
+});
 
 test.describe(
 	'Poll Trigger (legacy in-memory scheduler)',

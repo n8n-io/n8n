@@ -908,7 +908,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 				},
 				t(26),
 			),
-			// The browser agent finishes after the next message.
+			// The browser agent finishes, and its result is delivered, after the next message.
 			eventRow(
 				{
 					type: 'agent-completed',
@@ -927,6 +927,15 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 				},
 				t(39),
 			),
+			eventRow(
+				{
+					type: 'agent-result-delivered',
+					runId: 'run_1',
+					agentId: 'agent-browser',
+					payload: {},
+				},
+				t(45),
+			),
 		]);
 
 		const service = createService();
@@ -941,6 +950,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		const browserAgent = result.messages[1].agentTree?.children[0];
 		expect(browserAgent?.agentId).toBe('agent-browser');
 		expect(browserAgent?.status).toBe('completed');
+		expect(browserAgent?.resultDelivered).toBe(true);
 	});
 
 	it('keeps the later facts of a detached background agent when its turn was cancelled', async () => {

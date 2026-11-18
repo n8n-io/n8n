@@ -720,7 +720,9 @@ describe('integration tools', () => {
 
 	it('action tool schema requires platform IDs for explicit user and channel targets', () => {
 		const tool = createIntegrationActionTool({
-			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			descriptor: getIntegrationToolConnectionDescriptors([slackA], undefined, () => ({
+				supportedComponents: ['section', 'button', 'radio_select'],
+			}))[0],
 			messageContextStore: mock<IntegrationMessageContextStore>(),
 			actionExecutor: mock<IntegrationActionExecutor>(),
 		}).build();

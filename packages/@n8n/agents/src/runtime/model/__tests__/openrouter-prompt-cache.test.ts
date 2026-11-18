@@ -18,7 +18,7 @@ async function prepareRequest(overrides: Partial<CacheParams> = {}): Promise<Wir
 		promptCaching: { enabled: true },
 		system: [
 			{ role: 'system', content: 'Stable instructions' },
-			{ role: 'system', content: 'Recovered skills' },
+			{ role: 'system', content: 'Tool catalog' },
 			{ role: 'system', content: 'Volatile instructions' },
 		],
 		messages: [{ role: 'user', content: 'Hello' }],

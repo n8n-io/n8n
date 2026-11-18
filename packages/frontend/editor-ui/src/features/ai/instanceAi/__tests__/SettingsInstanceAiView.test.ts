@@ -953,6 +953,15 @@ describe('SettingsInstanceAiView', () => {
 			expect(queryByTestId('n8n-agent-cloud-browser-toggle')).toBeNull();
 		});
 
+		it('hides the cloud browser toggle on a multi-main instance', () => {
+			enableGatewayCredits();
+			settingsStore.settings = { ...settingsStore.settings, isMultiMain: true };
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-cloud-browser-toggle')).toBeNull();
+		});
+
 		it('persists turning off the cloud browser, which is on by default', async () => {
 			enableGatewayCredits();
 			const setField = vi.spyOn(store, 'setField');

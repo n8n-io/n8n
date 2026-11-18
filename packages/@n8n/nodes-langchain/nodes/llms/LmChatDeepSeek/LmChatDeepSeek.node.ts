@@ -8,6 +8,7 @@ import {
 } from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
+	type INodeProperties,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -20,6 +21,54 @@ import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 import type { OpenAICompatibleCredential } from '../../../types/types';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 
+const modelProperty: INodeProperties = {
+	displayName: 'Model',
+	name: 'model',
+	type: 'options',
+	description:
+		'The model which will generate the completion. <a href="https://api-docs.deepseek.com/quick_start/pricing">Learn more</a>.',
+	typeOptions: {
+		loadOptions: {
+			routing: {
+				request: {
+					method: 'GET',
+					url: '/models',
+				},
+				output: {
+					postReceive: [
+						{
+							type: 'rootProperty',
+							properties: {
+								property: 'data',
+							},
+						},
+						{
+							type: 'setKeyValue',
+							properties: {
+								name: '={{$responseItem.id}}',
+								value: '={{$responseItem.id}}',
+							},
+						},
+						{
+							type: 'sort',
+							properties: {
+								key: 'name',
+							},
+						},
+					],
+				},
+			},
+		},
+	},
+	routing: {
+		send: {
+			type: 'body',
+			property: 'model',
+		},
+	},
+	default: '',
+};
+
 export class LmChatDeepSeek implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'DeepSeek Chat Model',
@@ -27,7 +76,7 @@ export class LmChatDeepSeek implements INodeType {
 		name: 'lmChatDeepSeek',
 		icon: 'file:deepseek.svg',
 		group: ['transform'],
-		version: [1],
+		version: [1, 1.1],
 		description: 'For advanced usage with an AI chain',
 		defaults: {
 			name: 'DeepSeek Chat Model',
@@ -76,56 +125,24 @@ export class LmChatDeepSeek implements INodeType {
 				},
 			},
 			{
-				displayName: 'Model',
-				name: 'model',
-				type: 'options',
-				description:
-					'The model which will generate the completion. <a href="https://api-docs.deepseek.com/quick_start/pricing">Learn more</a>.',
-				typeOptions: {
-					loadOptions: {
-						routing: {
-							request: {
-								method: 'GET',
-								url: '/models',
-							},
-							output: {
-								postReceive: [
-									{
-										type: 'rootProperty',
-										properties: {
-											property: 'data',
-										},
-									},
-									{
-										type: 'setKeyValue',
-										properties: {
-											name: '={{$responseItem.id}}',
-											value: '={{$responseItem.id}}',
-										},
-									},
-									{
-										type: 'sort',
-										properties: {
-											key: 'name',
-										},
-									},
-								],
-							},
-						},
-					},
-				},
-				routing: {
-					send: {
-						type: 'body',
-						property: 'model',
-					},
-				},
+				...modelProperty,
 				default: 'deepseek-chat',
 				builderHint: {
 					propertyHint:
 						'Choose deepseek-chat or deepseek-reasoner according to the task. Confirm their current capabilities in the provider documentation instead of assuming a fixed underlying version. ' +
 						MODEL_SELECTION_HINT,
 				},
+				displayOptions: { show: { '@version': [1] } },
+			},
+			{
+				...modelProperty,
+				default: 'deepseek-flash',
+				builderHint: {
+					propertyHint:
+						'Choose deepseek-flash for most tasks, or deepseek-v4-pro for harder reasoning. ' +
+						MODEL_SELECTION_HINT,
+				},
+				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.1 } }] } },
 			},
 			{
 				displayName: 'Options',
