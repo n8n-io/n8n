@@ -5045,6 +5045,70 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		return false;
 	};
 
+	/**
+	 * The methods that the helpers implement for each value that native code holds as a plain
+	 * object (`$intl`, `$coll`). Any other method of such a value fails at run time where v1
+	 * succeeds, so the code is refused at compile time.
+	 */
+	const NATIVE_KIND_METHODS: Record<string, ReadonlySet<string>> = {
+		'Intl.DateTimeFormat': new Set(['format', 'formatToParts']),
+		'Intl.NumberFormat': new Set(['format', 'formatToParts']),
+		Map: new Set(['set', 'get', 'has', 'delete', 'clear', 'forEach', 'keys', 'values', 'entries']),
+		Set: new Set(['add', 'has', 'delete', 'clear', 'forEach', 'keys', 'values', 'entries']),
+	};
+
+	/** The kind of the value that `new <Global>(…)` makes, or null for another expression. */
+	const kindMade = (e: ts.Expression | undefined): string | null => {
+		const x = e === undefined ? undefined : stripParens(e);
+		if (x === undefined || !ts.isNewExpression(x)) return null;
+		const made = x.expression;
+		if (ts.isPropertyAccessExpression(made) && ts.isIdentifier(made.expression)) {
+			const kind = `Intl.${made.name.text}`;
+			if (
+				made.expression.text === 'Intl' &&
+				isFree(made.expression) &&
+				Object.hasOwn(NATIVE_KIND_METHODS, kind)
+			) {
+				return kind;
+			}
+		}
+		if (ts.isIdentifier(made) && isFree(made) && Object.hasOwn(NATIVE_KIND_METHODS, made.text)) {
+			return made.text;
+		}
+		return null;
+	};
+
+	/** The kind of a value that a variable holds, by the `new <Global>(…)` that sets it. */
+	const nativeKindVars = new Map<ts.Symbol, string>();
+	{
+		const scan = (x: ts.Node): void => {
+			if (ts.isVariableDeclaration(x) && ts.isIdentifier(x.name)) {
+				const kind = kindMade(x.initializer);
+				const sym = kind === null ? undefined : checker.getSymbolAtLocation(x.name);
+				if (kind !== null && sym !== undefined) nativeKindVars.set(sym, kind);
+			}
+			ts.forEachChild(x, scan);
+		};
+		scan(root);
+	}
+
+	const kindOf = (e: ts.Expression): string | null => {
+		const x = stripParens(e);
+		const made = kindMade(x);
+		if (made !== null) return made;
+		if (!ts.isIdentifier(x)) return null;
+		const sym = checker.getSymbolAtLocation(x);
+		return sym === undefined ? null : (nativeKindVars.get(sym) ?? null);
+	};
+
+	/** Refuses a value of a known native kind that goes where its kind is lost. */
+	const kindLost = (kind: string): void => {
+		block(
+			'native kind lost',
+			`A \`${kind}\` value goes to a place where its kind is lost, so a method of it has no native form.`,
+		);
+	};
+
 	const visit = (n: ts.Node): void => {
 		if (taEnabled && ts.isNewExpression(n) && isNewTypedArray(n)) {
 			if (!taPlace(n) || !canHandOver) {
@@ -5630,6 +5694,13 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			if (ts.isPropertyAccessExpression(callee)) {
 				const name = callee.name.text;
 				const plainArgs = !n.arguments.some((x) => ts.isSpreadElement(x));
+				const kind = kindOf(callee.expression);
+				if (kind !== null && !NATIVE_KIND_METHODS[kind].has(name)) {
+					block(
+						'native global method',
+						`\`${name}\` is not a method of a \`${kind}\` value in native code.`,
+					);
+				}
 				if (bufferCall(n, callee)) return;
 				if (
 					name === 'call' &&
@@ -5875,6 +5946,22 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 					for (const a of n.arguments) visit(a);
 					visit(callee.expression);
 					return;
+				}
+				// A method that the translator does not implement on an Intl formatter must be
+				// refused. Other globals are not type-tracked, so they stay as-is for now.
+				const recv = stripParens(callee.expression);
+				if (
+					hasIntl &&
+					ts.isNewExpression(recv) &&
+					ts.isPropertyAccessExpression(recv.expression) &&
+					ts.isIdentifier(recv.expression.expression) &&
+					recv.expression.expression.text === 'Intl' &&
+					isFree(recv.expression.expression)
+				) {
+					block(
+						'Intl formatter method',
+						`\`${name}\` of an Intl formatter has no native form.`,
+					);
 				}
 				if (name === 'then' || name === 'catch' || name === 'finally') {
 					if (n.arguments.some((a) => ts.isArrowFunction(a) || ts.isFunctionExpression(a))) {
@@ -6917,6 +7004,75 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	}
 
 	if (input.traced) traceWraps();
+
+	// A value of a known native kind goes only to places where the kind stays known: the member
+	// of a call that has a native form, the declaration of a variable that holds it, and `typeof`.
+	{
+		const kindHere = (x: ts.Node): string | null => {
+			if (!ts.isExpression(x)) return null;
+			const made = kindMade(x);
+			if (made !== null || !ts.isIdentifier(x)) return made;
+			const sym = checker.getSymbolAtLocation(x);
+			return sym === undefined ? null : (nativeKindVars.get(sym) ?? null);
+		};
+		// The collection helpers read the whole value (iteration, `size`, the static readers), so
+		// those places and the call `size` keep a collection's kind.
+		const keepsCollection = (x: ts.Node, at: ts.Node): boolean => {
+			if (ts.isSpreadElement(at) && at.expression === x) return true;
+			if (ts.isForOfStatement(at) && at.expression === x) return true;
+			if (
+				ts.isPropertyAssignment(at) &&
+				at.initializer === x &&
+				ts.isObjectLiteralExpression(at.parent)
+			) {
+				return true;
+			}
+			if (ts.isShorthandPropertyAssignment(at)) return true;
+			if (!ts.isCallExpression(at)) return false;
+			const callee = stripParens(at.expression);
+			// The compiled engine's own helpers (`__entries`, `__plain`, …) and the native helpers
+			// take the value as it is and read it.
+			if (ts.isIdentifier(callee)) return callee.text.startsWith('__');
+			if (!ts.isPropertyAccessExpression(callee) || !ts.isIdentifier(callee.expression)) {
+				return false;
+			}
+			const full = `${callee.expression.text}.${callee.name.text}`;
+			return (
+				isFree(callee.expression) &&
+				(Object.hasOwn(STATIC_HELPERS, full) || full === 'JSON.stringify')
+			);
+		};
+		const stays = (kind: string, x: ts.Node): boolean => {
+			let at: ts.Node = x.parent;
+			while (ts.isParenthesizedExpression(at)) at = at.parent;
+			if (ts.isPropertyAccessExpression(at) && at.expression === x) {
+				if (NATIVE_KIND_METHODS[kind].has(at.name.text)) return true;
+				return kind !== 'Intl.DateTimeFormat' && kind !== 'Intl.NumberFormat'
+					? at.name.text === 'size'
+					: false;
+			}
+			if (ts.isTypeOfExpression(at)) return true;
+			if (ts.isVariableDeclaration(at) && at.initializer === x && ts.isIdentifier(at.name)) {
+				return true;
+			}
+			return kind !== 'Intl.DateTimeFormat' && kind !== 'Intl.NumberFormat'
+				? keepsCollection(x, at)
+				: false;
+		};
+		const scan = (x: ts.Node): void => {
+			const isValue =
+				ts.isNewExpression(x) ||
+				(ts.isIdentifier(x) &&
+					!isNameOf(x) &&
+					!(ts.isVariableDeclaration(x.parent) && x.parent.name === x));
+			if (isValue) {
+				const kind = kindHere(x);
+				if (kind !== null && !stays(kind, x)) kindLost(kind);
+			}
+			ts.forEachChild(x, scan);
+		};
+		scan(root);
+	}
 
 	if (handsOver !== null) {
 		// The error with the mark of `RUNS_IN_HOST` is not an error of the code: each catch

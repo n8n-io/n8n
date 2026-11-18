@@ -373,6 +373,153 @@ const BINARY_CASES: Case[] = [
 ];
 const BINARY: Case[] = BINARY_CASES.map((c) => ({ ...c, items: FILE_ITEMS }));
 
+/** The issues of CODE-PARITY: results with extra members and refused formatToParts. */
+const PARITY_ITEMS = [
+	{
+		headers: { 'x-custom': 'v1' },
+		params: { q: 'search' },
+		query: { page: 1 },
+		body: { a: { b: '123-456-7890' } },
+		webhookUrl: 'https://example.com/hook',
+		executionMode: 'production',
+		extra: 'one more',
+	},
+];
+
+const PARITY1: Case[] = [
+	{
+		name: 'all mode plain object result from rich input',
+		code: "let v = items[0].json.body?.a?.b;\nv = String(v || '');\nif (!v || v === 'undefined' || v === 'null') throw new Error('no value');\nconst digits = v.replace(/\\D/g, '');\nconst last = digits.slice(-10);\nreturn { phone: last };",
+		items: PARITY_ITEMS,
+	},
+	{
+		name: 'all mode return { json: { a: 1 } } from rich input',
+		code: 'return { json: { a: 1 } };',
+		items: PARITY_ITEMS,
+	},
+	{
+		name: 'all mode return [{ a: 1 }] from rich input',
+		code: 'return [{ a: 1 }];',
+		items: PARITY_ITEMS,
+	},
+	{
+		name: 'all mode return { a: 1, json: 2 } from rich input',
+		code: 'return { a: 1, json: 2 };',
+		items: PARITY_ITEMS,
+	},
+	{
+		name: 'all mode return [] from rich input',
+		code: 'return [];',
+		items: PARITY_ITEMS,
+	},
+	{
+		name: 'all mode return null from rich input',
+		code: 'return null;',
+		items: PARITY_ITEMS,
+	},
+	{
+		name: 'all mode return undefined from rich input',
+		code: 'const x = 1;',
+		items: PARITY_ITEMS,
+	},
+	{
+		name: 'all mode return object with binary member from rich input',
+		code: "return { phone: '123', binary: { f: { data: 'aGk=', mimeType: 'a/b' } } };",
+		items: PARITY_ITEMS,
+	},
+];
+
+const EACH_PARITY1: Case[] = [
+	{
+		name: 'each mode plain object result from rich input',
+		code: "let v = $json.body?.a?.b;\nv = String(v || '');\nif (!v || v === 'undefined' || v === 'null') throw new Error('no value');\nconst digits = v.replace(/\\D/g, '');\nconst last = digits.slice(-10);\nreturn { phone: last };",
+		mode: 'each',
+		items: PARITY_ITEMS,
+	},
+	{
+		name: 'each mode return { json: { a: 1 } } from rich input',
+		code: 'return { json: { a: 1 } };',
+		mode: 'each',
+		items: PARITY_ITEMS,
+	},
+	{
+		name: 'each mode return [{ a: 1 }] from rich input',
+		code: 'return [{ a: 1 }];',
+		mode: 'each',
+		items: PARITY_ITEMS,
+	},
+	{
+		name: 'each mode return { a: 1, json: 2 } from rich input',
+		code: 'return { a: 1, json: 2 };',
+		mode: 'each',
+		items: PARITY_ITEMS,
+	},
+	{
+		name: 'each mode return [] from rich input',
+		code: 'return [];',
+		mode: 'each',
+		items: PARITY_ITEMS,
+	},
+	{
+		name: 'each mode return null from rich input',
+		code: 'return null;',
+		mode: 'each',
+		items: PARITY_ITEMS,
+	},
+	{
+		name: 'each mode return undefined from rich input',
+		code: 'const x = 1;',
+		mode: 'each',
+		items: PARITY_ITEMS,
+	},
+	{
+		name: 'each mode return object with binary member from rich input',
+		code: "return { phone: '123', binary: { f: { data: 'aGk=', mimeType: 'a/b' } } };",
+		mode: 'each',
+		items: PARITY_ITEMS,
+	},
+];
+
+const PARITY2_ITEMS = [
+	{
+		id: 1,
+		files: [{ id: 99 }],
+	},
+];
+const PARITY2_NODES: Record<string, unknown[]> = {
+	Download: [
+		{
+			x: 1,
+			$binary: { f: { data: 'aGVsbG8gYnl0ZXM=', mimeType: 'text/plain', fileName: 'a.txt' } },
+		},
+	],
+};
+
+const PARITY2: Case[] = [
+	{
+		name: 'binary taken from another node',
+		code: "const first = $input.first();\nconst json = first.json || {};\nlet id = null;\nif (json.files && json.files.length > 0) id = json.files[0].id;\nelse if (json.id) id = json.id;\nif (!id) throw new Error('no id');\nconst other = $('Download').first();\nlet file = null;\nif (other && other.binary) {\n  const keys = Object.keys(other.binary);\n  if (keys.length > 0) file = other.binary[keys[0]];\n}\nif (!file) throw new Error('no file');\nreturn [{ json: { id }, binary: { data: file } }];",
+		items: PARITY2_ITEMS,
+		nodes: PARITY2_NODES,
+	},
+];
+
+/** Methods of Intl formatters that the translator must refuse. */
+const REFUSE_METHODS: Case[] = [
+	{
+		name: 'Intl.DateTimeFormat.resolvedOptions',
+		code: "const opts = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).resolvedOptions();\nreturn [{ json: { tz: opts.timeZone } }];",
+	},
+];
+
+/** Methods of Intl formatters that the translator accepts. */
+const ACCEPT_METHODS: Case[] = [
+	{
+		name: 'Intl.DateTimeFormat.formatToParts',
+		code: "function stamp() {\n  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).formatToParts(new Date(0));\n  const p = {}; for (const x of parts) if (x.type !== 'literal') p[x.type] = x.value;\n  return `${p.year}-${p.month}-${p.day}`;\n}\nreturn [{ json: { stamp: stamp() } }];",
+	},
+];
+
 /** An optional call of a method that has a helper, with more of the chain after it. */
 const CHAIN_ITEMS = [{ a: 'x|y', n: 12.5, list: ['p', 'q'] }, { a: null }, {}];
 const each = (expression: string) =>
@@ -433,5 +580,31 @@ describe.skipIf(!taskRunnerAvailable())("native Code nodes against n8n's task ru
 			return;
 		}
 		expect(native).toEqual(await runnerCode(c.code, 'all', items));
+	});
+
+	/** CODE-PARITY issue 1: plain object result must equal v1. */
+	it.each(PARITY1)('gives the result of v1 for plain object all mode: $name', async (c) => {
+		await same(c);
+	});
+
+	it.each(EACH_PARITY1)('gives the result of v1 for plain object each mode: $name', async (c) => {
+		await same(c);
+	});
+
+	/** CODE-PARITY issue 2: binary taken from another node must equal v1. */
+	it.each(PARITY2)('gives the result of v1 for binary from another node: $name', async (c) => {
+		await same(c);
+	});
+
+	/** CODE-PARITY issue 3: unrecognized Intl formatter methods must be refused. */
+	it.each(REFUSE_METHODS)('refuses a method that has no native form: $name', async (c) => {
+		const items = c.items ?? ITEMS;
+		expect(() => nativeCode(c.code, c.mode ?? 'all', items, { nodes: c.nodes }))
+			.toThrow(/blocked/);
+	});
+
+	/** CODE-PARITY issue 3: formatToParts is accepted and matches v1. */
+	it.each(ACCEPT_METHODS)('gives the result of v1 for accepted method: $name', async (c) => {
+		await same(c);
 	});
 });
