@@ -1,0 +1,309 @@
+packages/@n8n/agents/src/runtime/__tests__/mcp-connection.test.ts
+  s_dfe3f914c8bb46::t_0c5b469e4828ef 468-484
+packages/@n8n/agents/src/runtime/mcp/mcp-connection.ts
+  s_dfe3f914c8bb46::t_719b59ab364eb9 226
+packages/@n8n/agents/src/runtime/streaming/__tests__/stream-session.test.ts
+  s_dfe3f914c8bb46::t_082df43c990422 3,20-58
+packages/@n8n/agents/src/runtime/streaming/stream-session.ts
+  s_dfe3f914c8bb46::t_ef290e555bec7d 77-81,96,131
+packages/@n8n/agents/src/sdk/__tests__/tool.test.ts
+  s_dfe3f914c8bb46::t_48635bea3d0a78 199-230
+packages/@n8n/agents/src/sdk/tool.ts
+  s_dfe3f914c8bb46::t_bfb7c51db1b69b 15,47-50,134,146-148,153-156,175-178
+packages/@n8n/agents/src/types/runtime/event.ts
+  s_dfe3f914c8bb46::t_bf723f0fe07aa7 65-72,80,101
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_dfe3f914c8bb46::t_dcfa18cc9ae654 19,179
+packages/@n8n/agents/src/types/sdk/mcp.ts
+  s_dfe3f914c8bb46::t_2429aa76dce788 2,59-61
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_dfe3f914c8bb46::t_fd3b8e14346a99 91-92,125-126
+packages/@n8n/api-types/src/agents/__tests__/agent-hitl.schema.test.ts
+  s_dfe3f914c8bb46::t_a9a2d18833a69b 1-97
+packages/@n8n/api-types/src/agents/agent-config-validation.schema.ts
+  s_dfe3f914c8bb46::t_1f0ec08641bcb4 20
+packages/@n8n/api-types/src/agents/agent-hitl.schema.ts
+  s_dfe3f914c8bb46::t_51009ae63d38c1 1-134
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_dfe3f914c8bb46::t_5835b024283173 7,304,384,422,445,641-646
+packages/@n8n/api-types/src/agents/background-job.ts
+  s_dfe3f914c8bb46::t_79b48602e9431e 10
+packages/@n8n/api-types/src/agents/dto.ts
+  s_dfe3f914c8bb46::t_22996b86591140 1,948-949
+packages/@n8n/api-types/src/agents/index.ts
+  s_dfe3f914c8bb46::t_ad27b29a64b7ee 3
+packages/@n8n/api-types/src/agents/inline-agent-config.schema.ts
+  s_dfe3f914c8bb46::t_5dbd1e08a1f3a4 18-19
+packages/@n8n/backend-services/src/services/__tests__/workflow-project.service.test.ts
+  s_dfe3f914c8bb46::t_07aeac8e63f677 20,26,29,40,43,71-86
+packages/@n8n/backend-services/src/services/workflow-project.service.ts
+  s_dfe3f914c8bb46::t_ae5f0dcf1111fb 4,8-20,44-51
+packages/@n8n/config/src/configs/__tests__/agents.config.test.ts
+  s_dfe3f914c8bb46::t_155a3e54e15ed7 21-35
+packages/@n8n/config/src/configs/agents.config.ts
+  s_dfe3f914c8bb46::t_3f00de4d8fad9a 1,12,41-44,74-76,81-84
+packages/@n8n/constants/src/nodes.ts
+  s_dfe3f914c8bb46::t_3dae82e922e37d 28-29,44-53
+packages/@n8n/db/src/migrations/common/1794916566281-AddAgentApprovalJobKind.ts
+  s_dfe3f914c8bb46::t_9905eb7dfe4039 1-77
+packages/@n8n/db/src/migrations/common/1794916567037-AddAgentApprovalExecutionOwner.ts
+  s_dfe3f914c8bb46::t_ceb07960da9c11 1-36
+packages/@n8n/db/src/migrations/sqlite/1794916567037-AddAgentApprovalExecutionOwner.ts
+  s_dfe3f914c8bb46::t_83efa9ed6ea217 1-6
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_dfe3f914c8bb46::t_2e58d286aaa270 1-2,442-460
+packages/cli/src/modules/agents/BUILT_IN_TOOLS.md
+  s_dfe3f914c8bb46::t_440fe73e48b41a 130
+packages/cli/src/modules/agents/__tests__/agent-checkpoint.repository.test.ts
+  s_dfe3f914c8bb46::t_ee518215388833 3,8,23-37
+packages/cli/src/modules/agents/__tests__/agent-config-hash.test.ts
+  s_dfe3f914c8bb46::t_693d312dc522e6 1-27
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_dfe3f914c8bb46::t_9a961ae1e9adf4 1,8,386-495
+packages/cli/src/modules/agents/__tests__/agent-document.test.ts
+  s_dfe3f914c8bb46::t_816798982044a0 1-6,38-119
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_dfe3f914c8bb46::t_27473030ce7b30 47,1064-1073,2449-2453,2535-2538,3217
+packages/cli/src/modules/agents/__tests__/agent-project-cleanup.service.test.ts
+  s_dfe3f914c8bb46::t_98029c6253639c 40
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_dfe3f914c8bb46::t_9f30ad8a0c4efc 417
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_dfe3f914c8bb46::t_3268058a8241c3 2042-2139
+packages/cli/src/modules/agents/__tests__/agent-workflow-dependency.repository.test.ts
+  s_dfe3f914c8bb46::t_3da4d5fd72b708 97-126
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_dfe3f914c8bb46::t_2cc99f694fa5ad 1,14-15,20,161-162,202-204,209-210,226-347,434,952,964
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  s_dfe3f914c8bb46::t_1b25c77488d26f 513,538,570-656
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_dfe3f914c8bb46::t_bd54e7e4f1c050 16-107
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_dfe3f914c8bb46::t_8ba0c2ee5cc41a 498-509
+packages/cli/src/modules/agents/agent-config-preparation.service.ts
+  s_dfe3f914c8bb46::t_2d5c550216c724 12,256-258,346-354,586
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_dfe3f914c8bb46::t_a2a274f5e7de9a 26-30,292,945-948,1033,1130,1516-1518,1539-1543,1837-1840,1910
+packages/cli/src/modules/agents/agent-project-cleanup.service.ts
+  s_dfe3f914c8bb46::t_0a66417194f33b 1,33,59
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_dfe3f914c8bb46::t_8edb90ca68ee26 1,18-20,32,122-123,162-164,243,710,828,902-933,943-944,1152-1161,1278-1283,1285-1293
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_dfe3f914c8bb46::t_3ba8e481afc3e3 6,410,765-847
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_dfe3f914c8bb46::t_1554fa7f6e2b98 17,21-26,62-65,87-89,156-164,213-215,283,312,447-463,516-517,616,708-713,762-772,775,786-831,843-901,950,959-971,977-978,1034,1049-1055,1265
+packages/cli/src/modules/agents/agent-workflow-tool-resume.service.ts
+  s_dfe3f914c8bb46::t_18abec3b01df93 17-20,130,144,154-159,162-171,173-176,232-265
+packages/cli/src/modules/agents/agents.module.ts
+  s_dfe3f914c8bb46::t_a0048f74f9b3e9 11-12,46
+packages/cli/src/modules/agents/agents.service.ts
+  s_dfe3f914c8bb46::t_26f00d264735ee 1,190,972,989
+packages/cli/src/modules/agents/approval/README.md
+  s_dfe3f914c8bb46::t_4a5c003f9326c6 1-122
+packages/cli/src/modules/agents/approval/__tests__/agent-approval-cleanup.service.test.ts
+  s_dfe3f914c8bb46::t_4c0359a3f31e79 1-66
+packages/cli/src/modules/agents/approval/__tests__/agent-channel-approval-response.test.ts
+  s_dfe3f914c8bb46::t_437fffab76f66d 1-191
+packages/cli/src/modules/agents/approval/__tests__/agent-channel-hitl.service.test.ts
+  s_dfe3f914c8bb46::t_842ad3aef9117b 1-175
+packages/cli/src/modules/agents/approval/__tests__/agent-decision-workflow.service.test.ts
+  s_dfe3f914c8bb46::t_91e597f9b508fe 1-999
+packages/cli/src/modules/agents/approval/__tests__/approval-description.test.ts
+  s_dfe3f914c8bb46::t_df07d7e651e8b0 1-105
+packages/cli/src/modules/agents/approval/__tests__/channel-hitl-options.test.ts
+  s_dfe3f914c8bb46::t_8dfc23266848a3 1-135
+packages/cli/src/modules/agents/approval/__tests__/decision-result.test.ts
+  s_dfe3f914c8bb46::t_3c2bbede6fd754 1-102
+packages/cli/src/modules/agents/approval/__tests__/review-requester.test.ts
+  s_dfe3f914c8bb46::t_9a7d3bc897622f 1-55
+packages/cli/src/modules/agents/approval/agent-approval-cleanup.service.ts
+  s_dfe3f914c8bb46::t_0a293806dc4dcc 1-45
+packages/cli/src/modules/agents/approval/agent-channel-hitl.service.ts
+  s_dfe3f914c8bb46::t_12f2e5250c751e 1-243
+packages/cli/src/modules/agents/approval/agent-decision-workflow.service.ts
+  s_dfe3f914c8bb46::t_7beba8d5fd61a2 1-520
+packages/cli/src/modules/agents/approval/agent-hitl-channels.controller.ts
+  s_dfe3f914c8bb46::t_e947c02bf85c35 1-28
+packages/cli/src/modules/agents/approval/approval-description.ts
+  s_dfe3f914c8bb46::t_3cb614ee4a2c5d 1-65
+packages/cli/src/modules/agents/approval/approval-expiry.ts
+  s_dfe3f914c8bb46::t_a26c59049e3712 1-11
+packages/cli/src/modules/agents/approval/decision-result.ts
+  s_dfe3f914c8bb46::t_d499cd54041c81 1-26
+packages/cli/src/modules/agents/approval/register-approval-runtime.ts
+  s_dfe3f914c8bb46::t_417929a1e7c81c 1-19
+packages/cli/src/modules/agents/approval/review-requester.ts
+  s_dfe3f914c8bb46::t_134c1d678ac960 1-37
+packages/cli/src/modules/agents/approval/workflow-caller.ts
+  s_dfe3f914c8bb46::t_814d1e8fe9af81 1-10
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_dfe3f914c8bb46::t_676c7a629550d8 5,8,18-19,102-103,1818-1820,1842-1872,2138-2290,2379-2456
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_dfe3f914c8bb46::t_2cc99de78b4360 1,22,191-194,200,218,222-238,335,864,948-949,1005,1121-1133,1135,1150-1261,1274-1275,1326-1328,1373-1381,1400,1521-1524
+packages/cli/src/modules/agents/entities/agent-background-job.entity.ts
+  s_dfe3f914c8bb46::t_7076b2a7dab5c6 8-14,30-32,62-67,70-94
+packages/cli/src/modules/agents/entities/agent.entity.ts
+  s_dfe3f914c8bb46::t_5f0d16de75bc51 8,48,72-82
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_dfe3f914c8bb46::t_6e0fb83f05510c 6,400-410,492-506,573-587
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_dfe3f914c8bb46::t_5dda6b884ad681 6-7,2949-2999
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
+  s_dfe3f914c8bb46::t_55947e17a802ca 1-2,390-415
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-suspension-cards.test.ts
+  s_dfe3f914c8bb46::t_fe88e0ee4be28d 26-44,56-66
+packages/cli/src/modules/agents/integrations/__tests__/integration-tools.test.ts
+  s_dfe3f914c8bb46::t_7ebd1417c717b5 2,2047-2053,2061-2062
+packages/cli/src/modules/agents/integrations/__tests__/n8n-checkpoint-storage.test.ts
+  s_dfe3f914c8bb46::t_00e45c0bd16f8b 372-404
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_dfe3f914c8bb46::t_e0161c2535279f 21,479-498
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_dfe3f914c8bb46::t_dcc2b75fa4c807 131-134,208,210,220-229
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_dfe3f914c8bb46::t_5f4f6e73a8c979 1,291-292
+packages/cli/src/modules/agents/integrations/agent-chat-suspension-cards.ts
+  s_dfe3f914c8bb46::t_dbc2b3da8c9e8e 12,52,63-65
+packages/cli/src/modules/agents/integrations/channel-hitl.ts
+  s_dfe3f914c8bb46::t_b61154342cc370 1-122
+packages/cli/src/modules/agents/integrations/integration-tool-execution.ts
+  s_dfe3f914c8bb46::t_1998fb95849293 282
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_dfe3f914c8bb46::t_c76840fa0efc7f 1,66,69-87,190-191,215-217,414-418
+packages/cli/src/modules/agents/integrations/platforms/discord/discord-hitl.ts
+  s_dfe3f914c8bb46::t_09d47072881adb 1-110
+packages/cli/src/modules/agents/integrations/platforms/discord/discord-integration.ts
+  s_dfe3f914c8bb46::t_818cd820e1cd32 1,79
+packages/cli/src/modules/agents/integrations/platforms/linear/linear-integration.ts
+  s_dfe3f914c8bb46::t_788b28241b3639 43
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-hitl.ts
+  s_dfe3f914c8bb46::t_ac8069ca67b71e 1-110
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_dfe3f914c8bb46::t_40b827e7bb83e4 1,58
+packages/cli/src/modules/agents/integrations/platforms/telegram/telegram-hitl.ts
+  s_dfe3f914c8bb46::t_085a4996f0ba2a 1-25
+packages/cli/src/modules/agents/integrations/platforms/telegram/telegram-integration.ts
+  s_dfe3f914c8bb46::t_2290e442c0f207 1,66
+packages/cli/src/modules/agents/json-config/agent-document.ts
+  s_dfe3f914c8bb46::t_11956cbd6bb7d4 1-7,22-27,38-48
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_dfe3f914c8bb46::t_cdecc32139c3e6 107-108,530-533,553-555,571-573
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_dfe3f914c8bb46::t_7b7f37c6a85e12 118,246,272
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_dfe3f914c8bb46::t_c3a2ccb83ede47 7,39-41,44,196-245,250,351,362-366,441-460
+packages/cli/src/modules/agents/repositories/agent-checkpoint.repository.ts
+  s_dfe3f914c8bb46::t_e2cf3980c98b35 3-12,17,48-58,82,85-91,137-147,152,157-170,190,193-200,211,217-235
+packages/cli/src/modules/agents/repositories/agent-hitl-workflow.repository.ts
+  s_dfe3f914c8bb46::t_8a2c17f1579058 1-78
+packages/cli/src/modules/agents/repositories/agent-workflow-dependency.repository.ts
+  s_dfe3f914c8bb46::t_06bc0029177bf6 62-66,68-71
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_dfe3f914c8bb46::t_5119e3fc7d749d 26,37,83,87-120
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_dfe3f914c8bb46::t_f1b3dbbbe393f3 873-883
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_dfe3f914c8bb46::t_72dfd8da038762 28,40,79,217,305,308-318,340,577,583-585,1059-1066
+packages/cli/src/modules/agents/utils/agent-config-hash.ts
+  s_dfe3f914c8bb46::t_5085f2b5d5bcbd 1,28-36
+packages/cli/src/modules/agents/utils/visit-agent-credential-references.ts
+  s_dfe3f914c8bb46::t_539ccd9b712ca5 46
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent-import-bindings.test.ts
+  s_dfe3f914c8bb46::t_e0d6f6ec0636c1 1-66
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent-requirements.extractor.test.ts
+  s_dfe3f914c8bb46::t_582822ddab5724 252-277
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent.exporter.test.ts
+  s_dfe3f914c8bb46::t_6a96db597dc935 80-104
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import-bindings.ts
+  s_dfe3f914c8bb46::t_4a9f39d349d027 346-357
+packages/cli/src/modules/n8n-packages/entities/agent/agent-requirements.extractor.ts
+  s_dfe3f914c8bb46::t_0adb326cb58d56 43-45
+packages/cli/src/modules/n8n-packages/entities/agent/agent.serializer.ts
+  s_dfe3f914c8bb46::t_756951fa45fac5 32-33,89-91
+packages/cli/src/node-catalog/__tests__/node-catalog.service.test.ts
+  s_dfe3f914c8bb46::t_19f32d69375e9f 84,283-291
+packages/cli/src/node-catalog/module-gated-node-types.ts
+  s_dfe3f914c8bb46::t_684cf889cf2661 4-5,10-19,30,40,42-47
+packages/cli/test/integration/agents/agent-channel-approval.integration.test.ts
+  s_dfe3f914c8bb46::t_61c3ec07933f22 1-509
+packages/cli/test/integration/agents/agent-checkpoint-pruning.task.integration.test.ts
+  s_dfe3f914c8bb46::t_0bdaf9ad2e129c 102-155
+packages/cli/test/integration/agents/agent-hitl-workflow.integration.test.ts
+  s_dfe3f914c8bb46::t_75ba121b3e7b78 1-142
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_dfe3f914c8bb46::t_361835689913bc 23,101-176
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_dfe3f914c8bb46::t_6ad6c7a7bbb99e 224
+packages/frontend/@n8n/design-system/src/components/N8nIcon/node-icon-names.ts
+  s_dfe3f914c8bb46::t_79ffb396d26eed 2-3
+packages/frontend/@n8n/design-system/src/components/N8nIcon/node-icons.ts
+  s_dfe3f914c8bb46::t_310edd5f9bcde6 2-3,86-87
+packages/frontend/@n8n/design-system/src/components/N8nIcon/nodes/agent-decision-response.svg
+  s_dfe3f914c8bb46::t_ce3d3d565a4284 1-12
+packages/frontend/@n8n/design-system/src/components/N8nIcon/nodes/agent-decision-trigger.svg
+  s_dfe3f914c8bb46::t_a05e74687e891a 1-12
+packages/nodes-base/nodes/AgentDecision/AgentDecisionResponse.node.json
+  s_dfe3f914c8bb46::t_64323f4a4c9fbe 1-8
+packages/nodes-base/nodes/AgentDecision/AgentDecisionResponse.node.ts
+  s_dfe3f914c8bb46::t_317aa3565ec4d0 1-55
+packages/nodes-base/nodes/AgentDecision/AgentDecisionTrigger.node.json
+  s_dfe3f914c8bb46::t_f46abde913e9f6 1-8
+packages/nodes-base/nodes/AgentDecision/AgentDecisionTrigger.node.test.ts
+  s_dfe3f914c8bb46::t_c2a46f25ecb92f 1-170
+packages/nodes-base/nodes/AgentDecision/AgentDecisionTrigger.node.ts
+  s_dfe3f914c8bb46::t_b1785a7dfc8701 1-83
+packages/nodes-base/nodes/Discord/v2/actions/message/sendAndWait.operation.ts
+  s_dfe3f914c8bb46::t_864a196c66be0f 8,21
+packages/nodes-base/nodes/Discord/v2/helpers/utils.ts
+  s_dfe3f914c8bb46::t_d944e1e5eb0ef8 1-2,441-450
+packages/nodes-base/nodes/MessageAnAgent/MessageAnAgent.node.ts
+  s_dfe3f914c8bb46::t_a4798e23fc6d87 32
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_dfe3f914c8bb46::t_b7385eaef6bbae 80-104,1116,1120,1170,1175
+packages/nodes-base/nodes/MessageAnAgent/shared.ts
+  s_dfe3f914c8bb46::t_38b9242d8d89e8 586,632-636,662-663
+packages/nodes-base/nodes/MessageAnAgent/v2/MessageAnAgentV2.node.ts
+  s_dfe3f914c8bb46::t_fee9bf50224f67 22
+packages/nodes-base/nodes/Slack/V2/GenericFunctions.ts
+  s_dfe3f914c8bb46::t_6edf06b19ecf22 546,581-582,584,588-595
+packages/nodes-base/nodes/Slack/V2/SlackV2.node.ts
+  s_dfe3f914c8bb46::t_af519d7056e9d7 58-61,184
+packages/nodes-base/nodes/Telegram/GenericFunctions.ts
+  s_dfe3f914c8bb46::t_8af66188798900 319
+packages/nodes-base/nodes/Telegram/Telegram.node.ts
+  s_dfe3f914c8bb46::t_2fe72e7e87c079 32-35,2041
+packages/nodes-base/package.json
+  s_dfe3f914c8bb46::t_296b91915e46b8 697-698
+packages/nodes-base/utils/sendAndWait/agent-approval.test.ts
+  s_dfe3f914c8bb46::t_b982ae92359c50 1-96
+packages/nodes-base/utils/sendAndWait/descriptions.ts
+  s_dfe3f914c8bb46::t_2bf719d1332db4 3-10
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_dfe3f914c8bb46::t_bee0387e57e368 195,1130,1132,1160,1174,1194,1205,1218,1243
+packages/cli/test/migration/1794916566281-add-agent-approval-job-kind.test.ts
+  s_0b0928afb88e83::t_0a5bdbb7466b21 1-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7c983fa9662cf5da9c572e25f4fd49cdc66670cb",
+  "prompts": {},
+  "sessions": {
+    "s_0b0928afb88e83": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e562-48b7-78c3-9715-33260f2294df",
+        "model": "unknown"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

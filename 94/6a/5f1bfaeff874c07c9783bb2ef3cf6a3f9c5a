@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.store.test.ts
+  s_d842348d080092::t_37e2fab21b339f 15,42-45,427-453
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.vue
+  s_d842348d080092::t_2c3360bec2dad2 1073-1082
+  s_d842348d080092::t_d0d59964cb2756 13,36,45-46,69,103,111,302,397-404,498-507,510-530,549-556,963-969,973-981
+  s_d842348d080092::t_76a1322261cacd 508-509,970-972
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d842348d080092::t_0263b2730f8295 7444-7447
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.test.ts
+  s_d842348d080092::t_76a1322261cacd 1127-1129
+  s_d842348d080092::t_c4c6385f78eb6f 24,1092-1126,1130-1184
+packages/frontend/editor-ui/src/features/workflow-reviews/composables/useWorkflowReviewsFeature.ts
+  s_d842348d080092::t_0263b2730f8295 25-26,29-30,35,41
+  s_d842348d080092::t_76a1322261cacd 27-28
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.store.ts
+  s_d842348d080092::t_619d2d09b5a1f0 28,32,38-41,62-64,234-246
+  s_d842348d080092::t_ccd9a06ce54a93 445-447
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
+  s_d842348d080092::t_619d2d09b5a1f0 4-5,63-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "946a5f1bfaeff874c07c9783bb2ef3cf6a3f9c5a",
+  "prompts": {},
+  "sessions": {
+    "s_d842348d080092": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e5ff11ea-ea68-4dce-b3b9-094b483d7df4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

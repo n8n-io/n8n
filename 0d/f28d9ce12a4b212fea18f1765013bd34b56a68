@@ -1,0 +1,83 @@
+docs/generated/postgres-schema/README.md
+  s_33852536738524::t_cac9d2acda5b51 12,219,517-523
+docs/generated/postgres-schema/public.agent_attention_flags.md
+  s_33852536738524::t_23e0c63382c6f5 1-73
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_33852536738524::t_b6224f23fe065f 12,67,119-125
+docs/generated/sqlite-schema/README.md
+  s_33852536738524::t_d0a751ab9626c2 12,201,503-509
+docs/generated/sqlite-schema/agent_attention_flags.md
+  s_33852536738524::t_e14cfa298e5938 1-80
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_33852536738524::t_adf0bf5cfd4d2d 23,67,119-125
+packages/@n8n/api-types/src/agents/__tests__/attention-flags.test.ts
+  s_33852536738524::t_bc1e348384253b 1-47
+packages/@n8n/api-types/src/agents/attention-flags.ts
+  s_33852536738524::t_e6e0033273e4e3 1-23
+packages/@n8n/api-types/src/agents/dto.ts
+  s_33852536738524::t_927d17d015bdce 179-183,188
+packages/@n8n/api-types/src/agents/index.ts
+  s_adee977eab8a65::t_4ab9f2075e2921 24
+packages/@n8n/db/src/migrations/common/1794932995699-CreateAgentAttentionFlags.ts
+  s_33852536738524::t_87424358672f53 1-27
+packages/cli/src/modules/agents/__tests__/agent-attention-flags.test.ts
+  s_33852536738524::t_41fa55b05181df 1-63
+packages/cli/src/modules/agents/__tests__/agent-checkpoint-pruning.task.test.ts
+  s_33852536738524::t_73c7e435f329f1 1,19-20,26,55,68-71
+packages/cli/src/modules/agents/__tests__/agent-execution.repository.test.ts
+  s_33852536738524::t_b6f4403116c8aa 6,18-22
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_33852536738524::t_569a0afefa3042 9,119,165,963-999,1019,1127,1828
+packages/cli/src/modules/agents/agent-attention-flags.controller.ts
+  s_33852536738524::t_7d21a9f5d8c1a6 1-31
+packages/cli/src/modules/agents/agent-attention-flags.service.ts
+  s_33852536738524::t_70ce186637bf19 1-28
+packages/cli/src/modules/agents/agent-checkpoint-pruning.task.ts
+  s_33852536738524::t_5b995d5f245771 3,43,47-50
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_33852536738524::t_dc030dca86cb08 23,214,1235,1242-1245
+packages/cli/src/modules/agents/agents.module.ts
+  s_33852536738524::t_81af5fab533a17 38,302,358
+packages/cli/src/modules/agents/entities/agent-attention-flag.entity.ts
+  s_33852536738524::t_66283983658292 1-30
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_33852536738524::t_28ed5852c56f61 405,408-411
+packages/cli/src/modules/agents/repositories/agent-attention-flag.repository.ts
+  s_33852536738524::t_8b80115930455e 1-92
+packages/cli/src/modules/agents/repositories/agent-checkpoint.repository.ts
+  s_33852536738524::t_93876a6072e712 122,127,129,132-136,150-154
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_33852536738524::t_7efa0f08a3c0bf 296,418,420-422,424-432,440-442,452-456
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_33852536738524::t_fa19e7d351a83f 7,70-74,488-491,500-501,512-521
+packages/cli/test/integration/agents/agent-attention-flags.test.ts
+  s_adee977eab8a65::t_66c7307052f96a 1-331
+packages/cli/test/integration/agents/agent-checkpoint-pruning.task.integration.test.ts
+  s_33852536738524::t_bc6bb46cada598 72,237
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_33852536738524::t_d9f73b69190609 2,190-196,243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0df28d9ce12a4b212fea18f1765013bd34b56a68",
+  "prompts": {},
+  "sessions": {
+    "s_33852536738524": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "daf37cb4-9789-425a-abe6-81e7366ae405",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_adee977eab8a65": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d5e8-1bc3-73e2-8649-1f304c4b7793",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

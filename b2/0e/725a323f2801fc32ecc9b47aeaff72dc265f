@@ -1,0 +1,37 @@
+packages/@n8n/backend-services/src/services/__tests__/execution-retention.service.test.ts
+  s_33852536738524::t_53fcf6746219f2 12-23
+packages/@n8n/backend-services/src/services/execution-retention.service.ts
+  s_33852536738524::t_957a8b4757707f 21-35
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_33852536738524::t_0a91596c636bca 738-751
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_33852536738524::t_fb67f81f12d46c 1095-1124
+packages/cli/src/executions/__tests__/execution-persistence.test.ts
+  s_33852536738524::t_0eaf60e0e0b56c 133-170
+packages/cli/src/executions/execution-persistence.ts
+  s_33852536738524::t_ab6ec288fd0651 840-842,862-867
+packages/cli/src/workflow-helpers.ts
+  s_33852536738524::t_4c7d884688f6ed 471-477,496
+packages/cli/test/integration/database/repositories/execution.repository.test.ts
+  s_33852536738524::t_708ccdbb7fa6cb 532-561
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  s_33852536738524::t_aa0d73f45ef654 27,29,525-589
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_33852536738524::t_58b57dd3eb773b 48,50,58-65,71,75-94,290,400
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b20e725a323f2801fc32ecc9b47aeaff72dc265f",
+  "prompts": {},
+  "sessions": {
+    "s_33852536738524": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "daf37cb4-9789-425a-abe6-81e7366ae405",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

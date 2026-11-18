@@ -1,0 +1,62 @@
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_adee977eab8a65::t_85cf4caa952967 296
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_adee977eab8a65::t_d570dc190efa90 1245,1289
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_adee977eab8a65::t_85cf4caa952967 1600
+packages/cli/src/modules/agents/integrations/integration-tool-factory.ts
+  s_adee977eab8a65::t_d570dc190efa90 9,22,55,123,187,199
+  s_adee977eab8a65::t_1cd29ecdaab677 188-191
+packages/cli/src/modules/agents/BUILT_IN_TOOLS.md
+  s_adee977eab8a65::t_c255d9405686c2 52-53,135,137-144
+packages/cli/src/modules/agents/integrations/conversation-tools.ts
+  s_adee977eab8a65::t_d570dc190efa90 42,44,65
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_adee977eab8a65::t_1cd29ecdaab677 506
+  s_adee977eab8a65::t_c255d9405686c2 490,499-505
+packages/cli/src/modules/agents/AGENTS.md
+  s_adee977eab8a65::t_c255d9405686c2 9
+packages/cli/src/modules/agents/integrations/platforms/n8n-chat/n8n-chat-integration.ts
+  s_adee977eab8a65::t_85cf4caa952967 82,126
+packages/cli/src/modules/agents/integrations/__tests__/conversation-tools.test.ts
+  s_adee977eab8a65::t_1cd29ecdaab677 53-56,221-223,236-239
+  s_adee977eab8a65::t_c255d9405686c2 108,113,125,150,198,207,215-220,224-235,240-241
+  s_adee977eab8a65::t_7b1c54c0f36987 242
+packages/cli/src/modules/agents/integrations/integration-tool-types.ts
+  s_adee977eab8a65::t_d570dc190efa90 5,37,162
+packages/cli/src/modules/agents/integrations/__tests__/integration-tool-descriptions.test.ts
+  s_adee977eab8a65::t_85cf4caa952967 3,9,14-15,19-25,31,33-40,44
+  s_adee977eab8a65::t_1cd29ecdaab677 10-12,16-18,26-29,41-43
+  s_adee977eab8a65::t_dfe7abf298b66d 13
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_adee977eab8a65::t_d570dc190efa90 382
+packages/cli/src/modules/agents/integrations/__tests__/n8n-chat-integration.test.ts
+  s_adee977eab8a65::t_85cf4caa952967 140
+packages/cli/src/modules/agents/integrations/integration-tool-descriptions.ts
+  s_adee977eab8a65::t_85cf4caa952967 5-18,45,51-56,60-63
+  s_adee977eab8a65::t_1cd29ecdaab677 58
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/allows-only-the-session-owner-to-cancel-a-suspended-run.json
+  s_adee977eab8a65::t_11395c24575fb6 6
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/sends-an-image-to-the-model-and-reloads-the-stored-attachment.json
+  s_adee977eab8a65::t_9ec4a50c5b4d80 6
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/streams-the-published-instructions-and-records-a-private-production-session.json
+  s_adee977eab8a65::t_e1fe87013b0917 6,26
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/suspends-a-tool-call-and-resumes-it-only-for-the-session-owner.json
+  s_adee977eab8a65::t_4aac98aa1e6260 6,16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "08f1bdea3f5cce41c1f9b8c4550fd10de9b6b2fc",
+  "prompts": {},
+  "sessions": {
+    "s_adee977eab8a65": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d5e8-1bc3-73e2-8649-1f304c4b7793",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
