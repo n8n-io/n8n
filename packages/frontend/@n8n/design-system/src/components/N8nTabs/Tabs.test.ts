@@ -204,4 +204,71 @@ describe('N8nTabs', () => {
 
 		expect(emitted('update:modelValue')).toBeUndefined();
 	});
+
+	describe('closable tabs', () => {
+		const closableOptions = [
+			{ value: 'builtin', label: 'Built in' },
+			{ value: 'mine', label: 'Mine', closable: true, closeLabel: 'Remove Mine' },
+		];
+
+		it('shows a close button only on a closable tab', () => {
+			const { getAllByTestId, getByRole } = render(N8nTabs, {
+				props: { modelValue: 'builtin', options: closableOptions },
+			});
+
+			expect(getAllByTestId('tab-close-button')).toHaveLength(1);
+			expect(getByRole('button', { name: 'Remove Mine' })).toBeInTheDocument();
+		});
+
+		it('emits close with the value and does not select the tab', async () => {
+			const { getByRole, emitted } = render(N8nTabs, {
+				props: { modelValue: 'builtin', options: closableOptions },
+			});
+
+			await userEvent.click(getByRole('button', { name: 'Remove Mine' }));
+
+			expect(emitted('close')).toEqual([['mine']]);
+			expect(emitted('update:modelValue')).toBeUndefined();
+		});
+
+		it('keeps the close button outside the tab, so the tab holds no other control', () => {
+			const { getByRole, getByText } = render(N8nTabs, {
+				props: { modelValue: 'builtin', options: closableOptions },
+			});
+
+			const tab = getByText('Mine').closest('[role="tab"]');
+			expect(tab).not.toContainElement(getByRole('button', { name: 'Remove Mine' }));
+		});
+
+		it('emits close for the Delete key on a closable tab only', async () => {
+			const { getByText, emitted } = render(N8nTabs, {
+				props: { modelValue: 'builtin', options: closableOptions },
+			});
+
+			await fireEvent.keyDown(getByText('Built in').closest('[role="tab"]')!, { key: 'Delete' });
+			expect(emitted('close')).toBeUndefined();
+
+			await fireEvent.keyDown(getByText('Mine').closest('[role="tab"]')!, { key: 'Delete' });
+			expect(emitted('close')).toEqual([['mine']]);
+		});
+
+		it('uses a default name for the close button', () => {
+			const { getByRole } = render(N8nTabs, {
+				props: { modelValue: 'a', options: [{ value: 'a', label: 'A', closable: true }] },
+			});
+
+			expect(getByRole('button', { name: 'Close tab' })).toBeInTheDocument();
+		});
+
+		it('shows no close button on a link tab', () => {
+			const { queryByTestId } = render(N8nTabs, {
+				props: {
+					modelValue: 'docs',
+					options: [{ value: 'docs', label: 'Docs', href: 'https://example.com', closable: true }],
+				},
+			});
+
+			expect(queryByTestId('tab-close-button')).toBeNull();
+		});
+	});
 });

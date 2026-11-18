@@ -21,6 +21,7 @@ import { ResourceMoveModal } from './components/ResourceMoveModal';
 import { SecretsProviderConnectionModal } from './components/SecretsProviderConnectionModal';
 import { WorkflowMenu } from './components/WorkflowMenu';
 import { WorkflowReviewControls } from './components/WorkflowReviewControls';
+import { UiExtensionsPages, UiExtensionsSidePanel } from './components/ui-extensions-side-panel';
 import { CredentialsPage } from './CredentialsPage';
 import { DataTableDetails } from './DataTableDetails';
 import { DataTableView } from './DataTableView';
@@ -131,6 +132,8 @@ export class n8nPage {
 	readonly commandBar: CommandBar;
 	readonly workflowMenu: WorkflowMenu;
 	readonly workflowReviewControls: WorkflowReviewControls;
+	readonly sidePanel: UiExtensionsSidePanel;
+	readonly uiExtensionPages: UiExtensionsPages;
 
 	readonly settingsEnvironment: SettingsEnvironmentPage;
 	readonly secretsProviderSettings: SecretsProviderSettingsPage;
@@ -226,6 +229,8 @@ export class n8nPage {
 		this.commandBar = new CommandBar(page);
 		this.workflowMenu = new WorkflowMenu(page);
 		this.workflowReviewControls = new WorkflowReviewControls(page);
+		this.sidePanel = new UiExtensionsSidePanel(page);
+		this.uiExtensionPages = new UiExtensionsPages(page);
 
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);

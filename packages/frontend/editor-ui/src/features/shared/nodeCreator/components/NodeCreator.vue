@@ -18,6 +18,7 @@ import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useAiGateway } from '@/app/composables/useAiGateway';
+import { useAppSidePanelLayout } from '@/app/composables/useAppSidePanelLayout';
 import type { NodeTypeSelectedPayload } from '@/Interface';
 import { onClickOutside, useElementBounding } from '@vueuse/core';
 
@@ -58,6 +59,7 @@ const state = reactive({
 	mousedownInsideEvent: null as MouseEvent | null,
 });
 
+const { width: sidePanelWidth } = useAppSidePanelLayout();
 const viewStacksLength = computed(() => useViewStacks().viewStacks.length);
 
 // An embedded editor (e.g. the Instance AI split view) renders its own header
@@ -90,7 +92,7 @@ function getTopOffset() {
 }
 
 function getRightOffset() {
-	const chatOffset = chatPanelStore.isOpen ? chatPanelStore.width : 0;
+	const chatOffset = (chatPanelStore.isOpen ? chatPanelStore.width : 0) + sidePanelWidth.value;
 
 	return isBesideFocusPanel.value ? chatOffset + focusPanelStore.focusPanelWidth : chatOffset;
 }

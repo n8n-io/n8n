@@ -61,6 +61,7 @@ export default {
 	'tags.showMore': (count: number) => `+${count} more`,
 	'tabs.scrollLeft': 'Show previous tabs',
 	'tabs.scrollRight': 'Show next tabs',
+	'tabs.close': 'Close tab',
 	'pagination.previousPage': 'Previous page',
 	'pagination.nextPage': 'Next page',
 	'pagination.total': 'Total {total}',

@@ -76,6 +76,11 @@ vi.mock('@/features/shared/banners/banners.store', () => ({
 	useBannersStore: vi.fn(() => ({ bannersHeight: 0 })),
 }));
 
+const mockSidePanelWidth = vi.hoisted(() => ({ value: 0 }));
+vi.mock('@/app/composables/useAppSidePanelLayout', () => ({
+	useAppSidePanelLayout: vi.fn(() => ({ isVisible: { value: true }, width: mockSidePanelWidth })),
+}));
+
 vi.mock('@/features/ai/assistant/chatPanel.store', () => ({
 	useChatPanelStore: vi.fn(() => ({ isOpen: false, width: 0 })),
 }));
@@ -108,6 +113,7 @@ describe('NodeCreator', () => {
 		vi.clearAllMocks();
 		mockNodeCreatorState.openingContext = null;
 		mockNodeCreatorState.isReplacingFromSetupPanel = false;
+		mockSidePanelWidth.value = 0;
 		mockFocusPanel.focusPanelActive = false;
 		mockFocusPanel.focusPanelWidth = 0;
 	});
@@ -195,6 +201,16 @@ describe('NodeCreator', () => {
 		const { getByTestId } = renderComponent({ props: { active: true } });
 
 		expect(getByTestId('node-creator').style.getPropertyValue('--node-creator--right')).toBe('0px');
+	});
+
+	it('moves left by the width of the side panel', () => {
+		mockSidePanelWidth.value = 400;
+
+		const { getByTestId } = renderComponent({ props: { active: true } });
+
+		expect(getByTestId('node-creator').style.getPropertyValue('--node-creator--right')).toBe(
+			'400px',
+		);
 	});
 
 	it('keeps the right edge when it adds a node while the focus panel is open', () => {

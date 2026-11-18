@@ -39,6 +39,7 @@ export const MCP_INSTANCE_SCOPES = [
 	'aiPreference:write',
 	'breakingChanges:list',
 	'breakingChanges:migrate',
+	'uiExtension:write',
 ] as const;
 
 export type McpScope = (typeof MCP_INSTANCE_SCOPES)[number];

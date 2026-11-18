@@ -74,6 +74,7 @@ describe('eligibleModules', () => {
 		'promotions',
 		'type-availability-policies',
 		'execution-limits',
+		'ui-extensions',
 	])('should include %s by default', (moduleName) => {
 		expect(Container.get(ModuleRegistry).eligibleModules).toContain(moduleName);
 	});
@@ -87,6 +88,7 @@ describe('eligibleModules', () => {
 		'promotions',
 		'type-availability-policies',
 		'execution-limits',
+		'ui-extensions',
 	])('should allow opting out of the default %s module via env var', (moduleName) => {
 		process.env.N8N_DISABLED_MODULES = moduleName;
 		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain(moduleName);
@@ -181,6 +183,7 @@ describe('eligibleModules', () => {
 			'scim',
 			'type-availability-policies',
 			'execution-limits',
+			'ui-extensions',
 		]);
 	});
 
@@ -231,6 +234,7 @@ describe('eligibleModules', () => {
 			'scim',
 			'type-availability-policies',
 			'execution-limits',
+			'ui-extensions',
 			'engine-v2',
 		]);
 	});

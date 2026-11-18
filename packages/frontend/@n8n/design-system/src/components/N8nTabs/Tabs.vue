@@ -67,7 +67,17 @@ watch(() => [props.options, props.justified, props.size, props.variant], updateS
 const emit = defineEmits<{
 	tooltipClick: [tab: Value, e: MouseEvent];
 	'update:modelValue': [tab: Value];
+	close: [tab: Value];
 }>();
+
+/** A link tab navigates, so only a plain tab can show a close button. */
+function isClosable(option: TabOptions<Value>) {
+	return option.closable === true && !option.href && !option.to;
+}
+
+function handleClose(option: TabOptions<Value>) {
+	if (isClosable(option)) emit('close', option.value);
+}
 
 function handleTooltipClick(tab: Value, event: MouseEvent) {
 	emit('tooltipClick', tab, event);
@@ -130,7 +140,10 @@ function scroll(direction: 'left' | 'right') {
 				:id="option.value.toString()"
 				:key="option.value"
 				:data-test-id="`tab-${option.value.toString()}`"
-				:class="{ [$style.alignRight]: option.align === 'right' }"
+				:class="{
+					[$style.alignRight]: option.align === 'right',
+					[$style.closable]: isClosable(option),
+				}"
 			>
 				<N8nTooltip :disabled="!option.tooltip" placement="bottom" :show-after="100">
 					<template #content>
@@ -186,6 +199,7 @@ function scroll(direction: 'left' | 'right') {
 						@click="() => handleTabClick(option)"
 						@keydown.enter.prevent="() => handleTabClick(option)"
 						@keydown.space.prevent="() => handleTabClick(option)"
+						@keydown.delete="() => handleClose(option)"
 					>
 						<N8nIcon
 							v-if="option.icon && option.iconPosition !== 'right'"
@@ -207,6 +221,18 @@ function scroll(direction: 'left' | 'right') {
 						<N8nBadge v-if="option.tag" :class="$style.badge">{{ option.tag }}</N8nBadge>
 					</div>
 				</N8nTooltip>
+				<!-- A sibling of the tab, not a child: a button inside a focusable tab is a nested control. -->
+				<button
+					v-if="isClosable(option)"
+					type="button"
+					:class="[$style.closeButton, { [$style.activeCloseButton]: modelValue === option.value }]"
+					:aria-label="option.closeLabel ?? t('tabs.close')"
+					:title="option.closeLabel ?? t('tabs.close')"
+					data-test-id="tab-close-button"
+					@click.stop="handleClose(option)"
+				>
+					<N8nIcon icon="x" size="xsmall" />
+				</button>
 			</div>
 		</div>
 		<button
@@ -319,6 +345,51 @@ function scroll(direction: 'left' | 'right') {
 
 .activeTab {
 	color: var(--color--primary);
+	padding-bottom: var(--spacing--2xs);
+	border-bottom: var(--color--primary) var(--tabs--tab--border-width--active) solid;
+
+	.modern & {
+		padding-bottom: var(--spacing--xs);
+	}
+}
+
+/** The close button sits next to its tab, so both share the row and the active underline. */
+.closable {
+	display: flex;
+	align-items: stretch;
+
+	.tab {
+		padding-right: var(--spacing--4xs);
+	}
+}
+
+.closeButton {
+	--tabs--tab--border-width--active: 2px;
+	display: flex;
+	align-items: center;
+	padding: 0 var(--spacing--2xs) calc(var(--spacing--2xs) + var(--tabs--tab--border-width--active))
+		0;
+	border: 0;
+	background: transparent;
+	color: var(--text-color--subtler);
+	cursor: pointer;
+
+	&:hover {
+		color: var(--text-color);
+	}
+
+	&:focus-visible {
+		outline: var(--border-width) solid var(--focus--border-color);
+		outline-offset: calc(-1 * var(--border-width));
+		border-radius: var(--radius--3xs);
+	}
+
+	.modern & {
+		padding-bottom: calc(var(--spacing--xs) + var(--tabs--tab--border-width--active));
+	}
+}
+
+.activeCloseButton {
 	padding-bottom: var(--spacing--2xs);
 	border-bottom: var(--color--primary) var(--tabs--tab--border-width--active) solid;
 

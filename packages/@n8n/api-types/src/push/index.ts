@@ -7,6 +7,7 @@ import type { ExecutionPushMessage } from './execution';
 import type { HotReloadPushMessage } from './hot-reload';
 import type { InstanceAiPushMessage } from './instance-ai';
 import type { WebhookPushMessage } from './webhook';
+import type { UiExtensionsPushMessage } from './ui-extensions';
 import type { WorkerPushMessage } from './worker';
 import type { WorkflowPushMessage } from './workflow';
 import type { WorkflowReviewPushMessage } from './workflow-review';
@@ -25,7 +26,8 @@ export type PushMessage =
 	| BuilderCreditsPushMessage
 	| ChatHubPushMessage
 	| InstanceAiPushMessage
-	| WorkflowReviewPushMessage;
+	| WorkflowReviewPushMessage
+	| UiExtensionsPushMessage;
 
 export type PushType = PushMessage['type'];
 

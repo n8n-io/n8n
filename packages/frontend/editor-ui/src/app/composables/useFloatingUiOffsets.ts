@@ -5,6 +5,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useAppSidePanelLayout } from '@/app/composables/useAppSidePanelLayout';
 import type { WorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { computed, type Ref } from 'vue';
 
@@ -24,6 +25,7 @@ export function useFloatingUiOffsets(workflowDocumentId: Readonly<Ref<WorkflowDo
 	const bannersStore = useBannersStore();
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
+	const { width: sidePanelWidth } = useAppSidePanelLayout();
 
 	const ndvStore = computed(() =>
 		workflowDocumentId.value ? useNDVStore(workflowDocumentId.value) : null,
@@ -40,7 +42,9 @@ export function useFloatingUiOffsets(workflowDocumentId: Readonly<Ref<WorkflowDo
 
 			return `${logsPanelOffset + assistantOffset}px`;
 		}),
-		toastRightOffset: computed(() => (chatPanelStore.isOpen ? `${chatPanelStore.width}px` : '0px')),
+		toastRightOffset: computed(
+			() => `${(chatPanelStore.isOpen ? chatPanelStore.width : 0) + sidePanelWidth.value}px`,
+		),
 		toastTopOffset: computed(() =>
 			settingsStore.isCanvasOnly ? '0px' : `${bannersStore.bannersHeight + uiStore.headerHeight}px`,
 		),

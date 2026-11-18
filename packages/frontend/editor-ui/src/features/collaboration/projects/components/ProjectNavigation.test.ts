@@ -3,6 +3,7 @@ import { createRouter, createMemoryHistory } from 'vue-router';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import { AGENTS_N8N_CHAT_FLAG } from '@n8n/api-types';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { promotionEventBus } from '@n8n/frontend-module-promotions';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -54,6 +55,16 @@ vi.mock('@n8n/composables/useToast', () => {
 			showError,
 		}),
 	};
+});
+
+// The group itself has its own tests in the ui-extensions module. Here only its place matters.
+vi.mock('@n8n/frontend-module-ui-extensions', async () => {
+	const { defineComponent, h } = await import('vue');
+	const stub = defineComponent({
+		render: () => h('div', { 'data-test-id': 'ui-extensions-pages-nav-stub' }),
+	});
+	// `defineAsyncComponent` takes `default` only from a module it recognises as ES.
+	return { loadPagesNav: async () => ({ __esModule: true, default: stub }) };
 });
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => {
@@ -647,5 +658,39 @@ describe('ProjectsNavigation', () => {
 
 		// The shared menu item should not be rendered
 		expect(getByTestId('project-shared-menu-item')).toBeInTheDocument();
+	});
+
+	describe('pages from the ui-extensions module', () => {
+		function configure(moduleActive: boolean) {
+			projectsStore.teamProjectsLimit = -1;
+			settingsStore.isModuleActive = vi.fn(
+				(name: string) => moduleActive && name === 'ui-extensions',
+			);
+			settingsStore.settings = {
+				...defaultSettings,
+				inbox: { enabled: true, availableTypes: ['self_healing_result'], failedTypes: [] },
+			};
+		}
+
+		it('shows the page group right after the block that ends with Inbox', async () => {
+			configure(true);
+			const { findByTestId, getByTestId } = renderComponent({ props: { collapsed: false } });
+
+			const group = await findByTestId('ui-extensions-pages-nav-stub');
+			const inbox = getByTestId('project-inbox-menu-item');
+			const topBlock = inbox.parentElement!;
+
+			expect(topBlock.nextElementSibling).toBe(group);
+			expect(inbox.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		});
+
+		it('shows no page group while the module is inactive', async () => {
+			configure(false);
+			const { getByTestId, queryByTestId } = renderComponent({ props: { collapsed: false } });
+
+			expect(getByTestId('project-inbox-menu-item')).toBeInTheDocument();
+			await nextTick();
+			expect(queryByTestId('ui-extensions-pages-nav-stub')).toBeNull();
+		});
 	});
 });

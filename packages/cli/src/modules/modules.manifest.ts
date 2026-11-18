@@ -28,4 +28,5 @@ export const packagedModules: PackagedModules = {
 	},
 	'execution-limits': async () => await import('@n8n/backend-module-execution-limits/module'),
 	'execution-ledger': async () => await import('@n8n/backend-module-execution-ledger/module'),
+	'ui-extensions': async () => await import('@n8n/backend-module-ui-extensions/module'),
 };

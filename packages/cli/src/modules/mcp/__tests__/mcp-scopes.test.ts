@@ -27,6 +27,7 @@ import {
 	User,
 	WorkflowRepository,
 } from '@n8n/db';
+import { UiExtensionViewsService } from '@n8n/backend-module-ui-extensions';
 import { registerWorkflowPreviewApp } from '@n8n/mcp-apps/server';
 import { InstanceSettings } from 'n8n-core';
 
@@ -69,6 +70,7 @@ import {
 } from '../tools/get-instance-context.tool';
 import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import { NodeCatalogService } from '@/node-catalog';
+import { Push } from '@/push';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
@@ -228,6 +230,7 @@ describe('McpService scope enforcement', () => {
 		instanceAiActive = false,
 		breakingChangesActive = false,
 		agentsActive = false,
+		uiExtensionsActive = true,
 		postHogClient = mockInstance(PostHogClient),
 	}: {
 		builderEnabled?: boolean;
@@ -235,6 +238,7 @@ describe('McpService scope enforcement', () => {
 		instanceAiActive?: boolean;
 		breakingChangesActive?: boolean;
 		agentsActive?: boolean;
+		uiExtensionsActive?: boolean;
 		postHogClient?: PostHogClient;
 	} = {}) =>
 		new McpService(
@@ -293,7 +297,8 @@ describe('McpService scope enforcement', () => {
 						(name: string) =>
 							(instanceAiActive && name === 'instance-ai') ||
 							(agentsActive && name === 'agents') ||
-							(breakingChangesActive && name === 'breaking-changes'),
+							(breakingChangesActive && name === 'breaking-changes') ||
+							(uiExtensionsActive && name === 'ui-extensions'),
 					),
 				settings: { get: () => undefined } as unknown as ModuleRegistry['settings'],
 			}),
@@ -310,6 +315,8 @@ describe('McpService scope enforcement', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockInstance(SkillsGate, { isEnabled: false });
+		mockInstance(UiExtensionViewsService);
+		mockInstance(Push);
 	});
 
 	it.each([false, true])(
@@ -358,7 +365,12 @@ describe('McpService scope enforcement', () => {
 				'save_user_preference',
 				'update_user_preference',
 				'undo_user_preference',
+				'create_side_panel_view',
+				'create_custom_page',
+				'delete_ui_extension',
 			]);
+			// Read-only instances keep it.
+			expect(registeredTools.has('list_ui_extensions')).toBe(true);
 			for (const name of blockedTools) expect(registeredTools.has(name), name).toBe(true);
 			for (const name of ['execute_workflow', 'test_workflow', 'search_workflows']) {
 				expect(registeredTools.has(name), name).toBe(true);
@@ -739,6 +751,56 @@ describe('McpService scope enforcement', () => {
 			const registered = getRegisteredToolNames(server);
 			expect(registered).not.toContain('get_user_preferences');
 			for (const name of WRITE_TOOLS) expect(registered).toContain(name);
+		});
+	});
+
+	describe.each([
+		'create_side_panel_view',
+		'create_custom_page',
+		'list_ui_extensions',
+		'delete_ui_extension',
+	])('%s registration', (TOOL) => {
+		it('registers the tool for an API key', async () => {
+			const server = await buildService().getServer(user, mcpFeatureFlags());
+			expect(getRegisteredToolNames(server).has(TOOL)).toBe(true);
+		});
+
+		it('registers the tool for a grant with the view and page scope and workflow:read', async () => {
+			const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, {
+				grantedScopes: ['uiExtension:write', 'workflow:read'],
+			});
+			expect(getRegisteredToolNames(server).has(TOOL)).toBe(true);
+		});
+
+		// A view can send out what it sees, so a grant that cannot read workflows gets no view or page.
+		it('withholds the tool from a grant without workflow:read', async () => {
+			const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, {
+				grantedScopes: ['uiExtension:write'],
+			});
+			expect(getRegisteredToolNames(server).has(TOOL)).toBe(false);
+		});
+
+		it('withholds the tool from a grant without the view and page scope', async () => {
+			const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, {
+				grantedScopes: ['workflow:read', 'workflow:write'],
+			});
+			expect(getRegisteredToolNames(server).has(TOOL)).toBe(false);
+		});
+
+		it('withholds the tool while the ui-extensions module is inactive', async () => {
+			const server = await buildService({ uiExtensionsActive: false }).getServer(
+				user,
+				mcpFeatureFlags(),
+			);
+			expect(getRegisteredToolNames(server).has(TOOL)).toBe(false);
+		});
+
+		it('registers the tool with the builder disabled', async () => {
+			const server = await buildService({ builderEnabled: false }).getServer(
+				user,
+				mcpFeatureFlags(),
+			);
+			expect(getRegisteredToolNames(server).has(TOOL)).toBe(true);
 		});
 	});
 

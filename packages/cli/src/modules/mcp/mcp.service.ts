@@ -80,7 +80,9 @@ import { FOLDER_FEATURE_TOOLS, getAllowedToolNames } from './mcp-scopes';
 import {
 	areAgentToolsAvailable,
 	canReadMigrationReport,
+	canUseUiExtensionTools,
 	isCommunityNodeInstallAvailable,
+	isUiExtensionsAvailable,
 } from './mcp-tool-availability';
 import type {
 	McpAppsTelemetryVariant,
@@ -917,6 +919,32 @@ export class McpService {
 		registerIfAllowed(
 			createUndoUserPreferenceTool(user, this.aiPreferenceService, this.telemetry, this.logger),
 		);
+
+		// Not builder-gated. The tools belong to the `ui-extensions` module, so they load only
+		// when that module is active. The service emits each change, and a cli relay pushes it.
+		if (
+			isUiExtensionsAvailable(this.moduleRegistry) &&
+			canUseUiExtensionTools(auth?.grantedScopes)
+		) {
+			const [
+				{ UiExtensionViewsService },
+				{ createCreateSidePanelViewTool },
+				{ createCreateCustomPageTool },
+				{ createListUiExtensionsTool },
+				{ createDeleteUiExtensionTool },
+			] = await Promise.all([
+				import('@n8n/backend-module-ui-extensions'),
+				import('./tools/create-side-panel-view.tool.js'),
+				import('./tools/create-custom-page.tool.js'),
+				import('./tools/list-ui-extensions.tool.js'),
+				import('./tools/delete-ui-extension.tool.js'),
+			]);
+			const viewsService = Container.get(UiExtensionViewsService);
+			registerIfAllowed(createCreateSidePanelViewTool(user, viewsService, this.telemetry));
+			registerIfAllowed(createCreateCustomPageTool(user, viewsService, this.telemetry));
+			registerIfAllowed(createListUiExtensionsTool(user, viewsService, this.telemetry));
+			registerIfAllowed(createDeleteUiExtensionTool(user, viewsService, this.telemetry));
+		}
 
 		// Not builder-gated: reading the report and running its built-in fixes need no builder.
 		// The tools belong to the `breaking-changes` module, so they load only when it serves a report.
