@@ -73,62 +73,6 @@
 				"hash": "4087a9cf20cb"
 			}
 		],
-		"pages/SidebarPage.ts": [
-			{
-				"rule": "scope-lockdown",
-				"line": 20,
-				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "b15fa9cfe2ac"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 46,
-				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "b15fa9cfe2ac"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 51,
-				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "b15fa9cfe2ac"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 102,
-				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "b15fa9cfe2ac"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 106,
-				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "b15fa9cfe2ac"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 119,
-				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "b15fa9cfe2ac"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 127,
-				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "b15fa9cfe2ac"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 135,
-				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "b15fa9cfe2ac"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 143,
-				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "b15fa9cfe2ac"
-			}
-		],
 		"tests/e2e/chat-hub/chat-hub-attachment.spec.ts": [
 			{
 				"rule": "selector-purity",
