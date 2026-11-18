@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { InboxItem, InboxSelfHealingItem, PromotionReviewType } from '@n8n/api-types';
+import type {
+	InboxItem,
+	InboxSelfHealingAgentItem,
+	InboxSelfHealingItem,
+	PromotionReviewType,
+} from '@n8n/api-types';
 import {
 	N8nAssistantAvatar,
 	N8nBadge,
@@ -28,6 +33,7 @@ function itemTitle(item: InboxItem) {
 		case 'workflow_review':
 			return item.title;
 		case 'self_healing_result':
+		case 'self_healing_agent_result':
 			return item.summary;
 		case 'promotion_review':
 			return item.title ?? item.branchName ?? i18n.baseText('inbox.promotionReview.untitled');
@@ -45,6 +51,14 @@ function outcomeLabel(item: InboxSelfHealingItem) {
 	}
 }
 
+function agentProposalStateLabel(item: InboxSelfHealingAgentItem) {
+	return i18n.baseText(
+		item.reviewState === 'applied' && item.appliedAutomatically
+			? 'inbox.agentProposal.state.appliedAutomatically'
+			: `inbox.agentProposal.state.${item.reviewState}`,
+	);
+}
+
 /** The status dot shows only a color. The tooltip gives the status in words. */
 function statusTooltip(item: InboxItem) {
 	switch (item.type) {
@@ -52,6 +66,8 @@ function statusTooltip(item: InboxItem) {
 			return getWorkflowReviewStatusDisplay(i18n, item.state, item.decision).decisionLabel;
 		case 'self_healing_result':
 			return item.state === 'closed' ? i18n.baseText('inbox.tabs.closed') : outcomeLabel(item);
+		case 'self_healing_agent_result':
+			return agentProposalStateLabel(item);
 		case 'promotion_review':
 			return i18n.baseText(`inbox.promotionReview.state.${item.reviewState}`);
 	}
@@ -73,7 +89,7 @@ function statusTooltip(item: InboxItem) {
 		<div :class="$style.cardContent">
 			<div :class="$style.cardHeader">
 				<N8nAssistantAvatar
-					v-if="item.type === 'self_healing_result'"
+					v-if="item.type === 'self_healing_result' || item.type === 'self_healing_agent_result'"
 					size="mini"
 					:class="$style.assistantAvatar"
 					data-test-id="inbox-assistant-avatar"
@@ -83,7 +99,10 @@ function statusTooltip(item: InboxItem) {
 					tag="h3"
 					:class="[
 						$style.cardTitle,
-						{ [$style.assistantTitle]: item.type === 'self_healing_result' },
+						{
+							[$style.assistantTitle]:
+								item.type === 'self_healing_result' || item.type === 'self_healing_agent_result',
+						},
 					]"
 					>{{ itemTitle(item) }}</N8nText
 				>
@@ -99,6 +118,13 @@ function statusTooltip(item: InboxItem) {
 						role="img"
 						:aria-label="i18n.baseText(`inbox.promotionReview.state.${item.reviewState}`)"
 						data-test-id="inbox-promotion-status"
+					/>
+					<span
+						v-else-if="item.type === 'self_healing_agent_result'"
+						:class="[$style.statusDot, item.state === 'closed' ? $style.closed : $style.fixReady]"
+						role="img"
+						:aria-label="agentProposalStateLabel(item)"
+						data-test-id="inbox-agent-proposal-status"
 					/>
 					<span
 						v-else
@@ -123,6 +149,14 @@ function statusTooltip(item: InboxItem) {
 					:leading-icon="reviewTypeIcon[item.reviewType]"
 					:class="$style.workflowBadge"
 					>{{ i18n.baseText('inbox.promotionReview.badge') }}</N8nBadge
+				>
+				<N8nBadge
+					v-else-if="item.type === 'self_healing_agent_result'"
+					variant="outline"
+					leading-icon="robot"
+					:class="$style.workflowBadge"
+					:title="item.agentName"
+					>{{ item.agentName }}</N8nBadge
 				>
 				<N8nBadge
 					v-else-if="item.workflowName"

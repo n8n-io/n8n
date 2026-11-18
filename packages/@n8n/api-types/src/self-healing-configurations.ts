@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
 import type { ProjectIcon } from './schemas/project.schema';
+import {
+	selfHealingAgentConfigurationShape,
+	type SelfHealingConfigurationAgentOption,
+} from './self-healing-agents';
 import { Z } from './zod-class';
 
 export class UpdateSelfHealingConfigurationDto extends Z.class({
@@ -9,6 +13,7 @@ export class UpdateSelfHealingConfigurationDto extends Z.class({
 	reviewerIds: z.array(z.string().uuid()).default([]),
 	includeAllProjectMembers: z.boolean().default(false),
 	includeSubWorkflows: z.boolean().default(false),
+	...selfHealingAgentConfigurationShape,
 }) {}
 
 export class SaveSelfHealingConfigurationDto extends UpdateSelfHealingConfigurationDto.extend({
@@ -29,6 +34,8 @@ export type SelfHealingConfigurationDto = SaveSelfHealingConfigurationDto & {
 export type SelfHealingConfigurationOptions = {
 	project: { name: string; icon: ProjectIcon | null };
 	workflows: Array<{ id: string; name: string }>;
+	/** Empty when the Agents feature is off. */
+	agents: SelfHealingConfigurationAgentOption[];
 	reviewers: Array<{
 		id: string;
 		email: string;

@@ -53,6 +53,11 @@ erDiagram
   varchar_36_ workflowId PK
 }
 "self_healing_configuration" {
+  TEXT agentGoals
+  VARCHAR_16_ agentPublicationMode
+  INTEGER agentScheduleIntervalHours
+  VARCHAR_16_ agentScope
+  INTEGER agentTraceThreshold
   datetime_3_ createdAt
   boolean enabled
   varchar enabledById FK

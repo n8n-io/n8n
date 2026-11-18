@@ -37,6 +37,11 @@ erDiagram
   uuid userId FK
 }
 "public.self_healing_configuration" {
+  json agentGoals
+  varchar_16_ agentPublicationMode
+  integer agentScheduleIntervalHours
+  varchar_16_ agentScope
+  integer agentTraceThreshold
   timestamp_3__with_time_zone createdAt
   boolean enabled
   uuid enabledById FK

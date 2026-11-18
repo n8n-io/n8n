@@ -52,7 +52,7 @@ function page(
 function enableInbox() {
 	useSettingsStore().settings.inbox = {
 		enabled: true,
-		availableTypes: ['workflow_review', 'self_healing_result'],
+		availableTypes: ['workflow_review', 'self_healing_result', 'self_healing_agent_result'],
 		failedTypes: [],
 	};
 }
@@ -184,6 +184,17 @@ describe('shared Inbox state', () => {
 		expect(store.lists.closed.items).toEqual([]);
 		expect(store.disabledSources).toEqual(['self_healing_result']);
 	});
+});
+
+it('disables agent proposals when the settings do not list their source', () => {
+	useSettingsStore().settings.inbox = {
+		enabled: true,
+		availableTypes: ['workflow_review', 'self_healing_result'],
+		failedTypes: [],
+	};
+	const store = useInboxStore();
+	store.reset();
+	expect(store.disabledSources).toEqual(['self_healing_agent_result', 'promotion_review']);
 });
 
 it('allows a source to recover on a fresh page without a settings reload', async () => {

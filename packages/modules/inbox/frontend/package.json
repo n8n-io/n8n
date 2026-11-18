@@ -28,6 +28,7 @@
     "@n8n/rest-api-client": "workspace:*",
     "@n8n/stores": "workspace:*",
     "@n8n/telemetry": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "n8n-workflow": "workspace:*",
     "pinia": "catalog:frontend",
     "reka-ui": "^2.5.0",
@@ -62,8 +63,7 @@
     "vue-tsc": "catalog:frontend",
     "@pinia/testing": "^0.1.6",
     "@testing-library/user-event": "catalog:frontend",
-    "@types/lodash": "catalog:",
-    "@n8n/utils": "workspace:*"
+    "@types/lodash": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

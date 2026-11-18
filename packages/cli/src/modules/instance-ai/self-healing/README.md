@@ -184,13 +184,54 @@ Personal projects show the configurations on their own Self-healing tab, not in 
 The same rollout flag controls settings, investigations, and reviews.
 Each project can have one all-workflows configuration and multiple selected-workflow configurations.
 Explicit workflow selections cannot overlap, including when configurations are paused.
+A configuration can also cover agents. See [Agent coverage](#agent-coverage).
 Moving a workflow to another project removes its explicit selections. The destination project's
 configuration applies to later failures. Moving between folders in the same project keeps selections.
 New configurations created in Project Settings start enabled.
 The form selects the creator as the initial reviewer when the creator can be selected.
 Enabling a configuration records the user whose access authorizes subsequent investigations.
 
-### Sub-workflows
+### Agent coverage
+
+A configuration covers workflows, agents, or both. The reviewer list is the same for both kinds.
+These fields set the agent coverage:
+
+| Field                        | Values                              | Meaning                                                    |
+| ---------------------------- | ----------------------------------- | ---------------------------------------------------------- |
+| `agentScope`                 | `none`, `all`, `selected`           | The agents that the configuration covers.                  |
+| `agentIds`                   | Agent IDs                           | The selection for `selected`. Other scopes store no agent. |
+| `agentGoals`                 | List of `quality`, `cost`, `latency` | What an investigation tries to improve. The server always stores `quality` first. `cost` and `latency` are optional additions. |
+| `agentScheduleIntervalHours` | 1 to 720, or `null`                 | Start an investigation after this number of hours.         |
+| `agentTraceThreshold`        | 1 to 10000, or `null`               | Start an investigation after this number of production sessions have new activity. |
+| `agentPublicationMode`       | `approval`, `auto`                  | Wait for a reviewer, or apply each proposal.               |
+
+A `null` trigger is off. A configuration that covers agents must have one trigger or both. The API
+rejects a save without a trigger with a 400 response. With the two triggers on, the first one that
+is due starts the investigation. The form shows the triggers as one choice: on a schedule, after new
+sessions, or whichever comes first.
+`POST /projects/:projectId/self-healing-configurations/:configurationId/agent-investigations`
+starts an investigation of one covered agent on demand. It uses the same access check as the other
+configuration routes. The configuration form does not call this endpoint.
+
+Each project can have one all-agents configuration and multiple selected-agent configurations.
+Explicit agent selections cannot overlap, including when configurations are paused.
+An explicit selection takes precedence over all-agent coverage.
+The selection accepts agents of the project that are not archived.
+A configuration that covers agents can have `scope: selected` with no workflows. It then covers agents only.
+The telemetry of such a configuration reports `scope: selected` with no selected workflows.
+
+Agent coverage needs the Agents feature. The options response has an empty `agents` list when Agents are off.
+Then a new configuration cannot cover agents, and an edit must keep the stored `agentScope` and `agentIds`.
+An edit can change all other fields, so the owner can continue to manage workflows and reviewers.
+
+Enabling a configuration that covers agents needs `agent:read`, `agent:update`, and `agent:execute` in the project.
+`agentPublicationMode: auto` also needs `agent:publish`. Workflow access is necessary only when the
+configuration covers workflows.
+An edit of an enabled configuration that adds agent coverage, or that changes the mode to `auto`,
+needs the same access. The edit then records the editing user as the enabling user.
+Agent investigations and automatic publication use the access of the enabling user. When that user
+loses the access, or when no reviewer can edit agents, the next check pauses the configuration.
+
 
 `includeSubWorkflows` lets investigations repair sub-workflows of covered workflows. It does not
 start investigations for sub-workflow failures. It defaults to `false`.
@@ -229,15 +270,20 @@ stops being a reviewer, also when selected individually.
 The individual picker offers enabled members who can edit a project workflow. The access can come
 from a project role, a global role, or a workflow share. Save accepts the same members, so a
 selected reviewer stays valid after a role change while a share still gives edit access.
+The picker also offers members whose project role or global role can edit agents (`agent:read` and `agent:update`).
 Existing permissions still apply. A reviewer reviews a result only with edit access to its
 workflow, from a project role, a global role, or a workflow share.
 Admins can manage and enable a team configuration without being selected as a reviewer.
 The configuration must have at least one enabled reviewer with edit access to a covered workflow.
+A configuration that covers agents must also have one enabled reviewer who can edit agents.
 Save and enable reject the configuration otherwise. When an access check finds no
 such reviewer, the configuration pauses.
+`GET /self-healing/status` also reports a reviewer of a configuration that covers agents, when the
+reviewer can edit agents in its project.
 
 Pause stops new investigations and prevents results from being saved while paused.
-After an explicit pause commits, the service requests cancellation of its unfinished investigations.
+After an explicit pause commits, the service requests cancellation of its unfinished investigations,
+of workflows and of agents.
 The Assistant runtime routes cancellation to local runs and runs on other main processes.
 Re-enabling permits future investigations. It does not resume canceled agents.
 Saved results remain available to assigned reviewers while the configuration is paused.
@@ -454,3 +500,166 @@ It also returns the ID of the user's personal project, where the Inbox offers th
 Open and Closed derive from `reviewState`.
 Could not fix results are Closed. Inbox reads do not change either state.
 The review UI will provide review screens and chat and editor navigation.
+
+## Agent improvements
+
+A configuration that covers agents starts investigations of published agents. An investigation reads
+the published agent, its eval suite and its production sessions. It can propose edits to the agent,
+changes to the eval suite, or the two together. The code is in `agents/`. It does not use the workflow
+tables.
+
+```mermaid
+flowchart LR
+  T[Sweep task or on-demand start] --> S[start: admission and claim]
+  S --> R[Assistant run]
+  R -->|no_change or failed| F[Investigation finished]
+  R -->|tested proposal| C[complete: save the proposal]
+  C -->|approval| O[Inbox: Open]
+  C -->|auto| A[applyAutomatically]
+  O -->|Apply| P[Closed: applied]
+  O -->|Discard| D[Closed: dismissed]
+  A --> P
+  A -->|a step fails| O
+```
+
+### Start an investigation
+
+`SelfHealingAgentInvestigationService.start()` has two callers: the on-demand route (trigger `manual`)
+and `SelfHealingAgentSweepTask`. It returns a `StartSelfHealingAgentInvestigationResponse` and does
+not wait for the run. The checks run in this order:
+
+1. The rollout flag is on. If Agents are off, the answer is `testing_unavailable`.
+2. `findForAgent` returns this configuration and it is enabled. If not, the answer is `not_covered`.
+3. The enabling user has the agent access. If not, the configuration pauses and the answer is `no_access`.
+4. The instance can test a proposal: the `agent-evals` and `data-table` modules are active and the
+   instance does not use queue mode. If not, the answer is `testing_unavailable`.
+5. The agent has no unfinished investigation (`already_running`) and no open proposal (`open_proposal`).
+   The investigation check comes first, because a completion changes an unfinished investigation
+   into an open proposal in one commit.
+6. `AgentProposalService.readBase()` returns the published version, and the draft has no changes.
+   If not, the answer is `not_published` or `unpublished_changes`.
+7. One transaction locks the configuration, repeats checks 3 and 5, and inserts the investigation.
+   The partial unique index on `agentId` for unfinished rows is the claim. A unique violation
+   gives `already_running`.
+8. `InstanceAiService.startAgentImprovementRun()` starts the run. If the Assistant refuses the run,
+   the investigation finishes as `failed` with `not_started` and the answer is `busy`.
+
+Check 5 closes an open proposal as `outdated` when no part of it is applied and its base version is
+not the published version. No person is told about an open proposal, so without this step such a
+proposal blocks the agent.
+
+The trace window is `(traceWindowStart, traceWindowEnd]`. The end is the admission time. The start is
+the newest of these times: the end of the last window that an investigation of the agent used, the
+publication of the current version, and 30 days before the admission. An investigation with the
+outcome `proposal` or `no_change` uses its window. A `failed` investigation does not, so the next
+investigation reads the same sessions again. Later activity stays for the next investigation.
+
+A production trace is one production session: one conversation that has a minimum of one settled
+top-level turn from a production source in the window. Eval runs and test chats are not production
+sessions. A session with new turns in two windows counts in the two windows. The investigator reads
+the full conversation of a session, also the turns from before the window, so that it can see a user
+correction that follows a failure. The fields `agentTraceThreshold`, `traceWindowStart`,
+`traceWindowEnd` and `traceCount` count sessions. The count has these accepted inexact cases:
+
+- A turn that is still running at the end of the window does not make its session count.
+- For an agent that was published before publication history existed, the publication time is the
+  save time of the version.
+
+### The sweep
+
+`SelfHealingAgentSweepTask` runs every 5 minutes on one main. It is registered only when the rollout
+flag is on. It first calls `reconcile()`. It stops there when Agents are off or the instance cannot
+test a proposal. For each enabled configuration that has a trigger, it resolves the enabling user one
+time, and then checks each covered agent. For `agentScope: all`, the covered agents are the published
+agents of the project that no other configuration selects.
+
+An agent is skipped when it has unpublished changes, an unfinished investigation, an open proposal
+that can be applied, or an investigation that failed in the last hour. The triggers are:
+
+| Trigger    | Due when                                                                                    |
+| ---------- | ------------------------------------------------------------------------------------------- |
+| `schedule` | `agentScheduleIntervalHours` have passed since the newest of: the last used trace window, the last change of the configuration, and the publication of the current version. |
+| `traces`   | The trace window has `agentTraceThreshold` production sessions or more.                     |
+| `both`     | The two triggers are due in the same sweep. One investigation starts.                       |
+
+The schedule does not start an investigation that has nothing new to read. When the last investigation
+that used its window read the current published version, and no production session has new activity
+since the end of that window, the schedule is not due. The first investigation of a version starts
+on schedule, also without sessions. This rule does not change the `traces` trigger.
+
+One sweep starts 5 investigations at most. An error for one agent is logged and the sweep continues.
+The task does not retry a failed sweep, because the next sweep does the same work.
+
+### Finish an investigation
+
+Each finish writes `outcome`, `failureReason`, `usage` and `finishedAt` with a compare-and-set on
+`finishedAt IS NULL`.
+
+| Outcome     | When                                                                              |
+| ----------- | --------------------------------------------------------------------------------- |
+| `no_change` | The investigator found nothing worth changing. There is no Inbox item.            |
+| `proposal`  | `SelfHealingAgentResultService.complete()` saved a proposal.                      |
+| `failed`    | All other cases. `failureReason` has a code, never an error message.              |
+
+The failure codes are `not_started`, the run status (`cancelled`, `errored`, `suspended`), the finish
+reason of the model, `invalid_output`, `untested_proposal`, `agent_changed`, `configuration_paused`,
+`save_failed` and `crash_interrupted`.
+
+The proposal is the input of the last `test_proposal` call that succeeded. A `proposal` answer without
+such a call fails as `untested_proposal`. `complete()` first checks that the agent is the same as at
+admission when the proposal has agent edits (`agent_changed` if not). It removes secrets from the
+summary and the report. Then one transaction locks the configuration, checks the enabling user
+again (`configuration_paused` if the configuration was paused during the run), inserts the
+`self_healing_agent_result` row as `open`, and finishes the investigation with the result ID.
+
+The report is 3 or 4 short plain paragraphs for a reader who is not technical. The investigator
+calls `check_report` before it answers. The input schema of that tool accepts 900 characters at
+most and no headings or lists, and a rejected input goes back to the model. The output schema keeps
+its 50,000 character limit, because an answer that fails the output schema ends the run as
+`invalid_output` and the tested proposal is lost.
+
+`reconcile()` closes the claim of a run that a crash or a restart interrupted (`crash_interrupted`).
+It runs at startup, also when the rollout flag is off, and in each sweep. It does not release apply claims.
+
+### Review and apply a proposal
+
+| Route                                                                    | Scope          | Action                 |
+| ------------------------------------------------------------------------ | -------------- | ---------------------- |
+| `GET /projects/:projectId/self-healing-agent-results/:resultId`          | `agent:read`   | Read the proposal.     |
+| `POST /projects/:projectId/self-healing-agent-results/:resultId/apply`   | `agent:update` | Apply the proposal.    |
+| `POST /projects/:projectId/self-healing-agent-results/:resultId/dismiss` | `agent:update` | Discard the proposal.  |
+
+Each route returns a `SelfHealingAgentResultDetail`. The user must be a reviewer of the configuration
+and must have `agent:read` and `agent:update` in the project. Other users get `404`. Apply also needs
+`agent:publish` when the proposal has agent edits.
+
+Apply takes a claim first: one conditional update sets `applyStartedAt` on an open proposal that has
+no claim, or a claim that is older than 10 minutes. A second apply and a dismiss get `409` while the
+claim is live. Each exit of the apply releases the claim. The steps are:
+
+1. If the proposal has agent edits and no part of them is saved, `AgentProposalService.checkApplicable()`
+   must return `ok`. Each other value closes the proposal as `outdated` and applies nothing.
+2. `AgentEvalProposalService.applyCases()` adds or updates the eval cases, unless
+   `applyProgress.evalsApplied` is set.
+3. `AgentProposalService.apply()` saves the edits and publishes the agent. An `outdated` answer closes
+   the proposal as `outdated`.
+
+`applyProgress` is stored after each step. A step that fails keeps the proposal `open`, stores the
+reason in `applyError`, and returns `200`. A later Apply does the remaining steps. A proposal that has
+only followed-skill edits publishes without a saved agent version, so `savedVersionId` stays `null`.
+A dismiss does not revert the parts that an earlier apply saved.
+
+`closedAt` is set for each closure. `closedBy` is the reviewer for `applied` and `dismissed`. It is
+`null` for `outdated` and for an automatic apply.
+
+With `agentPublicationMode: auto`, the investigation calls `applyAutomatically()` after `complete()`
+commits. It uses the access of the enabling user and not the reviewer rule. It needs `agent:read`,
+`agent:update` and `agent:publish`. A success sets `appliedAutomatically`. If the access is missing or
+a step fails, the proposal stays `open` for the reviewers.
+
+### Inbox
+
+The Inbox source `self_healing_agent_result` is enabled when the rollout flag is on and Agents are on.
+`listForInbox()` and `countForInbox()` use one query: the user is a reviewer of the configuration and
+has a global role, or a role in the project, with `agent:read` and `agent:update`. A proposal is Open
+while `reviewState` is `open`. All other states are Closed. No notification is sent for a new proposal.

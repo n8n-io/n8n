@@ -38,6 +38,8 @@ vi.mock('@n8n/composables/useDocumentTitle', () => ({
 const detailMounted = vi.fn();
 let reportChange: (change: InboxItemChange) => void;
 let reportResultChange: (change: InboxItemChange) => void;
+let reportProposalChange: (change: InboxItemChange) => void;
+let isSelectedProposal: (id: string) => boolean;
 const router = createRouter({
 	history: createMemoryHistory(),
 	routes: [
@@ -60,6 +62,7 @@ const renderOptions = {
      <button data-test-id="select-review" @click="$emit('select', { type: 'workflow_review', id: 'req-1' })" />
      <button data-test-id="select-other-review" @click="$emit('select', { type: 'workflow_review', id: 'req-2' })" />
      <button data-test-id="select-result" @click="$emit('select', { type: 'self_healing_result', id: 'req-1', projectId: 'p1', workflowId: 'w1' })" />
+     <button data-test-id="select-proposal" @click="$emit('select', { type: 'self_healing_agent_result', id: 'req-1', projectId: 'p1' })" />
      <button data-test-id="clear-review" @click="$emit('clear')" />
      <button data-test-id="select-closed-tab" @click="$emit('update:active-tab', 'closed')" />
     </div>`,
@@ -101,6 +104,29 @@ const renderOptions = {
 				template: `<div data-test-id="result-detail" :data-id="selection.id" :data-tab="tab">
     <button data-test-id="select-result-changes-tab" @click="$emit('update:tab', 'changes')" />
     <button data-test-id="select-result-activity-tab" @click="$emit('update:tab', 'activity')" />
+    </div>`,
+			}),
+			AgentProposalDetail: defineComponent({
+				props: {
+					selection: { type: Object as PropType<InboxSelection>, required: true },
+					tab: String,
+					onItemChange: {
+						type: Function as PropType<(change: InboxItemChange) => void>,
+						required: true,
+					},
+					isSelected: {
+						type: Function as PropType<(id: string) => boolean>,
+						required: true,
+					},
+				},
+				emits: ['update:tab'],
+				setup(props) {
+					reportProposalChange = props.onItemChange;
+					isSelectedProposal = props.isSelected;
+				},
+				template: `<div data-test-id="proposal-detail" :data-id="selection.id" :data-project="selection.projectId" :data-tab="tab">
+    <button data-test-id="select-proposal-evals-tab" @click="$emit('update:tab', 'evals')" />
+    <button data-test-id="select-proposal-activity-tab" @click="$emit('update:tab', 'activity')" />
     </div>`,
 			}),
 			PromotionReviewDetail: {
@@ -176,6 +202,52 @@ it('selects a result with the same ID without rendering the review entry', async
 	expect(router.currentRoute.value.path).toBe('/inbox/assistant-results/req-1');
 	expect(getByTestId('result-detail')).toHaveAttribute('data-id', 'req-1');
 	expect(queryByTestId('review-detail')).not.toBeInTheDocument();
+});
+
+it('opens an agent proposal with its three tabs and follows its closure to Closed', async () => {
+	await router.replace('/inbox/reviews/req-1?tab=changes');
+	const { getByTestId, queryByTestId } = renderComponent();
+	getByTestId('select-proposal').click();
+	await waitAllPromises();
+	expect(router.currentRoute.value.fullPath).toBe('/inbox/agent-proposals/req-1?projectId=p1');
+	expect(getByTestId('proposal-detail')).toHaveAttribute('data-project', 'p1');
+	expect(getByTestId('proposal-detail')).toHaveAttribute('data-tab', 'activity');
+	expect(queryByTestId('review-detail')).not.toBeInTheDocument();
+	expect(isSelectedProposal('req-1')).toBe(true);
+	expect(isSelectedProposal('req-2')).toBe(false);
+
+	getByTestId('select-proposal-evals-tab').click();
+	await waitAllPromises();
+	expect(router.currentRoute.value.query).toEqual({ projectId: 'p1', tab: 'evals' });
+	expect(getByTestId('proposal-detail')).toHaveAttribute('data-tab', 'evals');
+	getByTestId('select-proposal-activity-tab').click();
+	await waitAllPromises();
+	expect(router.currentRoute.value.query).toEqual({ projectId: 'p1' });
+
+	reportProposalChange({ type: 'self_healing_agent_result', id: 'req-1', state: 'closed' });
+	await waitAllPromises();
+	expect(store.reconcileItemChange).toHaveBeenCalledWith({
+		type: 'self_healing_agent_result',
+		id: 'req-1',
+		state: 'closed',
+	});
+	expect(router.currentRoute.value.query).toEqual({ projectId: 'p1', state: 'closed' });
+	expect(getByTestId('proposal-detail')).toHaveAttribute('data-id', 'req-1');
+});
+
+it('shows Activity in the other details when the URL names the Eval results tab', async () => {
+	await router.replace('/inbox/reviews/req-1?tab=evals');
+	const { getByTestId } = renderComponent();
+	expect(getByTestId('review-detail')).toHaveAttribute('data-tab', 'activity');
+});
+
+it('clears the selection of an agent proposal when its source is disabled', async () => {
+	await router.replace('/inbox/agent-proposals/req-1?projectId=p1&state=closed');
+	store.disabledSources = ['self_healing_agent_result'];
+	const { queryByTestId } = renderComponent();
+	await waitAllPromises();
+	expect(router.currentRoute.value.fullPath).toBe('/inbox?state=closed');
+	expect(queryByTestId('proposal-detail')).not.toBeInTheDocument();
 });
 
 it('clears source context and keeps the current state and tab', async () => {

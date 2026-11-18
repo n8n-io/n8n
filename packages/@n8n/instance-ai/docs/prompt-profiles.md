@@ -9,6 +9,10 @@ The internal `self-healing-v1` configuration uses `createSelfHealingAgent` direc
 It is not registered in the chat profile catalog or accepted as a public prompt pin.
 See the [self-healing contract](../../../cli/src/modules/instance-ai/self-healing/README.md).
 
+The internal `agent-improvement-v1` configuration uses `createAgentImprovementAgent` directly.
+It investigates one published agent and prepares a tested proposal. Like `self-healing-v1`,
+it is not registered in the chat profile catalog and is not accepted as a public prompt pin.
+
 `default@1` is the standard profile. It has no skill variants.
 
 `concise@1` (INS-1195) keeps every `default@1` policy and skill. It changes only

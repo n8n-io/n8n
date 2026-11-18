@@ -11,7 +11,8 @@ import { useRoute, useRouter } from 'vue-router';
 
 import InboxEmptyState from '../components/InboxEmptyState.vue';
 import InboxList from '../components/InboxList.vue';
-import { INBOX_VIEW, type InboxItemChange } from '../inbox.constants';
+import AgentProposalDetail from '../agent-proposal/AgentProposalDetail.vue';
+import { INBOX_VIEW, type InboxDetailTab, type InboxItemChange } from '../inbox.constants';
 import { inboxItemLocation, isInboxRoute, selectionFromRoute } from '../inbox.routes';
 import { useInboxStore } from '../inbox.store';
 import WorkflowReviewDetail from '../reviews/WorkflowReviewDetail.vue';
@@ -58,7 +59,12 @@ const selectedReviewItem = computed(() =>
 const selectedPromotionItem = computed(() =>
 	selectedListItem.value?.type === 'promotion_review' ? selectedListItem.value : undefined,
 );
-const detailTab = computed(() => (route.query.tab === 'changes' ? 'changes' : 'activity'));
+const detailTab = computed<InboxDetailTab>(() => {
+	const { tab } = route.query;
+	return tab === 'changes' || tab === 'evals' ? tab : 'activity';
+});
+// Only an agent proposal has the Eval results tab.
+const reviewTab = computed(() => (detailTab.value === 'evals' ? 'activity' : detailTab.value));
 let isMounted = false;
 
 function isOnInbox() {
@@ -77,6 +83,11 @@ function isSelectedReview(id: string) {
 function isSelectedResult(id: string) {
 	const selected = selectionFromRoute(router.currentRoute.value);
 	return selected?.type === 'self_healing_result' && selected.id === id;
+}
+
+function isSelectedAgentProposal(id: string) {
+	const selected = selectionFromRoute(router.currentRoute.value);
+	return selected?.type === 'self_healing_agent_result' && selected.id === id;
 }
 
 // Reset on entry. A layout-swap copy can unmount after the next view has mounted.
@@ -138,10 +149,10 @@ function onActiveTabChange(tab: 'open' | 'closed') {
 	else delete query.state;
 	void router.replace({ query });
 }
-function onDetailTabChange(tab: 'activity' | 'changes') {
+function onDetailTabChange(tab: InboxDetailTab) {
 	if (!isOnInbox()) return;
 	const query = { ...route.query };
-	if (tab === 'changes') query.tab = tab;
+	if (tab !== 'activity') query.tab = tab;
 	else delete query.tab;
 	void router.replace({ query });
 }
@@ -247,7 +258,7 @@ onBeforeUnmount(() => {
 					"
 					:review-id="selection.id"
 					:list-item="selectedReviewItem"
-					:tab="detailTab"
+					:tab="reviewTab"
 					:on-item-change="onItemChange"
 					:is-active="isActive"
 					:is-selected="isSelectedReview"
@@ -266,9 +277,20 @@ onBeforeUnmount(() => {
 						!store.disabledSources.includes(selection.type)
 					"
 					:selection="selection"
-					:tab="detailTab"
+					:tab="reviewTab"
 					:on-item-change="onItemChange"
 					:is-selected="isSelectedResult"
+					@update:tab="onDetailTabChange"
+				/>
+				<AgentProposalDetail
+					v-else-if="
+						selection?.type === 'self_healing_agent_result' &&
+						!store.disabledSources.includes(selection.type)
+					"
+					:selection="selection"
+					:tab="detailTab"
+					:on-item-change="onItemChange"
+					:is-selected="isSelectedAgentProposal"
 					@update:tab="onDetailTabChange"
 				/>
 				<template v-else>

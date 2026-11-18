@@ -21,6 +21,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		assertInstanceAiPromptVersion: profiles.assertInstanceAiPromptVersion,
 		CONCISE_PROMPT_VERSION: profiles.CONCISE_PROMPT_VERSION,
 		SELF_HEALING_PROFILE_VERSION: profiles.SELF_HEALING_PROFILE_VERSION,
+		AGENT_IMPROVEMENT_PROFILE_VERSION: profiles.AGENT_IMPROVEMENT_PROFILE_VERSION,
 		RunStateRegistry: profiles.RunStateRegistry,
 		describePromptProfile: profiles.describePromptProfile,
 		setTracePromptVersion: vi.fn(),
@@ -298,6 +299,11 @@ import { InstanceAiSkillsService } from '../instance-ai-skills.service';
 import { InstanceAiService } from '../instance-ai.service';
 import { buildRunStoppedMessage } from '../internal-messages';
 import { InstanceAiSandboxService } from '../sandbox';
+import type {
+	AgentImprovementRunInput,
+	AgentImprovementRunResult,
+	SelfHealingAgentInvestigatorService,
+} from '../self-healing/agents/self-healing-agent-investigator.service';
 import type {
 	SelfHealingAgentService,
 	SelfHealingRunInput,
@@ -1605,6 +1611,159 @@ describe('InstanceAiService — memory task observer', () => {
 			'Observational memory task completed',
 			expect.objectContaining({ outcome: 'skipped', reason: 'pending-tool-call' }),
 		);
+	});
+});
+
+describe('InstanceAiService — agent improvement launcher', () => {
+	const input = mock<AgentImprovementRunInput>({ user: fakeUser, threadId: 'persisted-thread' });
+	const lifecycle = { runId: 'persisted-run', onComplete: vi.fn() };
+	const completedRun: AgentImprovementRunResult = {
+		status: 'completed',
+		output: null,
+		usage: { credits: null, turns: null, durationSeconds: null },
+		lastTested: null,
+	};
+
+	function createLauncher() {
+		return Object.assign(
+			Object.create(InstanceAiService.prototype) as {
+				startAgentImprovementRun: InstanceAiService['startAgentImprovementRun'];
+			},
+			{
+				selfHealingAgent: { assertEnabled: vi.fn() },
+				agentInvestigator: {
+					execute: vi.fn<SelfHealingAgentInvestigatorService['execute']>(),
+				},
+				runState: new RunStateRegistry<User>((user) => user.id),
+				finalizingSelfHealingRuns: new Set<string>(),
+				liveness: {
+					clearThreadState: vi.fn(),
+					consumeRunTimeout: vi.fn(() => ({ timedOut: false })),
+				},
+				instanceAiConfig: { maxConcurrentRuns: 5, maxConcurrentRunsPerUser: 3 },
+				inFlightExecutions: new Set<Promise<unknown>>(),
+				logger: { debug: vi.fn(), warn: vi.fn() },
+				eventService: { emit: vi.fn() },
+				sandboxService: mock<InstanceAiSandboxService>(),
+				tracing: mock<InstanceAiTracingService>(),
+				turnEnvironment: { createProxyRunConfig: vi.fn(async () => ({})) },
+				publishRunFinish: vi.fn(),
+				emitRunMetrics: vi.fn(),
+			},
+		);
+	}
+
+	it('tracks the run through completion and releases the run registration', async () => {
+		const service = createLauncher();
+		const pending = createDeferredPromise<AgentImprovementRunResult>();
+		service.agentInvestigator.execute.mockReturnValue(pending.promise);
+
+		const run = service.startAgentImprovementRun(input, lifecycle);
+		const options = service.agentInvestigator.execute.mock.calls[0][1];
+		expect(service.runState.activeRunCountForUser(fakeUser.id)).toBe(1);
+		expect(service.inFlightExecutions.size).toBe(1);
+		expect(options.threadId).toBe(input.threadId);
+		expect(options.runId).toBe(lifecycle.runId);
+		expect(options.sandbox).toBe(service.sandboxService);
+		expect(options.tracing).toBe(service.tracing);
+		expect(options.onComplete).toBe(lifecycle.onComplete);
+		expect(options.signal).toBe(
+			service.runState.getActiveRun(input.threadId)?.abortController.signal,
+		);
+
+		pending.resolve(completedRun);
+		expect(await run).toBe(completedRun);
+		expect(service.runState.activeRunCount()).toBe(0);
+		expect(service.inFlightExecutions.size).toBe(0);
+		expect(service.liveness.clearThreadState).toHaveBeenLastCalledWith(input.threadId);
+	});
+
+	it('requests the proxy token with the self-healing billing user ID', async () => {
+		const service = createLauncher();
+		service.agentInvestigator.execute.mockImplementation(async (_input, options) => {
+			await options.createProxyRunConfig();
+			return completedRun;
+		});
+
+		await service.startAgentImprovementRun(input, lifecycle);
+
+		expect(service.turnEnvironment.createProxyRunConfig).toHaveBeenCalledWith({
+			id: 'self_healing',
+		});
+	});
+
+	it('throws a refusal before it returns a promise', () => {
+		const service = createLauncher();
+		service.instanceAiConfig.maxConcurrentRunsPerUser = 1;
+		service.runState.startRun({ threadId: 'existing', user: fakeUser });
+
+		expect(() => {
+			void service.startAgentImprovementRun(input, lifecycle);
+		}).toThrow(InstanceAiRunLimitError);
+
+		expect(service.agentInvestigator.execute).not.toHaveBeenCalled();
+		expect(service.runState.activeRunCount()).toBe(1);
+	});
+
+	it('checks the gate before it registers a run', () => {
+		const service = createLauncher();
+		service.selfHealingAgent.assertEnabled.mockImplementation(() => {
+			throw new Error('Unavailable');
+		});
+
+		expect(() => {
+			void service.startAgentImprovementRun(input, lifecycle);
+		}).toThrow('Unavailable');
+
+		expect(service.runState.activeRunCount()).toBe(0);
+		expect(service.agentInvestigator.execute).not.toHaveBeenCalled();
+	});
+
+	it('releases the run registration after a rejected run', async () => {
+		const service = createLauncher();
+		service.agentInvestigator.execute.mockRejectedValue(new Error('Storage unavailable'));
+
+		await expect(service.startAgentImprovementRun(input, lifecycle)).rejects.toThrow(
+			'Storage unavailable',
+		);
+
+		expect(service.runState.activeRunCount()).toBe(0);
+		expect(service.inFlightExecutions.size).toBe(0);
+	});
+
+	it('publishes a suspended run as an errored run with the prompt version', async () => {
+		const service = createLauncher();
+		service.agentInvestigator.execute.mockImplementation(async (_input, options) => {
+			options.onFinish({ status: 'suspended', reason: 'unexpected_suspension' }, 'model-1');
+			return { ...completedRun, status: 'suspended' };
+		});
+
+		await service.startAgentImprovementRun(input, lifecycle);
+
+		expect(service.publishRunFinish).toHaveBeenCalledExactlyOnceWith(
+			input.threadId,
+			lifecycle.runId,
+			'errored',
+			'unexpected_suspension',
+			undefined,
+			fakeUser.id,
+			{ modelId: 'model-1', promptVersion: 'agent-improvement-v1' },
+		);
+		expect(service.emitRunMetrics).toHaveBeenCalledTimes(1);
+	});
+
+	it('uses the shared timeout classification for a cancelled run', async () => {
+		const service = createLauncher();
+		service.liveness.consumeRunTimeout.mockReturnValue({ timedOut: true });
+		let reason: string | undefined;
+		service.agentInvestigator.execute.mockImplementation(async (_input, options) => {
+			reason = options.getAbortReason();
+			return { ...completedRun, status: 'cancelled' };
+		});
+
+		await service.startAgentImprovementRun(input, lifecycle);
+
+		expect(reason).toBe(INSTANCE_AI_RUN_TIMEOUT_REASON);
 	});
 });
 

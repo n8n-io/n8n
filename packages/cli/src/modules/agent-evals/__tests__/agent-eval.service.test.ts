@@ -670,7 +670,7 @@ describe('AgentEvalService', () => {
 				.mockResolvedValueOnce(
 					makeResult({
 						status: 'success',
-						verdict: { ...verdict, suggestion: undefined as never },
+						verdict: { ...verdict, suggestion: undefined as never, toolCheck: undefined as never },
 					}),
 				);
 
@@ -689,7 +689,14 @@ describe('AgentEvalService', () => {
 				resultRepository.findById
 					.mockResolvedValueOnce(makeResult({ status }))
 					.mockResolvedValueOnce(
-						makeResult({ status, verdict: { ...verdict, suggestion: undefined as never } }),
+						makeResult({
+							status,
+							verdict: {
+								...verdict,
+								suggestion: undefined as never,
+								toolCheck: undefined as never,
+							},
+						}),
 					);
 
 				const record = await service.acceptResult(AGENT_ID, PROJECT_ID, 'result-1');

@@ -13,7 +13,11 @@ import { mock } from 'vitest-mock-extended';
 import { AgentEvaluationService } from '@/modules/agents/evaluation/agent-evaluation.service';
 import type { AgentEvaluationPreparation } from '@/modules/agents/evaluation/agent-evaluation.contracts';
 
-import { EvalAgentExecutionService, mcpUrlsMatch } from '../agent-execution.service';
+import {
+	createAgentEvalMockWorld,
+	EvalAgentExecutionService,
+	mcpUrlsMatch,
+} from '../agent-execution.service';
 import { generateAgentScenarioSeed } from '../agent-scenario-seed';
 import { createMcpMockFetch } from '../mcp-mock-fetch';
 import { createLlmMockHandler } from '../mock-handler';
@@ -697,6 +701,157 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 
 		expect(result.success).toBe(false);
 		expect(result.errors[0]).toMatch(/Model run error: rate limited/);
+	});
+
+	describe('internal options', () => {
+		const runtime = (overrides = {}) => {
+			const generate = vi.fn().mockResolvedValue(makeGenerateResult(overrides));
+			buildRuntime.mockResolvedValue({ generate, close: vi.fn().mockResolvedValue(undefined) });
+			return generate;
+		};
+
+		it('prepares the draft when no source is given', async () => {
+			runtime();
+
+			await buildService().executeWithLlmMock('agent-1', user, request);
+
+			expect(agentEvaluation.prepare).toHaveBeenCalledWith(user, 'proj-1', 'agent-1', undefined);
+		});
+
+		it('prepares the given source', async () => {
+			runtime();
+			const source = { kind: 'published' as const, versionId: 'version-1' };
+
+			await buildService().executeWithLlmMock('agent-1', user, request, 'Hi', { source });
+
+			expect(agentEvaluation.prepare).toHaveBeenCalledWith(user, 'proj-1', 'agent-1', source);
+		});
+
+		it('generates the seed one time for two runs that share a world', async () => {
+			const generate = runtime();
+			const world = createAgentEvalMockWorld();
+			const service = buildService();
+
+			await service.executeWithLlmMock('agent-1', user, request, 'Case input', { world });
+			await service.executeWithLlmMock('agent-1', user, request, 'Case input', { world });
+
+			expect(generateAgentScenarioSeed).toHaveBeenCalledTimes(1);
+			// The world keeps the generated seed, not the seed with the case input.
+			expect(world.seed).toEqual(seed);
+			expect(generate).toHaveBeenNthCalledWith(2, 'Case input', expect.anything());
+		});
+
+		it('gives the caches of the world to the mocks of each run', async () => {
+			runtime();
+			const world = createAgentEvalMockWorld();
+			const service = buildService();
+
+			await service.executeWithLlmMock('agent-1', user, request, undefined, { world });
+			await service.executeWithLlmMock('agent-1', user, request, undefined, { world });
+
+			for (const call of vi.mocked(createLlmMockHandler).mock.calls) {
+				expect(call[0]?.responseCache).toBe(world.httpResponses);
+			}
+			for (const call of vi.mocked(createMcpMockFetch).mock.calls) {
+				expect(call[0].toolsByServer).toBe(world.mcpTools);
+				expect(call[0].resultCache).toBe(world.mcpResults);
+			}
+			expect(createLlmMockHandler).toHaveBeenCalledTimes(2);
+		});
+
+		it('gives no shared cache, model or signal to the mocks without internal options', async () => {
+			runtime();
+
+			await buildService().executeWithLlmMock('agent-1', user, request);
+
+			expect(createLlmMockHandler).toHaveBeenCalledWith({
+				scenarioHints: undefined,
+				globalContext: seed.globalContext,
+				nodeHints: seed.toolHints,
+			});
+			const mcpOptions = vi.mocked(createMcpMockFetch).mock.calls[0][0];
+			expect(mcpOptions).not.toHaveProperty('toolsByServer');
+			expect(mcpOptions).not.toHaveProperty('model');
+			expect(vi.mocked(generateAgentScenarioSeed).mock.calls[0][0]).not.toHaveProperty('model');
+		});
+
+		it('uses the helper model for the seed and the mocks', async () => {
+			runtime();
+			const helperModel = 'anthropic/claude-helper';
+
+			await buildService().executeWithLlmMock('agent-1', user, request, undefined, {
+				helperModel,
+			});
+
+			expect(vi.mocked(generateAgentScenarioSeed).mock.calls[0][0].model).toBe(helperModel);
+			expect(vi.mocked(createLlmMockHandler).mock.calls[0][0]?.model).toBe(helperModel);
+			expect(vi.mocked(createMcpMockFetch).mock.calls[0][0].model).toBe(helperModel);
+		});
+
+		it('returns an error result at once when the signal is already aborted', async () => {
+			const result = await buildService().executeWithLlmMock('agent-1', user, request, undefined, {
+				abortSignal: AbortSignal.abort(),
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.errors[0]).toMatch(/was stopped/);
+			expect(agentEvaluation.prepare).not.toHaveBeenCalled();
+		});
+
+		it('does not start the run when the signal aborts during seed generation', async () => {
+			runtime();
+			const controller = new AbortController();
+			vi.mocked(generateAgentScenarioSeed).mockImplementation(async () => {
+				controller.abort();
+				return seed;
+			});
+
+			const result = await buildService().executeWithLlmMock('agent-1', user, request, undefined, {
+				abortSignal: controller.signal,
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.errors[0]).toMatch(/was stopped/);
+			expect(buildRuntime).not.toHaveBeenCalled();
+		});
+
+		it('stops the run and the mocked requests when the signal aborts during the run', async () => {
+			const controller = new AbortController();
+			const generate = vi.fn().mockImplementation(
+				async (_message: string, options: { abortSignal: AbortSignal }) =>
+					await new Promise((_resolve, reject) => {
+						options.abortSignal.addEventListener('abort', () => reject(new Error('aborted')));
+						controller.abort();
+					}),
+			);
+			buildRuntime.mockResolvedValue({ generate, close: vi.fn().mockResolvedValue(undefined) });
+
+			const result = await buildService().executeWithLlmMock('agent-1', user, request, undefined, {
+				abortSignal: controller.signal,
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.errors[0]).toMatch(/was stopped/);
+			expect(vi.mocked(createLlmMockHandler).mock.calls[0][0]?.signal?.aborted).toBe(true);
+		});
+
+		it('reports the cost of the run when the model result has one', async () => {
+			runtime({
+				usage: { promptTokens: 100, completionTokens: 40, totalTokens: 140, cost: 0.0125 },
+			});
+
+			const result = await buildService().executeWithLlmMock('agent-1', user, request);
+
+			expect(result.usage).toEqual({ inputTokens: 100, outputTokens: 40, costUsd: 0.0125 });
+		});
+
+		it('reports no duration when the run recorded no model turn', async () => {
+			runtime();
+
+			const result = await buildService().executeWithLlmMock('agent-1', user, request);
+
+			expect(result).not.toHaveProperty('durationMs');
+		});
 	});
 });
 

@@ -7,7 +7,7 @@
 | activeVersionId | varchar(36) |  | true |  | [public.agent_history](public.agent_history.md) |  |
 | availableInMCP | boolean | false | false |  |  | Whether MCP clients granted agent scopes may operate on this agent |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| id | varchar(36) |  | false | [public.agent_background_job](public.agent_background_job.md) [public.agent_channel_status](public.agent_channel_status.md) [public.agent_chat_attachments](public.agent_chat_attachments.md) [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) [public.agent_checkpoints](public.agent_checkpoints.md) [public.agent_credential_dependency](public.agent_credential_dependency.md) [public.agent_eval_dataset](public.agent_eval_dataset.md) [public.agent_execution_threads](public.agent_execution_threads.md) [public.agent_files](public.agent_files.md) [public.agent_history](public.agent_history.md) [public.agent_publish_history](public.agent_publish_history.md) [public.agent_skill_dependency](public.agent_skill_dependency.md) [public.agent_task_definition](public.agent_task_definition.md) [public.agent_task_run_lock](public.agent_task_run_lock.md) [public.agent_workflow_dependency](public.agent_workflow_dependency.md) [public.agents_memory_entries](public.agents_memory_entries.md) [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) [public.agents_observation_cursors](public.agents_observation_cursors.md) [public.agents_observation_locks](public.agents_observation_locks.md) [public.agents_observations](public.agents_observations.md) [public.agents_tags](public.agents_tags.md) |  |  |
+| id | varchar(36) |  | false | [public.agent_background_job](public.agent_background_job.md) [public.agent_channel_status](public.agent_channel_status.md) [public.agent_chat_attachments](public.agent_chat_attachments.md) [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) [public.agent_checkpoints](public.agent_checkpoints.md) [public.agent_credential_dependency](public.agent_credential_dependency.md) [public.agent_eval_dataset](public.agent_eval_dataset.md) [public.agent_execution_threads](public.agent_execution_threads.md) [public.agent_files](public.agent_files.md) [public.agent_history](public.agent_history.md) [public.agent_publish_history](public.agent_publish_history.md) [public.agent_skill_dependency](public.agent_skill_dependency.md) [public.agent_task_definition](public.agent_task_definition.md) [public.agent_task_run_lock](public.agent_task_run_lock.md) [public.agent_workflow_dependency](public.agent_workflow_dependency.md) [public.agents_memory_entries](public.agents_memory_entries.md) [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) [public.agents_observation_cursors](public.agents_observation_cursors.md) [public.agents_observation_locks](public.agents_observation_locks.md) [public.agents_observations](public.agents_observations.md) [public.agents_tags](public.agents_tags.md) [public.self_healing_agent_investigation](public.self_healing_agent_investigation.md) [public.self_healing_agent_result](public.self_healing_agent_result.md) [public.self_healing_configuration_agent](public.self_healing_configuration_agent.md) |  |  |
 | identityId | uuid |  | true |  | [public.user](public.user.md) | Identity the agent acts as, a service account today. Null for an instance agent or an agent without one |
 | integrations | json | '[]'::json | false |  |  |  |
 | isArchived | boolean | false | false |  |  | Whether the agent is archived: hidden, unpublished and read-only |
@@ -88,6 +88,9 @@ erDiagram
 "public.agents_observation_locks" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents_observations" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents_tags" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.self_healing_agent_investigation" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.self_healing_agent_result" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.self_healing_configuration_agent" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents" }o--o| "public.user" : "FOREIGN KEY (#quot;identityId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agents" }o--o| "public.folder" : "FOREIGN KEY (#quot;parentFolderId#quot;) REFERENCES folder(id) ON DELETE RESTRICT"
 "public.agents" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
@@ -379,6 +382,62 @@ erDiagram
 "public.agents_tags" {
   varchar_36_ agentId FK
   varchar_36_ tagId FK
+}
+"public.self_healing_agent_investigation" {
+  varchar_36_ agentId FK
+  varchar_36_ agentVersionId
+  uuid backgroundUserId FK
+  integer configurationId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_64_ failureReason
+  timestamp_3__with_time_zone finishedAt
+  varchar_36_ id
+  varchar_16_ outcome
+  varchar_36_ projectId FK
+  varchar_36_ resultId FK
+  uuid runId
+  uuid threadId
+  integer traceCount
+  timestamp_3__with_time_zone traceWindowEnd
+  timestamp_3__with_time_zone traceWindowStart
+  varchar_16_ trigger
+  timestamp_3__with_time_zone updatedAt
+  json usage
+}
+"public.self_healing_agent_result" {
+  varchar_36_ agentId FK
+  varchar_255_ agentName
+  boolean appliedAutomatically
+  text applyError
+  json applyProgress
+  timestamp_3__with_time_zone applyStartedAt
+  uuid backgroundUserId FK
+  varchar_36_ baseVersionId
+  timestamp_3__with_time_zone closedAt
+  uuid closedById FK
+  integer configurationId FK
+  timestamp_3__with_time_zone createdAt
+  json edits
+  json evalCases
+  json evidence
+  json goals
+  varchar_36_ id
+  varchar_36_ projectId FK
+  varchar_36_ publishedVersionId
+  text report
+  varchar_16_ reviewState
+  varchar_255_ summary
+  integer traceCount
+  timestamp_3__with_time_zone traceWindowEnd
+  timestamp_3__with_time_zone traceWindowStart
+  varchar_16_ trigger
+  timestamp_3__with_time_zone updatedAt
+  json usage
+}
+"public.self_healing_configuration_agent" {
+  varchar_36_ agentId FK
+  integer configurationId FK
+  varchar_36_ projectId FK
 }
 "public.user" {
   timestamp_3__with_time_zone createdAt

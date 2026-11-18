@@ -1695,3 +1695,52 @@ describe('substituteBinaryMimeParts (gmail raw attachments)', () => {
 		expect(decoded).toContain('Content-Transfer-Encoding: base64');
 	});
 });
+
+describe('createLlmMockHandler shared options', () => {
+	// A read: the cache key of a write depends on the writes of its own handler.
+	const readRequest = {
+		url: 'https://api.slack.com/users.list',
+		method: 'GET',
+	} as IHttpRequestOptions;
+
+	it('serves the response of another handler that uses the same response cache', async () => {
+		llmSubmits({ type: 'json', body: { members: ['U_1'] } });
+		const responseCache = new Map();
+		const first = createLlmMockHandler({ responseCache });
+		const second = createLlmMockHandler({ responseCache });
+
+		const firstResult = await callHandler(first, readRequest);
+		const secondResult = await callHandler(second, readRequest);
+
+		expect(secondResult).toEqual(firstResult);
+		expect(mockGenerate).toHaveBeenCalledTimes(1);
+	});
+
+	it('generates the response again in a handler with its own cache', async () => {
+		llmSubmits({ type: 'json', body: { members: ['U_1'] } });
+		llmSubmits({ type: 'json', body: { members: ['U_2'] } });
+
+		await callHandler(createLlmMockHandler(), readRequest);
+		await callHandler(createLlmMockHandler(), readRequest);
+
+		expect(mockGenerate).toHaveBeenCalledTimes(2);
+	});
+
+	it('creates the responder with the given model', async () => {
+		llmSubmits({ type: 'json', body: {} });
+
+		await callHandler(createLlmMockHandler({ model: 'anthropic/claude-helper' }));
+
+		expect(vi.mocked(createEvalAgent).mock.calls.at(-1)![1]).toMatchObject({
+			resolvedModel: 'anthropic/claude-helper',
+		});
+	});
+
+	it('creates the responder without a model by default', async () => {
+		llmSubmits({ type: 'json', body: {} });
+
+		await callHandler(createLlmMockHandler());
+
+		expect(vi.mocked(createEvalAgent).mock.calls.at(-1)![1]).not.toHaveProperty('resolvedModel');
+	});
+});

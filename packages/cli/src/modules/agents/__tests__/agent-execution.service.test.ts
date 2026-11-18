@@ -2618,4 +2618,131 @@ describe('AgentExecutionService', () => {
 			]);
 		});
 	});
+
+	describe('production sessions', () => {
+		const filter = {
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			readerId: 'user-1',
+			after: null,
+			until: new Date('2026-09-17T00:00:00.000Z'),
+		};
+		const makeExecution = (overrides: Partial<AgentExecution>) =>
+			({
+				threadId: 'thread-1',
+				status: 'success',
+				hitlStatus: null,
+				storedAt: 'db',
+				timeline: [],
+				...overrides,
+			}) as AgentExecution;
+
+		it('counts sessions with the filter of the caller', async () => {
+			agentExecutionRepository.countProductionTraceSessions.mockResolvedValue(3);
+
+			await expect(service.countProductionTraceSessions(filter)).resolves.toBe(3);
+			expect(agentExecutionRepository.countProductionTraceSessions).toHaveBeenCalledWith(filter);
+		});
+
+		it('lists sessions in the order of the repository, each with its turns in the window', async () => {
+			const lastActivityAt = new Date('2026-09-16T00:00:00.000Z');
+			agentExecutionRepository.findProductionTraceSessions.mockResolvedValue([
+				{ threadId: 'thread-2', turnCount: 1, lastActivityAt },
+				{ threadId: 'thread-1', turnCount: 2, lastActivityAt },
+			]);
+			agentExecutionRepository.findProductionTracesInThreads.mockResolvedValue([
+				makeExecution({ id: 'execution-1', threadId: 'thread-1' }),
+				makeExecution({ id: 'execution-2', threadId: 'thread-2' }),
+				makeExecution({ id: 'execution-3', threadId: 'thread-1' }),
+			]);
+			agentExecutionThreadRepository.findManyByIds.mockResolvedValue([
+				makeThread({ id: 'thread-1' }),
+				makeThread({ id: 'thread-2' }),
+			]);
+
+			const result = await service.listProductionTraceSessions(filter, { limit: 20, offset: 5 });
+
+			expect(agentExecutionRepository.findProductionTraceSessions).toHaveBeenCalledWith(
+				filter,
+				20,
+				5,
+			);
+			expect(agentExecutionRepository.findProductionTracesInThreads).toHaveBeenCalledWith(filter, [
+				'thread-2',
+				'thread-1',
+			]);
+			expect(
+				result.map(({ threadId, turns }) => ({ threadId, turns: turns.map(({ id }) => id) })),
+			).toEqual([
+				{ threadId: 'thread-2', turns: ['execution-2'] },
+				{ threadId: 'thread-1', turns: ['execution-1', 'execution-3'] },
+			]);
+			// The turns of one session load together, oldest first.
+			expect(messageRepository.findExecutionInputs).toHaveBeenCalledWith([
+				'execution-1',
+				'execution-3',
+			]);
+		});
+
+		it('reads the blob timelines of the listed turns', async () => {
+			agentExecutionRepository.findProductionTraceSessions.mockResolvedValue([
+				{ threadId: 'thread-1', turnCount: 1, lastActivityAt: new Date() },
+			]);
+			agentExecutionRepository.findProductionTracesInThreads.mockResolvedValue([
+				makeExecution({ id: 'execution-1', storedAt: 'fs' }),
+			]);
+			agentExecutionThreadRepository.findManyByIds.mockResolvedValue([
+				makeThread({ id: 'thread-1' }),
+			]);
+			const timeline = [{ type: 'text' as const, content: 'Hello', timestamp: 1 }];
+			agentExecutionLogStore.hasLocation.mockReturnValue(true);
+			agentExecutionLogStore.readMany.mockImplementation(
+				async (refs) => new Map(refs.map((ref) => [ref.executionId, { timeline }])) as never,
+			);
+
+			const [session] = await service.listProductionTraceSessions(filter, { limit: 20, offset: 0 });
+
+			expect(agentExecutionLogStore.readMany).toHaveBeenCalledWith([
+				{ agentId: 'agent-1', threadId: 'thread-1', executionId: 'execution-1', storedAt: 'fs' },
+			]);
+			expect(session.turns[0].timeline).toEqual(timeline);
+		});
+
+		it('reads every turn of the session and marks the turns in the window', async () => {
+			agentExecutionRepository.findProductionTracesInThreads.mockResolvedValue([
+				makeExecution({ id: 'execution-2' }),
+			]);
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(makeThread({ id: 'thread-1' }));
+			agentExecutionRepository.findByThreadIdOrdered.mockResolvedValue([
+				makeExecution({ id: 'execution-1' }),
+				makeExecution({ id: 'execution-2' }),
+				makeExecution({ id: 'execution-3' }),
+			]);
+
+			const result = await service.getProductionTraceSession(filter, 'thread-1');
+
+			expect(agentExecutionRepository.findProductionTracesInThreads).toHaveBeenCalledWith(filter, [
+				'thread-1',
+			]);
+			expect(result?.thread.id).toBe('thread-1');
+			expect(result?.executions.map(({ id }) => id)).toEqual([
+				'execution-1',
+				'execution-2',
+				'execution-3',
+			]);
+			expect(result?.turns.map(({ id }) => id)).toEqual(['execution-2']);
+			expect(messageRepository.findExecutionInputs).toHaveBeenCalledWith([
+				'execution-1',
+				'execution-2',
+				'execution-3',
+			]);
+		});
+
+		it('returns null when the session has no production trace in the window', async () => {
+			agentExecutionRepository.findProductionTracesInThreads.mockResolvedValue([]);
+
+			await expect(service.getProductionTraceSession(filter, 'thread-9')).resolves.toBeNull();
+			expect(agentExecutionRepository.findByThreadIdOrdered).not.toHaveBeenCalled();
+		});
+	});
 });

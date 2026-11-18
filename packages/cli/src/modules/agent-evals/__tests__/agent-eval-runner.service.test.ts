@@ -147,7 +147,13 @@ describe('AgentEvalRunnerService', () => {
 		agentId: 'agent-1',
 		datasetSource: 'data_table',
 		datasetRef: { dataTableId: 'dt-1' },
-		columnMapping: { input: 'question', expectedOutput: 'answer', criteria: 'check' },
+		// An explicit `undefined` stops the deep mock from making the unset role a mock function.
+		columnMapping: {
+			input: 'question',
+			expectedOutput: 'answer',
+			criteria: 'check',
+			expectedTools: undefined,
+		},
 	});
 
 	beforeEach(() => {
@@ -515,9 +521,10 @@ describe('AgentEvalRunnerService', () => {
 
 			// `criteria` ("check" column) wins over `expectedOutput` ("answer" column),
 			// and is judged as a rule to satisfy rather than an answer to match.
+			// The judge of a rule also gets the record of the tool calls of the run.
 			expect(criteriaRunMock).toHaveBeenCalledWith({
 				input: 'What is 2+2?',
-				output: 'the answer',
+				output: expect.stringMatching(/^the answer\n\n\[Record[^\n]*\n1\. \{"tool":"lookup"\}$/),
 				criteria: 'is 4',
 			});
 			expect(correctnessRunMock).not.toHaveBeenCalled();
@@ -610,6 +617,90 @@ describe('AgentEvalRunnerService', () => {
 					},
 				}),
 			);
+		});
+
+		describe('tool expectation', () => {
+			beforeEach(() => {
+				datasetRepository.findById.mockResolvedValue({
+					...dataset,
+					columnMapping: { input: 'question', criteria: 'check', expectedTools: 'tools' },
+				} as AgentEvalDataset);
+				dataTableService.getColumns.mockResolvedValue([
+					{ name: 'question' },
+					{ name: 'check' },
+					{ name: 'tools' },
+				] as never);
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			});
+
+			it('fails the case without a model call when an expected tool was not called', async () => {
+				seedFor([{ id: 'row-1', question: 'Q', check: 'C', tools: 'lookup, find_order' }], {
+					success: 1,
+				});
+
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await finished;
+
+				expect(criteriaRunMock).not.toHaveBeenCalled();
+				expect(generateFixSuggestion).not.toHaveBeenCalled();
+				expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+					'res-0',
+					expect.objectContaining({
+						verdict: expect.objectContaining({
+							status: 'completed',
+							outcome: 'fail',
+							toolCheck: { pass: false, missing: ['find_order'], forbidden: [] },
+						}),
+					}),
+				);
+			});
+
+			it('judges the rule and stores the tool check when the expected tools were called', async () => {
+				seedFor([{ id: 'row-1', question: 'Q', check: 'C', tools: 'lookup, !find_order' }], {
+					success: 1,
+				});
+				criteriaRunMock.mockResolvedValue({ pass: true, reasoning: 'Good.' });
+
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await finished;
+
+				expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+					'res-0',
+					expect.objectContaining({
+						verdict: {
+							status: 'completed',
+							outcome: 'pass',
+							reasoning: 'Good.',
+							toolCheck: { pass: true, missing: [], forbidden: [] },
+						},
+					}),
+				);
+			});
+
+			it('stores the raw expected tools cell on the case snapshot', async () => {
+				seedFor([{ id: 'row-1', question: 'Q', check: 'C', tools: 'lookup' }], { success: 1 });
+				criteriaRunMock.mockResolvedValue({ pass: true, reasoning: 'Good.' });
+
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await finished;
+
+				expect(resultRepository.seedResults).toHaveBeenCalledWith([
+					expect.objectContaining({
+						input: { input: 'Q', criteria: 'C', expectedTools: 'lookup' },
+					}),
+				]);
+			});
+
+			it('rejects a run when the mapped expected tools column is not in the table', async () => {
+				dataTableService.getColumns.mockResolvedValue([
+					{ name: 'question' },
+					{ name: 'check' },
+				] as never);
+
+				await expect(service.startRun('ds-1', 'proj-1', user)).rejects.toThrow(
+					"expectedTools → 'tools'",
+				);
+			});
 		});
 
 		describe('fix suggestion', () => {

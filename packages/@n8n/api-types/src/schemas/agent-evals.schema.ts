@@ -34,8 +34,29 @@ export const agentEvalColumnMappingSchema = z.object({
 	input: z.string().min(1),
 	expectedOutput: z.string().min(1).optional(),
 	criteria: z.string().min(1).optional(),
+	/**
+	 * A column of comma-separated tool names that the agent must call.
+	 * A name with a `!` prefix must not be called. Example: `lookup_order, !lookup_customer`.
+	 */
+	expectedTools: z.string().min(1).optional(),
 });
 export type AgentEvalColumnMapping = z.infer<typeof agentEvalColumnMappingSchema>;
+
+/**
+ * Tool names that a case expects. A name with a `!` prefix must not be called.
+ * Example: `['lookup_order', '!lookup_customer']`.
+ */
+export const agentEvalExpectedToolsSchema = z.array(z.string().trim().min(1).max(257)).max(20);
+
+/** The result of the tool expectation check of a case. */
+export const agentEvalToolCheckSchema = z.object({
+	pass: z.boolean(),
+	/** Expected tools that the agent did not call. */
+	missing: z.array(z.string()),
+	/** Tools that the agent called although the case forbids them. */
+	forbidden: z.array(z.string()),
+});
+export type AgentEvalToolCheck = z.infer<typeof agentEvalToolCheckSchema>;
 
 export const agentEvalRunStatusSchema = z.enum([
 	'new',
@@ -80,6 +101,8 @@ export const agentEvalVerdictSchema = z.object({
 	reasoning: z.string().nullable(),
 	/** One instruction that would fix a failed rule. Only set on a `fail` outcome, and absent on older rows. */
 	suggestion: z.string().nullable().optional(),
+	/** The tool expectation check. Absent when the case expects no tools, and on older rows. */
+	toolCheck: agentEvalToolCheckSchema.nullable().optional(),
 });
 export type AgentEvalVerdict = z.infer<typeof agentEvalVerdictSchema>;
 

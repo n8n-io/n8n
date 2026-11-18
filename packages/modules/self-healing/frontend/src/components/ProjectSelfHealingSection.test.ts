@@ -26,6 +26,12 @@ const configuration: SelfHealingConfigurationDto = {
 	enabled: false,
 	enabledById: null,
 	lastActivity: null,
+	agentScope: 'none',
+	agentIds: [],
+	agentGoals: ['quality'],
+	agentScheduleIntervalHours: null,
+	agentTraceThreshold: null,
+	agentPublicationMode: 'approval',
 };
 
 async function renderSection(saved: Partial<SelfHealingConfigurationDto> = {}) {
@@ -34,6 +40,7 @@ async function renderSection(saved: Partial<SelfHealingConfigurationDto> = {}) {
 	store.options.project = {
 		project: { name: 'Acme project', icon: { type: 'emoji', value: '🚀' } },
 		workflows: [],
+		agents: [],
 		reviewers: [
 			{ id: 'reviewer', firstName: 'Test', lastName: 'Reviewer', email: 'reviewer@example.com' },
 		],
@@ -113,10 +120,10 @@ it('removes a configuration from the action menu only after confirmation', async
 
 it('shows relative last activity and the prototype empty label', async () => {
 	const { view, store } = await renderSection();
-	expect(view.getByText('No failures yet')).toBeVisible();
+	expect(view.getByText('No activity yet')).toBeVisible();
 	store.configurations.project[0].lastActivity = new Date(Date.now() - 5 * 60_000).toISOString();
 	expect(await view.findByText('5 minutes ago')).toBeVisible();
-	expect(view.queryByText('No failures yet')).not.toBeInTheDocument();
+	expect(view.queryByText('No activity yet')).not.toBeInTheDocument();
 });
 
 it('names a single selected workflow and counts several', async () => {
@@ -134,6 +141,28 @@ it('names a single selected workflow and counts several', async () => {
 
 	store.configurations.project[0].workflowIds = ['unknown'];
 	expect(await view.findByText('1 workflow')).toBeVisible();
+});
+
+it('describes the agent coverage of a configuration', async () => {
+	const { view, store } = await renderSection();
+	store.options.project!.agents = [{ id: 'support', name: 'Support agent', published: true }];
+	Object.assign(store.configurations.project[0], { agentScope: 'all' });
+	expect(await view.findByText('All workflows, All agents')).toBeVisible();
+
+	Object.assign(store.configurations.project[0], {
+		agentScope: 'selected',
+		agentIds: ['support'],
+	});
+	expect(await view.findByText('All workflows, Support agent')).toBeVisible();
+
+	Object.assign(store.configurations.project[0], { scope: 'selected', workflowIds: [] });
+	expect(await view.findByText('Support agent')).toBeVisible();
+
+	store.configurations.project[0].agentIds = ['support', 'billing'];
+	expect(await view.findByText('2 agents')).toBeVisible();
+
+	store.configurations.project.push({ ...configuration, id: 2, agentScope: 'all' });
+	expect(await view.findByText('All workflows, All other agents')).toBeVisible();
 });
 
 it('labels the all-workflows configuration as the rest when another selects workflows', async () => {
@@ -185,6 +214,7 @@ describe('personal tab', () => {
 		store.options.project = {
 			project: { name: 'Personal', icon: null },
 			workflows: [],
+			agents: [],
 			reviewers: [],
 		};
 		vi.spyOn(store, 'load').mockResolvedValue();
@@ -250,10 +280,14 @@ it('shows a one-line placeholder until the first load finishes', async () => {
 
 	expect(await view.findByTestId('self-healing-config-loading')).toBeInTheDocument();
 	expect(view.queryByText('Scope')).not.toBeInTheDocument();
-	expect(view.queryByText(/investigate failed workflows in this project/)).not.toBeInTheDocument();
+	expect(
+		view.queryByText(/fix failed workflows and improve agents in this project/),
+	).not.toBeInTheDocument();
 
 	pending.resolve(undefined);
-	expect(await view.findByText(/investigate failed workflows in this project/)).toBeVisible();
+	expect(
+		await view.findByText(/fix failed workflows and improve agents in this project/),
+	).toBeVisible();
 	expect(view.queryByTestId('self-healing-config-loading')).not.toBeInTheDocument();
 });
 

@@ -69,7 +69,12 @@ import { SelfHealingTelemetryEventRelay } from '../self-healing-telemetry.event-
 import { SelfHealingConfigurationService } from '../self-healing-configuration.service';
 import { SelfHealingConfigurationRepository } from '../database/self-healing-configuration.repository';
 import { SelfHealingConfigurationReviewer } from '../database/self-healing-configuration-reviewer.entity';
-import { createConfiguration, addReviewer, disableInstanceAdmins } from './support/configuration';
+import {
+	createConfiguration,
+	addReviewer,
+	disableInstanceAdmins,
+	NO_AGENT_COVERAGE,
+} from './support/configuration';
 
 mockInstance(ActiveWorkflowManager);
 mockInstance(TelemetryProxy);
@@ -631,6 +636,7 @@ describe('investigation eligibility after a result', () => {
 				reviewerIds: [user.id],
 				includeAllProjectMembers: false,
 				includeSubWorkflows: false,
+				...NO_AGENT_COVERAGE,
 			},
 			input.configurationId,
 		);
@@ -652,6 +658,7 @@ describe('investigation eligibility after a result', () => {
 				reviewerIds: [user.id],
 				includeAllProjectMembers: false,
 				includeSubWorkflows: false,
+				...NO_AGENT_COVERAGE,
 			},
 			input.configurationId,
 		);
@@ -2744,6 +2751,7 @@ describe('configuration lifecycle', () => {
 				reviewerIds: [reviewer.id],
 				includeAllProjectMembers: false,
 				includeSubWorkflows: false,
+				...NO_AGENT_COVERAGE,
 			},
 			result.configurationId,
 		);
@@ -2776,6 +2784,7 @@ describe('configuration lifecycle', () => {
 				reviewerIds: [user.id],
 				includeAllProjectMembers: false,
 				includeSubWorkflows: false,
+				...NO_AGENT_COVERAGE,
 			},
 			result.configurationId,
 		);
@@ -2801,6 +2810,7 @@ describe('configuration lifecycle', () => {
 				reviewerIds: [reviewer.id],
 				includeAllProjectMembers: false,
 				includeSubWorkflows: false,
+				...NO_AGENT_COVERAGE,
 			},
 			input.configurationId,
 		);
@@ -2840,6 +2850,7 @@ describe('configuration lifecycle', () => {
 					reviewerIds: [reviewer.id],
 					includeAllProjectMembers: false,
 					includeSubWorkflows: false,
+					...NO_AGENT_COVERAGE,
 				},
 				investigation.configurationId,
 			);

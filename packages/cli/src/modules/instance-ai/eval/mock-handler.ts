@@ -8,6 +8,7 @@
  * CLI test suite.
  */
 
+import type { ModelConfig } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
@@ -161,6 +162,10 @@ interface MockHandlerOptions {
 	maxRetries?: number;
 	/** Aborted when the run ends: every later request fails, like a cancelled real request. */
 	signal?: AbortSignal;
+	/** Shared response cache. Two handlers that use the same map serve the same responses. */
+	responseCache?: Map<string, Promise<EvalMockHttpResponse>>;
+	/** Host-resolved model for response generation. */
+	model?: ModelConfig;
 }
 
 // A real request never answers in zero time. Instant cache hits let a node that
@@ -344,7 +349,7 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 	// gets a fresh attempt, and soft-fallback responses (served after a
 	// rejected-and-never-resubmitted `submit_response`, e.g. the date-filter
 	// soft rejection) so known-suspect data is served at most once.
-	const responseCache = new Map<string, Promise<EvalMockHttpResponse>>();
+	const responseCache = options?.responseCache ?? new Map<string, Promise<EvalMockHttpResponse>>();
 	// Successful writes of this execution (one handler per execution), shown to
 	// later requests to the same service so a read returns what was written.
 	const writeLedger: WriteLedgerEntry[] = [];
@@ -391,6 +396,7 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 				priorWrites: formatWriteLedger(writeLedger, hostname),
 				nodeConfig: nodeConfigCache.get(node.name) ?? '',
 				maxRetries: options?.maxRetries ?? DEFAULT_MAX_RETRIES,
+				model: options?.model,
 			});
 
 			if (cacheKey) {
@@ -512,6 +518,7 @@ interface MockResponseContext {
 	priorWrites?: string;
 	nodeConfig: string;
 	maxRetries: number;
+	model?: ModelConfig;
 }
 
 async function generateMockResponse(
@@ -642,6 +649,7 @@ async function generateMockResponse(
 				},
 				attempt === 0 ? LLM_CALL_TIMEOUT_MS : LLM_CALL_RETRY_TIMEOUT_MS,
 				dateConstraints,
+				context.model,
 			);
 			applyEndpointNormalizers(request, spec);
 			applyProviderShapeNormalizers(
@@ -1006,6 +1014,7 @@ async function callLlm(
 	requestInfo: { serviceName: string; method: string; pathname: string; hostname?: string },
 	timeoutMs: number,
 	dateConstraints: DateFilterConstraint[] = [],
+	model?: ModelConfig,
 ): Promise<{ spec: MockResponseSpec; softOnly: boolean }> {
 	const capture: SubmitCapture = {};
 
@@ -1013,6 +1022,7 @@ async function callLlm(
 	const agent = createEvalAgent('eval-mock-responder', {
 		instructions: MOCK_SYSTEM_PROMPT,
 		cache: true,
+		...(model ? { resolvedModel: model } : {}),
 	})
 		.tool(
 			createQuirksLookupTool(

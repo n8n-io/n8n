@@ -10,6 +10,7 @@ import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import type { AgentConfigService } from '../agent-config.service';
 import type {
 	AgentExecutionService,
+	ProductionTraceSessionDetail,
 	ThreadDetail,
 	ThreadListItem,
 } from '../agent-execution.service';
@@ -20,7 +21,10 @@ import type { AgentsSettingsService } from '../agents-settings.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
 import type { AttachableWorkflowsService } from '../attachable-workflows.service';
+import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { ProjectAgent } from '../entities/agent.entity';
+import type { AgentPublishHistory } from '../entities/agent-publish-history.entity';
+import type { AgentPublishHistoryRepository } from '../repositories/agent-publish-history.repository';
 import { AgentContextService } from '../agent-context.service';
 import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
 
@@ -38,7 +42,10 @@ function makeService() {
 	const agentSkillRefs = createAgentSkillRefsService();
 	const agentsSettingsService = mock<AgentsSettingsService>();
 	const agentConfigService = mock<AgentConfigService>();
+	const agentPublishHistoryRepository = mock<AgentPublishHistoryRepository>();
 	agentsSettingsService.assertEnabled.mockResolvedValue(undefined);
+	agentsSettingsService.getEnabled.mockResolvedValue(true);
+	agentPublishHistoryRepository.findLatestForVersions.mockResolvedValue(new Map());
 	const service = new AgentContextService(
 		agentsService,
 		agentSkillsService,
@@ -51,6 +58,7 @@ function makeService() {
 		agentSkillRefs,
 		agentsSettingsService,
 		agentConfigService,
+		agentPublishHistoryRepository,
 	);
 	return {
 		service,
@@ -65,6 +73,7 @@ function makeService() {
 		agentSkillRefs,
 		agentsSettingsService,
 		agentConfigService,
+		agentPublishHistoryRepository,
 	};
 }
 
@@ -610,5 +619,313 @@ describe('AgentContextService', () => {
 			ForbiddenError,
 		);
 		expect(agentExecutionService.getThreads).toHaveBeenCalledTimes(1);
+	});
+
+	describe('listProjectAgents', () => {
+		it('lists the agents that are not archived, with their publication state', async () => {
+			const { service, agentsService } = makeService();
+			agentsService.findByProjectId.mockResolvedValue([
+				{ ...agent, isArchived: false },
+				{ ...agent, id: 'agent-2', name: 'Draft Agent', activeVersionId: null, isArchived: false },
+				{ ...agent, id: 'agent-3', name: 'Old Agent', isArchived: true },
+			] as ProjectAgent[]);
+
+			await expect(service.listProjectAgents('project-1')).resolves.toEqual([
+				{ id: 'agent-1', name: 'Support Agent', published: true },
+				{ id: 'agent-2', name: 'Draft Agent', published: false },
+			]);
+			expect(vi.mocked(userHasScopes)).not.toHaveBeenCalled();
+		});
+
+		it('returns an empty list when Agents are turned off', async () => {
+			const { service, agentsService, agentsSettingsService } = makeService();
+			agentsSettingsService.getEnabled.mockResolvedValue(false);
+
+			await expect(service.listProjectAgents('project-1')).resolves.toEqual([]);
+			expect(agentsService.findByProjectId).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getPublishedVersion', () => {
+		const cleanAgent = {
+			...agent,
+			isArchived: false,
+			versionId: 'published-1',
+			activeVersion: { versionId: 'published-1', createdAt: new Date('2026-09-01T00:00:00.000Z') },
+		} as ProjectAgent;
+
+		function makeCleanService() {
+			const mocks = makeService();
+			mocks.agentSkillRefs.versionSnapshot.mockResolvedValue(new Map());
+			mocks.agentSkillRefs.matchesVersion.mockResolvedValue(true);
+			return mocks;
+		}
+
+		it.each([
+			['the agent does not exist', null],
+			['the agent is archived', { ...cleanAgent, isArchived: true }],
+			['the agent is not published', { ...cleanAgent, activeVersionId: null }],
+		])('returns null when %s', async (_name, found) => {
+			const { service, agentsService } = makeCleanService();
+			agentsService.findById.mockResolvedValue(found as ProjectAgent | null);
+
+			await expect(service.getPublishedVersion('project-1', 'agent-1')).resolves.toBeNull();
+		});
+
+		it('uses the time of the latest publication of the active version', async () => {
+			const { service, agentsService, agentPublishHistoryRepository } = makeCleanService();
+			agentsService.findById.mockResolvedValue(cleanAgent);
+			const publishedAt = new Date('2026-09-10T00:00:00.000Z');
+			agentPublishHistoryRepository.findLatestForVersions.mockResolvedValue(
+				new Map([['published-1', { createdAt: publishedAt } as AgentPublishHistory]]),
+			);
+
+			await expect(service.getPublishedVersion('project-1', 'agent-1')).resolves.toEqual({
+				versionId: 'published-1',
+				publishedAt,
+				agentName: 'Support Agent',
+				clean: true,
+			});
+			expect(agentsService.findById).toHaveBeenCalledWith('agent-1', 'project-1');
+			expect(agentPublishHistoryRepository.findLatestForVersions).toHaveBeenCalledWith(
+				'agent-1',
+				['published-1'],
+				{},
+			);
+		});
+
+		it('reads the publication time of one version', async () => {
+			const { service, agentPublishHistoryRepository } = makeCleanService();
+			const publishedAt = new Date('2026-09-10T00:00:00.000Z');
+			agentPublishHistoryRepository.findLatestForVersions.mockResolvedValue(
+				new Map([['old-version', { createdAt: publishedAt } as AgentPublishHistory]]),
+			);
+
+			await expect(service.getVersionPublishedAt('agent-1', 'old-version')).resolves.toEqual(
+				publishedAt,
+			);
+			await expect(service.getVersionPublishedAt('agent-1', 'other')).resolves.toBeNull();
+		});
+
+		it('uses the save time of the version when it has no publication row', async () => {
+			const { service, agentsService } = makeCleanService();
+			agentsService.findById.mockResolvedValue(cleanAgent);
+
+			await expect(service.getPublishedVersion('project-1', 'agent-1')).resolves.toMatchObject({
+				publishedAt: new Date('2026-09-01T00:00:00.000Z'),
+			});
+		});
+
+		it('is not clean when the draft version is not the published version', async () => {
+			const { service, agentsService } = makeCleanService();
+			agentsService.findById.mockResolvedValue({ ...cleanAgent, versionId: 'draft-1' });
+
+			await expect(service.getPublishedVersion('project-1', 'agent-1')).resolves.toMatchObject({
+				clean: false,
+			});
+		});
+
+		it('is not clean when a followed skill has a newer version', async () => {
+			const { service, agentsService, agentSkillRefs } = makeCleanService();
+			agentsService.findById.mockResolvedValue(cleanAgent);
+			agentSkillRefs.matchesVersion.mockResolvedValue(false);
+
+			await expect(service.getPublishedVersion('project-1', 'agent-1')).resolves.toMatchObject({
+				clean: false,
+			});
+		});
+
+		it('is not clean when the draft refers to a skill that does not exist', async () => {
+			const { service, agentsService, agentSkillRefs } = makeCleanService();
+			agentsService.findById.mockResolvedValue(cleanAgent);
+			agentSkillRefs.versionSnapshot.mockRejectedValue(new UserError('missing skills'));
+
+			await expect(service.getPublishedVersion('project-1', 'agent-1')).resolves.toMatchObject({
+				clean: false,
+			});
+		});
+	});
+
+	describe('production sessions', () => {
+		const window = {
+			after: new Date('2026-09-01T00:00:00.000Z'),
+			until: new Date('2026-09-17T00:00:00.000Z'),
+		};
+		const filter = { projectId: 'project-1', agentId: 'agent-1', readerId: 'user-1', ...window };
+		const firstTurn = {
+			id: 'execution-1',
+			threadId: 'thread-1',
+			source: 'slack',
+			createdAt: new Date('2026-09-10T08:00:00.000Z'),
+			status: 'success',
+			userMessage: 'x'.repeat(600),
+			timeline: [
+				{ type: 'text', content: 'One moment.', timestamp: 1 },
+				{ type: 'tool-call', name: 'lookup_order' },
+			],
+			error: null,
+			failureSummary: null,
+			cost: 0.02,
+			totalTokens: 1200,
+			duration: 3400,
+		} as unknown as AgentExecution;
+		const secondTurn = {
+			...firstTurn,
+			id: 'execution-2',
+			createdAt: new Date('2026-09-11T09:30:00.000Z'),
+			status: 'error',
+			userMessage: 'That is the wrong order.',
+			timeline: [{ type: 'tool-call', name: 'lookup_customer' }],
+			failureSummary: { count: 1, latest: { message: 'Order not found' } },
+			cost: null,
+			totalTokens: 300,
+			duration: 600,
+		} as unknown as AgentExecution;
+		const summary = {
+			sessionId: 'thread-1',
+			source: 'slack',
+			lastActivityAt: '2026-09-11T09:30:00.000Z',
+			turnCount: 2,
+			firstUserMessage: 'x'.repeat(500),
+			toolNames: ['lookup_order', 'lookup_customer'],
+			failure: 'Order not found',
+			cost: 0.02,
+			totalTokens: 1500,
+			durationMs: 4000,
+		};
+
+		it('counts the sessions of the window as the user', async () => {
+			const { service, agentExecutionService } = makeService();
+			agentExecutionService.countProductionTraceSessions.mockResolvedValue(7);
+
+			await expect(
+				service.countProductionTraces(user, 'project-1', 'agent-1', window),
+			).resolves.toBe(7);
+			expect(agentExecutionService.countProductionTraceSessions).toHaveBeenCalledWith(filter);
+		});
+
+		it('lists one summary for each session from its turns in the window', async () => {
+			const { service, agentExecutionService } = makeService();
+			agentExecutionService.listProductionTraceSessions.mockResolvedValue([
+				{ threadId: 'thread-1', turns: [firstTurn, secondTurn] },
+			]);
+
+			await expect(
+				service.listProductionTraces(user, 'project-1', 'agent-1', window, {
+					limit: 20,
+					offset: 40,
+				}),
+			).resolves.toEqual([summary]);
+			expect(agentExecutionService.listProductionTraceSessions).toHaveBeenCalledWith(filter, {
+				limit: 20,
+				offset: 40,
+			});
+		});
+
+		it('gives null sums and a null source when no turn has a value', async () => {
+			const { service, agentExecutionService } = makeService();
+			agentExecutionService.listProductionTraceSessions.mockResolvedValue([
+				{
+					threadId: 'thread-1',
+					turns: [{ ...firstTurn, source: null, cost: null, totalTokens: null } as AgentExecution],
+				},
+			]);
+
+			const [listed] = await service.listProductionTraces(user, 'project-1', 'agent-1', window, {
+				limit: 20,
+				offset: 0,
+			});
+
+			expect(listed).toMatchObject({
+				source: null,
+				turnCount: 1,
+				failure: null,
+				cost: null,
+				totalTokens: null,
+				durationMs: 3400,
+			});
+		});
+
+		it.each([
+			[
+				{ limit: 5000, offset: -3 },
+				{ limit: 100, offset: 0 },
+			],
+			[
+				{ limit: -1, offset: 2.7 },
+				{ limit: 1, offset: 2 },
+			],
+			[
+				{ limit: Number.NaN, offset: Number.NaN },
+				{ limit: 1, offset: 0 },
+			],
+		])('keeps the page %o inside the allowed range', async (requested, used) => {
+			const { service, agentExecutionService } = makeService();
+			agentExecutionService.listProductionTraceSessions.mockResolvedValue([]);
+
+			await service.listProductionTraces(user, 'project-1', 'agent-1', window, requested);
+
+			expect(agentExecutionService.listProductionTraceSessions).toHaveBeenCalledWith(filter, used);
+		});
+
+		it('reads one session with every turn of its conversation', async () => {
+			const { service, agentExecutionService } = makeService();
+			const beforeWindow = { ...firstTurn, id: 'execution-0' } as AgentExecution;
+			agentExecutionService.getProductionTraceSession.mockResolvedValue({
+				thread: { id: 'thread-1', agentId: 'agent-1', agentName: 'Support Agent' },
+				executions: [beforeWindow, firstTurn, secondTurn],
+				turns: [firstTurn, secondTurn],
+			} as ProductionTraceSessionDetail);
+
+			const trace = await service.readProductionTrace(
+				user,
+				'project-1',
+				'agent-1',
+				'thread-1',
+				window,
+			);
+
+			expect(agentExecutionService.getProductionTraceSession).toHaveBeenCalledWith(
+				filter,
+				'thread-1',
+			);
+			expect(trace).toMatchObject(summary);
+			expect(trace?.session.thread.id).toBe('thread-1');
+			expect(trace?.session.executions.map(({ id }) => id)).toEqual([
+				'execution-0',
+				'execution-1',
+				'execution-2',
+			]);
+		});
+
+		it('returns null when the session has no production turn in the window', async () => {
+			const { service, agentExecutionService } = makeService();
+			agentExecutionService.getProductionTraceSession.mockResolvedValue(null);
+
+			await expect(
+				service.readProductionTrace(user, 'project-1', 'agent-1', 'thread-9', window),
+			).resolves.toBeNull();
+		});
+
+		it('rejects every session method when the user cannot read agents in the project', async () => {
+			const { service, agentExecutionService } = makeService();
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			await expect(
+				service.countProductionTraces(user, 'project-1', 'agent-1', window),
+			).rejects.toThrow(ForbiddenError);
+			await expect(
+				service.listProductionTraces(user, 'project-1', 'agent-1', window, {
+					limit: 20,
+					offset: 0,
+				}),
+			).rejects.toThrow(ForbiddenError);
+			await expect(
+				service.readProductionTrace(user, 'project-1', 'agent-1', 'thread-1', window),
+			).rejects.toThrow(ForbiddenError);
+			expect(agentExecutionService.countProductionTraceSessions).not.toHaveBeenCalled();
+			expect(agentExecutionService.listProductionTraceSessions).not.toHaveBeenCalled();
+			expect(agentExecutionService.getProductionTraceSession).not.toHaveBeenCalled();
+		});
 	});
 });

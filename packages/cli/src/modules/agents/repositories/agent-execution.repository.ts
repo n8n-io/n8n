@@ -8,6 +8,7 @@ import { AgentExecution } from '../entities/agent-execution.entity';
 import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { AgentExecutionMessageLink } from '../entities/agent-execution-message-link.entity';
 import { AgentMessageEntity } from '../entities/agent-message.entity';
+import { PRODUCTION_TRACE_SOURCES } from '../utils/agent-thread-access';
 import type {
 	AgentExecutionFailureSummary,
 	ThreadFailureSummary,
@@ -41,6 +42,37 @@ export type AgentExecutionUsageRow = Pick<AgentExecution, (typeof USAGE_COLUMNS)
 export interface AgentExecutionLinks {
 	parentExecutionId: string;
 }
+
+/** The agent, the reader and the time window of a production trace query. */
+export interface AgentProductionTraceFilter {
+	projectId: string;
+	agentId: string;
+	/** The user who reads the traces. A private thread of another user never matches. */
+	readerId: string;
+	/** Exclusive lower bound on `createdAt`. Null means no lower bound. */
+	after: Date | null;
+	/** Inclusive upper bound on `createdAt`. */
+	until: Date;
+}
+
+/** One session that has a production trace in the window. */
+export interface AgentProductionTraceSessionRow {
+	threadId: string;
+	/** Production traces of the session in the window. */
+	turnCount: number;
+	/** Creation time of the newest production trace of the session in the window. */
+	lastActivityAt: Date;
+}
+
+/**
+ * Postgres returns a date aggregate as a Date. SQLite returns the stored UTC
+ * text without a time zone, and `new Date` reads such text as local time.
+ */
+const toAggregateDate = (value: string | Date): Date => {
+	if (value instanceof Date) return value;
+	const hasTimeZone = /(?:Z|[+-]\d{2}:?\d{2})$/.test(value);
+	return new Date(hasTimeZone ? value : `${value.replace(' ', 'T')}Z`);
+};
 
 /** Keeps `IN (...)` lists below the SQLite bound-parameter limit. */
 const PARENT_ID_BATCH_SIZE = 500;
@@ -188,6 +220,92 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 			.innerJoin(AgentExecution, 'execution', 'execution.threadId = thread.id')
 			.where('execution.id = :executionId', { executionId })
 			.getOne();
+	}
+
+	/**
+	 * The one definition of a production trace: a settled top-level execution
+	 * from a production source, in a thread that the reader can access. The
+	 * session count, list and read all use this query, so they cannot disagree.
+	 */
+	private productionTraceQuery(filter: AgentProductionTraceFilter) {
+		const query = this.createQueryBuilder('execution')
+			.innerJoin(AgentExecutionThread, 'thread', 'thread.id = execution.threadId')
+			.where('thread.agentId = :agentId AND thread.projectId = :projectId', {
+				agentId: filter.agentId,
+				projectId: filter.projectId,
+			})
+			// A delegated run is part of the trace of its parent turn.
+			.andWhere('thread.parentThreadId IS NULL')
+			.andWhere('execution.parentExecutionId IS NULL')
+			.andWhere("execution.status <> 'running'")
+			// A resumed execution continues the trace of the suspended execution.
+			.andWhere("(execution.hitlStatus IS NULL OR execution.hitlStatus <> 'resumed')")
+			.andWhere('execution.createdAt <= :until', { until: filter.until })
+			.andWhere(
+				"(thread.accessScope = 'project' OR (thread.accessScope = 'user' AND thread.ownerId = :readerId))",
+				{ readerId: filter.readerId },
+			)
+			.andWhere(
+				"(execution.source IN (:...productionSources) OR (execution.source = 'task' AND thread.taskVersionId IS NOT NULL))",
+				{ productionSources: [...PRODUCTION_TRACE_SOURCES] },
+			);
+		if (filter.after) query.andWhere('execution.createdAt > :after', { after: filter.after });
+		return query;
+	}
+
+	/** Sessions that have one production trace or more in the window. */
+	async countProductionTraceSessions(filter: AgentProductionTraceFilter): Promise<number> {
+		const row = await this.productionTraceQuery(filter)
+			.select('COUNT(DISTINCT execution.threadId)', 'count')
+			.getRawOne<{ count: string | number }>();
+		return Number(row?.count ?? 0);
+	}
+
+	/**
+	 * One row for each session that has a production trace in the window,
+	 * newest activity first. `turnCount` and `lastActivityAt` use only the
+	 * turns in the window. The `threadId` breaks ties in `lastActivityAt`.
+	 */
+	async findProductionTraceSessions(
+		filter: AgentProductionTraceFilter,
+		limit: number,
+		offset: number,
+	): Promise<AgentProductionTraceSessionRow[]> {
+		const rows = await this.productionTraceQuery(filter)
+			.select('execution.threadId', 'threadId')
+			.addSelect('COUNT(*)', 'turnCount')
+			.addSelect('MAX(execution.createdAt)', 'lastActivityAt')
+			.groupBy('execution.threadId')
+			.orderBy('MAX(execution.createdAt)', 'DESC')
+			.addOrderBy('execution.threadId', 'DESC')
+			.limit(limit)
+			.offset(offset)
+			.getRawMany<{
+				threadId: string;
+				turnCount: string | number;
+				lastActivityAt: string | Date;
+			}>();
+		return rows.map((row) => ({
+			threadId: row.threadId,
+			turnCount: Number(row.turnCount),
+			lastActivityAt: toAggregateDate(row.lastActivityAt),
+		}));
+	}
+
+	/**
+	 * The production traces of the given sessions in the window, oldest first.
+	 * A session without a row here is not readable for this filter.
+	 */
+	async findProductionTracesInThreads(
+		filter: AgentProductionTraceFilter,
+		threadIds: string[],
+	): Promise<AgentExecution[]> {
+		if (threadIds.length === 0) return [];
+		return await this.productionTraceQuery(filter)
+			.andWhere('execution.threadId IN (:...threadIds)', { threadIds })
+			.orderBy('execution.createdAt', 'ASC')
+			.addOrderBy('execution.id', 'ASC')
+			.getMany();
 	}
 
 	async findLatestByThreadId(threadId: string): Promise<AgentExecution | null> {

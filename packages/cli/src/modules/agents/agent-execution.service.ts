@@ -72,6 +72,7 @@ import type { AgentExecutionThreadMetadata } from './repositories/agent-executio
 import {
 	AgentExecutionRepository,
 	type AgentExecutionLinks,
+	type AgentProductionTraceFilter,
 	type RunningAgentExecution,
 } from './repositories/agent-execution.repository';
 import {
@@ -142,6 +143,17 @@ interface TimelineSnapshotParams extends AgentExecutionLogRef {
 export interface ThreadDetail {
 	thread: AgentExecutionThread;
 	executions: AgentExecution[];
+}
+
+/** A session with its production traces in a window, oldest first. */
+export interface ProductionTraceSession {
+	threadId: string;
+	turns: AgentExecution[];
+}
+
+/** A full session, and its turns that are production traces in a window. */
+export interface ProductionTraceSessionDetail extends ThreadDetail {
+	turns: AgentExecution[];
 }
 
 /** One page of a thread's turns, oldest first. */
@@ -1014,6 +1026,71 @@ export class AgentExecutionService {
 		await this.hydrateExecutionInputs(executions, thread.agentName);
 		await this.hydrateTimelines(agentId, threadId, executions);
 		return { thread, executions, hasOlder: older !== undefined };
+	}
+
+	/**
+	 * Sessions that have a production trace in the window.
+	 * Module-internal. The caller must check read access to the project first.
+	 */
+	async countProductionTraceSessions(filter: AgentProductionTraceFilter): Promise<number> {
+		return await this.agentExecutionRepository.countProductionTraceSessions(filter);
+	}
+
+	/**
+	 * Sessions that have a production trace in the window, newest activity
+	 * first. Each session holds only its turns in the window, oldest first, with
+	 * inputs and timelines.
+	 * Module-internal. The caller must check read access to the project first.
+	 */
+	async listProductionTraceSessions(
+		filter: AgentProductionTraceFilter,
+		{ limit, offset }: { limit: number; offset: number },
+	): Promise<ProductionTraceSession[]> {
+		const rows = await this.agentExecutionRepository.findProductionTraceSessions(
+			filter,
+			limit,
+			offset,
+		);
+		const threadIds = rows.map(({ threadId }) => threadId);
+		const [turns, threads] = await Promise.all([
+			this.agentExecutionRepository.findProductionTracesInThreads(filter, threadIds),
+			this.agentExecutionThreadRepository.findManyByIds(threadIds),
+		]);
+		const byThread = groupBy(turns, ({ threadId }) => threadId);
+		// The timeline blobs are stored for each thread, so hydrate one thread at a time.
+		for (const thread of threads) {
+			const threadTurns = byThread[thread.id] ?? [];
+			await this.hydrateExecutionInputs(threadTurns, thread.agentName);
+			await this.hydrateTimelines(filter.agentId, thread.id, threadTurns);
+		}
+		// A turn that settles between the two queries can add a session. Keep the listed sessions only.
+		return rows.flatMap(({ threadId }) =>
+			byThread[threadId] ? [{ threadId, turns: byThread[threadId] }] : [],
+		);
+	}
+
+	/**
+	 * One session with all its turns, also the turns outside the window. `turns`
+	 * holds the turns that are production traces in the window. Returns null
+	 * when the session has no production trace for this filter.
+	 * Module-internal. The caller must check read access to the project first.
+	 */
+	async getProductionTraceSession(
+		filter: AgentProductionTraceFilter,
+		threadId: string,
+	): Promise<ProductionTraceSessionDetail | null> {
+		const matching = await this.agentExecutionRepository.findProductionTracesInThreads(filter, [
+			threadId,
+		]);
+		if (matching.length === 0) return null;
+		const thread = await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
+		if (!thread) return null;
+
+		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
+		await this.hydrateExecutionInputs(executions, thread.agentName);
+		await this.hydrateTimelines(filter.agentId, threadId, executions);
+		const matchingIds = new Set(matching.map(({ id }) => id));
+		return { thread, executions, turns: executions.filter(({ id }) => matchingIds.has(id)) };
 	}
 
 	/**

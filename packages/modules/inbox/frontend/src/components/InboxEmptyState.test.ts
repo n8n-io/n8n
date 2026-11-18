@@ -77,7 +77,7 @@ it.each([
 it('opens a new personal configuration from the setup prompt', async () => {
 	const { getByRole, getByTestId, router } = await renderEmptyState(['self_healing_result']);
 
-	expect(getByTestId('inbox-empty')).toHaveTextContent('Get fixes for failed workflows');
+	expect(getByTestId('inbox-empty')).toHaveTextContent('Get workflow fixes and agent improvements');
 	await fireEvent.click(getByRole('button', { name: 'Set up self-healing' }));
 
 	await vi.waitFor(() =>
@@ -110,7 +110,9 @@ it('keeps the loading state until the status request settles', async () => {
 	status.resolve({ isReviewer: false, setupProjectId: 'personal' });
 	await refresh;
 	await vi.waitFor(() =>
-		expect(getByTestId('inbox-empty')).toHaveTextContent('Get fixes for failed workflows'),
+		expect(getByTestId('inbox-empty')).toHaveTextContent(
+			'Get workflow fixes and agent improvements',
+		),
 	);
 });
 
@@ -118,7 +120,7 @@ it.each([
 	[
 		'open',
 		'No open reviews',
-		"When a workflow fails, the Assistant's suggested fix appears here for you to review.",
+		"The Assistant's workflow fixes and agent improvements appear here for you to review.",
 	],
 	['closed', 'No closed reviews', 'Reviews that were approved or discarded appear here.'],
 ] as const)('shows self-healing copy on the %s tab once it is set up', async (tab, title, body) => {

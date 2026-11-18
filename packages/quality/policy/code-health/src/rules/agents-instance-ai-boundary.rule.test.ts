@@ -93,6 +93,8 @@ const evaluation = import(\`../agents/evaluation/agent-evaluation.service\`);
 export type { AgentSessionDetail } from '../agents/agent-context.contracts';
 import type { AgentDraftState } from '@agents/agent-draft.contracts';
 import type { AgentCredentialProvider } from '@agents/agent-credential-provider.contracts';
+import { AgentProposalService } from '@/modules/agents/agent-proposal.service';
+import type { AgentProposalBase } from '../agents/agent-proposal.contracts';
 type Request = import('../agents/builder/builder-session').BuilderRequest;
 export type { AgentEvaluationPreparation } from '../agents/evaluation/agent-evaluation.contracts';
 export { pruneConfigForEval } from '../agents/evaluation/evaluation-config';

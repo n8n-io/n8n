@@ -9,7 +9,7 @@
 | customTelemetryTags | json | '[]'::json | false |  |  |  |
 | description | varchar(512) |  | true |  |  |  |
 | icon | json |  | true |  |  |  |
-| id | varchar(36) |  | false | [public.activity_event](public.activity_event.md) [public.agent_chat_attachments](public.agent_chat_attachments.md) [public.agent_execution_threads](public.agent_execution_threads.md) [public.agents](public.agents.md) [public.ai_preference](public.ai_preference.md) [public.app](public.app.md) [public.data_table](public.data_table.md) [public.folder](public.folder.md) [public.insights_metadata](public.insights_metadata.md) [public.instance_ai_threads](public.instance_ai_threads.md) [public.project_execution_limit](public.project_execution_limit.md) [public.project_pool_settings](public.project_pool_settings.md) [public.project_relation](public.project_relation.md) [public.project_secrets_provider_access](public.project_secrets_provider_access.md) [public.promotion_environment_project](public.promotion_environment_project.md) [public.role_mapping_rule_project](public.role_mapping_rule_project.md) [public.self_healing_configuration](public.self_healing_configuration.md) [public.self_healing_configuration_workflow](public.self_healing_configuration_workflow.md) [public.self_healing_investigation](public.self_healing_investigation.md) [public.self_healing_result](public.self_healing_result.md) [public.shared_credentials](public.shared_credentials.md) [public.shared_workflow](public.shared_workflow.md) [public.skill](public.skill.md) [public.skill_source](public.skill_source.md) [public.type_availability_policy_scope](public.type_availability_policy_scope.md) [public.variables](public.variables.md) [public.workflow_review_request](public.workflow_review_request.md) [public.workflow_suggestion](public.workflow_suggestion.md) |  |  |
+| id | varchar(36) |  | false | [public.activity_event](public.activity_event.md) [public.agent_chat_attachments](public.agent_chat_attachments.md) [public.agent_execution_threads](public.agent_execution_threads.md) [public.agents](public.agents.md) [public.ai_preference](public.ai_preference.md) [public.app](public.app.md) [public.data_table](public.data_table.md) [public.folder](public.folder.md) [public.insights_metadata](public.insights_metadata.md) [public.instance_ai_threads](public.instance_ai_threads.md) [public.project_execution_limit](public.project_execution_limit.md) [public.project_pool_settings](public.project_pool_settings.md) [public.project_relation](public.project_relation.md) [public.project_secrets_provider_access](public.project_secrets_provider_access.md) [public.promotion_environment_project](public.promotion_environment_project.md) [public.role_mapping_rule_project](public.role_mapping_rule_project.md) [public.self_healing_agent_investigation](public.self_healing_agent_investigation.md) [public.self_healing_agent_result](public.self_healing_agent_result.md) [public.self_healing_configuration](public.self_healing_configuration.md) [public.self_healing_configuration_agent](public.self_healing_configuration_agent.md) [public.self_healing_configuration_workflow](public.self_healing_configuration_workflow.md) [public.self_healing_investigation](public.self_healing_investigation.md) [public.self_healing_result](public.self_healing_result.md) [public.shared_credentials](public.shared_credentials.md) [public.shared_workflow](public.shared_workflow.md) [public.skill](public.skill.md) [public.skill_source](public.skill_source.md) [public.type_availability_policy_scope](public.type_availability_policy_scope.md) [public.variables](public.variables.md) [public.workflow_review_request](public.workflow_review_request.md) [public.workflow_suggestion](public.workflow_suggestion.md) |  |  |
 | name | varchar(255) |  | false |  |  |  |
 | type | varchar(36) |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -55,7 +55,10 @@ erDiagram
 "public.project_secrets_provider_access" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.promotion_environment_project" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.role_mapping_rule_project" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.self_healing_agent_investigation" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.self_healing_agent_result" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.self_healing_configuration" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.self_healing_configuration_agent" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.self_healing_configuration_workflow" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.self_healing_investigation" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.self_healing_result" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
@@ -259,7 +262,63 @@ erDiagram
   varchar_36_ projectId FK
   varchar_16_ roleMappingRuleId FK
 }
+"public.self_healing_agent_investigation" {
+  varchar_36_ agentId FK
+  varchar_36_ agentVersionId
+  uuid backgroundUserId FK
+  integer configurationId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_64_ failureReason
+  timestamp_3__with_time_zone finishedAt
+  varchar_36_ id
+  varchar_16_ outcome
+  varchar_36_ projectId FK
+  varchar_36_ resultId FK
+  uuid runId
+  uuid threadId
+  integer traceCount
+  timestamp_3__with_time_zone traceWindowEnd
+  timestamp_3__with_time_zone traceWindowStart
+  varchar_16_ trigger
+  timestamp_3__with_time_zone updatedAt
+  json usage
+}
+"public.self_healing_agent_result" {
+  varchar_36_ agentId FK
+  varchar_255_ agentName
+  boolean appliedAutomatically
+  text applyError
+  json applyProgress
+  timestamp_3__with_time_zone applyStartedAt
+  uuid backgroundUserId FK
+  varchar_36_ baseVersionId
+  timestamp_3__with_time_zone closedAt
+  uuid closedById FK
+  integer configurationId FK
+  timestamp_3__with_time_zone createdAt
+  json edits
+  json evalCases
+  json evidence
+  json goals
+  varchar_36_ id
+  varchar_36_ projectId FK
+  varchar_36_ publishedVersionId
+  text report
+  varchar_16_ reviewState
+  varchar_255_ summary
+  integer traceCount
+  timestamp_3__with_time_zone traceWindowEnd
+  timestamp_3__with_time_zone traceWindowStart
+  varchar_16_ trigger
+  timestamp_3__with_time_zone updatedAt
+  json usage
+}
 "public.self_healing_configuration" {
+  json agentGoals
+  varchar_16_ agentPublicationMode
+  integer agentScheduleIntervalHours
+  varchar_16_ agentScope
+  integer agentTraceThreshold
   timestamp_3__with_time_zone createdAt
   boolean enabled
   uuid enabledById FK
@@ -269,6 +328,11 @@ erDiagram
   varchar_36_ projectId FK
   varchar_16_ scope
   timestamp_3__with_time_zone updatedAt
+}
+"public.self_healing_configuration_agent" {
+  varchar_36_ agentId FK
+  integer configurationId FK
+  varchar_36_ projectId FK
 }
 "public.self_healing_configuration_workflow" {
   integer configurationId FK

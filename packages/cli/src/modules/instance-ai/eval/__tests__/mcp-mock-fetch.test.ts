@@ -232,3 +232,50 @@ describe('createMcpMockFetch', () => {
 		expect(body.error.code).toBe(-32601);
 	});
 });
+
+describe('createMcpMockFetch shared options', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		generate.mockResolvedValue({ messages: [] });
+	});
+
+	const options = {
+		servers: [{ name: 'acme_kb', url: 'https://mcp.acme-kb.example/mcp' }],
+		agentInstructions: 'Answer product questions from the acme knowledge base.',
+		onToolCall: vi.fn(),
+		logger,
+	};
+	const call = rpc('tools/call', { name: 'search_articles', arguments: { query: 'limit' } });
+
+	it('serves the catalog and the results of another mock that uses the same caches', async () => {
+		extractText
+			.mockReturnValueOnce(toolsListJson)
+			.mockReturnValue(JSON.stringify({ text: 'The export limit is 10k rows.' }));
+		const toolsByServer = new Map();
+		const resultCache = new Map();
+		const first = createMcpMockFetch({ ...options, toolsByServer, resultCache });
+		const second = createMcpMockFetch({ ...options, toolsByServer, resultCache });
+
+		const firstBody: unknown = await (await first('https://mcp.acme-kb.example/mcp', call)).json();
+		const secondBody: unknown = await (
+			await second('https://mcp.acme-kb.example/mcp', call)
+		).json();
+
+		expect(secondBody).toEqual(firstBody);
+		// One call for the catalog and one call for the result.
+		expect(generate).toHaveBeenCalledTimes(2);
+	});
+
+	it('creates the generators with the given model', async () => {
+		const { createEvalAgent } = await import('@n8n/instance-ai');
+		extractText.mockReturnValue(toolsListJson);
+		const fetchFn = createMcpMockFetch({ ...options, model: 'anthropic/claude-helper' });
+
+		await fetchFn('https://mcp.acme-kb.example/mcp', { ...rpc('tools/list') });
+
+		expect(createEvalAgent).toHaveBeenCalledWith(
+			'eval-mcp-tools-list',
+			expect.objectContaining({ resolvedModel: 'anthropic/claude-helper' }),
+		);
+	});
+});

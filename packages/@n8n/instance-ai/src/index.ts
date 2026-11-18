@@ -5,7 +5,9 @@ import type * as AiaModelDefaultsMod from './agent/aia-model-defaults';
 import type * as ApprovalJudgeMod from './approval-review/approval-judge';
 import type * as ApplyAgentThinkingMod from './agent/apply-agent-thinking';
 import type * as InstanceAgentMod from './agent/instance-agent';
+import type * as AgentImprovementAgentMod from './agent/agent-improvement-agent';
 import type * as SelfHealingAgentMod from './agent/self-healing-agent';
+import type * as AgentImprovementMod from './agent-improvement';
 import type * as SelfHealingMod from './self-healing';
 import type * as WorkspaceFilesMod from './workspace/workspace-files';
 import type * as SystemPromptMod from './agent/system-prompt';
@@ -130,6 +132,12 @@ const loadSelfHealingAgent = lazyModule<typeof SelfHealingAgentMod>(() =>
 	require('./agent/self-healing-agent'),
 );
 const loadSelfHealing = lazyModule<typeof SelfHealingMod>(() => require('./self-healing'));
+const loadAgentImprovementAgent = lazyModule<typeof AgentImprovementAgentMod>(() =>
+	require('./agent/agent-improvement-agent'),
+);
+const loadAgentImprovement = lazyModule<typeof AgentImprovementMod>(() =>
+	require('./agent-improvement'),
+);
 const loadWorkspaceFiles = lazyModule<typeof WorkspaceFilesMod>(() =>
 	require('./workspace/workspace-files'),
 );
@@ -936,6 +944,17 @@ export type {
 	SelfHealingCandidateInput,
 	SelfHealingCandidateVerifier,
 } from './self-healing';
+export const createAgentImprovementAgent: typeof AgentImprovementAgentMod.createAgentImprovementAgent =
+	lazyFunction(() => loadAgentImprovementAgent().createAgentImprovementAgent);
+export type { CreateAgentImprovementAgentOptions } from './agent/agent-improvement-agent';
+export type {
+	AgentImprovementOutput,
+	AgentImprovementThreadMetadata,
+	AgentImprovementHostTools,
+	AgentImprovementListSessionsInput,
+	AgentImprovementReadSessionInput,
+	AgentImprovementTestProposalInput,
+} from './agent-improvement';
 export const readWorkspaceFile: typeof WorkspaceFilesMod.readWorkspaceFile = lazyFunction(
 	() => loadWorkspaceFiles().readWorkspaceFile,
 );
@@ -955,3 +974,13 @@ defineLazyExport(
 );
 export declare const selfHealingOutputSchema: typeof SelfHealingMod.selfHealingOutputSchema;
 defineLazyExport('selfHealingOutputSchema', () => loadSelfHealing().selfHealingOutputSchema);
+export declare const AGENT_IMPROVEMENT_PROFILE_VERSION: typeof AgentImprovementMod.AGENT_IMPROVEMENT_PROFILE_VERSION;
+defineLazyExport(
+	'AGENT_IMPROVEMENT_PROFILE_VERSION',
+	() => loadAgentImprovement().AGENT_IMPROVEMENT_PROFILE_VERSION,
+);
+export declare const agentImprovementOutputSchema: typeof AgentImprovementMod.agentImprovementOutputSchema;
+defineLazyExport(
+	'agentImprovementOutputSchema',
+	() => loadAgentImprovement().agentImprovementOutputSchema,
+);

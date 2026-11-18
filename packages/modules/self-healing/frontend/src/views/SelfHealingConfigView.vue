@@ -1,14 +1,27 @@
 <script setup lang="ts">
-import type { SaveSelfHealingConfigurationDto } from '@n8n/api-types';
+import {
+	SELF_HEALING_AGENT_SCHEDULE_HOURS,
+	SELF_HEALING_AGENT_TRACE_THRESHOLD,
+	SELF_HEALING_AGENT_TRIGGER_DEFAULTS,
+	isSelfHealingAgentTriggerMissing,
+	normalizeSelfHealingAgentGoals,
+	type SaveSelfHealingConfigurationDto,
+	type SelfHealingAgentGoal,
+	type SelfHealingAgentPublicationMode,
+	type SelfHealingAgentScope,
+} from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
 	N8nAvatar,
+	N8nCallout,
 	N8nCombobox2,
 	N8nIcon,
 	N8nIconButton,
+	N8nInputNumber,
 	N8nLoading,
 	N8nSegmentControl,
+	N8nSelect2,
 	N8nText,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
@@ -20,6 +33,8 @@ import {
 	type ComboboxItem,
 	type ComboboxValue,
 	type SegmentOption,
+	type SelectOptionBase,
+	type SelectValue,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -38,6 +53,9 @@ import { useSubWorkflowScope, type SubWorkflowCoverage } from '../composables/us
 import { useSelfHealingStore } from '../self-healing.store';
 
 const PROJECT_MEMBERS_OPTION = '__project-members__';
+/** What starts an investigation. The stored fields are the hours and the session count. */
+type AgentTrigger = 'schedule' | 'sessions' | 'either';
+const OPTIONAL_AGENT_GOALS = ['cost', 'latency'] as const;
 
 const props = defineProps<{ projectId: string; configurationId: string }>();
 const store = useSelfHealingStore();
@@ -68,6 +86,12 @@ const form = ref<SaveSelfHealingConfigurationDto>({
 	reviewerIds: [],
 	includeAllProjectMembers: false,
 	includeSubWorkflows: true,
+	agentScope: 'none',
+	agentIds: [],
+	agentGoals: ['quality'],
+	agentScheduleIntervalHours: null,
+	agentTraceThreshold: null,
+	agentPublicationMode: 'approval',
 	enabled: true,
 });
 
@@ -144,6 +168,116 @@ function coverageNote(coverage: SubWorkflowCoverage | undefined) {
 	}
 	return notes.length > 0 ? notes.join(' ') : undefined;
 }
+
+// `options.agents` is empty both when Agents are off and when the project has no agent,
+// so the instance setting decides if the section shows.
+const agentsEnabled = computed(() => settingsStore.isAgentsEnabled);
+const hasAllAgentsConfiguration = computed(() =>
+	otherConfigurations.value.some(({ agentScope }) => agentScope === 'all'),
+);
+const reservedAgents = computed(
+	() => new Set(otherConfigurations.value.flatMap(({ agentIds }) => agentIds)),
+);
+const agentsById = computed(
+	() => new Map((choices.value?.agents ?? []).map((agent) => [agent.id, agent])),
+);
+const agentScopeOptions = computed<Array<SegmentOption<SelfHealingAgentScope>>>(() => [
+	{ value: 'none', label: i18n.baseText('selfHealing.config.agents.scope.none') },
+	{
+		value: 'all',
+		label: i18n.baseText('selfHealing.config.agents.scope.all'),
+		disabled: hasAllAgentsConfiguration.value,
+	},
+	{ value: 'selected', label: i18n.baseText('selfHealing.config.selected') },
+]);
+const agentTriggerOptions = computed<Array<SelectOptionBase<AgentTrigger>>>(() => [
+	{ value: 'schedule', label: i18n.baseText('selfHealing.config.agents.trigger.schedule') },
+	{ value: 'sessions', label: i18n.baseText('selfHealing.config.agents.trigger.sessions') },
+	{ value: 'either', label: i18n.baseText('selfHealing.config.agents.trigger.either') },
+]);
+const agentPublicationOptions = computed<Array<SegmentOption<SelfHealingAgentPublicationMode>>>(
+	() => [
+		{ value: 'approval', label: i18n.baseText('selfHealing.config.agents.publication.approval') },
+		{ value: 'auto', label: i18n.baseText('selfHealing.config.agents.publication.auto') },
+	],
+);
+
+const agentPickerItems = computed<ComboboxItem[]>(() =>
+	(choices.value?.agents ?? [])
+		.filter(({ id }) => !form.value.agentIds.includes(id))
+		.map(({ id, name, published }) => ({
+			value: id,
+			label: name,
+			icon: 'robot',
+			disabled: !published || reservedAgents.value.has(id),
+		})),
+);
+const selectedAgents = computed(() =>
+	form.value.agentIds.map((id) => {
+		const agent = agentsById.value.get(id);
+		return {
+			id,
+			name: agent?.name ?? i18n.baseText('selfHealing.config.agents.unavailable'),
+			published: agent?.published ?? false,
+			note:
+				agent && !agent.published
+					? i18n.baseText('selfHealing.config.agents.notPublishedHelp')
+					: undefined,
+		};
+	}),
+);
+
+function addAgent(value: ComboboxValue | ComboboxValue[] | undefined) {
+	if (typeof value === 'string' && value && !form.value.agentIds.includes(value)) {
+		form.value.agentIds.push(value);
+	}
+}
+
+function setTriggerValue(
+	field: 'agentScheduleIntervalHours' | 'agentTraceThreshold',
+	value: number | null | undefined,
+) {
+	// The number input emits no number while its text is empty. Keep the last value then.
+	if (typeof value === 'number' && Number.isFinite(value)) {
+		form.value[field] = Math.round(value);
+	}
+}
+
+const agentTrigger = computed<AgentTrigger>(() => {
+	if (form.value.agentScheduleIntervalHours === null) return 'sessions';
+	return form.value.agentTraceThreshold === null ? 'schedule' : 'either';
+});
+
+/** Turn on the fields of the choice. A field that stays on keeps its value. */
+function setAgentTrigger(trigger: AgentTrigger) {
+	const { scheduleIntervalHours, traceThreshold } = SELF_HEALING_AGENT_TRIGGER_DEFAULTS;
+	form.value.agentScheduleIntervalHours =
+		trigger === 'sessions'
+			? null
+			: (form.value.agentScheduleIntervalHours ?? scheduleIntervalHours);
+	form.value.agentTraceThreshold =
+		trigger === 'schedule' ? null : (form.value.agentTraceThreshold ?? traceThreshold);
+}
+
+function isAgentTrigger(value: SelectValue | undefined): value is AgentTrigger {
+	return value === 'schedule' || value === 'sessions' || value === 'either';
+}
+
+function onAgentTriggerSelect(value: SelectValue | undefined) {
+	if (isAgentTrigger(value)) setAgentTrigger(value);
+}
+
+function setAgentScope(scope: SelfHealingAgentScope) {
+	form.value.agentScope = scope;
+	// Agent coverage needs a trigger.
+	if (isSelfHealingAgentTriggerMissing(form.value)) setAgentTrigger('either');
+}
+
+function setAgentGoal(goal: SelfHealingAgentGoal, selected: boolean) {
+	const others = form.value.agentGoals.filter((value) => value !== goal);
+	form.value.agentGoals = normalizeSelfHealingAgentGoals(selected ? [...others, goal] : others);
+}
+
 const reviewersById = computed(
 	() => new Map(choices.value?.reviewers.map((reviewer) => [reviewer.id, reviewer])),
 );
@@ -208,20 +342,29 @@ const dirty = computed(
 const hasReviewers = computed(
 	() => form.value.includeAllProjectMembers || form.value.reviewerIds.length > 0,
 );
-const isFormValid = computed(() => {
-	if (!hasReviewers.value) {
-		return false;
-	}
+const agentsValid = computed(() => {
+	if (form.value.agentScope === 'none') return true;
+	if (isSelfHealingAgentTriggerMissing(form.value)) return false;
+	if (form.value.agentScope === 'all') return !hasAllAgentsConfiguration.value;
 
+	return (
+		form.value.agentIds.length > 0 &&
+		form.value.agentIds.every((id) => !reservedAgents.value.has(id))
+	);
+});
+const workflowsValid = computed(() => {
 	if (form.value.scope === 'all') {
 		return !hasAllWorkflowsConfiguration.value;
 	}
 
-	return (
-		form.value.workflowIds.length > 0 &&
-		form.value.workflowIds.every((id) => !reservedWorkflows.value.has(id))
-	);
+	// A configuration that covers agents can cover no workflow.
+	if (form.value.workflowIds.length === 0) {
+		return form.value.agentScope !== 'none';
+	}
+
+	return form.value.workflowIds.every((id) => !reservedWorkflows.value.has(id));
 });
+const isFormValid = computed(() => hasReviewers.value && agentsValid.value && workflowsValid.value);
 
 const title = computed(() =>
 	i18n.baseText(isNew.value ? 'selfHealing.config.new' : 'selfHealing.config.edit'),
@@ -260,6 +403,12 @@ async function load() {
 				reviewerIds: [...configuration.reviewerIds],
 				includeAllProjectMembers: configuration.includeAllProjectMembers,
 				includeSubWorkflows: configuration.includeSubWorkflows,
+				agentScope: configuration.agentScope,
+				agentIds: [...configuration.agentIds],
+				agentGoals: [...configuration.agentGoals],
+				agentScheduleIntervalHours: configuration.agentScheduleIntervalHours,
+				agentTraceThreshold: configuration.agentTraceThreshold,
+				agentPublicationMode: configuration.agentPublicationMode,
 				enabled: configuration.enabled,
 			};
 		} else {
@@ -270,6 +419,12 @@ async function load() {
 				reviewerIds: currentUserId && reviewersById.value.has(currentUserId) ? [currentUserId] : [],
 				includeAllProjectMembers: false,
 				includeSubWorkflows: true,
+				agentScope: 'none',
+				agentIds: [],
+				agentGoals: ['quality'],
+				agentScheduleIntervalHours: null,
+				agentTraceThreshold: null,
+				agentPublicationMode: 'approval',
 				enabled: true,
 			};
 		}
@@ -280,6 +435,8 @@ async function load() {
 		}
 
 		savedForm.value = structuredClone(toRaw(form.value));
+		// A configuration from before the trigger rule has no trigger. The user must save one.
+		if (isSelfHealingAgentTriggerMissing(form.value)) setAgentTrigger('either');
 		void subWorkflowScope.load(form.value.workflowIds, { refresh: true });
 	} catch (error) {
 		if (pendingLoad !== request) return;
@@ -320,6 +477,9 @@ async function save() {
 		const payload = structuredClone(toRaw(form.value));
 		if (payload.scope === 'all') {
 			payload.workflowIds = [];
+		}
+		if (payload.agentScope !== 'selected') {
+			payload.agentIds = [];
 		}
 
 		const { enabled, ...edit } = payload;
@@ -402,7 +562,7 @@ onBeforeRouteUpdate(async (to, from) => {
 				</template>
 			</N8nSettingsPageHeader>
 			<div v-if="loading" data-test-id="self-healing-config-loading">
-				<N8nSettingsSection :title="i18n.baseText('selfHealing.config.scope')">
+				<N8nSettingsSection :title="i18n.baseText('selfHealing.config.workflows')">
 					<N8nSettingsRowGroup>
 						<N8nSettingsRow>
 							<template #info>
@@ -435,7 +595,7 @@ onBeforeRouteUpdate(async (to, from) => {
 				i18n.baseText('selfHealing.config.retry')
 			}}</N8nButton>
 			<form v-else @submit.prevent="save">
-				<N8nSettingsSection :title="i18n.baseText('selfHealing.config.scope')">
+				<N8nSettingsSection :title="i18n.baseText('selfHealing.config.workflows')">
 					<N8nSettingsRowGroup>
 						<N8nSettingsRow
 							:title="i18n.baseText('selfHealing.config.workflows')"
@@ -446,7 +606,7 @@ onBeforeRouteUpdate(async (to, from) => {
 									v-model="form.scope"
 									:options="scopeOptions"
 									:disabled="saving"
-									:aria-label="i18n.baseText('selfHealing.config.scope')"
+									:aria-label="i18n.baseText('selfHealing.config.workflows')"
 									data-test-id="self-healing-scope"
 								/>
 							</template>
@@ -508,6 +668,171 @@ onBeforeRouteUpdate(async (to, from) => {
 									:disabled="saving"
 									:aria-label="i18n.baseText('selfHealing.config.removeWorkflow')"
 									@click="form.workflowIds = form.workflowIds.filter((id) => id !== workflow.id)"
+								/>
+							</template>
+						</N8nSettingsRow>
+					</N8nSettingsRowGroup>
+				</N8nSettingsSection>
+				<N8nSettingsSection
+					v-if="agentsEnabled"
+					:title="i18n.baseText('selfHealing.config.agents.title')"
+					:description="i18n.baseText('selfHealing.config.agents.help')"
+					data-test-id="self-healing-agents-section"
+				>
+					<N8nSettingsRowGroup>
+						<N8nSettingsRow
+							:title="i18n.baseText('selfHealing.config.agents.title')"
+							:description="i18n.baseText('selfHealing.config.agents.scopeHelp')"
+						>
+							<template #action>
+								<N8nSegmentControl
+									:model-value="form.agentScope"
+									:options="agentScopeOptions"
+									:disabled="saving"
+									:aria-label="i18n.baseText('selfHealing.config.agents.title')"
+									data-test-id="self-healing-agent-scope"
+									@update:model-value="setAgentScope"
+								/>
+							</template>
+						</N8nSettingsRow>
+						<template v-if="form.agentScope !== 'none'">
+							<N8nSettingsRow
+								v-for="goal in OPTIONAL_AGENT_GOALS"
+								:key="goal"
+								:title="i18n.baseText(`selfHealing.config.agents.goal.${goal}`)"
+								:description="i18n.baseText(`selfHealing.config.agents.goal.${goal}Help`)"
+							>
+								<template #action>
+									<N8nSwitch
+										:model-value="form.agentGoals.includes(goal)"
+										:disabled="saving"
+										:aria-label="i18n.baseText(`selfHealing.config.agents.goal.${goal}`)"
+										:data-test-id="`self-healing-agent-goal-${goal}`"
+										@update:model-value="setAgentGoal(goal, $event === true)"
+									/>
+								</template>
+							</N8nSettingsRow>
+							<N8nSettingsRow
+								:title="i18n.baseText('selfHealing.config.agents.trigger.title')"
+								:description="
+									i18n.baseText(`selfHealing.config.agents.trigger.help.${agentTrigger}`)
+								"
+								data-test-id="self-healing-agent-trigger-row"
+							>
+								<template #action>
+									<N8nSelect2
+										:model-value="agentTrigger"
+										:items="agentTriggerOptions"
+										size="medium"
+										align="end"
+										:disabled="saving"
+										:class="$style.triggerSelect"
+										:aria-label="i18n.baseText('selfHealing.config.agents.trigger.title')"
+										data-test-id="self-healing-agent-trigger"
+										@update:model-value="onAgentTriggerSelect"
+									/>
+								</template>
+							</N8nSettingsRow>
+							<N8nSettingsRow
+								v-if="form.agentScheduleIntervalHours !== null"
+								:title="i18n.baseText('selfHealing.config.agents.schedule.hours')"
+							>
+								<template #action>
+									<N8nInputNumber
+										:model-value="form.agentScheduleIntervalHours"
+										:min="SELF_HEALING_AGENT_SCHEDULE_HOURS.min"
+										:max="SELF_HEALING_AGENT_SCHEDULE_HOURS.max"
+										:precision="0"
+										:disabled="saving"
+										:class="$style.triggerInput"
+										:aria-label="i18n.baseText('selfHealing.config.agents.schedule.hours')"
+										data-test-id="self-healing-agent-schedule-hours"
+										@update:model-value="setTriggerValue('agentScheduleIntervalHours', $event)"
+									/>
+								</template>
+							</N8nSettingsRow>
+							<N8nSettingsRow
+								v-if="form.agentTraceThreshold !== null"
+								:title="i18n.baseText('selfHealing.config.agents.traces.count')"
+							>
+								<template #action>
+									<N8nInputNumber
+										:model-value="form.agentTraceThreshold"
+										:min="SELF_HEALING_AGENT_TRACE_THRESHOLD.min"
+										:max="SELF_HEALING_AGENT_TRACE_THRESHOLD.max"
+										:precision="0"
+										:disabled="saving"
+										:class="$style.triggerInput"
+										:aria-label="i18n.baseText('selfHealing.config.agents.traces.count')"
+										data-test-id="self-healing-agent-trace-threshold"
+										@update:model-value="setTriggerValue('agentTraceThreshold', $event)"
+									/>
+								</template>
+							</N8nSettingsRow>
+							<N8nSettingsRow
+								:title="i18n.baseText('selfHealing.config.agents.publication.title')"
+								:description="i18n.baseText('selfHealing.config.agents.publication.help')"
+							>
+								<template #action>
+									<N8nSegmentControl
+										v-model="form.agentPublicationMode"
+										:options="agentPublicationOptions"
+										:disabled="saving"
+										:aria-label="i18n.baseText('selfHealing.config.agents.publication.title')"
+										data-test-id="self-healing-agent-publication"
+									/>
+								</template>
+							</N8nSettingsRow>
+							<N8nSettingsRow v-if="form.agentPublicationMode === 'auto'" layout="custom">
+								<N8nCallout theme="warning" data-test-id="self-healing-agent-publication-warning">{{
+									i18n.baseText('selfHealing.config.agents.publication.autoWarning')
+								}}</N8nCallout>
+							</N8nSettingsRow>
+						</template>
+					</N8nSettingsRowGroup>
+					<N8nSettingsRowGroup v-if="form.agentScope === 'selected'">
+						<N8nSettingsRow layout="custom">
+							<N8nCombobox2
+								id="self-healing-agents"
+								model-value=""
+								icon="search"
+								:class="$style.searchPicker"
+								:items="agentPickerItems"
+								:disabled="saving"
+								:aria-label="i18n.baseText('selfHealing.config.agents.title')"
+								:placeholder="i18n.baseText('selfHealing.config.agents.choose')"
+								data-test-id="self-healing-agents"
+								@update:model-value="addAgent"
+								@keydown.enter.prevent
+							>
+								<template #item-trailing="{ item }">
+									<N8nText v-if="item.disabled" size="small" color="text-light">{{
+										i18n.baseText(
+											reservedAgents.has(item.value)
+												? 'selfHealing.config.workflowReserved'
+												: 'selfHealing.config.agents.notPublished',
+										)
+									}}</N8nText>
+								</template>
+							</N8nCombobox2>
+						</N8nSettingsRow>
+						<N8nSettingsRow
+							v-for="agent in selectedAgents"
+							:key="agent.id"
+							:title="agent.name"
+							:description="agent.note"
+							show-visual
+							data-test-id="self-healing-selected-agent"
+						>
+							<template #visual><N8nIcon icon="robot" size="large" /></template>
+							<template #action>
+								<N8nIconButton
+									icon="x"
+									variant="ghost"
+									size="small"
+									:disabled="saving"
+									:aria-label="i18n.baseText('selfHealing.config.agents.remove')"
+									@click="form.agentIds = form.agentIds.filter((id) => id !== agent.id)"
 								/>
 							</template>
 						</N8nSettingsRow>
@@ -709,6 +1034,14 @@ onBeforeRouteUpdate(async (to, from) => {
 .hint {
 	display: block;
 	margin-top: var(--spacing--2xs);
+}
+
+.triggerSelect {
+	width: calc(var(--spacing--4xl) * 1.5);
+}
+
+.triggerInput {
+	width: var(--spacing--4xl);
 }
 
 .skeleton {

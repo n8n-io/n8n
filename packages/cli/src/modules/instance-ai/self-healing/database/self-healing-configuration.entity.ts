@@ -1,4 +1,9 @@
-import { Project, User, WithTimestamps } from '@n8n/db';
+import type {
+	SelfHealingAgentGoal,
+	SelfHealingAgentPublicationMode,
+	SelfHealingAgentScope,
+} from '@n8n/api-types';
+import { JsonColumn, Project, User, WithTimestamps } from '@n8n/db';
 import {
 	Column,
 	Entity,
@@ -11,6 +16,7 @@ import {
 
 @Entity('self_healing_configuration')
 @Index(['projectId'], { unique: true, where: '"scope" = \'all\'' })
+@Index(['projectId'], { unique: true, where: '"agentScope" = \'all\'' })
 export class SelfHealingConfiguration extends WithTimestamps {
 	@PrimaryGeneratedColumn()
 	id: number;
@@ -34,6 +40,23 @@ export class SelfHealingConfiguration extends WithTimestamps {
 
 	@Column({ type: 'boolean', default: false })
 	includeSubWorkflows: boolean;
+
+	@Column({ type: 'varchar', length: 16, default: 'none' })
+	agentScope: SelfHealingAgentScope;
+
+	/** The aims of an investigation, in the stored order. The first one is `quality`. */
+	@JsonColumn({ default: '["quality"]' })
+	agentGoals: SelfHealingAgentGoal[];
+
+	// A null trigger is off. A configuration that covers agents has one trigger or both.
+	@Column({ type: 'int', nullable: true })
+	agentScheduleIntervalHours: number | null;
+
+	@Column({ type: 'int', nullable: true })
+	agentTraceThreshold: number | null;
+
+	@Column({ type: 'varchar', length: 16, default: 'approval' })
+	agentPublicationMode: SelfHealingAgentPublicationMode;
 
 	@Index()
 	@Column({ type: 'uuid', nullable: true })

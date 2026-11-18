@@ -10,6 +10,7 @@ import {
 	createAgentSkillRefsService,
 	storedAgentConfig,
 } from '../../__tests__/test-utils/stored-agent-config';
+import { AgentHistory } from '../../entities/agent-history.entity';
 import { Agent } from '../../entities/agent.entity';
 import { createAgentCredentialProvider } from '../../utils/agent-credential-provider';
 import { AgentEvaluationService } from '../agent-evaluation.service';
@@ -201,6 +202,137 @@ describe('AgentEvaluationService', () => {
 		expect(reconstruction.reconstructFromAgentEntity.mock.calls[0][0]).toMatchObject({
 			skillRefs: refs,
 			skills: { zeta, alpha },
+		});
+	});
+
+	describe('published source', () => {
+		const publishedConfig: AgentJsonConfig = {
+			...baseConfig,
+			instructions: 'Published instructions.',
+			skills: [{ type: 'skill', id: 'refunds' }],
+		};
+		const refunds = { name: 'Refunds', description: 'Refund rules.', instructions: 'Old rule.' };
+
+		function setupPublished() {
+			const context = setup({ ...baseConfig, instructions: 'Draft instructions.' });
+			context.saved.activeVersionId = 'version-1';
+			context.saved.activeVersion = Object.assign(new AgentHistory(), {
+				versionId: 'version-1',
+				schema: storedAgentConfig(structuredClone(publishedConfig)),
+				tools: {},
+			});
+			context.skillRefs.bodies.refunds = refunds;
+			context.reconstruction.reconstructFromAgentEntity.mockResolvedValue({
+				agent: mock(),
+				toolRegistry: new Map(),
+				mcpServerAttributions: new Map(),
+			});
+			return context;
+		}
+
+		it('runs the published version with its pinned skill bodies', async () => {
+			const { service, skillRefs, reconstruction, saved } = setupPublished();
+			const result = await service.prepare(user, 'proj-1', 'agent-1', {
+				kind: 'published',
+				versionId: 'version-1',
+			});
+			if (!result.preparation) throw new Error('Expected evaluation preparation');
+			expect(result.preparation.config.instructions).toBe('Published instructions.');
+
+			// A later skill save must not change the run of the published version.
+			skillRefs.bodies.refunds = { ...refunds, instructions: 'Newer rule.' };
+			await result.preparation.buildRuntime({});
+
+			expect(skillRefs.readVersion).toHaveBeenCalledWith(saved.activeVersion, {});
+			expect(skillRefs.skillsForRefs).not.toHaveBeenCalled();
+			const [source] = reconstruction.reconstructFromAgentEntity.mock.calls[0];
+			expect(source.agent.schema?.instructions).toBe('Published instructions.');
+			expect(source).toMatchObject({
+				skillRefs: [{ type: 'skill', id: 'refunds' }],
+				skills: { refunds },
+			});
+		});
+
+		it('applies the edits in memory only', async () => {
+			const { service, reconstruction, saved, repository } = setupPublished();
+			const result = await service.prepare(user, 'proj-1', 'agent-1', {
+				kind: 'published',
+				versionId: 'version-1',
+				edits: [
+					{ kind: 'instructions', before: 'Published instructions.', after: 'Edited.' },
+					{
+						kind: 'toolDescription',
+						toolType: 'node',
+						toolName: 'Slack_Tool',
+						before: null,
+						after: 'Sends a Slack message.',
+					},
+					{
+						kind: 'skill',
+						skillId: 'refunds',
+						skillName: 'Refunds',
+						field: 'instructions',
+						before: 'Old rule.',
+						after: 'New rule.',
+					},
+				],
+			});
+			if (!result.preparation) throw new Error('Expected evaluation preparation');
+			expect(result.preparation.tools).toEqual([
+				{
+					name: 'Slack_Tool',
+					kind: 'node',
+					description: 'Sends a Slack message.',
+					nodeType: 'n8n-nodes-base.slackTool',
+				},
+			]);
+			await result.preparation.buildRuntime({});
+
+			const [source] = reconstruction.reconstructFromAgentEntity.mock.calls[0];
+			expect(source.agent.schema?.instructions).toBe('Edited.');
+			expect(source.skills.refunds.instructions).toBe('New rule.');
+			expect(saved.activeVersion?.schema?.instructions).toBe('Published instructions.');
+			expect(refunds.instructions).toBe('Old rule.');
+			expect(repository.save).not.toHaveBeenCalled();
+		});
+
+		it.each(['other version', 'not published', 'archived'])(
+			'returns an error when the version cannot run: %s',
+			async (failure) => {
+				const { service, saved, skillRefs } = setupPublished();
+				if (failure === 'other version') saved.activeVersionId = 'version-2';
+				if (failure === 'not published') {
+					saved.activeVersionId = null;
+					saved.activeVersion = null;
+				}
+				if (failure === 'archived') saved.isArchived = true;
+				const result = await service.prepare(user, 'proj-1', 'agent-1', {
+					kind: 'published',
+					versionId: 'version-1',
+				});
+				expect(result).toEqual({
+					error: expect.stringContaining(failure === 'archived' ? 'archived' : 'not published'),
+				});
+				expect(skillRefs.readVersion).not.toHaveBeenCalled();
+			},
+		);
+
+		it('returns an error when an edit has no target', async () => {
+			const { service } = setupPublished();
+			const result = await service.prepare(user, 'proj-1', 'agent-1', {
+				kind: 'published',
+				versionId: 'version-1',
+				edits: [
+					{
+						kind: 'toolDescription',
+						toolType: 'workflow',
+						toolName: 'Missing',
+						before: null,
+						after: 'x',
+					},
+				],
+			});
+			expect(result).toEqual({ error: expect.stringContaining('has no workflow tool') });
 		});
 	});
 

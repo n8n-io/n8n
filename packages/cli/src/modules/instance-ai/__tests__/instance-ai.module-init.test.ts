@@ -25,6 +25,8 @@ import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiSetupTelemetryService } from '../instance-ai-setup-telemetry.service';
 import { InstanceAiModule } from '../instance-ai.module';
 import { InstanceAiService } from '../instance-ai.service';
+import { SelfHealingAgentInvestigationService } from '../self-healing/agents/self-healing-agent-investigation.service';
+import { SelfHealingAgentResultService } from '../self-healing/agents/self-healing-agent-result.service';
 import { SelfHealingInvestigationService } from '../self-healing/self-healing-investigation.service';
 import { AssistantTurnOverrides } from '../turn-setup/assistant-turn-overrides';
 
@@ -32,6 +34,7 @@ const {
 	loadSuggestionEventRelay,
 	createSuggestionEventRelay,
 	loadResultController,
+	loadAgentResultController,
 	loadConfigurationController,
 	loadEvalController,
 	loadAssistantAgentController,
@@ -40,6 +43,7 @@ const {
 	loadSuggestionEventRelay: vi.fn(),
 	createSuggestionEventRelay: vi.fn(),
 	loadResultController: vi.fn(),
+	loadAgentResultController: vi.fn(),
 	loadConfigurationController: vi.fn(),
 	loadEvalController: vi.fn(),
 	loadAssistantAgentController: vi.fn(),
@@ -84,6 +88,16 @@ vi.mock('@/modules/agents/system-agents/system-agent-registration.service', () =
 vi.mock('../self-healing/self-healing-investigation.service', () => ({
 	SelfHealingInvestigationService: vi.fn(),
 }));
+vi.mock('../self-healing/agents/self-healing-agent-investigation.service', () => ({
+	SelfHealingAgentInvestigationService: vi.fn(),
+}));
+vi.mock('../self-healing/agents/self-healing-agent-result.service', () => ({
+	SelfHealingAgentResultService: vi.fn(),
+}));
+vi.mock('../self-healing/agents/self-healing-agent-results.controller', () => {
+	loadAgentResultController();
+	return {};
+});
 vi.mock('../instance-ai.controller', () => ({}));
 vi.mock('../assistant.controller', () => ({}));
 vi.mock('../mcp/instance-ai-mcp-connection.controller', () => ({}));
@@ -143,6 +157,9 @@ describe('InstanceAiModule.init', () => {
 		sweeper.sweep.mockResolvedValue();
 		const investigations = mockInstance(SelfHealingInvestigationService);
 		investigations.reconcile.mockResolvedValue();
+		mockInstance(SelfHealingAgentResultService);
+		const agentInvestigations = mockInstance(SelfHealingAgentInvestigationService);
+		agentInvestigations.reconcile.mockResolvedValue();
 		const logger = mockInstance(Logger);
 		logger.scoped.mockReturnValue(logger);
 		vi.stubEnv('E2E_TESTS', 'false');
@@ -153,6 +170,7 @@ describe('InstanceAiModule.init', () => {
 			sources,
 			sweeper,
 			investigations,
+			agentInvestigations,
 			logger,
 			instanceSettings,
 			settings,
@@ -190,14 +208,18 @@ describe('InstanceAiModule.init', () => {
 	});
 
 	it('loads suggestion listeners only when workflow suggestions are enabled', async () => {
-		const { config, sources, investigations, mutationHooks, configurations } = setup();
+		const { config, sources, investigations, agentInvestigations, mutationHooks, configurations } =
+			setup();
 
 		await new InstanceAiModule().init();
 		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledOnce());
+		// The claims of interrupted agent investigations are released also with the flag off.
+		await vi.waitFor(() => expect(agentInvestigations.reconcile).toHaveBeenCalledOnce());
 
 		expect(loadSuggestionEventRelay).not.toHaveBeenCalled();
 		expect(createSuggestionEventRelay).not.toHaveBeenCalled();
 		expect(loadResultController).not.toHaveBeenCalled();
+		expect(loadAgentResultController).not.toHaveBeenCalled();
 		expect(loadConfigurationController).not.toHaveBeenCalled();
 		expect(sources.register).not.toHaveBeenCalled();
 		expect(mutationHooks.registerProvider).toHaveBeenCalledWith(configurations);
@@ -215,6 +237,10 @@ describe('InstanceAiModule.init', () => {
 		expect(loadConfigurationController).toHaveBeenCalledOnce();
 		expect(sources.register).toHaveBeenCalledWith(
 			expect.objectContaining({ type: 'self_healing_result' }),
+		);
+		expect(loadAgentResultController).toHaveBeenCalledOnce();
+		expect(sources.register).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'self_healing_agent_result' }),
 		);
 	});
 

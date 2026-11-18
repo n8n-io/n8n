@@ -270,6 +270,46 @@ it.each([
 	const dot = within(getByRole('list')).getByRole('img');
 	expect(dot.closest<HTMLElement>('[data-tooltip]')?.dataset.content).toBe(text);
 });
+it.each([
+	['open', false, 'Ready for review', 'fixReady'],
+	['applied', false, 'Applied', 'closed'],
+	['applied', true, 'Applied automatically', 'closed'],
+	['outdated', false, 'Outdated', 'closed'],
+	['dismissed', false, 'Discarded', 'closed'],
+] as const)(
+	'renders an agent proposal row that is %s (automatic: %s)',
+	(reviewState, appliedAutomatically, label, color) => {
+		const { getByRole } = renderComponent({
+			props: {
+				sections: [
+					section('waiting', {
+						items: [
+							{
+								type: 'self_healing_agent_result',
+								id: 'proposal',
+								state: reviewState === 'open' ? 'open' : 'closed',
+								projectId: 'project',
+								agentId: 'agent',
+								agentName: 'Support agent',
+								summary: 'Clarify the lookup tools',
+								reviewState,
+								appliedAutomatically,
+								createdAt: '2026-01-01T00:00:00.000Z',
+								updatedAt: '2026-01-01T00:00:00.000Z',
+							},
+						],
+					}),
+				],
+			},
+		});
+		const row = within(getByRole('list')).getByRole('button');
+		expect(row).toHaveAttribute('data-source', 'self_healing_agent_result');
+		expect(within(row).getByRole('heading', { name: 'Clarify the lookup tools' })).toBeVisible();
+		expect(within(row).getByTestId('inbox-assistant-avatar')).toBeInTheDocument();
+		expect(within(row).getByText('Support agent')).toBeInTheDocument();
+		expect(within(row).getByRole('img', { name: label }).className).toContain(color);
+	},
+);
 it('renders promotion review rows with the branch as fallback title and the GitLab problem', () => {
 	const promotion = (props: Partial<InboxPromotionReviewItem>): InboxPromotionReviewItem => ({
 		type: 'promotion_review',

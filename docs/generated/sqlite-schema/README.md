@@ -140,7 +140,10 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [scheduled_task](scheduled_task.md) | 19 |  | table |
 | [scope](scope.md) | 3 |  | table |
 | [secrets_provider_connection](secrets_provider_connection.md) | 7 |  | table |
-| [self_healing_configuration](self_healing_configuration.md) | 9 |  | table |
+| [self_healing_agent_investigation](self_healing_agent_investigation.md) | 19 |  | table |
+| [self_healing_agent_result](self_healing_agent_result.md) | 28 |  | table |
+| [self_healing_configuration](self_healing_configuration.md) | 14 |  | table |
+| [self_healing_configuration_agent](self_healing_configuration_agent.md) | 3 |  | table |
 | [self_healing_configuration_reviewer](self_healing_configuration_reviewer.md) | 2 |  | table |
 | [self_healing_configuration_workflow](self_healing_configuration_workflow.md) | 3 |  | table |
 | [self_healing_investigation](self_healing_investigation.md) | 13 |  | table |
@@ -395,8 +398,21 @@ erDiagram
 "role_scope" |o--|| "scope" : "FOREIGN KEY (scopeSlug) REFERENCES scope (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
 "role_scope" |o--|| "role" : "FOREIGN KEY (roleSlug) REFERENCES role (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
 "scheduled_task" }o--|| "scheduled_job" : "FOREIGN KEY (jobId) REFERENCES scheduled_job (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_agent_investigation" }o--o| "self_healing_agent_result" : "FOREIGN KEY (resultId) REFERENCES self_healing_agent_result (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"self_healing_agent_investigation" }o--|| "user" : "FOREIGN KEY (backgroundUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_agent_investigation" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_agent_investigation" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_agent_investigation" }o--|| "self_healing_configuration" : "FOREIGN KEY (configurationId) REFERENCES self_healing_configuration (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_agent_result" }o--o| "user" : "FOREIGN KEY (closedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"self_healing_agent_result" }o--|| "user" : "FOREIGN KEY (backgroundUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_agent_result" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_agent_result" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_agent_result" }o--|| "self_healing_configuration" : "FOREIGN KEY (configurationId) REFERENCES self_healing_configuration (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_configuration" }o--o| "user" : "FOREIGN KEY (enabledById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "self_healing_configuration" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_configuration_agent" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_configuration_agent" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_configuration_agent" |o--|| "self_healing_configuration" : "FOREIGN KEY (configurationId) REFERENCES self_healing_configuration (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_configuration_reviewer" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_configuration_reviewer" |o--|| "self_healing_configuration" : "FOREIGN KEY (configurationId) REFERENCES self_healing_configuration (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_configuration_workflow" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1841,7 +1857,63 @@ erDiagram
   varchar_36_ type
   datetime_3_ updatedAt
 }
+"self_healing_agent_investigation" {
+  varchar_36_ agentId FK
+  varchar_36_ agentVersionId
+  varchar backgroundUserId FK
+  INTEGER configurationId FK
+  datetime_3_ createdAt
+  varchar_64_ failureReason
+  datetime_3_ finishedAt
+  varchar_36_ id PK
+  varchar_16_ outcome
+  varchar_36_ projectId FK
+  varchar_36_ resultId FK
+  varchar runId
+  varchar threadId
+  INTEGER traceCount
+  datetime_3_ traceWindowEnd
+  datetime_3_ traceWindowStart
+  varchar_16_ trigger
+  datetime_3_ updatedAt
+  TEXT usage
+}
+"self_healing_agent_result" {
+  varchar_36_ agentId FK
+  varchar_255_ agentName
+  boolean appliedAutomatically
+  TEXT applyError
+  TEXT applyProgress
+  datetime_3_ applyStartedAt
+  varchar backgroundUserId FK
+  varchar_36_ baseVersionId
+  datetime_3_ closedAt
+  varchar closedById FK
+  INTEGER configurationId FK
+  datetime_3_ createdAt
+  TEXT edits
+  TEXT evalCases
+  TEXT evidence
+  TEXT goals
+  varchar_36_ id PK
+  varchar_36_ projectId FK
+  varchar_36_ publishedVersionId
+  TEXT report
+  varchar_16_ reviewState
+  varchar_255_ summary
+  INTEGER traceCount
+  datetime_3_ traceWindowEnd
+  datetime_3_ traceWindowStart
+  varchar_16_ trigger
+  datetime_3_ updatedAt
+  TEXT usage
+}
 "self_healing_configuration" {
+  TEXT agentGoals
+  VARCHAR_16_ agentPublicationMode
+  INTEGER agentScheduleIntervalHours
+  VARCHAR_16_ agentScope
+  INTEGER agentTraceThreshold
   datetime_3_ createdAt
   boolean enabled
   varchar enabledById FK
@@ -1851,6 +1923,11 @@ erDiagram
   varchar_36_ projectId FK
   varchar_16_ scope
   datetime_3_ updatedAt
+}
+"self_healing_configuration_agent" {
+  varchar_36_ agentId PK
+  INTEGER configurationId PK
+  varchar_36_ projectId FK
 }
 "self_healing_configuration_reviewer" {
   INTEGER configurationId PK

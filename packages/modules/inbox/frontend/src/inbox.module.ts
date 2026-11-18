@@ -53,6 +53,11 @@ export const InboxModule = defineFrontendModule({
 		},
 		{
 			...inboxView,
+			path: '/inbox/agent-proposals/:resultId',
+			name: 'InboxAgentProposal',
+		},
+		{
+			...inboxView,
 			path: '/inbox/promotion-reviews/:reviewId',
 			name: 'InboxPromotionReview',
 		},

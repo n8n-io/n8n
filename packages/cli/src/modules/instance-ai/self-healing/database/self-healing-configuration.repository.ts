@@ -20,17 +20,33 @@ import { DataSource, In, type ObjectLiteral, type SelectQueryBuilder } from '@n8
 import groupBy from 'lodash/groupBy';
 import keyBy from 'lodash/keyBy';
 
+import { SelfHealingAgentInvestigation } from '../agents/database/self-healing-agent-investigation.entity';
+import { SelfHealingConfigurationAgent } from '../agents/database/self-healing-configuration-agent.entity';
 import { SelfHealingConfiguration } from './self-healing-configuration.entity';
 import { SelfHealingConfigurationReviewer } from './self-healing-configuration-reviewer.entity';
 import { SelfHealingConfigurationWorkflow } from './self-healing-configuration-workflow.entity';
 import { SelfHealingInvestigation } from './self-healing-investigation.entity';
 import type { SelfHealingInboxAccess } from './self-healing-result.repository';
 
-type ReviewerRoles = {
+export type ReviewerRoles = {
 	projectRoleSlugs: string[];
 	globalRoleSlugs: string[];
 	workflowRoleSlugs: string[];
 };
+
+/** An enabled configuration that covers agents, as the agent sweep reads it. */
+export type SelfHealingAgentCoverage = Pick<
+	SelfHealingConfiguration,
+	| 'id'
+	| 'projectId'
+	| 'agentScope'
+	| 'agentGoals'
+	| 'agentScheduleIntervalHours'
+	| 'agentTraceThreshold'
+	| 'agentPublicationMode'
+	| 'enabledById'
+	| 'updatedAt'
+> & { agentIds: string[] };
 
 // Edit-access conditions for member queries that alias the user as `user` and left-join
 // the project relation as `projectMember`. Implicit members have no relation, so only
@@ -153,6 +169,35 @@ function whereCoversWorkflow<T extends ObjectLiteral>(
 	);
 }
 
+/**
+ * Keep only configurations that cover the agent. An explicit selection takes precedence
+ * over all-agent coverage, also when its configuration is paused.
+ */
+function whereCoversAgent<T extends ObjectLiteral>(
+	query: SelectQueryBuilder<T>,
+	configurationAlias: string,
+	agentIdExpression: string,
+) {
+	const selectedHere = query
+		.subQuery()
+		.select('1')
+		.from(SelfHealingConfigurationAgent, 'ownAgent')
+		.where(`ownAgent.configurationId = ${configurationAlias}.id`)
+		.andWhere(`ownAgent.agentId = ${agentIdExpression}`)
+		.getQuery();
+	const selectedInProject = query
+		.subQuery()
+		.select('1')
+		.from(SelfHealingConfigurationAgent, 'projectAgent')
+		.where(`projectAgent.projectId = ${configurationAlias}.projectId`)
+		.andWhere(`projectAgent.agentId = ${agentIdExpression}`)
+		.getQuery();
+	return query.andWhere(
+		`(EXISTS ${selectedHere} OR (${configurationAlias}.agentScope = :allAgentScope AND NOT EXISTS ${selectedInProject}))`,
+		{ allAgentScope: 'all' },
+	);
+}
+
 @Service()
 export class SelfHealingConfigurationRepository extends BaseRepository<SelfHealingConfiguration> {
 	constructor(
@@ -183,8 +228,9 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 
 		const configurationIds = configurations.map((configuration) => configuration.id);
 		const configurationId = In(configurationIds);
-		const [workflows, reviewers, activity] = await Promise.all([
+		const [workflows, agents, reviewers, activity] = await Promise.all([
 			this.manager.findBy(SelfHealingConfigurationWorkflow, { configurationId }),
+			this.manager.findBy(SelfHealingConfigurationAgent, { configurationId }),
 			this.manager.findBy(SelfHealingConfigurationReviewer, { configurationId }),
 			this.createQueryBuilder('configuration')
 				.select('configuration.id', 'configurationId')
@@ -198,16 +244,36 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 							.limit(1),
 					'lastActivity',
 				)
+				.addSelect(
+					(query) =>
+						query
+							.select('agentInvestigation.createdAt')
+							.from(SelfHealingAgentInvestigation, 'agentInvestigation')
+							.where('agentInvestigation.configurationId = configuration.id')
+							.orderBy('agentInvestigation.createdAt', 'DESC')
+							.limit(1),
+					'lastAgentActivity',
+				)
 				.where('configuration.id IN (:...ids)', { ids: configurationIds })
-				.getRawMany<{ configurationId: number; lastActivity: Date | string | null }>(),
+				.getRawMany<{
+					configurationId: number;
+					lastActivity: Date | string | null;
+					lastAgentActivity: Date | string | null;
+				}>(),
 		]);
 
 		const workflowsByConfiguration = groupBy(workflows, 'configurationId');
+		const agentsByConfiguration = groupBy(agents, 'configurationId');
 		const reviewersByConfiguration = groupBy(reviewers, 'configurationId');
 		const activityByConfiguration = keyBy(activity, 'configurationId');
 
 		return configurations.map((configuration) => {
-			const lastActivity = activityByConfiguration[configuration.id]?.lastActivity;
+			const row = activityByConfiguration[configuration.id];
+			// The newest investigation of a workflow or of an agent.
+			const lastActivity = [row?.lastActivity, row?.lastAgentActivity]
+				.flatMap((time) => (time ? [parseDbTime(time)] : []))
+				.sort((a, b) => b.getTime() - a.getTime())
+				.at(0);
 			return {
 				id: configuration.id,
 				projectId,
@@ -217,10 +283,18 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 				includeSubWorkflows: configuration.includeSubWorkflows,
 				enabledById: configuration.enabledById,
 				workflowIds: (workflowsByConfiguration[configuration.id] ?? []).map(
-					(row) => row.workflowId,
+					(workflow) => workflow.workflowId,
 				),
-				reviewerIds: (reviewersByConfiguration[configuration.id] ?? []).map((row) => row.userId),
-				lastActivity: lastActivity ? parseDbTime(lastActivity).toISOString() : null,
+				reviewerIds: (reviewersByConfiguration[configuration.id] ?? []).map(
+					(reviewer) => reviewer.userId,
+				),
+				agentScope: configuration.agentScope,
+				agentIds: (agentsByConfiguration[configuration.id] ?? []).map((agent) => agent.agentId),
+				agentGoals: configuration.agentGoals,
+				agentScheduleIntervalHours: configuration.agentScheduleIntervalHours,
+				agentTraceThreshold: configuration.agentTraceThreshold,
+				agentPublicationMode: configuration.agentPublicationMode,
+				lastActivity: lastActivity?.toISOString() ?? null,
 			};
 		});
 	}
@@ -230,6 +304,70 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 			.where('configuration.projectId = :projectId', { projectId })
 			.setParameter('workflowId', workflowId);
 		return await whereCoversWorkflow(query, 'configuration', ':workflowId').getOne();
+	}
+
+	/** The configuration that covers the agent, enabled or paused. */
+	async findForAgent(projectId: string, agentId: string) {
+		const query = this.createQueryBuilder('configuration')
+			.where('configuration.projectId = :projectId', { projectId })
+			.setParameter('agentId', agentId);
+		return await whereCoversAgent(query, 'configuration', ':agentId').getOne();
+	}
+
+	/** Enabled configurations that cover agents, for the agent sweep. */
+	async listEnabledWithAgentCoverage(): Promise<SelfHealingAgentCoverage[]> {
+		const configurations = await this.createQueryBuilder('configuration')
+			.where('configuration.enabled = :enabled', { enabled: true })
+			.andWhere('configuration.agentScope <> :noAgentScope', { noAgentScope: 'none' })
+			.orderBy('configuration.id', 'ASC')
+			.getMany();
+		if (configurations.length === 0) return [];
+
+		const agents = await this.manager.findBy(SelfHealingConfigurationAgent, {
+			configurationId: In(configurations.map(({ id }) => id)),
+		});
+		const agentsByConfiguration = groupBy(agents, 'configurationId');
+		return configurations.map((configuration) => ({
+			id: configuration.id,
+			projectId: configuration.projectId,
+			agentScope: configuration.agentScope,
+			agentIds: (agentsByConfiguration[configuration.id] ?? []).map(({ agentId }) => agentId),
+			agentGoals: configuration.agentGoals,
+			agentScheduleIntervalHours: configuration.agentScheduleIntervalHours,
+			agentTraceThreshold: configuration.agentTraceThreshold,
+			agentPublicationMode: configuration.agentPublicationMode,
+			enabledById: configuration.enabledById,
+			updatedAt: configuration.updatedAt,
+		}));
+	}
+
+	async listAgentIds(configurationId: number, ctx: OperationContext): Promise<string[]> {
+		const agents = await this.managerFor(ctx).findBy(SelfHealingConfigurationAgent, {
+			configurationId,
+		});
+		return agents.map(({ agentId }) => agentId);
+	}
+
+	async hasWorkflowSelections(configurationId: number, ctx: OperationContext): Promise<boolean> {
+		return await this.managerFor(ctx).existsBy(SelfHealingConfigurationWorkflow, {
+			configurationId,
+		});
+	}
+
+	/** The save maps a unique violation to the all-workflows message, so check agents first. */
+	async hasAllAgentsConfiguration(
+		projectId: string,
+		exceptId: number | undefined,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		const query = this.managerFor(ctx)
+			.createQueryBuilder(SelfHealingConfiguration, 'configuration')
+			.where('configuration.projectId = :projectId', { projectId })
+			.andWhere('configuration.agentScope = :agentScope', { agentScope: 'all' });
+		if (exceptId !== undefined) {
+			query.andWhere('configuration.id <> :exceptId', { exceptId });
+		}
+		return await query.getExists();
 	}
 
 	async hasConfiguration(projectId: string) {
@@ -444,6 +582,35 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 		}
 	}
 
+	/** Replace the agent selection. Pass an empty list when the scope is not `selected`. */
+	async replaceAgentSelections(
+		configuration: SelfHealingConfiguration,
+		agentIds: string[],
+		ctx: OperationContext,
+	): Promise<void> {
+		const manager = this.managerFor(ctx);
+		const configurationId = configuration.id;
+		await manager.delete(SelfHealingConfigurationAgent, { configurationId });
+		if (agentIds.length === 0) return;
+
+		try {
+			await manager.insert(
+				SelfHealingConfigurationAgent,
+				[...new Set(agentIds)].map((agentId) => ({
+					configurationId,
+					projectId: configuration.projectId,
+					agentId,
+				})),
+			);
+		} catch (error) {
+			if (isUniqueConstraintError(error)) {
+				throw new ConflictError('A selected agent already belongs to another configuration.');
+			}
+
+			throw error;
+		}
+	}
+
 	async removeWorkflowSelections(workflowIds: string[]) {
 		if (workflowIds.length === 0) return;
 
@@ -486,6 +653,46 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 			.setParameters(accessible.getParameters())
 			.setParameter('reviewerId', user.id);
 		whereCoversWorkflow(query, 'configuration', 'owner.workflowId');
+		return await whereReviewer(query, 'configuration', ':reviewerId').getExists();
+	}
+
+	/**
+	 * Tells whether a configuration can send an agent proposal to the user. The user must be
+	 * a reviewer and must have a role that can edit the agents of the project.
+	 */
+	async canReceiveAgentResults(
+		userId: string,
+		roles: { projectRoleSlugs: string[]; globalRoleSlugs: string[] },
+	): Promise<boolean> {
+		const query = this.manager
+			.createQueryBuilder(SelfHealingConfiguration, 'configuration')
+			.where('configuration.agentScope <> :noAgentScope', { noAgentScope: 'none' })
+			.setParameter('reviewerId', userId);
+		const editAccess: string[] = [];
+		if (roles.projectRoleSlugs.length) {
+			const projectRole = query
+				.subQuery()
+				.select('1')
+				.from(ProjectRelation, 'agentMember')
+				.where('agentMember.projectId = configuration.projectId')
+				.andWhere('agentMember.userId = :reviewerId')
+				.andWhere('agentMember.role IN (:...agentProjectRoleSlugs)');
+			query.setParameter('agentProjectRoleSlugs', roles.projectRoleSlugs);
+			editAccess.push(`EXISTS ${projectRole.getQuery()}`);
+		}
+		if (roles.globalRoleSlugs.length) {
+			const globalRole = query
+				.subQuery()
+				.select('1')
+				.from(User, 'agentUser')
+				.where('agentUser.id = :reviewerId')
+				.andWhere('agentUser.role IN (:...agentGlobalRoleSlugs)');
+			query.setParameter('agentGlobalRoleSlugs', roles.globalRoleSlugs);
+			editAccess.push(`EXISTS ${globalRole.getQuery()}`);
+		}
+		if (editAccess.length === 0) return false;
+
+		query.andWhere(`(${editAccess.join(' OR ')})`);
 		return await whereReviewer(query, 'configuration', ':reviewerId').getExists();
 	}
 

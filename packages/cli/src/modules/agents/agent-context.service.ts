@@ -9,6 +9,11 @@ import type {
 	AgentSessionSummary,
 	AgentContextReader,
 	AgentContextResult,
+	AgentProductionTrace,
+	AgentProductionTraceSummary,
+	AgentProductionTraceWindow,
+	AgentProjectListItem,
+	AgentPublishedVersion,
 	AgentSessionDetail,
 } from './agent-context.contracts';
 
@@ -34,9 +39,49 @@ import { AttachableWorkflowsService } from './attachable-workflows.service';
 import { AGENT_CAPABILITIES, AGENT_LIMITATIONS } from './agent-capabilities';
 import { toAgentSessionDetail, toSessionTitle } from './agent-session-read';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
+import type { AgentExecution } from './entities/agent-execution.entity';
+import { AgentPublishHistoryRepository } from './repositories/agent-publish-history.repository';
 import { composeJsonConfig } from './json-config/agent-config-composition';
 import { jsonSchemaToCompactText } from './json-config/schema-text-serializer';
 import { getAgentConfigHash } from './utils/agent-config-hash';
+import { isAgentDraftClean } from './utils/agent-draft-clean';
+
+/** Keeps a list of session summaries small enough for a model to read. */
+const TRACE_USER_MESSAGE_MAX_LENGTH = 500;
+
+/** Each listed session loads the timelines of its turns, so one page must stay small. */
+const TRACE_LIST_MAX_LIMIT = 100;
+
+const toWholeNumber = (value: number, min: number, max: number): number =>
+	Number.isFinite(value) ? Math.min(Math.max(Math.trunc(value), min), max) : min;
+
+/** Null when no turn has a value. */
+const sumOrNull = (values: Array<number | null>): number | null => {
+	const present = values.flatMap((value) => (value === null ? [] : [value]));
+	return present.length > 0 ? present.reduce((sum, value) => sum + value, 0) : null;
+};
+
+/** `turns` holds the turns of the session in the window, oldest first. It is not empty. */
+const toProductionTraceSummary = (
+	sessionId: string,
+	turns: AgentExecution[],
+): AgentProductionTraceSummary => ({
+	sessionId,
+	source: turns.find(({ source }) => source)?.source ?? null,
+	lastActivityAt: turns[turns.length - 1].createdAt.toISOString(),
+	turnCount: turns.length,
+	firstUserMessage: turns[0].userMessage?.slice(0, TRACE_USER_MESSAGE_MAX_LENGTH) ?? null,
+	toolNames: turns.flatMap(({ timeline }) =>
+		(timeline ?? []).flatMap((event) => (event.type === 'tool-call' ? [event.name] : [])),
+	),
+	failure:
+		turns
+			.map((turn) => turn.error ?? turn.failureSummary?.latest.message ?? null)
+			.find((failure) => failure !== null) ?? null,
+	cost: sumOrNull(turns.map(({ cost }) => cost)),
+	totalTokens: sumOrNull(turns.map(({ totalTokens }) => totalTokens)),
+	durationMs: sumOrNull(turns.map(({ duration }) => duration)),
+});
 
 const toSessionSummary = (thread: ThreadListItem): AgentSessionSummary => ({
 	threadId: thread.id,
@@ -93,6 +138,7 @@ export class AgentContextService {
 		private readonly agentSkillRefs: AgentSkillRefsService,
 		private readonly agentsSettingsService: AgentsSettingsService,
 		private readonly agentConfigService: AgentConfigService,
+		private readonly agentPublishHistoryRepository: AgentPublishHistoryRepository,
 	) {}
 
 	private async assertReadAccess(user: User, projectId: string): Promise<void> {
@@ -176,6 +222,122 @@ export class AgentContextService {
 		return {
 			sessions: result.threads.map(toSessionSummary),
 			nextCursor: result.nextCursor,
+		};
+	}
+
+	/**
+	 * The agents of a project that are not archived. It does not check a user:
+	 * the caller must check access to the project first.
+	 */
+	async listProjectAgents(projectId: string): Promise<AgentProjectListItem[]> {
+		if (!(await this.agentsSettingsService.getEnabled())) return [];
+		const agents = await this.agentsService.findByProjectId(projectId);
+		return agents
+			.filter((agent) => !agent.isArchived)
+			.map((agent) => ({
+				id: agent.id,
+				name: agent.name,
+				published: agent.activeVersionId !== null,
+			}));
+	}
+
+	/**
+	 * The published version of an agent, for a background job without a user.
+	 * Returns null when the agent does not exist, is archived, or is not published.
+	 */
+	async getPublishedVersion(
+		projectId: string,
+		agentId: string,
+	): Promise<AgentPublishedVersion | null> {
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent || agent.isArchived || agent.activeVersionId === null) return null;
+		const versionId = agent.activeVersionId;
+
+		const publications = await this.agentPublishHistoryRepository.findLatestForVersions(
+			agent.id,
+			[versionId],
+			{},
+		);
+		// A version without a publication row falls back to its save time.
+		const publishedAt =
+			publications.get(versionId)?.createdAt ?? agent.activeVersion?.createdAt ?? agent.updatedAt;
+
+		// A draft that refers to a deleted skill cannot be compared. It is not clean.
+		const clean = await isAgentDraftClean(agent, this.agentSkillRefs).catch((error: unknown) => {
+			if (error instanceof UserError) return false;
+			throw error;
+		});
+		return { versionId, publishedAt, agentName: agent.name, clean };
+	}
+
+	/** Counts the production sessions that have a turn in the window. */
+	/** When a version of an agent was last published. Null when it has no publication row. */
+	async getVersionPublishedAt(agentId: string, versionId: string): Promise<Date | null> {
+		const publications = await this.agentPublishHistoryRepository.findLatestForVersions(
+			agentId,
+			[versionId],
+			{},
+		);
+		return publications.get(versionId)?.createdAt ?? null;
+	}
+
+	async countProductionTraces(
+		user: User,
+		projectId: string,
+		agentId: string,
+		window: AgentProductionTraceWindow,
+	): Promise<number> {
+		await this.assertReadAccess(user, projectId);
+		return await this.agentExecutionService.countProductionTraceSessions({
+			projectId,
+			agentId,
+			readerId: user.id,
+			...window,
+		});
+	}
+
+	/**
+	 * Production sessions that have a turn in the window, newest activity first.
+	 * One page holds 100 sessions at most.
+	 */
+	async listProductionTraces(
+		user: User,
+		projectId: string,
+		agentId: string,
+		window: AgentProductionTraceWindow,
+		options: { limit: number; offset: number },
+	): Promise<AgentProductionTraceSummary[]> {
+		await this.assertReadAccess(user, projectId);
+		const sessions = await this.agentExecutionService.listProductionTraceSessions(
+			{ projectId, agentId, readerId: user.id, ...window },
+			{
+				limit: toWholeNumber(options.limit, 1, TRACE_LIST_MAX_LIMIT),
+				offset: toWholeNumber(options.offset, 0, Number.MAX_SAFE_INTEGER),
+			},
+		);
+		return sessions.map(({ threadId, turns }) => toProductionTraceSummary(threadId, turns));
+	}
+
+	/**
+	 * The full conversation of a production session. Returns null when the
+	 * session has no production turn in the window.
+	 */
+	async readProductionTrace(
+		user: User,
+		projectId: string,
+		agentId: string,
+		sessionId: string,
+		window: AgentProductionTraceWindow,
+	): Promise<AgentProductionTrace | null> {
+		await this.assertReadAccess(user, projectId);
+		const detail = await this.agentExecutionService.getProductionTraceSession(
+			{ projectId, agentId, readerId: user.id, ...window },
+			sessionId,
+		);
+		if (!detail) return null;
+		return {
+			...toProductionTraceSummary(sessionId, detail.turns),
+			session: toAgentSessionDetail(detail),
 		};
 	}
 

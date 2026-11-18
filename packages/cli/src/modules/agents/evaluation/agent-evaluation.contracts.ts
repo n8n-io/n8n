@@ -1,6 +1,6 @@
 import type { Agent, FetchFn, McpToolCallSettledEvent } from '@n8n/agents';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import type { AgentJsonConfig } from '@n8n/api-types';
+import type { AgentJsonConfig, AgentProposalEdit } from '@n8n/api-types';
 
 import type { ReferencedToolKind } from '../tool-registry';
 
@@ -25,6 +25,15 @@ export interface AgentEvaluationPreparation {
 		abortSignal?: AbortSignal,
 	): Promise<Agent>;
 }
+
+/**
+ * The agent content that an evaluation runs. `published` runs the version
+ * with that ID, which must be the published version, with its pinned skills.
+ * `edits` are applied in memory and are never saved.
+ */
+export type AgentEvaluationSource =
+	| { kind: 'draft' }
+	| { kind: 'published'; versionId: string; edits?: AgentProposalEdit[] };
 
 export type AgentEvaluationPreparationResult =
 	| { preparation: AgentEvaluationPreparation; error?: never }

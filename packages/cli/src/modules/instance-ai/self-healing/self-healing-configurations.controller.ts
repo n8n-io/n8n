@@ -1,9 +1,12 @@
 import {
 	SaveSelfHealingConfigurationDto,
 	SetSelfHealingConfigurationEnabledDto,
+	StartSelfHealingAgentInvestigationDto,
+	type StartSelfHealingAgentInvestigationResponse,
 	UpdateSelfHealingConfigurationDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { Body, Delete, Get, Middleware, Patch, Post, RestController } from '@n8n/decorators';
 import { BadRequestError } from '@n8n/errors';
 import type { NextFunction, Response } from 'express';
@@ -83,6 +86,25 @@ export class SelfHealingConfigurationsController {
 			configurationId(req),
 			input.enabled,
 		);
+	}
+
+	/** Start an investigation of one covered agent on demand. */
+	@Post('/:configurationId/agent-investigations')
+	async startAgentInvestigation(
+		req: ConfigurationRequest,
+		_res: Response,
+		@Body input: StartSelfHealingAgentInvestigationDto,
+	): Promise<StartSelfHealingAgentInvestigationResponse> {
+		// A static import makes a cycle and loads the Assistant runtime at startup.
+		const { SelfHealingAgentInvestigationService } = await import(
+			'./agents/self-healing-agent-investigation.service.js'
+		);
+		return await Container.get(SelfHealingAgentInvestigationService).start({
+			configurationId: configurationId(req),
+			projectId: req.params.projectId,
+			agentId: input.agentId,
+			trigger: 'manual',
+		});
 	}
 
 	@Delete('/:configurationId')

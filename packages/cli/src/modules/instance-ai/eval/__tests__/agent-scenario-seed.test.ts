@@ -86,3 +86,30 @@ describe('generateAgentScenarioSeed', () => {
 		expect(seed.warnings[0]).toContain('provider timeout');
 	});
 });
+
+describe('generateAgentScenarioSeed model', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		generate.mockResolvedValue({ messages: [] });
+		extractText.mockReturnValue(validSeedJson);
+	});
+
+	it('creates the generator with the given model', async () => {
+		const { createEvalAgent } = await import('@n8n/instance-ai');
+
+		await generateAgentScenarioSeed({ ...baseOptions, model: 'anthropic/claude-helper' });
+
+		expect(createEvalAgent).toHaveBeenCalledWith(
+			'eval-agent-seed-generator',
+			expect.objectContaining({ resolvedModel: 'anthropic/claude-helper' }),
+		);
+	});
+
+	it('creates the generator without a model by default', async () => {
+		const { createEvalAgent } = await import('@n8n/instance-ai');
+
+		await generateAgentScenarioSeed(baseOptions);
+
+		expect(vi.mocked(createEvalAgent).mock.calls[0][1]).not.toHaveProperty('resolvedModel');
+	});
+});

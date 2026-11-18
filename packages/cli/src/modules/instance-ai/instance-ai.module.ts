@@ -83,6 +83,22 @@ export class InstanceAiModule implements ModuleInterface {
 				list: async (user, query) => await results.listForInbox(user, query),
 				count: async (user) => await results.countForInbox(user),
 			});
+			await import('./self-healing/agents/self-healing-agent-results.controller.js');
+			const { SelfHealingAgentResultService } = await import(
+				'./self-healing/agents/self-healing-agent-result.service.js'
+			);
+			const agentResults = Container.get(SelfHealingAgentResultService);
+			Container.get(InboxSourceRegistry).register({
+				type: 'self_healing_agent_result',
+				isEnabled: async () => {
+					if (!Container.get(InstanceAiConfig).workflowSuggestionsEnabled) return false;
+					// The agents module starts after this module, so read its state at call time.
+					const { isAgentsAccessEnabled } = await import('./agents-access.js');
+					return isAgentsAccessEnabled();
+				},
+				list: async (user, query) => await agentResults.listForInbox(user, query),
+				count: async (user) => await agentResults.countForInbox(user),
+			});
 			const { WorkflowSuggestionEventRelay } = await import(
 				'./workflow-suggestions/workflow-suggestion-event-relay.service.js'
 			);
@@ -162,6 +178,18 @@ export class InstanceAiModule implements ModuleInterface {
 
 		await sweeper.sweep();
 		await Container.get(SelfHealingInvestigationService).reconcile();
+
+		// Release the claims of interrupted agent investigations, also when the flag is off.
+		try {
+			const { SelfHealingAgentInvestigationService } = await import(
+				'./self-healing/agents/self-healing-agent-investigation.service.js'
+			);
+			await Container.get(SelfHealingAgentInvestigationService).reconcile();
+		} catch (error) {
+			Container.get(Logger)
+				.scoped('instance-ai')
+				.error('Startup reconciliation of agent investigations failed', { error });
+		}
 	}
 
 	async systemTasks() {
@@ -180,6 +208,13 @@ export class InstanceAiModule implements ModuleInterface {
 				'./self-healing/self-healing-configuration-snapshot.task.js'
 			);
 			tasks.push(SelfHealingConfigurationSnapshotTask);
+		}
+
+		if (config.workflowSuggestionsEnabled) {
+			const { SelfHealingAgentSweepTask } = await import(
+				'./self-healing/agents/self-healing-agent-sweep.task.js'
+			);
+			tasks.push(SelfHealingAgentSweepTask);
 		}
 
 		if (config.pruneInterval > 0) {
@@ -269,6 +304,18 @@ export class InstanceAiModule implements ModuleInterface {
 			'./self-healing/database/self-healing-configuration-reviewer.entity.js'
 		);
 
+		const { SelfHealingConfigurationAgent } = await import(
+			'./self-healing/agents/database/self-healing-configuration-agent.entity.js'
+		);
+
+		const { SelfHealingAgentResult } = await import(
+			'./self-healing/agents/database/self-healing-agent-result.entity.js'
+		);
+
+		const { SelfHealingAgentInvestigation } = await import(
+			'./self-healing/agents/database/self-healing-agent-investigation.entity.js'
+		);
+
 		return [
 			InstanceAiThread,
 			InstanceAiMessage,
@@ -289,6 +336,9 @@ export class InstanceAiModule implements ModuleInterface {
 			SelfHealingConfigurationReviewer,
 			SelfHealingConfigurationWorkflow,
 			SelfHealingConfiguration,
+			SelfHealingConfigurationAgent,
+			SelfHealingAgentResult,
+			SelfHealingAgentInvestigation,
 		];
 	}
 

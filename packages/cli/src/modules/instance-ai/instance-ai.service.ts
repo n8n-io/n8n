@@ -32,6 +32,7 @@ import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import {
 	SELF_HEALING_PROFILE_VERSION,
+	AGENT_IMPROVEMENT_PROFILE_VERSION,
 	MAX_STEPS,
 	resolvePromptProfile,
 	setTracePromptVersion,
@@ -153,6 +154,12 @@ import { InstanceAiObservationRepository } from './repositories/instance-ai-obse
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { InstanceAiThreadGrantRepository } from './repositories/instance-ai-thread-grant.repository';
 import { InstanceAiSandboxService } from './sandbox';
+import {
+	SelfHealingAgentInvestigatorService,
+	type AgentImprovementRunInput,
+	type AgentImprovementRunLifecycle,
+	type AgentImprovementRunResult,
+} from './self-healing/agents/self-healing-agent-investigator.service';
 import {
 	SelfHealingAgentService,
 	type SelfHealingRunInput,
@@ -506,6 +513,7 @@ export class InstanceAiService {
 		private readonly turnEnvironment: AssistantTurnEnvironmentFactory,
 		private readonly turnInput: AssistantTurnInputBuilder,
 		private readonly agentFactory: AssistantAgentFactory,
+		private readonly agentInvestigator: SelfHealingAgentInvestigatorService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -1168,6 +1176,87 @@ export class InstanceAiService {
 		this.trackInFlightExecution(execution);
 
 		return await execution;
+	}
+
+	/**
+	 * Run one agent improvement investigation under the normal host lifecycle.
+	 * Not `async`: a refused run throws before this returns, so the caller can
+	 * report it and then let the run continue without an await.
+	 */
+	// eslint-disable-next-line @typescript-eslint/promise-function-async
+	startAgentImprovementRun(
+		input: AgentImprovementRunInput,
+		lifecycle: AgentImprovementRunLifecycle,
+	): Promise<AgentImprovementRunResult> {
+		this.selfHealingAgent.assertEnabled();
+		this.assertRunAdmissible(input.user);
+		const { threadId } = input;
+		this.liveness.clearThreadState(threadId);
+		const { runId, abortController, messageGroupId } = this.runState.startRun({
+			threadId,
+			runId: lifecycle.runId,
+			user: input.user,
+		});
+
+		const execution = this.agentInvestigator
+			.execute(input, {
+				threadId,
+				runId,
+				messageGroupId,
+				signal: abortController.signal,
+				sandbox: this.sandboxService,
+				tracing: this.tracing,
+				createProxyRunConfig: async () =>
+					await this.createProxyRunConfig({ id: SELF_HEALING_BILLING_USER_ID }),
+				assertCreditsAvailable: async () => await this.assertAssistantCreditsAvailable(input.user),
+				onActivity: () => this.runState.touchActiveRun(threadId),
+				onFinalizing: () => {
+					this.finalizingSelfHealingRuns.add(runId);
+				},
+				onComplete: lifecycle.onComplete,
+				getAbortReason: () => {
+					if (this.liveness.consumeRunTimeout(runId).timedOut)
+						return INSTANCE_AI_RUN_TIMEOUT_REASON;
+					if (quotaExhaustedFromSignal(abortController.signal)) return 'quota_exhausted';
+
+					return getAbortReason(abortController.signal);
+				},
+				onFinish: (result, modelId, stream) => {
+					const status = result.status === 'suspended' ? 'errored' : result.status;
+
+					// Shutdown already published the final cancellation event.
+					if (abortController.signal.reason !== 'service_shutdown') {
+						this.publishRunFinish(
+							threadId,
+							runId,
+							status,
+							result.reason,
+							undefined,
+							input.user.id,
+							{
+								modelId,
+								promptVersion: AGENT_IMPROVEMENT_PROFILE_VERSION,
+							},
+						);
+					}
+
+					this.emitRunMetrics(threadId, status, {
+						modelId,
+						workSummary: stream?.workSummary,
+						usage: stream?.usage,
+					});
+				},
+			})
+			.finally(() => {
+				this.finalizingSelfHealingRuns.delete(runId);
+				this.runState.clearActiveRun(threadId);
+				this.liveness.clearThreadState(threadId);
+			});
+
+		// The investigation caller reports failures of this promise.
+		this.trackInFlightExecution(execution);
+
+		return execution;
 	}
 
 	startRun(

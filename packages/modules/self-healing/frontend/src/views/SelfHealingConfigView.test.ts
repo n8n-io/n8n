@@ -33,6 +33,23 @@ vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => ({ currentUser: { id: 'creator' } }),
 }));
 
+const noAgentCoverage: Pick<
+	SelfHealingConfigurationDto,
+	| 'agentScope'
+	| 'agentIds'
+	| 'agentGoals'
+	| 'agentScheduleIntervalHours'
+	| 'agentTraceThreshold'
+	| 'agentPublicationMode'
+> = {
+	agentScope: 'none',
+	agentIds: [],
+	agentGoals: ['quality'],
+	agentScheduleIntervalHours: null,
+	agentTraceThreshold: null,
+	agentPublicationMode: 'approval',
+};
+
 const configuration: SelfHealingConfigurationDto = {
 	id: 1,
 	projectId: 'project',
@@ -44,9 +61,15 @@ const configuration: SelfHealingConfigurationDto = {
 	enabled: false,
 	enabledById: null,
 	lastActivity: null,
+	...noAgentCoverage,
 };
 
 let router: Router;
+
+async function chooseAgentTrigger(view: ReturnType<typeof render>, name: string) {
+	await fireEvent.keyDown(await view.findByTestId('self-healing-agent-trigger'), { key: 'Enter' });
+	await fireEvent.keyDown(await view.findByRole('option', { name }), { key: 'Enter' });
+}
 
 async function renderView(configurationId: string) {
 	await router.push(`/projects/project/settings/self-healing/${configurationId}`);
@@ -86,6 +109,7 @@ beforeEach(() => {
 	store.options.project = {
 		project: { name: 'Acme project', icon: { type: 'icon', value: 'rocket' } },
 		workflows: [{ id: 'workflow', name: 'Production workflow' }],
+		agents: [],
 		reviewers: [
 			{ id: 'creator', email: 'creator@example.com', firstName: 'Test', lastName: 'Reviewer' },
 		],
@@ -95,11 +119,8 @@ beforeEach(() => {
 });
 
 it.each([
-	[true, 'Self-healing uses your Assistant credits each time it investigates a failed workflow.'],
-	[
-		false,
-		'Self-healing uses tokens from your AI provider each time it investigates a failed workflow.',
-	],
+	[true, 'Self-healing uses your Assistant credits for each investigation.'],
+	[false, 'Self-healing uses tokens from your AI provider for each investigation.'],
 ])(
 	'explains the cost of investigations when the credit proxy is %s',
 	async (proxyEnabled, text) => {
@@ -132,6 +153,7 @@ it('creates an enabled configuration with the creator as reviewer', async () => 
 		expect(save).toHaveBeenCalledWith(
 			'project',
 			{
+				...noAgentCoverage,
 				scope: 'all',
 				workflowIds: [],
 				reviewerIds: ['creator'],
@@ -253,6 +275,7 @@ it.each([false, true])(
 		expect(save).toHaveBeenCalledWith(
 			'project',
 			{
+				...noAgentCoverage,
 				scope: 'all',
 				workflowIds: [],
 				reviewerIds: ['creator'],
@@ -435,6 +458,7 @@ it('selects workflow rows and reviewers before saving', async () => {
 	expect(save).toHaveBeenCalledWith(
 		'project',
 		{
+			...noAgentCoverage,
 			scope: 'selected',
 			workflowIds: ['workflow'],
 			reviewerIds: ['creator'],
@@ -604,7 +628,7 @@ describe('personal project', () => {
 
 		expect(view.queryByText('Reviewers')).not.toBeInTheDocument();
 		expect(view.queryByTestId('self-healing-reviewers')).not.toBeInTheDocument();
-		expect(view.queryByText(/who reviews its fixes/)).not.toBeInTheDocument();
+		expect(view.queryByText(/who reviews its changes/)).not.toBeInTheDocument();
 		await fireEvent.click(button);
 		await waitFor(() =>
 			expect(save).toHaveBeenCalledWith(
@@ -748,6 +772,7 @@ describe('project members', () => {
 		expect(save).toHaveBeenCalledWith(
 			'project',
 			{
+				...noAgentCoverage,
 				scope: 'all',
 				workflowIds: [],
 				reviewerIds: [],
@@ -790,6 +815,7 @@ describe('project members', () => {
 		expect(save).toHaveBeenCalledWith(
 			'project',
 			{
+				...noAgentCoverage,
 				scope: 'all',
 				workflowIds: [],
 				reviewerIds: ['creator', 'maya'],
@@ -841,6 +867,7 @@ describe('project members', () => {
 		expect(save).toHaveBeenCalledWith(
 			'project',
 			{
+				...noAgentCoverage,
 				scope: 'all',
 				workflowIds: [],
 				reviewerIds: ['creator'],
@@ -863,12 +890,253 @@ describe('project members', () => {
 		expect(save).toHaveBeenCalledWith(
 			'project',
 			{
+				...noAgentCoverage,
 				scope: 'all',
 				workflowIds: [],
 				reviewerIds: [],
 				includeAllProjectMembers: true,
 				includeSubWorkflows: false,
 			},
+			1,
+		);
+	});
+});
+
+describe('agents', () => {
+	const covered = {
+		...configuration,
+		enabled: true,
+		enabledById: 'creator',
+		agentScope: 'selected' as const,
+		agentIds: ['support'],
+		agentScheduleIntervalHours: 24,
+	};
+
+	beforeEach(() => {
+		useSettingsStore().settings.activeModules = ['agents'];
+		useSelfHealingStore().options.project.agents = [
+			{ id: 'support', name: 'Support agent', published: true },
+			{ id: 'billing', name: 'Billing agent', published: true },
+			{ id: 'draft', name: 'Draft agent', published: false },
+		];
+	});
+
+	it('hides the Agents section and keeps the saved agent fields when Agents are off', async () => {
+		useSettingsStore().settings.activeModules = [];
+		const store = useSelfHealingStore();
+		store.configurations.project = [{ ...covered, agentScheduleIntervalHours: 12 }];
+		const save = vi.spyOn(store, 'save').mockResolvedValue(covered);
+		const view = await renderView('1');
+		await fireEvent.click(await view.findByRole('switch', { name: 'Include sub-workflows' }));
+		expect(view.queryByTestId('self-healing-agents-section')).not.toBeInTheDocument();
+		await fireEvent.click(view.getByRole('button', { name: 'Save changes' }));
+
+		expect(save).toHaveBeenCalledWith(
+			'project',
+			expect.objectContaining({
+				agentScope: 'selected',
+				agentIds: ['support'],
+				agentScheduleIntervalHours: 12,
+			}),
+			1,
+		);
+	});
+
+	it('creates a configuration that covers only agents', async () => {
+		const store = useSelfHealingStore();
+		const save = vi.spyOn(store, 'save').mockResolvedValue(covered);
+		const view = await renderView('new');
+		const button = await view.findByRole('button', { name: 'Create configuration' });
+		expect(view.queryByTestId('self-healing-agent-trigger')).not.toBeInTheDocument();
+
+		await fireEvent.click(view.getAllByRole('radio', { name: 'Select manually' })[0]);
+		expect(button).toBeDisabled();
+		await fireEvent.click(view.getAllByRole('radio', { name: 'Select manually' })[1]);
+		expect(button).toBeDisabled();
+		await fireEvent.click(view.getAllByRole('button', { name: 'Show popup' })[1]);
+		expect(await view.findByRole('option', { name: /Draft agent/ })).toHaveAttribute(
+			'data-disabled',
+		);
+		await fireEvent.click(view.getByRole('option', { name: 'Support agent' }));
+		expect(view.getByTestId('self-healing-selected-agent')).toHaveTextContent('Support agent');
+		expect(view.queryByRole('button', { name: 'Run now' })).not.toBeInTheDocument();
+
+		// Quality is always a goal, so the form offers only the optional goals.
+		expect(view.queryByRole('switch', { name: /quality/i })).not.toBeInTheDocument();
+		await fireEvent.click(view.getByRole('switch', { name: 'Reduce cost' }));
+		// New agent coverage starts with the two triggers.
+		expect(view.getByTestId('self-healing-agent-trigger')).toHaveTextContent(
+			'Whichever comes first',
+		);
+		expect(view.getByTestId('self-healing-agent-trigger-row')).toHaveTextContent(
+			'whichever comes first',
+		);
+		expect(view.queryByTestId('self-healing-agent-publication-warning')).not.toBeInTheDocument();
+		await fireEvent.click(view.getByRole('radio', { name: 'Publish everything' }));
+		expect(view.getByTestId('self-healing-agent-publication-warning')).toBeVisible();
+		await fireEvent.click(button);
+
+		await waitFor(() =>
+			expect(save).toHaveBeenCalledWith(
+				'project',
+				{
+					scope: 'selected',
+					workflowIds: [],
+					reviewerIds: ['creator'],
+					includeAllProjectMembers: false,
+					includeSubWorkflows: true,
+					agentScope: 'selected',
+					agentIds: ['support'],
+					agentGoals: ['quality', 'cost'],
+					agentScheduleIntervalHours: 24,
+					agentTraceThreshold: 50,
+					agentPublicationMode: 'auto',
+					enabled: true,
+				},
+				undefined,
+			),
+		);
+	});
+
+	it.each([
+		['On a schedule', { agentScheduleIntervalHours: 12, agentTraceThreshold: null }],
+		['After new sessions', { agentScheduleIntervalHours: null, agentTraceThreshold: 100 }],
+		['Whichever comes first', { agentScheduleIntervalHours: 12, agentTraceThreshold: 100 }],
+	])('shows the saved trigger as %s', async (name, triggers) => {
+		const store = useSelfHealingStore();
+		store.configurations.project = [{ ...covered, ...triggers }];
+		const view = await renderView('1');
+
+		expect(await view.findByTestId('self-healing-agent-trigger')).toHaveTextContent(name);
+		expect(view.queryByTestId('self-healing-agent-schedule-hours') !== null).toBe(
+			triggers.agentScheduleIntervalHours !== null,
+		);
+		expect(view.queryByTestId('self-healing-agent-trace-threshold') !== null).toBe(
+			triggers.agentTraceThreshold !== null,
+		);
+		expect(view.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+	});
+
+	it('saves only the fields of the selected trigger', async () => {
+		const store = useSelfHealingStore();
+		store.configurations.project = [
+			{ ...covered, agentScheduleIntervalHours: 12, agentTraceThreshold: 100 },
+		];
+		const save = vi.spyOn(store, 'save').mockResolvedValue(covered);
+		const view = await renderView('1');
+		await chooseAgentTrigger(view, 'On a schedule');
+		expect(view.queryByTestId('self-healing-agent-trace-threshold')).not.toBeInTheDocument();
+		await fireEvent.click(view.getByRole('button', { name: 'Save changes' }));
+
+		expect(save).toHaveBeenCalledWith(
+			'project',
+			expect.objectContaining({ agentScheduleIntervalHours: 12, agentTraceThreshold: null }),
+			1,
+		);
+
+		// A field that the user turns on gets the default value.
+		await chooseAgentTrigger(view, 'After new sessions');
+		await fireEvent.click(view.getByRole('button', { name: 'Save changes' }));
+		expect(save).toHaveBeenLastCalledWith(
+			'project',
+			expect.objectContaining({ agentScheduleIntervalHours: null, agentTraceThreshold: 50 }),
+			1,
+		);
+	});
+
+	it('gives a trigger to a saved configuration that has none', async () => {
+		const store = useSelfHealingStore();
+		store.configurations.project = [{ ...covered, agentScheduleIntervalHours: null }];
+		const save = vi.spyOn(store, 'save').mockResolvedValue(covered);
+		const view = await renderView('1');
+		expect(await view.findByTestId('self-healing-agent-trigger')).toHaveTextContent(
+			'Whichever comes first',
+		);
+		await fireEvent.click(view.getByRole('button', { name: 'Save changes' }));
+
+		expect(save).toHaveBeenCalledWith(
+			'project',
+			expect.objectContaining({ agentScheduleIntervalHours: 24, agentTraceThreshold: 50 }),
+			1,
+		);
+	});
+
+	it('removes an optional goal and keeps quality', async () => {
+		const store = useSelfHealingStore();
+		store.configurations.project = [{ ...covered, agentGoals: ['quality', 'cost', 'latency'] }];
+		const save = vi.spyOn(store, 'save').mockResolvedValue(covered);
+		const view = await renderView('1');
+		const cost = await view.findByRole('switch', { name: 'Reduce cost' });
+		expect(cost).toBeChecked();
+		expect(view.getByRole('switch', { name: 'Reduce latency' })).toBeChecked();
+		await fireEvent.click(cost);
+		await fireEvent.click(view.getByRole('button', { name: 'Save changes' }));
+
+		expect(save).toHaveBeenCalledWith(
+			'project',
+			expect.objectContaining({ agentGoals: ['quality', 'latency'] }),
+			1,
+		);
+	});
+
+	it('does not offer a start of an investigation', async () => {
+		const store = useSelfHealingStore();
+		store.configurations.project = [covered];
+		const view = await renderView('1');
+		await view.findByTestId('self-healing-selected-agent');
+		expect(view.queryByRole('button', { name: 'Run now' })).not.toBeInTheDocument();
+	});
+
+	it('sends no agent selection when the scope is not a manual selection', async () => {
+		const store = useSelfHealingStore();
+		store.configurations.project = [covered];
+		const save = vi.spyOn(store, 'save').mockResolvedValue(covered);
+		const view = await renderView('1');
+		await fireEvent.click(await view.findByRole('radio', { name: 'All agents' }));
+		await fireEvent.click(view.getByRole('button', { name: 'Save changes' }));
+
+		expect(save).toHaveBeenCalledWith(
+			'project',
+			expect.objectContaining({ agentScope: 'all', agentIds: [] }),
+			1,
+		);
+	});
+
+	it('keeps agent coverage of other configurations unavailable', async () => {
+		const store = useSelfHealingStore();
+		store.configurations.project = [
+			{ ...covered, id: 2, scope: 'selected' },
+			{ ...configuration, id: 3, scope: 'selected', agentScope: 'all' },
+		];
+		const view = await renderView('new');
+		await view.findByRole('button', { name: 'Create configuration' });
+		expect(view.getByRole('radio', { name: 'All agents' })).toBeDisabled();
+		await fireEvent.click(view.getAllByRole('radio', { name: 'Select manually' })[1]);
+		await fireEvent.click(view.getAllByRole('button', { name: 'Show popup' })[0]);
+
+		const reserved = await view.findByRole('option', { name: /Support agent/ });
+		expect(reserved).toHaveAttribute('data-disabled');
+		expect(reserved).toHaveTextContent('In another configuration');
+		expect(view.getByRole('option', { name: 'Billing agent' })).not.toHaveAttribute(
+			'data-disabled',
+		);
+	});
+
+	it('saves the number of hours that the user types', async () => {
+		const store = useSelfHealingStore();
+		store.configurations.project = [{ ...covered, agentScheduleIntervalHours: 24 }];
+		const save = vi.spyOn(store, 'save').mockResolvedValue(covered);
+		const view = await renderView('1');
+		const input = within(await view.findByTestId('self-healing-agent-schedule-hours')).getByRole(
+			'spinbutton',
+		);
+		await fireEvent.update(input, '48');
+		await fireEvent.blur(input);
+		await fireEvent.click(view.getByRole('button', { name: 'Save changes' }));
+
+		expect(save).toHaveBeenCalledWith(
+			'project',
+			expect.objectContaining({ agentScheduleIntervalHours: 48 }),
 			1,
 		);
 	});

@@ -140,7 +140,10 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.scheduled_task](public.scheduled_task.md) | 19 |  | BASE TABLE |
 | [public.scope](public.scope.md) | 3 |  | BASE TABLE |
 | [public.secrets_provider_connection](public.secrets_provider_connection.md) | 7 |  | BASE TABLE |
-| [public.self_healing_configuration](public.self_healing_configuration.md) | 9 |  | BASE TABLE |
+| [public.self_healing_agent_investigation](public.self_healing_agent_investigation.md) | 19 |  | BASE TABLE |
+| [public.self_healing_agent_result](public.self_healing_agent_result.md) | 28 |  | BASE TABLE |
+| [public.self_healing_configuration](public.self_healing_configuration.md) | 14 |  | BASE TABLE |
+| [public.self_healing_configuration_agent](public.self_healing_configuration_agent.md) | 3 |  | BASE TABLE |
 | [public.self_healing_configuration_reviewer](public.self_healing_configuration_reviewer.md) | 2 |  | BASE TABLE |
 | [public.self_healing_configuration_workflow](public.self_healing_configuration_workflow.md) | 3 |  | BASE TABLE |
 | [public.self_healing_investigation](public.self_healing_investigation.md) | 13 |  | BASE TABLE |
@@ -413,8 +416,21 @@ erDiagram
 "public.role_scope" }o--|| "public.scope" : "FOREIGN KEY (#quot;scopeSlug#quot;) REFERENCES scope(slug) ON UPDATE CASCADE ON DELETE CASCADE"
 "public.role_scope" }o--|| "public.role" : "FOREIGN KEY (#quot;roleSlug#quot;) REFERENCES role(slug) ON UPDATE CASCADE ON DELETE CASCADE"
 "public.scheduled_task" }o--|| "public.scheduled_job" : "FOREIGN KEY (#quot;jobId#quot;) REFERENCES scheduled_job(id) ON DELETE CASCADE"
+"public.self_healing_agent_investigation" }o--|| "public.user" : "FOREIGN KEY (#quot;backgroundUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.self_healing_agent_investigation" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.self_healing_agent_investigation" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.self_healing_agent_investigation" }o--|| "public.self_healing_configuration" : "FOREIGN KEY (#quot;configurationId#quot;) REFERENCES self_healing_configuration(id) ON DELETE CASCADE"
+"public.self_healing_agent_investigation" }o--o| "public.self_healing_agent_result" : "FOREIGN KEY (#quot;resultId#quot;) REFERENCES self_healing_agent_result(id) ON DELETE SET NULL"
+"public.self_healing_agent_result" }o--o| "public.user" : "FOREIGN KEY (#quot;closedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.self_healing_agent_result" }o--|| "public.user" : "FOREIGN KEY (#quot;backgroundUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.self_healing_agent_result" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.self_healing_agent_result" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.self_healing_agent_result" }o--|| "public.self_healing_configuration" : "FOREIGN KEY (#quot;configurationId#quot;) REFERENCES self_healing_configuration(id) ON DELETE CASCADE"
 "public.self_healing_configuration" }o--o| "public.user" : "FOREIGN KEY (#quot;enabledById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.self_healing_configuration" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.self_healing_configuration_agent" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.self_healing_configuration_agent" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.self_healing_configuration_agent" }o--|| "public.self_healing_configuration" : "FOREIGN KEY (#quot;configurationId#quot;) REFERENCES self_healing_configuration(id) ON DELETE CASCADE"
 "public.self_healing_configuration_reviewer" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.self_healing_configuration_reviewer" }o--|| "public.self_healing_configuration" : "FOREIGN KEY (#quot;configurationId#quot;) REFERENCES self_healing_configuration(id) ON DELETE CASCADE"
 "public.self_healing_configuration_workflow" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
@@ -1855,7 +1871,63 @@ erDiagram
   varchar_36_ type
   timestamp_3__with_time_zone updatedAt
 }
+"public.self_healing_agent_investigation" {
+  varchar_36_ agentId FK
+  varchar_36_ agentVersionId
+  uuid backgroundUserId FK
+  integer configurationId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_64_ failureReason
+  timestamp_3__with_time_zone finishedAt
+  varchar_36_ id
+  varchar_16_ outcome
+  varchar_36_ projectId FK
+  varchar_36_ resultId FK
+  uuid runId
+  uuid threadId
+  integer traceCount
+  timestamp_3__with_time_zone traceWindowEnd
+  timestamp_3__with_time_zone traceWindowStart
+  varchar_16_ trigger
+  timestamp_3__with_time_zone updatedAt
+  json usage
+}
+"public.self_healing_agent_result" {
+  varchar_36_ agentId FK
+  varchar_255_ agentName
+  boolean appliedAutomatically
+  text applyError
+  json applyProgress
+  timestamp_3__with_time_zone applyStartedAt
+  uuid backgroundUserId FK
+  varchar_36_ baseVersionId
+  timestamp_3__with_time_zone closedAt
+  uuid closedById FK
+  integer configurationId FK
+  timestamp_3__with_time_zone createdAt
+  json edits
+  json evalCases
+  json evidence
+  json goals
+  varchar_36_ id
+  varchar_36_ projectId FK
+  varchar_36_ publishedVersionId
+  text report
+  varchar_16_ reviewState
+  varchar_255_ summary
+  integer traceCount
+  timestamp_3__with_time_zone traceWindowEnd
+  timestamp_3__with_time_zone traceWindowStart
+  varchar_16_ trigger
+  timestamp_3__with_time_zone updatedAt
+  json usage
+}
 "public.self_healing_configuration" {
+  json agentGoals
+  varchar_16_ agentPublicationMode
+  integer agentScheduleIntervalHours
+  varchar_16_ agentScope
+  integer agentTraceThreshold
   timestamp_3__with_time_zone createdAt
   boolean enabled
   uuid enabledById FK
@@ -1865,6 +1937,11 @@ erDiagram
   varchar_36_ projectId FK
   varchar_16_ scope
   timestamp_3__with_time_zone updatedAt
+}
+"public.self_healing_configuration_agent" {
+  varchar_36_ agentId FK
+  integer configurationId FK
+  varchar_36_ projectId FK
 }
 "public.self_healing_configuration_reviewer" {
   integer configurationId FK

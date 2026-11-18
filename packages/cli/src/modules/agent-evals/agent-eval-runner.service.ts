@@ -1,7 +1,7 @@
 import type { AgentEvalVerdict, AgentEvalRunSummary } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { AgentEvalDataset, AgentEvalResult, User } from '@n8n/db';
+import type { AgentEvalResult, User } from '@n8n/db';
 import {
 	AgentEvalDatasetRepository,
 	AgentEvalResultRepository,
@@ -9,13 +9,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import type {
-	DataTableColumnJsType,
-	DataTableRow,
-	IDataObject,
-	JsonObject,
-	JsonValue,
-} from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 import { jsonParse, jsonStringify } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
@@ -31,31 +25,23 @@ import { DataTableService } from '@n8n/backend-module-data-table';
 import { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import {
+	readSnapshotExpectedTools,
+	readSnapshotText,
+	resolveCases,
+	type ResolvedCase,
+} from './agent-eval-case-reader';
 import { generateFixSuggestion } from './agent-eval-fix-suggestion';
-import { judgeAgentAnswer } from './agent-eval-judge';
+import { judgeAgentAnswer, type JudgedToolCall } from './agent-eval-judge';
 import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
 import { assertRequiredModulesActive } from './agent-evals-required-modules';
 
-const ROW_PAGE_SIZE = 100;
 // Per-run in-flight cap layered on the shared evaluation queue: keeps one run
 // from flooding the queue (and bounds fan-out when the queue is unlimited).
 const MAX_PER_RUN_CONCURRENCY = 10;
-// Each case is a real agent execution, so a run is capped rather than letting a
-// large table launch thousands of model calls. Raise deliberately if needed.
-const MAX_CASES = 500;
 // `setTimeout` holds its delay in a 32-bit int and silently coerces anything
 // larger to 1ms, so a deadline past ~24.8 days must be clamped, not passed on.
 const MAX_TIMER_DELAY_MS = 2_147_483_647;
-
-/** A dataset row resolved into a runnable case via the dataset's column mapping. */
-interface ResolvedCase {
-	/** Origin Data Table row id, tracked loosely (rows are external/mutable). */
-	sourceRowId: string | null;
-	/** The opening message the agent receives. */
-	input: string;
-	/** The case snapshot persisted on the result row for later judging. */
-	snapshot: JsonObject;
-}
 
 interface CaseUsage {
 	inputTokens: number;
@@ -143,7 +129,7 @@ export class AgentEvalRunnerService {
 			throw new NotFoundError(`Agent ${dataset.agentId} not found or not accessible.`);
 		}
 
-		const cases = await this.resolveCases(dataset, user);
+		const cases = await resolveCases(this.dataTableService, dataset, user);
 		if (cases.length === 0) {
 			throw new BadRequestError('The dataset has no rows to run.');
 		}
@@ -642,7 +628,12 @@ export class AgentEvalRunnerService {
 			// covers both.
 			let verdict: JsonObject | null = null;
 			try {
-				const judged = await this.judgeCase(resolvedCase, execResult.finalText, ctx);
+				const judged = await this.judgeCase(
+					resolvedCase,
+					execResult.finalText,
+					execResult.toolCalls,
+					ctx,
+				);
 				const suggestion = await this.suggestFix(judged, resolvedCase, execResult.finalText, ctx);
 				verdict = toJsonObject(suggestion ? { ...judged, suggestion } : judged);
 			} catch (error) {
@@ -686,6 +677,7 @@ export class AgentEvalRunnerService {
 	private async judgeCase(
 		resolvedCase: ResolvedCase,
 		output: string,
+		toolCalls: JudgedToolCall[],
 		ctx: { agentId: string; projectId: string; user: User },
 	): Promise<AgentEvalVerdict> {
 		return await judgeAgentAnswer(
@@ -699,6 +691,8 @@ export class AgentEvalRunnerService {
 				output,
 				criteria: readSnapshotText(resolvedCase.snapshot, 'criteria'),
 				expectedOutput: readSnapshotText(resolvedCase.snapshot, 'expectedOutput'),
+				expectedTools: readSnapshotExpectedTools(resolvedCase.snapshot),
+				toolCalls,
 			},
 			ctx,
 		);
@@ -717,6 +711,8 @@ export class AgentEvalRunnerService {
 		ctx: { agentId: string; projectId: string; user: User },
 	): Promise<string | null> {
 		if (verdict.status !== 'completed' || verdict.outcome !== 'fail') return null;
+		// The rule was not judged after a failed tool check, so there is no rule failure to fix.
+		if (verdict.toolCheck && !verdict.toolCheck.pass) return null;
 		const rule = readSnapshotText(resolvedCase.snapshot, 'criteria');
 		if (!rule) return null;
 
@@ -729,82 +725,6 @@ export class AgentEvalRunnerService {
 			{ input: resolvedCase.input, output, rule, reasoning: verdict.reasoning },
 			ctx,
 		);
-	}
-
-	/**
-	 * Resolve the dataset's Data Table rows into runnable cases via its column
-	 * mapping. Mirrors {@link EvaluationDatasetService}'s data-table access: the
-	 * table may live in a different project than the agent, so access is checked
-	 * on the table directly.
-	 */
-	private async resolveCases(dataset: AgentEvalDataset, user: User): Promise<ResolvedCase[]> {
-		const mapping = dataset.columnMapping;
-		if (!mapping?.input) {
-			throw new BadRequestError('The dataset has no input column mapping.');
-		}
-
-		// Narrowed above (datasetSource === 'data_table'): the ref carries a table id.
-		const dataTableId = (dataset.datasetRef as { dataTableId: string }).dataTableId;
-
-		const allowed = await userHasScopes(user, ['dataTable:readRow'], false, { dataTableId });
-		if (!allowed) throw new ForbiddenError('You do not have access to this dataset.');
-
-		const tableProjectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
-
-		// Validate the mapping against the live columns so a renamed/deleted column
-		// fails loudly here instead of silently turning every case into an
-		// "empty input" error once the run starts.
-		const columnNames = new Set(
-			(await this.dataTableService.getColumns(dataTableId, tableProjectId)).map((c) => c.name),
-		);
-		const missing = (
-			[
-				['input', mapping.input],
-				['expectedOutput', mapping.expectedOutput],
-				['criteria', mapping.criteria],
-			] as const
-		)
-			.filter(([, name]) => name && !columnNames.has(name))
-			.map(([role, name]) => `${role} → '${name}'`);
-		if (missing.length > 0) {
-			throw new BadRequestError(
-				`The dataset's column mapping references columns missing from the data table: ${missing.join(', ')}.`,
-			);
-		}
-
-		const rows: DataTableRow[] = [];
-		let skip = 0;
-		for (;;) {
-			const { data, count } = await this.dataTableService.getManyRowsAndCount(
-				dataTableId,
-				tableProjectId,
-				{ take: ROW_PAGE_SIZE, skip },
-			);
-			// Reject oversized datasets rather than launching thousands of real
-			// agent executions (`count` is the table total, known from page one).
-			if (count > MAX_CASES) {
-				throw new BadRequestError(
-					`The dataset has ${count} rows, exceeding the ${MAX_CASES}-case limit for a single run.`,
-				);
-			}
-			rows.push(...data);
-			skip += data.length;
-			if (data.length === 0 || skip >= count) break;
-		}
-
-		return rows.map((row) => {
-			const snapshot: JsonObject = { input: cellToJson(row[mapping.input]) };
-			if (mapping.expectedOutput) {
-				snapshot.expectedOutput = cellToJson(row[mapping.expectedOutput]);
-			}
-			if (mapping.criteria) snapshot.criteria = cellToJson(row[mapping.criteria]);
-
-			return {
-				sourceRowId: row.id === undefined || row.id === null ? null : String(row.id),
-				input: cellToString(row[mapping.input]),
-				snapshot,
-			};
-		});
 	}
 }
 
@@ -831,32 +751,6 @@ function normalizeUsage(usage?: { inputTokens?: number; outputTokens?: number })
 	| undefined {
 	if (!usage) return undefined;
 	return { inputTokens: usage.inputTokens ?? 0, outputTokens: usage.outputTokens ?? 0 };
-}
-
-/**
- * Reads `criteria`/`expectedOutput` back out of a case snapshot as judge-ready
- * text. Mirrors {@link cellToJson}'s scalar coercion — the snapshot stores
- * whatever the mapped Data Table cell held.
- */
-function readSnapshotText(snapshot: JsonObject, key: 'criteria' | 'expectedOutput'): string | null {
-	const value = snapshot[key];
-	if (typeof value === 'string' && value.length > 0) return value;
-	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-	return null;
-}
-
-/** Coerce a Data Table cell into the agent's opening message. */
-function cellToString(value: DataTableColumnJsType | undefined): string {
-	if (value === null || value === undefined) return '';
-	if (value instanceof Date) return value.toISOString();
-	return String(value);
-}
-
-/** Coerce a Data Table cell into a JSON-safe snapshot value. */
-function cellToJson(value: DataTableColumnJsType | undefined): JsonValue {
-	if (value === null || value === undefined) return null;
-	if (value instanceof Date) return value.toISOString();
-	return value;
 }
 
 function toJsonObject(value: unknown): JsonObject {

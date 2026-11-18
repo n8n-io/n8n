@@ -8,7 +8,7 @@
 | disabled | boolean | false | false |  |  |  |
 | email | varchar(255) |  | true |  |  |  |
 | firstName | varchar(32) |  | true |  |  |  |
-| id | uuid | gen_random_uuid() | false | [public.activity_event](public.activity_event.md) [public.agent_eval_dataset](public.agent_eval_dataset.md) [public.agent_eval_rating](public.agent_eval_rating.md) [public.agent_eval_run](public.agent_eval_run.md) [public.agent_execution_threads](public.agent_execution_threads.md) [public.agent_history](public.agent_history.md) [public.agent_publish_history](public.agent_publish_history.md) [public.agents](public.agents.md) [public.ai_preference](public.ai_preference.md) [public.auth_identity](public.auth_identity.md) [public.chat_hub_agents](public.chat_hub_agents.md) [public.chat_hub_sessions](public.chat_hub_sessions.md) [public.chat_hub_tools](public.chat_hub_tools.md) [public.dynamic_credential_user_entry](public.dynamic_credential_user_entry.md) [public.evaluation_collection](public.evaluation_collection.md) [public.idempotency_key](public.idempotency_key.md) [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) [public.instance_ai_pending_confirmations](public.instance_ai_pending_confirmations.md) [public.instance_ai_thread_grants](public.instance_ai_thread_grants.md) [public.instance_ai_thread_tabs](public.instance_ai_thread_tabs.md) [public.migration_workflow_owner](public.migration_workflow_owner.md) [public.oauth_access_tokens](public.oauth_access_tokens.md) [public.oauth_authorization_codes](public.oauth_authorization_codes.md) [public.oauth_refresh_tokens](public.oauth_refresh_tokens.md) [public.oauth_user_consents](public.oauth_user_consents.md) [public.project](public.project.md) [public.project_relation](public.project_relation.md) [public.promotion_review](public.promotion_review.md) [public.promotion_run](public.promotion_run.md) [public.self_healing_configuration](public.self_healing_configuration.md) [public.self_healing_configuration_reviewer](public.self_healing_configuration_reviewer.md) [public.self_healing_investigation](public.self_healing_investigation.md) [public.self_healing_result](public.self_healing_result.md) [public.service_account_details](public.service_account_details.md) [public.skill](public.skill.md) [public.skill_source](public.skill_source.md) [public.skill_version](public.skill_version.md) [public.trusted_source_identity](public.trusted_source_identity.md) [public.user_api_keys](public.user_api_keys.md) [public.user_favorites](public.user_favorites.md) [public.workflow_builder_session](public.workflow_builder_session.md) [public.workflow_publish_history](public.workflow_publish_history.md) [public.workflow_review_activity](public.workflow_review_activity.md) [public.workflow_review_activity_comment](public.workflow_review_activity_comment.md) [public.workflow_review_request](public.workflow_review_request.md) [public.workflow_review_request_authors](public.workflow_review_request_authors.md) [public.workflow_review_request_reviewers](public.workflow_review_request_reviewers.md) [public.workflow_suggestion](public.workflow_suggestion.md) [public.workflow_suggestion_activity](public.workflow_suggestion_activity.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.activity_event](public.activity_event.md) [public.agent_eval_dataset](public.agent_eval_dataset.md) [public.agent_eval_rating](public.agent_eval_rating.md) [public.agent_eval_run](public.agent_eval_run.md) [public.agent_execution_threads](public.agent_execution_threads.md) [public.agent_history](public.agent_history.md) [public.agent_publish_history](public.agent_publish_history.md) [public.agents](public.agents.md) [public.ai_preference](public.ai_preference.md) [public.auth_identity](public.auth_identity.md) [public.chat_hub_agents](public.chat_hub_agents.md) [public.chat_hub_sessions](public.chat_hub_sessions.md) [public.chat_hub_tools](public.chat_hub_tools.md) [public.dynamic_credential_user_entry](public.dynamic_credential_user_entry.md) [public.evaluation_collection](public.evaluation_collection.md) [public.idempotency_key](public.idempotency_key.md) [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) [public.instance_ai_pending_confirmations](public.instance_ai_pending_confirmations.md) [public.instance_ai_thread_grants](public.instance_ai_thread_grants.md) [public.instance_ai_thread_tabs](public.instance_ai_thread_tabs.md) [public.migration_workflow_owner](public.migration_workflow_owner.md) [public.oauth_access_tokens](public.oauth_access_tokens.md) [public.oauth_authorization_codes](public.oauth_authorization_codes.md) [public.oauth_refresh_tokens](public.oauth_refresh_tokens.md) [public.oauth_user_consents](public.oauth_user_consents.md) [public.project](public.project.md) [public.project_relation](public.project_relation.md) [public.promotion_review](public.promotion_review.md) [public.promotion_run](public.promotion_run.md) [public.self_healing_agent_investigation](public.self_healing_agent_investigation.md) [public.self_healing_agent_result](public.self_healing_agent_result.md) [public.self_healing_configuration](public.self_healing_configuration.md) [public.self_healing_configuration_reviewer](public.self_healing_configuration_reviewer.md) [public.self_healing_investigation](public.self_healing_investigation.md) [public.self_healing_result](public.self_healing_result.md) [public.service_account_details](public.service_account_details.md) [public.skill](public.skill.md) [public.skill_source](public.skill_source.md) [public.skill_version](public.skill_version.md) [public.trusted_source_identity](public.trusted_source_identity.md) [public.user_api_keys](public.user_api_keys.md) [public.user_favorites](public.user_favorites.md) [public.workflow_builder_session](public.workflow_builder_session.md) [public.workflow_publish_history](public.workflow_publish_history.md) [public.workflow_review_activity](public.workflow_review_activity.md) [public.workflow_review_activity_comment](public.workflow_review_activity_comment.md) [public.workflow_review_request](public.workflow_review_request.md) [public.workflow_review_request_authors](public.workflow_review_request_authors.md) [public.workflow_review_request_reviewers](public.workflow_review_request_reviewers.md) [public.workflow_suggestion](public.workflow_suggestion.md) [public.workflow_suggestion_activity](public.workflow_suggestion_activity.md) |  |  |
 | kind | varchar(16) | 'person'::character varying | false |  |  | Kind of account: person or service |
 | lastActiveAt | date |  | true |  |  |  |
 | lastName | varchar(32) |  | true |  |  |  |
@@ -82,6 +82,9 @@ erDiagram
 "public.promotion_review" }o--o| "public.user" : "FOREIGN KEY (#quot;approvedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.promotion_review" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.promotion_run" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.self_healing_agent_investigation" }o--|| "public.user" : "FOREIGN KEY (#quot;backgroundUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.self_healing_agent_result" }o--o| "public.user" : "FOREIGN KEY (#quot;closedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.self_healing_agent_result" }o--|| "public.user" : "FOREIGN KEY (#quot;backgroundUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.self_healing_configuration" }o--o| "public.user" : "FOREIGN KEY (#quot;enabledById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.self_healing_configuration_reviewer" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.self_healing_investigation" }o--|| "public.user" : "FOREIGN KEY (#quot;backgroundUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
@@ -452,7 +455,63 @@ erDiagram
   uuid reviewId FK
   varchar_16_ type
 }
+"public.self_healing_agent_investigation" {
+  varchar_36_ agentId FK
+  varchar_36_ agentVersionId
+  uuid backgroundUserId FK
+  integer configurationId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_64_ failureReason
+  timestamp_3__with_time_zone finishedAt
+  varchar_36_ id
+  varchar_16_ outcome
+  varchar_36_ projectId FK
+  varchar_36_ resultId FK
+  uuid runId
+  uuid threadId
+  integer traceCount
+  timestamp_3__with_time_zone traceWindowEnd
+  timestamp_3__with_time_zone traceWindowStart
+  varchar_16_ trigger
+  timestamp_3__with_time_zone updatedAt
+  json usage
+}
+"public.self_healing_agent_result" {
+  varchar_36_ agentId FK
+  varchar_255_ agentName
+  boolean appliedAutomatically
+  text applyError
+  json applyProgress
+  timestamp_3__with_time_zone applyStartedAt
+  uuid backgroundUserId FK
+  varchar_36_ baseVersionId
+  timestamp_3__with_time_zone closedAt
+  uuid closedById FK
+  integer configurationId FK
+  timestamp_3__with_time_zone createdAt
+  json edits
+  json evalCases
+  json evidence
+  json goals
+  varchar_36_ id
+  varchar_36_ projectId FK
+  varchar_36_ publishedVersionId
+  text report
+  varchar_16_ reviewState
+  varchar_255_ summary
+  integer traceCount
+  timestamp_3__with_time_zone traceWindowEnd
+  timestamp_3__with_time_zone traceWindowStart
+  varchar_16_ trigger
+  timestamp_3__with_time_zone updatedAt
+  json usage
+}
 "public.self_healing_configuration" {
+  json agentGoals
+  varchar_16_ agentPublicationMode
+  integer agentScheduleIntervalHours
+  varchar_16_ agentScope
+  integer agentTraceThreshold
   timestamp_3__with_time_zone createdAt
   boolean enabled
   uuid enabledById FK

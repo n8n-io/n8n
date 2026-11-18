@@ -89,3 +89,62 @@ export interface AgentSessionDetail {
 	thread: AgentSessionThread;
 	executions: AgentSessionTurn[];
 }
+
+/** A project agent that an owner can select. */
+export interface AgentProjectListItem {
+	id: string;
+	name: string;
+	published: boolean;
+}
+
+/** The published version of an agent. */
+export interface AgentPublishedVersion {
+	/** `agents.activeVersionId`. */
+	versionId: string;
+	/** When this version became the published version. */
+	publishedAt: Date;
+	agentName: string;
+	/** Whether the draft equals the published version, followed skills included. */
+	clean: boolean;
+}
+
+/** Half-open interval `(after, until]` on the creation time of a turn. */
+export interface AgentProductionTraceWindow {
+	/** Null means no lower bound. */
+	after: Date | null;
+	until: Date;
+}
+
+/**
+ * One production session: a session that the reader can access, with one
+ * settled top-level turn or more from a production source in the window.
+ * The summary uses only the turns in the window.
+ */
+export interface AgentProductionTraceSummary {
+	/** The thread id. */
+	sessionId: string;
+	/** Origin of the session. */
+	source: string | null;
+	/** ISO 8601 time of the newest turn in the window. */
+	lastActivityAt: string;
+	/** Turns in the window. */
+	turnCount: number;
+	/** The user text of the first turn in the window, truncated. */
+	firstUserMessage: string | null;
+	/** Names of the tools that the turns in the window called, in call order. */
+	toolNames: string[];
+	/** The first failure text of a turn in the window. */
+	failure: string | null;
+	/** Sum over the turns in the window. */
+	cost: number | null;
+	/** Sum over the turns in the window. */
+	totalTokens: number | null;
+	/** Sum over the turns in the window. */
+	durationMs: number | null;
+}
+
+/**
+ * A production session with its full conversation. `session.executions` holds
+ * every turn of the thread in order, also the turns from before the window.
+ */
+export type AgentProductionTrace = AgentProductionTraceSummary & { session: AgentSessionDetail };

@@ -140,6 +140,21 @@
 			"reason": "Workflow selections belong to the original project configuration. A transfer to another project removes them. Deleting the configuration, project, or workflow also removes them through its foreign key."
 		},
 		{
+			"name": "SelfHealingConfigurationAgent",
+			"path": "packages/cli/src/modules/instance-ai/self-healing/agents/database/self-healing-configuration-agent.entity.ts",
+			"reason": "Agent selections belong to the original project configuration. Agents are not transferred (see Agent). Deleting the configuration, project, or agent removes them through its foreign key."
+		},
+		{
+			"name": "SelfHealingAgentResult",
+			"path": "packages/cli/src/modules/instance-ai/self-healing/agents/database/self-healing-agent-result.entity.ts",
+			"reason": "A proposal belongs to its agent, which is not transferred (see Agent). Deleted via FK cascade with the configuration, project, agent, or background user."
+		},
+		{
+			"name": "SelfHealingAgentInvestigation",
+			"path": "packages/cli/src/modules/instance-ai/self-healing/agents/database/self-healing-agent-investigation.entity.ts",
+			"reason": "An investigation belongs to its agent, which is not transferred (see Agent). Deleted via FK cascade with the configuration, project, agent, or background user."
+		},
+		{
 			"name": "ExecutionLedgerEntity",
 			"path": "packages/modules/execution-ledger/backend/src/database/entities/execution-ledger.entity.ts",
 			"reason": "Event record of runs in the project at the time they happened; re-homing rows would misstate where they ran. Rows live only seconds before the fold deletes them, and no foreign key ties them to the project."

@@ -7,11 +7,13 @@ import type {
 	PromotionReviewType,
 } from './dto/promotions/promotion-review.dto';
 import type { WorkflowReviewInboxItem } from './dto/workflow-reviews/list-workflow-review-inbox.dto';
+import type { SelfHealingAgentResultDetail } from './self-healing-agents';
 import type { SelfHealingResultDetail } from './self-healing-results';
 
 export const inboxSourceTypeSchema = z.enum([
 	'workflow_review',
 	'self_healing_result',
+	'self_healing_agent_result',
 	'promotion_review',
 ]);
 export type InboxSourceType = z.infer<typeof inboxSourceTypeSchema>;
@@ -34,6 +36,22 @@ export type InboxSelfHealingItem = Pick<
 	id: string;
 	state: InboxState;
 	workflowName: string;
+};
+
+export type InboxSelfHealingAgentItem = Pick<
+	SelfHealingAgentResultDetail,
+	| 'projectId'
+	| 'agentId'
+	| 'agentName'
+	| 'summary'
+	| 'reviewState'
+	| 'appliedAutomatically'
+	| 'createdAt'
+	| 'updatedAt'
+> & {
+	type: 'self_healing_agent_result';
+	id: string;
+	state: InboxState;
 };
 
 export type InboxPromotionReviewItem = {
@@ -59,7 +77,11 @@ export type InboxPromotionReviewItem = {
 	updatedAt: string;
 };
 
-export type InboxItem = InboxWorkflowReviewItem | InboxSelfHealingItem | InboxPromotionReviewItem;
+export type InboxItem =
+	| InboxWorkflowReviewItem
+	| InboxSelfHealingItem
+	| InboxSelfHealingAgentItem
+	| InboxPromotionReviewItem;
 
 export type InboxCounts = { open: number; closed: number };
 

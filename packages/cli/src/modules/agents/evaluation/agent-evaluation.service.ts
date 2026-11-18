@@ -2,6 +2,7 @@ import { raceWithAbort, throwIfAborted } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
+import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';
 import { UserError } from '@n8n/errors';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -17,10 +18,13 @@ import { fromAgentDocument, toAgentDocument } from '../json-config/agent-documen
 import type { AgentSkillRefs } from '../json-config/agent-document';
 import { AgentRepository } from '../repositories/agent.repository';
 import { createAgentCredentialProvider } from '../utils/agent-credential-provider';
+import { applyAgentEdits } from '../utils/agent-proposal-edits';
+import { resolveAgentRunSource } from '../utils/agent-published-snapshot';
 import type {
 	AgentRuntimeInstrumentation,
 	AgentEvaluationPreparationResult,
 	AgentEvaluationSkippedFeature,
+	AgentEvaluationSource,
 } from './agent-evaluation.contracts';
 import { pruneConfigForEval, summarizeTools } from './evaluation-config';
 
@@ -61,17 +65,42 @@ export class AgentEvaluationService {
 		user: User,
 		projectId: string,
 		agentId: string,
+		source: AgentEvaluationSource = { kind: 'draft' },
 	): Promise<AgentEvaluationPreparationResult> {
 		const error = await this.accessError(user, projectId, agentId);
 		if (error) return { error };
-		const saved = await this.repository.findByIdAndProjectId(agentId, projectId);
-		if (!saved) return { error: `Agent ${agentId} not found or not accessible` };
-		if (!saved.schema) return { error: `Agent ${agentId} has no JSON config to run.` };
+		const loaded = await this.repository.findByIdAndProjectId(agentId, projectId);
+		if (!loaded) return { error: `Agent ${agentId} not found or not accessible` };
 
-		const refs = await this.skillRefs.refsForDraft(saved, {});
-		const { config, skippedFeatures } = pruneConfigForEval(
-			toAgentDocument(structuredClone(saved.schema), refs),
-		);
+		let saved = loaded;
+		let document: AgentJsonConfig;
+		// Only a published source carries skill bodies. A draft run reads the latest ones.
+		let skills: Record<string, AgentSkill> | undefined;
+		if (source.kind === 'draft') {
+			if (!saved.schema) return { error: `Agent ${agentId} has no JSON config to run.` };
+			const refs = await this.skillRefs.refsForDraft(saved, {});
+			document = toAgentDocument(structuredClone(saved.schema), refs);
+		} else {
+			if (loaded.isArchived) return { error: `Agent ${agentId} is archived.` };
+			if (loaded.activeVersionId !== source.versionId || !loaded.activeVersion?.schema) {
+				return { error: `Version ${source.versionId} of agent ${agentId} is not published.` };
+			}
+			const published = await resolveAgentRunSource(loaded, true, this.skillRefs, {});
+			if (!published.agent.schema) return { error: `Agent ${agentId} has no JSON config to run.` };
+			saved = published.agent;
+			try {
+				({ config: document, skills } = applyAgentEdits(
+					toAgentDocument(structuredClone(published.agent.schema), published.skillRefs),
+					published.skills,
+					source.edits ?? [],
+				));
+			} catch (editError) {
+				if (editError instanceof UserError) return { error: editError.message };
+				throw editError;
+			}
+		}
+
+		const { config, skippedFeatures } = pruneConfigForEval(document);
 		const pruned = fromAgentDocument(config);
 		if ((saved.integrations ?? []).length > 0) {
 			skippedFeatures.push({
@@ -90,7 +119,7 @@ export class AgentEvaluationService {
 					await this.buildRuntime(
 						user,
 						projectId,
-						{ agent: detached, skillRefs: pruned.skillRefs },
+						{ agent: detached, skillRefs: pruned.skillRefs, skills },
 						skippedFeatures,
 						instrumentation,
 						abortSignal,
@@ -102,17 +131,23 @@ export class AgentEvaluationService {
 	private async buildRuntime(
 		user: User,
 		projectId: string,
-		snapshot: { agent: ProjectAgent; skillRefs: AgentSkillRefs },
+		snapshot: {
+			agent: ProjectAgent;
+			skillRefs: AgentSkillRefs;
+			skills?: Record<string, AgentSkill>;
+		},
 		skippedFeatures: AgentEvaluationSkippedFeature[],
 		instrumentation: Omit<AgentRuntimeInstrumentation, 'transformDelegatedAgentConfig'>,
 		abortSignal?: AbortSignal,
 	) {
 		const error = await this.accessError(user, projectId, snapshot.agent.id, abortSignal);
 		if (error) throw new UserError(error);
-		const skills = await raceWithAbort(
-			async () => await this.skillRefs.skillsForRefs(snapshot.skillRefs, {}),
-			abortSignal,
-		);
+		const skills =
+			snapshot.skills ??
+			(await raceWithAbort(
+				async () => await this.skillRefs.skillsForRefs(snapshot.skillRefs, {}),
+				abortSignal,
+			));
 		return await raceWithAbort(async () => {
 			const { agent } = await this.reconstruction.reconstructFromAgentEntity(
 				{ ...snapshot, skills },

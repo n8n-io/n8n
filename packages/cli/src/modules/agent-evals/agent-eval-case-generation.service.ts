@@ -2,6 +2,7 @@ import type { Agent } from '@n8n/agents';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import {
 	MANAGED_CREDENTIAL_TOKEN,
+	type AgentEvalColumnMapping,
 	type AgentEvalDraftCase,
 	type AgentJsonConfig,
 	type CreateDraftDatasetResult,
@@ -58,6 +59,12 @@ const GENERATE_TIMEOUT_MS = 60_000;
 // drafts have no gold answer and are never auto-graded.
 const INPUT_COLUMN = 'input';
 const CRITERIA_COLUMN = 'criteria';
+
+/** Column names of a new dataset, by role. */
+type DatasetColumns = Required<Pick<AgentEvalColumnMapping, 'input' | 'criteria'>> &
+	Pick<AgentEvalColumnMapping, 'expectedTools'>;
+
+const DEFAULT_DATASET_COLUMNS: DatasetColumns = { input: INPUT_COLUMN, criteria: CRITERIA_COLUMN };
 
 // How many name variants ("… (2)", "… (3)") to try before giving up on a
 // per-project name clash.
@@ -190,7 +197,23 @@ export class AgentEvalCaseGenerationService {
 		const baseName =
 			trimmedName && trimmedName.length > 0 ? trimmedName : defaultDatasetName(config.name);
 
-		return await this.persistDataset(projectId, agentId, user.id, baseName, []);
+		return await this.createDatasetForAgent(projectId, agentId, user.id, baseName);
+	}
+
+	/**
+	 * Creates an empty dataset for an agent, with one string column for each
+	 * role in `columns`. It does not check the per-user flag: the caller owns
+	 * the access checks.
+	 */
+	async createDatasetForAgent(
+		projectId: string,
+		agentId: string,
+		createdById: string,
+		baseName: string,
+		columns: DatasetColumns = DEFAULT_DATASET_COLUMNS,
+	): Promise<CreateDraftDatasetResult> {
+		this.assertInstanceWriteAccess();
+		return await this.persistDataset(projectId, agentId, createdById, baseName, [], columns);
 	}
 
 	/**
@@ -383,7 +406,7 @@ export class AgentEvalCaseGenerationService {
 	}
 
 	/**
-	 * Create the backing Data Table (input + criteria columns), insert the rows,
+	 * Create the backing Data Table (one column per mapped role), insert the rows,
 	 * and create the dataset pointer. Retries on a per-project name clash with a
 	 * numeric suffix. If anything after table creation fails (row insert or dataset
 	 * creation), the table is deleted so a populated-but-unreferenced dataset is
@@ -396,11 +419,11 @@ export class AgentEvalCaseGenerationService {
 		createdById: string,
 		baseName: string,
 		cases: AgentEvalDraftCase[],
+		columnMapping: DatasetColumns = DEFAULT_DATASET_COLUMNS,
 	): Promise<CreateDraftDatasetResult> {
-		const columns = [
-			{ name: INPUT_COLUMN, type: 'string' as const },
-			{ name: CRITERIA_COLUMN, type: 'string' as const },
-		];
+		const columns = [columnMapping.input, columnMapping.criteria, columnMapping.expectedTools]
+			.filter((columnName) => columnName !== undefined)
+			.map((columnName) => ({ name: columnName, type: 'string' as const }));
 
 		let table: Awaited<ReturnType<DataTableService['createDataTable']>> | undefined;
 		let name = baseName;
@@ -420,13 +443,12 @@ export class AgentEvalCaseGenerationService {
 			// Empty for `createEmptyDataset` — nothing to insert yet.
 			if (cases.length > 0) {
 				const rows = cases.map((c) => ({
-					[INPUT_COLUMN]: c.input,
-					[CRITERIA_COLUMN]: c.whatToCheck,
+					[columnMapping.input]: c.input,
+					[columnMapping.criteria]: c.whatToCheck,
 				}));
 				await this.dataTableService.insertRows(table.id, projectId, rows);
 			}
 
-			const columnMapping = { input: INPUT_COLUMN, criteria: CRITERIA_COLUMN };
 			const dataset = await this.datasetRepository.createDataset({
 				name,
 				agentId,

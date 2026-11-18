@@ -20,6 +20,7 @@ import { fetchSelfHealingStatus } from './self-healing/selfHealingResults.api';
 const sourceTypes: InboxSourceType[] = [
 	'workflow_review',
 	'self_healing_result',
+	'self_healing_agent_result',
 	'promotion_review',
 ];
 
@@ -36,9 +37,7 @@ type ListState = {
 };
 
 function isSourceType(value: unknown): value is InboxSourceType {
-	return (
-		value === 'workflow_review' || value === 'self_healing_result' || value === 'promotion_review'
-	);
+	return sourceTypes.some((type) => type === value);
 }
 
 function disabledTypesFromError(error: unknown): InboxSourceType[] {

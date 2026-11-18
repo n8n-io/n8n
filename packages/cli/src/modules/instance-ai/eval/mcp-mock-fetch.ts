@@ -1,4 +1,4 @@
-import type { FetchFn } from '@n8n/agents';
+import type { FetchFn, ModelConfig } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import { jsonParse } from 'n8n-workflow';
 
@@ -51,9 +51,20 @@ export interface McpMockFetchOptions {
 	knownToolsByServer?: Record<string, McpMockCanonicalTool[]>;
 	onToolCall: (call: McpMockToolCall) => void;
 	logger: Logger;
+	/** Shared tool catalogs. Two runs that use the same map see the same tools. */
+	toolsByServer?: Map<string, Promise<McpMockTool[]>>;
+	/** Shared tool results. Two runs that use the same map get the same results. */
+	resultCache?: Map<string, Promise<McpMockToolResult>>;
+	/** Host-resolved model for catalog and result generation. */
+	model?: ModelConfig;
 }
 
-interface McpMockTool {
+export interface McpMockToolResult {
+	text: string;
+	isError: boolean;
+}
+
+export interface McpMockTool {
 	name: string;
 	description: string;
 	inputSchema: Record<string, unknown>;
@@ -130,8 +141,8 @@ function jsonRpcError(id: unknown, code: number, message: string): Response {
 
 export function createMcpMockFetch(options: McpMockFetchOptions): FetchFn {
 	const { logger } = options;
-	const toolsByServer = new Map<string, Promise<McpMockTool[]>>();
-	const resultCache = new Map<string, Promise<{ text: string; isError: boolean }>>();
+	const toolsByServer = options.toolsByServer ?? new Map<string, Promise<McpMockTool[]>>();
+	const resultCache = options.resultCache ?? new Map<string, Promise<McpMockToolResult>>();
 	// Rolling record of prior calls per server, fed back for cross-call consistency.
 	const priorCallsByServer = new Map<string, string[]>();
 
@@ -198,6 +209,7 @@ export function createMcpMockFetch(options: McpMockFetchOptions): FetchFn {
 					sections.join('\n'),
 					validateToolsList,
 					logger,
+					options.model,
 				);
 				// Canonical catalogs (from the MCP registry) are authoritative: the
 				// real server exposes these names, so the mock must too, whatever
@@ -273,6 +285,7 @@ export function createMcpMockFetch(options: McpMockFetchOptions): FetchFn {
 					sections.join('\n'),
 					validateToolResult,
 					logger,
+					options.model,
 				);
 				return (
 					generated ?? {

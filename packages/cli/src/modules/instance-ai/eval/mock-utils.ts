@@ -1,4 +1,4 @@
-import type { FetchFn } from '@n8n/agents';
+import type { FetchFn, ModelConfig } from '@n8n/agents';
 import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import type { Logger } from '@n8n/backend-common';
 import { createEvalAgent, extractText, isRetryableEvalError } from '@n8n/instance-ai';
@@ -23,10 +23,14 @@ export async function generateJson<T>(
 	userPrompt: string,
 	validate: (parsed: unknown) => T | undefined,
 	logger: Logger,
+	model?: ModelConfig,
 ): Promise<T | undefined> {
 	for (let attempt = 1; attempt <= MAX_GENERATOR_ATTEMPTS; attempt++) {
 		try {
-			const agent = createEvalAgent(agentName, { instructions });
+			const agent = createEvalAgent(agentName, {
+				instructions,
+				...(model ? { resolvedModel: model } : {}),
+			});
 			const result = await agent.generate(userPrompt, {
 				providerOptions: { anthropic: { maxTokens: 4096 } },
 				abortSignal: AbortSignal.timeout(GENERATOR_TIMEOUT_MS),

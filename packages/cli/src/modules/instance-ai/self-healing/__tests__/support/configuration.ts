@@ -1,3 +1,4 @@
+import type { UpdateSelfHealingConfigurationDto } from '@n8n/api-types';
 import { TransactionRunner, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS } from '@n8n/permissions';
@@ -7,6 +8,24 @@ import { onTestFinished } from 'vitest';
 import { SelfHealingConfiguration } from '../../database/self-healing-configuration.entity';
 import { SelfHealingConfigurationRepository } from '../../database/self-healing-configuration.repository';
 import { SelfHealingConfigurationReviewer } from '../../database/self-healing-configuration-reviewer.entity';
+
+/** The agent fields of a configuration that covers no agent. */
+export const NO_AGENT_COVERAGE: Pick<
+	UpdateSelfHealingConfigurationDto,
+	| 'agentScope'
+	| 'agentIds'
+	| 'agentGoals'
+	| 'agentScheduleIntervalHours'
+	| 'agentTraceThreshold'
+	| 'agentPublicationMode'
+> = {
+	agentScope: 'none',
+	agentIds: [],
+	agentGoals: ['quality'],
+	agentScheduleIntervalHours: null,
+	agentTraceThreshold: null,
+	agentPublicationMode: 'approval',
+};
 
 export async function createConfiguration(projectId: string, userId: string) {
 	const repository = Container.get(SelfHealingConfigurationRepository);

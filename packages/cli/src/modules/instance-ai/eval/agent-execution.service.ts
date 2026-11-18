@@ -4,6 +4,7 @@ import {
 	throwIfAborted,
 	type Agent as RuntimeAgent,
 	type GenerateResult,
+	type ModelConfig,
 } from '@n8n/agents';
 import type {
 	AgentJsonConfig,
@@ -20,9 +21,12 @@ import { OutboundHttp } from '@n8n/backend-network';
 import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import type { EvalLlmMockHandler } from 'n8n-core';
+import type { EvalLlmMockHandler, EvalMockHttpResponse } from 'n8n-core';
 
-import type { AgentEvaluationPreparation } from '@/modules/agents/evaluation/agent-evaluation.contracts';
+import type {
+	AgentEvaluationPreparation,
+	AgentEvaluationSource,
+} from '@/modules/agents/evaluation/agent-evaluation.contracts';
 import { AgentEvaluationService } from '@/modules/agents/evaluation/agent-evaluation.service';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
@@ -34,11 +38,13 @@ import { snapshotLedgerBody } from './ledger-snapshot';
 import {
 	createMcpMockFetch,
 	type McpMockCanonicalTool,
+	type McpMockTool,
 	type McpMockToolCall,
+	type McpMockToolResult,
 } from './mcp-mock-fetch';
 import { createLlmMockHandler } from './mock-handler';
 import { redactSecretValuePatterns, truncateForLlm } from './request-sanitizer';
-import { createWebSearchMock } from './web-search-mock';
+import { createWebSearchMock, type WebSearchMockResult } from './web-search-mock';
 
 /** A deferred tool runs through the tool catalog's `call_tool`; resolve the real tool it ran. */
 function effectiveToolName(toolName: string, input: unknown): string {
@@ -78,6 +84,45 @@ const MAX_RECORDED_TOOL_VALUE_CHARS = 4_000;
 // a node tool's sanitized name) merges into one record — accepted, the
 // interceptedRequests still disambiguate.
 type ToolLedger = Map<string, InstanceAiEvalInterceptedRequest[]>;
+
+/**
+ * The mocked world of one eval case. Runs that share a world get the same
+ * scenario seed and the same mocked responses, so their results can be compared.
+ */
+export type AgentEvalMockWorld = {
+	seed?: InstanceAiEvalAgentScenarioSeed;
+	httpResponses: Map<string, Promise<EvalMockHttpResponse>>;
+	mcpTools: Map<string, Promise<McpMockTool[]>>;
+	mcpResults: Map<string, Promise<McpMockToolResult>>;
+	webSearches: Map<string, Promise<WebSearchMockResult>>;
+};
+
+export function createAgentEvalMockWorld(): AgentEvalMockWorld {
+	return {
+		httpResponses: new Map(),
+		mcpTools: new Map(),
+		mcpResults: new Map(),
+		webSearches: new Map(),
+	};
+}
+
+/** Options for in-process callers only. The REST request cannot set them. */
+export type AgentEvalExecutionInternalOptions = {
+	/** The agent content to run. The default is the draft. */
+	source?: AgentEvaluationSource;
+	world?: AgentEvalMockWorld;
+	/** Model for seed and mock generation. The default is the environment model. */
+	helperModel?: ModelConfig;
+	abortSignal?: AbortSignal;
+};
+
+export type AgentEvalExecutionResult = InstanceAiEvalAgentExecutionResult & {
+	usage?: { inputTokens?: number; outputTokens?: number; costUsd?: number };
+	/** Sum of the model turn durations. */
+	durationMs?: number;
+};
+
+const STOPPED_MESSAGE = 'Agent eval execution was stopped';
 
 interface AgentRunEvidence {
 	recorder: ReturnType<typeof createAgentModelTurnRecorder>;
@@ -196,7 +241,10 @@ export class EvalAgentExecutionService {
 		// per-tool hints keep the tool mocks coherent), but the message the agent
 		// receives is this input verbatim — how a fixed eval case is executed.
 		caseInput?: string,
-	): Promise<InstanceAiEvalAgentExecutionResult> {
+		internal: AgentEvalExecutionInternalOptions = {},
+	): Promise<AgentEvalExecutionResult> {
+		if (internal.abortSignal?.aborted) return this.errorResult(STOPPED_MESSAGE);
+
 		// Workflow-tool sub-executions carry a configureAdditionalData closure
 		// that doesn't survive queue serialization — refuse upfront so tool
 		// HTTP can't leak to real services.
@@ -210,7 +258,12 @@ export class EvalAgentExecutionService {
 			return this.errorResult('Agent eval execution requires the agents module to be active.');
 		}
 		const { projectId } = options;
-		const prepared = await Container.get(AgentEvaluationService).prepare(user, projectId, agentId);
+		const prepared = await Container.get(AgentEvaluationService).prepare(
+			user,
+			projectId,
+			agentId,
+			internal.source,
+		);
 		if (prepared.error !== undefined) return this.errorResult(prepared.error);
 		const preparation = prepared.preparation;
 		const { config, tools: toolSummaries } = preparation;
@@ -227,20 +280,29 @@ export class EvalAgentExecutionService {
 				? truncateForLlm(redactSecretValuePatterns(caseInput), MAX_SCENARIO_HINT_CHARS)
 				: undefined);
 
+		const { world, helperModel } = internal;
 		let seed: InstanceAiEvalAgentScenarioSeed;
-		try {
-			seed = await generateAgentScenarioSeed({
-				agentName: config.name,
-				instructions: config.instructions,
-				tools: toolSummaries,
-				scenarioHints: scenarioSignal,
-			});
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			return this.errorResult(
-				message.startsWith('FRAMEWORK ISSUE:') ? message : `FRAMEWORK ISSUE: ${message}`,
-			);
+		if (world?.seed) {
+			seed = world.seed;
+		} else {
+			try {
+				seed = await generateAgentScenarioSeed({
+					agentName: config.name,
+					instructions: config.instructions,
+					tools: toolSummaries,
+					scenarioHints: scenarioSignal,
+					...(helperModel ? { model: helperModel } : {}),
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return this.errorResult(
+					message.startsWith('FRAMEWORK ISSUE:') ? message : `FRAMEWORK ISSUE: ${message}`,
+				);
+			}
+			// Stored before the opening message override, so the next run starts from the same seed.
+			if (world) world.seed = seed;
 		}
+		if (internal.abortSignal?.aborted) return this.errorResult(STOPPED_MESSAGE);
 
 		// A fixed eval case overrides the generated opening message: keep the
 		// seed's context/hints (they steer the tool mocks) but send the case's
@@ -249,10 +311,18 @@ export class EvalAgentExecutionService {
 			seed = { ...seed, openingMessage: caseInput };
 		}
 
+		const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+		// With a caller signal, the run and its mocked requests stop together.
+		const runSignal = internal.abortSignal
+			? AbortSignal.any([AbortSignal.timeout(timeoutMs), internal.abortSignal])
+			: undefined;
 		const mockHandler = createLlmMockHandler({
 			scenarioHints: scenarioSignal,
 			globalContext: seed.globalContext,
 			nodeHints: seed.toolHints,
+			...(runSignal ? { signal: runSignal } : {}),
+			...(world ? { responseCache: world.httpResponses } : {}),
+			...(helperModel ? { model: helperModel } : {}),
 		});
 
 		const toolLedger: ToolLedger = new Map();
@@ -268,13 +338,16 @@ export class EvalAgentExecutionService {
 			scenarioSignal,
 			mockHandler,
 			evidence,
+			internal,
 		);
 		return await this.executePreparedRuntime(
 			preparation,
 			instrumentation,
 			seed,
 			evidence,
-			options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+			timeoutMs,
+			runSignal,
+			internal.abortSignal,
 		);
 	}
 
@@ -284,6 +357,7 @@ export class EvalAgentExecutionService {
 		scenarioSignal: string | undefined,
 		mockHandler: EvalLlmMockHandler,
 		{ recorder, toolLedger, credentialHelpers }: AgentRunEvidence,
+		{ world, helperModel }: AgentEvalExecutionInternalOptions = {},
 	): Promise<Parameters<AgentEvaluationPreparation['buildRuntime']>[0]> {
 		const pendingMcpCalls = new Map<string, McpMockToolCall[]>();
 		const mcpCallIdentity = (serverName: string, toolName: string) =>
@@ -308,6 +382,8 @@ export class EvalAgentExecutionService {
 			serverHints: seed.toolHints,
 			knownToolsByServer,
 			logger: this.logger,
+			...(world ? { toolsByServer: world.mcpTools, resultCache: world.mcpResults } : {}),
+			...(helperModel ? { model: helperModel } : {}),
 			onToolCall: (call) => {
 				const identity = mcpCallIdentity(call.serverName, call.toolName);
 				const calls = pendingMcpCalls.get(identity) ?? [];
@@ -347,6 +423,8 @@ export class EvalAgentExecutionService {
 			globalContext: seed.globalContext,
 			searchHint: seed.toolHints?.web_search,
 			logger: this.logger,
+			...(world ? { cache: world.webSearches } : {}),
+			...(helperModel ? { model: helperModel } : {}),
 			onSearch: (args, result) => {
 				let entries = toolLedger.get('web_search');
 				if (!entries) {
@@ -393,10 +471,12 @@ export class EvalAgentExecutionService {
 		seed: InstanceAiEvalAgentScenarioSeed,
 		evidence: AgentRunEvidence,
 		timeoutMs: number,
-	): Promise<InstanceAiEvalAgentExecutionResult> {
+		runSignal?: AbortSignal,
+		callerSignal?: AbortSignal,
+	): Promise<AgentEvalExecutionResult> {
 		const { config, skippedFeatures } = preparation;
 		const { recorder, toolLedger, credentialHelpers } = evidence;
-		const budgetSignal = AbortSignal.timeout(timeoutMs);
+		const budgetSignal = runSignal ?? AbortSignal.timeout(timeoutMs);
 		let agent: RuntimeAgent;
 		try {
 			agent = await raceWithAbort(async () => {
@@ -407,7 +487,13 @@ export class EvalAgentExecutionService {
 			}, budgetSignal);
 		} catch (error) {
 			return this.errorResult(
-				this.runErrorMessage(error, budgetSignal, timeoutMs, 'Failed to build agent runtime'),
+				this.runErrorMessage(
+					error,
+					budgetSignal,
+					timeoutMs,
+					'Failed to build agent runtime',
+					callerSignal,
+				),
 				seed,
 				skippedFeatures,
 			);
@@ -427,7 +513,7 @@ export class EvalAgentExecutionService {
 			// Flush so the failure result carries the recorded response bodies too.
 			await recorder.flush();
 			return this.errorResult(
-				this.runErrorMessage(error, budgetSignal, timeoutMs, 'Agent run failed'),
+				this.runErrorMessage(error, budgetSignal, timeoutMs, 'Agent run failed', callerSignal),
 				seed,
 				skippedFeatures,
 				{ modelTurns: recorder.turns, toolLedger, credentialHelpers },
@@ -455,7 +541,9 @@ export class EvalAgentExecutionService {
 		budgetSignal: AbortSignal,
 		timeoutMs: number,
 		prefix: string,
+		callerSignal?: AbortSignal,
 	) {
+		if (callerSignal?.aborted) return STOPPED_MESSAGE;
 		if (budgetSignal.aborted) {
 			const seconds = Math.round(timeoutMs / 1000);
 			return `Agent run exceeded its ${seconds}s eval budget and was stopped`;
@@ -506,7 +594,7 @@ export class EvalAgentExecutionService {
 		preparation: AgentEvaluationPreparation,
 		seed: InstanceAiEvalAgentScenarioSeed,
 		{ recorder, toolLedger, credentialHelpers }: AgentRunEvidence,
-	): InstanceAiEvalAgentExecutionResult {
+	): AgentEvalExecutionResult {
 		const { tools: toolSummaries, skippedFeatures, config } = preparation;
 		const mcpServers = config.mcpServers ?? [];
 		const errors: string[] = [];
@@ -576,7 +664,13 @@ export class EvalAgentExecutionService {
 						usage: {
 							inputTokens: result.usage.promptTokens,
 							outputTokens: result.usage.completionTokens,
+							...(result.usage.cost !== undefined ? { costUsd: result.usage.cost } : {}),
 						},
+					}
+				: {}),
+			...(recorder.turns.length > 0
+				? {
+						durationMs: recorder.turns.reduce((sum, turn) => sum + (turn.durationMs ?? 0), 0),
 					}
 				: {}),
 			seed,

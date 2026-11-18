@@ -108,6 +108,8 @@ it('reverts and reapplies the investigation schemas', async () => {
 		'AddIncludeSubWorkflowsToSelfHealingConfiguration1794320824000',
 		'LinkWorkflowSuggestionsToSelfHealingResult1794320825000',
 		'IndexSelfHealingInvestigationActivity1794320826000',
+		'AddAgentCoverageToSelfHealingConfiguration1795003766622',
+		'CreateSelfHealingAgentInvestigationAndResult1795003766976',
 	].map((name) => {
 		const migration = db.migrations.find(({ constructor }) => constructor.name === name);
 		if (!migration) throw new Error(`${name} is not registered.`);

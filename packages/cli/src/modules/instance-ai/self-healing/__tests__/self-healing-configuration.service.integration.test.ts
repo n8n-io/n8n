@@ -49,14 +49,30 @@ import {
 } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
+import type { SelfHealingConfigurationAgentOption } from '@n8n/api-types';
+
 import { runInTransaction } from '../../after-commit';
 import { InstanceAiService } from '../../instance-ai.service';
+import { SelfHealingAgentInvestigation } from '../agents/database/self-healing-agent-investigation.entity';
+import { SelfHealingAgentInvestigationRepository } from '../agents/database/self-healing-agent-investigation.repository';
 import { SelfHealingConfigurationRepository } from '../database/self-healing-configuration.repository';
 import { SelfHealingConfigurationReviewer } from '../database/self-healing-configuration-reviewer.entity';
 import { SelfHealingConfigurationWorkflow } from '../database/self-healing-configuration-workflow.entity';
 import { SelfHealingInvestigation } from '../database/self-healing-investigation.entity';
 import { SelfHealingConfigurationService } from '../self-healing-configuration.service';
-import { disableInstanceAdmins } from './support/configuration';
+import { createAgentRow } from './support/agent';
+import { disableInstanceAdmins, NO_AGENT_COVERAGE } from './support/configuration';
+
+// The agents module is not loaded here. `null` means that Agents are off.
+const agentContext = vi.hoisted(() => ({
+	current: null as {
+		listProjectAgents: (projectId: string) => Promise<SelfHealingConfigurationAgentOption[]>;
+	} | null,
+}));
+vi.mock('../../agents-access', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../../agents-access')>()),
+	getAgentContextService: () => agentContext.current,
+}));
 
 mockInstance(ActiveWorkflowManager);
 mockInstance(TelemetryProxy);
@@ -102,6 +118,7 @@ async function fixture() {
 		reviewerIds: [user.id],
 		includeAllProjectMembers: false,
 		includeSubWorkflows: false,
+		...NO_AGENT_COVERAGE,
 	};
 	return {
 		user,
@@ -400,6 +417,7 @@ it('requires existing project settings permission for every operation', async ()
 		reviewerIds: [admin.id],
 		includeAllProjectMembers: false,
 		includeSubWorkflows: false,
+		...NO_AGENT_COVERAGE,
 		enabled: false,
 	});
 	const agent = server.authAgentFor(editor);
@@ -540,6 +558,7 @@ it.each([
 		reviewerIds: [],
 		includeAllProjectMembers: true,
 		includeSubWorkflows: false,
+		...NO_AGENT_COVERAGE,
 		enabled: false,
 	});
 
@@ -573,6 +592,7 @@ it('denies a user downgraded to chat user access to their personal project', asy
 		reviewerIds: [],
 		includeAllProjectMembers: true,
 		includeSubWorkflows: false,
+		...NO_AGENT_COVERAGE,
 		enabled: false,
 	});
 	await server
@@ -821,11 +841,9 @@ it('validates only requested IDs and stores duplicate selections once', async ()
 		expect(await workflowLookup.mock.results[0].value).toEqual([
 			expect.objectContaining({ id: workflow.id }),
 		]);
-		expect(reviewerLookup).toHaveBeenCalledExactlyOnceWith(
-			project.id,
-			expect.anything(),
-			reviewerIds,
-		);
+		// The first lookup finds workflow editors. The second lookup finds agent editors.
+		expect(reviewerLookup).toHaveBeenCalledTimes(2);
+		expect(reviewerLookup).toHaveBeenNthCalledWith(1, project.id, expect.anything(), reviewerIds);
 		const reviewers = await reviewerLookup.mock.results[0].value;
 		expect(reviewers).toHaveLength(2);
 		expect(reviewers).toEqual(
@@ -1075,6 +1093,7 @@ it('disables the configuration after access loss and records a new explicit enab
 		reviewerIds: [user.id, replacement.id],
 		includeAllProjectMembers: false,
 		includeSubWorkflows: false,
+		...NO_AGENT_COVERAGE,
 		enabled: true,
 	});
 	await linkUserToProject(user, project, 'project:viewer');
@@ -1109,8 +1128,14 @@ it('reverts and reapplies the configuration schema', async () => {
 		'AddIncludeSubWorkflowsToSelfHealingConfiguration1794320824000',
 	);
 	const activityIndex = findMigration('IndexSelfHealingInvestigationActivity1794320826000');
+	// The agent tables refer to the configuration table, so they go first.
+	const agentCoverage = findMigration('AddAgentCoverageToSelfHealingConfiguration1795003766622');
+	const agentResults = findMigration('CreateSelfHealingAgentInvestigationAndResult1795003766976');
 	const runner = db.createQueryRunner();
 	try {
+		await agentResults.down(runner);
+		await agentCoverage.down(runner);
+		expect(await runner.hasColumn(repository.metadata.tablePath, 'agentScope')).toBe(false);
 		await activityIndex.down(runner);
 		await subWorkflows.down(runner);
 		expect(await runner.hasColumn(repository.metadata.tablePath, 'includeSubWorkflows')).toBe(
@@ -1128,6 +1153,8 @@ it('reverts and reapplies the configuration schema', async () => {
 			await projectMembers.up(runner);
 			await subWorkflows.up(runner);
 			await activityIndex.up(runner);
+			await agentCoverage.up(runner);
+			await agentResults.up(runner);
 		}
 		expect(await runner.hasTable(repository.metadata.tablePath)).toBe(true);
 		expect(await runner.hasColumn(repository.metadata.tablePath, 'includeAllProjectMembers')).toBe(
@@ -1658,6 +1685,7 @@ describe('configuration telemetry', () => {
 			reviewerIds: [user.id],
 			includeAllProjectMembers: false,
 			includeSubWorkflows: false,
+			...NO_AGENT_COVERAGE,
 			enabled: true,
 		});
 		await linkUserToProject(user, project, 'project:viewer');
@@ -1699,5 +1727,382 @@ describe('configuration telemetry', () => {
 			// The paused configuration covers the second workflow, so only one is watched.
 			watchedWorkflowCount: before.watchedWorkflowCount + 1,
 		});
+	});
+});
+
+describe('agent coverage', () => {
+	const WORKFLOW_ACCESS = ['workflow:read', 'workflow:update', 'execution:read'];
+	const projectAgents = new Map<string, SelfHealingConfigurationAgentOption[]>();
+
+	beforeEach(() => {
+		projectAgents.clear();
+		agentContext.current = {
+			listProjectAgents: async (projectId) => projectAgents.get(projectId) ?? [],
+		};
+	});
+
+	afterEach(async () => {
+		agentContext.current = null;
+		await Container.get(DataSource)
+			.getRepository(SelfHealingAgentInvestigation)
+			.createQueryBuilder()
+			.delete()
+			.execute();
+	});
+
+	async function createAgent(projectId: string, name = 'Support agent') {
+		const id = await createAgentRow(projectId, name);
+		projectAgents.set(projectId, [
+			...(projectAgents.get(projectId) ?? []),
+			{ id, name, published: true },
+		]);
+		return id;
+	}
+
+	/** A configuration input that covers one workflow and one agent. */
+	async function agentFixture() {
+		const data = await fixture();
+		const agentId = await createAgent(data.project.id);
+		return {
+			...data,
+			agentId,
+			input: {
+				...data.input,
+				agentScope: 'selected' as const,
+				agentIds: [agentId],
+				agentScheduleIntervalHours: 24,
+			},
+		};
+	}
+
+	async function createMemberWithScopes(
+		project: Awaited<ReturnType<typeof fixture>>['project'],
+		scopes: string[],
+	) {
+		const member = await createUser();
+		const role = await createCustomRoleWithScopeSlugs(scopes);
+		await linkUserToProject(member, project, role.slug);
+		return member;
+	}
+
+	it('saves and lists the agent fields and offers the agents of the project', async () => {
+		const { user, project, input, agentId } = await agentFixture();
+		const agentFields = {
+			agentScope: 'selected' as const,
+			agentIds: [agentId],
+			agentScheduleIntervalHours: 24,
+			agentTraceThreshold: 50,
+			agentPublicationMode: 'auto' as const,
+		};
+
+		const saved = await configurations.save(user, project.id, {
+			...input,
+			...agentFields,
+			agentGoals: ['latency', 'cost'],
+			agentIds: [agentId, agentId],
+		});
+
+		// Quality is always a goal, and the goals have a fixed order.
+		expect(saved).toMatchObject({ ...agentFields, agentGoals: ['quality', 'cost', 'latency'] });
+		expect(await configurations.list(project.id)).toEqual([saved]);
+		expect((await configurations.getConfigurationChoices(project.id)).agents).toEqual([
+			{ id: agentId, name: 'Support agent', published: true },
+		]);
+	});
+
+	it('uses the defaults for a request without agent fields', async () => {
+		const { user, input, url } = await fixture();
+		const { scope, workflowIds, reviewerIds } = input;
+
+		const created = await server
+			.authAgentFor(user)
+			.post(url)
+			.send({ scope, workflowIds, reviewerIds })
+			.expect(200);
+
+		expect(created.body.data).toMatchObject(NO_AGENT_COVERAGE);
+	});
+
+	it('needs a trigger when the configuration covers agents', async () => {
+		const { user, project, input } = await agentFixture();
+		const noTrigger = { ...input, agentScheduleIntervalHours: null, agentTraceThreshold: null };
+
+		await expect(configurations.save(user, project.id, noTrigger)).rejects.toThrow(
+			'Set a schedule, a number of sessions, or both for agent investigations.',
+		);
+		expect(
+			await configurations.save(user, project.id, { ...noTrigger, agentTraceThreshold: 50 }),
+		).toMatchObject({ agentScheduleIntervalHours: null, agentTraceThreshold: 50 });
+	});
+
+	it('accepts a configuration that covers agents only', async () => {
+		const { user, project, input } = await agentFixture();
+
+		expect(
+			await configurations.save(user, project.id, { ...input, workflowIds: [], enabled: true }),
+		).toMatchObject({ scope: 'selected', workflowIds: [], agentScope: 'selected', enabled: true });
+		await expect(
+			configurations.save(user, project.id, { ...input, workflowIds: [], agentScope: 'none' }),
+		).rejects.toThrow('Select at least one workflow.');
+	});
+
+	it('rejects an empty agent selection and agents outside the project', async () => {
+		const { user, project, input } = await agentFixture();
+		const other = await agentFixture();
+
+		await expect(configurations.save(user, project.id, { ...input, agentIds: [] })).rejects.toThrow(
+			'Select at least one agent.',
+		);
+		await expect(
+			configurations.save(user, project.id, { ...input, agentIds: [other.agentId] }),
+		).rejects.toThrow('from this project');
+	});
+
+	it('stores no agent selection when the scope is not selected', async () => {
+		const { user, project, input } = await agentFixture();
+
+		const saved = await configurations.save(user, project.id, { ...input, agentScope: 'all' });
+
+		expect(saved).toMatchObject({ agentScope: 'all', agentIds: [] });
+	});
+
+	it('permits one all-agents configuration and one configuration for each agent', async () => {
+		const { user, project, input } = await agentFixture();
+		const agentsOnly = { ...input, workflowIds: [] };
+		await configurations.save(user, project.id, { ...agentsOnly, agentScope: 'all' });
+		const selected = await configurations.save(user, project.id, agentsOnly);
+
+		await expect(
+			configurations.save(user, project.id, { ...agentsOnly, agentScope: 'all' }),
+		).rejects.toThrow('already has an all-agents configuration');
+		await expect(configurations.save(user, project.id, agentsOnly)).rejects.toThrow(
+			'A selected agent already belongs to another configuration.',
+		);
+		// An edit does not conflict with its own selection.
+		expect(await configurations.save(user, project.id, agentsOnly, selected.id)).toMatchObject({
+			agentIds: input.agentIds,
+		});
+	});
+
+	it('finds the configuration of an agent and prefers an explicit selection', async () => {
+		const { user, project, input, agentId } = await agentFixture();
+		const otherAgentId = await createAgent(project.id, 'Other agent');
+		const agentsOnly = { ...input, workflowIds: [] };
+		const all = await configurations.save(user, project.id, {
+			...agentsOnly,
+			agentScope: 'all',
+			enabled: true,
+		});
+		const selected = await configurations.save(user, project.id, agentsOnly);
+
+		expect((await repository.findForAgent(project.id, agentId))?.id).toBe(selected.id);
+		expect((await repository.findForAgent(project.id, otherAgentId))?.id).toBe(all.id);
+		await configurations.remove(user, project.id, all.id);
+		expect(await repository.findForAgent(project.id, otherAgentId)).toBeNull();
+
+		// The sweep reads only enabled configurations.
+		const paused = await repository.listEnabledWithAgentCoverage();
+		expect(paused.map(({ id }) => id)).not.toContain(selected.id);
+		await configurations.setEnabled(user, project.id, selected.id, true);
+		expect(await repository.listEnabledWithAgentCoverage()).toContainEqual({
+			id: selected.id,
+			projectId: project.id,
+			agentScope: 'selected',
+			agentIds: [agentId],
+			agentGoals: ['quality'],
+			agentScheduleIntervalHours: 24,
+			agentTraceThreshold: null,
+			agentPublicationMode: 'approval',
+			enabledById: user.id,
+			updatedAt: expect.any(Date),
+		});
+	});
+
+	it('needs agent access to enable agent coverage', async () => {
+		const { user, project, input } = await agentFixture();
+		const workflowEditor = await createMemberWithScopes(project, WORKFLOW_ACCESS);
+		const agentEditor = await createMemberWithScopes(project, [
+			...WORKFLOW_ACCESS,
+			'agent:read',
+			'agent:update',
+			'agent:execute',
+		]);
+		const enabled = { ...input, enabled: true };
+
+		await expect(configurations.save(workflowEditor, project.id, enabled)).rejects.toThrow(
+			'Agent edit and run access are required to enable self-healing for agents.',
+		);
+		await expect(
+			configurations.save(agentEditor, project.id, { ...enabled, agentPublicationMode: 'auto' }),
+		).rejects.toThrow('Agent publish access is required for automatic publication.');
+
+		const paused = await configurations.save(user, project.id, input);
+		await expect(
+			configurations.setEnabled(workflowEditor, project.id, paused.id, true),
+		).rejects.toThrow('Agent edit and run access');
+		expect(await configurations.setEnabled(agentEditor, project.id, paused.id, true)).toMatchObject(
+			{ enabled: true, enabledById: agentEditor.id },
+		);
+	});
+
+	it('records the user who adds agent authority to an enabled configuration', async () => {
+		const { user, project, input } = await agentFixture();
+		const workflowEditor = await createMemberWithScopes(project, WORKFLOW_ACCESS);
+		const editor = await createUser();
+		await linkUserToProject(editor, project, 'project:editor');
+		const workflowsOnly = { ...input, ...NO_AGENT_COVERAGE, enabled: true };
+		const configuration = await configurations.save(user, project.id, workflowsOnly);
+
+		await expect(
+			configurations.save(workflowEditor, project.id, input, configuration.id),
+		).rejects.toThrow('Agent edit and run access');
+		expect(await configurations.get(project.id, configuration.id)).toMatchObject({
+			agentScope: 'none',
+			enabledById: user.id,
+		});
+
+		expect(await configurations.save(editor, project.id, input, configuration.id)).toMatchObject({
+			agentScope: 'selected',
+			enabled: true,
+			enabledById: editor.id,
+		});
+		// An edit that adds no authority keeps the recorded user.
+		expect(
+			await configurations.save(
+				user,
+				project.id,
+				{ ...input, agentGoals: ['quality', 'cost'] },
+				configuration.id,
+			),
+		).toMatchObject({ agentGoals: ['quality', 'cost'], enabledById: editor.id });
+		expect(
+			await configurations.save(
+				user,
+				project.id,
+				{ ...input, agentPublicationMode: 'auto' },
+				configuration.id,
+			),
+		).toMatchObject({ agentPublicationMode: 'auto', enabledById: user.id });
+	});
+
+	it('needs a reviewer who can edit each covered kind', async () => {
+		const { user, project, input } = await agentFixture();
+		const workflowEditor = await createMemberWithScopes(project, WORKFLOW_ACCESS);
+		const agentEditor = await createMemberWithScopes(project, ['agent:read', 'agent:update']);
+
+		await expect(
+			configurations.save(user, project.id, { ...input, reviewerIds: [workflowEditor.id] }),
+		).rejects.toThrow('No reviewer can edit these agents');
+		await expect(
+			configurations.save(user, project.id, { ...input, reviewerIds: [agentEditor.id] }),
+		).rejects.toThrow('No reviewer can edit these workflows');
+		expect(
+			await configurations.save(user, project.id, {
+				...input,
+				workflowIds: [],
+				reviewerIds: [agentEditor.id],
+			}),
+		).toMatchObject({ reviewerIds: [agentEditor.id] });
+		const choices = await configurations.getConfigurationChoices(project.id);
+		expect(choices.reviewers.map(({ id }) => id)).toEqual(
+			expect.arrayContaining([user.id, workflowEditor.id, agentEditor.id]),
+		);
+	});
+
+	it('reports a reviewer of an agents-only configuration in the status', async () => {
+		const { user, project, input } = await agentFixture();
+		const agentEditor = await createMemberWithScopes(project, ['agent:read', 'agent:update']);
+		const viewer = await createMember();
+		await linkUserToProject(viewer, project, 'project:viewer');
+		const status = async (reviewer: User) =>
+			(await server.authAgentFor(reviewer).get('/self-healing/status').expect(200)).body.data;
+		expect(await status(agentEditor)).toMatchObject({ isReviewer: false });
+
+		await configurations.save(user, project.id, {
+			...input,
+			workflowIds: [],
+			reviewerIds: [],
+			includeAllProjectMembers: true,
+		});
+
+		expect(await status(agentEditor)).toMatchObject({ isReviewer: true });
+		expect(await status(viewer)).toMatchObject({ isReviewer: false });
+	});
+
+	it('resolves the agent actor and pauses after the actor loses access', async () => {
+		const { user, project, input } = await agentFixture();
+		const editor = await createUser();
+		await linkUserToProject(editor, project, 'project:editor');
+		const { id } = await configurations.save(user, project.id, {
+			...input,
+			reviewerIds: [user.id, editor.id],
+			enabled: true,
+		});
+		const resolve = async () =>
+			await runInTransaction(Container.get(TransactionRunner), {}, async (ctx) => {
+				const current = await repository.findForUpdate(id, project.id, ctx);
+				if (!current) throw new Error('Configuration not found.');
+				return await configurations.resolveAgentActorOrPause(current, ctx);
+			});
+		const track = vi.mocked(Container.get(TelemetryProxy).track);
+
+		expect((await resolve())?.id).toBe(user.id);
+
+		await linkUserToProject(user, project, 'project:viewer');
+		track.mockClear();
+		expect(await resolve()).toBeNull();
+		expect(await configurations.get(project.id, id)).toMatchObject({ enabled: false });
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.SELF_HEALING.INSTANCE_CHANGED_SELF_HEALING_CONFIGURATION,
+			expect.objectContaining({ change: 'auto_paused', reason: 'enabling_user_lost_access' }),
+		);
+	});
+
+	it('shows agent investigations as activity and cancels unfinished ones on pause', async () => {
+		const { user, project, input, agentId } = await agentFixture();
+		const { id } = await configurations.save(user, project.id, { ...input, enabled: true });
+		expect(await configurations.get(project.id, id)).toMatchObject({ lastActivity: null });
+		const investigation = await Container.get(TransactionRunner).run({}, async (ctx) => {
+			return await Container.get(SelfHealingAgentInvestigationRepository).createInvestigation(
+				{
+					configurationId: id,
+					projectId: project.id,
+					agentId,
+					backgroundUserId: user.id,
+					trigger: 'manual',
+					agentVersionId: 'version-1',
+					traceWindowStart: null,
+					traceWindowEnd: new Date(),
+					traceCount: 0,
+					threadId: randomUUID(),
+					runId: randomUUID(),
+				},
+				ctx,
+			);
+		});
+
+		const { lastActivity } = await configurations.get(project.id, id);
+		expect(lastActivity).toEqual(expect.any(String));
+
+		await configurations.setEnabled(user, project.id, id, false);
+		expect(runtime.routeCancelRun).toHaveBeenCalledExactlyOnceWith(investigation.threadId);
+	});
+
+	it('rejects only a change of the agent selection when Agents are off', async () => {
+		const { user, project, input, agentId } = await agentFixture();
+		const { id } = await configurations.save(user, project.id, input);
+		agentContext.current = null;
+
+		expect((await configurations.getConfigurationChoices(project.id)).agents).toEqual([]);
+		expect(
+			await configurations.save(user, project.id, { ...input, includeSubWorkflows: true }, id),
+		).toMatchObject({ includeSubWorkflows: true, agentScope: 'selected', agentIds: [agentId] });
+		await expect(
+			configurations.save(user, project.id, { ...input, agentScope: 'none' }, id),
+		).rejects.toThrow('Agents are not available on this instance.');
+		await expect(
+			configurations.save(user, project.id, { ...input, agentScope: 'all' }),
+		).rejects.toThrow('Agents are not available on this instance.');
+		expect(await configurations.get(project.id, id)).toMatchObject({ agentIds: [agentId] });
 	});
 });

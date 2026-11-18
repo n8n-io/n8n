@@ -111,7 +111,48 @@ const hasSelectedWorkflowConfiguration = computed(() =>
 	),
 );
 
+const agentNamesById = computed(
+	() => new Map((store.options[props.projectId]?.agents ?? []).map(({ id, name }) => [id, name])),
+);
+const hasSelectedAgentConfiguration = computed(() =>
+	configurations.value.some(({ agentScope }) => agentScope === 'selected'),
+);
+
+function agentScopeLabel(configuration: SelfHealingConfigurationDto) {
+	if (configuration.agentScope === 'none') return undefined;
+
+	if (configuration.agentScope === 'all') {
+		return i18n.baseText(
+			hasSelectedAgentConfiguration.value
+				? 'selfHealing.config.agents.allOther'
+				: 'selfHealing.config.agents.all',
+		);
+	}
+
+	const [onlyAgentId] = configuration.agentIds;
+	const onlyAgentName =
+		configuration.agentIds.length === 1 ? agentNamesById.value.get(onlyAgentId) : undefined;
+	if (onlyAgentName) return onlyAgentName;
+
+	return i18n.baseText('selfHealing.config.agents.selectedCount', {
+		adjustToNumber: configuration.agentIds.length,
+		interpolate: { count: configuration.agentIds.length },
+	});
+}
+
 function scopeLabel(configuration: SelfHealingConfigurationDto) {
+	const agents = agentScopeLabel(configuration);
+	if (!agents) return workflowScopeLabel(configuration);
+
+	// A configuration that covers agents can cover no workflow.
+	if (configuration.scope === 'selected' && configuration.workflowIds.length === 0) return agents;
+
+	return i18n.baseText('selfHealing.config.agents.scopeWithWorkflows', {
+		interpolate: { workflows: workflowScopeLabel(configuration), agents },
+	});
+}
+
+function workflowScopeLabel(configuration: SelfHealingConfigurationDto) {
 	if (configuration.scope === 'all') {
 		return i18n.baseText(
 			hasSelectedWorkflowConfiguration.value

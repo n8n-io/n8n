@@ -69,6 +69,10 @@ it.each([
 			workflowId: result.workflowId,
 		},
 	],
+	[
+		'/inbox/agent-proposals/result-1?projectId=project',
+		{ type: 'self_healing_agent_result', id: 'result-1', projectId: 'project' },
+	],
 ])('selects the item when opening %s directly', async (path, selection) => {
 	const router = createInboxRouter();
 	await router.push(path);
@@ -84,10 +88,42 @@ it.each(['', '?projectId=project', '?workflowId=workflow'])(
 	},
 );
 
+it('requires the project of an agent proposal', async () => {
+	const router = createInboxRouter();
+	await router.push('/inbox/agent-proposals/result-1');
+	expect(selectionFromRoute(router.currentRoute.value)).toBeNull();
+});
+
+it('links an agent proposal row to its detail route with its project', async () => {
+	const router = createInboxRouter();
+	await router.push('/inbox/assistant-results/result-1?projectId=other&workflowId=workflow');
+	const location = router.resolve(
+		inboxItemLocation(
+			{
+				type: 'self_healing_agent_result',
+				id: 'proposal-1',
+				state: 'open',
+				projectId: 'project',
+				agentId: 'agent',
+				agentName: 'Agent',
+				summary: 'Summary',
+				reviewState: 'open',
+				appliedAutomatically: false,
+				createdAt: '',
+				updatedAt: '',
+			},
+			router.currentRoute.value,
+		),
+	);
+	expect(location.path).toBe('/inbox/agent-proposals/proposal-1');
+	expect(location.query).toEqual({ projectId: 'project' });
+});
+
 it.each([
 	['Inbox', true],
 	['WorkflowReviewRequestsView', true],
 	['InboxAssistantResult', true],
+	['InboxAgentProposal', true],
 	['InboxPromotionReview', true],
 	['Workflow', false],
 	[undefined, false],

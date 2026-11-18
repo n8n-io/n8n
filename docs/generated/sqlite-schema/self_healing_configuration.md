@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "self_healing_configuration" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "projectId" varchar(36) NOT NULL, "scope" varchar(16) NOT NULL, "enabled" boolean NOT NULL DEFAULT (false), "enabledById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "includeAllProjectMembers" BOOLEAN NOT NULL DEFAULT FALSE, "includeSubWorkflows" BOOLEAN NOT NULL DEFAULT FALSE, CONSTRAINT "CHK_self_healing_configuration_scope" CHECK ("scope" IN ('all', 'selected')), CONSTRAINT "FK_0a8f9425ffdc01cce5876bc6247" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_2b04620d7af4060ba89412123ea" FOREIGN KEY ("enabledById") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "self_healing_configuration" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "projectId" varchar(36) NOT NULL, "scope" varchar(16) NOT NULL, "enabled" boolean NOT NULL DEFAULT (false), "enabledById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "includeAllProjectMembers" BOOLEAN NOT NULL DEFAULT FALSE, "includeSubWorkflows" BOOLEAN NOT NULL DEFAULT FALSE, "agentScope" VARCHAR(16) NOT NULL DEFAULT 'none', "agentGoals" TEXT NOT NULL DEFAULT '["quality"]', "agentScheduleIntervalHours" INTEGER, "agentTraceThreshold" INTEGER, "agentPublicationMode" VARCHAR(16) NOT NULL DEFAULT 'approval', CONSTRAINT "CHK_self_healing_configuration_scope" CHECK ("scope" IN ('all', 'selected')), CONSTRAINT "FK_0a8f9425ffdc01cce5876bc6247" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_2b04620d7af4060ba89412123ea" FOREIGN KEY ("enabledById") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -15,10 +15,15 @@ CREATE TABLE "self_healing_configuration" ("id" integer PRIMARY KEY AUTOINCREMEN
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| agentGoals | TEXT | '["quality"]' | false |  |  |  |
+| agentPublicationMode | VARCHAR(16) | 'approval' | false |  |  |  |
+| agentScheduleIntervalHours | INTEGER |  | true |  |  |  |
+| agentScope | VARCHAR(16) | 'none' | false |  |  |  |
+| agentTraceThreshold | INTEGER |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | enabled | boolean | false | false |  |  |  |
 | enabledById | varchar |  | true |  | [user](user.md) |  |
-| id | INTEGER |  | false | [self_healing_configuration_reviewer](self_healing_configuration_reviewer.md) [self_healing_configuration_workflow](self_healing_configuration_workflow.md) [self_healing_investigation](self_healing_investigation.md) [self_healing_result](self_healing_result.md) |  |  |
+| id | INTEGER |  | false | [self_healing_agent_investigation](self_healing_agent_investigation.md) [self_healing_agent_result](self_healing_agent_result.md) [self_healing_configuration_agent](self_healing_configuration_agent.md) [self_healing_configuration_reviewer](self_healing_configuration_reviewer.md) [self_healing_configuration_workflow](self_healing_configuration_workflow.md) [self_healing_investigation](self_healing_investigation.md) [self_healing_result](self_healing_result.md) |  |  |
 | includeAllProjectMembers | BOOLEAN | FALSE | false |  |  |  |
 | includeSubWorkflows | BOOLEAN | FALSE | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
@@ -41,6 +46,7 @@ CREATE TABLE "self_healing_configuration" ("id" integer PRIMARY KEY AUTOINCREMEN
 | IDX_0a8f9425ffdc01cce5876bc624 | CREATE INDEX "IDX_0a8f9425ffdc01cce5876bc624" ON "self_healing_configuration" ("projectId")  |
 | IDX_2b04620d7af4060ba89412123e | CREATE INDEX "IDX_2b04620d7af4060ba89412123e" ON "self_healing_configuration" ("enabledById")  |
 | IDX_self_healing_configuration_projectId | CREATE UNIQUE INDEX "IDX_self_healing_configuration_projectId" ON "self_healing_configuration" ("projectId") WHERE "scope" = 'all' |
+| IDX_self_healing_configuration_projectId_agentScope_all | CREATE UNIQUE INDEX "IDX_self_healing_configuration_projectId_agentScope_all" ON "self_healing_configuration" ("projectId") WHERE "agentScope" = 'all' |
 
 ## Relations
 
@@ -48,6 +54,9 @@ CREATE TABLE "self_healing_configuration" ("id" integer PRIMARY KEY AUTOINCREMEN
 erDiagram
 
 "self_healing_configuration" }o--o| "user" : "FOREIGN KEY (enabledById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"self_healing_agent_investigation" }o--|| "self_healing_configuration" : "FOREIGN KEY (configurationId) REFERENCES self_healing_configuration (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_agent_result" }o--|| "self_healing_configuration" : "FOREIGN KEY (configurationId) REFERENCES self_healing_configuration (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_configuration_agent" |o--|| "self_healing_configuration" : "FOREIGN KEY (configurationId) REFERENCES self_healing_configuration (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_configuration_reviewer" |o--|| "self_healing_configuration" : "FOREIGN KEY (configurationId) REFERENCES self_healing_configuration (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_configuration_workflow" |o--|| "self_healing_configuration" : "FOREIGN KEY (configurationId) REFERENCES self_healing_configuration (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_investigation" }o--|| "self_healing_configuration" : "FOREIGN KEY (configurationId) REFERENCES self_healing_configuration (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -55,6 +64,11 @@ erDiagram
 "self_healing_configuration" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "self_healing_configuration" {
+  TEXT agentGoals
+  VARCHAR_16_ agentPublicationMode
+  INTEGER agentScheduleIntervalHours
+  VARCHAR_16_ agentScope
+  INTEGER agentTraceThreshold
   datetime_3_ createdAt
   boolean enabled
   varchar enabledById FK
@@ -82,6 +96,62 @@ erDiagram
   varchar_128_ roleSlug FK
   TEXT settings
   datetime_3_ updatedAt
+}
+"self_healing_agent_investigation" {
+  varchar_36_ agentId FK
+  varchar_36_ agentVersionId
+  varchar backgroundUserId FK
+  INTEGER configurationId FK
+  datetime_3_ createdAt
+  varchar_64_ failureReason
+  datetime_3_ finishedAt
+  varchar_36_ id PK
+  varchar_16_ outcome
+  varchar_36_ projectId FK
+  varchar_36_ resultId FK
+  varchar runId
+  varchar threadId
+  INTEGER traceCount
+  datetime_3_ traceWindowEnd
+  datetime_3_ traceWindowStart
+  varchar_16_ trigger
+  datetime_3_ updatedAt
+  TEXT usage
+}
+"self_healing_agent_result" {
+  varchar_36_ agentId FK
+  varchar_255_ agentName
+  boolean appliedAutomatically
+  TEXT applyError
+  TEXT applyProgress
+  datetime_3_ applyStartedAt
+  varchar backgroundUserId FK
+  varchar_36_ baseVersionId
+  datetime_3_ closedAt
+  varchar closedById FK
+  INTEGER configurationId FK
+  datetime_3_ createdAt
+  TEXT edits
+  TEXT evalCases
+  TEXT evidence
+  TEXT goals
+  varchar_36_ id PK
+  varchar_36_ projectId FK
+  varchar_36_ publishedVersionId
+  TEXT report
+  varchar_16_ reviewState
+  varchar_255_ summary
+  INTEGER traceCount
+  datetime_3_ traceWindowEnd
+  datetime_3_ traceWindowStart
+  varchar_16_ trigger
+  datetime_3_ updatedAt
+  TEXT usage
+}
+"self_healing_configuration_agent" {
+  varchar_36_ agentId PK
+  INTEGER configurationId PK
+  varchar_36_ projectId FK
 }
 "self_healing_configuration_reviewer" {
   INTEGER configurationId PK

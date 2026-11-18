@@ -95,6 +95,21 @@ This factory is not a selectable chat profile. It requires a backend candidate v
 See the [self-healing contract](../../../cli/src/modules/instance-ai/self-healing/README.md)
 for invocation input, output, cleanup, and result acceptance.
 
+## Internal agent improvement invocation
+
+`InstanceAiService.startAgentImprovementRun` registers one internal run in the same host lifecycle.
+The CLI host calls `createAgentImprovementAgent` from this package. The factory selects its prompt
+(`prompts/agent-improvement/agent-improvement.md`), five host-bound tools, and structured output
+schema together. The tools are `get_agent_definition`, `list_eval_cases`, `list_production_sessions`,
+`read_production_session`, and `test_proposal`. Each tool forwards to a host callback, and the runtime
+marks each result as untrusted data. A sixth tool, `check_report`, has no host callback. Its input
+schema limits the report to 900 characters of plain paragraphs, and a rejected input goes back to
+the model. The output schema does not have this limit, because an output that fails validation ends
+the run without a result. The agent has no tool that changes an agent or an eval suite.
+The host stores the input of the last successful `test_proposal` call as the proposal. The agent
+gets the sandbox workspace tools only when the host supplies a workspace. The run uses the
+`ia-self-healing:<actorId>` storage resource. This factory is not a selectable chat profile.
+
 ## Deep Agent Architecture
 
 The system implements three pillars of the deep agent pattern:

@@ -922,6 +922,8 @@ export {
 	agentEvalVerdictStatusSchema,
 	agentEvalVerdictOutcomeSchema,
 	agentEvalVerdictSchema,
+	agentEvalExpectedToolsSchema,
+	agentEvalToolCheckSchema,
 	agentEvalVoteSchema,
 	createAgentEvalDatasetSchema,
 	updateAgentEvalDatasetSchema,
@@ -957,6 +959,7 @@ export type {
 	AgentEvalVerdictStatus,
 	AgentEvalVerdictOutcome,
 	AgentEvalVerdict,
+	AgentEvalToolCheck,
 	AgentEvalVote,
 	AgentEvalCorrection,
 	CreateAgentEvalDatasetDto,
@@ -1056,6 +1059,7 @@ export { compareExecutionListItems } from './dto/executions/compare-execution-li
 
 export type * from './workflow-suggestions';
 export * from './self-healing-results';
+export * from './self-healing-agents';
 
 export {
 	createInstanceAiEventLifecycle,

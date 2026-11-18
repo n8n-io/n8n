@@ -1,3 +1,4 @@
+import type { ModelConfig } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 
 import { buildDateAnchors } from './date-anchors';
@@ -33,6 +34,10 @@ export interface WebSearchMockOptions {
 	searchHint?: string;
 	onSearch: (args: WebSearchMockArgs, result: WebSearchMockResult) => void;
 	logger: Logger;
+	/** Shared result cache. Two runs that use the same map get the same results. */
+	cache?: Map<string, Promise<WebSearchMockResult>>;
+	/** Host-resolved model for result generation. */
+	model?: ModelConfig;
 }
 
 const SEARCH_PROMPT = [
@@ -76,7 +81,7 @@ export function createWebSearchMock(
 	options: WebSearchMockOptions,
 ): (args: WebSearchMockArgs) => Promise<WebSearchMockResult> {
 	const { logger } = options;
-	const cache = new Map<string, Promise<WebSearchMockResult>>();
+	const cache = options.cache ?? new Map<string, Promise<WebSearchMockResult>>();
 	const priorSearches: string[] = [];
 
 	return async (args) => {
@@ -112,6 +117,7 @@ export function createWebSearchMock(
 					sections.join('\n'),
 					validateSearchResults,
 					logger,
+					options.model,
 				);
 				if (!results) {
 					logger.warn(`[EvalWebSearchMock] generation failed for query "${args.query}"`);

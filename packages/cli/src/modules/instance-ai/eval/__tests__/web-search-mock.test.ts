@@ -103,3 +103,48 @@ describe('createWebSearchMock', () => {
 		expect(result.note).toContain('framework issue');
 	});
 });
+
+describe('createWebSearchMock shared options', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		generate.mockResolvedValue({ messages: [] });
+		extractText.mockReturnValue(resultsJson);
+	});
+
+	const options = {
+		agentInstructions: 'Answer product questions.',
+		onSearch: vi.fn(),
+		logger,
+	};
+
+	it('serves the results of another mock that uses the same cache', async () => {
+		const cache = new Map<string, Promise<WebSearchMockResult>>();
+		const first = createWebSearchMock({ ...options, cache });
+		const second = createWebSearchMock({ ...options, cache });
+
+		const firstResult = await first({ query: 'acme export limit' });
+		const secondResult = await second({ query: 'acme export limit' });
+
+		expect(secondResult).toEqual(firstResult);
+		expect(generate).toHaveBeenCalledTimes(1);
+	});
+
+	it('creates the generator with the given model', async () => {
+		const { createEvalAgent } = await import('@n8n/instance-ai');
+
+		await createWebSearchMock({ ...options, model: 'anthropic/claude-helper' })({ query: 'q' });
+
+		expect(createEvalAgent).toHaveBeenCalledWith(
+			'eval-web-search',
+			expect.objectContaining({ resolvedModel: 'anthropic/claude-helper' }),
+		);
+	});
+
+	it('creates the generator without a model by default', async () => {
+		const { createEvalAgent } = await import('@n8n/instance-ai');
+
+		await createWebSearchMock(options)({ query: 'q' });
+
+		expect(vi.mocked(createEvalAgent).mock.calls[0][1]).not.toHaveProperty('resolvedModel');
+	});
+});

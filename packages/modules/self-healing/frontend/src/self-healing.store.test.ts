@@ -16,11 +16,18 @@ const configuration: SelfHealingConfigurationDto = {
 	includeAllProjectMembers: false,
 	includeSubWorkflows: false,
 	lastActivity: null,
+	agentScope: 'none',
+	agentIds: [],
+	agentGoals: ['quality'],
+	agentScheduleIntervalHours: null,
+	agentTraceThreshold: null,
+	agentPublicationMode: 'approval',
 };
 
 const options: SelfHealingConfigurationOptions = {
 	project: { name: 'Acme project', icon: null },
 	workflows: [],
+	agents: [],
 	reviewers: [],
 };
 

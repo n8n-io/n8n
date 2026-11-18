@@ -581,6 +581,43 @@ describe('AgentEvalCaseGenerationService', () => {
 		});
 	});
 
+	describe('createDatasetForAgent', () => {
+		it('creates a table with one column for each role and does not check the flag', async () => {
+			const columns = { input: 'input', criteria: 'criteria', expectedTools: 'expectedTools' };
+
+			const result = await service.createDatasetForAgent(
+				'project-1',
+				'agent-1',
+				'user-1',
+				'Checks',
+				columns,
+			);
+
+			expect(flagGate.assertEnabled).not.toHaveBeenCalled();
+			expect(dataTableService.createDataTable).toHaveBeenCalledWith('project-1', {
+				name: 'Checks',
+				columns: [
+					{ name: 'input', type: 'string' },
+					{ name: 'criteria', type: 'string' },
+					{ name: 'expectedTools', type: 'string' },
+				],
+			});
+			expect(datasetRepository.createDataset).toHaveBeenCalledWith(
+				expect.objectContaining({ agentId: 'agent-1', columnMapping: columns }),
+			);
+			expect(result).toEqual({ datasetId: 'ds-1', dataTableId: 'dt-1', columnMapping: columns });
+		});
+
+		it('rejects on a read-only instance', async () => {
+			instanceWriteAccess.isReadOnly.mockReturnValue(true);
+
+			await expect(
+				service.createDatasetForAgent('project-1', 'agent-1', 'user-1', 'Checks'),
+			).rejects.toThrow(ForbiddenError);
+			expect(dataTableService.createDataTable).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('deleteDraftTable', () => {
 		it('deletes the table in its own project', async () => {
 			dataTableService.deleteDataTable.mockResolvedValue(true);

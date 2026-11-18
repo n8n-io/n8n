@@ -1,3 +1,5 @@
+import { WEBHOOK_INTEGRATION_TYPE } from '@n8n/api-types';
+
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { QueuedUserChatMessage } from '../types/agent-queued-message';
 import {
@@ -12,6 +14,23 @@ export const PREVIEW_THREAD_SOURCES = ['', 'chat', 'n8n_chat'] as const;
 export const N8N_CHAT_PRODUCTION_SOURCE = 'n8n_chat_production' as const;
 /** Transcript source of a system-agent turn. It is not a Preview source. */
 export const SYSTEM_CHAT_SOURCE = 'system_chat' as const;
+
+/**
+ * Execution sources that always run the published agent. This is an
+ * allow-list: add a new chat integration type here, or its runs do not count
+ * as production traces. `task` is not here because a manual task run uses the
+ * draft: the trace query accepts `task` only with a published task version.
+ */
+export const PRODUCTION_TRACE_SOURCES = [
+	N8N_CHAT_PRODUCTION_SOURCE,
+	'slack',
+	'telegram',
+	'linear',
+	'discord',
+	'whatsapp',
+	'teams',
+	WEBHOOK_INTEGRATION_TYPE,
+] as const;
 
 /**
  * The n8n UI chat that a person watches the turn in. Integrations and tasks have none.

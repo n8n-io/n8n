@@ -23,6 +23,7 @@ import { InboxSourceRegistry, type InboxSourceBoundary } from './inbox-source.re
 const sourceOrder: InboxSourceType[] = [
 	'workflow_review',
 	'self_healing_result',
+	'self_healing_agent_result',
 	'promotion_review',
 ];
 
