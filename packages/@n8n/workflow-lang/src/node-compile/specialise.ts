@@ -1277,6 +1277,10 @@ const HELPERS: Record<string, string> = {
 	for (let k = 0; k < found.length; k += 2) match.push(found[k] < 0 ? undefined : input.slice(found[k], found[k + 1]));
 	return match;
 }`,
+	__textOf: `function __textOf(value: any, callee: string): any {
+	if (value === null || value === undefined || typeof value === 'string') return value;
+	throw __error(callee + ' is not a function', 'TypeError', undefined);
+}`,
 	__locatorValue: `function __locatorValue(value: any, pattern: string, flags: string, label: string): any {
 	if (typeof value !== 'string') throw __error("ERROR: This parameter's value is invalid. Please enter a valid mode.", 'NodeOperationError', undefined);
 	const found: any = __regexExec(pattern, value, flags);
@@ -1832,6 +1836,7 @@ const HELPER_USES: Record<string, string[]> = {
 	__urlForm: ['__urlFormText'],
 	__assertParam: ['__error'],
 	__locatorValue: ['__error', '__regexExec'],
+	__textOf: ['__error'],
 	__assertParamTypes: ['__error'],
 	__validateParams: ['__error', '__paramFits'],
 	__jsonParse: ['__error'],
@@ -2023,6 +2028,18 @@ function mentionsBuffer(n: ts.Node): boolean {
 	if (ts.isIdentifier(n) && n.text === 'Buffer') return true;
 	return ts.forEachChild(n, mentionsBuffer) ?? false;
 }
+
+const TEXT_ONLY_METHODS = new Set([
+	'match',
+	'split',
+	'replace',
+	'replaceAll',
+	'startsWith',
+	'endsWith',
+	'trim',
+	'toLowerCase',
+	'toUpperCase',
+]);
 
 const TEXT_HELPERS = new Set([
 	'__changeCase',
@@ -3251,6 +3268,29 @@ class Specialiser {
 			ts.forEachChild(n, collectForms);
 		};
 		collectForms(root);
+		const locatorNames = new Set<string>();
+		const collectLocators = (n: ts.Node) => {
+			if (
+				ts.isVariableDeclaration(n) &&
+				ts.isIdentifier(n.name) &&
+				n.initializer &&
+				localNames.get(n.name.text) === 1 &&
+				ts.isVariableDeclarationList(n.parent) &&
+				(n.parent.flags & ts.NodeFlags.Const) !== 0
+			) {
+				const read = unwrapped(n.initializer);
+				const name = ts.isCallExpression(read) ? read.arguments[0] : undefined;
+				if (
+					name &&
+					isThisCall(read, 'getNodeParameter') &&
+					ts.isStringLiteralLike(name) &&
+					this.input.parameterKind?.(name.text)?.type === 'resourceLocator'
+				)
+					locatorNames.add(n.name.text);
+			}
+			ts.forEachChild(n, collectLocators);
+		};
+		collectLocators(root);
 		let depth = 0;
 
 		const visit = (node: ts.Node): ts.Node | ts.Node[] | undefined => {
@@ -3273,6 +3313,34 @@ class Specialiser {
 				(ts.isAwaitExpression(e) && isThisCall(e.expression, 'getCredentials'));
 
 			if (isFormNew(node)) return this.helper('__formNew');
+			if (
+				ts.isCallExpression(node) &&
+				ts.isPropertyAccessExpression(node.expression) &&
+				TEXT_ONLY_METHODS.has(node.expression.name.text)
+			) {
+				const receiver = unwrapped(node.expression.expression);
+				if (
+					ts.isPropertyAccessExpression(receiver) &&
+					receiver.name.text === 'value' &&
+					ts.isIdentifier(receiver.expression) &&
+					locatorNames.has(receiver.expression.text)
+				)
+					return f.updateCallExpression(
+						node,
+						f.createPropertyAccessExpression(
+							this.helper(
+								'__textOf',
+								ts.visitNode(node.expression.expression, visit) as ts.Expression,
+								f.createStringLiteral(
+									`${receiver.expression.text}.value.${node.expression.name.text}`,
+								),
+							),
+							node.expression.name.text,
+						),
+						undefined,
+						args(node),
+					);
+			}
 			if (
 				ts.isExpressionStatement(node) &&
 				ts.isCallExpression(node.expression) &&

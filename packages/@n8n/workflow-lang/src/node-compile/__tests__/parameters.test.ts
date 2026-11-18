@@ -272,6 +272,23 @@ describe('extractValue', () => {
 		});
 	});
 
+	it('keeps the name that v1 shows when node code calls a text method on a locator value', () => {
+		const body =
+			"const board = this.getNodeParameter('boardId', i, {}) as any; id = (board.value as string).match(/b\\/([a-z]+)/)?.[1];";
+		const result = compileWith(body, locator('url', '={{ $json.url }}'), { boardId: LOCATOR });
+		expect(result.errors).toEqual([]);
+		expect(result.source).toContain('__textOf(board.value, "board.value.match")');
+		expect(result.source).toContain("callee + ' is not a function'");
+		const plain = compileWith(
+			body,
+			{ boardId: '={{ $json.url }}' },
+			{
+				boardId: { type: 'string', extract: false },
+			},
+		);
+		expect(plain.source ?? '').not.toContain('__textOf');
+	});
+
 	it('does not compile an expression when the kind of the parameter is not known', () => {
 		const result = compileWith(EXTRACT, { boardId: '={{ $json.board }}' });
 		expect(result.errors).toEqual([`execute: ${OPTIONS_ERROR}`]);
