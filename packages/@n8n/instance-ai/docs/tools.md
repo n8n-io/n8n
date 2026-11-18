@@ -838,8 +838,9 @@ Get the output data of a specific node from an execution.
 | `nodeName` | string | yes | Node name to get output for |
 | `startIndex` | number | no | First item index to return. Defaults to `0` |
 | `maxItems` | number | no | Maximum items to return. Defaults to `10`; maximum `50` |
+| `storeFiles` | boolean | no | Store the files of the returned items as conversation files. Only when the host can store files |
 
-**Returns**: `{ nodeName, outputs: [{ index, name?, totalItems, items }], totalItems, returned: { from, to }, totalRuns? }`.
+**Returns**: `{ nodeName, outputs: [{ index, name?, totalItems, items }], totalItems, returned: { from, to }, totalRuns?, binaryFileCount?, files?, skippedFiles?: { total, files } }`.
 One `outputs` entry per node output, in output order; a Filter reports `Kept` and
 `Discarded` separately. `name` follows the node's output pane labels, including
 renamed Switch outputs and `Success` / `Error` for nodes that route errors to an
@@ -859,6 +860,16 @@ when there was more than one. Which runs are read depends on the node:
 A run that failed records no items, so `totalRuns` can count more runs than the
 items account for. Read the error of that run from `action="get"`, which
 reports it under `nodeErrors`.
+
+The items show only their JSON. `binaryFileCount` counts the files (binary
+data) of the returned items. With `storeFiles`, the action stores those files
+as conversation files, at most 10 for each call, one time for each binary. It
+lists them in `files` with their fileId. `skippedFiles.files` lists at most 10
+files that were not stored, and `skippedFiles.total` counts all of them. The model can then view them with `view-file`, copy them to
+the sandbox with `import-files`, or pass them to a run. To store more files,
+page with `startIndex` and `maxItems`. A redacted execution stores no files.
+The host offers `storeFiles` only when it sets `readBinary` and
+`storeWorkflowFile` on `storedFiles`.
 
 ### `workflow_builder_executions(action="get-resolved-node-parameters")`
 
