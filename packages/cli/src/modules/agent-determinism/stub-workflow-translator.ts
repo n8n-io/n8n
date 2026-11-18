@@ -62,7 +62,10 @@ export class StubWorkflowTranslator extends WorkflowTranslator {
 			generatePinData: false,
 			nodeTypesProvider: this.nodeTypes,
 		});
-		const parsed = await handler.parseAndValidate(stripImportStatements(code));
+		// The model can put an import on the same line as other code, which the shared
+		// stripper (line-anchored) misses.
+		const withoutImports = code.replace(/\bimport\s[^;]*?from\s*['"][^'"]+['"];?/g, '');
+		const parsed = await handler.parseAndValidate(stripImportStatements(withoutImports));
 		return parsed.workflow;
 	}
 }
