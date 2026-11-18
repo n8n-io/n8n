@@ -1,0 +1,11 @@
+{
+	"description": "A Set node reads the item of a node before an If node on the True branch ($('Source').item)",
+	"trigger": {
+		"body": {
+			"label": "if-paired"
+		}
+	},
+	"compare": [
+		"Read True"
+	]
+}

@@ -1,0 +1,87 @@
+{
+	"name": "If paired read",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "if-paired",
+				"options": {}
+			},
+			"webhookId": "9d1a6f42-2c3b-4e5d-8a7f-1b2c3d4e5f62"
+		},
+		{
+			"id": "source",
+			"name": "Source",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"parameters": {
+				"jsCode": "return [{ json: { n: 10 } }, { json: { n: 20 } }, { json: { n: 30 } }];"
+			}
+		},
+		{
+			"id": "if-node",
+			"name": "If",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [400, 0],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c1",
+							"leftValue": "={{ $json.n }}",
+							"operator": {
+								"type": "number",
+								"operation": "gte"
+							},
+							"rightValue": 20
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "read-true",
+			"name": "Read True",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [600, -100],
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "={ \"sourceN\": {{ $('Source').item.json.n }} }",
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [[{ "node": "Source", "type": "main", "index": 0 }]]
+		},
+		"Source": {
+			"main": [[{ "node": "If", "type": "main", "index": 0 }]]
+		},
+		"If": {
+			"main": [
+				[{ "node": "Read True", "type": "main", "index": 0 }],
+				[]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
