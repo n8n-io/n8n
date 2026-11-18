@@ -14,62 +14,35 @@ describe('Composable browser orchestration configuration', () => {
 	beforeEach(() => setConfig(config));
 	afterEach(() => resetConfig());
 
-	test.each(['BuilderWizardComposer', 'TestEntryComposer', 'ExecutionsComposer'])(
-		'allows the browser orchestration in %s',
-		(className) => {
-			const project = new Project({ useInMemoryFileSystem: true });
-			const filePath = `${config.rootDir}/composables/${className}.ts`;
-			const file = project.createSourceFile(filePath, readFileSync(filePath, 'utf8'));
+	const analyze = (body: string) => {
+		const project = new Project({ useInMemoryFileSystem: true });
+		const file = project.createSourceFile(
+			`${config.rootDir}/composables/ExampleComposer.ts`,
+			`export class ExampleComposer {\nasync setup() {\n${body}\n}\n}`,
+		);
+		return new NoPageInFlowRule().analyzeProject(project, [file]).map(({ line }) => line - 2);
+	};
 
-			expect(new NoPageInFlowRule().analyzeProject(project, [file])).toEqual([]);
-		},
-	);
+	test('allows browser orchestration', () => {
+		expect(
+			analyze(`await this.n8n.page.route('**/rest/example', async () => {});
+				await this.n8n.page.unroute('**/rest/example');
+				await this.n8n.page.waitForRequest('**/run');
+				await this.n8n.page.waitForResponse('**/run');
+				await this.n8n.page.waitForEvent('popup');
+				await this.n8n.page.context().newPage();
+				this.n8n.page.context().browser();`),
+		).toEqual([]);
+	});
 
-	test.each([
-		['BuilderWizardComposer', 'mockBuilderStream', "route('**/rest/ai/build', async () => {})"],
-		['BuilderWizardComposer', 'remockBuilderStream', "unroute('**/rest/ai/build')"],
-		['BuilderWizardComposer', 'mockAutosave', "route('**/rest/workflows/*', async () => {})"],
-		['TestEntryComposer', 'fromNewPage', "waitForEvent('popup')"],
-		['TestEntryComposer', 'newTab', 'context().newPage()'],
-		['TestEntryComposer', 'withUser', 'context().browser()'],
-		['ExecutionsComposer', 'createExecutions', "waitForResponse('**/run')"],
-		['ExecutionsComposer', 'executeNodeAndCapturePayload', "waitForRequest('**/run')"],
-		['WorkflowComposer', 'executeWorkflowAndWaitForNotification', "waitForResponse('**/run')"],
-		['WorkflowComposer', 'moveToProject', "waitForResponse('**/transfer')"],
-		['WorkflowComposer', 'selectProjectInMoveModal', "waitForResponse('**/projects')"],
-		['WorkflowComposer', 'selectFolderInMoveModal', "waitForResponse('**/folders')"],
-	])('limits %s.%s to its configured operation', (className, methodName, operation) => {
-		const cases = [
-			{ fileName: className, className, methodName, operation, expected: 0 },
-			{ fileName: 'OtherComposer', className, methodName, operation, expected: 1 },
-			{ fileName: className, className: 'OtherComposer', methodName, operation, expected: 1 },
-			{ fileName: className, className, methodName: 'otherMethod', operation, expected: 1 },
-			{
-				fileName: className,
-				className,
-				methodName,
-				operation: "getByTestId('button').click()",
-				expected: 1,
-			},
-			{
-				fileName: className,
-				className,
-				methodName,
-				operation: "context().pages()[0].getByTestId('button').click()",
-				expected: 1,
-			},
-		];
-		for (const entry of cases) {
-			const project = new Project({ useInMemoryFileSystem: true });
-			const file = project.createSourceFile(
-				`${config.rootDir}/composables/${entry.fileName}.ts`,
-				`export class ${entry.className} {
-					async ${entry.methodName}() { await this.n8n.page.${entry.operation}; }
-				}`,
-			);
-
-			expect(new NoPageInFlowRule().analyzeProject(project, [file])).toHaveLength(entry.expected);
-		}
+	test('reports DOM access behind an allowed operation', () => {
+		expect(
+			analyze(`this.n8n.page.context().pages()[0].getByTestId('button').click();
+				this.n8n.page.context().newPage().locator('button').click();
+				await this.n8n.page.route('**/rest/example', async () => {
+					await this.n8n.page.getByTestId('button').click();
+				});`),
+		).toEqual([1, 2, 4]);
 	});
 });
 

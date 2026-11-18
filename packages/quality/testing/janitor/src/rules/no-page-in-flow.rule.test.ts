@@ -1,7 +1,6 @@
 import { describe } from 'vitest';
 
 import { NoPageInFlowRule } from './no-page-in-flow.rule.js';
-import { getConfig, setConfig } from '../config.js';
 import { test, expect } from '../test/fixtures.js';
 
 describe('NoPageInFlowRule', () => {
@@ -25,44 +24,6 @@ export class WorkflowComposer {
 		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(0);
-	});
-
-	for (const operation of [
-		"route('**/rest/example', async () => {})",
-		"unroute('**/rest/example')",
-		"waitForRequest('**/run')",
-		"waitForResponse('**/run')",
-		"waitForEvent('popup')",
-		'context().newPage()',
-		'context().browser()',
-	]) {
-		test(`reports browser orchestration without a scoped exception: ${operation}`, ({
-			project,
-			createFile,
-		}) => {
-			const file = createFile(
-				'/composables/WorkflowComposer.ts',
-				`export class WorkflowComposer {
-				async setup() { await this.n8n.page.${operation}; }
-			}`,
-			);
-
-			expect(rule.analyzeProject(project, [file])).toHaveLength(1);
-		});
-	}
-
-	test('keeps raw expression allow patterns and keyboard members', ({ project, createFile }) => {
-		const file = createFile(
-			'/composables/WorkflowComposer.ts',
-			`export class WorkflowComposer {
-				async setup() {
-					await this.n8n.page.waitForURL('/home/workflows');
-					await this.n8n.page.keyboard.press('Enter');
-				}
-			}`,
-		);
-
-		expect(rule.analyzeProject(project, [file])).toEqual([]);
 	});
 
 	test('detects direct page.getByTestId access', ({ project, createFile }) => {
@@ -185,98 +146,4 @@ export class WorkflowComposer {
 		expect(violations[0].suggestion).toBeDefined();
 		expect(violations[0].suggestion).toContain('page object');
 	});
-
-	test('allows a complete browser chain only in its configured method', ({
-		project,
-		createFile,
-	}) => {
-		setConfig({
-			...getConfig(),
-			rules: {
-				'no-page-in-flow': {
-					allowPatterns: [
-						/^composables\/EntryComposer\.ts:EntryComposer\.newTab: this\.n8n\.page\.context\(\)\.newPage$/,
-					],
-				},
-			},
-		});
-		const file = createFile(
-			'/composables/EntryComposer.ts',
-			`export class EntryComposer {
-				async newTab() {
-					return this.n8n.page.context().newPage();
-				}
-				async otherMethod() {
-					return this.n8n.page.context().newPage();
-				}
-			}`,
-		);
-
-		const violations = rule.analyzeProject(project, [file]);
-		expect(violations).toHaveLength(1);
-		expect(violations[0].line).toBe(6);
-		expect(violations[0].message).toContain('page.context');
-	});
-
-	for (const { name, allowPatterns } of [
-		{
-			name: 'anchored scoped',
-			allowPatterns: [
-				/^composables\/EntryComposer\.ts:EntryComposer\.setup: this\.n8n\.page\.(context|route)$/,
-			],
-		},
-		{
-			name: 'unanchored scoped',
-			allowPatterns: [
-				/^composables\/EntryComposer\.ts:EntryComposer\.setup: this\.n8n\.page\.(context|route)/,
-			],
-		},
-		{
-			name: 'unanchored raw',
-			allowPatterns: [/\.page\.(context|route)/],
-		},
-	]) {
-		test(`limits ${name} patterns to the allowed operation`, ({ project, createFile }) => {
-			setConfig({
-				...getConfig(),
-				rules: {
-					'no-page-in-flow': {
-						allowPatterns,
-					},
-				},
-			});
-			const file = createFile(
-				'/composables/EntryComposer.ts',
-				`export class EntryComposer {
-				async setup() {
-					this.n8n.page.context();
-					this.n8n.page.context().pages()[0].getByTestId('button').click();
-					this.n8n.page.context().newPage().locator('button').click();
-					await this.n8n.page.route('**/rest/example', async () => {
-						await this.n8n.page.getByTestId('button').click();
-					});
-				}
-			}`,
-			);
-
-			const violations = rule.analyzeProject(project, [file]);
-			expect(violations.map(({ line }) => line)).toEqual([4, 5, 7]);
-			expect(violations.map(({ message }) => message)).toEqual([
-				'Direct page access in composable: this.n8n.page.context().pages()[0].getByTestId',
-				'Direct page access in composable: this.n8n.page.context().newPage().locator',
-				'Direct page access in composable: this.n8n.page.getByTestId',
-			]);
-			expect(
-				violations.every(
-					({ suggestion }) => suggestion === 'Use page object methods instead of direct locators',
-				),
-			).toBe(true);
-			const lines = file.getFullText().split('\n');
-			expect(violations.map(({ line, column }) => lines[line - 1].slice(column))).toEqual([
-				"getByTestId('button').click();",
-				"locator('button').click();",
-				"getByTestId('button').click();",
-			]);
-		});
-	}
 });

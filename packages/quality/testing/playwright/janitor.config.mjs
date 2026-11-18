@@ -126,17 +126,12 @@ export default defineConfig({
 				/\.page\.waitForLoadState/,
 				/\.page\.waitForURL/,
 				/\.page\.reload/,
-				// These methods own the builder stream and autosave mocks.
-				/^composables\/BuilderWizardComposer\.ts:BuilderWizardComposer\.(mockBuilderStream|mockAutosave): this\.n8n\.page\.route$/,
-				/^composables\/BuilderWizardComposer\.ts:BuilderWizardComposer\.remockBuilderStream: this\.n8n\.page\.unroute$/,
-				// Entry methods bind the facade to a popup, tab, or isolated user context.
-				/^composables\/TestEntryComposer\.ts:TestEntryComposer\.fromNewPage: this\.n8n\.page\.waitForEvent$/,
-				/^composables\/TestEntryComposer\.ts:TestEntryComposer\.newTab: this\.n8n\.page\.context\(\)\.newPage$/,
-				/^composables\/TestEntryComposer\.ts:TestEntryComposer\.withUser: this\.n8n\.page\.context\(\)\.browser$/,
-				// Register network waits before page-object actions start the requests.
-				/^composables\/ExecutionsComposer\.ts:ExecutionsComposer\.createExecutions: this\.n8n\.page\.waitForResponse$/,
-				/^composables\/ExecutionsComposer\.ts:ExecutionsComposer\.executeNodeAndCapturePayload: this\.n8n\.page\.waitForRequest$/,
-				/^composables\/WorkflowComposer\.ts:WorkflowComposer\.(executeWorkflowAndWaitForNotification|moveToProject|selectProjectInMoveModal|selectFolderInMoveModal): this\.n8n\.page\.waitForResponse$/,
+				// Network mocks, network waits, and popup waits do not touch the DOM.
+				// The `$` anchor keeps a locator on the call result reported.
+				/\.page\.(route|unroute|waitForRequest|waitForResponse|waitForEvent)$/,
+				// A composable can open a tab or get the browser from the context.
+				// The rule checks each prefix of a chain, so `context` must also match alone.
+				/\.page\.context(\(\)\.(newPage|browser))?$/,
 			],
 		},
 		'api-purity': { enabled: true, severity: 'warning' },

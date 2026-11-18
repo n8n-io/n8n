@@ -498,21 +498,6 @@ Certain page-level operations are allowed (configurable via `allowPatterns`):
 - `page.waitForURL()` - URL assertions
 - `page.reload()` - Page refresh
 
-Allow patterns can also match `relative/file.ts:ClassName.methodName: expression`.
-Use an anchored pattern to allow an operation in one composable method. The rule
-checks the full property-access chain. A pattern must match through the allowed
-operation. An allowed operation does not allow access to its call result, even
-when the pattern has no `$` anchor. Raw expression patterns still apply. Property
-members, such as `keyboard.press`, keep their existing exceptions.
-
-```typescript
-'no-page-in-flow': {
-  allowPatterns: [
-    /^composables\/EntryComposer\.ts:EntryComposer\.newTab: this\.app\.page\.context\(\)\.newPage$/,
-  ],
-},
-```
-
 #### `api-purity`
 
 **Severity:** warning
