@@ -103,6 +103,7 @@ milestone proves it.
 | Workflow artifact tab | extension | `structuredContent.workflowId` → `onArtifactChanged` | **yes, by convention.** M3: the bridge reads `workflowId`/`name` from the `structuredContent` of `create_workflow_from_code` and `update_workflow` and announces the artifact; no `_meta` needed because the output schema already names the workflow |
 | Thread state (file bindings, setup state, loop verdicts) | client-side | stays in Assistant orchestration tools | **partial.** M3: thread ownership of a created workflow and the admin `createWorkflow: blocked` rule are client-side decorators in the bridge. File bindings and the build→verify→debug loop have no equivalent: the MCP build is one call with the code inline, and verification is not run after it |
 | Workspace and sandbox build loop | not native | identity-keyed workspace tools (M4) | **yes, as tools.** M4: `open_workspace`, `workspace_read_file/write_file/str_replace_file/list_files/execute_command`, `build_workflow` and `get_workflow_as_code` expose the Assistant's sandbox to every client. The protocol carries no session, so the caller names its workspace (`workspaceKey`); the Assistant binds the key to its thread in the bridge and hides the parameter from the model. One sandbox per `(user, key)`, hashed into the sandbox identity |
+| Conversation scope (current project) | client-side | bridge injects `projectId` from the thread context | **no, client-side.** Eval run 1: the server's create tools default to the caller's personal project, the Assistant's thread lives in the conversation's project. 152 of 309 building cases created a duplicate in the wrong project before the model noticed and rebuilt. The bridge now binds `projectId` to the thread's project, as the native build tool did |
 | Legacy tool names in persisted threads | client-side | alias map; out of scope | - |
 | Auth, scopes, rate limits | native over HTTP; bypassed in-process | scopes passed to `getServer` | **partial.** M1: scopes work as for OAuth clients. Per-resource exposure (`availableInMCP`) is a third-party policy the protocol has no word for; the server needs a trusted first-party marker on the auth context (`firstParty`), set by the host |
 | Telemetry attribution | native | `clientInfo.name = 'n8n-assistant'` | ? |
@@ -197,6 +198,59 @@ Same LangSmith dataset, three runs: native Assistant (baseline, `master`),
 Assistant over MCP at each milestone, Claude over MCP
 (`eval:instance-ai --build-via-mcp`). See
 `packages/cli/src/modules/mcp/evaluations/README.md`.
+
+How to run: dispatch "Instance AI Evals: Experiments" from the branch ref
+(`gh workflow run test-evals-instance-ai.yml --ref <branch> -f branch=<branch>
+-f tier=pr -f iterations=3`). `tier=full` is the whole suite (~390 cases) and
+fits the 90-minute job only with `iterations=1`. The harness counts a save
+only for the native build tool's name, so `evaluations/outcome/event-parser.ts`
+also accepts the server's save tools (`create_workflow_from_code`,
+`update_workflow`, `build_workflow`).
+
+### Results after M4 (branch at `7357512`, model `claude-sonnet-4-6`)
+
+PR tier (11 cases × 3): 37 of 38 units green; the red unit is a process
+expectation (`notification-router`: establish the payload shape before
+building), 0/3 here and 42/45 across five same-day runs of other branches.
+Cause: the `workflow-builder` skill's "ask before the build only when a choice
+changes intent or topology" rule is gated off with the skill; the server's
+instructions are a build recipe with no clarify step.
+
+Full suite, one iteration (389 cases, 34 minutes), against the LangSmith
+baseline `instance-ai-baseline-13/07` (349 shared units; 1516 units of the
+current suite have no baseline):
+
+| | PoC | baseline | delta |
+|---|---|---|---|
+| aggregate pass rate (349 units) | 85.4% (CI 81.3–88.7) | 88.8% (CI 87.7–89.8) | −3.4 pp |
+| scenario units, executed workflows (117) | 86.3% | 79.2% | +7.1 pp |
+| expectation units, judged behaviour (232) | 84.9% | 93.7% | −8.8 pp |
+| failures observed vs expected under baseline rates | 51 vs 39 | | z = 3.1 |
+
+Verdicts: 277 stable, 39 watch, 33 soft regressions, no hard regressions.
+The scenario gain is not a PoC effect: the baseline predates master's own
+improvements. What the regressions are:
+
+1. **Wrong project (defect, now fixed in the bridge).** Without `projectId`
+   the server saves to the caller's personal project; the model noticed the
+   mismatch in 98 cases and rebuilt in the conversation's project, leaving a
+   duplicate in 152 cases. The harness judged the stale duplicate in 150 of
+   them: 30 of the 51 shared-unit failures and 23 of the 33 soft regressions
+   are in those cases (`user-self-corrects`, `targeted-edit-preserves-
+   configured-details`, `setup-follow-up-preserves-slack-channel`,
+   `rest-api-data-pipeline` all passed on the workflow the agent finished).
+   Re-run after the fix to get a clean number.
+2. **No verification loop (real).** ~14 expectations of the form "the agent
+   ran a verification of the built workflow" and `verification_gap` 6 vs 0
+   in the baseline. The native build result carries `postBuildFlow`; the
+   server's save result does not, and the skill that follows it is off.
+3. **Credential offering during the build (real, partly eval phrasing).** The
+   native build tool lists candidate credentials and binds a sole match; the
+   server's create path leaves credentials to `list_credentials` and
+   `setNodeCredential` (4 expectations).
+4. **Guidance drift (real).** Clarify-before-build (PR tier) and n8n
+   evaluation wiring (`ai-agent-build-wires-evals-when-asked`, 3
+   expectations, reference material in the gated skill).
 
 ## Structure
 

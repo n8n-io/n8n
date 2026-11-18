@@ -86,6 +86,18 @@ const WORKFLOW_WRITE_TOOLS: ReadonlySet<string> = new Set([
 const WORKSPACE_KEY_PARAM = 'workspaceKey';
 
 /**
+ * Server tools that create a workflow and default to the caller's personal
+ * project when `projectId` is absent. The protocol carries no conversation
+ * scope, so the Assistant binds them to the thread's project, as the native
+ * build tool did (the thread's project wins over the model's argument).
+ */
+const PROJECT_BOUND_TOOLS: ReadonlySet<string> = new Set([
+	'create_workflow_from_code',
+	'build_workflow',
+]);
+const PROJECT_ID_PARAM = 'projectId';
+
+/**
  * Hides `workspaceKey` from the model: the server is stateless and asks the
  * caller to name its workspace, the Assistant always means the thread's.
  */
@@ -184,6 +196,9 @@ export function createToolsFromInstanceMcpServer({
 					...(isRecord(input) ? input : {}),
 					...(bindsWorkspace && context.threadId
 						? { [WORKSPACE_KEY_PARAM]: context.threadId }
+						: {}),
+					...(PROJECT_BOUND_TOOLS.has(toolName) && context.projectId
+						? { [PROJECT_ID_PARAM]: context.projectId }
 						: {}),
 				};
 				const call = async (
