@@ -14,7 +14,6 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_shared_knowledge_collection_role | CHECK | CHECK (((role)::text = ANY ((ARRAY['knowledgeCollection:owner'::character varying, 'knowledgeCollection:user'::character varying])::text[]))) |
 | FK_453e7baab9b2d4f7a02569cca80 | FOREIGN KEY | FOREIGN KEY ("knowledgeCollectionId") REFERENCES knowledge_collection(id) ON DELETE CASCADE |
 | FK_86b015e85d35453e6a5d653c41c | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | PK_0f0451e44af79cf826fdddf9ae8 | PRIMARY KEY | PRIMARY KEY ("knowledgeCollectionId", "projectId") |

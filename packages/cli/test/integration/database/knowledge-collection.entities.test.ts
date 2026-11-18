@@ -95,7 +95,12 @@ describe('Knowledge collection entities', () => {
 		const agentId = await createAgent();
 		const collections = dataSource.getRepository(KnowledgeCollection);
 		const saved = await collections.save(
-			collections.create({ slug: `kc-${generateNanoId()}`, kind: 'agent', agentId }),
+			collections.create({
+				name: 'Agent knowledge',
+				slug: `kc-${generateNanoId()}`,
+				kind: 'agent',
+				agentId,
+			}),
 		);
 
 		const read = await collections.findOneOrFail({

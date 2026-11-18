@@ -7,11 +7,11 @@
 | agentId | varchar(36) |  | true |  | [public.agents](public.agents.md) | Agent that owns a private collection. NULL for a shared collection |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | createdById | uuid |  | true |  | [public.user](public.user.md) | Author. NULL after the author is deleted |
-| description | text |  | true |  |  | Tells the agent when to use a shared collection. Required for a shared collection |
+| description | text |  | true |  |  | Tells the agent when to use the collection |
 | id | varchar(16) |  | false | [public.agent_knowledge_dependency](public.agent_knowledge_dependency.md) [public.knowledge_file](public.knowledge_file.md) [public.knowledge_vector_store](public.knowledge_vector_store.md) [public.shared_knowledge_collection](public.shared_knowledge_collection.md) |  | Application-generated n8n nano ID |
 | isGlobal | boolean | false | false |  |  | Every agent on the instance can use a global collection |
 | kind | varchar(16) |  | false |  |  | 'shared' (belongs to a project) or 'agent' (the private collection of one agent) |
-| name | varchar(128) |  | true |  |  | Name of a shared collection, unique in its project. NULL for an agent collection |
+| name | varchar(128) |  | false |  |  | Name of the collection, unique in the project of a shared collection |
 | ownerProjectId | varchar(36) |  | true |  | [public.project](public.project.md) | Home project of a shared collection. NULL for an agent collection |
 | slug | varchar(24) |  | false |  |  | Tool-safe identifier, unique on the instance. Set at creation and never changed |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -20,7 +20,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_knowledge_collection_kind | CHECK | CHECK (((((kind)::text = 'agent'::text) AND ("agentId" IS NOT NULL) AND ("ownerProjectId" IS NULL) AND ("isGlobal" = false)) OR (((kind)::text = 'shared'::text) AND ("agentId" IS NULL) AND ("ownerProjectId" IS NOT NULL) AND (name IS NOT NULL) AND (description IS NOT NULL)))) |
+| CHK_knowledge_collection_owner | CHECK | CHECK (((("agentId" IS NULL) <> ("ownerProjectId" IS NULL)) AND (("agentId" IS NULL) OR ("isGlobal" = false)))) |
 | FK_2db6cab650ebf156debd84c3772 | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
 | FK_3dbb6554cfa9ce504a94274c64f | FOREIGN KEY | FOREIGN KEY ("createdById") REFERENCES "user"(id) ON DELETE SET NULL |
 | FK_9a2316d690a0d7beac2fce60fc6 | FOREIGN KEY | FOREIGN KEY ("ownerProjectId") REFERENCES project(id) ON DELETE CASCADE |
@@ -29,6 +29,7 @@
 | knowledge_collection_id_not_null | n | NOT NULL id |
 | knowledge_collection_isGlobal_not_null | n | NOT NULL "isGlobal" |
 | knowledge_collection_kind_not_null | n | NOT NULL kind |
+| knowledge_collection_name_not_null | n | NOT NULL name |
 | knowledge_collection_slug_not_null | n | NOT NULL slug |
 | knowledge_collection_updatedAt_not_null | n | NOT NULL "updatedAt" |
 

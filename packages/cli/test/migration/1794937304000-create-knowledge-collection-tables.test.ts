@@ -155,6 +155,7 @@ describe('CreateKnowledgeCollectionTables migration', () => {
 			const id = generateNanoId();
 			await insertRow('knowledge_collection', {
 				id,
+				name: 'Agent knowledge',
 				slug: newSlug(),
 				kind: 'agent',
 				agentId,
@@ -265,7 +266,7 @@ describe('CreateKnowledgeCollectionTables migration', () => {
 				await expect(insertAgentCollection(agentId)).rejects.toThrow();
 			});
 
-			it('accepts many agent collections, which have no project and no name', async () => {
+			it('accepts many agent collections with the same name, which have no project', async () => {
 				const projectId = await insertProject();
 				const firstId = await insertAgentCollection(await insertAgent(projectId));
 				const secondId = await insertAgentCollection(await insertAgent(projectId));
@@ -274,56 +275,49 @@ describe('CreateKnowledgeCollectionTables migration', () => {
 				expect(await countRows('knowledge_collection', 'id', secondId)).toBe(1);
 			});
 
-			// Each case breaks one branch of CHK_knowledge_collection_kind. The project and
+			// Each case breaks one part of CHK_knowledge_collection_owner. The project and
 			// the agent exist, so no foreign key rejects the row first.
 			it.each<[string, (owners: { projectId: string; agentId: string }) => Row]>([
 				[
-					'an agent collection with a project',
-					({ projectId, agentId }) => ({ kind: 'agent', agentId, ownerProjectId: projectId }),
+					'a collection with a project and an agent',
+					({ projectId, agentId }) => ({ kind: 'shared', ownerProjectId: projectId, agentId }),
 				],
+				['a collection without a project or an agent', () => ({ kind: 'shared' })],
 				[
 					'a global agent collection',
 					({ agentId }) => ({ kind: 'agent', agentId, isGlobal: true }),
-				],
-				['an agent collection without an agent', () => ({ kind: 'agent' })],
-				[
-					'a shared collection without a project',
-					() => ({ kind: 'shared', name: 'Handbook', description: 'HR' }),
-				],
-				[
-					'a shared collection without a name',
-					({ projectId }) => ({ kind: 'shared', ownerProjectId: projectId, description: 'HR' }),
-				],
-				[
-					'a shared collection without a description',
-					({ projectId }) => ({ kind: 'shared', ownerProjectId: projectId, name: 'Handbook' }),
-				],
-				[
-					'a shared collection with an agent',
-					({ projectId, agentId }) => ({
-						kind: 'shared',
-						ownerProjectId: projectId,
-						name: 'Handbook',
-						description: 'HR',
-						agentId,
-					}),
-				],
-				[
-					'a collection of an unknown kind',
-					({ projectId }) => ({ kind: 'team', ownerProjectId: projectId, name: 'Handbook' }),
 				],
 			])('rejects %s', async (_, collectionColumns) => {
 				const projectId = await insertProject();
 				const agentId = await insertAgent(projectId);
 				const row = {
 					id: generateNanoId(),
+					name: 'Handbook',
 					slug: newSlug(),
 					...collectionColumns({ projectId, agentId }),
 				};
 
 				await expect(insertRow('knowledge_collection', row)).rejects.toThrow(
-					`CHK_${context.tablePrefix}knowledge_collection_kind`,
+					`CHK_${context.tablePrefix}knowledge_collection_owner`,
 				);
+			});
+
+			it('rejects a collection without a name', async () => {
+				const projectId = await insertProject();
+
+				await expect(insertSharedCollection(projectId, { name: null })).rejects.toThrow();
+			});
+
+			it('accepts a collection without a description', async () => {
+				const id = await insertSharedCollection(await insertProject(), { description: null });
+
+				expect(await countRows('knowledge_collection', 'id', id)).toBe(1);
+			});
+
+			it('accepts a kind that the code does not know yet', async () => {
+				const id = await insertSharedCollection(await insertProject(), { kind: 'team' });
+
+				expect(await countRows('knowledge_collection', 'id', id)).toBe(1);
 			});
 
 			it('accepts a global shared collection', async () => {
@@ -348,13 +342,13 @@ describe('CreateKnowledgeCollectionTables migration', () => {
 				).resolves.not.toThrow();
 			});
 
-			it('rejects a role outside the list', async () => {
+			it('accepts a role that the code does not know yet', async () => {
 				const projectId = await insertProject();
 				const collectionId = await insertSharedCollection(projectId);
 
-				await expect(insertShare(collectionId, projectId, 'credential:owner')).rejects.toThrow(
-					`CHK_${context.tablePrefix}shared_knowledge_collection_role`,
-				);
+				await expect(
+					insertShare(collectionId, projectId, 'knowledgeCollection:editor'),
+				).resolves.not.toThrow();
 			});
 		});
 

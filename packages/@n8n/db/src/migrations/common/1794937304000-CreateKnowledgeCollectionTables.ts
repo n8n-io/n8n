@@ -38,14 +38,9 @@ export class CreateKnowledgeCollectionTables1794937304000 implements ReversibleM
 		escape,
 		isSqlite,
 	}: MigrationContext) {
-		const [kind, agentId, ownerProjectId, isGlobal, name, description] = [
-			'kind',
-			'agentId',
-			'ownerProjectId',
-			'isGlobal',
-			'name',
-			'description',
-		].map((columnName) => escape.columnName(columnName));
+		const [agentId, ownerProjectId, isGlobal] = ['agentId', 'ownerProjectId', 'isGlobal'].map(
+			(columnName) => escape.columnName(columnName),
+		);
 		const falseValue = isSqlite ? '0' : 'FALSE';
 
 		await createTable(collectionTable)
@@ -53,18 +48,15 @@ export class CreateKnowledgeCollectionTables1794937304000 implements ReversibleM
 				column('id').varchar(16).primary.comment('Application-generated n8n nano ID'),
 				column('name')
 					.varchar(128)
-					.comment(
-						'Name of a shared collection, unique in its project. NULL for an agent collection',
-					),
-				column('description').text.comment(
-					'Tells the agent when to use a shared collection. Required for a shared collection',
-				),
+					.notNull.comment('Name of the collection, unique in the project of a shared collection'),
+				column('description').text.comment('Tells the agent when to use the collection'),
 				column('slug')
 					.varchar(24)
 					.notNull.comment(
 						'Tool-safe identifier, unique on the instance. Set at creation and never changed',
 					),
-				// No CHECK on the values: CHK_knowledge_collection_kind allows only these two.
+				// No CHECK on the values: the service validates them and sets the kind to
+				// agree with the owner columns.
 				column('kind')
 					.varchar(16)
 					.notNull.comment(
@@ -82,7 +74,7 @@ export class CreateKnowledgeCollectionTables1794937304000 implements ReversibleM
 				column('createdById').uuid.comment('Author. NULL after the author is deleted'),
 			)
 			.withTimestamps.withIndexOn(['slug'], true)
-			// An agent collection has NULL in both columns, so these rows do not collide.
+			// An agent collection has no project, so its name does not collide with others.
 			.withIndexOn(['ownerProjectId', 'name'], true)
 			// One private collection for each agent. Both databases let many NULLs pass a
 			// unique index, so a plain index has the effect of a partial one.
@@ -102,11 +94,11 @@ export class CreateKnowledgeCollectionTables1794937304000 implements ReversibleM
 				columnName: 'id',
 				onDelete: 'SET NULL',
 			})
-			// The service also rejects an empty description and checks its length.
+			// A collection has exactly one owner, a project or an agent. A private
+			// collection is not global.
 			.withCheck(
-				`CHK_${tablePrefix}knowledge_collection_kind`,
-				`(${kind} = 'agent' AND ${agentId} IS NOT NULL AND ${ownerProjectId} IS NULL AND ${isGlobal} = ${falseValue})` +
-					` OR (${kind} = 'shared' AND ${agentId} IS NULL AND ${ownerProjectId} IS NOT NULL AND ${name} IS NOT NULL AND ${description} IS NOT NULL)`,
+				`CHK_${tablePrefix}knowledge_collection_owner`,
+				`((${agentId} IS NULL) <> (${ownerProjectId} IS NULL)) AND (${agentId} IS NULL OR ${isGlobal} = ${falseValue})`,
 			);
 	}
 
@@ -120,10 +112,10 @@ export class CreateKnowledgeCollectionTables1794937304000 implements ReversibleM
 			.withColumns(
 				column('knowledgeCollectionId').varchar(16).primary,
 				column('projectId').varchar(36).primary,
+				// No CHECK on the values: the service validates them.
 				column('role')
 					.varchar(32)
-					.notNull.withEnumCheck(['knowledgeCollection:owner', 'knowledgeCollection:user'])
-					.comment(
+					.notNull.comment(
 						"'knowledgeCollection:owner' (the home project, as in knowledge_collection.ownerProjectId) or 'knowledgeCollection:user'",
 					),
 			)

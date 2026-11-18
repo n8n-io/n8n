@@ -6,18 +6,18 @@ import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8
  * collection (`kind = 'shared'`) belongs to a project. A private collection
  * (`kind = 'agent'`) belongs to one agent.
  *
- * The check `CHK_knowledge_collection_kind` sets which columns each kind fills.
- * The service checks that a shared collection has a description of at most
- * `VECTOR_STORE_USE_WHEN_MAX_LENGTH` characters: agents read it on every turn.
+ * The check `CHK_knowledge_collection_owner` gives each collection exactly one
+ * owner, a project or an agent. The database does not check `kind`: the service
+ * sets it to agree with the owner columns.
  */
 @Entity({ name: 'knowledge_collection' })
 @Index(['slug'], { unique: true })
 @Index(['ownerProjectId', 'name'], { unique: true })
 @Index(['agentId'], { unique: true })
 export class KnowledgeCollection extends WithTimestampsAndStringId {
-	/** Unique in the owner project. Null for an agent collection. */
-	@Column({ type: 'varchar', length: 128, nullable: true })
-	name: string | null;
+	/** Unique in the owner project of a shared collection. */
+	@Column({ type: 'varchar', length: 128 })
+	name: string;
 
 	/** Tells the agent when to use the collection. */
 	@Column({ type: 'text', nullable: true })

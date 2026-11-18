@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "shared_knowledge_collection" ("knowledgeCollectionId" varchar(16) NOT NULL, "projectId" varchar(36) NOT NULL, "role" varchar(32) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_shared_knowledge_collection_role" CHECK ("role" IN ('knowledgeCollection:owner', 'knowledgeCollection:user')), CONSTRAINT "FK_453e7baab9b2d4f7a02569cca80" FOREIGN KEY ("knowledgeCollectionId") REFERENCES "knowledge_collection" ("id") ON DELETE CASCADE, CONSTRAINT "FK_86b015e85d35453e6a5d653c41c" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, PRIMARY KEY ("knowledgeCollectionId", "projectId"))
+CREATE TABLE "shared_knowledge_collection" ("knowledgeCollectionId" varchar(16) NOT NULL, "projectId" varchar(36) NOT NULL, "role" varchar(32) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_453e7baab9b2d4f7a02569cca80" FOREIGN KEY ("knowledgeCollectionId") REFERENCES "knowledge_collection" ("id") ON DELETE CASCADE, CONSTRAINT "FK_86b015e85d35453e6a5d653c41c" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, PRIMARY KEY ("knowledgeCollectionId", "projectId"))
 ```
 
 </details>
@@ -25,7 +25,6 @@ CREATE TABLE "shared_knowledge_collection" ("knowledgeCollectionId" varchar(16) 
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("role" IN ('knowledgeCollection:owner', 'knowledgeCollection:user')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (knowledgeCollectionId) REFERENCES knowledge_collection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | knowledgeCollectionId | PRIMARY KEY | PRIMARY KEY (knowledgeCollectionId) |
