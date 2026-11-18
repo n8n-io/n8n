@@ -9,6 +9,11 @@
 // that each other MIME node takes and never uses are zero) and `new Date()` gives
 // its time. Nothing is masked.
 //
+// The vectors after the first 500 have the mail options of the Gmail node
+// (`encodeEmail` of nodes-base/nodes/Google/Gmail/GenericFunctions.ts): the
+// message comes from `MailComposer` and `build`, with `keepBcc`, `inReplyTo`,
+// `references`, and files with a content type.
+//
 // Run by hand from workflow-runtime: node src/core/gen_mail_cases.mjs
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -18,6 +23,7 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const nodesBase = createRequire(join(here, '../../../packages/nodes-base/package.json'));
 const nodemailer = nodesBase('nodemailer');
+const MailComposer = nodesBase('nodemailer/lib/mail-composer');
 const crypto = nodesBase('node:crypto');
 const version = nodesBase('nodemailer/package.json').version;
 if (version !== '10.1.4') throw new Error(`nodemailer is ${version}; mail.zig states 10.1.4.`);
@@ -75,7 +81,49 @@ const transport = nodemailer.createTransport({
 	},
 });
 
+/** The message of the Gmail node: the mail options and the calls of `encodeEmail`. */
+async function buildComposed(fields, now, random) {
+	fixedNow = now;
+	entropy = random;
+	entropyAt = 0;
+	globalThis.Date = FixedDate;
+	crypto.randomBytes = fixedRandomBytes;
+	try {
+		const mailOptions = {
+			from: fields.from,
+			to: fields.to,
+			cc: fields.cc,
+			bcc: fields.bcc,
+			replyTo: fields.replyTo,
+			inReplyTo: fields.inReplyTo,
+			references: fields.references,
+			subject: fields.subject,
+			text: fields.text,
+			keepBcc: true,
+		};
+		if (fields.html) mailOptions.html = fields.html;
+		if (fields.attachments.length > 0) {
+			mailOptions.attachments = fields.attachments.map((a) => ({
+				filename: a.filename,
+				content: a.content,
+				contentType: a.contentType,
+				encoding: 'base64',
+			}));
+		}
+		mailOptions.disableFileAccess = true;
+		mailOptions.disableUrlAccess = true;
+		const mail = new MailComposer(mailOptions).compile();
+		mail.keepBcc = true;
+		const message = await mail.build();
+		return { message, envelope: mail.getEnvelope(), messageId: mail.messageId() };
+	} finally {
+		globalThis.Date = RealDate;
+		crypto.randomBytes = realRandomBytes;
+	}
+}
+
 async function build(fields, now, random) {
+	if (fields.composed) return await buildComposed(fields, now, random);
 	fixedNow = now;
 	entropy = random;
 	entropyAt = 0;
@@ -395,6 +443,87 @@ const fixed = [
 	{ from: 'a@example.com', to: 'b@example.com', text: '漢字'.repeat(30000), attachments: [] },
 ];
 
+// ---- the fields of the Gmail node -------------------------------------------------
+
+const plainAddresses = ['a@example.com', 'bob@example.com', 'first.last@a-b.example', 'x@y.org'];
+// `prepareEmailsInput` of the Gmail node: each entry in `<` and `>` with `, `, or as it is with `,`.
+const gmailList = () => {
+	if (below(8) === 0) return '';
+	return Array.from({ length: 1 + below(4) }, () => {
+		const entry = below(3) === 0 ? pick(addresses) : pick(plainAddresses);
+		return entry.includes('<') && entry.includes('>') ? `${entry},` : `<${entry}>, `;
+	}).join('');
+};
+const ids = [
+	'<CAF=abc123+xyz@mail.gmail.com>',
+	'<id-1@example.com>',
+	'plain-id@host',
+	' <spaced@example.com> ',
+	'<a b@c>',
+	'<',
+	'two <ids@x> here',
+	'x',
+];
+const hostIds = ['tab\tid', 'line\nbreak', '<ünï@x>'];
+const referenceLists = [
+	'<a@x.example> <b@y.example>',
+	'<a@x.example>  <b@y.example>   <c@z.example>',
+	'a@x.example b@y.example',
+	'<a b@x> c',
+	' ',
+	'<unclosed a b',
+	'<a@x>,<b@y>',
+	'<a@x><b@y>',
+	'> <',
+	'<one@example.com> <two@example.com> <three@example.com> <four@example.com> <five@example.com>',
+];
+const idField = (list) => {
+	const roll = below(10);
+	if (roll === 0) return undefined;
+	if (roll === 1) return '';
+	if (roll === 2) return pick(hostIds);
+	return pick(list);
+};
+const types = [
+	'image/png',
+	'application/pdf',
+	'text/plain',
+	'text/csv',
+	'text/html',
+	'application/octet-stream',
+	'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+	'TEXT/Plain',
+	'application/json',
+];
+const hostTypes = ['text/plain; charset=utf-8', 'message/rfc822', 'nonsense', 'a/b c', '/x', 'x/'];
+const gmailFiles = () => {
+	if (below(2) !== 0) return [];
+	return Array.from({ length: 1 + below(3) }, () => ({
+		filename: below(15) === 0 ? pick(hostNames) : pick(names),
+		content: bytes(pick(sizes)),
+		contentType: below(6) === 0 ? undefined : below(12) === 0 ? pick(hostTypes) : pick(types),
+	}));
+};
+const gmailFields = () => {
+	const html = below(2) === 0;
+	const body = below(8) === 0 ? '' : (bodyField() ?? '');
+	const reply = below(2) === 0;
+	return {
+		composed: true,
+		from: below(3) === 0 ? pick(addresses) : below(3) === 0 ? '' : `Sender Name <${pick(plainAddresses)}>`,
+		to: gmailList(),
+		cc: below(3) === 0 ? gmailList() : '',
+		bcc: below(3) === 0 ? gmailList() : '',
+		replyTo: below(4) === 0 ? gmailList() : '',
+		inReplyTo: reply ? idField(ids) : undefined,
+		references: reply ? idField(referenceLists) : undefined,
+		subject: subjectField() ?? '',
+		text: html ? '' : body,
+		html: html ? (below(3) === 0 ? attribution(body) : body) : '',
+		attachments: gmailFiles(),
+	};
+};
+
 // ---- the output -------------------------------------------------------------------
 
 const hex = (value) => Buffer.from(value ?? '', 'utf8').toString('hex');
@@ -406,12 +535,15 @@ const fnv = (buf) => {
 const inline_limit = 2500;
 
 const cases = [];
-const total = 500;
+const sent = 500;
+const total = sent + 300;
 for (let i = 0; i < total; i++) {
 	const fields =
 		i < fixed.length
 			? fixed[i]
-			: {
+			: i >= sent
+				? gmailFields()
+				: {
 					from:
 						below(10) === 0 ? addressField() : pick(addresses.concat(hostAddresses.slice(0, 2))),
 					to: addressField(),
@@ -436,7 +568,7 @@ for (let i = 0; i < total; i++) {
 	const atts = fields.attachments
 		.map(
 			(a) =>
-				`.{ .filename = "${hex(a.filename)}", .cid = "${hex(a.cid)}", .content = "${a.content.toString('hex')}" }`,
+				`.{ .filename = "${hex(a.filename)}", .cid = "${hex(a.cid)}", .content = "${a.content.toString('hex')}", .content_type = "${hex(a.contentType)}" }`,
 		)
 		.join(', ');
 	const big = (value) => {
@@ -456,6 +588,7 @@ for (let i = 0; i < total; i++) {
 		`    .{ .from = "${hex(fields.from)}", .to = "${hex(fields.to)}", .cc = "${hex(fields.cc)}", .bcc = "${hex(fields.bcc)}", ` +
 			`.reply_to = "${hex(fields.replyTo)}", .subject = "${hex(fields.subject)}", ` +
 			`.text = "${text.unit}", .text_count = ${text.count}, .html = "${html.unit}", .html_count = ${html.count}, ` +
+			`.in_reply_to = "${hex(fields.inReplyTo)}", .references = "${hex(fields.references)}", .keep_bcc = ${fields.composed === true}, ` +
 			`.attachments = &.{${atts}}, .now_ms = ${now}, .random = "${random.toString('hex')}", ` +
 			`.want = "${large ? '' : message.toString('hex')}", .want_len = ${message.length}, .want_hash = 0x${fnv(message).toString(16)}, ` +
 			`.envelope_from = "${hex(info.envelope.from === false ? '' : info.envelope.from)}", ` +
@@ -470,7 +603,7 @@ writeFileSync(
 		'//! Every text is in hex. `want` is empty for a long message: `want_len` and',
 		'//! `want_hash` (FNV-1a, 64 bits) state it.',
 		'',
-		'pub const Attachment = struct { filename: []const u8, cid: []const u8, content: []const u8 };',
+		'pub const Attachment = struct { filename: []const u8, cid: []const u8, content: []const u8, content_type: []const u8 };',
 		'',
 		'pub const Vector = struct {',
 		'    from: []const u8,',
@@ -483,6 +616,9 @@ writeFileSync(
 		'    text_count: u32,',
 		'    html: []const u8,',
 		'    html_count: u32,',
+		'    in_reply_to: []const u8,',
+		'    references: []const u8,',
+		'    keep_bcc: bool,',
 		'    attachments: []const Attachment,',
 		'    now_ms: i64,',
 		'    random: []const u8,',

@@ -1,6 +1,7 @@
 import { parameterVariants } from '../variants.ts';
 import type { Json, WalkNode, WalkProperty } from '../walk.ts';
-import { locatorMiss, locatorSample } from '../walk.ts';
+import type { WalkMode } from '../walk.ts';
+import { locatorMiss, locatorRule, locatorSample } from '../walk.ts';
 
 const nodeOf = (properties: WalkProperty[]): WalkNode =>
 	({
@@ -13,33 +14,34 @@ const choices = (count: number) =>
 	Array.from({ length: count }, (_, at) => ({ name: `Choice ${at + 1}`, value: `c${at + 1}` }));
 
 describe('a resource locator', () => {
-	const property = {
-		name: 'documentURL',
-		type: 'resourceLocator',
-		default: { mode: 'url', value: '' },
-		modes: [
-			{ name: 'url', extractValue: { type: 'regex', regex: /docs\.google\.com\/document\/d\/(\w+)/ } },
-			{ name: 'id', extractValue: { type: 'regex', regex: /^([A-Za-z0-9-_]+)$/ } },
-			{ name: 'list', typeOptions: {} },
-		],
-	} as unknown as WalkProperty;
+	const modes = [
+		{ name: 'url', extractValue: { type: 'regex', regex: /docs\.google\.com\/document\/d\/(\w+)/ } },
+		{ name: 'id', extractValue: { type: 'regex', regex: /^([A-Za-z0-9-_]+)$/ } },
+		{ name: 'list' },
+	] as unknown as WalkMode[];
 
-	it('gives a value that the rule of the id mode reads', () => {
-		expect(locatorSample(property)).toEqual({ __rl: true, mode: 'id', value: 'id1' });
+	const mode = (name: string) => modes.find((entry) => entry.name === name);
+
+	it('gives a value that the rule of a mode reads', () => {
+		expect(locatorSample(mode('id'))).toBe('id1');
+		expect(locatorSample(mode('url'))).toBeUndefined();
 	});
 
-	it('gives a value that the rule of the mode cannot read', () => {
-		expect(locatorMiss(property, 'id')).toBe('');
+	it('gives a value that the rule of a mode cannot read', () => {
+		expect(locatorMiss(mode('id'))).toBe('');
+		expect(locatorMiss(mode('url'))).toBe('');
 	});
 
-	it('keeps the plain value of a mode without a rule', () => {
-		expect(locatorSample({ name: 'x', type: 'resourceLocator' })).toEqual({
-			__rl: true,
-			mode: 'id',
-			value: 'id1',
-		});
-		expect(locatorMiss({ name: 'x', type: 'resourceLocator' }, 'id')).toBeUndefined();
-		expect(locatorMiss(property, 'list')).toBeUndefined();
+	it('gives a value for a mode without a rule', () => {
+		expect(locatorSample(mode('list'))).toBe('id1');
+		expect(locatorMiss(mode('list'))).toBeUndefined();
+		expect(locatorSample(undefined)).toBe('id1');
+		expect(locatorMiss(undefined)).toBeUndefined();
+	});
+
+	it('reads the rule of a mode as the node declares it', () => {
+		expect(locatorRule(mode('id'))?.source).toBe('^([A-Za-z0-9-_]+)$');
+		expect(locatorRule(mode('list'))).toBeUndefined();
 	});
 });
 

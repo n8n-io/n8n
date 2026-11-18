@@ -17,8 +17,9 @@ const mime_table = @import("mailmime_tables.zig");
 
 pub const Error = error{ NoSpace, HostOnly };
 
-/// One file. An empty `cid` is no content id.
-pub const Attachment = struct { filename: []const u8, cid: []const u8 = "", content: []const u8 };
+/// One file. An empty `cid` is no content id. An empty `content_type` is
+/// the type that nodemailer finds for the file name.
+pub const Attachment = struct { filename: []const u8, cid: []const u8 = "", content: []const u8, content_type: []const u8 = "" };
 
 /// The mail options of the node. An empty text is an option that is not set:
 /// nodemailer tests each for truth.
@@ -32,6 +33,11 @@ pub const Fields = struct {
     text: []const u8 = "",
     html: []const u8 = "",
     attachments: []const Attachment = &.{},
+    /// `inReplyTo` and `references` of the mail options (the Gmail node).
+    in_reply_to: []const u8 = "",
+    references: []const u8 = "",
+    /// `keepBcc` of the compiled message: the Bcc header is written.
+    keep_bcc: bool = false,
 };
 
 pub const Rcpt = smtp.Rcpt;
@@ -81,7 +87,7 @@ pub fn build(f: Fields, e: Entropy, w: Work) Error!Built {
     for (f.attachments) |a| {
         if (f.html.len > 0 and a.cid.len > 0) b.related += 1 else b.attached += 1;
     }
-    const texts = [_][]const u8{ f.from, f.to, f.cc, f.bcc, f.reply_to, f.subject, f.text, f.html };
+    const texts = [_][]const u8{ f.from, f.to, f.cc, f.bcc, f.reply_to, f.subject, f.text, f.html, f.in_reply_to, f.references };
     for (texts) |t| if (!validUtf8(t)) return error.HostOnly;
     try b.root();
     const last = if (b.out.len > 0) b.out.buf[b.out.len - 1] else 0;
@@ -251,15 +257,18 @@ const Builder = struct {
         try b.out.put("\r\n\r\n");
     }
 
-    /// From, To, Cc, Reply-To, Subject and Message-ID, and the envelope.
+    /// From, To, Cc, Bcc (when it is kept), Reply-To, In-Reply-To, References,
+    /// Subject and Message-ID, and the envelope.
     fn rootHeaders(b: *Builder) Error!void {
         std.debug.assert(b.nrcpts == 0 and b.message_id.len == 0);
         try b.addressHeader("From: ", b.f.from, .from, true);
         try b.addressHeader("To: ", b.f.to, .rcpt, true);
         try b.addressHeader("Cc: ", b.f.cc, .rcpt, true);
-        // Bcc gives recipients and no header.
-        try b.addressHeader("Bcc: ", b.f.bcc, .rcpt, false);
+        // Bcc gives recipients, and a header only when the message keeps it.
+        try b.addressHeader("Bcc: ", b.f.bcc, .rcpt, b.f.keep_bcc);
         try b.addressHeader("Reply-To: ", b.f.reply_to, .reply_to, true);
+        try b.inReplyToHeader();
+        try b.referencesHeader();
         try b.subjectHeader();
         const at = b.notes.len;
         try b.notes.byte('<');
@@ -289,6 +298,54 @@ const Builder = struct {
     fn tailHeaders(b: *Builder, content_type: []const u8) Error!void {
         try b.datedHeaders();
         try b.plainHeader("Content-Type: ", content_type);
+    }
+
+    /// `In-Reply-To`: the value in `<` and `>` (`_encodeHeaderValue`).
+    fn inReplyToHeader(b: *Builder) Error!void {
+        const v = b.f.in_reply_to;
+        if (v.len == 0) return;
+        if (!idTextTaken(v)) return error.HostOnly;
+        b.line.len = 0;
+        try b.line.put("In-Reply-To: ");
+        if (v[0] != '<') try b.line.byte('<');
+        try b.line.put(v);
+        if (v[v.len - 1] != '>') try b.line.byte('>');
+        try b.endHeader(13);
+    }
+
+    /// `References`: the ids between the spaces, each in `<` and `>`, with
+    /// one space between them. An id in `<` and `>` loses its spaces first.
+    fn referencesHeader(b: *Builder) Error!void {
+        std.debug.assert(b.tmp2.buf.len > 0);
+        if (b.f.references.len == 0) return;
+        if (!idTextTaken(b.f.references)) return error.HostOnly;
+        const v = std.mem.trim(u8, b.f.references, " ");
+        // `<[^>]*>` of nodemailer: a `<` opens a part that ends at the next `>`.
+        // Without that `>`, the `<` is a plain character.
+        b.tmp2.len = 0;
+        var open = false;
+        for (v, 0..) |c, i| {
+            if (!open and c == '<' and std.mem.indexOfScalarPos(u8, v, i + 1, '>') != null) open = true;
+            if (open and c == '>') open = false;
+            if (open and c == ' ') continue;
+            try b.tmp2.byte(c);
+        }
+        b.line.len = 0;
+        try b.line.put("References: ");
+        var ids = std.mem.tokenizeScalar(u8, b.tmp2.buf[0..b.tmp2.len], ' ');
+        var count: usize = 0;
+        // Each id has one byte or more: the text bounds the loop.
+        for (0..b.tmp2.len + 1) |_| {
+            const id = ids.next() orelse break;
+            if (count > 0) try b.line.byte(' ');
+            count += 1;
+            if (id[0] != '<') try b.line.byte('<');
+            try b.line.put(id);
+            if (id[id.len - 1] != '>') try b.line.byte('>');
+        }
+        // A value of spaces only is one empty id.
+        if (count == 0) try b.line.put("<>");
+        try b.endHeader(12);
     }
 
     fn subjectHeader(b: *Builder) Error!void {
@@ -418,7 +475,8 @@ const Builder = struct {
         b.headers = 0;
         if (!fileNameTaken(a.filename)) return error.HostOnly;
         for (a.cid) |c| if (c < 0x20 or c >= 0x7f or c == '"') return error.HostOnly;
-        const kind = contentType(a.filename);
+        if (a.content_type.len > 0 and !typeTaken(a.content_type)) return error.HostOnly;
+        const kind = if (a.content_type.len > 0) a.content_type else contentType(a.filename);
         if (startsWithIgnoreCase(kind, "message/")) return error.HostOnly;
         const quote = needsQuotes(a.filename);
         if (!is_root) try b.typeHeader(kind, a.filename, quote);
@@ -978,6 +1036,25 @@ fn fileNameTaken(name: []const u8) bool {
     return true;
 }
 
+/// A content type of a file that nodemailer writes as it is: `type/subtype`
+/// in token characters, without a parameter.
+fn typeTaken(kind: []const u8) bool {
+    const slash = std.mem.indexOfScalar(u8, kind, '/') orelse return false;
+    if (slash == 0 or slash + 1 == kind.len) return false;
+    for (kind, 0..) |c, i| {
+        if (i == slash) continue;
+        if (!std.ascii.isAlphanumeric(c) and std.mem.indexOfScalar(u8, "!#$&^_.+-", c) == null) return false;
+    }
+    return true;
+}
+
+/// A value of In-Reply-To or References in printable ASCII: no line break
+/// and no white space other than a space.
+fn idTextTaken(value: []const u8) bool {
+    for (value) |c| if (c < 0x20 or c >= 0x7f) return false;
+    return true;
+}
+
 fn needsQuotes(name: []const u8) bool {
     return name[0] == '-' or std.mem.indexOfAny(u8, name, " '\\;:/=(),<>@[]?") != null;
 }
@@ -1068,7 +1145,7 @@ const Rig = struct {
     fn fields(g: *Rig, v: cases.Vector) Fields {
         g.at = 0;
         for (v.attachments, 0..) |a, i| {
-            g.attachments[i] = .{ .filename = g.bytes(a.filename, 1), .cid = g.bytes(a.cid, 1), .content = g.bytes(a.content, 1) };
+            g.attachments[i] = .{ .filename = g.bytes(a.filename, 1), .cid = g.bytes(a.cid, 1), .content = g.bytes(a.content, 1), .content_type = g.bytes(a.content_type, 1) };
         }
         return .{
             .from = g.bytes(v.from, 1),
@@ -1080,6 +1157,9 @@ const Rig = struct {
             .text = g.bytes(v.text, v.text_count),
             .html = g.bytes(v.html, v.html_count),
             .attachments = g.attachments[0..v.attachments.len],
+            .in_reply_to = g.bytes(v.in_reply_to, 1),
+            .references = g.bytes(v.references, 1),
+            .keep_bcc = v.keep_bcc,
         };
     }
 };
@@ -1104,7 +1184,11 @@ test "mail: the message, the envelope and the Message-ID equal nodemailer for ea
     defer gpa.destroy(g);
     defer for ([_][]u8{ g.out, g.scratch, g.text }) |part| gpa.free(part);
     var built: usize = 0;
+    // The vectors with the mail options of the Gmail node.
+    var kept: usize = 0;
+    var built_kept: usize = 0;
     for (cases.vectors, 0..) |v, n| {
+        if (v.keep_bcc) kept += 1;
         const f = g.fields(v);
         const e = entropyOf(g, v);
         const got = build(f, e, g.work()) catch |err| {
@@ -1113,6 +1197,7 @@ test "mail: the message, the envelope and the Message-ID equal nodemailer for ea
             continue;
         };
         built += 1;
+        if (v.keep_bcc) built_kept += 1;
         errdefer std.debug.print("vector {d}\n", .{n});
         if (v.want.len > 0) try std.testing.expectEqualStrings(g.bytes(v.want, 1), got.message);
         try std.testing.expectEqual(@as(usize, v.want_len), got.message.len);
@@ -1125,6 +1210,7 @@ test "mail: the message, the envelope and the Message-ID equal nodemailer for ea
     }
     // The vectors hold inputs outside the subset on purpose; most are inside.
     try std.testing.expect(built * 10 >= cases.vectors.len * 6);
+    try std.testing.expect(kept >= 300 and built_kept * 10 >= kept * 6);
 }
 
 test "mail: a buffer that is too small is a limit, and no byte is written past it" {

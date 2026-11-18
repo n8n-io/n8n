@@ -194,7 +194,9 @@ pub fn glue(gpa: std.mem.Allocator, meta: ?[]const u8) ![]u8 {
     return a.finish();
 }
 
-pub const Upstream = enum { none, http, fallback_code };
+/// `http_read` is `http` with a step that reads the headers and the body of the answer, so the
+/// execution keeps them in its region.
+pub const Upstream = enum { none, http, http_read, fallback_code };
 
 /// W2 / W3 / W4: reply with the trigger body's id, after one upstream call.
 /// W3 calls the stub over native HTTP; W4 makes the call a code step that
@@ -214,7 +216,7 @@ pub fn webhookReply(gpa: std.mem.Allocator, meta: ?[]const u8, upstream: Upstrea
     try a.emit(.setprop, 0, 3, try a.str("id"), 2);
     switch (upstream) {
         .none => {},
-        .http => {
+        .http, .http_read => {
             try a.emit(.newobj, 0, 4, 0, 0);
             try a.emitBc(.loads, 5, try a.str("GET"));
             try a.emit(.setprop, 0, 4, try a.str("method"), 5);

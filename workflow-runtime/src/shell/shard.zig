@@ -181,7 +181,7 @@ pub const Shard = struct {
     }
 
     /// True when events for this execution need its snapshot restored first.
-    fn evicted(sh: *const Shard, exec_id: u64) bool {
+    pub fn evicted(sh: *const Shard, exec_id: u64) bool {
         return exec_id != 0 and sh.st.by_exec.get(exec_id) == null and sh.snaps.contains(exec_id);
     }
 

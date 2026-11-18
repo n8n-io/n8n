@@ -194,6 +194,13 @@ export interface ConvertOptions {
 	 * `src/nodes/shared/mssql-format.ts`.
 	 */
 	mssql?: boolean;
+	/**
+	 * The runtime has the native SMTP client (`wfrt serve --smtp-native`). The default is
+	 * false: the Send Email node runs in the fallback host. With true, the operation `send`
+	 * runs as a library node on the `smtp` effect, and the Gmail library node gets its
+	 * messages from the mail builder of the runtime.
+	 */
+	smtp?: boolean;
 }
 
 export interface InstanceInfo {
@@ -528,6 +535,21 @@ export class ModuleGenerator {
 		if (found) return found;
 		this.usesNoItems = true;
 		return 'noItems';
+	}
+
+	/**
+	 * The list of output `index` of node `name`, or null when there is none: the node did not
+	 * run before this one, or v1 has no such branch of it.
+	 */
+	private outputListOf(b: Body, node: string, index: number): string | null {
+		if (!this.known(b, node) || index < 0) return null;
+		// A connection from an output that the node does not have gives no run data in v1.
+		const def = b.graph.nodes.get(node);
+		const count = def ? knownMainOutputs(def) : undefined;
+		const errorOutput = def?.onError === 'continueErrorOutput' ? (wholeNodeOutputs(def) ?? 1) : 0;
+		if (count !== undefined && index > count - 1 && index !== errorOutput) return null;
+		const found = b.engine ? b.engineVars.get(node)?.get(index) : b.outputs.get(node)?.get(index);
+		return found ?? null;
 	}
 
 	private known(b: Body, node: string): boolean {
@@ -911,6 +933,7 @@ export class ModuleGenerator {
 			mysql: this.options.mysql,
 			mysqlRecordFirst: this.options.mysqlRecordFirst,
 			mssql: this.options.mssql,
+			smtp: this.options.smtp,
 			codeNodes:
 				this.options.codeNodes === 'host' || this.options.hostCodeNodes?.includes(node.name)
 					? 'host'
@@ -934,6 +957,7 @@ export class ModuleGenerator {
 					: null,
 			pairsByPosition: (name) => this.pairsByPosition(b, node.name, `${b.prefix}${name}`),
 			readOutput: (name) => this.branchOf(b, node.name, `${b.prefix}${name}`),
+			outputList: (name, index) => this.outputListOf(b, `${b.prefix}${name}`, index),
 			engine: b.engine,
 			traceAll: this.traceMode === 'all',
 			responded: this.waitsForRespondNode ? RESPONDED : undefined,

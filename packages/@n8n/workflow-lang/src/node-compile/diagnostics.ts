@@ -707,6 +707,19 @@ export const RULES: Rule[] = [
 		],
 	},
 	{
+		code: 'NC034',
+		title: 'A credential argument that the compiler cannot bind',
+		why: 'The engine fills the fields of a credential into the request. The compiler puts each field into the function that gets the credential. It can do this only for a function declaration or an arrow function with a plain parameter.',
+		remediation:
+			'Pass the credential as a plain parameter: `async function send(this: IExecuteFunctions, credentials: { apiKey: string })`. Do not give the parameter a default value, a rest pattern or a destructured pattern.',
+		forms: [
+			{
+				pattern:
+					/^a credential as an argument of a function that is not a declaration with a plain parameter has no compiled form$/,
+			},
+		],
+	},
+	{
 		code: 'NC040',
 		title: 'Class inheritance',
 		why: 'The compiler turns a class into plain functions. A parent class would need method lookup at run time.',

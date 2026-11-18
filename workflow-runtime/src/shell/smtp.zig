@@ -30,7 +30,7 @@ const marker_host = " (limit: smtp-host)";
 /// The files of one message.
 const max_files = 16;
 /// The text fields of a call, in the order of `mail.Fields`.
-const field_names = [_][]const u8{ "from", "to", "cc", "bcc", "replyTo", "subject", "text", "html" };
+const field_names = [_][]const u8{ "from", "to", "cc", "bcc", "replyTo", "subject", "text", "html", "inReplyTo", "references" };
 /// The session of a slot that has no call.
 const no_call: smtp.Config = .{ .name = "", .secure = false, .ignore_tls = false, .auth = false, .user = "", .pass = "", .from = "" };
 
@@ -175,7 +175,8 @@ pub const Client = struct {
                 .msg = try reserve(gpa, u8, cfg.max_request),
                 .env = try reserve(gpa, u8, 64 + 300 * @as(usize, cfg.max_rcpts)),
                 .rcpts = try gpa.alloc(smtp.Rcpt, cfg.max_rcpts),
-                .out = try reserve(gpa, u8, 512 << 10),
+                // The result of a call that builds only is the message in base64.
+                .out = try reserve(gpa, u8, @max(512 << 10, std.base64.url_safe_no_pad.Encoder.calcSize(cfg.max_request) + 1024)),
             };
         }
         c.name_len = defaultName(&c.name_buf).len;
@@ -225,7 +226,8 @@ pub const Client = struct {
             c.failText(ri, &.{msg});
             return null;
         }
-        c.open(ri);
+        // A call that builds only has its result now.
+        if (r.ok) c.pushDone(ri) else c.open(ri);
         return null;
     }
 
@@ -244,6 +246,13 @@ pub const Client = struct {
         @memcpy(r.args[0..args.len], args);
         var call: smtp_call.Call = .{};
         if (smtp_call.parseCall(r.args[0..args.len], &call)) |msg| return msg;
+        if (call.build) {
+            const built = switch (c.compose(r, r.args[0..args.len])) {
+                .message => |m| m,
+                .refused => |msg| return msg,
+            };
+            return writeBuilt(r, built);
+        }
         const st = store orelse c.cfg.credentials orelse return "smtp: the runtime has no credentials";
         var set: smtp_call.Settings = .{};
         if (smtp_call.loadSettings(st, call.credential, &set)) |msg| return msg;
@@ -302,6 +311,9 @@ pub const Client = struct {
             .text = values[6],
             .html = values[7],
             .attachments = files[0..nfiles],
+            .in_reply_to = values[8],
+            .references = values[9],
+            .keep_bcc = std.mem.eql(u8, std.mem.trim(u8, http.member(raw, "keepBcc") orelse "false", " \t\r\n"), "true"),
         };
         const work: mail.Work = .{ .out = r.msg, .scratch = c.scratch, .notes = r.env, .rcpts = r.rcpts };
         const built = mail.build(fields, c.cfg.entropy orelse freshEntropy(c.now_ms), work) catch |e| return .{ .refused = switch (e) {
@@ -745,6 +757,27 @@ pub const Client = struct {
     }
 };
 
+/// The result of a call that builds only: `{"raw":…,"messageId":…}`. `raw`
+/// is the message in base64 with `-` and `_`, and without padding, as the
+/// Gmail node of n8n writes it (`encodeEmail`). The answer is null, or the text of a limit.
+fn writeBuilt(r: *Req, built: mail.Built) ?[]const u8 {
+    std.debug.assert(built.message.len > 0 and !r.ok);
+    const enc = std.base64.url_safe_no_pad.Encoder;
+    const head = "{\"raw\":\"";
+    const size = enc.calcSize(built.message.len);
+    if (head.len + size + built.message_id.len * 6 + 32 > r.out.len) return "smtp: the message is larger than --smtp-max-message-kb" ++ marker_host;
+    @memcpy(r.out[0..head.len], head);
+    const text = enc.encode(r.out[head.len..][0..size], built.message);
+    std.debug.assert(text.len == size);
+    var o: smtp.Out = .{ .buf = r.out, .len = head.len + size };
+    o.put("\",\"messageId\":") catch return "smtp: the result does not fit its buffer (limit)";
+    o.string(built.message_id) catch return "smtp: the result does not fit its buffer (limit)";
+    o.byte('}') catch return "smtp: the result does not fit its buffer (limit)";
+    r.out_len = o.len;
+    r.ok = true;
+    return null;
+}
+
 /// `envelope` and `messageId` of `info`, at the end of the result.
 fn writeEnvelope(r: *const Req, o: *smtp.Out) error{NoSpace}!void {
     std.debug.assert(o.len > 0 and o.buf[o.len - 1] == '}');
@@ -806,6 +839,7 @@ fn stringOf(item: []const u8, name: []const u8) ?[]const u8 {
 fn readFile(text: *creds.Out, item: []const u8) FileError!mail.Attachment {
     const filename = decode(text, stringOf(item, "filename") orelse return error.BadFile) orelse return error.BadFile;
     const cid = if (stringOf(item, "cid")) |raw| decode(text, raw) orelse return error.BadFile else "";
+    const kind = if (stringOf(item, "contentType")) |raw| decode(text, raw) orelse return error.BadFile else "";
     const data = http.plainString(stringOf(item, "data") orelse return error.BadFile) orelse return error.BadFile;
     const space = text.buf[text.len..];
     if (binary_store.isStoredMarker(data)) {
@@ -818,14 +852,14 @@ fn readFile(text: *creds.Out, item: []const u8) FileError!mail.Attachment {
             error.NoStore, error.BadId, error.Io => error.NoStore,
         };
         text.len += stored.len;
-        return .{ .filename = filename, .cid = cid, .content = stored };
+        return .{ .filename = filename, .cid = cid, .content = stored, .content_type = kind };
     }
     const dec = std.base64.standard.Decoder;
     const n = dec.calcSizeForSlice(data) catch return error.BadFile;
     if (n > space.len) return error.TooLarge;
     dec.decode(space[0..n], data) catch return error.BadFile;
     text.len += n;
-    return .{ .filename = filename, .cid = cid, .content = space[0..n] };
+    return .{ .filename = filename, .cid = cid, .content = space[0..n], .content_type = kind };
 }
 
 /// A raw JSON string of the call, decoded into `out`.

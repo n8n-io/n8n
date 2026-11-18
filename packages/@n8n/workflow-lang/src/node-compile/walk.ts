@@ -1,5 +1,5 @@
 import type { NodeDescription } from '../convert/node-parameters.ts';
-import { getNodeParameters } from '../convert/node-parameters.ts';
+import { displayParameter, getNodeParameters } from '../convert/node-parameters.ts';
 import type { CredentialTypeRegistry } from '../credentials/types.ts';
 
 export type Json = Record<string, unknown>;
@@ -19,6 +19,7 @@ export interface WalkMember {
 
 export interface WalkMode {
 	name?: string;
+	placeholder?: unknown;
 	extractValue?: { type?: string; regex?: unknown };
 }
 
@@ -61,60 +62,78 @@ const VALID_SAMPLES: Record<string, unknown> = {
 
 const LOCATOR_SAMPLES = [
 	'id1',
+	'12345',
+	'0123456789abcdef0123456789abcdef',
+	'01234567-89ab-4def-8123-456789abcdef',
 	'a@example.test',
-	'https://example.test/id1',
-	'https://docs.google.com/document/d/id1/edit',
-	'https://drive.google.com/file/d/id1/view',
-	'https://drive.google.com/drive/folders/id1',
-	'https://example.test/d/id1/edit',
 ];
+const LOCATOR_SAMPLE_LIMIT = 200;
 const LOCATOR_MISSES = ['', 'no match'];
 
-export function locatorRule(
-	property: WalkProperty | undefined,
-	mode: unknown,
-): { pattern: string; flags: string } | undefined {
-	const rule = (property?.modes ?? []).find((entry) => entry.name === mode)?.extractValue;
-	if (rule === undefined || rule.type !== 'regex') return undefined;
-	if (typeof rule.regex === 'string') return { pattern: rule.regex, flags: '' };
-	return rule.regex instanceof RegExp
-		? { pattern: rule.regex.source, flags: rule.regex.flags }
-		: undefined;
+export function displayedProperty(
+	node: WalkNode,
+	version: number,
+	resolved: Json,
+	name: string,
+): WalkProperty | undefined {
+	const d = node.description;
+	return propertiesOf(node).find(
+		(p, at) =>
+			p.name === name && displayParameter(resolved, d.properties[at], version, d, resolved),
+	);
 }
 
-function matchesRule(rule: { pattern: string; flags: string }, text: string): boolean {
-	try {
-		const found = new RegExp(rule.pattern, rule.flags).exec(text);
-		return found !== null && found.length === 2 && typeof found[1] === 'string';
-	} catch {
-		return false;
-	}
+export function locatorRule(mode: WalkMode | undefined): RegExp | undefined {
+	const rule = mode?.extractValue;
+	if (!rule || rule.type !== 'regex') return undefined;
+	if (rule.regex instanceof RegExp) return new RegExp(rule.regex.source, rule.regex.flags);
+	return typeof rule.regex === 'string' ? new RegExp(rule.regex) : undefined;
 }
 
-export function locatorSample(property: WalkProperty | undefined): Json {
-	const rule = locatorRule(property, 'id');
-	const sample =
-		rule === undefined ? undefined : LOCATOR_SAMPLES.find((text) => matchesRule(rule, text));
-	return { __rl: true, mode: 'id', value: sample ?? 'id1' };
+export function locatorSample(mode: WalkMode | undefined): string | undefined {
+	const rule = locatorRule(mode);
+	if (rule === undefined) return LOCATOR_SAMPLES[0];
+	const placeholder =
+		typeof mode?.placeholder === 'string' && mode.placeholder.length <= LOCATOR_SAMPLE_LIMIT
+			? [mode.placeholder]
+			: [];
+	return [...LOCATOR_SAMPLES, ...placeholder].find((sample) => rule.exec(sample) !== null);
 }
 
-export function locatorMiss(property: WalkProperty | undefined, mode: unknown): string | undefined {
-	const rule = locatorRule(property, mode);
+export function locatorMiss(mode: WalkMode | undefined): string | undefined {
+	const rule = locatorRule(mode);
 	if (rule === undefined) return undefined;
-	return LOCATOR_MISSES.find((text) => {
-		try {
-			return new RegExp(rule.pattern, rule.flags).exec(text) === null;
-		} catch {
-			return false;
-		}
-	});
+	return LOCATOR_MISSES.find((text) => rule.exec(text) === null);
+}
+
+export function locatorWithoutSample(
+	node: WalkNode,
+	version: number,
+	parameters: Json,
+): string | undefined {
+	const resolved = resolveParameters(node, version, parameters);
+	for (const [name, value] of Object.entries(parameters)) {
+		if (typeof value !== 'object' || value === null || !('mode' in value) || !('value' in value))
+			continue;
+		const property = displayedProperty(node, version, resolved, name);
+		if (property?.type !== 'resourceLocator') continue;
+		const rule = locatorRule(property.modes?.find((mode) => mode.name === value.mode));
+		if (rule !== undefined && (typeof value.value !== 'string' || rule.exec(value.value) === null))
+			return name;
+	}
+	return undefined;
 }
 
 export function requiredParameters(node: WalkNode, version: number, start: Json): Json {
 	const properties = propertiesOf(node);
 	const out: Json = { ...start };
-	for (const [name, value] of Object.entries(resolveParameters(node, version, start))) {
-		const property = properties.find((p) => p.name === name);
+	const resolved = resolveParameters(node, version, start);
+	for (const [name, value] of Object.entries(resolved)) {
+		const defined = properties.filter((p) => p.name === name);
+		const property =
+			defined.length > 1 && defined.some((p) => p.type === 'resourceLocator')
+				? (displayedProperty(node, version, resolved, name) ?? defined[0])
+				: defined[0];
 		const type = property?.type;
 		if (name in out) continue;
 		const checked =
@@ -124,7 +143,10 @@ export function requiredParameters(node: WalkNode, version: number, start: Json)
 		if (type === 'string' && value === '') out[name] = checked ?? 'v1';
 		else if (type === 'json' && value === '') out[name] = '{}';
 		else if (type === 'number' && value === undefined) out[name] = 1;
-		else if (type === 'resourceLocator') out[name] = locatorSample(property);
+		else if (type === 'resourceLocator') {
+			const sample = locatorSample(property?.modes?.find((mode) => mode.name === 'id'));
+			out[name] = { __rl: true, mode: 'id', value: sample ?? LOCATOR_SAMPLES[0] };
+		}
 	}
 	return out;
 }

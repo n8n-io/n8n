@@ -14,6 +14,24 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { hashOfFile, NO_FILE } from '../src/nodes/__tests__/build-identity.ts';
+import type { KeyInputs, Progress } from '../src/node-compile/__tests__/verify-cache.ts';
+import {
+	CaseStore,
+	CLASS_READ,
+	findResult,
+	mergedList,
+	nodeKeys,
+	nodeTextOfProcess,
+	pruneCache,
+	readName,
+	readNow,
+	sharedParts,
+	storeResult,
+	subsetKey,
+	writeStatus,
+} from '../src/node-compile/__tests__/verify-cache.ts';
+
 import { publicCredential } from '../src/credentials/public.ts';
 import { loadCredentialTypes, registryOf } from '../src/credentials/types.ts';
 import type { ContinueForm, ErrorPairing } from '../src/node-compile/__tests__/verify.ts';
@@ -26,22 +44,29 @@ import {
 	flagKeyOf,
 	flagVariants,
 	FAILING_VALUE,
+	forgetPagingChoices,
 	itemFailureExpression,
 	itemFieldExpression,
 	MINTED_TOKEN_RESPONSE,
 } from '../src/node-compile/__tests__/verify.ts';
 import { ACCEPTED_COST_RISES } from '../src/node-compile/cost-accepted.ts';
 import { COST } from '../src/node-compile/cost.generated.ts';
+import { VERIFIED } from '../src/node-compile/verified.generated.ts';
 import type { ErrorMode, NodeSources } from '../src/node-compile/convert.ts';
 import { evaluateInSandbox } from '../src/node-compile/evaluate-node.ts';
 import type { Variant } from '../src/node-compile/variants.ts';
-import { mapperVariant, parameterVariants, withVariant } from '../src/node-compile/variants.ts';
+import {
+	filledGroups,
+	mapperVariant,
+	parameterVariants,
+	withVariant,
+} from '../src/node-compile/variants.ts';
 import type { Json, WalkNode, WalkProperty as Property } from '../src/node-compile/walk.ts';
 import {
 	credentialOf,
 	fakeCredentialData,
+	locatorWithoutSample,
 	operationsOf,
-	locatorMiss,
 	requiredParameters,
 	resolveParameters,
 } from '../src/node-compile/walk.ts';
@@ -64,9 +89,12 @@ import {
 import type { EquivalenceCase, NodeSettings } from '../src/nodes/__tests__/equivalence.ts';
 import {
 	disposeRecorder,
+	FALLBACK_HOST_DIR,
+	NODE_PACKAGES,
 	recordV1,
 	recordV1Cached,
 	recorderAvailable,
+	START_TYPE,
 } from '../src/nodes/__tests__/v1-recorder.ts';
 
 interface LoadedNode extends WalkNode {
@@ -80,7 +108,15 @@ const PREFIX = 'n8n-nodes-base.';
 const load = createRequire(join(base, 'package.json'));
 
 const ACCEPT_RISE = '--accept-cost-rise';
-const VALUE_FLAGS = ['--one', '--weights', '--key', ACCEPT_RISE];
+const VALUE_FLAGS = [
+	'--one',
+	'--weights',
+	'--status',
+	'--case-store',
+	'--part',
+	'--key',
+	ACCEPT_RISE,
+];
 const args = process.argv.slice(2);
 const valueOf = (flag: string) => (args.includes(flag) ? args[args.indexOf(flag) + 1] : undefined);
 const DIST = args.includes('--dist');
@@ -90,19 +126,35 @@ const ALL_BLOCKERS = args.includes('--all-blockers');
 const SHOW_COST = args.includes('--cost');
 const CHECK_COST = args.includes('--check-cost');
 const acceptedRises = new Set(args.filter((_arg, at) => at > 0 && args[at - 1] === ACCEPT_RISE));
+const WRITE = args.includes('--write');
 const one = valueOf('--one');
 const weightsFile = valueOf('--weights');
+const caseStoreFile = valueOf('--case-store');
 const keyText = valueOf('--key');
 const keyFilter = keyText === undefined ? undefined : new RegExp(keyText);
+const [PART, PARTS] = (valueOf('--part') ?? '0/1').split('/').map(Number);
+const inPart = (at: number, total: number) => Math.floor((at * PARTS) / total) === PART;
 const pattern = args.find((a, at) => !a.startsWith('--') && !VALUE_FLAGS.includes(args[at - 1]));
 const add = (into: Record<string, number>, from: Record<string, number> | undefined) => {
 	for (const [key, count] of Object.entries(from ?? {})) into[key] = (into[key] ?? 0) + count;
 };
-const MEASURE_COST =
-	SHOW_COST || CHECK_COST || (one === undefined && pattern === undefined && !DIST);
-const filter = new RegExp(one === undefined ? (pattern ?? '.') : `^${one}$`, 'i');
+const WHOLE = one === undefined && pattern === undefined && !DIST;
+const WRITES = !DIST && one === undefined && (WHOLE || WRITE);
+const MEASURE_COST = SHOW_COST || CHECK_COST || WHOLE || WRITE;
+const filter = new RegExp(pattern ?? '.', 'i');
 const PARALLEL = Number(process.env.VERIFY_PARALLEL) || 6;
 const NODE_TIMEOUT_MS = Number(process.env.VERIFY_NODE_TIMEOUT_MS) || 2_700_000;
+const CACHE_DIR = join(here, '../node_modules/.cache/verify-results');
+const RESULTS_DIR = join(CACHE_DIR, 'nodes');
+const CASES_DIR = join(CACHE_DIR, 'cases');
+const statusFile = valueOf('--status') ?? join(CACHE_DIR, 'status.json');
+const MAX_RESULT_FILES = 2000;
+const MAX_CASE_FILES = 3000;
+const SAVE_CASES_EVERY_MS = 120_000;
+const TRANSIENT = /no result after \d+ ms/;
+const MAX_SOURCE_TEXTS = 20_000;
+const STALE_EXIT_CODE = 2;
+const OPERATIONS_OF_A_PART = Number(process.env.VERIFY_PART_OPERATIONS) || 40;
 const UPLOAD_ANSWER = {
 	upload_url: 'https://files.example.com/upload/v1/abc',
 	file_id: 'F1',
@@ -187,13 +239,45 @@ function nodeOf(type: string, version: number): LoadedNode | undefined {
 	return node;
 }
 
+const repoDir = join(here, '../../../..');
+const reads: Record<string, string> = {};
+const sourceTexts = new Map<string, string | undefined>();
+const caseStore = caseStoreFile === undefined || !CACHE ? undefined : new CaseStore(caseStoreFile);
 const sources: NodeSources = {
 	entry: (type, version) => {
 		const node = nodeOf(type, version);
-		return node ? classFile.get(node.constructor.name) : undefined;
+		if (!node) return undefined;
+		const file = classFile.get(node.constructor.name);
+		reads[`${CLASS_READ}${node.constructor.name}`] = readNow(
+			repoDir,
+			(name) => classFile.get(name),
+			`${CLASS_READ}${node.constructor.name}`,
+		);
+		return file;
 	},
-	readFile: (path) =>
-		existsSync(path) && statSync(path).isFile() ? readFileSync(path, 'utf8') : undefined,
+	readFile: (path) => {
+		if (sourceTexts.has(path)) return sourceTexts.get(path);
+		const text =
+			existsSync(path) && statSync(path).isFile() ? readFileSync(path, 'utf8') : undefined;
+		reads[readName(repoDir, path)] = text === undefined ? NO_FILE : hashOfFile(path);
+		if (sourceTexts.size >= MAX_SOURCE_TEXTS) sourceTexts.clear();
+		sourceTexts.set(path, text);
+		return text;
+	},
+	...(caseStore === undefined
+		? {}
+		: {
+				subsetChecks: {
+					get: (type, version, source) => {
+						const kept = caseStore.get(subsetKey(type, version, source));
+						return Array.isArray(kept) && kept.every((error) => typeof error === 'string')
+							? kept
+							: undefined;
+					},
+					set: (type, version, source, errors) =>
+						caseStore.set(subsetKey(type, version, source), errors),
+				},
+			}),
 	description: (type, version) => nodeOf(type, version)?.description,
 	aliases: { '@utils/': `${base}/utils/` },
 	evaluate: evaluateInSandbox,
@@ -221,13 +305,12 @@ function readWeights(file: string | undefined): Map<string, number> {
 }
 const weights = readWeights(weightsFile);
 
-function weightOf(type: string, parameters: Json): number {
-	const operation = `${String(parameters.resource ?? '')}.${String(parameters.operation ?? '')}`;
-	return (
-		weights.get(`${type}:${operation}`) ??
-		weights.get(`${type.slice(PREFIX.length)}:${operation}`) ??
-		0
-	);
+function operationOf(type: string, parameters: Json): string {
+	return `${type}:${String(parameters.resource ?? '')}.${String(parameters.operation ?? '')}`;
+}
+
+function weightOf(operation: string): number {
+	return weights.get(operation) ?? weights.get(operation.slice(PREFIX.length)) ?? 0;
 }
 
 const SIGNING_KEY_FILE = join(here, '../node_modules/.cache/v1-recordings/test-signing-key.pem');
@@ -414,25 +497,12 @@ const OPERATION_ANSWERS: Record<string, OperationAnswers> = {
 	},
 };
 
-const MESSAGES_WITH_FILES = {
-	id: 'm1',
-	hasAttachments: true,
-	value: [
-		{ id: 'm1', subject: 'first', hasAttachments: true },
-		{ id: 'm2', subject: 'second', hasAttachments: false },
-	],
-};
-const ATTACHMENTS = {
-	value: [
-		{ id: 'a1', name: 'reports/summary.pdf', contentType: 'application/pdf' },
-		{ id: 'a2', name: 'notes.txt', contentType: 'text/plain' },
-	],
-};
-const VARIANT_ANSWERS: Record<string, EquivalenceCase['responses']> = {
-	'n8n-nodes-base.microsoftOutlook:options.downloadAttachments': [
-		{ body: MESSAGES_WITH_FILES },
-		{ body: ATTACHMENTS },
-		DOWNLOAD_ANSWER,
+const NO_COMPILE = 'does not compile: ';
+
+const OTHER_OPERATIONS: Record<string, Json[]> = {
+	'n8n-nodes-base.notion': [
+		{ resource: 'databasePage', operation: 'append' },
+		{ resource: 'database', operation: 'append' },
 	],
 };
 
@@ -467,78 +537,26 @@ function failingEvaluatedForm(form: ExpressionForm, at: number): ExpressionForm 
 	};
 }
 
-const MAX_LOCATOR_CHECKS = 4;
-const MAX_NESTED_CASES = 48;
+const MAX_WIDER_FORMS = 6;
+const MAX_VARIANT_FORMS_ALONE = 6;
+const NOT_AN_EXPRESSION = new Set(['resource', 'operation', 'authentication']);
 
-function locatorForms(node: LoadedNode, parameters: Json, fixed: Json): ExpressionForm[][] {
-	const properties = node.description.properties as unknown as Property[];
-	const out: ExpressionForm[][] = [];
-	for (const [name, value] of Object.entries(parameters)) {
-		if (name in fixed || out.length >= MAX_LOCATOR_CHECKS) continue;
-		if (!isJson(value) || value.__rl !== true || typeof value.value !== 'string') continue;
-		const field = name.replace(/\W/g, '_');
-		const good = value.value;
-		const forms: ExpressionForm[] = [
-			{
-				name,
-				value: itemFieldExpression(field),
-				fields: { [field]: [good, `${good}b`, `${good}c`] },
-			},
-			{
-				name,
-				value: itemFieldExpression(field),
-				fields: {
-					[field]: [
-						{ mode: value.mode, value: good },
-						{ mode: 'list', value: `${good}b` },
-						{ mode: 'other', value: 7 },
-					],
-				},
-			},
-		];
-		const property = properties.find((p) => p.name === name && p.type === 'resourceLocator');
-		const miss = locatorMiss(property, value.mode);
-		if (miss !== undefined) {
-			forms.push(
-				{ name, value: { ...value, value: miss }, fields: {} },
-				{
-					name,
-					value: { ...value, value: itemFieldExpression(field) },
-					fields: { [field]: [good, miss, good] },
-				},
-				{
-					name,
-					value: { ...value, value: itemFieldExpression(field) },
-					fields: { [field]: [miss, good, good] },
-				},
-			);
-		}
-		out.push(forms);
-	}
-	return out;
-}
-
-function withMappers(
+function mappersFilled(
 	node: LoadedNode,
 	version: number,
 	parameters: Json,
-	fixed: Json,
-): { parameters: Json; names: string[] } {
+): { parameters: Json; names: string[] } | undefined {
 	const properties = node.description.properties as unknown as Property[];
 	const out: Json = { ...parameters };
 	const names: string[] = [];
 	for (const name of Object.keys(resolve(node, version, parameters))) {
-		if (name in fixed || name in parameters) continue;
-		if (!properties.some((p) => p.name === name && p.type === 'resourceMapper')) continue;
+		if (name in parameters) continue;
+		if (!properties.some((entry) => entry.name === name && entry.type === 'resourceMapper')) continue;
 		out[name] = mapperVariant(name, itemFieldExpression).values[0];
 		names.push(name);
 	}
-	return { parameters: out, names };
+	return names.length === 0 ? undefined : { parameters: out, names };
 }
-
-const MAX_WIDER_FORMS = 6;
-const MAX_VARIANT_FORMS_ALONE = 6;
-const NOT_AN_EXPRESSION = new Set(['resource', 'operation', 'authentication']);
 
 function widerExpressionForms(
 	node: LoadedNode,
@@ -575,7 +593,12 @@ function widerExpressionForms(
 	return forms;
 }
 
-const checking = { cache: CACHE };
+const checking = { cache: CACHE, memo: caseStore };
+const blocked: Array<{ operation: string; reasons: string[] }> = [];
+const differences: Array<{ operation: string; reason: string }> = [];
+const modeDifferences: Array<[ErrorMode, string]> = [];
+const writes: Array<[key: string, other: boolean, conditions: string[]]> = [];
+let transient = false;
 const verified: Record<string, string[]> = {};
 const reasons: Record<string, number> = {};
 const modeReasons: Record<string, number> = {};
@@ -601,8 +624,12 @@ const costs: Record<string, CaseCost> = {};
 
 interface NodeResult {
 	verified: Record<string, string[]>;
-	reasons: Record<string, number>;
-	modeReasons?: Record<string, number>;
+	blocked: Array<{ operation: string; reasons: string[] }>;
+	differences: Array<{ operation: string; reason: string }>;
+	modeDifferences: Array<[ErrorMode, string]>;
+	writes: Array<[key: string, other: boolean, conditions: string[]]>;
+	reads: Record<string, string>;
+	transient: boolean;
 	manyItems?: Record<string, number>;
 	manyItemReasons?: Record<string, number>;
 	threeItemCost?: { operations: number; once: number; each: number };
@@ -614,94 +641,12 @@ interface NodeResult {
 	aloneReasons?: Record<string, number>;
 	expressions?: Record<string, number>;
 	expressionReasons?: Record<string, number>;
-	alone?: Record<string, number>;
-	weighted?: Record<string, number>;
 	tried: number;
 	compiled: number;
 	examples?: string[];
 	mintedTried?: number;
 	mintedVerified?: number;
 	costs?: Record<string, CaseCost>;
-}
-
-async function checkInProcess(name: string): Promise<NodeResult | undefined> {
-	return await new Promise((resolve) => {
-		const child = spawn(
-			process.execPath,
-			[
-				fileURLToPath(import.meta.url),
-				...(DIST ? ['--dist'] : []),
-				...(DETAIL ? ['--detail'] : []),
-				...(CACHE ? [] : ['--no-cache']),
-				...(ALL_BLOCKERS ? ['--all-blockers'] : []),
-				...(MEASURE_COST ? ['--cost'] : []),
-				...(weightsFile === undefined ? [] : ['--weights', weightsFile]),
-				...(keyText === undefined ? [] : ['--key', keyText]),
-				'--one',
-				name,
-			],
-			{
-				stdio: ['ignore', 'pipe', 'ignore'],
-			},
-		);
-		let out = '';
-		child.stdout.on('data', (chunk: Buffer) => {
-			out += chunk.toString();
-		});
-
-		const timer = setTimeout(() => child.kill('SIGKILL'), NODE_TIMEOUT_MS);
-		child.on('close', () => {
-			clearTimeout(timer);
-			const line = out.split('\n').find((l) => l.startsWith('RESULT '));
-			resolve(line ? (JSON.parse(line.slice('RESULT '.length)) as NodeResult) : undefined);
-		});
-	});
-}
-
-if (one === undefined) {
-	const names = Object.keys(known)
-		.sort()
-		.filter((name) => filter.test(name) && !/Trigger$/.test(name));
-	let next = 0;
-	const lost: string[] = [];
-	const worker = async () => {
-		while (next < names.length) {
-			const name = names[next++];
-			const result = await checkInProcess(name);
-			if (!result) {
-				lost.push(name);
-				continue;
-			}
-			Object.assign(verified, result.verified);
-			Object.assign(costs, result.costs);
-			add(reasons, result.reasons);
-			add(modeReasons, result.modeReasons);
-			add(manyItems, result.manyItems);
-			add(manyItemReasons, result.manyItemReasons);
-			add(threeItemCost, result.threeItemCost);
-			add(expressionCost, result.expressionCost);
-			add(continueCost, result.continueCost);
-			add(pairedReasons, result.pairedReasons);
-			add(failureReasons, result.failureReasons);
-			add(widerReasons, result.widerReasons);
-			add(aloneReasons, result.aloneReasons);
-			add(expressions, result.expressions);
-			add(expressionReasons, result.expressionReasons);
-			add(alone, result.alone);
-			add(weighted, result.weighted);
-			for (const example of result.examples ?? [])
-				if (examples.length < 400) examples.push(`${name}: ${example}`);
-			tried += result.tried;
-			compiledCount += result.compiled;
-			mintedTried += result.mintedTried ?? 0;
-			mintedVerified += result.mintedVerified ?? 0;
-		}
-	};
-	await Promise.all(Array.from({ length: PARALLEL }, worker));
-	if (lost.length > 0)
-		console.log(
-			`${lost.length} node(s) gave no result (a crash or more than forty-five minutes): ${lost.join(', ')}`,
-		);
 }
 
 const requestPart = (reason: string) => /^v1: the requests differ: (\w+)/.exec(reason)?.[1];
@@ -712,22 +657,427 @@ const keyOf = (reason: string) => {
 		? reason.replace(/'[^']*'/g, "'…'").slice(0, 90)
 		: `v1: the requests differ: ${part}`;
 };
-const why = (reason: string, weight: number, only = true) => {
-	if (requestPart(reason) !== undefined && examples.length < 60)
-		examples.push(reason.slice(0, 200));
+const extraOperations = (type: string, node: LoadedNode): Json[] => {
+	const shown = operations(node);
+	return (OTHER_OPERATIONS[type] ?? []).filter(
+		(other) => !shown.some((s) => s.resource === other.resource && s.operation === other.operation),
+	);
+};
+const operationsOfNode = (name: string): number => {
+	let count = 0;
+	try {
+		const top: LoadedNode = new (load(join(base, known[name].sourcePath))[known[name].className])();
+		const versions = top.nodeVersions
+			? Object.keys(top.nodeVersions).map(Number)
+			: [top.description.version].flat();
+		for (const version of versions) {
+			const node = nodeOf(`${PREFIX}${name}`, version);
+			if (node && sources.entry(`${PREFIX}${name}`, version) !== undefined)
+				count += [...operations(node), ...extraOperations(`${PREFIX}${name}`, node)].length;
+		}
+	} catch {
+		return 0;
+	}
+	return count;
+};
+function isNodeResult(value: unknown): value is NodeResult {
+	return (
+		isJson(value) &&
+		isJson(value.verified) &&
+		isJson(value.reads) &&
+		Array.isArray(value.blocked) &&
+		Array.isArray(value.differences) &&
+		Array.isArray(value.modeDifferences) &&
+		Array.isArray(value.writes) &&
+		typeof value.transient === 'boolean' &&
+		typeof value.tried === 'number' &&
+		typeof value.compiled === 'number'
+	);
+}
+
+const MAX_ERROR_TAIL = 2000;
+
+async function checkInProcess(
+	name: string,
+	storeFile: string | undefined,
+	part: string | undefined,
+	at: (operations: string) => void,
+): Promise<NodeResult | string> {
+	return await new Promise((resolve) => {
+		const child = spawn(
+			process.execPath,
+			[
+				fileURLToPath(import.meta.url),
+				...(DIST ? ['--dist'] : []),
+				...(CACHE ? [] : ['--no-cache']),
+				...(storeFile === undefined ? [] : ['--case-store', storeFile]),
+				...(part === undefined ? [] : ['--part', part]),
+				...(keyText === undefined ? [] : ['--key', keyText]),
+				'--cost',
+				'--one',
+				name,
+			],
+			{
+				stdio: ['ignore', 'pipe', 'pipe'],
+			},
+		);
+		let pending = '';
+		let found: string | undefined;
+		let errors = '';
+		let late = false;
+		child.stdout.on('data', (chunk: Buffer) => {
+			pending += chunk.toString();
+			for (let end = pending.indexOf('\n'); end >= 0; end = pending.indexOf('\n')) {
+				const line = pending.slice(0, end);
+				pending = pending.slice(end + 1);
+				if (line.startsWith('RESULT ')) found = line.slice('RESULT '.length);
+				const progress = /^AT (\d+) (\d+)$/.exec(line);
+				if (progress) at(`${progress[1]}/${progress[2]}`);
+			}
+		});
+		child.stderr.on('data', (chunk: Buffer) => {
+			errors = (errors + chunk.toString()).slice(-MAX_ERROR_TAIL);
+		});
+
+		const timer = setTimeout(() => {
+			late = true;
+			child.kill('SIGKILL');
+		}, NODE_TIMEOUT_MS);
+		child.on('close', (code) => {
+			clearTimeout(timer);
+			if (late) {
+				resolve(`no result in the time limit of ${Math.round(NODE_TIMEOUT_MS / 1000)} s`);
+				return;
+			}
+			let parsed: unknown;
+			try {
+				parsed = found === undefined ? undefined : JSON.parse(found);
+			} catch {
+				parsed = undefined;
+			}
+			if (isNodeResult(parsed)) {
+				resolve(parsed);
+				return;
+			}
+			const last = errors.trim().split('\n').at(-1) ?? '';
+			resolve(`the check stopped with no result (exit code ${code}): ${last.slice(0, 200)}`);
+		});
+	});
+}
+
+const nodeOfKey = (key: string) => key.slice(PREFIX.length, key.indexOf('@'));
+const COST_EXAMPLE = / ops in one call; \d+ ops in a call for each item$/;
+const STATUS_EVERY_MS = 15_000;
+const MAX_LOST_SHOWN = 60;
+const stale: Array<{ name: string; why: string; kept: number }> = [];
+const checkedNames: string[] = [];
+const lostKeys: string[] = [];
+
+const countReason = (reason: string, weight: number, only: boolean) => {
 	const key = keyOf(reason);
 	reasons[key] = (reasons[key] ?? 0) + 1;
 	if (only) alone[key] = (alone[key] ?? 0) + 1;
 	if (weight !== 0) weighted[key] = (weighted[key] ?? 0) + weight;
 };
 
-const whyMode = (mode: ErrorMode, reason: string) => {
-	const key = `${mode}: ${DETAIL ? reason.slice(0, 110) : reason.replace(/'[^']*'/g, "'…'").slice(0, 90)}`;
-	modeReasons[key] = (modeReasons[key] ?? 0) + 1;
+function withWrite(existing: string[] | undefined, other: boolean, stated: string[]): string[] {
+	return [...new Set(other ? [...(existing ?? []), ...stated] : stated)].sort();
+}
+
+function joinedResult(parts: NodeResult[]): NodeResult {
+	const [first] = parts;
+	if (parts.length === 1) return { ...first, writes: [] };
+	const sum = (pick: (part: NodeResult) => Record<string, number> | undefined) => {
+		const out: Record<string, number> = {};
+		for (const part of parts) add(out, pick(part));
+		return out;
+	};
+	const total = (pick: (part: NodeResult) => number | undefined) =>
+		parts.reduce((all, part) => all + (pick(part) ?? 0), 0);
+	const verifiedOf: Record<string, string[]> = {};
+	const costsOf: Record<string, CaseCost> = {};
+	const readsOf: Record<string, string> = {};
+	for (const part of parts) {
+		for (const [key, other, stated] of part.writes)
+			verifiedOf[key] = withWrite(verifiedOf[key], other, stated);
+		Object.assign(costsOf, part.costs);
+		Object.assign(readsOf, part.reads);
+	}
+	return {
+		verified: verifiedOf,
+		blocked: parts.flatMap((part) => part.blocked),
+		differences: parts.flatMap((part) => part.differences),
+		modeDifferences: parts.flatMap((part) => part.modeDifferences),
+		writes: [],
+		reads: readsOf,
+		transient: parts.some((part) => part.transient),
+		manyItems: sum((part) => part.manyItems),
+		manyItemReasons: sum((part) => part.manyItemReasons),
+		threeItemCost: {
+			operations: total((part) => part.threeItemCost?.operations),
+			once: total((part) => part.threeItemCost?.once),
+			each: total((part) => part.threeItemCost?.each),
+		},
+		expressionCost: sum((part) => part.expressionCost),
+		continueCost: sum((part) => part.continueCost),
+		pairedReasons: sum((part) => part.pairedReasons),
+		failureReasons: sum((part) => part.failureReasons),
+		widerReasons: sum((part) => part.widerReasons),
+		aloneReasons: sum((part) => part.aloneReasons),
+		expressions: sum((part) => part.expressions),
+		expressionReasons: sum((part) => part.expressionReasons),
+		tried: total((part) => part.tried),
+		compiled: total((part) => part.compiled),
+		examples: parts.flatMap((part) => part.examples ?? []).slice(0, 400),
+		mintedTried: total((part) => part.mintedTried),
+		mintedVerified: total((part) => part.mintedVerified),
+		costs: costsOf,
+	};
+}
+
+function mergeResult(name: string, result: NodeResult): void {
+	Object.assign(verified, result.verified);
+	for (const { operation, reasons: all } of result.blocked) {
+		const blockers = new Map<string, string>();
+		for (const reason of all.slice(0, ALL_BLOCKERS ? MAX_BLOCKERS : 1)) {
+			if (!blockers.has(keyOf(reason))) blockers.set(keyOf(reason), reason);
+		}
+		for (const reason of blockers.values())
+			countReason(reason, weightOf(operation), blockers.size === 1);
+	}
+	for (const { operation, reason } of result.differences)
+		countReason(reason, weightOf(operation), true);
+	for (const [mode, reason] of result.modeDifferences) {
+		const key = `${mode}: ${DETAIL ? reason.slice(0, 110) : reason.replace(/'[^']*'/g, "'…'").slice(0, 90)}`;
+		modeReasons[key] = (modeReasons[key] ?? 0) + 1;
+	}
+	if (MEASURE_COST) {
+		Object.assign(costs, result.costs);
+		add(threeItemCost, result.threeItemCost);
+		add(expressionCost, result.expressionCost);
+		add(continueCost, result.continueCost);
+	}
+	add(manyItems, result.manyItems);
+	add(manyItemReasons, result.manyItemReasons);
+	add(pairedReasons, result.pairedReasons);
+	add(failureReasons, result.failureReasons);
+	add(widerReasons, result.widerReasons);
+	add(aloneReasons, result.aloneReasons);
+	add(expressions, result.expressions);
+	add(expressionReasons, result.expressionReasons);
+	for (const example of result.examples ?? []) {
+		if (!MEASURE_COST && COST_EXAMPLE.test(example)) continue;
+		if (examples.length < 400) examples.push(`${name}: ${example}`);
+	}
+	tried += result.tried;
+	compiledCount += result.compiled;
+	mintedTried += result.mintedTried ?? 0;
+	mintedVerified += result.mintedVerified ?? 0;
+}
+
+if (one === undefined) {
+	const names = Object.keys(known)
+		.sort()
+		.filter((name) => filter.test(name) && !/Trigger$/.test(name));
+	checkedNames.push(...names);
+	testSigningKey();
+	const inputs: KeyInputs = {
+		packageDir: join(here, '..'),
+		repoDir,
+		script: fileURLToPath(import.meta.url),
+		converter: join(here, '../src/node-compile/convert.ts'),
+		hostDir: FALLBACK_HOST_DIR,
+		nodePackages: NODE_PACKAGES,
+		nodePrefix: PREFIX,
+		alwaysTypes: [START_TYPE],
+		credentialPackages: Object.values(NODE_PACKAGES),
+		signingKey: SIGNING_KEY_FILE,
+		dist: DIST,
+		environment: process.env,
+		nodeText: nodeTextOfProcess(),
+	};
+	const shared = CACHE ? sharedParts(inputs) : undefined;
+	if (CACHE) {
+		pruneCache(RESULTS_DIR, MAX_RESULT_FILES);
+		pruneCache(CASES_DIR, MAX_CASE_FILES);
+	}
+	const committed = new Map<string, string[]>();
+	for (const key of Object.keys(VERIFIED))
+		committed.set(nodeOfKey(key), [...(committed.get(nodeOfKey(key)) ?? []), key]);
+	const results = new Map<string, NodeResult>();
+	const running = new Map<string, { since: number; operations: string }>();
+	const started = new Date();
+	const totals = { done: 0, fromCache: 0, ran: 0, operations: 0, verified: 0 };
+	const status = (finished = false) => {
+		const progress: Progress = {
+			pid: process.pid,
+			started: started.toISOString(),
+			updated: new Date().toISOString(),
+			finished,
+			nodeTypes: names.length,
+			done: totals.done,
+			fromCache: totals.fromCache,
+			ran: totals.ran,
+			operations: totals.operations,
+			verified: totals.verified,
+			lost: lostKeys.length,
+			stale: stale.map((entry) => entry.name),
+			running: [...running].map(([name, state]) => ({
+				name,
+				seconds: Math.round((Date.now() - state.since) / 1000),
+				operations: state.operations,
+			})),
+		};
+		writeStatus(statusFile, progress);
+	};
+	const say = (text: string) => process.stderr.write(`${text}\n`);
+	const finish = (name: string, result: NodeResult, how: string) => {
+		results.set(name, result);
+		const lost = (committed.get(name) ?? []).filter((key) => !(key in result.verified));
+		lostKeys.push(...lost);
+		totals.done++;
+		totals.operations += result.tried;
+		totals.verified += Object.keys(result.verified).length;
+		say(
+			`[${totals.done}/${names.length}] end ${name}: operations ${result.tried}; verified ${Object.keys(result.verified).length}; lost ${lost.length} against the committed list; ${how}; total: operations ${totals.operations}; verified ${totals.verified}; lost ${lostKeys.length}`,
+		);
+		status();
+	};
+	const keysOf = new Map<string, { result: string; cases: string }>();
+	const queue: Array<{ name: string; part: number; parts: number; operations: number }> = [];
+	const wholes = new Map<
+		string,
+		{ since: number; left: number; results: Array<NodeResult | string | undefined> }
+	>();
+	const isClassFile = (name: string) => classFile.get(name);
+	const split = (name: string) => {
+		const count = operationsOfNode(name);
+		const parts = Math.min(PARALLEL, Math.max(1, Math.ceil(count / OPERATIONS_OF_A_PART)));
+		for (let part = 0; part < parts; part++)
+			queue.push({ name, part, parts, operations: count / parts });
+		wholes.set(name, {
+			since: 0,
+			left: parts,
+			results: Array.from({ length: parts }, () => undefined),
+		});
+	};
+	for (const name of names) {
+		if (shared === undefined) {
+			split(name);
+			continue;
+		}
+		const keys = nodeKeys(inputs, name, shared);
+		keysOf.set(name, keys);
+		const kept = findResult(RESULTS_DIR, name, keys.result, (read) =>
+			readNow(repoDir, isClassFile, read),
+		);
+		if (kept !== undefined && isNodeResult(kept.result)) {
+			totals.fromCache++;
+			finish(name, kept.result, `cache hit (the run took ${kept.seconds} s)`);
+			continue;
+		}
+		split(name);
+	}
+	queue.sort((a, b) => b.operations - a.operations);
+	const worker = async () => {
+		for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
+			const { name, part, parts } = next;
+			const whole = wholes.get(name);
+			if (whole === undefined) continue;
+			const label = parts === 1 ? name : `${name} (part ${part + 1} of ${parts})`;
+			const state = { since: Date.now(), operations: '' };
+			if (whole.since === 0) whole.since = state.since;
+			running.set(label, state);
+			say(`[${totals.done}/${names.length}] start ${label}`);
+			status();
+			const keys = keysOf.get(name);
+			whole.results[part] = await checkInProcess(
+				name,
+				keys === undefined
+					? undefined
+					: join(CASES_DIR, `${name}.${keys.cases.slice(0, 16)}.${part}-${parts}.json.gz`),
+				parts === 1 ? undefined : `${part}/${parts}`,
+				(operations) => {
+					state.operations = operations;
+				},
+			);
+			running.delete(label);
+			whole.left--;
+			if (whole.left > 0) {
+				status();
+				continue;
+			}
+			const seconds = Math.round((Date.now() - whole.since) / 1000);
+			const done = whole.results.filter(isNodeResult);
+			const failed = whole.results.find((result) => typeof result === 'string');
+			if (done.length !== parts) {
+				const kept = committed.get(name)?.length ?? 0;
+				const why = typeof failed === 'string' ? failed : 'a part gave no result';
+				stale.push({ name, why, kept });
+				totals.done++;
+				say(
+					`[${totals.done}/${names.length}] STALE ${name}: ${why}; ${seconds} s; ${kept} entries of the committed list stay and are not checked`,
+				);
+				status();
+				continue;
+			}
+			const result = joinedResult(done);
+			totals.ran++;
+			if (keys !== undefined && !result.transient)
+				storeResult(RESULTS_DIR, name, { key: keys.result, reads: result.reads, result, seconds });
+			finish(
+				name,
+				result,
+				`run of ${seconds} s${parts === 1 ? '' : ` in ${parts} parts`}${result.transient ? ', not kept' : ''}`,
+			);
+		}
+	};
+	const timer = setInterval(status, STATUS_EVERY_MS);
+	await Promise.all(Array.from({ length: PARALLEL }, worker));
+	clearInterval(timer);
+	status(true);
+	for (const name of names) {
+		const result = results.get(name);
+		if (result !== undefined) mergeResult(name, result);
+	}
+	say(
+		`node types ${names.length}: ${totals.fromCache} from the cache, ${totals.ran} ran, ${stale.length} stale`,
+	);
+	if (lostKeys.length > 0)
+		say(
+			`lost against the committed list: ${lostKeys.length} operation(s): ${lostKeys.sort().slice(0, MAX_LOST_SHOWN).join(', ')}`,
+		);
+	stale.sort((a, b) => (a.name < b.name ? -1 : 1));
+	if (stale.length > 0)
+		console.log(
+			`stale: ${stale.length} node type(s) gave no result; their entries in the committed list stay as they are and are not checked: ${stale.map((entry) => `${entry.name} (${entry.why}; ${entry.kept} entries)`).join('; ')}`,
+		);
+}
+
+const why = (reason: string, operation: string) => {
+	if (requestPart(reason) !== undefined && examples.length < 60)
+		examples.push(reason.slice(0, 200));
+	differences.push({ operation, reason });
 };
 
-for (const name of one === undefined ? [] : Object.keys(known).sort()) {
-	if (!filter.test(name) || /Trigger$/.test(name)) continue;
+const whyMode = (mode: ErrorMode, reason: string) => {
+	modeDifferences.push([mode, reason]);
+};
+
+let casesSaved = Date.now();
+const operationsOfOne = one === undefined || !(one in known) ? 0 : operationsOfNode(one);
+const operationsToCheck = Array.from({ length: operationsOfOne }, (_, at) => at).filter((at) =>
+	inPart(at, operationsOfOne),
+).length;
+let operationsSeen = 0;
+let operationsChecked = 0;
+const reportProgress = () => {
+	if (one !== undefined) process.stdout.write(`AT ${operationsChecked} ${operationsToCheck}\n`);
+};
+reportProgress();
+
+for (const name of one === undefined || !(one in known) ? [] : [one]) {
+	if (/Trigger$/.test(name)) continue;
 	const type = `${PREFIX}${name}`;
 	let top: LoadedNode;
 	try {
@@ -745,48 +1095,74 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 	for (const version of versions) {
 		const node = nodeOf(type, version);
 		if (!node || sources.entry(type, version) === undefined) continue;
-		for (const usual of operations(node)) {
+		for (const usual of [...operations(node), ...extraOperations(type, node)]) {
 			if (
 				keyFilter !== undefined &&
 				!keyFilter.test(verifiedKey(type, version, resolve(node, version, usual)))
 			)
 				continue;
+			if (!inPart(operationsSeen++, operationsOfOne)) continue;
+			forgetPagingChoices();
+			operationsChecked++;
+			reportProgress();
+			if (caseStore !== undefined && Date.now() - casesSaved > SAVE_CASES_EVERY_MS) {
+				caseStore.save();
+				casesSaved = Date.now();
+			}
 			for (const start of [usual, ...otherAuthentications(node, version, usual)]) {
 				const other = start !== usual;
 				if (!other) tried++;
-				const usualParameters = required(node, version, start);
-				const credential = credentialOf(node, resolve(node, version, usualParameters));
-				const fields = credential
-					? {
-							[credential]: publicCredential(
-								registry.get(credential),
-								credentialAsGiven(credential, fakeCredential(credential)),
-							),
-						}
-					: {};
-				const mapped = withMappers(node, version, usualParameters, start);
-				const usualCompiled = compileForCheck(
-					sources,
-					{ type, version, parameters: usualParameters },
-					fields,
+				const fieldsOf = (name: string | undefined) =>
+					name
+						? {
+								[name]: publicCredential(
+									registry.get(name),
+									credentialAsGiven(name, fakeCredential(name)),
+								),
+							}
+						: {};
+				const credentialFor = (p: Json) => credentialOf(node, resolve(node, version, p));
+				const plainStart = required(node, version, start);
+				const withGroups = filledGroups(node, version, plainStart, itemFieldExpression);
+				const withMappers = mappersFilled(node, version, plainStart);
+				const compilesWith = (p: Json) =>
+					!(
+						'errors' in
+						compileForCheck(
+							sources,
+							{ type, version, parameters: p },
+							fieldsOf(credentialFor(p)),
+						)
+					);
+				const filled = [withGroups, withMappers?.parameters].filter(
+					(candidate): candidate is Json => candidate !== undefined,
 				);
-				const mappedCompiled =
-					'errors' in usualCompiled && mapped.names.length > 0
-						? compileForCheck(sources, { type, version, parameters: mapped.parameters }, fields)
-						: undefined;
-				const withMapper = mappedCompiled !== undefined && !('errors' in mappedCompiled);
-				const parameters = withMapper ? mapped.parameters : usualParameters;
-				const compiled = withMapper ? mappedCompiled : usualCompiled;
-				const weight = weightOf(type, parameters);
+				const parameters = compilesWith(plainStart)
+					? plainStart
+					: (filled.find((candidate) => compilesWith(candidate)) ?? plainStart);
+				const mapperNames =
+					withMappers !== undefined && parameters === withMappers.parameters
+						? withMappers.names
+						: [];
+				const credential = credentialFor(parameters);
+				const weight = operationOf(type, parameters);
+				const unfit = locatorWithoutSample(node, version, parameters);
+				if (unfit !== undefined) {
+					if (!other) why(`no sample value fits the rule of the locator '${unfit}'`, weight);
+					continue;
+				}
+				const instance = { type, version, parameters };
+				const fields = fieldsOf(credential);
+				const compiled = compileForCheck(sources, instance, fields);
 				if (other && 'errors' in compiled) continue;
 				if (other && !('errors' in compiled) && compiled.mints.length > 0) mintedTried++;
 				if ('errors' in compiled) {
-					const blockers = new Map<string, string>();
-					for (const error of compiled.errors.slice(0, ALL_BLOCKERS ? MAX_BLOCKERS : 1)) {
-						const reason = error.slice(error.indexOf(': ') + 2);
-						if (!blockers.has(keyOf(reason))) blockers.set(keyOf(reason), reason);
-					}
-					for (const reason of blockers.values()) why(reason, weight, blockers.size === 1);
+					blocked.push({
+						operation: weight,
+						reasons: compiled.errors
+							.slice(0, MAX_BLOCKERS)
+							.map((error) => error.slice(error.indexOf(': ') + 2)),
+					});
 					continue;
 				}
 				if (!other) compiledCount++;
@@ -797,16 +1173,20 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					p: Json,
 					responses: EquivalenceCase['responses'],
 					items: EquivalenceCase['items'] = readsFiles ? FILE_ITEMS : undefined,
-					data: Json | undefined = credential ? fakeCredential(credential) : undefined,
-				): EquivalenceCase => ({
-					name: `${type}@${version} ${label}`,
-					type,
-					typeVersion: version,
-					parameters: p,
-					...(items ? { items } : {}),
-					...(credential && data ? { credential: { type: credential, data } } : {}),
-					responses,
-				});
+					given: Json | undefined = credential ? fakeCredential(credential) : undefined,
+				): EquivalenceCase => {
+					const own = credentialFor(p);
+					const data = own === credential ? given : own ? fakeCredential(own) : undefined;
+					return {
+						name: `${type}@${version} ${label}`,
+						type,
+						typeVersion: version,
+						parameters: p,
+						...(items ? { items } : {}),
+						...(own && data ? { credential: { type: own, data } } : {}),
+						responses,
+					};
+				};
 				const makesFiles = compiled.source.includes('__prepareBinary(');
 				const answers =
 					OPERATION_ANSWERS[
@@ -881,8 +1261,8 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 							(manyItemReasons[reason.slice(0, 110)] ?? 0) + 1;
 					}
 					if (SHOW_COST && !other) {
-						const once = costOfCase(three, sources, registry);
-						const each = costOfCase(three, sources, registry, true);
+						const once = costOfCase(three, sources, registry, false, undefined, caseStore);
+						const each = costOfCase(three, sources, registry, true, undefined, caseStore);
 						if (once && each) {
 							threeItemCost.operations++;
 							threeItemCost.once += once.ops;
@@ -931,57 +1311,35 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					}
 					const widerAgrees = names !== compiled.changed;
 					const settled = parameters;
-					const filesOf = (p: Json) => {
-						const c = compileForCheck(sources, { type, version, parameters: p }, fields);
-						const reads =
-							'errors' in c ? readsFiles : /__(binaryOf|inputBytes)\(__items/.test(c.source);
-						const makes = 'errors' in c ? makesFiles : c.source.includes('__prepareBinary(');
-						const same = reads === readsFiles && makes === makesFiles;
-						const answers = same
-							? ok
-							: makes
-								? [...token, DOWNLOAD_ANSWER]
-								: [...token, { body: reads ? { ...plain, ...UPLOAD_ANSWER } : plain }];
-						return { answers, first: reads ? FILE_ITEMS[0] : {} };
-					};
-					const agreesWith = async (
-						label: string,
-						p: Json,
-						conditions: string[] = [],
-					): Promise<string[] | string> => {
-						const c = compileForCheck(sources, { type, version, parameters: p }, fields);
+					const agreesWith = async (label: string, p: Json): Promise<string[] | string> => {
+						const c = compileForCheck(
+							sources,
+							{ type, version, parameters: p },
+							fieldsOf(credentialFor(p)),
+						);
 						if ('errors' in c) return `does not compile: ${c.errors[0]}`;
 						if (c.mints.length !== compiled.mints.length)
 							return 'the tokens of the credential differ';
-						const files = filesOf(p);
-						const items = (count: number) =>
-							Array.from({ length: count }, (_, k) => ({ ...files.first, position: k + 1 }));
-						let difference = await differenceFromV1(
-							make(label, p, files.answers, items(3)),
+						if (
+							/__(binaryOf|inputBytes)\(__items/.test(c.source) !== readsFiles ||
+							c.source.includes('__prepareBinary(') !== makesFiles
+						)
+							return 'the use of files differs from the usual case';
+						const difference = await differenceFromV1(
+							make(label, p, ok, several(3)),
 							sources,
 							registry,
 							checking,
 						);
-						for (const condition of conditions) {
-							const special = VARIANT_ANSWERS[`${type}:${condition}`];
-							if (special === undefined || difference !== undefined) continue;
-							difference = await differenceFromV1(
-								make(`${label}, the answers of ${condition}`, p, [...token, ...special], items(1)),
-								sources,
-								registry,
-								checking,
-							);
-						}
 						return difference ?? c.changed;
 					};
 					const variants = [
 						...parameterVariants(node, version, settled, start, names, itemFieldExpression),
-						...(withMapper ? mapped.names : []).map((name) =>
-							mapperVariant(name, itemFieldExpression),
-						),
+						...mapperNames.map((name) => mapperVariant(name, itemFieldExpression)),
 					];
 					const agreed: Variant[] = [];
 					const added: string[] = [];
+					const unsettled = new Set<string>();
 					for (const variant of variants) {
 						const changed: string[] = [];
 						let all = true;
@@ -989,10 +1347,11 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 							const found = await agreesWith(
 								`alone ${variant.condition} ${at}`,
 								required(node, version, withVariant(settled, variant, value)),
-								[variant.condition],
 							);
 							if (typeof found === 'string') {
 								all = false;
+								const safe = variant.settled === true && found.startsWith(NO_COMPILE);
+								if (variant.settled && !safe) unsettled.add(variant.name);
 								if (!other) {
 									const text = found.slice(0, 110);
 									aloneReasons[text] = (aloneReasons[text] ?? 0) + 1;
@@ -1001,6 +1360,7 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 											`${verifiedKey(type, version, compiled.resolved)} with ${variant.condition}: ${found.slice(0, 200)}`,
 										);
 								}
+								if (safe) continue;
 								break;
 							}
 							changed.push(...found);
@@ -1009,71 +1369,16 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						agreed.push(variant);
 						added.push(variant.condition, ...changed.filter((name) => name !== variant.name));
 					}
-					const nested: Array<{ variant: Variant; base: Json }> = [];
-					const shownAtStart = new Set(Object.keys(resolve(node, version, settled)));
-					let nestedCases = 0;
-					for (const parent of agreed) {
-						if (parent.member !== undefined) continue;
-						for (const value of parent.values) {
-							if (typeof value !== 'string' && typeof value !== 'boolean') continue;
-							const base = required(node, version, withVariant(settled, parent, value));
-							const inner = parameterVariants(
-								node,
-								version,
-								base,
-								{ ...start, [parent.name]: value },
-								names,
-								itemFieldExpression,
-							).filter(
-								(variant) =>
-									!shownAtStart.has(variant.name) &&
-									!nested.some((known) => known.variant.condition === variant.condition),
-							);
-							for (const variant of inner) {
-								if (nestedCases + variant.values.length > MAX_NESTED_CASES) continue;
-								nestedCases += variant.values.length;
-								const changed: string[] = [];
-								let all = true;
-								for (const [at, inside] of variant.values.entries()) {
-									const found = await agreesWith(
-										`under ${parent.name} ${String(value)}: ${variant.condition} ${at}`,
-										required(node, version, withVariant(base, variant, inside)),
-									);
-									if (typeof found === 'string') {
-										all = false;
-										if (!other) {
-											const text = found.slice(0, 110);
-											aloneReasons[text] = (aloneReasons[text] ?? 0) + 1;
-											if (examples.length < 400)
-												examples.push(
-													`${verifiedKey(type, version, compiled.resolved)} with ${variant.condition} under ${parent.name}: ${found.slice(0, 200)}`,
-												);
-										}
-										break;
-									}
-									changed.push(...found);
-								}
-								if (!all) continue;
-								nested.push({ variant, base });
-								added.push(
-									variant.condition,
-									...changed.filter((name) => name !== variant.name && name !== parent.name),
-								);
-							}
-						}
-					}
 					let together = settled;
 					for (const variant of agreed)
 						together = withVariant(together, variant, variant.values[0]);
 					together = required(node, version, together);
 					const combined =
 						agreed.length < 2 ||
-						typeof (await agreesWith(
-							'alone, together',
-							together,
-							agreed.map((variant) => variant.condition),
-						)) !== 'string';
+						typeof (await agreesWith('alone, together', together)) !== 'string';
 					if (combined) names = [...new Set([...names, ...added])];
+					else for (const variant of variants) if (variant.settled) unsettled.add(variant.name);
+					names = names.filter((name) => !unsettled.has(name));
 					const variantForms = combined ? agreed.filter((variant) => variant.form) : [];
 					if (!other) {
 						add(expressions, {
@@ -1216,8 +1521,8 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					}
 					for (const [mode, measured] of SHOW_COST && !other ? continueCases : []) {
 						if (formOf.get(mode) !== 'once') continue;
-						const once = costOfCase(measured, sources, registry, false, 'once');
-						const each = costOfCase(measured, sources, registry, false, 'item');
+						const once = costOfCase(measured, sources, registry, false, 'once', caseStore);
+						const each = costOfCase(measured, sources, registry, false, 'item', caseStore);
 						if (once && each) {
 							const node = `${type.slice(PREFIX.length)} ${mode}`;
 							add(continueCost, {
@@ -1246,32 +1551,28 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						missing: boolean,
 						mode?: ErrorMode,
 						from: Json = widerAgrees ? more : parameters,
-					): EquivalenceCase => {
-						const tested = {
-							...from,
-							...Object.fromEntries(chosen.map((form) => [form.name, form.value])),
-						};
-						const files = filesOf(tested);
-						return {
-							...(mode === undefined ? {} : { settings: { onError: mode } }),
-							...make(
-								mode === undefined ? label : `${label} ${mode}`,
-								tested,
-								files.answers,
-								[0, 1, 2].map((k) => ({
-									...files.first,
-									position: k + 1,
-									...(missing && k === 1
-										? {}
-										: Object.fromEntries(
-												chosen.flatMap((form) =>
-													Object.entries(form.fields).map(([field, values]) => [field, values[k]]),
-												),
-											)),
-								})),
-							),
-						};
-					};
+					): EquivalenceCase => ({
+						...(mode === undefined ? {} : { settings: { onError: mode } }),
+						...make(
+							mode === undefined ? label : `${label} ${mode}`,
+							{
+								...from,
+								...Object.fromEntries(chosen.map((form) => [form.name, form.value])),
+							},
+							ok,
+							[0, 1, 2].map((k) => ({
+								...first,
+								position: k + 1,
+								...(missing && k === 1
+									? {}
+									: Object.fromEntries(
+											chosen.flatMap((form) =>
+												Object.entries(form.fields).map(([field, values]) => [field, values[k]]),
+											),
+										)),
+							})),
+						),
+					});
 					const expressionDifference = async (
 						chosen: ExpressionForm[],
 						mode?: ErrorMode,
@@ -1317,8 +1618,8 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						if (SHOW_COST && !other && provenEach.length > 0) {
 							const chosen = forms.filter((form) => provenEach.includes(form.name));
 							const measured = expressionCase('expressions', chosen, false);
-							const once = costOfCase(measured, sources, registry);
-							const each = costOfCase(measured, sources, registry, true);
+							const once = costOfCase(measured, sources, registry, false, undefined, caseStore);
+							const each = costOfCase(measured, sources, registry, true, undefined, caseStore);
 							if (once && each) {
 								const node = type.slice(PREFIX.length);
 								add(expressionCost, {
@@ -1369,10 +1670,6 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						if (variantForms.length === 0) return [];
 						const all = await expressionDifference(formsOfVariants(variantForms), mode, together);
 						if (all === undefined) return variantForms.map((variant) => variant.condition);
-						if (examples.length < 400)
-							examples.push(
-								`${key} with ${variantForms.map((variant) => variant.condition).join(', ')} for each item, ${mode ?? 'stopWorkflow'}: ${all.slice(0, 200)}`,
-							);
 						const singly: string[] = [];
 						const tried =
 							variantForms.length > 1 ? variantForms.slice(0, MAX_VARIANT_FORMS_ALONE) : [];
@@ -1393,20 +1690,6 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					for (const [mode] of variantProven.length > 0 ? formOf : []) {
 						const under = (await variantEach(mode)).filter((name) => variantProven.includes(name));
 						provenUnder.push(...under.map((name) => itemParameterCondition(name, mode)));
-					}
-					for (const { variant, base } of combined ? nested : []) {
-						if (!variant.form || variant.rejected) continue;
-						const form: ExpressionForm = {
-							name: variant.name,
-							value: withVariant(base, variant, variant.form.value)[variant.name],
-							fields: variant.form.fields,
-						};
-						if ((await expressionDifference([form], undefined, base)) !== undefined) continue;
-						provenEach.push(variant.condition);
-						for (const [mode] of formOf) {
-							if ((await expressionDifference([form], mode, base)) === undefined)
-								provenUnder.push(itemParameterCondition(variant.condition, mode));
-						}
 					}
 					for (const [mode] of widerProven.length > 0 ? formOf : []) {
 						const agreed = (await widerUnder(mode)).filter((name) => widerProven.includes(name));
@@ -1525,8 +1808,11 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						}
 					}
 					if (failingForm && !other) expressions.failing = (expressions.failing ?? 0) + 1;
-					const rejectedEach = new Set<string>();
-					for (const variant of combined ? agreed : []) {
+					const rejectedEach = new Set<string>(unsettled);
+					const settledApart = variants.filter(
+						(variant) => variant.settled && !(combined && agreed.includes(variant)),
+					);
+					for (const variant of [...(combined ? agreed : []), ...settledApart]) {
 						if (!variant.rejected) continue;
 						const tested: ExpressionForm = {
 							name: variant.name,
@@ -1546,6 +1832,7 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 							checking,
 						);
 						if (difference === undefined) continue;
+						if (variant.settled && difference.startsWith(NO_COMPILE)) continue;
 						rejectedEach.add(variant.condition);
 						rejectedEach.add(variant.name);
 						if (!other) {
@@ -1587,63 +1874,32 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						...(pairedReason === undefined ? [PAIRED_ITEMS] : []),
 						...(eachItem === undefined ? [CALL_FOR_EACH_ITEM] : []),
 					];
-					let locatorReason: string | undefined;
-					for (const form of locatorForms(node, parameters, start).flat()) {
-						const probe = compileForCheck(
-							sources,
-							{ type, version, parameters: { ...parameters, [form.name]: form.value } },
-							fields,
-						);
-						if ('errors' in probe) continue;
-						for (const mode of [undefined, ...formOf.keys()]) {
-							const how = {
-								...checking,
-								pairing: mode === undefined ? undefined : formOf.get(mode),
-							};
-							const label = `a resource locator ${form.name} ${JSON.stringify(form.value).slice(0, 60)}`;
-							locatorReason ??= await differenceFromV1(
-								expressionCase(label, [form], false, mode, parameters),
-								sources,
-								registry,
-								how,
-							);
-							if (locatorReason !== undefined) {
-								locatorReason = `${label}, ${mode ?? 'stopWorkflow'}: ${locatorReason}`;
-								break;
-							}
-						}
-						if (locatorReason !== undefined) break;
-					}
-					if (locatorReason !== undefined) {
-						if (!other) why(`v1: ${locatorReason}`, weight);
-						if (examples.length < 400) examples.push(`${key}: ${locatorReason.slice(0, 300)}`);
-						continue;
-					}
 					const authentication = String(parameters.authentication);
-					verified[key] = [
-						...new Set(
-							other
-								? [
-										...(verified[key] ?? []),
-										...conditions.map((condition) =>
-											authenticationCondition(authentication, condition),
-										),
-									]
-								: conditions,
-						),
-					].sort();
+					const stated = other
+						? conditions.map((condition) => authenticationCondition(authentication, condition))
+						: conditions;
+					writes.push([key, other, stated]);
+					verified[key] = withWrite(verified[key], other, stated);
 					if (other) add(expressions, { 'other authentication': 1 });
 					if (MEASURE_COST && !other) {
-						const cost = costOfCase(make('ok', parameters, ok), sources, registry);
+						const cost = costOfCase(
+							make('ok', parameters, ok),
+							sources,
+							registry,
+							false,
+							undefined,
+							caseStore,
+						);
 						if (cost) costs[key] = cost;
 					}
 					if (compiled.mints.length > 0) mintedVerified++;
 				} catch (error) {
-					const failure = error instanceof Error ? error.message : String(error);
-					why(`check failed: ${failure}`, weight);
+					const message = error instanceof Error ? error.message : String(error);
+					if (TRANSIENT.test(message)) transient = true;
+					why(`check failed: ${message}`, weight);
 					if (examples.length < 400)
 						examples.push(
-							`${verifiedKey(type, version, compiled.resolved)}: check failed: ${failure.slice(0, 200)}`,
+							`${verifiedKey(type, version, compiled.resolved)}: check failed: ${message.slice(0, 200)}`,
 						);
 				}
 			}
@@ -1652,7 +1908,34 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 }
 await disposeRecorder();
 if (one !== undefined) {
-	const line = `RESULT ${JSON.stringify({ verified, reasons, modeReasons, manyItems, manyItemReasons, threeItemCost, expressionCost, continueCost, pairedReasons, failureReasons, widerReasons, aloneReasons, expressions, expressionReasons, alone, weighted, tried, compiled: compiledCount, examples, mintedTried, mintedVerified, costs })}\n`;
+	caseStore?.save();
+	const result: NodeResult = {
+		verified,
+		blocked,
+		differences,
+		modeDifferences,
+		writes,
+		reads,
+		transient,
+		manyItems,
+		manyItemReasons,
+		threeItemCost,
+		expressionCost,
+		continueCost,
+		pairedReasons,
+		failureReasons,
+		widerReasons,
+		aloneReasons,
+		expressions,
+		expressionReasons,
+		tried,
+		compiled: compiledCount,
+		examples,
+		mintedTried,
+		mintedVerified,
+		costs,
+	};
+	const line = `RESULT ${JSON.stringify(result)}\n`;
 	await new Promise((written) => process.stdout.write(line, written));
 	process.exit(0);
 }
@@ -1660,11 +1943,16 @@ if (one !== undefined) {
 const lines = Object.keys(verified)
 	.sort()
 	.map((key) => `\t${JSON.stringify(key)}: ${JSON.stringify(verified[key])},`);
-if (pattern === undefined && !DIST) {
+const ranNodes = new Set(checkedNames);
+const staleNodes = new Set(stale.map((entry) => entry.name));
+if (WRITES) {
+	const list = mergedList(VERIFIED, ranNodes, staleNodes, verified, WHOLE, nodeOfKey);
 	writeFileSync(
 		join(here, '../src/node-compile/verified.generated.ts'),
 		`export const VERIFIED: Record<string, string[]> = {
-${lines.join('\n')}
+${Object.entries(list)
+	.map(([key, names]) => `\t${JSON.stringify(key)}: ${JSON.stringify(names)},`)
+	.join('\n')}
 };
 `,
 	);
@@ -1689,11 +1977,16 @@ const idleListed = ACCEPTED_COST_RISES.filter(
 const idleAccepts = [...[...acceptedRises].filter((key) => !higher.includes(key)), ...idleListed];
 const recordOf = (key: string): [number, number] =>
 	risen.includes(key) ? COST[key] : [costs[key].ops, costs[key].allocations];
-if (pattern === undefined && !DIST) {
+if (WRITES) {
+	const measured: Record<string, [number, number]> = {};
+	for (const key of costKeys) measured[key] = recordOf(key);
+	const list = mergedList(COST, ranNodes, staleNodes, measured, WHOLE, nodeOfKey);
 	writeFileSync(
 		join(here, '../src/node-compile/cost.generated.ts'),
 		`export const COST: Record<string, [ops: number, allocations: number]> = {
-${costKeys.map((key) => `\t${JSON.stringify(key)}: [${recordOf(key).join(', ')}],`).join('\n')}
+${Object.entries(list)
+	.map(([key, record]) => `\t${JSON.stringify(key)}: [${record.join(', ')}],`)
+	.join('\n')}
 };
 `,
 	);
@@ -1704,7 +1997,6 @@ const spread = (values: number[]) => {
 	const sorted = [...values].sort((a, b) => a - b);
 	return `p50 ${quantile(sorted, 0.5)}; p90 ${quantile(sorted, 0.9)}; max ${sorted.at(-1) ?? 0}`;
 };
-const nodeOfKey = (key: string) => key.slice(PREFIX.length, key.indexOf('@'));
 if (SHOW_COST) {
 	const rows = costKeys.map((key) => costs[key]);
 	console.log(`cost of ${rows.length} verified operations, the 'ok' case, in bytecode`);
@@ -1905,3 +2197,4 @@ console.log(
 );
 if (args.includes('--examples')) console.log(examples.join('\n'));
 if (pattern !== undefined && !args.includes('--examples')) console.log(lines.join('\n'));
+if (stale.length > 0) process.exitCode = STALE_EXIT_CODE;

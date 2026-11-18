@@ -48,6 +48,36 @@ async function traced(wf: Record<string, unknown>, body: unknown = {}) {
 }
 
 describe('native Code nodes in a workflow', () => {
+	it.each([
+		[
+			'`new URL`',
+			'const u = new URL(items[0].json.u);\nreturn [{ json: { h: u.hostname } }];',
+			'URL is not defined [line 1]',
+		],
+		[
+			'`URLSearchParams`',
+			'const a = 1;\nconst q = new URLSearchParams({ a: "1" }).toString();\nreturn [{ json: { q, a } }];',
+			'URLSearchParams is not defined [line 2]',
+		],
+	])(
+		'gives the error of v1 for %s in the native form, without a host step',
+		async (_, jsCode, message) => {
+			// n8n's task runner has no `URL` and no `URLSearchParams` (the sandbox test records
+			// that against the real runner), so the native form throws the same error.
+			const { out, run, items } = await traced(
+				{
+					name: 'URL',
+					nodes: [hook, code('Url', jsCode, { onError: 'continueRegularOutput' })],
+					connections: chain(['Hook', 'Url']),
+				},
+				{ u: 'https://example.test/a?b=1' },
+			);
+			expect(out.fallbackNodes).toEqual([]);
+			expect(run.status).toBe('ok');
+			expect(items('Url')).toEqual([{ error: message }]);
+		},
+	);
+
 	it('keeps a Code node with a Date in a list in the fallback host without Date values', () => {
 		const wf = {
 			name: 'Dates',

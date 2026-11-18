@@ -36,8 +36,12 @@ pub const LoadResult = struct {
     closed_conns: u64 = 0,
     bad_status: u64 = 0,
     last_bad_status: u32 = 0,
-    /// Latency histogram in 10-microsecond buckets up to 1 s.
-    hist: [100_000]u32 = @splat(0),
+    /// The bad statuses that a full table or pool gives: 413, 500 and 503.
+    status_413: u64 = 0,
+    status_500: u64 = 0,
+    status_503: u64 = 0,
+    /// Latency histogram in 10-microsecond buckets up to 10 s.
+    hist: [1_000_000]u32 = @splat(0),
 };
 
 const max_pipeline = 256;
@@ -144,6 +148,9 @@ fn loadThreadInner(opts: LoadOptions, nconns: u32, res: *LoadResult, req: []cons
                     res.errors += 1;
                     res.bad_status += 1;
                     res.last_bad_status = resp.status;
+                    res.status_413 += @intFromBool(resp.status == 413);
+                    res.status_500 += @intFromBool(resp.status == 500);
+                    res.status_503 += @intFromBool(resp.status == 503);
                 }
                 std.mem.copyForwards(u8, cn.rbuf[0 .. cn.rlen - resp.consumed], cn.rbuf[resp.consumed..cn.rlen]);
                 cn.rlen -= resp.consumed;
@@ -223,14 +230,18 @@ pub fn runLoad(gpa: std.mem.Allocator, out: *std.Io.Writer, opts: LoadOptions) !
         total.status_429 += r.status_429;
         total.closed_conns += r.closed_conns;
         total.bad_status += r.bad_status;
+        total.status_413 += r.status_413;
+        total.status_500 += r.status_500;
+        total.status_503 += r.status_503;
         if (r.last_bad_status != 0) total.last_bad_status = r.last_bad_status;
         for (r.hist, 0..) |h, i| total.hist[i] += h;
     }
     const secs: f64 = @floatFromInt(opts.seconds);
-    try out.print("requests ok={d} 429={d} errors={d} rate={d:.0}/s p50={d}us p99={d}us p999={d}us closed_conns={d} bad_status={d} last_bad_status={d}\n", .{
+    try out.print("requests ok={d} 429={d} errors={d} rate={d:.0}/s p50={d}us p99={d}us p999={d}us closed_conns={d} bad_status={d} last_bad_status={d} 413={d} 500={d} 503={d}\n", .{
         total.ok,                     total.status_429,              total.errors,                   @as(f64, @floatFromInt(total.ok + total.status_429)) / secs,
         percentile(&total.hist, 0.5), percentile(&total.hist, 0.99), percentile(&total.hist, 0.999), total.closed_conns,
-        total.bad_status,             total.last_bad_status,
+        total.bad_status,             total.last_bad_status,         total.status_413,               total.status_500,
+        total.status_503,
     });
 }
 
@@ -261,10 +272,23 @@ pub const StubOptions = struct {
     h2: bool = false,
     /// SETTINGS_MAX_CONCURRENT_STREAMS of the stub.
     h2_streams: u32 = 256,
+    /// `--body BYTES`: the size of the JSON body of an HTTP/1.1 answer. 0 gives `{"ok":true}`.
+    body_bytes: u32 = 0,
 };
 
 const stub_body = "{\"ok\":true}";
-const stub_resp = "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: 11\r\n\r\n" ++ stub_body;
+const stub_resp_small = "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: 11\r\n\r\n" ++ stub_body;
+
+/// The HTTP/1.1 answer of the stub: a JSON body of `body_bytes` bytes, or the small one for 0.
+fn stubResponse(body_bytes: u32) ![]const u8 {
+    if (body_bytes == 0) return stub_resp_small;
+    const head_max = 96;
+    const buf = try backing.alloc(u8, head_max + body_bytes);
+    const head = try std.fmt.bufPrint(buf, "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {d}\r\n\r\n", .{body_bytes});
+    std.debug.assert(head.len <= head_max);
+    fillBody(buf[head.len..][0..body_bytes]);
+    return buf[0 .. head.len + body_bytes];
+}
 
 /// The HTTP/2 side of one stub connection. Benchmark code: it allocates
 /// from `backing` per connection, which the runtime itself never does.
@@ -385,6 +409,7 @@ const StubConn = struct {
 
 pub fn runStub(o: StubOptions) !void {
     const delay_ms = o.delay_ms;
+    const stub_resp = try stubResponse(o.body_bytes);
     var ctx: ?tls.Context = null;
     if (o.tls_cert != null and o.tls_key != null) {
         ctx = try tls.Context.server(o.tls_cert.?, o.tls_key.?);

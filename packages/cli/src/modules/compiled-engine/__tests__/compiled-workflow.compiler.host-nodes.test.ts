@@ -125,6 +125,7 @@ describe('CompiledWorkflowCompiler: nodes with conditions on a credential', () =
 				artifactCacheMb: 1,
 				sqlMysql: false,
 				sqlMssql: false,
+				smtpNative: false,
 			}),
 		);
 	});
@@ -229,6 +230,7 @@ describe('CompiledWorkflowCompiler: nodes with conditions on a credential', () =
 				artifactCacheMb: 1,
 				sqlMysql: false,
 				sqlMssql: false,
+				smtpNative: false,
 			}),
 		);
 		restarted.restoreHostNodes(stored);
@@ -268,6 +270,7 @@ describe('CompiledWorkflowCompiler: nodes with conditions on a credential', () =
 				artifactCacheMb: 1,
 				sqlMysql: false,
 				sqlMssql: false,
+				smtpNative: false,
 			}),
 		);
 
@@ -304,6 +307,7 @@ describe('CompiledWorkflowCompiler: nodes with conditions on a credential', () =
 				artifactCacheMb: 1,
 				sqlMysql: true,
 				sqlMssql: false,
+				smtpNative: false,
 			}),
 		);
 
@@ -330,6 +334,7 @@ describe('CompiledWorkflowCompiler: nodes with conditions on a credential', () =
 				artifactCacheMb: 1,
 				sqlMysql: false,
 				sqlMssql: false,
+				smtpNative: false,
 			}),
 		);
 		const first = await compiler.compile(input);
