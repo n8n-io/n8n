@@ -12,6 +12,7 @@ import {
 	assertCursorColumnInOutput,
 	getStartAfter,
 	getStartAfterSortRules,
+	mysqlCursorPredicate,
 } from '@utils/sql-keyset-paging';
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -145,20 +146,27 @@ export async function execute(
 				assertCursorColumnInOutput(this.getNode(), i, outputColumns, column, true);
 				rules = getStartAfterSortRules(this.getNode(), i, sortRules, column, true);
 				// Only an empty Value can start the walk again, so only then the node looks for empty text
+				const uniqueColumns = await uniqueColumnsOf(table);
 				await checkStartAfterColumn(
 					pool,
 					this.getNode(),
 					i,
 					table,
 					column,
-					await uniqueColumnsOf(table),
+					uniqueColumns,
 					nodeOptions.decimalNumbers === true,
 					value === undefined,
 				);
 
 				if (value !== undefined) {
-					const operator = rules[0].direction === 'DESC' ? '<' : '>';
-					query = addCursorPredicate(base, query, `${escapeSqlIdentifier(column)} ${operator} ?`);
+					const operator: '<' | '>' = rules[0].direction === 'DESC' ? '<' : '>';
+					const columnType =
+						uniqueColumns.find((unique) => unique.column === column.toLowerCase())?.type ?? '';
+					query = addCursorPredicate(
+						base,
+						query,
+						mysqlCursorPredicate(escapeSqlIdentifier(column), operator, columnType),
+					);
 					values.push(value);
 				}
 			}

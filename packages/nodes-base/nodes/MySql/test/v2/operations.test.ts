@@ -927,7 +927,7 @@ describe('Test MySql V2, operations', () => {
 			);
 
 			expect(connectionQuerySpy).toHaveBeenCalledWith(
-				"SELECT * FROM `test_table` WHERE (`id` > 1 OR `name` = 'test') AND `id` < '5' ORDER BY `id` DESC LIMIT 2",
+				"SELECT * FROM `test_table` WHERE (`id` > 1 OR `name` = 'test') AND `id` < CAST('5' AS DECIMAL(65, 0)) ORDER BY `id` DESC LIMIT 2",
 			);
 		});
 
@@ -1127,7 +1127,8 @@ describe('Test MySql V2, operations', () => {
 			expect(result[0].json.message).toContain('Column "name"');
 			expect(mockRunQueries).toHaveBeenCalledWith([
 				{
-					query: 'SELECT * FROM `test_table` WHERE `id` > ? ORDER BY `id` ASC LIMIT ?',
+					query:
+						'SELECT * FROM `test_table` WHERE `id` > CAST(? AS DECIMAL(65, 0)) ORDER BY `id` ASC LIMIT ?',
 					values: ['5', 2],
 					itemIndex: 1,
 				},
@@ -1153,11 +1154,40 @@ describe('Test MySql V2, operations', () => {
 
 			expect(mockRunQueries).toHaveBeenCalledWith([
 				{
-					query: 'SELECT * FROM `test_table` WHERE `ID` > ? ORDER BY `ID` ASC LIMIT ?',
+					query:
+						'SELECT * FROM `test_table` WHERE `ID` > CAST(? AS DECIMAL(65, 0)) ORDER BY `ID` ASC LIMIT ?',
 					values: ['5', 2],
 					itemIndex: 0,
 				},
 			]);
+		});
+
+		it('should compare a text cursor as text', async () => {
+			const pool = createCatalogPool();
+			const connectionQuerySpy = vi.spyOn(fakeConnection, 'query');
+
+			await runSelect(
+				{ ...baseParameters, startAfter: { values: { column: 'code', value: 'abc' } } },
+				pool,
+			);
+
+			expect(connectionQuerySpy).toHaveBeenCalledWith(
+				"SELECT * FROM `test_table` WHERE `code` > 'abc' ORDER BY `code` ASC LIMIT 2",
+			);
+		});
+
+		it('should compare a decimal cursor at the column precision', async () => {
+			const pool = createCatalogPool();
+			const connectionQuerySpy = vi.spyOn(fakeConnection, 'query');
+
+			await runSelect(
+				{ ...baseParameters, startAfter: { values: { column: 'price', value: '1.25' } } },
+				pool,
+			);
+
+			expect(connectionQuerySpy).toHaveBeenCalledWith(
+				"SELECT * FROM `test_table` WHERE `price` > CAST('1.25' AS DECIMAL(10, 2)) ORDER BY `price` ASC LIMIT 2",
+			);
 		});
 	});
 

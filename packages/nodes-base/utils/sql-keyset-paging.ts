@@ -131,6 +131,38 @@ export function addCursorPredicate(base: string, query: string, predicate: strin
 		: `${base} WHERE ${predicate}`;
 }
 
+const INTEGER_CURSOR_TYPE = /^(tinyint|smallint|mediumint|int|bigint)\b/;
+const DECIMAL_CURSOR_TYPE = /^decimal\((\d+),(\d+)\)/;
+
+/**
+ * MySQL compares a number column to a bound string as a double. A double cannot
+ * tell every integer above 9007199254740991 apart, and it rounds decimal places,
+ * so the next page can skip or repeat rows. Cast an integer or decimal cursor
+ * to an exact decimal of the column's precision. Text cursors stay strings.
+ */
+export function mysqlCursorPredicate(
+	columnSql: string,
+	operator: '<' | '>',
+	columnType: string,
+): string {
+	const cast = mysqlCursorCast(columnType);
+	const valueSql = cast === undefined ? '?' : `CAST(? AS ${cast})`;
+	return `${columnSql} ${operator} ${valueSql}`;
+}
+
+function mysqlCursorCast(columnType: string): string | undefined {
+	const type = columnType.toLowerCase();
+	if (INTEGER_CURSOR_TYPE.test(type)) return 'DECIMAL(65, 0)';
+
+	const decimal = DECIMAL_CURSOR_TYPE.exec(type);
+	if (decimal === null) return undefined;
+
+	const precision = Number(decimal[1]);
+	const scale = Number(decimal[2]);
+	if (precision < 1 || precision > 65 || scale < 0 || scale > precision) return undefined;
+	return `DECIMAL(${precision}, ${scale})`;
+}
+
 /**
  * The cursor column must be the first sort key. A key before it changes the
  * order of the rows, so "after the last value" skips rows.

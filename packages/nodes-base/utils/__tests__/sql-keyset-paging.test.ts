@@ -1,7 +1,12 @@
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { addCursorPredicate, assertCursorColumnType, getStartAfter } from '../sql-keyset-paging';
+import {
+	addCursorPredicate,
+	assertCursorColumnType,
+	getStartAfter,
+	mysqlCursorPredicate,
+} from '../sql-keyset-paging';
 
 const node = mock<INode>({ name: 'Test Node' });
 const ctxWith = (startAfter: unknown) =>
@@ -47,6 +52,26 @@ describe('addCursorPredicate', () => {
 		expect(
 			addCursorPredicate('SELECT * FROM t', 'SELECT * FROM t WHERE a = 1 OR b = 2', 'id > ?'),
 		).toBe('SELECT * FROM t WHERE (a = 1 OR b = 2) AND id > ?');
+	});
+});
+
+describe('mysqlCursorPredicate', () => {
+	it.each([
+		['`id`', 'int', '`id` > CAST(? AS DECIMAL(65, 0))'],
+		['`id`', 'bigint unsigned', '`id` > CAST(? AS DECIMAL(65, 0))'],
+		['`price`', 'decimal(10,2)', '`price` > CAST(? AS DECIMAL(10, 2))'],
+		['`price`', 'decimal(10,2) unsigned', '`price` > CAST(? AS DECIMAL(10, 2))'],
+		['`code`', 'varchar(64)', '`code` > ?'],
+		['`created`', 'datetime', '`created` > ?'],
+	])(
+		'binds a %s %s cursor so MySQL does not compare it as a double',
+		(columnSql, columnType, expected) => {
+			expect(mysqlCursorPredicate(columnSql, '>', columnType)).toBe(expected);
+		},
+	);
+
+	it('uses the descending operator', () => {
+		expect(mysqlCursorPredicate('`id`', '<', 'bigint')).toBe('`id` < CAST(? AS DECIMAL(65, 0))');
 	});
 });
 
