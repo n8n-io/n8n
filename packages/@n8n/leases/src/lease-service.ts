@@ -13,7 +13,7 @@ export class LeaseService<TTransaction> {
 
 	/**
 	 * Register a kind with the provider. Rejects when the name is invalid or already registered.
-	 * A rejection from the provider is permanent: the kind stays registered and cannot be registered again.
+	 * When the provider fails, the kind is not registered and can be registered again.
 	 */
 	async registerKind(kind: LeaseKind<TTransaction>): Promise<void> {
 		const { name } = kind;
@@ -21,8 +21,6 @@ export class LeaseService<TTransaction> {
 			throw new InvalidLeaseKindError(name);
 		}
 		if (this.kinds.has(name)) throw new DuplicateLeaseKindError(name);
-
-		this.kinds.add(name);
 
 		const {
 			leaseSeconds,
@@ -32,12 +30,18 @@ export class LeaseService<TTransaction> {
 		const options: LeaseKindOptions = { startTimeoutSeconds, maxFailedStarts };
 		if (leaseSeconds !== undefined) options.leaseSeconds = leaseSeconds;
 
-		this.provider.registerSource(name, kind.source);
-		await this.provider.registerHolder(
-			name,
-			options,
-			async (lease) => await kind.handler.hold(lease),
-		);
+		this.kinds.add(name);
+		try {
+			this.provider.registerSource(name, kind.source);
+			await this.provider.registerHolder(
+				name,
+				options,
+				async (lease) => await kind.handler.hold(lease),
+			);
+		} catch (error) {
+			this.kinds.delete(name);
+			throw error;
+		}
 	}
 
 	/** Sync the leases of a registered kind, or only those with `keys`. */

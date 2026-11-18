@@ -81,14 +81,25 @@ describe('LeaseService', () => {
 			expect(provider.registerHolder).toHaveBeenCalledTimes(1);
 		});
 
-		it('keeps the kind registered when the provider rejects', async () => {
+		it('unregisters the kind when registerHolder rejects, so it can be registered again', async () => {
 			const providerError = new Error('provider failed');
 			provider.registerHolder.mockRejectedValueOnce(providerError);
 
 			await expect(service.registerKind(makeKind())).rejects.toBe(providerError);
-			await expect(service.registerKind(makeKind())).rejects.toThrow(DuplicateLeaseKindError);
-			await service.changed('kind-name');
-			expect(provider.sync).toHaveBeenCalledWith('kind-name');
+			await expect(service.changed('kind-name')).rejects.toThrow(UnknownLeaseKindError);
+			await expect(service.registerKind(makeKind())).resolves.toBeUndefined();
+			expect(provider.registerHolder).toHaveBeenCalledTimes(2);
+		});
+
+		it('unregisters the kind when registerSource throws', async () => {
+			const providerError = new Error('source failed');
+			provider.registerSource.mockImplementationOnce(() => {
+				throw providerError;
+			});
+
+			await expect(service.registerKind(makeKind())).rejects.toBe(providerError);
+			expect(provider.registerHolder).not.toHaveBeenCalled();
+			await expect(service.changed('kind-name')).rejects.toThrow(UnknownLeaseKindError);
 		});
 
 		it('merges kind options over the defaults', async () => {
