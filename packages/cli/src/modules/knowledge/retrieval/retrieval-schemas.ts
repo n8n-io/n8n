@@ -9,12 +9,12 @@ const MAX_SEARCH_PATTERN_LENGTH = 500;
 const MAX_GLOB_PATTERN_LENGTH = 255;
 const MAX_FILE_PATH_LENGTH = 512;
 const MAX_SEARCH_TEXT_LIMIT = 100;
-const MAX_GLOB_FILES_LIMIT = 100;
+const MAX_FIND_FILES_LIMIT = 100;
 const MAX_FILE_ID_LENGTH = 64;
 const MAX_SEARCH_PATHS = 20;
 
 export const DEFAULT_SEARCH_TEXT_LIMIT = 20;
-export const DEFAULT_GLOB_FILES_LIMIT = 20;
+export const DEFAULT_FIND_FILES_LIMIT = 20;
 export const MAX_SEARCH_LINE_CHARS = 500;
 export const MAX_READ_LINE_CHARS = 2_000;
 export const MAX_OPERATION_OUTPUT_CHARS = 20_000;
@@ -39,7 +39,7 @@ const globPatternSchema = z.string().trim().min(1).max(MAX_GLOB_PATTERN_LENGTH);
 const searchOutputModeSchema = z.enum(['content', 'files_with_matches', 'count']);
 const searchContextFlagSchema = z.number().int().min(0).max(MAX_SEARCH_CONTEXT_LINES);
 
-export const searchKnowledgeInputSchema = z
+export const searchKnowledgeTextInputSchema = z
 	.object({
 		pattern: searchPatternSchema.describe(
 			'Ripgrep regex pattern to search for in uploaded knowledge file contents. This is line-based regex search, not semantic search. Simple words and phrases usually work as-is; escape punctuation-heavy literals when needed.',
@@ -75,7 +75,7 @@ export const searchKnowledgeInputSchema = z
 	})
 	.strict();
 
-export const globKnowledgeFilesInputSchema = z
+export const findKnowledgeFilesInputSchema = z
 	.object({
 		pattern: globPatternSchema.describe(
 			'Filename pattern matched against uploaded knowledge file names, not file contents. Supports * and ? wildcards and is case-insensitive by default. Use `*` to list every uploaded file, `*.pdf` to filter by extension, or name fragments like `*bert*` when the user gives title or filename clues.',
@@ -84,7 +84,7 @@ export const globKnowledgeFilesInputSchema = z
 			.number()
 			.int()
 			.min(1)
-			.max(MAX_GLOB_FILES_LIMIT)
+			.max(MAX_FIND_FILES_LIMIT)
 			.optional()
 			.describe(
 				'Optional maximum number of candidate files to return. Use a small value such as 5-20 and make the pattern more specific if hasMore is true.',
@@ -121,7 +121,7 @@ export const globKnowledgeFilesInputSchema = z
 		}
 	});
 
-export const readKnowledgeInputSchema = z
+export const readKnowledgeFileInputSchema = z
 	.object({
 		file: filePathSchema
 			.optional()
@@ -181,11 +181,11 @@ export const readKnowledgeInputSchema = z
 		}
 	});
 
-export type SearchKnowledgeRequest = z.infer<typeof searchKnowledgeInputSchema>;
-export type GlobKnowledgeFilesRequest = z.infer<typeof globKnowledgeFilesInputSchema>;
-export type ReadKnowledgeRequest = z.infer<typeof readKnowledgeInputSchema>;
+export type SearchKnowledgeTextRequest = z.infer<typeof searchKnowledgeTextInputSchema>;
+export type FindKnowledgeFilesRequest = z.infer<typeof findKnowledgeFilesInputSchema>;
+export type ReadKnowledgeFileRequest = z.infer<typeof readKnowledgeFileInputSchema>;
 
-export interface AgentKnowledgeFileReference {
+export interface KnowledgeFileReference {
 	file: string;
 	fileId: string;
 	storedAt: ExecutionDataStorageLocation;
@@ -196,95 +196,92 @@ export interface AgentKnowledgeFileReference {
 	createdAt: string;
 }
 
-type AgentKnowledgeFileIdentity = Pick<
-	AgentKnowledgeFileReference,
-	'file' | 'fileId' | 'displayName'
->;
+type KnowledgeFileIdentity = Pick<KnowledgeFileReference, 'file' | 'fileId' | 'displayName'>;
 
-export interface AgentKnowledgeCitation extends AgentKnowledgeFileIdentity {
+export interface KnowledgeFileCitation extends KnowledgeFileIdentity {
 	startLine: number;
 	endLine: number;
 }
 
-export interface SearchKnowledgeMatch extends AgentKnowledgeFileIdentity {
+export interface SearchKnowledgeTextMatch extends KnowledgeFileIdentity {
 	lineNumber: number;
 	text: string;
 	textTruncated: boolean;
-	context?: SearchKnowledgeContextLine[];
+	context?: SearchKnowledgeTextContextLine[];
 }
 
-export interface SearchKnowledgeContextLine {
+export interface SearchKnowledgeTextContextLine {
 	lineNumber: number;
 	text: string;
 	matched: boolean;
 }
 
-export interface SearchKnowledgeCount extends AgentKnowledgeFileIdentity {
+export interface SearchKnowledgeTextCount extends KnowledgeFileIdentity {
 	count: number;
 }
 
-export interface SearchKnowledgeContentResult {
+export interface SearchKnowledgeTextContentResult {
 	outputMode: 'content';
-	matches: SearchKnowledgeMatch[];
+	matches: SearchKnowledgeTextMatch[];
 	limit: number;
 	hasMore: boolean;
 	truncated: boolean;
 }
 
-export interface SearchKnowledgeFilesResult {
+export interface SearchKnowledgeTextFilesResult {
 	outputMode: 'files_with_matches';
-	files: AgentKnowledgeFileReference[];
+	files: KnowledgeFileReference[];
 	limit: number;
 	hasMore: boolean;
 	truncated: boolean;
 }
 
-export interface SearchKnowledgeCountResult {
+export interface SearchKnowledgeTextCountResult {
 	outputMode: 'count';
-	counts: SearchKnowledgeCount[];
+	counts: SearchKnowledgeTextCount[];
 	limit: number;
 	hasMore: boolean;
 	truncated: boolean;
 }
 
-export type SearchKnowledgeResult =
-	| SearchKnowledgeContentResult
-	| SearchKnowledgeFilesResult
-	| SearchKnowledgeCountResult;
+export type SearchKnowledgeTextResult =
+	| SearchKnowledgeTextContentResult
+	| SearchKnowledgeTextFilesResult
+	| SearchKnowledgeTextCountResult;
 
-export interface GlobKnowledgeFilesResult {
-	files: AgentKnowledgeFileReference[];
+export interface FindKnowledgeFilesResult {
+	files: KnowledgeFileReference[];
 	limit: number;
 	offset: number;
 	hasMore: boolean;
 }
 
-export interface ReadKnowledgeRangeResult {
+export interface ReadKnowledgeFileRangeResult {
 	startLine: number;
 	endLine: number;
 	text: string;
-	citation: AgentKnowledgeCitation;
+	citation: KnowledgeFileCitation;
 }
 
-export interface ReadKnowledgeResult extends AgentKnowledgeFileIdentity {
+export interface ReadKnowledgeFileResult extends KnowledgeFileIdentity {
 	createdAt: string;
-	ranges: ReadKnowledgeRangeResult[];
+	ranges: ReadKnowledgeFileRangeResult[];
 	truncated: boolean;
 }
 
-export function parseSearchKnowledgeRequest(input: unknown): SearchKnowledgeRequest {
-	return searchKnowledgeInputSchema.parse(input);
+export function parseSearchKnowledgeTextRequest(input: unknown): SearchKnowledgeTextRequest {
+	return searchKnowledgeTextInputSchema.parse(input);
 }
 
-export function parseGlobKnowledgeFilesRequest(input: unknown): GlobKnowledgeFilesRequest {
-	return globKnowledgeFilesInputSchema.parse(input);
+export function parseFindKnowledgeFilesRequest(input: unknown): FindKnowledgeFilesRequest {
+	return findKnowledgeFilesInputSchema.parse(input);
 }
 
-export function parseReadKnowledgeRequest(input: unknown): ReadKnowledgeRequest {
-	return readKnowledgeInputSchema.parse(input);
+export function parseReadKnowledgeFileRequest(input: unknown): ReadKnowledgeFileRequest {
+	return readKnowledgeFileInputSchema.parse(input);
 }
 
-export function assertValidKnowledgeFilePath(filePath: string): string {
+export function parseKnowledgeFilePath(filePath: string): string {
 	const trimmed = filePath.trim();
 	if (
 		!trimmed ||

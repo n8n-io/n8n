@@ -41,7 +41,8 @@ describe('SchedulerConfig', () => {
 			expect(scheduler.triggerNodeMode).toBe('new');
 			expect(scheduler.maxAttempts).toBe(5);
 			expect(scheduler.taskTimeoutSeconds).toBe(300);
-			expect(scheduler.enabledForPollTriggers).toBe(false);
+			expect(scheduler.enabledForPollTriggers).toBe(true);
+			expect(scheduler.durableCursorsEnabled).toBe(true);
 			expect(scheduler.pollTimeoutSeconds).toBe(45);
 			expect(scheduler.enabledForSystemTasks).toBe(false);
 		});
@@ -54,6 +55,22 @@ describe('SchedulerConfig', () => {
 			const { scheduler } = Container.get(GlobalConfig);
 
 			expect(scheduler.enabled).toBe(false);
+		});
+
+		it('should disable poll triggers via env', () => {
+			vi.stubEnv('N8N_SCHEDULER_POLL_TRIGGERS_ENABLED', 'false');
+
+			const { scheduler } = Container.get(GlobalConfig);
+
+			expect(scheduler.enabledForPollTriggers).toBe(false);
+		});
+
+		it('should disable durable cursors via env', () => {
+			vi.stubEnv('N8N_POLLER_DURABLE_CURSORS_ENABLED', 'false');
+
+			const { scheduler } = Container.get(GlobalConfig);
+
+			expect(scheduler.durableCursorsEnabled).toBe(false);
 		});
 
 		it('should allow the legacy trigger node mode via env', () => {

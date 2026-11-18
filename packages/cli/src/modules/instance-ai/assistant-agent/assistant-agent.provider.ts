@@ -39,8 +39,10 @@ import type {
 	SystemAgentTurnHandle,
 	SystemAgentTurnOptions,
 	SystemAgentTurnOutcome,
+	SystemAgentUserStopScope,
 } from '@/modules/agents/system-agents/system-agent.types';
-import { Telemetry } from '@/telemetry';
+import { TelemetryProxy } from '@n8n/backend-services';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 
 import {
@@ -167,7 +169,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		private readonly errorReporter: InstanceAiErrorReporterService,
 		private readonly userRepository: UserRepository,
 		private readonly turnOverrides: AssistantTurnOverrides,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.aiConfig = globalConfig.ai;
@@ -219,6 +221,15 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			});
 			await this.archiveTemporaryWorkflows(workflowService, markers, threadId);
 		};
+	}
+
+	/** The runtime calls this only for a stop that took effect. */
+	onUserStoppedTurn({ threadId, userId }: SystemAgentUserStopScope): void {
+		this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_STOPPED_RUN, {
+			user_id: userId,
+			thread_id: threadId,
+			runtime: 'agents',
+		});
 	}
 
 	/** A setup failure, such as the credit check before the run, gets the turn's error text. */

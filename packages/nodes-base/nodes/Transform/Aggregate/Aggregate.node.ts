@@ -11,6 +11,7 @@ import {
 	type IPairedItemData,
 	NodeConnectionTypes,
 	type NodeExecutionHint,
+	READ_ONLY_ANNOTATIONS,
 } from 'n8n-workflow';
 
 import { addBinariesToItem } from './utils';
@@ -26,6 +27,7 @@ export class Aggregate implements INodeType {
 		subtitle: '',
 		version: 1,
 		description: 'Combine a field from many items into a list in a single item',
+		annotations: READ_ONLY_ANNOTATIONS,
 		defaults: {
 			name: 'Aggregate',
 		},
