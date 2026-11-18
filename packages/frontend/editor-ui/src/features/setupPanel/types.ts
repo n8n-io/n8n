@@ -1,1 +1,1 @@
-export type FocusSidebarTabs = 'setup' | 'focus' | 'evaluations';
+export type FocusSidebarTabs = 'setup' | 'focus' | 'evaluations' | 'json';

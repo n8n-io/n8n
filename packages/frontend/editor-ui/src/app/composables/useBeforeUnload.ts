@@ -1,5 +1,6 @@
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowJsonDraftStore } from '@/features/workflows/jsonEditor/workflowJsonDraft.store';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { VIEWS } from '@/app/constants';
@@ -15,6 +16,7 @@ import type { useRoute } from 'vue-router';
 export function useBeforeUnload({ route }: { route: ReturnType<typeof useRoute> }) {
 	const uiStore = useUIStore();
 	const canvasStore = useCanvasStore();
+	const workflowJsonDraftStore = useWorkflowJsonDraftStore();
 
 	const i18n = useI18n();
 
@@ -31,7 +33,7 @@ export function useBeforeUnload({ route }: { route: ReturnType<typeof useRoute> 
 
 		handlers.forEach((handler) => handler());
 
-		if (uiStore.stateIsDirty) {
+		if (uiStore.stateIsDirty || workflowJsonDraftStore.hasUnappliedEdits) {
 			e.returnValue = true; //Gecko + IE
 			return true; //Gecko + Webkit, Safari, Chrome etc.
 		} else {

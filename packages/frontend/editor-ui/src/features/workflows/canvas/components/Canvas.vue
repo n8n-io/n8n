@@ -184,6 +184,7 @@ const emit = defineEmits<{
 		},
 	];
 	'toggle:focus-panel': [];
+	'toggle:json-panel': [];
 	'viewport:change': [viewport: ViewportTransform, dimensions: Dimensions];
 	'selection:end': [position: XYPosition];
 	'open:sub-workflow': [nodeId: string];
@@ -564,6 +565,7 @@ const keyMap = computed(() => {
 		i: () => emit('update:logs:input-open'),
 		o: () => emit('update:logs:output-open'),
 		z: onToggleZoomMode,
+		shift_j: () => emit('toggle:json-panel'),
 	};
 
 	// Group collapse state is a view preference, so expanding/collapsing

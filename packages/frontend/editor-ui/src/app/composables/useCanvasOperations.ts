@@ -1374,7 +1374,8 @@ export function useCanvasOperations() {
 				void externalHooks.run('nodeView.addNodeButton', { nodeTypeName: nodeData.type });
 
 				if (nextView === 'focus_panel') {
-					// Do nothing. The added node get selected and the details are shown in the focus panel
+					// The added node gets selected and its details show in the focus panel, which the JSON tab would hide
+					if (focusPanelStore.selectedTab === 'json') focusPanelStore.setSelectedTab('focus');
 				} else if (nextView === 'zoomed_view') {
 					experimentalNdvStore.setNodeNameToBeFocused(nodeData.name);
 				} else if (nextView === 'ndv') {

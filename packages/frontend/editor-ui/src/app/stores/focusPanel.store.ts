@@ -157,6 +157,8 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		// TODO: uncomment when tabs are implemented
 		// ...focusedNodeParameters.value.filter((p) => p.parameterPath !== nodeParameter.parameterPath),
 
+		// The tab watcher fires only for a new parameter, so focusing the same one again needs this
+		selectedTab.value = 'focus';
 		_setOptions({ parameters, isActive: true });
 	}
 
@@ -173,6 +175,10 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 	}
 
 	function toggleFocusPanel() {
+		// The JSON tab has its own toggle, so this one opens the panel on its default tab
+		if (!focusPanelActive.value && selectedTab.value === 'json') {
+			selectedTab.value = 'setup';
+		}
 		_setOptions({ isActive: !focusPanelActive.value });
 	}
 
@@ -188,6 +194,15 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 
 	function setSelectedTab(tab: FocusSidebarTabs) {
 		selectedTab.value = tab;
+	}
+
+	function toggleTab(tab: FocusSidebarTabs) {
+		if (focusPanelActive.value && selectedTab.value === tab) {
+			closeFocusPanel();
+			return;
+		}
+		selectedTab.value = tab;
+		openFocusPanel();
 	}
 
 	const focusedNodeParametersInTelemetryFormat = computed<
@@ -248,5 +263,6 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		updateWidth,
 		unsetParameters,
 		setSelectedTab,
+		toggleTab,
 	};
 });

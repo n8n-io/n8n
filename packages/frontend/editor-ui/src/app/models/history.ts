@@ -144,7 +144,9 @@ export class RemoveNodeCommand extends Command {
 	}
 
 	isEqualTo(anotherCommand: Command): boolean {
-		return anotherCommand instanceof AddNodeCommand && anotherCommand.node.name === this.node.name;
+		return (
+			anotherCommand instanceof RemoveNodeCommand && anotherCommand.node.name === this.node.name
+		);
 	}
 
 	async revert(): Promise<void> {

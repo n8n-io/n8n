@@ -858,7 +858,8 @@ async function onRevertRenameNode({
 	currentName: string;
 	newName: string;
 }) {
-	await revertRenameNode(currentName, newName);
+	// The node carries `newName` now, so rename it back to `currentName`
+	await revertRenameNode(newName, currentName);
 }
 
 async function onRevertReplaceNodeParameters({
@@ -1220,6 +1221,10 @@ function onToggleFocusPanel() {
 		parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
 		parameterCount: focusPanelStore.focusedNodeParametersInTelemetryFormat.length,
 	});
+}
+
+function onToggleJsonPanel() {
+	focusPanelStore.toggleTab('json');
 }
 
 function closeNodeCreator() {
@@ -2285,6 +2290,7 @@ onBeforeUnmount(() => {
 			@drag-and-drop="onDragAndDrop"
 			@tidy-up="onTidyUp"
 			@toggle:focus-panel="onToggleFocusPanel"
+			@toggle:json-panel="onToggleJsonPanel"
 			@extract-workflow="onExtractWorkflow"
 			@start-chat="onToggleChat"
 		>

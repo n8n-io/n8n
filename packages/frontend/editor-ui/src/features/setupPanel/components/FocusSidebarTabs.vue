@@ -22,6 +22,7 @@ const props = withDefaults(
 			setup?: string;
 			focus?: string;
 			evaluations?: string;
+			json?: string;
 		};
 	}>(),
 	{
@@ -54,6 +55,10 @@ const tabs = computed<Array<TabOptions<FocusSidebarTabs>>>(() => {
 			value: 'evaluations',
 		});
 	}
+	opts.push({
+		label: props.tabLabels?.json ?? i18n.baseText('setupPanel.tabs.json'),
+		value: 'json',
+	});
 	return opts;
 });
 

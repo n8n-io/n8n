@@ -16,6 +16,8 @@ import { type ContextMenuAction } from '@/features/shared/contextMenu/composable
 import type { INodeUi, ResizeData } from '@/Interface';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import FocusSidebarTabs from '@/features/setupPanel/components/FocusSidebarTabs.vue';
+import type { FocusSidebarTabs as FocusSidebarTab } from '@/features/setupPanel/types';
+import WorkflowJsonPanel from '@/features/workflows/jsonEditor/components/WorkflowJsonPanel.vue';
 import SetupPanel from '@/features/setupPanel/components/SetupPanel.vue';
 import FocusPanel from '@/app/components/FocusPanel.vue';
 import TestsPanel from '@/features/ai/evaluation.ee/components/Tests/TestsPanel.vue';
@@ -77,12 +79,14 @@ const showEvaluationsPaywall = computed(
 		!isLicensed.value,
 );
 
-// Tab bar visibility used to track only the setup panel; now it also needs to
-// stay shown when the evaluations tab is available, otherwise the user has no
-// way to switch back.
-const showTabs = computed(
-	() => isSetupPanelEnabled.value || isEvaluationsWizardSidepanelEnabled.value,
-);
+const showJsonPanel = computed(() => selectedTab.value === 'json');
+
+// With the setup feature off, the 'setup' default renders the focus panel, so highlight that tab.
+const activeTab = computed<FocusSidebarTab>({
+	get: () =>
+		selectedTab.value === 'setup' && !isSetupPanelEnabled.value ? 'focus' : selectedTab.value,
+	set: (tab) => focusPanelStore.setSelectedTab(tab),
+});
 
 const node = computed<INodeUi | undefined>(() => {
 	if (!experimentalNdvStore.isNdvInFocusPanelEnabled || resolvedParameter.value) {
@@ -187,10 +191,13 @@ onBeforeUnmount(() => {
 			@resize="onResizeThrottle"
 		>
 			<div :class="$style.container">
-				<div v-if="showTabs">
-					<FocusSidebarTabs v-model="selectedTab" :tab-labels="labelOverrides" />
+				<div>
+					<FocusSidebarTabs v-model="activeTab" :tab-labels="labelOverrides" />
 				</div>
-				<div v-if="showSetupPanel" :class="$style['setup-panel-wrapper']">
+				<div v-if="showJsonPanel" :class="$style['setup-panel-wrapper']">
+					<WorkflowJsonPanel :is-read-only="isCanvasReadOnly" />
+				</div>
+				<div v-else-if="showSetupPanel" :class="$style['setup-panel-wrapper']">
 					<SetupPanel :is-read-only="isCanvasReadOnly" />
 				</div>
 				<div v-else-if="showEvaluationsPanel" :class="$style['setup-panel-wrapper']">

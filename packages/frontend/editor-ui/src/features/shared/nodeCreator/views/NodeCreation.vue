@@ -247,6 +247,21 @@ function openCommandBar(event: MouseEvent) {
 				@click="toggleFocusPanel"
 			/>
 		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip
+			:label="i18n.baseText('nodeView.openJsonPanel')"
+			:shortcut="{ keys: ['j'], shiftKey: true }"
+			placement="left"
+		>
+			<N8nIconButton
+				variant="ghost"
+				size="large"
+				icon="json"
+				:aria-label="i18n.baseText('nodeView.openJsonPanel')"
+				data-test-id="toggle-json-panel-button"
+				data-attr="toggle-json-panel-button"
+				@click="focusPanelStore.toggleTab('json')"
+			/>
+		</KeyboardShortcutTooltip>
 		<!-- Instance AI hand-off (mimics the assistant button) — shown when the
 		Instance AI feature is on and the host provides the workflow action.
 		Clicking hands the current workflow off to a new Instance AI thread. -->
