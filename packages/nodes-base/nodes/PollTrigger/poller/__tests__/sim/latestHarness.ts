@@ -106,7 +106,7 @@ export async function runLatest(poll: Poll, sc: LScenario): Promise<LResult> {
 		cfg,
 		tick: 0,
 		fetch: 0,
-		at: (delta) => w.live[ctx.fetch * cfg.pageSize + delta],
+		at: (delta) => w.live[ctx.fetch * Math.min(cfg.pageSize, sc.cap ?? cfg.pageSize) + delta],
 		late: (n, maxPos) => {
 			const r = ctx.r;
 			if (!w.live.length) {
