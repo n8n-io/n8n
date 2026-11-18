@@ -20,7 +20,7 @@ import {
 	NODE_X_SPACING,
 	HORIZONTAL_NODE_STEP,
 	doRectsOverlap,
-	canUsePosition,
+	isPositionBlocked,
 } from './nodeViewUtils';
 import type { INode, INodeTypeDescription, INodeExecutionData, Workflow } from 'n8n-workflow';
 import type { INodeUi, XYPosition } from '@/Interface';
@@ -351,6 +351,41 @@ describe('getNewNodePosition', () => {
 		const result = getNewNodePosition(nodes, newPosition);
 		expect(result).toEqual([288, 288]);
 	});
+
+	it('should test the new node against the full width of a wide node', () => {
+		const nodes: INodeUi[] = [createTestNode({ id: '1', position: [0, 0], type: SET_NODE_TYPE })];
+		const result = getNewNodePosition(nodes, [160, 0], {
+			getNodeSize: () => [224, 96],
+		});
+		expect(result).toEqual([256, 96]);
+	});
+
+	it('should test the new node against the full height of a tall node', () => {
+		const nodes: INodeUi[] = [
+			createTestNode({ id: '1', position: [224, -96], type: SET_NODE_TYPE }),
+		];
+		const result = getNewNodePosition(nodes, [224, 96], {
+			getNodeSize: () => [96, 224],
+		});
+		expect(result).toEqual([272, 144]);
+	});
+
+	it('should keep a wide new node at its position when no node is in its rectangle', () => {
+		const nodes: INodeUi[] = [createTestNode({ id: '1', position: [0, 0], type: SET_NODE_TYPE })];
+		const result = getNewNodePosition(nodes, [784, -48], { size: [1440, 96] });
+		expect(result).toEqual([784, -48]);
+	});
+
+	it('should ignore a node with a position or size that is not a finite number', () => {
+		const nodes: INodeUi[] = [
+			createTestNode({ id: '1', position: [Number.NaN, 0], type: SET_NODE_TYPE }),
+			createTestNode({ id: '2', position: [0, 0], type: SET_NODE_TYPE }),
+		];
+		const result = getNewNodePosition(nodes, [0, 0], {
+			getNodeSize: (node) => (node.id === '2' ? [Infinity, 96] : DEFAULT_NODE_SIZE),
+		});
+		expect(result).toEqual([0, 0]);
+	});
 });
 
 const testNodes: INode[] = [
@@ -462,6 +497,17 @@ describe('getNodesGroupSize', () => {
 		const [we, he] = getNodesGroupSize(equalNodes);
 		expect(we).toBe(DEFAULT_NODE_SIZE[0]);
 		expect(he).toBe(DEFAULT_NODE_SIZE[1]);
+	});
+
+	it('should include the size of each node in the bounding box', () => {
+		const nodes: INode[] = [
+			createTestNode({ id: 'wide', position: [0, 0] }),
+			createTestNode({ id: 'tall', position: [400, -96] }),
+		];
+		const sizes: Record<string, [number, number]> = { wide: [320, 128], tall: [96, 224] };
+		const [width, height] = getNodesGroupSize(nodes, (node) => sizes[node.id]);
+		expect(width).toBe(496);
+		expect(height).toBe(224);
 	});
 });
 
@@ -694,29 +740,29 @@ describe('doRectsOverlap', () => {
 	});
 });
 
-describe('canUsePosition', () => {
-	it('should return true when positions are far apart', () => {
-		const pos1: XYPosition = [0, 0];
-		const pos2: XYPosition = [200, 200];
-		expect(canUsePosition(pos1, pos2)).toBe(true);
+describe('isPositionBlocked', () => {
+	const obstacle = { x: 0, y: 0, width: 224, height: 96 };
+
+	it('should block a candidate that overlaps the obstacle', () => {
+		expect(isPositionBlocked({ x: 200, y: 0, width: 96, height: 96 }, obstacle)).toBe(true);
 	});
 
-	it('should return false when positions overlap', () => {
-		const pos1: XYPosition = [0, 0];
-		const pos2: XYPosition = [50, 50];
-		expect(canUsePosition(pos1, pos2)).toBe(false);
+	it('should block a candidate less than one grid cell away', () => {
+		expect(
+			isPositionBlocked({ x: 224 + GRID_SIZE - 1, y: 0, width: 96, height: 96 }, obstacle),
+		).toBe(true);
+		expect(
+			isPositionBlocked({ x: 0, y: 96 + GRID_SIZE - 1, width: 96, height: 96 }, obstacle),
+		).toBe(true);
 	});
 
-	it('should return true when positions are separated horizontally', () => {
-		const pos1: XYPosition = [0, 0];
-		const pos2: XYPosition = [DEFAULT_NODE_SIZE[0] + 1, 0];
-		expect(canUsePosition(pos1, pos2)).toBe(true);
-	});
-
-	it('should return true when positions are separated vertically', () => {
-		const pos1: XYPosition = [0, 0];
-		const pos2: XYPosition = [0, DEFAULT_NODE_SIZE[1] + 1];
-		expect(canUsePosition(pos1, pos2)).toBe(true);
+	it('should not block a candidate one grid cell or more away', () => {
+		expect(isPositionBlocked({ x: 224 + GRID_SIZE, y: 0, width: 96, height: 96 }, obstacle)).toBe(
+			false,
+		);
+		expect(isPositionBlocked({ x: 0, y: -96 - GRID_SIZE, width: 96, height: 96 }, obstacle)).toBe(
+			false,
+		);
 	});
 });
 

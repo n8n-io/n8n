@@ -229,10 +229,10 @@ export class ConcurrencyControlService {
 
 		if (executionIdsToCancel.length === 0) return;
 
-		await this.executionRepository.cancelMany(executionIdsToCancel);
+		const canceled = await this.executionRepository.markAsCanceled(executionIdsToCancel);
 
 		this.logger.info('Canceled enqueued executions with response promises', {
-			executionIds: executionIdsToCancel,
+			executionIds: canceled.map(({ id }) => id),
 		});
 	}
 

@@ -46,12 +46,14 @@ import { canUseSystemAgent } from './system-agent-access';
 import { SystemAgentHostEventChannel } from './system-agent-host-events';
 import { SystemAgentRegistry } from './system-agent-registry';
 import type {
+	SystemAgentAfterThreadDeletion,
 	SystemAgentFile,
 	SystemAgentProvider,
 	SystemAgentStartTurn,
 	SystemAgentTurnHandle,
 	SystemAgentTurnOptions,
 	SystemAgentTurnOutcome,
+	SystemAgentUserStopScope,
 	SystemAgentWorkspaceScope,
 	SuspendedToolCall,
 } from './system-agent.types';
@@ -343,6 +345,31 @@ export class SystemAgentExecutionService {
 		await this.deleteOwnedThread(thread, user.id);
 	}
 
+	/**
+	 * The thread of a suspended run that the user owns, from its checkpoint.
+	 * Read it before the cancel, which clears the checkpoint state.
+	 */
+	async findThreadIdOfRun(agentId: string, user: User, runId: string): Promise<string | undefined> {
+		const status = await this.checkpointStorage.getStatus(runId, agentId);
+		const persistence = status.status === 'not-found' ? undefined : status.checkpoint?.persistence;
+		if (persistence?.resourceId !== this.resourceIdFor(user)) return undefined;
+		return persistence.threadId;
+	}
+
+	/** Tell the provider that the user stopped a turn. A failure is logged. */
+	async reportUserStoppedTurn(scope: SystemAgentUserStopScope): Promise<void> {
+		const provider = this.registry.get(scope.agentId);
+		if (!provider?.onUserStoppedTurn) return;
+		try {
+			await provider.onUserStoppedTurn(scope);
+		} catch (error) {
+			this.logger.warn('System agent stop callback failed', {
+				...scope,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
 	/** Stop running system-agent turns and discard queued turns before account cleanup. */
 	async stopThreadsOfUser(userId: string): Promise<void> {
 		let sessions: SessionRef[];
@@ -459,6 +486,7 @@ export class SystemAgentExecutionService {
 
 	/** Delete a session with its sandbox. The caller checks ownership. */
 	private async deleteOwnedThread(thread: SessionRef, userId: string): Promise<void> {
+		const afterDeletion = await this.prepareThreadDeletion(thread, userId);
 		const deleted = await this.executionService.deleteThread(
 			thread.projectId,
 			thread.agentId,
@@ -467,6 +495,41 @@ export class SystemAgentExecutionService {
 		);
 		if (!deleted) throw new NotFoundError('Session not found');
 		await this.destroyThreadWorkspace(thread.agentId, thread.id, userId);
+		if (!afterDeletion) return;
+		try {
+			await afterDeletion();
+		} catch (error) {
+			this.logger.warn('System agent cleanup after thread deletion failed', {
+				agentId: thread.agentId,
+				threadId: thread.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	/** Let the provider read the thread state that the deletion removes. A failure is logged. */
+	private async prepareThreadDeletion(
+		thread: SessionRef,
+		userId: string,
+	): Promise<SystemAgentAfterThreadDeletion | undefined> {
+		const provider = this.registry.get(thread.agentId);
+		if (!provider?.onBeforeThreadDeletion) return undefined;
+		try {
+			return await provider.onBeforeThreadDeletion({
+				agentId: thread.agentId,
+				threadId: thread.id,
+				projectId: thread.projectId,
+				userId,
+				memory: this.n8nMemory.getImplementation(thread.agentId),
+			});
+		} catch (error) {
+			this.logger.warn('System agent preparation for thread deletion failed', {
+				agentId: thread.agentId,
+				threadId: thread.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
+		}
 	}
 
 	/**

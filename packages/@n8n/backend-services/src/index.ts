@@ -50,10 +50,17 @@ export {
 	type FavoriteResourceResolver,
 	type ResolvedFavoriteResourceType,
 } from './services/favorite-resource-resolver.registry';
+export { CollaborationState, type WriteLock } from './collaboration/collaboration.state';
+export {
+	AgentProjectLookupProxy,
+	type AgentProjectLookup,
+} from './collaboration/agent-project-lookup-proxy.service';
 export { WorkflowProjectService } from './services/workflow-project.service';
 export {
 	OwnershipTransferHandlerRegistry,
 	type ProjectOwnershipTransferHandler,
+	type UserDeletionActor,
+	type UserDeletionContext,
 } from './services/ownership-transfer-handler.registry';
 export {
 	WorkflowSharingService,
@@ -113,6 +120,7 @@ export {
 	InstanceRegistryProxyService,
 	type InstanceRegistryProvider,
 } from './services/instance-registry-proxy.service';
+export { TelemetryProxy, type TelemetryTracker } from './services/telemetry-proxy.service';
 export { ExecutingUserIdentifierProxy } from './credentials/executing-user-identifier-proxy';
 export type { IExecutingUserIdentifier } from './credentials/executing-user-identifier.interface';
 export { ExecutionLedger, type CreatedExecution } from './executions/execution-ledger.service';
@@ -164,3 +172,5 @@ export {
 export { AiPreferenceScopeFullError } from './errors/response-errors/ai-preference-scope-full.error';
 export * from './auth';
 export { ProjectNotFoundError } from './errors/project-not-found.error';
+
+export { ExecutionRetentionService } from './services/execution-retention.service';

@@ -1,4 +1,4 @@
-import { computed, nextTick, reactive, ref, shallowRef, triggerRef, watch } from 'vue';
+import { computed, reactive, ref, shallowRef, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
@@ -9,6 +9,7 @@ import {
 	isSafeObjectKey,
 	resolveBuilderToolName,
 	WORKFLOW_BUILDER_TOOL_NAMES,
+	type InstanceAiApprovalMode,
 	type InstanceAiConfirmation,
 	type InstanceAiConfirmRequest,
 	type InstanceAiConfirmResponse,
@@ -32,7 +33,7 @@ import {
 import { isRecord } from '@n8n/utils/is-record';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { buildAlwaysAllowKey } from './alwaysAllow';
+import { buildAlwaysAllowKeys } from './alwaysAllow';
 import {
 	redactTelemetryProperties,
 	TELEMETRY_EVENT,
@@ -90,7 +91,10 @@ import {
 	syncLiveRunFromStatus,
 } from './instanceAi.liveRunState';
 import { isInstanceAiThreadSource } from './constants';
-import { instanceAiResponseNow } from './instanceAi.responseTiming';
+import {
+	instanceAiResponseNow,
+	observeInstanceAiResponseRender,
+} from './instanceAi.responseTiming';
 
 /**
  * State the editor handed off, snapshotted before its stores are torn down so
@@ -280,6 +284,24 @@ export function getPendingAppTargetFromThreadMetadata(
 		return undefined;
 	}
 	return { appId: target.appId, projectId: target.projectId };
+}
+
+/** Whether the thread builds or edits an agent. Auto approval mode does not apply there. */
+export function threadTargetsAgent(metadata: Record<string, unknown> | undefined): boolean {
+	return (
+		getAgentBuilderTargetFromThreadMetadata(metadata) !== undefined ||
+		getAgentBuilderTargetsFromThreadMetadata(metadata).length > 0 ||
+		getPendingAgentTargetFromThreadMetadata(metadata) !== undefined
+	);
+}
+
+/** The approval mode that the backend uses for the run of a message sent now. */
+export function messageApprovalMode(
+	settings: { approvalModesAvailable: boolean; approvalMode: InstanceAiApprovalMode },
+	buildsAgent: boolean,
+): InstanceAiApprovalMode | 'unavailable' {
+	if (!settings.approvalModesAvailable) return 'unavailable';
+	return buildsAgent ? 'manual' : settings.approvalMode;
 }
 
 export function getAgentPreviewViewFromThreadMetadata(
@@ -744,21 +766,12 @@ export function createThreadRuntime(
 		return event.payload.status === 'completed' ? 'completed' : null;
 	}
 
-	async function observeResponseRender(): Promise<{ atEpochMs: number; tabVisible: boolean }> {
-		await nextTick();
-		const tabVisible = document.visibilityState === 'visible';
-		if (tabVisible) {
-			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-		}
-		return { atEpochMs: instanceAiResponseNow(), tabVisible };
-	}
-
 	function createResponseSignal(responseKind: ResponseKind | null): ResponseSignal {
 		if (responseKind === null) return { kind: 'discard' };
 		return {
 			kind: 'received',
 			responseKind,
-			rendered: observeResponseRender(),
+			rendered: observeInstanceAiResponseRender(),
 		};
 	}
 
@@ -947,11 +960,9 @@ export function createThreadRuntime(
 		args: Record<string, unknown>,
 		confirmationWorkflowId?: string,
 	): void {
-		const key = buildAlwaysAllowKey(toolName, args, confirmationWorkflowId);
-		if (key === null) return;
-		const next = new Set(sessionAlwaysAllowKeys.value);
-		next.add(key);
-		sessionAlwaysAllowKeys.value = next;
+		const keys = buildAlwaysAllowKeys(toolName, args, confirmationWorkflowId);
+		if (keys.length === 0) return;
+		sessionAlwaysAllowKeys.value = new Set([...sessionAlwaysAllowKeys.value, ...keys]);
 	}
 
 	/** False when Always allow cannot be scoped (e.g. workflow edit with no workflow ID). */
@@ -960,7 +971,7 @@ export function createThreadRuntime(
 		args: Record<string, unknown>,
 		confirmationWorkflowId?: string,
 	): boolean {
-		return buildAlwaysAllowKey(toolName, args, confirmationWorkflowId) !== null;
+		return buildAlwaysAllowKeys(toolName, args, confirmationWorkflowId).length > 0;
 	}
 
 	function isGenericApprovalEligible(item: PendingConfirmationItem): boolean {
@@ -982,12 +993,13 @@ export function createThreadRuntime(
 	function hasSessionAlwaysAllowGrant(item: PendingConfirmationItem): boolean {
 		if (!isGenericApprovalEligible(item)) return false;
 		const confirmation = item.toolCall.confirmation;
-		const key = buildAlwaysAllowKey(
+		const keys = buildAlwaysAllowKeys(
 			item.toolCall.toolName,
 			item.toolCall.args ?? {},
 			confirmation.workflowId,
 		);
-		return key !== null && sessionAlwaysAllowKeys.value.has(key);
+		// A batch needs a grant for every action it contains.
+		return keys.length > 0 && keys.every((key) => sessionAlwaysAllowKeys.value.has(key));
 	}
 
 	// In-flight guard for the auto-approve watcher. We can't rely on
@@ -1603,6 +1615,10 @@ export function createThreadRuntime(
 			prefill_type: isPrefill ? authorship.prefillType : null,
 			prefill_id: isPrefill ? (authorship.prefillId ?? null) : null,
 			prompt_modified: isPrefill ? (authorship.promptModified ?? false) : null,
+			approval_mode: messageApprovalMode(
+				instanceAiSettingsStore,
+				threadTargetsAgent(hooks.getThreadMetadata?.(threadId)),
+			),
 			mention_counts: mentionCounts,
 			attachment_count: attachmentCount,
 			selected_element_count: selectedElementCount,

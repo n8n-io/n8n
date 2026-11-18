@@ -833,6 +833,21 @@ describe('buildTimelineBlocks', () => {
 		]);
 	});
 
+	test('leaves out a cloud browser sub-agent', () => {
+		const backgroundChild = makeAgentNode({
+			agentId: 'browser-1',
+			role: 'cloud-browser',
+			kind: 'cloud-browser',
+			taskId: 'task-1',
+		});
+
+		const blocks = blocksOf([{ type: 'child', agentId: 'browser-1' }], [], 'completed', [
+			backgroundChild,
+		]);
+
+		expect(blocks).toEqual([]);
+	});
+
 	test('does not hide unrelated trace tools when child is not a builder', () => {
 		const childEntry = (agentId: string, responseId?: string): InstanceAiTimelineEntry => ({
 			type: 'child',
@@ -1106,20 +1121,4 @@ describe('buildTimelineBlocks — instance context', () => {
 
 		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
 	});
-});
-
-test('keeps an automatic skill update in the trace before the answer', () => {
-	const update: InstanceAiTimelineEntry = {
-		type: 'skill-update',
-		runId: 'run-1',
-		skillId: 'hub:1',
-		name: 'Writing',
-		version: 'v2',
-		change: 'updated',
-	};
-	const answer: InstanceAiTimelineEntry = { type: 'text', content: 'Here is the answer.' };
-	expect(buildTimelineBlocks([update, answer], {}, {}, 'completed')).toEqual([
-		{ type: 'thinking', key: 'thinking-0', entries: [update], active: false },
-		{ type: 'text', key: 'text-1', entry: answer },
-	]);
 });

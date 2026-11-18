@@ -153,6 +153,7 @@ export class SelfHealingCandidateService {
 			model: context.modelId,
 			utilityModel: context.utilityModelId,
 			modelFetch: context.modelFetch,
+			onHelperUsage: context.onHelperUsage,
 			logger: this.logger,
 		});
 		abortSignal.throwIfAborted();
