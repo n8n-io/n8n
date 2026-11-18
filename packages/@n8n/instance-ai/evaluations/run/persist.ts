@@ -5,7 +5,15 @@
 // crash path that still writes whatever completed when the run threw.
 // ---------------------------------------------------------------------------
 
-import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import {
+	appendFileSync,
+	closeSync,
+	mkdirSync,
+	openSync,
+	readFileSync,
+	writeFileSync,
+	writeSync,
+} from 'fs';
 import { join } from 'path';
 
 import { aggregateResults } from './aggregator';
@@ -560,7 +568,7 @@ export function writeEvalResults(
 	const targetDir = outputDir ?? process.cwd();
 	mkdirSync(targetDir, { recursive: true });
 	const jsonPath = join(targetDir, 'eval-results.json');
-	writeFileSync(jsonPath, JSON.stringify(report, null, 2));
+	writeJsonReport(jsonPath, report);
 
 	// Always write the rendered PR comment — the markdown formatter handles
 	// both with-comparison and no-baseline cases. CI consumes this file
@@ -580,6 +588,32 @@ export function writeEvalResults(
 	);
 
 	return { jsonPath, prCommentPath };
+}
+
+/**
+ * Write the report pretty-printed, one test case at a time. A full-suite run
+ * at N=3 serializes past V8's string length cap (~512 MB), so the report is
+ * never stringified as one string: the header without `testCases` first, then
+ * each case, indented to sit inside the array.
+ */
+function writeJsonReport(
+	jsonPath: string,
+	report: { testCases: unknown[] } & Record<string, unknown>,
+): void {
+	const { testCases, ...header } = report;
+	const fd = openSync(jsonPath, 'w');
+	try {
+		const headerJson = JSON.stringify(header, null, 2);
+		const open = headerJson === '{}' ? '{\n' : `${headerJson.slice(0, -2)},\n`;
+		writeSync(fd, `${open}  "testCases": [`);
+		testCases.forEach((testCase, index) => {
+			const caseJson = JSON.stringify(testCase, null, 2).replace(/\n/g, '\n    ');
+			writeSync(fd, `${index > 0 ? ',' : ''}\n    ${caseJson}`);
+		});
+		writeSync(fd, `${testCases.length > 0 ? '\n  ' : ''}]\n}\n`);
+	} finally {
+		closeSync(fd);
+	}
 }
 
 /**
