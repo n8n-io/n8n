@@ -77,16 +77,6 @@ describe('EngineDataTablesService', () => {
 		Container.reset();
 	});
 
-	it('gives full access to workflows without the dynamic-credentials module', async () => {
-		vi.mocked(moduleRegistry.isActive).mockImplementation((name) => name !== 'dynamic-credentials');
-
-		await service.call(requestFor({ kind: 'getColumns', dataTableId: 'dt-1' }));
-
-		expect(proxyService.makeDataTableOperations).toHaveBeenCalledWith('project-1', 'dt-1', {
-			kind: 'management',
-		});
-	});
-
 	it('refuses row operations on a table with a row rule', async () => {
 		vi.mocked(dataTableService.validateDataTableExists).mockResolvedValue(
 			mock<DataTable>({

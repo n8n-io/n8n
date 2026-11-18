@@ -4,7 +4,6 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import RowAccessModal from '@/features/core/dataTable/components/RowAccessModal.vue';
@@ -40,7 +39,6 @@ const renderComponent = createComponentRenderer(RowAccessModal, {
 
 describe('RowAccessModal', () => {
 	let dataTableStore: ReturnType<typeof mockedStore<typeof useDataTableStore>>;
-	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 
 	beforeEach(() => {
 		createTestingPinia();
@@ -48,19 +46,6 @@ describe('RowAccessModal', () => {
 		const uiStore = mockedStore(useUIStore);
 		uiStore.isModalActiveById = { [MODAL_NAME]: true };
 		dataTableStore.setRowRule.mockResolvedValue(undefined);
-		settingsStore = mockedStore(useSettingsStore);
-		settingsStore.isModuleActive.mockReturnValue(true);
-	});
-
-	it('explains that row access in workflows needs Enterprise', async () => {
-		settingsStore.isModuleActive.mockReturnValue(false);
-		const { getByTestId, queryByTestId } = renderComponent();
-
-		await chooseScope(getByTestId('row-access-scope'), 'own');
-
-		expect(getByTestId('row-access-workflows-enterprise')).toBeInTheDocument();
-		expect(queryByTestId('row-access-without-user')).not.toBeInTheDocument();
-		expect(dataTableStore.fetchRowRuleImpact).not.toHaveBeenCalled();
 	});
 
 	it('keeps workflows without a user on all rows when the rule is new', async () => {

@@ -1,5 +1,5 @@
 import type { ListDataTableQueryDto } from '@n8n/api-types';
-import type { Logger, ModuleRegistry } from '@n8n/backend-common';
+import type { Logger } from '@n8n/backend-common';
 import {
 	CacheService,
 	type InstanceWriteAccessService,
@@ -40,7 +40,6 @@ describe('DataTableProxyService', () => {
 	let loggerMock = mock<Logger>();
 	let instanceWriteAccessMock = mock<InstanceWriteAccessService>();
 	let personRepositoryMock: PersonRepository;
-	let moduleRegistryMock: ReturnType<typeof mock<ModuleRegistry>>;
 	let dataTableProxyService: DataTableProxyService;
 
 	let workflow: Workflow;
@@ -56,8 +55,6 @@ describe('DataTableProxyService', () => {
 		instanceWriteAccessMock.isReadOnly.mockReturnValue(false);
 
 		personRepositoryMock = mock<PersonRepository>();
-		moduleRegistryMock = mock<ModuleRegistry>();
-		moduleRegistryMock.isActive.mockReturnValue(true);
 		dataTableServiceMock.validateDataTableExists.mockResolvedValue(
 			mock<DataTable>({ rowRule: null }),
 		);
@@ -70,7 +67,6 @@ describe('DataTableProxyService', () => {
 			instanceWriteAccessMock,
 			mock<ProjectScopeService>(),
 			personRepositoryMock,
-			moduleRegistryMock,
 		);
 
 		workflow = mock<Workflow>({
@@ -271,12 +267,6 @@ describe('DataTableProxyService', () => {
 			});
 		});
 
-		it('keeps full access in workflows without the dynamic-credentials module', async () => {
-			moduleRegistryMock.isActive.mockReturnValue(false);
-
-			expect(await listRows('user-1')).toEqual({ kind: 'management' });
-		});
-
 		it('acts for no user when the run carries none', async () => {
 			expect(await listRows()).toEqual({ kind: 'actor', actor: null });
 		});
@@ -462,7 +452,6 @@ describe('makeDataTableOperationsForUser', () => {
 			instanceWriteAccessMock,
 			projectScopeServiceMock,
 			mock<PersonRepository>(),
-			mock<ModuleRegistry>({ isActive: () => true }),
 		);
 
 		projectScopeServiceMock.getProjectIds.mockReset().mockResolvedValue(null);

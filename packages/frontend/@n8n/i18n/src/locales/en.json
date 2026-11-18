@@ -6452,7 +6452,6 @@
 	"dataTable.rowAccess.match.email": "Email",
 	"dataTable.rowAccess.match.project": "Team (project ID)",
 	"dataTable.rowAccess.conditions.hint": "A person sees a row when any of these match.",
-	"dataTable.rowAccess.workflowsEnterprise": "Apps always apply row access. In workflows, row access needs the Enterprise plan, so workflows still read and change every row.",
 	"dataTable.rowAccess.pickPerson": "Choose a person",
 	"dataTable.rowAccess.pickTeam": "Choose a team",
 	"dataTable.rowAccess.assign": "Assign to…",
