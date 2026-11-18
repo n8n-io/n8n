@@ -9,7 +9,7 @@ The local review instance runs the full n8n editor from this checkout. It uses a
 Open http://127.0.0.1:5184/workflow/jmrK04z0Fp1QqrjU?hackmation=constellation in the Orca browser. This browser is signed in to the local demo account.
 
 1. Select **Zoom to Fit** to see the full workflow.
-2. Select **Zoom Out** eight times to reveal the constellation.
+2. Select **Zoom Out** until the zoom falls below 10.7%. The number of clicks depends on the fitted zoom.
 3. Select **Zoom to Fit** to return. The workflow stays unchanged.
 4. Select **Save constellation artwork** to change labels or download SVG and PNG files.
 
@@ -29,7 +29,7 @@ Open **http://127.0.0.1:5181/**. The server binds to loopback. Port 5181 must be
 
 1. Inspect the branched order workflow.
 2. Select the canvas minus button several times, or scroll down over the canvas.
-3. Below about 15% zoom, the sky starts to appear. At 8.7%, the constellation is fully visible.
+3. Below 10.7% zoom, the sky starts to appear. At 6%, the constellation is fully visible.
 4. Pan the canvas. The stars stay connected to their node positions.
 5. Zoom back in or select **Fit workflow** to restore the normal view.
 6. Optionally select **Save constellation artwork** for the SVG and PNG export view.
@@ -42,7 +42,7 @@ Use **Import workflow JSON** to load an n8n workflow export. Import stays in mem
 
 Open a workflow in the normal editor. Use the canvas zoom-out control, pinch out, or hold the canvas zoom modifier while scrolling. The normal n8n canvas controls still handle the viewport.
 
-The reveal starts below about 15% and finishes at 8.7%. Zoom back above 15.5% to restore the normal view. These thresholds are defined in `zoom.ts`.
+The reveal starts below 10.7% and finishes at 6%. Zoom back above 10.8% to restore the normal view. These thresholds are defined in `zoom.ts`.
 
 `NodeView.vue` enables the effect on its `Canvas.vue` instance. `Canvas.vue` passes live Vue Flow nodes, edges, dimensions, and viewport data to `CanvasConstellation.vue`. Each star uses the rendered node center, including its dimensions and group offset. The sky does not intercept pointer events. Hidden nodes, group frames, and sticky notes are omitted.
 

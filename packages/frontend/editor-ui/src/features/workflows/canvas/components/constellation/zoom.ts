@@ -1,7 +1,7 @@
 import { isRecord } from '@n8n/utils/is-record';
 
-// Shift the reveal by four zoom-out clicks. Vue Flow divides the zoom by 1.2 per click.
-const ZOOM_DELAY = 1.2 ** 4;
+// Shift the reveal by six zoom-out clicks. Vue Flow divides the zoom by 1.2 per click.
+const ZOOM_DELAY = 1.2 ** 6;
 export const CONSTELLATION_ZOOM_START = 0.32 / ZOOM_DELAY;
 export const CONSTELLATION_ZOOM_FULL = 0.18 / ZOOM_DELAY;
 
