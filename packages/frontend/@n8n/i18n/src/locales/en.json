@@ -3431,6 +3431,8 @@
 	"page.peek.openFull": "Open full page",
 	"page.peek.close": "Close",
 	"page.tour.start": "Start tour",
+	"page.tour.take": "Take the tour",
+	"page.tour.take.tooltip": "Visit this workflow with the page \"{pageTitle}\"",
 	"page.tour.label": "Page tour",
 	"page.tour.stepCount": "Step {current} of {total}",
 	"page.tour.previous": "Previous",

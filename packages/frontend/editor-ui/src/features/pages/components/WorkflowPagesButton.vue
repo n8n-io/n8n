@@ -5,6 +5,7 @@ import { useNodePagesStore } from '../nodePages.store';
 import type { PagesResource } from '../resourcePages';
 import DocumentWorkflowWithAiButton from './DocumentWorkflowWithAiButton.vue';
 import ResourcePagesButton from './ResourcePagesButton.vue';
+import WorkflowTourButton from './WorkflowTourButton.vue';
 
 /**
  * Shows how many pages link to a workflow and lists them in a popover.
@@ -49,4 +50,5 @@ const workflow = computed<PagesResource>(() => ({
 			/>
 		</template>
 	</ResourcePagesButton>
+	<WorkflowTourButton :workflow-id="workflowId" />
 </template>
