@@ -181,6 +181,7 @@ describe('eligibleModules', () => {
 			'scim',
 			'type-availability-policies',
 			'execution-limits',
+			'page',
 		]);
 	});
 
@@ -231,6 +232,7 @@ describe('eligibleModules', () => {
 			'scim',
 			'type-availability-policies',
 			'execution-limits',
+			'page',
 			'engine-v2',
 		]);
 	});

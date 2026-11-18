@@ -153,6 +153,7 @@ catalog:
   '@tiptap/markdown': 3.30.5
   '@tiptap/pm': 3.30.5
   '@tiptap/starter-kit': 3.30.5
+  '@tiptap/suggestion': 3.30.5
   '@tiptap/vue-3': 3.30.5
   '@types/basic-auth': ^1.1.3
   '@types/compression': ^1.7.5
