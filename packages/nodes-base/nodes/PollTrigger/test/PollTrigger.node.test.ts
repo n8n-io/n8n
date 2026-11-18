@@ -15,11 +15,11 @@ import {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { HttpPollTrigger } from '../HttpPollTrigger.node';
+import { PollTrigger } from '../PollTrigger.node';
 
 const BASE = 'https://api.example.com';
 
-const trigger = new HttpPollTrigger();
+const trigger = new PollTrigger();
 
 const pageToolType: INodeType = {
 	description: {
@@ -41,8 +41,8 @@ const pageToolType: INodeType = {
 const createRunner = (parameters: INodeParameters, tool?: unknown, toolNode?: INode) => {
 	const node: INode = {
 		id: 'poll-node',
-		name: 'HTTP Poll Trigger',
-		type: 'n8n-nodes-base.httpPollTrigger',
+		name: 'Poll Trigger',
+		type: 'n8n-nodes-base.pollTrigger',
 		typeVersion: 1,
 		position: [0, 0],
 		parameters,
@@ -99,7 +99,7 @@ const latestParameters: INodeParameters = {
 
 const orders = (...ids: number[]) => ({ data: ids.map((id) => ({ id, name: `order ${id}` })) });
 
-describe('HttpPollTrigger', () => {
+describe('PollTrigger', () => {
 	afterEach(() => {
 		nock.cleanAll();
 	});

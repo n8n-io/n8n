@@ -473,17 +473,17 @@ function createToolFetchPage(
 	};
 }
 
-export class HttpPollTrigger implements INodeType {
+export class PollTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'HTTP Poll Trigger',
-		name: 'httpPollTrigger',
+		displayName: 'Poll Trigger',
+		name: 'pollTrigger',
 		icon: { light: 'file:httprequest.svg', dark: 'file:httprequest.dark.svg' },
 		group: ['trigger'],
 		version: 1,
-		description: 'Polls an HTTP API and starts a workflow for each new item',
+		description: 'Polls an API or a connected node and starts a workflow for each new item',
 		subtitle:
-			'={{$parameter["source"] === "tool" ? "Connected tool" : $parameter["method"] + ": " + $parameter["url"]}}',
-		defaults: { name: 'HTTP Poll Trigger' },
+			'={{$parameter["source"] === "tool" ? "Connected node" : $parameter["method"] + ": " + $parameter["url"]}}',
+		defaults: { name: 'Poll Trigger' },
 		credentials: GENERIC_AUTH_TYPES.map((name) => ({
 			name,
 			required: true,
@@ -577,7 +577,7 @@ export class HttpPollTrigger implements INodeType {
 
 		const result = await poll(config, staticData.poller, fetchPage);
 		staticData.poller = result.state;
-		for (const warning of result.warnings) this.logger.warn(`HTTP Poll Trigger: ${warning}`);
+		for (const warning of result.warnings) this.logger.warn(`Poll Trigger: ${warning}`);
 
 		const items = result.items.filter(isDataObject);
 		return items.length > 0 ? [this.helpers.returnJsonArray(items)] : null;
