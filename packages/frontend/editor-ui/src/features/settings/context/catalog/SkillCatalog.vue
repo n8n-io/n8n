@@ -134,9 +134,6 @@ function installs(entry: SkillCatalogEntry) {
 	</section>
 	<section v-else ref="catalog" :class="$style.catalog" tabindex="-1" data-test-id="skill-catalog">
 		<N8nText v-if="loading" role="status">{{ i18n.baseText('generic.loading') }}</N8nText>
-		<N8nText tag="p" color="text-light">{{
-			i18n.baseText('settings.context.skills.catalog.description')
-		}}</N8nText>
 		<div :class="$style.filters">
 			<N8nInputLabel
 				:class="$style.searchFilter"

@@ -11489,7 +11489,6 @@
 	"settings.context.skills.catalog.check.blocked": "This skill can’t be imported",
 	"settings.context.skills.catalog.check.warning": "Review the warnings before adding this skill",
 	"settings.context.skills.catalog.check.passed": "No issues found by n8n’s content checks",
-	"settings.context.skills.catalog.description": "Find a skill for the task you want to do. Review its instructions and requirements before adding it.",
 	"settings.context.skills.catalog.search": "Search skills",
 	"settings.context.skills.catalog.searchPlaceholder": "Search by name, task, or publisher",
 	"settings.context.skills.catalog.all": "All categories",
