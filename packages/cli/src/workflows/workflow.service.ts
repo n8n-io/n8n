@@ -1680,19 +1680,15 @@ export class WorkflowService {
 		transfer: () => Promise<void>,
 		{ publicApi }: { publicApi: PublicApiCaller },
 	): Promise<Map<string, WorkflowTransferResult>> {
-		let results = new Map<string, WorkflowTransferResult>();
-		let transferred = false;
 		try {
 			await transfer();
-			transferred = true;
-		} finally {
-			const movedIds = transferred
-				? workflowIds
-				: await this._ownedByProject(workflowIds, destinationProjectId);
-			results = await this._finishTransfer(user, movedIds, publicApi);
+		} catch (error) {
+			const movedIds = await this._ownedByProject(workflowIds, destinationProjectId);
+			await this._finishTransfer(user, movedIds, publicApi);
+			throw error;
 		}
 
-		return results;
+		return await this._finishTransfer(user, workflowIds, publicApi);
 	}
 
 	/** Never throws, and counts every workflow as moved if the owners cannot be read. */
