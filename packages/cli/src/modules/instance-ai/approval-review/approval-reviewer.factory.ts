@@ -30,8 +30,8 @@ import type { AssistantTurnMemory } from '../turn-setup/assistant-turn-runtime';
 
 /**
  * How far back the judge reads. The judge sees the user's messages of the older part,
- * so a limit that the user set early stays in view. A run start reads the full thread
- * with the same query, so this read costs no more than that one.
+ * so a limit that the user set early stays in view. Each review that goes to the judge
+ * reads these messages again.
  */
 const CONVERSATION_MESSAGE_LIMIT = 200;
 

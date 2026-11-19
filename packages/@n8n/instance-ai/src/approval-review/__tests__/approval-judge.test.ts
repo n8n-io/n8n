@@ -113,6 +113,34 @@ describe('renderApprovalJudgePrompt', () => {
 		]);
 	});
 
+	it('cuts a long older user message, and shows both notes when the budget and the roles leave messages out', () => {
+		const long = { role: 'user' as const, text: `${'x'.repeat(600)}${'y'.repeat(2_000)}` };
+		const olderTurns = Array.from({ length: 21 }, (_, index) => [
+			{ role: 'user' as const, text: `Request ${index}` },
+			{ role: 'assistant' as const, text: `Reply ${index}` },
+		]).flat();
+		const recent = Array.from({ length: 12 }, (_, index) => ({
+			role: 'user' as const,
+			text: `Recent ${index}`,
+		}));
+
+		const prompt = renderApprovalJudgePrompt({
+			...input,
+			conversation: [...olderTurns, long, ...recent],
+		});
+
+		expect(block(prompt, 'conversation')).toEqual([
+			olderMessagesNote,
+			...olderTurns.filter(({ role }) => role === 'user').slice(-19),
+			{ role: 'user', text: `…${'y'.repeat(2_000)}` },
+			{
+				role: 'note',
+				text: "Before this note, only the user's messages are shown. The Assistant's replies are left out.",
+			},
+			...recent,
+		]);
+	});
+
 	it('names the MCP server and its hints', () => {
 		const prompt = renderApprovalJudgePrompt({
 			...input,
