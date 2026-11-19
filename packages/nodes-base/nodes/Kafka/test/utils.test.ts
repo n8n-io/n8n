@@ -1,7 +1,6 @@
-import { OutboundHttp } from '@n8n/backend-network';
-import { Container } from '@n8n/di';
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-import { passthroughEgressFilter } from '@n8n/backend-network';
+import { OutboundHttp, passthroughEgressFilter } from '@n8n/backend-network';
+import { Container } from '@n8n/di';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createResultError, createResultOk } from '@n8n/utils/result';
 import type { Consumer } from 'kafkajs';
@@ -1261,7 +1260,6 @@ describe('Kafka Utils', () => {
 				expect(await bearerFromMiddleware()).toEqual({
 					headers: { Authorization: 'Bearer tok' },
 				});
-				vi.restoreAllMocks();
 			});
 
 			it('allows the token endpoint separately, because it is a host of its own', async () => {

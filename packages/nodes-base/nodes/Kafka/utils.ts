@@ -27,7 +27,7 @@ import { sleep } from '@n8n/utils/sleep';
 
 import type { ClientCredentialsConfig } from '../../credentials/common/client-credentials';
 import { createClientCredentialsTokenSource } from '../../credentials/common/client-credentials';
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import { getCredentialOwnRequestAllowedDomains, jsonParse, NodeOperationError } from 'n8n-workflow';
 import { OperationalError, UserError } from '@n8n/errors';
 import http from 'node:http';
 import https from 'node:https';
@@ -119,6 +119,8 @@ interface SchemaRegistryCredentials {
 	clientId?: string;
 	clientSecret?: string;
 	scope?: string;
+	sendCredentialsIn?: string;
+	allowedDomains?: string;
 }
 
 interface SchemaRegistryOptions {
@@ -553,20 +555,14 @@ export async function getSchemaRegistryOptions(
 			clientId: credentials.clientId,
 			clientSecret: credentials.clientSecret,
 			scope: credentials.scope,
+			sendCredentialsIn: credentials.sendCredentialsIn,
+			allowedDomains: getCredentialOwnRequestAllowedDomains({ ...credentials }),
 		};
 	}
 
 	return options;
 }
 
-/**
- * Constructs a Schema Registry client from the resolved connection options.
- * Shared by the Kafka producer node and the Kafka Trigger; each caller layers
- * its own behavior on top (the producer resolves a schema id, the trigger
- * applies the warn-and-continue policy).
- * @param ctx - The execution context (node or trigger)
- * @param fallbackUrl - The `schemaRegistryUrl` node parameter, used when no credential is selected
- */
 /**
  * Parses and allows one absolute http(s) target, so the address the client
  * connects to is the address the egress rules were checked against.
@@ -600,6 +596,14 @@ async function assertAllowedUrl(
 	return parsed;
 }
 
+/**
+ * Constructs a Schema Registry client from the resolved connection options.
+ * Shared by the Kafka producer node and the Kafka Trigger; each caller layers
+ * its own behavior on top (the producer resolves a schema id, the trigger
+ * applies the warn-and-continue policy).
+ * @param ctx - The execution context (node or trigger)
+ * @param fallbackUrl - The `schemaRegistryUrl` node parameter, used when no credential is selected
+ */
 export async function createSchemaRegistry(
 	ctx: Pick<FunctionsBase, 'getNode' | 'getCredentials'> & {
 		helpers: Pick<RequestHelperFunctions, 'getSecureEgressFilter'>;

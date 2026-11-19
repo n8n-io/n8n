@@ -151,11 +151,16 @@ describe('SchemaRegistryApi Credential', () => {
 			);
 		});
 
-		it('surfaces what the token endpoint said when it refuses the grant', async () => {
-			requestMock.mockRejectedValue(new Error('invalid_client'));
+		it('names what the token endpoint said when it refuses the grant', async () => {
+			requestMock.mockRejectedValue(
+				Object.assign(new Error('Request failed with status code 401'), {
+					[Symbol.for('n8n.backend-network.http-request-error')]: true,
+					response: { status: 401, data: { error_description: 'Client authentication failed' } },
+				}),
+			);
 
 			await expect(credential.preAuthentication?.(oauthCredentials)).rejects.toThrow(
-				'invalid_client',
+				'The token endpoint refused the grant: Client authentication failed',
 			);
 		});
 

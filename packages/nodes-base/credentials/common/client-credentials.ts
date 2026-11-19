@@ -1,3 +1,4 @@
+import { isHttpRequestError } from '@n8n/backend-network';
 import { OperationalError, UserError } from '@n8n/errors';
 
 import { getTokenRequestClient, hasAccessToken, TOKEN_REQUEST_TIMEOUT } from './token-request';
@@ -7,6 +8,9 @@ export interface ClientCredentialsConfig {
 	clientId?: unknown;
 	clientSecret?: unknown;
 	scope?: unknown;
+	/** RFC 6749 makes HTTP Basic the method a server must accept, so it is the default. */
+	sendCredentialsIn?: unknown;
+	allowedDomains?: string;
 }
 
 const ASSUMED_LIFETIME_SECONDS = 3600;
@@ -14,6 +18,17 @@ const RENEW_MARGIN_MS = 30_000;
 
 const asFilledString = (value: unknown) =>
 	typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
+
+function refusalFrom(error: unknown) {
+	if (!isHttpRequestError(error)) return undefined;
+
+	const data = error.response?.data;
+	if (typeof data === 'string' && data.trim() !== '') return data.trim().slice(0, 300);
+	if (typeof data !== 'object' || data === null) return undefined;
+
+	const { error_description: description, error: code } = data as Record<string, unknown>;
+	return asFilledString(description) ?? asFilledString(code);
+}
 
 /**
  * Swaps a client ID and secret for a bearer token at a user-supplied endpoint,
@@ -28,53 +43,72 @@ export async function requestClientCredentialsToken(config: ClientCredentialsCon
 		throw new UserError('Set the token URL, client ID and client secret');
 	}
 
-	const body = new URLSearchParams({
-		grant_type: 'client_credentials',
-		client_id: clientId,
-		client_secret: clientSecret,
-	});
+	const inBody = config.sendCredentialsIn === 'body';
+	const body = new URLSearchParams({ grant_type: 'client_credentials' });
+	if (inBody) {
+		body.append('client_id', clientId);
+		body.append('client_secret', clientSecret);
+	}
 	const scope = asFilledString(config.scope);
 	if (scope) body.append('scope', scope);
 
-	const response = await getTokenRequestClient('user-controlled').request({
-		url: tokenUrl,
-		method: 'POST',
-		body: body.toString(),
-		headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-		json: true,
-		timeout: TOKEN_REQUEST_TIMEOUT,
-	});
+	let response: unknown;
+	try {
+		response = await getTokenRequestClient('user-controlled').request({
+			url: tokenUrl,
+			method: 'POST',
+			...(inBody ? {} : { auth: { username: clientId, password: clientSecret } }),
+			body: body.toString(),
+			headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+			json: true,
+			timeout: TOKEN_REQUEST_TIMEOUT,
+			disableFollowRedirect: true,
+			allowedDomains: config.allowedDomains,
+		});
+	} catch (error) {
+		const refusal = refusalFrom(error);
+		if (refusal) throw new UserError(`The token endpoint refused the grant: ${refusal}`);
+		throw error;
+	}
 
 	if (!hasAccessToken(response)) {
 		throw new OperationalError('The token endpoint returned no access token');
 	}
 
 	const expiresIn = Number((response as { expires_in?: unknown }).expires_in);
-	return {
-		accessToken: response.access_token,
-		expiresInSeconds:
-			Number.isFinite(expiresIn) && expiresIn > 0 ? expiresIn : ASSUMED_LIFETIME_SECONDS,
-	};
+	const lifetimeMs =
+		(Number.isFinite(expiresIn) && expiresIn > 0 ? expiresIn : ASSUMED_LIFETIME_SECONDS) * 1000;
+	return { accessToken: response.access_token, lifetimeMs };
 }
 
 /**
  * Holds one token for as long as the endpoint says it lives, so a caller that
  * outlives a token, such as a trigger holding one client for an activation,
- * keeps working.
+ * keeps working. One in-flight request is shared rather than repeated.
  */
 export function createClientCredentialsTokenSource(
 	config: ClientCredentialsConfig,
 	now: () => number = Date.now,
 ) {
 	let cached: { accessToken: string; expiresAt: number } | undefined;
+	let inFlight: Promise<string> | undefined;
+
+	const mint = async () => {
+		const { accessToken, lifetimeMs } = await requestClientCredentialsToken(config);
+		cached = {
+			accessToken,
+			expiresAt: now() + lifetimeMs - Math.min(RENEW_MARGIN_MS, lifetimeMs / 2),
+		};
+		return accessToken;
+	};
 
 	return {
 		async getToken(): Promise<string> {
 			if (cached && cached.expiresAt > now()) return cached.accessToken;
-
-			const { accessToken, expiresInSeconds } = await requestClientCredentialsToken(config);
-			cached = { accessToken, expiresAt: now() + expiresInSeconds * 1000 - RENEW_MARGIN_MS };
-			return accessToken;
+			inFlight ??= mint().finally(() => {
+				inFlight = undefined;
+			});
+			return await inFlight;
 		},
 	};
 }

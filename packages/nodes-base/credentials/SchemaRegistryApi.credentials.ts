@@ -1,9 +1,10 @@
-import type {
-	ICredentialDataDecryptedObject,
-	ICredentialTestRequest,
-	ICredentialType,
-	IHttpRequestOptions,
-	INodeProperties,
+import {
+	getCredentialOwnRequestAllowedDomains,
+	type ICredentialDataDecryptedObject,
+	type ICredentialTestRequest,
+	type ICredentialType,
+	type IHttpRequestOptions,
+	type INodeProperties,
 } from 'n8n-workflow';
 
 import { requestClientCredentialsToken } from './common/client-credentials';
@@ -129,6 +130,30 @@ export class SchemaRegistryApi implements ICredentialType {
 			},
 		},
 		{
+			displayName: 'Client Authentication',
+			name: 'sendCredentialsIn',
+			type: 'options',
+			options: [
+				{
+					name: 'Authorization Header',
+					value: 'header',
+					description:
+						'Send the client ID and secret as HTTP Basic, which RFC 6749 requires a server to accept',
+				},
+				{
+					name: 'Request Body',
+					value: 'body',
+					description: 'Send the client ID and secret as form fields',
+				},
+			],
+			default: 'header',
+			displayOptions: {
+				show: {
+					authentication: ['oAuth2ClientCredentials'],
+				},
+			},
+		},
+		{
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'string',
@@ -145,7 +170,10 @@ export class SchemaRegistryApi implements ICredentialType {
 	async preAuthentication(credentials: ICredentialDataDecryptedObject) {
 		if (credentials.authentication !== 'oAuth2ClientCredentials') return {};
 
-		const { accessToken } = await requestClientCredentialsToken(credentials);
+		const { accessToken } = await requestClientCredentialsToken({
+			...credentials,
+			allowedDomains: getCredentialOwnRequestAllowedDomains(credentials),
+		});
 		return { accessToken };
 	}
 
