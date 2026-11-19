@@ -1105,6 +1105,24 @@ describe('AgentConfigService', () => {
 							collectionName: 'docs',
 						},
 					],
+					knowledge: {
+						liveSources: [
+							{
+								id: 'notion',
+								provider: 'notion',
+								name: 'Notion',
+								credential: 'unknown-live-source',
+								items: [{ id: 'page-1', kind: 'item', title: 'Refund policy' }],
+							},
+							{
+								id: 'slack',
+								provider: 'slack',
+								name: 'Slack',
+								credential: 'known-cred',
+								items: [],
+							},
+						],
+					},
 				},
 				user,
 				byUser,
@@ -1121,6 +1139,13 @@ describe('AgentConfigService', () => {
 			expect(savedConfig.mcpServers?.[0].credential).toBe('');
 			expect(savedConfig.vectorStores?.[0].credential).toBe('');
 			expect(savedConfig.vectorStores?.[0].embedding.credential).toBe('');
+			expect(savedConfig.knowledge?.liveSources?.map((source) => source.credential)).toEqual([
+				'',
+				'known-cred',
+			]);
+			expect(savedConfig.knowledge?.liveSources?.[0].items).toEqual([
+				{ id: 'page-1', kind: 'item', title: 'Refund policy' },
+			]);
 		});
 
 		it('persists personalisation changes from the config payload', async () => {

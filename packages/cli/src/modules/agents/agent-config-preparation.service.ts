@@ -570,6 +570,7 @@ const OPTIONAL_SCHEMA_FIELDS = [
 	'config',
 	'mcpServers',
 	'vectorStores',
+	'knowledge',
 ] as const;
 
 /**

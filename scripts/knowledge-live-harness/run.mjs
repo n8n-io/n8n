@@ -229,7 +229,7 @@ async function ensureAgent(client, agentKey, config) {
 	if (savedSources.length !== config.knowledge.liveSources.length) {
 		fail(
 			`The instance saved ${savedSources.length} of ${config.knowledge.liveSources.length} live sources. ` +
-				'It runs an @n8n/api-types build without knowledge.liveSources: rebuild and restart it.',
+				'It runs a build that drops knowledge.liveSources on save: rebuild n8n and @n8n/api-types and restart it.',
 		);
 	}
 	return agentId;
