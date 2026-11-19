@@ -1,0 +1,19 @@
+packages/cli/src/workflows/workflow.service.ts
+  s_d8d4a7a46a53b7::t_5d5f211e159489 1685-1688,1691
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "57432723c9e359d84d4059f941233ba42a69906b",
+  "prompts": {},
+  "sessions": {
+    "s_d8d4a7a46a53b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1c0f706-556d-48dc-8d5d-ba936d01d27e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

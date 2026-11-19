@@ -1,0 +1,86 @@
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_aa6794ac019785::t_c869f6100ff74d 167-168,894,923
+packages/cli/src/modules/agents/integrations/platforms/webhook/webhook-channel.controller.ts
+  s_aa6794ac019785::t_750a474d02148a 132-137,230-234,436-438
+  s_aa6794ac019785::t_ed3811fd6f7830 13-21,37,39,53,87-91,97,100,110,116-117,122-124,129-131,138,146,156,163-165,169,175-176,179-207,212-229,235-265,272,274,278,289,295-303,308,319,340,346,353,358,365,370,375,384,391-393,399-401,405-435,439-441,448-451,453,460,469,521-522,531-537,568,578
+packages/frontend/@n8n/agent-chat/src/api.ts
+  s_aa6794ac019785::t_a839184ac68669 11-15,28-30,37,62-66,146-179
+  s_aa6794ac019785::t_20b9ab5509f968 38-45
+packages/@n8n/decorators/src/pubsub/pubsub.event-map.ts
+  s_aa6794ac019785::t_e15d8fbd9d6638 166
+packages/cli/src/modules/agents/integrations/platforms/webhook/external-chat.service.ts
+  s_aa6794ac019785::t_6956d003d871b3 1-4,6-14,16-91,93-94,96,99-112,114-177,179-255,257-259,261-262,268-271,274,280-281,285,290,294-302
+  s_aa6794ac019785::t_5d34b3311986a7 5,15,92,113,178,256,260,272-273,282-284,286-289,291-293
+  s_aa6794ac019785::t_750a474d02148a 263-267,275-279
+  s_aa6794ac019785::t_f1265b1da0997e 95,97-98
+packages/cli/src/modules/agents/types/agent-queued-message.ts
+  s_aa6794ac019785::t_357bd809d700e5 26-28
+packages/cli/src/modules/agents/utils/agent-memory-scope.ts
+  s_aa6794ac019785::t_357bd809d700e5 5-10
+packages/cli/src/modules/agents/utils/agent-thread-access.ts
+  s_aa6794ac019785::t_357bd809d700e5 5,16-17,23,34-35,48-49,63-92,154-155
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_aa6794ac019785::t_80c5b2d40ad8e9 217-221,227-228,240,260
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_aa6794ac019785::t_750a474d02148a 197-198
+  s_aa6794ac019785::t_f9f6e005be020f 26-31,147-150,156-157,196,209-211,367-405,408-419
+  s_aa6794ac019785::t_c3012d238dbd61 406-407
+packages/frontend/editor-ui/src/features/agents/channels/n8nChat/AgentChannelN8nChatShare.vue
+  s_aa6794ac019785::t_d12f0c87b27b39 2-4,21-26,28-31,35,39,59-63,65-67,82,97-99,138-140,149-151,154-155,185-208
+  s_aa6794ac019785::t_5d0aa7f0adae95 64,152-153
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_aa6794ac019785::t_8e760ad306c96d 657-661
+  s_aa6794ac019785::t_c8feedcc89a47d 131-133
+packages/frontend/@n8n/agent-chat/src/AgentChat.vue
+  s_aa6794ac019785::t_2154146c91378b 821-826
+  s_aa6794ac019785::t_9cc46424070e54 458-460,505-513,519,523-526,536-541,838-848
+  s_aa6794ac019785::t_a91114c990d8a5 478-494
+  s_aa6794ac019785::t_fc17504f655cb2 339-340
+  s_aa6794ac019785::t_121569018d65c1 497-498,503-504,827-829
+  s_aa6794ac019785::t_20b9ab5509f968 85-88,192-200,345,433-435,496,520-522,527,544-553,555-560,563-566,808-820,830-837
+  s_aa6794ac019785::t_36ed21b244c06e 174-175,219-224,287-291,295-296,455-457
+  s_aa6794ac019785::t_01a687273f3b62 8,11,34-36,84,164-173,176-191,201-218,225-241,244-246,248-265,268-270,274-275,278-285,293,297,299-302,304-307,317-321,324-338,346,350-351
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_aa6794ac019785::t_7966741a13db50 76
+packages/cli/src/modules/agents/utils/__tests__/agent-thread-access.test.ts
+  s_aa6794ac019785::t_f1a9ace02bfcba 5-6,85-113
+packages/cli/src/modules/agents/integrations/platforms/webhook/webhook-channel.service.ts
+  s_aa6794ac019785::t_f5df0ed0e1e9f2 70-78,80-88,96-100,220,294,296-297,314-315,326-330,332,340
+  s_aa6794ac019785::t_cee1b5088de7e4 300-307
+packages/frontend/editor-ui/src/features/agents/channels/webhook/AgentChannelWebhookSetup.vue
+  s_aa6794ac019785::t_d12f0c87b27b39 15,212-218
+packages/@n8n/db/src/migrations/sqlite/1794900000000-AddExternalThreadScope.ts
+  s_aa6794ac019785::t_693cd43fda1b3c 1-6
+packages/cli/src/modules/agents/entities/agent-execution-thread.entity.ts
+  s_aa6794ac019785::t_f8befba10bcde5 41-46,135-137
+packages/cli/src/abstract-server.ts
+  s_aa6794ac019785::t_8a4bb292f07feb 144-147
+  s_aa6794ac019785::t_8ba4d4e51ce887 141-143
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_aa6794ac019785::t_6d825c286e79fd 52-54,56-65,68,74,76,79,83,89,91,95,105,107,116,123,129,132,412-415
+  s_aa6794ac019785::t_869011e8280df3 25,27
+packages/@n8n/db/src/migrations/common/1794900000000-AddExternalThreadScope.ts
+  s_aa6794ac019785::t_693cd43fda1b3c 1-10,14-39
+  s_aa6794ac019785::t_750a474d02148a 11-13
+packages/frontend/editor-ui/src/features/agents/channels/n8nChat/AgentChannelN8nChatView.vue
+  s_aa6794ac019785::t_d12f0c87b27b39 53
+packages/cli/src/modules/agents/integrations/platforms/webhook/chat-page-invites.service.ts
+  s_aa6794ac019785::t_4ffc9d49d230bb 7,33-35,45-48,53,65,67,74-75,78,82-86,96,99,106,124,130-132,150,152
+  s_aa6794ac019785::t_750a474d02148a 87-89,110-114,133-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9916e4772c45fe27525890c36bcde96502d62aee",
+  "prompts": {},
+  "sessions": {
+    "s_aa6794ac019785": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "780586c6-4bfd-4b06-b892-fff832b8300b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
