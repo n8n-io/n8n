@@ -18,7 +18,8 @@ import {
 	isDefaultProjectLimitAboveInstanceLimit,
 } from './execution-limit-rules';
 import { ExecutionLimitSettingsStore } from './execution-limit-settings.store';
-import type { ProjectLimit } from './execution-limits.types';
+import { ExecutionLimitsSnapshot } from './execution-limits-snapshot';
+import type { ApplicableLimits, ProjectLimit } from './execution-limits.types';
 import { ProjectExecutionLimitRepository } from './project-execution-limit.repository';
 
 function rejectIfAny(
@@ -36,7 +37,16 @@ export class ExecutionLimitsService {
 		private readonly projectLimitRepository: ProjectExecutionLimitRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly transactionRunner: TransactionRunner,
+		private readonly snapshot: ExecutionLimitsSnapshot,
 	) {}
+
+	/**
+	 * The limits that apply to an execution of this project. Reads memory only, so it is safe
+	 * at every execution start. `null` means that this process has not loaded the limits yet.
+	 */
+	getApplicableLimits(projectId: string): ApplicableLimits | null {
+		return this.snapshot.read(projectId);
+	}
 
 	/** The period, the instance limit and the default limit for new projects. */
 	async getSettings(): Promise<ExecutionLimitSettings> {
@@ -123,8 +133,11 @@ export class ExecutionLimitsService {
 		});
 	}
 
-	/** Every write goes through here, so one place can add work to the transaction of a change. */
+	/** Every write goes through here, so the limits in memory reload after each commit. */
 	private async commit<T>(write: (ctx: OperationContext) => Promise<T>): Promise<T> {
-		return await this.transactionRunner.run({}, write);
+		const result = await this.transactionRunner.run({}, write);
+		await this.snapshot.refreshAfterWrite();
+
+		return result;
 	}
 }
