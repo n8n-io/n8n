@@ -13,6 +13,21 @@ import type {
 import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 
 export const ROOT_URL = 'https://api-v2.mindee.net/v2';
+
+export const OPERATIONS = ['extraction', 'classification', 'crop', 'ocr', 'split'] as const;
+type MindeeOperation = (typeof OPERATIONS)[number];
+
+export function isMindeeOperation(value: unknown): value is MindeeOperation {
+	return OPERATIONS.some((operation) => operation === value);
+}
+
+const TOGGLE_FORM_FIELDS = {
+	rag: 'rag',
+	polygon: 'polygon',
+	confidence: 'confidence',
+	rawText: 'raw_text',
+};
+
 const INITIAL_DELAY_MS = 1500;
 const POLL_DELAY_MS = 1000;
 
@@ -21,10 +36,7 @@ const POLL_DELAY_MS = 1000;
  */
 interface MindeeV2UIParams {
 	modelId: string;
-	rag: string;
-	polygon: string;
-	confidence: string;
-	rawText: string;
+	toggles: Record<string, string>;
 	pollingTimeoutCount: number;
 	documentSource: 'binary' | 'url';
 	binaryPropertyName?: string;
@@ -174,16 +186,14 @@ export function readUIParams(ctx: IExecuteFunctions, index: number): MindeeV2UIP
 			? (ctx.getNodeParameter('documentUrl', index, '') as string)
 			: undefined;
 
-	const rag = typeof options.rag === 'string' ? options.rag : 'default';
-	const polygon = typeof options.polygon === 'string' ? options.polygon : 'default';
-	const confidence = typeof options.confidence === 'string' ? options.confidence : 'default';
-	const rawText = typeof options.rawText === 'string' ? options.rawText : 'default';
+	const toggles: Record<string, string> = {};
+	for (const [option, formField] of Object.entries(TOGGLE_FORM_FIELDS)) {
+		const value = options[option];
+		if (typeof value === 'string' && value !== 'default') toggles[formField] = value;
+	}
 	return {
 		modelId,
-		rag,
-		polygon,
-		confidence,
-		rawText,
+		toggles,
 		pollingTimeoutCount,
 		documentSource,
 		binaryPropertyName,
@@ -224,8 +234,7 @@ export async function buildRequestBody(
 	}
 
 	form.append('model_id', uiParams.modelId);
-	if (uiParams.rag !== 'default') form.append('rag', uiParams.rag);
-	if (uiParams.polygon !== 'default') form.append('polygon', uiParams.polygon);
-	if (uiParams.confidence !== 'default') form.append('confidence', uiParams.confidence);
-	if (uiParams.rawText !== 'default') form.append('raw_text', uiParams.rawText);
+	for (const [formField, value] of Object.entries(uiParams.toggles)) {
+		form.append(formField, value);
+	}
 }

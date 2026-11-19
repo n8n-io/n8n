@@ -1,8 +1,15 @@
+import FormData from 'form-data';
 import { mock, mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
 import { NodeApiError, requestUrl } from 'n8n-workflow';
 
-import { extractPollingUrl, pollMindee, readUIParams } from '../GenericFunctions';
+import {
+	buildRequestBody,
+	extractPollingUrl,
+	isMindeeOperation,
+	pollMindee,
+	readUIParams,
+} from '../GenericFunctions';
 import { getModels } from '../SearchFunctions';
 
 vi.mock('@n8n/utils/sleep', () => ({ sleep: vi.fn().mockResolvedValue(undefined) }));
@@ -125,10 +132,7 @@ describe('Mindee V2 > readUIParams', () => {
 
 		expect(params).toMatchObject({
 			modelId: 'model-id',
-			rag: 'default',
-			polygon: 'default',
-			confidence: 'default',
-			rawText: 'default',
+			toggles: {},
 			pollingTimeoutCount: 180,
 			documentSource: 'binary',
 		});
@@ -141,7 +145,19 @@ describe('Mindee V2 > readUIParams', () => {
 		);
 
 		expect(params.modelId).toBe('model-id');
-		expect(params.rag).toBe('true');
+		expect(params.toggles).toEqual({ rag: 'true' });
+	});
+
+	it('should map toggle options to their form fields and skip defaults', () => {
+		const params = readUIParams(
+			createContext({
+				modelId: 'model-id',
+				options: { rawText: 'false', polygon: 'default', confidence: 'true' },
+			}),
+			0,
+		);
+
+		expect(params.toggles).toEqual({ raw_text: 'false', confidence: 'true' });
 	});
 
 	it('should read the document URL for the URL source', () => {
@@ -205,5 +221,41 @@ describe('Mindee V2 > getModels', () => {
 		const result = await getModels.call(context, undefined, '3');
 
 		expect(result.paginationToken).toBeUndefined();
+	});
+});
+
+describe('Mindee V2 > isMindeeOperation', () => {
+	it.each(['extraction', 'classification', 'crop', 'ocr', 'split'])('should accept %s', (value) => {
+		expect(isMindeeOperation(value)).toBe(true);
+	});
+
+	it.each(['../jobs', 'extraction/../x', '', undefined, 1])('should reject %s', (value) => {
+		expect(isMindeeOperation(value)).toBe(false);
+	});
+});
+
+describe('Mindee V2 > buildRequestBody', () => {
+	it('should append the model ID and the enabled toggles to the form', async () => {
+		const form = new FormData();
+
+		await buildRequestBody(
+			mockDeep<IExecuteFunctions>(),
+			0,
+			{
+				modelId: 'model-id',
+				toggles: { rag: 'true', raw_text: 'false' },
+				pollingTimeoutCount: 180,
+				documentSource: 'url',
+				documentUrl: 'https://example.com/invoice.pdf',
+			},
+			form,
+		);
+
+		const body = form.getBuffer().toString();
+		expect(body).toContain('name="url"');
+		expect(body).toContain('name="model_id"');
+		expect(body).toContain('name="rag"');
+		expect(body).toContain('name="raw_text"');
+		expect(body).not.toContain('name="polygon"');
 	});
 });

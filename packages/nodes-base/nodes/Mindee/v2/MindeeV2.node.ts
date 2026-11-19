@@ -2,22 +2,42 @@ import FormData from 'form-data';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
+	type INodeProperties,
 	type INodeType,
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
 	NodeConnectionTypes,
+	NodeOperationError,
 	requestUrl,
 } from 'n8n-workflow';
 
 import {
 	buildRequestBody,
 	extractPollingUrl,
+	isMindeeOperation,
 	mindeeApiRequest,
+	OPERATIONS,
 	pollMindee,
 	readUIParams,
 	ROOT_URL,
 } from './GenericFunctions';
 import { getModels } from './SearchFunctions';
+
+function toggleOption(displayName: string, name: string, description: string): INodeProperties {
+	return {
+		displayName,
+		name,
+		type: 'options',
+		options: [
+			{ name: 'Use Model Default', value: 'default' },
+			{ name: 'Enabled', value: 'true' },
+			{ name: 'Disabled', value: 'false' },
+		],
+		default: 'default',
+		displayOptions: { show: { '/operation': ['extraction'] } },
+		description,
+	};
+}
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Mindee',
@@ -104,7 +124,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'How the document to process is provided',
 			displayOptions: {
 				show: {
-					operation: ['extraction', 'classification', 'crop', 'ocr', 'split'],
+					operation: [...OPERATIONS],
 				},
 			},
 		},
@@ -118,7 +138,7 @@ const versionDescription: INodeTypeDescription = {
 				'The name of the incoming binary field that contains the document file (e.g. <code>data</code>)',
 			displayOptions: {
 				show: {
-					operation: ['extraction', 'classification', 'crop', 'ocr', 'split'],
+					operation: [...OPERATIONS],
 					documentSource: ['binary'],
 				},
 			},
@@ -133,7 +153,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Public URL of the document to process',
 			displayOptions: {
 				show: {
-					operation: ['extraction', 'classification', 'crop', 'ocr', 'split'],
+					operation: [...OPERATIONS],
 					documentSource: ['url'],
 				},
 			},
@@ -151,7 +171,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 			displayOptions: {
 				show: {
-					operation: ['extraction', 'classification', 'crop', 'ocr', 'split'],
+					operation: [...OPERATIONS],
 				},
 			},
 			modes: [
@@ -181,121 +201,30 @@ const versionDescription: INodeTypeDescription = {
 			default: {},
 			displayOptions: {
 				show: {
-					operation: ['extraction', 'classification', 'crop', 'ocr', 'split'],
+					operation: [...OPERATIONS],
 				},
 			},
 			options: [
-				{
-					displayName: 'Enable Confidence Scores',
-					name: 'confidence',
-					type: 'options',
-					options: [
-						{
-							name: 'Use Model Default',
-							value: 'default',
-						},
-						{
-							name: 'Enabled',
-							value: 'true',
-						},
-						{
-							name: 'Disabled',
-							value: 'false',
-						},
-					],
-					default: 'default',
-					displayOptions: {
-						show: {
-							// eslint-disable-next-line @typescript-eslint/naming-convention
-							'/operation': ['extraction'],
-						},
-					},
-					description:
-						'Calculate confidence scores for all fields, and fill their `confidence` attribute',
-				},
-				{
-					displayName: 'Enable Polygons (Location Data)',
-					name: 'polygon',
-					type: 'options',
-					options: [
-						{
-							name: 'Use Model Default',
-							value: 'default',
-						},
-						{
-							name: 'Enabled',
-							value: 'true',
-						},
-						{
-							name: 'Disabled',
-							value: 'false',
-						},
-					],
-					default: 'default',
-					displayOptions: {
-						show: {
-							// eslint-disable-next-line @typescript-eslint/naming-convention
-							'/operation': ['extraction'],
-						},
-					},
-					description:
-						'Calculate bounding box polygons for all fields, and fill their `locations` attribute',
-				},
-				{
-					displayName: 'Enable RAG',
-					name: 'rag',
-					type: 'options',
-					options: [
-						{
-							name: 'Use Model Default',
-							value: 'default',
-						},
-						{
-							name: 'Enabled',
-							value: 'true',
-						},
-						{
-							name: 'Disabled',
-							value: 'false',
-						},
-					],
-					default: 'default',
-					displayOptions: {
-						show: {
-							// eslint-disable-next-line @typescript-eslint/naming-convention
-							'/operation': ['extraction'],
-						},
-					},
-					description: 'Enhance extraction accuracy with Retrieval-Augmented Generation',
-				},
-				{
-					displayName: 'Enable Raw Text',
-					name: 'rawText',
-					type: 'options',
-					options: [
-						{
-							name: 'Use Model Default',
-							value: 'default',
-						},
-						{
-							name: 'Enabled',
-							value: 'true',
-						},
-						{
-							name: 'Disabled',
-							value: 'false',
-						},
-					],
-					default: 'default',
-					displayOptions: {
-						show: {
-							// eslint-disable-next-line @typescript-eslint/naming-convention
-							'/operation': ['extraction'],
-						},
-					},
-					description:
-						'Extract the full text content from the document as strings, and fill the `raw_text` attribute',
-				},
+				toggleOption(
+					'Enable Confidence Scores',
+					'confidence',
+					'Calculate confidence scores for all fields, and fill their `confidence` attribute',
+				),
+				toggleOption(
+					'Enable Polygons (Location Data)',
+					'polygon',
+					'Calculate bounding box polygons for all fields, and fill their `locations` attribute',
+				),
+				toggleOption(
+					'Enable RAG',
+					'rag',
+					'Enhance extraction accuracy with Retrieval-Augmented Generation',
+				),
+				toggleOption(
+					'Enable Raw Text',
+					'rawText',
+					'Extract the full text content from the document as strings, and fill the `raw_text` attribute',
+				),
 				{
 					displayName: 'Polling Timeout (Seconds)',
 					name: 'pollingTimeoutCount',
@@ -335,6 +264,11 @@ export class MindeeV2 implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				const operation = this.getNodeParameter('operation', i);
+				if (!isMindeeOperation(operation)) {
+					throw new NodeOperationError(this.getNode(), `Unknown operation: ${String(operation)}`, {
+						itemIndex: i,
+					});
+				}
 				const params = readUIParams(this, i);
 				const form = new FormData();
 				await buildRequestBody(this, i, params, form);
