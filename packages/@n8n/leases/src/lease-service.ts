@@ -5,7 +5,7 @@ import {
 	UnknownLeaseKindError,
 } from './errors';
 import type { LeaseProvider } from './provider';
-import { DEFAULT_LEASE_KIND_OPTIONS, MAX_LEASE_KIND_LENGTH } from './types';
+import { DEFAULT_LEASE_KIND_OPTIONS, MAX_LEASE_KIND_LENGTH } from './constants';
 import type { LeaseKind, LeaseKindOptions, LeaseStatus } from './types';
 
 const LEASE_KIND_NAME_PATTERN = /^[a-z][a-z0-9-]*$/;
