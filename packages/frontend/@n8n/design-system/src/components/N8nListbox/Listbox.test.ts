@@ -205,6 +205,30 @@ const SectionHarness = defineComponent({
 	`,
 });
 
+const SectionActionHarness = defineComponent({
+	components: { N8nListbox, N8nListboxItem },
+	setup() {
+		const value = ref('readme');
+		return { value };
+	},
+	template: `
+		<div>
+			<button type="button">Before</button>
+			<N8nListbox v-model="value" label="Plugin files">
+				<N8nListboxItem value="readme">README</N8nListboxItem>
+				<button type="button">Add skill</button>
+				<N8nListboxItem value="search">
+					<span>search</span>
+					<button type="button">search actions</button>
+				</N8nListboxItem>
+				<button type="button">Add workflow</button>
+				<N8nListboxItem value="hybrid">hybrid</N8nListboxItem>
+			</N8nListbox>
+			<button type="button">After</button>
+		</div>
+	`,
+});
+
 const LayoutHarness = defineComponent({
 	components: { N8nListbox, N8nListboxItem, N8nIcon },
 	template: `
@@ -541,6 +565,38 @@ describe('N8nListbox', () => {
 		await userEvent.tab({ shift: true });
 		expect(readme).toHaveFocus();
 		expect(readme).toHaveAttribute('data-highlighted');
+	});
+
+	it('stops Tab from a section control on the next item action button', async () => {
+		const { getByRole } = render(SectionActionHarness);
+		const readme = getByRole('option', { name: 'README' });
+		const search = getByRole('option', { name: 'search search actions' });
+		const hybrid = getByRole('option', { name: 'hybrid' });
+		const addSkill = getByRole('button', { name: 'Add skill' });
+		const searchActions = getByRole('button', { name: 'search actions' });
+		const addWorkflow = getByRole('button', { name: 'Add workflow' });
+
+		await vi.waitFor(() => {
+			expect(readme).toHaveAttribute('data-highlighted');
+		});
+
+		addSkill.focus();
+		await userEvent.tab();
+		expect(searchActions).toHaveFocus();
+		expect(search).not.toHaveAttribute('data-highlighted');
+		expect(readme).toHaveAttribute('data-highlighted');
+
+		await userEvent.tab();
+		expect(addWorkflow).toHaveFocus();
+
+		await userEvent.tab();
+		expect(hybrid).toHaveFocus();
+		expect(hybrid).toHaveAttribute('data-highlighted');
+
+		addWorkflow.focus();
+		await userEvent.tab({ shift: true });
+		expect(searchActions).toHaveFocus();
+		expect(search).not.toHaveAttribute('data-highlighted');
 	});
 
 	it('moves the highlight with Left and Right when orientation is horizontal', async () => {
