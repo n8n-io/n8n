@@ -66,12 +66,8 @@ export function getPromotionScopesOfProjectRoles(
 	}
 
 	return {
-		[PROJECT_ADMIN_ROLE_SLUG]: PROMOTION_PROJECT_SCOPES.filter((s) =>
-			granted[PROJECT_ADMIN_ROLE_SLUG].has(s),
-		),
-		[PROJECT_EDITOR_ROLE_SLUG]: PROMOTION_PROJECT_SCOPES.filter((s) =>
-			granted[PROJECT_EDITOR_ROLE_SLUG].has(s),
-		),
+		[PROJECT_ADMIN_ROLE_SLUG]: [...granted[PROJECT_ADMIN_ROLE_SLUG]],
+		[PROJECT_EDITOR_ROLE_SLUG]: [...granted[PROJECT_EDITOR_ROLE_SLUG]],
 	};
 }
 
