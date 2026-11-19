@@ -1291,5 +1291,15 @@ describe('SettingsUsersView', () => {
 			ssoStore.isSamlLoginEnabled = true;
 			expect(isModalPrefetchEnabled(INVITE_USER_MODAL_KEY)).toBe(false);
 		});
+
+		it('does not prefetch the invite modal while user management is not set up', () => {
+			const spy = vi
+				.spyOn(permissions, 'hasPermission')
+				.mockImplementation((features) => features.includes('defaultUser'));
+			renderComponent();
+
+			expect(isModalPrefetchEnabled(INVITE_USER_MODAL_KEY)).toBe(false);
+			spy.mockRestore();
+		});
 	});
 });

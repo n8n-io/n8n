@@ -84,6 +84,7 @@ const isSSOEnabled = computed(() => !!ssoStore.isSamlLoginEnabled || !!ssoStore.
 // The same conditions as the invite button and the delete action.
 usePrefetchModals([INVITE_USER_MODAL_KEY], {
 	enabled: () =>
+		!showUMSetupWarning.value &&
 		!isSSOEnabled.value &&
 		usersStore.usersLimitNotReached &&
 		!isInstanceRoleProvisioningEnabled.value,
