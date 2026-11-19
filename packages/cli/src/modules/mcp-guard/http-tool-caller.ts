@@ -2,7 +2,7 @@ import http from 'node:http';
 import https from 'node:https';
 
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { McpCaller } from './mcp-upstream';
 import type { CapturedRequest } from './net-interceptor';
