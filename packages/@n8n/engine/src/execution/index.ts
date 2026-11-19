@@ -22,6 +22,8 @@ export type {
 	ResumeBinding,
 	ResumeCause,
 	StepSlots,
+	StepOutputSource,
+	StepOutputSources,
 	StepStatus,
 	SeededSteps,
 	TriggerOutputs,
@@ -43,10 +45,13 @@ export type {
 	StepView,
 } from './execution-view-store';
 export { StepNotFoundError } from './step-store';
+export { announceStepFailed } from './step-events';
+export { validateStepContext } from './validate-step-context';
 export type {
 	DueStep,
 	NewStepRecord,
 	StaleQueuedStep,
+	StaleRunningStep,
 	StepRecord,
 	StepStore,
 	StepSummary,

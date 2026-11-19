@@ -56,6 +56,9 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 		const executionData = execution.data.executionData;
 
 		if (executionData) {
+			for (const context of Object.values(executionData.contextData ?? {})) {
+				delete context.agentInvocations;
+			}
 			for (const executeData of executionData.nodeExecutionStack ?? []) {
 				if (executeData.data) {
 					this.redactConnections(executeData.data, reason);

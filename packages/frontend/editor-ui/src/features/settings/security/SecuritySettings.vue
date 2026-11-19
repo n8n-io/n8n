@@ -35,6 +35,7 @@ import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG } from './rateLimits/rateLimits';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 import { usePolicyAdminAccess } from '@n8n/frontend-module-type-availability-policies';
+import { useTypePoliciesSettingsFlag } from './composables/useTypePoliciesSettingsFlag';
 
 const router = useRouter();
 const rootStore = useRootStore();
@@ -47,6 +48,7 @@ const { isWorkflowReviewsAvailable } = useWorkflowReviewsFeature();
 const posthogStore = usePostHog();
 const { canManagePolicies: canManageTypePolicies, entryRouteName: typePoliciesRouteName } =
 	usePolicyAdminAccess();
+const { isEnabled: isTypePoliciesSettingsEnabled } = useTypePoliciesSettingsFlag();
 
 function openTypePolicies() {
 	void router.push({ name: typePoliciesRouteName.value });
@@ -404,7 +406,7 @@ const sharingCountText = computed(() => {
 		</N8nSettingsSection>
 
 		<N8nSettingsSection
-			v-if="canManageTypePolicies"
+			v-if="canManageTypePolicies && isTypePoliciesSettingsEnabled"
 			:title="i18n.baseText('settings.security.nodeAndCredentialPolicies.section')"
 			data-test-id="security-type-policies-section"
 		>

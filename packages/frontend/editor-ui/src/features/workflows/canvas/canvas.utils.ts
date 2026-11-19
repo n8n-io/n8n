@@ -32,6 +32,26 @@ import type { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocumen
 export type CanvasRenderData = ReturnType<typeof useWorkflowDocumentRenderData>;
 
 /**
+ * Returns true when the only issues of a node are credentials that are not set.
+ * Hosts with a setup panel show these nodes as "setup required", not as errors.
+ */
+export function nodeNeedsCredentialSetup(node: INodeUi | undefined): boolean {
+	const issues = node?.issues;
+	const credentialTypes = Object.keys(issues?.credentials ?? {});
+	if (!node || !credentialTypes.length) return false;
+	const hasOtherIssues = Object.entries(issues ?? {}).some(
+		([kind, issue]) =>
+			kind !== 'credentials' &&
+			(typeof issue === 'boolean' ? issue : Object.keys(issue ?? {}).length > 0),
+	);
+	if (hasOtherIssues) return false;
+	return credentialTypes.every((type) => {
+		const credential = node.credentials?.[type];
+		return !credential?.id && !credential?.__aiGatewayManaged;
+	});
+}
+
+/**
  * Adds an `{ x, y }` offset to a position (a `{ x, y }` or a `[x, y]` tuple),
  * returning a new `{ x, y }`.
  */

@@ -246,7 +246,6 @@ export class EngineV2Dispatcher {
 			allowNonTriggerRoot: plan !== undefined,
 			pinData: this.resolvePinData(data),
 		});
-		// One pass per node: a planned run seeds nothing inside a loop yet.
 		const seededSteps = await this.toSeededSteps(plan);
 
 		const executionId = data.engineV2ExecutionId ?? createExecutionIdV2();
@@ -433,8 +432,13 @@ export class EngineV2Dispatcher {
 		if (!plan) return undefined;
 		// Lazily imported, as in `toEngineWorkflowPayload`.
 		const { toStepOutputs } = await import('@n8n/node-engine-compatibility');
-		return Object.fromEntries(
-			plan.seeded.map(({ nodeId, outputs }) => [nodeId, [toStepOutputs(outputs)]]),
-		);
+		// One entry per node, its passes in iteration order; the planner numbers
+		// them from 0 without gaps. A null prototype: a node id such as
+		// `constructor` must land on its own key.
+		const byNode: SeededSteps = Object.create(null);
+		for (const { nodeId, iteration, outputs } of plan.seeded) {
+			(byNode[nodeId] ??= [])[iteration] = toStepOutputs(outputs);
+		}
+		return byNode;
 	}
 }

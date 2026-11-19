@@ -13,6 +13,7 @@ import type { LocalMcpServer } from '../../types';
 import {
 	buildTaskMessage,
 	runCloudBrowserAgent,
+	type CloudBrowserUserActionHost,
 	type RunCloudBrowserAgentOptions,
 } from '../cloud-browser-agent';
 
@@ -100,6 +101,7 @@ function makeOptions(): RunCloudBrowserAgentOptions {
 		agentId: 'agent-1',
 		brief: { goal: 'Find the price of the Pro plan', startUrl: 'https://example.com/pricing' },
 		mcpServer: mock<LocalMcpServer>(),
+		userActionHost: mock<CloudBrowserUserActionHost>(),
 		modelId: 'anthropic/claude-sonnet-4-5',
 		threadId: 'thread-1',
 		runId: 'run-1',
@@ -203,8 +205,38 @@ describe('runCloudBrowserAgent', () => {
 		expect(agents[0].tools.map((tool) => tool.name)).toEqual([
 			'browser_navigate',
 			'browser_click',
+			'browser_request_user_action',
 			'report_result',
 		]);
+	});
+
+	describe('browser_request_user_action', () => {
+		/** Runs the agent, then calls the tool as the model would. */
+		async function requestUserAction(
+			result: Awaited<ReturnType<CloudBrowserUserActionHost['requestUserAction']>>,
+		) {
+			vi.mocked(executeResumableStream).mockResolvedValue(streamResult());
+			const options = makeOptions();
+			vi.mocked(options.userActionHost.requestUserAction).mockResolvedValue(result);
+			await runCloudBrowserAgent(options);
+			const tool = agents[0].tools.find((t) => t.name === 'browser_request_user_action');
+			const output = await tool?.handler?.({ reason: 'Sign in to Acme.' }, {} as never);
+			expect(options.userActionHost.requestUserAction).toHaveBeenCalledTimes(1);
+			return output;
+		}
+
+		it('returns what to do next when the user returns control', async () => {
+			expect(await requestUserAction({ returned: true })).toEqual({
+				controlReturned: true,
+				next: 'Call browser_snapshot to see the page, then continue.',
+			});
+		});
+
+		it('returns the error when control does not come back', async () => {
+			expect(
+				await requestUserAction({ returned: false, error: 'The browser task has ended.' }),
+			).toEqual({ controlReturned: false, error: 'The browser task has ended.' });
+		});
 	});
 
 	it.each([
@@ -264,6 +296,58 @@ describe('runCloudBrowserAgent', () => {
 		expect(options.waitForConfirmation).toHaveBeenCalledWith('request-1');
 	});
 
+	describe('user control notes', () => {
+		/** Runs the agent and returns the input boundary hook it streams with. */
+		async function inputBoundaryWithNotes(notes: string[]) {
+			vi.mocked(executeResumableStream).mockResolvedValue(streamResult());
+			const options = makeOptions();
+			vi.mocked(options.userActionHost.drainUserControlNotes).mockReturnValue(notes);
+			await runCloudBrowserAgent(options);
+			const streamOptions = agents[0].stream.mock.calls[0][1];
+			return { options, onInputBoundary: streamOptions.onInputBoundary };
+		}
+
+		const boundary = (canContinue: boolean) => ({
+			messages: [],
+			lastCreatedAt: 0,
+			completing: false,
+			canContinue,
+		});
+
+		it('gives the agent each note as a user message in a user-control-note block', async () => {
+			const { onInputBoundary } = await inputBoundaryWithNotes(['I signed in', 'I closed a popup']);
+
+			const messages = await onInputBoundary(boundary(true));
+
+			expect(messages).toEqual(
+				['I signed in', 'I closed a popup'].map((note) => ({
+					id: expect.any(String),
+					createdAt: expect.any(Date),
+					role: 'user',
+					content: [
+						{
+							type: 'text',
+							text: `<user-control-note>\nThe user took control of the browser and gave it back. They wrote this note about what they did:\n${note}\n</user-control-note>`,
+						},
+					],
+				})),
+			);
+		});
+
+		it('adds no message when there is no note', async () => {
+			const { onInputBoundary } = await inputBoundaryWithNotes([]);
+
+			expect(await onInputBoundary(boundary(true))).toEqual([]);
+		});
+
+		it('leaves the notes queued when the run cannot continue', async () => {
+			const { options, onInputBoundary } = await inputBoundaryWithNotes(['I signed in']);
+
+			expect(await onInputBoundary(boundary(false))).toEqual([]);
+			expect(options.userActionHost.drainUserControlNotes).not.toHaveBeenCalled();
+		});
+	});
+
 	it('resumes after a card with the same options as the first stream', async () => {
 		vi.mocked(executeResumableStream).mockResolvedValue(streamResult());
 		const onStepStart = vi.fn();
@@ -281,6 +365,8 @@ describe('runCloudBrowserAgent', () => {
 			providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
 			modelStreamIdleTimeoutMs: 1000,
 			onStepStart,
+			// The same hook, so a note after a card still reaches the agent.
+			onInputBoundary: agents[0].stream.mock.calls[0][1].onInputBoundary,
 		};
 		expect(agents[0].stream).toHaveBeenCalledWith(
 			expect.any(String),

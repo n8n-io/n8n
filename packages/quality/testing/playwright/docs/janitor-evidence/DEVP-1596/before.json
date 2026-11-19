@@ -1,0 +1,223 @@
+{
+	"timestamp": "2026-11-18T10:41:35.741Z",
+	"projectRoot": "/__w/cat-bot/cat-bot/packages/quality/testing/playwright",
+	"rules": {
+		"enabled": [
+			"boundary-protection",
+			"scope-lockdown",
+			"selector-purity",
+			"no-page-in-flow",
+			"api-purity",
+			"dead-code",
+			"deduplication",
+			"test-data-hygiene",
+			"duplicate-logic",
+			"no-direct-page-instantiation",
+			"no-raw-editor-navigation",
+			"valid-owner-annotation"
+		],
+		"disabled": []
+	},
+	"results": [
+		{
+			"rule": "boundary-protection",
+			"violations": [],
+			"filesAnalyzed": 0,
+			"executionTimeMs": 97.58,
+			"fixable": false
+		},
+		{
+			"rule": "scope-lockdown",
+			"violations": [],
+			"filesAnalyzed": 0,
+			"executionTimeMs": 82.06,
+			"fixable": false
+		},
+		{
+			"rule": "selector-purity",
+			"violations": [
+				{
+					"file": "tests/e2e/chat-hub/chat-hub-attachment.spec.ts",
+					"line": 63,
+					"column": 16,
+					"rule": "selector-purity",
+					"message": "Chained locator call in test: newPage.locator('img')",
+					"severity": "error",
+					"suggestion": "Move selector to page object method instead of chaining .locator() in tests"
+				},
+				{
+					"file": "tests/e2e/chat-hub/chat-hub-attachment.spec.ts",
+					"line": 64,
+					"column": 16,
+					"rule": "selector-purity",
+					"message": "Chained locator call in test: newPage.locator('img')",
+					"severity": "error",
+					"suggestion": "Move selector to page object method instead of chaining .locator() in tests"
+				},
+				{
+					"file": "tests/e2e/chat-hub/chat-hub-attachment.spec.ts",
+					"line": 65,
+					"column": 16,
+					"rule": "selector-purity",
+					"message": "Chained locator call in test: newPage.locator('img')",
+					"severity": "error",
+					"suggestion": "Move selector to page object method instead of chaining .locator() in tests"
+				}
+			],
+			"filesAnalyzed": 0,
+			"executionTimeMs": 480.74,
+			"fixable": false
+		},
+		{
+			"rule": "no-page-in-flow",
+			"violations": [],
+			"filesAnalyzed": 0,
+			"executionTimeMs": 9.31,
+			"fixable": false
+		},
+		{
+			"rule": "api-purity",
+			"violations": [
+				{
+					"file": "tests/e2e/capabilities/proxy-server.spec.ts",
+					"line": 27,
+					"column": 33,
+					"rule": "api-purity",
+					"message": "Raw API call detected: fetch(",
+					"severity": "error",
+					"suggestion": "Use an API service instead of fetch(). Add the endpoint to the appropriate service class."
+				},
+				{
+					"file": "tests/e2e/capabilities/proxy-server.spec.ts",
+					"line": 64,
+					"column": 27,
+					"rule": "api-purity",
+					"message": "Raw API call detected: fetch(",
+					"severity": "error",
+					"suggestion": "Use an API service instead of fetch(). Add the endpoint to the appropriate service class."
+				}
+			],
+			"filesAnalyzed": 0,
+			"executionTimeMs": 2492.95,
+			"fixable": false
+		},
+		{
+			"rule": "dead-code",
+			"violations": [],
+			"filesAnalyzed": 0,
+			"executionTimeMs": 119.56,
+			"fixable": false
+		},
+		{
+			"rule": "deduplication",
+			"violations": [],
+			"filesAnalyzed": 0,
+			"executionTimeMs": 58.69,
+			"fixable": false
+		},
+		{
+			"rule": "test-data-hygiene",
+			"violations": [],
+			"filesAnalyzed": 0,
+			"executionTimeMs": 845.64,
+			"fixable": false
+		},
+		{
+			"rule": "duplicate-logic",
+			"violations": [
+				{
+					"file": "tests/infrastructure/benchmarks/kafka/output-size-impact.spec.ts",
+					"line": 25,
+					"column": 0,
+					"rule": "duplicate-logic",
+					"message": "Duplicate test logic: \"anonymous\" has identical structure to tests/infrastructure/benchmarks/kafka/node-count-scaling.spec.ts:\"anonymous\"",
+					"severity": "warning",
+					"suggestion": "Consider extracting shared setup to a helper function or fixture"
+				},
+				{
+					"file": "tests/infrastructure/benchmarks/webhook/webhook-dedicated-proc-2wp-2w.spec.ts",
+					"line": 33,
+					"column": 0,
+					"rule": "duplicate-logic",
+					"message": "Duplicate test logic: \"anonymous\" has identical structure to tests/infrastructure/benchmarks/webhook/webhook-dedicated-proc-2wp-1w.spec.ts:\"anonymous\"",
+					"severity": "warning",
+					"suggestion": "Consider extracting shared setup to a helper function or fixture"
+				},
+				{
+					"file": "tests/infrastructure/benchmarks/webhook/webhook-dedicated-proc-baseline.spec.ts",
+					"line": 33,
+					"column": 0,
+					"rule": "duplicate-logic",
+					"message": "Duplicate test logic: \"anonymous\" has identical structure to tests/infrastructure/benchmarks/webhook/webhook-dedicated-proc-2wp-1w.spec.ts:\"anonymous\"",
+					"severity": "warning",
+					"suggestion": "Consider extracting shared setup to a helper function or fixture"
+				},
+				{
+					"file": "tests/infrastructure/benchmarks-local/instance-ai/thread-churn-delegation.spec.ts",
+					"line": 24,
+					"column": 0,
+					"rule": "duplicate-logic",
+					"message": "Duplicate test logic: \"heap returns to baseline after delegation rounds\" has identical structure to tests/infrastructure/benchmarks-local/instance-ai/thread-churn-datatables.spec.ts:\"heap returns to baseline after data table create/delete rounds\"",
+					"severity": "warning",
+					"suggestion": "Consider extracting shared setup to a helper function or fixture"
+				},
+				{
+					"file": "tests/infrastructure/benchmarks-local/instance-ai/thread-churn.spec.ts",
+					"line": 17,
+					"column": 0,
+					"rule": "duplicate-logic",
+					"message": "Duplicate test logic: \"heap returns to baseline after parallel build rounds\" has identical structure to tests/infrastructure/benchmarks-local/instance-ai/thread-churn-datatables.spec.ts:\"heap returns to baseline after data table create/delete rounds\"",
+					"severity": "warning",
+					"suggestion": "Consider extracting shared setup to a helper function or fixture"
+				}
+			],
+			"filesAnalyzed": 0,
+			"executionTimeMs": 517.59,
+			"fixable": false
+		},
+		{
+			"rule": "no-direct-page-instantiation",
+			"violations": [],
+			"filesAnalyzed": 0,
+			"executionTimeMs": 255.28,
+			"fixable": false
+		},
+		{
+			"rule": "no-raw-editor-navigation",
+			"violations": [],
+			"filesAnalyzed": 0,
+			"executionTimeMs": 339.32,
+			"fixable": false
+		},
+		{
+			"rule": "valid-owner-annotation",
+			"violations": [],
+			"filesAnalyzed": 0,
+			"executionTimeMs": 401.58,
+			"fixable": false
+		}
+	],
+	"summary": {
+		"totalViolations": 10,
+		"byRule": {
+			"boundary-protection": 0,
+			"scope-lockdown": 0,
+			"selector-purity": 3,
+			"no-page-in-flow": 0,
+			"api-purity": 2,
+			"dead-code": 0,
+			"deduplication": 0,
+			"test-data-hygiene": 0,
+			"duplicate-logic": 5,
+			"no-direct-page-instantiation": 0,
+			"no-raw-editor-navigation": 0,
+			"valid-owner-annotation": 0
+		},
+		"bySeverity": {
+			"error": 5,
+			"warning": 5,
+			"info": 0
+		},
+		"filesAnalyzed": 0
+	}
+}
