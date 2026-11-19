@@ -431,12 +431,11 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		const threads = await query.getMany();
 		const hasMore = threads.length > limit;
 		if (hasMore) threads.pop();
+		const last = threads[threads.length - 1];
 
 		return {
 			threads,
-			nextCursor: hasMore
-				? `${threads[threads.length - 1].updatedAt.toISOString()}|${threads[threads.length - 1].id}`
-				: null,
+			nextCursor: hasMore ? `${last.updatedAt.toISOString()}|${last.id}` : null,
 		};
 	}
 
