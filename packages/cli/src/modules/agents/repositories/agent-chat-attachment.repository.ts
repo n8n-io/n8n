@@ -127,6 +127,26 @@ export class AgentChatAttachmentRepository {
 	}
 
 	/**
+	 * Whether a system chat thread has a file with these stored bytes, in the
+	 * scope of `findByIdForSystemAgent`. The caller checks access to the thread.
+	 */
+	async existsInSystemThreadByBinaryDataId(
+		threadId: string,
+		binaryDataId: string,
+		scope: { agentId: string; resourceId: string; sources: readonly string[] },
+		ctx: OperationContext,
+	): Promise<boolean> {
+		const { agentId, resourceId, sources } = scope;
+		return await this.table.managerFor(ctx).existsBy(AgentChatAttachment, {
+			threadId,
+			binaryDataId,
+			agentId,
+			resourceId,
+			source: In([...sources]),
+		});
+	}
+
+	/**
 	 * Thread lookup scoped to a project or agent — the scope carries the
 	 * caller's authorization and lets the matching composite index
 	 * ((projectId, threadId) or (agentId, threadId)) serve the query.
