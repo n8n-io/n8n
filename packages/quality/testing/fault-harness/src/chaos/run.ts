@@ -178,7 +178,7 @@ export async function chaosRun(
 			schedule,
 			applied,
 			requests: requests.length,
-			accepted: requests.filter((r) => r.status === 200).length,
+			accepted: requests.filter((r) => r.accepted).length,
 			executions: Object.keys(record.executions).length,
 			violations: checkWorkload(record),
 		};

@@ -10,6 +10,7 @@ export interface WorkloadRequest {
 	requestId: string;
 	sentAt: number;
 	status: number;
+	accepted: boolean;
 	ms: number;
 	executionId?: string;
 }
@@ -20,6 +21,18 @@ export interface Effect {
 }
 
 const TABLE = 'fault_harness_effects';
+
+/** The body n8n sends with status 200 while its database migrates, before any webhook route runs. */
+export const STARTING_UP = 'n8n is starting up. Please wait';
+
+/** Reads a webhook response: accepted, and the execution id it named if any. */
+export function readResponse(
+	status: number,
+	body: string,
+): Pick<WorkloadRequest, 'accepted' | 'executionId'> {
+	const accepted = status === 200 && body !== STARTING_UP;
+	return { accepted, executionId: accepted && body ? body : undefined };
+}
 
 /**
  * Steady webhook traffic against one workflow that writes a row per run, so
@@ -70,8 +83,7 @@ export class Workload {
 		const sentAt = Date.now();
 		const { result, abort } = this.harness.api.webhookInBackground(this.path, { requestId });
 		const done = result.then(({ status, body, ms }) => {
-			const executionId = status === 200 && body ? body : undefined;
-			this.requests.push({ requestId, sentAt, status, ms, executionId });
+			this.requests.push({ requestId, sentAt, status, ms, ...readResponse(status, body) });
 			this.inFlight.delete(done);
 		});
 		this.inFlight.set(done, abort);

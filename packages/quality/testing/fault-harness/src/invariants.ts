@@ -36,7 +36,7 @@ export function noAcceptedRequestLost({ requests, executions, effects }: RunReco
 	const pairs = new Set(effects.map((e) => `${e.requestId}|${e.executionId}`));
 	const done = new Set(effects.map((e) => e.requestId));
 	const lost = requests
-		.filter((r) => r.status === 200)
+		.filter((r) => r.accepted)
 		.filter((r) =>
 			r.executionId ? !pairs.has(`${r.requestId}|${r.executionId}`) : !done.has(r.requestId),
 		)
