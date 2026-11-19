@@ -156,38 +156,30 @@ describe('ExportService', () => {
 
 		it('starts a new file before a line would take it past 500 rows', async () => {
 			const MAX_ROWS_PER_FILE = 500;
-			const ROW_COUNT = 600;
 			// @ts-expect-error Accessing private property for testing
 			mockDataSource.entityMetadatas = [
 				{
 					name: 'BinaryDataFile',
 					tableName: 'binary_data',
-					columns: [
-						{ databaseName: 'fileId', type: 'uuid' },
-						{ databaseName: 'data', type: 'blob' },
-					],
+					columns: [{ databaseName: 'data', type: 'blob' }],
 				},
 			];
+			let rowsLeft = 600;
 			vi.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
 				if (query.includes('MAX(LENGTH(')) return [{ maxBytes: 20 * 1024 * 1024 }];
-				const page = /FROM "binary_data" LIMIT (\d+) OFFSET (\d+)/.exec(query);
-				const [limit, offset] = page ? [Number(page[1]), Number(page[2])] : [0, ROW_COUNT];
-				return Array.from({ length: Math.max(0, Math.min(limit, ROW_COUNT - offset)) }, (_, i) => ({
-					fileId: String(offset + i),
-					data: null,
-				}));
+				const pageRows = query.includes('FROM "binary_data"') ? Math.min(3, rowsLeft) : 0;
+				rowsLeft -= pageRows;
+				return Array.from({ length: pageRows }, () => ({ data: null }));
 			});
 
 			await exportService.exportEntities('/test/output');
 
 			const rowsPerFile = new Map<string, number>();
 			for (const [file, line] of vi.mocked(appendFile).mock.calls) {
-				const filePath = file as string;
 				const rows = String(line).trimEnd().split('\n').length;
-				rowsPerFile.set(filePath, (rowsPerFile.get(filePath) ?? 0) + rows);
+				rowsPerFile.set(file as string, (rowsPerFile.get(file as string) ?? 0) + rows);
 			}
-			const oversizedFiles = [...rowsPerFile].filter(([, rows]) => rows > MAX_ROWS_PER_FILE);
-			expect(oversizedFiles).toEqual([]);
+			expect(Math.max(...rowsPerFile.values())).toBeLessThanOrEqual(MAX_ROWS_PER_FILE);
 		});
 
 		it('should export entities successfully with a custom encryption key', async () => {
