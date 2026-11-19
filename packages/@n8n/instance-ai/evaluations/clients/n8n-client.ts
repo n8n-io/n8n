@@ -14,6 +14,9 @@ import {
 	type InstanceAiRichMessagesResponse,
 	type InstanceAiEvalAgentExecutionResult,
 	type InstanceAiEvalExecutionResult,
+	type InstanceAiEvalSimExecutionRequest,
+	type InstanceAiEvalSimPollRequest,
+	type InstanceAiEvalSimPollResult,
 	type InstanceAiRunDebugResponse,
 	type InstanceAiEvalThreadMemoryResponse,
 	type InstanceAiThreadDebugRunsResponse,
@@ -176,6 +179,8 @@ export interface WorkflowResponse {
 	connections: Record<string, unknown>;
 	nodeGroups?: WorkflowNodeGroupResponse[];
 	pinData?: Record<string, unknown>;
+	/** Workflow settings, e.g. `executionOrder`. */
+	settings?: Record<string, unknown>;
 }
 
 interface WorkflowListItem {
@@ -677,16 +682,21 @@ export class N8nClient {
 
 	/**
 	 * Execute a workflow manually.
-	 * POST /rest/workflows/:id/run  body: { triggerToStartFrom?: { name } }
+	 * POST /rest/workflows/:id/run  body: { triggerToStartFrom?: { name, data? } }
+	 * `triggerData` is the start node's task data (its output items), used instead of running it.
 	 */
 	async executeWorkflow(
 		workflowId: string,
 		triggerNodeName?: string,
 		timeoutMs?: number,
+		triggerData?: Record<string, unknown>,
 	): Promise<{ executionId: string }> {
 		const body: Record<string, unknown> = {};
 		if (triggerNodeName) {
-			body.triggerToStartFrom = { name: triggerNodeName };
+			body.triggerToStartFrom = {
+				name: triggerNodeName,
+				...(triggerData ? { data: triggerData } : {}),
+			};
 		}
 		const result = (await this.fetch(`/rest/workflows/${workflowId}/run`, {
 			timeoutMs,
@@ -705,6 +715,14 @@ export class N8nClient {
 			data: ExecutionDetail;
 		};
 		return result.data;
+	}
+
+	/**
+	 * Every node type's description (credentials, parameters, groups), as the editor loads it.
+	 * GET /types/nodes.json
+	 */
+	async getNodeTypes(): Promise<unknown> {
+		return await this.fetch('/types/nodes.json', { timeoutMs: 120_000 });
 	}
 
 	async stopExecution(executionId: string): Promise<void> {
@@ -1459,6 +1477,39 @@ export class N8nClient {
 			timeoutMs: serverBudgetMs + CLIENT_ABORT_MARGIN_MS,
 		})) as { data: InstanceAiEvalExecutionResult };
 		recordEvalUsage(result.data.llmUsage);
+		return result.data;
+	}
+
+	/**
+	 * Run a built workflow against simulated services: the eval instance runs it with the
+	 * given node parameters and issued credentials, and sends its vendor requests to the
+	 * sim server. POST /rest/instance-ai/eval/execute-with-sim/:workflowId
+	 */
+	async executeWithSim(
+		workflowId: string,
+		request: Omit<InstanceAiEvalSimExecutionRequest, 'timeoutMs'>,
+		timeoutMs: number = 120_000,
+	): Promise<InstanceAiEvalExecutionResult> {
+		// Forwarded so the server stops the run rather than leaving it burning CPU.
+		const serverBudgetMs = serverBudgetFor(timeoutMs);
+		const result = (await this.fetch(`/rest/instance-ai/eval/execute-with-sim/${workflowId}`, {
+			method: 'POST',
+			body: { ...request, timeoutMs: serverBudgetMs },
+			timeoutMs: serverBudgetMs + CLIENT_ABORT_MARGIN_MS,
+		})) as { data: InstanceAiEvalExecutionResult };
+		recordEvalUsage(result.data.llmUsage);
+		return result.data;
+	}
+
+	/** The first poll of a polling start node against simulated services; returns its state. */
+	async pollWithSim(
+		workflowId: string,
+		request: InstanceAiEvalSimPollRequest,
+	): Promise<InstanceAiEvalSimPollResult> {
+		const result = (await this.fetch(`/rest/instance-ai/eval/poll-with-sim/${workflowId}`, {
+			method: 'POST',
+			body: request,
+		})) as { data: InstanceAiEvalSimPollResult };
 		return result.data;
 	}
 

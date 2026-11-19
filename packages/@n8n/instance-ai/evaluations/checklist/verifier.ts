@@ -205,7 +205,11 @@ export function supportsOpenAiReasoning(modelId: string): boolean {
  * request here too, so both send the same instructions, schema and request settings. The
  * user message is the caller's: the export builds its own, so that part can differ.
  */
-export function buildNativeVerifierRequestBody(userMessage: string, providerModelId: string) {
+export function buildNativeVerifierRequestBody(
+	userMessage: string,
+	providerModelId: string,
+	instructions = MOCK_EXECUTION_VERIFY_PROMPT,
+) {
 	return {
 		model: providerModelId,
 		max_output_tokens: VERIFIER_MAX_OUTPUT_TOKENS,
@@ -213,7 +217,7 @@ export function buildNativeVerifierRequestBody(userMessage: string, providerMode
 		input: [
 			{
 				role: 'developer',
-				content: MOCK_EXECUTION_VERIFY_PROMPT,
+				content: instructions,
 			},
 			{
 				role: 'user',
@@ -232,6 +236,7 @@ export function buildNativeVerifierRequestBody(userMessage: string, providerMode
 async function runNativeOpenAiVerifier(
 	userMessage: string,
 	abortSignal: AbortSignal,
+	instructions: string,
 ): Promise<{
 	finishReason: unknown;
 	usage: unknown;
@@ -239,7 +244,11 @@ async function runNativeOpenAiVerifier(
 	parsed: z.infer<typeof checklistResultSchema> | undefined;
 }> {
 	const model = resolveEvalModelConfig(resolveJudgeModel());
-	const requestBody = buildNativeVerifierRequestBody(userMessage, model.providerModelId);
+	const requestBody = buildNativeVerifierRequestBody(
+		userMessage,
+		model.providerModelId,
+		instructions,
+	);
 	const response = await fetch(getOpenAiResponsesUrl(model.url), {
 		method: 'POST',
 		headers: {
@@ -410,6 +419,7 @@ export async function verifyChecklist(
 
 	const nativeUserMessage = buildNativeVerifierMessage(llmItems, artifact);
 	const messages = buildVerifierMessages(llmItems, artifact);
+	const instructions = artifact.instructions ?? MOCK_EXECUTION_VERIFY_PROMPT;
 
 	const validIds = new Set(llmItems.map((i) => i.id));
 	const attempts: VerifierAttemptDebug[] = [];
@@ -462,6 +472,7 @@ export async function verifyChecklist(
 				const nativeResult = await runNativeOpenAiVerifier(
 					nativeUserMessage,
 					abortController.signal,
+					instructions,
 				);
 				assistantText = nativeResult.assistantText;
 				parsed = nativeResult.parsed;
@@ -470,7 +481,7 @@ export async function verifyChecklist(
 				hasStructuredOutput = parsed !== undefined;
 			} else {
 				const agent = createEvalAgent('eval-checklist-verifier', {
-					instructions: MOCK_EXECUTION_VERIFY_PROMPT,
+					instructions,
 					cache: true,
 					judge: true,
 				}).structuredOutput(checklistResultSchema);

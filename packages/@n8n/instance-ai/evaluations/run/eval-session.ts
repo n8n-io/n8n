@@ -42,6 +42,8 @@ import type { EvalLogger } from '../harness/logger';
 import type { PrebuiltManifest } from '../harness/prebuilt-workflows';
 import { executeScenario } from '../harness/scenario-execution';
 import type { ScenarioSeedContext } from '../harness/seed-tables';
+import { userRequestOf } from '../sim/setup-writers';
+import { simOptionsFromArgs } from '../sim/sim-runner';
 import type {
 	BuildExpectationResult,
 	ExecutionScenario,
@@ -137,6 +139,8 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 		slugByTestCase.set(testCase, fileSlug);
 	}
 
+	const simOptions = simOptionsFromArgs(args);
+
 	const laneStates: LaneState[] = lanes.map((lane, idx) => {
 		const laneNum = idx + 1;
 		const laneTag = lanes.length > 1 ? ` [lane ${String(laneNum)}/${String(lanes.length)}]` : '';
@@ -192,6 +196,8 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 					buildTrace?: BuildResult['buildTrace'];
 					timeoutMs: number;
 					seedContext?: ScenarioSeedContext;
+					fileSlug?: string;
+					liveTurn?: string;
 				}) =>
 					await executeScenario(
 						lane.client,
@@ -205,6 +211,20 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 						args.pinAiRoots,
 						execArgs.seedContext,
 						args.outputDir,
+						simOptions
+							? {
+									options: simOptions,
+									caseInfo: {
+										fileSlug: execArgs.fileSlug ?? 'case',
+										userRequest: userRequestOf([
+											...(execArgs.liveTurn ? [execArgs.liveTurn] : []),
+											...((execArgs.fileSlug
+												? testCaseByFileSlug.get(execArgs.fileSlug)?.conversation
+												: undefined) ?? []),
+										]),
+									},
+								}
+							: undefined,
 					),
 			),
 			tracedExecuteAgent: wrap(

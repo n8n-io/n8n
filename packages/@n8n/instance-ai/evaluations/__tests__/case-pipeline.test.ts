@@ -203,6 +203,37 @@ describe('createCasePipeline', () => {
 		expect(orchestrator.buildCache.size).toBe(0);
 	});
 
+	it("passes a replay case's live opening turn to the run, which the case does not hold", async () => {
+		const lane = makeLane();
+		vi.mocked(lane.tracedExecute).mockResolvedValue({ success: true, score: 1 } as never);
+		const cached: CachedBuild = {
+			build: okBuild({
+				transcript: [
+					{ userMessage: 'an old question', steps: [], seeded: true },
+					{ userMessage: 'forward my Slack mentions', steps: [] },
+				],
+			}),
+			lane,
+			buildDurationMs: 1,
+		};
+		const replayCase: WorkflowTestCase = {
+			...scenarioCase(['happy-path']),
+			conversation: undefined,
+			seed: { mode: 'replay', threadId: 't-1', project: 'instance-ai' },
+		} as WorkflowTestCase;
+		const pipeline = createCasePipeline(
+			makeDeps(makeOrchestrator(cached), {
+				testCaseByFileSlug: new Map([['case-a', replayCase]]),
+			}),
+		);
+
+		await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(vi.mocked(lane.tracedExecute).mock.calls[0][0]).toMatchObject({
+			liveTurn: 'forward my Slack mentions',
+		});
+	});
+
 	// A staged prior run that produced no execution record leaves the case grading
 	// against history the instance does not have. The biting case is a build that
 	// SUCCEEDED: `buildFailedOnInfra` returns false there, so without this branch the

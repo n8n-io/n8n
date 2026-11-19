@@ -25,6 +25,14 @@ import { buildWorkflowContextBlock } from './workflow-context';
 import { isMockableTriggerNodeType } from '../../src/tools/workflows/workflow-json-utils';
 import { type VerifierAttemptDebug, verifyChecklist } from '../checklist/verifier';
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
+import {
+	runScenarioInSim,
+	type SimCaseInfo,
+	type SimOptions,
+	type SimScenarioReport,
+	TRIGGER_FOUND_NOTHING,
+} from '../sim/sim-runner';
+import { SIM_EXECUTION_VERIFY_PROMPT } from '../system-prompts/sim-execution-verify';
 import type {
 	BuildTrace,
 	ChecklistItem,
@@ -119,6 +127,7 @@ export async function executeScenario(
 	pinAiRoots?: string[],
 	seedContext?: ScenarioSeedContext,
 	outputDir?: string,
+	sim?: { options: SimOptions; caseInfo: SimCaseInfo },
 ): Promise<ExecutionScenarioResult> {
 	return await runScenario(
 		client,
@@ -132,6 +141,7 @@ export async function executeScenario(
 		pinAiRoots,
 		seedContext,
 		outputDir,
+		sim,
 	);
 }
 
@@ -255,6 +265,26 @@ export function selectScenarioWorkflowId(
 	return bestId;
 }
 
+/**
+ * DB write races abort an execution before any node runs and are reported in-band
+ * (success:false), bypassing the throw-based transient retry. Waits and returns true
+ * when the run should go again, so they don't pollute builder reliability stats.
+ */
+async function retryAfterTransientAbort(
+	evalResult: InstanceAiEvalExecutionResult,
+	attempt: number,
+	scenarioName: string,
+	logger: EvalLogger,
+): Promise<boolean> {
+	if (evalResult.success || !isTransientExecutionAbort(evalResult.errors)) return false;
+	if (attempt >= MAX_EXEC_ATTEMPTS) return false;
+	logger.warn(
+		`    [${scenarioName}] execution aborted by transient DB error (attempt ${String(attempt)}/${String(MAX_EXEC_ATTEMPTS)}: ${evalResult.errors.join('; ')}); retrying`,
+	);
+	await delay(500 * attempt);
+	return true;
+}
+
 async function runScenario(
 	client: N8nClient,
 	scenario: ExecutionScenario,
@@ -267,6 +297,7 @@ async function runScenario(
 	pinAiRoots?: string[],
 	seedContext?: ScenarioSeedContext,
 	outputDir?: string,
+	sim?: { options: SimOptions; caseInfo: SimCaseInfo },
 ): Promise<ExecutionScenarioResult> {
 	const pinNodes = pinAiRoots && pinAiRoots.length > 0 ? pinAiRoots : undefined;
 	const targetWorkflowId = selectScenarioWorkflowId(scenario, workflowId, workflowJsons, logger);
@@ -291,27 +322,54 @@ async function runScenario(
 		: undefined;
 
 	const execStart = Date.now();
-	let evalResult = await client.executeWithLlmMock(
-		targetWorkflowId,
-		scenario.dataSetup,
-		timeoutMs,
-		pinNodes,
-		seededDataTableIds,
-	);
-	// DB write races abort the execution before any node runs and are reported
-	// in-band (success:false), bypassing the throw-based transient retry —
-	// retry them here so they don't pollute builder reliability stats.
-	for (
-		let attempt = 1;
-		!evalResult.success &&
-		isTransientExecutionAbort(evalResult.errors) &&
-		attempt < MAX_EXEC_ATTEMPTS;
-		attempt++
-	) {
-		logger.warn(
-			`    [${scenario.name}] execution aborted by transient DB error (attempt ${String(attempt)}/${String(MAX_EXEC_ATTEMPTS)}: ${evalResult.errors.join('; ')}); retrying`,
-		);
-		await delay(500 * attempt);
+	let evalResult: InstanceAiEvalExecutionResult;
+	let simReport: SimScenarioReport | undefined;
+	if (sim) {
+		const workflow =
+			workflowJsons.find((wf) => wf.id === targetWorkflowId) ??
+			(await client.getWorkflow(targetWorkflowId));
+		const runSim = async () =>
+			await runScenarioInSim({
+				options: sim.options,
+				buildClient: client,
+				workflow,
+				scenario,
+				caseInfo: sim.caseInfo,
+				seededDataTableIds,
+				timeoutMs: timeoutMs ?? 120_000,
+				logger,
+			});
+		let outcome = await runSim();
+		for (
+			let attempt = 1;
+			outcome.kind === 'ran' &&
+			(await retryAfterTransientAbort(outcome.evalResult, attempt, scenario.name, logger));
+			attempt++
+		) {
+			outcome = await runSim();
+		}
+		if (outcome.kind === 'not-covered') {
+			// The run cannot measure the scenario: leave it out of scoring, like an unverified run.
+			const reasoning = `Not covered by the simulated services: ${outcome.reasons.join('; ')}`;
+			logger.info(`    [${scenario.name}] NOT COVERED (excluded from scoring) ${reasoning}`);
+			return {
+				scenario,
+				success: false,
+				workflowId: targetWorkflowId,
+				score: 0,
+				reasoning,
+				failureCategory: 'sim_not_covered',
+				attribution: attributionForScenario({
+					passed: false,
+					incomplete: true,
+					failureCategory: 'sim_not_covered',
+				}),
+				incomplete: true,
+			};
+		}
+		evalResult = outcome.evalResult;
+		simReport = outcome.report;
+	} else {
 		evalResult = await client.executeWithLlmMock(
 			targetWorkflowId,
 			scenario.dataSetup,
@@ -319,6 +377,19 @@ async function runScenario(
 			pinNodes,
 			seededDataTableIds,
 		);
+		for (
+			let attempt = 1;
+			await retryAfterTransientAbort(evalResult, attempt, scenario.name, logger);
+			attempt++
+		) {
+			evalResult = await client.executeWithLlmMock(
+				targetWorkflowId,
+				scenario.dataSetup,
+				timeoutMs,
+				pinNodes,
+				seededDataTableIds,
+			);
+		}
 	}
 	// Killed for time, not by the builder — throw so the timeout path classifies it.
 	throwIfServerBudgetStop(evalResult);
@@ -332,7 +403,13 @@ async function runScenario(
 	);
 
 	const verifyStart = Date.now();
-	const artifact = buildVerificationArtifact(scenario, evalResult, workflowJsons, targetWorkflowId);
+	const artifact = buildVerificationArtifact(
+		scenario,
+		evalResult,
+		workflowJsons,
+		targetWorkflowId,
+		simReport,
+	);
 	const savedChars = artifact.truncationSavedChars ?? 0;
 	if (savedChars > 0) {
 		logger.info(
@@ -416,6 +493,8 @@ export interface VerificationArtifact {
 	scenarioContext: string;
 	/** Chars dropped from oversized JSON blocks / request lists (head/tail truncation). */
 	truncationSavedChars?: number;
+	/** Verifier instructions for this run; the LLM-mock prompt when unset. */
+	instructions?: string;
 }
 
 /** Per-JSON-block char cap in the scenario context (~1.5k tokens). */
@@ -537,6 +616,7 @@ function buildScenarioContextBlock(
 	evalResult: InstanceAiEvalExecutionResult,
 	wf: WorkflowResponse | undefined,
 	saved: { chars: number },
+	sim?: SimScenarioReport,
 ): string {
 	const sections: string[] = [];
 
@@ -552,10 +632,12 @@ function buildScenarioContextBlock(
 	const preAnalysis: string[] = [];
 	if (evalResult.hints.warnings.length > 0) {
 		for (const warning of evalResult.hints.warnings) {
-			preAnalysis.push(`⚠ FRAMEWORK ISSUE: ${warning}`);
+			// Sim warnings carry their own label (SIMULATION GAP).
+			preAnalysis.push(sim ? `⚠ ${warning}` : `⚠ FRAMEWORK ISSUE: ${warning}`);
 		}
 	}
-	if (Object.keys(evalResult.hints.triggerContent).length === 0) {
+	const emptyPoll = evalResult.hints.warnings.some((w) => w.startsWith(TRIGGER_FOUND_NOTHING));
+	if (Object.keys(evalResult.hints.triggerContent).length === 0 && !emptyPoll) {
 		preAnalysis.push(
 			'⚠ FRAMEWORK ISSUE: Trigger content is empty — the start node received no input data. All downstream failures are likely caused by this, not by the workflow builder.',
 		);
@@ -605,21 +687,38 @@ function buildScenarioContextBlock(
 		wf?.nodes
 			.map((n) => n.name)
 			.filter((name): name is string => typeof name === 'string' && !ranNodes.has(name)) ?? [];
-	sections.push(
-		'## Execution summary',
-		'',
-		`**Status:** ${evalResult.success ? 'success' : 'failed'}`,
-		`**Mocked nodes** (HTTP intercepted): ${mockedNodes.join(', ') || 'none'}`,
-		`**Pinned nodes** (synthetic input): ${pinnedNodes.join(', ') || 'none'}`,
-		`**Real nodes** (executed with actual logic): ${realNodes.join(', ') || 'none'}`,
-		`**Did not run** (no execution data): ${didNotRun.join(', ') || 'none'}`,
-		// Verifiers read a sub-node's absence from the mocked/pinned lists as "the
-		// harness skipped mocking this model" and charged the root's own crash to
-		// the mock layer (TRUST-508/510).
-		'',
-		'> An AI sub-node (language model, memory, tool, embeddings) only produces execution data when its root node reaches it, and is served through that root — it never appears under mocked or pinned. Listed above it means the root was pinned or the root failed before invoking it, NOT that the harness declined to mock it. A vendor call the harness could not intercept is always a FRAMEWORK ISSUE flag in Pre-analysis.',
-		'',
-	);
+	if (sim) {
+		const callers = Object.entries(evalResult.nodeResults)
+			.filter(([, nr]) => nr.interceptedRequests.length > 0)
+			.map(([name]) => name);
+		sections.push(
+			'## Execution summary',
+			'',
+			`**Status:** ${evalResult.success ? 'success' : 'failed'}`,
+			`**Simulated services:** ${sim.services.join(', ')}`,
+			`**Nodes that called a simulated service:** ${callers.join(', ') || 'none'}`,
+			`**Pinned nodes** (trigger input written by the harness): ${pinnedNodes.join(', ') || 'none'}`,
+			`**Real nodes:** ${realNodes.join(', ') || 'none'}`,
+			`**Did not run** (no execution data): ${didNotRun.join(', ') || 'none'}`,
+			'',
+		);
+	} else {
+		sections.push(
+			'## Execution summary',
+			'',
+			`**Status:** ${evalResult.success ? 'success' : 'failed'}`,
+			`**Mocked nodes** (HTTP intercepted): ${mockedNodes.join(', ') || 'none'}`,
+			`**Pinned nodes** (synthetic input): ${pinnedNodes.join(', ') || 'none'}`,
+			`**Real nodes** (executed with actual logic): ${realNodes.join(', ') || 'none'}`,
+			`**Did not run** (no execution data): ${didNotRun.join(', ') || 'none'}`,
+			// Verifiers read a sub-node's absence from the mocked/pinned lists as "the
+			// harness skipped mocking this model" and charged the root's own crash to
+			// the mock layer (TRUST-508/510).
+			'',
+			'> An AI sub-node (language model, memory, tool, embeddings) only produces execution data when its root node reaches it, and is served through that root — it never appears under mocked or pinned. Listed above it means the root was pinned or the root failed before invoking it, NOT that the harness declined to mock it. A vendor call the harness could not intercept is always a FRAMEWORK ISSUE flag in Pre-analysis.',
+			'',
+		);
+	}
 
 	if (evalResult.errors.length > 0) {
 		sections.push('## Errors', '', ...evalResult.errors.map((e) => `- ${e}`), '');
@@ -643,6 +742,13 @@ function buildScenarioContextBlock(
 		}
 
 		const renderRequest = (req: (typeof nr.interceptedRequests)[number]): void => {
+			if (sim && isRecord(req.mockResponse) && req.mockResponse.simulated === true) {
+				const { status, operation, implemented, error } = req.mockResponse;
+				sections.push(
+					`**Request:** ${req.method} ${req.url} → ${String(status)}${typeof operation === 'string' ? ` (${operation})` : ''}${implemented === false ? ' — not implemented by the simulation' : ''}${typeof error === 'string' ? ` — ${error}` : ''}`,
+				);
+				return;
+			}
 			sections.push(`**Request:** ${req.method} ${req.url}`);
 			if (req.requestBody) {
 				sections.push(
@@ -678,7 +784,63 @@ function buildScenarioContextBlock(
 		sections.push('');
 	}
 
+	if (sim) {
+		sections.push(
+			'## Starting data (seeded before the run, written from the scenario)',
+			'',
+			...(sim.worldNotes ? [`_Notes: ${sim.worldNotes}_`, ''] : []),
+			'```json',
+			capJsonBlock(JSON.stringify(pruneEmpty(sim.startingWorlds) ?? {}, null, 2), saved),
+			'```',
+			'',
+			...(sim.arrivals.length > 0
+				? [
+						sim.arrivalsAfterFirstPoll
+							? "## Arrivals (sent after the trigger's first poll, before its second)"
+							: '## Arrivals (sent before the run)',
+						'',
+						'```json',
+						capJsonBlock(JSON.stringify(sim.arrivals, null, 2), saved),
+						'```',
+						'',
+					]
+				: []),
+			'## Final service state (after the run)',
+			'',
+			'```json',
+			capJsonBlock(JSON.stringify(pruneEmpty(sim.finalState) ?? {}, null, 2), saved),
+			'```',
+			'',
+		);
+		if (sim.unattributed.length > 0) {
+			sections.push(
+				'## Service requests outside any node run',
+				'',
+				...sim.unattributed.map(
+					(e) =>
+						`- ${e.service} ${e.request?.method ?? ''} ${e.request?.path ?? ''} → ${String(e.request?.status)}`,
+				),
+				'',
+			);
+		}
+	}
+
 	return sections.join('\n');
+}
+
+/** Drops empty arrays, objects and nulls, so a service's full state stays readable. */
+function pruneEmpty(value: unknown): unknown {
+	if (Array.isArray(value)) {
+		const items = value.map(pruneEmpty).filter((v) => v !== undefined);
+		return items.length > 0 ? items : undefined;
+	}
+	if (isRecord(value)) {
+		const entries = Object.entries(value)
+			.map(([k, v]) => [k, pruneEmpty(v)] as const)
+			.filter(([, v]) => v !== undefined);
+		return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+	}
+	return value === null ? undefined : value;
 }
 
 /** Build a verification artifact split into a cacheable workflow block + a fresh scenario block. */
@@ -687,12 +849,14 @@ export function buildVerificationArtifact(
 	evalResult: InstanceAiEvalExecutionResult,
 	workflowJsons: WorkflowResponse[],
 	workflowId?: string,
+	sim?: SimScenarioReport,
 ): VerificationArtifact {
 	const wf = workflowJsons.find((w) => w.id === workflowId) ?? workflowJsons[0];
 	const saved = { chars: 0 };
 	return {
 		workflowContext: buildWorkflowContextBlock(wf),
-		scenarioContext: buildScenarioContextBlock(scenario, evalResult, wf, saved),
+		scenarioContext: buildScenarioContextBlock(scenario, evalResult, wf, saved, sim),
 		truncationSavedChars: saved.chars,
+		...(sim ? { instructions: SIM_EXECUTION_VERIFY_PROMPT } : {}),
 	};
 }
