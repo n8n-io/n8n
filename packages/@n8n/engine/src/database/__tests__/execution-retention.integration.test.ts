@@ -80,6 +80,16 @@ describe('execution retention (integration)', () => {
 		return count;
 	}
 
+	it('has a partial index on the finish time and the id of ended executions', async () => {
+		const [index]: Array<{ indexdef: string }> = await dataSource.query(
+			`SELECT indexdef FROM pg_indexes
+			 WHERE tablename = 'workflow_execution' AND indexname = 'idx_workflow_execution_finished_at_id'`,
+		);
+
+		expect(index.indexdef).toContain('(finished_at, id)');
+		expect(index.indexdef).toContain('WHERE (finished_at IS NOT NULL)');
+	});
+
 	describe('findPrunableExecutions', () => {
 		it.each<ExecutionStatus>(['completed', 'failed', 'cancelled'])(
 			'selects a %s execution that finished before the window',
