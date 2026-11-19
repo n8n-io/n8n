@@ -2,15 +2,21 @@ import { createTestingPinia } from '@pinia/testing';
 import { mount } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { computed } from 'vue';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import type { PolicyViolation } from '@n8n/api-types';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import AgentChatToolSteps from '../components/AgentChatToolSteps.vue';
-import type { AgentsChatHostEventItem } from '@/features/ai/shared/agentsChat/interactionRegistry';
+import {
+	AGENTS_CHAT_INTERACTION_EXTENSIONS,
+	type AgentsChatHostEventItem,
+} from '@/features/ai/shared/agentsChat/interactionRegistry';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import {
 	TEST_HOST_EVENT,
+	TEST_OUTPUT_TOOL_NAME,
 	TestHostEvent,
+	testToolOutputExtension,
 } from '@/features/ai/shared/agentsChat/__tests__/fixtures/testInteractionExtension';
 import { TOOL_CALL_STATE } from '../constants';
 import { DELEGATE_SUB_AGENT_TOOL_NAME } from '../utils/delegate-tool';
@@ -406,6 +412,62 @@ describe('AgentChatToolSteps', () => {
 		expect(input.attributes('data-language')).toBe('json');
 		expect(output.attributes('data-language')).toBe('plaintext');
 		expect(output.text()).toBe('README.md\npackage.json');
+	});
+
+	it('shows the host output of a finished call inside its step, below the default input', async () => {
+		const wrapper = mount(AgentChatToolSteps, {
+			props: {
+				toolCalls: [
+					{
+						tool: TEST_OUTPUT_TOOL_NAME,
+						toolCallId: 'tc-rows',
+						state: TOOL_CALL_STATE.DONE,
+						input: { limit: 2 },
+						output: { rows: [{ id: 1 }] },
+					},
+				],
+				projectId: 'project-1',
+			},
+			global: {
+				provide: {
+					[AGENTS_CHAT_INTERACTION_EXTENSIONS]: computed(() => [testToolOutputExtension]),
+				},
+			},
+		});
+
+		expect(wrapper.find('[data-testid="test-tool-output"]').exists()).toBe(false);
+		await wrapper.get('button').trigger('click');
+
+		const output = wrapper.get('[data-testid="test-tool-output"]');
+		expect(output.text()).toBe('{"rows":[{"id":1}]}');
+		const blocks = wrapper.findAll('pre');
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].text()).toContain('"limit": 2');
+	});
+
+	it('keeps the default output of a call that failed, even when a host renders its output', async () => {
+		const wrapper = mount(AgentChatToolSteps, {
+			props: {
+				toolCalls: [
+					{
+						tool: TEST_OUTPUT_TOOL_NAME,
+						toolCallId: 'tc-rows',
+						state: TOOL_CALL_STATE.ERROR,
+						input: { limit: 2 },
+						output: { error: 'No access' },
+					},
+				],
+				projectId: 'project-1',
+			},
+			global: {
+				provide: {
+					[AGENTS_CHAT_INTERACTION_EXTENSIONS]: computed(() => [testToolOutputExtension]),
+				},
+			},
+		});
+
+		await wrapper.get('button').trigger('click');
+		expect(wrapper.find('[data-testid="test-tool-output"]').exists()).toBe(false);
 	});
 
 	it('does not make generic tool steps without data expandable', () => {

@@ -13,8 +13,12 @@ import {
 } from '@n8n/frontend-module-type-availability-policies';
 import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { computed, toRef } from 'vue';
-import type { AgentsChatHostEventItem } from '@/features/ai/shared/agentsChat/interactionRegistry';
+import { computed, inject, toRef } from 'vue';
+import {
+	AGENTS_CHAT_INTERACTION_EXTENSIONS,
+	findToolOutputRenderer,
+	type AgentsChatHostEventItem,
+} from '@/features/ai/shared/agentsChat/interactionRegistry';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import ToolDataBlock from '@/features/ai/shared/components/ToolDataBlock/ToolDataBlock.vue';
@@ -80,6 +84,14 @@ function outputFiles(tc: ToolCall) {
 
 function hostEventsFor(tc: ToolCall): AgentsChatHostEventItem[] {
 	return props.hostEvents?.get(tc.toolCallId) ?? [];
+}
+
+const interactionExtensions = inject(AGENTS_CHAT_INTERACTION_EXTENSIONS, undefined);
+
+/** The host component that shows the output of a call, when the chat host renders it. */
+function toolOutputComponent(tc: ToolCall) {
+	const extensions = interactionExtensions?.value ?? [];
+	return extensions.length > 0 ? findToolOutputRenderer(tc, extensions) : undefined;
 }
 
 const fixableFailures = computed<AgentFixWithAssistantFailure[]>(() => {
@@ -352,7 +364,12 @@ function hasActiveToolCall(): boolean {
 								<span :class="$style.toolDataLabel">
 									{{ i18n.baseText('agentSessions.timeline.output') }}
 								</span>
-								<ToolDataBlock :value="tc.output" />
+								<component
+									:is="toolOutputComponent(tc)"
+									v-if="toolOutputComponent(tc)"
+									:tool-call="tc"
+								/>
+								<ToolDataBlock v-else :value="tc.output" />
 							</div>
 						</div>
 					</N8nAiActivityStep>
@@ -431,7 +448,12 @@ function hasActiveToolCall(): boolean {
 								<span :class="$style.toolDataLabel">
 									{{ i18n.baseText('agentSessions.timeline.output') }}
 								</span>
-								<ToolDataBlock :value="tc.output" />
+								<component
+									:is="toolOutputComponent(tc)"
+									v-if="toolOutputComponent(tc)"
+									:tool-call="tc"
+								/>
+								<ToolDataBlock v-else :value="tc.output" />
 							</div>
 						</div>
 					</template>

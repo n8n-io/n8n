@@ -8490,6 +8490,8 @@
 	"instanceAi.toolCall.error": "Error",
 	"instanceAi.toolResult.moreRows": "and {count} more rows...",
 	"instanceAi.toolResult.dataTruncated": "Data truncated for display.",
+	"instanceAi.toolResult.view.table": "Table",
+	"instanceAi.toolResult.view.json": "JSON",
 	"instanceAi.thread.new": "New chat",
 	"instanceAi.thread.loadError": "Couldn't open this chat. Try again.",
 	"instanceAi.thread.loadOlderError": "Couldn't load earlier messages",
