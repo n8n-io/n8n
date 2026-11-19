@@ -255,6 +255,14 @@ describe('PostgresTrigger.trigger (Table Row Change Events mode)', () => {
 		);
 	});
 
+	it('watches for a lost connection before it runs any setup, so a drop cannot go unhandled', async () => {
+		const { connection, fns } = setup();
+		await new PostgresTrigger().trigger.call(fns);
+
+		const events = connection.client.on.mock.calls.map(([event]) => event);
+		expect(events.indexOf('error')).toBeLessThan(events.indexOf('notification'));
+	});
+
 	it('logs a lost connection instead of going silent', async () => {
 		const { connection, fns } = setup();
 		await new PostgresTrigger().trigger.call(fns);
