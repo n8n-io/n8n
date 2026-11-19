@@ -3,6 +3,7 @@ import { copyFile, mkdir, writeFile } from 'node:fs/promises';
 import { cpus, totalmem } from 'node:os';
 import { basename, join } from 'node:path';
 
+import { buildHtmlReport, type ReportData } from './html-report';
 import { PHASE_KEYS, type PageLoadSample } from './measure';
 import { computeStats, type Stats } from './stats';
 import type { PageTarget } from './targets';
@@ -247,6 +248,7 @@ export function buildReport(meta: RunMeta, results: PageResult[]): string {
 export interface WrittenFiles {
 	json: string;
 	csv: string;
+	html: string;
 }
 
 /**
@@ -261,27 +263,24 @@ export async function writeResults(
 ): Promise<WrittenFiles> {
 	const json = testInfo.outputPath('page-load.json');
 	const csv = testInfo.outputPath('page-load.csv');
+	const html = testInfo.outputPath('page-load.html');
 	await mkdir(testInfo.outputDir, { recursive: true });
-	await writeFile(
-		json,
-		JSON.stringify(
-			{
-				meta,
-				pages: results.map(({ target, samples, stats, warmup, failed }) => ({
-					...target,
-					stats,
-					warmup,
-					failed,
-					samples,
-				})),
-			},
-			null,
-			2,
-		),
-	);
+	const data: ReportData = {
+		meta,
+		pages: results.map(({ target, samples, stats, warmup, failed }) => ({
+			...target,
+			stats,
+			warmup,
+			failed,
+			samples,
+		})),
+	};
+	await writeFile(json, JSON.stringify(data, null, 2));
 	await writeFile(csv, toCsv(results));
+	await writeFile(html, buildHtmlReport(data));
 	await testInfo.attach('page-load.json', { path: json, contentType: 'application/json' });
 	await testInfo.attach('page-load.csv', { path: csv, contentType: 'text/csv' });
+	await testInfo.attach('page-load.html', { path: html, contentType: 'text/html' });
 
 	const exportDir = process.env.PERF_OUTPUT_DIR;
 	if (exportDir) {
@@ -289,11 +288,12 @@ export async function writeResults(
 		const stamp = meta.startedAt.replace(/[:.]/g, '-');
 		await copyFile(json, join(exportDir, `page-load-${stamp}.json`));
 		await copyFile(csv, join(exportDir, `page-load-${stamp}.csv`));
+		await copyFile(html, join(exportDir, `page-load-${stamp}.html`));
 		for (const sample of results.flatMap((result) => result.samples)) {
 			if (sample.tracePath) {
 				await copyFile(sample.tracePath, join(exportDir, `${stamp}-${basename(sample.tracePath)}`));
 			}
 		}
 	}
-	return { json, csv };
+	return { json, csv, html };
 }

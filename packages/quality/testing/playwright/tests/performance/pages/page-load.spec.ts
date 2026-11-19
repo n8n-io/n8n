@@ -118,7 +118,9 @@ test.describe(
 			}
 			const files = await writeResults(testInfo, meta, results);
 			console.log(buildReport(meta, results));
-			console.log(`[PERF] data: ${files.json}\n[PERF] csv:  ${files.csv}`);
+			console.log(
+				`[PERF] data: ${files.json}\n[PERF] csv:  ${files.csv}\n[PERF] html: ${files.html}`,
+			);
 
 			// The data files are written before this, so a failed load still leaves the run's data.
 			expect(results.length).toBe(targets.length);
