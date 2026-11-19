@@ -6,7 +6,6 @@ import type { INodeExecutionData, ITaskData } from 'n8n-workflow';
 import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import type { PushPayload } from '@n8n/api-types';
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
-import { openFormPopupWindow } from '@/features/execution/executions/executions.utils';
 import { trackNodeExecution } from './trackNodeExecution';
 import type { PushHandlerOptions } from './types';
 
@@ -72,9 +71,10 @@ export async function nodeExecuteAfter(
 	workflowExecutionStateStore.clearAgentNodeProgress(pushData.nodeName);
 
 	// Side effects
-	if (pushData.data.executionStatus === 'waiting' && pushData.data.metadata?.resumeFormUrl) {
-		openFormPopupWindow(pushData.data.metadata.resumeFormUrl);
-	} else if (pushData.data.executionStatus !== 'waiting') {
+	if (pushData.data.executionStatus === 'waiting') {
+		// The form is ready only after the backend saves the waiting execution.
+		workflowExecutionStateStore.setPendingFormPopupUrl(pushData.data.metadata?.resumeFormUrl);
+	} else {
 		void trackNodeExecution(pushData, workflowExecutionStateStore.workflowId);
 	}
 

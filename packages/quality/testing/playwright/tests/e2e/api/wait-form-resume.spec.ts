@@ -124,9 +124,16 @@ test.describe(
 				await n8n.ndv.clickBackToCanvasButton();
 
 				const formPagePromise = PublicFormPage.fromPopup(n8n.page.context());
+				const formResponsePromise = n8n.page.context().waitForEvent('response', {
+					predicate: (response) =>
+						new URL(response.url()).pathname.startsWith('/form-waiting/') &&
+						response.request().method() === 'GET' &&
+						response.request().isNavigationRequest(),
+				});
 				await n8n.canvas.clickExecuteWorkflowButton();
 
 				const formPage = await formPagePromise;
+				expect((await formResponsePromise).status()).toBe(200);
 
 				await formPage.expectText('Test Wait Form');
 				await expect(formPage.getField('Test Field')).toBeVisible();
