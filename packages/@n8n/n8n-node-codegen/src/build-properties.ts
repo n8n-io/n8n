@@ -169,6 +169,7 @@ function operationProperties(
 	if (limit) {
 		properties.push({
 			...propertyOf(limit),
+			...(limit.required ? { required: true } : {}),
 			displayOptions: { show: { ...show, returnAll: [false] } },
 		});
 	}

@@ -246,6 +246,15 @@ describe('readSpec', () => {
 		expect(operation.parameters.map((parameter) => parameter.schema)).toEqual([schema, schema]);
 	});
 
+	it('should mark only an operation with a successful response and no body as an empty response', () => {
+		expect(readOperation({ responses: { '204': { description: 'Deleted' } } }).emptyResponse).toBe(
+			true,
+		);
+		expect(
+			readOperation({ responses: { '404': { description: 'Not found' } } }).emptyResponse,
+		).toBe(false);
+	});
+
 	it('should keep a limit parameter when the operation has no cursor', () => {
 		const operation = readOperation({
 			parameters: [{ name: 'limit', in: 'query', schema: { type: 'number' } }],

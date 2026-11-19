@@ -169,14 +169,18 @@ function readParameters(operation: Operation, options: SpecOptions) {
 
 	parameters.push(...readBodyParameters(operation, blockers));
 
-	const successfulResponseTypes = Object.entries(operation.responses)
-		.filter(([status]) => status.startsWith('2'))
-		.flatMap(([, response]) => Object.keys(response.content ?? {}));
+	const successfulResponses = Object.entries(operation.responses).filter(([status]) =>
+		status.startsWith('2'),
+	);
+	const successfulResponseTypes = successfulResponses.flatMap(([, response]) =>
+		Object.keys(response.content ?? {}),
+	);
 	if (successfulResponseTypes.length > 0 && !successfulResponseTypes.includes(JSON_MEDIA_TYPE)) {
 		blockers.push(`${successfulResponseTypes[0]} response`);
 	}
 
-	return { parameters, paginated, emptyResponse: successfulResponseTypes.length === 0, blockers };
+	const emptyResponse = successfulResponses.length > 0 && successfulResponseTypes.length === 0;
+	return { parameters, paginated, emptyResponse, blockers };
 }
 
 interface SpecDocuments {

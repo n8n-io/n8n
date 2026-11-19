@@ -222,7 +222,7 @@ describe('buildProperties', () => {
 		expect(collection.options).toEqual([expect.objectContaining({ name: 'name' })]);
 	});
 
-	it('should show a required limit of a paginated operation once, when Return All is off', () => {
+	it('should show a required limit of a paginated operation once, as a required field, when Return All is off', () => {
 		const properties = build(
 			row('getWorkflows', {
 				paginated: true,
@@ -232,6 +232,7 @@ describe('buildProperties', () => {
 
 		expect(properties.filter((property) => property.name === 'limit')).toEqual([
 			expect.objectContaining({
+				required: true,
 				displayOptions: { show: expect.objectContaining({ returnAll: [false] }) },
 			}),
 		]);
