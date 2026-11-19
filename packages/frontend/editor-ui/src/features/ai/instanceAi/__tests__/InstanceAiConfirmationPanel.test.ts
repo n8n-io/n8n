@@ -468,22 +468,6 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			);
 		});
 
-		it('shows the reason of a target approval without a second description', () => {
-			injectPendingConfirmation(thread, {
-				requestId: 'auto-ask-target',
-				severity: 'warning',
-				message: 'Confirmation required',
-				targetApproval: { toolName: 'delete_record', displayName: 'Delete record', args: {} },
-				askReason: { kind: 'judge', text: 'You did not ask to delete this record.' },
-			});
-			const { getAllByText, getByTestId } = renderComponent({ props: { kind: 'floating' } });
-
-			expect(getAllByText('The agent wants to run the Delete record tool.')).toHaveLength(1);
-			expect(getByTestId('approval-ask-reason')).toHaveTextContent(
-				'You did not ask to delete this record.',
-			);
-		});
-
 		it('shows no reason without one, as in the "Ask for approval" mode', () => {
 			injectPendingConfirmation(thread, {
 				requestId: 'manual-ask',

@@ -592,6 +592,7 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 				:url="chunk.item.toolCall.confirmation.domainAccess.url"
 				:host="chunk.item.toolCall.confirmation.domainAccess.host"
 				:severity="chunk.item.toolCall.confirmation.severity"
+				:ask-reason="chunk.item.toolCall.confirmation.askReason"
 				@decide="handleDomainDecision(chunk.item.toolCall.confirmation, $event)"
 			/>
 
@@ -601,6 +602,7 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 				data-test-id="instance-ai-confirmation-panel"
 				:query="chunk.item.toolCall.confirmation.webSearch.query"
 				:severity="chunk.item.toolCall.confirmation.severity"
+				:ask-reason="chunk.item.toolCall.confirmation.askReason"
 				@decide="handleDomainDecision(chunk.item.toolCall.confirmation, $event)"
 			/>
 
@@ -650,11 +652,7 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 				</template>
 				<template v-else-if="chunk.item.toolCall.confirmation.askReason" #description>
 					<ApprovalAskReason
-						:description="
-							chunk.item.toolCall.confirmation.targetApproval
-								? undefined
-								: buildApprovalSubtitle(chunk.item)
-						"
+						:description="buildApprovalSubtitle(chunk.item)"
 						:reason="chunk.item.toolCall.confirmation.askReason!"
 					/>
 				</template>

@@ -90,16 +90,6 @@ describe('applyApprovalReview', () => {
 		expect(applyApprovalReview(tools, { approvalReviewer: undefined, logger })).toBe(tools);
 	});
 
-	it('shows the card without a reason in Manual mode', async () => {
-		const card = { message: 'Archive "Lead router"', severity: 'warning' };
-		const { tool } = approvalTool('archive-workflow', card);
-		const ctx = interruptibleContext();
-
-		await reviewed(tool, undefined).handler!({ workflowId: 'wf_1' }, ctx);
-
-		expect(ctx.suspend).toHaveBeenCalledWith({ requestId: 'req_1', ...card });
-	});
-
 	it('runs the action without a card when the judge approves', async () => {
 		const { tool, act } = approvalTool('publish_workflow', {
 			message: 'Publish "Lead router"',
@@ -193,12 +183,13 @@ describe('applyApprovalReview', () => {
 		expect(act).not.toHaveBeenCalled();
 	});
 
-	it('shows a card that needs input without a review', async () => {
-		const { tool } = approvalTool('setup_workflow', {
+	it('shows a card that needs input without a review and without a reason', async () => {
+		const card = {
 			message: 'Set up the workflow',
 			severity: 'info',
 			setupRequests: [{ node: 'Slack' }],
-		});
+		};
+		const { tool } = approvalTool('setup_workflow', card);
 		const review = reviewer('approve');
 		const ctx = interruptibleContext();
 
@@ -206,7 +197,7 @@ describe('applyApprovalReview', () => {
 
 		expect(review.judge).not.toHaveBeenCalled();
 		expect(review.reviewed).toEqual([]);
-		expect(ctx.suspend).toHaveBeenCalledTimes(1);
+		expect(ctx.suspend.mock.calls).toEqual([[{ requestId: 'req_1', ...card }, undefined]]);
 	});
 
 	it('passes a resumed call through without a review', async () => {

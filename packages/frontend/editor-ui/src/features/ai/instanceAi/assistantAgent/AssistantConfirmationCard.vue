@@ -469,12 +469,14 @@ function onApprovalSelect(key: string) {
 			:url="input.domainAccess.url"
 			:host="input.domainAccess.host"
 			:severity="input.severity"
+			:ask-reason="input.askReason"
 			@decide="submit"
 		/>
 		<DomainAccessApproval
 			v-else-if="variant === 'web-search' && input.webSearch"
 			:query="input.webSearch.query"
 			:severity="input.severity"
+			:ask-reason="input.askReason"
 			@decide="submit"
 		/>
 		<N8nCard v-else-if="variant === 'text'" :class="$style.card">
