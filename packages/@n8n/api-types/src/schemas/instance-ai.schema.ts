@@ -178,6 +178,11 @@ export function buildDataTablesSessionGrantKey(action: string): string {
 	return `data-tables:${action}`;
 }
 
+/** Thread grant for a table the Assistant created in this thread. */
+export function buildOwnedDataTableGrantKey(dataTableId: string): string {
+	return `data-tables:owned:${encodeURIComponent(dataTableId)}`;
+}
+
 // --- Workflow-setup skips ---
 
 const SETUP_SKIP_GRANT_PREFIX = 'workflows:setup-skip:';
@@ -271,6 +276,8 @@ export const instanceAiEventTypeSchema = z.enum([
 	'run-finish',
 	'agent-spawned',
 	'agent-completed',
+	'agent-result-delivered',
+	'cloud-browser-window-changed',
 	'text-delta',
 	'reasoning-delta',
 	'text-block',
@@ -522,6 +529,19 @@ export const agentSpawnedPayloadSchema = z.object({
 		.optional()
 		.describe('Resource this agent works on'),
 });
+
+/**
+ * A background agent's result reached the orchestrator in a later run. `runId` and `agentId` name
+ * the agent, so the payload is empty.
+ */
+export const agentResultDeliveredPayloadSchema = z.object({});
+
+/**
+ * A cloud browser agent's current window changed, for example when a site opened a popup. The
+ * client fetches the live view again. The payload is empty, so the live view link never travels
+ * in an event.
+ */
+export const cloudBrowserWindowChangedPayloadSchema = z.object({});
 
 export const agentCompletedPayloadSchema = z.object({
 	role: z.string(),
@@ -1195,6 +1215,25 @@ export interface InstanceAiBrowserCreateLinkResponse {
 	ttlSeconds: number | null;
 }
 
+/**
+ * The live view of a cloud browser task:
+ * - `live`: a session is open. The link lets anyone who has it control the browser, so the
+ *   client keeps it in memory only. `windowId` names the window the link shows, so the client
+ *   can tell a new window from a new link to the same one. `userHasTakenOver` is set after the
+ *   user clicked "Take over", until they give control back.
+ * - `starting`: a session is opening.
+ * - `no-session`: the task runs, but the agent has not opened a session yet.
+ * - `disconnected`: the session closed while the task runs. The agent can open a new one.
+ * - `not-found`: this instance has no browser for the task. The task finished, n8n restarted, the
+ *   task runs on another main, or it is not the user's.
+ */
+export type InstanceAiCloudBrowserLiveViewResponse =
+	| { status: 'live'; liveViewUrl: string; windowId: string; userHasTakenOver?: boolean }
+	| { status: 'starting' }
+	| { status: 'no-session' }
+	| { status: 'disconnected'; reason: 'connectionLost' | 'idleTimeout' | 'userControlTimeout' }
+	| { status: 'not-found' };
+
 export interface InstanceAiBrowserStatusResponse {
 	connected: boolean;
 	connectedAt: string | null;
@@ -1341,8 +1380,9 @@ export const skillUpdatePayloadSchema = z.object({
 	skillId: z.string(),
 	name: z.string().optional(),
 	version: z.string().nullable(),
+	/** `restored` also covers older events that resent a skill after compaction. */
 	change: z.enum(['updated', 'restored', 'unavailable']),
-	/** The content delivered for this response. Older events contain metadata only. */
+	/** The note the model saw. Older events contain the full skill content or nothing. */
 	content: z.string().optional(),
 });
 export type InstanceAiSkillUpdatePayload = z.infer<typeof skillUpdatePayloadSchema>;
@@ -1372,6 +1412,16 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		type: z.literal('agent-completed'),
 		...eventBase,
 		payload: agentCompletedPayloadSchema,
+	}),
+	z.object({
+		type: z.literal('agent-result-delivered'),
+		...eventBase,
+		payload: agentResultDeliveredPayloadSchema,
+	}),
+	z.object({
+		type: z.literal('cloud-browser-window-changed'),
+		...eventBase,
+		payload: cloudBrowserWindowChangedPayloadSchema,
 	}),
 	z.object({ type: z.literal('text-delta'), ...eventBase, payload: textDeltaPayloadSchema }),
 	z.object({
@@ -1598,6 +1648,36 @@ export const instanceAiAppTargetSchema = z.object({
 });
 export type InstanceAiAppTarget = z.infer<typeof instanceAiAppTargetSchema>;
 
+/** An app that a page hands off to a thread. A pending app has no row yet. */
+export const instanceAiAppSubjectSchema = z.object({
+	type: z.literal('app'),
+	id: z.string().uuid(),
+	projectId: z.string().min(1).max(64),
+	name: z.string().max(255).optional(),
+	/** The first build creates the app under this id. */
+	pending: z.literal(true).optional(),
+});
+export type InstanceAiAppSubject = z.infer<typeof instanceAiAppSubjectSchema>;
+
+/**
+ * An agent that a page hands off to a thread. A pending agent has no row yet.
+ * It has the same shape as the agent attachment, but only the subject binds.
+ */
+export const instanceAiAgentSubjectSchema = instanceAiAgentAttachmentSchema;
+export type InstanceAiAgentSubject = z.infer<typeof instanceAiAgentSubjectSchema>;
+
+/**
+ * The resource that a thread starts on: the agent or the app of the page that
+ * opened the thread. The Assistant agent binds it in the thread metadata, so
+ * its tools work on that resource and the page finds the thread again. Add a
+ * variant here, with its binding in `withThreadSubject`, for a new kind of page.
+ */
+export const instanceAiThreadSubjectSchema = z.discriminatedUnion('type', [
+	instanceAiAgentSubjectSchema,
+	instanceAiAppSubjectSchema,
+]);
+export type InstanceAiThreadSubject = z.infer<typeof instanceAiThreadSubjectSchema>;
+
 const instanceAiNodeRefSchema = z.object({
 	id: z.string().min(1).max(64),
 	name: z.string().max(255).optional(),
@@ -1802,6 +1882,11 @@ export class InstanceAiSendMessageRequest extends Z.class({
 	 *  user. Its device support is only visible there. Omit to advertise none.
 	 *  The backend still applies the admin switch, so this can only narrow. */
 	browserUseAvailable: z.boolean().optional(),
+	/**
+	 * The resource that a new thread starts on. The current runtime binds it
+	 * before the thread opens, so only the Assistant agent reads it.
+	 */
+	subject: instanceAiThreadSubjectSchema.optional(),
 	/** Pin a published prompt profile. Omit to use the backend experiment assignment. */
 	promptVersion: instanceAiPromptVersionSchema.optional(),
 	/** Eval override: observer threshold for THIS thread, so driving compaction
@@ -1811,6 +1896,11 @@ export class InstanceAiSendMessageRequest extends Z.class({
 
 export class InstanceAiCorrectTaskRequest extends Z.class({
 	message: z.string().min(1),
+}) {}
+
+/** The user hands a cloud browser back to its agent, with what they changed. */
+export class InstanceAiCloudBrowserReturnControlRequest extends Z.class({
+	note: z.string().trim().max(2000).optional(),
 }) {}
 
 /**
@@ -1973,6 +2063,7 @@ export class InstanceAiEnsureThreadRequest extends Z.class({
  * there first, and binds it to the thread in the same request.
  */
 export class InstanceAiPersistPendingAgentRequest extends Z.class({
+	parentFolderId: z.string().min(1).max(36).nullable().optional(),
 	projectId: z.string().min(1),
 	agentId: clientMintedAgentIdSchema,
 	name: z.string().min(1),
@@ -2118,6 +2209,10 @@ export interface InstanceAiAgentNode {
 	activity?: InstanceAiAgentActivity;
 	/** Whether this sub-agent changed its Agent. */
 	agentChange?: InstanceAiAgentChange;
+	/** A finished background agent whose result reached the orchestrator in a later run. */
+	resultDelivered?: boolean;
+	/** Counts the current window changes of a cloud browser agent, so its live view is fetched again. */
+	cloudBrowserWindowChanges?: number;
 	/** Short display title, e.g. "Building workflow". */
 	title?: string;
 	/** Brief task description for distinguishing sibling agents. */

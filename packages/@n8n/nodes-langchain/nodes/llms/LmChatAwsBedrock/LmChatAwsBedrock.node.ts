@@ -4,6 +4,7 @@ import {
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
+	usageMetadataTokensUsageParser,
 } from '@n8n/ai-utilities';
 import type { DocumentType } from '@smithy/types';
 import { awsNodeAuthOptions, awsNodeCredentials } from 'n8n-nodes-base/dist/nodes/Aws/utils';
@@ -380,7 +381,7 @@ export class LmChatAwsBedrock implements INodeType {
 			client,
 			model: modelName,
 			region,
-			callbacks: [new N8nLlmTracing(this)],
+			callbacks: [new N8nLlmTracing(this, { tokensUsageParser: usageMetadataTokensUsageParser })],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		};
 

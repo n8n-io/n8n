@@ -141,6 +141,7 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 				if (patch) {
 					await context.workflowTaskService.updateBuildOutcome(input.workItemId, {
 						...patch,
+						// oxlint-disable-next-line typescript/no-deprecated -- Clear saved legacy pin data after real credentials are applied.
 						verificationPinData: undefined,
 					});
 				}

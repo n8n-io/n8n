@@ -2332,6 +2332,140 @@ describe('AgentExecutionService', () => {
 		});
 	});
 
+	describe('getThreadDetailPage', () => {
+		const execution = (id: string, minute: number) =>
+			({
+				id,
+				storedAt: 'db',
+				createdAt: new Date(`2026-05-07T10:${String(minute).padStart(2, '0')}:00Z`),
+			}) as AgentExecution;
+
+		beforeEach(() => {
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(makeThread());
+			messageRepository.continuesExecution.mockResolvedValue(false);
+		});
+
+		it('returns the newest turns oldest first, and reports older turns', async () => {
+			agentExecutionRepository.findByThreadIdNewestFirst.mockResolvedValue([
+				execution('execution-4', 4),
+				execution('execution-3', 3),
+				execution('execution-2', 2),
+			]);
+
+			const result = await service.getThreadDetailPage(
+				'thread-1',
+				'project-1',
+				'agent-1',
+				'user-1',
+				{ limit: 2 },
+			);
+
+			expect(agentExecutionRepository.findByThreadIdNewestFirst).toHaveBeenCalledWith(
+				'thread-1',
+				3,
+				undefined,
+			);
+			expect(result?.executions.map(({ id }) => id)).toEqual(['execution-3', 'execution-4']);
+			expect(result?.hasOlder).toBe(true);
+		});
+
+		it('reports no older turns on the last page', async () => {
+			const before = { createdAt: new Date('2026-05-07T10:03:00Z'), id: 'execution-3' };
+			agentExecutionRepository.findByThreadIdNewestFirst.mockResolvedValue([
+				execution('execution-2', 2),
+				execution('execution-1', 1),
+			]);
+
+			const result = await service.getThreadDetailPage(
+				'thread-1',
+				'project-1',
+				'agent-1',
+				'user-1',
+				{ limit: 2, before },
+			);
+
+			expect(agentExecutionRepository.findByThreadIdNewestFirst).toHaveBeenCalledWith(
+				'thread-1',
+				3,
+				before,
+			);
+			expect(result?.executions.map(({ id }) => id)).toEqual(['execution-1', 'execution-2']);
+			expect(result?.hasOlder).toBe(false);
+		});
+
+		it('keeps a resumed turn on the page of the execution that it continues', async () => {
+			const suspended = execution('execution-2', 2);
+			const first = execution('execution-1', 1);
+			agentExecutionRepository.findByThreadIdNewestFirst
+				.mockResolvedValueOnce([
+					execution('execution-4', 4),
+					execution('execution-3', 3),
+					suspended,
+				])
+				.mockResolvedValueOnce([first]);
+			messageRepository.continuesExecution.mockImplementation(
+				async (executionId, predecessorId) =>
+					executionId === 'execution-3' && predecessorId === 'execution-2',
+			);
+
+			const result = await service.getThreadDetailPage(
+				'thread-1',
+				'project-1',
+				'agent-1',
+				'user-1',
+				{ limit: 2 },
+			);
+
+			expect(agentExecutionRepository.findByThreadIdNewestFirst).toHaveBeenLastCalledWith(
+				'thread-1',
+				1,
+				suspended,
+			);
+			expect(result?.executions.map(({ id }) => id)).toEqual([
+				'execution-2',
+				'execution-3',
+				'execution-4',
+			]);
+			expect(result?.hasOlder).toBe(true);
+		});
+
+		it('keeps a resume without input links on the page of the execution before it', async () => {
+			// Resumes from before input messages were linked have only their status.
+			const resumed = { ...execution('execution-3', 3), hitlStatus: 'resumed' } as AgentExecution;
+			const suspended = execution('execution-2', 2);
+			agentExecutionRepository.findByThreadIdNewestFirst
+				.mockResolvedValueOnce([execution('execution-4', 4), resumed, suspended])
+				.mockResolvedValueOnce([]);
+
+			const result = await service.getThreadDetailPage(
+				'thread-1',
+				'project-1',
+				'agent-1',
+				'user-1',
+				{ limit: 2 },
+			);
+
+			expect(messageRepository.continuesExecution).not.toHaveBeenCalled();
+			expect(result?.executions.map(({ id }) => id)).toEqual([
+				'execution-2',
+				'execution-3',
+				'execution-4',
+			]);
+			expect(result?.hasOlder).toBe(false);
+		});
+
+		it('does not read executions for a thread outside the requested owner', async () => {
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(
+				makeThread({ ownerId: 'other-user' }),
+			);
+
+			await expect(
+				service.getThreadDetailPage('thread-1', 'project-1', 'agent-1', 'user-1', { limit: 2 }),
+			).resolves.toBeNull();
+			expect(agentExecutionRepository.findByThreadIdNewestFirst).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('findLatestSuspendedRun', () => {
 		it('delegates to the repository and returns its result', async () => {
 			const suspended = { id: 'execution-1', source: 'telegram' } as AgentExecution;

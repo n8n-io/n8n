@@ -3084,6 +3084,64 @@ describe('createThreadRuntime - session always-allow', () => {
 		).toBe(true);
 	});
 
+	describe('batch data table changes', () => {
+		const insertAndRename = {
+			changes: [
+				{ action: 'insert-rows', table: 'Leads' },
+				{ action: 'rename-column', table: 'Leads' },
+			],
+		};
+
+		it('auto-approves a batch when every action has a session grant', async () => {
+			const runtime = registry.getOrCreateRuntime(activeThreadId);
+			runtime.addAlwaysAllowKey('change_data_tables', insertAndRename);
+
+			pushPendingApproval(runtime, {
+				messageId: 'msg-batch-1',
+				requestId: 'req-batch-1',
+				toolName: 'change_data_tables',
+				args: { changes: [{ action: 'rename-column', table: 'Orders' }] },
+			});
+			await vi.waitFor(() => {
+				expect(runtime.resolvedConfirmationIds.get('req-batch-1')).toBe('approved');
+			});
+		});
+
+		it('keeps the card when one action of the batch has no session grant', async () => {
+			const runtime = registry.getOrCreateRuntime(activeThreadId);
+			runtime.addAlwaysAllowKey('change_data_tables', insertAndRename);
+
+			pushPendingApproval(runtime, {
+				messageId: 'msg-batch-2',
+				requestId: 'req-batch-2',
+				toolName: 'change_data_tables',
+				args: {
+					changes: [
+						{ action: 'insert-rows', table: 'Leads' },
+						{ action: 'add-column', table: 'Leads' },
+					],
+				},
+			});
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			expect(runtime.resolvedConfirmationIds.has('req-batch-2')).toBe(false);
+		});
+
+		it('keeps the card for a batch that gives no grant key', async () => {
+			const runtime = registry.getOrCreateRuntime(activeThreadId);
+			runtime.addAlwaysAllowKey('change_data_tables', insertAndRename);
+
+			pushPendingApproval(runtime, {
+				messageId: 'msg-batch-3',
+				requestId: 'req-batch-3',
+				toolName: 'change_data_tables',
+				args: { changes: [] },
+			});
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			expect(runtime.resolvedConfirmationIds.has('req-batch-3')).toBe(false);
+			expect(runtime.canAlwaysAllow('change_data_tables', { changes: [] })).toBe(false);
+		});
+	});
+
 	it('scopes executions run grants per workflow', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
 		runtime.addAlwaysAllowKey('workflow_builder_executions', { action: 'run', workflowId: 'wf-1' });

@@ -231,6 +231,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { writeAssistantPreference } from '@/services/ai-preference-write';
 import { FolderService } from '@/services/folder.service';
 import {
@@ -709,7 +710,7 @@ export class InstanceAiAdapterService {
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
 			// Absent only in test contexts constructed without DI.
-			...(this.aiPreferenceService
+			...(this.aiPreferenceService && Container.get(AiPreferenceSettingsService).isEnabled
 				? { aiPreferenceService: this.createPreferenceAdapter(user) }
 				: {}),
 			skillService: this.getSkillService(user, assistantSkillsEnabled === true),
@@ -1890,6 +1891,7 @@ export class InstanceAiAdapterService {
 					nodes: [] as INode[],
 					connections: {},
 					settings,
+					// oxlint-disable-next-line typescript/no-deprecated -- Initialize the legacy active column for the unpublished workflow.
 					active: false,
 					versionId: randomUUID(),
 				} as Partial<WorkflowEntity>);
@@ -3728,11 +3730,13 @@ export class InstanceAiAdapterService {
 				accessFilter: async (id) => await userHasScopes(user, scopes, false, { dataTableId: id }),
 			});
 			if (result.kind === 'miss') {
-				throw new Error(`Data table "${dataTableId}" not found`);
+				throw new UserError(
+					`Data table "${dataTableId}" not found. Check the name or ID, or run list_data_tables to find the table.`,
+				);
 			}
 			if (result.kind === 'ambiguous') {
 				const projectIds = result.candidates.map((c) => c.projectId).join(', ');
-				throw new Error(
+				throw new UserError(
 					`Data table name "${dataTableId}" is ambiguous across accessible projects ` +
 						`(${projectIds}); pass the UUID or include a \`projectId\` to disambiguate.`,
 				);
@@ -3741,8 +3745,9 @@ export class InstanceAiAdapterService {
 			// disambiguator points at a different project. Never silently drop
 			// the projectId — return mismatch so the caller fixes the call.
 			if (projectIdFilter && result.table.projectId !== projectIdFilter) {
-				throw new Error(
-					`Data table "${dataTableId}" does not belong to project "${projectIdFilter}".`,
+				throw new UserError(
+					`Data table "${dataTableId}" does not belong to project "${projectIdFilter}". ` +
+						'Pass the table ID without a `projectId`, or pass the project that owns the table.',
 				);
 			}
 			return result.table;

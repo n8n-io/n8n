@@ -11,10 +11,9 @@ import { FolderResolutionError } from '../../../errors/folder-resolution.error';
 import { OutsideThreadProjectError } from '../../../errors/outside-thread-project.error';
 import { WorkflowNotFoundError } from '../../../errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../errors/workflow-save-conflict.error';
-import { loadInstanceAiSkills } from '../../../skills/skills';
 import type { ThreadRecord } from '../../../storage/thread-patch';
 import { emitTraceOnlyChildRun } from '../../../tracing/langsmith-tracing';
-import type { InstanceAiContext } from '../../../types';
+import type { InstanceAiContext, WorkflowDetail } from '../../../types';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import {
 	autoImportMissingSdkSymbols,
@@ -665,23 +664,22 @@ describe('createBuildWorkflowTool', () => {
 	it.each([
 		['reusable', 'post-build-flow'],
 		['one-off', 'one-off-operations'],
-	] as const)('activates the selected skill for a %s build', async (executionIntent, skillId) => {
-		const loadSkill = vi.fn(loadInstanceAiSkills().loadSkill);
-		const { context, filePath } = makeContext({ source: 'workflow source' });
-		const result = await executeTool<BuildToolOutput>(
-			createBuildWorkflowTool(context),
-			{ filePath, name: 'Request tracker', executionIntent },
-			{ loadSkill },
-		);
-		expect(result.success).toBe(true);
-		expect(loadSkill).toHaveBeenCalledWith(skillId);
-		expect(result.postBuildFlow?.instructions).toBe(
-			`Follow the active ${skillId} skill instructions.`,
-		);
-		expect(result.postBuildFlow?.guidance).toContain(
-			`Follow the active ${skillId} skill instructions now`,
-		);
-	});
+	] as const)(
+		'tells the agent to load the %s follow-up skill',
+		async (executionIntent, skillId) => {
+			const { context, filePath } = makeContext({ source: 'workflow source' });
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				name: 'Request tracker',
+				executionIntent,
+			});
+			expect(result.success).toBe(true);
+			expect(result.postBuildFlow?.instructions).toBe(`Load the ${skillId} skill with load_skill.`);
+			expect(result.postBuildFlow?.guidance).toContain(
+				`Load the ${skillId} skill with load_skill now and follow it`,
+			);
+		},
+	);
 
 	it('hands one-off builds to the one-off-operations skill', async () => {
 		const source = 'workflow source from workspace';
@@ -3569,6 +3567,69 @@ describe('createBuildWorkflowTool', () => {
 		expect(errorText).not.toContain('workflow-sdk-language.md');
 	});
 
+	it('gives each workflow source file in a run its own work item', async () => {
+		// Storage keeps the latest outcome per work item.
+		const latestOutcomes = new Map<string, WorkflowBuildOutcome>();
+		const reportBuildOutcome = vi.fn(async (outcome: WorkflowBuildOutcome) => {
+			latestOutcomes.set(outcome.workItemId, outcome);
+			return await Promise.resolve({ type: 'verify', workflowId: outcome.workflowId ?? '' });
+		});
+		const { context, filePath } = makeContext({
+			overrides: {
+				workflowBuildContext: {
+					threadId: 'thread-1',
+					runId: 'run-1',
+					taskId: 'task-1',
+					workItemId: 'wi-run',
+					workflowTaskService: { reportBuildOutcome } as unknown as NonNullable<
+						InstanceAiContext['workflowBuildContext']
+					>['workflowTaskService'],
+				},
+			},
+		});
+		const tool = createBuildWorkflowTool(context);
+
+		const first = await executeTool<BuildToolOutput>(tool, { filePath });
+		vi.mocked(context.workflowService.createFromWorkflowJSON).mockResolvedValueOnce({
+			id: 'wf-2',
+			versionId: 'v-2',
+			checksum: 'checksum-2',
+		} as WorkflowDetail);
+		const second = await executeTool<BuildToolOutput>(tool, {
+			filePath: 'src/workflows/second.workflow.ts',
+			sourceCode: 'second workflow source',
+		});
+		expect(first).toMatchObject({ success: true, workflowId: 'wf-1', workItemId: 'wi-run' });
+		expect(second).toMatchObject({ success: true, workflowId: 'wf-2' });
+		expect(second.workItemId).toMatch(/^wi_/);
+		expect(latestOutcomes.get(second.workItemId ?? '')?.workflowId).toBe('wf-2');
+		// Building the second workflow must not replace the first one's outcome.
+		expect(latestOutcomes.get('wi-run')?.workflowId).toBe('wf-1');
+
+		const firstAgain = await executeTool<BuildToolOutput>(tool, { filePath });
+		expect(firstAgain).toMatchObject({ success: true, workflowId: 'wf-1', workItemId: 'wi-run' });
+	});
+
+	it('keeps an explicit work item for later builds of the same file that omit it', async () => {
+		const { context, filePath } = makeContext({
+			overrides: {
+				workflowBuildContext: {
+					threadId: 'thread-1',
+					runId: 'run-1',
+					taskId: 'task-1',
+					workItemId: 'wi-run',
+				},
+			},
+		});
+		const tool = createBuildWorkflowTool(context);
+
+		const explicit = await executeTool<BuildToolOutput>(tool, { filePath, workItemId: 'wi-old' });
+		const omitted = await executeTool<BuildToolOutput>(tool, { filePath });
+
+		expect(explicit).toMatchObject({ success: true, workItemId: 'wi-old' });
+		expect(omitted).toMatchObject({ success: true, workItemId: 'wi-old' });
+	});
+
 	it('uses workflowBuildContext work item as the repeat-failure key', async () => {
 		const workflowBuildContext = {
 			threadId: 'thread-1',
@@ -3588,7 +3649,8 @@ describe('createBuildWorkflowTool', () => {
 
 		const tool = createBuildWorkflowTool(context);
 		await executeTool<{ success: boolean; errors?: string[] }>(tool, { filePath });
-		workflowBuildContext.workItemId = 'wi-2';
+		// Each run gets a new build context.
+		context.workflowBuildContext = { ...workflowBuildContext, runId: 'run-2', workItemId: 'wi-2' };
 		const firstForSecondWorkItem = await executeTool<{ success: boolean; errors?: string[] }>(
 			tool,
 			{ filePath },

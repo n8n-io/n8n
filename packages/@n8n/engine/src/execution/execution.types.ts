@@ -23,6 +23,13 @@ export function isLiveExecutionStatus(status: ExecutionStatus): boolean {
 	return (LIVE_EXECUTION_STATUSES as readonly ExecutionStatus[]).includes(status);
 }
 
+/** Ended for good. Every other status is `queued` or live. */
+export const ENDED_EXECUTION_STATUSES = ['completed', 'failed', 'cancelled'] as const;
+
+export function isEndedExecutionStatus(status: ExecutionStatus): boolean {
+	return (ENDED_EXECUTION_STATUSES as readonly ExecutionStatus[]).includes(status);
+}
+
 /** How an execution was initiated. */
 export type ExecutionMode = 'production' | 'manual';
 
@@ -128,8 +135,8 @@ export const DEFAULT_TRIGGER_OUTPUTS: TriggerOutputs = [];
  * completed with these outputs instead, so everything before it has settled
  * first, as it would have had the node run. Same opacity as `TriggerOutputs`.
  *
- * Each node maps to its outputs per pass, iteration 0 first. A node outside a
- * loop has one entry. TODO(CAT-4875): accept a loop's passes.
+ * Each node maps to the outputs of each of its passes, iteration 0 first. A
+ * node outside a loop has one pass. A node inside a loop has one per pass.
  */
 export type SeededSteps = Record<string, StepSlots[]>;
 

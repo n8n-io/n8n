@@ -7,6 +7,7 @@ import {
 	N8nDataTableServer,
 	N8nIcon,
 	N8nSpinner,
+	N8nStatusDot,
 	N8nText,
 	N8nTooltip,
 	N8nUserInfo,
@@ -27,6 +28,7 @@ type SkillAction = 'edit' | 'timeline' | 'download' | 'stopSyncing' | 'delete';
 
 type SourceAction =
 	| 'checkNow'
+	| 'reviewSkills'
 	| 'openInGitHub'
 	| 'changeScope'
 	| 'replaceCredential'
@@ -39,7 +41,7 @@ type SkillActionItem = {
 	icon: IconName;
 	disabled?: boolean;
 	tooltip?: string;
-	destructive?: boolean;
+	class?: string;
 };
 
 const props = defineProps<{
@@ -120,7 +122,8 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 			icon: 'trash-2',
 			disabled: deleteBlocked !== undefined,
 			tooltip: deleteBlocked,
-			destructive: true,
+			// The shared destructive style is red only on hover, and it colors the icon too.
+			class: $style.deleteAction,
 		},
 	];
 }
@@ -196,6 +199,11 @@ function sourceActions(source: SkillSourceListItem) {
 	}> = [];
 	if (source.canReview) {
 		items.push({
+			value: 'reviewSkills',
+			label: i18n.baseText('settings.context.skills.sources.reviewSkills'),
+			icon: 'book-open',
+		});
+		items.push({
 			value: 'checkNow',
 			label: i18n.baseText('settings.context.skills.checkForUpdates.action'),
 			icon: 'refresh-cw',
@@ -233,6 +241,7 @@ function sourceActions(source: SkillSourceListItem) {
 
 function onSourceAction(source: SkillSourceListItem, action: SourceAction) {
 	if (action === 'checkNow') emit('checkSource', source);
+	else if (action === 'reviewSkills') emit('reviewSource', source);
 	else if (action === 'changeScope') emit('moveSource', source);
 	else if (action === 'deleteSource') emit('deleteSource', source);
 	else if (action === 'replaceCredential') emit('replaceCredential', source);
@@ -386,16 +395,42 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 						data-test-id="skill-group-checking"
 					/>
 					<button
-						v-else-if="updateCount(sourcesById.get(group)!) > 0"
+						v-if="
+							sourcesById.get(group)!.canReview && sourcesById.get(group)!.newSkillsAvailable > 0
+						"
+						type="button"
+						:class="$style.updateButton"
+						data-test-id="skill-group-review-new"
+						data-attr="skill-group-review-new"
+						@click.stop="emit('reviewSource', sourcesById.get(group)!)"
+					>
+						<N8nBadge variant="outline" data-test-id="skill-group-new">
+							<template #leading>
+								<N8nStatusDot variant="success" data-test-id="skill-group-new-dot" />
+							</template>
+							{{
+								i18n.baseText('settings.context.skills.sources.new', {
+									interpolate: { count: sourcesById.get(group)!.newSkillsAvailable },
+								})
+							}}
+						</N8nBadge>
+					</button>
+					<button
+						v-if="
+							!props.checkingSourceIds?.includes(group) && updateCount(sourcesById.get(group)!) > 0
+						"
 						type="button"
 						:class="$style.updateButton"
 						data-test-id="skill-group-review-updates"
 						@click.stop="emit('reviewSource', sourcesById.get(group)!)"
 					>
-						<N8nBadge
-							:variant="sourcesById.get(group)!.updatesAvailable > 0 ? 'warning' : 'danger'"
-							data-test-id="skill-group-updates"
-						>
+						<N8nBadge variant="outline" data-test-id="skill-group-updates">
+							<template #leading>
+								<N8nStatusDot
+									:variant="sourcesById.get(group)!.updatesAvailable > 0 ? 'warning' : 'danger'"
+									data-test-id="skill-group-updates-dot"
+								/>
+							</template>
 							{{
 								i18n.baseText('settings.context.skills.sources.updates', {
 									interpolate: { count: updateCount(sourcesById.get(group)!) },
@@ -507,6 +542,12 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 </template>
 
 <style lang="scss" module>
+.deleteAction:not([data-disabled]) {
+	:global(.n8n-text) {
+		color: var(--text-color--danger);
+	}
+}
+
 .skillCell {
 	display: flex;
 	flex-direction: column;

@@ -1171,14 +1171,17 @@ describe('ExecutionService', () => {
 				concurrencyControl.has.mockReturnValue(true);
 				activeExecutions.has.mockReturnValue(false);
 				waitTracker.has.mockReturnValue(false);
-				executionRepository.stopBeforeRun.mockResolvedValue(mock<IExecutionResponse>());
+				const stoppedAt = new Date();
+				executionRepository.markAsCanceled.mockResolvedValue([
+					{ id: '123', workflowId: 'wf', mode: 'trigger', startedAt: null, stoppedAt },
+				]);
 
 				const req = mock<ExecutionRequest.Stop>({ params: { id: execution.id } });
 
 				/**
 				 * Act
 				 */
-				await executionService.stop(req.params.id, [execution.id]);
+				const result = await executionService.stop(req.params.id, [execution.id]);
 
 				/**
 				 * Assert
@@ -1190,6 +1193,22 @@ describe('ExecutionService', () => {
 				expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
 				expect(waitTracker.stopExecution).not.toHaveBeenCalled();
 				expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+				expect(executionRepository.markAsCanceled).toHaveBeenCalledWith(['123']);
+				expect(result).toMatchObject({ status: 'canceled', stoppedAt });
+			});
+
+			it('should return the finished run when a queued run finished before the stop', async () => {
+				const execution = mock<IExecutionResponse>({ id: '123', status: 'new', mode: 'trigger' });
+				const finished = mock<IExecutionResponse>({ id: '123', status: 'success' });
+				executionPersistence.findWithUnflattenedData
+					.mockResolvedValueOnce(execution)
+					.mockResolvedValueOnce(finished);
+				concurrencyControl.has.mockReturnValue(true);
+				executionRepository.markAsCanceled.mockResolvedValue([]);
+
+				const result = await executionService.stop('123', ['wf']);
+
+				expect(result).toMatchObject({ status: 'success' });
 			});
 		});
 
@@ -1557,6 +1576,74 @@ describe('ExecutionService', () => {
 					deleteConditions: { deleteBefore: undefined, ids: ['1', '2'] },
 				}),
 			);
+		});
+
+		describe('engine filter', () => {
+			const deleteBefore = '2026-01-01T00:00:00.000Z';
+
+			// A delete by date reaches only the engine v1 table, so a v2 filter must not
+			// fall through to deleting the v1 rows that match the other filters.
+			it('should delete nothing by date for the engine v2 filter', async () => {
+				await executionService.delete(
+					user,
+					DeleteExecutionsDto.parse({ deleteBefore, filters: { engine: 'v2' } }),
+					['wf-1'],
+				);
+
+				expect(executionPersistence.hardDeleteBy).not.toHaveBeenCalled();
+				expect(eventService.emit).not.toHaveBeenCalled();
+			});
+
+			it('should delete nothing by date for the engine v2 filter when another field is invalid', async () => {
+				await executionService.delete(
+					user,
+					DeleteExecutionsDto.parse({ deleteBefore, filters: { engine: 'v2', status: 123 } }),
+					['wf-1'],
+				);
+
+				expect(executionPersistence.hardDeleteBy).not.toHaveBeenCalled();
+			});
+
+			// An unknown engine fails the schema, which drops every filter. A delete by
+			// date would then match every v1 execution before the date.
+			it.each([['v3'], [123], [null]])(
+				'should reject an unknown engine %s instead of deleting without filters',
+				async (engine) => {
+					await expect(
+						executionService.delete(
+							user,
+							DeleteExecutionsDto.parse({ deleteBefore, filters: { engine, mode: 'manual' } }),
+							['wf-1'],
+						),
+					).rejects.toThrow(BadRequestError);
+
+					expect(executionPersistence.hardDeleteBy).not.toHaveBeenCalled();
+				},
+			);
+
+			it('should keep the engine v1 filter when deleting by date', async () => {
+				await executionService.delete(
+					user,
+					DeleteExecutionsDto.parse({ deleteBefore, filters: { engine: 'v1', mode: 'manual' } }),
+					['wf-1'],
+				);
+
+				expect(executionPersistence.hardDeleteBy).toHaveBeenCalledWith(
+					expect.objectContaining({ filters: { engine: 'v1', mode: 'manual' } }),
+				);
+			});
+
+			it('should delete by ids whatever the engine filter', async () => {
+				await executionService.delete(
+					user,
+					DeleteExecutionsDto.parse({ ids: ['1'], filters: { engine: 'v2' } }),
+					['wf-1'],
+				);
+
+				expect(executionPersistence.hardDeleteBy).toHaveBeenCalledWith(
+					expect.objectContaining({ deleteConditions: { deleteBefore: undefined, ids: ['1'] } }),
+				);
+			});
 		});
 	});
 

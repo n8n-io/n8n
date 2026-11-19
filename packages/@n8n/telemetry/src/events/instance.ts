@@ -157,6 +157,12 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 				// JSON Schema. It reaches the warehouse as an ISO timestamp via JSON.stringify.
 				.unknown()
 				.describe('Date of the oldest workflow, absent when the instance has none'),
+			license_consumer_id: z
+				.string()
+				.optional()
+				.describe(
+					'License server consumer ID of the stored license, absent without a license or with an ephemeral one. Changes when the instance activates again',
+				),
 			otel: z.object({
 				enabled: z.boolean(),
 				include_node_spans: z.boolean(),

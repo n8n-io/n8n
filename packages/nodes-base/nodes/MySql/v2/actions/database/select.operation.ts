@@ -1,3 +1,4 @@
+import memoize from 'lodash/memoize';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -6,13 +7,27 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import {
+	addCursorPredicate,
+	assertCursorColumnInOutput,
+	getStartAfter,
+	getStartAfterSortRules,
+} from '@utils/sql-keyset-paging';
 import { updateDisplayOptions } from '@utils/utilities';
 
-import type { QueryRunner, QueryValues, QueryWithValues, SortRule } from '../../helpers/interfaces';
+import type {
+	Mysql2Pool,
+	QueryRunner,
+	QueryValues,
+	QueryWithValues,
+	SortRule,
+} from '../../helpers/interfaces';
 import {
 	addSortRules,
 	addWhereClauses,
+	checkStartAfterColumn,
 	escapeSqlIdentifier,
+	getUniqueKeyColumns,
 	getWhereClauses,
 	prepareErrorItem,
 } from '../../helpers/utils';
@@ -21,6 +36,7 @@ import {
 	sortFixedCollection,
 	selectRowsFixedCollection,
 	combineConditionsCollection,
+	startAfterFixedCollection,
 } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -52,6 +68,7 @@ const properties: INodeProperties[] = [
 			},
 		},
 	},
+	startAfterFixedCollection,
 	selectRowsFixedCollection,
 	combineConditionsCollection,
 	sortFixedCollection,
@@ -74,10 +91,13 @@ export async function execute(
 	this: IExecuteFunctions,
 	inputItems: INodeExecutionData[],
 	runQueries: QueryRunner,
+	nodeOptions: IDataObject,
+	pool: Mysql2Pool,
 ): Promise<INodeExecutionData[]> {
 	let returnData: INodeExecutionData[] = [];
 
 	const queries: QueryWithValues[] = [];
+	const uniqueColumnsOf = memoize(async (table: string) => await getUniqueKeyColumns(pool, table));
 
 	for (let i = 0; i < inputItems.length; i++) {
 		try {
@@ -104,6 +124,7 @@ export async function execute(
 
 			const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
 
+			const base = query;
 			[query, values] = addWhereClauses(
 				this.getNode(),
 				i,
@@ -115,10 +136,35 @@ export async function execute(
 
 			const sortRules =
 				((this.getNodeParameter('sort', i, []) as IDataObject).values as SortRule[]) || [];
-
-			[query, values] = addSortRules(query, sortRules, values);
+			let rules = sortRules;
 
 			const returnAll = this.getNodeParameter('returnAll', i, false);
+			const startAfter = returnAll ? undefined : getStartAfter(this, i);
+			if (startAfter) {
+				const { column, value } = startAfter;
+				assertCursorColumnInOutput(this.getNode(), i, outputColumns, column, true);
+				rules = getStartAfterSortRules(this.getNode(), i, sortRules, column, true);
+				// Only an empty Value can start the walk again, so only then the node looks for empty text
+				await checkStartAfterColumn(
+					pool,
+					this.getNode(),
+					i,
+					table,
+					column,
+					await uniqueColumnsOf(table),
+					nodeOptions.decimalNumbers === true,
+					value === undefined,
+				);
+
+				if (value !== undefined) {
+					const operator = rules[0].direction === 'DESC' ? '<' : '>';
+					query = addCursorPredicate(base, query, `${escapeSqlIdentifier(column)} ${operator} ?`);
+					values.push(value);
+				}
+			}
+
+			[query, values] = addSortRules(query, rules, values);
+
 			if (!returnAll) {
 				const limit = this.getNodeParameter('limit', i, 50);
 				query += ' LIMIT ?';
