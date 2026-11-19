@@ -208,7 +208,6 @@ const InstanceAiWorkflowDraftPreviewStub = defineComponent({
 	props: {
 		draft: { type: Object, required: true },
 		building: Boolean,
-		statusText: String,
 		waiting: Boolean,
 	},
 	setup: (props) => () =>
@@ -216,7 +215,6 @@ const InstanceAiWorkflowDraftPreviewStub = defineComponent({
 			'data-test-id': 'instance-ai-workflow-draft-preview-stub',
 			'data-file-path': (props.draft as { filePath: string }).filePath,
 			'data-building': String(props.building),
-			'data-status-text': props.statusText ?? '',
 			'data-waiting': String(props.waiting),
 		}),
 });
@@ -2812,7 +2810,7 @@ describe('InstanceAiThreadView', () => {
 			] as typeof thread.messages;
 		}
 
-		it('shows the staging canvas of a new workflow with the step of the agent', async () => {
+		it('shows the staging canvas of a new workflow', async () => {
 			trackCanvasRendered.mockClear();
 			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
 				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
@@ -2823,11 +2821,6 @@ describe('InstanceAiThreadView', () => {
 
 			const preview = await findByTestId('instance-ai-workflow-draft-preview-stub');
 			expect(preview).toHaveAttribute('data-file-path', 'staging:run-1');
-			// The status holds each text for at least 1.5 seconds, so the new step shows after that.
-			await vi.waitFor(
-				() => expect(preview).toHaveAttribute('data-status-text', 'Searching for gmail, slack'),
-				{ timeout: 3000 },
-			);
 			expect(preview).toHaveAttribute('data-waiting', 'false');
 			expect(trackCanvasRendered).toHaveBeenCalledWith('staging');
 		});
@@ -2838,28 +2831,38 @@ describe('InstanceAiThreadView', () => {
 			);
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 			stageNewWorkflow();
-			const run = thread.messages[1];
-			run.agentTree!.toolCalls.push({
-				toolCallId: 'tc-ask',
-				toolName: 'ask_user',
-				args: {},
-				isLoading: true,
-				confirmation: {
-					requestId: 'req-1',
-					severity: 'info',
-					message: 'Which sheet?',
-					inputType: 'questions',
-				},
-				confirmationStatus: 'pending',
-			});
-			thread.messages = [...thread.messages];
+
+			thread.isAwaitingUserInput = true;
 
 			const preview = await findByTestId('instance-ai-workflow-draft-preview-stub');
 			await vi.waitFor(() => expect(preview).toHaveAttribute('data-waiting', 'true'));
-			expect(preview).toHaveAttribute('data-status-text', 'Waiting on your answer');
 		});
 
-		it('shows the step of the agent over the saved workflow that the build edits', async () => {
+		it('hides the building wave over the saved workflow while the run waits on the user', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			thread.producedArtifacts = new Map([
+				['wf-1', { type: 'workflow', id: 'wf-1', name: 'Demo' }],
+			]) as typeof thread.producedArtifacts;
+			const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			thread.isStreaming = true;
+			stageNewWorkflow();
+			thread.messages[1].agentTree!.toolCalls.splice(1, 0, {
+				toolCallId: 'tc-read',
+				toolName: 'get_workflow_as_code',
+				args: { workflowId: 'wf-1' },
+				isLoading: false,
+			});
+			thread.messages = [...thread.messages];
+			await findByTestId('instance-ai-draft-building-wave');
+
+			thread.isAwaitingUserInput = true;
+
+			await vi.waitFor(() => expect(queryByTestId('instance-ai-draft-building-wave')).toBeNull());
+		});
+
+		it('shows the building wave over the saved workflow that the build edits', async () => {
 			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
 				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
 			);
@@ -2880,10 +2883,7 @@ describe('InstanceAiThreadView', () => {
 			thread.messages = [...thread.messages];
 
 			await findByTestId('instance-ai-workflow-preview-stub');
-			const status = await findByTestId('instance-ai-canvas-run-status');
-			await vi.waitFor(() => expect(status).toHaveTextContent('Searching for gmail, slack'), {
-				timeout: 3000,
-			});
+			await findByTestId('instance-ai-draft-building-wave');
 			expect(queryByTestId('instance-ai-workflow-draft-preview-stub')).toBeNull();
 		});
 
