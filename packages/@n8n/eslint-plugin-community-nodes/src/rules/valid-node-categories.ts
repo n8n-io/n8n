@@ -1,4 +1,5 @@
 import { CODEX_AI_CATEGORY, CODEX_AI_SUBCATEGORIES, CODEX_NODE_CATEGORIES } from '@n8n/constants';
+import { isRecord } from '@n8n/utils/is-record';
 import type { TSESTree } from '@typescript-eslint/utils';
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
@@ -6,14 +7,86 @@ import {
 	createRule,
 	findNodeDescriptionObject,
 	findObjectProperty,
+	getPropertyKeyName,
+	getRuleDocsUrl,
+	getStringLiteralValue,
 	getTopLevelObjectInJson,
+	readJsonObject,
 } from '../utils/index.js';
 
+const ruleName = 'valid-node-categories';
+const supportedValuesUrl = `${getRuleDocsUrl(ruleName)}#supported-values`;
 const validCategories: ReadonlySet<string> = new Set(CODEX_NODE_CATEGORIES);
 const validAiSubcategories: ReadonlySet<string> = new Set(Object.values(CODEX_AI_SUBCATEGORIES));
+const rootNodes = CODEX_AI_SUBCATEGORIES.ROOT_NODES;
+
+function findStaticProperty(object: TSESTree.ObjectExpression, name: string) {
+	for (const property of [...object.properties].reverse()) {
+		// A spread or dynamic key can override an earlier property.
+		if (property.type !== AST_NODE_TYPES.Property) return undefined;
+		const key = getPropertyKeyName(property);
+		if (key === null) return undefined;
+		if (key === name) return property;
+	}
+	return null;
+}
+
+function isMainConnection(element: TSESTree.Node | null): boolean | null {
+	const connection =
+		element?.type === AST_NODE_TYPES.ObjectExpression
+			? (findStaticProperty(element, 'type')?.value ?? null)
+			: element;
+	const value = getStringLiteralValue(connection);
+	if (value !== null) return value === 'main';
+
+	if (
+		connection?.type === AST_NODE_TYPES.MemberExpression &&
+		connection.object.type === AST_NODE_TYPES.Identifier &&
+		connection.object.name === 'NodeConnectionTypes'
+	) {
+		const key =
+			!connection.computed && connection.property.type === AST_NODE_TYPES.Identifier
+				? connection.property.name
+				: getStringLiteralValue(connection.property);
+		if (key === 'Main') return true;
+		if (key?.startsWith('Ai')) return false;
+	}
+	return null;
+}
+
+function isMainNode(description: TSESTree.ObjectExpression): boolean {
+	const inputs = findStaticProperty(description, 'inputs')?.value;
+	const outputs = findStaticProperty(description, 'outputs')?.value;
+	if (
+		inputs?.type !== AST_NODE_TYPES.ArrayExpression ||
+		outputs?.type !== AST_NODE_TYPES.ArrayExpression
+	) {
+		return false;
+	}
+
+	const mainInputs = inputs.elements.map(isMainConnection);
+	const mainOutputs = outputs.elements.map(isMainConnection);
+	// The editor treats any non-main output as a sub-node output.
+	return (
+		!mainInputs.includes(null) &&
+		mainOutputs.every((output) => output === true) &&
+		(mainInputs.includes(true) || mainOutputs.includes(true))
+	);
+}
+
+function needsRootNodes(aiSubcategories: unknown): boolean {
+	return (
+		Array.isArray(aiSubcategories) &&
+		aiSubcategories.length > 0 &&
+		!aiSubcategories.includes(rootNodes) &&
+		aiSubcategories.every(
+			(value: unknown) => typeof value === 'string' && validAiSubcategories.has(value),
+		)
+	);
+}
 
 export const ValidNodeCategoriesRule = createRule({
-	name: 'valid-node-categories',
+	name: ruleName,
 	meta: {
 		type: 'problem',
 		docs: {
@@ -22,14 +95,13 @@ export const ValidNodeCategoriesRule = createRule({
 		messages: {
 			invalidCategories: '"categories" must be a non-empty array of community node categories.',
 			invalidCategoryType: 'Each category must be a string from the community node category list.',
-			invalidCategory:
-				'"{{ category }}" is not a supported community node category. See https://docs.n8n.io/connect/create-nodes/build-your-node/reference/codex-files/#node-categories for the allowed values.',
+			invalidCategory: `"{{ category }}" is not a supported community node category. See ${supportedValuesUrl} for the allowed values.`,
 			marketingCategory: '"Marketing" is not a supported category. Use "Marketing & Content".',
-			invalidAiSubcategory:
-				'"{{ subcategory }}" is not a supported AI subcategory. Use a subcategory from the node creator.',
+			invalidAiSubcategory: `"{{ subcategory }}" is not a supported AI subcategory. See ${supportedValuesUrl} for the allowed values.`,
 			invalidAiSubcategoryType: 'Each AI subcategory must be a supported string value.',
 			missingAiSubcategory: 'The "AI" category needs at least one "subcategories.AI" value.',
 			unexpectedAiSubcategory: '"subcategories.AI" needs "AI" in "categories".',
+			missingAiRootNodes: `Add "${rootNodes}" to "subcategories.AI" in {{ source }} to make this main node appear in regular Add node search.`,
 		},
 		schema: [],
 	},
@@ -38,7 +110,7 @@ export const ValidNodeCategoriesRule = createRule({
 		const isJson = context.filename.endsWith('.node.json');
 		if (!isJson && !/\.node\.[jt]s$/.test(context.filename)) return {};
 
-		function checkCodex(codex: TSESTree.ObjectExpression) {
+		function checkCodex(codex: TSESTree.ObjectExpression, mainNode = false) {
 			const categories = findObjectProperty(codex, 'categories');
 			let hasAiCategory = false;
 
@@ -109,6 +181,14 @@ export const ValidNodeCategoriesRule = createRule({
 					});
 				}
 			}
+
+			if (mainNode && needsRootNodes(aiSubcategories.value.elements.map(getStringLiteralValue))) {
+				context.report({
+					node: aiSubcategories.value,
+					messageId: 'missingAiRootNodes',
+					data: { source: '"description.codex"' },
+				});
+			}
 		}
 
 		return {
@@ -122,8 +202,32 @@ export const ValidNodeCategoriesRule = createRule({
 				if (isJson) return;
 				const description = findNodeDescriptionObject(node);
 				if (!description) return;
-				const codex = findObjectProperty(description, 'codex');
-				if (codex?.value.type === AST_NODE_TYPES.ObjectExpression) checkCodex(codex.value);
+				const staticCodex = findStaticProperty(description, 'codex');
+				const codex =
+					staticCodex === undefined ? findObjectProperty(description, 'codex') : staticCodex;
+				if (codex) {
+					if (codex.value.type === AST_NODE_TYPES.ObjectExpression) {
+						checkCodex(codex.value, codex === staticCodex && isMainNode(description));
+					}
+					return;
+				}
+
+				if (staticCodex !== null || !isMainNode(description)) return;
+				const codexPath = context.physicalFilename.replace(/\.node\.[jt]s$/, '.node.json');
+				if (codexPath === context.physicalFilename) return;
+				const siblingCodex = readJsonObject(codexPath);
+				if (
+					Array.isArray(siblingCodex?.categories) &&
+					siblingCodex.categories.includes(CODEX_AI_CATEGORY) &&
+					isRecord(siblingCodex.subcategories) &&
+					needsRootNodes(siblingCodex.subcategories[CODEX_AI_CATEGORY])
+				) {
+					context.report({
+						node: description,
+						messageId: 'missingAiRootNodes',
+						data: { source: 'the sibling ".node.json" file' },
+					});
+				}
 			},
 		};
 	},

@@ -1,20 +1,37 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+import { afterEach, vi } from 'vitest';
 
+import { readJsonObject } from '../utils/file-utils.js';
 import { ValidNodeCategoriesRule } from './valid-node-categories.js';
+
+vi.mock('../utils/file-utils.js', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../utils/file-utils.js')>()),
+	readJsonObject: vi.fn(),
+}));
 
 const ruleTester = new RuleTester();
 const filename = 'nodes/Example/Example.node.json';
+const typescriptNode = 'nodes/Example/Example.node.ts';
+const javascriptNode = 'nodes/Example/Example.node.js';
+const toolsOnly = { categories: ['AI'], subcategories: { AI: ['Tools'] } };
+
+function mockSiblingCodex(data: Record<string, unknown>): void {
+	vi.mocked(readJsonObject).mockImplementation((filePath) => (filePath === filename ? data : null));
+}
+
+afterEach(() => vi.mocked(readJsonObject).mockReset());
 
 function codex(categories: unknown, subcategories?: Record<string, string[]>): string {
 	return JSON.stringify({ node: 'n8n-nodes-example', categories, subcategories });
 }
 
-function inlineCodex(
-	categories: string[],
-	subcategories?: Record<string, string[]>,
+function nodeCode({
+	inline,
+	inputs = "['main']",
+	outputs = "['main']",
 	javascript = false,
-): string {
+}: { inline?: string; inputs?: string; outputs?: string; javascript?: boolean } = {}): string {
 	return `
 ${javascript ? '' : "import type { INodeType, INodeTypeDescription } from 'n8n-workflow';"}
 export class Example${javascript ? '' : ' implements INodeType'} {
@@ -25,12 +42,20 @@ export class Example${javascript ? '' : ' implements INodeType'} {
 		version: 1,
 		description: 'An example node',
 		defaults: { name: 'Example' },
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: ${inputs},
+		outputs: ${outputs},
 		properties: [],
-		codex: ${JSON.stringify({ categories, subcategories })},
+		${inline ? `codex: ${inline},` : ''}
 	};
 }`;
+}
+
+function inlineCodex(
+	categories: string[],
+	subcategories?: Record<string, string[]>,
+	javascript = false,
+): string {
+	return nodeCode({ inline: JSON.stringify({ categories, subcategories }), javascript });
 }
 
 ruleTester.run('valid-node-categories', ValidNodeCategoriesRule, {
@@ -47,9 +72,14 @@ ruleTester.run('valid-node-categories', ValidNodeCategoriesRule, {
 			code: inlineCodex(['AI'], { AI: ['Agents', 'Tools', 'Root Nodes'] }),
 		},
 		{
-			name: 'inline JavaScript codex with a supported AI subcategory',
-			filename: 'nodes/Example/Example.node.js',
-			code: inlineCodex(['AI'], { AI: ['Agents'] }, true),
+			name: 'inline JavaScript AI tool does not need Root Nodes',
+			filename: javascriptNode,
+			code: nodeCode({
+				inline: JSON.stringify(toolsOnly),
+				inputs: '[]',
+				outputs: "['ai_tool']",
+				javascript: true,
+			}),
 		},
 		{
 			name: 'JSON codex with nested tool and vector store subcategories',
@@ -63,11 +93,71 @@ ruleTester.run('valid-node-categories', ValidNodeCategoriesRule, {
 		{
 			name: 'inline codex with nested tool and vector store subcategories',
 			filename: 'nodes/Example/Example.node.ts',
-			code: inlineCodex(['AI'], {
-				AI: ['Tools', 'Vector Stores'],
-				Tools: ['Other Tools'],
-				'Vector Stores': ['Other Vector Stores'],
+			code: nodeCode({
+				inline: JSON.stringify({
+					categories: ['AI'],
+					subcategories: {
+						AI: ['Tools', 'Vector Stores'],
+						Tools: ['Other Tools'],
+						'Vector Stores': ['Other Vector Stores'],
+					},
+				}),
+				inputs: '[NodeConnectionTypes.AiEmbedding]',
+				outputs: '[NodeConnectionTypes.AiVectorStore]',
 			}),
+		},
+		{
+			name: 'AI main node with Root Nodes in its sibling codex',
+			filename: typescriptNode,
+			code: nodeCode(),
+			before: () =>
+				mockSiblingCodex({ categories: ['AI'], subcategories: { AI: ['Agents', 'Root Nodes'] } }),
+		},
+		{
+			name: 'AI-only node with a sibling codex does not need Root Nodes',
+			filename: typescriptNode,
+			code: nodeCode({ inputs: '[]', outputs: '[NodeConnectionTypes.AiTool]' }),
+			before: () => mockSiblingCodex(toolsOnly),
+		},
+		{
+			name: 'AI sub-node can carry Root Nodes',
+			filename: typescriptNode,
+			code: nodeCode({
+				inline: '{ categories: ["AI"], subcategories: { AI: ["Language Models", "Root Nodes"] } }',
+				inputs: '[]',
+				outputs: '[NodeConnectionTypes.AiLanguageModel]',
+			}),
+		},
+		{
+			name: 'inline codex with dynamic inputs does not require Root Nodes',
+			filename: typescriptNode,
+			code: nodeCode({ inline: JSON.stringify(toolsOnly), inputs: 'getInputs()' }),
+		},
+		{
+			name: 'spread after literal connections can override the node type',
+			filename: typescriptNode,
+			code: nodeCode({ inline: JSON.stringify(toolsOnly) }).replace(
+				'properties: [],',
+				'...connections, properties: [],',
+			),
+		},
+		{
+			name: 'sibling codex with dynamic output entries does not require Root Nodes',
+			filename: typescriptNode,
+			code: nodeCode({ outputs: '[NodeConnectionTypes.Main, ...extraOutputs]' }),
+			before: () => mockSiblingCodex(toolsOnly),
+		},
+		{
+			name: 'inline codex takes precedence over sibling codex for the Root Nodes check',
+			filename: typescriptNode,
+			code: inlineCodex(['Development']),
+			before: () => mockSiblingCodex(toolsOnly),
+		},
+		{
+			name: 'spread can supply an inline codex that takes precedence over the sibling codex',
+			filename: typescriptNode,
+			code: nodeCode().replace('displayName:', '...baseDescription, displayName:'),
+			before: () => mockSiblingCodex(toolsOnly),
 		},
 		{
 			name: 'all supported community categories',
@@ -103,6 +193,26 @@ ruleTester.run('valid-node-categories', ValidNodeCategoriesRule, {
 		},
 	],
 	invalid: [
+		{
+			name: 'inline AI main node with Tools but no Root Nodes',
+			filename: typescriptNode,
+			code: nodeCode({
+				inline: JSON.stringify(toolsOnly),
+				inputs: '[]',
+				outputs: '[{ type: NodeConnectionTypes.Main }]',
+			}),
+			errors: [{ messageId: 'missingAiRootNodes', data: { source: '"description.codex"' } }],
+		},
+		{
+			name: 'JavaScript AI main node with Agents and Tools but no Root Nodes in its sibling codex',
+			filename: javascriptNode,
+			code: nodeCode({ javascript: true }),
+			before: () =>
+				mockSiblingCodex({ categories: ['AI'], subcategories: { AI: ['Agents', 'Tools'] } }),
+			errors: [
+				{ messageId: 'missingAiRootNodes', data: { source: 'the sibling ".node.json" file' } },
+			],
+		},
 		{
 			name: 'JSON codex with Other Tools as a direct AI subcategory',
 			filename,
