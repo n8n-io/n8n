@@ -741,7 +741,11 @@ export class WorkflowPublicationApplier {
 			};
 		}
 
-		return { type: 'partial', triggerStatuses };
+		return {
+			type: 'partial',
+			triggerStatuses,
+			error: this.toActivationError(outcome.failures),
+		};
 	}
 
 	/**

@@ -1076,6 +1076,7 @@ describe('WorkflowPublicationApplier', () => {
 					errorMessage: 'third-party unavailable',
 				},
 			],
+			error,
 		});
 		// The new version is published despite the partial activation; no deactivation.
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
@@ -1164,6 +1165,7 @@ describe('WorkflowPublicationApplier', () => {
 					errorMessage: error.message,
 				},
 			],
+			error,
 		});
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
@@ -1270,6 +1272,7 @@ describe('WorkflowPublicationApplier', () => {
 					errorMessage: error.message,
 				},
 			],
+			error,
 		});
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',

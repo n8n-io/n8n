@@ -321,6 +321,17 @@ describe('Workflow publication retry (integration)', () => {
 		expect(await retryDelay(workflow.id)).toBeNull();
 	});
 
+	test('a partial workflow whose failed trigger has a UserError is not retried', async () => {
+		const workflow = await createPublishedWorkflow(
+			flakyNode('partial-user-error'),
+			scheduleNode('partial-user-error'),
+		);
+		fixture.failure = USER_ERROR;
+		await publish(workflow);
+
+		expect(await retryDelay(workflow.id)).toBeNull();
+	});
+
 	test('two triggers that both fail with a UserError are not retried', async () => {
 		const workflow = await createPublishedWorkflow(flakyNode('first'), flakyNode('second'));
 		fixture.failure = USER_ERROR;

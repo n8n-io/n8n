@@ -188,6 +188,7 @@ describe('PublicationStatusReporter', () => {
 						errorMessage: 'boom',
 					},
 				],
+				error: new Error('boom'),
 				teardownFailures: [failure],
 			});
 
@@ -668,6 +669,10 @@ describe('PublicationStatusReporter', () => {
 					errorMessage: 'broker down',
 				},
 			],
+			error: new AggregateError(
+				[new Error('cron unavailable'), new Error('broker down')],
+				'Triggers failed to activate',
+			),
 		});
 
 		const expectedMessage =
@@ -937,7 +942,7 @@ describe('PublicationStatusReporter', () => {
 	);
 
 	test.each(['in-memory', 'persisted'] as const)(
-		'partial schedules a retry for any failed trigger: %s',
+		'partial schedules a retry for a failure that is not permanent: %s',
 		async (triggerKind) => {
 			await reporter.report(makeRecord(), {
 				type: 'partial',
@@ -945,6 +950,7 @@ describe('PublicationStatusReporter', () => {
 					{ nodeId: 'ok', nodeName: 'Running', status: 'activated', triggerKind: 'in-memory' },
 					failedRow(triggerKind),
 				],
+				error: unreachable(),
 			});
 
 			expect(retryStateRepository.scheduleRetry).toHaveBeenCalledWith(
@@ -954,4 +960,21 @@ describe('PublicationStatusReporter', () => {
 			);
 		},
 	);
+
+	test('partial keeps a permanent failure suppressed', async () => {
+		await reporter.report(makeRecord(), {
+			type: 'partial',
+			triggerStatuses: [
+				{ nodeId: 'ok', nodeName: 'Running', status: 'activated', triggerKind: 'in-memory' },
+				failedRow('persisted'),
+			],
+			error: new WebhookPathTakenError('Webhook'),
+		});
+
+		expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+			operationContext,
+		);
+	});
 });

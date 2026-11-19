@@ -6,6 +6,7 @@ import {
 	WorkflowPublicationRetryStateRepository,
 	WorkflowPublicationTriggerStatusRepository,
 	TransactionRunner,
+	type OperationContext,
 	type TriggerStatusRow,
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
@@ -121,7 +122,6 @@ export class PublicationStatusReporter {
 				// deregistrations (whose teardown already ran) get their own report.
 				this.surfaceTeardownFailures(result.teardownFailures);
 				const { triggerState } = result;
-				const isPermanent = isPermanentFailure(result.error);
 				await this.transactionRunner.run({}, async (ctx) => {
 					if (triggerState) {
 						await this.triggerStatusRepository.replaceForWorkflow(
@@ -133,19 +133,7 @@ export class PublicationStatusReporter {
 							ctx,
 						);
 					}
-					if (isPermanent) {
-						await this.retryStateRepository.suppressRetry(
-							record.workflowId,
-							record.publishedVersionId,
-							ctx,
-						);
-					} else {
-						await this.retryStateRepository.scheduleRetry(
-							record.workflowId,
-							record.publishedVersionId,
-							ctx,
-						);
-					}
+					await this.updateRetryNote(record, result.error, ctx);
 					await this.outboxRepository.markFailed(record.id, result.error.message, ctx);
 				});
 				// An expected denial, already logged as a warning by the applier — the
@@ -165,9 +153,30 @@ export class PublicationStatusReporter {
 			case 'partial': {
 				// As on 'failed': the stored/pushed message stays about activation.
 				this.surfaceTeardownFailures(result.teardownFailures);
-				await this.reportPartial(record, result.triggerStatuses);
+				await this.reportPartial(record, result.triggerStatuses, result.error);
 				return;
 			}
+		}
+	}
+
+	/** Ends the retries of a permanent failure and schedules the next retry of any other failure. */
+	private async updateRetryNote(
+		record: WorkflowPublicationOutbox,
+		error: Error,
+		ctx: OperationContext,
+	): Promise<void> {
+		if (isPermanentFailure(error)) {
+			await this.retryStateRepository.suppressRetry(
+				record.workflowId,
+				record.publishedVersionId,
+				ctx,
+			);
+		} else {
+			await this.retryStateRepository.scheduleRetry(
+				record.workflowId,
+				record.publishedVersionId,
+				ctx,
+			);
 		}
 	}
 
@@ -180,6 +189,7 @@ export class PublicationStatusReporter {
 	private async reportPartial(
 		record: WorkflowPublicationOutbox,
 		triggerStatuses: TriggerPublicationStatus[],
+		error: Error,
 	): Promise<void> {
 		const failures = triggerStatuses.filter(
 			(s): s is FailedTriggerPublicationStatus => s.status === 'failed',
@@ -198,11 +208,7 @@ export class PublicationStatusReporter {
 				this.toRows(record, triggerStatuses),
 				ctx,
 			);
-			await this.retryStateRepository.scheduleRetry(
-				record.workflowId,
-				record.publishedVersionId,
-				ctx,
-			);
+			await this.updateRetryNote(record, error, ctx);
 			await this.outboxRepository.markPartialSuccess(record.id, errorMessage, ctx);
 		});
 
