@@ -38,31 +38,42 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	},
 });
 
-export const Default = Template.bind({});
-Default.args = {
-	modelValue: 'first',
-	options: [
-		{
-			label: 'First',
-			value: 'first',
-		},
-		{
-			label: 'Second',
-			value: 'second',
-		},
-		{
-			label: 'Github',
-			value: 'github',
-			href: 'https://github.com/',
-		},
-		{
-			label: 'Settings',
-			value: 'settings',
-			icon: 'cog',
-			align: 'right',
-		},
-	],
-};
+type DefaultTab = 'overview' | 'usage' | 'accessibility';
+
+const defaultTabs: Array<TabOptions<DefaultTab>> = [
+	{ label: 'Overview', value: 'overview' },
+	{ label: 'Usage', value: 'usage' },
+	{ label: 'Accessibility', value: 'accessibility' },
+];
+
+export const Default: StoryFn = () => ({
+	components: { N8nTabs },
+	setup() {
+		return { options: defaultTabs };
+	},
+	data() {
+		return { val: 'overview' };
+	},
+	methods,
+	template: `
+		<n8n-tabs v-model="val" :options="options" @update:model-value="onUpdateModelValue">
+			<template #content="{ value }">
+				<p v-if="value === 'overview'" style="padding: var(--spacing--sm);">
+					Tabs let users switch between related views without leaving the page.
+					Each tab shows one view at a time.
+				</p>
+				<p v-else-if="value === 'usage'" style="padding: var(--spacing--sm);">
+					Use tabs for content at the same level of hierarchy.
+					Keep labels short, and do not use more tabs than fit in one row.
+				</p>
+				<p v-else style="padding: var(--spacing--sm);">
+					Use the arrow keys to move between tabs.
+					Press Enter or Space to select the focused tab.
+				</p>
+			</template>
+		</n8n-tabs>
+	`,
+});
 
 const options: Array<TabOptions<string>> = [
 	{
@@ -81,7 +92,7 @@ const options: Array<TabOptions<string>> = [
 	{
 		label: 'Danger',
 		value: 'danger',
-		variant: 'danger',
+		isDestructive: true,
 		icon: 'triangle-alert',
 	},
 	{
@@ -91,6 +102,7 @@ const options: Array<TabOptions<string>> = [
 		iconPosition: 'right',
 	},
 	{
+		label: '',
 		value: 'iconOnly',
 		tooltip: 'Icon only tab',
 		icon: 'circle',
@@ -128,8 +140,8 @@ export const Overflow: StoryFn = () => ({
 		<div style="width: 40%; min-width: var(--spacing--xl); display: flex; flex-direction: column; gap: var(--spacing--xl);">
 			<n8n-tabs v-model="val" :options="options" />
 			<n8n-tabs v-model="val" size="small" :options="options" />
-			<n8n-tabs v-model="val" variant="modern" :options="options" />
-			<n8n-tabs v-model="val" variant="modern" size="small" :options="options" />
+			<n8n-tabs v-model="val" :options="options" />
+			<n8n-tabs v-model="val" size="small" :options="options" />
 		</div>
 	`,
 });
@@ -187,8 +199,8 @@ export const Sizes: StoryFn = () => ({
 		<div style="display: flex; flex-direction: column; gap: 24px;">
 			<n8n-tabs v-model="val" size="medium" :options="options" />
 			<n8n-tabs v-model="val" size="small" :options="options" />
-			<n8n-tabs v-model="val" variant="modern" size="medium" :options="options" />
-			<n8n-tabs v-model="val" variant="modern" size="small" :options="options" />
+			<n8n-tabs v-model="val" size="medium" :options="options" />
+			<n8n-tabs v-model="val" size="small" :options="options" />
 		</div>
 	`,
 });

@@ -4,10 +4,11 @@ import type { IconName } from '../components/N8nIcon/icons';
 
 export interface TabOptions<Value extends string | number> {
 	value: Value;
-	label?: string;
+	label: string;
 	icon?: IconName | (string & {});
 	iconPosition?: 'left' | 'right';
-	variant?: 'default' | 'danger';
+	/** Shows the tab in the danger color. */
+	isDestructive?: boolean;
 	href?: string;
 	/** Prevents selecting the tab (greyed out); combine with `tooltip` to explain why. */
 	disabled?: boolean;

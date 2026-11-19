@@ -172,13 +172,14 @@ describe('N8nTabs', () => {
 		expect(emitted('update:modelValue')).toEqual([['first']]);
 	});
 
-	it('does not emit for a disabled tab and marks it aria-disabled', async () => {
+	it('does not emit for a disabled tab and marks it disabled', async () => {
 		const { getByText, emitted } = render(N8nTabs, {
 			props: { modelValue: 'first', options },
 		});
 
-		const tab = getByText('Second').closest('[aria-disabled]');
-		expect(tab).toHaveAttribute('aria-disabled', 'true');
+		const tab = getByText('Second').closest('[role="tab"]');
+		expect(tab).toHaveAttribute('data-disabled');
+		expect(tab).toBeDisabled();
 
 		await userEvent.click(getByText('Second'));
 
@@ -198,7 +199,7 @@ describe('N8nTabs', () => {
 
 		const tab = getByText('Docs');
 		expect(tab.closest('a')).toBeNull();
-		expect(tab.closest('[aria-disabled]')).toHaveAttribute('aria-disabled', 'true');
+		expect(tab.closest('[role="tab"]')).toHaveAttribute('data-disabled');
 
 		await userEvent.click(tab);
 
