@@ -1,6 +1,24 @@
 # Plan: compile workflows to bytecode in Zig
 
-Status: proposal for assessment, 19 November 2026. Nothing in this plan is decided.
+Status: NOT PURSUED. Decision of 19 November 2026: the compile path stays in TypeScript.
+
+Why: a measurement on the full set of 77,424 real workflows showed that no easy part exists. The first slice
+(triggers, No Operation, Edit Fields with literal values) covers no real workflow. The easiest 10% already needs
+Code nodes or arbitrary JavaScript expressions, library nodes and credentials, so the JavaScript front end in Zig
+(piece B, the largest and the riskiest piece) cannot come last. With every non-Code node available: `$json` paths
+give 4.3%, Code nodes 9.4%, arbitrary expressions 16.9%.
+
+What was built stays on the branch `card/pi-wfc1` as a record and is not merged: the compiler `wfc` (library,
+command-line tool, WebAssembly of 100 KB), the TypeScript binding, and differential tests against the
+TypeScript converter. Measured there: about 8 µs to compile a workflow of 6 nodes natively, about 33 µs through
+WebAssembly. One fact from that work is useful in any case: a library node is not inlined; the converter emits
+one call of the runtime for each item with the parameters as data.
+
+The cheaper ways to a fast compile remain open: a cache keyed by the hash of the workflow JSON, one long-lived
+TypeScript program for each worker in place of a new program for each Code node, and a cache by content for
+node instances and Code snippets. Profile the converter before any of them.
+
+The text below is the plan as it was proposed.
 
 ## 1. Why
 

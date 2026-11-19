@@ -432,7 +432,11 @@ function planOperations(
 						: null;
 				const recv = strip(c.expression);
 				const root = rootName(recv);
-				const statics = ts.isIdentifier(recv) ? SAFE_STATICS[recv.text] : undefined;
+				// A name such as `constructor` is no entry of the table: read own members only.
+				const statics =
+					ts.isIdentifier(recv) && Object.hasOwn(SAFE_STATICS, recv.text)
+						? SAFE_STATICS[recv.text]
+						: undefined;
 				if (method === null) {
 					reason ??= 'a call with a computed method name';
 					return;
