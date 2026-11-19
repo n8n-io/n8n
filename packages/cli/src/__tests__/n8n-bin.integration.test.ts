@@ -1,4 +1,4 @@
-import { createBinTestDir, type BinTestDir } from '@test/bin-harness';
+import { createBinTestDir, readMarker, type BinTestDir } from '@test/bin-harness';
 
 const COMMAND_TIMEOUT_MS = 120_000;
 
@@ -12,7 +12,14 @@ describe('bin/n8n with prototype hardening', () => {
 		preload = testDir.writeFile(
 			'report-prototype-on-exit.cjs',
 			`process.on('exit', () => {
-	const state = { extensible: Object.isExtensible(Object.prototype) };
+	const state = {
+		object: Object.isExtensible(Object.prototype),
+		array: Object.isExtensible(Array.prototype),
+		function: Object.isExtensible(Function.prototype),
+		number: Object.isExtensible(Number.prototype),
+		boolean: Object.isExtensible(Boolean.prototype),
+		string: Object.isExtensible(String.prototype),
+	};
 	require('fs').writeSync(2, 'prototype-state:' + JSON.stringify(state) + '\\n');
 });`,
 		);
@@ -61,6 +68,7 @@ describe('bin/n8n with prototype hardening', () => {
 			preload,
 			env: {
 				DB_TYPE: 'sqlite',
+				N8N_RUNNERS_BROKER_PORT: '0',
 				N8N_DIAGNOSTICS_ENABLED: 'false',
 				N8N_SENTRY_DSN: 'http://public@127.0.0.1:9/1',
 			},
@@ -71,14 +79,21 @@ describe('bin/n8n with prototype hardening', () => {
 		'imports and executes a workflow in hardened processes',
 		() => {
 			const imported = runCommand(['import:workflow', `--input=${workflowFile}`]);
-			expect(imported.status, imported.stderr).toBe(0);
+			expect(imported.status, `${imported.stdout}\n${imported.stderr}`).toBe(0);
 
 			const executed = runCommand(['execute', '--id=hardenedRunTest1', '--rawOutput']);
-			expect(executed.status, executed.stderr).toBe(0);
+			expect(executed.status, `${executed.stdout}\n${executed.stderr}`).toBe(0);
 			expect(executed.stdout).toContain('hardened-run');
 
 			for (const { stderr } of [imported, executed]) {
-				expect(stderr).toContain('prototype-state:{"extensible":false}');
+				expect(readMarker(stderr, 'prototype-state:')).toEqual({
+					object: false,
+					array: false,
+					function: false,
+					number: false,
+					boolean: false,
+					string: true,
+				});
 			}
 		},
 		2 * COMMAND_TIMEOUT_MS + 30_000,

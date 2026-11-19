@@ -152,7 +152,7 @@ export class MessageEventBusLogWriter {
 			workerFileName = safeJoinPath(parsedName.dir, `${parsedName.name}-worker${parsedName.ext}`);
 		}
 		this._worker = new Worker(workerFileName, {
-			workerData: { lockObjectPrototype: isPrototypeHardeningEnabled() },
+			workerData: { prototypeHardeningEnabled: isPrototypeHardeningEnabled() },
 		});
 		if (this.worker) {
 			this.worker.on('messageerror', async (error) => {

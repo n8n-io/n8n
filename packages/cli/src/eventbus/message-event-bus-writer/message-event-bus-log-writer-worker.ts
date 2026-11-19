@@ -3,11 +3,13 @@ import { appendFileSync, existsSync, rmSync, renameSync, openSync, closeSync } f
 import { stat } from 'fs/promises';
 import { isMainThread, parentPort, workerData } from 'worker_threads';
 
+import { lockBuiltinPrototypes } from '../../prototype-hardening-core';
+
 import type { MessageEventBusLogWriterOptions } from './message-event-bus-log-writer';
 
-// A worker thread has its own Object.prototype, which the main thread's lock does not reach.
-if (isRecord(workerData) && workerData.lockObjectPrototype === true) {
-	Object.preventExtensions(Object.prototype);
+// Worker threads have their own prototypes, which the main thread's lock does not reach.
+if (isRecord(workerData) && workerData.prototypeHardeningEnabled === true) {
+	lockBuiltinPrototypes();
 }
 
 let logFileBasePath = '';

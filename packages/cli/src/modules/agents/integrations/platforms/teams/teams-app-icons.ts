@@ -11,7 +11,10 @@ import { runSerially } from '@n8n/utils/run-serially';
 import { UnexpectedError } from '@n8n/errors';
 import { Worker, type ResourceLimits } from 'node:worker_threads';
 
-import { isPrototypeHardeningEnabled } from '@/prototype-hardening';
+import {
+	isPrototypeHardeningEnabled,
+	PROTOTYPE_HARDENING_MODULE_PATH,
+} from '@/prototype-hardening';
 
 /**
  * Draws the agent's personalisation icon as the two PNGs a Teams app package
@@ -150,7 +153,9 @@ function stopProgress({ fromStop, toStop }: Gradient, position: number): number 
 // module paths are resolved here, because eval'd code cannot resolve them.
 const WORKER_SOURCE = `
 const { parentPort, workerData } = require('node:worker_threads');
-if (workerData.lockObjectPrototype) Object.preventExtensions(Object.prototype);
+if (workerData.prototypeHardeningEnabled) {
+	require(workerData.prototypeHardeningModulePath).lockBuiltinPrototypes();
+}
 const { readFileSync } = require('node:fs');
 const { initWasm, Resvg } = require(workerData.modulePath);
 initWasm(readFileSync(workerData.wasmPath)).then(() => {
@@ -169,7 +174,8 @@ async function rasterise(svgs: IconSvgs): Promise<Pick<TeamsAppIcons, 'color' | 
 		eval: true,
 		resourceLimits: WORKER_LIMITS,
 		workerData: {
-			lockObjectPrototype: isPrototypeHardeningEnabled(),
+			prototypeHardeningEnabled: isPrototypeHardeningEnabled(),
+			prototypeHardeningModulePath: PROTOTYPE_HARDENING_MODULE_PATH,
 			modulePath: require.resolve('@resvg/resvg-wasm'),
 			wasmPath: require.resolve('@resvg/resvg-wasm/index_bg.wasm'),
 			color: svgs.color,

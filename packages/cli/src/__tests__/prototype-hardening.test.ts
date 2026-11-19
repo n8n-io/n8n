@@ -7,6 +7,14 @@ import path from 'node:path';
 
 import { applyPrototypeHardening, isPrototypeHardeningEnabled } from '@/prototype-hardening';
 
+const lockedPrototypes = [
+	Object.prototype,
+	Array.prototype,
+	Function.prototype,
+	Number.prototype,
+	Boolean.prototype,
+];
+
 // The spy stands in for the real lock, so this process stays unchanged.
 describe('applyPrototypeHardening', () => {
 	const security = { disablePrototypeHardening: false };
@@ -16,14 +24,17 @@ describe('applyPrototypeHardening', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('locks Object.prototype', () => {
+	it('locks the built-in prototypes except String.prototype', () => {
 		security.disablePrototypeHardening = false;
 		const preventExtensions = vi.spyOn(Object, 'preventExtensions').mockImplementation((o) => o);
 
 		applyPrototypeHardening();
 
 		expect(isPrototypeHardeningEnabled()).toBe(true);
-		expect(preventExtensions).toHaveBeenCalledWith(Object.prototype);
+		for (const prototype of lockedPrototypes) {
+			expect(preventExtensions).toHaveBeenCalledWith(prototype);
+		}
+		expect(preventExtensions).not.toHaveBeenCalledWith(String.prototype);
 	});
 
 	it('does nothing when prototype hardening is turned off', () => {
@@ -33,7 +44,9 @@ describe('applyPrototypeHardening', () => {
 		applyPrototypeHardening();
 
 		expect(isPrototypeHardeningEnabled()).toBe(false);
-		expect(preventExtensions).not.toHaveBeenCalledWith(Object.prototype);
+		for (const prototype of lockedPrototypes) {
+			expect(preventExtensions).not.toHaveBeenCalledWith(prototype);
+		}
 	});
 });
 
@@ -67,24 +80,44 @@ ${check}`;
 		return JSON.parse(line.slice('result:'.length));
 	};
 
-	it('refuses new properties on Object.prototype', () => {
+	it('refuses new properties on the locked prototypes', () => {
+		const locked = { set: false, defineThrew: true, inherited: false };
 		expect(
-			runHardened(`let defineThrew = false;
-try { Object.defineProperty(Object.prototype, 'added', { value: 1 }); } catch { defineThrew = true; }
-report({ set: Reflect.set(Object.prototype, 'added', 1), defineThrew, inherited: 'added' in {} });`),
-		).toEqual({ set: false, defineThrew: true, inherited: false });
+			runHardened(`const samples = { objects: {}, arrays: [], functions: () => {}, numbers: 1, booleans: true };
+const result = {};
+for (const [name, sample] of Object.entries(samples)) {
+	const prototype = Object.getPrototypeOf(sample);
+	let defineThrew = false;
+	try { Object.defineProperty(prototype, 'added', { value: 1 }); } catch { defineThrew = true; }
+	result[name] = { set: Reflect.set(prototype, 'added', 1), defineThrew, inherited: 'added' in Object(sample) };
+}
+report(result);`),
+		).toEqual({
+			objects: locked,
+			arrays: locked,
+			functions: locked,
+			numbers: locked,
+			booleans: locked,
+		});
+	});
+
+	it('leaves String.prototype open for modules that add getters to it', () => {
+		expect(
+			runHardened(`Object.defineProperty(String.prototype, 'added', { get: () => 1, configurable: true });
+report({ value: ''.added });`),
+		).toEqual({ value: 1 });
 	});
 
 	it('refuses keys added through an inherited lookup', () => {
 		expect(
 			runHardened(`(function () {
 	'use strict';
-	const dictionary = {};
-	let threw = false;
-	try { (dictionary['__proto__'] ?? {}).added = 1; } catch { threw = true; }
-	report({ threw, inherited: 'added' in {} });
+	const tryAdd = (container) => {
+		try { (container['__proto__'] ?? {}).added = 1; return false; } catch { return true; }
+	};
+	report({ objectThrew: tryAdd({}), arrayThrew: tryAdd([]), inherited: 'added' in {} || 'added' in [] });
 })();`),
-		).toEqual({ threw: true, inherited: false });
+		).toEqual({ objectThrew: true, arrayThrew: true, inherited: false });
 	});
 
 	it('keeps the __proto__ accessor working', () => {
