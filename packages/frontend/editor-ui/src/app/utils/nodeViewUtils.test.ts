@@ -19,8 +19,10 @@ import {
 	GRID_SIZE,
 	NODE_X_SPACING,
 	HORIZONTAL_NODE_STEP,
+	NODE_Y_SPACING,
 	doRectsOverlap,
 	isPositionBlocked,
+	getNextNodeSlot,
 } from './nodeViewUtils';
 import type { INode, INodeTypeDescription, INodeExecutionData, Workflow } from 'n8n-workflow';
 import type { INodeUi, XYPosition } from '@/Interface';
@@ -228,33 +230,86 @@ describe('getGenericHints', () => {
 
 describe('generateOffsets', () => {
 	it('should return correct offsets for 0 nodes', () => {
-		const result = generateOffsets(0, 96, GRID_SIZE);
+		const result = generateOffsets(0, 96, NODE_Y_SPACING);
 		expect(result).toEqual([]);
 	});
 
 	it('should return correct offsets for 1 node', () => {
-		const result = generateOffsets(1, 96, GRID_SIZE);
+		const result = generateOffsets(1, 96, NODE_Y_SPACING);
 		expect(result).toEqual([0]);
 	});
 
 	it('should return correct offsets for 2 nodes', () => {
-		const result = generateOffsets(2, 96, GRID_SIZE);
+		const result = generateOffsets(2, 96, NODE_Y_SPACING);
 		expect(result).toEqual([-96, 96]);
 	});
 
 	it('should return correct offsets for 3 nodes', () => {
-		const result = generateOffsets(3, 96, GRID_SIZE);
-		expect(result).toEqual([-112, 0, 112]);
+		const result = generateOffsets(3, 96, NODE_Y_SPACING);
+		expect(result).toEqual([-192, 0, 192]);
 	});
 
 	it('should return correct offsets for 4 nodes', () => {
-		const result = generateOffsets(4, 96, GRID_SIZE);
-		expect(result).toEqual([-208, -96, 96, 208]);
+		const result = generateOffsets(4, 96, NODE_Y_SPACING);
+		expect(result).toEqual([-288, -96, 96, 288]);
 	});
 
 	it('should return correct offsets for large node count', () => {
-		const result = generateOffsets(10, 96, GRID_SIZE);
-		expect(result).toEqual([-544, -432, -320, -208, -96, 96, 208, 320, 432, 544]);
+		const result = generateOffsets(10, 96, NODE_Y_SPACING);
+		expect(result).toEqual([-864, -672, -480, -288, -96, 96, 288, 480, 672, 864]);
+	});
+
+	it('should put two offsets half a node size and spacing away from 0', () => {
+		const result = generateOffsets(2, 128, GRID_SIZE);
+		expect(result).toEqual([-72, 72]);
+	});
+});
+
+describe('getNextNodeSlot', () => {
+	it('should place the node one NODE_X_SPACING gap past the right edge of the source', () => {
+		const slot = getNextNodeSlot({
+			source: { position: [32, 64], width: 224, handleOffset: 48 },
+			target: { height: 96, handleOffset: 48 },
+		});
+
+		expect(slot).toEqual([32 + 224 + NODE_X_SPACING, 64]);
+	});
+
+	it('should line up the main handles of the source and the new node', () => {
+		// 4-input Merge (160 high) followed by a default node
+		const slot = getNextNodeSlot({
+			source: { position: [0, 0], width: 96, handleOffset: 80 },
+			target: { height: 96, handleOffset: 48 },
+		});
+
+		expect(slot).toEqual([224, 32]);
+	});
+
+	it.each([
+		[2, [-96, 96]],
+		[3, [-176, 16, 208]],
+	])('should fan %s outputs by the height of the new node and NODE_Y_SPACING', (count, ys) => {
+		// The source is 128 high for 3 outputs, so its handle line sits at 64
+		const sourceHandleOffset = count === 3 ? 64 : 48;
+		const slots = ys.map((_, index) =>
+			getNextNodeSlot({
+				source: { position: [0, 0], width: 96, handleOffset: sourceHandleOffset },
+				target: { height: 96, handleOffset: 48 },
+				fan: { index, count },
+			}),
+		);
+
+		expect(slots).toEqual(ys.map((y) => [224, y]));
+	});
+
+	it('should not fan the node for an output index out of range', () => {
+		const slot = getNextNodeSlot({
+			source: { position: [0, 0], width: 96, handleOffset: 48 },
+			target: { height: 96, handleOffset: 48 },
+			fan: { index: 5, count: 2 },
+		});
+
+		expect(slot).toEqual([224, 0]);
 	});
 });
 

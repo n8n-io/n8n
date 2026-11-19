@@ -50,7 +50,11 @@ the probe tracks is sent only when the card shows. `approval-judge.ts`
 describes what the judge reads and how it cuts long input.
 
 The judge sees the user's messages, the user's answers in question cards, and
-the Assistant's text.
+the Assistant's text. In a long thread it sees the newest messages. From the
+part before them it sees only what the user wrote, up to a budget of messages
+and characters. A limit that the user set there stays in view while it fits
+the budget. A note tells the judge when older messages are left out. Of a long
+message it sees only the end.
 
 ### Approval copy
 

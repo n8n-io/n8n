@@ -6,6 +6,7 @@
 - Always add stories for new components to `packages/frontend/@n8n/design-system`.
 - Always add comments to the public interfaces, with comments explaining what each one is for
 - Always add a `.test.ts` file with relevant tests for each component
+- Put the stories and the tests in the component folder, next to the component, for example `N8nButton/Button.stories.ts` and `N8nButton/Button.test.ts`
 - Always add i18n translations for user-facing strings, including accessible labels
 - Always use `n8n:content-design` skill for copy wording
 - Prefer to bind fixed child component props from a fixed props object. Add comment that explain why each prop must remain fixed.
@@ -24,5 +25,5 @@
 
 ## References
 
-- @README.md: Guidelines on contributing new components to the design-system
+- `README.md`, section "Contributing": Guidelines on contributing new components to the design-system
 - [W3C-APG](https://www.w3.org/WAI/ARIA/apg/patterns/): Guidelines on proper ARIA implementation
