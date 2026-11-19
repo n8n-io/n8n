@@ -212,13 +212,27 @@ describe('computeTimelineEntries with the current draft', () => {
 });
 
 describe('toVersionDiffWorkflow', () => {
-	const createWorkflow = (settings: IWorkflowDb['settings']) =>
-		({ id: 'wf-1', versionId: 'live', nodes: [], connections: {}, settings }) as IWorkflowDb;
+	const createWorkflow = (settings: IWorkflowDb['settings']): IWorkflowDb => ({
+		id: 'wf-1',
+		name: 'Workflow',
+		active: false,
+		isArchived: false,
+		createdAt: '2024-01-01T00:00:00.000Z',
+		updatedAt: '2024-01-01T00:00:00.000Z',
+		versionId: 'live',
+		activeVersionId: null,
+		nodes: [],
+		connections: {},
+		settings,
+	});
 
 	it('should use the default engine for a version with no engine', () => {
 		const version = { ...workflowVersionDataFactory(), settings: {} };
 
-		const result = toVersionDiffWorkflow(createWorkflow({ engineType: 'v2' }), version);
+		const result = toVersionDiffWorkflow(
+			createWorkflow({ engineType: 'v2', executionOrder: 'v1' }),
+			version,
+		);
 
 		expect(result.settings?.engineType).toBe('v1');
 	});
@@ -227,12 +241,18 @@ describe('toVersionDiffWorkflow', () => {
 		const version = { ...workflowVersionDataFactory(), settings: { engineType: 'v2' as const } };
 
 		const result = toVersionDiffWorkflow(
-			createWorkflow({ engineType: 'v1', timezone: 'UTC' }),
+			createWorkflow({ engineType: 'v1', timezone: 'UTC', executionOrder: 'v1' }),
 			version,
 		);
 
-		expect(result.settings).toEqual({ engineType: 'v2', timezone: 'UTC' });
+		expect(result.settings).toEqual({ engineType: 'v2', timezone: 'UTC', executionOrder: 'v1' });
 		expect(result.versionId).toBe(version.versionId);
+	});
+
+	it('should use the legacy execution order for a workflow with no settings', () => {
+		const result = toVersionDiffWorkflow(createWorkflow(undefined), workflowVersionDataFactory());
+
+		expect(result.settings).toEqual({ engineType: 'v1', executionOrder: 'v0' });
 	});
 });
 

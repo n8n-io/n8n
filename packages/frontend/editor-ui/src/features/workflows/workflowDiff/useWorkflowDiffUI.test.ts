@@ -187,14 +187,20 @@ describe('useWorkflowDiffUI', () => {
 		}
 
 		it('shows no change when one side has no engine and the other side has the default engine', () => {
-			const { settingsDiff, changesCount } = diffSettings(undefined, { engineType: 'v1' });
+			const { settingsDiff, changesCount } = diffSettings(
+				{ executionOrder: 'v1' },
+				{ engineType: 'v1', executionOrder: 'v1' },
+			);
 
 			expect(settingsDiff.value).toEqual([]);
 			expect(changesCount.value).toBe(0);
 		});
 
 		it('shows an engine change as one row with labels', () => {
-			const { settingsDiff, changesCount, tabs } = diffSettings({}, { engineType: 'v2' });
+			const { settingsDiff, changesCount, tabs } = diffSettings(
+				{ executionOrder: 'v1' },
+				{ engineType: 'v2', executionOrder: 'v1' },
+			);
 
 			expect(settingsDiff.value).toEqual([
 				{ name: 'engineType', before: 'generic.engine v1', after: 'generic.engine v2' },
@@ -205,8 +211,8 @@ describe('useWorkflowDiffUI', () => {
 
 		it('keeps the comparison of the other settings', () => {
 			const { settingsDiff } = diffSettings(
-				{ engineType: 'v1', timezone: 'UTC' },
-				{ engineType: 'v2', timezone: 'Europe/Berlin' },
+				{ engineType: 'v1', timezone: 'UTC', executionOrder: 'v1' },
+				{ engineType: 'v2', timezone: 'Europe/Berlin', executionOrder: 'v1' },
 			);
 
 			expect(settingsDiff.value).toEqual([
@@ -219,8 +225,8 @@ describe('useWorkflowDiffUI', () => {
 			settingsStore.isEngineV2Enabled = false;
 
 			const { settingsDiff, changesCount } = diffSettings(
-				{ engineType: 'v1' },
-				{ engineType: 'v2' },
+				{ engineType: 'v1', executionOrder: 'v1' },
+				{ engineType: 'v2', executionOrder: 'v1' },
 			);
 
 			expect(settingsDiff.value).toEqual([]);

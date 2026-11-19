@@ -5,7 +5,7 @@ import type {
 	WorkflowVersion,
 } from '@n8n/rest-api-client/api/workflowHistory';
 import dateformat from 'dateformat';
-import { applyVersionedSettings, pickVersionedSettings } from 'n8n-workflow';
+import { pickVersionedSettings } from 'n8n-workflow';
 
 export const getLastPublishedVersion = (
 	workflowPublishHistory: readonly WorkflowPublishHistory[],
@@ -113,7 +113,12 @@ export const toVersionDiffWorkflow = (
 	nodes: version.nodes,
 	connections: version.connections,
 	nodeGroups: version.nodeGroups ?? [],
-	settings: applyVersionedSettings(workflow.settings, pickVersionedSettings(version.settings)),
+	settings: {
+		...workflow.settings,
+		...pickVersionedSettings(version.settings),
+		// A workflow without an execution order runs with the legacy `v0` order.
+		executionOrder: workflow.settings?.executionOrder ?? 'v0',
+	},
 });
 
 export const getPublishedVersionId = (
