@@ -22,6 +22,7 @@ import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { isCloudBrowserResourceDecision } from '../cloudBrowserAgents';
 import { isPendingItemFloating } from '../confirmationKinds';
+import ApprovalAskReason from '@/features/ai/shared/components/ApprovalAskReason.vue';
 import CloudBrowserResourceDecision from './CloudBrowserResourceDecision.vue';
 import { formatApprovalDetails, formatApprovalTitle } from '../approvalDetails';
 import {
@@ -646,6 +647,16 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 					<N8nText tag="p" size="small" :class="$style.credentialDescription">
 						{{ buildApprovalSubtitle(chunk.item) }}
 					</N8nText>
+				</template>
+				<template v-else-if="chunk.item.toolCall.confirmation.askReason" #description>
+					<ApprovalAskReason
+						:description="
+							chunk.item.toolCall.confirmation.targetApproval
+								? undefined
+								: buildApprovalSubtitle(chunk.item)
+						"
+						:reason="chunk.item.toolCall.confirmation.askReason!"
+					/>
 				</template>
 			</N8nApprovalCard>
 		</template>

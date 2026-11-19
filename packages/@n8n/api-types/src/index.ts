@@ -1042,12 +1042,14 @@ export { SSO_LOGIN_REQUIRED_ERROR_CODE } from './constants/auth';
 export { N8N_CLIENT_HEADER, N8N_CLIENT_EDITOR_UI, N8N_CLIENT_N8N_NODE } from './constants/client';
 
 export {
+	instanceAiApprovalAskReasonSchema,
 	instanceAiApprovalDetailsSchema,
 	instanceAiApprovalModeSchema,
 	instanceAiAutoApprovalDeciderSchema,
 	autoApprovalPayloadSchema,
 	DATA_TABLE_CHANGE_SEVERITY,
 	isSessionGrantableDataTableAction,
+	type InstanceAiApprovalAskReason,
 	type InstanceAiApprovalDetails,
 	type InstanceAiDataTableChangeDetails,
 	type InstanceAiApprovalMode,

@@ -20,6 +20,7 @@ import { computed, inject, nextTick, onBeforeUnmount, provide, ref, watch } from
 
 import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import ApprovalAskReason from '@/features/ai/shared/components/ApprovalAskReason.vue';
 
 import { buildAlwaysAllowKeys } from '../alwaysAllow';
 import { formatApprovalDetails, formatApprovalTitle } from '../approvalDetails';
@@ -545,7 +546,11 @@ function onApprovalSelect(key: string) {
 			:disabled="isInactive"
 			data-test-id="assistant-agent-approval"
 			@select="onApprovalSelect"
-		/>
+		>
+			<template v-if="input.askReason" #description>
+				<ApprovalAskReason :description="approvalDescription" :reason="input.askReason" />
+			</template>
+		</N8nApprovalCard>
 	</div>
 </template>
 
