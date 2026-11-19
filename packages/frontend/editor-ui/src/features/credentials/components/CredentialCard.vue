@@ -22,7 +22,12 @@ import { usePrivateCredentials } from '@/features/resolvers/composables/usePriva
 import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
 import { useCredentialOAuth } from '../composables/useCredentialOAuth';
 import { useCredentialTypeUsability } from '../composables/useCredentialTypeUsability';
-import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
+import {
+	ContactAdminModal,
+	RestrictedNodePopover,
+	type ContactAudience,
+} from '@n8n/frontend-module-type-availability-policies';
+import { useContactAdminDialog } from '../composables/useContactAdminDialog';
 
 import {
 	N8nActionToggle,
@@ -70,6 +75,12 @@ const { authorize, isOAuthCredentialType } = useCredentialOAuth();
 
 const { describeCredentialTypeUsability } = useCredentialTypeUsability();
 
+const {
+	isOpen: isContactAdminOpen,
+	state: contactAdmin,
+	request: requestContactAdmin,
+} = useContactAdminDialog(() => {});
+
 const isConnecting = ref(false);
 const restrictedBadgeRef = useTemplateRef<HTMLElement>('restrictedBadgeRef');
 
@@ -85,6 +96,12 @@ const restriction = computed(() =>
 		? describeCredentialTypeUsability(props.data.restriction, credentialTypeDisplayName.value)
 		: null,
 );
+// For restricted nodes the admin must allow the nodes, so the request names them, not the type.
+function onContactAdmin(audience: ContactAudience) {
+	if (!restriction.value) return;
+	requestContactAdmin(restriction.value.contactSubject, audience, restriction.value.kind);
+}
+
 const credentialPermissions = computed(() => getResourcePermissions(props.data.scopes).credential);
 
 const isPrivateUnconnected = computed(
@@ -278,9 +295,16 @@ function moveResource() {
 							:description="restriction.description"
 							:project-type="data.homeProject?.type"
 							:anchor="restrictedBadgeRef"
+							@contact-admin="onContactAdmin"
 						/>
 						{{ locale.baseText('credentials.item.restricted') }}
 					</N8nBadge>
+					<ContactAdminModal
+						v-model:open="isContactAdminOpen"
+						:kind="contactAdmin.kind"
+						:type-name="contactAdmin.subject"
+						:audience="contactAdmin.audience"
+					/>
 				</span>
 			</N8nText>
 		</template>

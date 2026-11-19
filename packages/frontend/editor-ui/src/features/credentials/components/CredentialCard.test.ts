@@ -14,6 +14,7 @@ import { useCredentialsStore } from '../credentials.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import type { ICredentialsResponse } from '../credentials.types';
 import { MODAL_CONFIRM } from '@/app/constants';
+import { defineComponent } from 'vue';
 
 const mockAuthorize = vi.fn();
 const mockIsOAuthCredentialType = vi.fn();
@@ -595,12 +596,12 @@ describe('CredentialCard', () => {
 			expect(emitted('click')).toEqual([['cred-1']]);
 		});
 
-		it('does not open the credential on a press of the badge', async () => {
+		it('does not open the credential on a press of the lock marker', async () => {
 			const { getByTestId, emitted } = renderComponent({
 				props: { data: createCredential({ id: 'cred-1', restriction: typeRestricted }) },
 			});
 
-			await userEvent.click(getByTestId('credential-card-restricted'));
+			await userEvent.click(getByTestId('node-restricted-icon'));
 
 			expect(emitted('click')).toBeUndefined();
 		});
@@ -612,6 +613,36 @@ describe('CredentialCard', () => {
 
 			expect(container.firstElementChild?.className).toMatch(/restricted/);
 		});
+
+		it.each([
+			[typeRestricted, 'slackApi', 'credential'],
+			[nodesRestricted, 'Slack', 'node'],
+		])(
+			'asks the admin about what blocks a $reason credential',
+			async (restriction, subject, kind) => {
+				const { getByTestId } = renderComponent({
+					props: { data: createCredential({ type: 'slackApi', restriction }) },
+					global: {
+						stubs: {
+							RestrictedNodePopover: defineComponent({
+								emits: ['contactAdmin'],
+								template:
+									'<button data-test-id="contact-admin" @click="$emit(\'contactAdmin\', \'instance\')" />',
+							}),
+							ContactAdminModal: defineComponent({
+								props: ['open', 'typeName', 'kind'],
+								template:
+									'<div v-if="open" data-test-id="contact-admin-modal">{{ kind }}: {{ typeName }}</div>',
+							}),
+						},
+					},
+				});
+
+				await userEvent.click(getByTestId('contact-admin'));
+
+				expect(getByTestId('contact-admin-modal')).toHaveTextContent(`${kind}: ${subject}`);
+			},
+		);
 
 		it('does not dim a usable credential', () => {
 			const { container } = renderComponent({ props: { data: createCredential() } });

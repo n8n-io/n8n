@@ -570,11 +570,17 @@ describe('CredentialsView', () => {
 			reason: 'typeRestricted' as const,
 			restriction: { name: 'slackApi', available: false, scope: 'project' as const },
 		};
+		const nodesRestricted = {
+			reason: 'nodesRestricted' as const,
+			restriction: { name: 'n8n-nodes-base.jira', available: false, scope: 'instance' as const },
+			nodeTypes: ['n8n-nodes-base.jira'],
+		};
 
 		const credential = (
 			id: string,
 			type: string,
 			restriction?: CredentialRestriction,
+			overrides: Partial<ICredentialsResponse> = {},
 		): ICredentialsResponse => ({
 			id,
 			name: `${type} credential`,
@@ -592,16 +598,17 @@ describe('CredentialsView', () => {
 				updatedAt: '',
 			},
 			...(restriction ? { restriction } : {}),
+			...overrides,
 		});
 
-		const setup = ({ enabled = true }: { enabled?: boolean } = {}) => {
+		const setup = ({
+			enabled = true,
+			credentials = [credential('1', 'slackApi', typeRestricted), credential('2', 'gmailOAuth2')],
+		}: { enabled?: boolean; credentials?: ICredentialsResponse[] } = {}) => {
 			const policies = mockedStore(useTypeAvailabilityPoliciesStore);
 			policies.isEnabled = enabled;
 			const credentialsStore = mockedStore(useCredentialsStore);
-			credentialsStore.allCredentials = [
-				credential('1', 'slackApi', typeRestricted),
-				credential('2', 'gmailOAuth2'),
-			];
+			credentialsStore.allCredentials = credentials;
 			return credentialsStore;
 		};
 
@@ -672,6 +679,62 @@ describe('CredentialsView', () => {
 			await flushPromises();
 
 			expect(queryAllByTestId('resources-list-item')).toHaveLength(0);
+		});
+
+		it('marks a restricted credential that has no home project', async () => {
+			setup({
+				credentials: [credential('1', 'slackApi', typeRestricted, { homeProject: undefined })],
+			});
+
+			const { getByTestId } = renderComponent();
+			await flushPromises();
+
+			expect(getByTestId('credential-card-restricted')).toHaveTextContent('Restricted');
+		});
+
+		it('marks credentials on Overview before the personal project loads, and loads its policy after', async () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = null;
+			setup();
+			const policies = mockedStore(useTypeAvailabilityPoliciesStore);
+
+			const { getAllByTestId } = renderComponent();
+			await flushPromises();
+
+			expect(getAllByTestId('credential-card-restricted')).toHaveLength(1);
+			expect(policies.fetchForProject).not.toHaveBeenCalled();
+
+			projectsStore.personalProject = createTestProject({ id: 'personal-1' });
+			await flushPromises();
+
+			expect(policies.fetchForProject).toHaveBeenCalledWith('personal-1');
+		});
+
+		it('filters on restricted nodes only', async () => {
+			await router.push('/team-1/credentials');
+			setup({
+				credentials: [
+					credential('1', 'slackApi', typeRestricted),
+					credential('2', 'jiraSoftwareCloudApi', nodesRestricted),
+					credential('3', 'gmailOAuth2'),
+				],
+			});
+
+			const { getAllByTestId, getByTestId } = renderComponent();
+			await flushPromises();
+			expect(getAllByTestId('resources-list-item')).toHaveLength(3);
+
+			await fireEvent.click(getByTestId('resources-list-filters-trigger'));
+			await fireEvent.click(getByTestId('credential-filter-cannot-be-used-nodesRestricted'));
+
+			await waitFor(() => expect(getAllByTestId('resources-list-item')).toHaveLength(1));
+			expect(getByTestId('resources-list-item')).toHaveTextContent(
+				'jiraSoftwareCloudApi credential',
+			);
+			expect(getByTestId('credential-card-restricted')).toHaveTextContent('Restricted');
+			await waitFor(() =>
+				expect(router.currentRoute.value.query.cannotBeUsed).toBe('nodesRestricted'),
+			);
 		});
 
 		it('ignores a filter kept in the URL when the policies module is off', async () => {
