@@ -52,8 +52,10 @@ export function usePromotionPreview(
 	const graph = computed(() =>
 		preview.value ? buildSelectionGraph(preview.value, direction.value) : null,
 	);
-	/** The environment that the preview reads. */
+	/** The environment and branch that the preview reads. */
 	const source = computed(() => preview.value?.source ?? null);
+	/** How that environment presents itself: its name, provider and branch setting. */
+	const environment = computed(() => preview.value?.environment ?? null);
 
 	async function load() {
 		const isLatest = next();
@@ -120,6 +122,7 @@ export function usePromotionPreview(
 		check,
 		graph,
 		source,
+		environment,
 		refreshing,
 		refreshFailed,
 		lastRefreshedAt,

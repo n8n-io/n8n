@@ -70,7 +70,7 @@ const projectId = toRef(props, 'projectId');
 const direction = toRef(props, 'direction');
 const isInstance = computed(() => props.projectId === undefined);
 
-const { state, preview, check, graph, source, refreshing, refreshFailed, refresh } =
+const { state, preview, check, graph, source, environment, refreshing, refreshFailed, refresh } =
 	usePromotionPreview(projectId, direction);
 // The page shows and enforces only the blockers of the workflows it lists. A whole-instance
 // Apply stops for any blocker, also on a workflow that it does not change.
@@ -121,7 +121,7 @@ const projectName = computed(() => {
 			)?.name;
 });
 const title = computed(() => {
-	if (!source.value) {
+	if (!environment.value) {
 		return i18n.baseText(`promotions.preview.title.${props.direction}`);
 	}
 	return i18n.baseText(
@@ -129,7 +129,7 @@ const title = computed(() => {
 			? `promotions.preview.title.project.${props.direction}`
 			: `settings.promotions.${props.direction}.dialog.title`,
 		{
-			interpolate: { project: projectName.value ?? '', environment: source.value.environmentName },
+			interpolate: { project: projectName.value ?? '', environment: environment.value.name },
 		},
 	);
 });
@@ -286,9 +286,11 @@ const submitLabel = computed(() =>
 const promoteDialogOpen = ref(false);
 // Lives here, not in the dialog, so the typed message survives a failed promote.
 const promoteCommitMessage = ref('');
-// The router reuses this view across projects, so a draft must not carry over.
-watch(projectId, () => {
+// The router reuses this view across projects and directions, so neither a draft nor an open
+// dialog may carry over.
+watch([projectId, direction], () => {
 	promoteCommitMessage.value = '';
+	promoteDialogOpen.value = false;
 });
 
 async function onSubmit() {
@@ -552,13 +554,13 @@ const treeResizer = useResizablePanel({
 		</template>
 
 		<PromoteSelectionDialog
-			v-if="promoteDialogOpen && direction === 'promote' && source"
+			v-if="promoteDialogOpen && source && environment"
 			v-model:open="promoteDialogOpen"
 			v-model:commit-message="promoteCommitMessage"
 			:change-count="includedChanges"
 			:base-branch-name="source.branchName"
-			:create-branch-on-promotion="source.createBranchOnPromotion ?? false"
-			:provider-type="source.providerType"
+			:create-branch-on-promotion="environment.createBranchOnPromotion ?? false"
+			:provider-type="environment.providerType"
 			@confirm="onPromoteConfirm"
 		/>
 	</div>

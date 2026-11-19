@@ -71,7 +71,7 @@ import {
 	instanceApplyRequest,
 } from './apply-preview.service';
 import { PromotePreviewService } from './promote-preview.service';
-import { previewSource } from './promotion-preview';
+import { previewEnvironment, previewSource } from './promotion-preview';
 import { GitCommitPackageReader } from './git-commit-package-reader';
 import { exportInstancePackage, instancePromotionExportRequest } from './instance-package';
 import { PromotionCheckoutCleanupService } from './promotion-checkout-cleanup.service';
@@ -830,6 +830,7 @@ export class PromotionsService {
 	async readInstanceApplyPackage(environmentId: string): Promise<{
 		commitSha: string;
 		source: PromotionPreview['source'];
+		environment: PromotionPreview['environment'];
 		files: Map<string, Buffer>;
 	}> {
 		const input = await this.resolver.resolveForEnvironment(environmentId, 'apply');
@@ -839,6 +840,7 @@ export class PromotionsService {
 		return {
 			commitSha: identity.git.commitSha,
 			source: previewSource(input),
+			environment: previewEnvironment(input),
 			files,
 		};
 	}

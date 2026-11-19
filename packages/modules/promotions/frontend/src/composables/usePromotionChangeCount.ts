@@ -67,7 +67,7 @@ export function usePromotionChangeCount(
 			if (!isLatest()) return;
 			changeCount.value = totalChangeCount(buildSelectionGraph(preview, direction));
 			blocker.value = preview.blocker ?? null;
-			environmentName.value = preview.source.environmentName;
+			environmentName.value = preview.environment.name;
 			missing.value = false;
 		} catch (error) {
 			if (!isLatest()) return;

@@ -533,17 +533,22 @@ export function previewRevision(shown: {
 		.digest('hex');
 }
 
-/**
- * The environment that a preview reads. The UI shows it, so a user who can only preview
- * does not need to read the environment settings.
- */
+/** The environment and branch that a preview reads. Apply sends it back as its expected source. */
 export function previewSource(input: PromotionOperationInput): PromotionPreview['source'] {
-	const { environmentId, environmentName, providerType, config } = input;
+	return { environmentId: input.environmentId, branchName: checkoutBranchName(input.config) };
+}
+
+/**
+ * How the environment of a preview presents itself. The UI shows it, so a user who can only
+ * preview does not need to read the environment settings. It stays out of the revision.
+ */
+export function previewEnvironment(
+	input: PromotionOperationInput,
+): PromotionPreview['environment'] {
+	const { environmentName, providerType, config } = input;
 	return {
-		environmentId,
-		environmentName,
+		name: environmentName,
 		providerType,
-		branchName: checkoutBranchName(config),
 		...(config.direction === 'promote'
 			? { createBranchOnPromotion: config.settings.createBranchOnPromotion }
 			: {}),
