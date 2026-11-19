@@ -6,6 +6,7 @@ import type {
 	CredentialTypeUsageResponse,
 	FolderTransferPreview,
 	InstanceTypeAccessResponse,
+	NodeTypeUsageResponse,
 	PolicyEffectivePublicDto,
 	PolicyEffectiveWriteResultPublicDto,
 	SubWorkflowPolicyCheckResponse,
@@ -75,6 +76,10 @@ export async function fetchCredentialTypeUsage(
 	context: IRestApiContext,
 ): Promise<CredentialTypeUsageResponse> {
 	return await makeRestApiRequest(context, 'GET', '/credential-type-policies/usage');
+}
+
+export async function fetchNodeTypeUsage(context: IRestApiContext): Promise<NodeTypeUsageResponse> {
+	return await makeRestApiRequest(context, 'GET', '/node-type-policies/usage');
 }
 
 export type CredentialTypeSummary = {
