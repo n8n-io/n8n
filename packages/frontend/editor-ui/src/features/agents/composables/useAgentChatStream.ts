@@ -57,6 +57,7 @@ import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/share
 import { CHAT_MESSAGE_ROLE, CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
 import { isPolicyRefusedToolOutput } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
+import { resolveToolCatalogCall } from '@/features/ai/shared/agentsChat/toolCatalogCall';
 import { addReplyAttachments } from '@/features/ai/shared/agentsChat/replyFiles';
 import { isBudgetStopCode, type BudgetNoticeCode } from '../utils/budget-config';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
@@ -1289,17 +1290,20 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				// or push one if `tool-input-start` was missing.
 				const msg = ensureCurrent(session);
 				msg.toolCalls = msg.toolCalls ?? [];
+				// `tool-input-start` names a tool catalog call `call_tool`. The full input names the real tool.
+				const call = resolveToolCatalogCall(event.toolName, event.input);
 				const existing = msg.toolCalls.find((t) => t.toolCallId === event.toolCallId);
 				if (!existing) {
 					msg.toolCalls.push({
-						tool: event.toolName,
+						tool: call.tool,
 						toolCallId: event.toolCallId,
-						input: event.input,
+						input: call.input,
 						state: TOOL_CALL_STATE.PENDING,
-						displaySummary: summariseToolCall(event.toolName, undefined, event.input),
+						displaySummary: summariseToolCall(call.tool, undefined, call.input),
 					});
 				} else {
-					existing.input = event.input;
+					existing.tool = call.tool;
+					existing.input = call.input;
 					existing.displaySummary = summariseToolCall(
 						existing.tool,
 						existing.output,

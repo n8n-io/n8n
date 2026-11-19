@@ -439,6 +439,25 @@ describe('flattenExecutionsToTimelineItems', () => {
 		expect(items[0]).toMatchObject({ kind: 'skill', skillName: 'Triage' });
 	});
 
+	it('maps a tool catalog call_tool call as the tool it runs', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				toolCallEvent({
+					name: 'call_tool',
+					input: { tool: 'list_workflows', arguments: { limit: 5 } },
+					endTime: 200,
+					success: true,
+				}),
+			]),
+		]);
+
+		expect(items[0]).toMatchObject({
+			kind: 'tool',
+			toolName: 'list_workflows',
+			toolInput: { limit: 5 },
+		});
+	});
+
 	it.each([
 		['recall_memory', true, 200, { kind: 'memory', memoryAction: 'recall' }],
 		['flag_memory', true, 200, { kind: 'memory', memoryAction: 'flag' }],

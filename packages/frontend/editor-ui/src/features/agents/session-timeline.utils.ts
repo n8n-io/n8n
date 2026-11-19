@@ -7,6 +7,7 @@ import type { BadgeVariant } from '@n8n/design-system';
 import type { BaseTextKey, useI18n } from '@n8n/i18n';
 import { isRecord } from '@n8n/utils/is-record';
 import { convertDbMessages } from '@/features/ai/shared/agentsChat/messageMappers';
+import { resolveToolCatalogCall } from '@/features/ai/shared/agentsChat/toolCatalogCall';
 import type { ThinkingSegment } from '@/features/ai/shared/agentsChat/types';
 import type {
 	EventKind,
@@ -823,14 +824,15 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				const isNode = event.kind === 'node';
 				const kind = toolCallKind(event);
 				if (event.toolCallId) initialToolCalls.set(event.toolCallId, event);
+				const call = resolveToolCatalogCall(event.name, event.input);
 				const item: TimelineItem = {
 					kind,
 					executionId: exec.id,
-					toolName: event.name,
+					toolName: call.tool,
 					skillName: kind === 'skill' ? skillNameFromEvent(event) : undefined,
 					memoryAction: kind === 'memory' ? memoryActionOf(event) : undefined,
 					toolCallId: event.toolCallId,
-					toolInput: event.input,
+					toolInput: call.input,
 					toolOutput: event.output,
 					toolOutcome: toolCallOutcome(event),
 					toolSuccess: event.endTime === 0 ? undefined : event.success,
