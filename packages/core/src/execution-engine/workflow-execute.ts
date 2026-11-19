@@ -64,6 +64,7 @@ import {
 } from 'n8n-workflow';
 import { BaseError, UnexpectedError, UserError, OperationalError } from '@n8n/errors';
 import PCancelable, { type OnCancelFunction } from 'p-cancelable';
+import { types } from 'util';
 
 import { ErrorReporter } from '@/errors/error-reporter';
 import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
@@ -106,6 +107,11 @@ interface RunWorkflowOptions {
 	 * By default run() executes only destinationNode and its parents, others are not allowed to run
 	 */
 	additionalRunFilterNodes?: string[];
+}
+
+/** Returns the data as plain values. Makes a deep copy only when the data is a proxy. */
+function toPlainData(data: IDataObject): IDataObject {
+	return types.isProxy(data) ? deepCopy(data) : data;
 }
 
 function normalizeUnhandledAxiosError(error: unknown, node: INode): ExecutionBaseError {
@@ -3167,7 +3173,7 @@ export class WorkflowExecute {
 								json: {
 									// The data proxy of a scripting node returns nested values as
 									// proxies. Run data must hold plain values.
-									...deepCopy(pairedInputItem.json),
+									...toPlainData(pairedInputItem.json),
 									...item.json,
 								},
 							});

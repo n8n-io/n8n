@@ -2401,6 +2401,42 @@ describe('WorkflowExecute', () => {
 			});
 		});
 
+		test('should keep the input data of a node without proxies unchanged in the error item', () => {
+			const inputJson: IDataObject = JSON.parse('{"constructor":"a","prototype":"b","list":[1]}');
+			(inputJson.list as unknown[]).push(inputJson.list);
+			workflowExecute = new WorkflowExecute(
+				mock<IWorkflowExecuteAdditionalData>({
+					webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+					formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+				}),
+				'manual',
+				createRunExecutionData({
+					resultData: {
+						runData: {
+							previousNode: [
+								{
+									data: { main: [[{ json: inputJson }]] },
+									source: [],
+									startTime: 0,
+									executionIndex: 0,
+									executionTime: 0,
+								},
+							],
+						},
+					},
+				}),
+			);
+			const nodeSuccessData: INodeExecutionData[][] = [
+				[{ json: { error: 'Test error' }, pairedItem: { item: 0, input: 0 } }],
+			];
+
+			workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
+
+			const [errorItem] = nodeSuccessData[1];
+			expect(Object.keys(errorItem.json)).toEqual(['constructor', 'prototype', 'list', 'error']);
+			expect(errorItem.json.list).toBe(inputJson.list);
+		});
+
 		test('should route an error item undecorated when its source points at a missing output', () => {
 			const mismatchedSource = {
 				...executionData,
