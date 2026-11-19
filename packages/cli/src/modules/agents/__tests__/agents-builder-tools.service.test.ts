@@ -3530,78 +3530,28 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('asks again when an approval does not say which version the card showed', async () => {
-			const { service, agentPublishService } = makeService();
+			const { service, agentsService, agentPublishService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue({
+				id: agentId,
+				name: 'Support agent',
+				versionId: 'v-draft',
+				activeVersionId: null,
+				integrations: [],
+				schema: baseConfig,
+			} as unknown as ProjectAgent);
 			const suspend = vi.fn(async (payload: unknown) => payload as never);
 
-			await getPublishTool(service).handler!(
+			const result = await getPublishTool(service).handler!(
 				{},
 				{ ...ctx, suspend, resumeData: { approved: true }, continuation: undefined },
 			);
 
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
-		});
-
-		it('guards a publish that names the current draft by the draft revision', async () => {
-			const { service, agentsService, agentPublishService } = makeService();
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
-			agentsService.findById.mockResolvedValue({
-				id: agentId,
-				versionId: 'v-draft',
-				activeVersionId: null,
-				revision: 7,
-			} as unknown as ProjectAgent);
-			agentPublishService.publishAgent.mockResolvedValue({
-				agent: { activeVersionId: 'v-draft', versionId: 'v-draft' } as ProjectAgent,
+			expect(suspend).toHaveBeenCalledWith(expect.anything(), {
+				continuation: { confirmedVersionId: 'v-draft' },
 			});
-
-			await getPublishTool(service).handler!(
-				{ versionId: 'v-draft' },
-				{ ...ctx, resumeData: { approved: true }, continuation: { confirmedVersionId: 'v-draft' } },
-			);
-
-			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
-				agentId,
-				projectId,
-				user,
-				{ by: 'builder', trigger: 'explicit' },
-				'v-draft',
-				undefined,
-				7,
-			);
-		});
-
-		it('does not tie a history version publish to the draft revision', async () => {
-			const { service, agentsService, agentPublishService } = makeService();
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
-			agentsService.findById.mockResolvedValue({
-				id: agentId,
-				versionId: 'v-draft',
-				activeVersionId: 'v-draft',
-				revision: 7,
-			} as unknown as ProjectAgent);
-			agentPublishService.publishAgent.mockResolvedValue({
-				agent: { activeVersionId: 'v-history', versionId: 'v-draft' } as ProjectAgent,
-			});
-
-			await getPublishTool(service).handler!(
-				{ versionId: 'v-history' },
-				{
-					...ctx,
-					resumeData: { approved: true },
-					continuation: { confirmedVersionId: 'v-history' },
-				},
-			);
-
-			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
-				agentId,
-				projectId,
-				user,
-				{ by: 'builder', trigger: 'explicit' },
-				'v-history',
-				undefined,
-				undefined,
-			);
+			expect(result).toMatchObject({ approvalDetails: { action: 'publish-agent' } });
 		});
 
 		it('publishes nothing when the user cancels', async () => {

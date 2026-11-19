@@ -3,6 +3,11 @@ import { CHANGE_DATA_TABLES_TOOL_NAME, buildDataTablesSessionGrantKey } from '@n
 import { buildAlwaysAllowKeys } from '../alwaysAllow';
 
 describe('buildAlwaysAllowKeys', () => {
+	it('never offers Always allow for publishing an agent, which asks every time', () => {
+		expect(buildAlwaysAllowKeys('agent_builder_publish_agent', {})).toEqual([]);
+		expect(buildAlwaysAllowKeys('agent_builder_publish_agent', { versionId: 'v-1' })).toEqual([]);
+	});
+
 	describe('workflow runs', () => {
 		it('scopes a run to its workflow', () => {
 			expect(
