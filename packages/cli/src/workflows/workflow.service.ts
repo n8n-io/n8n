@@ -1770,12 +1770,12 @@ export class WorkflowService {
 		}
 	}
 
-	/** Never throws, so a transfer that failed half-way still reports its original error. */
+	/** Never throws, and counts every workflow as moved if the owners cannot be read. */
 	private async _ownedByProject(
 		workflows: PublishedWorkflow[],
 		projectId: string,
 	): Promise<PublishedWorkflow[]> {
-		let owned: PublishedWorkflow[] = [];
+		let owned = workflows;
 		try {
 			const owners = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
 				workflows.map((workflow) => workflow.id),
