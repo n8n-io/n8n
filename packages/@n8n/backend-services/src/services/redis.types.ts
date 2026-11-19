@@ -4,7 +4,7 @@ export type RedisClientType = N8nRedisClientType | BullRedisClientType;
  * Redis client used by n8n.
  *
  * - `subscriber(n8n)` to listen for messages from scaling mode pubsub channels
- * - `publisher(n8n)` to send messages into scaling mode pubsub channels
+ * - `publisher(n8n)` to send messages into pubsub channels and the engine v2 work queues
  * - `cache(n8n)` for caching operations (variables, resource ownership, etc.)
  * - `work-queue-consumer(n8n)` to read from the engine v2 work queues
  */
