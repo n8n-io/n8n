@@ -248,17 +248,15 @@ function listsOf(out: Awaited<ReturnType<typeof runReference>>): unknown[][] {
 		});
 }
 
-/** The output lists of v1's items, as `runOracle` gives them. */
-function listsOfV1(nodes: Record<string, unknown[][]>): unknown[][] {
-	return nodes.H ?? [];
-}
-
 /** The message of the first error item that v1 gave, for the runtime failure of the case. */
 function refusedMessage(nodes: Record<string, unknown[][]>): string {
 	for (const list of nodes.H ?? []) {
 		for (const item of list) {
-			const message = (item as { error?: { message?: unknown } } | null | undefined)?.error
-				?.message;
+			const error = (item as { error?: unknown } | null | undefined)?.error;
+			if (typeof error !== 'object' || error === null) continue;
+			const cause = (error as { cause?: { message?: unknown } }).cause;
+			if (typeof cause?.message === 'string') return cause.message;
+			const message = (error as { message?: unknown }).message;
 			if (typeof message === 'string') return message;
 		}
 	}
@@ -375,10 +373,14 @@ describe('HTTP Request error item of two items and v1', () => {
 /**
  * A credentials helper for the v1 engine of the run: it gives the credential data, and its
  * `authenticate` changes nothing, because the requests of these cases carry no secret.
+ * `parents` names the parent types of each credential type, as n8n's `CredentialTypes` gives them.
  */
-function credentialHelper(data: Record<string, unknown>) {
+function credentialHelper(
+	data: Record<string, unknown>,
+	parents: Record<string, string[]> = {},
+) {
 	return {
-		getParentTypes: () => [],
+		getParentTypes: (name: string) => parents[name] ?? [],
 		isCredentialUsableByNode: () => true,
 		authenticate: async (_credentials: unknown, _type: string, options: unknown) => options,
 		getDecrypted: async () => structuredClone(data),
@@ -388,6 +390,61 @@ function credentialHelper(data: Record<string, unknown>) {
 		runPreAuthentication: async () => undefined,
 		getCredentialsProperties: () => [],
 	};
+}
+
+/** The credential data that lets `requestOAuth2` sign the request and send it. */
+const OAUTH2_DATA = {
+	grantType: 'authorizationCode',
+	oauthTokenData: { access_token: 'fake-token', token_type: 'Bearer' },
+};
+
+/** Runs one credential case: v1 against the local server, and the converted workflow. */
+async function credentialCase(c: {
+	version: number;
+	onError: OnError;
+	parameters: Record<string, unknown>;
+	credentials: Record<string, { id: string; name: string }>;
+	credentialData: Record<string, unknown>;
+	parents?: Record<string, string[]>;
+	path: string;
+	error?: string;
+}): Promise<void> {
+	log = [];
+	const wf = workflowWith(
+		c.version,
+		c.onError,
+		{ ...c.parameters, url: kindUrl(c.path) },
+		c.credentials,
+	);
+	const v1 = await runOracle(wf, {
+		start: 'T',
+		item: {},
+		mode: 'trigger',
+		timeoutMs: 20_000,
+		additionalData: { credentialsHelper: credentialHelper(c.credentialData, c.parents) },
+	});
+	// A request that v1 stopped still gets its answer from the server a moment later.
+	if (c.error?.startsWith('http: the request timed out')) {
+		await new Promise((resolve) => setTimeout(resolve, 2300));
+	}
+	const converted = convertWorkflow(wf, { trace: 'all' });
+	expect(converted.ok).toBe(true);
+	expect(converted.fallbackNodes ?? []).toEqual([]);
+	const failure = c.path === '/refused' ? refusedMessage(v1.nodes) : c.error;
+	const out = await runReference(converted.source, {
+		trigger: { body: {} },
+		now: 0,
+		seed: 1,
+		effects: {
+			H:
+				failure !== undefined
+					? [{ $error: failure }]
+					: log.map((s) => ({ status: s.status, headers: s.headers, body: s.body })),
+		},
+		trace: true,
+	});
+	expect(out.status).toBe('ok');
+	expect(comparable(listsOf(out))).toEqual(comparable(v1.nodes.H ?? []));
 }
 
 const GENERIC_CREDENTIALS: Array<{
@@ -412,7 +469,59 @@ const GENERIC_CREDENTIALS: Array<{
 	},
 ];
 
-/** The cases of a credential: a generic credential (native) and a predefined one (refused). */
+/** The failure kinds of the predefined-credential cases (shape A). */
+const CREDENTIAL_KINDS = [
+	{ name: '400 with a JSON body', path: '/s400' },
+	{ name: '404 with a text body', path: '/s404text' },
+	{ name: '500 with an empty body', path: '/s500empty' },
+	{ name: '401', path: '/s401' },
+	{
+		name: 'invalid JSON with the JSON format',
+		path: '/invalid',
+		options: { response: { response: { responseFormat: 'json' } } },
+	},
+	{ name: 'refused connection', path: '/refused' },
+	{
+		name: 'timeout',
+		path: '/slow',
+		options: { timeout: 300 },
+		error: 'http: the request timed out after 300 ms',
+	},
+];
+
+/** The url of a kind, with the closed port for the refused-connection case. */
+function kindUrl(path: string): string {
+	return path === '/refused' ? `http://127.0.0.1:${closedPort}/x` : `${base}${path}`;
+}
+
+function predefinedCases(
+	nodeCredentialType: string,
+	credentialData: Record<string, unknown>,
+	kinds: typeof CREDENTIAL_KINDS,
+	parents?: Record<string, string[]>,
+) {
+	return [4.2, 4.3, 4.4].flatMap((version) =>
+		['continueRegularOutput', 'continueErrorOutput'].flatMap((onError) =>
+			kinds.map((kind) => ({
+				label: `${nodeCredentialType}, ${kind.name}, version ${version}, ${onError}`,
+				version,
+				onError: onError as OnError,
+				parameters: {
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType,
+					options: kind.options ?? {},
+				},
+				credentials: { [nodeCredentialType]: { id: 'case', name: 'case' } },
+				credentialData,
+				parents,
+				path: kind.path,
+				error: kind.error,
+			})),
+		),
+	);
+}
+
+/** The cases of a credential: a generic credential (native) and a predefined one (native). */
 describe('HTTP Request error item of a request with a credential and v1', () => {
 	it.each(
 		GENERIC_CREDENTIALS.flatMap((credential) =>
@@ -425,87 +534,62 @@ describe('HTTP Request error item of a request with a credential and v1', () => 
 				})),
 			),
 		),
-	)(
-		'$label',
-		async (c) => {
-			log = [];
-			const parameters = {
-				url: `${base}/s400`,
+	)('$label', async (c) => {
+		await credentialCase({
+			version: c.version,
+			onError: c.onError,
+			parameters: {
 				authentication: 'genericCredentialType',
 				genericAuthType: c.genericAuthType,
 				options: {},
-			};
-			const wf = workflowWith(c.version, c.onError, parameters, {
-				[c.genericAuthType]: { id: 'case', name: 'case' },
-			});
-			const v1 = await runOracle(wf, {
-				start: 'T',
-				item: {},
-				mode: 'trigger',
-				timeoutMs: 20_000,
-				additionalData: { credentialsHelper: credentialHelper(c.data) },
-			});
-			const converted = convertWorkflow(wf, { trace: 'all' });
-			expect(converted.ok).toBe(true);
-			expect(converted.fallbackNodes ?? []).toEqual([]);
-			const out = await runReference(converted.source, {
-				trigger: { body: {} },
-				now: 0,
-				seed: 1,
-				effects: { H: log.map((s) => ({ status: s.status, headers: s.headers, body: s.body })) },
-				trace: true,
-			});
-			expect(out.status).toBe('ok');
-			expect(comparable(listsOf(out))).toEqual(comparable(v1.nodes.H ?? []));
-		},
-		40_000,
-	);
+			},
+			credentials: { [c.genericAuthType]: { id: 'case', name: 'case' } },
+			credentialData: c.data,
+			path: '/s400',
+		});
+	}, 40_000);
 
 	it.each(
 		[4.2, 4.3, 4.4].flatMap((version) =>
 			['continueRegularOutput', 'continueErrorOutput'].map((onError) => ({
 				version,
 				onError: onError as OnError,
-				label: `predefined credential, version ${version}, ${onError}`,
+				label: `generic oAuth2Api, version ${version}, ${onError}`,
 			})),
 		),
-	)(
-		'$label runs in the fallback host: v1 wraps the failure in a NodeApiError',
-		async (c) => {
-			log = [];
-			const parameters = {
-				url: `${base}/s400`,
-				authentication: 'predefinedCredentialType',
-				nodeCredentialType: 'openAiApi',
+	)('$label', async (c) => {
+		await credentialCase({
+			version: c.version,
+			onError: c.onError,
+			parameters: {
+				authentication: 'genericCredentialType',
+				genericAuthType: 'oAuth2Api',
 				options: {},
-			};
-			const wf = workflowWith(c.version, c.onError, parameters, {
-				openAiApi: { id: 'case', name: 'case' },
-			});
-			const v1 = await runOracle(wf, {
-				start: 'T',
-				item: {},
-				mode: 'trigger',
-				timeoutMs: 20_000,
-				additionalData: { credentialsHelper: credentialHelper({ apiKey: 'x' }) },
-			});
-			const saved = comparable(listsOfV1(v1.nodes)) as Array<
-				Array<{ error?: Record<string, unknown> }>
-			>;
-			const item = (saved.flat()[0] ?? {}) as { error?: Record<string, unknown> };
-			expect(item.error?.name).toBe('NodeApiError');
-			expect(Object.keys(item.error ?? {}).sort()).toEqual([
-				'cause',
-				'context',
-				'description',
-				'message',
-				'name',
-				'timestamp',
-			]);
-			expect(saved.flat().length).toBe(1);
-			const converted = convertWorkflow(wf, { trace: 'all' });
-			expect(converted.fallbackNodes ?? []).toContain('H');
+			},
+			credentials: { oAuth2Api: { id: 'case', name: 'case' } },
+			credentialData: OAUTH2_DATA,
+			path: '/s400',
+		});
+	}, 40_000);
+
+	it.each(predefinedCases('openAiApi', { apiKey: 'x' }, CREDENTIAL_KINDS))(
+		'$label',
+		async (c) => {
+			await credentialCase(c);
 		},
 		40_000,
 	);
+
+	it.each(
+		predefinedCases(
+			'googleSheetsOAuth2Api',
+			OAUTH2_DATA,
+			CREDENTIAL_KINDS.filter((kind) =>
+				['400 with a JSON body', 'refused connection', 'timeout'].includes(kind.name),
+			),
+			{ googleSheetsOAuth2Api: ['oAuth2Api'] },
+		),
+	)('$label', async (c) => {
+		await credentialCase(c);
+	}, 40_000);
 });
