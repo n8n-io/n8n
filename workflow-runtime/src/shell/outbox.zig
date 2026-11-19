@@ -55,7 +55,8 @@ comptime {
 
 /// The sync policy of a record: the durability tier of its workflow.
 pub const Sync = enum {
-    /// `sync`: the record is on disk before its event counts as written.
+    /// `sync`: the record is on disk when the batch that wrote it ends
+    /// (`syncNow`): one sync for all records of the batch.
     now,
     /// `batched`: the record is on disk with the next batch flush.
     batch,
@@ -125,6 +126,8 @@ pub const Outbox = struct {
     stored: u64 = 0,
     /// A `batched` record is not synced yet.
     dirty: bool = false,
+    /// A record of the `sync` tier waits for the sync at the end of its batch.
+    need_sync: bool = false,
     chunk: []u8,
     rd: Reader,
 
@@ -159,6 +162,8 @@ pub const Outbox = struct {
     }
 
     pub fn deinit(ob: *Outbox) void {
+        // A record of the `sync` tier that still waits goes with the last flush.
+        if (ob.need_sync) ob.dirty = true;
         ob.flushSync();
         if (ob.fd >= 0) {
             _ = std.c.close(ob.fd);
@@ -213,11 +218,25 @@ pub const Outbox = struct {
     /// Fsync the records of the `batched` tier.
     pub fn flushSync(ob: *Outbox) void {
         if (!ob.dirty or ob.fd < 0) return;
-        if (std.c.fsync(ob.fd) != 0) {
-            sys.note("shard {d}: the outbox sync failed\n", .{ob.shard});
-            return;
-        }
+        if (!ob.syncSegment()) sys.note("shard {d}: the outbox sync failed\n", .{ob.shard});
+    }
+
+    /// Fsync the receiving segment: no record waits after it. False when the
+    /// sync failed.
+    fn syncSegment(ob: *Outbox) bool {
+        std.debug.assert(ob.fd >= 0);
+        if (std.c.fsync(ob.fd) != 0) return false;
         ob.dirty = false;
+        ob.need_sync = false;
+        return true;
+    }
+
+    /// Fsync the records of the `sync` tier that the batch wrote. One sync
+    /// covers all of them, so the cost of the tier does not grow with the
+    /// number of records in a batch.
+    pub fn syncNow(ob: *Outbox) !void {
+        if (!ob.need_sync) return;
+        if (!ob.syncSegment()) return error.OutboxSync;
     }
 
     /// Store the acked seq durably, then delete the segments that it covers.
@@ -327,6 +346,8 @@ pub const Outbox = struct {
     fn startSegment(ob: *Outbox, seq: u64) !void {
         std.debug.assert(seq == ob.next_seq);
         if (ob.fd >= 0) {
+            // The records that wait for a sync are in the segment that closes.
+            if ((ob.need_sync or ob.dirty) and !ob.syncSegment()) return error.OutboxSync;
             _ = std.c.close(ob.fd);
             ob.fd = -1;
         }
@@ -562,10 +583,7 @@ pub const Record = struct {
         ob.segs[ob.nsegs - 1].bytes = ob.cur_bytes;
         ob.next_seq = r.seq + 1;
         switch (sync) {
-            .now => {
-                if (std.c.fsync(ob.fd) != 0) return error.OutboxSync;
-                ob.dirty = false;
-            },
+            .now => ob.need_sync = true,
             .batch => ob.dirty = true,
             .none => {},
         }
@@ -902,6 +920,37 @@ test "outbox: write, read back, and read from an after seq" {
     var big_out: std.ArrayList(u8) = .empty;
     try readAll(&ob, 3, &big_out, a);
     try t.expectEqualStrings(big, big_out.items);
+}
+
+test "outbox: the records of the sync tier of a batch get one sync" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var td = try TestDir.make(a);
+    defer td.deinit();
+    var ob = try Outbox.init(a, .{ .dir = td.path, .shard = 0, .max_bytes = 1 << 20, .segment_bytes = 64 });
+    defer ob.deinit();
+    const t = std.testing;
+    try t.expect(!ob.need_sync);
+    _ = try appendLine(&ob, "one\n", .batch);
+    try t.expect(!ob.need_sync);
+    _ = try appendLine(&ob, "two\n", .now);
+    _ = try appendLine(&ob, "three\n", .now);
+    try t.expect(ob.need_sync);
+    try ob.syncNow();
+    try t.expect(!ob.need_sync and !ob.dirty);
+    // No record waits: the call does nothing.
+    try ob.syncNow();
+    // A segment that closes takes its waiting records with it.
+    var k: u32 = 0;
+    const segs = ob.nsegs;
+    while (ob.nsegs == segs and k < 64) : (k += 1) _ = try appendLine(&ob, "more\n", .now);
+    try t.expect(ob.nsegs > segs);
+    try ob.syncNow();
+    try t.expect(!ob.need_sync);
+    var all: std.ArrayList(u8) = .empty;
+    try readAll(&ob, 0, &all, a);
+    try t.expect(std.mem.startsWith(u8, all.items, "one\ntwo\nthree\nmore\n"));
 }
 
 test "outbox: a torn last record is cut on start" {

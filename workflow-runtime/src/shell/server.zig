@@ -1388,7 +1388,10 @@ pub const Runner = struct {
                 r.last_sync_ms = now;
             }
             // The outbox of the `batched` tier follows the same beat.
-            if (r.ob) |*ob| ob.flushSync();
+            if (r.ob) |*ob| {
+                try ob.syncNow();
+                ob.flushSync();
+            }
         }
     }
 
@@ -2061,6 +2064,8 @@ pub const Runner = struct {
         r.in_perform = true;
         defer r.in_perform = false;
         for (actions) |a| try r.performOne(a);
+        // The records of the `sync` tier of these actions: one sync for all.
+        if (r.ob) |*ob| try ob.syncNow();
     }
 
     fn performOne(r: *Runner, a: core.Action) !void {

@@ -21,7 +21,7 @@ nesting 26
 fn-assert 143
 discard 121
 core-std 89
-shell-syscall 66
+shell-syscall 65
 core-print 62
 map-order 3
 safety-off 17
