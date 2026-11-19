@@ -1080,7 +1080,7 @@ so the agent can pass a node it is building verbatim:
 | `config.parameters` | object | yes | Same shape as workflow-sdk `NodeConfig.parameters` |
 | `config.credentials` | object | no | Resolved credential references `{ id, name }` by credential type; n8n Connect managed credentials use `{ id: null, name, __aiGatewayManaged: true }` |
 | `input` | array | no | Input items `{ json }` (defaults to one empty item) |
-| `timeoutMs` | number | no | Max execution time, capped at 60s |
+| `timeoutMs` | number | no | Max execution time (default 30s, max 10 min) |
 
 **Returns**: `{ status: 'success', output }` or
 `{ status: 'error', error: { message, description?, nodeErrorType? } }`. The
