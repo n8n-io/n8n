@@ -19,6 +19,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import type { Rule, RuleGroup } from '@/Interface';
 import type { AgentSkill, AgentSkillReference } from '../types';
+import AgentSkillMermaidDiagram from './AgentSkillMermaidDiagram.vue';
 
 const SKILL_FILE = 'SKILL.md';
 const READ_ONLY_MARKDOWN_OPTIONS = {
@@ -283,48 +284,47 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 <template>
 	<div :class="$style.panel" data-testid="agent-skill-viewer">
 		<template v-if="props.readOnly">
-			<template v-if="isSkillFileSelected">
-				<N8nInputLabel
-					:class="$style.readOnlyField"
-					:label="i18n.baseText('agents.builder.skills.description.label')"
-					size="medium"
-					color="text-light"
-				>
-					<N8nText
-						tag="p"
-						color="text-base"
-						:class="$style.readOnlyText"
-						data-testid="agent-skill-description-text"
-						>{{ props.skill.description }}</N8nText
-					>
-				</N8nInputLabel>
-				<N8nInputLabel
-					:class="$style.readOnlyField"
-					:label="i18n.baseText('agents.builder.skills.instructions.label')"
-					size="medium"
-					color="text-light"
-				>
-					<N8nMarkdown
-						:class="$style.readOnlyMarkdown"
-						:options="READ_ONLY_MARKDOWN_OPTIONS"
-						:content="props.skill.instructions"
-						data-testid="agent-skill-instructions-text"
-					/>
-				</N8nInputLabel>
-			</template>
 			<N8nInputLabel
-				v-else-if="selectedReference"
+				v-if="isSkillFileSelected"
 				:class="$style.readOnlyField"
-				:label="selectedReference.path"
+				:label="i18n.baseText('agents.builder.skills.description.label')"
+				size="medium"
+				color="text-light"
+			>
+				<N8nText
+					tag="p"
+					color="text-base"
+					:class="$style.readOnlyText"
+					data-testid="agent-skill-description-text"
+					>{{ props.skill.description }}</N8nText
+				>
+			</N8nInputLabel>
+			<N8nInputLabel
+				v-if="isSkillFileSelected || selectedReference"
+				:class="$style.readOnlyField"
+				:label="
+					isSkillFileSelected
+						? i18n.baseText('agents.builder.skills.instructions.label')
+						: selectedReference?.path
+				"
 				size="medium"
 				color="text-light"
 			>
 				<N8nMarkdown
 					:class="$style.readOnlyMarkdown"
 					:options="READ_ONLY_MARKDOWN_OPTIONS"
-					:content="selectedReference.content"
-					data-testid="agent-skill-reference-text"
-				/>
+					:content="isSkillFileSelected ? props.skill.instructions : selectedReference?.content"
+					:data-testid="
+						isSkillFileSelected ? 'agent-skill-instructions-text' : 'agent-skill-reference-text'
+					"
+				>
+					<template #code-block="{ code, language }">
+						<AgentSkillMermaidDiagram v-if="language.toLowerCase() === 'mermaid'" :code="code">
+							<pre :class="$style.codeBlock"><code>{{ code }}</code></pre>
+						</AgentSkillMermaidDiagram>
+						<pre v-else :class="$style.codeBlock"><code>{{ code }}</code></pre>
+					</template>
+				</N8nMarkdown>
 			</N8nInputLabel>
 		</template>
 
@@ -498,6 +498,21 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 		display: inline;
 		line-height: inherit;
 	}
+}
+
+.codeBlock {
+	margin: 0;
+	padding: calc(var(--n8n-markdown--spacing) * 2);
+	overflow-x: auto;
+	white-space: pre-wrap;
+	font-family: var(--font-family--monospace);
+	font-size: calc(var(--n8n-markdown--font-size--base) * 0.875);
+	line-height: var(--line-height--xl);
+	color: var(--color--text--shade-1);
+	background: var(--background--subtle);
+	border: var(--border);
+	border-radius: var(--n8n-markdown--radius);
+	tab-size: 4;
 }
 
 .field {
