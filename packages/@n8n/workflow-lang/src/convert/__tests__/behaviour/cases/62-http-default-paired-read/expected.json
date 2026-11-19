@@ -16,9 +16,7 @@
 					"headers": {},
 					"params": {},
 					"query": {},
-					"body": {
-						"items": 3
-					}
+					"body": {}
 				}
 			]
 		],
@@ -44,6 +42,9 @@
 					"got": "r1"
 				},
 				{
+					"got": "r1b"
+				},
+				{
 					"got": "r2"
 				}
 			]
@@ -56,6 +57,10 @@
 				},
 				{
 					"got": "r1",
+					"src": "a1"
+				},
+				{
+					"got": "r1b",
 					"src": "a1"
 				},
 				{
@@ -72,22 +77,10 @@
 				},
 				{
 					"got": "r1",
-					"src": "a0"
+					"src": "a1"
 				},
 				{
-					"got": "r2",
-					"src": "a0"
-				}
-			]
-		],
-		"Read Expr": [
-			[
-				{
-					"got": "r0",
-					"src": "a0"
-				},
-				{
-					"got": "r1",
+					"got": "r1b",
 					"src": "a1"
 				},
 				{
@@ -95,19 +88,35 @@
 					"src": "a2"
 				}
 			]
+		],
+		"Read Expr": [
+			[
+				{
+					"src": "a0"
+				},
+				{
+					"src": "a1"
+				},
+				{
+					"src": "a1"
+				},
+				{
+					"src": "a2"
+				}
+			]
 		]
 	},
 	"requests": [
 		{
-			"path": "/thing/%7B%7B%20$json.id%20%7D%7D",
+			"path": "/thing/a0",
 			"method": "GET"
 		},
 		{
-			"path": "/thing/%7B%7B%20$json.id%20%7D%7D",
+			"path": "/thing/a1",
 			"method": "GET"
 		},
 		{
-			"path": "/thing/%7B%7B%20$json.id%20%7D%7D",
+			"path": "/thing/a2",
 			"method": "GET"
 		}
 	],

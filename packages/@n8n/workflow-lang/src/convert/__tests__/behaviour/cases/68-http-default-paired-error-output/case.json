@@ -1,0 +1,44 @@
+{
+	"description": "As case 62 with 'continue (using error output)': the second request fails and its item goes to the error output; the readers are on output 0",
+	"trigger": {
+		"body": {}
+	},
+	"http": {
+		"Http": {
+			"path": "thing",
+			"responses": [
+				{
+					"url": "/thing/a0",
+					"status": 200,
+					"body": [
+						{
+							"got": "r0"
+						},
+						{
+							"got": "r0b"
+						}
+					]
+				},
+				{
+					"url": "/thing/a1",
+					"status": 500,
+					"body": {
+						"error": "boom"
+					}
+				},
+				{
+					"url": "/thing/a2",
+					"status": 200,
+					"body": {
+						"got": "r2"
+					}
+				}
+			]
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	]
+}

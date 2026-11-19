@@ -21,7 +21,7 @@ import type { EffectRecord, Fixture } from '../../reference/runner.ts';
 import { runReference } from '../../reference/runner.ts';
 import { convertWorkflow } from '../index.ts';
 import type { BehaviourCase } from './behaviour/case.ts';
-import { ORACLE_PORT } from './behaviour/case.ts';
+import { answerOf, answerParts, convertOptionsOf, ORACLE_PORT } from './behaviour/case.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const casesDir = join(here, 'behaviour', 'cases');
@@ -108,9 +108,24 @@ let userFolder: string | undefined;
  */
 let codeHttpServer: Server | undefined;
 
+/**
+ * The case that runs now, and the number of requests that each of its nodes sent to the
+ * server. A node that runs in the fallback host sends its requests to the server, and gets
+ * the answers of the case there, as from the oracle's server.
+ */
+let served: { spec: BehaviourCase; counters: Map<string, number> } | undefined;
+
 beforeAll(async () => {
-	codeHttpServer = createServer((_request, response) => {
-		response.writeHead(404).end();
+	codeHttpServer = createServer((request, response) => {
+		const url = new URL(request.url ?? '/', 'http://localhost');
+		const found = served ? answerOf(served.spec, url.pathname, served.counters) : undefined;
+		if (!found) {
+			response.writeHead(404).end();
+			return;
+		}
+		const parts = answerParts(found.answer);
+		response.writeHead(parts.status, parts.headers);
+		response.end(parts.body);
 	});
 	await new Promise<void>((resolve, reject) => {
 		codeHttpServer?.once('error', reject);
@@ -139,6 +154,9 @@ async function loadNodeRunner(): Promise<RunNodeStep> {
 	return nodeRunner;
 }
 
+/** The error of the runtime for a response that is over the largest size of a stored file. */
+const RUNTIME_LIMIT = 'the response body from the server is larger than the largest stored file';
+
 const read = <T>(file: string): T => JSON.parse(readFileSync(file, 'utf8')) as T;
 
 /** Runs the converted source; code steps get their result from the fallback host's code runner. */
@@ -151,7 +169,9 @@ async function run(source: string, spec: BehaviourCase, schedule: boolean) {
 		effects[step] = http.responses.map((r) =>
 			r.error !== undefined
 				? { $error: r.error }
-				: {
+				: r.runtimeLimit === true
+					? { $error: RUNTIME_LIMIT }
+					: {
 						status: r.status ?? 200,
 						// The oracle's server answers JSON; the library node reads the content type.
 						headers:
@@ -254,7 +274,8 @@ describe('converted workflows behave as in n8n', () => {
 			);
 			const spec = read<BehaviourCase>(join(dir, 'case.json'));
 			const expected = read<Expected>(join(dir, 'expected.json'));
-			const converted = convertWorkflow(workflow);
+			served = { spec, counters: new Map() };
+			const converted = convertWorkflow(workflow, convertOptionsOf(spec));
 			const errors = converted.diagnostics.filter((d) => d.severity === 'error');
 			// Cases where the converter refuses (no compiled form for the path).
 			if (spec.expectRefusal === true) {
@@ -273,6 +294,14 @@ describe('converted workflows behave as in n8n', () => {
 			const schedule = workflow.nodes.some((n) => n.type === 'n8n-nodes-base.scheduleTrigger');
 			const out = await run(converted.source, spec, schedule);
 			expect(out.status, JSON.stringify(out.result)).toBe('ok');
+
+			// A node with an answer that the runtime cannot store hands that item over to the host.
+			for (const [step, http] of Object.entries(spec.http ?? {})) {
+				const handed = out.effects.filter((e) => e.step === `${step} (fallback host)`);
+				expect(handed.length, `host runs of ${step}`).toBe(
+					http.responses.filter((r) => r.runtimeLimit === true).length,
+				);
+			}
 
 			// Each node that the converted run returns (the leaves) has the items that n8n gave.
 			const result = out.result as Record<string, unknown[]>;

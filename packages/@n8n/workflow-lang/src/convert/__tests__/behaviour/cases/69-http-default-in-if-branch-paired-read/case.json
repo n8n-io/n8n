@@ -1,0 +1,46 @@
+{
+	"description": "The HTTP Request (default response format) is in the true branch of an If node: the readers follow the paired items through the HTTP Request and the If node to Source. One response gives two items, and one is a file that the runtime cannot store",
+	"trigger": {
+		"body": {}
+	},
+	"http": {
+		"Http": {
+			"path": "thing",
+			"responses": [
+				{
+					"url": "/thing/a0",
+					"status": 200,
+					"body": {
+						"got": "r0"
+					}
+				},
+				{
+					"url": "/thing/a2",
+					"status": 200,
+					"body": [
+						{
+							"got": "r2"
+						},
+						{
+							"got": "r2b"
+						}
+					]
+				},
+				{
+					"url": "/thing/a3",
+					"status": 200,
+					"body": "not-a-real-image",
+					"headers": {
+						"content-type": "image/png"
+					},
+					"runtimeLimit": true
+				}
+			]
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	]
+}

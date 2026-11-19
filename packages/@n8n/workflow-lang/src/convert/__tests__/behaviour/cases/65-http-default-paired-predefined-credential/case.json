@@ -1,0 +1,49 @@
+{
+	"description": "As case 62 with a predefined credential type (a token in a header)",
+	"trigger": {
+		"body": {}
+	},
+	"http": {
+		"Http": {
+			"path": "thing",
+			"responses": [
+				{
+					"url": "/thing/a0",
+					"status": 200,
+					"body": {
+						"got": "r0"
+					}
+				},
+				{
+					"url": "/thing/a1",
+					"status": 200,
+					"body": [
+						{
+							"got": "r1"
+						},
+						{
+							"got": "r1b"
+						}
+					]
+				},
+				{
+					"url": "/thing/a2",
+					"status": 200,
+					"body": {
+						"got": "r2"
+					}
+				}
+			]
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"credentials": {
+		"airtableTokenApi": {
+			"accessToken": "made-up"
+		}
+	}
+}

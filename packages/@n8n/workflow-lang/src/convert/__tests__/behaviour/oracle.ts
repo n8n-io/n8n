@@ -13,6 +13,7 @@
  */
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
+import { createRequire } from 'node:module';
 import type { AddressInfo } from 'node:net';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,13 +21,71 @@ import { fileURLToPath } from 'node:url';
 import type { BehaviourCase } from './case.ts';
 import type { OracleWorkflow, ServiceCall } from './oracle-engine.ts';
 import { runOracle } from './oracle-engine.ts';
-import { ORACLE_PORT } from './case.ts';
+import { answerOf, answerParts, ORACLE_PORT } from './case.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
 interface Captured {
 	requests: Array<{ path: string; method: string; body: unknown }>;
 	responses: unknown[];
+}
+
+type Loose = Record<string, unknown>;
+
+/** The class of a credential type of n8n-nodes-base. */
+function credentialType(name: string): Loose {
+	const req = createRequire(join(here, '../../../../../workflow-fallback-host/package.json'));
+	const root = dirname(req.resolve('n8n-nodes-base/package.json'));
+	const known: Record<string, { className: string; sourcePath: string } | undefined> = req(
+		join(root, 'dist/known/credentials.json'),
+	);
+	const entry = known[name];
+	if (!entry) throw new Error(`unknown credential type ${name}`);
+	const mod: Record<string, new () => Loose> = req(join(root, entry.sourcePath));
+	return new mod[entry.className]();
+}
+
+/**
+ * The credentials helper of n8n's CLI, reduced to what a case needs: the data of the case,
+ * and `authenticate` of a credential type (a function, or the generic form with
+ * `{{$credentials.x}}` expressions), as `CredentialsHelper.authenticate` applies it.
+ */
+function credentialsHelper(data: Record<string, Record<string, unknown>>) {
+	const resolve = (value: unknown, credentials: Loose): string =>
+		String(value)
+			.replace(/^=/, '')
+			.replace(/\{\{\s*\$credentials\.(\w+)\s*\}\}/g, (_all, key: string) =>
+				String(credentials[key] ?? ''),
+			);
+	return {
+		getParentTypes: (name: string): string[] => {
+			const parents = credentialType(name).extends;
+			return Array.isArray(parents) ? parents.map(String) : [];
+		},
+		isCredentialUsableByNode: () => true,
+		async authenticate(credentials: Loose, typeName: string, requestOptions: Loose) {
+			const type = credentialType(typeName);
+			const auth = type.authenticate;
+			if (typeof auth === 'function') return await auth.call(type, credentials, requestOptions);
+			if (typeof auth !== 'object' || auth === null) return requestOptions;
+			const properties: Record<string, Loose> = Reflect.get(auth, 'properties');
+			for (const [outer, values] of Object.entries(properties)) {
+				const target: Loose = { ...(requestOptions[outer] as Loose | undefined) };
+				for (const [key, value] of Object.entries(values)) {
+					target[resolve(key, credentials)] = resolve(value, credentials);
+				}
+				requestOptions[outer] = target;
+			}
+			return requestOptions;
+		},
+		preAuthentication: async () => undefined,
+		runPreAuthentication: async () => undefined,
+		getDecrypted: async (_additionalData: unknown, _node: unknown, type: string) =>
+			structuredClone(data[type] ?? {}),
+		updateCredentials: async () => {},
+		updateCredentialsOauthTokenData: async () => {},
+		getCredentialsProperties: () => [],
+	};
 }
 
 async function runCase(dir: string, port: number, captured: Captured): Promise<unknown> {
@@ -66,6 +125,9 @@ async function runCase(dir: string, port: number, captured: Captured): Promise<u
 		item,
 		mode,
 		...(spec.services ? { deduplication } : {}),
+		...(spec.credentials
+			? { additionalData: { credentialsHelper: credentialsHelper(spec.credentials) } }
+			: {}),
 	});
 	captured.responses.push(...result.responses);
 	return {
@@ -97,13 +159,12 @@ async function main() {
 			});
 			request.on('end', () => {
 				const url = new URL(request.url ?? '/', 'http://localhost');
-				const segment = url.pathname.split('/')[1] ?? '';
-				const step = Object.entries(spec.http ?? {}).find(([, v]) => v.path === segment);
+				const found = answerOf(spec, url.pathname, counters);
 				let parsed: unknown = body;
 				try {
 					parsed = body === '' ? undefined : JSON.parse(body);
 				} catch {}
-				if (!step) {
+				if (!found) {
 					response.writeHead(404).end();
 					return;
 				}
@@ -112,11 +173,9 @@ async function main() {
 					method: request.method ?? '',
 					body: parsed,
 				});
-				const n = counters.get(step[0]) ?? 0;
-				counters.set(step[0], n + 1);
-				const answer = step[1].responses[n % step[1].responses.length];
-				response.writeHead(answer.status ?? 200, { 'content-type': 'application/json' });
-				response.end(JSON.stringify(answer.body ?? {}));
+				const parts = answerParts(found.answer);
+				response.writeHead(parts.status, parts.headers);
+				response.end(parts.body);
 			});
 		});
 		await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()));

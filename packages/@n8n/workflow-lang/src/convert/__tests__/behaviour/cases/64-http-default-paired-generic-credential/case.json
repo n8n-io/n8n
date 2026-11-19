@@ -1,0 +1,50 @@
+{
+	"description": "As case 62 with version 4.4 and a generic credential type (header)",
+	"trigger": {
+		"body": {}
+	},
+	"credentials": {
+		"httpHeaderAuth": {
+			"name": "X-Test",
+			"value": "made-up"
+		}
+	},
+	"http": {
+		"Http": {
+			"path": "thing",
+			"responses": [
+				{
+					"url": "/thing/a0",
+					"status": 200,
+					"body": {
+						"got": "r0"
+					}
+				},
+				{
+					"url": "/thing/a1",
+					"status": 200,
+					"body": [
+						{
+							"got": "r1"
+						},
+						{
+							"got": "r1b"
+						}
+					]
+				},
+				{
+					"url": "/thing/a2",
+					"status": 200,
+					"body": {
+						"got": "r2"
+					}
+				}
+			]
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	]
+}

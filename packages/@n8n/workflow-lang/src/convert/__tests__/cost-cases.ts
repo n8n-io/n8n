@@ -16,8 +16,10 @@ import { decodeModule } from '../../compiler/decode.ts';
 import { compile } from '../../compiler/index.ts';
 import type { Fixture } from '../../reference/runner.ts';
 import { allocationsOf, emptyCost, runModule } from '../../testing/vm.ts';
+import type { ConvertOptions } from '../index.ts';
 import { convertWorkflow } from '../index.ts';
 import type { BehaviourCase } from './behaviour/case.ts';
+import { convertOptionsOf } from './behaviour/case.ts';
 import { connect, node } from './workflows.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -68,8 +70,8 @@ function costOf(name: string, source: string, fixture: Fixture): [number, number
 	return [cost.ops, allocationsOf(cost)];
 }
 
-function converted(name: string, workflow: unknown): string {
-	const result = convertWorkflow(workflow);
+function converted(name: string, workflow: unknown, options: ConvertOptions = {}): string {
+	const result = convertWorkflow(workflow, options);
 	const errors = result.diagnostics.filter((d) => d.severity === 'error');
 	if (errors.length > 0) throw new Error(`${name} does not convert: ${errors[0].message}`);
 	return result.source;
@@ -126,7 +128,7 @@ export function measureCosts(): CostRecord {
 		);
 		costs[`convert/${name}`] = costOf(
 			name,
-			converted(name, workflow),
+			converted(name, workflow, convertOptionsOf(spec)),
 			behaviourFixture(workflow, spec),
 		);
 	}

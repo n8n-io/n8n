@@ -1548,7 +1548,10 @@ function emailSendInHost(c: NodeContext): boolean {
  * The options of the fallback-host call of a node for one item (`StepCall.hostItem`), with
  * the parameters of the v1 node. Null when the host form has no code here.
  */
-function hostItemOf(c: NodeContext): { code: Code; usesIndex: boolean } | null {
+function hostItemOf(
+	c: NodeContext,
+	extra: Array<[string, Code]> = [],
+): { code: Code; usesIndex: boolean } | null {
 	let parameters: TranslatedValue;
 	try {
 		parameters = hostParameters(c, hostOwnParameters(c), '');
@@ -1566,7 +1569,7 @@ function hostItemOf(c: NodeContext): { code: Code; usesIndex: boolean } | null {
 	];
 	const credential = c.credential();
 	if (credential !== undefined) entries.push(['credential', raw(str(credential))]);
-	entries.push(...settingsField(c), ['host', raw("'fallback'")]);
+	entries.push(...settingsField(c), ['host', raw("'fallback'")], ...extra);
 	// Under a continue setting the v1 node gives the error item of the item itself.
 	const onError =
 		c.node.onError ?? (c.node.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow');
@@ -2312,6 +2315,23 @@ function lowerHttpLibrary(c: NodeContext): void {
 		emitPaging(c, paging, parameters.code, call.fields);
 		return;
 	}
+	if (storesFile || detectsFile) {
+		// A later node reads the item of an earlier node through this node: the hand-over is
+		// for one item, so each output item keeps the index of its input item in both forms.
+		const replay = c.local('Replay');
+		const hostItem = pairedHostItem(c, replay);
+		if (hostItem !== null) {
+			entries.push(replayOf(replay).compiled);
+			emitStep(c, {
+				...call,
+				usesIndex: call.usesIndex || hostItem.usesIndex,
+				hostItem: hostItem.code,
+				itemReplay: replay,
+				pairsByCall: true,
+			});
+			return;
+		}
+	}
 	if (storesFile) {
 		// A file over the largest size of the runtime: the fallback host runs the v1 node, with
 		// the answers of the requests that the library node sent before (`replayOf`).
@@ -2328,20 +2348,12 @@ function lowerHttpLibrary(c: NodeContext): void {
 			);
 		}
 		entries.push(answers.compiled);
-		const pairsOut = startPairs(c);
 		emitWithHostForm(
 			c,
 			false,
-			(to, hostLimit) =>
-				emitStep(to, {
-					...call,
-					hostLimit,
-					pairsByCall: pairsOut !== null,
-					pairsVar: pairsOut ?? undefined,
-				}),
+			(to, hostLimit) => emitStep(to, { ...call, hostLimit }),
 			hostForm,
 			replay,
-			pairsOut ?? undefined,
 		);
 		return;
 	}
@@ -2353,20 +2365,12 @@ function lowerHttpLibrary(c: NodeContext): void {
 		);
 		if (hostForm !== null) {
 			entries.push(answers.compiled);
-			const pairsOut = startPairs(c);
 			emitWithHostForm(
 				c,
 				false,
-				(to, hostLimit) =>
-					emitStep(to, {
-						...call,
-						hostLimit,
-						pairsByCall: pairsOut !== null,
-						pairsVar: pairsOut ?? undefined,
-					}),
+				(to, hostLimit) => emitStep(to, { ...call, hostLimit }),
 				hostForm,
 				replay,
-				pairsOut ?? undefined,
 			);
 			return;
 		}
@@ -2377,17 +2381,16 @@ function lowerHttpLibrary(c: NodeContext): void {
 }
 
 /**
- * Starts paired item tracking for the HTTP Request node when a later expression reads
- * through this node. Returns the name of the pairs variable, or null when not needed.
+ * The fallback-host call of an HTTP Request node for one item, when a later node reads the
+ * item of an earlier node through this node (`NodeContext.pairsWanted`). Null when the
+ * step keeps no paired items ("retry on fail"), or when the host form has no code for one
+ * item: the node then hands all items over, and the later read is not compiled.
  */
-function startPairs(c: NodeContext): string | null {
-	console.error(`startPairs: pairsWanted=${c.pairsWanted} setPairs=${c.setPairs !== undefined}`);
-	if (c.pairsWanted !== true || c.setPairs === undefined) return null;
-	const out = c.output(0);
-	const pairVar = `${out}PairData`;
-	console.error(`startPairs: registering ${pairVar}`);
-	c.setPairs(pairVar);
-	return pairVar;
+function pairedHostItem(c: NodeContext, replay: string): { code: Code; usesIndex: boolean } | null {
+	if (c.pairsWanted !== true || c.setPairs === undefined || c.node.retryOnFail === true) {
+		return null;
+	}
+	return hostItemOf(c, [['replay', raw(`${replay}.list`)]]);
 }
 
 function flatCode(code: Code): string {

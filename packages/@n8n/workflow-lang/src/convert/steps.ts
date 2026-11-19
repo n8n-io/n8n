@@ -76,12 +76,6 @@ export interface StepCall {
 	 */
 	pairsByCall?: boolean;
 	/**
-	 * The name of an existing pair-data variable to fill (declared by the caller at a scope
-	 * that stays alive after a host-form hand-over), in place of declaring `const
-	 * ${out}Pairs`. When set, `emitStep` pushes to this variable but does not register it.
-	 */
-	pairsVar?: string;
-	/**
 	 * The options of a fallback-host call for one item (`[ITEM]`), for a library node that the
 	 * converter calls once for each item and that sends what v1 sends once (a message). When
 	 * the call for an item ends with the mark of `RUNS_IN_HOST`, nothing went out for that
@@ -90,6 +84,12 @@ export interface StepCall {
 	 * node again: the items before the failure go out again.
 	 */
 	hostItem?: Code;
+	/**
+	 * With `hostItem`: the name of the list of answers of the requests of one item
+	 * (`replayOf`). The loop of the items starts an empty list for each item, so the host
+	 * call of an item gets the answers of that item only.
+	 */
+	itemReplay?: string;
 }
 
 /** Fails the node when a raw expression would not give the v1 value in the host. */
@@ -297,13 +297,10 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 		c.pairsWanted === true &&
 		c.setPairs !== undefined &&
 		c.node.retryOnFail !== true
-			? (call.pairsVar ?? `${out}Pairs`)
+			? `${out}Pairs`
 			: null;
 	if (pairs) {
-		// The caller declares the pair variable at an outer scope (e.g. for a host-form hand-over).
-		if (call.pairsVar === undefined) {
-			w.line(`const ${pairs}: Json = { items: ${out}, paired: [] };`);
-		}
+		w.line(`const ${pairs}: Json = { items: ${out}, paired: [] };`);
 		c.setPairs?.(pairs);
 	}
 	const push = (value: string) =>
@@ -328,6 +325,7 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 	} else {
 		w.open(`for (const ${ITEM} of ${input}) {`);
 	}
+	if (call.itemReplay !== undefined) w.line(`const ${call.itemReplay}: Json = ${REPLAY_START};`);
 	const opts = options(c, call, `[${ITEM}]`);
 	if (call.hostItem !== undefined) {
 		// The call for the item, and the host call for the same item after the mark. With a
@@ -1010,7 +1008,6 @@ export function emitWithHostForm(
 	emitForm: (to: NodeContext, hostLimit: boolean) => void,
 	host: HostForm,
 	replay?: string,
-	pairsVar?: string,
 ): void {
 	const { w } = c;
 	const out = c.output(0);
@@ -1018,7 +1015,6 @@ export function emitWithHostForm(
 	const inHost = c.local('RunsInHost');
 	const compiled = renamed(c, c.local('Compiled'), c.local('CompiledErrors'));
 	c.helper('fileLimitInHost');
-	if (pairsVar !== undefined) w.line(`let ${pairsVar}: Json = { items: [], paired: [] };`);
 	if (replay !== undefined) w.line(`const ${replay}: Json = ${REPLAY_START};`);
 	w.line(`let ${out}: Json[] = [];`);
 	if (errors) w.line(`let ${errors}: Json[] = [];`);
@@ -1026,7 +1022,6 @@ export function emitWithHostForm(
 	w.open('try {');
 	emitForm(compiled, true);
 	w.line(`${out} = ${compiled.output(0)};`);
-	if (pairsVar !== undefined) w.line(`${pairsVar}.items = ${out};`);
 	if (errors) w.line(`${errors} = ${compiled.output(1)};`);
 	w.close('} catch (error) {');
 	w.depth++;
@@ -1036,22 +1031,6 @@ export function emitWithHostForm(
 	w.open(`if (${inHost}) {`);
 	w.append(host.text.split('\n'));
 	w.line(`${out} = ${host.out};`);
-	if (pairsVar !== undefined) {
-		w.line(`${pairsVar}.items = ${out};`);
-		w.line(`${pairsVar}.paired = [];`);
-		// Fill the paired list from the host output items, which carry pairedItem from v1.
-		w.open(`for (let __i = 0; __i < ${out}.length; __i++) {`);
-		w.line(`const p = ${out}[__i]?.pairedItem;`);
-		w.line(`if (typeof p === 'number') ${pairsVar}.paired.push(p);`);
-		w.line(
-			`else if (p !== null && p !== undefined && typeof p === 'object' && !Array.isArray(p) && typeof p.item === 'number') ${pairsVar}.paired.push(p.item);`,
-		);
-		w.line(
-			`else if (Array.isArray(p) && p.length > 0 && p[0] !== null && typeof p[0] === 'object' && typeof p[0].item === 'number') ${pairsVar}.paired.push(p[0].item);`,
-		);
-		w.line(`else ${pairsVar}.paired.push(null);`);
-		w.close();
-	}
 	if (errors) w.line(`${errors} = ${host.errors};`);
 	w.close();
 }

@@ -17,7 +17,10 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { compile } from '../../compiler/index.ts';
+import type { ConvertOptions } from '../index.ts';
 import { convertWorkflow } from '../index.ts';
+import type { BehaviourCase } from './behaviour/case.ts';
+import { convertOptionsOf } from './behaviour/case.ts';
 import { extraWorkflows } from './workflows.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -75,7 +78,7 @@ function reachable(edges: Edges, from: string): Set<string> {
 	return seen;
 }
 
-const samples: Array<[string, Wf]> = [
+const samples: Array<[string, Wf, ConvertOptions]> = [
 	...readdirSync(casesDir)
 		.sort()
 		.filter((name) => {
@@ -88,20 +91,27 @@ const samples: Array<[string, Wf]> = [
 				return true;
 			}
 		})
-		.map((name): [string, Wf] => [
+		.map((name): [string, Wf, ConvertOptions] => [
 			name,
 			JSON.parse(readFileSync(join(casesDir, name, 'workflow.json'), 'utf8')) as Wf,
+			convertOptionsOf(
+				JSON.parse(readFileSync(join(casesDir, name, 'case.json'), 'utf8')) as BehaviourCase,
+			),
 		]),
-	...Object.entries(extraWorkflows).map(([name, wf]): [string, Wf] => [name, wf as Wf]),
+	...Object.entries(extraWorkflows).map(([name, wf]): [string, Wf, ConvertOptions] => [
+		name,
+		wf as Wf,
+		{},
+	]),
 ];
 
 /** Cases whose parallel branches start with plain code: see the note at the connection check. */
 const PLAIN_CODE_BRANCHES = new Set(['33-code-binary-output']);
 
 describe('round trip through the canvas projection', () => {
-	for (const [name, wf] of samples) {
+	for (const [name, wf, options] of samples) {
 		it(name, () => {
-			const converted = convertWorkflow(wf);
+			const converted = convertWorkflow(wf, options);
 			expect(converted.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
 			const compiled = compile(converted.source, { fileName: '/workflow.ts' });
 			expect(compiled.ok, JSON.stringify(compiled.diagnostics)).toBe(true);
