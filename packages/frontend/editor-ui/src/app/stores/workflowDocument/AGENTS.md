@@ -2,8 +2,7 @@
 
 ## Core pattern: apply/public method split
 
-Every composable in this folder that owns document state, and tells other code
-when it changes, follows a two-layer pattern:
+New composables that own document state and notify other code of changes should follow this two-layer pattern:
 
 **Public methods** (exposed) — represent user intent. Handle normalization,
 deduplication, and preparation. Call apply methods internally.
