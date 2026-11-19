@@ -6,7 +6,7 @@ import { computed, onMounted, shallowRef } from 'vue';
 
 import { credentialTypeIcon, FALLBACK_TYPE_ICON } from './credentialTypeIcon';
 import InstancePolicyTable, { type InstancePolicyTableRow } from './InstancePolicyTable.vue';
-import { setCredentialTypeAccess } from './setCredentialTypeAccess';
+import { setTypeAccess } from './setTypeAccess';
 import { useInstanceTypeAccess } from './useInstanceTypeAccess';
 import { useAppliedTheme } from '../composables/useAppliedTheme';
 import {
@@ -20,10 +20,7 @@ const NO_USAGE: TypeUsage = { uses: 0, workflows: 0, activeWorkflows: 0, project
 const i18n = useI18n();
 const rootStore = useRootStore();
 const theme = useAppliedTheme();
-const { types, loading, changeAccess } = useInstanceTypeAccess(
-	'credential',
-	setCredentialTypeAccess,
-);
+const { types, loading, changeAccess } = useInstanceTypeAccess('credential', setTypeAccess);
 
 const typeSummaries = shallowRef(new Map<string, CredentialTypeSummary>());
 const usage = shallowRef<CredentialTypeUsageResponse | null>(null);
