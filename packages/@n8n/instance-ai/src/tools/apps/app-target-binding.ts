@@ -50,12 +50,12 @@ export function withAppTarget(
 }
 
 /**
- * The thread metadata that binds an app that a page handed off, like the editor
- * writes before it opens a thread on the current runtime. A pending app gets the
+ * The thread metadata that binds an app subject, like the editor writes before
+ * it opens a thread on the current runtime. A pending app gets the
  * pending marker, so the first build creates the app under its id. Returns
  * `undefined` when the metadata already has the app or another pending app.
  */
-export function withAttachedAppTarget(
+export function withAppSubject(
 	metadata: Record<string, unknown>,
 	{ id: appId, projectId, name, pending }: InstanceAiAppSubject,
 ): Record<string, unknown> | undefined {
