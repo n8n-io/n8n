@@ -3789,6 +3789,7 @@ describe('AgentsBuilderToolsService', () => {
 				name: 'Support agent',
 				versionId: 'v-draft',
 				activeVersionId: 'v-draft',
+				revision: 0,
 				integrations: [],
 				schema: baseConfig,
 			} as unknown as ProjectAgent);
@@ -3810,8 +3811,14 @@ describe('AgentsBuilderToolsService', () => {
 			);
 
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
-			expect(result).toMatchObject({
-				approvalDetails: { action: 'publish-agent', liveAvailability: 'published' },
+			// The draft went live elsewhere, so there is nothing left to confirm.
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				ok: true,
+				agentId,
+				activeVersionId: 'v-draft',
+				versionId: 'v-draft',
+				changed: false,
 			});
 		});
 
@@ -3835,7 +3842,7 @@ describe('AgentsBuilderToolsService', () => {
 
 		it.each([
 			['a history version, with its own config', 'v-history', 'changed', true],
-			['the version that is already live', undefined, 'published', false],
+			['a changed draft', undefined, 'changed', false],
 		] as const)(
 			'asks before going live with %s',
 			async (_name, versionId, liveAvailability, selectedVersion) => {
@@ -3844,7 +3851,7 @@ describe('AgentsBuilderToolsService', () => {
 				agentsService.findById.mockResolvedValue({
 					id: agentId,
 					name: 'Support agent',
-					versionId: 'v-live',
+					versionId: 'v-draft',
 					activeVersionId: 'v-live',
 					revision: 2,
 					integrations: [{ type: 'slack', credentialId: 'cred-1' }],
@@ -3875,6 +3882,33 @@ describe('AgentsBuilderToolsService', () => {
 				});
 			},
 		);
+
+		it('does not ask when the version is already live, because nothing would change', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue({
+				id: agentId,
+				name: 'Support agent',
+				versionId: 'v-live',
+				activeVersionId: 'v-live',
+				revision: 2,
+				integrations: [],
+				schema: baseConfig,
+			} as unknown as ProjectAgent);
+			const suspend = vi.fn(async (payload: unknown) => payload as never);
+
+			const result = await getPublishTool(service).handler!({}, { ...ctx, suspend });
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				ok: true,
+				agentId,
+				activeVersionId: 'v-live',
+				versionId: 'v-live',
+				changed: false,
+			});
+		});
 
 		it('reports an unknown history version before asking', async () => {
 			const { service, agentsService, agentPublishService } = makeService();

@@ -1201,6 +1201,19 @@ export class AgentsBuilderToolsService {
 			return { ok: false, errors: [{ message: e instanceof Error ? e.message : String(e) }] };
 		}
 		if (!card) return { ok: false, errors: [{ message: 'Agent not found.' }] };
+		// The version is already live, so publishing changes nothing and needs no card.
+		if (
+			card.confirmation.approvalDetails.action === 'publish-agent' &&
+			card.confirmation.approvalDetails.liveAvailability === 'published'
+		) {
+			return {
+				ok: true,
+				agentId,
+				activeVersionId: card.continuation.liveVersionId,
+				versionId: card.continuation.confirmedVersionId,
+				changed: false,
+			};
+		}
 		return await ctx.suspend(card.confirmation, { continuation: card.continuation });
 	}
 
