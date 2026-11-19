@@ -15,7 +15,8 @@ export function random(seed: number) {
 	};
 }
 
-export type Upstream = 'postgres' | 'redis';
+/** A container a network fault slows or cuts traffic to: a service, or an n8n container by name. */
+export type Upstream = 'postgres' | 'redis' | 'engine-postgres' | 'main' | 'engine';
 
 /** One fault the chaos driver can apply. Targets are n8n container names: main, worker-1, ... */
 export type Fault =
@@ -42,6 +43,8 @@ export interface MenuOptions {
 	kinds: FaultKind[];
 	/** Hook points declared for the stack that a `hook` fault may arm. */
 	hookPoints?: string[];
+	/** Containers each target may lose its link to; default Postgres and Redis. */
+	upstreams?: Record<string, readonly Upstream[]>;
 	maxFaultMs?: number;
 }
 
@@ -63,7 +66,7 @@ function faultFrom(rng: ReturnType<typeof random>, menu: MenuOptions): Fault {
 				: menu.targets;
 	const target = rng.pick(pool);
 	const forMs = rng.int(1_000, maxMs);
-	const to = rng.pick(['postgres', 'redis'] as const);
+	const to = rng.pick(menu.upstreams?.[target] ?? (['postgres', 'redis'] as const));
 	switch (kind) {
 		case 'kill':
 		case 'stop':
