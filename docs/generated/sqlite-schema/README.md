@@ -112,6 +112,11 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [lease_kind](lease_kind.md) | 7 |  | table |
 | [lease_session](lease_session.md) | 7 |  | table |
 | [mcp_registry_server](mcp_registry_server.md) | 7 |  | table |
+| [mcp_server](mcp_server.md) | 17 |  | table |
+| [mcp_server_api_key](mcp_server_api_key.md) | 8 |  | table |
+| [mcp_server_call](mcp_server_call.md) | 20 |  | table |
+| [mcp_server_resource](mcp_server_resource.md) | 10 |  | table |
+| [mcp_server_tool](mcp_server_tool.md) | 12 |  | table |
 | [migration_finding](migration_finding.md) | 10 |  | table |
 | [migration_finding_sync](migration_finding_sync.md) | 3 |  | table |
 | [migration_workflow_owner](migration_workflow_owner.md) | 7 |  | table |
@@ -358,6 +363,11 @@ erDiagram
 "instance_credential_assignment" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "lease" |o--|| "lease_kind" : "FOREIGN KEY (leaseKind) REFERENCES lease_kind (kind) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "lease_session" }o--|| "lease_kind" : "FOREIGN KEY (leaseKind) REFERENCES lease_kind (kind) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"mcp_server" }o--|| "user" : "FOREIGN KEY (ownerId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"mcp_server_api_key" }o--|| "mcp_server" : "FOREIGN KEY (serverId) REFERENCES mcp_server (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"mcp_server_call" }o--|| "mcp_server" : "FOREIGN KEY (serverId) REFERENCES mcp_server (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"mcp_server_resource" }o--|| "mcp_server" : "FOREIGN KEY (serverId) REFERENCES mcp_server (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"mcp_server_tool" }o--|| "mcp_server" : "FOREIGN KEY (serverId) REFERENCES mcp_server (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "migration_finding" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "migration_workflow_owner" }o--o| "user" : "FOREIGN KEY (assignedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "migration_workflow_owner" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -1575,6 +1585,83 @@ erDiagram
   varchar_50_ status
   datetime_3_ updatedAt
   varchar_50_ version
+}
+"mcp_server" {
+  varchar_16_ accessMode
+  boolean active
+  BOOLEAN captureIntent
+  boolean confirmDestructive
+  boolean confirmWrite
+  datetime_3_ createdAt
+  TEXT description
+  varchar_36_ id PK
+  TEXT instructions
+  BOOLEAN missingCapabilityTool
+  varchar_128_ name
+  varchar ownerId FK
+  INTEGER rateLimitPerMinute
+  TEXT revokedUserIds
+  varchar_16_ shareVisibility
+  varchar_64_ slug
+  datetime_3_ updatedAt
+}
+"mcp_server_api_key" {
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  varchar_128_ keyHash
+  varchar_16_ keyHint
+  varchar_128_ label
+  datetime_3_ lastUsedAt
+  varchar_36_ serverId FK
+  datetime_3_ updatedAt
+}
+"mcp_server_call" {
+  varchar_36_ apiKeyId
+  varchar_320_ caller
+  varchar_16_ callerType
+  varchar callerUserId
+  varchar_128_ clientName
+  datetime_3_ createdAt
+  INTEGER durationMs
+  TEXT error
+  varchar_36_ executionId
+  varchar_36_ id PK
+  TEXT input
+  TEXT intent
+  varchar_16_ kind
+  varchar_256_ name
+  TEXT output
+  varchar_36_ serverId FK
+  VARCHAR_36_ sessionId
+  varchar_16_ status
+  datetime_3_ updatedAt
+  varchar_36_ workflowId
+}
+"mcp_server_resource" {
+  TEXT content
+  datetime_3_ createdAt
+  TEXT description
+  varchar_36_ id PK
+  varchar_16_ kind
+  varchar_128_ mimeType
+  varchar_256_ name
+  varchar_36_ serverId FK
+  varchar_36_ targetId
+  datetime_3_ updatedAt
+}
+"mcp_server_tool" {
+  varchar_16_ behavior
+  datetime_3_ createdAt
+  TEXT description
+  boolean enabled
+  varchar_36_ id PK
+  TEXT inputs
+  varchar_16_ kind
+  varchar_64_ name
+  INTEGER position
+  varchar_36_ serverId FK
+  varchar_36_ targetId
+  datetime_3_ updatedAt
 }
 "migration_finding" {
   datetime_3_ createdAt

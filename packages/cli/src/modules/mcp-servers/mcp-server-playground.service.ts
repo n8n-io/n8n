@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import type { ModelConfig } from '@n8n/agents';
 import type {
 	McpServerPlaygroundMessageDto,
 	McpServerPlaygroundRequestDto,
@@ -108,7 +109,7 @@ export class McpServerPlaygroundService {
 			}
 		}
 
-		let modelConfig: unknown;
+		let modelConfig: ModelConfig;
 		try {
 			const { InstanceAiService } = await import('@/modules/instance-ai/instance-ai.service.js');
 			modelConfig = await Container.get(InstanceAiService).resolveAgentModelConfig(user);
@@ -132,9 +133,7 @@ export class McpServerPlaygroundService {
 			]
 				.filter(Boolean)
 				.join('\n\n'),
-			fallbackModelConfig: modelConfig as Parameters<
-				typeof createEvalAgent
-			>[1]['fallbackModelConfig'],
+			resolvedModel: modelConfig,
 		});
 
 		for (const tool of tools) {
