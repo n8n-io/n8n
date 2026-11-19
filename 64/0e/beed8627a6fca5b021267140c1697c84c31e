@@ -1,0 +1,49 @@
+docs/adr/ADR-20261118-key-node-and-credential-translations-by-their-full-type.md
+  s_9197f781e3cb67::t_5fb8b53de3dc4b 1-83
+node-translations-user-facing-docs.md
+  s_9197f781e3cb67::t_15b78b150bc81d 1-125,138-328
+  s_9197f781e3cb67::t_1bb40e032478fc 126-137
+PLAN-node-translations.md
+  s_9197f781e3cb67::t_1fe00ffc60ffa1 335,337,339
+  s_9197f781e3cb67::t_f25f32a1083552 214-217
+  s_9197f781e3cb67::t_751e293b080b27 205-207
+  s_9197f781e3cb67::t_e5b4ea3912be99 166
+  s_9197f781e3cb67::t_87052efb971bd1 191-192,194-197,199
+  s_9197f781e3cb67::t_562aebf04de009 1-59,62-74,94-120,124-126,162,164-165,167-172,174-190,193,198,200-203,208-210,212-213,218-224,227,243-244,246,248,250,253-262,266,269-295,297-301,309-321,324-325,330-332,334,336,338,340
+  s_9197f781e3cb67::t_ba48efd590794c 75-93
+  s_9197f781e3cb67::t_754d05a0ea6832 263-265
+  s_9197f781e3cb67::t_4b95f26e7cfce6 121-123,127-161
+  s_9197f781e3cb67::t_ab50220631fd72 245,247,249,251-252
+  s_9197f781e3cb67::t_02a95223d178bd 204
+  s_9197f781e3cb67::t_6ada7cd718caa2 211
+  s_9197f781e3cb67::t_87d61b7f4f0b75 267-268
+  s_9197f781e3cb67::t_5c2a5e8e7e8dbd 60-61
+  s_9197f781e3cb67::t_437e0678ed616f 173
+  s_9197f781e3cb67::t_c01cc27985f849 225-226,228-242
+  s_9197f781e3cb67::t_9b70b0e6d2ff74 322-323,326,333
+  s_9197f781e3cb67::t_e1475724663434 327-329
+  s_9197f781e3cb67::t_c16978cda915e9 302-308
+  s_9197f781e3cb67::t_e0be3b47495eb8 163
+  s_9197f781e3cb67::t_b239558d3687f3 296
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "640ebeed8627a6fca5b021267140c1697c84c31e",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_9197f781e3cb67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6a845272-f3a6-4ae3-8649-c420138e39fe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

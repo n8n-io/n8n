@@ -1,0 +1,162 @@
+packages/cli/src/modules/execution-auto-retry/execution-auto-retry.module.ts
+  s_8921b88910068f::t_65b423a8126d4e 1-17
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_8921b88910068f::t_32d4405fbe4011 184
+  s_8921b88910068f::t_8f6b0f3ad508b2 235
+packages/cli/src/modules/execution-auto-retry/__tests__/execution-auto-retry.service.test.ts
+  s_8921b88910068f::t_39611f1280bb10 217,219-220,224-227
+  s_8921b88910068f::t_a1e8cca23605e8 86
+  s_8921b88910068f::t_95db4f00bc0d3d 50
+  s_8921b88910068f::t_b6930f1ccf7962 69
+  s_8921b88910068f::t_623e1de0cca4b8 61-64,66,74
+  s_8921b88910068f::t_b6b8f29207e8bf 118
+  s_8921b88910068f::t_4c1d1c535bf06e 142-144
+  s_8921b88910068f::t_242e929cb9dc4e 188,190,193-195,197,200-201
+  s_8921b88910068f::t_d2464ab6499fda 212-215,221-223,230
+  s_8921b88910068f::t_3e2406e2cff462 89
+  s_8921b88910068f::t_a85c146cc5fcb0 109
+  s_8921b88910068f::t_f5bf86a22baf4b 115
+  s_8921b88910068f::t_846dd3966ff06c 127-133,135-138
+  s_8921b88910068f::t_3281f9b09bfe07 229,231-235
+  s_8921b88910068f::t_b0425214ab6994 13
+  s_8921b88910068f::t_0d8ce8dc4b0c64 33,35-36
+  s_8921b88910068f::t_4c4dc6a28182a1 139-141,145-155,157-160
+  s_8921b88910068f::t_1c273b7fba6fc2 236-241,249,255,257,263
+  s_8921b88910068f::t_afba64f9d30263 119-120,134,156
+  s_8921b88910068f::t_985a104c9c6847 2-12,14-27,29-32,34,37-49,51-58,60,65,67-68,70-73,75-85,87-88,90-108,110-114,116-117,121-126,161-186,202-211,216,218,228,254,256,258-262,264-267
+  s_8921b88910068f::t_7cbbe459a7dc83 242-248,250-253
+  s_8921b88910068f::t_e9925f723376bc 28
+  s_8921b88910068f::t_0b00217a3a42b7 187,189,191-192,196,198-199
+  s_8921b88910068f::t_ae2a832c7fb977 59
+  s_8921b88910068f::t_03218b128fd97b 1
+packages/cli/src/modules/execution-auto-retry/__tests__/execution-auto-retry.integration.test.ts
+  s_8921b88910068f::t_31866d7eb86e39 79,82,86-92,95-96,100,102-103,105-127,129,133,136-149,151-164
+  s_8921b88910068f::t_390dbb1eb1943f 15
+  s_8921b88910068f::t_2f6548c4feb9b4 1-14,16-78,80-81,83-85,93-94,97-99,101,104,128,130-132,134-135,150,165-166
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowSettings/WorkflowSettings.test.ts
+  s_8921b88910068f::t_7740edf620a8aa 603,609
+  s_8921b88910068f::t_e52f1051b54cca 604-608,610-611
+  s_8921b88910068f::t_96952aae6272c5 588-602
+packages/cli/test/integration/database/repositories/execution.repository.test.ts
+  s_8921b88910068f::t_4fb9a87f25b8d1 193-211,214-215,219-221,239-240,242-245,248-249
+  s_8921b88910068f::t_52d54712d23c2f 212-213,217-218,222-227,229-234,236-238,254-256
+  s_8921b88910068f::t_a64b85d1d388e9 216,228,235,241,246-247,250-253
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_8921b88910068f::t_794e11319bd3b8 1184,1186-1194,1196-1197
+  s_8921b88910068f::t_a51293e77c5391 1176-1177,1198-1199
+  s_8921b88910068f::t_d354e564ac9420 1178-1181,1183,1203-1204
+  s_8921b88910068f::t_ca74841d54f776 1182,1185,1195,1200-1202
+packages/cli/src/modules/execution-auto-retry/execution-auto-retry.task-handler.ts
+  s_8921b88910068f::t_b549147cdaea41 66-68
+  s_8921b88910068f::t_e9e9b4bb921d8f 3,5-6,11,23-25,105,110-111
+  s_8921b88910068f::t_f46b5942e00e3b 69
+  s_8921b88910068f::t_7d608704ac09df 61-64,71-72,74
+  s_8921b88910068f::t_aa548d4bd52e2e 78-80
+  s_8921b88910068f::t_0718a4e621b271 1-2,4,7-10,12-22,26-60,65,70,73,75-77,81-104,106-109
+packages/@n8n/api-types/src/dto/workflows/workflow-public.openapi.ts
+  s_8921b88910068f::t_bf5ce08d347446 111-116
+  s_8921b88910068f::t_cf5c089acdeba6 292-297
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_8921b88910068f::t_ad6c6c039ad1f0 54
+packages/@n8n/api-types/src/dto/workflows/base-workflow-public.dto.ts
+  s_8921b88910068f::t_8a7736872bfaa9 112-116
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8921b88910068f::t_0d91fb5f970fe8 1861
+  s_8921b88910068f::t_bbda0eac375164 6051
+  s_8921b88910068f::t_171af0bc80bde1 6117
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsCard.test.ts
+  s_8921b88910068f::t_2d86049a9e6231 163-166,168-181,183-185
+  s_8921b88910068f::t_a14101f1d75fc7 167
+  s_8921b88910068f::t_1cb2d4533b34a3 182
+packages/cli/test/integration/scheduling/scheduled-job-lifecycle.test.ts
+  s_8921b88910068f::t_1d359d2804d059 322-344
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_8921b88910068f::t_75af783969948f 101
+packages/cli/src/modules/execution-auto-retry/__tests__/execution-auto-retry.task-handler.test.ts
+  s_8921b88910068f::t_739ca595ad12f5 2-8,10-33,35-43,49-53,55-58,60-67,70-73,75-85,87-89,102-118,130-131,133-138,140-143,154-156,158-163
+  s_8921b88910068f::t_d7dbebb752fe69 68
+  s_8921b88910068f::t_81c2ca7abdade6 34
+  s_8921b88910068f::t_1a7694c9ea0602 90-98,100-101
+  s_8921b88910068f::t_e2af9d4a513518 132
+  s_8921b88910068f::t_9d6b68baaab451 74,86,139,157
+  s_8921b88910068f::t_9afe2fac4e34b1 1
+  s_8921b88910068f::t_2de2f67982fb66 59
+  s_8921b88910068f::t_a0aeb5407293b6 99
+  s_8921b88910068f::t_0b5fda11c7ce47 54
+  s_8921b88910068f::t_a2a5978c0df3b4 119-129
+  s_8921b88910068f::t_c21f14ce8b02b6 69
+  s_8921b88910068f::t_617d005b31a948 44-48
+  s_8921b88910068f::t_6e6c90ff65e5c5 144-153
+  s_8921b88910068f::t_cb24139bdb156f 9
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowSettings/WorkflowSettings.vue
+  s_8921b88910068f::t_54b9abb2226f1e 202
+  s_8921b88910068f::t_38011a207bad34 1727-1748
+  s_8921b88910068f::t_08e99f0c826334 1725
+  s_8921b88910068f::t_1e5606a855567f 857-862
+  s_8921b88910068f::t_1472e34d4f61fe 1726
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsCard.vue
+  s_8921b88910068f::t_8461123d11eaf2 154,156
+  s_8921b88910068f::t_9a6254ca6926c1 155,157-158
+packages/@n8n/api-types/src/dto/workflows/__tests__/create-workflow-public.dto.test.ts
+  s_8921b88910068f::t_96d3d166a5f85c 123-131
+packages/workflow/src/workflow-settings-scope.ts
+  s_8921b88910068f::t_6448fce9aa10e8 18
+packages/workflow/src/interfaces.ts
+  s_8921b88910068f::t_38d4c0d6beb4fd 4255
+packages/cli/src/modules/execution-auto-retry/execution-auto-retry.service.ts
+  s_8921b88910068f::t_9e1a2d45dae692 18
+  s_8921b88910068f::t_acd6f5b1ba25f8 42
+  s_8921b88910068f::t_8d5a3383433044 15
+  s_8921b88910068f::t_bf70a191c36e6e 75-76,78-81,83,86,88
+  s_8921b88910068f::t_5ab3b74d192503 2-4,9-14,16-17,19-23,41,43-47,51,53,67-74,77,82,84-85,87,96-106,108-113,115-117,120,122,125,128,132-133,135-136,138
+  s_8921b88910068f::t_39611f1280bb10 89,95
+  s_8921b88910068f::t_6e43359c6887ad 5-6,8,39-40,52,149
+  s_8921b88910068f::t_446b7f5e0a4b5e 107
+  s_8921b88910068f::t_40197430743f5a 24-34
+  s_8921b88910068f::t_85a18592e2ceb6 118-119,121,123-124,127,129,131,134,137
+  s_8921b88910068f::t_c7ba1fde3ee986 126,130
+  s_8921b88910068f::t_8091c4df418d13 139-148
+  s_8921b88910068f::t_d7a9a3534489f4 54-66
+  s_8921b88910068f::t_2f623c83faecdf 35-38
+  s_8921b88910068f::t_29858aefea267a 1,7
+  s_8921b88910068f::t_608397f03a8be2 90-94
+  s_8921b88910068f::t_a978d0b0aab8b7 114
+  s_8921b88910068f::t_47ba7f7d6ea5f2 48-50
+packages/cli/src/modules/execution-auto-retry/execution-auto-retry-job.ts
+  s_8921b88910068f::t_4499ec036b004e 3-6,8,13,17-21,23,25-27,31-33
+  s_8921b88910068f::t_0a880472322fdd 14-16
+  s_8921b88910068f::t_15658276a6c177 7
+  s_8921b88910068f::t_11d2ffe77876f5 9-12
+  s_8921b88910068f::t_a36547c339e1c8 1-2
+  s_8921b88910068f::t_8a81d042755fb3 22,24,28-30,34
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/createWorkflow.generated.yml
+  s_8921b88910068f::t_3b2e1d04475978 253-263,853-862
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/deleteWorkflow.generated.yml
+  s_8921b88910068f::t_ac45967e401997 280-289
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflow.generated.yml
+  s_8921b88910068f::t_05954870bb8b57 289-298
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflows.generated.yml
+  s_8921b88910068f::t_c54070418c1bf6 316-325
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  s_8921b88910068f::t_7612ed062e554f 268-278,865-874
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowPublicDto.generated.yml
+  s_8921b88910068f::t_291f8a2b0662cf 258-267
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowPublishPublicDto.generated.yml
+  s_8921b88910068f::t_8a31f60d0bc0d2 258-267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ebd6d403e000fa605fe87e006b3b43d410d8a3f8",
+  "prompts": {},
+  "sessions": {
+    "s_8921b88910068f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "960ef281-5329-4790-b9ce-d57891488b50",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

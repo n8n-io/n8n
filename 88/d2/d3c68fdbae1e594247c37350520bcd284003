@@ -1,0 +1,28 @@
+packages/nodes-base/nodes/MongoDb/test/MongoDB.test.ts
+  s_e1668aebe0e5d1::t_03c3f5a4618bbe 771-789
+  s_e1668aebe0e5d1::t_9c9ec181ccc145 801
+packages/nodes-base/nodes/MongoDb/MongoDb.node.ts
+  s_e1668aebe0e5d1::t_03c3f5a4618bbe 48
+  s_e1668aebe0e5d1::t_9c9ec181ccc145 43,295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "88d2d3c68fdbae1e594247c37350520bcd284003",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e1668aebe0e5d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1dda7b0e-0e30-4f5f-a887-59d1f73bd6d9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
