@@ -285,7 +285,6 @@ function formatPublishAgent(details: PublishAgentDetails, t: Translate): string 
 			toolsLast ? targets.length - 1 : targets.length,
 			0,
 			t('instanceAi.approval.publishAgent.target.more', {
-				adjustToNumber: details.moreSendTargets,
 				interpolate: { count: details.moreSendTargets },
 			}),
 		);
