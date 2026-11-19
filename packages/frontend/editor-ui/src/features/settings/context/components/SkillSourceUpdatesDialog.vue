@@ -372,7 +372,6 @@ void load();
 					{{ sourceLine }}
 				</N8nText>
 				<div v-if="commit" :class="$style.commit" data-test-id="skill-update-commit">
-					<span aria-hidden="true">·</span>
 					<N8nLink
 						v-if="commit.webUrl"
 						:href="commit.webUrl"
@@ -384,8 +383,20 @@ void load();
 						new-window
 						>{{ commitTitle }}</N8nLink
 					>
-					<N8nText v-else size="small" color="text-light">{{ commitTitle }}</N8nText>
-					<N8nText v-if="commit.author || commitDate" size="small" color="text-light">
+					<N8nText
+						v-else
+						size="small"
+						color="text-light"
+						:class="$style.commitLink"
+						:title="commitTitle"
+						>{{ commitTitle }}</N8nText
+					>
+					<N8nText
+						v-if="commit.author || commitDate"
+						size="small"
+						color="text-light"
+						:class="$style.commitDetails"
+					>
 						· {{ [commit.author, commitDate].filter(Boolean).join(' · ') }}
 					</N8nText>
 				</div>
@@ -491,7 +502,7 @@ void load();
 				"
 			/>
 		</N8nDialogBody>
-		<N8nDialogFooter>
+		<N8nDialogFooter :class="$style.footer">
 			<N8nCheckbox
 				v-if="needsReview"
 				v-model="reviewed"
@@ -539,8 +550,8 @@ void load();
 .header {
 	flex-direction: column;
 	align-items: stretch;
-	gap: var(--spacing--3xs);
-	padding-bottom: var(--spacing--xs);
+	gap: var(--spacing--xs);
+	padding-bottom: var(--spacing--sm);
 }
 
 .metadata,
@@ -553,23 +564,43 @@ void load();
 
 .metadata,
 .commit {
-	flex-wrap: wrap;
-	row-gap: var(--spacing--4xs);
 	min-width: 0;
 	color: var(--text-color--subtler);
 }
 
+.metadata {
+	flex-wrap: wrap;
+	column-gap: var(--spacing--md);
+}
+
+.commit {
+	flex: 1 1 50%;
+}
+
 .commitLink {
 	min-width: 0;
-	overflow-wrap: anywhere;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 
 	&:hover {
 		text-decoration: underline;
 	}
 }
 
+.commitDetails {
+	flex-shrink: 0;
+}
+
 .source {
 	overflow-wrap: anywhere;
+}
+
+.footer {
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--spacing--sm);
+	border-top: var(--border);
 }
 
 .detailActions {

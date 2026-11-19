@@ -728,7 +728,7 @@ function onInteractOutside(event: Event) {
 					data-test-id="skill-source-summary"
 				>
 					<N8nIcon icon="git-branch" size="small" />
-					{{ sourceLine }}
+					<span :class="$style.sourceLabel" :title="sourceLine">{{ sourceLine }}</span>
 				</N8nText>
 				<SkillScopeBadge :skill="scopeSkill" :label="selectedScope?.label" />
 			</template>
@@ -937,18 +937,29 @@ function onInteractOutside(event: Event) {
 
 .header {
 	align-items: center;
+	column-gap: var(--spacing--sm);
+	row-gap: var(--spacing--xs);
 }
 
 .source {
 	display: flex;
+	flex: 1;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	min-width: 0;
-	overflow-wrap: anywhere;
+}
+
+.sourceLabel {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .footer {
 	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--spacing--sm);
+	border-top: var(--border);
 }
 
 /* The review shows the skill list and the files side by side. */
