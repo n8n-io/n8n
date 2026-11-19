@@ -6,6 +6,7 @@ import {
 	RoleService,
 	JwtService,
 	PostHogClient,
+	loginIdOf,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
@@ -52,7 +53,6 @@ import {
 	NotFoundError,
 	UserError,
 } from '@n8n/errors';
-import { loginIdOf } from '@/events/login-id';
 import { ExternalHooks } from '@/external-hooks';
 import type { Invitation } from '@/interfaces';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';

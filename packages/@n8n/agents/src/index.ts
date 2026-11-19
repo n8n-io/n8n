@@ -249,7 +249,6 @@ export {
 	renderSkillCatalogPrompt,
 	RUNTIME_SKILL_TOOL_NAMES,
 	RUNTIME_SKILL_FILE_NAME,
-	RUNTIME_SKILL_LIFETIMES,
 	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	RUNTIME_SKILL_LINKED_FILE_GROUPS,
 	RUNTIME_SKILL_NAME_PATTERN,
@@ -273,17 +272,12 @@ export type {
 	RuntimeSkillLoader,
 	RuntimeSkillLoadError,
 	RuntimeSkillMcpServerDependency,
-	RuntimeSkillLifetime,
 	RuntimeSkillPolicyContract,
 	RuntimeSkillReferenceContract,
 	RuntimeSkillReferenceLocation,
 	RuntimeSkillRegistry,
 	RuntimeSkillRegistryEntry,
 	RuntimeSkillSource,
-	RuntimeSkillContextUsage,
-	RuntimeSkillState,
-	RuntimeSkillStateScope,
-	RuntimeSkillStateStore,
 	RuntimeSkillValidationError,
 	RuntimeSkillValidationResult,
 } from './skills';
@@ -330,7 +324,7 @@ export {
 	createContextCueProvider,
 	parseAblatedContextCues,
 	whenSkillLoads,
-	whileSkillActive,
+	whileSkillLoaded,
 } from './context-cues';
 export type {
 	ContextCue,
@@ -373,6 +367,11 @@ export {
 	isAzureEntraCredential,
 	type AzureOpenAiAuthFields,
 } from './runtime/model/provider-credentials';
+export {
+	isSupportedAgentProvider,
+	mapCredentialForProvider,
+	SUPPORTED_AGENT_PROVIDERS,
+} from './runtime/model/credential-field-mapping';
 export {
 	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	ROOT_SUB_AGENT_TASK_PATH,
@@ -471,7 +470,10 @@ export type {
 } from './runtime/memory/memory-lifecycle';
 export { loadReplayedMessages } from './runtime/memory/memory-orchestrator';
 export { settleAbandonedToolCallsInMemory } from './runtime/memory/strip-orphaned-tool-messages';
-export { prepareObservationLogBatchCursor } from './runtime/memory/observation-log-batch';
+export {
+	observationCursorPosition,
+	prepareObservationLogBatchCursor,
+} from './runtime/memory/observation-log-batch';
 export {
 	fromObservationResumeColumns,
 	toObservationResumeColumns,

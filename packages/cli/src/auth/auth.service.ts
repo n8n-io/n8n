@@ -330,9 +330,9 @@ export class AuthService {
 		cookieOverrides?: { sameSite?: 'strict' | 'lax' | 'none'; secure?: boolean },
 	) {
 		// TODO: move this check to the login endpoint in AuthController
-		// If the instance has exceeded its user quota, prevent non-owners from logging in
-		const isWithinUsersLimit = this.license.getMaxUsers() === UNLIMITED_LICENSE_QUOTA;
-		if (person.role.slug !== GLOBAL_OWNER_ROLE.slug && !isWithinUsersLimit) {
+		// Non-owners can log in only when the user quota is unlimited.
+		const hasUnlimitedUsers = this.license.getMaxUsers() === UNLIMITED_LICENSE_QUOTA;
+		if (person.role.slug !== GLOBAL_OWNER_ROLE.slug && !hasUnlimitedUsers) {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 

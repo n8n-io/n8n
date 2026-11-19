@@ -281,6 +281,11 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 			await this.initInstanceSettingsLoader();
 			this.logger.debug('Instance settings loader init complete');
+
+			const { AiPreferenceSettingsService } = await import(
+				'@/services/ai-preference-settings.service.js'
+			);
+			await Container.get(AiPreferenceSettingsService).init();
 		}
 
 		await this.initBinaryDataService();

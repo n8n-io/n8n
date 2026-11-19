@@ -2,12 +2,32 @@ import {
 	AcceptSkillSourceUpdatesDto,
 	ConnectSkillSourceDto,
 	DiscoverSkillSourceDto,
+	DeleteSkillSourceQueryDto,
 	SKILL_SOURCE_MAX_SKILLS,
 } from '../skill-sources.schema';
 
 const target = { url: 'https://github.com/acme/skills', scope: 'instance' };
 
 const keys = (count: number) => Array.from({ length: count }, (_, index) => `key-${index}`);
+
+describe('DeleteSkillSourceQueryDto', () => {
+	it.each([
+		[undefined, undefined],
+		['false', false],
+		['true', true],
+	])('parses keepSkills=%s', (input, expected) => {
+		expect(DeleteSkillSourceQueryDto.parse({ keepSkills: input }).keepSkills).toBe(expected);
+	});
+
+	it.each(['yes', '0', '', ['true'], {}])('rejects invalid keepSkills=%j', (keepSkills) => {
+		expect(DeleteSkillSourceQueryDto.safeParse({ keepSkills }).success).toBe(false);
+	});
+
+	it('accepts a skill ID and rejects an empty ID for last-skill removal', () => {
+		expect(DeleteSkillSourceQueryDto.parse({ onlySkillId: 'skill-1' }).onlySkillId).toBe('skill-1');
+		expect(DeleteSkillSourceQueryDto.safeParse({ onlySkillId: '' }).success).toBe(false);
+	});
+});
 
 describe('ConnectSkillSourceDto', () => {
 	it.each([
@@ -78,6 +98,32 @@ describe('AcceptSkillSourceUpdatesDto', () => {
 		expect(
 			AcceptSkillSourceUpdatesDto.safeParse({
 				updates: keys(SKILL_SOURCE_MAX_SKILLS + 1).map((skillId) => ({ ...update, skillId })),
+			}).success,
+		).toBe(false);
+	});
+	it('allows new-only imports and skips, but refuses duplicate or oversized mixed selections', () => {
+		const newSkill = { key: 'new-skill', contentHash: 'b'.repeat(64) };
+		expect(
+			AcceptSkillSourceUpdatesDto.safeParse({ updates: [], newSkills: [newSkill] }).success,
+		).toBe(true);
+		expect(
+			AcceptSkillSourceUpdatesDto.safeParse({ updates: [], skippedNewSkills: [newSkill] }).success,
+		).toBe(true);
+		expect(
+			AcceptSkillSourceUpdatesDto.safeParse({ updates: [], newSkills: [newSkill, newSkill] })
+				.success,
+		).toBe(false);
+		expect(
+			AcceptSkillSourceUpdatesDto.safeParse({
+				updates: [],
+				newSkills: [newSkill],
+				skippedNewSkills: [newSkill],
+			}).success,
+		).toBe(false);
+		expect(
+			AcceptSkillSourceUpdatesDto.safeParse({
+				updates: [update],
+				newSkills: keys(SKILL_SOURCE_MAX_SKILLS).map((key) => ({ ...newSkill, key })),
 			}).success,
 		).toBe(false);
 	});

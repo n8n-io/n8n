@@ -1,4 +1,4 @@
-import { LicenseState } from '@n8n/backend-common';
+import { JwtService, PasswordUtility } from '@n8n/backend-services';
 import {
 	randomEmail,
 	randomInvalidPassword,
@@ -7,6 +7,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
+import { LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { Person } from '@n8n/db';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -18,8 +19,6 @@ import { mock } from 'vitest-mock-extended';
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { ExternalHooks } from '@/external-hooks';
-import { JwtService } from '@n8n/backend-services';
-import { PasswordUtility } from '@/services/password.utility';
 import { setCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 
@@ -135,6 +134,20 @@ describe('GET /resolve-password-token', () => {
 
 		expect(response.statusCode).toBe(200);
 	});
+
+	test.each([
+		{ quota: 0, status: 403 },
+		{ quota: 5, status: 403 },
+		{ quota: UNLIMITED_LICENSE_QUOTA, status: 200 },
+	])(
+		'should return $status for a member when the user quota is $quota',
+		async ({ quota, status }) => {
+			testServer.license.setQuota(LICENSE_QUOTAS.USERS_LIMIT, quota);
+			const token = authService.generatePasswordResetToken(member);
+
+			await testServer.authlessAgent.get('/resolve-password-token').query({ token }).expect(status);
+		},
+	);
 
 	test('should fail with invalid inputs', async () => {
 		await testServer.authlessAgent
@@ -262,7 +275,7 @@ describe('POST /change-password', () => {
 	});
 
 	test('owner should be able to reset its password when quota:users = 1', async () => {
-		vi.spyOn(Container.get(LicenseState), 'getMaxUsers').mockReturnValueOnce(1);
+		testServer.license.setQuota(LICENSE_QUOTAS.USERS_LIMIT, 1);
 
 		const resetPasswordToken = authService.generatePasswordResetToken(owner);
 		const response = await testServer.authlessAgent.post('/change-password').send({
@@ -291,7 +304,7 @@ describe('POST /change-password', () => {
 	});
 
 	test('member should not be able to reset its password when quota:users = 1', async () => {
-		vi.spyOn(Container.get(LicenseState), 'getMaxUsers').mockReturnValueOnce(1);
+		testServer.license.setQuota(LICENSE_QUOTAS.USERS_LIMIT, 1);
 
 		const resetPasswordToken = authService.generatePasswordResetToken(member);
 		const response = await testServer.authlessAgent.post('/change-password').send({
