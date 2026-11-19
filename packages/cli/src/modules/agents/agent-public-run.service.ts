@@ -1,9 +1,9 @@
 import type {
 	AgentExecutionPublicItemDto,
+	AgentExecutionStatus,
 	RunAgentPublicDto,
 	StoppedAgentExecutionPublicDto,
 } from '@n8n/api-types';
-import type { AgentExecutionStatus } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NotFoundError, UnexpectedError, UnprocessableRequestError } from '@n8n/errors';
