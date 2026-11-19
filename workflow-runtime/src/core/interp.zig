@@ -358,19 +358,7 @@ inline fn fastOp(vm: *Vm, op: Op, ins: Instr, R: []Value, pc: *u32) bool {
             const x = R[ins.b];
             const y = R[ins.c];
             if (value.kindOf(x) != .number or value.kindOf(y) != .number) return false;
-            const a = value.asNum(x);
-            const b = value.asNum(y);
-            R[ins.a] = switch (op) {
-                .add => value.num(a + b),
-                .sub => value.num(a - b),
-                .mul => value.num(a * b),
-                .mod => value.num(jsMod(a, b)),
-                .lt => value.boolean(a < b),
-                .le => value.boolean(a <= b),
-                .gt => value.boolean(a > b),
-                .ge => value.boolean(a >= b),
-                else => unreachable, // The outer prong lists these only.
-            };
+            R[ins.a] = numOpValue(op, value.asNum(x), value.asNum(y));
         },
         .seq => R[ins.a] = value.boolean(vm.strictEquals(R[ins.b], R[ins.c])),
         .sne => R[ins.a] = value.boolean(!vm.strictEquals(R[ins.b], R[ins.c])),
@@ -394,34 +382,105 @@ inline fn fastOp(vm: *Vm, op: Op, ins: Instr, R: []Value, pc: *u32) bool {
             }
         },
         .getprop => {
-            const o = R[ins.b];
-            if (value.kindOf(o) != .object) return false;
-            R[ins.a] = vm.objGetValue(value.payload(o), value.constString(ins.c));
+            R[ins.a] = fastGetProp(vm, R[ins.b], ins.c) orelse return false;
         },
         // Allocations: a full region leaves nothing changed, and `step`
         // runs the instruction again and reports it.
         .setprop => {
-            const o = R[ins.a];
-            if (value.kindOf(o) != .object) return false;
-            vm.objSet(value.payload(o), value.constString(ins.b), R[ins.c]) catch return false;
+            if (!fastSetProp(vm, R[ins.a], ins.b, R[ins.c])) return false;
         },
         .newobj => R[ins.a] = vm.r.newObject(4) catch return false,
         .newarr => R[ins.a] = vm.r.newArray(4) catch return false,
         .push => {
-            if (value.kindOf(R[ins.a]) != .array) return false;
-            vm.r.arrPush(value.payload(R[ins.a]), R[ins.b]) catch return false;
+            if (!fastPush(vm, R[ins.a], R[ins.b])) return false;
         },
         .getelem => {
-            const arr = R[ins.b];
-            const k = R[ins.c];
-            if (value.kindOf(arr) != .array or value.kindOf(k) != .number) return false;
-            const x = value.asNum(k);
-            if (!(x >= 0 and x == @trunc(x) and x < 4294967295)) return false;
-            R[ins.a] = vm.arrGet(arr, @intFromFloat(x));
+            R[ins.a] = fastGetElem(vm, R[ins.b], R[ins.c]) orelse return false;
         },
         else => return false,
     }
     pc.* += 1;
+    return true;
+}
+
+// ---- shared fast-path helpers ---------------------------------------------
+//
+// These are the one implementation of each fast opcode. `fastOp` and the
+// compiled functions (`aot.zig`) call them, so the two cannot drift.
+
+/// The fast-path kind of an opcode. `fastOp`, the compiled helpers in
+/// `aot.zig`, and the generator in `aotgen.zig` agree on this mapping, so a
+/// new opcode updates one list.
+pub const OpKind = enum {
+    arith, // numOp / numOpValue
+    getprop,
+    setprop,
+    newobj,
+    newarr,
+    push,
+    getelem,
+    plain, // a register load, move, or simple check, emitted inline
+    jump, // jmp, jt, jf, jnullish
+    slow, // every other opcode runs through stepIn
+};
+
+pub fn opKind(op: Op) OpKind {
+    return switch (op) {
+        .add, .sub, .mul, .mod, .lt, .le, .gt, .ge => .arith,
+        .getprop => .getprop,
+        .setprop => .setprop,
+        .newobj => .newobj,
+        .newarr => .newarr,
+        .push => .push,
+        .getelem => .getelem,
+        .nop, .mov, .loadk, .loads, .loadi, .loadundef, .loadnull, .loadbool, .seq, .sne, .not, .isnullish => .plain,
+        .jmp, .jt, .jf, .jnullish => .jump,
+        else => .slow, // every other opcode runs through stepIn.
+    };
+}
+
+/// The result of a fast number arithmetic or comparison: both operands are
+/// numbers.
+pub inline fn numOpValue(op: Op, x: f64, y: f64) Value {
+    return switch (op) {
+        .add => value.num(x + y),
+        .sub => value.num(x - y),
+        .mul => value.num(x * y),
+        .mod => value.num(jsMod(x, y)),
+        .lt => value.boolean(x < y),
+        .le => value.boolean(x <= y),
+        .gt => value.boolean(x > y),
+        .ge => value.boolean(x >= y),
+        else => unreachable, // the caller lists the number opcodes only.
+    };
+}
+
+/// The fast `getprop` for an object receiver; null asks for the slow path.
+pub inline fn fastGetProp(vm: *Vm, o: Value, key: u16) ?Value {
+    if (value.kindOf(o) != .object) return null;
+    return vm.objGetValue(value.payload(o), value.constString(key));
+}
+
+/// The fast `setprop` for an object receiver; false asks for the slow path.
+pub inline fn fastSetProp(vm: *Vm, o: Value, key: u16, v: Value) bool {
+    if (value.kindOf(o) != .object) return false;
+    vm.objSet(value.payload(o), value.constString(key), v) catch return false;
+    return true;
+}
+
+/// The fast `getelem` for an array and a small integer index; null asks for
+/// the slow path.
+pub inline fn fastGetElem(vm: *Vm, arr: Value, k: Value) ?Value {
+    if (value.kindOf(arr) != .array or value.kindOf(k) != .number) return null;
+    const x = value.asNum(k);
+    if (!(x >= 0 and x == @trunc(x) and x < 4294967295)) return null;
+    return vm.arrGet(arr, @intFromFloat(x));
+}
+
+/// The fast `push` for an array target; false asks for the slow path.
+pub inline fn fastPush(vm: *Vm, arr: Value, v: Value) bool {
+    if (value.kindOf(arr) != .array) return false;
+    vm.r.arrPush(value.payload(arr), v) catch return false;
     return true;
 }
 
@@ -594,7 +653,7 @@ fn arith(op: Op, x: f64, y: f64) f64 {
     };
 }
 
-pub fn jsMod(x: f64, y: f64) f64 {
+fn jsMod(x: f64, y: f64) f64 {
     if (std.math.isNan(x) or std.math.isNan(y) or std.math.isInf(x) or y == 0) return std.math.nan(f64);
     if (std.math.isInf(y) or x == 0) return x;
     // Whole numbers in the safe range: an integer remainder, much cheaper
