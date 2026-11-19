@@ -36,12 +36,17 @@ export function describePublishSendTargets(args: {
 	const { config, integrations, taskNames, channelLabel } = args;
 
 	const named: AgentPublishSendTarget[] = [
-		...integrations
-			.filter(
-				(integration) =>
-					integration.type !== N8N_CHAT_INTEGRATION_TYPE && !isDraftIntegration(integration),
-			)
-			.map((integration) => ({ kind: 'channel' as const, name: channelLabel(integration.type) })),
+		// Two workspaces of one channel type still read as one line, such as "Replies in Slack".
+		...[
+			...new Set(
+				integrations
+					.filter(
+						(integration) =>
+							integration.type !== N8N_CHAT_INTEGRATION_TYPE && !isDraftIntegration(integration),
+					)
+					.map((integration) => channelLabel(integration.type)),
+			),
+		].map((name) => ({ kind: 'channel' as const, name })),
 		...(config?.tasks ?? []).flatMap((task) => {
 			// A task without a definition has nothing to run.
 			const name = task.enabled ? taskNames.get(task.id) : undefined;

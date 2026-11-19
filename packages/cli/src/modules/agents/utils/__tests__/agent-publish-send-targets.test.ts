@@ -32,6 +32,8 @@ describe('describePublishSendTargets', () => {
 			},
 			integrations: [
 				{ type: 'slack', credentialId: 'cred-1' },
+				// A second Slack workspace still reads as one channel.
+				{ type: 'slack', credentialId: 'cred-2' },
 				{ type: 'telegram', credentialId: '' },
 				{ type: 'n8n_chat', credentialId: '' },
 			] as AgentIntegrationConfig[],
