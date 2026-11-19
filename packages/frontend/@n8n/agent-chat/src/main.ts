@@ -38,7 +38,8 @@ export function mount(options: MountOptions) {
 	// The editor's preview passes plain objects: this Vue tracks its own copy.
 	const preview = options.preview ? reactive({ ...options.preview }) : undefined;
 	const app = createApp(AgentChat, {
-		base: options.url.replace(/\/$/, ''),
+		// Absolute, so the storage keys hold the agent id and surface (the hosted page passes "./n8n-chat").
+		base: new URL(options.url, location.href).href.replace(/\/$/, ''),
 		mode: options.mode ?? 'bubble',
 		theme: options.theme ?? 'default',
 		overrides: options.overrides,

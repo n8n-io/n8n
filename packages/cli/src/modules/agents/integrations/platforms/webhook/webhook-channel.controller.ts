@@ -1,9 +1,9 @@
-import { UrlService } from '@n8n/backend-services';
+import { CacheService, UrlService } from '@n8n/backend-services';
 import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { createIpRateLimit, Get, Options, Post, RootLevelController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import path from 'node:path';
 
 import { AuthService } from '@/auth/auth.service';
@@ -33,12 +33,20 @@ const SESSION_COOKIE = 'n8n-chat-session';
 const REQUEST_ID = /^[A-Za-z0-9_-]{20,100}$/;
 const TOKEN_TTL = 60 * 60 * 1000;
 const REQUEST_TTL = 3 * 60 * 1000;
-const chatTokens = new Map<
-	string,
-	{ user: ChatPageUser; agentId: string; surface: ChatSurfaceName; expires: number; issued: number }
->();
+type ChatToken = {
+	user: ChatPageUser;
+	agentId: string;
+	surface: ChatSurfaceName;
+	expires: number;
+	issued: number;
+};
 type ChatRequest<P = object> = Request<{ agentId: string; surface: string } & P>;
-const loginRequests = new Map<string, { token: string; user: ChatPageUser; expires: number }>();
+type LoginRequest = { token: string; user: ChatPageUser; expires: number };
+// Embed sign-in state lives in n8n's cache (Redis in queue mode), so any main can serve the
+// popup, the poll and the chat calls. The token is hashed in the key.
+const tokenKey = (token: string) =>
+	`agent-chat:token:${createHash('sha256').update(token).digest('hex')}`;
+const loginKey = (requestId: string) => `agent-chat:login:${requestId}`;
 
 /**
  * The public endpoint of the webhook channel. It is a root-level controller, so
@@ -53,6 +61,7 @@ export class WebhookChannelController {
 		private readonly invites: ChatPageInviteService,
 		private readonly externalChat: ExternalChatService,
 		private readonly chatThemes: ChatThemeService,
+		private readonly cache: CacheService,
 	) {}
 
 	// Public routes: do not add a scope decorator. The caller is not an n8n user,
@@ -300,17 +309,18 @@ export class WebhookChannelController {
 			res.redirect(this.signInUrl(back));
 			return;
 		}
-		// ponytail: in-memory, single main only; the product stores tokens in the DB (or signs them).
 		const token = randomBytes(32).toString('base64url');
 		const now = Date.now();
-		chatTokens.set(token, {
+		const entry: ChatToken = {
 			user,
 			agentId: page.agent.id,
 			surface: page.name,
 			expires: now + TOKEN_TTL,
 			issued: now,
-		});
-		loginRequests.set(requestId, { token, user, expires: now + REQUEST_TTL });
+		};
+		await this.cache.set(tokenKey(token), entry, TOKEN_TTL);
+		const login: LoginRequest = { token, user, expires: now + REQUEST_TTL };
+		await this.cache.set(loginKey(requestId), login, REQUEST_TTL);
 		res.setHeader('Content-Type', 'text/html; charset=utf-8');
 		res.send(loginDoneHtml(user.name));
 	}
@@ -332,13 +342,16 @@ export class WebhookChannelController {
 		usesTemplates: true,
 		cors: CHAT_CORS,
 	})
-	chatLoginPoll(req: Request<{ agentId: string; requestId: string }>, res: Response) {
-		const entry = loginRequests.get(req.params.requestId);
+	async chatLoginPoll(req: Request<{ agentId: string; requestId: string }>, res: Response) {
+		const key = loginKey(req.params.requestId);
+		const entry = REQUEST_ID.test(req.params.requestId)
+			? await this.cache.get<LoginRequest>(key)
+			: undefined;
 		if (!entry || entry.expires < Date.now()) {
 			res.status(202).json({ status: 'pending' });
 			return;
 		}
-		loginRequests.delete(req.params.requestId);
+		await this.cache.delete(key);
 		res.json({ token: entry.token, user: { name: entry.user.name } });
 	}
 
@@ -467,7 +480,7 @@ export class WebhookChannelController {
 		const { methods, revokedBefore = {} } = await this.webhookChannel.chatSurface(agentId, surface);
 		const bearer = /^Bearer (.+)$/.exec(req.headers.authorization ?? '')?.[1];
 		if (bearer) {
-			const entry = chatTokens.get(bearer);
+			const entry = await this.cache.get<ChatToken>(tokenKey(bearer));
 			const valid =
 				methods.n8nUsers &&
 				entry?.agentId === agentId &&
