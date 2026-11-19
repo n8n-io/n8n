@@ -105,6 +105,26 @@ describe('GET /instance/access gating', () => {
 });
 
 describe('GET /node-type-policies/instance/access', () => {
+	test('leaves out the tool variants that n8n generates, and keeps a real tool node', async () => {
+		const realTool = '@n8n/n8n-nodes-langchain.toolCode';
+		nodeTypes.getKnownTypes.mockReturnValue(
+			knownTypes([SLACK, `${SLACK}Tool`, `${SLACK}HitlTool`, realTool]),
+		);
+		nodeTypes.resolveBaseName.mockImplementation((name) =>
+			name.startsWith(SLACK) && name !== SLACK
+				? { baseName: SLACK, isSyntheticTool: true }
+				: { baseName: name, isSyntheticTool: false },
+		);
+
+		const response = await testServer.authAgentFor(owner).get(`${NODE_ROUTE}/instance/access`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.types.map((type: { name: string }) => type.name)).toEqual([
+			SLACK,
+			realTool,
+		]);
+	});
+
 	test('reports allow from the default action at version 0 when no policy is written', async () => {
 		const response = await testServer.authAgentFor(owner).get(`${NODE_ROUTE}/instance/access`);
 

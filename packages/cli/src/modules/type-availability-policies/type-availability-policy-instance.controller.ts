@@ -59,10 +59,11 @@ export class TypeAvailabilityPolicyInstanceController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@GlobalScope('nodeTypePolicy:manage')
 	async getInstanceAccess(): Promise<InstanceTypeAccessResponse> {
-		return await this.service.getInstanceAccess(
-			NODE_TYPES_KIND,
-			Object.keys(this.nodeTypes.getKnownTypes()),
+		// A rule on the base type decides a generated tool variant, so the variant has no access to show.
+		const typeNames = Object.keys(this.nodeTypes.getKnownTypes()).filter(
+			(name) => !this.nodeTypes.resolveBaseName(name).isSyntheticTool,
 		);
+		return await this.service.getInstanceAccess(NODE_TYPES_KIND, typeNames);
 	}
 
 	@Put('/instance')

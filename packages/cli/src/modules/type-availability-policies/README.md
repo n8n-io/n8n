@@ -301,8 +301,9 @@ write between them can return newer rules under the older `version`. A write tha
 `version` back then fails with a conflict, so no change is lost.
 
 Each route lists the same type names as the builder read of its kind: `available-types` for
-node types, `available-credential-types` for credential types. Generated tool variants are node
-types, and they get the verdict of their base type.
+node types, `available-credential-types` for credential types. The node route leaves out the
+generated tool variants: a rule on the base type decides each variant, so the admin UI has no row
+for it.
 
 ## The write seal
 

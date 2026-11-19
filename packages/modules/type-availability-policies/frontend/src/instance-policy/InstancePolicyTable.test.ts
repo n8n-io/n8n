@@ -16,6 +16,7 @@ const row = (
 	name,
 	displayName,
 	access,
+	matchedRuleId: null,
 	editable,
 	icon: { type: 'icon', name: 'key-round' },
 });

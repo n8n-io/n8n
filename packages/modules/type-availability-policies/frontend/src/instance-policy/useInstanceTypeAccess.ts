@@ -12,6 +12,8 @@ import type { RestrictedTypeKind } from '../type-availability-policies.constants
 export type InstanceTypeAccessRow = {
 	name: string;
 	access: PolicyAction;
+	/** The rule that decides the access, or `null` when the default action decides it. */
+	matchedRuleId: string | null;
 	/** False when a rule leaves the type open to project opt-in, which the admin page cannot set. */
 	editable: boolean;
 };
@@ -46,6 +48,7 @@ export function useInstanceTypeAccess<K extends RestrictedTypeKind>(
 		(response.value?.types ?? []).map((type) => ({
 			name: type.name,
 			access: pending.get(type.name)?.access ?? type.access,
+			matchedRuleId: type.matchedRuleId,
 			editable: !(type.access === 'delegate' && type.matchedRuleId !== null),
 		})),
 	);

@@ -3002,6 +3002,7 @@
 	"typeAvailabilityPolicies.instancePolicy.table.filter.all": "All ({count})",
 	"typeAvailabilityPolicies.instancePolicy.table.filter.option": "{label} ({count})",
 	"typeAvailabilityPolicies.instancePolicy.table.search.credential": "Search credentials",
+	"typeAvailabilityPolicies.instancePolicy.table.search.node": "Search nodes",
 	"typeAvailabilityPolicies.restrictedNode.title": "This node is restricted",
 	"typeAvailabilityPolicies.restrictedNode.description.instance": "An administrator blocked '{nodeType}' on this instance. {nextStep}",
 	"typeAvailabilityPolicies.restrictedNode.description.project": "An administrator blocked '{nodeType}' in this project. {nextStep}",
