@@ -30,7 +30,7 @@ const codeStepModule = join(here, '../../../../workflow-fallback-host/src/code-s
 
 type Mode = 'all' | 'each';
 /** The node between `Source` and `Code`. */
-type Chain = 'direct' | 'set' | 'drop' | 'reverse';
+type Chain = 'direct' | 'set' | 'drop' | 'reverse' | 'filter';
 
 interface Case {
 	name: string;
@@ -65,6 +65,29 @@ const MID: Record<Exclude<Chain, 'direct'>, Record<string, unknown>> = {
 		typeVersion: 2,
 		position: [0, 0],
 		parameters: { jsCode: 'return items.slice(1).map((i) => ({ json: i.json }));' },
+	},
+	// The items 1 and 2 of three, with the paired item of each: a compiled node that keeps
+	// the paired items for the code in the host.
+	filter: {
+		name: 'Mid',
+		type: 'n8n-nodes-base.filter',
+		typeVersion: 2.2,
+		position: [0, 0],
+		parameters: {
+			conditions: {
+				options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 },
+				conditions: [
+					{
+						id: '1',
+						leftValue: '={{ $json.n }}',
+						rightValue: 10,
+						operator: { type: 'number', operation: 'gt' },
+					},
+				],
+				combinator: 'and',
+			},
+			options: {},
+		},
 	},
 	// The same number of items in another order, with the paired item of each.
 	reverse: {
@@ -183,7 +206,7 @@ const valueCase = (name: string, text: string, chain: Chain = 'direct'): Case[] 
 	{ name: `${name} [each, ${chain}]`, code: `return ${item(text)};`, mode: 'each', chain },
 ];
 
-const CHAINS: Chain[] = ['direct', 'set', 'drop', 'reverse'];
+const CHAINS: Chain[] = ['direct', 'set', 'drop', 'reverse', 'filter'];
 
 const PAIRING: Case[] = CHAINS.flatMap((chain) => [
 	...valueCase('$(node).item', '$("Source").item.json.n', chain),
@@ -415,12 +438,6 @@ const REFUSALS: Array<{ code: string; when: (c: Case) => boolean }> = [
 	{
 		code: 'code-node-reference',
 		when: (c) => (c.chain === 'drop' || c.chain === 'reverse') && PAIRED.test(c.code),
-	},
-	{
-		code: 'code-node-reference',
-		when: (c) =>
-			(c.chain === 'drop' || c.chain === 'reverse') &&
-			/\$node\s*\[\s*['"]/.test(c.code),
 	},
 	{
 		code: 'code-node-reference',

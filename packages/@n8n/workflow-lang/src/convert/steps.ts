@@ -84,6 +84,12 @@ export interface StepCall {
 	 * node again: the items before the failure go out again.
 	 */
 	hostItem?: Code;
+	/**
+	 * With `hostItem`: the name of the list of answers of the requests of one item
+	 * (`replayOf`). The loop of the items starts an empty list for each item, so the host
+	 * call of an item gets the answers of that item only.
+	 */
+	itemReplay?: string;
 }
 
 /** Fails the node when a raw expression would not give the v1 value in the host. */
@@ -319,6 +325,7 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 	} else {
 		w.open(`for (const ${ITEM} of ${input}) {`);
 	}
+	if (call.itemReplay !== undefined) w.line(`const ${call.itemReplay}: Json = ${REPLAY_START};`);
 	const opts = options(c, call, `[${ITEM}]`);
 	if (call.hostItem !== undefined) {
 		// The call for the item, and the host call for the same item after the mark. With a

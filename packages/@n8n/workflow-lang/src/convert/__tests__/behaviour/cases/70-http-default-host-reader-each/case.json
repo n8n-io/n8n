@@ -1,0 +1,44 @@
+{
+	"description": "As case 63 with a Code node in 'each item' mode that runs in the fallback host (it has a class): the host code gets the index of the paired item of each input item",
+	"trigger": {
+		"body": {}
+	},
+	"http": {
+		"Http": {
+			"path": "thing",
+			"responses": [
+				{
+					"url": "/thing/a0",
+					"status": 200,
+					"body": [
+						{
+							"got": "r0"
+						},
+						{
+							"got": "r0b"
+						}
+					]
+				},
+				{
+					"url": "/thing/a1",
+					"status": 200,
+					"body": "not-a-real-image",
+					"headers": {
+						"content-type": "image/png"
+					},
+					"runtimeLimit": true
+				},
+				{
+					"url": "/thing/a2",
+					"status": 200,
+					"body": {
+						"got": "r2"
+					}
+				}
+			]
+		}
+	},
+	"compare": [
+		"Read Each"
+	]
+}

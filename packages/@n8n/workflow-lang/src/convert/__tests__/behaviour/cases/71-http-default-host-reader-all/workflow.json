@@ -1,0 +1,101 @@
+{
+	"name": "HTTP default format host reader, all items",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [
+				0,
+				0
+			],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "http-default-host-all",
+				"options": {}
+			},
+			"webhookId": "0b7f1c2e-3d4a-4b5c-8d6e-000000000071"
+		},
+		{
+			"id": "source",
+			"name": "Source",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"jsCode": "return [{ json: { id: 'a0' } }, { json: { id: 'a1' } }, { json: { id: 'a2' } }];"
+			}
+		},
+		{
+			"id": "http",
+			"name": "Http",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [
+				400,
+				0
+			],
+			"typeVersion": 4.2,
+			"parameters": {
+				"method": "GET",
+				"url": "=http://127.0.0.1:47123/thing/{{ $json.id }}",
+				"authentication": "none",
+				"options": {}
+			}
+		},
+		{
+			"id": "read-all",
+			"name": "Read All",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				600,
+				100
+			],
+			"parameters": {
+				"jsCode": "function* sources() { for (let k = 0; k < items.length; k++) yield $('Source').itemMatching(k).json.id; }\nconst ids = [...sources()];\nreturn items.map((item, k) => ({ json: { got: item.json.got ?? null, src: ids[k], first: $('Source').item.json.id } }));"
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Source",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Source": {
+			"main": [
+				[
+					{
+						"node": "Http",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Http": {
+			"main": [
+				[
+					{
+						"node": "Read All",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

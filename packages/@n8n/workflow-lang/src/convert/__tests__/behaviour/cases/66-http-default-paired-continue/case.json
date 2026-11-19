@@ -1,0 +1,44 @@
+{
+	"description": "As case 62 with version 4.4 and 'continue': the second request fails and gives an error item",
+	"trigger": {
+		"body": {}
+	},
+	"http": {
+		"Http": {
+			"path": "thing",
+			"responses": [
+				{
+					"url": "/thing/a0",
+					"status": 200,
+					"body": [
+						{
+							"got": "r0"
+						},
+						{
+							"got": "r0b"
+						}
+					]
+				},
+				{
+					"url": "/thing/a1",
+					"status": 500,
+					"body": {
+						"error": "boom"
+					}
+				},
+				{
+					"url": "/thing/a2",
+					"status": 200,
+					"body": {
+						"got": "r2"
+					}
+				}
+			]
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	]
+}

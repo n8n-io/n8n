@@ -226,15 +226,20 @@ const $execution = {
 const __lists = {};
 // As v1: each read of a node gives the same items.
 const __list = (name) => (__lists[name] ??= (__nodes[name] || []).map((json, k) => __wrap(json, k)));
-// The item of a node that pairs with input item k (v1's pairedItemMethod). The converter gives
-// this code only when v1 pairs the items of the node with the input items by position.
+// The item of a node that pairs with input item k (v1's pairedItemMethod). v1 pairs the items
+// of the node with the input items by position, or the converter gives the index of the paired
+// item of each input item (\`$pairs\`): a number, or the error of v1 for that item.
+const __pairs = __context.$pairs || {};
 const __paired = (name, k, matching) => {
 	if (k === undefined) {
 		if (matching) __fail('Missing item index for .itemMatching()');
 		k = __current;
 	}
 	if (!__inputItems()[k]) __fail('Can’t get data');
-	return __list(name)[k];
+	if (!Object.prototype.hasOwnProperty.call(__pairs, name)) return __list(name)[k];
+	const pairs = __pairs[name];
+	if (typeof pairs[k] !== 'number') __fail(pairs[k].$error);
+	return __list(name)[pairs[k]];
 };
 const $ = (name) => {
 	if (!__known(name)) __fail("Referenced node doesn't exist");
@@ -491,18 +496,38 @@ export function lowerCode(c: NodeContext): void {
 		}
 	}
 	const paired = pairedReads(user);
+	// The index of the paired item of each input item, for a node whose items do not pair with
+	// the input items by position (`$pairs` of the prologue).
+	const pairLists: string[] = [];
 	for (const name of paired === 'all' ? refs : paired) {
-		if (name === c.node.name || !c.pairsByPosition(name)) {
+		if (name !== c.node.name && c.pairsByPosition(name)) continue;
+		// The nodes on the way keep the paired item of each of their items. A path without
+		// such a node is not accepted here: it has no proof for the code in the host.
+		const tracked = name === c.node.name ? null : c.pairedIndex(name, 'k');
+		if (tracked === null || tracked.values.length === 0) {
 			throw new NodeFailure(
 				'code-node-reference',
 				`The code reads the item of node "${name}" that pairs with an input item, and the pairing is not known: v1 follows the paired items of each node on the way.`,
 				codeField,
 			);
 		}
+		// The list is a part of the call of the step: plain code before the step would be a
+		// node of its own on the canvas.
+		c.helper('pairedIndexList');
+		const params = tracked.values.map((v) => `${v.param}: Json`).join(', ');
+		const values = tracked.values.map((v) => v.value).join(', ');
+		pairLists.push(
+			`${JSON.stringify(name)}: ((${params}): Json[] => pairedIndexList(${c.input}.length, (k: number): number => ${tracked.code}))(${values})`,
+		);
 	}
-	// $node[name].json follows pairedItem in v1; the converter uses the index of the current
-	// item, which equals the paired item only when the items pair by position.
-	const nodeAccess = user.matchAll(/\$node\s*\[\s*['"]([^'"]*)['"]\s*\]/g);
+	// `$node[name].json` in the Code node of v1 is the item of the node at the index of the
+	// current item: it follows no paired item (the parity test with the task runner has the
+	// proof for each chain). The legacy Function nodes have no such proof, so there the read
+	// is compiled only when the items pair by position.
+	const nodeAccess =
+		type === 'n8n-nodes-base.code'
+			? []
+			: user.matchAll(/\$node\s*\[\s*['"]([^'"]*)['"]\s*\]/g);
 	for (const m of nodeAccess) {
 		const name = m[1];
 		if (name && name !== c.node.name && !c.pairsByPosition(name) && c.ranBefore(name) !== null) {
@@ -547,6 +572,7 @@ export function lowerCode(c: NodeContext): void {
 	if (user.includes('$executionId')) globals.push('$executionId: ctx.execution().id');
 	if (user.includes('$prevNode')) globals.push(`$prevNode: ${prevNode(c)}`);
 	if (/\$items\(\s*\)/.test(user) && previousRunsOnce(c) === true) globals.push('$itemsOnce: true');
+	if (pairLists.length > 0) globals.push(`$pairs: { ${pairLists.join(', ')} }`);
 	// The prologue defines `$`, `$node`, `$items` and `$item` when the code reads them.
 	const context =
 		refs.length > 0 || globals.length > 0 || /\$items\b|\$item\b|\$\(|\$node\b/.test(user);

@@ -1,0 +1,44 @@
+{
+	"description": "A Code node in both modes and a Set node read Source through an HTTP Request with the default response format (version 4.2); the second response gives two items",
+	"trigger": {
+		"body": {}
+	},
+	"http": {
+		"Http": {
+			"path": "thing",
+			"responses": [
+				{
+					"url": "/thing/a0",
+					"status": 200,
+					"body": {
+						"got": "r0"
+					}
+				},
+				{
+					"url": "/thing/a1",
+					"status": 200,
+					"body": [
+						{
+							"got": "r1"
+						},
+						{
+							"got": "r1b"
+						}
+					]
+				},
+				{
+					"url": "/thing/a2",
+					"status": 200,
+					"body": {
+						"got": "r2"
+					}
+				}
+			]
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	]
+}

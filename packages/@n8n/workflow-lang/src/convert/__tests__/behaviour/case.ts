@@ -1,3 +1,5 @@
+import type { ConvertOptions } from '../../index.ts';
+
 /** The input of a behaviour case (`cases/<name>/case.json`). */
 export interface BehaviourCase {
 	description: string;
@@ -22,6 +24,18 @@ export interface BehaviourCase {
 				body?: unknown;
 				headers?: Record<string, string>;
 				error?: string;
+				/**
+				 * The path of the request that gets this answer. Without it, the answers go out in
+				 * the order of the requests. A v1 node sends the requests of its items at the same
+				 * time, so a case with a different path for each item gives the path.
+				 */
+				url?: string;
+				/**
+				 * True for an answer that the runtime cannot store (a file over its largest size).
+				 * The compiled node gets the error of that limit, and the fallback host runs the v1
+				 * node, which gets the answer from the server of the test.
+				 */
+				runtimeLimit?: boolean;
 			}>;
 		}
 	>;
@@ -34,6 +48,70 @@ export interface BehaviourCase {
 	compare?: string[];
 	/** True when the converter should refuse this case (no compiled form for the path). */
 	expectRefusal?: boolean;
+	/**
+	 * True when the runtime of the case stores a response as binary data
+	 * (`NodeSources.storesResponses`): the response format "file" of an HTTP Request node.
+	 */
+	storesResponses?: boolean;
+	/**
+	 * The data of the credentials of the nodes for the v1 run, by credential type. The
+	 * compiled run has no credential data: a credential is a slot name there.
+	 */
+	credentials?: Record<string, Record<string, unknown>>;
+}
+
+/** The options of the converter for a case. */
+export function convertOptionsOf(spec: BehaviourCase): ConvertOptions {
+	if (spec.storesResponses !== true) return {};
+	return {
+		nodeSources: {
+			entry: () => undefined,
+			readFile: () => undefined,
+			description: () => undefined,
+			storesResponses: true,
+		},
+	};
+}
+
+type Answer = NonNullable<BehaviourCase['http']>[string]['responses'][number];
+
+/**
+ * The answer of the server of a case to a request: the answers of the node whose `path` is
+ * the first segment of the path. `counters` holds the number of requests of each node.
+ */
+export function answerOf(
+	spec: BehaviourCase,
+	pathname: string,
+	counters: Map<string, number>,
+): { step: string; answer: Answer } | undefined {
+	const segment = pathname.split('/')[1] ?? '';
+	const step = Object.entries(spec.http ?? {}).find(([, v]) => v.path === segment);
+	if (!step) return undefined;
+	const n = counters.get(step[0]) ?? 0;
+	counters.set(step[0], n + 1);
+	const responses = step[1].responses;
+	const answer = responses.find((r) => r.url === pathname) ?? responses[n % responses.length];
+	return { step: step[0], answer };
+}
+
+/**
+ * The status, the headers and the body text of an answer. A text body of an answer with
+ * `headers` goes out as it is. Each other body goes out as JSON.
+ */
+export function answerParts(answer: Answer): {
+	status: number;
+	headers: Record<string, string>;
+	body: string;
+} {
+	const status = answer.status ?? 200;
+	if (answer.headers !== undefined && typeof answer.body === 'string') {
+		return { status, headers: answer.headers, body: answer.body };
+	}
+	return {
+		status,
+		headers: { 'content-type': 'application/json', ...answer.headers },
+		body: JSON.stringify(answer.body ?? {}),
+	};
 }
 
 /** The port in the URLs of the case workflows. The oracle replaces it with the port of its server. */

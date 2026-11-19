@@ -1735,6 +1735,25 @@ function pairedInputIndex(pair: Json, k: number, inputCount: number, outputCount
 	return typeof index === 'number' && index >= 0 && index < inputCount && Math.floor(index) === index ? index : -1;
 }`,
 	},
+	pairedIndexList: {
+		uses: [],
+		source: `/**
+ * The index of the paired item of each of \`count\` input items, for code in the fallback
+ * host that reads \`$('Node').item\`. \`at\` gives the index for one input item. v1 gives the
+ * error of a paired item when the code reads that item, so the list keeps the message.
+ */
+function pairedIndexList(count: number, at: (k: number) => number): Json[] {
+	const out: Json[] = [];
+	for (let k = 0; k < count; k++) {
+		try {
+			out.push(at(k));
+		} catch (error) {
+			out.push({ $error: error !== null && typeof error === 'object' ? error.message : String(error) });
+		}
+	}
+	return out;
+}`,
+	},
 	pairedSourceIndexes: {
 		uses: [],
 		source: `/**
