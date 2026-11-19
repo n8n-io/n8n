@@ -75,6 +75,15 @@ describe('validFieldReferences', () => {
 		expect(result.pass).toBe(true);
 	});
 
+	it.each(['={{ $json.email?.[0] ?? $json.body }}', '={{ $json.email?.() ?? $json.body }}'])(
+		'passes when a missing field read with optional bracket or call access has a fallback: %s',
+		async (expression) => {
+			const result = await validFieldReferences.run(leadToSet(expression), { prompt: '' });
+
+			expect(result.pass).toBe(true);
+		},
+	);
+
 	it('fails when every alternative in the fallback chain is missing', async () => {
 		const result = await validFieldReferences.run(
 			leadToSet('={{ $json.email ?? $json.mail ?? "" }}'),

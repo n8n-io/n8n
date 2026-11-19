@@ -35,7 +35,7 @@ interface FieldReference {
 }
 
 /** Property access, optional chaining or calls that follow a matched reference. */
-const ACCESS_TAIL = /^(?:\?\.\w+|\.\w+|\[[^\]]*\]|\(\))*/;
+const ACCESS_TAIL = /^(?:\??\.\w+|(?:\?\.)?\[[^\]]*\]|(?:\?\.)?\(\))*/;
 /** The text between two operands of one `??` / `||` chain. */
 const FALLBACK_LINK = /^\s*\)*\s*(?:\?\?|\|\|)\s*\(*\s*$/;
 /** One `.prop` / `?.prop` read in an access tail. A method name before `(` is not a field. */
