@@ -57,6 +57,7 @@ describe('semantic-registry', () => {
 		it('names the Switch output after the rules as error when there is no fallback output', () => {
 			const node = createNodeJSON({
 				type: 'n8n-nodes-base.switch',
+				typeVersion: 3.2,
 				parameters: { rules: { values: [{}, {}] } },
 				onError: 'continueErrorOutput',
 			});
@@ -66,11 +67,60 @@ describe('semantic-registry', () => {
 		it('names the Switch output after the extra fallback output as error', () => {
 			const node = createNodeJSON({
 				type: 'n8n-nodes-base.switch',
+				typeVersion: 3.2,
 				parameters: { rules: { values: [{}, {}] }, options: { fallbackOutput: 'extra' } },
 				onError: 'continueErrorOutput',
 			});
 			expect(getOutputName(node.type, 2, node)).toBe('fallback');
 			expect(getOutputName(node.type, 3, node)).toBe('error');
+		});
+
+		it.each([
+			{
+				label: 'V1, which always has 4 outputs',
+				typeVersion: 1,
+				parameters: { rules: { rules: [{}, {}, {}] } },
+				errorIndex: 4,
+			},
+			{
+				label: 'V1 without rules',
+				typeVersion: 1,
+				parameters: {},
+				errorIndex: 4,
+			},
+			{
+				label: 'V2 in rules mode',
+				typeVersion: 2,
+				parameters: { rules: { rules: [{}, {}] } },
+				errorIndex: 2,
+			},
+			{
+				label: 'V2 in expression mode',
+				typeVersion: 2,
+				parameters: { mode: 'expression', outputsAmount: 3 },
+				errorIndex: 3,
+			},
+			{
+				label: 'V3 in expression mode',
+				typeVersion: 3.2,
+				parameters: { mode: 'expression', numberOutputs: 2 },
+				errorIndex: 2,
+			},
+			{
+				label: 'V3 without rules, which defaults to one rule',
+				typeVersion: 3.2,
+				parameters: {},
+				errorIndex: 1,
+			},
+		])('names the Switch error output for $label', ({ typeVersion, parameters, errorIndex }) => {
+			const node = createNodeJSON({
+				type: 'n8n-nodes-base.switch',
+				typeVersion,
+				parameters,
+				onError: 'continueErrorOutput',
+			});
+			expect(getOutputName(node.type, errorIndex, node)).toBe('error');
+			expect(getOutputName(node.type, errorIndex - 1, node)).not.toBe('error');
 		});
 
 		it('returns generic output name for unknown node types', () => {

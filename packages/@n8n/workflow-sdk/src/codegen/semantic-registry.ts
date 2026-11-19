@@ -88,7 +88,7 @@ function hasErrorOutput(node: NodeJSON): boolean {
 export function getOutputName(type: string, index: number, node: NodeJSON): string {
 	// Check for error output first (when node has onError: 'continueErrorOutput')
 	if (hasErrorOutput(node)) {
-		const errorIndex = resolveErrorOutputIndex(type, node.parameters);
+		const errorIndex = resolveErrorOutputIndex({ ...node, type });
 		if (index === errorIndex) {
 			return 'error';
 		}

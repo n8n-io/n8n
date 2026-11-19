@@ -11,7 +11,7 @@ import {
 	type GraphNode,
 	type NodeInstance,
 } from '../../../types/base';
-import { filterMethodsFromPath } from '../../string-utils';
+import { filterMethodsFromPath, parseVersion } from '../../string-utils';
 import { extractExpressions, parseExpression, hasPath } from '../../validation-helpers';
 import type { ValidatorPlugin, ValidationIssue, PluginContext } from '../types';
 
@@ -51,9 +51,14 @@ interface Predecessor {
 }
 
 function isErrorOutputIndex(graphNode: GraphNode, outputIndex: number): boolean {
-	const { config, type } = graphNode.instance;
+	const { config, type, version } = graphNode.instance;
 	if (config?.onError !== 'continueErrorOutput') return false;
-	return outputIndex === resolveErrorOutputIndex(type, config.parameters);
+	const errorIndex = resolveErrorOutputIndex({
+		type,
+		typeVersion: parseVersion(version),
+		parameters: config.parameters,
+	});
+	return outputIndex === errorIndex;
 }
 
 /**
@@ -123,16 +128,19 @@ function describePredecessor(pred: Predecessor): string {
 }
 
 /**
- * Check whether a predecessor outputs `fieldPath`. Error output items always
- * carry `error`, and its content varies by node, so any path under it is valid.
- * Returns undefined when the output shape of the predecessor is unknown.
+ * Check whether a predecessor outputs `fieldPath`. Returns undefined when the
+ * output shape of the predecessor is unknown.
+ *
+ * An error output item is the node's input item plus `error`, not the node's
+ * normal output. Any path under `error` is valid, because its content varies
+ * by node. Other paths come from the unknown input, so they stay unknown.
  */
 function predecessorHasPath(
 	pred: Predecessor,
 	fieldPath: string[],
 	outputShapes: Map<string, Record<string, unknown>>,
 ): boolean | undefined {
-	if (pred.isErrorOutput && fieldPath[0] === 'error') return true;
+	if (pred.isErrorOutput) return fieldPath[0] === 'error' ? true : undefined;
 	const shape = outputShapes.get(pred.name);
 	return shape ? hasPath(shape, fieldPath) : undefined;
 }
