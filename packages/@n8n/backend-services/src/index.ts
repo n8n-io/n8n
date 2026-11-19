@@ -163,6 +163,7 @@ export {
 export {
 	WorkflowPublishGuardProxy,
 	type WorkflowPublishGuard,
+	type WorkflowPublishTarget,
 } from './workflows/workflow-publish-guard-proxy.service';
 export {
 	NodeTypesProviderMissingError,

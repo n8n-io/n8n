@@ -1,0 +1,116 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"_links": {
+			"properties": {
+				"html": {
+					"properties": {
+						"href": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"pull_request": {
+					"properties": {
+						"href": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"author_association": {
+			"type": "string"
+		},
+		"body": {
+			"type": "string"
+		},
+		"commit_id": {
+			"type": "string"
+		},
+		"html_url": {
+			"type": "string"
+		},
+		"id": {
+			"type": "number"
+		},
+		"node_id": {
+			"type": "string"
+		},
+		"pull_request_url": {
+			"type": "string"
+		},
+		"state": {
+			"type": "string"
+		},
+		"submitted_at": {
+			"type": "string"
+		},
+		"user": {
+			"properties": {
+				"avatar_url": {
+					"type": "string"
+				},
+				"events_url": {
+					"type": "string"
+				},
+				"followers_url": {
+					"type": "string"
+				},
+				"following_url": {
+					"type": "string"
+				},
+				"gists_url": {
+					"type": "string"
+				},
+				"gravatar_id": {
+					"type": "string"
+				},
+				"html_url": {
+					"type": "string"
+				},
+				"id": {
+					"type": "number"
+				},
+				"login": {
+					"type": "string"
+				},
+				"node_id": {
+					"type": "string"
+				},
+				"organizations_url": {
+					"type": "string"
+				},
+				"received_events_url": {
+					"type": "string"
+				},
+				"repos_url": {
+					"type": "string"
+				},
+				"site_admin": {
+					"type": "boolean"
+				},
+				"starred_url": {
+					"type": "string"
+				},
+				"subscriptions_url": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				},
+				"url": {
+					"type": "string"
+				},
+				"user_view_type": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

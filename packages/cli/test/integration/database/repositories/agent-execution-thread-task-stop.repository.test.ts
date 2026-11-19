@@ -3,7 +3,8 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-import { Agent } from '@/modules/agents/entities/agent.entity';
+import { createAgent } from '@test-integration/db/agents';
+
 import { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
 import { AgentBackgroundJob } from '@/modules/agents/entities/agent-background-job.entity';
@@ -34,7 +35,7 @@ describe('AgentExecutionThreadRepository task stops', () => {
 		plans = Container.get(AgentPlanRepository);
 		({ id: projectId } = await createTeamProject());
 		agentId = randomUUID();
-		await db.getRepository(Agent).save({
+		await createAgent({
 			id: agentId,
 			name: 'Cancellation tests',
 			projectId,

@@ -1716,6 +1716,82 @@ describe('AssistantAgentThreadView', () => {
 		});
 	});
 
+	describe('agent subject of a new thread', () => {
+		function launchWith(subject: Record<string, unknown>) {
+			stashAssistantAgentLaunch('thread-new', {
+				projectId: 'project-1',
+				source: 'agent_builder_page',
+				origin: 'internal',
+				subject: { type: 'agent', id: 'agent-1', projectId: 'project-1', ...subject } as never,
+			});
+		}
+
+		async function renderNewThread() {
+			const view = renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+			return view;
+		}
+
+		function clientContext(): Record<string, unknown> {
+			return (panelProps.current['client-context'] as () => Record<string, unknown>)();
+		}
+
+		it('opens a saved agent before the first message and binds it with that message', async () => {
+			launchWith({ name: 'Triage' });
+
+			const { getByTestId } = await renderNewThread();
+
+			expect(getByTestId('agent-preview-stub')).toBeInTheDocument();
+			expect(agentPreview.props).toMatchObject({
+				'agent-id': 'agent-1',
+				'project-id': 'project-1',
+			});
+			expect(fetchTargets).not.toHaveBeenCalled();
+			expect(clientContext()).toMatchObject({
+				subject: { type: 'agent', id: 'agent-1', projectId: 'project-1', name: 'Triage' },
+			});
+		});
+
+		it('binds a change from the preview once the server accepts the first message', async () => {
+			launchWith({ name: 'Triage' });
+			await renderNewThread();
+			const renamed = { agentId: 'agent-1', projectId: 'project-1', name: 'Refund triage' };
+
+			expect(agentPreview.targets).toBeDefined();
+			await agentPreview.targets?.bind(renamed);
+			expect(bindTarget).not.toHaveBeenCalled();
+
+			// The first turn bound the subject under its old name.
+			fetchTargets.mockResolvedValue({
+				targets: {
+					bound: { agentId: 'agent-1', projectId: 'project-1', name: 'Triage' },
+					pending: null,
+					targets: [],
+					previewSession: null,
+				},
+			});
+			bindTarget.mockResolvedValue({ targets: noTargets() });
+			const onSessionCreated = panelProps.current.onSessionCreated as () => void;
+			onSessionCreated();
+			await flushPromises();
+
+			expect(bindTarget).toHaveBeenCalledExactlyOnceWith(expect.anything(), 'thread-new', renamed);
+		});
+
+		it('sends a pending agent without a preview before the first message', async () => {
+			launchWith({ pending: true });
+
+			const { queryByTestId } = await renderNewThread();
+
+			expect(queryByTestId('agent-preview-stub')).not.toBeInTheDocument();
+			expect(clientContext()).toMatchObject({
+				subject: { type: 'agent', id: 'agent-1', projectId: 'project-1', pending: true },
+			});
+		});
+	});
+
 	describe('agent preview', () => {
 		const agentTabs: AssistantThreadTabsState = {
 			tabs: [{ type: 'agent', id: 'agent-1', name: 'Triage', projectId: 'project-1' }],

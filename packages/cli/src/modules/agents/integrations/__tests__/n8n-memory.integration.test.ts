@@ -24,7 +24,6 @@ import { AgentMemoryScopeRepository } from '../../repositories/agent-memory-scop
 import { AgentMemoryEntrySourceRepository } from '../../repositories/agent-memory-entry-source.repository';
 import { AgentObservationRepository } from '../../repositories/agent-observation.repository';
 import { AgentThreadRepository } from '../../repositories/agent-thread.repository';
-import { AgentRepository } from '../../repositories/agent.repository';
 import { integrationMemoryResourceId } from '../../utils/agent-memory-scope';
 import type { EpisodicScopeContext } from '../agent-chat-integration';
 import {
@@ -40,6 +39,8 @@ import {
 } from '../integration-tools';
 import { N8nMemory, type N8nMemoryImpl } from '../n8n-memory';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
+
+import { createAgent } from '@test-integration/db/agents';
 
 describe('N8nMemoryImpl', () => {
 	let repository: AgentThreadRepository;
@@ -59,15 +60,10 @@ describe('N8nMemoryImpl', () => {
 		observations = Container.get(AgentObservationRepository);
 		entryRepository = Container.get(AgentMemoryEntryRepository);
 		const project = await createTeamProject();
-		const agentRepository = Container.get(AgentRepository);
-		const agents = await agentRepository.save([
-			agentRepository.create({ name: 'Memory agent', projectId: project.id, integrations: [] }),
-			agentRepository.create({
-				name: 'Other memory agent',
-				projectId: project.id,
-				integrations: [],
-			}),
-		]);
+		const agents = [
+			await createAgent({ name: 'Memory agent', projectId: project.id, integrations: [] }),
+			await createAgent({ name: 'Other memory agent', projectId: project.id, integrations: [] }),
+		];
 		agentId = agents[0].id;
 		otherAgentId = agents[1].id;
 		memory = Container.get(N8nMemory).getImplementation(agentId);

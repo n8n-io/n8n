@@ -12,12 +12,14 @@ const row = (
 	displayName: string,
 	access: InstancePolicyTableRow['access'] = 'allow',
 	editable = true,
+	usage: InstancePolicyTableRow['usage'] = null,
 ): InstancePolicyTableRow => ({
 	name,
 	displayName,
 	access,
 	editable,
 	icon: { type: 'icon', name: 'key-round' },
+	usage,
 });
 
 const ROWS = [
@@ -133,15 +135,33 @@ describe('InstancePolicyTable', () => {
 		expect(emitted('change')).toBeUndefined();
 	});
 
-	it('shows the usage columns with no value yet', () => {
-		const { getByRole, getByTestId } = setup();
+	it('shows the usage of each row, and no value for an unknown usage', () => {
+		const { getByRole, getByTestId } = setup([
+			row('bitlyApi', 'Bitly API', 'allow', true, {
+				uses: 3,
+				workflows: 2,
+				activeWorkflows: 1,
+				projects: 1,
+			}),
+			row('notionApi', 'Notion API'),
+		]);
 
 		for (const title of ['Projects', 'Uses', 'Workflows', 'Active workflows']) {
 			expect(getByRole('columnheader', { name: title })).toBeInTheDocument();
 		}
-		const [firstRow] = within(getByTestId('instance-policy-table')).getAllByRole('row').slice(1);
-		const cells = within(firstRow).getAllByRole('cell');
-		expect(cells.slice(2).map((cell) => cell.textContent?.trim())).toEqual(['—', '—', '—', '—']);
+		const usageCells = within(getByTestId('instance-policy-table'))
+			.getAllByRole('row')
+			.slice(1)
+			.map((tableRow) =>
+				within(tableRow)
+					.getAllByRole('cell')
+					.slice(2)
+					.map((cell) => cell.textContent?.trim()),
+			);
+		expect(usageCells).toEqual([
+			['1', '3', '2', '1'],
+			['—', '—', '—', '—'],
+		]);
 	});
 
 	it('names each Access dropdown after its row', () => {

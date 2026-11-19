@@ -45,17 +45,17 @@ a deployable engine worker) without touching core logic.
   in-memory queues. `createRedisWorkQueues` builds the pair of Redis queues:
   the engine sets the list names and the message schemas. The host gives the
   Redis connections, the key prefix and the concurrency limits.
-  `RedisWorkQueue` never closes a connection. The factory closes only the
-  consumer connections that it opened through the host; the host closes the
-  publisher. The engine has no runtime dependency on `ioredis`; the adapter
-  declares the client commands it needs as interfaces.
+  `RedisWorkQueue` never closes a connection. The factory's `close()` closes
+  only the consumer connections; the host closes the publisher. The engine has
+  no runtime dependency on `ioredis`; the adapter declares the client commands
+  it needs as interfaces.
 - **Serving infra** — `server/` (express), `serve.ts` (standalone entrypoint),
   Dockerfile. First candidate to be extracted later.
 - **Runtime factory** — `runtime/` (`createEngineRuntime`). Owns the engine's
   internal topology: the stores, the handlers, the workers, the HTTP app and the
   start/stop order. It takes the adapters a host chooses and returns a running
-  engine, so no host repeats the wiring. The host always gives it the pair of
-  queues. It starts and stops the queues, but never closes their connections.
+  engine, so no host repeats the wiring. The host gives it the queues. It
+  starts and stops them, but never closes their connections.
   A data plane database is not optional — the factory's type requires one, and
   each composition root refuses to start without it rather than serving
   `/healthz` while unable to run a workflow.

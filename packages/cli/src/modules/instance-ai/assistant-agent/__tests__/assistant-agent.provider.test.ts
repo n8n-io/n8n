@@ -551,16 +551,41 @@ describe('AssistantAgentProvider', () => {
 			return { turn, written };
 		}
 
-		describe('attached agent', () => {
+		describe('agent subject', () => {
 			function agentTurn(
 				agent: Record<string, unknown>,
 				metadata: Record<string, unknown> | undefined = undefined,
 			) {
 				return turnWithMetadata(
-					{ attachments: [{ type: 'agent', projectId: 'project-1', ...agent } as never] },
+					{ subject: { type: 'agent', projectId: 'project-1', ...agent } as never },
 					metadata,
 				);
 			}
+
+			it('keeps every approval card on the first turn of an agent subject', async () => {
+				const { provider, turnEnvironment } = setup();
+				const { turn } = agentTurn({ id: 'agent-1' });
+
+				await provider.prepareTurn(turn);
+
+				expect(turnEnvironment.create).toHaveBeenCalledWith(
+					expect.objectContaining({ attachesAgent: true }),
+					expect.anything(),
+				);
+			});
+
+			it('does not bind an agent that is only attached to the message', async () => {
+				const { provider } = setup();
+				const { turn, written } = turnWithMetadata(
+					{ attachments: [{ type: 'agent', id: 'agent-1', projectId: 'project-1' }] },
+					{ emoji: '🤖' },
+				);
+
+				await provider.prepareTurn(turn);
+
+				expect(written.metadata).toBeUndefined();
+				expect(turn.memory.saveThread).not.toHaveBeenCalled();
+			});
 
 			it('binds a saved agent to a new thread', async () => {
 				const { provider } = setup();

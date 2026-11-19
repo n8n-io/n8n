@@ -300,7 +300,6 @@ export {
 	saveAgentBuilderTarget,
 	threadAuthorizesAgentAdoption,
 	threadTargetsAgent,
-	withAttachedAgentTarget,
 	withBoundAgentTarget,
 } from './tools/orchestration/agent-target-binding';
 export type {
