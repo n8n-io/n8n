@@ -6,6 +6,7 @@ import {
 	WorkflowHistoryRepository,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationReason,
+	WorkflowPublicationTriggerStatusRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 	type WorkflowPublicationTriggerKind,
@@ -108,6 +109,7 @@ export class WorkflowPublicationApplier {
 		private readonly durableJobProvisioner: DurableJobProvisioner,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 		private readonly workflowPublisherService: WorkflowPublisherService,
+		private readonly triggerStatusRepository: WorkflowPublicationTriggerStatusRepository,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -276,6 +278,10 @@ export class WorkflowPublicationApplier {
 					toAdd,
 					activationMode,
 					abort,
+					await this.triggerStatusRepository.findRetriedTriggerNodeIds(
+						record.workflowId,
+						newVersion.versionId,
+					),
 				);
 				return withTeardownFailures(
 					this.classifyActivationOutcome(

@@ -2,6 +2,7 @@ import type {
 	WorkflowEntity,
 	WorkflowHistory,
 	WorkflowPublicationOutbox,
+	WorkflowPublicationTriggerStatusRepository,
 	WorkflowPublishedVersion as WorkflowPublishedVersionEntity,
 	WorkflowPublishedVersionRepository,
 	WorkflowHistoryRepository,
@@ -53,6 +54,7 @@ describe('WorkflowPublicationApplier', () => {
 	const durableJobProvisioner = mock<DurableJobProvisioner>();
 	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
 	const workflowPublisherService = mock<WorkflowPublisherService>();
+	const triggerStatusRepository = mock<WorkflowPublicationTriggerStatusRepository>();
 
 	const applier = new WorkflowPublicationApplier(
 		logger,
@@ -70,6 +72,7 @@ describe('WorkflowPublicationApplier', () => {
 		durableJobProvisioner,
 		credentialsPermissionChecker,
 		workflowPublisherService,
+		triggerStatusRepository,
 	);
 
 	function makeRecord(
@@ -151,6 +154,7 @@ describe('WorkflowPublicationApplier', () => {
 		workflowTriggerActivator.getNodesWithUnregisteredWebhooks.mockResolvedValue(new Set());
 		workflowTriggerActivator.activate.mockResolvedValue({ activated: [], failures: [] });
 		workflowTriggerActivator.deactivate.mockResolvedValue({ externalTeardownFailures: [] });
+		triggerStatusRepository.findRetriedTriggerNodeIds.mockResolvedValue(new Set());
 		workflowTriggerActivator.updateTriggerCount.mockResolvedValue(undefined);
 		// The test nodes are scheduleTrigger nodes, so default every node to 'in-memory'.
 		workflowTriggerActivator.getTriggerKinds.mockImplementation(
@@ -677,6 +681,7 @@ describe('WorkflowPublicationApplier', () => {
 			new Set(['b']),
 			'update',
 			abort,
+			new Set(),
 		);
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
@@ -702,6 +707,7 @@ describe('WorkflowPublicationApplier', () => {
 				new Set(['a']),
 				expectedMode,
 				abort,
+				new Set(),
 			);
 		});
 
@@ -716,6 +722,7 @@ describe('WorkflowPublicationApplier', () => {
 				new Set(['a']),
 				'update',
 				abort,
+				new Set(),
 			);
 		});
 
@@ -737,6 +744,7 @@ describe('WorkflowPublicationApplier', () => {
 						new Set(['a']),
 						'activate',
 						abort,
+						new Set(),
 					);
 				},
 			);
@@ -752,6 +760,7 @@ describe('WorkflowPublicationApplier', () => {
 					new Set(['a']),
 					'activate',
 					abort,
+					new Set(),
 				);
 			});
 
@@ -770,6 +779,7 @@ describe('WorkflowPublicationApplier', () => {
 					new Set(['a']),
 					expectedMode,
 					abort,
+					new Set(),
 				);
 			});
 		});
@@ -803,6 +813,7 @@ describe('WorkflowPublicationApplier', () => {
 			new Set(['a']),
 			'update',
 			abort,
+			new Set(),
 		);
 	});
 
@@ -854,6 +865,7 @@ describe('WorkflowPublicationApplier', () => {
 			new Set(['a']),
 			'update',
 			abort,
+			new Set(),
 		);
 	});
 
@@ -877,6 +889,7 @@ describe('WorkflowPublicationApplier', () => {
 			new Set(['b', 'c']),
 			'update',
 			abort,
+			new Set(),
 		);
 	});
 
@@ -949,6 +962,7 @@ describe('WorkflowPublicationApplier', () => {
 			new Set(['a']),
 			'update',
 			abort,
+			new Set(),
 		);
 		// The cache is invalidated before the version is advanced and repopulated
 		// straight after, so the empty window never serves a stale version, all
@@ -983,6 +997,7 @@ describe('WorkflowPublicationApplier', () => {
 				new Set(['n8n']),
 				'update',
 				abort,
+				new Set(),
 			);
 		});
 
@@ -1299,6 +1314,7 @@ describe('WorkflowPublicationApplier', () => {
 			new Set(['a']),
 			'activate',
 			abort,
+			new Set(),
 		);
 	});
 

@@ -64,6 +64,10 @@ export interface TriggerOperationAbort {
 	onDetached: (work: Promise<unknown>) => void;
 }
 
+function activationAttempts(nodeId: INode['id'], retriedNodeIds: ReadonlySet<INode['id']>): number {
+	return retriedNodeIds.has(nodeId) ? 1 : TRIGGER_ACTIVATION_MAX_ATTEMPTS;
+}
+
 /**
  * Resolves with `promise`, or rejects with the abort reason once the signal
  * fires — reporting the abandoned promise through `onDetached`.
@@ -288,6 +292,7 @@ export class WorkflowTriggerActivator {
 	 * in the returned outcome's `failures` and the remaining nodes are still
 	 * attempted, so a single broken trigger does not prevent the others from
 	 * running. The caller decides whether the result is a full or partial success.
+	 * A node in `retriedNodeIds` gets one try, because its retry schedule spaces the attempts.
 	 */
 	async activate(
 		dbWorkflow: WorkflowEntity,
@@ -295,6 +300,7 @@ export class WorkflowTriggerActivator {
 		nodeIds: Set<INode['id']>,
 		activationMode: WorkflowActivateMode,
 		abort: TriggerOperationAbort,
+		retriedNodeIds: ReadonlySet<INode['id']> = new Set(),
 	): Promise<TriggerActivationOutcome> {
 		const startedAt = Date.now();
 		try {
@@ -304,6 +310,7 @@ export class WorkflowTriggerActivator {
 				nodeIds,
 				activationMode,
 				abort,
+				retriedNodeIds,
 			);
 			this.emitTriggerOperation(
 				'activate',
@@ -324,6 +331,7 @@ export class WorkflowTriggerActivator {
 		nodeIds: Set<INode['id']>,
 		activationMode: WorkflowActivateMode,
 		abort: TriggerOperationAbort,
+		retriedNodeIds: ReadonlySet<INode['id']>,
 	): Promise<TriggerActivationOutcome> {
 		return await this.tracing.startSpan(
 			{
@@ -360,6 +368,7 @@ export class WorkflowTriggerActivator {
 							outcome,
 							activationMode,
 							abort,
+							retriedNodeIds,
 						),
 						this.registerNonWebhookTriggers(
 							dbWorkflow,
@@ -370,6 +379,7 @@ export class WorkflowTriggerActivator {
 							outcome,
 							activationMode,
 							abort,
+							retriedNodeIds,
 						),
 					]);
 					this.throwRejectedPhaseError(phaseResults);
@@ -612,6 +622,7 @@ export class WorkflowTriggerActivator {
 		outcome: TriggerActivationOutcome,
 		activationMode: WorkflowActivateMode,
 		abort: TriggerOperationAbort,
+		retriedNodeIds: ReadonlySet<INode['id']>,
 	) {
 		const webhooksByNode = this.groupWebhookTriggersByNode(workflow, additionalData, nodeIds);
 
@@ -624,6 +635,7 @@ export class WorkflowTriggerActivator {
 					webhooks,
 					activationMode,
 					abort,
+					activationAttempts(nodeId, retriedNodeIds),
 				),
 		);
 
@@ -645,6 +657,7 @@ export class WorkflowTriggerActivator {
 		webhooks: IWebhookData[],
 		activationMode: WorkflowActivateMode,
 		abort: TriggerOperationAbort,
+		maxAttempts: number,
 	): Promise<Result<{ nodeId: INode['id'] }, TriggerActivationFailure>> {
 		try {
 			for (const webhookData of webhooks) {
@@ -657,7 +670,7 @@ export class WorkflowTriggerActivator {
 								mode: 'trigger',
 								activation: activationMode,
 							}),
-						TRIGGER_ACTIVATION_MAX_ATTEMPTS,
+						maxAttempts,
 						abort.signal,
 					),
 					abort,
@@ -857,6 +870,7 @@ export class WorkflowTriggerActivator {
 		outcome: TriggerActivationOutcome,
 		activationMode: WorkflowActivateMode,
 		abort: TriggerOperationAbort,
+		retriedNodeIds: ReadonlySet<INode['id']>,
 	) {
 		const triggerNodeIds = this.getNonWebhookTriggerNodeIdsForNodeIds(workflow, nodeIds);
 		if (triggerNodeIds.length === 0) return;
@@ -888,7 +902,7 @@ export class WorkflowTriggerActivator {
 						retryTriggerActivation(
 							async () =>
 								await this.nonWebhookTriggerRegistrar.register(workflow, registration, nodeId),
-							TRIGGER_ACTIVATION_MAX_ATTEMPTS,
+							activationAttempts(nodeId, retriedNodeIds),
 							abort.signal,
 						),
 						abort,

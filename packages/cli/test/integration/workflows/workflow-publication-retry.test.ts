@@ -27,6 +27,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
@@ -60,7 +61,12 @@ const UNREACHABLE = Object.assign(new Error('connect EHOSTUNREACH 10.0.0.1:993')
 	code: 'EHOSTUNREACH',
 });
 
-const fixture: { failure: Error | undefined } = { failure: undefined };
+const fixture: {
+	failure: Error | undefined;
+	/** Failures a node throws before it succeeds, independent of `failure`. */
+	failuresLeft: Map<string, number>;
+	calls: Map<string, number>;
+} = { failure: undefined, failuresLeft: new Map(), calls: new Map() };
 
 const flakyTrigger: INodeType = {
 	description: {
@@ -75,6 +81,13 @@ const flakyTrigger: INodeType = {
 		properties: [],
 	},
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
+		const { id } = this.getNode();
+		fixture.calls.set(id, (fixture.calls.get(id) ?? 0) + 1);
+		const failuresLeft = fixture.failuresLeft.get(id) ?? 0;
+		if (failuresLeft > 0) {
+			fixture.failuresLeft.set(id, failuresLeft - 1);
+			throw UNREACHABLE;
+		}
 		if (fixture.failure) throw fixture.failure;
 		return { closeFunction: async () => {} };
 	},
@@ -103,6 +116,8 @@ const RETRIED = { registered: true, retryNote: null };
 const LEFT_ALONE = 0;
 
 const ONE_ATTEMPT = 1;
+
+const ONE_TRY = 1;
 
 const LONG_AGO = new Date('2000-01-01T00:00:00.000Z');
 
@@ -230,6 +245,8 @@ afterEach(async () => {
 	vi.restoreAllMocks();
 	Container.get(WorkflowsConfig).workflowPublicationConcurrency = originalConcurrency;
 	fixture.failure = undefined;
+	fixture.failuresLeft.clear();
+	fixture.calls.clear();
 	consumer.stopPolling();
 	await Container.get(ActiveWorkflowManager).removeAll();
 	await testDb.truncate([
@@ -384,6 +401,43 @@ describe('Workflow publication retry (integration)', () => {
 		await reconciler.reconcile('reconcile');
 
 		expect(await outcome(workflow.id, trigger.id)).toEqual(RETRIED);
+	});
+
+	test('a scheduled retry gives a failed trigger one try', async () => {
+		const trigger = flakyNode('one-try');
+		const workflow = await failReconcileWhileUnreachable(trigger);
+		fixture.failure = UNREACHABLE;
+		await makeRetryDue(workflow.id);
+		fixture.calls.clear();
+
+		await reconciler.reconcile('reconcile');
+
+		expect(fixture.calls.get(trigger.id)).toBe(ONE_TRY);
+	});
+
+	test('a user publish gives a failed trigger its quick tries again', async () => {
+		const trigger = flakyNode('quick-tries');
+		const workflow = await failReconcileWhileUnreachable(trigger);
+		fixture.failure = UNREACHABLE;
+		fixture.calls.clear();
+
+		await publish(workflow);
+
+		expect(fixture.calls.get(trigger.id)).toBe(TRIGGER_ACTIVATION_MAX_ATTEMPTS);
+	});
+
+	test('a restart gives the healthy trigger of a retried workflow its quick tries', async () => {
+		const failed = flakyNode('retried');
+		const healthy = flakyNode('healthy');
+		const workflow = await createPublishedWorkflow(failed, healthy);
+		fixture.failuresLeft.set(failed.id, TRIGGER_ACTIVATION_MAX_ATTEMPTS);
+		await publish(workflow);
+		await activeWorkflowTriggers.remove(workflow.id);
+		fixture.failuresLeft.set(healthy.id, 1);
+
+		await reconciler.reconcile('startup');
+
+		expect(activeWorkflowTriggers.get(workflow.id)?.has(healthy.id)).toBe(true);
 	});
 
 	test('retries the failed in-memory trigger of a partially published workflow once its delay is up', async () => {
