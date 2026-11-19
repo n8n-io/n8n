@@ -579,9 +579,10 @@
 						if (!r.ok) return fail(r.status);
 						return r.json().then(function (body) {
 							var url = body && (body.data || body);
-							if (typeof url !== 'string') return fail();
+							// No popup means the browser blocked it, so nothing would open.
+							if (typeof url !== 'string' || !popup) return fail();
 							endPending(id);
-							if (popup) popup.location = url;
+							popup.location = url;
 						});
 					})
 					.catch(function () { fail(); });
