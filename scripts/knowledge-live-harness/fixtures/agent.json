@@ -1,0 +1,22 @@
+{
+	"instructions": "You are a support assistant of Acme Corp. You answer questions about internal documents.\n\nRules:\n- Use the selected knowledge tools (list_knowledge, search_knowledge, read_knowledge) for every question about company documents, policies, pricing, onboarding, support procedures or team conversations. Read an item before you use its content.\n- Answer in two or three sentences. End with a line `Source: <url>` for every item you used.\n- When the selected knowledge does not hold the answer, reply exactly: `Not in the selected knowledge.` Do not guess and do not use general knowledge for it.\n- When two items conflict, follow the one with the latest updatedAt and name both.",
+	"sources": {
+		"notion": {
+			"id": "notion",
+			"provider": "notion",
+			"name": "Notion",
+			"description": "Refund policies, the pricing FAQ, the onboarding guide and the Support KB."
+		},
+		"slack": {
+			"id": "slack",
+			"provider": "slack",
+			"name": "Slack",
+			"description": "The #seed-support channel: support threads of the team."
+		}
+	},
+	"agents": {
+		"kb-native": { "retrieval": "native" },
+		"kb-index": { "retrieval": "index" },
+		"kb-hybrid": { "retrieval": { "notion": "index", "slack": "native" } }
+	}
+}

@@ -51,6 +51,7 @@
     "seed:account:check": "node scripts/instance-seeding/checkPreferenceProfile.mjs",
     "seed:test": "node --test scripts/instance-seeding/*.test.mjs",
     "knowledge:seed-sources": "node scripts/knowledge-live-harness/seed-sources.mjs",
+    "knowledge:harness": "node scripts/knowledge-live-harness/run.mjs",
     "nathan": "node scripts/nathan.mjs",
     "agent:setup": "node scripts/agent-setup.mjs",
     "agent:lint": "node scripts/agent-check.mjs lint",

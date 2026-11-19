@@ -105,4 +105,5 @@ packages/@n8n/db/src/migrations/postgresdb/index.ts
 .output/
 # Outputs of the knowledge live retrieval harness (scripts/knowledge-live-harness)
 scripts/knowledge-live-harness/fixtures/items.json
+scripts/knowledge-live-harness/fixtures/agents.json
 scripts/knowledge-live-harness/results/
