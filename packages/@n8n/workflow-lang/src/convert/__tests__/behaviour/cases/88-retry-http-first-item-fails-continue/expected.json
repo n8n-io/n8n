@@ -1,0 +1,112 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Source",
+		"Http",
+		"End"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {}
+				}
+			]
+		],
+		"Source": [
+			[
+				{
+					"id": "a0"
+				},
+				{
+					"id": "a1"
+				},
+				{
+					"id": "a2"
+				}
+			]
+		],
+		"Http": [
+			[
+				{
+					"error": {
+						"message": "500 - {\"error\":\"boom\"}",
+						"name": "AxiosError",
+						"stack": "AxiosError: Request failed with status code 500\n    at settle (/Users/craig/work/n8n/node_modules/.pnpm/axios@1.20.0_debug@4.4.3_supports-color@8.1.1__supports-color@8.1.1/node_modules/axios/dist/node/axios.cjs:2530:12)\n    at IncomingMessage.handleStreamEnd (/Users/craig/work/n8n/node_modules/.pnpm/axios@1.20.0_debug@4.4.3_supports-color@8.1.1__supports-color@8.1.1/node_modules/axios/dist/node/axios.cjs:4772:11)\n    at IncomingMessage.emit (node:events:526:24)\n    at endReadableNT (node:internal/streams/readable:2147:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/craig/work/n8n/node_modules/.pnpm/axios@1.20.0_debug@4.4.3_supports-color@8.1.1__supports-color@8.1.1/node_modules/axios/dist/node/axios.cjs:6308:43)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async requestWithResponseLimit (/Users/craig/work/n8n/packages/@n8n/backend-network/dist/http/axios/invoke.js:45:16)\n    at async invokeWithChallengeAuth (/Users/craig/work/n8n/packages/@n8n/backend-network/dist/http/axios/invoke.js:26:16)\n    at async invokeAxios (/Users/craig/work/n8n/packages/@n8n/backend-network/dist/http/axios/invoke.js:13:16)\n    at async sendLegacyRequest (/Users/craig/work/n8n/packages/@n8n/backend-network/dist/http/legacy-request.js:43:15)\n    at async executeLegacyRequest (/Users/craig/work/n8n/packages/@n8n/backend-network/dist/http/legacy-request.js:15:16)\n    at async Object.requestLegacy (/Users/craig/work/n8n/packages/@n8n/backend-network/dist/http/outbound-http.js:50:28)\n    at async proxyRequestToAxios (/Users/craig/work/n8n/packages/core/dist/execution-engine/node-execution-context/utils/request-helpers/legacy-request-adapter.js:9:12)\n    at async Object.request (/Users/craig/work/n8n/packages/core/dist/execution-engine/node-execution-context/utils/request-helpers/factory.js:65:20)",
+						"code": "ERR_BAD_RESPONSE",
+						"status": 500
+					}
+				},
+				{
+					"got": "r1"
+				},
+				{
+					"got": "r2"
+				}
+			]
+		],
+		"End": [
+			[
+				{
+					"got": "",
+					"id": "",
+					"failed": true
+				},
+				{
+					"got": "r1",
+					"id": "",
+					"failed": false
+				},
+				{
+					"got": "r2",
+					"id": "",
+					"failed": false
+				}
+			]
+		]
+	},
+	"requests": [
+		{
+			"path": "/thing/a0",
+			"method": "GET"
+		},
+		{
+			"path": "/thing/a1",
+			"method": "GET"
+		},
+		{
+			"path": "/thing/a2",
+			"method": "GET"
+		},
+		{
+			"path": "/thing/a0",
+			"method": "GET"
+		},
+		{
+			"path": "/thing/a1",
+			"method": "GET"
+		},
+		{
+			"path": "/thing/a2",
+			"method": "GET"
+		},
+		{
+			"path": "/thing/a0",
+			"method": "GET"
+		},
+		{
+			"path": "/thing/a1",
+			"method": "GET"
+		},
+		{
+			"path": "/thing/a2",
+			"method": "GET"
+		}
+	],
+	"responses": []
+}

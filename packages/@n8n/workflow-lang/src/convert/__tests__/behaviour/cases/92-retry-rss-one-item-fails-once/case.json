@@ -1,0 +1,56 @@
+{
+	"description": "RSS Feed Read (a library node) with 'retry on fail' and three items: the request of the second item fails once. v1 reads the feeds one after the other and stops at the error, then runs the node again for all items",
+	"trigger": {
+		"body": {}
+	},
+	"http": {
+		"Feed": {
+			"path": "feed",
+			"responses": [
+				{
+					"url": "/feed/a0",
+					"status": 200,
+					"body": "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel><title>Feed</title><link>http://example.test/</link><description>d</description><item><title>t0</title><link>http://example.test/t0</link><guid>t0</guid></item></channel></rss>",
+					"headers": {
+						"content-type": "application/rss+xml"
+					}
+				},
+				{
+					"url": "/feed/a1",
+					"status": 500,
+					"body": "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel><title>Feed</title><link>http://example.test/</link><description>d</description><item><title>x</title><link>http://example.test/x</link><guid>x</guid></item></channel></rss>",
+					"headers": {
+						"content-type": "application/rss+xml"
+					}
+				},
+				{
+					"url": "/feed/a0",
+					"status": 200,
+					"body": "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel><title>Feed</title><link>http://example.test/</link><description>d</description><item><title>t0-second</title><link>http://example.test/t0-second</link><guid>t0-second</guid></item></channel></rss>",
+					"headers": {
+						"content-type": "application/rss+xml"
+					}
+				},
+				{
+					"url": "/feed/a1",
+					"status": 200,
+					"body": "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel><title>Feed</title><link>http://example.test/</link><description>d</description><item><title>t1-second</title><link>http://example.test/t1-second</link><guid>t1-second</guid></item></channel></rss>",
+					"headers": {
+						"content-type": "application/rss+xml"
+					}
+				},
+				{
+					"url": "/feed/a2",
+					"status": 200,
+					"body": "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel><title>Feed</title><link>http://example.test/</link><description>d</description><item><title>t2-second</title><link>http://example.test/t2-second</link><guid>t2-second</guid></item></channel></rss>",
+					"headers": {
+						"content-type": "application/rss+xml"
+					}
+				}
+			]
+		}
+	},
+	"compare": [
+		"End"
+	]
+}

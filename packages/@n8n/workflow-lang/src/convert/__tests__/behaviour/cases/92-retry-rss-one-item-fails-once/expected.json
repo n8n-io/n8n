@@ -1,0 +1,90 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Source",
+		"Feed",
+		"End"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {}
+				}
+			]
+		],
+		"Source": [
+			[
+				{
+					"id": "a0"
+				},
+				{
+					"id": "a1"
+				},
+				{
+					"id": "a2"
+				}
+			]
+		],
+		"Feed": [
+			[
+				{
+					"title": "t0-second",
+					"link": "http://example.test/t0-second",
+					"guid": "t0-second"
+				},
+				{
+					"title": "t1-second",
+					"link": "http://example.test/t1-second",
+					"guid": "t1-second"
+				},
+				{
+					"title": "t2-second",
+					"link": "http://example.test/t2-second",
+					"guid": "t2-second"
+				}
+			]
+		],
+		"End": [
+			[
+				{
+					"title": "t0-second"
+				},
+				{
+					"title": "t1-second"
+				},
+				{
+					"title": "t2-second"
+				}
+			]
+		]
+	},
+	"requests": [
+		{
+			"path": "/feed/a0",
+			"method": "GET"
+		},
+		{
+			"path": "/feed/a1",
+			"method": "GET"
+		},
+		{
+			"path": "/feed/a0",
+			"method": "GET"
+		},
+		{
+			"path": "/feed/a1",
+			"method": "GET"
+		},
+		{
+			"path": "/feed/a2",
+			"method": "GET"
+		}
+	],
+	"responses": []
+}

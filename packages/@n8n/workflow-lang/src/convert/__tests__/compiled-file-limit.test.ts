@@ -280,21 +280,87 @@ describe('a compiled node that reaches the largest size of a stored file', () =>
 		expect(out.result).toMatchObject({ Good: [{ error: expect.any(String) }, { id: 'b' }] });
 	});
 
-	it('runs the node in the host in the same run when a later node reads the paired items', async () => {
-		const compiled = await run({}, [FILE], { reads: true });
-		expect(compiled.source).toContain('.paired');
-		expect(compiled.kinds).toEqual(['http GET', 'http GET']);
-		expect(compiled.result).toMatchObject({ Good: [{ source: 'a' }, { source: 'b' }] });
-		// The host gives no paired items: the later node pairs by position, as v1's engine.
+	it('keeps no paired items, so a later read of a paired item is not compiled as exact', async () => {
+		// The host runs the v1 node for all items and gives no paired items. The v1 node pairs
+		// each of its items with its input item, so no rule of positions gives v1's item: for
+		// the items `a, a2, b` of the inputs `a, b`, the read by position gives `a, b` and
+		// nothing, and v1 gives `a, a, b`.
+		const flow = workflowWith({}, false, true);
+		const result = convertWorkflow(flow, {
+			nodeSources: sourcesWith([...ONE_CALL, '@pairedItems']),
+			instance: { baseUrl: 'https://n8n.example', id: 'a'.repeat(64) },
+		});
+		expect(result.source).not.toContain('.paired');
+		expect(result.diagnostics.filter((d) => d.code === 'paired-item').map((d) => d.node)).toEqual([
+			'Good',
+		]);
+		// The node itself hands over as before.
 		const out = await run({}, [FILE, TOO_LARGE], { reads: true });
 		expect(out.status).toBe('ok');
 		expect(out.kinds).toEqual(['http GET', 'http GET', 'node']);
-		expect(out.result).toEqual({ Good: [{ source: 'a' }, { source: 'b' }] });
-		const traced = await run({}, [TOO_LARGE], { reads: true, trace: true });
-		expect(traced.status).toBe('ok');
 		const stopped = await run({}, [TOUCHED, TOO_LARGE], { reads: true, touch: true });
 		expect(stopped.kinds).toEqual(['http POST', 'http GET']);
 		expect(stopped.status).not.toBe('ok');
+	}, 30_000);
+
+	it('compiles a parameter that reads a paired item through a node with complete paired items', async () => {
+		// The Filter node gives each item that it keeps the index of its input item, so the read
+		// of the paired item cannot fail: the expression is not one that can fail, and the node
+		// needs no check of a failed expression against the v1 node.
+		const flow = workflowWith({}, false);
+		const probe = flow.nodes.find((n) => n.name === 'Probe');
+		if (probe) probe.parameters = { id: "={{ $('Split').item.json.id }}", touch: false };
+		flow.nodes.push({
+			name: 'Keep',
+			type: 'n8n-nodes-base.filter',
+			typeVersion: 2.2,
+			position: [300, 0],
+			parameters: {
+				conditions: {
+					options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 },
+					conditions: [
+						{
+							id: '1',
+							leftValue: '={{ $json.id }}',
+							rightValue: 'a',
+							operator: { type: 'string', operation: 'notEquals' },
+						},
+					],
+					combinator: 'and',
+				},
+				options: {},
+			},
+		});
+		flow.connections.Split = { main: [[{ node: 'Keep', type: 'main', index: 0 }]] };
+		Object.assign(flow.connections, {
+			Keep: { main: [[{ node: 'Probe', type: 'main', index: 0 }]] },
+		});
+		const result = convertWorkflow(flow, {
+			nodeSources,
+			instance: { baseUrl: 'https://n8n.example', id: 'a'.repeat(64) },
+		});
+		expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+		expect(result.fallbackNodes).toEqual([]);
+		expect(result.source).toContain('pairedKnownIndex(');
+		const out = await runReference(
+			result.source,
+			{
+				trigger: {
+					body: { list: [{ id: 'a' }, { id: 'b' }, { id: 'c' }] },
+					headers: {},
+					query: {},
+				},
+				now: 0,
+				seed: 1,
+				effects: { Probe: [FILE] },
+			},
+			{ extraNodes: result.nodes },
+		);
+		expect(out.status).toBe('ok');
+		const urls = out.effects
+			.filter((effect) => effect.kind === 'http')
+			.map((effect) => Reflect.get(Object(effect.args), 'url'));
+		expect(urls).toEqual(['https://api.example.test/files/b', 'https://api.example.test/files/c']);
 	}, 30_000);
 
 	it('runs the node in the host when its compiled form is a call for each item', () => {

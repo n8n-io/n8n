@@ -1,0 +1,99 @@
+{
+	"name": "Single-item target, no paired item, Code each item",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [
+				0,
+				0
+			],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "single-unpaired-each",
+				"options": {}
+			},
+			"webhookId": "0b7f1c2e-3d4a-4b5c-8d6e-000000000073"
+		},
+		{
+			"id": "split",
+			"name": "Split",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"jsCode": "return [{ json: { id: 'a0' } }, { json: { id: 'a1' } }, { json: { id: 'a2' } }];"
+			}
+		},
+		{
+			"id": "drop",
+			"name": "Drop",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				400,
+				0
+			],
+			"parameters": {
+				"jsCode": "return [{ json: { id: 'b0' } }, { json: { id: 'b1' } }];"
+			}
+		},
+		{
+			"id": "read-each",
+			"name": "Read Each",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				600,
+				0
+			],
+			"parameters": {
+				"jsCode": "return { json: { id: $json.id, tag: $('Webhook').item.json.body.tag } };",
+				"mode": "runOnceForEachItem"
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Split",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split": {
+			"main": [
+				[
+					{
+						"node": "Drop",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Drop": {
+			"main": [
+				[
+					{
+						"node": "Read Each",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

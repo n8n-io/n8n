@@ -1,0 +1,238 @@
+{
+	"name": "Engine form, loop back from another branch",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [
+				0,
+				0
+			],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "engine-loop-other-branch",
+				"options": {}
+			},
+			"webhookId": "0b7f1c2e-3d4a-4b5c-8d6e-000000000083"
+		},
+		{
+			"id": "seed",
+			"name": "Seed",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"jsCode": "return [{ json: { round: 0 } }];"
+			}
+		},
+		{
+			"id": "tag",
+			"name": "Tag",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				400,
+				0
+			],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "1",
+							"name": "tag",
+							"value": "=t{{ $json.round }}",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "keep",
+			"name": "Keep",
+			"type": "n8n-nodes-base.filter",
+			"typeVersion": 2.2,
+			"position": [
+				600,
+				0
+			],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c1",
+							"leftValue": "={{ $json.round }}",
+							"operator": {
+								"type": "number",
+								"operation": "lt"
+							},
+							"rightValue": 5
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "more",
+			"name": "More",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [
+				800,
+				-200
+			],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c1",
+							"leftValue": "={{ $json.round }}",
+							"operator": {
+								"type": "number",
+								"operation": "lt"
+							},
+							"rightValue": 1
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "next",
+			"name": "Next",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				1000,
+				-200
+			],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "1",
+							"name": "round",
+							"value": "={{ $json.round + 1 }}",
+							"type": "number"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "read",
+			"name": "Read",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				800,
+				200
+			],
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "return { json: { round: $json.round, tag: $('Tag').item.json.tag } };"
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Seed",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Seed": {
+			"main": [
+				[
+					{
+						"node": "Tag",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Tag": {
+			"main": [
+				[
+					{
+						"node": "Keep",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Keep": {
+			"main": [
+				[
+					{
+						"node": "More",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"More": {
+			"main": [
+				[
+					{
+						"node": "Next",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[]
+			]
+		},
+		"Next": {
+			"main": [
+				[
+					{
+						"node": "Tag",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

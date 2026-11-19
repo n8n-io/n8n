@@ -1,0 +1,119 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Source",
+		"Http",
+		"Read Each",
+		"Read Expr"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {}
+				}
+			]
+		],
+		"Source": [
+			[
+				{
+					"id": "a0"
+				},
+				{
+					"id": "a1"
+				},
+				{
+					"id": "a2"
+				}
+			]
+		],
+		"Http": [
+			[
+				{
+					"got": "r0-second"
+				},
+				{
+					"got": "r0-second-b"
+				},
+				{
+					"got": "r1-second"
+				},
+				{
+					"got": "r2-second"
+				}
+			]
+		],
+		"Read Each": [
+			[
+				{
+					"got": "r0-second",
+					"src": "a0"
+				},
+				{
+					"got": "r0-second-b",
+					"src": "a0"
+				},
+				{
+					"got": "r1-second",
+					"src": "a1"
+				},
+				{
+					"got": "r2-second",
+					"src": "a2"
+				}
+			]
+		],
+		"Read Expr": [
+			[
+				{
+					"got": "r0-second",
+					"src": "a0"
+				},
+				{
+					"got": "r0-second-b",
+					"src": "a0"
+				},
+				{
+					"got": "r1-second",
+					"src": "a1"
+				},
+				{
+					"got": "r2-second",
+					"src": "a2"
+				}
+			]
+		]
+	},
+	"requests": [
+		{
+			"path": "/thing/a0",
+			"method": "GET"
+		},
+		{
+			"path": "/thing/a1",
+			"method": "GET"
+		},
+		{
+			"path": "/thing/a2",
+			"method": "GET"
+		},
+		{
+			"path": "/thing/a0",
+			"method": "GET"
+		},
+		{
+			"path": "/thing/a1",
+			"method": "GET"
+		},
+		{
+			"path": "/thing/a2",
+			"method": "GET"
+		}
+	],
+	"responses": []
+}

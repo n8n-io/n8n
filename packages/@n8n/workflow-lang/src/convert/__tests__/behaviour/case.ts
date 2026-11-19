@@ -90,8 +90,16 @@ export function answerOf(
 	const n = counters.get(step[0]) ?? 0;
 	counters.set(step[0], n + 1);
 	const responses = step[1].responses;
-	const answer = responses.find((r) => r.url === pathname) ?? responses[n % responses.length];
-	return { step: step[0], answer };
+	// Several answers with one path: the requests of that path get them in their order, and
+	// the last one again after that (a request that fails once, then gives an answer).
+	const same = responses.filter((r) => r.url === pathname);
+	if (same.length > 0) {
+		const key = `${step[0]}|${pathname}`;
+		const k = counters.get(key) ?? 0;
+		counters.set(key, k + 1);
+		return { step: step[0], answer: same[Math.min(k, same.length - 1)] };
+	}
+	return { step: step[0], answer: responses[n % responses.length] };
 }
 
 /**

@@ -1,0 +1,13 @@
+{
+	"name": "Single-item target through RSS Feed Read, flat",
+	"nodes": [
+		{ "id": "webhook", "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0,0], "parameters": { "httpMethod": "POST", "path": "single-95", "options": {} }, "webhookId": "0b7f1c2e-3d4a-4b5c-8d6e-000000000095" },
+		{ "id": "feed", "name": "Feed", "type": "n8n-nodes-base.rssFeedRead", "typeVersion": 1.2, "position": [200,0], "parameters": { "url": "=http://127.0.0.1:47123/feed", "options": {} } },
+		{ "id": "read", "name": "Read", "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [400,0], "parameters": { "mode": "raw", "jsonOutput": "={ \"title\": \"{{ $json.title }}\", \"tag\": \"{{ $('Webhook').item.json.body.tag }}\" }", "options": {} } }
+	],
+	"connections": {
+		"Webhook": { "main": [[{ "node": "Feed", "type": "main", "index": 0 }]] },
+		"Feed": { "main": [[{ "node": "Read", "type": "main", "index": 0 }]] }
+	},
+	"settings": { "executionOrder": "v1" }
+}

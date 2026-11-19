@@ -12,7 +12,7 @@
  * for every Code node, `ConvertOptions.hostCodeNodes` for the named nodes,
  * and a `// @n8n-host` comment in the code for that node.
  */
-import { NodeFailure } from '../context.ts';
+import { NodeFailure, pairingNote } from '../context.ts';
 import type { NodeContext } from '../context.ts';
 import { emitWithHostForm } from '../steps.ts';
 import type { HostForm } from '../steps.ts';
@@ -167,6 +167,7 @@ export function attemptNative(
 		allowedModules?: string[];
 		dateValues?: boolean;
 		pairsByPosition?: (name: string) => boolean;
+		pairingReason?: (name: string) => string;
 		pairedIndex?: (name: string) => {
 			at(itemIndex: string): string;
 			values: Array<{ param: string; value: string }>;
@@ -278,6 +279,12 @@ export function attemptNative(
 				}
 			: {}),
 	};
+}
+
+/** The reason of the first read of a paired item among the blockers, as the end of a diagnostic. */
+function pairingOf(blockers: Array<{ pairing?: string }>): string {
+	const first = blockers.find((b) => b.pairing !== undefined);
+	return first === undefined ? '' : pairingNote(first.pairing);
 }
 
 function blockerText(blockers: Blocker[]): string {
@@ -503,6 +510,10 @@ export function lowerCodeNative(c: NodeContext, hostForm?: () => HostForm | null
 			dateValues: c.dateValues,
 			// With "execute once" the node gets one input item, and the node before has more.
 			pairsByPosition: (name) => c.node.executeOnce !== true && c.pairsByPosition(name),
+			pairingReason: (name) =>
+				c.node.executeOnce === true
+					? `executeOnce on the reader ${c.node.type}@${c.version}`
+					: (c.pairingReason?.(name) ?? 'not known'),
 			// The paired items that the compiled nodes on the way keep, from the input item to
 			// the node that the code reads. The values stay the same for every item index, so
 			// the walk is made once with index 0 to collect them.
@@ -532,7 +543,7 @@ export function lowerCodeNative(c: NodeContext, hostForm?: () => HostForm | null
 	if (!attempt.ok) {
 		c.info(
 			'code-host',
-			`The code runs in the fallback host: ${blockerText(attempt.blockers)}.`,
+			`The code runs in the fallback host: ${blockerText(attempt.blockers)}.${pairingOf(attempt.blockers)}`,
 			field,
 		);
 		return false;

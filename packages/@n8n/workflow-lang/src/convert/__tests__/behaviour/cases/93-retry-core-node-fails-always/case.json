@@ -1,0 +1,9 @@
+{
+	"description": "A Stop and Error node with 'retry on fail': it fails on each try, and the workflow stops with its error",
+	"trigger": {
+		"body": {}
+	},
+	"compare": [
+		"End"
+	]
+}

@@ -79,7 +79,8 @@ function startPairs(c: NodeContext, out: string, output = 0): string | null {
 	if (c.pairsWanted !== true || c.setPairs === undefined) return null;
 	const pairVar = `${out}PairData`;
 	c.w.line(`const ${pairVar}: Json = { items: ${out}, paired: [] };`);
-	c.setPairs(pairVar, output);
+	// The node pushes the index of the input item with each item that it gives.
+	c.setPairs(pairVar, output, true);
 	return pairVar;
 }
 

@@ -1,0 +1,225 @@
+{
+	"name": "Single-item target, node with one input item",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [
+				0,
+				0
+			],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "single-one-input",
+				"options": {}
+			},
+			"webhookId": "0b7f1c2e-3d4a-4b5c-8d6e-000000000084"
+		},
+		{
+			"id": "mark",
+			"name": "Mark",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "1",
+							"name": "marked",
+							"value": true,
+							"type": "boolean"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "pass",
+			"name": "Pass",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [
+				400,
+				0
+			],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c1",
+							"leftValue": "={{ $json.marked }}",
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							},
+							"rightValue": true
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "http",
+			"name": "Http",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.4,
+			"position": [
+				600,
+				0
+			],
+			"retryOnFail": true,
+			"maxTries": 2,
+			"waitBetweenTries": 0,
+			"parameters": {
+				"method": "GET",
+				"url": "http://127.0.0.1:47123/thing/list",
+				"authentication": "none",
+				"options": {}
+			}
+		},
+		{
+			"id": "keep",
+			"name": "Keep",
+			"type": "n8n-nodes-base.filter",
+			"typeVersion": 2.2,
+			"position": [
+				800,
+				0
+			],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c1",
+							"leftValue": "={{ $json.got }}",
+							"operator": {
+								"type": "string",
+								"operation": "notEquals"
+							},
+							"rightValue": "r1"
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "read-each",
+			"name": "Read Each",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				1000,
+				0
+			],
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "return { json: { got: $json.got, tag: $('Webhook').item.json.body.tag } };"
+			}
+		},
+		{
+			"id": "read-expr",
+			"name": "Read Expr",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				1000,
+				200
+			],
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "={ \"tag\": \"{{ $('Webhook').item.json.body.tag }}\" }",
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Mark",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mark": {
+			"main": [
+				[
+					{
+						"node": "Pass",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Pass": {
+			"main": [
+				[
+					{
+						"node": "Http",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[]
+			]
+		},
+		"Http": {
+			"main": [
+				[
+					{
+						"node": "Keep",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Keep": {
+			"main": [
+				[
+					{
+						"node": "Read Each",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read Expr",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

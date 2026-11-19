@@ -1343,6 +1343,15 @@ function textNeverThrows(marked: string): boolean {
 	let quiet = true;
 	const visit = (n: ts.Node): void => {
 		if (!quiet) return;
+		// `pairedKnownIndex` reads a list of numbers: it cannot throw (see the helper).
+		if (
+			ts.isCallExpression(n) &&
+			ts.isIdentifier(n.expression) &&
+			n.expression.text === 'pairedKnownIndex'
+		) {
+			n.arguments.forEach(visit);
+			return;
+		}
 		const typeCheck =
 			ts.isBinaryExpression(n) &&
 			(n.operatorToken.kind === ts.SyntaxKind.InKeyword ||

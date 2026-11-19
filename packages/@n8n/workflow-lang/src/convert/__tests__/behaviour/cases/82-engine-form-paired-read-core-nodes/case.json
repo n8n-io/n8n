@@ -1,0 +1,10 @@
+{
+	"description": "The engine form (two nodes give items to one Code node). A Code node in the fallback host and a Set node read Source through a Code node that gives two new items for two input items, a Set node, a Filter node and a Switch node",
+	"trigger": {
+		"body": {}
+	},
+	"compare": [
+		"Read Host",
+		"Read Expr"
+	]
+}

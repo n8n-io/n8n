@@ -21,7 +21,7 @@ import type { LegacyIssue } from '../legacy/index.ts';
 import type { Code } from './code.ts';
 import { literal, print, raw, str, Writer } from './code.ts';
 import type { NodeContext, SubWorkflowCall } from './context.ts';
-import { NodeFailure } from './context.ts';
+import { NodeFailure, pairingNote } from './context.ts';
 import type { ExpressionScope, PairedItem, TranslateOptions } from './expression.ts';
 import { INDEX, ITEM, translateValue } from './expression.ts';
 import { Graph } from './graph.ts';
@@ -252,7 +252,13 @@ class Body {
 	 * The compiled nodes that give the paired item of each output item: the code of the
 	 * result of the node (`{ items, paired }`) and of its input list.
 	 */
-	readonly pairs = new Map<string, { run: string; input: string }>();
+	readonly pairs = new Map<string, { run: string; input: string; total?: boolean }>();
+
+	/** Why a node keeps no paired items, by node name: fixed words, for `pairingReason`. */
+	readonly noPairs = new Map<string, string>();
+
+	/** The first reason of a read of a paired item that is not known, by the node that reads. */
+	readonly notPaired = new Map<string, string>();
 
 	/** The nodes between an expression with `$('Node')` and that node (see `lineageOf`). */
 	lineage: Set<string> | undefined;
@@ -599,40 +605,203 @@ export class ModuleGenerator {
 		);
 	}
 
+	/** The type and version of a node, for the reason of a pairing that is not known. */
+	private typeOf(b: Body, name: string): string {
+		const n = b.graph.nodes.get(name);
+		return n ? `${n.type}@${n.typeVersion ?? 1}` : 'a node that is not there';
+	}
+
+	/**
+	 * The one walk from `current` back to `target` along the paired items, as v1 follows them.
+	 * Each read of a paired item uses it, so the reads and the reason of a refusal agree.
+	 * The steps that the walk follows:
+	 * - a node that gives one item for each item;
+	 * - a compiled node that keeps the paired item of each of its items (a hop: the run
+	 *   gives v1's error for an item that has none);
+	 * - for a `target` that gives one item: a node whose input is that one item by
+	 *   construction (`oneItemInto`). `first` is true then, and each item pairs with the one
+	 *   item.
+	 * `direct` is true when the input items of the last hop are the items of `target`. For each
+	 * other path the walk gives the first reason, built from node types and settings only.
+	 */
+	private pairingWalk(
+		b: Body,
+		current: string,
+		target: string,
+	):
+		| {
+				hops: Array<{ run: string; input: string; name: string; total?: boolean }>;
+				direct: boolean;
+				first: boolean;
+				/** The output of `target` that the path leaves, and true for no node between. */
+				output: number;
+				adjacent: boolean;
+		  }
+		| { reason: string } {
+		if (!this.known(b, target)) return { reason: 'target has not run' };
+		const single = this.singleItem(b, target);
+		const hops: Array<{ run: string; input: string; name: string; total?: boolean }> = [];
+		// The nodes of the path, from the reader back to the node after `target`.
+		const path: string[] = [];
+		let cur = current;
+		for (let guard = 0; guard < b.graph.nodes.size; guard++) {
+			const all = b.graph.incoming(cur);
+			const inc = all.filter((e) => e.input === 0 && b.scope.has(e.from) && this.known(b, e.from));
+			path.push(cur);
+			// In the engine form a node with several connections runs once for each of them, or
+			// waits: its latest run is not always the run that gave the items of the reader.
+			if (inc.length !== 1 || (b.engine && all.length !== 1)) {
+				const at = this.typeOf(b, cur);
+				if (all.length === 0) return { reason: `no connection into ${at}` };
+				if (all.length > 1) return { reason: `${all.length} connections into ${at}` };
+				if (all[0].input !== 0) return { reason: `connection into input ${all[0].input} of ${at}` };
+				return { reason: `node before ${at} has not run` };
+			}
+			const e = inc[0];
+			if (e.from === target) {
+				const again = this.runsAgainFirst(b, target, path);
+				if (again !== null) return { reason: again };
+				return { hops, direct: true, first: false, output: e.output, adjacent: cur === current };
+			}
+			const parent = b.graph.nodes.get(e.from);
+			if (!parent) return { reason: 'a node on the way is not there' };
+			// A node whose input is the one item of `target`: each of its items pairs with that
+			// item, also when the node keeps paired items that can have none (new items of code).
+			const one = single ? this.oneItemInto(b, e.from, target) : null;
+			if (one !== null) {
+				const again = this.runsAgainFirst(b, target, [...path, ...one]);
+				if (again !== null) return { reason: again };
+				return { hops, direct: false, first: true, output: 0, adjacent: false };
+			}
+			const pairs = b.pairs.get(`${e.from}|${e.output}`);
+			if (!parent.executeOnce && (ONE_TO_ONE.has(parent.type) || parent.disabled)) {
+				cur = e.from;
+				continue;
+			}
+			if (!parent.executeOnce && pairs) {
+				hops.push({ ...pairs, name: b.short(e.from) });
+				cur = e.from;
+				continue;
+			}
+			const type = this.typeOf(b, e.from);
+			if (parent.executeOnce) return { reason: `executeOnce on ${type}` };
+			const why =
+				b.noPairs.get(e.from) ?? (this.fallback.includes(e.from) ? 'in the host' : undefined);
+			return { reason: `no pairs after ${type}${why === undefined ? '' : ` (${why})`}` };
+		}
+		return { reason: 'the walk does not end' };
+	}
+
+	/**
+	 * The nodes from `name` back to the node after `target`, when the input of node `name` is
+	 * the one item of `target` by construction: `target` gives one item, and each node
+	 * between gives at most one item for one item (a node that gives one item for each item,
+	 * an If, Filter or Switch node). v1 then pairs each item of node `name` with its one input
+	 * item: the v1 node gives the index of that item, or `assignPairedItems` of the engine
+	 * does (one input with one item). Null for each other node, and for:
+	 * - a node with several inputs (v1 has that rule for one input only);
+	 * - code of the user that has the text `pairedItem`: it can give any paired item.
+	 */
+	private oneItemInto(b: Body, name: string, target: string): string[] | null {
+		const node = b.graph.nodes.get(name);
+		if (!node || SEVERAL_INPUTS.has(node.type)) return null;
+		if (USER_CODE.test(node.type) && parameterText(node).includes('pairedItem')) return null;
+		const nodes = [name];
+		let cur = name;
+		for (let guard = 0; guard < b.graph.nodes.size; guard++) {
+			const all = b.graph.incoming(cur);
+			if (all.length !== 1 || all[0].input !== 0) return null;
+			const from = all[0].from;
+			if (from === target) return nodes;
+			const parent = b.graph.nodes.get(from);
+			if (!parent || !b.scope.has(from)) return null;
+			if (!(ONE_TO_ONE.has(parent.type) || parent.disabled || AT_MOST_ONE.has(parent.type))) {
+				return null;
+			}
+			nodes.push(from);
+			cur = from;
+		}
+		return null;
+	}
+
+	/**
+	 * The engine form keeps the lists and the paired items of the latest run of each node. v1
+	 * follows the run that gave the items of the reader (`previousNodeRun`). The two are the
+	 * same run when no node of the path can run again before the reader runs: each node of
+	 * the path has one connection in, and v1 runs the children of a node before any other
+	 * waiting node (depth first). So only another child of a node of the path can come
+	 * first, and only a way from that child back to `target` gives a new run. Null when there
+	 * is no such way (or in the flat form), else the reason.
+	 * `path` has the nodes from the reader back to the node after `target`.
+	 */
+	private runsAgainFirst(b: Body, target: string, path: string[]): string | null {
+		if (!b.engine) return null;
+		let parent = target;
+		for (let k = path.length - 1; k >= 0; k--) {
+			const child = path[k];
+			for (const e of b.graph.outgoing(parent)) {
+				if (e.to === child || !b.scope.has(e.to)) continue;
+				if (b.graph.reachable(e.to).has(target)) {
+					return `a loop back from another branch of ${this.typeOf(b, parent)}`;
+				}
+			}
+			parent = child;
+		}
+		return null;
+	}
+
+	/**
+	 * Why the item of `target` that pairs with an input item of `current` is not known, in
+	 * fixed words (node types and settings, never names or values). For a path that the walk
+	 * follows, the reader itself is the reason: its form needs the pairing by position.
+	 */
+	private pairingReason(b: Body, current: string, target: string): string {
+		const walk = this.pairingWalk(b, current, target);
+		// The engine form (loops, a run for each parent) is a part of the reason: a count can
+		// tell the two forms apart.
+		if ('reason' in walk) {
+			return b.engine ? `engine form of the workflow: ${walk.reason}` : walk.reason;
+		}
+		return this.singleItem(b, target)
+			? 'reader in the host, target with one item'
+			: 'reader needs the pairing by position';
+	}
+
 	private pairedItem(b: Body, current: string, target: string): PairedItem | null {
 		if (!this.known(b, target)) return null;
 		const list = this.outputVar(b, target, this.branchOf(b, current, target));
-		if (this.singleItem(b, target)) return { code: `${list}[0]`, usesIndex: false };
-		let cur = current;
-		const hops: Array<{ run: string; input: string; name: string }> = [];
-		for (let guard = 0; guard < b.graph.nodes.size; guard++) {
-			const inc = b.graph
-				.incoming(cur)
-				.filter((e) => e.input === 0 && b.scope.has(e.from) && this.known(b, e.from));
-			if (inc.length !== 1) break;
-			const e = inc[0];
-			if (e.from === target) {
-				if (cur === current) return { code: ITEM, usesIndex: false };
-				// The items of the last compiled node before `target` are the items of `target`:
-				// two different paired items there are two items of `target`, as in v1.
-				let index = INDEX;
-				hops.forEach((hop, k) => {
-					index = `pairedSourceIndex(${hop.run}, ${index}, ${hop.input}.length, ${str(hop.name)}, ${k === hops.length - 1})`;
-				});
-				return { code: `${this.outputVar(b, target, e.output)}[${index}]`, usesIndex: true };
+		const single = this.singleItem(b, target);
+		const walk = this.pairingWalk(b, current, target);
+		if ('reason' in walk) {
+			if (!b.notPaired.has(current)) {
+				b.notPaired.set(current, this.pairingReason(b, current, target));
 			}
-			const parent = b.graph.nodes.get(e.from);
-			if (!parent || parent.executeOnce) break;
-			if (!(ONE_TO_ONE.has(parent.type) || parent.disabled)) {
-				// A compiled node gives the paired item of each output item, as the v1 node does.
-				const pairs = b.pairs.get(`${e.from}|${e.output}`);
-				if (!pairs) break;
-				this.helpers.add('pairedSourceIndex');
-				hops.push({ ...pairs, name: b.short(e.from) });
-			}
-			cur = e.from;
+			// The pairing is not known: the read pairs by position (a node with one item has
+			// that item only).
+			return single
+				? { code: `${list}[0]`, usesIndex: false, approximate: true }
+				: { code: `${list}[${INDEX}]`, usesIndex: true, approximate: true };
 		}
-		return { code: `${list}[${INDEX}]`, usesIndex: true, approximate: true };
+		const { hops } = walk;
+		// A hop that gives each item the index of an input item cannot fail: without another
+		// hop, each item pairs with the one item of the node.
+		if (single && hops.every((hop) => hop.total === true)) {
+			return { code: `${list}[0]`, usesIndex: false };
+		}
+		if (walk.adjacent) return { code: ITEM, usesIndex: false };
+		// Each hop gives v1's error for an item without a paired item. The items of the last
+		// compiled node before `target` are the items of `target`: two different paired items
+		// there are two items of `target`, as in v1.
+		let index = INDEX;
+		hops.forEach((hop, k) => {
+			this.helpers.add(hop.total === true ? 'pairedKnownIndex' : 'pairedSourceIndex');
+			index =
+				hop.total === true
+					? `pairedKnownIndex(${hop.run}, ${index})`
+					: `pairedSourceIndex(${hop.run}, ${index}, ${hop.input}.length, ${str(hop.name)}, ${walk.direct && k === hops.length - 1})`;
+		});
+		if (single) return { code: `${list}[0 * ${index}]`, usesIndex: true };
+		return { code: `${this.outputVar(b, target, walk.output)}[${index}]`, usesIndex: true };
 	}
 
 	/**
@@ -641,7 +810,9 @@ export class ModuleGenerator {
 	 * are the input items of `current` in number and order.
 	 */
 	private pairsByPosition(b: Body, current: string, target: string): boolean {
-		if (b.engine || !this.known(b, target)) return false;
+		if (!this.known(b, target)) return false;
+		// In the engine form the lists are those of the latest run: the walk has the check.
+		if (b.engine && 'reason' in this.pairingWalk(b, current, target)) return false;
 		let cur = current;
 		for (let guard = 0; guard < b.graph.nodes.size; guard++) {
 			const inc = b.graph.incoming(cur);
@@ -674,50 +845,48 @@ export class ModuleGenerator {
 		const knownHops = this.pairedHops.get(key);
 		if (knownHops) {
 			return knownHops.chain === null
-				? { code: itemIndex, values: [] }
+				? null
 				: { code: knownHops.chain(itemIndex), values: knownHops.values };
 		}
-		type Hop = { run: string; input: string; name: string; runParam: string; lenParam: string };
+		type Hop = {
+			run: string;
+			input: string;
+			name: string;
+			total?: boolean;
+			runParam: string;
+			lenParam: string;
+		};
 		const hops: Hop[] = [];
 		let chain: ((index: string) => string) | null = null;
-		if (this.known(b, target)) {
-			if (this.singleItem(b, target)) {
-				chain = () => '0';
-			} else {
-				let cur = current;
-				for (let guard = 0; guard < b.graph.nodes.size && chain === null; guard++) {
-					const inc = b.graph
-						.incoming(cur)
-						.filter((e) => e.input === 0 && b.scope.has(e.from) && this.known(b, e.from));
-					if (inc.length !== 1) break;
-					const e = inc[0];
-					if (e.from === target) {
-						if (cur === current) chain = (index) => index;
-						else {
-							const steps = [...hops];
-							chain = (index) => {
-								let code = index;
-								steps.forEach((hop, k) => {
-									code = `pairedSourceIndex(${hop.runParam}, ${code}, ${hop.lenParam}, ${str(hop.name)}, ${k === steps.length - 1})`;
-								});
-								return code;
-							};
-						}
-						break;
-					}
-					const parent = b.graph.nodes.get(e.from);
-					if (!parent || parent.executeOnce) break;
-					if (!(ONE_TO_ONE.has(parent.type) || parent.disabled)) {
-						const p = b.pairs.get(`${e.from}|${e.output}`);
-						if (!p) break;
-						hops.push({
-							...p,
-							name: b.short(e.from),
-							runParam: this.names.unique('coP'),
-							lenParam: this.names.unique('coLen'),
-						});
-					}
-					cur = e.from;
+		const walk = this.pairingWalk(b, current, target);
+		if (!('reason' in walk)) {
+			for (const hop of walk.hops) {
+				hops.push({
+					...hop,
+					runParam: this.names.unique('coP'),
+					lenParam: this.names.unique('coLen'),
+				});
+			}
+			const steps = [...hops];
+			const single = this.singleItem(b, target);
+			// Each hop gives v1's error for an item without a paired item. A node with one item
+			// gives that item.
+			const known = steps.every((hop) => hop.total === true);
+			chain = (index) => {
+				// Hops that cannot fail lead to the one item of a node with one item.
+				if (single && known) return '0';
+				let code = index;
+				steps.forEach((hop, k) => {
+					code =
+						hop.total === true
+							? `pairedKnownIndex(${hop.runParam}, ${code})`
+							: `pairedSourceIndex(${hop.runParam}, ${code}, ${hop.lenParam}, ${str(hop.name)}, ${walk.direct && k === steps.length - 1})`;
+				});
+				return single ? `0 * ${code}` : code;
+			};
+			if (!(single && known)) {
+				for (const hop of steps) {
+					this.helpers.add(hop.total === true ? 'pairedKnownIndex' : 'pairedSourceIndex');
 				}
 			}
 		}
@@ -728,7 +897,6 @@ export class ModuleGenerator {
 		const found = { chain, values };
 		this.pairedHops.set(key, found);
 		if (chain === null) return null;
-		if (hops.length > 0) this.helpers.add('pairedSourceIndex');
 		return { code: chain(itemIndex), values };
 	}
 
@@ -926,7 +1094,7 @@ export class ModuleGenerator {
 						severity: 'warning',
 						code: 'paired-item',
 						node: node.name,
-						message: 'An expression pairs items of another node by position.',
+						message: `An expression pairs items of another node by position.${pairingNote(b.notPaired.get(node.name))}`,
 					});
 				}
 				return t;
@@ -937,7 +1105,17 @@ export class ModuleGenerator {
 				this.helpers.add(name);
 			},
 			warn: (code, message, parameter) =>
-				this.diag({ severity: 'warning', code, message, node: node.name, parameter }),
+				this.diag({
+					severity: 'warning',
+					code,
+					// The reason of a pairing that is not known is the end of the message.
+					message:
+						code === 'paired-item' && !message.endsWith(']')
+							? `${message}${pairingNote(b.notPaired.get(node.name))}`
+							: message,
+					node: node.name,
+					parameter,
+				}),
 			info: (code, message, parameter) =>
 				this.diag({ severity: 'info', code, message, node: node.name, parameter }),
 			credentialOf: (other) => {
@@ -987,9 +1165,9 @@ export class ModuleGenerator {
 			markCompiled: () => {
 				this.compiledSteps.add(node.name);
 			},
-			pairsWanted: !b.engine && this.lineageOf(b).has(node.name),
-			setPairs: (run, output = 0) => {
-				b.pairs.set(`${node.name}|${output}`, { run, input });
+			pairsWanted: this.lineageOf(b).has(node.name),
+			setPairs: (run, output = 0, total = false) => {
+				b.pairs.set(`${node.name}|${output}`, { run, input, total });
 			},
 			noOutputWhen: (condition) => {
 				// "Always output data" gives one empty item instead (ensureAlwaysOutputData of v1).
@@ -1043,6 +1221,10 @@ export class ModuleGenerator {
 						)
 					: null,
 			pairsByPosition: (name) => this.pairsByPosition(b, node.name, `${b.prefix}${name}`),
+			pairingReason: (name) => this.pairingReason(b, node.name, `${b.prefix}${name}`),
+			noPairs: (why) => {
+				if (!b.noPairs.has(node.name)) b.noPairs.set(node.name, why);
+			},
 			pairedIndex: (name, itemIndex) =>
 				this.pairedIndexCode(b, node.name, `${b.prefix}${name}`, itemIndex),
 			readOutput: (name) => this.branchOf(b, node.name, `${b.prefix}${name}`),
@@ -1480,6 +1662,8 @@ export class ModuleGenerator {
 			lowerer(c);
 		} catch (e) {
 			if (!(e instanceof NodeFailure)) throw e;
+			// The code of a failure is a fixed word: the reason that the node keeps no paired items.
+			b.noPairs.set(node.name, `whole node in the host: ${e.code}`);
 			const degradable =
 				HOST_CAPABLE.has(node.type) && (e.code === 'expression' || e.code.startsWith('condition'));
 			const several =
@@ -1791,6 +1975,7 @@ export class ModuleGenerator {
 		const sub = this.subNodeTargets(b);
 		// The `let` lists of the latest run of each node.
 		w.comment('The items of the latest run of each node.');
+		const latestPairs = new Map<string, Map<number, string>>();
 		for (const name of b.order) {
 			const base = camelIdentifier(b.short(name), name === trigger.name ? 'trigger' : 'node');
 			const vars = new Map<number, string>();
@@ -1800,6 +1985,17 @@ export class ModuleGenerator {
 			}
 			b.engineVars.set(name, vars);
 			for (const v of vars.values()) w.line(`let ${v}: Json[] = [];`);
+			// The paired items of the latest run, for a node on the way of a paired read.
+			const kind = b.graph.nodes.get(name)?.type ?? '';
+			if (name !== trigger.name && !ONE_TO_ONE.has(kind) && this.lineageOf(b).has(name)) {
+				const latest = new Map<number, string>();
+				for (const [k, v] of vars) {
+					const pairs = this.names.unique(`${v}LatestPairs`);
+					latest.set(k, pairs);
+					w.line(`let ${pairs}: Json = { items: [], paired: [], length: 0 };`);
+				}
+				latestPairs.set(name, latest);
+			}
 		}
 		// One function for each node.
 		const fns = new Map<string, string>();
@@ -1838,6 +2034,23 @@ export class ModuleGenerator {
 			for (const v of own) this.names.release(v);
 			this.emitNode(b, node, named);
 			for (const v of own) this.names.reserve(v);
+			// The paired items of this run are local to the function. A later node reads those
+			// of the latest run: `length` is the count of the input items of that run.
+			for (const [k, latest] of latestPairs.get(name) ?? []) {
+				const local = b.pairs.get(`${name}|${k}`);
+				if (!local) continue;
+				w.line(
+					`${latest} = { items: ${local.run}.items, paired: ${local.run}.paired, length: ${local.input}.length };`,
+				);
+				b.pairs.set(`${name}|${k}`, { run: latest, input: latest, total: local.total });
+			}
+			for (const key of [...b.pairs.keys()]) {
+				// Paired items of an output without a connection have no reader.
+				const at = key.lastIndexOf('|');
+				if (key.slice(0, at) === name && !latestPairs.get(name)?.has(Number(key.slice(at + 1)))) {
+					b.pairs.delete(key);
+				}
+			}
 			const lists = this.outputLists(b, name);
 			outputCounts.set(name, lists.length);
 			// No output at all (`noOutputWhen`): an empty list of outputs.
@@ -2339,6 +2552,15 @@ export class ModuleGenerator {
 		};
 	}
 }
+
+/** Node types with several main inputs. */
+const SEVERAL_INPUTS = new Set([`${BASE}merge`, `${BASE}compareDatasets`]);
+
+/** Core nodes that give each input item to at most one place of each output. */
+const AT_MOST_ONE = new Set([`${BASE}if`, `${BASE}filter`, `${BASE}switch`]);
+
+/** Node types that run code of the user, which can give any paired item. */
+const USER_CODE = /\.(code|function|functionItem|aiTransform)$/;
 
 /** `requiredInputs` of the v1 node description: `all` when every input must have items. */
 function requiredInputs(node: N8nNode | undefined): 'all' | number | undefined {

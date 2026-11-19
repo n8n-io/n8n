@@ -1,0 +1,37 @@
+{
+	"description": "HTTP Request with 'retry on fail' and 'continue': the request of the first item fails on each try. v1 runs the node again while the first item of the output has an error",
+	"trigger": {
+		"body": {}
+	},
+	"http": {
+		"Http": {
+			"path": "thing",
+			"responses": [
+				{
+					"url": "/thing/a0",
+					"status": 500,
+					"body": {
+						"error": "boom"
+					}
+				},
+				{
+					"url": "/thing/a1",
+					"status": 200,
+					"body": {
+						"got": "r1"
+					}
+				},
+				{
+					"url": "/thing/a2",
+					"status": 200,
+					"body": {
+						"got": "r2"
+					}
+				}
+			]
+		}
+	},
+	"compare": [
+		"End"
+	]
+}
