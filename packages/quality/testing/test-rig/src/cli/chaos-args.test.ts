@@ -24,6 +24,7 @@ describe('parseChaosArgs', () => {
 
 	it('rejects an unknown engine mode or workers with an engine', () => {
 		expect(() => parseChaosArgs(['--engine', 'container'])).toThrow('in-process or remote');
+		expect(() => parseChaosArgs(['--engine', 'toString'])).toThrow('in-process or remote');
 		expect(() => parseChaosArgs(['--engine', 'remote', '--workers', '1'])).toThrow('no workers');
 	});
 });
