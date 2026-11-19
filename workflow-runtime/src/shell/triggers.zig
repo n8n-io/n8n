@@ -94,22 +94,22 @@ fn routePayload(gpa: std.mem.Allocator, index: u32, method: []const u8, raw_path
 /// `/usr/share/zoneinfo`).
 pub fn zonePayload(gpa: std.mem.Allocator, name: []const u8) ![]u8 {
     if (name.len == 0 or name.len > 64 or name[0] == '/' or std.mem.indexOf(u8, name, "..") != null) return error.BadTimezone;
-    const dir: []const u8 = if (std.c.getenv("TZDIR")) |d| std.mem.span(d) else "/usr/share/zoneinfo";
+    const dir: []const u8 = if (sys.getenv("TZDIR")) |d| d else "/usr/share/zoneinfo";
     var path_buf: [512]u8 = undefined;
     const path = try std.fmt.bufPrintSentinel(&path_buf, "{s}/{s}", .{ dir, name }, 0);
-    const fd = std.c.open(path, .{ .ACCMODE = .RDONLY }, @as(std.c.mode_t, 0));
+    const fd = sys.openFileZ(path, .rdonly, 0);
     if (fd < 0) {
         sys.note("time zone {s}: cannot open {s}\n", .{ name, path });
         return error.UnknownTimezone;
     }
-    defer _ = std.c.close(fd);
+    defer sys.close(fd);
     var out: std.ArrayList(u8) = .empty;
     try out.appendSlice(gpa, name);
     try out.append(gpa, '\n');
     var buf: [1 << 14]u8 = undefined;
     // TZif files are a few kilobytes; the bound stops a wrong path early.
     while (out.items.len < 1 << 20) {
-        const n = std.c.read(fd, &buf, buf.len);
+        const n = sys.readFile(fd, &buf);
         if (n <= 0) break;
         try out.appendSlice(gpa, buf[0..@intCast(n)]);
     }

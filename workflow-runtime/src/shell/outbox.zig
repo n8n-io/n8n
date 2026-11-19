@@ -166,7 +166,7 @@ pub const Outbox = struct {
         if (ob.need_sync) ob.dirty = true;
         ob.flushSync();
         if (ob.fd >= 0) {
-            _ = std.c.close(ob.fd);
+            sys.close(ob.fd);
             ob.fd = -1;
         }
         ob.rd.closeFd();
@@ -225,7 +225,7 @@ pub const Outbox = struct {
     /// sync failed.
     fn syncSegment(ob: *Outbox) bool {
         std.debug.assert(ob.fd >= 0);
-        if (std.c.fsync(ob.fd) != 0) return false;
+        if (sys.fsyncFile(ob.fd) != 0) return false;
         ob.dirty = false;
         ob.need_sync = false;
         return true;
@@ -325,13 +325,13 @@ pub const Outbox = struct {
         while (i < k) : (i += 1) {
             var pb: [path_bytes]u8 = undefined;
             const p = ob.segPath(&pb, ob.segs[i].first_seq) catch return error.OutboxPath;
-            if (std.c.unlink(p) != 0 and std.c.errno(@as(c_int, -1)) != .NOENT) return error.OutboxDelete;
+            if (sys.unlinkZ(p) != 0 and !sys.isEnoent()) return error.OutboxDelete;
             std.debug.assert(ob.stored >= ob.segs[i].bytes);
             ob.stored -= ob.segs[i].bytes;
         }
         // The receiving segment may be one of them.
         if (ob.fd >= 0 and k == ob.nsegs) {
-            _ = std.c.close(ob.fd);
+            sys.close(ob.fd);
             ob.fd = -1;
             ob.cur_bytes = 0;
         }
@@ -348,7 +348,7 @@ pub const Outbox = struct {
         if (ob.fd >= 0) {
             // The records that wait for a sync are in the segment that closes.
             if ((ob.need_sync or ob.dirty) and !ob.syncSegment()) return error.OutboxSync;
-            _ = std.c.close(ob.fd);
+            sys.close(ob.fd);
             ob.fd = -1;
         }
         if (ob.nsegs == ob.segs.len) {
@@ -360,11 +360,11 @@ pub const Outbox = struct {
         }
         var pb: [path_bytes]u8 = undefined;
         const p = try ob.segPath(&pb, seq);
-        const fd = std.c.open(p, .{ .ACCMODE = .WRONLY, .CREAT = true, .EXCL = true, .APPEND = true }, @as(std.c.mode_t, 0o600));
+        const fd = sys.openFileZ(p, .creat_excl_append, 0o600);
         if (fd >= 0) return ob.adoptSegment(fd, seq);
         // A segment file of a crash: it holds no valid record.
-        _ = std.c.unlink(p);
-        const again = std.c.open(p, .{ .ACCMODE = .WRONLY, .CREAT = true, .APPEND = true }, @as(std.c.mode_t, 0o600));
+        _ = sys.unlinkZ(p);
+        const again = sys.openFileZ(p, .creat_append, 0o600);
         if (again < 0) return error.OutboxOpen;
         return ob.adoptSegment(again, seq);
     }
@@ -373,7 +373,7 @@ pub const Outbox = struct {
     fn openSegment(ob: *Outbox, first_seq: u64) !void {
         var pb: [path_bytes]u8 = undefined;
         const p = try ob.segPath(&pb, first_seq);
-        const fd = std.c.open(p, .{ .ACCMODE = .WRONLY, .APPEND = true }, @as(std.c.mode_t, 0o600));
+        const fd = sys.openFileZ(p, .append, 0o600);
         if (fd < 0) return error.OutboxOpen;
         ob.fd = fd;
         std.debug.assert(ob.nsegs > 0 and ob.segs[ob.nsegs - 1].first_seq == first_seq);
@@ -382,8 +382,8 @@ pub const Outbox = struct {
     }
 
     fn adoptSegment(ob: *Outbox, fd: c_int, first_seq: u64) !void {
-        if (std.c.fchmod(fd, @as(std.c.mode_t, 0o600)) != 0) {
-            _ = std.c.close(fd);
+        if (sys.fchmodFile(fd, 0o600) != 0) {
+            sys.close(fd);
             return error.OutboxOpen;
         }
         std.debug.assert(ob.nsegs < ob.segs.len);
@@ -409,12 +409,12 @@ pub const Outbox = struct {
     /// The segment files of this shard, oldest first.
     fn scanNames(ob: *Outbox) !void {
         var pb: [path_bytes]u8 = undefined;
-        const d = std.c.opendir(dirPath(ob.dir, &pb)) orelse return error.OutboxDir;
-        defer _ = std.c.closedir(d);
+        var it = sys.DirIter.openZ(dirPath(ob.dir, &pb)) orelse return error.OutboxDir;
+        defer it.close();
         var guard: u32 = 0;
-        while (std.c.readdir(d)) |ent| : (guard += 1) {
+        while (it.nextName()) |name| : (guard += 1) {
             if (guard > 1 << 20) return error.OutboxDir;
-            const first = parseSegName(std.mem.sliceTo(&ent.name, 0), ob.shard) orelse continue;
+            const first = parseSegName(name, ob.shard) orelse continue;
             if (ob.nsegs == ob.segs.len) return error.OutboxTooManySegments;
             ob.segs[ob.nsegs] = .{ .first_seq = first, .bytes = 0 };
             ob.nsegs += 1;
@@ -447,7 +447,7 @@ pub const Outbox = struct {
         while (j < ob.nsegs) : (j += 1) {
             var pb: [path_bytes]u8 = undefined;
             const p = ob.segPath(&pb, ob.segs[j].first_seq) catch continue;
-            _ = std.c.unlink(p);
+            _ = sys.unlinkZ(p);
         }
         ob.nsegs = keep;
         ob.next_seq = expect;
@@ -460,9 +460,9 @@ pub const Outbox = struct {
     fn scanSegment(ob: *Outbox, first_seq: u64) !Scanned {
         var pb: [path_bytes]u8 = undefined;
         const p = try ob.segPath(&pb, first_seq);
-        const fd = std.c.open(p, .{ .ACCMODE = .RDWR }, @as(std.c.mode_t, 0o600));
+        const fd = sys.openFileZ(p, .rdwr, 0o600);
         if (fd < 0) return error.OutboxOpen;
-        defer _ = std.c.close(fd);
+        defer sys.close(fd);
         var off: u64 = 0;
         var expect = first_seq;
         var guard: u64 = 0;
@@ -486,16 +486,16 @@ pub const Outbox = struct {
             expect += 1;
         }
         // Drop what a crash left behind.
-        if (off != fileSize(fd) and std.c.ftruncate(fd, @intCast(off)) != 0) return error.OutboxTruncate;
+        if (off != fileSize(fd) and sys.ftruncateFile(fd, off) != 0) return error.OutboxTruncate;
         return .{ .bytes = off, .next_seq = expect };
     }
 
     fn readAckFile(ob: *Outbox) u64 {
         var pb: [path_bytes]u8 = undefined;
         const p = ob.ackPath(&pb) catch return 0;
-        const fd = std.c.open(p, .{ .ACCMODE = .RDONLY }, @as(std.c.mode_t, 0));
+        const fd = sys.openFileZ(p, .rdonly, 0);
         if (fd < 0) return 0;
-        defer _ = std.c.close(fd);
+        defer sys.close(fd);
         var buf: [ack_text_bytes]u8 = undefined;
         const n = readAt(fd, &buf, 0);
         const text = std.mem.trim(u8, buf[0..n], " \t\r\n");
@@ -512,20 +512,20 @@ pub const Outbox = struct {
         var ab: [path_bytes]u8 = undefined;
         const tmp = try ob.ackTmpPath(&tb);
         const p = try ob.ackPath(&ab);
-        const fd = std.c.open(tmp, .{ .ACCMODE = .WRONLY, .CREAT = true, .TRUNC = true }, @as(std.c.mode_t, 0o600));
+        const fd = sys.openFileZ(tmp, .creat_trunc_wronly, 0o600);
         if (fd < 0) return error.OutboxAck;
         var text: [ack_text_bytes]u8 = undefined;
         const line = std.fmt.bufPrint(&text, "{d}\n", .{ob.acked_seq}) catch unreachable;
         writeAll(fd, line) catch {
-            _ = std.c.close(fd);
+            sys.close(fd);
             return error.OutboxAck;
         };
-        if (std.c.fsync(fd) != 0) {
-            _ = std.c.close(fd);
+        if (sys.fsyncFile(fd) != 0) {
+            sys.close(fd);
             return error.OutboxAck;
         }
-        _ = std.c.close(fd);
-        if (std.c.rename(tmp, p) != 0) return error.OutboxAck;
+        sys.close(fd);
+        if (sys.renameZ(tmp, p) != 0) return error.OutboxAck;
         syncDir(ob.dir);
     }
 };
@@ -627,7 +627,7 @@ pub const Reader = struct {
 
     fn closeFd(rd: *Reader) void {
         if (rd.fd >= 0) {
-            _ = std.c.close(rd.fd);
+            sys.close(rd.fd);
             rd.fd = -1;
         }
     }
@@ -718,7 +718,7 @@ pub const Reader = struct {
         rd.closeFd();
         var pb: [path_bytes]u8 = undefined;
         const p = ob.segPath(&pb, first) catch return null;
-        const fd = std.c.open(p, .{ .ACCMODE = .RDONLY }, @as(std.c.mode_t, 0));
+        const fd = sys.openFileZ(p, .rdonly, 0);
         if (fd < 0) return null;
         rd.fd = fd;
         rd.fd_first = first;
@@ -800,7 +800,7 @@ fn parseSegName(name: []const u8, shard: u32) ?u64 {
 fn writeAll(fd: c_int, b: []const u8) error{OutboxWrite}!void {
     var off: usize = 0;
     while (off < b.len) {
-        const n = std.c.write(fd, b[off..].ptr, b.len - off);
+        const n = sys.writeFile(fd, b[off..]);
         if (n <= 0) return error.OutboxWrite;
         off += @intCast(n);
     }
@@ -809,12 +809,12 @@ fn writeAll(fd: c_int, b: []const u8) error{OutboxWrite}!void {
 /// Exactly `buf.len` bytes at `off`, or fewer at the end of the file.
 fn readAt(fd: c_int, buf: []u8, off: u64) usize {
     if (buf.len == 0) return 0;
-    const n = std.c.pread(fd, buf.ptr, buf.len, @intCast(off));
+    const n = sys.preadFile(fd, buf, off);
     return if (n <= 0) 0 else @intCast(n);
 }
 
 fn fileSize(fd: c_int) u64 {
-    const n = std.c.lseek(fd, 0, 2); // SEEK_END
+    const n = sys.lseekEnd(fd);
     return if (n < 0) 0 else @intCast(n);
 }
 
@@ -828,16 +828,17 @@ fn dirPath(dir: []const u8, buf: []u8) [*:0]const u8 {
 /// Create the log dir (0700) when it is not there.
 fn ensureDir(dir: []const u8) !void {
     var b: [path_bytes]u8 = undefined;
-    if (std.c.mkdir(dirPath(dir, &b), @as(std.c.mode_t, 0o700)) == 0) return;
-    if (std.c.errno(@as(c_int, -1)) != .EXIST) return error.OutboxDir;
+    if (sys.mkdirZ(dirPath(dir, &b), 0o700) == 0) return;
+    if (!sys.isEexist()) return error.OutboxDir;
 }
 
 fn syncDir(dir: []const u8) void {
     var b: [path_bytes]u8 = undefined;
-    const fd = std.c.open(dirPath(dir, &b), .{ .ACCMODE = .RDONLY }, @as(std.c.mode_t, 0));
+    const fd = sys.openFileZ(dirPath(dir, &b), .rdonly, 0);
     if (fd < 0) return;
-    _ = std.c.fsync(fd);
-    _ = std.c.close(fd);
+    // fsync result ignored: best-effort sync of the directory
+    _ = sys.fsyncFile(fd);
+    sys.close(fd);
 }
 
 // ---- tests ------------------------------------------------------------------------
@@ -967,9 +968,9 @@ test "outbox: a torn last record is cut on start" {
         // A crash in the middle of the next record.
         var pb: [path_bytes]u8 = undefined;
         const p = try ob.segPath(&pb, 1);
-        const fd = std.c.open(p, .{ .ACCMODE = .WRONLY, .APPEND = true }, @as(std.c.mode_t, 0o600));
+        const fd = sys.openFileZ(p, .append, 0o600);
         try t.expect(fd >= 0);
-        defer _ = std.c.close(fd);
+        defer sys.close(fd);
         var junk: [7]u8 = @splat(7);
         try writeAll(fd, &junk);
     }

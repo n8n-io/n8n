@@ -6,6 +6,154 @@ const c = std.c;
 
 pub const is_linux = builtin.os.tag == .linux;
 
+// ---- socket address types (for dns.zig c-ares callbacks) ----
+
+pub const Sockaddr = c.sockaddr;
+pub const SockaddrIn = c.sockaddr.in;
+pub const SockaddrIn6 = c.sockaddr.in6;
+pub const af_inet = c.AF.INET;
+pub const af_inet6 = c.AF.INET6;
+pub const af_unspec = c.AF.UNSPEC;
+
+// ---- file helpers (for outbox.zig, server.zig, triggers.zig) ----
+
+pub const Mode = c.mode_t;
+
+pub const OpenHow = enum {
+    rdonly,
+    rdwr,
+    append,
+    creat_excl_append,
+    creat_trunc_wronly,
+    creat_append,
+};
+
+/// Open a file by path. Returns a file descriptor, or -1 on error.
+pub fn openFileZ(path: [*:0]const u8, how: OpenHow, mode: Mode) c_int {
+    const flags: c.O = switch (how) {
+        .rdonly => .{ .ACCMODE = .RDONLY },
+        .rdwr => .{ .ACCMODE = .RDWR },
+        .append => .{ .ACCMODE = .WRONLY, .APPEND = true },
+        .creat_excl_append => .{ .ACCMODE = .WRONLY, .CREAT = true, .EXCL = true, .APPEND = true },
+        .creat_trunc_wronly => .{ .ACCMODE = .WRONLY, .CREAT = true, .TRUNC = true },
+        .creat_append => .{ .ACCMODE = .WRONLY, .CREAT = true, .APPEND = true },
+    };
+    return c.open(path, flags, mode);
+}
+
+/// Plain read(2) from a file, not a socket.
+pub fn readFile(fd: c_int, buf: []u8) isize {
+    return c.read(fd, buf.ptr, buf.len);
+}
+
+/// Plain write(2) to a file, not a socket.
+pub fn writeFile(fd: c_int, buf: []const u8) isize {
+    return c.write(fd, buf.ptr, buf.len);
+}
+
+/// pread(2) at an offset.
+pub fn preadFile(fd: c_int, buf: []u8, offset: u64) isize {
+    return c.pread(fd, buf.ptr, buf.len, @intCast(offset));
+}
+
+/// lseek to the end; returns the offset, or -1.
+pub fn lseekEnd(fd: c_int) i64 {
+    return c.lseek(fd, 0, c.SEEK.END);
+}
+
+/// fsync(2).
+pub fn fsyncFile(fd: c_int) c_int {
+    return c.fsync(fd);
+}
+
+/// fchmod(2).
+pub fn fchmodFile(fd: c_int, mode: Mode) c_int {
+    return c.fchmod(fd, mode);
+}
+
+/// ftruncate(2).
+pub fn ftruncateFile(fd: c_int, len: u64) c_int {
+    return c.ftruncate(fd, @intCast(len));
+}
+
+/// unlink(2) by path.
+pub fn unlinkZ(path: [*:0]const u8) c_int {
+    return c.unlink(path);
+}
+
+/// rename(2).
+pub fn renameZ(old: [*:0]const u8, new: [*:0]const u8) c_int {
+    return c.rename(old, new);
+}
+
+/// mkdir(2) by path.
+pub fn mkdirZ(path: [*:0]const u8, mode: Mode) c_int {
+    return c.mkdir(path, mode);
+}
+
+// ---- errno helpers (for outbox.zig, server.zig) ----
+
+/// The current errno as an integer.
+pub fn lastErrno() c_int {
+    return @intFromEnum(c.errno(@as(c_int, -1)));
+}
+
+/// True when errno is ENOENT.
+pub fn isEnoent() bool {
+    return c.errno(@as(c_int, -1)) == .NOENT;
+}
+
+/// True when errno is EEXIST.
+pub fn isEexist() bool {
+    return c.errno(@as(c_int, -1)) == .EXIST;
+}
+
+// ---- directory iteration (for outbox.zig scanNames) ----
+
+pub const DirIter = struct {
+    d: ?*c.DIR,
+
+    pub fn openZ(path: [*:0]const u8) ?DirIter {
+        const d = c.opendir(path) orelse return null;
+        return .{ .d = d };
+    }
+
+    /// The next entry name, or null at the end. Skips "." and "..".
+    pub fn nextName(it: *DirIter) ?[]const u8 {
+        while (true) {
+            const ent = c.readdir(it.d.?) orelse return null;
+            const name = std.mem.sliceTo(&ent.name, 0);
+            if (std.mem.eql(u8, name, ".") or std.mem.eql(u8, name, "..")) continue;
+            return name;
+        }
+    }
+
+    pub fn close(it: *DirIter) void {
+        _ = c.closedir(it.d.?);
+        it.d = null;
+    }
+};
+
+// ---- posix errno constants (for server.zig io_uring recv) ----
+
+pub const posix_e_nobufs = @as(i32, @backingInt(c.E.NOBUFS));
+pub const posix_e_connreset = @as(i32, @backingInt(c.E.CONNRESET));
+
+// ---- socketpair (for server.zig tests) ----
+
+pub fn socketPair() !struct { a: c_int, b: c_int } {
+    var fds: [2]c_int = undefined;
+    if (c.socketpair(c.AF.UNIX, c.SOCK.STREAM, 0, &fds) != 0) return error.SocketPair;
+    return .{ .a = fds[0], .b = fds[1] };
+}
+
+// ---- nanosleep (for server.zig napTest) ----
+
+pub fn nanoSleep(ns: u64) void {
+    var ts: c.timespec = .{ .sec = @intCast(ns / 1_000_000_000), .nsec = @intCast(ns % 1_000_000_000) };
+    _ = c.nanosleep(&ts, null);
+}
+
 pub const Ready = struct { token: u64, readable: bool, writable: bool, eof: bool };
 
 /// A poller token: kind in the top byte, a 24-bit generation, a 32-bit index.
@@ -613,4 +761,9 @@ pub fn fileMode(path: [*:0]const u8) error{Stat}!c_uint {
     var st = std.mem.zeroes(std.c.Stat);
     if (std.c.stat(path, &st) != 0) return error.Stat;
     return @intCast(st.mode & 0o777);
+}
+
+test "sim_stream: passes if the import and its own tests compile and run" {
+    // passes if the import and the sim_stream tests pass
+    _ = @import("sim_stream.zig");
 }

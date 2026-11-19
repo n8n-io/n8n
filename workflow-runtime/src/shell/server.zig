@@ -639,7 +639,7 @@ const FileLog = struct {
     fn sync(ctx: *anyopaque) anyerror!void {
         const l: *FileLog = @ptrCast(@alignCast(ctx));
         try l.flush();
-        if (std.c.fsync(l.fd) != 0) return error.LogSync;
+        if (sys.fsyncFile(l.fd) != 0) return error.LogSync;
     }
     fn flush(l: *FileLog) !void {
         if (l.len == 0) return;
@@ -649,7 +649,7 @@ const FileLog = struct {
     fn writeAll(fd: c_int, b: []const u8) !void {
         var off: usize = 0;
         while (off < b.len) {
-            const n = std.c.write(fd, b[off..].ptr, b.len - off);
+            const n = sys.writeFile(fd, b[off..]);
             if (n <= 0) return error.LogWrite;
             off += @intCast(n);
         }
@@ -671,8 +671,8 @@ fn makeDirMode(path: []const u8, mode: u16) !void {
     @memcpy(buf[0..path.len], path);
     buf[path.len] = 0;
     const z = buf[0..path.len :0];
-    if (std.c.mkdir(z, @as(std.c.mode_t, @intCast(mode))) == 0) return;
-    if (std.c.errno(@as(c_int, -1)) != .EXIST) return error.LogDir;
+    if (sys.mkdirZ(z, @intCast(mode)) == 0) return;
+    if (!sys.isEexist()) return error.LogDir;
 }
 
 pub const Runner = struct {
@@ -909,10 +909,10 @@ pub const Runner = struct {
             var path_buf: [512]u8 = undefined;
             const path = try std.fmt.bufPrintSentinel(&path_buf, "{s}/shard-{d}.log", .{ dir, id }, 0);
             existing = readAll(gpa, path) catch &.{};
-            const O = std.c.O{ .ACCMODE = .WRONLY, .CREAT = true, .APPEND = true };
-            const fd = std.c.open(path, O, @as(std.c.mode_t, 0o600));
+            const fd = sys.openFileZ(path, .creat_append, 0o600);
             if (fd < 0) return error.LogOpen;
-            _ = std.c.fchmod(fd, @as(std.c.mode_t, 0o600));
+            // fchmod result ignored: mode was just set by open
+            _ = sys.fchmodFile(fd, 0o600);
             r.flog = try gpa.create(FileLog);
             r.flog.?.* = .{ .fd = fd, .buf = try reserve(gpa, u8, 4 << 20) };
             log = .{ .ctx = r.flog.?, .appendFn = FileLog.append, .syncFn = FileLog.sync };
@@ -1089,13 +1089,13 @@ pub const Runner = struct {
     }
 
     fn readAll(gpa: std.mem.Allocator, path: [*:0]const u8) ![]u8 {
-        const fd = std.c.open(path, .{ .ACCMODE = .RDONLY }, @as(std.c.mode_t, 0));
+        const fd = sys.openFileZ(path, .rdonly, 0);
         if (fd < 0) return error.NotFound;
-        defer _ = std.c.close(fd);
+        defer sys.close(fd);
         var out: std.ArrayList(u8) = .empty;
         var buf: [1 << 16]u8 = undefined;
         while (true) {
-            const n = std.c.read(fd, &buf, buf.len);
+            const n = sys.readFile(fd, &buf);
             if (n <= 0) break;
             try out.appendSlice(gpa, buf[0..@intCast(n)]);
         }
@@ -1110,7 +1110,7 @@ pub const Runner = struct {
             const stats = try r.sh.recover(existing);
             if (stats.valid_bytes < existing.len and r.flog != null) {
                 // Drop a torn tail so new records follow valid ones.
-                _ = std.c.ftruncate(r.flog.?.fd, @intCast(stats.valid_bytes));
+                _ = sys.ftruncateFile(r.flog.?.fd, stats.valid_bytes);
             }
             const tk = try r.sh.resolveInDoubt(now);
             try r.perform(tk.actions);
@@ -1181,7 +1181,7 @@ pub const Runner = struct {
         if (r.flog) |l| {
             // Records since the last sync.
             l.flush() catch {};
-            _ = std.c.close(l.fd);
+            sys.close(l.fd);
         }
         r.queue.deinit();
         if (r.ob) |*ob| ob.deinit();
@@ -1522,13 +1522,13 @@ pub const Runner = struct {
         if (!c.more) cn.recv_armed = false;
         if (c.res > 0) {
             r.takeBytes(idx, ring.bytes(c));
-        } else if (c.res == -@as(i32, @backingInt(std.posix.E.NOBUFS))) {
+        } else if (c.res == -sys.posix_e_nobufs) {
             // No free buffer: a limit. The buffers of this round come back
             // before the next enter, which submits the re-arm.
         } else {
             // The peer closed, or an error: send what is queued, then close.
             // Errors other than a reset are unexpected: name the first ones.
-            if (c.res < 0 and c.res != -@as(i32, @backingInt(std.posix.E.CONNRESET))) {
+            if (c.res < 0 and c.res != -sys.posix_e_connreset) {
                 r.ring_recv_errors += 1;
                 if (r.ring_recv_errors <= 8) sys.note("shard {d}: io_uring recv ended with errno {d}\n", .{ r.id, -c.res });
             }
@@ -4814,7 +4814,7 @@ const TestRunner = struct {
         opts.routes = t.routes;
         opts.test_region_counts = t.region_counts;
         if (t.fallback_wait_ms) |ms| opts.fallback_wait_ms = ms;
-        var p: u16 = 36000 + @as(u16, @intCast(@mod(std.c.getpid(), 2000)));
+        var p: u16 = 36000 + @as(u16, @intCast(@mod(sys.processId(), 2000)));
         while (p < 39000) : (p += 1) {
             opts.port = p;
             t.r = Runner.init(t.arena.allocator(), 0, opts, &t.stats, &t.stop) catch |e| {
@@ -4885,8 +4885,7 @@ const TestRunner = struct {
 };
 
 fn napTest() void {
-    var ts: std.c.timespec = .{ .sec = 0, .nsec = 2_000_000 };
-    _ = std.c.nanosleep(&ts, null);
+    sys.nanoSleep(2_000_000);
 }
 
 test "regression: a second client gets its own connection, not the one already open" {
@@ -5409,17 +5408,16 @@ const no_host = "/nonexistent/wfrt-test-fallback.sock";
 /// A host connection on a socket pair in slot `ci`, ready for steps. The
 /// test is the host: it uses the other end, which the caller closes.
 fn fakeHostConn(r: *Runner, ci: u8) !c_int {
-    var fds: [2]c_int = undefined;
-    if (std.c.socketpair(std.c.AF.UNIX, std.c.SOCK.STREAM, 0, &fds) != 0) return error.SocketPair;
-    sys.setNonBlocking(fds[0]);
-    sys.setNonBlocking(fds[1]);
+    const pair = try sys.socketPair();
+    sys.setNonBlocking(pair.a);
+    sys.setNonBlocking(pair.b);
     const c = &r.fb_conns[ci];
     std.debug.assert(c.fd < 0);
-    c.fd = fds[0];
+    c.fd = pair.a;
     c.gen +%= 1;
     c.state = .ready;
-    try r.poller.addRead(fds[0], token(.fallback, c.gen, ci));
-    return fds[1];
+    try r.poller.addRead(pair.a, token(.fallback, c.gen, ci));
+    return pair.b;
 }
 
 /// A step in flight on connection `ci`, with its frame in the journal.
