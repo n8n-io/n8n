@@ -23,6 +23,20 @@ import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 import { searchModels } from './methods/searchModels';
 
+/**
+ * Strict tool use guarantees that tool inputs match their JSON Schema. The node creates the model,
+ * but the provider-agnostic agent binds tools later, so this subclass applies strict mode at bind time.
+ * @see https://platform.claude.com/docs/en/agents-and-tools/tool-use/strict-tool-use
+ */
+export class StrictChatAnthropic extends ChatAnthropic {
+	override bindTools(
+		...args: Parameters<ChatAnthropic['bindTools']>
+	): ReturnType<ChatAnthropic['bindTools']> {
+		const [tools, kwargs] = args;
+		return super.bindTools(tools, { ...kwargs, strict: true });
+	}
+}
+
 const ANTHROPIC_MODEL_BUILDER_HINT = {
 	propertyHint:
 		'When extended thinking is needed, use Adaptive mode and choose an Effort level. ' +
@@ -356,6 +370,14 @@ export class LmChatAnthropic implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Strict Tool Use',
+						name: 'strictToolUse',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether to require tool inputs to match their schemas. The Anthropic API rejects tools with unsupported schemas, such as recursive $ref.',
+					},
+					{
 						displayName: 'Maximum Number of Tokens',
 						name: 'maxTokensToSample',
 						default: DEFAULT_MAX_TOKENS,
@@ -586,6 +608,7 @@ export class LmChatAnthropic implements INodeType {
 			effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 			streaming?: boolean;
 			promptCaching?: 'disabled' | '5m' | '1h';
+			strictToolUse?: boolean;
 		};
 
 		// Pre-flight check for the one model family we have confirmed rejects manual thinking, so
@@ -775,7 +798,8 @@ export class LmChatAnthropic implements INodeType {
 			chatAnthropicParams.topP = options.topP;
 		}
 
-		const model = new ChatAnthropic(chatAnthropicParams);
+		const ModelClass = options.strictToolUse ? StrictChatAnthropic : ChatAnthropic;
+		const model = new ModelClass(chatAnthropicParams);
 
 		// Some Anthropic models do not support Langchain default of -1 for topP so we need to unset it
 		if (options.topP === undefined) {

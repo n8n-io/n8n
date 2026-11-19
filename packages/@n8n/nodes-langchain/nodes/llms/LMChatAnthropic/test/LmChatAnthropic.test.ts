@@ -14,7 +14,7 @@ import type { INode, INodeProperties, ISupplyDataFunctions } from 'n8n-workflow'
 import { NodeOperationError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
-import { LmChatAnthropic } from '../LmChatAnthropic.node';
+import { LmChatAnthropic, StrictChatAnthropic } from '../LmChatAnthropic.node';
 
 vi.mock('@langchain/anthropic', () => ({
 	ChatAnthropic: vi.fn(),
@@ -114,6 +114,71 @@ describe('LmChatAnthropic', () => {
 	});
 
 	describe('supplyData', () => {
+		const getModel = async (options: Record<string, unknown>) => {
+			const context = setupMockContext({ typeVersion: 1.6 });
+			context.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-5';
+				if (paramName === 'options') return options;
+				return undefined;
+			});
+			const { response } = await lmChatAnthropic.supplyData.call(context, 0);
+			return response as ChatAnthropic;
+		};
+
+		it('should use plain ChatAnthropic when strict tool use is unset or disabled', async () => {
+			const defaultModel = await getModel({});
+			expect(defaultModel).toBeInstanceOf(ChatAnthropic);
+			expect(defaultModel).not.toBeInstanceOf(StrictChatAnthropic);
+
+			const disabledModel = await getModel({ strictToolUse: false });
+			expect(disabledModel).toBeInstanceOf(ChatAnthropic);
+			expect(disabledModel).not.toBeInstanceOf(StrictChatAnthropic);
+		});
+
+		it('should use StrictChatAnthropic when strict tool use is enabled', async () => {
+			const model = await getModel({ strictToolUse: true });
+			expect(model).toBeInstanceOf(StrictChatAnthropic);
+		});
+
+		describe('strict tool binding', () => {
+			const parentBindTools = vi.fn();
+			const originalBindTools = ChatAnthropic.prototype.bindTools;
+
+			beforeEach(() => {
+				parentBindTools.mockReset();
+				ChatAnthropic.prototype.bindTools = parentBindTools;
+			});
+
+			afterEach(() => {
+				ChatAnthropic.prototype.bindTools = originalBindTools;
+			});
+
+			it('should inject strict while preserving tool choice', async () => {
+				const model = (await getModel({ strictToolUse: true })) as StrictChatAnthropic;
+				const tools = [];
+				model.bindTools(tools, { tool_choice: 'any' });
+				expect(parentBindTools).toHaveBeenCalledWith(tools, { tool_choice: 'any', strict: true });
+			});
+
+			it('should preserve all caller kwargs', async () => {
+				const model = (await getModel({ strictToolUse: true })) as StrictChatAnthropic;
+				const tools = [];
+				model.bindTools(tools, { tool_choice: 'auto', parallel_tool_calls: false });
+				expect(parentBindTools).toHaveBeenCalledWith(tools, {
+					tool_choice: 'auto',
+					parallel_tool_calls: false,
+					strict: true,
+				});
+			});
+
+			it('should override explicit strict false', async () => {
+				const model = (await getModel({ strictToolUse: true })) as StrictChatAnthropic;
+				const tools = [];
+				model.bindTools(tools, { strict: false });
+				expect(parentBindTools).toHaveBeenCalledWith(tools, { strict: true });
+			});
+		});
+
 		it('should create ChatAnthropic instance with basic configuration (version >= 1.3)', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.3 });
 
