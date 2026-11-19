@@ -1,7 +1,8 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { LICENSE_FEATURES } from '@n8n/constants';
+import { FoldStepRegistry } from '@n8n/db';
 import { ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 
 import { ExecutionLimitInstanceUsage } from '../execution-limit-instance-usage.entity';
 import { ExecutionLimitUsage } from '../execution-limit-usage.entity';
@@ -16,13 +17,25 @@ describe('ExecutionLimitsModule', () => {
 		);
 	});
 
-	it('is gated by the execution limits license feature, so an unlicensed instance skips init', () => {
-		expect(Container.get(ModuleMetadata).get('execution-limits')?.licenseFlag).toBe(
-			LICENSE_FEATURES.EXECUTION_LIMITS,
-		);
+	it('has no license flag, so init runs on an unlicensed instance', () => {
+		expect(Container.get(ModuleMetadata).get('execution-limits')?.licenseFlag).toBeUndefined();
+	});
+
+	it('init registers the usage fold step', async () => {
+		const registry = new FoldStepRegistry();
+		Container.set(FoldStepRegistry, registry);
+		// The repository of the step reads the manager when it is built.
+		Container.set(DataSource, { manager: {} } as unknown as DataSource);
+		mockInstance(ExecutionLimitsSnapshot);
+
+		await new ExecutionLimitsModule().init();
+
+		expect(registry.getAll().map((step) => step.name)).toEqual(['execution_limit_usage']);
 	});
 
 	it('loads the limits on init, before the process takes work', async () => {
+		Container.set(FoldStepRegistry, new FoldStepRegistry());
+		Container.set(DataSource, { manager: {} } as unknown as DataSource);
 		const snapshot = mockInstance(ExecutionLimitsSnapshot);
 		let finishStart = () => {};
 		snapshot.start.mockReturnValue(new Promise<void>((resolve) => (finishStart = resolve)));
