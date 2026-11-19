@@ -1,4 +1,3 @@
-import { UnprocessableRequestError } from '@n8n/errors';
 import type { Folder, Project, WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
@@ -16,6 +15,7 @@ import { VariableRequirementsExtractor } from '../../variable/variable-requireme
 import type { AutoIncludedWorkflow } from '../auto-included-workflow-resolver';
 import { AutoIncludedWorkflowExporter } from '../auto-included-workflow.exporter';
 import { WorkflowSerializer } from '../workflow.serializer';
+import { PackageWorkflowInvalidError } from '../../package-export.errors';
 
 function makeWorkflow(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
 	return {
@@ -104,9 +104,9 @@ describe('AutoIncludedWorkflowExporter', () => {
 			.export(emptyRequest(new CapturingWriter(), [includedWorkflow({ workflow })]))
 			.catch((e: unknown) => e);
 
-		expect(error).toBeInstanceOf(UnprocessableRequestError);
-		expect((error as UnprocessableRequestError).message).toContain('wf_bad');
-		expect((error as UnprocessableRequestError).message).toContain('nodes.0.position');
+		expect(error).toBeInstanceOf(PackageWorkflowInvalidError);
+		expect((error as PackageWorkflowInvalidError).message).toContain('wf_bad');
+		expect((error as PackageWorkflowInvalidError).message).toContain('nodes.0.position');
 	});
 
 	it('skips a workflow already present in the existing workflow entries', async () => {

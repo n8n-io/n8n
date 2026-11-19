@@ -38,6 +38,24 @@ describe('CredentialRequirementsExtractor', () => {
 		expect(extractor.extractFromWorkflow(workflow)).toEqual([]);
 	});
 
+	it('ignores a null credential reference', () => {
+		const workflow = makeWorkflow({
+			nodes: [
+				{
+					id: 'n1',
+					name: 'HTTP',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+					credentials: { httpHeaderAuth: null },
+				},
+			] as never,
+		});
+
+		expect(extractor.extractFromWorkflow(workflow)).toEqual([]);
+	});
+
 	it('emits one requirement per node credential slot, keyed by credential type', () => {
 		// node.credentials is { [credentialTypeKey]: { id, name } } — the
 		// type comes from the map key, not the value.

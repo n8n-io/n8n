@@ -1,5 +1,4 @@
 import type { User, WorkflowEntity } from '@n8n/db';
-import { UnprocessableRequestError } from '@n8n/errors';
 import { jsonParse } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -20,6 +19,7 @@ import { VariableRequirementsExtractor } from '../../variable/variable-requireme
 import type { WorkflowVariableRequirement } from '../../variable/variable.types';
 import { WorkflowExporter } from '../workflow.exporter';
 import { WorkflowSerializer } from '../workflow.serializer';
+import { PackageWorkflowInvalidError } from '../../package-export.errors';
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -255,10 +255,10 @@ describe('WorkflowExporter', () => {
 			})
 			.catch((e: unknown) => e);
 
-		expect(error).toBeInstanceOf(UnprocessableRequestError);
-		expect((error as UnprocessableRequestError).httpStatusCode).toBe(422);
-		expect((error as UnprocessableRequestError).message).toContain(workflow.id);
-		expect((error as UnprocessableRequestError).message).toContain('nodes.0.position');
+		expect(error).toBeInstanceOf(PackageWorkflowInvalidError);
+		expect((error as PackageWorkflowInvalidError).httpStatusCode).toBe(422);
+		expect((error as PackageWorkflowInvalidError).message).toContain(workflow.id);
+		expect((error as PackageWorkflowInvalidError).message).toContain('nodes.0.position');
 	});
 
 	it('writes node groups into workflow.json', async () => {

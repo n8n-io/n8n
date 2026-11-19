@@ -1,8 +1,8 @@
 import type { SerializedWorkflow } from '@n8n/api-types';
 import { WorkflowEntity } from '@n8n/db';
-import { UnprocessableRequestError } from '@n8n/errors';
 
 import { WorkflowSerializer } from '../workflow.serializer';
+import { PackageWorkflowInvalidError } from '../../package-export.errors';
 
 const wire = (overrides: Partial<SerializedWorkflow> = {}): SerializedWorkflow => ({
 	id: 'wf-source-id',
@@ -185,7 +185,7 @@ describe('WorkflowSerializer.serializeForExport', () => {
 		});
 
 		expect(() => serializer.serializeForExport(workflow, { includeTags: false })).toThrow(
-			UnprocessableRequestError,
+			PackageWorkflowInvalidError,
 		);
 		expect(() => serializer.serializeForExport(workflow, { includeTags: false })).toThrow(
 			'nodes.0.credentials.someApi',

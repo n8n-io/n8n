@@ -6,11 +6,11 @@ import {
 } from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UnprocessableRequestError } from '@n8n/errors';
 import type { IConnections, INode } from 'n8n-workflow';
 import { ZodError } from 'zod';
 
 import { visitWorkflowCredentials } from '../credential/workflow-credential-references';
+import { PackageWorkflowInvalidError } from '../package-export.errors';
 import { definePackageSerializationPayload } from '../package-serialization.types';
 import { compareTagsByName } from '../tag/tag.types';
 
@@ -103,9 +103,7 @@ export class WorkflowSerializer {
 		// Clone so the live entity keeps its names for requirement extraction.
 		const copy = structuredClone(nodes);
 		visitWorkflowCredentials(copy, (_type, details) => {
-			if (typeof details !== 'object' || details === null || details.name === undefined) {
-				return false;
-			}
+			if (details.name === undefined) return false;
 			const mutable: { name?: string } = details;
 			delete mutable.name;
 			return true;
@@ -123,8 +121,9 @@ export class WorkflowSerializer {
 				.slice(0, 10)
 				.map((issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`)
 				.join('; ');
-			throw new UnprocessableRequestError(
+			throw new PackageWorkflowInvalidError(
 				`Workflow ${workflow.id} cannot be exported because its stored data is invalid (${fields}). Export aborted.`,
+				error,
 			);
 		}
 	}

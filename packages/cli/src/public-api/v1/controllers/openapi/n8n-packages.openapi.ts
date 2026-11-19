@@ -25,6 +25,10 @@ export const EXPORT_DESCRIPTION =
 	'Agent definitions include referenced skills, custom tools, and schedules.\n' +
 	'Knowledge base files and runtime data are excluded.\n';
 
+export const EXPORT_422_DESCRIPTION =
+	'A requested workflow cannot be exported because its stored data is invalid. ' +
+	'The message names the workflow and the invalid fields.';
+
 export const EXPORT_200_DESCRIPTION =
 	'A gzipped tar archive containing the exported package contents.';
 export const EXPORT_COUNTS_HEADER_DESCRIPTION =

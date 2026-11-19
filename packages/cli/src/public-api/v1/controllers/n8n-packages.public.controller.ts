@@ -41,6 +41,7 @@ import type { PublicApiRequest } from '@/public-api/public-api-client';
 
 import {
 	EXPORT_200_DESCRIPTION,
+	EXPORT_422_DESCRIPTION,
 	EXPORT_COUNTS_HEADER_DESCRIPTION,
 	EXPORT_DESCRIPTION,
 	EXPORT_SUMMARY,
@@ -221,6 +222,7 @@ export class N8nPackagesPublicController {
 		headers: { [EXPORT_COUNTS_HEADER]: { description: EXPORT_COUNTS_HEADER_DESCRIPTION } },
 	})
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(422, { description: EXPORT_422_DESCRIPTION })
 	async exportPackage(
 		req: AuthenticatedRequest,
 		_res: Response,
