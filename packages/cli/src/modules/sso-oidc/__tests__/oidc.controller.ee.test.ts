@@ -758,13 +758,13 @@ describe('OidcController', () => {
 			const saved = { ...previous, clientId: 'new-client', loginEnabled: true };
 			oidcService.getRedactedConfig.mockReturnValueOnce(previous).mockReturnValueOnce(saved);
 			const payload = { ...saved, clientSecret: 'new-secret' };
-			const req = mock<AuthenticatedRequest>({ user });
+			const req = mock<AuthenticatedRequest>({ user: person });
 
 			const result = await controller.saveConfiguration(req, mock<Response>(), payload);
 
 			expect(oidcService.updateConfig).toHaveBeenCalledWith(payload);
 			expect(eventService.emit).toHaveBeenCalledWith('sso-settings-updated', {
-				user,
+				user: person,
 				protocol: 'oidc',
 				loginEnabled: true,
 				fieldsChanged: ['clientId', 'loginEnabled', 'clientSecret'],
@@ -779,7 +779,7 @@ describe('OidcController', () => {
 			oidcService.getRedactedConfig.mockReturnValueOnce(previous).mockReturnValueOnce(previous);
 
 			await controller.saveConfiguration(
-				mock<AuthenticatedRequest>({ user }),
+				mock<AuthenticatedRequest>({ user: person }),
 				mock<Response>(),
 				previous,
 			);
@@ -795,7 +795,7 @@ describe('OidcController', () => {
 			try {
 				await expect(
 					controller.saveConfiguration(
-						mock<AuthenticatedRequest>({ user }),
+						mock<AuthenticatedRequest>({ user: person }),
 						mock<Response>(),
 						previous,
 					),

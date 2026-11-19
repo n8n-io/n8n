@@ -488,13 +488,13 @@ describe('SSO settings events', () => {
 		test('emits sso-settings-updated with the names of the changed fields', async () => {
 			const saved = { ...previous, metadata: '<new/>', loginEnabled: true } as SamlPreferences;
 			samlService.setSamlPreferences.mockResolvedValueOnce(saved);
-			const req = mock<AuthenticatedRequest>({ user });
+			const req = mock<AuthenticatedRequest>({ user: person });
 
 			const result = await controller.configPost(req, mock<Response>(), saved);
 
 			expect(samlService.setSamlPreferences).toHaveBeenCalledWith(saved);
 			expect(eventService.emit).toHaveBeenCalledWith('sso-settings-updated', {
-				user,
+				user: person,
 				protocol: 'saml',
 				loginEnabled: true,
 				fieldsChanged: ['loginEnabled', 'metadata'],
@@ -507,7 +507,11 @@ describe('SSO settings events', () => {
 			const saved = { ...previous, signingPrivateKey: 'encrypted:abc' } as SamlPreferences;
 			samlService.setSamlPreferences.mockResolvedValueOnce(saved);
 
-			await controller.configPost(mock<AuthenticatedRequest>({ user }), mock<Response>(), saved);
+			await controller.configPost(
+				mock<AuthenticatedRequest>({ user: person }),
+				mock<Response>(),
+				saved,
+			);
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'sso-settings-updated',
@@ -520,7 +524,11 @@ describe('SSO settings events', () => {
 		test('does not emit when nothing was saved', async () => {
 			samlService.setSamlPreferences.mockResolvedValueOnce(undefined);
 
-			await controller.configPost(mock<AuthenticatedRequest>({ user }), mock<Response>(), previous);
+			await controller.configPost(
+				mock<AuthenticatedRequest>({ user: person }),
+				mock<Response>(),
+				previous,
+			);
 
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
@@ -529,7 +537,11 @@ describe('SSO settings events', () => {
 			instanceSettingsLoaderConfig.ssoManagedByEnv = true;
 
 			await expect(
-				controller.configPost(mock<AuthenticatedRequest>({ user }), mock<Response>(), previous),
+				controller.configPost(
+					mock<AuthenticatedRequest>({ user: person }),
+					mock<Response>(),
+					previous,
+				),
 			).rejects.toThrow(ForbiddenError);
 
 			expect(samlService.setSamlPreferences).not.toHaveBeenCalled();
@@ -539,14 +551,14 @@ describe('SSO settings events', () => {
 
 	describe('toggleEnabledPost', () => {
 		test('reports loginEnabled as changed when the toggle flips it', async () => {
-			const req = mock<AuthenticatedRequest>({ user });
+			const req = mock<AuthenticatedRequest>({ user: person });
 			const res = mock<Response>();
 
 			await controller.toggleEnabledPost(req, res, { loginEnabled: true } as SamlToggleDto);
 
 			expect(samlService.setSamlPreferences).toHaveBeenCalledWith({ loginEnabled: true });
 			expect(eventService.emit).toHaveBeenCalledWith('sso-settings-updated', {
-				user,
+				user: person,
 				protocol: 'saml',
 				loginEnabled: true,
 				fieldsChanged: ['loginEnabled'],
@@ -556,9 +568,13 @@ describe('SSO settings events', () => {
 		});
 
 		test('reports no changed field when the toggle repeats the stored state', async () => {
-			await controller.toggleEnabledPost(mock<AuthenticatedRequest>({ user }), mock<Response>(), {
-				loginEnabled: false,
-			} as SamlToggleDto);
+			await controller.toggleEnabledPost(
+				mock<AuthenticatedRequest>({ user: person }),
+				mock<Response>(),
+				{
+					loginEnabled: false,
+				} as SamlToggleDto,
+			);
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'sso-settings-updated',
