@@ -163,6 +163,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/close', () => 
 					return { closer: projectAdmin, agent: testServer.authAgentFor(projectAdmin) };
 				},
 			],
+			['an instance owner', async () => ({ closer: owner, agent: ownerAgent })],
 		])('closes a review as %s', async (_label, actor) => {
 			const { closer, agent } = await actor();
 			const { request } = await seedRequest(viewer, { reviewerIds: [member.id] });
