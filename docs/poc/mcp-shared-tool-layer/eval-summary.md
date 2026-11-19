@@ -1,7 +1,7 @@
 # MCP as the Assistant's tool layer: eval results
 
-**TL;DR:** The concept holds. Against a same-day master control on the full
-suite, the Assistant over MCP scores **-1.4 pp** (87.9% vs 89.3%, confidence
+**TL;DR:** No unfixable regressions. Against a same-day master control on the
+full suite, the Assistant over MCP scores **-1.4 pp** (87.9% vs 89.3%, confidence
 intervals overlap), and the only systematic regression is one missing piece:
 the post-build **verification loop** (23 judged units at 0/3 where master
 passes, against 3 the other way). Everything else that looked like a
@@ -10,9 +10,6 @@ balanced noise. The verification loop is a PoC gap, not a protocol limit:
 nothing in MCP prevents the server's save result from carrying the post-build
 flow, or the verify tool from living on the server. Close it and the PoC is at
 parity.
-
-Spec, capability matrix and per-milestone findings:
-[`.agents/specs/mcp-shared-tool-layer.md`](../../../.agents/specs/mcp-shared-tool-layer.md).
 
 ## What ran
 
