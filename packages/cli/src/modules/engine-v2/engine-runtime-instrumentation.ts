@@ -147,6 +147,21 @@ function wrapStores({ executionStore, stepStore, executionViewStore }: EngineSto
 				'failStaleRunningStep',
 				stepStore.failStaleRunningStep.bind(stepStore),
 			),
+			findStaleSettledSteps: storeOperation(
+				'step',
+				'findStaleSettledSteps',
+				stepStore.findStaleSettledSteps.bind(stepStore),
+			),
+			renewSettledStep: storeOperation(
+				'step',
+				'renewSettledStep',
+				stepStore.renewSettledStep.bind(stepStore),
+			),
+			acknowledgeSettledStep: storeOperation(
+				'step',
+				'acknowledgeSettledStep',
+				stepStore.acknowledgeSettledStep.bind(stepStore),
+			),
 			failStep: storeOperation('step', 'failStep', stepStore.failStep.bind(stepStore)),
 			failWaitingStep: storeOperation(
 				'step',

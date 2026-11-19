@@ -41,6 +41,8 @@ import {
 	ReconciliationSweeper,
 	RunningStepDetector,
 	RunningStepRepair,
+	SettledStepDetector,
+	SettledStepRepair,
 } from '../reconciliation';
 import type { ExecutionResponseSender } from '../response-channel';
 import { createEngineServer } from '../server';
@@ -213,6 +215,11 @@ export function createEngineRuntime({
 				reconciliationIntervalMs,
 				DEFAULT_RECONCILIATION_BATCH_SIZE,
 			),
+			new SettledStepDetector(
+				stepStore,
+				reconciliationIntervalMs,
+				DEFAULT_RECONCILIATION_BATCH_SIZE,
+			),
 		],
 		{
 			'execution-queued-no-message': new QueuedExecutionRepair(executionStore, orchestrationQueue),
@@ -223,6 +230,7 @@ export function createEngineRuntime({
 				orchestrationQueue,
 				lifecycleEventPublisherFactory,
 			),
+			'step-settled-no-message': new SettledStepRepair(stepStore, orchestrationQueue),
 		},
 		logger,
 	);
