@@ -1,0 +1,38 @@
+packages/cli/src/modules/agents/integrations/platforms/webhook/webhook-channel.service.ts
+  s_aa6794ac019785::t_1be4ee39227968 100,219
+  s_aa6794ac019785::t_34bacb6920f8aa 72-73,89,95-99,101-104,107,234
+packages/frontend/@n8n/agent-chat/src/AgentChat.vue
+  s_aa6794ac019785::t_34bacb6920f8aa 59,61,478
+packages/frontend/@n8n/agent-chat/src/api.ts
+  s_aa6794ac019785::t_34bacb6920f8aa 16,35
+packages/cli/src/modules/agents/integrations/platforms/webhook/chat-page-invites.service.ts
+  s_aa6794ac019785::t_417a7deddb13f8 71-72
+packages/frontend/editor-ui/src/features/agents/channels/n8nChat/AgentChannelN8nChatShare.vue
+  ai_agent 268-281
+  s_aa6794ac019785::t_b9d7e33564784d 404,409
+  s_aa6794ac019785::t_bdc0aa00db9da0 175,266-267,282
+  s_aa6794ac019785::t_a0486f74a9f6ee 2,7,14-15,17,35,38,54,57-59,67,70-78,83,112,123,131-138,141-146,152-154,168-171,173-174,176-185,187-246,248-265,283-299,301-302,304-330,332-372,374,383,386-392,398-401,405,408,412-415,418-421,423-439
+  s_aa6794ac019785::t_9fc16472582610 247,422
+packages/cli/src/modules/agents/integrations/platforms/webhook/webhook-channel.controller.ts
+  s_aa6794ac019785::t_34bacb6920f8aa 191,429
+packages/cli/src/modules/agents/integrations/platforms/webhook/external-chat.service.ts
+  s_aa6794ac019785::t_34bacb6920f8aa 81
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_aa6794ac019785::t_417a7deddb13f8 101,108-117,123-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "aea4008d65a83297e8c11a0a3becaba35eaab6ec",
+  "prompts": {},
+  "sessions": {
+    "s_aa6794ac019785": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "780586c6-4bfd-4b06-b892-fff832b8300b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
