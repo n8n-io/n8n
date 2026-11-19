@@ -61,8 +61,8 @@ function onKeydown(event: KeyboardEvent) {
 
 	const option = optionIn(listbox, target);
 
-	// A section control sits between items. Tab follows the visual order and
-	// lands on the nearest item when no other control sits in between.
+	// A section control sits between items. Tab lands on the nearest item only
+	// when no other control sits in front of that item.
 	if (!option) {
 		moveHighlightPastControl(listbox, target, event);
 		return;
@@ -99,10 +99,16 @@ function moveHighlightPastControl(listbox: HTMLElement, target: HTMLElement, eve
 	if (!neighbor) return;
 
 	const tabStop = adjacentTabStop(target, backwards);
-	if (tabStop === neighbor) return;
-	if (tabStop && !isBetween(target, neighbor, tabStop)) return;
+	// Keep native Tab when the next control is the item, sits between this
+	// control and the item, or lives inside the item.
+	if (tabStop && keepsNativeTab(target, neighbor, tabStop)) return;
 
 	moveHighlight(neighbor, event);
+}
+
+function keepsNativeTab(target: HTMLElement, neighbor: HTMLElement, tabStop: HTMLElement) {
+	if (tabStop === neighbor || neighbor.contains(tabStop)) return true;
+	return !isBetween(target, neighbor, tabStop);
 }
 
 function nearestOption(listbox: HTMLElement, from: HTMLElement, backwards: boolean) {
@@ -124,15 +130,21 @@ function isAvailableOption(option: HTMLElement) {
 }
 
 function isBetween(from: HTMLElement, middle: HTMLElement, end: HTMLElement) {
-	const middleFollowsFrom =
-		(from.compareDocumentPosition(middle) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
-	const endFollowsMiddle =
-		(middle.compareDocumentPosition(end) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
-	const fromFollowsMiddle =
-		(middle.compareDocumentPosition(from) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
-	const middleFollowsEnd =
-		(end.compareDocumentPosition(middle) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+	const middleFollowsFrom = follows(from, middle);
+	const endFollowsMiddle = follows(middle, end);
+	const fromFollowsMiddle = follows(middle, from);
+	const middleFollowsEnd = follows(end, middle);
 	return (middleFollowsFrom && endFollowsMiddle) || (fromFollowsMiddle && middleFollowsEnd);
+}
+
+// A child is reported as following its parent. That containment bit must not
+// count, or Tab from a section control skips the next item's action button.
+function follows(start: HTMLElement, node: HTMLElement) {
+	const position = start.compareDocumentPosition(node);
+	if (position & (Node.DOCUMENT_POSITION_CONTAINS | Node.DOCUMENT_POSITION_CONTAINED_BY)) {
+		return false;
+	}
+	return (position & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
 }
 
 function moveHighlight(option: HTMLElement, event: KeyboardEvent) {
