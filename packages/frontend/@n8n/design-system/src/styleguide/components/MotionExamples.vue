@@ -16,13 +16,7 @@ const exampleKeys: ExampleKey[] = [
 	'fadeOut',
 ];
 const refreshKeys = ref<Record<ExampleKey, number>>(
-	exampleKeys.reduce(
-		(keys, key) => ({
-			...keys,
-			[key]: 0,
-		}),
-		{} as Record<ExampleKey, number>,
-	),
+	Object.fromEntries(exampleKeys.map((key) => [key, 0])) as Record<ExampleKey, number>,
 );
 const popoverOpen = ref(true);
 const collapsibleOpen = ref(true);

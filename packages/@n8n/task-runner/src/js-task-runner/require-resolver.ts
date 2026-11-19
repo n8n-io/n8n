@@ -83,6 +83,7 @@ const membraneHandler: ProxyHandler<object> = {
 		return descriptor;
 	},
 	apply: (target, thisArg, args) =>
+		// oxlint-disable-next-line anti-slop/no-reflect-apply -- a module function can shadow call/apply, so the trap must not dispatch through them
 		Reflect.apply(target as (...a: unknown[]) => unknown, unwrap(thisArg), args.map(unwrap)),
 	// Return values are left unwrapped so callers keep ownership of what a
 	// module hands back (e.g. a Buffer they can still mutate).

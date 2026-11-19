@@ -42,10 +42,10 @@ export function pathComponents(targetPath: string): string[] {
 	// paths build correctly instead of being re-rooted at the bare separator.
 	const root = path.parse(targetPath).root;
 	const segments = targetPath.slice(root.length).split(path.sep).filter(Boolean);
-	return segments.reduce<string[]>(
-		(components, segment) => [...components, path.join(components.at(-1) ?? root, segment)],
-		[],
-	);
+	return segments.reduce<string[]>((components, segment) => {
+		components.push(path.join(components.at(-1) ?? root, segment));
+		return components;
+	}, []);
 }
 
 /**

@@ -100,12 +100,11 @@ export async function simplify(this: IExecuteFunctions, contacts: IContact[], li
 	const data: IDataObject[] = [];
 
 	for (const contact of contacts) {
-		const extras = contact.extra.reduce(
-			(accumulator: IDataObject, currentValue: IDataObject): any => {
-				const key = fieldsKeyValue[currentValue.field_id as string] as string;
-				return { [key]: currentValue.value, ...accumulator };
-			},
-			{},
+		// Reversed so that the first value wins for a duplicate key, as before.
+		const extras = Object.fromEntries(
+			contact.extra
+				.map((extra) => [fieldsKeyValue[extra.field_id as string] as string, extra.value])
+				.reverse(),
 		);
 		data.push({
 			...contact.base,

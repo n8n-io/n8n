@@ -2122,11 +2122,9 @@ const updateFields: INodeProperties[] = [
 							];
 							const separateFields = Object.keys(fields)
 								.filter((key) => separateProperties.includes(key))
-								.reduce((obj, key) => {
-									return {
-										...obj,
-										[key]: fields[key],
-									};
+								.reduce<IDataObject>((obj, key) => {
+									obj[key] = fields[key];
+									return obj;
 								}, {});
 							if (Object.keys(separateFields).length) {
 								const body: IDataObject = {

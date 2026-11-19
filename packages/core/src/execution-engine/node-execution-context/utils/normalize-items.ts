@@ -24,10 +24,7 @@ export function normalizeItems(
 	if (executionData.every((item) => typeof item === 'object' && 'binary' in item)) {
 		const normalizedItems: INodeExecutionData[] = [];
 		executionData.forEach((item) => {
-			const json = Object.keys(item).reduce((acc, key) => {
-				if (key === 'binary') return acc;
-				return { ...acc, [key]: item[key] };
-			}, {});
+			const json = Object.fromEntries(Object.entries(item).filter(([key]) => key !== 'binary'));
 
 			normalizedItems.push({
 				json,

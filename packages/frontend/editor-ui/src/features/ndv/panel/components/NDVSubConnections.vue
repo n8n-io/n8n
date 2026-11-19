@@ -100,7 +100,8 @@ const connectedNodes = computed<Record<string, NodeConfig[]>>(() => {
 
 			// Use a unique key that combines connection type and per-type index
 			const connectionKey = `${connection.type}-${typeIndex}`;
-			return { ...acc, [connectionKey]: nodes };
+			acc[connectionKey] = nodes;
+			return acc;
 		},
 		{} as Record<string, NodeConfig[]>,
 	);

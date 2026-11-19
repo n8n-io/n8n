@@ -144,7 +144,8 @@ export async function execute(
 					items.reduce((acc, item) => {
 						const itemColumns = Object.keys(item.json);
 
-						return acc.concat(itemColumns);
+						acc.push(...itemColumns);
+						return acc;
 					}, [] as string[]),
 				),
 			];
@@ -168,7 +169,8 @@ export async function execute(
 					insertItems.reduce((acc, item) => {
 						const itemColumns = Object.keys(item);
 
-						return acc.concat(itemColumns);
+						acc.push(...itemColumns);
+						return acc;
 					}, [] as string[]),
 				),
 			];
@@ -182,10 +184,10 @@ export async function execute(
 			table,
 		)} (${escapedColumns}) VALUES ${replacements}`;
 
-		const values = insertItems.reduce(
-			(acc: IDataObject[], item) => acc.concat(Object.values(item) as IDataObject[]),
-			[],
-		);
+		const values = insertItems.reduce((acc: IDataObject[], item) => {
+			acc.push(...(Object.values(item) as IDataObject[]));
+			return acc;
+		}, []);
 
 		queries.push({ query, values });
 	} else {

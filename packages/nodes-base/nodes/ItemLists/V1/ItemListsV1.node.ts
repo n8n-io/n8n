@@ -823,36 +823,23 @@ return 0;`,
 									});
 								}
 
-								newItem = {
-									...fieldsToInclude.reduce((prev, field) => {
-										if (field === fieldToSplitOut) {
-											return prev;
-										}
-										let value;
-										if (!disableDotNotation) {
-											value = get(items[i].json, field);
-										} else {
-											value = items[i].json[field];
-										}
-										prev = { ...prev, [field]: value };
-										return prev;
-									}, {}),
-								};
+								newItem = Object.fromEntries(
+									fieldsToInclude
+										.filter((field) => field !== fieldToSplitOut)
+										.map((field) => [
+											field,
+											disableDotNotation ? items[i].json[field] : get(items[i].json, field),
+										]),
+								);
 							} else if (include === 'allOtherFields') {
 								const keys = Object.keys(items[i].json);
 
-								newItem = {
-									...keys.reduce((prev, field) => {
-										let value;
-										if (!disableDotNotation) {
-											value = get(items[i].json, field);
-										} else {
-											value = items[i].json[field];
-										}
-										prev = { ...prev, [field]: value };
-										return prev;
-									}, {}),
-								};
+								newItem = Object.fromEntries(
+									keys.map((field) => [
+										field,
+										disableDotNotation ? items[i].json[field] : get(items[i].json, field),
+									]),
+								);
 
 								unset(newItem, fieldToSplitOut);
 							}
@@ -1052,7 +1039,8 @@ return 0;`,
 							if (isEmpty(newItem)) {
 								return acc;
 							}
-							return acc.concat([newItem]);
+							acc.push(newItem);
+							return acc;
 						}, [] as IDataObject[]);
 					}
 

@@ -113,7 +113,7 @@ vi.mock('ai', async () => {
 		embedMany: vi.fn(),
 		generateText: new Proxy(generateMock, {
 			apply: async (target, thisArg, args) => {
-				const result: unknown = await Reflect.apply(target, thisArg, args);
+				const result: unknown = await target.apply(thisArg, args);
 				if (!result || typeof result !== 'object') return result;
 				const legacy = result as {
 					response?: { messages: unknown[] };
@@ -130,7 +130,7 @@ vi.mock('ai', async () => {
 		}),
 		streamText: new Proxy(streamMock, {
 			apply: (target, thisArg, args) => {
-				const result: unknown = Reflect.apply(target, thisArg, args);
+				const result: unknown = target.apply(thisArg, args);
 				if (!result || typeof result !== 'object') return result;
 				const legacy = result as {
 					response?: PromiseLike<{ messages: unknown[] }>;

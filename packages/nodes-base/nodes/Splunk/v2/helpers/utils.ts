@@ -11,10 +11,9 @@ function compactEntryContent(splunkObject: any): any {
 	}
 
 	if (Array.isArray(splunkObject)) {
-		return splunkObject.reduce((acc, cur) => {
-			acc = { ...acc, ...compactEntryContent(cur) };
-			return acc;
-		}, {});
+		return Object.fromEntries(
+			splunkObject.flatMap((cur) => Object.entries(compactEntryContent(cur))),
+		);
 	}
 
 	if (splunkObject[SPLUNK.DICT]) {
@@ -39,10 +38,11 @@ function compactEntryContent(splunkObject: any): any {
 }
 
 function formatEntryContent(content: any): any {
-	return content[SPLUNK.DICT][SPLUNK.KEY].reduce((acc: any, cur: any) => {
-		acc = { ...acc, ...compactEntryContent(cur) };
-		return acc;
-	}, {});
+	return Object.fromEntries(
+		content[SPLUNK.DICT][SPLUNK.KEY].flatMap((cur: any) =>
+			Object.entries(compactEntryContent(cur)),
+		),
+	);
 }
 
 export function formatEntry(entry: any, doNotFormatContent = false): any {

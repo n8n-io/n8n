@@ -31,12 +31,8 @@ function getPredefinedFromSelected(selectedApps: string[]) {
 	const predefinedNodes = Object.keys(PREDEFINED_TEMPLATES_BY_NODE);
 	const predefinedSelected = predefinedNodes.filter((node) => selectedApps.includes(node));
 
-	return predefinedSelected.reduce<number[]>(
-		(acc, app) => [
-			...acc,
-			...PREDEFINED_TEMPLATES_BY_NODE[app as keyof typeof PREDEFINED_TEMPLATES_BY_NODE],
-		],
-		[],
+	return predefinedSelected.flatMap(
+		(app) => PREDEFINED_TEMPLATES_BY_NODE[app as keyof typeof PREDEFINED_TEMPLATES_BY_NODE],
 	);
 }
 

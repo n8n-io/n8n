@@ -117,10 +117,7 @@ function wrapIntegrationWithRedaction(
 
 			const wrapped: UnknownMethod = function (...args) {
 				const [argument, ...rest] = args;
-				return Reflect.apply(original, integration, [
-					redactHookArgument(property, argument, redact),
-					...rest,
-				]);
+				return original.call(integration, redactHookArgument(property, argument, redact), ...rest);
 			};
 			methodCache.set(property, { original, wrapped });
 			return wrapped;

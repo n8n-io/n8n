@@ -5,11 +5,13 @@ import { jsonSchemaToZod } from '../src';
 
 describe('jsonSchemaToZod', () => {
 	test('should accept json schema 7 and 4', () => {
-		const schema = { type: 'string' } as unknown;
+		const schema4: JSONSchema4 = { type: 'string' };
+		const schema6: JSONSchema6Definition = { type: 'string' };
+		const schema7: JSONSchema7Definition = { type: 'string' };
 
-		expect(jsonSchemaToZod(schema as JSONSchema4));
-		expect(jsonSchemaToZod(schema as JSONSchema6Definition));
-		expect(jsonSchemaToZod(schema as JSONSchema7Definition));
+		expect(jsonSchemaToZod(schema4));
+		expect(jsonSchemaToZod(schema6));
+		expect(jsonSchemaToZod(schema7));
 	});
 
 	test('can exclude defaults', () => {

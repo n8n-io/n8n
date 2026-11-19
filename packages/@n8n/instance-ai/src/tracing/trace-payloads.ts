@@ -1127,7 +1127,7 @@ function getToolInputSchema(tool: unknown): unknown {
 	const toJSONSchema = isRecord(inputSchema) ? inputSchema.toJSONSchema : undefined;
 	if (typeof toJSONSchema === 'function' && toJSONSchema.length === 0) {
 		try {
-			const schema: unknown = Reflect.apply(toJSONSchema, inputSchema, []);
+			const schema: unknown = toJSONSchema.call(inputSchema);
 			return schema;
 		} catch {
 			return { type: 'zod', conversion: 'failed' };

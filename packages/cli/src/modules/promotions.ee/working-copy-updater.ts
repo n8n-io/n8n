@@ -735,7 +735,13 @@ export class WorkingCopyUpdater {
 			.relative(resolvedBase, resolved)
 			.split(path.sep)
 			.filter(Boolean)
-			.reduce((acc, segment) => [...acc, path.join(acc.at(-1)!, segment)], [resolvedBase]);
+			.reduce(
+				(acc, segment) => {
+					acc.push(path.join(acc.at(-1)!, segment));
+					return acc;
+				},
+				[resolvedBase],
+			);
 
 		for (const component of components) {
 			if (verified.has(component)) continue;

@@ -215,10 +215,9 @@ export function mapFields(this: IExecuteFunctions, inputSize: number) {
 		const nodeVersion = this.getNode().typeVersion;
 		if (nodeVersion < 4) {
 			const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject[];
-			let dataToSend: IDataObject = {};
-			for (const field of fields) {
-				dataToSend = { ...dataToSend, [field.fieldId as string]: field.fieldValue };
-			}
+			const dataToSend: IDataObject = Object.fromEntries(
+				fields.map((field) => [field.fieldId as string, field.fieldValue]),
+			);
 			returnData.push(dataToSend);
 		} else {
 			const mappingValues = this.getNodeParameter('columns.value', i) as IDataObject;

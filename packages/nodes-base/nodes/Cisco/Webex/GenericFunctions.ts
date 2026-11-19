@@ -128,9 +128,7 @@ export function mapResource(event: string) {
 }
 
 function removeEmptyProperties(rest: { [key: string]: any }) {
-	return Object.keys(rest)
-		.filter((k) => rest[k] !== '')
-		.reduce((a, k) => ({ ...a, [k]: rest[k] }), {});
+	return Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== ''));
 }
 
 export function getAttachments(attachments: IDataObject[]) {

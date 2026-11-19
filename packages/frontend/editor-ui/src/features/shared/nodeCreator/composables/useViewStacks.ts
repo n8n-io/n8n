@@ -116,12 +116,10 @@ export interface ViewStack {
 	communityNodeDetails?: CommunityNodeDetails;
 }
 
-const nodePopularityMap = Object.values(nodePopularity).reduce((acc, node) => {
-	return {
-		...acc,
-		[node.id]: node.popularity * 100, // Scale the popularity score
-	};
-}, {});
+const nodePopularityMap = Object.fromEntries(
+	// Scale the popularity score
+	Object.values(nodePopularity).map((node) => [node.id, node.popularity * 100]),
+);
 
 export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	const nodeCreatorStore = useNodeCreatorStore();
