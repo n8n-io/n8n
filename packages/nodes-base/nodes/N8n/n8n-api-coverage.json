@@ -20,13 +20,13 @@
 		"PUT /agents/{agentId}": {
 			"status": "gap"
 		},
-		"DELETE /ai-preferences/{preferenceId}": {
+		"DELETE /ai-preferences/{aiPreferenceId}": {
 			"status": "gap"
 		},
 		"GET /ai-preferences": {
 			"status": "gap"
 		},
-		"PUT /ai-preferences/{preferenceId}": {
+		"PUT /ai-preferences/{aiPreferenceId}": {
 			"status": "gap"
 		},
 		"POST /ai-preferences": {

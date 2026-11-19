@@ -3,7 +3,7 @@ tags:
   - AiPreference
 summary: List AI preferences
 description: |-
-  List the AI preferences you can read: the instance preferences, your own preferences, and the preferences of the projects where you hold the projectAiPreference:list permission. With the aiPreference:list permission, the list also has the preferences of other users. Filter with scope and projectId. The response is one cursor page: read the next page with the cursor query parameter.
+  List the AI preferences you can read: the instance preferences, your own preferences, and the preferences of the projects where your role can read them. Owners and admins also see the preferences of other users. Filter with scope and projectId. The response is one cursor page: read the next page with the cursor query parameter.
 
   Requires the `aiPreference:list` API key scope.
 x-required-scope: aiPreference:list
@@ -87,5 +87,7 @@ responses:
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
   '429':
     $ref: ../../../../shared/spec/responses/tooManyRequests.yml

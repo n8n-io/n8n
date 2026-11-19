@@ -187,8 +187,8 @@ export class AiPreferenceService {
 	async list(
 		user: User,
 		page: {
-			skip: number;
-			take: number;
+			offset: number;
+			limit: number;
 			ids?: string[];
 			search?: string;
 			sortBy?: AiPreferenceSortOption;
@@ -200,8 +200,8 @@ export class AiPreferenceService {
 		const [rows, count] = await this.aiPreferenceRepository.findPageVisible({
 			...(await this.visibleTo(user, access)),
 			...(await this.narrowedTo(access, page)),
-			skip: page.skip,
-			take: page.take,
+			skip: page.offset,
+			take: page.limit,
 			...(page.ids ? { ids: page.ids } : {}),
 			...(page.search ? { search: page.search } : {}),
 			...(page.sortBy ? { sortBy: page.sortBy } : {}),

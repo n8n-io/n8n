@@ -13,7 +13,7 @@ parameters:
       format: uuid
     required: true
     description: The ID of the AI preference.
-    name: preferenceId
+    name: aiPreferenceId
     in: path
 requestBody:
   required: true

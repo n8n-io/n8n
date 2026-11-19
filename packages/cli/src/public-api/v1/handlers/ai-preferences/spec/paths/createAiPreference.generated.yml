@@ -3,7 +3,7 @@ tags:
   - AiPreference
 summary: Create an AI preference
 description: |-
-  Create an AI preference for yourself (scope user), for a project (scope project, with projectId), or for the whole instance (scope instance). A preference for the instance or for another user needs the aiPreference:create permission. A preference for a project needs the projectAiPreference:create permission in that project. Each scope holds at most 50 preferences, and two preferences in one scope cannot have the same text.
+  Create an AI preference for yourself (scope user), for a project (scope project, with projectId), or for the whole instance (scope instance). Only owners and admins can create a preference for the instance or for another user. A preference for a project needs a project role that can edit preferences in that project. Each scope holds at most 50 preferences, and two preferences in one scope cannot have the same text.
 
   Requires the `aiPreference:create` API key scope.
 x-required-scope: aiPreference:create
@@ -52,6 +52,8 @@ responses:
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
   '409':
     $ref: ../../../../shared/spec/responses/conflict.yml
   '415':

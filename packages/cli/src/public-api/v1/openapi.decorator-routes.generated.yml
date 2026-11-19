@@ -23,7 +23,7 @@ paths:
       $ref: ./handlers/ai-preferences/spec/paths/listAiPreferences.generated.yml
     post:
       $ref: ./handlers/ai-preferences/spec/paths/createAiPreference.generated.yml
-  /ai-preferences/{preferenceId}:
+  /ai-preferences/{aiPreferenceId}:
     put:
       $ref: ./handlers/ai-preferences/spec/paths/updateAiPreference.generated.yml
     delete:
