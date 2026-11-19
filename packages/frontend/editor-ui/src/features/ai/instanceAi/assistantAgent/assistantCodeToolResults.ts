@@ -24,7 +24,7 @@ export function getAssistantToolCallCode(toolCall: ToolCall): string | undefined
 }
 
 /** Shows the workflow code and node type definitions of the Assistant tools as highlighted code. */
-export const assistantToolResultCodeExtension: AgentsChatInteractionExtension = {
+export const assistantCodeToolResultExtension: AgentsChatInteractionExtension = {
 	key: 'assistant_tool_result_code',
 	matchToolOutput: (toolCall) => getAssistantToolCallCode(toolCall) !== undefined,
 	toolOutputComponent: defineAsyncComponent(

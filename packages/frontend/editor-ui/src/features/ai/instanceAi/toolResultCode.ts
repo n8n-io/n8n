@@ -29,7 +29,15 @@ export function isCodeToolCall(toolName: string, args?: Record<string, unknown>)
 	return isWorkflowCodeCall(toolName, args) || isNodeTypeDefinitionsCall(toolName, args);
 }
 
-/** The code in the result of a code tool call, or `null` when the result has no code. */
+function hasDefinitionError(definition: unknown): boolean {
+	return isRecord(definition) && typeof definition.error === 'string' && definition.error !== '';
+}
+
+/**
+ * The code in the result of a code tool call, or `null` when the result has no
+ * code. A node types result in which a definition failed returns `null`, so
+ * that the error stays visible in the JSON.
+ */
 export function extractToolCallCode(
 	toolName: string,
 	args: Record<string, unknown> | undefined,
@@ -37,14 +45,16 @@ export function extractToolCallCode(
 ): string | null {
 	if (!isRecord(result)) return null;
 	if (isWorkflowCodeCall(toolName, args)) {
-		return typeof result.code === 'string' ? result.code : null;
+		return typeof result.code === 'string' && result.code !== '' ? result.code : null;
 	}
 	if (isNodeTypeDefinitionsCall(toolName, args) && Array.isArray(result.definitions)) {
-		return result.definitions
+		if (result.definitions.some(hasDefinitionError)) return null;
+		const code = result.definitions
 			.filter(isRecord)
 			.map((definition) => definition.content)
-			.filter((content): content is string => typeof content === 'string')
+			.filter((content): content is string => typeof content === 'string' && content !== '')
 			.join('\n\n');
+		return code !== '' ? code : null;
 	}
 	return null;
 }

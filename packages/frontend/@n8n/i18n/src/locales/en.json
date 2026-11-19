@@ -8491,6 +8491,7 @@
 	"instanceAi.toolResult.moreRows": "and {count} more rows...",
 	"instanceAi.toolResult.dataTruncated": "Data truncated for display.",
 	"instanceAi.toolResult.view.table": "Table",
+	"instanceAi.toolResult.view.code": "Code",
 	"instanceAi.toolResult.view.json": "JSON",
 	"instanceAi.thread.new": "New chat",
 	"instanceAi.thread.loadError": "Couldn't open this chat. Try again.",
