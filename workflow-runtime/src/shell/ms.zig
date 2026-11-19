@@ -1391,6 +1391,11 @@ pub const Client = struct {
             }
         };
         c.wheel.advanceTo(c.now_ms, Ctx{ .c = c });
+        if (c.cfg.idle_ms == 0) {
+            for (c.conns, 0..) |*cn, i| {
+                if (cn.state == .idle) c.closeConn(std.math.cast(u32, i).?);
+            }
+        }
         // Statement deadlines and cancel deadlines are per-conn: scan linearly.
         for (c.conns, 0..) |*cn, i| {
             const ci = std.math.cast(u32, i).?;

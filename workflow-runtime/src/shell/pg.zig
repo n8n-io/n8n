@@ -1777,6 +1777,11 @@ pub const Client = struct {
             }
         };
         c.wheel.advanceTo(c.now_ms, Ctx{ .c = c });
+        if (c.cfg.idle_ms == 0) {
+            for (c.conns, 0..) |*cn, i| {
+                if (cn.state == .idle) c.closeIdle(std.math.cast(u32, i).?);
+            }
+        }
         // Cancels are few: scan them linearly.
         for (&c.cancels) |*k| {
             if (k.fd >= 0 and c.now_ms - k.at_ms >= 5000) c.closeCancel(k);

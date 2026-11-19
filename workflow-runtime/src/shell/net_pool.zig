@@ -163,6 +163,7 @@ pub const TimerWheel = struct {
 
     pub fn init(w: *TimerWheel, links: []Link) void {
         w.links = links;
+        @memset(links, .{});
         @memset(&w.heads, @as(u32, none));
         w.tick = 0;
     }
@@ -311,6 +312,8 @@ test "PoolTable: sticky pool keeps its slot" {
     const k2 = poolKey("b", &.{1});
     const idx2 = poolFor(&pools, k2, 200).?;
     try std.testing.expect(idx2 != idx1);
+    // Keep slot 2 busy so only the sticky slot 1 is evictable.
+    pools[idx2].refs = 1;
     // Eviction of stale sticky pools: k1 can be evicted for a third key.
     const k3 = poolKey("c", &.{1});
     const idx3 = poolFor(&pools, k3, 300).?;

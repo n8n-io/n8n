@@ -693,6 +693,7 @@ pub const Client = struct {
         const r = &c.reqs[ri];
         std.debug.assert(c.cfree.len > 0 and r.conn == none);
         const ci = c.cfree.pop().?;
+        c.ncfree = c.cfree.len;
         c.wheel.schedule(ri, @min(r.deadline_ms, r.connect_deadline_ms), c.now_ms);
         const cn = &c.conns[ci];
         std.debug.assert(cn.state == .free);
@@ -1551,6 +1552,11 @@ pub const Client = struct {
             }
         };
         c.wheel.advanceTo(c.now_ms, Ctx{ .c = c });
+        if (c.cfg.idle_ms == 0) {
+            for (c.conns, 0..) |*cn, i| {
+                if (cn.state == .idle) c.quitConn(std.math.cast(u32, i).?);
+            }
+        }
         // Kill conns are few: scan them linearly.
         for (c.conns, 0..) |*cn, i| {
             const ci = std.math.cast(u32, i).?;
@@ -1628,6 +1634,7 @@ pub const Client = struct {
     fn openKill(c: *Client, plan: KillPlan) void {
         std.debug.assert(c.cfree.len > 0 and c.kills[plan.slot].used);
         const ci = c.cfree.pop().?;
+        c.ncfree = c.cfree.len;
         const cn = &c.conns[ci];
         std.debug.assert(cn.state == .free);
         cn.state = .connecting;
