@@ -53,10 +53,6 @@ function getTabsElement(): HTMLElement | undefined {
 	return element instanceof HTMLElement ? element : undefined;
 }
 
-function isDestructive(option: TabOptions<Value>) {
-	return option.isDestructive === true;
-}
-
 /** The shared indicator cannot read the colour of the active tab, so it gets the state here. */
 const activeOption = computed(() =>
 	props.options.find((option) => option.value === props.modelValue),
@@ -201,24 +197,20 @@ function scroll(direction: 'left' | 'right') {
 							:disabled="option.disabled"
 							:as="isLinkOption(option) ? RouterLink : 'button'"
 							:to="isLinkOption(option) ? option.to : undefined"
-							:class="{
-								[$style.tab]: true,
-								[$style.noText]: !option.label,
-								[$style.destructive]: isDestructive(option),
-							}"
+							:class="$style.tab"
 						>
 							<N8nIcon
 								v-if="option.icon && option.iconPosition !== 'right'"
 								:icon="option.icon"
+								:color="option.iconColor"
 								:class="$style.icon"
 								size="small"
 							/>
-							<N8nText v-if="option.label" :size="size" bold :class="$style.label">{{
-								option.label
-							}}</N8nText>
+							<N8nText :size="size" bold :class="$style.label">{{ option.label }}</N8nText>
 							<N8nIcon
 								v-if="option.icon && option.iconPosition === 'right'"
 								:icon="option.icon"
+								:color="option.iconColor"
 								:class="$style.icon"
 								size="small"
 							/>
@@ -236,7 +228,6 @@ function scroll(direction: 'left' | 'right') {
 				<TabsIndicator
 					:class="{
 						[$style.indicator]: true,
-						[$style.destructive]: !!activeOption && isDestructive(activeOption),
 						[$style.indicatorHidden]: !activeOption || !!activeOption.disabled,
 					}"
 				/>
@@ -353,12 +344,6 @@ function scroll(direction: 'left' | 'right') {
 		--n8n-tabs--tab--color: var(--n8n-tabs--tab--color--active);
 	}
 
-	&.destructive {
-		--n8n-tabs--tab--color: var(--color--danger);
-		--n8n-tabs--tab--color--hover: var(--color--danger);
-		--n8n-tabs--tab--color--active: var(--color--danger);
-	}
-
 	&[data-disabled],
 	&:disabled {
 		--n8n-tabs--tab--color: var(--text-color--disabled);
@@ -381,10 +366,6 @@ function scroll(direction: 'left' | 'right') {
 		transform var(--n8n-tabs--indicator--duration) var(--n8n-tabs--indicator--easing),
 		width var(--n8n-tabs--indicator--duration) var(--n8n-tabs--indicator--easing);
 	@include motion.reduced-motion;
-
-	&.destructive {
-		background-color: var(--color--danger);
-	}
 }
 
 .indicatorHidden {
@@ -459,19 +440,13 @@ function scroll(direction: 'left' | 'right') {
 		--n8n-tabs--tab--color--hover: var(--text-color);
 		--n8n-tabs--tab--color--active: var(--text-color);
 
-		&.destructive {
-			--n8n-tabs--tab--color--hover: var(--color--danger);
-			--n8n-tabs--tab--color--active: var(--color--danger);
-		}
-
 		&[data-disabled],
 		&:disabled {
 			--n8n-tabs--tab--color--hover: var(--text-color--disabled);
 		}
 	}
 
-	.indicator,
-	.indicator.destructive {
+	.indicator {
 		top: 0;
 		bottom: 0;
 		height: auto;
@@ -496,10 +471,6 @@ function scroll(direction: 'left' | 'right') {
 	display: flex;
 	align-items: center;
 	flex-shrink: 0;
-}
-
-.noText .icon {
-	display: block;
 }
 
 .arrowButton {

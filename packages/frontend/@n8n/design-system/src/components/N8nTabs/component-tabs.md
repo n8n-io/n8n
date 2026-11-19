@@ -37,12 +37,11 @@ Built on Reka UI `Tabs`. `TabsRoot` holds the selected value, orientation, rovin
 /** packages/frontend/@n8n/design-system/src/types/tabs.ts */
 interface TabOptions<Value extends string | number> {
   value: Value;
-  /** Label should be required */
   label: string;
   icon?: IconName | (string & {});
   iconPosition?: 'left' | 'right';
-  /** Replace variant?: 'default' | 'danger'; **/
-  isDestructive:false;
+  /** Colors only the icon, for example `danger` to flag a problem. */
+  iconColor?: IconColor;
   disabled?: boolean;
   tooltip?: string;
   align?: 'left' | 'right';

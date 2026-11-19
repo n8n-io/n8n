@@ -73,9 +73,9 @@ const options = computed(() => {
 			label: i18n.baseText('nodeSettings.credential'),
 			value: 'credential',
 			...(props.hasCredentialIssue && {
-				icon: 'triangle-alert',
+				icon: 'exclamation-triangle',
 				iconPosition: 'right',
-				variant: 'danger',
+				iconColor: 'danger',
 			}),
 		});
 	}
@@ -90,14 +90,13 @@ const options = computed(() => {
 		{
 			value: 'settings',
 			notification: canUpdatePackage.value && hasUpdateAvailable.value ? true : undefined,
-			...(props.compact
-				? { icon: 'settings', align: 'right', tooltip: i18n.baseText('nodeSettings.settings') }
-				: { label: i18n.baseText('nodeSettings.settings') }),
+			label: i18n.baseText('nodeSettings.settings'),
 		},
 	);
 
 	if (isCommunityNode.value) {
 		ret.push({
+			label: i18n.baseText('generic.communityNode'),
 			icon: 'box',
 			value: 'communityNode',
 			align: 'right',
@@ -193,17 +192,5 @@ function onTooltipClick(tab: NodeSettingsTab, event: MouseEvent) {
 	gap: var(--spacing--4xs);
 	padding: 0 var(--spacing--sm);
 	font-size: var(--font-size--sm);
-}
-</style>
-
-<style lang="scss">
-#communityNode > div {
-	cursor: auto;
-	padding-right: 0;
-	padding-left: 0;
-
-	&:hover {
-		color: unset;
-	}
 }
 </style>
