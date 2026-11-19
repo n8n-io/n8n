@@ -27,8 +27,17 @@ const BAKE_FILE = 'docker/docker-bake.hcl';
 /**
  * The upstream images that the release images run on. The other pins are
  * builder stages or our own images, which these sources feed.
+ * runners-distroless copies the Python runtime and the glibc libraries of
+ * DEBIAN_PYTHON_IMAGE over its base, and Trivy does not see these files in
+ * the release image. So the pin is a source too.
  */
-export const SOURCES = ['DHI_REF', 'DEBIAN_DHI_REF', 'DISTROLESS_BASE_IMAGE', 'PYTHON_IMAGE'];
+export const SOURCES = [
+	'DHI_REF',
+	'DEBIAN_DHI_REF',
+	'DISTROLESS_BASE_IMAGE',
+	'PYTHON_IMAGE',
+	'DEBIAN_PYTHON_IMAGE',
+];
 
 export const PLATFORMS = ['linux/amd64', 'linux/arm64'];
 

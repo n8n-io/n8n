@@ -144,11 +144,20 @@ describe('renderSummary', () => {
 				pinned: summarizeReport(report([finding('CVE-1', 'openssl', 'CRITICAL')])),
 				newest: summarizeReport(report([], ['curl'])),
 			},
+			{
+				platform: 'linux/arm64',
+				pinned: summarizeReport(report([finding('CVE-2', 'zlib', 'HIGH')])),
+				newest: summarizeReport(report([])),
+			},
 		]);
 		const summary = renderSummary([result, evaluateSource(pin, digest('a'), [])]);
 		assert.match(
 			summary,
 			/\| `DHI_REF` \| candidate \| linux\/amd64 \| 1 C \/ 0 H \/ 0 M \| 0 C \/ 0 H \/ 0 M \| curl \|/,
+		);
+		assert.match(
+			summary,
+			/\| `DHI_REF` \| candidate \| linux\/arm64 \| 0 C \/ 1 H \/ 0 M \| 0 C \/ 0 H \/ 0 M \| - \|/,
 		);
 		assert.match(summary, /\| `DHI_REF` \| current \| - \| - \| - \| - \|/);
 	});
