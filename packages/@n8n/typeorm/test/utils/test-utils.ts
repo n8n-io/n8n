@@ -193,9 +193,9 @@ function getOrmFilepath(): string {
 		}
 	} catch (err) {
 		throw new Error(
-			`Cannot find ormconfig.json file in the root of the project. To run tests please create ormconfig.json file` +
-				` in the root of the project (near ormconfig.json.dist, you need to copy ormconfig.json.dist into ormconfig.json` +
-				` and change all database settings to match your local environment settings).`,
+			'Cannot find ormconfig.json. To run the upstream TypeORM suite, create packages/@n8n/typeorm/ormconfig.json.' +
+				' Put a JSON array of connection options in it, one for each database to test, for example:' +
+				' [{ "name": "sqlite", "type": "sqlite", "database": "./temp/sqlitedb-1.db" }]',
 		);
 	}
 }
