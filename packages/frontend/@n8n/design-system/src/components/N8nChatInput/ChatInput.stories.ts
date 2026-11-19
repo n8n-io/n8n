@@ -1,8 +1,9 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import '../../css/_tokens.scss';
+import './ChatInput.mentions.stories.css';
 
 import N8nChatInput from './ChatInput.vue';
 import type { WorkflowSuggestion } from '../../types/assistant';
@@ -366,60 +367,201 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 	components: {
 		N8nChatInput,
 		N8nDropdownMenu,
+		N8nIcon,
 		N8nIconButton,
 		N8nTooltip,
 	},
 	setup() {
+		type MentionKind = 'workflow' | 'group' | 'node';
+		type MentionData = {
+			kind: MentionKind;
+			breadcrumbs: string[];
+			nodeCount?: number;
+			showPath?: boolean;
+		};
+		type MentionItem = DropdownMenuItemProps<string, MentionData>;
+
+		type MentionRange = { origin: 'typed' | 'button'; start: number; end: number };
+
 		const chatInputRef = ref<{
 			getInputElement: () => HTMLTextAreaElement | undefined;
 		} | null>(null);
 		const dropdownRef = ref<DropdownMenuExposed | null>(null);
 		const composerRef = ref<HTMLElement | null>(null);
-		const menuOpen = ref(false);
 		const value = ref('');
-		const mentionRange = ref<{ start: number; end: number } | null>(null);
+		const menuOpen = ref(false);
+		const query = ref('');
+		const mentionRange = ref<MentionRange | null>(null);
 		const savedSelection = ref({ start: 0, end: 0 });
-		const inputElement = computed(() => chatInputRef.value?.getInputElement() ?? null);
-		const items: Array<DropdownMenuItemProps<string>> = [
-			{
-				id: 'orders',
-				label: 'Orders workflow',
-				selectable: true,
-				children: [
-					{ id: 'validate-order', label: 'Validate order' },
-					{
-						id: 'fulfillment',
-						label: 'Fulfillment group',
-						selectable: true,
-						children: [{ id: 'create-shipment', label: 'Create shipment' }],
-					},
-				],
-			},
-			{ id: 'invoices', label: 'Invoices workflow' },
-		];
-		const logSelect = action('select');
+		const menuWidth = ref('24rem');
+		const tags = ref<Array<{ id: string; label: string; kind: MentionKind }>>([]);
+		const inputElement = computed(() => chatInputRef.value?.getInputElement() ?? undefined);
 
-		const findItemLabel = (
-			menuItems: Array<DropdownMenuItemProps<string>>,
-			itemId: string,
-		): string | undefined => {
-			for (const item of menuItems) {
-				if (item.id === itemId) return item.label;
-				const childLabel = item.children && findItemLabel(item.children, itemId);
-				if (childLabel) return childLabel;
-			}
-
-			return undefined;
-		};
+		const isTrigger = (character: string | undefined) => character === '@' || character === '＠';
 
 		const saveSelection = () => {
 			const input = inputElement.value;
 			if (!input) return;
+			savedSelection.value = { start: input.selectionStart, end: input.selectionEnd };
+		};
 
-			savedSelection.value = {
-				start: input.selectionStart,
-				end: input.selectionEnd,
-			};
+		const closeMenu = () => {
+			menuOpen.value = false;
+			query.value = '';
+			mentionRange.value = null;
+		};
+		const workflow = (
+			id: string,
+			label: string,
+			nodeCount?: number,
+			children?: MentionItem[],
+		): MentionItem => ({
+			id,
+			label,
+			selectable: children ? true : undefined,
+			data: { kind: 'workflow', breadcrumbs: [label], nodeCount },
+			children,
+		});
+		const browseItems: MentionItem[] = [
+			workflow('orders', 'Orders', 4, [
+				{
+					id: 'orders-webhook',
+					label: 'Webhook',
+					data: { kind: 'node', breadcrumbs: ['Orders', 'Webhook'] },
+				},
+				{
+					id: 'orders-if-checks',
+					label: 'If checks',
+					selectable: true,
+					data: { kind: 'group', breadcrumbs: ['Orders', 'If checks'], nodeCount: 2 },
+					children: [
+						{
+							id: 'orders-if',
+							label: 'If',
+							data: { kind: 'node', breadcrumbs: ['Orders', 'If checks', 'If'] },
+						},
+						{
+							id: 'orders-set',
+							label: 'Set fields',
+							data: { kind: 'node', breadcrumbs: ['Orders', 'If checks', 'Set fields'] },
+						},
+					],
+				},
+			]),
+			workflow('invoices', 'Invoices', 2, [
+				{
+					id: 'invoices-schedule',
+					label: 'Schedule',
+					data: { kind: 'node', breadcrumbs: ['Invoices', 'Schedule'] },
+				},
+				{
+					id: 'invoices-send',
+					label: 'Send invoice',
+					data: { kind: 'node', breadcrumbs: ['Invoices', 'Send invoice'] },
+				},
+			]),
+			workflow('onboarding', 'Customer onboarding', 3, [
+				{
+					id: 'onboarding-form',
+					label: 'Signup form',
+					data: { kind: 'node', breadcrumbs: ['Customer onboarding', 'Signup form'] },
+				},
+			]),
+			{
+				id: 'orders-if',
+				label: 'If',
+				data: { kind: 'node', breadcrumbs: ['Orders', 'If checks', 'If'], showPath: true },
+			},
+			{
+				id: 'orders-if-checks-row',
+				label: 'If checks',
+				data: { kind: 'group', breadcrumbs: ['Orders', 'If checks'], nodeCount: 2, showPath: true },
+			},
+			workflow('lead-scoring', 'Lead scoring'),
+			workflow('sync-crm', 'Sync CRM'),
+			workflow('weekly-digest', 'Weekly digest'),
+			workflow('refund-requests', 'Refund requests'),
+			workflow('inventory-sync', 'Inventory sync'),
+			workflow('support-triage', 'Support triage'),
+			workflow('campaign-launch', 'Campaign launch'),
+			workflow('invoice-reminders', 'Invoice reminders'),
+			workflow('hiring-pipeline', 'Hiring pipeline'),
+			workflow('error-alerts', 'Error alerts'),
+			workflow('data-backup', 'Data backup'),
+			workflow('slack-digest', 'Slack digest'),
+		];
+
+		const flatten = (menuItems: MentionItem[]): MentionItem[] =>
+			menuItems.flatMap((item) => {
+				const breadcrumbs = item.data?.breadcrumbs ?? [item.label];
+				const current: MentionItem = {
+					...item,
+					children: undefined,
+					data: {
+						kind: item.data?.kind ?? 'workflow',
+						breadcrumbs,
+						nodeCount: item.data?.nodeCount,
+						showPath: breadcrumbs.length > 1,
+					},
+				};
+				return [current, ...flatten(item.children ?? [])];
+			});
+
+		const items = computed(() => {
+			const term = query.value.trim().toLowerCase();
+			if (!term) return browseItems;
+			return flatten(browseItems).filter((item) =>
+				(item.data?.breadcrumbs ?? [item.label]).join(' ').toLowerCase().includes(term),
+			);
+		});
+
+		const findItem = (menuItems: MentionItem[], itemId: string): MentionItem | undefined => {
+			for (const item of menuItems) {
+				if (item.id === itemId) return item;
+				const child = item.children && findItem(item.children, itemId);
+				if (child) return child;
+			}
+			return undefined;
+		};
+
+		const handleKeydown = (event: KeyboardEvent) => {
+			if (!menuOpen.value) return;
+			dropdownRef.value?.handleExternalKeydown(event);
+		};
+
+		const handleTextChange = async (nextValue: string) => {
+			value.value = nextValue;
+			await nextTick();
+			const caret = inputElement.value?.selectionEnd ?? nextValue.length;
+			const beforeCaret = nextValue.slice(0, caret);
+			let triggerIndex = -1;
+			for (let index = beforeCaret.length - 1; index >= 0; index -= 1) {
+				if (isTrigger(beforeCaret[index])) {
+					triggerIndex = index;
+					break;
+				}
+			}
+			const validTrigger = triggerIndex === 0 || /\s/.test(beforeCaret[triggerIndex - 1] ?? '');
+			const index = validTrigger ? triggerIndex : -1;
+			const range = mentionRange.value;
+			if (index >= 0 && (!range || range.origin !== 'typed' || range.start !== index)) {
+				mentionRange.value = { origin: 'typed', start: index, end: caret };
+				query.value = nextValue.slice(index + 1, caret);
+				menuOpen.value = true;
+				return;
+			}
+			if (!range) return;
+			const triggerExists = range.origin === 'button' || isTrigger(nextValue[range.start]);
+			const beforeRange = range.origin === 'typed' ? caret <= range.start : caret < range.start;
+			if (!triggerExists || beforeRange) {
+				closeMenu();
+				return;
+			}
+			range.end = caret;
+			query.value = nextValue.slice(
+				range.origin === 'typed' ? range.start + 1 : range.start,
+				caret,
+			);
 		};
 
 		const handleCaretMove = async () => {
@@ -427,79 +569,82 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 			saveSelection();
 			const range = mentionRange.value;
 			if (!range) return;
-
 			const selection = savedSelection.value;
-			if (
-				selection.start <= range.start ||
-				selection.start > range.end ||
-				selection.end > range.end
-			) {
-				menuOpen.value = false;
-				mentionRange.value = null;
-			}
+			const beforeRange =
+				range.origin === 'typed' ? selection.start <= range.start : selection.start < range.start;
+			if (beforeRange || selection.start > range.end || selection.end > range.end) closeMenu();
 		};
 
-		const handleKeydown = (event: KeyboardEvent) => {
-			dropdownRef.value?.handleExternalKeydown(event);
-		};
-
-		const openMenu = async () => {
-			menuOpen.value = true;
-			await nextTick();
-			dropdownRef.value?.highlightFirstItem();
-		};
-
-		const handleOpenChange = async (open: boolean) => {
-			if (open) {
-				await openMenu();
-			} else {
-				menuOpen.value = false;
-				mentionRange.value = null;
-			}
-		};
-
-		const handleUpdateModelValue = async (newValue: string) => {
-			value.value = newValue;
-			await nextTick();
-			saveSelection();
-
-			const caret = inputElement.value?.selectionEnd ?? newValue.length;
-			const candidateIndex = caret - 1;
-			const followsWhitespace =
-				candidateIndex === 0 || /\s/.test(newValue[candidateIndex - 1] ?? '');
-			if (newValue[candidateIndex] === '@' && followsWhitespace) {
-				mentionRange.value = { start: candidateIndex, end: caret };
-				await openMenu();
+		const handleOpenChange = (open: boolean) => {
+			if (!open) {
+				const range = mentionRange.value;
+				if (
+					range?.origin === 'typed' &&
+					isTrigger(value.value[range.start]) &&
+					value.value.slice(range.start + 1, range.end).trim() === ''
+				) {
+					value.value = value.value.slice(0, range.start) + value.value.slice(range.end);
+				}
+				closeMenu();
 				return;
 			}
-
-			const range = mentionRange.value;
-			if (range && (newValue[range.start] !== '@' || caret <= range.start)) {
-				menuOpen.value = false;
-				mentionRange.value = null;
-			} else if (range) {
-				mentionRange.value = { start: range.start, end: caret };
-			}
+			if (mentionRange.value) return;
+			saveSelection();
+			mentionRange.value = {
+				origin: 'button',
+				start: savedSelection.value.start,
+				end: savedSelection.value.end,
+			};
+			query.value = '';
+			menuOpen.value = true;
 		};
 
 		const handleSelect = async (itemId: string) => {
-			logSelect(itemId);
-			const label = findItemLabel(items, itemId);
-			if (!label) return;
-
+			action('select')(itemId);
+			const item = findItem(browseItems, itemId);
+			if (!item?.data) return;
+			if (!tags.value.some((tag) => tag.id === item.id)) {
+				tags.value = [
+					...tags.value,
+					{
+						id: item.id,
+						label: item.data.breadcrumbs[item.data.breadcrumbs.length - 1] ?? item.label,
+						kind: item.data.kind,
+					},
+				];
+			}
 			const range = mentionRange.value;
-			const start = range?.start ?? savedSelection.value.start;
-			const end = range?.end ?? savedSelection.value.end;
-			const insertedText = `"${label}"`;
-			value.value = value.value.slice(0, start) + insertedText + value.value.slice(end);
-			mentionRange.value = null;
-
-			await nextTick();
-			const caret = start + insertedText.length;
-			inputElement.value?.focus({ preventScroll: true });
-			inputElement.value?.setSelectionRange(caret, caret);
-			savedSelection.value = { start: caret, end: caret };
+			if (range?.origin === 'typed') {
+				value.value = value.value.slice(0, range.start) + value.value.slice(range.end);
+				await nextTick();
+				const input = inputElement.value;
+				input?.focus({ preventScroll: true });
+				input?.setSelectionRange(range.start, range.start);
+			}
+			closeMenu();
 		};
+
+		const removeTag = (id: string) => {
+			tags.value = tags.value.filter((tag) => tag.id !== id);
+		};
+
+		watch(menuOpen, (open) => {
+			if (!open) return;
+			void nextTick(() => dropdownRef.value?.highlightFirstItem());
+		});
+
+		let menuWidthObserver: ResizeObserver | undefined;
+		onMounted(() => {
+			menuWidthObserver = new ResizeObserver(() => {
+				const width = composerRef.value?.getBoundingClientRect().width;
+				if (width) menuWidth.value = `${width}px`;
+			});
+			if (composerRef.value) {
+				menuWidthObserver.observe(composerRef.value);
+				menuWidth.value = `${composerRef.value.getBoundingClientRect().width}px`;
+			}
+		});
+		onBeforeUnmount(() => menuWidthObserver?.disconnect());
 
 		return {
 			args,
@@ -507,15 +652,19 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 			dropdownRef,
 			composerRef,
 			menuOpen,
+			query,
 			value,
+			menuWidth,
+			tags,
 			inputElement,
 			items,
 			handleKeydown,
 			handleOpenChange,
-			handleUpdateModelValue,
+			handleTextChange,
 			handleSelect,
 			handleCaretMove,
 			saveSelection,
+			removeTag,
 			onSubmit: methods.onSubmit,
 		};
 	},
@@ -537,13 +686,34 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 					:model-value="value"
 					:placeholder="args.placeholder"
 					:max-length="args.maxLength"
-					@update:model-value="handleUpdateModelValue"
+					@update:model-value="handleTextChange"
 					@submit="onSubmit"
 					@click="handleCaretMove"
 					@keyup="handleCaretMove"
 					@pointerdown.capture="saveSelection"
 					@select="handleCaretMove"
 				>
+					<template #leading>
+						<div v-if="tags.length" class="mention-story-tags">
+							<span v-for="tag in tags" :key="tag.id" class="mention-story-chip">
+								<span class="mention-story-chip-icon">
+									<N8nIcon
+										:icon="tag.kind === 'group' ? 'group' : tag.kind === 'node' ? 'crosshair' : 'workflow'"
+										size="small"
+									/>
+								</span>
+								<span class="mention-story-chip-label">{{ tag.label }}</span>
+								<button
+									type="button"
+									class="mention-story-chip-remove"
+									:aria-label="'Remove ' + tag.label"
+									@click="removeTag(tag.id)"
+								>
+									<N8nIcon icon="x" size="small" />
+								</button>
+							</span>
+						</div>
+					</template>
 					<template #right-actions>
 						<N8nDropdownMenu
 							ref="dropdownRef"
@@ -551,6 +721,8 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 							:items="items"
 							:external-focus-target="inputElement"
 							:reference="composerRef"
+							:width="menuWidth"
+							extra-popper-class="mention-story-menu"
 							placement="top-start"
 							searchable
 							search-mode="external"
@@ -558,21 +730,47 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 							@select="handleSelect"
 						>
 							<template #trigger>
-								<N8nTooltip as-child content="Open context menu" placement="top">
+								<N8nTooltip as-child content="Mention a workflow, node, or group" placement="top">
 									<N8nIconButton
 										icon="at-sign"
-										title="Open context menu"
+										aria-label="Mention a workflow, node, or group"
 										variant="ghost"
 										size="medium"
 									/>
 								</N8nTooltip>
+							</template>
+							<template #item-leading="{ item }">
+								<N8nIcon
+									v-if="item.data"
+									:icon="item.data.kind === 'group' ? 'group' : item.data.kind === 'node' ? 'crosshair' : 'workflow'"
+									size="large"
+								/>
+							</template>
+							<template #item-label="{ item }">
+								<span v-if="item.data?.showPath" class="mention-story-path">
+									<template v-for="(part, index) in item.data.breadcrumbs" :key="part">
+										<span
+											v-if="index > 0"
+											class="mention-story-separator"
+											role="img"
+											aria-label=" > "
+										>
+											<N8nIcon icon="chevron-right" size="xsmall" />
+										</span>
+										<span :class="index === item.data.breadcrumbs.length - 1 ? '' : 'mention-story-ancestor'">{{ part }}</span>
+									</template>
+								</span>
+								<span v-else>{{ item.label }}</span>
+							</template>
+							<template #item-trailing="{ item }">
+								<span v-if="item.data?.nodeCount">{{ item.data.nodeCount }}</span>
 							</template>
 						</N8nDropdownMenu>
 					</template>
 				</N8nChatInput>
 			</div>
 			<p style="margin-top: var(--spacing--2xs); color: var(--text-color--subtle);">
-				Type @ at the start of the message or after a space, or use the @ button. Use Enter and the arrow keys while focus stays in the message input.
+				Type @ at the start of the message or after a space, or use the @ button. A pick adds a tag and removes a typed query. The draft stays when you pick from the button.
 			</p>
 		</div>
 	`,
@@ -588,7 +786,7 @@ WithExternalDropdown.parameters = {
 	docs: {
 		description: {
 			story:
-				'Demonstrates typed and button-triggered opening, quoted text insertion, external focus, and keyboard integration. Query filtering and attachments are not included.',
+				'Matches the assistant mention menu: open workflows stay first, search shows a path, and a pick adds only a tag.',
 		},
 	},
 };

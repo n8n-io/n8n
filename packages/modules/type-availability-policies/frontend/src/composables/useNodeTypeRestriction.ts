@@ -17,6 +17,7 @@ import {
 	isRestrictionScope,
 	RESTRICTION_CONTACT_COPY,
 	SCOPE_LABEL_KEY,
+	type RestrictedTypeKind,
 	type RestrictionContact,
 	type RestrictionNextStep,
 } from '../type-availability-policies.constants';
@@ -56,6 +57,16 @@ export function getNodeTypeRestriction(nodeType: string): TypeRestriction | null
 	return nodeRestriction(nodeType);
 }
 
+/** The policy kind behind a node type's verdict, matching the order in `getNodeTypeRestriction`. */
+export function getNodeTypeRestrictionKind(
+	nodeType: string,
+	restriction: TypeRestriction,
+): RestrictedTypeKind {
+	return isCredentialOnlyNodeType(nodeType) && restriction.name !== HTTP_REQUEST_NODE_TYPE
+		? 'credential'
+		: 'node';
+}
+
 export function isNodeTypeRestricted(nodeType: string): boolean {
 	return getNodeTypeRestriction(nodeType) !== null;
 }
@@ -92,8 +103,15 @@ export function getRestrictionContact(
 export function useRestrictionContact(
 	verdict: MaybeRefOrGetter<OptionalVerdict>,
 	projectId?: MaybeRefOrGetter<string | undefined>,
+	/** Judges a project other than the open one, such as a move destination. */
+	projectType?: MaybeRefOrGetter<ProjectType | null | undefined>,
 ) {
-	const contact = computed(() => getRestrictionContact(toValue(verdict), toValue(projectId)));
+	const contact = computed(() => {
+		const type = toValue(projectType);
+		return type === undefined
+			? getRestrictionContact(toValue(verdict), toValue(projectId))
+			: resolveRestrictionContact(toValue(verdict), type);
+	});
 	const copy = computed(() => RESTRICTION_CONTACT_COPY[contact.value]);
 	return { contact, copy };
 }
@@ -119,7 +137,7 @@ export function describeNodeTypeRestriction(
 }
 
 /** A restricted node type, named as the user sees it in the node panel. */
-type RestrictedNodeTypeName = RestrictionVerdict & { displayName: string };
+export type RestrictedNodeTypeName = RestrictionVerdict & { displayName: string };
 
 const RESTRICTED_SCOPES: Array<[NodeTypeAvailabilityScope | undefined, BaseTextKey]> = [
 	['instance', SCOPE_LABEL_KEY.instance],
@@ -127,20 +145,49 @@ const RESTRICTED_SCOPES: Array<[NodeTypeAvailabilityScope | undefined, BaseTextK
 	[undefined, 'typeAvailabilityPolicies.restrictedNodes.scope.generic'],
 ];
 
-function sharedRestrictionContact(verdicts: RestrictionVerdict[]): RestrictionContact {
-	const contacts = new Set(verdicts.map((verdict) => getRestrictionContact(verdict)));
-	const [first] = contacts;
-	if (contacts.size === 1) return first;
-	return [...contacts].every((contact) => RESTRICTION_CONTACT_COPY[contact].audience === 'project')
+/** One contact for several restrictions: a project admin only when one can lift all of them. */
+export function sharedRestrictionContact(contacts: RestrictionContact[]): RestrictionContact {
+	const unique = new Set(contacts);
+	const [first = 'instance'] = unique;
+	if (unique.size <= 1) return first;
+	return [...unique].every((contact) => RESTRICTION_CONTACT_COPY[contact].audience === 'project')
 		? 'project'
 		: 'instance';
 }
 
-/** Why these node types block a publish, with one scope on each line when there are several. */
-export function describeRestrictedNodeTypes(restricted: RestrictedNodeTypeName[]): string {
+/** The contact copy for several restrictions at once. */
+export function sharedContactCopy(verdicts: OptionalVerdict[]) {
+	return RESTRICTION_CONTACT_COPY[
+		sharedRestrictionContact(verdicts.map((verdict) => getRestrictionContact(verdict)))
+	];
+}
+
+/**
+ * The restricted types among `nodeTypes`, one entry for each type, named as the user sees them.
+ * `nodeType` keeps the input type: for a credential-only node, the verdict's `name` is the
+ * HTTP Request node or the credential type that denied it.
+ * `restrictionOf` lets a surface judge a project other than the open one.
+ */
+export function collectRestrictedNodeTypes(
+	nodeTypes: Iterable<string>,
+	displayNameOf: (nodeType: string) => string,
+	restrictionOf: (nodeType: string) => TypeRestriction | null = getNodeTypeRestriction,
+): Array<TypeRestriction & { nodeType: string; displayName: string }> {
+	return [...new Set(nodeTypes)].flatMap((nodeType) => {
+		const restriction = restrictionOf(nodeType);
+		return restriction ? [{ ...restriction, nodeType, displayName: displayNameOf(nodeType) }] : [];
+	});
+}
+
+export function describeRestrictedNodeTypes(
+	restricted: RestrictedNodeTypeName[],
+	surface?: RestrictedCalloutSurface,
+): string {
 	if (restricted.length === 1) {
 		const [{ displayName, ...verdict }] = restricted;
-		return describeNodeTypeRestriction(displayName, verdict, 'replace');
+		return surface
+			? describeTypeRestriction(surface, displayName, verdict)
+			: describeNodeTypeRestriction(displayName, verdict, 'replace');
 	}
 
 	const i18n = useI18n();
@@ -161,8 +208,21 @@ export function describeRestrictedNodeTypes(restricted: RestrictedNodeTypeName[]
 	return [
 		i18n.baseText('typeAvailabilityPolicies.restrictedNodes.title'),
 		...scopeLines,
-		i18n.baseText(RESTRICTION_CONTACT_COPY[sharedRestrictionContact(restricted)].severalNextStep),
+		i18n.baseText(sharedContactCopy(restricted).severalNextStep),
 	].join('\n');
+}
+
+const IMPORTED_DESCRIPTION_KEY: Record<RestrictionContact, BaseTextKey> = {
+	instance: 'typeAvailabilityPolicies.importedRestricted.description',
+	project: 'typeAvailabilityPolicies.importedRestricted.description.project',
+	optIn: 'typeAvailabilityPolicies.importedRestricted.description.optIn',
+};
+
+export function describeImportedRestrictions(verdicts: RestrictionVerdict[]): string {
+	const contact = sharedRestrictionContact(
+		verdicts.map((verdict) => getRestrictionContact(verdict)),
+	);
+	return useI18n().baseText(IMPORTED_DESCRIPTION_KEY[contact]);
 }
 
 export type RestrictionMessage = NodeTypeAvailabilityScope | 'optIn' | 'generic';
@@ -175,30 +235,91 @@ export function getRestrictionMessage(
 	return verdict?.scope ?? 'generic';
 }
 
-const AGENT_TOOL_DESCRIPTION_KEY: Record<RestrictionMessage, BaseTextKey> = {
-	instance: 'typeAvailabilityPolicies.restrictedNode.agentTool.instance',
-	project: 'typeAvailabilityPolicies.restrictedNode.agentTool.project',
-	optIn: 'typeAvailabilityPolicies.restrictedNode.agentTool.optIn',
-	generic: 'typeAvailabilityPolicies.restrictedNode.agentTool.generic',
+export type RestrictedCalloutSurface = 'tool' | 'chatTool' | 'credential' | 'replaceToSave';
+
+const CALLOUT_COPY: Record<
+	RestrictedCalloutSurface,
+	{
+		keys: Record<RestrictionMessage, BaseTextKey>;
+		interpolationKey: 'nodeType' | 'credentialType';
+	}
+> = {
+	tool: {
+		keys: {
+			instance: 'typeAvailabilityPolicies.restrictedNode.agentTool.instance',
+			project: 'typeAvailabilityPolicies.restrictedNode.agentTool.project',
+			optIn: 'typeAvailabilityPolicies.restrictedNode.agentTool.optIn',
+			generic: 'typeAvailabilityPolicies.restrictedNode.agentTool.generic',
+		},
+		interpolationKey: 'nodeType',
+	},
+	chatTool: {
+		keys: {
+			instance: 'typeAvailabilityPolicies.restrictedNode.chatTool.instance',
+			project: 'typeAvailabilityPolicies.restrictedNode.chatTool.project',
+			optIn: 'typeAvailabilityPolicies.restrictedNode.chatTool.optIn',
+			generic: 'typeAvailabilityPolicies.restrictedNode.chatTool.generic',
+		},
+		interpolationKey: 'nodeType',
+	},
+	credential: {
+		keys: {
+			instance: 'typeAvailabilityPolicies.restrictedCredentialType.callout.instance',
+			project: 'typeAvailabilityPolicies.restrictedCredentialType.callout.project',
+			optIn: 'typeAvailabilityPolicies.restrictedCredentialType.callout.optIn',
+			generic: 'typeAvailabilityPolicies.restrictedCredentialType.callout.generic',
+		},
+		interpolationKey: 'credentialType',
+	},
+	replaceToSave: {
+		keys: {
+			instance: 'typeAvailabilityPolicies.restrictedNode.replaceToSave.instance',
+			project: 'typeAvailabilityPolicies.restrictedNode.replaceToSave.project',
+			optIn: 'typeAvailabilityPolicies.restrictedNode.replaceToSave.optIn',
+			generic: 'typeAvailabilityPolicies.restrictedNode.replaceToSave.generic',
+		},
+		interpolationKey: 'nodeType',
+	},
 };
+
+export function describeTypeRestriction(
+	surface: RestrictedCalloutSurface,
+	typeName: string,
+	verdict: OptionalVerdict,
+): string {
+	const { keys, interpolationKey } = CALLOUT_COPY[surface];
+	return useI18n().baseText(keys[getRestrictionMessage(verdict)], {
+		interpolate: { [interpolationKey]: typeName },
+	});
+}
 
 export function describeAgentToolRestriction(
 	nodeTypeName: string,
 	verdict: OptionalVerdict,
 ): string {
-	return useI18n().baseText(AGENT_TOOL_DESCRIPTION_KEY[getRestrictionMessage(verdict)], {
-		interpolate: { nodeType: nodeTypeName },
+	return describeTypeRestriction('tool', nodeTypeName, verdict);
+}
+
+function useTypeRestriction<T extends TypeRestriction>(
+	type: MaybeRefOrGetter<string | null | undefined>,
+	lookup: (type: string) => T | null,
+) {
+	const restriction = computed(() => {
+		const name = toValue(type);
+		return name ? lookup(name) : null;
 	});
+
+	return { restriction, isRestricted: computed(() => restriction.value !== null) };
 }
 
 export function useNodeTypeRestriction(nodeType: MaybeRefOrGetter<string | null | undefined>) {
-	const restriction = computed(() => {
-		const type = toValue(nodeType);
-		return type ? getNodeTypeRestriction(type) : null;
-	});
+	const { restriction, isRestricted } = useTypeRestriction(nodeType, getNodeTypeRestriction);
 
-	const isRestricted = computed(() => restriction.value !== null);
-	const restrictionScope = computed(() => restriction.value?.scope);
+	return { restriction, isRestricted, restrictionScope: computed(() => restriction.value?.scope) };
+}
 
-	return { restriction, isRestricted, restrictionScope };
+export function useCredentialTypeRestriction(
+	credentialType: MaybeRefOrGetter<string | null | undefined>,
+) {
+	return useTypeRestriction(credentialType, getCredentialTypeRestriction);
 }

@@ -7,6 +7,7 @@ import {
 	pushHandlerRegistry,
 	commandRegistry,
 	parameterInputRegistry,
+	runDataDisplayModeRegistry,
 } from '@n8n/frontend-module-sdk';
 import { VIEWS } from '@/app/constants';
 import { modules } from '@/app/modules.manifest';
@@ -153,6 +154,18 @@ export const registerModuleParameterInputs = () => {
 	modules.forEach((module) => {
 		module.parameterInputs?.forEach((contribution) => {
 			parameterInputRegistry.register(contribution);
+		});
+	});
+};
+
+/**
+ * Not gated on `isModuleActive`: a display mode only renders run data, and a
+ * frontend-only module has no backend twin to make it active.
+ */
+export const registerModuleRunDataDisplayModes = () => {
+	modules.forEach((module) => {
+		module.runDataDisplayModes?.forEach((contribution) => {
+			runDataDisplayModeRegistry.register(contribution);
 		});
 	});
 };

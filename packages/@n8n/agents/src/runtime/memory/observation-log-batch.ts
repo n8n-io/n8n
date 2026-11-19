@@ -40,6 +40,19 @@ export function prepareObservationLogBatchCursor(
 	};
 }
 
+/** The fields that say where the Observer stopped. A compare-and-set on a cursor
+ *  matches on these only: the working set is payload, not position. */
+export function observationCursorPosition(
+	cursor: ObservationCursor,
+): Omit<ObservationCursor, 'workingSet'> {
+	return {
+		observationScopeId: cursor.observationScopeId,
+		lastObservedMessageId: cursor.lastObservedMessageId,
+		lastObservedAt: cursor.lastObservedAt,
+		updatedAt: cursor.updatedAt,
+	};
+}
+
 export function observationCursorsMatch(
 	stored: ObservationCursor | null,
 	expected: ObservationCursor | null,

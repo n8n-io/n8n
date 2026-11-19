@@ -3,6 +3,44 @@ import { z } from 'zod/v4';
 import { defineTelemetryEvents } from '../define';
 
 export const PLATFORM_TELEMETRY = defineTelemetryEvents({
+	USER_CREATED_FOLDER: {
+		name: 'User created folder',
+		description: 'A user created a folder in the editor.',
+		properties: z.object({
+			folder_id: z.string(),
+			resource_type: z.enum(['workflow', 'agent']),
+		}),
+	},
+	USER_RENAMED_FOLDER: {
+		name: 'User renamed folder',
+		description: 'A user renamed a folder in the editor.',
+		properties: z.object({
+			folder_id: z.string(),
+			resource_type: z.enum(['workflow', 'agent']),
+		}),
+	},
+	USER_DELETED_FOLDER: {
+		name: 'User deleted folder',
+		description: 'A user deleted a folder in the editor.',
+		properties: z.object({
+			folder_id: z.string(),
+			resource_type: z.enum(['workflow', 'agent']),
+			deleted_sub_folders: z.number(),
+			deleted_sub_workflows: z.number().optional(),
+			deleted_sub_agents: z.number().optional(),
+		}),
+	},
+	USER_MOVED_CONTENT: {
+		name: 'User moved content',
+		description: 'A user moved a workflow or Agent to a folder in the editor.',
+		properties: z.object({
+			resource_type: z.enum(['workflow', 'agent']),
+			workflow_id: z.string().optional(),
+			agent_id: z.string().optional(),
+			source_folder_id: z.string().nullable().optional(),
+			destination_folder_id: z.string(),
+		}),
+	},
 	USER_IS_PART_OF_EXPERIMENT: {
 		name: 'User is part of experiment',
 		description:
@@ -10,6 +48,33 @@ export const PLATFORM_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			name: z.string().describe('Experiment feature-flag key'),
 			variant: z.union([z.string(), z.boolean()]).describe('Variant assigned to the user'),
+		}),
+	},
+	USER_OPENED_ACCOUNT_MENU: {
+		name: 'User opened account menu',
+		description:
+			'User opened the account menu from the user row at the bottom of the main sidebar, by click or keyboard. Reported once per open, not on close.',
+		properties: z.object({
+			sidebar_collapsed: z.boolean().describe('Whether the sidebar was the icon rail at the time'),
+		}),
+	},
+	USER_CLICKED_ACCOUNT_MENU_ITEM: {
+		name: 'User clicked account menu item',
+		description:
+			"User chose a row in the account menu that opens from the user row at the bottom of the main sidebar. Help links report 'User clicked help resource' instead.",
+		properties: z.object({
+			item: z
+				.enum(['cloud_console', 'personal_settings', 'whats_new', 'sign_out'])
+				.describe('Row the user chose'),
+			sidebar_collapsed: z.boolean().describe('Whether the sidebar was the icon rail at the time'),
+		}),
+	},
+	USER_CLICKED_INSTANCE_SETTINGS_LINK: {
+		name: 'User clicked instance settings link',
+		description:
+			"User clicked the Instance settings link at the bottom of the main sidebar, which opens the settings area on its first instance page. Personal settings reached through the account menu report 'User clicked account menu item' instead.",
+		properties: z.object({
+			sidebar_collapsed: z.boolean().describe('Whether the sidebar was the icon rail at the time'),
 		}),
 	},
 	TASK_RUNNER_DISCONNECTED: {
@@ -28,6 +93,10 @@ export const PLATFORM_TELEMETRY = defineTelemetryEvents({
 		description:
 			'The memory guard stopped the running execution that held the most run data, because the instance was running out of memory. Reported once for each stop, after the guard checked whether the stop freed memory.',
 		properties: z.object({
+			user_id: z
+				.string()
+				.optional()
+				.describe('Owner of the workflow, or the instance owner for a team project'),
 			workflow_id: z.string(),
 			execution_mode: z.string().describe('Mode of the stopped execution, for example webhook'),
 			reason: z

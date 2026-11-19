@@ -184,7 +184,7 @@ describe('MemoryGuardService', () => {
 		});
 		tracker.getEstimate.mockImplementation((id) => estimates.get(id));
 
-		productionHold = new ProductionHold();
+		productionHold = new ProductionHold(mock<EventService>());
 		concurrencyControl = new ConcurrencyControlService(
 			mockLogger(),
 			mock<ExecutionRepository>(),
@@ -499,6 +499,64 @@ describe('MemoryGuardService', () => {
 			expect(stoppedIds()).toEqual(['first', 'second']);
 		});
 
+		it('should stop holding when a hold-limit stop frees no memory', async () => {
+			addExecution('first', { megabytes: 300 });
+			addExecution('second', { megabytes: 200 });
+			utilization = 0.82;
+			await sample(2);
+			const held = concurrencyControl.throttle({ mode: 'webhook', executionId: 'held' });
+			utilization = 0.78;
+
+			await vi.advanceTimersByTimeAsync(HOLD_LIMIT_MS + 300);
+			await vi.advanceTimersByTimeAsync(3_000);
+			expect(stoppedIds()).toEqual(['first']);
+			expect(await isAdmitted(held)).toBe(true);
+			expect(guardLogger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('A stop at the hold limit did not free the expected memory'),
+			);
+
+			utilization = 0.82;
+			await sample(2);
+			const arrival = concurrencyControl.throttle({ mode: 'webhook', executionId: 'arrival' });
+			await vi.advanceTimersByTimeAsync(HOLD_LIMIT_MS * 2);
+			expect(await isAdmitted(arrival)).toBe(true);
+			expect(stoppedIds()).toEqual(['first']);
+
+			utilization = 0.96;
+			await sample();
+			expect(stoppedIds()).toEqual(['first', 'second']);
+
+			utilization = 0.7;
+			await sample();
+			utilization = 0.82;
+			await sample(2);
+			const later = concurrencyControl.throttle({ mode: 'webhook', executionId: 'later' });
+			expect(await isAdmitted(later)).toBe(false);
+		});
+
+		it('should keep a hold that starts during a hold-limit stop', async () => {
+			addExecution('first', { megabytes: 300 });
+			addExecution('second', { megabytes: 200 });
+			utilization = 0.82;
+			await sample(2);
+			void concurrencyControl.throttle({ mode: 'webhook', executionId: 'held' });
+			utilization = 0.78;
+			await vi.advanceTimersByTimeAsync(HOLD_LIMIT_MS + 300);
+			expect(stoppedIds()).toEqual(['first']);
+
+			utilization = 0.7;
+			await vi.advanceTimersByTimeAsync(300);
+			utilization = 0.82;
+			await vi.advanceTimersByTimeAsync(600);
+			const arrival = concurrencyControl.throttle({ mode: 'webhook', executionId: 'arrival' });
+			await vi.advanceTimersByTimeAsync(3_000);
+
+			expect(await isAdmitted(arrival)).toBe(false);
+			expect(guardLogger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('A stop at the hold limit did not free the expected memory'),
+			);
+		});
+
 		it.each([0.82, 0.9, 0.96])(
 			'should stop holding at %s until memory falls when a held execution waits too long and nothing can be stopped',
 			async (level) => {
@@ -744,6 +802,8 @@ describe('MemoryGuardService', () => {
 			await sample();
 			expect(eventService.emit).toHaveBeenCalledWith('memory-guard-hold-ended', {
 				heldMs: expect.any(Number),
+				heldExecutions: 0,
+				longestWaitMs: 0,
 			});
 		});
 
@@ -900,7 +960,7 @@ describe('MemoryGuardService', () => {
 
 			await stopOnce('3');
 
-			expect(deactivateWorkflowAsSystem).toHaveBeenCalledWith('repeat');
+			expect(deactivateWorkflowAsSystem).toHaveBeenCalledWith('repeat', 'memory-guard');
 			expect(mailer.notifyWorkflowAutodeactivated).toHaveBeenCalledWith(
 				expect.objectContaining({ reason: 'memory-pressure' }),
 			);
@@ -940,7 +1000,7 @@ describe('MemoryGuardService', () => {
 
 			await stopOnce('4');
 
-			expect(deactivateWorkflowAsSystem).toHaveBeenCalledWith('repeat');
+			expect(deactivateWorkflowAsSystem).toHaveBeenCalledWith('repeat', 'memory-guard');
 			expect(mailer.notifyWorkflowAutodeactivated).toHaveBeenCalled();
 		});
 
@@ -998,7 +1058,7 @@ describe('MemoryGuardService', () => {
 
 			await stopOnce('1');
 
-			expect(deactivateWorkflowAsSystem).toHaveBeenCalledWith('repeat');
+			expect(deactivateWorkflowAsSystem).toHaveBeenCalledWith('repeat', 'memory-guard');
 		});
 
 		it('should not count stops of manual executions', async () => {
@@ -1071,7 +1131,7 @@ describe('MemoryGuardService', () => {
 				expect.stringContaining('(hold-limit)'),
 				expect.stringContaining('(hold-limit)'),
 			]);
-			expect(deactivateWorkflowAsSystem).toHaveBeenCalledWith('repeat');
+			expect(deactivateWorkflowAsSystem).toHaveBeenCalledWith('repeat', 'memory-guard');
 		});
 
 		it('should not count a stop when a successful execution of the workflow ends during it', async () => {
@@ -1121,7 +1181,7 @@ describe('MemoryGuardService', () => {
 			endLookup();
 			await vi.advanceTimersByTimeAsync(0);
 
-			expect(deactivateWorkflowAsSystem).toHaveBeenCalledWith('repeat');
+			expect(deactivateWorkflowAsSystem).toHaveBeenCalledWith('repeat', 'memory-guard');
 		});
 
 		it('should start the count again after a successful execution of the workflow', async () => {
@@ -1153,7 +1213,7 @@ describe('MemoryGuardService', () => {
 
 			await stopOnce('3');
 
-			expect(deactivateWorkflowAsSystem).toHaveBeenCalledWith('repeat');
+			expect(deactivateWorkflowAsSystem).toHaveBeenCalledWith('repeat', 'memory-guard');
 		});
 	});
 

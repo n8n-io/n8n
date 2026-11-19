@@ -8,12 +8,15 @@ import {
 	isQuotaExhaustedError,
 	WorkflowTaskCoordinator,
 	type InstanceAiContext,
+	type InstanceAiTraceContext,
 	type SandboxConfig,
 } from '@n8n/instance-ai';
 import { mock } from 'vitest-mock-extended';
 
+import type { InstanceAiAdapterService } from '../../instance-ai.adapter.service';
 import { QuotaExhaustedStreamError } from '../assistant-credits';
 import { AssistantTurnEnvironmentFactory } from '../assistant-turn-environment.factory';
+import { AssistantTurnOverrides } from '../assistant-turn-overrides';
 import type { AssistantTurnRuntime } from '../assistant-turn-runtime';
 
 const user = { id: 'user-1' } as User;
@@ -41,19 +44,21 @@ function createSetupFactory() {
 			resolveExperimentGates: vi.fn(async () => ({
 				configEvalsEnabled: false,
 				conversationHistoryEnabled: false,
-				progressiveBuildingEnabled: false,
 				conciseStyleEnabled: false,
 				setupPanelEnabled: false,
 				setupPanelVariant: 'control',
 				folderExplorationEnabled: false,
 				credentialDescriptionsEnabled: false,
-				aiPreferencesEnabled: false,
+				approvalModesEnabled: false,
 				instanceContextEnabled: false,
 				nodeUsageEnabled: false,
 			})),
 		},
 		settingsService: {
-			getAdminSettings: vi.fn(async () => ({ browserUseEnabled: false })),
+			getAdminSettings: vi.fn(async () => ({
+				browserUseEnabled: false,
+				cloudBrowserEnabled: false,
+			})),
 			getPermissions: vi.fn(() => ({})),
 			getSandboxStatus: vi.fn(() => ({ workflowBuilderAvailable: true })),
 			isMcpAccessEnabled: vi.fn(() => false),
@@ -62,14 +67,16 @@ function createSetupFactory() {
 		aiService: { isProxyEnabled: vi.fn(() => false) },
 		instanceWriteAccess: { isReadOnly: vi.fn(() => false) },
 		telemetry: { track: vi.fn() },
-		evalCredentialAllowlists: {},
+		// The real default, so that the tests see "no override" unless a test sets one.
+		turnOverrides: new AssistantTurnOverrides(),
 		modelService: {
 			getCredits: vi.fn(async () => ({ creditsQuota: -1, creditsClaimed: 0 })),
 			resolveAgentModelConfig: vi.fn(async () => 'anthropic/claude-sonnet'),
-			resolveMemoryModelConfig: vi.fn(async () => undefined),
+			resolveUtilityModelConfig: vi.fn(async () => undefined),
+			resolveApprovalJudgeModelConfig: vi.fn(async () => 'anthropic/claude-haiku'),
 			getModelFetch: vi.fn(() => undefined),
 		},
-		creditService: { claimRunUsage: vi.fn() },
+		creditService: { claimRunUsage: vi.fn(), helperUsageClaimer: vi.fn(() => vi.fn()) },
 		instanceAiErrorReporter: {
 			withBoundary: vi.fn(async (_c, _x, fn: () => unknown) => await fn()),
 		},
@@ -80,6 +87,10 @@ function createSetupFactory() {
 				source: { registry: { skillsHash: 'hash', skills: [] }, loadSkill: vi.fn() },
 				disabledTools: [],
 			})),
+		},
+		approvalModeService: { resolveMode: vi.fn(() => 'manual') },
+		approvalReviewerFactory: {
+			create: vi.fn(() => ({ judge: vi.fn(), onReviewed: vi.fn() })),
 		},
 		areMcpConnectionsAvailable: () => false,
 	};
@@ -95,8 +106,6 @@ function createRuntime(overrides: Partial<AssistantTurnRuntime> = {}): Assistant
 		getProjectId: vi.fn(async () => 'project-1'),
 		eventBus: mock<AssistantTurnRuntime['eventBus']>(),
 		turnState: {
-			getBuildMode: vi.fn(() => 'progressive' as const),
-			setBuildMode: vi.fn(),
 			getPromptVersion: vi.fn(() => undefined),
 			setPromptConfiguration: vi.fn(),
 			setSetupPanelEnabled: vi.fn(),
@@ -135,17 +144,46 @@ describe('AssistantTurnEnvironmentFactory', () => {
 		it('reads and stores the turn settings through the runtime', async () => {
 			const { factory } = createSetupFactory();
 			const runtime = createRuntime();
+			vi.mocked(runtime.turnState.getPromptVersion).mockReturnValue('concise@1');
 
 			const environment = await factory.create(params, runtime);
 
 			expect(runtime.turnState.setSetupPanelEnabled).toHaveBeenCalledWith(false);
-			expect(runtime.turnState.setBuildMode).toHaveBeenCalledWith('progressive');
 			expect(runtime.turnState.setPromptConfiguration).toHaveBeenCalledWith(
-				expect.objectContaining({ version: 'progressive@1' }),
+				expect.objectContaining({ version: 'concise@1' }),
 			);
 			expect(environment.orchestrationContext.promptConfiguration).toMatchObject({
-				version: 'progressive@1',
+				version: 'concise@1',
 			});
+		});
+
+		it('reads the credential settings of the thread from the turn overrides on each call', async () => {
+			const { factory, fields } = createSetupFactory();
+			const { turnOverrides } = fields;
+			const target = { credentialType: 'slackApi', baseUrl: 'http://stub', urlField: 'url' };
+			const allowlist = vi.spyOn(turnOverrides, 'getCredentialIdAllowlist');
+			vi.spyOn(turnOverrides, 'shouldBypassCredentialTest').mockReturnValue(true);
+			vi.spyOn(turnOverrides, 'getCredentialTestTarget').mockReturnValue(target);
+
+			await factory.create(params, createRuntime());
+
+			const [, options] = fields.adapterService.createContext.mock
+				.calls[0] as unknown as Parameters<InstanceAiAdapterService['createContext']>;
+			expect(options?.getCredentialIdAllowlist?.()).toBeUndefined();
+			// A change after the turn setup applies to the next call.
+			allowlist.mockReturnValue(['cred-1']);
+			expect(options?.getCredentialIdAllowlist?.()).toEqual(['cred-1']);
+			expect(allowlist).toHaveBeenCalledWith(params.threadId);
+			expect(options?.shouldBypassCredentialTest?.('cred-1')).toBe(true);
+			expect(turnOverrides.shouldBypassCredentialTest).toHaveBeenCalledWith(
+				params.threadId,
+				'cred-1',
+			);
+			expect(options?.getCredentialTestTarget?.('slackApi')).toBe(target);
+			expect(turnOverrides.getCredentialTestTarget).toHaveBeenCalledWith(
+				params.threadId,
+				'slackApi',
+			);
 		});
 
 		it('wires the runtime hooks into the contexts', async () => {
@@ -163,6 +201,91 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(runtime.onDomainAccessTracker).toHaveBeenCalledWith(context.domainAccessTracker);
 		});
 
+		it('wires helper usage billing into the context', async () => {
+			const { factory, fields } = createSetupFactory();
+			const claimer = vi.fn();
+			fields.creditService.helperUsageClaimer.mockReturnValue(claimer);
+
+			await factory.create(params, createRuntime());
+
+			expect(fields.creditService.helperUsageClaimer).toHaveBeenCalledWith(
+				params.user,
+				params.threadId,
+				params.runId,
+			);
+			expect(fields.adapterService.createContext).toHaveBeenCalledWith(
+				params.user,
+				expect.objectContaining({ onHelperUsage: claimer }),
+			);
+		});
+
+		it('gives the trace of the turn to the error reports of the setup', async () => {
+			const { factory, fields } = createSetupFactory();
+			const report = vi.fn();
+			Object.assign(fields.instanceAiErrorReporter, { report });
+			fields.creditService.claimRunUsage.mockRejectedValue(new Error('negative quota'));
+			const tracing = { rootRun: { traceId: 'ls-trace-1' } } as unknown as NonNullable<
+				Parameters<AssistantTurnEnvironmentFactory['create']>[0]['tracing']
+			>;
+
+			const { orchestrationContext } = await factory.create(
+				{ ...params, tracing },
+				createRuntime(),
+			);
+			await orchestrationContext.claimSubAgentUsage?.('dedupe-1', [], 'completed');
+
+			expect(orchestrationContext.tracing).toBe(tracing);
+			expect(fields.instanceAiErrorReporter.withBoundary).toHaveBeenCalledWith(
+				'instance-ai-sandbox-setup',
+				expect.objectContaining({ runId: 'run-1', tracing }),
+				expect.any(Function),
+			);
+			expect(report).toHaveBeenCalledWith(
+				expect.any(Error),
+				expect.objectContaining({ component: 'instance-ai-agent-builder-usage', tracing }),
+			);
+		});
+
+		it.each([
+			{ cloudBrowserEnabled: true, isAvailable: true, wired: true },
+			{ cloudBrowserEnabled: true, isAvailable: false, wired: false },
+			{ cloudBrowserEnabled: false, isAvailable: true, wired: false },
+		])(
+			'sets startCloudBrowserTask only when the cloud browser is enabled and available (%j)',
+			async ({ cloudBrowserEnabled, isAvailable, wired }) => {
+				const { factory, fields } = createSetupFactory();
+				fields.settingsService.getAdminSettings.mockResolvedValue({
+					browserUseEnabled: false,
+					cloudBrowserEnabled,
+				});
+				const cloudBrowser = {
+					isAvailable: vi.fn(async () => isAvailable),
+					startTask: vi.fn(async () => ({ status: 'started' as const, taskId: 'task-1' })),
+				};
+
+				const { orchestrationContext } = await factory.create(
+					params,
+					createRuntime({ cloudBrowser }),
+				);
+
+				if (cloudBrowserEnabled) expect(cloudBrowser.isAvailable).toHaveBeenCalled();
+				else expect(cloudBrowser.isAvailable).not.toHaveBeenCalled();
+				if (!wired) {
+					expect(orchestrationContext.startCloudBrowserTask).toBeUndefined();
+					return;
+				}
+				const input = { title: 'Find the price', goal: 'Find the price of the Pro plan' };
+				await expect(orchestrationContext.startCloudBrowserTask?.(input)).resolves.toEqual({
+					status: 'started',
+					taskId: 'task-1',
+				});
+				expect(cloudBrowser.startTask).toHaveBeenCalledWith(
+					input,
+					expect.objectContaining({ runId: 'run-1', user, threadId: 'thread-1' }),
+				);
+			},
+		);
+
 		it('leaves out the optional hooks that a runtime does not supply', async () => {
 			const { factory } = createSetupFactory();
 
@@ -171,6 +294,54 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(orchestrationContext.cancelBackgroundTask).toBeUndefined();
 			expect(orchestrationContext.sendCorrectionToTask).toBeUndefined();
 		});
+
+		it.each([
+			{ workflowBuilderAvailable: true, sandboxEnabled: true, expected: true },
+			{ workflowBuilderAvailable: true, sandboxEnabled: false, expected: false },
+			{ workflowBuilderAvailable: false, sandboxEnabled: true, expected: false },
+		])(
+			'keeps the app service, tool and skill only with a sandbox workspace (%o)',
+			async ({ workflowBuilderAvailable, sandboxEnabled, expected }) => {
+				const { factory, fields } = createSetupFactory();
+				fields.adapterService.createContext.mockReturnValue(
+					mock<InstanceAiContext>({ appService: mock() }),
+				);
+				fields.settingsService.getSandboxStatus.mockReturnValue({ workflowBuilderAvailable });
+				const runtime = createRuntime();
+				runtime.sandbox.resolveConfig = vi.fn(
+					async () => ({ enabled: sandboxEnabled, provider: 'local' }) as unknown as SandboxConfig,
+				);
+
+				const { context } = await factory.create(params, runtime);
+
+				expect(fields.skillsService.loadSkills).toHaveBeenCalledWith(
+					expect.objectContaining({ appBuildingEnabled: expected }),
+					expect.anything(),
+				);
+				expect(context.appService !== undefined).toBe(expected);
+				expect(context.workspace !== undefined).toBe(expected);
+			},
+		);
+
+		it.each(['n8n-sandbox', 'daytona'])(
+			'gives the prompt the same workspace root for the %s provider',
+			async (provider) => {
+				const { factory, fields } = createSetupFactory();
+				fields.settingsService.getSandboxStatus.mockReturnValue({
+					workflowBuilderAvailable: true,
+				});
+				const runtime = createRuntime();
+				runtime.sandbox.resolveConfig = vi.fn(
+					async () => ({ enabled: true, provider }) as unknown as SandboxConfig,
+				);
+
+				const { context, orchestrationContext } = await factory.create(params, runtime);
+
+				expect(context.workspaceRoot).toBe('/home/user/workspace');
+				expect(context.fallbackWorkspaceRoot).toBe('/home/daytona/workspace');
+				expect(orchestrationContext.workspaceRoot).toBe('/home/user/workspace');
+			},
+		);
 
 		it('uses the workflow task coordinator directly when the runtime does not sync tasks', async () => {
 			const { factory } = createSetupFactory();
@@ -193,6 +364,125 @@ describe('AssistantTurnEnvironmentFactory', () => {
 
 			expect(workflowTasks).not.toBeInstanceOf(WorkflowTaskCoordinator);
 			expect(runtime.syncWorkflowTasks).toHaveBeenCalledTimes(1);
+		});
+
+		it('keeps Manual mode and the MCP settings as they are while approval modes are off', async () => {
+			const { factory, fields } = createSetupFactory();
+
+			const { context } = await factory.create(params, createRuntime());
+
+			// The context is a deep mock, so check that the mode was never set.
+			expect(Object.keys(context)).not.toContain('approvalMode');
+			expect(context.enforceAdminMcpPermissions).toBe(false);
+			expect(fields.approvalModeService.resolveMode).toHaveBeenCalledWith(user, false);
+			expect(fields.approvalReviewerFactory.create).not.toHaveBeenCalled();
+		});
+
+		it('keeps the MCP settings of a user who picked Manual', async () => {
+			const { factory, fields } = createSetupFactory();
+			fields.adapterService.resolveExperimentGates.mockResolvedValue({
+				...(await fields.adapterService.resolveExperimentGates()),
+				approvalModesEnabled: true,
+			});
+			fields.approvalModeService.resolveMode.mockReturnValue('manual');
+
+			const { context } = await factory.create(params, createRuntime());
+
+			expect(fields.approvalModeService.resolveMode).toHaveBeenCalledWith(user, true);
+			expect(context.approvalMode).toBe('manual');
+			expect(context.enforceAdminMcpPermissions).toBe(false);
+			expect(fields.approvalReviewerFactory.create).not.toHaveBeenCalled();
+		});
+
+		it('creates the Auto mode reviewer for a user in Auto mode', async () => {
+			const { factory, fields } = createSetupFactory();
+			fields.adapterService.resolveExperimentGates.mockResolvedValue({
+				...(await fields.adapterService.resolveExperimentGates()),
+				approvalModesEnabled: true,
+			});
+			fields.approvalModeService.resolveMode.mockReturnValue('auto');
+			const runtime = createRuntime();
+
+			const { context, orchestrationContext } = await factory.create(params, runtime);
+
+			expect(context.approvalMode).toBe('auto');
+			expect(context.enforceAdminMcpPermissions).toBe(true);
+			expect(context.approvalReviewer).toBe(
+				fields.approvalReviewerFactory.create.mock.results[0].value,
+			);
+			const [reviewerParams] = fields.approvalReviewerFactory.create.mock.calls[0] as unknown as [
+				{ resolveJudgeModel: () => Promise<unknown>; getTracing: () => unknown } & Record<
+					string,
+					unknown
+				>,
+			];
+			expect(reviewerParams).toMatchObject({
+				user,
+				threadId: 'thread-1',
+				runId: 'run-1',
+				resourceId: 'user-1',
+				memory: runtime.memory,
+				eventBus: runtime.eventBus,
+			});
+			// The judge model resolves on the first review, not at turn setup.
+			expect(fields.modelService.resolveApprovalJudgeModelConfig).not.toHaveBeenCalled();
+			await expect(reviewerParams.resolveJudgeModel()).resolves.toBe('anthropic/claude-haiku');
+			expect(fields.modelService.resolveApprovalJudgeModelConfig).toHaveBeenCalledWith(
+				user,
+				'anthropic/claude-sonnet',
+				expect.anything(),
+			);
+			// The judge reads the run's trace at review time, also one attached after setup.
+			const tracing = mock<InstanceAiTraceContext>();
+			orchestrationContext.tracing = tracing;
+			expect(reviewerParams.getTracing()).toBe(tracing);
+		});
+
+		describe('in the Agent Builder', () => {
+			async function autoModeSetup() {
+				const setup = createSetupFactory();
+				setup.fields.adapterService.resolveExperimentGates.mockResolvedValue({
+					...(await setup.fields.adapterService.resolveExperimentGates()),
+					approvalModesEnabled: true,
+				});
+				setup.fields.approvalModeService.resolveMode.mockReturnValue('auto');
+				return setup;
+			}
+
+			it('keeps every card in a thread that builds an agent', async () => {
+				const { factory, fields } = await autoModeSetup();
+				const runtime = createRuntime({
+					memory: mock<AssistantTurnRuntime['memory']>({
+						getThread: vi.fn(
+							async () =>
+								({
+									resourceId: 'user-1',
+									metadata: {
+										instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'project-1' },
+									},
+								}) as never,
+						),
+					}),
+				});
+
+				const { context } = await factory.create(params, runtime);
+
+				expect(context.approvalMode).toBe('manual');
+				expect(context.enforceAdminMcpPermissions).toBe(false);
+				expect(fields.approvalReviewerFactory.create).not.toHaveBeenCalled();
+			});
+
+			it('keeps every card when the message attaches an agent', async () => {
+				const { factory, fields } = await autoModeSetup();
+
+				const { context } = await factory.create(
+					{ ...params, attachesAgent: true },
+					createRuntime(),
+				);
+
+				expect(context.enforceAdminMcpPermissions).toBe(false);
+				expect(fields.approvalReviewerFactory.create).not.toHaveBeenCalled();
+			});
 		});
 
 		it('refuses a thread that another user owns', async () => {
@@ -298,6 +588,8 @@ describe('AssistantTurnEnvironmentFactory', () => {
 					editorBaseUrl: '',
 				}),
 				mock<UrlService>({ getInstanceBaseUrl: vi.fn(() => 'https://acme.example.com') }),
+				mock(),
+				mock(),
 				mock(),
 				mock(),
 				mock(),

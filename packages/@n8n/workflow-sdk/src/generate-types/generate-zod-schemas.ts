@@ -10,24 +10,21 @@
  * This allows them to be loaded at runtime via require() without compilation.
  */
 
-// oxlint-disable import/no-cycle -- TODO: Refactor shared types/utils to break cycle
-import type {
-	NodeProperty,
-	NodeTypeDescription,
-	DiscriminatorCombination,
-	DiscriminatorTree,
-	AIInputTypeInfo,
-} from './generate-types';
-// eslint-disable-next-line import-x/no-cycle -- TODO: Refactor shared types/utils to break cycle
 import {
+	type NodeProperty,
+	type NodeTypeDescription,
+	type DiscriminatorCombination,
+	type DiscriminatorTree,
+	type AIInputTypeInfo,
+	DISPLAY_ONLY_PROPERTY_TYPES,
 	extractDiscriminatorCombinations,
 	getPropertiesForCombination,
 	filterPropertiesForVersion,
 	buildDiscriminatorTree,
 	extractAIInputTypesFromBuilderHint,
+	isCustomApiCall,
 	narrowDisplayOptionsByDisabled,
-} from './generate-types';
-// oxlint-enable import/no-cycle
+} from './node-type-description';
 import { checkConditions } from '../validation/display-options';
 
 // =============================================================================
@@ -36,21 +33,6 @@ import { checkConditions } from '../validation/display-options';
 
 /** Indentation string for generated code (2 spaces per level) */
 const INDENT = '  ';
-
-/** Custom API Call operations don't have fixed schemas - skip them */
-const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
-
-function isCustomApiCall(operation: string): boolean {
-	return operation === CUSTOM_API_CALL_KEY;
-}
-
-/**
- * Property types that don't carry runtime data and are skipped from generated
- * Zod schemas — they exist only as UI hints in the workflow JSON.
- *
- * Note: `button` and `icon` are not in this list — they can carry data.
- */
-const DISPLAY_ONLY_PROPERTY_TYPES = new Set(['notice', 'curlImport', 'credentials', 'callout']);
 
 /**
  * Runtime shape for `type: 'icon'` properties (see N8nIconPicker).

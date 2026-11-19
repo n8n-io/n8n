@@ -2,7 +2,10 @@ operationId: createTag
 tags:
   - Tags
 summary: Create a tag
-description: Create a tag in your instance.
+description: |-
+  Create a tag in your instance.
+
+  Requires the `tag:create` API key scope.
 x-required-scope: tag:create
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
@@ -50,3 +53,5 @@ responses:
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
   '422':
     $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

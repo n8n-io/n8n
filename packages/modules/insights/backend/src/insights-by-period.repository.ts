@@ -12,7 +12,7 @@ import { Container, Service } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, LessThanOrEqual, Repository } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { z } from 'zod';
 
 import {
@@ -170,7 +170,8 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		// Database-specific period start expression to filter out data to compact by days matching the periodUnit
 		let periodStartExpr = `date('now', '-${maxAgeInDays} days')`;
 		if (dbType === 'postgresdb') {
-			periodStartExpr = `CURRENT_DATE - INTERVAL '${maxAgeInDays} day'`;
+			// Subtract days before converting back, so DST in the session zone cannot shift the cutoff
+			periodStartExpr = `(DATE_TRUNC('day', NOW() AT TIME ZONE 'UTC') - INTERVAL '${maxAgeInDays} day') AT TIME ZONE 'UTC'`;
 		}
 
 		return periodStartExpr;
@@ -179,8 +180,8 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	/**
 	 * Builds the SQL expression that truncates `periodStart` to the start of its period bucket.
 	 *
-	 * @param callerTimeZone Caller timezone to bucket in. Omit for internal compaction, which must
-	 * stay timezone-agnostic (UTC) since its boundaries define the stored/deduplicated period keys.
+	 * @param callerTimeZone Caller timezone to bucket in. Omit for internal compaction, which buckets
+	 * in UTC since its boundaries define the stored/deduplicated period keys.
 	 * When set, day/week boundaries follow the caller's local wall-clock (LIGO-808), so a
 	 * positive-offset caller no longer gets an extra prior-day chart bar. `name` is the IANA zone;
 	 * `offsetSegments` are that zone's UTC offsets over the queried range, used only for SQLite.
@@ -189,35 +190,24 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	 * datetime. Convert it to UTC with `localPeriodStartToUtc`.
 	 */
 	private getPeriodStartExpr(periodUnitToCompactInto: PeriodUnit, callerTimeZone?: CallerTimeZone) {
-		// Database-specific period start expression to truncate timestamp to the periodUnit
-		// SQLite by default
-		let periodStartExpr =
-			periodUnitToCompactInto === 'week'
-				? "strftime('%Y-%m-%d 00:00:00.000', date(periodStart, '-6 days', 'weekday 1'))"
-				: `strftime('%Y-%m-%d ${periodUnitToCompactInto === 'hour' ? '%H' : '00'}:00:00.000', periodStart)`;
+		// A bare DATE_TRUNC on timestamptz truncates in the session time zone, so always name one.
+		// Postgres resolves the offset per row, so buckets stay exact across DST transitions.
 		if (dbType === 'postgresdb') {
-			periodStartExpr = `DATE_TRUNC('${periodUnitToCompactInto}', ${this.escapeField('periodStart')})`;
+			// Re-check the zone so it cannot break out of the string literal
+			const zone =
+				callerTimeZone && isValidTimeZone(callerTimeZone.name) ? callerTimeZone.name : 'UTC';
+			const periodField = this.escapeField('periodStart');
+			return `DATE_TRUNC('${periodUnitToCompactInto}', ${periodField} AT TIME ZONE '${zone}') AT TIME ZONE '${zone}'`;
 		}
 
 		if (!callerTimeZone) {
-			return periodStartExpr;
+			return periodUnitToCompactInto === 'week'
+				? "strftime('%Y-%m-%d 00:00:00.000', date(periodStart, '-6 days', 'weekday 1'))"
+				: `strftime('%Y-%m-%d ${periodUnitToCompactInto === 'hour' ? '%H' : '00'}:00:00.000', periodStart)`;
 		}
 
 		// Truncating in UTC splits a caller-local day/week across two UTC buckets for non-UTC
 		// callers (e.g. an extra prior-day chart bar for positive offsets, LIGO-808).
-		if (dbType === 'postgresdb') {
-			// Postgres ships the IANA timezone database, so it can truncate directly in the caller's
-			// zone. The offset is resolved per row, so buckets stay correct even when the range spans
-			// a DST transition. `name` is a validated IANA zone (see below), so it cannot break out of
-			// the string literal; re-check at the boundary as defence in depth.
-			if (isValidTimeZone(callerTimeZone.name)) {
-				const periodField = this.escapeField('periodStart');
-				const zone = callerTimeZone.name;
-				return `DATE_TRUNC('${periodUnitToCompactInto}', ${periodField} AT TIME ZONE '${zone}') AT TIME ZONE '${zone}'`;
-			}
-			return periodStartExpr;
-		}
-
 		// SQLite has no IANA timezone database. Shift each row into local wall-clock time with the
 		// offset of its own DST segment, then truncate. The bucket start stays in local time: one
 		// fixed offset cannot convert it back, because the offset at the bucket start can differ

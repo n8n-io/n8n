@@ -111,6 +111,7 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'logStreaming:manage', // Log Streaming
 			'ldap:manage', // LDAP
 			'otel:manage', // OpenTelemetry
+			'workflowSettings:manage', // Workflow settings
 			'eventBusDestination:create', // Log Streaming
 			'eventBusDestination:read',
 			'eventBusDestination:update',
@@ -120,6 +121,7 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'aiPreference:update',
 			'aiPreference:delete',
 			'aiPreference:list',
+			'aiPreference:manage',
 			'skill:create', // Context (instance skills)
 			'skill:read',
 			'skill:update',

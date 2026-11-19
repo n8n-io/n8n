@@ -13,13 +13,13 @@ import {
 import type { Response } from 'express';
 
 import { AgentSkillsService } from './agent-skills.service';
-import { CollaborationService } from '@/collaboration/collaboration.service';
+import { AgentWriteLockService } from './agent-write-lock.service';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentsSkillsController {
 	constructor(
 		private readonly agentSkillsService: AgentSkillsService,
-		private readonly collaborationService: CollaborationService,
+		private readonly agentWriteLockService: AgentWriteLockService,
 	) {}
 
 	@Get('/:agentId/skills')
@@ -51,7 +51,7 @@ export class AgentsSkillsController {
 	) {
 		const { projectId } = req.params;
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			projectId,
@@ -85,7 +85,7 @@ export class AgentsSkillsController {
 		const { projectId } = req.params;
 		const { baseSkillHash, availableTo, ...updates } = payload;
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			projectId,
@@ -118,7 +118,7 @@ export class AgentsSkillsController {
 	) {
 		const { projectId } = req.params;
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			projectId,

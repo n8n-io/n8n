@@ -3,9 +3,15 @@ import {
 	OutboundHttp,
 	type HttpRequestClient,
 } from '@n8n/backend-network';
+import {
+	GITHUB_SKILL_SOURCE_CREDENTIAL_TYPES,
+	isGitHubSkillSourceCredentialType,
+	type GitHubSkillSourceCredentialType,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 import { isRecord } from '@n8n/utils/is-record';
+import { sha256 } from '@n8n/utils/sha256';
 import { LRUCache } from 'lru-cache';
 import type { Readable } from 'node:stream';
 import pLimit from 'p-limit';
@@ -69,12 +75,25 @@ const CREDENTIAL_INVALID = 'GitHub refused the credential. Its token is wrong or
 const API = 'https://api.github.com';
 /** The repositories that the repository select lists at most: 10 pages of 100. */
 const MAX_REPOSITORY_PAGES = 10;
-const TOKEN_CREDENTIAL = 'githubApi';
-const APP_CREDENTIAL = 'githubAppApi';
+const APP_CREDENTIAL: GitHubSkillSourceCredentialType = 'githubAppApi';
+
+/**
+ * Where each credential type holds its token. A GitHub App gets a fresh one on each resolve.
+ * OAuth2 holds it in `oauthTokenData` once the user connected the account.
+ */
+const TOKEN_OF: Record<
+	GitHubSkillSourceCredentialType,
+	(data: Record<string, unknown>) => unknown
+> = {
+	githubApi: (data) => data.accessToken,
+	githubAppApi: (data) => data.accessToken,
+	githubOAuth2Api: (data) =>
+		isRecord(data.oauthTokenData) ? data.oauthTokenData.access_token : undefined,
+};
 
 /**
  * Reads skills from GitHub repositories. Branches come from `ls-refs` over git smart HTTP. A
- * public tarball comes from codeload, so a public source makes no REST call. A private source
+ * public tarball comes from codeload. Optional commit metadata uses the REST API. A private source
  * reads its tarball through the REST API with the token of its credential, and the repository
  * select lists repositories through the REST API, so both count against the REST rate limit of
  * that token. Every request goes to a fixed GitHub host. The user only fills path segments.
@@ -84,10 +103,11 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	readonly type = 'github';
 
 	/**
-	 * A personal access token, classic or fine-grained, and a GitHub App installation. Not
-	 * OAuth2: its fixed scope gives write access to every repository of the user.
+	 * A personal access token, classic or fine-grained, a GitHub App installation, and an
+	 * OAuth2 account. OAuth2 has a fixed scope with write access to every repository of the
+	 * user, so the connect dialog warns about it.
 	 */
-	readonly credentialTypes = [TOKEN_CREDENTIAL, APP_CREDENTIAL];
+	readonly credentialTypes: readonly string[] = GITHUB_SKILL_SOURCE_CREDENTIAL_TYPES;
 
 	readonly capabilities: SkillSourceCapabilities = {
 		discovery: 'listing',
@@ -128,7 +148,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		return isGitHubLink(input);
 	}
 
-	/** Both credential types hold the token in `accessToken`. A GitHub App gets a fresh one. */
+	/** The token of the credential, from where its type holds it. */
 	authFrom(credential: {
 		id?: string;
 		type: string;
@@ -136,10 +156,11 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	}): SkillSourceAuth {
 		this.checkCredential(credential);
 		const { id, type, data } = credential;
-		if (typeof data.accessToken !== 'string' || data.accessToken === '') {
+		const token = isGitHubSkillSourceCredentialType(type) ? TOKEN_OF[type](data) : undefined;
+		if (typeof token !== 'string' || token === '') {
 			throw new SkillSourceReadError('credential_invalid', 'The credential has no token.');
 		}
-		return { token: data.accessToken, credentialType: type, ...(id ? { credentialId: id } : {}) };
+		return { token, credentialType: type, ...(id ? { credentialId: id } : {}) };
 	}
 
 	/** A credential of another type, or for another GitHub server, is refused. */
@@ -193,17 +214,39 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		return readRef(ref).path || '/';
 	}
 
-	webUrl(locator: SkillSourceLocator, ref?: RemoteSkillRef): string {
+	webUrl(locator: SkillSourceLocator, ref?: RemoteSkillRef, revision?: string): string {
 		const { owner, repository, branch, path } = readLocator(locator);
-		return gitHubTreeUrl(owner, repository, branch, ref ? readRef(ref).path : path);
+		return gitHubTreeUrl(owner, repository, revision ?? branch, ref ? readRef(ref).path : path);
+	}
+
+	revisionUrl(locator: SkillSourceLocator, revision: string): string {
+		const { owner, repository } = readLocator(locator);
+		return `https://${GITHUB_HOST}/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}/commit/${encodeURIComponent(revision)}`;
+	}
+
+	async describeRevision(locator: SkillSourceLocator, revision: string, auth?: SkillSourceAuth) {
+		const { owner, repository } = readLocator(locator);
+		const [o, r, sha] = [owner, repository, revision].map(encodeURIComponent);
+		// The git commit endpoint returns metadata without the potentially large file diff.
+		const body = await this.sendJson(`${API}/repos/${o}/${r}/git/commits/${sha}`, auth);
+		if (!isRecord(body))
+			throw new SkillSourceReadError('unreachable', 'GitHub sent an answer n8n cannot read.');
+		const author = isRecord(body.author) ? body.author : {};
+		return {
+			message: typeof body.message === 'string' ? body.message : null,
+			author: typeof author.name === 'string' ? author.name : null,
+			date: typeof author.date === 'string' ? author.date : null,
+		};
 	}
 
 	async discover(
 		locator: SkillSourceLocator,
 		auth?: SkillSourceAuth,
+		_cursor?: string,
+		revision?: string,
 	): Promise<{ items: RemoteSkillRef[]; truncated: boolean; tooDeep: number; revision: string }> {
 		const parsed = readLocator(locator);
-		const sha = await this.head(parsed, auth);
+		const sha = revision ?? (await this.head(parsed, auth));
 		const archive = await this.archiveAt(parsed, sha, auth);
 		const { path } = parsed;
 		if (path && !archive.paths.some((file) => isInside(file, path) && file !== path)) {
@@ -212,6 +255,11 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		const { folders, truncated, tooDeep } = findSkillFolders(archive.paths, path);
 		const items = folders.map((folder): GitHubSkillRef => ({ path: folder }));
 		return { items, truncated, tooDeep, revision: sha };
+	}
+
+	/** The commit at the head of the branch: one `ls-refs` request, no archive. */
+	async probe(locator: SkillSourceLocator, auth?: SkillSourceAuth): Promise<string> {
+		return await this.head(readLocator(locator), auth);
 	}
 
 	async fetchLatest(
@@ -227,10 +275,16 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		const inRepository = (file: string) => (path ? `${path}/${file}` : file);
 		const skillFile = inRepository(SKILL_FILE);
 		if (archive.oversized.has(skillFile)) {
-			throw new SkillParseError(`The SKILL.md of ${path || '/'} is larger than 1 MB.`);
+			throw new SkillParseError(
+				`The SKILL.md of ${path || '/'} is larger than 1 MB.`,
+				archive.oversized.get(skillFile),
+			);
 		}
-		if (!archive.text.has(skillFile)) {
-			throw new SkillSourceNotFoundError(`The skill folder ${path || '/'} has no SKILL.md.`);
+		const skillText = archive.text.get(skillFile);
+		if (skillText === undefined) {
+			throw new SkillSourceNotFoundError(`The skill folder ${path || '/'} has no SKILL.md.`, {
+				skill: true,
+			});
 		}
 		// A reference over the size limit has no text, so it is skipped, not imported empty.
 		const all = filesOfSkill(archive.paths, path);
@@ -239,13 +293,26 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 			.filter((file) => !archive.oversized.has(inRepository(file)))
 			.map((file) => ({ path: file, content: archive.text.get(inRepository(file)) ?? '' }));
 		const folderName = path.split('/').at(-1) || parsed.repository;
-		const { content, skippedFiles } = readSkillFolder(folderName, files);
-		return { content, revision: sha, fidelity: [], skippedFiles: [...skippedFiles, ...oversized] };
+		try {
+			const { content, skippedFiles, unstorableFiles } = readSkillFolder(folderName, files);
+			return {
+				content,
+				revision: sha,
+				fidelity: [],
+				skippedFiles: [...skippedFiles, ...oversized],
+				unstorableFiles,
+			};
+		} catch (error) {
+			if (error instanceof SkillParseError) {
+				throw new SkillParseError(error.message, await sha256(skillText));
+			}
+			throw error;
+		}
 	}
 
 	/**
-	 * A GitHub App lists the repositories it is installed on. A token lists the repositories
-	 * that its user owns, collaborates on, or reaches through an organization.
+	 * A GitHub App lists the repositories it is installed on. A token or an OAuth2 account lists
+	 * the repositories that its user owns, collaborates on, or reaches through an organization.
 	 */
 	async listRepositories(
 		auth: SkillSourceAuth,
@@ -420,12 +487,16 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	}
 
 	/** One page of a REST answer as JSON. */
-	private async sendJson(url: string, auth: SkillSourceAuth): Promise<unknown> {
-		const body = await this.send({ url, method: 'GET', headers: bearer(auth) }, auth, {
-			bytes: MAX_REFS_BYTES,
-			message: 'GitHub sent too much data.',
-			reason: 'unreachable',
-		});
+	private async sendJson(url: string, auth?: SkillSourceAuth): Promise<unknown> {
+		const body = await this.send(
+			{ url, method: 'GET', headers: auth ? bearer(auth) : API_HEADERS },
+			auth,
+			{
+				bytes: MAX_REFS_BYTES,
+				message: 'GitHub sent too much data.',
+				reason: 'unreachable',
+			},
+		);
 		try {
 			return jsonParse<unknown>(body.toString('utf8'));
 		} catch (error) {
@@ -478,10 +549,15 @@ function throwForStatus(
 	headers: Record<string, unknown>,
 	auth?: SkillSourceAuth,
 ): never {
-	if (statusCode === 429 || (statusCode === 403 && rateLimitSpent(headers))) {
+	// A 403 with `retry-after` is a secondary rate limit, such as too many requests at once.
+	if (
+		statusCode === 429 ||
+		(statusCode === 403 && (rateLimitSpent(headers) || headers['retry-after'] !== undefined))
+	) {
 		throw new SkillSourceReadError(
 			'rate_limited',
 			'GitHub limits how often n8n can read it. Try again in a few minutes.',
+			{ retryAfterSeconds: retryAfterSeconds(headers) },
 		);
 	}
 	// With a token, 401 means GitHub refused the token itself.
@@ -535,6 +611,21 @@ function sortRepositories(repositories: SkillSourceRepository[]): SkillSourceRep
 function rateLimitSpent(headers: Record<string, unknown>): boolean {
 	const remaining = headers['x-ratelimit-remaining'];
 	return remaining === '0' || remaining === 0;
+}
+
+/**
+ * How long GitHub asked n8n to wait: `retry-after` in seconds, else the reset time of the
+ * spent limit. Undefined when the answer says neither.
+ */
+export function retryAfterSeconds(
+	headers: Record<string, unknown>,
+	now = Date.now(),
+): number | undefined {
+	const retryAfter = Number(headers['retry-after']);
+	if (Number.isFinite(retryAfter) && retryAfter >= 0) return retryAfter;
+	const reset = Number(headers['x-ratelimit-reset']);
+	if (Number.isFinite(reset) && reset > 0) return Math.max(0, Math.ceil(reset - now / 1000));
+	return undefined;
 }
 
 function readLocator(locator: SkillSourceLocator): GitHubLocator {

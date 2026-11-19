@@ -80,7 +80,10 @@ export class ExecutionRecoveryService {
 						// Lazy resolution breaks the DI cycle: WorkflowService →
 						// ActiveWorkflowManager → MessageEventBus → this service
 						const { WorkflowService } = await import('@/workflows/workflow.service.js');
-						await Container.get(WorkflowService).deactivateWorkflowAsSystem(workflowId);
+						await Container.get(WorkflowService).deactivateWorkflowAsSystem(
+							workflowId,
+							'crash-recovery',
+						);
 						this.logger.warn(
 							`Autodeactivated workflow ${workflowId} due to too many crashed executions.`,
 						);
@@ -325,6 +328,7 @@ export class ExecutionRecoveryService {
 
 		const run: IRun = {
 			data: execution.data,
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 			finished: false,
 			mode: execution.mode,
 			waitTill: execution.waitTill ?? undefined,

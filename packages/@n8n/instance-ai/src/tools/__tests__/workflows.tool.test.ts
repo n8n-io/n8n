@@ -353,6 +353,15 @@ describe('workflows tool', () => {
 			});
 		});
 
+		it('marks only get-as-code as needing the workspace, since it writes the source file', () => {
+			const context = createMockContext();
+			const flagged = createWorkflowTools(context)
+				.filter((tool) => tool.requiresWorkspace)
+				.map((tool) => tool.name);
+
+			expect(flagged).toEqual(['get_workflow_as_code']);
+		});
+
 		it('should support a filtered safe action surface', () => {
 			const context = createMockContext();
 			const tools = createWorkflowTools(context, { allowedActions: builderWorkflowActions });
@@ -999,7 +1008,7 @@ describe('workflows tool', () => {
 
 				expect(result.note).toContain('spans too many projects');
 				expect(result.note).toContain('Do NOT substitute a `query` name filter');
-				expect(result.note).toContain('workspace(action="list-projects")');
+				expect(result.note).toContain('list_projects');
 				expect(result.note).toContain('narrow to one project');
 			});
 
@@ -1122,7 +1131,7 @@ describe('workflows tool', () => {
 				structure: '// generated code',
 				note: STRUCTURE_ONLY_NOTE,
 			});
-			expect(STRUCTURE_ONLY_NOTE).toContain('get-as-code');
+			expect(STRUCTURE_ONLY_NOTE).toContain('get_workflow_as_code');
 			expect(STRUCTURE_ONLY_NOTE).not.toContain('get-json');
 			const codegenInput = vi.mocked(generateWorkflowCode).mock.calls[0][0];
 			expect(codegenInput).toMatchObject({ name: 'Test WF' });
@@ -1654,6 +1663,33 @@ describe('workflows tool', () => {
 			expect(result.filePath).toBeUndefined();
 			expect(result.note).toContain(error.message);
 			expect(files.size).toBe(0);
+			await expect(
+				getWorkflowSourceFileBinding(context, 'src/workflows/test-wf.workflow.ts'),
+			).resolves.toBeUndefined();
+		});
+
+		it('keeps the read-only note with investigation source guidance', async () => {
+			const context = createWorkspaceContext(new Map());
+			context.assertInThreadProject = vi.fn().mockRejectedValue(
+				new Error('This workflow has a pending suggestion.', {
+					cause: new OutsideThreadProjectError(),
+				}),
+			);
+			const tool = createWorkflowToolRouter(context, {
+				surface: 'full',
+				sourceGuidance: 'Edit the investigation candidate.',
+			});
+
+			const result = await executeTool<{ filePath?: string; note?: string }>(
+				tool,
+				{ action: 'get-as-code', workflowId: 'wf1' },
+				{} as never,
+			);
+
+			expect(result.filePath).toBeUndefined();
+			expect(result.note).toBe(
+				'Read-only: the source was not written to a file. This workflow has a pending suggestion.',
+			);
 			await expect(
 				getWorkflowSourceFileBinding(context, 'src/workflows/test-wf.workflow.ts'),
 			).resolves.toBeUndefined();

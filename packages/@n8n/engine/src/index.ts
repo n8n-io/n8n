@@ -3,19 +3,26 @@ export type { EngineRuntime, EngineRuntimeOptions } from './runtime';
 
 export type { EngineLogger } from './logging';
 
+export { assertSecureTransport, createEngineHttpServer, openEngineTls } from './tls';
+export type { EngineTls, EngineTlsFiles, EngineTlsSource } from './tls';
+
 export {
 	ACTION_TOKEN_SPEC,
 	IDENTITY_TOKEN_SPEC,
 	InvalidActionTokenError,
 	InvalidIdentityTokenError,
 	mintActionToken,
+	mintApprovalCallback,
 	mintIdentityToken,
 	mintResumeToken,
+	mintStepBoundResumeToken,
+	parseApprovalCallback,
 	SharedSecretIdentityVerifier,
 	verifyActionToken,
 } from './auth';
-export type { AuthenticatedCaller, ActionScope, IdentityVerifier } from './auth';
+export type { AuthenticatedCaller, ActionScope, ApprovalDecision, IdentityVerifier } from './auth';
 
+export { triggerOutputsSchema, workflowGraphSchema } from './server';
 export type {
 	CancelExecutionResponse,
 	EngineErrorResponse,
@@ -29,24 +36,29 @@ export type {
 	ExecutionListItem,
 	ResolveStepRequest,
 	ResolveStepResponse,
-	ResumeTargetRequest,
+	ResumeLocateRequest,
 	ResumeTargetResponse,
 } from './server';
 
 // The publisher stays internal: no host constructs or swaps one.
 export {
+	LIFECYCLE_EVENT_SUBSCRIPTION_KINDS,
 	MAX_LIFECYCLE_EVENTS_PER_BATCH,
 	lifecycleEventBatchSchema,
 	lifecycleEventSchema,
+	lifecycleEventSubscriptionSchema,
 } from './lifecycle-events';
 export type {
 	LifecycleEventCallback,
 	LifecycleEvent,
 	LifecycleEventBatch,
+	LifecycleEventSubscription,
 } from './lifecycle-events';
 
 export {
 	createResponseEmitter,
+	EXECUTION_CHANNEL_TOPICS,
+	MAX_FRAME_BYTES,
 	executionResponseSchema,
 	noopExecutionResponseSender,
 	noopResponseEmitter,
@@ -56,19 +68,26 @@ export {
 export type {
 	ChunkMessage,
 	EndedMessage,
+	ExecutionChannelCodec,
+	ExecutionChannelFrameHandler,
+	ExecutionChannelPublisher,
+	ExecutionChannelSubscriber,
+	ExecutionChannelTopic,
 	ExecutionResponse,
 	ExecutionResponseSender,
+	FrameResult,
 	ResponseEmitter,
 	ResponseExpectation,
 	ResponseExpectationKind,
 	ResponseMessage,
 	UndeliverableMessage,
+	UnsubscribeFromExecutionChannel,
 } from './response-channel';
 
-export { UnimplementedError } from './common';
+export { jsonObjectSchema, UnimplementedError } from './common';
 export type { JsonObject, JsonValue } from './common';
 
-export { deriveLoops, isBatchStepConfig } from './graph';
+export { deriveLoops, isBatchStepConfig, validateExecutableGraph } from './graph';
 export type {
 	BatchStepConfig,
 	GraphEdge,
@@ -100,17 +119,30 @@ export type {
 } from './admittance';
 
 export type {
+	EngineWorkQueues,
 	ExecutionEnqueuedEvent,
 	OrchestrationMessage,
 	StepSettledEvent,
 	StepMessage,
 	StepReadyEvent,
 	WorkQueue,
+	RedisWorkQueues,
+	WorkQueuePublisherClient,
 } from './queue';
+export { createInMemoryWorkQueues, createRedisWorkQueues } from './queue';
 
-export { ExecutionNotFoundError, InvalidParentLinkError, StepNotFoundError } from './execution';
+export {
+	attachStepErrorDetails,
+	ExecutionNotFoundError,
+	InvalidParentLinkError,
+	StepNotFoundError,
+	stepErrorDetails,
+} from './execution';
 export type {
 	CallerContext,
+	SubExecutionOutcome,
+	SubExecutionResult,
+	SubExecutionResumeCause,
 	ExecutionMode,
 	ExecutionViewStore,
 	ExecutionRecord,

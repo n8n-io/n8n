@@ -29,11 +29,22 @@ export type IAuthDataSanitizeKeys = {
 };
 
 export const replaceNullValues = (item: INodeExecutionData) => {
-	if (item.json === null) {
+	if (item.json === null || item.json === undefined) {
 		item.json = {};
 	}
 	return item;
 };
+
+export function removeRequestOptions(error: unknown) {
+	if (typeof error !== 'object' || error === null) return;
+
+	Reflect.deleteProperty(error, 'options');
+
+	const cause = Reflect.get(error, 'cause');
+	if (typeof cause === 'object' && cause !== null) {
+		Reflect.deleteProperty(cause, 'options');
+	}
+}
 
 export const REDACTED = '**hidden**';
 

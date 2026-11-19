@@ -9,13 +9,18 @@ import { useToast } from '@n8n/composables/useToast';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	N8nButton,
+	N8nEmptyState,
+	N8nEnterpriseReadinessBadge,
 	N8nHeading,
 	N8nIcon,
 	N8nInput,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
+	N8nSwitch,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { TableOptions } from '@n8n/design-system';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -34,7 +39,13 @@ import { useContextStore } from '../context.store';
 import type { AiPreferenceScope } from '@n8n/api-types';
 
 import type { Preference } from '../context.types';
-import { keepSortOnClear, preferenceScope, toPreferenceSortOption } from '../context.utils';
+import {
+	canManageContextPreferences,
+	isContextPreferencesEnabled,
+	keepSortOnClear,
+	preferenceScope,
+	toPreferenceSortOption,
+} from '../context.utils';
 
 const i18n = useI18n();
 const router = useRouter();
@@ -42,6 +53,7 @@ const documentTitle = useDocumentTitle();
 const message = useMessage();
 const telemetry = useTelemetry();
 const contextStore = useContextStore();
+const settingsStore = useSettingsStore();
 const preferencesEmptyStateExperiment = usePreferencesEmptyStateExperiment();
 const emptyStateVariant = preferencesEmptyStateExperiment.variant;
 const { showError, showMessage } = useToast();
@@ -57,6 +69,14 @@ const search = ref('');
 const appliedSearch = ref('');
 const loadFailed = ref(false);
 let latestLoad = 0;
+
+const canManagePreferences = canManageContextPreferences();
+const preferencesEnabled = computed(() => isContextPreferencesEnabled());
+const preferencesSwitchOn = computed(() => settingsStore.settings.aiPreferences?.enabled === true);
+const preferencesManagedByEnv = computed(
+	() => settingsStore.settings.aiPreferences?.managedByEnv === true,
+);
+const isSavingSwitch = ref(false);
 
 const dialogTarget = ref<Preference | 'new' | null>(null);
 const openedExample = ref<PreferenceExample>();
@@ -234,21 +254,37 @@ async function onDeleteSelected() {
 	});
 }
 
+async function onPreferencesEnabledChange(enabled: boolean) {
+	isSavingSwitch.value = true;
+	try {
+		await contextStore.setPreferencesEnabled(enabled);
+		if (preferencesEnabled.value) await loadVisit();
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.preferences.enable.error'));
+	} finally {
+		isSavingSwitch.value = false;
+	}
+}
+
 async function goBack() {
 	await router.push({ name: VIEWS.SETTINGS_CONTEXT });
 }
 
-onMounted(async () => {
-	documentTitle.set(i18n.baseText('settings.context.preferences.title'));
-	// Once for the visit, not once for each page: paging is not a second visit. A failed load
-	// reports nothing, so a zero here is an empty list and never a broken one. A search that
-	// replaces the first load also reports nothing, because the store then holds its filtered rows.
+// Once for the visit, not once for each page: paging is not a second visit. A failed load
+// reports nothing, so a zero here is an empty list and never a broken one. A search that
+// replaces the first load also reports nothing, because the store then holds its filtered rows.
+async function loadVisit() {
 	if (!(await load())) return;
 	telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_PREFERENCES, {
 		count: contextStore.count,
 		scope_types: [...new Set(contextStore.preferences.map((row) => preferenceScope(row)))],
 	});
 	if (contextStore.count === 0) preferencesEmptyStateExperiment.trackExposure();
+}
+
+onMounted(async () => {
+	documentTitle.set(i18n.baseText('settings.context.preferences.title'));
+	if (preferencesEnabled.value) await loadVisit();
 });
 </script>
 
@@ -265,9 +301,49 @@ onMounted(async () => {
 			:title="i18n.baseText('settings.context.preferences.title')"
 			:description="i18n.baseText('settings.context.preferences.description')"
 			:show-docs-link="false"
-		/>
+		>
+			<template #titleTrailing>
+				<N8nEnterpriseReadinessBadge
+					v-if="settingsStore.isEnterprisePlan"
+					size="xsmall"
+					data-test-id="preferences-enterprise-readiness-badge"
+				/>
+				<span v-if="canManagePreferences" :class="$style.switch">
+					<N8nTooltip
+						:disabled="!preferencesManagedByEnv"
+						:content="i18n.baseText('settings.context.preferences.enable.managedByEnv')"
+					>
+						<N8nSwitch
+							size="small"
+							:model-value="preferencesSwitchOn"
+							:disabled="isSavingSwitch || preferencesManagedByEnv"
+							:aria-label="i18n.baseText('settings.context.preferences.title')"
+							data-test-id="preferences-enable-toggle"
+							@update:model-value="onPreferencesEnabledChange"
+						/>
+					</N8nTooltip>
+				</span>
+			</template>
+		</N8nSettingsPageHeader>
 
-		<PreferencesEmptyStateAssistant v-if="showAssistantEmptyState" @write-own="openCreateModal" />
+		<N8nText
+			v-if="!preferencesEnabled && preferencesSwitchOn"
+			color="text-light"
+			data-test-id="preferences-needs-consumer"
+		>
+			{{ i18n.baseText('settings.context.preferences.enable.needsConsumer') }}
+		</N8nText>
+		<N8nEmptyState
+			v-else-if="!preferencesEnabled"
+			:icon="{ type: 'icon', value: 'brain' }"
+			:heading="i18n.baseText('settings.context.preferences.off.title')"
+			:description="i18n.baseText('settings.context.preferences.off.description')"
+			data-test-id="preferences-off-state"
+		/>
+		<PreferencesEmptyStateAssistant
+			v-else-if="showAssistantEmptyState"
+			@write-own="openCreateModal"
+		/>
 		<PreferencesEmptyStateExamples
 			v-else-if="showExamplesEmptyState"
 			@use-example="openExampleModal"
@@ -357,7 +433,18 @@ onMounted(async () => {
 
 	header {
 		margin-inline: 0 auto;
+		max-width: none;
+
+		> p {
+			display: block;
+			max-width: 45rem;
+		}
 	}
+}
+
+.switch {
+	display: inline-flex;
+	margin-left: auto;
 }
 
 .toolbar {

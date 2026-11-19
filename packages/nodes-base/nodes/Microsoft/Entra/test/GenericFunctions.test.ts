@@ -5,7 +5,7 @@ import type {
 	IHttpRequestOptions,
 	INode,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 import {
 	microsoftApiRequest,
@@ -61,13 +61,13 @@ describe('Microsoft Entra GenericFunctions', () => {
 					graphApiBaseUrl: 'https://graph.microsoft.us',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/groups');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/groups`);
 
 				expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 					'microsoftEntraOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						url: 'https://graph.microsoft.us/v1.0/groups',
+						url: requestUrl`https://graph.microsoft.us/v1.0/groups`,
 						json: true,
 					}),
 				);
@@ -83,13 +83,13 @@ describe('Microsoft Entra GenericFunctions', () => {
 					graphApiBaseUrl: '',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/groups');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/groups`);
 
 				expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 					'microsoftEntraOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						url: 'https://graph.microsoft.com/v1.0/groups',
+						url: requestUrl`https://graph.microsoft.com/v1.0/groups`,
 						json: true,
 					}),
 				);
@@ -104,13 +104,13 @@ describe('Microsoft Entra GenericFunctions', () => {
 					},
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/groups');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/groups`);
 
 				expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 					'microsoftEntraOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						url: 'https://graph.microsoft.com/v1.0/groups',
+						url: requestUrl`https://graph.microsoft.com/v1.0/groups`,
 						json: true,
 					}),
 				);
@@ -126,13 +126,13 @@ describe('Microsoft Entra GenericFunctions', () => {
 					graphApiBaseUrl: 'https://graph.microsoft.com/',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/groups');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/groups`);
 
 				expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 					'microsoftEntraOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						url: 'https://graph.microsoft.com/v1.0/groups',
+						url: requestUrl`https://graph.microsoft.com/v1.0/groups`,
 						json: true,
 					}),
 				);
@@ -148,13 +148,13 @@ describe('Microsoft Entra GenericFunctions', () => {
 					graphApiBaseUrl: 'https://graph.microsoft.com///',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/groups');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/groups`);
 
 				expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 					'microsoftEntraOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						url: 'https://graph.microsoft.com/v1.0/groups',
+						url: requestUrl`https://graph.microsoft.com/v1.0/groups`,
 						json: true,
 					}),
 				);
@@ -170,13 +170,13 @@ describe('Microsoft Entra GenericFunctions', () => {
 					graphApiBaseUrl: 'https://graph.microsoft.us',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/groups');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/groups`);
 
 				expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 					'microsoftEntraOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						url: 'https://graph.microsoft.us/v1.0/groups',
+						url: requestUrl`https://graph.microsoft.us/v1.0/groups`,
 						json: true,
 					}),
 				);
@@ -192,13 +192,13 @@ describe('Microsoft Entra GenericFunctions', () => {
 					graphApiBaseUrl: 'https://dod-graph.microsoft.us',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/groups');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/groups`);
 
 				expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 					'microsoftEntraOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						url: 'https://dod-graph.microsoft.us/v1.0/groups',
+						url: requestUrl`https://dod-graph.microsoft.us/v1.0/groups`,
 						json: true,
 					}),
 				);
@@ -214,13 +214,13 @@ describe('Microsoft Entra GenericFunctions', () => {
 					graphApiBaseUrl: 'https://microsoftgraph.chinacloudapi.cn',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/groups');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/groups`);
 
 				expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 					'microsoftEntraOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						url: 'https://microsoftgraph.chinacloudapi.cn/v1.0/groups',
+						url: requestUrl`https://microsoftgraph.chinacloudapi.cn/v1.0/groups`,
 						json: true,
 					}),
 				);
@@ -240,12 +240,12 @@ describe('Microsoft Entra GenericFunctions', () => {
 					graphApiBaseUrl: 'https://graph.microsoft.us',
 				});
 
-				await microsoftApiPaginateRequest.call(mockExecuteFunctions, 'GET', '/groups');
+				await microsoftApiPaginateRequest.call(mockExecuteFunctions, 'GET', requestPath`/groups`);
 
 				expect(mockRequestWithAuthenticationPaginated).toHaveBeenCalledWith(
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://graph.microsoft.us/v1.0/groups',
+						uri: requestUrl`https://graph.microsoft.us/v1.0/groups`,
 						json: true,
 					}),
 					0,
@@ -268,12 +268,12 @@ describe('Microsoft Entra GenericFunctions', () => {
 					graphApiBaseUrl: '',
 				});
 
-				await microsoftApiPaginateRequest.call(mockExecuteFunctions, 'GET', '/groups');
+				await microsoftApiPaginateRequest.call(mockExecuteFunctions, 'GET', requestPath`/groups`);
 
 				expect(mockRequestWithAuthenticationPaginated).toHaveBeenCalledWith(
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://graph.microsoft.com/v1.0/groups',
+						uri: requestUrl`https://graph.microsoft.com/v1.0/groups`,
 						json: true,
 					}),
 					0,
@@ -296,12 +296,12 @@ describe('Microsoft Entra GenericFunctions', () => {
 					graphApiBaseUrl: 'https://graph.microsoft.com/',
 				});
 
-				await microsoftApiPaginateRequest.call(mockExecuteFunctions, 'GET', '/groups');
+				await microsoftApiPaginateRequest.call(mockExecuteFunctions, 'GET', requestPath`/groups`);
 
 				expect(mockRequestWithAuthenticationPaginated).toHaveBeenCalledWith(
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://graph.microsoft.com/v1.0/groups',
+						uri: requestUrl`https://graph.microsoft.com/v1.0/groups`,
 						json: true,
 					}),
 					0,
@@ -326,13 +326,27 @@ describe('Microsoft Entra GenericFunctions', () => {
 			});
 		});
 
+		it('microsoftApiRequest encodes a path value that contains a slash', async () => {
+			mockRequestWithAuthentication.mockResolvedValue({});
+
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'PATCH',
+				requestPath`/users/${'87d349ed/groups'}`,
+			);
+
+			expect(String(mockRequestWithAuthentication.mock.calls[0][1].url)).toBe(
+				'https://graph.microsoft.com/v1.0/users/87d349ed%2Fgroups',
+			);
+		});
+
 		it('microsoftApiRequest keeps a URL override on the credential host', async () => {
 			mockRequestWithAuthentication.mockResolvedValue({ value: [] });
 
 			await microsoftApiRequest.call(
 				mockExecuteFunctions,
 				'GET',
-				'/groups',
+				requestPath`/groups`,
 				{},
 				undefined,
 				undefined,
@@ -357,7 +371,7 @@ describe('Microsoft Entra GenericFunctions', () => {
 				microsoftApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/groups',
+					requestPath`/groups`,
 					{},
 					undefined,
 					undefined,
@@ -373,7 +387,7 @@ describe('Microsoft Entra GenericFunctions', () => {
 				microsoftApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/groups',
+					requestPath`/groups`,
 					{},
 					undefined,
 					undefined,
@@ -391,7 +405,7 @@ describe('Microsoft Entra GenericFunctions', () => {
 			});
 
 			await expect(
-				microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/groups'),
+				microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/groups`),
 			).rejects.toThrow('The Graph API base URL is not a valid URL');
 
 			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
@@ -403,7 +417,7 @@ describe('Microsoft Entra GenericFunctions', () => {
 			await microsoftApiRequest.call(
 				mockExecuteFunctions,
 				'GET',
-				'/groups',
+				requestPath`/groups`,
 				{},
 				undefined,
 				undefined,
@@ -420,7 +434,7 @@ describe('Microsoft Entra GenericFunctions', () => {
 			});
 
 			await expect(
-				microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/groups'),
+				microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/groups`),
 			).rejects.toThrow('The Graph API base URL is not a valid URL');
 
 			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
@@ -431,7 +445,7 @@ describe('Microsoft Entra GenericFunctions', () => {
 				microsoftApiPaginateRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/groups',
+					requestPath`/groups`,
 					{},
 					undefined,
 					undefined,

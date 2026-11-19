@@ -1,4 +1,4 @@
-import { ref, reactive, computed, watch, onScopeDispose, type Ref } from 'vue';
+import { ref, reactive, computed, watch, onScopeDispose, shallowRef, toRaw, type Ref } from 'vue';
 import { useDocumentVisibility } from '@vueuse/core';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { TIME } from '@/app/constants/durations';
@@ -7,6 +7,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { isRecord } from '@n8n/utils/is-record';
 import type {
 	AgentBuilderOpenSuspension,
+	AgentChatMessagesResponse,
 	AgentChatQueueItem,
 	AgentPersistedMessageDto,
 	AgentSseEvent,
@@ -56,6 +57,7 @@ import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/share
 import { CHAT_MESSAGE_ROLE, CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
 import { isPolicyRefusedToolOutput } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
+import { addReplyAttachments } from '@/features/ai/shared/agentsChat/replyFiles';
 import { isBudgetStopCode, type BudgetNoticeCode } from '../utils/budget-config';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
 import { useAgentExecutionUpdates } from './useAgentExecutionUpdates';
@@ -98,6 +100,8 @@ export interface UseAgentChatStreamParams {
 	budgetCards?: boolean;
 	/** Card types of the chat host. The stream maps suspended tool calls with them. */
 	interactionExtensions?: readonly AgentsChatInteractionExtension[];
+	/** Called with each event of the chat stream, as received. */
+	onStreamEvent?: (event: AgentSseEvent) => void;
 }
 
 type ResumePayload =
@@ -114,6 +118,8 @@ type ResumePayload =
 	  };
 
 const STOP_ACCEPTANCE_TIMEOUT_MS = 30 * TIME.SECOND;
+/** Turns in one page of a thread's history. */
+const HISTORY_PAGE_SIZE = 20;
 const MAX_WAITING_STREAMS = 2;
 const MAX_START_VALIDATION_ATTEMPTS = 3;
 
@@ -151,6 +157,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const steeringQueueIds = ref(new Set<string>());
 	const isReorderingQueue = ref(false);
 	const consumedQueueIds = new Set<string>();
+	/**
+	 * The first send of a new session shows its message before the run starts, so the
+	 * chat does not flash empty. The run takes the message over, or the send removes it.
+	 */
+	const earlySend = shallowRef<{ message: ChatMessage; queueId?: string }>();
+	// A list rebuilt with `map` or `filter` holds proxies, which `indexOf` does not match.
+	const indexOfMessage = (message: ChatMessage) =>
+		messages.value.findIndex((item) => toRaw(item) === toRaw(message));
 	const steerableExecutionId = ref<string | null>(null);
 	const streams = new Map<AbortController, StreamSession>();
 	/**
@@ -187,6 +201,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const streamSettlements = new WeakMap<AbortController, Promise<void>>();
 	const historyLoaded = ref(false);
 	const isLoadingHistory = ref(false);
+	/** Cursor of the next older page of the thread. `null` when no older turns exist. */
+	const olderMessagesCursor = ref<string | null>(null);
+	/** Whether `messages` starts with turns from older pages, which a refresh must keep. */
+	let hasLoadedOlderPages = false;
+	/** Stops a second load of the same page while one runs. */
+	let isLoadingOlderMessages = false;
+	const hasOlderMessages = computed(() => olderMessagesCursor.value !== null);
 	const pushStore = usePushConnectionStore();
 	const visibility = useDocumentVisibility();
 	let disposed = false;
@@ -228,7 +249,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const dismissedWarningKeys = new Set<string>();
 
 	const messagingState = computed<'idle' | 'waitingFirstChunk' | 'receiving'>(() => {
-		if (!isStreaming.value) return 'idle';
+		if (!isStreaming.value && !earlySend.value) return 'idle';
 		const lastMsg = messages.value[messages.value.length - 1];
 		if (!lastMsg || lastMsg.role === CHAT_MESSAGE_ROLE.USER) return 'waitingFirstChunk';
 		return 'receiving';
@@ -252,6 +273,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			let dbMessages: AgentPersistedMessageDto[];
 			let openSuspensions: AgentBuilderOpenSuspension[] = [];
 			let runningExecutionId: string | null | undefined;
+			let nextCursor: string | null = null;
 			if (continueId) {
 				const envelope = await getChatMessages(
 					rootStore.restApiContext,
@@ -259,10 +281,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					params.agentId.value,
 					continueId,
 					channel.value,
+					{ limit: HISTORY_PAGE_SIZE },
 				);
 				dbMessages = envelope.messages;
 				openSuspensions = envelope.openSuspensions;
 				runningExecutionId = envelope.activeExecutionId;
+				nextCursor = envelope.nextCursor ?? null;
 			} else if (!capabilities.value.previewHistory) {
 				// A fresh n8n Chat has no default thread to fall back to (unlike the
 				// builder's single test chat) — nothing to load until the first
@@ -284,13 +308,27 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			retryCount = 0;
 			clearTimeout(retryTimer);
 			if (!isStreamOpen.value && streamAtStart === streamVersion) {
-				messages.value = restoreBudgetNotices(
+				const history = restoreBudgetNotices(
 					applyOpenSuspensions(
 						convertDbMessages(dbMessages, extensions),
 						openSuspensions,
 						extensions,
 					),
 				);
+				// A new session's history holds its first message only after its run starts.
+				const early = earlySend.value?.message;
+				const hasRun = history.some((message) => message.role === CHAT_MESSAGE_ROLE.USER);
+				const newestPage = early && !hasRun ? [...history, early] : history;
+				const olderTurns = hasLoadedOlderPages ? turnsBefore(newestPage) : undefined;
+				if (olderTurns) {
+					// Keep the older pages that the user loaded. Their cursor stays valid.
+					messages.value = [...olderTurns, ...newestPage];
+				} else {
+					messages.value = newestPage;
+					olderMessagesCursor.value = nextCursor;
+					hasLoadedOlderPages = false;
+				}
+				if (hasRun) earlySend.value = undefined;
 				isRecovering.value = false;
 				if (runningExecutionId !== undefined) activeExecutionId.value = runningExecutionId;
 				if (isCancelling.value) reconcileStop();
@@ -315,6 +353,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					streamAtStart === streamVersion
 				) {
 					messages.value = [];
+					resetOlderMessages();
 				}
 				return clearOnNotFound;
 			} else if (!silent) {
@@ -327,6 +366,95 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			return false;
 		}
+	}
+
+	/**
+	 * The loaded messages of the turns before `newestPage`. `undefined` when the
+	 * loaded messages and the page have no turn in common, so that a gap could
+	 * exist between them.
+	 */
+	function turnsBefore(newestPage: ChatMessage[]): ChatMessage[] | undefined {
+		const pageExecutionIds = new Set(newestPage.map((message) => message.executionId));
+		const firstShared = messages.value.findIndex(
+			(message) => message.executionId !== undefined && pageExecutionIds.has(message.executionId),
+		);
+		return firstShared === -1 ? undefined : messages.value.slice(0, firstShared);
+	}
+
+	/**
+	 * The chat messages of a response that holds older turns. Open suspensions
+	 * belong to the newest turn, so these turns settle their tool calls.
+	 */
+	function toOlderMessages(envelope: AgentChatMessagesResponse): ChatMessage[] {
+		return applyOpenSuspensions(convertDbMessages(envelope.messages, extensions), [], extensions);
+	}
+
+	function resetOlderMessages(): void {
+		olderMessagesCursor.value = null;
+		hasLoadedOlderPages = false;
+		isLoadingOlderMessages = false;
+	}
+
+	/**
+	 * Load the next older page of the thread and add it before the loaded
+	 * messages. Rejects when the request fails, so the caller can offer a retry.
+	 */
+	async function loadOlderMessages(): Promise<void> {
+		const cursor = olderMessagesCursor.value;
+		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
+		if (cursor === null || !threadId || disposed || isLoadingOlderMessages) return;
+		const target = targetKey();
+		// A refresh that drops the older pages, or a new target, makes this page stale.
+		const isCurrent = () =>
+			!disposed && target === targetKey() && olderMessagesCursor.value === cursor;
+		isLoadingOlderMessages = true;
+		try {
+			const envelope = await getChatMessages(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+				threadId,
+				channel.value,
+				{ limit: HISTORY_PAGE_SIZE, cursor },
+			);
+			if (!isCurrent()) return;
+			const loadedIds = new Set(messages.value.map((message) => message.id));
+			const older = toOlderMessages(envelope).filter((message) => !loadedIds.has(message.id));
+			// Hosts with sync watchers, such as the Assistant preview, skip turns that load as
+			// history. Mark the older turns as history only while they are added.
+			const wasLoadingHistory = isLoadingHistory.value;
+			isLoadingHistory.value = true;
+			messages.value = [...older, ...messages.value];
+			isLoadingHistory.value = wasLoadingHistory;
+			olderMessagesCursor.value = envelope.nextCursor ?? null;
+			hasLoadedOlderPages = true;
+		} finally {
+			if (target === targetKey()) isLoadingOlderMessages = false;
+		}
+	}
+
+	/**
+	 * Every message of the thread, also the older turns that are not loaded.
+	 * Fetches the whole thread only when older turns exist. Leaves `messages`
+	 * as it is.
+	 */
+	async function getFullHistory(): Promise<ChatMessage[]> {
+		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
+		if (olderMessagesCursor.value === null || !threadId) return messages.value;
+		const envelope = await getChatMessages(
+			rootStore.restApiContext,
+			params.projectId.value,
+			params.agentId.value,
+			threadId,
+			channel.value,
+		);
+		const thread = toOlderMessages(envelope);
+		// The loaded messages can be newer than the response, for example a live reply.
+		const loadedExecutionIds = new Set(messages.value.map((message) => message.executionId));
+		const firstLoaded = thread.findIndex(
+			(message) => message.executionId !== undefined && loadedExecutionIds.has(message.executionId),
+		);
+		return firstLoaded === -1 ? thread : [...thread.slice(0, firstLoaded), ...messages.value];
 	}
 
 	async function loadHistory(): Promise<void> {
@@ -384,13 +512,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				channel.value,
 			);
 			if (!disposed && target === targetKey() && version === queueVersion) {
-				queuedMessages.value = result.items.filter((item) => !consumedQueueIds.has(item.id));
+				queuedMessages.value = result.items.filter(
+					(item) => !consumedQueueIds.has(item.id) && item.id !== earlySend.value?.queueId,
+				);
 				steerableExecutionId.value = result.steerableExecutionId ?? null;
 			}
-		} catch (error) {
-			if (!disposed && target === targetKey() && version === queueVersion) {
-				showError(error, locale.baseText('agents.chat.queue.loadError'));
-			}
+		} catch {
+			// Background refresh: keep the last known queue. The next push event or reconnect
+			// retries, and a toast on every failed poll floods the UI while n8n is unreachable.
 		}
 	}
 
@@ -566,6 +695,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	watch(targetKey, () => {
 		detachStream();
 		messages.value = [];
+		resetOlderMessages();
+		earlySend.value = undefined;
 		queuedMessages.value = [];
 		removingQueueIds.value.clear();
 		steeringQueueIds.value.clear();
@@ -598,6 +729,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				params.agentId.value,
 			);
 			messages.value = [];
+			resetOlderMessages();
 		} catch (error) {
 			showError(error, locale.baseText('agents.chat.clearHistory.error'));
 		}
@@ -608,6 +740,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	// -------------------------------------------------------------------------
 
 	interface StreamSession {
+		stopReport?: boolean;
 		target: string;
 		controller: AbortController;
 		queueId?: string;
@@ -616,6 +749,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		sessionId?: string;
 		usageComplete?: boolean;
 		needsStartValidation?: boolean;
+		silentBeforeStart?: boolean;
 		busy?: boolean;
 		/** Gets the queue item id when the message was queued rather than started. */
 		onAccepted?: (queueId?: string) => void;
@@ -647,6 +781,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	 */
 	function ensureCurrent(session: StreamSession): ChatMessage {
 		if (session.current) return session.current;
+
 		const msg = reactive<ChatMessage>({
 			id: crypto.randomUUID(),
 			role: 'assistant',
@@ -654,6 +789,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			toolCalls: [],
 			status: CHAT_MESSAGE_STATUS.STREAMING,
 			executionId: session.executionId,
+			...(session.stopReport ? { stopReport: true } : {}),
 		});
 		messages.value.push(msg);
 		session.current = msg;
@@ -671,7 +807,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	function attachBudgetNotice(
 		session: StreamSession,
-		code: 'budget.monthly' | 'budget.session' | 'budget.alert',
+		code: 'budget.monthly' | 'budget.session' | 'budget.alert' | 'budget.credits',
 		agentId?: string,
 	): void {
 		const msg = ensureCurrent(session);
@@ -924,9 +1060,20 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return false;
 	}
 
+	function holdsOnlyHostEvents(msg: ChatMessage): boolean {
+		return (
+			!!msg.hostEvents?.length &&
+			!msg.content &&
+			(msg.toolCalls?.length ?? 0) === 0 &&
+			getMessageThinkingSegments(msg).length === 0 &&
+			!msg.budgetNotices?.length
+		);
+	}
+
 	function dropOrphanMintedBubbles(session: StreamSession): void {
 		for (const msg of session.minted) {
 			if (
+				!msg.stopReport &&
 				!msg.content &&
 				(msg.toolCalls?.length ?? 0) === 0 &&
 				getMessageThinkingSegments(msg).length === 0 &&
@@ -1013,9 +1160,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		// Controller validation failures only emit `error`. Any other event proves
 		// that the backend admitted and persisted this turn.
 		if (event.type !== 'error') acknowledgeSessionCreation();
+
 		switch (event.type) {
 			case 'message-queued':
 				session.queueId = event.queueId;
+				if (session.userMessage && earlySend.value?.message === session.userMessage)
+					earlySend.value.queueId = event.queueId;
 				acceptedSessionId.value = event.sessionId;
 				detachExcessWaitingStreams();
 				session.onAccepted?.(event.queueId);
@@ -1051,18 +1201,23 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				fatalError.value = null;
 				warnings.value = [];
 				if (session.userMessage) {
-					if (
-						!messages.value.some(
-							(message) =>
-								message.role === CHAT_MESSAGE_ROLE.USER &&
-								message.executionId === event.executionId,
-						)
-					) {
-						messages.value.push({
-							...session.userMessage,
-							content: event.message ?? session.userMessage.content,
-							executionId: event.executionId,
-						});
+					const started = messages.value.some(
+						(message) =>
+							message.role === CHAT_MESSAGE_ROLE.USER && message.executionId === event.executionId,
+					);
+					const startedMessage = {
+						...session.userMessage,
+						content: event.message ?? session.userMessage.content,
+						executionId: event.executionId,
+					};
+					// The run takes the place of the message that its send showed early.
+					const isEarly = earlySend.value?.message === session.userMessage;
+					if (isEarly) earlySend.value = undefined;
+					const earlyIndex = isEarly ? indexOfMessage(session.userMessage) : -1;
+					if (earlyIndex >= 0) {
+						messages.value.splice(earlyIndex, 1, ...(started ? [] : [startedMessage]));
+					} else if (!started) {
+						messages.value.push(startedMessage);
 					}
 				}
 				queueVersion++;
@@ -1072,6 +1227,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				session.executionId = event.executionId;
 				session.sessionId = event.sessionId;
 				notifyUsage(session);
+				session.stopReport = event.stopReport;
 				activeExecutionId.value = event.executionId;
 				acceptedSessionId.value = event.sessionId;
 				session.onAccepted?.();
@@ -1082,8 +1238,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			case 'finish-step':
 				// LLM iteration boundary — the next text/tool event mints a
 				// fresh ChatMessage. We don't flip status here; `done` is what
-				// finalizes the message at the end of the stream.
-				session.current = undefined;
+				// finalizes the message at the end of the stream. A message with
+				// only host events, such as the turn setup sends before the first
+				// step, takes the next step too, as the history shows it.
+				if (!session.stopReport && !(session.current && holdsOnlyHostEvents(session.current))) {
+					session.current = undefined;
+				}
 				break;
 			case 'text-start':
 			case 'text-end':
@@ -1206,6 +1366,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 							: TOOL_CALL_STATE.DONE;
 					found.tc.canceled = toolResultEvent.canceled === true;
 					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
+					addReplyAttachments(found.msg, found.tc);
 					const currentInteractive = getMessageInteractive(found.msg, event.toolCallId);
 					const updated = rebuildInteractiveFromHistory(found.tc, extensions);
 					if (updated && currentInteractive?.resolvedAt === undefined) {
@@ -1246,6 +1407,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					};
 					msg.toolCalls = [...(msg.toolCalls ?? []), tc];
 				}
+				addReplyAttachments(msg, tc);
 				const interactive = rebuildInteractiveFromHistory({ ...tc, output: undefined }, extensions);
 				if (interactive) {
 					interactive.runId = payload.runId;
@@ -1326,6 +1488,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			case 'error': {
 				session.errorEmitted = true;
+
+				if (session.silentBeforeStart && !session.executionId) {
+					session.terminalEventReceived = true;
+
+					break;
+				}
+
 				if (event.errorCode === AGENT_CHAT_ERROR_CODES.turnAlreadyRunning) {
 					session.busy = true;
 					isCancelling.value = false;
@@ -1333,6 +1502,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					isRecovering.value = true;
 					return { done: true };
 				}
+
+				if (session.stopReport && session.minted.size === 0) ensureCurrent(session);
+
 				settleOpenReasoning(session);
 				dropOrphanMintedBubbles(session);
 				markInFlightStateFailed(session);
@@ -1359,6 +1531,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			case 'done':
 				notifyUsage(session, undefined, true);
+				if (session.stopReport && session.minted.size === 0) ensureCurrent(session);
 				if (event.executionId === activeExecutionId.value) activeExecutionId.value = null;
 				settleOpenReasoning(session);
 				if (event.executionId) {
@@ -1382,6 +1555,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			default:
 				break;
 		}
+
 		return undefined;
 	}
 
@@ -1414,11 +1588,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			!disposed && !session.controller.signal.aborted && session.target === targetKey();
 		for (let attempt = 0; attempt < MAX_START_VALIDATION_ATTEMPTS && isCurrent(); attempt++) {
 			const ownershipAtStart = ownershipVersion;
+			// The running execution is the newest turn, so the newest page is enough.
 			const history = await getChatMessages(
 				rootStore.restApiContext,
 				params.projectId.value,
 				params.agentId.value,
 				event.sessionId,
+				channel.value,
+				{ limit: 1 },
 			).catch(() => undefined);
 			if (!isCurrent()) break;
 			// Timeline updates do not invalidate execution ownership.
@@ -1461,6 +1638,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					} catch {
 						continue;
 					}
+					params.onStreamEvent?.(event);
 					const result =
 						event.type === 'execution-started' && session.needsStartValidation
 							? await handleDelayedExecutionStart(event, session)
@@ -1499,11 +1677,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		body: Record<string, unknown>,
 		onAccepted?: (queueId?: string) => void,
 		userMessage?: ChatMessage,
+		waitForStart = false,
 	): Promise<{ outcome: StreamOutcome }> {
 		const controller = new AbortController();
 		const session: StreamSession = {
 			controller,
 			userMessage,
+			silentBeforeStart: waitForStart,
 			target: targetKey(),
 			onAccepted,
 			errorEmitted: false,
@@ -1513,11 +1693,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			openReasoning: new Map(),
 		};
 		streams.set(controller, session);
-		if (!userMessage) {
+
+		if (!userMessage && !waitForStart) {
 			isStreamOpen.value = true;
 			streamVersion++;
 			abortController.value = controller;
 		}
+
 		let settleStream: (() => void) | undefined;
 		streamSettlements.set(
 			controller,
@@ -1593,6 +1775,20 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				}
 			}
 		}
+	}
+
+	async function requestTaskStop(planId: string | null): Promise<void> {
+		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
+
+		if (!threadId) throw new Error('Session not found');
+
+		const url = `${agentChatBaseUrl(rootStore.restApiContext, params.projectId.value, params.agentId.value, channel.value)}/${encodeURIComponent(threadId)}/task-cancellation/stream`;
+		await new Promise<void>((resolve, reject) => {
+			void postAndConsume(url, { planId }, () => resolve(), undefined, true).then(({ outcome }) => {
+				if (outcome === 'completed') resolve();
+				else reject(new Error('Could not confirm the stop request'));
+			}, reject);
+		});
 	}
 
 	async function streamChat(
@@ -1819,8 +2015,15 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				file,
 			})),
 		};
+		// Nothing waits ahead of the first message of a new session, so its run starts
+		// right away. The message shows now, not when the run starts.
+		if (params.newSession?.value === true && messages.value.length === 0) {
+			earlySend.value = { message: userMessage };
+			messages.value.push(userMessage);
+		}
 		return await new Promise<'sent' | 'busy'>((resolve) => {
 			let released = false;
+			let detached = false;
 			const release = (outcome: 'sent' | 'busy' = 'sent') => {
 				if (released) return;
 				released = true;
@@ -1838,13 +2041,27 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				clientContext,
 			)
 				.then(({ outcome }) => {
+					detached = outcome === 'detached';
 					release(outcome === 'busy' ? 'busy' : 'sent');
 				})
 				.catch((error: unknown) => {
 					if (!disposed && target === targetKey())
 						showError(error, locale.baseText('agents.chat.queue.sendError'));
 				})
-				.finally(release);
+				.finally(() => {
+					// A send that did not start a run shows what history and the queue hold.
+					// An accepted message whose stream dropped still runs, so it stays until
+					// history holds it.
+					const early = earlySend.value;
+					if (early?.message === userMessage && !(detached && early.queueId)) {
+						earlySend.value = undefined;
+						const index = indexOfMessage(userMessage);
+						if (index >= 0) messages.value.splice(index, 1);
+						// The queue list hid the accepted message while the chat showed it.
+						if (early.queueId) void refreshQueue();
+					}
+					release();
+				});
 		});
 	}
 
@@ -1973,8 +2190,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		reorderQueuedMessage,
 		isSubmitting,
 		isLoadingHistory,
+		hasOlderMessages,
+		loadOlderMessages,
+		getFullHistory,
 		messages,
 		isStreaming,
+		isStreamAttached: computed(() => isStreamOpen.value),
 		activeExecutionId,
 		isCancelling,
 		messagingState,
@@ -1985,6 +2206,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		clearHistory,
 		clearBudgetNotices,
 		sendMessage,
+		requestTaskStop,
 		stopGenerating,
 		detachStream,
 		resume,

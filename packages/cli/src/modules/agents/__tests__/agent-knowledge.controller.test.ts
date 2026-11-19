@@ -1,4 +1,5 @@
 import type { AgentFileDto } from '@n8n/api-types';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { Response } from 'express';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -7,15 +8,14 @@ import multer from 'multer';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
-import type { Telemetry } from '@/telemetry';
-
 import type { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
 import {
-	AgentKnowledgeUploadError,
-	type AgentKnowledgeUploadFailureReason,
-} from '../agent-knowledge-upload.error';
+	KnowledgeUploadError,
+	type KnowledgeUploadFailureReason,
+} from '@/modules/knowledge/files/knowledge-upload.error';
+
 import { AgentKnowledgeController } from '../agent-knowledge.controller';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
@@ -28,12 +28,12 @@ function makeController({
 	agentKnowledgeService = mock<AgentKnowledgeService>(),
 	knowledgeAvailabilityService = makeKnowledgeAvailabilityService(),
 	runtimeCacheService = mock<AgentRuntimeCacheService>(),
-	telemetry = mock<Telemetry>(),
+	telemetry = mock<TelemetryProxy>(),
 }: {
 	agentKnowledgeService?: Mocked<AgentKnowledgeService>;
 	knowledgeAvailabilityService?: KnowledgeAvailabilityService;
 	runtimeCacheService?: Mocked<AgentRuntimeCacheService>;
-	telemetry?: Mocked<Telemetry>;
+	telemetry?: Mocked<TelemetryProxy>;
 } = {}) {
 	return {
 		controller: new AgentKnowledgeController(
@@ -229,9 +229,9 @@ describe('AgentKnowledgeController upload telemetry', () => {
 
 	describe('failed uploads', () => {
 		function expectFailureEvent(
-			telemetry: Mocked<Telemetry>,
+			telemetry: Mocked<TelemetryProxy>,
 			fileCount: number,
-			reason: AgentKnowledgeUploadFailureReason | 'unknown',
+			reason: KnowledgeUploadFailureReason | 'unknown',
 		) {
 			expect(telemetry.track).toHaveBeenCalledTimes(1);
 			expect(telemetry.track).toHaveBeenCalledWith(
@@ -269,7 +269,7 @@ describe('AgentKnowledgeController upload telemetry', () => {
 
 		it('reports a rejected file type with its reason', async () => {
 			const { controller, telemetry } = makeController();
-			const fileUploadError = new AgentKnowledgeUploadError('Only CSV…', 'file_type');
+			const fileUploadError = new KnowledgeUploadError('Only CSV…', 'file_type');
 
 			await expect(
 				controller.uploadFiles(
@@ -301,7 +301,7 @@ describe('AgentKnowledgeController upload telemetry', () => {
 		it.each([
 			[
 				'a check of the service',
-				new AgentKnowledgeUploadError('exists', 'duplicate_name'),
+				new KnowledgeUploadError('exists', 'duplicate_name'),
 				'duplicate_name',
 			],
 			['an unexpected error', new Error('disk full'), 'unknown'],

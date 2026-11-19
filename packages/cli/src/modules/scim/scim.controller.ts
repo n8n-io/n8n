@@ -12,15 +12,19 @@ import {
 	Put,
 	Query,
 	RootLevelController,
+	type StaticRouterMetadata,
 } from '@n8n/decorators';
-import type { Response } from 'express';
+import { Container } from '@n8n/di';
+import { Router, type Response } from 'express';
 
+import { markScimRejection, ScimRequestObserver } from './scim-request-observer';
 import { scimRoute } from './scim-route';
 import {
 	ScimConflictError,
 	ScimForbiddenError,
 	ScimInvalidFilterError,
 	ScimInvalidValueError,
+	ScimOwnerProtectedError,
 	ScimResourceNotFoundError,
 } from './scim.errors';
 import { ScimService } from './scim.service';
@@ -31,6 +35,23 @@ import { ScimService } from './scim.service';
  */
 @RootLevelController('/scim/v2')
 export class ScimController {
+	/**
+	 * Runs for every `/scim/v2` request before route matching and before the IP
+	 * rate limit of each route. Thus the observer also reports a 429 and a path
+	 * that n8n does not support. The empty router passes each request on.
+	 * Identity providers send their own User-Agent, so the global bot filter
+	 * must not drop a request to a path that has no route.
+	 */
+	static routers: StaticRouterMetadata[] = [
+		{
+			path: '/',
+			router: Router(),
+			skipAuth: true,
+			allowBots: true,
+			middlewares: [Container.get(ScimRequestObserver).getMiddleware()],
+		},
+	];
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly scimService: ScimService,
@@ -60,12 +81,15 @@ export class ScimController {
 			return this.scimError(res, 409, error.message, 'uniqueness');
 		}
 		if (error instanceof ScimForbiddenError) {
+			if (error instanceof ScimOwnerProtectedError) markScimRejection(res, 'owner_protected');
 			return this.scimError(res, 403, error.message);
 		}
 		if (error instanceof ScimInvalidFilterError) {
+			markScimRejection(res, 'invalid_filter');
 			return this.scimError(res, 400, error.message, 'invalidFilter');
 		}
 		if (error instanceof ScimInvalidValueError) {
+			markScimRejection(res, 'invalid_value');
 			return this.scimError(res, 400, error.message, 'invalidValue');
 		}
 

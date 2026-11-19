@@ -34,8 +34,9 @@ import {
 const props = withDefaults(
 	defineProps<{
 		maxHeight?: string;
-		/** Scope the history shown — applied to `history.threads` before grouping. */
-		filter?: (thread: InstanceAiThreadSummary) => boolean;
+		/** Scope the history shown — applied to `history.threads` before grouping, and to the
+		 * Assistant agent threads in the store. */
+		filter?: (thread: InstanceAiThreadSummary | SystemAgentThreadSummary) => boolean;
 		/** False → selecting a row emits `select` without routing, "View all" is hidden,
 		 * and deleting the active thread emits `deleted(true)` instead of navigating. Use this for an
 		 * embedding host that has no thread route of its own. */
@@ -174,9 +175,24 @@ const scopedItems = computed<RecentChatItem[]>(() => {
 	// `useMergedChatHistory` already folds the sources together, gated by the options above.
 	if (usesMergedHistory.value) return mergedItems.value;
 	// Scope the server-paged history to the embedding host's subject, such as one agent.
-	return history.value.threads
-		.filter((thread) => (props.filter ? props.filter(thread) : true))
-		.map((thread) => ({ kind: 'assistant' as const, thread }));
+	const filter = props.filter;
+	if (!filter) {
+		return history.value.threads.map((thread) => ({ kind: 'assistant' as const, thread }));
+	}
+	// The host loads the Assistant agent threads of its subject into the store, so the
+	// search runs here, while the server searches the Assistant history.
+	const searchTerm = history.value.search.trim().toLowerCase();
+	const agentThreads = instanceAiSettingsStore.isAssistantAgentEnabled
+		? assistantAgentThreadsStore.knownThreads.filter(
+				(thread) => filter(thread) && (thread.title ?? '').toLowerCase().includes(searchTerm),
+			)
+		: [];
+	return [
+		...history.value.threads
+			.filter(filter)
+			.map((thread) => ({ kind: 'assistant' as const, thread })),
+		...agentThreads.map((thread) => ({ kind: 'assistant-agent' as const, thread })),
+	].sort((a, b) => Date.parse(b.thread.updatedAt) - Date.parse(a.thread.updatedAt));
 });
 
 // The recent-only list never pages; "View all" opens the full list.
@@ -212,7 +228,10 @@ const menuItems = computed<Array<DropdownMenuItemProps<string, ChatHistoryItemDa
 				item.kind === 'agent'
 					? 'instance-ai-agent-thread-item'
 					: 'instance-ai-assistant-agent-thread-item',
-			data: { updatedAt: item.thread.updatedAt, actions: agentActions },
+			data: {
+				updatedAt: item.thread.updatedAt,
+				actions: item.kind === 'agent' ? agentActions : threadActions,
+			},
 		};
 	}),
 );
@@ -312,26 +331,49 @@ function setRenameInput(element: unknown) {
 	renameInput.value = element instanceof HTMLInputElement ? element : null;
 }
 
-function startRename(threadId: string) {
+/**
+ * The current title of a row the user can rename, and how to rename it. n8n Chat agent
+ * threads have no rename.
+ */
+function renameTarget(itemId: string) {
+	if (!isPrefixedRowId(itemId)) {
+		const thread = history.value.threads.find((t) => t.id === itemId);
+		if (!thread) return undefined;
+		return {
+			title: thread.title,
+			rename: async (title: string) => await store.renameThread(itemId, title),
+		};
+	}
+	const item = itemsById.value.get(itemId);
+	if (item?.kind !== 'assistant-agent') return undefined;
+	return {
+		title: item.thread.title ?? '',
+		rename: async (title: string) =>
+			await assistantAgentThreadsStore.renameThread(item.thread.id, title),
+	};
+}
+
+function startRename(itemId: string) {
 	if (props.disabled) return;
-	const currentTitle = history.value.threads.find((thread) => thread.id === threadId)?.title;
-	if (!currentTitle) return;
-	editingThreadId.value = threadId;
-	editingTitle.value = currentTitle;
+	const target = renameTarget(itemId);
+	if (!target) return;
+	editingThreadId.value = itemId;
+	editingTitle.value = target.title;
 	void nextTick(() => {
 		renameInput.value?.focus();
 		renameInput.value?.select();
 	});
 }
 
-async function confirmRename(threadId: string) {
+async function confirmRename(itemId: string) {
 	// Enter and the blur it causes both call this; leaving edit mode first keeps one request.
-	if (editingThreadId.value !== threadId) return;
+	if (editingThreadId.value !== itemId) return;
 	editingThreadId.value = null;
 	const title = editingTitle.value.trim();
-	if (!title || title === history.value.threads.find((t) => t.id === threadId)?.title) return;
+	const target = renameTarget(itemId);
+	if (!title || !target || title === target.title) return;
 	try {
-		await store.renameThread(threadId, title);
+		await target.rename(title);
 		toast.showMessage({
 			type: 'success',
 			title: i18n.baseText('instanceAi.threads.renameSuccess'),
@@ -363,34 +405,42 @@ function handleMenuSelect(itemId: string) {
 	const item = itemsById.value.get(itemId);
 	if (!item || item.kind === 'assistant') return;
 	restoreTriggerFocus = true;
+	// An embedding host opens its Assistant agent threads in place.
+	if (item.kind === 'assistant-agent' && !props.navigate) {
+		emit('select', item.thread.id);
+		return;
+	}
 	void router.push(chatItemRoute(item));
 }
 
 async function handleDeleteAssistantAgentThread(thread: SystemAgentThreadSummary) {
 	const deleted = await assistantAgentThreadsStore.deleteThread(thread);
 	// Read the open thread after the request: the user can open another one meanwhile.
-	if (deleted && thread.id === activeThreadId.value) {
+	if (!deleted || thread.id !== activeThreadId.value) return;
+	if (props.navigate) {
 		void router.push({ name: INSTANCE_AI_VIEW });
+	} else {
+		emit('deleted', true);
 	}
 }
 
 function handleThreadAction(action: string, itemId: string) {
 	if (props.disabled) return;
+	if (action === 'rename') {
+		// Wait for the action menu to unmount before the rename input takes focus.
+		requestAnimationFrame(() => startRename(itemId));
+		return;
+	}
+	if (action !== 'delete') return;
 	if (isPrefixedRowId(itemId)) {
 		const item = itemsById.value.get(itemId);
-		if (action !== 'delete') return;
 		// This dropdown is Assistant-only (never open on an agent's own chat page), so
 		// deleting an agent thread here never needs to navigate away.
 		if (item?.kind === 'agent') void agentThreadsStore.deleteThread(item.thread);
 		if (item?.kind === 'assistant-agent') void handleDeleteAssistantAgentThread(item.thread);
 		return;
 	}
-	if (action === 'delete') {
-		void handleDeleteThread(itemId);
-	} else if (action === 'rename') {
-		// Wait for the action menu to unmount before the rename input takes focus.
-		requestAnimationFrame(() => startRename(itemId));
-	}
+	void handleDeleteThread(itemId);
 }
 </script>
 
@@ -463,7 +513,7 @@ function handleThreadAction(action: string, itemId: string) {
 		</template>
 
 		<template #item-edit="{ item, ui }">
-			<div :class="[$style.renameContainer, ui.class]" @pointerdown.stop @click.stop>
+			<div :class="[$style.renameContainer, ui.class]">
 				<input
 					:ref="setRenameInput"
 					v-model="editingTitle"

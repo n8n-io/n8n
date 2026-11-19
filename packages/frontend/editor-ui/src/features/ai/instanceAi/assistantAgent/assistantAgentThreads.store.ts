@@ -9,13 +9,24 @@ import {
 	deleteSystemAgentThread,
 	getSystemAgentThread,
 	listSystemAgentThreads,
+	renameSystemAgentThread,
 } from '@/features/agents/composables/useAgentApi';
 
+import { fetchAssistantAgentThreadCredits } from './assistantAgentTabs.api';
 import {
 	ASSISTANT_AGENT_ID,
 	forgetAssistantAgentThread,
 	rememberAssistantAgentThread,
 } from './assistantAgentThreads';
+
+/** The thread with its title from a rename in this session, if any. */
+export function withRenamedTitle(
+	thread: SystemAgentThreadSummary,
+	renamedTitles: ReadonlyMap<string, string>,
+): SystemAgentThreadSummary {
+	const title = renamedTitles.get(thread.id);
+	return title === undefined ? thread : { ...thread, title };
+}
 
 /** How many Assistant agent threads the sidebar's recent chats load. */
 export const ASSISTANT_AGENT_RECENT_THREADS_LIMIT = 10;
@@ -39,12 +50,19 @@ export const useAssistantAgentThreadsStore = defineStore('assistantAgentThreads'
 	const openedThreads = ref<SystemAgentThreadSummary[]>([]);
 	/** Ids deleted in this session, so every mounted list filters the row out. */
 	const deletedThreadIds = ref<Set<string>>(new Set());
+	/**
+	 * Titles renamed in this session, so every mounted list shows the new title. A
+	 * response that a rename overtook can still hold the old title.
+	 */
+	const renamedTitles = ref<Map<string, string>>(new Map());
+	/** The credit total of each thread, from its load and the credit pushes. */
+	const creditsUsed = ref<Map<string, number>>(new Map());
 	const threadsById = computed(
 		() =>
 			new Map(
 				[...openedThreads.value, ...recentThreads.value]
 					.filter((thread) => !deletedThreadIds.value.has(thread.id))
-					.map((thread) => [thread.id, thread]),
+					.map((thread) => [thread.id, withRenamedTitle(thread, renamedTitles.value)]),
 			),
 	);
 	/** Every known thread, newest `updatedAt` first. */
@@ -109,8 +127,57 @@ export const useAssistantAgentThreadsStore = defineStore('assistantAgentThreads'
 		recentThreads.value = recentThreads.value.filter((t) => t.id !== thread.id);
 		openedThreads.value = openedThreads.value.filter((t) => t.id !== thread.id);
 		deletedThreadIds.value.add(thread.id);
+		creditsUsed.value.delete(thread.id);
 		forgetAssistantAgentThread(thread.id);
 		return true;
+	}
+
+	// The latest rename of each thread. Only it can restore the old title.
+	const renameVersions = new Map<string, number>();
+
+	/** Shows the new title at once, and restores the old one when the request fails. */
+	async function renameThread(threadId: string, title: string): Promise<void> {
+		const previous = renamedTitles.value.get(threadId);
+		const version = (renameVersions.get(threadId) ?? 0) + 1;
+		renameVersions.set(threadId, version);
+		renamedTitles.value.set(threadId, title);
+		try {
+			await renameSystemAgentThread(rootStore.restApiContext, ASSISTANT_AGENT_ID, threadId, title);
+		} catch (error) {
+			if (renameVersions.get(threadId) === version) {
+				if (previous === undefined) renamedTitles.value.delete(threadId);
+				else renamedTitles.value.set(threadId, previous);
+			}
+			throw error;
+		}
+	}
+
+	/** The credit total of a thread, or `undefined` before its first claim. */
+	function threadCreditsUsed(threadId: string): number | undefined {
+		return creditsUsed.value.get(threadId);
+	}
+
+	/**
+	 * Keeps the larger total. A total only grows, so a load that a push overtook
+	 * cannot show an older total.
+	 */
+	function setThreadCreditsUsed(threadId: string, total: number): void {
+		const current = creditsUsed.value.get(threadId);
+		if (current === undefined || total > current) creditsUsed.value.set(threadId, total);
+	}
+
+	/** Loads the stored credit total of a thread, so the total shows after a reload. */
+	async function loadThreadCredits(threadId: string): Promise<void> {
+		try {
+			const { creditsUsed: total } = await fetchAssistantAgentThreadCredits(
+				rootStore.restApiContext,
+				threadId,
+			);
+			if (total !== null) setThreadCreditsUsed(threadId, total);
+		} catch (error) {
+			// Best effort: the header shows no thread total.
+			console.error('Failed to load Assistant agent thread credits', error);
+		}
 	}
 
 	return {
@@ -119,10 +186,15 @@ export const useAssistantAgentThreadsStore = defineStore('assistantAgentThreads'
 		threadsById,
 		knownThreads,
 		deletedThreadIds,
+		renamedTitles,
 		remember,
 		fetchRecent,
 		addOpenedThread,
 		loadThread,
 		deleteThread,
+		renameThread,
+		threadCreditsUsed,
+		setThreadCreditsUsed,
+		loadThreadCredits,
 	};
 });

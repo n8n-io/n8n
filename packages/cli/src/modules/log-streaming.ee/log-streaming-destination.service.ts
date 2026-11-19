@@ -14,7 +14,7 @@ import {
 	eventMessageGenericDestinationTestEvent,
 } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 
 import { EventDestinationsRepository } from './database/repositories/event-destination.repository';
 import { messageEventBusDestinationFromDb } from './destinations/message-event-bus-destination-from-db';

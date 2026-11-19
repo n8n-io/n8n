@@ -16,7 +16,9 @@ describe('GenericFunctions - searchPosts', () => {
 	beforeEach(() => {
 		mockGoogleApiRequest.mockClear();
 		mockGetNodeParameter.mockClear();
-		mockGetNodeParameter.mockReturnValue('parameterValue');
+		mockGetNodeParameter.mockImplementation((name: string) => ({
+			value: name === 'account' ? 'accounts/123' : 'locations/123',
+		}));
 	});
 
 	it('should return posts with filtering', async () => {

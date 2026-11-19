@@ -9,7 +9,6 @@ import type { ProjectListItem } from '@/features/collaboration/projects/projects
 import { useRemoteProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import { useI18n } from '@n8n/i18n';
 
-import { ElRadio } from 'element-plus';
 import {
 	N8nButton,
 	N8nDialog,
@@ -17,10 +16,13 @@ import {
 	N8nDialogFooter,
 	N8nInput,
 	N8nInputLabel,
+	N8nRadioGroup,
+	N8nRadioGroupItem,
 	N8nText,
 } from '@n8n/design-system';
 
 defineOptions({ inheritAttrs: false });
+
 const props = defineProps<{
 	modalName: string;
 	data: {
@@ -139,46 +141,48 @@ function onDialogOpenUpdate(open: boolean) {
 							i18n.baseText('settings.users.confirmDataHandlingAfterDeletion')
 						}}</N8nText>
 					</div>
-					<ElRadio
-						v-model="operation"
-						label="transfer"
-						@update:model-value="operation = 'transfer'"
-					>
-						<N8nText color="text-dark">{{
-							i18n.baseText('settings.users.transferWorkflowsAndCredentials')
-						}}</N8nText>
-					</ElRadio>
-					<div v-if="operation === 'transfer'" :class="$style.optionInput">
-						<N8nText color="text-dark">{{
-							i18n.baseText('settings.users.transferWorkflowsAndCredentials.user')
-						}}</N8nText>
-						<ProjectSharing
-							v-model="selectedProject"
-							class="pt-2xs"
-							:search-fn="searchFn"
-							:filter-fn="filterFn"
-							:placeholder="
-								i18n.baseText('settings.users.transferWorkflowsAndCredentials.placeholder')
-							"
-						/>
-					</div>
-					<ElRadio v-model="operation" label="delete" @update:model-value="operation = 'delete'">
-						<N8nText color="text-dark">{{
-							i18n.baseText('settings.users.deleteWorkflowsAndCredentials')
-						}}</N8nText>
-					</ElRadio>
-					<div
-						v-if="operation === 'delete'"
-						:class="$style.optionInput"
-						data-test-id="delete-data-input"
-					>
-						<N8nInputLabel :label="i18n.baseText('settings.users.deleteConfirmationMessage')">
-							<N8nInput
-								v-model="deleteConfirmText"
-								:placeholder="i18n.baseText('settings.users.deleteConfirmationText')"
-							/>
-						</N8nInputLabel>
-					</div>
+					<N8nRadioGroup v-model="operation">
+						<N8nRadioGroupItem value="transfer">
+							<template #label>
+								<N8nText color="text-dark">{{
+									i18n.baseText('settings.users.transferWorkflowsAndCredentials')
+								}}</N8nText>
+							</template>
+							<template #content>
+								<div v-if="operation === 'transfer'" class="pt-2xs">
+									<N8nText color="text-dark">{{
+										i18n.baseText('settings.users.transferWorkflowsAndCredentials.user')
+									}}</N8nText>
+									<ProjectSharing
+										v-model="selectedProject"
+										class="pt-2xs"
+										:search-fn="searchFn"
+										:filter-fn="filterFn"
+										:placeholder="
+											i18n.baseText('settings.users.transferWorkflowsAndCredentials.placeholder')
+										"
+									/>
+								</div>
+							</template>
+						</N8nRadioGroupItem>
+						<N8nRadioGroupItem value="delete">
+							<template #label>
+								<N8nText color="text-dark">{{
+									i18n.baseText('settings.users.deleteWorkflowsAndCredentials')
+								}}</N8nText>
+							</template>
+							<template #content>
+								<div v-if="operation === 'delete'" class="pt-2xs" data-test-id="delete-data-input">
+									<N8nInputLabel :label="i18n.baseText('settings.users.deleteConfirmationMessage')">
+										<N8nInput
+											v-model="deleteConfirmText"
+											:placeholder="i18n.baseText('settings.users.deleteConfirmationText')"
+										/>
+									</N8nInputLabel>
+								</div>
+							</template>
+						</N8nRadioGroupItem>
+					</N8nRadioGroup>
 				</div>
 			</form>
 		</N8nDialogBody>
@@ -201,23 +205,11 @@ function onDialogOpenUpdate(open: boolean) {
 	> *:not(:last-child) {
 		margin-bottom: var(--spacing--sm);
 	}
-
-	// Element Plus keeps the radio label on one line. Remove this override
-	// when the radio selection uses the Reka UI design-system component.
-	:global(.el-radio) {
-		max-width: 100%;
-		margin-right: 0;
-		white-space: normal;
-	}
 }
 
 .innerContent {
 	> * {
 		margin-bottom: var(--spacing--2xs);
 	}
-}
-
-.optionInput {
-	padding-left: var(--spacing--lg);
 }
 </style>

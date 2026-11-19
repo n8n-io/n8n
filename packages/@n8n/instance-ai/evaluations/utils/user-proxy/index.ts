@@ -205,6 +205,12 @@ export class UserProxyLlm {
 		}
 	}
 
+	/** Record a whole assistant reply, for builders that don't emit n8n SSE events. */
+	recordAssistantMessage(text: string): void {
+		if (text.trim().length === 0) return;
+		this.actualTranscript.push({ role: 'assistant', text });
+	}
+
 	async respondToConfirmation(event: CapturedEvent): Promise<InstanceAiConfirmRequest> {
 		const requestId = extractRequestId(event);
 		const isRepeat = requestId !== undefined && this.seenRequestIds.has(requestId);

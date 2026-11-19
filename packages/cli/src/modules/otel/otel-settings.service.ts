@@ -70,6 +70,10 @@ export class OtelSettingsService {
 		private readonly logger: Logger,
 	) {}
 
+	isOutboundInjectionEnabled(): boolean {
+		return Boolean(this.currentSettings?.enabled && this.currentSettings?.injectOutbound);
+	}
+
 	getSettings(): OtelSettingsResponse {
 		if (!this.currentSettings) throw new Error('OTel settings not yet initialized');
 		return {

@@ -10,8 +10,10 @@ import type {
 	RuntimeSkill,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
+	ObservationalMemoryConfig,
 	ScopedMemoryTaskEvent,
 	Telemetry,
+	TokenUsage,
 	Workspace,
 } from '@n8n/agents';
 import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
@@ -20,6 +22,11 @@ import type {
 	AgentJsonConfig,
 	AgentSessionStatus,
 	AgentSkill,
+	AppBinding,
+	AppBindingsResponse,
+	AppBuildResponse,
+	AppListResponse,
+	AppResponse,
 	SaveSkillDto,
 	SkillDetail,
 	SkillListResponse,
@@ -27,8 +34,8 @@ import type {
 	SkillScope,
 	EvaluationMetric,
 	TaskList,
+	InstanceAiApprovalMode,
 	InstanceAiPromptConfiguration,
-	InstanceAiEvent,
 	InstanceAiFileAttachment,
 	InstanceAiPermissions,
 	InstanceAiSetupItem,
@@ -38,7 +45,7 @@ import type {
 	McpToolCallRequest,
 	McpToolCallResult,
 } from '@n8n/api-types';
-import type { OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
+import type { NodeJSON, OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
 	GenericValue,
 	IDisplayOptions,
@@ -57,9 +64,11 @@ import type { DomainAccessTracker } from './domain-access/domain-access-tracker'
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
 import type { AgentContextInput } from './tools/agent-context.tool';
+import type { StartCloudBrowserTask } from './tools/orchestration/start-cloud-browser-task.tool';
 import type { McpClientManager } from './mcp/mcp-client-manager';
 import type { OrchestratorRunHandoffReason } from './runtime/orchestrator-run-control';
 import type { TraceStatus } from './runtime/resumable-stream-executor';
+import type { InstanceAiApprovalReviewer } from './approval-review/approval-review';
 import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { BuilderUsageItem } from './stream/usage-accumulator';
 import type {
@@ -177,6 +186,11 @@ export interface ExecutionResult {
 	workflowPinnedNodeNames?: string[];
 	/** Nodes whose output items carry file data, which `data` omits. */
 	binaryOutputNodeNames?: string[];
+	/**
+	 * Time-based Wait nodes that a verification run executed without their
+	 * delay. They ran and passed their input through, but did not wait.
+	 */
+	skippedWaitNodeNames?: string[];
 	/** Node-level errors from run data, including continue-on-fail errors. */
 	nodeErrors?: ExecutionNodeError[];
 	/** Name of the last node the execution processed, when available. */
@@ -849,6 +863,14 @@ export interface InstanceAiCredentialService {
 	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
 	/** Whether the given credential type is supported by AI Gateway. */
 	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
+	/** Why AI Gateway cannot serve a credential type it covers on this node, or
+	 *  undefined when it can or does not cover the type. Applies the rule the
+	 *  engine applies when the workflow runs: node type, type version, action
+	 *  (with node defaults applied) and hidden properties. */
+	getAiGatewayNodeRejection?(
+		node: Pick<NodeJSON, 'type' | 'typeVersion' | 'parameters'>,
+		credType: string,
+	): Promise<string | undefined>;
 	/** Current AI Gateway wallet, or `null` when Connect is off or the fetch failed. */
 	getAiGatewayWallet?(): Promise<{ balance: number } | null>;
 	/** List all credential types supported by n8n Connect on this instance. */
@@ -1292,6 +1314,36 @@ export interface InstanceAiDataTableService {
 	): Promise<{ deletedCount: number; dataTableId: string; tableName: string; projectId: string }>;
 }
 
+export interface InstanceAiAppService {
+	createApp(input: {
+		name: string;
+		namespace: string;
+		visibility?: AppResponse['visibility'];
+		id?: string;
+	}): Promise<AppResponse>;
+	listApps(query: { name?: string }): Promise<AppListResponse>;
+	getApp(appId: string): Promise<AppResponse>;
+	findApp(appId: string): Promise<AppResponse | undefined>;
+	/** The draft source as a gzip tar archive, with the version it is based on. */
+	exportDraft(appId: string): Promise<{ baseVersionId: string | null; archive: Buffer }>;
+	commit(
+		appId: string,
+		baseVersionId: string | null,
+		archive: Buffer,
+		label: string | null,
+	): Promise<AppBuildResponse>;
+	/** The bindings of the draft version, with the TypeScript declarations that describe them. */
+	getBindings(appId: string): Promise<AppBindingsResponse & { types: string }>;
+	/** Saves the full binding list as a new version on top of `baseVersionId`. */
+	setBindings(
+		appId: string,
+		baseVersionId: string | null,
+		bindings: AppBinding[],
+	): Promise<AppBindingsResponse & { types: string }>;
+	/** The `@n8n/app-sdk` package of this instance as a gzip tar archive. */
+	exportSdk(): Promise<Buffer>;
+}
+
 // ── Evaluation configs (config-based evals) ──────────────────────────────────
 
 /** Preset LLM-judge metrics supported by config-based evals — mirrors
@@ -1316,7 +1368,7 @@ export interface EvaluationConfigMetricInput {
 }
 
 /** Payload for creating/updating a config-based eval. The dataset is a Data
- *  Table the caller already created (via the data_tables tool). */
+ *  Table the caller already created (via the change_data_tables tool). */
 export interface UpsertEvaluationConfigInput {
 	name: string;
 	startNodeName: string;
@@ -1404,10 +1456,10 @@ export interface InstanceAiWebResearchService {
 		},
 	): Promise<WebSearchResponse>;
 
+	/** Fetch the full extracted page. The research tool slices it for the model. */
 	fetchUrl(
 		url: string,
 		options?: {
-			maxContentLength?: number;
 			maxResponseBytes?: number;
 			timeoutMs?: number;
 			/** When aborted, in-flight page fetches should stop promptly. */
@@ -1651,6 +1703,20 @@ export interface InstanceAiAgentContextReader {
 	lookup(input: AgentContextLookup): Promise<Record<string, unknown>>;
 }
 
+/** A stored file of the thread, as `parse-file` reads it. */
+export interface InstanceAiStoredFile {
+	fileName: string;
+	mimeType: string;
+	sizeBytes: number;
+	/** Loads the bytes. Gives `undefined` when storage no longer has them. */
+	readContent(): Promise<Buffer | undefined>;
+}
+
+export interface InstanceAiStoredFileReader {
+	/** Gives `undefined` when the thread has no such file. */
+	read(fileId: string): Promise<InstanceAiStoredFile | undefined>;
+}
+
 // ── Context bundle ───────────────────────────────────────────────────────────
 
 /** An artifact that a tool created or changed. Tools pass the name when they know it. */
@@ -1679,14 +1745,21 @@ export interface InstanceAiContext {
 	/** True while the thread runs the host-seeded onboarding flow. Presence gates `leave-onboarding`. */
 	onboardingThread?: boolean;
 	/**
-	 * Host-resolved model for the current run (proxy-managed on cloud). Domain
-	 * tools pass it as the fallback for utility LLM calls (simulation fixtures,
-	 * destructiveness classification), which otherwise resolve an eval model
-	 * from environment API keys that proxy-managed deployments don't have.
+	 * Host-resolved main model for the current run (proxy-managed on cloud).
+	 * Domain tools use it for helper calls when no utility model is set.
 	 */
 	modelId?: ModelConfig;
+	/**
+	 * Host-resolved utility model: the configured or default small model on the
+	 * main model's provider. The verification helpers (destructiveness
+	 * classification, simulation fixtures) run on it. Absent →
+	 * utility calls use `modelId`.
+	 */
+	utilityModelId?: ModelConfig;
 	/** Transport for those utility LLM calls. It carries no run labels. */
 	modelFetch?: FetchFn;
+	/** Bills the token usage of one helper LLM call. Best effort: it never throws. */
+	onHelperUsage?: HelperUsageHook;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
 	credentialService: InstanceAiCredentialService;
@@ -1710,6 +1783,7 @@ export interface InstanceAiContext {
 	 *  absence hides the `save_user_preference` tool. */
 	aiPreferenceService?: InstanceAiPreferenceService;
 	skillService?: InstanceAiSkillService;
+	appService?: InstanceAiAppService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */
@@ -1743,6 +1817,18 @@ export interface InstanceAiContext {
 	browserUseState?: BrowserUseState;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
+	/**
+	 * Auto mode: reviews an approval before its card shows, and runs the action
+	 * when the review approves it. Absent means Manual mode.
+	 */
+	approvalReviewer?: InstanceAiApprovalReviewer;
+	/** The approval mode of this run. Absent while approval modes are off. */
+	approvalMode?: InstanceAiApprovalMode;
+	/**
+	 * When true, a user's MCP tool permissions can only make the admin's
+	 * permissions stricter. Otherwise they replace them.
+	 */
+	enforceAdminMcpPermissions?: boolean;
 	/** Thread-level "always allow" grants the user has approved (keys like `executions:run`).
 	 *  Loaded per run from persisted thread state so a grant survives reload/navigation and
 	 *  is visible across mains. Tools consult this to skip HITL for already-granted actions. */
@@ -1824,10 +1910,16 @@ export interface InstanceAiContext {
 	aiCreatedWorkflowIds?: Set<string>;
 	/**
 	 * File attachments from the current user message. Runtime-only — not
-	 * persisted. Used to register `parse-file` and supply data to the parser.
+	 * persisted. The current-message `parse-file` reads them by index.
 	 * Workflow (resource) attachments are handled separately by the adapter.
 	 */
 	currentUserAttachments?: InstanceAiFileAttachment[];
+	/**
+	 * Reads stored files of the thread by id. When it is set, `parse-file` takes
+	 * a `fileId` and is registered on every turn, so the tool list stays stable
+	 * and files from earlier messages stay readable.
+	 */
+	storedFiles?: InstanceAiStoredFileReader;
 	/** Logger for diagnostics from domain tools. */
 	logger: Logger;
 	/** Optional telemetry sink for domain tools. */
@@ -1838,6 +1930,11 @@ export interface InstanceAiContext {
 	 *  accept absolute file paths under the root by normalizing them to
 	 *  workspace-relative. */
 	workspaceRoot?: string;
+	/**
+	 * Second root that the tools accept in absolute paths. Older Daytona sandboxes keep their files
+	 * there and link `workspaceRoot` to it, so tool output can name either root.
+	 */
+	fallbackWorkspaceRoot?: string;
 	/** Current thread identity, used by workflow source file bindings and other thread-local state. */
 	threadId?: string;
 	/** Thread memory adapter used for thread-local metadata. */
@@ -1928,6 +2025,22 @@ export interface McpServerConfig {
 	};
 }
 
+// ── Helper model usage ───────────────────────────────────────────────────────
+
+/** Token usage of one helper LLM call, such as the destructiveness classifier. */
+export interface HelperModelUsageReport {
+	/** Helper name, for example `verification-simulation-fixtures`. */
+	helper: string;
+	/** Catalog model id the host prices the call by, for example `anthropic/claude-haiku-5-5`. */
+	model: string;
+	usage: TokenUsage;
+	/** Unique for each call, so hosts can build idempotent billing keys. */
+	reportId: string;
+}
+
+/** Bills the token usage of one helper LLM call. Best effort: it never throws. */
+export type HelperUsageHook = (report: HelperModelUsageReport) => Promise<void>;
+
 // ── Memory ───────────────────────────────────────────────────────────────────
 
 export interface InstanceAiMemoryConfig {
@@ -1935,9 +2048,20 @@ export interface InstanceAiMemoryConfig {
 	threadTtlDays?: number;
 	observationalMemory?: {
 		observerThresholdTokens: number;
-		reflectorThresholdTokens: number;
+		/** Fixed Reflector threshold. When unset, the SDK uses a share of the memory window. */
+		reflectorThresholdTokens?: number;
 		/** Run the Observer inside a turn. Default `true`; `false` limits it to the post-turn path. */
 		midRunObservation?: boolean;
+		/** Memory policy options, passed through to the agents SDK. Unset options use the SDK defaults. */
+		policy?: Pick<
+			ObservationalMemoryConfig,
+			| 'windowShares'
+			| 'logPlacement'
+			| 'failurePolicy'
+			| 'maxObserverBatchesAfterTurn'
+			| 'reflectionMode'
+			| 'historyRecall'
+		>;
 		/** Model for the Observer and Reflector. Defaults to the agent's model. */
 		model?: ModelConfig;
 		/** Called with token usage after each observer/reflector LLM call, so the host can meter it. */
@@ -2201,13 +2325,12 @@ export interface OrchestrationContext {
 	mcpTools?: InstanceAiToolRegistry;
 	/** Skills that the agent can load. */
 	skills?: RuntimeSkillSource;
-	skillAvailabilityNotice?: string;
-	/** Add loaded Hub content to UI events without changing agent memory. */
-	mapSkillEventForDisplay?: (event: InstanceAiEvent) => InstanceAiEvent;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */
 	oauth2CallbackUrl?: string;
 	/** Cancel a running background task by its ID */
 	cancelBackgroundTask?: (taskId: string) => Promise<void>;
+	/** Start a browser task in the background. Set only when this run can use the cloud browser. */
+	startCloudBrowserTask?: StartCloudBrowserTask;
 	/** Hand off durable work to follow-up tasks once the current tool result reaches the UI. */
 	requestRunHandoff?: (reason: OrchestratorRunHandoffReason) => void;
 	/** Shared runtime workspace for the current orchestration context. */

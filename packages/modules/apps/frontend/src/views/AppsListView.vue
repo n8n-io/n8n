@@ -5,15 +5,17 @@ import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nEmptyState } from '@n8n/design-system';
 import { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
-import { componentRegistry } from '@n8n/frontend-module-sdk';
+import { capabilities, capabilityRegistry, componentRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, useTemplateRef } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { listApps } from '../apps.api';
+import { getAppPermissions } from '../apps.permissions';
 import { APPS_PAGE_SIZE, APPS_SORT_MAP, type AppsSortBy } from '../apps.constants';
 import AppCard from '../components/AppCard.vue';
+import { useCreateApp } from '../composables/useCreateApp';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -21,6 +23,8 @@ const rootStore = useRootStore();
 const toast = useToast();
 const { debounce } = useDebounce();
 const latestFetch = useLatestFetch();
+const { createApp } = useCreateApp();
+const projectPermissions = capabilityRegistry.use(capabilities.projectPermissions);
 
 const ResourcesListLayout = computed(() => componentRegistry.get('resources-list-layout'));
 const ProjectHeader = computed(() => componentRegistry.get('project-header'));
@@ -31,6 +35,15 @@ const layout = useTemplateRef<{ setCurrentPage: (page: number) => Promise<void> 
 const projectId = computed(() =>
 	typeof route.params.projectId === 'string' ? route.params.projectId : undefined,
 );
+const createProjectId = computed(() => projectId.value ?? projectPermissions.defaultProjectId?.());
+const canCreateApp = computed(() => {
+	const id = createProjectId.value;
+	return id !== undefined && getAppPermissions(id).canCreate;
+});
+
+function onCreateApp() {
+	if (createProjectId.value) createApp(createProjectId.value);
+}
 
 const apps = ref<AppResponse[]>([]);
 const totalApps = ref(0);
@@ -162,7 +175,7 @@ async function onAppDeleted(appId: string) {
 		@update:pagination-and-sort="onPaginationAndSortUpdated"
 	>
 		<template #header>
-			<component :is="ProjectHeader" v-if="ProjectHeader">
+			<component :is="ProjectHeader" v-if="ProjectHeader" main-button="app">
 				<component :is="InsightsSummary" v-if="InsightsSummary && !projectId" />
 			</component>
 		</template>
@@ -171,7 +184,10 @@ async function onAppDeleted(appId: string) {
 				:icon="{ type: 'icon', value: 'layout-template' }"
 				:heading="i18n.baseText('apps.empty.heading')"
 				:description="i18n.baseText('apps.empty.description')"
+				:button-text="i18n.baseText('apps.create')"
+				:button-disabled="!canCreateApp"
 				data-test-id="apps-empty-state"
+				@click:button="onCreateApp"
 			/>
 		</template>
 		<template #item="{ item }">
