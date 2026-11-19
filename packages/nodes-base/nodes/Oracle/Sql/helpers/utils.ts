@@ -424,6 +424,7 @@ export function checkStartAfterColumn(
 	column: string,
 	columnInfo: ColumnDefinition | undefined,
 	uniqueColumns: string[],
+	value?: string,
 ) {
 	if (!columnInfo) {
 		throw new NodeOperationError(node, `Column "${column}" was not found in table "${table}"`, {
@@ -433,6 +434,19 @@ export function checkStartAfterColumn(
 	assertUniqueCursorColumn(node, itemIndex, uniqueColumns, column);
 	assertCursorColumnType(node, itemIndex, column, columnInfo.type, START_AFTER_TYPE);
 	assertCursorColumnNotNull(node, itemIndex, column, columnInfo.nullable);
+	// The value of a NUMBER column is bound as a number, which cannot keep all digits of a bigger integer
+	if (
+		columnInfo.type === 'NUMBER' &&
+		value !== undefined &&
+		/^\s*[+-]?\d+\s*$/.test(value) &&
+		!Number.isSafeInteger(Number(value))
+	) {
+		throw new NodeOperationError(node, 'The Start After value is too big to be exact', {
+			itemIndex,
+			description:
+				'n8n cannot keep all digits of a number above 9007199254740991, so the next page can skip rows.',
+		});
+	}
 }
 
 export function prepareErrorItem(

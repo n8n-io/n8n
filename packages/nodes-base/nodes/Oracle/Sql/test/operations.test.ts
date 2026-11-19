@@ -1848,6 +1848,18 @@ VALUES (
 				).rejects.toThrow('Sort by "ID" first');
 			});
 
+			it('should throw when a text value for a NUMBER column is too big to be exact', async () => {
+				const mockThis = createMockExecuteFunction({
+					...baseParameters,
+					startAfter: { values: { column: 'ID', value: '9007199254740993' } },
+				});
+				const runQueries = getRunQueriesFn(mockThis, pool);
+
+				await expect(
+					select.execute.call(mockThis, runQueries, items, nodeOptions, pool),
+				).rejects.toThrow('The Start After value is too big to be exact');
+			});
+
 			it('should not duplicate ORDER BY when the cursor column is already sorted', async () => {
 				const mockThis = createMockExecuteFunction({
 					...baseParameters,

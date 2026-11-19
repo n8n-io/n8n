@@ -157,6 +157,7 @@ export async function execute(
 				column,
 				columnMetaDataObject[column],
 				await uniqueColumnsOf(schema, table),
+				value,
 			);
 
 			if (value !== undefined) {

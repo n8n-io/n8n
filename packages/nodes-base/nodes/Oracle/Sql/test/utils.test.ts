@@ -12,6 +12,7 @@ import {
 	getBindParameters,
 	getCompatibleValue,
 	getOutBindDefsForExecute,
+	getUniqueKeyColumns,
 	quoteSqlIdentifier,
 } from '../helpers/utils';
 import { getOracleDBConfig } from '../transport';
@@ -549,6 +550,25 @@ describe('Test getBindParameters ', () => {
 				dir: oracleDBTypes.BIND_OUT,
 			},
 		});
+	});
+});
+
+describe('Test getUniqueKeyColumns', () => {
+	it('should read only unique indexes on one column of the table', async () => {
+		const execute = vi.fn().mockResolvedValue({ rows: [{ COLUMN_NAME: 'ID' }] });
+		const close = vi.fn();
+		const pool = {
+			getConnection: async () => ({ execute, close }),
+		} as unknown as oracleDBTypes.Pool;
+
+		expect(await getUniqueKeyColumns(pool, 'HR', 'EMPLOYEES')).toEqual(['ID']);
+
+		const [sql, binds] = execute.mock.calls[0];
+		expect(sql).toContain("ai.uniqueness = 'UNIQUE'");
+		expect(sql).toContain("ai.index_type IN ('NORMAL', 'IOT - TOP')");
+		expect(sql).toContain('HAVING COUNT(*) = 1');
+		expect(binds).toEqual({ schema_name: 'HR', table_name: 'EMPLOYEES' });
+		expect(close).toHaveBeenCalled();
 	});
 });
 
