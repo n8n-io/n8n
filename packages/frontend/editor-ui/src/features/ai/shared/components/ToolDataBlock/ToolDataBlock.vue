@@ -36,7 +36,9 @@ function downloadFull() {
 
 function downloadFile(data: string, mimeType: string) {
 	const fileName = toolContentFileName(mimeType);
-	saveAs(base64ToFile(data, fileName, mimeType), fileName);
+	// Never give the blob the tool's MIME type. Where `saveAs` opens the blob URL
+	// instead of downloading it, a `text/html` blob would run in the n8n origin.
+	saveAs(base64ToFile(data, fileName, 'application/octet-stream'), fileName);
 }
 </script>
 

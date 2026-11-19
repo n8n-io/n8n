@@ -89,6 +89,7 @@ describe('ToolDataBlock', () => {
 
 		const [file, fileName] = vi.mocked(saveAs).mock.calls.at(-1)!;
 		expect(fileName).toBe('tool-file.csv');
+		expect((file as Blob).type).toBe('application/octet-stream');
 		expect(await readBlob(file as Blob)).toBe('hello');
 	});
 
