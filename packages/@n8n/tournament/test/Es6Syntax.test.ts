@@ -43,6 +43,8 @@ describe('ES6 Syntax', () => {
 			['a line continuation', '`a\\\n   b`', 'a   b'],
 			['a line continuation after CRLF', '`a\\\r\n   b`', 'a   b'],
 			['escapes next to a new line', '`q\\`b\\${x}c\\\\d\n   e`', 'q`b${x}c\\d\n   e'],
+			['a value in parentheses before a new line', '`a${(x)}b\n   c`', 'a1b\n   c'],
+			['a value in parentheses after a new line', '`a\n   ${(x)}b`', 'a\n   1b'],
 			['String.raw with a new line', 'String.raw`a${x}\n   b\\n`', 'a1\n   b\\n'],
 			['String.raw with a line continuation', 'String.raw`a\\\n   b`', 'a\\\n   b'],
 			['String.raw with CRLF', 'String.raw`a\r\n   b`', 'a\n   b'],

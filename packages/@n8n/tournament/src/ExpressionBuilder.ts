@@ -238,12 +238,13 @@ const fixStringNewLines = (
 			this.traverse(path);
 			if (path.node.quasis.some(hasLineTerminator)) {
 				const quasis = path.node.quasis.map((el) =>
-					hasLineTerminator(el)
-						? b.templateElement(
-								{ cooked: el.value.cooked, raw: literalText.hold(el.value.raw) },
-								el.tail,
-							)
-						: el,
+					b.templateElement(
+						{
+							cooked: el.value.cooked,
+							raw: hasLineTerminator(el) ? literalText.hold(el.value.raw) : el.value.raw,
+						},
+						el.tail,
+					),
 				);
 				// `original: null` makes recast print the literal from scratch. When
 				// recast patches a changed element into the source instead, it adds
