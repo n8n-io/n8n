@@ -73,7 +73,7 @@ const options = computed(() => {
 			label: i18n.baseText('nodeSettings.credential'),
 			value: 'credential',
 			...(props.hasCredentialIssue && {
-				icon: 'exclamation-triangle',
+				icon: 'triangle-alert',
 				iconPosition: 'right',
 				iconColor: 'danger',
 			}),
