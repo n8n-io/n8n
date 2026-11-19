@@ -2730,7 +2730,10 @@ export class InstanceAiAdapterService {
 						credentialRefusal,
 					);
 					await pruneVerificationPins(result.executedNodeNames);
-					const storeOutputFile = options?.storeOutputFile;
+					// The privacy setting hides the output items, so it keeps their files out of the chat too.
+					const storeOutputFile = allowSendingParameterValues
+						? options?.storeOutputFile
+						: undefined;
 					if (storeOutputFile && result.status !== 'running') {
 						const execution = await loadExecutionForViewer(executionId, user);
 						if (execution) {
