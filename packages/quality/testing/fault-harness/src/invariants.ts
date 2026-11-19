@@ -110,7 +110,7 @@ export function everyAcceptedRequestHasOneExecution({
 	for (const { id, requestId } of executions)
 		byRequest.set(requestId, [...(byRequest.get(requestId) ?? []), id]);
 	const wrong = requests
-		.filter((r) => r.status === 200)
+		.filter((r) => r.accepted)
 		.map((r) => ({
 			requestId: r.requestId,
 			answered: r.executionId,

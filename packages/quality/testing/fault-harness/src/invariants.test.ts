@@ -176,6 +176,14 @@ describe('engine workload invariants', () => {
 		expect(everyAcceptedRequestHasOneExecution(record)).toEqual([]);
 	});
 
+	it('ignore a request that n8n answered while starting up', () => {
+		const record = {
+			...engineHealthy,
+			requests: [...engineHealthy.requests, { ...request('d'), accepted: false }],
+		};
+		expect(checkEngineWorkload(record)).toEqual([]);
+	});
+
 	it('flag executions that are not final', () => {
 		const record = {
 			...engineHealthy,
