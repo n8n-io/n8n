@@ -938,10 +938,17 @@ export class AgentExecutionService {
 		projectId: string,
 		agentId: string,
 		userId: string,
+		/** SPIKE (agent-chat-embed): the owner's sessions view also opens outside visitors' chats. */
+		options: { includeExternal?: boolean } = {},
 	): Promise<ThreadDetail | null> {
 		const thread = await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
 		if (!thread) return null;
-		if (!threadBelongsTo(thread, projectId, agentId, userId)) return null;
+		const externalForStaff =
+			options.includeExternal === true &&
+			thread.accessScope === 'external' &&
+			thread.projectId === projectId &&
+			thread.agentId === agentId;
+		if (!externalForStaff && !threadBelongsTo(thread, projectId, agentId, userId)) return null;
 
 		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
 		await this.hydrateExecutionInputs(executions, thread.agentName);

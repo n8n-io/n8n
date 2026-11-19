@@ -296,8 +296,10 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		const query = this.createQueryBuilder('thread')
 			.where('thread.projectId = :projectId', { projectId })
 			.andWhere('thread.agentId = :agentId', { agentId })
+			// SPIKE (agent-chat-embed): outside visitors' chats (scope 'external') are the agent's,
+			// like API sessions: everyone who may read the agent sees them.
 			.andWhere(
-				"(thread.accessScope = 'project' OR (thread.accessScope = 'user' AND thread.ownerId = :userId))",
+				"(thread.accessScope IN ('project', 'external') OR (thread.accessScope = 'user' AND thread.ownerId = :userId))",
 				{ userId },
 			);
 		this.applyListFilters(query, filters, userId, this.updatedAtExpression());

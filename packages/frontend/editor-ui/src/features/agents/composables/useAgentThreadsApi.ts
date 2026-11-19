@@ -34,6 +34,8 @@ export interface AgentExecutionThread extends AgentSessionPreviewAccess {
 	source?: string | null;
 	failureSummary?: ThreadFailureSummary | null;
 	status?: AgentSessionStatus | null;
+	/** SPIKE (agent-chat-embed): an outside visitor's chat: the invitee, n8n user or "Anonymous visitor". */
+	externalVisitor?: string;
 }
 
 export type AgentExecutionStatus =

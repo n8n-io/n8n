@@ -174,6 +174,21 @@ function originPresentation(thread: AgentExecutionThread): OriginPresentation {
 			return { icon: 'message-square', label: i18n.baseText('agentSessions.origin.n8nChat') };
 		case 'webhook':
 			return { icon: 'plug', label: i18n.baseText('agentSessions.origin.webhook') };
+		// SPIKE (agent-chat-embed): outside visitors on the n8n Chat channel's page or embed. Not i18n.
+		case 'external_chat_page':
+		case 'external_chat_embed':
+		case 'external_chat': {
+			const where =
+				source === 'external_chat_embed'
+					? 'Embed'
+					: source === 'external_chat_page'
+						? 'Chat page'
+						: 'Chat page / embed';
+			return {
+				icon: source === 'external_chat_embed' ? 'code' : 'globe',
+				label: thread.externalVisitor ? `${where} · ${thread.externalVisitor}` : where,
+			};
+		}
 		case 'slack':
 		case 'telegram':
 		case 'linear':

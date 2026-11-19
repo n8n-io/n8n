@@ -377,14 +377,18 @@ export class AgentMessageQueueConsumer {
 	): Promise<void> {
 		const { thread, admission, payload } = claim;
 		if (payload.kind !== 'external_chat' || !thread.externalPrincipal) return;
-		const options = (payload.options ?? {}) as { allowBackgroundTasks?: boolean };
+		const options = (payload.options ?? {}) as {
+			allowBackgroundTasks?: boolean;
+			entry?: 'page' | 'embed';
+		};
 		const stream = this.orchestrator.executeForChatPublished({
 			agentId: thread.agentId,
 			projectId: thread.projectId,
 			message: payload.message,
 			memory: { threadId: thread.id, resourceId: payload.resourceId },
 			attachments: payload.attachments,
-			integrationType: EXTERNAL_CHAT_SOURCE,
+			// Recorded as the execution source: the owner's sessions list shows "Chat page" or "Embed".
+			integrationType: `${EXTERNAL_CHAT_SOURCE}_${options.entry === 'embed' ? 'embed' : 'page'}`,
 			access: {
 				accessScope: 'external',
 				ownerId: null,

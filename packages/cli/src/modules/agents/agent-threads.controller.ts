@@ -3,7 +3,7 @@ import {
 	ListAgentSessionsQueryDto,
 	type AgentSessionPreviewAccess,
 } from '@n8n/api-types';
-import type { AuthenticatedRequest } from '@n8n/db';
+import { isPerson, UserRepository, type AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Post, ProjectScope, Query, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
@@ -14,6 +14,7 @@ import { AgentExecutionService } from './agent-execution.service';
 import { AgentMemoryTraceService } from './agent-memory-trace.service';
 import { AgentSessionLangSmithExportService } from './agent-session-langsmith-export.service';
 import { AgentSessionStopService } from './agent-session-stop.service';
+import { ChatPageInviteService } from './integrations/platforms/webhook/chat-page-invites.service';
 import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 import { canContinueThreadInPreview } from './utils/agent-thread-access';
 import { parseThreadListLimit } from './utils/parse-thread-list-limit';
@@ -27,6 +28,8 @@ export class AgentThreadsController {
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly systemAgents: SystemAgentRegistry,
 		private readonly sessionStopService: AgentSessionStopService,
+		private readonly chatPageInvites: ChatPageInviteService,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	@Get('/:agentId/threads')
@@ -39,7 +42,7 @@ export class AgentThreadsController {
 		const { cursor, limit: requestedLimit, ...filters } = query;
 		const limit = parseThreadListLimit(requestedLimit);
 
-		return await this.agentExecutionService.getThreads(
+		const page = await this.agentExecutionService.getThreads(
 			req.params.projectId,
 			req.params.agentId,
 			req.user.id,
@@ -47,6 +50,42 @@ export class AgentThreadsController {
 			cursor,
 			filters,
 		);
+		return { ...page, threads: await this.withExternalVisitors(req.params.agentId, page.threads) };
+	}
+
+	/**
+	 * SPIKE (agent-chat-embed): who an outside visitor's chat is with: the invitee's
+	 * name or email, the n8n user, or "Anonymous visitor". The principal key itself
+	 * is not sent to the browser.
+	 */
+	private async withExternalVisitors<T extends { externalPrincipal?: string | null }>(
+		agentId: string,
+		threads: T[],
+	) {
+		const keys = threads.map((thread) => thread.externalPrincipal).filter((key) => !!key);
+		if (!keys.length) return threads;
+		const invites = new Map(
+			(await this.chatPageInvites.list(agentId, 'n8n-chat')).map((i) => [
+				`invite-${i.id}`,
+				i.label,
+			]),
+		);
+		const userIds = keys.filter((key) => key!.startsWith('user-')).map((key) => key!.slice(5));
+		const users = new Map(
+			(userIds.length ? await this.userRepository.findManyByIds(userIds) : [])
+				.filter(isPerson)
+				.map((person) => [
+					`user-${person.id}`,
+					`${person.firstName ?? ''} ${person.lastName ?? ''}`.trim() || person.email,
+				]),
+		);
+		return threads.map(({ externalPrincipal, ...thread }) => {
+			if (!externalPrincipal) return thread;
+			const externalVisitor = externalPrincipal.startsWith('anon-')
+				? 'Anonymous visitor'
+				: (invites.get(externalPrincipal) ?? users.get(externalPrincipal) ?? 'Removed invite');
+			return { ...thread, externalVisitor };
+		});
 	}
 
 	@Get('/:agentId/threads/:threadId')
@@ -60,6 +99,7 @@ export class AgentThreadsController {
 			projectId,
 			agentId,
 			req.user.id,
+			{ includeExternal: true },
 		);
 		if (!result) {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
@@ -68,6 +108,7 @@ export class AgentThreadsController {
 			ownerId: _ownerId,
 			accessScope: _accessScope,
 			owner: _owner,
+			externalPrincipal: _externalPrincipal,
 			...thread
 		} = result.thread;
 		const source = result.executions.find((execution) => execution.source !== null)?.source;

@@ -203,6 +203,8 @@ export class WebhookChannelController {
 					user,
 					body: req.body,
 					write,
+					// The hosted page calls from the instance's own origin; an embed from another site.
+					entry: isSameOriginChatCall(req) ? 'page' : 'embed',
 					// A closed connection only detaches the stream: the queued turn continues.
 					abortSignal: closeSignal(res),
 				});

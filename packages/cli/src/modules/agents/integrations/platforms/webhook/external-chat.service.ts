@@ -106,6 +106,8 @@ export class ExternalChatService {
 		body: unknown;
 		write: (event: ExternalChatEvent) => void;
 		abortSignal: AbortSignal;
+		/** Where the visitor chats: the hosted page or an embed. Labels the session for the owner. */
+		entry: 'page' | 'embed';
 	}): Promise<void> {
 		const { agent, user, write } = request;
 		const body = (request.body ?? {}) as Record<string, unknown>;
@@ -150,7 +152,8 @@ export class ExternalChatService {
 					projectId: agent.projectId,
 					threadId: conversationId,
 					sessionMode: requested ? 'existing' : 'new',
-					source: EXTERNAL_CHAT_SOURCE,
+					// Recorded on the execution: the owner's sessions list shows "Chat page" or "Embed".
+					source: `${EXTERNAL_CHAT_SOURCE}_${request.entry}`,
 					payload: {
 						kind: 'external_chat',
 						userId: principal,
@@ -158,7 +161,7 @@ export class ExternalChatService {
 						resourceId,
 						attachments,
 						// ponytail: background jobs stay off until a visitor can receive their results (recovery stream).
-						options: { allowBackgroundTasks: false },
+						options: { allowBackgroundTasks: false, entry: request.entry },
 					},
 				},
 				(queueId) => {
