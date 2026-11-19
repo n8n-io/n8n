@@ -1,0 +1,4 @@
+{
+  "name": "skillful-subagent-creator",
+  "description": "Creates Claude subagents equipped with curated skills for solving problems within DAG workflows. Use when designing a specialist subagent, selecting skills for a subagent, writing the 4-section subagent prompt, or wiring subagents into orchestration DAGs. Activate on \"create subagent\", \"subagent with skills\", \"specialist agent\", \"agent DAG\", \"orchestrate agents\", \"skill-equipped agent\". NOT for creating skills themselves (use skill-architect), general Claude Code usage, or single-agent prompting without skills."
+}

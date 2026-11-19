@@ -1,0 +1,4 @@
+{
+  "name": "automatic-stateful-prompt-improver",
+  "description": "Automatically intercepts and optimizes prompts using the prompt-learning MCP server. Learns from performance over time via embedding-indexed history. Uses APE, OPRO, DSPy patterns. Activate on \"optimize prompt\", \"improve this prompt\", \"prompt engineering\", or ANY complex task request. Requires prompt-learning MCP server. NOT for simple questions (just answer them), NOT for direct commands (just execute them), NOT for conversational responses (no optimization needed)."
+}
