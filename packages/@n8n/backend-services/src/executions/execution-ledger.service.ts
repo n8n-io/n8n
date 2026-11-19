@@ -85,14 +85,14 @@ export class ExecutionLedger {
 
 		const recorded = await this.recordStarted(started, ctx);
 		const { mode } = started;
-		const outcome = toLedgerOutcome({
+		const ended = toLedgerOutcome({
 			mode,
 			status: created.status,
 			startedAt: created.startedAt ?? null,
 		});
-		if (!recorded || outcome === 'none') return;
+		if (!recorded || ended.outcome === 'none') return;
 
-		if (outcome !== 'blocked') {
+		if (ended.outcome !== 'blocked') {
 			// No caller creates a row that finished with work done, so its runtime is unknown.
 			this.errorReporter.error(
 				new UnexpectedError('An execution row was created finished with work done', {
@@ -103,7 +103,7 @@ export class ExecutionLedger {
 		}
 
 		await this.recordEndedInTransaction(
-			{ ...started, ...blocked, occurredAt: created.stoppedAt ?? started.occurredAt },
+			{ ...started, ...ended, occurredAt: created.stoppedAt ?? started.occurredAt },
 			ctx,
 		);
 	}
