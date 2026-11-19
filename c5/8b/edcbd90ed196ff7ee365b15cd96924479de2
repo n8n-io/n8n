@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_aa6794ac019785::t_dcb963158bc1e2 28,94-98
+packages/frontend/editor-ui/src/features/agents/channels/n8nChat/AgentChannelN8nChatShare.vue
+  s_aa6794ac019785::t_dcb963158bc1e2 211,213-226,426,439
+packages/frontend/editor-ui/src/features/agents/channels/n8nChat/AgentChatAppearanceEditor.vue
+  s_aa6794ac019785::t_dcb963158bc1e2 6,25-26,81,84-94,137,144,304-306,399-400
+packages/cli/src/modules/agents/integrations/platforms/webhook/webhook-channel.service.ts
+  s_aa6794ac019785::t_dcb963158bc1e2 92,96-122,142-144,157,165,167,169-175,393-402
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c58bedcbd90ed196ff7ee365b15cd96924479de2",
+  "prompts": {},
+  "sessions": {
+    "s_aa6794ac019785": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "780586c6-4bfd-4b06-b892-fff832b8300b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
