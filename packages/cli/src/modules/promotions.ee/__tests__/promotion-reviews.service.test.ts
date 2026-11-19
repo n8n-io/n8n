@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
-import type { TransactionRunner, User } from '@n8n/db';
+import type { EventService } from '@n8n/backend-services';
+import { Person, type TransactionRunner } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { ServiceUnavailableError } from '@n8n/errors';
@@ -19,6 +20,7 @@ describe('PromotionReviewsService', () => {
 	const hostResolver = mock<PromotionReviewHostResolver>();
 	const mergeRequests = mock<GitLabMergeRequestClient>();
 	const logger = mock<Logger>();
+	const eventService = mock<EventService>();
 	logger.scoped.mockReturnValue(logger);
 
 	const service = new PromotionReviewsService(
@@ -28,9 +30,10 @@ describe('PromotionReviewsService', () => {
 		hostResolver,
 		mergeRequests,
 		logger,
+		eventService,
 	);
 
-	const actor = mock<User>({
+	const actor = Object.assign(new Person(), {
 		id: 'actor',
 		firstName: 'Ada',
 		lastName: 'Lovelace',
@@ -57,6 +60,7 @@ describe('PromotionReviewsService', () => {
 		iid: 3,
 		project_id: 7,
 		web_url: 'https://gitlab.example.com/platform/api/-/merge_requests/3',
+		has_conflicts: false,
 	});
 
 	beforeEach(() => {
@@ -85,6 +89,12 @@ describe('PromotionReviewsService', () => {
 			review: { reviewId: expect.any(String), number: 3, webUrl: mergeRequest.web_url },
 			warnings: [],
 		});
+		expect(eventService.emit).toHaveBeenCalledWith('promotion-merge-request-opened', {
+			user: actor,
+			environmentId: 'env-1',
+			reviewType: 'gitlab',
+			hasConflicts: false,
+		});
 		const reviewId = result.review?.reviewId;
 		expect(mergeRequests.createMergeRequest).toHaveBeenCalledWith(host.access, {
 			projectPath: 'platform/api',
@@ -111,7 +121,7 @@ describe('PromotionReviewsService', () => {
 	});
 
 	it('writes the description from the commit message and the promoter', async () => {
-		const unnamed = mock<User>({
+		const unnamed = Object.assign(new Person(), {
 			id: 'actor',
 			firstName: undefined,
 			lastName: undefined,

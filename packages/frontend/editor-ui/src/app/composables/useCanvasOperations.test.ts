@@ -2,6 +2,8 @@ import { setActivePinia } from 'pinia';
 import type {
 	IConnection,
 	IConnections,
+	INode,
+	INodeTypes,
 	INodeTypeDescription,
 	IPinData,
 	IWebhookDescription,
@@ -10,7 +12,8 @@ import type {
 	Workflow,
 	IWorkflowGroup,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers, UserError, TelemetryHelpers } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, TelemetryHelpers, deepCopy } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
 import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
 import type {
@@ -32,11 +35,14 @@ import {
 	AddNodeCommand,
 	AddNodeGroupCommand,
 	BulkCommand,
+	historyBus,
+	MoveNodeCommand,
 	RemoveNodeCommand,
 	RemoveNodeGroupCommand,
 	ReplaceNodeParametersCommand,
 	UpdateNodeGroupCommand,
 } from '@/app/models/history';
+import type { Command } from '@/app/models/history';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -68,14 +74,17 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import {
 	AGENT_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
+	MERGE_NODE_TYPE,
 	MESSAGE_AN_AGENT_NODE_TYPE,
 	NO_OP_NODE_TYPE,
 	OPEN_AI_CHAT_MODEL_NODE_TYPE,
 	SET_NODE_TYPE,
+	SLACK_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
@@ -99,6 +108,8 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowDocumentConnections } from '@/app/stores/workflowDocument/useWorkflowDocumentConnections';
+import { useWorkflowDocumentGraph } from '@/app/stores/workflowDocument/useWorkflowDocumentGraph';
 
 import { useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -143,8 +154,27 @@ vi.mock('@n8n/rest-api-client/api/workflowHistory', () => ({
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import * as workflowHelpersModule from '@/app/composables/useWorkflowHelpers';
 import * as nodeGroupOperationGuards from '@/features/workflows/canvas/composables/useCanvasNodeGroupOperationGuards';
-import { DEFAULT_NODE_SIZE, GRID_SIZE, HORIZONTAL_NODE_STEP } from '@/app/utils/nodeViewUtils';
-import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
+import {
+	DEFAULT_NODE_SIZE,
+	GRID_SIZE,
+	HORIZONTAL_NODE_STEP,
+	isPositionBlocked,
+} from '@/app/utils/nodeViewUtils';
+import { DEFAULT_AGENT_HEIGHT, DEFAULT_AGENT_WIDTH } from '@/features/agents/utils/agentNode';
+
+/** Merge v3 computes its main inputs from the `numberInputs` parameter. */
+function createMergeNodeTypeDescription() {
+	return mockNodeTypeDescription({
+		name: MERGE_NODE_TYPE,
+		version: 3,
+		inputs: "={{ Array.from({ length: $parameter.numberInputs || 2 }, () => 'main') }}",
+	});
+}
+
+/** Its node types are unknown, so the workflow object keeps the node parameters as they are. */
+function createWorkflowObjectKeepingParameters(nodes: INode[]) {
+	return createTestWorkflowObject({ nodes, nodeTypes: mock<INodeTypes>() });
+}
 
 vi.mock('n8n-workflow', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('n8n-workflow')>();
@@ -271,6 +301,7 @@ describe('useCanvasOperations', () => {
 		allowMultipleBoundaryNodes.value = false;
 		// These actions are stubbed by createTestingPinia, so provide safe defaults.
 		// Tests that need custom behavior can override via vi.spyOn.
+		mockGraphTraversalDefaults();
 		vi.mocked(workflowDocumentStoreInstance.getParentNodesByDepth).mockReturnValue([]);
 		vi.mocked(workflowDocumentStoreInstance.getConnectedNodes).mockReturnValue([]);
 		vi.mocked(workflowDocumentStoreInstance.getWorkflowObjectAccessorSnapshot).mockReturnValue({
@@ -287,6 +318,20 @@ describe('useCanvasOperations', () => {
 			getParentNodesByDepth: workflowDocumentStoreInstance.getParentNodesByDepth,
 		});
 	});
+
+	// createTestingPinia stubs the traversal actions to return undefined, so the
+	// port maps never fill. Tests that need a real graph override these defaults.
+	function mockGraphTraversalDefaults() {
+		vi.mocked(workflowDocumentStoreInstance.getParentNodes).mockReturnValue([]);
+		vi.mocked(workflowDocumentStoreInstance.getChildNodes).mockReturnValue([]);
+	}
+
+	// Mock: createWorkflowObject is stubbed, so build a test Workflow from the given data.
+	function mockCreateWorkflowObject() {
+		vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+			(nodes, connections) => createTestWorkflowObject({ nodes, connections }),
+		);
+	}
 
 	function mockStoreNodePositions(positionsByNodeId: Record<string, XYPosition>) {
 		const nodesById = new Map(
@@ -405,8 +450,28 @@ describe('useCanvasOperations', () => {
 			expect(geometryStore.setPendingCenterY).toHaveBeenCalledWith(
 				workflowDocumentStoreInstance.workflowId,
 				result.id,
-				result.position[1] + AGENT_NODE_SIZE[1] / 2,
+				result.position[1] + DEFAULT_AGENT_HEIGHT / 2,
 			);
+		});
+
+		it('places an agent card added at the last click clear of a node and keeps its top-left', () => {
+			const geometryStore = mockedStore(useAgentNodeCanvasGeometryStore);
+			workflowDocumentStoreInstance.allNodes = [
+				createTestNode({ id: 'E', name: 'E', type: SET_NODE_TYPE, position: [400, 0] }),
+			];
+
+			const { addNode, lastClickPosition } = useCanvasOperations();
+			lastClickPosition.value = [250, 10];
+			const result = addNode(
+				{ type: MESSAGE_AN_AGENT_NODE_TYPE, typeVersion: 2 },
+				mockNodeTypeDescription({ name: MESSAGE_AN_AGENT_NODE_TYPE, version: 2 }),
+			);
+
+			// The 320 × 128 card at the snapped click [256, 16] touches E, so it moves diagonally
+			expect(result.position).toEqual([352, 112]);
+			// No pending center: when the card measures (for example 206 px), it grows down
+			// from this top-left and does not move back onto E
+			expect(geometryStore.setPendingCenterY).not.toHaveBeenCalled();
 		});
 
 		it('should not assign credentials when multiple credentials are available', () => {
@@ -664,6 +729,25 @@ describe('useCanvasOperations', () => {
 			expect(uiStore.lastCancelledConnectionPosition).toBeUndefined();
 		});
 
+		it('should snap a main output connection drop to the nearest grid line', () => {
+			const uiStore = mockedStore(useUIStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const node = createTestNode({ id: '0' });
+			const nodeTypeDescription = mockNodeTypeDescription();
+
+			uiStore.lastInteractedWithNodeId = node.id;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(node as INodeUi);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+
+			uiStore.lastInteractedWithNodeHandle = 'outputs/main/0';
+			uiStore.lastCancelledConnectionPosition = [1000, 163];
+
+			const { resolveNodePosition } = useCanvasOperations();
+			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
+
+			expect(position).toEqual([1008, 112]);
+		});
+
 		it('should place the node to the right of the last interacted with node', () => {
 			const uiStore = mockedStore(useUIStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -690,6 +774,44 @@ describe('useCanvasOperations', () => {
 
 			// 112 + HORIZONTAL_NODE_STEP (224) = 336, matching the auto-layout step
 			expect(position).toEqual([336, 112]);
+		});
+
+		it('should place the node clear of a tall agent card next to the last interacted with node', () => {
+			const uiStore = mockedStore(useUIStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const geometryStore = mockedStore(useAgentNodeCanvasGeometryStore);
+
+			const nodeA = createTestNode({ id: 'A', name: 'A', type: SET_NODE_TYPE, position: [0, 0] });
+			const agent = createTestNode({
+				id: 'agent',
+				name: 'Agent',
+				type: MESSAGE_AN_AGENT_NODE_TYPE,
+				typeVersion: 2,
+				position: [224, -64],
+			});
+			const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE });
+			const nodesById = new Map([nodeA, agent].map((n) => [n.id, n as INodeUi]));
+
+			workflowDocumentStoreInstance.allNodes = [nodeA, agent];
+			uiStore.lastInteractedWithNodeId = nodeA.id;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id: string) =>
+				nodesById.get(id),
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(nodeA as INodeUi);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			geometryStore.getNodeHeight.mockImplementation((_canvasId, nodeId) =>
+				nodeId === agent.id ? 224 : undefined,
+			);
+
+			const { resolveNodePosition } = useCanvasOperations();
+			const position = resolveNodePosition(
+				{ ...createTestNode({ id: 'new', type: SET_NODE_TYPE }), position: undefined },
+				nodeTypeDescription,
+			);
+
+			// The slot [224, 0] is inside the 320 × 224 card, so the node moves diagonally
+			// until it is one grid cell below the card
+			expect(position).toEqual([416, 192]);
 		});
 
 		it('should place the node clear of the agent card when added after a message an agent node', () => {
@@ -723,7 +845,7 @@ describe('useCanvasOperations', () => {
 			expect(position).toEqual([
 				lastInteracted.position[0] +
 					HORIZONTAL_NODE_STEP +
-					(AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0]),
+					(DEFAULT_AGENT_WIDTH - DEFAULT_NODE_SIZE[0]),
 				lastInteracted.position[1],
 			]);
 		});
@@ -855,9 +977,9 @@ describe('useCanvasOperations', () => {
 			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
 			// Configuration node size is [200, 80], so customOffset = 200 * 2 = 400
-			// Expected position: [100 + (200/1) * 1 - 200/2 - 400, 100 + 220] = [-200, 320]
+			// Expected position: [100 + (200/1) * 1 - 200/2 - 400, 100 + 208] = [-200, 308], y snaps to 304
 			expect(position[0]).toBeLessThan(100); // Node should be moved left due to custom offset
-			expect(position[1]).toEqual(320); // Standard Y position for configuration nodes
+			expect(position[1]).toEqual(304); // Standard Y position for configuration nodes
 		});
 
 		it('should apply custom Y offset for AI Memory connection type', () => {
@@ -894,7 +1016,7 @@ describe('useCanvasOperations', () => {
 			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
 			expect(position[0]).toBeLessThan(100); // Node should be moved left due to custom offset
-			expect(position[1]).toEqual(320); // Standard Y position for configuration nodes
+			expect(position[1]).toEqual(304); // Standard Y position for configuration nodes
 		});
 
 		it('should not apply custom offset for regular connection types', () => {
@@ -933,7 +1055,7 @@ describe('useCanvasOperations', () => {
 			// No custom offset applied, allowing for some wiggle room when tests are run on different environments
 			expect(position[0]).toBeGreaterThanOrEqual(40);
 			expect(position[0]).toBeLessThanOrEqual(80);
-			expect(position[1]).toBe(320);
+			expect(position[1]).toBe(304);
 		});
 
 		it('should handle missing connection type gracefully', () => {
@@ -972,7 +1094,7 @@ describe('useCanvasOperations', () => {
 			// No custom offset applied, allowing for some wiggle room when tests are run on different environments
 			expect(position[0]).toBeGreaterThanOrEqual(40);
 			expect(position[0]).toBeLessThanOrEqual(80);
-			expect(position[1]).toBe(320);
+			expect(position[1]).toBe(304);
 		});
 
 		it('should position HITL node vertically between main node and tool node when inserted via connection', () => {
@@ -1789,6 +1911,59 @@ describe('useCanvasOperations', () => {
 				position: [32 + HORIZONTAL_NODE_STEP + 2 * GRID_SIZE, 32 + GRID_SIZE],
 				parameters: {},
 			});
+		});
+
+		it('should place the next node from the rendered width of a configurable node', async () => {
+			const nodeTypesStore = useNodeTypesStore();
+			const llmChainType = '@n8n/n8n-nodes-langchain.chainLlm';
+			nodeTypesStore.nodeTypes = {
+				[llmChainType]: {
+					1: mockNodeTypeDescription({
+						name: llmChainType,
+						inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.AiLanguageModel],
+					}),
+				},
+				[SET_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: SET_NODE_TYPE }) },
+			};
+
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			const { addNodes } = useCanvasOperations();
+			await addNodes(
+				[
+					{ name: 'LLM Chain', type: llmChainType },
+					{ name: 'Set', type: SET_NODE_TYPE },
+				],
+				{ position: [0, 0] },
+			);
+
+			// 224 (configurable width) + NODE_X_SPACING (128)
+			expect(addNodeSpy.mock.calls[1][0].position).toEqual([352, 0]);
+		});
+
+		it('should place the next node from the evaluated inputs of a Merge node', async () => {
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[MERGE_NODE_TYPE]: { 3: createMergeNodeTypeDescription() },
+				[SET_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: SET_NODE_TYPE }) },
+			};
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation((nodes) =>
+				createWorkflowObjectKeepingParameters(nodes),
+			);
+
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			const { addNodes } = useCanvasOperations();
+			await addNodes(
+				[
+					{ name: 'Merge', type: MERGE_NODE_TYPE, typeVersion: 3 },
+					{ name: 'Set', type: SET_NODE_TYPE },
+				],
+				{ position: [0, 0] },
+			);
+
+			// 96 (two main inputs) + NODE_X_SPACING (128)
+			expect(addNodeSpy.mock.calls[1][0].position).toEqual([224, 0]);
 		});
 	});
 
@@ -2699,6 +2874,31 @@ describe('useCanvasOperations', () => {
 					disabled: true,
 				},
 			});
+		});
+		it('should not toggle a selection that contains a restricted node type', () => {
+			const toast = useToast();
+			const nodes = [
+				createTestNode({ id: '1', name: 'A', type: 'n8n-nodes-base.slack' }),
+				createTestNode({ id: '2', name: 'B' }),
+			];
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue(nodes);
+			const updateNodePropertiesSpy = vi.spyOn(
+				workflowDocumentStoreInstance,
+				'updateNodeProperties',
+			);
+			mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
+				(name) => ({ name, available: name !== 'n8n-nodes-base.slack' }),
+			);
+
+			useCanvasOperations().toggleNodesDisabled(['1', '2']);
+
+			expect(updateNodePropertiesSpy).not.toHaveBeenCalled();
+			expect(toast.showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'warning',
+					message: expect.stringContaining('n8n-nodes-base.slack'),
+				}),
+			);
 		});
 	});
 
@@ -6417,7 +6617,7 @@ describe('useCanvasOperations', () => {
 				{ viewport: { xMin: 0, yMin: 0, xMax: 1000, yMax: 1000 }, trackEvents: false },
 			);
 
-			expect(result.nodes?.[0].position).toEqual([464, 464]);
+			expect(result.nodes?.[0].position).toEqual([448, 448]);
 		});
 
 		it('centers the bounding box when pasting nodes with different leftmost and topmost nodes', async () => {
@@ -6442,6 +6642,148 @@ describe('useCanvasOperations', () => {
 				[656, 352],
 				[256, 552],
 			]);
+		});
+
+		it('keeps a pasted wide group in place when no node is in its rectangle', async () => {
+			workflowDocumentStoreInstance.allNodes = [
+				createTestNode({ id: 'E', name: 'E', position: [0, 0] }),
+			];
+			const nodes = [
+				createTestNode({ name: 'First', position: [0, 0] }),
+				createTestNode({ name: 'Last', position: [1344, 0] }),
+			];
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(importedNodes, connections) =>
+					createTestWorkflowObject({ nodes: importedNodes, connections }),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			canvasOperations.lastClickPosition.value = [784, -48];
+			const result = await canvasOperations.importWorkflowData(
+				{ nodes, connections: {} },
+				'paste',
+				{ trackEvents: false },
+			);
+
+			// The 1440 × 96 group starts right of E, so it does not move
+			expect(result.nodes?.map((node) => node.position)).toEqual([
+				[784, -48],
+				[2128, -48],
+			]);
+		});
+
+		it('centers a pasted agent card in the viewport by its rendered size', async () => {
+			const nodes = [
+				createTestNode({
+					name: 'Agent',
+					type: MESSAGE_AN_AGENT_NODE_TYPE,
+					typeVersion: 2,
+					position: [100, 100],
+				}),
+			];
+			const nodeTypes = createMockNodeTypes({
+				[MESSAGE_AN_AGENT_NODE_TYPE]: mockLoadedNodeType(MESSAGE_AN_AGENT_NODE_TYPE),
+			});
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(importedNodes, connections) =>
+					createTestWorkflowObject({ nodes: importedNodes, connections, nodeTypes }),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			const result = await canvasOperations.importWorkflowData(
+				{ nodes, connections: {} },
+				'paste',
+				{ viewport: { xMin: 0, yMin: 0, xMax: 1000, yMax: 1000 }, trackEvents: false },
+			);
+
+			// (1000 - 320) / 2 = 340 and (1000 - 128) / 2 = 436, snapped to the grid
+			expect(result.nodes?.[0].position).toEqual([336, 432]);
+		});
+
+		it('moves a pasted sticky clear of an agent card in the viewport center', async () => {
+			workflowDocumentStoreInstance.allNodes = [
+				createTestNode({
+					id: 'agent',
+					name: 'Agent',
+					type: MESSAGE_AN_AGENT_NODE_TYPE,
+					typeVersion: 2,
+					position: [336, 432],
+				}),
+			];
+			const nodes = [
+				createTestNode({
+					name: 'Sticky',
+					type: STICKY_NODE_TYPE,
+					position: [0, 0],
+					parameters: { width: 600, height: 400 },
+				}),
+			];
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(importedNodes, connections) =>
+					createTestWorkflowObject({ nodes: importedNodes, connections }),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			const result = await canvasOperations.importWorkflowData(
+				{ nodes, connections: {} },
+				'paste',
+				{ viewport: { xMin: 0, yMin: 0, xMax: 1000, yMax: 1000 }, trackEvents: false },
+			);
+
+			// The centered 600 × 400 sticky at [208, 304] covers the 320 × 128 card at
+			// [336, 432], so it moves diagonally until it is one grid cell below the card
+			expect(result.nodes?.[0].position).toEqual([496, 592]);
+		});
+
+		describe('restricted node types', () => {
+			const RESTRICTED_NODE_TYPE = 'n8n-nodes-base.code';
+			const toast = useToast();
+
+			beforeEach(() => {
+				vi.mocked(toast.showMessage).mockClear();
+				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+					(importedNodes, connections) =>
+						createTestWorkflowObject({ nodes: importedNodes, connections }),
+				);
+				mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
+					(name) =>
+						name === RESTRICTED_NODE_TYPE
+							? { name, available: false, scope: 'instance' }
+							: { name, available: true },
+				);
+			});
+
+			function importedNodes() {
+				return [
+					createTestNode({ name: 'Code', type: RESTRICTED_NODE_TYPE }),
+					createTestNode({ name: 'Set', type: SET_NODE_TYPE }),
+				];
+			}
+
+			it('imports the nodes and warns once when the caller opts in', async () => {
+				const result = await useCanvasOperations().importWorkflowData(
+					{ nodes: importedNodes(), connections: {} },
+					'paste',
+					{ trackEvents: false, warnRestrictedNodes: true },
+				);
+
+				expect(result.nodes?.map((node) => node.name)).toEqual(['Code', 'Set']);
+				expect(toast.showMessage).toHaveBeenCalledTimes(1);
+				expect(toast.showMessage).toHaveBeenCalledWith(
+					expect.objectContaining({ customClass: 'content-toast restricted-import-toast' }),
+					false,
+				);
+			});
+
+			it('does not warn when the caller does not opt in', async () => {
+				await useCanvasOperations().importWorkflowData(
+					{ nodes: importedNodes(), connections: {} },
+					'file',
+					{ trackEvents: false },
+				);
+
+				expect(toast.showMessage).not.toHaveBeenCalled();
+			});
 		});
 
 		it.each(['paste', 'file', 'url'] as const)(
@@ -6483,9 +6825,7 @@ describe('useCanvasOperations', () => {
 					nodeGroups: [{ id: 'group', name: 'Group 2', nodeIds: [anchorNode.id] }],
 				};
 
-				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
-					(nodes, connections) => createTestWorkflowObject({ nodes, connections }),
-				);
+				mockCreateWorkflowObject();
 
 				const canvasOperations = useCanvasOperations();
 				const result = await canvasOperations.importWorkflowData(
@@ -7386,9 +7726,7 @@ describe('useCanvasOperations', () => {
 				],
 			};
 
-			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
-				(nodes, connections) => createTestWorkflowObject({ nodes, connections }),
-			);
+			mockCreateWorkflowObject();
 			vi.mocked(workflowDocumentStoreInstance.getNextDefaultName).mockImplementation(
 				(name) => name,
 			);
@@ -7507,6 +7845,52 @@ describe('useCanvasOperations', () => {
 			expect(duplicatedNodeIds.length).toBe(2);
 			expect(duplicatedNodeIds).not.toContain('1');
 			expect(duplicatedNodeIds).not.toContain('2');
+		});
+
+		it('places a duplicated node clear of the agent card under the last click', async () => {
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: SET_NODE_TYPE }) },
+			};
+
+			const agent = createTestNode({
+				id: 'agent',
+				name: 'Agent',
+				type: MESSAGE_AN_AGENT_NODE_TYPE,
+				typeVersion: 2,
+				position: [0, 0],
+			});
+			const setNode = createTestNode({
+				id: 'set',
+				name: 'Edit Fields',
+				type: SET_NODE_TYPE,
+				position: [-400, 400],
+			});
+			workflowDocumentStoreInstance.allNodes = [agent, setNode];
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue([setNode]);
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(importedNodes, connections) =>
+					createTestWorkflowObject({ nodes: importedNodes, connections }),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			// The last canvas click is on the 320 × 128 card
+			canvasOperations.lastClickPosition.value = [200, 50];
+			await canvasOperations.duplicateNodes([setNode.id]);
+
+			const copy = vi
+				.mocked(workflowDocumentStoreInstance.addNode)
+				.mock.calls.map(([node]) => node)
+				.find((node) => node.type === SET_NODE_TYPE);
+			expect(copy?.position).toEqual([304, 144]);
+			const [x, y] = copy?.position ?? [0, 0];
+			expect(
+				isPositionBlocked(
+					{ x, y, width: DEFAULT_NODE_SIZE[0], height: DEFAULT_NODE_SIZE[1] },
+					{ x: 0, y: 0, width: DEFAULT_AGENT_WIDTH, height: DEFAULT_AGENT_HEIGHT },
+				),
+			).toBe(false);
 		});
 
 		it('should not duplicate empty groups when the feature is disabled', async () => {
@@ -8312,6 +8696,43 @@ describe('useCanvasOperations', () => {
 			// Mock cleanup handled automatically by test isolation
 		});
 
+		it('aligns the main handle of a new agent card with the node it replaces', () => {
+			const geometryStore = mockedStore(useAgentNodeCanvasGeometryStore);
+			const previous = createTestNode({
+				id: 'previous',
+				name: 'Previous',
+				type: SET_NODE_TYPE,
+				position: [400, 96],
+			});
+			const card = createTestNode({
+				id: 'card',
+				name: 'Agent',
+				type: MESSAGE_AN_AGENT_NODE_TYPE,
+				typeVersion: 2,
+				position: [800, 800],
+			});
+			const nodesById = new Map([previous, card].map((n) => [n.id, n as INodeUi]));
+			workflowDocumentStoreInstance.allNodes = [previous, card];
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id: string) =>
+				nodesById.get(id),
+			);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+			nodeTypesStore.getNodeType = vi
+				.fn()
+				.mockReturnValue(mockNodeTypeDescription({ name: SET_NODE_TYPE }));
+
+			const { replaceNode } = useCanvasOperations();
+			replaceNode(previous.id, card.id, { trackHistory: false });
+
+			// The handle of the 96 px node sits 48 px below its top
+			expect(geometryStore.setPendingCenterY).toHaveBeenCalledWith(
+				workflowDocumentStoreInstance.workflowId,
+				card.id,
+				96 + DEFAULT_NODE_SIZE[1] / 2,
+			);
+		});
+
 		describe('common cases', () => {
 			beforeEach(() => {
 				workflowDocumentStoreInstance.allNodes = [
@@ -8711,6 +9132,7 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
+			mockGraphTraversalDefaults();
 			workflowDocumentStoreInstance.allNodes = [nodeA, nodeB, nodeC];
 			workflowDocumentStoreInstance.connectionsBySourceNode = {
 				[nodeA.name]: {
@@ -8775,6 +9197,7 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
+			mockGraphTraversalDefaults();
 			workflowDocumentStoreInstance.allNodes = [sourceNode, targetNode, stickyNote];
 			workflowDocumentStoreInstance.connectionsBySourceNode = {
 				[sourceNode.name]: {
@@ -8837,6 +9260,7 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
+			mockGraphTraversalDefaults();
 			workflowDocumentStoreInstance.allNodes = [sourceNode, targetNode, stickyNote];
 			workflowDocumentStoreInstance.connectionsBySourceNode = {
 				[sourceNode.name]: {
@@ -8903,6 +9327,7 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
+			mockGraphTraversalDefaults();
 			workflowDocumentStoreInstance.allNodes = [sourceNode, targetNode, stickyNote];
 			workflowDocumentStoreInstance.connectionsBySourceNode = {
 				[sourceNode.name]: {
@@ -8965,6 +9390,7 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
+			mockGraphTraversalDefaults();
 			workflowDocumentStoreInstance.allNodes = [sourceNode, targetNode, stickyNote];
 			workflowDocumentStoreInstance.connectionsBySourceNode = {
 				[sourceNode.name]: {
@@ -9043,6 +9469,7 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
+			mockGraphTraversalDefaults();
 			workflowDocumentStoreInstance.allNodes = [
 				sourceNode,
 				targetNode,
@@ -9117,6 +9544,7 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
+			mockGraphTraversalDefaults();
 			workflowDocumentStoreInstance.allNodes = [sourceNode, targetNode, stickyNote];
 			workflowDocumentStoreInstance.connectionsBySourceNode = {
 				[sourceNode.name]: {
@@ -9193,6 +9621,7 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
+			mockGraphTraversalDefaults();
 			workflowDocumentStoreInstance.allNodes = [sourceNode, targetNode1, targetNode2, stickyNote];
 			workflowDocumentStoreInstance.connectionsBySourceNode = {
 				[sourceNode.name]: {
@@ -9224,6 +9653,621 @@ describe('useCanvasOperations', () => {
 			expect(associatedNodes).toBeDefined();
 			expect(associatedNodes).toHaveLength(2);
 			expect(associatedNodes?.map((n) => n.id).sort()).toEqual(['target1', 'target2']);
+		});
+	});
+
+	describe('getNodePlacementSize', () => {
+		it.each([
+			['unmeasured', undefined, [320, 128]],
+			['measured', 206, [320, 206]],
+		])(
+			'should return the agent card size for a %s Message an Agent node',
+			(_measurement, measuredHeight, expectedSize) => {
+				const geometryStore = mockedStore(useAgentNodeCanvasGeometryStore);
+				geometryStore.getNodeHeight.mockReturnValue(measuredHeight);
+				const agent = createTestNode({
+					id: 'agent',
+					type: MESSAGE_AN_AGENT_NODE_TYPE,
+					typeVersion: 3.1,
+				}) as INodeUi;
+
+				const { getNodePlacementSize } = useCanvasOperations();
+
+				expect(
+					getNodePlacementSize(
+						agent,
+						mockNodeTypeDescription({ name: MESSAGE_AN_AGENT_NODE_TYPE, version: 3.1 }),
+					),
+				).toEqual(expectedSize);
+			},
+		);
+
+		it('should make a node wider for each non-main output at the top above four', () => {
+			const codeNode = createTestNode({
+				id: 'code',
+				name: 'LangChain Code',
+				type: '@n8n/n8n-nodes-langchain.code',
+			}) as INodeUi;
+			vi.mocked(workflowDocumentStoreInstance.getNodeById).mockReturnValue(codeNode);
+
+			const { getNodePlacementSize } = useCanvasOperations();
+
+			expect(
+				getNodePlacementSize(
+					codeNode,
+					mockNodeTypeDescription({
+						name: codeNode.type,
+						inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.AiLanguageModel],
+						outputs: [
+							NodeConnectionTypes.AiLanguageModel,
+							NodeConnectionTypes.AiMemory,
+							NodeConnectionTypes.AiTool,
+							NodeConnectionTypes.AiRetriever,
+							NodeConnectionTypes.AiOutputParser,
+							NodeConnectionTypes.AiTool,
+						],
+					}),
+				),
+			).toEqual([336, 80]);
+		});
+
+		it.each([
+			['a sized sticky note', { width: 600, height: 400 }, [600, 400]],
+			['a sticky note without a size', {}, [240, 160]],
+		])('should return the size of %s', (_description, parameters, expectedSize) => {
+			const sticky = createTestNode({ type: STICKY_NODE_TYPE, parameters }) as INodeUi;
+
+			const { getNodePlacementSize } = useCanvasOperations();
+
+			expect(
+				getNodePlacementSize(sticky, mockNodeTypeDescription({ name: STICKY_NODE_TYPE })),
+			).toEqual(expectedSize);
+		});
+
+		it.each([
+			['the default inputs', {}, [96, 96]],
+			['four inputs', { numberInputs: 4 }, [96, 160]],
+		])(
+			'should evaluate the inputs of a new Merge node with %s',
+			(_description, parameters, expectedSize) => {
+				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation((nodes) =>
+					createWorkflowObjectKeepingParameters(nodes),
+				);
+				const draft = createTestNode({
+					id: 'draft',
+					name: 'Merge',
+					type: MERGE_NODE_TYPE,
+					typeVersion: 3,
+					parameters,
+				}) as INodeUi;
+
+				const { getNodePlacementSize } = useCanvasOperations();
+
+				expect(getNodePlacementSize(draft, createMergeNodeTypeDescription())).toEqual(expectedSize);
+			},
+		);
+
+		it('should not read the parameters of an existing node with the same name for a new node', () => {
+			const existingMerge = createTestNode({
+				id: 'existing',
+				name: 'Merge',
+				type: MERGE_NODE_TYPE,
+				typeVersion: 3,
+				parameters: { numberInputs: 4 },
+			}) as INodeUi;
+			const documentWorkflow = createWorkflowObjectKeepingParameters([existingMerge]);
+			vi.mocked(workflowDocumentStoreInstance.getExpressionHandler).mockReturnValue(
+				documentWorkflow.expression,
+			);
+			vi.mocked(workflowDocumentStoreInstance.getNodeById).mockImplementation((id) =>
+				id === existingMerge.id ? existingMerge : undefined,
+			);
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation((nodes) =>
+				createWorkflowObjectKeepingParameters(nodes),
+			);
+			const draft = createTestNode({
+				id: 'draft',
+				name: 'Merge',
+				type: MERGE_NODE_TYPE,
+				typeVersion: 3,
+				parameters: {},
+			}) as INodeUi;
+
+			const { getNodePlacementSize } = useCanvasOperations();
+
+			expect(getNodePlacementSize(existingMerge, createMergeNodeTypeDescription())).toEqual([
+				96, 160,
+			]);
+			expect(getNodePlacementSize(draft, createMergeNodeTypeDescription())).toEqual([96, 96]);
+		});
+	});
+
+	describe('insert on a connection', () => {
+		const configurableNodeType = mockNodeTypeDescription({
+			name: '@n8n/n8n-nodes-langchain.agent',
+			inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.AiLanguageModel],
+		});
+		const setNodeType = mockNodeTypeDescription({ name: SET_NODE_TYPE });
+
+		/** Inserts a Set node on the connection from `source` to `target`. */
+		function insertOnConnection(source: INodeUi, target: INodeUi, nodes: INodeUi[]) {
+			const uiStore = mockedStore(useUIStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const nodeTypes = [configurableNodeType, setNodeType];
+
+			workflowDocumentStoreInstance.allNodes = nodes;
+			vi.mocked(workflowDocumentStoreInstance.getNodeById).mockImplementation((id) =>
+				nodes.find((node) => node.id === id),
+			);
+			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(
+				(name) => nodes.find((node) => node.name === name) ?? null,
+			);
+			vi.mocked(workflowDocumentStoreInstance.setNodePositionById).mockImplementation(
+				(id, position) => {
+					const node = nodes.find((n) => n.id === id);
+					if (node) node.position = position;
+				},
+			);
+			vi.mocked(workflowDocumentStoreInstance.setNodeParameters).mockImplementation(
+				({ name, value }) => {
+					const node = nodes.find((n) => n.name === name);
+					if (node) node.parameters = value as INodeUi['parameters'];
+				},
+			);
+			nodeTypesStore.getNodeType = vi.fn(
+				(type: string) => nodeTypes.find((nodeType) => nodeType.name === type) ?? null,
+			);
+			uiStore.lastInteractedWithNodeId = source.id;
+			uiStore.lastInteractedWithNodeConnection = {
+				source: source.id,
+				target: target.id,
+				sourceHandle: `outputs/${NodeConnectionTypes.Main}/0`,
+				targetHandle: `inputs/${NodeConnectionTypes.Main}/0`,
+			};
+
+			const { resolveNodePosition } = useCanvasOperations();
+			resolveNodePosition(
+				{ ...createTestNode({ id: 'new', name: 'New', type: SET_NODE_TYPE }), position: undefined },
+				setNodeType,
+			);
+		}
+
+		it('should move a wide target that a default-size check misses', () => {
+			const source = createTestNode({ id: 's', name: 'S', type: SET_NODE_TYPE, position: [0, 0] });
+			const target = createTestNode({
+				id: 't',
+				name: 'T',
+				type: configurableNodeType.name,
+				position: [112, 0],
+			});
+
+			insertOnConnection(source, target, [source, target]);
+
+			expect(target.position).toEqual([336, 0]);
+		});
+
+		it('should make room when a node touches the new node from below', () => {
+			const source = createTestNode({ id: 's', name: 'S', type: SET_NODE_TYPE, position: [0, 0] });
+			const target = createTestNode({
+				id: 't',
+				name: 'T',
+				type: SET_NODE_TYPE,
+				position: [448, 0],
+			});
+			const below = createTestNode({
+				id: 'b',
+				name: 'B',
+				type: SET_NODE_TYPE,
+				position: [224, 96],
+			});
+
+			insertOnConnection(source, target, [source, target, below]);
+
+			// The new node at [224, 0] has no gap to B, so the space check fails
+			expect(target.position).toEqual([672, 0]);
+		});
+
+		it('should stretch a sticky note to the grid with a padding of two grid cells', () => {
+			const source = createTestNode({ id: 's', name: 'S', type: SET_NODE_TYPE, position: [0, 0] });
+			const target = createTestNode({
+				id: 't',
+				name: 'T',
+				type: SET_NODE_TYPE,
+				position: [224, 0],
+			});
+			const sticky = createTestNode({
+				id: 'sticky',
+				name: 'Sticky',
+				type: STICKY_NODE_TYPE,
+				position: [-48, -48],
+				parameters: { width: 400, height: 208 },
+			});
+
+			insertOnConnection(source, target, [source, target, sticky]);
+
+			expect(target.position).toEqual([448, 0]);
+			// T right edge (448 + 96) + padding (32) - sticky left edge (-48)
+			expect(sticky.parameters.width).toBe(624);
+			expect(sticky.position).toEqual([-48, -48]);
+		});
+
+		it('should stretch a sticky note around the full width of an agent card', () => {
+			const source = createTestNode({ id: 's', name: 'S', type: SET_NODE_TYPE, position: [0, 0] });
+			const agent = createTestNode({
+				id: 'agent',
+				name: 'Agent',
+				type: MESSAGE_AN_AGENT_NODE_TYPE,
+				typeVersion: 2,
+				position: [224, 0],
+			});
+			const sticky = createTestNode({
+				id: 'sticky',
+				name: 'Sticky',
+				type: STICKY_NODE_TYPE,
+				position: [-32, -32],
+				parameters: { width: 608, height: 224 },
+			});
+
+			insertOnConnection(source, agent, [source, agent, sticky]);
+
+			expect(agent.position).toEqual([448, 0]);
+			// Agent right edge (448 + 320) + padding (32) - sticky left edge (-32)
+			expect(sticky.parameters.width).toBe(832);
+		});
+	});
+
+	describe('edge insert before a node with sub-nodes', () => {
+		const MEMORY_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryBufferWindow';
+		const TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolCalculator';
+
+		const mainNodeTypeDescription = mockNodeTypeDescription({
+			name: SET_NODE_TYPE,
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+		});
+
+		/**
+		 * Prepares an insert on the source → target edge. The traversal actions
+		 * run on a test Workflow, so `getConnectedNodes` is the real one. The
+		 * connection actions run on the store's own connections composable. The
+		 * history mocks copy the store's bulk recording into `undoStack`.
+		 */
+		function setupEdgeInsert({
+			nodes,
+			connections,
+			source,
+			target,
+		}: {
+			nodes: TestNode[];
+			connections: IConnections;
+			source: TestNode;
+			target: TestNode;
+		}) {
+			const historyStore = mockedStore(useHistoryStore);
+			const uiStore = mockedStore(useUIStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const nodesById = new Map(nodes.map((node) => [node.id, node]));
+			const undoStack: Array<Command | BulkCommand> = [];
+
+			nodeTypesStore.nodeTypes = { [SET_NODE_TYPE]: { 1: mainNodeTypeDescription } };
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(mainNodeTypeDescription);
+			workflowDocumentStoreInstance.allNodes = nodes;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+				nodesById.get(id),
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockImplementation(
+				(name) => [...nodesById.values()].find((node) => node.name === name) ?? null,
+			);
+
+			const documentConnections = useWorkflowDocumentConnections({
+				getNodeById: (id) => nodesById.get(id),
+				syncWorkflowObject: () => {},
+			});
+			documentConnections.setConnections(deepCopy(connections));
+			vi.spyOn(workflowDocumentStoreInstance, 'connectionsBySourceNode', 'get').mockImplementation(
+				() => documentConnections.connectionsBySourceNode.value,
+			);
+			vi.mocked(workflowDocumentStoreInstance.hasConnection).mockImplementation(
+				documentConnections.hasConnection,
+			);
+			vi.mocked(workflowDocumentStoreInstance.addConnection).mockImplementation(
+				documentConnections.addConnection,
+			);
+			vi.mocked(workflowDocumentStoreInstance.removeConnection).mockImplementation(
+				documentConnections.removeConnection,
+			);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockImplementation(
+				documentConnections.incomingConnectionsByNodeName,
+			);
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockImplementation(
+				documentConnections.outgoingConnectionsByNodeName,
+			);
+
+			vi.spyOn(workflowDocumentStoreInstance, 'addNode').mockImplementation((addedNode) => {
+				nodesById.set(addedNode.id, addedNode);
+			});
+			vi.spyOn(workflowDocumentStoreInstance, 'removeNodeById').mockImplementation((id) => {
+				nodesById.delete(id);
+			});
+			vi.spyOn(workflowDocumentStoreInstance, 'setNodePositionById').mockImplementation(
+				(id, position) => {
+					const node = nodesById.get(id);
+					if (node) node.position = position;
+				},
+			);
+
+			const nodeTypes = createMockNodeTypes(
+				Object.fromEntries(nodes.map((node) => [node.type, mockLoadedNodeType(node.type)])),
+			);
+			const graph = useWorkflowDocumentGraph(
+				shallowRef(createTestWorkflowObject({ nodes, connections, nodeTypes })),
+			);
+			vi.mocked(workflowDocumentStoreInstance.getParentNodes).mockImplementation(
+				graph.getParentNodes,
+			);
+			vi.mocked(workflowDocumentStoreInstance.getChildNodes).mockImplementation(
+				graph.getChildNodes,
+			);
+			vi.mocked(workflowDocumentStoreInstance.getConnectedNodes).mockImplementation(
+				graph.getConnectedNodes,
+			);
+
+			historyStore.startRecordingUndo.mockImplementation(() => {
+				historyStore.currentBulkAction = new BulkCommand([]);
+			});
+			historyStore.pushCommandToUndo.mockImplementation((command) => {
+				if (historyStore.currentBulkAction) {
+					historyStore.currentBulkAction.commands.push(command);
+				} else {
+					undoStack.push(command);
+				}
+			});
+			historyStore.stopRecordingUndo.mockImplementation(() => {
+				if (historyStore.currentBulkAction?.commands.length) {
+					undoStack.push(historyStore.currentBulkAction);
+				}
+				historyStore.currentBulkAction = null;
+			});
+
+			uiStore.lastInteractedWithNodeId = source.id;
+			uiStore.lastInteractedWithNodeConnection = canvasConnection(source, target);
+			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.Main}/0`;
+
+			const positionOf = (node: TestNode) => nodesById.get(node.id)?.position;
+			const hasNode = (id: string) => nodesById.has(id);
+			const edges = () => listEdges(documentConnections.connectionsBySourceNode.value);
+
+			return { positionOf, hasNode, edges, undoStack };
+		}
+
+		/** Lists each connection as `source → target (type)`, in a stable order. */
+		function listEdges(connectionsBySource: IConnections) {
+			return Object.entries(connectionsBySource)
+				.flatMap(([sourceName, connectionsByType]) =>
+					Object.entries(connectionsByType).flatMap(([type, outputs]) =>
+						outputs.flatMap((output) =>
+							(output ?? []).map((target) => `${sourceName} → ${target.node} (${type})`),
+						),
+					),
+				)
+				.sort();
+		}
+
+		function createAgentWithSubNodes() {
+			const trigger = createTestNode({
+				id: 'trigger',
+				name: 'Chat Trigger',
+				type: CHAT_TRIGGER_NODE_TYPE,
+				position: [0, 0],
+			});
+			const agent = createTestNode({
+				id: 'agent',
+				name: 'AI Agent',
+				type: AGENT_NODE_TYPE,
+				position: [224, 0],
+			});
+			const slack = createTestNode({
+				id: 'slack',
+				name: 'Slack',
+				type: SLACK_NODE_TYPE,
+				position: [576, 0],
+			});
+			const model = createTestNode({
+				id: 'model',
+				name: 'Model',
+				type: OPEN_AI_CHAT_MODEL_NODE_TYPE,
+				position: [96, 208],
+			});
+			const memory = createTestNode({
+				id: 'memory',
+				name: 'Memory',
+				type: MEMORY_NODE_TYPE,
+				position: [240, 208],
+			});
+			const tool = createTestNode({
+				id: 'tool',
+				name: 'Tool',
+				type: TOOL_NODE_TYPE,
+				position: [384, 208],
+			});
+			const connections = createConnectionsBySource(
+				workflowConnection(trigger, agent),
+				workflowConnection(agent, slack),
+				workflowConnection(model, agent, { sourceType: NodeConnectionTypes.AiLanguageModel }),
+				workflowConnection(memory, agent, { sourceType: NodeConnectionTypes.AiMemory }),
+				workflowConnection(tool, agent, { sourceType: NodeConnectionTypes.AiTool }),
+			);
+
+			return {
+				trigger,
+				agent,
+				slack,
+				model,
+				memory,
+				tool,
+				nodes: [trigger, agent, slack, model, memory, tool],
+				connections,
+			};
+		}
+
+		it('should move the sub-nodes of an AI Agent with it when an insert shifts the agent', async () => {
+			const { trigger, agent, slack, model, memory, tool, nodes, connections } =
+				createAgentWithSubNodes();
+			const { positionOf } = setupEdgeInsert({
+				nodes,
+				connections,
+				source: trigger,
+				target: agent,
+			});
+
+			const { addNodesAndConnections } = useCanvasOperations();
+			await addNodesAndConnections([{ type: SET_NODE_TYPE }], [], {});
+
+			expect(positionOf(agent)).toEqual([448, 0]);
+			expect(positionOf(slack)).toEqual([800, 0]);
+			expect(positionOf(model)).toEqual([320, 208]);
+			expect(positionOf(memory)).toEqual([464, 208]);
+			expect(positionOf(tool)).toEqual([608, 208]);
+		});
+
+		it('should record the insert and every shift in one undo step', async () => {
+			const { trigger, agent, slack, model, memory, tool, nodes, connections } =
+				createAgentWithSubNodes();
+			const { positionOf, hasNode, edges, undoStack } = setupEdgeInsert({
+				nodes,
+				connections,
+				source: trigger,
+				target: agent,
+			});
+
+			const {
+				addNodesAndConnections,
+				revertAddNode,
+				revertCreateConnection,
+				revertDeleteConnection,
+				revertUpdateNodePosition,
+			} = useCanvasOperations();
+			const { addedNodes } = await addNodesAndConnections([{ type: SET_NODE_TYPE }], [], {});
+
+			expect(undoStack).toHaveLength(1);
+			const bulk = undoStack[0];
+			expect(bulk).toBeInstanceOf(BulkCommand);
+			const commands = bulk instanceof BulkCommand ? bulk.commands : [];
+
+			const addCommands = commands.filter((command) => command instanceof AddNodeCommand);
+			expect(addCommands).toEqual([
+				expect.objectContaining({ node: expect.objectContaining({ id: addedNodes[0].id }) }),
+			]);
+
+			const oldPositionByName = Object.fromEntries(
+				commands
+					.filter((command) => command instanceof MoveNodeCommand)
+					.map((command) => [command.nodeName, command.oldPosition]),
+			);
+			expect(oldPositionByName).toEqual({
+				'AI Agent': [224, 0],
+				Slack: [576, 0],
+				Model: [96, 208],
+				Memory: [240, 208],
+				Tool: [384, 208],
+			});
+
+			const insertedName = addedNodes[0].name;
+			expect(edges()).toEqual(
+				[
+					`Chat Trigger → ${insertedName} (main)`,
+					`${insertedName} → AI Agent (main)`,
+					'AI Agent → Slack (main)',
+					'Model → AI Agent (ai_languageModel)',
+					'Memory → AI Agent (ai_memory)',
+					'Tool → AI Agent (ai_tool)',
+				].sort(),
+			);
+
+			// Undo the bulk as useHistoryHelper does, with the history bus handlers that NodeView registers
+			const onNodeMove = ({ nodeName, position }: { nodeName: string; position: XYPosition }) =>
+				revertUpdateNodePosition(nodeName, { x: position[0], y: position[1] });
+			const onRevertAddNode = async ({ node }: { node: INodeUi }) => await revertAddNode(node.name);
+			const onRevertAddConnection = ({ connection }: { connection: [IConnection, IConnection] }) =>
+				revertCreateConnection(connection);
+			const onRevertRemoveConnection = ({
+				connection,
+			}: {
+				connection: [IConnection, IConnection];
+			}) => revertDeleteConnection(connection);
+			historyBus.on('nodeMove', onNodeMove);
+			historyBus.on('revertAddNode', onRevertAddNode);
+			historyBus.on('revertAddConnection', onRevertAddConnection);
+			historyBus.on('revertRemoveConnection', onRevertRemoveConnection);
+			for (const command of [...commands].reverse()) {
+				await command.revert();
+			}
+			historyBus.off('nodeMove', onNodeMove);
+			historyBus.off('revertAddNode', onRevertAddNode);
+			historyBus.off('revertAddConnection', onRevertAddConnection);
+			historyBus.off('revertRemoveConnection', onRevertRemoveConnection);
+
+			expect(hasNode(addedNodes[0].id)).toBe(false);
+			expect(edges()).toEqual(listEdges(connections));
+			expect(positionOf(agent)).toEqual([224, 0]);
+			expect(positionOf(slack)).toEqual([576, 0]);
+			expect(positionOf(model)).toEqual([96, 208]);
+			expect(positionOf(memory)).toEqual([240, 208]);
+			expect(positionOf(tool)).toEqual([384, 208]);
+		});
+
+		it('should keep a sub-node in place when it also feeds a root node that stays', async () => {
+			const trigger = createTestNode({
+				id: 'trigger',
+				name: 'Trigger',
+				type: CHAT_TRIGGER_NODE_TYPE,
+				position: [0, 0],
+			});
+			const set1 = createTestNode({
+				id: 'set1',
+				name: 'Set1',
+				type: SET_NODE_TYPE,
+				position: [224, 0],
+			});
+			const agentA = createTestNode({
+				id: 'agent-a',
+				name: 'Agent A',
+				type: AGENT_NODE_TYPE,
+				position: [448, 0],
+			});
+			const agentB = createTestNode({
+				id: 'agent-b',
+				name: 'Agent B',
+				type: AGENT_NODE_TYPE,
+				position: [448, 400],
+			});
+			const model = createTestNode({
+				id: 'model',
+				name: 'Model',
+				type: OPEN_AI_CHAT_MODEL_NODE_TYPE,
+				position: [448, 208],
+			});
+			const aiLanguageModel = { sourceType: NodeConnectionTypes.AiLanguageModel };
+			const connections = createConnectionsBySource(
+				workflowConnection(trigger, set1),
+				workflowConnection(set1, agentA),
+				workflowConnection(model, agentA, aiLanguageModel),
+				workflowConnection(model, agentB, aiLanguageModel),
+			);
+			const { positionOf } = setupEdgeInsert({
+				nodes: [trigger, set1, agentA, agentB, model],
+				connections,
+				source: trigger,
+				target: set1,
+			});
+
+			const { addNodesAndConnections } = useCanvasOperations();
+			await addNodesAndConnections([{ type: SET_NODE_TYPE }], [], {});
+
+			expect(positionOf(set1)).toEqual([448, 0]);
+			expect(positionOf(agentA)).toEqual([672, 0]);
+			expect(positionOf(model)).toEqual([448, 208]);
+			expect(positionOf(agentB)).toEqual([448, 400]);
 		});
 	});
 

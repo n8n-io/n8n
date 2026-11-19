@@ -1,15 +1,16 @@
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)
-import { EventService } from '@n8n/backend-services';
+import { EventService, TelemetryProxy } from '@n8n/backend-services';
 // EOF Experiment cleanup
 import type { AgentActor, AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import isEqual from 'lodash/isEqual';
+import { InstanceSettings } from 'n8n-core';
 
-import { Telemetry } from '@/telemetry';
-
+import { buildVectorStoreFingerprints } from './agent-knowledge-telemetry';
 import { buildAgentCapabilityTelemetryProperties } from './agent-telemetry';
+import { builderTelemetrySessionProperties } from './builder/builder-telemetry-session';
 import type { Agent } from './entities/agent.entity';
 import { toAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 
@@ -29,6 +30,7 @@ export type AgentConfigPart =
 	| 'credential'
 	| 'memory'
 	| 'name'
+	| 'description'
 	| 'config'
 	| 'tools'
 	| 'providerTools'
@@ -50,6 +52,7 @@ const CONFIG_PARTS = [
 	'credential',
 	'memory',
 	'name',
+	'description',
 	'config',
 	'tools',
 	'providerTools',
@@ -158,13 +161,13 @@ export type AgentCreationEvent = Omit<AgentModificationEvent, 'changedParts' | '
 
 export type AgentSidecarChanges = Partial<Record<'tools' | 'skills' | 'tasks', boolean>>;
 
-export function buildAgentMutationEvent(
-	agent: Agent,
+export function buildAgentMutationEvent<AgentType extends Agent>(
+	agent: AgentType,
 	skillRefs: AgentSkillRefs,
 	projectId: string,
 	context: AgentMutationTelemetryContext,
 	changedParts: AgentConfigPart[],
-): AgentModificationEvent {
+): AgentModificationEvent & { agent: AgentType } {
 	const config = agent.schema ? toAgentDocument(agent.schema, skillRefs) : null;
 	return {
 		agent,
@@ -197,7 +200,8 @@ function modificationProperties({
 @Service()
 export class AgentModificationTelemetryService {
 	constructor(
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
+		private readonly instanceSettings: InstanceSettings,
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		private readonly eventService: EventService,
 		// EOF Experiment cleanup
@@ -207,7 +211,10 @@ export class AgentModificationTelemetryService {
 		if (event.changedParts.length === 0) return;
 		try {
 			const { by } = event;
-			const properties = modificationProperties(event);
+			const properties = {
+				...modificationProperties(event),
+				...this.vectorStoreFingerprints(event),
+			};
 			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 			this.recordAssistantActivity(event, properties.capability_count, event.changedParts);
 			// EOF Experiment cleanup
@@ -221,13 +228,41 @@ export class AgentModificationTelemetryService {
 				return;
 			}
 
-			const entry = {
-				builder: TELEMETRY_EVENT.AGENTS.BUILDER_MODIFIED_AGENT,
-				mcp: TELEMETRY_EVENT.AGENTS.MCP_MODIFIED_AGENT,
-			}[by];
-			this.telemetry.track(entry, { ...properties, event_version: '2' });
+			if (by === 'builder') {
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_MODIFIED_AGENT, {
+					...properties,
+					...builderTelemetrySessionProperties(),
+					event_version: '2',
+				});
+				return;
+			}
+
+			this.telemetry.track(TELEMETRY_EVENT.AGENTS.MCP_MODIFIED_AGENT, {
+				...properties,
+				event_version: '2',
+			});
 		} catch {
 			// Telemetry must never fail a write that already succeeded.
+		}
+	}
+
+	/** Make sure a failed fingerprint leaves out only the fingerprints, not the whole event. */
+	private vectorStoreFingerprints(event: AgentModificationEvent): {
+		vector_store_fingerprints?: string[];
+	} {
+		if (!event.changedParts.includes('vectorStores')) {
+			return {};
+		}
+
+		try {
+			return {
+				vector_store_fingerprints: buildVectorStoreFingerprints(
+					event.config?.vectorStores ?? [],
+					this.instanceSettings.hmacSignatureSecret,
+				),
+			};
+		} catch {
+			return {};
 		}
 	}
 
@@ -261,7 +296,7 @@ export class AgentModificationTelemetryService {
 			!event.config?.model?.trim() &&
 			!event.config?.instructions?.trim() &&
 			capabilityCount === 0 &&
-			!changedParts?.some((part) => part !== 'name')
+			!changedParts?.some((part) => part !== 'name' && part !== 'description')
 		) {
 			return;
 		}
@@ -287,6 +322,7 @@ export class AgentModificationTelemetryService {
 			case 'builder':
 				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT, {
 					...properties,
+					...builderTelemetrySessionProperties(),
 					event_version: '3',
 				});
 				return;

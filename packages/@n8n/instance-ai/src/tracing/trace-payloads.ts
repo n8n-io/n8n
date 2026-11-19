@@ -11,12 +11,12 @@ import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 import { createHash } from 'node:crypto';
 
 import {
-	DOMAIN_TOOL_IDS,
 	ORCHESTRATION_TOOL_IDS,
 	ORCHESTRATION_TOOL_NAMES,
 	WORKSPACE_TOOL_IDS,
 } from '../tools/tool-ids';
 import type { InstanceAiToolRegistry } from '../types';
+import { classifyToolCategory, classifyToolSideEffect } from './tool-classification';
 import { formatAgentRoleLabel, formatTraceLabel } from './trace-labels';
 import { modelConfigId } from '../utils/model-config-id';
 
@@ -1112,56 +1112,6 @@ function classifyToolSource(name: string, toolRecord: Record<string, unknown>): 
 	}
 
 	return 'domain';
-}
-
-/** Keyword checks must not match the builder prefix (`workflow_builder_` contains "workflow" and "build"). */
-function unprefixedToolName(name: string): string {
-	return name.replace(/^(workflow|agent)_builder_/, '');
-}
-
-function classifyToolCategory(name: string): string {
-	if (name === DOMAIN_TOOL_IDS.DATA_TABLES) return 'data-table';
-	if (name === DOMAIN_TOOL_IDS.NODES || name === 'materialize-node-type') return 'node';
-	if (name === DOMAIN_TOOL_IDS.EXECUTIONS) return 'execution';
-	if (name === ORCHESTRATION_TOOL_IDS.CREATE_TASKS) return 'planning';
-	const baseName = unprefixedToolName(name);
-	if (baseName.includes('credential')) return 'credential';
-	if (baseName.includes('browser')) return 'browser';
-	if (baseName.includes('data-table')) return 'data-table';
-	if (baseName.includes('workflow')) {
-		return 'workflow';
-	}
-	if (baseName.includes('research')) return 'research';
-	if (baseName.includes('plan')) return 'planning';
-	if (baseName.startsWith('workspace_')) return 'workspace';
-	if (baseName.includes('file') || baseName.includes('filesystem')) return 'filesystem';
-	return 'other';
-}
-
-function classifyToolSideEffect(name: string): string {
-	if (name === DOMAIN_TOOL_IDS.EXECUTIONS) return 'execute';
-	if (name === DOMAIN_TOOL_IDS.ASK_USER) return 'none';
-	const baseName = unprefixedToolName(name);
-	if (baseName.includes('browser')) return 'browser';
-	if (baseName.includes('research')) return 'network';
-	if (baseName.includes('execute') || baseName.includes('run')) {
-		return 'execute';
-	}
-	if (
-		baseName.includes('write') ||
-		baseName.includes('submit') ||
-		baseName.includes('apply') ||
-		baseName.includes('build') ||
-		baseName.includes('create') ||
-		baseName.includes('update') ||
-		baseName.includes('delete') ||
-		baseName.includes('remove') ||
-		baseName.includes('complete')
-	) {
-		return 'write';
-	}
-	if (baseName.includes('pause-for-user')) return 'none';
-	return 'read';
 }
 
 function getToolInputSchema(tool: unknown): unknown {

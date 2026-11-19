@@ -1,9 +1,10 @@
 import {
 	AuthIdentity,
 	BaseRepository,
+	Person,
 	TransactionRunner,
 	User,
-	UserRepository,
+	PersonRepository,
 	type AuthProviderType,
 	type OperationContext,
 } from '@n8n/db';
@@ -24,20 +25,22 @@ export class ScimUserRepository extends BaseRepository<User> {
 	constructor(
 		dataSource: DataSource,
 		transactionRunner: TransactionRunner,
-		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 	) {
 		super(User, dataSource.manager, transactionRunner);
 	}
 
-	/** One page of users in a stable order, optionally narrowed by a SCIM filter. */
+	/**
+	 * One page of people in a stable order, optionally narrowed by a SCIM filter.
+	 * SCIM manages people only, so service accounts never appear.
+	 */
 	async findPage(
 		{ skip, take, filter }: { skip: number; take: number; filter?: ScimUserFilter },
 		ctx: OperationContext,
-	): Promise<[User[], number]> {
+	): Promise<[Person[], number]> {
 		const qb = this.managerFor(ctx)
-			.createQueryBuilder(User, 'user')
+			.createQueryBuilder(Person, 'user')
 			.leftJoinAndSelect('user.authIdentities', 'authIdentity')
-			.leftJoinAndSelect('user.role', 'role')
 			.orderBy('user.createdAt', 'ASC')
 			.addOrderBy('user.id', 'ASC');
 
@@ -51,9 +54,11 @@ export class ScimUserRepository extends BaseRepository<User> {
 		}
 
 		const total = await qb.getCount();
-		const users = await qb.skip(skip).take(take).getMany();
+		// TypeORM reads `take(0)` as "no limit", but SCIM `count=0` asks for
+		// the total only (RFC 7644 section 3.4.2.4).
+		const people = take > 0 ? await qb.skip(skip).take(take).getMany() : [];
 
-		return [users, total];
+		return [people, total];
 	}
 
 	/**
@@ -62,12 +67,12 @@ export class ScimUserRepository extends BaseRepository<User> {
 	 * identity that lets them sign in.
 	 */
 	async createProvisioned(
-		user: DeepPartial<User>,
+		person: DeepPartial<Person>,
 		identity: { providerId: string; providerType: AuthProviderType } | undefined,
 		ctx: OperationContext,
-	): Promise<User> {
+	): Promise<Person> {
 		return await this.runInTransaction(ctx, async (tx) => {
-			const { user: created } = await this.userRepository.createUserWithProject(user, tx);
+			const { user: created } = await this.personRepository.createPersonWithProject(person, tx);
 
 			if (identity) {
 				await tx.save(tx.create(AuthIdentity, { ...identity, userId: created.id }));

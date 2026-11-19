@@ -1,0 +1,137 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "7c1d2e3f-4a5b-4c6d-8e7f-9a0b1c2d3e01",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "text",
+				"operation": "message",
+				"modelId": { "__rl": true, "mode": "id", "value": "qwen3-max" },
+				"messages": { "messageValues": [{ "content": "Hello", "role": "user" }] },
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.alibabaCloud",
+			"typeVersion": 1.1,
+			"position": [220, 0],
+			"id": "7c1d2e3f-4a5b-4c6d-8e7f-9a0b1c2d3e02",
+			"name": "Message a Model",
+			"credentials": {
+				"alibabaCloudApi": {
+					"id": "123",
+					"name": "Qwen Cloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "image",
+				"operation": "analyze",
+				"modelId": { "__rl": true, "mode": "id", "value": "qwen-vl-plus" },
+				"inputType": "url",
+				"imageUrl": "https://example.com/cat.png",
+				"question": "What is in this image?",
+				"visionOptions": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.alibabaCloud",
+			"typeVersion": 1.1,
+			"position": [440, 0],
+			"id": "7c1d2e3f-4a5b-4c6d-8e7f-9a0b1c2d3e03",
+			"name": "Analyze Image",
+			"credentials": {
+				"alibabaCloudApi": {
+					"id": "123",
+					"name": "Qwen Cloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "image",
+				"operation": "generate",
+				"modelId": { "__rl": true, "mode": "id", "value": "wan2.6-t2i" },
+				"prompt": "A red bicycle",
+				"downloadImage": false,
+				"imageOptions": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.alibabaCloud",
+			"typeVersion": 1.1,
+			"position": [660, 0],
+			"id": "7c1d2e3f-4a5b-4c6d-8e7f-9a0b1c2d3e04",
+			"name": "Generate Image",
+			"credentials": {
+				"alibabaCloudApi": {
+					"id": "123",
+					"name": "Qwen Cloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "video",
+				"operation": "textToVideo",
+				"modelId": { "__rl": true, "mode": "id", "value": "wan2.6-t2v" },
+				"prompt": "A cat playing with a ball of yarn",
+				"downloadVideo": false,
+				"videoOptions": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.alibabaCloud",
+			"typeVersion": 1.1,
+			"position": [880, 0],
+			"id": "7c1d2e3f-4a5b-4c6d-8e7f-9a0b1c2d3e05",
+			"name": "Text to Video",
+			"credentials": {
+				"alibabaCloudApi": {
+					"id": "123",
+					"name": "Qwen Cloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "video",
+				"operation": "imageToVideo",
+				"modelId": { "__rl": true, "mode": "id", "value": "wan2.6-i2v" },
+				"inputType": "url",
+				"imgUrl": "https://example.com/cat.png",
+				"prompt": "The cat jumps",
+				"downloadVideo": false,
+				"imageToVideoOptions": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.alibabaCloud",
+			"typeVersion": 1.1,
+			"position": [1100, 0],
+			"id": "7c1d2e3f-4a5b-4c6d-8e7f-9a0b1c2d3e06",
+			"name": "Image to Video",
+			"credentials": {
+				"alibabaCloudApi": {
+					"id": "123",
+					"name": "Qwen Cloud account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Message a Model", "type": "main", "index": 0 }]]
+		},
+		"Message a Model": {
+			"main": [[{ "node": "Analyze Image", "type": "main", "index": 0 }]]
+		},
+		"Analyze Image": {
+			"main": [[{ "node": "Generate Image", "type": "main", "index": 0 }]]
+		},
+		"Generate Image": {
+			"main": [[{ "node": "Text to Video", "type": "main", "index": 0 }]]
+		},
+		"Text to Video": {
+			"main": [[{ "node": "Image to Video", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {}
+}

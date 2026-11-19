@@ -12,6 +12,18 @@ import { workspaceDistExternals } from './vitest.workspace-externals';
  * `@n8n/...` or `@test/...`. The entries are therefore non-overlapping.
  */
 const alias = {
+	'@n8n/backend-module-data-table/testing': path.resolve(
+		__dirname,
+		'../modules/data-table/backend/src/testing.ts',
+	),
+	'@n8n/backend-module-data-table/module': path.resolve(
+		__dirname,
+		'../modules/data-table/backend/src/data-table.module.ts',
+	),
+	'@n8n/backend-module-data-table': path.resolve(
+		__dirname,
+		'../modules/data-table/backend/src/index.ts',
+	),
 	'@test-integration': path.resolve(__dirname, 'test/integration/shared'),
 	'@test': path.resolve(__dirname, 'test/shared'),
 	'@n8n/backend-module-insights/testing': path.resolve(
@@ -29,6 +41,14 @@ const alias = {
 	'@n8n/backend-module-insights': path.resolve(
 		__dirname,
 		'../modules/insights/backend/src/index.ts',
+	),
+	'@n8n/backend-module-execution-ledger/testing': path.resolve(
+		__dirname,
+		'../modules/execution-ledger/backend/src/testing.ts',
+	),
+	'@n8n/backend-module-execution-ledger/module': path.resolve(
+		__dirname,
+		'../modules/execution-ledger/backend/src/execution-ledger.module.ts',
 	),
 	'@n8n/backend-module-workflow-builder/module': path.resolve(
 		__dirname,

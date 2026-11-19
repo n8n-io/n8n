@@ -1,109 +1,11 @@
+import type { ImportBlockingIssue } from '@n8n/api-types';
 import { ApiError } from '../../client';
 
 type RequirementConsumer = { kind: string; id: string };
 
-type BlockingIssue =
-	| {
-			type: 'workflow-conflict';
-			sourceWorkflowId: string;
-			existingWorkflowId: string;
-			name: string;
-	  }
-	| {
-			type: 'workflow-lineage-conflict';
-			sourceWorkflowId: string;
-			projectId: string;
-			existingWorkflows: Array<{ id: string; name: string; isArchived: boolean }>;
-	  }
-	| { type: 'project-conflict'; sourceProjectId: string; name: string }
-	| { type: 'workflow-removal-forbidden'; workflowId: string; name: string; projectId: string }
-	| {
-			type: 'workflow-removal-conflict';
-			sourceWorkflowId: string;
-			workflowId: string;
-			projectId: string;
-	  }
-	| {
-			type: 'workflow-archive-forbidden';
-			sourceWorkflowId: string;
-			existingWorkflowId: string;
-			name: string;
-			projectId: string;
-			transition: 'archive' | 'unarchive';
-	  }
-	| { type: 'folder-removal-forbidden'; folderId: string; name: string; projectId: string }
-	| { type: 'credential-unresolved'; kind: string; sourceId: string; usedBy: RequirementConsumer[] }
-	| {
-			type: 'credential-policy-violation';
-			sourceId: string;
-			targetId?: string;
-			name?: string;
-			credentialType: string;
-			usedBy: RequirementConsumer[];
-			violations: Array<{ message: string }>;
-	  }
-	| {
-			type: 'credential-conflict';
-			kind: 'differs' | 'divergent';
-			targetId: string;
-			sourceIds: string[];
-			name: string;
-			usedBy: RequirementConsumer[];
-	  }
-	| {
-			type: 'credential-update-forbidden';
-			targetId: string;
-			sourceIds: string[];
-			name: string;
-			usedBy: RequirementConsumer[];
-	  }
-	| { type: 'variable-unresolved'; name: string; usedBy: RequirementConsumer[] }
-	| { type: 'variable-conflict'; name: string; projectId?: string; usedBy: RequirementConsumer[] }
-	| {
-			type: 'variable-limit-exceeded';
-			limit: number;
-			remaining: number;
-			requested: number;
-			names: string[];
-			usedBy: RequirementConsumer[];
-	  }
-	| {
-			type: 'missing-node-type';
-			nodeType: string;
-			typeVersion: number;
-			usedBy: RequirementConsumer[];
-	  }
-	| {
-			type: 'tag-unresolved';
-			kind: string;
-			sourceId?: string;
-			name?: string;
-			missingScope?: string;
-			usedBy: RequirementConsumer[];
-	  }
-	| {
-			type: 'data-table-unresolved';
-			kind: string;
-			sourceId?: string;
-			name?: string;
-			missingScope?: string;
-			missingColumns?: string[];
-			typeMismatches?: Array<{ column: string }>;
-			extraColumns?: string[];
-			overwriteChanges?: DataTableSchemaChange[];
-			currentName?: string;
-			conflictingTableId?: string;
-			usedBy: RequirementConsumer[];
-	  };
-
-type DataTableSchemaChange = { destructive?: boolean } & (
-	| { kind: 'add-column'; column: string }
-	| { kind: 'remove-column'; column: string }
-	| { kind: 'change-column-type'; column: string; from: string; to: string }
-	| { kind: 'rename-column'; from: string; to: string }
-	| { kind: 'reorder-columns' }
-	| { kind: 'rename-table'; from: string; to: string }
-);
+type DataTableSchemaChange = NonNullable<
+	Extract<ImportBlockingIssue, { type: 'data-table-unresolved' }>['overwriteChanges']
+>[number];
 
 function describeSchemaChange(change: DataTableSchemaChange): string {
 	switch (change.kind) {
@@ -132,7 +34,24 @@ function formatConsumers(consumers: RequirementConsumer[] | undefined): string {
 
 function formatIssue(issue: unknown): string {
 	if (typeof issue !== 'object' || issue === null) return JSON.stringify(issue);
-	const it = issue as Partial<BlockingIssue> & Record<string, unknown>;
+	const it = issue as Partial<ImportBlockingIssue> & Record<string, unknown>;
+	if (it.type === 'agent-conflict') {
+		const task = it.sourceTaskId ? `, task ${it.sourceTaskId}` : '';
+		const targets = Array.isArray(it.targetIds) ? it.targetIds.join(', ') : '';
+		return `Agent ${it.sourceAgentId}${task} conflicts in project ${it.projectId} (${it.kind}; targets: ${targets})`;
+	}
+	if (it.type === 'agent-invalid') {
+		return `Agent ${it.sourceAgentId} at ${it.path}: ${it.message}`;
+	}
+	if (it.type === 'agent-dependency-unresolved') {
+		return `Agent ${it.sourceAgentId} in project ${it.projectId}: ${it.dependencyType} ${it.referenceId} is ${it.reason} at ${it.path}`;
+	}
+	if (it.type === 'agent-policy-violation') {
+		const reasons = Array.isArray(it.violations)
+			? it.violations.map(({ message }) => message).join('; ')
+			: '';
+		return `Agent "${it.name}" (${it.sourceAgentId}) refused by policy: ${reasons}`;
+	}
 	if (it.type === 'workflow-conflict') {
 		return `workflow "${it.name}" (source ${it.sourceWorkflowId}) already exists as ${it.existingWorkflowId}`;
 	}

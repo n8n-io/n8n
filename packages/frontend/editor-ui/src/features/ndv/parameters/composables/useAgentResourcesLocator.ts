@@ -6,7 +6,7 @@ import {
 	getAgent,
 	type ListAgentsOptions,
 } from '@/features/agents/composables/useAgentApi';
-import type { AgentResource } from '@/features/agents/types';
+import { toAgentListItem, type AgentListItem } from '@/features/agents/agent.types';
 
 const PAGE_SIZE = 40;
 
@@ -14,6 +14,7 @@ export interface AgentResourceOption {
 	name: string;
 	value: string;
 	personalisation: AgentJsonConfig['personalisation'] | null;
+	isArchived?: boolean;
 }
 
 /**
@@ -35,32 +36,41 @@ export function useAgentResourcesLocator(
 	const currentPage = ref(0);
 	const totalCount = ref(0);
 	const nameCache = new Map<string, string>();
+	// The list call hides archived agents. Keep the selected one so the picker can show it.
+	const archivedSelection = ref<AgentResourceOption | null>(null);
 	// Bumped on every reset (mount/search) so an older in-flight request that
 	// resolves late can't clobber a newer query's results.
 	let loadGeneration = 0;
+	// Bumped on every agent refresh. A late response for an older selection must not replace the archived selection.
+	let refreshGeneration = 0;
 
 	const hasMoreAgentsToLoad = computed(() => totalCount.value > agentsResources.value.length);
 
-	function constructName(agent: AgentResource) {
+	function constructName(agent: AgentListItem) {
 		// Prefix the project name when the agent lives outside the personal project
 		const projectName = resolveProjectName(agent.projectId);
 		return projectName ? `${projectName} — ${agent.name}` : agent.name;
 	}
 
-	function agentToResourceMapper(agent: AgentResource): AgentResourceOption {
+	function agentToResourceMapper(agent: AgentListItem): AgentResourceOption {
 		const name = constructName(agent);
 		nameCache.set(agent.id, name);
-		return { name, value: agent.id, personalisation: agent.schema?.personalisation ?? null };
+		return {
+			name,
+			value: agent.id,
+			personalisation: agent.personalisation ?? null,
+			...(agent.isArchived ? { isArchived: true } : {}),
+		};
 	}
 
 	function getAgentName(id: string): string {
 		return nameCache.get(id) ?? id;
 	}
 
-	async function fetchPage(skip: number) {
+	async function fetchPage(offset: number) {
 		const options: ListAgentsOptions = {
-			skip,
-			take: PAGE_SIZE,
+			offset,
+			limit: PAGE_SIZE,
 			sortBy: 'updatedAt:desc',
 		};
 		if (searchFilter.value) {
@@ -96,11 +106,11 @@ export function useAgentResourcesLocator(
 
 		// Claim the page number synchronously so two concurrent load-more calls
 		// can't read the same page and append a duplicate.
-		const skip = currentPage.value * PAGE_SIZE;
+		const offset = currentPage.value * PAGE_SIZE;
 		currentPage.value++;
 
 		try {
-			const { count, data } = await fetchPage(skip);
+			const { count, data } = await fetchPage(offset);
 			// A newer reset (e.g. a fresh search) superseded this request.
 			if (generation !== loadGeneration) return;
 
@@ -137,9 +147,15 @@ export function useAgentResourcesLocator(
 	// can be healed. Returns null on failure so callers keep the existing value.
 	async function refreshAgentName(id: string): Promise<string | null> {
 		if (!projectId.value) return null;
+		const generation = ++refreshGeneration;
 		try {
 			const agent = await getAgent(rootStore.restApiContext, projectId.value, id);
-			return agentToResourceMapper(agent).name;
+			const option = agentToResourceMapper(toAgentListItem(agent));
+			// A newer refresh owns the archived selection.
+			if (generation === refreshGeneration) {
+				archivedSelection.value = option.isArchived ? option : null;
+			}
+			return option.name;
 		} catch {
 			return null;
 		}
@@ -157,6 +173,7 @@ export function useAgentResourcesLocator(
 
 	return {
 		agentsResources,
+		archivedSelection,
 		isLoadingResources,
 		loadError,
 		hasMoreAgentsToLoad,

@@ -21,6 +21,9 @@ const customTelemetryTagPublicSchema = z
 	})
 	.strict();
 
+// The node schema accepts these fields and drops them, so a public update never sends them.
+export const PUBLIC_API_IGNORED_NODE_FIELDS = ['extendsCredential'] as const;
+
 const workflowNodeWritePublicSchema = z
 	.object({
 		id: z.string().optional().openapi(workflowNodeFieldDocs.id),
@@ -82,6 +85,8 @@ const workflowSettingsWritePublicSchema = z
 			.enum(['separate', 'combined'])
 			.optional()
 			.openapi(workflowSettingsFieldDocs.binaryMode),
+		// Accepted but ignored: a stored workflow can hold any value here, so a GET-then-PUT must not fail on it
+		engineType: z.string().nullable().optional().openapi(workflowSettingsFieldDocs.engineType),
 		callerPolicy: z
 			.enum(['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'])
 			.optional()
@@ -112,7 +117,12 @@ const workflowSettingsWritePublicSchema = z
 	})
 	.strict()
 	.transform(
-		({ binaryMode: _binaryMode, credentialResolverId: _resolverId, ...settings }) => settings,
+		({
+			binaryMode: _binaryMode,
+			engineType: _engineType,
+			credentialResolverId: _resolverId,
+			...settings
+		}) => settings,
 	);
 
 const sharedWorkflowWritePublicSchema = z

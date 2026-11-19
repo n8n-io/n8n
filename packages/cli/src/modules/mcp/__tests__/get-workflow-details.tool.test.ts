@@ -6,8 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@n8n/backend-services';
-import { Telemetry } from '@/telemetry';
+import { type CredentialsFinderService, RoleService, TelemetryProxy } from '@n8n/backend-services';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { createWorkflow } from './mock.utils';
@@ -24,6 +23,7 @@ describe('get-workflow-details MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	const baseWebhookUrl = 'https://example.test';
 	const nodeTypes = mock<INodeTypes>();
+	const credentialsFinderService = mock<CredentialsFinderService>();
 
 	describe('smoke tests', () => {
 		test('it creates tool correctly', () => {
@@ -31,7 +31,7 @@ describe('get-workflow-details MCP tool', () => {
 				findWorkflowForUser: vi.fn(),
 			});
 			const credentialsService = mockInstance(CredentialsService, {});
-			const telemetry = mockInstance(Telemetry, {
+			const telemetry = mockInstance(TelemetryProxy, {
 				track: vi.fn(),
 			});
 			const roleService = mockInstance(RoleService, {
@@ -47,6 +47,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				telemetry,
@@ -86,6 +87,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -152,6 +154,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -182,6 +185,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -206,6 +210,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -259,6 +264,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -290,6 +296,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				inSyncFinder,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -317,6 +324,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				divergedFinder,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -351,6 +359,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				movedFinder,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -391,6 +400,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -427,6 +437,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -453,6 +464,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -479,6 +491,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -510,6 +523,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -562,6 +576,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -589,6 +604,7 @@ describe('get-workflow-details MCP tool', () => {
 					baseWebhookUrl,
 					wfFinder,
 					credentialsService,
+					credentialsFinderService,
 					nodeTypes,
 					endpoints,
 					roleService,
@@ -611,6 +627,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,

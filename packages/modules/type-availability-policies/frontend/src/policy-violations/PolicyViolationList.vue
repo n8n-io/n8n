@@ -1,38 +1,41 @@
-<script setup lang="ts">
+<script setup lang="ts" generic="T extends PolicyViolationListItem">
 import { computed } from 'vue';
-import type { PolicyViolation } from '@n8n/api-types';
+import { POLICY_VIOLATION_KIND } from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
+import type { PolicyViolationListItem } from './policyViolations';
 import { isRestrictionScope, SCOPE_LABEL_KEY } from '../type-availability-policies.constants';
 
 const props = withDefaults(
 	defineProps<{
-		violations: PolicyViolation[];
-		isJumpable?: (violation: PolicyViolation) => boolean;
-		labelOf?: (violation: PolicyViolation) => string | undefined;
+		violations: T[];
+		isJumpable?: (violation: T) => boolean;
+		labelOf?: (violation: T) => string | undefined;
 	}>(),
 	{ isJumpable: () => false, labelOf: () => undefined },
 );
 
-const emit = defineEmits<{ jump: [violation: PolicyViolation] }>();
+const emit = defineEmits<{ jump: [violation: T] }>();
 
 const i18n = useI18n();
 
 const NAME_KEY_BY_KIND: Record<string, BaseTextKey | undefined> = {
-	'node-type-unavailable': 'typeAvailabilityPolicies.violations.nodeType',
-	'credential-type-unavailable': 'typeAvailabilityPolicies.violations.credentialType',
-	'node-type-deprecated': 'typeAvailabilityPolicies.violations.nodeType',
+	[POLICY_VIOLATION_KIND.nodeTypeUnavailable]: 'typeAvailabilityPolicies.violations.nodeType',
+	[POLICY_VIOLATION_KIND.credentialTypeUnavailable]:
+		'typeAvailabilityPolicies.violations.credentialType',
+	[POLICY_VIOLATION_KIND.nodeTypeDeprecated]: 'typeAvailabilityPolicies.violations.nodeType',
 };
 
 /** Headings for kinds that have no scope, so their items can stay as short as scoped ones. */
 const HEADING_KEY_BY_KIND: Record<string, BaseTextKey | undefined> = {
-	'node-type-deprecated': 'typeAvailabilityPolicies.violations.deprecatedHeading',
+	[POLICY_VIOLATION_KIND.nodeTypeDeprecated]:
+		'typeAvailabilityPolicies.violations.deprecatedHeading',
 };
 
 const SCOPE_ORDER = ['instance', 'project'];
 
-type Item = { key: string; text: string; violation: PolicyViolation; jumpable: boolean };
+type Item = { key: string; text: string; violation: T; jumpable: boolean };
 type Group = {
 	id: string;
 	scope: string | undefined;
@@ -40,10 +43,10 @@ type Group = {
 	items: Item[];
 };
 
-function itemText(violation: PolicyViolation): string {
+function itemText(violation: T): string {
 	const { kind, subject, message } = violation;
 	const key = NAME_KEY_BY_KIND[kind];
-	if (!subject || !key) return message;
+	if (!subject || !key) return message ?? subject ?? kind;
 
 	return i18n.baseText(key, { interpolate: { name: props.labelOf(violation) ?? subject } });
 }
@@ -54,7 +57,7 @@ function scopeHeading(scope: string | undefined): string | undefined {
 	return isRestrictionScope(scope) ? i18n.baseText(SCOPE_LABEL_KEY[scope]) : scope;
 }
 
-function groupOf({ scope, kind }: PolicyViolation): Pick<Group, 'id' | 'heading'> {
+function groupOf({ scope, kind }: T): Pick<Group, 'id' | 'heading'> {
 	if (scope) return { id: `scope:${scope}`, heading: scopeHeading(scope) };
 
 	const key = HEADING_KEY_BY_KIND[kind];

@@ -208,34 +208,76 @@ jq -r '.publicKey' provider.json   # add to the repository as a deploy key
 n8n-cli promotion-environment create --file=promote.json
 n8n-cli promotion-environment create --file=apply.json
 
-# 3. Connect each environment before you use it.
-n8n-cli promotion-environment connect <promoteId>
-n8n-cli promotion-environment connect <applyId>
-
-# 4. Promote from this instance, or apply to it.
-n8n-cli promotion-environment promote <promoteId> -m "Promote team projects"
+# 3. Promote from this instance, or apply to it.
+n8n-cli promotion-environment promote <promoteId>
 n8n-cli promotion-environment apply <applyId>
+
+# A project that exists only in the Apply package must exist here before you
+# apply to it from its project. Create it empty, with the same ID:
+n8n-cli promotion-environment list-missing-projects <applyId>
+n8n-cli promotion-environment create-missing-projects <applyId>   # exits 1 if one fails
+```
+
+GitLab setup. A GitLab provider lists its repositories and branches, so read the
+remote URL and the branch names from it instead of guessing them:
+
+```bash
+# gitlab-provider.json:
+# {"name":"GitLab","type":"gitlab","config":{"schemaVersion":1,"baseUrl":"https://gitlab.example.com"},
+#  "auth":{"authType":"token","password":"<GitLab access token>"}}
+n8n-cli promotion-provider create --file=gitlab-provider.json --format=id-only   # providerId
+n8n-cli promotion-provider list-repositories <providerId> --search=flows --json  # remoteUrl, fullPath
+n8n-cli promotion-provider list-branches <providerId> <fullPath> --json          # isDefault marks the default branch
+# Put remoteUrl and a branch name in the environment JSON, then create the environment as above.
 ```
 
 Apply a reviewed commit only:
 
 ```bash
-# Review the changes. Take the commit SHA from the same response as the rows:
-# a second request can read a newer commit.
-n8n-cli promotion-environment list-changes <projectId> apply --sort=updatedAt --order=desc --json > reviewed-changes.json
-jq '{commitSha, changes}' reviewed-changes.json
-# The branch comes from the Apply environment.
-n8n-cli promotion-environment get <applyId> --jq '.settings.branchName'
+# Review the changes. The table lists each changed resource with its PROJECT. A team project
+# that the package does not hold is listed as deleted, with everything in it. Take the source,
+# the commit SHA and the revision from the same response as the rows: a second request can
+# read a newer commit.
+n8n-cli promotion-environment list-apply-changes <applyId> --json > reviewed-changes.json
+jq '{commitSha, source, revision}' reviewed-changes.json
 
 n8n-cli promotion-environment apply <applyId> \
-  --expected-environment-id=<applyId> --expected-branch=<branch> --expected-commit-sha=<full sha>
-# Exit 3: the source changed since the review. Review again.
-# Exit 4: preflight found missing bindings, access requirements, or conflicts. Resolve them,
+  --expected-environment-id=<source.environmentId> --expected-branch=<source.branchName> \
+  --expected-commit-sha=<commitSha> --expected-preview-revision=<revision>
+# Exit 3: the source or this instance changed since the review. Review again.
+# Exit 4: the Apply check found missing bindings, access requirements, or conflicts. Resolve them,
 # then run the apply-continue command that apply printed:
 n8n-cli promotion-environment apply-continue <applyId> \
   --expected-environment-id=<applyId> --expected-branch=<branch> --expected-commit-sha=<full sha>
+# Setting up bindings changes the preview. To continue only with a reviewed preview, run
+# list-apply-changes again and add --expected-preview-revision=<new revision>.
 # To also apply destructive data table changes and delete the team projects that the
-# package does not hold, add --confirm-destructive-changes.
+# package does not hold, add --confirm-destructive-changes. With --expected-preview-revision,
+# it covers only what that preview showed.
+```
+
+Promote or apply a selection of a project:
+
+```bash
+# The table lists each changed resource with its TYPE and ID. Select workflows with -w and
+# folders with --folder; the project is always included. A changed credential, data table,
+# variable, or tag can't be selected: select a workflow from its USEDBY column instead.
+n8n-cli promotion-environment list-changes <projectId> promote
+n8n-cli promotion-environment promote-selection <projectId> -w <workflowId> --folder <folderId>
+
+# Promote only the reviewed selection. Take the revision from the preview.
+n8n-cli promotion-environment list-changes <projectId> promote --json > preview.json
+n8n-cli promotion-environment promote-selection <projectId> -w <workflowId> \
+  --expected-preview-revision="$(jq -r .revision preview.json)"
+# Exit 3: the project or its branch changed since the review. Review again.
+
+# Apply only the reviewed selection. Take the source and the revision from the same preview.
+n8n-cli promotion-environment list-changes <projectId> apply --json > preview.json
+jq '{commitSha, source, revision}' preview.json
+n8n-cli promotion-environment apply-selection <projectId> -w <workflowId> \
+  --expected-environment-id=<source.environmentId> --expected-branch=<source.branchName> \
+  --expected-commit-sha=<commitSha> --expected-preview-revision=<revision>
+# Exit 3: the source or the preview changed since the review. Review again.
 ```
 
 Environment JSON for step 2 (`promote.json`; `apply.json` uses `"direction":"apply"`
@@ -258,6 +300,8 @@ n8n-cli promotion-provider list
 n8n-cli promotion-provider get <id>          # re-read the public key; the list omits it
 echo '{"name":"New name"}' | n8n-cli promotion-provider update <id> --stdin
 n8n-cli promotion-provider delete <id>       # fails while an environment uses it
+n8n-cli promotion-provider list-repositories <id> --search=<text> --limit=20   # GitLab only
+n8n-cli promotion-provider list-branches <id> <fullPath or repository id>      # GitLab only
 
 # Environments
 n8n-cli promotion-environment list --scope=instance --direction=promote
@@ -265,7 +309,8 @@ n8n-cli promotion-environment list --provider=<providerId>
 n8n-cli promotion-environment get <id>
 echo '{"name":"New name"}' | n8n-cli promotion-environment update <id> --stdin
 n8n-cli promotion-environment delete <id>
-n8n-cli promotion-environment disconnect <id>
+n8n-cli promotion-environment connect <id>      # optional: clone the branch now
+n8n-cli promotion-environment disconnect <id>   # remove the local checkout
 
 # Change the settings. The write replaces the whole settings object,
 # so send every setting you want to keep. Direction and scope cannot change.
@@ -281,21 +326,36 @@ n8n-cli promotion-environment remove-project <id> <projectId>
 Key points:
 - Pass every JSON body through `--stdin` or `--file`, never through a flag. This
   keeps credentials off the command line.
-- `authType` is `ssh-key` or `token`. `token` means an HTTP(S) username and
-  password, not a Git host API token. `publicKey` is `null` for a `token` provider.
+- `type` is `git` or `gitlab`. For `git`, `authType` is `ssh-key` or `token`, and
+  `token` means an HTTP(S) username and password. For `gitlab`, `authType` is
+  `token` only: `password` is the GitLab access token (`api` and
+  `write_repository`), `config.baseUrl` is required, and n8n ignores `username`.
+  `publicKey` is `null` for a `token` provider. The token user needs the
+  Developer role or higher to open merge requests. Protected branches can
+  require the Maintainer role to push, and to merge when a reviewer approves.
+- `list-repositories` and `list-branches` work for `gitlab` providers only. A `git`
+  provider fails with an error. Pass the repository as plain `fullPath`
+  (`acme/flows`), `id`, or an environment's `remote.repositoryPath`. Do not URL-encode it.
+  Read `remoteUrl`, `fullPath` and branch names from `--json` output: the table
+  shortens values longer than 60 characters to `...`.
 - `createBranchOnPromotion` is always required in promote settings.
 - `promote` and `apply` work on an `instance` environment of their direction
-  only, and need it connected first. Connecting one environment does not make another
-  ready.
+  only.
+- `connect` is optional. The other commands prepare the environment when they
+  need it. Do not run `connect` before each command.
 - A project can have one environment for each direction. A direction without a
   project environment uses the instance environment.
-- `apply` and `apply-continue` import nothing on exit code `3` (`source-changed`)
-  or `4` (`blocked`). Check `$?`, or the `status` field in JSON output, before you
+- `apply` and `apply-continue` import nothing on exit code `3` (`source-changed`
+  or `preview-changed`) or `4` (`blocked`). Check `$?`, or the `status` field in JSON output, before you
   read `counts`. With `--json`, a `blocked` result lists what is missing under
-  `preflight`.
-- The `--expected-*` flags go together: pass all three or none. The commit SHA
-  must be the full SHA.
-- API key scopes for this group are named `gitConnection:*`. `promote` also needs
+  `check`.
+- The `--expected-environment-id`, `--expected-branch`, and
+  `--expected-commit-sha` flags go together: pass all three or none. The commit
+  SHA must be the full SHA. `--expected-preview-revision` is separate. It works
+  with `promote-selection`, `apply`, `apply-continue`, `apply-selection`, and
+  `apply-selection-continue`. Take it from `list-apply-changes` for a whole-instance
+  Apply and from `list-changes <projectId> <promote|apply>` for a selection.
+- API key scopes for this group are named `promotions:*`. `promote` also needs
   `variable:list` when the workflows reference variables.
 
 ## Other

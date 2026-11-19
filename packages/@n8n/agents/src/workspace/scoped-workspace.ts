@@ -249,5 +249,6 @@ export function createScopedWorkspace(
 		sandbox: workspace.sandbox
 			? new ScopedSandbox(workspace.sandbox, root, env, ensureRoot)
 			: undefined,
+		prewarm: () => workspace.prewarm(),
 	});
 }

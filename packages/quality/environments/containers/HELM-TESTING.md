@@ -2,6 +2,27 @@
 
 Test n8n Helm chart deployments using K3s (lightweight Kubernetes) inside Docker, powered by `@testcontainers/k3s`.
 
+## Scope
+
+The chart lives in [`n8n-io/n8n-hosting`](https://github.com/n8n-io/n8n-hosting). Its CI and this stack test different things.
+
+| Check | Owner |
+|---|---|
+| Chart lint, unit tests, schema, and Kubernetes resource checks | Chart CI |
+| Every chart example installs on released n8n | Chart CI |
+| Chart upgrade from the previous major | Chart CI |
+| An unreleased n8n build works on the released chart | This stack |
+| n8n behaves correctly in the chart topology (worker, runner sidecar) | This stack |
+
+Do not add chart-only checks here. Add them to the chart CI.
+
+The stack reuses the chart CI inputs, so that the two do not drift:
+
+- **Values:** `charts/n8n/examples/<example>.yaml`, then the overlay `charts/n8n/ci/install/<example>.yaml`.
+- **Secrets and fixtures:** `charts/n8n/ci/prepare-cluster.sh` creates the Secrets and starts Postgres and Redis.
+
+The chart ref is pinned to a tag in `helm-stack.ts`. The stack needs chart 2.0 or later.
+
 ## Prerequisites
 
 ### Required
@@ -10,7 +31,7 @@ Test n8n Helm chart deployments using K3s (lightweight Kubernetes) inside Docker
 - **Privileged container support** — K3s runs as a privileged container
 - **helm** CLI — runs on your host machine ([install](https://helm.sh/docs/intro/install/))
 - **kubectl** CLI — runs on your host machine ([install](https://kubernetes.io/docs/tasks/tools/))
-- **n8n Docker image** — built locally (`pnpm build:docker`) or pulled from Docker Hub
+- **n8n and runner Docker images** — built locally (`pnpm build:docker`) or pulled from Docker Hub. The chart starts a runner sidecar by default. The runner image must have the same tag as the n8n image.
 
 ### Not Required
 
@@ -34,54 +55,58 @@ Test n8n Helm chart deployments using K3s (lightweight Kubernetes) inside Docker
 
 ```
 Host Machine (helm, kubectl)
-├── KUBECONFIG=/tmp/helm-kubeconfig-*.yaml
+├── KUBECONFIG=~/.kube/n8n-helm-<example>.yaml
 └── Docker
     └── K3s Container (privileged, NodePort 30080 → host random port)
         ├── containerd (K3s runtime)
-        │   └── n8n image (preloaded from host Docker)
+        │   └── n8n and runner images (preloaded from host Docker)
         └── Kubernetes control plane
-            ├── n8n Pod (Helm-deployed)
+            ├── n8n Pods (Helm-deployed, with the runner sidecar)
+            ├── Postgres and Redis (chart CI fixtures)
             └── Service (NodePort 30080 → Pod 5678)
 
 Playwright ──── http://localhost:<host-port> ──→ NodePort ──→ n8n Pod
 ```
 
-1. `@testcontainers/k3s` starts K3s inside a Docker container with NodePort 30080 exposed
-2. The n8n Docker image is exported from host Docker and imported into K3s's containerd
-3. Host `helm` installs the n8n chart using a kubeconfig pointing at the K3s API
-4. The n8n service is patched to NodePort, routing traffic through K3s's exposed port
-5. Playwright tests connect via `N8N_BASE_URL=http://localhost:<host-port>`
+1. The chart is downloaded at the pinned ref. An unknown example fails here.
+2. `@testcontainers/k3s` starts K3s inside a Docker container with NodePort 30080 exposed
+3. The n8n and runner images are pulled into K3s's containerd, or imported from host Docker
+4. The chart's `prepare-cluster.sh` creates the Secrets and starts the Postgres and Redis fixtures
+5. Host `helm` installs the chart with the example and its overlay
+6. The n8n service is patched to NodePort, routing traffic through K3s's exposed port
+7. Playwright tests connect via `N8N_BASE_URL=http://localhost:<host-port>`
 
 ## Local Usage
 
 ```bash
-# 1. Build the n8n Docker image (or use a Docker Hub image)
+# 1. Build the n8n and runner Docker images (or use Docker Hub images)
 pnpm build:docker
 
 # 2. Start the Helm stack (takes ~60-120s)
 cd packages/quality/environments/containers
-pnpm stack:helm
+pnpm stack:helm --env E2E_TESTS=true --env NODE_ENV=development
 
-# 3. In another terminal, use the printed KUBECONFIG for debugging
-export KUBECONFIG=/tmp/helm-kubeconfig-*.yaml
+# 3. In another terminal, debug with kubectl (the stack activates its context)
 kubectl get pods
-kubectl logs -l app.kubernetes.io/name=n8n
+kubectl logs -l app.kubernetes.io/name=n8n --all-containers
 
 # 4. Run tests
 N8N_BASE_URL=http://localhost:<port> RESET_E2E_DB=true \
-  npx playwright test tests/e2e/building-blocks/ --workers=1
+  pnpm --filter n8n-playwright exec playwright test --project=e2e tests/e2e/nodes/code-node-api.spec.ts --workers=1
 
 # 5. Cleanup
 pnpm stack:helm:clean
 ```
 
+The stack passes `N8N_LICENSE_ACTIVATION_KEY`, `N8N_LICENSE_TENANT_ID`, and `N8N_LICENSE_CERT` from the host environment to the n8n pods. An `--env` value overrides the host value.
+
 ### Test a Specific Version Matrix
 
 ```bash
-# Test n8n 1.80.0 against chart version v1.2.0
-pnpm stack:helm --image n8nio/n8n:1.80.0 --chart-ref v1.2.0
+# Test a published n8n version against the chart main branch
+pnpm stack:helm --image n8nio/n8n:nightly --chart-ref main
 
-# Test latest n8n against a chart PR branch
+# Test the local n8n image against a chart PR branch
 pnpm stack:helm --chart-ref fix/pvc-permissions
 
 # Test a GHCR image (e.g., from CI)
@@ -91,13 +116,14 @@ pnpm stack:helm --image ghcr.io/n8n-io/n8n:ci-12345
 ### CLI Options
 
 ```
---mode <mode>         standalone (SQLite, default) or queue (PostgreSQL + Redis + workers).
-                      Queue mode's Postgres chart and image are pinned in
-                      postgres-versions.json.
---image <image>       n8n Docker image (default: n8nio/n8n:local)
---chart-ref <ref>     Git branch/tag for n8n-hosting (default: main)
+--example <name>      Chart example to install (default: standalone). `minimal` is queue
+                      mode: PostgreSQL + Redis + one worker.
+--image <image>       n8n Docker image (default: n8nio/n8n:local). The runner image is the
+                      same name with `runners` as the last path segment.
+--chart-ref <ref>     Git branch/tag for n8n-hosting (default: the tag pinned in helm-stack.ts)
 --chart-repo <url>    Git repo URL (default: https://github.com/n8n-io/n8n-hosting.git)
 --k3s-image <image>   K3s image (default: rancher/k3s:v1.32.2-k3s1)
+--env <KEY=VALUE>     Set an environment variable in the n8n pods (repeatable)
 --url-file <path>     Write URL to file when ready (for CI automation)
 --help                Show help
 ```
@@ -106,12 +132,19 @@ pnpm stack:helm --image ghcr.io/n8n-io/n8n:ci-12345
 
 The `test-e2e-helm.yml` workflow handles everything:
 
-- **Trigger:** Push to `helm-container-test` branch, or manual dispatch
-- **Build:** Creates n8n Docker image, pushes to GHCR
-- **Test:** Starts K3s, installs Helm chart, runs building-blocks E2E tests
-- **Cleanup:** Removes ephemeral GHCR image
+- **Trigger:** Nightly, a pull request that changes the harness, or manual dispatch
+- **Build:** Creates the n8n and runner Docker images, pushes to GHCR
+- **Test:** For the `standalone` and `minimal` examples, starts K3s, installs the chart, and runs a Code node execution
+- **Cleanup:** Removes the ephemeral GHCR images
+- **Alert:** A nightly failure posts to Slack
 
-Manual dispatch also accepts `helm-chart-ref` to test a specific chart version.
+Manual dispatch accepts `branch` and `helm-chart-ref`. Use `branch` to test `3.x`.
+
+To add a profile, add the chart example name to the workflow matrix. The stack does not run the chart's `ci/install/<example>.pre.sh` hooks, so examples that have one are not supported.
+
+### Why a Code node execution
+
+The chart runs n8n with external task runners. In queue mode, the chart also sends manual executions to the worker, and only the worker pod has the runner sidecar. A Code node execution passes only when main, Redis, the worker, and the sidecar work together.
 
 ## Troubleshooting
 
@@ -135,7 +168,7 @@ If empty, run `pnpm build:docker` first.
 
 Use kubectl to inspect the cluster:
 ```bash
-export KUBECONFIG=/tmp/helm-kubeconfig-*.yaml
+export KUBECONFIG=~/.kube/n8n-helm-<example>.yaml
 kubectl get pods -o wide
 kubectl describe pod -l app.kubernetes.io/name=n8n
 kubectl get events --sort-by=.lastTimestamp
@@ -145,7 +178,7 @@ kubectl get events --sort-by=.lastTimestamp
 
 NodePort routing is stateless (kube-proxy), so connectivity issues typically indicate the pod is unhealthy. Check pod status:
 ```bash
-export KUBECONFIG=/tmp/helm-kubeconfig-*.yaml
+export KUBECONFIG=~/.kube/n8n-helm-<example>.yaml
 kubectl get pods -o wide
 kubectl describe pod -l app.kubernetes.io/name=n8n
 kubectl version --client

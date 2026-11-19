@@ -29,7 +29,7 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Re
 #     and with a read-only token, so this path skips fork heads.
 #     Comment-only reviews are skipped: they cannot change approvals, and
 #     review bots submit one after every push.
-#   - workflow_run of "CI: Pull Request Review" (completed): the fork
+#   - workflow_run of "Util: Notify PR Status" (completed): the fork
 #     counterpart of pull_request_review. That workflow runs on every review
 #     event; its completion arrives here in the base repository context. The
 #     PR is looked up from the triggering run's head. Same-repo heads skip
@@ -64,7 +64,7 @@ on:
   pull_request_review:
     types: [submitted, dismissed]
   workflow_run:
-    workflows: ['CI: Pull Request Review']
+    workflows: ['Util: Notify PR Status']
     types: [completed]
   merge_group:
   workflow_dispatch:

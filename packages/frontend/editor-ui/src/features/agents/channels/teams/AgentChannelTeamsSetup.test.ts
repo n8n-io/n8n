@@ -40,7 +40,9 @@ vi.mock('@n8n/composables/useToast', () => ({
 vi.mock('@/features/credentials/credentials.api');
 
 const confirm = vi.hoisted(() => vi.fn());
-vi.mock('@/app/composables/useMessage', () => ({ useMessage: () => ({ confirm }) }));
+vi.mock('../../composables/useAgentConfirmationModal', () => ({
+	useAgentConfirmationModal: () => ({ openAgentConfirmationModal: confirm }),
+}));
 
 vi.mock('./api', () => ({
 	checkTeamsCredential: vi.fn(),
@@ -438,6 +440,9 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(
 				getByText('agents.channels.teams.setup.availability.fileAccessPermission'),
 			).toBeVisible();
+			expect(
+				getByText('agents.channels.teams.setup.availability.fileAccessDelegated'),
+			).toBeVisible();
 			expect(queryByTestId('teams-file-access')).toBeNull();
 		});
 	});
@@ -461,11 +466,10 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(getByTestId('teams-download-package')).toBeDisabled();
 		});
 
-		it('stays locked while no credential is picked, and says why', async () => {
+		it('stays locked while no credential is picked', async () => {
 			const { getByTestId } = renderComponent({ props: props() });
 
 			await waitFor(() => expect(getByTestId('teams-download-package')).toBeDisabled());
-			expect(getByTestId('teams-package-blocked')).toBeVisible();
 		});
 
 		const connectAndFail = async () => {
@@ -578,9 +582,9 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(emitted()['update:modelValue']?.at(-1)).toEqual(['cred-1']);
 		});
 
-		it('keeps the credential of a connected channel when the restart is cancelled', async () => {
+		it.each(['cancel', 'close'])('keeps the connected credential on %s', async (result) => {
 			withBot();
-			confirm.mockResolvedValue('cancel');
+			confirm.mockResolvedValue(result);
 			// A listener makes the model controlled, as under v-model in the hosts.
 			const connected = {
 				savedCredentialId: 'cred-1',
@@ -1451,8 +1455,6 @@ describe('AgentChannelTeamsSetup', () => {
 			});
 
 			await waitFor(() => expect(getByTestId('teams-setup-load-failed')).toBeVisible());
-			// The credential is verified, so a hint pointing back at it would be wrong.
-			expect(queryByTestId('teams-package-blocked')).toBeNull();
 
 			await fireEvent.click(getByTestId('teams-setup-retry'));
 

@@ -2,6 +2,7 @@ import type {
 	AgentApproval,
 	AgentIntegrationConfig,
 	N8N_CHAT_INTEGRATION_TYPE,
+	RichCardComponentType,
 } from '@n8n/api-types';
 import type { z } from 'zod';
 
@@ -33,6 +34,9 @@ export type IntegrationMessageTarget =
  */
 export type ReplyExpectation = 'required' | 'optional';
 
+export const CONVERSATION_TOOL_NAMES = ['do_not_respond'] as const;
+export type ConversationToolName = (typeof CONVERSATION_TOOL_NAMES)[number];
+
 export interface TelegramMessageAttachmentContext {
 	type: 'image' | 'file' | 'video' | 'audio';
 	file_id: string;
@@ -61,6 +65,8 @@ export interface IntegrationMessageContext {
 	/** Inbound target whose automatic reply is controlled by `replyExpectation`. */
 	replyTarget?: IntegrationMessageTarget;
 	replyMessageId?: string;
+	/** Files that respond queued for the final reply of a run. */
+	queuedFiles?: { runId: string; fileIds: string[] };
 	updatedAt: string;
 }
 
@@ -109,7 +115,8 @@ export type IntegrationContextQuery =
 	| 'search_labels'
 	| 'search_issue_states'
 	| 'get_issue'
-	| 'search_issues';
+	| 'search_issues'
+	| 'list_templates';
 
 export type IntegrationAction =
 	| 'respond'
@@ -120,7 +127,8 @@ export type IntegrationAction =
 	| 'add_reaction'
 	| 'create_issue'
 	| 'update_issue'
-	| 'create_comment';
+	| 'create_comment'
+	| 'send_template';
 
 export interface IntegrationToolOperationDefinition<Name extends string = string> {
 	name: Name;
@@ -151,6 +159,9 @@ export interface IntegrationToolConnectionDescriptor {
 	actionToolDefinitions: IntegrationActionDefinition[];
 	contextToolGuidance?: string[];
 	actionToolGuidance?: string[];
+	supportedComponents?: readonly RichCardComponentType[];
+	/** Eager tools supported by this channel in the current conversation. */
+	conversationTools?: readonly ConversationToolName[];
 	/** Actions this channel gates behind human approval. Absent = none. */
 	approval?: AgentApproval;
 }
@@ -162,10 +173,28 @@ export interface IntegrationMessageContextStore {
 		resourceId: string,
 		context: IntegrationMessageContext,
 	): Promise<void>;
-	bindSession(derivedThreadId: string, origin: SessionBinding): Promise<void>;
+	/**
+	 * `recipientId` names the person or channel, so many threads of one recipient
+	 * count once. `outboundText` is the message the task sent to this recipient.
+	 */
+	bindSession(
+		derivedThreadId: string,
+		origin: SessionBinding,
+		options?: { recipientId?: string; outboundText?: string },
+	): Promise<void>;
 	resolveSession(derivedThreadId: string): Promise<SessionBinding | null>;
+	resolveSessionReplyScope(derivedThreadId: string): Promise<SessionReplyScope | null>;
+	/** Removes the task messages a turn carried, once it has accepted them. */
+	consumeOutboundMessages(derivedThreadId: string, carried: string[]): Promise<void>;
 	unbindSession(derivedThreadId: string): Promise<void>;
 	clearSessionBindings(originThreadId: string): Promise<void>;
+	/** Remembers which session sent a message, so a later delivery failure reaches that session. */
+	recordSentMessage(
+		derivedThreadId: string,
+		messageId: string,
+		origin: SessionBinding,
+	): Promise<void>;
+	resolveSentMessage(derivedThreadId: string, messageId: string): Promise<SessionBinding | null>;
 }
 
 export interface SessionBinding {
@@ -173,7 +202,17 @@ export interface SessionBinding {
 	resourceId: string;
 }
 
+/** What a reply on a task-bound thread may see of the task's session. */
+export interface SessionReplyScope {
+	binding: SessionBinding;
+	/** True when the task also messaged other recipients. */
+	sharedWithOtherRecipients: boolean;
+	/** Messages the task sent to this recipient, oldest first. */
+	outboundMessages: string[];
+}
+
 export interface IntegrationContextQueryParams {
+	abortSignal?: AbortSignal;
 	descriptor: IntegrationToolConnectionDescriptor;
 	query: IntegrationContextQuery;
 	input: Record<string, unknown>;
@@ -192,10 +231,21 @@ export interface IntegrationActionParams {
 	runId?: string;
 	toolCallId?: string;
 	currentMessageContext?: IntegrationMessageContext;
+	/** Memory scope of the run. It shows what started the run. */
+	resourceId?: string;
+	/** Read scope for `input.fileIds`. Undefined when the run has no thread. */
+	fileScope?: { projectId: string; threadId: string };
 }
+
+export type IntegrationRecipientCheckParams = Pick<
+	IntegrationActionParams,
+	'descriptor' | 'action' | 'input' | 'resourceId' | 'currentMessageContext'
+>;
 
 export interface IntegrationActionExecutor {
 	execute(params: IntegrationActionParams): Promise<IntegrationActionResult>;
+	/** Returns the reason when the integration refuses the recipient, or undefined to allow it. */
+	checkRecipient?(params: IntegrationRecipientCheckParams): string | undefined;
 }
 
 export type IntegrationActionResult =

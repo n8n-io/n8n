@@ -23,10 +23,13 @@ import { z } from 'zod';
 import { isTriggerNodeType } from './workflow-json-utils';
 import { AGENT_TOOL_NODE_TYPE, createVerificationGraph } from './verification-graph';
 import type { Logger } from '../../logger';
-import type { ModelConfig } from '../../types';
-import { HAIKU_MODEL } from '../../utils/eval-agents';
+import type { AnthropicThinkingEffort, FetchFn } from '@n8n/agents';
+
+import type { HelperUsageHook, ModelConfig } from '../../types';
 import { generateValidatedJson } from '../../utils/generate-validated-json';
 import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';
+
+export const DESTRUCTIVENESS_CLASSIFIER_EFFORT: AnthropicThinkingEffort = 'low';
 
 type WorkflowNode = WorkflowJSON['nodes'][number];
 
@@ -36,8 +39,14 @@ export interface ClassifyNodesForSimulationInput {
 	mockedNodeNames?: string[];
 	/** Classify only these names. Keep the full graph for tool discovery. */
 	nodeNames?: ReadonlySet<string>;
-	/** Host-resolved model used when no eval model API key is configured in the environment. */
-	fallbackModelConfig?: ModelConfig;
+	/** Host-resolved main model for the run. */
+	model?: ModelConfig;
+	/** Host-resolved utility model. The classifier prefers it over `model`. */
+	utilityModel?: ModelConfig;
+	/** Transport for the helper's model call. */
+	modelFetch?: FetchFn;
+	/** Receives the helper call's token usage so the host can bill it. */
+	onHelperUsage?: HelperUsageHook;
 	logger?: Logger;
 }
 
@@ -114,19 +123,6 @@ const CODE_NODE_TYPES = new Set([
 
 const FORM_NODE_TYPE = 'n8n-nodes-base.form';
 const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
-
-/**
- * A real wait this short is harmless during verification and — unlike a
- * simulated one — preserves pass-through data for downstream expressions.
- */
-const MAX_EXECUTABLE_WAIT_SECONDS = 60;
-
-const WAIT_UNIT_SECONDS: Record<string, number> = {
-	seconds: 1,
-	minutes: 60,
-	hours: 3600,
-	days: 86_400,
-};
 
 const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 
@@ -256,27 +252,21 @@ function deterministicVerdict(
 	}
 
 	if (nodeType === WAIT_NODE_TYPE) {
-		// Wait node defaults: resume='timeInterval', amount=1, unit='hours'.
+		// Wait node defaults: resume='timeInterval'. A verification run removes the
+		// delay of time-based waits, so they run for real and keep pass-through data.
 		const params = isRecord(node.parameters) ? node.parameters : {};
 		const resume = typeof params.resume === 'string' ? params.resume : 'timeInterval';
-		if (resume === 'timeInterval') {
-			const amount = typeof params.amount === 'number' ? params.amount : 1;
-			const unit = typeof params.unit === 'string' ? params.unit : 'hours';
-			const seconds = amount * (WAIT_UNIT_SECONDS[unit] ?? 3600);
-			if (seconds <= MAX_EXECUTABLE_WAIT_SECONDS) {
-				return deterministic(
-					node.name,
-					'execute',
-					`Short wait (${seconds}s) — runs for real to preserve pass-through data`,
-				);
-			}
+		if (resume === 'timeInterval' || resume === 'specificTime') {
+			return deterministic(
+				node.name,
+				'execute',
+				'Time-based wait — verification runs it without the delay',
+			);
 		}
 		return deterministic(
 			node.name,
 			'simulate',
-			resume === 'timeInterval' || resume === 'specificTime'
-				? 'Pauses the workflow for longer than verification can wait'
-				: 'Pauses the workflow until a user or external system resumes it',
+			'Pauses the workflow until a user or external system resumes it',
 		);
 	}
 
@@ -356,8 +346,10 @@ function formatNodeBlock(node: WorkflowNode & { name: string }): string {
 
 async function classifyAmbiguousNodes(
 	nodes: Array<WorkflowNode & { name: string }>,
-	fallbackModelConfig?: ModelConfig,
+	model?: ModelConfig,
 	logger?: Logger,
+	modelFetch?: FetchFn,
+	onHelperUsage?: HelperUsageHook,
 ): Promise<NodeSimulationVerdict[]> {
 	const userText = [
 		'Classify the following n8n workflow nodes.',
@@ -368,11 +360,13 @@ async function classifyAmbiguousNodes(
 	].join('\n');
 
 	const result = await generateValidatedJson('verification-destructiveness-classifier', {
-		model: HAIKU_MODEL,
+		model,
+		effort: DESTRUCTIVENESS_CLASSIFIER_EFFORT,
 		instructions: SYSTEM_INSTRUCTIONS,
 		userText,
 		schema: LlmVerdictSchema,
-		fallbackModelConfig,
+		modelFetch,
+		onHelperUsage,
 	});
 	if (!result.ok) {
 		logger?.warn(
@@ -439,8 +433,10 @@ export async function classifyNodesForSimulation(
 		try {
 			for (const verdict of await classifyAmbiguousNodes(
 				ambiguous,
-				input.fallbackModelConfig,
+				input.utilityModel ?? input.model,
 				input.logger,
+				input.modelFetch,
+				input.onHelperUsage,
 			)) {
 				verdictByName.set(verdict.nodeName, verdict);
 			}

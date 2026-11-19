@@ -2,10 +2,10 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@n8n/backend-services';
-import type { Telemetry } from '@/telemetry';
+import type { EventService, TelemetryProxy } from '@n8n/backend-services';
 
 import { AgentModificationTelemetryService } from '@/modules/agents/agent-modification-telemetry.service';
 import { Agent } from '@/modules/agents/entities/agent.entity';
@@ -31,9 +31,13 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 		by: 'builder',
 		changedParts: ['instructions'],
 	} satisfies Parameters<AgentModificationTelemetryService['record']>[0];
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const activity = mock<EventService>();
-	const service = new AgentModificationTelemetryService(telemetry, activity);
+	const service = new AgentModificationTelemetryService(
+		telemetry,
+		mock<InstanceSettings>(),
+		activity,
+	);
 
 	beforeEach(() => vi.clearAllMocks());
 
@@ -66,18 +70,26 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 		},
 	);
 
-	it('does not count renaming an empty agent shell', () => {
-		const emptyConfig = { name: 'New name', model: '', instructions: '' } satisfies AgentJsonConfig;
-		service.record({
-			...event,
-			agent: Object.assign(new Agent(), { schema: emptyConfig, integrations: [] }),
-			config: emptyConfig,
-			changedParts: ['name'],
-		});
+	it.each(['name', 'description'] as const)(
+		'does not count a %s change to an empty agent shell',
+		(part) => {
+			const emptyConfig = {
+				name: 'New name',
+				description: 'Answers billing questions',
+				model: '',
+				instructions: '',
+			} satisfies AgentJsonConfig;
+			service.record({
+				...event,
+				agent: Object.assign(new Agent(), { schema: emptyConfig, integrations: [] }),
+				config: emptyConfig,
+				changedParts: [part],
+			});
 
-		expect(activity.emit).not.toHaveBeenCalled();
-		expect(telemetry.track).toHaveBeenCalledOnce();
-	});
+			expect(activity.emit).not.toHaveBeenCalled();
+			expect(telemetry.track).toHaveBeenCalledOnce();
+		},
+	);
 
 	it('does not count creating an empty agent shell', () => {
 		const emptyConfig = {

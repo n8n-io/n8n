@@ -1,11 +1,12 @@
+import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
+import { TransactionRunner } from '@n8n/db';
 import type { EventService } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 import type { ToolDescriptor } from '@n8n/agents';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
-import { UserError } from 'n8n-workflow';
 
-import { ConflictError, NotFoundError } from '@n8n/errors';
+import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentSaveCompletionService } from '../agent-save-completion.service';
@@ -72,6 +73,8 @@ function makeService() {
 			modificationTelemetry,
 		),
 		createAgentSkillRefsService(),
+		mock<AgentDefinitionService>(),
+		historyTransactionRunner(),
 	);
 
 	return {
@@ -111,7 +114,9 @@ describe('AgentCustomToolsService', () => {
 		expect(agent.tools[result.id]).toEqual({ code: 'return 1;', descriptor });
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
-		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {});
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined, {
+			allowArchivedUpdate: false,
+		});
 	});
 
 	it('keeps save effects silent when a custom tool loses the revision fence', async () => {
@@ -207,7 +212,9 @@ describe('AgentCustomToolsService', () => {
 		]);
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
-		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {});
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined, {
+			allowArchivedUpdate: false,
+		});
 	});
 
 	it('snapshots only configured custom tools', () => {
@@ -275,3 +282,9 @@ describe('AgentCustomToolsService', () => {
 		);
 	});
 });
+
+function historyTransactionRunner() {
+	const runner = mock<TransactionRunner>();
+	runner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+	return runner;
+}

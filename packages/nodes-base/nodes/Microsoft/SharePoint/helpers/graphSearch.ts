@@ -1,4 +1,9 @@
-import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
+import type {
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodeListSearchResult,
+	RequestPath,
+} from 'n8n-workflow';
 
 import { type GraphSearchReply } from './utils';
 import { microsoftApiRequest } from '../transport';
@@ -8,7 +13,7 @@ export const SEARCH_PAGE_LIMIT = 10;
 
 export type CollectionSearchOptions<T> = {
 	/** First-page resource path; ignored once `paginationToken` is set. */
-	endpoint: string;
+	endpoint: RequestPath;
 	qs: IDataObject;
 	toResult: (item: T) => { name: string; value: string } | null;
 	filter?: string;
@@ -35,7 +40,7 @@ export async function searchGraphCollection<T>(
 			? ((await microsoftApiRequest.call(
 					this,
 					'GET',
-					'',
+					options.endpoint,
 					{},
 					{},
 					nextToken,
@@ -73,7 +78,7 @@ export async function searchDriveItems(
 	this: ILoadOptionsFunctions,
 	options: {
 		/** First-page resource path; ignored once `paginationToken` is set. */
-		endpoint: string;
+		endpoint: RequestPath;
 		qs: IDataObject;
 		keep: (item: DriveItem) => boolean;
 		filter?: string;

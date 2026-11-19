@@ -27,12 +27,12 @@ export class MicrosoftOutlookTrigger implements INodeType {
 		},
 		builderHint: {
 			searchHint:
-				'When downstream nodes create records (tasks, rows, tickets) per email, guarantee each email is processed exactly once: filter to unread AND mark each email read or move it to a folder after its record is created, or track handled message ids in a Data Table. Otherwise the same email can be reprocessed into duplicates.',
+				'When downstream nodes create records (tasks, rows, tickets) per email, make sure each email creates its record once. Poll cursors are best-effort, so the same email can arrive again. Either filter to unread AND mark each email read; or move it out of the watched folder, which works only when Folders to Include limits the trigger to that folder; or track handled message ids in a Data Table: look the id up before creating the record, skip ids already seen, and insert the id after the record is created. An unread filter alone is not enough: if no step marks the email read, it excludes nothing. Wire the mark-as-handled step after the record-creating node, so a failed run never consumes an email without its record.',
 			relatedNodes: [
 				{
 					nodeType: 'n8n-nodes-base.microsoftOutlook',
 					relationHint:
-						'Mark polled emails as handled after processing (message update with isRead: true, or message move to a folder) so they are not picked up again',
+						'Mark polled emails as handled after processing (message update with isRead: true, or message move to a folder when Folders to Include limits the trigger) so they are not picked up again',
 				},
 				{
 					nodeType: 'n8n-nodes-base.dataTable',
@@ -43,7 +43,7 @@ export class MicrosoftOutlookTrigger implements INodeType {
 				{
 					content: `<patterns>
 <pattern title="Do not reprocess the same email">
-When this trigger feeds an action that creates records (tasks, rows, tickets, messages), ensure each email is handled once: filter to unread emails AND add an Outlook step that marks each email handled — message \`update\` with \`isRead: true\`, or message \`move\` to a processed folder — or record handled message ids in a Data Table — look the id up before creating the record, skip ids already seen, insert it after the create succeeds. The unread filter alone changes nothing if no step ever marks the email read. Wire the mark-as-handled step AFTER the record-creating node, so a mid-run failure cannot consume an email without producing its record.
+When this trigger feeds an action that creates records (tasks, rows, tickets, messages), ensure each email is handled once: filter to unread emails AND add an Outlook step that marks each email handled — message \`update\` with \`isRead: true\`, or message \`move\` to a processed folder, which works only when Folders to Include limits the trigger to the watched folder — or record handled message ids in a Data Table — look the id up before creating the record, skip ids already seen, insert it after the create succeeds. The unread filter alone changes nothing if no step ever marks the email read. Wire the mark-as-handled step AFTER the record-creating node, so a mid-run failure cannot consume an email without producing its record.
 </pattern>
 </patterns>`,
 				},

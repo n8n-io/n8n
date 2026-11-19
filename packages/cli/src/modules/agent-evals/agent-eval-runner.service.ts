@@ -27,7 +27,7 @@ import { License } from '@/license';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { DataTableService } from '@n8n/backend-module-data-table';
 import { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 

@@ -3,16 +3,14 @@ import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { CredentialsEntity } from '@n8n/db';
-import { ShutdownMetadata } from '@n8n/decorators';
+import { LOWEST_SHUTDOWN_PRIORITY, ShutdownMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { StateAdapter } from 'chat';
 
-import { LOWEST_SHUTDOWN_PRIORITY } from '@/constants';
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { UrlService } from '@n8n/backend-services';
+import type { UrlService, Publisher } from '@n8n/backend-services';
 
 import { AgentChangePublisher } from '../../agent-change-publisher.service';
 import { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
@@ -133,7 +131,7 @@ function mockProjectCredential(
 ) {
 	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([cred]);
 	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
-	credentialsService.decrypt.mockResolvedValue({});
+	credentialsService.decryptForUse.mockResolvedValue({});
 }
 
 function buildServiceWith(
@@ -225,6 +223,14 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 		const agent = makeAgent({ activeVersionId: null });
 
 		await service.syncToConfig(agent, [], [slackIntegration]);
+
+		expect(connectSpy).not.toHaveBeenCalled();
+	});
+
+	it('does not connect a draft channel on a published agent', async () => {
+		const agent = makeAgent({ activeVersionId: 'published-version-1' });
+
+		await service.syncToConfig(agent, [], [{ type: 'slack', credentialId: '' }]);
 
 		expect(connectSpy).not.toHaveBeenCalled();
 	});
@@ -462,11 +468,49 @@ describe('ChatIntegrationService', () => {
 				);
 
 				expect(credentialsService.findAllCredentialIdsForProject).toHaveBeenCalledWith('project-1');
-				expect(credentialsService.decrypt).toHaveBeenCalledWith(cred, true);
+				expect(credentialsService.decryptForUse).toHaveBeenCalledWith(
+					cred,
+					{ kind: 'system', reason: 'integration' },
+					'project-1',
+				);
 			} finally {
 				loadMemoryStateSpy.mockRestore();
 				loadChatSdkSpy.mockRestore();
 			}
+		});
+
+		it.each(['project', 'global'])('checks %s credentials before channel setup', async (scope) => {
+			const integration = new FakeIntegration('slack', false);
+			const createAdapter = vi.spyOn(integration, 'createAdapter');
+			const onBeforeConnect = vi.fn();
+			Object.assign(integration, { onBeforeConnect });
+			const registry = new ChatIntegrationRegistry();
+			registry.register(integration);
+			const credential = mock<CredentialsEntity>({ id: 'cred-1', type: 'slackApi' });
+			const credentialsService = mock<CredentialsService>();
+			credentialsService.findAllCredentialIdsForProject.mockResolvedValue(
+				scope === 'project' ? [credential] : [],
+			);
+			credentialsService.findAllGlobalCredentialIds.mockResolvedValue(
+				scope === 'global' ? [credential] : [],
+			);
+			const refusal = new Error('Credential type is not available');
+			credentialsService.decryptForUse.mockRejectedValue(refusal);
+			const { service } = buildServiceWith({ registry, credentialsService });
+
+			await expect(
+				service.validateBeforeConnect('agent-1', slackIntegration, 'project-1'),
+			).rejects.toBe(refusal);
+			await expect(service.connect('agent-1', slackIntegration, 'project-1')).rejects.toBe(refusal);
+
+			expect(credentialsService.decryptForUse).toHaveBeenCalledWith(
+				credential,
+				{ kind: 'system', reason: 'integration' },
+				'project-1',
+			);
+			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+			expect(onBeforeConnect).not.toHaveBeenCalled();
+			expect(createAdapter).not.toHaveBeenCalled();
 		});
 
 		it('fails to connect when the credential is not accessible to the project', async () => {
@@ -576,7 +620,7 @@ describe('ChatIntegrationService', () => {
 			await expect(service.connect('agent-1', slackIntegration, 'project-1')).rejects.toThrow(
 				'shutting down',
 			);
-			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+			expect(credentialsService.decryptForUse).not.toHaveBeenCalled();
 			expect(service.getChatInstance('agent-1', slackIntegration)).toBeUndefined();
 		});
 
@@ -786,7 +830,7 @@ describe('ChatIntegrationService — outbound Preview connections', () => {
 			service.getChatInstanceForTools('agent-1', slackIntegration),
 		).resolves.toBeUndefined();
 
-		expect(credentialsService.decrypt).not.toHaveBeenCalled();
+		expect(credentialsService.decryptForUse).not.toHaveBeenCalled();
 	});
 
 	it('disposes a stale outbound connection when the agent is published', async () => {
@@ -1000,7 +1044,7 @@ describe('ChatIntegrationService — outbound Preview connections', () => {
 			service.getChatInstanceForTools('agent-1', telegramIntegration),
 		).resolves.toBeUndefined();
 
-		expect(credentialsService.decrypt).not.toHaveBeenCalled();
+		expect(credentialsService.decryptForUse).not.toHaveBeenCalled();
 	});
 
 	it('does not create an outbound fallback on a follower for a published webhook channel', async () => {
@@ -1023,7 +1067,7 @@ describe('ChatIntegrationService — outbound Preview connections', () => {
 			service.getChatInstanceForTools('agent-1', slackIntegration),
 		).resolves.toBeUndefined();
 
-		expect(credentialsService.decrypt).not.toHaveBeenCalled();
+		expect(credentialsService.decryptForUse).not.toHaveBeenCalled();
 	});
 });
 

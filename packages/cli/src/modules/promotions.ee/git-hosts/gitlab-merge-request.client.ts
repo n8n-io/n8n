@@ -67,6 +67,7 @@ type ApiRequest = {
 	path: string;
 	qs?: IDataObject;
 	body?: IDataObject;
+	timeoutMs?: number;
 };
 
 /** Stores one merge request as `<projectId>!<iid>`. The id stays valid after a rename. */
@@ -81,7 +82,13 @@ export const parseGitLabReviewId = (remoteReviewId: string): MergeRequestRef => 
 	return { projectId: Number(groups.projectId), iid: Number(groups.iid) };
 };
 
-/** Opens and reads GitLab merge requests. GitLab records each write as the token's bot user. */
+/**
+ * The ref that holds the merge request head. It outlives the source branch, but GitLab deletes it
+ * 14 days after the merge request closes or merges.
+ */
+export const gitLabReviewHeadRef = ({ iid }: MergeRequestRef) => `refs/merge-requests/${iid}/head`;
+
+/** Opens, reads, and merges GitLab merge requests. GitLab records each write as the token's user. */
 @Service()
 export class GitLabMergeRequestClient {
 	private readonly http: HttpRequestClient;
@@ -117,12 +124,45 @@ export class GitLabMergeRequestClient {
 	async getMergeRequest(
 		access: GitHostAccess,
 		{ projectId, iid }: MergeRequestRef,
+		{ timeoutMs }: { timeoutMs?: number } = {},
 	): Promise<GitLabMergeRequest> {
 		const { body } = await this.request(access, {
 			method: 'GET',
 			path: `projects/${projectId}/merge_requests/${iid}`,
+			timeoutMs,
 		});
 		return this.parse(body);
+	}
+
+	/** GitLab answers 409 when the head is no longer `sha`. */
+	async approve(access: GitHostAccess, { projectId, iid }: MergeRequestRef, sha: string) {
+		await this.request(access, {
+			method: 'POST',
+			path: `projects/${projectId}/merge_requests/${iid}/approve`,
+			body: { sha },
+		});
+	}
+
+	/** Merges only the head `sha`, then deletes the source branch. */
+	async merge(
+		access: GitHostAccess,
+		{ projectId, iid }: MergeRequestRef,
+		sha: string,
+	): Promise<GitLabMergeRequest> {
+		const { body } = await this.request(access, {
+			method: 'PUT',
+			path: `projects/${projectId}/merge_requests/${iid}/merge`,
+			body: { sha, should_remove_source_branch: true },
+		});
+		return this.parse(body);
+	}
+
+	async createNote(access: GitHostAccess, { projectId, iid }: MergeRequestRef, body: string) {
+		await this.request(access, {
+			method: 'POST',
+			path: `projects/${projectId}/merge_requests/${iid}/notes`,
+			body: { body },
+		});
 	}
 
 	private parse(body: unknown): GitLabMergeRequest {
@@ -136,7 +176,7 @@ export class GitLabMergeRequestClient {
 
 	private async request(
 		access: GitHostAccess,
-		{ method, path, qs, body }: ApiRequest,
+		{ method, path, qs, body, timeoutMs }: ApiRequest,
 	): Promise<TypedHttpFullResponse<unknown>> {
 		let response: TypedHttpFullResponse<unknown>;
 		try {
@@ -150,7 +190,7 @@ export class GitLabMergeRequestClient {
 				body,
 				headers: { 'PRIVATE-TOKEN': access.accessToken },
 				json: true,
-				timeout: requestTimeoutMs,
+				timeout: timeoutMs ?? requestTimeoutMs,
 				maxResponseBodyBytes,
 				returnFullResponse: true,
 				ignoreHttpStatusErrors: true,
@@ -213,27 +253,31 @@ export class GitLabMergeRequestClient {
 			path,
 			status: response.statusCode,
 		});
-		throw statusError(response.statusCode, response.body);
+		throw statusError(response.statusCode, response.body, path);
 	}
 }
 
-function statusError(status: number, body: unknown) {
+function statusError(status: number, body: unknown, path: string) {
 	if (status >= 300 && status < 400) {
 		return new BadRequestError('GitLab redirected the request. Use the final GitLab URL.');
 	}
 	// A GitLab 401 or 403 stays a 400, so it does not look like an n8n session failure.
-	if (status === 401) {
+	if (status === 401 || status === 403) {
+		// Protected branches allow only Maintainers to merge by default.
 		return new BadRequestError(
-			'GitLab rejected the access token for this action. The token needs the api scope and the Developer role or higher.',
-		);
-	}
-	if (status === 403) {
-		return new BadRequestError(
-			'The access token may not perform this merge request action. Check the token scopes and role.',
+			path.endsWith('/merge')
+				? 'The access token may not merge this merge request. The token needs the `api` scope and the Maintainer role or higher.'
+				: 'The access token may not perform this merge request action. The token needs the `api` scope and the Developer role or higher.',
 		);
 	}
 	if (status === 404) {
 		return new NotFoundError('GitLab could not find the project or merge request.');
+	}
+	// The merge call answers 405 when GitLab cannot merge now. The body gives no reason.
+	if (status === 405) {
+		return new BadRequestError(
+			"GitLab can't merge this merge request now. Check its merge checks on GitLab, such as a required pipeline.",
+		);
 	}
 	if (status === 408) {
 		return new ServiceUnavailableError(

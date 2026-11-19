@@ -6,6 +6,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { ResponseError } from '@n8n/rest-api-client';
+import { SKILLS_SORT_OPTIONS } from '@n8n/api-types';
 
 import type { Preference } from './context.types';
 import {
@@ -17,6 +18,8 @@ import {
 	preferenceWriteRejectionReason,
 	toPreferencePermissions,
 	toPreferenceSortOption,
+	toSortOption,
+	keepSortOnClear,
 } from './context.utils';
 
 function preference(overrides: Partial<Preference> = {}): Preference {
@@ -152,6 +155,38 @@ describe('context.utils', () => {
 
 		it('falls back to the last updated rows first when the table has no sort', () => {
 			expect(toPreferenceSortOption([])).toBe('updatedAt:desc');
+		});
+	});
+
+	describe('toSortOption', () => {
+		it.each([
+			[{ id: 'name', desc: false }, 'name:asc'],
+			[{ id: 'name', desc: true }, 'name:desc'],
+			[{ id: 'updatedAt', desc: false }, 'updatedAt:asc'],
+		])('maps %o to %s for the skills list', (sort, option) => {
+			expect(toSortOption([sort], SKILLS_SORT_OPTIONS)).toBe(option);
+		});
+
+		it('drops a column that the endpoint cannot sort', () => {
+			expect(toSortOption([{ id: 'scope', desc: false }], SKILLS_SORT_OPTIONS)).toBeUndefined();
+		});
+	});
+
+	describe('keepSortOnClear', () => {
+		const byName = [{ id: 'name', desc: false }];
+
+		it('keeps a new sort on another column', () => {
+			const byUpdate = [{ id: 'updatedAt', desc: false }];
+
+			expect(keepSortOnClear(byName, byUpdate)).toEqual(byUpdate);
+		});
+
+		it('turns the order around instead of clearing it', () => {
+			expect(keepSortOnClear(byName, [])).toEqual([{ id: 'name', desc: true }]);
+		});
+
+		it('stays unsorted when nothing was sorted', () => {
+			expect(keepSortOnClear([], [])).toEqual([]);
 		});
 	});
 

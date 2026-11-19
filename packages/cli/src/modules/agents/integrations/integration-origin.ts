@@ -34,6 +34,38 @@ export async function buildIntegrationOrigin(
 	return undefined;
 }
 
+/**
+ * Looks up the display names of an enqueued message origin and saves the merged
+ * origin. It runs after enqueue, so a slow lookup never delays the turn. A failed
+ * lookup or save is logged. It never throws.
+ */
+export async function recordIntegrationOriginNames(
+	integration: AgentChatIntegration,
+	input: OriginInput,
+	origin: AgentMessageIntegrationOrigin,
+	save: (origin: AgentMessageIntegrationOrigin) => Promise<void>,
+	logger: Logger,
+): Promise<void> {
+	if (!integration.fetchOriginNames) return;
+	try {
+		const names = await integration.fetchOriginNames(input, origin);
+		if (!names) return;
+		const parsed = AgentMessageIntegrationOriginSchema.safeParse({ ...origin, ...names });
+		if (!parsed.success) {
+			logger.debug('[AgentChatBridge] Dropped invalid integration origin names', {
+				type: origin.type,
+			});
+			return;
+		}
+		await save(parsed.data);
+	} catch (error) {
+		logger.debug('[AgentChatBridge] Failed to record integration origin names', {
+			type: origin.type,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+}
+
 function decodeThread(thread: Thread<unknown, unknown>): DecodedThread | undefined {
 	const decoded: unknown = thread.adapter.decodeThreadId(thread.id);
 	return isRecord(decoded) ? decoded : undefined;

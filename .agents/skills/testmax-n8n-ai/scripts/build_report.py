@@ -113,6 +113,11 @@ def read_jsonl(path):
 
 
 def run_seconds(meta):
+	# A CLI run also spends time on container start-up, the prompt paste wait and shutdown.
+	if 'turnStartedAt' in meta or 'turnFinishedAt' in meta:
+		if meta.get('turnStartedAt') and meta.get('turnFinishedAt'):
+			return ts(meta['turnFinishedAt']) - ts(meta['turnStartedAt'])
+		return None
 	return ts(meta['finishedAt']) - ts(meta['startedAt']) if meta.get('finishedAt') and meta.get('startedAt') else None
 
 
@@ -1381,6 +1386,8 @@ def render_row_cells(name, meta, data, result):
 	out = sum(c['out'] for c in calls)
 	cells = [
 		f'<span class="run-name">{esc(run_title(name, meta))}</span>', esc(data.get('model') or '-'),
+		(f'<span title="{esc("Source: " + meta["effortSource"])}">{esc(meta["effort"])}</span>'
+		 if meta.get('effort') and meta.get('effortSource') else esc(meta.get('effort') or '-')),
 		result, data['duration'], str(len(calls)),
 		f'{len(tools)}' + (f' <span class="err">({errors} err)</span>' if errors else ''),
 		kilo(prompt), f'{100 * cached / prompt:.0f}%' if prompt else '-', kilo(out), cost,
@@ -1628,7 +1635,7 @@ def render_brief(prompt, expected):
 	)
 
 
-THEAD = ('<tr><th>Run</th><th>Model</th><th>Result</th><th>Active time</th><th>LLM calls</th><th>Tool calls</th>'
+THEAD = ('<tr><th>Run</th><th>Model</th><th>Effort</th><th>Result</th><th>Active time</th><th>LLM calls</th><th>Tool calls</th>'
          '<th>Input tokens</th><th>Cached</th><th>Output tokens</th><th>Cost</th></tr>')
 
 

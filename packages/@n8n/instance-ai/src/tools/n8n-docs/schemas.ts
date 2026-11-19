@@ -53,7 +53,7 @@ const lookupAction = z.object({
 	action: z
 		.literal('lookup')
 		.describe(
-			'Search the n8n docs registry, read the best matching markdown pages, and return source material. When answering from returned documents, end with Source or Sources using the returned page titles and URLs.',
+			'Search the n8n docs registry, read the best matching markdown pages, and return source material.',
 		),
 	...sharedLookupFields,
 	oauthRedirectUrl: z
@@ -87,11 +87,7 @@ const searchAction = z.object({
 });
 
 const readAction = z.object({
-	action: z
-		.literal('read')
-		.describe(
-			'Read one n8n docs markdown page from the registry. When answering from the returned document, end with Source using the returned page title and URL.',
-		),
+	action: z.literal('read').describe('Read one n8n docs markdown page from the registry.'),
 	url: z.string().url().describe('n8n docs page URL. Must resolve to a docs registry entry.'),
 	maxContentLength: maxContentLengthField,
 });

@@ -3,13 +3,8 @@ import type { JSONSchema7 } from 'json-schema';
 import { createHash } from 'node:crypto';
 
 import type { McpCallToolResult, McpConnection } from './mcp-connection';
-import {
-	hasMcpMediaContent,
-	mcpContentToMessageParts,
-	mcpContentToModelParts,
-} from './mcp-content';
+import { hasMcpMediaContent, mcpContentToModelParts } from './mcp-content';
 import { sanitizeToolName } from '../../sdk/tool';
-import type { AgentMessage } from '../../types/sdk/message';
 import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../../types/sdk/tool';
 
 const MAX_TOOL_NAME_LENGTH = 64;
@@ -46,9 +41,6 @@ export class McpToolResolver {
 			});
 		};
 
-		const toMessage = (output: unknown): AgentMessage | undefined => {
-			return buildRichMessage(output as McpCallToolResult);
-		};
 		const toModelOutput = (output: unknown): unknown => {
 			return buildModelOutput(output as McpCallToolResult);
 		};
@@ -58,7 +50,6 @@ export class McpToolResolver {
 			description: tool.description ?? '',
 			inputSchema: tool.inputSchema as JSONSchema7,
 			handler,
-			toMessage,
 			toModelOutput,
 			outputTrust: 'untrusted',
 			mcpTool: true,
@@ -130,22 +121,6 @@ function appendStableSuffix(name: string, stableIdentity: string, attempt: numbe
 	const prefixLength = MAX_TOOL_NAME_LENGTH - TOOL_NAME_HASH_LENGTH - 1;
 	const prefix = name.slice(0, prefixLength).replace(/[_-]+$/, '');
 	return `${prefix}_${suffix}`;
-}
-
-/**
- * Convert an MCP CallToolResult into a rich AgentMessage containing text and file content parts.
- * Returns undefined if the result contains only text (the tool-result JSON is sufficient for the LLM).
- * Returns an assistant Message with ContentFile parts so multimodal models can process them.
- */
-function buildRichMessage(result: McpCallToolResult): AgentMessage | undefined {
-	if (!result?.content) return undefined;
-
-	if (!hasMcpMediaContent(result.content)) return undefined;
-
-	const contentParts = mcpContentToMessageParts(result.content);
-	if (contentParts.length === 0) return undefined;
-
-	return { role: 'assistant', content: contentParts };
 }
 
 function buildModelOutput(result: McpCallToolResult): unknown {

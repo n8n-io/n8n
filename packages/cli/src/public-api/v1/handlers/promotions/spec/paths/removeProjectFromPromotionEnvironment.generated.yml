@@ -1,8 +1,12 @@
 operationId: removeProjectFromPromotionEnvironment
 tags:
   - Promotions
-summary: Unlink a project from a promotion environment
-x-required-scope: gitConnection:manageProjects
+summary: 'Beta: Unlink a project from a promotion environment'
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Requires the `promotions:manageProjects` API key scope.
+x-required-scope: promotions:manageProjects
 parameters:
   - schema:
       type: string
@@ -28,5 +32,7 @@ responses:
     $ref: ../../../../shared/spec/responses/notFound.yml
   '409':
     $ref: ../../../../shared/spec/responses/conflict.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
   '503':
     $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

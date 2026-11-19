@@ -63,6 +63,7 @@ describe('PrometheusWorkflowStatisticsMetricsService', () => {
 				mock(),
 				mock(),
 				mock(),
+				mock(),
 			),
 		);
 	});

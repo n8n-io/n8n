@@ -99,9 +99,13 @@ erDiagram
   boolean availableInMCP
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
+  uuid identityId FK
   json integrations
+  boolean isArchived
   varchar_128_ name
+  varchar_36_ parentFolderId FK
   varchar_255_ projectId FK
+  integer publicationRevision
   integer revision
   json schema
   varchar_16_ scope
@@ -115,6 +119,8 @@ erDiagram
   boolean acceptsSteering
   json attachments
   json author
+  integer cacheReadTokens
+  integer cacheWriteTokens
   integer completionTokens
   double_precision cost
   timestamp_3__with_time_zone createdAt
@@ -126,6 +132,7 @@ erDiagram
   varchar_16_ hitlStatus
   varchar_36_ id
   varchar_255_ model
+  varchar_36_ parentExecutionId FK
   integer promptTokens
   varchar_32_ source
   timestamp_3__with_time_zone startedAt
@@ -172,6 +179,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   uuid id
+  varchar_16_ kind
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled
@@ -198,6 +206,8 @@ erDiagram
   varchar_36_ agentId FK
   varchar_255_ author
   timestamp_3__with_time_zone createdAt
+  text description
+  text name
   uuid publishedById FK
   json schema
   json skills

@@ -2,8 +2,11 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { waitFor, within } from '@testing-library/vue';
 import { ref } from 'vue';
 
+import type { FrontendModuleSettings } from '@n8n/api-types';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import type { PreferencesEmptyStateVariant } from '@/experiments/preferencesEmptyState/usePreferencesEmptyStateExperiment';
@@ -17,6 +20,11 @@ const trackMock = vi.fn();
 const confirmMock = vi.fn().mockResolvedValue('confirm');
 const emptyStateVariant = ref<PreferencesEmptyStateVariant | undefined>(undefined);
 const trackEmptyStateExposure = vi.fn();
+const permissions = vi.hoisted(() => ({ managePreferences: false }));
+
+vi.mock('@/app/utils/rbac/permissions', () => ({
+	hasPermission: () => permissions.managePreferences,
+}));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: trackMock }),
@@ -61,18 +69,28 @@ function preference(overrides: Partial<Preference> = {}): Preference {
  * a button that plays the dialog's `saved` event back to the page.
  */
 const PreferenceModalStub = {
-	props: ['open', 'preference'],
+	props: ['open', 'preference', 'example'],
 	emits: ['saved', 'update:open'],
 	template: `
 		<div
 			data-test-id="preference-modal-stub"
 			:data-open="String(open)"
 			:data-preference-id="preference?.id ?? ''"
+			:data-example-id="example?.id ?? ''"
 		>
 			<button data-test-id="preference-modal-stub-saved" @click="$emit('saved')" />
+			<button data-test-id="preference-modal-stub-close" @click="$emit('update:open', false)" />
 		</div>
 	`,
 };
+
+async function clickRowAction(table: HTMLElement, action: 'edit' | 'delete') {
+	await userEvent.click(within(table).getByTestId('preference-actions').querySelector('button')!);
+	await waitFor(() =>
+		expect(document.querySelector(`[data-test-id="action-${action}"]`)).toBeInTheDocument(),
+	);
+	await userEvent.click(document.querySelector(`[data-test-id="action-${action}"]`)!);
+}
 
 const renderComponent = createComponentRenderer(SettingsPreferencesView, {
 	global: { stubs: { PreferenceModal: PreferenceModalStub } },
@@ -80,11 +98,25 @@ const renderComponent = createComponentRenderer(SettingsPreferencesView, {
 const renderView = () => renderComponent();
 
 let contextStore: MockedStore<typeof useContextStore>;
+let settingsStore: MockedStore<typeof useSettingsStore>;
+
+function setPreferences(
+	{ switchOn, managedByEnv = false }: { switchOn: boolean; managedByEnv?: boolean },
+	moduleSettings: FrontendModuleSettings = {
+		mcp: { mcpAccessEnabled: true },
+	} as FrontendModuleSettings,
+) {
+	settingsStore.settings.aiPreferences = { enabled: switchOn, managedByEnv };
+	settingsStore.moduleSettings = moduleSettings;
+}
 
 describe('SettingsPreferencesView', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		contextStore = mockedStore(useContextStore);
+		settingsStore = mockedStore(useSettingsStore);
+		setPreferences({ switchOn: true });
+		permissions.managePreferences = false;
 		contextStore.loading = false;
 		push.mockClear();
 		trackMock.mockReset();
@@ -166,15 +198,15 @@ describe('SettingsPreferencesView', () => {
 		expect(getByTestId('preference-modal-stub')).toHaveAttribute('data-preference-id', '');
 	});
 
-	it('opens the edit modal with the row it was triggered from', async () => {
+	it('opens the edit modal when a row is clicked', async () => {
 		const row = preference();
 		contextStore.preferences = [row];
 		contextStore.count = 1;
 
-		const { getByTestId } = renderView();
+		const { getByTestId, getByText } = renderView();
 		await new Promise(process.nextTick);
 
-		await userEvent.click(getByTestId('preference-edit-button'));
+		await userEvent.click(getByText(row.content));
 
 		expect(getByTestId('preference-modal-stub')).toHaveAttribute('data-open', 'true');
 		expect(getByTestId('preference-modal-stub')).toHaveAttribute('data-preference-id', row.id);
@@ -203,7 +235,7 @@ describe('SettingsPreferencesView', () => {
 		const { getByTestId } = renderView();
 		await new Promise(process.nextTick);
 
-		await userEvent.click(getByTestId('preference-delete-button'));
+		await clickRowAction(getByTestId('preferences-table'), 'delete');
 		await new Promise(process.nextTick);
 
 		expect(contextStore.deletePreference).toHaveBeenCalledWith('p1');
@@ -259,7 +291,7 @@ describe('SettingsPreferencesView', () => {
 		const { getByTestId } = renderView();
 		await new Promise(process.nextTick);
 
-		await userEvent.click(getByTestId('preference-delete-button'));
+		await clickRowAction(getByTestId('preferences-table'), 'delete');
 		await new Promise(process.nextTick);
 
 		expect(contextStore.deletePreference).not.toHaveBeenCalled();
@@ -359,7 +391,6 @@ describe('SettingsPreferencesView', () => {
 	it.each([
 		{ variant: 'assistant' as const, count: 1 },
 		{ variant: 'control' as const, count: 0 },
-		{ variant: 'examples' as const, count: 0 },
 	])(
 		'shows the toolbar and table for the $variant variant with $count preferences',
 		async ({ variant, count }) => {
@@ -374,6 +405,63 @@ describe('SettingsPreferencesView', () => {
 			expect(getByText(/^Last updated/)).toBeInTheDocument();
 		},
 	);
+
+	it('shows only the example cards, without the table and the toolbar, in the examples variant', async () => {
+		contextStore.preferences = [];
+		contextStore.count = 0;
+		emptyStateVariant.value = 'examples';
+
+		const { findByTestId, queryByTestId } = renderView();
+
+		expect(await findByTestId('preferences-empty-state-examples')).toBeInTheDocument();
+		expect(queryByTestId('preferences-table')).not.toBeInTheDocument();
+		expect(queryByTestId('preferences-create-button')).not.toBeInTheDocument();
+	});
+
+	it('shows the table and the toolbar in the examples variant once preferences exist', async () => {
+		contextStore.preferences = [preference()];
+		contextStore.count = 1;
+		emptyStateVariant.value = 'examples';
+
+		const { findByTestId, queryByTestId, getByTestId } = renderView();
+
+		expect(await findByTestId('preferences-table')).toBeInTheDocument();
+		expect(getByTestId('preferences-create-button')).toBeInTheDocument();
+		expect(queryByTestId('preferences-empty-state-examples')).not.toBeInTheDocument();
+	});
+
+	it('opens the create modal with the example from "Use example"', async () => {
+		contextStore.preferences = [];
+		contextStore.count = 0;
+		emptyStateVariant.value = 'examples';
+
+		const { findByTestId, getByTestId } = renderView();
+		await userEvent.click(
+			within(await findByTestId('preferences-example-answers')).getByRole('button'),
+		);
+
+		const modal = getByTestId('preference-modal-stub');
+		expect(modal).toHaveAttribute('data-open', 'true');
+		expect(modal).toHaveAttribute('data-preference-id', '');
+		expect(modal).toHaveAttribute('data-example-id', 'answers');
+	});
+
+	it('opens the create modal without the example after an example was closed', async () => {
+		contextStore.preferences = [];
+		contextStore.count = 0;
+		emptyStateVariant.value = 'examples';
+
+		const { findByTestId, getByTestId } = renderView();
+		await userEvent.click(
+			within(await findByTestId('preferences-example-answers')).getByRole('button'),
+		);
+		await userEvent.click(getByTestId('preference-modal-stub-close'));
+		await userEvent.click(getByTestId('preferences-empty-state-write-own'));
+
+		const modal = getByTestId('preference-modal-stub');
+		expect(modal).toHaveAttribute('data-open', 'true');
+		expect(modal).toHaveAttribute('data-example-id', '');
+	});
 
 	it('tracks no empty state experiment exposure when the page has preferences', async () => {
 		contextStore.preferences = [preference()];
@@ -461,6 +549,278 @@ describe('SettingsPreferencesView', () => {
 			skip: 0,
 			take: 50,
 			sortBy: 'updatedAt:desc',
+		});
+	});
+
+	describe('search', () => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('searches on the server and shows an empty table, not the empty state, for no matches', async () => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+			emptyStateVariant.value = 'assistant';
+			// A first load with rows, so the toolbar renders in every empty state variant.
+			contextStore.preferences = [preference()];
+			contextStore.count = 1;
+			const { getByTestId, queryByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			contextStore.fetchPreferences.mockImplementation(async () => {
+				contextStore.preferences = [];
+				contextStore.count = 0;
+				return { count: 0, data: [] };
+			});
+			await userEvent.type(getByTestId('preferences-search'), 'short');
+			await vi.runAllTimersAsync();
+
+			expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({
+				skip: 0,
+				take: 50,
+				sortBy: 'updatedAt:desc',
+				search: 'short',
+			});
+			expect(queryByTestId('preferences-empty-state')).not.toBeInTheDocument();
+			expect(queryByTestId('preferences-empty-state-assistant')).not.toBeInTheDocument();
+			expect(getByTestId('preferences-search')).toBeInTheDocument();
+		});
+
+		it('starts a new search on the first page with an empty selection', async () => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+			contextStore.preferences = [preference({ id: 'a' }), preference({ id: 'b' })];
+			contextStore.count = 60; // two pages at the default size of 50
+
+			const { getByTestId, getAllByRole, queryByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			await userEvent.click(getByTestId('pagination-next'));
+			await new Promise(process.nextTick);
+			await userEvent.click(getAllByRole('checkbox')[0]);
+			expect(getByTestId('preferences-delete-selected-button')).toBeInTheDocument();
+
+			await userEvent.type(getByTestId('preferences-search'), 'short');
+			await vi.runAllTimersAsync();
+
+			expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({
+				skip: 0,
+				take: 50,
+				sortBy: 'updatedAt:desc',
+				search: 'short',
+			});
+			expect(queryByTestId('preferences-delete-selected-button')).not.toBeInTheDocument();
+		});
+
+		it('keeps the toolbar while a cleared search with no matches reloads', async () => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+			emptyStateVariant.value = 'assistant';
+			contextStore.preferences = [preference()];
+			contextStore.count = 1;
+			const { getByTestId, queryByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			contextStore.fetchPreferences.mockImplementation(async () => {
+				contextStore.preferences = [];
+				contextStore.count = 0;
+				return { count: 0, data: [] };
+			});
+			await userEvent.type(getByTestId('preferences-search'), 'zzz');
+			await vi.runAllTimersAsync();
+
+			// The unfiltered reload has not run yet: the zero still describes the search.
+			await userEvent.clear(getByTestId('preferences-search'));
+			expect(queryByTestId('preferences-empty-state-assistant')).not.toBeInTheDocument();
+			expect(getByTestId('preferences-search')).toBeInTheDocument();
+
+			contextStore.fetchPreferences.mockImplementation(async () => {
+				contextStore.preferences = [preference()];
+				contextStore.count = 1;
+				return { count: 1, data: contextStore.preferences };
+			});
+			await vi.runAllTimersAsync();
+
+			expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({
+				skip: 0,
+				take: 50,
+				sortBy: 'updatedAt:desc',
+			});
+			expect(queryByTestId('preferences-empty-state-assistant')).not.toBeInTheDocument();
+			expect(getByTestId('preferences-search')).toBeInTheDocument();
+		});
+
+		it('ignores an older load that finishes after a new search', async () => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+			contextStore.preferences = [preference()];
+			contextStore.count = 60; // two pages at the default size of 50
+
+			const { getByTestId } = renderView();
+			await new Promise(process.nextTick);
+			await userEvent.click(getByTestId('pagination-next'));
+			await new Promise(process.nextTick);
+
+			// The reload of page 2 stays pending until the search has finished.
+			let finishOlderLoad: () => void = () => {};
+			contextStore.fetchPreferences.mockImplementationOnce(
+				async () =>
+					await new Promise((resolve) => {
+						finishOlderLoad = () => resolve({ count: 1, data: [] });
+					}),
+			);
+			await userEvent.click(getByTestId('preference-modal-stub-saved'));
+
+			contextStore.fetchPreferences.mockImplementation(async () => {
+				contextStore.preferences = [preference()];
+				contextStore.count = 1;
+				return { count: 1, data: contextStore.preferences };
+			});
+			await userEvent.type(getByTestId('preferences-search'), 'short');
+			await vi.runAllTimersAsync();
+			const callsAfterSearch = contextStore.fetchPreferences.mock.calls.length;
+
+			// Page 2 no longer exists, but the older load must not fetch again with its old filter.
+			finishOlderLoad();
+			await vi.runAllTimersAsync();
+
+			expect(contextStore.fetchPreferences).toHaveBeenCalledTimes(callsAfterSearch);
+			expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({
+				skip: 0,
+				take: 50,
+				sortBy: 'updatedAt:desc',
+				search: 'short',
+			});
+		});
+
+		it('reports no visit when a search replaces the first load', async () => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+			contextStore.preferences = [];
+			contextStore.count = 0;
+
+			// The first load stays pending until the search has finished.
+			let finishFirstLoad: () => void = () => {};
+			contextStore.fetchPreferences.mockImplementationOnce(
+				async () =>
+					await new Promise((resolve) => {
+						finishFirstLoad = () => resolve({ count: 0, data: [] });
+					}),
+			);
+			contextStore.fetchPreferences.mockImplementation(async () => {
+				contextStore.preferences = [];
+				contextStore.count = 0;
+				return { count: 0, data: [] };
+			});
+
+			const { getByTestId } = renderView();
+			await userEvent.type(getByTestId('preferences-search'), 'zzz');
+			await vi.runAllTimersAsync();
+
+			finishFirstLoad();
+			await vi.runAllTimersAsync();
+
+			// The store holds the filtered rows, so their count does not describe the visit.
+			expect(trackMock).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.USER_VIEWED_PREFERENCES,
+				expect.anything(),
+			);
+			expect(trackEmptyStateExposure).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('the admin switch', () => {
+		it('is hidden from a member', async () => {
+			const { queryByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			expect(queryByTestId('preferences-enable-toggle')).toBeNull();
+		});
+
+		it('shows an admin the switch in the header, above the list', async () => {
+			permissions.managePreferences = true;
+			contextStore.preferences = [preference()];
+			contextStore.count = 1;
+
+			const { getByTestId, getByText } = renderView();
+			await new Promise(process.nextTick);
+
+			expect(getByTestId('preferences-enable-toggle')).toHaveAttribute('aria-checked', 'true');
+			expect(getByText('Keep replies short.')).toBeInTheDocument();
+		});
+
+		it('shows an admin the switch and the off state while preferences are off, and loads nothing', async () => {
+			permissions.managePreferences = true;
+			setPreferences({ switchOn: false });
+
+			const { getByTestId, queryByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			expect(getByTestId('preferences-enable-toggle')).toHaveAttribute('aria-checked', 'false');
+			expect(getByTestId('preferences-off-state')).toHaveTextContent('Preferences are off');
+			expect(queryByTestId('preferences-search')).toBeNull();
+			expect(contextStore.fetchPreferences).not.toHaveBeenCalled();
+			expect(trackMock).not.toHaveBeenCalled();
+		});
+
+		it('turns preferences on and loads the list', async () => {
+			permissions.managePreferences = true;
+			setPreferences({ switchOn: false });
+			contextStore.setPreferencesEnabled.mockImplementation(async (enabled: boolean) => {
+				setPreferences({ switchOn: enabled });
+			});
+
+			const { getByTestId } = renderView();
+			await new Promise(process.nextTick);
+			await userEvent.click(getByTestId('preferences-enable-toggle'));
+
+			expect(contextStore.setPreferencesEnabled).toHaveBeenCalledWith(true);
+			await waitFor(() =>
+				expect(trackMock).toHaveBeenCalledWith(
+					TELEMETRY_EVENT.CONTEXT.USER_VIEWED_PREFERENCES,
+					expect.objectContaining({ count: 0 }),
+				),
+			);
+		});
+
+		it('says which consumer to turn on when the switch is on but nothing reads preferences', async () => {
+			permissions.managePreferences = true;
+			setPreferences({ switchOn: true }, {
+				'instance-ai': { enabled: false },
+				mcp: { mcpAccessEnabled: false },
+			} as FrontendModuleSettings);
+
+			const { getByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			expect(getByTestId('preferences-needs-consumer')).toHaveTextContent(
+				'Turn on n8n Assistant or instance-level MCP to use preferences',
+			);
+			expect(contextStore.fetchPreferences).not.toHaveBeenCalled();
+		});
+
+		it('locks the switch while the env manages it', async () => {
+			permissions.managePreferences = true;
+			setPreferences({ switchOn: true, managedByEnv: true });
+
+			const { getByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			expect(getByTestId('preferences-enable-toggle')).toBeDisabled();
+		});
+	});
+
+	describe('page header', () => {
+		it('shows the enterprise readiness badge on the enterprise plan', () => {
+			settingsStore.settings.license = {
+				...settingsStore.settings.license,
+				planName: 'Enterprise',
+			};
+
+			const { getByTestId } = renderView();
+
+			expect(getByTestId('preferences-enterprise-readiness-badge')).toBeInTheDocument();
+		});
+
+		it('hides the enterprise readiness badge on other plans', () => {
+			const { queryByTestId } = renderView();
+
+			expect(queryByTestId('preferences-enterprise-readiness-badge')).toBeNull();
 		});
 	});
 

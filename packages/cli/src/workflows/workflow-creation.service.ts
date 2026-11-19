@@ -1,8 +1,8 @@
-import type { RedactionFloor } from '@n8n/api-types';
+import { isSafeObjectKey, type RedactionFloor } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { EventService, CredentialsFinderService } from '@n8n/backend-services';
+import { EventService, CredentialsFinderService, loginIdOf } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import type { EntityManager, User, Project, Folder } from '@n8n/db';
+import type { EntityManager, User, Project, Folder, OperationContext } from '@n8n/db';
 import {
 	ProjectRepository,
 	SharedWorkflow,
@@ -12,6 +12,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -27,6 +28,7 @@ import { policyForFloor, policyMeetsFloor } from '@/modules/redaction/redaction-
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import type { PublicApiCaller } from '@/public-api/public-api-client';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
@@ -36,6 +38,7 @@ import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { DeprecatedNodesValidationService } from './deprecated-nodes-validation.service';
 import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
 import { dropRedactionPolicy } from './utils';
+import { WorkflowEngineDefaults } from './workflow-engine-defaults';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowValidationService } from './workflow-validation.service';
@@ -77,6 +80,7 @@ export class WorkflowCreationService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
+		private readonly workflowEngineDefaults: WorkflowEngineDefaults,
 	) {}
 
 	async prepareBatchContext(
@@ -149,12 +153,13 @@ export class WorkflowCreationService {
 			sourceWorkflowId?: string;
 			autosaved?: boolean;
 			uiContext?: string;
-			publicApi?: boolean;
+			publicApi?: PublicApiCaller;
 			source?: WorkflowActionSource;
 			versionName?: string;
 			versionDescription?: string;
 			batchContext?: WorkflowCreateBatchContext;
 		} = {},
+		ctx: OperationContext = {},
 	): Promise<WorkflowEntity> {
 		const {
 			tagIds,
@@ -169,6 +174,11 @@ export class WorkflowCreationService {
 			versionDescription,
 			batchContext,
 		} = options;
+
+		// Callers can preset the id, so every create path applies the REST workflow id rule.
+		if (newWorkflow.id && !isSafeObjectKey(newWorkflow.id)) {
+			throw new BadRequestError('Invalid workflow id');
+		}
 
 		// Ensure workflow is created as inactive
 		// oxlint-disable-next-line typescript/no-deprecated
@@ -323,12 +333,12 @@ export class WorkflowCreationService {
 
 		const savedWorkflow = await this.workflowRepository.runInTransaction(
 			{ policyCleared: cleared },
-			async (transactionManager, ctx) => {
+			async (transactionManager, trxCtx) => {
 				project = await this.projectService.getProjectWithScope(
 					user,
 					effectiveProjectId,
 					['workflow:create'],
-					ctx,
+					trxCtx,
 				);
 
 				if (project === null) {
@@ -353,6 +363,8 @@ export class WorkflowCreationService {
 					batchContext?.autoExposeNewWorkflows,
 				);
 
+				newWorkflow.settings = this.workflowEngineDefaults.applyTo(newWorkflow.settings);
+
 				if (parentFolderId && parentFolderId !== PROJECT_ROOT) {
 					newWorkflow.parentFolder = await this.findParentFolderInProjectOrFail(
 						parentFolderId,
@@ -361,7 +373,7 @@ export class WorkflowCreationService {
 					);
 				}
 
-				const workflow = await this.workflowRepository.createContent(newWorkflow, ctx);
+				const workflow = await this.workflowRepository.createContent(newWorkflow, trxCtx);
 
 				const newSharedWorkflow = this.sharedWorkflowRepository.create({
 					role: 'workflow:owner',
@@ -421,6 +433,7 @@ export class WorkflowCreationService {
 			projectType: project.type,
 			uiContext,
 			source,
+			loginId: loginIdOf(ctx),
 		});
 
 		return savedWorkflow;
@@ -432,7 +445,12 @@ export class WorkflowCreationService {
 		em?: EntityManager,
 	): Promise<Folder> {
 		try {
-			return await this.folderService.findFolderInProjectOrFail(parentFolderId, projectId, em);
+			return await this.folderService.findFolderInProjectOrFail(
+				parentFolderId,
+				projectId,
+				'workflow',
+				em,
+			);
 		} catch {
 			throw new NotFoundError(`Could not find the folder: ${parentFolderId}`);
 		}
@@ -448,7 +466,7 @@ export class WorkflowCreationService {
 			return await this.mcpSettingsService.getAutoExposeNewWorkflows();
 		} catch (error) {
 			this.logger.warn('Failed to resolve auto-expose setting for new workflow', {
-				cause: error instanceof Error ? error.message : String(error),
+				cause: getErrorMessage(error),
 			});
 			return false;
 		}
@@ -517,7 +535,7 @@ export class WorkflowCreationService {
 			if (!(await this.mcpSettingsService.getAutoExposeNewWorkflows(transactionManager))) return;
 		} catch (error) {
 			this.logger.warn('Failed to resolve auto-expose setting for new workflow', {
-				cause: error instanceof Error ? error.message : String(error),
+				cause: getErrorMessage(error),
 			});
 			return;
 		}

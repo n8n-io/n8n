@@ -1,5 +1,5 @@
 import type { INodeProperties, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -29,7 +29,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	let after: string | undefined;
 
 	do {
-		const response = await apiRequest.call(this, 'GET', '/assistants', {
+		const response = await apiRequest.call(this, 'GET', requestPath`/assistants`, {
 			headers: {
 				'OpenAI-Beta': 'assistants=v2',
 			},

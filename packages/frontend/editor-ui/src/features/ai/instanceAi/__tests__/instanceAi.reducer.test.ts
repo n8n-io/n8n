@@ -547,9 +547,60 @@ describe('instanceAi.reducer', () => {
 			expect(child.result).toBe('done');
 			expect(child.error).toBeUndefined();
 		});
+
+		test('agent-result-delivered sets resultDelivered on the node of a finished run', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makeAgentSpawnedEvent('run-1', 'sub-1', 'agent-root'));
+			handleEvent(state, makeAgentCompletedEvent('run-1', 'sub-1', 'done', undefined));
+			handleEvent(state, makeRunFinishEvent('run-1', 'agent-root', 'completed'));
+			handleEvent(state, {
+				type: 'agent-result-delivered',
+				runId: 'run-1',
+				agentId: 'sub-1',
+				payload: {},
+			});
+
+			const child = state.messages[0].agentTree!.children[0];
+			expect(child.resultDelivered).toBe(true);
+			expect(child.status).toBe('completed');
+		});
+
+		test('cloud-browser-window-changed counts window changes on the agent node', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makeAgentSpawnedEvent('run-1', 'sub-1', 'agent-root'));
+			const windowChanged: InstanceAiEvent = {
+				type: 'cloud-browser-window-changed',
+				runId: 'run-1',
+				agentId: 'sub-1',
+				payload: {},
+			};
+
+			handleEvent(state, windowChanged);
+			expect(state.messages[0].agentTree!.children[0].cloudBrowserWindowChanges).toBe(1);
+
+			handleEvent(state, windowChanged);
+			expect(state.messages[0].agentTree!.children[0].cloudBrowserWindowChanges).toBe(2);
+		});
 	});
 
 	// Test live event dispatch, not only shared history replay.
+	it('adds a live skill update to the assistant timeline', () => {
+		const state = stateWithRun('run-1', 'agent-root');
+		const payload = {
+			skillId: 'hub:1',
+			name: 'Writing',
+			version: 'v2',
+			change: 'updated' as const,
+		};
+		handleEvent(state, { type: 'skill-update', runId: 'run-1', agentId: 'agent-root', payload });
+		const runState = state.runStateByGroupId.get('run-1');
+		expect(runState?.agentsById['agent-root'].timeline).toContainEqual({
+			type: 'skill-update',
+			runId: 'run-1',
+			...payload,
+		});
+	});
+
 	describe('instance context', () => {
 		const injected = {
 			injection: {
@@ -643,6 +694,30 @@ describe('instanceAi.reducer', () => {
 				message: 'Select credentials',
 				projectId: 'proj-789',
 			});
+		});
+
+		test('auto-approval marks the tool call that ran without its card', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'publish_workflow'));
+			handleEvent(state, {
+				type: 'auto-approval',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					toolCallId: 'tc-1',
+					message: 'Publish "Lead router"',
+					reason: 'The user asked to publish it.',
+					decidedBy: 'judge',
+				},
+			});
+
+			const tc = state.messages[0].agentTree!.toolCalls[0];
+			expect(tc.autoApproval).toEqual({
+				message: 'Publish "Lead router"',
+				reason: 'The user asked to publish it.',
+				decidedBy: 'judge',
+			});
+			expect(tc.confirmation).toBeUndefined();
 		});
 	});
 
@@ -926,38 +1001,6 @@ describe('instanceAi.reducer', () => {
 			expect(runState?.agentsById['agent-root']?.toolCalls).toEqual([]);
 			expect(runState?.agentsById['agent-child']?.toolCalls).toEqual([]);
 		});
-
-		test('createRunStateFromTree preserves planItems', () => {
-			const runState = createRunStateFromTree({
-				agentId: 'agent-root',
-				role: 'orchestrator',
-				status: 'completed',
-				textContent: '',
-				reasoning: '',
-				toolCalls: [],
-				children: [],
-				timeline: [],
-				planItems: [
-					{
-						id: 'task-1',
-						title: 'Build workflow',
-						kind: 'build-workflow',
-						spec: 'Create the workflow',
-						deps: [],
-					},
-				],
-			});
-
-			expect(runState?.agentsById['agent-root']?.planItems).toEqual([
-				{
-					id: 'task-1',
-					title: 'Build workflow',
-					kind: 'build-workflow',
-					spec: 'Create the workflow',
-					deps: [],
-				},
-			]);
-		});
 	});
 
 	// -----------------------------------------------------------------------
@@ -1021,10 +1064,6 @@ describe('instanceAi.reducer', () => {
 
 		test('returns eval-setup for eval setup tool', () => {
 			expect(getRenderHint('eval-setup-with-agent')).toBe('eval-setup');
-		});
-
-		test('returns planner render hint for create-tasks', () => {
-			expect(getRenderHint('create-tasks')).toBe('planner');
 		});
 
 		test.each(['create_skills', 'list_skills', 'read_skill', 'update_skill', 'load_skill'])(

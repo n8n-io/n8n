@@ -8,6 +8,7 @@
 
 import {
 	LIST_N8N_GATEWAY_SERVICES_TOOL_NAME,
+	MCP_GET_MIGRATION_REPORT_TOOL_NAME,
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
 	MCP_USER_PREFERENCES_TRIGGER_CLAUSE,
 } from '../../mcp.constants';
@@ -56,6 +57,13 @@ export type McpInstructionsOptions = {
 	 * read the tool's own description before building. Identical for every caller.
 	 */
 	isUserPreferencesEnabled?: boolean;
+
+	/**
+	 * The version the migration report targets, set only when the report tools are registered
+	 * for this caller. One sentence points the client at the report when the user asks about
+	 * that upgrade.
+	 */
+	migrationReportTargetVersion?: string;
 	credentialDescriptionsEnabled?: boolean;
 };
 export function getMcpInstructions(options: McpInstructionsOptions): string {
@@ -65,6 +73,7 @@ export function getMcpInstructions(options: McpInstructionsOptions): string {
 		isAgentsEnabled = false,
 		isInstanceContextEnabled = false,
 		isUserPreferencesEnabled = false,
+		migrationReportTargetVersion,
 	} = options;
 	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
 
@@ -84,6 +93,11 @@ export function getMcpInstructions(options: McpInstructionsOptions): string {
 	// that — so anything below the cut never arrives. A test pins this inside the budget.
 	const INSTANCE_CONTEXT_HINT = isInstanceContextEnabled
 		? `Start with the instance, not a blank page. Read the n8n://instance/context resource, or call ${GET_INSTANCE_CONTEXT_TOOL_NAME} if you do not read resources, before your first substantive answer.`
+		: '';
+
+	// Kept short and early for the same reason: it must survive the 2048-character cut.
+	const MIGRATION_REPORT_HINT = migrationReportTargetVersion
+		? `When the user asks about upgrading to n8n ${migrationReportTargetVersion}, breaking changes, or the migration report, call ${MCP_GET_MIGRATION_REPORT_TOOL_NAME} first.`
 		: '';
 
 	const GROUPS_HINT = `
@@ -151,6 +165,7 @@ Agent conversations and runs are not workflow executions: get_workflow_execution
 		INTRO,
 		USER_PREFERENCES_HINT,
 		INSTANCE_CONTEXT_HINT,
+		MIGRATION_REPORT_HINT,
 		isBuilderEnabled && isAgentsEnabled ? ARTIFACT_ROUTING_INSTRUCTIONS : '',
 		isAgentsEnabled ? AGENT_INSTRUCTIONS : '',
 		isBuilderEnabled ? BUILDER_INSTRUCTIONS : '',

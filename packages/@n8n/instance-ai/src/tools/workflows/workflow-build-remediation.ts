@@ -9,9 +9,9 @@ import { createRemediation } from '../../workflow-loop/remediation';
 import type { RemediationMetadata } from '../../workflow-loop/workflow-loop-state';
 
 export const INVALID_WORKFLOW_ID_GUIDANCE =
-	'Call workflow_builder_build_workflow again with the same filePath and omit workflowId to create a new workflow only if that value was never a real n8n workflow id (for example an SDK slug). ' +
-	'If you meant an existing workflow, confirm the id with workflow_builder_workflows() first — missing and inaccessible look the same. ' +
-	'workflowId must be a real n8n workflow id from a prior workflow_builder_build_workflow or workflow_builder_workflows() tool result — never the first argument of workflow(slug, name).';
+	'Run workflow_builder_build_workflow through call_tool again with the same filePath and omit workflowId to create a new workflow only if that value was never a real n8n workflow id (for example an SDK slug). ' +
+	'If you meant an existing workflow, confirm the id by running list_workflows through call_tool first — missing and inaccessible look the same. ' +
+	'workflowId must be a real n8n workflow id from a prior workflow_builder_build_workflow or list_workflows tool result — never the first argument of workflow(slug, name).';
 
 function getFailureText(error: unknown): string {
 	return getErrorMessage(error).toLowerCase();
@@ -58,7 +58,7 @@ export function createWorkflowModifiedExternallyRemediation(): RemediationMetada
 	return createCodeFixableRemediation({
 		reason: 'workflow_modified_externally',
 		guidance:
-			'The workflow was modified outside this conversation since your last save (canvas edit, setup, credential change, or version revert). Call workflow_builder_workflows(action="get-as-code", workflowId): it regenerates the bound source file from the saved workflow. Re-apply your intended change in that file with workspace_str_replace_file, then call workflow_builder_build_workflow again with the same filePath. If get-as-code reports status "conflict", the file still holds your unbuilt edits on top of the old version: delete the file, call get-as-code again, and re-apply the change before building.',
+			'The workflow was modified outside this conversation since your last save (canvas edit, setup, credential change, or version revert). Run get_workflow_as_code through call_tool with workflowId: it regenerates the bound source file from the saved workflow. Re-apply your intended change in that file with workspace_str_replace_file, then run workflow_builder_build_workflow through call_tool again with the same filePath. If get_workflow_as_code reports status "conflict", the file still holds your unbuilt edits on top of the old version: delete the file, run get_workflow_as_code through call_tool again, and re-apply the change before building.',
 	});
 }
 
@@ -138,7 +138,7 @@ export function createSaveFailureRemediation(
 	return createCodeFixableRemediation({
 		reason: 'workflow_save_failed',
 		guidance:
-			'The workflow did not save. Edit the workspace source file using the returned filePath, then call workflow_builder_build_workflow again with the same filePath.',
+			'The workflow did not save. Edit the workspace source file using the returned filePath, then run workflow_builder_build_workflow through call_tool again with the same filePath.',
 	});
 }
 
@@ -162,7 +162,7 @@ export function createSourceCompileRemediation(input: {
 	return createCodeFixableRemediation({
 		reason: input.reason,
 		guidance: isWorkflowJsonFailure
-			? 'Edit the workspace WorkflowJSON file using filePath, then call workflow_builder_build_workflow again with the same filePath.'
-			: 'Edit the workspace source file using filePath, then call workflow_builder_build_workflow again with the same filePath.',
+			? 'Edit the workspace WorkflowJSON file using filePath, then run workflow_builder_build_workflow through call_tool again with the same filePath.'
+			: 'Edit the workspace source file using filePath, then run workflow_builder_build_workflow through call_tool again with the same filePath.',
 	});
 }

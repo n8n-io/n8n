@@ -14,7 +14,6 @@ import type {
 	InstanceAiAdminSettingsResponse,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiConnectionUpdate,
-	InstanceAiUserPreferencesResponse,
 	InstanceAiProviderConnection,
 	InstanceAiPermissions,
 	InstanceAiSandboxProvider,
@@ -34,7 +33,7 @@ import {
 import { hasGlobalScope } from '@n8n/permissions';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { ICredentialDataDecryptedObject, IUserSettings } from 'n8n-workflow';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import {
@@ -42,7 +41,13 @@ import {
 	type InstanceCredentialUse,
 	type ResolvedInstanceCredential,
 } from '@/credentials/instance-credential-broker';
-import { ConflictError, ForbiddenError, UnprocessableRequestError } from '@n8n/errors';
+import {
+	ConflictError,
+	ForbiddenError,
+	UnprocessableRequestError,
+	UnexpectedError,
+} from '@n8n/errors';
+import { License } from '@/license';
 import { AiService } from '@/services/ai.service';
 import {
 	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
@@ -52,7 +57,9 @@ import {
 
 export { INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY, INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY };
 
+import { InstanceAiCloudBrowserService } from './browser/instance-ai-cloud-browser.service';
 import { withModelName } from './model-config-name';
+import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 import {
 	N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE,
 	normalizeSandboxProvider,
@@ -243,6 +250,7 @@ interface PersistedAdminSettings {
 	searchDisabled?: boolean;
 	n8nSandboxServiceUrl?: string | null;
 	browserUseEnabled?: boolean;
+	cloudBrowserEnabled?: boolean;
 }
 
 interface PreparedConnection {
@@ -281,8 +289,8 @@ export class InstanceAiSettingsService {
 
 	private sandboxProviderOverride?: InstanceAiSandboxProvider;
 
-	/** Whether n8n Agent is enabled for this instance. */
-	private enabled = true;
+	/** The saved on/off choice. Unset means the env var or the license plan decides. */
+	private enabled?: boolean;
 
 	/** Whether users may connect the n8n Assistant to MCP servers from the registry. */
 	private mcpAccessEnabled = true;
@@ -308,6 +316,9 @@ export class InstanceAiSettingsService {
 		private readonly instanceCredentialBroker: InstanceCredentialBroker,
 		private readonly sandboxSettingsService: SandboxSettingsService,
 		private readonly eventService: EventService,
+		private readonly license: License,
+		private readonly threadRepository: InstanceAiThreadRepository,
+		private readonly cloudBrowserService: InstanceAiCloudBrowserService,
 	) {
 		this.config = globalConfig.instanceAi;
 		this.deploymentConfig = globalConfig.deployment;
@@ -350,6 +361,29 @@ export class InstanceAiSettingsService {
 		if (sandboxStatus.unavailableReason) {
 			logger.warn(`Sandbox unavailable: ${sandboxStatus.unavailableReason}`);
 		}
+		await this.keepEnabledIfInUse();
+	}
+
+	/**
+	 * Runs at startup. Enterprise defaults to off, but an instance that already uses the
+	 * Assistant stays on.
+	 * Threads are deleted with their user, so save the choice instead of re-checking them.
+	 */
+	private async keepEnabledIfInUse(): Promise<void> {
+		if (this.enabled !== undefined || this.config.enabled !== undefined) return;
+		if (!this.license.isEnterprisePlan() || !(await this.threadRepository.exists())) return;
+		await this.withPersistedAdminSettings(async (ctx, persisted) => {
+			if (persisted.enabled === undefined) {
+				persisted.enabled = true;
+				await this.settingsRepository.upsertByKey(
+					ADMIN_SETTINGS_KEY,
+					JSON.stringify(persisted),
+					true,
+					ctx,
+				);
+			}
+			this.enabled = persisted.enabled;
+		});
 	}
 
 	// ── Admin settings ────────────────────────────────────────────────────
@@ -424,7 +458,7 @@ export class InstanceAiSettingsService {
 				: c.sandboxProvider,
 		);
 		return {
-			enabled: this.enabled,
+			enabled: this.isInstanceAiEnabled(),
 			permissions: { ...this.permissions },
 			mcpAccessEnabled: this.mcpAccessEnabled,
 			sandboxEnabled: c.sandboxEnabled,
@@ -475,6 +509,7 @@ export class InstanceAiSettingsService {
 				},
 			},
 			browserUseEnabled: this.isBrowserUseEnabled(),
+			cloudBrowserEnabled: this.isCloudBrowserEnabled(),
 		};
 	}
 
@@ -522,6 +557,9 @@ export class InstanceAiSettingsService {
 			if (update.sandboxConnection?.type === 'daytonaApi') {
 				this.rejectManagedFields(update, ['sandboxConnection'], this.deploymentLabel());
 			}
+		}
+		if (update.cloudBrowserEnabled === true && !(await this.cloudBrowserService.isAvailable())) {
+			throw new UnprocessableRequestError('The cloud browser is not available on this instance');
 		}
 		const {
 			modelCredentialId: initialModelCredentialId,
@@ -1025,33 +1063,6 @@ export class InstanceAiSettingsService {
 		this.emitSettingsUpdated(previous, this.snapshotAdminSettings());
 	}
 
-	// ── User preferences ──────────────────────────────────────────────────
-
-	async getUserPreferences(user: User): Promise<InstanceAiUserPreferencesResponse> {
-		const prefs = this.readUserPreferences(user);
-		const credentialId = prefs.credentialId ?? null;
-
-		let credentialType: string | null = null;
-		let credentialName: string | null = null;
-
-		if (credentialId) {
-			const cred = await this.credentialsFinderService.findCredentialForUser(credentialId, user, [
-				'credential:read',
-			]);
-			if (cred) {
-				credentialType = cred.type;
-				credentialName = cred.name;
-			}
-		}
-
-		return {
-			credentialId,
-			credentialType,
-			credentialName,
-			modelName: prefs.modelName || this.extractModelName(this.config.model),
-		};
-	}
-
 	// ── Shared accessors ──────────────────────────────────────────────────
 
 	/** Restores redacted fields from the assigned credential without sending them to the client. */
@@ -1227,13 +1238,18 @@ export class InstanceAiSettingsService {
 		return this.mcpAccessEnabled;
 	}
 
-	/** Whether the n8n Agent is enabled by the admin. */
+	/** Whether the n8n Agent is enabled for this instance. */
 	isAgentEnabled(): boolean {
-		return this.enabled;
+		return this.isInstanceAiEnabled();
 	}
 
 	isBrowserUseEnabled(): boolean {
 		return this.config.browserUseEnabled;
+	}
+
+	/** Whether the cloud browser is turned on by the admin. */
+	isCloudBrowserEnabled(): boolean {
+		return this.config.cloudBrowserEnabled;
 	}
 
 	/** Whether workflow building can use the required sandbox workspace. */
@@ -1254,7 +1270,8 @@ export class InstanceAiSettingsService {
 
 	/** Whether Instance AI chat and main UI are enabled (settings always available when module loads). */
 	isInstanceAiEnabled(): boolean {
-		return this.enabled;
+		// Resolved on every read because the license plan can change at runtime.
+		return this.enabled ?? this.config.enabled ?? !this.license.isEnterprisePlan();
 	}
 
 	/** Public, detail-free setup state used to gate member-facing entry points. */
@@ -1299,9 +1316,14 @@ export class InstanceAiSettingsService {
 		return this.config.model.trim();
 	}
 
-	/** Model name for the Observer and Reflector memory tasks; empty when unset. */
-	getConfiguredMemoryModelName(): string {
-		return this.config.memoryModel.trim();
+	/** Model name for background and helper tasks; empty when unset. */
+	getConfiguredUtilityModelName(): string {
+		return this.config.utilityModel.trim();
+	}
+
+	/** Model name for the judge of Auto approval mode; empty when unset. */
+	getConfiguredApprovalJudgeModelName(): string {
+		return this.config.approvalJudgeModel.trim();
 	}
 
 	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */
@@ -1433,6 +1455,7 @@ export class InstanceAiSettingsService {
 		if (!baseUrl && !apiKey) return null;
 		const headers = modelCredentialHeaders(credentialType, data);
 		return {
+			kind: 'endpoint',
 			id,
 			url: baseUrl,
 			...(apiKey ? { apiKey } : {}),
@@ -1613,6 +1636,7 @@ export class InstanceAiSettingsService {
 
 		if (modelUrl) {
 			return {
+				kind: 'endpoint',
 				id,
 				url: modelUrl,
 				...(modelApiKey ? { apiKey: modelApiKey } : {}),
@@ -1622,6 +1646,7 @@ export class InstanceAiSettingsService {
 
 		if (modelApiKey) {
 			return {
+				kind: 'endpoint',
 				id,
 				url: '',
 				apiKey: modelApiKey,
@@ -1657,6 +1682,7 @@ export class InstanceAiSettingsService {
 		const googleCredentials = this.config.vertexServiceAccountJson?.trim() || undefined;
 
 		return {
+			kind: 'vertex-anthropic',
 			id,
 			project: this.resolveVertexProjectId(),
 			location: this.resolveVertexLocation(),
@@ -1708,6 +1734,8 @@ export class InstanceAiSettingsService {
 		}
 		if (persisted.browserUseEnabled !== undefined)
 			c.browserUseEnabled = persisted.browserUseEnabled;
+		if (persisted.cloudBrowserEnabled !== undefined)
+			c.cloudBrowserEnabled = persisted.cloudBrowserEnabled;
 	}
 
 	private readUserPreferences(user: User): UserInstanceAiPreferences {
@@ -1729,6 +1757,7 @@ export class InstanceAiSettingsService {
 			searchDisabled: this.searchDisabled,
 			n8nSandboxServiceUrl: this.adminN8nSandboxServiceUrl,
 			browserUseEnabled: c.browserUseEnabled,
+			cloudBrowserEnabled: c.cloudBrowserEnabled,
 		};
 	}
 

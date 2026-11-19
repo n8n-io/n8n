@@ -100,7 +100,7 @@ export interface ProxyServerRequest {
 export interface ProxyServerResponse {
 	statusCode: number;
 	headers?: Record<string, string[]>;
-	body?: string;
+	body?: HttpResponse['body'];
 	delay?: {
 		timeUnit: 'MICROSECONDS' | 'MILLISECONDS' | 'SECONDS' | 'MINUTES';
 		value: number;
@@ -355,6 +355,10 @@ export class ProxyServer {
 		});
 	}
 
+	async getMockedEndpoint(path: string): Promise<Response> {
+		return await fetch(`${this.url}${path}`);
+	}
+
 	async wasRequestMade(request: RequestDefinition, numberOfRequests = 1): Promise<boolean> {
 		return await this.verifyRequest(request, numberOfRequests);
 	}
@@ -362,6 +366,11 @@ export class ProxyServer {
 	async getAllRequestsMade(): Promise<RequestMade[]> {
 		// @ts-expect-error mockserver types seem to be messed up
 		return await this.client.retrieveRecordedRequestsAndResponses('');
+	}
+
+	/** Includes requests whose delayed response is still pending. */
+	async getReceivedRequests(path: string): Promise<HttpRequest[]> {
+		return await this.client.retrieveRecordedRequests({ path });
 	}
 
 	async recordExpectations(

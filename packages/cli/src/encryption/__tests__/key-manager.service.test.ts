@@ -251,6 +251,7 @@ describe('KeyManagerService', () => {
 			const { service, repo, cipherMock } = makeFreshService();
 			const key = makeKey({ algorithm: 'aes-256-cbc' });
 			repo.findDataEncryptionKeyByAlgorithm.mockResolvedValue(key);
+			cipherMock.decryptDEKWithInstanceKey.mockReturnValue('test_key');
 
 			const result = await service.getLegacyKey();
 
@@ -265,16 +266,65 @@ describe('KeyManagerService', () => {
 		});
 
 		it('memoizes the stored legacy key — the row is immutable once seeded', async () => {
-			const { service, repo } = makeFreshService();
+			const { service, repo, cipherMock } = makeFreshService();
 			repo.findDataEncryptionKeyByAlgorithm.mockResolvedValue(
 				makeKey({ algorithm: 'aes-256-cbc' }),
 			);
+			cipherMock.decryptDEKWithInstanceKey.mockReturnValue('test_key');
 
 			const first = await service.getLegacyKey();
 			const second = await service.getLegacyKey();
 
 			expect(repo.findDataEncryptionKeyByAlgorithm).toHaveBeenCalledTimes(1);
 			expect(second).toBe(first);
+		});
+
+		describe('when the stored key was seeded under another instance key', () => {
+			// Real ciphers: the row is wrapped under key A, the service runs under key B.
+			const realCipher = (encryptionKey: string) =>
+				new Cipher(mock<InstanceSettings>({ encryptionKey }), mock<EncryptionKeyProxy>());
+
+			const setup = () => {
+				const keyA = randomBytes(24).toString('base64');
+				const keyB = randomBytes(24).toString('base64');
+				const cipherB = realCipher(keyB);
+				const repo = mock<DeploymentKeyRepository>();
+				const logger = mock<Logger>();
+				const service = new KeyManagerService(
+					repo,
+					cipherB,
+					mock<InstanceSettings>({ encryptionKey: keyB }),
+					logger,
+				);
+				repo.findDataEncryptionKeyByAlgorithm.mockResolvedValue(
+					makeKey({
+						algorithm: 'aes-256-cbc',
+						value: realCipher(keyA).encryptDEKWithInstanceKey(keyA),
+					}),
+				);
+				return { service, repo, logger, cipherB, keyB };
+			};
+
+			it('uses the current instance key', async () => {
+				const { service, cipherB, keyB } = setup();
+
+				const result = await service.getLegacyKey();
+
+				expect(result.id).toBe('instance-key');
+				expect(result.format).toBe('no-prefix');
+				expect(cipherB.decryptDEKWithInstanceKey(result.value)).toBe(keyB);
+			});
+
+			it('warns once and does not query the store again', async () => {
+				const { service, repo, logger } = setup();
+
+				const first = await service.getLegacyKey();
+				const second = await service.getLegacyKey();
+
+				expect(second).toBe(first);
+				expect(repo.findDataEncryptionKeyByAlgorithm).toHaveBeenCalledTimes(1);
+				expect(logger.warn).toHaveBeenCalledTimes(1);
+			});
 		});
 
 		it('falls back to the instance key when the legacy key is not seeded', async () => {

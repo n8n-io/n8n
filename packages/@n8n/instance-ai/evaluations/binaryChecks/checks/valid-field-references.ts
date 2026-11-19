@@ -26,37 +26,64 @@ interface FieldReference {
 	field: string;
 	/** The node name providing the data, or undefined for $json (upstream) */
 	sourceNode: string | undefined;
+	/** Where the reference starts in the expression */
+	start: number;
+	/** Where the reference ends, after any property access or call on it */
+	end: number;
+	/** False when a plain `.prop` read on the field would throw if the field is missing */
+	safeWhenMissing: boolean;
 }
+
+/** Property access, optional chaining or calls that follow a matched reference. */
+const ACCESS_TAIL = /^(?:\?\.\w+|\.\w+|\[[^\]]*\]|\(\))*/;
+/** The text between two operands of one `??` / `||` chain. */
+const FALLBACK_LINK = /^\s*\)*\s*(?:\?\?|\|\|)\s*\(*\s*$/;
 
 function unescapeNodeName(raw: string): string {
 	return raw.replace(/\\(.)/g, '$1');
 }
 
-/** Extract field references from a single expression string. */
+/** Extract field references from a single expression string, in order of appearance. */
 function extractFieldReferences(expression: string): FieldReference[] {
 	const refs: FieldReference[] = [];
+	const add = (m: RegExpMatchArray, field: string, sourceNode: string | undefined) => {
+		const start = m.index ?? 0;
+		const matchEnd = start + m[0].length;
+		const tail = ACCESS_TAIL.exec(expression.slice(matchEnd))?.[0] ?? '';
+		refs.push({
+			field,
+			sourceNode,
+			start,
+			end: matchEnd + tail.length,
+			safeWhenMissing: tail === '' || tail.startsWith('?.'),
+		});
+	};
 
 	// $json.fieldName
-	for (const m of expression.matchAll(JSON_FIELD_DOT)) {
-		refs.push({ field: m[1], sourceNode: undefined });
-	}
+	for (const m of expression.matchAll(JSON_FIELD_DOT)) add(m, m[1], undefined);
 
 	// $json["fieldName"]
-	for (const m of expression.matchAll(JSON_FIELD_BRACKET)) {
-		refs.push({ field: m[1], sourceNode: undefined });
-	}
+	for (const m of expression.matchAll(JSON_FIELD_BRACKET)) add(m, m[1], undefined);
 
 	// $('NodeName')...json.fieldName
-	for (const m of expression.matchAll(NAMED_NODE_FIELD_DOT)) {
-		refs.push({ field: m[3], sourceNode: unescapeNodeName(m[2]) });
-	}
+	for (const m of expression.matchAll(NAMED_NODE_FIELD_DOT)) add(m, m[3], unescapeNodeName(m[2]));
 
 	// $('NodeName')...json["fieldName"]
 	for (const m of expression.matchAll(NAMED_NODE_FIELD_BRACKET)) {
-		refs.push({ field: m[3], sourceNode: unescapeNodeName(m[2]) });
+		add(m, m[3], unescapeNodeName(m[2]));
 	}
 
-	return refs;
+	return refs.sort((x, y) => x.start - y.start);
+}
+
+/** Group references into `??` / `||` chains: each chain id is the index of its first reference. */
+function fallbackChains(expression: string, refs: FieldReference[]): number[] {
+	const chain: number[] = [];
+	refs.forEach((ref, i) => {
+		const linked = i > 0 && FALLBACK_LINK.test(expression.slice(refs[i - 1].end, ref.start));
+		chain.push(linked ? chain[i - 1] : i);
+	});
+	return chain;
 }
 
 // ---------------------------------------------------------------------------
@@ -188,6 +215,19 @@ function getKnownOutputFields(node: WorkflowNodeResponse): Set<string> | undefin
 	return undefined;
 }
 
+/** The node a reference reads from: the named node, or the single upstream node for `$json`. */
+function resolveSourceNode(
+	ref: FieldReference,
+	nodeName: string,
+	nodeByName: Map<string, WorkflowNodeResponse>,
+	upstreamMap: Map<string, string[]>,
+): WorkflowNodeResponse | undefined {
+	if (ref.sourceNode) return nodeByName.get(ref.sourceNode);
+	const upstreamNames = upstreamMap.get(nodeName);
+	// Multiple upstream nodes (merge): can't determine which
+	return upstreamNames?.length === 1 ? nodeByName.get(upstreamNames[0]) : undefined;
+}
+
 // ---------------------------------------------------------------------------
 // The check
 // ---------------------------------------------------------------------------
@@ -212,33 +252,31 @@ export const validFieldReferences: BinaryCheck = {
 			for (const expr of expressions) {
 				const refs = extractFieldReferences(expr);
 				if (refs.length > 0) sawAnyFieldRef = true;
-				for (const ref of refs) {
-					// Determine which node provides the data
-					let sourceNode: WorkflowNodeResponse | undefined;
 
-					if (ref.sourceNode) {
-						// Explicit reference: $('NodeName').item.json.field
-						sourceNode = nodeByName.get(ref.sourceNode);
-					} else {
-						// Implicit reference: $json.field — use first upstream node
-						const upstreamNames = upstreamMap.get(node.name);
-						if (upstreamNames?.length === 1) {
-							sourceNode = nodeByName.get(upstreamNames[0]);
-						}
-						// Multiple upstream nodes (merge) — can't determine which, skip
-					}
+				// present: a known schema has the field; missing: a known schema lacks it;
+				// unknown: no source or no schema to check against.
+				const status = refs.map((ref) => {
+					const sourceNode = resolveSourceNode(ref, node.name, nodeByName, upstreamMap);
+					const knownFields = sourceNode ? getKnownOutputFields(sourceNode) : undefined;
+					if (!sourceNode || !knownFields) return { state: 'unknown' as const };
+					return knownFields.has(ref.field)
+						? { state: 'present' as const }
+						: { state: 'missing' as const, sourceNode };
+				});
+				const chain = fallbackChains(expr, refs);
 
-					if (!sourceNode) continue;
-
-					const knownFields = getKnownOutputFields(sourceNode);
-					if (!knownFields) continue; // No schema — skip gracefully
-
-					if (!knownFields.has(ref.field)) {
-						invalid.push(
-							`"${ref.field}" not in output of "${sourceNode.name}" (in node "${node.name}")`,
-						);
-					}
-				}
+				refs.forEach((ref, i) => {
+					const result = status[i];
+					if (result.state !== 'missing') return;
+					// A missing field is fine when another alternative in its chain exists.
+					const covered =
+						ref.safeWhenMissing &&
+						refs.some((_, j) => j !== i && chain[j] === chain[i] && status[j].state === 'present');
+					if (covered) return;
+					invalid.push(
+						`"${ref.field}" not in output of "${result.sourceNode.name}" (in node "${node.name}")`,
+					);
+				});
 			}
 		}
 

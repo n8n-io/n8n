@@ -423,25 +423,28 @@ describe('httpRequest manual redirect following with SSRF + proxy', () => {
 			await Promise.all([origin.close(), crossOrigin.close()]);
 		});
 
-		it('drops Authorization, Proxy-Authorization, and Cookie on a cross-origin redirect', async () => {
-			const { bridge } = makeBridge('/never-matches');
+		it.each([[undefined], [false]])(
+			'drops Authorization, Proxy-Authorization, and Cookie on a cross-origin redirect when sendCredentialsOnCrossOriginRedirect is %s',
+			async (sendCredentialsOnCrossOriginRedirect) => {
+				const { bridge } = makeBridge('/never-matches');
 
-			await httpRequest(
-				{
-					method: 'GET',
-					url: `${origin.url}/cross`,
-					headers: { ...credentialHeaders },
-					sendCredentialsOnCrossOriginRedirect: false,
-				},
-				bridge,
-			);
+				await httpRequest(
+					{
+						method: 'GET',
+						url: `${origin.url}/cross`,
+						headers: { ...credentialHeaders },
+						sendCredentialsOnCrossOriginRedirect,
+					},
+					bridge,
+				);
 
-			expect(received.authorization).toBeUndefined();
-			expect(received['proxy-authorization']).toBeUndefined();
-			expect(received.cookie).toBeUndefined();
-			// Non-credential headers still carry over.
-			expect(received['x-keep']).toBe('keep-me');
-		});
+				expect(received.authorization).toBeUndefined();
+				expect(received['proxy-authorization']).toBeUndefined();
+				expect(received.cookie).toBeUndefined();
+				// Non-credential headers still carry over.
+				expect(received['x-keep']).toBe('keep-me');
+			},
+		);
 
 		it('keeps credential headers on a same-origin redirect', async () => {
 			const { bridge } = makeBridge('/never-matches');
