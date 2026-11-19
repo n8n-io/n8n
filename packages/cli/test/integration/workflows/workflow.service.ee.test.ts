@@ -2,13 +2,15 @@ import { testDb, mockInstance } from '@n8n/backend-test-utils';
 import {
 	CredentialsEntity,
 	CredentialsRepository,
+	GLOBAL_MEMBER_ROLE,
 	SharedWorkflowRepository,
+	User,
 	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import type { INode } from 'n8n-workflow';
+import type { INode, IWorkflowBase } from 'n8n-workflow';
 
 import { UninspectableSubworkflowSourceError } from '@/errors/uninspectable-subworkflow-source.error';
 import { Telemetry } from '@/telemetry';
@@ -343,6 +345,108 @@ describe('EnterpriseWorkflowService', () => {
 				FIRST_CREDENTIAL_ID,
 			]);
 			expect(nodesWithInaccessibleCreds).toHaveLength(0);
+		});
+	});
+
+	describe('validateCredentialPermissionsToUser', () => {
+		const member = Object.assign(new User(), { role: GLOBAL_MEMBER_ROLE });
+		const allowed = [Object.assign(new CredentialsEntity(), { id: 'cred-1' })];
+		const subworkflowNode = (nodes: unknown[]) => ({
+			type: 'n8n-nodes-base.executeWorkflow',
+			parameters: {
+				source: 'parameter',
+				workflowJson: JSON.stringify({ nodes, connections: {} }),
+			},
+		});
+		// Real objects, not mocks, so an explicit null id survives.
+		const toWorkflow = (nodes: unknown[]) => ({ nodes }) as unknown as IWorkflowBase;
+		const validate = (nodes: unknown[]) =>
+			service.validateCredentialPermissionsToUser(toWorkflow(nodes), allowed, member);
+
+		test('rejects a credential inside an inline sub-workflow the user cannot use', () => {
+			expect(() =>
+				validate([
+					subworkflowNode([{ credentials: { spotifyApi: { id: 'cred-unknown', name: 'x' } } }]),
+				]),
+			).toThrow();
+		});
+
+		test('passes when an inline sub-workflow credential is allowed', () => {
+			expect(() =>
+				validate([subworkflowNode([{ credentials: { spotifyApi: { id: 'cred-1', name: 'x' } } }])]),
+			).not.toThrow();
+		});
+
+		test('rejects a non-managed credential with a null id (name-only reference)', () => {
+			expect(() =>
+				validate([{ credentials: { spotifyApi: { id: null, name: 'Someone else prod' } } }]),
+			).toThrow();
+		});
+
+		test('rejects a non-managed credential with an empty-string id', () => {
+			expect(() =>
+				validate([{ credentials: { spotifyApi: { id: '', name: 'Someone else prod' } } }]),
+			).toThrow();
+		});
+
+		test('rejects a null-id credential inside an inline sub-workflow', () => {
+			expect(() =>
+				validate([
+					subworkflowNode([
+						{ credentials: { spotifyApi: { id: null, name: 'Someone else prod' } } },
+					]),
+				]),
+			).toThrow();
+		});
+
+		test('skips nodes without credentials', () => {
+			expect(() => validate([{ credentials: undefined }])).not.toThrow();
+		});
+
+		test('rejects a credential nested in a deeper inline sub-workflow', () => {
+			const inner = JSON.stringify({
+				nodes: [{ credentials: { spotifyApi: { id: 'cred-unknown', name: 'x' } } }],
+				connections: {},
+			});
+			expect(() =>
+				validate([
+					subworkflowNode([{ ...subworkflowNode([]), parameters: { workflowJson: inner } }]),
+				]),
+			).toThrow();
+		});
+	});
+
+	describe('validateWorkflowCredentialUsage() - unresolved credentials', () => {
+		const nodeWithNullCred = (id: string, name: string) =>
+			({
+				id,
+				name,
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [0, 0],
+				parameters: {},
+				credentials: { httpHeaderAuth: { id: null, name: 'some name' } },
+			}) as unknown as INode;
+
+		test('rejects a new node carrying an unresolved credential', () => {
+			const newVersion = {
+				nodes: [nodeWithNullCred('new-1', 'Steal')],
+			} as unknown as IWorkflowBase;
+			const previousVersion = { nodes: [] } as unknown as IWorkflowBase;
+
+			expect(() =>
+				service.validateWorkflowCredentialUsage(newVersion, previousVersion, []),
+			).toThrow();
+		});
+
+		test('keeps an unresolved credential on a pre-existing node without throwing', () => {
+			const existing = nodeWithNullCred('existing-1', 'Call');
+			const newVersion = { nodes: [{ ...existing, name: 'Renamed' }] } as unknown as IWorkflowBase;
+			const previousVersion = { nodes: [existing] } as unknown as IWorkflowBase;
+
+			expect(() =>
+				service.validateWorkflowCredentialUsage(newVersion, previousVersion, []),
+			).not.toThrow();
 		});
 	});
 

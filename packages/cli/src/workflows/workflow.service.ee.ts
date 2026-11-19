@@ -164,19 +164,19 @@ export class EnterpriseWorkflowService {
 		allowedCredentials: CredentialsEntity[],
 		user: User,
 	) {
-		workflow.nodes.forEach((node) => {
-			if (!node.credentials) {
-				return;
-			}
-			Object.keys(node.credentials).forEach((credentialType) => {
-				const credentialId = node.credentials?.[credentialType].id;
-				if (credentialId === undefined) return;
-				const matchedCredential = allowedCredentials.find(({ id }) => id === credentialId);
-				if (!matchedCredential) {
-					throw new UserError('The workflow contains credentials that you do not have access to');
-				}
-			});
-		});
+		// Reuse the shared collector so inline sub-workflow credentials (Execute
+		// Sub-workflow, Workflow Tool, Workflow Retriever) and unresolved name-only
+		// references are inspected too, keeping this check aligned with the update path.
+		// Uninspectable sources are handled below, so they are allowed here.
+		const allowedCredentialIds = allowedCredentials.map(({ id }) => id);
+		const inaccessibleNodes = this.getNodesWithInaccessibleCreds(
+			workflow,
+			allowedCredentialIds,
+			true,
+		);
+		if (inaccessibleNodes.length > 0) {
+			throw new UserError('The workflow contains credentials that you do not have access to');
+		}
 
 		if (this.canUseEveryCredential(user)) return;
 		const blockedNode = workflow.nodes.find(
@@ -305,8 +305,10 @@ export class EnterpriseWorkflowService {
 	}
 
 	/**
-	 * Get all nodes in a workflow where the node credential is not accessible to the user,
-	 * or where a sub-workflow is loaded only at run time and cannot be inspected.
+	 * Get all nodes in a workflow whose credentials the user cannot use: a
+	 * referenced credential id is not accessible, the node carries a credential
+	 * reference without an id, or a sub-workflow is loaded only at run time and
+	 * cannot be inspected. Inline sub-workflow credentials are included.
 	 */
 	getNodesWithInaccessibleCreds(
 		workflow: IWorkflowBase,
@@ -317,8 +319,9 @@ export class EnterpriseWorkflowService {
 			return [];
 		}
 		return workflow.nodes.filter((node) => {
-			const { ids, hasUninspectableSource } = this.getNodeCredentialRefs(node);
+			const { ids, hasUnresolved, hasUninspectableSource } = this.getNodeCredentialRefs(node);
 			return (
+				hasUnresolved ||
 				(hasUninspectableSource && !allowUninspectableSource) ||
 				ids.some((credId) => !userCredIds.includes(credId))
 			);
@@ -326,11 +329,14 @@ export class EnterpriseWorkflowService {
 	}
 
 	/**
-	 * Collect every credential id a node references. Besides the node's own
+	 * Collect the credential references a node uses. Besides the node's own
 	 * `credentials`, a node with an inline workflow selector (Execute
 	 * Sub-workflow, Workflow Tool, Workflow Retriever) embeds a whole workflow —
 	 * including its nodes' credentials — inside its `workflowJson` string
-	 * parameter, so those references are parsed out and returned as well.
+	 * parameter, so those references are walked as well.
+	 *
+	 * Returns `ids` (credential ids) and `hasUnresolved` (a credential reference
+	 * carrying no id, i.e. only a name).
 	 * `hasUninspectableSource` marks a sub-workflow that is loaded only at run
 	 * time (URL, local file, expression), so it has no references to inspect.
 	 *
@@ -343,9 +349,11 @@ export class EnterpriseWorkflowService {
 	 */
 	private getNodeCredentialRefs(node: INode): {
 		ids: string[];
+		hasUnresolved: boolean;
 		hasUninspectableSource: boolean;
 	} {
 		const ids: string[] = [];
+		let hasUnresolved = false;
 		let hasUninspectableSource = false;
 		const stack: INode[] = [node];
 
@@ -355,7 +363,11 @@ export class EnterpriseWorkflowService {
 			if (current.credentials) {
 				for (const nodeCred of Object.values(current.credentials)) {
 					const id = nodeCred.id?.toString();
-					if (id) ids.push(id);
+					if (id) {
+						ids.push(id);
+					} else if (nodeCred.id === null || nodeCred.id === '') {
+						hasUnresolved = true;
+					}
 				}
 			}
 
@@ -365,7 +377,7 @@ export class EnterpriseWorkflowService {
 			}
 		}
 
-		return { ids, hasUninspectableSource };
+		return { ids, hasUnresolved, hasUninspectableSource };
 	}
 
 	/**
