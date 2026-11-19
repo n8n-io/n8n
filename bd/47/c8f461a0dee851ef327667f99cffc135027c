@@ -1,0 +1,24 @@
+packages/cli/src/modules/skills/utils/skill-update-review.ts
+  s_3d598469e16764::t_80d5697971c06f 4,57-58,62-67
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceFilesView.vue
+  s_3d598469e16764::t_80d5697971c06f 158-166
+packages/cli/src/modules/skills/__tests__/skill-update-review.test.ts
+  s_3d598469e16764::t_28a6c3d915f516 22-26,28-33
+  s_3d598469e16764::t_1fd85b237fbb91 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bd47c8f461a0dee851ef327667f99cffc135027c",
+  "prompts": {},
+  "sessions": {
+    "s_3d598469e16764": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1f323-0b07-76e2-9e16-ded6407e36ad",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
