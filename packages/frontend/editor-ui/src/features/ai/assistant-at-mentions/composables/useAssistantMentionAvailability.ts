@@ -49,20 +49,29 @@ export function useAssistantMentionAvailability(options: {
 		if (reset) hasSavedResource.value = false;
 
 		isLoading.value = true;
-		try {
-			const workflows = await workflowsListStore.searchWorkflows({
-				projectId,
-				isArchived: false,
-				select: ['id', 'updatedAt'],
-				options: { take: 1, skip: 0, sortBy: 'updatedAt:asc', includeScopes: false },
-			});
-			const hasResource = workflows.length > 0 || (await hasAgent(projectId));
-			if (generation === requestGeneration) hasSavedResource.value = hasResource;
-		} catch {
-			if (reset && generation === requestGeneration) hasSavedResource.value = false;
-		} finally {
-			if (generation === requestGeneration) isLoading.value = false;
-		}
+		// Each check runs on its own, so a failed workflow request cannot hide the agents.
+		const [workflows, agents] = await Promise.allSettled([
+			hasWorkflow(projectId),
+			hasAgent(projectId),
+		]);
+		if (generation !== requestGeneration) return;
+		const found = [workflows, agents].some(
+			(result) => result.status === 'fulfilled' && result.value,
+		);
+		const failed = [workflows, agents].some((result) => result.status === 'rejected');
+		// When a check failed and the other found nothing, keep the last known value.
+		if (found || !failed || reset) hasSavedResource.value = found;
+		isLoading.value = false;
+	}
+
+	async function hasWorkflow(projectId: string): Promise<boolean> {
+		const workflows = await workflowsListStore.searchWorkflows({
+			projectId,
+			isArchived: false,
+			select: ['id', 'updatedAt'],
+			options: { take: 1, skip: 0, sortBy: 'updatedAt:asc', includeScopes: false },
+		});
+		return workflows.length > 0;
 	}
 
 	watch(

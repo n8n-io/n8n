@@ -69,7 +69,8 @@ export function useAssistantAgentMessageTelemetry(threadId: string) {
 
 	/**
 	 * Returns the context of the message, which `User received AI Assistant response` repeats.
-	 * `composerMentionCounts` are the mentions of the composer, which a host send does not carry.
+	 * `composerMentionCounts` are the composer mentions that this message sends. A host send
+	 * reports its own counts instead.
 	 */
 	function trackSend(
 		{ text, files, clientContext, isFirstMessage }: AssistantAgentSendingMessage,

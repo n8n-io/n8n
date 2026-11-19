@@ -314,6 +314,12 @@ const excludedMentionContext = computed(() => {
 			buildMentionKey('workflow', props.contextChip.workflowId, props.contextChip.workflowId),
 		);
 		workflowIds.add(props.contextChip.workflowId);
+	} else if (
+		props.contextChip?.type === 'agent-artifact' ||
+		props.contextChip?.type === 'agent-preview-session'
+	) {
+		// The hand-off chip already gives the agent as context.
+		keys.add(buildAgentMentionKey(props.contextChip.agentId));
 	}
 
 	for (const attachment of attachedResources.value) {

@@ -13,7 +13,10 @@ import { flushPromises } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
 import { defineComponent, h, inject, ref, type Ref } from 'vue';
 
-import type { AgentChatComposerAttachment } from '@/features/agents/utils/composer-attachments';
+import {
+	mergeClientContextPatches,
+	type AgentChatComposerAttachment,
+} from '@/features/agents/utils/composer-attachments';
 import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
@@ -2283,12 +2286,18 @@ describe('AssistantAgentThreadView', () => {
 			await flushPromises();
 			await pick(workflowMention, getByTestId);
 			await pick(agentMention, getByTestId);
-			const clientContext = { attachments: [workflowMention.attachment, agentMention.attachment] };
+			// The context that the panel sends: the host context with the staged chip patches.
+			const hostContext = panelProps.current['client-context'] as () => Record<string, unknown>;
+			const clientContext = mergeClientContextPatches(composerAttachments.value, hostContext());
+			expect(clientContext?.attachments).toEqual([
+				workflowMention.attachment,
+				agentMention.attachment,
+			]);
 
 			const onMessageSending = panelProps.current.onMessageSending as (payload: {
 				text: string;
 				files: File[];
-				clientContext: Record<string, unknown>;
+				clientContext?: Record<string, unknown>;
 				isFirstMessage: boolean;
 			}) => void;
 			onMessageSending({ text: 'Compare them', files: [], clientContext, isFirstMessage: false });
@@ -2303,6 +2312,23 @@ describe('AssistantAgentThreadView', () => {
 			);
 			expect(getByTestId('workflow-preview-stub')).toBeInTheDocument();
 			expect(previewProps.current?.['workflow-id']).toBe('wf-1');
+		});
+
+		it('reports no mentions for a send that leaves the staged chips in the composer', async () => {
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+			await pick(agentMention, getByTestId);
+
+			// The answer to a question card sends the text without the client context.
+			const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
+			onMessageSending({ text: 'Yes', files: [], isFirstMessage: false });
+
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({ mention_counts: EMPTY_ASSISTANT_MENTION_COUNTS }),
+			);
 		});
 
 		it('gives a sent message the resources of its client context, and shows them', async () => {

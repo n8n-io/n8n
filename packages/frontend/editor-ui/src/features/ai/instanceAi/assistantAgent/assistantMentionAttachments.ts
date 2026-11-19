@@ -70,8 +70,13 @@ export function toMentionComposerAttachment(
 
 /** The mention keys that the staged chips already hold, so the picker hides them. */
 export function stagedMentionKeys(staged: readonly StagedChip[]): string[] {
+	return mentionKeysOf(staged.flatMap(readChipAttachments));
+}
+
+/** The mention keys that resource attachments hold. */
+export function mentionKeysOf(attachments: readonly InstanceAiResourceAttachment[]): string[] {
 	const keys = new Set<string>();
-	for (const attachment of staged.flatMap(readChipAttachments)) {
+	for (const attachment of attachments) {
 		if (attachment.type === 'workflow') {
 			keys.add(buildMentionKey('workflow', attachment.id, attachment.id));
 		} else if (attachment.type === 'agent') {

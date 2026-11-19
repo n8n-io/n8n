@@ -22,6 +22,7 @@ import type { AgentChatComposerAttachment } from '@/features/agents/utils/compos
 import {
 	countMentions,
 	countStagedAttachments,
+	mentionKeysOf,
 	readChipAttachments,
 	stagedMentionKeys,
 	toMentionComposerAttachment,
@@ -192,9 +193,17 @@ export function useAssistantAgentMentions(options: {
 		options.panel()?.removeComposerAttachment(chipId);
 	}
 
-	/** The mentions that the composer sends with its next message. */
-	function stagedMentionCounts(): AssistantMentionCounts {
-		return countMentions([...mentionsByChip.values()].flat());
+	/**
+	 * The staged mentions that a message sends. A send without the composer
+	 * chips, such as the answer to a question card, sends none of them.
+	 */
+	function sentMentionCounts(
+		sent: readonly InstanceAiResourceAttachment[],
+	): AssistantMentionCounts {
+		const sentKeys = new Set(mentionKeysOf(sent));
+		return countMentions(
+			[...mentionsByChip.values()].flat().filter(({ key }) => sentKeys.has(key)),
+		);
 	}
 
 	/**
@@ -269,7 +278,7 @@ export function useAssistantAgentMentions(options: {
 		handleKeydown,
 		handlePointerDown,
 		handleCaretMove,
-		stagedMentionCounts,
+		sentMentionCounts,
 		firstSentMentionedWorkflow,
 		close: mentions.close,
 	};

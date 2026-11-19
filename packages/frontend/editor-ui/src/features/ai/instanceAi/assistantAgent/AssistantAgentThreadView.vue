@@ -293,7 +293,8 @@ const turnTelemetry = useAssistantAgentTurnTelemetry({
 
 function onMessageSending(message: AssistantAgentSendingMessage): void {
 	mentions.close();
-	turnTelemetry.trackSubmit(messageTelemetry.trackSend(message, mentions.stagedMentionCounts()));
+	const sent = readMessageReferences(message.clientContext?.attachments);
+	turnTelemetry.trackSubmit(messageTelemetry.trackSend(message, mentions.sentMentionCounts(sent)));
 }
 
 function onStreamEvent(event: AgentSseEvent): void {
