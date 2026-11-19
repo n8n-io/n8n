@@ -92,8 +92,8 @@ export function parseChaosArgs(argv: string[], random = Math.random): ChaosArgs 
 		workers: engine ? 0 : count('workers', values.workers ?? '2'),
 		engine,
 		kinds,
-		// The engine repairs a stale queued execution or step only after 60 s, and checks every 60 s.
-		settleMs: positive('settle', values.settle ?? (engine ? '180' : '120')) * 1000,
+		// The engine profile shortens the engine timers: a crashed running step is repaired after about 22 s.
+		settleMs: positive('settle', values.settle ?? (engine ? '60' : '120')) * 1000,
 		shrink: values.shrink,
 		repeats,
 		minFailures,

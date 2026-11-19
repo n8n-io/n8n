@@ -34,6 +34,12 @@ describe('chaosProfile', () => {
 		expect(menu.hookTargets).toEqual(['main']);
 		expect(menu.upstreams).toEqual({ main: ['postgres'] });
 		expect(stack.hooks?.every((h) => h.roles?.join() === 'main')).toBe(true);
+		expect(stack.hooks?.filter((h) => h.kind === 'set').map((h) => h.point)).toEqual([
+			'engine-staleness',
+			'engine-reconciliation-interval',
+			'engine-wait-sweep-interval',
+		]);
+		expect(menu.hookPoints).toEqual(engineChaosHooks('in-process').map((h) => h.point));
 	});
 
 	it('hooks the engine container and cuts links between both planes and their services in remote mode', () => {
