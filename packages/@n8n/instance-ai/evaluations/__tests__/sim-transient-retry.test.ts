@@ -2,6 +2,11 @@ vi.mock('../sim/sim-runner', async (importOriginal) => ({
 	...(await importOriginal<typeof import('../sim/sim-runner')>()),
 	runScenarioInSim: vi.fn(),
 }));
+// Only the number of runs matters here: the verifier must not call a model.
+vi.mock('../checklist/verifier', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../checklist/verifier')>()),
+	verifyChecklist: vi.fn().mockRejectedValue(new Error('not verified in this test')),
+}));
 
 import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
@@ -46,7 +51,6 @@ describe('sim execution', () => {
 			.mockResolvedValue(ran(['Slack returned 404']));
 		const client = mock<N8nClient>();
 
-		// Verification is not stubbed; only the number of runs matters here.
 		await executeScenario(
 			client,
 			'wf-1',
