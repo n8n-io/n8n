@@ -895,6 +895,7 @@ export class SkillService {
 		ctx: OperationContext = {},
 	): Promise<void> {
 		await this.txRunner.run(ctx, async (txCtx) => {
+			await this.sourceRepository.invalidateSourceForSkill(skillId, txCtx);
 			const [skill] = await this.skillRepository.findByIds([skillId], txCtx);
 			if (!skill) throw new NotFoundError('Skill not found');
 			await this.skillRepository.lockForEdit([skillId], txCtx);

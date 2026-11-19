@@ -24,11 +24,19 @@ const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
 const createdSessionSchema = z.object({
 	id: z.string().min(1),
 	connectUrl: z.string().min(1),
+	region: z.string().optional(),
 });
 
-/** The live view of a session's first tab. The response also lists each tab, which we do not need. */
+/**
+ * The live view of a session's first tab, and of each open tab. A tab's `id` is its CDP
+ * target id.
+ */
 const liveViewSchema = z.object({
 	debuggerFullscreenUrl: z.string().min(1),
+	pages: z
+		.array(z.object({ id: z.string().min(1), debuggerFullscreenUrl: z.string().min(1) }))
+		.default([])
+		.catch([]),
 });
 
 /** Errors from the gateway itself carry a message written for the user. */
@@ -43,7 +51,7 @@ const gatewayErrorSchema = z.object({
 export type AiGatewayBrowserSession = z.infer<typeof createdSessionSchema>;
 
 /**
- * The live view link of a session. The link lets anyone who has it watch and control the
+ * The live view links of a session. A link lets anyone who has it watch and control the
  * browser, so it must never be logged or stored.
  */
 export type AiGatewayBrowserLiveView = z.infer<typeof liveViewSchema>;
@@ -66,9 +74,11 @@ export class AiGatewayBrowserUseService {
 	async createSession({
 		userId,
 		attribution,
+		proxyCountry,
 	}: {
 		userId: string;
 		attribution: AiGatewayRequestAttribution;
+		proxyCountry?: string;
 	}): Promise<AiGatewayBrowserSession> {
 		// Without keepAlive, Browserbase ends the session when the CDP connection
 		// drops, so a crashed or restarted instance cannot leave one running.
@@ -77,7 +87,18 @@ export class AiGatewayBrowserUseService {
 			authHeaderKey: BROWSERBASE_API_KEY_HEADER,
 			method: 'POST',
 			path: '/v1/sessions',
-			body: { keepAlive: false, browserSettings: { viewport: BROWSER_VIEWPORT } },
+			body: {
+				keepAlive: false,
+				browserSettings: { viewport: BROWSER_VIEWPORT },
+				...(proxyCountry && {
+					proxies: [
+						{
+							type: 'browserbase',
+							geolocation: { country: proxyCountry },
+						},
+					],
+				}),
+			},
 			userId,
 			attribution,
 			mapErrorResponse: toGatewayError,

@@ -22,8 +22,8 @@ import { CacheService, UrlService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 
-// The OAuth server owns form metadata. Loading instance MCP also loads its tool graph
-// in the setup hook and can exceed the hook timeout under CI load.
+// The integration runner uses a migrated SQLite template in CI.
+// Load only the modules that serve form metadata.
 const testServer = setupTestServer({
 	modules: ['inbound-auth-core', 'oauth-server'],
 	endpointGroups: ['oauth-server'],

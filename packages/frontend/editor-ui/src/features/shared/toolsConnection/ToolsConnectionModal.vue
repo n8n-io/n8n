@@ -588,7 +588,11 @@ function handleOpenChange(value: boolean) {
 									@credential-dropdown-open="emit('credential-dropdown-open', $event)"
 									@first-credential-connect="emit('first-credential-connect', $event)"
 									@new-credential-connect="emit('new-credential-connect', $event)"
-								/>
+								>
+									<template v-if="$slots['row-footer']" #footer>
+										<slot name="row-footer" :item="row.item" />
+									</template>
+								</ToolRow>
 								<div v-else :class="$style.suggestionRow">
 									<slot name="suggestion-footer" />
 								</div>

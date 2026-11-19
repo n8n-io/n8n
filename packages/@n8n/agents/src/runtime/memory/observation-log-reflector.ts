@@ -3,6 +3,7 @@ import { isRecord } from '@n8n/utils/is-record';
 
 import { uniqueStrings } from './memory-lifecycle';
 import { reportSideCallUsage } from './forward-usage';
+import { outputTokenCounter } from './measured-tokens';
 import { redactText } from '../../sdk/guardrails';
 import type { AgentExecutionCounter, TokenUsage } from '../../types/sdk/agent';
 import type {
@@ -31,6 +32,16 @@ const MARKER_LABELS: Record<ObservationLogMarker, string> = {
 const REFLECTOR_OVER_BUDGET_WARNING =
 	'Observation log remains over reflector budget after reflection';
 
+/** Share of the target that the newest observations take. They stay as written. */
+const KEEP_SHARE = 1 / 3;
+
+/**
+ * The least and the most of its length that the older part keeps in one pass.
+ * A harder squeeze loses detail. A log that is still too long is reflected
+ * again after the next observation.
+ */
+const REFLECT_SHARES = [0.2, 0.7] as const;
+
 export type ObservationLogReflectorMemory = BuiltObservationLogStore;
 
 export interface ObservationLogReflectorWarning {
@@ -44,6 +55,13 @@ export interface RunObservationLogReflectorOpts {
 	memory: ObservationLogReflectorMemory;
 	observationScopeId: string;
 	reflectorThresholdTokens: number;
+	/**
+	 * Log size the Reflector aims for, below `reflectorThresholdTokens`, so the
+	 * log is not reflected again at every observation. The newest observations
+	 * stay as written, and only the older ones are reflected. Without it, the
+	 * whole log is reflected toward the threshold.
+	 */
+	reflectorTargetTokens?: number;
 	reflect: ObservationLogReflectFn;
 	tokenCounter?: TokenCounter;
 	now?: Date;
@@ -193,14 +211,25 @@ export async function runObservationLogReflector(
 	}
 
 	const now = opts.now ?? new Date();
-	const renderedObservationLog = renderObservationLogForReflection(activeObservationLog);
+	const target = opts.reflectorTargetTokens;
+	const { older, keptTokens } =
+		target === undefined
+			? { older: activeObservationLog, keptTokens: 0 }
+			: splitNewest(activeObservationLog, target * KEEP_SHARE);
+	const olderTokens = tokenCount - keptTokens;
+	const olderOnly = older.length < activeObservationLog.length;
+	const renderedObservationLog = renderObservationLogForReflection(older);
 	const reflectResult = await opts.reflect({
 		observationScopeId,
 		now,
-		activeObservationLog,
+		activeObservationLog: older,
 		renderedObservationLog,
-		tokenCount,
-		tokenBudget: reflectorThresholdTokens,
+		tokenCount: olderTokens,
+		tokenBudget:
+			target === undefined
+				? reflectorThresholdTokens
+				: Math.max(1, Math.round(olderTokens * squeezeShare(target - keptTokens, olderTokens))),
+		...(olderOnly && { olderOnly }),
 		executionCounter: opts.executionCounter,
 		telemetry: opts.telemetry,
 		modelFetch: opts.modelFetch,
@@ -215,15 +244,16 @@ export async function runObservationLogReflector(
 	// and never let a callback throw or rejection abort reflection.
 	reportSideCallUsage(opts.onUsage, reflectModel, reflectUsage);
 	const normalized = normalizeObservationLogReflection(
-		activeObservationLog,
-		withCreatedAt(parseObservationLogReflectionJson(output), now),
+		older,
+		withCreatedAt(parseObservationLogReflectionJson(output), now, olderOnly ? older : undefined),
 	);
+	const mergeTokenCounter = outputTokenCounter(output, reflectUsage, tokenCounter);
 	const reflection: ObservationLogReflection = {
 		...normalized,
 		merge: await Promise.all(
 			normalized.merge.map(async (merge) => {
 				const text = redactText(merge.text).text;
-				return { ...merge, text, tokenCount: await tokenCounter(text) };
+				return { ...merge, text, tokenCount: await mergeTokenCounter(text) };
 			}),
 		),
 	};
@@ -252,6 +282,52 @@ export async function runObservationLogReflector(
 		usage: reflectUsage,
 		model: reflectModel,
 	};
+}
+
+/**
+ * Split the log into the older entries to reflect and the newest ones to keep
+ * as written. Keeps whole groups (a root and its children), newest first, up
+ * to `keepTokens`. Always leaves at least one group to reflect.
+ */
+function splitNewest(
+	entries: ObservationLogEntry[],
+	keepTokens: number,
+): { older: ObservationLogEntry[]; keptTokens: number } {
+	const active = entries.filter((entry) => entry.status === 'active').sort(compareEntries);
+	const byId = new Map(active.map((entry) => [entry.id, entry]));
+	const rootOf = (entry: ObservationLogEntry): string => {
+		let current = entry;
+		const seen = new Set<string>();
+		while (current.parentId && !seen.has(current.id)) {
+			seen.add(current.id);
+			const parent = byId.get(current.parentId);
+			if (!parent) break;
+			current = parent;
+		}
+		return current.id;
+	};
+	const groups = new Map<string, ObservationLogEntry[]>();
+	for (const entry of active) {
+		const root = rootOf(entry);
+		groups.set(root, [...(groups.get(root) ?? []), entry]);
+	}
+	const ordered = [...groups.values()];
+	let head = ordered.length;
+	let keptTokens = 0;
+	while (head > 1) {
+		const size = countObservationTokens(ordered[head - 1]);
+		if (keptTokens + size > keepTokens) break;
+		keptTokens += size;
+		head--;
+	}
+	return { older: ordered.slice(0, head).flat(), keptTokens };
+}
+
+/** The share of its length the older part keeps, so the whole log lands near the target. */
+function squeezeShare(roomTokens: number, olderTokens: number): number {
+	const [least, most] = REFLECT_SHARES;
+	if (olderTokens <= 0) return most;
+	return Math.min(most, Math.max(least, roomTokens / olderTokens));
 }
 
 function descendantIds(id: string, childrenByParent: Map<string, ObservationLogEntry[]>): string[] {
@@ -361,13 +437,29 @@ function readOptionalParentId(value: unknown, index: number): string | null | un
 	throw new Error(`Reflector merge[${index}].parentId must be a string or null`);
 }
 
-function withCreatedAt(reflection: ObservationLogReflection, now: Date): ObservationLogReflection {
+/**
+ * Date each replacement. When newer entries stay as written, a replacement
+ * takes the date of the newest entry it replaces, so it stays before them.
+ */
+function withCreatedAt(
+	reflection: ObservationLogReflection,
+	now: Date,
+	reflected?: ObservationLogEntry[],
+): ObservationLogReflection {
+	const createdAtById = new Map(reflected?.map((entry) => [entry.id, entry.createdAt.getTime()]));
 	return {
 		drop: reflection.drop,
-		merge: reflection.merge.map((merge, index) => ({
-			...merge,
-			createdAt: merge.createdAt ?? new Date(now.getTime() + index),
-		})),
+		merge: reflection.merge.map((merge, index) => {
+			if (merge.createdAt) return merge;
+			const replaced = merge.supersedes
+				.map((id) => createdAtById.get(id))
+				.filter((time): time is number => time !== undefined);
+			const createdAt =
+				reflected && replaced.length > 0
+					? new Date(Math.max(...replaced))
+					: new Date(now.getTime() + index);
+			return { ...merge, createdAt };
+		}),
 	};
 }
 
