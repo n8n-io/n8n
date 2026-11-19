@@ -1,0 +1,48 @@
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/component-data-grid.md
+  s_74d64b3f874ae2::t_156bc146027aff 67,107-118,285-286
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/DataGridDateEditor.vue
+  s_74d64b3f874ae2::t_156bc146027aff 16-17,20-24,28,41
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/cellValues.test.ts
+  s_74d64b3f874ae2::t_294be1f11ffb69 107-109
+  s_74d64b3f874ae2::t_3cab3a5849198b 82-85,106,110-113
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/DataGridDatePicker.test.ts
+  s_74d64b3f874ae2::t_3cab3a5849198b 147-151,173-180
+  s_74d64b3f874ae2::t_5274db0089cd20 181-182
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/DataGridColumnHeader.vue
+  s_74d64b3f874ae2::t_156bc146027aff 70,72
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/filters.ts
+  s_74d64b3f874ae2::t_156bc146027aff 122,186-191,193-197
+  s_74d64b3f874ae2::t_3e44f05a925b44 181
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/filters.test.ts
+  s_74d64b3f874ae2::t_3cab3a5849198b 76-77,135-141
+  s_74d64b3f874ae2::t_780b48a8100547 142-143
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/DataGridLoadingIndicator.test.ts
+  s_74d64b3f874ae2::t_156bc146027aff 25-27,31
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/cellValues.ts
+  s_74d64b3f874ae2::t_156bc146027aff 54
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/DataGrid.types.ts
+  s_74d64b3f874ae2::t_156bc146027aff 36,84-97
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/DataGrid.test.ts
+  s_74d64b3f874ae2::t_3cab3a5849198b 737-750
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c63f6512046d727de6b5b07281f71aa78ea4a4fa",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_74d64b3f874ae2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bcf6478d-a88f-473e-b22e-6b13b235969e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

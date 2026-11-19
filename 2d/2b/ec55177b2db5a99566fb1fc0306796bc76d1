@@ -1,0 +1,39 @@
+packages/cli/src/workflows/publication/publication-status-reporter.ts
+  s_40f8b037f3bcf9::t_2030d3444a7d1d 9
+  s_40f8b037f3bcf9::t_2574c3595cfdfe 192
+  s_40f8b037f3bcf9::t_25a20d8ca9d3b6 136
+  s_40f8b037f3bcf9::t_661cf6bd939190 211
+  s_40f8b037f3bcf9::t_4d48e6d848e6ea 156,162-179
+  s_40f8b037f3bcf9::t_ce16466b4edec3 180-182
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_40f8b037f3bcf9::t_467be503b416f1 1079
+  s_40f8b037f3bcf9::t_4243808466b9e8 1168,1275
+packages/cli/src/workflows/publication/publication-result.ts
+  s_40f8b037f3bcf9::t_06d427c464c218 90-91
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_40f8b037f3bcf9::t_a3061aa9a63512 744-748
+packages/cli/src/workflows/publication/__tests__/workflow-publication-outbox-consumer.test.ts
+  s_40f8b037f3bcf9::t_d0d091f3dbe10e 811-815
+packages/cli/src/workflows/publication/__tests__/publication-status-reporter.test.ts
+  s_40f8b037f3bcf9::t_2ea6bb1a9049d4 945,953,963-979
+  s_40f8b037f3bcf9::t_37435762670bd2 191
+  s_40f8b037f3bcf9::t_c64a6c6244f551 672-675
+packages/cli/test/integration/workflows/workflow-publication-retry.test.ts
+  s_40f8b037f3bcf9::t_0e76ba7fe752f1 324-334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d2bec55177b2db5a99566fb1fc0306796bc76d1",
+  "prompts": {},
+  "sessions": {
+    "s_40f8b037f3bcf9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66c65aaf-9fbc-4586-9b3f-bc033bff0f2a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
