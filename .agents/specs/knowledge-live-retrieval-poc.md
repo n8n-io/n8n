@@ -363,6 +363,12 @@ Day-2 decision of 2026-11-19:
     Slack's own search backs both our provider and its MCP server, so the
     Slack half of C0 would mostly re-measure scope enforcement and tokens.
     A Slack C0 through a tunnel is a day-4 optional.
+16. "No company data in the PoC" covers OAuth grants: the Notion MCP
+    credential of C0 is granted the seed page only. The first C0 run was
+    authorized on the whole workspace: the baseline searched company pages,
+    read two of them, and could not even fetch the seeded page, so the run
+    was discarded and its artifacts deleted. The harness now prints every
+    tool call that names an id outside the seed (`OUT OF SEED`).
 
 ## Rules on this branch
 
@@ -425,6 +431,14 @@ Notes:
 - The Slack scope probe cost six tool calls: the model kept searching after
   `list_knowledge()` had shown the selected items. Fixed after the run with
   one more rule in the system instruction.
+- First C0 run (discarded, grant too wide; `anthropic/claude-sonnet-4-5`):
+  the hosted Notion server exposes `notion-search` and `notion-fetch` (model
+  names `notion_notion-search`, `notion_notion-fetch`). On the refund
+  question the baseline fetched the given url (empty: outside the grant),
+  searched, read two pages outside its allowed list, and then refused
+  because no url matched: 6 tool calls, 27.3 s. On "Not picked" it refused
+  from the instructions alone, no tool call, 3.3 s. Scope violations at the
+  tool layer are the metric to count for C0.
 - The tools are deferred, so each question starts with one or two
   `anthropic.tool_search` turns before the first knowledge call. C0's MCP
   tools are deferred too; an eager variant is a later measurement.
@@ -468,7 +482,7 @@ Notes:
 - [x] `endRun` hook in the turn-execution run end (done on day 1)
 - [x] Allow-set refusal test (done on day 1, with the per-run extension, refs and the unavailable-source result)
 - [x] `fixtures/agent.json` for `kb-native`, `kb-index`, `kb-mcp-c0` (and `kb-hybrid`); `smoke [agent]` runs any of them
-- [ ] Exit: `kb-native` answers a Slack channel question with a permalink (done 2026-11-19, see "First measurements"); `kb-mcp-c0` runs (waits for the `mcpOAuth2Api` credentials)
+- [ ] Exit: `kb-native` answers a Slack channel question with a permalink (done 2026-11-19, see "First measurements"); `kb-mcp-c0` runs with a grant on the seed page only (the first run had the whole workspace, decision 16)
 
 ### Day 3: `index`, harness, question set
 

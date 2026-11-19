@@ -63,8 +63,9 @@ agents get no live knowledge tools and answer from nothing.
 | `N8N_MODEL` | The model of every test agent. Default `anthropic/claude-sonnet-4-5`. Keep one snapshot for a whole comparison. |
 | `N8N_NOTION_CREDENTIAL_ID` | The `notionApi` credential. Without it the Notion source is left out. |
 | `N8N_SLACK_CREDENTIAL_ID` | The `slackApi` credential. Without it the Slack source is left out. |
-| `N8N_NOTION_MCP_CREDENTIAL_ID`, `N8N_SLACK_MCP_CREDENTIAL_ID` | The `mcpOAuth2Api` credentials of the hosted Notion and Slack MCP servers, for `kb-mcp-c0`. Create them in the editor: add an MCP server with the URL of `fixtures/agent.json` to any agent and connect it. A server without a credential is left out. |
+| `N8N_NOTION_MCP_CREDENTIAL_ID`, `N8N_SLACK_MCP_CREDENTIAL_ID` | The `mcpOAuth2Api` credentials of the hosted Notion and Slack MCP servers, for `kb-mcp-c0`. Create them in the editor: add an MCP server with the URL of `fixtures/agent.json` to any agent and connect it. On the Notion consent screen grant the `[seed] Knowledge PoC` page only: a wider grant lets the baseline read company pages, and their content then lands in the thread and in `results/`. A server without a credential is left out. |
 | `CHAT_TIMEOUT_MS` | Wait per question. Default 180000. |
+| `HARNESS_AGENTS_FILE`, `HARNESS_RESULTS_DIR` | Where the created agents and the results go. For tests of the script against a fake instance, so they never touch the real state. |
 
 `fixtures/agent.json` holds the shared instructions, the source descriptions,
 the hosted MCP servers of the baseline and the per-agent deltas (`retrieval`
@@ -73,7 +74,10 @@ the picked items from `items.json`. The baseline gets the picked items as a
 list in its instructions, because the hosted servers see the whole workspace. The agents it created are
 remembered in `fixtures/agents.json` (not committed) and updated on every run.
 `results/` holds one JSON file per harness run: the questions, the answers,
-the tool calls of the stream and the thread detail of each run.
+the tool calls of the stream, the thread detail of each run and `outOfSeed`:
+the tool calls that named an id the seed did not write. The run prints them
+as `OUT OF SEED` lines. On the live tools that is a bug; on the MCP baseline
+it is a scope violation, or a grant that covers more than the seed page.
 
 ## Output
 

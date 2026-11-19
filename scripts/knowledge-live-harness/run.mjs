@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES = path.join(HERE, 'fixtures');
-const RESULTS = path.join(HERE, 'results');
+const RESULTS = process.env.HARNESS_RESULTS_DIR ?? path.join(HERE, 'results');
 // The agents the script created, by key. Dev tests of the script point it elsewhere.
 const AGENTS_FILE = process.env.HARNESS_AGENTS_FILE ?? path.join(FIXTURES, 'agents.json');
 
@@ -294,10 +294,53 @@ function summarizeToolCalls(toolCalls) {
 		.map((call) => `${call.toolName}(${JSON.stringify(call.input)})`);
 }
 
-async function ask(client, agentId, question) {
+// Ids an agent can name in a tool input: Notion ids, Slack channel ids and message timestamps.
+const ID_PATTERNS = [
+	/[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}/gi,
+	/\b[CGD][A-Z0-9]{8,}\b/g,
+	/\b\d{10}\.\d{6}\b/g,
+];
+
+const normalizeId = (id) => id.replace(/-/g, '').toLowerCase();
+
+/** Every id the seed wrote, so a tool call that names another id stands out. */
+function collectSeedIds(value, into = new Set()) {
+	if (Array.isArray(value)) {
+		for (const entry of value) collectSeedIds(entry, into);
+	} else if (value && typeof value === 'object') {
+		for (const entry of Object.values(value)) collectSeedIds(entry, into);
+	} else if (typeof value === 'string') {
+		for (const pattern of ID_PATTERNS) {
+			for (const match of value.matchAll(pattern)) into.add(normalizeId(match[0]));
+		}
+	}
+	return into;
+}
+
+/**
+ * Tool calls that name an id outside the seed. On the live tools that is a
+ * bug; on the MCP baseline it is a scope violation, or a grant that covers
+ * more than the seed page. Only ids are reported, never content.
+ */
+function findOutOfSeedCalls(toolCalls, seedIds) {
+	const flagged = [];
+	for (const call of toolCalls) {
+		if (call.input === undefined || call.toolName?.startsWith('anthropic.')) continue;
+		const ids = [...collectSeedIds(call.input)];
+		const outside = ids.filter((id) => !seedIds.has(id));
+		if (outside.length > 0) flagged.push({ toolName: call.toolName, ids: outside });
+	}
+	return flagged;
+}
+
+async function ask(client, agentId, question, seedIds) {
 	console.log(`\nQ: ${question}`);
 	const result = await client.chat(agentId, question);
 	for (const line of summarizeToolCalls(result.toolCalls)) console.log(`  tool: ${line}`);
+	const outOfSeed = findOutOfSeedCalls(result.toolCalls, seedIds);
+	for (const call of outOfSeed) {
+		console.log(`  OUT OF SEED: ${call.toolName} named ${call.ids.join(', ')}`);
+	}
 	for (const error of result.errors) console.log(`  error: ${error}`);
 	console.log(`A: ${result.text.trim() || '(no text)'}`);
 	console.log(`  ${result.wallMs} ms, thread ${result.threadId}`);
@@ -312,7 +355,7 @@ async function ask(client, agentId, question) {
 			console.log(`  thread detail unavailable: ${error.message}`);
 		}
 	}
-	return { question, ...result, thread };
+	return { question, ...result, outOfSeed, thread };
 }
 
 const SMOKE_QUESTIONS = {
@@ -332,11 +375,18 @@ async function smoke(client, scaffold, items, agentKey) {
 	const sourceKeys = config.knowledge
 		? config.knowledge.liveSources.map((source) => source.id)
 		: config.mcpServers.map((server) => server.name);
+	const seedIds = collectSeedIds(items);
 	const runs = [];
 	for (const sourceKey of sourceKeys) {
 		for (const question of SMOKE_QUESTIONS[sourceKey] ?? []) {
-			runs.push(await ask(client, agentId, question));
+			runs.push(await ask(client, agentId, question, seedIds));
 		}
+	}
+	const violations = runs.reduce((count, run) => count + run.outOfSeed.length, 0);
+	if (violations > 0) {
+		console.log(
+			`\n${violations} tool call(s) named ids outside the seed. On the MCP baseline, check that the OAuth grant covers only the seed page.`,
+		);
 	}
 	await mkdir(RESULTS, { recursive: true });
 	const file = path.join(
