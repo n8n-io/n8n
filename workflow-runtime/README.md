@@ -17,8 +17,11 @@ from `$HOMEBREW_PREFIX/opt`. On Linux: `libssl-dev` and `libc-ares-dev`.
 
 | Path | What it is |
 |---|---|
-| `src/core/` | The deterministic core: module verifier, interpreter, region heap and compaction, JSON codec, standard library, the shard `step` function, log record format. No I/O, clock or threads. |
-| `src/shell/` | The platform shell: the shard pipeline (log, sync tiers, snapshots, recovery), HTTP server and client, fallback host link, crash simulation, benchmarks. |
+| `src/limits/` | Shared hard ceilings (`Limits` and related bounds) imported by wire, core and shell. |
+| `src/wire/` | Pure protocol codecs (`pgwire`, `mywire`, `tdswire`, `smtp`, `mail`, `hpack`, `http2`, `numfmt`). No sockets, clocks or `@intCast`/`@truncate`. |
+| `src/core/` | The deterministic core in six ordered subsystems (`mem -> text -> runtime -> stdlib -> vm -> sched`): region heap, codecs and Unicode tables, VM runtime ops and JSON/XML, standard library, bytecode verifier/interpreter/AOT, shard scheduler and log format. No I/O, clock or threads. |
+| `src/shell/` | The platform shell: the shard pipeline (log, sync tiers, snapshots, recovery), HTTP server and client, shared SQL/SMTP pool and `EffectDriver` registry, fallback host link, benchmarks. |
+| `src/sim/` | Seeded deterministic crash simulation (`sim.zig`). Touches no real clock, file, socket or thread. |
 | `bench/run.sh` | The HTTP workloads W2, W3, W4 and W7, and W3 over TLS (`ONLY=w3tls`). |
 | `bench/egress-test.sh` | Integration test of outbound HTTP: TLS, DNS, bodies, redirects, credentials, over HTTP/1.1 and HTTP/2 (Node.js `http2`, and Go's `net/http` when Go is installed). Needs Node.js. |
 | `bench/egress-load.sh` | W3 at vendor latency (100 ms, 300 ms) with 1,000 to 30,000 requests in flight, over HTTP/1.1, h2c, and TLS with and without h2. Prints the rate, CPU time per request and peak RSS. |

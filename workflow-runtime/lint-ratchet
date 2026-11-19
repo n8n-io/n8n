@@ -10,7 +10,7 @@ local-array 1
 global-var 16
 empty-catch 15
 silent-catch 68
-anyerror 14
+anyerror 10
 inferred-error 16
 unreachable-comment 53
 optional-unwrap 21

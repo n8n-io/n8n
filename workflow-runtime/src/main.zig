@@ -4,7 +4,7 @@ const std = @import("std");
 const core_lib = @import("core");
 const fixture = @import("shell/fixture.zig");
 const perf_report = @import("shell/perf_report.zig");
-const sim = @import("shell/sim.zig");
+const sim = @import("sim/sim.zig");
 const server = @import("shell/server.zig");
 const loadgen = @import("shell/loadgen.zig");
 const bench = @import("shell/bench.zig");
@@ -815,5 +815,6 @@ test {
     _ = @import("shell/binary_store.zig");
     _ = @import("shell/blob_store.zig");
     _ = @import("shell/binary_names_test.zig");
+    _ = @import("sim/sim.zig");
     _ = @import("shell/blob_e2e_test.zig");
 }

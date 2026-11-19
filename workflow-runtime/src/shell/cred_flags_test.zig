@@ -8,7 +8,7 @@ const Asm = core_lib.asm_.Asm;
 const EK = core_lib.module.EffectKind;
 const shard_mod = @import("shard.zig");
 
-const MemLog = @import("static_data_test.zig").MemLog;
+const MemLog = @import("memlog.zig").MemLog;
 
 fn newLog(a: std.mem.Allocator) !*MemLog {
     const log = try a.create(MemLog);

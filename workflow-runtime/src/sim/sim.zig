@@ -7,9 +7,10 @@
 const std = @import("std");
 const core_lib = @import("core");
 const core = core_lib.core;
-const shard_mod = @import("shard.zig");
-const programs = @import("programs.zig");
+const shard_mod = @import("../shell/shard.zig");
+const programs = @import("../shell/programs.zig");
 const Shard = shard_mod.Shard;
+pub const MemLog = @import("../shell/memlog.zig").MemLog;
 
 pub const Options = struct {
     executions: u32 = 40,
@@ -39,27 +40,8 @@ pub const Report = struct {
     fires: u32 = 0,
 };
 
-/// The in-memory log. `synced` marks what survives a crash.
-pub const MemLog = struct {
-    bytes: std.ArrayList(u8) = .empty,
-    synced: usize = 0,
-    gpa: std.mem.Allocator,
-
-    fn append(ctx: *anyopaque, b: []const u8) anyerror!void {
-        const l: *MemLog = @ptrCast(@alignCast(ctx));
-        try l.bytes.appendSlice(l.gpa, b);
-    }
-    fn sync(ctx: *anyopaque) anyerror!void {
-        const l: *MemLog = @ptrCast(@alignCast(ctx));
-        l.synced = l.bytes.items.len;
-    }
-    pub fn sink(l: *MemLog) shard_mod.LogSink {
-        return .{ .ctx = l, .appendFn = append, .syncFn = sync };
-    }
-    pub fn crash(l: *MemLog) void {
-        l.bytes.shrinkRetainingCapacity(l.synced);
-    }
-};
+/// The in-memory log lives in `src/shell/memlog.zig` so the simulation and
+/// shell tests share one implementation.
 
 const Delivery = struct { at: i64, ev: core.Event, durable: bool };
 
@@ -389,7 +371,9 @@ fn crash(gpa: std.mem.Allocator, box: **ShardBox, log: *MemLog, world: *World, r
 }
 
 /// Run `seeds` seeds; each compares a crashing run with its reference run.
-pub fn run(gpa: std.mem.Allocator, out: *std.Io.Writer, first_seed: u64, seeds: u64, opts: Options) !u32 {
+/// `out` is any writer that accepts `print(fmt, args)` so the simulation stays
+/// free of `std.Io` imports.
+pub fn run(gpa: std.mem.Allocator, out: anytype, first_seed: u64, seeds: u64, opts: Options) !u32 {
     var modules: [programs.sim_programs.len + 1][]const u8 = undefined;
     for (programs.sim_programs, 0..) |p, i| modules[i] = try p(gpa, programs.simMeta());
     modules[programs.sim_programs.len] = try programs.everySecond(gpa, programs.schedule_meta);
@@ -448,7 +432,7 @@ fn compare(ref: Outcome, got: Outcome, n: u32, window_end: i64) ?[]const u8 {
 }
 
 test "sim_stream fault schedule: poller wakeups and reset recovery" {
-    const st = @import("sim_stream.zig");
+    const st = @import("../shell/sim_stream.zig");
     const t = std.testing;
     const Msg = "stream-fault-echo";
 

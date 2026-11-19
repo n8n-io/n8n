@@ -362,18 +362,7 @@ test "fuzz url parser and query encoder" {
 
 // ---- log reader and recovery ------------------------------------------------------
 
-const MemLog = struct {
-    bytes: std.ArrayList(u8) = .empty,
-    gpa: std.mem.Allocator,
-    fn append(ctx: *anyopaque, b: []const u8) anyerror!void {
-        const l: *MemLog = @ptrCast(@alignCast(ctx));
-        try l.bytes.appendSlice(l.gpa, b);
-    }
-    fn sync(_: *anyopaque) anyerror!void {}
-    fn sink(l: *MemLog) shard_mod.LogSink {
-        return .{ .ctx = l, .appendFn = append, .syncFn = sync };
-    }
-};
+const MemLog = @import("memlog.zig").MemLog;
 
 fn shardConfig() core.Config {
     var c = smallConfig();

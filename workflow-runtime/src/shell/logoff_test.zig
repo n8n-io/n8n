@@ -10,7 +10,7 @@ const shard_mod = @import("shard.zig");
 const logoff = @import("logoff.zig");
 const programs = @import("programs.zig");
 
-const MemLog = @import("sim.zig").MemLog;
+const MemLog = @import("memlog.zig").MemLog;
 
 fn config() core.Config {
     return .{ .slots = 8, .region_counts = .{ 8, 4, 2, 1 }, .region_sizes = .{ 4 << 10, 64 << 10, 256 << 10, 1 << 20 }, .max_parked = 8, .max_pending = 64, .max_actions = 256, .max_batch_events = 64, .max_timers = 16 };
