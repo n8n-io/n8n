@@ -6,7 +6,10 @@
 			"name": "Webhook",
 			"type": "n8n-nodes-base.webhook",
 			"typeVersion": 2,
-			"position": [0, 0],
+			"position": [
+				0,
+				0
+			],
 			"parameters": {
 				"httpMethod": "POST",
 				"path": "filter-paired",
@@ -19,7 +22,10 @@
 			"name": "Source",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 2,
-			"position": [200, 0],
+			"position": [
+				200,
+				0
+			],
 			"parameters": {
 				"jsCode": "return [{ json: { n: 10 } }, { json: { n: 20 } }, { json: { n: 30 } }];"
 			}
@@ -29,7 +35,10 @@
 			"name": "Tag",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [400, 0],
+			"position": [
+				400,
+				0
+			],
 			"parameters": {
 				"assignments": {
 					"assignments": [
@@ -50,7 +59,10 @@
 			"name": "Filter",
 			"type": "n8n-nodes-base.filter",
 			"typeVersion": 2.2,
-			"position": [600, 0],
+			"position": [
+				600,
+				0
+			],
 			"parameters": {
 				"conditions": {
 					"options": {
@@ -80,7 +92,10 @@
 			"name": "Read Expression",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [800, -100],
+			"position": [
+				800,
+				-100
+			],
 			"parameters": {
 				"mode": "raw",
 				"jsonOutput": "={ \"sourceN\": {{ $('Source').item.json.n }}, \"sourceTag\": \"{{ $('Tag').item.json.tag }}\" }",
@@ -92,29 +107,101 @@
 			"name": "Read If Expression",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [800, 100],
+			"position": [
+				800,
+				100
+			],
 			"parameters": {
 				"mode": "raw",
 				"jsonOutput": "={ \"tagVal\": \"{{ $('Tag').item.json.tag }}\" }",
 				"options": {}
 			}
+		},
+		{
+			"id": "read-code-each",
+			"name": "Read Code Each",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				800,
+				200
+			],
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "return { json: { sourceN: $('Source').item.json.n, tag: $('Tag').item.json.tag, match: $('Source').itemMatching(0).json.n, node: $node['Tag'].json.tag } };"
+			}
+		},
+		{
+			"id": "read-code-all",
+			"name": "Read Code All",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				800,
+				300
+			],
+			"parameters": {
+				"jsCode": "return items.map((item, k) => ({ json: { sourceN: $('Source').item.json.n, match: $('Source').itemMatching(k).json.n } }));"
+			}
 		}
 	],
 	"connections": {
 		"Webhook": {
-			"main": [[{ "node": "Source", "type": "main", "index": 0 }]]
+			"main": [
+				[
+					{
+						"node": "Source",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		},
 		"Source": {
-			"main": [[{ "node": "Tag", "type": "main", "index": 0 }]]
+			"main": [
+				[
+					{
+						"node": "Tag",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		},
 		"Tag": {
-			"main": [[{ "node": "Filter", "type": "main", "index": 0 }]]
+			"main": [
+				[
+					{
+						"node": "Filter",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		},
 		"Filter": {
 			"main": [
 				[
-					{ "node": "Read Expression", "type": "main", "index": 0 },
-					{ "node": "Read If Expression", "type": "main", "index": 0 }
+					{
+						"node": "Read Expression",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read If Expression",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read Code Each",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read Code All",
+						"type": "main",
+						"index": 0
+					}
 				]
 			]
 		}

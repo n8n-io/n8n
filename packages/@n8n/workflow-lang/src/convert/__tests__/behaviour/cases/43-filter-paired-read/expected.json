@@ -7,7 +7,9 @@
 		"Tag",
 		"Filter",
 		"Read Expression",
-		"Read If Expression"
+		"Read If Expression",
+		"Read Code Each",
+		"Read Code All"
 	],
 	"nodes": {
 		"Webhook": [
@@ -88,6 +90,34 @@
 				},
 				{
 					"tagVal": "x"
+				}
+			]
+		],
+		"Read Code Each": [
+			[
+				{
+					"sourceN": 10,
+					"tag": "x",
+					"match": 10,
+					"node": "x"
+				},
+				{
+					"sourceN": 30,
+					"tag": "x",
+					"match": 10,
+					"node": "x"
+				}
+			]
+		],
+		"Read Code All": [
+			[
+				{
+					"sourceN": 10,
+					"match": 10
+				},
+				{
+					"sourceN": 10,
+					"match": 30
 				}
 			]
 		]

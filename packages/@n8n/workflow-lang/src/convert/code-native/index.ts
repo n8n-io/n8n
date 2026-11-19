@@ -165,6 +165,10 @@ export function attemptNative(
 		allowedModules?: string[];
 		dateValues?: boolean;
 		pairsByPosition?: (name: string) => boolean;
+		pairedIndex?: (name: string) => {
+			at(itemIndex: string): string;
+			values: Array<{ param: string; value: string }>;
+		} | null;
 		defaultOutput?: (name: string) => number;
 		outputList?: (name: string, output: number) => boolean;
 		notRun?: (name: string) => boolean;
@@ -496,6 +500,18 @@ export function lowerCodeNative(c: NodeContext, hostForm?: () => HostForm | null
 			dateValues: c.dateValues,
 			// With "execute once" the node gets one input item, and the node before has more.
 			pairsByPosition: (name) => c.node.executeOnce !== true && c.pairsByPosition(name),
+			// The paired items that the compiled nodes on the way keep, from the input item to
+			// the node that the code reads. The values stay the same for every item index, so
+			// the walk is made once with index 0 to collect them.
+			pairedIndex: (name) => {
+				if (c.node.executeOnce === true) return null;
+				const probe = c.pairedIndex(name, '0');
+				if (probe === null) return null;
+				return {
+					values: probe.values,
+					at: (itemIndex) => c.pairedIndex(name, itemIndex)?.code ?? probe.code,
+				};
+			},
 			defaultOutput: (name) => c.readOutput(name),
 			outputList: (name, output) => c.outputList(name, output) !== null,
 			// As the host step: a node of the workflow without a list before this node has no run.

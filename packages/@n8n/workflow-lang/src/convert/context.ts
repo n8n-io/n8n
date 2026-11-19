@@ -136,6 +136,15 @@ export interface NodeContext {
 	 * to this node.
 	 */
 	pairsByPosition(name: string): boolean;
+	/**
+	 * The index of the item of node `name` that v1 pairs with input item `itemIndex`, by the
+	 * paired items that the compiled nodes on the way keep. Null when a node on the way has no
+	 * kept paired items: then the read stays in the fallback host.
+	 */
+	pairedIndex(
+		name: string,
+		itemIndex: string,
+	): { code: string; values: Array<{ param: string; value: string }> } | null;
 	/** The output of node `name` that `$('name')` reads from this node. */
 	readOutput(name: string): number;
 	/**

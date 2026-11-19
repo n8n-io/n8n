@@ -257,6 +257,12 @@ class Body {
 	/** The nodes between an expression with `$('Node')` and that node (see `lineageOf`). */
 	lineage: Set<string> | undefined;
 
+	/** The chain of paired indexes from a node to another (see `pairedIndexCode`). */
+	readonly pairedHops = new Map<
+		string,
+		{ chain: ((index: string) => string) | null; values: Array<{ param: string; value: string }> }
+	>();
+
 	/** The variable of the `n8n-compiled.context` step result, when expressions need it. */
 	instanceVar: string | null = null;
 
@@ -467,6 +473,12 @@ export class ModuleGenerator {
 	/** The whole input list of each node with "execute once" (its input is the first item). */
 	private readonly onceInputs = new Map<string, string>();
 
+	/** The chain of paired indexes from a node to another (see `pairedIndexCode`). */
+	private readonly pairedHops = new Map<
+		string,
+		{ chain: ((index: string) => string) | null; values: Array<{ param: string; value: string }> }
+	>();
+
 	private readonly fallback: string[] = [];
 	/** Nodes that run as compiled code: their step moves the error items itself. */
 	private readonly compiledSteps = new Set<string>();
@@ -643,6 +655,75 @@ export class ModuleGenerator {
 			cur = from;
 		}
 		return false;
+	}
+
+	/**
+	 * The index of the item of `target` that v1 pairs with input item `itemIndex` of `current`,
+	 * by the paired items that the compiled nodes on the way keep (`NodeContext.pairedIndex`).
+	 * Null when a node on the way keeps none: v1 walks its paired items then, and the read
+	 * stays in the fallback host.
+	 */
+	private pairedIndexCode(
+		b: Body,
+		current: string,
+		target: string,
+		itemIndex: string,
+	): { code: string; values: Array<{ param: string; value: string }> } | null {
+		const key = `${current}|${target}`;
+		// The names of the values stay the same for each item index: a caller collects them once.
+		const knownHops = this.pairedHops.get(key);
+		if (knownHops) {
+			return knownHops.chain === null
+				? { code: itemIndex, values: [] }
+				: { code: knownHops.chain(itemIndex), values: knownHops.values };
+		}
+		const hops: Array<{ run: string; input: string; name: string }> = [];
+		let chain: ((index: string) => string) | null = null;
+		if (this.known(b, target)) {
+			if (this.singleItem(b, target)) {
+				chain = () => '0';
+			} else {
+				let cur = current;
+				for (let guard = 0; guard < b.graph.nodes.size && chain === null; guard++) {
+					const inc = b.graph
+						.incoming(cur)
+						.filter((e) => e.input === 0 && b.scope.has(e.from) && this.known(b, e.from));
+					if (inc.length !== 1) break;
+					const e = inc[0];
+					if (e.from === target) {
+						if (cur === current) chain = (index) => index;
+						else {
+							const steps = [...hops];
+							chain = (index) => {
+								let code = index;
+								steps.forEach((hop, k) => {
+									code = `pairedSourceIndex(${hop.run}, ${code}, ${hop.input}.length ${''}, ${str(hop.name)}, ${k === steps.length - 1})`;
+								});
+								return code;
+							};
+						}
+						break;
+					}
+					const parent = b.graph.nodes.get(e.from);
+					if (!parent || parent.executeOnce) break;
+					if (!(ONE_TO_ONE.has(parent.type) || parent.disabled)) {
+						const pairs = e.output === 0 ? b.pairs.get(e.from) : undefined;
+						if (!pairs) break;
+						hops.push({ ...pairs, name: b.short(e.from) });
+					}
+					cur = e.from;
+				}
+			}
+		}
+		const values = hops.flatMap((hop) => [
+			{ param: hop.run, value: hop.run },
+			{ param: `${hop.run}InputCount`, value: `${hop.input}.length` },
+		]).map((v) => ({ param: this.names.unique('coPairs'), value: v.value }));
+		const found = { chain, values };
+		this.pairedHops.set(key, found);
+		if (chain === null) return null;
+		if (hops.length > 0) this.helpers.add('pairedSourceIndex');
+		return { code: chain(itemIndex), values };
 	}
 
 	/**
@@ -956,6 +1037,8 @@ export class ModuleGenerator {
 						)
 					: null,
 			pairsByPosition: (name) => this.pairsByPosition(b, node.name, `${b.prefix}${name}`),
+			pairedIndex: (name, itemIndex) =>
+				this.pairedIndexCode(b, node.name, `${b.prefix}${name}`, itemIndex),
 			readOutput: (name) => this.branchOf(b, node.name, `${b.prefix}${name}`),
 			outputList: (name, index) => this.outputListOf(b, `${b.prefix}${name}`, index),
 			engine: b.engine,

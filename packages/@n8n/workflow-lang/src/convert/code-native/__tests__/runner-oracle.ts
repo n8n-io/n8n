@@ -36,10 +36,28 @@ export interface RunnerOptions {
 	onError?: 'continueRegularOutput' | 'continueErrorOutput';
 	/** Other settings of the Code node, for example `retryOnFail`. */
 	settings?: Record<string, unknown>;
+	/**
+	 * The paired item of each item of a node that ran before, by node name. The default is the
+	 * position of the item, as v1 pairs the items of a Code node that gives none.
+	 */
+	paired?: Record<string, number[]>;
+	/**
+	 * A node that gives a fixed list, whatever its input is, with a fixed paired item for each
+	 * item: the shape of a node that drops some of its input items (a Filter).
+	 */
+	fixed?: Record<string, { items: unknown[]; paired: number[] }>;
 }
 
 const LIFT =
 	'return items.map((i) => { const { $binary, ...json } = i.json; return $binary ? { json, binary: $binary } : { json }; });';
+
+/** The body of a Code node that gives a fixed list with a fixed paired item for each item. */
+const fixedWith = (items: unknown[], paired: number[]) =>
+	`return ${JSON.stringify(items)}.map((json, k) => ({ json, pairedItem: { item: ${JSON.stringify(paired)}[k] } }));`;
+
+/** The body of a Code node that lifts the items and gives each one its own paired item. */
+const liftWith = (paired: number[]) =>
+	`return items.map((i, k) => { const { $binary, ...json } = i.json; const out = $binary ? { json, binary: $binary } : { json }; out.pairedItem = { item: ${JSON.stringify(paired)}[k] }; return out; });`;
 
 const node = (name: string, type: string, parameters: Record<string, unknown>) => ({
 	name,
@@ -61,11 +79,23 @@ export async function runnerCode(
 	const nodes: Array<Record<string, unknown>> = [];
 	const chain: string[] = [];
 	for (const [name, list] of sources) {
+		const fixed = options.fixed?.[name];
+		if (!fixed) {
+			nodes.push(
+				node(`${name} data`, 'n8n-nodes-testing.testData', { data: JSON.stringify(list) }),
+			);
+			chain.push(`${name} data`);
+		}
 		nodes.push(
-			node(`${name} data`, 'n8n-nodes-testing.testData', { data: JSON.stringify(list) }),
-			node(name, 'n8n-nodes-base.code', { jsCode: LIFT }),
+			node(name, 'n8n-nodes-base.code', {
+				jsCode: fixed
+					? fixedWith(fixed.items, fixed.paired)
+					: options.paired?.[name]
+						? liftWith(options.paired[name])
+						: LIFT,
+			}),
 		);
-		chain.push(`${name} data`, name);
+		chain.push(name);
 	}
 	nodes.push({
 		...node('Code', 'n8n-nodes-base.code', {
@@ -108,6 +138,8 @@ export function nativeCode(
 		effects?: Record<string, unknown[]>;
 		/** What the converter knows of the workflow, for example `pairsByPosition`. */
 		known?: Partial<CodeNativeInput>;
+		/** The values of the workflow variables of a paired index code (`trigger.body.pairs`). */
+		pairValues?: unknown[];
 	} = {},
 ): RunnerOutcome {
 	const names = Object.keys(options.nodes ?? {});
@@ -134,6 +166,7 @@ export function nativeCode(
 		trigger: {
 			body: {
 				input: items,
+				pairs: options.pairValues ?? [],
 				nodes: t.translation.nodes.map(
 					(n) => options.outputs?.[`${n.name}@${n.output}`] ?? options.nodes?.[n.name],
 				),
