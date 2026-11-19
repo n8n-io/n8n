@@ -88,7 +88,8 @@ const valuesOf = (runData: IRunData, nodeName: string, field: string) =>
 /**
  * The `list` value of the Split Out item that each item of `nodeName` links back
  * to, per run. It follows the links as the data proxy does: the item's own
- * address if it has one, else the source of the run.
+ * address if it has one, else the source of the run. Every item in this
+ * workflow comes from exactly one item, so more than one link is an error.
  */
 function splitOutValues(runData: IRunData, nodeName: string): unknown[][] {
 	return (runData[nodeName] ?? []).map((task, run) =>
@@ -97,13 +98,16 @@ function splitOutValues(runData: IRunData, nodeName: string): unknown[][] {
 			for (let hop = 0; at.node !== 'Split Out'; hop++) {
 				if (hop > 20) return `no way back from ${nodeName}`;
 				const pairedItem = runData[at.node]?.[at.run]?.data?.main[at.slot]?.[at.index]?.pairedItem;
-				const link: IPairedItemData | undefined =
-					typeof pairedItem === 'number'
-						? { item: pairedItem }
-						: Array.isArray(pairedItem)
-							? pairedItem[0]
-							: pairedItem;
-				if (link === undefined) return `no link at ${at.node}/${at.run}/${at.slot}/${at.index}`;
+				const links: IPairedItemData[] =
+					pairedItem === undefined
+						? []
+						: typeof pairedItem === 'number'
+							? [{ item: pairedItem }]
+							: [pairedItem].flat();
+				const [link] = links;
+				if (links.length !== 1) {
+					return `${links.length} links at ${at.node}/${at.run}/${at.slot}/${at.index}`;
+				}
 				const address = link.sourceOverwrite ?? runData[at.node][at.run].source[link.input ?? 0];
 				if (!address) return `no source at ${at.node}/${at.run}`;
 				at = {
