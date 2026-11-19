@@ -1,0 +1,14 @@
+{
+	"description": "A Code node in all-items mode spreads the item itself (items.map(i => ({ ...i, json: { ...i.json, x: 1 } }))) after a Filter kept the items 1 and 3",
+	"trigger": {
+		"body": {
+			"label": "121-code-all-map-spread-item-after-filter"
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"expectRefusal": true
+}

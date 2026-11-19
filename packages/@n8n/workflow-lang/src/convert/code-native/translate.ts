@@ -231,9 +231,10 @@ export interface Translation {
 	 */
 	handsOver: boolean;
 	/**
-	 * True when every top-level return statement of the code gives a fresh value: a new
-	 * object or array that the code creates, not an input item. Then the engine rule
-	 * of `assignPairedItems` can pair the output items from the input and output lengths.
+	 * True when every top-level return gives new items: an array of new items, a `map` of the
+	 * input items with a helper that gives a new item, a loop that pushes new items, a `filter`
+	 * or `slice` of such a list, or one new item. Then the engine rule of `assignPairedItems`
+	 * can pair the output items from the input and output counts.
 	 */
 	freshOutput: boolean;
 }
@@ -814,6 +815,167 @@ function stripParens(e: ts.Expression): ts.Expression {
 	let x = e;
 	while (ts.isParenthesizedExpression(x)) x = x.expression;
 	return x;
+}
+
+/** The members whose spread copies the data of an item, not the item with its `pairedItem`. */
+const ITEM_DATA_MEMBERS = new Set(['json', 'binary']);
+
+/** The methods that give a list of the items of the list that they read. */
+const ITEM_LIST_METHODS = new Set(['filter', 'slice', 'reverse', 'sort', 'toSorted', 'toReversed']);
+
+/** True when `e` gives a list of the input items of the code (also a part of it). */
+function isInputItems(e: ts.Expression): boolean {
+	const x = stripParens(e);
+	if (ts.isIdentifier(x)) return x.text === 'items';
+	if (!ts.isCallExpression(x)) return false;
+	const callee = stripParens(x.expression);
+	if (!ts.isPropertyAccessExpression(callee)) return false;
+	if (callee.name.text === 'all') {
+		return ts.isIdentifier(callee.expression) && callee.expression.text === '$input';
+	}
+	return ITEM_LIST_METHODS.has(callee.name.text) && isInputItems(callee.expression);
+}
+
+/**
+ * True when `e` builds one new item, which cannot hold the `pairedItem` of an input item. A
+ * spread copies that member, so only a spread of the data of an item is new. A computed name
+ * can hide a `pairedItem` key, so a new item has fixed names only.
+ */
+function isNewItem(e: ts.Expression): boolean {
+	const x = stripParens(e);
+	if (!ts.isObjectLiteralExpression(x)) return false;
+	for (const p of x.properties) {
+		if (ts.isSpreadAssignment(p)) {
+			const s = stripParens(p.expression);
+			if (ts.isIdentifier(s) && s.text === '$json') continue;
+			if (!ts.isPropertyAccessExpression(s) || !ITEM_DATA_MEMBERS.has(s.name.text)) return false;
+			continue;
+		}
+		if (ts.isComputedPropertyName(p.name)) return false;
+	}
+	return true;
+}
+
+/** True when each return of the helper `body` gives one new item. */
+function givesNewItem(body: ts.ConciseBody): boolean {
+	if (!ts.isBlock(body)) return isNewItem(body);
+	let any = false;
+	let all = true;
+	const scan = (n: ts.Node): void => {
+		if (!all) return;
+		if (ts.isReturnStatement(n)) {
+			any = true;
+			if (n.expression === undefined || !isNewItem(n.expression)) all = false;
+			return;
+		}
+		if (isFunctionNode(n)) return;
+		ts.forEachChild(n, scan);
+	};
+	ts.forEachChild(body, scan);
+	return any && all;
+}
+
+/**
+ * True when `e` gives a list of new items: an array of new items, a `map` of the input items
+ * with a helper that gives a new item, a `filter` or `slice` of such a list, or a variable
+ * that the code fills with new items only.
+ */
+function givesNewItems(e: ts.Expression, body: ts.Block): boolean {
+	const x = stripParens(e);
+	if (ts.isArrayLiteralExpression(x)) {
+		return x.elements.every((el) => !ts.isSpreadElement(el) && isNewItem(el));
+	}
+	if (ts.isObjectLiteralExpression(x)) return isNewItem(x);
+	if (ts.isCallExpression(x)) {
+		const callee = stripParens(x.expression);
+		if (!ts.isPropertyAccessExpression(callee)) return false;
+		const method = callee.name.text;
+		const arg = x.arguments[0];
+		if (method === 'map') {
+			if (
+				arg === undefined ||
+				x.arguments.length !== 1 ||
+				!(ts.isArrowFunction(arg) || ts.isFunctionExpression(arg)) ||
+				!givesNewItem(arg.body)
+			) {
+				return false;
+			}
+			return isInputItems(callee.expression) || givesNewItems(callee.expression, body);
+		}
+		if (method === 'filter' || method === 'slice') return givesNewItems(callee.expression, body);
+		return false;
+	}
+	if (ts.isIdentifier(x)) return fillsWithNewItems(x.text, body);
+	return false;
+}
+
+/**
+ * True when the variable `name` of the code starts as an array of new items and each other use
+ * of it is a `push` of a new item, a read of its length or its return. Then the code gives new
+ * items only, whatever the number of the pushes.
+ */
+function fillsWithNewItems(name: string, body: ts.Block): boolean {
+	let found: ts.VariableDeclaration | undefined;
+	let declarations = 0;
+	const find = (n: ts.Node): void => {
+		if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.name.text === name) {
+			declarations++;
+			found = n;
+		} else if (ts.isParameter(n) && ts.isIdentifier(n.name) && n.name.text === name) {
+			declarations++;
+		}
+		ts.forEachChild(n, find);
+	};
+	ts.forEachChild(body, find);
+	if (declarations !== 1 || found === undefined || found.initializer === undefined) return false;
+	const init = stripParens(found.initializer);
+	if (!ts.isArrayLiteralExpression(init)) return false;
+	if (!init.elements.every((el) => !ts.isSpreadElement(el) && isNewItem(el))) return false;
+	let good = true;
+	const walk = (n: ts.Node): void => {
+		if (!good) return;
+		if (n === found) {
+			if (found.initializer !== undefined) walk(found.initializer);
+			return;
+		}
+		if (ts.isCallExpression(n)) {
+			const callee = stripParens(n.expression);
+			if (
+				ts.isPropertyAccessExpression(callee) &&
+				ts.isIdentifier(callee.expression) &&
+				callee.expression.text === name
+			) {
+				const arg = n.arguments[0];
+				if (callee.name.text !== 'push' || arg === undefined || n.arguments.length !== 1) {
+					good = false;
+					return;
+				}
+				if (!(ts.isSpreadElement(arg) ? givesNewItems(arg.expression, body) : isNewItem(arg))) {
+					good = false;
+				}
+				return;
+			}
+		}
+		if (
+			ts.isPropertyAccessExpression(n) &&
+			ts.isIdentifier(n.expression) &&
+			n.expression.text === name
+		) {
+			if (n.name.text !== 'length') good = false;
+			return;
+		}
+		if (ts.isReturnStatement(n) && n.expression !== undefined) {
+			const x = stripParens(n.expression);
+			if (ts.isIdentifier(x) && x.text === name) return;
+		}
+		if (ts.isIdentifier(n) && n.text === name) {
+			good = false;
+			return;
+		}
+		ts.forEachChild(n, walk);
+	};
+	ts.forEachChild(body, walk);
+	return good;
 }
 
 function stringArgument(call: ts.CallExpression): string | null {
@@ -7410,10 +7572,13 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			message: `The code has a Date value and the helper \`${unproven[0]}\`, which is not proven to read a Date value as JavaScript does.`,
 		});
 	}
-	// True when every top-level return gives a new literal value (array or object literal,
-	// not a method call). Only then the items are provably fresh (no pairedItem from input).
+	// True when every top-level return gives new items: an array of new items, a `map` of the
+	// input items to new items, a loop that pushes new items, or one new item. Only then no
+	// output item holds a pairedItem from an input item, and the engine rule of
+	// `assignPairedItems` pairs the output items from the counts, as v1 does.
 	let freshOutput = false;
-	if (root.body && (input.mode === 'all' || input.mode === 'each')) {
+	const rootBody = root.body;
+	if (rootBody && (input.mode === 'all' || input.mode === 'each')) {
 		let anyReturn = false;
 		let allFresh = true;
 		const scan = (n: ts.Node): void => {
@@ -7423,19 +7588,13 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				const x = n.expression;
 				if (x === undefined) { allFresh = false; return; }
 				const s = stripParens(x);
-				if (
-					!ts.isArrayLiteralExpression(s) &&
-					!ts.isObjectLiteralExpression(s) &&
-					!ts.isNewExpression(s)
-				) {
-					allFresh = false;
-				}
+				if (!ts.isNewExpression(s) && !givesNewItems(s, rootBody)) allFresh = false;
 				return;
 			}
 			if (n !== root && isFunctionNode(n)) return;
 			ts.forEachChild(n, scan);
 		};
-		ts.forEachChild(root.body, scan);
+		ts.forEachChild(rootBody, scan);
 		freshOutput = anyReturn && allFresh;
 	}
 	const translation = {

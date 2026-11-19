@@ -1,0 +1,13 @@
+{
+	"description": "A Code node in all-items mode gives a new item for each input item with the same json object: items.map(i => ({ json: i.json }))",
+	"trigger": {
+		"body": {
+			"label": "120-code-all-map-same-json"
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	]
+}
