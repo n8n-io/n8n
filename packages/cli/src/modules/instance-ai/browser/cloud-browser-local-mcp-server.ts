@@ -228,18 +228,7 @@ interface ActiveSession {
 	windowSeenByAgent?: string;
 	/** The browser tools that run right now. Calls can run in parallel. See `executeBrowserToolOnSession`. */
 	runningBrowserTools: number;
-	/** The agent asked the user to sign in during the session. Logged when the session ends. */
-	hadLoginRequest?: boolean;
 }
-
-/**
- * What `releaseSession` needs from a session, also before it is fully open. Without a connection,
- * the tools never connected to the session.
- */
-type SessionToRelease = Pick<
-	ActiveSession,
-	'id' | 'location' | 'loginProfile' | 'saveLoginProfileOnSessionEnd' | 'hadLoginRequest'
-> & { connection?: BrowserToolkit['connection'] };
 
 /** Browser tools on a Browserbase session, for one background task. */
 export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserUserActionHost {
@@ -458,10 +447,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		const error = this.startUserControl();
 		if (error) return { returned: false, error };
 		const userControl = this.userControl;
-		if (isLoginRequest && userControl && this.activeSession) {
-			this.activeSession.hadLoginRequest = true;
-			userControl.isLoginRequest = true;
-		}
+		if (isLoginRequest && userControl) userControl.isLoginRequest = true;
 		return (await userControl?.result.promise) ?? { returned: true };
 	}
 
@@ -707,7 +693,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		logger.warn('Cloud browser session lost', { taskId: scope.taskId, sessionId: session.id });
 		this.activeSession = undefined;
 		this.sessionUnavailableReason = 'connectionLost';
-		await this.releaseSession(session);
+		await this.releaseSessionAndLoginProfile(session);
 		return undefined;
 	}
 
@@ -744,7 +730,8 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 			toolkit = createToolkit(connectUrl);
 			await toolkit.connection.connect();
 		} catch (error) {
-			await this.releaseSession({ id, location, loginProfile });
+			await this.releaseSessionById(id);
+			await this.deleteLoginProfile(loginProfile);
 			throw error;
 		}
 
@@ -810,7 +797,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		this.sessionUnavailableReason = 'connectionLost';
 		this.clearIdleTimer();
 		this.endUserControl({ returned: false, error: SESSION_UNAVAILABLE_MESSAGES.connectionLost });
-		await this.releaseSession(session);
+		await this.releaseSessionAndLoginProfile(session);
 	}
 
 	/** Releases the active session, if one is open. */
@@ -819,29 +806,20 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		const session = this.activeSession;
 		if (!session) return;
 		this.activeSession = undefined;
-		await this.releaseSession(session);
+		await this.releaseSessionAndLoginProfile(session);
 	}
 
 	/**
 	 * Disconnects the tools from a session and releases it. Then saves its login profile, or else
 	 * deletes it. A failure is only logged, since nothing more can be done about it here.
 	 */
-	private async releaseSession(session: SessionToRelease): Promise<void> {
+	private async releaseSessionAndLoginProfile(session: ActiveSession): Promise<void> {
 		const { id: sessionId, location, loginProfile } = session;
-		const { scope, sessionProvider, logger } = this.options;
 
 		const shouldSaveLoginProfile = await this.shouldSaveLoginProfile(session);
 
-		try {
-			await session.connection?.disconnect();
-			await sessionProvider.releaseSession(scope, sessionId);
-		} catch (error) {
-			logger.warn('Failed to release cloud browser session', {
-				taskId: scope.taskId,
-				sessionId,
-				error: ensureError(error).message,
-			});
-		}
+		await session.connection.disconnect();
+		await this.releaseSessionById(sessionId);
 
 		const isLoginSaved =
 			shouldSaveLoginProfile && !!loginProfile
@@ -851,15 +829,20 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		if (!isLoginSaved) {
 			await this.deleteLoginProfile(loginProfile);
 		}
+	}
 
-		// Shows how many sessions need a sign-in, to decide whether a login profile for every
-		// session is worth its cost.
-		logger.info('Cloud browser session ended', {
-			taskId: scope.taskId,
-			sessionId,
-			hadLoginRequest: session.hadLoginRequest ?? false,
-			loginSaved: isLoginSaved,
-		});
+	/** Releases a session with the provider. A failure is only logged. */
+	private async releaseSessionById(sessionId: string): Promise<void> {
+		const { scope, sessionProvider, logger } = this.options;
+		try {
+			await sessionProvider.releaseSession(scope, sessionId);
+		} catch (error) {
+			logger.warn('Failed to release cloud browser session', {
+				taskId: scope.taskId,
+				sessionId,
+				error: ensureError(error).message,
+			});
+		}
 	}
 
 	/**
@@ -867,20 +850,20 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	 * profile keeps the browser state of its session, so the other sites are cleared from it first.
 	 * When they cannot be cleared, for example after the connection dropped, it is not saved.
 	 */
-	private async shouldSaveLoginProfile(session: SessionToRelease): Promise<boolean> {
-		const { loginProfile, connection } = session;
+	private async shouldSaveLoginProfile(session: ActiveSession): Promise<boolean> {
+		const { loginProfile } = session;
 		if (!loginProfile || !session.saveLoginProfileOnSessionEnd) return false;
-		if (!connection?.isConnected) return false;
-		return await this.clearOtherSiteData(connection, loginProfile);
+		if (!session.connection.isConnected) return false;
+		return await this.clearOtherSiteData(session, loginProfile);
 	}
 
 	/** Deletes the data of every site except the login profile's. Returns whether it did. */
 	private async clearOtherSiteData(
-		connection: ActiveSession['connection'],
+		session: ActiveSession,
 		loginProfile: CloudBrowserLoginProfile,
 	): Promise<boolean> {
 		const { scope, logger } = this.options;
-		const adapter = adapterOf({ connection });
+		const adapter = adapterOf(session);
 		if (!adapter?.clearSiteDataExcept) return false;
 		try {
 			await adapter.clearSiteDataExcept(loginProfile.domain);
@@ -1031,7 +1014,7 @@ function activePageIdOf(session: ActiveSession): string | undefined {
 	}
 }
 
-function adapterOf(session: Pick<ActiveSession, 'connection'>) {
+function adapterOf(session: ActiveSession) {
 	try {
 		return session.connection.getConnection().adapter;
 	} catch {

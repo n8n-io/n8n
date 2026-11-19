@@ -2427,10 +2427,6 @@ describe('CloudBrowserLocalMcpServer', () => {
 					expect.objectContaining({ error: 'HTTP 502' }),
 				);
 				expect(sessionProvider.deleteLoginProfile).toHaveBeenCalledWith(scope, 'login-profile-1');
-				expect(logger.info).toHaveBeenCalledWith(
-					'Cloud browser session ended',
-					expect.objectContaining({ loginSaved: false }),
-				);
 			});
 		});
 
@@ -2555,10 +2551,6 @@ describe('CloudBrowserLocalMcpServer', () => {
 				expect(sessionProvider.releaseSession).toHaveBeenCalledWith(scope, 'sess-1');
 				expect(sessionProvider.saveLoginProfile).not.toHaveBeenCalled();
 				expect(sessionProvider.deleteLoginProfile).toHaveBeenCalledWith(scope, 'login-profile-1');
-				expect(logger.info).toHaveBeenCalledWith(
-					'Cloud browser session ended',
-					expect.objectContaining({ loginSaved: false }),
-				);
 			});
 
 			it('does not save the login when the browser cannot clear site data', async () => {
@@ -2591,33 +2583,6 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 				expect(sessionProvider.saveLoginProfile).not.toHaveBeenCalled();
 				expect(sessionProvider.deleteLoginProfile).toHaveBeenCalledWith(scope, 'login-profile-1');
-			});
-
-			it('logs a session that ended without a sign-in', async () => {
-				const { server, logger, start } = setup();
-				await start({ url: 'https://example.com' });
-
-				await server.release();
-
-				expect(logger.info).toHaveBeenCalledWith('Cloud browser session ended', {
-					taskId: scope.taskId,
-					sessionId: 'sess-1',
-					hadLoginRequest: false,
-					loginSaved: false,
-				});
-			});
-
-			it('logs that the agent asked the user to sign in, and whether the login was saved', async () => {
-				const { server, logger } = await setupSavedLogin();
-
-				await server.release();
-
-				expect(logger.info).toHaveBeenCalledWith('Cloud browser session ended', {
-					taskId: scope.taskId,
-					sessionId: 'sess-1',
-					hadLoginRequest: true,
-					loginSaved: true,
-				});
 			});
 		});
 	});
