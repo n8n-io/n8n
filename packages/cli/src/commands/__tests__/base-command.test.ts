@@ -1,9 +1,10 @@
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import { AzureBlobConfig } from '@n8n/blob-storage';
 import { GlobalConfig } from '@n8n/config';
 import { SystemTaskMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { BinaryDataConfig, BinaryDataService } from 'n8n-core';
+import { BinaryDataConfig, BinaryDataService, StorageConfig } from 'n8n-core';
 
 import { DatabaseManager } from '@/binary-data/database.manager';
 import { License } from '@/license';
@@ -76,6 +77,67 @@ describe('initBinaryDataService', () => {
 		} finally {
 			exit.mockRestore();
 		}
+	});
+
+	describe('Azure storage without a license', () => {
+		const licenseState = mockInstance(LicenseState);
+		const storageConfig = mockInstance(StorageConfig, { mode: 'database' });
+		mockInstance(AzureBlobConfig, { containerName: 'n8n-data' });
+		const deployment = Container.get(GlobalConfig).deployment;
+		const originalDeploymentType = deployment.type;
+
+		let exit: ReturnType<typeof vi.spyOn>;
+
+		beforeEach(() => {
+			exit = vi.spyOn(process, 'exit').mockImplementation(() => {
+				throw new Error('process.exit');
+			});
+			vi.spyOn(
+				TestCommand.prototype as unknown as { initBinaryDataBlobManagers: () => Promise<void> },
+				'initBinaryDataBlobManagers',
+			).mockResolvedValue(undefined);
+			licenseState.isBinaryDataAzureLicensed.mockReturnValue(false);
+			licenseState.isExecutionDataAzureLicensed.mockReturnValue(false);
+		});
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+			deployment.type = originalDeploymentType;
+			binaryDataConfig.mode = 's3';
+			storageConfig.mode = 'database';
+		});
+
+		it.each([
+			['binary data', () => (binaryDataConfig.mode = 'azure')],
+			['execution data', () => (storageConfig.mode = 'azure')],
+		])('should warn and start on n8n Cloud when %s uses Azure', async (_, useAzure) => {
+			binaryDataConfig.mode = 'filesystem';
+			useAzure();
+			deployment.type = 'cloud';
+
+			await new TestCommand().initBinaryDataService();
+
+			expect(exit).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Continuing because this is an n8n Cloud deployment.'),
+			);
+			expect(binaryDataService.init).toHaveBeenCalled();
+		});
+
+		it.each([
+			['binary data', () => (binaryDataConfig.mode = 'azure')],
+			['execution data', () => (storageConfig.mode = 'azure')],
+		])('should exit outside n8n Cloud when %s uses Azure', async (_, useAzure) => {
+			binaryDataConfig.mode = 'filesystem';
+			useAzure();
+			deployment.type = 'default';
+
+			await expect(new TestCommand().initBinaryDataService()).rejects.toThrow('process.exit');
+
+			expect(exit).toHaveBeenCalledWith(1);
+			expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Azure Blob'));
+			expect(binaryDataService.init).not.toHaveBeenCalled();
+		});
 	});
 });
 

@@ -396,6 +396,21 @@ export abstract class BaseCommand<F = never> {
 		this.logger.error(error.stack!);
 	}
 
+	/**
+	 * The license only gates writing new data to Azure; existing data stays readable.
+	 * On n8n Cloud the platform sets the mode and the user cannot change it, so an
+	 * expired license must not stop the instance from starting.
+	 */
+	private onUnlicensedAzureStorage(message: string) {
+		if (this.globalConfig.deployment.type === 'cloud') {
+			this.logger.warn(`${message} Continuing because this is an n8n Cloud deployment.`);
+			return;
+		}
+
+		this.logger.error(message);
+		process.exit(1);
+	}
+
 	async initBinaryDataService() {
 		const binaryDataConfig = Container.get(BinaryDataConfig);
 		const binaryDataService = Container.get(BinaryDataService);
@@ -418,10 +433,9 @@ export abstract class BaseCommand<F = never> {
 		if (isAzureWriteMode) {
 			const isLicensed = Container.get(LicenseState).isBinaryDataAzureLicensed();
 			if (!isLicensed) {
-				this.logger.error(
+				this.onUnlicensedAzureStorage(
 					'Azure Blob binary data storage requires a valid license. Either set `N8N_DEFAULT_BINARY_DATA_MODE` to something else, or upgrade to a license that supports this feature.',
 				);
-				process.exit(1);
 			}
 			if (Container.get(AzureBlobConfig).containerName === '') {
 				this.logger.error(
@@ -456,10 +470,9 @@ export abstract class BaseCommand<F = never> {
 
 		if (isExecutionDataAzureMode) {
 			if (!isExecutionDataAzureLicensed) {
-				this.logger.error(
+				this.onUnlicensedAzureStorage(
 					'Azure Blob execution data storage requires a valid license. Either set `N8N_EXECUTION_DATA_STORAGE_MODE` to something else, or upgrade to a license that supports this feature.',
 				);
-				process.exit(1);
 			}
 			if (!isAzureConfigured) {
 				this.logger.error(
