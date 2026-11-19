@@ -2331,7 +2331,7 @@ function lowerHttpLibrary(c: NodeContext): void {
 		emitWithHostForm(
 			c,
 			false,
-			(to, hostLimit) => emitStep(to, { ...call, hostLimit }),
+			(to, hostLimit) => emitStep(to, { ...call, hostLimit, pairsByCall: true }),
 			hostForm,
 			replay,
 		);
@@ -2348,7 +2348,7 @@ function lowerHttpLibrary(c: NodeContext): void {
 			emitWithHostForm(
 				c,
 				false,
-				(to, hostLimit) => emitStep(to, { ...call, hostLimit }),
+				(to, hostLimit) => emitStep(to, { ...call, hostLimit, pairsByCall: true }),
 				hostForm,
 				replay,
 			);
