@@ -13,6 +13,8 @@ export interface PageResult {
 	samples: PageLoadSample[];
 	/** Statistics over the measured (non-warm-up) samples. */
 	stats: Record<'usableMs' | 'ttfbMs' | 'fcpMs' | 'dclMs' | 'lcpMs' | 'longTaskMs', Stats>;
+	/** The warm-up (first visit) against the average of the measured runs. */
+	warmup: { usableMs: number | null; deltaMs: number | null; deltaPct: number | null };
 }
 
 export interface RunMeta {
@@ -57,7 +59,22 @@ export function summarize(target: PageTarget, samples: PageLoadSample[]): PageRe
 			computeStats(measured.map((sample) => sample[key]).filter((v): v is number => v !== null)),
 		]),
 	) as PageResult['stats'];
-	return { target, samples, stats };
+	const warmupSample = samples.find((sample) => sample.warmup);
+	const warmupMs = warmupSample ? warmupSample.usableMs : null;
+	const deltaMs = warmupMs === null || measured.length === 0 ? null : warmupMs - stats.usableMs.avg;
+	const deltaPct =
+		deltaMs === null || stats.usableMs.avg === 0 ? null : (deltaMs / stats.usableMs.avg) * 100;
+	return { target, samples, stats, warmup: { usableMs: warmupMs, deltaMs, deltaPct } };
+}
+
+function signedMs(value: number | null): string {
+	if (value === null) return 'n/a';
+	return `${value >= 0 ? '+' : ''}${value.toFixed(0)} ms`;
+}
+
+function signedPct(value: number | null): string {
+	if (value === null) return 'n/a';
+	return `${value >= 0 ? '+' : ''}${value.toFixed(0)} %`;
 }
 
 const CSV_COLUMNS = [
@@ -124,8 +141,11 @@ export function buildReport(meta: RunMeta, results: PageResult[]): string {
 		target.label,
 		fmt.ms(stats.usableMs.median),
 		fmt.ms(stats.usableMs.avg),
+		fmt.ms(stats.usableMs.p75),
 		fmt.ms(stats.usableMs.p80),
+		fmt.ms(stats.usableMs.p90),
 		fmt.ms(stats.usableMs.p95),
+		fmt.ms(stats.usableMs.p99),
 		fmt.ms(stats.usableMs.stddev),
 		`${(stats.usableMs.cv * 100).toFixed(0)} %`,
 		fmt.ms(stats.usableMs.min),
@@ -146,9 +166,36 @@ export function buildReport(meta: RunMeta, results: PageResult[]): string {
 			{
 				heading: 'Time to usable',
 				rows: formatTable(
-					['Page', 'Median', 'Avg', 'p80', 'p95', 'Stddev', 'CV', 'Min', 'Max'],
+					[
+						'Page',
+						'Median',
+						'Avg',
+						'p75',
+						'p80',
+						'p90',
+						'p95',
+						'p99',
+						'Stddev',
+						'CV',
+						'Min',
+						'Max',
+					],
 					rows,
-					['left', 'right', 'right', 'right', 'right', 'right', 'right', 'right', 'right'],
+					['left', ...Array.from({ length: 11 }, (): 'right' => 'right')],
+				),
+			},
+			{
+				heading: 'Warm-up (first visit) vs average of the measured runs',
+				rows: formatTable(
+					['Page', 'Warm-up', 'Avg of runs', 'Diff', 'Diff %'],
+					results.map(({ target, stats, warmup }) => [
+						target.label,
+						warmup.usableMs === null ? 'n/a' : fmt.ms(warmup.usableMs),
+						fmt.ms(stats.usableMs.avg),
+						signedMs(warmup.deltaMs),
+						signedPct(warmup.deltaPct),
+					]),
+					['left', 'right', 'right', 'right', 'right'],
 				),
 			},
 			{

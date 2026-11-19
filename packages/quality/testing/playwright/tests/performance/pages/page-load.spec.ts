@@ -95,6 +95,13 @@ test.describe(
 				);
 				await attachMetric(
 					testInfo,
+					`editor-load-${result.target.id}-usable-p90-ms`,
+					result.stats.usableMs.p90,
+					'ms',
+					dimensions,
+				);
+				await attachMetric(
+					testInfo,
 					`editor-load-${result.target.id}-usable-p95-ms`,
 					result.stats.usableMs.p95,
 					'ms',
