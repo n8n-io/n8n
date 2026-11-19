@@ -89,11 +89,37 @@ const SURFACE_CHANNEL: Record<ChatSurfaceName, string> = {
 // Hex colours only: the widget writes them into CSS, so nothing else may get through.
 const color = z
 	.string()
-	.regex(/^#[0-9a-fA-F]{6}$/)
+	.regex(/^#[0-9a-fA-F]{6}$/, 'Use a colour like #0a7d4f')
 	.optional();
 const text = (max: number) => z.string().trim().max(max).optional();
 /** SPIKE (agent-chat-embed): the chat's appearance, edited in the theme editor. */
-export const ChatAppearanceSchema = z.object({
+/**
+ * Normalises what forms and older saves send: empty values mean "default" and are
+ * dropped, a radius may come as a string, a colour may lack its `#`, a logo URL may
+ * lack its scheme. Real mistakes still fail, with the field in the error.
+ */
+function normalizeAppearance(value: unknown): unknown {
+	if (value === null || value === undefined) return {};
+	if (typeof value !== 'object' || Array.isArray(value)) return value;
+	const out: Record<string, unknown> = {};
+	for (const [key, raw] of Object.entries(value)) {
+		let field: unknown = typeof raw === 'string' ? raw.trim() : raw;
+		if (field === null || field === undefined || field === '') continue;
+		if (key === 'radius' && typeof field === 'string') field = Number(field);
+		if (key === 'radius' && typeof field === 'number' && Number.isFinite(field)) {
+			field = Math.min(24, Math.max(0, Math.round(field)));
+		}
+		if (key.endsWith('Color') && typeof field === 'string' && /^[0-9a-fA-F]{6}$/.test(field)) {
+			field = `#${field}`;
+		}
+		if (key === 'logoUrl' && typeof field === 'string' && !/^[a-z][a-z0-9+.-]*:/i.test(field)) {
+			field = `https://${field}`;
+		}
+		out[key] = field;
+	}
+	return out;
+}
+const AppearanceShape = z.object({
 	title: text(80),
 	welcomeMessage: text(500),
 	placeholder: text(80),
@@ -113,7 +139,9 @@ export const ChatAppearanceSchema = z.object({
 	position: z.enum(['right', 'left']).optional(),
 	launcherIcon: z.enum(['chat', 'sparkle', 'help', 'logo']).optional(),
 });
-export type ChatAppearance = z.infer<typeof ChatAppearanceSchema>;
+/** SPIKE (agent-chat-embed): the chat's appearance, edited in the theme editor. */
+export const ChatAppearanceSchema = z.preprocess(normalizeAppearance, AppearanceShape);
+export type ChatAppearance = z.infer<typeof AppearanceShape>;
 export const CHAT_SURFACE_METHODS = ['n8nUsers', 'magicLinks', 'anonymous'] as const;
 export type ChatSurfaceMethod = (typeof CHAT_SURFACE_METHODS)[number];
 const method = z.boolean().default(false);
@@ -126,7 +154,7 @@ export const ChatSurfaceSettingsSchema = z.object({
 			(value) =>
 				value && typeof value === 'object' && 'public' in value && !('anonymous' in value)
 					? { ...value, anonymous: value.public }
-					: value,
+					: (value ?? {}),
 			z.object({ n8nUsers: method, magicLinks: method, anonymous: method }),
 		)
 		.default({}),
@@ -134,10 +162,17 @@ export const ChatSurfaceSettingsSchema = z.object({
 	 * Option B only. Features for identified principals (n8n users, invitees),
 	 * never for anonymous visitors. Only `uploads` is built.
 	 */
-	features: z.object({ uploads: method }).default({}),
+	features: z.preprocess((value) => value ?? {}, z.object({ uploads: method })),
 	/** The look of the hosted page and the embed. Empty fields use the widget's defaults. */
-	appearance: ChatAppearanceSchema.default({}),
+	appearance: ChatAppearanceSchema,
 });
+
+/** "appearance.logoUrl: Use an http(s) URL; …": which field failed, for the owner UI. */
+export function describeSettingsError(error: z.ZodError) {
+	return error.issues
+		.map((issue) => `${issue.path.join('.') || 'settings'}: ${issue.message}`)
+		.join('; ');
+}
 export type ChatSurfaceSettings = z.infer<typeof ChatSurfaceSettingsSchema>;
 interface StoredChatSurface extends ChatSurfaceSettings {
 	/** Chat sessions of a method issued before this time are dead (set when the method or the surface is turned off). */
@@ -355,10 +390,16 @@ export class WebhookChannelService {
 		const stored: Partial<StoredChatSurface> = row
 			? (JSON.parse(row.value) as StoredChatSurface)
 			: {};
-		return {
-			...ChatSurfaceSettingsSchema.parse(stored),
-			revokedBefore: stored.revokedBefore ?? {},
-		};
+		// A saved look that no longer validates must not take the access settings down with it.
+		const parsed = ChatSurfaceSettingsSchema.safeParse(stored);
+		const settings = parsed.success
+			? parsed.data
+			: ChatSurfaceSettingsSchema.parse({ ...stored, appearance: {} });
+		const revokedBefore = { ...stored.revokedBefore } as Record<string, number | undefined>;
+		// Revocations saved before the rename to "anonymous".
+		if (revokedBefore.public && !revokedBefore.anonymous)
+			revokedBefore.anonymous = revokedBefore.public;
+		return { ...settings, revokedBefore };
 	}
 
 	/** Saves the settings. Turning a method (or the whole surface) off ends that method's chat sessions. */

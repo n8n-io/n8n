@@ -25,6 +25,7 @@ import {
 } from './integrations/platforms/webhook/chat-page-invites.service';
 import {
 	ChatSurfaceSettingsSchema,
+	describeSettingsError,
 	isChatSurfaceName,
 	WebhookChannelService,
 	type ChatSurfaceName,
@@ -90,7 +91,11 @@ export class AgentIntegrationsController {
 	) {
 		const name = chatSurfaceName(surface);
 		const parsed = ChatSurfaceSettingsSchema.safeParse(req.body);
-		if (!parsed.success) throw new BadRequestError('Invalid chat surface settings');
+		if (!parsed.success) {
+			throw new BadRequestError(
+				`Invalid chat surface settings: ${describeSettingsError(parsed.error)}`,
+			);
+		}
 		// The raw body: a save without `appearance` keeps the saved one.
 		return await this.webhookChannel.setChatSurface(agentId, name, req.body);
 	}

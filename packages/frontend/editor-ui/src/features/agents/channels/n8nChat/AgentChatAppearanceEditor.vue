@@ -3,6 +3,7 @@
 // of the real @n8n/agent-chat widget (the bundle this instance serves). Copy is hard-coded.
 import {
 	N8nButton,
+	N8nCallout,
 	N8nDialog,
 	N8nDialogBody,
 	N8nDialogFooter,
@@ -21,6 +22,8 @@ const props = defineProps<{
 	agentName: string;
 	scriptUrl: string;
 	variant: 'webhook' | 'n8n-chat';
+	/** The server's answer to the last Save, e.g. "appearance.logoUrl: Use an http(s) URL". */
+	error?: string;
 }>();
 const emit = defineEmits<{
 	'update:open': [open: boolean];
@@ -75,13 +78,20 @@ const PREVIEW_MODES = [
 function set<K extends keyof ChatAppearance>(key: K, value: ChatAppearance[K]) {
 	draft.value = { ...draft.value, [key]: value };
 }
-/** Only what the owner set, and only valid colours: empty fields use the widget's defaults. */
+/** Only what the owner set: empty fields use the widget's defaults. The server checks the rest. */
 function cleaned(appearance: ChatAppearance): ChatAppearance {
 	return Object.fromEntries(
-		Object.entries(appearance).filter(([key, value]) => {
-			if (value === undefined || value === '' || value === null) return false;
-			return !key.endsWith('Color') || HEX.test(String(value));
-		}),
+		Object.entries(appearance).filter(
+			([, value]) => value !== undefined && value !== null && String(value).trim() !== '',
+		),
+	);
+}
+/** The preview gets only valid colours, so a half-typed one does not flash. */
+function forPreview(appearance: ChatAppearance): ChatAppearance {
+	return Object.fromEntries(
+		Object.entries(cleaned(appearance)).filter(
+			([key, value]) => !key.endsWith('Color') || HEX.test(String(value)),
+		),
 	);
 }
 
@@ -124,14 +134,14 @@ async function mountPreview() {
 		mode: previewMode.value,
 		theme: previewMode.value === 'fullscreen' ? 'n8n' : 'default',
 		preview: {
-			appearance: cleaned(draft.value),
+			appearance: forPreview(draft.value),
 			agentName: props.agentName,
 			variant: props.variant,
 		},
 	});
 }
 watch([stage, previewMode], async () => await mountPreview());
-watch(draft, (value) => widget?.update(cleaned(value)), { deep: true });
+watch(draft, (value) => widget?.update(forPreview(value)), { deep: true });
 onBeforeUnmount(() => widget?.unmount());
 </script>
 
@@ -291,6 +301,9 @@ onBeforeUnmount(() => widget?.unmount());
 					</N8nText>
 				</div>
 			</div>
+			<N8nCallout v-if="error" theme="danger" :class="$style.error" data-testid="appearance-error">
+				Not saved. {{ error }}
+			</N8nCallout>
 		</N8nDialogBody>
 		<N8nDialogFooter>
 			<N8nButton variant="ghost" data-testid="appearance-reset" @click="draft = {}">
@@ -381,6 +394,10 @@ onBeforeUnmount(() => widget?.unmount());
 		var(--color--background--light-3) 24px
 	);
 	overflow: hidden;
+}
+
+.error {
+	margin-top: var(--spacing--sm);
 }
 
 .spacer {

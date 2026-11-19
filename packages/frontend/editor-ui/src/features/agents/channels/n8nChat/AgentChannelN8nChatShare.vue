@@ -208,9 +208,22 @@ async function copyAdvanced() {
 }
 
 const editorOpen = ref(false);
+const appearanceError = ref('');
 async function saveAppearance(appearance: ChatAppearance) {
-	await save({ appearance });
-	editorOpen.value = false;
+	appearanceError.value = '';
+	const before = settings.value;
+	try {
+		await save({ appearance });
+		editorOpen.value = false;
+	} catch (error) {
+		// Keep the dialog open with the draft, and say which field the server refused.
+		settings.value = before;
+		appearanceError.value = error instanceof Error ? error.message : String(error);
+	}
+}
+function openEditor() {
+	appearanceError.value = '';
+	editorOpen.value = true;
 }
 const customized = computed(() => Object.keys(settings.value.appearance ?? {}).length > 0);
 </script>
@@ -410,7 +423,7 @@ const customized = computed(() => Object.keys(settings.value.appearance ?? {}).l
 								size="small"
 								variant="outline"
 								data-testid="n8n-chat-appearance-open"
-								@click="editorOpen = true"
+								@click="openEditor"
 								>Customize appearance</N8nButton
 							>
 						</template>
@@ -423,6 +436,7 @@ const customized = computed(() => Object.keys(settings.value.appearance ?? {}).l
 					:agent-name="agentName"
 					:script-url="scriptUrl"
 					:variant="isOptionB ? 'n8n-chat' : 'webhook'"
+					:error="appearanceError"
 					@save="saveAppearance"
 				/>
 			</section>
