@@ -9,7 +9,7 @@ import { isDeepStrictEqual } from 'node:util';
 import type { ZodIssue } from 'zod';
 
 import type { SkillContent } from './skill-content-hash';
-import { linkReviewReason } from './skill-link-review-policy';
+import { extractSkillLinks, linkReviewReason } from './skill-link-review-policy';
 import { SKILL_MD } from './skill-md';
 import { codePointOf, HIDDEN_PATTERN, locate, skillMdText } from './skill-text';
 import { isScriptFile } from './skipped-files';
@@ -112,14 +112,6 @@ export function findHiddenUnicode(input: SkillScanInput): SkillScanFinding[] {
 	});
 }
 
-/**
- * A link up to the first character that cannot be part of it. An IPv6 host sits in brackets,
- * which the rest of a link cannot hold, so it has its own group after the optional user info.
- * An underscore can come before a link, as in Markdown emphasis. A pipe ends a table cell.
- */
-const URL_PATTERN =
-	/(?<![a-z0-9])(?:https?|wss?|ftp):\/\/(?:[^\s<>"'`()[\]{}/?#@|]*@)?(?:\[[\d:a-f.]+\])?[^\s<>"'`()[\]{}|]*/gi;
-
 /** The English text of each reason, for the `detail` of a finding. */
 const LINK_REASON_DETAIL: Record<SkillLinkReviewReason, string> = {
 	ip_address: 'it uses an IP address',
@@ -138,7 +130,7 @@ export function findNewUrls({ content, previous }: SkillScanInput): SkillScanFin
 	const known = previous ? domainsByFile(previous) : undefined;
 	return [...domainsByFile(content, !previous)]
 		.filter(([key]) => !known?.has(key))
-		.map(([key, { file, location, domain, reviewReason }]) => ({
+		.map(([key, { file, locate, domain, reviewReason }]) => ({
 			rule: reviewReason ? 'risky_url' : 'new_url',
 			severity: previous || reviewReason ? 'needs_review' : 'info',
 			file,
@@ -149,23 +141,17 @@ export function findNewUrls({ content, previous }: SkillScanInput): SkillScanFin
 				: reviewReason
 					? `The link ${domain ? `to ${domain}` : key} needs review because ${LINK_REASON_DETAIL[reviewReason]}.`
 					: `The skill links to ${domain}.`,
-			location,
+			location: locate(),
 		}));
 }
 
 /** `domain` is absent for a link with an address that n8n cannot read. */
 type DomainOccurrence = {
 	file: string;
-	location: SkillScanLocation;
+	locate: () => SkillScanLocation;
 	domain?: string;
 	reviewReason?: SkillLinkReviewReason;
 };
-
-/** Sentence and Markdown punctuation that can follow a link. */
-const TRAILING_PUNCTUATION = /[.,;:!?*_~]+$/;
-
-/** A scheme with no address, such as the `https://` of `https://<host>`. */
-const BARE_SCHEME = /^[a-z]+:\/\/$/i;
 
 /**
  * Keep the first link per domain. At import, prefer the first link that needs review. A link
@@ -178,23 +164,20 @@ function domainsByFile(
 	const domains = new Map<string, DomainOccurrence>();
 	for (const { file, texts } of textsByFile(content)) {
 		for (const entry of texts) {
-			for (const match of entry.text.matchAll(URL_PATTERN)) {
-				const link = match[0].replace(TRAILING_PUNCTUATION, '');
-				if (BARE_SCHEME.test(link)) continue;
-				const location = entry.locate(match.index, match.index + link.length);
-				const url = URL.parse(link);
-				// A fully qualified host name can end with a dot.
-				const domain = url?.hostname.toLowerCase().replace(/\.+$/, '');
-				if (!url || !domain) {
-					if (checkImportRisk && !domains.has(link)) {
-						domains.set(link, { file, location, reviewReason: 'unreadable' });
-					}
-					continue;
-				}
+			for (const { link, start, end, url, domain } of extractSkillLinks(entry.text)) {
+				if (!domain && !checkImportRisk) continue;
+				const key = domain || link;
+				const existing = domains.get(key);
+				if (existing && (!checkImportRisk || existing.reviewReason)) continue;
 				const reviewReason = checkImportRisk ? linkReviewReason(url, domain) : undefined;
-				const existing = domains.get(domain);
-				if (existing && (!reviewReason || existing.reviewReason)) continue;
-				domains.set(domain, { file, location, domain, reviewReason });
+				if (existing && !reviewReason) continue;
+				domains.set(key, {
+					file,
+					domain,
+					reviewReason,
+					// Resolve the location only for links that produce a finding.
+					locate: () => entry.locate(start, end),
+				});
 			}
 		}
 	}

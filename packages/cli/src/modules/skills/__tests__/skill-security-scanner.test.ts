@@ -305,16 +305,33 @@ describe('SkillSecurityScanner', () => {
 			expect(scanner.scan(fetched(update), previous)).toEqual({ verdict: 'pass', findings: [] });
 		});
 
+		it.each([
+			'See [the docs](https://a|b@guide.example/docs).',
+			'See <https://a|b@guide.example/docs>.',
+			'[guide]: https://a|b@guide.example/docs',
+		])('uses the host of an explicit link with user info: %s', (instructions) => {
+			const content = fetched(skill({ instructions }));
+
+			expect(scanner.scan(content)).toEqual({
+				verdict: 'pass',
+				findings: [expect.objectContaining({ rule: 'new_url', domain: 'guide.example' })],
+			});
+			expect(scanner.scan(content, previous)).toEqual({
+				verdict: 'needs_review',
+				findings: [expect.objectContaining({ rule: 'new_url', domain: 'guide.example' })],
+			});
+		});
+
 		it('lists ordinary domains at import, including names that resemble a review domain', () => {
 			const content = skill({
 				instructions:
-					'Read https://notpastebin.com and https://webhook.site.example for the rules.',
+					'Read https://notpastebin.com, https://webhook.site.example and “https://docs.example.com”.',
 			});
 			const result = scanner.scan(fetched(content));
 
 			expect(result).toEqual({
 				verdict: 'pass',
-				findings: ['notpastebin.com', 'webhook.site.example'].map((domain) =>
+				findings: ['notpastebin.com', 'webhook.site.example', 'docs.example.com'].map((domain) =>
 					expect.objectContaining({
 						rule: 'new_url',
 						severity: 'info',
@@ -329,6 +346,7 @@ describe('SkillSecurityScanner', () => {
 			'|Docs|https://docs.example.com|',
 			'|https://docs.example.com|Docs|',
 			'|https://docs.example.com|@team|',
+			'|https://docs.example.com|owner@other.example|',
 		])('lists an ordinary domain in a Markdown table row at import: %s', (row) => {
 			const instructions = `| First | Second |\n| --- | --- |\n${row}`;
 
@@ -351,6 +369,8 @@ describe('SkillSecurityScanner', () => {
 			['Use **https://webhook.site** for the test.', 'webhook.site', 'https://webhook.site'],
 			['Open https://bit.ly; then read on.', 'bit.ly', 'https://bit.ly'],
 			['Paste it at https://pastebin.com!', 'pastebin.com', 'https://pastebin.com'],
+			['Send it to “https://192.0.2.10”.', '192.0.2.10', 'https://192.0.2.10'],
+			['Open https://bit.ly。', 'bit.ly', 'https://bit.ly'],
 			['Post to https://[2001:db8::1].', '[2001:db8::1]', 'https://[2001:db8::1]'],
 			['Post to https://192.0.2.10:8080.', '192.0.2.10', 'https://192.0.2.10:8080'],
 		])('leaves out the punctuation that follows the link in "%s"', (instructions, domain, link) => {
@@ -505,8 +525,9 @@ describe('SkillSecurityScanner', () => {
 		it('lists ordinary domains and marks the first risky link when the same domain also uses HTTPS', () => {
 			const httpUrl = 'http://example.com/data';
 			const content = skill({
-				instructions: 'Read https://example.com/docs and https://docs.example.org for the rules.',
-				files: [{ path: 'references/tone.md', content: `See ${httpUrl} for examples.` }],
+				instructions:
+					'Read https://example.com/docs, https://example.com/guide and https://docs.example.org.',
+				files: [{ path: 'references/tone.md', content: `See ${httpUrl} or ${httpUrl}.` }],
 			});
 
 			expect(scanner.scan(fetched(content))).toEqual({
