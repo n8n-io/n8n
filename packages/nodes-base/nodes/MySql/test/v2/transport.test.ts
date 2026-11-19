@@ -47,6 +47,7 @@ describe('MySQL v2 / transport / createPool', () => {
 		['the credential, because zero is not a deadline', 2_500, 0, 2_500],
 		['the credential, because a negative is not a deadline', 2_500, -5, 2_500],
 		['the credential, because an expression gave no number', 2_500, NaN, 2_500],
+		['the credential, because Infinity is coerced to a 1ms deadline', 2_500, Infinity, 2_500],
 	])('sends %s', async (_name, credentialMs, optionSeconds, expected) => {
 		await createPool.call(ctx, credentials(credentialMs), {
 			...(optionSeconds === undefined ? {} : { [timeoutKey!]: optionSeconds }),
