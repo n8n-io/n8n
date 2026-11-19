@@ -153,6 +153,11 @@ describe('EngineV2Dispatcher', () => {
 		payloadFiles.claimForExecution.mockResolvedValue(undefined);
 		payloadFiles.discard.mockResolvedValue(undefined);
 		manualRunPlanner.applies.mockReturnValue(false);
+		// `clearAllMocks` keeps an implementation that a test set. Each test starts
+		// with node types that declare no annotation.
+		nodeTypes.getByNameAndVersion.mockImplementation(() =>
+			mock<INodeType>({ description: { properties: [] } }),
+		);
 		dispatcher = new EngineV2Dispatcher(
 			proxy,
 			credentialsPermissionChecker,
