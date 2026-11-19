@@ -1,11 +1,15 @@
-import type { LeadershipEvent, RunRecord } from './invariants';
+import type { EngineRunRecord, LeadershipEvent, RunRecord } from './invariants';
 import {
+	checkEngineWorkload,
 	checkWorkload,
+	everyAcceptedRequestHasOneExecution,
+	everyEngineExecutionFinished,
 	everyExecutionFinished,
 	everySuccessHasItsEffect,
 	leaderOverlaps,
 	noAcceptedRequestLost,
 	noRepeatedEffects,
+	noRunningExecutionWithoutLiveStep,
 	oneLeaderAtATime,
 	queueDrained,
 } from './invariants';
@@ -114,6 +118,85 @@ describe('workload invariants', () => {
 		expect(queueDrained({ ...healthy, bull: { wait: ['9'], active: [] } })).toEqual([
 			{ invariant: 'queue drained', detail: { wait: ['9'], active: [] } },
 		]);
+	});
+});
+
+describe('engine workload invariants', () => {
+	const execution = (id: string, requestId: string, status = 'completed', liveSteps = 0) => ({
+		id,
+		requestId,
+		status,
+		liveSteps,
+	});
+	const engineHealthy: EngineRunRecord = {
+		requests: [request('a', 200, 'e1'), request('b', 200), request('c', 0)],
+		executions: [execution('e1', 'a'), execution('e2', 'b')],
+		effects: [
+			{ requestId: 'a', executionId: 'e1' },
+			{ requestId: 'b', executionId: 'e2' },
+		],
+	};
+
+	it('find nothing wrong with a healthy run', () => {
+		expect(checkEngineWorkload(engineHealthy)).toEqual([]);
+	});
+
+	it('flag an accepted request with no execution, two executions, or another execution than it was told', () => {
+		const record = {
+			...engineHealthy,
+			requests: [request('a', 200, 'e9'), request('b', 200), request('d', 200)],
+			executions: [...engineHealthy.executions, execution('e3', 'b')],
+		};
+		expect(everyAcceptedRequestHasOneExecution(record)).toEqual([
+			{
+				invariant: 'every accepted request has one execution',
+				detail: [
+					{ requestId: 'a', answered: 'e9', found: ['e1'] },
+					{ requestId: 'b', answered: undefined, found: ['e2', 'e3'] },
+					{ requestId: 'd', answered: undefined, found: [] },
+				],
+			},
+		]);
+	});
+
+	it('accept a rejected request with or without an execution', () => {
+		const record = {
+			...engineHealthy,
+			executions: [...engineHealthy.executions, execution('e3', 'c')],
+		};
+		expect(everyAcceptedRequestHasOneExecution(record)).toEqual([]);
+	});
+
+	it('flag executions that are not final', () => {
+		const record = {
+			...engineHealthy,
+			executions: [execution('e1', 'a', 'running', 1), execution('e2', 'b', 'queued')],
+		};
+		expect(everyEngineExecutionFinished(record)).toEqual([
+			{ invariant: 'every execution finished', detail: { e1: 'running', e2: 'queued' } },
+		]);
+	});
+
+	it('flag a running execution only when no step is left to move it on', () => {
+		const record = {
+			...engineHealthy,
+			executions: [
+				execution('e1', 'a', 'running', 1),
+				execution('e2', 'b', 'running', 0),
+				execution('e3', 'c', 'queued', 0),
+			],
+		};
+		expect(noRunningExecutionWithoutLiveStep(record)).toEqual([
+			{ invariant: 'no running execution without a live step', detail: ['e2'] },
+		]);
+	});
+
+	it('flag an effect written twice', () => {
+		const record = {
+			...engineHealthy,
+			effects: [...engineHealthy.effects, { requestId: 'a', executionId: 'e1' }],
+		};
+		expect(checkEngineWorkload(record).map((v) => v.invariant)).toEqual(['no repeated effects']);
 	});
 });
 
