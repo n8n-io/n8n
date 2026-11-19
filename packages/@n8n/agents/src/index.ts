@@ -368,6 +368,11 @@ export {
 	type AzureOpenAiAuthFields,
 } from './runtime/model/provider-credentials';
 export {
+	isSupportedAgentProvider,
+	mapCredentialForProvider,
+	SUPPORTED_AGENT_PROVIDERS,
+} from './runtime/model/credential-field-mapping';
+export {
 	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	ROOT_SUB_AGENT_TASK_PATH,
 	assertSubAgentTaskPath,

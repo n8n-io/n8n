@@ -15,6 +15,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/vue';
 import type { VNode } from 'vue';
@@ -188,6 +189,17 @@ describe('SettingsSkillsView', () => {
 		await userEvent.click(await screen.findByRole('option', { name: optionText }));
 	}
 
+	it.each([true, false])(
+		'shows the enterprise readiness badge only on the enterprise plan (%s)',
+		async (enterprise) => {
+			mockedStore(useSettingsStore).isEnterprisePlan = enterprise;
+			const view = renderView();
+			await new Promise(process.nextTick);
+
+			expect(!!view.queryByTestId('skills-enterprise-readiness-badge')).toBe(enterprise);
+		},
+	);
+
 	it('loads the first page of 10 skills on mount', async () => {
 		renderView();
 		await new Promise(process.nextTick);
@@ -196,6 +208,123 @@ describe('SettingsSkillsView', () => {
 			skip: 0,
 			take: 10,
 			sortBy: 'updatedAt:desc',
+		});
+	});
+
+	describe('pagination preferences', () => {
+		const key = 'n8n-skills-pagination:alice';
+
+		beforeEach(() => {
+			mockedStore(useUsersStore).currentUserId = 'alice';
+			skillsStore.skills = [skill()];
+			skillsStore.count = 200;
+		});
+
+		it('restores page and page size with a fresh store after changing the controls', async () => {
+			const view = renderView();
+			await userEvent.click(await view.findByTestId('pagination-sizes'));
+			await userEvent.click(await screen.findByRole('option', { name: /25/ }));
+			await userEvent.click(view.getByTestId('pagination-next'));
+			await userEvent.click(view.getByTestId('pagination-next'));
+			await waitFor(() =>
+				expect(JSON.parse(localStorage.getItem(key)!)).toEqual({ page: 2, itemsPerPage: 25 }),
+			);
+			view.unmount();
+
+			createTestingPinia();
+			setPermissions();
+			mockedStore(useUsersStore).currentUserId = 'alice';
+			skillsStore = mockedStore(useSkillsStore);
+			skillsStore.count = 200;
+			skillsStore.skills = [skill()];
+			renderView();
+			await waitFor(() =>
+				expect(skillsStore.fetchSkills).toHaveBeenCalledWith({
+					skip: 50,
+					take: 25,
+					sortBy: 'updatedAt:desc',
+				}),
+			);
+		});
+
+		it.each([false, true])('clamps and saves an invalid page with grouping=%s', async (grouped) => {
+			localStorage.setItem(key, JSON.stringify({ page: 99, itemsPerPage: 10 }));
+			mockedStore(usePostHog).isFeatureEnabled.mockImplementation(
+				(flag) => grouped && String(flag) === SKILL_SYNC_FLAG,
+			);
+			skillsStore.fetchSources.mockResolvedValue([]);
+			skillsStore.fetchSkills.mockImplementation(async () => {
+				skillsStore.count = 23;
+				if (grouped) {
+					skillsStore.page = 2;
+					skillsStore.pageCount = 3;
+				}
+				return {
+					data: skillsStore.skills,
+					count: 23,
+					...(grouped ? { page: 2, pageCount: 3 } : {}),
+				};
+			});
+			renderView();
+			await waitFor(() =>
+				expect(JSON.parse(localStorage.getItem(key)!)).toEqual({ page: 2, itemsPerPage: 10 }),
+			);
+			if (!grouped) {
+				expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+					expect.objectContaining({ skip: 20, take: 10 }),
+				);
+			}
+		});
+
+		it('keeps pagination preferences separate for each user', async () => {
+			localStorage.setItem(key, JSON.stringify({ page: 2, itemsPerPage: 25 }));
+			mockedStore(useUsersStore).currentUserId = 'bob';
+			const view = renderView();
+			await waitFor(() =>
+				expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
+					expect.objectContaining({ skip: 0, take: 10 }),
+				),
+			);
+			await userEvent.click(view.getByTestId('pagination-next'));
+			await waitFor(() =>
+				expect(JSON.parse(localStorage.getItem('n8n-skills-pagination:bob')!)).toEqual({
+					page: 1,
+					itemsPerPage: 10,
+				}),
+			);
+			expect(JSON.parse(localStorage.getItem(key)!)).toEqual({ page: 2, itemsPerPage: 25 });
+		});
+
+		it.each([
+			{ page: -1, itemsPerPage: 0 },
+			{ page: '2', itemsPerPage: 123 },
+		])('uses defaults for invalid saved values %j', async (saved) => {
+			localStorage.setItem(key, JSON.stringify(saved));
+			renderView();
+			await waitFor(() =>
+				expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
+					expect.objectContaining({ skip: 0, take: 10 }),
+				),
+			);
+		});
+
+		it('resets a restored page when the filter changes and keeps the page size', async () => {
+			localStorage.setItem(key, JSON.stringify({ page: 2, itemsPerPage: 25 }));
+			const view = renderView();
+			await waitFor(() =>
+				expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
+					expect.objectContaining({ skip: 50, take: 25 }),
+				),
+			);
+			await pickFilter(view, 'skills-filter-scope', 'Projects');
+			await waitFor(() =>
+				expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+					expect.objectContaining({ skip: 0, take: 25, scope: 'project' }),
+				),
+			);
+			await waitFor(() =>
+				expect(JSON.parse(localStorage.getItem(key)!)).toEqual({ page: 0, itemsPerPage: 25 }),
+			);
 		});
 	});
 
@@ -1564,15 +1693,47 @@ describe('SettingsSkillsView', () => {
 			`,
 		};
 
-		function enableSkillSync() {
+		function enableSkillSync({ switchOn = true, managedByEnv = false } = {}) {
 			mockedStore(usePostHog).isFeatureEnabled.mockImplementation(
 				(flag) => String(flag) === SKILL_SYNC_FLAG,
+			);
+			mockedStore(useSettingsStore).moduleSettings = {
+				skills: { skillSyncEnabled: switchOn, skillSyncManagedByEnv: managedByEnv },
+			};
+		}
+
+		async function openSkillSyncSettings(view: ReturnType<typeof renderView>) {
+			await userEvent.click(view.getByTestId('skill-sync-settings-button'));
+			return await view.findByTestId('skill-sync-settings');
+		}
+
+		function allowSkillSyncManage(allowed = true) {
+			mockedStore(useRBACStore).hasScope.mockImplementation(
+				(scope) => allowed && scope === 'skill:manage',
 			);
 		}
 
 		function renderWithDialogStub() {
 			return renderView({ global: { stubs: { SkillSourceConnectDialog: ConnectDialogStub } } });
 		}
+
+		it('shows only the settings button above the recommended-skills empty state', async () => {
+			enableSkillSync({ switchOn: false });
+			allowSkillSyncManage();
+			mockedStore(usePostHog).getVariant.mockImplementation((flag) =>
+				String(flag) === RECOMMENDED_SKILLS_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			mockedStore(usePostHog).isVariantEnabled.mockImplementation(
+				(flag, expected) => flag === RECOMMENDED_SKILLS_EXPERIMENT.name && expected === 'variant',
+			);
+			const view = renderWithDialogStub();
+
+			await view.findByTestId('skills-recommended-empty-state');
+			expect(view.queryByTestId('skills-search')).not.toBeInTheDocument();
+			expect(view.queryByTestId('skills-create-menu-button')).not.toBeInTheDocument();
+			const settings = await openSkillSyncSettings(view);
+			expect(within(settings).getByTestId('skill-sync-enable-toggle')).toBeEnabled();
+		});
 
 		it('offers "Connect to GitHub" first in the "Create skills" menu when the flag is on', async () => {
 			enableSkillSync();
@@ -1589,6 +1750,129 @@ describe('SettingsSkillsView', () => {
 			]);
 			await userEvent.click(await view.findByTestId('skills-create-github'));
 			expect(await view.findByTestId('connect-dialog-stub')).toBeInTheDocument();
+		});
+
+		describe('switch', () => {
+			it('shows the switch to an admin while the flag is on', async () => {
+				enableSkillSync();
+				allowSkillSyncManage();
+				const view = renderWithDialogStub();
+				await new Promise(process.nextTick);
+
+				expect(view.getByTestId('skill-sync-settings-button')).toHaveAttribute(
+					'aria-label',
+					'Skill settings',
+				);
+				expect(view.queryByTestId('skill-sync-settings')).not.toBeInTheDocument();
+
+				const settings = await openSkillSyncSettings(view);
+
+				expect(settings).toHaveTextContent('Skill Sync');
+				expect(view.getByTestId('skill-sync-enable-toggle')).not.toBeDisabled();
+			});
+
+			it('hides the switch from a user without the manage scope', async () => {
+				enableSkillSync();
+				allowSkillSyncManage(false);
+				const view = renderWithDialogStub();
+				await new Promise(process.nextTick);
+
+				expect(view.queryByTestId('skill-sync-settings-button')).not.toBeInTheDocument();
+			});
+
+			it('hides the switch while the flag is off', async () => {
+				mockedStore(useSettingsStore).moduleSettings = {
+					skills: { skillSyncEnabled: true, skillSyncManagedByEnv: false },
+				};
+				allowSkillSyncManage();
+				const view = renderWithDialogStub();
+				await new Promise(process.nextTick);
+
+				expect(view.queryByTestId('skill-sync-settings-button')).not.toBeInTheDocument();
+			});
+
+			it('hides "Connect to GitHub" and the sources while the switch is off', async () => {
+				enableSkillSync({ switchOn: false });
+				allowSkillSyncManage();
+				const view = renderWithDialogStub();
+				await new Promise(process.nextTick);
+
+				await userEvent.click(view.getByTestId('skills-create-menu-button'));
+
+				await view.findByTestId('skills-create-manual');
+				expect(view.queryByTestId('skills-create-github')).not.toBeInTheDocument();
+				expect(skillsStore.fetchSources).not.toHaveBeenCalled();
+				expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
+					expect.not.objectContaining({ groupBy: 'source' }),
+				);
+			});
+
+			it('saves the switch', async () => {
+				enableSkillSync();
+				allowSkillSyncManage();
+				const view = renderWithDialogStub();
+				await new Promise(process.nextTick);
+
+				await openSkillSyncSettings(view);
+				await userEvent.click(view.getByTestId('skill-sync-enable-toggle'));
+
+				expect(skillsStore.setSkillSyncEnabled).toHaveBeenCalledWith(false);
+			});
+
+			it('shows an error when the save fails', async () => {
+				enableSkillSync();
+				allowSkillSyncManage();
+				const error = new Error('nope');
+				skillsStore.setSkillSyncEnabled.mockRejectedValue(error);
+				const view = renderWithDialogStub();
+				await new Promise(process.nextTick);
+
+				await openSkillSyncSettings(view);
+				await userEvent.click(view.getByTestId('skill-sync-enable-toggle'));
+
+				await waitFor(() =>
+					expect(showErrorMock).toHaveBeenCalledWith(
+						error,
+						'Could not save the Skill Sync setting',
+					),
+				);
+				expect(view.getByTestId('skill-sync-enable-toggle')).not.toBeDisabled();
+			});
+
+			it('falls back to the plain list when another admin turned Skill Sync off', async () => {
+				enableSkillSync();
+				const settingsStore = mockedStore(useSettingsStore);
+				settingsStore.getModuleSettings.mockImplementation(async () => {
+					settingsStore.moduleSettings = {
+						skills: { skillSyncEnabled: false, skillSyncManagedByEnv: false },
+					};
+				});
+				skillsStore.fetchSkills.mockImplementation(async (query) => {
+					if (query?.groupBy === 'source') throw new Error('Not found');
+					return { data: [], count: 0, page: 1, pageCount: 1 };
+				});
+				skillsStore.fetchSources.mockRejectedValue(new Error('Not found'));
+				renderWithDialogStub();
+
+				await waitFor(() =>
+					expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+						expect.not.objectContaining({ groupBy: 'source' }),
+					),
+				);
+				expect(showErrorMock).not.toHaveBeenCalled();
+			});
+
+			it('locks the switch while env manages it', async () => {
+				enableSkillSync({ managedByEnv: true });
+				allowSkillSyncManage();
+				const view = renderWithDialogStub();
+				await new Promise(process.nextTick);
+
+				await openSkillSyncSettings(view);
+
+				expect(view.getByTestId('skill-sync-enable-toggle')).toBeDisabled();
+				expect(view.getByText('Managed via environment variables')).toBeInTheDocument();
+			});
 		});
 
 		it('reloads the list and names the imported and failed skills', async () => {
@@ -1996,6 +2280,34 @@ describe('SettingsSkillsView', () => {
 					JSON.parse(localStorage.getItem('n8n-skills-collapsed-sources:anonymous') ?? '[]'),
 				).toEqual(['src-1']);
 				localStorage.removeItem('n8n-skills-collapsed-sources:anonymous');
+			});
+
+			it('keeps the current page when folding and unfolding a source on a later page', async () => {
+				mockedStore(useUsersStore).currentUserId = 'alice';
+				localStorage.setItem(
+					'n8n-skills-pagination:alice',
+					JSON.stringify({ page: 2, itemsPerPage: 10 }),
+				);
+				skillsStore.fetchSkills.mockImplementation(async () => {
+					skillsStore.page = 2;
+					skillsStore.pageCount = 3;
+					skillsStore.count = 23;
+					return { data: skillsStore.skills, count: 23, page: 2, pageCount: 3 };
+				});
+				const view = await renderWithSource();
+				for (const expanded of ['false', 'true']) {
+					skillsStore.fetchSkills.mockClear();
+					await userEvent.click(view.getByTestId('skill-group-toggle'));
+					await waitFor(() =>
+						expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
+							expect.objectContaining({ page: 2 }),
+						),
+					);
+					expect(skillsStore.fetchSkills).not.toHaveBeenCalledWith(
+						expect.objectContaining({ focusSourceId: expect.anything() }),
+					);
+					expect(view.getByTestId('skill-group-toggle')).toHaveAttribute('aria-expanded', expanded);
+				}
 			});
 
 			it('forgets the folds of sources that are gone', async () => {

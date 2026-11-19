@@ -1,0 +1,33 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"channel": {
+			"type": "string"
+		},
+		"length": {
+			"type": "number"
+		},
+		"name": {
+			"type": "string"
+		},
+		"payload": {
+			"additionalProperties": true,
+			"properties": {
+				"created_at": {
+					"type": "string"
+				},
+				"id": {
+					"type": ["number", "string"]
+				},
+				"status": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"processId": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

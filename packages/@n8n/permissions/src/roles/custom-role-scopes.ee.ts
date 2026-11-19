@@ -127,6 +127,7 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'skill:update',
 			'skill:delete',
 			'skill:list',
+			'skill:manage',
 			'chatHub:manage', // Chat
 			'aiAssistant:manage', // n8n Assistant
 			'instanceAi:manage',

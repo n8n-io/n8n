@@ -14,7 +14,9 @@ export interface CancelExecutionResult {
 }
 
 /**
- * Ends an execution on request. No more steps will be planned.
+ * Ends an execution on request. No more steps will be planned, and every
+ * sub-execution that has not ended is cancelled with it, whether or not a
+ * step waits for it.
  * TODO(CAT-4757): interrupt already-running steps through their executor.
  */
 export class CancelExecutionService {
@@ -60,8 +62,33 @@ export class CancelExecutionService {
 					message: `Execution ${execution.id} was cancelled`,
 				},
 			});
+			await this.cancelSubExecutions(executionId);
 		}
 
 		return { status: execution.status, finishedAt: execution.finishedAt };
+	}
+
+	/**
+	 * Cancels every sub-execution of the execution that has not ended, and through each
+	 * of them their own sub-executions. The nesting depth bounds the recursion.
+	 *
+	 * A sub-execution whose cancel throws does not stop the others. The errors
+	 * are thrown together once every sub-execution has been tried.
+	 */
+	async cancelSubExecutions(parentExecutionId: string): Promise<void> {
+		const errors: unknown[] = [];
+		for (const id of await this.executionStore.loadLiveSubExecutionIds(parentExecutionId)) {
+			try {
+				await this.cancel(id);
+			} catch (error) {
+				errors.push(error);
+			}
+		}
+		if (errors.length > 0) {
+			throw new AggregateError(
+				errors,
+				`Cancelling the sub-executions of execution ${parentExecutionId} failed`,
+			);
+		}
 	}
 }

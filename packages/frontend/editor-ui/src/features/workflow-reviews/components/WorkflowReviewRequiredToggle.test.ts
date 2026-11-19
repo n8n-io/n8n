@@ -18,10 +18,11 @@ vi.mock('@/features/workflow-reviews/workflowReviews.api', () => ({
 
 const TestHost = defineComponent({
 	components: { N8nDropdownMenu, WorkflowReviewRequiredToggle },
+	props: { lockedByInstance: { type: Boolean, default: false } },
 	template: `
 		<N8nDropdownMenu :default-open="true" :items="[{ id: 'action', label: 'Action' }]">
 			<template #footer>
-				<WorkflowReviewRequiredToggle workflow-id="workflow-1" />
+				<WorkflowReviewRequiredToggle workflow-id="workflow-1" :locked-by-instance="lockedByInstance" />
 			</template>
 		</N8nDropdownMenu>
 	`,
@@ -102,6 +103,24 @@ describe('WorkflowReviewRequiredToggle', () => {
 
 		expect(store.isReviewRequired('workflow-1')).toBe(true);
 		expect(store.isReviewRequired('workflow-2')).toBe(false);
+	});
+
+	it('shows review as required and locked with the reason when the instance always requires approval', async () => {
+		const pinia = createPinia();
+		const store = useReviewRequiredStore(pinia);
+		const { getByRole, getByText } = renderComponent({ pinia, props: { lockedByInstance: true } });
+		await userEvent.click(getByRole('button'));
+
+		const reviewItem = getByRole('menuitemcheckbox', { name: /Review required/ });
+		expect(reviewItem).toHaveAttribute('aria-checked', 'true');
+		expect(reviewItem).toHaveAttribute('aria-disabled', 'true');
+		expect(
+			getByText('New versions need an approved review before they can be published.'),
+		).toBeInTheDocument();
+
+		await userEvent.click(reviewItem);
+
+		expect(store.isReviewRequired('workflow-1')).toBe(false);
 	});
 
 	describe('with an open review', () => {

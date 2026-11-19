@@ -1,0 +1,12 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"formMode": {
+			"type": "string"
+		},
+		"submittedAt": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

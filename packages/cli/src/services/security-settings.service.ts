@@ -1,5 +1,5 @@
 import type { RedactionFloor } from '@n8n/api-types';
-import { EventService, RoleService } from '@n8n/backend-services';
+import { EventService, RoleService, loginIdOf } from '@n8n/backend-services';
 import {
 	type OperationContext,
 	SettingsRepository,
@@ -14,14 +14,13 @@ import {
 } from '@n8n/permissions';
 import type { DistributiveOmit } from '@n8n/utils/types';
 
-import { loginIdOf } from '@/events/login-id';
 import type { RelayEventMap, UserLike } from '@/events/maps/relay.event-map';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 
 /**
  * The writable subset of the security policy shared by the internal controller
- * and the public API. Workflow reviews are handled separately by the caller as
- * they are gated behind a dedicated license + dev flag.
+ * and the public API. The caller handles workflow reviews separately, because
+ * they have their own license.
  */
 export interface SecurityPolicyUpdate {
 	personalSpacePublishing?: boolean;
