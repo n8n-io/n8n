@@ -7,7 +7,7 @@ and the experiment design live in
 | Script | Command | What it does |
 | --- | --- | --- |
 | `seed-sources.mjs` | `pnpm knowledge:seed-sources` | Writes the test content to Notion and Slack and records the ids in `fixtures/items.json`. |
-| `run.mjs` | `pnpm knowledge:harness [smoke]` | Creates or updates the test agents from `fixtures/agent.json` and `fixtures/items.json` through the REST API, asks them questions over the chat stream and reads the thread executions. `smoke` asks `kb-native` one fact question and one scope probe. |
+| `run.mjs` | `pnpm knowledge:harness smoke [agent]` | Creates or updates a test agent from `fixtures/agent.json` and `fixtures/items.json` through the REST API, asks it questions over the chat stream and reads the thread executions. `smoke` asks one fact question and one scope probe per source; the agent is `kb-native` by default, or `kb-mcp-c0` for the baseline. |
 
 Secrets come from env vars. Never pass one as a command argument: the dev
 metrics record pnpm arguments.
@@ -63,11 +63,14 @@ agents get no live knowledge tools and answer from nothing.
 | `N8N_MODEL` | The model of every test agent. Default `anthropic/claude-sonnet-4-5`. Keep one snapshot for a whole comparison. |
 | `N8N_NOTION_CREDENTIAL_ID` | The `notionApi` credential. Without it the Notion source is left out. |
 | `N8N_SLACK_CREDENTIAL_ID` | The `slackApi` credential. Without it the Slack source is left out. |
+| `N8N_NOTION_MCP_CREDENTIAL_ID`, `N8N_SLACK_MCP_CREDENTIAL_ID` | The `mcpOAuth2Api` credentials of the hosted Notion and Slack MCP servers, for `kb-mcp-c0`. Create them in the editor: add an MCP server with the URL of `fixtures/agent.json` to any agent and connect it. A server without a credential is left out. |
 | `CHAT_TIMEOUT_MS` | Wait per question. Default 180000. |
 
-`fixtures/agent.json` holds the shared instructions, the source descriptions
-and the per-agent deltas (`retrieval` per source). The script fills the
-credentials and the picked items from `items.json`. The agents it created are
+`fixtures/agent.json` holds the shared instructions, the source descriptions,
+the hosted MCP servers of the baseline and the per-agent deltas (`retrieval`
+per source, or `mcp` for the baseline). The script fills the credentials and
+the picked items from `items.json`. The baseline gets the picked items as a
+list in its instructions, because the hosted servers see the whole workspace. The agents it created are
 remembered in `fixtures/agents.json` (not committed) and updated on every run.
 `results/` holds one JSON file per harness run: the questions, the answers,
 the tool calls of the stream and the thread detail of each run.

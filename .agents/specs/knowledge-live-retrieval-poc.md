@@ -257,10 +257,10 @@ optional again.
 
 | | Notion v3 (`n8n-nodes-base.notion`, version 3) | Slack v2.7 (`n8n-nodes-base.slack`, version 2.7) |
 |---|---|---|
-| resolveLink | `pageLocator` url regex (`v3/actions/common.descriptions.ts`), then `page:get` for the title | archive-URL regex: channel id and optional `p<ts>` |
-| list | `block:getAll` raw (`child_page`, `child_database`); `database:get` lists the data sources of a database; `databasePage:getAll` raw with `dataSourceLocator` for a data source | `channel:history` (`oldest` = 30 days by default, cap 200) |
-| search | `page:search` raw (`simple: false`, because the simplified output throws on an untitled page), kept when the result or its parent is in the allow-set; data sources through `databasePage:getAll` with a JSON title filter (`property: 'title'`, one `contains` per term); in-process over cached items | `message:search` per picked channel, post-filter by `channel` |
-| read | `page:getMarkdown` (`{ id, markdown, truncated }`, no title or url), plus `databasePage:get` raw when the entry has no url or edit time | `channel:replies` for the thread; url from `message:getPermalink` |
+| resolveLink | the page url regex of the node locators, then `databasePage:get` raw, or `database:get` | archive-URL regex (`/archives/<channel>/p<ts>`) and the `app.slack.com/client` form; `channel:get` for the name |
+| list | `block:getAll` raw (`child_page`, `child_database`); `database:get` lists the data sources of a database; `databasePage:getAll` raw with `dataSourceLocator` for a data source | `channel:history` (`oldest` = 30 days, cap 200), join and leave notices dropped; one entry per top-level message, `containerType: thread` |
+| search | `page:search` raw (`simple: false`, because the simplified output throws on an untitled page), kept when the result or its parent is in the allow-set; data sources through `databasePage:getAll` with a JSON title filter (`property: 'title'`, one `contains` per term); in-process over cached items | `message:search` (2.7, `assistant.search.context`, sort by relevance) per picked channel with `searchChannel: [name]`, hits kept when `channel_id` is the picked channel; picked threads are searched in process |
+| read | `page:getMarkdown` (`{ id, markdown, truncated }`, no title or url), plus `databasePage:get` raw when the entry has no url or edit time | `channel:replies` with the entry ts; a reply is read as its whole thread (`thread_ts`); one `message:getPermalink` per credential, then permalinks are built from the workspace base |
 | defaultRetrieval | `index` for containers, `native` for items | `native` |
 | persistableContent | `true` | `false` (terms forbid stored messages) |
 | credential in the PoC | `notionApi` internal integration token first; `notionOAuth2Api` before the final runs if time allows | `slackApi` with the user OAuth token (`xoxp-…`) of a new app in a test workspace, installed from the app's OAuth page. Slack requires an HTTPS redirect URL, so the `slackOAuth2Api` flow needs a tunnel on a local instance; optional later |
@@ -416,7 +416,7 @@ Notes:
 - [ ] Anthropic credential in the local project
 - [x] `seed-sources.mjs` seeds the Notion and Slack content and writes `fixtures/items.json` (both sources seeded on 2026-11-19)
 - [x] Spike 1: Notion `page:getMarkdown` output shape: `{ object: 'page_markdown', id, markdown, truncated, unknown_block_ids }`, read from the node code instead of a run
-- [ ] Spike 2: Slack `message:search` with `in:` and a channel id
+- [x] Spike 2: moot. The 2.7 search output carries `channel_id`, so the provider passes the channel name (from `channel:get`, cached per credential) to `in:` and filters the hits by id
 - [x] Spike 3: `executeInline` runs the Notion operations without a workflow id (the day-1 exit); Slack follows with its provider
 - [ ] C0: hosted Notion and Slack MCP servers connect; tool lists recorded
 - [ ] Spike outputs saved under `scripts/knowledge-live-harness/fixtures/spikes/`
@@ -434,10 +434,10 @@ Notes:
 
 ### Day 2: Slack, per-run state, C0 agent, the test
 
-- [ ] Slack provider: `resolveLink`, `list`, `search`, `read`
+- [x] Slack provider: `resolveLink`, `list`, `search`, `read`
 - [x] `endRun` hook in the turn-execution run end (done on day 1)
 - [x] Allow-set refusal test (done on day 1, with the per-run extension, refs and the unavailable-source result)
-- [ ] `fixtures/agent.json` for `kb-native`, `kb-index`, `kb-mcp-c0`
+- [x] `fixtures/agent.json` for `kb-native`, `kb-index`, `kb-mcp-c0` (and `kb-hybrid`); `smoke [agent]` runs any of them
 - [ ] Exit: `kb-native` answers a Slack channel question with a permalink; `kb-mcp-c0` runs
 
 ### Day 3: `index`, harness, question set

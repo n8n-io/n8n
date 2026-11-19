@@ -5,7 +5,8 @@
 // executions of each thread. Dev tooling, not product code.
 //
 // Commands:
-//   smoke   one fact question and one scope probe against kb-native
+//   smoke [agent]   one fact question and one scope probe per source, against
+//                   kb-native (default) or another agent of fixtures/agent.json
 //
 // Secrets come from env vars. Never pass one as a command argument.
 
@@ -40,6 +41,11 @@ const MODEL_CREDENTIAL_ID = requireEnv('N8N_MODEL_CREDENTIAL_ID');
 const SOURCE_CREDENTIALS = {
 	notion: process.env.N8N_NOTION_CREDENTIAL_ID,
 	slack: process.env.N8N_SLACK_CREDENTIAL_ID,
+};
+/** The `mcpOAuth2Api` credentials of the hosted MCP servers, for the C0 baseline. */
+const MCP_CREDENTIALS = {
+	notion: process.env.N8N_NOTION_MCP_CREDENTIAL_ID,
+	slack: process.env.N8N_SLACK_MCP_CREDENTIAL_ID,
 };
 
 async function readJson(file, fallback) {
@@ -169,10 +175,40 @@ function pickedItems(items, source) {
 	}));
 }
 
+/**
+ * The C0 baseline: the hosted MCP servers with read-only tool permissions, and
+ * the picked items listed in the instructions. The scope is instruction-only.
+ */
+function buildMcpAgentConfig(agentKey, scaffold, items) {
+	const mcpServers = [];
+	const lines = [];
+	for (const [sourceKey, server] of Object.entries(scaffold.mcpServers)) {
+		const credential = MCP_CREDENTIALS[sourceKey];
+		if (!credential || !items[sourceKey]) continue;
+		mcpServers.push({ ...server, credential });
+		for (const item of pickedItems(items, sourceKey)) {
+			lines.push(
+				`  - ${scaffold.sources[sourceKey].name}: ${item.title}${item.url ? ` (${item.url})` : ''}`,
+			);
+		}
+	}
+	if (mcpServers.length === 0) {
+		fail('No MCP credential is set (N8N_NOTION_MCP_CREDENTIAL_ID, N8N_SLACK_MCP_CREDENTIAL_ID)');
+	}
+	return {
+		name: agentKey,
+		model: MODEL,
+		credential: MODEL_CREDENTIAL_ID,
+		instructions: scaffold.mcpInstructions.replace('{{items}}', lines.join('\n')),
+		mcpServers,
+	};
+}
+
 /** Builds the config of one test agent from the scaffold, the items and the env. */
 function buildAgentConfig(agentKey, scaffold, items) {
 	const delta = scaffold.agents[agentKey];
 	if (!delta) fail(`Unknown agent "${agentKey}" in fixtures/agent.json`);
+	if (delta.mcp) return buildMcpAgentConfig(agentKey, scaffold, items);
 	const liveSources = [];
 	for (const [sourceKey, source] of Object.entries(scaffold.sources)) {
 		const credential = SOURCE_CREDENTIALS[sourceKey];
@@ -226,7 +262,7 @@ async function ensureAgent(client, agentKey, config) {
 	});
 	console.log(`Updated agent ${agentKey} (${agentId})`);
 	const savedSources = updated.config?.knowledge?.liveSources ?? [];
-	if (savedSources.length !== config.knowledge.liveSources.length) {
+	if (config.knowledge && savedSources.length !== config.knowledge.liveSources.length) {
 		fail(
 			`The instance saved ${savedSources.length} of ${config.knowledge.liveSources.length} live sources. ` +
 				'It runs a build that drops knowledge.liveSources on save: rebuild n8n and @n8n/api-types and restart it.',
@@ -289,18 +325,24 @@ const SMOKE_QUESTIONS = {
 	],
 };
 
-async function smoke(client, scaffold, items) {
-	const config = buildAgentConfig('kb-native', scaffold, items);
-	const agentId = await ensureAgent(client, 'kb-native', config);
+async function smoke(client, scaffold, items, agentKey) {
+	const config = buildAgentConfig(agentKey, scaffold, items);
+	const agentId = await ensureAgent(client, agentKey, config);
+	const sourceKeys = config.knowledge
+		? config.knowledge.liveSources.map((source) => source.id)
+		: config.mcpServers.map((server) => server.name);
 	const runs = [];
-	for (const source of config.knowledge.liveSources) {
-		for (const question of SMOKE_QUESTIONS[source.id] ?? []) {
+	for (const sourceKey of sourceKeys) {
+		for (const question of SMOKE_QUESTIONS[sourceKey] ?? []) {
 			runs.push(await ask(client, agentId, question));
 		}
 	}
 	await mkdir(RESULTS, { recursive: true });
-	const file = path.join(RESULTS, `smoke-${new Date().toISOString().replace(/[:.]/g, '-')}.json`);
-	await writeFile(file, JSON.stringify({ agentId, runs }, null, '\t'));
+	const file = path.join(
+		RESULTS,
+		`smoke-${agentKey}-${new Date().toISOString().replace(/[:.]/g, '-')}.json`,
+	);
+	await writeFile(file, JSON.stringify({ agentKey, agentId, runs }, null, '\t'));
 	console.log(`\nSaved ${path.relative(process.cwd(), file)}`);
 }
 
@@ -313,10 +355,10 @@ async function main() {
 	await preflight(client);
 	switch (command) {
 		case 'smoke':
-			await smoke(client, scaffold, items);
+			await smoke(client, scaffold, items, process.argv[3] ?? 'kb-native');
 			break;
 		default:
-			fail(`Unknown command "${command}". Commands: smoke`);
+			fail(`Unknown command "${command}". Commands: smoke [agent]`);
 	}
 }
 

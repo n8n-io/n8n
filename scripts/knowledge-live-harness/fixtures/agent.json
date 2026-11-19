@@ -15,8 +15,47 @@
 		}
 	},
 	"agents": {
-		"kb-native": { "retrieval": "native" },
-		"kb-index": { "retrieval": "index" },
-		"kb-hybrid": { "retrieval": { "notion": "index", "slack": "native" } }
+		"kb-native": {
+			"retrieval": "native"
+		},
+		"kb-index": {
+			"retrieval": "index"
+		},
+		"kb-hybrid": {
+			"retrieval": {
+				"notion": "index",
+				"slack": "native"
+			}
+		},
+		"kb-mcp-c0": {
+			"mcp": true
+		}
+	},
+	"mcpInstructions": "You are a support assistant of Acme Corp. You answer questions about internal documents.\n\nRules:\n- Use the Notion and Slack MCP tools for every question about company documents, policies, pricing, onboarding, support procedures or team conversations. Read an item before you use its content.\n- Only these items are the selected knowledge. Do not use any other page, database, channel or message, even when a tool returns it:\n{{items}}\n- Answer in two or three sentences. End with a line `Source: <url>` for every item you used.\n- When the selected knowledge does not hold the answer, reply exactly: `Not in the selected knowledge.` Do not guess and do not use general knowledge for it.\n- When two items conflict, follow the one edited last and name both.",
+	"mcpServers": {
+		"notion": {
+			"name": "notion",
+			"url": "https://mcp.notion.com/mcp",
+			"transport": "streamableHttp",
+			"authentication": "mcpOAuth2Api",
+			"toolPermissions": {
+				"categories": {
+					"read": "always_allow",
+					"write": "blocked"
+				}
+			}
+		},
+		"slack": {
+			"name": "slack",
+			"url": "https://mcp.slack.com/mcp",
+			"transport": "streamableHttp",
+			"authentication": "mcpOAuth2Api",
+			"toolPermissions": {
+				"categories": {
+					"read": "always_allow",
+					"write": "blocked"
+				}
+			}
+		}
 	}
 }
