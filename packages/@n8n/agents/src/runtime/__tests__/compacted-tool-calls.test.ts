@@ -22,6 +22,11 @@ function message(content: ContentToolCall[]): AgentDbMessage {
 
 it('keeps a bounded index of recent calls across successive masks', () => {
 	const earlier = collectCompactedToolCalls([{ ...message([call('first')]), id: 'earlier' }]);
+	const carried = collectCompactedToolCalls([message([call('second')])], earlier);
+	expect(renderCompactedToolCalls(carried)).toContain(
+		`inspect ${historyToolCallRef('earlier', 0)} returned`,
+	);
+
 	const next = collectCompactedToolCalls(
 		[message(Array.from({ length: 50 }, (_, i) => call(`call-${i}`)))],
 		earlier,
