@@ -25,6 +25,7 @@ export interface RedisWorkQueuesOptions {
 }
 
 export interface RedisWorkQueues {
+	/** Pass them to `createEngineRuntime`, which starts and stops them. */
 	queues: EngineWorkQueues;
 	/** Closes the consumer connections. Call it after the engine has stopped the queues. */
 	close(): void;
