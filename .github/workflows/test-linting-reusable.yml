@@ -66,3 +66,11 @@ jobs:
       - name: Run global lint checks
         if: matrix.run-global-checks
         run: pnpm boundaries:check && pnpm check:workspace-private-deps
+
+      # Annotates anti-slop hits on the lines this PR adds. It does not fail the job yet.
+      - name: Check new code with anti-slop rules
+        if: matrix.run-global-checks && inputs.affectedBase != ''
+        continue-on-error: true
+        env:
+          BASE: ${{ inputs.affectedBase }}
+        run: pnpm lint:anti-slop "$BASE"
