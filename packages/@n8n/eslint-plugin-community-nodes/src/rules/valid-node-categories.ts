@@ -202,17 +202,16 @@ export const ValidNodeCategoriesRule = createRule({
 				if (isJson) return;
 				const description = findNodeDescriptionObject(node);
 				if (!description) return;
-				const staticCodex = findStaticProperty(description, 'codex');
-				const codex =
-					staticCodex === undefined ? findObjectProperty(description, 'codex') : staticCodex;
+				const codex = findStaticProperty(description, 'codex');
+				if (codex === undefined) return;
 				if (codex) {
 					if (codex.value.type === AST_NODE_TYPES.ObjectExpression) {
-						checkCodex(codex.value, codex === staticCodex && isMainNode(description));
+						checkCodex(codex.value, isMainNode(description));
 					}
 					return;
 				}
 
-				if (staticCodex !== null || !isMainNode(description)) return;
+				if (!isMainNode(description)) return;
 				const codexPath = context.physicalFilename.replace(/\.node\.[jt]s$/, '.node.json');
 				if (codexPath === context.physicalFilename) return;
 				const siblingCodex = readJsonObject(codexPath);

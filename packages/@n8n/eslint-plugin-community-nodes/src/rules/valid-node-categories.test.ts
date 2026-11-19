@@ -31,7 +31,14 @@ function nodeCode({
 	inputs = "['main']",
 	outputs = "['main']",
 	javascript = false,
-}: { inline?: string; inputs?: string; outputs?: string; javascript?: boolean } = {}): string {
+	trailingProperties = '',
+}: {
+	inline?: string;
+	inputs?: string;
+	outputs?: string;
+	javascript?: boolean;
+	trailingProperties?: string;
+} = {}): string {
 	return `
 ${javascript ? '' : "import type { INodeType, INodeTypeDescription } from 'n8n-workflow';"}
 export class Example${javascript ? '' : ' implements INodeType'} {
@@ -46,6 +53,7 @@ export class Example${javascript ? '' : ' implements INodeType'} {
 		outputs: ${outputs},
 		properties: [],
 		${inline ? `codex: ${inline},` : ''}
+		${trailingProperties}
 	};
 }`;
 }
@@ -158,6 +166,23 @@ ruleTester.run('valid-node-categories', ValidNodeCategoriesRule, {
 			filename: typescriptNode,
 			code: nodeCode().replace('displayName:', '...baseDescription, displayName:'),
 			before: () => mockSiblingCodex(toolsOnly),
+		},
+		{
+			name: 'a later spread can override inline codex',
+			filename: typescriptNode,
+			code: nodeCode({
+				inline: '{ categories: ["Bananas"] }',
+				trailingProperties: '...{ codex: { categories: ["Development"] } },',
+			}),
+		},
+		{
+			name: 'a later computed key can override inline codex',
+			filename: javascriptNode,
+			code: nodeCode({
+				inline: '{ categories: ["Bananas"] }',
+				trailingProperties: '["co" + "dex"]: { categories: ["Development"] },',
+				javascript: true,
+			}),
 		},
 		{
 			name: 'all supported community categories',
@@ -328,6 +353,12 @@ ruleTester.run('valid-node-categories', ValidNodeCategoriesRule, {
 			name: 'inline codex with an unknown top-level category',
 			filename: 'nodes/Example/Example.node.ts',
 			code: inlineCodex(['Development', 'Bananas']),
+			errors: [{ messageId: 'invalidCategory', data: { category: 'Bananas' } }],
+		},
+		{
+			name: 'inline codex after a spread still rejects an unknown category',
+			filename: typescriptNode,
+			code: inlineCodex(['Bananas']).replace('displayName:', '...baseDescription, displayName:'),
 			errors: [{ messageId: 'invalidCategory', data: { category: 'Bananas' } }],
 		},
 		{
