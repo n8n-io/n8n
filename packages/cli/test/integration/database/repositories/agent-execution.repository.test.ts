@@ -4198,12 +4198,13 @@ describe('AgentExecutionRepository', () => {
 		return await repository.save(execution);
 	};
 
-	describe('AGENT-1047 SQLite pagination matrix', () => {
+	const describeSqlite = describe.skipIf(process.env.DB_TYPE === 'postgresdb');
+	describeSqlite('AGENT-1047 SQLite pagination matrix', () => {
 		const seed = async (count: number) => {
 			const ids: string[] = [];
 			for (let index = 0; index < count; index++) {
 				const thread = await createThread();
-				await createExecution({ threadId: thread.id, agentId, projectId, status: 'success' });
+				await createExecution({ threadId: thread.id, status: 'success' });
 				await threadRepo
 					.createQueryBuilder()
 					.update()
