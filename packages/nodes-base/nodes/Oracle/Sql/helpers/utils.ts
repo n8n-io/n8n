@@ -13,6 +13,11 @@ import { UserError } from '@n8n/errors';
 import oracledb from 'oracledb';
 
 import { routeBinaryProperties } from '@utils/binary';
+import {
+	assertCursorColumnNotNull,
+	assertCursorColumnType,
+	assertUniqueCursorColumn,
+} from '@utils/sql-keyset-paging';
 import { generatePairedItemData, wrapData } from '@utils/utilities';
 
 import type {
@@ -403,6 +408,31 @@ export async function getUniqueKeyColumns(
 	} finally {
 		await conn.close();
 	}
+}
+
+// n8n outputs the other types as objects, or with less precision
+const START_AFTER_TYPE = /^(NUMBER|N?VARCHAR2|N?CHAR)$/;
+
+/**
+ * Throws if Start After cannot page by the column without skipped or repeated rows.
+ * `uniqueColumns` comes from getUniqueKeyColumns.
+ */
+export function checkStartAfterColumn(
+	node: INode,
+	itemIndex: number,
+	table: string,
+	column: string,
+	columnInfo: ColumnDefinition | undefined,
+	uniqueColumns: string[],
+) {
+	if (!columnInfo) {
+		throw new NodeOperationError(node, `Column "${column}" was not found in table "${table}"`, {
+			itemIndex,
+		});
+	}
+	assertUniqueCursorColumn(node, itemIndex, uniqueColumns, column);
+	assertCursorColumnType(node, itemIndex, column, columnInfo.type, START_AFTER_TYPE);
+	assertCursorColumnNotNull(node, itemIndex, column, columnInfo.nullable);
 }
 
 export function prepareErrorItem(

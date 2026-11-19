@@ -5,15 +5,11 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 import type * as oracleDBTypes from 'oracledb';
 
 import {
 	addCursorPredicate,
 	assertCursorColumnInOutput,
-	assertCursorColumnNotNull,
-	assertCursorColumnType,
-	assertUniqueCursorColumn,
 	getStartAfter,
 	getStartAfterSortRules,
 } from '@utils/sql-keyset-paging';
@@ -30,6 +26,7 @@ import {
 	addBindParam,
 	addSortRules,
 	addWhereClauses,
+	checkStartAfterColumn,
 	quoteSqlIdentifier,
 	getColumnMap,
 	getColumnMetaData,
@@ -151,25 +148,16 @@ export async function execute(
 		const startAfter = returnAll ? undefined : getStartAfter(this, i, '');
 		if (startAfter) {
 			const { column, value } = startAfter;
-			if (!columnMetaDataObject[column]) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`Column "${column}" was not found in table "${table}"`,
-					{ itemIndex: i },
-				);
-			}
 			assertCursorColumnInOutput(this.getNode(), i, outputColumns, column);
 			rules = getStartAfterSortRules(this.getNode(), i, sortRules, column);
-			assertUniqueCursorColumn(this.getNode(), i, await uniqueColumnsOf(schema, table), column);
-			// n8n outputs the other types as objects, or with less precision
-			assertCursorColumnType(
+			checkStartAfterColumn(
 				this.getNode(),
 				i,
+				table,
 				column,
-				columnMetaDataObject[column].type,
-				/^(NUMBER|N?VARCHAR2|N?CHAR)$/,
+				columnMetaDataObject[column],
+				await uniqueColumnsOf(schema, table),
 			);
-			assertCursorColumnNotNull(this.getNode(), i, column, columnMetaDataObject[column].nullable);
 
 			if (value !== undefined) {
 				const operator = rules[0].direction === 'DESC' ? '<' : '>';
