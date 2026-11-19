@@ -1,6 +1,6 @@
 # Component specification
 
-A single-select list. Arrow keys move a highlight over the whole item. Pointer movement moves the highlight. A click selects the item under the pointer. Enter or Space selects the highlighted item. Tab from a control inside an item moves the highlight to the next enabled item. Tab from a control between items moves the highlight to the nearest item in that direction. Tab moves to the next control when that control sits between the current control and the item. Built on Reka UI `Listbox`.
+A single-select list. Arrow keys move a highlight over the whole item. Pointer movement moves the highlight. A click selects the item under the pointer. Enter or Space selects the highlighted item. Tab from a control inside an item moves the highlight to the next enabled item. Tab from a control between items moves the highlight to the nearest item in that direction when no other control sits in front of that item. Tab moves to the next control when that control sits between the current control and the item, or inside that item. Built on Reka UI `Listbox`.
 
 - **Component Name:** N8nListbox, N8nListboxItem
 - **Reka UI Component:** [Listbox](https://reka-ui.com/docs/components/listbox)
