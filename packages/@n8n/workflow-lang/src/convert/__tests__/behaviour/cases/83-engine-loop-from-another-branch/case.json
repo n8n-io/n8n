@@ -1,0 +1,10 @@
+{
+	"description": "A branch above the reader goes back to the node Tag, so Tag and the Filter node run a second time before the reader runs for the first run. v1 gives each run of the reader the item of Tag of the run that gave its items: `t1`, then `t0`. The engine form keeps the latest run only, so the converter refuses the read",
+	"expectRefusal": true,
+	"trigger": {
+		"body": {}
+	},
+	"compare": [
+		"Read"
+	]
+}

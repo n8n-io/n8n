@@ -1,0 +1,198 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Source",
+		"Loop",
+		"Tag",
+		"Keep",
+		"Read",
+		"Read Expr",
+		"Loop",
+		"Tag",
+		"Keep",
+		"Read",
+		"Read Expr",
+		"Loop",
+		"Tag",
+		"Keep",
+		"Read",
+		"Read Expr",
+		"Loop",
+		"Done"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {}
+				}
+			]
+		],
+		"Source": [
+			[
+				{
+					"id": "a0"
+				},
+				{
+					"id": "a1"
+				},
+				{
+					"id": "a2"
+				},
+				{
+					"id": "a3"
+				},
+				{
+					"id": "a4"
+				}
+			]
+		],
+		"Loop": [
+			[
+				{
+					"id": "a1",
+					"tag": "a1-0",
+					"again": "a1-0"
+				},
+				{
+					"id": "a3",
+					"tag": "a3-1",
+					"again": "a3-1"
+				},
+				{
+					"id": "a4",
+					"tag": "a4-2",
+					"again": "a4-2"
+				}
+			],
+			[
+				{
+					"id": "a0"
+				},
+				{
+					"id": "a1"
+				},
+				{
+					"id": "a2"
+				},
+				{
+					"id": "a3"
+				},
+				{
+					"id": "a4"
+				}
+			]
+		],
+		"Tag": [
+			[
+				{
+					"id": "a0",
+					"tag": "a0-0"
+				},
+				{
+					"id": "a1",
+					"tag": "a1-0"
+				},
+				{
+					"id": "a2",
+					"tag": "a2-1"
+				},
+				{
+					"id": "a3",
+					"tag": "a3-1"
+				},
+				{
+					"id": "a4",
+					"tag": "a4-2"
+				}
+			]
+		],
+		"Keep": [
+			[
+				{
+					"id": "a1",
+					"tag": "a1-0"
+				},
+				{
+					"id": "a3",
+					"tag": "a3-1"
+				},
+				{
+					"id": "a4",
+					"tag": "a4-2"
+				}
+			],
+			[
+				{
+					"id": "a0",
+					"tag": "a0-0"
+				},
+				{
+					"id": "a2",
+					"tag": "a2-1"
+				}
+			]
+		],
+		"Read": [
+			[
+				{
+					"id": "a1",
+					"tag": "a1-0"
+				},
+				{
+					"id": "a3",
+					"tag": "a3-1"
+				},
+				{
+					"id": "a4",
+					"tag": "a4-2"
+				}
+			]
+		],
+		"Read Expr": [
+			[
+				{
+					"id": "a1",
+					"tag": "a1-0",
+					"again": "a1-0"
+				},
+				{
+					"id": "a3",
+					"tag": "a3-1",
+					"again": "a3-1"
+				},
+				{
+					"id": "a4",
+					"tag": "a4-2",
+					"again": "a4-2"
+				}
+			]
+		],
+		"Done": [
+			[
+				{
+					"id": "a1",
+					"tag": "a1-0",
+					"again": "a1-0"
+				},
+				{
+					"id": "a3",
+					"tag": "a3-1",
+					"again": "a3-1"
+				},
+				{
+					"id": "a4",
+					"tag": "a4-2",
+					"again": "a4-2"
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

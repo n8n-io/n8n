@@ -642,11 +642,16 @@ export class ModuleGenerator {
 		if (!this.known(b, target)) return { reason: 'target has not run' };
 		const single = this.singleItem(b, target);
 		const hops: Array<{ run: string; input: string; name: string }> = [];
+		// The nodes of the path, from the reader back to the node after `target`.
+		const path: string[] = [];
 		let cur = current;
 		for (let guard = 0; guard < b.graph.nodes.size; guard++) {
 			const all = b.graph.incoming(cur);
 			const inc = all.filter((e) => e.input === 0 && b.scope.has(e.from) && this.known(b, e.from));
-			if (inc.length !== 1) {
+			path.push(cur);
+			// In the engine form a node with several connections runs once for each of them, or
+			// waits: its latest run is not always the run that gave the items of the reader.
+			if (inc.length !== 1 || (b.engine && all.length !== 1)) {
 				const at = this.typeOf(b, cur);
 				if (all.length === 0) return { reason: `no connection into ${at}` };
 				if (all.length > 1) return { reason: `${all.length} connections into ${at}` };
@@ -655,6 +660,8 @@ export class ModuleGenerator {
 			}
 			const e = inc[0];
 			if (e.from === target) {
+				const again = this.runsAgainFirst(b, target, path);
+				if (again !== null) return { reason: again };
 				return { hops, direct: true, first: false, output: e.output, adjacent: cur === current };
 			}
 			const parent = b.graph.nodes.get(e.from);
@@ -671,6 +678,8 @@ export class ModuleGenerator {
 			}
 			const above = b.graph.incoming(e.from);
 			if (single && above.length === 1 && above[0].input === 0 && above[0].from === target) {
+				const again = this.runsAgainFirst(b, target, [...path, e.from]);
+				if (again !== null) return { reason: again };
 				return { hops, direct: false, first: true, output: above[0].output, adjacent: false };
 			}
 			const type = this.typeOf(b, e.from);
@@ -683,17 +692,43 @@ export class ModuleGenerator {
 	}
 
 	/**
+	 * The engine form keeps the lists and the paired items of the latest run of each node. v1
+	 * follows the run that gave the items of the reader (`previousNodeRun`). The two are the
+	 * same run when no node of the path can run again before the reader runs: each node of
+	 * the path has one connection in, and v1 runs the children of a node before any other
+	 * waiting node (depth first). So only another child of a node of the path can come
+	 * first, and only a way from that child back to `target` gives a new run. Null when there
+	 * is no such way (or in the flat form), else the reason.
+	 * `path` has the nodes from the reader back to the node after `target`.
+	 */
+	private runsAgainFirst(b: Body, target: string, path: string[]): string | null {
+		if (!b.engine) return null;
+		let parent = target;
+		for (let k = path.length - 1; k >= 0; k--) {
+			const child = path[k];
+			for (const e of b.graph.outgoing(parent)) {
+				if (e.to === child || !b.scope.has(e.to)) continue;
+				if (b.graph.reachable(e.to).has(target)) {
+					return `a loop back from another branch of ${this.typeOf(b, parent)}`;
+				}
+			}
+			parent = child;
+		}
+		return null;
+	}
+
+	/**
 	 * Why the item of `target` that pairs with an input item of `current` is not known, in
 	 * fixed words (node types and settings, never names or values). For a path that the walk
 	 * follows, the reader itself is the reason: its form needs the pairing by position.
 	 */
 	private pairingReason(b: Body, current: string, target: string): string {
 		const walk = this.pairingWalk(b, current, target);
-		// In the engine form (loops, a run for each parent) no node keeps paired items.
-		if (b.engine) {
-			return `engine form of the workflow${'reason' in walk ? `: ${walk.reason}` : ''}`;
+		// The engine form (loops, a run for each parent) is a part of the reason: a count can
+		// tell the two forms apart.
+		if ('reason' in walk) {
+			return b.engine ? `engine form of the workflow: ${walk.reason}` : walk.reason;
 		}
-		if ('reason' in walk) return walk.reason;
 		return this.singleItem(b, target)
 			? 'reader in the host, target with one item'
 			: 'reader needs the pairing by position';
@@ -735,7 +770,9 @@ export class ModuleGenerator {
 	 * are the input items of `current` in number and order.
 	 */
 	private pairsByPosition(b: Body, current: string, target: string): boolean {
-		if (b.engine || !this.known(b, target)) return false;
+		if (!this.known(b, target)) return false;
+		// In the engine form the lists are those of the latest run: the walk has the check.
+		if (b.engine && 'reason' in this.pairingWalk(b, current, target)) return false;
 		let cur = current;
 		for (let guard = 0; guard < b.graph.nodes.size; guard++) {
 			const inc = b.graph.incoming(cur);
@@ -1072,7 +1109,7 @@ export class ModuleGenerator {
 			markCompiled: () => {
 				this.compiledSteps.add(node.name);
 			},
-			pairsWanted: !b.engine && this.lineageOf(b).has(node.name),
+			pairsWanted: this.lineageOf(b).has(node.name),
 			setPairs: (run, output = 0) => {
 				b.pairs.set(`${node.name}|${output}`, { run, input });
 			},
@@ -1882,6 +1919,7 @@ export class ModuleGenerator {
 		const sub = this.subNodeTargets(b);
 		// The `let` lists of the latest run of each node.
 		w.comment('The items of the latest run of each node.');
+		const latestPairs = new Map<string, Map<number, string>>();
 		for (const name of b.order) {
 			const base = camelIdentifier(b.short(name), name === trigger.name ? 'trigger' : 'node');
 			const vars = new Map<number, string>();
@@ -1891,6 +1929,17 @@ export class ModuleGenerator {
 			}
 			b.engineVars.set(name, vars);
 			for (const v of vars.values()) w.line(`let ${v}: Json[] = [];`);
+			// The paired items of the latest run, for a node on the way of a paired read.
+			const kind = b.graph.nodes.get(name)?.type ?? '';
+			if (name !== trigger.name && !ONE_TO_ONE.has(kind) && this.lineageOf(b).has(name)) {
+				const latest = new Map<number, string>();
+				for (const [k, v] of vars) {
+					const pairs = this.names.unique(`${v}LatestPairs`);
+					latest.set(k, pairs);
+					w.line(`let ${pairs}: Json = { items: [], paired: [], length: 0 };`);
+				}
+				latestPairs.set(name, latest);
+			}
 		}
 		// One function for each node.
 		const fns = new Map<string, string>();
@@ -1929,6 +1978,23 @@ export class ModuleGenerator {
 			for (const v of own) this.names.release(v);
 			this.emitNode(b, node, named);
 			for (const v of own) this.names.reserve(v);
+			// The paired items of this run are local to the function. A later node reads those
+			// of the latest run: `length` is the count of the input items of that run.
+			for (const [k, latest] of latestPairs.get(name) ?? []) {
+				const local = b.pairs.get(`${name}|${k}`);
+				if (!local) continue;
+				w.line(
+					`${latest} = { items: ${local.run}.items, paired: ${local.run}.paired, length: ${local.input}.length };`,
+				);
+				b.pairs.set(`${name}|${k}`, { run: latest, input: latest });
+			}
+			for (const key of [...b.pairs.keys()]) {
+				// Paired items of an output without a connection have no reader.
+				const at = key.lastIndexOf('|');
+				if (key.slice(0, at) === name && !latestPairs.get(name)?.has(Number(key.slice(at + 1)))) {
+					b.pairs.delete(key);
+				}
+			}
 			const lists = this.outputLists(b, name);
 			outputCounts.set(name, lists.length);
 			// No output at all (`noOutputWhen`): an empty list of outputs.

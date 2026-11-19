@@ -1,0 +1,96 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Seed",
+		"Tag",
+		"Keep",
+		"More",
+		"Next",
+		"Tag",
+		"Keep",
+		"More",
+		"Read",
+		"Read"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {}
+				}
+			]
+		],
+		"Seed": [
+			[
+				{
+					"round": 0
+				}
+			]
+		],
+		"Tag": [
+			[
+				{
+					"round": 0,
+					"tag": "t0"
+				},
+				{
+					"round": 1,
+					"tag": "t1"
+				}
+			]
+		],
+		"Keep": [
+			[
+				{
+					"round": 0,
+					"tag": "t0"
+				},
+				{
+					"round": 1,
+					"tag": "t1"
+				}
+			],
+			[]
+		],
+		"More": [
+			[
+				{
+					"round": 0,
+					"tag": "t0"
+				}
+			],
+			[
+				{
+					"round": 1,
+					"tag": "t1"
+				}
+			]
+		],
+		"Next": [
+			[
+				{
+					"round": 1
+				}
+			]
+		],
+		"Read": [
+			[
+				{
+					"round": 1,
+					"tag": "t1"
+				},
+				{
+					"round": 0,
+					"tag": "t0"
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

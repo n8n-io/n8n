@@ -4,7 +4,7 @@
  * `cost.test.ts` fails when a number rises.
  */
 export const CONVERT_COST: Record<string, [ops: number, allocations: number]> = {
-	"convert/01-webhook-if-http-respond": [1418, 121],
+	"convert/01-webhook-if-http-respond": [1573, 144],
 	"convert/02-schedule-split-merge": [1728, 139],
 	"convert/03-error-output": [1211, 113],
 	"convert/04-code-nodes": [1651, 105],
@@ -79,6 +79,9 @@ export const CONVERT_COST: Record<string, [ops: number, allocations: number]> = 
 	"convert/76-unpaired-host-reader-item": [1146, 95],
 	"convert/77-unpaired-host-reader-paired-item": [1146, 95],
 	"convert/78-single-target-paired-host-node": [109, 47],
+	"convert/80-engine-form-paired-read": [9218, 523],
+	"convert/81-engine-loop-paired-read": [6302, 412],
+	"convert/82-engine-form-paired-read-core-nodes": [5607, 364],
 	"convert/small": [126, 14],
 	"corpus/01-order-approval": [160, 17],
 	"corpus/02-loops": [265, 13],
