@@ -23,6 +23,7 @@ const http = @import("http.zig");
 const smtp_call = @import("smtp_call.zig");
 const binary_store = @import("binary_store.zig");
 const sql_net = @import("sql_net.zig");
+const net_pool = @import("net_pool.zig");
 
 const cred_bytes = 1024;
 const read_passes = 256;
@@ -129,9 +130,12 @@ pub const Client = struct {
     resolver: *dns.Resolver,
     reqs: []Req,
     /// Finished calls, oldest first: a ring of request indexes.
-    done: []u32,
-    done_head: u32 = 0,
-    ndone: u32 = 0,
+    done_ring: net_pool.DoneRing(u32),
+    /// Free-slot stack for request slots.
+    req_free: net_pool.FreeStack(u32),
+    /// O(1) timer wheel: one link per req.
+    wheel_links: []net_pool.Link,
+    wheel: net_pool.TimerWheel,
     /// The EHLO name when the credential has none: the rule of nodemailer.
     name_buf: [260]u8 = @splat(0),
     name_len: usize = 0,
@@ -154,7 +158,10 @@ pub const Client = struct {
             .tls_insecure = try tls.Context.client(true, null),
             .resolver = try gpa.create(dns.Resolver),
             .reqs = try gpa.alloc(Req, cfg.max_reqs),
-            .done = try gpa.alloc(u32, cfg.max_reqs),
+            .done_ring = .{ .items = try gpa.alloc(u32, cfg.max_reqs) },
+            .req_free = .{ .items = try gpa.alloc(u32, cfg.max_reqs) },
+            .wheel_links = try gpa.alloc(net_pool.Link, cfg.max_reqs),
+            .wheel = .{},
         };
         try c.resolver.init(poller, kind_dns, cfg.dns_servers);
         c.scratch = try reserve(gpa, u8, mail.scratch_min);
@@ -179,6 +186,8 @@ pub const Client = struct {
                 .out = try reserve(gpa, u8, @max(512 << 10, std.base64.url_safe_no_pad.Encoder.calcSize(cfg.max_request) + 1024)),
             };
         }
+        c.req_free.initAll();
+        c.wheel.init(c.wheel_links);
         c.name_len = defaultName(&c.name_buf).len;
     }
 
@@ -202,7 +211,7 @@ pub const Client = struct {
     pub fn start(c: *Client, exec_id: u64, seq: u32, args: []const u8, store: ?*const creds.Store, now_ms: i64) ?[]const u8 {
         c.now_ms = now_ms;
         c.counters.started += 1;
-        const ri = c.freeReq() orelse {
+        const ri = c.req_free.pop() orelse {
             c.counters.refused += 1;
             return "smtp: too many calls in flight (--smtp-max-requests); the step can run again (limit)";
         };
@@ -222,19 +231,13 @@ pub const Client = struct {
         r.connect_deadline_ms = now_ms + c.cfg.connect_ms;
         r.phase_deadline_ms = r.connect_deadline_ms;
         r.idle_deadline_ms = std.math.maxInt(i64);
+        c.wheel.schedule(ri, r.connect_deadline_ms, now_ms);
         if (c.prepare(ri, args, store)) |msg| {
             c.failText(ri, &.{msg});
             return null;
         }
         // A call that builds only has its result now.
         if (r.ok) c.pushDone(ri) else c.open(ri);
-        return null;
-    }
-
-    fn freeReq(c: *const Client) ?u32 {
-        for (c.reqs, 0..) |*r, i| {
-            if (r.state == .free) return std.math.cast(u32, i);
-        }
         return null;
     }
 
@@ -365,13 +368,12 @@ pub const Client = struct {
     }
 
     pub fn hasWork(c: *const Client) bool {
-        return c.more_pending or c.ndone > 0 or c.resolver.hasDone();
+        return c.more_pending or c.done_ring.len > 0 or c.resolver.hasDone();
     }
 
     /// The oldest finished call, or null. Give it back with `release`.
     pub fn nextDone(c: *const Client) ?Done {
-        if (c.ndone == 0) return null;
-        const ri = c.done[c.done_head];
+        const ri = c.done_ring.peek() orelse return null;
         const r = &c.reqs[ri];
         std.debug.assert(r.state == .done);
         return .{ .req = ri, .exec_id = r.exec_id, .seq = r.seq, .ok = r.ok, .payload = r.out[0..r.out_len] };
@@ -379,12 +381,13 @@ pub const Client = struct {
 
     /// Free the call that `nextDone` gave.
     pub fn release(c: *Client, ri: u32) void {
-        std.debug.assert(c.ndone > 0 and c.done[c.done_head] == ri);
+        std.debug.assert(c.done_ring.peek().? == ri);
         const r = &c.reqs[ri];
-        c.done_head = (c.done_head + 1) % c.cfg.max_reqs;
-        c.ndone -= 1;
+        // Discard: the popped value is the same ri we are releasing.
+        _ = c.done_ring.pop();
         if (r.out_len > 64 << 10) sys.releasePages(r.out[0..r.out_len]);
         r.state = .free;
+        c.req_free.push(ri);
     }
 
     // ---- the end of a call ------------------------------------------------------
@@ -414,11 +417,12 @@ pub const Client = struct {
         r.fd = -1;
         r.gen +%= 1;
         r.write_armed = false;
+        c.wheel.cancel(ri);
     }
 
     fn pushDone(c: *Client, ri: u32) void {
         const r = &c.reqs[ri];
-        std.debug.assert(r.state != .free and r.state != .done and c.ndone < c.done.len);
+        std.debug.assert(r.state != .free and r.state != .done and c.done_ring.len < c.done_ring.items.len);
         c.closeSocket(ri);
         @memset(&r.cred, 0);
         @memset(r.wbuf[0..@min(r.wbuf.len, 4 * cred_bytes)], 0);
@@ -427,9 +431,9 @@ pub const Client = struct {
         // The pages of a large message go back to the system.
         sys.releasePages(r.args);
         sys.releasePages(r.text);
+        c.wheel.cancel(ri);
         r.state = .done;
-        c.done[(c.done_head + c.ndone) % c.cfg.max_reqs] = ri;
-        c.ndone += 1;
+        c.done_ring.push(ri);
     }
 
     /// End a call with an error text: the step fails, or, with a marker,
@@ -604,6 +608,7 @@ pub const Client = struct {
         r.state = .talk;
         r.phase_deadline_ms = c.setupDeadline(r);
         r.idle_deadline_ms = c.now_ms + c.cfg.socket_ms;
+        c.scheduleSmtpReq(ri);
     }
 
     /// `_remainingSetupTime`: the greeting time, cut by what is left of the connection time.
@@ -630,6 +635,7 @@ pub const Client = struct {
         if (!c.startTls(ri)) return;
         r.state = .upgrading;
         r.phase_deadline_ms = c.setupDeadline(r);
+        c.scheduleSmtpReq(ri);
         c.doHandshake(ri);
     }
 
@@ -743,17 +749,36 @@ pub const Client = struct {
     // ---- time limits ---------------------------------------------------------------
 
     fn scanTimeouts(c: *Client) void {
-        for (c.reqs, 0..) |*r, i| {
-            const ri = std.math.cast(u32, i) orelse continue;
-            const which: smtp.Timeout = switch (r.state) {
-                .free, .done => continue,
-                .resolving, .connecting, .handshaking => if (c.now_ms >= r.connect_deadline_ms) .connect else continue,
-                .upgrading => if (c.now_ms >= r.phase_deadline_ms) .upgrade else continue,
-                .talk => if (c.now_ms >= r.phase_deadline_ms) .greeting else if (c.now_ms >= r.idle_deadline_ms) .socket else continue,
-            };
-            c.counters.timeouts += 1;
-            c.act(ri, r.sess.onTimeout(which));
-        }
+        const Ctx = struct {
+            c: *Client,
+            pub fn fire(ctx: @This(), id: u32) void {
+                ctx.c.checkSmtpReq(id);
+            }
+        };
+        c.wheel.advanceTo(c.now_ms, Ctx{ .c = c });
+    }
+
+    fn scheduleSmtpReq(c: *Client, ri: u32) void {
+        const r = &c.reqs[ri];
+        const earliest = switch (r.state) {
+            .resolving, .connecting, .handshaking => r.connect_deadline_ms,
+            .upgrading, .talk => @min(r.phase_deadline_ms, r.idle_deadline_ms),
+            .free, .done => return c.wheel.cancel(ri),
+        };
+        c.wheel.schedule(ri, earliest, c.now_ms);
+    }
+
+    fn checkSmtpReq(c: *Client, ri: u32) void {
+        const r = &c.reqs[ri];
+        const which: smtp.Timeout = switch (r.state) {
+            .free, .done => .connect,
+            .resolving, .connecting, .handshaking => if (c.now_ms >= r.connect_deadline_ms) .connect else return c.scheduleSmtpReq(ri),
+            .upgrading => if (c.now_ms >= r.phase_deadline_ms) .upgrade else return c.scheduleSmtpReq(ri),
+            .talk => if (c.now_ms >= r.phase_deadline_ms) .greeting else if (c.now_ms >= r.idle_deadline_ms) .socket else return c.scheduleSmtpReq(ri),
+        };
+        if (which == .connect and r.state == .free) return;
+        c.counters.timeouts += 1;
+        c.act(ri, r.sess.onTimeout(which));
     }
 };
 

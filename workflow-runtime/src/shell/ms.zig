@@ -35,6 +35,7 @@ const creds = @import("creds.zig");
 const http = @import("http.zig");
 const ms_call = @import("ms_call.zig");
 const sql_net = @import("sql_net.zig");
+const net_pool = @import("net_pool.zig");
 
 const none: u32 = std.math.maxInt(u32);
 /// The bytes of server, user, database and password of one call.
@@ -159,12 +160,7 @@ const Req = struct {
     dns_id: u16 = 0,
 };
 
-const Pool = struct {
-    key: [32]u8 = @splat(0),
-    conns: u32 = 0,
-    /// Calls that use or wait for this pool.
-    refs: u32 = 0,
-};
+const Pool = net_pool.Pool;
 
 const ConnState = enum(u8) { free, connecting, prelogin, tls, login, setup, busy, idle };
 /// The answer that a busy connection waits for.
@@ -233,16 +229,17 @@ pub const Client = struct {
     tls_trusting: tls.Context,
     resolver: *dns.Resolver,
     reqs: []Req,
-    rfree: []u32,
-    nrfree: u32,
+    rfree: net_pool.FreeStack(u32),
+    nrfree: u32 = 0,
     conns: []Conn,
-    cfree: []u32,
-    ncfree: u32,
+    cfree: net_pool.FreeStack(u32),
+    ncfree: u32 = 0,
     pools: []Pool,
     /// Finished calls, oldest first: a ring of request indexes.
-    done: []u32,
-    done_head: u32 = 0,
-    ndone: u32 = 0,
+    done_ring: net_pool.DoneRing(u32),
+    /// O(1) timer wheel: one link per req, one per conn.
+    wheel_links: []net_pool.Link,
+    wheel: net_pool.TimerWheel,
     /// The text and the string values of the statement that is built now.
     tmp: []u8,
     /// The payload of the message that is built now.
@@ -275,27 +272,34 @@ pub const Client = struct {
             .tls_trusting = try tls.Context.client(true, null),
             .resolver = try gpa.create(dns.Resolver),
             .reqs = try gpa.alloc(Req, cfg.max_reqs),
-            .rfree = try gpa.alloc(u32, cfg.max_reqs),
+            .rfree = .{ .items = try gpa.alloc(u32, cfg.max_reqs) },
             .nrfree = cfg.max_reqs,
             .conns = try gpa.alloc(Conn, cfg.max_conns),
-            .cfree = try gpa.alloc(u32, cfg.max_conns),
+            .cfree = .{ .items = try gpa.alloc(u32, cfg.max_conns) },
             .ncfree = cfg.max_conns,
             .pools = try gpa.alloc(Pool, cfg.max_pools),
-            .done = try gpa.alloc(u32, cfg.max_reqs),
+            .done_ring = .{ .items = try gpa.alloc(u32, cfg.max_reqs) },
+            .wheel_links = try gpa.alloc(net_pool.Link, cfg.max_reqs + cfg.max_conns),
+            .wheel = .{},
             .tmp = try reserve(gpa, u8, cfg.max_request),
             .build = try reserve(gpa, u8, build_bytes),
             .params = try gpa.alloc(tds.Param, ms_call.max_params),
         };
         c.host_len = sys.hostName(&c.host_buf).len;
         try c.resolver.init(poller, kind_dns, cfg.dns_servers);
+        // Discard: loop index not needed here.
         for (c.reqs, 0..) |*r, i| {
+            _ = i;
             r.* = .{
                 .args = try reserve(gpa, u8, cfg.max_request),
                 .out = try reserve(gpa, u8, @as(usize, cfg.max_result) + 256),
             };
-            c.rfree[i] = cfg.max_reqs - 1 - std.math.cast(u32, i).?;
         }
+        c.rfree.initAll();
+        c.nrfree = c.rfree.len;
+        // Discard: loop index not needed here.
         for (c.conns, 0..) |*cn, i| {
+            _ = i;
             cn.* = .{
                 .rbuf = try reserve(gpa, u8, @as(usize, cfg.max_result) + (128 << 10)),
                 // The packet headers add 8 bytes for each 504 bytes at least.
@@ -303,9 +307,11 @@ pub const Client = struct {
                 .cols = try gpa.alloc(tds.Column, max_columns),
                 .bio = .{ .in = try gpa.alloc(u8, cipher_bytes), .out = try gpa.alloc(u8, cipher_bytes) },
             };
-            c.cfree[i] = cfg.max_conns - 1 - std.math.cast(u32, i).?;
         }
+        c.cfree.initAll();
+        c.ncfree = c.cfree.len;
         for (c.pools) |*p| p.* = .{};
+        c.wheel.init(c.wheel_links);
     }
 
     /// Close the connections and free what OpenSSL and c-ares hold. The
@@ -330,12 +336,11 @@ pub const Client = struct {
     pub fn start(c: *Client, exec_id: u64, seq: u32, args: []const u8, store: ?*const creds.Store, now_ms: i64) ?[]const u8 {
         c.now_ms = now_ms;
         c.counters.started += 1;
-        if (c.nrfree == 0) {
+        const ri = c.rfree.pop() orelse {
             c.counters.refused += 1;
             return "sql: too many calls in flight (--sql-max-requests); the step can run again (limit)";
-        }
-        c.nrfree -= 1;
-        const ri = c.rfree[c.nrfree];
+        };
+        c.nrfree = c.rfree.len;
         const r = &c.reqs[ri];
         std.debug.assert(r.state == .free);
         r.state = .queued;
@@ -369,6 +374,7 @@ pub const Client = struct {
         r.connect_deadline_ms = c.now_ms + r.cred.connect_ms;
         r.pool = c.poolFor(poolKey(&r.cred)) orelse return "sql: more database credentials are in use than the runtime has pools; the step can run again (limit)";
         c.pools[r.pool].refs += 1;
+        c.wheel.schedule(ri, @min(r.deadline_ms, r.connect_deadline_ms), c.now_ms);
         return null;
     }
 
@@ -458,13 +464,12 @@ pub const Client = struct {
     /// True when `afterEvents` or `nextDone` has work now and the loop
     /// must not sleep.
     pub fn hasWork(c: *const Client) bool {
-        return c.pump_pending or c.more_pending or c.ndone > 0 or c.resolver.hasDone();
+        return c.pump_pending or c.more_pending or c.done_ring.len > 0 or c.resolver.hasDone();
     }
 
     /// The oldest finished call, or null. Give it back with `release`.
     pub fn nextDone(c: *const Client) ?Done {
-        if (c.ndone == 0) return null;
-        const ri = c.done[c.done_head];
+        const ri = c.done_ring.peek() orelse return null;
         const r = &c.reqs[ri];
         std.debug.assert(r.state == .done);
         return .{ .req = ri, .exec_id = r.exec_id, .seq = r.seq, .ok = r.ok, .payload = r.out[0..r.out_len] };
@@ -472,15 +477,15 @@ pub const Client = struct {
 
     /// Free the call that `nextDone` gave.
     pub fn release(c: *Client, ri: u32) void {
-        std.debug.assert(c.ndone > 0 and c.done[c.done_head] == ri);
+        std.debug.assert(c.done_ring.peek().? == ri);
         const r = &c.reqs[ri];
-        c.done_head = (c.done_head + 1) % std.math.cast(u32, c.done.len).?;
-        c.ndone -= 1;
+        // Discard: the popped value is the same ri we are releasing.
+        _ = c.done_ring.pop();
         // The pages of a large result go back to the system.
         if (r.out_len > 64 << 10) sys.releasePages(r.out[0..r.out_len]);
         r.state = .free;
-        c.rfree[c.nrfree] = ri;
-        c.nrfree += 1;
+        c.rfree.push(ri);
+        c.nrfree = c.rfree.len;
     }
 
     // ---- calls: the end --------------------------------------------------------
@@ -520,15 +525,14 @@ pub const Client = struct {
 
     fn finishReq(c: *Client, ri: u32) void {
         const r = &c.reqs[ri];
-        std.debug.assert(r.state != .free and r.state != .done and c.ndone < c.done.len);
+        std.debug.assert(r.state != .free and r.state != .done and c.done_ring.len < c.done_ring.items.len);
         if (r.state == .queued and r.order != 0) c.queued -= 1;
         if (r.pool != none) c.pools[r.pool].refs -= 1;
+        c.wheel.cancel(ri);
         r.cred.wipe();
         r.order = 0;
         r.state = .done;
-        const len = std.math.cast(u32, c.done.len).?;
-        c.done[(c.done_head + c.ndone) % len] = ri;
-        c.ndone += 1;
+        c.done_ring.push(ri);
         c.pump_pending = true;
     }
 
@@ -543,6 +547,7 @@ pub const Client = struct {
         cn.phase = .none;
         cn.idle_at_ms = c.now_ms;
         cn.it = null;
+        c.scheduleConnIdle(ci);
     }
 
     /// Close a connection and end its call: with an error text, or, when
@@ -594,6 +599,7 @@ pub const Client = struct {
         }
         if (cn.req != none) c.reqs[cn.req].conn = none;
         if (cn.pool != none) c.pools[cn.pool].conns -= 1;
+        const nri = cn.req;
         if (cn.rlen > 64 << 10) sys.releasePages(cn.rbuf[0..cn.rlen]);
         // The bytes of a login do not stay in the buffer.
         @memset(cn.wbuf[0..@min(cn.wlen, 4096)], 0);
@@ -605,8 +611,10 @@ pub const Client = struct {
             .bio = .{ .in = cn.bio.in, .out = cn.bio.out },
         };
         cn.* = keep;
-        c.cfree[c.ncfree] = ci;
-        c.ncfree += 1;
+        if (nri != none) c.wheel.cancel(nri);
+        c.wheel.cancel(@as(u32, @intCast(c.reqs.len)) + ci);
+        c.cfree.push(ci);
+        c.ncfree = c.cfree.len;
         c.pump_pending = true;
     }
 
@@ -614,15 +622,7 @@ pub const Client = struct {
 
     /// The pool with this key, or a pool that nothing uses.
     fn poolFor(c: *Client, key: [32]u8) ?u32 {
-        var free: ?u32 = null;
-        for (c.pools, 0..) |*p, i| {
-            const idx = std.math.cast(u32, i).?;
-            if (std.mem.eql(u8, &p.key, &key)) return idx;
-            if (p.conns == 0 and p.refs == 0 and free == null) free = idx;
-        }
-        const idx = free orelse return null;
-        c.pools[idx] = .{ .key = key };
-        return idx;
+        return net_pool.poolFor(c.pools, key, c.now_ms);
     }
 
     fn idleConn(c: *const Client, pool: u32) ?u32 {
@@ -646,7 +646,7 @@ pub const Client = struct {
     fn canRun(c: *const Client, ri: u32) bool {
         const r = &c.reqs[ri];
         if (c.idleConn(r.pool) != null) return true;
-        return c.pools[r.pool].conns < c.cfg.pool_conns and (c.ncfree > 0 or c.oldestIdle() != null);
+        return c.pools[r.pool].conns < c.cfg.pool_conns and (c.cfree.len > 0 or c.oldestIdle() != null);
     }
 
     /// Give the call a connection, or let it wait in order.
@@ -671,9 +671,12 @@ pub const Client = struct {
             cn.state = .busy;
             r.conn = ci;
             r.state = .running;
+            // Cancel: this conn is no longer idle.
+            c.wheel.cancel(@as(u32, @intCast(c.reqs.len)) + ci);
+            c.wheel.schedule(ri, r.deadline_ms, c.now_ms);
             return c.beginCall(ci);
         }
-        if (c.ncfree == 0) c.closeConn(c.oldestIdle() orelse return c.failReq(ri, "sql: no connection is free (limit)", .{}));
+        if (c.cfree.len == 0) c.closeConn(c.oldestIdle() orelse return c.failReq(ri, "sql: no connection is free (limit)", .{}));
         c.open(ri);
     }
 
@@ -719,9 +722,10 @@ pub const Client = struct {
     /// Take a connection slot for the call and find the address of the host.
     fn open(c: *Client, ri: u32) void {
         const r = &c.reqs[ri];
-        std.debug.assert(c.ncfree > 0 and r.conn == none);
-        c.ncfree -= 1;
-        const ci = c.cfree[c.ncfree];
+        std.debug.assert(c.cfree.len > 0 and r.conn == none);
+        const ci = c.cfree.pop().?;
+        c.ncfree = c.cfree.len;
+        c.wheel.schedule(ri, @min(r.deadline_ms, r.connect_deadline_ms), c.now_ms);
         const cn = &c.conns[ci];
         std.debug.assert(cn.state == .free);
         cn.state = .connecting;
@@ -963,6 +967,7 @@ pub const Client = struct {
         c.counters.connects += 1;
         cn.state = .busy;
         c.reqs[ri].state = .running;
+        c.wheel.schedule(ri, c.reqs[ri].deadline_ms, c.now_ms);
         c.beginCall(ci);
     }
 
@@ -1377,23 +1382,52 @@ pub const Client = struct {
     // ---- time limits and ATTENTION ---------------------------------------------
 
     fn scanTimeouts(c: *Client) void {
-        for (c.reqs, 0..) |*r, i| {
-            const ri = std.math.cast(u32, i).?;
-            switch (r.state) {
-                .free, .done => {},
-                .queued, .running => if (c.now_ms >= r.deadline_ms) c.timedOut(ri),
-                .resolving, .connecting => if (c.now_ms >= @min(r.deadline_ms, r.connect_deadline_ms)) c.connectTimedOut(ri),
+        const Ctx = struct {
+            c: *Client,
+            pub fn fire(ctx: @This(), id: u32) void {
+                if (id < ctx.c.reqs.len) return ctx.c.checkReq(id);
+                const ci = id - @as(u32, @intCast(ctx.c.reqs.len));
+                if (ci < ctx.c.conns.len) ctx.c.checkConnIdle(ci);
             }
-        }
+        };
+        c.wheel.advanceTo(c.now_ms, Ctx{ .c = c });
+        // Statement deadlines and cancel deadlines are per-conn: scan linearly.
         for (c.conns, 0..) |*cn, i| {
             const ci = std.math.cast(u32, i).?;
-            if (cn.state == .idle and c.now_ms - cn.idle_at_ms >= c.cfg.idle_ms) c.closeConn(ci);
             if (cn.state != .busy) continue;
             const limit = cn.statement_deadline_ms;
             if (cn.phase == .run and limit > 0 and c.now_ms >= limit) c.requestTimedOut(ci);
             if (cn.state == .busy and cn.phase == .cancel and c.now_ms >= cn.cancel_deadline_ms) {
                 c.failCall(ci, "sql: the server did not cancel the statement at its time limit; the connection closed");
             }
+        }
+    }
+
+    fn scheduleConnIdle(c: *Client, ci: u32) void {
+        const cn = &c.conns[ci];
+        const id = @as(u32, @intCast(c.reqs.len)) + ci;
+        if (cn.state == .idle) {
+            c.wheel.schedule(id, cn.idle_at_ms + @as(i64, c.cfg.idle_ms), c.now_ms);
+        } else {
+            c.wheel.cancel(id);
+        }
+    }
+
+    fn checkReq(c: *Client, ri: u32) void {
+        const r = &c.reqs[ri];
+        switch (r.state) {
+            .free, .done => {},
+            .queued, .running => if (c.now_ms >= r.deadline_ms) return c.timedOut(ri) else c.wheel.schedule(ri, r.deadline_ms, c.now_ms),
+            .resolving, .connecting => if (c.now_ms >= @min(r.deadline_ms, r.connect_deadline_ms)) return c.connectTimedOut(ri) else c.wheel.schedule(ri, @min(r.deadline_ms, r.connect_deadline_ms), c.now_ms),
+        }
+    }
+
+    fn checkConnIdle(c: *Client, ci: u32) void {
+        const cn = &c.conns[ci];
+        if (cn.state == .idle and c.now_ms - cn.idle_at_ms >= c.cfg.idle_ms) {
+            c.closeConn(ci);
+        } else if (cn.state == .idle) {
+            c.scheduleConnIdle(ci);
         }
     }
 
@@ -1509,11 +1543,5 @@ fn loadCredential(r: *Req, st: *const creds.Store) ?[]const u8 {
 /// The key of the pool of a call: every value that makes a connection
 /// differ. The password is in it only as a part of the digest.
 fn poolKey(k: *const Cred) [32]u8 {
-    var h = std.crypto.hash.sha2.Sha256.init(.{});
-    const lens = [_]u16{ k.host_len, k.user_len, k.db_len, k.pass_len, k.port, @intFromBool(k.tls), @intFromBool(k.trust) };
-    h.update(std.mem.sliceAsBytes(&lens));
-    const numbers = [_]u32{ @backingInt(k.version), k.connect_ms, k.request_ms };
-    h.update(std.mem.sliceAsBytes(&numbers));
-    h.update(k.buf[0 .. @as(usize, k.host_len) + k.user_len + k.db_len + k.pass_len]);
-    return h.finalResult();
+    return net_pool.poolKey(k.buf[0 .. @as(usize, k.host_len) + k.user_len + k.db_len + k.pass_len], &.{ k.host_len, k.user_len, k.db_len, k.pass_len, k.port, @intFromBool(k.tls), @intFromBool(k.trust) });
 }
