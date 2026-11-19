@@ -5,8 +5,15 @@ export interface SidebarProps {
 	 * Side of the parent this sidebar sits on.
 	 * The resize handle is on the inner edge.
 	 * Place the component on that side of the parent.
+	 * @default 'left'
 	 */
 	side?: SidebarSide;
+	/**
+	 * Current width in pixels.
+	 * Bind with v-model:width.
+	 * @default 240
+	 */
+	width?: number;
 	/**
 	 * Local storage key for the width.
 	 * The sidebar reads this key on mount.
@@ -22,11 +29,20 @@ export interface SidebarProps {
 	 * The sidebar saves that restored width when widthStorageId is set.
 	 */
 	defaultWidth?: number;
-	/** Minimum width in pixels. */
+	/**
+	 * Minimum width in pixels.
+	 * @default 160
+	 */
 	minWidth?: number;
-	/** Maximum width in pixels. */
+	/**
+	 * Maximum width in pixels.
+	 * @default 480
+	 */
 	maxWidth?: number;
-	/** Show the drag handle. */
+	/**
+	 * Show the drag handle.
+	 * @default true
+	 */
 	resizable?: boolean;
 	/** Accessible name for the sidebar. */
 	label?: string;
