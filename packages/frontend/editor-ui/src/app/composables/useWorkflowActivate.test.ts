@@ -92,7 +92,6 @@ vi.mock('@/app/stores/workflowsList.store', () => ({
 const mockSettingsImpl = vi.hoisted(() => ({
 	isWorkflowPublicationServiceEnabled: false,
 	isMultiMain: false,
-	settings: {} as { workflowReviews?: { enabled: boolean; alwaysRequired?: boolean } },
 	setWorkflowReviewsPolicy: vi.fn(),
 }));
 
@@ -200,7 +199,6 @@ describe('useWorkflowActivate', () => {
 		vi.clearAllMocks();
 		mockSettingsImpl.isWorkflowPublicationServiceEnabled = false;
 		mockSettingsImpl.isMultiMain = false;
-		mockSettingsImpl.settings = {};
 		mockActivationStorageFlag.value = undefined;
 		mockDocumentStore.hydrated = false;
 		mockDocumentStore.checksum = undefined;
@@ -271,7 +269,6 @@ describe('useWorkflowActivate', () => {
 		});
 
 		it('requires approval in the editor when the server refuses an unreviewed version', async () => {
-			mockSettingsImpl.settings = { workflowReviews: { enabled: true, alwaysRequired: false } };
 			const refusal = Object.assign(new Error('No approved review'), {
 				meta: { reason: 'review_required', versionId: VERSION_ID, validationError: true },
 			});
