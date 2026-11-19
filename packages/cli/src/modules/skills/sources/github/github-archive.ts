@@ -34,7 +34,7 @@ export const DEFAULT_ARCHIVE_LIMITS: ArchiveLimits = {
 export type RepositoryArchive = {
 	paths: string[];
 	text: Map<string, string>;
-	/** Hashes of files over the size limit. Their text is not kept. */
+	/** Content identifiers for files over the size limit. Their text is not kept. */
 	oversized: Map<string, string>;
 };
 
@@ -47,7 +47,7 @@ export function archiveSize(archive: RepositoryArchive): number {
 	return bytes;
 }
 
-function tooLarge(root: string): SkillSourceReadError {
+export function archiveTooLarge(root: string): SkillSourceReadError {
 	return new SkillSourceReadError(
 		'archive_too_large',
 		root === ''
@@ -106,7 +106,7 @@ export async function readRepositoryArchive(
 			bytes += entry.size;
 			if (entries > limits.maxEntries || bytes > limits.maxUncompressedBytes) {
 				entry.resume();
-				return fail(tooLarge(root));
+				return fail(archiveTooLarge(root));
 			}
 			if (entry.type !== 'File') {
 				entry.resume();
@@ -126,7 +126,7 @@ export async function readRepositoryArchive(
 			textBytes += entry.size;
 			if (textBytes > limits.maxTextBytes) {
 				entry.resume();
-				return fail(tooLarge(root));
+				return fail(archiveTooLarge(root));
 			}
 			const chunks: Buffer[] = [];
 			entry.on('data', (chunk: Buffer) => chunks.push(chunk));
@@ -179,7 +179,7 @@ function withoutTopFolder(path: string): string | undefined {
 	return rest === '' ? undefined : rest;
 }
 
-function keepsText(path: string): boolean {
+export function keepsText(path: string): boolean {
 	const segments = path.split('/');
 	const name = segments.at(-1) ?? '';
 	if (name === 'SKILL.md') return true;
