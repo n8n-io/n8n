@@ -106,6 +106,25 @@ function onRevoke() {
 					</N8nText>
 
 					<N8nText color="text-light" size="small">
+						{{ i18n.baseText('settings.mcp.oAuthClients.details.lastUsed') }}
+					</N8nText>
+					<N8nText
+						:color="client.lastUsedAt ? 'text-dark' : 'text-light'"
+						size="small"
+						data-test-id="mcp-client-details-last-used"
+					>
+						<N8nTimeAgo
+							v-if="client.lastUsedAt"
+							:date="client.lastUsedAt"
+							capitalize
+							:locale="rootStore.defaultLocale"
+						/>
+						<template v-else>
+							{{ i18n.baseText('settings.mcp.oAuthClients.lastUsed.never') }}
+						</template>
+					</N8nText>
+
+					<N8nText color="text-light" size="small">
 						{{ i18n.baseText('settings.mcp.oAuthClients.details.access') }}
 					</N8nText>
 					<div :class="$style.access" data-test-id="mcp-client-details-access">

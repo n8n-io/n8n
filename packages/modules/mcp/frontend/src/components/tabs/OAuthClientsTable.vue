@@ -190,6 +190,15 @@ const tableHeaders = computed<Array<TableHeader<OAuthClientResponseDto>>>(() => 
 		},
 	},
 	{
+		title: i18n.baseText('settings.mcp.oAuthClients.table.lastUsed'),
+		key: 'lastUsedAt',
+		width: 110,
+		disableSort: true,
+		value() {
+			return;
+		},
+	},
+	{
 		title: '',
 		key: 'actions',
 		align: 'end',
@@ -334,6 +343,22 @@ function onRevoke(item: OAuthClientResponseDto) {
 							capitalize
 							:locale="rootStore.defaultLocale"
 						/>
+					</N8nText>
+				</template>
+				<template #[`item.lastUsedAt`]="{ item }">
+					<N8nText
+						data-test-id="mcp-client-last-used"
+						:color="item.lastUsedAt ? 'text-base' : 'text-light'"
+					>
+						<N8nTimeAgo
+							v-if="item.lastUsedAt"
+							:date="item.lastUsedAt"
+							capitalize
+							:locale="rootStore.defaultLocale"
+						/>
+						<template v-else>
+							{{ i18n.baseText('settings.mcp.oAuthClients.lastUsed.never') }}
+						</template>
 					</N8nText>
 				</template>
 				<template #[`item.actions`]="{ item }">

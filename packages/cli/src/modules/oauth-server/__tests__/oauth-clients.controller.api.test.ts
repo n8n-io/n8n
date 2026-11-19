@@ -8,6 +8,7 @@ import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 import { OAuthClient } from '../database/entities/oauth-client.entity';
+import { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 
 const testServer = setupTestServer({ endpointGroups: ['mcp'], modules: ['oauth-server', 'mcp'] });
@@ -25,7 +26,7 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
-	await testDb.truncate(['OAuthClient', 'UserConsent']);
+	await testDb.truncate(['AccessToken', 'OAuthClient', 'UserConsent']);
 });
 
 describe('GET /rest/mcp/oauth-clients', () => {
@@ -81,6 +82,64 @@ describe('GET /rest/mcp/oauth-clients', () => {
 			id: ownerClient.id,
 			grantedAt,
 			scopes: ['workflow:read', 'execution:read'],
+			lastUsedAt: null,
+		});
+	});
+
+	test('should return the last use time of a used grant', async () => {
+		const client = await oauthClientRepository.save({
+			id: 'used-client',
+			name: 'Used Client',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+		await userConsentRepository.save({
+			userId: owner.id,
+			clientId: client.id,
+			grantedAt: Date.now(),
+			scope: ['workflow:read'],
+		});
+		await userConsentRepository.save({
+			userId: member.id,
+			clientId: client.id,
+			grantedAt: Date.now(),
+			scope: ['workflow:read'],
+		});
+
+		const usedAt = new Date('2026-11-13T10:00:00.000Z');
+		await Container.get(AccessTokenRepository).insertToken(
+			{ token: 'used-client-token', userId: owner.id, clientId: client.id },
+			{},
+		);
+		await userConsentRepository.recordLastUsed({
+			userId: owner.id,
+			clientId: client.id,
+			accessToken: 'used-client-token',
+			usedAt,
+			minIntervalMs: 60_000,
+		});
+
+		const mine = await testServer.authAgentFor(owner).get('/mcp/oauth-clients');
+
+		expect(mine.statusCode).toBe(200);
+		expect(mine.body.data.data[0].lastUsedAt).toBe(usedAt.toISOString());
+
+		const all = await testServer
+			.authAgentFor(owner)
+			.get('/mcp/oauth-clients')
+			.query({ ownership: 'all' });
+
+		expect(all.statusCode).toBe(200);
+		const lastUsedByOwner = Object.fromEntries(
+			all.body.data.data.map((row: { owner: { id: string }; lastUsedAt: string | null }) => [
+				row.owner.id,
+				row.lastUsedAt,
+			]),
+		);
+		expect(lastUsedByOwner).toEqual({
+			[owner.id]: usedAt.toISOString(),
+			[member.id]: null,
 		});
 	});
 

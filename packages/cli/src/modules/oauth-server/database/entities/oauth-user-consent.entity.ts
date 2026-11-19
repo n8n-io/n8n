@@ -1,4 +1,4 @@
-import { JsonColumn, User } from '@n8n/db';
+import { DateTimeColumn, JsonColumn, User } from '@n8n/db';
 import { Column, Entity, Index, ManyToOne, PrimaryGeneratedColumn, Unique } from '@n8n/typeorm';
 
 import { OAuthClient } from './oauth-client.entity';
@@ -33,4 +33,8 @@ export class UserConsent {
 	/** OAuth scopes granted on the consent screen. */
 	@JsonColumn()
 	scope: string[];
+
+	/** Last time the client used this grant on the instance MCP server. `null` if never. */
+	@DateTimeColumn({ nullable: true })
+	lastUsedAt: Date | null;
 }

@@ -7,6 +7,7 @@ import {
 	inboundRequestOf,
 	isUrlIssuer,
 	ResourceAdmission,
+	SYSTEM_TRUSTED_SOURCE_ID,
 	type Inbound,
 	type Refusal,
 	type RefusalReason,
@@ -18,6 +19,7 @@ import { JwtService, TelemetryProxy } from '@n8n/backend-services';
 import type { AuthFailureReason, TelemetryAuthContext } from '@n8n/backend-services/auth';
 
 import { McpServerApiKeyService, type McpApiKeyResult } from './mcp-api-key.service';
+import { McpClientUsageService, type McpClientUse } from './mcp-client-usage.service';
 import { McpProtectedResource } from './mcp-protected-resource';
 import {
 	USER_CONNECTED_TO_MCP_EVENT,
@@ -81,6 +83,7 @@ export class McpServerMiddlewareService {
 		private readonly jwtService: JwtService,
 		private readonly telemetry: TelemetryProxy,
 		private readonly logger: Logger,
+		private readonly clientUsage: McpClientUsageService,
 	) {}
 
 	/**
@@ -120,7 +123,8 @@ export class McpServerMiddlewareService {
 			}
 
 			const { token } = extracted.value.credential;
-			const urlIssuer = isUrlIssuer(this.issuerOf(token));
+			const claims = this.claimsOf(token);
+			const urlIssuer = isUrlIssuer(claims?.iss);
 			if (!urlIssuer) {
 				const result = await this.mcpServerApiKeyService.verifyApiKey(token);
 				if (result !== null) {
@@ -135,14 +139,18 @@ export class McpServerMiddlewareService {
 				await this.deny(req, res, admitted, telemetryOf(admitted.reason, urlIssuer));
 				return;
 			}
-			await this.settleSecurityContext(req, res, next, inbound, admitted.context);
+			// The admission verified the token, so its `jti` is safe to read here.
+			await this.settleSecurityContext(req, res, next, inbound, admitted.context, {
+				id: claims?.jti,
+				value: token,
+			});
 		};
 	}
 
 	/** Routing only, never a decision: the token is not verified yet. */
-	private issuerOf(token: string): unknown {
+	private claimsOf(token: string): { iss?: unknown; jti?: unknown } | null | undefined {
 		try {
-			return this.jwtService.decodeUnverified<{ iss?: unknown } | null>(token)?.iss;
+			return this.jwtService.decodeUnverified<{ iss?: unknown; jti?: unknown } | null>(token);
 		} catch {
 			// `jwt.decode` throws on a JWT-typed token whose payload is not JSON.
 			return undefined;
@@ -155,6 +163,7 @@ export class McpServerMiddlewareService {
 		next: NextFunction,
 		inbound: Inbound,
 		context: SecurityContext,
+		accessToken: { id: unknown; value: string },
 	) {
 		// RFC 9068 §2.2 requires `client_id`, and MCP attributes every OAuth call to a client.
 		if (context.clientId === undefined) {
@@ -176,7 +185,31 @@ export class McpServerMiddlewareService {
 		mcpReq.mcpScopes = context.tokenScopes ?? [];
 		// Keep what earlier middleware put on the operation context.
 		mcpReq.ctx = { ...mcpReq.ctx, security: context };
+		// Only n8n's own authorization server creates local consents. An external source can
+		// map its client ID to a local one, so its traffic must not set Last used.
+		const tokenId = accessToken.id;
+		if (
+			context.subjectClaim?.sourceId === SYSTEM_TRUSTED_SOURCE_ID &&
+			typeof tokenId === 'string'
+		) {
+			this.recordUseOnSuccess(res, {
+				userId: user.id,
+				clientId: context.clientId,
+				tokenId,
+				accessToken: accessToken.value,
+			});
+		}
 		next();
+	}
+
+	/**
+	 * Records Last used only when the endpoint served the request. An admitted request can
+	 * still fail, for example a GET listen probe always gets 405, and that is not a connection.
+	 */
+	private recordUseOnSuccess(res: Response, use: McpClientUse) {
+		res.once('finish', () => {
+			if (res.statusCode < 400) this.clientUsage.recordUse(use);
+		});
 	}
 
 	private async refuseAdmitted(

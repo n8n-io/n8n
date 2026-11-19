@@ -1,0 +1,113 @@
+import type { Logger } from '@n8n/backend-common';
+import { mock } from 'vitest-mock-extended';
+
+import type { UserConsentRepository } from '@/modules/oauth-server/database/repositories/oauth-user-consent.repository';
+
+import { McpClientUsageService, type McpClientUse } from '../mcp-client-usage.service';
+
+const NOW = new Date('2026-11-13T10:00:00.000Z');
+
+const use = (tokenId = 'token-1'): McpClientUse => ({
+	userId: 'user-1',
+	clientId: 'client-1',
+	tokenId,
+	accessToken: `bearer-${tokenId}`,
+});
+
+describe('McpClientUsageService', () => {
+	const userConsentRepository = mock<UserConsentRepository>();
+	const logger = mock<Logger>();
+	let service: McpClientUsageService;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.useFakeTimers({ now: NOW });
+		userConsentRepository.recordLastUsed.mockResolvedValue();
+		service = new McpClientUsageService(userConsentRepository, logger);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('records the use for the admitting token with a one-minute throttle that the database enforces', () => {
+		service.recordUse(use());
+
+		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledWith({
+			userId: 'user-1',
+			clientId: 'client-1',
+			accessToken: 'bearer-token-1',
+			usedAt: NOW,
+			minIntervalMs: 60_000,
+		});
+	});
+
+	it('skips the database for the same token inside the interval', () => {
+		service.recordUse(use());
+		vi.advanceTimersByTime(59_999);
+		service.recordUse(use());
+
+		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(1);
+
+		vi.advanceTimersByTime(1);
+		service.recordUse(use());
+
+		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(2);
+	});
+
+	it('sends the first use of a new token, such as after the grant was created again', () => {
+		service.recordUse(use('token-1'));
+		service.recordUse(use('token-2'));
+
+		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(2);
+	});
+
+	it('evicts only the oldest token when the fast path is full', () => {
+		for (let i = 0; i < 1001; i++) service.recordUse(use(`token-${i}`));
+		userConsentRepository.recordLastUsed.mockClear();
+
+		service.recordUse(use('token-0'));
+		service.recordUse(use('token-1000'));
+
+		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(1);
+	});
+
+	it('logs a failed write, does not throw, and retries on the next request', async () => {
+		const error = new Error('db down');
+		userConsentRepository.recordLastUsed.mockRejectedValueOnce(error);
+
+		expect(() => service.recordUse(use())).not.toThrow();
+		await vi.waitFor(() => expect(logger.warn).toHaveBeenCalled());
+
+		expect(logger.warn).toHaveBeenCalledWith('Failed to update lastUsedAt on MCP client grant', {
+			userId: 'user-1',
+			clientId: 'client-1',
+			error,
+		});
+
+		service.recordUse(use());
+
+		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(2);
+	});
+
+	it('keeps the entry of a later write when an older write fails', async () => {
+		let rejectFirst!: (error: Error) => void;
+		userConsentRepository.recordLastUsed.mockReturnValueOnce(
+			new Promise<void>((_, reject) => {
+				rejectFirst = reject;
+			}),
+		);
+
+		service.recordUse(use());
+		vi.advanceTimersByTime(60_000);
+		service.recordUse(use());
+		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(2);
+
+		rejectFirst(new Error('db down'));
+		await vi.waitFor(() => expect(logger.warn).toHaveBeenCalled());
+
+		service.recordUse(use());
+
+		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(2);
+	});
+});

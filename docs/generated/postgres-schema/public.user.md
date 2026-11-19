@@ -409,6 +409,7 @@ erDiagram
   varchar clientId FK
   bigint grantedAt
   integer id
+  timestamp_3__with_time_zone lastUsedAt
   json scope
   uuid userId FK
 }

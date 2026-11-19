@@ -2,6 +2,7 @@ import type { Mocked } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Person, Transaction, User, UserRepository } from '@n8n/db';
+import { SYSTEM_TRUSTED_SOURCE_ID } from '@n8n/inbound-auth';
 import type { Inbound, RefusalReason, Refused, ResourceAdmission } from '@n8n/inbound-auth';
 import type { Principal, SecurityContext } from '@n8n/permissions';
 import type { Response, NextFunction } from 'express';
@@ -12,6 +13,7 @@ import type { InstanceSettings } from 'n8n-core';
 import { JwtService, TelemetryProxy } from '@n8n/backend-services';
 
 import { McpServerApiKeyService } from '../mcp-api-key.service';
+import type { McpClientUsageService } from '../mcp-client-usage.service';
 import { MCP_CLIENT_INFO_META_KEY, MCP_PROTOCOL_VERSION_META_KEY } from '../mcp.constants';
 import { McpProtectedResource } from '../mcp-protected-resource';
 import { McpServerMiddlewareService } from '../mcp-server-middleware.service';
@@ -45,6 +47,13 @@ const mockRes = () => {
 	return res;
 };
 
+/** Ends the mocked response the way Express does, which runs the `finish` listeners. */
+const finishWith = (res: Response, statusCode: number) => {
+	res.statusCode = statusCode;
+	const calls = vi.mocked(res.once).mock.calls as Array<[string, () => void]>;
+	for (const [event, listener] of calls) if (event === 'finish') listener();
+};
+
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock(), mock());
 
@@ -59,12 +68,23 @@ const context: SecurityContext = {
 	tokenScopes: ['workflow:read'],
 };
 
+/** A context from n8n's own authorization server, which owns the local consents. */
+const localContext: SecurityContext = {
+	...context,
+	subjectClaim: {
+		sourceId: SYSTEM_TRUSTED_SOURCE_ID,
+		issuer: 'http://localhost:5678',
+		subject: 'user-123',
+	},
+};
+
 let mcpServerApiKeyService: Mocked<McpServerApiKeyService>;
 let mcpProtectedResource: Mocked<McpProtectedResource>;
 let admission: Mocked<ResourceAdmission>;
 let userRepository: Mocked<UserRepository>;
 let telemetry: Mocked<TelemetryProxy>;
 let logger: Mocked<Logger>;
+let clientUsage: Mocked<McpClientUsageService>;
 let service: McpServerMiddlewareService;
 
 describe('McpServerMiddlewareService', () => {
@@ -77,6 +97,7 @@ describe('McpServerMiddlewareService', () => {
 		userRepository = mock<UserRepository>();
 		telemetry = mockInstance(TelemetryProxy);
 		logger = mock<Logger>();
+		clientUsage = mock<McpClientUsageService>();
 
 		service = new McpServerMiddlewareService(
 			mcpServerApiKeyService,
@@ -86,6 +107,7 @@ describe('McpServerMiddlewareService', () => {
 			jwtService,
 			telemetry,
 			logger,
+			clientUsage,
 		);
 	});
 
@@ -265,6 +287,57 @@ describe('McpServerMiddlewareService', () => {
 				expect(logger.info).not.toHaveBeenCalled();
 			});
 
+			it('records the use of a local OAuth client grant once the endpoint served the request', async () => {
+				admission.admit.mockResolvedValue({ ok: true, context: localContext });
+				const token = jwt.sign(
+					{ iss: 'http://localhost:5678', sub: 'user-123', jti: 'token-1' },
+					'any-secret',
+				);
+
+				const { res } = await run(`Bearer ${token}`);
+
+				expect(clientUsage.recordUse).not.toHaveBeenCalled();
+
+				finishWith(res, 200);
+
+				expect(clientUsage.recordUse).toHaveBeenCalledWith({
+					userId: 'user-123',
+					clientId: 'client-abc',
+					tokenId: 'token-1',
+					accessToken: token,
+				});
+			});
+
+			it.each([405, 400, 500])(
+				'does not record local grant use when the endpoint answers %i',
+				async (statusCode) => {
+					admission.admit.mockResolvedValue({ ok: true, context: localContext });
+					const token = jwt.sign(
+						{ iss: 'http://localhost:5678', sub: 'user-123', jti: 'token-1' },
+						'any-secret',
+					);
+
+					const { res, next } = await run(`Bearer ${token}`);
+					finishWith(res, statusCode);
+
+					expect(next).toHaveBeenCalled();
+					expect(clientUsage.recordUse).not.toHaveBeenCalled();
+				},
+			);
+
+			it('does not record local grant use for a token from an external trusted source', async () => {
+				const token = jwt.sign(
+					{ iss: 'https://idp.example', sub: 'idp-alice', jti: 'token-1' },
+					'any-secret',
+				);
+
+				const { res, next } = await run(`Bearer ${token}`);
+				finishWith(res, 200);
+
+				expect(next).toHaveBeenCalled();
+				expect(clientUsage.recordUse).not.toHaveBeenCalled();
+			});
+
 			it('keeps what earlier middleware put on the operation context', async () => {
 				const req = mockReqWith(`Bearer ${signIssuerToken('https://idp.example')}`);
 				const earlier = { trx: mock<Transaction>() };
@@ -298,6 +371,7 @@ describe('McpServerMiddlewareService', () => {
 					withoutClient,
 				);
 				expectUnauthorized(res, next, 'Unauthorized: not-an-access-token');
+				expect(clientUsage.recordUse).not.toHaveBeenCalled();
 				expect(telemetry.track).toHaveBeenCalledWith(
 					'User connected to MCP server',
 					expect.objectContaining({
@@ -319,6 +393,7 @@ describe('McpServerMiddlewareService', () => {
 					context,
 				);
 				expectUnauthorized(res, next, 'Unauthorized: unknown-subject');
+				expect(clientUsage.recordUse).not.toHaveBeenCalled();
 				expect(telemetry.track).toHaveBeenCalledWith(
 					'User connected to MCP server',
 					expect.objectContaining({ reason: 'user_not_found', auth_type: 'oauth' }),

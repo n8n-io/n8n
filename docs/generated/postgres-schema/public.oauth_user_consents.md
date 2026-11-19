@@ -7,6 +7,7 @@
 | clientId | varchar |  | false |  | [public.oauth_clients](public.oauth_clients.md) |  |
 | grantedAt | bigint |  | false |  |  | Unix timestamp in milliseconds |
 | id | integer |  | false |  |  |  |
+| lastUsedAt | timestamp(3) with time zone |  | true |  |  | Last time the client used this grant on the instance MCP server; NULL if never |
 | scope | json |  | false |  |  | OAuth scopes granted on the consent screen |
 | userId | uuid |  | false |  | [public.user](public.user.md) |  |
 
@@ -43,6 +44,7 @@ erDiagram
   varchar clientId FK
   bigint grantedAt
   integer id
+  timestamp_3__with_time_zone lastUsedAt
   json scope
   uuid userId FK
 }
