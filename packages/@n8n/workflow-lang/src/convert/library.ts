@@ -813,6 +813,29 @@ function pairsByCallOf(type: string, parameters: Record<string, unknown>): boole
 	return key !== null && rows.has(key);
 }
 
+/**
+ * The operations of a library node that v1 runs once for all items, in which v1 sends one
+ * request for each input item in item order, and gives one output item for each input item in
+ * the same order: output item `k` comes from input item `k`, so the pair is the position.
+ * `src/nodes/__tests__/paired-by-call.test.ts` records the requests and the pairs of these
+ * calls on three input items, with `simplify` on and off. `openAi text.message` is no row here:
+ * v1 gives two items for each input item in its default form and one with the JSON output.
+ */
+const PAIRS_BY_POSITION_ROWS: Record<string, Set<string>> = {
+	'@n8n/n8n-nodes-langchain.anthropic': new Set(['text.message']),
+	'@n8n/n8n-nodes-langchain.googleGemini': new Set(['text.message']),
+	'@n8n/n8n-nodes-langchain.openAi': new Set(['text.response']),
+};
+
+/**
+ * True when the v1 node of a batch call gives one output item for each input item, in item
+ * order. The step then fills the index of each item of output 0 with its position.
+ */
+function pairsByPositionOf(type: string, parameters: Record<string, unknown>): boolean {
+	const key = libraryCallKey(type, parameters);
+	return key !== null && (PAIRS_BY_POSITION_ROWS[type]?.has(key) ?? false);
+}
+
 /** The oldest version of a node type that its library node runs; older ones run in the host. */
 export const MIN_VERSIONS: Record<string, number> = {
 	// Version 2.0 searches once for all input items.
@@ -1586,6 +1609,7 @@ export function lowerLibrary(c: NodeContext): void {
 			...nodeCall(c, type, batch, c.credential(), false),
 			oneErrorItem: true,
 			pairedErrorItem: true,
+			pairsByPosition: pairsByPositionOf(type, adapted),
 		});
 		return;
 	}

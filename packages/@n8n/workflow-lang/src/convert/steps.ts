@@ -76,6 +76,12 @@ export interface StepCall {
 	 */
 	pairsByCall?: boolean;
 	/**
+	 * The v1 node gives one output item for each input item, in item order, so output item `k`
+	 * comes from input item `k`. The step fills the pairs of output 0 with `0..n-1` after the
+	 * call, for `$('Node').item` in a later node.
+	 */
+	pairsByPosition?: boolean;
+	/**
 	 * The options of a fallback-host call for one item (`[ITEM]`), for a library node that the
 	 * converter calls once for each item and that sends what v1 sends once (a message). When
 	 * the call for an item ends with the mark of `RUNS_IN_HOST`, nothing went out for that
@@ -238,10 +244,30 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 	if (!call.perItem) {
 		const items = call.extraItems ? `[...${input}, ${call.extraItems}]` : input;
 		const opts = options(c, call, items);
+		// The pairs of an operation that gives one item for each input item, in item order. An
+		// error output moves a failed item out of output 0, so the position is no longer the
+		// index of the input item there; "always output data" adds an item of no call.
+		const byPosition = `${out}Pairs`;
+		const position =
+			call.pairsByPosition === true &&
+			c.pairsWanted === true &&
+			c.setPairs !== undefined &&
+			onError !== 'continueErrorOutput' &&
+			c.node.alwaysOutputData !== true
+				? byPosition
+				: null;
+		// Each item of the output has an index, so a read of a pair through this step cannot fail.
+		const emitPosition = () => {
+			if (position === null) return;
+			w.line(`const ${position}: Json = { items: ${out}, paired: [] };`);
+			w.line(`for (let k = 0; k < ${out}.length; k++) ${position}.paired.push(k);`);
+			c.setPairs?.(position, 0, true);
+		};
 		if (onError === 'stopWorkflow' && !c.traceAll && !errorRetry(c)) {
 			w.block(
 				`const ${out}: Json[] = ${input}.length > 0 ? await ${fn}(${c.print(opts, `const ${out}: Json[] = ${input}.length > 0 ? await ${fn}(`)}) : [];`,
 			);
+			emitPosition();
 			return;
 		}
 		if (onError === 'stopWorkflow' && !c.traceAll) {
@@ -249,6 +275,7 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 			w.open(`if (${input}.length > 0) {`);
 			emitCall(c, out, null, fn, opts, `${out}[0]`, call.hostLimit);
 			w.close();
+			emitPosition();
 			return;
 		}
 		if (onError === 'stopWorkflow') {
@@ -258,6 +285,7 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 			emitCall(c, out, null, fn, opts, `${out}[0]`, call.hostLimit);
 			failTrace(c, call.hostLimit);
 			w.close();
+			emitPosition();
 			return;
 		}
 		w.line(`let ${out}: Json[] = [];`);
@@ -292,6 +320,7 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 		}
 		w.close();
 		w.close();
+		emitPosition();
 		return;
 	}
 

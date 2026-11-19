@@ -273,7 +273,7 @@ const probeNode = (name: string, id: string) => node(name, 'probe', 1, [500, 0],
 const read = "={{ $('Source').item.json.id }}";
 
 /** The workflow of the read, through the nodes between `Source` and the reader. */
-function readThrough(middle: Array<ReturnType<typeof node>>, reader: ReturnType<typeof node>) {
+function readThrough(middle: Array<{ name: string }>, reader: { name: string }) {
 	const names = ['Source', ...middle.map((m) => m.name), reader.name];
 	const result = convertWorkflow(
 		{
@@ -291,9 +291,15 @@ function readThrough(middle: Array<ReturnType<typeof node>>, reader: ReturnType<
 		fallback: result.fallbackNodes,
 		// A read that cannot fail: no helper that throws for an item without a pair.
 		exact: !result.source.includes('pairedSourceIndex('),
+		// The pairs are the position: the step fills them with 0..n-1 after the call.
+		position: result.source.includes('paired.push(k)'),
 		gated: result.diagnostics.some((d) =>
 			d.message.startsWith('An expression of a parameter can fail'),
 		),
+		// The reason at the end of the diagnostic of the reader, when the node keeps no pairs.
+		reason: /\[pairing: (.*)\]$/.exec(
+			result.diagnostics.find((d) => d.node === reader.name)?.message ?? '',
+		)?.[1],
 	};
 }
 
@@ -319,12 +325,12 @@ describe('a paired read in a parameter, behind a library node that pairs by call
 			{ credentials: { airtableTokenApi: { id: 'case', name: 'case' } } },
 		);
 		const out = readThrough([mailRead], record);
-		expect(out).toEqual({ fallback: [], exact: true, gated: false });
+		expect(out).toMatchObject({ fallback: [], exact: true, position: false, gated: false });
 	});
 
 	it('compiles the parameter of a node that runs as compiled code', () => {
 		const out = readThrough([mailRead], probeNode('Reader', read));
-		expect(out).toEqual({ fallback: [], exact: true, gated: false });
+		expect(out).toMatchObject({ fallback: [], exact: true, position: false, gated: false });
 	});
 
 	it('stays gated behind a node whose items keep no index for each item', () => {
@@ -332,8 +338,147 @@ describe('a paired read in a parameter, behind a library node that pairs by call
 		// parameter of a compiled node is evaluated before its call. `PAIRS_BY_CALL_ROWS` does not
 		// cover that node, so its step is not complete.
 		const out = readThrough([mailRead, probeNode('Middle', 'x')], probeNode('Reader', read));
-		expect(out).toEqual({ fallback: ['Reader'], exact: false, gated: true });
+		expect(out).toMatchObject({ fallback: ['Reader'], exact: false, gated: true });
 	});
+});
+
+/** A vendor node of the LangChain package: it runs once for all items (a batch call). */
+const LC = '@n8n/n8n-nodes-langchain';
+const vendorNode = (name: string, type: string, parameters: Record<string, unknown>) => ({
+	name,
+	type: `${LC}.${type}`,
+	typeVersion: 1,
+	position: [500, 0] as [number, number],
+	parameters,
+});
+const message = { values: [{ content: 'Hi' }] };
+
+describe('a paired read through a vendor node that runs once for all items', () => {
+	it('keeps the position for the operations that give one item for each input item', () => {
+		for (const [type, parameters] of [
+			['anthropic', { resource: 'text', operation: 'message', messages: message }],
+			['googleGemini', { resource: 'text', operation: 'message', messages: message }],
+		] as const) {
+			const out = readThrough([vendorNode('Vendor', type, parameters)], probeNode('Reader', read));
+			expect(out).toMatchObject({ fallback: [], exact: true, position: true, gated: false });
+		}
+	});
+
+	it('keeps no pairs for an operation that gives two items for each input item', () => {
+		const out = readThrough(
+			[
+				vendorNode('Vendor', 'openAi', {
+					resource: 'text',
+					operation: 'message',
+					messages: message,
+				}),
+			],
+			probeNode('Reader', read),
+		);
+		expect(out).toMatchObject({
+			position: false,
+			gated: false,
+			reason: `no pairs after ${LC}.openAi@1`,
+		});
+	});
+});
+
+/**
+ * What v1 sends and pairs for a vendor node on three input items, for the message operations:
+ * the requests in their order, and the pair of each output item.
+ */
+const VENDOR_CALLS: Record<string, { requests: string[]; pairs: string }> = {
+	'anthropic text.message defaults': {
+		requests: ['POST /v1/messages', 'POST /v1/messages', 'POST /v1/messages'],
+		pairs: '0,1,2',
+	},
+	'anthropic text.message raw output': {
+		requests: ['POST /v1/messages', 'POST /v1/messages', 'POST /v1/messages'],
+		pairs: '0,1,2',
+	},
+	'openAi text.response 2': {
+		requests: ['POST /v1/responses', 'POST /v1/responses', 'POST /v1/responses'],
+		pairs: '0,1,2',
+	},
+	// Two items for each input item: the message and its response.
+	'openAi text.message': {
+		requests: [
+			'POST /v1/chat/completions',
+			'POST /v1/chat/completions',
+			'POST /v1/chat/completions',
+		],
+		pairs: '0,0,1,1,2,2',
+	},
+	'googleGemini text.message defaults': {
+		requests: [
+			'POST /v1beta/models/gemini-2.5-flash:generateContent',
+			'POST /v1beta/models/gemini-2.5-flash:generateContent',
+			'POST /v1beta/models/gemini-2.5-flash:generateContent',
+		],
+		pairs: '0,1,2',
+	},
+	'googleGemini text.message version 1 raw output': {
+		requests: [
+			'POST /v1beta/models/gemini-2.0-flash:generateContent',
+			'POST /v1beta/models/gemini-2.0-flash:generateContent',
+			'POST /v1beta/models/gemini-2.0-flash:generateContent',
+		],
+		pairs: '0,1,2',
+	},
+};
+
+describe.runIf(recorderAvailable())('what a vendor node sends and pairs on three items', () => {
+	afterAll(async () => {
+		await disposeRecorder();
+	});
+
+	it(
+		'sends one request for each item, in item order, and pairs the output',
+		{ timeout: 120_000 },
+		async () => {
+			const actual: Record<string, { requests: string[]; pairs: string }> = {};
+			for (const name of Object.keys(VENDOR_CALLS)) {
+				const c = cases.find((x) => x.name === name);
+				if (c === undefined) throw new Error(`no case ${name}`);
+				const recording = await recordV1(probeCase(c));
+				actual[name] = {
+					requests: recording.requests.map(
+						(request) => `${request.method} ${new URL(String(request.url)).pathname}`,
+					),
+					pairs: (recording.pairs ?? []).map(pairText).join(','),
+				};
+			}
+			expect(actual).toEqual(VENDOR_CALLS);
+		},
+	);
+
+	it(
+		'gives one item for each input item under a continue setting, but not on the error output',
+		{ timeout: 120_000 },
+		async () => {
+			const base = cases.find((c) => c.name === 'anthropic text.message defaults');
+			if (base === undefined) throw new Error('no anthropic case');
+			const ok = base.responses[0]!;
+			// The second item fails: v1 continues with the third.
+			const probe = {
+				...probeCase(base),
+				responses: [ok, { status: 500, body: { error: 'x' } }, ok],
+			};
+			const regular = await recordV1({ ...probe, settings: { onError: 'continueRegularOutput' } });
+			expect((regular.outputs ?? []).map((list) => list.length)).toEqual([3]);
+			expect((regular.paired ?? []).map((list) => list.map(pairText))).toEqual([['0', '1', '2']]);
+			// The error output takes the failed item out of output 0, so the position is no index there.
+			const errorOutput = await recordV1({
+				...probe,
+				settings: { onError: 'continueErrorOutput' },
+			});
+			expect((errorOutput.outputs ?? []).map((list) => list.length)).toEqual([2, 1]);
+			expect((errorOutput.paired ?? []).map((list) => list.map(pairText))).toEqual([
+				['0', '2'],
+				['1'],
+			]);
+		},
+	);
 });
 
 /**
