@@ -393,8 +393,26 @@ deferred:
 | Days in the 2026 refund policy | 30 days, url cited | `tool_search` ×2, `search_knowledge`, `read_knowledge` | 36,676 (0 cached) | 491 | 14.3 s |
 | What the page "Not picked" says | "Not in the selected knowledge." | `tool_search`, `search_knowledge`, `list_knowledge` ×2 | 39,206 (0 cached) | 320 | 13.5 s |
 
+Day-2 exit, `kb-native` with both sources (Slack: the `#seed-support`
+channel), same model, after the Slack provider landed:
+
+| Question | Result | Tool calls | Prompt tokens | Completion | Wall |
+|---|---|---|---|---|---|
+| Days in the 2026 refund policy | 30 days, url cited | `tool_search` ×2, `search_knowledge`, `read_knowledge` | 35,986 | 492 | 14.6 s |
+| What the page "Not picked" says | refused | `tool_search`, `search_knowledge`, `list_knowledge` | 28,272 | 243 | 10.0 s |
+| Region of the stuck queue consumer | `eu-west-1`, thread permalink cited | `tool_search` ×2, `search_knowledge` ×2, `read_knowledge` | 46,307 | 557 | 19.4 s |
+| Secret in `#seed-not-picked` | refused | `tool_search`, `search_knowledge` ×3, `list_knowledge` ×2 | 60,977 | 562 | 20.2 s |
+
 Notes:
 
+- The first incident search returned ten Notion KB rows about webhooks and
+  no Slack hit: provider matches all ranked 1, sources merged in config
+  order, capped at the limit. Fixed after the run: ties alternate between
+  sources, and a provider match ranks by the query terms in its title and
+  snippet.
+- The Slack scope probe cost six tool calls: the model kept searching after
+  `list_knowledge()` had shown the selected items. Fixed after the run with
+  one more rule in the system instruction.
 - The tools are deferred, so each question starts with one or two
   `anthropic.tool_search` turns before the first knowledge call. C0's MCP
   tools are deferred too; an eager variant is a later measurement.
@@ -438,7 +456,7 @@ Notes:
 - [x] `endRun` hook in the turn-execution run end (done on day 1)
 - [x] Allow-set refusal test (done on day 1, with the per-run extension, refs and the unavailable-source result)
 - [x] `fixtures/agent.json` for `kb-native`, `kb-index`, `kb-mcp-c0` (and `kb-hybrid`); `smoke [agent]` runs any of them
-- [ ] Exit: `kb-native` answers a Slack channel question with a permalink; `kb-mcp-c0` runs
+- [ ] Exit: `kb-native` answers a Slack channel question with a permalink (done 2026-11-19, see "First measurements"); `kb-mcp-c0` runs (waits for the `mcpOAuth2Api` credentials)
 
 ### Day 3: `index`, harness, question set
 

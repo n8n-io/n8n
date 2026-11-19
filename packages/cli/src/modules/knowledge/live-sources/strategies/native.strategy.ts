@@ -6,7 +6,7 @@ import type {
 	LiveSearchContext,
 	RankedSearchMatch,
 } from './live-retrieval-strategy';
-import { searchLines, titleMatches, tokenizeQuery } from './text-search';
+import { countTerms, searchLines, titleMatches, tokenizeQuery } from './text-search';
 
 /** Matches per picked item, so one long document cannot fill the result. */
 const MAX_MATCHES_PER_ITEM = 3;
@@ -28,15 +28,21 @@ export class NativeRetrievalStrategy implements LiveRetrievalStrategy {
 		limit: number,
 	): Promise<RankedSearchMatch[]> {
 		const matches: RankedSearchMatch[] = [];
+		const terms = tokenizeQuery(query);
 		const hasContainer = context.scope.some((entry) => entry.kind === 'container');
 		if (hasContainer && context.provider.capabilities.nativeContainerSearch) {
 			const found = await context.provider.search(context.ctx, context.scope, query, limit);
 			for (const match of found) {
-				matches.push({ ...match, score: PROVIDER_MATCH_SCORE });
+				// The provider matched somewhere; the query terms in the title and the
+				// snippet tell how well, so "FAQ: webhooks" ranks below "queue consumer region".
+				const overlap = Math.max(
+					countTerms(match.entry.title, terms),
+					countTerms(match.snippet, terms),
+				);
+				matches.push({ ...match, score: Math.max(PROVIDER_MATCH_SCORE, overlap) });
 			}
 		}
 
-		const terms = tokenizeQuery(query);
 		for (const item of context.pickedItems) {
 			matches.push(...(await this.searchItem(context, item, terms)));
 		}

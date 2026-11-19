@@ -101,11 +101,7 @@ export function searchLines(text: string, terms: readonly string[], limit: numbe
 	const matches: LineMatch[] = [];
 	const lines = text.split('\n');
 	for (const [index, line] of lines.entries()) {
-		const lower = line.toLowerCase();
-		let score = 0;
-		for (const term of terms) {
-			if (lower.includes(term)) score += 1;
-		}
+		const score = countTerms(line, terms);
 		if (score === 0) continue;
 		matches.push({ line: index + 1, score, snippet: cutSnippet(line) });
 	}
@@ -113,10 +109,19 @@ export function searchLines(text: string, terms: readonly string[], limit: numbe
 	return matches.slice(0, limit);
 }
 
+/** The number of distinct terms the text contains. */
+export function countTerms(text: string, terms: readonly string[]): number {
+	const lower = text.toLowerCase();
+	let count = 0;
+	for (const term of terms) {
+		if (lower.includes(term)) count += 1;
+	}
+	return count;
+}
+
 /** True when the title contains at least one term. */
 export function titleMatches(title: string, terms: readonly string[]): boolean {
-	const lower = title.toLowerCase();
-	return terms.some((term) => lower.includes(term));
+	return countTerms(title, terms) > 0;
 }
 
 export function cutSnippet(line: string): string {

@@ -193,6 +193,41 @@ describe('LiveRetrievalService', () => {
 			expect(result.searched[0].error).not.toContain('sk-secret-1234567890');
 		});
 
+		it('alternates the sources in a tie, so one source cannot fill the capped result', async () => {
+			const { service, provider } = makeService();
+			provider.capabilities.nativeContainerSearch = true;
+			provider.search.mockImplementation(async (ctx) =>
+				Array.from({ length: 5 }, (_, index) => ({
+					entry: {
+						id: `${ctx.sourceId}-${index}`,
+						kind: 'item' as const,
+						title: `${ctx.sourceId} match ${index}`,
+					},
+					snippet: `${ctx.sourceId} match ${index}`,
+				})),
+			);
+			const containerOnly = (id: string): LiveSourceConfig => ({
+				...SOURCE,
+				id,
+				name: id,
+				items: [PICKED_CONTAINER],
+			});
+
+			const result = await service.search(
+				SCOPE,
+				[containerOnly('first'), containerOnly('second')],
+				{ runId: 'run-1' },
+				{ query: 'match', limit: 4 },
+			);
+
+			expect(result.hits.map((hit) => hit.sourceId)).toEqual([
+				'first',
+				'second',
+				'first',
+				'second',
+			]);
+		});
+
 		it('finds the matching line of a picked item and ranks it', async () => {
 			const { service } = makeService();
 

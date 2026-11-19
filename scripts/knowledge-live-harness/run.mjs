@@ -17,7 +17,8 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES = path.join(HERE, 'fixtures');
 const RESULTS = path.join(HERE, 'results');
-const AGENTS_FILE = path.join(FIXTURES, 'agents.json');
+// The agents the script created, by key. Dev tests of the script point it elsewhere.
+const AGENTS_FILE = process.env.HARNESS_AGENTS_FILE ?? path.join(FIXTURES, 'agents.json');
 
 const BASE_URL = (process.env.N8N_BASE_URL ?? 'http://localhost:5678').replace(/\/$/, '');
 const MODEL = process.env.N8N_MODEL ?? 'anthropic/claude-sonnet-4-5';

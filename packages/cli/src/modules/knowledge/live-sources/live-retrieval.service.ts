@@ -233,10 +233,9 @@ export class LiveRetrievalService {
 			}
 		}
 
-		ranked.sort((a, b) => b.score - a.score);
 		const hits: LiveHit[] = [];
 		const seen = new Map<string, number>();
-		for (const match of ranked) {
+		for (const match of interleaveTies(ranked)) {
 			const ref = formatLiveRef(match.source.id, match.entry.id);
 			const hit: LiveHit = {
 				ref,
@@ -455,6 +454,32 @@ export class LiveRetrievalService {
 		});
 		return `Knowledge source "${source.id}" is unavailable: ${sanitizeLiveSourceErrorMessage(message)}`;
 	}
+}
+
+/**
+ * Best matches first. Matches of equal rank alternate between the sources, so
+ * one source with many weak title matches cannot push another source out of
+ * the capped result.
+ */
+function interleaveTies(matches: readonly SourceMatch[]): SourceMatch[] {
+	const byScore = new Map<number, Map<string, SourceMatch[]>>();
+	for (const match of matches) {
+		const bySource = byScore.get(match.score) ?? new Map<string, SourceMatch[]>();
+		const queue = bySource.get(match.source.id) ?? [];
+		queue.push(match);
+		bySource.set(match.source.id, queue);
+		byScore.set(match.score, bySource);
+	}
+	const result: SourceMatch[] = [];
+	for (const score of [...byScore.keys()].sort((a, b) => b - a)) {
+		const queues = [...(byScore.get(score)?.values() ?? [])];
+		for (let index = 0; queues.some((queue) => index < queue.length); index++) {
+			for (const queue of queues) {
+				if (index < queue.length) result.push(queue[index]);
+			}
+		}
+	}
+	return result;
 }
 
 function findSource(sources: readonly LiveSourceConfig[], sourceId: string): LiveSourceConfig {
