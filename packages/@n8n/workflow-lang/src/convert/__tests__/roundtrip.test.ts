@@ -78,6 +78,16 @@ function reachable(edges: Edges, from: string): Set<string> {
 const samples: Array<[string, Wf]> = [
 	...readdirSync(casesDir)
 		.sort()
+		.filter((name) => {
+			try {
+				const spec = JSON.parse(
+					readFileSync(join(casesDir, name, 'case.json'), 'utf8'),
+				) as { expectRefusal?: boolean };
+				return spec.expectRefusal !== true;
+			} catch {
+				return true;
+			}
+		})
 		.map((name): [string, Wf] => [
 			name,
 			JSON.parse(readFileSync(join(casesDir, name, 'workflow.json'), 'utf8')) as Wf,

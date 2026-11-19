@@ -1623,8 +1623,9 @@ function nullToUndefined(value: Json): Json {
  * Moves the error items of an output to the error output, as v1's handleNodeErrorOutput:
  * items whose keys are only error, message and details, with a truthy error. The item
  * merges into its input item (the only one, or the one at its position).
+ * \`paired\` is a paired array that keeps the same length as \`out\`; it is compacted the same way.
  */
-function moveErrorItems(out: Json[], errors: Json[], input: Json[]): void {
+function moveErrorItems(out: Json[], errors: Json[], input: Json[], paired?: Json[]): void {
 	let kept = 0;
 	const total = out.length;
 	for (let i = 0; i < total; i++) {
@@ -1639,10 +1640,12 @@ function moveErrorItems(out: Json[], errors: Json[], input: Json[]): void {
 			errors.push(source !== undefined ? { ...source, ...item } : item);
 		} else {
 			out[kept] = item;
+			if (paired !== undefined && kept !== i) paired[kept] = paired[i];
 			kept++;
 		}
 	}
-	while (out.length > kept) out.pop();
+	while (out.length > kept) { out.pop(); }
+	if (paired !== undefined) while (paired.length > kept) { paired.pop(); }
 }`,
 	},
 	isErrorItem: {

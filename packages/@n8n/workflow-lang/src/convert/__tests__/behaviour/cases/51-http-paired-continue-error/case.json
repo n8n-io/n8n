@@ -1,0 +1,49 @@
+{
+	"description": "51-http-paired-continue-error",
+	"trigger": {
+		"body": {
+			"items": 5
+		}
+	},
+	"http": {
+		"Http": {
+			"path": "thing",
+			"responses": [
+				{
+					"status": 200,
+					"body": {
+						"got": "r0"
+					}
+				},
+				{
+					"status": 500,
+					"body": {
+						"error": "boom"
+					}
+				},
+				{
+					"status": 200,
+					"body": {
+						"got": "r2"
+					}
+				},
+				{
+					"status": 200,
+					"body": {
+						"got": "r3"
+					}
+				},
+				{
+					"status": 200,
+					"body": {
+						"got": "r4"
+					}
+				}
+			]
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read Expr"
+	]
+}

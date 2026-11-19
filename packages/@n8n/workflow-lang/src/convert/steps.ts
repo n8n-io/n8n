@@ -283,11 +283,14 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 
 	w.line(`const ${out}: Json[] = [];`);
 	// The index of the input item of each item of output 0 (`paired`), as a compiled node gives it.
+	// The index of the input item of each item of output 0, as a compiled node gives it.
+	// v1 pairs each output item with its input item after a continue too. With "retry on
+	// fail" the pairs are not proven: the reader stays in the host.
 	const pairs =
 		call.pairsByCall === true &&
 		c.pairsWanted === true &&
 		c.setPairs !== undefined &&
-		!errorRetry(c)
+		c.node.retryOnFail !== true
 			? `${out}Pairs`
 			: null;
 	if (pairs) {

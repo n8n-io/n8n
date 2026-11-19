@@ -1,0 +1,216 @@
+{
+  "name": "Code after Filter returns items paired read",
+  "nodes": [
+    {
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "code-return-items",
+        "options": {}
+      },
+      "webhookId": "f6a7b8c9-d0e1-2345-fabc-456789012345"
+    },
+    {
+      "id": "source",
+      "name": "Source",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return [{ json: { n: 10 } }, { json: { n: 20 } }, { json: { n: 30 } }];"
+      }
+    },
+    {
+      "id": "tag",
+      "name": "Tag",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        0
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "t",
+              "name": "tag",
+              "value": "x",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "filter",
+      "name": "Filter",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        600,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.n }}",
+              "operator": {
+                "type": "number",
+                "operation": "notEquals"
+              },
+              "rightValue": 20
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "middle",
+      "name": "Middle",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return items;"
+      }
+    },
+    {
+      "id": "read-each",
+      "name": "Read Each",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return { json: { sourceN: $('Source').item.json.n } };"
+      }
+    },
+    {
+      "id": "read-all",
+      "name": "Read All",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        100
+      ],
+      "parameters": {
+        "jsCode": "return items.map((item, k) => ({ json: { sourceN: $('Source').item.json.n } }));"
+      }
+    },
+    {
+      "id": "read-expr",
+      "name": "Read Expr",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1000,
+        200
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={ \"sourceN\": {{ $('Source').item.json.n }} }",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Source": {
+      "main": [
+        [
+          {
+            "node": "Tag",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Middle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Middle": {
+      "main": [
+        [
+          {
+            "node": "Read Each",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read All",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read Expr",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

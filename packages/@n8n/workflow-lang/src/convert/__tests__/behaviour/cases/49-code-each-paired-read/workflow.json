@@ -1,0 +1,90 @@
+{
+	"name": "Code each-item paired read",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "code-each-paired",
+				"options": {}
+			},
+			"webhookId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+		},
+		{
+			"id": "source",
+			"name": "Source",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"parameters": {
+				"jsCode": "return [{ json: { n: 10 } }, { json: { n: 20 } }, { json: { n: 30 } }];"
+			}
+		},
+		{
+			"id": "middle",
+			"name": "Middle",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [400, 0],
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "return { json: { doubled: item.json.n * 2, middle: true } };"
+			}
+		},
+		{
+			"id": "read-each",
+			"name": "Read Each",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [600, 0],
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "return { json: { sourceN: $('Source').item.json.n, middleDoubled: item.json.doubled } };"
+			}
+		},
+		{
+			"id": "read-all",
+			"name": "Read All",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [600, 100],
+			"parameters": {
+				"jsCode": "return items.map((item, k) => ({ json: { sourceN: $('Source').item.json.n, middleDoubled: item.json.doubled } }));"
+			}
+		},
+		{
+			"id": "read-expr",
+			"name": "Read Expr",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [600, 200],
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "={ \"sourceN\": {{ $('Source').item.json.n }}, \"sourceNDup\": {{ $('Source').item.json.n }} }",
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [[{ "node": "Source", "type": "main", "index": 0 }]]
+		},
+		"Source": {
+			"main": [[{ "node": "Middle", "type": "main", "index": 0 }]]
+		},
+		"Middle": {
+			"main": [[
+				{ "node": "Read Each", "type": "main", "index": 0 },
+				{ "node": "Read All", "type": "main", "index": 0 },
+				{ "node": "Read Expr", "type": "main", "index": 0 }
+			]]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
