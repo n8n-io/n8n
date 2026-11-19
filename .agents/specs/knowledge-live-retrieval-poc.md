@@ -1,6 +1,7 @@
 # Knowledge live retrieval: PoC spec
 
-Status: plan, not started. Ticket: https://linear.app/n8n/issue/KNO-338
+Status: plan, not started. Setup decisions of 2026-11-19 applied (see
+"Decisions"). Ticket: https://linear.app/n8n/issue/KNO-338
 (project "Knowledge live retrieval"). Research notes (internal):
 [Knowledge live retrieval: PoC approach and session notes](https://app.notion.com/p/41b5b6e0c94f81148174fb637547c64f).
 
@@ -13,15 +14,16 @@ Agents read picked items of external services at run time. No copy stays in
 n8n. The agent reads only the picked items and nothing else in the source.
 Every answer links to the source item.
 
-The PoC compares three retrieval strategies behind one tool surface with the
+The PoC compares two retrieval strategies behind one tool surface with the
 plain MCP baseline, for Notion and Slack:
 
 - `native`: the provider's own search, plus in-process search over cached
   picked items.
 - `index`: an in-memory card index (BM25) over the picked containers; reads
   stay live.
-- `mirror` (optional): fetched text in the sandbox mirror, searched with the
-  existing ripgrep commands.
+- ~~`mirror`: fetched text in the sandbox mirror, searched with the existing
+  ripgrep commands.~~ Dropped: no sandbox is available locally. The design
+  stays on the Notion page.
 - `C0` (baseline): the hosted Notion and Slack MCP servers attached as
   `mcpServers`, read-only tool permissions, picked items listed in the
   instructions.
@@ -57,9 +59,8 @@ flowchart LR
   end
   subgraph knowledge["knowledge module: live-sources/"]
     Tools --> Run[LiveRetrievalService: allow-set, per-run cache, provenance]
-    Run --> Strat[strategy: native, index, mirror]
+    Run --> Strat[strategy: native or index]
     Strat --> Idx[LiveIndexService: cards, BM25, in memory]
-    Strat --> Mir[sandbox mirror under knowledge-mirror/live/]
     Strat --> Reg[LiveSourceProviderRegistry]
     Reg --> Notion[NotionProvider] & Slack[SlackProvider]
     Notion & Slack --> Adapter[NodeOperationAdapter]
@@ -82,7 +83,7 @@ knowledge: z.object({
     name: z.string().min(1).max(64),
     description: z.string().max(512).optional(), // shown in the knowledge map
     credential: z.string().min(1),
-    retrieval: z.enum(['native', 'index', 'mirror']).optional(), // default per provider
+    retrieval: z.enum(['native', 'index']).optional(), // default per provider; 'mirror' reserved
     items: z.array(z.object({
       id: z.string().min(1),
       kind: z.enum(['item', 'container']),
@@ -124,7 +125,6 @@ packages/cli/src/modules/knowledge/
     live-index.service.ts                  cards and BM25 per agentId:sourceId
     strategies/native.strategy.ts
     strategies/index.strategy.ts
-    strategies/mirror.strategy.ts          optional
     providers/notion.provider.ts
     providers/slack.provider.ts
     __tests__/live-retrieval.service.test.ts   the one test: the allow-set refusal
@@ -136,7 +136,7 @@ packages/cli/src/modules/agents/
   agent-knowledge-live.controller.ts       POST .../:agentId/knowledge/live-sources/:sourceId/index
   BUILT_IN_TOOLS.md                        + the three tools and their attach condition
 packages/@n8n/api-types/src/agents/agent-json-config.schema.ts   + knowledge.liveSources
-scripts/knowledge-live-harness/            run.mjs, fixtures/, results/
+scripts/knowledge-live-harness/            run.mjs, seed-sources.mjs, fixtures/, results/
 ```
 
 The existing boundary files (`knowledge-retriever.ts`,
@@ -159,7 +159,7 @@ type RunContext = {
 type LiveSourceItem = { id: string; kind: 'item' | 'container'; containerType?: string; title: string; url?: string; parentId?: string };
 type LiveEntry = LiveSourceItem & { icon?: string; hasChildren?: boolean; updatedAt?: string };
 type LiveEntryRef = { sourceId: string; itemId: string }; // knowledge://live/<sourceId>/<itemId>
-type LiveHit = { ref: string; sourceId: string; title: string; snippet: string; url?: string; lineRange?: { start: number; end: number }; updatedAt?: string; retrieval: 'native' | 'index' | 'mirror' };
+type LiveHit = { ref: string; sourceId: string; title: string; snippet: string; url?: string; lineRange?: { start: number; end: number }; updatedAt?: string; retrieval: 'native' | 'index' };
 type LiveDocument = { id: string; title: string; url: string; text: string; updatedAt?: string };
 
 interface KnowledgeLiveSourceProvider {
@@ -221,8 +221,8 @@ returned as `{ error, errorType }`, never thrown.
 Attach: `BuildFromJsonOptions.buildLiveKnowledgeTools?: (sources) => Promise<BuiltTool[]>`,
 called in `buildFromJson` after the vector-store block when
 `config.knowledge?.liveSources?.length > 0`. The reconstruction service
-implements the hook, gated by `isLiveSourcesEnabled()`. `native` and `index`
-work without a sandbox; `mirror` checks the sandbox at call time.
+implements the hook, gated by `isLiveSourcesEnabled()`. Neither strategy
+needs a sandbox.
 
 ## Strategies
 
@@ -230,9 +230,13 @@ work without a sandbox; `mirror` checks the sandbox at call time.
 |---|---|---|---|
 | `native` | `provider.search` per picked container, plus in-process search over the cached picked items | live | Floor of the PoC. |
 | `index` | BM25 over cards `{ ref, title, path, head ≤500 chars (redacted), updatedAt }` built on rebuild or first search; caps: 500 entries, depth 2 | live | In memory per `agentId:sourceId`. Lost on restart. Slack cards hold channel metadata only. `list_knowledge()` shows `indexed N of M` and the build time. |
-| `mirror` | existing `rg` commands over `<home>/knowledge-mirror/live/<sourceId>/` | existing `awk` command | Writes through `KnowledgeSandboxProviderProxy.acquire(scope).filesystem`. `buildScopedKnowledgeShellCommand` gets a base-dir parameter. The file mirror's finalize step only touches `files/` and the manifest. Refused for Slack and when the sandbox is off. |
 
 BM25: about 80 lines in `live-index.service.ts`. No new dependency.
+
+`mirror` (fetched text under `<home>/knowledge-mirror/live/<sourceId>/`,
+searched with the existing `rg` and `awk` commands) is dropped from the PoC:
+no sandbox is available locally. If one becomes available, it is a day-4
+optional again.
 
 ## Provider mapping
 
@@ -244,14 +248,32 @@ BM25: about 80 lines in `live-index.service.ts`. No new dependency.
 | read | `page:getMarkdown` | `channel:replies` for the thread; url from `message:getPermalink` |
 | defaultRetrieval | `index` for containers, `native` for items | `native` |
 | persistableContent | `true` | `false` (terms forbid stored messages) |
+| credential in the PoC | `notionApi` internal integration token first; `notionOAuth2Api` before the final runs if time allows | `slackOAuth2Api` user token from a new app in a test workspace; the n8n default user scopes include `search:read.*` |
 
 ## Harness
 
-`scripts/knowledge-live-harness/run.mjs`, a dev script in the private root
-package like `scripts/instance-seeding`. Root script: `knowledge:harness`.
+Two dev scripts in the private root package, like `scripts/instance-seeding`.
+Secrets come from env vars, never from arguments.
 
-- Env vars, never arguments: `N8N_BASE_URL`, `N8N_EMAIL`, `N8N_PASSWORD`,
-  `N8N_PROJECT_ID`.
+`scripts/knowledge-live-harness/seed-sources.mjs` (root script
+`knowledge:seed-sources`) creates the test content, so every run sees the same
+fixtures:
+
+- Notion, through the API with `NOTION_SEED_TOKEN` (the internal integration
+  that the `notionApi` credential also uses) under `NOTION_SEED_ROOT_PAGE_ID`:
+  a root page "Knowledge PoC" with "Refund policy (2024)", "Refund policy
+  (2026)", "Pricing FAQ", a "Support KB" data source with about 300 rows (some
+  with poor titles), and a "Not picked" page for the scope probe.
+- Slack, through the API with `SLACK_SEED_USER_TOKEN` (the user token of the
+  test app, so the messages are not bot messages): a `#support` channel with
+  a few threads, and a `#not-picked` channel for the scope probe.
+- Writes the created ids to `fixtures/items.json`. A re-run replaces its own
+  content.
+
+`scripts/knowledge-live-harness/run.mjs` (root script `knowledge:harness`):
+
+- Env vars: `N8N_BASE_URL`, `N8N_EMAIL`, `N8N_PASSWORD`, `N8N_PROJECT_ID`,
+  `N8N_MODEL_CREDENTIAL_ID` (the Anthropic credential).
 - Login through `POST /rest/login`. Create or update the agents from
   `fixtures/agent.json` and `fixtures/items.json` through
   `POST /rest/projects/:projectId/agents/v2` and `PUT .../:agentId`.
@@ -264,15 +286,17 @@ package like `scripts/instance-seeding`. Root script: `knowledge:harness`.
   passes the scope probe.
 - Write `results/<commit>-<time>.json` and a markdown table.
 
-Agents on one scaffold, same model snapshot, same instructions, same items:
+Agents on one scaffold, same instructions, same items, same model: one
+Anthropic model snapshot through a direct Anthropic credential (direct route,
+so native tool deferral is available).
 
 | Agent | Delta |
 |---|---|
 | `kb-native` | `retrieval: native` on every source |
 | `kb-index` | `retrieval: index`; index built before the run |
-| `kb-mirror` (optional) | `retrieval: mirror`; sandbox on |
 | `kb-mcp-c0` | no live sources; `mcpServers` with the hosted Notion and Slack servers, read-only `toolPermissions`, picked items with urls in the instructions |
 | `kb-hybrid` (optional) | `index` for Notion, `native` for Slack |
+| ~~`kb-mirror`~~ | dropped with the `mirror` strategy |
 
 Question classes, at least two per class per source: item, container,
 disambiguation, freshness, scope probe, context beyond the match. Include a
@@ -295,8 +319,22 @@ source.
    turn-execution run end.
 6. `listSearch` and the browse route wait for the picker. The adapter only
    needs `execute`.
-7. Drop order under pressure: the stub panel, `mirror`, `index`. Floor:
-   `native`, C0, the harness.
+7. Drop order under pressure: the stub panel, `index`. Floor: `native`, C0,
+   the harness.
+
+Setup decisions of 2026-11-19:
+
+8. A script seeds the test content in Notion and Slack. Same fixtures for
+   every run.
+9. Notion starts with a `notionApi` internal integration token. OAuth2 comes
+   before the final runs only if time allows.
+10. Slack runs in a test workspace with a new app. No company data in the
+    PoC.
+11. The test agents use one Anthropic model snapshot through a direct
+    credential.
+12. `mirror` is dropped: no sandbox is available locally.
+13. The stub "Live sources" panel stays the last optional item.
+14. KNO-338 stays as it is until the results exist.
 
 ## Rules on this branch
 
@@ -332,7 +370,10 @@ source.
 
 - [x] Branch `kno-338-research-track` from fresh master
 - [ ] `liveSourcesEnabled` on `KnowledgeConfig`, `isLiveSourcesEnabled()` on the availability service
-- [ ] Local credentials: Notion OAuth2 or `notionApi`, Slack user token with the 2.7 scopes
+- [ ] Notion internal integration (token, root page shared with it); `notionApi` credential in the local project
+- [ ] Slack test workspace and app (n8n default user scopes); `slackOAuth2Api` credential in the local project; user token for the seed script
+- [ ] Anthropic credential in the local project
+- [ ] `seed-sources.mjs` seeds the Notion and Slack content and writes `fixtures/items.json`
 - [ ] Spike 1: Notion `page:getMarkdown` output shape through a node-tool agent
 - [ ] Spike 2: Slack `message:search` with `in:` and a channel id
 - [ ] Spike 3: `executeInline` runs both operations without a workflow id
@@ -367,9 +408,10 @@ source.
 - [ ] Question set with the large Notion data source
 - [ ] Exit: a results table for `kb-native` and `kb-mcp-c0`
 
-### Day 4: runs, mirror, write-up
+### Day 4: runs, write-up
 
 - [ ] Three runs per question and agent, same model snapshot
-- [ ] `mirror` strategy and `kb-mirror`, if time allows
+- [x] ~~`mirror` strategy and `kb-mirror`, if time allows~~ Dropped: no sandbox available locally
+- [ ] `notionOAuth2Api` credential and a re-run of the Notion questions, if time allows
 - [ ] Stub "Live sources" panel, if time allows
 - [ ] Write-up on the Notion page: per-source correctness, tokens per correct answer, wall time, turns, tool calls, scope violations, effort actuals, recommendation
