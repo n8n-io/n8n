@@ -1439,7 +1439,7 @@ export function lowerLibrary(c: NodeContext): void {
 				emitWithHostForm(
 					c,
 					false,
-					(to, hostLimit) => emitStep(to, { ...call, hostLimit }),
+					(to, hostLimit) => emitStep(to, { ...call, hostLimit, sendsAll: true }),
 					hostForm,
 				);
 				return;
@@ -1485,7 +1485,7 @@ export function lowerLibrary(c: NodeContext): void {
 		emitWithHostForm(
 			c,
 			false,
-			(to, hostLimit) => emitStep(to, { ...call, hostLimit }),
+			(to, hostLimit) => emitStep(to, { ...call, hostLimit, sendsAll: true }),
 			hostForm,
 			replay,
 		);
@@ -2324,8 +2324,17 @@ function lowerHttpLibrary(c: NodeContext): void {
 	if (storesFile || detectsFile) {
 		// A later node reads the item of an earlier node through this node: the hand-over is
 		// for one item, so each output item keeps the index of its input item in both forms.
+		// With "retry on fail" the hand-over is for one item too: the loop of the tries is
+		// around all items, and a hand-over of all items in a try has no form.
 		const replay = c.local('Replay');
 		const hostItem = pairedHostItem(c, replay);
+		if (hostItem === null && c.node.retryOnFail === true) {
+			throw new NodeFailure(
+				'http-retry',
+				'The node has "retry on fail", and its fallback-host form for one item has no code here.',
+				'options.response',
+			);
+		}
 		if (hostItem !== null) {
 			entries.push(replayOf(replay).compiled);
 			emitStep(c, {
@@ -2334,6 +2343,7 @@ function lowerHttpLibrary(c: NodeContext): void {
 				hostItem: hostItem.code,
 				itemReplay: replay,
 				pairsByCall: true,
+				sendsAll: true,
 			});
 			return;
 		}
@@ -2357,7 +2367,7 @@ function lowerHttpLibrary(c: NodeContext): void {
 		emitWithHostForm(
 			c,
 			false,
-			(to, hostLimit) => emitStep(to, { ...call, hostLimit }),
+			(to, hostLimit) => emitStep(to, { ...call, hostLimit, sendsAll: true }),
 			hostForm,
 			replay,
 		);
@@ -2374,7 +2384,7 @@ function lowerHttpLibrary(c: NodeContext): void {
 			emitWithHostForm(
 				c,
 				false,
-				(to, hostLimit) => emitStep(to, { ...call, hostLimit }),
+				(to, hostLimit) => emitStep(to, { ...call, hostLimit, sendsAll: true }),
 				hostForm,
 				replay,
 			);
@@ -2383,7 +2393,7 @@ function lowerHttpLibrary(c: NodeContext): void {
 	}
 	// v1 sends one request for each item, and pairs each output item with its input item
 	// (`pairedItem: { item: i }`), also when one response gives several items.
-	emitStep(c, { ...call, pairsByCall: true });
+	emitStep(c, { ...call, pairsByCall: true, sendsAll: true });
 }
 
 /**
@@ -2393,11 +2403,8 @@ function lowerHttpLibrary(c: NodeContext): void {
  * item: the node then hands all items over, and the later read is not compiled.
  */
 function pairedHostItem(c: NodeContext, replay: string): { code: Code; usesIndex: boolean } | null {
-	if (c.pairsWanted !== true || c.setPairs === undefined) return null;
-	if (c.node.retryOnFail === true) {
-		c.noPairs?.('retry on fail');
-		return null;
-	}
+	const paired = c.pairsWanted === true && c.setPairs !== undefined;
+	if (!paired && c.node.retryOnFail !== true) return null;
 	const hostItem = hostItemOf(c, [['replay', raw(`${replay}.list`)]]);
 	if (hostItem === null) c.noPairs?.('no host form for one item');
 	return hostItem;

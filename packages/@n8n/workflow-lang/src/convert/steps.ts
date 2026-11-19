@@ -90,6 +90,12 @@ export interface StepCall {
 	 * call of an item gets the answers of that item only.
 	 */
 	itemReplay?: string;
+	/**
+	 * The v1 node sends the requests of all items before it reads an answer (HTTP Request:
+	 * `Promise.allSettled`). So when the request of an item fails and the node stops, the
+	 * requests of the items after it go out too, and then the node gives the first error.
+	 */
+	sendsAll?: boolean;
 }
 
 /** Fails the node when a raw expression would not give the v1 value in the host. */
@@ -149,9 +155,11 @@ export function emitCall(
 	opts: Code,
 	first: string,
 	hostLimit = false,
+	plain = false,
 ): void {
 	const { w } = c;
-	const retry = errorRetry(c);
+	// `plain`: the caller has the loop of the tries around all items (`emitStep`).
+	const retry = plain ? null : errorRetry(c);
 	if (!retry) {
 		const head = `${declare ?? target} = await ${fn}(`;
 		w.block(`${head}${c.print(opts, head)});`);
@@ -290,16 +298,12 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 	w.line(`const ${out}: Json[] = [];`);
 	// The index of the input item of each item of output 0 (`paired`), as a compiled node gives it.
 	// The index of the input item of each item of output 0, as a compiled node gives it.
-	// v1 pairs each output item with its input item after a continue too. With "retry on
-	// fail" the pairs are not proven: the reader stays in the host.
+	// v1 pairs each output item with its input item after a continue too, and the output of
+	// a node with "retry on fail" is that of its last run.
 	const pairs =
-		call.pairsByCall === true &&
-		c.pairsWanted === true &&
-		c.setPairs !== undefined &&
-		c.node.retryOnFail !== true
+		call.pairsByCall === true && c.pairsWanted === true && c.setPairs !== undefined
 			? `${out}Pairs`
 			: null;
-	if (call.pairsByCall === true && c.node.retryOnFail === true) c.noPairs?.('retry on fail');
 	if (pairs) {
 		w.line(`const ${pairs}: Json = { items: ${out}, paired: [] };`);
 		// Each push of an item below has the push of the index of its input item.
@@ -307,8 +311,14 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 	}
 	const push = (value: string) =>
 		pairs ? `{ ${out}.push(${value}); ${pairs}.paired.push(${INDEX}); }` : `${out}.push(${value});`;
-	// "Retry on fail" of v1 for a node that sends what v1 sends once: all items run again.
-	const again = call.hostItem !== undefined ? errorRetry(c) : null;
+	// "Retry on fail" of v1 (`processRunExecutionData`): the node runs again for all items
+	// when it throws, or when the first item that it gives has an `error`. The output is
+	// that of the last run. So the loop of the tries is around the loop of the items, and
+	// the call for an item has no retry of its own.
+	const again = errorRetry(c);
+	// With the error output, the item of an input item that fails goes to the error list at
+	// once: v1 looks at the first item of the node before it moves that item.
+	const firstFailed = again !== null && errors !== null;
 	if (again) {
 		c.helper('retryError');
 		w.open(`for (let tryIndex = 0; tryIndex < ${again.tries}; tryIndex++) {`);
@@ -318,8 +328,26 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 			);
 		}
 		w.line(`while (${out}.length > 0) ${out}.pop();`);
+		if (errors) w.line(`while (${errors}.length > 0) ${errors}.pop();`);
+		if (pairs) w.line(`while (${pairs}.paired.length > 0) ${pairs}.paired.pop();`);
 		w.line('let failed = false;');
+		if (firstFailed) w.line('let firstFailed = false;');
 		w.open('try {');
+	}
+	// The error item of an input item, on the error output or on output 0.
+	const failedItem = (): string => {
+		const pushed = errors ? errorOutputPush(c, errors, ITEM, push('{}')) : push(errorItem(c));
+		return firstFailed
+			? `{ if (${out}.length === 0 && ${errors}.length === 0) firstFailed = true; ${pushed} }`
+			: pushed;
+	};
+	// The requests of the items after an item that fails go out too (`StepCall.sendsAll`). A
+	// step has one place of its call, so the call of each item is in a `try`: after the first
+	// error the answers have no reader, and the node gives that error after the last item.
+	const sendsRest = call.sendsAll === true && onError === 'stopWorkflow';
+	if (sendsRest) {
+		w.line('let stopped = false;');
+		w.line('let stopError: Json = null;');
 	}
 	if (call.usesIndex || pairs) {
 		w.open(`for (let ${INDEX} = 0; ${INDEX} < ${input}.length; ${INDEX}++) {`);
@@ -328,8 +356,35 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 		w.open(`for (const ${ITEM} of ${input}) {`);
 	}
 	if (call.itemReplay !== undefined) w.line(`const ${call.itemReplay}: Json = ${REPLAY_START};`);
-	const opts = options(c, call, `[${ITEM}]`);
-	if (call.hostItem !== undefined) {
+	const withRetry = options(c, call, `[${ITEM}]`);
+	// The step retry of the runtime is for one call: the loop of the tries replaces it.
+	const opts: Code =
+		again !== null && withRetry.kind === 'object'
+			? { kind: 'object', entries: withRetry.entries.filter(([k]) => k !== 'retry') }
+			: withRetry;
+	const plain = again !== null;
+	if (sendsRest) {
+		w.open('try {');
+		if (call.hostItem !== undefined) {
+			const once: Code =
+				opts.kind === 'object'
+					? { kind: 'object', entries: opts.entries.filter(([k]) => k !== 'retry') }
+					: opts;
+			emitItemWithHost(c, fn, once, call.hostItem);
+		} else {
+			emitCall(c, 'result', 'let result: Json[]', fn, opts, 'result[0]', call.hostLimit, plain);
+		}
+		w.line(`if (!stopped) for (const r of result) ${push('r')}`);
+		w.close('} catch (error) {');
+		w.depth++;
+		// The mark of `RUNS_IN_HOST` is no error of an item: the host form runs the node.
+		if (call.hostLimit || call.hostMark) {
+			c.helper('fileLimitInHost');
+			w.line('if (fileLimitInHost(error)) throw error;');
+		}
+		w.line('if (!stopped) { stopped = true; stopError = error; }');
+		w.close();
+	} else if (call.hostItem !== undefined) {
 		// The call for the item, and the host call for the same item after the mark. With a
 		// retry, the error of the last try is traced after the loop of the tries.
 		const traced = onError === 'stopWorkflow' && c.traceAll === true && again === null;
@@ -342,41 +397,27 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 		emitItemWithHost(c, fn, once, call.hostItem);
 		// The v1 node in the host gives the error item of the item itself. n8n's engine moves
 		// an item that has only `error` to the error output, with the JSON of the input item.
+		const first = firstFailed
+			? `if (${out}.length === 0 && ${errors}.length === 0) firstFailed = true; `
+			: '';
 		const moved = errors
-			? `if (itemInHost && r != null && typeof r.error === 'string' && r.error !== '' && Object.keys(r).length === 1) ${errorOutputPush(c, errors, ITEM, push('{}')).replace('error.message', 'r.error')} else ${push('r')}`
+			? `if (itemInHost && r != null && typeof r.error === 'string' && r.error !== '' && Object.keys(r).length === 1) { ${first}${errorOutputPush(c, errors, ITEM, push('{}')).replace('error.message', 'r.error')} } else ${push('r')}`
 			: push('r');
 		w.line(`for (const r of result) ${moved}`);
 		if (traced) failTrace(c);
 		if (onError !== 'stopWorkflow') {
 			w.close('} catch (error) {');
 			w.depth++;
-			w.line(errors ? errorOutputPush(c, errors, ITEM, push('{}')) : push(errorItem(c)));
+			w.line(failedItem());
 			w.close();
 		}
-		if (again) {
-			// The end of the loop of the items, then the end of the try.
-			w.close();
-			w.close('} catch (error) {');
-			w.depth++;
-			w.open(`if (tryIndex + 1 >= ${again.tries}) {`);
-			if (c.traceAll && onError === 'stopWorkflow') {
-				w.line(
-					`ctx.trace(${str(c.node.name)}, { $error: { message: error.message, description: error.description ?? '' } });`,
-				);
-			}
-			w.line('throw error;');
-			w.close();
-			w.line('failed = true;');
-			w.close();
-			w.line(`if (!failed && !retryError(${out}[0])) break;`);
-		}
-	} else if (onError === 'stopWorkflow' && c.traceAll) {
+	} else if (onError === 'stopWorkflow' && c.traceAll && !again) {
 		w.open('try {');
 		emitCall(c, 'result', 'let result: Json[]', fn, opts, 'result[0]', call.hostLimit);
 		w.line(`for (const r of result) ${push('r')}`);
 		failTrace(c, call.hostLimit);
 	} else if (onError === 'stopWorkflow') {
-		emitCall(c, 'result', 'let result: Json[]', fn, opts, 'result[0]', call.hostLimit);
+		emitCall(c, 'result', 'let result: Json[]', fn, opts, 'result[0]', call.hostLimit, plain);
 		w.line(`for (const r of result) ${push('r')}`);
 	} else {
 		w.open('try {');
@@ -388,6 +429,7 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 			opts,
 			call.reportError ? 'result[0]?.items?.[0]' : 'result[0]',
 			call.hostMark,
+			plain,
 		);
 		if (call.reportError) {
 			w.line(`for (const r of result[0]?.items ?? []) ${out}.push(r);`);
@@ -402,6 +444,8 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 		if (WHOLE_NODE_ERRORS.has(c.node.type)) {
 			// The v1 node throws this error: n8n passes all input items on output 0.
 			w.open('if (error.wholeNode === true) {');
+			// v1 runs a node that throws again: the items go on after the last try only.
+			if (again) w.line(`if (tryIndex + 1 < ${again.tries}) throw error;`);
 			w.line(`while (${out}.length > 0) ${out}.pop();`);
 			w.line(`for (const given of ${input}) ${out}.push(given);`);
 			if (errors) w.line(`while (${errors}.length > 0) ${errors}.pop();`);
@@ -412,10 +456,42 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 			w.line('break;');
 			w.close();
 		}
-		w.line(errors ? errorOutputPush(c, errors, ITEM, push('{}')) : push(errorItem(c)));
+		w.line(failedItem());
 		w.close();
 	}
 	w.close();
+	if (sendsRest) {
+		w.open('if (stopped) {');
+		if (c.traceAll && !again) {
+			w.line(
+				`ctx.trace(${str(c.node.name)}, { $error: { message: stopError.message, description: stopError.description ?? '' } });`,
+			);
+		}
+		w.line('throw stopError;');
+		w.close();
+	}
+	if (again) {
+		// The end of the try around the loop of the items. The mark of `RUNS_IN_HOST` is no
+		// failure of a try: the host form runs the node.
+		const marked = call.hostLimit || call.hostMark ? ' || fileLimitInHost(error)' : '';
+		if (marked !== '') c.helper('fileLimitInHost');
+		w.close('} catch (error) {');
+		w.depth++;
+		w.open(`if (tryIndex + 1 >= ${again.tries}${marked}) {`);
+		if (c.traceAll && onError === 'stopWorkflow') {
+			w.line(
+				`${marked === '' ? '' : 'if (!fileLimitInHost(error)) '}ctx.trace(${str(c.node.name)}, { $error: { message: error.message, description: error.description ?? '' } });`,
+			);
+		}
+		w.line('throw error;');
+		w.close();
+		w.line('failed = true;');
+		w.close();
+		w.line(
+			`if (!failed && !${firstFailed ? '(firstFailed || ' : ''}retryError(${out}[0])${firstFailed ? ')' : ''}) break;`,
+		);
+		w.close();
+	}
 }
 
 /**

@@ -106,11 +106,13 @@ describe('the reason of a read of a paired item that is not compiled', () => {
 		expect(paged.code).toBe(pagination);
 		expect(paged.expression).toBe(pagination);
 
+		// With "retry on fail" the node keeps the paired items of its last run: no refusal.
 		const retried = reasons(
 			[http({}, { retryOnFail: true })],
 			[['Source', 0, 'Secret Request', 0]],
 		);
-		expect(retried.code).toBe('no pairs after n8n-nodes-base.httpRequest@4.2 (retry on fail)');
+		expect(retried.code).toBeUndefined();
+		expect(retried.expression).toBeUndefined();
 	});
 
 	it('names a node with several connections into it', () => {
