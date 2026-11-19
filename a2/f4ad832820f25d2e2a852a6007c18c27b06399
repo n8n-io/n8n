@@ -1,0 +1,49 @@
+packages/cli/src/modules/policy-infrastructure/README.md
+  s_6bdcca0a27f363::t_19024a2ecd85e7 133,192-195
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_6bdcca0a27f363::t_b8b1c742975eb8 336-350,357,365
+  s_6bdcca0a27f363::t_19024a2ecd85e7 16
+packages/cli/src/policy/__tests__/policy-enforcement.service.test.ts
+  s_6bdcca0a27f363::t_19024a2ecd85e7 385
+packages/cli/src/modules/agent-tool-policies/agent-tool-policies.module.ts
+  s_6bdcca0a27f363::t_325478f591258e 14
+packages/@n8n/decorators/src/policy-check/policy-check.ts
+  s_6bdcca0a27f363::t_19024a2ecd85e7 1-6,210-215
+packages/cli/src/modules/agents/agent-policy.service.ts
+  s_6bdcca0a27f363::t_19024a2ecd85e7 2,119-121,123-127,143
+packages/cli/src/modules/agent-tool-policies/__tests__/tool-policy.check.test.ts
+  s_6bdcca0a27f363::t_e1aa821d403eca 3
+  s_6bdcca0a27f363::t_c637d11cc256f8 1,6-24,27-39,41-45,48-64,68-70,75-85,88-89,91-92,94-106,110-111,113,115-116,119-123,125,127-129,131-133,135-136,138,140-144
+packages/cli/src/modules/agent-tool-policies/__tests__/tool-policy-engine.test.ts
+  s_6bdcca0a27f363::t_19024a2ecd85e7 58
+packages/cli/src/modules/policy-infrastructure/__tests__/policy-decision.service.test.ts
+  s_6bdcca0a27f363::t_19024a2ecd85e7 542
+packages/cli/src/modules/agent-tool-policies/tool-policy.check.ts
+  s_6bdcca0a27f363::t_4dcc1c86f83705 9-39
+packages/cli/src/modules/agents/__tests__/agent-policy.service.test.ts
+  s_6bdcca0a27f363::t_26af9aacfaccba 2,196,211,217-234,333,350
+  s_6bdcca0a27f363::t_19024a2ecd85e7 316
+  s_6bdcca0a27f363::t_6ea1b6da0f016e 277-281
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_6bdcca0a27f363::t_19024a2ecd85e7 864-868
+packages/cli/src/modules/agent-tool-policies/__tests__/agent-tool-policies.module.test.ts
+  s_6bdcca0a27f363::t_325478f591258e 6,15,19
+packages/cli/src/modules/agent-tool-policies/__tests__/tool-policy-enforcement.test.ts
+  s_6bdcca0a27f363::t_c23cbb053726b5 1-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a2f4ad832820f25d2e2a852a6007c18c27b06399",
+  "prompts": {},
+  "sessions": {
+    "s_6bdcca0a27f363": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "565eb793-19a9-4a9e-85f2-146865e3826b",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

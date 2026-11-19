@@ -1,0 +1,45 @@
+packages/frontend/editor-ui/src/features/workflowTests/workflowTests.display.ts
+  s_e214e69ba1c23e::t_682eea8f0ebf82 19-20,81,88,98,118,121,123-127
+packages/frontend/editor-ui/src/features/workflowTests/workflowTests.utils.test.ts
+  s_e214e69ba1c23e::t_682eea8f0ebf82 35,46,56
+packages/frontend/editor-ui/src/features/workflowTests/components/WorkflowTestsEditor.vue
+  s_e214e69ba1c23e::t_512e8bda401894 1-36,47-88,97-118
+  s_e214e69ba1c23e::t_85aaca72a61a10 37-46,89-96
+packages/frontend/editor-ui/src/features/workflowTests/components/WorkflowTestsSummary.vue
+  s_e214e69ba1c23e::t_44cb0649ec2fa6 206-207
+  s_e214e69ba1c23e::t_afef6143bf8b6d 2,12,39-40,52-87,89-90,95-96,98,109,111-135,138-139,142,154-155,159,164,166,174-176,178-183,205,214,219,223-231,234-235,241,243-244,249,251-252
+packages/frontend/editor-ui/src/features/shared/editors/components/JsEditor/JsEditor.vue
+  s_e214e69ba1c23e::t_7e461621957c32 118-127,130
+packages/frontend/editor-ui/src/features/workflowTests/views/WorkflowTestsView.test.ts
+  s_e214e69ba1c23e::t_41bfba01a9d394 50-51
+  s_e214e69ba1c23e::t_d6070a9ea6ce27 91,93,95-97,101,104,112,115,123,125-126
+  s_e214e69ba1c23e::t_21edcaae27f6d8 1-49,52-90,92,94,98-100,102-103,105-111,113-114,116-122,124,127-128
+packages/frontend/editor-ui/src/features/workflowTests/components/WorkflowTestsEmptyState.vue
+  s_e214e69ba1c23e::t_b8e924561f2504 1-34,51,64,78,83-87,89,91-123
+  s_e214e69ba1c23e::t_4b92a523ac2ab2 35-50,52-63,65-77,79-82,88,90
+packages/frontend/editor-ui/src/features/workflowTests/components/WorkflowTestResultRow.vue
+  ai_agent 2,14-15,22,42-53,62-100,112-113,117-134,137-139,142-144,148-149,155-159,163-164,176,179-184,187-188,191,195,198,200-201,206,208-212
+packages/frontend/editor-ui/src/features/workflowTests/components/WorkflowTestTree.vue
+  s_e214e69ba1c23e::t_3c88a7136538c5 2,12,19-20,25,36,38,41-63,67-82,88,91,100-101,105-110,112-124,126-127,131-137,139-140,143-147,151-152,162,165,169,173-174,179
+packages/frontend/editor-ui/src/features/workflowTests/views/WorkflowTestsView.vue
+  s_e214e69ba1c23e::t_44cb0649ec2fa6 479
+  s_e214e69ba1c23e::t_e23ae327cd3ed2 9,16-26,35-36,69,78,85-103,123-148,189-196,206,209,216,225-229,232-235,238,240,242-251,297-303,309-334,336-338,349,355,357-368,374-379,381-425,431,435-441,443,453,455,478,480-481,486,489-490,493,495-497,500,502,504-509,512-513,516-517,521-530,536-537
+packages/frontend/editor-ui/src/features/workflowTests/workflowTests.utils.ts
+  s_e214e69ba1c23e::t_682eea8f0ebf82 7,59,101-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "306e0984b498c4a422d5e021babd798dec26fd92",
+  "prompts": {},
+  "sessions": {
+    "s_e214e69ba1c23e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb3288dc-0c71-4e65-bb28-f8ed9e52afb6",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

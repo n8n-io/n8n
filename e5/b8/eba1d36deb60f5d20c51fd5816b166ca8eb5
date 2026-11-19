@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_0d08b1699015c9::t_e175c8d6304ae5 144-147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e5b8eba1d36deb60f5d20c51fd5816b166ca8eb5",
+  "prompts": {},
+  "sessions": {
+    "s_0d08b1699015c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "02b547dd-b473-45e9-a57b-ead7d2d067a3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

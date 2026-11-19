@@ -1,0 +1,69 @@
+docs/generated/postgres-schema/README.md
+  s_3dd47ea0104342::t_4a6bde17053546 69,1151
+docs/generated/postgres-schema/public.agent_credential_dependency.md
+  s_3dd47ea0104342::t_70bd43b1fdc510 70
+docs/generated/postgres-schema/public.chat_hub_agents.md
+  s_3dd47ea0104342::t_71e198fce87e8b 78
+docs/generated/postgres-schema/public.chat_hub_sessions.md
+  s_3dd47ea0104342::t_28fe947b1e5e35 95
+docs/generated/postgres-schema/public.credential_dependency.md
+  s_3dd47ea0104342::t_fa13ad1f149550 55
+docs/generated/postgres-schema/public.credentials_entity.md
+  s_3dd47ea0104342::t_5f33f2a897b5d1 13,33,76
+docs/generated/postgres-schema/public.dynamic_credential_entry.md
+  s_3dd47ea0104342::t_0d4d6a01f888f5 59
+docs/generated/postgres-schema/public.dynamic_credential_resolver.md
+  s_3dd47ea0104342::t_e13a75b840c93e 57
+docs/generated/postgres-schema/public.dynamic_credential_user_entry.md
+  s_3dd47ea0104342::t_c98bc4b1a95266 61
+docs/generated/postgres-schema/public.instance_ai_mcp_registry_connections.md
+  s_3dd47ea0104342::t_048077c658737b 63
+docs/generated/postgres-schema/public.instance_credential_assignment.md
+  s_3dd47ea0104342::t_4806f5659fcf8f 50
+docs/generated/postgres-schema/public.shared_credentials.md
+  s_3dd47ea0104342::t_5fe9a23a6daacc 54
+docs/generated/postgres-schema/public.skill_source.md
+  s_3dd47ea0104342::t_2b56ba334c949a 100
+docs/generated/sqlite-schema/README.md
+  s_3dd47ea0104342::t_68a71315d07d73 69,1137
+docs/generated/sqlite-schema/agent_credential_dependency.md
+  s_3dd47ea0104342::t_ffd3a819421490 80
+docs/generated/sqlite-schema/chat_hub_agents.md
+  s_3dd47ea0104342::t_b146e1811db60a 80
+docs/generated/sqlite-schema/chat_hub_sessions.md
+  s_3dd47ea0104342::t_17a990a588899b 99
+docs/generated/sqlite-schema/credential_dependency.md
+  s_3dd47ea0104342::t_6a47e749fdb653 60
+docs/generated/sqlite-schema/credentials_entity.md
+  s_3dd47ea0104342::t_0168621b47aa89 9,24,75
+docs/generated/sqlite-schema/dynamic_credential_entry.md
+  s_3dd47ea0104342::t_77751922f515ca 67
+docs/generated/sqlite-schema/dynamic_credential_resolver.md
+  s_3dd47ea0104342::t_822fcfb0415dbc 63
+docs/generated/sqlite-schema/dynamic_credential_user_entry.md
+  s_3dd47ea0104342::t_9eb7ff70137561 69
+docs/generated/sqlite-schema/instance_ai_mcp_registry_connections.md
+  s_3dd47ea0104342::t_a6b00445b3f041 68
+docs/generated/sqlite-schema/instance_credential_assignment.md
+  s_3dd47ea0104342::t_46a1f5058ab51a 58
+docs/generated/sqlite-schema/shared_credentials.md
+  s_3dd47ea0104342::t_51b171085612cf 62
+docs/generated/sqlite-schema/skill_source.md
+  s_3dd47ea0104342::t_5423d4a09aec97 104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "117530a48e7d3ccda4d5cae3832640f89ad9831f",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
