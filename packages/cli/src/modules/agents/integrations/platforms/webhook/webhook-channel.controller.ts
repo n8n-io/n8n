@@ -125,6 +125,8 @@ export class WebhookChannelController {
 		res.json({
 			name: page.agent.name,
 			methods: page.surface.methods,
+			// The owner's look for this chat. The widget applies it; data-* attributes on the snippet win.
+			appearance: page.surface.appearance,
 			user: user ? { name: user.name, kind: user.kind } : null,
 			// Option B: a durable queue, so history after a reload, queueing and Stop.
 			variant: external ? 'n8n-chat' : 'webhook',
@@ -382,7 +384,10 @@ export class WebhookChannelController {
 			sameSite: 'lax',
 			secure: globalConfig.auth.cookie.secure,
 			path: chatCookiePath(agent.id, name),
-			maxAge: Date.parse(result.invite.expiresAt) - Date.now(),
+			// A link without expiry keeps the session until revoke or logout (browsers cap cookies at 400 days).
+			maxAge: result.invite.expiresAt
+				? Date.parse(result.invite.expiresAt) - Date.now()
+				: 400 * 24 * 60 * 60 * 1000,
 		});
 		res.json({ user: { name: result.invite.label, kind: 'invite' } });
 	}

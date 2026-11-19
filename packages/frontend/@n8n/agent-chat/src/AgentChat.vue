@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue';
 
+import { themeCss } from './theme';
+
 import {
 	endSession,
 	exchangeInvite,
@@ -9,16 +11,22 @@ import {
 	loginWithPopup,
 	sendMessage,
 	stopTurn,
+	type ChatAppearance,
 	type ChatConfig,
+	type PreviewState,
 } from './api';
 import { renderMarkdown } from './markdown';
 
 const props = defineProps<{
 	base: string;
 	mode: 'fullscreen' | 'bubble';
-	title?: string;
-	welcomeMessage?: string;
 	theme: 'n8n' | 'default';
+	/** From the snippet's data-* attributes: they win over the owner's appearance. */
+	overrides?: ChatAppearance;
+	/** Hide the round launcher: the host page opens the chat with window.n8nAgentChat.open(). */
+	hideLauncher?: boolean;
+	/** Theme editor preview: sample messages, no network. Reactive (the editor updates it). */
+	preview?: PreviewState;
 }>();
 
 interface Tool {
@@ -46,8 +54,21 @@ const conversationId = ref<string>();
 const list = ref<HTMLElement>();
 let abort: AbortController | undefined;
 
-const title = computed(() => props.title ?? config.value?.name ?? 'Agent');
-const welcome = computed(() => props.welcomeMessage ?? config.value?.welcomeMessage);
+// Owner's appearance (or the editor's draft), then the snippet's data-* attributes on top.
+const look = computed<ChatAppearance>(() => ({
+	...(props.preview ? props.preview.appearance : config.value?.appearance),
+	...Object.fromEntries(
+		Object.entries(props.overrides ?? {}).filter(([, v]) => v !== undefined && v !== ''),
+	),
+}));
+const css = computed(() => themeCss(look.value, props.theme, props.mode));
+const title = computed(() => look.value.title || config.value?.name || 'Agent');
+const welcome = computed(() => look.value.welcomeMessage || config.value?.welcomeMessage);
+const launcherIcon = computed(() => {
+	const icon = look.value.launcherIcon;
+	if (icon === 'logo' && look.value.logoUrl) return undefined;
+	return icon === 'sparkle' ? '✨' : icon === 'help' ? '?' : '💬';
+});
 
 // Embed sign-in: the token lives in this tab's storage of the host page (first-party).
 const storageKey = `n8n-agent-chat:${props.base}`;
@@ -119,8 +140,41 @@ async function redeemInvite(replace: boolean) {
 	await loadConfig();
 }
 onMounted(async () => {
+	if (props.preview) return showPreview(props.preview);
 	if (inviteToken) await redeemInvite(false);
 	else await loadConfig();
+});
+
+/** Theme editor: a signed-in person mid-conversation, with a tool step. Nothing reaches a server. */
+function showPreview(preview: PreviewState) {
+	open.value = true;
+	config.value = {
+		name: preview.agentName,
+		methods: { n8nUsers: true, magicLinks: true, anonymous: false },
+		user: { name: 'Alex Doe', kind: 'invite' },
+		variant: preview.variant,
+		features: {
+			history: preview.variant === 'n8n-chat',
+			queue: preview.variant === 'n8n-chat',
+			stop: preview.variant === 'n8n-chat',
+			uploads: preview.variant === 'n8n-chat',
+		},
+		signInUrl: '',
+		loginUrl: '',
+	};
+	messages.value = [
+		{ role: 'user', text: 'Where is my order #1042?', tools: [] },
+		{
+			role: 'agent',
+			text: 'Your order **#1042** shipped yesterday. It should arrive on Friday.',
+			tools: [{ id: 'preview', name: 'get_order_status', done: true }],
+		},
+	];
+}
+
+defineExpose({
+	setOpen: (value: boolean) => (open.value = value),
+	toggle: () => (open.value = !open.value),
 });
 
 async function signIn() {
@@ -360,10 +414,31 @@ function onKeydown(event: KeyboardEvent) {
 </script>
 
 <template>
-	<div :class="['agent-chat', `agent-chat--${mode}`, `agent-chat--theme-${theme}`]">
+	<div
+		:class="[
+			'agent-chat',
+			`agent-chat--${mode}`,
+			`agent-chat--theme-${theme}`,
+			{ 'agent-chat--left': look.position === 'left' },
+		]"
+	>
+		<!-- The theme as :host variables; host page CSS on the host element still wins. -->
+		<component :is="'style'">{{ css }}</component>
 		<section v-if="open" class="agent-chat__window" role="dialog" :aria-label="title">
 			<header class="agent-chat__header">
-				<svg v-if="theme === 'n8n'" class="agent-chat__logo" viewBox="0 0 240 96" aria-label="n8n">
+				<img
+					v-if="look.logoUrl"
+					class="agent-chat__logo-img"
+					:src="look.logoUrl"
+					alt=""
+					referrerpolicy="no-referrer"
+				/>
+				<svg
+					v-else-if="theme === 'n8n'"
+					class="agent-chat__logo"
+					viewBox="0 0 240 96"
+					aria-label="n8n"
+				>
 					<path
 						d="M48 96C52.5 96 54 94.5 54 90V78C54 60 60 54 78 54H90C108 54 114 60 114 78V90C114 94.5 115.5 96 120 96C124.5 96 126 94.5 126 90V78C126 60 132 54 150 54H162C180 54 186 60 186 78V90C186 94.5 187.5 96 192 96C196.5 96 198 94.5 198 90V78C198 60 204 54 222 54H234C238.5 54 240 52.5 240 48C240 43.5 238.5 42 234 42H222C204 42 198 36 198 18V6C198 1.5 196.5 0 192 0C187.5 0 186 1.5 186 6V18C186 36 180 42 162 42H150C132 42 126 36 126 18V6C126 1.5 124.5 0 120 0C115.5 0 114 1.5 114 6V18C114 36 108 42 90 42H78C60 42 54 36 54 18V6C54 1.5 52.5 0 48 0C43.5 0 42 1.5 42 6V18C42 36 36 42 18 42H6C1.5 42 0 43.5 0 48C0 52.5 1.5 54 6 54H18C36 54 42 60 42 78V90C42 94.5 43.5 96 48 96Z"
 					/>
@@ -529,7 +604,7 @@ function onKeydown(event: KeyboardEvent) {
 					v-model="input"
 					class="agent-chat__input"
 					rows="1"
-					placeholder="Message"
+					:placeholder="look.placeholder || 'Message'"
 					:disabled="!!loadError"
 					@keydown="onKeydown"
 				/>
@@ -537,7 +612,7 @@ function onKeydown(event: KeyboardEvent) {
 					class="agent-chat__send"
 					type="submit"
 					data-testid="agent-chat-send"
-					:disabled="(busy && !features?.queue) || (!input.trim() && !attachment)"
+					:disabled="!!preview || (busy && !features?.queue) || (!input.trim() && !attachment)"
 				>
 					Send
 				</button>
@@ -567,13 +642,22 @@ function onKeydown(event: KeyboardEvent) {
 			</footer>
 		</section>
 		<button
-			v-if="mode === 'bubble'"
+			v-if="mode === 'bubble' && !hideLauncher"
 			class="agent-chat__launcher"
 			type="button"
 			:aria-label="open ? 'Close chat' : `Chat with ${title}`"
+			data-testid="agent-chat-launcher"
 			@click="open = !open"
 		>
-			{{ open ? '✕' : '💬' }}
+			<template v-if="open">✕</template>
+			<template v-else-if="launcherIcon">{{ launcherIcon }}</template>
+			<img
+				v-else
+				class="agent-chat__launcher-img"
+				:src="look.logoUrl"
+				alt=""
+				referrerpolicy="no-referrer"
+			/>
 		</button>
 	</div>
 </template>
@@ -646,21 +730,22 @@ function onKeydown(event: KeyboardEvent) {
 	height: 12px;
 	fill: var(--agent-chat--color-primary);
 }
-/* Hosted page: n8n's brand. The embed keeps the neutral tokens above for the embedder's brand. */
-.agent-chat--theme-n8n {
-	--agent-chat--color-primary: #ea4b71;
-	--agent-chat--color-surface: #f2f2f5;
-	--agent-chat--color-text: #2d2e3a;
-	--agent-chat--color-border: #dcdce4;
-	--agent-chat--radius: 8px;
+/* Colours, font and radius come from theme.ts (:host variables), so the owner's appearance and data-* apply. */
+.agent-chat--left {
+	right: auto;
+	left: 20px;
+	align-items: flex-start;
 }
-.agent-chat--theme-n8n.agent-chat--fullscreen {
-	--agent-chat--color-background: #f7f7fa;
-	--agent-chat--color-surface: #fff;
+.agent-chat__logo-img {
+	height: 24px;
+	max-width: 96px;
+	object-fit: contain;
 }
-.agent-chat--theme-n8n.agent-chat--fullscreen .agent-chat__header {
-	background: #fff;
-	border-bottom-color: var(--agent-chat--color-border);
+.agent-chat__launcher-img {
+	width: 32px;
+	height: 32px;
+	object-fit: contain;
+	border-radius: 50%;
 }
 .agent-chat__title {
 	flex: 1;
@@ -791,6 +876,8 @@ function onKeydown(event: KeyboardEvent) {
 	border-radius: var(--agent-chat--radius);
 	outline: none;
 	max-height: 140px;
+	background: var(--agent-chat--color-background);
+	color: inherit;
 }
 .agent-chat__input:focus {
 	border-color: var(--agent-chat--color-primary);

@@ -86,6 +86,34 @@ const SURFACE_CHANNEL: Record<ChatSurfaceName, string> = {
 	chat: WEBHOOK_INTEGRATION_TYPE,
 	'n8n-chat': N8N_CHAT_INTEGRATION_TYPE,
 };
+// Hex colours only: the widget writes them into CSS, so nothing else may get through.
+const color = z
+	.string()
+	.regex(/^#[0-9a-fA-F]{6}$/)
+	.optional();
+const text = (max: number) => z.string().trim().max(max).optional();
+/** SPIKE (agent-chat-embed): the chat's appearance, edited in the theme editor. */
+export const ChatAppearanceSchema = z.object({
+	title: text(80),
+	welcomeMessage: text(500),
+	placeholder: text(80),
+	primaryColor: color,
+	backgroundColor: color,
+	textColor: color,
+	agentBubbleColor: color,
+	font: z.enum(['system', 'serif', 'mono', 'rounded']).optional(),
+	radius: z.number().int().min(0).max(24).optional(),
+	logoUrl: z
+		.string()
+		.url()
+		.max(500)
+		.refine((url) => /^https?:\/\//.test(url), 'Use an http(s) URL')
+		.optional(),
+	colorScheme: z.enum(['light', 'dark', 'auto']).optional(),
+	position: z.enum(['right', 'left']).optional(),
+	launcherIcon: z.enum(['chat', 'sparkle', 'help', 'logo']).optional(),
+});
+export type ChatAppearance = z.infer<typeof ChatAppearanceSchema>;
 export const CHAT_SURFACE_METHODS = ['n8nUsers', 'magicLinks', 'anonymous'] as const;
 export type ChatSurfaceMethod = (typeof CHAT_SURFACE_METHODS)[number];
 const method = z.boolean().default(false);
@@ -107,6 +135,8 @@ export const ChatSurfaceSettingsSchema = z.object({
 	 * never for anonymous visitors. Only `uploads` is built.
 	 */
 	features: z.object({ uploads: method }).default({}),
+	/** The look of the hosted page and the embed. Empty fields use the widget's defaults. */
+	appearance: ChatAppearanceSchema.default({}),
 });
 export type ChatSurfaceSettings = z.infer<typeof ChatSurfaceSettingsSchema>;
 interface StoredChatSurface extends ChatSurfaceSettings {
@@ -339,6 +369,10 @@ export class WebhookChannelService {
 	): Promise<ChatSurfaceSettings> {
 		const next = ChatSurfaceSettingsSchema.parse(input);
 		const current = await this.chatSurface(agentId, name);
+		// The access toggles and the theme editor save separately: a save without `appearance` keeps it.
+		if (typeof input === 'object' && input !== null && !('appearance' in input)) {
+			next.appearance = current.appearance;
+		}
 		const revokedBefore = { ...current.revokedBefore };
 		for (const name of CHAT_SURFACE_METHODS) {
 			const wasOn = current.enabled && current.methods[name];

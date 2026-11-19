@@ -20,7 +20,8 @@ export interface ChatPageInvite {
 	label: string;
 	tokenHash: string;
 	createdAt: string;
-	expiresAt: string;
+	/** Unset: the link never expires (it can still be revoked). */
+	expiresAt?: string;
 	revokedAt?: string;
 	uses: number;
 	lastUsedAt?: string;
@@ -28,7 +29,7 @@ export interface ChatPageInvite {
 
 export type InviteFailure = 'invite_invalid' | 'invite_expired' | 'invite_revoked';
 
-const DEFAULT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export const DEFAULT_INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 /** Invites and sessions belong to one surface of one agent: a link for v1 does not open option B. */
 const scopeOf = (agentId: string, surface: ChatSurfaceName) =>
@@ -50,7 +51,13 @@ export class ChatPageInviteService {
 	}
 
 	/** Creates a link and writes it to the server log: the spike's stand-in for sending an email. */
-	async create(agentId: string, surface: ChatSurfaceName, label: string, ttlMs = DEFAULT_TTL_MS) {
+	/** `ttlMs: null` creates a link that never expires. */
+	async create(
+		agentId: string,
+		surface: ChatSurfaceName,
+		label: string,
+		ttlMs: number | null = DEFAULT_INVITE_TTL_MS,
+	) {
 		const token = randomBytes(32).toString('base64url');
 		const now = Date.now();
 		const invite: ChatPageInvite = {
@@ -58,7 +65,7 @@ export class ChatPageInviteService {
 			label,
 			tokenHash: sha256(token),
 			createdAt: new Date(now).toISOString(),
-			expiresAt: new Date(now + ttlMs).toISOString(),
+			expiresAt: ttlMs === null ? undefined : new Date(now + ttlMs).toISOString(),
 			uses: 0,
 		};
 		// ponytail: read-modify-write of one JSON row; concurrent creates can lose one.
@@ -66,7 +73,7 @@ export class ChatPageInviteService {
 		// The fragment never reaches servers, logs or Referer headers.
 		const link = `${this.urlService.getAgentWebhookUrl(agentId)}/${surface}#invite=${token}`;
 		this.logger.warn(
-			`[SPIKE agent-chat-embed, DEV ONLY, no email sent] Magic link for "${label}" (expires ${invite.expiresAt}): ${link}`,
+			`[SPIKE agent-chat-embed, DEV ONLY, no email sent] Magic link for "${label}" (expires ${invite.expiresAt ?? 'never'}): ${link}`,
 		);
 		// The caller shows the link once; only its hash is stored.
 		return { invite, link };
@@ -144,7 +151,7 @@ export class ChatPageInviteService {
 
 	private state(invite: ChatPageInvite): ChatPageInvite | InviteFailure {
 		if (invite.revokedAt) return 'invite_revoked';
-		if (Date.parse(invite.expiresAt) <= Date.now()) return 'invite_expired';
+		if (invite.expiresAt && Date.parse(invite.expiresAt) <= Date.now()) return 'invite_expired';
 		return invite;
 	}
 

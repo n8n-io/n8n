@@ -8,7 +8,7 @@
  *   { type: 'notice', text }            e.g. an action that needs approval
  *   { type: 'error', message, code? }
  *   { type: 'done' }
- * GET {base}/config  →  { name, methods, user, variant, features, signInUrl, loginUrl }
+ * GET {base}/config  →  { name, appearance, methods, user, variant, features, signInUrl, loginUrl }
  * Option B (variant `n8n-chat`) adds, on the durable queue of n8n Chat:
  *   { type: 'queued', queueId } / { type: 'started', executionId }   a message waits, then runs
  *   GET  {base}/conversations/{id}        →  { messages, activeExecutionId, pending }
@@ -29,9 +29,34 @@ export type ChatEvent =
 	| { type: 'started'; executionId: string }
 	| { type: 'done'; executionId?: string };
 
+/** The owner's look for the chat (theme editor). Empty fields use the widget's defaults. */
+export interface ChatAppearance {
+	title?: string;
+	welcomeMessage?: string;
+	placeholder?: string;
+	primaryColor?: string;
+	backgroundColor?: string;
+	textColor?: string;
+	agentBubbleColor?: string;
+	font?: 'system' | 'serif' | 'mono' | 'rounded';
+	radius?: number;
+	logoUrl?: string;
+	colorScheme?: 'light' | 'dark' | 'auto';
+	position?: 'right' | 'left';
+	launcherIcon?: 'chat' | 'sparkle' | 'help' | 'logo';
+}
+
+/** Theme editor preview: the draft appearance and the sample conversation's context. */
+export interface PreviewState {
+	appearance: ChatAppearance;
+	agentName: string;
+	variant: 'webhook' | 'n8n-chat';
+}
+
 export interface ChatConfig {
 	name: string;
 	welcomeMessage?: string;
+	appearance?: ChatAppearance;
 	methods: { n8nUsers: boolean; magicLinks: boolean; anonymous: boolean };
 	user: { name: string; kind?: 'n8n-user' | 'invite' } | null;
 	variant?: 'webhook' | 'n8n-chat';

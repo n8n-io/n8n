@@ -12,14 +12,19 @@ import {
 	N8nInput,
 	N8nLink,
 	N8nSettingsRow,
+	N8nSegmentControl,
 	N8nSettingsRowGroup,
 	N8nSwitch2,
 	N8nTableBase,
 	N8nText,
 } from '@n8n/design-system';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, ref } from 'vue';
+
+import AgentChatAppearanceEditor from './AgentChatAppearanceEditor.vue';
+import type { ChatAppearance } from './chatAppearance';
 
 const props = defineProps<{
 	projectId: string;
@@ -41,6 +46,7 @@ interface Surface {
 	enabled: boolean;
 	methods: Record<Method, boolean>;
 	features?: Record<Feature, boolean>;
+	appearance?: ChatAppearance;
 }
 const METHODS: Array<{ key: Method; label: string; hint: string }> = [
 	{
@@ -78,48 +84,62 @@ const variantHint = computed(() =>
 );
 
 const chatUrl = ref('');
-const surface = ref<Surface>({
+const agentName = ref('');
+const settings = ref<Surface>({
 	enabled: false,
 	methods: { n8nUsers: false, magicLinks: false, anonymous: false },
 });
-const noMethod = computed(() => !Object.values(surface.value.methods).some(Boolean));
+const noMethod = computed(() => !Object.values(settings.value.methods).some(Boolean));
 onMounted(async () => {
-	const page = await makeRestApiRequest<Surface & { url: string }>(
+	const page = await makeRestApiRequest<Surface & { url: string; agentName: string }>(
 		rootStore.restApiContext,
 		'GET',
 		path.value,
 	);
 	chatUrl.value = page.url;
-	surface.value = { enabled: page.enabled, methods: page.methods, features: page.features };
+	agentName.value = page.agentName;
+	settings.value = {
+		enabled: page.enabled,
+		methods: page.methods,
+		features: page.features,
+		appearance: page.appearance ?? {},
+	};
 	await loadInvites();
 });
 async function save(change: Partial<Surface>) {
-	surface.value = { ...surface.value, ...change };
-	surface.value = await makeRestApiRequest<Surface>(
+	settings.value = { ...settings.value, ...change };
+	settings.value = await makeRestApiRequest<Surface>(
 		rootStore.restApiContext,
 		'PUT',
 		path.value,
-		surface.value,
+		settings.value,
 	);
 }
 function setMethod(key: Method, on: boolean) {
-	void save({ methods: { ...surface.value.methods, [key]: on } });
+	void save({ methods: { ...settings.value.methods, [key]: on } });
 }
 function setFeature(key: Feature, on: boolean) {
-	void save({ features: { uploads: false, ...surface.value.features, [key]: on } });
+	void save({ features: { uploads: false, ...settings.value.features, [key]: on } });
 }
 
 // Invite links. The server returns a new link once (it stores only the hash) and writes it to its log.
 interface Invite {
 	id: string;
 	label: string;
-	expiresAt: string;
+	expiresAt?: string;
 	revokedAt?: string;
 	uses: number;
 	lastUsedAt?: string;
 }
+const EXPIRY = [
+	{ label: '1 day', value: '1d' },
+	{ label: '7 days', value: '7d' },
+	{ label: '30 days', value: '30d' },
+	{ label: 'No expiry', value: 'never' },
+];
 const invites = ref<Invite[]>([]);
 const recipient = ref('');
+const expiresIn = ref('7d');
 const newLink = ref<{ label: string; link: string }>();
 async function loadInvites() {
 	invites.value = await makeRestApiRequest<Invite[]>(
@@ -128,7 +148,9 @@ async function loadInvites() {
 		`${path.value}/invites`,
 	);
 }
-async function createInvite(body: { label: string } | { replaces: string }) {
+async function createInvite(
+	body: ({ label: string } | { replaces: string }) & { expiresIn: string },
+) {
 	const created = await makeRestApiRequest<Invite & { link: string }>(
 		rootStore.restApiContext,
 		'POST',
@@ -141,7 +163,7 @@ async function createInvite(body: { label: string } | { replaces: string }) {
 async function addRecipient() {
 	const label = recipient.value.trim();
 	if (!label) return;
-	await createInvite({ label });
+	await createInvite({ label, expiresIn: expiresIn.value });
 	recipient.value = '';
 }
 async function revokeInvite(id: string) {
@@ -150,17 +172,47 @@ async function revokeInvite(id: string) {
 }
 function inviteStatus(invite: Invite) {
 	if (invite.revokedAt) return 'Revoked';
-	if (Date.parse(invite.expiresAt) <= Date.now()) return 'Expired';
-	return `Expires ${new Date(invite.expiresAt).toLocaleDateString()}`;
+	if (!invite.expiresAt) return 'Never expires';
+	const left = Date.parse(invite.expiresAt) - Date.now();
+	if (left <= 0) return 'Expired';
+	const hours = Math.ceil(left / 3_600_000);
+	return hours < 48 ? `Expires in ${hours} h` : `Expires in ${Math.round(hours / 24)} days`;
 }
 
 // One tag: the bundle is served by this instance and mounts itself from its data attributes.
 const scriptUrl = computed(() =>
 	chatUrl.value.replace(/\/[^/]+\/(chat|n8n-chat)$/, '/assets/agent-chat.js'),
 );
+// The look comes from /config, so the snippet needs no data-* attributes.
 const snippet = computed(
 	() => `<script src="${scriptUrl.value}" data-agent-url="${chatUrl.value}" defer></${'script'}>`,
 );
+// data-* attributes win over the saved appearance: for site owners who brand the embed themselves.
+const advancedSnippet = computed(() =>
+	[
+		`<script src="${scriptUrl.value}"`,
+		`  data-agent-url="${chatUrl.value}"`,
+		'  data-title="Acme support"',
+		'  data-welcome-message="Hi! Ask me about your order."',
+		'  data-primary-color="#0a7d4f"',
+		'  data-position="left"',
+		`  defer></${'script'}>`,
+	].join('\n'),
+);
+const { copy } = useClipboard();
+const copiedAdvanced = ref(false);
+async function copyAdvanced() {
+	await copy(advancedSnippet.value);
+	copiedAdvanced.value = true;
+	setTimeout(() => (copiedAdvanced.value = false), 2000);
+}
+
+const editorOpen = ref(false);
+async function saveAppearance(appearance: ChatAppearance) {
+	await save({ appearance });
+	editorOpen.value = false;
+}
+const customized = computed(() => Object.keys(settings.value.appearance ?? {}).length > 0);
 </script>
 
 <template>
@@ -179,7 +231,7 @@ const snippet = computed(
 				>
 					<template #action>
 						<N8nSwitch2
-							:model-value="surface.enabled"
+							:model-value="settings.enabled"
 							aria-label="Share outside n8n"
 							data-testid="n8n-chat-share-toggle"
 							@update:model-value="(on) => save({ enabled: !!on })"
@@ -189,7 +241,7 @@ const snippet = computed(
 			</N8nSettingsRowGroup>
 		</section>
 
-		<template v-if="surface.enabled">
+		<template v-if="settings.enabled">
 			<section :class="$style.section" :aria-labelledby="`${ids}-access`">
 				<N8nText :id="`${ids}-access`" tag="h3" size="medium" bold>Who can chat</N8nText>
 				<N8nSettingsRowGroup :class="$style.group" data-testid="n8n-chat-methods">
@@ -198,13 +250,13 @@ const snippet = computed(
 						:key="method.key"
 						:title="method.label"
 						:description="method.hint"
-						:model-value="method.key === 'magicLinks' && surface.methods.magicLinks"
+						:model-value="method.key === 'magicLinks' && settings.methods.magicLinks"
 						:expandable="method.key === 'magicLinks'"
 						:disclosure="false"
 					>
 						<template #action>
 							<N8nCheckbox
-								:model-value="surface.methods[method.key]"
+								:model-value="settings.methods[method.key]"
 								:aria-label="method.label"
 								:data-testid="`n8n-chat-method-${method.key}`"
 								@update:model-value="(on) => setMethod(method.key, !!on)"
@@ -216,6 +268,13 @@ const snippet = computed(
 									Valid for 7 days or until you revoke it. Links open on the chat page, not in the
 									embed. No email is sent: copy the link and send it yourself.
 								</N8nText>
+								<N8nSegmentControl
+									v-model="expiresIn"
+									:options="EXPIRY"
+									size="small"
+									:class="$style.expiry"
+									data-testid="n8n-chat-invite-expiry"
+								/>
 								<div :class="$style.inline">
 									<N8nInput
 										v-model="recipient"
@@ -268,7 +327,7 @@ const snippet = computed(
 													<N8nLink
 														size="small"
 														data-testid="n8n-chat-invite-renew"
-														@click="createInvite({ replaces: invite.id })"
+														@click="createInvite({ replaces: invite.id, expiresIn })"
 														>New link</N8nLink
 													>
 													<N8nLink
@@ -316,7 +375,7 @@ const snippet = computed(
 					>
 						<template #action>
 							<N8nCheckbox
-								:model-value="!!surface.features?.[feature.key]"
+								:model-value="!!settings.features?.[feature.key]"
 								:aria-label="feature.label"
 								:data-testid="`n8n-chat-feature-${feature.key}`"
 								@update:model-value="(on) => setFeature(feature.key, !!on)"
@@ -333,6 +392,39 @@ const snippet = computed(
 					</N8nSettingsRow>
 				</N8nSettingsRowGroup>
 				<N8nText size="small" color="text-light">Never for anonymous visitors.</N8nText>
+			</section>
+
+			<section :class="$style.section" :aria-labelledby="`${ids}-look`">
+				<N8nText :id="`${ids}-look`" tag="h3" size="medium" bold>Appearance</N8nText>
+				<N8nSettingsRowGroup :class="$style.group">
+					<N8nSettingsRow
+						title="Look of the chat page and embed"
+						:description="
+							customized
+								? 'Customized. The hosted page and the embed load it automatically.'
+								: 'Default look. Set colors, text, font, logo and the bubble.'
+						"
+					>
+						<template #action>
+							<N8nButton
+								size="small"
+								variant="outline"
+								data-testid="n8n-chat-appearance-open"
+								@click="editorOpen = true"
+								>Customize appearance</N8nButton
+							>
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+				<AgentChatAppearanceEditor
+					v-if="editorOpen"
+					v-model:open="editorOpen"
+					:appearance="settings.appearance ?? {}"
+					:agent-name="agentName"
+					:script-url="scriptUrl"
+					:variant="isOptionB ? 'n8n-chat' : 'webhook'"
+					@save="saveAppearance"
+				/>
 			</section>
 
 			<section :class="$style.section" :aria-labelledby="`${ids}-link`">
@@ -368,7 +460,31 @@ const snippet = computed(
 						data-testid="n8n-chat-embed-snippet"
 					/>
 					<N8nText size="small" color="text-light">
-						Paste into any website’s HTML. n8n users sign in through a popup on this instance.
+						Paste into any website’s HTML. It uses the appearance above. n8n users sign in through a
+						popup on this instance.
+					</N8nText>
+				</div>
+				<div :class="$style.field">
+					<div :class="$style.labelRow">
+						<N8nText size="small" bold>Advanced: override the look on your site</N8nText>
+						<N8nLink
+							size="small"
+							data-testid="n8n-chat-embed-advanced-copy"
+							@click="copyAdvanced"
+							>{{ copiedAdvanced ? 'Copied' : 'Copy' }}</N8nLink
+						>
+					</div>
+					<N8nInput
+						:model-value="advancedSnippet"
+						type="textarea"
+						:rows="7"
+						readonly
+						:class="$style.code"
+						data-testid="n8n-chat-embed-advanced"
+					/>
+					<N8nText size="small" color="text-light">
+						data-* attributes win over the appearance above. Also: data-launcher="none" with
+						window.n8nAgentChat.open() to open the chat from your own button.
 					</N8nText>
 				</div>
 			</section>
@@ -432,6 +548,21 @@ const snippet = computed(
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
+}
+
+.labelRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.expiry {
+	align-self: flex-start;
+}
+
+.code textarea {
+	font-family: monospace;
+	font-size: var(--font-size--2xs);
 }
 
 .code input {

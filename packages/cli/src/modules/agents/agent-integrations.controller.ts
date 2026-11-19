@@ -19,7 +19,10 @@ import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { buildChannelStatusReport } from './integrations/channel-status-report';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { deriveWhatsAppVerifyToken } from './integrations/integration-helpers';
-import { ChatPageInviteService } from './integrations/platforms/webhook/chat-page-invites.service';
+import {
+	ChatPageInviteService,
+	DEFAULT_INVITE_TTL_MS,
+} from './integrations/platforms/webhook/chat-page-invites.service';
 import {
 	ChatSurfaceSettingsSchema,
 	isChatSurfaceName,
@@ -54,15 +57,27 @@ export class AgentIntegrationsController {
 	@Get('/:agentId/chat-pages/:surface')
 	@ProjectScope('agent:read')
 	async chatPage(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
 		@Param('surface') surface: string,
 	) {
 		const name = chatSurfaceName(surface);
-		const { enabled, methods, features } = await this.webhookChannel.chatSurface(agentId, name);
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		const { enabled, methods, features, appearance } = await this.webhookChannel.chatSurface(
+			agentId,
+			name,
+		);
 		const url = `${this.urlService.getAgentWebhookUrl(agentId)}/${name}`;
-		return { url, enabled, methods, ...(name === 'n8n-chat' ? { features } : {}) };
+		return {
+			url,
+			agentName: agent.name,
+			enabled,
+			methods,
+			appearance,
+			...(name === 'n8n-chat' ? { features } : {}),
+		};
 	}
 
 	@Put('/:agentId/chat-pages/:surface')
@@ -76,7 +91,8 @@ export class AgentIntegrationsController {
 		const name = chatSurfaceName(surface);
 		const parsed = ChatSurfaceSettingsSchema.safeParse(req.body);
 		if (!parsed.success) throw new BadRequestError('Invalid chat surface settings');
-		return await this.webhookChannel.setChatSurface(agentId, name, parsed.data);
+		// The raw body: a save without `appearance` keeps the saved one.
+		return await this.webhookChannel.setChatSurface(agentId, name, req.body);
 	}
 
 	// SPIKE (agent-chat-embed): magic links per recipient. The link goes to the server log, not to the client.
@@ -98,7 +114,7 @@ export class AgentIntegrationsController {
 		req: AuthenticatedRequest<
 			{ projectId: string },
 			unknown,
-			{ label?: unknown; expiresInSeconds?: unknown; replaces?: unknown }
+			{ label?: unknown; expiresIn?: unknown; expiresInSeconds?: unknown; replaces?: unknown }
 		>,
 		_res: Response,
 		@Param('agentId') agentId: string,
@@ -116,10 +132,12 @@ export class AgentIntegrationsController {
 			replaced?.label ??
 			(typeof req.body?.label === 'string' ? req.body.label.trim().slice(0, 60) : '');
 		if (!label) throw new BadRequestError('A recipient name or email is required');
+		// Chosen at creation: 1, 7 (default) or 30 days, or never. `expiresInSeconds` is for tests only.
 		const seconds = Number(req.body?.expiresInSeconds);
-		// Default 7 days; a shorter expiry is for testing only.
 		const ttlMs =
-			Number.isFinite(seconds) && seconds > 0 ? Math.min(seconds, 30 * 86400) * 1000 : undefined;
+			Number.isFinite(seconds) && seconds > 0
+				? Math.min(seconds, 30 * 86400) * 1000
+				: inviteTtl(req.body?.expiresIn);
 		if (replaced) await this.chatPageInvites.revoke(agentId, name, replaced.id);
 		const { invite, link } = await this.chatPageInvites.create(agentId, name, label, ttlMs);
 		const { tokenHash: _tokenHash, ...rest } = invite;
@@ -420,4 +438,14 @@ export class AgentIntegrationsController {
 function chatSurfaceName(surface: string): ChatSurfaceName {
 	if (!isChatSurfaceName(surface)) throw new NotFoundError('Unknown chat surface');
 	return surface;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** SPIKE (agent-chat-embed): the invite expiry choices of the owner UI. */
+function inviteTtl(choice: unknown): number | null {
+	if (choice === 'never') return null;
+	if (choice === '1d') return DAY_MS;
+	if (choice === '30d') return 30 * DAY_MS;
+	if (choice === undefined || choice === '7d') return DEFAULT_INVITE_TTL_MS;
+	throw new BadRequestError('expiresIn must be 1d, 7d, 30d or never');
 }
