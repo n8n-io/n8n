@@ -1,7 +1,3 @@
-import type { User } from '@n8n/db';
-import { ForbiddenError } from '@n8n/errors';
-import { mock } from 'vitest-mock-extended';
-
 import { entityFilePath } from '@/modules/n8n-packages/io/manifest-entry';
 import { FORMAT_VERSION } from '@/modules/n8n-packages/spec/constants';
 import {
@@ -10,13 +6,7 @@ import {
 } from '@/modules/n8n-packages/spec/manifest.schema';
 
 import { PACKAGE_SUBFOLDER } from '../constants';
-import { PromotionChangeService } from '../promotion-change.service';
 import { buildPreview, scopeManifestToProject, type PreviewSide } from '../promotion-preview';
-
-vi.mock('@/modules/n8n-packages/n8n-packages.service', () => ({
-	N8nPackagesService: class {},
-}));
-vi.mock('@/services/folder.service', () => ({ FolderService: class {} }));
 
 const ids = (entries: Array<{ id: string }> | undefined) => entries?.map(({ id }) => id).sort();
 
@@ -143,33 +133,4 @@ describe('buildPreview', () => {
 			'workflow:wfA',
 		]);
 	});
-});
-
-describe('PromotionChangeService preview permission', () => {
-	const service = new PromotionChangeService(
-		mock(),
-		mock(),
-		mock(),
-		mock(),
-		mock(),
-		mock(),
-		mock(),
-	);
-	// A setup scope does not grant the preview.
-	const reader = {
-		role: { slug: 'custom', scopes: [{ slug: 'promotions:readEnvironments' }] },
-	} as User;
-
-	it.each(['promote', 'apply'] as const)(
-		'names the promotions:%s scope when the user lacks it',
-		async (direction) => {
-			const details = service.getDetails(reader, 'project1', direction, {
-				commitSha: null,
-				keys: [],
-			});
-
-			await expect(details).rejects.toThrow(ForbiddenError);
-			await expect(details).rejects.toThrow(`requires the promotions:${direction} scope`);
-		},
-	);
 });

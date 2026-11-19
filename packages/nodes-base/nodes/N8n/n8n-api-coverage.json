@@ -254,7 +254,7 @@
 		"GET /promotions/settings": {
 			"status": "gap"
 		},
-		"PUT /promotions/settings": {
+		"PATCH /promotions/settings": {
 			"status": "gap"
 		},
 		"GET /promotions/providers": {

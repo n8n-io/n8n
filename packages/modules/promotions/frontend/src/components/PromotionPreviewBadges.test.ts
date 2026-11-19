@@ -75,7 +75,11 @@ describe('PromotionPreviewBadges', () => {
 		await router.isReady();
 		createTestingPinia();
 		shell.promotionsEnabled = true;
-		shell.currentProject = createTestProject({ id: 'p1', scopes: ['project:export'] });
+		// The project scopes also hold the scopes of the instance role, as the server sends them.
+		shell.currentProject = createTestProject({
+			id: 'p1',
+			scopes: ['project:export', 'promotions:promote', 'promotions:apply'],
+		});
 		shell.currentProjectId = 'p1';
 		projectContext = mock<ProjectContext>({
 			currentProject: () => shell.currentProject,
@@ -196,14 +200,18 @@ describe('PromotionPreviewBadges', () => {
 			if (requirement === 'feature') {
 				shell.promotionsEnabled = false;
 			} else if (requirement === 'export') {
-				shell.currentProject = createTestProject({ id: 'p1', scopes: [] });
+				shell.currentProject = createTestProject({
+					id: 'p1',
+					scopes: ['promotions:promote', 'promotions:apply'],
+				});
 			} else if (requirement === 'direction') {
 				mockedStore(useUsersStore).currentUser = mock<IUser>({ globalScopes: [] });
+				shell.currentProject = createTestProject({ id: 'p1', scopes: ['project:export'] });
 			} else {
 				shell.currentProject = createTestProject({
 					id: 'p1',
 					type: ProjectTypes.Personal,
-					scopes: ['project:export'],
+					scopes: ['project:export', 'promotions:promote', 'promotions:apply'],
 				});
 			}
 			const { queryByTestId } = renderComponent();
@@ -212,6 +220,28 @@ describe('PromotionPreviewBadges', () => {
 			expect(queryByTestId('promotion-preview-badges')).not.toBeInTheDocument();
 		},
 	);
+
+	it('should show the promote badge only in projects where the project role can promote', async () => {
+		mockedStore(useUsersStore).currentUser = mock<IUser>({ globalScopes: [] });
+		shell.currentProject = createTestProject({
+			id: 'p1',
+			scopes: ['project:export', 'promotions:promote'],
+		});
+		const { getByTestId, queryByTestId } = renderComponent();
+		await waitAllPromises();
+		expect(getByTestId('promotion-preview-badge-promote')).toHaveAttribute(
+			'data-route',
+			`${PROMOTION_PREVIEW_VIEWS.promote}:p1`,
+		);
+		expect(api.getPromotionPreview).toHaveBeenCalledTimes(1);
+		expect(api.getPromotionPreview).toHaveBeenCalledWith(expect.anything(), 'p1', 'promote');
+
+		vi.mocked(api.getPromotionPreview).mockClear();
+		shell.currentProject = createTestProject({ id: 'p2', scopes: ['project:export'] });
+		await waitAllPromises();
+		expect(queryByTestId('promotion-preview-badges')).not.toBeInTheDocument();
+		expect(api.getPromotionPreview).not.toHaveBeenCalled();
+	});
 
 	it.each(['promote', 'apply'] as const)(
 		'should show a spinner only for the %s direction, which has an environment, while its count loads slowly',
@@ -269,6 +299,7 @@ describe('PromotionPreviewBadges', () => {
 			await waitAllPromises();
 
 			mockedStore(useUsersStore).currentUser = mock<IUser>({ globalScopes: [] });
+			shell.currentProject = createTestProject({ id: 'p1', scopes: ['project:export'] });
 			await waitFor(() =>
 				expect(queryByTestId('promotion-preview-badges')).not.toBeInTheDocument(),
 			);
