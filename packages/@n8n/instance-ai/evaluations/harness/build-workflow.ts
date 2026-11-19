@@ -601,12 +601,18 @@ export function workflowExpectedForCase(
 	);
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Build a workflow via Instance AI. Returns the workflow ID for use with
  * executeScenario(). Call cleanupBuild() when done.
  */
 export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildResult> {
 	const { client, logger } = config;
+	// A caller bug, not a build result: fail before any setup runs.
+	if (config.threadId !== undefined && !UUID_PATTERN.test(config.threadId)) {
+		throw new Error(`threadId must be a UUID, got "${config.threadId}"`);
+	}
 	const promptVersion = resolveEvalPromptVersion(config);
 	const observerThresholdTokens = config.requiresMemoryCompaction
 		? COMPACTION_OBSERVER_THRESHOLD_TOKENS
