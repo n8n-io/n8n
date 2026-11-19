@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/composables/useUiExtensionOverviewData.test.ts
+  s_6956ec5be81713::t_b0680e173da04c 9,230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "423a7741609db7d85e5871f4a859eb31e3a96dbc",
+  "prompts": {},
+  "sessions": {
+    "s_6956ec5be81713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91664345-a691-443f-b08d-05a7967643b2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

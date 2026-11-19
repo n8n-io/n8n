@@ -1,0 +1,65 @@
+packages/cli/src/modules/skills/services/skill.service.ts
+  s_ca259abe004f4c::t_7fab29b6c23059 205,302-309
+  s_ca259abe004f4c::t_fda392b25dea52 266-269,271-272,274-279,294
+packages/frontend/editor-ui/src/features/settings/context/components/SkillsTable.test.ts
+  s_ca259abe004f4c::t_f58ff9d8bd00fd 8,411,445,450-465,467-468
+  s_ca259abe004f4c::t_485e28bd6dcda8 195,198,538,546-547,549
+  s_ca259abe004f4c::t_fbfbbfe8c04612 199
+  s_ca259abe004f4c::t_9d7820b8d14fce 446-449,466
+packages/cli/src/modules/skills/AGENTS.md
+  s_ca259abe004f4c::t_485e28bd6dcda8 83
+packages/frontend/editor-ui/src/features/settings/context/components/SkillAgentsCell.vue
+  s_ca259abe004f4c::t_52b377e0a45eb7 145,196,210-214
+  s_ca259abe004f4c::t_a87fec1334e8c0 181-183
+packages/frontend/editor-ui/src/features/settings/context/skills.store.test.ts
+  s_ca259abe004f4c::t_f58ff9d8bd00fd 131,142,146
+  s_ca259abe004f4c::t_4cd7e1e291fa17 132-138
+packages/frontend/editor-ui/src/features/settings/context/skills.store.ts
+  s_ca259abe004f4c::t_7fab29b6c23059 6,39,58,235
+packages/@n8n/api-types/src/agents/skills.schema.ts
+  s_ca259abe004f4c::t_7fab29b6c23059 95-104,111-112
+  s_ca259abe004f4c::t_fda392b25dea52 106,228,233-234
+packages/cli/src/modules/skills/utils/skill-group-page.ts
+  s_ca259abe004f4c::t_fda392b25dea52 3,11,13-30,32-39,41,43
+packages/cli/src/modules/skills/__tests__/integration/skill-source-rows.integration.test.ts
+  s_ca259abe004f4c::t_da5b0efd3a2933 258-259,271,273,275-289,294-295,297,300,307,309-310,313,325-339,341-342,345-354,358-361,363
+  s_ca259abe004f4c::t_f58ff9d8bd00fd 290-293,296,343-344,355-357
+packages/cli/src/modules/skills/__tests__/skill-group-page.test.ts
+  s_ca259abe004f4c::t_b7209582e39cbe 11-19,26-28,30,33-35,37-58,60-78,81-84
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.vue
+  s_ca259abe004f4c::t_52b377e0a45eb7 25,80-84,145-146,150-152,154-166,169-177,953
+  s_ca259abe004f4c::t_6ffc7f306a861e 153
+  s_ca259abe004f4c::t_a87fec1334e8c0 167-168
+  s_ca259abe004f4c::t_7fab29b6c23059 1266
+packages/cli/src/modules/skills/database/repositories/skill.repository.ts
+  s_ca259abe004f4c::t_fda392b25dea52 135,140,143,145-146,162-163,166
+packages/frontend/editor-ui/src/features/settings/context/components/SkillsTable.vue
+  s_ca259abe004f4c::t_7fab29b6c23059 3-8,66,150-153,174-177,181-198
+  s_ca259abe004f4c::t_52b377e0a45eb7 12,16,457
+  s_ca259abe004f4c::t_aa23ebcfb3b4a0 154,156-157,171
+  s_ca259abe004f4c::t_ccb3f3426e3d9b 178-180,376
+  s_ca259abe004f4c::t_0d18c7a2c9a883 199
+  s_ca259abe004f4c::t_9d7820b8d14fce 388-418,614-620,629
+  s_ca259abe004f4c::t_a87fec1334e8c0 439,441-442,444,447-453,455-456,458-463,465-466
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_ca259abe004f4c::t_9d7820b8d14fce 4198-4201
+  s_ca259abe004f4c::t_485e28bd6dcda8 4224
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.test.ts
+  s_ca259abe004f4c::t_ed8eebc783fbd2 200-215,217-231,233-250,252-255,257-259,261-270,273-277,280-285,287-291,294,296-301,304-307,310-311,313-316,2024-2027,2029-2041,2044-2045,2047-2049
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3675c3a75c724d1fc4c2b8097cacc017346f4f9e",
+  "prompts": {},
+  "sessions": {
+    "s_ca259abe004f4c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e9a6-7db2-7663-aa6d-795ee74ac70f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

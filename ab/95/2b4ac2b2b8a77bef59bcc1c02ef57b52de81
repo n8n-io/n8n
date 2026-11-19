@@ -1,0 +1,20 @@
+packages/cli/src/modules/agent-determinism/determinism-analysis.service.ts
+  s_ea960491adee56::t_b9abd42c86df46 135
+  s_ea960491adee56::t_3d73b98b38e4fb 136-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ab952b4ac2b2b8a77bef59bcc1c02ef57b52de81",
+  "prompts": {},
+  "sessions": {
+    "s_ea960491adee56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1555d798-e4f9-4c9d-bbde-eb8d9e0452fa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

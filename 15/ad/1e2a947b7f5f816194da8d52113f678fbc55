@@ -1,0 +1,21 @@
+packages/cli/src/modules/promotions.ee/dependency-check/apply-check-facts.service.ts
+  s_3dd47ea0104342::t_40e152659c9d14 93-98
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_3dd47ea0104342::t_8255af3a77fdd0 175-176,178-180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "15ad1e2a947b7f5f816194da8d52113f678fbc55",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-requirement.service.ts
+  s_d842348d080092::t_dfd703fe189689 1-37
+packages/@n8n/api-types/src/workflow-reviews-policy.ts
+  s_d842348d080092::t_dfd703fe189689 10-12
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-publish-guard.service.test.ts
+  s_d842348d080092::t_cd63bc4a541b9d 2,14,21,25-30,97-103
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-publish-guard.integration.test.ts
+  s_d842348d080092::t_e98b757da1c953 105,298-301,597
+  s_d842348d080092::t_37542e9110ac78 11-15,106-112,282-297,302-313,315-317,319-326,328-334,337-351,353-358,360-366,368-379,482,484,586-589,591,595-596,599-608,613,617,623,626-675,687
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_d842348d080092::t_316da2f729b068 92-94,104-105
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/activateWorkflow.generated.yml
+  ai_agent 49
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/publishWorkflow.generated.yml
+  ai_agent 48
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  ai_agent 1143
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-publish-guard.service.ts
+  s_d842348d080092::t_dfd703fe189689 2,9,16,21,41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f0c6c8ddf0b9ce5e3602057822da368fb73d5fa8",
+  "prompts": {},
+  "sessions": {
+    "s_d842348d080092": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e5ff11ea-ea68-4dce-b3b9-094b483d7df4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

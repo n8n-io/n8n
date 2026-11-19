@@ -1,0 +1,94 @@
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_043f5ea13b0ca2::t_219d34a80e3523 602
+  s_043f5ea13b0ca2::t_c08afa2698f9d8 636-639,641,643-651
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_043f5ea13b0ca2::t_4c740872ac9f1c 65
+  s_043f5ea13b0ca2::t_c1d994df1d38fe 562-564
+  s_043f5ea13b0ca2::t_2d8a90d836ff45 73
+packages/@n8n/db/src/entities/workflow-publication-outbox.ts
+  s_043f5ea13b0ca2::t_87ce4ceb246e9b 38-39
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_043f5ea13b0ca2::t_f0f9bc91182b8a 22-24
+  s_043f5ea13b0ca2::t_c8bcfaa8e34681 217
+  s_043f5ea13b0ca2::t_ed822e25a2b6f2 202-206
+  s_043f5ea13b0ca2::t_7e0856dfd7cad5 174-179,186
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_043f5ea13b0ca2::t_627006a2a73d88 572-607
+packages/cli/test/integration/workflows/workflow-publication-outbox-consumer.test.ts
+  s_043f5ea13b0ca2::t_816a9f9c1d5dcd 222-236,238-240
+packages/cli/test/migration/1794818518295-add-transfer-reason-to-workflow-publication-outbox.test.ts
+  s_043f5ea13b0ca2::t_cae6ee8d1008bd 1-10,12-22,24-25,27-33,44-46,48-50,52-75
+  s_043f5ea13b0ca2::t_e4e5f3ec48cb6c 23,26,34-43,47,51
+packages/@n8n/db/src/migrations/common/1794818518295-AddTransferReasonToWorkflowPublicationOutbox.ts
+  s_043f5ea13b0ca2::t_8fdeba6f49c24c 1-2,18-19,35-36
+  s_043f5ea13b0ca2::t_14e887a3175443 3-6,8-17,25-34
+  s_043f5ea13b0ca2::t_4a7482d900571c 20-24
+docs/generated/postgres-schema/public.workflow_publication_outbox.md
+  s_043f5ea13b0ca2::t_ab295801ae7634 20
+docs/generated/sqlite-schema/workflow_publication_outbox.md
+  s_043f5ea13b0ca2::t_493ad901ed59fe 9,31-32
+packages/cli/src/workflows/workflow.service.ts
+  s_043f5ea13b0ca2::t_9195c9d0299242 1668-1678,1841,1843-1846,1857-1859,1865-1866,1868-1869,1874
+  s_043f5ea13b0ca2::t_0d1548710a9df8 1667,1842
+  s_043f5ea13b0ca2::t_4a7482d900571c 1860-1864
+  s_043f5ea13b0ca2::t_c86d8aba1e645f 7,112,134-141,1679-1839
+  s_043f5ea13b0ca2::t_d7c4defe471daa 1840
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_043f5ea13b0ca2::t_d12e59e179a5a6 2722-2732
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_043f5ea13b0ca2::t_1154a856e2a955 829
+  s_043f5ea13b0ca2::t_4a7482d900571c 923-927
+  s_043f5ea13b0ca2::t_d8df45b8a4b83b 1173-1174,1176-1177,1179-1186,1189,1191-1193,1195,1197-1208,1210-1219
+  s_043f5ea13b0ca2::t_ec89ed08f4ee54 893-894,896-897,899-901,903-904,906,908-910,912-917,921-922,930
+  s_043f5ea13b0ca2::t_1162f022afc8a4 73
+  s_043f5ea13b0ca2::t_0d1548710a9df8 907,1190
+  s_043f5ea13b0ca2::t_a2b7b221e00303 10
+  s_043f5ea13b0ca2::t_b5daf191170db6 892,905,911,919,1172,1194,1209
+  s_043f5ea13b0ca2::t_589afdb1f982cf 157-158
+packages/cli/test/integration/workflows/workflows.controller.ee.test.ts
+  s_043f5ea13b0ca2::t_d29ffae44b070d 2935-2937,2939-2941,2943-2945,2947-2951,2953-3044
+  s_043f5ea13b0ca2::t_d648d0b61588cf 33
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_043f5ea13b0ca2::t_241202e0040fa3 773-787
+packages/cli/test/integration/workflows/workflow.service.ee.test.ts
+  s_043f5ea13b0ca2::t_692aab4af5fd1b 2
+  s_043f5ea13b0ca2::t_6556212370252e 50-51
+packages/cli/test/integration/folder/folder.controller.test.ts
+  s_043f5ea13b0ca2::t_cd4933402dc817 14
+  s_043f5ea13b0ca2::t_247f45441626a8 2750-2833
+  s_043f5ea13b0ca2::t_2958ee2df4986e 2834
+packages/cli/test/integration/policy/workflow-transfer-unpublish.policy.test.ts
+  s_043f5ea13b0ca2::t_dee742ff1fd798 17
+  s_043f5ea13b0ca2::t_4a7482d900571c 619-621
+  s_043f5ea13b0ca2::t_93fca173ea3fd0 308
+  s_043f5ea13b0ca2::t_d7cf8bec72ef77 429-442
+  s_043f5ea13b0ca2::t_a6c642a6ba4411 14
+  s_043f5ea13b0ca2::t_5eeacb79ebeb21 10,13,16,18-23,25,32-40,43-44,46-47,49,51,57-59,62-65,75-78,92-146,149,153,171-190,197-208,213-217,220-222,228-229,237,279-307,309-319,321-337,339-352,373-427,443,476-618,622-655
+  s_043f5ea13b0ca2::t_0d1548710a9df8 320,338
+  s_043f5ea13b0ca2::t_4ae49189179ed0 163
+  s_043f5ea13b0ca2::t_f35924be983a4d 353,356,363,368,372
+  s_043f5ea13b0ca2::t_02bcb01617d6f7 357-362,364-367,369-371
+  s_043f5ea13b0ca2::t_f76c200c385df1 354-355
+  s_043f5ea13b0ca2::t_db1effa12ecfbf 164,428
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_043f5ea13b0ca2::t_030edfc435f7e3 578-580
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_043f5ea13b0ca2::t_9859445c92b284 82-83
+  s_043f5ea13b0ca2::t_cb3cf034d4c6b0 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "afa67aab63c7d0daed33a0262294767560023445",
+  "prompts": {},
+  "sessions": {
+    "s_043f5ea13b0ca2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80b31086-dd76-4604-92db-53cbedccf87b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

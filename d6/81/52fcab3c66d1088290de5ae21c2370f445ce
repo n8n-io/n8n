@@ -1,0 +1,54 @@
+packages/cli/src/execution-lifecycle/execute-error-workflow.ts
+  s_5631e4fb1157e6::t_7c8ee4b48dd04a 5,35,38,50-51,98,100
+  s_5631e4fb1157e6::t_92f2639accbfd6 6,36-37,39-49,99
+  s_5631e4fb1157e6::t_c7f1ce0cadd22a 34
+packages/@n8n/api-types/src/dto/workflows/base-workflow-public.dto.ts
+  s_5631e4fb1157e6::t_af7f5562e7da74 82-85
+packages/workflow/src/workflow-settings-scope.ts
+  s_5631e4fb1157e6::t_c3c11890403115 25
+packages/cli/src/execution-lifecycle/__tests__/execute-error-workflow.test.ts
+  s_5631e4fb1157e6::t_e03a0400ab127c 341-357,360-363,365-440
+  s_5631e4fb1157e6::t_4d8955631b6fa5 358-359,364
+packages/@n8n/api-types/src/dto/workflows/workflow-public.openapi.ts
+  s_5631e4fb1157e6::t_c58309877c0508 43-49,260-263
+packages/workflow/src/interfaces.ts
+  s_5631e4fb1157e6::t_f0165873f12367 4242-4246
+packages/cli/src/interfaces.ts
+  s_5631e4fb1157e6::t_2b0685b51a30c5 218-222
+  s_5631e4fb1157e6::t_b1f87c0a7d4e8e 15
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/createWorkflow.generated.yml
+  s_5631e4fb1157e6::t_8dd9f4fe62d542 178-181,771-774
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/deleteWorkflow.generated.yml
+  s_5631e4fb1157e6::t_a9c4aa1c712312 205-208
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflow.generated.yml
+  s_5631e4fb1157e6::t_092585fbff28ac 214-217
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflows.generated.yml
+  s_5631e4fb1157e6::t_4c90164c9138c0 241-244
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  s_5631e4fb1157e6::t_bfcf9531863f9e 193-196,783-786
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowPublicDto.generated.yml
+  s_5631e4fb1157e6::t_b043fbc9c426ad 183-186
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowPublishPublicDto.generated.yml
+  s_5631e4fb1157e6::t_ae9cd68b909497 183-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d68152fcab3c66d1088290de5ae21c2370f445ce",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5631e4fb1157e6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa70ca35-8c1d-451e-9aca-ed24413b8763",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}
