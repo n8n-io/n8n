@@ -301,6 +301,17 @@ export class PostgresTrigger implements INodeType {
 			throw error;
 		}
 
+		let connectionReleased = false;
+		const releaseConnection = async () => {
+			if (connectionReleased) return;
+			connectionReleased = true;
+			try {
+				await connection.done();
+			} catch (error) {
+				this.logger.warn('Postgres Trigger could not release its connection', { error });
+			}
+		};
+
 		const cleanUpDb = async () => {
 			try {
 				try {
@@ -335,10 +346,14 @@ export class PostgresTrigger implements INodeType {
 				}
 			} finally {
 				connection.client.removeListener('notification', onNotification);
+				await releaseConnection();
 			}
 		};
 
 		connection.client.on('notification', onNotification);
+		connection.client.on('error', (error: Error) => {
+			this.logger.error('Postgres Trigger lost its connection and stopped listening', { error });
+		});
 
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.

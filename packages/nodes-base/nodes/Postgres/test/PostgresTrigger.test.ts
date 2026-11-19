@@ -1,4 +1,5 @@
 import type { IDataObject, ITriggerFunctions } from 'n8n-workflow';
+import { TriggerCloseError } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 
 import {
@@ -172,6 +173,7 @@ describe('PostgresTrigger.trigger (Table Row Change Events mode)', () => {
 			getNode: vi.fn().mockReturnValue({ id: 'node-1' }),
 			getMode: vi.fn().mockReturnValue('trigger'),
 			emit: vi.fn(),
+			logger: { error: vi.fn(), warn: vi.fn() },
 			helpers: { returnJsonArray: vi.fn((d: unknown) => d) },
 		} as unknown as ITriggerFunctions;
 
@@ -207,6 +209,44 @@ describe('PostgresTrigger.trigger (Table Row Change Events mode)', () => {
 		await expect(new PostgresTrigger().trigger.call(fns)).rejects.toThrow();
 		expect(connection.done).toHaveBeenCalled();
 	});
+
+	it.each<[string, 'query' | 'any' | undefined]>([
+		['close runs normally', undefined],
+		['the health check fails', 'query'],
+		['dropping the objects throws', 'any'],
+	])('releases the connection when %s', async (_case, failing) => {
+		const { connection, fns } = setup();
+		const response = await new PostgresTrigger().trigger.call(fns);
+		if (failing) connection[failing].mockRejectedValueOnce(new Error('gone'));
+
+		const close = response.closeFunction?.();
+		await (failing ? expect(close).rejects.toThrow(TriggerCloseError) : close);
+
+		expect(connection.done).toHaveBeenCalledTimes(1);
+	});
+
+	it('releases once when close runs twice', async () => {
+		const { connection, fns } = setup();
+		const response = await new PostgresTrigger().trigger.call(fns);
+
+		await response.closeFunction?.();
+		await response.closeFunction?.();
+
+		expect(connection.done).toHaveBeenCalledTimes(1);
+	});
+
+	it('logs a lost connection instead of going silent', async () => {
+		const { connection, fns } = setup();
+		await new PostgresTrigger().trigger.call(fns);
+		const onError = connection.client.on.mock.calls.find(([event]) => event === 'error')?.[1];
+
+		onError?.(new Error('terminated by administrator'));
+
+		expect(fns.logger.error).toHaveBeenCalledWith(
+			'Postgres Trigger lost its connection and stopped listening',
+			{ error: expect.any(Error) },
+		);
+	});
 });
 
 describe('PostgresTrigger.trigger (Advanced mode)', () => {
@@ -232,6 +272,7 @@ describe('PostgresTrigger.trigger (Advanced mode)', () => {
 			getNode: vi.fn().mockReturnValue({ id: 'node-1' }),
 			getMode: vi.fn().mockReturnValue('trigger'),
 			emit: vi.fn(),
+			logger: { error: vi.fn(), warn: vi.fn() },
 			helpers: { returnJsonArray: vi.fn((d: unknown) => d) },
 		} as unknown as ITriggerFunctions;
 
