@@ -3,11 +3,14 @@ export { useTypeAvailabilityPoliciesStore } from './type-availability-policies.s
 export {
 	RESTRICTED_NODE_POPOVER_SIDE_OFFSET,
 	RESTRICTED_NODE_POPOVER_WIDTH,
+	INSTANCE_POLICY_VIEW,
+	POLICIES_LANDING_VIEW,
 	SCOPE_LABEL_KEY,
 	type ContactAudience,
 	type RestrictedTypeKind,
 } from './type-availability-policies.constants';
 export { useTypeAvailability } from './composables/useTypeAvailability';
+export { usePolicyAdminAccess } from './composables/usePolicyAdminAccess';
 export {
 	describeAgentToolRestriction,
 	describeImportedRestrictions,

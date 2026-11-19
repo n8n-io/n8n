@@ -17,7 +17,7 @@ export class TaskRunnerTaskTimeoutRule implements IBreakingChangeInstanceRule {
 			version: 'v3',
 			title: 'Task runner timeout default is reduced to 1 minute',
 			description:
-				'The default of N8N_RUNNERS_TASK_TIMEOUT goes down from 300 seconds (5 minutes) to 60 seconds (1 minute). Only the default changes. You can set the variable to keep the current timeout.',
+				'The default of N8N_RUNNERS_TASK_TIMEOUT goes down from 300 seconds (5 minutes) to 60 seconds (1 minute). Only the default changes. To keep the current timeout, set N8N_RUNNERS_TASK_TIMEOUT=300 on n8n and on every external task runner.',
 			category: BreakingChangeCategory.environment,
 			impact: 'executionsMightFail',
 		};
@@ -42,7 +42,7 @@ export class TaskRunnerTaskTimeoutRule implements IBreakingChangeInstanceRule {
 				{
 					action: 'Set N8N_RUNNERS_TASK_TIMEOUT if your Code nodes do heavy work',
 					description:
-						'The new default applies only when the variable is not set. If you have compute-intensive Code nodes that can run for more than 1 minute, set N8N_RUNNERS_TASK_TIMEOUT=300 to keep the current timeout. Otherwise, you do not need to do anything.',
+						'The new default applies only when the variable is not set. If you have compute-intensive Code nodes that can run for more than 1 minute, set N8N_RUNNERS_TASK_TIMEOUT=300 to keep the current timeout. Set it on n8n and on every external task runner container (n8nio/runners), because each one reads the variable and the lowest value applies. Otherwise, you do not need to do anything.',
 				},
 			],
 		};

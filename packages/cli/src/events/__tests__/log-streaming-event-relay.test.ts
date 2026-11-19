@@ -1034,6 +1034,41 @@ describe('LogStreamingEventRelay', () => {
 		});
 	});
 
+	describe('sso events', () => {
+		it('should log on `sso-settings-updated` event', () => {
+			const event: RelayEventMap['sso-settings-updated'] = {
+				user: {
+					id: '123',
+					email: 'owner@example.com',
+					firstName: 'Olga',
+					lastName: 'Owner',
+					role: { slug: 'global:owner' },
+				},
+				protocol: 'oidc',
+				loginEnabled: false,
+				fieldsChanged: ['clientSecret', 'loginEnabled'],
+				publicApi: true,
+			};
+
+			eventService.emit('sso-settings-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.sso.settings.updated',
+				payload: {
+					userId: '123',
+					_email: 'owner@example.com',
+					_firstName: 'Olga',
+					_lastName: 'Owner',
+					globalRole: 'global:owner',
+					protocol: 'oidc',
+					loginEnabled: false,
+					fieldsChanged: ['clientSecret', 'loginEnabled'],
+					publicApi: true,
+				},
+			});
+		});
+	});
+
 	describe('user events', () => {
 		it('should log on `user-updated` event', () => {
 			const event: RelayEventMap['user-updated'] = {
@@ -3397,6 +3432,36 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it.each([
+			[true, 'n8n.audit.workflow-reviews.approval-required.enabled'],
+			[false, 'n8n.audit.workflow-reviews.approval-required.disabled'],
+		])('should log the approval requirement set to %s as `%s`', (value, eventName) => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user707',
+					email: 'admin10@example.com',
+					firstName: 'Tenth',
+					lastName: 'Admin',
+					role: { slug: 'global:owner' },
+				},
+				settingName: 'workflow_reviews_approval_required',
+				value,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName,
+				payload: {
+					userId: 'user707',
+					_email: 'admin10@example.com',
+					_firstName: 'Tenth',
+					_lastName: 'Admin',
+					globalRole: 'global:owner',
+				},
+			});
+		});
+
 		it('should log `public-api-rate-limit.enabled` when public_api_rate_limit is turned on', () => {
 			const event: RelayEventMap['instance-policies-updated'] = {
 				user: {
@@ -3992,6 +4057,101 @@ describe('LogStreamingEventRelay', () => {
 			);
 		});
 	});
+	describe('SCIM events', () => {
+		const user = {
+			id: 'user-1',
+			email: 'owner@n8n.io',
+			firstName: 'Own',
+			lastName: 'Er',
+			role: { slug: 'global:owner' },
+		};
+		const redactedUser = {
+			userId: 'user-1',
+			_email: 'owner@n8n.io',
+			_firstName: 'Own',
+			_lastName: 'Er',
+			globalRole: 'global:owner',
+		};
+
+		it.each([
+			['enabled', true, 'n8n.audit.scim.enabled'],
+			['disabled', false, 'n8n.audit.scim.disabled'],
+			['token_created', true, 'n8n.audit.scim.token.created'],
+			['token_rotated', true, 'n8n.audit.scim.token.rotated'],
+			['token_revoked', false, 'n8n.audit.scim.token.revoked'],
+		] as const)('should log a `%s` SCIM settings change', (change, isActive, auditEventName) => {
+			eventService.emit('scim-settings-updated', { user, isActive, change, source: 'user' });
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: auditEventName,
+				payload: { ...redactedUser, isActive, source: 'user' },
+			});
+		});
+
+		it.each(['sso_off', 'startup'] as const)(
+			'should log a SCIM turn-off by n8n without a user (%s)',
+			(source) => {
+				eventService.emit('scim-settings-updated', {
+					user: null,
+					isActive: false,
+					change: 'disabled',
+					source,
+				});
+
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName: 'n8n.audit.scim.disabled',
+					payload: { userId: null, isActive: false, source },
+				});
+			},
+		);
+
+		it('should log a deprovisioning policy change with both policies', () => {
+			const before = {
+				onDelete: 'disable',
+				dataAction: 'transfer',
+				transferProjectId: null,
+			} as const;
+			const after = { onDelete: 'delete', dataAction: 'delete', transferProjectId: null } as const;
+
+			eventService.emit('scim-deprovisioning-policy-updated', {
+				user,
+				isActive: true,
+				before,
+				after,
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.scim.deprovisioning.updated',
+				payload: { ...redactedUser, isActive: true, before, after },
+			});
+		});
+
+		it.each([
+			[
+				'a 429 of the IP rate limit',
+				{ operation: 'list_users', status: 429, reason: 'rate_limited' },
+			],
+			['a path without a route', { operation: 'other', status: 404, reason: 'not_found' }],
+		] as const)('should not log %s', (_, event) => {
+			eventService.emit('scim-request-rejected', event);
+
+			expect(eventBus.sendAuditEvent).not.toHaveBeenCalled();
+		});
+
+		it('should log each rejected SCIM request', () => {
+			const event = { operation: 'create_user', status: 409, reason: 'conflict' } as const;
+
+			eventService.emit('scim-request-rejected', event);
+			eventService.emit('scim-request-rejected', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledTimes(2);
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.scim.request.rejected',
+				payload: { userId: null, ...event },
+			});
+		});
+	});
+
 	describe('trusted source events', () => {
 		it.each([
 			['trusted-source-created', 'n8n.audit.trusted-source.created'],

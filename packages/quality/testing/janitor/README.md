@@ -425,6 +425,11 @@ rules: {
     severity: 'error',
     // Customize which method names indicate a standalone page
     navigationMethods: ['goto', 'navigate', 'visit', 'open'],
+    // Match the relative file path, class name, and full locator expression.
+    // Use exact patterns for teleported UI or a sibling modal footer.
+    allowPatterns: [
+      /^pages\/SettingsModal\.ts:SettingsModal: this\.page\.getByTestId\('settings-save'\)$/,
+    ],
   },
 }
 ```

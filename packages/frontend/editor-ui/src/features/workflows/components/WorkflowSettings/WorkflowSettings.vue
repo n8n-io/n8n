@@ -889,8 +889,8 @@ onMounted(async () => {
 
 	if (!workflowsStore.isWorkflowSaved[workflowDocumentStore.value.workflowId]) {
 		toast.showMessage({
-			title: 'No workflow active',
-			message: 'No workflow active to display settings of.',
+			title: i18n.baseText('workflowSettings.showMessage.noWorkflowActive.title'),
+			message: i18n.baseText('workflowSettings.showMessage.noWorkflowActive.message'),
 			type: 'error',
 			duration: 0,
 		});
@@ -931,8 +931,8 @@ onMounted(async () => {
 
 		await Promise.all(promises);
 	} catch (error) {
-		toast.showError(error, 'Problem loading settings', {
-			message: 'The following error occurred loading the data:',
+		toast.showError(error, i18n.baseText('workflowSettings.showError.loadSettings.title'), {
+			message: i18n.baseText('workflowSettings.showError.loadSettings.message'),
 		});
 	}
 
@@ -995,9 +995,10 @@ onMounted(async () => {
 	// Fetch the instance redaction floor AFTER workflowSettings has been assigned, so
 	// the floor-coercion watch sees the loaded settings (not the initial empty object).
 	// The FE gates this fetch on the `DataRedaction` license, while the endpoint itself is
-	// gated by `feat:personalSpacePolicy` + `securitySettings:manage`. A license mismatch
-	// (one licensed, the other not) is intentionally absorbed by the try/catch fail-open
-	// below: the floor stays `'off'` and no enforcement is applied client-side.
+	// gated by `feat:personalSpacePolicy` or `feat:workflowReviews`, plus
+	// `securitySettings:manage`. A license mismatch (one licensed, the other not) is
+	// intentionally absorbed by the try/catch fail-open below: the floor stays `'off'`
+	// and no enforcement is applied client-side.
 	if (isDataRedactionLicensed.value) {
 		try {
 			const response = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);

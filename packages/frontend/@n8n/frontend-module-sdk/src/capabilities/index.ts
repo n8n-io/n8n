@@ -10,4 +10,5 @@ export { projectContext } from './projectContext';
 export { projectPermissions } from './projectPermissions';
 export { resourceEditors } from './resourceEditors';
 export { tagNames } from './tagNames';
+export { typeDescriptions } from './typeDescriptions';
 export { workflowMcpAccessSync } from './workflowMcpAccessSync';

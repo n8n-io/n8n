@@ -8,6 +8,7 @@ import {
 	type InstanceAiElementAttachment,
 	type InstanceAiNodesAttachment,
 	type InstanceAiResourceAttachment,
+	type InstanceAiThreadSubject,
 	type InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -21,7 +22,7 @@ import {
 	patchThread,
 	snapshotAgent,
 	tokenUsageToBuilderUsageItems,
-	withAttachedAgentTarget,
+	withThreadSubject,
 	type InstanceAiWorkflowService,
 	type ModelConfig,
 } from '@n8n/instance-ai';
@@ -39,8 +40,10 @@ import type {
 	SystemAgentTurnHandle,
 	SystemAgentTurnOptions,
 	SystemAgentTurnOutcome,
+	SystemAgentUserStopScope,
 } from '@/modules/agents/system-agents/system-agent.types';
-import { Telemetry } from '@/telemetry';
+import { TelemetryProxy } from '@n8n/backend-services';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 
 import {
@@ -167,7 +170,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		private readonly errorReporter: InstanceAiErrorReporterService,
 		private readonly userRepository: UserRepository,
 		private readonly turnOverrides: AssistantTurnOverrides,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.aiConfig = globalConfig.ai;
@@ -219,6 +222,15 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			});
 			await this.archiveTemporaryWorkflows(workflowService, markers, threadId);
 		};
+	}
+
+	/** The runtime calls this only for a stop that took effect. */
+	onUserStoppedTurn({ threadId, userId }: SystemAgentUserStopScope): void {
+		this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_STOPPED_RUN, {
+			user_id: userId,
+			thread_id: threadId,
+			runtime: 'agents',
+		});
 	}
 
 	/** A setup failure, such as the credit check before the run, gets the turn's error text. */
@@ -304,7 +316,14 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				proxyRunConfig,
 				experimentGates,
 				...(trace ? { tracing: trace.context } : {}),
-				attachesAgent: request.attachments?.some((attachment) => attachment.type === 'agent'),
+				// Whether the turn can build or edit an agent. Auto approval is not part of the Agent
+				// Builder, so such a turn keeps every approval card. The subject is bound after this,
+				// so the first turn of an agent thread counts it here. An attached or mentioned agent
+				// does not bind the thread, but this turn can still edit it, so the turn stays manual.
+				// Later turns that do not attach it use the approval mode of the user.
+				attachesAgent:
+					request.subject?.type === 'agent' ||
+					request.attachments?.some((attachment) => attachment.type === 'agent'),
 			},
 			runtime,
 		);
@@ -323,7 +342,8 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 
 		let turnInput: AssistantTurnInput | undefined;
 		if (turn.type === 'start') {
-			await this.bindAttachedAgent(turn, request.attachments);
+			// Only the subject binds. An attached or mentioned agent is a reference for the turn.
+			await this.bindThreadSubject(turn, request.subject);
 			const buildInput = async () =>
 				await this.turnInput.buildInput(environment, runtime, {
 					user,
@@ -565,30 +585,36 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 	}
 
 	/**
-	 * Binds the agent that the Agent Builder panel attached, like the editor binds
-	 * a thread on the current runtime before its first message. The builder tools
-	 * then edit that agent, and the panel lists the thread under it.
+	 * Binds the resource that the thread starts on, like the editor binds a thread
+	 * on the current runtime before its first message. The tools then work on that
+	 * resource, and its page finds the thread by the binding.
 	 */
-	private async bindAttachedAgent(
+	private async bindThreadSubject(
 		turn: SystemAgentStartTurn<AssistantSandboxLease>,
-		attachments: InstanceAiAttachment[] | undefined,
+		subject: InstanceAiThreadSubject | undefined,
 	): Promise<void> {
-		const attached = attachments?.find(
-			(attachment): attachment is InstanceAiAgentAttachment => attachment.type === 'agent',
-		);
-		if (attached?.projectId !== turn.thread.projectId) return;
+		// The tools act only in the project of the thread.
+		if (subject?.projectId !== turn.thread.projectId) return;
+		await this.updateThreadMetadata(turn, (metadata) => withThreadSubject(metadata, subject));
+	}
+
+	/** Applies `update` to the thread metadata. `update` returns `undefined` to change nothing. */
+	private async updateThreadMetadata(
+		turn: SystemAgentStartTurn<AssistantSandboxLease>,
+		update: (metadata: Record<string, unknown>) => Record<string, unknown> | undefined,
+	): Promise<void> {
 		// A patch replaces the metadata, so binding a saved agent drops its pending marker.
 		// `saveThread` merges, and a leftover marker makes a later build adopt this agent.
 		const patched = await patchThread(turn.memory, {
 			threadId: turn.thread.id,
 			update: ({ metadata }) => {
-				const next = withAttachedAgentTarget(metadata ?? {}, attached);
+				const next = update(metadata ?? {});
 				return next ? { metadata: next } : null;
 			},
 		});
 		if (patched) return;
 		// The first turn saves its messages after this, so the thread row can be missing here.
-		const metadata = withAttachedAgentTarget({}, attached);
+		const metadata = update({});
 		if (!metadata) return;
 		await turn.memory.saveThread({ id: turn.thread.id, resourceId: turn.resourceId, metadata });
 	}

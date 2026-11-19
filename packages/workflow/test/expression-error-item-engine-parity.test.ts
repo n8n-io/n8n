@@ -181,6 +181,35 @@ describe('Expression - Error instances in item data (engine parity)', () => {
 			});
 		});
 
+		describe('Error that holds a class instance', () => {
+			// Shape of an mssql RequestError: the driver error keeps its message token.
+			class ErrorMessageToken {
+				name = 'ERROR';
+
+				constructor(readonly number: number) {}
+			}
+			const driverError = Object.assign(new Error('Query cancelled'), {
+				code: 'EREQUEST',
+				info: new ErrorMessageToken(111202),
+			});
+			const requestError = Object.assign(new Error('Timeout'), {
+				code: 'ETIMEOUT',
+				precedingErrors: [
+					Object.assign(new Error('Query cancelled'), { originalError: driverError }),
+				],
+			});
+			const item = {
+				json: { execution: { id: '1', error: requestError } },
+				pairedItem: { item: 0 },
+			};
+
+			it('={{ $json.execution.toJsonString() }}', () => {
+				expect(evaluate('={{ $json.execution.toJsonString() }}', item, native)).toBe(
+					JSON.stringify(item.json.execution),
+				);
+			});
+		});
+
 		describe('Item that holds an Error and a __proto__ key', () => {
 			const item = {
 				json: { error: new Error('x'), body: JSON.parse('{"__proto__":{"a":1}}') },

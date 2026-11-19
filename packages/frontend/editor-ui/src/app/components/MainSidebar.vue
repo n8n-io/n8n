@@ -122,7 +122,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		id: 'insights',
 		icon: 'chart-column-decreasing',
-		label: 'Insights',
+		label: i18n.baseText('mainSidebar.insights'),
 		position: 'bottom',
 		route: { to: { name: VIEWS.INSIGHTS } },
 		available:

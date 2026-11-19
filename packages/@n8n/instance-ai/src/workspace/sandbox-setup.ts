@@ -19,13 +19,13 @@
  *     chunks/
  *       *.ts                          # reusable node/workflow modules
  *     knowledge-base/
- *       index.json                    # combined catalog of guides and templates
+ *       index.json                    # combined catalog of guides and references
  *       best-practices/
  *         index.json                  # technique guide catalog
  *         *.md                        # guide content per technique
- *       templates/
- *         index.json                  # curated template catalog
- *         *.ts                        # SDK workflow examples
+ *       reference/
+ *         index.json                  # reference file catalog
+ *         *.md                        # SDK and node reference content
  */
 
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
@@ -532,13 +532,11 @@ async function materializeKnowledgeBaseStep(
 	verifiedBundles: VerifiedWorkspaceBundles | undefined,
 ): Promise<void> {
 	await setupStep('materialize-knowledge-base', async () => {
-		const templatesBundle = (await context.templatesService?.getBundle()) ?? null;
 		await materializeKnowledgeBaseIntoWorkspace({
 			workspace,
 			verifiedBundles,
 			root,
 			logger: context.logger,
-			templatesArchive: templatesBundle?.archive ?? null,
 		});
 	});
 }

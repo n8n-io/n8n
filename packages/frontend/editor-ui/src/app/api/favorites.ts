@@ -11,6 +11,7 @@ export type UserFavorite = {
 	resourceType: FavoriteResourceType;
 	resourceName: string;
 	resourceProjectId?: string;
+	folderResourceType?: 'workflow' | 'agent';
 };
 
 export async function getFavorites(context: IRestApiContext): Promise<UserFavorite[]> {
