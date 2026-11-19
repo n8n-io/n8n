@@ -82,6 +82,31 @@ describe('AssistantPreferenceCardsService', () => {
 			expect(stored).toEqual({ 'tc-1': card });
 		});
 
+		it('returns the stored card, which keeps the text of an earlier edit', async () => {
+			stored = {
+				'tc-1': {
+					toolCallId: 'tc-1',
+					preferenceId: 'pref-1',
+					state: 'edited',
+					content: 'Two sticky notes.',
+					scope: 'user',
+					projectId: null,
+				},
+			};
+
+			const card = await service.undo(user, THREAD_ID, 'pref-1', { toolCallId: 'tc-1' });
+
+			expect(card).toEqual({
+				toolCallId: 'tc-1',
+				preferenceId: 'pref-1',
+				state: 'undone',
+				content: 'Two sticky notes.',
+				scope: 'user',
+				projectId: null,
+			});
+			expect(stored).toEqual({ 'tc-1': card });
+		});
+
 		it('checks the thread before it deletes the row', async () => {
 			threadMetadata.read.mockRejectedValue(new NotFoundError('Session not found'));
 
@@ -153,13 +178,38 @@ describe('AssistantPreferenceCardsService', () => {
 			state: 'undone',
 		});
 
-		it('replaces the earlier card of the same call', () => {
-			const edited: AssistantPreferenceCard = { ...card(1), state: 'edited', content: 'x' };
+		it('keeps the edited text and scope when an undo follows an edit', () => {
+			const edited: AssistantPreferenceCard = {
+				...card(1),
+				state: 'edited',
+				content: 'Two sticky notes.',
+				scope: 'project',
+				projectId: 'project-1',
+			};
 
 			expect(withCard({ 'tc-1': edited, 'tc-2': card(2) }, card(1))).toEqual({
 				'tc-2': card(2),
-				'tc-1': card(1),
+				'tc-1': { ...edited, state: 'undone' },
 			});
+		});
+
+		it('clears the project when an edit moves the row out of the project', () => {
+			const inProject: AssistantPreferenceCard = {
+				...card(1),
+				state: 'edited',
+				content: 'x',
+				scope: 'project',
+				projectId: 'project-1',
+			};
+			const moved: AssistantPreferenceCard = {
+				...card(1),
+				state: 'edited',
+				content: 'x',
+				scope: 'user',
+				projectId: null,
+			};
+
+			expect(withCard({ 'tc-1': inProject }, moved)['tc-1']).toEqual(moved);
 		});
 
 		it('drops the oldest cards when the state is full', () => {

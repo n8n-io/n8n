@@ -17,6 +17,28 @@ export const assistantPreferenceCardSchema = preferenceCardPayloadSchema.extend(
 });
 export type AssistantPreferenceCard = z.infer<typeof assistantPreferenceCardSchema>;
 
+/**
+ * The card after `next`, with the rules of the `preference-card` fold of the
+ * current Assistant. An undo names no content, scope or project, so it keeps
+ * the last ones: an edit then an undo strikes out the edited text. A card that
+ * names a scope also decides the project, so a move out of a project clears it.
+ */
+export function mergeAssistantPreferenceCard(
+	previous: AssistantPreferenceCard | undefined,
+	next: AssistantPreferenceCard,
+): AssistantPreferenceCard {
+	const namesScope = next.scope !== undefined;
+	const content = next.content ?? previous?.content;
+	const scope = next.scope ?? previous?.scope;
+	const projectId = namesScope ? (next.projectId ?? null) : previous?.projectId;
+	return {
+		...next,
+		...(content !== undefined && { content }),
+		...(scope !== undefined && { scope }),
+		...(projectId !== undefined && { projectId }),
+	};
+}
+
 /** The stored cards of a thread, by tool call id. */
 export const assistantPreferenceCardsStateSchema = z.record(
 	z.string(),

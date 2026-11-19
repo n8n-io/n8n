@@ -1,6 +1,7 @@
 import {
 	aiPreferenceTargetOf,
 	assistantPreferenceCardSchema,
+	mergeAssistantPreferenceCard,
 	MAX_ASSISTANT_PREFERENCE_CARDS,
 	type AssistantPreferenceCard,
 	type AssistantPreferenceCardEditRequestDto,
@@ -30,14 +31,19 @@ function parseCards(stored: unknown): AssistantPreferenceCardsState {
 	return cards;
 }
 
-/** The stored cards with `card`. The oldest cards go when the state is full. */
+/**
+ * The stored cards with `card` merged onto the earlier card of its call. The
+ * oldest cards go when the state is full.
+ */
 export function withCard(
 	stored: unknown,
 	card: AssistantPreferenceCard,
 ): AssistantPreferenceCardsState {
-	const others = Object.entries(parseCards(stored)).filter(([id]) => id !== card.toolCallId);
+	const cards = parseCards(stored);
+	const merged = mergeAssistantPreferenceCard(cards[card.toolCallId], card);
+	const others = Object.entries(cards).filter(([id]) => id !== card.toolCallId);
 	const kept = others.slice(-(MAX_ASSISTANT_PREFERENCE_CARDS - 1));
-	return { ...Object.fromEntries(kept), [card.toolCallId]: card };
+	return { ...Object.fromEntries(kept), [card.toolCallId]: merged };
 }
 
 /**
@@ -108,19 +114,28 @@ export class AssistantPreferenceCardsService {
 		);
 	}
 
-	/** Stores the card after the preference write succeeded, so it never claims a state the row does not have. */
+	/**
+	 * Stores the card after the preference write succeeded, so it never claims a
+	 * state the row does not have. Returns the stored card, which keeps the text
+	 * and scope of an earlier edit on undo.
+	 */
 	private async store(
 		user: User,
 		threadId: string,
 		card: AssistantPreferenceCard,
 	): Promise<AssistantPreferenceCard> {
+		let stored = card;
 		await this.threadMetadata.update(
 			ASSISTANT_AGENT_ID,
 			user,
 			threadId,
 			ASSISTANT_PREFERENCE_CARDS_METADATA_KEY,
-			(current) => withCard(current, card),
+			(current) => {
+				const next = withCard(current, card);
+				stored = next[card.toolCallId];
+				return next;
+			},
 		);
-		return card;
+		return stored;
 	}
 }

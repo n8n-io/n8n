@@ -1,4 +1,8 @@
-import type { AssistantPreferenceCard, InstanceAiToolCallState } from '@n8n/api-types';
+import {
+	mergeAssistantPreferenceCard,
+	type AssistantPreferenceCard,
+	type InstanceAiToolCallState,
+} from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { isRecord } from '@n8n/utils/is-record';
 import { defineAsyncComponent, reactive, type DeepReadonly, type InjectionKey } from 'vue';
@@ -75,6 +79,11 @@ export function useAssistantPreferenceCards({
 		return last.toolCalls?.some((call) => call.toolCallId === toolCallId) === true;
 	}
 
+	/** The server returns the merged card. Merging again keeps the edited text if it did not. */
+	function apply(card: AssistantPreferenceCard): void {
+		cards.set(card.toolCallId, mergeAssistantPreferenceCard(cards.get(card.toolCallId), card));
+	}
+
 	const host: PreferenceCardHost = {
 		projectId: () => projectId,
 		async undo({ preferenceId, toolCallId }) {
@@ -85,7 +94,7 @@ export function useAssistantPreferenceCards({
 				{ toolCallId },
 			);
 			if (!card) return false;
-			cards.set(toolCallId, card);
+			apply(card);
 			return true;
 		},
 		async edit({ preferenceId, toolCallId }, edit) {
@@ -96,7 +105,7 @@ export function useAssistantPreferenceCards({
 				{ toolCallId, ...edit },
 			);
 			if (!card || !preference) return null;
-			cards.set(toolCallId, card);
+			apply(card);
 			return preference;
 		},
 	};

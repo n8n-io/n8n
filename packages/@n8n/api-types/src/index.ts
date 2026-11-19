@@ -799,6 +799,7 @@ export type {
 export {
 	assistantPreferenceCardSchema,
 	assistantPreferenceCardsStateSchema,
+	mergeAssistantPreferenceCard,
 	MAX_ASSISTANT_PREFERENCE_CARDS,
 } from './schemas/assistant-preference-cards.schema';
 export type {

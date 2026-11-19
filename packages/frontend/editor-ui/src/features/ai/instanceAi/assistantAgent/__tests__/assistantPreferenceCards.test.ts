@@ -162,6 +162,28 @@ describe('useAssistantPreferenceCards', () => {
 		expect(cards.get('tc-1')).toEqual(card);
 	});
 
+	it('keeps the edited text when an undo follows an edit', async () => {
+		const edited: AssistantPreferenceCard = {
+			...undone,
+			state: 'edited',
+			content: 'Two sticky notes.',
+			scope: 'user',
+			projectId: null,
+		};
+		api.editAssistantPreferenceCard.mockResolvedValue({
+			card: edited,
+			preference: { id: 'pref-1' } as AiPreferenceDto,
+		});
+		api.undoAssistantPreferenceCard.mockResolvedValue({ card: undone });
+		const cards = create();
+		const target = { preferenceId: 'pref-1', toolCallId: 'tc-1', runId: '' };
+
+		await cards.host.edit(target, { content: 'Two sticky notes.' });
+		await cards.host.undo(target);
+
+		expect(cards.get('tc-1')).toEqual({ ...edited, state: 'undone' });
+	});
+
 	it('keeps a card that the user changed over the stored one', async () => {
 		const edited: AssistantPreferenceCard = { ...undone, state: 'edited', content: 'Brief.' };
 		api.undoAssistantPreferenceCard.mockResolvedValue({ card: undone });
