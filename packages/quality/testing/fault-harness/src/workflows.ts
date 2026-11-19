@@ -32,6 +32,9 @@ export const nodes = {
 	code: (name: string, jsCode: string) => node(name, 'n8n-nodes-base.code', 2, { jsCode }),
 };
 
+/** Workflow settings that make `chain` build a workflow that runs on engine v2. */
+export const ENGINE_V2_SETTINGS = { engineType: 'v2' };
+
 /** A workflow whose nodes run one after the other in the given order. */
 export function chain(
 	name: string,

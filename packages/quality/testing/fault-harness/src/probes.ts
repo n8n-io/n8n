@@ -87,6 +87,15 @@ export class PostgresProbe {
 	}
 }
 
+/** Postgres probe for the engine v2 database, `n8n_engine`. */
+export class EngineProbe {
+	constructor(private readonly query: (sql: string) => Promise<string>) {}
+
+	async sql(query: string): Promise<string> {
+		return await this.query(query);
+	}
+}
+
 export interface BullState {
 	wait: string[];
 	active: string[];
