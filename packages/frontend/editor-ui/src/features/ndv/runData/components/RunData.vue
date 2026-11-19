@@ -780,7 +780,8 @@ const hasPreviewSchema = asyncComputed(async () => {
 }, false);
 
 const itemsCountProps = computed<InstanceType<typeof RunDataItemCount>['$props']>(() => ({
-	search: activeSearch.value,
+	// Schema view filters itself and shows no filtered count
+	search: isSchemaView.value ? '' : activeSearch.value,
 	dataCount: dataCount.value,
 	unfilteredDataCount: unfilteredDataCount.value,
 	subExecutionsCount: activeTaskMetadata.value?.subExecutionsCount,
