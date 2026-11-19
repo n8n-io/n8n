@@ -4,6 +4,7 @@ import type { User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentSkillRefsService } from '../../agent-skill-refs.service';
+import type { ChatIntegrationRegistry } from '../../integrations/agent-chat-integration';
 import type { ProjectAgent } from '../../entities/agent.entity';
 import type { AgentExecutionThreadRepository } from '../../repositories/agent-execution-thread.repository';
 import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
@@ -100,6 +101,11 @@ function setup({
 			settings: engineV2 ? { engineType: 'v2' } : {},
 		} as WorkflowEntity,
 	]);
+	const chatIntegrations = mock<ChatIntegrationRegistry>();
+	chatIntegrations.get.mockImplementation(
+		(type: string) =>
+			(type === 'telegram' ? { conversationTools: ['do_not_respond'] } : undefined) as never,
+	);
 	const service = new SimulationSessionService(
 		mock<Logger>(),
 		flagGate,
@@ -109,6 +115,7 @@ function setup({
 		threadRepository,
 		executionRepository,
 		workflowRepository,
+		chatIntegrations,
 	);
 	return { service, threadRepository, executionRepository, flagGate, workflowRepository };
 }
@@ -250,7 +257,7 @@ describe('SimulationSessionService', () => {
 			kind: 'workflow',
 			testability: 'blocked',
 			reason: 'not_simulatable',
-			detail: 'This workflow runs on Engine v2, which test runs and evaluations cannot reach yet.',
+			detail: 'Test runs and evaluations do not support Engine v2 workflows yet.',
 		});
 		expect(backend.describeTools).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -319,6 +326,28 @@ describe('SimulationSessionService', () => {
 			'slack_action',
 			'slack_2_context',
 			'slack_2_action',
+		]);
+		expect(integrationTools.every((tool) => tool.testability === 'blocked')).toBe(true);
+	});
+
+	it('lists the conversation tools a chat integration adds as blocked', async () => {
+		const { service } = setup({
+			backend: llmBackend(),
+			integrations: [
+				{ type: 'telegram', credentialId: 'cred-a' },
+				{ type: 'slack', credentialId: 'cred-b' },
+			],
+		});
+
+		const tools = await service.describeTools('agent-1', 'project-1');
+
+		const integrationTools = tools.filter((tool) => tool.kind === 'integration');
+		expect(integrationTools.map((tool) => tool.toolName)).toEqual([
+			'slack_context',
+			'slack_action',
+			'telegram_context',
+			'telegram_action',
+			'do_not_respond',
 		]);
 		expect(integrationTools.every((tool) => tool.testability === 'blocked')).toBe(true);
 	});

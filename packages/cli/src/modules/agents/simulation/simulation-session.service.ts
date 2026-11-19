@@ -17,6 +17,7 @@ import { toAgentDocument } from '../json-config/agent-document';
 import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import { AgentRepository } from '../repositories/agent.repository';
+import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { getIntegrationToolConnectionDescriptors } from '../integrations/integration-tool-factory';
 import { instrumentedRunGap } from '../tools/instrumented-run-guard';
 import { findWorkflowToolWorkflows } from '../tools/workflow-tool-workflow-resolver';
@@ -59,6 +60,7 @@ export class SimulationSessionService {
 		private readonly threadRepository: AgentExecutionThreadRepository,
 		private readonly executionRepository: AgentExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly chatIntegrations: ChatIntegrationRegistry,
 	) {}
 
 	async openForDraftRun(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
@@ -198,13 +200,27 @@ export class SimulationSessionService {
 		for (const [toolName, gap] of await this.workflowRunGaps(enabledConfig, projectId)) {
 			if (!hostGaps.has(toolName)) hostGaps.set(toolName, gap);
 		}
-		// Named as the runtime names them: `slack_context`, `slack_action`, `slack_2_action`.
+		// Named as the runtime names them: `slack_context`, `slack_action`, `slack_2_action`,
+		// plus the shared conversation tools (`do_not_respond`) the channels declare.
 		const integrations = (saved.integrations ?? []).filter(isCredentialAgentIntegration);
-		for (const descriptor of getIntegrationToolConnectionDescriptors(integrations, agentId)) {
-			for (const toolName of [descriptor.contextToolName, descriptor.actionToolName]) {
-				tools.push({ toolName, kind: 'integration' });
-				hostGaps.set(toolName, 'Chat integration tools cannot run in a test run yet.');
-			}
+		const descriptors = getIntegrationToolConnectionDescriptors(
+			integrations,
+			agentId,
+			(integration) => ({
+				conversationTools: this.chatIntegrations.get(integration.type)?.conversationTools,
+			}),
+		);
+		const integrationToolNames = new Set<string>();
+		for (const descriptor of descriptors) {
+			integrationToolNames.add(descriptor.contextToolName);
+			integrationToolNames.add(descriptor.actionToolName);
+		}
+		for (const descriptor of descriptors) {
+			for (const toolName of descriptor.conversationTools ?? []) integrationToolNames.add(toolName);
+		}
+		for (const toolName of integrationToolNames) {
+			tools.push({ toolName, kind: 'integration' });
+			hostGaps.set(toolName, 'Chat integration tools cannot run in a test run yet.');
 		}
 
 		return {
