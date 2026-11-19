@@ -156,6 +156,7 @@ describe('ExportService', () => {
 
 		it('starts a new file before a line would take it past 500 rows', async () => {
 			const MAX_ROWS_PER_FILE = 500;
+			const ROW_COUNT = 600;
 			// @ts-expect-error Accessing private property for testing
 			mockDataSource.entityMetadatas = [
 				{
@@ -164,7 +165,7 @@ describe('ExportService', () => {
 					columns: [{ databaseName: 'data', type: 'blob' }],
 				},
 			];
-			let rowsLeft = 600;
+			let rowsLeft = ROW_COUNT;
 			vi.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
 				if (query.includes('MAX(LENGTH(')) return [{ maxBytes: 20 * 1024 * 1024 }];
 				const pageRows = query.includes('FROM "binary_data"') ? Math.min(3, rowsLeft) : 0;
@@ -176,9 +177,14 @@ describe('ExportService', () => {
 
 			const rowsPerFile = new Map<string, number>();
 			for (const [file, line] of vi.mocked(appendFile).mock.calls) {
+				const filePath = file as string;
 				const rows = String(line).trimEnd().split('\n').length;
-				rowsPerFile.set(file as string, (rowsPerFile.get(file as string) ?? 0) + rows);
+				if (filePath.includes('binarydatafile')) {
+					rowsPerFile.set(filePath, (rowsPerFile.get(filePath) ?? 0) + rows);
+				}
 			}
+			const exportedRows = [...rowsPerFile.values()].reduce((sum, rows) => sum + rows, 0);
+			expect(exportedRows).toBe(ROW_COUNT);
 			expect(Math.max(...rowsPerFile.values())).toBeLessThanOrEqual(MAX_ROWS_PER_FILE);
 		});
 

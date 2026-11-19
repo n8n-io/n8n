@@ -7,8 +7,8 @@ const MAX_FILE_CHARS = 64 * MiB;
 const MAX_ROWS_PER_FILE = 500;
 
 /**
- * Writes rows as encrypted JSONL lines: a line holds at least one row and at most 32 MiB of JSON,
- * a file holds at least one line and at most 64 MiB or 500 rows.
+ * Writes rows as encrypted JSONL lines: a line holds one row, or more rows while it stays within
+ * 32 MiB of JSON, and a file holds one line, or more lines while it stays within 64 MiB and 500 rows.
  */
 export class EntityArchiveWriter {
 	private pendingRows: string[] = [];
