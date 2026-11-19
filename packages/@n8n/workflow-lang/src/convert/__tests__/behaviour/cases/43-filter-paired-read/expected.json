@@ -1,0 +1,127 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Source",
+		"Tag",
+		"Filter",
+		"Read Expression",
+		"Read If Expression",
+		"Read Code Each",
+		"Read Code All"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"label": "filter-paired"
+					}
+				}
+			]
+		],
+		"Source": [
+			[
+				{
+					"n": 10
+				},
+				{
+					"n": 20
+				},
+				{
+					"n": 30
+				}
+			]
+		],
+		"Tag": [
+			[
+				{
+					"n": 10,
+					"tag": "x"
+				},
+				{
+					"n": 20,
+					"tag": "x"
+				},
+				{
+					"n": 30,
+					"tag": "x"
+				}
+			]
+		],
+		"Filter": [
+			[
+				{
+					"n": 10,
+					"tag": "x"
+				},
+				{
+					"n": 30,
+					"tag": "x"
+				}
+			],
+			[
+				{
+					"n": 20,
+					"tag": "x"
+				}
+			]
+		],
+		"Read Expression": [
+			[
+				{
+					"sourceN": 10,
+					"sourceTag": "x"
+				},
+				{
+					"sourceN": 30,
+					"sourceTag": "x"
+				}
+			]
+		],
+		"Read If Expression": [
+			[
+				{
+					"tagVal": "x"
+				},
+				{
+					"tagVal": "x"
+				}
+			]
+		],
+		"Read Code Each": [
+			[
+				{
+					"sourceN": 10,
+					"tag": "x",
+					"match": 10,
+					"node": "x"
+				},
+				{
+					"sourceN": 30,
+					"tag": "x",
+					"match": 10,
+					"node": "x"
+				}
+			]
+		],
+		"Read Code All": [
+			[
+				{
+					"sourceN": 10,
+					"match": 10
+				},
+				{
+					"sourceN": 10,
+					"match": 30
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

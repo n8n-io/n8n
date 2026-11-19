@@ -1,0 +1,88 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Source",
+		"Switch",
+		"Read Low",
+		"Read Mid",
+		"Read High"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"label": "switch-paired"
+					}
+				}
+			]
+		],
+		"Source": [
+			[
+				{
+					"n": 10
+				},
+				{
+					"n": 20
+				},
+				{
+					"n": 30
+				},
+				{
+					"n": 40
+				}
+			]
+		],
+		"Switch": [
+			[
+				{
+					"n": 10
+				},
+				{
+					"n": 20
+				}
+			],
+			[
+				{
+					"n": 30
+				}
+			],
+			[
+				{
+					"n": 40
+				}
+			]
+		],
+		"Read Low": [
+			[
+				{
+					"sourceN": 10
+				},
+				{
+					"sourceN": 20
+				}
+			]
+		],
+		"Read Mid": [
+			[
+				{
+					"sourceN": 30
+				}
+			]
+		],
+		"Read High": [
+			[
+				{
+					"sourceN": 40
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

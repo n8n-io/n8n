@@ -68,9 +68,9 @@ export interface NodeContext {
 	pairsWanted?: boolean;
 	/**
 	 * Records the code of the result of a compiled node that gives the paired item of each
-	 * output item (`{ items, paired }`).
+	 * output item (`{ items, paired }`), for output `output` (0 by default).
 	 */
-	setPairs?(run: string): void;
+	setPairs?(run: string, output?: number): void;
 	/** True when the source traces every node (`trace: 'all'`), sub-nodes of AI clusters too. */
 	traceAll?: boolean;
 	/** Code of a condition under which the node gives no output at all (v1 run data has none). */
@@ -136,6 +136,15 @@ export interface NodeContext {
 	 * to this node.
 	 */
 	pairsByPosition(name: string): boolean;
+	/**
+	 * The index of the item of node `name` that v1 pairs with input item `itemIndex`, by the
+	 * paired items that the compiled nodes on the way keep. Null when a node on the way has no
+	 * kept paired items: then the read stays in the fallback host.
+	 */
+	pairedIndex(
+		name: string,
+		itemIndex: string,
+	): { code: string; values: Array<{ param: string; value: string }> } | null;
 	/** The output of node `name` that `$('name')` reads from this node. */
 	readOutput(name: string): number;
 	/**

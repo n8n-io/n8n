@@ -71,6 +71,18 @@ function openLoop(c: NodeContext, list: string, index: boolean): void {
 	}
 }
 
+/**
+ * Starts paired item tracking for an output list when a later expression reads through
+ * this node. Returns the name of the pairs variable, or null when not needed.
+ */
+function startPairs(c: NodeContext, out: string, output = 0): string | null {
+	if (c.pairsWanted !== true || c.setPairs === undefined) return null;
+	const pairVar = `${out}PairData`;
+	c.w.line(`const ${pairVar}: Json = { items: ${out}, paired: [] };`);
+	c.setPairs(pairVar, output);
+	return pairVar;
+}
+
 const mapParams = (index: boolean) =>
 	index ? `(${ITEM}: Json, ${INDEX}: number)` : `(${ITEM}: Json)`;
 
@@ -113,9 +125,18 @@ export function lowerIf(c: NodeContext): void {
 	const f = c.output(1, 'False');
 	c.w.line(`const ${t}: Json[] = [];`);
 	c.w.line(`const ${f}: Json[] = [];`);
-	openLoop(c, c.input, usage.index);
-	c.w.line(`if (${code}) ${t}.push(${ITEM});`);
-	c.w.line(`else ${f}.push(${ITEM});`);
+	const pairVar = startPairs(c, t);
+	const falsePair = startPairs(c, f, 1);
+	const tracked = pairVar !== null && falsePair !== null;
+	openLoop(c, c.input, usage.index || tracked);
+	if (tracked) {
+		c.w.line(`if (${code}) { ${t}.push(${ITEM}); ${pairVar}.paired.push(${INDEX}); }`);
+		c.w.line(`else { ${f}.push(${ITEM}); ${falsePair}.paired.push(${INDEX}); }`);
+	} else {
+		if (pairVar) c.w.line(`if (${code}) { ${t}.push(${ITEM}); ${pairVar}.paired.push(${INDEX}); }`);
+		else c.w.line(`if (${code}) ${t}.push(${ITEM});`);
+		c.w.line(`else ${f}.push(${ITEM});`);
+	}
 	c.w.close();
 	keepsPlain(c, [t, f]);
 }
@@ -159,9 +180,18 @@ export function lowerFilter(c: NodeContext): void {
 	const discarded = c.output(1, 'Discarded');
 	c.w.line(`const ${kept}: Json[] = [];`);
 	c.w.line(`const ${discarded}: Json[] = [];`);
-	openLoop(c, c.input, usage.index);
-	c.w.line(`if (${code}) ${kept}.push(${ITEM});`);
-	c.w.line(`else ${discarded}.push(${ITEM});`);
+	const pairVar = startPairs(c, kept);
+	const droppedPairs = startPairs(c, discarded, 1);
+	const tracked = pairVar !== null && droppedPairs !== null;
+	openLoop(c, c.input, usage.index || pairVar !== null);
+	if (tracked) {
+		c.w.line(`if (${code}) { ${kept}.push(${ITEM}); ${pairVar}.paired.push(${INDEX}); }`);
+		c.w.line(`else { ${discarded}.push(${ITEM}); ${droppedPairs}.paired.push(${INDEX}); }`);
+	} else {
+		if (pairVar) c.w.line(`if (${code}) { ${kept}.push(${ITEM}); ${pairVar}.paired.push(${INDEX}); }`);
+		else c.w.line(`if (${code}) ${kept}.push(${ITEM});`);
+		c.w.line(`else ${discarded}.push(${ITEM});`);
+	}
 	c.w.close();
 	keepsPlain(c, [kept, discarded]);
 }
@@ -176,14 +206,23 @@ export function lowerSwitch(c: NodeContext): void {
 	const usage = { item: false, index: false };
 	const opts = isRecord(p.options) ? p.options : {};
 	if (p.mode === 'expression') {
-		const count = typeof p.numberOutputs === 'number' ? p.numberOutputs : 4;
+		const count = c.version >= 2 ? Number(p.outputsAmount ?? 4) || 4 : 4;
 		const outs = Array.from({ length: count }, (_, k) => c.output(k, `Output${k}`));
 		for (const o of outs) c.w.line(`const ${o}: Json[] = [];`);
 		const t = c.compiled(p.output ?? 0, 'output');
 		const all = c.local('Outputs');
 		c.w.line(`const ${all} = [${outs.join(', ')}];`);
-		openLoop(c, c.input, t.usage.index);
-		c.w.line(`${all}[${flat(t.code)}].push(${ITEM});`);
+		const pairsOf = outs.map((o, k) => startPairs(c, o, k));
+		const allPairs = pairsOf.every((x) => x !== null);
+		const pairList = c.local('OutputPairs');
+		if (allPairs) c.w.line(`const ${pairList} = [${pairsOf.join(', ')}];`);
+		openLoop(c, c.input, t.usage.index || allPairs);
+		if (allPairs) {
+			const at = `${all}[${flat(t.code)}]`;
+			c.w.line(`{ ${at}.push(${ITEM}); ${pairList}[${flat(t.code)}].paired.push(${INDEX}); }`);
+		} else {
+			c.w.line(`${all}[${flat(t.code)}].push(${ITEM});`);
+		}
 		c.w.close();
 		return;
 	}
@@ -221,21 +260,35 @@ export function lowerSwitch(c: NodeContext): void {
 	if (conds.some((x) => x.includes('looseBoolean('))) c.helper('looseBoolean');
 	for (const cond of conds) dateHelpers(c, cond);
 	const fallbackTarget = extra ?? (typeof fallback === 'number' ? outs[fallback] : null);
-	openLoop(c, c.input, usage.index);
+	// The paired item of each output item: the item that the rule routed there.
+	const pairsOf = outs.map((o, k) => startPairs(c, o, k));
+	const extraPairs = extra ? startPairs(c, extra, outs.length) : null;
+	const tracked = pairsOf.every((x) => x !== null) && (extra === null || extraPairs !== null);
+	const push = (list: string, pairs: string | null): string =>
+		tracked && pairs !== null
+			? `{ ${list}.push(${ITEM}); ${pairs}.paired.push(${INDEX}); }`
+			: `${list}.push(${ITEM});`;
+	const pairsFor = (list: string | null): string | null => {
+		if (list === null) return null;
+		if (extra !== null && list === extra) return extraPairs;
+		const k = outs.indexOf(list);
+		return k < 0 ? null : (pairsOf[k] ?? null);
+	};
+	openLoop(c, c.input, usage.index || tracked);
 	if (opts.allMatchingOutputs === true) {
 		c.w.line('let matched = false;');
 		conds.forEach((cond, k) => {
 			c.w.open(`if (${cond}) {`);
-			c.w.line(`${outs[k]}.push(${ITEM});`);
+			c.w.line(push(outs[k], pairsFor(outs[k])));
 			c.w.line('matched = true;');
 			c.w.close();
 		});
-		if (fallbackTarget) c.w.line(`if (!matched) ${fallbackTarget}.push(${ITEM});`);
+		if (fallbackTarget) c.w.line(`if (!matched) ${push(fallbackTarget, pairsFor(fallbackTarget))}`);
 	} else {
 		conds.forEach((cond, k) =>
-			c.w.line(`${k === 0 ? '' : 'else '}if (${cond}) ${outs[k]}.push(${ITEM});`),
+			c.w.line(`${k === 0 ? '' : 'else '}if (${cond}) ${push(outs[k], pairsFor(outs[k]))}`),
 		);
-		if (fallbackTarget) c.w.line(`else ${fallbackTarget}.push(${ITEM});`);
+		if (fallbackTarget) c.w.line(`else ${push(fallbackTarget, pairsFor(fallbackTarget))}`);
 	}
 	c.w.close();
 }
@@ -252,8 +305,17 @@ function lowerSwitchV1(c: NodeContext): void {
 		const t = c.compiled(p.output ?? 0, 'output');
 		const all = c.local('Outputs');
 		c.w.line(`const ${all} = [${outs.join(', ')}];`);
-		openLoop(c, c.input, t.usage.index);
-		c.w.line(`${all}[${flat(t.code)}].push(${ITEM});`);
+		const pairsOf = outs.map((o, k) => startPairs(c, o, k));
+		const allPairs = pairsOf.every((x) => x !== null);
+		const pairList = c.local('OutputPairs');
+		if (allPairs) c.w.line(`const ${pairList} = [${pairsOf.join(', ')}];`);
+		openLoop(c, c.input, t.usage.index || allPairs);
+		if (allPairs) {
+			const at = `${all}[${flat(t.code)}]`;
+			c.w.line(`{ ${at}.push(${ITEM}); ${pairList}[${flat(t.code)}].paired.push(${INDEX}); }`);
+		} else {
+			c.w.line(`${all}[${flat(t.code)}].push(${ITEM});`);
+		}
 		c.w.close();
 		return;
 	}
@@ -282,11 +344,17 @@ function lowerSwitchV1(c: NodeContext): void {
 	);
 	if (conds.some((x) => x.includes('isEmptyValue('))) c.helper('isEmptyValue');
 	const fallback = Number(p.fallbackOutput ?? -1);
-	openLoop(c, c.input, usage.index);
+	const pairsOf = outs.map((o, k) => startPairs(c, o, k));
+	const allPairs = pairsOf.every((x) => x !== null);
+	openLoop(c, c.input, usage.index || allPairs);
 	const route = (index: number): string => {
 		const target = outs[index];
-		return target === undefined
-			? `throw new Error(${str(`The ouput ${index} is not allowed. It has to be between 0 and ${count - 1}!`)});`
+		if (target === undefined) {
+			return `throw new Error(${str(`The ouput ${index} is not allowed. It has to be between 0 and ${count - 1}!`)});`;
+		}
+		const pairs = pairsOf[index];
+		return allPairs && pairs !== null
+			? `{ ${target}.push(${ITEM}); ${pairs}.paired.push(${INDEX}); }`
 			: `${target}.push(${ITEM});`;
 	};
 	rules.forEach((r, k) => {

@@ -2355,8 +2355,9 @@ function lowerHttpLibrary(c: NodeContext): void {
 			return;
 		}
 	}
-	// v1 sends one request for each item.
-	emitStep(c, call);
+	// v1 sends one request for each item, and pairs each output item with its input item
+	// (`pairedItem: { item: i }`), also when one response gives several items.
+	emitStep(c, { ...call, pairsByCall: true });
 }
 
 function flatCode(code: Code): string {

@@ -1,0 +1,14 @@
+{
+	"description": "A Set node and Code nodes read the item of nodes before a Filter through the Filter ($('Source').item, .itemMatching(k)), in both Code modes",
+	"trigger": {
+		"body": {
+			"label": "filter-paired"
+		}
+	},
+	"compare": [
+		"Read Expression",
+		"Read If Expression",
+		"Read Code Each",
+		"Read Code All"
+	]
+}

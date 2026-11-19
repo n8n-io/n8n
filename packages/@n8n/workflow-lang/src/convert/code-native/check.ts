@@ -20,6 +20,8 @@ export function harnessSource(
 ): string {
 	const lists = t.nodes.map((_, k) => `trigger.body.nodes[${k}]`);
 	const all = t.allNodes.map((_, k) => `trigger.body.all[${k}]`);
+	// The workflow variables of the paired index code: the harness gives their values.
+	const pairs = t.pairedValues.map((_, k) => `trigger.body.pairs[${k}]`);
 	// Code that makes requests is an async function; its \`http\` step has the name \`code\`.
 	const parts = t.usesHttp
 		? emitAsync(
@@ -31,10 +33,24 @@ export function harnessSource(
 				all,
 				plainInput,
 				traced,
+				'{}',
+				'{ plan: [] }',
+				pairs,
 			)
 		: {
 				declaration: '',
-				expression: emitExpression(t, mode, 'trigger.body.input', lists, all, plainInput, traced),
+				expression: emitExpression(
+					t,
+					mode,
+					'trigger.body.input',
+					lists,
+					all,
+					plainInput,
+					traced,
+					'{}',
+					'{ plan: [] }',
+					pairs,
+				),
 			};
 	const expr = parts.expression;
 	return `import { webhook, workflow } from '@n8n/workflow-lang';

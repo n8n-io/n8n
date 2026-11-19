@@ -268,6 +268,18 @@ async function serviceBackend(): Promise<ServiceHandler> {
 				typeof event.workflowId === 'string' ? event.workflowId : '',
 			);
 		}
+		if (service === 'execution') {
+			// The n8n module saves these values with the run. This harness compares node outputs only.
+			const args = isRecord(event.args) ? event.args : {};
+			if (event.op === 'setCustomData') return { ok: true, result: null };
+			if (event.op === 'setTimeSaved') {
+				const { minutes } = args;
+				return typeof minutes === 'number' && Number.isFinite(minutes) && minutes >= 0
+					? { ok: true, result: null }
+					: { ok: false, error: { message: 'The minutes saved are not a number' } };
+			}
+			return { ok: false, error: { message: `Unknown execution operation "${String(event.op)}"` } };
+		}
 		if (service !== 'dataTable') {
 			return { ok: false, error: { message: `Unknown service "${service}"` } };
 		}

@@ -1,0 +1,50 @@
+{
+	"description": "A Code node in both modes and a Set node read the item of a node before an HTTP Request through the HTTP Request; the responses are one per request",
+	"trigger": {
+		"body": {
+			"items": 5
+		}
+	},
+	"http": {
+		"Http": {
+			"path": "thing",
+			"responses": [
+				{
+					"status": 200,
+					"body": {
+						"got": "r0"
+					}
+				},
+				{
+					"status": 200,
+					"body": {
+						"got": "r1"
+					}
+				},
+				{
+					"status": 200,
+					"body": {
+						"got": "r2"
+					}
+				},
+				{
+					"status": 200,
+					"body": {
+						"got": "r3"
+					}
+				},
+				{
+					"status": 200,
+					"body": {
+						"got": "r4"
+					}
+				}
+			]
+		}
+	},
+	"compare": [
+		"Read All",
+		"Read Each",
+		"Read Expr"
+	]
+}

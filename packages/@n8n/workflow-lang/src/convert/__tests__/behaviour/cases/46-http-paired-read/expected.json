@@ -1,0 +1,159 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Source",
+		"Http",
+		"Read All",
+		"Read Each",
+		"Read Expr"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"items": 5
+					}
+				}
+			]
+		],
+		"Source": [
+			[
+				{
+					"id": "a0"
+				},
+				{
+					"id": "a1"
+				},
+				{
+					"id": "a2"
+				},
+				{
+					"id": "a3"
+				},
+				{
+					"id": "a4"
+				}
+			]
+		],
+		"Http": [
+			[
+				{
+					"got": "r0"
+				},
+				{
+					"got": "r1"
+				},
+				{
+					"got": "r2"
+				},
+				{
+					"got": "r3"
+				},
+				{
+					"got": "r4"
+				}
+			]
+		],
+		"Read All": [
+			[
+				{
+					"got": "r0",
+					"src": "a0"
+				},
+				{
+					"got": "r1",
+					"src": "a0"
+				},
+				{
+					"got": "r2",
+					"src": "a0"
+				},
+				{
+					"got": "r3",
+					"src": "a0"
+				},
+				{
+					"got": "r4",
+					"src": "a0"
+				}
+			]
+		],
+		"Read Each": [
+			[
+				{
+					"got": "r0",
+					"src": "a0"
+				},
+				{
+					"got": "r1",
+					"src": "a1"
+				},
+				{
+					"got": "r2",
+					"src": "a2"
+				},
+				{
+					"got": "r3",
+					"src": "a3"
+				},
+				{
+					"got": "r4",
+					"src": "a4"
+				}
+			]
+		],
+		"Read Expr": [
+			[
+				{
+					"got": "r0",
+					"src": "a0"
+				},
+				{
+					"got": "r1",
+					"src": "a1"
+				},
+				{
+					"got": "r2",
+					"src": "a2"
+				},
+				{
+					"got": "r3",
+					"src": "a3"
+				},
+				{
+					"got": "r4",
+					"src": "a4"
+				}
+			]
+		]
+	},
+	"requests": [
+		{
+			"path": "/thing/%7B%7B%20$json.id%20%7D%7D",
+			"method": "GET"
+		},
+		{
+			"path": "/thing/%7B%7B%20$json.id%20%7D%7D",
+			"method": "GET"
+		},
+		{
+			"path": "/thing/%7B%7B%20$json.id%20%7D%7D",
+			"method": "GET"
+		},
+		{
+			"path": "/thing/%7B%7B%20$json.id%20%7D%7D",
+			"method": "GET"
+		},
+		{
+			"path": "/thing/%7B%7B%20$json.id%20%7D%7D",
+			"method": "GET"
+		}
+	],
+	"responses": []
+}

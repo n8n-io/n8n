@@ -1,0 +1,38 @@
+{
+	"description": "A Code node in both modes and a Set node read the item of a node before an HTTP Request through the HTTP Request, with the second request failing and 'Never Error' set: v1 pairs the error item with its input item too",
+	"trigger": {
+		"body": {
+			"items": 3
+		}
+	},
+	"http": {
+		"Http": {
+			"path": "thing",
+			"responses": [
+				{
+					"status": 200,
+					"body": {
+						"got": "r0"
+					}
+				},
+				{
+					"status": 500,
+					"body": {
+						"error": "boom"
+					}
+				},
+				{
+					"status": 200,
+					"body": {
+						"got": "r2"
+					}
+				}
+			]
+		}
+	},
+	"compare": [
+		"Read All",
+		"Read Each",
+		"Read Expr"
+	]
+}
