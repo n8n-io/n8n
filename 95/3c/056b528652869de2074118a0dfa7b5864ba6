@@ -1,0 +1,18 @@
+.github/WORKFLOWS.md
+  h_52a137d26d774c 946-949
+.github/scripts/owners/assign-reviewers.mjs
+  h_52a137d26d774c 45-47,53
+.github/scripts/owners/assign-reviewers.test.mjs
+  h_52a137d26d774c 151-164,166-167,170-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "953c056b528652869de2074118a0dfa7b5864ba6",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

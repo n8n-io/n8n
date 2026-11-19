@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/sensitive-data-map/sensitiveDataMap.panel.test.ts
+  s_4ea71e2ba1183f::t_0f5dfb3622913e 52,57,62,67-69,75-78
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4ea71e2ba1183f::t_4f0db3443f45e0 4010-4018
+packages/frontend/editor-ui/src/features/sensitive-data-map/sensitiveDataMap.types.ts
+  s_4ea71e2ba1183f::t_fc37a61ba91d60 56-57
+packages/frontend/editor-ui/src/features/sensitive-data-map/components/SensitiveDataPanel.test.ts
+  s_4ea71e2ba1183f::t_0f5dfb3622913e 61-64
+packages/frontend/editor-ui/src/features/sensitive-data-map/components/SensitiveDataPanel.vue
+  s_4ea71e2ba1183f::t_c9742b56aa84b0 7,16-23,51-55,98-113,115-124,239-240,242-246,249-251
+packages/frontend/editor-ui/src/features/sensitive-data-map/engine/__tests__/findSensitiveData.flow.test.ts
+  s_4ea71e2ba1183f::t_0f5dfb3622913e 123-142
+packages/frontend/editor-ui/src/features/sensitive-data-map/sensitiveDataMap.panel.ts
+  s_4ea71e2ba1183f::t_e2b43cc98c8109 20-42,48,60-69,77-116,127-128,132,136-138,160,171
+packages/frontend/editor-ui/src/features/sensitive-data-map/engine/findSensitiveData.ts
+  s_4ea71e2ba1183f::t_fc37a61ba91d60 109-125,139,171-188,195-202
+  s_4ea71e2ba1183f::t_54fb21a90514c3 311,313
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "352b45bec45149da1c878c038e0e4c4f9c43477a",
+  "prompts": {},
+  "sessions": {
+    "s_4ea71e2ba1183f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79c66528-1553-4a0f-a9b2-b8474eca94f5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+packages/@n8n/n8n-node-codegen/src/types.ts
+  s_9baea89e7b81d2::t_d4af61df728783 67-77
+  s_9baea89e7b81d2::t_166bb3bb548063 60-65
+packages/@n8n/n8n-node-codegen/src/n8n-node.config.ts
+  s_9baea89e7b81d2::t_166bb3bb548063 3
+packages/@n8n/n8n-node-codegen/src/generate.ts
+  s_9baea89e7b81d2::t_5c61df23ffb96b 8
+  s_9baea89e7b81d2::t_166bb3bb548063 10
+packages/@n8n/n8n-node-codegen/src/report.ts
+  s_9baea89e7b81d2::t_48b72fa70c04be 1
+  s_9baea89e7b81d2::t_d4af61df728783 7-11,18-19
+  s_9baea89e7b81d2::t_8953fc60d57180 12-17
+packages/@n8n/n8n-node-codegen/src/resolve-operations.ts
+  s_9baea89e7b81d2::t_f964e9c746b85d 4,6
+packages/@n8n/n8n-node-codegen/src/__tests__/resolve-operations.test.ts
+  s_9baea89e7b81d2::t_166bb3bb548063 23
+packages/@n8n/n8n-node-codegen/src/spec/read-spec.ts
+  s_9baea89e7b81d2::t_166bb3bb548063 83,86,94,171,174-175,181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6f551e7110121aff046e6b4916fb19b01579f58f",
+  "prompts": {},
+  "sessions": {
+    "s_9baea89e7b81d2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "88c8a28e-9bc2-46c2-84de-8e64cd7c3f92",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

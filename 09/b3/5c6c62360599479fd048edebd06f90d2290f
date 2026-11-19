@@ -1,0 +1,44 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeDefault.test.ts
+  s_126e90b504d18d::t_dc9ea09c0e003e 491,502
+packages/frontend/editor-ui/src/features/ai/skills/useSkillDependencies.ts
+  s_126e90b504d18d::t_c2e6a85150670c 93
+packages/frontend/editor-ui/src/features/ai/skills/skillDependencyState.ts
+  s_126e90b504d18d::t_c2e6a85150670c 2,20-22
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.ts
+  s_126e90b504d18d::t_9f448122679ddd 661-662
+  s_126e90b504d18d::t_14c43b4fbfa032 632-639
+  s_126e90b504d18d::t_e7e8cf465099e1 665-667
+  s_126e90b504d18d::t_2375c1955a0c75 663-664
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNodeToolbar.vue
+  s_126e90b504d18d::t_2f9b73cffb7e69 18-21,149-157,242-249
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.test.ts
+  s_126e90b504d18d::t_dc9ea09c0e003e 579,585,660,677
+packages/frontend/editor-ui/src/features/workflows/canvas/canvas.utils.test.ts
+  s_126e90b504d18d::t_dc9ea09c0e003e 1207,1222,1245
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNode.vue
+  s_126e90b504d18d::t_9f448122679ddd 206
+packages/@n8n/nodes-langchain/nodes/tools/ToolSkill/ToolSkill.node.ts
+  s_126e90b504d18d::t_67c17a677e6eb3 258
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_126e90b504d18d::t_2f9b73cffb7e69 1817,1885
+  s_126e90b504d18d::t_0a5e0aeacf54e9 26,1818,1839-1882,1892
+  s_126e90b504d18d::t_c2e6a85150670c 1821-1823
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.test.ts
+  s_126e90b504d18d::t_dc9ea09c0e003e 386
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "09b35c6c62360599479fd048edebd06f90d2290f",
+  "prompts": {},
+  "sessions": {
+    "s_126e90b504d18d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53d0ed1b-1ddd-4373-8a47-d0ff0bb754c7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

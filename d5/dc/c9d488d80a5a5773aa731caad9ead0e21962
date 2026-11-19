@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/workflowTests/views/WorkflowTestsView.test.ts
+  s_e214e69ba1c23e::t_8688c43c82c482 12,140-147
+packages/frontend/editor-ui/src/features/workflowTests/views/WorkflowTestsView.vue
+  s_e214e69ba1c23e::t_28712960f44f75 64-65,221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d5dcc9d488d80a5a5773aa731caad9ead0e21962",
+  "prompts": {},
+  "sessions": {
+    "s_e214e69ba1c23e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb3288dc-0c71-4e65-bb28-f8ed9e52afb6",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}
