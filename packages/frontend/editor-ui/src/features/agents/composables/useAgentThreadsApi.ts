@@ -1,9 +1,12 @@
 import type {
 	AgentMessageAuthor,
+	AgentPersistedMessageDto,
 	AgentSessionPreviewAccess,
 	AgentSessionLangSmithExportResponse,
 	AgentSessionOrigin,
 	AgentSessionStatus,
+	AgentSessionStopResponse,
+	AgentThreadMemoryDto,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -33,7 +36,13 @@ export interface AgentExecutionThread extends AgentSessionPreviewAccess {
 	status?: AgentSessionStatus | null;
 }
 
-export type AgentExecutionStatus = 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
+export type AgentExecutionStatus =
+	| 'running'
+	| 'success'
+	| 'error'
+	| 'cancelled'
+	| 'interrupted'
+	| 'awaiting';
 export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
 export type AgentExecutionFailureKind = 'execution' | 'tool' | 'node' | 'workflow';
 export type { AgentSessionOrigin, AgentSessionStatus };
@@ -91,6 +100,7 @@ export interface AgentExecution {
 	stoppedAt: string | null;
 	duration: number;
 	userMessage: string | null;
+	inputMessages?: AgentPersistedMessageDto[];
 	/** Chat platform user who wrote the turn; null outside chat integrations. */
 	author: AgentMessageAuthor | null;
 	attachments: AgentExecutionAttachment[] | null;
@@ -104,11 +114,14 @@ export interface AgentExecution {
 	failureSummary: AgentExecutionFailureSummary | null;
 	hitlStatus: AgentExecutionHitlStatus | null;
 	source: string | null;
+	finishReason: string | null;
+	guardrailCode: string | null;
 }
 
 export interface ThreadDetail {
 	thread: AgentExecutionThread;
 	executions: AgentExecution[];
+	memory?: AgentThreadMemoryDto;
 }
 
 export interface ThreadsPage {
@@ -168,6 +181,34 @@ export const deleteThread = async (
 		context,
 		'DELETE',
 		`${agentBasePath(projectId, agentId)}/threads/${encodeURIComponent(threadId)}`,
+	);
+};
+
+export const resumeTaskApproval = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	body: { toolCallId: string; resumeData: unknown },
+): Promise<{ success: boolean }> => {
+	return await makeRestApiRequest<{ success: boolean }>(
+		context,
+		'POST',
+		`${agentBasePath(projectId, agentId)}/threads/${encodeURIComponent(threadId)}/approval`,
+		body,
+	);
+};
+
+export const stopSession = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+): Promise<AgentSessionStopResponse> => {
+	return await makeRestApiRequest<AgentSessionStopResponse>(
+		context,
+		'POST',
+		`${agentBasePath(projectId, agentId)}/threads/${encodeURIComponent(threadId)}/stop`,
 	);
 };
 

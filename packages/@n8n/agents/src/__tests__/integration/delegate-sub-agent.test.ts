@@ -15,6 +15,48 @@ const describe = describeIf('anthropic');
 const SENTINEL = 'SUBAGENT_OK_731';
 
 describe('delegate_subagent integration', () => {
+	it.each([
+		{
+			mode: 'foreground',
+			request:
+				'As one step in a larger API comparison, delegate a short review of these notes to an inline child: API A uses OAuth, and API B uses API keys. This is a small, sequential review. Then summarize its result.',
+			output: { status: 'completed', answer: 'API A uses OAuth; API B uses API keys.' },
+		},
+		{
+			mode: 'background',
+			request:
+				'As one step in a larger API comparison, ask an inline child to research API authentication options in the background. Return once the job is launched; I will continue other work.',
+			output: { status: 'started', jobId: 'background-job-1' },
+		},
+	])('selects $mode execution through the consolidated tool', async ({ request, output }) => {
+		const parent = new Agent('delegation-mode-integration')
+			.model('anthropic/claude-sonnet-4-5')
+			.instructions(
+				'Delegate the bounded research subtask once, then report the tool outcome. Choose the execution mode using the tool guidance and the user request.',
+			)
+			.tool(
+				createDelegateSubAgentTool({
+					runSubAgent: async () => ({
+						status: 'completed',
+						answer: 'API A uses OAuth; API B uses API keys.',
+					}),
+					runBackgroundSubAgent: async () => ({
+						status: 'started',
+						jobId: 'background-job-1',
+					}),
+				}),
+			);
+
+		try {
+			const result = await parent.generate(request);
+			expect(result.toolCalls).toHaveLength(1);
+			expect(result.toolCalls?.[0]).toMatchObject({ tool: 'delegate_subagent', output });
+			expect(result.finishReason).toBe('stop');
+		} finally {
+			await parent.close();
+		}
+	});
+
 	it('lets a real parent agent call delegate_subagent and use its result', async () => {
 		const delegateTool = createDelegateSubAgentTool({
 			policy: { maxChildren: 1 },

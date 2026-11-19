@@ -1,6 +1,7 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
 	getProxyAgent,
+	aiClientFetch,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
@@ -18,6 +19,7 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
+import { getRequiredApiKey } from '@utils/helpers';
 import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 import { COMPATIBLE_MODE_SUFFIX } from './alibaba-cloud-base-url';
@@ -134,7 +136,7 @@ export class LmChatAlibabaCloud implements INodeType {
 		icon: 'file:alibaba.svg',
 		group: ['transform'],
 		version: [1, 1.1],
-		description: 'For advanced usage with an AI chain',
+		description: 'Run Qwen models, with optional response-format settings',
 		defaults: {
 			name: 'Qwen Cloud Chat Model',
 		},
@@ -151,7 +153,7 @@ export class LmChatAlibabaCloud implements INodeType {
 					},
 				],
 			},
-			alias: ['qwen', 'dashscope', 'alibaba', 'model studio'],
+			alias: ['qwen', 'dashscope', 'alibaba', 'model studio', 'deepseek'],
 		},
 
 		inputs: [],
@@ -320,6 +322,7 @@ export class LmChatAlibabaCloud implements INodeType {
 		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			baseURL,
+			fetch: aiClientFetch,
 			fetchOptions: {
 				dispatcher: getProxyAgent(
 					baseURL,
@@ -333,7 +336,7 @@ export class LmChatAlibabaCloud implements INodeType {
 		};
 
 		const model = new ChatOpenAI({
-			apiKey: credentials.apiKey,
+			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			model: modelName,
 			...options,
 			timeout,

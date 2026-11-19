@@ -5,20 +5,27 @@ import { describe, test, it, expect, vi, beforeEach, afterEach, beforeAll, after
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
 import { ensureThread, postMessage, postConfirmation, postCancel } from '../instanceAi.api';
 import {
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	type InstanceAiAgentNode,
 	type InstanceAiCredentialDestination,
 	type InstanceAiTargetApproval,
 } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { deepCopy } from 'n8n-workflow';
 import { USER_TYPED_MESSAGE } from '../prefills';
 import {
 	createThreadRuntime,
+	getAppTargetsFromThreadMetadata,
 	getAgentBuilderTargetFromThreadMetadata,
+	getAgentBuilderTargetsFromThreadMetadata,
 	getAgentPreviewSessionFromThreadMetadata,
 	getAgentPreviewViewFromThreadMetadata,
+	getPendingAppTargetFromThreadMetadata,
+	threadTargetsAgent,
 	type ThreadRuntime,
 } from '../instanceAi.threadRuntime';
 
@@ -444,7 +451,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				preferences: [{ id: 'pref-1', scope: 'instance' }],
 				renderedLength: 40,
 				injectedThisTurn: false,
-				carriedFromRunId: 'run-0',
 			},
 		});
 
@@ -452,7 +458,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		await runtime.loadHistoricalMessages();
 
 		expect(runtime.appliedPreferences?.preferences.map(({ id }) => id)).toEqual(['pref-1']);
-		expect(runtime.appliedPreferences?.carriedFromRunId).toBe('run-0');
+		expect(runtime.appliedPreferences?.injectedThisTurn).toBe(false);
 	});
 
 	test('a live payload that arrived during restore is not overwritten by the persisted one', async () => {
@@ -1314,6 +1320,10 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				attachment_count: 0,
+				selected_element_count: 0,
+				approval_mode: 'unavailable',
 			},
 		);
 		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(
@@ -1327,6 +1337,10 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				attachment_count: 0,
+				selected_element_count: 0,
+				approval_mode: 'unavailable',
 			},
 		);
 		expect(warnSpy).toHaveBeenCalledWith(
@@ -1404,6 +1418,10 @@ describe('createThreadRuntime - SSE and hydration', () => {
 					prefill_type: 'handoff_setup_panel_execute',
 					prefill_id: null,
 					prompt_modified: false,
+					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+					attachment_count: 0,
+					selected_element_count: 0,
+					approval_mode: 'unavailable',
 				},
 			);
 		});
@@ -1433,6 +1451,81 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		});
 	});
 
+	test('sendMessage reports mention, attachment, and selected element counts', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+		await activeRuntime(registry).sendMessage('Compare the workflow and node', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: [
+				{ type: 'workflow', id: 'workflow-1', name: 'Orders' },
+				{
+					type: 'nodes',
+					workflowId: 'workflow-1',
+					sets: [{ nodes: [{ id: 'node-1', name: 'Validate' }] }],
+				},
+				{ type: 'element', appId: 'app-1', tagName: 'button' },
+			],
+			mentionCounts: {
+				total: 3,
+				workflow: 1,
+				node: 1,
+				group: 1,
+			},
+		});
+
+		expect(mockTelemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+			expect.objectContaining({
+				mention_counts: { total: 3, workflow: 1, node: 1, group: 1 },
+				attachment_count: 3,
+				selected_element_count: 1,
+			}),
+		);
+		warnSpy.mockRestore();
+	});
+
+	test('sendMessage records a mentioned workflow as a mentioned tab on a fresh thread', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const runtime = activeRuntime(registry);
+
+		// The sent message is the only trace of the mention: on the wire it is a
+		// plain workflow attachment, like a hand-off would be, and the tab comes
+		// with the message rather than with the pick.
+		expect(runtime.producedArtifacts.has('workflow-mentioned')).toBe(false);
+		await runtime.sendMessage('Look at this', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: [
+				{ type: 'workflow', id: 'workflow-mentioned', name: 'Orders' },
+				{ type: 'workflow', id: 'workflow-handoff', name: 'Canvas' },
+			],
+			mentionCounts: { total: 1, workflow: 1, node: 0, group: 0 },
+			mentionedWorkflowIds: ['workflow-mentioned'],
+		});
+		await nextTick();
+
+		expect(runtime.producedArtifacts.get('workflow-mentioned')?.name).toBe('Orders');
+		expect(runtime.producedArtifactOrigins.get('workflow-mentioned')).toBe('mentioned');
+		expect(runtime.producedArtifactOrigins.get('workflow-handoff')).toBe('attached');
+	});
+
+	test('a refused send leaves no tab and no origin behind for a mentioned workflow', async () => {
+		mockPostMessage.mockRejectedValueOnce(new Error('post failed'));
+		const runtime = activeRuntime(registry);
+
+		const sent = await runtime.sendMessage('Look at this', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: [{ type: 'workflow', id: 'workflow-mentioned', name: 'Orders' }],
+			mentionCounts: { total: 1, workflow: 1, node: 0, group: 0 },
+			mentionedWorkflowIds: ['workflow-mentioned'],
+		});
+		await nextTick();
+
+		expect(sent).toBe(false);
+		expect(runtime.producedArtifacts.has('workflow-mentioned')).toBe(false);
+		expect(runtime.producedArtifactOrigins.has('workflow-mentioned')).toBe(false);
+	});
+
 	test('sendMessage includes action_source from thread metadata', async () => {
 		const hooks = {
 			onTitleUpdated: vi.fn(),
@@ -1455,11 +1548,45 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				attachment_count: 0,
+				selected_element_count: 0,
+				approval_mode: 'unavailable',
 			},
 		);
 		expect(warnSpy).not.toHaveBeenCalled();
 		warnSpy.mockRestore();
 	});
+
+	test.each([
+		{ available: false, metadata: undefined, expected: 'unavailable' },
+		{ available: true, metadata: undefined, expected: 'auto' },
+		{
+			available: true,
+			metadata: { instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'project-1' } },
+			expected: 'manual',
+		},
+	])(
+		'sendMessage tracks the approval mode $expected',
+		async ({ available, metadata, expected }) => {
+			const settingsStore = mockedStore(useInstanceAiSettingsStore);
+			settingsStore.approvalModesAvailable = available;
+			settingsStore.approvalMode = 'auto';
+			const runtime = createThreadRuntime(activeThreadId, {
+				onTitleUpdated: vi.fn(),
+				onRunFinish: vi.fn(),
+				getThreadMetadata: () => metadata,
+			});
+			mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+
+			await runtime.sendMessage('hello', { authorship: USER_TYPED_MESSAGE });
+
+			expect(mockTelemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({ approval_mode: expected }),
+			);
+		},
+	);
 
 	test('sendMessage falls back and warns for invalid action_source values', async () => {
 		const hooks = {
@@ -1483,6 +1610,10 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				attachment_count: 0,
+				selected_element_count: 0,
+				approval_mode: 'unavailable',
 			},
 		);
 		expect(warnSpy).toHaveBeenCalledWith(
@@ -1516,6 +1647,10 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: 'suggestion_catalog',
 				prefill_id: 'v4-engineering-data-management-1',
 				prompt_modified: true,
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				attachment_count: 0,
+				selected_element_count: 0,
+				approval_mode: 'unavailable',
 			},
 		);
 		warnSpy.mockRestore();
@@ -1573,7 +1708,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			undefined,
 			expect.any(String),
 			'iframe-push-ref-123',
-			expect.any(Array),
+			expect.any(Boolean),
 			undefined,
 		);
 	});
@@ -1609,7 +1744,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			context,
 			expect.any(String),
 			undefined,
-			expect.any(Array),
+			expect.any(Boolean),
 			undefined,
 		);
 	});
@@ -1627,9 +1762,36 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			undefined,
 			expect.any(String),
 			undefined,
-			expect.any(Array),
+			expect.any(Boolean),
 			undefined,
 		);
+	});
+
+	test('sendMessage sends no tabs while the stored tabs of the view load', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const runtime = activeRuntime(registry);
+		runtime.producedArtifacts.set('wf-1', { type: 'workflow', id: 'wf-1', name: 'Maybe closed' });
+		runtime.setOpenTabs(null);
+
+		await runtime.sendMessage('Change it', { authorship: USER_TYPED_MESSAGE });
+
+		expect(mockPostMessage.mock.calls[0]?.[8]).toBeUndefined();
+	});
+
+	test('sendMessage forwards the open tabs instead of every produced artifact', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const runtime = activeRuntime(registry);
+		runtime.producedArtifacts.set('wf-1', { type: 'workflow', id: 'wf-1', name: 'Closed' });
+		runtime.producedArtifacts.set('wf-2', { type: 'workflow', id: 'wf-2', name: 'Open' });
+		runtime.setOpenTabs([{ type: 'workflow', id: 'wf-2', name: 'Open' }]);
+		runtime.setActiveArtifactId('wf-2');
+
+		await runtime.sendMessage('Change it', { authorship: USER_TYPED_MESSAGE });
+
+		expect(mockPostMessage.mock.calls[0]?.[8]).toEqual({
+			artifacts: [{ type: 'workflow', id: 'wf-2', name: 'Open' }],
+			activeId: 'wf-2',
+		});
 	});
 
 	test('sendMessage forwards the thread artifact index to postMessage', async () => {
@@ -1654,7 +1816,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			undefined,
 			expect.any(String),
 			undefined,
-			expect.any(Array),
+			expect.any(Boolean),
 			{
 				artifacts: [{ type: 'workflow', id: 'wf-1', name: 'WhatsApp FAQ Auto-Responder' }],
 				activeId: 'wf-1',
@@ -1779,6 +1941,9 @@ describe('createThreadRuntime - response timing telemetry', () => {
 					response_kind: 'completed',
 					action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 					tab_visible: false,
+					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+					attachment_count: 0,
+					selected_element_count: 0,
 				},
 			],
 			[
@@ -1792,9 +1957,44 @@ describe('createThreadRuntime - response timing telemetry', () => {
 					response_kind: 'completed',
 					action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 					tab_visible: false,
+					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+					attachment_count: 0,
+					selected_element_count: 0,
 				},
 			],
 		]);
+	});
+
+	test("repeats the message's context counts on the response event", async () => {
+		mockPostMessage.mockResolvedValueOnce({ runId: 'run-with-context' });
+
+		await activeRuntime(registry).sendMessage('Compare the workflow and node', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: [
+				{ type: 'workflow', id: 'workflow-1', name: 'Orders' },
+				{
+					type: 'nodes',
+					workflowId: 'workflow-1',
+					sets: [{ nodes: [{ id: 'node-1', name: 'Validate' }] }],
+				},
+				{ type: 'element', appId: 'app-1', tagName: 'button' },
+			],
+			mentionCounts: {
+				total: 3,
+				workflow: 1,
+				node: 1,
+				group: 1,
+			},
+		});
+		finishRun('run-with-context', 'completed');
+		await vi.waitFor(() => expect(responseMetricCalls()).toHaveLength(1));
+
+		expect(responseMetricCalls()[0][1]).toMatchObject({
+			run_id: 'run-with-context',
+			mention_counts: { total: 3, workflow: 1, node: 1, group: 1 },
+			attachment_count: 3,
+			selected_element_count: 1,
+		});
 	});
 
 	test('waits for the visible response render frame before tracking', async () => {
@@ -1858,7 +2058,11 @@ describe('createThreadRuntime - response timing telemetry', () => {
 				type: 'tool-call',
 				runId: 'run-confirmation',
 				agentId: 'agent-root',
-				payload: { toolCallId: 'tc-confirmation', toolName: 'workflows', args: { action: 'run' } },
+				payload: {
+					toolCallId: 'tc-confirmation',
+					toolName: 'workflow_builder_workflows',
+					args: { action: 'run' },
+				},
 			}),
 		);
 		capturedOnMessage!(
@@ -1869,7 +2073,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 				payload: {
 					requestId: 'req-confirmation',
 					toolCallId: 'tc-confirmation',
-					toolName: 'workflows',
+					toolName: 'workflow_builder_workflows',
 					args: { action: 'run' },
 					severity: 'info',
 					message: 'Run this workflow?',
@@ -1888,7 +2092,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 
 	test('waits for completion when a confirmation is auto-approved', async () => {
 		const runtime = activeRuntime(registry);
-		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
+		runtime.addAlwaysAllowKey('workflow_builder_workflows', { action: 'run' });
 		mockPostMessage.mockResolvedValueOnce({ runId: 'run-auto-approved' });
 		mockPostConfirmation.mockResolvedValueOnce({ ok: true });
 		await runtime.sendMessage('auto-approved action', { authorship: USER_TYPED_MESSAGE });
@@ -1898,7 +2102,11 @@ describe('createThreadRuntime - response timing telemetry', () => {
 				type: 'tool-call',
 				runId: 'run-auto-approved',
 				agentId: 'agent-root',
-				payload: { toolCallId: 'tc-auto', toolName: 'workflows', args: { action: 'run' } },
+				payload: {
+					toolCallId: 'tc-auto',
+					toolName: 'workflow_builder_workflows',
+					args: { action: 'run' },
+				},
 			}),
 		);
 		capturedOnMessage!(
@@ -1909,7 +2117,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 				payload: {
 					requestId: 'req-auto',
 					toolCallId: 'tc-auto',
-					toolName: 'workflows',
+					toolName: 'workflow_builder_workflows',
 					args: { action: 'run' },
 					severity: 'info',
 					message: 'Run this workflow?',
@@ -2091,7 +2299,7 @@ describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-1',
-							toolName: 'workflows',
+							toolName: 'workflow_builder_workflows',
 							args: { action: 'run' },
 							isLoading: true,
 							confirmation: { requestId: 'req-1', severity: 'info', message: 'Run?' },
@@ -2139,7 +2347,7 @@ describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-1',
-							toolName: 'workflows',
+							toolName: 'workflow_builder_workflows',
 							args: { action: 'run' },
 							isLoading: true,
 							confirmation: { requestId: 'req-deny', severity: 'info', message: 'Run?' },
@@ -2174,7 +2382,14 @@ describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
 					status: 'active',
 					textContent: '',
 					reasoning: '',
-					toolCalls: [{ toolCallId: 'tc-root', toolName: 'workflows', args: {}, isLoading: true }],
+					toolCalls: [
+						{
+							toolCallId: 'tc-root',
+							toolName: 'workflow_builder_workflows',
+							args: {},
+							isLoading: true,
+						},
+					],
 					children: [
 						{
 							agentId: 'agent-child',
@@ -2183,7 +2398,12 @@ describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
 							textContent: '',
 							reasoning: '',
 							toolCalls: [
-								{ toolCallId: 'tc-child', toolName: 'build-workflow', args: {}, isLoading: true },
+								{
+									toolCallId: 'tc-child',
+									toolName: 'workflow_builder_build_workflow',
+									args: {},
+									isLoading: true,
+								},
 							],
 							children: [],
 							timeline: [],
@@ -2235,7 +2455,14 @@ describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
 					status: 'active',
 					textContent: '',
 					reasoning: '',
-					toolCalls: [{ toolCallId: 'tc-root', toolName: 'workflows', args: {}, isLoading: true }],
+					toolCalls: [
+						{
+							toolCallId: 'tc-root',
+							toolName: 'workflow_builder_workflows',
+							args: {},
+							isLoading: true,
+						},
+					],
 					children: [],
 					timeline: [],
 				},
@@ -2274,7 +2501,14 @@ describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
 					status: 'active',
 					textContent: '',
 					reasoning: '',
-					toolCalls: [{ toolCallId: 'tc-root', toolName: 'workflows', args: {}, isLoading: true }],
+					toolCalls: [
+						{
+							toolCallId: 'tc-root',
+							toolName: 'workflow_builder_workflows',
+							args: {},
+							isLoading: true,
+						},
+					],
 					children: [],
 					timeline: [],
 				},
@@ -2463,6 +2697,31 @@ describe('createThreadRuntime - inline MCP connect confirmation', () => {
 		expect(runtime.isAwaitingConfirmation).toBe(false);
 	});
 
+	it('counts as awaiting user input while its run is active, although it is not in the panel', () => {
+		const runtime = seedConfirmation({
+			requestId: 'req-mcp-active',
+			severity: 'info',
+			message: 'To search the web',
+			mcpConnectRequest: { servers: [{ serverSlug: 'brave', title: 'Brave' }] },
+		});
+		runtime.activeRunId = 'run-1';
+
+		expect(runtime.isAwaitingConfirmation).toBe(false);
+		expect(runtime.isAwaitingUserInput).toBe(true);
+	});
+
+	it('does not count as awaiting user input once its run has ended', () => {
+		const runtime = seedConfirmation({
+			requestId: 'req-mcp-ended',
+			severity: 'info',
+			message: 'To search the web',
+			mcpConnectRequest: { servers: [{ serverSlug: 'brave', title: 'Brave' }] },
+		});
+
+		expect(runtime.activeRunId).toBeNull();
+		expect(runtime.isAwaitingUserInput).toBe(false);
+	});
+
 	it('leaves other confirmations on the same tool in the panel', () => {
 		const runtime = seedConfirmation({
 			requestId: 'req-plain',
@@ -2603,12 +2862,12 @@ describe('createThreadRuntime - session always-allow', () => {
 
 	it('auto-approves matching generic-eligible confirmations after key is added', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
+		runtime.addAlwaysAllowKey('workflow_builder_workflows', { action: 'run' });
 
 		pushPendingApproval(runtime, {
 			messageId: 'msg-auto',
 			requestId: 'req-auto',
-			toolName: 'workflows',
+			toolName: 'workflow_builder_workflows',
 			args: { action: 'run' },
 		});
 
@@ -2640,12 +2899,12 @@ describe('createThreadRuntime - session always-allow', () => {
 
 	it('does not auto-approve channel-setup confirmations even when the key matches', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('configure_channel', {});
+		runtime.addAlwaysAllowKey('agent_builder_configure_channel', {});
 
 		pushPendingApproval(runtime, {
 			messageId: 'msg-channel',
 			requestId: 'req-channel',
-			toolName: 'configure_channel',
+			toolName: 'agent_builder_configure_channel',
 			args: {},
 			channelConfig: { integrationType: 'slack', agentId: 'agent-1' },
 		});
@@ -2657,12 +2916,12 @@ describe('createThreadRuntime - session always-allow', () => {
 
 	it('does not auto-approve destructive confirmations even when the key matches', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('workflows', { action: 'delete' });
+		runtime.addAlwaysAllowKey('workflow_builder_workflows', { action: 'delete' });
 
 		pushPendingApproval(runtime, {
 			messageId: 'msg-destructive',
 			requestId: 'req-destructive',
-			toolName: 'workflows',
+			toolName: 'workflow_builder_workflows',
 			args: { action: 'delete' },
 			severity: 'destructive',
 		});
@@ -2674,12 +2933,12 @@ describe('createThreadRuntime - session always-allow', () => {
 
 	it('does not auto-approve target-agent approvals even when the outer tool key matches', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('build-agent', {});
+		runtime.addAlwaysAllowKey('agent_builder_build_agent', {});
 
 		pushPendingApproval(runtime, {
 			messageId: 'msg-target-approval',
 			requestId: 'req-target-approval',
-			toolName: 'build-agent',
+			toolName: 'agent_builder_build_agent',
 			targetApproval: {
 				toolName: 'delete_record',
 				args: { id: 'record-1' },
@@ -2693,12 +2952,12 @@ describe('createThreadRuntime - session always-allow', () => {
 
 	it('does not auto-approve credential destinations with a generic setup grant', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('workflows', { action: 'setup' });
+		runtime.addAlwaysAllowKey('workflow_builder_workflows', { action: 'setup' });
 
 		pushPendingApproval(runtime, {
 			messageId: 'msg-destination',
 			requestId: 'req-destination',
-			toolName: 'workflows',
+			toolName: 'workflow_builder_workflows',
 			args: { action: 'setup', workflowId: 'workflow-1' },
 			credentialDestination: {
 				origin: 'https://api.example.com',
@@ -2737,13 +2996,16 @@ describe('createThreadRuntime - session always-allow', () => {
 
 	it('scopes workflow update grants per workflow', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('workflows', { action: 'update', workflowId: 'wf-1' });
-		runtime.addAlwaysAllowKey('build-workflow', { workflowId: 'wf-1' });
+		runtime.addAlwaysAllowKey('workflow_builder_workflows', {
+			action: 'update',
+			workflowId: 'wf-1',
+		});
+		runtime.addAlwaysAllowKey('workflow_builder_build_workflow', { workflowId: 'wf-1' });
 
 		pushPendingApproval(runtime, {
 			messageId: 'msg-update-1',
 			requestId: 'req-update-1',
-			toolName: 'workflows',
+			toolName: 'workflow_builder_workflows',
 			args: { action: 'update', workflowId: 'wf-1' },
 		});
 		await vi.waitFor(() => {
@@ -2753,7 +3015,7 @@ describe('createThreadRuntime - session always-allow', () => {
 		pushPendingApproval(runtime, {
 			messageId: 'msg-build-1',
 			requestId: 'req-build-1',
-			toolName: 'build-workflow',
+			toolName: 'workflow_builder_build_workflow',
 			args: { workflowId: 'wf-1' },
 		});
 		await vi.waitFor(() => {
@@ -2763,7 +3025,7 @@ describe('createThreadRuntime - session always-allow', () => {
 		pushPendingApproval(runtime, {
 			messageId: 'msg-update-2',
 			requestId: 'req-update-2',
-			toolName: 'workflows',
+			toolName: 'workflow_builder_workflows',
 			args: { action: 'update', workflowId: 'wf-2' },
 		});
 		await new Promise((resolve) => setTimeout(resolve, 10));
@@ -2773,12 +3035,12 @@ describe('createThreadRuntime - session always-allow', () => {
 	it('scopes bound build-workflow grants from confirmation.workflowId when args omit it', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
 		// Bound saves often omit args.workflowId; the suspend payload carries it.
-		runtime.addAlwaysAllowKey('build-workflow', {}, 'wf-1');
+		runtime.addAlwaysAllowKey('workflow_builder_build_workflow', {}, 'wf-1');
 
 		pushPendingApproval(runtime, {
 			messageId: 'msg-bound-1',
 			requestId: 'req-bound-1',
-			toolName: 'build-workflow',
+			toolName: 'workflow_builder_build_workflow',
 			args: { filePath: 'src/workflows/main.workflow.ts' },
 			workflowId: 'wf-1',
 		});
@@ -2789,7 +3051,7 @@ describe('createThreadRuntime - session always-allow', () => {
 		pushPendingApproval(runtime, {
 			messageId: 'msg-bound-2',
 			requestId: 'req-bound-2',
-			toolName: 'build-workflow',
+			toolName: 'workflow_builder_build_workflow',
 			args: { filePath: 'src/workflows/other.workflow.ts' },
 			workflowId: 'wf-2',
 		});
@@ -2799,30 +3061,95 @@ describe('createThreadRuntime - session always-allow', () => {
 
 	it('does not store a blanket build-workflow always-allow key without a workflow id', () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('build-workflow', { filePath: 'src/workflows/main.workflow.ts' });
+		runtime.addAlwaysAllowKey('workflow_builder_build_workflow', {
+			filePath: 'src/workflows/main.workflow.ts',
+		});
 		expect(runtime.sessionAlwaysAllowKeys.size).toBe(0);
 	});
 
 	it('reports canAlwaysAllow false for unscoped workflow edits', () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
 		expect(
-			runtime.canAlwaysAllow('build-workflow', { filePath: 'src/workflows/main.workflow.ts' }),
+			runtime.canAlwaysAllow('workflow_builder_build_workflow', {
+				filePath: 'src/workflows/main.workflow.ts',
+			}),
 		).toBe(false);
-		expect(runtime.canAlwaysAllow('workflows', { action: 'update' })).toBe(false);
-		expect(runtime.canAlwaysAllow('build-workflow', {}, 'wf-1')).toBe(true);
-		expect(runtime.canAlwaysAllow('workflows', { action: 'update', workflowId: 'wf-1' })).toBe(
-			true,
-		);
+		expect(runtime.canAlwaysAllow('workflow_builder_workflows', { action: 'update' })).toBe(false);
+		expect(runtime.canAlwaysAllow('workflow_builder_build_workflow', {}, 'wf-1')).toBe(true);
+		expect(
+			runtime.canAlwaysAllow('workflow_builder_workflows', {
+				action: 'update',
+				workflowId: 'wf-1',
+			}),
+		).toBe(true);
+	});
+
+	describe('batch data table changes', () => {
+		const insertAndRename = {
+			changes: [
+				{ action: 'insert-rows', table: 'Leads' },
+				{ action: 'rename-column', table: 'Leads' },
+			],
+		};
+
+		it('auto-approves a batch when every action has a session grant', async () => {
+			const runtime = registry.getOrCreateRuntime(activeThreadId);
+			runtime.addAlwaysAllowKey('change_data_tables', insertAndRename);
+
+			pushPendingApproval(runtime, {
+				messageId: 'msg-batch-1',
+				requestId: 'req-batch-1',
+				toolName: 'change_data_tables',
+				args: { changes: [{ action: 'rename-column', table: 'Orders' }] },
+			});
+			await vi.waitFor(() => {
+				expect(runtime.resolvedConfirmationIds.get('req-batch-1')).toBe('approved');
+			});
+		});
+
+		it('keeps the card when one action of the batch has no session grant', async () => {
+			const runtime = registry.getOrCreateRuntime(activeThreadId);
+			runtime.addAlwaysAllowKey('change_data_tables', insertAndRename);
+
+			pushPendingApproval(runtime, {
+				messageId: 'msg-batch-2',
+				requestId: 'req-batch-2',
+				toolName: 'change_data_tables',
+				args: {
+					changes: [
+						{ action: 'insert-rows', table: 'Leads' },
+						{ action: 'add-column', table: 'Leads' },
+					],
+				},
+			});
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			expect(runtime.resolvedConfirmationIds.has('req-batch-2')).toBe(false);
+		});
+
+		it('keeps the card for a batch that gives no grant key', async () => {
+			const runtime = registry.getOrCreateRuntime(activeThreadId);
+			runtime.addAlwaysAllowKey('change_data_tables', insertAndRename);
+
+			pushPendingApproval(runtime, {
+				messageId: 'msg-batch-3',
+				requestId: 'req-batch-3',
+				toolName: 'change_data_tables',
+				args: { changes: [] },
+			});
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			expect(runtime.resolvedConfirmationIds.has('req-batch-3')).toBe(false);
+			expect(runtime.canAlwaysAllow('change_data_tables', { changes: [] })).toBe(false);
+		});
 	});
 
 	it('scopes executions run grants per workflow', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('executions', { action: 'run', workflowId: 'wf-1' });
+		runtime.addAlwaysAllowKey('workflow_builder_executions', { action: 'run', workflowId: 'wf-1' });
 
 		pushPendingApproval(runtime, {
 			messageId: 'msg-wf-1',
 			requestId: 'req-wf-1',
-			toolName: 'executions',
+			toolName: 'workflow_builder_executions',
 			args: { action: 'run', workflowId: 'wf-1' },
 		});
 		await vi.waitFor(() => {
@@ -2832,16 +3159,107 @@ describe('createThreadRuntime - session always-allow', () => {
 		pushPendingApproval(runtime, {
 			messageId: 'msg-wf-2',
 			requestId: 'req-wf-2',
-			toolName: 'executions',
+			toolName: 'workflow_builder_executions',
 			args: { action: 'run', workflowId: 'wf-2' },
 		});
 		await new Promise((resolve) => setTimeout(resolve, 10));
 		expect(runtime.resolvedConfirmationIds.has('req-wf-2')).toBe(false);
 	});
 
+	describe('execute_node grants', () => {
+		const sheetsArgs = { type: 'n8n-nodes-base.googleSheets' };
+
+		it('auto-approves a later execute_node call for the same node type', async () => {
+			const runtime = registry.getOrCreateRuntime(activeThreadId);
+			runtime.addAlwaysAllowKey('execute_node', sheetsArgs);
+			expect(runtime.sessionAlwaysAllowKeys.size).toBe(1);
+
+			pushPendingApproval(runtime, {
+				messageId: 'msg-exec-same',
+				requestId: 'req-exec-same',
+				toolName: 'execute_node',
+				args: { type: 'n8n-nodes-base.googleSheets' },
+			});
+
+			await vi.waitFor(() => {
+				expect(runtime.resolvedConfirmationIds.get('req-exec-same')).toBe('approved');
+			});
+			expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-exec-same', {
+				kind: 'approval',
+				approved: true,
+			});
+		});
+
+		it('does not auto-approve execute_node for a different node type', async () => {
+			const runtime = registry.getOrCreateRuntime(activeThreadId);
+			runtime.addAlwaysAllowKey('execute_node', sheetsArgs);
+
+			pushPendingApproval(runtime, {
+				messageId: 'msg-exec-other',
+				requestId: 'req-exec-other',
+				toolName: 'execute_node',
+				args: { type: 'n8n-nodes-base.slack' },
+			});
+
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			expect(runtime.resolvedConfirmationIds.has('req-exec-other')).toBe(false);
+			expect(mockPostConfirmation).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['missing', {}],
+			['empty', { type: '' }],
+		])('does not auto-approve execute_node with a %s type', async (_label, args) => {
+			const runtime = registry.getOrCreateRuntime(activeThreadId);
+			runtime.addAlwaysAllowKey('execute_node', sheetsArgs);
+
+			pushPendingApproval(runtime, {
+				messageId: 'msg-exec-notype',
+				requestId: 'req-exec-notype',
+				toolName: 'execute_node',
+				args,
+			});
+
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			expect(runtime.resolvedConfirmationIds.has('req-exec-notype')).toBe(false);
+			expect(mockPostConfirmation).not.toHaveBeenCalled();
+		});
+
+		it('does not store an execute_node grant without a node type', () => {
+			const runtime = registry.getOrCreateRuntime(activeThreadId);
+			runtime.addAlwaysAllowKey('execute_node', {});
+			expect(runtime.sessionAlwaysAllowKeys.size).toBe(0);
+			expect(runtime.canAlwaysAllow('execute_node', { type: '' })).toBe(false);
+		});
+
+		it('still scopes legacy workflow_builder_nodes execute grants by node type', async () => {
+			const runtime = registry.getOrCreateRuntime(activeThreadId);
+			runtime.addAlwaysAllowKey('workflow_builder_nodes', { action: 'execute', ...sheetsArgs });
+
+			pushPendingApproval(runtime, {
+				messageId: 'msg-legacy-same',
+				requestId: 'req-legacy-same',
+				toolName: 'workflow_builder_nodes',
+				args: { action: 'execute', type: 'n8n-nodes-base.googleSheets' },
+			});
+			await vi.waitFor(() => {
+				expect(runtime.resolvedConfirmationIds.get('req-legacy-same')).toBe('approved');
+			});
+
+			pushPendingApproval(runtime, {
+				messageId: 'msg-legacy-other',
+				requestId: 'req-legacy-other',
+				toolName: 'workflow_builder_nodes',
+				args: { action: 'execute', type: 'n8n-nodes-base.slack' },
+			});
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			expect(runtime.resolvedConfirmationIds.has('req-legacy-other')).toBe(false);
+		});
+	});
+
 	it('clears keys on resetState', () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
+		runtime.addAlwaysAllowKey('workflow_builder_workflows', { action: 'run' });
 		expect(runtime.sessionAlwaysAllowKeys.size).toBe(1);
 
 		runtime.resetState();
@@ -2851,12 +3269,12 @@ describe('createThreadRuntime - session always-allow', () => {
 	it('keeps the confirmation pending when auto-approve POST fails', async () => {
 		mockPostConfirmation.mockRejectedValueOnce(new Error('network down'));
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
+		runtime.addAlwaysAllowKey('workflow_builder_workflows', { action: 'run' });
 
 		pushPendingApproval(runtime, {
 			messageId: 'msg-fail',
 			requestId: 'req-fail',
-			toolName: 'workflows',
+			toolName: 'workflow_builder_workflows',
 			args: { action: 'run' },
 		});
 
@@ -2893,7 +3311,7 @@ describe('createThreadRuntime - "User viewed new builder workflow" telemetry', (
 				toolCalls: [
 					{
 						toolCallId: opts.toolCallId,
-						toolName: 'build-workflow',
+						toolName: 'workflow_builder_build_workflow',
 						args: {},
 						isLoading: false,
 						result: { success: true, workflowId: opts.workflowId },
@@ -2901,7 +3319,7 @@ describe('createThreadRuntime - "User viewed new builder workflow" telemetry', (
 				],
 				children: [],
 				timeline: [],
-			},
+			} satisfies InstanceAiAgentNode,
 			status: 'completed',
 			backgroundTasks: [],
 		};
@@ -3028,7 +3446,7 @@ describe('createThreadRuntime - "User viewed new builder workflow" telemetry', (
 						toolCalls: [
 							{
 								toolCallId: 'tc-hist',
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								args: {},
 								isLoading: false,
 								result: { success: true, workflowId: 'wf-hist' },
@@ -3047,6 +3465,57 @@ describe('createThreadRuntime - "User viewed new builder workflow" telemetry', (
 		// The historical build really was hydrated (so "not tracked" is meaningful,
 		// not just an empty no-op hydration).
 		expect(activeRuntime(registry).messages).toHaveLength(1);
+		expect(mockTelemetryTrack).not.toHaveBeenCalledWith(
+			'User viewed new builder workflow',
+			expect.anything(),
+		);
+	});
+
+	test('does not track for a workflow that only appears in an older history page', async () => {
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: activeThreadId,
+			messages: [
+				{
+					id: 'msg-new',
+					role: 'user',
+					createdAt: new Date().toISOString(),
+					content: 'Thanks',
+					reasoning: '',
+					isStreaming: false,
+				},
+			],
+			nextEventId: 11,
+			nextCursor: 'cursor-1',
+		});
+		await activeRuntime(registry).loadHistoricalMessages();
+		const { agentTree } = runSyncWithBuild({
+			runId: 'run-old',
+			messageGroupId: 'mg-old',
+			workflowId: 'wf-old',
+			toolCallId: 'tc-old',
+		});
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: activeThreadId,
+			messages: [
+				{
+					id: 'msg-old',
+					runId: 'run-old',
+					messageGroupId: 'mg-old',
+					role: 'assistant',
+					createdAt: new Date().toISOString(),
+					content: '',
+					reasoning: '',
+					isStreaming: false,
+					agentTree,
+				},
+			],
+			nextEventId: 11,
+		});
+
+		await activeRuntime(registry).loadOlderMessages();
+
+		expect(activeRuntime(registry).messages.map((msg) => msg.id)).toEqual(['msg-old', 'msg-new']);
+		expect(activeRuntime(registry).isHydratingThread).toBe(false);
 		expect(mockTelemetryTrack).not.toHaveBeenCalledWith(
 			'User viewed new builder workflow',
 			expect.anything(),
@@ -3205,6 +3674,54 @@ describe('getAgentBuilderTargetFromThreadMetadata', () => {
 	});
 });
 
+describe('getAgentBuilderTargetsFromThreadMetadata', () => {
+	test('reads all valid targets from the persisted registry', () => {
+		expect(
+			getAgentBuilderTargetsFromThreadMetadata({
+				instanceAiAgentBuilderTargets: {
+					first: { agentId: 'agent-1', projectId: 'project-1', ref: 'first' },
+					second: { agentId: 'agent-2', projectId: 'project-2' },
+					invalid: { agentId: 'agent-3' },
+				},
+			}),
+		).toEqual([
+			{ agentId: 'agent-1', projectId: 'project-1' },
+			{ agentId: 'agent-2', projectId: 'project-2' },
+		]);
+	});
+});
+
+describe('app targets from thread metadata', () => {
+	test('reads valid app targets and drops malformed entries', () => {
+		expect(
+			getAppTargetsFromThreadMetadata({
+				instanceAiAppTargets: [
+					{ appId: 'app-1', projectId: 'project-1' },
+					{ appId: 'app-2' },
+					'not-a-target',
+				],
+			}),
+		).toEqual([{ appId: 'app-1', projectId: 'project-1' }]);
+	});
+
+	test('reads a valid pending app target', () => {
+		expect(
+			getPendingAppTargetFromThreadMetadata({
+				instanceAiPendingAppTarget: { appId: 'app-1', projectId: 'project-1' },
+			}),
+		).toEqual({ appId: 'app-1', projectId: 'project-1' });
+	});
+
+	test('returns no app targets for malformed metadata', () => {
+		expect(getAppTargetsFromThreadMetadata({ instanceAiAppTargets: 'not-an-array' })).toEqual([]);
+		expect(
+			getPendingAppTargetFromThreadMetadata({
+				instanceAiPendingAppTarget: { appId: 'app-1' },
+			}),
+		).toBeUndefined();
+	});
+});
+
 describe('getAgentPreviewViewFromThreadMetadata', () => {
 	test('returns the persisted agent preview session', () => {
 		expect(
@@ -3248,26 +3765,310 @@ describe('getAgentPreviewSessionFromThreadMetadata', () => {
 	});
 });
 
-describe('createThreadRuntime - pending plan review', () => {
+describe('createThreadRuntime - onboarding exit', () => {
+	const hooks = {
+		onTitleUpdated: vi.fn(),
+		onRunFinish: vi.fn(),
+		onOnboardingLeft: vi.fn(),
+	} satisfies Parameters<typeof createThreadRuntime>[1];
+	let runtime: ThreadRuntime;
+
+	const sse = (event: Record<string, unknown>) =>
+		capturedOnMessage!(makeSSEEvent({ runId: 'run-1', agentId: 'agent-root', ...event }));
+
+	beforeEach(async () => {
+		setupRuntimePinia();
+		vi.clearAllMocks();
+		capturedOnMessage = null;
+		runtime = createThreadRuntime('thread-onboarding', hooks);
+		runtime.connectSSE();
+		await vi.waitFor(() => {
+			expect(capturedOnMessage).not.toBeNull();
+		});
+		sse(validRunStartEvent('run-1', 'agent-root'));
+	});
+
+	afterEach(() => {
+		runtime.closeSSE();
+	});
+
+	test('a leave-onboarding call ends the onboarding with the reason the agent gave', () => {
+		sse({ type: 'tool-call', payload: { toolCallId: 'tc-1', toolName: 'search', args: {} } });
+		expect(hooks.onOnboardingLeft).not.toHaveBeenCalled();
+
+		sse({
+			type: 'tool-call',
+			payload: { toolCallId: 'tc-2', toolName: 'leave-onboarding', args: { reason: 'stop' } },
+		});
+		expect(hooks.onOnboardingLeft).toHaveBeenCalledTimes(1);
+		expect(hooks.onOnboardingLeft).toHaveBeenCalledWith('thread-onboarding', 'left', 'stop');
+	});
+
+	test('a failed run ends the onboarding; a completed one does not', () => {
+		sse({ type: 'run-finish', payload: { status: 'completed' } });
+		expect(hooks.onOnboardingLeft).not.toHaveBeenCalled();
+
+		sse(validRunStartEvent('run-2', 'agent-root'));
+		sse({ type: 'run-finish', runId: 'run-2', payload: { status: 'error' } });
+		expect(hooks.onOnboardingLeft).toHaveBeenCalledTimes(1);
+		expect(hooks.onOnboardingLeft).toHaveBeenCalledWith('thread-onboarding', 'run_failed');
+	});
+});
+
+describe('createThreadRuntime - follow-up run after a reconnect', () => {
 	let registry: RuntimeRegistry;
+
+	beforeEach(async () => {
+		setupRuntimePinia();
+		capturedOnMessage = null;
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-follow-up';
+		activeRuntime(registry).connectSSE();
+		await vi.waitFor(() => {
+			expect(capturedOnMessage).not.toBeNull();
+		});
+	});
+
+	afterEach(() => {
+		activeRuntime(registry).closeSSE();
+		vi.clearAllMocks();
+	});
+
+	test('shows the next confirmation of a follow-up run after a run-sync rebuilt the tree', async () => {
+		const runtime = activeRuntime(registry);
+		const send = (event: Record<string, unknown>) => capturedOnMessage!(makeSSEEvent(event));
+
+		// Run 1 starts the message group. Run 2 is a follow-up in the same group
+		// and streams under its own orchestrator agent id.
+		send({
+			type: 'run-start',
+			runId: 'run-1',
+			agentId: 'orchestrator-run-1',
+			payload: { messageId: 'msg-1', messageGroupId: 'mg-1' },
+		});
+		send({
+			type: 'tool-call',
+			runId: 'run-1',
+			agentId: 'orchestrator-run-1',
+			payload: { toolCallId: 'tc-search', toolName: 'search', args: {} },
+		});
+		send({
+			type: 'run-start',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: { messageId: 'msg-2', messageGroupId: 'mg-1' },
+		});
+		send({
+			type: 'tool-call',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: {
+				toolCallId: 'tc-folder',
+				toolName: 'workspace',
+				args: { action: 'create-folder' },
+			},
+		});
+		send({
+			type: 'confirmation-request',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: {
+				requestId: 'req-folder',
+				toolCallId: 'tc-folder',
+				toolName: 'workspace',
+				args: { action: 'create-folder' },
+				severity: 'info',
+				message: 'Create folder?',
+			},
+		});
+
+		// A reconnect while the run waits: the run-sync frame replaces the tree
+		// with the server's fold, which is rooted at run 1's agent.
+		capturedInstance!.dispatchNamedEvent('run-sync', {
+			runId: 'run-2',
+			messageGroupId: 'mg-1',
+			runIds: ['run-1', 'run-2'],
+			agentTree: deepCopy(runtime.messages.at(-1)!.agentTree),
+			status: 'suspended',
+			backgroundTasks: [],
+		});
+
+		mockPostConfirmation.mockResolvedValueOnce({ ok: true, runId: 'run-2' });
+		await runtime.confirmAction('req-folder', { kind: 'approval', approved: true });
+		runtime.resolveConfirmation('req-folder', 'approved');
+
+		// The resumed segment: the approved tool's result, then a second tool call
+		// that asks for its own confirmation.
+		send({
+			type: 'tool-result',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: { toolCallId: 'tc-folder', result: { id: 'folder-1' } },
+		});
+		send({
+			type: 'tool-call',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: {
+				toolCallId: 'tc-move',
+				toolName: 'workspace',
+				args: { action: 'move-workflow-to-folder' },
+			},
+		});
+		send({
+			type: 'confirmation-request',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: {
+				requestId: 'req-move',
+				toolCallId: 'tc-move',
+				toolName: 'workspace',
+				args: { action: 'move-workflow-to-folder' },
+				severity: 'info',
+				message: 'Move workflow?',
+			},
+		});
+		await nextTick();
+
+		expect(
+			runtime.pendingConfirmations.map((item) => item.toolCall.confirmation.requestId),
+		).toEqual(['req-move']);
+		expect(runtime.isAwaitingConfirmation).toBe(true);
+	});
+});
+
+describe('createThreadRuntime - older history pages', () => {
+	const threadId = 'thread-older';
+	const message = (
+		id: string,
+		role: 'user' | 'assistant',
+		messageGroupId?: string,
+	): ThreadRuntime['messages'][number] => ({
+		id,
+		role,
+		messageGroupId,
+		createdAt: '2026-01-01T00:00:00.000Z',
+		content: id,
+		reasoning: '',
+		isStreaming: false,
+	});
+
+	async function hydratedRuntime() {
+		const runtime = createRuntimeRegistry().getOrCreateRuntime(threadId);
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId,
+			messages: [message('u2', 'user', 'g2'), message('a2', 'assistant', 'g2')],
+			nextCursor: 'cursor-1',
+			nextEventId: 0,
+		});
+		await runtime.loadHistoricalMessages();
+		return runtime;
+	}
 
 	beforeEach(() => {
 		setupRuntimePinia();
-		registry = createRuntimeRegistry();
-		activeThreadId = 'thread-plan-review';
-		mockPostConfirmation.mockReset();
-		mockPostConfirmation.mockResolvedValue({ ok: true });
 	});
 
-	/**
-	 * Seed one assistant message whose root agent holds the given create-tasks
-	 * calls, optionally followed by later messages from a newer turn.
-	 */
-	function seedPlanCards(
-		toolCalls: Array<Record<string, unknown>>,
-		laterMessages: Array<Record<string, unknown>> = [],
-	) {
-		const runtime = activeRuntime(registry);
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	test('prepends older pages until the thread start and skips messages it already has', async () => {
+		const runtime = await hydratedRuntime();
+		expect(runtime.hasOlderMessages).toBe(true);
+
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId,
+			messages: [
+				message('u1', 'user', 'g1'),
+				message('a1', 'assistant', 'g1'),
+				message('a2-older-copy', 'assistant', 'g2'),
+				message('u2', 'user'),
+			],
+			nextEventId: 0,
+		});
+		await runtime.loadOlderMessages();
+
+		expect(mockFetchThreadMessages).toHaveBeenLastCalledWith(
+			expect.anything(),
+			threadId,
+			100,
+			undefined,
+			'cursor-1',
+		);
+		expect(runtime.messages.map((msg) => msg.id)).toEqual(['u1', 'a1', 'u2', 'a2']);
+		expect(runtime.hasOlderMessages).toBe(false);
+
+		await runtime.loadOlderMessages();
+		expect(mockFetchThreadMessages).toHaveBeenCalledTimes(2);
+	});
+
+	test('drops a page that returns after a reset', async () => {
+		const runtime = await hydratedRuntime();
+		let resolveOlder!: (value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void;
+		mockFetchThreadMessages.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveOlder = resolve;
+			}),
+		);
+
+		const loading = runtime.loadOlderMessages();
+		runtime.resetState();
+		resolveOlder({
+			threadId,
+			messages: [message('u1', 'user')],
+			nextCursor: 'cursor-0',
+			nextEventId: 0,
+		});
+		await loading;
+
+		expect(mockFetchThreadMessages).toHaveBeenCalledTimes(2);
+		expect(runtime.messages).toEqual([]);
+		expect(runtime.hasOlderMessages).toBe(false);
+	});
+
+	test('rethrows a failed request and keeps the cursor for a retry', async () => {
+		const runtime = await hydratedRuntime();
+		mockFetchThreadMessages.mockRejectedValueOnce(new Error('fetch failed'));
+
+		await expect(runtime.loadOlderMessages()).rejects.toThrow('fetch failed');
+		expect(runtime.hasOlderMessages).toBe(true);
+
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId,
+			messages: [message('u1', 'user')],
+			nextEventId: 0,
+		});
+		await runtime.loadOlderMessages();
+		expect(runtime.messages.map((msg) => msg.id)).toEqual(['u1', 'u2', 'a2']);
+	});
+});
+
+describe('threadTargetsAgent', () => {
+	it('is true for a thread with a bound or a pending agent', () => {
+		const target = { agentId: 'agent-1', projectId: 'project-1' };
+
+		expect(threadTargetsAgent({ instanceAiAgentBuilderTarget: target })).toBe(true);
+		expect(threadTargetsAgent({ instanceAiPendingAgentTarget: target })).toBe(true);
+		expect(threadTargetsAgent({ instanceAiAgentBuilderTargets: { 'agent-1': target } })).toBe(true);
+	});
+
+	it('is false for a thread without an agent', () => {
+		expect(threadTargetsAgent(undefined)).toBe(false);
+		expect(threadTargetsAgent({ instanceAiAgentBuilderTarget: { agentId: 'agent-1' } })).toBe(
+			false,
+		);
+	});
+});
+
+describe('createThreadRuntime - background agent confirmations', () => {
+	beforeEach(() => {
+		setupRuntimePinia();
+		activeThreadId = 'thread-background-agent';
+	});
+
+	it('attaches a confirmation to the background agent that raised it, even with hidden steps', () => {
+		const runtime = activeRuntime(createRuntimeRegistry());
 		runtime.messages = [
 			{
 				id: 'msg-1',
@@ -3280,266 +4081,49 @@ describe('createThreadRuntime - pending plan review', () => {
 				agentTree: {
 					agentId: 'agent-root',
 					role: 'orchestrator',
-					status: 'active',
+					status: 'completed',
 					textContent: '',
 					reasoning: '',
-					toolCalls,
-					children: [],
+					toolCalls: [],
 					timeline: [],
-				},
-			},
-			...laterMessages,
-		] as unknown as typeof runtime.messages;
-		return runtime;
-	}
-
-	function planCard(overrides: Record<string, unknown> = {}) {
-		const { confirmation, ...rest } = overrides;
-		return {
-			toolCallId: 'tc-plan',
-			toolName: 'create-tasks',
-			args: { tasks: [{ id: 't1', title: 'Ingest orders', kind: '', spec: '', deps: [] }] },
-			isLoading: true,
-			confirmation: {
-				requestId: 'req-plan',
-				severity: 'info',
-				message: 'Review the plan',
-				inputType: 'plan-review',
-				inputThreadId: 'input-thread-1',
-				...(confirmation as Record<string, unknown> | undefined),
-			},
-			...rest,
-		};
-	}
-
-	it('exposes a pending plan review while keeping it out of the confirmation panel', () => {
-		const runtime = seedPlanCards([planCard()]);
-
-		expect(runtime.pendingConfirmations).toHaveLength(0);
-		expect(runtime.isAwaitingConfirmation).toBe(false);
-		expect(runtime.pendingPlanReview).toEqual({
-			requestId: 'req-plan',
-			inputThreadId: 'input-thread-1',
-			taskCount: 1,
-		});
-	});
-
-	// planItems is never populated by the create-tasks suspend payload, so the
-	// count has to come off args.tasks or `num_tasks` telemetry reports zero.
-	it('counts tasks from args.tasks when planItems is absent', () => {
-		const runtime = seedPlanCards([
-			planCard({
-				args: {
-					tasks: [
-						{ id: 't1', title: 'Ingest', kind: '', spec: '', deps: [] },
-						{ id: 't2', title: 'Digest', kind: '', spec: '', deps: [] },
-						{ id: 't3', title: 'Reconcile', kind: '', spec: '', deps: [] },
+					children: [
+						{
+							agentId: 'agent-cloud-browser',
+							role: 'cloud-browser',
+							kind: 'cloud-browser',
+							status: 'active',
+							textContent: '',
+							reasoning: '',
+							children: [],
+							timeline: [],
+							toolCalls: [
+								{
+									toolCallId: 'tc-navigate',
+									toolName: 'browser_navigate',
+									args: { url: 'https://example.com' },
+									isLoading: true,
+									confirmation: {
+										requestId: 'req-navigate',
+										severity: 'warning',
+										message: 'browser_navigate: Browser: example.com',
+										inputType: 'resource-decision',
+										resourceDecision: {
+											toolGroup: 'browser',
+											kind: 'host',
+											resource: 'example.com',
+											description: 'Browser: example.com',
+											options: ['denyOnce', 'allowOnce', 'allowForSession'],
+										},
+									},
+								},
+							],
+						},
 					],
 				},
-			}),
-		]);
-
-		expect(runtime.pendingPlanReview?.taskCount).toBe(3);
-	});
-
-	it('ignores an expired plan review so the composer falls back to its streaming state', () => {
-		const runtime = seedPlanCards([planCard({ confirmation: { expired: true } })]);
-
-		expect(runtime.pendingPlanReview).toBeNull();
-	});
-
-	it('ignores a plan review already resolved client-side', () => {
-		const runtime = seedPlanCards([planCard()]);
-		runtime.resolveConfirmation('req-plan', 'changes-requested');
-
-		expect(runtime.pendingPlanReview).toBeNull();
-	});
-
-	it.each(['approved', 'denied'] as const)(
-		'ignores a plan review whose tool call is already %s',
-		(confirmationStatus) => {
-			const runtime = seedPlanCards([planCard({ confirmationStatus })]);
-
-			expect(runtime.pendingPlanReview).toBeNull();
-		},
-	);
-
-	it('ignores a plan review whose tool call has settled', () => {
-		const runtime = seedPlanCards([planCard({ isLoading: false })]);
-
-		expect(runtime.pendingPlanReview).toBeNull();
-	});
-
-	// A revised plan stacks a fresh card on top of the superseded one.
-	it('picks the newest card when two plan reviews are pending', () => {
-		const runtime = seedPlanCards([
-			planCard(),
-			planCard({
-				toolCallId: 'tc-plan-2',
-				confirmation: { requestId: 'req-plan-revised' },
-			}),
-		]);
-
-		expect(runtime.pendingPlanReview?.requestId).toBe('req-plan-revised');
-	});
-
-	// A later turn strands the older card: its run was left behind, so routing
-	// composer feedback into its requestId would resume an abandoned run.
-	it('ignores a plan review stranded by a newer turn', () => {
-		const runtime = seedPlanCards(
-			[planCard()],
-			[
-				{
-					id: 'msg-2',
-					role: 'assistant',
-					runId: 'run-2',
-					content: 'Working on something else',
-					reasoning: '',
-					isStreaming: false,
-					createdAt: '2026-01-01T00:01:00.000Z',
-				},
-			],
-		);
-
-		expect(runtime.pendingPlanReview).toBeNull();
-	});
-
-	it('ignores a plan review once a new turn is optimistically appended', () => {
-		const runtime = seedPlanCards(
-			[planCard()],
-			[
-				{
-					id: 'msg-2',
-					role: 'user',
-					content: 'Actually, do this instead',
-					createdAt: '2026-01-01T00:01:00.000Z',
-				},
-			],
-		);
-
-		expect(runtime.pendingPlanReview).toBeNull();
-	});
-
-	it('still surfaces non-plan confirmations on the same tool call to the panel', () => {
-		const runtime = seedPlanCards([
-			planCard({ confirmation: { requestId: 'req-plain', inputType: undefined } }),
-		]);
+			},
+		] as unknown as typeof runtime.messages;
 
 		expect(runtime.pendingConfirmations).toHaveLength(1);
-		expect(runtime.pendingPlanReview).toBeNull();
-	});
-
-	// Nothing else retires the marker: request-changes never re-arms the run, so
-	// `isStreaming` stays true across the whole revision and its fallback clear
-	// never fires. The superseded card would shimmer "Updating plan..." forever.
-	it('retires the updating marker of the card a revised plan supersedes', async () => {
-		const runtime = seedPlanCards([planCard()]);
-		await runtime.requestPlanChanges('req-plan', 'Simplify it');
-		expect(runtime.updatingPlanRequestIds.has('req-plan')).toBe(true);
-
-		// The backend settles the suspended call, then suspends a revised card.
-		seedPlanCards([
-			planCard({ isLoading: false }),
-			planCard({ toolCallId: 'tc-plan-2', confirmation: { requestId: 'req-plan-revised' } }),
-		]);
-		await nextTick();
-
-		expect(runtime.updatingPlanRequestIds.has('req-plan')).toBe(false);
-	});
-
-	// The superseded call settles before the revised card suspends, so there is a
-	// gap with no pending plan review at all — and that gap is exactly the wait.
-	it('keeps the updating marker while the revised plan is still being written', async () => {
-		const runtime = seedPlanCards([planCard()]);
-		await runtime.requestPlanChanges('req-plan', 'Simplify it');
-
-		seedPlanCards([planCard({ isLoading: false })]);
-		await nextTick();
-
-		expect(runtime.updatingPlanRequestIds.has('req-plan')).toBe(true);
-	});
-});
-
-describe('createThreadRuntime - requestPlanChanges', () => {
-	let registry: RuntimeRegistry;
-
-	beforeEach(() => {
-		setupRuntimePinia();
-		registry = createRuntimeRegistry();
-		activeThreadId = 'thread-plan-changes';
-		mockPostConfirmation.mockReset();
-		mockPostConfirmation.mockResolvedValue({ ok: true });
-	});
-
-	it('sends the raw feedback as a change request and resolves the card', async () => {
-		const runtime = activeRuntime(registry);
-
-		const ok = await runtime.requestPlanChanges('req-plan', 'Drop the third workflow');
-
-		expect(ok).toBe(true);
-		expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-plan', {
-			kind: 'approval',
-			approved: false,
-			userInput: 'Drop the third workflow',
-		});
-		expect(runtime.resolvedConfirmationIds.get('req-plan')).toBe('changes-requested');
-	});
-
-	// The revised plan card merges into the assistant message ABOVE the transcript
-	// tail, so a user bubble appended here would read after the revision it caused.
-	it('does not add a message to the transcript', async () => {
-		const runtime = activeRuntime(registry);
-
-		await runtime.requestPlanChanges('req-plan', 'Drop the third workflow');
-
-		expect(runtime.messages).toHaveLength(0);
-	});
-
-	it('marks the plan card as updating while the request is in flight', async () => {
-		const runtime = activeRuntime(registry);
-		let updatingDuringFlight = false;
-		mockPostConfirmation.mockImplementationOnce(async () => {
-			updatingDuringFlight = runtime.updatingPlanRequestIds.has('req-plan');
-			return { ok: true };
-		});
-
-		await runtime.requestPlanChanges('req-plan', 'Simplify it');
-
-		expect(updatingDuringFlight).toBe(true);
-	});
-
-	// A second submit landing mid-flight would POST the same requestId again; the
-	// rejection then wipes the "Updating plan..." state of the revision that was
-	// accepted, so the in-flight request owns the card until it settles.
-	it('ignores a second change request while the first is still in flight', async () => {
-		const runtime = activeRuntime(registry);
-		let releaseFirst: (() => void) | undefined;
-		mockPostConfirmation.mockImplementationOnce(
-			async () =>
-				await new Promise<{ ok: true }>((resolve) => {
-					releaseFirst = () => resolve({ ok: true });
-				}),
-		);
-
-		const first = runtime.requestPlanChanges('req-plan', 'Simplify it');
-		const second = await runtime.requestPlanChanges('req-plan', 'And add logging');
-
-		expect(second).toBe(false);
-		expect(mockPostConfirmation).toHaveBeenCalledTimes(1);
-
-		releaseFirst?.();
-		expect(await first).toBe(true);
-		expect(runtime.resolvedConfirmationIds.get('req-plan')).toBe('changes-requested');
-	});
-
-	it('clears the updating marker and leaves the card unresolved when the request fails', async () => {
-		const runtime = activeRuntime(registry);
-		mockPostConfirmation.mockRejectedValueOnce(new Error('network error'));
-
-		const ok = await runtime.requestPlanChanges('req-plan', 'Drop the third workflow');
-
-		expect(ok).toBe(false);
-		expect(runtime.updatingPlanRequestIds.has('req-plan')).toBe(false);
-		expect(runtime.resolvedConfirmationIds.has('req-plan')).toBe(false);
+		expect(runtime.pendingConfirmations[0].agentNode.kind).toBe('cloud-browser');
 	});
 });

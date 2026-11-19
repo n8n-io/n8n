@@ -56,6 +56,114 @@ describe('ThinkingBlock', () => {
 		createTestingPinia({ stubActions: false });
 	});
 
+	it.each(['completed', 'cancelled', 'error'] as const)(
+		'keeps a stale loading tool static when its agent is %s',
+		async (status) => {
+			const tc = makeToolCall({ isLoading: true });
+			const { getByTestId, findByText } = renderComponent({
+				props: {
+					agentNode: makeAgentNode({ status, toolCalls: [tc] }),
+					entries: [toolEntry(tc.toolCallId)],
+					active: false,
+				},
+			});
+			await fireEvent.click(getByTestId('thinking-block-header'));
+			expect((await findByText('Searching nodes')).className).not.toContain('shimmer');
+		},
+	);
+
+	it('shows an action that Auto mode approved, with the reason', async () => {
+		const tc = makeToolCall({
+			toolName: 'publish_workflow',
+			autoApproval: {
+				message: 'Publish "Lead router"',
+				reason: 'The user asked to publish this workflow.',
+				decidedBy: 'judge',
+			},
+		});
+		const { getByTestId, findByTestId, findByText } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ toolCalls: [tc] }),
+				entries: [toolEntry(tc.toolCallId)],
+				active: false,
+			},
+		});
+		await fireEvent.click(getByTestId('thinking-block-header'));
+
+		const step = await findByTestId('instance-ai-auto-approval');
+		expect(step.textContent).toContain('Approved automatically: Publish "Lead router"');
+		await userEvent.click(await findByText('Approved automatically: Publish "Lead router"'));
+		expect(await findByText('The user asked to publish this workflow.')).toBeInTheDocument();
+	});
+
+	it('labels a multi-line card message with its first line', async () => {
+		const tc = makeToolCall({
+			toolName: 'data_tables',
+			autoApproval: {
+				message: 'Add 1 row\n\nRow 1: set "name" to "Jane Doe"',
+				reason: 'The user asked for this row.',
+				decidedBy: 'judge',
+			},
+		});
+		const { getByTestId, findByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ toolCalls: [tc] }),
+				entries: [toolEntry(tc.toolCallId)],
+				active: false,
+			},
+		});
+		await fireEvent.click(getByTestId('thinking-block-header'));
+
+		const step = await findByTestId('instance-ai-auto-approval');
+		expect(step.textContent).toContain('Approved automatically: Add 1 row');
+		expect(step.textContent).not.toContain('Row 1');
+	});
+
+	it('explains an action that the low-risk rule approved', async () => {
+		const tc = makeToolCall({
+			toolName: 'workspace',
+			autoApproval: { message: 'Create folder "Reports"', reason: 'n/a', decidedBy: 'rule' },
+		});
+		const { getByTestId, findByText } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ toolCalls: [tc] }),
+				entries: [toolEntry(tc.toolCallId)],
+				active: false,
+			},
+		});
+		await fireEvent.click(getByTestId('thinking-block-header'));
+
+		await userEvent.click(await findByText('Approved automatically: Create folder "Reports"'));
+		expect(await findByText("Low-risk action that's easy to undo")).toBeInTheDocument();
+	});
+
+	it('shows no auto-approval line for a call that the user approved', async () => {
+		const tc = makeToolCall({ confirmationStatus: 'approved' });
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ toolCalls: [tc] }),
+				entries: [toolEntry(tc.toolCallId)],
+				active: false,
+			},
+		});
+		await fireEvent.click(getByTestId('thinking-block-header'));
+
+		expect(queryByTestId('instance-ai-auto-approval')).not.toBeInTheDocument();
+	});
+
+	it('animates a loading tool owned by a live agent', async () => {
+		const tc = makeToolCall({ isLoading: true });
+		const { getByTestId, findByText } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active', toolCalls: [tc] }),
+				entries: [toolEntry(tc.toolCallId)],
+				active: true,
+			},
+		});
+		await fireEvent.click(getByTestId('thinking-block-header'));
+		expect((await findByText('Searching nodes')).className).toContain('shimmer');
+	});
+
 	it('should show duration from tool-call timestamps when settled', () => {
 		const tc = makeToolCall({
 			startedAt: '2026-01-01T00:00:00Z',
@@ -86,6 +194,46 @@ describe('ThinkingBlock', () => {
 		});
 
 		expect(getByTestId('thinking-block-header')).toHaveTextContent('Thought for 1m 5s');
+	});
+
+	it('should not count the time until an interrupted tool call was swept', () => {
+		const tc = makeToolCall({
+			startedAt: '2026-01-01T00:00:00Z',
+			completedAt: '2026-01-02T22:06:23Z',
+			interrupted: true,
+		});
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ toolCalls: [tc] }),
+				entries: [toolEntry('tc-1')],
+				active: false,
+			},
+		});
+
+		expect(getByTestId('thinking-block-header')).toHaveTextContent('Finished thinking');
+	});
+
+	it('should end the duration at the last completed call when a later call was interrupted', () => {
+		const done = makeToolCall({
+			toolCallId: 'tc-1',
+			startedAt: '2026-01-01T00:00:00Z',
+			completedAt: '2026-01-01T00:00:12Z',
+		});
+		const swept = makeToolCall({
+			toolCallId: 'tc-2',
+			startedAt: '2026-01-01T00:00:13Z',
+			completedAt: '2026-01-02T22:06:23Z',
+			interrupted: true,
+		});
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ toolCalls: [done, swept] }),
+				entries: [toolEntry('tc-1'), toolEntry('tc-2')],
+				active: false,
+			},
+		});
+
+		expect(getByTestId('thinking-block-header')).toHaveTextContent('Thought for 12s');
 	});
 
 	it('should fall back to a static title when no timestamps exist', () => {
@@ -339,7 +487,11 @@ describe('ThinkingBlock', () => {
 		const { getByTestId, getAllByText, getByText } = renderComponent({
 			props: {
 				agentNode: makeAgentNode({ status: 'active', toolCalls: [tc] }),
-				entries: [reasoning('deep thoughts'), text('Checking credentials now.'), toolEntry('tc-1')],
+				entries: [
+					reasoning('Deep thoughts. More detail.'),
+					text('Checking credentials now.'),
+					toolEntry('tc-1'),
+				],
 				active: true,
 			},
 		});
@@ -348,8 +500,23 @@ describe('ThinkingBlock', () => {
 
 		// Appears twice: as the header status line and as the narration paragraph
 		expect(getAllByText('Checking credentials now.')).toHaveLength(2);
-		// Reasoning rows are labeled with their own first sentence
-		expect(getByText('deep thoughts')).toBeInTheDocument();
+		// Reasoning shows in full, not behind a second toggle
+		expect(getByText('Deep thoughts. More detail.')).toBeVisible();
+	});
+
+	it('should show the full reasoning on the first expand when it is the header line', async () => {
+		const { getByTestId, getByText, queryByRole } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active' }),
+				entries: [reasoning('\n\nThis sounds like a mapping request. So I look it up.')],
+				active: true,
+			},
+		});
+
+		await userEvent.click(getByTestId('thinking-block-header'));
+
+		expect(getByText('This sounds like a mapping request. So I look it up.')).toBeVisible();
+		expect(queryByRole('button', { name: /This sounds like/, expanded: false })).toBeNull();
 	});
 });
 
@@ -394,5 +561,43 @@ describe('collapsed subline label', () => {
 
 		expect(subline).toContain('could not be read');
 		expect(subline).not.toContain('Read instance context');
+	});
+});
+
+describe('skill update activity', () => {
+	it('shows an unnamed unavailable skill without exposing its internal ID', async () => {
+		const entry: InstanceAiTimelineEntry = {
+			type: 'skill-update',
+			runId: 'run-1',
+			skillId: 'hub:internal-id',
+			version: null,
+			change: 'unavailable',
+		};
+		const { getByTestId, findByRole, findByText, queryByText } = renderComponent({
+			props: { agentNode: makeAgentNode(), entries: [entry], active: false },
+		});
+		await fireEvent.click(getByTestId('thinking-block-header'));
+		await fireEvent.click(await findByRole('button', { name: 'A loaded skill is unavailable' }));
+		expect(await findByText('The Assistant stopped using this skill')).toBeVisible();
+		expect(queryByText('hub:internal-id')).toBeNull();
+	});
+
+	it('says that the Assistant loads an updated skill again', async () => {
+		const entry: InstanceAiTimelineEntry = {
+			type: 'skill-update',
+			runId: 'run-1',
+			skillId: 'hub:internal-id',
+			name: 'Triage',
+			version: 'v2',
+			change: 'updated',
+		};
+		const { getByTestId, findByRole, findByText } = renderComponent({
+			props: { agentNode: makeAgentNode(), entries: [entry], active: false },
+		});
+		await fireEvent.click(getByTestId('thinking-block-header'));
+		await fireEvent.click(await findByRole('button', { name: 'Skill updated: Triage' }));
+		expect(
+			await findByText('This skill changed. The Assistant loads the new version when it needs it.'),
+		).toBeVisible();
 	});
 });

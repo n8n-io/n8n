@@ -3,6 +3,7 @@ export { V1StepExecutor } from './v1-step-executor';
 export { createEngineStepDataLoader } from './engine-step-data-loader';
 export { fromStepInputs, toStepOutputs } from './io';
 export { toV1RunExecutionData } from './v1-execution-read';
+export { fromV1ErrorDetails } from './v1-error-details';
 export {
 	AmbiguousTriggerError,
 	NotATriggerError,
@@ -13,5 +14,9 @@ export type {
 	AdditionalDataContext,
 	StepData,
 	StepDataLoader,
+	SubWorkflowResolveRequest,
+	SubWorkflowResolveResult,
+	SubWorkflowResolver,
 	V1StepExecutorDeps,
 } from './types';
+export { attachResponseHooks } from './v1-response-hooks';

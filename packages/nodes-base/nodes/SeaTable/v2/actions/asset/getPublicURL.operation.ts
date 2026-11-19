@@ -4,6 +4,8 @@ import {
 	type INodeProperties,
 	type IExecuteFunctions,
 	updateDisplayOptions,
+	requestPath,
+	decodePathValue,
 } from 'n8n-workflow';
 
 import { seaTableApiRequest } from '../../GenericFunctions';
@@ -36,11 +38,14 @@ export async function execute(
 
 	let responseData = [] as IDataObject[];
 	if (assetPath) {
+		const path = this.getNode().typeVersion < 2.1 ? decodePathValue(assetPath) : assetPath;
 		responseData = await seaTableApiRequest.call(
 			this,
 			{},
 			'GET',
-			`/api/v2.1/dtable/app-download-link/?path=${assetPath}`,
+			requestPath`/api/v2.1/dtable/app-download-link/`,
+			{},
+			{ path },
 		);
 	}
 

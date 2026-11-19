@@ -25,9 +25,17 @@ const every: LifecycleEvent[] = [
 	{ type: 'execution:started', ...executionEvent, mode: 'manual', hostMode: 'manual' },
 	{ type: 'execution:completed', ...executionEvent },
 	{ type: 'execution:failed', ...executionEvent },
+	{ type: 'execution:cancelled', ...executionEvent },
 	{ type: 'step:started', ...stepEvent },
 	{ type: 'step:completed', ...stepEvent, outputs: [[{ json: { x: 1 } }], null] },
-	{ type: 'step:failed', ...stepEvent },
+	{ type: 'step:completed', ...stepEvent },
+	{ type: 'step:failed', ...stepEvent, error: { name: 'Error', message: 'boom' } },
+	{
+		type: 'step:failed',
+		...stepEvent,
+		error: { name: 'NodeApiError', message: 'boom', stack: 'at x', details: { httpCode: '429' } },
+	},
+	{ type: 'step:waiting', ...stepEvent },
 ];
 
 describe('lifecycleEventSchema', () => {
@@ -44,9 +52,9 @@ describe('lifecycleEventSchema', () => {
 	});
 
 	it('keeps the completed outputs in step with StepSlots', () => {
-		expectTypeOf<
-			Extract<LifecycleEvent, { type: 'step:completed' }>['outputs']
-		>().toEqualTypeOf<StepSlots>();
+		expectTypeOf<Extract<LifecycleEvent, { type: 'step:completed' }>['outputs']>().toEqualTypeOf<
+			StepSlots | undefined
+		>();
 	});
 
 	it.each(every.map((event) => [event.type, event] as const))(
@@ -58,7 +66,7 @@ describe('lifecycleEventSchema', () => {
 
 	it('rejects an event type the engine cannot emit yet', () => {
 		expect(
-			lifecycleEventSchema.safeParse({ type: 'execution:cancelled', ...executionEvent }).success,
+			lifecycleEventSchema.safeParse({ type: 'execution:paused', ...executionEvent }).success,
 		).toBe(false);
 	});
 
@@ -83,9 +91,22 @@ describe('lifecycleEventSchema', () => {
 		).toBe(false);
 	});
 
-	it('rejects a completed step without outputs', () => {
+	it('treats the contents of an output slot as opaque', () => {
+		// Not JSON, so a schema that walked the slot would refuse it.
+		const outputs = [[{ json: { when: new Date(0), gap: undefined } }]];
+
+		const parsed = lifecycleEventSchema.safeParse({
+			type: 'step:completed',
+			...stepEvent,
+			outputs,
+		});
+
+		expect(parsed.success).toBe(true);
+	});
+
+	it('accepts a completed step without outputs', () => {
 		expect(lifecycleEventSchema.safeParse({ type: 'step:completed', ...stepEvent }).success).toBe(
-			false,
+			true,
 		);
 	});
 });

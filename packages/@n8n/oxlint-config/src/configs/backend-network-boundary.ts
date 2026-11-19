@@ -5,7 +5,7 @@ export const backendNetworkBoundaryConfig = defineConfig({
 		'n8n-local-rules/no-uncentralized-http': [
 			'error',
 			{
-				allow: ['packages/@n8n/backend-network/', 'packages/@n8n/benchmark/'],
+				allow: ['packages/@n8n/backend-network/', 'packages/quality/efficiency/scale/benchmark/'],
 			},
 		],
 	},

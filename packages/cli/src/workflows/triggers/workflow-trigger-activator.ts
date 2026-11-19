@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import assert from 'node:assert/strict';
 
 import { Logger } from '@n8n/backend-common';
@@ -22,10 +23,10 @@ import {
 	ERROR_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
-	UserError,
 	Workflow,
 	WorkflowActivationError,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import {
@@ -33,7 +34,6 @@ import {
 	TRIGGER_TEARDOWN_MAX_ATTEMPTS,
 	TRIGGER_TEARDOWN_RETRY_INITIAL_DELAY_MS,
 } from '@/constants';
-import { EventService } from '@/events/event.service';
 import type {
 	PublicationOperationResult,
 	PublicationTriggerOperation,

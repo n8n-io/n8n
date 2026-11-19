@@ -28,7 +28,7 @@ a deployable engine worker) without touching core logic.
 
 ## Layers (today, all in this package)
 
-- **Core (decides)** — `graph/`, `execution/`, `admittance/`. Pure
+- **Core (decides)** — `graph/`, `execution/`, `reconciliation/`, `admittance/`. Pure
   orchestration/policy. Must not open connections, bind an HTTP server, or read
   the environment. Everything external arrives via constructor args / a deps bag
   (the `createScheduler(deps)` pattern).
@@ -40,7 +40,11 @@ a deployable engine worker) without touching core logic.
   in at construction.
 - **Adapters (do)** — effectful implementations: `database/` (TypeORM entities,
   migrations, the Postgres `DataSource`, and `TypeOrmExecutionStore`), `queue/`
-  (in-memory default). The Postgres/ORM coupling lives *here only*.
+  (in-memory default, and `RedisWorkQueue` on a Redis list). The Postgres/ORM
+  coupling lives *here only*. `RedisWorkQueue` receives its Redis clients and
+  never closes them: the composition root owns the connections and the key
+  names. The engine has no runtime dependency on `ioredis`; the adapter declares
+  the client commands it needs as interfaces.
 - **Serving infra** — `server/` (express), `serve.ts` (standalone entrypoint),
   Dockerfile. First candidate to be extracted later.
 - **Runtime factory** — `runtime/` (`createEngineRuntime`). Owns the engine's
@@ -58,7 +62,7 @@ a deployable engine worker) without touching core logic.
 
 ## Rules that keep the seams extractable
 
-- Core modules (`graph`, `execution`, `admittance`) don't import `express`,
+- Core modules (`graph`, `execution`, `reconciliation`, `admittance`) don't import `express`,
   `pg`, or `@n8n/typeorm`, don't construct a `DataSource`, and never import from
   `database/`. Persistence, queue, and HTTP are injected. The dependency arrow
   is one-way: `database/` imports the interface + domain types from the core, not
@@ -68,7 +72,7 @@ a deployable engine worker) without touching core logic.
   `EngineConfig`), never in core logic. (The blueprint flags `@n8n/config` as
   debatable precisely because it pulls the DI runtime in — keep it out of core.)
 - We go one step stricter than the scheduler's allowlist: **no `n8n-workflow`
-  dependency at all, not even type-only** (per the Engine 2.0 design — the core
+  dependency at all, not even type-only** (per the Engine v2 design — the core
   must stay free of v1 concepts). Shared JSON types are redefined locally in
   `common/`.
 - Arrows point inward: `cli`/`serve` depend on the engine; the engine never
@@ -104,6 +108,13 @@ Reads go through `ExecutionViewStore`, so a reader's type cannot reach
 (`ExecutionQueryService`). Name the columns in the query: these types are
 structural, so an adapter returning whole entities still type-checks and still
 ships every column.
+
+## Error messages name nodes, not IDs
+
+Users see engine errors in the editor, and node IDs mean nothing to them. When
+an error message refers to a node, use the node's name. Use
+`createNodeLabeler(graph)` from `graph/` to get the name in quotes. It falls
+back to the ID when the graph has no node with that ID.
 
 ## Known deviations — the seams to clean up on decomposition
 

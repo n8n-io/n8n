@@ -1,25 +1,26 @@
 import { AI_PREFERENCE_CONTENT_MAX_LENGTH, AI_PREFERENCE_MAX_PER_SCOPE } from '@n8n/api-types';
 import type { AiPreferenceSource } from '@n8n/api-types';
+import { ModuleRegistry } from '@n8n/backend-common';
 import {
 	createTeamProject,
 	getPersonalProject,
 	linkUserToProject,
 	testDb,
 } from '@n8n/backend-test-utils';
-import type { Project, User } from '@n8n/db';
+import type { Person, Project } from '@n8n/db';
 import { AiPreferenceRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { AiPreferenceService, renderAiPreferencesBlock } from '@/services/ai-preference.service';
+import { AiPreferenceService, renderAiPreferencesBlock } from '@n8n/backend-services';
 
 import { createAdmin, createMember, createOwner } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
-let owner: User;
-let admin: User;
-let member: User;
-let outsider: User;
+let owner: Person;
+let admin: Person;
+let member: Person;
+let outsider: Person;
 
 let ownerAgent: SuperAgentTest;
 let adminAgent: SuperAgentTest;
@@ -34,6 +35,7 @@ let readOnlyProject: Project;
 const testServer = utils.setupTestServer({ endpointGroups: ['ai-preferences'] });
 
 beforeAll(async () => {
+	Container.get(ModuleRegistry).settings.set('mcp', { mcpAccessEnabled: true });
 	owner = await createOwner();
 	admin = await createAdmin();
 	member = await createMember();
@@ -63,6 +65,7 @@ async function seed(attributes: {
 	projectId?: string | null;
 	source?: AiPreferenceSource;
 	createdAt?: Date;
+	updatedAt?: Date;
 }) {
 	const row = await repository().save(
 		repository().create({
@@ -78,6 +81,9 @@ async function seed(attributes: {
 	// tie. A test that asserts an order sets the value it means.
 	if (attributes.createdAt) {
 		await repository().update(row.id, { createdAt: attributes.createdAt });
+	}
+	if (attributes.updatedAt) {
+		await repository().update(row.id, { updatedAt: attributes.updatedAt });
 	}
 	return row;
 }
@@ -164,7 +170,7 @@ describe('POST /ai-preferences', () => {
 
 		const edit = await memberAgent
 			.patch(`/ai-preferences/${b.body.data.id}`)
-			.send({ content: 'Rule A.', scope: 'user' });
+			.send({ content: 'Rule A.', scope: 'user', userId: member.id });
 		expect(edit.statusCode).toBe(409);
 
 		await repository().delete({ userId: member.id });
@@ -208,6 +214,22 @@ describe('POST /ai-preferences', () => {
 
 		const stored = await repository().findOneByOrFail({ id: response.body.data.id });
 		expect(stored.createdById).toBe(member.id);
+	});
+
+	test('returns the author on the row, to the author and to other readers', async () => {
+		const created = await ownerAgent
+			.post('/ai-preferences')
+			.send({ content: 'Everyone.', scope: 'instance' });
+		const author = { id: owner.id, email: owner.email };
+		expect(created.body.data.createdBy).toMatchObject(author);
+
+		const listed = await memberAgent.get('/ai-preferences');
+		expect(listed.body.data.data).toEqual([
+			expect.objectContaining({
+				id: created.body.data.id,
+				createdBy: expect.objectContaining(author),
+			}),
+		]);
 	});
 
 	test('trims the content and refuses a blank preference', async () => {
@@ -418,6 +440,37 @@ describe('GET /ai-preferences', () => {
 		expect(contentsOf(response)).toEqual(['first', 'second', 'third']);
 	});
 
+	test('sorts the rows by the requested date', async () => {
+		await seed({
+			content: 'a',
+			userId: member.id,
+			createdAt: new Date('2026-01-01'),
+			updatedAt: new Date('2026-03-01'),
+		});
+		await seed({
+			content: 'b',
+			userId: member.id,
+			createdAt: new Date('2026-02-01'),
+			updatedAt: new Date('2026-01-15'),
+		});
+		await seed({
+			content: 'c',
+			userId: member.id,
+			createdAt: new Date('2026-03-01'),
+			updatedAt: new Date('2026-02-01'),
+		});
+
+		const response = await memberAgent.get('/ai-preferences').query({ sortBy: 'updatedAt:desc' });
+
+		expect(contentsOf(response)).toEqual(['a', 'c', 'b']);
+	});
+
+	test('refuses an unknown sort', async () => {
+		const response = await memberAgent.get('/ai-preferences').query({ sortBy: 'content:asc' });
+
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('hides the rows of a project the caller is not a member of', async () => {
 		await seed({ content: 'Marketing', projectId: project.id });
 
@@ -585,6 +638,58 @@ describe('GET /ai-preferences?ids=', () => {
 	});
 });
 
+describe('GET /ai-preferences?search=', () => {
+	test('returns the rows whose text contains the term, ignoring case, and counts only them', async () => {
+		await seed({ content: 'Keep replies SHORT.', userId: member.id });
+		await seed({ content: 'Short names for nodes', projectId: project.id });
+		await seed({ content: 'Use British spelling' });
+
+		const response = await memberAgent.get('/ai-preferences').query({ search: ' short ' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.count).toBe(2);
+		expect(contentsOf(response).sort()).toEqual(['Keep replies SHORT.', 'Short names for nodes']);
+	});
+
+	test('matches the wildcard characters literally', async () => {
+		await seed({ content: 'Cap retries at 100%', userId: member.id });
+		await seed({ content: 'Cap retries at 1000', userId: member.id });
+		await seed({ content: 'snake_case names', userId: member.id });
+		await seed({ content: 'snakeXcase names', userId: member.id });
+
+		const percent = await memberAgent.get('/ai-preferences').query({ search: '100%' });
+		const underscore = await memberAgent.get('/ai-preferences').query({ search: 'snake_case' });
+
+		expect(contentsOf(percent)).toEqual(['Cap retries at 100%']);
+		expect(contentsOf(underscore)).toEqual(['snake_case names']);
+	});
+
+	test('does not widen what the caller may see', async () => {
+		await seed({ content: 'Short, theirs', userId: outsider.id });
+		await seed({ content: 'Short, mine', userId: member.id });
+
+		const response = await memberAgent.get('/ai-preferences').query({ search: 'short' });
+
+		expect(contentsOf(response)).toEqual(['Short, mine']);
+	});
+
+	test('returns every row for a blank term', async () => {
+		await seed({ content: 'one', userId: member.id });
+		await seed({ content: 'two', userId: member.id });
+
+		const response = await memberAgent.get('/ai-preferences').query({ search: '   ' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.count).toBe(2);
+	});
+
+	test('refuses a term that is too long', async () => {
+		const response = await memberAgent.get('/ai-preferences').query({ search: 'a'.repeat(201) });
+
+		expect(response.statusCode).toBe(400);
+	});
+});
+
 describe('GET /ai-preferences/count', () => {
 	test('returns the size of the list the caller would see, without rows', async () => {
 		await seed({ content: 'Instance' });
@@ -607,7 +712,7 @@ describe('PATCH /ai-preferences/:id', () => {
 
 		const response = await memberAgent
 			.patch(`/ai-preferences/${row.id}`)
-			.send({ content: 'New', scope: 'user' });
+			.send({ content: 'New', scope: 'user', userId: member.id });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.content).toBe('New');
@@ -617,13 +722,13 @@ describe('PATCH /ai-preferences/:id', () => {
 	test('keeps the surface that created the row, whatever the edit says', async () => {
 		const created = await memberAgent
 			.post('/ai-preferences')
-			.send({ content: 'From settings.', scope: 'user' });
+			.send({ content: 'From settings.', scope: 'user', userId: member.id });
 
 		// A body carrying a surface is ignored on an edit as it is on a create, so an
 		// assistant edit of a person's row never relabels it.
 		const response = await memberAgent
 			.patch(`/ai-preferences/${created.body.data.id}`)
-			.send({ content: 'Edited.', scope: 'user', source: 'aia' });
+			.send({ content: 'Edited.', scope: 'user', userId: member.id, source: 'aia' });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.source).toBe('ui');
@@ -662,7 +767,7 @@ describe('PATCH /ai-preferences/:id', () => {
 
 		const response = await memberAgent
 			.patch(`/ai-preferences/${row.id}`)
-			.send({ content: 'Marketing', scope: 'user' });
+			.send({ content: 'Marketing', scope: 'user', userId: member.id });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toMatchObject({ userId: member.id, projectId: null });
@@ -724,16 +829,41 @@ describe('PATCH /ai-preferences/:id', () => {
 		});
 	});
 
-	test("moves another user's preference to the admin when no user is named", async () => {
-		// The owner is explicit on the wire. A request without one means the caller.
+	test("refuses an edit of another user's row that does not name the user", async () => {
+		// An edit names its target. Without an owner the old code moved the row to the
+		// caller, so an admin could take a member's row by leaving one field out.
 		const row = await seed({ content: 'Theirs', userId: member.id });
 
 		const response = await adminAgent
 			.patch(`/ai-preferences/${row.id}`)
 			.send({ content: 'Theirs', scope: 'user' });
 
-		expect(response.statusCode).toBe(200);
-		expect((await repository().findOneByOrFail({ id: row.id })).userId).toBe(admin.id);
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('An edit of a user preference must name the user');
+		expect((await repository().findOneByOrFail({ id: row.id })).userId).toBe(member.id);
+	});
+
+	test('refuses an edit of the caller own row that does not name the user', async () => {
+		const row = await seed({ content: 'Mine', userId: member.id });
+
+		const response = await memberAgent
+			.patch(`/ai-preferences/${row.id}`)
+			.send({ content: 'Changed', scope: 'user' });
+
+		expect(response.statusCode).toBe(400);
+		expect((await repository().findOneByOrFail({ id: row.id })).content).toBe('Mine');
+	});
+
+	test("refuses a member who names another user's row as the target", async () => {
+		// Review focus 1: naming the owner is not the same as owning the right to edit them.
+		const row = await seed({ content: 'Mine', userId: member.id });
+
+		const response = await memberAgent
+			.patch(`/ai-preferences/${row.id}`)
+			.send({ content: 'Mine', scope: 'user', userId: outsider.id });
+
+		expect(response.statusCode).toBe(403);
+		expect((await repository().findOneByOrFail({ id: row.id })).userId).toBe(member.id);
 	});
 
 	test('refuses a move into a project the caller may only read, even with update rights on the row', async () => {

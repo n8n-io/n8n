@@ -1,14 +1,20 @@
 export {
 	SystemTask,
-	resolveSystemTaskRunOptions,
-	resolveSystemTaskSchedule,
-	validateSystemTask,
+	clusterTarget,
+	instanceTarget,
+	intervalFromMilliseconds,
+	intervalFromSeconds,
+	leaderTimerTarget,
+	resolveSystemTask,
+	timeoutAfterLimit,
 } from './system-task';
+export type { SystemTaskClass, SystemTaskRunOptions } from './system-task';
 export type {
-	SystemTaskClass,
-	SystemTaskEffects,
-	SystemTaskRunOptions,
+	ClusterTarget,
+	InstanceTarget,
+	LeaderTimerTarget,
+	SchedulerOptions,
+	SystemTaskTarget,
 	SystemTaskSchedule,
-} from './system-task';
-export type { SystemTaskPlacement } from './system-task-placement';
+} from './types';
 export { SystemTaskMetadata } from './system-task-metadata';

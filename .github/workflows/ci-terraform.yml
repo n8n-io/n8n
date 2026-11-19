@@ -3,7 +3,7 @@ name: 'CI: Terraform'
 on:
   pull_request:
     paths:
-      - packages/@n8n/benchmark/infra/**
+      - packages/quality/efficiency/scale/benchmark/infra/**
       - .github/workflows/ci-terraform.yml
 
 # The job only reads the repo and runs terraform. It writes nothing.
@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: packages/@n8n/benchmark/infra
+        working-directory: packages/quality/efficiency/scale/benchmark/infra
     steps:
       - name: Check out project
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { keapApiRequest } from './GenericFunctions';
 
@@ -71,7 +71,7 @@ export class KeapTrigger implements INodeType {
 			// select them easily
 			async getEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const hooks = await keapApiRequest.call(this, 'GET', '/hooks/event_keys');
+				const hooks = await keapApiRequest.call(this, 'GET', requestPath`/hooks/event_keys`);
 				for (const hook of hooks) {
 					const hookName = hook;
 					const hookId = hook;
@@ -92,7 +92,7 @@ export class KeapTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 
-				const responseData = await keapApiRequest.call(this, 'GET', '/hooks', {});
+				const responseData = await keapApiRequest.call(this, 'GET', requestPath`/hooks`, {});
 
 				for (const existingData of responseData) {
 					if (
@@ -118,7 +118,7 @@ export class KeapTrigger implements INodeType {
 					hookUrl: webhookUrl,
 				};
 
-				const responseData = await keapApiRequest.call(this, 'POST', '/hooks', body);
+				const responseData = await keapApiRequest.call(this, 'POST', requestPath`/hooks`, body);
 
 				if (responseData.key === undefined) {
 					// Required data is missing so was not successful
@@ -134,7 +134,7 @@ export class KeapTrigger implements INodeType {
 
 				if (webhookData.webhookId !== undefined) {
 					try {
-						await keapApiRequest.call(this, 'DELETE', `/hooks/${webhookData.webhookId}`);
+						await keapApiRequest.call(this, 'DELETE', requestPath`/hooks/${webhookData.webhookId}`);
 					} catch (error) {
 						return false;
 					}

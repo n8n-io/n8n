@@ -1,0 +1,67 @@
+import { test, expect } from '../../../fixtures/base';
+
+test.describe(
+	'AI-812-partial-execs-broken-when-using-chat-trigger',
+	{
+		annotation: [{ type: 'owner', description: 'Agent' }],
+	},
+	() => {
+		test.beforeEach(async ({ n8n }) => {
+			await n8n.start.fromImportedWorkflow('Test_chat_partial_execution.json');
+			await n8n.notifications.quickCloseAll();
+			await n8n.canvas.clickZoomToFitButton();
+			await n8n.canvas.deselectAll();
+		});
+
+		test.afterEach(async ({ n8n }) => {
+			await n8n.notifications.quickCloseAll();
+			await n8n.canvas.logsPanel.clearExecutionData();
+			await n8n.canvas.logsPanel.sendManualChatMessage('Test Full Execution');
+
+			await expect(n8n.canvas.logsPanel.getManualChatMessages()).toHaveCount(4);
+
+			await expect(n8n.canvas.logsPanel.getManualChatMessages().last()).toContainText(
+				'Set 3 with chatInput: Test Full Execution',
+			);
+		});
+
+		// TODO(CET-309): engine v2 does not run the chat trigger yet.
+		test('should do partial execution when using chat trigger and clicking NDV execute node @engine:v2-pending', async ({
+			n8n,
+		}) => {
+			await n8n.canvas.openNode('Edit Fields1');
+			await n8n.ndv.execute();
+
+			await expect(n8n.canvas.logsPanel.getManualChatModal()).toBeVisible();
+			await n8n.canvas.logsPanel.sendManualChatMessage('Test Partial Execution');
+
+			await expect(n8n.canvas.logsPanel.getManualChatMessages()).toHaveCount(2);
+			await expect(n8n.canvas.logsPanel.getManualChatMessages().first()).toContainText(
+				'Test Partial Execution',
+			);
+			await expect(n8n.canvas.logsPanel.getManualChatMessages().last()).toContainText(
+				'Set 2 with chatInput: Test Partial Execution',
+			);
+		});
+
+		// TODO(CET-309): engine v2 does not run the chat trigger yet.
+		test('should do partial execution when using chat trigger and context-menu execute node @engine:v2-pending', async ({
+			n8n,
+		}) => {
+			// Workaround to prevent the context menu be blocked by the tabbar
+			await n8n.canvas.dragNodeToRelativePosition('Edit Fields', 0, -100);
+			await n8n.canvas.executeNodeFromContextMenu('Edit Fields');
+
+			await expect(n8n.canvas.logsPanel.getManualChatModal()).toBeVisible();
+			await n8n.canvas.logsPanel.sendManualChatMessage('Test Partial Execution');
+
+			await expect(n8n.canvas.logsPanel.getManualChatMessages()).toHaveCount(2);
+			await expect(n8n.canvas.logsPanel.getManualChatMessages().first()).toContainText(
+				'Test Partial Execution',
+			);
+			await expect(n8n.canvas.logsPanel.getManualChatMessages().last()).toContainText(
+				'Set 1 with chatInput: Test Partial Execution',
+			);
+		});
+	},
+);

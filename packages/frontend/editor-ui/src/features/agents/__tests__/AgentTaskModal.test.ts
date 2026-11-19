@@ -1,7 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { AGENT_TASK_OBJECTIVE_MAX_LENGTH, type AgentTaskDto } from '@n8n/api-types';
 import { configure, fireEvent, waitFor } from '@testing-library/vue';
-import { defineComponent, h, nextTick, onMounted, watch } from 'vue';
+import { defineComponent, h, nextTick, onMounted, ref, watch } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -136,11 +136,11 @@ const stubs = {
 		template:
 			'<button v-bind="$attrs" role="switch" :aria-checked="String(modelValue)" @click="$emit(\'update:modelValue\', !modelValue)" />',
 	},
-	AgentPreviewButton: {
-		props: ['isRunnable', 'testId', 'validationIssues', 'variant'],
+	AgentTestButton: {
+		props: ['isRunnable', 'testId', 'validationIssues', 'variant', 'disabledReason'],
 		emits: ['open-preview'],
 		template:
-			'<button :data-testid="testId" :data-variant="variant" :disabled="!isRunnable" @click="isRunnable && $emit(\'open-preview\')">Preview</button>',
+			'<button :data-testid="testId" :data-variant="variant" :disabled="!isRunnable || !!disabledReason" @click="isRunnable && !disabledReason && $emit(\'open-preview\')">Preview</button>',
 	},
 	N8nInput: {
 		props: ['modelValue'],
@@ -376,30 +376,20 @@ describe('AgentTaskModal', () => {
 		);
 	});
 
-	it('pauses and unpauses an existing task with the inline toggle', async () => {
-		const onToggle = vi.fn();
-		const { getByTestId, getByText, queryByText } = renderModal({
+	it('allows manual Preview of a deactivated schedule without a modal toggle', async () => {
+		const onPreview = vi.fn();
+		const { getByTestId, queryByTestId, getByText } = renderModal({
 			task: makeTask(),
-			taskState: { enabled: true },
-			onToggle,
+			taskState: { enabled: false },
+			isRunnable: true,
+			onPreview,
 		});
 
-		expect(getByTestId('agent-task-pause-control')).toHaveTextContent('agents.builder.tasks.pause');
-		expect(getByTestId('agent-task-toggle')).toHaveAttribute('aria-checked', 'false');
-		expect(getByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).toBeInTheDocument();
+		expect(queryByTestId('agent-task-toggle')).not.toBeInTheDocument();
+		expect(getByText(/agents\.builder\.capabilities\.deactivated/)).toBeInTheDocument();
+		await fireEvent.click(getByTestId('agent-task-preview'));
 
-		await fireEvent.click(getByTestId('agent-task-toggle'));
-
-		expect(onToggle).toHaveBeenCalledWith({ id: 'task-9', enabled: false });
-		expect(getByTestId('agent-task-toggle')).toHaveAttribute('aria-checked', 'true');
-		expect(queryByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).not.toBeInTheDocument();
-		expect(getByText('agents.builder.tasks.schedule.executionPaused')).toBeInTheDocument();
-
-		await fireEvent.click(getByTestId('agent-task-toggle'));
-
-		expect(onToggle).toHaveBeenLastCalledWith({ id: 'task-9', enabled: true });
-		expect(getByTestId('agent-task-toggle')).toHaveAttribute('aria-checked', 'false');
-		expect(getByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).toBeInTheDocument();
+		expect(onPreview).toHaveBeenCalledWith('Obj');
 	});
 
 	describe('schedule timezone', () => {
@@ -549,6 +539,30 @@ describe('AgentTaskModal', () => {
 		expect(onPreview).not.toHaveBeenCalled();
 	});
 
+	it('updates Test availability while the task modal is open', async () => {
+		const reason = ref<string>();
+		const onPreview = vi.fn();
+		const { getByTestId } = renderModal({
+			task: makeTask(),
+			isRunnable: true,
+			onPreview,
+			getPreviewDisabledReason: () => reason.value,
+		});
+		const button = getByTestId('agent-task-preview');
+		expect(button).toBeEnabled();
+		reason.value = 'Assistant is working';
+		await nextTick();
+		expect(button).toBeDisabled();
+		await fireEvent.click(button);
+		expect(onPreview).not.toHaveBeenCalled();
+		expect(uiStore.closeModal).not.toHaveBeenCalled();
+		reason.value = undefined;
+		await nextTick();
+		expect(button).toBeEnabled();
+		await fireEvent.click(button);
+		expect(onPreview).toHaveBeenCalledWith('Obj');
+	});
+
 	it('does not open Preview when the objective is invalid', async () => {
 		const onPreview = vi.fn();
 		const { getByTestId } = renderModal({
@@ -585,8 +599,7 @@ describe('AgentTaskModal', () => {
 		});
 
 		expect(getByTestId('agent-task-delete')).toHaveTextContent('agents.builder.tasks.delete');
-		expect(getByTestId('agent-task-pause-control')).toBeInTheDocument();
-		expect(getByTestId('agent-task-toggle')).toBeInTheDocument();
+		expect(queryByTestId('agent-task-toggle')).not.toBeInTheDocument();
 		expect(getByTestId('agent-task-preview')).toHaveTextContent('Preview');
 		expect(getByTestId('agent-task-preview')).toHaveAttribute('data-variant', 'ghost');
 		expect(getByTestId('agent-task-save')).toHaveTextContent('generic.save');

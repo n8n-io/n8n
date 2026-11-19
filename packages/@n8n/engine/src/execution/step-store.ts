@@ -12,9 +12,9 @@ import type {
  * A new step to persist. `id` and timestamps are assigned by the store.
  *
  * Creation statuses only: a row becomes `running`, `waiting`, `failed`, or
- * `cancelled` solely through `claimStep`, `suspendStep`, `failStep`, or
- * `cancelPendingSteps`, so it cannot bypass the checks and locking those
- * transitions enforce.
+ * `cancelled` solely through `claimStep`, `suspendStep`, `failStep`,
+ * `cancelStep`, or `cancelPendingSteps`, so it cannot bypass the checks and
+ * locking those transitions enforce.
  *
  * A step created `completed` (the trigger) must carry its slot list, even
  * `[]`: a missing one persists as SQL NULL, which liveness reads as every
@@ -72,7 +72,26 @@ export interface DueStep {
 	executionId: string;
 }
 
-/** Persistence interface for step records. */
+/** A step that is still `queued` after its `stale_after` time. */
+export interface StaleQueuedStep {
+	id: string;
+	executionId: string;
+	staleAfter: Date;
+}
+
+/** A step that is still `running` after its `stale_after` time. */
+export interface StaleRunningStep {
+	id: string;
+	staleAfter: Date;
+}
+
+/**
+ * Persistence interface for step records.
+ *
+ * Every transition into `queued` or `running` also records when the engine
+ * treats the step as stuck in that status (see `StalenessThresholds`). Every
+ * other transition clears that time.
+ */
 export interface StepStore {
 	/**
 	 * Persist new step records for one execution, batched so planning a fan-out
@@ -123,6 +142,8 @@ export interface StepStore {
 	 * Record a wait: persist `wait_declaration` and move the step to `waiting`. A
 	 * compare-and-set on `running`, as `completeStep` — but `waiting` is no
 	 * outcome, so nothing plans behind the step and nothing counts it settled.
+	 * If the execution has ended, the step is cancelled instead and the call
+	 * returns `false`: nothing resumes a wait in an ended execution.
 	 */
 	suspendStep(id: string, waitDeclaration: WaitDeclaration): Promise<boolean>;
 
@@ -135,9 +156,6 @@ export interface StepStore {
 	 *
 	 * Whether a given resume is allowed against a given wait is checked by
 	 * whoever accepts it, not here.
-	 *
-	 * TODO(CAT-2928): nothing calls this yet. The resolve endpoint that accepts
-	 * a resume request is the caller.
 	 */
 	resumeStep(id: string, resumeCause: ResumeCause): Promise<boolean>;
 
@@ -154,6 +172,10 @@ export interface StepStore {
 	 *
 	 * `limit` bounds the batch, so a backlog cannot turn one sweep into a single
 	 * long-running update.
+	 *
+	 * A due wait whose execution has ended is cancelled instead of resumed, and
+	 * is not returned. A step that suspends after the execution's cancellation
+	 * sweep ran is the one case that reaches here.
 	 */
 	resumeDueSteps(due: Date, limit: number): Promise<DueStep[]>;
 
@@ -168,8 +190,49 @@ export interface StepStore {
 	 */
 	nextWaitDeadline(): Promise<Date | null>;
 
+	/**
+	 * The steps that are `queued` and whose `stale_after` time is `at` or
+	 * earlier, oldest first, at most `limit`. A plain read: it locks no row.
+	 */
+	findStaleQueuedSteps(at: Date, limit: number): Promise<StaleQueuedStep[]>;
+
+	/**
+	 * Gives a `queued` step a new `stale_after` time. A compare-and-set on the
+	 * status and on the `staleAfter` value that the caller read, so only one of
+	 * several concurrent callers gets `true`.
+	 */
+	renewQueuedStep(id: string, staleAfter: Date): Promise<boolean>;
+
+	/**
+	 * The steps that are `running` and whose `stale_after` time is `at` or
+	 * earlier, oldest first, at most `limit`. A plain read: it locks no row.
+	 */
+	findStaleRunningSteps(at: Date, limit: number): Promise<StaleRunningStep[]>;
+
+	/**
+	 * Fail a step that no worker settled in time. As `failStep`, but the
+	 * compare-and-set also tests the `staleAfter` value that the caller read. A
+	 * step that settled, or that was claimed again, after that read is not
+	 * changed.
+	 */
+	failStaleRunningStep(id: string, staleAfter: Date, error: StepError): Promise<boolean>;
+
 	/** Record a failed run: persist `error` and mark the step failed. As `completeStep`. */
 	failStep(id: string, error: StepError): Promise<boolean>;
+
+	/**
+	 * Fail a step that waits on a sub-execution the engine could not start. As
+	 * `failStep`, but a compare-and-set on `waiting`: the step suspended before
+	 * the start was attempted, so no worker owns it.
+	 */
+	failWaitingStep(id: string, error: StepError): Promise<boolean>;
+
+	/**
+	 * Settle a claimed step that will not run, because its execution ended
+	 * between the claim and the run. As `completeStep`, a compare-and-set on
+	 * `running`, so a worker that lost the claim writes nothing.
+	 */
+	cancelStep(id: string): Promise<boolean>;
 
 	/**
 	 * Cancel every pending step of the execution (`-> cancelled`). A pending step
@@ -230,6 +293,16 @@ export interface StepStore {
 	 */
 	loadAllSteps(executionId: string): Promise<StepRecord[]>;
 
+	/** The steps of the given nodes, every pass of each, with their outputs. */
+	loadStepsByNodeIds(executionId: string, nodeIds: string[]): Promise<StepRecord[]>;
+
+	/**
+	 * Every step of the execution in the `waiting` status, with its wait
+	 * declaration, whatever that declaration says. The caller decides which
+	 * waits it can act on.
+	 */
+	loadWaitingSteps(executionId: string): Promise<StepRecord[]>;
+
 	/**
 	 * How many of the execution's steps have settled (completed, failed,
 	 * skipped, or cancelled). Rows are unique per `(node, iteration)`, only exist
@@ -242,4 +315,7 @@ export interface StepStore {
 
 	/** Whether any of the execution's steps failed. */
 	hasFailedSteps(executionId: string): Promise<boolean>;
+
+	/** The execution's failed steps, by node and then by pass. */
+	loadFailedSteps(executionId: string): Promise<StepRecord[]>;
 }

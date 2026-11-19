@@ -116,6 +116,7 @@ export const baseConfig = defineConfig({
 		'typescript/consistent-type-assertions': 'error',
 		'typescript/consistent-type-exports': 'error',
 		'typescript/explicit-member-accessibility': ['error', { accessibility: 'no-public' }],
+		'typescript/no-deprecated': 'error',
 		'typescript/no-array-delete': 'error',
 		'typescript/no-base-to-string': 'error',
 		'typescript/no-duplicate-enum-values': 'error',
@@ -217,6 +218,7 @@ export const baseConfig = defineConfig({
 		'unused-imports/no-unused-imports': 'error',
 
 		'n8n-local-rules/no-application-error': 'error',
+		'n8n-local-rules/no-base-error-import-from-workflow': 'error',
 		'n8n-local-rules/no-aws-credential-discovery-imports': 'error',
 		'n8n-local-rules/no-internal-package-import': 'error',
 		'n8n-local-rules/no-interpolation-in-regular-string': 'error',
@@ -232,6 +234,13 @@ export const baseConfig = defineConfig({
 		'n8n-local-rules/no-useless-catch-throw': 'error',
 	},
 	overrides: [
+		{
+			// Ignore deprecations in tests, as well as barrel files which are usually just exports
+			files: ['test/**/*.ts', '**/__tests__/**/*.ts', '**/*.test.ts', '**/index.ts'],
+			rules: {
+				'typescript/no-deprecated': 'off',
+			},
+		},
 		{
 			files: ['eslint.config.mjs', 'eslint.*.config.mjs', 'oxlint.config.mts'],
 			jsPlugins: ['@n8n/oxlint-config/import-x-alias'],

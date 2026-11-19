@@ -6,11 +6,14 @@ import {
 	DirectedGraph,
 	filterDisabledNodes,
 	recreateNodeExecutionStack,
+	StorageConfig,
 	WorkflowExecute,
 	rewireGraph,
 } from 'n8n-core';
-import { NodeHelpers, UserError, createRunExecutionData } from 'n8n-workflow';
+import { NodeHelpers, createRunExecutionData } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type {
+	ExecutionStorageLocation,
 	IExecuteData,
 	IPinData,
 	IRun,
@@ -24,7 +27,10 @@ import type PCancelable from 'p-cancelable';
 
 @Service()
 export class ManualExecutionService {
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly storageConfig: StorageConfig,
+	) {}
 
 	getExecutionStartNode(data: IWorkflowExecutionDataProcess, workflow: Workflow) {
 		let startNode;
@@ -52,6 +58,7 @@ export class ManualExecutionService {
 		additionalData: IWorkflowExecuteAdditionalData,
 		executionId: string,
 		pinData?: IPinData,
+		storedAt: ExecutionStorageLocation = this.storageConfig.modeTag,
 	): PCancelable<IRun> {
 		if (data.triggerToStartFrom?.data && data.startNodes?.length) {
 			this.logger.debug(
@@ -101,6 +108,7 @@ export class ManualExecutionService {
 				additionalData,
 				data.executionMode,
 				executionData,
+				storedAt,
 			);
 			return workflowExecute.processRunExecutionData(workflow);
 		} else if (data.runData === undefined || data.executionMode === 'evaluation') {
@@ -168,7 +176,12 @@ export class ManualExecutionService {
 			}
 
 			// Can execute without webhook so go on
-			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
+			const workflowExecute = new WorkflowExecute(
+				additionalData,
+				data.executionMode,
+				undefined,
+				storedAt,
+			);
 			return workflowExecute.run({
 				workflow,
 				startNode,
@@ -186,7 +199,12 @@ export class ManualExecutionService {
 			// Partial Execution
 			this.logger.debug(`Execution ID ${executionId} is a partial execution.`, { executionId });
 			// Execute only the nodes between start and destination nodes
-			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
+			const workflowExecute = new WorkflowExecute(
+				additionalData,
+				data.executionMode,
+				undefined,
+				storedAt,
+			);
 
 			return workflowExecute.runPartialWorkflow2(
 				workflow,

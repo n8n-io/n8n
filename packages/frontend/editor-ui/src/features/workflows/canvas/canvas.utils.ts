@@ -59,9 +59,8 @@ export function computeNodeDisplaySize(
 
 	const mainInputCount = inputs.filter((p) => p.type === 'main').length || 1;
 	const mainOutputCount = outputs.filter((p) => p.type === 'main').length || 1;
-	const nonMainInputCount =
-		inputs.filter((p) => p.type !== 'main').length +
-		outputs.filter((p) => p.type !== 'main').length;
+	const nonMainInputCount = inputs.filter((p) => p.type !== 'main').length;
+	const nonMainOutputCount = outputs.filter((p) => p.type !== 'main').length;
 
 	return calculateNodeSize(
 		renderOptions.configuration ?? false,
@@ -69,6 +68,7 @@ export function computeNodeDisplaySize(
 		mainInputCount,
 		mainOutputCount,
 		nonMainInputCount,
+		nonMainOutputCount,
 		isExperimentalNdvActive,
 	);
 }
@@ -110,8 +110,7 @@ export function createEmptyCanvasRenderData(
 		executionIssuesByNodeName: shallowReactive(new Map()),
 		executionPinDataByNodeName: {},
 		executionIssuesByNodeId: shallowReactive(new Map()),
-		executionPinDataByNodeId: shallowReactive(new Map()),
-		isExecutionDataDisplayed: false,
+		getDisplayedExecutionPinData: () => undefined,
 		executionStatusByNodeId: shallowReactive(new Map()),
 		executionRunDataByNodeId: shallowReactive(new Map()),
 		executionRunDataOutputMapByNodeId: shallowReactive(new Map()),
@@ -428,10 +427,13 @@ export function getMaxNodePortsLabelSize(
 	return labelSizes[Math.max(...labelSizeIndexes)];
 }
 
-export function shouldIgnoreCanvasShortcut(el: Element): boolean {
+export function shouldIgnoreCanvasShortcut(
+	el: Element,
+	{ allowInInputs = false }: { allowInInputs?: boolean } = {},
+): boolean {
 	return (
-		['INPUT', 'TEXTAREA'].includes(el.tagName) ||
-		el.closest('[contenteditable]') !== null ||
+		(!allowInInputs &&
+			(['INPUT', 'TEXTAREA'].includes(el.tagName) || el.closest('[contenteditable]') !== null)) ||
 		el.closest('[role="dialog"]') !== null ||
 		el.closest('.ignore-key-press-canvas') !== null
 	);

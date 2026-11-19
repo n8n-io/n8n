@@ -1,6 +1,7 @@
+import { UnexpectedError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
 import type { IDataObject } from 'n8n-workflow';
-import { NodeOperationError, UnexpectedError } from 'n8n-workflow';
+import { NodeOperationError, requestUrl } from 'n8n-workflow';
 
 import {
 	databricksApiRequest,
@@ -10,7 +11,9 @@ import {
 } from '../actions/helpers';
 import { clampPageSize, collectPages, toPage, type Page, type PageLimits } from './pagination';
 
-export const PIPELINE_EVENTS_MAX_PAGE_SIZE = 1000;
+// The API reference lists 1000, but the server rejects anything above 250 with
+// "Cannot have more than 250 events per page."
+export const PIPELINE_EVENTS_MAX_PAGE_SIZE = 250;
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z$/;
 
@@ -132,13 +135,17 @@ async function fetchPipelineEventsPage(
 	if (!UUID_PATTERN.test(params.pipelineId)) {
 		throw new NodeOperationError(context.getNode(), 'Pipeline ID must be a UUID');
 	}
-	const response: unknown = await databricksApiRequest(context, credentialType, {
-		method: 'GET',
-		url: `${host}/api/2.0/pipelines/${params.pipelineId}/events`,
-		qs: toQuery(params),
-		headers: { Accept: 'application/json' },
-		json: true,
-	});
+	const response: unknown = await databricksApiRequest(
+		context,
+		credentialType,
+		requestUrl`${host}/api/2.0/pipelines/${params.pipelineId}/events`,
+		{
+			method: 'GET',
+			qs: toQuery(params),
+			headers: { Accept: 'application/json' },
+			json: true,
+		},
+	);
 	if (!isPipelineEventsResponse(response)) {
 		throw new NodeOperationError(
 			context.getNode(),

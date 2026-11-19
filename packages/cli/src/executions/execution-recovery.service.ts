@@ -58,6 +58,7 @@ export class ExecutionRecoveryService {
 				where: { workflowId },
 				order: { startedAt: 'DESC' },
 				take: maxLastExecutions,
+				withDeleted: true,
 			});
 			const numberOfCrashedExecutions = lastExecutions.filter((e) => e.status === 'crashed').length;
 
@@ -79,7 +80,10 @@ export class ExecutionRecoveryService {
 						// Lazy resolution breaks the DI cycle: WorkflowService →
 						// ActiveWorkflowManager → MessageEventBus → this service
 						const { WorkflowService } = await import('@/workflows/workflow.service.js');
-						await Container.get(WorkflowService).deactivateWorkflowAsSystem(workflowId);
+						await Container.get(WorkflowService).deactivateWorkflowAsSystem(
+							workflowId,
+							'crash-recovery',
+						);
 						this.logger.warn(
 							`Autodeactivated workflow ${workflowId} due to too many crashed executions.`,
 						);
@@ -170,7 +174,7 @@ export class ExecutionRecoveryService {
 		 * */
 		if (
 			!execution ||
-			(['success', 'error', 'canceled'].includes(execution.status) && execution.data)
+			(['success', 'error', 'canceled', 'crashed'].includes(execution.status) && execution.data)
 		) {
 			return null;
 		}
@@ -180,8 +184,6 @@ export class ExecutionRecoveryService {
 		// CAT-752: runData can be missing even tho according to the type it shouldn't be.
 		// We initialize it to avoid referencing a property of undefined later on.
 		runExecutionData.resultData.runData ??= {};
-
-		let lastNodeRunTimestamp: DateTime | undefined;
 
 		for (const node of execution.workflowData.nodes) {
 			const nodeMessages = nodeMessagesByName[node.name] ?? [];
@@ -210,23 +212,40 @@ export class ExecutionRecoveryService {
 				taskData.executionStatus = 'success';
 				taskData.data ??= ARTIFICIAL_TASK_DATA;
 				taskData.executionTime = nodeFinishedMessage.ts.diff(nodeStartedMessage.ts).toMillis();
-				lastNodeRunTimestamp = nodeFinishedMessage.ts;
 			} else {
 				taskData.executionStatus = 'crashed';
 				taskData.error = new NodeCrashedError(node);
 				taskData.executionTime = 0;
 				runExecutionData.resultData.error = new WorkflowCrashedError();
-				lastNodeRunTimestamp = nodeStartedMessage.ts;
 			}
 
 			runExecutionData.resultData.lastNodeExecuted = node.name;
 			runExecutionData.resultData.runData[node.name] = [taskData];
 		}
 
+		const stoppedAt = this.toStoppedAt(
+			this.latestNodeEventTs(nodeMessagesByName),
+			workflowMessages,
+		);
+
+		// A finished row that lost its data is past the claim's status guard, so it is amended directly.
+		if (!['success', 'error', 'canceled'].includes(execution.status)) {
+			const [claimed] = await this.executionCrashService.markAsCrashedWithoutCounting(
+				executionId,
+				'startup-recovery',
+				{ stoppedAt },
+			);
+
+			// Another detector crashed it first, or it moved on to a status that must be kept.
+			if (!claimed) return null;
+		}
+
 		return {
 			...execution,
 			status: execution.status === 'error' ? 'error' : 'crashed',
-			stoppedAt: this.toStoppedAt(lastNodeRunTimestamp, workflowMessages),
+			stoppedAt,
+			// The claim clears `waitTill`, so the later write must not restore the stale value.
+			waitTill: null,
 			data: runExecutionData,
 		} as IExecutionResponse;
 	}
@@ -266,6 +285,17 @@ export class ExecutionRecoveryService {
 		);
 	}
 
+	/** The node list follows canvas order, not run order, so pick the latest event by time. */
+	private latestNodeEventTs(nodeMessagesByName: Record<string, EventMessageTypes[]>) {
+		let latest: DateTime | undefined;
+
+		for (const { ts } of Object.values(nodeMessagesByName).flat()) {
+			if (!latest || ts > latest) latest = ts;
+		}
+
+		return latest;
+	}
+
 	private toStoppedAt(timestamp: DateTime | undefined, messages: EventMessageTypes[]) {
 		if (timestamp) return timestamp.toJSDate();
 
@@ -298,6 +328,7 @@ export class ExecutionRecoveryService {
 
 		const run: IRun = {
 			data: execution.data,
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 			finished: false,
 			mode: execution.mode,
 			waitTill: execution.waitTill ?? undefined,
@@ -310,7 +341,7 @@ export class ExecutionRecoveryService {
 		await lifecycleHooks.runHook('workflowExecuteAfter', [run]);
 	}
 
-	private async getAutodeactivationRecipient(workflow: WorkflowEntity): Promise<User> {
+	async getAutodeactivationRecipient(workflow: WorkflowEntity): Promise<User> {
 		const project = await this.ownershipService.getWorkflowProjectCached(workflow.id);
 
 		const roleSlug = project.type === 'team' ? PROJECT_ADMIN_ROLE_SLUG : PROJECT_OWNER_ROLE_SLUG;

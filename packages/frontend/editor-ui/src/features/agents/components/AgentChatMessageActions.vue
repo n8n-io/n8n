@@ -11,6 +11,11 @@ const emit = defineEmits<{
 	sendToAssistant: [];
 }>();
 
+defineSlots<{
+	/** Extra actions after the default ones, for example the host `message-actions`. */
+	'extra-actions'?: () => unknown;
+}>();
+
 const i18n = useI18n();
 </script>
 
@@ -37,5 +42,6 @@ const i18n = useI18n();
 				@click="emit('sendToAssistant')"
 			/>
 		</N8nTooltip>
+		<slot name="extra-actions" />
 	</N8nChatActions>
 </template>

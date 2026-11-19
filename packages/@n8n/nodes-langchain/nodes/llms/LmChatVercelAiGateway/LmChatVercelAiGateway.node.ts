@@ -1,6 +1,7 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
 	getProxyAgent,
+	aiClientFetch,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
@@ -13,6 +14,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { getRequiredApiKey } from '@utils/helpers';
 import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 import type { OpenAICompatibleCredential } from '../../../types/types';
@@ -235,6 +237,7 @@ export class LmChatVercelAiGateway implements INodeType {
 		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
+			fetch: aiClientFetch,
 			fetchOptions: {
 				dispatcher: getProxyAgent(
 					credentials.url,
@@ -248,7 +251,7 @@ export class LmChatVercelAiGateway implements INodeType {
 		};
 
 		const model = new ChatOpenAI({
-			apiKey: credentials.apiKey,
+			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			model: modelName,
 			...options,
 			timeout,

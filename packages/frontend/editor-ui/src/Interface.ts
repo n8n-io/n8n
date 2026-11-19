@@ -1,3 +1,4 @@
+import type { ResourceEditorDestination } from '@/features/collaboration/projects/projects.types';
 import type {
 	AgentJsonConfig,
 	FrontendSettings,
@@ -9,10 +10,10 @@ import type {
 } from '@n8n/api-types';
 import type { ILogInStatus } from '@/features/settings/users/users.types';
 import type { NodeViewItemSection } from '@/features/shared/nodeCreator/views/viewsData';
-import type { IUsedCredential } from '@/features/credentials/credentials.types';
+import type { CredentialPayload, IUsedCredential } from '@/features/credentials/credentials.types';
 import type { Scope, WorkflowSharingRole } from '@n8n/permissions';
 import type { NodeCreatorTag, IconName, BinaryMetadata } from '@n8n/design-system';
-import type { ModalState } from '@n8n/frontend-module-sdk';
+import type { DisplayMode, ModalState, SlotResourcesListFilters } from '@n8n/frontend-module-sdk';
 import type {
 	GenericValue,
 	IConnections,
@@ -105,7 +106,8 @@ declare global {
 				options?: {
 					api_host?: string;
 					tracing_headers?: string[];
-					autocapture?: boolean;
+					autocapture?: boolean | { element_attribute_ignorelist?: string[] };
+					mask_all_text?: boolean;
 					disable_session_recording?: boolean;
 					advanced_disable_feature_flags?: boolean;
 					debug?: boolean;
@@ -380,11 +382,7 @@ export interface ModuleResources {}
 // The Resource type is the union of core resources and any module resources
 export type Resource = CoreResource | ModuleResources[keyof ModuleResources];
 
-export type BaseFilters = {
-	search: string;
-	homeProject: string;
-	[key: string]: boolean | string | string[];
-};
+export type BaseFilters = SlotResourcesListFilters;
 
 export type SortingAndPaginationUpdates = {
 	page?: number;
@@ -499,6 +497,7 @@ export type SimplifiedNodeType = Pick<
 	| 'codex'
 	| 'defaults'
 	| 'outputs'
+	| 'deprecated'
 > & {
 	tag?: NodeCreatorTag;
 	isNew?: boolean;
@@ -624,6 +623,11 @@ export interface ViewCreateElement extends CreateElementBase {
 	properties: ViewItemProps;
 }
 
+export interface CommandCreateElement extends CreateElementBase {
+	type: 'command';
+	properties: ViewItemProps;
+}
+
 export interface LabelCreateElement extends CreateElementBase {
 	type: 'label';
 	subcategory: string;
@@ -657,6 +661,7 @@ export type INodeCreateElement =
 	| SubcategoryCreateElement
 	| SectionCreateElement
 	| ViewCreateElement
+	| CommandCreateElement
 	| LabelCreateElement
 	| ActionCreateElement
 	| AgentCreateElement
@@ -704,9 +709,16 @@ export type ModalKey = keyof Modals;
 export type { ModalState };
 
 export interface NewCredentialsModal extends ModalState {
+	notice?: () => string;
+	initialName?: string;
+	initialData?: Record<string, unknown>;
+	destination?: ResourceEditorDestination;
+	createCredential?: (details: CredentialPayload, projectId: string) => Promise<string>;
+	onInitializeError?: (error: unknown) => void;
 	showAuthSelector?: boolean;
 	forceManualMode?: boolean;
 	closeOnSave?: boolean;
+	fixedCredentialsOnly?: boolean;
 	onCredentialCreated?: (credential: { id: string }) => void;
 	projectId?: string;
 	suggestedName?: string;
@@ -722,6 +734,8 @@ export interface NewCredentialsModal extends ModalState {
 	hideAskAssistant?: boolean;
 	appendToBody?: boolean;
 	usageScope?: 'project' | 'instance';
+	/** The tab the modal opens on, for a surface that sends the user to one part of it. */
+	initialTab?: 'connection' | 'sharing' | 'details';
 	/** Behavior for the Instance AI credential setup-help button, supplied by the
 	 * surface that opened the modal (an editor capability, or the credentials list).
 	 * Resolves to whether the credential modal should close (false keeps it open for
@@ -739,7 +753,8 @@ export interface NewCredentialsModal extends ModalState {
 	}) => Promise<boolean>;
 }
 
-export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
+/** A built-in display mode, or the id of a display mode that a module registered. */
+export type IRunDataDisplayMode = DisplayMode;
 
 export interface TargetItem {
 	nodeName: string;
@@ -776,8 +791,7 @@ export type NodeCreatorOpenSource =
 	| 'notice_error_message'
 	| 'add_node_button'
 	| 'add_evaluation_node_button'
-	| 'templates_callout'
-	| 'instance_ai';
+	| 'templates_callout';
 
 export interface INodeCreatorState {
 	itemsFilter: string;

@@ -1,6 +1,14 @@
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+
+import { pairAiGatewayServers } from '../mcp-registry-ai-gateway';
 import { searchMcpRegistryServers } from '../mcp-registry-search';
 import type { McpRegistryServer } from '../mcp-registry.types';
-import { githubUsesCredentialsMockServer } from '../mock-servers';
+import {
+	braveSearchAiGatewayMockServer,
+	firecrawlAiGatewayMockServer,
+	firecrawlMockServer,
+	githubUsesCredentialsMockServer,
+} from '../mock-servers';
 
 function server(overrides: Partial<McpRegistryServer> = {}): McpRegistryServer {
 	return {
@@ -123,5 +131,39 @@ describe('searchMcpRegistryServers', () => {
 		const [result] = searchMcpRegistryServers([server({ slug: 'notion' })], ['notion']);
 
 		expect(result.isTemplated).toBe(false);
+	});
+
+	it('returns a gateway-only row without a credential, and leaves out a paired AI Gateway row', () => {
+		const servers = pairAiGatewayServers(
+			[firecrawlMockServer, firecrawlAiGatewayMockServer, braveSearchAiGatewayMockServer],
+			() => true,
+		);
+
+		const results = searchMcpRegistryServers(servers, ['firecrawl', 'brave']);
+
+		expect(
+			results.map(({ slug, authentication, credentialType, credential, aiGatewayCredential }) => ({
+				slug,
+				authentication,
+				credentialType,
+				credential,
+				aiGatewayCredential,
+			})),
+		).toEqual([
+			{
+				slug: 'firecrawl',
+				authentication: 'firecrawlMcpOAuth2Api',
+				credentialType: 'firecrawlMcpOAuth2Api',
+				credential: undefined,
+				aiGatewayCredential: AI_GATEWAY_MANAGED_TAG,
+			},
+			{
+				slug: 'n8n-connect-brave-search',
+				authentication: 'none',
+				credentialType: '',
+				credential: AI_GATEWAY_MANAGED_TAG,
+				aiGatewayCredential: undefined,
+			},
+		]);
 	});
 });

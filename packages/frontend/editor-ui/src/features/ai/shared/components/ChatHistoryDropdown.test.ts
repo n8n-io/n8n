@@ -71,7 +71,11 @@ const textStub = {
 	props: ['size', 'color'],
 };
 
-function mountHistory(items: TestItem[], itemDoubleClickEnabled = false) {
+function mountHistory(
+	items: TestItem[],
+	itemDoubleClickEnabled = false,
+	extraProps: Record<string, unknown> = {},
+) {
 	return mount(ChatHistoryDropdown, {
 		props: {
 			items,
@@ -79,6 +83,7 @@ function mountHistory(items: TestItem[], itemDoubleClickEnabled = false) {
 			contentTestId: 'chat-history-list',
 			actionButtonLabel: 'Conversation actions',
 			itemDoubleClickEnabled,
+			...extraProps,
 		},
 		slots: { trigger: '<button>History</button>' },
 		global: {
@@ -143,6 +148,44 @@ describe('ChatHistoryDropdown', () => {
 			'group-This week',
 			'week',
 		]);
+	});
+
+	it('pins a leading item above every date group, even with no items at all', () => {
+		const leadingItem: TestItem = { id: 'new-chat', label: 'New chat', testId: 'new-chat' };
+
+		const withItems = mountHistory([item('today', 0)], false, { leadingItem });
+		expect(
+			withItems
+				.getComponent({ name: 'N8nDropdownMenu' })
+				.props('items')
+				.map((menuItem: TestItem) => menuItem.id),
+		).toEqual(['new-chat', 'group-Today', 'today']);
+
+		const empty = mountHistory([], false, { leadingItem, emptyText: 'No chats yet' });
+		const emptyItems = empty.getComponent({ name: 'N8nDropdownMenu' }).props('items');
+		expect(emptyItems.map((menuItem: TestItem) => menuItem.id)).toEqual([
+			'new-chat',
+			'__chat-history-empty__',
+		]);
+		expect(emptyItems[1]).toMatchObject({ label: 'No chats yet', header: true });
+	});
+
+	it('keeps the leading item clickable while loading, instead of hiding it behind skeletons', async () => {
+		const leadingItem: TestItem = { id: 'new-chat', label: 'New chat', testId: 'new-chat' };
+
+		const wrapper = mountHistory([], false, { leadingItem, loading: true });
+
+		const dropdown = wrapper.getComponent({ name: 'N8nDropdownMenu' });
+		expect(dropdown.props('loading')).toBe(false);
+		const items = dropdown.props('items');
+		expect(items.map((menuItem: TestItem) => menuItem.id)).toEqual([
+			'new-chat',
+			'__chat-history-loading__',
+		]);
+		expect(items[1]).toMatchObject({ header: true });
+
+		await wrapper.getComponent({ name: 'N8nText' }).trigger('click');
+		expect(wrapper.emitted('select')).toEqual([['new-chat']]);
 	});
 
 	it('delays selection only while waiting for a possible double-click', async () => {
@@ -212,5 +255,71 @@ describe('ChatHistoryDropdown', () => {
 		actionButton.focus();
 		await user.tab();
 		expect(result.queryByTestId('chat-history-list')).not.toBeInTheDocument();
+	});
+	it('keeps hover events away from every row only while a row is being renamed', async () => {
+		const renderHistory = createComponentRenderer(ChatHistoryDropdown);
+		const result = renderHistory({
+			props: {
+				items: [item('today', 0), item('older', 10)],
+				searchPlaceholder: 'Search history',
+				contentTestId: 'chat-history-list',
+				actionButtonLabel: 'Conversation actions',
+				editingItemId: 'today',
+			},
+			slots: {
+				trigger: '<button data-test-id="history-trigger">History</button>',
+				'item-edit': '<input aria-label="Rename conversation" />',
+			},
+		});
+		await fireEvent.click(result.getByTestId('history-trigger'));
+		const rows = result.getAllByTestId('chat-history-item');
+
+		// The menu moves focus from a row's own hover listeners.
+		const hoveredRows = () => {
+			const reached: number[] = [];
+			rows.forEach((row, index) => {
+				const listener = () => reached.push(index);
+				for (const type of ['pointermove', 'pointerleave']) {
+					row.addEventListener(type, listener);
+					row.dispatchEvent(new Event(type, { bubbles: true, cancelable: true }));
+					row.removeEventListener(type, listener);
+				}
+			});
+			return reached;
+		};
+		expect(hoveredRows()).toEqual([]);
+
+		await result.rerender({ editingItemId: undefined });
+		expect(hoveredRows()).toEqual([0, 0, 1, 1]);
+	});
+	it('keeps clicks and keys inside the edit row away from the row', async () => {
+		const renderHistory = createComponentRenderer(ChatHistoryDropdown);
+		const result = renderHistory({
+			props: {
+				items: [item('today', 0)],
+				searchPlaceholder: 'Search history',
+				contentTestId: 'chat-history-list',
+				actionButtonLabel: 'Conversation actions',
+				editingItemId: 'today',
+			},
+			slots: {
+				trigger: '<button data-test-id="history-trigger">History</button>',
+				'item-edit': '<input aria-label="Rename conversation" />',
+			},
+		});
+		await fireEvent.click(result.getByTestId('history-trigger'));
+		const row = result.getByTestId('chat-history-item');
+		const reached: string[] = [];
+		for (const type of ['pointerdown', 'click', 'keydown']) {
+			row.addEventListener(type, () => reached.push(type));
+		}
+
+		const input = result.getByLabelText('Rename conversation');
+		await fireEvent.pointerDown(input);
+		await fireEvent.click(input);
+		await fireEvent.keyDown(input, { key: ' ' });
+
+		expect(reached).toEqual([]);
+		expect(result.emitted().select).toBeUndefined();
 	});
 });

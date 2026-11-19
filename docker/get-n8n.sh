@@ -15,11 +15,11 @@ set -eu
 SCRIPT_VERSION="1.4.0"
 # The version to install is derived from the latest stable GitHub release in
 # resolve_n8n_version(); this fallback only applies when that lookup fails.
-FALLBACK_N8N_VERSION="2.32.0"
+FALLBACK_N8N_VERSION="2.43.4"
 # Sandbox service release (API, runner and sandbox images ship together).
 # Pinned here, not resolved at run time: the stack definition must match it.
 # --upgrade moves existing installs to this pin.
-SANDBOX_VERSION="1.3.4"
+SANDBOX_VERSION="1.8.1"
 N8N_DIR="${N8N_DIR:-./n8n}"
 N8N_PORT=5678
 SOURCE_URL="https://github.com/n8n-io/n8n/blob/master/docker/get-n8n.sh"

@@ -139,6 +139,7 @@ exports[`Microsoft Teams v2 rlc.description > emits the pinned INodeProperties 1
       "mode": "list",
       "value": "",
     },
+    "description": "Select the team from the list or by ID (the ID is the "groupId" parameter in the URL you get from "Get a link to the team")",
     "displayName": "Team",
     "modes": [
       {
@@ -253,7 +254,7 @@ exports[`Microsoft Teams v2 rlc.description > emits the pinned INodeProperties 1
         "validation": [
           {
             "properties": {
-              "errorMessage": "Not a valid Microsoft Teams Team ID",
+              "errorMessage": "Not a valid Microsoft Teams member ID",
               "regex": "^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})[ 	]*",
             },
             "type": "regex",
@@ -314,7 +315,7 @@ exports[`Microsoft Teams v2 rlc.description > emits the pinned INodeProperties 1
       {
         "displayName": "From List",
         "name": "list",
-        "placeholder": "e.g. My Team",
+        "placeholder": "Select a Team...",
         "type": "list",
         "typeOptions": {
           "searchListMethod": "getTeams",
@@ -375,7 +376,7 @@ exports[`Microsoft Teams v2 rlc.description > emits the pinned INodeProperties 1
       {
         "displayName": "From List",
         "name": "list",
-        "placeholder": "e.g. Engineering",
+        "placeholder": "Select a Team Tag...",
         "type": "list",
         "typeOptions": {
           "searchListMethod": "getTags",
@@ -477,7 +478,7 @@ exports[`Microsoft Teams v2 rlc.description > emits the pinned Service Principal
         "validation": [
           {
             "properties": {
-              "errorMessage": "Not a valid Microsoft Teams Team ID",
+              "errorMessage": "Not a valid Microsoft Teams member ID",
               "regex": "^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})[ 	]*",
             },
             "type": "regex",
@@ -516,7 +517,7 @@ exports[`Microsoft Teams v2 rlc.description > emits the pinned Service Principal
         "validation": [
           {
             "properties": {
-              "errorMessage": "Not a valid Microsoft Teams Team ID",
+              "errorMessage": "Not a valid Microsoft Teams member ID",
               "regex": "^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})[ 	]*",
             },
             "type": "regex",

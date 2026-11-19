@@ -2,16 +2,16 @@ operationId: updateFolder
 tags:
   - Folders
 summary: Update a folder
-description: Update folder name or parent folder.
+description: |-
+  Update folder name or parent folder.
+
+  Requires the `folder:update` API key scope.
 x-required-scope: folder:update
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
     required: true
-    description: The ID of the project.
+    description: The ID of the project, or `personal` for the calling user's own personal project.
     name: projectId
     in: path
   - schema:
@@ -81,3 +81,5 @@ responses:
     $ref: ../../../../shared/spec/responses/notFound.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

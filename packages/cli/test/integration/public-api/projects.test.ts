@@ -1,5 +1,7 @@
+import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
+	createWorkflow,
 	getProjectByNameOrFail,
 	linkUserToProject,
 	getAllProjectRelations,
@@ -18,14 +20,16 @@ import { Container } from '@n8n/di';
 import type { MockInstance } from 'vitest';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { EventService } from '@/events/event.service';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
 import {
 	createMemberWithApiKey,
 	createOwnerWithApiKey,
+	createAdmin,
 	createMember,
 	createUserShell,
+	createServiceAccountWithProject,
 } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -488,6 +492,7 @@ describe('Projects in Public API', () => {
 			testServer.license.enable('feat:projectRole:admin');
 			const owner = await createOwnerWithApiKey();
 			const project = await createTeamProject();
+			const workflow = await createWorkflow({}, project);
 
 			/**
 			 * Act
@@ -506,6 +511,10 @@ describe('Projects in Public API', () => {
 				removalType: 'delete',
 				targetProjectId: undefined,
 			});
+			expect(emitSpy).toHaveBeenCalledWith(
+				'workflow-deleted',
+				expect.objectContaining({ workflowId: workflow.id, publicApi: 'other' }),
+			);
 
 			const list = await testServer.publicApiAgentFor(owner).get('/projects');
 			expect(list.body.data).not.toContainEqual(expect.objectContaining({ id: project.id }));
@@ -790,6 +799,43 @@ describe('Projects in Public API', () => {
 			expect(viewerRow.role).toBe('project:viewer');
 			const editorRow = response.body.data.find((m: { id: string }) => m.id === member2.id);
 			expect(editorRow.role).toBe('project:editor');
+		});
+
+		it('if licensed, should return a service account member with its name and an empty email', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
+			testServer.license.enable('feat:projectRole:editor');
+			const owner = await createOwnerWithApiKey();
+			const project = await createTeamProject('shared-project', owner);
+			const serviceAccount = await createServiceAccountWithProject(
+				GLOBAL_MEMBER_ROLE,
+				'Deploy bot',
+			);
+			await linkUserToProject(serviceAccount, project, 'project:editor');
+
+			/**
+			 * Act
+			 */
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get(`/projects/${project.id}/users`);
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(200);
+			expect(response.body.data).toContainEqual({
+				id: serviceAccount.id,
+				email: '',
+				firstName: 'Deploy bot',
+				lastName: null,
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+				role: 'project:editor',
+			});
 		});
 
 		it('if licensed, should respect limit and cursor for pagination', async () => {
@@ -1108,6 +1154,8 @@ describe('Projects in Public API', () => {
 					],
 				};
 
+				const addUsers = vi.spyOn(Container.get(ProjectService), 'addUsersToProject');
+
 				const response = await testServer
 					.publicApiAgentFor(owner)
 					.post(`/projects/${project.id}/users`)
@@ -1118,6 +1166,16 @@ describe('Projects in Public API', () => {
 				});
 
 				expect(response.status).toBe(201);
+				expect(addUsers).toHaveBeenCalledWith(
+					{
+						user: expect.objectContaining({ id: owner.id }),
+						projectId: project.id,
+						relations: payload.relations,
+						publicApi: 'other',
+					},
+					undefined,
+				);
+				addUsers.mockRestore();
 				expect(response.text).toBe('');
 				expect(response.headers['content-type']).toBeUndefined();
 				expect(projectBefore.length).toEqual(1);
@@ -1165,6 +1223,26 @@ describe('Projects in Public API', () => {
 					'message',
 					'Your instance is not licensed to use role "project:viewer".',
 				);
+			});
+
+			it('should skip instance owners and admins and add the rest', async () => {
+				const owner = await createOwnerWithApiKey();
+				const [admin, member] = await Promise.all([createAdmin(), createMember()]);
+				const project = await createTeamProject('shared-project', owner);
+
+				await testServer
+					.publicApiAgentFor(owner)
+					.post(`/projects/${project.id}/users`)
+					.send({
+						relations: [
+							{ userId: admin.id, role: 'project:admin' },
+							{ userId: member.id, role: 'project:admin' },
+						],
+					})
+					.expect(201);
+
+				const relations = await getAllProjectRelations({ projectId: project.id });
+				expect(relations.map((r) => r.userId).sort()).toEqual([owner.id, member.id].sort());
 			});
 
 			describe('when project roles are managed', () => {

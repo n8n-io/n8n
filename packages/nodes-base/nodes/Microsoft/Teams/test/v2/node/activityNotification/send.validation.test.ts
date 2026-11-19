@@ -1,4 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 
@@ -17,7 +18,7 @@ vi.mock('../../../../v2/transport', async () => {
 });
 
 const RECIPIENT = '11111111-2222-3333-4444-555555555555';
-const PATH = `/v1.0/users/${RECIPIENT}/teamwork/sendActivityNotification`;
+const PATH = requestPath`/v1.0/users/${RECIPIENT}/teamwork/sendActivityNotification`;
 const LINK = 'https://teams.microsoft.com/l/chat/0/0?users=someone@contoso.com';
 const BODY = {
 	topic: { source: 'text', value: 'n8n workflow run', webUrl: LINK },
@@ -74,7 +75,7 @@ describe('Microsoft Teams V2 - activityNotification:send validation', () => {
 
 		expect(request).toHaveBeenCalledWith(
 			'POST',
-			'/v1.0/users/jacob%40contoso.com/teamwork/sendActivityNotification',
+			requestPath`/v1.0/users/jacob@contoso.com/teamwork/sendActivityNotification`,
 			BODY,
 		);
 	});

@@ -1,5 +1,9 @@
 import jwt from 'jsonwebtoken';
-import type { ICredentialDataDecryptedObject, IHttpRequestHelper } from 'n8n-workflow';
+import type {
+	ICredentialDataDecryptedObject,
+	IHttpRequestHelper,
+	IHttpRequestOptions,
+} from 'n8n-workflow';
 
 import { GithubAppApi } from '../GithubAppApi.credentials';
 import type { Mock } from 'vitest';
@@ -52,7 +56,6 @@ describe('GithubAppApi Credential', () => {
 			expect(httpRequest).toHaveBeenCalledWith(
 				expect.objectContaining({
 					method: 'POST',
-					url: 'https://api.github.com/app/installations/98765/access_tokens',
 					headers: expect.objectContaining({
 						Authorization: 'Bearer signed-jwt',
 						Accept: 'application/vnd.github+json',
@@ -61,7 +64,43 @@ describe('GithubAppApi Credential', () => {
 					json: true,
 				}),
 			);
+			const [options] = httpRequest.mock.calls[0] as [IHttpRequestOptions];
+			expect(String(options.url)).toBe(
+				'https://api.github.com/app/installations/98765/access_tokens',
+			);
 			expect(result.accessToken).toBe('ghs_installation_token');
+		});
+
+		it('should encode the installation ID as one path segment', async () => {
+			const httpRequest = vi.fn().mockResolvedValue({ token: 'ghs_installation_token' });
+			const helper = {
+				helpers: { httpRequest },
+			} as unknown as IHttpRequestHelper;
+
+			await credential.preAuthentication.call(helper, {
+				...baseCredentials,
+				installationId: '98765/user?x=1',
+			});
+
+			const [options] = httpRequest.mock.calls[0] as [IHttpRequestOptions];
+			expect(String(options.url)).toBe(
+				'https://api.github.com/app/installations/98765%2Fuser%3Fx=1/access_tokens',
+			);
+		});
+
+		it('should reject an installation ID that is a dot segment', async () => {
+			const httpRequest = vi.fn();
+			const helper = {
+				helpers: { httpRequest },
+			} as unknown as IHttpRequestHelper;
+
+			await expect(
+				credential.preAuthentication.call(helper, {
+					...baseCredentials,
+					installationId: '../x',
+				}),
+			).rejects.toThrow('Invalid identifier');
+			expect(httpRequest).not.toHaveBeenCalled();
 		});
 
 		it('should throw a clear error when JWT creation fails', async () => {

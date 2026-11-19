@@ -1,17 +1,42 @@
+import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
-import { hasGlobalScope } from '@n8n/permissions';
+import { hasGlobalScope, type AuthPrincipal } from '@n8n/permissions';
 
 import type { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 
 import type { McpConfig } from './mcp.config';
 
+/**
+ * Whether this instance has a migration report to serve: a target version is
+ * set and the module that builds the report is active. Consent and registration
+ * both use it, so the scope is never offered for tools that cannot register.
+ */
+export function isMigrationReportAvailable(moduleRegistry: ModuleRegistry): boolean {
+	return MIGRATION_REPORT_TARGET_VERSION !== null && moduleRegistry.isActive('breaking-changes');
+}
+
+/**
+ * Whether the migration report tools register for this caller. The REST routes need the
+ * same permission. A fix or a status also needs edit access to the workflow, which each
+ * tool checks.
+ */
+export function canReadMigrationReport(
+	moduleRegistry: ModuleRegistry,
+	user: AuthPrincipal,
+): boolean {
+	return isMigrationReportAvailable(moduleRegistry) && hasGlobalScope(user, 'breakingChanges:list');
+}
+
 export function areAgentToolsAvailable(
 	globalConfig: GlobalConfig,
 	moduleRegistry: ModuleRegistry,
 ): boolean {
-	return globalConfig.endpoints.mcpBuilderEnabled && moduleRegistry.isActive('agents');
+	return (
+		globalConfig.endpoints.mcpBuilderEnabled &&
+		moduleRegistry.isActive('agents') &&
+		moduleRegistry.settings.get('agents')?.enabled !== false
+	);
 }
 
 /**
@@ -42,7 +67,7 @@ export function isCommunityNodeInstallAvailable(
 		>;
 	},
 	mcpConfig: Pick<McpConfig, 'communityNodeDiscoveryEnabled'>,
-	user: User,
+	user: AuthPrincipal,
 ): boolean {
 	return (
 		globalConfig.endpoints.mcpBuilderEnabled &&

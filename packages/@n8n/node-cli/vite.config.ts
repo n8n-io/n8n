@@ -1,3 +1,4 @@
+import { changedFileCoverage } from '@n8n/vitest-config/changed-file-coverage';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
@@ -13,6 +14,8 @@ export default defineConfig({
 						enabled: true,
 						provider: 'v8',
 						reporter: process.env.CI === 'true' ? ['cobertura'] : ['text-summary'],
+						// With a CHANGED_FILES signal (PR runs), measure only the changed files.
+						...changedFileCoverage(),
 					},
 				}
 			: {}),

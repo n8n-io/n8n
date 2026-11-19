@@ -1,6 +1,15 @@
-import { computed, onBeforeUnmount, watch, type ComputedRef, type ShallowRef } from 'vue';
+import {
+	computed,
+	inject,
+	onBeforeUnmount,
+	toValue,
+	watch,
+	type ComputedRef,
+	type ShallowRef,
+} from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useLogsStore } from '@/app/stores/logs.store';
+import { LogsPanelHostKey } from '@/app/constants/injectionKeys';
 import { useResizablePanel } from '@n8n/design-system';
 import { usePopOutWindow } from '@/features/execution/logs/composables/usePopOutWindow';
 import {
@@ -8,6 +17,7 @@ import {
 	LOCAL_STORAGE_OVERVIEW_PANEL_WIDTH,
 	LOCAL_STORAGE_PANEL_HEIGHT,
 	LOCAL_STORAGE_PANEL_WIDTH,
+	MIN_IO_PANEL_WIDTH,
 } from '@/features/execution/logs/logs.constants';
 
 const INITIAL_POPUP_HEIGHT = 400;
@@ -22,11 +32,16 @@ export function useLogsPanelLayout(
 ) {
 	const logsStore = useLogsStore();
 	const telemetry = useTelemetry();
+	// The host defines where the panel lives and how it persists its height (INS-1192).
+	const host = inject(LogsPanelHostKey, {
+		context: 'editor',
+		heightStorageKey: LOCAL_STORAGE_PANEL_HEIGHT,
+	});
 
 	const resizer = useResizablePanel({
-		container: document.body,
+		container: () => toValue(host.heightContainer) ?? document.body,
 		height: {
-			localStorageKey: LOCAL_STORAGE_PANEL_HEIGHT,
+			localStorageKey: host.heightStorageKey,
 			defaultSize: function getDefaultHeight(size) {
 				return size * 0.3;
 			},
@@ -58,7 +73,8 @@ export function useLogsPanelLayout(
 		width: {
 			localStorageKey: LOCAL_STORAGE_OVERVIEW_PANEL_WIDTH,
 			defaultSize: function getDefaultWidth(size) {
-				return Math.min(240, size * 0.2);
+				// Reserve space for both I/O panes in compact hosts.
+				return Math.min(400, size * 0.3, size - 2 * MIN_IO_PANEL_WIDTH);
 			},
 			minSize: 80,
 			maxSize: 500,
@@ -76,6 +92,14 @@ export function useLogsPanelLayout(
 	const popOutWindowTitle = computed(() => `Logs - ${workflowName.value}`);
 	const shouldPopOut = computed(() => logsStore.state === LOGS_PANEL_STATE.FLOATING);
 
+	function trackToggle(newState: 'attached' | 'collapsed' | 'floating') {
+		telemetry.track('User toggled log view', {
+			new_state: newState,
+			source: 'user',
+			context: host.context,
+		});
+	}
+
 	const { canPopOut, isPoppedOut, popOutWindow } = usePopOutWindow({
 		title: popOutWindowTitle,
 		initialHeight: INITIAL_POPUP_HEIGHT,
@@ -88,7 +112,7 @@ export function useLogsPanelLayout(
 				return;
 			}
 
-			telemetry.track('User toggled log view', { new_state: 'attached' });
+			trackToggle('attached');
 			logsStore.setPreferPoppedOut(false);
 		},
 	});
@@ -101,14 +125,11 @@ export function useLogsPanelLayout(
 		}
 
 		logsStore.toggleOpen(open);
-
-		telemetry.track('User toggled log view', {
-			new_state: wasOpen ? 'collapsed' : 'attached',
-		});
+		trackToggle(wasOpen ? 'collapsed' : 'attached');
 	}
 
 	function handlePopOut() {
-		telemetry.track('User toggled log view', { new_state: 'floating' });
+		trackToggle('floating');
 		logsStore.toggleOpen(true);
 		logsStore.setPreferPoppedOut(true);
 	}

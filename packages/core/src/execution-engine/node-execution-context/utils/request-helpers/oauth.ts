@@ -1,3 +1,4 @@
+// oxlint-disable typescript/no-deprecated
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -31,13 +32,8 @@ import type {
 	WorkflowExecuteMode,
 	Logger as WorkflowLogger,
 } from 'n8n-workflow';
-import {
-	OperationalError,
-	jsonParse,
-	NodeOperationError,
-	UserError,
-	UnexpectedError,
-} from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import { OperationalError, UserError, UnexpectedError } from '@n8n/errors';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 import { Stream } from 'stream';
@@ -187,7 +183,7 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 			currentCredential?.oauthTokenData?.access_token;
 
 		// if the access token value changed, the refresh already happend in another process, so we can just return the new token
-		if (currentAccessToken !== token.accessToken) {
+		if (currentAccessToken && currentAccessToken !== token.accessToken) {
 			return buildSigningToken(
 				token.client,
 				currentCredential?.oauthTokenData as ClientOAuth2TokenData,
@@ -244,6 +240,11 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		// previous token data to ensure it's not lost on refresh.
 		if (!newOAuthTokenData.resource && token.data.resource) {
 			newOAuthTokenData.resource = token.data.resource;
+		}
+
+		// Salesforce requires the instance URL even when the refresh response returns an empty value.
+		if (!newOAuthTokenData.instance_url && token.data.instance_url) {
+			newOAuthTokenData.instance_url = token.data.instance_url;
 		}
 
 		const refreshedTokenData = await decryptOAuth2TokenDataIfConfigured(
@@ -340,9 +341,9 @@ const TOKEN_EXPIRY_BUFFER_MS = 60_000;
  * Whether the stored token still has time left on it. An absent or unparsable expiry counts as
  * expired, so callers fall back to refreshing when the expiry is unknown.
  */
-function isStoredTokenUnexpired(credentials: OAuth2CredentialData): boolean {
-	const expiresAt = Number(credentials.oauthTokenData?.n8n_expires_at);
-	return Number.isFinite(expiresAt) && Date.now() + TOKEN_EXPIRY_BUFFER_MS < expiresAt;
+export function isTokenExpiryInFuture(expiresAt: unknown): boolean {
+	const timestamp = Number(expiresAt);
+	return Number.isFinite(timestamp) && Date.now() + TOKEN_EXPIRY_BUFFER_MS < timestamp;
 }
 
 function isSingleUseValue(value: unknown): boolean {
@@ -503,7 +504,7 @@ export async function requestOAuth2(
 		if (shouldSkipTokenRefresh) return false;
 		if (!isTokenExpiredStatusCode(status, tokenExpiredStatusCode)) return false;
 		if (status === 401 || oAuth2Options?.skipRefreshWhileTokenIsFresh !== true) return true;
-		return !isStoredTokenUnexpired(credentials);
+		return !isTokenExpiryInFuture(credentials.oauthTokenData?.n8n_expires_at);
 	};
 
 	const refreshCtx: RefreshOAuth2TokenContext = {
@@ -679,8 +680,13 @@ export async function refreshOAuth2Token(
 	}
 
 	const oAuthClient = createOAuth2Client(credentials, additionalData.ssrfBridge);
-	const oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
-	const token = buildSigningToken(oAuthClient, oauthTokenData, oAuth2Options);
+	const oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData | undefined;
+	// Client-credentials grants acquire their first token through refreshOrFetchToken as well.
+	const token = buildSigningToken(
+		oAuthClient,
+		oauthTokenData ?? { access_token: '', refresh_token: '' },
+		oAuth2Options,
+	);
 
 	const newToken = await refreshOrFetchToken({
 		credentials,

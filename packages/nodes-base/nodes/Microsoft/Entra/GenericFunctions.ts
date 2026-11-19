@@ -7,17 +7,19 @@ import type {
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INode,
-	IRequestOptions,
 	INodeExecutionData,
 	IN8nHttpFullResponse,
 	INodePropertyOptions,
 	INodeListSearchResult,
 	INodeListSearchItems,
+	RequestPath,
 } from 'n8n-workflow';
 import {
 	isResourceLocatorValue,
 	NodeApiError,
 	NodeOperationError,
+	requestPath,
+	requestUrl,
 	sanitizeXmlName,
 } from 'n8n-workflow';
 import { parseStringPromise } from 'xml2js';
@@ -144,14 +146,13 @@ export async function validateGroupPreSend(
 }
 
 /**
- * Resolves the URL a request is sent to. An explicit `url` (e.g. a next-page link from Graph) is
+ * Resolves the credential's Graph base URL. An explicit `url` (e.g. a next-page link from Graph) is
  * used verbatim, but only after it is confirmed to be on the credential's Graph host: the bearer
  * token must never travel to an unexpected origin. Graph's own @odata.nextLink is always
  * same-origin, so nothing legitimate is refused.
  */
-async function resolveGraphTarget(
+async function resolveGraphBaseUrl(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	endpoint: string,
 	url?: string,
 ): Promise<string> {
 	const credentials = await this.getCredentials('microsoftEntraOAuth2Api');
@@ -168,32 +169,33 @@ async function resolveGraphTarget(
 				'Set a full URL on the credential, e.g. https://graph.microsoft.com, and try again.',
 		});
 	}
-	const target = url ?? `${baseUrl}/v1.0${endpoint}`;
-	if (!URL.canParse(target)) {
-		throw new NodeOperationError(this.getNode(), 'The request URL is not a valid URL');
+	if (url) {
+		if (!URL.canParse(url)) {
+			throw new NodeOperationError(this.getNode(), 'The request URL is not a valid URL');
+		}
+		if (new URL(url).origin !== new URL(baseUrl).origin) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Refusing to send credentials to an unexpected host',
+			);
+		}
 	}
-	if (new URL(target).origin !== new URL(baseUrl).origin) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'Refusing to send credentials to an unexpected host',
-		);
-	}
-	return target;
+	return baseUrl;
 }
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs?: IDataObject,
 	headers?: IDataObject,
 	url?: string,
 ): Promise<any> {
-	const target = await resolveGraphTarget.call(this, endpoint, url);
-	const options: IHttpRequestOptions = {
+	const baseUrl = await resolveGraphBaseUrl.call(this, url);
+	const options = {
 		method,
-		url: target,
+		...(url ? { url } : { url: requestUrl`${baseUrl}/v1.0${endpoint}` }),
 		json: true,
 		headers,
 		body,
@@ -210,18 +212,18 @@ export async function microsoftApiRequest(
 export async function microsoftApiPaginateRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs?: IDataObject,
 	headers?: IDataObject,
 	url?: string,
 	itemIndex: number = 0,
 ): Promise<IDataObject[]> {
-	const target = await resolveGraphTarget.call(this, endpoint, url);
+	const baseUrl = await resolveGraphBaseUrl.call(this, url);
 	// Todo: IHttpRequestOptions doesn't have uri property which is required for requestWithAuthenticationPaginated
-	const options: IRequestOptions = {
+	const options = {
 		method,
-		uri: target,
+		...(url ? { uri: url } : { uri: requestUrl`${baseUrl}/v1.0${endpoint}` }),
 		json: true,
 		headers,
 		body,
@@ -419,7 +421,7 @@ export async function getGroupProperties(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
-	const response = await microsoftApiRequest.call(this, 'GET', '/$metadata#groups');
+	const response = await microsoftApiRequest.call(this, 'GET', requestPath`/$metadata#groups`);
 	const metadata = await parseStringPromise(response as string, {
 		explicitArray: false,
 		tagNameProcessors: [sanitizeXmlName],
@@ -457,7 +459,7 @@ export async function getUserProperties(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
-	const response = await microsoftApiRequest.call(this, 'GET', '/$metadata#users');
+	const response = await microsoftApiRequest.call(this, 'GET', requestPath`/$metadata#users`);
 	const metadata = await parseStringPromise(response as string, {
 		explicitArray: false,
 		tagNameProcessors: [sanitizeXmlName],
@@ -503,7 +505,7 @@ export async function getGroups(
 		response = await microsoftApiRequest.call(
 			this,
 			'GET',
-			'/groups',
+			requestPath`/groups`,
 			{},
 			undefined,
 			undefined,
@@ -518,7 +520,7 @@ export async function getGroups(
 			headers.ConsistencyLevel = 'eventual';
 			qs.$search = `"displayName:${escapeODataSearchValue(filter)}"`;
 		}
-		response = await microsoftApiRequest.call(this, 'GET', '/groups', {}, qs, headers);
+		response = await microsoftApiRequest.call(this, 'GET', requestPath`/groups`, {}, qs, headers);
 	}
 
 	const groups: Array<{
@@ -548,7 +550,7 @@ export async function getUsers(
 		response = await microsoftApiRequest.call(
 			this,
 			'GET',
-			'/users',
+			requestPath`/users`,
 			{},
 			undefined,
 			undefined,
@@ -563,7 +565,7 @@ export async function getUsers(
 			const filterValue = escapeODataValue(filter);
 			qs.$filter = `startsWith(displayName, '${filterValue}') OR startsWith(userPrincipalName, '${filterValue}')`;
 		}
-		response = await microsoftApiRequest.call(this, 'GET', '/users', {}, qs, headers);
+		response = await microsoftApiRequest.call(this, 'GET', requestPath`/users`, {}, qs, headers);
 	}
 
 	const users: Array<{

@@ -24,6 +24,8 @@ defineOptions({
 });
 
 export interface N8nChatInputProps {
+	/** Blocks workflow canvas shortcuts while the textarea has focus. Defaults to true. */
+	blockCanvasShortcuts?: boolean;
 	modelValue?: string;
 	placeholder?: string;
 	maxLength?: number;
@@ -55,11 +57,14 @@ export interface N8nChatInputProps {
 	submitDisabled?: boolean;
 	sendButtonTestId?: string;
 	stopButtonTestId?: string;
+	/** Test id for the native textarea. Fallthrough attrs land on the wrapper. */
+	inputTestId?: string;
 }
 
 const INFINITE_CREDITS = -1;
 
 const props = withDefaults(defineProps<N8nChatInputProps>(), {
+	blockCanvasShortcuts: true,
 	modelValue: '',
 	placeholder: '',
 	maxLength: 5000,
@@ -78,6 +83,7 @@ const props = withDefaults(defineProps<N8nChatInputProps>(), {
 	submitDisabled: undefined,
 	sendButtonTestId: 'send-message-button',
 	stopButtonTestId: 'send-message-button',
+	inputTestId: undefined,
 });
 
 const emit = defineEmits<{
@@ -93,6 +99,7 @@ const slots = useSlots();
 const { t } = useI18n();
 
 const textareaRef = ref<HTMLTextAreaElement>();
+const sendStopButtonRef = ref<HTMLElement>();
 const isFocused = ref(false);
 const textValue = ref(props.modelValue || '');
 function hasCustomActions() {
@@ -297,6 +304,13 @@ function getInputElement(): HTMLTextAreaElement | undefined {
 	return textareaRef.value;
 }
 
+/**
+ * Returns the element around the send and stop button while the component is mounted.
+ */
+function getSendStopButtonElement(): HTMLElement | undefined {
+	return sendStopButtonRef.value;
+}
+
 // Each layout measures to a different height, so switching leaves a stale one.
 // Slot-driven switches aren't reactive, so re-check on render, not in a watcher.
 let renderedLayout = effectiveLayout();
@@ -320,6 +334,7 @@ onMounted(() => {
 defineExpose({
 	focusInput,
 	getInputElement,
+	getSendStopButtonElement,
 });
 </script>
 
@@ -348,6 +363,7 @@ defineExpose({
 				<textarea
 					ref="textareaRef"
 					v-model="textValue"
+					:data-test-id="inputTestId"
 					:class="[
 						$style.textarea,
 						{
@@ -355,7 +371,7 @@ defineExpose({
 							[$style.adaptiveTextarea]: effectiveLayout() === 'adaptive',
 						},
 						'ignore-key-press-node-creator',
-						'ignore-key-press-canvas',
+						{ 'ignore-key-press-canvas': blockCanvasShortcuts },
 					]"
 					:style="textareaStyle"
 					:placeholder="hasNoCredits ? '' : placeholder"
@@ -392,7 +408,7 @@ defineExpose({
 						<div v-if="$slots['right-actions']" :class="$style.actionsContent" @click.stop>
 							<slot name="right-actions" />
 						</div>
-						<div :class="$style.actionsContent" @click.stop>
+						<div ref="sendStopButtonRef" :class="$style.actionsContent" @click.stop>
 							<N8nSendStopButton
 								:streaming="streaming"
 								:disabled="sendDisabled"
@@ -527,7 +543,7 @@ defineExpose({
 
 	.overLimit {
 		color: var(--color--danger);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 }
 

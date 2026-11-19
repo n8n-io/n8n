@@ -286,6 +286,29 @@ describe('credentials.store', () => {
 			expect(store.allCredentials).toEqual([inScope]);
 		});
 
+		it('does not treat the agent slice and the non-agent slice of a scope as interchangeable', async () => {
+			const store = useCredentialsStore();
+
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockResolvedValue([inScope]);
+			await store.fetchUsableCredentials({ projectId: 'project-1' });
+
+			expect(store.hasUsableCredentialsForScope({ projectId: 'project-1' })).toBe(true);
+			expect(store.hasUsableCredentialsForScope({ projectId: 'project-1', forAgent: true })).toBe(
+				false,
+			);
+
+			await store.fetchUsableCredentials({ projectId: 'project-1', forAgent: true });
+
+			expect(credentialsApi.getUsableCredentials).toHaveBeenLastCalledWith(
+				mockRootStore.restApiContext,
+				{ projectId: 'project-1', forAgent: true },
+			);
+			expect(store.hasUsableCredentialsForScope({ projectId: 'project-1', forAgent: true })).toBe(
+				true,
+			);
+			expect(store.hasUsableCredentialsForScope({ projectId: 'project-1' })).toBe(false);
+		});
+
 		it('reads an unfetched slice as empty rather than falling back to the flat map', async () => {
 			const store = useCredentialsStore();
 
@@ -471,6 +494,26 @@ describe('credentials.store', () => {
 	});
 
 	describe('createNewCredential', () => {
+		it('passes pendingAuthorization through to the API', async () => {
+			const store = useCredentialsStore();
+			vi.spyOn(credentialsApi, 'createNewCredential').mockResolvedValue(
+				mock<ICredentialsResponse>({ id: 'pending-1' }),
+			);
+
+			await store.createNewCredential(
+				{ id: '', name: 'Pending account', type: 'slackOAuth2Api', data: {} },
+				'project-123',
+				undefined,
+				{ skipStoreUpdate: true, pendingAuthorization: true },
+			);
+
+			expect(credentialsApi.createNewCredential).toHaveBeenCalledWith(
+				mockRootStore.restApiContext,
+				expect.objectContaining({ pendingAuthorization: true }),
+			);
+			expect(store.getCredentialById('pending-1')).toBeUndefined();
+		});
+
 		it.each(['Use for production reports', null])(
 			'passes description %j as credential metadata',
 			async (description) => {

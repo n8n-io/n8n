@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -8,12 +9,13 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import type { OperationContext, User } from '@n8n/db';
 import { ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { SecurityContext } from '@n8n/permissions';
 import { jsonParse, type INode } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { saveCredential } from '@test-integration/db/credentials';
@@ -113,12 +115,12 @@ describe('workflow package export', () => {
 			expect(entries[0].name).toBe('manifest.json');
 			expect(manifest).toMatchObject({
 				packageFormatVersion: FORMAT_VERSION,
-				exportedAt: expect.any(String),
 				sourceN8nVersion: expect.any(String),
 				sourceId: expect.any(String),
 			});
+			expect(manifest).not.toHaveProperty('exportedAt');
 			expect(manifest.workflows).toEqual([
-				{ id: workflow.id, name: 'My Workflow', target: expect.any(String) },
+				{ id: workflow.id, name: 'My Workflow', target: expect.any(String), isArchived: false },
 			]);
 
 			const workflowFile = entries.find(
@@ -178,7 +180,7 @@ describe('workflow package export', () => {
 			const exportedPackage = await readExport(exported.stream);
 
 			expect(exportedPackage.manifest.workflows).toEqual([
-				{ id: workflow.id, name: workflow.name, target: expect.any(String) },
+				{ id: workflow.id, name: workflow.name, target: expect.any(String), isArchived: true },
 			]);
 			const content = workflowJson(
 				exportedPackage.entries,
@@ -253,9 +255,16 @@ describe('workflow package export', () => {
 					{
 						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
-						usedByWorkflows: [wfA.id, wfB.id],
+						usedBy: [
+							{ kind: 'workflow', id: wfA.id },
+							{ kind: 'workflow', id: wfB.id },
+						],
 					},
-					{ type: 'n8n-nodes-base.set', typeVersion: 3.4, usedByWorkflows: [wfB.id] },
+					{
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3.4,
+						usedBy: [{ kind: 'workflow', id: wfB.id }],
+					},
 				],
 			});
 		});
@@ -328,8 +337,16 @@ describe('workflow package export', () => {
 			expect(manifest.requirements?.workflows).toHaveLength(2);
 			expect(manifest.requirements?.workflows).toEqual(
 				expect.arrayContaining([
-					{ id: workflowB.id, name: workflowB.name, usedByWorkflows: [workflowA.id] },
-					{ id: workflowC.id, name: workflowC.name, usedByWorkflows: [workflowB.id] },
+					{
+						id: workflowB.id,
+						name: workflowB.name,
+						usedBy: [{ kind: 'workflow', id: workflowA.id }],
+					},
+					{
+						id: workflowC.id,
+						name: workflowC.name,
+						usedBy: [{ kind: 'workflow', id: workflowB.id }],
+					},
 				]),
 			);
 		});
@@ -374,12 +391,14 @@ describe('workflow package export', () => {
 			const { manifest } = await readExport(stream);
 
 			expect(manifest.requirements).toEqual({
-				workflows: [{ id: child.id, name: child.name, usedByWorkflows: [parent.id] }],
+				workflows: [
+					{ id: child.id, name: child.name, usedBy: [{ kind: 'workflow', id: parent.id }] },
+				],
 				nodeTypes: [
 					{
 						type: 'n8n-nodes-base.executeWorkflow',
 						typeVersion: 1,
-						usedByWorkflows: [parent.id],
+						usedBy: [{ kind: 'workflow', id: parent.id }],
 					},
 				],
 			});
@@ -426,12 +445,14 @@ describe('workflow package export', () => {
 			const { manifest } = await readExport(stream);
 
 			expect(manifest.requirements).toEqual({
-				workflows: [{ id: child.id, name: child.name, usedByWorkflows: [parent.id] }],
+				workflows: [
+					{ id: child.id, name: child.name, usedBy: [{ kind: 'workflow', id: parent.id }] },
+				],
 				nodeTypes: [
 					{
 						type: '@n8n/n8n-nodes-langchain.toolWorkflow',
 						typeVersion: 2.2,
-						usedByWorkflows: [parent.id],
+						usedBy: [{ kind: 'workflow', id: parent.id }],
 					},
 				],
 			});
@@ -464,7 +485,13 @@ describe('workflow package export', () => {
 			const { manifest } = await readExport(stream);
 
 			expect(manifest.requirements).toEqual({
-				workflows: [{ id: errorHandler.id, name: errorHandler.name, usedByWorkflows: [parent.id] }],
+				workflows: [
+					{
+						id: errorHandler.id,
+						name: errorHandler.name,
+						usedBy: [{ kind: 'workflow', id: parent.id }],
+					},
+				],
 			});
 		});
 
@@ -491,17 +518,21 @@ describe('workflow package export', () => {
 				workflowIds: [parentA.id, parentB.id, child.id],
 			});
 			const { manifest } = await readExport(stream);
-			const expectedUsedByWorkflows = manifest
+			const expectedUsedBy = manifest
 				.workflows!.map(({ id }) => id)
-				.filter((id) => id === parentA.id || id === parentB.id);
+				.filter((id) => id === parentA.id || id === parentB.id)
+				.map((id) => ({ kind: 'workflow', id }));
 
 			expect(manifest.requirements).toEqual({
-				workflows: [{ id: child.id, name: child.name, usedByWorkflows: expectedUsedByWorkflows }],
+				workflows: [{ id: child.id, name: child.name, usedBy: expectedUsedBy }],
 				nodeTypes: [
 					{
 						type: 'n8n-nodes-base.executeWorkflow',
 						typeVersion: 1,
-						usedByWorkflows: [parentA.id, parentB.id],
+						usedBy: [
+							{ kind: 'workflow', id: parentA.id },
+							{ kind: 'workflow', id: parentB.id },
+						],
 					},
 				],
 			});
@@ -521,7 +552,7 @@ describe('workflow package export', () => {
 				service.exportPackage({
 					user: owner,
 					workflowIds: [parent.id],
-					missingWorkflowDependencyPolicy: 'fail',
+					dependencyPolicy: 'fail',
 				}),
 			).rejects.toThrow(PackageExportBlockedError);
 		});
@@ -552,7 +583,7 @@ describe('workflow package export', () => {
 			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [workflowA.id],
-				missingWorkflowDependencyPolicy: 'include-in-package',
+				dependencyPolicy: 'include-in-package',
 			});
 			const { manifest, entries } = await readExport(stream);
 
@@ -568,13 +599,44 @@ describe('workflow package export', () => {
 					id: credential.id,
 					name: credential.name,
 					type: 'httpHeaderAuth',
-					usedByWorkflows: [workflowC.id],
+					usedBy: [{ kind: 'workflow', id: workflowC.id }],
 				},
 			]);
 			expect(manifest.requirements?.workflows).toEqual([
-				{ id: workflowB.id, name: workflowB.name, usedByWorkflows: [workflowA.id] },
-				{ id: workflowC.id, name: workflowC.name, usedByWorkflows: [workflowB.id] },
+				{
+					id: workflowB.id,
+					name: workflowB.name,
+					usedBy: [{ kind: 'workflow', id: workflowA.id }],
+				},
+				{
+					id: workflowC.id,
+					name: workflowC.name,
+					usedBy: [{ kind: 'workflow', id: workflowB.id }],
+				},
 			]);
+		});
+
+		it('adds the login of the operation context to the export event', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflow({ name: 'Login', nodes: [], connections: {} }, owner);
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			try {
+				await service.exportPackage({ user: owner, ctx, workflowIds: [workflow.id] });
+
+				const exportedEvents = emitSpy.mock.calls.filter(
+					([name]) => name === 'n8n-package-exported',
+				);
+				expect(exportedEvents).toHaveLength(1);
+				expect((exportedEvents[0][1] as RelayEventMap['n8n-package-exported']).loginId).toBe(
+					'login-1',
+				);
+			} finally {
+				emitSpy.mockRestore();
+			}
 		});
 
 		it('emits all exported workflow IDs when static sub-workflows are auto-included', async () => {
@@ -592,7 +654,7 @@ describe('workflow package export', () => {
 				await service.exportPackage({
 					user: owner,
 					workflowIds: [parent.id],
-					missingWorkflowDependencyPolicy: 'include-in-package',
+					dependencyPolicy: 'include-in-package',
 				});
 
 				const exportedEvents = emitSpy.mock.calls.filter(
@@ -633,7 +695,7 @@ describe('workflow package export', () => {
 			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [workflowA.id],
-				missingWorkflowDependencyPolicy: 'include-in-package',
+				dependencyPolicy: 'include-in-package',
 			});
 			const { manifest, entries } = await readExport(stream);
 
@@ -677,8 +739,16 @@ describe('workflow package export', () => {
 				[workflowA.id, workflowB.id].sort(),
 			);
 			expect(manifest.requirements?.workflows).toEqual([
-				{ id: workflowB.id, name: workflowB.name, usedByWorkflows: [workflowA.id] },
-				{ id: workflowA.id, name: workflowA.name, usedByWorkflows: [workflowB.id] },
+				{
+					id: workflowB.id,
+					name: workflowB.name,
+					usedBy: [{ kind: 'workflow', id: workflowA.id }],
+				},
+				{
+					id: workflowA.id,
+					name: workflowA.name,
+					usedBy: [{ kind: 'workflow', id: workflowB.id }],
+				},
 			]);
 		});
 	});
@@ -688,7 +758,7 @@ describe('workflow package export', () => {
 			const { stream } = await service.exportPackage({
 				user,
 				workflowIds,
-				missingWorkflowDependencyPolicy: 'reference-only',
+				dependencyPolicy: 'reference-only',
 			});
 			return await readExport(stream);
 		}
@@ -706,10 +776,10 @@ describe('workflow package export', () => {
 			const { manifest, entries } = await exportReferenceOnly(owner, [parent.id]);
 
 			expect(manifest.workflows).toEqual([
-				{ id: parent.id, name: 'Parent', target: expect.any(String) },
+				{ id: parent.id, name: 'Parent', target: expect.any(String), isArchived: false },
 			]);
 			expect(manifest.requirements?.workflows).toEqual([
-				{ id: child.id, name: child.name, usedByWorkflows: [parent.id] },
+				{ id: child.id, name: child.name, usedBy: [{ kind: 'workflow', id: parent.id }] },
 			]);
 			// Only the parent's workflow.json travels; the referenced child stays out.
 			expect(entries.filter((e) => e.name.endsWith('/workflow.json'))).toHaveLength(1);
@@ -739,7 +809,7 @@ describe('workflow package export', () => {
 			expect(manifest.requirements?.credentials).toBeUndefined();
 			expect(entries.some((e) => e.name.includes('credential'))).toBe(false);
 			expect(manifest.requirements?.workflows).toEqual([
-				{ id: child.id, name: child.name, usedByWorkflows: [parent.id] },
+				{ id: child.id, name: child.name, usedBy: [{ kind: 'workflow', id: parent.id }] },
 			]);
 		});
 
@@ -784,11 +854,11 @@ describe('workflow package export', () => {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
-					usedByWorkflows: [parent.id],
+					usedBy: [{ kind: 'workflow', id: parent.id }],
 				},
 			]);
 			expect(manifest.requirements?.workflows).toEqual([
-				{ id: child.id, name: child.name, usedByWorkflows: [parent.id] },
+				{ id: child.id, name: child.name, usedBy: [{ kind: 'workflow', id: parent.id }] },
 			]);
 		});
 
@@ -807,10 +877,10 @@ describe('workflow package export', () => {
 			const { manifest, entries } = await exportReferenceOnly(owner, [cheddar.id]);
 
 			expect(manifest.workflows).toEqual([
-				{ id: cheddar.id, name: 'CHEDDAR', target: expect.any(String) },
+				{ id: cheddar.id, name: 'CHEDDAR', target: expect.any(String), isArchived: false },
 			]);
 			expect(manifest.requirements?.workflows).toEqual([
-				{ id: brie.id, name: 'BRIE', usedByWorkflows: [cheddar.id] },
+				{ id: brie.id, name: 'BRIE', usedBy: [{ kind: 'workflow', id: cheddar.id }] },
 			]);
 			expect(entries.filter((e) => e.name.endsWith('/workflow.json'))).toHaveLength(1);
 		});
@@ -836,7 +906,11 @@ describe('workflow package export', () => {
 			const { manifest } = await exportReferenceOnly(owner, [workflowA.id]);
 
 			expect(manifest.requirements?.workflows).toEqual([
-				{ id: workflowB.id, name: workflowB.name, usedByWorkflows: [workflowA.id] },
+				{
+					id: workflowB.id,
+					name: workflowB.name,
+					usedBy: [{ kind: 'workflow', id: workflowA.id }],
+				},
 			]);
 		});
 
@@ -860,7 +934,7 @@ describe('workflow package export', () => {
 			const { manifest } = await exportReferenceOnly(member, [parent.id]);
 
 			expect(manifest.requirements?.workflows).toEqual([
-				{ id: foreignWorkflow.id, usedByWorkflows: [parent.id] },
+				{ id: foreignWorkflow.id, usedBy: [{ kind: 'workflow', id: parent.id }] },
 			]);
 			expect(manifest.requirements?.workflows?.[0]).not.toHaveProperty('name');
 		});
@@ -880,7 +954,7 @@ describe('workflow package export', () => {
 			expect(manifest.workflows!.map(({ id }) => id).sort()).toEqual([parent.id, child.id].sort());
 			expect(entries.filter((e) => e.name.endsWith('/workflow.json'))).toHaveLength(2);
 			expect(manifest.requirements?.workflows).toEqual([
-				{ id: child.id, name: child.name, usedByWorkflows: [parent.id] },
+				{ id: child.id, name: child.name, usedBy: [{ kind: 'workflow', id: parent.id }] },
 			]);
 		});
 
@@ -900,10 +974,14 @@ describe('workflow package export', () => {
 			const { manifest } = await exportReferenceOnly(owner, [parent.id]);
 
 			expect(manifest.workflows).toEqual([
-				{ id: parent.id, name: 'Parent', target: expect.any(String) },
+				{ id: parent.id, name: 'Parent', target: expect.any(String), isArchived: false },
 			]);
 			expect(manifest.requirements?.workflows).toEqual([
-				{ id: errorHandler.id, name: errorHandler.name, usedByWorkflows: [parent.id] },
+				{
+					id: errorHandler.id,
+					name: errorHandler.name,
+					usedBy: [{ kind: 'workflow', id: parent.id }],
+				},
 			]);
 		});
 	});
@@ -911,7 +989,7 @@ describe('workflow package export', () => {
 	describe('workflow version policy', () => {
 		it.each(['latest', 'published-strict'] as const)(
 			'exports a single-version workflow under %s',
-			async (workflowVersionPolicy) => {
+			async (versionPolicy) => {
 				const owner = await createOwner();
 				const project = await createTeamProject('Project A', owner);
 				const { workflow } = await buildVersionedWorkflow({
@@ -924,7 +1002,7 @@ describe('workflow package export', () => {
 				const { stream } = await service.exportPackage({
 					user: owner,
 					workflowIds: [workflow.id],
-					workflowVersionPolicy,
+					versionPolicy,
 				});
 				const { manifest, entries } = await readExport(stream);
 
@@ -970,7 +1048,7 @@ describe('workflow package export', () => {
 			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [workflow.id],
-				workflowVersionPolicy: 'published-strict',
+				versionPolicy: 'published-strict',
 			});
 			const { manifest, entries } = await readExport(stream);
 
@@ -998,7 +1076,7 @@ describe('workflow package export', () => {
 				service.exportPackage({
 					user: owner,
 					workflowIds: [workflow.id],
-					workflowVersionPolicy: 'published-strict',
+					versionPolicy: 'published-strict',
 				}),
 			).rejects.toThrow('1 workflow(s) have no published version. Export aborted.');
 		});
@@ -1021,7 +1099,7 @@ describe('workflow package export', () => {
 			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [published.id, unpublished.id],
-				workflowVersionPolicy: 'prefer-published',
+				versionPolicy: 'prefer-published',
 			});
 			const { manifest, entries } = await readExport(stream);
 
@@ -1049,7 +1127,7 @@ describe('workflow package export', () => {
 			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [published.id, unpublished.id],
-				workflowVersionPolicy: 'ignore-unpublished',
+				versionPolicy: 'ignore-unpublished',
 			});
 			const { manifest, entries } = await readExport(stream);
 
@@ -1076,8 +1154,8 @@ describe('workflow package export', () => {
 				service.exportPackage({
 					user: owner,
 					workflowIds: [parent.id],
-					workflowVersionPolicy: 'ignore-unpublished',
-					missingWorkflowDependencyPolicy: 'include-in-package',
+					versionPolicy: 'ignore-unpublished',
+					dependencyPolicy: 'include-in-package',
 				}),
 			).rejects.toThrow('1 sub-workflow dependency has no published version. Export aborted.');
 		});
@@ -1103,7 +1181,7 @@ describe('workflow package export', () => {
 			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [workflow.id],
-				workflowVersionPolicy: 'published-strict',
+				versionPolicy: 'published-strict',
 			});
 			const { manifest } = await readExport(stream);
 
@@ -1113,7 +1191,7 @@ describe('workflow package export', () => {
 					id: publishedCredential.id,
 					name: publishedCredential.name,
 					type: 'httpHeaderAuth',
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				},
 			]);
 		});

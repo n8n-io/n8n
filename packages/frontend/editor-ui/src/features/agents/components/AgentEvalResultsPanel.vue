@@ -202,7 +202,7 @@ onBeforeUnmount(store.stopPollingRun);
 
 		<div v-if="hasMore" :class="$style.loadMore">
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				size="small"
 				:loading="review.loadingMore"
 				data-testid="agent-eval-load-more"

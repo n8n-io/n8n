@@ -131,8 +131,20 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue({ track: vi.fn() }),
 }));
 
+const mockShowError = vi.hoisted(() => vi.fn());
+
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: vi.fn().mockReturnValue({ showError: vi.fn(), showMessage: vi.fn() }),
+	useToast: vi.fn().mockReturnValue({ showError: mockShowError, showMessage: vi.fn() }),
+}));
+
+const mockShowPolicyViolationToast = vi.hoisted(() => vi.fn());
+const mockClosePolicyViolationToast = vi.hoisted(() => vi.fn());
+
+vi.mock('@/app/composables/usePolicyViolationToast', () => ({
+	usePolicyViolationToast: vi.fn().mockReturnValue({
+		showPolicyViolationToast: mockShowPolicyViolationToast,
+		closePolicyViolationToast: mockClosePolicyViolationToast,
+	}),
 }));
 
 // Models the "Don't show again" flag of the activation success modal.
@@ -217,6 +229,7 @@ describe('useWorkflowActivate', () => {
 
 			expect(result).toEqual({ success: true });
 			expect(mockSetPublicationStatus).not.toHaveBeenCalled();
+			expect(mockClosePolicyViolationToast).toHaveBeenCalledWith('publish');
 		});
 
 		it('does NOT set publicationStatus when the publish request fails', async () => {
@@ -228,6 +241,30 @@ describe('useWorkflowActivate', () => {
 
 			expect(result).toEqual({ success: false, errorHandled: true });
 			expect(mockSetPublicationStatus).not.toHaveBeenCalled();
+			expect(mockShowError).toHaveBeenCalled();
+			expect(mockSetWorkflowInactive).toHaveBeenCalledWith(WORKFLOW_ID);
+		});
+
+		it('leaves a publish refused by policy to the policy violation toast', async () => {
+			const violations = [{ kind: 'node-type-unavailable', checkId: 'c', message: 'Blocked' }];
+			const refusal = Object.assign(new Error('Blocked by an instance policy'), {
+				meta: { violations },
+			});
+			mockPublishWorkflow.mockRejectedValueOnce(refusal);
+
+			const { publishWorkflow } = useWorkflowActivate();
+			const result = await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			expect(result).toEqual({ success: false, errorHandled: true });
+			expect(mockShowPolicyViolationToast).toHaveBeenCalledWith(
+				violations,
+				expect.any(String),
+				'publish',
+				`${WORKFLOW_ID}@latest`,
+			);
+			expect(mockShowError).not.toHaveBeenCalled();
+			expect(mockSetWorkflowInactive).not.toHaveBeenCalled();
+			expect(mockSetActiveState).not.toHaveBeenCalled();
 		});
 
 		it('sends the document checksum and refreshes it when the document is open in an editor', async () => {

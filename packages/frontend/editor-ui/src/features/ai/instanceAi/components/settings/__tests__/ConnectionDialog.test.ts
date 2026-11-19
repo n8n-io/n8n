@@ -67,7 +67,6 @@ describe('ConnectionDialog', () => {
 					sandbox: { provider: false, serviceUrl: false, apiKey: false },
 					search: { provider: false, apiKey: false, url: false },
 				},
-				localGatewayDisabled: false,
 			} as never,
 		});
 		vi.spyOn(store, 'save').mockResolvedValue(true);
@@ -132,7 +131,7 @@ describe('ConnectionDialog', () => {
 
 		await waitFor(() => expect(emitted().saved).toEqual([[]]));
 		expect(store.setField).toHaveBeenCalledWith('modelCredentialId', 'anthropic-id');
-		expect(store.setField).toHaveBeenCalledWith('modelName', 'claude-opus-5');
+		expect(store.setField).toHaveBeenCalledWith('modelName', 'claude-opus-5-5');
 		expect(emitted()['update:open']).toContainEqual([false]);
 	});
 

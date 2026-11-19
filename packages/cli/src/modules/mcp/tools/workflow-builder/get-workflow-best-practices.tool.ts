@@ -1,3 +1,4 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import {
 	bestPracticesRegistry,
@@ -8,11 +9,10 @@ import {
 import { GROUPING_GUIDANCE } from '@n8n/workflow-sdk/prompts/sdk-reference';
 import z from 'zod';
 
-import type { Telemetry } from '@/telemetry';
-
 import { MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL } from './constants';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { trackAndRethrowToolError } from '../tool-error.utils';
 
 const LIST_SENTINEL = 'list';
 
@@ -108,7 +108,7 @@ function buildTechniqueResponse(technique: WorkflowTechniqueType) {
  */
 export const createGetWorkflowBestPracticesTool = (
 	user: User,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL.toolName,
 	config: {
@@ -149,12 +149,7 @@ export const createGetWorkflowBestPracticesTool = (
 				structuredContent: response.structured,
 			};
 		} catch (error) {
-			telemetryPayload.results = {
-				success: false,
-				error: error instanceof Error ? error.message : String(error),
-			};
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-			throw error;
+			trackAndRethrowToolError(telemetry, telemetryPayload, error);
 		}
 	},
 });

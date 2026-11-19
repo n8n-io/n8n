@@ -93,6 +93,14 @@ export class TemplateConfig {
 	/** Overrides default HTML template for the email-change completion notice (use full path) */
 	@Env('N8N_UM_EMAIL_TEMPLATES_EMAIL_CHANGE_COMPLETED')
 	'email-change-completed': string = '';
+
+	/** Overrides default HTML template for the agent monthly budget alert (use full path) */
+	@Env('N8N_UM_EMAIL_TEMPLATES_AGENT_BUDGET_ALERT')
+	'agent-budget-alert': string = '';
+
+	/** Overrides default HTML template for notifying a workflow owner about migration findings (use full path) */
+	@Env('N8N_UM_EMAIL_TEMPLATES_MIGRATION_FINDINGS')
+	'migration-findings': string = '';
 }
 
 const emailModeSchema = z.enum(['', 'smtp']);

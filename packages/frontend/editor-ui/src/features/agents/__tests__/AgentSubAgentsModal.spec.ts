@@ -23,8 +23,9 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.subAgents.modal.remove': 'Remove sub-agent',
 				'projects.header.create.agent': 'Create agent',
 				'projectRoles.agent:create.tooltip': 'Create new agents',
-				'agents.builder.subAgents.useWhen.label': 'When should this agent be used?',
-				'agents.builder.subAgents.useWhen.hint': 'Tell the parent agent when to delegate work.',
+				'agents.builder.subAgents.useWhen.label': 'When to use this agent',
+				'agents.builder.subAgents.useWhen.hint':
+					'Describe when the parent agent should delegate work to this agent.',
 				'agents.builder.subAgents.useWhen.placeholder': 'Use for billing questions',
 				'agents.builder.subAgents.useWhen.characterCount': '0/512',
 				'agents.builder.subAgents.useWhen.validation.maxLength': `Use when must be ${options?.interpolate?.max ?? ''} characters or less`,
@@ -131,6 +132,11 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nScrollArea: { template: '<div><slot /></div>', props: ['maxHeight', 'type'] },
 	N8nText: { template: '<span><slot /></span>', props: ['size', 'color', 'bold'] },
+	N8nTooltip: {
+		name: 'N8nTooltip',
+		props: ['content', 'placement'],
+		template: '<span><slot /></span>',
+	},
 }));
 
 describe('AgentSubAgentsModal', () => {
@@ -161,6 +167,13 @@ describe('AgentSubAgentsModal', () => {
 		await addButtons[1].trigger('click');
 
 		expect(wrapper.find('h2').text()).toBe('Research Agent');
+		expect(wrapper.get('label').text()).toBe('When to use this agent');
+		const help = wrapper.getComponent({ name: 'N8nTooltip' });
+		expect(help.props('content')).toBe(
+			'Describe when the parent agent should delegate work to this agent.',
+		);
+		expect(help.get('[tabindex="0"]').attributes('aria-label')).toBe(help.props('content'));
+		expect(wrapper.text()).not.toContain('Describe when the parent agent should delegate work');
 		expect(
 			wrapper
 				.get('[data-testid="agent-sub-agents-modal-use-when"]')
@@ -254,12 +267,16 @@ describe('AgentSubAgentsModal', () => {
 	});
 
 	it('passes the agents and asset-specific copy to the shared picker', async () => {
+		const personalisation = {
+			icon: 'rocket',
+			gradient: { from: '#FF1500', to: '#FF6900', angle: 135, fromStop: 0, toStop: 100 },
+		};
 		const wrapper = mount(AgentSubAgentsModal, {
 			props: {
 				modalName: 'agentSubAgentsModal',
 				data: {
 					agents: [
-						{ id: 'agent-2', name: 'Billing Agent' },
+						{ id: 'agent-2', name: 'Billing Agent', personalisation },
 						{ id: 'agent-3', name: 'Research Agent' },
 					],
 					onConfirm: vi.fn(),
@@ -272,8 +289,17 @@ describe('AgentSubAgentsModal', () => {
 		expect(picker.props('emptyMessage')).toBe('No sub-agents available');
 		expect(picker.props('noResultsMessage')).toBe('No matching agents');
 		expect(picker.props('items')).toEqual([
-			expect.objectContaining({ agentId: 'agent-2', title: 'Billing Agent' }),
-			expect.objectContaining({ agentId: 'agent-3', title: 'Research Agent' }),
+			expect.objectContaining({
+				agentId: 'agent-2',
+				title: 'Billing Agent',
+				iconSource: { type: 'avatar', personalisation },
+			}),
+			expect.objectContaining({
+				agentId: 'agent-3',
+				title: 'Research Agent',
+				// No personalisation: the shared picker falls back to the generic row icon.
+				iconSource: undefined,
+			}),
 		]);
 
 		await wrapper.findAll('[data-testid="agent-sub-agents-modal-add"]')[1].trigger('click');

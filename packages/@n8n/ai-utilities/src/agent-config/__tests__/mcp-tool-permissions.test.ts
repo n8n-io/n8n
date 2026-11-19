@@ -1,0 +1,133 @@
+import {
+	classifyMcpTool,
+	compileMcpToolPermissions,
+	compileStricterMcpToolPermissions,
+	resolveMcpToolPermission,
+	stricterMcpToolPermission,
+} from '../mcp-tool-permissions';
+
+describe('MCP tool permissions', () => {
+	describe('classifyMcpTool', () => {
+		it.each([
+			[{ name: 'anything', annotations: { readOnlyHint: true } }, 'read'],
+			[{ name: 'search_records' }, 'read'],
+			[{ name: 'getAccount' }, 'read'],
+			[{ name: 'anything', annotations: { readOnlyHint: false } }, 'write'],
+			[{ name: 'search_records', annotations: { destructiveHint: true } }, 'write'],
+			[{ name: 'get_run_record', annotations: { readOnlyHint: true } }, 'read'],
+			[{ name: 'create_record' }, 'write'],
+			[{ name: 'unknown_operation' }, 'write'],
+		] as const)('classifies %o as %s', (tool, expected) => {
+			expect(classifyMcpTool(tool)).toBe(expected);
+		});
+
+		it('prefers explicit write hints when annotations conflict', () => {
+			expect(
+				classifyMcpTool({
+					name: 'search',
+					annotations: { readOnlyHint: true, destructiveHint: true },
+				}),
+			).toBe('write');
+		});
+
+		it('prefers write name segments over read name segments', () => {
+			expect(classifyMcpTool({ name: 'search_and_delete' })).toBe('write');
+		});
+	});
+
+	describe('resolveMcpToolPermission', () => {
+		it('uses a tool override before its category permission', () => {
+			const policy = {
+				categories: { read: 'always_allow', write: 'require_approval' },
+				tools: { search: 'blocked' },
+			} as const;
+
+			expect(resolveMcpToolPermission(policy, { name: 'search' })).toBe('blocked');
+			expect(resolveMcpToolPermission(policy, { name: 'create' })).toBe('require_approval');
+		});
+	});
+
+	describe('compileMcpToolPermissions', () => {
+		it('compiles category permissions and overrides into SDK settings', () => {
+			const policy = {
+				categories: { read: 'always_allow', write: 'require_approval' },
+				tools: {
+					lookup: 'require_approval',
+					remove: 'blocked',
+					create: 'always_allow',
+				},
+			} as const;
+
+			expect(
+				compileMcpToolPermissions(policy, [
+					{ name: 'search', annotations: { readOnlyHint: true } },
+					{ name: 'lookup', annotations: { readOnlyHint: true } },
+					{ name: 'create', annotations: { readOnlyHint: false } },
+					{ name: 'update', annotations: { readOnlyHint: false } },
+					{ name: 'remove', annotations: { readOnlyHint: false } },
+				]),
+			).toEqual({
+				toolFilter: { mode: 'exclude', tools: ['remove'] },
+				requireApproval: ['lookup', 'update'],
+			});
+		});
+
+		it('keeps empty compiled lists explicit', () => {
+			expect(
+				compileMcpToolPermissions({ categories: { read: 'always_allow', write: 'always_allow' } }, [
+					{ name: 'search' },
+					{ name: 'create' },
+				]),
+			).toEqual({
+				toolFilter: { mode: 'exclude', tools: [] },
+				requireApproval: [],
+			});
+		});
+	});
+
+	describe('stricterMcpToolPermission', () => {
+		it.each([
+			['always_allow', 'require_approval', 'require_approval'],
+			['require_approval', 'always_allow', 'require_approval'],
+			['require_approval', 'blocked', 'blocked'],
+			['blocked', 'always_allow', 'blocked'],
+			['always_allow', 'always_allow', 'always_allow'],
+		] as const)('picks the stricter of %s and %s', (a, b, expected) => {
+			expect(stricterMcpToolPermission(a, b)).toBe(expected);
+		});
+	});
+
+	describe('compileStricterMcpToolPermissions', () => {
+		const tools = [
+			{ name: 'search', annotations: { readOnlyHint: true } },
+			{ name: 'create', annotations: { readOnlyHint: false } },
+			{ name: 'remove', annotations: { readOnlyHint: false } },
+		];
+
+		it('does not let a user policy relax an admin policy', () => {
+			const admin = { categories: { read: 'always_allow', write: 'require_approval' } } as const;
+			const user = {
+				categories: { read: 'always_allow', write: 'always_allow' },
+				tools: { remove: 'always_allow' },
+			} as const;
+
+			expect(compileStricterMcpToolPermissions([admin, user], tools)).toEqual({
+				toolFilter: { mode: 'exclude', tools: [] },
+				requireApproval: ['create', 'remove'],
+			});
+		});
+
+		it('applies a user policy that is stricter than the admin policy', () => {
+			const admin = { categories: { read: 'always_allow', write: 'always_allow' } } as const;
+			const user = {
+				categories: { read: 'require_approval', write: 'always_allow' },
+				tools: { remove: 'blocked' },
+			} as const;
+
+			expect(compileStricterMcpToolPermissions([admin, user], tools)).toEqual({
+				toolFilter: { mode: 'exclude', tools: ['remove'] },
+				requireApproval: ['search'],
+			});
+		});
+	});
+});

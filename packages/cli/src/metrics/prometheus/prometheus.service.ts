@@ -3,18 +3,23 @@ import { Service } from '@n8n/di';
 import type express from 'express';
 import promClient from 'prom-client';
 
+import { DatabaseIndependentRoutes } from '@/services/database-independent-routes.service';
+
 import { PrometheusActiveWorkflowMetricsService } from './active-workflow-metrics.service';
 import type { PrometheusMetricsCollector } from './base';
 import { PrometheusCacheMetricsService } from './cache-metrics.service';
+import { METRICS_PATH } from './constant';
 import { PrometheusDbPoolMetricsService } from './db-pool-metrics.service';
 import { PrometheusDefaultMetricsService } from './default-metrics.service';
 import { PrometheusDnsCacheMetricsService } from './dns-cache-metrics.service';
 import { PrometheusEncryptionMetricsService } from './encryption-metrics.service';
 import { PrometheusEventBusMetricsService } from './event-bus-metrics.service';
 import { PrometheusExecutionDataMetricsService } from './execution-data-metrics.service';
+import { PrometheusExecutionLedgerMetricsService } from './execution-ledger-metrics.service';
 import { PrometheusInstanceAiMetricsService } from './instance-ai-metrics.service';
 import { PrometheusInstanceRoleMetricsService } from './instance-role-metrics.service';
 import { PrometheusMcpPostSaveMetricsService } from './mcp-post-save-metrics.service';
+import { PrometheusMemoryGuardMetricsService } from './memory-guard-metrics.service';
 import { PrometheusPollTriggerMetricsService } from './poll-trigger-metrics.service';
 import { PrometheusPssMetricsService } from './pss-metrics.service';
 import { PrometheusQueueMetricsService } from './queue-metrics.service';
@@ -63,6 +68,9 @@ export class PrometheusMetricsService {
 		pollTrigger: PrometheusPollTriggerMetricsService,
 		encryption: PrometheusEncryptionMetricsService,
 		systemTask: PrometheusSystemTaskMetricsService,
+		memoryGuard: PrometheusMemoryGuardMetricsService,
+		executionLedger: PrometheusExecutionLedgerMetricsService,
+		private readonly databaseIndependentRoutes: DatabaseIndependentRoutes,
 	) {
 		this.logger = logger.scoped('metrics');
 		this.collectors = [
@@ -91,6 +99,8 @@ export class PrometheusMetricsService {
 			pollTrigger,
 			encryption,
 			systemTask,
+			memoryGuard,
+			executionLedger,
 		];
 	}
 
@@ -119,10 +129,11 @@ export class PrometheusMetricsService {
 
 	private mountMetricsEndpoint(app: express.Application) {
 		this.logger.debug("Initialization of prometheus metrics: register endpoint 'metrics/'");
-		app.get('/metrics', async (_req: express.Request, res: express.Response) => {
+		app.get(METRICS_PATH, async (_req: express.Request, res: express.Response) => {
 			const metrics = await promClient.register.metrics();
 			res.setHeader('Content-Type', promClient.register.contentType);
 			res.send(metrics).end();
 		});
+		this.databaseIndependentRoutes.add(METRICS_PATH);
 	}
 }

@@ -9,6 +9,7 @@ export type AgentConfirmationModalData = {
 	description: string;
 	confirmButtonText: string;
 	cancelButtonText: string;
+	isDestructive?: boolean;
 	onConfirm?: () => unknown | Promise<unknown>;
 	onCancel?: () => unknown | Promise<unknown>;
 	onClose?: () => unknown | Promise<unknown>;
@@ -68,10 +69,15 @@ async function onOpenChange(open: boolean) {
 			</N8nText>
 		</div>
 		<template #footerActions>
-			<N8nButton variant="subtle" size="medium" :disabled="submitting" @click="onCancel">
+			<N8nButton variant="outline" size="medium" :disabled="submitting" @click="onCancel">
 				{{ props.data.cancelButtonText }}
 			</N8nButton>
-			<N8nButton variant="solid" size="medium" :loading="submitting" @click="onConfirm">
+			<N8nButton
+				:variant="props.data.isDestructive ? 'destructive' : 'solid'"
+				size="medium"
+				:loading="submitting"
+				@click="onConfirm"
+			>
 				{{ props.data.confirmButtonText }}
 			</N8nButton>
 		</template>
@@ -82,12 +88,11 @@ async function onOpenChange(open: boolean) {
 .content {
 	display: flex;
 	flex-direction: row;
-	align-items: start;
+	align-items: center;
 	gap: var(--spacing--xs);
 }
 
 .icon {
 	flex-shrink: 0;
-	margin-top: var(--spacing--4xs);
 }
 </style>

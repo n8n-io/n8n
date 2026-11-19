@@ -26,8 +26,8 @@ function createSettings(
 			sandbox: { provider: false, serviceUrl: false, apiKey: false },
 			search: { provider: false, apiKey: false, url: false },
 		},
-		localGatewayDisabled: false,
 		browserUseEnabled: true,
+		cloudBrowserEnabled: false,
 		...overrides,
 	};
 }

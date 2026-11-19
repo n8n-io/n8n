@@ -2,7 +2,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { GlobalConfig } from '@n8n/config';
-import type { EntityManager } from '@n8n/db';
 import type { CronDefinition } from '@n8n/scheduler';
 import type { CronExpression, INode, TriggerTime } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -21,6 +20,7 @@ const NEXT_TEN = new Date('2026-01-05T10:00:00.000Z');
 const WORKFLOW_ID = 'wf-1';
 const NODE_ID = 'node-1';
 const TIMEZONE = 'UTC';
+const POLL_TIMEOUT_SECONDS = 45;
 
 // Custom crons map straight through to `cron` schedules, so their first fire is exact.
 const DAILY_AT_NINE: TriggerTime = { mode: 'custom', cronExpression: '0 0 9 * * *' };
@@ -42,7 +42,10 @@ describe('PollTriggerJobRegistrar', () => {
 	const makeRegistrar = () =>
 		new PollTriggerJobRegistrar(
 			mockLogger(),
-			mock<GlobalConfig>({ generic: { timezone: TIMEZONE } }),
+			mock<GlobalConfig>({
+				generic: { timezone: TIMEZONE },
+				scheduler: { pollTimeoutSeconds: POLL_TIMEOUT_SECONDS },
+			}),
 			jobProvisioner,
 			pollBackoffService,
 			owner,
@@ -96,6 +99,7 @@ describe('PollTriggerJobRegistrar', () => {
 					},
 				],
 				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+				timeoutSeconds: POLL_TIMEOUT_SECONDS,
 			});
 		});
 
@@ -246,6 +250,7 @@ describe('PollTriggerJobRegistrar', () => {
 				payload: { workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 				desired: [],
 				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+				timeoutSeconds: POLL_TIMEOUT_SECONDS,
 			});
 		});
 
@@ -301,20 +306,6 @@ describe('PollTriggerJobRegistrar', () => {
 			await makeRegistrar().removeWorkflow(WORKFLOW_ID);
 
 			expect(jobProvisioner.deprovisionOwnerTaskType).toHaveBeenCalledWith(
-				OWNER_REF,
-				POLL_TRIGGER_TASK_TYPE,
-			);
-		});
-	});
-
-	describe('removeWorkflowInTransaction', () => {
-		it('removes the poll jobs of a workflow within the given transaction', async () => {
-			const manager = mock<EntityManager>();
-
-			await makeRegistrar().removeWorkflowInTransaction(manager, WORKFLOW_ID);
-
-			expect(jobProvisioner.deprovisionOwnerTaskTypeInTransaction).toHaveBeenCalledWith(
-				manager,
 				OWNER_REF,
 				POLL_TRIGGER_TASK_TYPE,
 			);

@@ -10,13 +10,11 @@ import {
 	MANDATORY_INSTANCE_SCOPES,
 } from '@n8n/permissions';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { License } from '@/license';
 import { ProvisioningRoleDeletionChecker } from '@/modules/provisioning.ee/role-deletion-checker.ee';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleDeletionCheckProxy } from '@/services/role-deletion-check-proxy.service';
-import { RoleService } from '@/services/role.service';
+import { RoleDeletionCheckProxy, RoleService } from '@n8n/backend-services';
 
 import {
 	createRole,
@@ -25,7 +23,7 @@ import {
 	createTestScopes,
 	cleanupRolesAndScopes,
 } from '../shared/db/roles';
-import { createMember, createUser } from '../shared/db/users';
+import { createMember, createServiceAccountWithProject, createUser } from '../shared/db/users';
 
 let roleService: RoleService;
 let roleRepository: RoleRepository;
@@ -1566,6 +1564,63 @@ describe('RoleService', () => {
 				relations: ['role'],
 			});
 			expect(reassignedUser.role.slug).toBe(targetRole.slug);
+		});
+
+		it('should throw when only a service account holds the global role and no reassignment role is given', async () => {
+			//
+			// ARRANGE
+			//
+			const roleInUse = await createRole({
+				displayName: 'Service Account Role',
+				roleType: 'global',
+				systemRole: false,
+			});
+			await createServiceAccountWithProject(roleInUse);
+
+			//
+			// ACT & ASSERT
+			//
+			await expect(
+				roleService.removeCustomRole({ slug: roleInUse.slug, userId: 'test-user-id' }),
+			).rejects.toThrow('Cannot delete role assigned to users');
+			expect(await roleRepository.findBySlug(roleInUse.slug)).not.toBeNull();
+		});
+
+		it('should reassign a service account to another role, then delete', async () => {
+			//
+			// ARRANGE
+			//
+			const roleInUse = await createRole({
+				displayName: 'Service Account Role',
+				roleType: 'global',
+				systemRole: false,
+			});
+			const targetRole = await createRole({
+				displayName: 'Target Role',
+				roleType: 'global',
+				systemRole: false,
+			});
+			const serviceAccount = await createServiceAccountWithProject(roleInUse);
+
+			//
+			// ACT
+			//
+			await roleService.removeCustomRole({
+				slug: roleInUse.slug,
+				reassignRoleSlug: targetRole.slug,
+				userId: 'test-user-id',
+			});
+
+			//
+			// ASSERT
+			//
+			expect(await roleRepository.findBySlug(roleInUse.slug)).toBeNull();
+
+			const reassignedAccount = await userRepository.findOneOrFail({
+				where: { id: serviceAccount.id },
+				relations: ['role'],
+			});
+			expect(reassignedAccount.role.slug).toBe(targetRole.slug);
 		});
 
 		it('should throw when the reassignment role does not exist', async () => {

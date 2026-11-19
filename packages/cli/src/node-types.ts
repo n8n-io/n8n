@@ -7,7 +7,8 @@ import { readdir, readFile } from 'fs/promises';
 import { RoutingNode, UnrecognizedNodeTypeError } from 'n8n-core';
 import type { ExecuteContext } from 'n8n-core';
 import type { INodeType, INodeTypeDescription, INodeTypes, IVersionedNodeType } from 'n8n-workflow';
-import { deepCopy, isHitlToolType, NodeHelpers, UnexpectedError, UserError } from 'n8n-workflow';
+import { deepCopy, isHitlToolType, NodeHelpers } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import { join, dirname } from 'path';
 
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
@@ -28,10 +29,15 @@ export class NodeTypes implements INodeTypes {
 	 * A "synthetic tool" has no implementation of its own: workflows persist
 	 * names like `gmailTool`, and the registry fabricates that node on demand by
 	 * converting the `gmail` base node into an agent tool.
+	 *
+	 * A tool name listed in `NODES_EXCLUDE` is never synthetic. It resolves to
+	 * itself, so loading it fails as an unrecognized type.
 	 */
 	resolveBaseName(nodeTypeName: string): { baseName: string; isSyntheticTool: boolean } {
 		const isSyntheticTool =
-			nodeTypeName.endsWith('Tool') && !this.loadNodesAndCredentials.recognizesNode(nodeTypeName);
+			nodeTypeName.endsWith('Tool') &&
+			!this.loadNodesAndCredentials.recognizesNode(nodeTypeName) &&
+			!this.loadNodesAndCredentials.excludeNodes.includes(nodeTypeName);
 		return {
 			baseName: isSyntheticTool ? stripToolSuffix(nodeTypeName) : nodeTypeName,
 			isSyntheticTool,

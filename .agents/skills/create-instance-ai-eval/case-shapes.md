@@ -288,7 +288,7 @@ on every correct build. See "Credential validity" below for how to script a
 card-created credential that deliberately does not authenticate.
 
 **`auto` is reachable but inert** — the product genuinely rebuilds the agent
-and returns `needsBrowserSetup:true`, but this harness has no Computer Use
+and returns `needsBrowserSetup:true`, but this harness has no Browser Use
 tools attached, so the conversation stalls afterward (expected, not a bug).
 Keep any case scripting `auto` a local smoke test, never part of the gated
 suite — it will time out.
@@ -661,6 +661,85 @@ Get this wrong in the "handed it" direction — omit `attach` on a conversation 
 really had one — and the agent has to guess from prose that deliberately names
 nothing. It will list workflows and pick, or ask which one, and you will score a
 clarification failure the real user never hit.
+
+#### Seeded faults must really fail
+
+`seed.priorRuns[].hints` steer the mock for the staged run's outbound calls and
+nothing else. The builder's own runs are never mocked, and Code, Set, IF, Filter
+and Merge run for real. So:
+
+- **The fault must fail in n8n.** A Code node that returns a plain object does not
+  fail; n8n wraps it as one item. Return an array of plain values, reference a
+  node that does not exist (`$('Missing')`), or throw.
+- **The fault fires before any external call.** The builder's rerun reaches a
+  fixture host and dies there (DNS, 401), so a fault behind an HTTP node is never
+  reached. Never grade the rerun itself; grade the fix with `outcomeExpectations`
+  and the harness's `executionScenarios`.
+- **An empty branch needs a Filter that keeps nothing.** Split Out over an empty
+  array still emits a placeholder item.
+- **Walk the item flow before asserting a count.** A Slack node fed three items
+  posts three times.
+
+#### Recorded runs — the same failure every time
+
+`priorRuns` asks the mock to fail again on every eval, so the failure can change from
+run to run, or not happen. When the case grades how the agent handles one specific
+failure, and always for training data, record the failed run once and replay it with
+`seed.recordedRuns`. The harness restores the run as it was, before the live turn.
+
+```jsonc
+"seed": {
+  "mode": "inline",
+  "workflows": [{ "id": "dS8xQ2mV6bTn4Kp1", "name": "Daily Sync", "nodes": [/* … */], "connections": {} }],
+  "recordedRuns": [{ "workflow": "dS8xQ2mV6bTn4Kp1", "envelope": { /* export response, verbatim */ } }]
+}
+```
+
+How to get an `envelope`:
+
+1. Start an eval instance (`N8N_INSTANCE_AI_EVAL_INSTANCE=true`) and seed the owner,
+   as in [running-evals.md](running-evals.md).
+2. Log in and find your personal project:
+
+   ```bash
+   B=http://localhost:5680; J=/tmp/n8n-eval.cookies
+   curl -sf -c $J -H 'Content-Type: application/json' -X POST $B/rest/login \
+     -d '{"emailOrLdapLoginId":"nathan@n8n.io","password":"PlaywrightTest123"}' >/dev/null
+   PROJECT=$(curl -sf -b $J $B/rest/projects/personal | jq -r .data.id)
+   ```
+
+3. In the editor, import the seed workflow into that project. Make it fail the way
+   the case says, and run it. Copy the failed run's id from the workflow's
+   Executions tab.
+4. Create a thread in the same project, then export the run:
+
+   ```bash
+   THREAD=$(uuidgen | tr A-Z a-z)
+   curl -sf -b $J -H 'Content-Type: application/json' -X POST $B/rest/instance-ai/threads \
+     -d "{\"threadId\":\"$THREAD\",\"projectId\":\"$PROJECT\",\"source\":\"evals\",\"origin\":\"internal\"}" >/dev/null
+   curl -sf -b $J -H 'Content-Type: application/json' -X POST $B/rest/instance-ai/eval/export-execution \
+     -d "{\"threadId\":\"$THREAD\",\"executionId\":\"<id>\"}" | jq .data.envelope > envelope.json
+   ```
+
+5. Put `envelope.json` in `recordedRuns[].envelope` as-is. `workflow` is the seed
+   workflow's `id` in the case, not the id on your instance.
+
+Rules:
+
+- **The run's workflow must match the seed.** The agent reads the seeded workflow and
+  the run side by side, so node names must agree. Export after the last change to the
+  seed workflow, and export again when you change it. The harness logs a warning when
+  the run has nodes the seed workflow does not.
+- **Only a failed run exports** (`error` or `crashed`). Export refuses engine-v2 runs,
+  retries, sub-workflow and agent sub-runs, credentials in the run data, and binary
+  files stored outside the run. Keep the failing workflow small and self-contained.
+- **Scrub the envelope like any other seed content.** It holds every node's output
+  data. A failure staged on a fixture workflow carries no user data. Never export a
+  run that processed real user data.
+- **The routing stub skips these cases.** It cannot restore runs, so routing cases with
+  `recordedRuns` are listed as needing setup and do not run there.
+- A restore that fails is a `framework_issue`, never an agent failure. Recorded runs
+  restore before any `priorRuns`, in declared order.
 
 #### Before you ship a seeded case — three checks
 

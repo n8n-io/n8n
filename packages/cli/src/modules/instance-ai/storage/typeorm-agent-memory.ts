@@ -4,9 +4,12 @@ import {
 	type BuiltMemory,
 	type BuiltObservationLogStore,
 	type BuiltObservationLogTaskLockStore,
+	type BuiltObservationResumeStore,
 	type MemoryDescriptor,
 	type NewObservationLogEntry,
 	type ObservationCursor,
+	type ObservationLogBatch,
+	type ObservationLogBatchCommitResult,
 	type ObservationLogEntry,
 	type ObservationLogReadOptions,
 	type ObservationLogReflection,
@@ -14,10 +17,10 @@ import {
 	type ObservationLogScope,
 	type ObservationLogTaskKind,
 	type ObservationLogTaskLockHandle,
+	type ObservationResumeState,
 	type JSONObject,
 	type JSONValue,
 	type Thread,
-	type RuntimeSkillStateStore,
 } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
@@ -28,11 +31,8 @@ import {
 	type ThreadPatch,
 } from '@n8n/instance-ai';
 import { In, LessThan, Like } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
-import { z } from 'zod';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ConflictError, ForbiddenError, UnexpectedError } from '@n8n/errors';
 
 import { TypeORMObservationLogStore } from './typeorm-observation-log-store';
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
@@ -50,19 +50,6 @@ function parseJsonSafe(text: string): unknown {
 	} catch {
 		return undefined;
 	}
-}
-
-const activeSkillStatesSchema = z.array(
-	z.object({
-		agentName: z.string(),
-		resourceId: z.string(),
-		skillIds: z.array(z.string()),
-	}),
-);
-
-function activeSkillStates(metadata: Thread['metadata']) {
-	const parsed = activeSkillStatesSchema.safeParse(metadata?.activeSkillStates);
-	return parsed.success ? parsed.data : [];
 }
 
 function isAgentMessage(value: unknown): value is AgentMessage {
@@ -162,9 +149,6 @@ function workingMemoryKey(params: {
 }
 
 const PATCH_ONLY_METADATA_KEYS = new Set([
-	'activeSkillStates',
-	'instanceAiIterationLog',
-	'instanceAiPlannedTasks',
 	'instanceAiTasks',
 	'instanceAiTerminalOutcomes',
 	'instanceAiWorkflowLoop',
@@ -193,34 +177,12 @@ function mergeSaveThreadMetadata(
 
 @Service()
 export class TypeORMAgentMemory
-	implements BuiltMemory, BuiltObservationLogStore, BuiltObservationLogTaskLockStore
+	implements
+		BuiltMemory,
+		BuiltObservationLogStore,
+		BuiltObservationLogTaskLockStore,
+		BuiltObservationResumeStore
 {
-	readonly skillState: RuntimeSkillStateStore = {
-		load: async ({ threadId, resourceId, agentName }) => {
-			const thread = await this.getThread(threadId);
-			return activeSkillStates(thread?.metadata).find(
-				(state) => state.resourceId === resourceId && state.agentName === agentName,
-			)?.skillIds;
-		},
-		save: async ({ threadId, resourceId, agentName }, skillIds) => {
-			const updated = await this.patchThread({
-				threadId,
-				update: (thread) => ({
-					metadata: {
-						...thread.metadata,
-						activeSkillStates: [
-							...activeSkillStates(thread.metadata).filter(
-								(state) => state.resourceId !== resourceId || state.agentName !== agentName,
-							),
-							{ resourceId, agentName, skillIds },
-						],
-					},
-				}),
-			});
-			if (!updated) throw new UnexpectedError('Cannot save active skills for a missing thread');
-		},
-	};
-
 	private readonly threadMutationQueues = new Map<string, Promise<unknown>>();
 	private readonly observationLog: TypeORMObservationLogStore;
 
@@ -414,7 +376,7 @@ export class TypeORMAgentMemory
 	/**
 	 * Delete every thread owned by `resourceId` (a user), the sub-agent threads
 	 * spawned under those threads, and all of their working-memory resources.
-	 * Downstream rows (messages, checkpoints, event-log entries, iteration logs,
+	 * Downstream rows (messages, checkpoints, event-log entries, thread tabs,
 	 * grants, pending confirmations, observations) cascade via their `threadId`
 	 * FK; resources have no FK to threads and are removed explicitly. Returns the
 	 * number of owner threads deleted.
@@ -474,36 +436,41 @@ export class TypeORMAgentMemory
 		});
 	}
 
+	/**
+	 * One page of a thread's messages, returned oldest-first, plus one lookahead
+	 * row so the caller can tell whether older rows exist. `before` is the oldest
+	 * row of the previous page and replaces `page`: keyset paging on
+	 * (createdAt, id) stays stable while new rows arrive.
+	 */
 	async listMessages(args: {
 		threadId: string;
 		limit?: number;
 		page?: number;
-		/** Also resolve `newerBoundaryAt`: the createdAt of the row immediately
-		 *  newer than the page, i.e. where the next page starts. Read in the same
-		 *  scan as the page itself (one extra row), not a second query. */
-		withNewerBoundary?: boolean;
-	}): Promise<{ messages: AgentDbMessage[]; newerBoundaryAt?: Date }> {
+		before?: { createdAt: Date; id: string };
+	}): Promise<{ messages: AgentDbMessage[]; hasMore: boolean }> {
+		const { threadId, before } = args;
 		const limit = args.limit ?? 50;
-		const page = args.page ?? 0;
-		const offset = page * limit;
-		// The newest page has no newer neighbour — its span is open-ended.
-		const withBoundary = args.withNewerBoundary === true && offset > 0;
 		const entities = await this.messageRepo.find({
-			where: { threadId: args.threadId },
+			where: before
+				? [
+						{ threadId, createdAt: LessThan(before.createdAt) },
+						{ threadId, createdAt: before.createdAt, id: LessThan(before.id) },
+					]
+				: { threadId },
 			order: { createdAt: 'DESC', id: 'DESC' },
-			take: withBoundary ? limit + 1 : limit,
-			skip: withBoundary ? offset - 1 : offset,
+			take: limit + 1,
+			skip: before ? 0 : (args.page ?? 0) * limit,
 		});
-		// Rows are newest-first, so the extra row is the neighbour, not part of
-		// the page.
-		const boundary = withBoundary ? entities.shift() : undefined;
 
 		return {
-			messages: entities.reverse().flatMap((entity) => {
-				const message = this.toAgentMessage(entity);
-				return message ? [message] : [];
-			}),
-			newerBoundaryAt: boundary?.createdAt,
+			messages: entities
+				.slice(0, limit)
+				.reverse()
+				.flatMap((entity) => {
+					const message = this.toAgentMessage(entity);
+					return message ? [message] : [];
+				}),
+			hasMore: entities.length > limit,
 		};
 	}
 
@@ -567,6 +534,12 @@ export class TypeORMAgentMemory
 		);
 	}
 
+	async commitObservationLogBatch(
+		batch: ObservationLogBatch,
+	): Promise<ObservationLogBatchCommitResult> {
+		return await this.observationLog.commitObservationLogBatch(batch);
+	}
+
 	async appendObservationLogEntries(
 		rows: NewObservationLogEntry[],
 	): Promise<ObservationLogEntry[]> {
@@ -611,6 +584,14 @@ export class TypeORMAgentMemory
 
 	async setCursor(cursor: ObservationCursor): Promise<void> {
 		return await this.observationLog.setCursor(cursor);
+	}
+
+	async getResumeState(observationScopeId: string): Promise<ObservationResumeState | null> {
+		return await this.observationLog.getResumeState(observationScopeId);
+	}
+
+	async saveResumeState(state: ObservationResumeState): Promise<void> {
+		return await this.observationLog.saveResumeState(state);
 	}
 
 	async acquireObservationLogTaskLock(

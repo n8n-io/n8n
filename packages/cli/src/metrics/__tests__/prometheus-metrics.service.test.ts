@@ -5,6 +5,8 @@ import type express from 'express';
 import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
 
+import type { DatabaseIndependentRoutes } from '@/services/database-independent-routes.service';
+
 import type { PrometheusActiveWorkflowMetricsService } from '../prometheus/active-workflow-metrics.service';
 import type { PrometheusCacheMetricsService } from '../prometheus/cache-metrics.service';
 import type { PrometheusDbPoolMetricsService } from '../prometheus/db-pool-metrics.service';
@@ -23,6 +25,8 @@ import type { PrometheusQueueMetricsService } from '../prometheus/queue-metrics.
 import type { PrometheusRouteMetricsService } from '../prometheus/route-metrics.service';
 import type { PrometheusSchedulerMetricsService } from '../prometheus/scheduler-metrics.service';
 import type { PrometheusSsrfMetricsService } from '../prometheus/ssrf-metrics.service';
+import type { PrometheusExecutionLedgerMetricsService } from '../prometheus/execution-ledger-metrics.service';
+import type { PrometheusMemoryGuardMetricsService } from '../prometheus/memory-guard-metrics.service';
 import type { PrometheusSystemTaskMetricsService } from '../prometheus/system-task-metrics.service';
 import type { PrometheusTokenExchangeMetricsService } from '../prometheus/token-exchange-metrics.service';
 import type { PrometheusVersionMetricsService } from '../prometheus/version-metrics.service';
@@ -63,6 +67,9 @@ describe('PrometheusMetricsService', () => {
 	let scheduler: Mocked<PrometheusSchedulerMetricsService>;
 	let pollTrigger: Mocked<PrometheusPollTriggerMetricsService>;
 	let systemTask: Mocked<PrometheusSystemTaskMetricsService>;
+	let memoryGuard: Mocked<PrometheusMemoryGuardMetricsService>;
+	let executionLedger: Mocked<PrometheusExecutionLedgerMetricsService>;
+	const databaseIndependentRoutes = mock<DatabaseIndependentRoutes>();
 
 	let service: PrometheusMetricsService;
 
@@ -94,6 +101,9 @@ describe('PrometheusMetricsService', () => {
 			pollTrigger,
 			encryption,
 			systemTask,
+			memoryGuard,
+			executionLedger,
+			databaseIndependentRoutes,
 		);
 
 	beforeEach(() => {
@@ -132,6 +142,8 @@ describe('PrometheusMetricsService', () => {
 		pollTrigger = mock<PrometheusPollTriggerMetricsService>({ enabled: true });
 		encryption = mock<PrometheusEncryptionMetricsService>({ enabled: true });
 		systemTask = mock<PrometheusSystemTaskMetricsService>({ enabled: true });
+		memoryGuard = mock<PrometheusMemoryGuardMetricsService>({ enabled: true });
+		executionLedger = mock<PrometheusExecutionLedgerMetricsService>({ enabled: true });
 
 		service = buildService();
 	});
@@ -169,6 +181,8 @@ describe('PrometheusMetricsService', () => {
 			expect(pollTrigger.init).toHaveBeenCalledWith(app);
 			expect(encryption.init).toHaveBeenCalledWith(app);
 			expect(systemTask.init).toHaveBeenCalledWith(app);
+			expect(memoryGuard.init).toHaveBeenCalledWith(app);
+			expect(executionLedger.init).toHaveBeenCalledWith(app);
 		});
 
 		it('should NOT call init on disabled collectors', () => {
@@ -191,6 +205,7 @@ describe('PrometheusMetricsService', () => {
 			service.init(app);
 
 			expect(app.get).toHaveBeenCalledWith('/metrics', expect.any(Function));
+			expect(databaseIndependentRoutes.add).toHaveBeenCalledWith('/metrics');
 		});
 
 		it('should return metrics string with correct content-type when /metrics handler is called', async () => {

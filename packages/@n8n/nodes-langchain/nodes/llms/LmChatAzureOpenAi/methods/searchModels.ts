@@ -1,5 +1,5 @@
 import { proxyFetch } from '@n8n/ai-utilities';
-import { listAzureOpenAiModels } from '@n8n/ai-utilities/model-discovery';
+import { getAzureFoundryOrigin, listAzureOpenAiModels } from '@n8n/ai-utilities/model-discovery';
 import type { ILoadOptionsFunctions, INode, INodeListSearchResult } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -11,6 +11,7 @@ import type { AzureEntraCognitiveServicesOAuth2ApiCredential } from '../types';
 interface AzureResourceCredential {
 	endpointType?: 'classic' | 'foundry';
 	foundryEndpoint?: string;
+	project?: string;
 }
 
 /**
@@ -20,7 +21,23 @@ interface AzureResourceCredential {
  * only reachable through the ARM control plane, which this call doesn't use.
  */
 function resolveFoundryBaseURL(node: INode, foundryEndpoint?: string): string {
-	return new URL(requireFoundryEndpoint(node, foundryEndpoint)).origin;
+	return getAzureFoundryOrigin(requireFoundryEndpoint(node, foundryEndpoint));
+}
+
+// The dropdown shows only the message, so it also says how to fix the problem.
+function classicCredentialError(node: INode): NodeOperationError {
+	return new NodeOperationError(
+		node,
+		"Only a Microsoft Foundry credential can list deployments. Select By ID and enter the deployment name, or set the credential's Endpoint Type to Microsoft Foundry.",
+	);
+}
+
+// Without this, the list call reports `Project "" was not found`.
+function missingProjectError(node: INode): NodeOperationError {
+	return new NodeOperationError(
+		node,
+		'Enter the Project in the node or in the credential to list its deployments. Or select By ID and enter the deployment name.',
+	);
 }
 
 export async function searchModels(
@@ -31,34 +48,42 @@ export async function searchModels(
 		'authentication',
 		AuthenticationType.ApiKey,
 	) as AuthenticationType;
-	const project = this.getNodeParameter('project', '') as string;
+	// The node's own Project overrides the credential's, so existing workflows keep their value.
+	const nodeProject = this.getNodeParameter('project', '') as string;
 	const egressFilter = this.helpers.getSecureEgressFilter();
 
 	let baseURL: string;
 	let headers: Record<string, string>;
+	let project: string;
 
 	if (authenticationMethod === AuthenticationType.ApiKey) {
 		const credential = await this.getCredentials<AzureResourceCredential & { apiKey: string }>(
 			'azureOpenAiApi',
 		);
 		if (credential.endpointType !== 'foundry') {
-			return { results: [] };
+			throw classicCredentialError(this.getNode());
 		}
 		baseURL = resolveFoundryBaseURL(this.getNode(), credential.foundryEndpoint);
+		project = nodeProject || credential.project || '';
+		if (!project) throw missingProjectError(this.getNode());
 		headers = { 'api-key': credential.apiKey };
 	} else {
 		const credential = await this.getCredentials<AzureEntraCognitiveServicesOAuth2ApiCredential>(
 			'azureEntraCognitiveServicesOAuth2Api',
 		);
 		if (credential.endpointType !== 'foundry') {
-			return { results: [] };
+			throw classicCredentialError(this.getNode());
 		}
 		baseURL = resolveFoundryBaseURL(this.getNode(), credential.foundryEndpoint);
+		project = nodeProject || credential.project || '';
+		// Checked before the token request, so an empty Project does not cost a call to Entra.
+		if (!project) throw missingProjectError(this.getNode());
 		// Mints a token for the Foundry audience, which this call needs.
 		const token = await new N8nOAuth2TokenCredential(
 			this.getNode(),
 			credential,
 			AZURE_AI_FOUNDRY_AUDIENCE,
+			egressFilter,
 		).getToken();
 		if (!token) {
 			throw new NodeOperationError(this.getNode(), 'Failed to retrieve access token');

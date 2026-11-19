@@ -147,4 +147,154 @@ describe('parseAndResolveQueryParameters', () => {
 			"Invalid JSON in 'Query'",
 		);
 	});
+
+	describe('dollar strings', () => {
+		const escape = { escapeDollarStrings: true };
+
+		it('keeps a string that starts with $ as a field path by default', () => {
+			const result = parseAndResolveQueryParameters('{ "label": "$1" }', ['$owner'], mockNode, 0);
+
+			expect(result).toEqual({ label: '$owner' });
+		});
+
+		it.each(['$owner', '$$ROOT', '$'])('wraps %p in $literal when escaping', (parameter) => {
+			const result = parseAndResolveQueryParameters(
+				'{ "label": "$1" }',
+				[parameter],
+				mockNode,
+				0,
+				'Projection',
+				escape,
+			);
+
+			expect(result).toEqual({ label: { $literal: parameter } });
+		});
+
+		it('wraps each string that starts with $ inside an array parameter', () => {
+			const result = parseAndResolveQueryParameters(
+				'{ "label": "$1" }',
+				[['$owner', 'plain', 5]],
+				mockNode,
+				0,
+				'Projection',
+				escape,
+			);
+
+			expect(result).toEqual({ label: [{ $literal: '$owner' }, 'plain', 5] });
+		});
+
+		it('leaves other values unchanged when escaping', () => {
+			const date = new Date('2024-01-01');
+			const result = parseAndResolveQueryParameters(
+				'{ "a": "$1", "b": "$2", "c": "$3", "d": "$4", "e": "$5" }',
+				['plain', 1, true, null, date],
+				mockNode,
+				0,
+				'Projection',
+				escape,
+			);
+
+			expect(result).toEqual({ a: 'plain', b: 1, c: true, d: null, e: date });
+		});
+
+		it('does not touch strings the author wrote or bound field names', () => {
+			const result = parseAndResolveQueryParameters(
+				'{ "$1": 1, "fixed": "$owner" }',
+				['name'],
+				mockNode,
+				0,
+				'Projection',
+				escape,
+			);
+
+			expect(result).toEqual({ name: 1, fixed: '$owner' });
+		});
+
+		it('wraps dollar strings only inside configured fields', () => {
+			const result = parseAndResolveQueryParameters(
+				'{ "name": "$1", "$expr": { "$eq": ["$owner", "$2"] } }',
+				['$owner', '$owner'],
+				mockNode,
+				0,
+				'Query',
+				{ escapeDollarStringsInFields: ['$expr'] },
+			);
+
+			expect(result).toEqual({
+				name: '$owner',
+				$expr: { $eq: ['$owner', { $literal: '$owner' }] },
+			});
+		});
+
+		it('keeps configured escaping active in nested expression arrays', () => {
+			const result = parseAndResolveQueryParameters(
+				'{ "$and": [{ "$expr": { "$eq": ["$owner", "$1"] } }] }',
+				['$owner'],
+				mockNode,
+				0,
+				'Query',
+				{ escapeDollarStringsInFields: ['$expr'] },
+			);
+
+			expect(result).toEqual({
+				$and: [{ $expr: { $eq: ['$owner', { $literal: '$owner' }] } }],
+			});
+		});
+
+		it('preserves dollar strings inside configured query fields', () => {
+			const result = parseAndResolveQueryParameters(
+				'{ "items": { "$elemMatch": { "sku": "$1" } } }',
+				['$5-OFF'],
+				mockNode,
+				0,
+				'Projection',
+				{
+					escapeDollarStrings: true,
+					preserveDollarStringsInFields: ['$elemMatch'],
+				},
+			);
+
+			expect(result).toEqual({
+				items: { $elemMatch: { sku: '$5-OFF' } },
+			});
+		});
+	});
+
+	describe('null parameters', () => {
+		it('allows a null parameter by default', () => {
+			const result = parseAndResolveQueryParameters('{ "name": "$1" }', [null], mockNode, 0);
+
+			expect(result).toEqual({ name: null });
+		});
+
+		it.each([
+			['a null parameter', [null], 'Query parameter 1 must not be null'],
+			['a null inside an array parameter', [['a', null]], 'Query parameter 1 must not be null'],
+			['a later null parameter', ['a', null], 'Query parameter 2 must not be null'],
+		])('rejects %s when rejectNull is set', (_label, parameters, message) => {
+			expect(() =>
+				parseAndResolveQueryParameters(
+					'{ "a": "$1", "b": "$2" }',
+					parameters,
+					mockNode,
+					0,
+					'Query',
+					{ rejectNull: true },
+				),
+			).toThrow(message);
+		});
+
+		it('allows non-null parameters when rejectNull is set', () => {
+			const result = parseAndResolveQueryParameters(
+				'{ "name": "$1", "age": "$2" }',
+				['Alice', 0],
+				mockNode,
+				0,
+				'Query',
+				{ rejectNull: true },
+			);
+
+			expect(result).toEqual({ name: 'Alice', age: 0 });
+		});
+	});
 });

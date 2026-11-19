@@ -6,6 +6,7 @@ import type {
 	ChatProviderSettingsDto,
 } from './chat-hub';
 import type { QuickConnectOption } from './quick-connect';
+import type { InboxSettings } from './inbox';
 import type { InsightsDateRange } from './schemas/insights.schema';
 import type { WorkflowReviewsPolicy } from './workflow-reviews-policy';
 
@@ -93,6 +94,7 @@ export interface FrontendSettings {
 	endpointWebhookTest: string;
 	endpointWebhookWaiting: string;
 	endpointHealth: string;
+	healthCheckTimeoutMs: number;
 	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
 	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
 	saveManualExecutions: boolean;
@@ -133,12 +135,13 @@ export interface FrontendSettings {
 		};
 	};
 	instanceId: string;
+	/** Random ID of this install, for telemetry. Absent while the process has none. */
+	installId?: string;
 	telemetry: ITelemetrySettings;
 	posthog: {
 		enabled: boolean;
 		apiHost: string;
 		apiKey: string;
-		autocapture: boolean;
 		disableSessionRecording: boolean;
 		debug: boolean;
 		proxy: string;
@@ -178,6 +181,8 @@ export interface FrontendSettings {
 	};
 	workflowTagsDisabled: boolean;
 	workflowsAutosaveDisabled: boolean;
+	workflowsGroupsWithTriggersEnabled: boolean;
+	workflowsGroupsWithManyBoundariesEnabled: boolean;
 	useWorkflowPublicationService: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
@@ -196,6 +201,7 @@ export interface FrontendSettings {
 	aiAssistant: {
 		enabled: boolean;
 		setup: boolean;
+		cloudUbbEnabled: boolean;
 	};
 	/**
 	 * @deprecated Gates the AI Transform node's code generation. No longer gates
@@ -230,6 +236,7 @@ export interface FrontendSettings {
 		enforced: boolean;
 	};
 	workflowReviews?: WorkflowReviewsPolicy;
+	inbox?: InboxSettings;
 	folders: {
 		enabled: boolean;
 	};
@@ -258,6 +265,10 @@ export interface FrontendSettings {
 	};
 	ai: {
 		allowSendingParameterValues: boolean;
+	};
+	aiPreferences: {
+		enabled: boolean;
+		managedByEnv: boolean;
 	};
 	pruning?: {
 		isEnabled: boolean;
@@ -299,6 +310,12 @@ export interface FrontendSettings {
 		 * `101_agent_evals` flag would otherwise never resolve.
 		 */
 		agentEvalsEnabled: boolean;
+		/**
+		 * Operator override (`N8N_FORCE_AGENT_WORTH_TESTING`) that forces the
+		 * "Test your agent" offer's capability check to pass regardless of the
+		 * agent's actual model/tools/skills.
+		 */
+		forceAgentWorthTesting: boolean;
 	};
 
 	/** Backend modules that were initialized during startup. */
@@ -364,6 +381,16 @@ export type FrontendModuleSettings = {
 	};
 
 	/**
+	 * Client settings for SCIM user-provisioning module.
+	 */
+	scim?: {
+		/** Whether SCIM provisioning is enabled in the instance. */
+		scimEnabled: boolean;
+		/** Whether the instance has a SCIM token. */
+		hasToken: boolean;
+	};
+
+	/**
 	 * Client settings for Chat module.
 	 */
 	'chat-hub'?: {
@@ -379,7 +406,6 @@ export type FrontendModuleSettings = {
 	'instance-ai'?: {
 		enabled: boolean;
 		mcpConnectionsAvailable: boolean;
-		localGatewayDisabled: boolean;
 		browserUseEnabled: boolean;
 		proxyEnabled: boolean;
 		cloudManaged: boolean;
@@ -390,8 +416,9 @@ export type FrontendModuleSettings = {
 		sandboxUnavailableReason: string | null;
 		/** When true, orchestrator LLM step / workflow code debug is captured (`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`). */
 		runDebugEnabled: boolean;
-		/** Whether this instance is in the activation-capped trial cohort (`N8N_INSTANCE_AI_ACTIVATION_CAPPED`). Optional. */
-		activationCapped?: boolean;
+		workflowSuggestionsEnabled: boolean;
+		/** Whether new threads can run on the n8n Assistant agent of the agents runtime. */
+		assistantAgentEnabled: boolean;
 	};
 
 	/**
@@ -427,6 +454,7 @@ export type FrontendModuleSettings = {
 	 * Client settings for the agents module.
 	 */
 	agents?: {
+		enabled?: boolean;
 		/**
 		 * Enabled agent sub-feature modules. Each token unlocks a specific
 		 * capability inside the agents module (see the backend's
@@ -441,6 +469,31 @@ export type FrontendModuleSettings = {
 		knowledgeBaseEnabled: boolean;
 		/** Whether the AI Assistant proxy is available to the agents module. */
 		proxyEnabled: boolean;
+	};
+
+	/**
+	 * Client settings for the knowledge module.
+	 */
+	knowledge?: {
+		/**
+		 * The upload limits the backend enforces, so the editor can reject an
+		 * upload with the same limits before the request. Configured through
+		 * the `N8N_KNOWLEDGE_*` environment variables.
+		 */
+		limits: {
+			/** Largest single file, in bytes. */
+			maxFileSizeBytes: number;
+			/** Most files in one upload request. */
+			maxFilesPerUpload: number;
+			/** Most bytes one knowledge base can hold across all its files. */
+			maxTotalSizeBytes: number;
+		};
+		/**
+		 * Whether the operator turned collections on with
+		 * `N8N_KNOWLEDGE_COLLECTIONS_ENABLED`. The editor combines it with the
+		 * PostHog flag `KNOWLEDGE_COLLECTIONS_FLAG`.
+		 */
+		collectionsEnabled?: boolean;
 	};
 };
 

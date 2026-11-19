@@ -1,10 +1,11 @@
 import type { BaseTextKey } from '@n8n/i18n';
-import type {
-	AgentIntegrationConfig,
-	AgentJsonConfig,
-	AgentJsonToolConfig,
-	AgentPersonalisation,
-	AgentTaskConfig,
+import {
+	N8N_CHAT_INTEGRATION_TYPE,
+	type AgentIntegrationConfig,
+	type AgentJsonConfig,
+	type AgentJsonToolConfig,
+	type AgentPersonalisation,
+	type AgentTaskConfig,
 } from '@n8n/api-types';
 
 type AgentTemplateGradient = AgentPersonalisation['gradient'];
@@ -18,6 +19,7 @@ export interface AgentTemplate {
 	id: string;
 	labelKey: BaseTextKey;
 	descriptionKey: BaseTextKey;
+	placeholderKey: BaseTextKey;
 	icon: string;
 	/** Avatar gradient shown on the option and written onto the agent. */
 	gradient: AgentTemplateGradient;
@@ -48,11 +50,32 @@ export interface AgentTemplate {
 /** Distinct from the home-screen suggestion catalog (`v1`). */
 export const AGENT_TEMPLATE_SUGGESTIONS_VERSION = 'agent-templates-v1';
 
+/**
+ * A first message carried from the Agents list empty state into a new builder.
+ * `prompt` is text the user typed. `template` names a starter to apply.
+ */
+export type AgentStarter =
+	| { kind: 'template'; templateId: string }
+	| { kind: 'prompt'; text: string };
+
+export function isAgentStarter(value: unknown): value is AgentStarter {
+	if (typeof value !== 'object' || value === null) return false;
+	const starter = value as AgentStarter;
+	if (starter.kind === 'prompt') {
+		return typeof starter.text === 'string' && starter.text.trim() !== '';
+	}
+	if (starter.kind === 'template') {
+		return typeof starter.templateId === 'string' && starter.templateId !== '';
+	}
+	return false;
+}
+
 export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 	{
 		id: 'morning-news-brief',
 		labelKey: 'agents.builder.templates.morningNewsBrief.label',
 		descriptionKey: 'agents.builder.templates.morningNewsBrief.description',
+		placeholderKey: 'agents.builder.templates.morningNewsBrief.placeholder',
 		icon: 'sun',
 		gradient: { from: '#F5A524', to: '#FF5A1F', angle: 160, fromStop: 8, toStop: 92 },
 		config: {
@@ -76,6 +99,7 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 		id: 'process-incoming-emails',
 		labelKey: 'agents.builder.templates.processIncomingEmails.label',
 		descriptionKey: 'agents.builder.templates.processIncomingEmails.description',
+		placeholderKey: 'agents.builder.templates.processIncomingEmails.placeholder',
 		icon: 'mail',
 		gradient: { from: '#2563EB', to: '#7C3AED', angle: 135, fromStop: 0, toStop: 100 },
 		config: {
@@ -124,6 +148,7 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 		id: 'qualify-new-leads',
 		labelKey: 'agents.builder.templates.qualifyNewLeads.label',
 		descriptionKey: 'agents.builder.templates.qualifyNewLeads.description',
+		placeholderKey: 'agents.builder.templates.qualifyNewLeads.placeholder',
 		icon: 'users',
 		gradient: { from: '#059669', to: '#84CC16', angle: 120, fromStop: 4, toStop: 88 },
 		config: {
@@ -136,6 +161,7 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 		id: 'propose-meeting-times',
 		labelKey: 'agents.builder.templates.proposeMeetingTimes.label',
 		descriptionKey: 'agents.builder.templates.proposeMeetingTimes.description',
+		placeholderKey: 'agents.builder.templates.proposeMeetingTimes.placeholder',
 		icon: 'calendar',
 		gradient: { from: '#0F766E', to: '#2DD4BF', angle: 150, fromStop: 4, toStop: 96 },
 		config: {
@@ -168,26 +194,30 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 	},
 ];
 
+const isN8nChat = (integration: AgentIntegrationConfig) =>
+	integration.type === N8N_CHAT_INTEGRATION_TYPE;
+
 /**
  * A blank agent: no instructions, no tools, and no channel integrations.
  * `name` and `model` are ignored — both are seeded on every new agent, so a
  * default name or model does not count as content the user would lose by
- * applying a template.
+ * applying a template. n8n Chat is ignored for the same reason.
  */
 export function isAgentConfigBlank(config: AgentJsonConfig): boolean {
 	return (
 		config.instructions.trim() === '' &&
 		(config.tools?.length ?? 0) === 0 &&
-		(config.integrations?.length ?? 0) === 0
+		(config.integrations ?? []).every(isN8nChat)
 	);
 }
 
 /**
  * Returns the config with the template written onto it, or `null` when the
  * agent already has content (instructions or tools). `name` is only replaced
- * while it still equals `defaultName` (the seeded "New Agent"), so a renamed
+ * while it still equals `defaultName` (the seeded "Untitled"), so a renamed
  * agent keeps its name. The template icon and gradient replace the
- * personalisation. `model` and every other field are preserved.
+ * personalisation. `model`, a default n8n Chat channel and every other field
+ * are preserved.
  */
 export function applyAgentTemplate(
 	config: AgentJsonConfig,
@@ -200,7 +230,10 @@ export function applyAgentTemplate(
 		name: config.name === defaultName ? template.config.name : config.name,
 		instructions: template.config.instructions,
 		tools: template.config.tools ?? [],
-		integrations: template.config.integrations ?? [],
+		integrations: [
+			...(config.integrations ?? []).filter(isN8nChat),
+			...(template.config.integrations ?? []).filter((integration) => !isN8nChat(integration)),
+		],
 		config: { ...config.config, ...template.config.config },
 		personalisation: {
 			icon: template.icon,

@@ -6,12 +6,12 @@ import { Container } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { In, LessThan, LessThanOrEqual, MoreThanOrEqual, And, Not } from '@n8n/typeorm';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
-import { BinaryDataService } from 'n8n-core';
+import { ErrorReporter } from 'n8n-core';
 import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { mock } from 'vitest-mock-extended';
 
-import { ExecutionEntity, Project, type WorkflowEntity } from '../../entities';
+import { ExecutionData, ExecutionEntity, Project, type WorkflowEntity } from '../../entities';
 import type { IExecutionResponse } from '../../entities/types-db';
 import { TransactionRunner } from '../../services/transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
@@ -29,9 +29,9 @@ describe('ExecutionRepository', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
 		logging: { outputs: ['console'], scopes: [] },
 	});
-	mockInstance(BinaryDataService);
 	const logger = mockInstance(Logger);
 	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
+	const errorReporter = mockInstance(ErrorReporter);
 	const transactionRunner = mock<TransactionRunner>();
 	Container.set(TransactionRunner, transactionRunner);
 	const executionRepository = Container.get(ExecutionRepository);
@@ -240,6 +240,63 @@ describe('ExecutionRepository', () => {
 		});
 	});
 
+	describe('reportInvalidExecutions', () => {
+		test('should report the loaded row fields of each execution without data', () => {
+			const execution = Object.assign(new ExecutionEntity(), {
+				id: '42',
+				storedAt: 'fs',
+				status: 'success',
+				mode: 'manual',
+				finished: true,
+				createdAt: new Date('2026-11-01T10:00:00.000Z'),
+				startedAt: new Date('2026-11-01T10:00:01.000Z'),
+				stoppedAt: new Date('2026-11-01T10:00:02.000Z'),
+				jsonSizeBytes: 1024,
+				deletedAt: null,
+				retryOf: null,
+			});
+
+			executionRepository.reportInvalidExecutions([execution]);
+
+			const [error] = errorReporter.error.mock.calls[0];
+			expect(error).toMatchObject({
+				message: 'Found executions without executionData',
+				extra: { executionIds: ['42'] },
+			});
+			expect(error).toHaveProperty('extra.executions', [
+				{
+					id: '42',
+					storedAt: 'fs',
+					status: 'success',
+					mode: 'manual',
+					finished: true,
+					createdAt: '2026-11-01T10:00:00.000Z',
+					startedAt: '2026-11-01T10:00:01.000Z',
+					stoppedAt: '2026-11-01T10:00:02.000Z',
+					jsonSizeBytes: 1024,
+				},
+			]);
+		});
+
+		test('should report all ids but the row fields of at most 20 executions', () => {
+			const executions = Array.from({ length: 25 }, (_, i) =>
+				Object.assign(new ExecutionEntity(), { id: String(i) }),
+			);
+
+			executionRepository.reportInvalidExecutions(executions);
+
+			const [error] = errorReporter.error.mock.calls[0];
+			expect(error).toHaveProperty(
+				'extra.executionIds',
+				executions.map(({ id }) => id),
+			);
+			expect(error).toHaveProperty(
+				'extra.executions',
+				executions.slice(0, 20).map(({ id }) => ({ id })),
+			);
+		});
+	});
+
 	describe('getConcurrentExecutionsCount', () => {
 		test('should count running executions with mode webhook or trigger', async () => {
 			const mockCount = 5;
@@ -251,6 +308,20 @@ describe('ExecutionRepository', () => {
 				where: { status: 'running', mode: In(['webhook', 'trigger']) },
 			});
 			expect(result).toBe(mockCount);
+		});
+	});
+
+	describe('findUnfinishedIds', () => {
+		test('should select ids of running or unknown executions', async () => {
+			entityManager.find.mockResolvedValueOnce([{ id: '1' }, { id: '2' }]);
+
+			const result = await executionRepository.findUnfinishedIds();
+
+			expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
+				select: ['id'],
+				where: { status: In(['running', 'unknown']) },
+			});
+			expect(result).toEqual(['1', '2']);
 		});
 	});
 
@@ -525,37 +596,26 @@ describe('ExecutionRepository', () => {
 		});
 	});
 
-	describe('cancelMany', () => {
-		test('should clear waitTill when canceling executions', async () => {
-			const executionIds = ['1', '2', '3'];
+	describe('markAsCanceled', () => {
+		test('should cancel only unfinished executions by default and clear waitTill', async () => {
+			entityManager.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
 
-			await executionRepository.cancelMany(executionIds);
+			await executionRepository.markAsCanceled(['1', '2', '1']);
 
 			expect(entityManager.update).toHaveBeenCalledWith(
 				ExecutionEntity,
-				{ id: In(executionIds) },
+				{ id: In(['1', '2']), status: In(['new', 'running', 'unknown', 'waiting']) },
 				expect.objectContaining({ status: 'canceled', waitTill: null }),
 			);
 		});
-	});
 
-	describe('stopBeforeRun', () => {
-		test('should clear waitTill when stopping execution before run', async () => {
-			const execution = mock<IExecutionResponse>({
-				id: '1',
-				status: 'waiting',
-				waitTill: new Date('2025-01-01T00:00:00.000Z'),
-			});
+		test('should update in batches of 900 ids', async () => {
+			entityManager.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
+			const ids = Array.from({ length: 901 }, (_, i) => String(i));
 
-			await executionRepository.stopBeforeRun(execution);
+			await executionRepository.markAsCanceled(ids);
 
-			expect(execution.waitTill).toBeNull();
-			expect(execution.status).toBe('canceled');
-			expect(entityManager.update).toHaveBeenCalledWith(
-				ExecutionEntity,
-				{ id: '1' },
-				expect.objectContaining({ status: 'canceled', waitTill: null }),
-			);
+			expect(entityManager.update).toHaveBeenCalledTimes(2);
 		});
 	});
 
@@ -589,32 +649,66 @@ describe('ExecutionRepository', () => {
 		);
 	});
 
-	describe('deleteExecutionsByFilter', () => {
-		test('should delete binary data', async () => {
+	describe('findExecutionsToDelete', () => {
+		test('should return the matching executions without deleting anything', async () => {
 			const workflowId = nanoid();
-			const binaryDataService = Container.get(BinaryDataService);
+			const deleteSpy = vi.spyOn(executionRepository, 'delete');
 
 			vi.spyOn(executionRepository, 'createQueryBuilder').mockReturnValue(
 				mock<SelectQueryBuilder<ExecutionEntity>>({
 					select: vi.fn().mockReturnThis(),
 					andWhere: vi.fn().mockReturnThis(),
-					getMany: vi.fn().mockResolvedValue([{ id: '1', workflowId }]),
+					getMany: vi.fn().mockResolvedValue([{ id: '1', workflowId, storedAt: 'db' }]),
 				}),
 			);
 
-			await executionRepository.deleteExecutionsByFilter({
+			const refs = await executionRepository.findExecutionsToDelete({
 				filters: { id: '1' },
 				accessibleWorkflowIds: ['1'],
 				deleteConditions: { ids: ['1'] },
 			});
 
-			expect(binaryDataService.deleteMany).toHaveBeenCalledWith([
-				{ type: 'execution', executionId: '1', workflowId },
-			]);
+			expect(refs).toEqual([{ executionId: '1', workflowId, storedAt: 'db' }]);
+			expect(deleteSpy).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('updateExistingExecution', () => {
+		test.each([0, 1])(
+			'guards the wait timestamp before writing row and data (matched rows: %s)',
+			async (affected) => {
+				const expectedWait = new Date('3000-01-01T00:00:00.000Z');
+				const nextWait = new Date('2026-11-17T12:00:00.000Z');
+				entityManager.transaction.mockImplementation(
+					async (fn: unknown) =>
+						await (fn as (em: typeof entityManager) => Promise<boolean>)(entityManager),
+				);
+				entityManager.update.mockResolvedValue({ affected, raw: [], generatedMaps: [] });
+
+				const updated = await executionRepository.updateExistingExecution(
+					'1',
+					{ waitTill: nextWait, data: mock<IRunExecutionData>() },
+					{ requireStatus: 'waiting', requireWaitTill: expectedWait },
+				);
+
+				expect(entityManager.update).toHaveBeenNthCalledWith(
+					1,
+					ExecutionEntity,
+					{ id: '1', status: 'waiting', waitTill: expectedWait },
+					{ waitTill: nextWait },
+				);
+				expect(updated).toBe(affected === 1);
+				expect(entityManager.update).toHaveBeenCalledTimes(affected === 1 ? 2 : 1);
+				if (affected === 1) {
+					expect(entityManager.update).toHaveBeenLastCalledWith(
+						ExecutionData,
+						{ executionId: '1' },
+						expect.objectContaining({ data: expect.any(String) }),
+					);
+				}
+			},
+		);
+
 		test.each(['sqlite', 'postgresdb'] as const)(
 			'should update execution and data in transaction on %s',
 			async (dbType) => {

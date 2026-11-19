@@ -12,11 +12,9 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 import { DateTime } from 'luxon';
-import { UserError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InsightsService } from '@/modules/insights/insights.service';
+import { BadRequestError, ForbiddenError, UserError } from '@n8n/errors';
+import { InsightsService } from '@n8n/backend-module-insights';
 
 @PublicApiController('/insights')
 export class InsightsPublicController {

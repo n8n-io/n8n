@@ -1,8 +1,9 @@
 import {
-	CreatePolicyDocumentDto,
-	PutInstancePolicyDto,
+	CreateCredentialTypePolicyDocumentDto,
+	PutCredentialTypeInstancePolicyDto,
 	ReplaceAttachmentsDto,
-	UpdatePolicyDocumentDto,
+	UpdateCredentialTypePolicyDocumentDto,
+	type InstanceTypeAccessResponse,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -20,7 +21,9 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
+
+import { CredentialTypes } from '@/credential-types';
 
 import { CREDENTIAL_TYPES_KIND } from './constants';
 import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
@@ -33,7 +36,10 @@ import { TypeAvailabilityPolicyService } from './type-availability-policy.servic
  */
 @RestController('/credential-type-policies')
 export class CredentialTypePolicyInstanceController {
-	constructor(private readonly service: TypeAvailabilityPolicyService) {}
+	constructor(
+		private readonly service: TypeAvailabilityPolicyService,
+		private readonly credentialTypes: CredentialTypes,
+	) {}
 
 	@Get('/instance')
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
@@ -49,13 +55,23 @@ export class CredentialTypePolicyInstanceController {
 		};
 	}
 
+	@Get('/instance/access')
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
+	@GlobalScope('credentialTypePolicy:manage')
+	async getInstanceAccess(): Promise<InstanceTypeAccessResponse> {
+		return await this.service.getInstanceAccess(
+			CREDENTIAL_TYPES_KIND,
+			Object.keys(this.credentialTypes.getKnownTypes()),
+		);
+	}
+
 	@Put('/instance')
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@GlobalScope('credentialTypePolicy:manage')
 	async putInstancePolicy(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Body dto: PutInstancePolicyDto,
+		@Body dto: PutCredentialTypeInstancePolicyDto,
 	) {
 		const result = await this.service.setEffectivePolicy(
 			CREDENTIAL_TYPES_KIND,
@@ -80,7 +96,7 @@ export class CredentialTypePolicyInstanceController {
 	async createPolicy(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Body dto: CreatePolicyDocumentDto,
+		@Body dto: CreateCredentialTypePolicyDocumentDto,
 	) {
 		const { policy, warnings } = await this.service.createPolicyDocument(
 			CREDENTIAL_TYPES_KIND,
@@ -117,7 +133,7 @@ export class CredentialTypePolicyInstanceController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('policyId') policyId: string,
-		@Body dto: UpdatePolicyDocumentDto,
+		@Body dto: UpdateCredentialTypePolicyDocumentDto,
 	) {
 		const { policy, warnings } = await this.service.updatePolicyDocument(
 			CREDENTIAL_TYPES_KIND,
@@ -143,6 +159,17 @@ export class CredentialTypePolicyInstanceController {
 		return { success: true };
 	}
 
+	@Get('/scopes/:scopeId/attachments')
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
+	@GlobalScope('credentialTypePolicy:manage')
+	async getAttachments(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('scopeId') scopeId: string,
+	) {
+		return await this.service.getAttachments(CREDENTIAL_TYPES_KIND, scopeId);
+	}
+
 	@Put('/scopes/:scopeId/attachments')
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@GlobalScope('credentialTypePolicy:manage')
@@ -156,6 +183,7 @@ export class CredentialTypePolicyInstanceController {
 			CREDENTIAL_TYPES_KIND,
 			scopeId,
 			dto.attachments,
+			dto.version,
 			req.user.id,
 		);
 	}

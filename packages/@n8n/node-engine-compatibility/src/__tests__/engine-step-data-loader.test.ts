@@ -22,6 +22,7 @@ const context = {
 	mode: 'production',
 	iteration: 0,
 	callerContext: { hostMode: 'trigger' },
+	responseExpectation: { kind: 'none' },
 } as const;
 
 describe('createEngineStepDataLoader', () => {
