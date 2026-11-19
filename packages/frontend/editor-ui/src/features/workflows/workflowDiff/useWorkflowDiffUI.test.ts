@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref, computed } from 'vue';
 import type { IWorkflowDb, INodeUi } from '@/Interface';
 import { NodeDiffStatus } from 'n8n-workflow';
@@ -10,9 +10,16 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	}),
 }));
 
+const settingsStore = vi.hoisted(() => ({ isEngineV2Enabled: true }));
+
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => settingsStore,
+}));
+
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
-		baseText: (key: string) => key,
+		baseText: (key: string, options?: { interpolate?: Record<string, string> }) =>
+			[key, ...Object.values(options?.interpolate ?? {})].join(' '),
 	}),
 }));
 
@@ -21,6 +28,10 @@ import { useWorkflowDiffUI } from './useWorkflowDiffUI';
 import { toDiffWorkflow, type DiffWorkflowInput } from './workflowDiff.utils';
 
 describe('useWorkflowDiffUI', () => {
+	beforeEach(() => {
+		settingsStore.isEngineV2Enabled = true;
+	});
+
 	function createMockWorkflow(overrides: Partial<IWorkflowDb> = {}): IWorkflowDb {
 		return {
 			id: 'test-workflow',
@@ -158,6 +169,62 @@ describe('useWorkflowDiffUI', () => {
 			expect(tagsDiff).toBeDefined();
 			expect(tagsDiff?.before).toContain('tag1');
 			expect(tagsDiff?.after).toContain('tag2');
+		});
+	});
+
+	describe('version-scoped settings', () => {
+		function diffSettings(
+			sourceSettings: IWorkflowDb['settings'],
+			targetSettings: IWorkflowDb['settings'],
+		) {
+			return useWorkflowDiffUI({
+				sourceWorkflow: computed(() => createMockWorkflow({ settings: sourceSettings })),
+				targetWorkflow: computed(() => createMockWorkflow({ settings: targetSettings })),
+				nodesDiff: ref(new Map()),
+				connectionsDiff: ref(new Map()),
+				selectedDetailId: ref(undefined),
+			});
+		}
+
+		it('shows no change when one side has no engine and the other side has the default engine', () => {
+			const { settingsDiff, changesCount } = diffSettings(undefined, { engineType: 'v1' });
+
+			expect(settingsDiff.value).toEqual([]);
+			expect(changesCount.value).toBe(0);
+		});
+
+		it('shows an engine change as one row with labels', () => {
+			const { settingsDiff, changesCount, tabs } = diffSettings({}, { engineType: 'v2' });
+
+			expect(settingsDiff.value).toEqual([
+				{ name: 'engineType', before: 'generic.engine v1', after: 'generic.engine v2' },
+			]);
+			expect(changesCount.value).toBe(1);
+			expect(tabs.value.find((tab) => tab.value === 'settings')?.data.count).toBe(1);
+		});
+
+		it('keeps the comparison of the other settings', () => {
+			const { settingsDiff } = diffSettings(
+				{ engineType: 'v1', timezone: 'UTC' },
+				{ engineType: 'v2', timezone: 'Europe/Berlin' },
+			);
+
+			expect(settingsDiff.value).toEqual([
+				{ name: 'timezone', before: 'UTC', after: 'Europe/Berlin' },
+				{ name: 'engineType', before: 'generic.engine v1', after: 'generic.engine v2' },
+			]);
+		});
+
+		it('hides the engine change when engine v2 is off', () => {
+			settingsStore.isEngineV2Enabled = false;
+
+			const { settingsDiff, changesCount } = diffSettings(
+				{ engineType: 'v1' },
+				{ engineType: 'v2' },
+			);
+
+			expect(settingsDiff.value).toEqual([]);
+			expect(changesCount.value).toBe(0);
 		});
 	});
 

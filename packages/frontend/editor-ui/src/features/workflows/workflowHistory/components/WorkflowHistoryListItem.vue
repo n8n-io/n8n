@@ -32,6 +32,7 @@ const props = withDefaults(
 		actions: Array<UserAction<IUser>>;
 		isSelected?: boolean;
 		isPublished?: boolean;
+		isCurrentDraft?: boolean;
 		isGrouped?: boolean;
 		isPending?: boolean;
 		isWorkflowDiffsEnabled?: boolean;
@@ -40,6 +41,7 @@ const props = withDefaults(
 		compareWith: null,
 		isSelected: false,
 		isPublished: false,
+		isCurrentDraft: false,
 		isGrouped: false,
 		isPending: false,
 		isWorkflowDiffsEnabled: false,
@@ -90,6 +92,9 @@ const versionStatus = computed<WorkflowHistoryVersionStatus>(() => {
 
 	return props.index === 0 ? 'latest' : 'default';
 });
+
+// The first row already reads as the current changes.
+const showCurrentDraftLabel = computed(() => props.isCurrentDraft && props.index !== 0);
 
 const getPublishedUserName = (userId: string | undefined | null) => {
 	if (!userId) {
@@ -208,6 +213,17 @@ onMounted(() => {
 						<WorkflowVersionEngineBadge :settings="props.item.settings" />
 					</div>
 					<div :class="$style.metaRow">
+						<!-- On its own line, so the truncated version name cannot hide it. -->
+						<N8nText
+							v-if="showCurrentDraftLabel"
+							size="small"
+							:bold="true"
+							color="text-dark"
+							:class="$style.currentDraftLabel"
+							data-test-id="workflow-history-current-draft-label"
+						>
+							{{ i18n.baseText('workflowHistory.item.currentDraft') }}
+						</N8nText>
 						<N8nText size="small" color="text-base" :class="$style.metaAuthor">
 							{{ authorLabel }},
 						</N8nText>
@@ -367,6 +383,10 @@ $hoverBackground: var(--color--background--light-1);
 	gap: var(--spacing--5xs);
 	margin-top: var(--spacing--5xs);
 	min-width: 0;
+}
+
+.currentDraftLabel {
+	flex-basis: 100%;
 }
 
 .metaAuthor {

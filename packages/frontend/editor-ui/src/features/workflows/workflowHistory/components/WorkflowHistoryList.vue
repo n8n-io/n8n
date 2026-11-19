@@ -29,6 +29,7 @@ const props = defineProps<{
 	shouldUpgrade?: boolean;
 	isListLoading?: boolean;
 	publishedVersionId?: string;
+	currentVersionId?: string;
 	pendingVersionId?: string | null;
 	isWorkflowDiffsEnabled?: boolean;
 }>();
@@ -48,7 +49,7 @@ const shouldAutoScroll = ref(true);
 const expandedGroups = reactive<Set<string>>(new Set());
 
 const timelineEntries = computed<TimelineEntry[]>(() => {
-	return computeTimelineEntries(props.items);
+	return computeTimelineEntries(props.items, props.currentVersionId);
 });
 
 const toggleGroup = (groupId: string) => {
@@ -221,6 +222,7 @@ const pruneTimeDisplay = computed(() => {
 					:compare-with="getItemToCompareWith(versionEntry.item, versionEntry.originalIndex)"
 					:is-selected="versionEntry.item.versionId === props.selectedItem?.versionId"
 					:is-published="versionEntry.item.versionId === props.publishedVersionId"
+					:is-current-draft="versionEntry.item.versionId === props.currentVersionId"
 					:is-pending="versionEntry.item.versionId === props.pendingVersionId"
 					:actions="getActions(versionEntry.item, versionEntry.originalIndex)"
 					:is-workflow-diffs-enabled="props.isWorkflowDiffsEnabled"
@@ -240,6 +242,7 @@ const pruneTimeDisplay = computed(() => {
 				:compare-with="getItemToCompareWith(entry.item, entry.originalIndex)"
 				:is-selected="entry.item.versionId === props.selectedItem?.versionId"
 				:is-published="entry.item.versionId === props.publishedVersionId"
+				:is-current-draft="entry.item.versionId === props.currentVersionId"
 				:is-pending="entry.item.versionId === props.pendingVersionId"
 				:actions="getActions(entry.item, entry.originalIndex)"
 				:is-workflow-diffs-enabled="props.isWorkflowDiffsEnabled"

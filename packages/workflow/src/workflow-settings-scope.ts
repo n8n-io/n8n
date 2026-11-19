@@ -47,11 +47,10 @@ const isVersionedEntry = (
 	entry: [string, WorkflowSettingScope],
 ): entry is [VersionedWorkflowSettingKey, 'version'] => entry[1] === 'version';
 
-const VERSIONED_WORKFLOW_SETTING_KEYS: readonly VersionedWorkflowSettingKey[] = Object.entries(
-	WORKFLOW_SETTINGS_SCOPE,
-)
-	.filter(isVersionedEntry)
-	.map(([key]) => key);
+export const VERSIONED_WORKFLOW_SETTING_KEYS: readonly VersionedWorkflowSettingKey[] =
+	Object.entries(WORKFLOW_SETTINGS_SCOPE)
+		.filter(isVersionedEntry)
+		.map(([key]) => key);
 
 const VERSIONED_SETTING_DEFAULTS: Readonly<Required<VersionedWorkflowSettings>> = Object.freeze({
 	engineType: 'v1',

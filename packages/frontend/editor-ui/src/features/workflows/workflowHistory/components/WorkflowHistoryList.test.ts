@@ -365,6 +365,36 @@ describe('WorkflowHistoryList', () => {
 	});
 
 	describe('grouping unnamed versions', () => {
+		it('should show the unnamed current draft outside the group, with its label', () => {
+			const draft = unnamedWorkflowHistoryDataFactory();
+			const items: WorkflowHistory[] = [
+				namedWorkflowHistoryDataFactory(),
+				unnamedWorkflowHistoryDataFactory(),
+				draft,
+				unnamedWorkflowHistoryDataFactory(),
+			];
+
+			const { getAllByTestId } = renderComponent({
+				pinia,
+				props: {
+					items,
+					actions,
+					selectedItem: null,
+					requestNumberOfItems: 20,
+					lastReceivedItemsLength: 20,
+					evaluatedPruneTimeInHours: -1,
+					currentVersionId: draft.versionId,
+				},
+			});
+
+			const listItems = getAllByTestId('workflow-history-list-item');
+			expect(listItems).toHaveLength(2);
+			expect(
+				within(listItems[1]).getByTestId('workflow-history-current-draft-label'),
+			).toBeInTheDocument();
+			expect(getAllByTestId('workflow-history-group-header')).toHaveLength(2);
+		});
+
 		it('should group consecutive unnamed versions under a collapsible header', async () => {
 			const items: WorkflowHistory[] = [
 				namedWorkflowHistoryDataFactory(),

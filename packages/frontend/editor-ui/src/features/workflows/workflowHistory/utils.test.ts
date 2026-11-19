@@ -3,10 +3,12 @@ import {
 	computeTimelineEntries,
 	generateVersionLabelFromId,
 	getVersionLabel,
+	toVersionDiffWorkflow,
 	type TimelineGroupHeader,
 	type TimelineVersionEntry,
 } from './utils';
-import { workflowHistoryDataFactory } from './__tests__/utils';
+import { workflowHistoryDataFactory, workflowVersionDataFactory } from './__tests__/utils';
+import type { IWorkflowDb } from '@/Interface';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -188,6 +190,49 @@ describe('computeTimelineEntries', () => {
 
 		expect(versionEntry.item).toBe(items[0]);
 		expect(groupHeader.versions[0].item).toBe(items[1]);
+	});
+});
+
+describe('computeTimelineEntries with the current draft', () => {
+	it('should not group the unnamed current draft', () => {
+		const draft = createUnnamedItem();
+		const items = [createNamedItem(), createUnnamedItem(), draft, createUnnamedItem()];
+
+		const result = computeTimelineEntries(items, draft.versionId);
+
+		expect(result.map((entry) => entry.type)).toEqual([
+			'version',
+			'group-header',
+			'version',
+			'group-header',
+		]);
+		expect((result[2] as TimelineVersionEntry).item).toBe(draft);
+		expect((result[2] as TimelineVersionEntry).isGrouped).toBe(false);
+	});
+});
+
+describe('toVersionDiffWorkflow', () => {
+	const createWorkflow = (settings: IWorkflowDb['settings']) =>
+		({ id: 'wf-1', versionId: 'live', nodes: [], connections: {}, settings }) as IWorkflowDb;
+
+	it('should use the default engine for a version with no engine', () => {
+		const version = { ...workflowVersionDataFactory(), settings: {} };
+
+		const result = toVersionDiffWorkflow(createWorkflow({ engineType: 'v2' }), version);
+
+		expect(result.settings?.engineType).toBe('v1');
+	});
+
+	it('should use the engine of the version and keep the live settings', () => {
+		const version = { ...workflowVersionDataFactory(), settings: { engineType: 'v2' as const } };
+
+		const result = toVersionDiffWorkflow(
+			createWorkflow({ engineType: 'v1', timezone: 'UTC' }),
+			version,
+		);
+
+		expect(result.settings).toEqual({ engineType: 'v2', timezone: 'UTC' });
+		expect(result.versionId).toBe(version.versionId);
 	});
 });
 
