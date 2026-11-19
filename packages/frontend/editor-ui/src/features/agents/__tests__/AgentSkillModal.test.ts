@@ -1895,7 +1895,8 @@ describe('AgentSkillModal from Settings', () => {
 		expect(queryByTestId('agent-skill-add-reference')).not.toBeInTheDocument();
 	});
 
-	it('shows where a synced skill comes from and keeps its content read-only', () => {
+	it('keeps the repository link in the banner and opens GitHub from the menu', async () => {
+		const open = vi.spyOn(window, 'open').mockImplementation(() => null);
 		const { getByTestId, queryByTestId } = renderModal({
 			skillId: 's1',
 			skill: SAVED_SKILL,
@@ -1920,13 +1921,16 @@ describe('AgentSkillModal from Settings', () => {
 			'https://github.com/acme/skills/tree/main/brand-voice',
 		);
 		expect(sourceLink).toHaveAttribute('target', '_blank');
-		expect(within(banner).getByTestId('agent-skill-open-in-github')).toBeInTheDocument();
+		expect(within(banner).queryByTestId('agent-skill-open-in-github')).not.toBeInTheDocument();
 		expect(getByTestId('agent-skill-open-in-github').closest('footer')).toBeNull();
 		expect(queryByTestId('agent-skill-read-only-callout')).not.toBeInTheDocument();
-		expect(getByTestId('agent-skill-open-in-github')).toHaveAttribute(
-			'href',
+		await userEvent.click(getByTestId('agent-skill-open-in-github'));
+		expect(open).toHaveBeenCalledWith(
 			'https://github.com/acme/skills/tree/main/brand-voice',
+			'_blank',
+			'noopener,noreferrer',
 		);
+		open.mockRestore();
 		expect(queryByTestId('agent-skill-name-input')).not.toBeInTheDocument();
 		expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
 	});
@@ -1950,9 +1954,10 @@ describe('AgentSkillModal from Settings', () => {
 			},
 		});
 
-		const button = within(getByTestId('agent-skill-synced-banner')).getByTestId(
-			'agent-skill-stop-syncing',
-		);
+		expect(
+			within(getByTestId('agent-skill-synced-banner')).queryByTestId('agent-skill-stop-syncing'),
+		).not.toBeInTheDocument();
+		const button = getByTestId('agent-skill-stop-syncing');
 		expect(button.closest('footer')).toBeNull();
 		expect(button).toHaveTextContent('settings.context.skills.stopSyncing.action');
 		await userEvent.click(button);
@@ -2248,8 +2253,12 @@ describe('AgentSkillModal from Settings', () => {
 		expect(badge.closest('button, [role="button"], [aria-haspopup]')).toBeNull();
 		await userEvent.click(badge);
 		expect(queryByRole('menu')).not.toBeInTheDocument();
-		// The skill changes scope through its source, so no "Change scope" item is left to show.
-		expect(queryByTestId('agent-skill-header-menu')).not.toBeInTheDocument();
+		await userEvent.click(getByTestId('agent-skill-header-menu'));
+		expect(queryByTestId('agent-skill-menu-change-scope')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-skill-stop-syncing')).not.toBeInTheDocument();
+		expect(
+			queryByRole('menuitem', { name: 'settings.context.skills.synced.openInGithub' }),
+		).toBeInTheDocument();
 		expect(getByTestId('agent-skill-scope-badge')).toHaveTextContent('Global');
 		expect(onConfirm).not.toHaveBeenCalled();
 	});
