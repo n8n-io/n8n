@@ -3432,6 +3432,36 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it.each([
+			[true, 'n8n.audit.workflow-reviews.approval-required.enabled'],
+			[false, 'n8n.audit.workflow-reviews.approval-required.disabled'],
+		])('should log the approval requirement set to %s as `%s`', (value, eventName) => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user707',
+					email: 'admin10@example.com',
+					firstName: 'Tenth',
+					lastName: 'Admin',
+					role: { slug: 'global:owner' },
+				},
+				settingName: 'workflow_reviews_approval_required',
+				value,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName,
+				payload: {
+					userId: 'user707',
+					_email: 'admin10@example.com',
+					_firstName: 'Tenth',
+					_lastName: 'Admin',
+					globalRole: 'global:owner',
+				},
+			});
+		});
+
 		it('should log `public-api-rate-limit.enabled` when public_api_rate_limit is turned on', () => {
 			const event: RelayEventMap['instance-policies-updated'] = {
 				user: {

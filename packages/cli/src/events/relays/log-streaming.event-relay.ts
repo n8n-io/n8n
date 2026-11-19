@@ -1579,6 +1579,14 @@ export class LogStreamingEventRelay extends EventRelay {
 					payload,
 				});
 				break;
+			case 'workflow_reviews_approval_required':
+				void this.eventBus.sendAuditEvent({
+					eventName: value
+						? 'n8n.audit.workflow-reviews.approval-required.enabled'
+						: 'n8n.audit.workflow-reviews.approval-required.disabled',
+					payload,
+				});
+				break;
 			case 'public_api_rate_limit':
 				void this.eventBus.sendAuditEvent({
 					eventName: value
