@@ -103,3 +103,6 @@ packages/@n8n/db/src/migrations/sqlite/index.ts
 packages/@n8n/db/src/migrations/postgresdb/index.ts
 # Files that local dev tools generate, such as `pnpm telemetry:sink`
 .output/
+# Outputs of the knowledge live retrieval harness (scripts/knowledge-live-harness)
+scripts/knowledge-live-harness/fixtures/items.json
+scripts/knowledge-live-harness/results/
