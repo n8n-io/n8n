@@ -612,6 +612,27 @@ export class OAuthServerService implements OAuthServerProvider {
 		return tokens;
 	}
 
+	async issueAccessToken(
+		client: OAuthClientInformationFull,
+		userId: string,
+		resource: string,
+	): Promise<{ accessToken: string; expiresIn: number }> {
+		const accessToken = await this.grantService.runForActiveUser(userId, async (ctx) => {
+			const pair = this.tokenService.generateTokenPair(userId, client.client_id, resource, []);
+			await this.tokenService.saveTokenPair(
+				pair.accessToken,
+				pair.refreshToken,
+				client.client_id,
+				userId,
+				[],
+				pair.audience,
+				ctx,
+			);
+			return pair.accessToken;
+		});
+		return { accessToken, expiresIn: this.tokenService.getAccessTokenExpirySeconds() };
+	}
+
 	// `resource` (when present) is normalized and validated against the registry here, then
 	// against the grant's own resource by the token service; if omitted, the token service
 	// reuses the grant's resource. `_scopes` is part of the SDK contract but unused — OAuth

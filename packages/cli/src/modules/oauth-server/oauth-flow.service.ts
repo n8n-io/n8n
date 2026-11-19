@@ -330,6 +330,46 @@ export class OAuth2FlowService implements N8nOAuth2Flow {
 		return { ...refreshed, refreshToken: encodeRefreshGrant(accepted, refreshed.refreshToken) };
 	}
 
+	/**
+	 * Issue a token to a user who is already signed in to n8n, in process and without consent.
+	 * The caller vouches for the user. Only a first-party resource that accepts the instance's
+	 * own server qualifies, and the token must still pass the resource's admission.
+	 */
+	async issue(resourceUrl: string, userId: string): Promise<N8nOAuth2FlowResult> {
+		const resource = await this.resourceRegistry.getByResourceUrl(resourceUrl);
+		if (!resource?.isFirstParty || acceptedSourceOf(resource) !== SYSTEM_TRUSTED_SOURCE_ID) {
+			throw new UserError(`Cannot issue a token for resource: ${resourceUrl}`);
+		}
+
+		const client = await this.oauthServerService.clientsStore.getClient(resourceUrl);
+		if (!client) return { valid: false, reason: 'invalid_client' };
+
+		const { accessToken, expiresIn } = await this.oauthServerService.issueAccessToken(
+			client,
+			userId,
+			resourceUrl,
+		);
+		const admitted = await this.admission.admitBearer(
+			resource,
+			{ method: 'GET', url: resourceUrl, ip: '' },
+			accessToken,
+		);
+		if (!admitted.ok) return { valid: false, reason: admitted.reason };
+
+		const { subject } = admitted.context;
+		return {
+			valid: true,
+			token: accessToken,
+			expiresIn,
+			user: {
+				id: subject.id,
+				email: subject.email ?? '',
+				firstName: subject.firstName ?? '',
+				lastName: subject.lastName ?? '',
+			},
+		};
+	}
+
 	/** The internal server's rotation, in process, on the trigger's virtual client. */
 	private async refreshWithVirtualClient(
 		refreshToken: string,

@@ -12,12 +12,13 @@ export type OAuth2FlowRequest = Pick<Inbound['request'], 'method' | 'url' | 'ip'
  * with a per-trigger virtual client, or an external issuer with a registered client.
  * `refresh` rotates the grant at the same source. A registered (DCR) client of the
  * internal server cannot use these methods — it goes through the public `/oauth/token`
- * endpoint instead.
+ * endpoint instead. `issue` skips the redirect for a user who is already signed in to n8n.
  */
 export interface N8nOAuth2Flow {
 	begin(resourceUrl: string, metadata?: Record<string, string>): Promise<string>;
 	complete(code: string, state: string, request?: OAuth2FlowRequest): Promise<N8nOAuth2FlowResult>;
 	refresh(refreshToken: string, resourceUrl: string): Promise<N8nOAuth2RefreshResult>;
+	issue(resourceUrl: string, userId: string): Promise<N8nOAuth2FlowResult>;
 }
 
 @Service()
@@ -45,5 +46,10 @@ export class OAuth2FlowProxy implements N8nOAuth2Flow {
 	async refresh(refreshToken: string, resourceUrl: string): Promise<N8nOAuth2RefreshResult> {
 		if (!this.provider) throw new UnexpectedError('OAuth2 trigger flow is not available');
 		return await this.provider.refresh(refreshToken, resourceUrl);
+	}
+
+	async issue(resourceUrl: string, userId: string): Promise<N8nOAuth2FlowResult> {
+		if (!this.provider) throw new UnexpectedError('OAuth2 trigger flow is not available');
+		return await this.provider.issue(resourceUrl, userId);
 	}
 }

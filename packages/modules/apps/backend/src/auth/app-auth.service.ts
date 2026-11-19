@@ -13,7 +13,7 @@ import { appCookieName, appCookieOptions, readCookie } from './app-cookies';
 import { AppProtectedResource } from './app-protected-resource';
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
-import { AppHostService } from '../serving/app-host.service';
+import { AppHostService, type AppHostKind } from '../serving/app-host.service';
 
 export interface AppRequest extends Request {
 	appContext?: {
@@ -64,16 +64,34 @@ export class AppAuthService {
 	/** Resolves the published app of the request host and checks the visitor's session. */
 	async admit(req: Request): Promise<AppAdmission> {
 		const token = readCookie(req, appCookieName(this.hosts.baseUrl, 'session')) ?? '';
-		const cacheKey = `${this.hosts.namespace(req)}:${this.hash(token)}`;
+		const cacheKey = this.cacheKey('published', this.hosts.namespace(req), token);
 		const cached = token ? this.admitted.get(cacheKey) : undefined;
 		if (cached) return { ok: true, ...cached, token };
 
 		const app = await this.requireApp(req);
 		if (!token) return { ok: false, app, reason: 'unauthenticated' };
+		return await this.admitToken(req, app, token);
+	}
 
-		const request = { method: req.method, url: this.hosts.callbackUrl(app), ip: req.ip ?? '' };
+	/** Checks a session token against the app resource of the given host kind. */
+	async admitToken(
+		req: Request,
+		app: App,
+		token: string,
+		kind: AppHostKind = 'published',
+	): Promise<AppAdmission> {
+		const cacheKey = this.cacheKey(kind, app.namespace, token);
+		// REVIEW: duplicate cache read
+		const cached = this.admitted.get(cacheKey);
+		if (cached) return { ok: true, ...cached, token };
+
+		const request = {
+			method: req.method,
+			url: this.hosts.callbackUrl(app, kind),
+			ip: req.ip ?? '',
+		};
 		const result = await this.admission.admitBearer(
-			this.resources.forApp(app, { revalidate: false }),
+			this.resources.forApp(app, { kind, revalidate: false }),
 			request,
 			token,
 		);
@@ -90,11 +108,16 @@ export class AppAuthService {
 	}
 
 	/** Seals the user ID too, so the run resolves credentials after the session token expires. */
-	async sealVisitor(app: App, token: string, userId: string): Promise<string> {
+	async sealVisitor(
+		app: App,
+		token: string,
+		userId: string,
+		kind: AppHostKind = 'published',
+	): Promise<string> {
 		return await this.executionContext.buildTriggerIdentityCredentials(
 			token,
-			this.hosts.callbackUrl(app),
-			this.resources.grantFor(app),
+			this.hosts.callbackUrl(app, kind),
+			this.resources.grantFor(app, kind),
 			userId,
 		);
 	}
@@ -224,6 +247,10 @@ export class AppAuthService {
 		return typeof exp === 'number'
 			? Math.max(1, Math.min(ADMISSION_CACHE_TTL_MS, exp * 1000 - Date.now()))
 			: ADMISSION_CACHE_TTL_MS;
+	}
+
+	private cacheKey(kind: AppHostKind, namespace: string | undefined, token: string): string {
+		return `${kind}:${namespace}:${this.hash(token)}`;
 	}
 
 	private hash(value: string): string {
