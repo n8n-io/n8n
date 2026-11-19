@@ -138,6 +138,7 @@ export function createNodeExecutionSnapshot(
 		waiting: undefined,
 		hasExecutionError: false,
 		hasValidationError: false,
+		needsCredentialSetup: false,
 		status: undefined,
 		dirty: false,
 		iterations: 0,

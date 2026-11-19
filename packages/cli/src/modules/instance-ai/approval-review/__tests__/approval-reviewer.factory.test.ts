@@ -85,7 +85,7 @@ describe('InstanceAiApprovalReviewerFactory', () => {
 				decision: 'approve',
 				reason: 'The user asked to publish it.',
 			});
-			expect(getMessages).toHaveBeenCalledWith('thread-1', { limit: 30, resourceId: 'user-1' });
+			expect(getMessages).toHaveBeenCalledWith('thread-1', { limit: 200, resourceId: 'user-1' });
 			expect(judgeApproval).toHaveBeenCalledWith(
 				{
 					conversation: [{ role: 'user', text: 'Publish Lead router' }],
@@ -175,7 +175,7 @@ describe('InstanceAiApprovalReviewerFactory', () => {
 
 		it('tells the judge when it read only the newest messages of the thread', async () => {
 			getMessages.mockResolvedValue(
-				Array.from({ length: 30 }, () => ({
+				Array.from({ length: 200 }, () => ({
 					role: 'user',
 					content: [{ type: 'text', text: 'Publish Lead router' }],
 				})),
