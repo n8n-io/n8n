@@ -27,6 +27,11 @@ import type {
 } from './agent-telemetry.types';
 import { AgentUsageTelemetryService } from './agent-usage-telemetry.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
+import {
+	AgentExecutionMetrics,
+	type AgentMetricsSubject,
+	type FinishedAgentExecutionStatus,
+} from './agent-execution-metrics';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { SESSION_STOPPED_REASON } from './agent-session-stop-reason';
@@ -217,6 +222,7 @@ export class AgentExecutionService {
 		private readonly messageRepository: AgentMessageRepository,
 		private readonly systemAgents: SystemAgentRegistry,
 		private readonly projectDeletion: AgentProjectDeletionRepository,
+		private readonly metrics: AgentExecutionMetrics,
 	) {}
 
 	async startExecutionRecording(
@@ -405,6 +411,7 @@ export class AgentExecutionService {
 	): void {
 		this.executionControllers.set(execution.id, new AbortController());
 		this.startHeartbeat(execution.id);
+		this.metrics.started(execution.id, metricsSubjectOf(params));
 		if (needsTitleSync) this.executionsNeedingTitleSync.add(execution.id);
 		this.executionUpdateBroadcaster.notify({
 			projectId: params.projectId,
@@ -484,6 +491,9 @@ export class AgentExecutionService {
 
 		try {
 			await this.writeTerminalExecution(executionId, settled, status, stoppedAt, failureSummary);
+			// Report as soon as the outcome is stored. A failed write leaves the row
+			// running, and the sweep counts it as interrupted.
+			this.reportFinishedExecution(settled, status);
 
 			// Save the terminal row first. A rejected finalization must not replace a stored blob.
 			await this.moveFinalTimelineToBlob(executionId, settled, storedAt);
@@ -566,6 +576,7 @@ export class AgentExecutionService {
 				id: execution.threadId,
 			});
 			if (!thread) return;
+			this.metrics.interrupted({ agentId: thread.agentId, parentAgentId: thread.parentAgentId });
 			this.executionUpdateBroadcaster.notify({
 				projectId: thread.projectId,
 				agentId: thread.agentId,
@@ -606,11 +617,28 @@ export class AgentExecutionService {
 		this.stopHeartbeat(executionId);
 	}
 
+	/** A metrics failure must not fail an execution that is already stored. */
+	private reportFinishedExecution(
+		params: RecordMessageParams,
+		status: FinishedAgentExecutionStatus,
+	): void {
+		try {
+			this.metrics.finished(
+				metricsSubjectOf(params),
+				{ status, hitlStatus: params.hitlStatus },
+				params.record,
+			);
+		} catch (error) {
+			this.errorReporter.error(error);
+		}
+	}
+
 	private stopHeartbeat(executionId: string): void {
 		const timer = this.heartbeatTimers.get(executionId);
 		if (timer) clearInterval(timer);
 		this.heartbeatTimers.delete(executionId);
 		this.executionControllers.delete(executionId);
+		this.metrics.stopped(executionId);
 	}
 
 	private ensureTimelineSnapshotWrite(executionId: string): void {
@@ -1529,9 +1557,15 @@ function cleanUserMessage(message: string | null, agentName: string): string | n
 	return cleaned.length > 0 ? cleaned : null;
 }
 
+function metricsSubjectOf(
+	params: Pick<RecordMessageParams, 'agentId' | 'threadMetadata'>,
+): AgentMetricsSubject {
+	return { agentId: params.agentId, parentAgentId: params.threadMetadata?.parentAgentId };
+}
+
 function executionStatus(
 	params: Pick<RecordMessageParams, 'record' | 'hitlStatus' | 'source'>,
-): AgentExecution['status'] {
+): FinishedAgentExecutionStatus {
 	const { record } = params;
 	if (record.error !== null || record.finishReason === 'error') return 'error';
 	if (record.finishReason === 'cancelled') return 'cancelled';
