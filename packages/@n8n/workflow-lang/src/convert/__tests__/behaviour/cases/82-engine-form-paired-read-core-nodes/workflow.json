@@ -1,0 +1,364 @@
+{
+	"name": "Engine form paired read, core nodes and a host reader",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [
+				0,
+				0
+			],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "engine-paired-core",
+				"options": {}
+			},
+			"webhookId": "0b7f1c2e-3d4a-4b5c-8d6e-000000000082"
+		},
+		{
+			"id": "source",
+			"name": "Source",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"jsCode": "return [{ json: { id: 'a0', kind: 'x' } }, { json: { id: 'a1', kind: 'y' } }, { json: { id: 'a2', kind: 'x' } }, { json: { id: 'a3', kind: 'x' } }, { json: { id: 'a4', kind: 'z' } }];"
+			}
+		},
+		{
+			"id": "left",
+			"name": "Left",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				200,
+				400
+			],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "1",
+							"name": "side",
+							"value": "left",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "right",
+			"name": "Right",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				200,
+				500
+			],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "1",
+							"name": "side",
+							"value": "right",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "tail",
+			"name": "Tail",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				400,
+				450
+			],
+			"parameters": {
+				"jsCode": "return [{ json: { count: items.length } }];"
+			}
+		},
+		{
+			"id": "route",
+			"name": "Route",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3.2,
+			"position": [
+				400,
+				0
+			],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 2
+								},
+								"conditions": [
+									{
+										"id": "r1",
+										"leftValue": "={{ $json.kind }}",
+										"rightValue": "x",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 2
+								},
+								"conditions": [
+									{
+										"id": "r2",
+										"leftValue": "={{ $json.kind }}",
+										"rightValue": "y",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "keep",
+			"name": "Keep",
+			"type": "n8n-nodes-base.filter",
+			"typeVersion": 2.2,
+			"position": [
+				600,
+				0
+			],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c1",
+							"leftValue": "={{ $json.id }}",
+							"operator": {
+								"type": "string",
+								"operation": "notEquals"
+							},
+							"rightValue": "a0"
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "mark",
+			"name": "Mark",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				800,
+				0
+			],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "1",
+							"name": "marked",
+							"value": true,
+							"type": "boolean"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "twice",
+			"name": "Twice",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				1000,
+				0
+			],
+			"parameters": {
+				"jsCode": "return [{ json: { part: 1 } }, { json: { part: 2 } }];"
+			}
+		},
+		{
+			"id": "read-host",
+			"name": "Read Host",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				1200,
+				0
+			],
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "class Box {}\nreturn { json: { part: $json.part, src: $('Source').item.json.id, kind: $('Source').item.json.kind } };"
+			}
+		},
+		{
+			"id": "read-expr",
+			"name": "Read Expr",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				1200,
+				200
+			],
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "={ \"part\": {{ $json.part }}, \"src\": \"{{ $('Source').item.json.id }}\" }",
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Source",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Left",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Right",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Left": {
+			"main": [
+				[
+					{
+						"node": "Tail",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Right": {
+			"main": [
+				[
+					{
+						"node": "Tail",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Source": {
+			"main": [
+				[
+					{
+						"node": "Route",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Route": {
+			"main": [
+				[
+					{
+						"node": "Keep",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[]
+			]
+		},
+		"Keep": {
+			"main": [
+				[
+					{
+						"node": "Mark",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mark": {
+			"main": [
+				[
+					{
+						"node": "Twice",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Twice": {
+			"main": [
+				[
+					{
+						"node": "Read Host",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read Expr",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

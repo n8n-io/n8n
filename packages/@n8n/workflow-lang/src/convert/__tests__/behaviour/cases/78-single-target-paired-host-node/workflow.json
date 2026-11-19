@@ -1,0 +1,157 @@
+{
+	"name": "Single-item target, node in the host after it",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [
+				0,
+				0
+			],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "single-paired-host",
+				"options": {}
+			},
+			"webhookId": "0b7f1c2e-3d4a-4b5c-8d6e-000000000078"
+		},
+		{
+			"id": "fresh",
+			"name": "Fresh",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"jsCode": "class Box {}\nreturn [{ json: { id: 'a0' } }, { json: { id: 'a1' } }, { json: { id: 'a2' } }];"
+			}
+		},
+		{
+			"id": "filter",
+			"name": "Filter",
+			"type": "n8n-nodes-base.filter",
+			"typeVersion": 2.2,
+			"position": [
+				400,
+				0
+			],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c1",
+							"leftValue": "={{ $json.id }}",
+							"operator": {
+								"type": "string",
+								"operation": "notEquals"
+							},
+							"rightValue": "a1"
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "read-each",
+			"name": "Read Each",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				600,
+				0
+			],
+			"parameters": {
+				"jsCode": "return { json: { id: $json.id, tag: $('Webhook').item.json.body.tag } };",
+				"mode": "runOnceForEachItem"
+			}
+		},
+		{
+			"id": "read-all",
+			"name": "Read All",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				600,
+				0
+			],
+			"parameters": {
+				"jsCode": "return items.map((item, k) => ({ json: { id: item.json.id, tag: $('Webhook').itemMatching(k).json.body.tag, first: $('Webhook').item.json.body.tag } }));"
+			}
+		},
+		{
+			"id": "read-expr",
+			"name": "Read Expr",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				600,
+				200
+			],
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "={ \"tag\": \"{{ $('Webhook').item.json.body.tag }}\" }",
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Fresh",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fresh": {
+			"main": [
+				[
+					{
+						"node": "Filter",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Filter": {
+			"main": [
+				[
+					{
+						"node": "Read Each",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read Expr",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

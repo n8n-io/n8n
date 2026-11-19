@@ -1,0 +1,64 @@
+{
+	"description": "As case 86, and two readers read Source through the HTTP Request. In the second run the first response gives two items: each reader gets the item of Source that pairs with its item of the last run",
+	"trigger": {
+		"body": {}
+	},
+	"http": {
+		"Http": {
+			"path": "thing",
+			"responses": [
+				{
+					"url": "/thing/a0",
+					"status": 200,
+					"body": {
+						"got": "r0"
+					}
+				},
+				{
+					"url": "/thing/a1",
+					"status": 500,
+					"body": {
+						"error": "boom"
+					}
+				},
+				{
+					"url": "/thing/a2",
+					"status": 200,
+					"body": {
+						"got": "r2"
+					}
+				},
+				{
+					"url": "/thing/a0",
+					"status": 200,
+					"body": [
+						{
+							"got": "r0-second"
+						},
+						{
+							"got": "r0-second-b"
+						}
+					]
+				},
+				{
+					"url": "/thing/a1",
+					"status": 200,
+					"body": {
+						"got": "r1-second"
+					}
+				},
+				{
+					"url": "/thing/a2",
+					"status": 200,
+					"body": {
+						"got": "r2-second"
+					}
+				}
+			]
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read Expr"
+	]
+}

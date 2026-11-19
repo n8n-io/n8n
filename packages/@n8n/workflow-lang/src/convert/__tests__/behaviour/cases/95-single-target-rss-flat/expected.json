@@ -1,0 +1,56 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Feed",
+		"Read"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"tag": "t"
+					}
+				}
+			]
+		],
+		"Feed": [
+			[
+				{
+					"title": "t0",
+					"link": "http://example.test/t0",
+					"guid": "t0"
+				},
+				{
+					"title": "t1",
+					"link": "http://example.test/t1",
+					"guid": "t1"
+				}
+			]
+		],
+		"Read": [
+			[
+				{
+					"title": "t0",
+					"tag": "t"
+				},
+				{
+					"title": "t1",
+					"tag": "t"
+				}
+			]
+		]
+	},
+	"requests": [
+		{
+			"path": "/feed",
+			"method": "GET"
+		}
+	],
+	"responses": []
+}

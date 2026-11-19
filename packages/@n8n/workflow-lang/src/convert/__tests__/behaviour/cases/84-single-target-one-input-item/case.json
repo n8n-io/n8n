@@ -1,0 +1,33 @@
+{
+	"description": "The readers read the item of the trigger through a Filter node and an HTTP Request with 'retry on fail', which keeps no paired items. The input of the HTTP Request is the one item of the trigger by construction (a Set node and an If node between them), so v1 pairs each of its three items with that item",
+	"trigger": {
+		"body": {
+			"tag": "t"
+		}
+	},
+	"http": {
+		"Http": {
+			"path": "thing",
+			"responses": [
+				{
+					"status": 200,
+					"body": [
+						{
+							"got": "r0"
+						},
+						{
+							"got": "r1"
+						},
+						{
+							"got": "r2"
+						}
+					]
+				}
+			]
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read Expr"
+	]
+}

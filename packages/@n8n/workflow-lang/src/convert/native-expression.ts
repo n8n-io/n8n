@@ -126,12 +126,14 @@ export function nativeExpression(
 	// JavaScript. An error of the engine (a paired item that is not there) must stop the node,
 	// so code that calls a function of the generated source other than a Luxon helper has no
 	// native form. The error of an extension helper passes the guard, and `jsonOf` and `fromAi`
-	// have no error.
+	// have no error. `pairedKnownIndex` reads the paired item of a node that gives one for
+	// each item: it has no error either.
 	for (const name of translated.called) {
 		const safe =
 			name.startsWith('lux') ||
 			name === 'jsonOf' ||
 			name === 'fromAi' ||
+			name === 'pairedKnownIndex' ||
 			EXTENSION_HELPER_NAMES.has(name);
 		if (globals.has(name) && !safe) {
 			return { ok: false, blockers: [`call of ${name}`] };

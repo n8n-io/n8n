@@ -1735,6 +1735,17 @@ function pairedInputIndex(pair: Json, k: number, inputCount: number, outputCount
 	return typeof index === 'number' && index >= 0 && index < inputCount && Math.floor(index) === index ? index : -1;
 }`,
 	},
+	pairedKnownIndex: {
+		uses: [],
+		source: `/**
+ * The index of the input item of output item \`k\` of a compiled node that gives each of its
+ * items the index of an input item (the If, Switch and Filter nodes, a node that runs once
+ * for each item). Such an item always has a paired item, so this read cannot fail.
+ */
+function pairedKnownIndex(run: Json, k: number): number {
+	return run.paired[k];
+}`,
+	},
 	pairedIndexList: {
 		uses: [],
 		source: `/**

@@ -1,0 +1,195 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Source",
+		"Split",
+		"Http",
+		"Read Each",
+		"Read All",
+		"Read Expr",
+		"Left",
+		"Tail",
+		"Right",
+		"Tail"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {}
+				}
+			]
+		],
+		"Source": [
+			[
+				{
+					"id": "a0",
+					"pass": true
+				},
+				{
+					"id": "a1",
+					"pass": false
+				},
+				{
+					"id": "a2",
+					"pass": true
+				},
+				{
+					"id": "a3",
+					"pass": true
+				}
+			]
+		],
+		"Split": [
+			[
+				{
+					"id": "a0",
+					"pass": true
+				},
+				{
+					"id": "a2",
+					"pass": true
+				},
+				{
+					"id": "a3",
+					"pass": true
+				}
+			],
+			[
+				{
+					"id": "a1",
+					"pass": false
+				}
+			]
+		],
+		"Http": [
+			[
+				{
+					"got": "r0"
+				},
+				{
+					"got": "r2"
+				},
+				{
+					"got": "r2b"
+				},
+				{
+					"id": "a3",
+					"pass": true
+				}
+			]
+		],
+		"Read Each": [
+			[
+				{
+					"got": "r0",
+					"src": "a0"
+				},
+				{
+					"got": "r2",
+					"src": "a2"
+				},
+				{
+					"got": "r2b",
+					"src": "a2"
+				},
+				{
+					"got": null,
+					"src": "a3"
+				}
+			]
+		],
+		"Read All": [
+			[
+				{
+					"got": "r0",
+					"src": "a0",
+					"first": "a0"
+				},
+				{
+					"got": "r2",
+					"src": "a2",
+					"first": "a0"
+				},
+				{
+					"got": "r2b",
+					"src": "a2",
+					"first": "a0"
+				},
+				{
+					"got": null,
+					"src": "a3",
+					"first": "a0"
+				}
+			]
+		],
+		"Read Expr": [
+			[
+				{
+					"src": "a0"
+				},
+				{
+					"src": "a2"
+				},
+				{
+					"src": "a2"
+				},
+				{
+					"src": "a3"
+				}
+			]
+		],
+		"Left": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {},
+					"side": "left"
+				}
+			]
+		],
+		"Tail": [
+			[
+				{
+					"count": 1
+				},
+				{
+					"count": 1
+				}
+			]
+		],
+		"Right": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {},
+					"side": "right"
+				}
+			]
+		]
+	},
+	"requests": [
+		{
+			"path": "/thing/a0",
+			"method": "GET"
+		},
+		{
+			"path": "/thing/a2",
+			"method": "GET"
+		},
+		{
+			"path": "/thing/a3",
+			"method": "GET"
+		}
+	],
+	"responses": []
+}

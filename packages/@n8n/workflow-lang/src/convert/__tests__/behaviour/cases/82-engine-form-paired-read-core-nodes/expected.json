@@ -1,0 +1,178 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Source",
+		"Route",
+		"Keep",
+		"Mark",
+		"Twice",
+		"Read Host",
+		"Read Expr",
+		"Left",
+		"Tail",
+		"Right",
+		"Tail"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {}
+				}
+			]
+		],
+		"Source": [
+			[
+				{
+					"id": "a0",
+					"kind": "x"
+				},
+				{
+					"id": "a1",
+					"kind": "y"
+				},
+				{
+					"id": "a2",
+					"kind": "x"
+				},
+				{
+					"id": "a3",
+					"kind": "x"
+				},
+				{
+					"id": "a4",
+					"kind": "z"
+				}
+			]
+		],
+		"Route": [
+			[
+				{
+					"id": "a0",
+					"kind": "x"
+				},
+				{
+					"id": "a2",
+					"kind": "x"
+				},
+				{
+					"id": "a3",
+					"kind": "x"
+				}
+			],
+			[
+				{
+					"id": "a1",
+					"kind": "y"
+				}
+			]
+		],
+		"Keep": [
+			[
+				{
+					"id": "a2",
+					"kind": "x"
+				},
+				{
+					"id": "a3",
+					"kind": "x"
+				}
+			],
+			[
+				{
+					"id": "a0",
+					"kind": "x"
+				}
+			]
+		],
+		"Mark": [
+			[
+				{
+					"id": "a2",
+					"kind": "x",
+					"marked": true
+				},
+				{
+					"id": "a3",
+					"kind": "x",
+					"marked": true
+				}
+			]
+		],
+		"Twice": [
+			[
+				{
+					"part": 1
+				},
+				{
+					"part": 2
+				}
+			]
+		],
+		"Read Host": [
+			[
+				{
+					"part": 1,
+					"src": "a2",
+					"kind": "x"
+				},
+				{
+					"part": 2,
+					"src": "a3",
+					"kind": "x"
+				}
+			]
+		],
+		"Read Expr": [
+			[
+				{
+					"part": 1,
+					"src": "a2"
+				},
+				{
+					"part": 2,
+					"src": "a3"
+				}
+			]
+		],
+		"Left": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {},
+					"side": "left"
+				}
+			]
+		],
+		"Tail": [
+			[
+				{
+					"count": 1
+				},
+				{
+					"count": 1
+				}
+			]
+		],
+		"Right": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {},
+					"side": "right"
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

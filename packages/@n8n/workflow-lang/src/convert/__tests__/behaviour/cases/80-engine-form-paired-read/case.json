@@ -1,0 +1,46 @@
+{
+	"description": "Two nodes give items to one Code node, so the workflow takes the engine form (each node runs once for each parent). Three readers read Source through an HTTP Request (default response format, one response of two items) and an If node, and one response that the runtime cannot store (the fallback host runs the v1 node for that item)",
+	"trigger": {
+		"body": {}
+	},
+	"http": {
+		"Http": {
+			"path": "thing",
+			"responses": [
+				{
+					"url": "/thing/a0",
+					"status": 200,
+					"body": {
+						"got": "r0"
+					}
+				},
+				{
+					"url": "/thing/a2",
+					"status": 200,
+					"body": [
+						{
+							"got": "r2"
+						},
+						{
+							"got": "r2b"
+						}
+					]
+				},
+				{
+					"url": "/thing/a3",
+					"status": 200,
+					"body": "not-a-real-image",
+					"headers": {
+						"content-type": "image/png"
+					},
+					"runtimeLimit": true
+				}
+			]
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	]
+}

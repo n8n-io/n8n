@@ -1,0 +1,14 @@
+{
+	"description": "The readers read the item of the trigger (one item) through two Code nodes that run in the fallback host. The second one has several input items and the step keeps no paired items, so the converter does not know that v1 finds a paired item: it refuses the Code readers. v1 gives the trigger item here",
+	"trigger": {
+		"body": {
+			"tag": "t"
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"expectRefusal": true
+}

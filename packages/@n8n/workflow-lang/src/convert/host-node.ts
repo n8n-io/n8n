@@ -17,6 +17,7 @@
 import type { Code } from './code.ts';
 import { literal, raw, str } from './code.ts';
 import type { NodeContext } from './context.ts';
+import { NodeFailure } from './context.ts';
 import type { TranslatedValue } from './expression.ts';
 import { INDEX, ITEM } from './expression.ts';
 import {
@@ -236,6 +237,15 @@ export function emitHostCall(c: NodeContext, call: HostCall, mainCount: number |
 			: [['items', raw(first)]];
 
 	const guard = inputs.map((i) => `${i}.length > 0`).join(' || ');
+	// "Retry on fail" of v1 runs the node again for all items. A call of the host for each
+	// item has its own retry, which is not that. The escape of the generator runs the node
+	// once, in the host, with the run data that its parameters read.
+	if (call.perItem && c.node.retryOnFail === true) {
+		throw new NodeFailure(
+			'expression',
+			'The node has "retry on fail" and its parameters read the items: v1 runs the node again for all items, and a call for each item does not.',
+		);
+	}
 	if (call.perItem) {
 		if (call.usesIndex) {
 			w.open(`for (let ${INDEX} = 0; ${INDEX} < ${c.input}.length; ${INDEX}++) {`);

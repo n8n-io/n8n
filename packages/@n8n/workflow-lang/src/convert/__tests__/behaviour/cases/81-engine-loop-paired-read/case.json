@@ -1,0 +1,9 @@
+{
+	"description": "A Loop Over Items node (batch 2 of 5 items): the Set node Tag, a Filter node and two readers run once for each batch. Each reader gets the item of Tag of its own batch, through the Filter node",
+	"trigger": {
+		"body": {}
+	},
+	"compare": [
+		"Done"
+	]
+}

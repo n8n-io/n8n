@@ -159,6 +159,9 @@ const RUNTIME_LIMIT = 'the response body from the server is larger than the larg
 
 const read = <T>(file: string): T => JSON.parse(readFileSync(file, 'utf8')) as T;
 
+/** The error of each step of the run that failed in the fallback host, by step name. */
+const stepErrors = new Map<string, string>();
+
 /** Runs the converted source; code steps get their result from the fallback host's code runner. */
 async function run(source: string, spec: BehaviourCase, schedule: boolean) {
 	const runCode = await loadCodeRunner();
@@ -172,13 +175,13 @@ async function run(source: string, spec: BehaviourCase, schedule: boolean) {
 				: r.runtimeLimit === true
 					? { $error: RUNTIME_LIMIT }
 					: {
-						status: r.status ?? 200,
-						// The oracle's server answers JSON; the library node reads the content type.
-						headers:
-							r.headers ??
-							(typeof r.body === 'string' ? {} : { 'content-type': 'application/json' }),
-						body: r.body,
-					},
+							status: r.status ?? 200,
+							// The oracle's server answers JSON; the library node reads the content type.
+							headers:
+								r.headers ??
+								(typeof r.body === 'string' ? {} : { 'content-type': 'application/json' }),
+							body: r.body,
+						},
 		);
 	}
 	const fixture: Fixture = {
@@ -231,7 +234,9 @@ async function run(source: string, spec: BehaviourCase, schedule: boolean) {
 						? await runCode({ name: args.name, code: args.code, items: args.items ?? [] })
 						: await (await loadNodeRunner())(e.args, { step: e.step, key: `${e.step}-${k}` });
 			} catch (error) {
-				list[k] = { $error: error instanceof Error ? error.message : String(error) };
+				const message = error instanceof Error ? error.message : String(error);
+				list[k] = { $error: message };
+				stepErrors.set(e.step, message);
 			}
 			added = true;
 			break;
@@ -286,9 +291,23 @@ describe('converted workflows behave as in n8n', () => {
 			// Cases where v1 errors: the compiled workflow must give the same error.
 			if (expected.error !== null) {
 				const schedule = workflow.nodes.some((n) => n.type === 'n8n-nodes-base.scheduleTrigger');
+				stepErrors.clear();
 				const out = await run(converted.source, spec, schedule);
+				// A step that fails in the fallback host stops the run with the error of the step.
+				if (out.status === 'needs_attention') {
+					const failed = (out.result as { step: string }).step;
+					expect(failed).toBe(expected.order.at(-1));
+					expect(stepErrors.get(failed)).toContain(expected.error as string);
+					return;
+				}
 				expect(out.status, JSON.stringify(out.result)).toBe('error');
 				expect((out.result as { message?: string })?.message).toContain(expected.error as string);
+				// The requests before the error are those of v1, in the same order.
+				if (spec.http !== undefined) {
+					expect(requestsOf(out.effects).map((r) => `${r.method} ${r.path}`)).toEqual(
+						expected.requests.map((r) => `${r.method} ${r.path}`),
+					);
+				}
 				return;
 			}
 			const schedule = workflow.nodes.some((n) => n.type === 'n8n-nodes-base.scheduleTrigger');

@@ -2014,7 +2014,16 @@ function pairedMatch(list: Json[], inputCount: number, k: Json, index: (k: numbe
 	if (!(at >= 0 && at < inputCount && Math.floor(at) === at)) {
 		throw { name: 'ExpressionError', message: 'Can’t get data', $line: null };
 	}
-	return list[index(at)];
+	try {
+		return list[index(at)];
+	} catch (error) {
+		// The error of v1 for an item without a paired item names the method of the read.
+		const message: Json = error !== null && typeof error === 'object' ? error.message : undefined;
+		if (typeof message === 'string' && message.startsWith('Paired item data for item from node ')) {
+			throw new Error('Paired item data for itemMatching' + message.slice('Paired item data for item'.length));
+		}
+		throw error;
+	}
 }`,
 	},
 	nodeJsonAt: {

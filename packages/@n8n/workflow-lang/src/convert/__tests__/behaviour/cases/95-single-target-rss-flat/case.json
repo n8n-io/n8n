@@ -1,0 +1,14 @@
+{
+	"description": "A reader reads $('Webhook').item through rssFeedRead (several items out) in the flat form",
+	"trigger": { "body": { "tag": "t" } },
+	"http": {
+		"Feed": {
+			"path": "feed",
+			"responses": [{
+				"headers": { "content-type": "application/rss+xml; charset=utf-8" },
+				"body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><rss version=\"2.0\"><channel><title>News</title><item><title>t0</title><link>http://example.test/t0</link><guid>t0</guid></item><item><title>t1</title><link>http://example.test/t1</link><guid>t1</guid></item></channel></rss>"
+			}]
+		}
+	},
+	"compare": ["Read"]
+}

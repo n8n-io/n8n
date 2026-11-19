@@ -225,7 +225,8 @@ Open, not fixed in this audit:
 - The same pairing problem exists in expressions. `$('Node').item` in a parameter pairs by position with the
   warning `paired-item` (711 workflows in the corpus count of `docs/convert-coverage.md`). A node with
   "execute once" counts as a node with one item (`singleItem` in `convert/generator.ts`), but it can give many
-  items. A node with one item gives that item also when a node on the way gives no paired items, where v1 fails.
+  items. A read of a node with one item now follows the paired items (`firstItemPath`): it gives v1's error for
+  an item without a paired item, and a path that the converter cannot follow gets the refusal or the warning.
   The exact fix is the paired items of each node in the engine; until then the rule asks for no conversion.
 
 ### 2. Credential fields in node code
