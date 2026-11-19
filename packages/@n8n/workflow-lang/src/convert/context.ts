@@ -68,9 +68,11 @@ export interface NodeContext {
 	pairsWanted?: boolean;
 	/**
 	 * Records the code of the result of a compiled node that gives the paired item of each
-	 * output item (`{ items, paired }`), for output `output` (0 by default).
+	 * output item (`{ items, paired }`), for output `output` (0 by default). `total` is true
+	 * when the code of the node gives each output item the index of an input item of the
+	 * run, by construction: then a read of the paired item cannot fail.
 	 */
-	setPairs?(run: string, output?: number): void;
+	setPairs?(run: string, output?: number, total?: boolean): void;
 	/** True when the source traces every node (`trace: 'all'`), sub-nodes of AI clusters too. */
 	traceAll?: boolean;
 	/** Code of a condition under which the node gives no output at all (v1 run data has none). */

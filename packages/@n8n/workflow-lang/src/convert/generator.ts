@@ -252,7 +252,7 @@ class Body {
 	 * The compiled nodes that give the paired item of each output item: the code of the
 	 * result of the node (`{ items, paired }`) and of its input list.
 	 */
-	readonly pairs = new Map<string, { run: string; input: string }>();
+	readonly pairs = new Map<string, { run: string; input: string; total?: boolean }>();
 
 	/** Why a node keeps no paired items, by node name: fixed words, for `pairingReason`. */
 	readonly noPairs = new Map<string, string>();
@@ -631,7 +631,7 @@ export class ModuleGenerator {
 		target: string,
 	):
 		| {
-				hops: Array<{ run: string; input: string; name: string }>;
+				hops: Array<{ run: string; input: string; name: string; total?: boolean }>;
 				direct: boolean;
 				first: boolean;
 				/** The output of `target` that the path leaves, and true for no node between. */
@@ -641,7 +641,7 @@ export class ModuleGenerator {
 		| { reason: string } {
 		if (!this.known(b, target)) return { reason: 'target has not run' };
 		const single = this.singleItem(b, target);
-		const hops: Array<{ run: string; input: string; name: string }> = [];
+		const hops: Array<{ run: string; input: string; name: string; total?: boolean }> = [];
 		// The nodes of the path, from the reader back to the node after `target`.
 		const path: string[] = [];
 		let cur = current;
@@ -750,15 +750,22 @@ export class ModuleGenerator {
 				: { code: `${list}[${INDEX}]`, usesIndex: true, approximate: true };
 		}
 		const { hops } = walk;
-		if (single && hops.length === 0) return { code: `${list}[0]`, usesIndex: false };
+		// A hop that gives each item the index of an input item cannot fail: without another
+		// hop, each item pairs with the one item of the node.
+		if (single && hops.every((hop) => hop.total === true)) {
+			return { code: `${list}[0]`, usesIndex: false };
+		}
 		if (walk.adjacent) return { code: ITEM, usesIndex: false };
 		// Each hop gives v1's error for an item without a paired item. The items of the last
 		// compiled node before `target` are the items of `target`: two different paired items
 		// there are two items of `target`, as in v1.
-		if (hops.length > 0) this.helpers.add('pairedSourceIndex');
 		let index = INDEX;
 		hops.forEach((hop, k) => {
-			index = `pairedSourceIndex(${hop.run}, ${index}, ${hop.input}.length, ${str(hop.name)}, ${walk.direct && k === hops.length - 1})`;
+			this.helpers.add(hop.total === true ? 'pairedKnownIndex' : 'pairedSourceIndex');
+			index =
+				hop.total === true
+					? `pairedKnownIndex(${hop.run}, ${index})`
+					: `pairedSourceIndex(${hop.run}, ${index}, ${hop.input}.length, ${str(hop.name)}, ${walk.direct && k === hops.length - 1})`;
 		});
 		if (single) return { code: `${list}[0 * ${index}]`, usesIndex: true };
 		return { code: `${this.outputVar(b, target, walk.output)}[${index}]`, usesIndex: true };
@@ -808,7 +815,14 @@ export class ModuleGenerator {
 				? null
 				: { code: knownHops.chain(itemIndex), values: knownHops.values };
 		}
-		type Hop = { run: string; input: string; name: string; runParam: string; lenParam: string };
+		type Hop = {
+			run: string;
+			input: string;
+			name: string;
+			total?: boolean;
+			runParam: string;
+			lenParam: string;
+		};
 		const hops: Hop[] = [];
 		let chain: ((index: string) => string) | null = null;
 		const walk = this.pairingWalk(b, current, target);
@@ -824,14 +838,24 @@ export class ModuleGenerator {
 			const single = this.singleItem(b, target);
 			// Each hop gives v1's error for an item without a paired item. A node with one item
 			// gives that item.
+			const known = steps.every((hop) => hop.total === true);
 			chain = (index) => {
+				// Hops that cannot fail lead to the one item of a node with one item.
+				if (single && known) return '0';
 				let code = index;
 				steps.forEach((hop, k) => {
-					code = `pairedSourceIndex(${hop.runParam}, ${code}, ${hop.lenParam}, ${str(hop.name)}, ${walk.direct && k === steps.length - 1})`;
+					code =
+						hop.total === true
+							? `pairedKnownIndex(${hop.runParam}, ${code})`
+							: `pairedSourceIndex(${hop.runParam}, ${code}, ${hop.lenParam}, ${str(hop.name)}, ${walk.direct && k === steps.length - 1})`;
 				});
-				if (!single) return code;
-				return steps.length === 0 ? '0' : `0 * ${code}`;
+				return single ? `0 * ${code}` : code;
 			};
+			if (!(single && known)) {
+				for (const hop of steps) {
+					this.helpers.add(hop.total === true ? 'pairedKnownIndex' : 'pairedSourceIndex');
+				}
+			}
 		}
 		const values = hops.flatMap((hop) => [
 			{ param: hop.runParam, value: hop.run },
@@ -840,7 +864,6 @@ export class ModuleGenerator {
 		const found = { chain, values };
 		this.pairedHops.set(key, found);
 		if (chain === null) return null;
-		if (hops.length > 0) this.helpers.add('pairedSourceIndex');
 		return { code: chain(itemIndex), values };
 	}
 
@@ -1110,8 +1133,8 @@ export class ModuleGenerator {
 				this.compiledSteps.add(node.name);
 			},
 			pairsWanted: this.lineageOf(b).has(node.name),
-			setPairs: (run, output = 0) => {
-				b.pairs.set(`${node.name}|${output}`, { run, input });
+			setPairs: (run, output = 0, total = false) => {
+				b.pairs.set(`${node.name}|${output}`, { run, input, total });
 			},
 			noOutputWhen: (condition) => {
 				// "Always output data" gives one empty item instead (ensureAlwaysOutputData of v1).
@@ -1986,7 +2009,7 @@ export class ModuleGenerator {
 				w.line(
 					`${latest} = { items: ${local.run}.items, paired: ${local.run}.paired, length: ${local.input}.length };`,
 				);
-				b.pairs.set(`${name}|${k}`, { run: latest, input: latest });
+				b.pairs.set(`${name}|${k}`, { run: latest, input: latest, total: local.total });
 			}
 			for (const key of [...b.pairs.keys()]) {
 				// Paired items of an output without a connection have no reader.

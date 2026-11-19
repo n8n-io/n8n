@@ -302,7 +302,8 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 	if (call.pairsByCall === true && c.node.retryOnFail === true) c.noPairs?.('retry on fail');
 	if (pairs) {
 		w.line(`const ${pairs}: Json = { items: ${out}, paired: [] };`);
-		c.setPairs?.(pairs);
+		// Each push of an item below has the push of the index of its input item.
+		c.setPairs?.(pairs, 0, true);
 	}
 	const push = (value: string) =>
 		pairs ? `{ ${out}.push(${value}); ${pairs}.paired.push(${INDEX}); }` : `${out}.push(${value});`;
