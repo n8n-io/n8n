@@ -195,12 +195,12 @@ describe('ExecutionCrashService', () => {
 		executionRepository.markAsCrashedFrom.mockImplementation(async (_id, _status, options) => {
 			options?.onTransitioned?.([waiting]);
 
-			return await Promise.resolve([waiting]);
+			return await Promise.resolve(true);
 		});
 
 		const crashed = await crashService.markAsCrashedFrom('1', 'waiting', 'resume-limit', 2);
 
-		expect(crashed).toEqual([waiting]);
+		expect(crashed).toBe(true);
 		expect(executionRepository.markAsCrashedFrom).toHaveBeenCalledWith(
 			'1',
 			'waiting',

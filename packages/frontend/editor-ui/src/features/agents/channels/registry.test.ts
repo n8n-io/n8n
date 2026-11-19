@@ -76,7 +76,7 @@ describe('agent channel platform registry', () => {
 				code: 'resources_not_deleted',
 				action: { type: 'open_url', url: 'https://admin.teams.microsoft.com/policies/manage-apps' },
 			},
-			{ text },
+			{ text, restart: false },
 		);
 
 		expect(presentation?.title).toBe('agents.channels.modal.teamsResourcesNotDeleted.title');
@@ -114,6 +114,7 @@ describe('agent channel platform registry', () => {
 					interpolations.push(interpolate);
 					return key;
 				},
+				restart: false,
 			},
 		);
 
@@ -133,19 +134,60 @@ describe('agent channel platform registry', () => {
 				code: 'number_still_connected',
 				action: { type: 'open_url', url: 'https://developers.facebook.com/apps' },
 			},
-			{ text },
+			{ text, restart: false },
 		);
 
 		expect(presentation?.title).toBe('agents.channels.whatsapp.removed.titleNoNumber');
 	});
 
-	it('ignores a WhatsApp warning it does not recognise', () => {
+	it('shows no WhatsApp removal warning when the user sets the channel up again', () => {
 		const presentation = getAgentChannelPlatform('whatsapp').presentDisconnectWarning?.(
-			{ integrationType: 'whatsapp', code: 'something_else' },
-			{ text },
+			{
+				integrationType: 'whatsapp',
+				code: 'number_still_connected',
+				action: { type: 'open_url', url: 'https://developers.facebook.com/apps' },
+			},
+			{ text, restart: true },
 		);
 
 		expect(presentation).toBeNull();
+	});
+
+	it('keeps the Teams leftovers warning when the user sets the channel up again', () => {
+		const presentation = getAgentChannelPlatform('teams').presentDisconnectWarning?.(
+			{
+				integrationType: 'teams',
+				code: 'resources_not_deleted',
+				action: { type: 'open_url', url: 'https://admin.teams.microsoft.com/policies/manage-apps' },
+			},
+			{ text, restart: true },
+		);
+
+		expect(presentation?.title).toBe('agents.channels.modal.teamsResourcesNotDeleted.title');
+	});
+
+	it('ignores a WhatsApp warning it does not recognise', () => {
+		const presentation = getAgentChannelPlatform('whatsapp').presentDisconnectWarning?.(
+			{ integrationType: 'whatsapp', code: 'something_else' },
+			{ text, restart: false },
+		);
+
+		expect(presentation).toBeNull();
+	});
+
+	it.each(['slack', 'telegram', 'teams', 'whatsapp', 'discord', 'linear', 'webhook'])(
+		'describes %s in the channel list',
+		(type) => {
+			expect(getAgentChannelPlatform(type).getListDescription?.({ text })).toBe(
+				`agents.channels.${type}.listDescription`,
+			);
+		},
+	);
+
+	it('describes n8n Chat in the channel list', () => {
+		expect(getAgentChannelPlatform('n8n_chat').getListDescription?.({ text })).toBe(
+			'agents.channels.n8nChat.listDescription',
+		);
 	});
 
 	it('registers n8n Chat with its "Make available" connect action', () => {
@@ -170,7 +212,7 @@ describe('agent channel platform registry', () => {
 				code: 'app_not_deleted',
 				action: { type: 'open_url', url: 'https://api.slack.com/apps/A123' },
 			},
-			{ text },
+			{ text, restart: false },
 		);
 
 		expect(presentation?.title).toBe('agents.channels.modal.slackAppNotDeleted.title');

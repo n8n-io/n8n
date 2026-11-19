@@ -13,7 +13,7 @@ import type { NodeViewItemSection } from '@/features/shared/nodeCreator/views/vi
 import type { CredentialPayload, IUsedCredential } from '@/features/credentials/credentials.types';
 import type { Scope, WorkflowSharingRole } from '@n8n/permissions';
 import type { NodeCreatorTag, IconName, BinaryMetadata } from '@n8n/design-system';
-import type { ModalState, SlotResourcesListFilters } from '@n8n/frontend-module-sdk';
+import type { DisplayMode, ModalState, SlotResourcesListFilters } from '@n8n/frontend-module-sdk';
 import type {
 	GenericValue,
 	IConnections,
@@ -718,6 +718,7 @@ export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;
 	forceManualMode?: boolean;
 	closeOnSave?: boolean;
+	fixedCredentialsOnly?: boolean;
 	onCredentialCreated?: (credential: { id: string }) => void;
 	projectId?: string;
 	suggestedName?: string;
@@ -752,7 +753,8 @@ export interface NewCredentialsModal extends ModalState {
 	}) => Promise<boolean>;
 }
 
-export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
+/** A built-in display mode, or the id of a display mode that a module registered. */
+export type IRunDataDisplayMode = DisplayMode;
 
 export interface TargetItem {
 	nodeName: string;
@@ -789,8 +791,7 @@ export type NodeCreatorOpenSource =
 	| 'notice_error_message'
 	| 'add_node_button'
 	| 'add_evaluation_node_button'
-	| 'templates_callout'
-	| 'instance_ai';
+	| 'templates_callout';
 
 export interface INodeCreatorState {
 	itemsFilter: string;

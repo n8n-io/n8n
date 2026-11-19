@@ -20,6 +20,8 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { mockedStore } from '@/__tests__/utils';
 import { addCredentialTranslation } from '@n8n/i18n';
 import type { INodeUi } from '@/Interface';
+import { computed, toValue } from 'vue';
+import { useGatewayCreditsPromotion } from '../../gatewayCreditsPromotion/useGatewayCreditsPromotion';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -30,6 +32,12 @@ vi.mock('@/app/composables/useWorkflowId', async () => {
 		useRouteWorkflowId: () => computed(() => ''),
 	};
 });
+
+vi.mock('../../gatewayCreditsPromotion/useGatewayCreditsPromotion', () => ({
+	useGatewayCreditsPromotion: vi.fn(() => ({
+		promotionText: computed<string | undefined>(() => undefined),
+	})),
+}));
 
 vi.mock('@n8n/i18n', async () => {
 	const actual = await vi.importActual('@n8n/i18n');
@@ -135,6 +143,44 @@ describe('CredentialConfig', () => {
 		);
 
 		expect(screen.queryByTestId('gateway-credits-credential-error-nudge')).not.toBeInTheDocument();
+	});
+
+	describe('Gateway credits promotion', () => {
+		const promotionOptions = () => vi.mocked(useGatewayCreditsPromotion).mock.lastCall?.[0];
+
+		it('looks up the promotion by the node that opened the modal and shows it', () => {
+			vi.mocked(useGatewayCreditsPromotion).mockReturnValueOnce({
+				promotionText: computed<string | undefined>(() => 'Free until December 1, 2026.'),
+			});
+			// Without `merge`, so the context node does not leak into the shared default props.
+			renderComponent({
+				props: {
+					...defaultRenderOptions.props,
+					isManaged: false,
+					contextNode: {
+						id: 'node-1',
+						name: 'Google Gemini',
+						type: '@n8n/n8n-nodes-langchain.googleGemini',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				},
+			});
+
+			expect(toValue(promotionOptions()?.nodeType)).toBe('@n8n/n8n-nodes-langchain.googleGemini');
+			expect(toValue(promotionOptions()?.credentialType)).toBe('testCredential');
+			expect(screen.getByTestId('gateway-credits-promotion')).toHaveTextContent(
+				'Free until December 1, 2026.',
+			);
+		});
+
+		it('looks up the promotion without a node when no node opened the modal', () => {
+			renderComponent({ props: { isManaged: false } }, { merge: true });
+
+			expect(toValue(promotionOptions()?.nodeType)).toBeUndefined();
+			expect(screen.queryByTestId('gateway-credits-promotion')).not.toBeInTheDocument();
+		});
 	});
 
 	it('should not call addCredentialTranslation when getCredentialTranslation returns null', async () => {
@@ -362,6 +408,44 @@ describe('CredentialConfig', () => {
 
 			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
 		});
+
+		it.each(['new', 'edit'])(
+			'hides credential type selection for fixed-only %s modals',
+			async (mode) => {
+				const { rerender } = renderComponent({
+					pinia: createPiniaWithStoredCredential('team'),
+					props: {
+						isManaged: false,
+						mode,
+						credentialId: 'cred-1',
+						credentialType: mockCredentialType,
+						credentialProperties: [],
+						credentialData: {},
+						isPrivateCredentialsEnabled: true,
+						isOAuthType: true,
+						isNewCredential: mode === 'new',
+						newCredentialProjectType: 'team',
+						fixedCredentialsOnly: true,
+						credentialPermissions: {
+							create: true,
+							createEndUser: true,
+							update: true,
+							read: true,
+							delete: false,
+							share: false,
+							list: true,
+							move: false,
+						},
+					},
+				});
+
+				expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
+
+				await rerender({ fixedCredentialsOnly: false });
+
+				expect(screen.getByTestId('credential-type-selector')).toBeInTheDocument();
+			},
+		);
 
 		it('should display dynamic credentials section when all conditions are met for new credential', async () => {
 			renderComponent({

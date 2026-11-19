@@ -4,10 +4,13 @@ import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
 import {
+	CodeExecutionBackend,
 	EventService,
 	UrlService,
 	RuntimeCredentialProxyService,
 	WorkflowPublishedDataService,
+	toCodeTaskRequest,
+	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -22,26 +25,24 @@ import {
 } from 'n8n-core';
 import type {
 	AiEvent,
-	EnvProviderState,
 	ExecuteAgentData,
 	ExecuteAgentInvocationContext,
 	ExecuteAgentSource,
 	ExecuteAgentWorkflowContext,
 	ExecuteWorkflowData,
 	ExecuteWorkflowOptions,
+	ExecutionBlockedReason,
 	ExecutionError,
 	ExecutionStatus,
 	IDataObject,
 	IExecuteData,
 	IWorkflowExecutionTelemetryMetadata,
-	IExecuteFunctions,
 	IExecuteWorkflowInfo,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
 	IRun,
 	IRunExecutionData,
-	ITaskDataConnections,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowExecutionDataProcess,
@@ -82,7 +83,6 @@ import {
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
-import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { buildSubWorkflowError } from '@/utils/sub-workflow-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
@@ -231,6 +231,10 @@ export async function getPublishedWorkflowData(
 			versionId: publishedData.publishedVersion.versionId,
 			nodes: publishedData.publishedVersion.nodes,
 			connections: publishedData.publishedVersion.connections,
+			settings: Container.get(WorkflowVersionedSettingsService).forPublishedRun(
+				publishedData.workflow.settings,
+				publishedData.publishedVersion,
+			),
 		};
 	}
 
@@ -252,6 +256,10 @@ export async function getPublishedWorkflowData(
 			versionId: workflowData.activeVersion.versionId,
 			nodes: workflowData.activeVersion.nodes,
 			connections: workflowData.activeVersion.connections,
+			settings: Container.get(WorkflowVersionedSettingsService).forPublishedRun(
+				workflowData.settings,
+				workflowData.activeVersion,
+			),
 		};
 	}
 
@@ -649,8 +657,8 @@ async function startExecution(
 		);
 
 	let hooks: ExecutionLifecycleHooks | undefined;
-	let callerAllowed = false;
-	let credentialChecksPassed = false;
+	// Why the run stopped, while no node of the sub-workflow can have run.
+	let blockedReason: ExecutionBlockedReason | undefined = 'startFailed';
 
 	let data;
 	try {
@@ -681,13 +689,14 @@ async function startExecution(
 		const rootExecutionMode = additionalData.rootExecutionMode ?? options.executionMode;
 
 		// A refused caller must not start executions in this workflow's project.
+		blockedReason = 'policy';
 		await Container.get(SubworkflowPolicyChecker).check(
 			workflow,
 			options.parentWorkflowId,
 			options.node,
 			additionalData.userId,
 		);
-		callerAllowed = true;
+		blockedReason = 'credentialAccess';
 
 		if (isInlineSubworkflow && additionalData.userId && isUserInitiated(rootExecutionMode)) {
 			// Inline sub-workflow triggered by a specific user: its credentials were
@@ -715,7 +724,7 @@ async function startExecution(
 			);
 			telemetryMetadata.personalCredentialsCount = personalCredentialsCount;
 		}
-		credentialChecksPassed = true;
+		blockedReason = 'startFailed';
 
 		// Create new additionalData to have different workflow loaded and to call
 		// different webhooks
@@ -772,6 +781,8 @@ async function startExecution(
 			Container.get(StorageConfig).modeTag,
 		);
 		const execution = workflowExecute.processRunExecutionData(workflow);
+		// The engine marks its own early failures once it has started.
+		blockedReason = undefined;
 		activeExecutions.attachWorkflowExecution(executionId, execution);
 		data = await execution;
 	} catch (error) {
@@ -782,6 +793,7 @@ async function startExecution(
 			'node' in executionError ? executionError.node : undefined,
 			startTime,
 		);
+		if (blockedReason) fullRunData.data.resultData.failedBeforeStart = blockedReason;
 
 		// When failing, we might not have finished the execution
 		// Therefore, database might not contain finished errors.
@@ -813,7 +825,7 @@ async function startExecution(
 			});
 
 		try {
-			if (hooks && callerAllowed && !credentialChecksPassed) {
+			if (hooks && blockedReason === 'credentialAccess') {
 				// `WorkflowExecute` never started, so run its hooks here, as `WorkflowRunner.failExecution`
 				// does for a top-level run. The save hook stores the failure and starts the error workflow.
 				// No workflow instance: nothing runs, so the before hooks skip their pre-run gates.
@@ -887,11 +899,11 @@ export function setExecutionStatus(this: { executionId?: string }, status: Execu
 }
 
 export function sendDataToUI(
-	this: { pushRef?: string },
+	this: { pushRef?: string; userId?: string },
 	type: PushType,
 	data: IDataObject | IDataObject[],
 ) {
-	const { pushRef } = this;
+	const { pushRef, userId } = this;
 	if (pushRef === undefined) {
 		return;
 	}
@@ -899,7 +911,7 @@ export function sendDataToUI(
 	// Push data to session which started workflow
 	try {
 		const pushInstance = Container.get(Push);
-		pushInstance.send({ type, data } as PushMessage, pushRef);
+		pushInstance.send({ type, data } as PushMessage, pushRef, userId);
 	} catch (error) {
 		const logger = Container.get(Logger);
 		logger.warn(`There was a problem sending message to UI: ${error.message}`);
@@ -1010,50 +1022,15 @@ export async function getBase({
 			return executionData?.data;
 		},
 		externalSecretsProxy: Container.get(ExternalSecretsProxy),
-		async startRunnerTask(
-			additionalData: IWorkflowExecuteAdditionalData,
-			jobType: string,
-			settings: unknown,
-			executeFunctions: IExecuteFunctions,
-			inputData: ITaskDataConnections,
-			node: INode,
-			workflow: Workflow,
-			runExecutionData: IRunExecutionData,
-			runIndex: number,
-			itemIndex: number,
-			activeNodeName: string,
-			connectionInputData: INodeExecutionData[],
-			siblingParameters: INodeParameters,
-			mode: WorkflowExecuteMode,
-			envProviderState: EnvProviderState,
-			executeData?: IExecuteData,
-		) {
-			return await Container.get(TaskRequester).startTask(
-				additionalData,
-				jobType,
-				settings,
-				executeFunctions,
-				inputData,
-				node,
-				workflow,
-				runExecutionData,
-				runIndex,
-				itemIndex,
-				activeNodeName,
-				connectionInputData,
-				siblingParameters,
-				mode,
-				envProviderState,
-				executeData,
-			);
-		},
+		startRunnerTask: async (...args) =>
+			await Container.get(CodeExecutionBackend).runTask(toCodeTaskRequest(...args)),
 		logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => {
 			eventService.emit(eventName, payload);
 		},
 		logHitlResponse: (payload) => {
 			eventService.emit('hitl-response-actioned', payload);
 		},
-		getRunnerStatus: (taskType: string) => Container.get(TaskRequester).getRunnerStatus(taskType),
+		getRunnerStatus: (taskType: string) => Container.get(CodeExecutionBackend).getStatus(taskType),
 	};
 
 	const ssrfConfig = Container.get(SsrfProtectionConfig);

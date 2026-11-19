@@ -227,6 +227,10 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 		return result;
 	}
 
+	async findById(id: string) {
+		return await this.findOneBy({ id });
+	}
+
 	async createResult(input: CreateSelfHealingResult, ctx: OperationContext) {
 		const manager = this.managerFor(ctx);
 		return await manager.save(

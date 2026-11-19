@@ -1,5 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -46,7 +46,6 @@ const V1_SIMPLIFIED_OUTPUT: IDataObject = {
 
 const SITE_ID =
 	'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE';
-const ENCODED_SITE_ID = encodeURIComponent(SITE_ID);
 const LIST_ID = '58a279af-1f06-4392-a5ed-2b37fa1d6c1d';
 
 describe('Microsoft SharePoint v2 — List: Get', () => {
@@ -91,7 +90,7 @@ describe('Microsoft SharePoint v2 — List: Get', () => {
 		expect(apiRequest).toHaveBeenCalledTimes(1);
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			`/v1.0/sites/${ENCODED_SITE_ID}/lists/${LIST_ID}`,
+			requestPath`/v1.0/sites/${SITE_ID}/lists/${LIST_ID}`,
 			{},
 			{ $select: LIST_SIMPLIFY_SELECT },
 		);
@@ -116,14 +115,14 @@ describe('Microsoft SharePoint v2 — List: Get', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'GET',
-			'/v1.0/sites/contoso.sharepoint.com:/sites/site1',
+			expect.objectContaining({ value: '/v1.0/sites/contoso.sharepoint.com:/sites/site1' }),
 			{},
 			{ $select: 'id' },
 		);
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'GET',
-			`/v1.0/sites/${ENCODED_SITE_ID}/lists/My%20List%201`,
+			expect.objectContaining({ value: `/v1.0/sites/${SITE_ID}/lists/My%20List%201` }),
 			{},
 			{ $select: LIST_SIMPLIFY_SELECT },
 		);
@@ -144,7 +143,7 @@ describe('Microsoft SharePoint v2 — List: Get', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			`/v1.0/sites/${ENCODED_SITE_ID}/lists/${LIST_ID}`,
+			requestPath`/v1.0/sites/${SITE_ID}/lists/${LIST_ID}`,
 			{},
 			{},
 		);
@@ -216,7 +215,7 @@ describe('Microsoft SharePoint v2 — List: Get', () => {
 			simplify: true,
 		});
 		apiRequest.mockImplementation(async (_method: string, resource: string) =>
-			resource.includes(':') ? { id: SITE_ID } : { ...GRAPH_LIST_REPLY },
+			String(resource).includes(':') ? { id: SITE_ID } : { ...GRAPH_LIST_REPLY },
 		);
 
 		const result = await node.execute.call(ctx);

@@ -1,5 +1,9 @@
 import { Logger } from '@n8n/backend-common';
-import { EventService, type WorkflowPublishedDataService } from '@n8n/backend-services';
+import {
+	EventService,
+	type WorkflowPublishedDataService,
+	type WorkflowVersionedSettingsService,
+} from '@n8n/backend-services';
 import {
 	OAuth2FlowProxy,
 	type ProtectedResource,
@@ -2960,7 +2964,7 @@ describe('executeWebhook manual chat history', () => {
 				}),
 			);
 			const workflowRepository = mock<WorkflowRepository>();
-			workflowRepository.findOne.mockResolvedValue(
+			workflowRepository.get.mockResolvedValue(
 				mock<WorkflowEntity>({
 					id: WORKFLOW_ID,
 					name: 'Chat history workflow',
@@ -2988,6 +2992,7 @@ describe('executeWebhook manual chat history', () => {
 				mock<WorkflowPublishedDataService>(),
 				mock<ExpressionEngineConfig>(),
 				mock<WorkflowPublisherService>(),
+				mock<WorkflowVersionedSettingsService>(),
 			);
 			const app = express();
 			app.use(rawBodyReader);
@@ -3183,7 +3188,8 @@ describe('executeWebhook on engine v2', () => {
 			},
 		});
 
-		const responseCallback = vi.fn();
+		const responseReceived = createDeferredPromise();
+		const responseCallback = vi.fn<WebhookResponseCallback>(() => responseReceived.resolve());
 
 		const returned = await executeWebhook(
 			workflow,
@@ -3212,7 +3218,7 @@ describe('executeWebhook on engine v2', () => {
 			{ engineResume },
 		);
 
-		return { response, responseCallback, returned };
+		return { response, responseCallback, responseReceived: responseReceived.promise, returned };
 	};
 
 	beforeEach(() => {
@@ -3413,7 +3419,9 @@ describe('executeWebhook on engine v2', () => {
 		});
 
 		it('answers with the data of the step the run ended on', async () => {
-			const { responseCallback } = await startWebhook({ responseMode: 'lastNode' });
+			const { responseCallback, responseReceived } = await startWebhook({
+				responseMode: 'lastNode',
+			});
 
 			answerRun('completed', {
 				nodeId: 'edit-fields',
@@ -3422,7 +3430,9 @@ describe('executeWebhook on engine v2', () => {
 				outputs: [[{ json: { ok: true } }]],
 			});
 
-			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalledTimes(1));
+			// The first response with step data loads the compatibility module on demand.
+			await responseReceived;
+			expect(responseCallback).toHaveBeenCalledTimes(1);
 			expect(responseCallback).toHaveBeenCalledWith(
 				null,
 				expect.objectContaining({ body: [{ ok: true }], code: 200 }),

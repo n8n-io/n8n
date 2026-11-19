@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-module-execution-limits",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -35,17 +35,23 @@
     "test:dev": "vitest --silent=false"
   },
   "dependencies": {
+    "@n8n/api-types": "workspace:*",
     "@n8n/constants": "workspace:*",
-    "@n8n/decorators": "workspace:*"
+    "@n8n/db": "workspace:*",
+    "@n8n/decorators": "workspace:*",
+    "@n8n/di": "workspace:*",
+    "@n8n/errors": "workspace:*",
+    "@n8n/typeorm": "workspace:*"
   },
   "devDependencies": {
-    "@n8n/di": "workspace:*",
+    "@n8n/backend-test-utils": "workspace:*",
     "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",
+    "vite": "catalog:",
     "vitest": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"

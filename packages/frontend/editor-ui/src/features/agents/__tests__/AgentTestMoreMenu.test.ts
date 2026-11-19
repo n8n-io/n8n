@@ -169,7 +169,7 @@ const defaultProps = {
 	isExporting: false,
 	isDeletingSession: false,
 	canDeleteSession: true,
-	getConversationMarkdown: function getConversationMarkdown() {
+	getConversationMarkdown: async function getConversationMarkdown() {
 		return '**User:**\n\nHello';
 	},
 } satisfies MenuProps;
@@ -258,7 +258,7 @@ describe('AgentTestMoreMenu', function describeMenu() {
 	});
 
 	it('does not copy an empty conversation', async function skipsEmptyConversation() {
-		const wrapper = mountMenu({ getConversationMarkdown: vi.fn().mockReturnValue('') });
+		const wrapper = mountMenu({ getConversationMarkdown: vi.fn().mockResolvedValue('') });
 
 		getDropdown(wrapper).vm.$emit('select', 'copy-conversation');
 		await flushPromises();
@@ -681,9 +681,9 @@ describe('AgentTestMoreMenu', function describeMenu() {
 		['teams', 'Teams', 'teams'],
 		['mcp', 'Mcp', 'mcp'],
 		['workflow', 'Workflow', 'workflow'],
-		['webhook', 'Webhook', 'webhook'],
 		['instance-ai', 'agentSessions.origin.instanceAi', 'sparkles'],
 		['n8n_chat_production', 'agentSessions.origin.n8nChat', 'message-square'],
+		['webhook', 'agentSessions.origin.webhook', 'plug'],
 		['chat', 'agentSessions.origin.preview', 'bolt-filled'],
 		['n8n_chat', 'agentSessions.origin.preview', 'bolt-filled'],
 		[null, 'agentSessions.origin.preview', 'bolt-filled'],

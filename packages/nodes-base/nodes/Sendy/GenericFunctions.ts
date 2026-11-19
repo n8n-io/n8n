@@ -5,13 +5,15 @@ import type {
 	ILoadOptionsFunctions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function sendyApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
@@ -23,14 +25,14 @@ export async function sendyApiRequest(
 
 	body.boolean = true;
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},
 		method,
 		form: body,
 		qs,
-		uri: `${credentials.url}${path}`,
+		uri: requestUrl`${credentials.url}${path}`,
 	};
 
 	try {

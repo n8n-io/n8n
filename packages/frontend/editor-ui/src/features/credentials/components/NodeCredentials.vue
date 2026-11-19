@@ -9,7 +9,11 @@ import type {
 	INodeParameters,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { isMcpAiGatewayAuthentication, resolveSupportedCredentialActivation } from 'n8n-workflow';
+import {
+	isMcpAiGatewayAuthentication,
+	NodeHelpers,
+	resolveSupportedCredentialActivation,
+} from 'n8n-workflow';
 import {
 	computed,
 	inject,
@@ -509,11 +513,22 @@ const isDefaultResolver = computed(() => {
 	return !resolverId || resolverId === SYSTEM_RESOLVER_ID;
 });
 
-// Whether the node's current resource/operation is runnable by the AI gateway.
-// Nodes without an operation selected are treated as supported so gateway
-// auto-selection still works for operation-agnostic nodes.
+// Whether the node's current resource/operation is runnable by the AI gateway,
+// with node defaults applied as the engine does. Nodes without an operation are
+// treated as supported so gateway auto-selection still works for
+// operation-agnostic nodes.
 const isCurrentActionSupported = computed(() => {
-	const params = props.node.parameters;
+	const params =
+		(nodeType.value &&
+			NodeHelpers.getNodeParameters(
+				nodeType.value.properties,
+				props.node.parameters,
+				true,
+				false,
+				props.node,
+				nodeType.value,
+			)) ??
+		props.node.parameters;
 	const operation = params.operation as string | undefined;
 	if (!operation) return true;
 	const resource = params.resource as string | undefined;
@@ -832,6 +847,7 @@ function createNewCredential(
 		props.node.name,
 		props.node,
 		{
+			...(props.forAgent ? { fixedCredentialsOnly: true } : {}),
 			hideAskAssistant: hideAskAssistant.value,
 			closeOnSave: true,
 			...(isToolContext ? { appendToBody: true } : {}),
@@ -1057,6 +1073,8 @@ function showAiGatewaySelector(credentialType: string): boolean {
 	if (AI_GATEWAY_UNSUPPORTED_NODE_TYPES.includes(node.value.type)) return false;
 	if (!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)) return false;
 	if (isAiGatewayManagedCredentials(credentialType)) return true;
+	// The gateway rejects this resource/operation when the workflow runs.
+	if (!isCurrentActionSupported.value) return false;
 	// Shown type supported → toggle directly; otherwise fall back to a sibling.
 	if (aiGateway.isCredentialTypeSupported(credentialType)) return true;
 	return resolveGatewayActivation(credentialType) !== undefined;
@@ -1179,6 +1197,7 @@ function editCredential(credentialType: string): void {
 	assert(credential?.id);
 
 	uiStore.openExistingCredential(credential.id, {
+		...(props.forAgent ? { fixedCredentialsOnly: true } : {}),
 		hideAskAssistant: hideAskAssistant.value,
 		...(isToolContext ? { appendToBody: true } : {}),
 		instanceAiCredentialHelp: resolveInstanceAiCredentialHelp(),
@@ -1478,6 +1497,8 @@ function onCredentialOptionSelected(
 async function onClickCreateCredential(type: ICredentialType | INodeCredentialDescription) {
 	selectRefs.value.forEach((select) => select.blur());
 	await nextTick();
+	// The closing dropdown refocuses the select, and the modal would restore focus there and reopen it.
+	selectRefs.value.forEach((select) => select.blur());
 	createNewCredential(type.name, true, showMixedCredentials(type));
 }
 

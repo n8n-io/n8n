@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import type { HubspotObjectType } from './V1/GenericFunctions';
 import { getAllProperties, hubspotApiRequest, propertyEvents } from './V1/GenericFunctions';
@@ -344,7 +344,7 @@ export class HubspotTrigger implements INodeType {
 					const { targetUrl } = await hubspotApiRequest.call(
 						this,
 						'GET',
-						`/webhooks/v3/${appId}/settings`,
+						requestPath`/webhooks/v3/${appId}/settings`,
 						{},
 					);
 					if (targetUrl !== currentWebhookUrl) {
@@ -363,7 +363,7 @@ export class HubspotTrigger implements INodeType {
 				const { results: subscriptions } = await hubspotApiRequest.call(
 					this,
 					'GET',
-					`/webhooks/v3/${appId}/subscriptions`,
+					requestPath`/webhooks/v3/${appId}/subscriptions`,
 					{},
 				);
 
@@ -372,12 +372,17 @@ export class HubspotTrigger implements INodeType {
 					await hubspotApiRequest.call(
 						this,
 						'DELETE',
-						`/webhooks/v3/${appId}/subscriptions/${subscription.id}`,
+						requestPath`/webhooks/v3/${appId}/subscriptions/${subscription.id}`,
 						{},
 					);
 				}
 
-				await hubspotApiRequest.call(this, 'DELETE', `/webhooks/v3/${appId}/settings`, {});
+				await hubspotApiRequest.call(
+					this,
+					'DELETE',
+					requestPath`/webhooks/v3/${appId}/settings`,
+					{},
+				);
 
 				return false;
 			},
@@ -387,7 +392,7 @@ export class HubspotTrigger implements INodeType {
 				const events =
 					((this.getNodeParameter('eventsUi') as IDataObject)?.eventValues as IDataObject[]) || [];
 				const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
-				let endpoint = `/webhooks/v3/${appId}/settings`;
+				let endpoint = requestPath`/webhooks/v3/${appId}/settings`;
 				let body: IDataObject = {
 					targetUrl: webhookUrl,
 					maxConcurrentRequests: additionalFields.maxConcurrentRequests || 5,
@@ -395,7 +400,7 @@ export class HubspotTrigger implements INodeType {
 
 				await hubspotApiRequest.call(this, 'PUT', endpoint, body);
 
-				endpoint = `/webhooks/v3/${appId}/subscriptions`;
+				endpoint = requestPath`/webhooks/v3/${appId}/subscriptions`;
 
 				if (Array.isArray(events) && events.length === 0) {
 					throw new NodeOperationError(this.getNode(), 'You must define at least one event');
@@ -421,7 +426,7 @@ export class HubspotTrigger implements INodeType {
 				const { results: subscriptions } = await hubspotApiRequest.call(
 					this,
 					'GET',
-					`/webhooks/v3/${appId}/subscriptions`,
+					requestPath`/webhooks/v3/${appId}/subscriptions`,
 					{},
 				);
 
@@ -429,13 +434,18 @@ export class HubspotTrigger implements INodeType {
 					await hubspotApiRequest.call(
 						this,
 						'DELETE',
-						`/webhooks/v3/${appId}/subscriptions/${subscription.id}`,
+						requestPath`/webhooks/v3/${appId}/subscriptions/${subscription.id}`,
 						{},
 					);
 				}
 
 				try {
-					await hubspotApiRequest.call(this, 'DELETE', `/webhooks/v3/${appId}/settings`, {});
+					await hubspotApiRequest.call(
+						this,
+						'DELETE',
+						requestPath`/webhooks/v3/${appId}/settings`,
+						{},
+					);
 				} catch (error) {
 					return false;
 				}

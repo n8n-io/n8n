@@ -37,17 +37,16 @@ import type {
 	IWorkflowDataProxyData,
 } from 'n8n-workflow';
 import {
-	UnexpectedError,
 	createRunExecutionData,
 	Expression,
 	NodeApiError,
 	NodeConnectionTypes,
 	NodeHelpers,
 	NodeOperationError,
-	UserError,
 	Workflow,
 	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import assert from 'node:assert';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -2598,6 +2597,16 @@ describe('WorkflowExecute', () => {
 		}
 
 		const lastRun = (result: IRun) => result.data.resultData.runData[SUB_NODE].at(-1)!;
+
+		it('runs a waiting node again when the resume mode requires execution', async () => {
+			// The waiting node must execute again instead of passing its input through.
+			const { result } = await runResumedSubError(
+				{},
+				{ resumeError: undefined, resumeMode: 'reexecute' },
+			);
+			expect(result.status).toBe('success');
+			expect(lastRun(result).data?.main?.[0]?.[0]?.json).toEqual({ ran: true });
+		});
 
 		it('should halt the parent execution when onError = stopWorkflow', async () => {
 			const { result } = await runResumedSubError({ onError: 'stopWorkflow' });

@@ -38,6 +38,9 @@ An import that unpublishes a workflow requires `workflow:deactivate`.
 An import that archives a published workflow requires only `workflow:delete`.
 If your pipeline imports packages that publish or unpublish workflows, add these scopes to its API key.
 
+Package imports that create a missing credential now require the `credential:create` API key scope in both `create-stub` (default) and `create-with-values` modes.
+If your pipeline imports packages with missing credentials, add this scope to its API key.
+
 ## Promotions (preview)
 
 The change preview endpoint `GET /api/v1/promotions/projects/{projectId}/changes/{direction}` no longer returns `changes`.
@@ -52,6 +55,12 @@ The endpoint no longer accepts the `search`, `sort` and `order` query parameters
 The CLI `promotion-environment list-changes` command shows the changed resources of all types.
 It no longer accepts `--search`, `--sort` and `--order`.
 It needs an n8n instance with this change.
+
+The selective promote endpoint `POST /api/v1/promotions/projects/{projectId}/promote` now returns a `status`.
+`promoted` means that the push succeeded. Only this status has `counts` and `git`.
+`preview-changed` means that nothing was pushed. It occurs only when the request sends `expectedPreviewRevision`.
+Read `status` before you read `counts` and `git`.
+The change preview now always returns `revision`, also for `promote`.
 
 # 2.0.0
 

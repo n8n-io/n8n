@@ -85,6 +85,7 @@ erDiagram
   datetime_3_ createdAt
   varchar createdById FK
   varchar_36_ credentialId FK
+  boolean credentialRequired
   varchar id PK
   varchar_255_ identityKey
   datetime_3_ lastCheckedAt
@@ -94,6 +95,7 @@ erDiagram
   varchar_36_ projectId FK
   varchar_32_ status
   varchar_16_ type
+  TEXT unlinkedSkills
   datetime_3_ updatedAt
 }
 ```
