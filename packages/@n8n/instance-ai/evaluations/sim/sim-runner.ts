@@ -36,6 +36,7 @@ import {
 } from './evidence';
 import {
 	ADOPT_INSTRUCTIONS,
+	bareId,
 	type BindingPlan,
 	parseWorldPlan,
 	type TriggerInput,
@@ -321,7 +322,11 @@ async function worldPlanFor(
 			scenario,
 			runStart,
 			...(plan && errors.length > 0
-				? { previousPlan: plan, previousErrors: errors }
+				? {
+						previousPlan: plan,
+						previousErrors: errors,
+						...(adopt ? { adoptFrom: adopt.resources } : {}),
+					}
 				: adopt
 					? { previousPlan: adopt.base, adoptFrom: adopt.resources }
 					: {}),
@@ -364,7 +369,7 @@ async function bindingFor(
 	scenario: ExecutionScenario,
 	fields: CaseFields,
 ) {
-	const key = sha([workflow.nodes, plan.worlds, scenario.name]);
+	const key = sha([workflow.nodes, plan.worlds, caseInfo.userRequest, scenario, fields.setup]);
 	let cached = bindingCache.get(key);
 	if (!cached) {
 		cached = (async () => {
@@ -448,8 +453,7 @@ function resolveRef(
 		return typeof value === 'string' || typeof value === 'number' ? String(value) : undefined;
 	}
 	const id = refs[ref];
-	// Some ref maps carry a type prefix ("user:123"); calls use the bare id.
-	return id === undefined ? undefined : id.replace(/^[a-z_]+:(?=[^:]+$)/, '');
+	return id === undefined ? undefined : bareId(id);
 }
 
 const replaceWholeId = (text: string, from: string, to: string) =>
@@ -738,7 +742,7 @@ export async function runScenarioInSim(input: {
 				refs: seeded.refs,
 			});
 		}
-		const startNode = triggers.includes(trigger.startNode) ? trigger.startNode : triggers[0];
+		const startNode = trigger.startNode;
 
 		const result = await input.buildClient.executeWithSim(
 			workflow.id,
@@ -765,13 +769,10 @@ export async function runScenarioInSim(input: {
 		const events: ServiceEvent[] = [];
 		const finalState: Record<string, unknown> = {};
 		for (const service of services) {
-			const log = await context.admin
-				.events(service, tenant(service), seeded.token)
-				.catch(() => []);
+			// A failed read would pass for "no calls, no writes": let it fail the run as a framework issue.
+			const log = await context.admin.events(service, tenant(service), seeded.token);
 			events.push(...log.map((e) => ({ ...e, service: service.slug })));
-			finalState[service.slug] = await context.admin
-				.state(service, tenant(service), seeded.token)
-				.catch(() => ({}));
+			finalState[service.slug] = await context.admin.state(service, tenant(service), seeded.token);
 		}
 		const typesByName = Object.fromEntries(nodes.map((n) => [n.name, n.type]));
 		const unattributed = attachSimEvents(result.nodeResults, typesByName, events);

@@ -111,6 +111,7 @@ uses its own tenant.
 | Pass or `builder_issue` | As in LLM mode |
 | `mock_issue` | The simulation or its starting data is wrong. A call that the sim server does not implement is a simulation gap |
 | `framework_issue` | The harness failed (seeding, binding, the run) |
+| `verification_gap` | The verifier could not decide from the artifact. The result is not a builder, simulation or harness failure |
 | `TRIGGER FOUND NOTHING` | A polling trigger found no record, so the run stopped at the trigger. The verifier compares the trigger's filters with the starting data |
 | Not covered | The run needed a host or an AI client that the sim server cannot answer. The scenario is incomplete and is not scored |
 

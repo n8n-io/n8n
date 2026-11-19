@@ -552,6 +552,10 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 						buildTrace: build.buildTrace,
 						seedContext,
 						fileSlug: inputs.testCaseFile,
+						liveTurn:
+							testCaseByFileSlug.get(inputs.testCaseFile)?.seed?.mode === 'replay'
+								? build.transcript?.find((turn) => !turn.seeded)?.userMessage
+								: undefined,
 						timeoutMs: effectiveTimeoutMs(
 							testCaseByFileSlug.get(inputs.testCaseFile)?.complexity,
 							args.timeoutMs,

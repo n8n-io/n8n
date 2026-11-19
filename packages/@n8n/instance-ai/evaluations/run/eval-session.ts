@@ -197,6 +197,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 					timeoutMs: number;
 					seedContext?: ScenarioSeedContext;
 					fileSlug?: string;
+					liveTurn?: string;
 				}) =>
 					await executeScenario(
 						lane.client,
@@ -215,11 +216,12 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 									options: simOptions,
 									caseInfo: {
 										fileSlug: execArgs.fileSlug ?? 'case',
-										userRequest: userRequestOf(
-											execArgs.fileSlug
+										userRequest: userRequestOf([
+											...(execArgs.liveTurn ? [execArgs.liveTurn] : []),
+											...((execArgs.fileSlug
 												? testCaseByFileSlug.get(execArgs.fileSlug)?.conversation
-												: undefined,
-										),
+												: undefined) ?? []),
+										]),
 									},
 								}
 							: undefined,

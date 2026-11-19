@@ -214,7 +214,7 @@ export function classifyNode(
 	const host = staticHost(node);
 
 	if (host === null) return { kind: 'internal' }; // a computed URL: the sealed DNS answers it at run time
-	if (host !== undefined && typeof params.url === 'string') {
+	if (host !== undefined) {
 		const service = catalog.serviceForHost(host);
 		if (!service) return { kind: 'not-covered', reason: `no simulated service for ${host}` };
 		if (params.authentication === 'predefinedCredentialType') {

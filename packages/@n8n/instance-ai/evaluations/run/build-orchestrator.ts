@@ -169,6 +169,8 @@ export interface LaneState {
 		seedContext?: ScenarioSeedContext;
 		/** The case's file slug; `--mocking sim` reads the case's request through it. */
 		fileSlug?: string;
+		/** A replay case's opening turn, from its trace: the case itself does not hold it. */
+		liveTurn?: string;
 	}) => Promise<Awaited<ReturnType<typeof executeScenario>>>;
 	tracedExecuteAgent: (execArgs: {
 		agentId: string;

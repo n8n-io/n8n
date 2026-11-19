@@ -66,6 +66,9 @@ export function userRequestOf(conversation: unknown): string {
 		.slice(0, 6000);
 }
 
+/** Some ref maps carry a type prefix ("user:123"); calls use the bare id. */
+export const bareId = (id: string) => id.replace(/^[a-z_]+:(?=[^:]+$)/, '');
+
 const scenarioText = (scenario: ExecutionScenario): string =>
 	[
 		`## Scenario "${scenario.name}"`,
@@ -230,8 +233,10 @@ export async function writeWorldPlan(input: {
 		...(input.adoptFrom && input.previousPlan
 			? [
 					"## Adopt the workflow's names",
-					'You wrote this plan without the workflow:',
-					cap(input.previousPlan, 20000),
+					// A retry already shows the failed plan above.
+					...(input.previousErrors
+						? []
+						: ['You wrote this plan without the workflow:', cap(input.previousPlan, 20000)]),
 					'The built workflow now exists. Its resource fields, per node (<parameter> = value (mode)):',
 					...input.adoptFrom,
 					ADOPT_INSTRUCTIONS,
@@ -253,7 +258,12 @@ export async function writeWorldPlan(input: {
 			try {
 				params = JSON.parse(arrival.params);
 			} catch {}
-			return { ...arrival, params: isRecord(params) ? params : {} };
+			if (!isRecord(params)) {
+				throw new Error(
+					`world writer returned ${arrival.service} ${arrival.type} params that are not a JSON object`,
+				);
+			}
+			return { ...arrival, params };
 		}),
 	};
 }
@@ -383,7 +393,7 @@ export async function writeTriggerInput(input: {
 		'## Nodes that read the trigger output',
 		cap(readers, 12000),
 		'## Seeded resources (ref -> native id)',
-		cap(input.refs, 6000),
+		cap(Object.fromEntries(Object.entries(input.refs).map(([ref, id]) => [ref, bareId(id)])), 6000),
 		scenarioText({ ...input.scenario, dataSetup: input.dataSetup }),
 	].join('\n\n');
 	const agent = createEvalAgent('eval-sim-trigger-writer', {
@@ -394,6 +404,11 @@ export async function writeTriggerInput(input: {
 	const trigger = triggerSchema.safeParse(result.structuredOutput);
 	if (!trigger.success)
 		throw new Error(`trigger writer returned no valid input: ${trigger.error.message}`);
+	if (!input.triggerNodes.includes(trigger.data.startNode)) {
+		throw new Error(
+			`trigger writer picked "${trigger.data.startNode}", which is not a trigger of the workflow (${input.triggerNodes.join(', ')})`,
+		);
+	}
 	const items = trigger.data.items.map((item): unknown => JSON.parse(item));
 	if (!items.every(isRecord))
 		throw new Error('trigger writer returned an item that is not an object');

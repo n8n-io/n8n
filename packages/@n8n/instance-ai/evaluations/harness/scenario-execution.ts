@@ -265,6 +265,26 @@ export function selectScenarioWorkflowId(
 	return bestId;
 }
 
+/**
+ * DB write races abort an execution before any node runs and are reported in-band
+ * (success:false), bypassing the throw-based transient retry. Waits and returns true
+ * when the run should go again, so they don't pollute builder reliability stats.
+ */
+async function retryAfterTransientAbort(
+	evalResult: InstanceAiEvalExecutionResult,
+	attempt: number,
+	scenarioName: string,
+	logger: EvalLogger,
+): Promise<boolean> {
+	if (evalResult.success || !isTransientExecutionAbort(evalResult.errors)) return false;
+	if (attempt >= MAX_EXEC_ATTEMPTS) return false;
+	logger.warn(
+		`    [${scenarioName}] execution aborted by transient DB error (attempt ${String(attempt)}/${String(MAX_EXEC_ATTEMPTS)}: ${evalResult.errors.join('; ')}); retrying`,
+	);
+	await delay(500 * attempt);
+	return true;
+}
+
 async function runScenario(
 	client: N8nClient,
 	scenario: ExecutionScenario,
@@ -308,16 +328,26 @@ async function runScenario(
 		const workflow =
 			workflowJsons.find((wf) => wf.id === targetWorkflowId) ??
 			(await client.getWorkflow(targetWorkflowId));
-		const outcome = await runScenarioInSim({
-			options: sim.options,
-			buildClient: client,
-			workflow,
-			scenario,
-			caseInfo: sim.caseInfo,
-			seededDataTableIds,
-			timeoutMs: timeoutMs ?? 120_000,
-			logger,
-		});
+		const runSim = async () =>
+			await runScenarioInSim({
+				options: sim.options,
+				buildClient: client,
+				workflow,
+				scenario,
+				caseInfo: sim.caseInfo,
+				seededDataTableIds,
+				timeoutMs: timeoutMs ?? 120_000,
+				logger,
+			});
+		let outcome = await runSim();
+		for (
+			let attempt = 1;
+			outcome.kind === 'ran' &&
+			(await retryAfterTransientAbort(outcome.evalResult, attempt, scenario.name, logger));
+			attempt++
+		) {
+			outcome = await runSim();
+		}
 		if (outcome.kind === 'not-covered') {
 			// The run cannot measure the scenario: leave it out of scoring, like an unverified run.
 			const reasoning = `Not covered by the simulated services: ${outcome.reasons.join('; ')}`;
@@ -347,20 +377,11 @@ async function runScenario(
 			pinNodes,
 			seededDataTableIds,
 		);
-		// DB write races abort the execution before any node runs and are reported
-		// in-band (success:false), bypassing the throw-based transient retry —
-		// retry them here so they don't pollute builder reliability stats.
 		for (
 			let attempt = 1;
-			!evalResult.success &&
-			isTransientExecutionAbort(evalResult.errors) &&
-			attempt < MAX_EXEC_ATTEMPTS;
+			await retryAfterTransientAbort(evalResult, attempt, scenario.name, logger);
 			attempt++
 		) {
-			logger.warn(
-				`    [${scenario.name}] execution aborted by transient DB error (attempt ${String(attempt)}/${String(MAX_EXEC_ATTEMPTS)}: ${evalResult.errors.join('; ')}); retrying`,
-			);
-			await delay(500 * attempt);
 			evalResult = await client.executeWithLlmMock(
 				targetWorkflowId,
 				scenario.dataSetup,

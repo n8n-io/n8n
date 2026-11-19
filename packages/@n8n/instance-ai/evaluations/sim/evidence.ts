@@ -111,6 +111,10 @@ function distance(a: string, b: string, limit: number): number {
 	return previous[b.length];
 }
 
+/** Whether `text` holds `id` as a whole token, not inside a longer id. */
+const givesWholeId = (text: string, id: string) =>
+	new RegExp(`(?<![\\w-])${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-])`).test(text);
+
 export interface CaseFields {
 	/** Fields to point at seeded data: empty, a placeholder, or an id the case never gives. */
 	setup: SetupField[];
@@ -152,14 +156,14 @@ export function caseFields(
 			return;
 		}
 		if (isRecord(value) && value.__rl === true) {
-			const v = value.value;
+			const v = typeof value.value === 'number' ? String(value.value) : value.value;
 			current.push(`${at.slice(prefix)} = ${JSON.stringify(v)} (${String(value.mode)})`);
 			if (typeof v !== 'string' || v.startsWith('=')) return;
 			const field = { path: at, value: v };
 			// A name is the build's choice: adoption gives the world that name when the case leaves it open.
 			if (v === '' || PLACEHOLDER.test(v)) fields.setup.push(field);
 			else if (value.mode === 'name') fields.openNames.push(field);
-			else if (!caseText.includes(v) && !typo(v)) fields.setup.push(field);
+			else if (!givesWholeId(caseText, v) && !typo(v)) fields.setup.push(field);
 		} else if (typeof value === 'string') {
 			if (PLACEHOLDER.test(value)) fields.setup.push({ path: at, value });
 		} else if (Array.isArray(value) || isRecord(value)) {

@@ -160,6 +160,15 @@ describe('classifyNode', () => {
 		});
 	});
 
+	it('routes a GraphQL node by its static endpoint host', () => {
+		const graphql = {
+			name: 'GQL',
+			type: 'n8n-nodes-base.graphql',
+			parameters: { endpoint: 'https://acme.myshopify.com/admin/api/graphql.json' },
+		};
+		expect(classifyNode(graphql, nodeTypes, catalog)).toMatchObject({ kind: 'service' });
+	});
+
 	it('gives a shared host or credential type to a modelled service, the dedicated one before a combined one', () => {
 		const modelled = (slug: string, hosts: string[]) => ({
 			...service(slug, hosts, ['googleSheetsOAuth2Api']),

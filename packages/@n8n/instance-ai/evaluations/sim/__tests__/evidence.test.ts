@@ -151,4 +151,20 @@ describe('caseFields', () => {
 		);
 		expect(fields.resources[0]).toContain('columns = columns ["Channel URL"]');
 	});
+
+	it('keeps only a whole id the case gives, and reads a numeric id as one', () => {
+		const parameters = {
+			projectId: { __rl: true, mode: 'id', value: 'proj-12' },
+			boardId: { __rl: true, mode: 'id', value: 4471 },
+			listId: { __rl: true, mode: 'id', value: 9001 },
+		};
+		const fields = caseFields(
+			[{ name: 'Node', parameters }],
+			'Move the card from proj-12345 to list 9001',
+		);
+		expect(fields.setup).toEqual([
+			{ path: 'Node.projectId', value: 'proj-12' },
+			{ path: 'Node.boardId', value: '4471' },
+		]);
+	});
 });
