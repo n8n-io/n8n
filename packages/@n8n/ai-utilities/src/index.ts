@@ -18,6 +18,7 @@ export {
 	N8nLlmTracing,
 	anthropicTokensUsageParser,
 	openAiTokensUsageParser,
+	usageMetadataTokensUsageParser,
 } from './utils/n8n-llm-tracing';
 export { extractRespondingModel, toRunDataGeneration } from './utils/extract-responding-model';
 export { redactHeaderValues } from './utils/redact-headers';

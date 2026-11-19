@@ -126,26 +126,8 @@ const durationSec = computed<number | undefined>(() => {
 				:label="skillUpdateLabel(entry)"
 				data-test-id="instance-ai-skill-update"
 			>
-				<template v-if="entry.change !== 'unavailable' && entry.content !== undefined">
-					<ToolResultJson :value="{ skillId: entry.skillId, name: entry.name }" />
-					<ToolResultJson
-						:value="{
-							success: true,
-							skillId: entry.skillId,
-							name: entry.name,
-							hash: entry.version,
-							content: entry.content,
-						}"
-					/>
-				</template>
-				<p v-else :class="$style.thought">
-					{{
-						i18n.baseText(
-							entry.change === 'unavailable'
-								? 'instanceAi.skillUpdate.unavailable.description'
-								: 'instanceAi.skillUpdate.loaded.description',
-						)
-					}}
+				<p :class="$style.thought">
+					{{ i18n.baseText(`instanceAi.skillUpdate.${entry.change}.description`) }}
 				</p>
 			</N8nAiActivityStep>
 

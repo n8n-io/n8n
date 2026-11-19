@@ -4,12 +4,16 @@ import type {
 	CredentialTransferPreview,
 	CredentialTypePolicyEffectivePublicDto,
 	FolderTransferPreview,
+	InstanceTypeAccessResponse,
 	PolicyEffectivePublicDto,
 	PolicyEffectiveWriteResultPublicDto,
 	SubWorkflowPolicyCheckResponse,
 	WorkflowTransferPreview,
 } from '@n8n/api-types';
-import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { get, makeRestApiRequest } from '@n8n/rest-api-client';
+import { isRecord } from '@n8n/utils/is-record';
+import { retry } from '@n8n/utils/retry';
+import type { Themed } from 'n8n-workflow';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
 import type { RestrictedTypeKind } from './type-availability-policies.constants';
@@ -57,6 +61,92 @@ export async function saveInstancePolicy<K extends RestrictedTypeKind>(
 		defaultAction: policy.defaultAction,
 		version: policy.version,
 	});
+}
+
+export async function fetchInstanceAccess(
+	context: IRestApiContext,
+	kind: RestrictedTypeKind,
+): Promise<InstanceTypeAccessResponse> {
+	return await makeRestApiRequest(context, 'GET', `${INSTANCE_POLICY_ENDPOINT[kind]}/access`);
+}
+
+export type CredentialTypeSummary = {
+	displayName: string;
+	icon?: Themed<string>;
+	iconUrl?: Themed<string>;
+	iconColor?: string;
+	extends?: string[];
+};
+
+function toThemed(value: unknown): Themed<string> | undefined {
+	if (typeof value === 'string') return value;
+	if (isRecord(value) && typeof value.light === 'string' && typeof value.dark === 'string') {
+		return { light: value.light, dark: value.dark };
+	}
+	return undefined;
+}
+
+// A type that a later package install adds shows its name until the page reloads.
+const summariesByBaseUrl = new Map<string, Promise<Map<string, CredentialTypeSummary>>>();
+
+/**
+ * Credential types by name. Reads the static file that the editor also loads, because the server
+ * releases the type descriptions from memory after startup. Each page reads the file once.
+ */
+export async function fetchCredentialTypeSummaries(
+	baseUrl: string,
+): Promise<Map<string, CredentialTypeSummary>> {
+	let summaries = summariesByBaseUrl.get(baseUrl);
+	if (!summaries) {
+		summaries = readCredentialTypeSummaries(baseUrl);
+		summariesByBaseUrl.set(baseUrl, summaries);
+		// A failed or empty read tries again on the next call.
+		void summaries.then(
+			(read) => {
+				if (read.size === 0) summariesByBaseUrl.delete(baseUrl);
+			},
+			() => summariesByBaseUrl.delete(baseUrl),
+		);
+	}
+	return await summaries;
+}
+
+async function readCredentialTypeSummaries(
+	baseUrl: string,
+): Promise<Map<string, CredentialTypeSummary>> {
+	let types: unknown;
+	// Right after startup the server can still be writing the file, as the editor's own read allows.
+	await retry(
+		async () => {
+			types = await get(baseUrl, 'types/credentials.json');
+			return Array.isArray(types);
+		},
+		500,
+		5,
+	);
+	if (!Array.isArray(types)) return new Map();
+
+	return new Map(
+		types.flatMap((type: unknown) => {
+			if (
+				!isRecord(type) ||
+				typeof type.name !== 'string' ||
+				typeof type.displayName !== 'string'
+			) {
+				return [];
+			}
+			const summary: CredentialTypeSummary = {
+				displayName: type.displayName,
+				icon: toThemed(type.icon),
+				iconUrl: toThemed(type.iconUrl),
+				iconColor: typeof type.iconColor === 'string' ? type.iconColor : undefined,
+				extends: Array.isArray(type.extends)
+					? type.extends.filter((parent): parent is string => typeof parent === 'string')
+					: undefined,
+			};
+			return [[type.name, summary] as const];
+		}),
+	);
 }
 
 export async function fetchAvailableTypes(

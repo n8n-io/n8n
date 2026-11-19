@@ -897,6 +897,44 @@ describe('HttpRequestV3', () => {
 
 			expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
 		});
+
+		it('should return an empty object for a paginated JSON response with no body', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return { ...options, response: { response: { responseFormat: 'json' } } };
+						case 'options.pagination.pagination':
+							return {
+								paginationMode: 'responseContainsNextURL',
+								nextURL: '={{ $response.body?.next }}',
+								paginationCompleteWhen: 'other',
+								completeExpression: '={{ !$response.body?.next }}',
+								limitPagesFetched: false,
+								requestInterval: 0,
+							};
+						case 'options.response.response.responseFormat':
+							return 'json';
+						default:
+							return defaultValue;
+					}
+				},
+			);
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue([
+				{ headers: {}, body: undefined, statusCode: 204 },
+			]);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
+		});
 	});
 
 	describe('Continued request errors', () => {

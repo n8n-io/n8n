@@ -1,5 +1,16 @@
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import {
+	computed,
+	h,
+	nextTick,
+	onBeforeUnmount,
+	onMounted,
+	ref,
+	useCssModule,
+	useTemplateRef,
+	watch,
+} from 'vue';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn, useLocalStorage } from '@vueuse/core';
@@ -9,6 +20,7 @@ import {
 	MCP_SKILLS_EXTENSION_FLAG,
 	SKILLS_SORT_OPTIONS,
 	skillScopeSchema,
+	skillSourceDeleteBlockSchema,
 	type AgentSkill,
 	type SkillCreateMethod,
 	type SkillAgentOption,
@@ -27,6 +39,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	N8nActionDropdown,
 	N8nButton,
+	N8nCheckbox,
 	N8nHeading,
 	N8nIcon,
 	N8nInput,
@@ -115,6 +128,7 @@ const FILTER_KEYS: Array<keyof SkillFilters> = ['scope', 'agentId', 'createdById
 const NO_FILTERS: SkillFilters = { scope: '', agentId: '', createdById: '', sourceIds: [] };
 
 const i18n = useI18n();
+const $style = useCssModule();
 const router = useRouter();
 const route = useRoute();
 const documentTitle = useDocumentTitle();
@@ -122,7 +136,13 @@ const message = useMessage();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const skillsStore = useSkillsStore();
-const { isEnabled: assistantSkillsEnabled } = useAssistantSkillsExperiment();
+const settingsStore = useSettingsStore();
+const { isEnabled: assistantSkillsExperimentEnabled } = useAssistantSkillsExperiment();
+const assistantSkillsEnabled = computed(
+	() =>
+		assistantSkillsExperimentEnabled.value &&
+		settingsStore.moduleSettings['instance-ai']?.enabled === true,
+);
 const posthogStore = usePostHog();
 const { deleteBlockedReason } = useSkillDeleteRule();
 const telemetry = useTelemetry();
@@ -837,9 +857,30 @@ async function onDownload(item: Pick<SkillListItem, 'id'>) {
 }
 
 /** `onDeleted` runs as soon as the delete succeeds, before the list reloads. */
-async function onDelete(skill: Pick<SkillListItem, 'id'>, onDeleted?: () => void) {
+async function onDelete(skill: SkillListItem, onDeleted?: () => void) {
+	const source = skillsStore.sources.find(
+		(item) =>
+			skillSyncEnabled.value &&
+			item.id === skill.sourceId &&
+			item.skillCount === 1 &&
+			item.canDelete,
+	);
+	let removeSource = false;
+	const warning = i18n.baseText('settings.context.skills.delete.confirm.message');
 	const confirmed = await message.confirm(
-		i18n.baseText('settings.context.skills.delete.confirm.message'),
+		source
+			? h('div', { class: $style.confirmation }, [
+					h('p', warning),
+					h(N8nCheckbox, {
+						label: i18n.baseText('settings.context.skills.delete.removeSource', {
+							interpolate: { source: source.label },
+						}),
+						'onUpdate:modelValue': (checked: boolean) => {
+							removeSource = checked;
+						},
+					}),
+				])
+			: warning,
 		i18n.baseText('settings.context.skills.delete.confirm.title'),
 		{
 			type: 'warning',
@@ -849,7 +890,11 @@ async function onDelete(skill: Pick<SkillListItem, 'id'>, onDeleted?: () => void
 	);
 	if (confirmed !== MODAL_CONFIRM) return;
 	try {
-		await skillsStore.deleteSkill(skill.id);
+		if (source && removeSource) {
+			await skillsStore.deleteSource(source.id, { onlySkillId: skill.id });
+		} else {
+			await skillsStore.deleteSkill(skill.id);
+		}
 		onDeleted?.();
 		showMessage({
 			title: i18n.baseText('settings.context.skills.delete.success'),
@@ -857,7 +902,24 @@ async function onDelete(skill: Pick<SkillListItem, 'id'>, onDeleted?: () => void
 		});
 	} catch (error) {
 		// An agent may have attached the skill since the list loaded: that answers 409.
-		showError(error, i18n.baseText('settings.context.skills.error.delete'));
+		// The source delete names its agents in a payload, which a toast cannot list.
+		const block = skillSourceDeleteBlockSchema.safeParse(
+			error instanceof ResponseError && error.httpStatusCode === 409 ? error.meta : undefined,
+		);
+		if (block.success) {
+			const count = block.data.agents.length + block.data.hiddenAgents;
+			showMessage({
+				title: i18n.baseText('settings.context.skills.error.delete'),
+				message: i18n.baseText('settings.context.skills.delete.inUse', {
+					interpolate: { count },
+					adjustToNumber: count,
+				}),
+				type: 'error',
+				duration: 0,
+			});
+		} else {
+			showError(error, i18n.baseText('settings.context.skills.error.delete'));
+		}
 	}
 	// The deleted skill may have been the last one of its creator.
 	void loadCreators();
@@ -873,10 +935,19 @@ async function onDelete(skill: Pick<SkillListItem, 'id'>, onDeleted?: () => void
 async function onStopSyncing(skill: SkillListItem, onStopped?: () => void) {
 	const name = skill.name;
 	const confirmed = await message.confirm(
-		i18n.baseText('settings.context.skills.stopSyncing.confirm.message', {
-			interpolate: { scope: scopeDisplay(skill).label, count: skill.latestVersion },
-			adjustToNumber: skill.latestVersion,
-		}),
+		h('div', { class: $style.confirmation }, [
+			h(
+				'p',
+				i18n.baseText('settings.context.skills.stopSyncing.confirm.message', {
+					interpolate: { scope: scopeDisplay(skill).label },
+				}),
+			),
+			h(
+				'p',
+				i18n.baseText('settings.context.skills.stopSyncing.confirm.keep', { adjustToNumber: 1 }),
+			),
+			h('p', i18n.baseText('settings.context.skills.stopSyncing.confirm.updates')),
+		]),
 		i18n.baseText('settings.context.skills.stopSyncing.confirm.title', {
 			interpolate: { name },
 		}),
@@ -985,7 +1056,7 @@ async function onCheckSource(source: SkillSourceListItem) {
 		checkingSourceIds.value = checkingSourceIds.value.filter((id) => id !== source.id);
 		await loadSources();
 	}
-	const { label, updatesFound, throttled } = result;
+	const { label, updatesFound, newSkillsFound = 0, throttled } = result;
 	showMessage({
 		title: throttled
 			? i18n.baseText('settings.context.skills.checkForUpdates.throttled', {
@@ -994,13 +1065,24 @@ async function onCheckSource(source: SkillSourceListItem) {
 			: i18n.baseText('settings.context.skills.checkForUpdates.checked', {
 					interpolate: { label },
 				}),
-		message:
-			updatesFound === 0
+		message: [
+			updatesFound === 0 && newSkillsFound === 0
 				? i18n.baseText('settings.context.skills.checkForUpdates.none')
-				: i18n.baseText('settings.context.skills.checkForUpdates.found', {
-						interpolate: { count: updatesFound },
-						adjustToNumber: updatesFound,
-					}),
+				: updatesFound > 0
+					? i18n.baseText('settings.context.skills.checkForUpdates.found', {
+							interpolate: { count: updatesFound },
+							adjustToNumber: updatesFound,
+						})
+					: '',
+			newSkillsFound > 0
+				? i18n.baseText('settings.context.skills.checkForUpdates.new', {
+						interpolate: { count: newSkillsFound },
+						adjustToNumber: newSkillsFound,
+					})
+				: '',
+		]
+			.filter(Boolean)
+			.join(' '),
 		type: 'success',
 	});
 }
@@ -1375,6 +1457,12 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
+.confirmation {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+}
+
 /* The settings shell insets the page; the header is pulled to the table's left edge. */
 .layout {
 	padding: 0;
@@ -1418,8 +1506,9 @@ onMounted(async () => {
 	text-align: center;
 }
 
+// Wide enough to keep the "Based on" source of each card on one line.
 .recommended {
-	max-width: 48rem;
+	max-width: 58rem;
 	margin: var(--spacing--xs) 0;
 }
 </style>

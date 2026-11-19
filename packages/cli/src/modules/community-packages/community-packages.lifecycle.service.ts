@@ -1,6 +1,6 @@
 import type { PackagePolicyRestrictions } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService, InstalledTypeRestrictionsProxy } from '@n8n/backend-services';
+import { EventService, InstalledTypeRestrictionsProxy, loginIdOf } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -15,7 +15,6 @@ import {
 } from '@/constants';
 import { BadRequestError, InternalServerError, NotFoundError } from '@n8n/errors';
 import { IncompatibleNodesApiVersionError } from '@/errors/response-errors/incompatible-nodes-api-version.error';
-import { loginIdOf } from '@/events/login-id';
 import type { UserLike } from '@/events/maps/relay.event-map';
 import { Push } from '@/push';
 
@@ -216,6 +215,7 @@ export class CommunityPackagesLifecycleService {
 				success: false,
 				packageVersion,
 				failureReason: errorMessage,
+				source: presentation,
 				loginId: loginIdOf(ctx),
 			});
 
@@ -251,6 +251,7 @@ export class CommunityPackagesLifecycleService {
 			packageNodeNames: installedPackage.installedNodes.map((node) => node.name),
 			packageAuthor: installedPackage.authorName,
 			packageAuthorEmail: installedPackage.authorEmail,
+			source: presentation,
 			loginId: loginIdOf(ctx),
 		});
 

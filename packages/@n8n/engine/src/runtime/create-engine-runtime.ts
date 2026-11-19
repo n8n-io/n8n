@@ -146,6 +146,14 @@ export function createEngineRuntime({
 		lifecycleEventPublisher,
 	);
 
+	// One cancel path for the API and for an execution that ends with sub-executions.
+	const cancelExecution = new CancelExecutionService(
+		executionStore,
+		stepStore,
+		lifecycleEventPublisherFactory,
+		responseSender,
+		stepQueue,
+	);
 	const orchestrationWorker = new OrchestrationWorker(
 		orchestrationQueue,
 		new ExecutionStartHandler(
@@ -161,6 +169,7 @@ export function createEngineRuntime({
 			orchestrationQueue,
 			lifecycleEventPublisherFactory,
 			responseSender,
+			cancelExecution,
 		),
 	);
 	const waitSweeper = new WaitSweeper(stepStore, stepQueue, logger, waitSweepIntervalMs);
@@ -219,13 +228,7 @@ export function createEngineRuntime({
 
 	const { app } = createEngineServer({
 		startExecution,
-		cancelExecution: new CancelExecutionService(
-			executionStore,
-			stepStore,
-			lifecycleEventPublisherFactory,
-			responseSender,
-			stepQueue,
-		),
+		cancelExecution,
 		executionQuery: new ExecutionQueryService(executionViewStore),
 		resumeRequests:
 			resumeSecret === undefined

@@ -100,6 +100,8 @@ export interface ObservationLogObserverInput {
 	transcriptTokenCount: number;
 	observationLogTail: ObservationLogEntry[];
 	renderedObservationLogTail: string | null;
+	/** The current working set, which the Observer can write again in full. */
+	workingSet?: string | null;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
 	/** The agent's model transport (`AgentRuntimeConfig.modelFetch`), for the task's own model call. */
@@ -132,7 +134,13 @@ export interface ObservationLogReflectorInput {
 	activeObservationLog: ObservationLogEntry[];
 	renderedObservationLog: string;
 	tokenCount: number;
+	/** Token count the reflected entries should reach together. */
 	tokenBudget: number;
+	/**
+	 * True when only the oldest entries are sent. The newest entries stay as
+	 * written and follow the reflection.
+	 */
+	olderOnly?: boolean;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
 	/** The agent's model transport (`AgentRuntimeConfig.modelFetch`), for the task's own model call. */

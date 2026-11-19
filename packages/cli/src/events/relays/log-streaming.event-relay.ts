@@ -1,4 +1,4 @@
-import { EventService } from '@n8n/backend-services';
+import { EventService, EventRelay } from '@n8n/backend-services';
 import { UserRepository } from '@n8n/db';
 import { Redactable } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -14,7 +14,6 @@ import type { EventNamesAuditType } from '@/eventbus/event-message-classes';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { RelayEventMap, UserLike } from '@/events/maps/relay.event-map';
-import { EventRelay } from '@/events/relays/event-relay';
 import type {
 	PolicyAttachment,
 	PolicyRule,

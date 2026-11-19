@@ -42,6 +42,7 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 		findStaleQueuedExecutions: vi.fn(),
 		renewQueuedExecution: vi.fn(),
 		refreshLiveStatus: vi.fn(),
+		loadLiveSubExecutionIds: vi.fn().mockResolvedValue([]),
 		...overrides,
 	};
 }

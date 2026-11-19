@@ -79,7 +79,8 @@ const showCloudBrowserRow = computed(
 	() =>
 		isCloudBrowserExperimentEnabled.value &&
 		settingsStore.isAiGatewayEnabled &&
-		settingsStore.isAiGatewayCloudUbbEnabled,
+		settingsStore.isAiGatewayCloudUbbEnabled &&
+		!settingsStore.isMultiMain,
 );
 const isMcpAccessEnabled = computed(() => store.settings?.mcpAccessEnabled ?? true);
 const isSelfManaged = computed(() => !store.isProxyEnabled && !store.isCloudManaged);

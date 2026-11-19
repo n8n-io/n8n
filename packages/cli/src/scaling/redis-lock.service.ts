@@ -165,7 +165,7 @@ export class RedisLockService implements ILockService {
 				}
 			}
 
-			if (options?.waitTimeoutMs !== undefined && Date.now() - startTime > options.waitTimeoutMs) {
+			if (options?.waitTimeoutMs !== undefined && Date.now() - startTime >= options.waitTimeoutMs) {
 				// `sawContention: false` means every attempt failed in Redis, so the lease
 				// may not be held at all. Callers that report "busy" must check the flag.
 				throw new LockAcquisitionTimeoutError(

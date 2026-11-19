@@ -34,6 +34,7 @@ type SkillAction = 'edit' | 'timeline' | 'download' | 'stopSyncing' | 'delete';
 
 type SourceAction =
 	| 'checkNow'
+	| 'reviewSkills'
 	| 'openInGitHub'
 	| 'changeScope'
 	| 'replaceCredential'
@@ -46,7 +47,7 @@ type SkillActionItem = {
 	icon: IconName;
 	disabled?: boolean;
 	tooltip?: string;
-	destructive?: boolean;
+	class?: string;
 };
 
 const props = defineProps<{
@@ -128,7 +129,8 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 			icon: 'trash-2',
 			disabled: deleteBlocked !== undefined,
 			tooltip: deleteBlocked,
-			destructive: true,
+			// The shared destructive style is red only on hover, and it colors the icon too.
+			class: $style.deleteAction,
 		},
 	];
 }
@@ -234,6 +236,11 @@ function sourceActions(source: SkillSourceListItem) {
 	}> = [];
 	if (source.canReview) {
 		items.push({
+			value: 'reviewSkills',
+			label: i18n.baseText('settings.context.skills.sources.reviewSkills'),
+			icon: 'book-open',
+		});
+		items.push({
 			value: 'checkNow',
 			label: i18n.baseText('settings.context.skills.checkForUpdates.action'),
 			icon: 'refresh-cw',
@@ -271,6 +278,7 @@ function sourceActions(source: SkillSourceListItem) {
 
 function onSourceAction(source: SkillSourceListItem, action: SourceAction) {
 	if (action === 'checkNow') emit('checkSource', source);
+	else if (action === 'reviewSkills') emit('reviewSource', source);
 	else if (action === 'changeScope') emit('moveSource', source);
 	else if (action === 'deleteSource') emit('deleteSource', source);
 	else if (action === 'replaceCredential') emit('replaceCredential', source);
@@ -436,8 +444,31 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 						size="small"
 						data-test-id="skill-group-checking"
 					/>
+					<button
+						v-if="
+							sourcesById.get(group)!.canReview && sourcesById.get(group)!.newSkillsAvailable > 0
+						"
+						type="button"
+						:class="$style.updateButton"
+						data-test-id="skill-group-review-new"
+						data-attr="skill-group-review-new"
+						@click.stop="emit('reviewSource', sourcesById.get(group)!)"
+					>
+						<N8nBadge variant="outline" data-test-id="skill-group-new">
+							<template #leading>
+								<N8nStatusDot variant="success" data-test-id="skill-group-new-dot" />
+							</template>
+							{{
+								i18n.baseText('settings.context.skills.sources.new', {
+									interpolate: { count: sourcesById.get(group)!.newSkillsAvailable },
+								})
+							}}
+						</N8nBadge>
+					</button>
 					<N8nButton
-						v-else-if="updateCount(sourcesById.get(group)!) > 0"
+						v-if="
+							!props.checkingSourceIds?.includes(group) && updateCount(sourcesById.get(group)!) > 0
+						"
 						variant="outline"
 						size="small"
 						data-test-id="skill-group-review-updates"
@@ -567,6 +598,12 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 </template>
 
 <style lang="scss" module>
+.deleteAction:not([data-disabled]) {
+	:global(.n8n-text) {
+		color: var(--text-color--danger);
+	}
+}
+
 .skillCell {
 	display: flex;
 	flex-direction: column;
@@ -644,6 +681,15 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 }
 
 .groupRowFoldable {
+	cursor: pointer;
+}
+
+.updateButton {
+	display: inline-flex;
+	padding: 0;
+	border: none;
+	border-radius: var(--radius--sm);
+	background: none;
 	cursor: pointer;
 }
 

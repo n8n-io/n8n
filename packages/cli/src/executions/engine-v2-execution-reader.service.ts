@@ -1,3 +1,4 @@
+import { toWorkflowSnapshot, type WorkflowRunDocument } from '@n8n/backend-services';
 import type { IExecutionBase, IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
@@ -20,7 +21,6 @@ import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.
 
 import { resolveV2Statuses, toModeFilter, toV1Mode, toV1Status } from './engine-v2-mapping';
 import type { ExecutionPosition } from './execution-cursor';
-import { toWorkflowSnapshot, type WorkflowRunDocument } from './execution-data/types';
 import type { ExecutionIdV2 } from './execution-id';
 
 /**
@@ -168,6 +168,7 @@ export class EngineV2ExecutionReader {
 			workflowId: item.workflowId,
 			status: toV1Status(item.status),
 			mode: toV1Mode(item),
+			// oxlint-disable-next-line typescript/no-deprecated -- Preserve the v1 execution response format.
 			finished: item.status === 'completed',
 			createdAt: new Date(item.createdAt),
 			startedAt: new Date(item.createdAt),
@@ -264,6 +265,7 @@ export class EngineV2ExecutionReader {
 			workflowId: snapshot.workflowId,
 			mode: toV1Mode(snapshot),
 			status: toV1Status(snapshot.status),
+			// oxlint-disable-next-line typescript/no-deprecated -- Preserve the v1 execution response format.
 			finished: snapshot.status === 'completed',
 			createdAt: startedAt,
 			startedAt,
