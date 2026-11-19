@@ -111,6 +111,7 @@ export class InstanceAiCloudBrowserService {
 		const server = new CloudBrowserLocalMcpServer({
 			scope: { userId, threadId, taskId },
 			sessionProvider: this.getSessionProvider(),
+			enableLoginProfiles: true,
 			createToolkit: (connectUrl) =>
 				createBrowserTools(
 					{ mode: 'remote' },

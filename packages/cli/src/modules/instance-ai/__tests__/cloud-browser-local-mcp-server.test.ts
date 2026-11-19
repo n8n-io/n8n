@@ -154,7 +154,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 		};
 	}
 
-	function setup() {
+	function setup({ enableLoginProfiles = true }: { enableLoginProfiles?: boolean } = {}) {
 		const sessionProvider = mock<CloudBrowserSessionProvider>();
 		// Sessions created and not yet released, so a test can check what is left open.
 		const openSessions = new Set<string>();
@@ -184,6 +184,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 		const server = new CloudBrowserLocalMcpServer({
 			scope,
 			sessionProvider,
+			enableLoginProfiles,
 			createToolkit,
 			toolContext: { dir: '/tmp' },
 			domainGate,
@@ -2184,6 +2185,40 @@ describe('CloudBrowserLocalMcpServer', () => {
 				},
 			);
 
+			it('opens a session without a login profile when login profiles are not enabled', async () => {
+				const { server, sessionProvider, start } = setup({ enableLoginProfiles: false });
+				sessionProvider.getSessionLiveViewUrl.mockResolvedValue('https://live.example.com/1');
+
+				const result = await start({ url: 'https://example.com' });
+
+				expect(result.isError).toBeUndefined();
+				expect(sessionProvider.createLoginProfile).not.toHaveBeenCalled();
+				expect(sessionProvider.createSession).toHaveBeenCalledWith(
+					scope,
+					expect.objectContaining({ loginProfileId: undefined }),
+				);
+				expect(await server.getLiveView()).not.toHaveProperty('loginProfile');
+
+				await server.release();
+				expect(sessionProvider.deleteLoginProfile).not.toHaveBeenCalled();
+			});
+
+			it('does not save a login when login profiles are not enabled', async () => {
+				const { server, sessionProvider, toolkits, start } = setup({ enableLoginProfiles: false });
+				await start({ url: 'https://example.com' });
+				toolkits[0].adapter.getPageUrl.mockReturnValue('https://example.com/home');
+				await askToSignIn(server);
+
+				expect(await server.returnControlToAgent(undefined, true)).toEqual({
+					returned: true,
+					loginWillBeSaved: false,
+				});
+				await server.release();
+
+				expect(toolkits[0].adapter.clearSiteDataExcept).not.toHaveBeenCalled();
+				expect(sessionProvider.saveLoginProfile).not.toHaveBeenCalled();
+			});
+
 			it('opens a session without a login profile when creating one fails', async () => {
 				const { sessionProvider, logger, start } = setup();
 				sessionProvider.createLoginProfile.mockRejectedValue(new Error('HTTP 502'));
@@ -2485,7 +2520,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 				await expect(server.release()).resolves.toBeUndefined();
 
 				expect(logger.warn).toHaveBeenCalledWith(
-					'Failed to delete an unsaved cloud browser login profile',
+					'Failed to delete a cloud browser login profile',
 					expect.objectContaining({ error: 'HTTP 502' }),
 				);
 			});
