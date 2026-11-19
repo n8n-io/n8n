@@ -1,10 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type {
 	AuthenticationService,
 	Extracted,
 	IdentityService,
 	Reject,
 	TrustedSource,
+	TrustedSourceStore,
 	Verified,
 } from '@n8n/inbound-auth';
 import type { Principal, SecurityContext } from '@n8n/permissions';
@@ -35,13 +37,13 @@ const verified: Verified = {
 	request: { method: 'POST', url: '/mcp', ip: '203.0.113.7' },
 	receivedAt: extracted.receivedAt,
 	credentialKind: 'bearer',
-	source: { id: SOURCE_ID, issuer: 'https://idp.example' } as TrustedSource,
+	source: { id: SOURCE_ID, issuer: 'https://idp.example', managedBy: 'admin' } as TrustedSource,
 	claims: { sub: 'alice' },
 	expiresAt: new Date('2026-10-12T11:00:00.000Z'),
 };
 
 const context: SecurityContext = {
-	subject: { id: 'user-1', type: 'human', email: 'alice@example.com' } as Principal,
+	subject: { id: 'user-1', type: 'person', email: 'alice@example.com' } as Principal,
 	authMethod: 'oauth-access-token',
 	subjectClaim: { sourceId: SOURCE_ID, issuer: 'https://idp.example', subject: 'alice' },
 };
@@ -49,12 +51,15 @@ const context: SecurityContext = {
 const logger = mock<Logger>();
 const authentication = mock<AuthenticationService>();
 const identity = mock<IdentityService>();
+const store = mock<TrustedSourceStore>();
+const eventService = mock<EventService>();
 
 let pipeline: InboundAuthPipeline;
 
 beforeEach(() => {
 	vi.clearAllMocks();
-	pipeline = new InboundAuthPipeline(logger, authentication, identity);
+	store.recordFirstAuthentication.mockResolvedValue(false);
+	pipeline = new InboundAuthPipeline(logger, authentication, identity, store, eventService);
 });
 
 describe('InboundAuthPipeline', () => {
@@ -76,11 +81,12 @@ describe('InboundAuthPipeline', () => {
 			identity.identify.mockResolvedValue({ ok: true, value: context });
 		});
 
-		it('logs one info line with surface, resource, source, auth method and user id', async () => {
+		it('logs one debug line with surface, resource, source, auth method and user id', async () => {
 			await pipeline.run(extracted);
 
-			expect(logger.info).toHaveBeenCalledTimes(1);
-			expect(logger.info).toHaveBeenCalledWith(expect.any(String), {
+			expect(logger.info).not.toHaveBeenCalled();
+			expect(logger.debug).toHaveBeenCalledTimes(1);
+			expect(logger.debug).toHaveBeenCalledWith(expect.any(String), {
 				surface: 'instance-mcp',
 				resource: RESOURCE,
 				sourceId: SOURCE_ID,
@@ -92,7 +98,7 @@ describe('InboundAuthPipeline', () => {
 		it('never writes the bearer token, the external subject or the email', async () => {
 			await pipeline.run(extracted);
 
-			const written = JSON.stringify(logger.info.mock.calls);
+			const written = JSON.stringify(logger.debug.mock.calls);
 			expect(written).not.toContain(TOKEN);
 			expect(written).not.toContain('alice');
 		});
@@ -116,6 +122,70 @@ describe('InboundAuthPipeline', () => {
 		const result = await pipeline.run(extracted);
 
 		expect(result).toEqual(reject);
+	});
+
+	describe('first authentication', () => {
+		beforeEach(() => {
+			authentication.authenticate.mockResolvedValue({ ok: true, value: verified });
+			identity.identify.mockResolvedValue({ ok: true, value: context });
+		});
+
+		it('records the first use after identity passes and emits the event with the surface', async () => {
+			store.recordFirstAuthentication.mockResolvedValue(true);
+
+			const result = await pipeline.run(extracted);
+
+			expect(result).toEqual({ ok: true, value: context });
+			expect(store.recordFirstAuthentication).toHaveBeenCalledWith(verified.source);
+			expect(eventService.emit).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('trusted-source-first-authenticated', {
+				sourceId: SOURCE_ID,
+				surface: 'instance-mcp',
+			});
+		});
+
+		it('emits nothing when the source was used before', async () => {
+			store.recordFirstAuthentication.mockResolvedValue(false);
+
+			await pipeline.run(extracted);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('neither records nor emits for a system-managed source', async () => {
+			authentication.authenticate.mockResolvedValue({
+				ok: true,
+				value: { ...verified, source: { ...verified.source, managedBy: 'system' } },
+			});
+
+			await pipeline.run(extracted);
+
+			expect(store.recordFirstAuthentication).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('neither records nor emits when the identity step rejects', async () => {
+			identity.identify.mockResolvedValue({ ok: false, reason: 'binding-inactive' });
+
+			await pipeline.run(extracted);
+
+			expect(store.recordFirstAuthentication).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('still accepts the request and warns when the record fails', async () => {
+			store.recordFirstAuthentication.mockRejectedValue(new Error('database unavailable'));
+
+			const result = await pipeline.run(extracted);
+
+			expect(result).toEqual({ ok: true, value: context });
+			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Could not record the first authentication of a trusted source',
+				expect.objectContaining({ sourceId: SOURCE_ID }),
+			);
+			expect(JSON.stringify(logger.warn.mock.calls)).not.toContain(TOKEN);
+		});
 	});
 
 	describe('reject log line', () => {
@@ -180,7 +250,7 @@ describe('InboundAuthPipeline', () => {
 
 			await pipeline.run(extracted);
 
-			expect(logger.info).not.toHaveBeenCalled();
+			expect(logger.debug).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -2,6 +2,7 @@ import {
 	CommunityPackageListPublicDto,
 	CommunityPackagePublicDto,
 	InstallCommunityPackagePublicDto,
+	InstallCommunityPackageResponsePublicDto,
 	ListCommunityPackagesQueryDto,
 	UpdateCommunityPackagePublicDto,
 	communityPackageNameParamSchema,
@@ -55,19 +56,23 @@ export class CommunityPackagesPublicController {
 	@ApiSummary('Install a community package')
 	@ApiDescription('Install a community package by npm name and optional version.')
 	@ApiTags(['CommunityPackage'])
-	@ApiResponse(200, CommunityPackagePublicDto)
+	@ApiResponse(200, InstallCommunityPackageResponsePublicDto)
 	async installPackage(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Body body: InstallCommunityPackagePublicDto,
-	): Promise<CommunityPackagePublicDto> {
+	): Promise<InstallCommunityPackageResponsePublicDto> {
 		const installedPackage = await this.communityPackagesLifecycleService.install(
 			{ name: body.name, version: body.version },
 			req.user,
 			'publicApi',
+			req.ctx,
 		);
+		const policyRestrictions =
+			await this.communityPackagesLifecycleService.describePolicyRestrictions(installedPackage);
+		const publicPackage = toCommunityPackagePublic(installedPackage);
 
-		return toCommunityPackagePublic(installedPackage);
+		return policyRestrictions ? { ...publicPackage, policyRestrictions } : publicPackage;
 	}
 
 	@Patch('/:name')
@@ -87,6 +92,7 @@ export class CommunityPackagesPublicController {
 			{ name, version: body.version },
 			req.user,
 			'notFound',
+			req.ctx,
 		);
 
 		return toCommunityPackagePublic(updated);
@@ -105,6 +111,11 @@ export class CommunityPackagesPublicController {
 		_res: Response,
 		@Param('name', communityPackageNameParamSchema) packageName: string,
 	): Promise<void> {
-		await this.communityPackagesLifecycleService.uninstall(packageName, req.user, 'notFound');
+		await this.communityPackagesLifecycleService.uninstall(
+			packageName,
+			req.user,
+			'notFound',
+			req.ctx,
+		);
 	}
 }

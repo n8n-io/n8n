@@ -4,9 +4,11 @@ import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { ResponseError, ConflictError, ForbiddenError } from '@n8n/errors';
-import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
-import type { AiPreferenceService } from '@/services/ai-preference.service';
-import type { Telemetry } from '@/telemetry';
+import {
+	AiPreferenceScopeFullError,
+	type AiPreferenceService,
+	type TelemetryTracker,
+} from '@n8n/backend-services';
 
 /**
  * Why an assistant write did not land, in words a model can relay. The same six values as the
@@ -56,7 +58,7 @@ export function secondsSinceSaved(preference: AiPreferenceDto, now = Date.now())
 
 export type AssistantPreferenceWrite = {
 	aiPreferenceService: AiPreferenceService;
-	telemetry: Telemetry;
+	telemetry: TelemetryTracker;
 	logger: Logger;
 	user: User;
 	surface: AssistantSurface;

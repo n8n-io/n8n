@@ -1,20 +1,46 @@
 import { describe, test, expect } from 'vitest';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
-import {
-	getLatestBuildResult,
-	getLatestBuilderTarget,
-	getLatestAgentBuilderTarget,
-	getLatestCallAgentResult,
-	getLatestDataTableResult,
-	getLatestDeletedDataTableId,
-	getLatestWorkflowUpdateResult,
-	getLatestAgentArtifactResult,
-	getLatestAgentConfigMutation,
-	getExecutionResultsByWorkflow,
-	isAgentEditingWorkflow,
-	isAgentEditingAgent,
-	getActiveSelectedAgentIds,
-} from '../canvasPreview.utils';
+import { toArtifactTurns } from '../agentTreeArtifactTurns';
+import * as utils from '../canvasPreview.utils';
+import { getAppArtifactFromToolCall, getSkillArtifactFromToolCall } from '../canvasPreview.utils';
+
+// The fixtures are agent trees of the current runtime. The readers read the
+// flattened turns, so these tests also cover the flattening.
+const turns = (agentTree: InstanceAiAgentNode) =>
+	toArtifactTurns([
+		{
+			id: 'msg-1',
+			role: 'assistant',
+			createdAt: '',
+			content: '',
+			reasoning: '',
+			isStreaming: false,
+			agentTree,
+		},
+	]);
+const getLatestBuildResult = (node: InstanceAiAgentNode) => utils.getLatestBuildResult(turns(node));
+const getLatestDataTableResult = (node: InstanceAiAgentNode) =>
+	utils.getLatestDataTableResult(turns(node));
+const getLatestDeletedDataTableIds = (node: InstanceAiAgentNode) =>
+	utils.getLatestDeletedDataTableIds(turns(node));
+const getLatestWorkflowUpdateResult = (node: InstanceAiAgentNode) =>
+	utils.getLatestWorkflowUpdateResult(turns(node));
+const getLatestAgentArtifactResult = (node: InstanceAiAgentNode) =>
+	utils.getLatestAgentArtifactResult(turns(node));
+const getLatestAgentConfigMutation = (node: InstanceAiAgentNode) =>
+	utils.getLatestAgentConfigMutation(turns(node));
+const getExecutionResultsByWorkflow = (node: InstanceAiAgentNode) =>
+	utils.getExecutionResultsByWorkflow(turns(node));
+const isAgentEditingWorkflow = (node: InstanceAiAgentNode, workflowId: string) =>
+	utils.isAgentEditingWorkflow(turns(node), workflowId);
+const isAgentEditingAgent = (node: InstanceAiAgentNode, agentId: string) =>
+	utils.isAgentEditingAgent(turns(node), agentId);
+const getActiveSelectedAgentIds = (node: InstanceAiAgentNode) =>
+	utils.getActiveSelectedAgentIds(turns(node));
+const getLatestSkillArtifactResult = (node: InstanceAiAgentNode) =>
+	utils.getLatestSkillArtifactResult(turns(node));
+const getLatestAppArtifactResult = (node: InstanceAiAgentNode) =>
+	utils.getLatestAppArtifactResult(turns(node));
 
 function makeToolCall(overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState {
 	return {
@@ -38,6 +64,23 @@ function makeAgentNode(overrides: Partial<InstanceAiAgentNode> = {}): InstanceAi
 		timeline: [],
 		...overrides,
 	};
+}
+
+/** A finished `change_data_tables` call with the given result. */
+function batchCall(
+	result: Record<string, unknown>,
+	toolCallId = 'tc-batch',
+): InstanceAiToolCallState {
+	return makeToolCall({
+		toolCallId,
+		toolName: 'change_data_tables',
+		args: { changes: [] },
+		result,
+	});
+}
+
+function applied(index: number, action: string, id: string) {
+	return { index, action, table: { id, name: `Table ${id}`, projectId: 'proj-1' }, result: {} };
 }
 
 describe('getLatestBuildResult', () => {
@@ -193,296 +236,6 @@ describe('getLatestBuildResult', () => {
 	});
 });
 
-describe('getLatestCallAgentResult', () => {
-	test('returns undefined for node with no tool calls', () => {
-		expect(getLatestCallAgentResult(makeAgentNode(), 'agent-1')).toBeUndefined();
-	});
-
-	test('returns undefined for non-call_agent tool calls', () => {
-		const node = makeAgentNode({
-			targetResource: { type: 'agent', id: 'agent-1' },
-			toolCalls: [
-				makeToolCall({ toolName: 'agent_builder_build_agent', result: { agentChange: 'created' } }),
-			],
-		});
-		expect(getLatestCallAgentResult(node, 'agent-1')).toBeUndefined();
-	});
-
-	test('returns undefined for a loading call_agent call', () => {
-		const node = makeAgentNode({
-			targetResource: { type: 'agent', id: 'agent-1' },
-			toolCalls: [
-				makeToolCall({
-					toolName: 'agent_builder_call_agent',
-					isLoading: true,
-					args: { message: 'Summarize the thread' },
-					result: undefined,
-				}),
-			],
-		});
-		expect(getLatestCallAgentResult(node, 'agent-1')).toBeUndefined();
-	});
-
-	test('returns undefined for a call_agent call that did not complete', () => {
-		const node = makeAgentNode({
-			targetResource: { type: 'agent', id: 'agent-1' },
-			toolCalls: [
-				makeToolCall({
-					toolName: 'agent_builder_call_agent',
-					args: { message: 'Summarize the thread' },
-					result: { status: 'error', code: 'agent_misconfigured' },
-				}),
-			],
-		});
-		expect(getLatestCallAgentResult(node, 'agent-1')).toBeUndefined();
-	});
-
-	test('returns the message and response from a completed call_agent call', () => {
-		const node = makeAgentNode({
-			targetResource: { type: 'agent', id: 'agent-1' },
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-call-1',
-					toolName: 'agent_builder_call_agent',
-					args: { message: 'Summarize the thread about the outage' },
-					result: {
-						status: 'completed',
-						response: 'Ticket #48219 is a P1 SSO outage.',
-						executionId: 'exec-1',
-						sessionId: 'session-1',
-					},
-				}),
-			],
-		});
-		expect(getLatestCallAgentResult(node, 'agent-1')).toEqual({
-			message: 'Summarize the thread about the outage',
-			response: 'Ticket #48219 is a P1 SSO outage.',
-			toolCallId: 'tc-call-1',
-		});
-	});
-
-	test('returns the latest result when multiple test calls exist', () => {
-		const node = makeAgentNode({
-			targetResource: { type: 'agent', id: 'agent-1' },
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-call-1',
-					toolName: 'agent_builder_call_agent',
-					args: { message: 'first try' },
-					result: { status: 'completed', response: 'old answer', executionId: 'exec-1' },
-				}),
-				makeToolCall({
-					toolCallId: 'tc-call-2',
-					toolName: 'agent_builder_call_agent',
-					args: { message: 'second try' },
-					result: { status: 'completed', response: 'new answer', executionId: 'exec-2' },
-				}),
-			],
-		});
-		expect(getLatestCallAgentResult(node, 'agent-1')).toEqual({
-			message: 'second try',
-			response: 'new answer',
-			toolCallId: 'tc-call-2',
-		});
-	});
-
-	test('finds result in child agent nodes, resolving identity from the child target', () => {
-		const child = makeAgentNode({
-			agentId: 'builder-1',
-			kind: 'agent-builder',
-			targetResource: { type: 'agent', id: 'agent-1' },
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-child',
-					toolName: 'agent_builder_call_agent',
-					args: { message: 'child message' },
-					result: { status: 'completed', response: 'child answer', executionId: 'exec-1' },
-				}),
-			],
-		});
-		const parent = makeAgentNode({ children: [child] });
-		expect(getLatestCallAgentResult(parent, 'agent-1')).toEqual({
-			message: 'child message',
-			response: 'child answer',
-			toolCallId: 'tc-child',
-		});
-	});
-
-	test('ignores a completed call_agent result that tested a different agent', () => {
-		// Reproduces building agent A, then agent B without B's own completed
-		// call_agent yet — A's test run must not be mistaken for B's.
-		const agentABuilder = makeAgentNode({
-			agentId: 'builder-a',
-			kind: 'agent-builder',
-			targetResource: { type: 'agent', id: 'agent-a' },
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-call-a',
-					toolName: 'agent_builder_call_agent',
-					args: { message: 'test agent A' },
-					result: { status: 'completed', response: 'A answer', executionId: 'exec-a' },
-				}),
-			],
-		});
-		const agentBBuilder = makeAgentNode({
-			agentId: 'builder-b',
-			kind: 'agent-builder',
-			targetResource: { type: 'agent', id: 'agent-b' },
-			toolCalls: [],
-		});
-		const parent = makeAgentNode({ children: [agentABuilder, agentBBuilder] });
-
-		expect(getLatestCallAgentResult(parent, 'agent-b')).toBeUndefined();
-		expect(getLatestCallAgentResult(parent, 'agent-a')).toEqual({
-			message: 'test agent A',
-			response: 'A answer',
-			toolCallId: 'tc-call-a',
-		});
-	});
-});
-
-describe('getLatestBuilderTarget', () => {
-	test('returns undefined for node with no children', () => {
-		expect(getLatestBuilderTarget(makeAgentNode())).toBeUndefined();
-	});
-
-	test('returns undefined when builder child has no targetResource id (create flow)', () => {
-		const builder = makeAgentNode({
-			agentId: 'agent-builder-1',
-			role: 'workflow-builder',
-			kind: 'builder',
-			status: 'active',
-			targetResource: { type: 'workflow' },
-		});
-		const parent = makeAgentNode({ children: [builder] });
-		expect(getLatestBuilderTarget(parent)).toBeUndefined();
-	});
-
-	test('returns agentId and workflowId when builder is spawned with targetResource.id (edit flow)', () => {
-		const builder = makeAgentNode({
-			agentId: 'agent-builder-1',
-			role: 'workflow-builder',
-			kind: 'builder',
-			status: 'active',
-			targetResource: { type: 'workflow', id: 'wf-existing' },
-		});
-		const parent = makeAgentNode({ children: [builder] });
-		expect(getLatestBuilderTarget(parent)).toEqual({
-			agentId: 'agent-builder-1',
-			workflowId: 'wf-existing',
-		});
-	});
-
-	test('detects builder by kind even when role differs', () => {
-		const builder = makeAgentNode({
-			agentId: 'agent-builder-2',
-			role: 'background-task',
-			kind: 'builder',
-			status: 'active',
-			targetResource: { type: 'workflow', id: 'wf-1' },
-		});
-		const parent = makeAgentNode({ children: [builder] });
-		expect(getLatestBuilderTarget(parent)?.workflowId).toBe('wf-1');
-	});
-
-	test('ignores non-workflow targetResource types', () => {
-		const credSetup = makeAgentNode({
-			agentId: 'agent-cred-1',
-			role: 'credential-setup',
-			kind: 'builder',
-			status: 'active',
-			targetResource: { type: 'credential', id: 'cred-1' },
-		});
-		const parent = makeAgentNode({ children: [credSetup] });
-		expect(getLatestBuilderTarget(parent)).toBeUndefined();
-	});
-
-	test('returns the latest builder when multiple are present', () => {
-		const builderA = makeAgentNode({
-			agentId: 'agent-builder-a',
-			role: 'workflow-builder',
-			kind: 'builder',
-			status: 'completed',
-			targetResource: { type: 'workflow', id: 'wf-a' },
-		});
-		const builderB = makeAgentNode({
-			agentId: 'agent-builder-b',
-			role: 'workflow-builder',
-			kind: 'builder',
-			status: 'active',
-			targetResource: { type: 'workflow', id: 'wf-b' },
-		});
-		const parent = makeAgentNode({ children: [builderA, builderB] });
-		expect(getLatestBuilderTarget(parent)?.workflowId).toBe('wf-b');
-	});
-
-	test('walks nested children depth-first, newest last', () => {
-		const nestedBuilder = makeAgentNode({
-			agentId: 'agent-builder-nested',
-			role: 'workflow-builder',
-			kind: 'builder',
-			status: 'active',
-			targetResource: { type: 'workflow', id: 'wf-nested' },
-		});
-		const intermediate = makeAgentNode({
-			agentId: 'agent-intermediate',
-			role: 'coordinator',
-			children: [nestedBuilder],
-		});
-		const parent = makeAgentNode({ children: [intermediate] });
-		expect(getLatestBuilderTarget(parent)?.workflowId).toBe('wf-nested');
-	});
-});
-
-describe('getLatestAgentBuilderTarget', () => {
-	test('returns undefined for node with no children', () => {
-		expect(getLatestAgentBuilderTarget(makeAgentNode())).toBeUndefined();
-	});
-
-	test('returns undefined when no agent-builder node is present', () => {
-		const builder = makeAgentNode({
-			agentId: 'agent-builder-1',
-			role: 'workflow-builder',
-			kind: 'builder',
-			status: 'active',
-			targetResource: { type: 'workflow', id: 'wf-existing' },
-		});
-		const parent = makeAgentNode({ children: [builder] });
-		expect(getLatestAgentBuilderTarget(parent)).toBeUndefined();
-	});
-
-	test('returns undefined when targetResource.type is not agent', () => {
-		const builder = makeAgentNode({
-			agentId: 'agent-builder-1',
-			kind: 'agent-builder',
-			status: 'active',
-			targetResource: { type: 'workflow', id: 'wf-1' },
-		});
-		const parent = makeAgentNode({ children: [builder] });
-		expect(getLatestAgentBuilderTarget(parent)).toBeUndefined();
-	});
-
-	test('returns agentId and targetAgentId when the most recent agent-builder child has an agent targetResource', () => {
-		const builderA = makeAgentNode({
-			agentId: 'agent-builder-a',
-			kind: 'agent-builder',
-			status: 'completed',
-			targetResource: { type: 'agent', id: 'agent-a', projectId: 'project-1' },
-		});
-		const builderB = makeAgentNode({
-			agentId: 'agent-builder-b',
-			kind: 'agent-builder',
-			status: 'active',
-			targetResource: { type: 'agent', id: 'agent-b', projectId: 'project-1' },
-		});
-		const parent = makeAgentNode({ children: [builderA, builderB] });
-		expect(getLatestAgentBuilderTarget(parent)).toEqual({
-			agentId: 'agent-builder-b',
-			targetAgentId: 'agent-b',
-		});
-	});
-});
-
 describe('getLatestAgentArtifactResult', () => {
 	test('reads a created agent from the select-agent result', () => {
 		const orchestrator = makeAgentNode({
@@ -556,154 +309,6 @@ describe('getLatestAgentArtifactResult', () => {
 			toolCallId: 'tc-patch',
 			kind: 'mutated',
 		});
-	});
-
-	test('returns no artifact for an explicit unchanged result', () => {
-		const orchestrator = makeAgentNode({
-			toolCalls: [
-				makeToolCall({
-					toolName: 'agent_builder_build_agent',
-					args: { name: 'Existing Agent' },
-					result: { ok: true, agentChange: 'none', configUpdated: false },
-				}),
-			],
-		});
-
-		expect(
-			getLatestAgentArtifactResult(orchestrator, {
-				agentId: 'agent-1',
-				projectId: 'project-1',
-			}),
-		).toBeUndefined();
-	});
-
-	test('uses parent agent target for nested agent mutations', () => {
-		const nestedAgentBuilder = makeAgentNode({
-			agentId: 'nested-builder',
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-nested-build',
-					toolName: 'agent_builder_build_agent',
-					args: { message: 'add a step' },
-					result: { ok: true, configUpdated: true },
-				}),
-			],
-		});
-		const parentAgentBuilder = makeAgentNode({
-			agentId: 'agent-builder',
-			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
-			children: [nestedAgentBuilder],
-		});
-
-		expect(getLatestAgentArtifactResult(parentAgentBuilder)).toEqual({
-			agentId: 'agent-1',
-			projectId: 'project-1',
-			toolCallId: 'tc-nested-build',
-			kind: 'mutated',
-		});
-	});
-
-	test('creates from a name arg, resolving identity from the spawned builder child target', () => {
-		const builderChild = makeAgentNode({
-			agentId: 'builder-child',
-			role: 'agent-builder',
-			kind: 'agent-builder',
-			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1', name: 'New Agent' },
-		});
-		const orchestrator = makeAgentNode({
-			children: [builderChild],
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-create',
-					toolName: 'agent_builder_build_agent',
-					args: { message: 'build me an agent', name: 'New Agent' },
-					result: { ok: true, builderReply: 'Created it' },
-				}),
-			],
-		});
-
-		expect(getLatestAgentArtifactResult(orchestrator)).toEqual({
-			agentId: 'agent-1',
-			projectId: 'project-1',
-			toolCallId: 'tc-create',
-			kind: 'created',
-		});
-	});
-
-	test('mutates using fallbackTarget when no targetResource exists in the tree', () => {
-		const orchestrator = makeAgentNode({
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-mutate',
-					toolName: 'agent_builder_build_agent',
-					args: { message: 'add a skill' },
-					result: { ok: true, configUpdated: true },
-				}),
-			],
-		});
-
-		expect(
-			getLatestAgentArtifactResult(orchestrator, { agentId: 'agent-1', projectId: 'project-1' }),
-		).toEqual({
-			agentId: 'agent-1',
-			projectId: 'project-1',
-			toolCallId: 'tc-mutate',
-			kind: 'mutated',
-		});
-	});
-
-	test('mutates on a failed turn that still updated the config', () => {
-		const orchestrator = makeAgentNode({
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-mutate-fail',
-					toolName: 'agent_builder_build_agent',
-					args: { message: 'add a skill' },
-					result: { ok: false, error: 'The agent builder run errored.', configUpdated: true },
-				}),
-			],
-		});
-
-		expect(
-			getLatestAgentArtifactResult(orchestrator, { agentId: 'agent-1', projectId: 'project-1' }),
-		).toEqual({
-			agentId: 'agent-1',
-			projectId: 'project-1',
-			toolCallId: 'tc-mutate-fail',
-			kind: 'mutated',
-		});
-	});
-
-	test('returns undefined for a reply-only turn (ok but no name and no configUpdated)', () => {
-		const orchestrator = makeAgentNode({
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-reply',
-					toolName: 'agent_builder_build_agent',
-					args: { message: 'what does this agent do?' },
-					result: { ok: true, builderReply: 'It triages your inbox.' },
-				}),
-			],
-		});
-
-		expect(
-			getLatestAgentArtifactResult(orchestrator, { agentId: 'agent-1', projectId: 'project-1' }),
-		).toBeUndefined();
-	});
-
-	test('returns undefined when no target is available anywhere in the tree', () => {
-		const orchestrator = makeAgentNode({
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-mutate',
-					toolName: 'agent_builder_build_agent',
-					args: { message: 'add a skill' },
-					result: { ok: true, configUpdated: true },
-				}),
-			],
-		});
-
-		expect(getLatestAgentArtifactResult(orchestrator)).toBeUndefined();
 	});
 });
 
@@ -993,9 +598,72 @@ describe('getLatestDataTableResult', () => {
 	});
 });
 
-describe('getLatestDeletedDataTableId', () => {
+describe('getLatestDataTableResult for batch data table changes', () => {
+	test('returns the last table that the batch changed', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				batchCall({
+					success: true,
+					applied: [applied(0, 'create', 'dt-a'), applied(1, 'insert-rows', 'dt-b')],
+					skipped: [],
+				}),
+			],
+		});
+		expect(getLatestDataTableResult(node)).toEqual({
+			dataTableId: 'dt-b',
+			toolCallId: 'tc-batch',
+		});
+	});
+
+	test('ignores tables that the batch deleted', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				batchCall({
+					success: true,
+					applied: [
+						applied(0, 'insert-rows', 'dt-a'),
+						applied(1, 'insert-rows', 'dt-b'),
+						applied(2, 'delete', 'dt-b'),
+					],
+					skipped: [],
+				}),
+			],
+		});
+		expect(getLatestDataTableResult(node)?.dataTableId).toBe('dt-a');
+	});
+
+	test('returns an applied table of a batch that failed later', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				batchCall({
+					success: false,
+					applied: [applied(0, 'add-column', 'dt-a')],
+					failed: { index: 1, action: 'insert-rows', error: 'Bad value' },
+					skipped: [2],
+				}),
+			],
+		});
+		expect(getLatestDataTableResult(node)?.dataTableId).toBe('dt-a');
+	});
+
+	test('skips a batch that only deleted tables, or that is still loading', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				batchCall(
+					{ success: true, applied: [applied(0, 'create', 'dt-old')], skipped: [] },
+					'tc-1',
+				),
+				batchCall({ success: true, applied: [applied(0, 'delete', 'dt-x')], skipped: [] }, 'tc-2'),
+				{ ...batchCall({}, 'tc-3'), isLoading: true, result: undefined },
+			],
+		});
+		expect(getLatestDataTableResult(node)).toEqual({ dataTableId: 'dt-old', toolCallId: 'tc-1' });
+	});
+});
+
+describe('getLatestDeletedDataTableIds', () => {
 	test('returns undefined for node with no tool calls', () => {
-		expect(getLatestDeletedDataTableId(makeAgentNode())).toBeUndefined();
+		expect(getLatestDeletedDataTableIds(makeAgentNode())).toEqual([]);
 	});
 
 	test('returns undefined for non-delete-data-table tool calls', () => {
@@ -1008,7 +676,7 @@ describe('getLatestDeletedDataTableId', () => {
 				}),
 			],
 		});
-		expect(getLatestDeletedDataTableId(node)).toBeUndefined();
+		expect(getLatestDeletedDataTableIds(node)).toEqual([]);
 	});
 
 	test('returns undefined for loading delete-data-table call', () => {
@@ -1021,7 +689,7 @@ describe('getLatestDeletedDataTableId', () => {
 				}),
 			],
 		});
-		expect(getLatestDeletedDataTableId(node)).toBeUndefined();
+		expect(getLatestDeletedDataTableIds(node)).toEqual([]);
 	});
 
 	test('returns undefined when delete-data-table result has success: false', () => {
@@ -1034,7 +702,7 @@ describe('getLatestDeletedDataTableId', () => {
 				}),
 			],
 		});
-		expect(getLatestDeletedDataTableId(node)).toBeUndefined();
+		expect(getLatestDeletedDataTableIds(node)).toEqual([]);
 	});
 
 	test('returns undefined when args lacks dataTableId', () => {
@@ -1047,7 +715,7 @@ describe('getLatestDeletedDataTableId', () => {
 				}),
 			],
 		});
-		expect(getLatestDeletedDataTableId(node)).toBeUndefined();
+		expect(getLatestDeletedDataTableIds(node)).toEqual([]);
 	});
 
 	test('returns dataTableId from successful delete-data-table', () => {
@@ -1060,7 +728,7 @@ describe('getLatestDeletedDataTableId', () => {
 				}),
 			],
 		});
-		expect(getLatestDeletedDataTableId(node)).toBe('dt-deleted');
+		expect(getLatestDeletedDataTableIds(node)).toEqual(['dt-deleted']);
 	});
 
 	test('returns the latest result when multiple deletes exist', () => {
@@ -1080,7 +748,7 @@ describe('getLatestDeletedDataTableId', () => {
 				}),
 			],
 		});
-		expect(getLatestDeletedDataTableId(node)).toBe('dt-new');
+		expect(getLatestDeletedDataTableIds(node)).toEqual(['dt-new']);
 	});
 
 	test('finds result in child agent nodes', () => {
@@ -1095,7 +763,39 @@ describe('getLatestDeletedDataTableId', () => {
 			],
 		});
 		const parent = makeAgentNode({ children: [child] });
-		expect(getLatestDeletedDataTableId(parent)).toBe('dt-child');
+		expect(getLatestDeletedDataTableIds(parent)).toEqual(['dt-child']);
+	});
+
+	test('returns every table that the latest batch deleted', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				batchCall({
+					success: false,
+					applied: [
+						applied(0, 'delete', 'dt-a'),
+						applied(1, 'insert-rows', 'dt-b'),
+						applied(2, 'delete', 'dt-c'),
+					],
+					failed: { index: 3, action: 'delete', error: 'Not found' },
+					skipped: [],
+				}),
+			],
+		});
+		expect(getLatestDeletedDataTableIds(node)).toEqual(['dt-a', 'dt-c']);
+	});
+
+	test('skips a batch that deleted no table', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'data_tables',
+					args: { action: 'delete', dataTableId: 'dt-old' },
+					result: { success: true },
+				}),
+				batchCall({ success: true, applied: [applied(0, 'insert-rows', 'dt-b')], skipped: [] }),
+			],
+		});
+		expect(getLatestDeletedDataTableIds(node)).toEqual(['dt-old']);
 	});
 });
 
@@ -1418,7 +1118,7 @@ describe('isAgentEditingWorkflow', () => {
 			status: 'active',
 			toolCalls: [
 				makeToolCall({
-					toolName: 'workflow_builder_credentials',
+					toolName: 'credentials',
 					args: { action: 'setup' },
 					result: { announced: true, preBuild: true, workflowId: 'wf-1' },
 				}),
@@ -1435,7 +1135,6 @@ describe('isAgentEditingWorkflow', () => {
 			toolName: 'workflow_builder_build_workflow',
 			args: { filePath: 'workflow.ts' },
 			isLoading: true,
-			startedAt: '2026-09-15T08:00:00.000Z',
 		});
 		const node = makeAgentNode({
 			status: 'active',
@@ -1449,9 +1148,6 @@ describe('isAgentEditingWorkflow', () => {
 		});
 		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(true);
 		expect(isAgentEditingWorkflow(node, 'wf-other')).toBe(false);
-		call.startedAt = '2026-09-15T08:01:00.000Z';
-		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
-		call.startedAt = '2026-09-15T08:00:00.000Z';
 		call.isLoading = false;
 		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
 	});
@@ -1478,33 +1174,6 @@ describe('isAgentEditingWorkflow', () => {
 					result: { success: true, workflowId: 'wf-1' },
 				}),
 			],
-		});
-		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
-	});
-
-	test('locks while a workflow-builder sub-agent is active on the workflow', () => {
-		const node = makeAgentNode({
-			role: 'workflow-builder',
-			status: 'active',
-			targetResource: { type: 'workflow', id: 'wf-1' },
-		});
-		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(true);
-	});
-
-	test('locks while a kind-only builder sub-agent is active on the workflow', () => {
-		const node = makeAgentNode({
-			kind: 'builder',
-			status: 'active',
-			targetResource: { type: 'workflow', id: 'wf-1' },
-		});
-		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(true);
-	});
-
-	test('does not lock once the builder is no longer active', () => {
-		const node = makeAgentNode({
-			role: 'workflow-builder',
-			status: 'completed',
-			targetResource: { type: 'workflow', id: 'wf-1' },
 		});
 		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
 	});
@@ -1615,37 +1284,13 @@ describe('isAgentEditingWorkflow', () => {
 });
 
 describe('isAgentEditingAgent', () => {
-	test('locks while an active agent-builder child targets the agent', () => {
-		const builder = makeAgentNode({
-			agentId: 'agent-builder-1',
-			kind: 'agent-builder',
-			status: 'active',
-			targetResource: { type: 'agent', id: 'agent-1' },
-		});
-		const parent = makeAgentNode({ children: [builder] });
-		expect(isAgentEditingAgent(parent, 'agent-1')).toBe(true);
-	});
-
-	test('does not lock once the agent-builder child has completed', () => {
-		const builder = makeAgentNode({
-			agentId: 'agent-builder-1',
-			kind: 'agent-builder',
-			status: 'completed',
-			targetResource: { type: 'agent', id: 'agent-1' },
-		});
-		const parent = makeAgentNode({ children: [builder] });
-		expect(isAgentEditingAgent(parent, 'agent-1')).toBe(false);
-	});
-
-	test('locks while an active agent run has a successful build-agent result for the agent', () => {
+	test('locks while an active agent run has a config mutation for the agent', () => {
 		const node = makeAgentNode({
 			status: 'active',
-			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
 			toolCalls: [
 				makeToolCall({
-					toolName: 'agent_builder_build_agent',
-					args: { message: 'add a skill' },
-					result: { ok: true, configUpdated: true },
+					toolName: 'agent_builder_add_skill',
+					result: { ok: true, configMutated: true, agentId: 'agent-1', projectId: 'project-1' },
 				}),
 			],
 		});
@@ -1655,12 +1300,10 @@ describe('isAgentEditingAgent', () => {
 	test('does not lock the same tree once the root node is no longer active', () => {
 		const node = makeAgentNode({
 			status: 'completed',
-			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
 			toolCalls: [
 				makeToolCall({
-					toolName: 'agent_builder_build_agent',
-					args: { message: 'add a skill' },
-					result: { ok: true, configUpdated: true },
+					toolName: 'agent_builder_add_skill',
+					result: { ok: true, configMutated: true, agentId: 'agent-1', projectId: 'project-1' },
 				}),
 			],
 		});
@@ -1737,7 +1380,7 @@ describe('isAgentEditingAgent', () => {
 });
 
 describe('getActiveSelectedAgentIds', () => {
-	test('returns agents selected in active nodes only', () => {
+	test('returns the agents that live turns selected last', () => {
 		const finished = makeAgentNode({
 			agentId: 'old-run',
 			toolCalls: [
@@ -1747,20 +1390,8 @@ describe('getActiveSelectedAgentIds', () => {
 				}),
 			],
 		});
-		const activeChild = makeAgentNode({
-			agentId: 'active-child',
+		const live = makeAgentNode({
 			status: 'active',
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-child-select',
-					toolName: 'agent_builder_select_agent',
-					result: { ok: true, agentId: 'agent-child' },
-				}),
-			],
-		});
-		const root = makeAgentNode({
-			status: 'active',
-			children: [finished, activeChild],
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-select',
@@ -1774,7 +1405,9 @@ describe('getActiveSelectedAgentIds', () => {
 				}),
 			],
 		});
-		expect(getActiveSelectedAgentIds(root)).toEqual(new Set(['agent-1', 'agent-child']));
+		expect(utils.getActiveSelectedAgentIds([...turns(finished), ...turns(live)])).toEqual(
+			new Set(['agent-1']),
+		);
 	});
 
 	test('returns only the latest selection of an active node', () => {
@@ -1794,5 +1427,227 @@ describe('getActiveSelectedAgentIds', () => {
 			],
 		});
 		expect(getActiveSelectedAgentIds(root)).toEqual(new Set(['agent-b']));
+	});
+});
+
+describe('getSkillArtifactFromToolCall', () => {
+	test('returns the skill of a successful create', () => {
+		expect(
+			getSkillArtifactFromToolCall(
+				makeToolCall({
+					toolName: 'skills',
+					args: { action: 'create' },
+					result: { success: true, skill: { id: 'skill-1', name: 'Brand voice' } },
+				}),
+			),
+		).toEqual({ skillId: 'skill-1', name: 'Brand voice' });
+	});
+
+	test('returns the skill of a successful update and falls back to the skill id argument', () => {
+		expect(
+			getSkillArtifactFromToolCall(
+				makeToolCall({
+					toolName: 'skills',
+					args: { action: 'update', skillId: 'skill-1' },
+					result: { success: true, saved: { version: 3 } },
+				}),
+			),
+		).toEqual({ skillId: 'skill-1' });
+	});
+
+	test.each([
+		['a list', { action: 'list' }, { count: 1, skills: [{ id: 'skill-1' }] }],
+		['a get', { action: 'get', skillId: 'skill-1' }, { id: 'skill-1', name: 'Brand voice' }],
+		['a delete', { action: 'delete', skillId: 'skill-1' }, { success: true, skillId: 'skill-1' }],
+		['a denied create', { action: 'create' }, { success: false, denied: true }],
+		['a refused update', { action: 'update', skillId: 'skill-1' }, { success: false }],
+	])('returns undefined for %s', (_label, args, result) => {
+		expect(
+			getSkillArtifactFromToolCall(makeToolCall({ toolName: 'skills', args, result })),
+		).toBeUndefined();
+	});
+
+	const asUntrustedToolOutput = (result: unknown) => ({
+		type: 'content',
+		value: [
+			{
+				type: 'text',
+				text: `<untrusted_data source="tool:skills">\n${JSON.stringify(result).replace(/<(\s*\/\s*untrusted_data)/gi, '&lt;$1')}\n</untrusted_data>`,
+			},
+		],
+	});
+
+	test.each([
+		[
+			'create',
+			{ action: 'create', projectId: 'project-1', scope: 'project' },
+			{
+				success: true,
+				skill: {
+					id: 'skill_OoDEBCj0pt0q2Old',
+					name: 'Release Notes Writer',
+					scope: 'project',
+					projectId: 'project-1',
+					latestVersion: 1,
+					skill: { name: 'Release Notes Writer', instructions: '## Overview\n</untrusted_data>' },
+				},
+			},
+		],
+		[
+			'update',
+			{ action: 'update', skillId: 'skill_OoDEBCj0pt0q2Old' },
+			{
+				success: true,
+				saved: {
+					id: 'skill_OoDEBCj0pt0q2Old',
+					versionId: 'version-2',
+					version: 2,
+					created: true,
+					name: 'Release Notes Writer',
+				},
+			},
+		],
+	])(
+		'returns the skill of a successful %s wrapped as untrusted tool output',
+		(_label, args, result) => {
+			expect(
+				getSkillArtifactFromToolCall(
+					makeToolCall({ toolName: 'skills', args, result: asUntrustedToolOutput(result) }),
+				),
+			).toEqual({ skillId: 'skill_OoDEBCj0pt0q2Old', name: 'Release Notes Writer' });
+		},
+	);
+
+	test('returns undefined for a denied create wrapped as untrusted tool output', () => {
+		expect(
+			getSkillArtifactFromToolCall(
+				makeToolCall({
+					toolName: 'skills',
+					args: { action: 'create' },
+					result: asUntrustedToolOutput({ success: false, denied: true }),
+				}),
+			),
+		).toBeUndefined();
+	});
+
+	test('returns undefined for a call that is still running', () => {
+		expect(
+			getSkillArtifactFromToolCall(
+				makeToolCall({ toolName: 'skills', args: { action: 'create' }, isLoading: true }),
+			),
+		).toBeUndefined();
+	});
+
+	test('returns undefined for another tool with the same result shape', () => {
+		expect(
+			getSkillArtifactFromToolCall(
+				makeToolCall({
+					toolName: 'agent_builder_create_skills',
+					args: { action: 'create' },
+					result: { success: true, skill: { id: 'skill-1' } },
+				}),
+			),
+		).toBeUndefined();
+	});
+});
+
+describe('getLatestSkillArtifactResult', () => {
+	test('returns the latest skill write, also from a child agent', () => {
+		const root = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-create',
+					toolName: 'skills',
+					args: { action: 'create' },
+					result: { success: true, skill: { id: 'skill-1', name: 'One' } },
+				}),
+			],
+			children: [
+				makeAgentNode({
+					agentId: 'child',
+					toolCalls: [
+						makeToolCall({
+							toolCallId: 'tc-update',
+							toolName: 'skills',
+							args: { action: 'update', skillId: 'skill-2' },
+							result: { success: true, saved: { id: 'skill-2', name: 'Two' } },
+						}),
+					],
+				}),
+			],
+		});
+
+		expect(getLatestSkillArtifactResult(root)).toEqual({
+			skillId: 'skill-2',
+			name: 'Two',
+			toolCallId: 'tc-update',
+		});
+	});
+});
+
+describe('getAppArtifactFromToolCall', () => {
+	const app = { id: 'app-1', name: 'Todos', projectId: 'project-1', namespace: 'todos' };
+	const expected = { appId: 'app-1', name: 'Todos', projectId: 'project-1' };
+
+	test.each([
+		['create', { action: 'create', name: 'Todos', namespace: 'todos' }, { app }],
+		['commit', { action: 'commit', appId: 'app-1', label: 'Add list' }, { app, versionId: 'v1' }],
+	])('returns the app of a successful %s', (_label, args, result) => {
+		expect(getAppArtifactFromToolCall(makeToolCall({ toolName: 'apps', args, result }))).toEqual(
+			expected,
+		);
+	});
+
+	test.each([
+		['a get', { action: 'get', appId: 'app-1' }, { app }],
+		['an open', { action: 'open', appId: 'app-1' }, { app, path: 'apps/app-1' }],
+		['an error', { action: 'commit', appId: 'app-1' }, { error: 'There are no staged changes.' }],
+	])('returns undefined for %s', (_label, args, result) => {
+		expect(
+			getAppArtifactFromToolCall(makeToolCall({ toolName: 'apps', args, result })),
+		).toBeUndefined();
+	});
+
+	test('returns undefined for a call that is still running', () => {
+		expect(
+			getAppArtifactFromToolCall(
+				makeToolCall({ toolName: 'apps', args: { action: 'create' }, isLoading: true }),
+			),
+		).toBeUndefined();
+	});
+});
+
+describe('getLatestAppArtifactResult', () => {
+	test('returns the latest app write, also from a child agent', () => {
+		const root = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-create',
+					toolName: 'apps',
+					args: { action: 'create' },
+					result: { app: { id: 'app-1', name: 'One', projectId: 'project-1' } },
+				}),
+			],
+			children: [
+				makeAgentNode({
+					agentId: 'child',
+					toolCalls: [
+						makeToolCall({
+							toolCallId: 'tc-commit',
+							toolName: 'apps',
+							args: { action: 'commit', appId: 'app-2' },
+							result: { app: { id: 'app-2', name: 'Two', projectId: 'project-1' } },
+						}),
+					],
+				}),
+			],
+		});
+
+		expect(getLatestAppArtifactResult(root)).toEqual({
+			appId: 'app-2',
+			name: 'Two',
+			projectId: 'project-1',
+			toolCallId: 'tc-commit',
+		});
 	});
 });

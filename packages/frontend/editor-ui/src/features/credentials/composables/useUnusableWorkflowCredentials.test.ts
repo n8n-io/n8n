@@ -1,7 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import type { FrontendSettings } from '@n8n/api-types';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 
 import type { INodeUi } from '@/Interface';
 
@@ -42,14 +40,8 @@ describe('useUnusableWorkflowCredentials', () => {
 			),
 		});
 
-	const setup = (
-		credentials: IUsedCredential[],
-		{ flagEnabled = true, nodes }: { flagEnabled?: boolean; nodes?: INodeUi[] } = {},
-	) => {
+	const setup = (credentials: IUsedCredential[], { nodes }: { nodes?: INodeUi[] } = {}) => {
 		setActivePinia(createTestingPinia());
-		useSettingsStore().settings = {
-			granularCredentialSharing: flagEnabled,
-		} as FrontendSettings;
 
 		return useUnusableWorkflowCredentials(
 			Object.fromEntries(credentials.map((c) => [c.id, c])),
@@ -99,14 +91,6 @@ describe('useUnusableWorkflowCredentials', () => {
 
 		expect(isBlocked.value).toBe(true);
 		expect(reason.value).toContain('its owner');
-	});
-
-	// Every user-facing change sits behind the flag.
-	it('blocks nothing while the feature flag is off', () => {
-		const { isBlocked, reason } = setup([personallyOwned], { flagEnabled: false });
-
-		expect(isBlocked.value).toBe(false);
-		expect(reason.value).toBe('');
 	});
 
 	// The used-credential metadata only changes on load and on save, so the

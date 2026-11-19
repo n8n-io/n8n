@@ -12,7 +12,7 @@ import {
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings, Tracing } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { strict } from 'node:assert';
 
 import { DurableScheduler } from '../durable-scheduler';

@@ -66,7 +66,9 @@ export async function createPool(
 		if (credentials.sshAuthenticateWith === 'privateKey' && credentials.privateKey) {
 			credentials.privateKey = formatPemBlock(credentials.privateKey);
 		}
-		const sshClient = await this.helpers.getSSHClient(credentials);
+
+		const abortController = new AbortController();
+		const sshClient = await this.helpers.getSSHClient(credentials, abortController);
 
 		// Find a free TCP port
 		const localPort = await new Promise<number>((resolve) => {
@@ -85,9 +87,13 @@ export async function createPool(
 				credentials.port,
 				(err, clientChannel) => {
 					if (err) return reject(err);
+					clientChannel.on('close', () => abortController.abort());
 					resolve(clientChannel);
 				},
 			);
+		}).catch((error) => {
+			abortController.abort();
+			throw error;
 		});
 
 		return mysql2.createPool({

@@ -10,6 +10,8 @@ import {
 	type INodeTypeDescription,
 	type IHttpRequestMethods,
 	NodeConnectionTypes,
+	requestPath,
+	requestUrl,
 } from 'n8n-workflow';
 
 import { oldVersionNotice } from '@utils/descriptions';
@@ -90,10 +92,10 @@ export class GoogleAnalyticsV1 implements INodeType {
 				const { items: dimensions } = await googleApiRequest.call(
 					this,
 					'GET',
-					'',
+					requestPath``,
 					{},
 					{},
-					'https://www.googleapis.com/analytics/v3/metadata/ga/columns',
+					requestUrl`https://www.googleapis.com/analytics/v3/metadata/ga/columns`,
 				);
 
 				for (const dimension of dimensions) {
@@ -130,10 +132,10 @@ export class GoogleAnalyticsV1 implements INodeType {
 				const { items } = await googleApiRequest.call(
 					this,
 					'GET',
-					'',
+					requestPath``,
 					{},
 					{},
-					'https://www.googleapis.com/analytics/v3/management/accounts/~all/webproperties/~all/profiles',
+					requestUrl`https://www.googleapis.com/analytics/v3/management/accounts/~all/webproperties/~all/profiles`,
 				);
 
 				for (const item of items) {
@@ -156,7 +158,7 @@ export class GoogleAnalyticsV1 implements INodeType {
 
 		let method: IHttpRequestMethods = 'GET';
 		const qs: IDataObject = {};
-		let endpoint = '';
+		let endpoint = requestPath``;
 		let responseData;
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -164,7 +166,7 @@ export class GoogleAnalyticsV1 implements INodeType {
 					if (operation === 'get') {
 						//https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet
 						method = 'POST';
-						endpoint = '/v4/reports:batchGet';
+						endpoint = requestPath`/v4/reports:batchGet`;
 						const viewId = this.getNodeParameter('viewId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', 0);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -256,7 +258,7 @@ export class GoogleAnalyticsV1 implements INodeType {
 					if (operation === 'search') {
 						//https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/userActivity/search
 						method = 'POST';
-						endpoint = '/v4/userActivity:search';
+						endpoint = requestPath`/v4/userActivity:search`;
 						const viewId = this.getNodeParameter('viewId', i);
 						const userId = this.getNodeParameter('userId', i);
 						const returnAll = this.getNodeParameter('returnAll', 0);

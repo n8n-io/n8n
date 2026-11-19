@@ -6,6 +6,7 @@ import { computed, ref, useCssModule } from 'vue';
 
 import { ElTag } from 'element-plus';
 import { N8nButton, N8nIcon, N8nLink } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 
 type Theme = 'success' | 'danger' | 'warning' | 'info';
 
@@ -26,6 +27,8 @@ const props = withDefaults(defineProps<Props>(), {
 	buttonTitle: '',
 	details: '',
 });
+
+const i18n = useI18n();
 
 const emit = defineEmits<{
 	click: [];
@@ -83,7 +86,7 @@ const messageClass = computed<Record<Theme, string>>(() => ({
 						<N8nIcon v-if="icon" :icon="icon" :class="iconClass[props.theme]" />
 						<span :class="messageClass[props.theme]"> {{ message }}&nbsp; </span>
 						<N8nLink v-if="details && !expanded" :bold="true" size="small" @click="expand">
-							<span :class="$style.moreDetails">More details</span>
+							<span :class="$style.moreDetails">{{ i18n.baseText('generic.moreDetails') }}</span>
 						</N8nLink>
 					</div>
 					<div v-if="$slots.subtitle" :class="[$style.subtitle, icon && $style.subtitleWithIcon]">

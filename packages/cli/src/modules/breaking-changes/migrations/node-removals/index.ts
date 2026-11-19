@@ -1,8 +1,10 @@
+import { agentToolsV1ToV2 } from './agent-tools-v1-to-v2.migration';
 import { aiTransformToCode } from './ai-transform-to-code.migration';
 import {
 	binaryInputLoaderToDefaultDataLoader,
 	jsonInputLoaderToDefaultDataLoader,
 } from './document-loaders.migration';
+import { editImageToV2 } from './edit-image-v2.migration';
 import { htmlExtractToHtml } from './html-extract-to-html.migration';
 import { icalToConvertToFile } from './ical-to-convert-to-file.migration';
 import { itemListsToTransformNodes } from './item-lists.migration';
@@ -21,9 +23,11 @@ import { writeBinaryFileToReadWriteFile } from './write-binary-file-to-read-writ
 import type { Migration } from '../node-migration';
 
 export const nodeRemovalMigrations: Migration[] = [
+	agentToolsV1ToV2,
 	aiTransformToCode,
 	binaryInputLoaderToDefaultDataLoader,
 	cronToScheduleTrigger,
+	editImageToV2,
 	htmlExtractToHtml,
 	icalToConvertToFile,
 	inMemoryInsertToVectorStore,

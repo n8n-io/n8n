@@ -15,7 +15,7 @@ import type {
 } from '@n8n/decorators';
 import { PolicyCheck } from '@n8n/decorators';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
-import { getActiveCredentialTypes } from 'n8n-workflow';
+import { getRequestedCredentialTypes } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
 
@@ -27,8 +27,6 @@ const NO_VIOLATIONS: PolicyCheckResult = { violations: [] };
 
 /** Nothing to grandfather, for the points that report the full list. */
 const NOTHING_GRANDFATHERED: ReadonlySet<string> = new Set();
-
-const CREDENTIAL_TYPE_PARAMETERS = ['nodeCredentialType', 'genericAuthType'] as const;
 
 /**
  * Enforces credential type availability policies, at every point that handles a workflow and
@@ -144,50 +142,31 @@ export class CredentialTypePolicyCheck implements RegisteredPolicyCheck {
 	}
 
 	/**
-	 * The credential types a workflow's nodes ask for: the keys of each node's `credentials` map,
-	 * a type a node like HTTP Request names by parameter, and the type a credential-only node
-	 * extends. A node that names a type without selecting a credential still counts: the workflow
-	 * is built around a type the policy refuses.
+	 * The credential types a workflow's nodes ask for. See `getRequestedCredentialTypes`, which the
+	 * editor also uses to warn before this check refuses a save.
 	 *
-	 * `extendsCredential` is read on its own because it needs no node description. It is how a
-	 * credential-only node (the VirusTotal node, say) is stored, so a rule on `virusTotalApi`
-	 * reaches that node even when HTTP Request's description is not installed here.
+	 * `extendsCredential` needs no node description. It is how a credential-only node (the
+	 * VirusTotal node, say) is stored, so a rule on `virusTotalApi` reaches that node even when
+	 * HTTP Request's description is not installed here.
 	 */
 	private distinctCredentialTypes(nodes: PolicedWorkflow['nodes']): string[] {
 		// A Set keeps first-encounter order, so violations and audit lines stay deterministic.
 		const types = new Set<string>();
 
 		for (const node of nodes) {
-			for (const type of Object.keys(node.credentials ?? {})) types.add(type);
-			for (const type of this.parameterCredentialTypes(node)) types.add(type);
-			if (node.extendsCredential) types.add(node.extendsCredential);
+			const credentialTypes = getRequestedCredentialTypes(node, () => this.descriptionOf(node));
+			for (const type of credentialTypes) types.add(type);
 		}
 
 		return [...types];
 	}
 
-	/**
-	 * The `nodeCredentialType` / `genericAuthType` values the node actually uses. A value the
-	 * node's display options hide is left over from an earlier choice and does not count. An
-	 * expression, or a node type that isn't installed, can't be resolved here, so it adds nothing.
-	 */
-	private parameterCredentialTypes(node: INode): string[] {
-		const named = CREDENTIAL_TYPE_PARAMETERS.map((name) => node.parameters?.[name]).filter(
-			(value): value is string => typeof value === 'string' && value !== '',
-		);
-		if (named.length === 0) return [];
-
-		let description: INodeTypeDescription | null = null;
+	private descriptionOf(node: INode): INodeTypeDescription | null {
 		try {
-			description = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
+			return this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
 		} catch {
-			// An uninstalled node type has no description; the helper treats that as unresolvable.
+			return null;
 		}
-
-		const active = getActiveCredentialTypes(node, description);
-		if (!active) return [];
-
-		return named.filter((type) => active.has(type));
 	}
 
 	private async checkWorkflow(

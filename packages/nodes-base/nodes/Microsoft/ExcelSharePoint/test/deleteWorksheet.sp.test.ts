@@ -19,7 +19,7 @@ describe('Microsoft Excel (SharePoint), Service Principal worksheet => deleteWor
 	nock('https://graph.microsoft.com')
 		.matchHeader('Authorization', 'Bearer test-access-token')
 		.delete(
-			'/v1.0/sites/contoso.sharepoint.com%2Cg1%2Cg2/drives/b!drive1/items/ITEM123/workbook/worksheets/Sheet1',
+			'/v1.0/sites/contoso.sharepoint.com,g1,g2/drives/b!drive1/items/ITEM123/workbook/worksheets/Sheet1',
 		)
 		.reply(200, {});
 

@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import type { Logger } from '@n8n/backend-common';
 import type { CredentialsEntity, OperationContext, TransactionRunner } from '@n8n/db';
-import type { DataSource, SelectQueryBuilder } from '@n8n/typeorm';
+import { In, type DataSource, type EntityManager, type SelectQueryBuilder } from '@n8n/typeorm';
+import { createRequire } from 'node:module';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';
@@ -9,6 +11,11 @@ import { AgentCredentialDependency } from '../entities/agent-credential-dependen
 import type { AgentHistory } from '../entities/agent-history.entity';
 import { Agent } from '../entities/agent.entity';
 import { AgentCredentialDependencyRepository } from '../repositories/agent-credential-dependency.repository';
+
+// Share the transaction adapter loaded by the built BaseRepository.
+const { TypeOrmTransactionRunner } = createRequire(__filename)(
+	'@n8n/db/dist/services/typeorm-transaction',
+) as typeof import('@n8n/db/dist/services/typeorm-transaction');
 
 const entityManager = mockEntityManager(AgentCredentialDependency);
 const mockDataSource = { manager: entityManager };
@@ -93,8 +100,9 @@ describe('AgentCredentialDependencyRepository', () => {
 			mock<CredentialsEntity>({ id: 'credential-published' }),
 		]);
 
-		await repository.refreshForAgent(agent.id);
+		await repository.refreshForAgent(agent.id, {});
 
+		expect(txRunner.run).toHaveBeenCalledWith({}, expect.any(Function));
 		expect(entityManager.delete).toHaveBeenCalledWith(AgentCredentialDependency, {
 			agentId: agent.id,
 		});
@@ -126,7 +134,7 @@ describe('AgentCredentialDependencyRepository', () => {
 			mock<CredentialsEntity>({ id: 'credential-draft' }),
 		]);
 
-		await repository.refreshForAgent(agent.id);
+		await repository.refreshForAgent(agent.id, {});
 
 		expect(entityManager.insert).toHaveBeenCalledWith(AgentCredentialDependency, [
 			{
@@ -139,7 +147,7 @@ describe('AgentCredentialDependencyRepository', () => {
 	it('leaves the replacement empty when the agent no longer exists', async () => {
 		entityManager.findOne.mockResolvedValue(null);
 
-		await repository.refreshForAgent('deleted-agent');
+		await repository.refreshForAgent('deleted-agent', {});
 
 		expect(entityManager.delete).toHaveBeenCalledWith(AgentCredentialDependency, {
 			agentId: 'deleted-agent',
@@ -157,7 +165,7 @@ describe('AgentCredentialDependencyRepository', () => {
 			mock<CredentialsEntity>({ id: 'credential-draft' }),
 		]);
 
-		await repository.refreshForAgent(agent.id);
+		await repository.refreshForAgent(agent.id, {});
 
 		expect(entityManager.findOne).toHaveBeenCalledWith(Agent, {
 			where: { id: agent.id },
@@ -167,5 +175,43 @@ describe('AgentCredentialDependencyRepository', () => {
 		expect(credentialQuery.getMany.mock.invocationCallOrder[0]).toBeLessThan(
 			entityManager.delete.mock.invocationCallOrder[0],
 		);
+	});
+
+	it('uses the active transaction for refresh, lookup and removal', async () => {
+		const transactionManager = mock<EntityManager>();
+		Object.assign(transactionManager, { connection: entityManager.connection });
+		transactionManager.findOne.mockResolvedValue(null);
+		const dependencies = [{ agentId: 'agent-1', credentialId: 'credential-1' }];
+		transactionManager.find.mockResolvedValue(dependencies);
+		const transaction = vi.fn(
+			async (fn: (manager: EntityManager) => Promise<unknown>) => await fn(transactionManager),
+		);
+		const dataSource = mock<DataSource>();
+		Object.assign(dataSource, {
+			manager: entityManager,
+			transaction,
+		});
+		const runner = new TypeOrmTransactionRunner(dataSource, mock<Logger>());
+		repository = new AgentCredentialDependencyRepository(dataSource, runner);
+
+		await runner.run({}, async (ctx) => {
+			await repository.refreshForAgent('agent-1', ctx);
+			expect(await repository.findByCredentialIds(['credential-1'], ctx)).toEqual(dependencies);
+			await repository.removeForAgent('agent-1', ctx);
+		});
+
+		expect(transaction).toHaveBeenCalledTimes(1);
+		expect(transactionManager.findOne).toHaveBeenCalledWith(Agent, { where: { id: 'agent-1' } });
+		expect(transactionManager.find).toHaveBeenCalledWith(AgentCredentialDependency, {
+			select: ['agentId', 'credentialId'],
+			where: { credentialId: In(['credential-1']) },
+		});
+		expect(transactionManager.delete).toHaveBeenCalledTimes(2);
+		expect(transactionManager.delete).toHaveBeenCalledWith(AgentCredentialDependency, {
+			agentId: 'agent-1',
+		});
+		expect(entityManager.findOne).not.toHaveBeenCalled();
+		expect(entityManager.find).not.toHaveBeenCalled();
+		expect(entityManager.delete).not.toHaveBeenCalled();
 	});
 });

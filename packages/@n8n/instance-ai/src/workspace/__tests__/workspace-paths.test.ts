@@ -68,6 +68,32 @@ describe('normalizeWorkspaceRelativePath', () => {
 			).toThrow('must stay within the workspace root');
 		});
 	});
+
+	describe('with fallbackWorkspaceRoot', () => {
+		const roots = {
+			workspaceRoot: '/home/user/workspace',
+			fallbackWorkspaceRoot: '/home/daytona/workspace',
+		};
+
+		it.each([
+			'/home/user/workspace/src/main.workflow.ts',
+			'/home/daytona/workspace/src/main.workflow.ts',
+		])('strips either root from %s', (path) => {
+			expect(normalizeWorkspaceRelativePath(path, roots)).toBe('src/main.workflow.ts');
+		});
+
+		it('rejects absolute paths outside both roots', () => {
+			expect(() => normalizeWorkspaceRelativePath('/home/daytona/secrets.txt', roots)).toThrow(
+				'must stay within the workspace root',
+			);
+		});
+
+		it('still rejects traversal after stripping the fallback root', () => {
+			expect(() =>
+				normalizeWorkspaceRelativePath('/home/daytona/workspace/../secrets.txt', roots),
+			).toThrow('must stay within the workspace root');
+		});
+	});
 });
 
 describe('joinWorkspacePath', () => {

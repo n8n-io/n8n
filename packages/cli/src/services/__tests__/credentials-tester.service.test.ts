@@ -3,6 +3,7 @@ import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import { RoutingNode, UnrecognizedNodeTypeError } from 'n8n-core';
 import type { ExecuteContext } from 'n8n-core';
+import { ServiceNowBasicApi } from 'n8n-nodes-base/dist/credentials/ServiceNowBasicApi.credentials';
 import type {
 	ICredentialsHelper,
 	ICredentialTestFunctions,
@@ -17,6 +18,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsHelper } from '@/credentials-helper';
+import { ManagedAppUnavailableError } from '@/errors/managed-app-unavailable.error';
 import type { NodeTypes } from '@/node-types';
 import {
 	AUTH_PROBE_ACCEPTED_MESSAGE,
@@ -138,6 +140,22 @@ describe('CredentialsTester', () => {
 			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
 				{} as IWorkflowExecuteAdditionalData,
 			);
+		});
+
+		it('reports that the user must reconnect when the managed app is no longer available', async () => {
+			credentialsHelper.applyDefaultsAndOverwrites.mockRejectedValue(
+				new ManagedAppUnavailableError('Reconnect the credential to continue.'),
+			);
+
+			const result = await credentialsTester.testCredentials('user-id', 'testCredentials', {
+				id: 'credential-id',
+				name: 'credential-name',
+				type: 'oAuth2Api',
+				data: {},
+			});
+
+			expect(result).toEqual({ status: 'Error', message: 'Reconnect the credential to continue.' });
+			expect(mockTestFunction).not.toHaveBeenCalled();
 		});
 
 		it('should redact secrets in error messages', async () => {
@@ -264,6 +282,45 @@ describe('CredentialsTester', () => {
 
 			expect(result).toEqual({ status: 'OK', message: 'fine' });
 			expect(RoutingNode).not.toHaveBeenCalled();
+		});
+
+		it('tests ServiceNow Basic credentials when the ServiceNow node is excluded', async () => {
+			credentialTypes.getByName.mockReturnValue(new ServiceNowBasicApi());
+			credentialTypes.getSupportedNodes.mockReturnValue([]);
+			nodeTypes.getByName.mockImplementation(() => {
+				throw new UnrecognizedNodeTypeError('n8n-nodes-base', 'serviceNow');
+			});
+			const requestLegacy = vi.fn().mockResolvedValue({ statusCode: 403 });
+			Container.set(
+				OutboundHttp,
+				mock<OutboundHttp>({
+					requests: vi.fn().mockReturnValue(mock<HttpRequestClient>({ requestLegacy })),
+				}),
+			);
+			const data = { user: 'test-user', password: 'test-password', subdomain: 'test-instance' };
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(data);
+
+			const result = await credentialsTester.testCredentials('user-id', 'serviceNowBasicApi', {
+				id: 'credential-id',
+				name: 'ServiceNow integration',
+				type: 'serviceNowBasicApi',
+				data,
+			});
+
+			expect(result).toEqual({ status: 'OK', message: 'Connection successful!' });
+			expect(requestLegacy).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({
+					uri: 'https://test-instance.service-now.com/api/now/table/sys_user',
+					followRedirect: false,
+					qs: { sysparm_limit: '1', sysparm_fields: 'sys_id' },
+					auth: { user: data.user, pass: data.password },
+					json: true,
+					simple: false,
+					resolveWithFullResponse: true,
+				}),
+				expect.any(Object),
+			);
+			expect(nodeTypes.getByName).not.toHaveBeenCalled();
 		});
 
 		it('should not redact secrets with value shorter than 3 characters', async () => {

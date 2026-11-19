@@ -7,6 +7,8 @@ import {
 	handleErrorsGetPost,
 	handleErrorsUpdatePost,
 	handlePagination,
+	localPostsPresend,
+	postNamePresend,
 } from './GenericFunctions';
 
 export const postOperations: INodeProperties[] = [
@@ -24,10 +26,9 @@ export const postOperations: INodeProperties[] = [
 				action: 'Create post',
 				description: 'Create a new post on Google Business Profile',
 				routing: {
-					send: { preSend: [handleDatesPresend] },
+					send: { preSend: [localPostsPresend, handleDatesPresend] },
 					request: {
 						method: 'POST',
-						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/localPosts',
 					},
 				},
 			},
@@ -37,9 +38,9 @@ export const postOperations: INodeProperties[] = [
 				action: 'Delete post',
 				description: 'Delete an existing post',
 				routing: {
+					send: { preSend: [postNamePresend] },
 					request: {
 						method: 'DELETE',
-						url: '=/{{$parameter["post"]}}',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -53,9 +54,9 @@ export const postOperations: INodeProperties[] = [
 				action: 'Get post',
 				description: 'Retrieve details of a specific post',
 				routing: {
+					send: { preSend: [postNamePresend] },
 					request: {
 						method: 'GET',
-						url: '=/{{$parameter["post"]}}',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -69,11 +70,10 @@ export const postOperations: INodeProperties[] = [
 				action: 'Get many posts',
 				description: 'Retrieve multiple posts',
 				routing: {
-					send: { paginate: true },
+					send: { paginate: true, preSend: [localPostsPresend] },
 					operations: { pagination: handlePagination },
 					request: {
 						method: 'GET',
-						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/localPosts',
 						qs: {
 							pageSize:
 								'={{ $parameter["limit"] ? ($parameter["limit"] < 100 ? $parameter["limit"] : 100) : 100 }}', // Google allows maximum 100 results per page
@@ -88,11 +88,10 @@ export const postOperations: INodeProperties[] = [
 				description: 'Update an existing post',
 				routing: {
 					send: {
-						preSend: [handleDatesPresend, addUpdateMaskPresend],
+						preSend: [postNamePresend, handleDatesPresend, addUpdateMaskPresend],
 					},
 					request: {
 						method: 'PATCH',
-						url: '=/{{$parameter["post"]}}',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {

@@ -48,7 +48,6 @@ describe('OAuth access-token signing', () => {
 			iat: now,
 			exp: now + 60,
 			scope: '',
-			meta: { isOAuth: true },
 		};
 	};
 
@@ -80,7 +79,6 @@ describe('OAuth access-token signing', () => {
 			iat: expect.any(Number),
 			exp: payload.iat! + OAUTH_ACCESS_TOKEN_TTL_SECONDS,
 			scope: 'tool:read',
-			meta: { isOAuth: true },
 		});
 	});
 

@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { Publisher, PushProxy } from '@n8n/backend-services';
 import { testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -21,8 +22,7 @@ import {
 	notionMockServer,
 	slackExtendingMockServer,
 } from '@/modules/mcp-registry/registry/mock-servers';
-import type { Push } from '@/push';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 const OVERLAPPING_RUNS = 4;
 const SEEDED_AT = new Date('2026-01-01T00:00:00.000Z');
@@ -38,7 +38,7 @@ const bySlug = (rows: StoredRow[]): StoredRow[] =>
 describe('McpRegistryRefreshTask', () => {
 	const signal = new AbortController().signal;
 	const apiClient = mock<McpRegistryApiClient>();
-	const push = mock<Push>();
+	const push = mock<PushProxy>();
 	const publisher = mock<Publisher>();
 	let repository: McpRegistryServerRepository;
 	let task: McpRegistryRefreshTask;
@@ -56,6 +56,7 @@ describe('McpRegistryRefreshTask', () => {
 			mock<LoadNodesAndCredentials>({ loaders: {} }),
 			push,
 			publisher,
+			mock<AiGatewayService>({ isEnabled: () => false }),
 		);
 		task = new McpRegistryRefreshTask(service);
 	});

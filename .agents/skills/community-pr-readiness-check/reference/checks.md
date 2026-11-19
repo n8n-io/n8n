@@ -76,38 +76,35 @@ The matching regex below is a cached extraction of those rules. If the conventio
 For all types except `revert`:
 
 ```
-^(feat|fix|perf|test|docs|refactor|build|ci|chore)(\([a-zA-Z0-9 ]+( Node)?\))?!?: [A-Z].+[^.]$
+^(feat|fix|perf|test|docs|refactor|build|ci|chore)(\((API|core|editor|benchmark|ai-builder|engine|[A-Za-z0-9 .]+ Node)(, (API|core|editor|benchmark|ai-builder|engine|[A-Za-z0-9 .]+ Node))*\))?!?: [A-Z].+[^.]$
 ```
 
 For `revert` titles, the summary is the original commit header (which starts with a lowercase type), so capitalization is not enforced:
 
 ```
-^revert(\([a-zA-Z0-9 ]+( Node)?\))?!?: .+[^.]$
+^revert(\((API|core|editor|benchmark|ai-builder|engine|[A-Za-z0-9 .]+ Node)(, (API|core|editor|benchmark|ai-builder|engine|[A-Za-z0-9 .]+ Node))*\))?!?: .+[^.]$
 ```
 
 Quick recap of what the regex enforces (full detail in the conventions file):
 
 - Type must be one of: `feat fix perf test docs refactor build ci chore revert`.
-- Scope is optional, in parentheses; characters limited to `[a-zA-Z0-9 ]` — hyphens like `(nodes-base)` fail.
+- Scope is optional, in parentheses. Each scope is one of `API`, `core`, `editor`, `benchmark`, `ai-builder`, `engine`, or a node display name followed by ` Node` (for example `(Slack Node)`). Separate several scopes with `, `. Package names such as `(nodes-base)` fail.
 - Breaking changes: `!` before the colon.
 - Summary: starts with capital letter (lowercase allowed for `revert:`), no trailing period.
 - No Linear ticket IDs in the title (e.g. `N8N-1234`).
 
 ### C. PR description completeness
 
-The PR template at `.github/pull_request_template.md` is the **source of truth** for what a complete PR description looks like. Read it at the start of the check — sections and checklist items shouldn't be hardcoded here.
+The PR template at `.github/pull_request_template.md` is the **source of truth** for what a complete PR description looks like. Read it at the start of the check — sections shouldn't be hardcoded here.
 
 Procedure:
 
-1. Read the template file and extract:
-   - Every `## Heading` (the expected section list).
-   - Every `- [ ]` checkbox item under the `## Review / Merge checklist` heading.
+1. Read the template file and extract every `## Heading` (the expected section list).
 2. For each `## Heading` from the template, check the PR body contains a heading with the same text. Treat headings case-insensitively but require the exact text — `## Related Issue` does **not** satisfy `## Related Linear tickets, Github issues, and Community forum posts`.
 3. For the `## Summary` heading specifically, require non-empty content below it (the HTML comment placeholder doesn't count as content).
-4. For the checklist, require every extracted checkbox item to appear in the PR body. Match by the item text (after stripping `- [ ]` / `- [x]`); the boxes can be checked or unchecked — community PRs commonly leave them unchecked, which is fine.
-5. For the "Related tickets" section: if the heading is present, accept any of these as content: a URL (`http`), a GitHub closing keyword (`closes #N`, `fixes #N`, `resolves #N`), or empty (only the HTML comment). Only flag if the heading is missing entirely.
+4. For the "Related tickets" section: if the heading is present, accept any of these as content: a URL (`http`), a GitHub closing keyword (`closes #N`, `fixes #N`, `resolves #N`), or empty (only the HTML comment). Only flag if the heading is missing entirely.
 
-When the check fails, report **which** section or checkbox item is missing — that's what the contributor message includes.
+When the check fails, report **which** section is missing — that's what the contributor message includes.
 
 ### D. Tests
 

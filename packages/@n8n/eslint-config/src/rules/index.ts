@@ -19,19 +19,23 @@ import { NoErrorInstanceInToThrowRule } from './no-error-instance-in-to-throw.js
 import { NoAwsCredentialDiscoveryImportsRule } from './no-aws-credential-discovery-imports.js';
 import { NoUncentralizedHttpRule } from './no-uncentralized-http.js';
 import { NoApplicationErrorRule } from './no-application-error.js';
+import { NoBaseErrorImportFromWorkflowRule } from './no-base-error-import-from-workflow.js';
 import { NoDynamicRegExpRule } from './no-dynamic-regexp.js';
 import { ProjectOwnedEntityTransferRule } from './project-owned-entity-transfer.js';
-import { NoRekaUiPaginationRule } from './no-reka-ui-pagination.js';
 import { NoRestrictedSleepDefinitionRule } from './no-restricted-sleep-definition.js';
 import { NoRestrictedSleepImportRule } from './no-restricted-sleep-import.js';
 import { NoRepositoryInPublicApiHandlerRule } from './no-repository-in-public-api-handler.js';
 import { NoUnsealedWorkflowEntityWriteRule } from './no-unsealed-workflow-entity-write.js';
 import { NoUnsealedCredentialsEntityWriteRule } from './no-unsealed-credentials-entity-write.js';
 import { RequireEscapedQueryValuesRule } from './require-escaped-query-values.js';
+import { RequireEncodedPathSegmentsRule } from './require-encoded-path-segments.js';
+import { RequireDisableReasonRule } from './require-disable-reason.js';
+import { RequireRequestTargetRule } from './require-request-target.js';
 import { NoOnLeaderTakeoverRule } from './no-on-leader-takeover.js';
 import { NoEncryptionGuardrailDisableRule } from './no-encryption-guardrail-disable.js';
 import { NoRawEnumRule } from './no-raw-enum.js';
 import { NoStaticRuntimeImportRule } from './no-static-runtime-import.js';
+import { RequireMacroVariableNameRule } from './require-macro-variable-name.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -54,17 +58,21 @@ export const rules = {
 	'no-aws-credential-discovery-imports': NoAwsCredentialDiscoveryImportsRule,
 	'no-uncentralized-http': NoUncentralizedHttpRule,
 	'no-application-error': NoApplicationErrorRule,
+	'no-base-error-import-from-workflow': NoBaseErrorImportFromWorkflowRule,
 	'no-dynamic-regexp': NoDynamicRegExpRule,
 	'project-owned-entity-transfer': ProjectOwnedEntityTransferRule,
-	'no-reka-ui-pagination': NoRekaUiPaginationRule,
 	'no-restricted-sleep-definition': NoRestrictedSleepDefinitionRule,
 	'no-restricted-sleep-import': NoRestrictedSleepImportRule,
 	'no-repository-in-public-api-handler': NoRepositoryInPublicApiHandlerRule,
 	'no-unsealed-workflow-entity-write': NoUnsealedWorkflowEntityWriteRule,
 	'no-unsealed-credentials-entity-write': NoUnsealedCredentialsEntityWriteRule,
 	'require-escaped-query-values': RequireEscapedQueryValuesRule,
+	'require-encoded-path-segments': RequireEncodedPathSegmentsRule,
+	'require-disable-reason': RequireDisableReasonRule,
+	'require-request-target': RequireRequestTargetRule,
 	'no-on-leader-takeover': NoOnLeaderTakeoverRule,
 	'no-encryption-guardrail-disable': NoEncryptionGuardrailDisableRule,
 	'no-raw-enum': NoRawEnumRule,
 	'no-static-runtime-import': NoStaticRuntimeImportRule,
+	'require-macro-variable-name': RequireMacroVariableNameRule,
 } satisfies Record<string, AnyRuleModule>;

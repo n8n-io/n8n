@@ -1,0 +1,56 @@
+{
+	"name": "Data Table node",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "manual-trigger",
+			"name": "Manual Trigger"
+		},
+		{
+			"parameters": {
+				"resource": "row",
+				"operation": "insert",
+				"dataTableId": {
+					"__rl": true,
+					"value": "PLACEHOLDER_DATA_TABLE_ID",
+					"mode": "id"
+				},
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": { "name": "Ada", "age": 36, "joined": "2026-10-27T10:00:00.000Z" },
+					"schema": []
+				}
+			},
+			"type": "n8n-nodes-base.dataTable",
+			"typeVersion": 1.1,
+			"position": [300, 0],
+			"id": "insert-row",
+			"name": "Insert row"
+		},
+		{
+			"parameters": {
+				"resource": "row",
+				"operation": "get",
+				"dataTableId": {
+					"__rl": true,
+					"value": "PLACEHOLDER_DATA_TABLE_ID",
+					"mode": "id"
+				},
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.dataTable",
+			"typeVersion": 1.1,
+			"position": [600, 0],
+			"id": "get-rows",
+			"name": "Get rows"
+		}
+	],
+	"connections": {
+		"Manual Trigger": { "main": [[{ "node": "Insert row", "type": "main", "index": 0 }]] },
+		"Insert row": { "main": [[{ "node": "Get rows", "type": "main", "index": 0 }]] }
+	},
+	"active": false
+}

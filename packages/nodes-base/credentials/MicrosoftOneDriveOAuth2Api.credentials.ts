@@ -8,7 +8,7 @@ export class MicrosoftOneDriveOAuth2Api implements ICredentialType {
 
 	extends = ['microsoftOAuth2Api'];
 
-	displayName = 'Microsoft Drive OAuth2 API';
+	displayName = 'Microsoft OneDrive OAuth2 API';
 
 	documentationUrl = 'microsoft';
 

@@ -2,10 +2,13 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHttpRequestMethods,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
 import { sleep } from '@n8n/utils/sleep';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 import type {
 	VideoGenerationResponse,
@@ -17,34 +20,28 @@ type RequestParameters = {
 	headers?: IDataObject;
 	body?: IDataObject;
 	qs?: IDataObject;
-	option?: IDataObject;
 };
 
 export async function apiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	parameters?: RequestParameters,
 ) {
-	const { body, qs, option, headers } = parameters ?? {};
+	const { body, qs, headers } = parameters ?? {};
 
 	const credentials = await this.getCredentials('minimaxApi');
 	const versionedBaseUrl = (credentials.url as string) ?? 'https://api.minimax.io/v1';
 	const baseUrl = versionedBaseUrl.replace(/\/v1\/?$/, '');
-	const url = `${baseUrl}${endpoint}`;
 
-	const options = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		headers: headers ?? {},
 		method,
 		body,
 		qs,
-		url,
+		url: requestUrl`${baseUrl}${endpoint}`,
 		json: true,
 	};
-
-	if (option && Object.keys(option).length !== 0) {
-		Object.assign(options, option);
-	}
 
 	return await this.helpers.httpRequestWithAuthentication.call(this, 'minimaxApi', options);
 }
@@ -60,7 +57,7 @@ export async function pollVideoTask(
 	pollIntervalMs: number = DEFAULT_POLL_INTERVAL_MS,
 ): Promise<{ fileId: string; status: string }> {
 	for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
-		const response = await apiRequest.call(this, 'GET', '/v1/query/video_generation', {
+		const response = await apiRequest.call(this, 'GET', requestPath`/v1/query/video_generation`, {
 			qs: { task_id: taskId },
 		});
 
@@ -106,7 +103,7 @@ export async function pollVideoTaskV2(
 		const response = (await apiRequest.call(
 			this,
 			'GET',
-			`/v2/query/video_generation/${taskId}`,
+			requestPath`/v2/query/video_generation/${taskId}`,
 		)) as VideoTaskV2QueryResponse;
 		const task = response.task;
 		const status = task?.status;
@@ -142,7 +139,7 @@ export async function getVideoDownloadUrl(
 	this: IExecuteFunctions,
 	fileId: string,
 ): Promise<string> {
-	const response = await apiRequest.call(this, 'GET', '/v1/files/retrieve', {
+	const response = await apiRequest.call(this, 'GET', requestPath`/v1/files/retrieve`, {
 		qs: { file_id: fileId },
 	});
 
@@ -163,7 +160,7 @@ export async function generateVideo(
 	body: IDataObject,
 ): Promise<{ videoUrl: string; taskId: string; fileId?: string }> {
 	if (apiVersion === 'v2') {
-		const response = (await apiRequest.call(this, 'POST', '/v2/video_generation', {
+		const response = (await apiRequest.call(this, 'POST', requestPath`/v2/video_generation`, {
 			body,
 		})) as VideoGenerationV2Response;
 		const taskId = response.task_id;
@@ -178,7 +175,7 @@ export async function generateVideo(
 		return { videoUrl, taskId };
 	}
 
-	const response = (await apiRequest.call(this, 'POST', '/v1/video_generation', {
+	const response = (await apiRequest.call(this, 'POST', requestPath`/v1/video_generation`, {
 		body,
 	})) as VideoGenerationResponse;
 	if (response.base_resp?.status_code !== 0) {

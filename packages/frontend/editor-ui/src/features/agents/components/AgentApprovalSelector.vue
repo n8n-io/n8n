@@ -23,15 +23,14 @@ const props = defineProps<{
 	modelValue?: AgentApproval;
 	options: ApprovalEntryOption[];
 	label: string;
-	hint: string;
+	hint?: string;
 	placeholder: string;
 	testIdPrefix: string;
 	loading?: boolean;
 	/** Already-translated message shown below the tag list. */
 	error?: string | null;
-	/** Hide the "Disabled" option — for callers that wrap the selector in a
-	 * toggle that already handles enable/disable. */
-	hideDisabledOption?: boolean;
+	/** Show only the entry picker when a separate toggle controls approval. */
+	selectionOnly?: boolean;
 	disabled?: boolean;
 }>();
 
@@ -46,17 +45,20 @@ const i18n = useI18n();
 const approvalMode = ref<ApprovalMode>('disabled');
 const selectedEntries = ref<string[]>([]);
 
-const modeOptions = computed(() => {
-	const all = [
-		{ label: i18n.baseText('agents.toolConfig.mcpApproval.disabled'), value: 'disabled' as const },
-		{ label: i18n.baseText('agents.toolConfig.mcpApproval.askAll'), value: 'global' as const },
-		{
-			label: i18n.baseText('agents.toolConfig.mcpApproval.askSelected'),
-			value: 'selected' as const,
-		},
-	];
-	return props.hideDisabledOption ? all.filter((option) => option.value !== 'disabled') : all;
-});
+const modeOptions = computed(() => [
+	{ label: i18n.baseText('agents.toolConfig.mcpApproval.disabled'), value: 'disabled' as const },
+	{ label: i18n.baseText('agents.toolConfig.mcpApproval.askAll'), value: 'global' as const },
+	{
+		label: i18n.baseText('agents.toolConfig.mcpApproval.askSelected'),
+		value: 'selected' as const,
+	},
+]);
+
+const displayedEntries = computed(() =>
+	props.selectionOnly && approvalMode.value === 'global'
+		? props.options.map((option) => option.value)
+		: selectedEntries.value,
+);
 
 const isValid = computed(
 	() => approvalMode.value !== 'selected' || selectedEntries.value.length > 0,
@@ -130,18 +132,21 @@ function handleModeUpdate(value: unknown) {
 
 function handleSelectedUpdate(value: unknown) {
 	selectedEntries.value = toStringArray(value);
+	if (props.selectionOnly) approvalMode.value = 'selected';
 	emitApproval();
 }
 </script>
 
 <template>
-	<div :class="$style.approvalRow">
+	<div :class="[$style.approvalRow, { [$style.selectionOnly]: props.selectionOnly }]">
 		<div :class="$style.approvalText">
-			<N8nText size="small" :bold="true">{{ props.label }}</N8nText>
-			<N8nText size="small" color="text-light">{{ props.hint }}</N8nText>
+			<N8nText tag="label" :for="`${props.testIdPrefix}-tools`" size="small" :bold="true">
+				{{ props.label }}
+			</N8nText>
+			<N8nText v-if="props.hint" size="small" color="text-light">{{ props.hint }}</N8nText>
 		</div>
 
-		<div :class="$style.controls">
+		<div v-if="!props.selectionOnly" :class="$style.controls">
 			<N8nSelect
 				:model-value="approvalMode"
 				:disabled="props.disabled"
@@ -161,12 +166,15 @@ function handleSelectedUpdate(value: unknown) {
 		</div>
 
 		<N8nSelect
-			v-if="approvalMode === 'selected'"
-			:model-value="selectedEntries"
+			v-if="props.selectionOnly || approvalMode === 'selected'"
+			:id="`${props.testIdPrefix}-tools`"
+			:model-value="displayedEntries"
 			multiple
 			filterable
 			:disabled="props.disabled"
-			size="small"
+			:size="props.selectionOnly ? 'medium' : 'small'"
+			:teleported="!props.selectionOnly"
+			:aria-label="props.label"
 			:loading="props.loading"
 			:placeholder="props.placeholder"
 			:data-test-id="`${props.testIdPrefix}-tools`"
@@ -200,6 +208,11 @@ function handleSelectedUpdate(value: unknown) {
 	flex-direction: column;
 	gap: var(--spacing--5xs);
 	min-width: 0;
+}
+
+.selectionOnly {
+	padding-top: 0;
+	margin-right: 0;
 }
 
 .controls {

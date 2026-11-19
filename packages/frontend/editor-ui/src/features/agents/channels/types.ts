@@ -28,6 +28,8 @@ export interface AgentChannelViewExpose {
 	saveLabel?: string;
 	/** Runs after a successful save, before the modal closes. Must not throw. */
 	afterSave?: () => Promise<void>;
+	/** False when the channel can be saved without a credential. Defaults to true. */
+	credentialRequired?: boolean;
 	/** Keeps the modal open after connecting. The view emits `done` to close it. */
 	keepOpenAfterConnect?: boolean;
 	/**
@@ -49,15 +51,32 @@ export interface AgentChannelRuntimeContext {
 	ensureAgentPersisted?: () => Promise<void>;
 }
 
+export interface AgentChannelRestart {
+	/** The channel credential for the new setup, or '' to start without one. */
+	credentialId: string;
+	/**
+	 * The sign-in for the new setup, for a platform whose setup signs in first
+	 * (for Teams, the Microsoft account that creates the app and the bot). It is
+	 * set when the user restarts by changing the sign-in. The runtime applies it
+	 * only after the channel is removed, so a cancelled restart keeps the old
+	 * sign-in. `credentialId` is the bot's own credential.
+	 */
+	signInCredentialId?: string;
+}
+
 export interface AgentChannelRuntime {
 	load: () => Promise<void>;
 	loading: Readonly<Ref<boolean>>;
+	/** Forgets what an earlier setup left here, so the next one starts from the first step. */
+	reset?: (restart: AgentChannelRestart) => void;
 }
 
 export interface AgentChannelViewProps {
 	mode: AgentChannelMode;
 	integration: ChatIntegrationDescriptor;
 	modelValue: string;
+	/** The credential the saved channel runs on, or '' while there is none. */
+	savedCredentialId?: string;
 	credentials: AgentCredentialOption[];
 	credentialPermissions: PermissionsRecord['credential'];
 	credentialsLoading: boolean;
@@ -85,12 +104,17 @@ export interface AgentChannelViewProps {
 }
 
 export interface AgentChannelPresentationContext {
-	text: (key: BaseTextKey) => string;
+	text: (key: BaseTextKey, interpolate?: Record<string, string>) => string;
 }
 
 export interface AgentChannelWarningPresentation {
 	title: string;
 	message: string | VNode;
+}
+
+export interface AgentChannelDisconnectWarningContext extends AgentChannelPresentationContext {
+	/** The user removes the channel to set it up again. */
+	restart: boolean;
 }
 
 export interface AgentChannelDisconnectContext {
@@ -112,6 +136,8 @@ export interface AgentChannelPlatform {
 		runtime: AgentChannelRuntime,
 	) => AgentChannelConnectAction;
 	getConnectedDescription?: (context: AgentChannelPresentationContext) => string;
+	/** What the channel does and what setup needs, shown under its name in the channel list. */
+	getListDescription?: (context: AgentChannelPresentationContext) => string;
 	headerContent?: {
 		setupModal?: Component;
 		/** The Assistant's setup card. Separate from the modal, so each platform opts in. */
@@ -126,6 +152,6 @@ export interface AgentChannelPlatform {
 	) => boolean;
 	presentDisconnectWarning?: (
 		warning: AgentIntegrationDisconnectWarning,
-		context: AgentChannelPresentationContext,
+		context: AgentChannelDisconnectWarningContext,
 	) => AgentChannelWarningPresentation | null;
 }

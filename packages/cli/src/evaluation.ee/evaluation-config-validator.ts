@@ -15,7 +15,7 @@ import {
 } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@n8n/backend-services';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { DataTableRepository } from '@n8n/backend-module-data-table';
 
 import { LlmJudgeProviderRegistry } from './llm-judge-provider-registry';
 

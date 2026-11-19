@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, IBinaryData } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 vi.mock('../transport', () => ({
@@ -86,7 +87,7 @@ describe('AlicloudModelStudio Operations', () => {
 			});
 			expect(mockApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/api/v1/services/aigc/multimodal-generation/generation',
+				requestPath`/api/v1/services/aigc/multimodal-generation/generation`,
 				expect.objectContaining({
 					body: expect.objectContaining({ model: 'qwen3.5-flash' }),
 				}),
@@ -119,7 +120,7 @@ describe('AlicloudModelStudio Operations', () => {
 
 			expect(mockApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/api/v1/services/aigc/text-generation/generation',
+				requestPath`/api/v1/services/aigc/text-generation/generation`,
 				{
 					body: expect.objectContaining({
 						model: 'qwen-coder-turbo',
@@ -130,6 +131,37 @@ describe('AlicloudModelStudio Operations', () => {
 				},
 			);
 			expect(result.json).toEqual({ content: 'Hi there!' });
+		});
+
+		it.each([
+			['deepseek-v4-pro', '/api/v1/services/aigc/text-generation/generation'],
+			['deepseek-v4-pro-0813', '/api/v1/services/aigc/text-generation/generation'],
+			['deepseek-v4-flash-0731', '/api/v1/services/aigc/text-generation/generation'],
+			['deepseek-v4.1-flash', '/api/v1/services/aigc/multimodal-generation/generation'],
+		])('should route %s to %s', async (modelId, endpoint) => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(param: string, _index: number, fallback?: any) => {
+					const params: Record<string, unknown> = {
+						modelId,
+						messages: { messageValues: [{ role: 'user', content: 'Hello' }] },
+						options: {},
+						simplify: true,
+					};
+					return params[param] ?? fallback;
+				},
+			);
+			mockApiRequest.mockResolvedValue({
+				output: { text: 'Hi there!' },
+				usage: { input_tokens: 5, output_tokens: 3 },
+			});
+
+			await textMessageExecute.call(mockExecuteFunctions, 0);
+
+			expect(mockApiRequest).toHaveBeenCalledWith(
+				'POST',
+				expect.objectContaining({ value: endpoint }),
+				expect.anything(),
+			);
 		});
 
 		it('should use multimodal endpoint and convert string content to array format for multimodal models', async () => {
@@ -160,7 +192,7 @@ describe('AlicloudModelStudio Operations', () => {
 
 			expect(mockApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/api/v1/services/aigc/multimodal-generation/generation',
+				requestPath`/api/v1/services/aigc/multimodal-generation/generation`,
 				{
 					body: expect.objectContaining({
 						model: 'qwen3.5-flash',
@@ -270,7 +302,7 @@ describe('AlicloudModelStudio Operations', () => {
 
 			expect(mockApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/api/v1/services/aigc/multimodal-generation/generation',
+				requestPath`/api/v1/services/aigc/multimodal-generation/generation`,
 				{
 					body: expect.objectContaining({
 						model: 'qwen3-vl-flash',
@@ -361,7 +393,7 @@ describe('AlicloudModelStudio Operations', () => {
 
 			expect(mockApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/api/v1/services/aigc/multimodal-generation/generation',
+				requestPath`/api/v1/services/aigc/multimodal-generation/generation`,
 				{
 					body: expect.objectContaining({
 						model: 'z-image-turbo',
@@ -476,7 +508,7 @@ describe('AlicloudModelStudio Operations', () => {
 
 			expect(mockApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/api/v1/services/aigc/image-generation/generation',
+				requestPath`/api/v1/services/aigc/image-generation/generation`,
 				expect.objectContaining({
 					headers: { 'X-DashScope-Async': 'enable' },
 					body: expect.objectContaining({
@@ -551,7 +583,7 @@ describe('AlicloudModelStudio Operations', () => {
 			);
 			expect(mockApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/api/v1/services/aigc/image-generation/generation',
+				requestPath`/api/v1/services/aigc/image-generation/generation`,
 				expect.objectContaining({
 					headers: { 'X-DashScope-Async': 'enable' },
 					body: expect.objectContaining({
@@ -612,7 +644,7 @@ describe('AlicloudModelStudio Operations', () => {
 
 			expect(mockApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/api/v1/services/aigc/text2image/image-synthesis',
+				requestPath`/api/v1/services/aigc/text2image/image-synthesis`,
 				expect.objectContaining({
 					headers: { 'X-DashScope-Async': 'enable' },
 					body: {
@@ -661,7 +693,7 @@ describe('AlicloudModelStudio Operations', () => {
 
 			expect(mockApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/api/v1/services/aigc/text2image/image-synthesis',
+				requestPath`/api/v1/services/aigc/text2image/image-synthesis`,
 				expect.objectContaining({
 					body: expect.objectContaining({
 						model: 'wan2.2-t2i-flash',
@@ -699,7 +731,7 @@ describe('AlicloudModelStudio Operations', () => {
 
 			expect(mockApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/api/v1/services/aigc/text2image/image-synthesis',
+				requestPath`/api/v1/services/aigc/text2image/image-synthesis`,
 				expect.objectContaining({
 					body: expect.objectContaining({ model: 'wanx2.1-t2i-plus' }),
 				}),
@@ -742,7 +774,7 @@ describe('AlicloudModelStudio Operations', () => {
 
 			expect(mockApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/api/v1/services/aigc/image2image/image-synthesis',
+				requestPath`/api/v1/services/aigc/image2image/image-synthesis`,
 				expect.objectContaining({
 					headers: { 'X-DashScope-Async': 'enable' },
 					body: {
@@ -795,7 +827,7 @@ describe('AlicloudModelStudio Operations', () => {
 
 			expect(mockApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/api/v1/services/aigc/image-generation/generation',
+				requestPath`/api/v1/services/aigc/image-generation/generation`,
 				expect.objectContaining({
 					body: expect.objectContaining({
 						model: 'wan2.7-image',
@@ -903,7 +935,7 @@ describe('AlicloudModelStudio Operations', () => {
 
 			expect(mockApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/api/v1/services/aigc/video-generation/video-synthesis',
+				requestPath`/api/v1/services/aigc/video-generation/video-synthesis`,
 				expect.objectContaining({
 					headers: { 'X-DashScope-Async': 'enable' },
 					body: expect.objectContaining({
@@ -1004,7 +1036,7 @@ describe('AlicloudModelStudio Operations', () => {
 
 			expect(mockApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/api/v1/services/aigc/video-generation/video-synthesis',
+				requestPath`/api/v1/services/aigc/video-generation/video-synthesis`,
 				expect.objectContaining({
 					body: expect.objectContaining({
 						model: 'wan2.6-i2v-flash',

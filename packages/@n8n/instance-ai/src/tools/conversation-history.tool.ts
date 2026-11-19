@@ -1,5 +1,5 @@
 import { Tool } from '@n8n/agents';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
@@ -27,7 +27,7 @@ const searchAction = z.object({
 		.max(200)
 		.optional()
 		.describe(
-			"Case-insensitive text matched against conversation titles, the user's messages, and answers the user gave to workflow_builder_ask_user questions. Matched as one exact phrase — prefer fewer, short, distinctive terms, and run separate searches for separate concepts. Omit to list the most recent conversations instead.",
+			"Case-insensitive text matched against conversation titles, the user's messages, and answers the user gave to ask_user questions. Matched as one exact phrase — prefer fewer, short, distinctive terms, and run separate searches for separate concepts. Omit to list the most recent conversations instead.",
 		),
 	limit: z
 		.number()

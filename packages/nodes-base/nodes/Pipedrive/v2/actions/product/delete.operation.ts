@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { pipedriveApiRequest } from '../../transport';
@@ -36,7 +37,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		try {
 			const productId = this.getNodeParameter('productId', i) as number;
 
-			await pipedriveApiRequest.call(this, 'DELETE', `/products/${productId}`, {});
+			await pipedriveApiRequest.call(this, 'DELETE', requestPath`/products/${productId}`, {});
 
 			const executionData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray({ success: true } as IDataObject),

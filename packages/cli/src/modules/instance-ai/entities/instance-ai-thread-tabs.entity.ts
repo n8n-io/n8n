@@ -1,4 +1,4 @@
-import type { InstanceAiThreadTabsState } from '@n8n/api-types';
+import type { AssistantThreadTabsState } from '@n8n/api-types';
 import { JsonColumn, User, WithTimestamps } from '@n8n/db';
 import { Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
@@ -31,5 +31,5 @@ export class InstanceAiThreadTabs extends WithTimestamps {
 	userId: string;
 
 	@JsonColumn()
-	state: InstanceAiThreadTabsState;
+	state: AssistantThreadTabsState;
 }

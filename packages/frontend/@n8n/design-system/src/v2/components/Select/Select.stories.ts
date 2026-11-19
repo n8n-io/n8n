@@ -5,7 +5,9 @@ import { defineComponent, ref, computed } from 'vue';
 
 import N8nButton from '@n8n/design-system/components/N8nButton';
 import N8nDialog from '@n8n/design-system/components/N8nDialog/Dialog.vue';
+import N8nDialogBody from '@n8n/design-system/components/N8nDialog/DialogBody.vue';
 import N8nDialogClose from '@n8n/design-system/components/N8nDialog/DialogClose.vue';
+import N8nDialogDescription from '@n8n/design-system/components/N8nDialog/DialogDescription.vue';
 import N8nDialogFooter from '@n8n/design-system/components/N8nDialog/DialogFooter.vue';
 import N8nInput from '@n8n/design-system/components/N8nInput';
 import N8nInputLabel from '@n8n/design-system/components/N8nInputLabel';
@@ -909,6 +911,8 @@ const SelectFooterDemo = defineComponent({
 			onUpdate: action('update:modelValue'),
 			Select,
 			N8nDialog,
+			N8nDialogBody,
+			N8nDialogDescription,
 			N8nDialogFooter,
 			N8nDialogClose,
 			N8nButton,
@@ -936,9 +940,13 @@ const SelectFooterDemo = defineComponent({
 				:is="N8nDialog"
 				v-model:open="createOpen"
 				header="Add custom role"
-				description="This action item uses onSelect with preventDefault so it never becomes the Select value."
 				size="small"
 			>
+				<component :is="N8nDialogBody">
+					<component :is="N8nDialogDescription">
+						This action item uses onSelect with preventDefault so it never becomes the Select value.
+					</component>
+				</component>
 				<component :is="N8nDialogFooter">
 					<component :is="N8nDialogClose" as-child>
 						<component :is="N8nButton" label="Cancel" variant="outline" />

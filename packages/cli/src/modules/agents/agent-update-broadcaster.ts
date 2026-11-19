@@ -1,12 +1,9 @@
 import type { PushPayload } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { OnPubSubEvent } from '@n8n/decorators';
+import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-
-import { Push } from '@/push';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher, PushProxy } from '@n8n/backend-services';
 
 import { AgentPushRecipientsService } from './agent-push-recipients.service';
 
@@ -17,7 +14,7 @@ export class AgentUpdateBroadcaster {
 	constructor(
 		private readonly logger: Logger,
 		private readonly recipients: AgentPushRecipientsService,
-		private readonly push: Push,
+		private readonly push: PushProxy,
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
 	) {

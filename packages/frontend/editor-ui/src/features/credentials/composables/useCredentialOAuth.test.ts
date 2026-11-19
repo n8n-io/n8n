@@ -1,6 +1,8 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 
+import type { ICredentialType } from 'n8n-workflow';
+
 import type { ICredentialsResponse } from '../credentials.types';
 import * as credentialsApi from '../credentials.api';
 import { useCredentialsStore } from '../credentials.store';
@@ -26,7 +28,8 @@ vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
 
-vi.mock('./oauthCallback', () => ({
+vi.mock('./oauthCallback', async (importOriginal) => ({
+	...(await importOriginal<typeof import('./oauthCallback')>()),
 	getTrustedOAuthOrigins: () => ['http://localhost:5678'],
 	hasOAuthTokenData: vi.fn(() => false),
 	waitForOAuthCallback: vi.fn(async () => 'success'),
@@ -93,6 +96,68 @@ describe('useCredentialOAuth', () => {
 			expect(store.hasFetchedUsableCredentials).toBe(false);
 			// The flat map still learns about the credential, as it did before.
 			expect(store.getCredentialById('new-cred')?.id).toBe('new-cred');
+		});
+	});
+
+	describe('Automatic OAuth mode', () => {
+		const oAuth2Api: ICredentialType = {
+			name: 'oAuth2Api',
+			displayName: 'OAuth2 API',
+			properties: [
+				{ displayName: 'Client ID', name: 'clientId', type: 'string', default: '', required: true },
+				{
+					displayName: 'Client Secret',
+					name: 'clientSecret',
+					type: 'string',
+					default: '',
+					required: true,
+				},
+			],
+		};
+		const todoistOAuth2Api: ICredentialType = {
+			name: 'todoistOAuth2Api',
+			extends: ['oAuth2Api'],
+			displayName: 'Todoist OAuth2 API',
+			properties: [],
+		};
+		const registerTypes = (todoist: ICredentialType) => {
+			useCredentialsStore().state.credentialTypes = {
+				[oAuth2Api.name]: oAuth2Api,
+				[todoist.name]: todoist,
+			};
+		};
+
+		it.each([
+			{ expected: true, case: 'the type supports registration', dynamicClientRegistration: true },
+			{
+				expected: false,
+				case: 'the type does not support registration',
+				dynamicClientRegistration: undefined,
+			},
+		])('offers quick connect: $expected when $case', ({ expected, dynamicClientRegistration }) => {
+			registerTypes({ ...todoistOAuth2Api, dynamicClientRegistration });
+
+			expect(useCredentialOAuth().canOAuthCredentialQuickConnect('todoistOAuth2Api')).toBe(
+				expected,
+			);
+		});
+
+		it('creates the credential in Automatic mode when it connects with one click', async () => {
+			registerTypes({ ...todoistOAuth2Api, dynamicClientRegistration: true });
+			vi.mocked(credentialsApi.createNewCredential).mockResolvedValue(
+				credential({ type: 'todoistOAuth2Api' }),
+			);
+
+			await useCredentialOAuth().createAndAuthorize('todoistOAuth2Api', undefined, {
+				name: 'Todoist account',
+			});
+
+			expect(credentialsApi.createNewCredential).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					data: expect.objectContaining({ useDynamicClientRegistration: true }),
+				}),
+			);
 		});
 	});
 });

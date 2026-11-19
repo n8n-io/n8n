@@ -51,7 +51,12 @@ const dataTableHasDependents = computed(() => hasDependencies(props.dataTable.id
 </script>
 <template>
 	<div data-test-id="data-table-card">
-		<N8nLink :to="dataTableRoute" class="data-table-card" data-test-id="data-table-card-link">
+		<N8nLink
+			:to="dataTableRoute"
+			:underline="false"
+			class="data-table-card"
+			data-test-id="data-table-card-link"
+		>
 			<N8nCard :class="$style.card">
 				<template #prepend>
 					<N8nIcon

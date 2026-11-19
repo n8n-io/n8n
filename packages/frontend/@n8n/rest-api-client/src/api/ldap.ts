@@ -45,6 +45,7 @@ export interface LdapConfig {
 	searchPageSize: number;
 	searchTimeout: number;
 	enforceEmailUniqueness: boolean;
+	linkExistingAccountsByEmail: boolean;
 }
 
 export async function getLdapConfig(context: IRestApiContext): Promise<LdapConfig> {
