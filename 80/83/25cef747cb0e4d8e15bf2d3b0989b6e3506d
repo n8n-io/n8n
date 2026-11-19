@@ -1,0 +1,20 @@
+packages/cli/src/modules/agents/integrations/platforms/webhook/webhook-channel.controller.ts
+  s_aa6794ac019785::t_b0526b5a5da86e 95-96,109,326,604-605,607-609,611,618,624,634
+  s_aa6794ac019785::t_de56da7a0cab80 606
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "808325cef747cb0e4d8e15bf2d3b0989b6e3506d",
+  "prompts": {},
+  "sessions": {
+    "s_aa6794ac019785": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "780586c6-4bfd-4b06-b892-fff832b8300b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

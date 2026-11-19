@@ -1,0 +1,45 @@
+packages/cli/src/modules/n8n-packages/package-failure-classifier.ts
+  s_74d7705e7f5665::t_e87363afa53fc3 14,26
+packages/cli/src/modules/n8n-packages/__tests__/package-failure-classifier.test.ts
+  s_74d7705e7f5665::t_e87363afa53fc3 14,23-27
+packages/cli/src/modules/n8n-packages/entities/package-export.errors.ts
+  s_74d7705e7f5665::t_e87363afa53fc3 1,9-14
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-requirements.extractor.test.ts
+  s_74d7705e7f5665::t_90aedbdfbbe00f 41-58
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/auto-included-workflow.exporter.test.ts
+  ai_agent 18,107-109
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
+  ai_agent 22,258-261
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.serializer.test.ts
+  ai_agent 5,188
+packages/cli/src/modules/n8n-packages/entities/workflow/references/sub-workflow-node.reference.ts
+  s_74d7705e7f5665::t_e87363afa53fc3 15,25
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.serializer.ts
+  s_74d7705e7f5665::t_e87363afa53fc3 13,106,124,126
+packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
+  s_74d7705e7f5665::t_e87363afa53fc3 28-31
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/exportPackage.generated.yml
+  ai_agent 153
+packages/cli/src/modules/n8n-packages/entities/credential/workflow-credential-references.ts
+  s_74d7705e7f5665::t_e87363afa53fc3 24
+packages/cli/src/public-api/v1/controllers/n8n-packages.public.controller.ts
+  s_74d7705e7f5665::t_e87363afa53fc3 44,225
+packages/cli/src/modules/n8n-packages/entities/workflow/references/__tests__/sub-workflow-node.reference.test.ts
+  s_74d7705e7f5665::t_16546f7175ecc3 178-180,182-187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "51233f215ca390b13bd93ca3d7d116d8e4754add",
+  "prompts": {},
+  "sessions": {
+    "s_74d7705e7f5665": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e1b7345-f87e-410f-9acb-bf0f0d710dca",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNodeToolbar.test.ts
+  s_126e90b504d18d::t_c0475789ff0b4e 380-382,385
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNodeToolbar.vue
+  s_126e90b504d18d::t_c0475789ff0b4e 150,252,254
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.test.ts
+  s_126e90b504d18d::t_9addac3b3dd74f 278-300
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/edges/SkillDependencyEdge.vue
+  s_126e90b504d18d::t_c0475789ff0b4e 5-6,9,14-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "031e8f7f85dd617872fd64b0ca37b0043e03325b",
+  "prompts": {},
+  "sessions": {
+    "s_126e90b504d18d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53d0ed1b-1ddd-4373-8a47-d0ff0bb754c7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
