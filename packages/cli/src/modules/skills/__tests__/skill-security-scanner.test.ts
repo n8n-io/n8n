@@ -327,6 +327,23 @@ describe('SkillSecurityScanner', () => {
 	});
 
 	describe('rule risky_url: links that need review at import', () => {
+		it('reads the real host when a review domain is in another part of the link', () => {
+			const content = skill({
+				instructions: [
+					'https://bit.ly@other.example/x',
+					'https://other.example/?u=https://bit.ly/abc',
+					'https://bit.ly.evil.example/a',
+				].join('\n'),
+			});
+
+			expect(scanner.scan(fetched(content))).toEqual({
+				verdict: 'pass',
+				findings: ['other.example', 'bit.ly.evil.example'].map((domain) =>
+					expect.objectContaining({ rule: 'new_url', severity: 'info', domain }),
+				),
+			});
+		});
+
 		it.each([
 			['https://192.0.2.10/collect', '192.0.2.10', 'uses an IP address'],
 			['https://[2001:db8::1]/collect', '[2001:db8::1]', 'uses an IP address'],
@@ -335,6 +352,12 @@ describe('SkillSecurityScanner', () => {
 			['https://Pastebin.com/notes', 'pastebin.com', 'uses a paste site'],
 			['https://test.Webhook.site./collect', 'test.webhook.site', 'uses a webhook catcher'],
 			['https://bit.ly/read-more', 'bit.ly', 'uses a URL shortener'],
+			// Forms that hide the real host.
+			['https://other.example@bit.ly/x', 'bit.ly', 'uses a URL shortener'],
+			['https://2130706433/x', '127.0.0.1', 'uses an IP address'],
+			['https://127.1/x', '127.0.0.1', 'uses an IP address'],
+			['https://[::ffff:192.0.2.1]/x', '[::ffff:c000:201]', 'uses an IP address'],
+			['ftp://files.example.com/a', 'files.example.com', 'does not use HTTPS'],
 		])('flags %s for review', (url, domain, reason) => {
 			const content = skill({ instructions: `See [the link](${url}).` });
 
