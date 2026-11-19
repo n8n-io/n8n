@@ -119,18 +119,21 @@ export class AgentCheckpointRepository extends BaseRepository<AgentCheckpoint> {
 	 * A save that refreshes a checkpoint first keeps that row. Its thread id is
 	 * not returned.
 	 */
-	async expireStale(olderThan: Date): Promise<ExpiredCheckpoints> {
+	async expireStale(olderThan: Date, ctx: OperationContext = {}): Promise<ExpiredCheckpoints> {
 		// Postgres returns the changed rows from the UPDATE. The sqlite driver
 		// does not. Read those rows and update them in one write transaction.
 		// BEGIN IMMEDIATE stops a save from landing between the two statements.
 		if (this.manager.connection.options.type === 'postgres') {
-			return await this.expireStaleOnPostgres(olderThan);
+			return await this.expireStaleOnPostgres(olderThan, ctx);
 		}
-		return await this.expireStaleOnSqlite(olderThan);
+		return await this.expireStaleOnSqlite(olderThan, ctx);
 	}
 
-	private async expireStaleOnPostgres(olderThan: Date): Promise<ExpiredCheckpoints> {
-		const result = await this.staleExpiration(this.manager, olderThan)
+	private async expireStaleOnPostgres(
+		olderThan: Date,
+		ctx: OperationContext,
+	): Promise<ExpiredCheckpoints> {
+		const result = await this.staleExpiration(this.managerFor(ctx), olderThan)
 			.returning(['threadId'])
 			.execute();
 		if (!Array.isArray(result.raw)) {
@@ -144,8 +147,11 @@ export class AgentCheckpointRepository extends BaseRepository<AgentCheckpoint> {
 		return { affected, threadIds };
 	}
 
-	private async expireStaleOnSqlite(olderThan: Date): Promise<ExpiredCheckpoints> {
-		return await this.manager.transaction(async (manager) => {
+	private async expireStaleOnSqlite(
+		olderThan: Date,
+		ctx: OperationContext,
+	): Promise<ExpiredCheckpoints> {
+		return await this.runInTransaction(ctx, async (manager) => {
 			const rows = await manager.find(AgentCheckpoint, {
 				select: { runId: true, threadId: true },
 				where: { updatedAt: LessThan(olderThan), state: Not(IsNull()) },

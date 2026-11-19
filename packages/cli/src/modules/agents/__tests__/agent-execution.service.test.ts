@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
 
+import type { AgentAttentionFlagRepository } from '../repositories/agent-attention-flag.repository';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentExecutionService, type RecordMessageParams } from '../agent-execution.service';
 import { SESSION_STOPPED_REASON } from '../agent-session-stop-reason';
@@ -115,6 +116,7 @@ describe('AgentExecutionService', () => {
 	const txRunner = mock<TransactionRunner>();
 	const queueRepository = mock<AgentMessageQueueRepository>();
 	const messageRepository = mock<AgentMessageRepository>();
+	const attentionFlags = mock<AgentAttentionFlagRepository>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -160,6 +162,7 @@ describe('AgentExecutionService', () => {
 			messageRepository,
 			new SystemAgentRegistry(),
 			projectDeletion,
+			attentionFlags,
 		);
 	});
 
@@ -957,6 +960,43 @@ describe('AgentExecutionService', () => {
 	});
 
 	describe('execution lifecycle', () => {
+		it.each([
+			['Provider failed', true],
+			[null, false],
+		] as const)('flags only error completions (%s)', async (error, shouldFlag) => {
+			await service.finalizeExecution('execution-1', {
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: null,
+				record: makeMessageRecord({ error }),
+			});
+			if (shouldFlag) {
+				expect(attentionFlags.flagSession).toHaveBeenCalledWith(
+					'thread-1',
+					'session-error',
+					expect.any(Object),
+				);
+			} else {
+				expect(attentionFlags.flagSession).not.toHaveBeenCalled();
+			}
+		});
+
+		it('does not flag an execution that another writer already finalized', async () => {
+			agentExecutionRepository.updateIfRunning.mockResolvedValue(false);
+			await expect(
+				service.finalizeExecution('execution-1', {
+					threadId: 'thread-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					projectId: 'project-1',
+					userMessage: null,
+					record: makeMessageRecord({ error: 'Failed' }),
+				}),
+			).rejects.toThrow('Agent execution is no longer running');
+			expect(attentionFlags.flagSession).not.toHaveBeenCalled();
+		});
 		it('writes the timeline to blob storage in non-db mode', async () => {
 			storageConfig = mock<StorageConfig>({ modeTag: 'fs' });
 			service = new AgentExecutionService(
@@ -976,6 +1016,7 @@ describe('AgentExecutionService', () => {
 				messageRepository,
 				new SystemAgentRegistry(),
 				projectDeletion,
+				attentionFlags,
 			);
 
 			const record = makeMessageRecord({
@@ -1083,6 +1124,7 @@ describe('AgentExecutionService', () => {
 					messageRepository,
 					new SystemAgentRegistry(),
 					projectDeletion,
+					attentionFlags,
 				);
 
 				const record = makeMessageRecord({
@@ -1783,6 +1825,7 @@ describe('AgentExecutionService', () => {
 				messageRepository,
 				new SystemAgentRegistry(),
 				projectDeletion,
+				attentionFlags,
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);

@@ -69,6 +69,7 @@ describe('AgentCheckpointPruningTask', () => {
 			storage,
 			Container.get(AgentBackgroundJobService),
 			Container.get(AgentExecutionRepository),
+			Container.get(TransactionRunner),
 		);
 		stale = new Date(Date.now() - (config.checkpointTtlSeconds + Time.hours.toSeconds) * 1000);
 	});
@@ -233,12 +234,7 @@ describe('AgentCheckpointPruningTask', () => {
 		it('rejects expired approval while pruning is uncommitted', async () => {
 			// Arrange: the other connection prunes the row but does not commit.
 			const [runId] = await insertCheckpoints('stale', 1, stale);
-			await new AgentCheckpointPruningTask(
-				Container.get(DatabaseConfig),
-				otherStorage,
-				Container.get(AgentBackgroundJobService),
-				Container.get(AgentExecutionRepository),
-			).run(new AbortController().signal);
+			await otherStorage.pruneStaleSuspensions();
 
 			// Expiry rejects the claim before it needs the pruning lock.
 			const claim = storage.claimForResume(runId, suspendedState, agentId);
