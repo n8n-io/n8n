@@ -1713,15 +1713,13 @@ export class WorkflowService {
 			await transfer();
 			transferred = true;
 		} finally {
-			const transferredWorkflows = transferred
-				? workflows
-				: await this._ownedByProject(workflows, destinationProjectId);
+			const movedIds = transferred
+				? workflowIds
+				: await this._ownedByProject(workflowIds, destinationProjectId);
 			await this._restoreTriggersOfUntransferred(
-				[...refusals.keys()].filter(
-					(workflowId) => !transferredWorkflows.some((workflow) => workflow.id === workflowId),
-				),
+				[...refusals.keys()].filter((workflowId) => !movedIds.includes(workflowId)),
 			);
-			results = await this._finishTransfer(user, transferredWorkflows, refusals, publicApi);
+			results = await this._finishTransfer(user, movedIds, refusals, publicApi);
 		}
 
 		return results;
@@ -1772,19 +1770,15 @@ export class WorkflowService {
 	}
 
 	/** Never throws, and counts every workflow as moved if the owners cannot be read. */
-	private async _ownedByProject(
-		workflows: PublishedWorkflow[],
-		projectId: string,
-	): Promise<PublishedWorkflow[]> {
-		let owned = workflows;
+	private async _ownedByProject(workflowIds: string[], projectId: string): Promise<string[]> {
+		let owned = workflowIds;
 		try {
-			const owners = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
-				workflows.map((workflow) => workflow.id),
-			);
-			owned = workflows.filter((workflow) => owners.get(workflow.id)?.id === projectId);
+			const owners =
+				await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
+			owned = workflowIds.filter((workflowId) => owners.get(workflowId)?.id === projectId);
 		} catch (error) {
 			this.logger.error('Failed to read which workflows a failed transfer moved', {
-				workflowIds: workflows.map((workflow) => workflow.id),
+				workflowIds,
 				error,
 			});
 		}
@@ -1794,38 +1788,37 @@ export class WorkflowService {
 	/** Never throws, so a transfer that failed half-way still reports its original error. */
 	private async _finishTransfer(
 		user: User,
-		workflows: PublishedWorkflow[],
+		workflowIds: string[],
 		refusals: Map<string, unknown>,
 		publicApi: PublicApiCaller,
 	): Promise<Map<string, WorkflowTransferResult>> {
+		const workflows = await this._publishedWorkflows(workflowIds);
 		const failures = new Map<string, unknown>();
-		const allowedIds: string[] = [];
 		for (const workflow of workflows) {
 			if (refusals.has(workflow.id)) {
 				failures.set(workflow.id, refusals.get(workflow.id));
 			} else {
 				const credentialRefusal = await this._triggerCredentialRefusal(workflow);
-				if (credentialRefusal) {
-					failures.set(workflow.id, credentialRefusal);
-				} else {
-					allowedIds.push(workflow.id);
-				}
+				if (credentialRefusal) failures.set(workflow.id, credentialRefusal);
 			}
 		}
 
-		if (allowedIds.length > 0) {
+		const republishIds = workflowIds.filter(
+			(workflowId) => !refusals.has(workflowId) && !failures.has(workflowId),
+		);
+		if (republishIds.length > 0) {
 			try {
 				await this.outboxRepository.enqueueByWorkflowIds(
-					allowedIds,
+					republishIds,
 					WorkflowPublicationReason.Transfer,
 				);
 				this.workflowPublicationNotifier.requestDrain();
 			} catch (error) {
 				this.logger.error('Failed to republish the transferred workflows', {
-					workflowIds: allowedIds,
+					workflowIds: republishIds,
 					error,
 				});
-				for (const workflowId of allowedIds) failures.set(workflowId, error);
+				for (const workflowId of republishIds) failures.set(workflowId, error);
 			}
 		}
 
@@ -1840,6 +1833,20 @@ export class WorkflowService {
 		}
 
 		return results;
+	}
+
+	/** Never throws: if the read fails, only the leader checks the credentials. */
+	private async _publishedWorkflows(workflowIds: string[]): Promise<PublishedWorkflow[]> {
+		let published: PublishedWorkflow[] = [];
+		try {
+			const workflows = await this.workflowRepository.findWithActiveVersionByIds(workflowIds);
+			published = workflows.filter(
+				(workflow): workflow is PublishedWorkflow => workflow.activeVersion !== null,
+			);
+		} catch (error) {
+			this.logger.error('Failed to read the transferred workflows', { workflowIds, error });
+		}
+		return published;
 	}
 
 	/** Never throws: after any other error, the leader checks the credentials again. */

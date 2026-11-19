@@ -1,9 +1,11 @@
 import {
 	createActiveWorkflow,
 	createTeamProject,
+	createWorkflowHistory,
 	getWorkflowSharing,
 	mockInstance,
 	randomCredentialPayload,
+	setActiveVersion,
 	testDb,
 } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
@@ -25,6 +27,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { Telemetry } from '@/telemetry';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { saveCredential } from '../shared/db/credentials';
 import { createFolder } from '../shared/db/folders';
@@ -80,6 +83,26 @@ const pendingTransfer = (versionId: string) => ({
 
 const registeredCronOf = (workflowId: string) =>
 	Container.get(ActiveWorkflowTriggers).get(workflowId)?.get(CRON_NODE_ID);
+
+/** Adds to the version a node with a credential that only the source project holds. */
+const addCredentialOnlySourceHolds = async (versionId: string) => {
+	const credential = await saveCredential(randomCredentialPayload(), {
+		project: sourceProject,
+		role: 'credential:owner',
+	});
+	const credentialedNode: INode = {
+		id: 'credentialed-node',
+		name: 'Credentialed Node',
+		type: 'n8n-nodes-base.credentialedNode',
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
+		credentials: { githubApi: { id: credential.id, name: credential.name } },
+	};
+	const history = Container.get(WorkflowHistoryRepository);
+	const { nodes } = await history.findOneByOrFail({ versionId });
+	await history.update({ versionId }, { nodes: [...nodes, credentialedNode] });
+};
 
 const failTransferEnqueue = () =>
 	vi
@@ -191,24 +214,8 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 	});
 
 	test('unpublishes the workflow and reports the error when the destination cannot use its credential', async () => {
-		const credential = await saveCredential(randomCredentialPayload(), {
-			project: sourceProject,
-			role: 'credential:owner',
-		});
-		const credentialedNode: INode = {
-			id: 'credentialed-node',
-			name: 'Credentialed Node',
-			type: 'n8n-nodes-base.credentialedNode',
-			typeVersion: 1,
-			position: [0, 0],
-			parameters: {},
-			credentials: { githubApi: { id: credential.id, name: credential.name } },
-		};
 		const workflow = await createActiveWorkflow({}, sourceProject);
-		await Container.get(WorkflowHistoryRepository).update(
-			{ versionId: workflow.versionId },
-			{ nodes: [...workflow.nodes, credentialedNode] },
-		);
+		await addCredentialOnlySourceHolds(workflow.versionId);
 
 		const response = await authMemberAgent
 			.put(`/workflows/${workflow.id}/transfer`)
@@ -225,6 +232,37 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 			activeVersionId: await activeVersionIdOf(workflow.id),
 			records: await outboxRecordsOf(workflow.id),
 		}).toEqual(UNPUBLISHED_AND_REPORTED);
+	});
+
+	test('checks the credentials of the version that is published when the move ends', async () => {
+		const workflow = await createActiveWorkflow({}, sourceProject);
+		await addCredentialOnlySourceHolds(workflow.versionId);
+		const republishedVersionId = uuid();
+		vi.spyOn(
+			Container.get(EnterpriseWorkflowService) as unknown as {
+				shareCredentialsWithProject: () => Promise<void>;
+			},
+			'shareCredentialsWithProject',
+		).mockImplementation(async () => {
+			await createWorkflowHistory({ ...workflow, versionId: republishedVersionId }, sourceProject);
+			await setActiveVersion(workflow.id, republishedVersionId);
+		});
+
+		const response = await authMemberAgent
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: targetProject.id })
+			.expect(200);
+
+		const REPUBLISHED = {
+			body: {},
+			activeVersionId: republishedVersionId,
+			records: [pendingTransfer(republishedVersionId)],
+		};
+		expect({
+			body: response.body,
+			activeVersionId: await activeVersionIdOf(workflow.id),
+			records: await outboxRecordsOf(workflow.id),
+		}).toEqual(REPUBLISHED);
 	});
 
 	test('emits workflow-deactivated with source api and the public API client when the transfer enqueue of a public API move fails', async () => {
