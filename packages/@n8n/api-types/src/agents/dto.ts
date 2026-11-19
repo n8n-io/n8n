@@ -30,6 +30,7 @@ import {
 	createAgentSkillSchema,
 } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
+import { agentChatModeSchema } from '../schemas/agent-safe-testing.schema';
 import { alsoNullable } from '../dto/openapi-nullable';
 import { workflowParentFolderPublicSchema } from '../dto/workflows/workflow-public.dto';
 import {
@@ -805,6 +806,11 @@ const agentChatMessageShape = {
 	 * shape and validates it. Project agents ignore it.
 	 */
 	clientContext: z.record(z.unknown()).optional(),
+	/**
+	 * `test` starts a test run (safe testing flag on). A chat that is already a test run
+	 * stays one. Absent or `live` runs the draft against real services.
+	 */
+	mode: agentChatModeSchema.optional(),
 };
 
 /** Rules that every chat message DTO applies on top of its shape. */
