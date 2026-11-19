@@ -145,6 +145,7 @@ function setup(
 		mock(),
 		mock(),
 		mock(),
+		mock(),
 	);
 
 	const events: AgentSseEvent[] = [];
