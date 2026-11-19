@@ -1,0 +1,16 @@
+packages/nodes-base/nodes/Github/Github.node.ts
+  h_52a137d26d774c 845-846
+packages/nodes-base/nodes/Github/__tests__/Github.dispatch.test.ts
+  h_52a137d26d774c 1-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "92526bfc957d0d97f16e2e32c00967a34bbc7f6a",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

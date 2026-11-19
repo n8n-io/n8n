@@ -1,0 +1,33 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_293d023a29dd97::t_4489ea920fb2c0 1461-1470
+packages/frontend/editor-ui/src/features/credentials/composables/useVaultCredentials.ts
+  s_293d023a29dd97::t_4489ea920fb2c0 1-35
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialForm.ts
+  s_293d023a29dd97::t_4489ea920fb2c0 38,96,274-275,341-342
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/VaultSecretEntry.vue
+  s_293d023a29dd97::t_4489ea920fb2c0 1-216
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/VaultSecretEntry.test.ts
+  s_293d023a29dd97::t_4489ea920fb2c0 1-205
+packages/frontend/editor-ui/src/features/credentials/composables/useVaultCredentials.test.ts
+  s_293d023a29dd97::t_4489ea920fb2c0 1-68
+packages/frontend/editor-ui/src/features/credentials/credentials.api.ts
+  s_293d023a29dd97::t_4489ea920fb2c0 214-234
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_293d023a29dd97::t_4489ea920fb2c0 33-34,304-312,812-817
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b35648605cce2671b4926fa735ee063201110fa3",
+  "prompts": {},
+  "sessions": {
+    "s_293d023a29dd97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20ed4163-15ff-44f2-a2f6-48db5f846d4f",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

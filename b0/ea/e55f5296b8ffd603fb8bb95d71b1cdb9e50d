@@ -1,0 +1,41 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersSection.vue
+  s_5222e07be9a0a2::t_f5456155c527a8 195-199
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersList.vue
+  s_5222e07be9a0a2::t_e0d7ca540597a8 226
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskForm.vue
+  s_5222e07be9a0a2::t_22ec2bb4bf96c5 3,149-151,154-163,165-166
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5222e07be9a0a2::t_4bfc53f74a00d6 10182
+  s_5222e07be9a0a2::t_82940cbaf5e406 10428
+packages/@n8n/api-types/src/agents/types.ts
+  s_5222e07be9a0a2::t_320e2e61ba0625 178-179
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_5222e07be9a0a2::t_8c9227fa2a6db8 15,54-66
+  s_5222e07be9a0a2::t_6d8b03712c76aa 67-68
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_5222e07be9a0a2::t_4f532e76a2f7ee 13,37,48,64,66,714-772
+  s_5222e07be9a0a2::t_143f293db079a0 773-774
+packages/cli/src/modules/agents/integrations/platforms/discord/discord-operations.ts
+  s_5222e07be9a0a2::t_30a857aeada49c 312,314-315,336-338,340-343,346-348,350-355,357
+packages/cli/src/modules/agents/integrations/__tests__/discord-operations.test.ts
+  s_5222e07be9a0a2::t_4a06f2cb3e3b28 357-378,382-386,396-418
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_5222e07be9a0a2::t_9fe94c8ce5930f 262,266
+  s_5222e07be9a0a2::t_9b6bfe7d752702 253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b0eae55f5296b8ffd603fb8bb95d71b1cdb9e50d",
+  "prompts": {},
+  "sessions": {
+    "s_5222e07be9a0a2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1ee5b-ac62-7088-97b1-647f3e9e90e1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

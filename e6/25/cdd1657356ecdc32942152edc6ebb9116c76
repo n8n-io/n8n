@@ -1,0 +1,26 @@
+packages/quality/testing/playwright/pages/DataTableDetails.ts
+  s_74d64b3f874ae2::t_7368ed985fd238 341-343
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/DataGrid.vue
+  s_74d64b3f874ae2::t_474cd61c0e5933 948
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e625cdd1657356ecdc32942152edc6ebb9116c76",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_74d64b3f874ae2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bcf6478d-a88f-473e-b22e-6b13b235969e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

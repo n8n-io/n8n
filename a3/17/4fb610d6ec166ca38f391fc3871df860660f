@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/system-agents/system-agent-channel.service.ts
+  s_b83c2cc9d859ec::t_31b3bb20a97b6b 119-121
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-channel.service.test.ts
+  s_b83c2cc9d859ec::t_85b85adf9caa0a 123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a3174fb610d6ec166ca38f391fc3871df860660f",
+  "prompts": {},
+  "sessions": {
+    "s_b83c2cc9d859ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b90adbb-dcfe-439f-a7eb-7c74a20d13cc",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
