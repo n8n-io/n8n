@@ -6,7 +6,7 @@ Guidance for the knowledge module (`packages/cli/src/modules/knowledge`). See th
 
 The module owns knowledge for Agents: uploaded files and their retrieval, and external vector-store connections. The implementation moved here from `packages/cli/src/modules/agents/` in P0 of the plan, with no user-facing change. The agents module is the only consumer today. Background and decisions: [Knowledge module plan](https://app.notion.com/p/3f85b6e0c94f8147b598e8bb4508ac86) (internal).
 
-- `files/` holds uploaded-file knowledge: the file store (`init()` wires it to the configured blob backends), `KnowledgeFileService` (upload, list, delete; scope-based), the upload middleware, the storage naming helpers and the upload error.
+- `files/` holds uploaded-file knowledge: the file store (module init and disabled-module cleanup wire the configured blob backends), `KnowledgeFileService` (upload, list, delete; scope-based), the upload middleware, the storage naming helpers and the upload error.
 - `entities/` holds `KnowledgeFile` (table `agent_files`); `repositories/` holds its repository.
 - `retrieval/` holds the sandbox mirror (`KnowledgeMirrorService`), the shell commands and their parsers, the request and result schemas, and `KnowledgeRetrievalService`, the entry point for consumers.
 - `vector-stores/` holds vector-store construction, embedding credential resolution, the connection test and the error sanitiser. Agents calls them and supplies the credential provider.
@@ -32,7 +32,7 @@ There is no barrel. A consumer imports by path (`@/modules/knowledge/...`) and n
 
 - Availability: `knowledge-availability.service.ts`, before every knowledge call.
 - The boundary: `knowledge-consumer-scope.ts`, `knowledge-retriever.ts`, `knowledge-sandbox-provider.ts` and `knowledge-sandbox-provider-proxy.ts` (to register its adapter).
-- Files: `files/knowledge-file.service.ts`, `files/knowledge-upload.middleware.ts`, `files/knowledge-upload.error.ts`, and `assertKnowledgePathSegment` from `files/storage-naming.ts`, which the sandbox runtime applies to the ids that form a sandbox path.
+- Files: `files/knowledge-file.service.ts`, `files/knowledge-file-cleanup.service.ts`, `files/knowledge-upload.middleware.ts`, `files/knowledge-upload.error.ts`, and `assertKnowledgePathSegment` from `files/storage-naming.ts`, which the sandbox runtime applies to the ids that form a sandbox path.
 - Retrieval: `retrieval/knowledge-retrieval.service.ts`, and the tool input schemas and result types from `retrieval/retrieval-schemas.ts`.
 - Vector stores: `vector-stores/factory.ts`, `vector-stores/embedding-credential.ts`, `vector-stores/error-sanitizer.ts` and `vector-stores/connection-test.service.ts`.
 - Telemetry: `telemetry/helpers.ts`.
@@ -71,7 +71,7 @@ vector-stores/                           external vector-store connections, conn
 
 ## Disabled module
 
-`N8N_DISABLED_MODULES=knowledge` skips the module's `init()` and `entities()`. `KnowledgeFile` is then not registered with TypeORM while the `agent_files` table still exists, and an unguarded `KnowledgeFileRepository` call fails with a metadata error. The guards below keep every caller away from the repository while the module is off.
+`N8N_DISABLED_MODULES=knowledge` skips the module's `init()` and `entities()`. `KnowledgeFile` is then not registered with TypeORM while the `agent_files` table still exists, and an unguarded `KnowledgeFileRepository` call fails with a metadata error. Feature calls stay away from `KnowledgeFileRepository` while the module is off. Deletion uses the cleanup repository below.
 
 `knowledge-availability.service.ts` (`KnowledgeAvailabilityService`) is the one place that answers whether knowledge is available: `isModuleActive()` and `isFileKnowledgeEnabled()` (module active and sandbox on). Every consumer asks it before a knowledge call, derives its own flags from it, and raises the error that fits its own surface. The check runs at two levels on purpose: the controllers answer the user with the same 404 as the sandbox gate, and the facade protects the callers that bypass the controllers, today the deletion cascades. With the module off:
 
@@ -80,7 +80,7 @@ vector-stores/                           external vector-store connections, conn
 - The `AgentKnowledgeService` facade rejects upload, list, warm-up and single-file delete before it touches the repository.
 - Runtime reconstruction attaches the workspace but not the knowledge tools, and does not call `KnowledgeRetrievalService`.
 - The telemetry reads of the file totals (the publish event and the daily knowledge snapshot) report no files.
-- Agent and project deletion cannot read the agent's files, so `deleteAllFilesForAgent` logs a warning and returns. The `agent_files` rows go with the agent through the database cascade, but their stored bytes stay in `binary_data` or the blob store. This is a known gap: an operator who deletes agents while the module is off leaves their knowledge bytes behind. `destroyKnowledgeSandbox` still runs: `KnowledgeRetrievalService.destroySandbox` reads no file row.
+- Agent and project deletion call `KnowledgeFileCleanupService` before the database cascade removes the file rows. Its cleanup repository reads storage references without entity metadata. It registers configured byte stores on demand and deletes the bytes through `KnowledgeFileStore`. The deletion hooks log cleanup failures and continue. `destroyKnowledgeSandbox` still runs: `KnowledgeRetrievalService.destroySandbox` reads no file row.
 - Vector stores keep working. They are plain code, not an entity.
 
 Each guard has a test. A new consumer, or a new knowledge call in the agents module, asks `KnowledgeAvailabilityService` and gets a test.
