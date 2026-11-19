@@ -92,6 +92,8 @@ vi.mock('@/app/stores/workflowsList.store', () => ({
 const mockSettingsImpl = vi.hoisted(() => ({
 	isWorkflowPublicationServiceEnabled: false,
 	isMultiMain: false,
+	settings: {} as { workflowReviews?: { enabled: boolean; alwaysRequired?: boolean } },
+	setWorkflowReviewsPolicy: vi.fn(),
 }));
 
 vi.mock('@n8n/stores/settings.store', () => ({
@@ -198,6 +200,7 @@ describe('useWorkflowActivate', () => {
 		vi.clearAllMocks();
 		mockSettingsImpl.isWorkflowPublicationServiceEnabled = false;
 		mockSettingsImpl.isMultiMain = false;
+		mockSettingsImpl.settings = {};
 		mockActivationStorageFlag.value = undefined;
 		mockDocumentStore.hydrated = false;
 		mockDocumentStore.checksum = undefined;
@@ -265,6 +268,25 @@ describe('useWorkflowActivate', () => {
 			expect(mockShowError).not.toHaveBeenCalled();
 			expect(mockSetWorkflowInactive).not.toHaveBeenCalled();
 			expect(mockSetActiveState).not.toHaveBeenCalled();
+		});
+
+		it('requires approval in the editor when the server refuses an unreviewed version', async () => {
+			mockSettingsImpl.settings = { workflowReviews: { enabled: true, alwaysRequired: false } };
+			const refusal = Object.assign(new Error('No approved review'), {
+				meta: { reason: 'review_required', versionId: VERSION_ID, validationError: true },
+			});
+			mockPublishWorkflow.mockRejectedValueOnce(refusal);
+
+			const { publishWorkflow } = useWorkflowActivate();
+			const result = await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			expect(result).toEqual({ success: false, errorHandled: true });
+			expect(mockSettingsImpl.setWorkflowReviewsPolicy).toHaveBeenCalledWith({
+				enabled: true,
+				alwaysRequired: true,
+			});
+			expect(mockShowError).toHaveBeenCalled();
+			expect(mockSetWorkflowInactive).not.toHaveBeenCalled();
 		});
 
 		it('sends the document checksum and refreshes it when the document is open in an editor', async () => {
