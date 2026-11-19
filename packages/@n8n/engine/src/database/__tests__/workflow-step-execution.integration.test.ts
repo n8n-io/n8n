@@ -16,6 +16,7 @@ import { WorkflowExecution } from '../entities/workflow-execution.entity';
 import { WorkflowStepExecution } from '../entities/workflow-step-execution.entity';
 import { generateId } from '../generate-id';
 import { WidenStepStaleAfterIndex1795050000000 } from '../migrations/1795050000000-WidenStepStaleAfterIndex';
+import { AddStepAttempt1795089600000 } from '../migrations/1795089600000-AddStepAttempt';
 import { TypeOrmExecutionViewStore } from '../typeorm-execution-view-store';
 import { TypeOrmStepStore } from '../typeorm-step-store';
 
@@ -373,7 +374,7 @@ describe('workflow_step_execution table (integration)', () => {
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
 
-		expect(await store.completeStep(id, [[{ json: { ok: true } }]], null)).toBe(true);
+		expect(await store.completeStep(id, 1, [[{ json: { ok: true } }]], null)).toBe(true);
 
 		const step = await store.loadStep(id);
 		expect(step.status).toBe('completed');
@@ -390,7 +391,7 @@ describe('workflow_step_execution table (integration)', () => {
 			[{ nodeId: 'trigger', outputIndex: 0, iteration: 0, offset: 2, itemCount: 1 }],
 		];
 
-		expect(await store.completeStep(id, [null, [{ json: { n: 3 } }]], outputSources)).toBe(true);
+		expect(await store.completeStep(id, 1, [null, [{ json: { n: 3 } }]], outputSources)).toBe(true);
 
 		expect((await store.loadStep(id)).outputSources).toEqual(outputSources);
 		const { steps } = await viewStore().loadExecutionWithStepsView(executionId);
@@ -406,8 +407,8 @@ describe('workflow_step_execution table (integration)', () => {
 			status: 'queued',
 		});
 
-		expect(await store.completeStep(id, [[{ json: { ok: true } }]], null)).toBe(false);
-		expect(await store.failStep(id, { name: 'Error', message: 'node blew up' })).toBe(false);
+		expect(await store.completeStep(id, 1, [[{ json: { ok: true } }]], null)).toBe(false);
+		expect(await store.failStep(id, 1, { name: 'Error', message: 'node blew up' })).toBe(false);
 
 		// neither the status nor the result columns moved
 		const found = await dataSource
@@ -427,7 +428,7 @@ describe('workflow_step_execution table (integration)', () => {
 			outputsAtDeadline: [[{ json: { passed: 'through' } }]],
 		};
 
-		expect(await store.suspendStep(id, wait)).toBe(true);
+		expect(await store.suspendStep(id, 1, wait)).toBe(true);
 
 		const found = await dataSource
 			.getRepository(WorkflowStepExecution)
@@ -445,7 +446,7 @@ describe('workflow_step_execution table (integration)', () => {
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
 
-		expect(await store.suspendStep(id, { resumeBinding: 'execution' })).toBe(true);
+		expect(await store.suspendStep(id, 1, { resumeBinding: 'execution' })).toBe(true);
 
 		const found = await dataSource
 			.getRepository(WorkflowStepExecution)
@@ -464,7 +465,7 @@ describe('workflow_step_execution table (integration)', () => {
 			status: 'queued',
 		});
 
-		expect(await store.suspendStep(id, { resumeBinding: 'execution' })).toBe(false);
+		expect(await store.suspendStep(id, 1, { resumeBinding: 'execution' })).toBe(false);
 
 		const found = await dataSource
 			.getRepository(WorkflowStepExecution)
@@ -493,7 +494,7 @@ describe('workflow_step_execution table (integration)', () => {
 			});
 
 			const wait = { resumeAt: '2099-01-01T00:00:00.000Z', outputsAtDeadline: [] };
-			expect(await store.suspendStep(id, wait)).toBe(recorded);
+			expect(await store.suspendStep(id, 1, wait)).toBe(recorded);
 
 			const found = await dataSource
 				.getRepository(WorkflowStepExecution)
@@ -520,7 +521,7 @@ describe('workflow_step_execution table (integration)', () => {
 			executionId,
 		]);
 
-		const suspend = store.suspendStep(id, { resumeBinding: 'execution' });
+		const suspend = store.suspendStep(id, 1, { resumeBinding: 'execution' });
 		try {
 			await waitUntilQueryBlocksOnLock('FOR SHARE');
 			await cancellation.commitTransaction();
@@ -539,7 +540,7 @@ describe('workflow_step_execution table (integration)', () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
-		await store.suspendStep(id, { resumeBinding: 'execution' });
+		await store.suspendStep(id, 1, { resumeBinding: 'execution' });
 
 		// expected but pending: the execution stays open until the wait resolves
 		expect(await store.countSettledSteps(executionId)).toBe(0);
@@ -879,8 +880,8 @@ describe('workflow_step_execution table (integration)', () => {
 			status: 'queued',
 		});
 
-		expect(await store.cancelStep(running.id)).toBe(true);
-		expect(await store.cancelStep(queued.id)).toBe(false);
+		expect(await store.cancelStep(running.id, 1)).toBe(true);
+		expect(await store.cancelStep(queued.id, 1)).toBe(false);
 
 		expect((await store.loadStep(running.id)).status).toBe('cancelled');
 		expect((await store.loadStep(queued.id)).status).toBe('queued');
@@ -897,7 +898,7 @@ describe('workflow_step_execution table (integration)', () => {
 			stack: 'Error: node blew up\n    at somewhere',
 			details: { httpCode: '500' },
 		};
-		expect(await store.failStep(id, error)).toBe(true);
+		expect(await store.failStep(id, 1, error)).toBe(true);
 
 		const found = await dataSource
 			.getRepository(WorkflowStepExecution)
@@ -1067,7 +1068,7 @@ describe('workflow_step_execution table (integration)', () => {
 			status: 'running',
 		});
 		// a multi-slot output with a dead slot round-trips as stored
-		await store.completeStep(aId, [[{ json: { from: 'a' } }], null], null);
+		await store.completeStep(aId, 1, [[{ json: { from: 'a' } }], null], null);
 		const { id: bId } = await createStep(store, executionId, {
 			nodeId: 'b',
 			iteration: 0,
@@ -1106,7 +1107,7 @@ describe('workflow_step_execution table (integration)', () => {
 		});
 		// slot 0 has data, slot 1 was never fired, slot 2 ran but produced zero
 		// items — [] is live, only JSON null marks a dead slot
-		await store.completeStep(aId, [[{ json: { big: 'payload' } }], null, []], null);
+		await store.completeStep(aId, 1, [[{ json: { big: 'payload' } }], null, []], null);
 		const { id: bId } = await createStep(store, executionId, {
 			nodeId: 'b',
 			iteration: 0,
@@ -1168,7 +1169,7 @@ describe('workflow_step_execution table (integration)', () => {
 			iteration: 0,
 			status: 'running',
 		});
-		await store.failStep(eId, { name: 'Error', message: 'node blew up' });
+		await store.failStep(eId, 1, { name: 'Error', message: 'node blew up' });
 		// a sibling execution's settled rows must not count
 		const otherExecutionId = await createExecution();
 		await createStep(store, otherExecutionId, {
@@ -1423,8 +1424,11 @@ describe('workflow_step_execution table (integration)', () => {
 		});
 
 		it.each<[string, (store: TypeOrmStepStore, id: string) => Promise<boolean>]>([
-			['completeStep', async (store, id) => await store.completeStep(id, [], null)],
-			['failStep', async (store, id) => await store.failStep(id, { name: 'Error', message: 'x' })],
+			['completeStep', async (store, id) => await store.completeStep(id, 1, [], null)],
+			[
+				'failStep',
+				async (store, id) => await store.failStep(id, 1, { name: 'Error', message: 'x' }),
+			],
 		])('%s writes the queue threshold on the settled step', async (_name, write) => {
 			const executionId = await createExecution();
 			const store = stalenessStore();
@@ -1460,12 +1464,12 @@ describe('workflow_step_execution table (integration)', () => {
 			[
 				'suspendStep',
 				async (store, id) =>
-					await store.suspendStep(id, {
+					await store.suspendStep(id, 1, {
 						resumeAt: '2099-01-01T00:00:00.000Z',
 						outputsAtDeadline: [],
 					}),
 			],
-			['cancelStep', async (store, id) => await store.cancelStep(id)],
+			['cancelStep', async (store, id) => await store.cancelStep(id, 1)],
 		])('%s clears the value of a running step', async (_name, write) => {
 			const executionId = await createExecution();
 			const store = stalenessStore();
@@ -1625,7 +1629,7 @@ describe('workflow_step_execution table (integration)', () => {
 			it('changes nothing when the step completed after the read', async () => {
 				const store = stalenessStore();
 				const { id, observed } = await claimedStep(store);
-				await store.completeStep(id, [[]], null);
+				await store.completeStep(id, 1, [[]], null);
 
 				expect(await store.failStaleRunningStep(id, observed, error)).toBe(false);
 
@@ -1649,10 +1653,116 @@ describe('workflow_step_execution table (integration)', () => {
 				const { id, observed } = await claimedStep(store);
 				await store.failStaleRunningStep(id, observed, error);
 
-				expect(await store.completeStep(id, [[]], null)).toBe(false);
-				expect(await store.failStep(id, { name: 'Error', message: 'late' })).toBe(false);
+				expect(await store.completeStep(id, 1, [[]], null)).toBe(false);
+				expect(await store.failStep(id, 1, { name: 'Error', message: 'late' })).toBe(false);
 
 				expect(await store.loadStep(id)).toMatchObject({ status: 'failed', error });
+			});
+		});
+
+		describe('requeueStaleRunningStep', () => {
+			async function claimedStep(store: TypeOrmStepStore, status: ExecutionStatus = 'running') {
+				const executionId = await createExecution();
+				const { id } = await createStep(store, executionId, {
+					nodeId: 'a',
+					iteration: 0,
+					status: 'queued',
+				});
+				const claimed = await store.claimStep(id);
+				// The execution ends after the claim, as it does when a sibling step fails.
+				if (status !== 'running') {
+					await dataSource.getRepository(WorkflowExecution).update({ id: executionId }, { status });
+				}
+				const observed = await loadStaleAfter(id);
+				if (!claimed || !observed) throw new Error('expected a claimed step');
+				return { id, observed, attempt: claimed.attempt };
+			}
+
+			it('queues the step again once for one observed value, with the next attempt', async () => {
+				const store = stalenessStore();
+				const { id, observed, attempt } = await claimedStep(store);
+				expect(attempt).toBe(1);
+
+				await expectStaleAfter(
+					() => id,
+					staleness.queuedMs,
+					async () => expect(await store.requeueStaleRunningStep(id, observed)).toBe(true),
+				);
+
+				expect(await store.loadStep(id)).toMatchObject({ status: 'queued', attempt: 2 });
+				expect(await store.requeueStaleRunningStep(id, observed)).toBe(false);
+				expect(await store.loadStep(id)).toMatchObject({ status: 'queued', attempt: 2 });
+			});
+
+			it('changes nothing when the observed time is not the time of the row', async () => {
+				const store = stalenessStore();
+				const { id, observed } = await claimedStep(store);
+				const earlier = new Date(observed.getTime() - 1_000);
+
+				expect(await store.requeueStaleRunningStep(id, earlier)).toBe(false);
+
+				expect(await store.loadStep(id)).toMatchObject({ status: 'running', attempt: 1 });
+				expect(await loadStaleAfter(id)).toEqual(observed);
+			});
+
+			it.each<ExecutionStatus>(['completed', 'failed', 'cancelled'])(
+				'changes nothing when the execution is %s',
+				async (status) => {
+					const store = stalenessStore();
+					const { id, observed } = await claimedStep(store, status);
+
+					expect(await store.requeueStaleRunningStep(id, observed)).toBe(false);
+
+					expect(await store.loadStep(id)).toMatchObject({ status: 'running', attempt: 1 });
+				},
+			);
+
+			it('gives the second claim the next attempt', async () => {
+				const store = stalenessStore();
+				const { id, observed } = await claimedStep(store);
+				await store.requeueStaleRunningStep(id, observed);
+
+				expect(await store.claimStep(id)).toMatchObject({ status: 'running', attempt: 2 });
+			});
+
+			it.each<[string, (store: TypeOrmStepStore, id: string, attempt: number) => Promise<boolean>]>(
+				[
+					[
+						'completeStep',
+						async (store, id, attempt) => await store.completeStep(id, attempt, [], null),
+					],
+					[
+						'failStep',
+						async (store, id, attempt) =>
+							await store.failStep(id, attempt, { name: 'Error', message: 'late' }),
+					],
+					[
+						'suspendStep',
+						async (store, id, attempt) =>
+							await store.suspendStep(id, attempt, { resumeBinding: 'execution' }),
+					],
+					['cancelStep', async (store, id, attempt) => await store.cancelStep(id, attempt)],
+				],
+			)('%s of the first worker changes nothing after the second claim', async (_name, write) => {
+				const store = stalenessStore();
+				const { id, observed, attempt: firstAttempt } = await claimedStep(store);
+				await store.requeueStaleRunningStep(id, observed);
+				const secondClaim = await store.claimStep(id);
+				if (!secondClaim) throw new Error('expected a second claim');
+				const afterSecondClaim = await loadStaleAfter(id);
+
+				// The first worker was only slow. It returns now, with its own attempt.
+				expect(await write(store, id, firstAttempt)).toBe(false);
+
+				expect(await store.loadStep(id)).toMatchObject({
+					status: 'running',
+					attempt: 2,
+					outputs: null,
+					waitDeclaration: null,
+				});
+				expect(await loadStaleAfter(id)).toEqual(afterSecondClaim);
+				// The second worker still holds the step.
+				expect(await write(store, id, secondClaim.attempt)).toBe(true);
 			});
 		});
 
@@ -1865,6 +1975,37 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(await staleAfterComment()).toContain('NULL in every other case');
 	});
 
+	it('the migration of the attempt column changes a table that has rows, in both directions', async () => {
+		const executionId = await createExecution();
+		const { id } = await seedStep({ executionId, nodeId: 'a', status: 'running' });
+		const attemptColumn = async () => {
+			const rows: Array<{ is_nullable: string; column_default: string }> = await dataSource.query(
+				`SELECT is_nullable, column_default FROM information_schema.columns
+				 WHERE table_name = 'workflow_step_execution' AND column_name = 'attempt'`,
+			);
+			return rows;
+		};
+		const migration = new AddStepAttempt1795089600000();
+		const queryRunner = dataSource.createQueryRunner();
+		await queryRunner.connect();
+		try {
+			await migration.down(queryRunner);
+			expect(await attemptColumn()).toEqual([]);
+		} finally {
+			// The other tests need the schema of the newest migration.
+			await migration.up(queryRunner);
+			await queryRunner.release();
+		}
+
+		expect(await attemptColumn()).toEqual([{ is_nullable: 'NO', column_default: '1' }]);
+		// A row that was there before the migration has the first attempt.
+		const [row]: Array<{ attempt: number }> = await dataSource.query(
+			'SELECT attempt FROM workflow_step_execution WHERE id = $1',
+			[id],
+		);
+		expect(row.attempt).toBe(1);
+	});
+
 	it.each([
 		["status = 'queued'"],
 		["status = 'running'"],
@@ -1942,7 +2083,7 @@ describe('workflow_step_execution table (integration)', () => {
 			{ nodeId: 'b', iteration: 0, status: 'queued' },
 		]);
 		await store.claimStep(failedId);
-		await store.failStep(failedId, { name: 'Error', message: 'boom' });
+		await store.failStep(failedId, 1, { name: 'Error', message: 'boom' });
 
 		const { steps } = await viewStore().loadExecutionWithStepsView(executionId);
 

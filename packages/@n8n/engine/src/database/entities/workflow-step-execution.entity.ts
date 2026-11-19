@@ -92,6 +92,15 @@ export class WorkflowStepExecution {
 	@Column({ name: 'stale_after', type: 'timestamptz', precision: 3, nullable: true })
 	staleAfter!: Date | null;
 
+	/**
+	 * How many times the engine queued the step to run it from the start. It is
+	 * 1 at creation. The reconciliation sweeper adds 1 when it queues a step
+	 * again after the worker of the step stopped. A resume after a wait does not
+	 * change it.
+	 */
+	@Column('int', { default: 1 })
+	attempt!: number;
+
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz', precision: 3 })
 	createdAt!: Date;
 

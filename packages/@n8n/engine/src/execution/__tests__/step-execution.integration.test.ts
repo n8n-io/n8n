@@ -133,8 +133,8 @@ describe('step execution (integration)', () => {
 					return recorded;
 				});
 				const suspendStep = stepStore.suspendStep.bind(stepStore);
-				vi.spyOn(stepStore, 'suspendStep').mockImplementation(async (id, wait) => {
-					const recorded = await suspendStep(id, wait);
+				vi.spyOn(stepStore, 'suspendStep').mockImplementation(async (id, attempt, wait) => {
+					const recorded = await suspendStep(id, attempt, wait);
 					if (resolveOn === 'suspend') done();
 					return recorded;
 				});

@@ -15,6 +15,7 @@ export default defineConfig({
 				'src/database/migrations/1795046400000-AddFinishedAtIndexToWorkflowExecution.ts',
 				'src/database/migrations/1795050000000-WidenStepStaleAfterIndex.ts',
 				'src/database/migrations/1795132800000-AddErrorWorkflowColumnsToWorkflowExecution.ts',
+				'src/database/migrations/1795089600000-AddStepAttempt.ts',
 			],
 			rules: { 'unicorn/filename-case': 'off' },
 		},
