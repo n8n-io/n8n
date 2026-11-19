@@ -404,6 +404,9 @@ describe('SkillSecurityScanner', () => {
 			['https://127.1/x', '127.0.0.1', 'uses an IP address'],
 			['https://[::ffff:192.0.2.1]/x', '[::ffff:c000:201]', 'uses an IP address'],
 			['ftp://files.example.com/a', 'files.example.com', 'does not use HTTPS'],
+			// A loopback host is the n8n host for an agent, so it gets no exemption.
+			['http://localhost:3000', 'localhost', 'does not use HTTPS'],
+			['http://127.0.0.1:3000/health', '127.0.0.1', 'uses an IP address'],
 		])('flags %s for review', (url, domain, reason) => {
 			const content = skill({ instructions: `See [the link](${url}).` });
 
