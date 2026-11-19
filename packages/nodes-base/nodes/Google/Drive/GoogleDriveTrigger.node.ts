@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	Failure,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { escapeBackslashQuotedValue } from '@utils/query-escaping';
 
@@ -409,7 +409,7 @@ export class GoogleDriveTrigger implements INodeType {
 					this,
 					'drives',
 					'GET',
-					'/drive/v3/drives',
+					requestPath`/drive/v3/drives`,
 				);
 				returnData.push({
 					name: 'Root',
@@ -485,17 +485,38 @@ export class GoogleDriveTrigger implements INodeType {
 
 		let files;
 
+		// `files.list` cannot filter by ID, so read a single watched item directly.
+		let watchedItemId: string | undefined;
+		if (this.getMode() !== 'manual') {
+			if (triggerOn === 'specificFile') {
+				watchedItemId = extractId(
+					this.getNodeParameter('fileToWatch', '', { extractValue: true }) as string,
+				);
+			} else if (triggerOn === 'specificFolder' && event === 'watchFolderUpdated') {
+				watchedItemId = extractId(
+					this.getNodeParameter('folderToWatch', '', { extractValue: true }) as string,
+				);
+			}
+		}
+
 		try {
-			if (this.getMode() === 'manual') {
+			if (watchedItemId !== undefined) {
+				files = await getWatchedItemIfChanged.call(this, watchedItemId, {
+					isFolderEvent: !event.startsWith('file'),
+					fileType: options.fileType as string | undefined,
+					timeField: event.includes('Created') ? 'createdTime' : 'modifiedTime',
+					changedAfter: startDate,
+				});
+			} else if (this.getMode() === 'manual') {
 				qs.pageSize = 1;
-				files = await googleApiRequest.call(this, 'GET', '/drive/v3/files', {}, qs);
+				files = await googleApiRequest.call(this, 'GET', requestPath`/drive/v3/files`, {}, qs);
 				files = files.files;
 			} else {
 				files = await googleApiRequestAllItems.call(
 					this,
 					'files',
 					'GET',
-					'/drive/v3/files',
+					requestPath`/drive/v3/files`,
 					{},
 					qs,
 				);
@@ -517,24 +538,6 @@ export class GoogleDriveTrigger implements INodeType {
 			throw error;
 		}
 
-		if (triggerOn === 'specificFile' && this.getMode() !== 'manual') {
-			const fileToWatch = extractId(
-				this.getNodeParameter('fileToWatch', '', { extractValue: true }) as string,
-			);
-			files = files.filter((file: { id: string }) => file.id === fileToWatch);
-		}
-
-		if (
-			triggerOn === 'specificFolder' &&
-			event === 'watchFolderUpdated' &&
-			this.getMode() !== 'manual'
-		) {
-			const folderToWatch = extractId(
-				this.getNodeParameter('folderToWatch', '', { extractValue: true }) as string,
-			);
-			files = files.filter((file: { id: string }) => file.id === folderToWatch);
-		}
-
 		webhookData.lastTimeChecked = endDate;
 
 		if (Array.isArray(files) && files.length) {
@@ -549,6 +552,43 @@ export class GoogleDriveTrigger implements INodeType {
 
 		return null;
 	}
+}
+
+async function getWatchedItemIfChanged(
+	this: IPollFunctions,
+	itemId: string,
+	conditions: {
+		isFolderEvent: boolean;
+		fileType?: string;
+		timeField: 'createdTime' | 'modifiedTime';
+		changedAfter: string;
+	},
+): Promise<IDataObject[]> {
+	if (!/^[\w-]+$/.test(itemId)) return [];
+
+	let item: IDataObject;
+	try {
+		item = await googleApiRequest.call(
+			this,
+			'GET',
+			requestPath`/drive/v3/files/${itemId}`,
+			{},
+			{ supportsAllDrives: true, fields: '*' },
+		);
+	} catch (error) {
+		if (error instanceof NodeApiError && error.httpCode === '404') return [];
+		throw error;
+	}
+
+	const { isFolderEvent, fileType, timeField, changedAfter } = conditions;
+	const isFolder = item.mimeType === 'application/vnd.google-apps.folder';
+	const matches =
+		item.trashed !== true &&
+		isFolder === isFolderEvent &&
+		(!fileType || fileType === 'all' || item.mimeType === fileType) &&
+		Date.parse(item[timeField] as string) > Date.parse(changedAfter);
+
+	return matches ? [item] : [];
 }
 
 const DAILY_QUOTA_TIMEZONE = 'America/Los_Angeles';

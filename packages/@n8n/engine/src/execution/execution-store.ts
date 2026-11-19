@@ -1,9 +1,11 @@
 import type { StoredWorkflowGraph } from '../graph';
+import type { LifecycleEventSubscription } from '../lifecycle-events';
 import type { ResponseExpectation } from '../response-channel';
 import type {
 	CallerContext,
 	ExecutionMode,
 	ExecutionStatus,
+	ParentLink,
 	SeededSteps,
 	StepKey,
 	StepKeyId,
@@ -27,6 +29,10 @@ interface BaseExecutionRecord {
 	callerContext: CallerContext;
 	/** What kind of a response the caller expects. */
 	responseExpectation: ResponseExpectation;
+	/** The parent link, or `null` for a top-level execution. */
+	parent: ParentLink | null;
+	/** Which lifecycle events the caller subscribes to. Missing or `null` means none. */
+	lifecycleEventSubscription?: LifecycleEventSubscription | null;
 }
 
 /**
@@ -46,6 +52,12 @@ export type ExecutionRecord = BaseExecutionRecord & {
 	finishedAt: Date | null;
 };
 
+/** An execution that is still `queued` after its `stale_after` time. */
+export interface StaleQueuedExecution {
+	id: string;
+	staleAfter: Date;
+}
+
 /** Thrown by `loadExecution` when no execution exists for the given id. */
 export class ExecutionNotFoundError extends Error {
 	constructor(readonly executionId: string) {
@@ -54,13 +66,43 @@ export class ExecutionNotFoundError extends Error {
 	}
 }
 
-/** Persistence interface for executions. */
+/** Thrown by `createExecution` when the parent of a sub-execution has ended. */
+export class ParentExecutionEndedError extends Error {
+	constructor(
+		readonly parentExecutionId: string,
+		readonly status: ExecutionStatus,
+	) {
+		super(`Parent execution ${parentExecutionId} is ${status}`);
+		this.name = 'ParentExecutionEndedError';
+	}
+}
+
+/**
+ * Persistence interface for executions.
+ *
+ * A write that makes an execution `queued` also records when the engine treats
+ * it as stuck in that status (see `StalenessThresholds`). A transition out of
+ * `queued` clears that time.
+ */
 export interface ExecutionStore {
-	/** Persist a new execution record under the caller-minted `record.id`. */
+	/**
+	 * Persist a new execution record under the caller-minted `record.id`.
+	 *
+	 * A record with a parent link is written only while the parent has not
+	 * ended, and the check holds the parent row until the write commits. So an
+	 * end of the parent either waits and then finds this sub-execution, or
+	 * commits first and this write refuses.
+	 *
+	 * @throws {ExecutionNotFoundError} when the parent row is missing.
+	 * @throws {ParentExecutionEndedError} when the parent has ended.
+	 */
 	createExecution(record: NewExecutionRecord): Promise<void>;
 
 	/** Load a full execution by id. Throws `ExecutionNotFoundError` if absent. */
 	loadExecution(id: string): Promise<ExecutionRecord>;
+
+	/** Load only an execution's status. Throws `ExecutionNotFoundError` if absent. */
+	loadExecutionStatus(id: string): Promise<ExecutionStatus>;
 
 	/**
 	 * The outputs the caller seeded for the given steps, by step key id. A key
@@ -90,6 +132,19 @@ export interface ExecutionStore {
 	cancelExecution(id: string): Promise<{ finishedAt: Date } | null>;
 
 	/**
+	 * The executions that are `queued` and whose `stale_after` time is `at` or
+	 * earlier, oldest first, at most `limit`. A plain read: it locks no row.
+	 */
+	findStaleQueuedExecutions(at: Date, limit: number): Promise<StaleQueuedExecution[]>;
+
+	/**
+	 * Gives a `queued` execution a new `stale_after` time. A compare-and-set on
+	 * the status and on the `staleAfter` value that the caller read, so only one
+	 * of several concurrent callers gets `true`.
+	 */
+	renewQueuedExecution(id: string, staleAfter: Date): Promise<boolean>;
+
+	/**
 	 * Sets a live execution's status from the state of its steps: `waiting` when
 	 * every step it still owes is suspended, `running` when one step can run.
 	 *
@@ -101,4 +156,10 @@ export interface ExecutionStore {
 	 * handlers do. Read the step rows to tell `running` from `waiting`.
 	 */
 	refreshLiveStatus(id: string): Promise<void>;
+
+	/**
+	 * The ids of the sub-executions of an execution that have not ended: `queued`,
+	 * `running` or `waiting`. A cancel cascades through them.
+	 */
+	loadLiveSubExecutionIds(parentExecutionId: string): Promise<string[]>;
 }

@@ -1,8 +1,6 @@
-import type { ModuleRegistry } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { OtelLifecycleHandler } from '../otel-lifecycle-handler';
 import { OtelSettingsController } from '../otel-settings.controller';
 import type {
 	OtelConnectionParams,
@@ -11,8 +9,6 @@ import type {
 } from '../otel-settings.service';
 import type { OtelConfig } from '../otel.config';
 import type { OtelService } from '../otel.service';
-
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 const req = mock<AuthenticatedRequest>();
 const res = mock<Response>();
@@ -38,25 +34,13 @@ const baseResponse: OtelSettingsResponse = { ...baseSettings, envManagedFields: 
 describe('OtelSettingsController', () => {
 	let otelSettingsService: ReturnType<typeof mock<OtelSettingsService>>;
 	let otelService: ReturnType<typeof mock<OtelService>>;
-	let otelLifecycleHandler: ReturnType<typeof mock<OtelLifecycleHandler>>;
-	let moduleRegistry: ReturnType<typeof mock<ModuleRegistry>>;
-	let publisher: ReturnType<typeof mock<Publisher>>;
 	let controller: OtelSettingsController;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		otelSettingsService = mock<OtelSettingsService>();
 		otelService = mock<OtelService>();
-		otelLifecycleHandler = mock<OtelLifecycleHandler>();
-		moduleRegistry = mock<ModuleRegistry>();
-		publisher = mock<Publisher>();
-		controller = new OtelSettingsController(
-			otelSettingsService,
-			otelService,
-			otelLifecycleHandler,
-			moduleRegistry,
-			publisher,
-		);
+		controller = new OtelSettingsController(otelSettingsService, otelService);
 	});
 
 	describe('getSettings', () => {
@@ -72,9 +56,7 @@ describe('OtelSettingsController', () => {
 	describe('updateSettings', () => {
 		beforeEach(() => {
 			otelSettingsService.saveSettings.mockResolvedValue(undefined);
-			otelLifecycleHandler.onReloadOtelConfig.mockResolvedValue(undefined);
-			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
-			publisher.publishCommand.mockResolvedValue(undefined);
+			otelService.applyAfterSave.mockResolvedValue(undefined);
 			otelSettingsService.getSettings.mockReturnValue(baseResponse);
 		});
 
@@ -84,24 +66,10 @@ describe('OtelSettingsController', () => {
 			expect(otelSettingsService.saveSettings).toHaveBeenCalledWith(baseSettings);
 		});
 
-		it('triggers OTel reload after saving', async () => {
+		it('applies the saved settings here and in the other processes', async () => {
 			await controller.updateSettings(req, res, baseSettings);
 
-			expect(otelLifecycleHandler.onReloadOtelConfig).toHaveBeenCalledTimes(1);
-		});
-
-		it('refreshes module settings after reload', async () => {
-			await controller.updateSettings(req, res, baseSettings);
-
-			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('otel');
-		});
-
-		it('publishes reload-otel-config command to other instances', async () => {
-			await controller.updateSettings(req, res, baseSettings);
-
-			expect(publisher.publishCommand).toHaveBeenCalledWith({
-				command: 'reload-otel-config',
-			});
+			expect(otelService.applyAfterSave).toHaveBeenCalledTimes(1);
 		});
 
 		it('returns settings after all side-effects complete', async () => {
@@ -122,7 +90,7 @@ describe('OtelSettingsController', () => {
 			otelSettingsService.saveSettings.mockImplementation(async () => {
 				order.push('save');
 			});
-			otelLifecycleHandler.onReloadOtelConfig.mockImplementation(async () => {
+			otelService.applyAfterSave.mockImplementation(async () => {
 				order.push('reload');
 			});
 

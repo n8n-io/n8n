@@ -18,6 +18,9 @@ import {
 	XMsVersion,
 } from '../GenericFunctions';
 
+const blobUrl = (blobParameter: string) =>
+	`=/{{ toPathSegment($parameter["container"]) }}/{{ String($parameter["${blobParameter}"]) === "" ? toPathSegment("") : String($parameter["${blobParameter}"]).split("/").map((part) => part && toPathSegment(part)).join("/") }}`;
+
 export const blobOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -38,7 +41,7 @@ export const blobOperations: INodeProperties[] = [
 					request: {
 						ignoreHttpStatusErrors: true,
 						method: 'PUT',
-						url: '=/{{ $parameter["container"] }}/{{ $parameter["blobCreate"] }}',
+						url: blobUrl('blobCreate'),
 						headers: {
 							[HeaderConstants.X_MS_DATE]: '={{ new Date().toUTCString() }}',
 							[HeaderConstants.X_MS_VERSION]: XMsVersion,
@@ -71,7 +74,7 @@ export const blobOperations: INodeProperties[] = [
 					request: {
 						ignoreHttpStatusErrors: true,
 						method: 'DELETE',
-						url: '=/{{ $parameter["container"] }}/{{ $parameter["blob"] }}',
+						url: blobUrl('blob'),
 						headers: {
 							[HeaderConstants.X_MS_DATE]: '={{ new Date().toUTCString() }}',
 							[HeaderConstants.X_MS_VERSION]: XMsVersion,
@@ -104,7 +107,7 @@ export const blobOperations: INodeProperties[] = [
 					request: {
 						ignoreHttpStatusErrors: true,
 						method: 'GET',
-						url: '=/{{ $parameter["container"] }}/{{ $parameter["blob"] }}',
+						url: blobUrl('blob'),
 						headers: {
 							[HeaderConstants.X_MS_DATE]: '={{ new Date().toUTCString() }}',
 							[HeaderConstants.X_MS_VERSION]: XMsVersion,
@@ -188,7 +191,7 @@ export const blobOperations: INodeProperties[] = [
 							restype: 'container',
 							comp: 'list',
 						},
-						url: '=/{{ $parameter["container"] }}',
+						url: '=/{{ toPathSegment($parameter["container"]) }}',
 						headers: {
 							[HeaderConstants.X_MS_DATE]: '={{ new Date().toUTCString() }}',
 							[HeaderConstants.X_MS_VERSION]: XMsVersion,

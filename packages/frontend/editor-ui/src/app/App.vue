@@ -13,10 +13,11 @@ import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { useTelemetryInitializer } from '@/app/composables/useTelemetryInitializer';
 import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting';
 import { useModulePushDispatcher } from '@/app/composables/useModulePushDispatcher';
-import { useTrialIntroModalAutoOpen } from '@/experiments/trialIntroModal/useTrialIntroModalAutoOpen';
-// Experiment cleanup (119_surface_assistant_on_workflow_error)
-import WorkflowErrorNudge from '@/experiments/surfaceAssistantOnWorkflowError/components/WorkflowErrorNudge.vue';
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { useMcpDiscoveryEnrollment } from '@/experiments/surfaceMcpToClaudeTrialUsers/useMcpDiscovery';
 // EOF Experiment cleanup
+import { useTrialIntroModalAutoOpen } from '@/experiments/trialIntroModal/useTrialIntroModalAutoOpen';
+import WorkflowErrorNudge from '@/features/ai/instanceAi/workflowErrorNudge/components/WorkflowErrorNudge.vue';
 import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -59,7 +60,7 @@ const workflowDocumentId = computed<WorkflowDocumentId | null>(
 );
 
 const { setAppZIndexes } = useStyles();
-const { toastBottomOffset, toastRightOffset, askAiFloatingButtonBottomOffset } =
+const { toastBottomOffset, toastRightOffset, toastTopOffset, askAiFloatingButtonBottomOffset } =
 	useFloatingUiOffsets(workflowDocumentId);
 
 // Initialize undo/redo
@@ -76,6 +77,9 @@ useBackendStatus();
 useModulePushDispatcher({ router });
 
 useTrialIntroModalAutoOpen();
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+useMcpDiscoveryEnrollment();
+// EOF Experiment cleanup
 
 const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
@@ -129,6 +133,7 @@ const setLayoutRef = (el: Element) => {
 
 useExposeCssVar('--toast--offset', toastBottomOffset);
 useExposeCssVar('--toast--right', toastRightOffset);
+useExposeCssVar('--toast--top', toastTopOffset);
 useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloatingButtonBottomOffset);
 </script>
 
@@ -146,9 +151,7 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 		<template #overlays>
 			<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
 			<E2ETestModeMarker />
-			<!-- Experiment cleanup (119_surface_assistant_on_workflow_error) -->
 			<WorkflowErrorNudge />
-			<!-- EOF Experiment cleanup -->
 		</template>
 		<template #aside>
 			<AppChatPanel v-if="layoutRef" :layout-ref="layoutRef" />

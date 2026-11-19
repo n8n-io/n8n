@@ -1,6 +1,9 @@
 import type { StreamChunk } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES, type AgentIntegrationConfig } from '@n8n/api-types';
 import type { Logger as BackendLogger } from '@n8n/backend-common';
+import type { OutboundHttp } from '@n8n/backend-network';
+import type { CacheService } from '@n8n/backend-services';
+import type { AgentsConfig } from '@n8n/config';
 import type { WhatsAppAdapter } from '@chat-adapter/whatsapp';
 import { createHmac } from 'crypto';
 import type { InstanceSettings } from 'n8n-core';
@@ -19,6 +22,8 @@ import type {
 } from '../../../integration-tools';
 import type { AgentRepository } from '../../../../repositories/agent.repository';
 import { WhatsAppIntegration } from '../../../platforms/whatsapp/whatsapp-integration';
+import { WhatsAppOptionPagesStore } from '../../../platforms/whatsapp/whatsapp-option-pages.store';
+import type { WhatsAppSetupTelemetryService } from '../../../platforms/whatsapp/whatsapp-setup-telemetry.service';
 import type { WhatsAppWebhookVerificationStore } from '../../../platforms/whatsapp/whatsapp-webhook-verification.store';
 import {
 	createMockAttachmentService,
@@ -112,6 +117,8 @@ export interface WhatsAppReplayContext
 		isResumable: Mock;
 	};
 	actionExecutor: ChatIntegrationActionExecutor;
+	/** Reads of the business account's message templates (see `WhatsAppIntegration.createTemplateFetcher`). */
+	templateRequests: Mock;
 	/** The guarded adapter instance actually wired into `chat` (see `WhatsAppIntegration.createAdapter`). */
 	adapter: WhatsAppAdapter;
 	apiCalls: WhatsAppApiCall[];
@@ -137,12 +144,33 @@ export function whatsAppThreadId(
 	return `whatsapp:${fixtures.phoneNumberId}:${fixtures.contact.wa_id}`;
 }
 
+/** A real option store on a map, so a test can open a later page of a list. */
+export function createOptionPagesStore(logger: BackendLogger): WhatsAppOptionPagesStore {
+	const entries = new Map<string, unknown>();
+	const cache = mock<CacheService>();
+	cache.set.mockImplementation(async (key: string, value: unknown) => {
+		entries.set(key, value);
+	});
+	cache.get.mockImplementation(async (key: string) => entries.get(key));
+	return new WhatsAppOptionPagesStore(
+		cache,
+		logger,
+		mock<AgentsConfig>({ checkpointTtlSeconds: 3600 }),
+	);
+}
+
 export function createWhatsAppIntegration(
 	channelRateLimitGuard = new ChannelRateLimitGuard(),
 	webhookVerification: WhatsAppWebhookVerificationStore = mock<WhatsAppWebhookVerificationStore>(),
+	logger: BackendLogger = mock<BackendLogger>(),
+	optionPages: WhatsAppOptionPagesStore = createOptionPagesStore(logger),
+	setupTelemetry: WhatsAppSetupTelemetryService = mock<WhatsAppSetupTelemetryService>(),
+	templateRequests: Mock = vi.fn(),
 ): WhatsAppIntegration {
+	const outboundHttp = mock<OutboundHttp>();
+	outboundHttp.requests.mockReturnValue({ request: templateRequests } as never);
 	return new WhatsAppIntegration(
-		mock<BackendLogger>(),
+		logger,
 		mock<AgentRepository>(),
 		mock<InstanceSettings>({
 			encryptionKey: 'test-encryption-key',
@@ -150,6 +178,9 @@ export function createWhatsAppIntegration(
 		}),
 		channelRateLimitGuard,
 		webhookVerification,
+		outboundHttp,
+		optionPages,
+		setupTelemetry,
 	);
 }
 
@@ -289,9 +320,21 @@ export async function createWhatsAppReplayContext(
 		failedApiTypes?: string[];
 		failureSequence?: WhatsAppFailureSequence;
 		webhookVerification?: WhatsAppWebhookVerificationStore;
+		/** Raw Graph API templates that the business account returns. */
+		templates?: unknown[];
+		/** Replaces the whole template response, for a refused request. */
+		templateResponse?: { statusCode: number; body: unknown };
+		logger?: BackendLogger;
+		setupTelemetry?: WhatsAppSetupTelemetryService;
 	} = {},
 ): Promise<WhatsAppReplayContext> {
 	const stub = installWhatsAppApiStub(options.failedApiTypes, options.failureSequence);
+	const templateRequests = vi.fn(
+		async () =>
+			await Promise.resolve(
+				options.templateResponse ?? { statusCode: 200, body: { data: options.templates ?? [] } },
+			),
+	);
 
 	// Shared with `createReplayContextSetup` below so the adapter's own guard
 	// checks (automatic replies) and the action executor's (respond, send_dm)
@@ -301,6 +344,10 @@ export async function createWhatsAppReplayContext(
 	const integrationImpl = createWhatsAppIntegration(
 		channelRateLimitGuard,
 		options.webhookVerification,
+		options.logger,
+		undefined,
+		options.setupTelemetry,
+		templateRequests,
 	);
 	const integration: AgentIntegrationConfig = options.integration ?? {
 		type: 'whatsapp',
@@ -380,6 +427,7 @@ export async function createWhatsAppReplayContext(
 		attachmentService,
 		chat: chat as unknown as ChatInstance,
 		adapter,
+		templateRequests,
 		apiCalls: stub.apiCalls,
 		sendWebhook,
 		lastApiCall: () => stub.apiCalls.at(-1),

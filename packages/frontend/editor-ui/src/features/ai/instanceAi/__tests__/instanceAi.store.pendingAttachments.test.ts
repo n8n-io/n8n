@@ -69,4 +69,26 @@ describe('instanceAi store — pending composer attachments', () => {
 		store.requestClearCanvasSelection();
 		expect(store.clearCanvasSelectionRequest).toBe(before + 1);
 	});
+
+	it('stages an element next to other attachments', () => {
+		const store = useInstanceAiStore();
+		store.stageNodeSets('w1', setsA);
+		store.stageElement({ type: 'element', appId: 'app-1', tagName: 'button', text: 'Save' });
+
+		expect(store.consumePendingAttachments()).toEqual([
+			expect.objectContaining({ type: 'nodes' }),
+			{ type: 'element', appId: 'app-1', tagName: 'button', text: 'Save' },
+		]);
+	});
+
+	it('knows which app has an element in the composer', () => {
+		const store = useInstanceAiStore();
+
+		store.setComposerElementAppId('app-1');
+
+		expect(store.hasComposerElementFor('app-1')).toBe(true);
+		expect(store.hasComposerElementFor('app-2')).toBe(false);
+		store.setComposerElementAppId(null);
+		expect(store.hasComposerElementFor('app-1')).toBe(false);
+	});
 });

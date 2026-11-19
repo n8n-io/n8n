@@ -33,6 +33,7 @@ import {
 	resolveMcpRegistryConnection,
 } from './mcp-registry-connection';
 import type { McpRegistryServer } from './registry/mcp-registry.types';
+import { isAiGatewayMcpServer } from './registry/mcp-registry.types';
 
 type McpRegistryBaseNode = INodeType & {
 	setRegistryRuntime(runtime: McpRegistryRuntime): void;
@@ -124,7 +125,10 @@ export class McpRegistryNodeLoader implements NodeLoader {
 				sourcePath,
 			};
 
-			if (credentialDescription) {
+			// The AI Gateway no longer lists a deprecated row. Its hidden node stays for saved
+			// workflows, but its credential type is not registered, so minting refuses it.
+			const isRetiredAiGatewayRow = isAiGatewayMcpServer(server) && server.status !== 'active';
+			if (credentialDescription && !isRetiredAiGatewayRow) {
 				this.types.credentials.push(credentialDescription);
 				this.credentialTypes[credentialDescription.name] = {
 					type: credentialDescription,
@@ -157,6 +161,11 @@ export class McpRegistryNodeLoader implements NodeLoader {
 
 	getConnection(nodeTypeName: string): McpRegistryConnection | undefined {
 		return this.connections.get(nodeTypeName);
+	}
+
+	/** Whether registry nodes can use a credential type, by the same rule as `loadAll`. */
+	isSupportedCredentialType(name: string): boolean {
+		return isSupportedMcpRegistryCredentialType(this.getCredentialTypes(), name);
 	}
 
 	getNode(nodeType: string): LoadedClass<INodeType | IVersionedNodeType> {

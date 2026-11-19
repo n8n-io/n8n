@@ -5,6 +5,7 @@ import { CredentialsRepository } from '@n8n/db';
 import { GROUP_DESCRIPTION_MAX_LENGTH, STICKY_NODE_TYPE } from 'n8n-workflow';
 import type {
 	DynamicCredentialsUsage,
+	IExecutionContext,
 	ExecutionError,
 	INodeCredentialsDetails,
 	IRun,
@@ -1002,6 +1003,11 @@ describe('getLastExecutedNodeRuns', () => {
 describe('updateParentExecutionWithChildResults', () => {
 	const PARENT_ID = 'parent-execution-id';
 
+	// A child with no credentials of its own, unless a test says otherwise.
+	beforeEach(() => {
+		mockInstance(CredentialsPermissionChecker).getCredentialIdsForNodes.mockReturnValue([]);
+	});
+
 	const waitingParent = (): IExecutionResponse =>
 		({
 			status: 'waiting',
@@ -1033,6 +1039,88 @@ describe('updateParentExecutionWithChildResults', () => {
 				...(executedByUserId ? { executionData: { runtimeData: { executedByUserId } } } : {}),
 			},
 		}) as unknown as IRun;
+
+	it('waits for all children and preserves input when the node must execute again', async () => {
+		const persistence = mockInstance(ExecutionPersistence);
+		const parent = waitingParent();
+		const stack = parent.data.executionData!.nodeExecutionStack[0];
+		stack.metadata = {
+			resumeMode: 'reexecute',
+			waitingChildExecutionIds: ['a', 'b'],
+		};
+		const input = structuredClone(stack.data);
+		const child = childRun('success', 'Decision', {
+			data: { main: [[{ json: { approved: true } }]] },
+		});
+		persistence.findSingleExecution.mockResolvedValue(parent);
+		persistence.findStatusesByIds.mockResolvedValue([
+			{ id: 'a', status: 'success' },
+			{ id: 'b', status: 'waiting' },
+		]);
+		expect(
+			await updateParentExecutionWithChildResults(PARENT_ID, child, {
+				executionId: 'a',
+				workflowId: 'review',
+			}),
+		).toBe(false);
+		expect(persistence.updateExistingExecution).not.toHaveBeenCalled();
+		persistence.findStatusesByIds.mockResolvedValue([
+			{ id: 'a', status: 'success' },
+			{ id: 'b', status: 'error' },
+		]);
+		persistence.findSingleExecution.mockResolvedValueOnce(parent).mockResolvedValueOnce({
+			data: {
+				resultData: { runData: {} },
+				executionData: {
+					runtimeData: { redaction: { version: 2, production: true, manual: true } },
+				},
+			},
+			workflowData: { settings: { redactCallerExecutions: true }, nodes: [] },
+		} as unknown as IExecutionResponse);
+		parent.data.executionData!.runtimeData = {} as IExecutionContext;
+		expect(
+			await updateParentExecutionWithChildResults(PARENT_ID, child, {
+				executionId: 'a',
+				workflowId: 'review',
+			}),
+		).toBe(true);
+		expect(stack.data).toEqual(input);
+		expect(stack.metadata.resumeError).toBeUndefined();
+		expect(parent.data.executionData!.runtimeData.subWorkflowRedaction).toEqual({
+			production: true,
+			manual: true,
+		});
+	});
+
+	it('skips the full parent load for a child without a result when the parent is not waiting', async () => {
+		const persistence = mockInstance(ExecutionPersistence);
+		persistence.findStatusesByIds.mockResolvedValue([{ id: PARENT_ID, status: 'running' }]);
+
+		const patched = await updateParentExecutionWithChildResults(
+			PARENT_ID,
+			childRun('success', 'Done', {}),
+		);
+
+		expect(patched).toBe(false);
+		expect(persistence.findStatusesByIds).toHaveBeenCalledWith([PARENT_ID]);
+		expect(persistence.findSingleExecution).not.toHaveBeenCalled();
+	});
+
+	it('resumes a waiting parent in re-execute mode for a child without a result', async () => {
+		const persistence = mockInstance(ExecutionPersistence);
+		const parent = waitingParent();
+		parent.data.executionData!.nodeExecutionStack[0].metadata = { resumeMode: 'reexecute' };
+		persistence.findStatusesByIds.mockResolvedValue([{ id: PARENT_ID, status: 'waiting' }]);
+		persistence.findSingleExecution.mockResolvedValue(parent);
+
+		const patched = await updateParentExecutionWithChildResults(
+			PARENT_ID,
+			childRun('success', 'Done', {}),
+		);
+
+		expect(patched).toBe(true);
+		expect(persistence.updateExistingExecution).toHaveBeenCalledTimes(1);
+	});
 
 	type StackEntry = {
 		data?: unknown;
@@ -1313,12 +1401,7 @@ describe('updateParentExecutionWithChildResults', () => {
 	});
 
 	describe('credentials the sub-workflows reference', () => {
-		afterEach(() => {
-			delete process.env.N8N_ENV_FEAT_CRED_SHARING;
-		});
-
 		it('stamps them on the waiting task and the resume stash, joining sibling children', async () => {
-			process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
 			const parent = waitingParent();
 			parent.data.resultData = {
 				runData: {
@@ -1355,7 +1438,6 @@ describe('updateParentExecutionWithChildResults', () => {
 		});
 
 		it('stamps them when the sub-workflow fails, next to the resume error', async () => {
-			process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
 			const parent = waitingParent();
 			parent.data.resultData = {
 				runData: {
@@ -1389,24 +1471,6 @@ describe('updateParentExecutionWithChildResults', () => {
 			const entry = parent.data.executionData!.nodeExecutionStack[0] as unknown as StackEntry;
 			expect(entry.metadata?.resumeError).toMatchObject({ message: 'ERROR' });
 			expect(entry.metadata?.dynamicCredentialsUsage?.usedCredentialIds).toEqual(['child-cred']);
-		});
-
-		it('reports nothing with credential sharing off', async () => {
-			const parent = waitingParent();
-			const executionPersistence = mockInstance(ExecutionPersistence);
-			executionPersistence.findSingleExecution.mockResolvedValue(parent);
-			const permissionChecker = mockInstance(CredentialsPermissionChecker);
-
-			await updateParentExecutionWithChildResults(
-				PARENT_ID,
-				childRun('success', 'Done', { data: { main: [[{ json: { out: 1 } }]] } }),
-				undefined,
-				mock<IWorkflowBase>({ nodes: [] }),
-			);
-
-			expect(permissionChecker.getCredentialIdsForNodes).not.toHaveBeenCalled();
-			const entry = parent.data.executionData!.nodeExecutionStack[0] as unknown as StackEntry;
-			expect(entry.metadata?.dynamicCredentialsUsage?.usedCredentialIds).toBeUndefined();
 		});
 	});
 

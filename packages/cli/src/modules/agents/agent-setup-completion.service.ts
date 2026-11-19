@@ -1,10 +1,13 @@
 import type { CredentialProvider } from '@n8n/agents';
-import type { AgentJsonConfig } from '@n8n/api-types';
+import type {
+	AgentConfigValidationResponse,
+	AgentJsonConfig,
+	AgentTaskConfig,
+} from '@n8n/api-types';
+import { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-
-import { Telemetry } from '@/telemetry';
 
 import { AgentValidationService } from './agent-validation.service';
 import type { Agent } from './entities/agent.entity';
@@ -36,7 +39,7 @@ type EmitSetupCompleted = () => Promise<void>;
 export class AgentSetupCompletionService {
 	constructor(
 		private readonly agentValidationService: AgentValidationService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly agentRepository: AgentRepository,
 	) {}
 
@@ -52,18 +55,31 @@ export class AgentSetupCompletionService {
 		projectId: string,
 		credentialProvider: CredentialProvider,
 		user?: User,
+		tasks?: ReadonlyMap<string, AgentTaskConfig>,
 	): Promise<EmitSetupCompleted | null> {
 		const config = agent.schema ? toAgentDocument(agent.schema, skillRefs) : null;
 		const counts = countAgentCapabilities(config, agent.integrations);
 		if (!this.isPending(agent, counts)) return null;
 
-		const validation = await this.agentValidationService.validateLoadedAgentConfiguration(
-			agent,
-			projectId,
-			credentialProvider,
-			'publish',
-			{ skillRefs },
-		);
+		// A complete save already holds the task bodies. Do not reload a newer draft for its event.
+		let validation: AgentConfigValidationResponse;
+		if (tasks) {
+			validation = await this.agentValidationService.validateAgentEntityConfiguration(
+				agent,
+				skillRefs,
+				projectId,
+				tasks,
+				credentialProvider,
+			);
+		} else {
+			validation = await this.agentValidationService.validateLoadedAgentConfiguration(
+				agent,
+				projectId,
+				credentialProvider,
+				'publish',
+				{ skillRefs },
+			);
+		}
 		if (validation.status !== 'valid') return null;
 
 		return this.claim(agent, projectId, counts, user);

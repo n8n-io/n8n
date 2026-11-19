@@ -2,6 +2,7 @@
 import {
 	N8nBadge,
 	N8nButton,
+	N8nCheckbox,
 	N8nOption,
 	N8nPopover,
 	N8nSegmentControl,
@@ -25,6 +26,8 @@ import {
 defineProps<{
 	/** The owners of the listed workflows. */
 	owners: Array<{ id: string; label: string }>;
+	/** The projects of the listed workflows. */
+	projects: Array<{ id: string; label: string }>;
 	currentUserId?: string;
 	/** The number of workflows that each quick filter shows. */
 	counts: { assignedToMe: number; open: number; wontFix: number; unassigned: number };
@@ -270,7 +273,7 @@ const publishedOptions = computed<Array<{ value: PublishedFilter; label: string 
 					<N8nSelect
 						size="small"
 						filterable
-						:class="$style.ownerSelect"
+						:class="$style.select"
 						:model-value="filters.owner"
 						data-test-id="migration-rule-filter-owner"
 						@update:model-value="setFilter('owner', $event)"
@@ -288,6 +291,34 @@ const publishedOptions = computed<Array<{ value: PublishedFilter; label: string 
 						/>
 					</N8nSelect>
 				</div>
+				<div :class="$style.group">
+					<N8nText size="small" color="text-dark" bold>
+						{{ i18n.baseText('settings.migrationReport.detail.filters.project') }}
+					</N8nText>
+					<N8nSelect
+						size="small"
+						filterable
+						:class="$style.select"
+						:model-value="filters.project"
+						data-test-id="migration-rule-filter-project"
+						@update:model-value="setFilter('project', $event)"
+					>
+						<N8nOption value="any" :label="anyLabel" />
+						<N8nOption
+							v-for="project in projects"
+							:key="project.id"
+							:value="project.id"
+							:label="project.label"
+							data-test-id="migration-rule-filter-project-item"
+						/>
+					</N8nSelect>
+				</div>
+				<N8nCheckbox
+					:label="i18n.baseText('settings.migrationReport.detail.filters.showArchived')"
+					:model-value="filters.showArchived"
+					data-test-id="migration-rule-filter-show-archived"
+					@update:model-value="setFilter('showArchived', $event)"
+				/>
 				<div :class="$style.footer">
 					<N8nButton
 						variant="ghost"
@@ -342,7 +373,7 @@ const publishedOptions = computed<Array<{ value: PublishedFilter; label: string 
 	border-top: var(--border);
 }
 
-.ownerSelect {
+.select {
 	width: 100%;
 }
 

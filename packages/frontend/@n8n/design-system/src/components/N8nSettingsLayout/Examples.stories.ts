@@ -16,6 +16,7 @@ import N8nButton from '../N8nButton';
 import N8nDataTableServer from '../N8nDataTableServer';
 import {
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogClose,
 	N8nDialogDescription,
 	N8nDialogFooter,
@@ -651,6 +652,7 @@ const components = {
 	N8nSwitch,
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogClose,
 	N8nDialogFooter,
 	N8nExternalLink,
@@ -931,7 +933,7 @@ export const ApiKeys: Story = {
 						</template>
 						<template #[slotActions]>
 							<div style="display: flex; justify-content: flex-end">
-								<N8nButton variant="ghost" size="small" icon-only icon="ellipsis-vertical" aria-label="API key actions" />
+								<N8nButton variant="ghost" size="small" icon-only icon="ellipsis" aria-label="API key actions" />
 							</div>
 						</template>
 					</N8nDataTableServer>
@@ -1331,6 +1333,7 @@ const ClientDetailsDialog = defineComponent({
 	name: 'ClientDetailsDialog',
 	components: {
 		N8nDialog,
+		N8nDialogBody,
 		N8nDialogHeader,
 		N8nDialogTitle,
 		N8nDialogDescription,
@@ -1382,9 +1385,10 @@ const ClientDetailsDialog = defineComponent({
 						</span>
 						<N8nDialogTitle>{{ client.name }}</N8nDialogTitle>
 					</div>
-					<N8nDialogDescription>{{ client.type }} · connected to this instance over MCP</N8nDialogDescription>
 				</N8nDialogHeader>
 
+				<N8nDialogBody>
+				<N8nDialogDescription>{{ client.type }} · connected to this instance over MCP</N8nDialogDescription>
 				<div class="mcp-client-details__fields">
 					<N8nText size="small" color="text-light">Connected by</N8nText>
 					<N8nText size="small" color="text-dark">{{ client.connectedBy }}</N8nText>
@@ -1400,6 +1404,7 @@ const ClientDetailsDialog = defineComponent({
 						</div>
 					</div>
 				</div>
+				</N8nDialogBody>
 
 				<N8nDialogFooter>
 					<N8nDialogClose as-child>
@@ -1960,8 +1965,10 @@ export const ModelContextProtocol: Story = {
 					v-model:open="showDisableDialog"
 					size="small"
 					header="Disable MCP access?"
-					:description="disableDialogDescription"
 				>
+					<N8nDialogBody>
+						<N8nDialogDescription>{{ disableDialogDescription }}</N8nDialogDescription>
+					</N8nDialogBody>
 					<N8nDialogFooter>
 						<N8nDialogClose as-child>
 							<N8nButton variant="outline" label="Cancel" />
@@ -1978,8 +1985,12 @@ export const ModelContextProtocol: Story = {
 					v-model:open="showExposeAllDialog"
 					size="small"
 					header="Enable MCP access for all workflows?"
-					description="This lets connected clients reach every workflow on this instance right away. You can disable MCP access for individual workflows at any time."
 				>
+					<N8nDialogBody>
+						<N8nDialogDescription>
+							This lets connected clients reach every workflow on this instance right away. You can disable MCP access for individual workflows at any time.
+						</N8nDialogDescription>
+					</N8nDialogBody>
 					<N8nDialogFooter>
 						<N8nDialogClose as-child>
 							<N8nButton variant="outline" label="Not now" />
@@ -1998,8 +2009,11 @@ export const ModelContextProtocol: Story = {
 					v-model:open="showConnectDialog"
 					size="large"
 					header="Connect a client"
-					description="Pick the client you want to connect, then follow the tailored setup steps. When your client connects, n8n asks you to grant it access in a new tab."
 				>
+					<N8nDialogBody>
+					<N8nDialogDescription>
+						Pick the client you want to connect, then follow the tailored setup steps. When your client connects, n8n asks you to grant it access in a new tab.
+					</N8nDialogDescription>
 					<!-- Same structure the connect flow had on the page — ONE bordered N8nSettingsRowGroup
 					     with the "Your client" picker row on top (divider shown once a client is selected)
 					     and the tailored, dividerless setup rows below, wrapped in AutoHeight so switching
@@ -2126,6 +2140,7 @@ export const ModelContextProtocol: Story = {
 							</AutoHeight>
 						</N8nSettingsRowGroup>
 					</div>
+					</N8nDialogBody>
 				</N8nDialog>
 
 				<!-- CLIENT DETAILS → opened from a preview row's Access text: the full per-client grant

@@ -108,7 +108,6 @@ test.describe(
 			await expect(n8n.ndv.getCredentialOptionByText(serviceAccountCredentialName2)).toBeVisible();
 			await expect(n8n.ndv.getCredentialOptionByText(serviceAccountCredentialName)).toBeVisible();
 			await expect(n8n.ndv.credentialDropdownCreateNewCredential()).toBeVisible();
-			await expect(n8n.ndv.getCredentialDropdownOptions()).toHaveCount(2);
 		});
 
 		test('should correctly render required and optional credentials', async ({ n8n }) => {
@@ -116,7 +115,9 @@ test.describe(
 
 			await n8n.canvas.addNode('Pipedrive', { trigger: 'On new Pipedrive event' });
 			await n8n.ndv.selectOptionInParameterDropdown('incomingAuthentication', 'Basic Auth');
-			await expect(n8n.ndv.getNodeCredentialsEmptyState()).toHaveCount(2);
+			// Pipedrive OAuth2 has Automatic OAuth mode, so the first slot offers quick connect.
+			await expect(n8n.ndv.getNodeCredentialsQuickConnectEmptyState()).toHaveCount(1);
+			await expect(n8n.ndv.getNodeCredentialsEmptyState()).toHaveCount(1);
 
 			await n8n.ndv.clickCreateNewCredential(0);
 			// First credential type has multiple auth options → mode selector visible

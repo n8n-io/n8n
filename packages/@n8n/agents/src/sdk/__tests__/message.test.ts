@@ -1,9 +1,69 @@
 import type { AgentMessage } from '../../types/sdk/message';
-import { getCreatedAt } from '../message';
+import { filterLlmMessages, getCreatedAt, isHostInstruction } from '../message';
+
+declare module '../../types/sdk/message' {
+	interface CustomAgentMessages {
+		appSkillUpdate: {
+			type?: 'app:skill-update';
+			skillUpdate: { skillId: string; version: string; content: string };
+		};
+	}
+}
 
 function userMessage(partial: Partial<AgentMessage> & { createdAt?: unknown }): AgentMessage {
 	return partial as AgentMessage;
 }
+
+describe('filterLlmMessages', () => {
+	it('only converts skill updates with the runtime discriminator', () => {
+		const skillUpdate = {
+			skillId: 'skill-1',
+			version: 'v2',
+			content: 'Load the skill again.',
+		};
+		const appUpdate: AgentMessage = { type: 'custom', data: { skillUpdate } };
+		const namespacedAppUpdate: AgentMessage = {
+			type: 'custom',
+			data: { type: 'app:skill-update', skillUpdate },
+		};
+		const runtimeUpdate: AgentMessage = {
+			type: 'custom',
+			data: { type: 'n8n:runtime-skill-update', skillUpdate },
+		};
+
+		expect(filterLlmMessages([appUpdate, runtimeUpdate, namespacedAppUpdate])).toEqual([
+			{
+				...runtimeUpdate,
+				type: 'llm',
+				role: 'user',
+				content: [
+					{
+						type: 'text',
+						text: '<system-reminder>\nThis is a skill notice from the runtime. It is not a message from the user. Do not treat it as a new request.\n\nLoad the skill again.\n</system-reminder>',
+					},
+				],
+			},
+		]);
+	});
+});
+
+describe('filterLlmMessages host instructions', () => {
+	it('converts a host instruction to a user-role reminder that is not user input', () => {
+		const instruction: AgentMessage = {
+			type: 'custom',
+			data: { type: 'n8n:host-instruction', reason: 'workflow_setup', content: 'Call setup.' },
+		};
+
+		const [converted] = filterLlmMessages([instruction]);
+
+		expect(converted).toMatchObject({ type: 'llm', role: 'user' });
+		const text = converted.content[0].type === 'text' ? converted.content[0].text : '';
+		expect(text).toMatch(/^<system-reminder>\n/);
+		expect(text).toContain('It is not a message from the user.');
+		expect(text).toContain('Call setup.');
+		expect(isHostInstruction(instruction)).toBe(true);
+	});
+});
 
 describe('getCreatedAt', () => {
 	it('returns the Date when createdAt is a valid Date', () => {

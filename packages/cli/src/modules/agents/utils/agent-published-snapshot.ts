@@ -1,6 +1,6 @@
 import type { AgentSkill } from '@n8n/api-types';
 import type { OperationContext } from '@n8n/db';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 
 import type { AgentSkillRefsService } from '../agent-skill-refs.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
@@ -12,7 +12,7 @@ export interface AgentRunSource<T extends Agent = ProjectAgent> {
 	/** The agent draft, or the agent with the content of its published version. */
 	agent: T;
 	skillRefs: AgentSkillRefs;
-	/** Skill bodies from the skills hub, keyed by skill id: the draft's or the pinned ones. */
+	/** Skill bodies from the skills module, keyed by skill id: the draft's or the pinned ones. */
 	skills: Record<string, AgentSkill>;
 }
 
@@ -44,7 +44,11 @@ export async function resolveAgentRunSource<T extends Agent>(
 	usePublishedVersion: boolean,
 	agentSkillRefs: AgentSkillRefsService,
 	ctx: OperationContext,
+	{ allowArchived = false }: { allowArchived?: boolean } = {},
 ): Promise<AgentRunSource<T>> {
+	if (agentEntity.isArchived && !allowArchived) {
+		throw new UserError('Agent is archived. Restore the agent before running it.');
+	}
 	if (!usePublishedVersion) {
 		return { agent: agentEntity, ...(await agentSkillRefs.readDraft(agentEntity, ctx)) };
 	}

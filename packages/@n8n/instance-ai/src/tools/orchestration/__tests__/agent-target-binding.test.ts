@@ -6,11 +6,13 @@ import {
 	normalizeAgentRef,
 	PENDING_AGENT_METADATA_KEY,
 	clearedAgentBuilderTargetMetadata,
+	readAgentTargetsMetadata,
 	resolveAgentBuilderTarget,
 	saveAgentBuilderTarget,
 	seedAgentBuilderTargetMetadata,
 	threadAuthorizesAgentAdoption,
 	withBoundAgentTarget,
+	threadTargetsAgent,
 } from '../agent-target-binding';
 
 /** In-memory thread store shared across "turns" (fresh contexts). */
@@ -518,5 +520,50 @@ describe('threadAuthorizesAgentAdoption', () => {
 			false,
 		);
 		expect(threadAuthorizesAgentAdoption({ instanceAiAgentBuilderTarget: 7 }, target)).toBe(false);
+	});
+});
+
+describe('readAgentTargetsMetadata', () => {
+	it('reads the bound, pending and registered agents and the preview session', () => {
+		const metadata = {
+			...agentBuilderTargetMetadata([
+				{ agentId: 'agent-1', projectId: 'project-1', name: 'Triage', ref: 'triage' },
+			]),
+			[PENDING_AGENT_METADATA_KEY]: { agentId: 'agent-2', projectId: 'project-1' },
+			instanceAiAgentPreviewSession: { agentId: 'agent-1', threadId: 'session-1' },
+		};
+
+		expect(readAgentTargetsMetadata(metadata)).toEqual({
+			bound: { agentId: 'agent-1', projectId: 'project-1', name: 'Triage', ref: 'triage' },
+			pending: { agentId: 'agent-2', projectId: 'project-1' },
+			targets: [{ agentId: 'agent-1', projectId: 'project-1', name: 'Triage', ref: 'triage' }],
+			previewSession: { agentId: 'agent-1', threadId: 'session-1' },
+		});
+	});
+
+	it('reads malformed keys as not set', () => {
+		expect(
+			readAgentTargetsMetadata({
+				instanceAiAgentBuilderTarget: { agentId: 1 },
+				[PENDING_AGENT_METADATA_KEY]: 'agent-2',
+				instanceAiAgentBuilderTargets: [],
+			}),
+		).toEqual({ bound: undefined, pending: undefined, targets: [], previewSession: undefined });
+	});
+});
+
+describe('threadTargetsAgent', () => {
+	const target = { agentId: 'agent-1', projectId: 'project-1' };
+
+	it('is true for a bound, a pending or an earlier agent target', () => {
+		expect(threadTargetsAgent({ instanceAiAgentBuilderTarget: target })).toBe(true);
+		expect(threadTargetsAgent({ instanceAiPendingAgentTarget: target })).toBe(true);
+		expect(threadTargetsAgent({ instanceAiAgentBuilderTargets: { 'agent-1': target } })).toBe(true);
+	});
+
+	it('is false for a thread without an agent', () => {
+		expect(threadTargetsAgent(undefined)).toBe(false);
+		expect(threadTargetsAgent({})).toBe(false);
+		expect(threadTargetsAgent({ instanceAiAgentBuilderTargets: {} })).toBe(false);
 	});
 });

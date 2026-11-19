@@ -5,7 +5,7 @@ import type {
 	INode,
 	INodeParameterResourceLocator,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { execute } from '../../../actions/page/getManyByLabel.operation';
@@ -63,7 +63,7 @@ describe('Confluence page:getManyByLabel operation', () => {
 		expect(apiRequest).toHaveBeenCalledTimes(1);
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/wiki/api/v2/labels/777/pages',
+			requestPath`/wiki/api/v2/labels/777/pages`,
 			{},
 			{ 'body-format': 'storage', limit: 100 },
 		);
@@ -81,7 +81,7 @@ describe('Confluence page:getManyByLabel operation', () => {
 		expect(ctx.getNodeParameter).toHaveBeenCalledWith('label', 0, '', { extractValue: true });
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/wiki/api/v2/labels/777/pages',
+			requestPath`/wiki/api/v2/labels/777/pages`,
 			{},
 			expect.objectContaining({ limit: 100 }),
 		);
@@ -106,7 +106,7 @@ describe('Confluence page:getManyByLabel operation', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/wiki/api/v2/labels/777/pages',
+			requestPath`/wiki/api/v2/labels/777/pages`,
 			{},
 			expect.objectContaining({ 'space-id': '999' }),
 		);
@@ -144,14 +144,14 @@ describe('Confluence page:getManyByLabel operation', () => {
 			expect(apiRequest).toHaveBeenNthCalledWith(
 				1,
 				'GET',
-				'/wiki/api/v2/labels/777/pages',
+				requestPath`/wiki/api/v2/labels/777/pages`,
 				{},
 				{ 'body-format': 'storage', limit: 250 },
 			);
 			expect(apiRequest).toHaveBeenNthCalledWith(
 				2,
 				'GET',
-				'/wiki/api/v2/labels/777/pages',
+				requestPath`/wiki/api/v2/labels/777/pages`,
 				{},
 				{ 'body-format': 'storage', limit: 250, cursor: 'abc==' },
 			);
@@ -257,7 +257,7 @@ describe('Confluence page:getManyByLabel operation', () => {
 
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/wiki/api/v2/labels/777/pages',
+				requestPath`/wiki/api/v2/labels/777/pages`,
 				{},
 				expect.objectContaining({ 'body-format': 'atlas_doc_format' }),
 			);
@@ -284,7 +284,7 @@ describe('Confluence page:getManyByLabel operation', () => {
 
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/wiki/api/v2/labels/777/pages',
+				requestPath`/wiki/api/v2/labels/777/pages`,
 				{},
 				expect.objectContaining({ 'body-format': 'atlas_doc_format' }),
 			);

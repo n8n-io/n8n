@@ -1,4 +1,7 @@
 import { EventService } from '@n8n/backend-services';
+import type { CredentialProvider } from '@n8n/agents';
+import type { AgentIntegrationConfig, AgentTaskConfig } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 
 import {
@@ -7,6 +10,8 @@ import {
 	type AgentCreationEvent,
 } from './agent-modification-telemetry.service';
 import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
+import type { ProjectAgent } from './entities/agent.entity';
+import { syncAgentIntegrations } from './integrations/integrations-sync';
 
 /** Run save effects only after the complete draft write commits. */
 @Service()
@@ -23,6 +28,44 @@ export class AgentSaveCompletionService {
 		this.broadcaster.notify(
 			{ projectId: event.projectId, agentId: event.agent.id, source: event.by },
 			pushRef,
+		);
+	}
+
+	async definitionSaved(
+		event: AgentModificationEvent & { agent: ProjectAgent },
+		previousIntegrations: AgentIntegrationConfig[],
+		credentialProvider: CredentialProvider,
+		tasks: ReadonlyMap<string, AgentTaskConfig>,
+		operation: 'create' | 'update',
+	): Promise<void> {
+		const { AgentSetupCompletionService } = await import('./agent-setup-completion.service.js');
+		let emitSetupCompleted: (() => Promise<void>) | null = null;
+		try {
+			emitSetupCompleted = await Container.get(AgentSetupCompletionService).recordIfSetupComplete(
+				event.agent,
+				event.config?.skills,
+				event.projectId,
+				credentialProvider,
+				event.user,
+				tasks,
+			);
+		} catch (error) {
+			Container.get(Logger).warn('Failed to check Agent setup completion', {
+				agentId: event.agent.id,
+				error,
+			});
+		}
+		if (operation === 'create') {
+			this.configurationCreated(event);
+			await emitSetupCompleted?.();
+		} else {
+			await this.configurationSaved(event, undefined, emitSetupCompleted);
+		}
+		await syncAgentIntegrations(
+			event.agent,
+			previousIntegrations,
+			event.agent.integrations,
+			Container.get(Logger),
 		);
 	}
 

@@ -78,6 +78,7 @@ describe('folder package export', () => {
 		expect(jsonParse(folderFile!.content.toString())).toEqual({
 			id: folder.id,
 			name: 'to_production',
+			resourceType: 'workflow',
 			parentFolderId: null,
 		});
 	});

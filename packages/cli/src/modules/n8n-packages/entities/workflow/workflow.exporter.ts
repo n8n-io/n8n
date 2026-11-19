@@ -8,7 +8,7 @@ import { applyWorkflowVersionPolicy, needsActiveVersion } from './workflow-versi
 import { packageDirectory, writeWorkflowManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
 import type { ExportVersionPolicy } from '../../n8n-packages.types';
-import type { ManifestEntry } from '../../spec/manifest.schema';
+import type { WorkflowManifestEntry } from '../../spec/manifest.schema';
 import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
 import type { WorkflowCredentialRequirement } from '../credential/credential.types';
 import { DataTableRequirementsExtractor } from '../data-table/data-table-requirements.extractor';
@@ -36,7 +36,7 @@ export interface WorkflowExportRequest {
 }
 
 export interface WorkflowExportResult {
-	entries: ManifestEntry[];
+	entries: WorkflowManifestEntry[];
 	requirements: ExportRequirements;
 }
 
@@ -74,7 +74,8 @@ export class WorkflowExporter {
 			request.workflowIds,
 			applyWorkflowVersionPolicy(workflows, request.versionPolicy),
 		);
-		const entries: ManifestEntry[] = [];
+
+		const entries: WorkflowManifestEntry[] = [];
 		const credentials: WorkflowCredentialRequirement[] = [];
 		const dataTables: WorkflowDataTableRequirement[] = [];
 		const variables: WorkflowVariableRequirement[] = [];

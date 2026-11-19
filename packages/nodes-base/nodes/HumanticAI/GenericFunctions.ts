@@ -6,17 +6,19 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function humanticAiApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'formData'> = {},
 ): Promise<any> {
 	try {
 		const credentials = await this.getCredentials('humanticAiApi');
@@ -27,9 +29,9 @@ export async function humanticAiApiRequest(
 			method,
 			qs,
 			body,
-			uri: `https://api.humantic.ai/v1${resource}`,
+			uri: requestUrl`https://api.humantic.ai/v1${resource}`,
 			json: true,
-		} satisfies IRequestOptions;
+		} satisfies WithRequestTarget<IRequestOptions, 'uri'>;
 
 		options = Object.assign({}, options, option);
 		options.qs.apikey = credentials.apiKey;

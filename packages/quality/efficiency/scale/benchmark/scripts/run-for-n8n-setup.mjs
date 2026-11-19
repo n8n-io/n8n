@@ -79,7 +79,7 @@ async function main() {
 				N8N_LICENSE_ACTIVATION_KEY: n8nLicenseActivationKey,
 				N8N_LICENSE_TENANT_ID: n8nLicenseTenantId,
 				N8N_ENCRYPTION_KEY,
-				BENCHMARK_VERSION: benchmarkTag,
+				N8N_BENCHMARK_VERSION: benchmarkTag,
 				K6_API_TOKEN: k6ApiToken,
 				BENCHMARK_RESULT_WEBHOOK_URL: resultWebhookUrl,
 				BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER: resultWebhookAuthHeader,

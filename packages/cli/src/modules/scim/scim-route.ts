@@ -14,6 +14,8 @@ const scimConfig = Container.get(ScimConfig);
  * Options shared by all SCIM endpoints: the built-in cookie auth is skipped
  * and replaced by bearer-token auth (`ScimAuthMiddleware`), since requests
  * come from the identity provider, not a browser session.
+ * `ScimController` adds the request observer before route matching. The
+ * observer reports a rejected request when its response ends.
  */
 export const scimRoute: {
 	skipAuth: boolean;

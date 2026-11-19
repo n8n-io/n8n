@@ -31,6 +31,8 @@ import type { PrometheusQueueMetricsService } from '../queue-metrics.service';
 import type { PrometheusRouteMetricsService } from '../route-metrics.service';
 import type { PrometheusSchedulerMetricsService } from '../scheduler-metrics.service';
 import type { PrometheusSsrfMetricsService } from '../ssrf-metrics.service';
+import type { PrometheusExecutionLedgerMetricsService } from '../execution-ledger-metrics.service';
+import type { PrometheusMemoryGuardMetricsService } from '../memory-guard-metrics.service';
 import type { PrometheusSystemTaskMetricsService } from '../system-task-metrics.service';
 import type { PrometheusTokenExchangeMetricsService } from '../token-exchange-metrics.service';
 import type { PrometheusVersionMetricsService } from '../version-metrics.service';
@@ -74,6 +76,8 @@ describe('database pool metrics exposition', () => {
 		pollTrigger: mock<PrometheusPollTriggerMetricsService>({ enabled: false }),
 		encryption: mock<PrometheusEncryptionMetricsService>({ enabled: false }),
 		systemTask: mock<PrometheusSystemTaskMetricsService>({ enabled: false }),
+		memoryGuard: mock<PrometheusMemoryGuardMetricsService>({ enabled: false }),
+		executionLedger: mock<PrometheusExecutionLedgerMetricsService>({ enabled: false }),
 	};
 	let config: GlobalConfig;
 	let metrics: DbConnectionMetrics;
@@ -107,6 +111,7 @@ describe('database pool metrics exposition', () => {
 			new DatabaseMetricQueryService(
 				new CachedMetricQueryFactory(cacheService, dbConnection),
 				workflowRepository,
+				mock(),
 				mock(),
 				mock(),
 				mock(),
@@ -146,6 +151,8 @@ describe('database pool metrics exposition', () => {
 			disabledCollectors.pollTrigger,
 			disabledCollectors.encryption,
 			disabledCollectors.systemTask,
+			disabledCollectors.memoryGuard,
+			disabledCollectors.executionLedger,
 			Container.get(DatabaseIndependentRoutes),
 		);
 		prometheusMetrics.init(server.app);

@@ -215,12 +215,12 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 	}
 }
 
-/* Destructive items (delete, revoke, ...) turn danger-red on hover or keyboard
- * highlight: the icon and label both inherit the item color, so one rule
- * covers them, and the token adapts to light/dark themes on its own. */
+/* Destructive items (delete, revoke, ...) turn danger-red when highlighted.
+ * The icon and label both inherit the item color, so one rule covers them.
+ * The token adapts to light and dark themes. Do not use :hover. The pointer
+ * stays over the previous row when arrow keys move the highlight. */
 .destructive {
 	&:not([data-disabled]) {
-		&:hover,
 		&[data-highlighted],
 		&[aria-selected='true'] {
 			color: var(--color--danger);
