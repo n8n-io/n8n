@@ -1,0 +1,137 @@
+{
+	"name": "Retry, paired read",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [
+				0,
+				0
+			],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "retry-94",
+				"options": {}
+			},
+			"webhookId": "0b7f1c2e-3d4a-4b5c-8d6e-000000000094"
+		},
+		{
+			"id": "source",
+			"name": "Source",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"jsCode": "return [{ json: { id: 'a0' } }, { json: { id: 'a1' } }, { json: { id: 'a2' } }];"
+			}
+		},
+		{
+			"id": "http",
+			"name": "Http",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [
+				400,
+				0
+			],
+			"retryOnFail": true,
+			"waitBetweenTries": 1,
+			"parameters": {
+				"method": "GET",
+				"url": "=http://127.0.0.1:47123/thing/{{ $json.id }}",
+				"authentication": "none",
+				"options": {
+					"batching": {
+						"batch": {
+							"batchSize": 1,
+							"batchInterval": 20
+						}
+					},
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					}
+				}
+			},
+			"maxTries": 2
+		},
+		{
+			"id": "read-each",
+			"name": "Read Each",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				600,
+				0
+			],
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "return { json: { got: $json.got, src: $('Source').item.json.id } };"
+			}
+		},
+		{
+			"id": "read-expr",
+			"name": "Read Expr",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				600,
+				200
+			],
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "={ \"got\": \"{{ $json.got }}\", \"src\": \"{{ $('Source').item.json.id }}\" }",
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Source",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Source": {
+			"main": [
+				[
+					{
+						"node": "Http",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Http": {
+			"main": [
+				[
+					{
+						"node": "Read Each",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read Expr",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

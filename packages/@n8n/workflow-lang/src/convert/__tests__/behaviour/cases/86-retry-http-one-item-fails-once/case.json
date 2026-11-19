@@ -1,0 +1,58 @@
+{
+	"description": "HTTP Request with 'retry on fail' and three items: the request of the second item fails once. v1 runs the node again for all items, and the output is that of the second run",
+	"trigger": {
+		"body": {}
+	},
+	"http": {
+		"Http": {
+			"path": "thing",
+			"responses": [
+				{
+					"url": "/thing/a0",
+					"status": 200,
+					"body": {
+						"got": "r0"
+					}
+				},
+				{
+					"url": "/thing/a1",
+					"status": 500,
+					"body": {
+						"error": "boom"
+					}
+				},
+				{
+					"url": "/thing/a2",
+					"status": 200,
+					"body": {
+						"got": "r2"
+					}
+				},
+				{
+					"url": "/thing/a0",
+					"status": 200,
+					"body": {
+						"got": "r0-second"
+					}
+				},
+				{
+					"url": "/thing/a1",
+					"status": 200,
+					"body": {
+						"got": "r1-second"
+					}
+				},
+				{
+					"url": "/thing/a2",
+					"status": 200,
+					"body": {
+						"got": "r2-second"
+					}
+				}
+			]
+		}
+	},
+	"compare": [
+		"End"
+	]
+}

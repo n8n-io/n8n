@@ -302,6 +302,12 @@ describe('converted workflows behave as in n8n', () => {
 				}
 				expect(out.status, JSON.stringify(out.result)).toBe('error');
 				expect((out.result as { message?: string })?.message).toContain(expected.error as string);
+				// The requests before the error are those of v1, in the same order.
+				if (spec.http !== undefined) {
+					expect(requestsOf(out.effects).map((r) => `${r.method} ${r.path}`)).toEqual(
+						expected.requests.map((r) => `${r.method} ${r.path}`),
+					);
+				}
 				return;
 			}
 			const schedule = workflow.nodes.some((n) => n.type === 'n8n-nodes-base.scheduleTrigger');
