@@ -242,6 +242,17 @@ describe('Data Transformation Functions', () => {
 					),
 				).toThrow('Unsupported unit');
 			});
+
+			test.each(['weekday', 'weekNumber', 'yearDayNumber'])(
+				'should throw for get-only unit %s',
+				(unit) => {
+					expect(() =>
+						evaluate(
+							`={{ DateTime.fromISO("2024-03-30T18:49:00Z").diffTo("2024-03-25T18:49:00Z", "${unit}") }}`,
+						),
+					).toThrow('Unsupported unit');
+				},
+			);
 		});
 
 		describe('.toDateTime', () => {

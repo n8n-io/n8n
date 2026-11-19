@@ -240,7 +240,13 @@ function diffTo(date: DateTime, args: [string | Date | DateTime, DurationUnit | 
 		units = ['days'];
 	}
 
+	// 'weekday', 'weekNumber' and 'yearDayNumber' are extract() parts. Luxon's
+	// diff() rejects them, so they must not pass this check or diff() throws a
+	// raw InvalidUnitError instead of the friendly error below.
 	const allowedUnitSet = new Set([...dateParts, ...durationUnits]);
+	allowedUnitSet.delete('weekday');
+	allowedUnitSet.delete('weekNumber');
+	allowedUnitSet.delete('yearDayNumber');
 	const errorUnit = units.find((u) => !allowedUnitSet.has(u));
 
 	if (errorUnit) {
