@@ -212,6 +212,29 @@ describe('MigrationConventionsRule', () => {
 			expect(violations[0].message).toContain('Hand-written table name `workflow_entity`');
 		});
 
+		it('flags lowercase SQL that a concatenation passes to a query function', async () => {
+			const violations = await analyzeAdded(
+				migration(
+					"const select = 'select id ';\n" + "await runQuery(select + 'from workflow_entity');",
+				),
+			);
+
+			expect(violations).toHaveLength(1);
+			expect(violations[0].message).toContain('Hand-written table name `workflow_entity`');
+		});
+
+		it('flags a table renamed after ALTER TABLE in an earlier statement', async () => {
+			const violations = await analyzeAdded(
+				migration(
+					'await runQuery(`ALTER INDEX "idx_a" RENAME TO "idx_b"; ALTER TABLE #{escape.tableName(\'a\')} RENAME TO b`);',
+				),
+			);
+
+			expect(violations.map((v) => v.message.split('. ')[0])).toEqual([
+				expect.stringContaining('Hand-written table name `b` after RENAME TO'),
+			]);
+		});
+
 		it('flags a hand-written tablePrefix in a table position', async () => {
 			const violations = await analyzeAdded(
 				migration(
@@ -271,6 +294,11 @@ describe('MigrationConventionsRule', () => {
 				"await runQuery(`COMMENT ON COLUMN #{table}.x IS 'Copied from the source table'`);",
 				'await runQuery(`CREATE TRIGGER t AFTER UPDATE ON #{table} FOR EACH ROW BEGIN SELECT 1; END`);',
 				"logger.info('Copying rows from workflow_entity into the new table');",
+				"logger.warn('Update from the legacy format failed');",
+				"throw new Error('Create table step did not finish');",
+				'await runQuery(`CREATE TRIGGER t AFTER UPDATE OF status ON #{table} FOR EACH ROW BEGIN SELECT 1; END`);',
+				"await runQuery(`ALTER INDEX #{escape.indexName('a')} RENAME TO #{escape.indexName('b')}`);",
+				'await runQuery(`ALTER INDEX "idx_a" RENAME TO "idx_b"`);',
 				'await createTable(`my_table`);',
 				'const indexName = `#{tablePrefix}uq_my_index`;',
 			].join('\n\t\t');

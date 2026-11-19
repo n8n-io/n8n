@@ -206,7 +206,7 @@ export function isPostgresOnlyBranch(node: Node): boolean {
 }
 
 const PLACEHOLDER = '\u0000';
-const SQL_START = /^\s*(?:SELECT|INSERT|UPDATE|DELETE|ALTER|CREATE|DROP|WITH|PRAGMA|TRUNCATE)\b/i;
+const SQL_START = /^\s*(?:SELECT|INSERT|UPDATE|DELETE|ALTER|CREATE|DROP|WITH|PRAGMA|TRUNCATE)\b/;
 const QUERY_FUNCTIONS = new Set(['runQuery', 'query', 'runInBatches']);
 
 export interface SqlLiteral {
@@ -216,28 +216,44 @@ export interface SqlLiteral {
 	expressions: Node[];
 }
 
-function isQueryArgument(node: Node): boolean {
-	let current: Node = node;
-	let parent = current.getParent();
-	while (
-		parent &&
-		(Node.isParenthesizedExpression(parent) ||
-			(Node.isBinaryExpression(parent) &&
-				parent.getOperatorToken().getKind() === SyntaxKind.PlusToken))
-	) {
-		current = parent;
-		parent = current.getParent();
+/** Literals that reach a query function argument through parentheses, `+` and `const` bindings. */
+function queryArgumentLiterals(file: SourceFile): Set<Node> {
+	const literals = new Set<Node>();
+	const visit = (node: Node | undefined, depth: number): void => {
+		if (!node || depth > 4) return;
+		if (
+			Node.isStringLiteral(node) ||
+			Node.isNoSubstitutionTemplateLiteral(node) ||
+			Node.isTemplateExpression(node)
+		) {
+			literals.add(node);
+		} else if (Node.isParenthesizedExpression(node) || Node.isAsExpression(node)) {
+			visit(node.getExpression(), depth);
+		} else if (
+			Node.isBinaryExpression(node) &&
+			node.getOperatorToken().getKind() === SyntaxKind.PlusToken
+		) {
+			visit(node.getLeft(), depth);
+			visit(node.getRight(), depth);
+		} else if (Node.isIdentifier(node)) {
+			for (const declaration of node.getSymbol()?.getDeclarations() ?? []) {
+				if (!Node.isVariableDeclaration(declaration)) continue;
+				const list = declaration.getVariableStatement()?.getDeclarationKind();
+				if (list !== undefined && list !== VariableDeclarationKind.Const) continue;
+				visit(declaration.getInitializer(), depth + 1);
+			}
+		}
+	};
+	for (const call of file.getDescendantsOfKind(SyntaxKind.CallExpression)) {
+		if (!QUERY_FUNCTIONS.has(calleeName(call) ?? '')) continue;
+		for (const argument of call.getArguments()) visit(argument, 0);
 	}
-	return (
-		parent !== undefined &&
-		Node.isCallExpression(parent) &&
-		parent.getArguments().includes(current) &&
-		QUERY_FUNCTIONS.has(calleeName(parent) ?? '')
-	);
+	return literals;
 }
 
-/** String and template literals that hold SQL: query arguments, or text that starts with a statement keyword. */
+/** SQL literals: query arguments in any case, other strings only with an uppercase statement keyword. */
 export function sqlLiterals(file: SourceFile): SqlLiteral[] {
+	const queryLiterals = queryArgumentLiterals(file);
 	const literals: SqlLiteral[] = [];
 	file.forEachDescendant((node) => {
 		let literal: SqlLiteral | undefined;
@@ -253,7 +269,8 @@ export function sqlLiterals(file: SourceFile): SqlLiteral[] {
 			}
 			literal = { node, text, expressions };
 		}
-		if (literal && (SQL_START.test(literal.text) || isQueryArgument(node))) literals.push(literal);
+		if (literal && (SQL_START.test(literal.text) || queryLiterals.has(node)))
+			literals.push(literal);
 	});
 	return literals;
 }
@@ -285,7 +302,9 @@ const NON_TABLE_WORDS = new Set([
 	'no',
 	'null',
 	'on',
+	'of',
 ]);
+const ALTER_TABLE_STATEMENT = /\bALTER\s+TABLE\b[^;]*$/i;
 const SYSTEM_TABLE = /^(?:sqlite_|pg_|information_schema|pragma_|json_|jsonb_)/i;
 const CTE_NAME =
 	/(?:\bWITH\s+(?:RECURSIVE\s+)?|,\s*)([A-Za-z_]\w*)\s+AS\s*(?:NOT\s+)?(?:MATERIALIZED\s+)?\(/gi;
@@ -342,7 +361,10 @@ export function tableReferences(sql: SqlLiteral): TableReference[] {
 	const references: TableReference[] = [];
 	for (const match of literal.text.matchAll(TABLE_KEYWORD)) {
 		const start = match.index ?? 0;
-		if (NON_TABLE_PREDECESSOR.test(literal.text.slice(0, start))) continue;
+		const before = literal.text.slice(0, start);
+		if (NON_TABLE_PREDECESSOR.test(before)) continue;
+		// `ALTER INDEX a RENAME TO b` and similar rename objects that are not tables.
+		if (/^RENAME/i.test(match[1]) && !ALTER_TABLE_STATEMENT.test(before)) continue;
 		const reference = referenceAt(literal, start + match[0].length, match[1], cteNames);
 		if (reference) references.push(reference);
 	}
