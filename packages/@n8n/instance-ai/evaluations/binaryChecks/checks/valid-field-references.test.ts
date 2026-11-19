@@ -229,5 +229,55 @@ describe('validFieldReferences', () => {
 
 			expect(result.pass).toBe(true);
 		});
+
+		it('fails for an unlisted bracket key inside a nested closed object', async () => {
+			const result = await run(RECORD_SCHEMA, '={{ $json.meta["author"] }}');
+
+			expect(result.pass).toBe(false);
+			expect(result.comment).toContain('"meta.author" not in output of "Feedback Form"');
+		});
+
+		it('passes for a listed bracket key inside a nested closed object', async () => {
+			const result = await run(RECORD_SCHEMA, "={{ $json.meta['source'].trim() }}");
+
+			expect(result.pass).toBe(true);
+		});
+
+		it('passes when a nested key is dynamic', async () => {
+			const result = await run(RECORD_SCHEMA, '={{ $json.meta[$now.weekday] }}');
+
+			expect(result.pass).toBe(true);
+		});
+
+		it('walks into array items through a numeric index', async () => {
+			const schema = {
+				type: 'object',
+				properties: {
+					lines: {
+						type: 'array',
+						items: { type: 'object', properties: { sku: { type: 'string' } } },
+					},
+				},
+			} satisfies JsonSchema;
+
+			const valid = await run(schema, '={{ $json.lines[0].sku }}');
+			const invalid = await run(schema, '={{ $json.lines[0].price }}');
+
+			expect(valid.pass).toBe(true);
+			expect(invalid.pass).toBe(false);
+			expect(invalid.comment).toContain('"lines[0].price" not in output of "Feedback Form"');
+		});
+
+		it('fails when a plain read follows the missing nested key before the fallback', async () => {
+			const result = await run(RECORD_SCHEMA, '={{ $json.meta?.author.name ?? $json.id }}');
+
+			expect(result.pass).toBe(false);
+		});
+
+		it('passes when the missing nested key is read safely before the fallback', async () => {
+			const result = await run(RECORD_SCHEMA, '={{ $json.meta.author?.name ?? $json.id }}');
+
+			expect(result.pass).toBe(true);
+		});
 	});
 });

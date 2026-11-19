@@ -21,35 +21,75 @@ const NAMED_NODE_FIELD_DOT =
 const NAMED_NODE_FIELD_BRACKET =
 	/\$\(\s*(['"`])((?:\\.|(?!\1)[^\\])*)\1\s*\)(?:\.first\(\)|\.\w+)*\.json\[['"]([^'"]+)['"]\]/g;
 
+/** One step of a field path: an object key, or an array index. */
+type PathSegment = { key: string } | { index: string };
+
+/** One property access, optional chaining or call that follows a matched reference. */
+interface Access {
+	length: number;
+	/** True for `?.` access, which yields undefined instead of throwing on a missing value */
+	optional: boolean;
+	/** The field this access reads, or undefined for a call, method name or dynamic key */
+	segment: PathSegment | undefined;
+}
+
 interface FieldReference {
-	/** The field path being read, e.g. `['body', 'email']` for `$json.body.email` */
-	path: string[];
+	/** The field path being read, e.g. `body`, `email` for `$json.body.email` */
+	path: PathSegment[];
+	/** The accesses after the root field. The access at index `i` follows `path[i]`. */
+	accesses: Access[];
 	/** The node name providing the data, or undefined for $json (upstream) */
 	sourceNode: string | undefined;
 	/** Where the reference starts in the expression */
 	start: number;
 	/** Where the reference ends, after any property access or call on it */
 	end: number;
-	/** False when a plain `.prop` read on the field would throw if the field is missing */
-	safeWhenMissing: boolean;
 }
 
-/** Property access, optional chaining or calls that follow a matched reference. */
-const ACCESS_TAIL = /^(?:\?\.\w+|\.\w+|\[[^\]]*\]|\(\))*/;
 /** The text between two operands of one `??` / `||` chain. */
 const FALLBACK_LINK = /^\s*\)*\s*(?:\?\?|\|\|)\s*\(*\s*$/;
-/** One `.prop` / `?.prop` read in an access tail. A method name before `(` is not a field. */
-const PATH_SEGMENT = /^\??\.(\w+)(?![\w(])/;
 
-/** The nested field names read right after a field reference. */
-function nestedPath(tail: string): string[] {
-	const path: string[] = [];
-	let rest = tail;
-	for (let m = PATH_SEGMENT.exec(rest); m; m = PATH_SEGMENT.exec(rest)) {
-		path.push(m[1]);
-		rest = rest.slice(m[0].length);
+/** Access patterns, tried in order. Group 1 is the optional `?.` marker. */
+const ACCESS_PATTERNS: Array<[RegExp, (m: RegExpExecArray) => PathSegment | undefined]> = [
+	// `.prop` / `?.prop`. A method name before `(` is not a field.
+	[/^(\?\.|\.)(\w+)(?=(\()?)/, (m) => (m[3] ? undefined : { key: m[2] })],
+	// `["prop"]` / `?.['prop']`
+	[/^(\?\.)?\[\s*(['"])((?:(?!\2).)*)\2\s*\]/, (m) => ({ key: m[3] })],
+	// `[0]` / `?.[0]`
+	[/^(\?\.)?\[\s*(\d+)\s*\]/, (m) => ({ index: m[2] })],
+	// `[expr]`: a dynamic key that can't be checked statically
+	[/^(\?\.)?\[[^\]]*\]/, () => undefined],
+	// `()` / `?.()`
+	[/^(\?\.)?\(\)/, () => undefined],
+];
+
+function nextAccess(text: string): Access | undefined {
+	for (const [pattern, toSegment] of ACCESS_PATTERNS) {
+		const m = pattern.exec(text);
+		if (m) return { length: m[0].length, optional: m[1] === '?.', segment: toSegment(m) };
 	}
-	return path;
+	return undefined;
+}
+
+/** Parse the accesses that follow a matched reference. */
+function parseAccesses(text: string): Access[] {
+	const accesses: Access[] = [];
+	let offset = 0;
+	for (let a = nextAccess(text); a; a = nextAccess(text.slice(offset))) {
+		accesses.push(a);
+		offset += a.length;
+	}
+	return accesses;
+}
+
+/** The field segments read in sequence, up to the first call or dynamic key. */
+function leadingSegments(accesses: Access[]): PathSegment[] {
+	const segments: PathSegment[] = [];
+	for (const { segment } of accesses) {
+		if (!segment) break;
+		segments.push(segment);
+	}
+	return segments;
 }
 
 function unescapeNodeName(raw: string): string {
@@ -62,14 +102,13 @@ function extractFieldReferences(expression: string): FieldReference[] {
 	const add = (m: RegExpMatchArray, field: string, sourceNode: string | undefined) => {
 		const start = m.index ?? 0;
 		const matchEnd = start + m[0].length;
-		const after = expression.slice(matchEnd);
-		const tail = ACCESS_TAIL.exec(after)?.[0] ?? '';
+		const accesses = parseAccesses(expression.slice(matchEnd));
 		refs.push({
-			path: [field, ...nestedPath(after)],
+			path: [{ key: field }, ...leadingSegments(accesses)],
+			accesses,
 			sourceNode,
 			start,
-			end: matchEnd + tail.length,
-			safeWhenMissing: tail === '' || tail.startsWith('?.'),
+			end: matchEnd + accesses.reduce((sum, a) => sum + a.length, 0),
 		});
 	};
 
@@ -235,7 +274,7 @@ function getKnownOutputSchema(node: WorkflowNodeResponse): JsonSchema | undefine
 type SchemaStep = { next: JsonSchema } | 'missing' | 'unknown';
 
 /** Read one key of an object schema. Open objects accept keys they do not list. */
-function stepInto(schema: JsonSchema, key: string): SchemaStep {
+function stepIntoKey(schema: JsonSchema, key: string): SchemaStep {
 	const { properties, additionalProperties } = schema;
 	if (properties && Object.hasOwn(properties, key)) return { next: properties[key] };
 	if (typeof additionalProperties === 'object') return { next: additionalProperties };
@@ -243,16 +282,34 @@ function stepInto(schema: JsonSchema, key: string): SchemaStep {
 	return 'missing';
 }
 
-/** The path up to the first key that the schema does not have, or undefined if none. */
-function findMissingPath(schema: JsonSchema, path: string[]): string | undefined {
+function stepInto(schema: JsonSchema, segment: PathSegment): SchemaStep {
+	if ('key' in segment) return stepIntoKey(schema, segment.key);
+	return schema.items ? { next: schema.items } : 'unknown';
+}
+
+/** The index of the first path segment that the schema does not have, or undefined if none. */
+function findMissingIndex(schema: JsonSchema, path: PathSegment[]): number | undefined {
 	let current = schema;
-	for (const [i, key] of path.entries()) {
-		const step = stepInto(current, key);
+	for (const [i, segment] of path.entries()) {
+		const step = stepInto(current, segment);
 		if (step === 'unknown') return undefined;
-		if (step === 'missing') return path.slice(0, i + 1).join('.');
+		if (step === 'missing') return i;
 		current = step.next;
 	}
 	return undefined;
+}
+
+/** Render a path as `meta.author` or `lines[0].sku`. */
+function formatPath(path: PathSegment[]): string {
+	return path
+		.map((s, i) => ('index' in s ? `[${s.index}]` : i === 0 ? s.key : `.${s.key}`))
+		.join('');
+}
+
+/** False when the access right after the missing segment would throw on undefined. */
+function isSafeWhenMissing(ref: FieldReference, missingIndex: number): boolean {
+	const next = ref.accesses[missingIndex];
+	return next === undefined || next.optional;
 }
 
 /** The node a reference reads from: the named node, or the single upstream node for `$json`. */
@@ -299,10 +356,10 @@ export const validFieldReferences: BinaryCheck = {
 					const sourceNode = resolveSourceNode(ref, node.name, nodeByName, upstreamMap);
 					const schema = sourceNode ? getKnownOutputSchema(sourceNode) : undefined;
 					if (!sourceNode || !schema) return { state: 'unknown' as const };
-					const missingPath = findMissingPath(schema, ref.path);
-					return missingPath === undefined
+					const missingIndex = findMissingIndex(schema, ref.path);
+					return missingIndex === undefined
 						? { state: 'present' as const }
-						: { state: 'missing' as const, sourceNode, missingPath };
+						: { state: 'missing' as const, sourceNode, missingIndex };
 				});
 				const chain = fallbackChains(expr, refs);
 
@@ -311,11 +368,11 @@ export const validFieldReferences: BinaryCheck = {
 					if (result.state !== 'missing') return;
 					// A missing field is fine when another alternative in its chain exists.
 					const covered =
-						ref.safeWhenMissing &&
+						isSafeWhenMissing(ref, result.missingIndex) &&
 						refs.some((_, j) => j !== i && chain[j] === chain[i] && status[j].state === 'present');
 					if (covered) return;
 					invalid.push(
-						`"${result.missingPath}" not in output of "${result.sourceNode.name}" (in node "${node.name}")`,
+						`"${formatPath(ref.path.slice(0, result.missingIndex + 1))}" not in output of "${result.sourceNode.name}" (in node "${node.name}")`,
 					);
 				});
 			}
