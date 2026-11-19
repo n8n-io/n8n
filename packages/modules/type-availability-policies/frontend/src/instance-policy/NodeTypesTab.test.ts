@@ -203,9 +203,12 @@ describe('NodeTypesTab', () => {
 	it('restricts a node type at once', async () => {
 		mocks.saveInstancePolicy.mockResolvedValue({ ...policy(2), warnings: [] });
 		const { findByText, getByTestId } = await setup(() =>
-			mocks.fetchInstanceAccess
-				.mockResolvedValueOnce(access(1))
-				.mockResolvedValue(access(2, [{ name: SLACK, access: 'deny', matchedRuleId: 'new-rule' }])),
+			mocks.fetchInstanceAccess.mockResolvedValueOnce(access(1)).mockResolvedValue(
+				access(2, [
+					{ name: SLACK, access: 'deny', matchedRuleId: 'new-rule' },
+					{ name: SLACK_TRIGGER, access: 'allow', matchedRuleId: null },
+				]),
+			),
 		);
 		await findByText('Slack');
 
@@ -225,6 +228,8 @@ describe('NodeTypesTab', () => {
 		// The row shows the access that the server reports after the save.
 		await waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(2));
 		expect(accessCell(getByTestId)).toHaveTextContent('Restricted');
+		// The trigger has a name of its own, so the rule on Slack does not change it.
+		expect(accessCell(getByTestId, SLACK_TRIGGER)).toHaveTextContent('Allowed');
 	});
 
 	it('keeps a rule on a Tool variant in front when it allows the node type', async () => {
