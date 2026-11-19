@@ -6298,7 +6298,6 @@
 	"workflowHistory.item.active": "Published",
 	"workflowHistory.item.publishedBy": "Published by",
 	"workflowHistory.item.currentChanges": "Current changes",
-	"workflowHistory.item.currentDraft": "Current draft",
 	"workflowHistory.item.compareTooltip.compareLine": "Compare “{name}”",
 	"workflowHistory.item.compareTooltip.withLine": "with “{name}”",
 	"workflowHistory.limitDay": "Version history is limited to 1 day",

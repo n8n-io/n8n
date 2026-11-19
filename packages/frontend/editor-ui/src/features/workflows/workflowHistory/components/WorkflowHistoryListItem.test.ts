@@ -77,34 +77,6 @@ describe('WorkflowHistoryListItem', () => {
 		expect(getByTestId('workflow-history-engine-badge')).toHaveTextContent('Engine v2');
 	});
 
-	it('should label the current draft when it is not the first item', () => {
-		const item = workflowHistoryDataFactory();
-
-		const { getByTestId } = renderComponent({
-			pinia,
-			props: { item, index: 2, actions, isCurrentDraft: true },
-		});
-
-		expect(getByTestId('workflow-history-current-draft-label')).toHaveTextContent('Current draft');
-	});
-
-	it.each([
-		{ index: 0, isCurrentDraft: true },
-		{ index: 2, isCurrentDraft: false },
-	])(
-		'should not label the item at index $index with isCurrentDraft $isCurrentDraft',
-		({ index, isCurrentDraft }) => {
-			const item = workflowHistoryDataFactory();
-
-			const { queryByTestId } = renderComponent({
-				pinia,
-				props: { item, index, actions, isCurrentDraft },
-			});
-
-			expect(queryByTestId('workflow-history-current-draft-label')).not.toBeInTheDocument();
-		},
-	);
-
 	it('should emit compare event when compare button is clicked', async () => {
 		const item = workflowHistoryDataFactory();
 		const itemToCompareWith = workflowHistoryDataFactory();

@@ -49,12 +49,8 @@ export type TimelineEntry = TimelineVersionEntry | TimelineGroupHeader;
  * Named versions are shown as individual entries.
  * Consecutive unnamed versions are grouped into collapsible blocks.
  * The first item is always shown separately (never grouped).
- * The current draft is never grouped, so its label stays visible.
  */
-export const computeTimelineEntries = (
-	items: WorkflowHistory[],
-	currentVersionId?: string,
-): TimelineEntry[] => {
+export const computeTimelineEntries = (items: WorkflowHistory[]): TimelineEntry[] => {
 	const entries: TimelineEntry[] = [];
 	let currentGroup: TimelineVersionEntry[] = [];
 	let groupCounter = 0;
@@ -74,8 +70,7 @@ export const computeTimelineEntries = (
 	for (let i = 0; i < items.length; i++) {
 		const item = items[i];
 		const isFirstItem = i === 0;
-		const isCurrentDraft = item.versionId === currentVersionId;
-		const shouldBeGrouped = !isFirstItem && !isCurrentDraft && !item.name?.trim();
+		const shouldBeGrouped = !isFirstItem && !item.name?.trim();
 
 		if (shouldBeGrouped) {
 			currentGroup.push({

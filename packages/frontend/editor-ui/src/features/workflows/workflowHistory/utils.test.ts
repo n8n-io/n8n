@@ -193,24 +193,6 @@ describe('computeTimelineEntries', () => {
 	});
 });
 
-describe('computeTimelineEntries with the current draft', () => {
-	it('should not group the unnamed current draft', () => {
-		const draft = createUnnamedItem();
-		const items = [createNamedItem(), createUnnamedItem(), draft, createUnnamedItem()];
-
-		const result = computeTimelineEntries(items, draft.versionId);
-
-		expect(result.map((entry) => entry.type)).toEqual([
-			'version',
-			'group-header',
-			'version',
-			'group-header',
-		]);
-		expect((result[2] as TimelineVersionEntry).item).toBe(draft);
-		expect((result[2] as TimelineVersionEntry).isGrouped).toBe(false);
-	});
-});
-
 describe('toVersionDiffWorkflow', () => {
 	const createWorkflow = (settings: IWorkflowDb['settings']): IWorkflowDb => ({
 		id: 'wf-1',
