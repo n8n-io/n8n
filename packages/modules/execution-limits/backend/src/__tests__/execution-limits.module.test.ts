@@ -22,10 +22,18 @@ describe('ExecutionLimitsModule', () => {
 
 	it('loads the limits on init, before the process takes work', async () => {
 		const snapshot = mockInstance(ExecutionLimitsSnapshot);
+		let finishStart = () => {};
+		snapshot.start.mockReturnValue(new Promise<void>((resolve) => (finishStart = resolve)));
+		const onInitDone = vi.fn();
 
-		await new ExecutionLimitsModule().init();
+		const init = new ExecutionLimitsModule().init().then(onInitDone);
+		await vi.waitFor(() => expect(snapshot.start).toHaveBeenCalledTimes(1));
+		await new Promise(setImmediate);
+		expect(onInitDone).not.toHaveBeenCalled();
 
-		expect(snapshot.reload).toHaveBeenCalledTimes(1);
+		finishStart();
+		await init;
+		expect(onInitDone).toHaveBeenCalledTimes(1);
 	});
 
 	it('owns the project execution limit entity', async () => {

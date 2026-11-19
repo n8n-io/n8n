@@ -2,7 +2,7 @@ import type { ExecutionLimitSettings } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Publisher } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
-import { OnPubSubEvent } from '@n8n/decorators';
+import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { latestWins } from '@n8n/utils/promise/latest-wins';
 
@@ -17,9 +17,8 @@ export const REFRESH_INTERVAL_MS = 60 * Time.seconds.toMilliseconds;
  * The database stays the source of truth.
  *
  * Kept fresh by events: the writing process reloads after its commit, and the others reload
- * on a pubsub command or when their pubsub connection comes back. A read also starts a reload
- * when the last one is older than `REFRESH_INTERVAL_MS`, which recovers from a failed reload
- * or a lost command.
+ * on a pubsub command or when their pubsub connection comes back. A timer also reloads every
+ * `REFRESH_INTERVAL_MS`, which recovers from a failed reload or a lost command.
  */
 @Service()
 export class ExecutionLimitsSnapshot {
@@ -28,7 +27,7 @@ export class ExecutionLimitsSnapshot {
 		projectMaxExecutions: ReadonlyMap<string, number>;
 	} | null = null;
 
-	private refreshDueAt = 0;
+	private refreshTimer: NodeJS.Timeout | undefined;
 
 	constructor(
 		private readonly settingsStore: ExecutionLimitSettingsStore,
@@ -39,10 +38,22 @@ export class ExecutionLimitsSnapshot {
 		this.logger = this.logger.scoped('policy');
 	}
 
-	/** `null` until the first load succeeds. Never waits for the reload that it starts. */
-	read(projectId: string): ApplicableLimits | null {
-		if (Date.now() >= this.refreshDueAt) void this.reload();
+	/** A failed first load does not stop the boot: the timer tries again. */
+	async start(): Promise<void> {
+		await this.reload();
 
+		this.refreshTimer ??= setInterval(async () => await this.reload(), REFRESH_INTERVAL_MS);
+		this.refreshTimer.unref();
+	}
+
+	@OnShutdown()
+	stop(): void {
+		clearInterval(this.refreshTimer);
+		this.refreshTimer = undefined;
+	}
+
+	/** `null` until the first load succeeds. */
+	read(projectId: string): ApplicableLimits | null {
 		if (!this.loaded) return null;
 
 		return {
@@ -56,8 +67,6 @@ export class ExecutionLimitsSnapshot {
 	@OnPubSubEvent('reload-execution-limits')
 	@OnPubSubEvent('pubsub-reconnected')
 	async reload(): Promise<void> {
-		this.refreshDueAt = Date.now() + REFRESH_INTERVAL_MS;
-
 		try {
 			await this.loadLatest();
 		} catch (error) {

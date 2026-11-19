@@ -11,7 +11,7 @@ export class ExecutionLimitsModule implements ModuleInterface {
 	async init() {
 		// Loaded before the process takes work, so the first read already has the limits.
 		const { ExecutionLimitsSnapshot } = await import('./execution-limits-snapshot.js');
-		await Container.get(ExecutionLimitsSnapshot).reload();
+		await Container.get(ExecutionLimitsSnapshot).start();
 	}
 
 	async entities() {
