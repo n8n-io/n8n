@@ -1313,6 +1313,29 @@ export interface InstanceAiDataTableService {
 	): Promise<{ deletedCount: number; dataTableId: string; tableName: string; projectId: string }>;
 }
 
+/**
+ * MCP Servers (hack): read and change one user-built MCP server. Inputs are
+ * validated by the host. Every change pushes a reload to the open server page.
+ */
+export interface InstanceAiMcpServerBuilderService {
+	get(serverId: string): Promise<Record<string, unknown>>;
+	update(serverId: string, changes: Record<string, unknown>): Promise<Record<string, unknown>>;
+	searchTargets(query?: string): Promise<Array<Record<string, unknown>>>;
+	searchSkills(query?: string): Promise<Array<Record<string, unknown>>>;
+	addTool(serverId: string, tool: Record<string, unknown>): Promise<Record<string, unknown>>;
+	updateTool(
+		serverId: string,
+		toolId: string,
+		changes: Record<string, unknown>,
+	): Promise<Record<string, unknown>>;
+	removeTool(serverId: string, toolId: string): Promise<Record<string, unknown>>;
+	addResource(
+		serverId: string,
+		resource: Record<string, unknown>,
+	): Promise<Record<string, unknown>>;
+	removeResource(serverId: string, resourceId: string): Promise<Record<string, unknown>>;
+}
+
 export interface InstanceAiAppService {
 	createApp(input: {
 		name: string;
@@ -1783,6 +1806,8 @@ export interface InstanceAiContext {
 	aiPreferenceService?: InstanceAiPreferenceService;
 	skillService?: InstanceAiSkillService;
 	appService?: InstanceAiAppService;
+	/** Present when the MCP Servers module is active. */
+	mcpServerBuilderService?: InstanceAiMcpServerBuilderService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */

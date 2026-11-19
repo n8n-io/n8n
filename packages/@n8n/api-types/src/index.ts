@@ -13,6 +13,7 @@ export type * from './quick-connect';
 export * from './agents/index';
 export * from './skills/index';
 export * from './knowledge/index';
+export * from './mcp-servers/index';
 export * from './builder-tool-names';
 export * from './schemas/app.schema';
 export * from './schemas/app-binding.schema';

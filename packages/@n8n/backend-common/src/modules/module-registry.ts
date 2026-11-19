@@ -83,6 +83,7 @@ export class ModuleRegistry {
 		'n8n-packages',
 		'runtime-credentials',
 		'mcp-registry',
+		'mcp-servers',
 		'workflow-reviews',
 		'inbox',
 		'promotions',

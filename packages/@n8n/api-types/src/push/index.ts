@@ -6,6 +6,7 @@ import type { DebugPushMessage } from './debug';
 import type { ExecutionPushMessage } from './execution';
 import type { HotReloadPushMessage } from './hot-reload';
 import type { InstanceAiPushMessage } from './instance-ai';
+import type { McpServersPushMessage } from './mcp-servers';
 import type { WebhookPushMessage } from './webhook';
 import type { WorkerPushMessage } from './worker';
 import type { WorkflowPushMessage } from './workflow';
@@ -25,7 +26,8 @@ export type PushMessage =
 	| BuilderCreditsPushMessage
 	| ChatHubPushMessage
 	| InstanceAiPushMessage
-	| WorkflowReviewPushMessage;
+	| WorkflowReviewPushMessage
+	| McpServersPushMessage;
 
 export type PushType = PushMessage['type'];
 

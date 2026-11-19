@@ -1,5 +1,6 @@
 import { isRecord } from '@n8n/utils/is-record';
 import type { InstanceAiThreadSubject } from '@n8n/api-types';
+import { INSTANCE_AI_MCP_SERVER_TARGET_METADATA_KEY } from '@n8n/api-types';
 import type { ComputedRef, InjectionKey } from 'vue';
 
 import { INSTANCE_AI_AGENT_BUILDER_TARGETS_METADATA_KEY } from '../constants';
@@ -20,6 +21,7 @@ import {
  */
 export type InstanceAiEmbedSubject =
 	| InstanceAiThreadSubject
+	| { type: 'mcpServer'; id: string; projectId: string; name?: string }
 	| { type: 'workflow'; id: string; projectId: string; name?: string };
 
 /**
@@ -51,6 +53,10 @@ export function threadTargetsSubject(
 		// TODO(AGENT-810 follow-up): workflows have no thread-metadata binding key
 		// yet (see plan §7 / NodeView host) — always excluded until that lands.
 		return false;
+	}
+	if (subject.type === 'mcpServer') {
+		const target = metadata?.[INSTANCE_AI_MCP_SERVER_TARGET_METADATA_KEY];
+		return isRecord(target) && target.serverId === subject.id;
 	}
 	if (subject.type === 'app') {
 		if (getPendingAppTargetFromThreadMetadata(metadata)?.appId === subject.id) return true;

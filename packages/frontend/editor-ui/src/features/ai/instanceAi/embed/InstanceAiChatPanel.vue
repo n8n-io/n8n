@@ -658,7 +658,11 @@ async function openFullAssistant() {
 	}
 	// The server does not know a thread before its first message. The full view then
 	// opens it as new, shows the agent, and its first message binds it.
-	if (panelAgentThreads.get(threadId) === true && props.subject.type !== 'workflow') {
+	if (
+		panelAgentThreads.get(threadId) === true &&
+		props.subject.type !== 'workflow' &&
+		props.subject.type !== 'mcpServer'
+	) {
 		markAssistantAgentLaunch(threadId, {
 			projectId: props.subject.projectId,
 			subject: props.subject,

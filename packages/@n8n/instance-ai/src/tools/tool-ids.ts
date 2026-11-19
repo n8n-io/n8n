@@ -68,6 +68,7 @@ export const DOMAIN_TOOL_IDS = {
 	SAVE_USER_PREFERENCE: 'save_user_preference',
 	SKILLS: 'skills',
 	APPS: 'apps',
+	MCP_SERVER_BUILDER: 'mcp-server-builder',
 } as const;
 
 /** Trace-only chain-typed child run emitted by `workflow_builder_build_workflow` with the
