@@ -1,9 +1,9 @@
 import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
-import { formatFilters } from '../GenericFunctions';
+import { formatFilters, freshserviceApiRequest } from '../GenericFunctions';
 
 describe('Freshservice GenericFunctions', () => {
 	describe('formatFilters', () => {
@@ -55,6 +55,25 @@ describe('Freshservice GenericFunctions', () => {
 
 		it('names the offending field in the error', () => {
 			expect(() => format({ department_id: "a'b" })).toThrow("'department_id' cannot contain '");
+		});
+	});
+
+	describe('freshserviceApiRequest', () => {
+		it('should encode a path value with a slash as one segment', async () => {
+			const context = mockDeep<IExecuteFunctions>();
+			context.getCredentials.mockResolvedValue({ apiKey: 'fake-api-key', domain: 'acme' });
+			context.helpers.request.mockResolvedValue({});
+
+			const id = '42/delete?x=1';
+			await freshserviceApiRequest.call(context, 'GET', requestPath`/tickets/${id}`);
+
+			expect(context.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					uri: expect.objectContaining({
+						value: 'https://acme.freshservice.com/api/v2/tickets/42%2Fdelete%3Fx=1',
+					}),
+				}),
+			);
 		});
 	});
 });

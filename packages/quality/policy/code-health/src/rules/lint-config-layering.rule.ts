@@ -13,8 +13,7 @@ const CONFIG_FILENAMES = ['eslint.config.mjs', 'eslint.config.js', 'eslint.confi
 /**
  * A package that has moved to oxlint deletes its ESLint config, so the layering
  * policy has to follow it there. Only the layered `oxlint.config.{mts,ts}` form
- * is checked: `.oxlintrc.json` is the editor-ui bridge, a standalone rule table
- * whose policy still lives in its ESLint config.
+ * is checked: a standalone `.oxlintrc.json` rule table extends no layer.
  */
 const OXLINT_CONFIG_FILENAMES = ['oxlint.config.mts', 'oxlint.config.ts'];
 

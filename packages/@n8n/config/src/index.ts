@@ -11,6 +11,7 @@ import { CacheConfig } from './configs/cache.config';
 import { CanvasOnlyConfig } from './configs/canvas-only.config';
 import { ChatHubConfig } from './configs/chat-hub.config';
 import { ChatTriggerConfig } from './configs/chat-trigger.config';
+import { CodeExecutionConfig } from './configs/code-execution.config';
 import { CollaborationConfig } from './configs/collaboration.config';
 import { CompressionNodeConfig } from './configs/compression.config';
 import { CredentialsConfig } from './configs/credentials.config';
@@ -31,6 +32,7 @@ import { HiringBannerConfig } from './configs/hiring-banner.config';
 import { HttpRequestConfig } from './configs/http-request.config';
 import { InstanceAiConfig } from './configs/instance-ai.config';
 import { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
+import { LeasesConfig } from './configs/leases.config';
 import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
 import { MemoryGuardConfig } from './configs/memory-guard.config';
@@ -68,6 +70,8 @@ export { sampleRateSchema } from './configs/sentry.config';
 export { positiveIntSchema, nonnegativeIntSchema } from './schemas';
 export type { TaskRunnerMode } from './configs/runners.config';
 export { TaskRunnersConfig } from './configs/runners.config';
+export { CodeExecutionConfig, CodeSandboxConfig } from './configs/code-execution.config';
+export type { CodeExecutionBackendType, CodeSandboxScope } from './configs/code-execution.config';
 export { SecurityConfig } from './configs/security.config';
 export { PublicApiRateLimitConfig } from './configs/public-api.config';
 export {
@@ -118,6 +122,7 @@ export { AgentsConfig } from './configs/agents.config';
 export { CompressionNodeConfig } from './configs/compression.config';
 export { RedisConfig } from './configs/redis.config';
 export { SchedulerConfig } from './configs/scheduler.config';
+export { LeasesConfig } from './configs/leases.config';
 export { EndpointsConfig, PrometheusMetricsConfig };
 
 const protocolSchema = z.enum(['http', 'https']);
@@ -201,10 +206,16 @@ export class GlobalConfig {
 	taskRunners: TaskRunnersConfig;
 
 	@Nested
+	codeExecution: CodeExecutionConfig;
+
+	@Nested
 	multiMainSetup: MultiMainSetupConfig;
 
 	@Nested
 	scheduler: SchedulerConfig;
+
+	@Nested
+	leases: LeasesConfig;
 
 	@Nested
 	generic: GenericConfig;

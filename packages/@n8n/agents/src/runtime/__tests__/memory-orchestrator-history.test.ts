@@ -161,6 +161,56 @@ describe('MemoryOrchestrator.loadHistoryMessages with observational memory', () 
 		expect(resumed.llmVisibleMessages().map((m) => m.id)).toEqual(['m2', 'm3']);
 	});
 
+	it('keeps skills loaded before the resume point', async () => {
+		const store = new InMemoryMemory();
+		const loadSkill: AgentDbMessage = {
+			id: m1.id,
+			createdAt: m1.createdAt,
+			role: 'assistant',
+			content: [
+				{
+					type: 'tool-call',
+					toolCallId: 'load-1',
+					toolName: 'load_skill',
+					input: { skillId: 'workflow-builder' },
+					state: 'resolved',
+					output: { type: 'content', value: [{ type: 'text', text: 'Skill body' }] },
+				},
+			],
+		};
+		await seedThread(store, [loadSkill, m2, m3]);
+		await store.setCursor({
+			observationScopeId: THREAD_ID,
+			lastObservedMessageId: m1.id,
+			lastObservedAt: m1.createdAt,
+			updatedAt: m1.createdAt,
+		});
+		await store.appendObservationLogEntries([
+			{
+				observationScopeId: THREAD_ID,
+				marker: 'critical',
+				text: 'Builder skill loaded.',
+				parentId: null,
+				createdAt: m1.createdAt,
+			},
+		]);
+		await store.saveResumeState({
+			observationScopeId: THREAD_ID,
+			resumeFrom: { lastObservedMessageId: m1.id, lastObservedAt: m1.createdAt },
+			resumeNotes: 'Builder skill loaded.',
+			lastRequestTokens: null,
+			lastModelId: null,
+		});
+
+		const list = new AgentMessageList();
+		await buildOrchestrator(store).loadInto(list, {
+			persistence: { threadId: THREAD_ID, resourceId: RESOURCE_ID },
+		});
+
+		expect(list.messages().map(({ id }) => id)).toEqual(['m2', 'm3']);
+		expect(list.loadedSkillIds()).toEqual(new Set(['workflow-builder']));
+	});
+
 	it('ignores a stale resume point that has no cursor behind it', async () => {
 		const store = new InMemoryMemory();
 		await seedThread(store, [m1, m2, m3]);

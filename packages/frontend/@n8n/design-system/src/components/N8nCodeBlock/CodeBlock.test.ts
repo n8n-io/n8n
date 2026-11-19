@@ -9,19 +9,20 @@ vi.mock('element-plus', async (importOriginal) => {
 	return { ...elementPlus, ElNotification: vi.fn() };
 });
 
-const writeText = vi.fn<Clipboard['writeText']>();
-
-function setClipboard(clipboard?: Pick<Clipboard, 'writeText'>) {
-	Object.defineProperty(navigator, 'clipboard', {
-		configurable: true,
-		value: clipboard,
-	});
-}
+// jsdom has no async Clipboard API, so copies go through the legacy `execCommand` fallback.
+const execCommand = vi.fn<(command: string) => boolean>();
+let copiedText: string | undefined;
 
 describe('N8nCodeBlock', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		setClipboard({ writeText });
+		copiedText = undefined;
+		execCommand.mockImplementation(() => {
+			copiedText = document.querySelector('textarea')?.value;
+			return true;
+		});
+		Object.defineProperty(document, 'execCommand', { configurable: true, value: execCommand });
+		Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
 	});
 
 	it('normalizes the language', () => {
@@ -53,14 +54,17 @@ describe('N8nCodeBlock', () => {
 
 		await fireEvent.click(getByRole('button', { name: 'Copy code' }));
 
-		expect(writeText).toHaveBeenCalledWith(code);
+		expect(execCommand).toHaveBeenCalledWith('copy');
+		expect(copiedText).toBe(code);
 		expect(emitted('copy')).toEqual([[code]]);
 		expect(getByRole('button', { name: 'Copied to clipboard' })).toBeInTheDocument();
 		expect(ElNotification).not.toHaveBeenCalled();
 	});
 
 	it('reports copy failure without emitting a copy event', async () => {
-		writeText.mockRejectedValueOnce(new Error('Clipboard unavailable'));
+		execCommand.mockImplementationOnce(() => {
+			throw new Error('Clipboard unavailable');
+		});
 		const { emitted, getByRole } = render(CodeBlock, { props: { code: 'example' } });
 
 		await fireEvent.click(getByRole('button', { name: 'Copy code' }));
@@ -75,7 +79,9 @@ describe('N8nCodeBlock', () => {
 	it('clears success feedback when a later copy fails', async () => {
 		const { emitted, getByRole } = render(CodeBlock, { props: { code: 'example' } });
 		await fireEvent.click(getByRole('button', { name: 'Copy code' }));
-		writeText.mockRejectedValueOnce(new Error('Clipboard unavailable'));
+		execCommand.mockImplementationOnce(() => {
+			throw new Error('Clipboard unavailable');
+		});
 
 		await fireEvent.click(getByRole('button', { name: 'Copied to clipboard' }));
 
@@ -100,13 +106,9 @@ describe('N8nCodeBlock', () => {
 		}
 	});
 
-	it.each([
-		{ copyable: false, clipboard: { writeText } },
-		{ copyable: true, clipboard: undefined },
-	])('hides the copy action when unavailable', ({ copyable, clipboard }) => {
-		setClipboard(clipboard);
+	it('hides the copy action when the block is not copyable', () => {
 		const { queryByRole } = render(CodeBlock, {
-			props: { code: 'const active = true;', copyable },
+			props: { code: 'const active = true;', copyable: false },
 		});
 
 		expect(queryByRole('button', { name: 'Copy code' })).not.toBeInTheDocument();

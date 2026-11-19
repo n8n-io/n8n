@@ -38,7 +38,7 @@ import {
 
 import { BadRequestError } from '@n8n/errors';
 
-import { CollaborationService } from '@/collaboration/collaboration.service';
+import { AgentWriteLockService } from '@/modules/agents/agent-write-lock.service';
 
 import { AgentEvalRatingService } from './agent-eval-rating.service';
 import { AgentEvalService } from './agent-eval.service';
@@ -71,7 +71,7 @@ export class AgentEvalsController {
 		private readonly service: AgentEvalService,
 		private readonly ratingService: AgentEvalRatingService,
 		private readonly flagGate: AgentEvalsFlagGate,
-		private readonly collaborationService: CollaborationService,
+		private readonly agentWriteLockService: AgentWriteLockService,
 	) {}
 
 	// ---- datasets ----
@@ -201,7 +201,7 @@ export class AgentEvalsController {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId } = req.params;
 		const pushRef = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			pushRef,
 			projectId,
@@ -310,7 +310,7 @@ export class AgentEvalsController {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId } = req.params;
 		const pushRef = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			pushRef,
 			projectId,

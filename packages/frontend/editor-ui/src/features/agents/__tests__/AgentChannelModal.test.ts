@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentApproval, ChatIntegrationDescriptor } from '@n8n/api-types';
 
+import { getAgentChannelPlatform } from '../channels/registry';
 import AgentChannelModal, { type ChannelView } from '../components/AgentChannelModal.vue';
 
 const mocks = vi.hoisted(() => ({
@@ -103,6 +104,7 @@ vi.mock('../channels/registry', async () => {
 				:data-setup-kind="runtime.setupKind?.value"
 			>
 				<button data-testid="select-credential" @click="$emit('update:modelValue', 'credential-new')" />
+				<button data-testid="clear-credential" @click="$emit('update:modelValue', '')" />
 				<button data-testid="connect-channel" @click="$emit('connect')" />
 				<button data-testid="platform-done" @click="$emit('done')" />
 				<button data-testid="persist-channel" @click="$emit('persist')" />
@@ -798,6 +800,24 @@ describe('AgentChannelModal', () => {
 			expect(mocks.connect).toHaveBeenCalledWith('example', '', { accessMode: 'all' }, {});
 		});
 
+		it('drops the saved credential when the selection is cleared', async () => {
+			statuses.value.example = 'connected';
+			connectedCredentials.value.example = 'credential-old';
+			const wrapper = mountModal('example_edit');
+			await flushPromises();
+
+			await wrapper.get('[data-testid="clear-credential"]').trigger('click');
+			await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.connect).toHaveBeenCalledWith(
+				'example',
+				'',
+				{ accessMode: 'all' },
+				{ replaces: { credentialId: 'credential-old' } },
+			);
+		});
+
 		it('replaces a saved entry without a credential when a credential is chosen', async () => {
 			statuses.value.example = 'connected';
 			connectedCredentials.value.example = '';
@@ -938,6 +958,31 @@ describe('AgentChannelModal', () => {
 			duration: 0,
 		});
 		expect(wrapper.emitted('agent-changed')).toHaveLength(1);
+	});
+
+	it('tells the platform when a removal is a restart', async () => {
+		statuses.value.example = 'connected';
+		connectedCredentials.value.example = 'credential-old';
+		const warning = {
+			integrationType: 'example',
+			code: 'cleanup_incomplete',
+			action: { type: 'open_url', url: 'https://example.test/settings' },
+		};
+		mocks.disconnect.mockResolvedValueOnce({ status: 'disconnected', warning });
+		const presentDisconnectWarning = vi.spyOn(
+			getAgentChannelPlatform('example'),
+			'presentDisconnectWarning',
+		);
+		const wrapper = mountModal('example_edit');
+		await flushPromises();
+
+		await wrapper.get('[data-testid="platform-restart"]').trigger('click');
+		await flushPromises();
+
+		expect(presentDisconnectWarning).toHaveBeenCalledWith(
+			warning,
+			expect.objectContaining({ restart: true }),
+		);
 	});
 
 	it('confirms managed removal from the edit view and keeps the Slack app when unchecked', async () => {

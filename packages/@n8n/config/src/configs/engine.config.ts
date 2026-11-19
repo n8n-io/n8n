@@ -25,8 +25,9 @@ export class EngineConfig {
 	 * control plane side. Remote mode needs `N8N_ENGINE_BASE_URL` and
 	 * `N8N_ENGINE_AUTH_SECRET`.
 	 *
-	 * The mode also sets how execution responses reach the control plane:
-	 * in memory for `in-process`, and over Redis for `remote`.
+	 * In `remote` mode, this instance and every engine process use Redis. Set
+	 * the same `QUEUE_BULL_REDIS_*` variables and `N8N_REDIS_KEY_PREFIX` on each
+	 * of them, also when you don't use queue mode.
 	 */
 	@Env('N8N_ENGINE_MODE', engineModeSchema)
 	mode: EngineMode = 'in-process';
@@ -71,6 +72,47 @@ export class EngineConfig {
 	 */
 	@Env('N8N_ENGINE_DATABASE_URL')
 	databaseUrl: string = '';
+
+	/**
+	 * How many workflow steps one engine process runs at the same time, where
+	 * each step is one run of one node. In `in-process` mode, the engine process
+	 * is the n8n main process. A higher value uses more memory.
+	 *
+	 * This is in development and not ready for use.
+	 */
+	@Env('N8N_ENGINE_STEP_CONCURRENCY', positiveIntSchema)
+	stepConcurrency: number = 1;
+
+	/**
+	 * How many planning tasks one engine process runs at the same time. A planning
+	 * task starts an execution, or decides what runs next after a step finishes.
+	 * In `in-process` mode, the engine process is the n8n main process.
+	 *
+	 * This is in development and not ready for use.
+	 */
+	@Env('N8N_ENGINE_ORCHESTRATION_CONCURRENCY', positiveIntSchema)
+	orchestrationConcurrency: number = 1;
+
+	/**
+	 * Maximum number of connections in the engine's Postgres connection pool, for
+	 * each engine process. Raise it when the engine reports connection timeouts
+	 * while the database responds normally.
+	 *
+	 * This is in development and not ready for use.
+	 */
+	@Env('N8N_ENGINE_DATABASE_POOL_SIZE', positiveIntSchema)
+	databasePoolSize: number = 10;
+
+	/**
+	 * How long in milliseconds the engine waits for a Postgres connection, either
+	 * a new one or a free one from the pool. When the wait runs out, the work that
+	 * needed the connection fails. A step can fail, or an execution can stop
+	 * making progress.
+	 *
+	 * This is in development and not ready for use.
+	 */
+	@Env('N8N_ENGINE_DATABASE_CONNECTION_TIMEOUT', positiveIntSchema.max(2147483647))
+	databaseConnectionTimeoutMs: number = 20_000;
 
 	/**
 	 * Shared secret the control plane signs its identity token with and the engine

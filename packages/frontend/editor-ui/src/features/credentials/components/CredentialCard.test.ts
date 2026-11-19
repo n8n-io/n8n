@@ -1,6 +1,6 @@
 import { usePostHog } from '@/app/stores/posthog.store';
 import { setActivePinia } from 'pinia';
-import { within } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -14,6 +14,9 @@ import { useCredentialsStore } from '../credentials.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import type { ICredentialsResponse } from '../credentials.types';
 import { MODAL_CONFIRM } from '@/app/constants';
+import { defineComponent } from 'vue';
+import type { Project } from '@n8n/rest-api-client';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 
 const mockAuthorize = vi.fn();
 const mockIsOAuthCredentialType = vi.fn();
@@ -42,6 +45,9 @@ vi.mock('@n8n/composables/useToast', () => ({
 }));
 
 const renderComponent = createComponentRenderer(CredentialCard);
+
+const findContactModal = async (getByTestId: (id: string) => HTMLElement) =>
+	await waitFor(() => getByTestId('contact-admin-modal'));
 
 const createCredential = (overrides = {}): CredentialsResource =>
 	({
@@ -552,6 +558,143 @@ describe('CredentialCard', () => {
 			await userEvent.click(getByTestId('credential-card-connect'));
 
 			expect(emitted('click')).toBeUndefined();
+		});
+	});
+
+	describe('restricted credential', () => {
+		const typeRestricted = {
+			reason: 'typeRestricted' as const,
+			restriction: { name: 'slackApi', available: false, scope: 'instance' as const },
+		};
+		const nodesRestricted = {
+			reason: 'nodesRestricted' as const,
+			restriction: { name: 'n8n-nodes-base.slack', available: false, scope: 'instance' as const },
+			nodeTypeNames: ['Slack'],
+		};
+
+		it('shows no badge when nothing restricts the credential', () => {
+			const { queryByTestId } = renderComponent({ props: { data: createCredential() } });
+
+			expect(queryByTestId('credential-card-restricted')).not.toBeInTheDocument();
+		});
+
+		it.each([typeRestricted, nodesRestricted])(
+			'shows the Restricted badge when the $reason',
+			(restriction) => {
+				const { getByTestId } = renderComponent({
+					props: { data: createCredential({ type: 'slackApi', restriction }) },
+				});
+
+				expect(getByTestId('credential-card-restricted')).toHaveTextContent('Restricted');
+			},
+		);
+
+		it('still opens a credential of a blocked type', async () => {
+			const { getByRole, emitted } = renderComponent({
+				props: {
+					data: createCredential({ id: 'cred-1', name: 'Slack', restriction: typeRestricted }),
+				},
+			});
+
+			await userEvent.click(getByRole('heading', { name: /Slack/ }));
+
+			expect(emitted('click')).toEqual([['cred-1']]);
+		});
+
+		it('does not open the credential on a press of the lock marker', async () => {
+			const { getByTestId, emitted } = renderComponent({
+				props: { data: createCredential({ id: 'cred-1', restriction: typeRestricted }) },
+			});
+
+			await userEvent.click(getByTestId('node-restricted-icon'));
+
+			expect(emitted('click')).toBeUndefined();
+		});
+
+		it.each([typeRestricted, nodesRestricted])('dims a $reason credential', (restriction) => {
+			const { container } = renderComponent({
+				props: { data: createCredential({ restriction }) },
+			});
+
+			expect(container.firstElementChild?.className).toMatch(/restricted/);
+		});
+
+		it.each([
+			[typeRestricted, 'slackApi', 'credential'],
+			[nodesRestricted, 'Slack', 'node'],
+		])(
+			'asks the admin about what blocks a $reason credential',
+			async (restriction, subject, kind) => {
+				const { getByTestId } = renderComponent({
+					props: { data: createCredential({ type: 'slackApi', restriction }) },
+					global: {
+						stubs: {
+							RestrictedNodePopover: defineComponent({
+								emits: ['contactAdmin'],
+								template:
+									'<button data-test-id="contact-admin" @click="$emit(\'contactAdmin\', \'instance\')" />',
+							}),
+							ContactAdminModal: defineComponent({
+								props: ['open', 'typeName', 'kind'],
+								template:
+									'<div v-if="open" data-test-id="contact-admin-modal">{{ kind }}: {{ typeName }}</div>',
+							}),
+						},
+					},
+				});
+
+				await userEvent.click(getByTestId('contact-admin'));
+
+				expect(getByTestId('contact-admin-modal')).toHaveTextContent(`${kind}: ${subject}`);
+			},
+		);
+
+		it.each([
+			['another project', 'team-2', 'Team 2'],
+			['the open policy project', 'team-1', 'default'],
+		])(
+			'lists the admins of the project that set a project restriction, for %s',
+			async (_, projectId, listed) => {
+				mockedStore(useTypeAvailabilityPoliciesStore).policyProject = {
+					id: 'team-1',
+				} as Project;
+				mockedStore(useProjectsStore).fetchProject.mockResolvedValue({
+					id: 'team-2',
+					name: 'Team 2',
+				} as Project);
+				const { getByTestId } = renderComponent({
+					props: {
+						data: createCredential({
+							restriction: typeRestricted,
+							restrictionProject: { id: projectId, type: 'team' },
+						}),
+					},
+					global: {
+						stubs: {
+							RestrictedNodePopover: defineComponent({
+								emits: ['contactAdmin'],
+								template:
+									'<button data-test-id="contact-admin" @click="$emit(\'contactAdmin\', \'project\')" />',
+							}),
+							ContactAdminModal: defineComponent({
+								props: ['open', 'project'],
+								template:
+									'<div v-if="open" data-test-id="contact-admin-modal">{{ project === undefined ? "default" : project.name }}</div>',
+							}),
+						},
+					},
+				});
+
+				await userEvent.click(getByTestId('contact-admin'));
+
+				expect(await findContactModal(getByTestId)).toHaveTextContent(listed);
+			},
+		);
+
+		it('does not dim a usable credential', () => {
+			const { container } = renderComponent({ props: { data: createCredential() } });
+
+			expect(container.firstElementChild?.className).not.toMatch(/restricted/);
 		});
 	});
 });

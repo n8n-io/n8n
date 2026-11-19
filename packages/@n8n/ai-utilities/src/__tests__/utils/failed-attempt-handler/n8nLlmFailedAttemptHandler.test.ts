@@ -54,6 +54,52 @@ describe('makeN8nLlmFailedAttemptHandler', () => {
 
 		const rateLimited = () => Object.assign(new Error('429'), { status: 429 });
 
+		it('should stop after one Ollama billing rejection and preserve a warning-level API error', async () => {
+			const message = 'Add usage credits or subscribe and save up to 66%: https://ollama.com/plans';
+			const error = Object.assign(new Error(message), {
+				name: 'ResponseError',
+				error: message,
+				status_code: 402,
+			});
+			const caller = new AsyncCaller({
+				maxRetries: 2,
+				onFailedAttempt: makeN8nLlmFailedAttemptHandler(ctx),
+			});
+			const callable = vi.fn().mockRejectedValue(error);
+
+			const result = caller.call(callable).catch((caught: unknown) => caught);
+			await vi.runAllTimersAsync();
+			const caught = await result;
+
+			expect(caught).toBeInstanceOf(NodeApiError);
+			expect(caught).toMatchObject({
+				level: 'warning',
+				httpCode: '402',
+				functionality: 'configuration-node',
+			});
+			expect((caught as NodeApiError).cause).toBe(error);
+			expect((caught as NodeApiError).description).toBe(message);
+			expect(callable).toHaveBeenCalledTimes(1);
+		});
+
+		it('should retry Ollama server errors and preserve the final error', async () => {
+			const error = Object.assign(new Error('Service unavailable'), {
+				name: 'ResponseError',
+				status_code: 503,
+			});
+			const caller = new AsyncCaller({
+				maxRetries: 2,
+				onFailedAttempt: makeN8nLlmFailedAttemptHandler(ctx),
+			});
+			const callable = vi.fn().mockRejectedValue(error);
+
+			const result = caller.call(callable).catch((caught: unknown) => caught);
+			await vi.runAllTimersAsync();
+
+			expect(await result).toBe(error);
+			expect(callable).toHaveBeenCalledTimes(3);
+		});
+
 		it('should retry through AsyncCaller up to maxRetries', async () => {
 			const caller = new AsyncCaller({
 				maxRetries: 2,

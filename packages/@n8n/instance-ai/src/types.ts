@@ -13,6 +13,7 @@ import type {
 	ObservationalMemoryConfig,
 	ScopedMemoryTaskEvent,
 	Telemetry,
+	TokenUsage,
 	Workspace,
 } from '@n8n/agents';
 import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
@@ -33,8 +34,8 @@ import type {
 	SkillScope,
 	EvaluationMetric,
 	TaskList,
+	InstanceAiApprovalMode,
 	InstanceAiPromptConfiguration,
-	InstanceAiEvent,
 	InstanceAiFileAttachment,
 	InstanceAiPermissions,
 	InstanceAiSetupItem,
@@ -63,9 +64,11 @@ import type { DomainAccessTracker } from './domain-access/domain-access-tracker'
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
 import type { AgentContextInput } from './tools/agent-context.tool';
+import type { StartCloudBrowserTask } from './tools/orchestration/start-cloud-browser-task.tool';
 import type { McpClientManager } from './mcp/mcp-client-manager';
 import type { OrchestratorRunHandoffReason } from './runtime/orchestrator-run-control';
 import type { TraceStatus } from './runtime/resumable-stream-executor';
+import type { InstanceAiApprovalReviewer } from './approval-review/approval-review';
 import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { BuilderUsageItem } from './stream/usage-accumulator';
 import type {
@@ -86,7 +89,6 @@ import type {
 	WorkflowVerificationEvidence,
 	WorkflowTriggerVerificationProgress,
 } from './workflow-loop/workflow-loop-state';
-import type { BuilderTemplatesService } from './workspace/builder-templates-service';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
 
@@ -1365,7 +1367,7 @@ export interface EvaluationConfigMetricInput {
 }
 
 /** Payload for creating/updating a config-based eval. The dataset is a Data
- *  Table the caller already created (via the data_tables tool). */
+ *  Table the caller already created (via the change_data_tables tool). */
 export interface UpsertEvaluationConfigInput {
 	name: string;
 	startNodeName: string;
@@ -1453,10 +1455,10 @@ export interface InstanceAiWebResearchService {
 		},
 	): Promise<WebSearchResponse>;
 
+	/** Fetch the full extracted page. The research tool slices it for the model. */
 	fetchUrl(
 		url: string,
 		options?: {
-			maxContentLength?: number;
 			maxResponseBytes?: number;
 			timeoutMs?: number;
 			/** When aborted, in-flight page fetches should stop promptly. */
@@ -1742,14 +1744,21 @@ export interface InstanceAiContext {
 	/** True while the thread runs the host-seeded onboarding flow. Presence gates `leave-onboarding`. */
 	onboardingThread?: boolean;
 	/**
-	 * Host-resolved model for the current run (proxy-managed on cloud). Domain
-	 * tools pass it as the fallback for utility LLM calls (simulation fixtures,
-	 * destructiveness classification), which otherwise resolve an eval model
-	 * from environment API keys that proxy-managed deployments don't have.
+	 * Host-resolved main model for the current run (proxy-managed on cloud).
+	 * Domain tools use it for helper calls when no utility model is set.
 	 */
 	modelId?: ModelConfig;
+	/**
+	 * Host-resolved utility model: the configured or default small model on the
+	 * main model's provider. The verification helpers (destructiveness
+	 * classification, simulation fixtures) run on it. Absent →
+	 * utility calls use `modelId`.
+	 */
+	utilityModelId?: ModelConfig;
 	/** Transport for those utility LLM calls. It carries no run labels. */
 	modelFetch?: FetchFn;
+	/** Bills the token usage of one helper LLM call. Best effort: it never throws. */
+	onHelperUsage?: HelperUsageHook;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
 	credentialService: InstanceAiCredentialService;
@@ -1795,8 +1804,6 @@ export interface InstanceAiContext {
 		executionId?: string;
 	}) => Promise<{ title: string; sessionNumber: number; transcript: string } | null>;
 	webResearchService?: InstanceAiWebResearchService;
-	/** Curated workflow-template provider — materializes `knowledge-base/templates/` in the sandbox. */
-	templatesService?: BuilderTemplatesService;
 	workspaceService?: InstanceAiWorkspaceService;
 	workflowTemplateService: InstanceAiWorkflowTemplateService;
 	/**
@@ -1807,6 +1814,18 @@ export interface InstanceAiContext {
 	browserUseState?: BrowserUseState;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
+	/**
+	 * Auto mode: reviews an approval before its card shows, and runs the action
+	 * when the review approves it. Absent means Manual mode.
+	 */
+	approvalReviewer?: InstanceAiApprovalReviewer;
+	/** The approval mode of this run. Absent while approval modes are off. */
+	approvalMode?: InstanceAiApprovalMode;
+	/**
+	 * When true, a user's MCP tool permissions can only make the admin's
+	 * permissions stricter. Otherwise they replace them.
+	 */
+	enforceAdminMcpPermissions?: boolean;
 	/** Thread-level "always allow" grants the user has approved (keys like `executions:run`).
 	 *  Loaded per run from persisted thread state so a grant survives reload/navigation and
 	 *  is visible across mains. Tools consult this to skip HITL for already-granted actions. */
@@ -2002,6 +2021,22 @@ export interface McpServerConfig {
 		userId?: string;
 	};
 }
+
+// ── Helper model usage ───────────────────────────────────────────────────────
+
+/** Token usage of one helper LLM call, such as the destructiveness classifier. */
+export interface HelperModelUsageReport {
+	/** Helper name, for example `verification-simulation-fixtures`. */
+	helper: string;
+	/** Catalog model id the host prices the call by, for example `anthropic/claude-haiku-5-5`. */
+	model: string;
+	usage: TokenUsage;
+	/** Unique for each call, so hosts can build idempotent billing keys. */
+	reportId: string;
+}
+
+/** Bills the token usage of one helper LLM call. Best effort: it never throws. */
+export type HelperUsageHook = (report: HelperModelUsageReport) => Promise<void>;
 
 // ── Memory ───────────────────────────────────────────────────────────────────
 
@@ -2287,12 +2322,12 @@ export interface OrchestrationContext {
 	mcpTools?: InstanceAiToolRegistry;
 	/** Skills that the agent can load. */
 	skills?: RuntimeSkillSource;
-	/** Add loaded Hub content to UI events without changing agent memory. */
-	mapSkillEventForDisplay?: (event: InstanceAiEvent) => InstanceAiEvent;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */
 	oauth2CallbackUrl?: string;
 	/** Cancel a running background task by its ID */
 	cancelBackgroundTask?: (taskId: string) => Promise<void>;
+	/** Start a browser task in the background. Set only when this run can use the cloud browser. */
+	startCloudBrowserTask?: StartCloudBrowserTask;
 	/** Hand off durable work to follow-up tasks once the current tool result reaches the UI. */
 	requestRunHandoff?: (reason: OrchestratorRunHandoffReason) => void;
 	/** Shared runtime workspace for the current orchestration context. */

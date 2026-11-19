@@ -2,6 +2,7 @@
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { usePrefetchModals } from '@/app/composables/usePrefetchModals';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	DELETE_SECRETS_PROVIDER_MODAL_KEY,
@@ -13,13 +14,14 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import type { SecretProviderConnection } from '@n8n/api-types';
 import {
-	N8nEmptyState,
 	N8nButton,
+	N8nEmptyState,
 	N8nHeading,
 	N8nIcon,
 	N8nLink,
 	N8nLoading,
-	N8nSwitch,
+	N8nSettingsEnableRow,
+	N8nSettingsRowGroup,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -43,6 +45,10 @@ const message = useMessage();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const uiStore = useUIStore();
+
+usePrefetchModals([SECRETS_PROVIDER_CONNECTION_MODAL_KEY, DELETE_SECRETS_PROVIDER_MODAL_KEY], {
+	enabled: () => secretsProviders.isEnterpriseExternalSecretsEnabled.value,
+});
 const secretsProviderConnection = useSecretsProviderConnection(projectsStore.currentProjectId);
 const hasActiveProviders = computed(() => secretsProviders.activeProviders.value.length > 0);
 
@@ -55,8 +61,7 @@ const isRoleBasedAccessEnabled = computed(
 const systemRolesEnabled = ref(false);
 const systemRolesToggleLoading = ref(false);
 
-async function onSystemRolesToggle(value: string | number | boolean) {
-	const enabled = Boolean(value);
+async function onSystemRolesToggle(enabled: boolean) {
 	if (!enabled) {
 		const result = await message.confirm(
 			i18n.baseText('settings.externalSecrets.systemRoles.confirm.message'),
@@ -255,28 +260,20 @@ function goToUpgrade() {
 						</span>
 					</N8nLink>
 				</N8nText>
-				<div
+				<N8nSettingsRowGroup
 					v-if="isRoleBasedAccessEnabled"
-					:class="$style.systemRolesToggle"
 					class="mt-xl"
 					data-test-id="external-secrets-system-roles-toggle"
 				>
-					<div :class="$style.systemRolesToggleInfo">
-						<N8nText :bold="true" size="small">
-							{{ i18n.baseText('settings.externalSecrets.systemRoles.title') }}
-						</N8nText>
-						<N8nText size="small" color="text-light">
-							{{ i18n.baseText('settings.externalSecrets.systemRoles.description') }}
-						</N8nText>
-					</div>
-					<N8nSwitch
-						size="large"
-						:model-value="systemRolesEnabled"
+					<N8nSettingsEnableRow
+						:title="i18n.baseText('settings.externalSecrets.systemRoles.title')"
+						:description="i18n.baseText('settings.externalSecrets.systemRoles.description')"
+						:enabled="systemRolesEnabled"
 						:disabled="systemRolesToggleLoading"
-						data-test-id="external-secrets-system-roles-switch"
-						@update:model-value="onSystemRolesToggle"
+						switch-test-id="external-secrets-system-roles-switch"
+						@update:enabled="onSystemRolesToggle"
 					/>
-				</div>
+				</N8nSettingsRowGroup>
 				<N8nButton
 					v-if="hasActiveProviders && secretsProviders.canCreate.value"
 					:class="$style.addButton"
@@ -375,20 +372,5 @@ function goToUpgrade() {
 	text-transform: lowercase;
 	display: inline-flex;
 	align-items: center;
-}
-
-.systemRolesToggle {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: var(--spacing--sm);
-	border: var(--border);
-	border-radius: var(--radius--lg);
-}
-
-.systemRolesToggleInfo {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
 }
 </style>

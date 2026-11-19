@@ -1,4 +1,5 @@
 import { classifyRateLimitError } from '@langchain/core/utils/async_caller';
+import { isRecord } from '@n8n/utils/is-record';
 
 const STATUS_NO_RETRY = [
 	400, // Bad Request
@@ -24,6 +25,15 @@ const STATUS_NO_RETRY = [
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const n8nDefaultFailedAttemptHandler = (error: any) => {
+	// Ollama uses status_code. Both status checks below need the standard field.
+	if (
+		isRecord(error) &&
+		(error.status === undefined || error.status === null) &&
+		typeof error.status_code === 'number'
+	) {
+		error.status = error.status_code;
+	}
+
 	if (
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-call
 		error?.message?.startsWith?.('Cancel') ||

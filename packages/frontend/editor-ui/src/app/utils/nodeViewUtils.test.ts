@@ -15,15 +15,18 @@ import {
 	snapPositionToGrid,
 	snapToGrid,
 	calculateNodeSize,
+	getNodeSizeFromPorts,
 	GRID_SIZE,
 	NODE_X_SPACING,
 	HORIZONTAL_NODE_STEP,
+	NODE_Y_SPACING,
 	doRectsOverlap,
-	canUsePosition,
+	isPositionBlocked,
+	getNextNodeSlot,
 } from './nodeViewUtils';
 import type { INode, INodeTypeDescription, INodeExecutionData, Workflow } from 'n8n-workflow';
 import type { INodeUi, XYPosition } from '@/Interface';
-import { NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { mock, type MockProxy } from 'vitest-mock-extended';
@@ -227,33 +230,86 @@ describe('getGenericHints', () => {
 
 describe('generateOffsets', () => {
 	it('should return correct offsets for 0 nodes', () => {
-		const result = generateOffsets(0, 96, GRID_SIZE);
+		const result = generateOffsets(0, 96, NODE_Y_SPACING);
 		expect(result).toEqual([]);
 	});
 
 	it('should return correct offsets for 1 node', () => {
-		const result = generateOffsets(1, 96, GRID_SIZE);
+		const result = generateOffsets(1, 96, NODE_Y_SPACING);
 		expect(result).toEqual([0]);
 	});
 
 	it('should return correct offsets for 2 nodes', () => {
-		const result = generateOffsets(2, 96, GRID_SIZE);
+		const result = generateOffsets(2, 96, NODE_Y_SPACING);
 		expect(result).toEqual([-96, 96]);
 	});
 
 	it('should return correct offsets for 3 nodes', () => {
-		const result = generateOffsets(3, 96, GRID_SIZE);
-		expect(result).toEqual([-112, 0, 112]);
+		const result = generateOffsets(3, 96, NODE_Y_SPACING);
+		expect(result).toEqual([-192, 0, 192]);
 	});
 
 	it('should return correct offsets for 4 nodes', () => {
-		const result = generateOffsets(4, 96, GRID_SIZE);
-		expect(result).toEqual([-208, -96, 96, 208]);
+		const result = generateOffsets(4, 96, NODE_Y_SPACING);
+		expect(result).toEqual([-288, -96, 96, 288]);
 	});
 
 	it('should return correct offsets for large node count', () => {
-		const result = generateOffsets(10, 96, GRID_SIZE);
-		expect(result).toEqual([-544, -432, -320, -208, -96, 96, 208, 320, 432, 544]);
+		const result = generateOffsets(10, 96, NODE_Y_SPACING);
+		expect(result).toEqual([-864, -672, -480, -288, -96, 96, 288, 480, 672, 864]);
+	});
+
+	it('should put two offsets half a node size and spacing away from 0', () => {
+		const result = generateOffsets(2, 128, GRID_SIZE);
+		expect(result).toEqual([-72, 72]);
+	});
+});
+
+describe('getNextNodeSlot', () => {
+	it('should place the node one NODE_X_SPACING gap past the right edge of the source', () => {
+		const slot = getNextNodeSlot({
+			source: { position: [32, 64], width: 224, handleOffset: 48 },
+			target: { height: 96, handleOffset: 48 },
+		});
+
+		expect(slot).toEqual([32 + 224 + NODE_X_SPACING, 64]);
+	});
+
+	it('should line up the main handles of the source and the new node', () => {
+		// 4-input Merge (160 high) followed by a default node
+		const slot = getNextNodeSlot({
+			source: { position: [0, 0], width: 96, handleOffset: 80 },
+			target: { height: 96, handleOffset: 48 },
+		});
+
+		expect(slot).toEqual([224, 32]);
+	});
+
+	it.each([
+		[2, [-96, 96]],
+		[3, [-176, 16, 208]],
+	])('should fan %s outputs by the height of the new node and NODE_Y_SPACING', (count, ys) => {
+		// The source is 128 high for 3 outputs, so its handle line sits at 64
+		const sourceHandleOffset = count === 3 ? 64 : 48;
+		const slots = ys.map((_, index) =>
+			getNextNodeSlot({
+				source: { position: [0, 0], width: 96, handleOffset: sourceHandleOffset },
+				target: { height: 96, handleOffset: 48 },
+				fan: { index, count },
+			}),
+		);
+
+		expect(slots).toEqual(ys.map((y) => [224, y]));
+	});
+
+	it('should not fan the node for an output index out of range', () => {
+		const slot = getNextNodeSlot({
+			source: { position: [0, 0], width: 96, handleOffset: 48 },
+			target: { height: 96, handleOffset: 48 },
+			fan: { index: 5, count: 2 },
+		});
+
+		expect(slot).toEqual([224, 0]);
 	});
 });
 
@@ -349,6 +405,41 @@ describe('getNewNodePosition', () => {
 		const newPosition: XYPosition = [96, 96];
 		const result = getNewNodePosition(nodes, newPosition);
 		expect(result).toEqual([288, 288]);
+	});
+
+	it('should test the new node against the full width of a wide node', () => {
+		const nodes: INodeUi[] = [createTestNode({ id: '1', position: [0, 0], type: SET_NODE_TYPE })];
+		const result = getNewNodePosition(nodes, [160, 0], {
+			getNodeSize: () => [224, 96],
+		});
+		expect(result).toEqual([256, 96]);
+	});
+
+	it('should test the new node against the full height of a tall node', () => {
+		const nodes: INodeUi[] = [
+			createTestNode({ id: '1', position: [224, -96], type: SET_NODE_TYPE }),
+		];
+		const result = getNewNodePosition(nodes, [224, 96], {
+			getNodeSize: () => [96, 224],
+		});
+		expect(result).toEqual([272, 144]);
+	});
+
+	it('should keep a wide new node at its position when no node is in its rectangle', () => {
+		const nodes: INodeUi[] = [createTestNode({ id: '1', position: [0, 0], type: SET_NODE_TYPE })];
+		const result = getNewNodePosition(nodes, [784, -48], { size: [1440, 96] });
+		expect(result).toEqual([784, -48]);
+	});
+
+	it('should ignore a node with a position or size that is not a finite number', () => {
+		const nodes: INodeUi[] = [
+			createTestNode({ id: '1', position: [Number.NaN, 0], type: SET_NODE_TYPE }),
+			createTestNode({ id: '2', position: [0, 0], type: SET_NODE_TYPE }),
+		];
+		const result = getNewNodePosition(nodes, [0, 0], {
+			getNodeSize: (node) => (node.id === '2' ? [Infinity, 96] : DEFAULT_NODE_SIZE),
+		});
+		expect(result).toEqual([0, 0]);
 	});
 });
 
@@ -462,6 +553,17 @@ describe('getNodesGroupSize', () => {
 		expect(we).toBe(DEFAULT_NODE_SIZE[0]);
 		expect(he).toBe(DEFAULT_NODE_SIZE[1]);
 	});
+
+	it('should include the size of each node in the bounding box', () => {
+		const nodes: INode[] = [
+			createTestNode({ id: 'wide', position: [0, 0] }),
+			createTestNode({ id: 'tall', position: [400, -96] }),
+		];
+		const sizes: Record<string, [number, number]> = { wide: [320, 128], tall: [96, 224] };
+		const [width, height] = getNodesGroupSize(nodes, (node) => sizes[node.id]);
+		expect(width).toBe(496);
+		expect(height).toBe(224);
+	});
 });
 
 describe('updateViewportToContainNodes', () => {
@@ -517,6 +619,7 @@ describe('calculateNodeSize', () => {
 			1,
 			1,
 			0,
+			0,
 			false,
 		);
 		// width = GRID_SIZE * 5 = 16 * 5 = 80
@@ -533,7 +636,7 @@ describe('calculateNodeSize', () => {
 		// maxVerticalHandles = 3
 		// height = 96 + (3 - 2) * 32 = 96 + 32 = 128
 		expect(
-			calculateNodeSize(false, true, mainInputCount, mainOutputCount, nonMainInputCount, false),
+			calculateNodeSize(false, true, mainInputCount, mainOutputCount, nonMainInputCount, 0, false),
 		).toEqual({ width: 272, height: 128 });
 	});
 
@@ -541,7 +644,7 @@ describe('calculateNodeSize', () => {
 		const nonMainInputCount = 2;
 		// width = 80 + 16 + (max(4, 2) - 1) * 16 * 3 = 240
 		// height = CONFIGURATION_NODE_SIZE[1] = 16 * 5 = 80
-		expect(calculateNodeSize(true, true, 1, 1, nonMainInputCount, false)).toEqual({
+		expect(calculateNodeSize(true, true, 1, 1, nonMainInputCount, 0, false)).toEqual({
 			width: 240,
 			height: 80,
 		});
@@ -553,7 +656,7 @@ describe('calculateNodeSize', () => {
 		// width = 96
 		// maxVerticalHandles = 3
 		// height = 96 + (3 - 2) * 32 = 128
-		expect(calculateNodeSize(false, false, mainInputCount, mainOutputCount, 0, false)).toEqual({
+		expect(calculateNodeSize(false, false, mainInputCount, mainOutputCount, 0, 0, false)).toEqual({
 			width: 96,
 			height: 128,
 		});
@@ -564,9 +667,9 @@ describe('calculateNodeSize', () => {
 		const mainOutputCount = 4;
 		// maxVerticalHandles = 6
 		// height = 96 + (6 - 2) * 32 = 96 + 128 = 224
-		expect(calculateNodeSize(false, false, mainInputCount, mainOutputCount, 0, false).height).toBe(
-			224,
-		);
+		expect(
+			calculateNodeSize(false, false, mainInputCount, mainOutputCount, 0, 0, false).height,
+		).toBe(224);
 	});
 
 	it('should respect the minimum width for configurable nodes', () => {
@@ -575,7 +678,7 @@ describe('calculateNodeSize', () => {
 		// height = default path, mainInputCount = 1, mainOutputCount = 1
 		// maxVerticalHandles = 1
 		// height = 96 + (1 - 2) * 32 = 96 + 0 = 96
-		expect(calculateNodeSize(false, true, 1, 1, nonMainInputCount, false)).toEqual({
+		expect(calculateNodeSize(false, true, 1, 1, nonMainInputCount, 0, false)).toEqual({
 			width: 224,
 			height: 96,
 		});
@@ -584,7 +687,58 @@ describe('calculateNodeSize', () => {
 	it('should handle edge case when mainInputCount and mainOutputCount are 0', () => {
 		// maxVerticalHandles = max(0,0,1) = 1
 		// height = 96 + (1 - 2) * 32 = 96 + 0 = 96
-		expect(calculateNodeSize(false, false, 0, 0, 0, false).height).toBe(96);
+		expect(calculateNodeSize(false, false, 0, 0, 0, 0, false).height).toBe(96);
+	});
+});
+
+describe('getNodeSizeFromPorts', () => {
+	const { Main, AiLanguageModel, AiMemory, AiTool, AiOutputParser, AiRetriever } =
+		NodeConnectionTypes;
+
+	it('should return the default size for a node with main ports only', () => {
+		expect(getNodeSizeFromPorts([Main], [Main])).toEqual({ width: 96, height: 96 });
+	});
+
+	it('should return the configurable size for an AI Agent', () => {
+		expect(getNodeSizeFromPorts([Main, AiLanguageModel, AiMemory, AiTool], [Main])).toEqual({
+			width: 224,
+			height: 96,
+		});
+	});
+
+	it('should make a configurable node wider for each non-main input above four', () => {
+		expect(
+			getNodeSizeFromPorts(
+				[Main, AiLanguageModel, AiMemory, AiTool, AiOutputParser, AiRetriever],
+				[Main],
+			),
+		).toEqual({ width: 272, height: 96 });
+	});
+
+	it('should make a node taller for four main inputs', () => {
+		expect(getNodeSizeFromPorts([Main, Main, Main, Main], [Main])).toEqual({
+			width: 96,
+			height: 160,
+		});
+	});
+
+	it('should return the configurable configuration size for a HITL tool', () => {
+		expect(getNodeSizeFromPorts([AiTool], [AiTool])).toEqual({ width: 240, height: 80 });
+	});
+
+	it('should not count non-main outputs as ports for an AI Agent Tool with an output parser', () => {
+		expect(
+			getNodeSizeFromPorts([AiLanguageModel, AiMemory, AiTool, AiOutputParser], [AiTool]),
+		).toEqual({ width: 240, height: 80 });
+	});
+
+	it('should make a node wider for each non-main output at the top above four', () => {
+		expect(
+			getNodeSizeFromPorts(
+				[Main, AiLanguageModel],
+				[AiLanguageModel, AiMemory, AiTool, AiRetriever, AiOutputParser, AiTool],
+			),
+		).toEqual({ width: 336, height: 80 });
 	});
 });
 
@@ -641,29 +795,29 @@ describe('doRectsOverlap', () => {
 	});
 });
 
-describe('canUsePosition', () => {
-	it('should return true when positions are far apart', () => {
-		const pos1: XYPosition = [0, 0];
-		const pos2: XYPosition = [200, 200];
-		expect(canUsePosition(pos1, pos2)).toBe(true);
+describe('isPositionBlocked', () => {
+	const obstacle = { x: 0, y: 0, width: 224, height: 96 };
+
+	it('should block a candidate that overlaps the obstacle', () => {
+		expect(isPositionBlocked({ x: 200, y: 0, width: 96, height: 96 }, obstacle)).toBe(true);
 	});
 
-	it('should return false when positions overlap', () => {
-		const pos1: XYPosition = [0, 0];
-		const pos2: XYPosition = [50, 50];
-		expect(canUsePosition(pos1, pos2)).toBe(false);
+	it('should block a candidate less than one grid cell away', () => {
+		expect(
+			isPositionBlocked({ x: 224 + GRID_SIZE - 1, y: 0, width: 96, height: 96 }, obstacle),
+		).toBe(true);
+		expect(
+			isPositionBlocked({ x: 0, y: 96 + GRID_SIZE - 1, width: 96, height: 96 }, obstacle),
+		).toBe(true);
 	});
 
-	it('should return true when positions are separated horizontally', () => {
-		const pos1: XYPosition = [0, 0];
-		const pos2: XYPosition = [DEFAULT_NODE_SIZE[0] + 1, 0];
-		expect(canUsePosition(pos1, pos2)).toBe(true);
-	});
-
-	it('should return true when positions are separated vertically', () => {
-		const pos1: XYPosition = [0, 0];
-		const pos2: XYPosition = [0, DEFAULT_NODE_SIZE[1] + 1];
-		expect(canUsePosition(pos1, pos2)).toBe(true);
+	it('should not block a candidate one grid cell or more away', () => {
+		expect(isPositionBlocked({ x: 224 + GRID_SIZE, y: 0, width: 96, height: 96 }, obstacle)).toBe(
+			false,
+		);
+		expect(isPositionBlocked({ x: 0, y: -96 - GRID_SIZE, width: 96, height: 96 }, obstacle)).toBe(
+			false,
+		);
 	});
 });
 

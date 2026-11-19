@@ -11,6 +11,9 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 
 const dependenciesMap = ref<Record<string, ResolvedDependenciesResult>>({});
 const countsMap = ref<Record<string, DependencyTypeCounts>>({});
+// Generation of the request that wrote each entry, so the newer of counts and details wins
+const countsWrittenGeneration = ref<Record<string, number>>({});
+const detailsWrittenGeneration = ref<Record<string, number>>({});
 
 // The backend omits resources without dependency rows (and inaccessible ones)
 // from its responses, so a missing id means "empty", not "unknown".
@@ -77,6 +80,7 @@ export function useDependencies() {
 						const key = cacheKey(resourceType, id);
 						if (countsRequestGeneration[key] !== generation) continue; // a newer request owns this key
 						countsMap.value[key] = result[id] ?? emptyCounts();
+						countsWrittenGeneration.value[key] = generation;
 					}
 				} catch {
 					// Counts are supplementary — silently ignore errors
@@ -106,6 +110,7 @@ export function useDependencies() {
 						const key = cacheKey(resourceType, id);
 						if (detailsRequestGeneration[key] !== generation) continue; // a newer request owns this key
 						dependenciesMap.value[key] = result[id] ?? { dependencies: [], inaccessibleCount: 0 };
+						detailsWrittenGeneration.value[key] = generation;
 					}
 				} catch {
 					// Dependencies are supplementary — silently ignore errors
@@ -154,16 +159,27 @@ export function useDependencies() {
 		return Object.values(counts).reduce((sum, n) => sum + n, 0);
 	}
 
+	/** Number of dependencies, from whichever of the cached details and counts is newer. */
+	function getDependencyCount(resourceId: string, resourceType: DependencyResourceType): number {
+		const key = cacheKey(resourceType, resourceId);
+		const details = dependenciesMap.value[key];
+		const detailsGeneration = detailsWrittenGeneration.value[key] ?? 0;
+		const countsGeneration = countsWrittenGeneration.value[key] ?? 0;
+		if (details !== undefined && detailsGeneration >= countsGeneration) {
+			return details.dependencies.length + details.inaccessibleCount;
+		}
+		return getTotalCount(resourceId, resourceType);
+	}
+
 	function hasDependencies(resourceId: string, resourceType: DependencyResourceType): boolean {
-		// Check full deps first, then counts
-		const entry = dependenciesMap.value[cacheKey(resourceType, resourceId)];
-		if (entry !== undefined) return entry.dependencies.length > 0 || entry.inaccessibleCount > 0;
-		return getTotalCount(resourceId, resourceType) > 0;
+		return getDependencyCount(resourceId, resourceType) > 0;
 	}
 
 	function clearCache(): void {
 		dependenciesMap.value = {};
 		countsMap.value = {};
+		countsWrittenGeneration.value = {};
+		detailsWrittenGeneration.value = {};
 	}
 
 	return {
@@ -173,6 +189,7 @@ export function useDependencies() {
 		getDependencies,
 		getDependencyCounts,
 		getTotalCount,
+		getDependencyCount,
 		hasDependencies,
 		clearCache,
 	};

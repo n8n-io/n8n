@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as share from '../../../../v2/actions/folder/share.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction, driveNode } from '../helpers';
@@ -44,7 +45,7 @@ describe('test GoogleDriveV2: folder share', () => {
 		expect(transport.googleApiRequest).toBeCalledTimes(1);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/drive/v3/files/folderIDxxxxxx/permissions',
+			requestPath`/drive/v3/files/folderIDxxxxxx/permissions`,
 			{ allowFileDiscovery: true, role: 'reader', type: 'anyone' },
 			{ moveToNewOwnersRoot: true, supportsAllDrives: true },
 		);

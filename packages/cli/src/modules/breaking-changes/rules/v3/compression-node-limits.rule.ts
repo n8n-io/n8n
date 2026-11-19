@@ -17,7 +17,7 @@ export class CompressionNodeLimitsRule implements IBreakingChangeInstanceRule {
 			version: 'v3',
 			title: 'Compression node limits are lowered',
 			description:
-				'The default maximum decompressed size goes down from 2 GiB to 256 MiB, and the default maximum number of ZIP entries goes down from 5000 to 1000. Only the defaults change. You can set the limits to keep the current values.',
+				'The default maximum decompressed size goes down from 2 GiB to 256 MiB, and the default maximum number of ZIP entries goes down from 5000 to 1000. Only the defaults change. To keep the current limits, set N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES=2147483648 and N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES=5000.',
 			category: BreakingChangeCategory.environment,
 			impact: 'executionsMightFail',
 		};
@@ -55,7 +55,7 @@ export class CompressionNodeLimitsRule implements IBreakingChangeInstanceRule {
 				{
 					action: 'Set the compression limits if your workflows handle large archives',
 					description:
-						'The new defaults apply only when these variables are not set. If your workflows decompress more than 256 MiB, or ZIP archives with more than 1000 entries, set N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES and N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES to the limits you need. Otherwise, you do not need to do anything.',
+						'The new defaults apply only when these variables are not set. If your workflows decompress more than 256 MiB, or ZIP archives with more than 1000 entries, set N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES and N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES to the limits you need. The size is a number of bytes. To keep the current limits, use N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES=2147483648 and N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES=5000. Otherwise, you do not need to do anything.',
 				},
 			],
 		};

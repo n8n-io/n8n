@@ -14,6 +14,7 @@
 | resumeFromMessageId | varchar(36) |  | true |  |  | Last message replaced by resumeNotes; later requests start after it |
 | resumeNotes | text |  | true |  |  | Observation notes as sent to the model at the resume point |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| workingSet | text |  | true |  |  | Plan checklist and working commands the Observer last wrote; each write replaces it |
 
 ## Constraints
 
@@ -51,6 +52,7 @@ erDiagram
   varchar_36_ resumeFromMessageId
   text resumeNotes
   timestamp_3__with_time_zone updatedAt
+  text workingSet
 }
 "public.instance_ai_threads" {
   timestamp_3__with_time_zone createdAt

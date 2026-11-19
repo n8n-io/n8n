@@ -2,9 +2,11 @@ import type {
 	FieldType,
 	ILoadOptionsFunctions,
 	INodeProperties,
+	RequestPath,
 	ResourceMapperField,
 	ResourceMapperFields,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { assertPathSegment, isForbiddenError, withColumnTypes } from '../../helpers/utils';
 import { resolveSiteId } from '../../site';
@@ -109,7 +111,7 @@ function toMapperFields(column: SharePointListColumn): ResourceMapperField[] {
 
 async function loadListColumns(
 	this: ILoadOptionsFunctions,
-	listPath: string,
+	listPath: RequestPath,
 ): Promise<SharePointListColumn[]> {
 	try {
 		// Only the contentTypes columns reply carries the `type` discriminator
@@ -117,7 +119,7 @@ async function loadListColumns(
 		const response = (await microsoftApiRequest.call(
 			this,
 			'GET',
-			`${listPath}/contentTypes`,
+			requestPath`${listPath}/contentTypes`,
 			{},
 			{ expand: 'columns' },
 		)) as ContentTypesReply;
@@ -132,7 +134,7 @@ async function loadListColumns(
 	const response = (await microsoftApiRequest.call(
 		this,
 		'GET',
-		`${listPath}/columns`,
+		requestPath`${listPath}/columns`,
 	)) as ColumnsReply;
 	return withColumnTypes(response.value ?? []);
 }
@@ -149,7 +151,7 @@ export async function getMappingColumns(
 
 	const columns = await loadListColumns.call(
 		this,
-		`/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listIdOrTitle)}`,
+		requestPath`/v1.0/sites/${siteId}/lists/${listIdOrTitle}`,
 	);
 	const fields = columns
 		.filter((column) => !column.hidden && !column.readOnly)

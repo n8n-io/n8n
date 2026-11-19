@@ -305,6 +305,7 @@ export class ChatTrigger extends Node {
 	description: INodeTypeDescription = {
 		displayName: 'Chat Trigger',
 		name: 'chatTrigger',
+		schemaPath: 'trigger/ChatTrigger/ChatTrigger',
 		icon: 'node:chat-trigger',
 		iconColor: 'black',
 		group: ['trigger'],

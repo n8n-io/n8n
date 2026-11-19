@@ -1,5 +1,6 @@
 import { AI_PREFERENCE_CONTENT_MAX_LENGTH, AI_PREFERENCE_MAX_PER_SCOPE } from '@n8n/api-types';
 import type { AiPreferenceSource } from '@n8n/api-types';
+import { ModuleRegistry } from '@n8n/backend-common';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -34,6 +35,7 @@ let readOnlyProject: Project;
 const testServer = utils.setupTestServer({ endpointGroups: ['ai-preferences'] });
 
 beforeAll(async () => {
+	Container.get(ModuleRegistry).settings.set('mcp', { mcpAccessEnabled: true });
 	owner = await createOwner();
 	admin = await createAdmin();
 	member = await createMember();

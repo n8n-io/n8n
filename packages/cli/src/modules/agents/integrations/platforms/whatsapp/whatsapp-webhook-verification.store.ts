@@ -26,7 +26,8 @@ export class WhatsAppWebhookVerificationStore {
 	/** Never throws: Meta has already received its answer when this runs. */
 	async markVerified(agentId: string): Promise<void> {
 		try {
-			await this.cacheService.set(cacheKey(agentId), true, VERIFIED_TTL_MS);
+			// The time, so the setup can allow Meta a moment to save the callback URL.
+			await this.cacheService.set(cacheKey(agentId), Date.now(), VERIFIED_TTL_MS);
 		} catch (error) {
 			this.logger.warn('[WhatsAppIntegration] Failed to record the webhook handshake', {
 				agentId,
@@ -59,7 +60,11 @@ export class WhatsAppWebhookVerificationStore {
 		await this.cacheService.delete(cacheKey(agentId));
 	}
 
-	async isVerified(agentId: string): Promise<boolean> {
-		return (await this.cacheService.get<boolean>(cacheKey(agentId))) === true;
+	/** When Meta completed the handshake, or `undefined` when it has not. */
+	async verifiedAt(agentId: string): Promise<number | undefined> {
+		const value = await this.cacheService.get<unknown>(cacheKey(agentId));
+		if (typeof value === 'number') return value;
+		// Recorded before the time was kept. Old enough to need no allowance.
+		return value === true ? 0 : undefined;
 	}
 }

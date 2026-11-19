@@ -1,4 +1,5 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { SettingsRepository, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InternalServerError } from '@n8n/errors';
@@ -25,6 +26,7 @@ export class ScimSsoService {
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly scimSwitchReader: ScimSwitchReader,
 		private readonly settingsRepository: SettingsRepository,
+		private readonly eventService: EventService,
 	) {}
 
 	isSsoEnabled(): boolean {
@@ -63,13 +65,13 @@ export class ScimSsoService {
 		this.scimSwitchReader.register(
 			async () => await this.scimSettingsService.isSavedEnabled(),
 			async (protocol) =>
-				await this.turnOffScim(`${protocol.toUpperCase()} single sign-on turned off`),
+				await this.turnOffScim(`${protocol.toUpperCase()} single sign-on turned off`, 'sso_off'),
 		);
 
 		if (this.isSsoEnabled()) return;
 
 		try {
-			await this.turnOffScim('single sign-on is off at startup');
+			await this.turnOffScim('single sign-on is off at startup', 'startup');
 		} catch {
 			// `turnOffScim` logs the failure. The start continues, because the
 			// SCIM routes reject requests while single sign-on is off.
@@ -83,7 +85,7 @@ export class ScimSsoService {
 	 * thus tells the admin to turn SCIM off and then single sign-on again.
 	 * Until then, this main rejects SCIM requests.
 	 */
-	private async turnOffScim(reason: string) {
+	private async turnOffScim(reason: string, source: 'sso_off' | 'startup') {
 		try {
 			if (!(await this.scimSettingsService.turnOff())) return;
 		} catch (error) {
@@ -99,6 +101,12 @@ export class ScimSsoService {
 		this.logger.info(
 			`SCIM provisioning turned off, because ${reason}. The SCIM token and the SCIM settings are kept.`,
 		);
+		this.eventService.emit('scim-settings-updated', {
+			user: null,
+			isActive: false,
+			change: 'disabled',
+			source,
+		});
 
 		try {
 			// `/rest/module-settings` serves a cached snapshot.

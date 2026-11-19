@@ -14,7 +14,12 @@ export { getMetadataFiltersValues, hasLongSequentialRepeat } from './utils/helpe
 export { N8nBinaryLoader } from './utils/n8n-binary-loader';
 export { N8nJsonLoader } from './utils/n8n-json-loader';
 export { N8nPdfLoader } from './utils/loaders/n8n-pdf-loader';
-export { N8nLlmTracing, anthropicTokensUsageParser } from './utils/n8n-llm-tracing';
+export {
+	N8nLlmTracing,
+	anthropicTokensUsageParser,
+	openAiTokensUsageParser,
+	usageMetadataTokensUsageParser,
+} from './utils/n8n-llm-tracing';
 export { extractRespondingModel, toRunDataGeneration } from './utils/extract-responding-model';
 export { redactHeaderValues } from './utils/redact-headers';
 export {
@@ -139,4 +144,10 @@ export { WindowedChatMemory, type WindowedChatMemoryConfig } from './memory/wind
 
 // Suppliers
 export { supplyMemory, type SupplyMemoryOptions } from './suppliers/supplyMemory';
-export { supplyModel, type SupplyModelOptions, type OpenAiModel } from './suppliers/supplyModel';
+export {
+	supplyModel,
+	getSuppliedModelOptions,
+	type SuppliedModel,
+	type SupplyModelOptions,
+	type OpenAiModel,
+} from './suppliers/supplyModel';
