@@ -20,6 +20,7 @@ import { join } from 'node:path';
 import { CredentialsFinderService, CacheService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { ManagedAppUnavailableError } from '@/errors/managed-app-unavailable.error';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { SlackMethodsService } from './slack-methods.service';
@@ -185,7 +186,7 @@ export class SlackManagedSetupService {
 		const integrations = agent?.integrations ?? [];
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			options.user,
-			{ projectId: options.projectId, excludePersonalRoute: true },
+			{ projectId: options.projectId, excludePersonalRoute: true, excludeResolvable: true },
 		);
 		const managerCredentials: SlackManagerCredentialSummary[] = [];
 
@@ -545,7 +546,7 @@ export class SlackManagedSetupService {
 	): Promise<ManagerCredentialContext> {
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			user,
-			{ projectId, excludePersonalRoute: true },
+			{ projectId, excludePersonalRoute: true, excludeResolvable: true },
 		);
 		if (
 			!usableCredentials.some(
@@ -563,6 +564,9 @@ export class SlackManagedSetupService {
 		if (!credential) throw new NotFoundError(`Credential "${credentialId}" not found`);
 		const rawData = await this.credentialsService.decrypt(credential, true);
 		if (!this.usesManagedSlackAuth(rawData)) {
+			if (this.hasMissingManagedApp(rawData)) {
+				throw new BadRequestError('Reconnect the Slack credential to use the managed app');
+			}
 			throw new BadRequestError('The selected Slack credential does not use managed OAuth');
 		}
 		const oauthTokenData = childRecord(rawData, 'oauthTokenData');
@@ -578,6 +582,14 @@ export class SlackManagedSetupService {
 			throw new BadRequestError('Reconnect the Slack credential to grant managed app access');
 		}
 		return { credential, rawData, oauthTokenData, accessToken };
+	}
+
+	/** True when the credential is bound to a managed app version that this instance no longer has. */
+	private hasMissingManagedApp(data: ICredentialDataDecryptedObject): boolean {
+		return (
+			this.credentialsOverwrites.getManagedAuthState(SLACK_MANAGER_CREDENTIAL_TYPE, data) ===
+			'missing-app'
+		);
 	}
 
 	private usesManagedSlackAuth(data: ICredentialDataDecryptedObject): boolean {
@@ -725,7 +737,8 @@ export class SlackManagedSetupService {
 		if (!credential) return undefined;
 
 		const rawData = await this.credentialsService.decrypt(credential, true);
-		if (!this.usesManagedSlackAuth(rawData)) return undefined;
+		const managedAppMissing = this.hasMissingManagedApp(rawData);
+		if (!managedAppMissing && !this.usesManagedSlackAuth(rawData)) return undefined;
 		const oauthTokenData = childRecord(rawData, 'oauthTokenData');
 		const authedUser = oauthTokenData ? childRecord(oauthTokenData, 'authed_user') : undefined;
 		const accessToken = stringProperty(authedUser, 'access_token');
@@ -733,7 +746,19 @@ export class SlackManagedSetupService {
 			stringProperty(authedUser, 'scope') ?? stringProperty(oauthTokenData, 'scope'),
 		);
 		const reconnectRequired =
-			!!accessToken && REQUIRED_MANAGER_SCOPES.some((scope) => !grantedScopes.has(scope));
+			!!accessToken &&
+			(managedAppMissing || REQUIRED_MANAGER_SCOPES.some((scope) => !grantedScopes.has(scope)));
+		// The credential stays in the list so that the user can reconnect it. Its token can no
+		// longer be refreshed, so n8n does not call Slack with it.
+		if (managedAppMissing) {
+			return {
+				id: credential.id,
+				name: credential.name,
+				connected: !!accessToken,
+				reconnectRequired,
+				workspaces: [],
+			};
+		}
 		const workspaces =
 			accessToken && oauthTokenData
 				? await this.getWorkspacesFromContext(
@@ -916,12 +941,26 @@ export class SlackManagedSetupService {
 		}
 	}
 
+	private getConnectedAppOverwrite(rawData: ICredentialDataDecryptedObject) {
+		try {
+			return this.credentialsOverwrites.getOverwrites(
+				SLACK_MANAGER_CREDENTIAL_TYPE,
+				this.credentialsOverwrites.resolveBoundVersion(SLACK_MANAGER_CREDENTIAL_TYPE, rawData),
+			);
+		} catch (error) {
+			if (error instanceof ManagedAppUnavailableError) return undefined;
+			throw error;
+		}
+	}
+
 	private async refreshManagerAccessToken(
 		manager: ManagerCredentialContext,
 	): Promise<string | undefined> {
 		const authedUser = childRecord(manager.oauthTokenData, 'authed_user');
 		const refreshToken = stringProperty(authedUser, 'refresh_token');
-		const overwrite = this.credentialsOverwrites.getOverwrites(SLACK_MANAGER_CREDENTIAL_TYPE);
+		// The refresh token belongs to the app that issued it, so the secret comes from the
+		// version stored on the credential. A version without an app means no refresh.
+		const overwrite = this.getConnectedAppOverwrite(manager.rawData);
 		if (
 			!refreshToken ||
 			typeof overwrite?.clientId !== 'string' ||

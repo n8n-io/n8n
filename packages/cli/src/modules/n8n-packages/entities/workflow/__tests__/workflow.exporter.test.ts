@@ -19,6 +19,7 @@ import { VariableRequirementsExtractor } from '../../variable/variable-requireme
 import type { WorkflowVariableRequirement } from '../../variable/variable.types';
 import { WorkflowExporter } from '../workflow.exporter';
 import { WorkflowSerializer } from '../workflow.serializer';
+import { PackageWorkflowInvalidError } from '../../package-export.errors';
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -162,7 +163,12 @@ describe('WorkflowExporter', () => {
 		});
 
 		expect(entries).toEqual([
-			{ id: workflow.id, name: workflow.name, target: 'workflows/repeated-wf_repeated' },
+			{
+				id: workflow.id,
+				name: workflow.name,
+				target: 'workflows/repeated-wf_repeated',
+				isArchived: false,
+			},
 		]);
 		expect(
 			writer.files.filter((f) => f.path === 'workflows/repeated-wf_repeated/workflow.json'),
@@ -223,15 +229,36 @@ describe('WorkflowExporter', () => {
 			(f) => f.path === 'workflows/my-workflow-wf_abc1234567/workflow.json',
 		);
 		expect(workflowFile).toBeDefined();
-		expect(jsonParse<unknown>(workflowFile!.content)).toMatchObject({
-			nodes: [
-				{
-					credentials: {
-						googlePalmApi: { id: null, name: '', __aiGatewayManaged: true },
-					},
-				},
-			],
+		// Exact match proves the display name is absent; id and managed flag remain.
+		const parsed = jsonParse<{ nodes: Array<{ credentials: Record<string, unknown> }> }>(
+			workflowFile!.content,
+		);
+		expect(parsed.nodes[0].credentials.googlePalmApi).toEqual({
+			id: null,
+			__aiGatewayManaged: true,
 		});
+	});
+
+	it('throws a 422 that names the workflow and invalid fields when stored data fails the schema', async () => {
+		const workflow = makeWorkflow({
+			nodes: [{ id: 'n1', name: 'Node', type: 'x', typeVersion: 1, parameters: {} }] as never,
+		});
+		const { exporter } = makeExporter([workflow]);
+
+		const error = await exporter
+			.export({
+				user,
+				workflowIds: [workflow.id],
+				writer: new CapturingWriter(),
+				includeTags: true,
+				versionPolicy: 'latest',
+			})
+			.catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(PackageWorkflowInvalidError);
+		expect((error as PackageWorkflowInvalidError).httpStatusCode).toBe(422);
+		expect((error as PackageWorkflowInvalidError).message).toContain(workflow.id);
+		expect((error as PackageWorkflowInvalidError).message).toContain('nodes.0.position');
 	});
 
 	it('writes node groups into workflow.json', async () => {

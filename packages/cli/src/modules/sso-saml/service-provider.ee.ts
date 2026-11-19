@@ -32,6 +32,7 @@ export function getServiceProviderInstance(
 			wantAssertionsSigned: prefs.wantAssertionsSigned,
 			wantMessageSigned: prefs.wantMessageSigned,
 			signatureConfig: prefs.signatureConfig,
+			// oxlint-disable-next-line typescript/no-deprecated -- Preserve the configured default RelayState for existing SAML setups.
 			relayState: prefs.relayState,
 			nameIDFormat: ['urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress'],
 			assertionConsumerService: [

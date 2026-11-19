@@ -5,7 +5,7 @@ export class CiscoWebexOAuth2Api implements ICredentialType {
 
 	extends = ['oAuth2Api'];
 
-	displayName = 'Cisco Webex OAuth2 API';
+	displayName = 'Webex by Cisco OAuth2 API';
 
 	documentationUrl = 'ciscowebex';
 

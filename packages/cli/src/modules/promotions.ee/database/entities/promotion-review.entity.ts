@@ -14,7 +14,7 @@ import {
 import { v7 as uuidv7 } from 'uuid';
 
 import { PromotionEnvironment } from './promotion-environment.entity';
-import { PromotionRun } from './promotion-run.entity';
+import type { PromotionRun } from './promotion-run.entity';
 
 /**
  * The gate on a promote. Several runs can point at one review. The host owns
@@ -62,10 +62,15 @@ export class PromotionReview extends WithCreatedAt {
 	@Column({ type: 'uuid', nullable: true })
 	createdById: string | null;
 
-	/** The one n8n user who approved in n8n. NULL until then. Not copied from the host. */
+	/**
+	 * The n8n user who claimed the approval. It names the approver only on a merged review.
+	 * On other states it is a claim in progress, or one that a stopped request left.
+	 * Not copied from the host.
+	 */
 	@Column({ type: 'uuid', nullable: true })
 	approvedById: string | null;
 
+	/** When the approval was claimed. On an open review, an old claim is stale. */
 	@DateTimeColumn({ nullable: true })
 	approvedAt: Date | null;
 
@@ -81,9 +86,6 @@ export class PromotionReview extends WithCreatedAt {
 	@JoinColumn({ name: 'approvedById' })
 	approvedBy: Relation<User> | null;
 
-	@OneToMany(
-		() => PromotionRun,
-		(run) => run.review,
-	)
+	@OneToMany('PromotionRun', 'review')
 	runs: Relation<PromotionRun>[];
 }

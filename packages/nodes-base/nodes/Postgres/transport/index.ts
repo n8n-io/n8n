@@ -85,6 +85,27 @@ const getPostgresConfig = (
 		dbConfig.sslmode = credentials.ssl || 'disable';
 	}
 
+	if (
+		dbConfig.ssl &&
+		(credentials.caCertificate || credentials.clientCertificate || credentials.clientPrivateKey)
+	) {
+		const ssl = typeof dbConfig.ssl === 'object' ? dbConfig.ssl : {};
+
+		if (credentials.caCertificate) {
+			ssl.ca = formatPemBlock(credentials.caCertificate);
+		}
+
+		if (credentials.clientCertificate) {
+			ssl.cert = formatPemBlock(credentials.clientCertificate);
+		}
+
+		if (credentials.clientPrivateKey) {
+			ssl.key = formatPemBlock(credentials.clientPrivateKey);
+		}
+
+		dbConfig.ssl = ssl;
+	}
+
 	return dbConfig;
 };
 
@@ -132,7 +153,9 @@ export async function configurePostgres(
 
 		if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.7) {
 			// Also return DATE and date/timestamp array columns as strings
-			dbConfig.types = getDateAsStringTypeParsers(pgp);
+			dbConfig.types = getDateAsStringTypeParsers(pgp, {
+				legacyUtcTimestamps: options.nodeVersion < 2.9,
+			});
 		} else if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.1) {
 			// DATE columns still return Date objects on these versions
 			dbConfig.types = getLegacyDateTypeParsers(pgp);
@@ -187,6 +210,18 @@ export async function configurePostgres(
 					onForwardError(error);
 				}
 			});
+
+			// Only for custom certificates, so existing SSH + SSL setups keep verifying against the tunnel address
+			if (
+				dbConfig.ssl &&
+				(credentials.caCertificate || credentials.clientCertificate || credentials.clientPrivateKey)
+			) {
+				const ssl = {
+					...(typeof dbConfig.ssl === 'object' ? dbConfig.ssl : {}),
+					servername: credentials.host,
+				};
+				dbConfig.ssl = ssl;
+			}
 
 			const db = pgp({
 				...dbConfig,

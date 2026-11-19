@@ -85,13 +85,16 @@ describe('WorkflowReviewInboxService.listForInbox', () => {
 
 		const result = await service.listForInbox(user, { state: 'open', limit: 2 });
 
-		expect(workflowReviewInboxRepository.findRequests).toHaveBeenCalledWith({
-			visibility: involvedVisibility,
-			state: 'open',
-			category: undefined,
-			limit: 2,
-			boundary: undefined,
-		});
+		expect(workflowReviewInboxRepository.findRequests).toHaveBeenCalledWith(
+			{
+				visibility: involvedVisibility,
+				state: 'open',
+				category: undefined,
+				limit: 2,
+				boundary: undefined,
+			},
+			{},
+		);
 		expect(result.map((row) => row.id)).toEqual(['second', 'first']);
 		expect(result[0]).toMatchObject({ type: 'workflow_review', workflowName: 'Linked workflow' });
 		expect(participantResolver.resolve).toHaveBeenCalledWith(rows);
@@ -109,13 +112,28 @@ describe('WorkflowReviewInboxService.listForInbox', () => {
 
 		await service.listForInbox(user, { state: 'closed', limit: 16, boundary });
 
-		expect(workflowReviewInboxRepository.findRequests).toHaveBeenCalledWith({
-			visibility: involvedVisibility,
-			state: 'closed',
-			category: undefined,
-			limit: 16,
-			boundary,
-		});
+		expect(workflowReviewInboxRepository.findRequests).toHaveBeenCalledWith(
+			{
+				visibility: involvedVisibility,
+				state: 'closed',
+				category: undefined,
+				limit: 16,
+				boundary,
+			},
+			{},
+		);
+	});
+
+	it('returns counts for the resolved visibility without a transaction', async () => {
+		mockVisibility();
+		const counts = { open: 2, closed: 1 };
+		workflowReviewInboxRepository.countRequestsByState.mockResolvedValue(counts);
+
+		expect(await service.getInboxSummaryForUser(user)).toBe(counts);
+		expect(workflowReviewInboxRepository.countRequestsByState).toHaveBeenCalledWith(
+			involvedVisibility,
+			{},
+		);
 	});
 
 	it('checks the live policy before reading rows', async () => {

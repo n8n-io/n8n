@@ -4,6 +4,7 @@ import {
 	type ExecutionRedaction,
 	type ExecutionRedactionOptions,
 	type RedactableExecution,
+	loginIdOf,
 } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -136,6 +137,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 						workflowId: execution.workflowId,
 						ipAddress: options.ipAddress ?? '',
 						userAgent: options.userAgent ?? '',
+						loginId: loginIdOf(options.ctx),
 						redactionPolicy: this.resolvePolicy(execution),
 						rejectionReason: 'Not the executing user of a private-credential execution',
 					});
@@ -148,6 +150,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 						workflowId: execution.workflowId,
 						ipAddress: options.ipAddress ?? '',
 						userAgent: options.userAgent ?? '',
+						loginId: loginIdOf(options.ctx),
 						redactionPolicy: this.resolvePolicy(execution),
 						rejectionReason: 'User cannot use a credential referenced by this execution',
 					});
@@ -171,6 +174,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 						workflowId: execution.workflowId,
 						ipAddress: options.ipAddress ?? '',
 						userAgent: options.userAgent ?? '',
+						loginId: loginIdOf(options.ctx),
 						redactionPolicy: this.resolvePolicy(execution),
 						rejectionReason: 'User lacks execution:reveal scope for this workflow',
 					});
@@ -253,6 +257,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 					workflowId: execution.workflowId,
 					ipAddress: options.ipAddress ?? '',
 					userAgent: options.userAgent ?? '',
+					loginId: loginIdOf(options.ctx),
 					redactionPolicy: this.resolvePolicy(execution),
 				});
 			}
@@ -309,7 +314,9 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 * `execution:reveal` scope nor an instance-wide `credential:use` scope (e.g.
 	 * Owner/Admin) grants a bypass: `ignoreGlobalUseScope` asks for the viewer's
 	 * actual personal access to each credential, the same question a colleague
-	 * with no elevated scopes would be asked.
+	 * with no elevated scopes would be asked. The owner and admins are implicit
+	 * members of every team project, so credentials shared with a team project
+	 * count for them, and credentials that only a personal project holds do not.
 	 */
 	private async resolveCredentialInaccessibleExecutions(
 		executions: RedactableExecution[],

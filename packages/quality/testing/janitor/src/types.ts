@@ -40,6 +40,8 @@ export interface RuleSettings {
 	allowPatterns?: RegExp[];
 	allowInExpect?: boolean;
 	navigationMethods?: string[];
+	/** For duplicate-logic, skip test-to-test comparisons for matching root-relative paths. */
+	excludeTestBodyPaths?: RegExp[];
 }
 
 export interface RuleConfig {

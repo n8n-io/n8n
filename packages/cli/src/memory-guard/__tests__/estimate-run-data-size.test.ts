@@ -1,6 +1,6 @@
 import type { IDataObject, INodeExecutionData, IRunData, ITaskData } from 'n8n-workflow';
 
-import { estimateItemsSize, estimateTaskDataSize } from '../estimate-run-data-size';
+import { estimateItemsSize, estimateTaskDataSize, RunSharing } from '../estimate-run-data-size';
 
 // Mirrors the byte model in the estimator, so the exact cases below read as arithmetic.
 const variables: Record<string, unknown> = process.config.variables;
@@ -607,5 +607,46 @@ describe('estimateTaskDataSize', () => {
 
 			expect(estimate).toBe(estimateItemsSize(items, new WeakSet()));
 		});
+	});
+});
+
+describe('RunSharing', () => {
+	const payloadOf = (char: string) => ({ data: char.repeat(100) });
+	const payloadBytes = objectBytes(1) + stringBytes(100);
+
+	const estimateRuns = (runs: IDataObject[]) => {
+		const sharing = new RunSharing();
+		const seen = new WeakSet<object>();
+		runs.forEach((json, run) =>
+			estimateItemsSize([{ json }], seen, undefined, { runs: sharing, run }),
+		);
+		return sharing;
+	};
+
+	it('should report the bytes of an object that a later run holds too, for the run that counted it', () => {
+		const shared = payloadOf('x');
+
+		const sharing = estimateRuns([{ shared }, { other: payloadOf('y') }, { shared }]);
+
+		expect(sharing.sharedBytesOf(0)).toBe(payloadBytes);
+		expect(sharing.sharedBytesOf(1)).toBe(0);
+		expect(sharing.sharedBytesOf(2)).toBe(0);
+	});
+
+	it('should count a nested object once when later runs hold it and its parent', () => {
+		const inner = payloadOf('x');
+		const outer = { inner };
+
+		const sharing = estimateRuns([{ outer }, { inner }, { outer }]);
+
+		expect(sharing.sharedBytesOf(0)).toBe(objectBytes(1) + payloadBytes);
+	});
+
+	it('should not report an object that only one run holds twice', () => {
+		const payload = payloadOf('x');
+
+		const sharing = estimateRuns([{ first: payload, second: payload }]);
+
+		expect(sharing.sharedBytesOf(0)).toBe(0);
 	});
 });

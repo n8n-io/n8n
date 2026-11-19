@@ -11,7 +11,7 @@ import type {
 } from '@n8n/api-types';
 import type { AgentEvalDataset, AgentEvalRating, AgentEvalResult, AgentEvalRun } from '@n8n/db';
 import type { JsonObject } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 /**
  * Entity → wire-record mappers. Mapped field-by-field so dates serialize as ISO

@@ -717,16 +717,14 @@ describe('ProjectRoleView', () => {
 	});
 
 	describe('Skill scopes', () => {
-		it('hides the Skills scopes while the skills hub is off', () => {
+		it('hides the Skills scopes while the agents module is inactive', () => {
 			const { queryByText } = renderComponent();
 
 			expect(queryByText('Skills')).not.toBeInTheDocument();
 		});
 
-		it('shows the Skills scopes while the skills hub is on', () => {
-			settingsStore.moduleSettings = {
-				agents: { skillsHubEnabled: true },
-			} as typeof settingsStore.moduleSettings;
+		it('shows the Skills scopes while the agents module is active', () => {
+			vi.mocked(settingsStore.isModuleActive).mockImplementation((name) => name === 'agents');
 			const { getByText } = renderComponent();
 
 			expect(getByText('Skills')).toBeInTheDocument();

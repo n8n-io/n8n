@@ -14,7 +14,7 @@ import { mock } from 'vitest-mock-extended';
 import { CredentialTypeConflictError } from '@/errors/response-errors/credential-type-conflict.error';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 import type { CommunityPackagesConfig } from '../community-packages.config';
 import { CommunityPackagesService } from '../community-packages.service';

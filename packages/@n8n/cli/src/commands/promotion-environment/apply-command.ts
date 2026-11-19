@@ -1,8 +1,9 @@
 import { BaseCommand, EXIT_BLOCKED, EXIT_SOURCE_CHANGED, EXIT_SUCCESS } from '../../base-command';
 import type {
 	ApplyPackageResult,
-	PromotionBindingPreflight,
+	PromotionApplyCheck,
 	PromotionProjectDeletion,
+	PromotionSelection,
 } from '../../client';
 
 type ReportFlags = { quiet?: boolean; format?: string; json?: boolean; jq?: string };
@@ -19,6 +20,7 @@ export abstract class PromotionApplyCommand extends BaseCommand {
 		result: ApplyPackageResult,
 		flags: ReportFlags,
 		continueCommand: ContinueCommand,
+		previewCommand: string,
 	): void {
 		// `succeed()` ignores --jq, so JSON output for every status goes through `output()`.
 		if (this.isJsonMode(flags)) {
@@ -39,11 +41,7 @@ export abstract class PromotionApplyCommand extends BaseCommand {
 		}
 
 		if (!flags.quiet) {
-			this.logToStderr(
-				result.status === 'blocked'
-					? blockedMessage(result, result.preflight, continueCommand)
-					: sourceChangedMessage(result),
-			);
+			this.logToStderr(stopMessage(result, continueCommand, previewCommand));
 		}
 		this.exit(exitCodeFor(result));
 	}
@@ -52,6 +50,21 @@ export abstract class PromotionApplyCommand extends BaseCommand {
 function exitCodeFor(result: ApplyPackageResult): number {
 	if (result.status === 'applied') return EXIT_SUCCESS;
 	return result.status === 'blocked' ? EXIT_BLOCKED : EXIT_SOURCE_CHANGED;
+}
+
+function stopMessage(
+	result: ApplyPackageResult,
+	continueCommand: ContinueCommand,
+	previewCommand: string,
+): string {
+	if (result.status === 'blocked') return blockedMessage(result, result.check, continueCommand);
+	if (result.status === 'preview-changed') {
+		return [
+			'The Apply preview changed since you reviewed it. Nothing was imported.',
+			`Run ${previewCommand}. Review the changes. Then apply with the new revision.`,
+		].join('\n');
+	}
+	return sourceChangedMessage(result);
 }
 
 function sourceChangedMessage(result: ApplyPackageResult): string {
@@ -64,20 +77,20 @@ function sourceChangedMessage(result: ApplyPackageResult): string {
 
 function blockedMessage(
 	result: BlockedResult,
-	preflight: PromotionBindingPreflight,
+	check: PromotionApplyCheck,
 	continueCommand: ContinueCommand,
 ): string {
 	const bindings = (kind: 'credential' | 'variable') =>
-		preflight.missingBindings.filter((binding) => binding.kind === kind).length;
-	const projectDeletions = preflight.conflicts.filter(isProjectDeletion);
+		check.missingBindings.filter((binding) => binding.kind === kind).length;
+	const projectDeletions = check.conflicts.filter(isProjectDeletion);
 
 	return [
 		'Apply is blocked. Nothing was imported.',
-		`  Missing projects:    ${preflight.missingProjects.length}`,
+		`  Missing projects:    ${check.missingProjects.length}`,
 		`  Missing credentials: ${bindings('credential')}`,
 		`  Missing variables:   ${bindings('variable')}`,
-		`  Access requirements: ${preflight.accessRequirements.length}`,
-		`  Conflicts:           ${preflight.conflicts.length}`,
+		`  Access requirements: ${check.accessRequirements.length}`,
+		`  Conflicts:           ${check.conflicts.length}`,
 		...(projectDeletions.length > 0
 			? [
 					'Apply deletes these projects with everything in them:',
@@ -86,7 +99,7 @@ function blockedMessage(
 			: []),
 		'Run with --json for the details. After you resolve them, run:',
 		`  ${continueCommand(result)}`,
-		...(preflight.conflicts.some(({ code }) => code === 'destructive-change')
+		...(check.conflicts.some(({ code }) => code === 'destructive-change')
 			? [
 					'To also apply data table changes that remove or retype columns, add --confirm-destructive-changes. The values in those columns are removed.',
 				]
@@ -114,22 +127,39 @@ function expectedSourceArgs(result: BlockedResult): string {
 	);
 }
 
-/** The command that resumes a blocked whole-instance Apply. */
+/**
+ * The command that resumes a blocked whole-instance Apply. It leaves out the preview revision:
+ * setting up a binding changes the preview, so the old one never matches.
+ */
 export function environmentContinueCommand(environmentId: string): ContinueCommand {
 	return (result) =>
 		`n8n-cli promotion-environment apply-continue ${shellQuote(environmentId)}` +
 		expectedSourceArgs(result);
 }
 
-/** The command that resumes a blocked selection Apply. It resends the same workflow ids. */
+/**
+ * The command that resumes a blocked selection Apply. It resends the same selection. It leaves
+ * out the preview revision: setting up a binding changes the preview, so the old one never matches.
+ */
 export function selectionContinueCommand(
 	projectId: string,
-	workflowIds: string[],
+	{ workflowIds = [], folderIds = [] }: PromotionSelection,
 ): ContinueCommand {
 	return (result) =>
 		`n8n-cli promotion-environment apply-selection-continue ${shellQuote(projectId)}` +
 		workflowIds.map((id) => ` -w ${shellQuote(id)}`).join('') +
+		folderIds.map((id) => ` --folder ${shellQuote(id)}`).join('') +
 		expectedSourceArgs(result);
+}
+
+/** The command that shows the whole-instance Apply preview, with its new revision. */
+export function environmentPreviewCommand(environmentId: string): string {
+	return `n8n-cli promotion-environment list-apply-changes ${shellQuote(environmentId)} --json`;
+}
+
+/** The command that shows the Apply preview of a project, with its new revision. */
+export function selectionPreviewCommand(projectId: string): string {
+	return `n8n-cli promotion-environment list-changes ${shellQuote(projectId)} apply --json`;
 }
 
 /** Branch names can contain shell metacharacters such as `;` and `$(`, so the shell must not interpret them. */

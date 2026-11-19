@@ -2,7 +2,10 @@ operationId: getTestRuns
 tags:
   - Evaluation
 summary: Retrieve test runs
-description: Retrieve the evaluation test runs of a workflow.
+description: |-
+  Retrieve the evaluation test runs of a workflow.
+
+  Requires the `testRun:list` API key scope.
 x-required-scope: testRun:list
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml
@@ -114,3 +117,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

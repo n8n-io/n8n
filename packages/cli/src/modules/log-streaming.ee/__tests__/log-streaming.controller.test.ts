@@ -1,6 +1,7 @@
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthenticatedRequest, CredentialsEntity, User } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type {
 	MessageEventBusDestinationOptions,
@@ -151,6 +152,7 @@ describe('EventBusController', () => {
 				'cred-1',
 				req.user,
 				['credential:read'],
+				{ excludeSeeOnlyRoles: true },
 			);
 			expect(destinationService.addDestination).not.toHaveBeenCalled();
 		});
@@ -162,7 +164,7 @@ describe('EventBusController', () => {
 			destinationService.addDestination.mockResolvedValue(created);
 
 			const req = {
-				user: mock<User>(),
+				user: mock<User>({ role: GLOBAL_OWNER_ROLE }),
 				body: {
 					__type: MessageEventBusDestinationTypeNames.webhook,
 					label: 'Test',
@@ -177,6 +179,7 @@ describe('EventBusController', () => {
 				'cred-1',
 				req.user,
 				['credential:read'],
+				{ excludeSeeOnlyRoles: true },
 			);
 			expect(destinationService.addDestination).toHaveBeenCalled();
 		});
@@ -235,6 +238,7 @@ describe('EventBusController', () => {
 				'cred-1',
 				req.user,
 				['credential:read'],
+				{ excludeSeeOnlyRoles: true },
 			);
 		});
 	});

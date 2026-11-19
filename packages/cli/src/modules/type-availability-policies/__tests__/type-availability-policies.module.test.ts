@@ -46,7 +46,7 @@ describe('TypeAvailabilityPoliciesModule', () => {
 	// Importing a controller module here (even just to get a class reference to look up)
 	// would register it via its own `@RestController`/`@Get` decorators regardless of
 	// whether `init()` still imports it, making the assertion pass even after a regression.
-	it('registers the node-types and credential-types instance, project and available-types controllers on init', async () => {
+	it('registers the node-types and credential-types instance, project, available-types and sub-workflow policy check controllers on init', async () => {
 		const module = new TypeAvailabilityPoliciesModule();
 
 		await module.init();
@@ -66,6 +66,7 @@ describe('TypeAvailabilityPoliciesModule', () => {
 			'CredentialTypePolicyProjectController',
 			'AvailableTypesController',
 			'AvailableCredentialTypesController',
+			'SubWorkflowPolicyCheckController',
 		]) {
 			expect(routeCountByName.get(name)).toBeGreaterThan(0);
 		}

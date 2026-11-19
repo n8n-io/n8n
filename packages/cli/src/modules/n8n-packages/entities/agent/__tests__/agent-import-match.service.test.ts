@@ -36,31 +36,23 @@ describe('AgentImportMatchService', () => {
 		expect(agents.findImportCandidates).not.toHaveBeenCalled();
 	});
 
-	it('omits both task mappings when two proposed owners use one ID', async () => {
-		const { service, context } = setup();
+	it('reports both proposed owners when they use one task ID', async () => {
+		const { service } = setup();
 		const content = serializedAgentSchema.parse(
 			looseAgentsFixture().files['agents/support/agent.json'],
 		);
 		const tasks = { shared_task: content.tasks.support_source_task };
 		const sources = ['first', 'second'].map((sourceAgentId) => ({ sourceAgentId, tasks }));
-		const identities = await service.allocateAgentIds(
-			await service.findBySourceAgentIds(context, ['first', 'second']),
-		);
-		const result = await service.mapTaskIds(sources, identities);
-		expect([...result.taskIdsBySourceAgentId.values()].map((map) => map.size)).toEqual([0, 0]);
-		expect(result.idConflicts).toEqual([
+		const result = await service.findTaskIdConflicts(sources);
+		expect(result).toEqual([
 			{
 				sourceAgentId: 'first',
-				targetAgentId: 'first',
 				sourceTaskId: 'shared_task',
-				targetTaskId: 'shared_task',
 				conflictingAgentId: 'second',
 			},
 			{
 				sourceAgentId: 'second',
-				targetAgentId: 'second',
 				sourceTaskId: 'shared_task',
-				targetTaskId: 'shared_task',
 				conflictingAgentId: 'first',
 			},
 		]);

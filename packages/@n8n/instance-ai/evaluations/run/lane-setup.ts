@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import type { Lane } from './build-orchestrator';
-import { cleanupLaneUsers, LaneUserPool } from './lane-users';
+import { cleanupLaneUsers, deleteTeamBuildProjects, LaneUserPool } from './lane-users';
 import type { CliArgs } from '../cli/args';
 import { N8nClient } from '../clients/n8n-client';
 import { cleanupCredentials } from '../credentials/seeder';
@@ -28,10 +28,15 @@ export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lan
 				args.baseUrls.length > 1
 					? ` [lane ${String(idx + 1)}/${String(args.baseUrls.length)}]`
 					: '';
-			const client = new N8nClient(baseUrl);
+			const client = new N8nClient(baseUrl, { assistantRuntime: args.assistantRuntime });
 			logger.info(`Authenticating with ${baseUrl}...${tag}`);
 			await client.login(args.email, args.password);
 			logger.success(`Authenticated${tag}`);
+			const agents = client.assistantAgents();
+			if (agents) {
+				await agents.assertEnabled();
+				logger.info(`Driving the Assistant agent on the Agents runtime${tag}`);
+			}
 
 			logger.info(`Seeding MCP registry...${tag}`);
 			const mcpSeedResult = await seedMcpRegistry(client, logger);
@@ -47,6 +52,16 @@ export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lan
 				await client.enableMcpAccess();
 			}
 			const buildUserPool = new LaneUserPool(client);
+			const teamBuildProjects = await client.canCreateTeamProjects();
+			if (teamBuildProjects) {
+				// The dispatcher runs one CLI per instance at a time, so any marked
+				// project here is a crashed run's leftover.
+				await deleteTeamBuildProjects(client, logger);
+			} else {
+				logger.warn(
+					`No team projects on this instance: builds run in a member's personal project, so n8n hides execution output from the agent${tag}`,
+				);
+			}
 
 			// Independent reads of one instance, so they run together.
 			const [preRunWorkflowIds, preRunDataTableIds, preRunFolderIds] = await Promise.all([
@@ -67,6 +82,7 @@ export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lan
 				createdCredentialIds,
 				workflowIdsToDelete,
 				buildUserPool,
+				teamBuildProjects,
 			};
 		}),
 	);
@@ -92,6 +108,9 @@ export async function cleanupLanes(
 			// users when workflows are kept.
 			if (cleanup.buildUsers && lane.buildUserPool) {
 				await cleanupLaneUsers(lane.client, lane.buildUserPool, logger);
+			}
+			if (cleanup.buildUsers && lane.teamBuildProjects) {
+				await deleteTeamBuildProjects(lane.client, logger);
 			}
 		}),
 	);

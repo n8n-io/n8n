@@ -20,7 +20,7 @@ import type {
 	KnownNodesAndCredentials,
 	NodeLoader,
 } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -290,6 +290,40 @@ describe('LoadNodesAndCredentials', () => {
 			});
 			expect(result).toEqual('/nodes-base/dist/nodes/Test/__schema__/v1.0.0.json');
 		});
+
+		it('should use the schemaPath that the node declares', () => {
+			const type = { description: { properties: [], schemaPath: 'Test/TestTrigger' } };
+			vi.spyOn(instance, 'getNode').mockReturnValue({
+				sourcePath: 'Test.node.js',
+				type: type as unknown as INodeType,
+			});
+
+			const result = instance.resolveSchema({
+				node: 'n8n-nodes-base.test',
+				version: '1.0.0',
+				resource: 'account',
+				operation: 'get',
+			});
+			expect(result).toEqual(
+				'/nodes-base/dist/nodes/Test/TestTrigger/__schema__/v1.0.0/account/get.json',
+			);
+		});
+
+		it('should ignore a schemaPath that leaves the package nodes folder', () => {
+			const type = { description: { properties: [], schemaPath: '../../elsewhere' } };
+			vi.spyOn(instance, 'getNode').mockReturnValue({
+				sourcePath: 'Test.node.js',
+				type: type as unknown as INodeType,
+			});
+
+			const result = instance.resolveSchema({
+				node: 'n8n-nodes-base.test',
+				version: '1.0.0',
+				resource: 'account',
+				operation: 'get',
+			});
+			expect(result).toEqual('/nodes-base/dist/nodes/Test/__schema__/v1.0.0/account/get.json');
+		});
 	});
 
 	describe('createOutputSchemaLookup', () => {
@@ -409,6 +443,93 @@ describe('LoadNodesAndCredentials', () => {
 					instance.createOutputSchemaLookup()({ ...lookupRef, parameters: { simple: true } }),
 				).toEqual(plainSchema);
 			});
+		});
+
+		describe('default resource and operation', () => {
+			const triggerSchema = { type: 'object', title: 'trigger output' };
+			const actionNode = {
+				description: {
+					properties: [
+						{ name: 'resource', type: 'options', default: 'account' },
+						{
+							name: 'operation',
+							type: 'options',
+							default: 'get',
+							displayOptions: { show: { resource: ['account'] } },
+						},
+					],
+				},
+			} as unknown as INodeType;
+
+			beforeEach(() => {
+				// A trigger that shares the folder stores its schema as output.json.
+				writeFileSync(
+					join(nodesDir, 'Test', '__schema__', 'v1.0.0', 'output.json'),
+					JSON.stringify(triggerSchema),
+				);
+				vi.spyOn(instance, 'getNode').mockReturnValue({
+					sourcePath: 'Test.node.js',
+					type: actionNode,
+				});
+			});
+
+			it('should use the default resource and operation when the node does not set them', () => {
+				expect(
+					instance.createOutputSchemaLookup()({
+						type: 'n8n-nodes-base.test',
+						typeVersion: 1,
+						parameters: {},
+					}),
+				).toEqual({ type: 'object' });
+			});
+
+			it('should use the default operation of the resource that the node sets', () => {
+				expect(
+					instance.createOutputSchemaLookup()({
+						type: 'n8n-nodes-base.test',
+						typeVersion: 1,
+						resource: 'account',
+						parameters: { resource: 'account' },
+					}),
+				).toEqual({ type: 'object' });
+			});
+		});
+
+		it('should load the schema from the schemaPath folder that the node declares', () => {
+			const packageNodes = join(nodesDir, 'pkg', 'dist', 'nodes');
+			const triggerSchemaDir = join(
+				packageNodes,
+				'Shared',
+				'SharedTrigger',
+				'__schema__',
+				'v1.0.0',
+			);
+			mkdirSync(triggerSchemaDir, { recursive: true });
+			writeFileSync(
+				join(triggerSchemaDir, 'output.json'),
+				JSON.stringify({ type: 'object', title: 'trigger' }),
+			);
+			mkdirSync(join(packageNodes, 'Shared', '__schema__', 'v1.0.0'), { recursive: true });
+			writeFileSync(
+				join(packageNodes, 'Shared', '__schema__', 'v1.0.0', 'output.json'),
+				JSON.stringify({ type: 'object', title: 'sibling' }),
+			);
+			instance.knownNodes['n8n-nodes-base.sharedTrigger'] = {
+				className: 'SharedTrigger',
+				sourcePath: join(packageNodes, 'Shared', 'SharedTrigger.node.js'),
+			};
+			const type = { description: { properties: [], schemaPath: 'Shared/SharedTrigger' } };
+			vi.spyOn(instance, 'getNode').mockReturnValue({
+				sourcePath: 'SharedTrigger.node.js',
+				type: type as unknown as INodeType,
+			});
+
+			expect(
+				instance.createOutputSchemaLookup()({
+					type: 'n8n-nodes-base.sharedTrigger',
+					typeVersion: 1,
+				}),
+			).toEqual({ type: 'object', title: 'trigger' });
 		});
 
 		it('should return undefined for unknown nodes or missing schemas', () => {
@@ -1138,6 +1259,78 @@ describe('LoadNodesAndCredentials', () => {
 				expect(instance.isKnownNode('testPackage.TestNode')).toBe(true);
 				expect(instance.types.nodes).toHaveLength(1);
 			});
+		});
+	});
+
+	describe('credential domain restriction fields', () => {
+		const createCredentialLoader = (credentialType: ICredentialType) =>
+			mock<NodeLoader>({
+				packageName: 'test-package',
+				known: {
+					nodes: {},
+					credentials: {
+						[credentialType.name]: { className: 'TestApi', sourcePath: 'TestApi.credentials.js' },
+					},
+				},
+				types: { nodes: [], credentials: [] },
+				ensureTypesLoaded: vi.fn().mockResolvedValue(undefined),
+				getCredential: vi.fn().mockReturnValue({
+					type: credentialType,
+					sourcePath: 'TestApi.credentials.js',
+				}),
+			});
+
+		let instance: LoadNodesAndCredentials;
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			instance.excludeNodes = [];
+		});
+
+		it('should not load credential classes when post-processing loaders', async () => {
+			const loader = createCredentialLoader({
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+				authenticate: { type: 'generic', properties: {} },
+			});
+			instance.loaders = { 'test-package': loader };
+
+			await instance.postProcessLoaders();
+
+			expect(loader.getCredential).not.toHaveBeenCalled();
+		});
+
+		it('should add domain restriction fields when a credential is accessed', () => {
+			instance.loaders = {
+				'test-package': createCredentialLoader({
+					name: 'testApi',
+					displayName: 'Test API',
+					properties: [{ displayName: 'API Key', name: 'apiKey', type: 'string', default: '' }],
+					authenticate: { type: 'generic', properties: {} },
+				}),
+			};
+
+			const names = instance.getCredential('testApi').type.properties.map(({ name }) => name);
+
+			expect(names).toContain('apiKey');
+			expect(names).toContain('allowedHttpRequestDomains');
+		});
+
+		it('should add domain restriction fields only once across repeated access', () => {
+			instance.loaders = {
+				'test-package': createCredentialLoader({
+					name: 'testApi',
+					displayName: 'Test API',
+					properties: [],
+					authenticate: { type: 'generic', properties: {} },
+				}),
+			};
+
+			instance.getCredential('testApi');
+			const { properties } = instance.getCredential('testApi').type;
+
+			expect(properties.filter(({ name }) => name === 'allowedHttpRequestDomains')).toHaveLength(1);
 		});
 	});
 

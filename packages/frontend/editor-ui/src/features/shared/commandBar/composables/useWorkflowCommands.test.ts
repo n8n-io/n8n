@@ -19,6 +19,10 @@ import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import { shallowRef, type Ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { mockedStore } from '@/__tests__/utils';
+import { createMockEnterpriseSettings } from '@/__tests__/mocks';
+import { EnterpriseEditionFeature } from '@/app/constants';
 
 vi.mock('@/app/composables/useWorkflowHelpers');
 vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
@@ -303,6 +307,30 @@ describe('useWorkflowCommands', () => {
 
 			expect(publishCommand).toBeUndefined();
 			expect(unpublishCommand).toBeUndefined();
+		});
+
+		it('should title the publish command Submit for review when the instance always requires approval', () => {
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
+				[EnterpriseEditionFeature.WorkflowReviews]: true,
+			});
+			settingsStore.settings = {
+				...settingsStore.settings,
+				workflowReviews: { enabled: true, alwaysRequired: true },
+			};
+			mockWorkflowDocumentStore.setHomeProject({
+				id: 'team-project',
+				name: 'team project',
+				type: 'team',
+				icon: null,
+				createdAt: '',
+				updatedAt: '',
+			});
+
+			const { commands } = useWorkflowCommands();
+			const publishCommand = commands.value.find((cmd) => cmd.id === 'publish-workflow');
+
+			expect(publishCommand?.title).toBe('commandBar.workflow.submitForReview');
 		});
 
 		it('should handle publish workflow', async () => {

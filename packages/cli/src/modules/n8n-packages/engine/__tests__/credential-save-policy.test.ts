@@ -72,7 +72,7 @@ describe('CredentialSavePolicyGate', () => {
 		policyEnforcementService.hasChecksFor.mockReturnValue(false);
 
 		expect(
-			await gate.refusedStubs(request(), resolution(notFound('C1')), 'project-1', actor),
+			await gate.refusedStubs(request(), resolution(notFound('C1')), 'project-1', actor, 'enforce'),
 		).toEqual([]);
 		expect(policyEnforcementService.hasChecksFor).toHaveBeenCalledWith('credentialSave');
 		expect(policyEnforcementService.enforceCredentialSave).not.toHaveBeenCalled();
@@ -88,6 +88,7 @@ describe('CredentialSavePolicyGate', () => {
 				resolution(notFound('C1'), notFound('C2', { type: 'slackApi' })),
 				'project-1',
 				actor,
+				'enforce',
 			),
 		).toEqual([]);
 
@@ -120,6 +121,7 @@ describe('CredentialSavePolicyGate', () => {
 				resolution(notFound('C1')),
 				'project-1',
 				actor,
+				'enforce',
 			),
 		).toEqual([]);
 		expect(policyEnforcementService.enforceCredentialSave).not.toHaveBeenCalled();
@@ -140,6 +142,7 @@ describe('CredentialSavePolicyGate', () => {
 			),
 			'project-1',
 			actor,
+			'enforce',
 		);
 
 		expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledTimes(1);
@@ -158,6 +161,7 @@ describe('CredentialSavePolicyGate', () => {
 			resolution(notFound('C1'), notFound('C1')),
 			'project-1',
 			actor,
+			'enforce',
 		);
 
 		expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledTimes(1);
@@ -172,6 +176,7 @@ describe('CredentialSavePolicyGate', () => {
 				resolution(notFound('C1', { type: undefined })),
 				'project-1',
 				actor,
+				'enforce',
 			),
 		).toEqual([]);
 		expect(policyEnforcementService.enforceCredentialSave).not.toHaveBeenCalled();
@@ -191,6 +196,7 @@ describe('CredentialSavePolicyGate', () => {
 			resolution(notFound('C1'), notFound('C2', { name: undefined })),
 			'project-1',
 			actor,
+			'enforce',
 		);
 
 		expect(refused).toEqual([
@@ -226,6 +232,7 @@ describe('CredentialSavePolicyGate', () => {
 			resolution(notFound('C1'), notFound('C2')),
 			'project-1',
 			actor,
+			'enforce',
 		);
 
 		expect(refused).toHaveLength(1);
@@ -238,7 +245,7 @@ describe('CredentialSavePolicyGate', () => {
 		policyEnforcementService.enforceCredentialSave.mockRejectedValue(checkFailure);
 
 		await expect(
-			gate.refusedStubs(request(), resolution(notFound('C1')), 'project-1', actor),
+			gate.refusedStubs(request(), resolution(notFound('C1')), 'project-1', actor, 'enforce'),
 		).rejects.toBe(checkFailure);
 	});
 });
@@ -279,7 +286,7 @@ describe('CredentialSavePolicyGate.refusedUpdates', () => {
 	it('checks nothing when no check is registered', async () => {
 		policyEnforcementService.hasChecksFor.mockReturnValue(false);
 
-		expect(await gate.refusedUpdates(byTarget(update()), 'package', actor)).toEqual([]);
+		expect(await gate.refusedUpdates(byTarget(update()), 'package', actor, 'enforce')).toEqual([]);
 		expect(policyEnforcementService.enforceCredentialSave).not.toHaveBeenCalled();
 		expect(policyEnforcementService.enforceContentImport).not.toHaveBeenCalled();
 	});
@@ -287,7 +294,9 @@ describe('CredentialSavePolicyGate.refusedUpdates', () => {
 	it('checks an update like the write-time save, and as imported content', async () => {
 		policyEnforcementService.hasChecksFor.mockReturnValue(true);
 
-		expect(await gate.refusedUpdates(byTarget(update()), 'git-connection', actor)).toEqual([]);
+		expect(
+			await gate.refusedUpdates(byTarget(update()), 'git-connection', actor, 'enforce'),
+		).toEqual([]);
 
 		expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledWith(
 			{
@@ -310,7 +319,7 @@ describe('CredentialSavePolicyGate.refusedUpdates', () => {
 	it('asks only the points that have checks', async () => {
 		policyEnforcementService.hasChecksFor.mockImplementation((point) => point === 'contentImport');
 
-		await gate.refusedUpdates(byTarget(update()), 'package', actor);
+		await gate.refusedUpdates(byTarget(update()), 'package', actor, 'enforce');
 
 		expect(policyEnforcementService.enforceCredentialSave).not.toHaveBeenCalled();
 		expect(policyEnforcementService.enforceContentImport).toHaveBeenCalledTimes(1);
@@ -329,6 +338,7 @@ describe('CredentialSavePolicyGate.refusedUpdates', () => {
 			),
 			'package',
 			actor,
+			'enforce',
 		);
 
 		expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledTimes(1);
@@ -364,7 +374,7 @@ describe('CredentialSavePolicyGate.refusedUpdates', () => {
 			new PolicyViolationError([importViolation]),
 		);
 
-		const [refused] = await gate.refusedUpdates(byTarget(update()), 'package', actor);
+		const [refused] = await gate.refusedUpdates(byTarget(update()), 'package', actor, 'enforce');
 
 		expect(refused).toEqual(expect.objectContaining({ violations: [violation, importViolation] }));
 	});
@@ -379,6 +389,7 @@ describe('CredentialSavePolicyGate.refusedUpdates', () => {
 			byTarget(update(), update({ sourceId: 'S2', targetId: 'T2' })),
 			'package',
 			actor,
+			'enforce',
 		);
 
 		expect(refused).toEqual([expect.objectContaining({ sourceId: 'S1', targetId: 'T1' })]);
@@ -390,7 +401,7 @@ describe('CredentialSavePolicyGate.refusedUpdates', () => {
 		const checkFailure = new Error('check exploded');
 		policyEnforcementService.enforceContentImport.mockRejectedValue(checkFailure);
 
-		await expect(gate.refusedUpdates(byTarget(update()), 'package', actor)).rejects.toBe(
+		await expect(gate.refusedUpdates(byTarget(update()), 'package', actor, 'enforce')).rejects.toBe(
 			checkFailure,
 		);
 	});

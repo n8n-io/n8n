@@ -11,6 +11,7 @@ import {
 	type IntegrationPlatformMessageContext,
 	type ReplyExpectation,
 	type SessionBinding,
+	type SessionReplyScope,
 } from './integration-tools';
 
 interface CaptureMessageContextOptions {
@@ -82,6 +83,49 @@ export class AgentChatMessageContextBridge {
 			return await this.messageContextStore.resolveSession(threadId);
 		} catch (error) {
 			this.logger.warn('[AgentChatBridge] Failed to resolve session binding', {
+				agentId: this.agentId,
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
+		}
+	}
+
+	/** Like {@link resolveSession}, with what the reply may see of the task. */
+	async resolveSessionReplyScope(threadId: string): Promise<SessionReplyScope | null> {
+		if (!this.messageContextStore) return null;
+		try {
+			return await this.messageContextStore.resolveSessionReplyScope(threadId);
+		} catch (error) {
+			this.logger.warn('[AgentChatBridge] Failed to resolve session binding', {
+				agentId: this.agentId,
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
+		}
+	}
+
+	/** A failure leaves the messages in place, so the next reply carries them. */
+	async consumeOutboundMessages(threadId: string, carried: string[]): Promise<void> {
+		if (!this.messageContextStore) return;
+		try {
+			await this.messageContextStore.consumeOutboundMessages(threadId, carried);
+		} catch (error) {
+			this.logger.warn('[AgentChatBridge] Failed to clear task messages after a reply', {
+				agentId: this.agentId,
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	async resolveSentMessage(threadId: string, messageId: string): Promise<SessionBinding | null> {
+		if (!this.messageContextStore) return null;
+		try {
+			return await this.messageContextStore.resolveSentMessage(threadId, messageId);
+		} catch (error) {
+			this.logger.warn('[AgentChatBridge] Failed to resolve the session of a sent message', {
 				agentId: this.agentId,
 				threadId,
 				error: error instanceof Error ? error.message : String(error),

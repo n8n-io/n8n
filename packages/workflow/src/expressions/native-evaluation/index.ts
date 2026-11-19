@@ -1,5 +1,11 @@
 import { getCompiled, type CompiledExpression } from './compiler';
-import { EngineFallbackError, Env, bounded, evalChunk } from './evaluator';
+import {
+	EngineFallbackError,
+	Env,
+	bounded,
+	evalChunk,
+	type NativeFallbackReason,
+} from './evaluator';
 import { MAX_DEPTH, MAX_RESULT_LENGTH, hasOwn, isArray, isObj } from './grammar';
 import type { IWorkflowDataProxyData } from '../../interfaces';
 
@@ -57,14 +63,14 @@ export function isNativelyEvaluable(expression: string): boolean {
 
 /**
  * Evaluate an expression (with the leading `=` already stripped) in-process.
- * Returns `{ handled: false }` when the expression is outside the subset or a
- * runtime value fell outside what parsing proved; the caller must then run
- * the regular pipeline.
+ * Returns `{ handled: false }` when the expression is outside the subset, and
+ * `{ handled: false, fallbackReason }` when a runtime value fell outside what
+ * parsing proved; the caller must then run the regular pipeline.
  */
 export function evaluateNatively(
 	expression: string,
 	data: IWorkflowDataProxyData,
-): { handled: true; value: unknown } | { handled: false } {
+): { handled: true; value: unknown } | { handled: false; fallbackReason?: NativeFallbackReason } {
 	const compiled = getCompiled(expression);
 	if (compiled === null) return { handled: false };
 
@@ -72,7 +78,9 @@ export function evaluateNatively(
 		const value = copyResult(evalCompiled(compiled, data));
 		return { handled: true, value };
 	} catch (error) {
-		if (error instanceof EngineFallbackError) return { handled: false };
+		if (error instanceof EngineFallbackError) {
+			return { handled: false, fallbackReason: error.reason };
+		}
 
 		throw error;
 	}
@@ -94,15 +102,17 @@ function copyResult(value: unknown): unknown {
 	const copy = (value: unknown, depth: number): unknown => {
 		const nonJsonLeaf =
 			typeof value === 'function' || typeof value === 'symbol' || typeof value === 'bigint';
-		if (nonJsonLeaf) throw new EngineFallbackError();
+		if (nonJsonLeaf) throw new EngineFallbackError('unsupported_type');
 		if (!isObj(value)) return value;
-		if (depth > MAX_DEPTH || value.isProxy === true) throw new EngineFallbackError();
+		if (depth > MAX_DEPTH) throw new EngineFallbackError('too_deep');
+		if (value.isProxy === true) throw new EngineFallbackError('unsupported_type');
 
 		if (isArray(value)) {
-			if (getPrototypeOf(value) !== Array.prototype) throw new EngineFallbackError();
+			if (getPrototypeOf(value) !== Array.prototype)
+				throw new EngineFallbackError('unsupported_type');
 
 			visits += value.length;
-			if (visits > MAX_RESULT_LENGTH) throw new EngineFallbackError();
+			if (visits > MAX_RESULT_LENGTH) throw new EngineFallbackError('too_large');
 
 			// Holes stay holes: the corpus pins an engine divergence on sparse arrays.
 			const result = new Array<unknown>(value.length);
@@ -113,15 +123,16 @@ function copyResult(value: unknown): unknown {
 		}
 
 		const proto: unknown = getPrototypeOf(value);
-		if (proto !== Object.prototype && proto !== null) throw new EngineFallbackError();
+		if (proto !== Object.prototype && proto !== null)
+			throw new EngineFallbackError('unsupported_type');
 
 		const ownKeys = keys(value);
 		visits += ownKeys.length;
-		if (visits > MAX_RESULT_LENGTH) throw new EngineFallbackError();
+		if (visits > MAX_RESULT_LENGTH) throw new EngineFallbackError('too_large');
 
 		const result: Record<string, unknown> = {};
 		for (const key of ownKeys) {
-			if (key === '__proto__') throw new EngineFallbackError();
+			if (key === '__proto__') throw new EngineFallbackError('unsupported_type');
 			result[key] = copy(value[key], depth + 1);
 		}
 		return result;
@@ -154,7 +165,7 @@ function evalCompiled(compiled: CompiledExpression, data: IWorkflowDataProxyData
 
 		// An object here would coerce through its toString on the host.
 		if (isObj(value)) {
-			throw new EngineFallbackError();
+			throw new EngineFallbackError('unsupported_type');
 		}
 
 		const part = value || value === 0 || value === false ? value : '';
@@ -162,7 +173,7 @@ function evalCompiled(compiled: CompiledExpression, data: IWorkflowDataProxyData
 		length += typeof part === 'string' ? part.length : 1;
 
 		// Bound before the join allocates the combined string.
-		if (length > MAX_RESULT_LENGTH) throw new EngineFallbackError();
+		if (length > MAX_RESULT_LENGTH) throw new EngineFallbackError('too_large');
 	}
 
 	// Single-chunk expressions (plain text, or a lone blank `{{}}`) return the

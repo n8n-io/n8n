@@ -1,63 +1,10 @@
 import type { InstanceRole, InstanceType } from '@n8n/constants';
 import { Service } from '@n8n/di';
 
+import type { PubSubEventMap } from './pubsub.event-map';
 import type { EventHandler } from '../types';
 
-export type PubSubEventName =
-	| 'add-webhooks-triggers-and-pollers'
-	| 'remove-triggers-and-pollers'
-	| 'clear-test-webhooks'
-	| 'display-workflow-activation'
-	| 'display-workflow-deactivation'
-	| 'display-workflow-activation-error'
-	| 'display-workflow-publication-status'
-	| 'workflow-publish-wake-up'
-	| 'community-package-install'
-	| 'community-package-uninstall'
-	| 'community-package-update'
-	| 'get-worker-status'
-	| 'stop-execution'
-	| 'reload-external-secrets-providers'
-	| 'reload-license'
-	| 'reload-oidc-config'
-	| 'reload-saml-config'
-	| 'reload-oauth-signing-keys'
-	| 'reload-overwrite-credentials'
-	| 'response-to-get-worker-status'
-	| 'restart-event-bus'
-	| 'relay-execution-lifecycle-event'
-	| 'relay-agent-execution-update'
-	| 'relay-agent-queued-chat'
-	| 'cancel-agent-chat-execution'
-	| 'cancel-agent-chat-foreground'
-	| 'relay-agent-message-queue-update'
-	| 'relay-agent-background-tasks-update'
-	| 'relay-agent-update'
-	| 'resume-agent-workflow-tool'
-	| 'relay-chat-stream-event'
-	| 'relay-instance-ai-event'
-	| 'relay-instance-ai-task-control'
-	| 'relay-chat-human-message'
-	| 'relay-chat-message-edit'
-	| 'reload-sso-provisioning-configuration'
-	| 'reload-source-control-config'
-	| 'reload-mcp-registry'
-	| 'reload-otel-config'
-	| 'reload-instance-ai-settings'
-	| 'reload-agents-settings'
-	| 'cancel-test-run'
-	| 'cancel-collection'
-	| 'agent-chat-integration-changed'
-	| 'agent-chat-subscription-changed'
-	| 'agent-chat-leader-channel-request'
-	| 'agent-chat-leader-channel-result'
-	| 'agent-config-changed'
-	| 'cancel-agent-background-job'
-	| 'wake-agent-background-job'
-	| 'agent-tasks-changed'
-	| 'redaction-floor-changed'
-	| 'reload-type-availability-policies'
-	| 'pubsub-reconnected';
+export type PubSubEventName = keyof PubSubEventMap;
 
 export type PubSubEventFilter =
 	| {

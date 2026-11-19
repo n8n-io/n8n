@@ -3,6 +3,7 @@ import type { SerializedCredential, SerializedCredentialData } from '@n8n/api-ty
 import type {
 	ImportBindingMap,
 	CredentialConflictPolicy,
+	CredentialPersonalRoute,
 	CredentialMatchingMode,
 	CredentialMissingMode,
 } from '../../n8n-packages.types';
@@ -16,6 +17,8 @@ import type { AgentRequirementSource } from '../requirement-source';
 export type PlacedCredentialRequirement = PackageCredentialRequirement & {
 	packageData?: SerializedCredentialData;
 	packageDataIsComplete?: boolean;
+	/** Package description. `null` clears it. Absent when the source did not export descriptions. */
+	packageDescription?: string | null;
 };
 
 export interface CredentialReference {
@@ -38,8 +41,22 @@ export type CredentialResolutionFailureKind =
 	| 'source_not_found'
 	| 'type_mismatch';
 
+/**
+ * Why the user cannot use a credential that a reference names by id, for `not_found`.
+ * Set only for a user who can read all credentials.
+ * - `not-on-instance`: no credential has the id.
+ * - `access-required`: the credential exists, but it is not shared with the target project.
+ * - `incompatible-usage-scope`: the credential exists, but it is not a project credential.
+ */
+export type CredentialNotFoundReason =
+	| 'not-on-instance'
+	| 'access-required'
+	| 'incompatible-usage-scope';
+
 export type CredentialResolutionFailure = {
 	kind: CredentialResolutionFailureKind;
+	/** For `not_found` of a credential the matcher looked up by id. */
+	reason?: CredentialNotFoundReason;
 	sourceId: string;
 	name?: string;
 	type?: string;
@@ -77,9 +94,12 @@ export interface CredentialUpdateCandidate extends CredentialMatch {
 	name: string;
 	/** Package expression values. Absent when the package was exported without values. */
 	data?: SerializedCredentialData;
+	/** Package description. `null` clears it. Absent means the package does not decide it. */
+	description?: string | null;
 }
 
 export interface CredentialImportPlan extends CredentialResolution {
+	stubIds: ImportBindingMap;
 	/** Matched credentials the conflict policy can update. Empty under `keep-existing`. */
 	candidates: CredentialUpdateCandidate[];
 	/** The candidates that `overwrite` would change. */
@@ -135,6 +155,8 @@ export interface CredentialBindingRequest {
 	missingMode: CredentialMissingMode;
 	credentialBindings?: ImportBindingMap;
 	conflictPolicy: CredentialConflictPolicy;
+	/** Omitted means `allow`. */
+	personalRoute?: CredentialPersonalRoute;
 	/** Package credential files by credential id. Read only when the policy is not `keep-existing`. */
 	packageCredentials?: ReadonlyMap<string, SerializedCredential>;
 	updateScope: CredentialUpdateScope;

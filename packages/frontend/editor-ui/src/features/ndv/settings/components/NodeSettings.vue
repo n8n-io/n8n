@@ -37,6 +37,7 @@ import { useNodeCredentialOptions } from '@/features/credentials/composables/use
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
 	RestrictedNodePanel,
+	RestrictedSubWorkflowCallout,
 	useNodeTypeRestriction,
 } from '@n8n/frontend-module-type-availability-policies';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
@@ -44,6 +45,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { importCurlEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import NodeStorageLimitCallout from '@/features/core/dataTable/components/NodeStorageLimitCallout.vue';
+import { usePolicyViolationLabels } from '@/app/composables/usePolicyViolationLabels';
 import { RenameNodeCommand } from '@/app/models/history';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useHistoryStore } from '@/app/stores/history.store';
@@ -201,6 +203,11 @@ const isReadOnly = computed(
 		(hasForeignCredential.value && !isHomeProjectTeam.value),
 );
 const node = computed(() => props.activeNode ?? ndvStore.value.activeNode);
+
+const { labelOf } = usePolicyViolationLabels();
+const canCheckSubWorkflowPolicy = computed(
+	() => !props.readOnly && workflowDocumentStore.value.scopes.includes('workflow:update'),
+);
 const { isRestricted, restriction } = useNodeTypeRestriction(() => node.value?.type);
 
 const nodeType = computed(() =>
@@ -562,6 +569,12 @@ const ndvAgentConfig = inject(NdvAgentConfigKey, null);
 const isAgentNode = computed(() => isAgentNodeV2(node.value));
 const showAgentNdvControls = computed(() => isAgentNode.value && ndvAgentConfig !== null);
 const agentNdvMode = computed(() => ndvAgentConfig?.mode?.value ?? 'referenced');
+// The inline agent controls read the usable-credentials slice for the agent scope.
+// The slice is last-writer-wins, so a workflow-scoped fetch here would leave the
+// model picker with no credentials and no models.
+const skipNodeCredentialsFetch = computed(
+	() => showAgentNdvControls.value && agentNdvMode.value === 'inline',
+);
 
 const onParameterBlur = (parameterName: string) => {
 	hiddenIssuesInputs.value = hiddenIssuesInputs.value.filter((name) => name !== parameterName);
@@ -761,6 +774,7 @@ function handleSelectAction(params: INodeParameters) {
 			ref="nodeParameterWrapper"
 			:class="[
 				'node-parameters-wrapper',
+				'ph-no-capture',
 				shouldShowStaticScrollbar ? 'with-static-scrollbar' : '',
 				extraParameterWrapperClassName ?? '',
 			]"
@@ -785,6 +799,13 @@ function handleSelectAction(params: INodeParameters) {
 			/>
 			<FreeAiCreditsCallout />
 			<NodeStorageLimitCallout />
+			<RestrictedSubWorkflowCallout
+				v-if="node"
+				:parent-workflow-id="workflowDocumentStore.workflowId"
+				:node="node"
+				:enabled="canCheckSubWorkflowPolicy"
+				:label-of="labelOf"
+			/>
 			<NodeActionsList
 				v-if="openPanel === 'action'"
 				class="action-tab"
@@ -834,6 +855,7 @@ function handleSelectAction(params: INodeParameters) {
 						:node="node"
 						:readonly="readOnly || isDeprecated"
 						:show-all="true"
+						:skip-credentials-fetch="skipNodeCredentialsFetch"
 						:hide-issues="hiddenIssuesInputs.includes('credentials')"
 						:hide-ask-assistant="hideCredentialHelp"
 						@credential-selected="credentialSelected"

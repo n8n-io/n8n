@@ -173,9 +173,9 @@ export type ToolCategoryKey =
 	| 'workflows'
 	| 'agents'
 	| 'project'
-	| 'this-agent'
 	| 'global'
-	| 'data';
+	| 'data'
+	| 'recommended';
 
 /** Used when an item carries no explicit `category`. */
 export const CATEGORY_BY_KIND: Record<ConnectionItemKind, ToolCategoryKey> = {

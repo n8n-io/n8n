@@ -27,6 +27,7 @@ function createMockContext(existingWorkflow?: WorkflowJSON): InstanceAiContext {
 		credentialService: {
 			list: vi.fn(),
 			get: vi.fn(),
+			updateDescription: vi.fn(),
 			delete: vi.fn(),
 			test: vi.fn(),
 		},
@@ -548,6 +549,68 @@ describe('resolveCredentials', () => {
 			expect(json.nodes[0].credentials).toEqual({});
 			expect(result.mockedNodeNames).toEqual(['Slack']);
 			expect(result.mockedCredentialsByNode).toEqual({ Slack: ['slackApi'] });
+		});
+
+		describe('when Gateway credits cover the type but reject the node', () => {
+			const rejection = 'message.delete not supported';
+
+			function makeRejectingContext(existingWorkflow?: WorkflowJSON) {
+				const ctx = createMockContext(existingWorkflow);
+				Object.assign(ctx.credentialService, {
+					isAiGatewayCredentialType: vi.fn().mockResolvedValue(true),
+					getAiGatewayNodeRejection: vi.fn().mockResolvedValue(rejection),
+				});
+				return ctx;
+			}
+
+			it.each([
+				['an unresolved slot', undefined],
+				['a managed tag', { id: '__AI_GATEWAY_MANAGED__', name: 'Gateway credits' }],
+			])('leaves %s open for the user and reports why', async (_, value) => {
+				const slackApi = value as unknown as { id: string; name: string };
+				const json = makeWorkflow({ nodes: [{ ...makeSlackNode(), credentials: { slackApi } }] });
+				const ctx = makeRejectingContext();
+
+				const result = await resolveCredentials(json, undefined, ctx, makeCredentialMap([]));
+
+				expect(ctx.credentialService.getAiGatewayNodeRejection).toHaveBeenCalledWith(
+					json.nodes[0],
+					'slackApi',
+				);
+				expect(json.nodes[0].credentials).toEqual({});
+				expect(result.mockedCredentialsByNode).toEqual({ Slack: ['slackApi'] });
+				expect(result.gatewayRejectionsByNode).toEqual({ Slack: rejection });
+			});
+
+			it('does not restore saved Gateway credits that the node can no longer use', async () => {
+				const saved = makeWorkflow({
+					nodes: [{ ...makeSlackNode(), credentials: { slackApi: makeManagedCredential() } }],
+				});
+				const json = makeWorkflow({ nodes: [makeSlackNode()] });
+
+				const result = await resolveCredentials(
+					json,
+					'wf-1',
+					makeRejectingContext(saved),
+					makeCredentialMap([]),
+				);
+
+				expect(json.nodes[0].credentials).toEqual({});
+				expect(result.gatewayRejectionsByNode).toEqual({ Slack: rejection });
+			});
+
+			it('leaves a credential-less node open and reports why', async () => {
+				const json = makeWorkflow({ nodes: [{ ...makeSlackNode(), credentials: undefined }] });
+				const ctx = makeRejectingContext();
+				(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+					.fn()
+					.mockResolvedValue({ credentials: [{ name: 'slackApi' }] });
+
+				const result = await resolveCredentials(json, undefined, ctx, makeCredentialMap([]));
+
+				expect(json.nodes[0].credentials).toBeUndefined();
+				expect(result.gatewayRejectionsByNode).toEqual({ Slack: rejection });
+			});
 		});
 	});
 
@@ -1971,6 +2034,19 @@ describe('buildCredentialResolutionNote', () => {
 		expect(note).not.toContain('work out of the box');
 		expect(note).not.toContain('n8n Connect');
 		expect(note).not.toContain('n8n credits');
+	});
+
+	it('explains which nodes Gateway credits cannot run, and why', () => {
+		const note = buildCredentialResolutionNote({}, [], {
+			gatewayRejectionsByNode: { 'Analyze image': 'image.analyze not supported' },
+		});
+
+		expect(note).toContain(
+			'need the user\'s own credential: "Analyze image" (image.analyze not supported).',
+		);
+		expect(note).toContain('Tell the user why');
+		// No credential was attached, so the "already set up" guidance must not appear.
+		expect(note).not.toContain('Those attached credentials are already set up');
 	});
 });
 

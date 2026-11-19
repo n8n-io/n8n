@@ -16,17 +16,26 @@ import type {
 	IWorkflowBase,
 } from 'n8n-workflow';
 import {
-	UnexpectedError,
 	ExpressionError,
 	NodeConnectionTypes,
 	CONSOLE_OUTPUT_REDACTED_MESSAGE,
+	AI_EVENT_REDACTED_MESSAGE,
 	WAIT_INDEFINITELY,
 	WAIT_FOR_SUB_EXECUTION,
 	MAX_IN_PROCESS_WAIT_MS,
+	createRunExecutionData,
+	NodeApiError,
 } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
+import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
+import { InstanceSettings } from '@/instance-settings';
+import {
+	parseHitlCallbackReference,
+	verifyHitlCallbackReference,
+} from '@/utils/hitl-callback-reference';
 
 import { describeCommonTests } from './shared-tests';
 import { ExecuteContext } from '../execute-context';
@@ -127,6 +136,26 @@ describe('ExecuteContext', () => {
 			const expectedData = [{ json: { test: 'data' } }];
 
 			expect(executeContext.getInputData(inputIndex, connectionType)).toEqual(expectedData);
+		});
+
+		it('should read input data from a map without a prototype', () => {
+			const inputDataWithoutPrototype = { ...inputData };
+			Object.setPrototypeOf(inputDataWithoutPrototype, null);
+			const context = new ExecuteContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputDataWithoutPrototype,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			expect(context.getInputData(inputIndex, connectionType)).toEqual(inputData.main[inputIndex]);
 		});
 
 		it('should return an empty array if the input name does not exist', () => {
@@ -439,6 +468,145 @@ describe('ExecuteContext', () => {
 	});
 
 	describe('executeAgent', () => {
+		it('retains completed items and resumes the pending item after serialization', async () => {
+			const agentNode: INode = { ...node, type: 'n8n-nodes-base.messageAnAgent', typeVersion: 4 };
+			const invocationData: IExecuteData = {
+				node: agentNode,
+				metadata: {},
+				data: inputData,
+				source: null,
+			};
+			const state = createRunExecutionData();
+			const complete = {
+				response: 'done',
+				structuredOutput: { ok: true },
+				usage: null,
+				toolCalls: [],
+				finishReason: 'stop',
+				session: null,
+			};
+			const waiting = {
+				...complete,
+				waiting: { runId: 'run-2', executionIds: ['decision-2'] },
+			};
+			const runAgent = vi
+				.fn()
+				.mockResolvedValueOnce(complete)
+				.mockResolvedValueOnce(waiting)
+				.mockResolvedValue(complete);
+			const extra = mock<IWorkflowExecuteAdditionalData>({ executeAgent: runAgent });
+			const createContext = (
+				data: IExecuteData,
+				executionState = state,
+				contextRunIndex = runIndex,
+			) =>
+				new ExecuteContext(
+					workflow,
+					agentNode,
+					extra,
+					mode,
+					executionState,
+					contextRunIndex,
+					connectionInputData,
+					inputData,
+					data,
+					[closeFn],
+				);
+			const first = createContext(invocationData);
+			await first.executeAgent({ agentId: 'agent' }, 'first', 'parent', 0);
+			await first.executeAgent({ agentId: 'agent' }, 'second', 'parent', 1);
+			expect(state.waitTill).toEqual(WAIT_FOR_SUB_EXECUTION);
+			expect(invocationData.metadata?.waitingChildExecutionIds).toEqual(['decision-2']);
+			expect(invocationData.metadata).toEqual({
+				resumeMode: 'reexecute',
+				waitingChildExecutionIds: ['decision-2'],
+			});
+			const restoredState = structuredClone(state);
+			const resumed = createContext(structuredClone(invocationData), restoredState);
+			expect(await resumed.executeAgent({ agentId: 'agent' }, 'first', 'parent', 0)).toEqual(
+				complete,
+			);
+			await resumed.executeAgent({ agentId: 'agent' }, 'second', 'parent', 1);
+			await resumed.executeAgent({ agentId: 'agent' }, 'third', 'parent', 2);
+			expect(runAgent).toHaveBeenCalledTimes(4);
+			expect(runAgent.mock.calls[2][7]).toMatchObject({ continuation: waiting.waiting });
+			expect(runAgent.mock.calls[2][3]).toBe(runAgent.mock.calls[1][3]);
+			// A later run of the same node must not return the earlier run's cached result.
+			const nextRun = createContext(
+				{ ...invocationData, metadata: {} },
+				restoredState,
+				runIndex + 1,
+			);
+			await nextRun.executeAgent({ agentId: 'agent' }, 'new input', 'parent', 0);
+			expect(runAgent).toHaveBeenCalledTimes(5);
+			expect(runAgent.mock.calls[4][3]).not.toBe(runAgent.mock.calls[0][3]);
+		});
+
+		it.each([
+			{
+				label: 'user error',
+				error: new UserError('Bad input', { description: 'Check the prompt' }),
+				type: UserError,
+				httpCode: undefined,
+			},
+			{
+				label: 'operational error',
+				error: new OperationalError('Model failed', { description: 'Try again later' }),
+				type: OperationalError,
+				httpCode: undefined,
+			},
+			{
+				label: 'API error',
+				error: new NodeApiError(
+					node,
+					{ message: 'Rate limited', httpCode: '429' },
+					{ message: 'Rate limited', description: 'Wait before you retry', httpCode: '429' },
+				),
+				type: NodeApiError,
+				httpCode: '429',
+			},
+		])('replays a failed invocation with its details after a resume ($label)', async (scenario) => {
+			const agentNode: INode = { ...node, type: 'n8n-nodes-base.messageAnAgent', typeVersion: 4 };
+			const invocationData: IExecuteData = {
+				node: agentNode,
+				metadata: {},
+				data: inputData,
+				source: null,
+			};
+			const state = createRunExecutionData();
+			const runAgent = vi.fn().mockRejectedValue(scenario.error);
+			const extra = mock<IWorkflowExecuteAdditionalData>({ executeAgent: runAgent });
+			const createContext = (data: IExecuteData, executionState: IRunExecutionData) =>
+				new ExecuteContext(
+					workflow,
+					agentNode,
+					extra,
+					mode,
+					executionState,
+					runIndex,
+					connectionInputData,
+					inputData,
+					data,
+					[closeFn],
+				);
+
+			await expect(
+				createContext(invocationData, state).executeAgent({ agentId: 'agent' }, 'hi', 'parent', 0),
+			).rejects.toBe(scenario.error);
+
+			const resumed = createContext(structuredClone(invocationData), structuredClone(state));
+			const replayed = await resumed
+				.executeAgent({ agentId: 'agent' }, 'hi', 'parent', 0)
+				.catch((error: unknown) => error);
+			expect(runAgent).toHaveBeenCalledOnce();
+			expect(replayed).toBeInstanceOf(scenario.type);
+			expect(replayed).toMatchObject({
+				message: scenario.error.message,
+				description: scenario.error.description,
+				...(scenario.httpCode ? { httpCode: scenario.httpCode } : {}),
+			});
+		});
+
 		const webhookNode: INode = {
 			id: 'webhook-node-id',
 			name: 'Webhook',
@@ -899,6 +1067,31 @@ describe('ExecuteContext', () => {
 			expect(context.isConsoleOutputRedacted()).toBe(true);
 		});
 
+		describe('AI event payloads', () => {
+			it('replaces the payload with the marker when the channel redacts', () => {
+				const context = makeContext('trigger', runDataWith(true, false));
+				context.logAiEvent('ai-llm-generated-output', '{"messages":["secret prompt"]}');
+
+				expect(additionalData.logAiEvent).toHaveBeenCalledWith(
+					'ai-llm-generated-output',
+					expect.objectContaining({ nodeName: node.name, msg: AI_EVENT_REDACTED_MESSAGE }),
+				);
+				expect(JSON.stringify(vi.mocked(additionalData.logAiEvent).mock.calls)).not.toContain(
+					'secret prompt',
+				);
+			});
+
+			it('passes the payload through unchanged when no channel redacts', () => {
+				const context = makeContext('trigger', runDataWith(false, false));
+				context.logAiEvent('ai-llm-generated-output', '{"messages":["hello"]}');
+
+				expect(additionalData.logAiEvent).toHaveBeenCalledWith(
+					'ai-llm-generated-output',
+					expect.objectContaining({ msg: '{"messages":["hello"]}' }),
+				);
+			});
+		});
+
 		describe('production stdout gating', () => {
 			let logSpy: ReturnType<typeof vi.spyOn>;
 
@@ -1061,6 +1254,53 @@ describe('ExecuteContext', () => {
 
 			expect(vi.getTimerCount()).toBe(0);
 			expect(waitRunExecutionData.waitTill).toBeUndefined();
+		});
+	});
+
+	describe('getApprovalCallbackReference', () => {
+		const instanceSettings = Container.get(InstanceSettings);
+
+		const approvalContext = () =>
+			new ExecuteContext(
+				workflow,
+				node,
+				mock<IWorkflowExecuteAdditionalData>({ executionId: '123' }),
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executeData,
+				[],
+			);
+
+		it.each([
+			['approve', 'a'],
+			['decline', 'd'],
+		] as const)(
+			'names the execution and the decision to %s, signed with the instance secret',
+			(decision, encoded) => {
+				const parsed = parseHitlCallbackReference(
+					approvalContext().getApprovalCallbackReference(decision),
+				);
+
+				expect(parsed).toMatchObject({ executionId: '123', decision: encoded });
+				expect(verifyHitlCallbackReference(parsed!, instanceSettings.hmacSignatureSecret)).toBe(
+					true,
+				);
+			},
+		);
+
+		it('rejects approval callbacks in the engine process', () => {
+			const previousInstanceType = instanceSettings.instanceType;
+			Object.assign(instanceSettings, { instanceType: 'engine' });
+			try {
+				expect(() => approvalContext().getApprovalCallbackReference('approve')).toThrow(
+					'Engine v2 does not support approval callbacks yet',
+				);
+			} finally {
+				Object.assign(instanceSettings, { instanceType: previousInstanceType });
+			}
 		});
 	});
 });

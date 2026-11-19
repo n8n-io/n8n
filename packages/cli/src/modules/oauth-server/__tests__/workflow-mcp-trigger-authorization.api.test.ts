@@ -8,6 +8,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WebhookRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 import type { INode } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
@@ -18,7 +19,7 @@ import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
 import { CacheService, UrlService, JwtService } from '@n8n/backend-services';
 
-import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
+import { OAuthClient } from '../database/entities/oauth-client.entity';
 import type { OAuthSessionPayload } from '../oauth-session.service';
 import { sessionCookieFor, TEST_FLOW_ID } from './oauth-flow-test-utils';
 
@@ -29,7 +30,12 @@ import { sessionCookieFor, TEST_FLOW_ID } from './oauth-flow-test-utils';
  * Three actors exercise the access-control system: no access (denied), execute
  * via a project/resource role, and execute via a global role.
  */
-const testServer = setupTestServer({ endpointGroups: ['mcp'], modules: ['oauth-server', 'mcp'] });
+// The OAuth server registers the workflow trigger resolver. The instance MCP
+// module loads tools and controllers that these tests do not use.
+const testServer = setupTestServer({
+	endpointGroups: ['oauth-server'],
+	modules: ['oauth-server'],
+});
 
 let owner: User;
 let memberNoAccess: User;
@@ -38,7 +44,7 @@ let adminWithGlobalAccess: User;
 
 let tokenService: OAuthTokenService;
 let jwtService: JwtService;
-let oauthClientRepository: OAuthClientRepository;
+let oauthClientRepository: Repository<OAuthClient>;
 let mcpEndpoint: string;
 
 const webhookBaseUrl = () => Container.get(UrlService).getWebhookBaseUrl().replace(/\/$/, '');
@@ -126,7 +132,7 @@ beforeAll(async () => {
 
 	tokenService = Container.get(OAuthTokenService);
 	jwtService = Container.get(JwtService);
-	oauthClientRepository = Container.get(OAuthClientRepository);
+	oauthClientRepository = Container.get(DataSource).getRepository(OAuthClient);
 	mcpEndpoint = Container.get(GlobalConfig).endpoints.mcp;
 });
 
@@ -196,7 +202,8 @@ describe('consent gate: workflow name and authorization code require execute acc
 		const response = await testServer
 			.authAgentFor(memberNoAccess)
 			.get(`/consent/details?flow=${TEST_FLOW_ID}`)
-			.set('Cookie', sessionCookieFor(TEST_FLOW_ID, sessionToken));
+			.set('Cookie', sessionCookieFor(TEST_FLOW_ID, sessionToken))
+			.expect(403);
 
 		expect(JSON.stringify(response.body)).not.toContain(workflowName);
 	});

@@ -6,8 +6,8 @@ import { useExclusiveOpen } from './useExclusiveOpen';
 function instance() {
 	const wantsOpen = ref(false);
 	const scope = effectScope();
-	const open = scope.run(() => useExclusiveOpen(wantsOpen))!;
-	return { wantsOpen, open, scope };
+	const { open, claim } = scope.run(() => useExclusiveOpen(wantsOpen))!;
+	return { wantsOpen, open, claim, scope };
 }
 
 describe('useExclusiveOpen', () => {
@@ -51,10 +51,46 @@ describe('useExclusiveOpen', () => {
 		b.scope.stop();
 	});
 
+	it('takes the slot back on a claim while it still wants to open', async () => {
+		const a = instance();
+		const b = instance();
+
+		a.wantsOpen.value = true;
+		b.wantsOpen.value = true;
+		await nextTick();
+		expect(a.open.value).toBe(false);
+
+		a.claim();
+		expect(a.open.value).toBe(true);
+		expect(b.open.value).toBe(false);
+
+		b.wantsOpen.value = false;
+		await nextTick();
+		expect(a.open.value).toBe(true);
+
+		a.scope.stop();
+		b.scope.stop();
+	});
+
+	it('ignores a claim while it does not want to open', async () => {
+		const a = instance();
+		const b = instance();
+
+		b.wantsOpen.value = true;
+		await nextTick();
+		a.claim();
+
+		expect(a.open.value).toBe(false);
+		expect(b.open.value).toBe(true);
+
+		a.scope.stop();
+		b.scope.stop();
+	});
+
 	it('opens an instance that already wants to open when it is created', async () => {
 		const wantsOpen = ref(true);
 		const scope = effectScope();
-		const open = scope.run(() => useExclusiveOpen(wantsOpen))!;
+		const { open } = scope.run(() => useExclusiveOpen(wantsOpen))!;
 
 		expect(open.value).toBe(true);
 

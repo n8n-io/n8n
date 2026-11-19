@@ -8,9 +8,12 @@ import { CatalogViolationsRule } from './rules/catalog-violations.rule.js';
 import { EncryptionBoundaryRule } from './rules/encryption-boundary.rule.js';
 import { EndpointScopeCoverageRule } from './rules/endpoint-scope-coverage.rule.js';
 import { LintConfigLayeringRule } from './rules/lint-config-layering.rule.js';
+import { MigrationBusyTableRule } from './rules/migration-busy-table.rule.js';
+import { MigrationConventionsRule } from './rules/migration-conventions.rule.js';
 import { MigrationTimestampRule } from './rules/migration-timestamp.rule.js';
 import { SingleInstanceLibsRule } from './rules/single-instance-libs.rule.js';
 import { SingleInstanceLockfileRule } from './rules/single-instance-lockfile.rule.js';
+import { SkillsModuleBoundaryRule } from './rules/skills-module-boundary.rule.js';
 import { StaleOverridesRule } from './rules/stale-overrides.rule.js';
 import { SubpathPurityRule } from './rules/subpath-purity.rule.js';
 import { TypeormPersistenceBoundaryRule } from './rules/typeorm-persistence-boundary.rule.js';
@@ -23,9 +26,12 @@ export { CatalogViolationsRule } from './rules/catalog-violations.rule.js';
 export { EncryptionBoundaryRule } from './rules/encryption-boundary.rule.js';
 export { EndpointScopeCoverageRule } from './rules/endpoint-scope-coverage.rule.js';
 export { LintConfigLayeringRule } from './rules/lint-config-layering.rule.js';
+export { MigrationBusyTableRule } from './rules/migration-busy-table.rule.js';
+export { MigrationConventionsRule } from './rules/migration-conventions.rule.js';
 export { MigrationTimestampRule } from './rules/migration-timestamp.rule.js';
 export { SingleInstanceLibsRule } from './rules/single-instance-libs.rule.js';
 export { SingleInstanceLockfileRule } from './rules/single-instance-lockfile.rule.js';
+export { SkillsModuleBoundaryRule } from './rules/skills-module-boundary.rule.js';
 export { StaleOverridesRule } from './rules/stale-overrides.rule.js';
 export { SubpathPurityRule } from './rules/subpath-purity.rule.js';
 export type { SubpathSpec } from './rules/subpath-purity.rule.js';
@@ -38,10 +44,26 @@ const defaultRuleSettings: RuleSettingsMap = {
 		severity: 'error',
 		options: {},
 	},
+	'skills-module-boundary': {
+		enabled: true,
+		severity: 'error',
+		options: {},
+	},
 	'adr-conventions': {
 		enabled: true,
 		severity: 'error',
-		options: { allowedOwners: ['API & OEM', 'Assistant', 'Catalysts'] },
+		options: {
+			// Catalysts stays for the ADRs written before it split into Core Application and Core Execution.
+			allowedOwners: [
+				'API & OEM',
+				'Assistant',
+				'Catalysts',
+				'Core Application',
+				'Core Execution',
+				'Governance & Observability',
+				'Nodes',
+			],
+		},
 	},
 	'catalog-violations': {
 		enabled: true,
@@ -57,6 +79,17 @@ const defaultRuleSettings: RuleSettingsMap = {
 	'migration-timestamp': {
 		enabled: true,
 		severity: 'error',
+		options: {},
+	},
+	'migration-conventions': {
+		enabled: true,
+		severity: 'error',
+		options: {},
+	},
+	'migration-busy-table': {
+		// The CLI fails on any violation, warnings too. Keep this off until warnings do not block.
+		enabled: false,
+		severity: 'warning',
 		options: {},
 	},
 	'single-instance-libs': {
@@ -162,10 +195,13 @@ function mergeSettings(defaults: RuleSettingsMap, overrides?: RuleSettingsMap): 
 export function createDefaultRunner(settings?: RuleSettingsMap): RuleRunner<CodeHealthContext> {
 	const runner = new RuleRunner<CodeHealthContext>();
 	runner.registerRule(new AgentsInstanceAiBoundaryRule());
+	runner.registerRule(new SkillsModuleBoundaryRule());
 	runner.registerRule(new AdrConventionsRule());
 	runner.registerRule(new CatalogViolationsRule());
 	runner.registerRule(new WorkflowPrTargetSafetyRule());
 	runner.registerRule(new MigrationTimestampRule());
+	runner.registerRule(new MigrationConventionsRule());
+	runner.registerRule(new MigrationBusyTableRule());
 	runner.registerRule(new SingleInstanceLibsRule());
 	runner.registerRule(new SingleInstanceLockfileRule());
 	runner.registerRule(new EncryptionBoundaryRule());

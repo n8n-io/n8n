@@ -17,6 +17,7 @@ import { detectPythonCodeConstraints } from './detect-python-code-constraints';
 import { detectSlackBlocksShape } from './detect-slack-blocks-shape';
 import { detectUnparseableOpenAiSchema } from './detect-unparseable-openai-schema';
 import { detectWrongKindLocatorValues } from './detect-wrong-kind-locator';
+import { collectHostSdkValidatorWarnings } from './host-sdk-validation';
 import { findStickyNoteWraps, rewrapStickyNotes } from './sticky-note-wrapping';
 import { collectValidationIssues, type ValidationWarning } from './workflow-validation-warnings';
 import { traceSandboxOperation, sandboxFileBytes } from '../../tracing/sandbox-tracing';
@@ -400,11 +401,19 @@ async function compileTypeScriptWorkflowSource(
 
 	await layOutWithNodeTypes(buildOutput.workflow, context.nodeTypesProvider);
 
+	const sandboxWarnings = buildOutput.warnings ?? [];
 	return {
 		success: true,
 		workflow: buildOutput.workflow,
 		declaredOutputFixtures: buildOutput.declaredOutputFixtures,
-		warnings: buildOutput.warnings ?? [],
+		warnings: [
+			...sandboxWarnings,
+			...collectHostSdkValidatorWarnings(
+				buildOutput.workflow,
+				buildOutput.declaredOutputFixtures,
+				sandboxWarnings,
+			),
+		],
 		compiler: 'sandbox-tsx',
 	};
 }

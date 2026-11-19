@@ -15,6 +15,7 @@ import type {
 	RelatedExecution,
 	StartNodeData,
 } from '..';
+import type { FailedBeforeStartMarker } from '../execution-blocked-reason';
 import type { IRunExecutionDataV0 } from './run-execution-data.v0';
 import type { SubWorkflowOutputPolicy } from '../sub-workflow-output';
 
@@ -55,6 +56,8 @@ export interface IRunExecutionDataV1 {
 		pinData?: IPinData;
 		lastNodeExecuted?: string;
 		metadata?: Record<string, string>;
+		/** Set when the run stopped before its first node. Holds the reason. */
+		failedBeforeStart?: FailedBeforeStartMarker;
 	};
 	executionData?: {
 		contextData: IExecuteContextData;
@@ -89,6 +92,8 @@ export interface IRunExecutionDataV1 {
 	 */
 	waitReason?: 'suspended';
 	pushRef?: string;
+	/** The user who owns `pushRef`, used only to route push messages on resume. */
+	pushRefUserId?: string;
 
 	/** Data needed for a worker to run a manual execution. */
 	manualData?: Pick<

@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
 import { WorkflowPublicationTriggerStatus } from '../entities';
@@ -52,6 +52,14 @@ export class WorkflowPublicationTriggerStatusRepository extends BaseRepository<W
 		ctx: OperationContext = {},
 	): Promise<WorkflowPublicationTriggerStatus[]> {
 		return await this.managerFor(ctx).findBy(WorkflowPublicationTriggerStatus, { workflowId });
+	}
+
+	async findByWorkflowIds(workflowIds: string[]): Promise<WorkflowPublicationTriggerStatus[]> {
+		const rows: WorkflowPublicationTriggerStatus[] = [];
+		for (const chunk of chunkIds(workflowIds)) {
+			rows.push(...(await this.findBy({ workflowId: In(chunk) })));
+		}
+		return rows;
 	}
 
 	/**

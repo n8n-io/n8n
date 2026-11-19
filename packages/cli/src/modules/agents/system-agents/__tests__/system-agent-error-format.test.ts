@@ -5,6 +5,7 @@ import type { TransactionRunner, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentChatExecutionService } from '../../agent-chat-execution.service';
+import type { AgentKnowledgeUsageTracker } from '../../agent-knowledge-usage-tracker';
 import type { AgentExecutionService } from '../../agent-execution.service';
 import type {
 	AgentMessageQueueService,
@@ -17,10 +18,10 @@ import type { AgentExecutionThread } from '../../entities/agent-execution-thread
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
 import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
 import type { AgentExecutionThreadRepository } from '../../repositories/agent-execution-thread.repository';
-import type { AgentRepository } from '../../repositories/agent.repository';
 import { SystemAgentExecutionService } from '../system-agent-execution.service';
 import { SystemAgentRegistry } from '../system-agent-registry';
 import type { SystemAgentProvider, SystemAgentTurnHandle } from '../system-agent.types';
+import type { AgentSandboxFilesService } from '../../agent-sandbox-files.service';
 
 /**
  * Runs a system-agent turn on the real turn execution service and recorder,
@@ -107,6 +108,8 @@ function setup(
 		mock<AgentMessageQueueService>(),
 		mock<AgentMessageSteeringService>(),
 		toolApprovalService,
+		mock<AgentKnowledgeUsageTracker>(),
+		mock<AgentSandboxFilesService>(),
 	);
 
 	const registry = new SystemAgentRegistry();
@@ -128,7 +131,6 @@ function setup(
 	const service = new SystemAgentExecutionService(
 		mock<Logger>(),
 		registry,
-		mock<AgentRepository>(),
 		mock<AgentExecutionThreadRepository>(),
 		executionRepository,
 		executionService,
@@ -137,6 +139,8 @@ function setup(
 		chatExecutionService,
 		mock<N8NCheckpointStorage>(),
 		mock<TransactionRunner>(),
+		mock(),
+		mock(),
 		mock(),
 		mock(),
 	);

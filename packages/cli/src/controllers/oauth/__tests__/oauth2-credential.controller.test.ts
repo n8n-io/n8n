@@ -7,7 +7,8 @@ import type { ClientOAuth2 } from '@n8n/client-oauth2';
 import { type CredentialsEntity, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
-import { UserError } from 'n8n-workflow';
+import { MANAGED_VERSION_KEY } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
@@ -66,6 +67,20 @@ describe('OAuth2CredentialController', () => {
 				req,
 				res,
 			);
+		});
+	});
+
+	describe('getClientMetadata', () => {
+		it('should send the client ID metadata document as JSON', () => {
+			const document = {
+				client_id: 'https://n8n.example.com/rest/oauth2-credential/client-metadata.json',
+			};
+			oauthService.getClientMetadataDocument.mockReturnValue(document as any);
+			const res = mock<Response>();
+
+			controller.getClientMetadata(mock(), res);
+
+			expect(res.json).toHaveBeenCalledWith(document);
 		});
 	});
 
@@ -160,6 +175,115 @@ describe('OAuth2CredentialController', () => {
 			expect(res.render).not.toHaveBeenCalled();
 		});
 
+		it('should render the error and its description when the authorization server refuses the request', async () => {
+			oauthService.peekCallbackFlowState.mockResolvedValueOnce({ csrfSecret: 'csrf-secret' });
+			const errorReq = mock<OAuthRequest.OAuth2Credential.Callback>();
+			errorReq.query = {
+				error: 'invalid_client',
+				error_description: 'Unknown client',
+				state: 'state',
+			} as OAuthRequest.OAuth2Credential.Callback['query'];
+
+			await controller.handleCallback(errorReq, res);
+
+			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+				res,
+				'The OAuth2 server returned an error.',
+				'invalid_client: Unknown client',
+			);
+			expect(oauthService.resolveCredential).not.toHaveBeenCalled();
+		});
+
+		it('should render only the error when the description is missing', async () => {
+			oauthService.peekCallbackFlowState.mockResolvedValueOnce({ csrfSecret: 'csrf-secret' });
+			const errorReq = mock<OAuthRequest.OAuth2Credential.Callback>();
+			errorReq.query = {
+				error: 'access_denied',
+				state: 'state',
+			} as OAuthRequest.OAuth2Credential.Callback['query'];
+
+			await controller.handleCallback(errorReq, res);
+
+			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+				res,
+				'The OAuth2 server returned an error.',
+				'access_denied',
+			);
+		});
+
+		it.each([
+			[
+				'shows',
+				{ issuer: 'https://auth.example.com' },
+				'https://auth.example.com',
+				'invalid_client',
+			],
+			['hides', { issuer: 'https://auth.example.com' }, 'https://attacker.example', undefined],
+			[
+				'hides',
+				{ issuer: 'https://auth.example.com', isIssuerParameterRequired: true },
+				undefined,
+				undefined,
+			],
+		])(
+			'%s the error details after the issuer check (recorded: %o, iss: %s)',
+			async (_, recorded, iss, reason) => {
+				oauthService.peekCallbackFlowState.mockResolvedValueOnce({
+					csrfSecret: 'csrf-secret',
+					...recorded,
+				});
+				const errorReq = mock<OAuthRequest.OAuth2Credential.Callback>();
+				errorReq.query = {
+					error: 'invalid_client',
+					state: validState,
+					...(iss ? { iss } : {}),
+				} as OAuthRequest.OAuth2Credential.Callback['query'];
+
+				await controller.handleCallback(errorReq, res);
+
+				expect(oauthService.peekCallbackFlowState).toHaveBeenCalledWith(validState);
+				expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+					res,
+					'The OAuth2 server returned an error.',
+					reason,
+				);
+			},
+		);
+
+		it('should hide the error details when the response has no known flow state', async () => {
+			oauthService.peekCallbackFlowState.mockResolvedValueOnce(undefined);
+			const errorReq = mock<OAuthRequest.OAuth2Credential.Callback>();
+			errorReq.query = {
+				error: 'invalid_client',
+				error_description: 'Unknown client',
+			} as OAuthRequest.OAuth2Credential.Callback['query'];
+
+			await controller.handleCallback(errorReq, res);
+
+			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+				res,
+				'The OAuth2 server returned an error.',
+				undefined,
+			);
+		});
+
+		it('should hide the error details when the response carries an issuer', async () => {
+			const errorReq = mock<OAuthRequest.OAuth2Credential.Callback>();
+			errorReq.query = {
+				error: 'invalid_client',
+				error_description: 'Unknown client',
+				iss: 'https://auth.example.com',
+			} as OAuthRequest.OAuth2Credential.Callback['query'];
+
+			await controller.handleCallback(errorReq, res);
+
+			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+				res,
+				'The OAuth2 server returned an error.',
+				undefined,
+			);
+		});
+
 		it('should exchange the code for a valid token, and save it to DB for static credential', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetToken = vi.fn().mockResolvedValue({
@@ -196,13 +320,17 @@ describe('OAuth2CredentialController', () => {
 			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
 			externalHooks.run.mockResolvedValue(undefined);
 
-			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
-				query: {
-					code: 'auth_code',
-					state: validState,
+			const req = Object.assign(
+				mock<OAuthRequest.OAuth2Credential.Callback>({
+					originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+				}),
+				{
+					query: {
+						code: 'auth_code',
+						state: validState,
+					},
 				},
-				originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
-			});
+			);
 
 			await controller.handleCallback(req, res);
 
@@ -214,6 +342,66 @@ describe('OAuth2CredentialController', () => {
 			);
 			expect(res.render).toHaveBeenCalledWith('oauth-callback');
 			expect(externalHooks.run).toHaveBeenCalledWith('oauth2.callback', expect.any(Array));
+		});
+
+		describe('authorization response issuer', () => {
+			const runCallback = async (
+				flowState: { issuer?: string; isIssuerParameterRequired?: boolean },
+				iss?: string,
+			) => {
+				const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+				const mockGetToken = vi.fn().mockResolvedValue({ data: { access_token: 'new_token' } });
+				vi.mocked(ClientOAuth2).mockImplementation(function () {
+					return { code: { getToken: mockGetToken } } as unknown as ClientOAuth2;
+				});
+				oauthService.resolveCredential.mockResolvedValueOnce([
+					mock<CredentialsEntity>({ id: '1' }),
+					{},
+					{
+						clientId: 'client_id',
+						authUrl: 'https://auth.example.com/authorize',
+						accessTokenUrl: 'https://auth.example.com/token',
+						grantType: 'pkce',
+					},
+					{ token: 'token', cid: '1', origin: 'static-credential' as const, createdAt: timestamp },
+					{ csrfSecret: 'csrf-secret', codeVerifier: 'verifier', ...flowState },
+				]);
+				oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
+
+				const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+					query: { code: 'auth_code', state: validState, ...(iss ? { iss } : {}) },
+					originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+				});
+				await controller.handleCallback(req, res);
+				return mockGetToken;
+			};
+
+			it.each([
+				['iss differs from the recorded issuer', {}, 'https://attacker.example'],
+				['iss is absent but required', { isIssuerParameterRequired: true }, undefined],
+			])('should not exchange the code when %s', async (_, flowState, iss) => {
+				const getToken = await runCallback(
+					{ issuer: 'https://auth.example.com', ...flowState },
+					iss,
+				);
+
+				expect(getToken).not.toHaveBeenCalled();
+				expect(oauthService.encryptAndSaveData).not.toHaveBeenCalled();
+				expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+					res,
+					'The authorization response came from an unexpected OAuth2 server.',
+				);
+			});
+
+			it.each([
+				['iss matches the recorded issuer', { issuer: 'https://auth.example.com' }],
+				['no issuer is recorded', {}],
+			])('should exchange the code when %s', async (_, flowState) => {
+				const getToken = await runCallback(flowState, 'https://auth.example.com');
+
+				expect(getToken).toHaveBeenCalled();
+				expect(res.render).toHaveBeenCalledWith('oauth-callback');
+			});
 		});
 
 		describe('outbound network policy', () => {
@@ -480,6 +668,146 @@ describe('OAuth2CredentialController', () => {
 			);
 		});
 
+		describe('managed app version', () => {
+			const tokenData = { access_token: 'new_token', refresh_token: 'refresh_token' };
+			const oauthCredentials = {
+				clientId: 'client_id',
+				clientSecret: 'client_secret',
+				authUrl: 'https://example.domain/oauth2/auth',
+				accessTokenUrl: 'https://example.domain/oauth2/token',
+				scope: 'openid',
+				grantType: 'authorizationCode',
+				authentication: 'header',
+			};
+
+			const mockTokenExchange = async () => {
+				const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+				vi.mocked(ClientOAuth2).mockImplementation(function () {
+					return {
+						code: { getToken: vi.fn().mockResolvedValue({ data: { ...tokenData } }) },
+					} as any;
+				});
+				oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
+				externalHooks.run.mockResolvedValue(undefined);
+			};
+
+			const callbackRequest = (state: object = {}) =>
+				Object.assign(
+					mock<OAuthRequest.OAuth2Credential.Callback>({
+						originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+					}),
+					{
+						query: {
+							code: 'auth_code',
+							state: Buffer.from(JSON.stringify({ ...state, token: 'token' })).toString('base64'),
+						},
+					},
+				);
+
+			const staticState = {
+				token: 'token',
+				cid: '1',
+				userId: '123',
+				origin: 'static-credential' as const,
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+
+			it('should store the managed app version of the flow with the tokens', async () => {
+				await mockTokenExchange();
+				const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+				oauthService.resolveCredential.mockResolvedValueOnce([
+					mockResolvedCredential,
+					{},
+					oauthCredentials,
+					staticState,
+					{ csrfSecret: 'csrf-secret', managedVersion: 2 },
+				]);
+
+				await controller.handleCallback(callbackRequest(staticState), res);
+
+				expect(oauthService.encryptAndSaveData).toHaveBeenCalledWith(mockResolvedCredential, {
+					oauthTokenData: { ...tokenData, [MANAGED_VERSION_KEY]: 2 },
+				});
+			});
+
+			it('should store no version for a flow without a managed app', async () => {
+				await mockTokenExchange();
+				const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+				oauthService.resolveCredential.mockResolvedValueOnce([
+					mockResolvedCredential,
+					{},
+					oauthCredentials,
+					staticState,
+					{ csrfSecret: 'csrf-secret' },
+				]);
+
+				await controller.handleCallback(callbackRequest(staticState), res);
+
+				expect(oauthService.encryptAndSaveData).toHaveBeenCalledWith(mockResolvedCredential, {
+					oauthTokenData: tokenData,
+				});
+			});
+
+			it('should build on the token data that the service carries over, with the version of the flow', async () => {
+				await mockTokenExchange();
+				const mockResolvedCredential = mock<CredentialsEntity>({ id: '1', type: 'genericOAuth2' });
+				const stored = { oauthTokenData: { id_token: 'old-id' } };
+				oauthService.getCarriedOverTokenData.mockReturnValueOnce({ id_token: 'old-id' });
+				oauthService.resolveCredential.mockResolvedValueOnce([
+					mockResolvedCredential,
+					stored,
+					oauthCredentials,
+					staticState,
+					{ csrfSecret: 'csrf-secret', managedVersion: 2 },
+				]);
+
+				await controller.handleCallback(callbackRequest(staticState), res);
+
+				expect(oauthService.getCarriedOverTokenData).toHaveBeenCalledWith(
+					'genericOAuth2',
+					stored,
+					2,
+				);
+				expect(oauthService.encryptAndSaveData).toHaveBeenCalledWith(mockResolvedCredential, {
+					oauthTokenData: {
+						id_token: 'old-id',
+						...tokenData,
+						[MANAGED_VERSION_KEY]: 2,
+					},
+				});
+			});
+
+			it('should pass the managed app version to a dynamic credential', async () => {
+				await mockTokenExchange();
+				const mockResolvedCredential = mock<CredentialsEntity>({ id: '1', type: 'genericOAuth2' });
+				const dynamicState = {
+					...staticState,
+					origin: 'dynamic-credential' as const,
+					credentialResolverId: 'resolver-id',
+					authorizationHeader: 'Bearer token123',
+				};
+				oauthService.resolveCredential.mockResolvedValueOnce([
+					mockResolvedCredential,
+					{},
+					oauthCredentials,
+					dynamicState,
+					{ csrfSecret: 'csrf-secret', managedVersion: 2 },
+				]);
+				oauthService.saveDynamicCredential.mockResolvedValueOnce(undefined);
+
+				await controller.handleCallback(callbackRequest(dynamicState), res);
+
+				expect(oauthService.saveDynamicCredential).toHaveBeenCalledWith(
+					mockResolvedCredential,
+					{ oauthTokenData: { ...tokenData, [MANAGED_VERSION_KEY]: 2 } },
+					'token123',
+					'resolver-id',
+					{},
+				);
+			});
+		});
+
 		it('should handle dynamic credential callback successfully', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const oauthTokenData = { access_token: 'new_token', refresh_token: 'refresh_token' };
@@ -595,13 +923,17 @@ describe('OAuth2CredentialController', () => {
 			externalHooks.run.mockResolvedValue(undefined);
 			oauthService.saveDynamicCredential.mockResolvedValueOnce(undefined);
 
-			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
-				query: {
-					code: 'auth_code',
-					state: validState,
+			const req = Object.assign(
+				mock<OAuthRequest.OAuth2Credential.Callback>({
+					originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+				}),
+				{
+					query: {
+						code: 'auth_code',
+						state: validState,
+					},
 				},
-				originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
-			});
+			);
 
 			await controller.handleCallback(req, res);
 
@@ -826,13 +1158,17 @@ describe('OAuth2CredentialController', () => {
 			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
 			externalHooks.run.mockResolvedValue(undefined);
 
-			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
-				query: {
-					code: 'auth_code',
-					state: undefinedOriginState,
+			const req = Object.assign(
+				mock<OAuthRequest.OAuth2Credential.Callback>({
+					originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+				}),
+				{
+					query: {
+						code: 'auth_code',
+						state: undefinedOriginState,
+					},
 				},
-				originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
-			});
+			);
 
 			await controller.handleCallback(req, res);
 
@@ -1101,6 +1437,11 @@ describe('OAuth2CredentialController', () => {
 			});
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			oauthService.getCarriedOverTokenData.mockReturnValueOnce({
+				access_token: 'old_token',
+				expires_in: 3600,
+				n8n_expires_at: existingExpiresAt,
+			});
 			oauthService.resolveCredential.mockResolvedValueOnce([
 				mockResolvedCredential,
 				{

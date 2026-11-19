@@ -58,14 +58,14 @@ resolved output. Only omit `=` for a genuinely fixed constant string.
 1. Ensure a dataset exists with an input column and a ground-truth column:
 
    ```
-   data_tables(action="list")
+   list_data_tables()
    // if none fits:
-   data_tables(action="create", name="Support agent eval dataset",
-     columns=[{ name: "input", type: "string" },
-              { name: "expected_output", type: "string" }])
-   // then seed rows:
-   data_tables(action="insert-rows", dataTableId="<id>",
-     rows=[{ input: "...", expected_output: "..." }])
+   change_data_tables(changes=[
+     { action: "create", name: "Support agent eval dataset",
+       columns: [{ name: "input", type: "string" },
+                 { name: "expected_output", type: "string" }] },
+     { action: "insert-rows", table: "Support agent eval dataset",
+       rows: [{ input: "...", expected_output: "..." }] }])
    ```
 
 2. Create the config eval, linking the dataset by id:
@@ -127,4 +127,4 @@ eval-config(
 
 This tool never touches the canvas. Do not add EvaluationTrigger or Evaluation
 nodes; config evals are attached through the evaluation-config API only. Build
-and seed datasets exclusively through the `data_tables` tool.
+and seed datasets exclusively through the data table tools.

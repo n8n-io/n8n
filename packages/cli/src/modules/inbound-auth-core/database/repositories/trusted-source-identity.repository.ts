@@ -1,11 +1,11 @@
 import {
 	BaseRepository,
 	OperationContext,
+	Person,
 	ProjectRelation,
 	Role,
 	TransactionRunner,
-	User,
-	UserRepository,
+	PersonRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, type DeepPartial, In } from '@n8n/typeorm';
@@ -18,10 +18,6 @@ import {
 class TrustedSourceIdentityStore extends BaseRepository<TrustedSourceIdentityEntity> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(TrustedSourceIdentityEntity, dataSource.manager, transactionRunner);
-	}
-
-	override managerFor(ctx: OperationContext) {
-		return super.managerFor(ctx);
 	}
 }
 
@@ -37,7 +33,7 @@ export class TrustedSourceIdentityRepository {
 	constructor(
 		dataSource: DataSource,
 		transactionRunner: TransactionRunner,
-		private readonly users: UserRepository,
+		private readonly people: PersonRepository,
 	) {
 		this.store = new TrustedSourceIdentityStore(dataSource, transactionRunner);
 	}
@@ -46,7 +42,7 @@ export class TrustedSourceIdentityRepository {
 	async findBinding(
 		sourceId: string,
 		subject: string,
-		ctx: OperationContext = {},
+		ctx: OperationContext,
 	): Promise<{ userId: string; status: TrustedSourceIdentityStatus } | null> {
 		return await this.store.managerFor(ctx).findOne(TrustedSourceIdentityEntity, {
 			select: ['userId', 'status'],
@@ -54,7 +50,7 @@ export class TrustedSourceIdentityRepository {
 		});
 	}
 
-	async clearByTrustedSourceId(trustedSourceId: string, ctx: OperationContext = {}): Promise<void> {
+	async clearByTrustedSourceId(trustedSourceId: string, ctx: OperationContext): Promise<void> {
 		await this.store
 			.managerFor(ctx)
 			.delete(TrustedSourceIdentityEntity, { sourceId: trustedSourceId });
@@ -64,7 +60,7 @@ export class TrustedSourceIdentityRepository {
 	async findBySubject(
 		sourceId: string,
 		subject: string,
-		ctx: OperationContext = {},
+		ctx: OperationContext,
 	): Promise<TrustedSourceIdentityEntity | null> {
 		return await this.store.managerFor(ctx).findOne(TrustedSourceIdentityEntity, {
 			where: { sourceId, subject },
@@ -76,19 +72,22 @@ export class TrustedSourceIdentityRepository {
 		});
 	}
 
-	/** Reads inside the identity transaction must reuse its connection: the pool may hold one. */
-	async findUserByEmail(email: string, ctx: OperationContext = {}): Promise<User | null> {
+	/**
+	 * Only a person has an email. Reads inside the identity transaction must reuse its
+	 * connection: the pool may hold one.
+	 */
+	async findUserByEmail(email: string, ctx: OperationContext): Promise<Person | null> {
 		return await this.store
 			.managerFor(ctx)
-			.findOne(User, { where: { email }, relations: { role: true } });
+			.findOne(Person, { where: { email }, relations: { role: true } });
 	}
 
-	async globalRoleExists(slug: string, ctx: OperationContext = {}): Promise<boolean> {
+	async globalRoleExists(slug: string, ctx: OperationContext): Promise<boolean> {
 		return await this.store.managerFor(ctx).exists(Role, { where: { slug, roleType: 'global' } });
 	}
 
 	/** True when every slug names a project role. Reads inside the identity transaction. */
-	async projectRolesExist(slugs: string[], ctx: OperationContext = {}): Promise<boolean> {
+	async projectRolesExist(slugs: string[], ctx: OperationContext): Promise<boolean> {
 		const unique = [...new Set(slugs)];
 		if (unique.length === 0) return true;
 		const count = await this.store
@@ -101,7 +100,7 @@ export class TrustedSourceIdentityRepository {
 		sourceId: string,
 		subject: string,
 		seenAt: Date,
-		ctx: OperationContext = {},
+		ctx: OperationContext,
 	): Promise<void> {
 		await this.store
 			.managerFor(ctx)
@@ -109,10 +108,7 @@ export class TrustedSourceIdentityRepository {
 	}
 
 	/** Writes the binding unless one exists for `(sourceId, subject)`; an existing row wins silently. */
-	async insertIfAbsent(
-		row: InsertTrustedSourceIdentityRow,
-		ctx: OperationContext = {},
-	): Promise<void> {
+	async insertIfAbsent(row: InsertTrustedSourceIdentityRow, ctx: OperationContext): Promise<void> {
 		await this.store
 			.managerFor(ctx)
 			.createQueryBuilder()
@@ -130,12 +126,12 @@ export class TrustedSourceIdentityRepository {
 	 */
 	async createUserWithBinding(
 		ctx: OperationContext,
-		user: DeepPartial<User>,
+		person: DeepPartial<Person>,
 		binding: Pick<InsertTrustedSourceIdentityRow, 'sourceId' | 'subject' | 'provenance' | 'status'>,
 		projectRoles: { projectId: string; role: string }[] = [],
-	): Promise<User> {
+	): Promise<Person> {
 		return await this.store.runInTransaction(ctx, async (tx) => {
-			const { user: createdUser } = await this.users.createUserWithProject(user, tx);
+			const { user: createdUser } = await this.people.createPersonWithProject(person, tx);
 
 			await tx.insert(TrustedSourceIdentityEntity, {
 				...binding,

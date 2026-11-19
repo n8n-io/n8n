@@ -5,7 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 
-import { areSkillToolsAvailable, isCommunityNodeInstallAvailable } from '../mcp-tool-availability';
+import { isCommunityNodeInstallAvailable } from '../mcp-tool-availability';
 
 vi.mock('@n8n/permissions', async (importOriginal) => ({
 	...(await importOriginal<typeof permissions>()),
@@ -139,11 +139,5 @@ describe('isCommunityNodeInstallAvailable', () => {
 				user,
 			),
 		).toBe(false);
-	});
-});
-
-describe('areSkillToolsAvailable', () => {
-	it.each([true, false])('follows the skills hub gate: %s', (isEnabled) => {
-		expect(areSkillToolsAvailable({ isEnabled })).toBe(isEnabled);
 	});
 });

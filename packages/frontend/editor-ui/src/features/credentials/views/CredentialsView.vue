@@ -7,6 +7,7 @@ import type { BaseFilters, Resource } from '@/Interface';
 import type { ICredentialsResponse, ICredentialTypeMap } from '../credentials.types';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { usePrefetchModals } from '@/app/composables/usePrefetchModals';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
@@ -31,6 +32,7 @@ import { useCredentialsStore } from '../credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useDependencies } from '@/app/composables/useDependencies';
 import { useInstanceAiCredentialHelp } from '@/features/ai/instanceAi/composables/useInstanceAiCredentialHelp';
+import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 
 import { N8nCheckbox, N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
 const props = defineProps<{
@@ -40,6 +42,8 @@ const props = defineProps<{
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
+
+usePrefetchModals([CREDENTIAL_SELECT_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY]);
 const sourceControlStore = useSourceControlStore();
 const externalSecretsStore = useExternalSecretsStore();
 const projectsStore = useProjectsStore();
@@ -274,6 +278,12 @@ sourceControlStore.$onAction(({ name, after }) => {
 });
 
 watch(() => route?.params?.projectId, initialize);
+
+// A new credential goes to this project, so the new credential picker reads its policy.
+useTypeAvailability(() => {
+	const { projectId } = route?.params ?? {};
+	return typeof projectId === 'string' ? projectId : projectsStore.personalProject?.id;
+});
 
 watch(
 	() => props.credentialId,

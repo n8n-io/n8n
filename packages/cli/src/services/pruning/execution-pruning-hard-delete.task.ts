@@ -25,6 +25,7 @@ export class ExecutionPruningHardDeleteTask implements SystemTask {
 			// at the pause and returns, so the occurrence completes with result `timed_out`.
 			timeoutSeconds: this.intervalSeconds,
 		},
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep timer scheduling while the durable scheduler is disabled.
 		leaderTimer: {
 			// A failed run retries after one second, as the old timer did.
 			retryDelaySeconds: 1,

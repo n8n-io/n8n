@@ -5,12 +5,15 @@ import type {
 	BuiltTool,
 	CheckpointStore,
 	ExecutionOptions,
+	FetchFn,
 	MemoryTaskUsageReport,
 	RuntimeSkill,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
+	ObservationalMemoryConfig,
 	ScopedMemoryTaskEvent,
 	Telemetry,
+	TokenUsage,
 	Workspace,
 } from '@n8n/agents';
 import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
@@ -19,6 +22,11 @@ import type {
 	AgentJsonConfig,
 	AgentSessionStatus,
 	AgentSkill,
+	AppBinding,
+	AppBindingsResponse,
+	AppBuildResponse,
+	AppListResponse,
+	AppResponse,
 	SaveSkillDto,
 	SkillDetail,
 	SkillListResponse,
@@ -26,6 +34,7 @@ import type {
 	SkillScope,
 	EvaluationMetric,
 	TaskList,
+	InstanceAiApprovalMode,
 	InstanceAiPromptConfiguration,
 	InstanceAiFileAttachment,
 	InstanceAiPermissions,
@@ -36,7 +45,7 @@ import type {
 	McpToolCallRequest,
 	McpToolCallResult,
 } from '@n8n/api-types';
-import type { OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
+import type { NodeJSON, OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
 	GenericValue,
 	IDisplayOptions,
@@ -55,10 +64,11 @@ import type { DomainAccessTracker } from './domain-access/domain-access-tracker'
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
 import type { AgentContextInput } from './tools/agent-context.tool';
+import type { StartCloudBrowserTask } from './tools/orchestration/start-cloud-browser-task.tool';
 import type { McpClientManager } from './mcp/mcp-client-manager';
 import type { OrchestratorRunHandoffReason } from './runtime/orchestrator-run-control';
 import type { TraceStatus } from './runtime/resumable-stream-executor';
-import type { IterationLog } from './storage/iteration-log';
+import type { InstanceAiApprovalReviewer } from './approval-review/approval-review';
 import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { BuilderUsageItem } from './stream/usage-accumulator';
 import type {
@@ -78,9 +88,7 @@ import type {
 	WorkflowLoopState,
 	WorkflowVerificationEvidence,
 	WorkflowTriggerVerificationProgress,
-	WorkflowVerificationObligation,
 } from './workflow-loop/workflow-loop-state';
-import type { BuilderTemplatesService } from './workspace/builder-templates-service';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
 
@@ -177,6 +185,11 @@ export interface ExecutionResult {
 	workflowPinnedNodeNames?: string[];
 	/** Nodes whose output items carry file data, which `data` omits. */
 	binaryOutputNodeNames?: string[];
+	/**
+	 * Time-based Wait nodes that a verification run executed without their
+	 * delay. They ran and passed their input through, but did not wait.
+	 */
+	skippedWaitNodeNames?: string[];
 	/** Node-level errors from run data, including continue-on-fail errors. */
 	nodeErrors?: ExecutionNodeError[];
 	/** Name of the last node the execution processed, when available. */
@@ -756,8 +769,15 @@ export type ExecuteNodeResult =
 			output: string;
 			truncated?: { totalItems: number; shownItems: number; message: string };
 			outputSuppressed?: string;
+			/** Set when n8n redacted the run's data for the user. `output` is then empty. */
+			redaction?: ExecutionRedaction;
 	  }
-	| { status: 'error'; error: { message: string; description?: string; nodeErrorType?: string } };
+	| {
+			status: 'error';
+			error: { message: string; description?: string; nodeErrorType?: string };
+			/** Set when n8n redacted the run's data for the user. Only the error type remains. */
+			redaction?: ExecutionRedaction;
+	  };
 
 /** Executes a single node standalone through the regular execution engine.
  *  The request mirrors a workflow-sdk node (`{ type, version, config }`). */
@@ -795,6 +815,7 @@ export interface CredentialHostInfo {
 }
 
 export interface InstanceAiCredentialService {
+	updateDescription(credentialId: string, description: string | null): Promise<void>;
 	/**
 	 * List credentials.
 	 *
@@ -841,6 +862,14 @@ export interface InstanceAiCredentialService {
 	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
 	/** Whether the given credential type is supported by AI Gateway. */
 	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
+	/** Why AI Gateway cannot serve a credential type it covers on this node, or
+	 *  undefined when it can or does not cover the type. Applies the rule the
+	 *  engine applies when the workflow runs: node type, type version, action
+	 *  (with node defaults applied) and hidden properties. */
+	getAiGatewayNodeRejection?(
+		node: Pick<NodeJSON, 'type' | 'typeVersion' | 'parameters'>,
+		credType: string,
+	): Promise<string | undefined>;
 	/** Current AI Gateway wallet, or `null` when Connect is off or the fetch failed. */
 	getAiGatewayWallet?(): Promise<{ balance: number } | null>;
 	/** List all credential types supported by n8n Connect on this instance. */
@@ -897,7 +926,7 @@ export interface InstanceAiActivityEntry {
 
 /**
  * An entry in full, plus the rest of what the log knows about the same resource. Deliberately not
- * the live record: `workflow_builder_workflows` and `workflow_builder_credentials` already fetch those, and the entry carries the ids
+ * the live record: `get_workflow` and `list_credentials` already fetch those, and the entry carries the ids
  * to call them with.
  */
 export interface InstanceAiActivityExpansion {
@@ -955,6 +984,56 @@ export interface ExploreResourcesResult {
 	builderHint?: string;
 }
 
+export interface ResolveParameterOptionsParams {
+	nodeType: string;
+	version: number;
+	parameterPath: string;
+	nodeParameters?: Record<string, unknown>;
+	credentials?: Record<string, { id: string; name: string }>;
+	credentialType?: string;
+	credentialId?: string;
+	filter?: string;
+	paginationToken?: string;
+}
+
+export type ResolveParameterOptionsResult =
+	| {
+			ok: true;
+			kind: 'resourceLocator' | 'loadOptionsMethod' | 'loadOptionsRouting';
+			parameterPath: string;
+			methodName?: string;
+			mode?: string;
+			results: Array<{
+				name: string;
+				value: string | number | boolean;
+				url?: string;
+				description?: string;
+				parameterValue: unknown;
+			}>;
+			paginationToken?: string;
+			builderHint?: string;
+	  }
+	| {
+			ok: false;
+			code:
+				| 'node_type_not_found'
+				| 'parameter_not_found'
+				| 'not_dynamic_selector'
+				| 'missing_credentials'
+				| 'lookup_failed';
+			message: string;
+			dynamicParameters?: Array<{
+				path: string;
+				type: string;
+				method: string;
+			}>;
+			credentialSlots?: Array<{
+				credentialType: string;
+				credentialSlot: string;
+				displayName?: string;
+			}>;
+	  };
+
 /**
  * A resource-locator value the connected credential can't reach. Identifies the
  * parameter and the offending value only — list the values it *can* reach with
@@ -995,6 +1074,10 @@ export interface InstanceAiNodeService {
 		deprecated?: boolean;
 		/** Set when the node cannot run on this instance, because the feature it needs is off. */
 		unavailable?: string;
+		aiGateway?: AiGatewayNodeMeta;
+		webhooks?: unknown[];
+		polling?: boolean;
+		triggerPanel?: unknown;
 	} | null>;
 	/** List available resource/operation discriminators for a node. Null for flat nodes. */
 	listDiscriminators?(
@@ -1002,6 +1085,9 @@ export interface InstanceAiNodeService {
 	): Promise<{ resources: Array<{ name: string; operations: string[] }> } | null>;
 	/** Query real resources via a node's listSearch or loadOptions methods (e.g. list spreadsheets, models). */
 	exploreResources?(params: ExploreResourcesParams): Promise<ExploreResourcesResult>;
+	resolveParameterOptions?(
+		params: ResolveParameterOptionsParams,
+	): Promise<ResolveParameterOptionsResult>;
 	/**
 	 * Report resource-locator parameters whose current value the given credential can't
 	 * reach. A credential can narrow a parameter's value space after the value was chosen —
@@ -1155,6 +1241,7 @@ export interface InstanceAiPreferenceService {
 }
 
 export interface InstanceAiSkillService {
+	assistantSkillsEnabled: boolean;
 	list(options: {
 		query?: string;
 		scope?: SkillScope;
@@ -1168,6 +1255,7 @@ export interface InstanceAiSkillService {
 		scope: 'project' | 'instance';
 		projectId?: string;
 		skill: Omit<AgentSkill, 'allowedTools'>;
+		availableToAssistant?: boolean;
 	}): Promise<SkillDetail>;
 	update(skillId: string, input: SaveSkillDto): Promise<SkillSaveResponse>;
 	delete(skillId: string): Promise<void>;
@@ -1225,6 +1313,36 @@ export interface InstanceAiDataTableService {
 	): Promise<{ deletedCount: number; dataTableId: string; tableName: string; projectId: string }>;
 }
 
+export interface InstanceAiAppService {
+	createApp(input: {
+		name: string;
+		namespace: string;
+		visibility?: AppResponse['visibility'];
+		id?: string;
+	}): Promise<AppResponse>;
+	listApps(query: { name?: string }): Promise<AppListResponse>;
+	getApp(appId: string): Promise<AppResponse>;
+	findApp(appId: string): Promise<AppResponse | undefined>;
+	/** The draft source as a gzip tar archive, with the version it is based on. */
+	exportDraft(appId: string): Promise<{ baseVersionId: string | null; archive: Buffer }>;
+	commit(
+		appId: string,
+		baseVersionId: string | null,
+		archive: Buffer,
+		label: string | null,
+	): Promise<AppBuildResponse>;
+	/** The bindings of the draft version, with the TypeScript declarations that describe them. */
+	getBindings(appId: string): Promise<AppBindingsResponse & { types: string }>;
+	/** Saves the full binding list as a new version on top of `baseVersionId`. */
+	setBindings(
+		appId: string,
+		baseVersionId: string | null,
+		bindings: AppBinding[],
+	): Promise<AppBindingsResponse & { types: string }>;
+	/** The `@n8n/app-sdk` package of this instance as a gzip tar archive. */
+	exportSdk(): Promise<Buffer>;
+}
+
 // ── Evaluation configs (config-based evals) ──────────────────────────────────
 
 /** Preset LLM-judge metrics supported by config-based evals — mirrors
@@ -1249,7 +1367,7 @@ export interface EvaluationConfigMetricInput {
 }
 
 /** Payload for creating/updating a config-based eval. The dataset is a Data
- *  Table the caller already created (via the data_tables tool). */
+ *  Table the caller already created (via the change_data_tables tool). */
 export interface UpsertEvaluationConfigInput {
 	name: string;
 	startNodeName: string;
@@ -1337,10 +1455,10 @@ export interface InstanceAiWebResearchService {
 		},
 	): Promise<WebSearchResponse>;
 
+	/** Fetch the full extracted page. The research tool slices it for the model. */
 	fetchUrl(
 		url: string,
 		options?: {
-			maxContentLength?: number;
 			maxResponseBytes?: number;
 			timeoutMs?: number;
 			/** When aborted, in-flight page fetches should stop promptly. */
@@ -1439,11 +1557,12 @@ export interface InstanceAiBuilderDelegate {
 	 * `options.adoptOnCollision` says the caller has proven it may adopt that
 	 * agent — set it only for an id this thread's own lifecycle metadata attests
 	 * to, so the editor winning the insert (and configuring the row) makes this
-	 * call adopt rather than fail.
+	 * call adopt rather than fail. `options.session` names the thread and run
+	 * for the creation telemetry.
 	 */
 	createAgent(
 		name: string,
-		options?: { id?: string; adoptOnCollision?: boolean },
+		options?: { id?: string; adoptOnCollision?: boolean; session?: BuilderToolsSession },
 	): Promise<{
 		agentId: string;
 		projectId: string;
@@ -1463,7 +1582,7 @@ export interface InstanceAiBuilderDelegate {
 	): BuiltTool[];
 	/** Runtime skills that the builder tools rely on, such as `agent-builder-config`. */
 	getRuntimeSkills(): RuntimeSkill[];
-	/** Preview link and model recommendations for the target agent. */
+	/** Preview link for the target agent. */
 	getBuilderSessionContext(agentId: string): Promise<string>;
 	/** Current display name of the agent, or undefined when not found. */
 	resolveAgentName(agentId: string): Promise<string | undefined>;
@@ -1480,6 +1599,27 @@ export interface InstanceAiBuilderDelegate {
 	 *  trace metric. Resolves to `undefined` when the agent does not exist. Optional
 	 *  for the same reason as `readAgentArtifact`. */
 	validateAgent?(agentId: string): Promise<AgentValidationSummary | undefined>;
+	/** Credentials the agent can use without asking the user. Optional for the
+	 *  same reason as `readAgentArtifact`: without it, every request shows the card. */
+	getCredentialDefaults?(agentId: string): Promise<AgentCredentialDefaults>;
+	/** Records a credential card for the agent build telemetry. */
+	trackCredentialRequest?(
+		agentId: string,
+		session: Partial<BuilderToolsSession>,
+		request: AgentCredentialRequestEvent,
+	): void;
+}
+
+export interface AgentCredentialDefaults {
+	/** Credentials of the agent's configured chat channels. Tools reuse them. */
+	channelCredentialIds: string[];
+	/** True when n8n can supply a managed credential, for example for Episodic Memory embeddings. */
+	managedCredentialAvailable: boolean;
+}
+
+export interface AgentCredentialRequestEvent {
+	credentialType: string;
+	outcome: 'requested' | 'provided' | 'skipped';
 }
 
 export interface AgentValidationSummary {
@@ -1562,6 +1702,20 @@ export interface InstanceAiAgentContextReader {
 	lookup(input: AgentContextLookup): Promise<Record<string, unknown>>;
 }
 
+/** A stored file of the thread, as `parse-file` reads it. */
+export interface InstanceAiStoredFile {
+	fileName: string;
+	mimeType: string;
+	sizeBytes: number;
+	/** Loads the bytes. Gives `undefined` when storage no longer has them. */
+	readContent(): Promise<Buffer | undefined>;
+}
+
+export interface InstanceAiStoredFileReader {
+	/** Gives `undefined` when the thread has no such file. */
+	read(fileId: string): Promise<InstanceAiStoredFile | undefined>;
+}
+
 // ── Context bundle ───────────────────────────────────────────────────────────
 
 /** An artifact that a tool created or changed. Tools pass the name when they know it. */
@@ -1583,19 +1737,28 @@ export interface InstanceAiContext {
 	projectId?: string;
 	/**
 	 * Per-run folder-exploration gate, resolved by the host before the context
-	 * is built. When true, the `workflow_builder_workflows` list action advertises folder fields
+	 * is built. When true, `list_workflows` advertises folder fields
 	 * and rows carry `folder`. Absent or false keeps the pre-feature shape.
 	 */
 	folderExplorationEnabled?: boolean;
 	/** True while the thread runs the host-seeded onboarding flow. Presence gates `leave-onboarding`. */
 	onboardingThread?: boolean;
 	/**
-	 * Host-resolved model for the current run (proxy-managed on cloud). Domain
-	 * tools pass it as the fallback for utility LLM calls (simulation fixtures,
-	 * destructiveness classification), which otherwise resolve an eval model
-	 * from environment API keys that proxy-managed deployments don't have.
+	 * Host-resolved main model for the current run (proxy-managed on cloud).
+	 * Domain tools use it for helper calls when no utility model is set.
 	 */
 	modelId?: ModelConfig;
+	/**
+	 * Host-resolved utility model: the configured or default small model on the
+	 * main model's provider. The verification helpers (destructiveness
+	 * classification, simulation fixtures) run on it. Absent →
+	 * utility calls use `modelId`.
+	 */
+	utilityModelId?: ModelConfig;
+	/** Transport for those utility LLM calls. It carries no run labels. */
+	modelFetch?: FetchFn;
+	/** Bills the token usage of one helper LLM call. Best effort: it never throws. */
+	onHelperUsage?: HelperUsageHook;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
 	credentialService: InstanceAiCredentialService;
@@ -1606,7 +1769,7 @@ export interface InstanceAiContext {
 	/** Optional — present when the host allows MCP registry discovery for this
 	 *  user. Presence gates the `mcp-servers` tool. */
 	mcpService?: InstanceAiMcpService;
-	/** Optional — presence gates the `execute` action on the `workflow_builder_nodes` tool. */
+	/** Optional — presence gates the `execute_node` tool. */
 	executeNodeService?: InstanceAiExecuteNodeService;
 	/** Optional — wired by the host when the run has a bound project. Presence
 	 *  gates the `conversation-history` tool (orchestrator only). */
@@ -1619,6 +1782,7 @@ export interface InstanceAiContext {
 	 *  absence hides the `save_user_preference` tool. */
 	aiPreferenceService?: InstanceAiPreferenceService;
 	skillService?: InstanceAiSkillService;
+	appService?: InstanceAiAppService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */
@@ -1640,8 +1804,6 @@ export interface InstanceAiContext {
 		executionId?: string;
 	}) => Promise<{ title: string; sessionNumber: number; transcript: string } | null>;
 	webResearchService?: InstanceAiWebResearchService;
-	/** Curated workflow-template provider — materializes `knowledge-base/templates/` in the sandbox. */
-	templatesService?: BuilderTemplatesService;
 	workspaceService?: InstanceAiWorkspaceService;
 	workflowTemplateService: InstanceAiWorkflowTemplateService;
 	/**
@@ -1652,14 +1814,18 @@ export interface InstanceAiContext {
 	browserUseState?: BrowserUseState;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
-	/** When set, `runWorkflow: 'always_allow'` only short-circuits HITL approval for these workflow IDs.
-	 *  Used by checkpoint follow-up runs to scope the override to the workflows the checkpoint is
-	 *  verifying — `workflow_builder_executions(action="run")` on any other workflow still requires user approval. */
-	allowedRunWorkflowIds?: ReadonlySet<string>;
-	/** Fallback scope for checkpoint follow-up runs when replay/runtime workflow IDs are remapped. */
-	allowedRunWorkflowNames?: ReadonlySet<string>;
-	/** Force `workflow_builder_executions(action="run")` through HITL even when a scoped checkpoint override exists. */
-	requireRunWorkflowApproval?: boolean;
+	/**
+	 * Auto mode: reviews an approval before its card shows, and runs the action
+	 * when the review approves it. Absent means Manual mode.
+	 */
+	approvalReviewer?: InstanceAiApprovalReviewer;
+	/** The approval mode of this run. Absent while approval modes are off. */
+	approvalMode?: InstanceAiApprovalMode;
+	/**
+	 * When true, a user's MCP tool permissions can only make the admin's
+	 * permissions stricter. Otherwise they replace them.
+	 */
+	enforceAdminMcpPermissions?: boolean;
 	/** Thread-level "always allow" grants the user has approved (keys like `executions:run`).
 	 *  Loaded per run from persisted thread state so a grant survives reload/navigation and
 	 *  is visible across mains. Tools consult this to skip HITL for already-granted actions. */
@@ -1685,7 +1851,7 @@ export interface InstanceAiContext {
 	runId?: string;
 	/**
 	 * Run-scoped outcome tracking for browser-assisted credential setup. The
-	 * workflow_builder_credentials tool marks an attempt pending when it hands off to the LLM
+	 * credentials tool marks an attempt pending when it hands off to the LLM
 	 * with `needsBrowserSetup`; the browser tool wrapper reports each
 	 * `browser_create_credential` outcome. The host resolves the terminal
 	 * success/failure telemetry when the run finishes.
@@ -1741,10 +1907,16 @@ export interface InstanceAiContext {
 	aiCreatedWorkflowIds?: Set<string>;
 	/**
 	 * File attachments from the current user message. Runtime-only — not
-	 * persisted. Used to register `parse-file` and supply data to the parser.
+	 * persisted. The current-message `parse-file` reads them by index.
 	 * Workflow (resource) attachments are handled separately by the adapter.
 	 */
 	currentUserAttachments?: InstanceAiFileAttachment[];
+	/**
+	 * Reads stored files of the thread by id. When it is set, `parse-file` takes
+	 * a `fileId` and is registered on every turn, so the tool list stays stable
+	 * and files from earlier messages stay readable.
+	 */
+	storedFiles?: InstanceAiStoredFileReader;
 	/** Logger for diagnostics from domain tools. */
 	logger: Logger;
 	/** Optional telemetry sink for domain tools. */
@@ -1755,6 +1927,11 @@ export interface InstanceAiContext {
 	 *  accept absolute file paths under the root by normalizing them to
 	 *  workspace-relative. */
 	workspaceRoot?: string;
+	/**
+	 * Second root that the tools accept in absolute paths. Older Daytona sandboxes keep their files
+	 * there and link `workspaceRoot` to it, so tool output can name either root.
+	 */
+	fallbackWorkspaceRoot?: string;
 	/** Current thread identity, used by workflow source file bindings and other thread-local state. */
 	threadId?: string;
 	/** Thread memory adapter used for thread-local metadata. */
@@ -1771,22 +1948,14 @@ export interface InstanceAiContext {
 	outputSchemaLookup?: OutputSchemaLookup;
 	/**
 	 * Runtime-only workflow build loop context. The direct `workflow_builder_build_workflow` tool
-	 * reports build outcomes here so planned build follow-ups and verification
-	 * tools can share the same work item without a detached builder sub-agent.
+	 * reports build outcomes here so verification tools can share the same work
+	 * item without a detached builder sub-agent.
 	 */
 	workflowBuildContext?: {
 		threadId: string;
 		runId: string;
 		taskId: string;
 		workItemId: string;
-		/**
-		 * True for replan/checkpoint follow-ups where an approved plan already
-		 * exists and the builder may retry directly without creating a new plan.
-		 */
-		allowPostPlanWorkflowCreate?: boolean;
-		/** True when the active planned build task's final deliverable is a supporting workflow. */
-		isSupportingWorkflowTask?: boolean;
-		plannedTaskService?: PlannedTaskService;
 		workflowTaskService?: WorkflowTaskService;
 		onBuildOutcome?: (outcome: WorkflowBuildOutcome) => void | Promise<void>;
 	};
@@ -1826,168 +1995,6 @@ export interface TaskStorage {
 	save(threadId: string, tasks: TaskList): Promise<void>;
 }
 
-// ── Planned task graphs ─────────────────────────────────────────────────────
-
-export const PLANNED_TASK_KINDS = ['build-workflow', 'checkpoint'] as const;
-/** Legacy kinds still accepted when loading persisted graphs; failed at dispatch time. */
-export const LEGACY_PLANNED_TASK_KINDS = ['delegate'] as const;
-export const STORED_PLANNED_TASK_KINDS = [
-	...PLANNED_TASK_KINDS,
-	...LEGACY_PLANNED_TASK_KINDS,
-] as const;
-export type PlannedTaskKind = (typeof PLANNED_TASK_KINDS)[number];
-export type StoredPlannedTaskKind = (typeof STORED_PLANNED_TASK_KINDS)[number];
-
-export interface PlannedTask {
-	id: string;
-	title: string;
-	kind: PlannedTaskKind;
-	spec: string;
-	deps: string[];
-	/** Existing workflow ID for build-workflow tasks that modify an existing workflow. */
-	workflowId?: string;
-	/**
-	 * True when the build-workflow task's final deliverable is intentionally a
-	 * supporting sub-workflow. Auxiliary supporting workflows created inside a
-	 * larger main-workflow task should not set this.
-	 */
-	isSupportingWorkflow?: boolean;
-}
-
-export type PlannedTaskStatus = 'planned' | 'running' | 'succeeded' | 'failed' | 'cancelled';
-
-export interface PlannedTaskRecord extends Omit<PlannedTask, 'kind'> {
-	kind: StoredPlannedTaskKind;
-	status: PlannedTaskStatus;
-	agentId?: string;
-	backgroundTaskId?: string;
-	result?: string;
-	error?: string;
-	outcome?: Record<string, unknown>;
-	startedAt?: number;
-	finishedAt?: number;
-}
-
-export type PlannedTaskGraphStatus =
-	| 'awaiting_approval'
-	| 'active'
-	| 'awaiting_replan'
-	| 'completed'
-	| 'cancelled';
-
-export interface PlannedTaskGraph {
-	planRunId: string;
-	messageGroupId?: string;
-	postBuildRunApprovalRequired?: boolean;
-	status: PlannedTaskGraphStatus;
-	tasks: PlannedTaskRecord[];
-}
-
-export interface PlannedWorkflowVerification {
-	task: PlannedTaskRecord;
-	obligation: WorkflowVerificationObligation;
-	outcome?: WorkflowBuildOutcome;
-}
-
-export type PlannedTaskSchedulerAction =
-	| { type: 'none'; graph: PlannedTaskGraph | null }
-	| { type: 'dispatch'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
-	| { type: 'orchestrate-build-workflow'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
-	| { type: 'orchestrate-checkpoint'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
-	| {
-			type: 'orchestrate-workflow-verification';
-			graph: PlannedTaskGraph;
-			verification: PlannedWorkflowVerification;
-	  }
-	| { type: 'replan'; graph: PlannedTaskGraph; failedTask: PlannedTaskRecord }
-	| { type: 'synthesize'; graph: PlannedTaskGraph };
-
-export interface PlannedTaskService {
-	createPlan(
-		threadId: string,
-		tasks: PlannedTask[],
-		metadata: {
-			planRunId: string;
-			messageGroupId?: string;
-			postBuildRunApprovalRequired?: boolean;
-		},
-	): Promise<PlannedTaskGraph>;
-	getGraph(threadId: string): Promise<PlannedTaskGraph | null>;
-	markRunning(
-		threadId: string,
-		taskId: string,
-		update: { agentId?: string; backgroundTaskId?: string; startedAt?: number },
-	): Promise<PlannedTaskGraph | null>;
-	markSucceeded(
-		threadId: string,
-		taskId: string,
-		update: { result?: string; outcome?: Record<string, unknown>; finishedAt?: number },
-	): Promise<PlannedTaskGraph | null>;
-	markFailed(
-		threadId: string,
-		taskId: string,
-		update: { error?: string; finishedAt?: number },
-	): Promise<PlannedTaskGraph | null>;
-	markCancelled(
-		threadId: string,
-		taskId: string,
-		update?: { error?: string; finishedAt?: number },
-	): Promise<PlannedTaskGraph | null>;
-	markCheckpointSucceeded(
-		threadId: string,
-		taskId: string,
-		update: { result?: string; outcome?: Record<string, unknown>; finishedAt?: number },
-	): Promise<CheckpointSettleResult>;
-	markCheckpointFailed(
-		threadId: string,
-		taskId: string,
-		update: {
-			error?: string;
-			/** Structured verification outcome (executionId, failureNode, etc.) so
-			 *  replans have execution context, not just a flat error string. */
-			outcome?: Record<string, unknown>;
-			finishedAt?: number;
-		},
-	): Promise<CheckpointSettleResult>;
-	/** Rewind a running checkpoint back to `planned` after a scheduling race
-	 *  prevented its follow-up from starting. Non-destructive — dependents are
-	 *  untouched and the next tick re-emits `orchestrate-checkpoint`. */
-	revertCheckpointToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
-	/** Rewind a running build-workflow task after a scheduling race prevented
-	 *  its orchestrator follow-up from starting. */
-	revertBuildWorkflowToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
-	tick(
-		threadId: string,
-		options?: {
-			availableSlots?: number;
-			pendingWorkflowVerification?: PlannedWorkflowVerification;
-		},
-	): Promise<PlannedTaskSchedulerAction>;
-	clear(threadId: string): Promise<void>;
-	/** Transition an `awaiting_approval` graph → `active` after the user
-	 *  approves the plan. No-op on any other status. */
-	approvePlan(threadId: string): Promise<PlannedTaskGraph | null>;
-	/** Transition an `awaiting_approval` graph → `cancelled` after the user
-	 *  denies the plan outright. No-op on any other status. */
-	denyPlan(threadId: string): Promise<PlannedTaskGraph | null>;
-	/** Revert an `awaiting_replan` or `completed` graph back to `active`. Used by
-	 *  the service when a replan or synthesize follow-up couldn't start. */
-	revertToActive(threadId: string): Promise<PlannedTaskGraph | null>;
-}
-
-/**
- * Result of a guarded checkpoint settlement. The mutators only transition a task
- * when its kind is `checkpoint` AND its status is `running`, so callers can read
- * the `reason` to report a precise error back to the LLM.
- */
-export type CheckpointSettleResult =
-	| { ok: true; graph: PlannedTaskGraph }
-	| {
-			ok: false;
-			reason: 'not-found' | 'wrong-kind' | 'wrong-status';
-			actual?: { kind?: StoredPlannedTaskKind; status?: PlannedTaskStatus };
-	  };
-
 // ── MCP ──────────────────────────────────────────────────────────────────────
 
 export interface McpServerConfig {
@@ -2015,6 +2022,22 @@ export interface McpServerConfig {
 	};
 }
 
+// ── Helper model usage ───────────────────────────────────────────────────────
+
+/** Token usage of one helper LLM call, such as the destructiveness classifier. */
+export interface HelperModelUsageReport {
+	/** Helper name, for example `verification-simulation-fixtures`. */
+	helper: string;
+	/** Catalog model id the host prices the call by, for example `anthropic/claude-haiku-5-5`. */
+	model: string;
+	usage: TokenUsage;
+	/** Unique for each call, so hosts can build idempotent billing keys. */
+	reportId: string;
+}
+
+/** Bills the token usage of one helper LLM call. Best effort: it never throws. */
+export type HelperUsageHook = (report: HelperModelUsageReport) => Promise<void>;
+
 // ── Memory ───────────────────────────────────────────────────────────────────
 
 export interface InstanceAiMemoryConfig {
@@ -2022,13 +2045,34 @@ export interface InstanceAiMemoryConfig {
 	threadTtlDays?: number;
 	observationalMemory?: {
 		observerThresholdTokens: number;
-		reflectorThresholdTokens: number;
+		/** Fixed Reflector threshold. When unset, the SDK uses a share of the memory window. */
+		reflectorThresholdTokens?: number;
 		/** Run the Observer inside a turn. Default `true`; `false` limits it to the post-turn path. */
 		midRunObservation?: boolean;
+		/** Memory policy options, passed through to the agents SDK. Unset options use the SDK defaults. */
+		policy?: Pick<
+			ObservationalMemoryConfig,
+			| 'windowShares'
+			| 'logPlacement'
+			| 'failurePolicy'
+			| 'maxObserverBatchesAfterTurn'
+			| 'reflectionMode'
+			| 'historyRecall'
+		>;
 		/** Model for the Observer and Reflector. Defaults to the agent's model. */
 		model?: ModelConfig;
 		/** Called with token usage after each observer/reflector LLM call, so the host can meter it. */
 		onTaskUsage?: (report: MemoryTaskUsageReport) => void | Promise<void>;
+	};
+	/**
+	 * Generate a title for a thread that has none, after the first turn. The
+	 * runtime reports the usage of the title call through `onSideCallUsage`.
+	 */
+	titleGeneration?: {
+		/** Model for the title call. Defaults to the agent's model. */
+		model?: ModelConfig;
+		/** Saves the title before the run ends, instead of after it in the background. */
+		sync?: boolean;
 	};
 }
 
@@ -2036,8 +2080,19 @@ export interface InstanceAiMemoryConfig {
 
 type NativeLanguageModelConfig = Extract<NativeModelConfig, { specificationVersion: string }>;
 
+/** OpenAI-compatible or api-key-only endpoint. An empty `url` keeps the provider default. */
+export type EndpointModelConfig = {
+	kind: 'endpoint';
+	id: `${string}/${string}`;
+	url: string;
+	apiKey?: string;
+	headers?: Record<string, string>;
+	supportsStructuredOutputs?: boolean;
+};
+
 /** Direct Google Vertex Claude (Anthropic Messages via `:rawPredict`). */
 export type VertexAnthropicModelConfig = {
+	kind: 'vertex-anthropic';
 	id: `google-vertex-anthropic/${string}`;
 	project: string;
 	location: string;
@@ -2047,10 +2102,11 @@ export type VertexAnthropicModelConfig = {
 /** Model identifier: plain string for built-in providers, object for OpenAI-compatible endpoints,
  *  Vertex Claude, or a pre-built LanguageModel instance (e.g. from @ai-sdk/anthropic with a custom baseURL).
  *
+ *  Object configs carry a `kind` tag, so code never infers the variant from its fields.
  *  The LanguageModel variant exists for proxy routes that need a provider-native transport. */
 export type ModelConfig =
 	| string
-	| { id: `${string}/${string}`; url: string; apiKey?: string; headers?: Record<string, string> }
+	| EndpointModelConfig
 	| VertexAnthropicModelConfig
 	| NativeLanguageModelConfig;
 
@@ -2230,6 +2286,8 @@ export interface OrchestrationContext {
 	setupPanelEnabled?: boolean;
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
+	/** Transport for utility LLM calls (see `InstanceAiContext.modelFetch`). */
+	modelFetch?: FetchFn;
 	/**
 	 * Operator overrides for the model-stream stall deadlines, forwarded to
 	 * sub-agent runs so they honor the same limits as the orchestrator.
@@ -2268,10 +2326,8 @@ export interface OrchestrationContext {
 	oauth2CallbackUrl?: string;
 	/** Cancel a running background task by its ID */
 	cancelBackgroundTask?: (taskId: string) => Promise<void>;
-	/** Persist and inspect dependency-aware planned tasks for this thread. */
-	plannedTaskService?: PlannedTaskService;
-	/** Run one scheduler pass after plan/task state changes. */
-	schedulePlannedTasks?: () => Promise<void>;
+	/** Start a browser task in the background. Set only when this run can use the cloud browser. */
+	startCloudBrowserTask?: StartCloudBrowserTask;
 	/** Hand off durable work to follow-up tasks once the current tool result reaches the UI. */
 	requestRunHandoff?: (reason: OrchestratorRunHandoffReason) => void;
 	/** Shared runtime workspace for the current orchestration context. */
@@ -2283,20 +2339,8 @@ export interface OrchestrationContext {
 	/** The current user message being processed — needed because memory history only
 	 *  returns previously-saved messages, so the in-flight message isn't available yet. */
 	currentUserMessage?: string;
-	/** True when the current run was started by the replan pipeline after a failed
-	 *  background task. Set by the host, not by user text — the workflow_builder_create_tasks guard
-	 *  reads this instead of substring-matching `currentUserMessage`. */
-	isReplanFollowUp?: boolean;
-	/** True when the current run was started to execute a planned-task checkpoint.
-	 *  The orchestrator should run the checkpoint's spec and call workflow_builder_complete_checkpoint. */
-	isCheckpointFollowUp?: boolean;
-	/** When isCheckpointFollowUp is true, the task ID of the checkpoint being executed.
-	 *  Used by the post-run deadlock fallback in the service. */
-	checkpointTaskId?: string;
 	/** The domain context — gives sub-agent tools access to n8n services */
 	domainContext?: InstanceAiContext;
-	/** Thread-scoped iteration log for accumulating attempt history across retries */
-	iterationLog?: IterationLog;
 	/** Send a correction message to a running background task */
 	sendCorrectionToTask?: (
 		taskId: string,
@@ -2335,4 +2379,8 @@ export interface CreateInstanceAgentOptions {
 	/** When false, extended thinking / reasoning is not enabled. Defaults to true. */
 	thinkingEnabled?: boolean;
 	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
+	/** Transport for the agent's model calls. Sub-agents and memory tasks inherit it. */
+	modelFetch?: FetchFn;
+	/** Send the `x-n8n-function-id` header on model calls (`N8N_INSTANCE_AI_MODEL_REQUEST_LABELS`). */
+	requestLabels?: boolean;
 }

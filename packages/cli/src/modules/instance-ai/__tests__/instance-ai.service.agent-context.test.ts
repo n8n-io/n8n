@@ -8,8 +8,8 @@ import { AgentContextService } from '@/modules/agents/agent-context.service';
 import type { AgentSessionDetail } from '@/modules/agents/agent-context.contracts';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
-import { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
-import { InstanceAiService } from '../instance-ai.service';
+import type { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
+import { AssistantAgentFactory } from '../turn-setup/assistant-agent.factory';
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
@@ -22,7 +22,7 @@ type ServiceInternals = {
 
 const user = mock<User>({ id: 'user-1' });
 
-describe('InstanceAiService Agent context binding', () => {
+describe('AssistantAgentFactory Agent context binding', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
 	});
@@ -38,7 +38,7 @@ describe('InstanceAiService Agent context binding', () => {
 				settings: new Map(),
 			} as unknown as ModuleRegistry)
 			.mockReturnValueOnce(adapter);
-		const service = Object.create(InstanceAiService.prototype) as ServiceInternals;
+		const service = Object.create(AssistantAgentFactory.prototype) as ServiceInternals;
 		const context = { projectId: 'project-1' } as unknown as InstanceAiContext;
 
 		await service.bindAgentContextReader(context, user);
@@ -53,7 +53,7 @@ describe('InstanceAiService Agent context binding', () => {
 	it('does not expose Agent context without read scope', async () => {
 		vi.mocked(userHasScopes).mockResolvedValue(false);
 		const containerGet = vi.spyOn(Container, 'get');
-		const service = Object.create(InstanceAiService.prototype) as ServiceInternals;
+		const service = Object.create(AssistantAgentFactory.prototype) as ServiceInternals;
 		const context = { projectId: 'project-1' } as unknown as InstanceAiContext;
 
 		await service.bindAgentContextReader(context, user);
@@ -97,7 +97,7 @@ describe('InstanceAiService Agent context binding', () => {
 			if (service === AgentContextService) return agents;
 			throw new Error('Unexpected service');
 		});
-		const service = Object.create(InstanceAiService.prototype) as ServiceInternals;
+		const service = Object.create(AssistantAgentFactory.prototype) as ServiceInternals;
 		const reference = { agentId: 'agent-1', threadId: 'preview-thread-1' };
 		const context = mock<InstanceAiContext>({
 			projectId: 'project-1',

@@ -1,12 +1,11 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
-
-import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { UserCalledMCPToolEventPayload } from '../mcp.types';
 
 export function trackAndReturnToolError(
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	telemetryPayload: UserCalledMCPToolEventPayload,
 	error: unknown,
 	formatOutput: (message: string) => Record<string, unknown> = (message) => ({ error: message }),
@@ -24,7 +23,7 @@ export function trackAndReturnToolError(
 }
 
 export function trackAndRethrowToolError(
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	telemetryPayload: UserCalledMCPToolEventPayload,
 	error: unknown,
 ): never {

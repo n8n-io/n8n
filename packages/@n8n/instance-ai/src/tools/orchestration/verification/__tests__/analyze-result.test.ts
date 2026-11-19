@@ -111,7 +111,7 @@ describe('analyzeVerificationResult — chat model failures', () => {
 		expect(analysis.success).toBe(false);
 		expect(analysis.remediation?.reason).toBe('chat_model_failure');
 		expect(analysis.remediation?.shouldEdit).toBe(true);
-		expect(analysis.remediation?.guidance).toContain('explore-resources');
+		expect(analysis.remediation?.guidance).toContain('get_node_parameter_options');
 	});
 
 	it('includes precomputed replacement suggestions in recovery guidance', () => {
@@ -237,7 +237,7 @@ describe('analyzeVerificationResult — chat model failures', () => {
 
 		expect(analysis.remediation?.reason).toBe('chat_model_failure');
 		expect(analysis.remediation?.guidance).not.toContain('claude-x');
-		expect(analysis.remediation?.guidance).toContain('explore-resources');
+		expect(analysis.remediation?.guidance).toContain('get_node_parameter_options');
 	});
 
 	it('omits n8n credits when the gateway covers a different node than the failing one', () => {
@@ -703,5 +703,63 @@ describe('analyzeVerificationResult — redacted runs', () => {
 
 		expect(analysis.remediation).toMatchObject({ reason: 'runtime_failure', shouldEdit: true });
 		expect(analysis.redactionNote).toBeUndefined();
+	});
+});
+
+describe('analyzeVerificationResult — skipped wait delays', () => {
+	const waitOutcome = makeBuildOutcome({
+		nodeSimulationPlan: [
+			{
+				nodeName: 'Wait Before Retry',
+				verdict: 'execute',
+				reason: 'Time-based wait — verification runs it without the delay',
+				confidence: 'high',
+				source: 'deterministic',
+			},
+			{
+				nodeName: 'Wait Before Report',
+				verdict: 'execute',
+				reason: 'Time-based wait — verification runs it without the delay',
+				confidence: 'high',
+				source: 'deterministic',
+			},
+		],
+	});
+
+	function analyze(executedNodeNames: string[]) {
+		return analyzeVerificationResult({
+			result: {
+				executionId: 'exec-1',
+				status: 'success',
+				executedNodeNames,
+				data: Object.fromEntries(executedNodeNames.map((name) => [name, [{}]])),
+				skippedWaitNodeNames: ['Wait Before Retry', 'Wait Before Report'],
+			} as unknown as ExecutionRunResult,
+			buildOutcome: waitOutcome,
+			simulatedNodes: [],
+			stateBefore: undefined,
+			runId: 'run-1',
+		});
+	}
+
+	it('counts a wait that ran without its delay as reached', () => {
+		const analysis = analyze(['Trigger', 'Wait Before Retry']);
+
+		expect(analysis.success).toBe(true);
+		expect(analysis.nodesExecuted).toContain('Wait Before Retry');
+		expect(analysis.reachedSimulatedNodes).toEqual([]);
+	});
+
+	it('names only the reached waits whose delay was skipped', () => {
+		const analysis = analyze(['Trigger', 'Wait Before Retry']);
+
+		expect(analysis.simulationNote).toContain('Wait Before Retry');
+		expect(analysis.simulationNote).not.toContain('Wait Before Report');
+	});
+
+	it('adds no note when no skipped wait was reached', () => {
+		const analysis = analyze(['Trigger']);
+
+		expect(analysis.simulationNote).toBeUndefined();
 	});
 });

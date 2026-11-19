@@ -2,9 +2,7 @@ import type { ImportBlockingIssue } from '@n8n/api-types';
 
 import type { BlockingIssue } from '../n8n-packages.types';
 
-// ImportBlockingIssue is a zod mirror of this BlockingIssue union, kept separate because
-// @n8n/api-types cannot depend on `packages/cli` (the dependency runs the other way). This
-// check keeps them from drifting.
+// The shared schema must match the backend-specific BlockingIssue variants.
 describe('BlockingIssue / ImportBlockingIssue contract', () => {
 	it('mirrors the schema inferred from importBlockingIssueSchema exactly, variant by variant', () => {
 		expectTypeOf<Extract<BlockingIssue, { type: 'workflow-conflict' }>>().branded.toEqualTypeOf<
@@ -76,6 +74,9 @@ describe('BlockingIssue / ImportBlockingIssue contract', () => {
 		>();
 		expectTypeOf<Extract<BlockingIssue, { type: 'policy-violation' }>>().branded.toEqualTypeOf<
 			Extract<ImportBlockingIssue, { type: 'policy-violation' }>
+		>();
+		expectTypeOf<Extract<BlockingIssue, { type: 'policy-check-failed' }>>().branded.toEqualTypeOf<
+			Extract<ImportBlockingIssue, { type: 'policy-check-failed' }>
 		>();
 		expectTypeOf<
 			Extract<BlockingIssue, { type: 'credential-policy-violation' }>

@@ -1,35 +1,51 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useDebounceFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	N8nButton,
+	N8nEmptyState,
+	N8nEnterpriseReadinessBadge,
 	N8nHeading,
+	N8nIcon,
+	N8nInput,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
+	N8nSwitch,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { TableOptions } from '@n8n/design-system';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
-import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { DEBOUNCE_TIME, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { PREFERENCES_EMPTY_STATE_EXPERIMENT } from '@/app/constants/experiments';
 import PreferencesEmptyStateAssistant from '@/experiments/preferencesEmptyState/components/PreferencesEmptyStateAssistant.vue';
 import PreferencesEmptyStateExamples from '@/experiments/preferencesEmptyState/components/PreferencesEmptyStateExamples.vue';
+import type { PreferenceExample } from '@/experiments/preferencesEmptyState/preferenceExamples';
 import { usePreferencesEmptyStateExperiment } from '@/experiments/preferencesEmptyState/usePreferencesEmptyStateExperiment';
 
 import PreferenceModal from '../components/PreferenceModal.vue';
 import PreferencesTable from '../components/PreferencesTable.vue';
-import { PREFERENCES_DEFAULT_PAGE_SIZE, PREFERENCES_DEFAULT_SORT_BY } from '../context.constants';
+import { CONTEXT_DEFAULT_SORT_BY, PREFERENCES_DEFAULT_PAGE_SIZE } from '../context.constants';
 import { useContextStore } from '../context.store';
 import type { AiPreferenceScope } from '@n8n/api-types';
 
 import type { Preference } from '../context.types';
-import { preferenceScope, toPreferenceSortOption } from '../context.utils';
+import {
+	canManageContextPreferences,
+	isContextPreferencesEnabled,
+	keepSortOnClear,
+	preferenceScope,
+	toPreferenceSortOption,
+} from '../context.utils';
 
 const i18n = useI18n();
 const router = useRouter();
@@ -37,6 +53,7 @@ const documentTitle = useDocumentTitle();
 const message = useMessage();
 const telemetry = useTelemetry();
 const contextStore = useContextStore();
+const settingsStore = useSettingsStore();
 const preferencesEmptyStateExperiment = usePreferencesEmptyStateExperiment();
 const emptyStateVariant = preferencesEmptyStateExperiment.variant;
 const { showError, showMessage } = useToast();
@@ -44,29 +61,64 @@ const { showError, showMessage } = useToast();
 const tableOptions = ref<TableOptions>({
 	page: 0,
 	itemsPerPage: PREFERENCES_DEFAULT_PAGE_SIZE,
-	sortBy: PREFERENCES_DEFAULT_SORT_BY,
+	sortBy: CONTEXT_DEFAULT_SORT_BY,
 });
 const selection = ref<string[]>([]);
+const search = ref('');
+// The term of the last load that finished. It differs from `search` while a load is pending.
+const appliedSearch = ref('');
 const loadFailed = ref(false);
+let latestLoad = 0;
+
+const canManagePreferences = canManageContextPreferences();
+const preferencesEnabled = computed(() => isContextPreferencesEnabled());
+const preferencesSwitchOn = computed(() => settingsStore.settings.aiPreferences?.enabled === true);
+const preferencesManagedByEnv = computed(
+	() => settingsStore.settings.aiPreferences?.managedByEnv === true,
+);
+const isSavingSwitch = ref(false);
 
 const dialogTarget = ref<Preference | 'new' | null>(null);
+const openedExample = ref<PreferenceExample>();
 
-// A failed load also reports zero rows, so the empty state must not stand in for it.
+// The search runs on the server: the count and the page both describe the matching rows.
+// The applied term counts too, so clearing a search with no matches does not show the
+// empty state before the unfiltered reload arrives.
+const isFiltered = computed(() => search.value.trim() !== '' || appliedSearch.value !== '');
+// A failed load also reports zero rows, so the empty state must not stand in for it. A
+// search that matches nothing shows an empty table, not "No preferences yet".
 const showEmptyState = computed(
-	() => !contextStore.loading && !loadFailed.value && contextStore.count === 0,
+	() => !contextStore.loading && !loadFailed.value && !isFiltered.value && contextStore.count === 0,
+);
+const showAssistantEmptyState = computed(
+	() =>
+		showEmptyState.value &&
+		emptyStateVariant.value === PREFERENCES_EMPTY_STATE_EXPERIMENT.assistant,
+);
+const showExamplesEmptyState = computed(
+	() =>
+		showEmptyState.value && emptyStateVariant.value === PREFERENCES_EMPTY_STATE_EXPERIMENT.examples,
 );
 const selectedCount = computed(() => selection.value.length);
 
-async function load() {
+/** Resolves to `true` only when this load succeeded and no newer load replaced it. */
+async function load(): Promise<boolean> {
+	const run = ++latestLoad;
 	const { page = 0, itemsPerPage = PREFERENCES_DEFAULT_PAGE_SIZE } = tableOptions.value;
 	const sortBy = toPreferenceSortOption(tableOptions.value.sortBy);
+	const term = search.value.trim();
+	const filter = term ? { search: term } : {};
 	try {
 		await contextStore.fetchPreferences({
 			skip: page * itemsPerPage,
 			take: itemsPerPage,
 			sortBy,
+			...filter,
 		});
+		// A newer load owns the page now. Its filter and page replace this one.
+		if (run !== latestLoad) return false;
 		loadFailed.value = false;
+		appliedSearch.value = term;
 
 		// Deleting the last rows of a page can leave the page past the end.
 		const lastPage = Math.max(0, Math.ceil(contextStore.count / itemsPerPage) - 1);
@@ -76,25 +128,45 @@ async function load() {
 				skip: lastPage * itemsPerPage,
 				take: itemsPerPage,
 				sortBy,
+				...filter,
 			});
 		}
+		return run === latestLoad;
 	} catch (error) {
+		if (run !== latestLoad) return false;
 		loadFailed.value = true;
 		showError(error, i18n.baseText('settings.context.preferences.error.load'));
+		return false;
 	}
 }
 
+/**
+ * A new search starts at the first page with an empty selection, so a bulk delete never
+ * reaches rows that the search hides.
+ */
+async function onSearch() {
+	selection.value = [];
+	tableOptions.value = { ...tableOptions.value, page: 0 };
+	await load();
+}
+
+const onSearchDebounced = useDebounceFn(onSearch, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
+
 async function onOptionsUpdate(options: TableOptions) {
-	const [previous] = tableOptions.value.sortBy;
-	const sortBy =
-		options.sortBy.length > 0 || !previous
-			? options.sortBy
-			: [{ id: previous.id, desc: !previous.desc }];
-	tableOptions.value = { ...options, sortBy };
+	tableOptions.value = {
+		...options,
+		sortBy: keepSortOnClear(tableOptions.value.sortBy, options.sortBy),
+	};
 	await load();
 }
 
 function openCreateModal() {
+	openedExample.value = undefined;
+	dialogTarget.value = 'new';
+}
+
+function openExampleModal(example: PreferenceExample) {
+	openedExample.value = example;
 	dialogTarget.value = 'new';
 }
 
@@ -182,21 +254,37 @@ async function onDeleteSelected() {
 	});
 }
 
+async function onPreferencesEnabledChange(enabled: boolean) {
+	isSavingSwitch.value = true;
+	try {
+		await contextStore.setPreferencesEnabled(enabled);
+		if (preferencesEnabled.value) await loadVisit();
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.preferences.enable.error'));
+	} finally {
+		isSavingSwitch.value = false;
+	}
+}
+
 async function goBack() {
 	await router.push({ name: VIEWS.SETTINGS_CONTEXT });
 }
 
-onMounted(async () => {
-	documentTitle.set(i18n.baseText('settings.context.preferences.title'));
-	await load();
-	// Once for the visit, not once for each page: paging is not a second visit. A failed load
-	// reports nothing, so a zero here is an empty list and never a broken one.
-	if (loadFailed.value) return;
+// Once for the visit, not once for each page: paging is not a second visit. A failed load
+// reports nothing, so a zero here is an empty list and never a broken one. A search that
+// replaces the first load also reports nothing, because the store then holds its filtered rows.
+async function loadVisit() {
+	if (!(await load())) return;
 	telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_PREFERENCES, {
 		count: contextStore.count,
 		scope_types: [...new Set(contextStore.preferences.map((row) => preferenceScope(row)))],
 	});
 	if (contextStore.count === 0) preferencesEmptyStateExperiment.trackExposure();
+}
+
+onMounted(async () => {
+	documentTitle.set(i18n.baseText('settings.context.preferences.title'));
+	if (preferencesEnabled.value) await loadVisit();
 });
 </script>
 
@@ -213,14 +301,69 @@ onMounted(async () => {
 			:title="i18n.baseText('settings.context.preferences.title')"
 			:description="i18n.baseText('settings.context.preferences.description')"
 			:show-docs-link="false"
-		/>
+		>
+			<template #titleTrailing>
+				<N8nEnterpriseReadinessBadge
+					v-if="settingsStore.isEnterprisePlan"
+					size="xsmall"
+					data-test-id="preferences-enterprise-readiness-badge"
+				/>
+				<span v-if="canManagePreferences" :class="$style.switch">
+					<N8nTooltip
+						:disabled="!preferencesManagedByEnv"
+						:content="i18n.baseText('settings.context.preferences.enable.managedByEnv')"
+					>
+						<N8nSwitch
+							size="small"
+							:model-value="preferencesSwitchOn"
+							:disabled="isSavingSwitch || preferencesManagedByEnv"
+							:aria-label="i18n.baseText('settings.context.preferences.title')"
+							data-test-id="preferences-enable-toggle"
+							@update:model-value="onPreferencesEnabledChange"
+						/>
+					</N8nTooltip>
+				</span>
+			</template>
+		</N8nSettingsPageHeader>
 
+		<N8nText
+			v-if="!preferencesEnabled && preferencesSwitchOn"
+			color="text-light"
+			data-test-id="preferences-needs-consumer"
+		>
+			{{ i18n.baseText('settings.context.preferences.enable.needsConsumer') }}
+		</N8nText>
+		<N8nEmptyState
+			v-else-if="!preferencesEnabled"
+			:icon="{ type: 'icon', value: 'brain' }"
+			:heading="i18n.baseText('settings.context.preferences.off.title')"
+			:description="i18n.baseText('settings.context.preferences.off.description')"
+			data-test-id="preferences-off-state"
+		/>
 		<PreferencesEmptyStateAssistant
-			v-if="showEmptyState && emptyStateVariant === PREFERENCES_EMPTY_STATE_EXPERIMENT.assistant"
+			v-else-if="showAssistantEmptyState"
 			@write-own="openCreateModal"
 		/>
-		<div v-else :class="$style.tableArea">
+		<PreferencesEmptyStateExamples
+			v-else-if="showExamplesEmptyState"
+			@use-example="openExampleModal"
+			@write-own="openCreateModal"
+		/>
+		<template v-else>
 			<div :class="$style.toolbar">
+				<N8nInput
+					v-model="search"
+					:class="$style.search"
+					:placeholder="i18n.baseText('settings.context.preferences.search.placeholder')"
+					clearable
+					data-test-id="preferences-search"
+					@update:model-value="onSearchDebounced"
+				>
+					<template #prefix>
+						<N8nIcon icon="search" />
+					</template>
+				</N8nInput>
+				<span :class="$style.spacer" />
 				<N8nText v-if="selectedCount > 0" color="text-light" size="small">
 					{{
 						i18n.baseText('settings.context.preferences.selected', {
@@ -255,11 +398,7 @@ onMounted(async () => {
 				@update:options="onOptionsUpdate"
 			>
 				<template #empty>
-					<PreferencesEmptyStateExamples
-						v-if="emptyStateVariant === PREFERENCES_EMPTY_STATE_EXPERIMENT.examples"
-						@write-own="openCreateModal"
-					/>
-					<div v-else :class="$style.empty" data-test-id="preferences-empty-state">
+					<div :class="$style.empty" data-test-id="preferences-empty-state">
 						<N8nHeading tag="h2" size="medium" bold>
 							{{ i18n.baseText('settings.context.preferences.empty.title') }}
 						</N8nHeading>
@@ -274,11 +413,12 @@ onMounted(async () => {
 					</div>
 				</template>
 			</PreferencesTable>
-		</div>
+		</template>
 
 		<PreferenceModal
 			:open="dialogTarget !== null"
 			:preference="dialogTarget === 'new' ? null : dialogTarget"
+			:example="dialogTarget === 'new' ? openedExample : undefined"
 			@update:open="(open) => (dialogTarget = open ? dialogTarget : null)"
 			@saved="onSaved"
 		/>
@@ -286,16 +426,40 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
-/* Collapse the layout's own top inset; the settings shell already pads the page top. */
+/* The same frame as the Skills page: the settings shell insets the page, and the header
+   is pulled to the table's left edge. */
 .layout {
-	padding-top: 0;
+	padding: 0;
+
+	header {
+		margin-inline: 0 auto;
+		max-width: none;
+
+		> p {
+			display: block;
+			max-width: 45rem;
+		}
+	}
 }
 
-/* Toolbar and table read as one block below the centered page header, as on the API page. */
-.tableArea {
+.switch {
+	display: inline-flex;
+	margin-left: auto;
+}
+
+.toolbar {
 	display: flex;
-	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--xs);
 	width: 100%;
+}
+
+.spacer {
+	flex: 1;
+}
+
+.search {
+	max-width: 20rem;
 }
 
 .empty {
@@ -305,13 +469,5 @@ onMounted(async () => {
 	gap: var(--spacing--xs);
 	padding: var(--spacing--2xl) var(--spacing--md);
 	text-align: center;
-}
-
-.toolbar {
-	display: flex;
-	align-items: center;
-	justify-content: flex-end;
-	gap: var(--spacing--xs);
-	margin-bottom: var(--spacing--sm);
 }
 </style>

@@ -256,4 +256,70 @@ describe('ChatHistoryDropdown', () => {
 		await user.tab();
 		expect(result.queryByTestId('chat-history-list')).not.toBeInTheDocument();
 	});
+	it('keeps hover events away from every row only while a row is being renamed', async () => {
+		const renderHistory = createComponentRenderer(ChatHistoryDropdown);
+		const result = renderHistory({
+			props: {
+				items: [item('today', 0), item('older', 10)],
+				searchPlaceholder: 'Search history',
+				contentTestId: 'chat-history-list',
+				actionButtonLabel: 'Conversation actions',
+				editingItemId: 'today',
+			},
+			slots: {
+				trigger: '<button data-test-id="history-trigger">History</button>',
+				'item-edit': '<input aria-label="Rename conversation" />',
+			},
+		});
+		await fireEvent.click(result.getByTestId('history-trigger'));
+		const rows = result.getAllByTestId('chat-history-item');
+
+		// The menu moves focus from a row's own hover listeners.
+		const hoveredRows = () => {
+			const reached: number[] = [];
+			rows.forEach((row, index) => {
+				const listener = () => reached.push(index);
+				for (const type of ['pointermove', 'pointerleave']) {
+					row.addEventListener(type, listener);
+					row.dispatchEvent(new Event(type, { bubbles: true, cancelable: true }));
+					row.removeEventListener(type, listener);
+				}
+			});
+			return reached;
+		};
+		expect(hoveredRows()).toEqual([]);
+
+		await result.rerender({ editingItemId: undefined });
+		expect(hoveredRows()).toEqual([0, 0, 1, 1]);
+	});
+	it('keeps clicks and keys inside the edit row away from the row', async () => {
+		const renderHistory = createComponentRenderer(ChatHistoryDropdown);
+		const result = renderHistory({
+			props: {
+				items: [item('today', 0)],
+				searchPlaceholder: 'Search history',
+				contentTestId: 'chat-history-list',
+				actionButtonLabel: 'Conversation actions',
+				editingItemId: 'today',
+			},
+			slots: {
+				trigger: '<button data-test-id="history-trigger">History</button>',
+				'item-edit': '<input aria-label="Rename conversation" />',
+			},
+		});
+		await fireEvent.click(result.getByTestId('history-trigger'));
+		const row = result.getByTestId('chat-history-item');
+		const reached: string[] = [];
+		for (const type of ['pointerdown', 'click', 'keydown']) {
+			row.addEventListener(type, () => reached.push(type));
+		}
+
+		const input = result.getByLabelText('Rename conversation');
+		await fireEvent.pointerDown(input);
+		await fireEvent.click(input);
+		await fireEvent.keyDown(input, { key: ' ' });
+
+		expect(reached).toEqual([]);
+		expect(result.emitted().select).toBeUndefined();
+	});
 });

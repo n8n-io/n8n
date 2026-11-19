@@ -1,11 +1,7 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestUrl } from 'n8n-workflow';
 
-import {
-	databricksApiRequest,
-	getActiveCredentialType,
-	getHost,
-	type DatabricksContext,
-} from '../actions/helpers';
+import { assertLakebaseOAuth } from './lakebase';
+import { databricksApiRequest, getHost, type DatabricksContext } from '../actions/helpers';
 
 type EndpointsResponse = {
 	body?: {
@@ -25,6 +21,8 @@ export async function resolveLakebaseRestBase(
 	project: string,
 	branch: string,
 ): Promise<string> {
+	// A PAT can read the endpoints, so check before the lookup to name the real cause
+	assertLakebaseOAuth(context);
 	let cache = memo.get(context);
 	if (!cache) memo.set(context, (cache = new Map()));
 	const key = `${project}\0${branch}`;
@@ -43,18 +41,18 @@ async function fetchLakebaseRestBase(
 	project: string,
 	branch: string,
 ): Promise<string> {
-	// `authentication` is a top-level option, not per item, so index 0 is right for every caller
-	const credentialType = getActiveCredentialType(context);
-	const host = await getHost(context, credentialType);
-	const parent = `${host}/api/2.0/postgres/projects/${encodeURIComponent(project)}/branches/${encodeURIComponent(branch)}`;
-
-	const response: EndpointsResponse = await databricksApiRequest(context, credentialType, {
-		method: 'GET',
-		url: `${parent}/endpoints`,
-		headers: { Accept: 'application/json' },
-		json: true,
-		returnFullResponse: true,
-	});
+	const host = await getHost(context, 'databricksOAuth2Api');
+	const response: EndpointsResponse = await databricksApiRequest(
+		context,
+		'databricksOAuth2Api',
+		requestUrl`${host}/api/2.0/postgres/projects/${project}/branches/${branch}/endpoints`,
+		{
+			headers: { Accept: 'application/json' },
+			json: true,
+			method: 'GET',
+			returnFullResponse: true,
+		},
+	);
 	const endpointHost = response.body?.endpoints?.find(
 		(e) => e.status?.endpoint_type === 'ENDPOINT_TYPE_READ_WRITE',
 	)?.status?.hosts?.host;
