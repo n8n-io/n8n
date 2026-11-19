@@ -4057,6 +4057,46 @@ describe('LogStreamingEventRelay', () => {
 			);
 		});
 	});
+	describe('provisioning settings events', () => {
+		const user = {
+			id: 'user-1',
+			email: 'owner@n8n.io',
+			firstName: 'Own',
+			lastName: 'Er',
+			role: { slug: 'global:owner' },
+		};
+		const redactedUser = {
+			userId: 'user-1',
+			_email: 'owner@n8n.io',
+			_firstName: 'Own',
+			_lastName: 'Er',
+			globalRole: 'global:owner',
+		};
+
+		it('should log a provisioning settings save with the state after it', () => {
+			eventService.emit('provisioning-settings-updated', {
+				user,
+				authenticationMethod: 'oidc',
+				assignmentMethod: 'instance_role',
+				roleMappingMethod: 'idp_rule_mapping',
+				instanceRuleCount: 0,
+				projectRuleCount: 0,
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.provisioning.settings.updated',
+				payload: {
+					...redactedUser,
+					authenticationMethod: 'oidc',
+					assignmentMethod: 'instance_role',
+					roleMappingMethod: 'idp_rule_mapping',
+					instanceRuleCount: 0,
+					projectRuleCount: 0,
+				},
+			});
+		});
+	});
+
 	describe('SCIM events', () => {
 		const user = {
 			id: 'user-1',
