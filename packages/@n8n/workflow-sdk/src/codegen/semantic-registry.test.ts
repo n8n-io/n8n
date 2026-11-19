@@ -54,6 +54,25 @@ describe('semantic-registry', () => {
 			expect(getOutputName(node.type, 3, node)).toBe('fallback');
 		});
 
+		it('names the Switch output after the rules as error when there is no fallback output', () => {
+			const node = createNodeJSON({
+				type: 'n8n-nodes-base.switch',
+				parameters: { rules: { values: [{}, {}] } },
+				onError: 'continueErrorOutput',
+			});
+			expect(getOutputName(node.type, 2, node)).toBe('error');
+		});
+
+		it('names the Switch output after the extra fallback output as error', () => {
+			const node = createNodeJSON({
+				type: 'n8n-nodes-base.switch',
+				parameters: { rules: { values: [{}, {}] }, options: { fallbackOutput: 'extra' } },
+				onError: 'continueErrorOutput',
+			});
+			expect(getOutputName(node.type, 2, node)).toBe('fallback');
+			expect(getOutputName(node.type, 3, node)).toBe('error');
+		});
+
 		it('returns generic output name for unknown node types', () => {
 			const node = createNodeJSON({ type: 'n8n-nodes-base.unknown' });
 			expect(getOutputName(node.type, 0, node)).toBe('output0');

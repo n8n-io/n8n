@@ -57,23 +57,45 @@ function isErrorOutputIndex(graphNode: GraphNode, outputIndex: number): boolean 
 }
 
 /**
- * Collect the output indexes of a source node that connect to `nodeName`,
- * from both the connections map and connections declared via node's .to().
+ * Classify a connection from a source node. Connections declared with
+ * `.onError()` use the `error` connection type at output 0; connections in the
+ * `main` type leave the error output only at the type-specific error index.
  */
-function findOutputIndexesTo(nodeName: string, graphNode: GraphNode): number[] {
-	const outputIndexes: number[] = [];
+function isErrorConnection(
+	graphNode: GraphNode,
+	connectionType: string | undefined,
+	outputIndex: number,
+): boolean {
+	if (connectionType === 'error') return true;
+	return isErrorOutputIndex(graphNode, outputIndex);
+}
 
-	for (const [outputIndex, targets] of graphNode.connections.get('main') ?? []) {
-		if (targets.some((target) => target.node === nodeName)) outputIndexes.push(outputIndex);
+/**
+ * Collect, for each connection from a source node to `nodeName`, whether it
+ * leaves the error output. Reads both the connections map and connections
+ * declared via the node's .to() / .onError().
+ */
+function findConnectionKindsTo(nodeName: string, graphNode: GraphNode): boolean[] {
+	const kinds: boolean[] = [];
+
+	for (const [connectionType, outputs] of graphNode.connections) {
+		if (connectionType !== 'main' && connectionType !== 'error') continue;
+		for (const [outputIndex, targets] of outputs) {
+			if (targets.some((target) => target.node === nodeName)) {
+				kinds.push(isErrorConnection(graphNode, connectionType, outputIndex));
+			}
+		}
 	}
 
 	if (typeof graphNode.instance.getConnections === 'function') {
 		for (const conn of graphNode.instance.getConnections()) {
-			if (resolveTargetNodeName(conn.target) === nodeName) outputIndexes.push(conn.outputIndex);
+			if (resolveTargetNodeName(conn.target) === nodeName) {
+				kinds.push(isErrorConnection(graphNode, conn.connectionType, conn.outputIndex));
+			}
 		}
 	}
 
-	return outputIndexes;
+	return kinds;
 }
 
 /**
@@ -84,8 +106,7 @@ function findPredecessors(nodeName: string, nodes: ReadonlyMap<string, GraphNode
 	const predecessors = new Map<string, Predecessor>();
 
 	for (const [sourceNodeName, graphNode] of nodes) {
-		for (const outputIndex of findOutputIndexesTo(nodeName, graphNode)) {
-			const isErrorOutput = isErrorOutputIndex(graphNode, outputIndex);
+		for (const isErrorOutput of findConnectionKindsTo(nodeName, graphNode)) {
 			predecessors.set(`${sourceNodeName}:${isErrorOutput}`, {
 				name: sourceNodeName,
 				isErrorOutput,
@@ -94,6 +115,11 @@ function findPredecessors(nodeName: string, nodes: ReadonlyMap<string, GraphNode
 	}
 
 	return [...predecessors.values()];
+}
+
+/** Label a predecessor in messages, so its success and error outputs read apart. */
+function describePredecessor(pred: Predecessor): string {
+	return pred.isErrorOutput ? `${pred.name} (error output)` : pred.name;
 }
 
 /**
@@ -127,8 +153,8 @@ function validateJsonPath(
 
 	for (const pred of predecessors) {
 		const found = predecessorHasPath(pred, fieldPath, outputShapes);
-		if (found === true) validIn.push(pred.name);
-		if (found === false) invalidIn.push(pred.name);
+		if (found === true) validIn.push(describePredecessor(pred));
+		if (found === false) invalidIn.push(describePredecessor(pred));
 	}
 
 	const fieldPathStr = fieldPath.join('.');

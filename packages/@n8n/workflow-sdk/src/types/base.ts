@@ -165,19 +165,31 @@ interface ErrorIndexNodeInfo {
 }
 
 /**
+ * Count the natural outputs of a Switch node in rules mode: one for each rule,
+ * plus one when `options.fallbackOutput` is `'extra'` (as in SwitchV3).
+ */
+function countSwitchOutputs(parameters?: IDataObject): number {
+	const rules = parameters?.rules as { rules?: unknown[]; values?: unknown[] } | undefined;
+	const rulesArray = rules?.rules ?? rules?.values;
+	const numCases = Array.isArray(rulesArray) ? rulesArray.length : 4;
+	const options = parameters?.options;
+	const hasFallbackOutput =
+		typeof options === 'object' &&
+		options !== null &&
+		'fallbackOutput' in options &&
+		options.fallbackOutput === 'extra';
+	return hasFallbackOutput ? numCases + 1 : numCases;
+}
+
+/**
  * Resolve the output index at which a node's error pin should live in the
- * modern (main[n]) format. Kept in sync with the NODE_SEMANTICS table in
- * codegen/semantic-registry.ts — the rule is always `natural output count`,
- * with 1 as the fallback for community / unknown nodes.
+ * modern (main[n]) format. The codegen in codegen/semantic-registry.ts uses
+ * this too. The rule is always `natural output count`, with 1 as the
+ * fallback for community / unknown nodes.
  */
 export function resolveErrorOutputIndex(type: string, parameters?: IDataObject): number {
 	if (type === 'n8n-nodes-base.if') return 2; // trueBranch + falseBranch
-	if (type === 'n8n-nodes-base.switch') {
-		const rules = parameters?.rules as { rules?: unknown[]; values?: unknown[] } | undefined;
-		const rulesArray = rules?.rules ?? rules?.values;
-		const numCases = Array.isArray(rulesArray) ? rulesArray.length : 4;
-		return numCases + 1; // cases + fallback
-	}
+	if (type === 'n8n-nodes-base.switch') return countSwitchOutputs(parameters);
 	if (type === 'n8n-nodes-base.splitInBatches') return 2; // done + loop
 	if (type === 'n8n-nodes-base.merge') return 1; // single output
 	return 1;

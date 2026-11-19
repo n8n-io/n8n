@@ -403,22 +403,34 @@ describe('expressionPathValidator', () => {
 	describe('error output connections', () => {
 		function validateErrorBranch(options: {
 			sourceType?: string;
+			sourceParameters?: Record<string, unknown>;
 			onError?: OnError;
 			outputIndex: number;
+			outputIndexes?: number[];
+			connectionType?: string;
 			expression: string;
 			useDeclaredConnections?: boolean;
 		}) {
 			const source = createMockNode(options.sourceType ?? 'n8n-nodes-base.httpRequest', 'HTTP', {
+				parameters: options.sourceParameters,
 				output: [{ status: 'ok' }],
 				onError: options.onError ?? 'continueErrorOutput',
 			});
+			const outputIndexes = options.outputIndexes ?? [options.outputIndex];
+			const connectionType = options.connectionType ?? 'main';
 			const sourceConns = new Map<string, Map<number, ConnectionTarget[]>>();
 			if (options.useDeclaredConnections) {
-				(source as unknown as Record<string, unknown>).getConnections = () => [
-					{ target: { name: 'Handle Error' }, outputIndex: options.outputIndex },
-				];
+				(source as unknown as Record<string, unknown>).getConnections = () =>
+					outputIndexes.map((outputIndex) => ({
+						target: { name: 'Handle Error' },
+						outputIndex,
+						connectionType: options.connectionType,
+					}));
 			} else {
-				sourceConns.set('main', new Map([[options.outputIndex, [conn('Handle Error', 0)]]]));
+				sourceConns.set(
+					connectionType,
+					new Map(outputIndexes.map((index) => [index, [conn('Handle Error', 0)]])),
+				);
 			}
 			const consumer = createMockNode('n8n-nodes-base.set', 'Handle Error', {
 				parameters: { value: options.expression },
@@ -464,6 +476,69 @@ describe('expressionPathValidator', () => {
 			});
 
 			expect(issues).toHaveLength(0);
+		});
+
+		it('accepts $json.error on a connection declared with onError()', () => {
+			const issues = validateErrorBranch({
+				outputIndex: 0,
+				connectionType: 'error',
+				expression: '={{ $json.error.message }}',
+				useDeclaredConnections: true,
+			});
+
+			expect(issues).toHaveLength(0);
+		});
+
+		it('reads an error-type connection in the graph as the error output', () => {
+			const errorConnection = { outputIndex: 0, connectionType: 'error' };
+
+			expect(
+				validateErrorBranch({ ...errorConnection, expression: '={{ $json.error.message }}' }),
+			).toHaveLength(0);
+			expect(
+				validateErrorBranch({ ...errorConnection, expression: '={{ $json.missingField }}' }),
+			).toContainEqual(
+				expect.objectContaining({ code: 'INVALID_EXPRESSION_PATH', nodeName: 'Handle Error' }),
+			);
+		});
+
+		it('places the Switch error output after the rules when there is no fallback output', () => {
+			const issues = validateErrorBranch({
+				sourceType: 'n8n-nodes-base.switch',
+				sourceParameters: { rules: { values: [{}, {}] } },
+				outputIndex: 2,
+				expression: '={{ $json.error.message }}',
+			});
+
+			expect(issues).toHaveLength(0);
+		});
+
+		it('places the Switch error output after the extra fallback output', () => {
+			const switchWithFallback = {
+				sourceType: 'n8n-nodes-base.switch',
+				sourceParameters: { rules: { values: [{}, {}] }, options: { fallbackOutput: 'extra' } },
+				expression: '={{ $json.error.message }}',
+			};
+
+			expect(validateErrorBranch({ ...switchWithFallback, outputIndex: 3 })).toHaveLength(0);
+			expect(validateErrorBranch({ ...switchWithFallback, outputIndex: 2 })).toContainEqual(
+				expect.objectContaining({ code: 'INVALID_EXPRESSION_PATH', nodeName: 'Handle Error' }),
+			);
+		});
+
+		it('names the output kind when one source connects from its success and error outputs', () => {
+			const issues = validateErrorBranch({
+				outputIndex: 0,
+				outputIndexes: [0, 1],
+				expression: '={{ $json.error }}',
+			});
+
+			expect(issues).toEqual([
+				expect.objectContaining({
+					code: 'PARTIAL_EXPRESSION_PATH',
+					message: expect.stringContaining('exists in [HTTP (error output)] but NOT in [HTTP]'),
+				}),
+			]);
 		});
 
 		it('still reports $json.error on the success output', () => {

@@ -4,6 +4,7 @@ import type {
 	NodeConfig,
 	StickyNoteConfig,
 	IConnections,
+	IDataObject,
 } from './base';
 import {
 	isNodeChain,
@@ -260,23 +261,32 @@ describe('Base Types', () => {
 			expect(connections.IF.main[2]).toEqual([{ node: 'ErrorHandler', type: 'main', index: 0 }]);
 		});
 
-		it('places error at main[numCases + 1] for a Switch node using its rules length', () => {
+		function foldSwitchErrorConnection(parameters: IDataObject): IConnections {
 			const connections: IConnections = {
 				Switch: {
 					main: [[{ node: 'Case 0', type: 'main', index: 0 }]],
 					error: [[{ node: 'OnError', type: 'main', index: 0 }]],
 				},
 			};
-
 			foldLegacyErrorConnections(connections, [
-				{
-					name: 'Switch',
-					type: 'n8n-nodes-base.switch',
-					parameters: { rules: { values: [{}, {}, {}] } },
-				},
+				{ name: 'Switch', type: 'n8n-nodes-base.switch', parameters },
 			]);
+			return connections;
+		}
 
-			// 3 cases + 1 fallback = errorIndex 4
+		it('places error at main[numCases] for a Switch node without a fallback output', () => {
+			const connections = foldSwitchErrorConnection({ rules: { values: [{}, {}, {}] } });
+
+			expect(connections.Switch.main).toHaveLength(4);
+			expect(connections.Switch.main[3]).toEqual([{ node: 'OnError', type: 'main', index: 0 }]);
+		});
+
+		it('places error at main[numCases + 1] for a Switch node with the extra fallback output', () => {
+			const connections = foldSwitchErrorConnection({
+				rules: { values: [{}, {}, {}] },
+				options: { fallbackOutput: 'extra' },
+			});
+
 			expect(connections.Switch.main).toHaveLength(5);
 			expect(connections.Switch.main[4]).toEqual([{ node: 'OnError', type: 'main', index: 0 }]);
 		});
