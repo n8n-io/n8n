@@ -1,10 +1,10 @@
 import { agentSkillSchema, type SkillScanFinding, type SkillScanLocation } from '@n8n/api-types';
 import { kebabCase } from 'change-case';
-import { isIP } from 'node:net';
 import { isDeepStrictEqual } from 'node:util';
 import type { ZodIssue } from 'zod';
 
 import type { SkillContent } from './skill-content-hash';
+import { linkReviewReason } from './skill-link-review-policy';
 import { SKILL_MD } from './skill-md';
 import { codePointOf, HIDDEN_PATTERN, locate, skillMdText } from './skill-text';
 import { isScriptFile } from './skipped-files';
@@ -114,12 +114,6 @@ export function findHiddenUnicode(input: SkillScanInput): SkillScanFinding[] {
 const URL_PATTERN =
 	/\b(?:https?|wss?|ftp):\/\/(?:[^\s<>"'`()[\]{}/?#@]*@)?(?:\[[\d:a-f.]+\])?[^\s<>"'`()[\]{}]*/gi;
 
-const REVIEW_DOMAIN_GROUPS = [
-	{ domains: ['pastebin.com', 'paste.ee'], reason: 'it uses a paste site' },
-	{ domains: ['webhook.site', 'requestbin.com'], reason: 'it uses a webhook catcher' },
-	{ domains: ['bit.ly', 'tinyurl.com'], reason: 'it uses a URL shortener' },
-];
-
 /**
  * An update needs review if it links to a new domain. At import, list each domain and flag
  * destinations that need review even without a previous version.
@@ -190,15 +184,6 @@ function domainsByFile(
 		}
 	}
 	return domains;
-}
-
-function linkReviewReason(url: URL, domain: string): string | undefined {
-	const address = domain.startsWith('[') ? domain.slice(1, -1) : domain;
-	if (isIP(address)) return 'it uses an IP address';
-	if (url.protocol !== 'https:') return 'it does not use HTTPS';
-	return REVIEW_DOMAIN_GROUPS.find(({ domains }) =>
-		domains.some((base) => domain === base || domain.endsWith(`.${base}`)),
-	)?.reason;
 }
 
 /**
