@@ -16,6 +16,8 @@ import { z } from 'zod';
 import { resolveToolNodeType, type EphemeralNodeExecutor } from '@/node-execution';
 import { NodeTypesProviderMissingError, NodeTypesProxy } from '@n8n/backend-services';
 
+import { withNodeGuard } from '../../mcp-guard/chat-scope';
+import type { HydrationModel } from '../../mcp-guard/hydration-llm';
 import { AgentFileBridge, FILES_INPUT_SCHEMA } from '../agent-file-bridge.service';
 import type { InstrumentToolAdditionalData } from '../evaluation/agent-evaluation.contracts';
 import { toPolicyRefusalResult } from './policy-refusal';
@@ -27,6 +29,11 @@ export interface NodeToolFactoryContext {
 	projectId: string;
 	/** Owner of the files that the tool returns. Absent for inline agents. */
 	agentId?: string;
+	/**
+	 * Set for a test chat when the mcp-guard is on. The node runs as guarded: its network calls go to
+	 * the guard, not to the real service. Absent on every other path.
+	 */
+	guardModel?: HydrationModel;
 	/** Eval-only additionalData decoration — absent on every production path. */
 	instrumentToolAdditionalData?: InstrumentToolAdditionalData;
 }
@@ -183,17 +190,21 @@ export async function resolveNodeTool(
 							threadId: toolCtx.persistence?.threadId,
 						})
 					: undefined;
-			const result = await ctx.executor.executeInline({
-				nodeType,
-				nodeTypeVersion: toolSchema.node.nodeTypeVersion,
-				nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
-				credentialDetails: toExecutorCredentials(toolSchema.node.credentials),
-				inputData: [
-					{ json: input as IDataObject, ...(inputFiles && { binary: inputFiles.binary }) },
-				],
-				projectId: ctx.projectId,
-				...instrumentedExecution,
-			});
+			const execute = async () =>
+				await ctx.executor.executeInline({
+					nodeType,
+					nodeTypeVersion: toolSchema.node.nodeTypeVersion,
+					nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
+					credentialDetails: toExecutorCredentials(toolSchema.node.credentials),
+					inputData: [
+						{ json: input as IDataObject, ...(inputFiles && { binary: inputFiles.binary }) },
+					],
+					projectId: ctx.projectId,
+					...instrumentedExecution,
+				});
+			const result = ctx.guardModel
+				? await withNodeGuard(ctx.guardModel, execute)
+				: await execute();
 			// A refusal is returned, not thrown: thrown errors reach the chat as plain text.
 			if (result.status === 'error' && result.violations) {
 				return toPolicyRefusalResult(
