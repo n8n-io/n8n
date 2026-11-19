@@ -1,0 +1,12 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"data": {
+			"items": {
+				"type": "object"
+			},
+			"type": ["array", "object"]
+		}
+	},
+	"type": "object"
+}
