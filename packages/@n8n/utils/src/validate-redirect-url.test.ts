@@ -1,4 +1,4 @@
-import { validateRedirectUrl } from '../validate-redirect-url';
+import { validateRedirectUrl } from './validate-redirect-url';
 
 describe('validateRedirectUrl', () => {
 	it.each([

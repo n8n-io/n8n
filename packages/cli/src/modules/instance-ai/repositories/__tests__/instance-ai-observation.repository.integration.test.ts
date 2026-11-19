@@ -154,6 +154,23 @@ describe('InstanceAiObservationRepository', () => {
 			expect(await memory.getObservationLog(input)).toEqual(rows);
 		});
 
+		it('stores the working set and matches the next writer on position only', async () => {
+			const first = batch();
+			first.nextCursor.workingSet = 'Plan\n- [ ] Ship it';
+			expect(await memory.commitObservationLogBatch(first)).toBe('committed');
+			const cursor = await memory.getCursor(THREAD);
+			expect(cursor?.workingSet).toBe('Plan\n- [ ] Ship it');
+
+			// A different working set in the expected cursor must still match.
+			const next = batch({ ...cursor!, workingSet: 'stale working set' });
+			next.nextCursor.lastObservedMessageId = 'm3';
+			next.nextCursor.lastObservedAt = new Date(3);
+			next.nextCursor.workingSet = 'Plan\n- [x] Ship it';
+
+			expect(await memory.commitObservationLogBatch(next)).toBe('committed');
+			expect((await memory.getCursor(THREAD))?.workingSet).toBe('Plan\n- [x] Ship it');
+		});
+
 		it.each([false, true])(
 			'accepts only one competing writer with an existing cursor: %s',
 			async (existing) => {
