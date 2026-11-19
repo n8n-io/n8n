@@ -409,5 +409,26 @@ describe('Engine', () => {
 				exit.mockRestore();
 			}
 		});
+
+		it('reports a single release error through the crash path', async () => {
+			const engine = createEngine();
+			await engine.init();
+			const shutdownError = new Error('shutdown failed');
+			runtime.shutdown.mockRejectedValueOnce(shutdownError);
+			// @ts-expect-error - Accessing protected method for testing
+			const exitWithCrash = vi.spyOn(engine, 'exitWithCrash').mockResolvedValue(undefined);
+			const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+			try {
+				// @ts-expect-error - Accessing protected method for testing
+				await engine.stopProcess();
+
+				expect(exitWithCrash).toHaveBeenCalledWith(
+					'There was an error shutting down the engine.',
+					expect.objectContaining({ errors: [shutdownError] }),
+				);
+			} finally {
+				exit.mockRestore();
+			}
+		});
 	});
 });
