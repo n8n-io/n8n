@@ -14,6 +14,7 @@ import {
 	type StepKey,
 	type StepKeyId,
 	type StepSlots,
+	type StepOutputSources,
 	type StepStatus,
 } from '../execution/execution.types';
 import { DEFAULT_STALENESS_THRESHOLDS, type StalenessThresholds } from '../execution/staleness';
@@ -198,14 +199,19 @@ export class TypeOrmStepStore implements StepStore {
 				iteration: row.iteration,
 				status: 'running',
 				outputs: null,
+				outputSources: null,
 				waitDeclaration: row.wait_declaration,
 				resumeCause: row.resume_cause,
 			};
 		});
 	}
 
-	async completeStep(id: string, outputs: StepSlots): Promise<boolean> {
-		return await this.transition(id, 'running', 'completed', { outputs });
+	async completeStep(
+		id: string,
+		outputs: StepSlots,
+		outputSources: StepOutputSources | null,
+	): Promise<boolean> {
+		return await this.transition(id, 'running', 'completed', { outputs, outputSources });
 	}
 
 	async suspendStep(id: string, waitDeclaration: WaitDeclaration): Promise<boolean> {
@@ -394,6 +400,7 @@ export class TypeOrmStepStore implements StepStore {
 		to: StepStatus,
 		fields: {
 			outputs?: StepSlots;
+			outputSources?: StepOutputSources | null;
 			error?: StepError;
 			waitDeclaration?: WaitDeclaration;
 			waitTill?: Date | null;

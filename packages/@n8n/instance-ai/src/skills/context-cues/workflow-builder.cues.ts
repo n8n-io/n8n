@@ -1,4 +1,4 @@
-import { type ContextCueSet, whileSkillActive } from '@n8n/agents';
+import { type ContextCueSet, whileSkillLoaded } from '@n8n/agents';
 
 /**
  * Context cues for the `workflow-builder` skill. They are not in
@@ -7,7 +7,7 @@ import { type ContextCueSet, whileSkillActive } from '@n8n/agents';
  */
 export const WORKFLOW_BUILDER_CUES: ContextCueSet = {
 	id: 'workflow-builder',
-	isActive: whileSkillActive('workflow-builder'),
+	isActive: whileSkillLoaded('workflow-builder'),
 	cues: [
 		{
 			id: 'if-branches-on-builder',

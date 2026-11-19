@@ -935,6 +935,19 @@ The file drives four workflows:
 | `ci-owners-assign-reviewers.yml`  | Opt-in reviewer auto-assignment (label-triggered)                        |
 | `ci-owners-required-reviews.yml`  | Enforces `required` entries via the "Required Reviews" commit status     |
 
+### Auto-assign reviewers
+
+On an eligible PR into `master`, apply `Auto-assign reviewers` to request all
+owning teams. Apply `Auto-assign required reviewers` to request only teams whose
+`required` OWNERS entries match changed non-test files. If both labels are
+present, the workflow requests all owning teams.
+
+After it requests reviews, the workflow replaces the trigger labels with
+`Reviewers auto-assigned` to prevent repeat requests. While that marker is
+present, the workflow removes any trigger labels without requesting reviews
+again. If no teams match, it leaves the trigger label in place so a later
+update can try again.
+
 ### Required reviews
 
 An entry with the `required` option makes team approval mandatory: when a PR

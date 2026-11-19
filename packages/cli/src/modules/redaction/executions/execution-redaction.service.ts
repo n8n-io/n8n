@@ -4,6 +4,7 @@ import {
 	type ExecutionRedaction,
 	type ExecutionRedactionOptions,
 	type RedactableExecution,
+	loginIdOf,
 } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -19,7 +20,6 @@ import {
 
 import { ForbiddenError, ScopeForbiddenError } from '@n8n/errors';
 
-import { loginIdOf } from '@/events/login-id';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 

@@ -5,6 +5,8 @@ import { DataSource, type Repository } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { v4 as uuid } from 'uuid';
 
+import { createAgent as createTestAgent } from '@test-integration/db/agents';
+
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentFile } from '@/modules/knowledge/entities';
 import { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
@@ -40,7 +42,7 @@ describe('KnowledgeFileRepository', () => {
 
 	async function createAgent(): Promise<string> {
 		const agentId = uuid();
-		await agentRepo.insert({
+		await createTestAgent({
 			id: agentId,
 			name: 'Knowledge agent',
 			projectId,

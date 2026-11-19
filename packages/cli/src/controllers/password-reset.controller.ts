@@ -4,7 +4,7 @@ import {
 	ResolvePasswordTokenQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, PasswordUtility } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import { GLOBAL_OWNER_ROLE, PersonRepository } from '@n8n/db';
 import {
@@ -33,7 +33,6 @@ import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { createJitterMiddleware } from '@/middlewares';
 import { AuthlessRequest } from '@/requests';
-import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
 import {
 	isOidcCurrentAuthenticationMethod,

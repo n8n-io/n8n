@@ -328,6 +328,7 @@ export class ExecutionRecoveryService {
 
 		const run: IRun = {
 			data: execution.data,
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 			finished: false,
 			mode: execution.mode,
 			waitTill: execution.waitTill ?? undefined,

@@ -6,6 +6,7 @@ import { Container } from '@n8n/di';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
+import { stripToolSuffix } from '@/utils';
 import { createMember, createOwner } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
 
@@ -105,6 +106,50 @@ describe('GET /instance/access gating', () => {
 });
 
 describe('GET /node-type-policies/instance/access', () => {
+	const mockNodeTypes = (loaded: string[], generated: string[]) => {
+		const recognized = new Set(loaded);
+		nodeTypes.getKnownTypes.mockReturnValue(knownTypes([...loaded, ...generated]));
+		nodeTypes.resolveBaseName.mockImplementation((name) =>
+			name.endsWith('Tool') && !recognized.has(name)
+				? { baseName: stripToolSuffix(name), isSyntheticTool: true }
+				: { baseName: name, isSyntheticTool: false },
+		);
+	};
+
+	test('leaves out the tool variants that n8n generates, and keeps a trigger and the real tool nodes', async () => {
+		const trigger = `${SLACK}Trigger`;
+		const toolCode = '@n8n/n8n-nodes-langchain.toolCode';
+		const mcpClientTool = '@n8n/n8n-nodes-langchain.mcpClientTool';
+		mockNodeTypes([SLACK, trigger, toolCode, mcpClientTool], [`${SLACK}Tool`, `${SLACK}HitlTool`]);
+
+		const response = await testServer.authAgentFor(owner).get(`${NODE_ROUTE}/instance/access`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.types.map((type: { name: string }) => type.name)).toEqual([
+			SLACK,
+			trigger,
+			toolCode,
+			mcpClientTool,
+		]);
+	});
+
+	test('keeps a tool variant that a rule of its own decides', async () => {
+		const slackTool = `${SLACK}Tool`;
+		mockNodeTypes([SLACK], [slackTool, `${SLACK}HitlTool`]);
+		await putInstancePolicy(NODE_ROUTE, [
+			{ id: 'deny-slack-tool', action: 'deny', selector: { kind: 'name', value: slackTool } },
+			{ id: 'allow-slack', action: 'allow', selector: { kind: 'name', value: SLACK } },
+		]);
+
+		const response = await testServer.authAgentFor(owner).get(`${NODE_ROUTE}/instance/access`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.types).toEqual([
+			{ name: SLACK, access: 'allow', matchedRuleId: 'allow-slack' },
+			{ name: slackTool, access: 'deny', matchedRuleId: 'deny-slack-tool' },
+		]);
+	});
+
 	test('reports allow from the default action at version 0 when no policy is written', async () => {
 		const response = await testServer.authAgentFor(owner).get(`${NODE_ROUTE}/instance/access`);
 

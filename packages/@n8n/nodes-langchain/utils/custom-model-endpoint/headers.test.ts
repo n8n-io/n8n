@@ -1,7 +1,7 @@
 import { UserError } from '@n8n/errors';
 
-import { buildRequestHeaders, toHeaderRecord } from './headers';
-import type { EndpointCredential, LoginMethod } from './types';
+import { buildRequestHeaders, oauth2BasicCredentials, toHeaderRecord } from './headers';
+import type { EndpointCredential, LoginMethod, OAuth2Login } from './types';
 
 const endpoint = (
 	login: LoginMethod,
@@ -104,6 +104,31 @@ describe('buildRequestHeaders', () => {
 			expect(headers.authorization).toBe('Bearer sk-test');
 		});
 
+		it('never lets a minted token override the login header either', () => {
+			const headers = buildRequestHeaders({
+				endpoint: endpoint(login),
+				bearerToken: 'minted',
+			});
+
+			expect(headers.authorization).toBe('Bearer sk-test');
+		});
+
+		it('sends the minted token for OAuth2, whose own login header is empty', () => {
+			const headers = buildRequestHeaders({
+				endpoint: endpoint({
+					type: 'oauth2',
+					tokenUrl: 'https://login.example.com/token',
+					clientId: 'id',
+					clientSecret: 'secret',
+					scope: '',
+					sendCredentialsIn: 'header',
+				}),
+				bearerToken: 'minted',
+			});
+
+			expect(headers.authorization).toBe('Bearer minted');
+		});
+
 		it('never lets another header override the key of "API key in header"', () => {
 			const headers = buildRequestHeaders({
 				endpoint: endpoint(
@@ -134,6 +159,43 @@ describe('buildRequestHeaders', () => {
 
 			expect(act).toThrow(UserError);
 		});
+	});
+});
+
+describe('oauth2BasicCredentials', () => {
+	const oauth2 = (clientId: string, clientSecret: string): OAuth2Login => ({
+		type: 'oauth2',
+		tokenUrl: 'https://login.example.com/oauth2/token',
+		clientId,
+		clientSecret,
+		scope: '',
+		sendCredentialsIn: 'header',
+	});
+
+	it.each([
+		['nothing that needs encoding', 'client-1', 'cs-9f2a71c4', 'client-1:cs-9f2a71c4'],
+		[
+			'a colon in the client id, which splits the pair early when it is left raw',
+			'client:1',
+			'cs-9f2a71c4',
+			'client%3A1:cs-9f2a71c4',
+		],
+		[
+			'a space, which the form encoding writes as a plus',
+			'client 1',
+			'cs 9f2a71c4',
+			'client+1:cs+9f2a71c4',
+		],
+		[
+			'the characters base64 reads back ambiguously',
+			'client-1',
+			'cs+a/b=9f2a71c4',
+			'client-1:cs%2Ba%2Fb%3D9f2a71c4',
+		],
+	])('encodes the pair that holds %s', (_name, clientId, clientSecret, pair) => {
+		const decoded = Buffer.from(oauth2BasicCredentials(oauth2(clientId, clientSecret)), 'base64');
+
+		expect(decoded.toString('utf8')).toBe(pair);
 	});
 });
 

@@ -18,6 +18,7 @@ import {
 	N8nIcon,
 	N8nHoverCard,
 	N8nText,
+	useDropdownSearch,
 } from '@n8n/design-system';
 import type { IconOrEmoji, PathItem } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
@@ -121,6 +122,9 @@ const switcherOptions = computed<Array<DropdownMenuItemProps<string>>>(() => {
 	}));
 });
 
+const { filteredItems: filteredSwitcherOptions, handleSearch: onSwitcherSearch } =
+	useDropdownSearch(switcherOptions, { isSearchable: (item) => !item.disabled });
+
 function onSwitcherSelect(id: string) {
 	if (id === '__empty__') return;
 	emit('switch-agent', id);
@@ -183,9 +187,13 @@ function onMenuSelect(id: string) {
 				<template #append>
 					<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
 					<N8nDropdownMenu
-						:items="switcherOptions"
+						:items="filteredSwitcherOptions"
 						placement="bottom-start"
 						data-testid="agent-header-switcher"
+						searchable
+						:search-placeholder="i18n.baseText('generic.search')"
+						:empty-text="i18n.baseText('agents.noResults')"
+						@search="onSwitcherSearch"
 						@select="onSwitcherSelect"
 					>
 						<template #trigger>

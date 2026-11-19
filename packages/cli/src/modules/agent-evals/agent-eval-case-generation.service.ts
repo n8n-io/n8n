@@ -1,4 +1,4 @@
-import type { Agent } from '@n8n/agents';
+import { type Agent, isSupportedAgentProvider } from '@n8n/agents';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import {
 	MANAGED_CREDENTIAL_TOKEN,
@@ -34,7 +34,6 @@ import {
 	type CaseRevisionContext,
 } from './case-generation/case-generation-prompt';
 import { sampleDimensionTuples } from './case-generation/dimensions';
-import { isSupportedAgentProvider } from '@/credentials/credential-field-mapping';
 import { resolveCredentialAwareModelConfig } from '../agents/json-config/model-config';
 import { createAgentCredentialProvider } from '../agents/utils/agent-credential-provider';
 import { DataTableService, DataTableNameConflictError } from '@n8n/backend-module-data-table';

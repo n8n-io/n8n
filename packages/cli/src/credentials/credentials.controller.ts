@@ -102,6 +102,7 @@ export class CredentialsController {
 			includeData: query.includeData,
 			onlySharedWithMe: query.onlySharedWithMe,
 			includeGlobal: query.includeGlobal,
+			includeRestrictions: query.includeRestrictions,
 			filters: {
 				externalSecretsStore: query.externalSecretsStore,
 			},

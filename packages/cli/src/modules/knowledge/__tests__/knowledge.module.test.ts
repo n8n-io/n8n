@@ -1,11 +1,10 @@
 import type { FrontendModuleSettings } from '@n8n/api-types';
+import { ExecutionDataJsonStore } from '@n8n/backend-services';
 import { S3ByteStore } from '@n8n/blob-storage';
 import { ObjectStoreService } from '@n8n/blob-storage/object-store';
 import { ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
-
-import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
 
 import {
 	AgentFile,
@@ -30,13 +29,14 @@ describe('KnowledgeModule', () => {
 	});
 
 	describe('settings()', () => {
-		it('exposes the configured upload limits in bytes and counts', async () => {
+		it('exposes the configured upload limits in bytes and counts, and the collections override', async () => {
 			Container.set(
 				KnowledgeConfig,
 				mock<KnowledgeConfig>({
 					maxFileSizeBytes: 5 * 1024 * 1024,
 					maxFilesPerUpload: 3,
 					maxTotalSizeBytes: 500 * 1024 * 1024,
+					collectionsEnabled: true,
 				}),
 			);
 
@@ -46,6 +46,7 @@ describe('KnowledgeModule', () => {
 					maxFilesPerUpload: 3,
 					maxTotalSizeBytes: 500 * 1024 * 1024,
 				},
+				collectionsEnabled: true,
 			});
 		});
 	});
