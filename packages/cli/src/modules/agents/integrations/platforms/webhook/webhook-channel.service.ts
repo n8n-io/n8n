@@ -69,8 +69,8 @@ export interface WebhookChannelReply {
 /**
  * SPIKE (agent-chat-embed): the chat surface settings of a channel. Shaped like a
  * channel setting (the product puts it in the channel entry's `settings`).
- * Everything is off by default. Methods are independent; `public` lets anyone
- * in, the others still give an identity when enabled.
+ * Everything is off by default. Methods are independent; `anonymous` lets anyone
+ * in without sign-in, the others still give an identity when enabled.
  *
  * Two surfaces, side by side for comparison:
  * - `chat` on the API (webhook) channel: v1, each turn runs on the webhook path.
@@ -86,16 +86,25 @@ const SURFACE_CHANNEL: Record<ChatSurfaceName, string> = {
 	chat: WEBHOOK_INTEGRATION_TYPE,
 	'n8n-chat': N8N_CHAT_INTEGRATION_TYPE,
 };
-export const CHAT_SURFACE_METHODS = ['n8nUsers', 'magicLinks', 'public'] as const;
+export const CHAT_SURFACE_METHODS = ['n8nUsers', 'magicLinks', 'anonymous'] as const;
 export type ChatSurfaceMethod = (typeof CHAT_SURFACE_METHODS)[number];
 const method = z.boolean().default(false);
 export const ChatSurfaceSettingsSchema = z.object({
 	/** "Share outside n8n": off means no hosted page, no embed, 404 on every chat route. */
 	enabled: z.boolean().default(false),
-	methods: z.object({ n8nUsers: method, magicLinks: method, public: method }).default({}),
+	methods: z
+		.preprocess(
+			// Settings saved before the rename to "anonymous" keep their value.
+			(value) =>
+				value && typeof value === 'object' && 'public' in value && !('anonymous' in value)
+					? { ...value, anonymous: value.public }
+					: value,
+			z.object({ n8nUsers: method, magicLinks: method, anonymous: method }),
+		)
+		.default({}),
 	/**
 	 * Option B only. Features for identified principals (n8n users, invitees),
-	 * never for anonymous visitors of a public chat. Only `uploads` is built.
+	 * never for anonymous visitors. Only `uploads` is built.
 	 */
 	features: z.object({ uploads: method }).default({}),
 });
@@ -207,7 +216,7 @@ export class WebhookChannelService {
 	/**
 	 * SPIKE (agent-chat-embed): the agent chat protocol of @n8n/agent-chat (see
 	 * its src/api.ts). The chat page belongs to the n8n Chat channel. The caller's
-	 * identity (an n8n user, or nobody on a public page) is part of the thread id,
+	 * identity (an n8n user, or nobody when anonymous chat is on) is part of the thread id,
 	 * so a conversation id only works for the identity that started it.
 	 */
 	async *chat(request: {
@@ -222,7 +231,7 @@ export class WebhookChannelService {
 				throw new WebhookChannelError(404, 'agent_not_found', 'This agent has no chat page');
 			const { agent, surface } = page;
 			const user = request.user;
-			if (!user && !surface.methods.public) throw accessError(surface);
+			if (!user && !surface.methods.anonymous) throw accessError(surface);
 			const body = (request.body ?? {}) as Record<string, unknown>;
 			const message = typeof body.message === 'string' ? body.message.trim() : '';
 			if (!message) throw new WebhookChannelError(400, 'invalid_request', 'message is required');

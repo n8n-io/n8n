@@ -56,9 +56,9 @@ const token = ref<string | undefined>(stored?.token);
 const userName = ref<string | undefined>(stored?.user);
 const signingIn = ref(false);
 const sameOrigin = new URL(props.base, location.href).origin === location.origin;
-// No identity and the chat is not public: the visitor cannot chat yet (or at all).
+// No identity and anonymous chat is off: the visitor cannot chat yet (or at all).
 const needsLogin = computed(
-	() => !!config.value && !config.value.methods.public && !config.value.user && !token.value,
+	() => !!config.value && !config.value.methods.anonymous && !config.value.user && !token.value,
 );
 const signedInAs = computed(() => config.value?.user?.name ?? userName.value);
 
@@ -475,7 +475,7 @@ function onKeydown(event: KeyboardEvent) {
 					Sign out
 				</button>
 			</div>
-			<!-- Public chat without an identity: say so, so missing features (uploads, memory) make sense. -->
+			<!-- Anonymous chat without an identity: say so, so missing features (uploads, memory) make sense. -->
 			<div
 				v-else-if="config && !needsLogin && !signedInAs"
 				class="agent-chat__identity"

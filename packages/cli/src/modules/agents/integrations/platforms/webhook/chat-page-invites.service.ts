@@ -68,7 +68,8 @@ export class ChatPageInviteService {
 		this.logger.warn(
 			`[SPIKE agent-chat-embed, DEV ONLY, no email sent] Magic link for "${label}" (expires ${invite.expiresAt}): ${link}`,
 		);
-		return invite;
+		// The caller shows the link once; only its hash is stored.
+		return { invite, link };
 	}
 
 	async revoke(agentId: string, surface: ChatSurfaceName, inviteId: string) {

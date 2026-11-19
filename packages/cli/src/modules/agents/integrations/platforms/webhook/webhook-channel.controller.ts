@@ -188,7 +188,7 @@ export class WebhookChannelController {
 			}
 		} else {
 			try {
-				if (!user && !page.surface.methods.public) throw accessError(page.surface);
+				if (!user && !page.surface.methods.anonymous) throw accessError(page.surface);
 				await this.externalChat.send({
 					agent: page.agent,
 					surface: page.surface,
@@ -426,7 +426,7 @@ export class WebhookChannelController {
 		}
 		try {
 			const user = await this.chatUser(req, page.name);
-			if (!user && !page.surface.methods.public) throw accessError(page.surface);
+			if (!user && !page.surface.methods.anonymous) throw accessError(page.surface);
 			res.json(await handle(page, user));
 		} catch (error) {
 			const channelError =

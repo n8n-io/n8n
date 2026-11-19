@@ -78,7 +78,7 @@ export function toExternalEvent(event: AgentSseEvent): ExternalChatEvent | undef
  * go through n8n Chat's backend (durable message queue, consumer, execution
  * recording, Stop) as an external principal, not as an n8n user and not as the
  * agent owner. The principal key is `user-<id>`, `invite-<id>` or, for an
- * anonymous visitor of a public chat, `anon-<conversationId>` (the conversation
+ * anonymous visitor, `anon-<conversationId>` (the conversation
  * ID is then the visitor's only credential).
  */
 @Service()

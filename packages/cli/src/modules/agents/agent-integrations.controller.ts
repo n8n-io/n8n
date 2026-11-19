@@ -98,26 +98,33 @@ export class AgentIntegrationsController {
 		req: AuthenticatedRequest<
 			{ projectId: string },
 			unknown,
-			{ label?: unknown; expiresInSeconds?: unknown }
+			{ label?: unknown; expiresInSeconds?: unknown; replaces?: unknown }
 		>,
 		_res: Response,
 		@Param('agentId') agentId: string,
 		@Param('surface') surface: string,
 	) {
 		const name = chatSurfaceName(surface);
-		const label = typeof req.body?.label === 'string' ? req.body.label.trim().slice(0, 60) : '';
+		// "Create new link" for an existing recipient: revoke the old link, keep the name.
+		// The old token is never shown again (only its hash is stored).
+		const replaced =
+			typeof req.body?.replaces === 'string'
+				? (await this.chatPageInvites.list(agentId, name)).find((i) => i.id === req.body.replaces)
+				: undefined;
+		if (req.body?.replaces !== undefined && !replaced) throw new NotFoundError('Invite not found');
+		const label =
+			replaced?.label ??
+			(typeof req.body?.label === 'string' ? req.body.label.trim().slice(0, 60) : '');
 		if (!label) throw new BadRequestError('A recipient name or email is required');
 		const seconds = Number(req.body?.expiresInSeconds);
 		// Default 7 days; a shorter expiry is for testing only.
 		const ttlMs =
 			Number.isFinite(seconds) && seconds > 0 ? Math.min(seconds, 30 * 86400) * 1000 : undefined;
-		const { tokenHash: _tokenHash, ...invite } = await this.chatPageInvites.create(
-			agentId,
-			name,
-			label,
-			ttlMs,
-		);
-		return invite;
+		if (replaced) await this.chatPageInvites.revoke(agentId, name, replaced.id);
+		const { invite, link } = await this.chatPageInvites.create(agentId, name, label, ttlMs);
+		const { tokenHash: _tokenHash, ...rest } = invite;
+		// The link is in this response only. Test instances usually have no SMTP.
+		return { ...rest, link };
 	}
 
 	@Delete('/:agentId/chat-pages/:surface/invites/:inviteId')
