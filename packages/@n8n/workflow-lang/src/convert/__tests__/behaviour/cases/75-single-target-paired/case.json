@@ -1,0 +1,13 @@
+{
+	"description": "The readers read the item of the trigger (one item) through a Code node that gives three new items for the one trigger item, and a Filter node: v1 pairs each item with the trigger item",
+	"trigger": {
+		"body": {
+			"tag": "t"
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	]
+}

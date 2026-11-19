@@ -1,0 +1,11 @@
+{
+	"description": "A Code node that runs in the fallback host (it has a class) reads the item of a node of three items through a Code node that gives two new items: v1 fails with the error of `.item`",
+	"trigger": {
+		"body": {
+			"tag": "t"
+		}
+	},
+	"compare": [
+		"Read Each"
+	]
+}

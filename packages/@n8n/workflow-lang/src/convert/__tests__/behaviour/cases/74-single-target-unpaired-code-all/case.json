@@ -1,0 +1,11 @@
+{
+	"description": "A Code node in 'all items' mode reads the item of the trigger (one item): the node before the reader gives two new items for three input items, so its items have no paired item and v1 fails",
+	"trigger": {
+		"body": {
+			"tag": "t"
+		}
+	},
+	"compare": [
+		"Read All"
+	]
+}

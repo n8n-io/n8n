@@ -230,15 +230,18 @@ const __list = (name) => (__lists[name] ??= (__nodes[name] || []).map((json, k) 
 // of the node with the input items by position, or the converter gives the index of the paired
 // item of each input item (\`$pairs\`): a number, or the error of v1 for that item.
 const __pairs = __context.$pairs || {};
-const __paired = (name, k, matching) => {
+const __paired = (name, k, method) => {
 	if (k === undefined) {
-		if (matching) __fail('Missing item index for .itemMatching()');
+		if (method === 'itemMatching') __fail('Missing item index for .itemMatching()');
 		k = __current;
 	}
 	if (!__inputItems()[k]) __fail('Can’t get data');
 	if (!Object.prototype.hasOwnProperty.call(__pairs, name)) return __list(name)[k];
 	const pairs = __pairs[name];
-	if (typeof pairs[k] !== 'number') __fail(pairs[k].$error);
+	// The error of v1 for an item without a paired item names the method of the read.
+	if (typeof pairs[k] !== 'number') {
+		__fail(String(pairs[k].$error).replace(/^Paired item data for item from node /, 'Paired item data for ' + method + ' from node '));
+	}
 	return __list(name)[pairs[k]];
 };
 const $ = (name) => {
@@ -253,9 +256,9 @@ const $ = (name) => {
 		all: () => list,
 		first: () => list[0],
 		last: () => list[list.length - 1],
-		get item() { return __paired(name, undefined, false); },
-		itemMatching: (k) => __paired(name, k, true),
-		pairedItem: (k) => __paired(name, k, false),
+		get item() { return __paired(name, undefined, 'item'); },
+		itemMatching: (k) => __paired(name, k, 'itemMatching'),
+		pairedItem: (k) => __paired(name, k, 'pairedItem'),
 		isExecuted: list.length > 0,
 	};
 };
@@ -525,9 +528,7 @@ export function lowerCode(c: NodeContext): void {
 	// proof for each chain). The legacy Function nodes have no such proof, so there the read
 	// is compiled only when the items pair by position.
 	const nodeAccess =
-		type === 'n8n-nodes-base.code'
-			? []
-			: user.matchAll(/\$node\s*\[\s*['"]([^'"]*)['"]\s*\]/g);
+		type === 'n8n-nodes-base.code' ? [] : user.matchAll(/\$node\s*\[\s*['"]([^'"]*)['"]\s*\]/g);
 	for (const m of nodeAccess) {
 		const name = m[1];
 		if (name && name !== c.node.name && !c.pairsByPosition(name) && c.ranBefore(name) !== null) {

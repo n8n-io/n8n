@@ -1,0 +1,11 @@
+{
+	"description": "As case 76 with `.pairedItem(0)`: v1 names the method in the error",
+	"trigger": {
+		"body": {
+			"tag": "t"
+		}
+	},
+	"compare": [
+		"Read Each"
+	]
+}

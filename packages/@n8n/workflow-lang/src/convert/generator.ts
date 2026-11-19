@@ -599,10 +599,66 @@ export class ModuleGenerator {
 		);
 	}
 
+	/**
+	 * The path from `current` back to a node `target` that gives one item, when v1 finds a
+	 * paired item at each step of it: then the item that pairs with each input item of
+	 * `current` is the one item of `target`. The steps that v1 follows:
+	 * - a node that gives one item for each item;
+	 * - a compiled node that keeps the paired item of each of its items (a hop: the run
+	 *   gives v1's error for an item that has none);
+	 * - the node after `target`, whose only input is the one item of `target`: v1 pairs each
+	 *   of its items with that item (the node itself, or `assignPairedItems` of the engine).
+	 * Null for each other path: an item of a node on it can have no paired item, and v1 fails
+	 * then. `direct` is true when the input items of the last hop are the items of `target`.
+	 */
+	private firstItemPath(
+		b: Body,
+		current: string,
+		target: string,
+	): { hops: Array<{ run: string; input: string; name: string }>; direct: boolean } | null {
+		const hops: Array<{ run: string; input: string; name: string }> = [];
+		let cur = current;
+		for (let guard = 0; guard < b.graph.nodes.size; guard++) {
+			const all = b.graph.incoming(cur);
+			const inc = all.filter((e) => e.input === 0 && b.scope.has(e.from) && this.known(b, e.from));
+			if (inc.length !== 1) return null;
+			const e = inc[0];
+			if (e.from === target) return { hops, direct: true };
+			const parent = b.graph.nodes.get(e.from);
+			if (!parent) return null;
+			const pairs = b.pairs.get(`${e.from}|${e.output}`);
+			if (!parent.executeOnce && (ONE_TO_ONE.has(parent.type) || parent.disabled)) {
+				cur = e.from;
+			} else if (!parent.executeOnce && pairs) {
+				hops.push({ ...pairs, name: b.short(e.from) });
+				cur = e.from;
+			} else {
+				const above = b.graph.incoming(e.from);
+				if (above.length === 1 && above[0].input === 0 && above[0].from === target) {
+					return { hops, direct: false };
+				}
+				return null;
+			}
+		}
+		return null;
+	}
+
 	private pairedItem(b: Body, current: string, target: string): PairedItem | null {
 		if (!this.known(b, target)) return null;
 		const list = this.outputVar(b, target, this.branchOf(b, current, target));
-		if (this.singleItem(b, target)) return { code: `${list}[0]`, usesIndex: false };
+		if (this.singleItem(b, target)) {
+			const path = this.firstItemPath(b, current, target);
+			// The pairing is not known: the item is the only one that the read can give.
+			if (path === null) return { code: `${list}[0]`, usesIndex: false, approximate: true };
+			if (path.hops.length === 0) return { code: `${list}[0]`, usesIndex: false };
+			// Each hop gives v1's error for an item without a paired item. The item is item 0.
+			this.helpers.add('pairedSourceIndex');
+			let index = INDEX;
+			path.hops.forEach((hop, k) => {
+				index = `pairedSourceIndex(${hop.run}, ${index}, ${hop.input}.length, ${str(hop.name)}, ${path.direct && k === path.hops.length - 1})`;
+			});
+			return { code: `${list}[0 * ${index}]`, usesIndex: true };
+		}
 		let cur = current;
 		const hops: Array<{ run: string; input: string; name: string }> = [];
 		for (let guard = 0; guard < b.graph.nodes.size; guard++) {
@@ -682,7 +738,25 @@ export class ModuleGenerator {
 		let chain: ((index: string) => string) | null = null;
 		if (this.known(b, target)) {
 			if (this.singleItem(b, target)) {
-				chain = () => '0';
+				const path = this.firstItemPath(b, current, target);
+				if (path !== null) {
+					for (const hop of path.hops) {
+						hops.push({
+							...hop,
+							runParam: this.names.unique('coP'),
+							lenParam: this.names.unique('coLen'),
+						});
+					}
+					const steps = [...hops];
+					// Each hop gives v1's error for an item without a paired item. The item is item 0.
+					chain = (index) => {
+						let code = index;
+						steps.forEach((hop, k) => {
+							code = `pairedSourceIndex(${hop.runParam}, ${code}, ${hop.lenParam}, ${str(hop.name)}, ${path.direct && k === steps.length - 1})`;
+						});
+						return steps.length === 0 ? '0' : `0 * ${code}`;
+					};
+				}
 			} else {
 				let cur = current;
 				for (let guard = 0; guard < b.graph.nodes.size && chain === null; guard++) {
