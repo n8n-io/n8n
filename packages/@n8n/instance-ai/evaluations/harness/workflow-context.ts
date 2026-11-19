@@ -34,7 +34,8 @@ function renderNodeGroupLines(wf: WorkflowResponse): string[] {
 
 function renderSettingsLines(wf: WorkflowResponse): string[] {
 	const settings = wf.settings ?? {};
-	const header = '**Workflow settings** (an absent or "DEFAULT" value means the instance default):';
+	const header =
+		'**Workflow settings** (an absent or "DEFAULT" value means the instance default; an absent `executionOrder` means the legacy `v0` order):';
 	if (Object.keys(settings).length === 0) {
 		// Stated absence, not omission — the judge must be able to tell "no time
 		// zone set" from "the time zone is not shown to me".

@@ -83,7 +83,7 @@ describe('buildWorkflowContextBlock', () => {
 	it('states "(none set)" when the workflow has no settings', () => {
 		for (const wf of [workflow('wf-1'), workflow('wf-2', { settings: {} })]) {
 			expect(buildWorkflowContextBlock(wf)).toContain(
-				'**Workflow settings** (an absent or "DEFAULT" value means the instance default):\n\n(none set)',
+				'**Workflow settings** (an absent or "DEFAULT" value means the instance default; an absent `executionOrder` means the legacy `v0` order):\n\n(none set)',
 			);
 		}
 	});
