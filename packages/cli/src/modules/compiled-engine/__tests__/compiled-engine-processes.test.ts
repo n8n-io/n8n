@@ -150,7 +150,7 @@ describe('the listen address of wfrt', () => {
 	});
 
 	it('starts wfrt with the SMTP client only with the setting', () => {
-		expect(new CompiledEngineConfig().smtpNative).toBe(false);
+		expect(new CompiledEngineConfig().smtpNative).toBe(true);
 		expect(argsWith('127.0.0.1')).not.toContain('--smtp-native');
 		expect(argsWith('127.0.0.1', true, '', true)).not.toContain('--smtp-native');
 		expect(argsWith('127.0.0.1', false, '', false, true)).toContain('--smtp-native');

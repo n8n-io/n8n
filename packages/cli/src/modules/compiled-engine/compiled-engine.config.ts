@@ -88,7 +88,7 @@ export class CompiledEngineConfig {
 	 * `wfrt` yourself, also start it with `--smtp-native`.
 	 */
 	@Env('N8N_COMPILED_ENGINE_SMTP_NATIVE')
-	smtpNative: boolean = false;
+	smtpNative: boolean = true;
 
 	/**
 	 * Whether n8n starts `wfrt` and the fallback host as child processes and
