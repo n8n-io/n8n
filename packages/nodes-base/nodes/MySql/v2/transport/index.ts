@@ -48,8 +48,14 @@ export async function createPool(
 		connectionOptions.connectionLimit = options.connectionLimit as number;
 	}
 
-	if (options?.connectTimeout) {
-		connectionOptions.connectTimeout = options.connectTimeout as number;
+	// The credential holds the connection deadline for every node that uses it, in
+	// milliseconds. The node's own option is in seconds, as on the Postgres node, and wins.
+	if (credentials.connectTimeout) {
+		connectionOptions.connectTimeout = credentials.connectTimeout;
+	}
+
+	if (options?.connectionTimeout) {
+		connectionOptions.connectTimeout = (options.connectionTimeout as number) * 1000;
 	}
 
 	if (options?.largeNumbersOutput === 'text') {
