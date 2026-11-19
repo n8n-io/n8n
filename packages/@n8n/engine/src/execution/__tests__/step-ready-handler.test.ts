@@ -16,9 +16,9 @@ import {
 	type StepStatus,
 	type WaitDeclaration,
 } from '../execution.types';
-import { resolveInputReads, StepReadyHandler } from '../step-ready-handler';
 import { InvalidParentLinkError, type StartExecutionService } from '../start-execution.service';
 import { attachStepErrorDetails } from '../step-error-details';
+import { resolveInputReads, StepReadyHandler } from '../step-ready-handler';
 import type { StepRecord, StepStore, StepSummary } from '../step-store';
 
 /** Key for a `loadStepsByKeys` result at iteration 0, as the handler requests them. */
@@ -116,6 +116,7 @@ function makeExecutionStore(
 		findStaleQueuedExecutions: vi.fn(),
 		renewQueuedExecution: vi.fn(),
 		refreshLiveStatus: vi.fn(),
+		loadLiveSubExecutionIds: vi.fn().mockResolvedValue([]),
 	};
 }
 
@@ -154,6 +155,10 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		resumeStep: vi.fn().mockResolvedValue(true),
 		resumeDueSteps: vi.fn().mockResolvedValue([]),
 		nextWaitDeadline: vi.fn().mockResolvedValue(null),
+		findStaleQueuedSteps: vi.fn().mockResolvedValue([]),
+		renewQueuedStep: vi.fn(),
+		findStaleRunningSteps: vi.fn().mockResolvedValue([]),
+		failStaleRunningStep: vi.fn(),
 		failWaitingStep: vi.fn().mockResolvedValue(true),
 		...overrides,
 	} satisfies StepStore;
@@ -625,6 +630,27 @@ describe('StepReadyHandler', () => {
 			executionId: 'exec-1',
 			stepId: 'step-a',
 		});
+	});
+
+	it('does not report a failure when another owner took the step over', async () => {
+		const stepStore = makeStepStore({}, { failStep: vi.fn().mockResolvedValue(false) });
+		const queue = makeQueue();
+		const publisher = makeLifecycleEventPublisher();
+		const handler = makeHandler(
+			makeExecutionStore(),
+			stepStore,
+			queue,
+			{ v1StepExecutor: { execute: vi.fn().mockRejectedValue(new Error('node failed')) } },
+			publisher,
+		);
+
+		await handler.handle(event);
+
+		expect(stepStore.failStep).toHaveBeenCalled();
+		expect(queue.publish).not.toHaveBeenCalled();
+		expect(publisher.publish).not.toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'step:failed' }),
+		);
 	});
 
 	it('does not report completion when the lifecycle event is not recorded', async () => {

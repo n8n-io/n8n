@@ -6,6 +6,7 @@ import {
 	RoleService,
 	JwtService,
 	PostHogClient,
+	loginIdOf,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthIdentity, OperationContext, Person, PublicUser } from '@n8n/db';
@@ -51,7 +52,6 @@ import {
 	NotFoundError,
 	UserError,
 } from '@n8n/errors';
-import { loginIdOf } from '@/events/login-id';
 import { ExternalHooks } from '@/external-hooks';
 import type { Invitation } from '@/interfaces';
 import { License } from '@/license';

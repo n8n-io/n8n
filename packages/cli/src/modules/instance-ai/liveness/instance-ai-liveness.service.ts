@@ -84,6 +84,8 @@ export type InstanceAiLivenessServiceOptions<
 	backgroundTaskIdleTimeoutMs: number;
 	runState: InstanceAiLivenessRunState<TSuspendedRun>;
 	backgroundTasks: InstanceAiLivenessBackgroundTasks;
+	/** A task that waits for the user outside a confirmation, for example a cloud browser they control. */
+	isTaskWaitingForUser?: (taskId: string) => boolean;
 	eventBus: InstanceAiLivenessEventBus;
 	finalizeCancelledSuspendedRun: (suspended: TSuspendedRun, reason: string) => void;
 	onPendingConfirmationRejected?: (requestId: string) => void;
@@ -204,7 +206,8 @@ export class InstanceAiLivenessService<
 				now,
 				{
 					shouldSkipTask: (task) =>
-						this.options.runState.hasPendingConfirmationForThread(task.threadId),
+						this.options.runState.hasPendingConfirmationForThread(task.threadId) ||
+						(this.options.isTaskWaitingForUser?.(task.taskId) ?? false),
 				},
 			);
 			for (const task of timedOutTasks) {

@@ -47,6 +47,7 @@ export { ExecutionListRepository } from './execution-list.repository';
 export { ExecutionMetadataRepository } from './execution-metadata.repository';
 export {
 	ExecutionRepository,
+	type CanceledExecution,
 	type CrashedExecution,
 	type ExecutionDeletionCriteria,
 	type ResumableExecutionStatus,

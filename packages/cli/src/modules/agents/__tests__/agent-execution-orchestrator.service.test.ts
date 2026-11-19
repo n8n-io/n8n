@@ -23,6 +23,8 @@ import {
 	type AgentToolGuardrailConfig,
 	type BudgetGuardrailConfig,
 } from '@n8n/api-types';
+import type { LanguageModel } from 'ai';
+import { MockLanguageModelV3 } from 'ai/test';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { LockService, type Logger } from '@n8n/backend-common';
 import type { AiConfig } from '@n8n/config';
@@ -171,6 +173,23 @@ function makeFailingStream(error: Error): ReadableStream<StreamChunk> {
 			}
 
 			controller.error(error);
+		},
+	});
+}
+
+/** A minimal mock model for guardrail-model wiring tests. */
+function mockLanguageModel(): LanguageModel {
+	return new MockLanguageModelV3({
+		provider: 'mock',
+		modelId: 'guardrail-test',
+		doGenerate: {
+			content: [{ type: 'text', text: '{"confidenceScore":0,"flagged":false}' }],
+			finishReason: { unified: 'stop', raw: 'stop' },
+			usage: {
+				inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+				outputTokens: { total: 1, text: 1, reasoning: 0 },
+			},
+			warnings: [],
 		},
 	});
 }
@@ -2608,6 +2627,37 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(stop).toEqual({ action: 'stop', code: 'guardrail.keywords.g1' });
 	});
 
+	it('attaches the guardrail model saved on the published runtime to the turn', async () => {
+		const { service, agentRepository, runtimeCacheService, executionService } = makeService();
+		agentRepository.isN8nChatPublished.mockResolvedValue(true);
+		executionService.canUseProductionChatThread.mockResolvedValue(true);
+		const guardrailModel = mockLanguageModel();
+		const runtime = {
+			...makeRuntime(),
+			toolRegistry: new Map([['read_file', { kind: 'node' }]]) as ToolRegistry,
+			toolGuardrails: [{ kind: 'nsfw', id: 'g1', stage: 'before' }] as AgentToolGuardrailConfig[],
+			guardrailModel,
+		};
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await collect(
+			service.executeForN8nChatPublished({
+				agentId,
+				projectId,
+				user,
+				message: 'Hello',
+				memory: { threadId: 'thread-1', resourceId: 'n8n-chat-production:user-1' },
+			}),
+		);
+
+		// The model kind built a hook from the runtime's model: the configured
+		// model instance reached withToolGuardrails through the turn options.
+		const options = runtime.agent.stream.mock.calls[0][1] as ExecutionOptions;
+		const hooks = options.guardrails?.hooks ?? [];
+		expect(hooks).toHaveLength(1);
+		expect(hooks[0].beforeTool).toBeTypeOf('function');
+	});
+
 	it('rejects a production turn with a foreign thread or memory scope', async () => {
 		const { service, agentRepository, runtimeCacheService, executionService } = makeService();
 		agentRepository.isN8nChatPublished.mockResolvedValue(true);
@@ -3936,6 +3986,57 @@ describe('AgentExecutionOrchestratorService', () => {
 		await expect(
 			service.getConversationHistory({ threadId: 'thread-1', projectId, agentId, userId }),
 		).resolves.toEqual({ messages: [], activeExecutionId: 'execution-1' });
+	});
+
+	it('returns one page of turns with the cursor of its oldest turn', async () => {
+		const { service, executionService } = makeService();
+		const createdAt = new Date('2026-04-26T10:00:00.000Z');
+		executionService.getThreadDetailPage.mockResolvedValue({
+			thread: { id: 'thread-1' },
+			executions: [
+				{ id: 'execution-2', userMessage: 'Hi', createdAt, timeline: [] },
+				{ id: 'execution-3', userMessage: 'Again', createdAt, timeline: [] },
+			],
+			hasOlder: true,
+		} as never);
+
+		const result = await service.getConversationHistory({
+			threadId: 'thread-1',
+			projectId,
+			agentId,
+			userId,
+			page: { limit: 2 },
+		});
+
+		expect(executionService.getThreadDetailPage).toHaveBeenCalledWith(
+			'thread-1',
+			projectId,
+			agentId,
+			userId,
+			{ limit: 2 },
+		);
+		expect(executionService.getThreadDetail).not.toHaveBeenCalled();
+		expect(result?.messages.map(({ id }) => id)).toEqual(['execution-2:user', 'execution-3:user']);
+		expect(result?.nextCursor).toBe('2026-04-26T10:00:00.000Z|execution-2');
+	});
+
+	it('returns no cursor on the oldest page', async () => {
+		const { service, executionService } = makeService();
+		executionService.getThreadDetailPage.mockResolvedValue({
+			thread: { id: 'thread-1' },
+			executions: [{ id: 'execution-1', userMessage: 'Hi', createdAt: new Date(), timeline: [] }],
+			hasOlder: false,
+		} as never);
+
+		const result = await service.getConversationHistory({
+			threadId: 'thread-1',
+			projectId,
+			agentId,
+			userId,
+			page: { limit: 2 },
+		});
+
+		expect(result?.nextCursor).toBeNull();
 	});
 
 	it('rejects expired checkpoints and resumes active checkpoints without passing resourceId', async () => {

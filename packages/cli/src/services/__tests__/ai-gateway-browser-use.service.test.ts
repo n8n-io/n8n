@@ -1,3 +1,4 @@
+import type { LicenseState } from '@n8n/backend-common';
 import { OperationalError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
@@ -11,18 +12,28 @@ const attribution = { instanceAiThreadId: 'thread-1', instanceAiTaskId: 'task-1'
 
 describe('AiGatewayBrowserUseService', () => {
 	let aiGatewayService: ReturnType<typeof mock<AiGatewayService>>;
+	let licenseState: ReturnType<typeof mock<LicenseState>>;
 	let service: AiGatewayBrowserUseService;
 
 	beforeEach(() => {
 		aiGatewayService = mock<AiGatewayService>();
-		service = new AiGatewayBrowserUseService(aiGatewayService);
+		licenseState = mock<LicenseState>();
+		service = new AiGatewayBrowserUseService(aiGatewayService, licenseState);
 	});
 
-	it.each([true, false])('is enabled when Gateway credits are enabled (%s)', (enabled) => {
-		aiGatewayService.isEnabled.mockReturnValue(enabled);
+	it.each([
+		[true, true, true],
+		[false, true, false],
+		[true, false, false],
+	])(
+		'is enabled only with Gateway credits enabled (%s) and Cloud usage-based billing (%s)',
+		(gatewayEnabled, cloudUbbLicensed, expected) => {
+			aiGatewayService.isEnabled.mockReturnValue(gatewayEnabled);
+			licenseState.isAiGatewayCloudUbbLicensed.mockReturnValue(cloudUbbLicensed);
 
-		expect(service.isGatewayBrowserUseEnabled()).toBe(enabled);
-	});
+			expect(service.isGatewayBrowserUseEnabled()).toBe(expected);
+		},
+	);
 
 	const sessionRequest = {
 		provider: 'browserbaseBrowserUse',
@@ -35,7 +46,7 @@ describe('AiGatewayBrowserUseService', () => {
 	};
 
 	describe('createSession()', () => {
-		it('creates a session without keepAlive through the gateway', async () => {
+		it('creates a session without keepAlive, at the live view size, through the gateway', async () => {
 			aiGatewayService.sendProviderRequest.mockResolvedValue({
 				id: 'sess-1',
 				connectUrl: 'wss://connect.example.com',
@@ -48,7 +59,52 @@ describe('AiGatewayBrowserUseService', () => {
 			expect(aiGatewayService.sendProviderRequest).toHaveBeenCalledWith({
 				...sessionRequest,
 				path: '/v1/sessions',
-				body: { keepAlive: false },
+				body: { keepAlive: false, browserSettings: { viewport: { width: 1280, height: 800 } } },
+			});
+		});
+
+		it('asks for a residential proxy in the given country', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				id: 'sess-1',
+				connectUrl: 'wss://connect.example.com',
+			});
+
+			await service.createSession({ userId: 'user-1', attribution, proxyCountry: 'DE' });
+
+			expect(aiGatewayService.sendProviderRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					body: expect.objectContaining({
+						proxies: [{ type: 'browserbase', geolocation: { country: 'DE' } }],
+					}),
+				}),
+			);
+		});
+
+		it('sends no proxies without a country', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				id: 'sess-1',
+				connectUrl: 'wss://connect.example.com',
+			});
+
+			await service.createSession({ userId: 'user-1', attribution, proxyCountry: undefined });
+
+			const [{ body }] = aiGatewayService.sendProviderRequest.mock.calls[0];
+			expect(body).not.toHaveProperty('proxies');
+		});
+
+		it("returns the session's region when the gateway sends it", async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				id: 'sess-1',
+				connectUrl: 'wss://connect.example.com',
+				region: 'eu-central-1',
+			});
+
+			const session = await service.createSession({ userId: 'user-1', attribution });
+
+			expect(session).toEqual({
+				id: 'sess-1',
+				connectUrl: 'wss://connect.example.com',
+				region: 'eu-central-1',
 			});
 		});
 
@@ -58,6 +114,84 @@ describe('AiGatewayBrowserUseService', () => {
 			await expect(service.createSession({ userId: 'user-1', attribution })).rejects.toThrow(
 				'invalid browser session',
 			);
+		});
+	});
+
+	describe('getLiveView()', () => {
+		it("reads the session's live view link", async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				debuggerFullscreenUrl: 'https://live.example.com/1',
+				pages: [],
+			});
+
+			const view = await service.getLiveView({
+				userId: 'user-1',
+				attribution,
+				sessionId: 'sess/1',
+			});
+
+			expect(view).toEqual({ debuggerFullscreenUrl: 'https://live.example.com/1', pages: [] });
+			expect(aiGatewayService.sendProviderRequest).toHaveBeenCalledWith({
+				...sessionRequest,
+				method: 'GET',
+				path: '/v1/sessions/sess%2F1/debug',
+			});
+		});
+
+		it('reads the live view link of each tab', async () => {
+			const pages = [
+				{ id: 'TARGET-1', debuggerFullscreenUrl: 'https://live.example.com/1' },
+				{ id: 'TARGET-2', debuggerFullscreenUrl: 'https://live.example.com/2' },
+			];
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				debuggerFullscreenUrl: 'https://live.example.com/1',
+				pages,
+			});
+
+			const view = await service.getLiveView({
+				userId: 'user-1',
+				attribution,
+				sessionId: 'sess-1',
+			});
+
+			expect(view).toEqual({ debuggerFullscreenUrl: 'https://live.example.com/1', pages });
+		});
+
+		it('reads a response with no tab list as no tabs', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				debuggerFullscreenUrl: 'https://live.example.com/1',
+			});
+
+			const view = await service.getLiveView({
+				userId: 'user-1',
+				attribution,
+				sessionId: 'sess-1',
+			});
+
+			expect(view).toEqual({ debuggerFullscreenUrl: 'https://live.example.com/1', pages: [] });
+		});
+
+		it('reads a tab list it cannot read as no tabs, and keeps the first tab link', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				debuggerFullscreenUrl: 'https://live.example.com/1',
+				pages: [{ id: 'target-1' }],
+			});
+
+			const view = await service.getLiveView({
+				userId: 'user-1',
+				attribution,
+				sessionId: 'sess-1',
+			});
+
+			expect(view).toEqual({ debuggerFullscreenUrl: 'https://live.example.com/1', pages: [] });
+		});
+
+		it('throws when the response has no live view link', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({ pages: [] });
+
+			await expect(
+				service.getLiveView({ userId: 'user-1', attribution, sessionId: 'sess-1' }),
+			).rejects.toThrow('invalid browser live view');
 		});
 	});
 

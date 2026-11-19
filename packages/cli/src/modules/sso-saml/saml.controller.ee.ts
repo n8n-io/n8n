@@ -11,12 +11,12 @@ import url from 'url';
 
 import { AuthService } from '@/auth/auth.service';
 import { AuthError, ForbiddenError } from '@n8n/errors';
+import { validateRedirectUrl } from '@n8n/utils/validate-redirect-url';
 import { SSO_ACCESS_DENIED_REDIRECT_PATH } from '@/modules/provisioning.ee/constants';
 import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import { AuthlessRequest } from '@/requests';
 import { sendErrorResponse } from '@/response-helper';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
-import { validateRedirectUrl } from '@/utils/validate-redirect-url';
 
 import { SamlEmailNotVerifiedError } from './errors/saml-email-not-verified.error';
 import {
