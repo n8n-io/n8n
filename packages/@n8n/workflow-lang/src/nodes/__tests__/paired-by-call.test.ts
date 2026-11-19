@@ -17,6 +17,7 @@
  */
 import { writeFileSync } from 'node:fs';
 
+import type { NodeSources } from '../../node-compile/convert.ts';
 import { ADAPTERS, libraryCallKey } from '../../convert/library.ts';
 import { convertWorkflow } from '../../convert/index.ts';
 import { connect, node, webhookNode } from '../../convert/__tests__/workflows.ts';
@@ -221,6 +222,117 @@ describe('the compiled read of a paired item through a library node', () => {
 		);
 		expect(out.code).toBe('no pairs after n8n-nodes-base.googleSheets@4.7');
 		expect(out.expression).toBe('no pairs after n8n-nodes-base.googleSheets@4.7');
+	});
+});
+
+/** A node compiled from its source, with a parameter that reads the item of an earlier node. */
+const PROBE = 'n8n-nodes-base.probe';
+const PROBE_SOURCE = `import type { IExecuteFunctions, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class Probe implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Probe', name: 'probe', group: ['transform'], version: 1, description: 'Probe',
+		defaults: { name: 'Probe' }, inputs: ['main'], outputs: ['main'], properties: [],
+	};
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
+		const out: INodeExecutionData[] = [];
+		for (let i = 0; i < items.length; i++) {
+			out.push({ json: { id: this.getNodeParameter('id', i) }, pairedItem: { item: i } });
+		}
+		return [out];
+	}
+}
+`;
+const PROBE_NODE_SOURCES: NodeSources = {
+	entry: (type) => (type === PROBE ? '/probe/Probe.node.ts' : undefined),
+	readFile: (path) => (path === '/probe/Probe.node.ts' ? PROBE_SOURCE : undefined),
+	description: (type) =>
+		type === PROBE
+			? {
+					name: 'probe',
+					properties: [{ displayName: 'Id', name: 'id', type: 'string', default: '' }],
+				}
+			: undefined,
+	// The probe gives the paired item of each of its items, as v1 does.
+	verified: { [`${PROBE}@1:.`]: ['id', '@each=id', '@pairedItems'] },
+};
+
+const sourceItems = node('Source', 'code', 2, [200, 0], {
+	jsCode: "return [{ json: { id: 'a' } }, { json: { id: 'b' } }, { json: { id: 'c' } }];",
+});
+const mailRead = node(
+	'Mail',
+	'gmail',
+	2.2,
+	[400, 0],
+	{ resource: 'message', operation: 'get', messageId: 'm1' },
+	{ credentials: { gmailOAuth2: { id: 'case', name: 'case' } } },
+);
+const probeNode = (name: string, id: string) => node(name, 'probe', 1, [500, 0], { id });
+const read = "={{ $('Source').item.json.id }}";
+
+/** The workflow of the read, through the nodes between `Source` and the reader. */
+function readThrough(middle: Array<ReturnType<typeof node>>, reader: ReturnType<typeof node>) {
+	const names = ['Source', ...middle.map((m) => m.name), reader.name];
+	const result = convertWorkflow(
+		{
+			name: 'A paired read in a parameter',
+			nodes: [webhookNode(), sourceItems, ...middle, reader],
+			connections: connect([
+				['Webhook', 0, 'Source', 0] as [string, number, string, number],
+				...names.slice(1).map((to, k): [string, number, string, number] => [names[k]!, 0, to, 0]),
+			]),
+			settings: { executionOrder: 'v1' },
+		},
+		{ nodeSources: PROBE_NODE_SOURCES },
+	);
+	return {
+		fallback: result.fallbackNodes,
+		// A read that cannot fail: no helper that throws for an item without a pair.
+		exact: !result.source.includes('pairedSourceIndex('),
+		gated: result.diagnostics.some((d) =>
+			d.message.startsWith('An expression of a parameter can fail'),
+		),
+	};
+}
+
+describe('a paired read in a parameter, behind a library node that pairs by call', () => {
+	it('compiles a field of the Airtable node', () => {
+		const record = node(
+			'Record',
+			'airtable',
+			2.1,
+			[600, 0],
+			{
+				operation: 'update',
+				base: { __rl: true, mode: 'id', value: 'appBase1' },
+				table: { __rl: true, mode: 'id', value: 'tbl1' },
+				columns: {
+					mappingMode: 'defineBelow',
+					value: { id: read, Name: 'Ada' },
+					matchingColumns: ['id'],
+					schema: [{ id: 'Name', type: 'string', required: true }],
+				},
+				options: {},
+			},
+			{ credentials: { airtableTokenApi: { id: 'case', name: 'case' } } },
+		);
+		const out = readThrough([mailRead], record);
+		expect(out).toEqual({ fallback: [], exact: true, gated: false });
+	});
+
+	it('compiles the parameter of a node that runs as compiled code', () => {
+		const out = readThrough([mailRead], probeNode('Reader', read));
+		expect(out).toEqual({ fallback: [], exact: true, gated: false });
+	});
+
+	it('stays gated behind a node whose items keep no index for each item', () => {
+		// The probe gives the paired items of v1, which can be absent: the read can fail, and the
+		// parameter of a compiled node is evaluated before its call. `PAIRS_BY_CALL_ROWS` does not
+		// cover that node, so its step is not complete.
+		const out = readThrough([mailRead, probeNode('Middle', 'x')], probeNode('Reader', read));
+		expect(out).toEqual({ fallback: ['Reader'], exact: false, gated: true });
 	});
 });
 
