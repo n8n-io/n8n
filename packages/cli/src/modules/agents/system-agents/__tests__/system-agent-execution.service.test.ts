@@ -9,6 +9,7 @@ import { mock } from 'vitest-mock-extended';
 import { FileNotFoundError } from 'n8n-core';
 import { Readable } from 'node:stream';
 
+import type { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
@@ -122,6 +123,9 @@ function setup(
 	const sandboxFiles = mock<AgentSandboxFilesService>({ maxImportBytes: 200 * 1024 * 1024 });
 	sandboxFiles.isEnabled.mockResolvedValue(false);
 	const fileBridge = mock<AgentFileBridge>();
+	const binaryDataAccess = mock<BinaryDataAccessService>();
+	binaryDataAccess.hasReadAccess.mockResolvedValue(false);
+	attachmentService.isSystemAgentThreadBinary.mockResolvedValue(false);
 
 	const onChunk = vi.fn();
 	const onSettled = vi.fn(async () => {});
@@ -179,6 +183,7 @@ function setup(
 		threadGrants,
 		sandboxFiles,
 		fileBridge,
+		binaryDataAccess,
 	);
 
 	return {
@@ -205,6 +210,7 @@ function setup(
 		threadGrants,
 		sandboxFiles,
 		fileBridge,
+		binaryDataAccess,
 	};
 }
 
@@ -1058,18 +1064,61 @@ describe('SystemAgentExecutionService', () => {
 				await expect(turn.readFileBinary('att-1')).resolves.toBeUndefined();
 			});
 
-			it('stores a workflow output file in the system chat of the user', async () => {
-				const { turn, fileBridge } = await startTurnWithAttachment();
+			describe('storing a workflow output file', () => {
 				const binary = { id: 'filesystem-v2:run/1', data: 'filesystem-v2', mimeType: 'image/png' };
 				const stored = { fileId: 'f-1', fileName: 'a.png', mimeType: 'image/png', sizeBytes: 3 };
-				fileBridge.adoptBinary.mockResolvedValue(stored);
 
-				await expect(turn.storeWorkflowFile(binary)).resolves.toBe(stored);
-				expect(fileBridge.adoptBinary).toHaveBeenCalledWith(binary, {
-					agentId: thread.agentId,
-					projectId: thread.projectId,
-					threadId: 'thread-1',
-					resourceId: 'system-chat:user-1',
+				it('stores a binary of an execution that the user can read in the system chat of the user', async () => {
+					const { turn, fileBridge, binaryDataAccess } = await startTurnWithAttachment();
+					binaryDataAccess.hasReadAccess.mockResolvedValue(true);
+					fileBridge.adoptBinary.mockResolvedValue(stored);
+
+					await expect(turn.storeWorkflowFile(binary)).resolves.toBe(stored);
+					expect(binaryDataAccess.hasReadAccess).toHaveBeenCalledWith(user, binary.id);
+					expect(fileBridge.adoptBinary).toHaveBeenCalledWith(binary, {
+						agentId: thread.agentId,
+						projectId: thread.projectId,
+						threadId: 'thread-1',
+						resourceId: 'system-chat:user-1',
+					});
+				});
+
+				it('stores a file of the thread that a run passed on', async () => {
+					const { turn, fileBridge, attachmentService, binaryDataAccess } =
+						await startTurnWithAttachment();
+					attachmentService.isSystemAgentThreadBinary.mockResolvedValue(true);
+					fileBridge.adoptBinary.mockResolvedValue(stored);
+
+					await expect(turn.storeWorkflowFile(binary)).resolves.toBe(stored);
+					expect(attachmentService.isSystemAgentThreadBinary).toHaveBeenCalledWith(
+						'thread-1',
+						binary.id,
+						{
+							agentId: AGENT_ID,
+							resourceId: 'system-chat:user-1',
+							sources: ['system_chat', 'sandbox', 'tool'],
+						},
+					);
+					expect(binaryDataAccess.hasReadAccess).not.toHaveBeenCalled();
+				});
+
+				it('skips a binary that the user cannot read and that is not a file of the thread', async () => {
+					const { turn, fileBridge } = await startTurnWithAttachment();
+
+					await expect(turn.storeWorkflowFile({ ...binary, fileName: 'a.png' })).resolves.toEqual({
+						fileName: 'a.png',
+						reason: 'you do not have access to this file',
+					});
+					expect(fileBridge.adoptBinary).not.toHaveBeenCalled();
+				});
+
+				it('stores inline binary data without an access check', async () => {
+					const { turn, fileBridge, binaryDataAccess } = await startTurnWithAttachment();
+					const inline = { data: 'aGk=', mimeType: 'text/plain' };
+					fileBridge.adoptBinary.mockResolvedValue(stored);
+
+					await expect(turn.storeWorkflowFile(inline)).resolves.toBe(stored);
+					expect(binaryDataAccess.hasReadAccess).not.toHaveBeenCalled();
 				});
 			});
 
