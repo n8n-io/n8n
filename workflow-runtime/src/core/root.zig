@@ -33,12 +33,9 @@ pub const collate = @import("collate.zig");
 pub const binary_names = @import("binary_names.zig");
 pub const mime_tables = @import("mime_tables.zig");
 pub const cred_flags = @import("cred_flags.zig");
-pub const pgwire = @import("pgwire.zig");
-pub const mywire = @import("mywire.zig");
-pub const smtp = @import("smtp.zig");
-pub const mail = @import("mail.zig");
-pub const tdswire = @import("tdswire.zig");
-pub const tdscase_tables = @import("tdscase_tables.zig");
+// Wire codecs now live in src/wire/. Shell consumers import them directly
+// as @import("wire").<name>; core consumers use the forwarding wrapper in
+// src/core/numfmt.zig or import @import("wire") directly when needed.
 
 test {
     @import("std").testing.refAllDecls(@This());

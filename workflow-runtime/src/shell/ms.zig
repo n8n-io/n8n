@@ -27,7 +27,7 @@
 //! limit error. Every buffer is reserved in `init`.
 const std = @import("std");
 const core_lib = @import("core");
-const tds = core_lib.tdswire;
+const tds = @import("wire").tdswire;
 const sys = @import("sys.zig");
 const tls = @import("tls.zig");
 const dns = @import("dns.zig");

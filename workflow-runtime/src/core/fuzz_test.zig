@@ -627,7 +627,7 @@ test "fuzz text codecs" {
 
 // ---- PostgreSQL wire protocol (pgwire.zig) ----------------------------------------
 
-const pgwire = @import("pgwire.zig");
+const pgwire = @import("wire").pgwire;
 
 /// Every slice that a decoder gives points into the message body.
 fn pgwireBody(m: pgwire.Msg) !void {
@@ -782,7 +782,7 @@ test "fuzz pgwire scram server-first" {
 
 // ---- MySQL protocol (mywire.zig) --------------------------------------------------
 
-const mywire = @import("mywire.zig");
+const mywire = @import("wire").mywire;
 
 /// Read the body of one packet with each reader of the codec. A slice
 /// that a reader gives lies inside the body.
@@ -917,7 +917,7 @@ test "fuzz mywire text scan" {
 
 // ---- TDS protocol (tdswire.zig) ---------------------------------------------------
 
-const tdswire = @import("tdswire.zig");
+const tdswire = @import("wire").tdswire;
 
 /// Any bytes as the reply to a request and to a login: JSON inside the
 /// buffer or an error that leaves nothing, never a crash.
@@ -1017,7 +1017,7 @@ test "fuzz tdswire replies and requests" {
 /// The message builder takes any bytes in its fields. A message that it
 /// gives ends with a line break, and each address of the envelope has `@`.
 fn fuzzMail(_: void, smith: *Smith) !void {
-    const mail = @import("mail.zig");
+    const mail = @import("wire").mail;
     const raw = input_buf[0..smith.slice(&input_buf)];
     var parts: [11][]const u8 = @splat("");
     var it = std.mem.splitScalar(u8, raw, 0xff);

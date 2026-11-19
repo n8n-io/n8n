@@ -12,7 +12,7 @@
 //! request, so a test can say what the client sent. A simple text is split
 //! at each `;`, and each part is the text of a rule.
 const std = @import("std");
-const pgwire = @import("core").pgwire;
+const pgwire = @import("wire").pgwire;
 const sys = @import("sys.zig");
 
 const Sha256 = std.crypto.hash.sha2.Sha256;

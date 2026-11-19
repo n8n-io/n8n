@@ -9,7 +9,22 @@ pub fn build(b: *std.Build) void {
     // wfrt ships ReleaseSafe; measure the engine the same way by default.
     const engine_opt = b.option(std.builtin.Optimize, "engine-optimize", "Mode of the wfrt core and shard (default safe, as wfrt ships)") orelse .safe;
 
-    const core = b.createModule(.{ .root_source_file = b.path("../../src/core/root.zig"), .target = target, .optimize = engine_opt });
+    const perf_options = b.addOptions();
+    perf_options.addOption(bool, "perf_model", false);
+    perf_options.addOption(bool, "aot", true);
+
+    const limits = b.createModule(.{ .root_source_file = b.path("../../src/limits/root.zig"), .target = target, .optimize = engine_opt });
+    const wire = b.createModule(.{ .root_source_file = b.path("../../src/wire/root.zig"), .target = target, .optimize = engine_opt, .imports = &.{.{ .name = "limits", .module = limits }} });
+    const core = b.createModule(.{
+        .root_source_file = b.path("../../src/core/root.zig"),
+        .target = target,
+        .optimize = engine_opt,
+        .imports = &.{
+            .{ .name = "limits", .module = limits },
+            .{ .name = "wire", .module = wire },
+        },
+    });
+    core.addOptions("perf_options", perf_options);
     const shard = b.createModule(.{ .root_source_file = b.path("../../src/shell/shard.zig"), .target = target, .optimize = engine_opt, .imports = &.{.{ .name = "core", .module = core }} });
     const programs = b.createModule(.{ .root_source_file = b.path("../../src/shell/programs.zig"), .target = target, .optimize = engine_opt, .imports = &.{.{ .name = "core", .module = core }} });
 

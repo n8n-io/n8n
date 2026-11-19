@@ -1031,8 +1031,8 @@ test "fuzz fallback host service results" {
 
 // ---- HTTP/2 frames and HPACK -------------------------------------------------------
 
-const http2 = @import("http2.zig");
-const hpack = @import("hpack.zig");
+const http2 = @import("wire").http2;
+const hpack = @import("wire").hpack;
 
 /// What the frame reader reports, as text, and checks of its own
 /// promises: content of a DATA frame never exceeds its flow-controlled

@@ -5,7 +5,7 @@
 //! (STARTTLS), close the connection, or give no answer. The server keeps
 //! every byte that it reads, so a test can check what went on the wire.
 const std = @import("std");
-const mail = @import("core").mail;
+const mail = @import("wire").mail;
 const sys = @import("sys.zig");
 const tls = @import("tls.zig");
 const sql_net = @import("sql_net.zig");

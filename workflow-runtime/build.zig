@@ -27,11 +27,30 @@ pub fn build(b: *std.Build) void {
     const aot = b.option(bool, "aot", "Link precompiled AOT library functions in aot_gen.zig (default true)") orelse true;
     perf_options.addOption(bool, "aot", aot);
 
+    const limits_mod = b.createModule(.{
+        .root_source_file = b.path("src/limits/root.zig"),
+        .target = target,
+        .optimize = optimize,
+        .omit_frame_pointer = omit_fp,
+    });
+
+    const wire_mod = b.createModule(.{
+        .root_source_file = b.path("src/wire/root.zig"),
+        .target = target,
+        .optimize = optimize,
+        .omit_frame_pointer = omit_fp,
+        .imports = &.{.{ .name = "limits", .module = limits_mod }},
+    });
+
     const core = b.createModule(.{
         .root_source_file = b.path("src/core/root.zig"),
         .target = target,
         .optimize = optimize,
         .omit_frame_pointer = omit_fp,
+        .imports = &.{
+            .{ .name = "limits", .module = limits_mod },
+            .{ .name = "wire", .module = wire_mod },
+        },
     });
     core.addOptions("perf_options", perf_options);
 
@@ -41,7 +60,11 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .link_libc = true,
         .omit_frame_pointer = omit_fp,
-        .imports = &.{.{ .name = "core", .module = core }},
+        .imports = &.{
+            .{ .name = "limits", .module = limits_mod },
+            .{ .name = "wire", .module = wire_mod },
+            .{ .name = "core", .module = core },
+        },
     });
     exe_mod.addOptions("build_options", build_options);
     if (net) linkNet(b, exe_mod, target);
@@ -75,19 +98,39 @@ pub fn build(b: *std.Build) void {
     const test_debug = b.step("test-debug", "Unit tests, Debug");
     const test_safe = b.step("test-safe", "Unit tests, ReleaseSafe");
     inline for (.{ .{ test_debug, std.builtin.OptimizeMode.Debug }, .{ test_safe, std.builtin.OptimizeMode.ReleaseSafe } }) |pair| {
-        const core_t = b.createModule(.{ .root_source_file = b.path("src/core/root.zig"), .target = target, .optimize = pair[1] });
+        const limits_t = b.createModule(.{ .root_source_file = b.path("src/limits/root.zig"), .target = target, .optimize = pair[1] });
+        const wire_t = b.createModule(.{
+            .root_source_file = b.path("src/wire/root.zig"),
+            .target = target,
+            .optimize = pair[1],
+            .imports = &.{.{ .name = "limits", .module = limits_t }},
+        });
+        const core_t = b.createModule(.{
+            .root_source_file = b.path("src/core/root.zig"),
+            .target = target,
+            .optimize = pair[1],
+            .imports = &.{
+                .{ .name = "limits", .module = limits_t },
+                .{ .name = "wire", .module = wire_t },
+            },
+        });
         core_t.addOptions("perf_options", perf_options);
         const shell_t = b.createModule(.{
             .root_source_file = b.path("src/main.zig"),
             .target = target,
             .optimize = pair[1],
             .link_libc = true,
-            .imports = &.{.{ .name = "core", .module = core_t }},
+            .imports = &.{
+                .{ .name = "limits", .module = limits_t },
+                .{ .name = "wire", .module = wire_t },
+                .{ .name = "core", .module = core_t },
+            },
         });
         shell_t.addOptions("build_options", build_options);
         if (net) linkNet(b, shell_t, target);
         sanitize(core_t, tsan, sanitize_c);
         sanitize(shell_t, tsan, sanitize_c);
+        const wt = b.addTest(.{ .root_module = wire_t, .name = "wire-test" });
         const ct = b.addTest(.{ .root_module = core_t, .name = "core-test" });
         const st = b.addTest(.{ .root_module = shell_t, .name = "shell-test" });
         // `check` compiles the test code too, without a binary: with
@@ -96,10 +139,12 @@ pub fn build(b: *std.Build) void {
         // binary, so they do not link.
         if (pair[1] == std.builtin.OptimizeMode.Debug) {
             const check_tests = b.step("check-tests", "Compile the unit tests without producing a binary");
+            check_tests.dependOn(&b.addTest(.{ .root_module = wire_t, .name = "wire-test-check" }).step);
             check_tests.dependOn(&b.addTest(.{ .root_module = core_t, .name = "core-test-check" }).step);
             check_tests.dependOn(&b.addTest(.{ .root_module = shell_t, .name = "shell-test-check" }).step);
             check.dependOn(check_tests);
         }
+        pair[0].dependOn(&b.addRunArtifact(wt).step);
         pair[0].dependOn(&b.addRunArtifact(ct).step);
         pair[0].dependOn(&b.addRunArtifact(st).step);
         // The test binaries, installed for Valgrind and for ci.sh, which runs
@@ -137,17 +182,23 @@ pub fn build(b: *std.Build) void {
     // The fuzzer runs one test of a binary for ever, so a long run names
     // one target: -Dfuzz-filter="fuzz json".
     const fuzz_filter = b.option([]const u8, "fuzz-filter", "Fuzz only tests whose names contain this (default: fuzz)") orelse "fuzz";
+    const fuzz_wire = b.addTest(.{ .root_module = wire_mod, .filters = &.{fuzz_filter} });
     const fuzz_core = b.addTest(.{ .root_module = core, .filters = &.{fuzz_filter} });
     const fuzz_shell_mod = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
         .link_libc = true,
-        .imports = &.{.{ .name = "core", .module = core }},
+        .imports = &.{
+            .{ .name = "limits", .module = limits_mod },
+            .{ .name = "wire", .module = wire_mod },
+            .{ .name = "core", .module = core },
+        },
     });
     fuzz_shell_mod.addOptions("build_options", build_options);
     if (net) linkNet(b, fuzz_shell_mod, target);
     const fuzz_shell = b.addTest(.{ .root_module = fuzz_shell_mod, .filters = &.{fuzz_filter} });
+    fuzz_step.dependOn(&b.addRunArtifact(fuzz_wire).step);
     fuzz_step.dependOn(&b.addRunArtifact(fuzz_core).step);
     fuzz_step.dependOn(&b.addRunArtifact(fuzz_shell).step);
 }

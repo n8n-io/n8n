@@ -4,7 +4,7 @@
 //! Everything here works on buffers that the client (`ms.zig`) owns;
 //! nothing here touches a socket.
 const std = @import("std");
-const tds = @import("core").tdswire;
+const tds = @import("wire").tdswire;
 const http = @import("http.zig");
 const creds = @import("creds.zig");
 

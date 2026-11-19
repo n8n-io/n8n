@@ -8,8 +8,8 @@ const egress = @import("egress.zig");
 const request = @import("request.zig");
 const blob_store = @import("blob_store.zig");
 const binary_store = @import("binary_store.zig");
-const http2 = @import("http2.zig");
-const hpack = @import("hpack.zig");
+const http2 = @import("wire").http2;
+const hpack = @import("wire").hpack;
 
 const kind_conn: u8 = 3;
 const kind_dns: u8 = 5;

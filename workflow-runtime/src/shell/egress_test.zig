@@ -265,8 +265,8 @@ test "a request body larger than the connection buffer goes out whole (head and 
 
 // ---- HTTP/2 and origin limits -------------------------------------------------------
 
-const http2 = @import("http2.zig");
-const hpack = @import("hpack.zig");
+const http2 = @import("wire").http2;
+const hpack = @import("wire").hpack;
 
 fn freePort(base: u16) !struct { port: u16, lfd: c_int } {
     var p: u16 = base + @as(u16, @intCast(@mod(std.c.getpid(), 2000)));

@@ -13,8 +13,8 @@
 //! `hostOnly`. `docs/smtp-effect.md` has the limits.
 const std = @import("std");
 const core_lib = @import("core");
-const smtp = core_lib.smtp;
-const mail = core_lib.mail;
+const smtp = @import("wire").smtp;
+const mail = @import("wire").mail;
 const sys = @import("sys.zig");
 const tls = @import("tls.zig");
 const dns = @import("dns.zig");

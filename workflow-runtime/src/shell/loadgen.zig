@@ -4,8 +4,8 @@ const std = @import("std");
 const sys = @import("sys.zig");
 
 const http = @import("http.zig");
-const http2 = @import("http2.zig");
-const hpack = @import("hpack.zig");
+const http2 = @import("wire").http2;
+const hpack = @import("wire").hpack;
 const tls = @import("tls.zig");
 
 pub const LoadOptions = struct {
