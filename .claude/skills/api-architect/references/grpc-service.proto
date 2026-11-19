@@ -1,0 +1,102 @@
+// gRPC Service Reference
+// Complete Protocol Buffer definition with all streaming patterns
+
+syntax = "proto3";
+
+package user.v1;
+
+option go_package = "github.com/example/user/v1;userv1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/field_mask.proto";
+
+// UserService demonstrates all gRPC communication patterns
+service UserService {
+  // Unary RPC - Single request, single response
+  rpc GetUser(GetUserRequest) returns (User);
+
+  // Unary RPC - Create operation
+  rpc CreateUser(CreateUserRequest) returns (User);
+
+  // Unary RPC - Update with field mask
+  rpc UpdateUser(UpdateUserRequest) returns (User);
+
+  // Server streaming - Watch for changes
+  rpc WatchUsers(WatchUsersRequest) returns (stream UserEvent);
+
+  // Client streaming - Bulk operations
+  rpc BulkCreateUsers(stream CreateUserRequest) returns (BulkCreateResponse);
+
+  // Bidirectional streaming - Real-time sync
+  rpc SyncUsers(stream SyncRequest) returns (stream SyncResponse);
+}
+
+// Core domain message
+message User {
+  string id = 1;
+  string email = 2;
+  string name = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+// Request messages
+message GetUserRequest {
+  string id = 1;
+}
+
+message CreateUserRequest {
+  string email = 1;
+  string name = 2;
+}
+
+message UpdateUserRequest {
+  string id = 1;
+  User user = 2;
+  google.protobuf.FieldMask update_mask = 3;  // Partial update support
+}
+
+message WatchUsersRequest {
+  repeated string user_ids = 1;  // Empty = watch all
+}
+
+// Event message for streaming
+message UserEvent {
+  enum EventType {
+    EVENT_TYPE_UNSPECIFIED = 0;
+    EVENT_TYPE_CREATED = 1;
+    EVENT_TYPE_UPDATED = 2;
+    EVENT_TYPE_DELETED = 3;
+  }
+  EventType type = 1;
+  User user = 2;
+  google.protobuf.Timestamp timestamp = 3;
+}
+
+// Bulk operation response
+message BulkCreateResponse {
+  int32 created_count = 1;
+  repeated string created_ids = 2;
+  repeated Error errors = 3;
+}
+
+// Standard error message
+message Error {
+  string code = 1;
+  string message = 2;
+  map<string, string> metadata = 3;
+}
+
+// Bidirectional sync messages
+message SyncRequest {
+  oneof payload {
+    User user = 1;
+    string delete_id = 2;
+  }
+}
+
+message SyncResponse {
+  bool success = 1;
+  string id = 2;
+  Error error = 3;
+}

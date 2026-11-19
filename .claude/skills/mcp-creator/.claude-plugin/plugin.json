@@ -1,0 +1,4 @@
+{
+  "name": "mcp-creator",
+  "description": "Expert MCP (Model Context Protocol) server developer creating safe, performant, production-ready servers with proper security, error handling, and developer experience. Activate on 'create MCP', 'MCP server', 'build MCP', 'custom tool server', 'MCP development', 'Model Context Protocol'. NOT for using existing MCPs (just invoke them), general API development (use backend-architect), or skills/agents without external state (use skill-coach/agent-creator)."
+}

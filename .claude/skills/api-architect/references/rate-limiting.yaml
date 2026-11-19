@@ -1,0 +1,98 @@
+# Rate Limiting Design Reference
+# Complete rate limiting configuration with tiers, headers, and responses
+
+# Tier-based rate limits
+tiers:
+  free:
+    requests_per_minute: 60
+    requests_per_day: 1000
+    burst: 10
+    description: "Basic tier for evaluation and small projects"
+
+  starter:
+    requests_per_minute: 300
+    requests_per_day: 10000
+    burst: 50
+    description: "For small production applications"
+
+  pro:
+    requests_per_minute: 600
+    requests_per_day: 50000
+    burst: 100
+    description: "For growing production workloads"
+
+  enterprise:
+    requests_per_minute: 6000
+    requests_per_day: unlimited
+    burst: 1000
+    description: "Custom limits negotiated per contract"
+
+# Rate limit response headers (always include these)
+headers:
+  X-RateLimit-Limit: "60"           # Max requests allowed in current window
+  X-RateLimit-Remaining: "45"       # Requests remaining in current window
+  X-RateLimit-Reset: "1640000000"   # Unix timestamp when window resets
+  X-RateLimit-Policy: "60;w=60"     # Policy: 60 requests per 60 seconds
+  Retry-After: "30"                 # Seconds until retry (only on 429)
+
+# Sliding window configuration
+sliding_window:
+  window_size_seconds: 60
+  precision: 1  # 1-second granularity
+  algorithm: "sliding_log"  # Options: fixed_window, sliding_log, token_bucket
+
+# Token bucket (alternative algorithm)
+token_bucket:
+  capacity: 100          # Maximum tokens
+  refill_rate: 10        # Tokens added per second
+  initial_tokens: 100    # Starting tokens
+
+# Per-endpoint limits (override tier limits)
+endpoint_limits:
+  "/auth/token":
+    requests_per_minute: 5
+    burst: 2
+    reason: "Prevent brute force attacks"
+
+  "/search":
+    requests_per_minute: 30
+    burst: 5
+    reason: "Expensive operation"
+
+  "/export":
+    requests_per_hour: 10
+    burst: 1
+    reason: "Very expensive, generates large files"
+
+# 429 Too Many Requests response
+error_response:
+  status: 429
+  headers:
+    Content-Type: "application/json"
+    Retry-After: "30"
+  body:
+    error:
+      code: "RATE_LIMIT_EXCEEDED"
+      message: "Too many requests. Please retry after 30 seconds."
+      retryAfter: 30
+      limit: 60
+      window: "1 minute"
+      documentation: "https://api.example.com/docs/rate-limits"
+
+# Graceful degradation
+degradation:
+  soft_limit: 0.8   # At 80% of limit, add warning header
+  headers_at_soft_limit:
+    X-RateLimit-Warning: "Approaching rate limit"
+
+# IP-based vs API-key-based
+identification:
+  primary: "api_key"          # X-API-Key header
+  fallback: "client_ip"       # For unauthenticated requests
+  header_name: "X-API-Key"
+
+# Exempt paths (no rate limiting)
+exempt_paths:
+  - "/health"
+  - "/metrics"
+  - "/.well-known/*"

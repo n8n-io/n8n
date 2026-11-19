@@ -18,7 +18,7 @@ a tool or a lesson must survive the session. Keep it under 150 lines.
   Not in this repository. Use the `prediction-modeling` skill for what to log.
 - Work branches: `ccr-4d6bcf99-mmbgxo` and `claude/branche-higgsfield-974raq`; push both.
 
-## Skills in .claude/skills (122) — pick by theme
+## Skills in .claude/skills (147) — pick by theme
 
 38 come from master (marketingskills v2: copywriting, ad-creative, social, sms, offers,
 referrals, onboarding, analytics, aso…; skill-creator, brainstorming, deep-research…).
@@ -76,6 +76,7 @@ newest one when the owner says "reprends où on s'est arrêtés". Project plugin
 | Austin1serb/Anthropic-Leaked-Source-Code (2026-11-16) | Refused, not downloaded: leaked proprietary code. Cassie is built on the official Claude Agent SDK instead |
 | UXAspects/UXAspects, SixArm/ui-ux-design-guide, notsobigcompany/BigUIPaging (2026-11-17) | Not installed: Angular component library (our site is plain JS); a UI/UX glossary with no licence file (our design skills cover it); SwiftUI paging for iOS (only if PitUp gets a native iOS app). The site cleanup was done with our own design skills instead (D85) |
 | open-jarvis/OpenJarvis (2026-11-18) | Evaluated, owner declined ("Laisse tomber"). Apache 2.0, local-first assistant (Ollama models, Telegram/WhatsApp, scheduled agents). Would need his PC on all day, 16 GB RAM for a usable small model; its WhatsApp channel uses Baileys (ban risk, never for PitUp customers); has a crypto-mining feature. Do not propose again unless asked |
+| erichowens/some_claude_skills (2026-11-20) | 22 skills installés (MIT, aucun hook ni serveur MCP) : design-system-creator, color-theory-palette-harmony-expert, design-critic, design-trend-analyzer, seo-visibility-expert, technical-writer, api-architect, fullstack-debugger, react-performance-optimizer, mcp-creator, agent-creator, skill-architect, skillful-subagent-creator, team-builder, llm-router, ai-engineer, sound-engineer, video-processing-editing, admin-dashboard, windows-95-web-designer, pet-memorial-creator, automatic-stateful-prompt-improver (inactif : demande un serveur MCP « prompt-learning » non installé). Leur skill-creator (marqué DEPRECATED) non installé : celui d'Anthropic reste |
 | higgsfield-ai/higgsfield, o3de, ai-agent frameworks lists | Not relevant (GPU training framework; game engine — owner may revisit) |
 | 3641397194-wq/gpt6-Astra, claude-code-best/claude-code, asgeirtj/system_prompts_leaks | Refused: jailbreak injector with unknown relay; unauthorised reconstruction of proprietary code; leaked confidential prompts |
 

@@ -1,0 +1,4 @@
+{
+  "name": "fullstack-debugger",
+  "description": "'Expert debugger for Next.js + Cloudflare Workers + Supabase stacks. Systematic troubleshooting for auth, caching, workers, RLS, CORS, and build issues. Activate on: ''debug'', ''not working'', ''error'', ''broken'', ''500'', ''401'', ''403'', ''cache issue'', ''RLS'', ''CORS''. NOT for: feature development (use language skills), architecture design (use system-architect).'"
+}

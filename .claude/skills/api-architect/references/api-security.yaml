@@ -1,0 +1,139 @@
+# API Security Patterns Reference
+# Complete security configuration for authentication, authorization, and protection
+
+# Authentication methods
+authentication:
+  # API Key authentication
+  api_key:
+    header: "X-API-Key"
+    query_param: "api_key"  # Fallback (not recommended)
+    format: "prefix_random"  # e.g., "sk_live_abc123..."
+    rotation_period_days: 90
+
+  # JWT Bearer token
+  jwt:
+    header: "Authorization"
+    scheme: "Bearer"
+    algorithm: "RS256"  # Prefer asymmetric for microservices
+    issuer: "https://auth.example.com"
+    audience: "https://api.example.com"
+    expiration_minutes: 15
+    refresh_token_days: 7
+    claims:
+      required: ["sub", "iat", "exp", "aud"]
+      optional: ["scope", "role", "tenant_id"]
+
+  # OAuth 2.0 flows
+  oauth2:
+    authorization_endpoint: "https://auth.example.com/authorize"
+    token_endpoint: "https://auth.example.com/token"
+    scopes:
+      read: "Read access to resources"
+      write: "Write access to resources"
+      delete: "Delete access to resources"
+      admin: "Administrative operations"
+    flows:
+      authorization_code:
+        use_case: "Web applications with backend"
+        pkce_required: true
+      client_credentials:
+        use_case: "Service-to-service"
+      device_code:
+        use_case: "CLI tools, TV apps"
+
+# Authorization patterns
+authorization:
+  # Role-based access control
+  rbac:
+    roles:
+      viewer:
+        permissions: ["read:users", "read:posts"]
+      editor:
+        permissions: ["read:*", "write:users", "write:posts"]
+      admin:
+        permissions: ["*"]
+    inheritance:
+      admin: ["editor"]
+      editor: ["viewer"]
+
+  # Attribute-based access control
+  abac:
+    policies:
+      - name: "own_resources"
+        condition: "resource.owner_id == user.id"
+        effect: "allow"
+      - name: "tenant_isolation"
+        condition: "resource.tenant_id == user.tenant_id"
+        effect: "allow"
+      - name: "time_restricted"
+        condition: "current_time.hour >= 9 AND current_time.hour <= 17"
+        effect: "allow"
+
+# Input validation
+validation:
+  # Request body limits
+  max_body_size: "1MB"
+  max_json_depth: 10
+  max_array_length: 1000
+
+  # Common patterns
+  patterns:
+    email: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+    uuid: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    phone: "^\\+[1-9]\\d{1,14}$"
+
+  # Sanitization
+  sanitize:
+    html: "escape"  # Escape HTML entities
+    sql: "parameterize"  # Use parameterized queries
+    path: "normalize"  # Prevent path traversal
+
+# CORS configuration
+cors:
+  allowed_origins:
+    - "https://app.example.com"
+    - "https://admin.example.com"
+  allowed_methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+  allowed_headers: ["Authorization", "Content-Type", "X-Request-ID"]
+  exposed_headers: ["X-RateLimit-Remaining", "X-Request-ID"]
+  max_age: 86400  # 24 hours
+  credentials: true
+
+# Security headers
+security_headers:
+  Strict-Transport-Security: "max-age=31536000; includeSubDomains"
+  X-Content-Type-Options: "nosniff"
+  X-Frame-Options: "DENY"
+  X-XSS-Protection: "1; mode=block"
+  Content-Security-Policy: "default-src 'self'"
+  Referrer-Policy: "strict-origin-when-cross-origin"
+
+# Error handling (don't leak information)
+error_handling:
+  production:
+    include_stack_trace: false
+    include_internal_message: false
+    generic_500_message: "An unexpected error occurred"
+  development:
+    include_stack_trace: true
+    include_internal_message: true
+
+# Audit logging
+audit:
+  events:
+    - "authentication.success"
+    - "authentication.failure"
+    - "authorization.denied"
+    - "resource.created"
+    - "resource.updated"
+    - "resource.deleted"
+    - "api_key.rotated"
+  include:
+    - "timestamp"
+    - "user_id"
+    - "ip_address"
+    - "user_agent"
+    - "request_id"
+    - "endpoint"
+    - "method"
+    - "response_code"
