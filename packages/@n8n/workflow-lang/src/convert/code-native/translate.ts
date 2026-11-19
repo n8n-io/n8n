@@ -3576,8 +3576,11 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		/**
 		 * Refuses code that writes, deletes or tests a member of a value that can be a Date value.
 		 * A Date of JavaScript takes members, and a Date value has none. The object is no Date
-		 * value when it is a list or an object that the code writes there, a constant that starts
-		 * with one, or the \`json\` of an item.
+		 * value for certain when every value that it can hold is plain: a literal, the \`json\` of
+		 * an item, a copy from \`Object.assign({}, …)\`, \`Object.fromEntries\`, \`JSON.parse\` or
+		 * a list method that makes a new list, the accumulator of a \`reduce\` that starts with a
+		 * literal, a constant whose value is one of these, or a \`let\`/\`var\` whose every
+		 * assignment is one of these.
 		 */
 		const guardMembers = (): void => {
 			const plain = (e: ts.Expression | undefined): boolean => {
@@ -3618,23 +3621,150 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				ts.forEachChild(n, findJson);
 			};
 			findJson(root);
-			const noValue = (e: ts.Expression): boolean => {
+			/** True when \`e\` is a list for certain, so a list method of it gives a new list. */
+			const isList = (e: ts.Expression, seen: Set<ts.Symbol>): boolean => {
+				const x = stripParens(e);
+				if (ts.isArrayLiteralExpression(x)) return true;
+				if (ts.isCallExpression(x)) {
+					const g = globalCall(x);
+					if (g !== null && ['Array.from', 'Object.keys', 'Object.values', 'Object.entries'].includes(g)) {
+						return true;
+					}
+					const callee = stripParens(x.expression);
+					return (
+						ts.isPropertyAccessExpression(callee) &&
+						NEW_LIST_METHODS.has(callee.name.text) &&
+						isList(callee.expression, seen)
+					);
+				}
+				if (!ts.isIdentifier(x)) return false;
+				const symbol = checker.getSymbolAtLocation(x);
+				if (symbol === undefined || seen.has(symbol)) return false;
+				const declarations = symbol.declarations ?? [];
+				const d = declarations.length === 1 ? declarations[0] : undefined;
+				if (d === undefined || !ts.isVariableDeclaration(d) || !ts.isVariableDeclarationList(d.parent)) {
+					return false;
+				}
+				const next = new Set(seen);
+				next.add(symbol);
+				if ((d.parent.flags & ts.NodeFlags.Const) !== 0) {
+					return d.initializer !== undefined && isList(d.initializer, next);
+				}
+				if (d.initializer !== undefined && !isList(d.initializer, next)) return false;
+				let ok = true;
+				const visit = (n: ts.Node): void => {
+					if (!ok) return;
+					if (ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+						const left = stripParens(n.left);
+						if (ts.isIdentifier(left) && checker.getSymbolAtLocation(left) === symbol && !isList(n.right, next)) {
+							ok = false;
+						}
+					}
+					ts.forEachChild(n, visit);
+				};
+				visit(root);
+				return ok;
+			};
+			/** True when a call gives a new object or list, never a Date value. */
+			const freshPlain = (call: ts.CallExpression): boolean => {
+				const g = globalCall(call);
+				if (g === 'JSON.parse' || g === 'Object.fromEntries') return true;
+				if (g === 'Object.assign') {
+					const first = call.arguments[0];
+					return first !== undefined && plain(stripParens(first));
+				}
+				const callee = stripParens(call.expression);
+				return (
+					ts.isPropertyAccessExpression(callee) &&
+					NEW_LIST_METHODS.has(callee.name.text) &&
+					isList(callee.expression, new Set())
+				);
+			};
+			/** True when a \`reduce\` callback returns its accumulator in every path. */
+			const returnsAccumulator = (fn: ts.FunctionLikeDeclaration, name: ts.Identifier): boolean => {
+				const symbol = checker.getSymbolAtLocation(name);
+				if (symbol === undefined) return false;
+				let any = false;
+				let ok = true;
+				const visit = (n: ts.Node): void => {
+					if (!ok) return;
+					if (ts.isReturnStatement(n)) {
+						any = true;
+						const x = n.expression === undefined ? undefined : stripParens(n.expression);
+						if (
+							x === undefined ||
+							!ts.isIdentifier(x) ||
+							checker.getSymbolAtLocation(x) !== symbol
+						) {
+							ok = false;
+						}
+						return;
+					}
+					if (n !== fn && isFunctionNode(n)) return;
+					ts.forEachChild(n, visit);
+				};
+				if (fn.body === undefined) return false;
+				visit(fn.body);
+				return any && ok;
+			};
+			/** True when \`d\` is the accumulator of a \`reduce\` that starts plain and keeps it. */
+			const isReduceAccumulator = (d: ts.ParameterDeclaration, seen: Set<ts.Symbol>): boolean => {
+				if (!ts.isIdentifier(d.name)) return false;
+				const fn = d.parent;
+				if (!isFunctionNode(fn) || fn.parameters[0] !== d) return false;
+				const call = fn.parent;
+				if (!ts.isCallExpression(call) || call.arguments[0] !== fn) return false;
+				const callee = stripParens(call.expression);
+				if (!ts.isPropertyAccessExpression(callee) || callee.name.text !== 'reduce') return false;
+				const init = call.arguments[1];
+				return init !== undefined && noValue(init, seen) && returnsAccumulator(fn, d.name);
+			};
+			/** True when every assignment to \`symbol\` in the code gives a plain value. */
+			const everyAssignmentPlain = (symbol: ts.Symbol, seen: Set<ts.Symbol>): boolean => {
+				let ok = true;
+				const visit = (n: ts.Node): void => {
+					if (!ok) return;
+					if (ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+						const left = stripParens(n.left);
+						if (
+							ts.isIdentifier(left) &&
+							checker.getSymbolAtLocation(left) === symbol &&
+							!noValue(n.right, seen)
+						) {
+							ok = false;
+						}
+					}
+					ts.forEachChild(n, visit);
+				};
+				visit(root);
+				return ok;
+			};
+			/** True when the value of \`e\` is no Date value for certain. */
+			const noValue = (e: ts.Expression, seen: Set<ts.Symbol>): boolean => {
 				const x = stripParens(e);
 				if (plain(x)) return true;
 				if (isJson(x)) return !jsonChanges;
+				if (ts.isCallExpression(x)) return freshPlain(x);
 				if (!ts.isIdentifier(x)) return false;
-				const declarations = checker.getSymbolAtLocation(x)?.declarations ?? [];
+				const symbol = checker.getSymbolAtLocation(x);
+				if (symbol === undefined || seen.has(symbol)) return false;
+				const declarations = symbol.declarations ?? [];
 				const d = declarations.length === 1 ? declarations[0] : undefined;
-				return (
-					d !== undefined &&
-					ts.isVariableDeclaration(d) &&
-					ts.isVariableDeclarationList(d.parent) &&
-					(d.parent.flags & ts.NodeFlags.Const) !== 0 &&
-					plain(d.initializer)
-				);
+				if (d === undefined) return false;
+				const next = new Set(seen);
+				next.add(symbol);
+				if (ts.isParameter(d) && isReduceAccumulator(d, next)) return true;
+				if (!ts.isVariableDeclaration(d) || !ts.isVariableDeclarationList(d.parent)) {
+					return false;
+				}
+				if ((d.parent.flags & ts.NodeFlags.Const) !== 0) {
+					return d.initializer !== undefined && noValue(d.initializer, next);
+				}
+				if (d.initializer !== undefined && !noValue(d.initializer, next)) return false;
+				return everyAssignmentPlain(symbol, next);
 			};
 			const check = (object: ts.Expression): void => {
-				if (noValue(object)) return;
+				if (noValue(object, new Set())) return;
 				block(
 					'Date: a member of a value that can be a Date value',
 					'The code writes, deletes or tests a member of a value that can be a Date value. A Date value has no members.',

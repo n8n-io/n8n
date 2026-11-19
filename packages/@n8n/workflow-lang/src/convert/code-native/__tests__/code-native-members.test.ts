@@ -2,11 +2,13 @@
  * The member shapes of a native Code node that also makes a Date value.
  *
  * A native Code node holds a Date value without the members of a JavaScript Date, so a write,
- * delete or test of a member of a value that can be a Date value needs a proof or a check.
- * This test records which of the common shapes the translation refuses today.
+ * delete or test of a member of a value that can be a Date value needs a proof. The static
+ * proof is widened: a literal, a spread copy, `Object.assign({}, …)`, `Object.fromEntries`,
+ * `JSON.parse`, a list method that makes a new list, a `reduce` accumulator that starts with a
+ * literal, and a `let`/`var` whose every assignment is one of these are no Date value. The
+ * shapes that the proof cannot cover stay refused until the next step adds the run-time check.
  *
- * The cases are made up. They run only the translation: the oracle against n8n's real task
- * runner is a later step.
+ * The cases are made up.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -81,28 +83,28 @@ const statusOf = (s: Shape): string => {
 	return t.ok ? 'ok' : t.blockers[0].feature;
 };
 
-/** The measurement: which shapes the translation refuses before the widening. */
+/** The translation of each shape: refused with the first blocker, or `ok`. */
 const MEASURED: Record<string, string> = {
-	'let o = {}': 'Date: a member of a value that can be a Date value',
-	'var o = {}': 'Date: a member of a value that can be a Date value',
+	'let o = {}': 'ok',
+	'var o = {}': 'ok',
 	'const o = {...x}': 'ok',
-	'Object.assign({}, x)': 'Date: a member of a value that can be a Date value',
-	'JSON.parse(s)': 'Date: a member of a value that can be a Date value',
+	'Object.assign({}, x)': 'ok',
+	'JSON.parse(s)': 'ok',
 	'const a = []; a[0] = 1': 'ok',
 	'list.map(fn); a[0].k = 1': 'Date: a member of a value that can be a Date value',
 	'function parameter': 'Date: a member of a value that can be a Date value',
-	'reduce accumulator': 'Date: a member of a value that can be a Date value',
+	'reduce accumulator': 'ok',
 	'item.json.k': 'ok',
 	'items[i].json.k': 'ok',
 	'for of item.json.k': 'ok',
-	'const j = item.json; j.k = 1': 'Date: a member of a value that can be a Date value',
+	'const j = item.json; j.k = 1': 'ok',
 	'delete o.k': 'ok',
 	"'k' in o": 'ok',
 	'o.count++': 'ok',
 	'o.list.push(1); o.k = 1': 'ok',
 };
 
-describe('member shapes of a Date value: the refusal today', () => {
+describe('member shapes of a Date value: the widened static proof', () => {
 	it.each(SHAPES)('$name', (shape) => {
 		expect(statusOf(shape)).toBe(MEASURED[shape.name]);
 	});
