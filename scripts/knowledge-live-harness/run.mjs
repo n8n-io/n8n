@@ -553,12 +553,19 @@ const average = (values) => {
 	const known = values.filter((value) => typeof value === 'number');
 	return known.length > 0 ? known.reduce((sum, value) => sum + value, 0) / known.length : null;
 };
+// One stalled model call must not define an agent's wall time.
+const median = (values) => {
+	const known = values.filter((value) => typeof value === 'number').sort((a, b) => a - b);
+	if (known.length === 0) return null;
+	const middle = Math.floor(known.length / 2);
+	return known.length % 2 === 1 ? known[middle] : (known[middle - 1] + known[middle]) / 2;
+};
 const fmt = (value, digits = 0) => (value === null ? '-' : value.toFixed(digits));
 
 /** One line per agent and class, plus a total line, as a markdown table. */
 function summarize(runs) {
 	const lines = [
-		'| Agent | Class | Runs | Pass | Answer | Citation | Refusal | Violations | Prompt tokens | Tokens / pass | Tool calls | Wall s |',
+		'| Agent | Class | Runs | Pass | Answer | Citation | Refusal | Violations | Prompt tokens | Tokens / pass | Tool calls | Wall s (median) |',
 		'| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
 	];
 	const groups = new Map();
@@ -580,7 +587,7 @@ function summarize(runs) {
 				: `${relevant.filter((run) => run.score[field]).length}/${relevant.length}`;
 		};
 		lines.push(
-			`| ${agentKey} | ${cls} | ${group.length} | ${passes}/${group.length} | ${scored('answered')} | ${scored('cited')} | ${scored('refused')} | ${group.reduce((sum, run) => sum + run.score.violations, 0)} | ${fmt(average(group.map((run) => run.metrics.promptTokens)))} | ${passes > 0 ? fmt(totalTokens / passes) : '-'} | ${fmt(average(group.map((run) => run.metrics.toolCalls)), 1)} | ${fmt(average(group.map((run) => run.metrics.wallMs / 1000)), 1)} |`,
+			`| ${agentKey} | ${cls} | ${group.length} | ${passes}/${group.length} | ${scored('answered')} | ${scored('cited')} | ${scored('refused')} | ${group.reduce((sum, run) => sum + run.score.violations, 0)} | ${fmt(average(group.map((run) => run.metrics.promptTokens)))} | ${passes > 0 ? fmt(totalTokens / passes) : '-'} | ${fmt(average(group.map((run) => run.metrics.toolCalls)), 1)} | ${fmt(median(group.map((run) => run.metrics.wallMs / 1000)), 1)} |`,
 		);
 	}
 	return lines.join('\n');

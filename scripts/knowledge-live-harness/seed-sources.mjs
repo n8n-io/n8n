@@ -259,8 +259,11 @@ async function seedNotion() {
 		rows.splice(position, 0, needle);
 	});
 	const needles = {};
+	// Every row id, so the harness can tell a row inside the picked data source from a page outside the seed.
+	const rowIds = [];
 	for (const [index, row] of rows.entries()) {
 		const created = await createRow(dataSourceId, row);
+		rowIds.push(created.id);
 		if (SUPPORT_KB_NEEDLES.includes(row))
 			needles[row.key] = { id: created.id, title: row.title, url: created.url };
 		if ((index + 1) % 25 === 0 || index + 1 === rows.length) {
@@ -282,6 +285,7 @@ async function seedNotion() {
 		databaseId: database.id,
 		dataSourceId,
 		kbRows: rows.length,
+		rowIds,
 		picked,
 		notPicked,
 		children,

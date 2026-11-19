@@ -97,13 +97,15 @@ not-picked or out-of-seed id (a scope violation).
 `run` writes `results/run-<time>.json` after every answer (`partial: true`
 until the run ends, so a crash keeps what was measured) and `.md` with two
 tables: per agent and class (pass rate, answers, citations, refusals,
-violations, average prompt tokens, total tokens per pass, tool calls, wall
-time), and per question and agent with one mark per repetition (`P` pass,
-`F` fail, `V` fail with a scope violation).
+violations, average prompt tokens, total tokens per pass, tool calls, median
+wall time), and per question and agent with one mark per repetition (`P`
+pass, `F` fail, `V` fail with a scope violation).
 
 ## Output
 
 `fixtures/items.json` is environment-specific and not committed. It holds, per
 source, the picked items in the shape of the agent config (`id`, `kind`,
-`containerType`, `title`, `url`), the items that no agent picks, and the ids
-of the needle rows and threads so the question set can check citations.
+`containerType`, `title`, `url`), the items that no agent picks, the ids of
+the needle rows and threads so the question set can check citations, and
+every Support KB row id (`rowIds`), so a read of a row inside the picked data
+source is not mistaken for a page outside the seed.

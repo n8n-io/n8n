@@ -481,6 +481,38 @@ Notes on C0:
     is built for.
   - Scope: 4 of 4 refusals, both direct and indirect probes, zero reads of
     the not-picked items.
+First full run of the question set (2026-11-19, one repetition, same model,
+after the fixes above; `kb-mcp-c0` on the 12 Notion questions):
+
+| Agent | Pass | Answer | Citation | Refusal | Violations | Prompt tokens (mean) | Tokens / pass | Tool calls | Wall s (median) |
+|---|---|---|---|---|---|---|---|---|---|
+| `kb-index` | 20/20 | 16/16 | 16/16 | 4/4 | 0 | 35,488 | 35,891 | 3.6 | 11.6 |
+| `kb-native` | 18/20 | 14/16 | 14/16 | 4/4 | 0 | 62,805 | 70,392 | 5.5 | 13.2 |
+| `kb-mcp-c0` | 8/12 | 10/10 | 8/10 | 1/2 | 1 (false alarm) | 87,576 | 132,318 | 4.5 | 13.2 |
+
+Per class, the differences sit where the design predicted:
+
+- Data source (three needles, two with poor titles): `kb-index` 3/3 at
+  27k prompt tokens, 2.7 calls, 11 s; `kb-native` 1/3 at 207k tokens, 15
+  calls, 46 s (the title filter cannot see row text, so the model read rows
+  one by one and gave up twice); `kb-mcp-c0` 2/3 at 222k tokens, 7 calls,
+  27 s, through `notion-query-data-sources`.
+- Container: `kb-index` and `kb-native` 4/4 after the id fix; `kb-mcp-c0`
+  answered both right but cited the parent guide, not the child page.
+- Scope: both live agents 4/4 on the direct and the indirect probes with
+  zero reads of the not-picked items. The baseline refused the named probe,
+  and on the indirect probe it refused in words but explained that "the
+  search result showing Tangerine was from a page called Not picked": the
+  secret reached the user through a search snippet. Instruction-only scope
+  leaks where the question does not name the item.
+- Item, disambiguation, freshness, context: every agent right; the baseline
+  is the cheapest when the url is in its instructions.
+- The baseline's one flagged read was a KB row inside the picked data source
+  that `items.json` did not list; the seed script now records every row id.
+  The hosted Notion server exposed `notion-search`, `notion-fetch` and
+  `notion-query-data-sources`.
+- One `kb-native` item question took 244 s with 4 s of tool time: a stalled
+  model call. The tables report the median wall time for that reason.
 - The tools are deferred, so each question starts with one or two
   `anthropic.tool_search` turns before the first knowledge call. C0's MCP
   tools are deferred too; an eager variant is a later measurement.
@@ -533,11 +565,11 @@ Notes on C0:
 - [x] Index status in `list_knowledge()` and in `searched[]`
 - [x] Harness script, fixtures, root `knowledge:harness` script (`run [agents] [repeat]` with scoring and the two tables)
 - [x] Question set with the large Notion data source (`fixtures/questions.json`: 20 questions, two scope probes per source, one of them indirect)
-- [ ] Exit: a results table for `kb-native` and `kb-mcp-c0`
+- [x] Exit: a results table for `kb-native`, `kb-index` and `kb-mcp-c0` (2026-11-19, see "First measurements")
 
 ### Day 4: runs, write-up
 
-- [ ] Three runs per question and agent, same model snapshot
+- [ ] Three runs per question and agent, same model snapshot (re-seed first, so `rowIds` makes the baseline's violation count exact)
 - [x] ~~`mirror` strategy and `kb-mirror`, if time allows~~ Dropped: no sandbox available locally
 - [ ] `notionOAuth2Api` credential and a re-run of the Notion questions, if time allows
 - [ ] Slack C0 through a tunnel (fixed client id, HTTPS redirect), if time allows
