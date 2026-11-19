@@ -44,14 +44,15 @@ function downloadFile(data: string, mimeType: string) {
 	<div v-if="contentItems" :class="$style.toolData" data-test-id="ai-tool-data-content">
 		<template v-for="(item, index) in contentItems" :key="index">
 			<ToolDataBlock v-if="item.type === 'text'" :value="item.text" />
-			<img
-				v-else-if="item.type === 'image'"
-				:src="`data:${item.mimeType};base64,${item.data}`"
-				:alt="i18n.baseText('binaryDataDisplay.imagePreview')"
-				:class="$style.image"
-				data-test-id="ai-tool-data-image"
-			/>
-			<div v-else :class="$style.file" data-test-id="ai-tool-data-file">
+			<div v-else-if="item.type === 'image'" :class="$style.binaryPart">
+				<img
+					:src="`data:${item.mimeType};base64,${item.data}`"
+					:alt="i18n.baseText('binaryDataDisplay.imagePreview')"
+					:class="$style.image"
+					data-test-id="ai-tool-data-image"
+				/>
+			</div>
+			<div v-else :class="[$style.binaryPart, $style.file]" data-test-id="ai-tool-data-file">
 				<N8nText size="small" color="text-light">{{ item.mimeType }}</N8nText>
 				<N8nButton
 					variant="outline"
@@ -92,13 +93,19 @@ function downloadFile(data: string, mimeType: string) {
 	background-color: var(--background--surface);
 }
 
+/* Matches the frame of the code blocks, so every part of the result reads as one kind of block. */
+.binaryPart {
+	padding: var(--spacing--xs);
+	border: 0.5px solid var(--border-color);
+	border-radius: var(--radius);
+	background-color: var(--background--surface);
+}
+
 .image {
-	align-self: flex-start;
+	display: block;
 	max-width: 100%;
 	max-height: 320px;
 	object-fit: contain;
-	border: var(--border);
-	border-radius: var(--radius);
 }
 
 .file,
