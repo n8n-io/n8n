@@ -165,12 +165,11 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return response.autoExposeNewWorkflows;
 	}
 
-	async function setPreferencesEnabled(enabled: boolean): Promise<boolean> {
+	async function setPreferencesEnabled(enabled: boolean): Promise<void> {
 		const response = await updateMcpSettings(rootStore.restApiContext, {
 			preferencesEnabled: enabled,
 		});
 		applyMcpSettingsResponse(response);
-		return response.preferencesEnabled;
 	}
 
 	// Toggle MCP access for a single workflow

@@ -74,12 +74,18 @@ describe('McpSettingsService', () => {
 			},
 		);
 
-		test.each(['true', 'false'])('returns the saved value "%s" on any plan', async (value) => {
-			findByKey.mockResolvedValue(mock<Settings>({ key, value }));
-			license.isEnterprisePlan.mockReturnValue(true);
+		test.each([
+			{ value: 'true', isEnterprisePlan: true },
+			{ value: 'false', isEnterprisePlan: false },
+		])(
+			'returns the saved value "$value" when isEnterprisePlan is $isEnterprisePlan',
+			async ({ value, isEnterprisePlan }) => {
+				findByKey.mockResolvedValue(mock<Settings>({ key, value }));
+				license.isEnterprisePlan.mockReturnValue(isEnterprisePlan);
 
-			await expect(service.getPreferencesEnabled()).resolves.toBe(value === 'true');
-		});
+				await expect(service.getPreferencesEnabled()).resolves.toBe(value === 'true');
+			},
+		);
 
 		test('saves the value', async () => {
 			await service.setPreferencesEnabled(false);

@@ -840,12 +840,21 @@ describe('SettingsMCPView', () => {
 			mcpStore.preferencesEnabled = true;
 		});
 
-		it('shows the switch with its saved value to a user with mcp:manage', async () => {
-			const { getByTestId } = createComponent({ pinia });
-			await waitAllPromises();
+		it.each([true, false])(
+			'shows the saved value %s to a user with mcp:manage',
+			async (preferencesEnabled) => {
+				mcpStore.preferencesEnabled = preferencesEnabled;
 
-			expect(getByTestId('mcp-preferences-toggle')).toHaveAttribute('aria-checked', 'true');
-		});
+				const { getByTestId } = createComponent({ pinia });
+				await waitAllPromises();
+
+				expect(getByTestId('mcp-preferences-toggle')).toHaveAttribute(
+					'aria-checked',
+					String(preferencesEnabled),
+				);
+				expect(getByTestId('mcp-preferences-toggle')).not.toBeDisabled();
+			},
+		);
 
 		it('hides the switch from a user without mcp:manage', async () => {
 			rbacStore.hasScope.mockReturnValue(false);
@@ -853,12 +862,10 @@ describe('SettingsMCPView', () => {
 			const { queryByTestId } = createComponent({ pinia });
 			await waitAllPromises();
 
-			expect(queryByTestId('mcp-preview-features-section')).toBeNull();
+			expect(queryByTestId('mcp-context-section')).toBeNull();
 		});
 
 		it('saves the new value', async () => {
-			mcpStore.setPreferencesEnabled.mockResolvedValue(false);
-
 			const { getByTestId } = createComponent({ pinia });
 			await waitAllPromises();
 

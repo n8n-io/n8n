@@ -2,6 +2,7 @@ import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { EventService, Publisher } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type ApiKey, type AuthenticatedRequest, Person, type User, Role } from '@n8n/db';
+import { PubSubMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -188,6 +189,20 @@ describe('McpSettingsController', () => {
 
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
 		});
+
+		test.each(['reload-mcp-settings', 'pubsub-reconnected'])(
+			'refreshes the MCP module settings on %s',
+			(eventName) => {
+				const handlers = Container.get(PubSubMetadata)
+					.getHandlers()
+					.filter(
+						({ eventName: name, eventHandlerClass }) =>
+							name === eventName && eventHandlerClass.name === 'McpSettingsController',
+					);
+
+				expect(handlers.map(({ methodName }) => methodName)).toEqual(['refreshMcpModuleSettings']);
+			},
+		);
 
 		test('handles module registry refresh failure gracefully', async () => {
 			const req = createReq({ mcpAccessEnabled: true }, { user: createPerson() });

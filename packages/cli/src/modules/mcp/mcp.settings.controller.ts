@@ -148,6 +148,7 @@ export class McpSettingsController {
 	}
 
 	@OnPubSubEvent('reload-mcp-settings', { instanceType: 'main' })
+	@OnPubSubEvent('pubsub-reconnected', { instanceType: 'main' })
 	async refreshMcpModuleSettings() {
 		try {
 			await this.moduleRegistry.refreshModuleSettings('mcp');

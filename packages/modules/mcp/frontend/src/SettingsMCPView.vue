@@ -87,7 +87,7 @@ const onTogglePreferences = async (enabled: boolean) => {
 	try {
 		await mcpStore.setPreferencesEnabled(enabled);
 	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.mcp.previewFeatures.error.title'));
+		toast.showError(error, i18n.baseText('settings.mcp.preferences.error.title'));
 	} finally {
 		preferencesSaving.value = false;
 	}
@@ -447,8 +447,8 @@ onBeforeUnmount(() => {
 
 			<N8nSettingsSection
 				v-if="canManageMcpInstance"
-				:title="i18n.baseText('settings.mcp.previewFeatures.title')"
-				data-test-id="mcp-preview-features-section"
+				:title="i18n.baseText('settings.mcp.context.title')"
+				data-test-id="mcp-context-section"
 			>
 				<N8nSettingsRowGroup>
 					<N8nSettingsEnableRow

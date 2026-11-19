@@ -657,10 +657,9 @@ describe('mcp.store', () => {
 				preferencesEnabled: true,
 			};
 
-			const result = await useMCPStore().setPreferencesEnabled(false);
+			await useMCPStore().setPreferencesEnabled(false);
 
 			expect(updateSpy).toHaveBeenCalledWith(expect.anything(), { preferencesEnabled: false });
-			expect(result).toBe(false);
 			expect(settingsStore.moduleSettings.mcp).toEqual({ ...response, mcpManagedByEnv: false });
 		});
 	});
