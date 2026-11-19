@@ -55,7 +55,7 @@ fn putCodePoint(b: *Builder, cp: u21) Error!void {
             buf[1] = @intCast(0x80 | ((cp >> 6) & 0x3F));
             buf[2] = @intCast(0x80 | (cp & 0x3F));
         },
-        else => {
+        else => { // a 4-byte sequence.
             buf[0] = @intCast(0xF0 | (cp >> 18));
             buf[1] = @intCast(0x80 | ((cp >> 12) & 0x3F));
             buf[2] = @intCast(0x80 | ((cp >> 6) & 0x3F));
@@ -74,7 +74,7 @@ fn hexValue(c: u8) ?u8 {
         '0'...'9' => c - '0',
         'a'...'f' => c - 'a' + 10,
         'A'...'F' => c - 'A' + 10,
-        else => null,
+        else => null, // a byte that is not a hex digit.
     };
 }
 
@@ -286,7 +286,7 @@ fn b64Value(c: u8) ?u6 {
         '0'...'9' => @intCast(c - '0' + 52),
         '+' => 62,
         '/' => 63,
-        else => null,
+        else => null, // a byte that is not in base64.
     };
 }
 

@@ -17,7 +17,7 @@ pub const Part = struct {
 pub const Error = error{BadMultipart};
 
 /// The `boundary` parameter of a Content-Type, quoted or not.
-pub fn boundaryOf(content_type: []const u8) ?[]const u8 {
+fn boundaryOf(content_type: []const u8) ?[]const u8 {
     return param(content_type, "boundary");
 }
 
@@ -31,7 +31,7 @@ pub fn param(header: []const u8, name: []const u8) ?[]const u8 {
         const eq = std.mem.indexOfScalarPos(u8, header, i, '=') orelse return null;
         const key = std.mem.trim(u8, header[i..eq], " \t");
         var j = eq + 1;
-        var value: []const u8 = undefined;
+        var value: []const u8 = &.{};
         if (j < header.len and header[j] == '"') {
             const start = j + 1;
             j = start;
@@ -166,7 +166,7 @@ const max_parts = 256;
 pub fn writeBody(b: *Builder, content_type_raw: ?[]const u8, content_disposition: ?[]const u8, body: []const u8, opts: BodyOptions) WriteError!void {
     const ct_full = content_type_raw orelse "";
     const semi = std.mem.indexOfScalar(u8, ct_full, ';') orelse ct_full.len;
-    var media_buf: [128]u8 = undefined;
+    var media_buf: [128]u8 = @splat(0);
     const media_raw = std.mem.trim(u8, ct_full[0..semi], " \t");
     const media = std.ascii.lowerString(media_buf[0..@min(media_raw.len, media_buf.len)], media_raw[0..@min(media_raw.len, media_buf.len)]);
     const prop = if (opts.binary_property.len > 0) opts.binary_property else "data";
@@ -204,7 +204,7 @@ fn writeWholeBinary(b: *Builder, prop: []const u8, mime: []const u8, content_dis
     try b.append(",\"$binary\":{");
     try str(b, prop);
     try b.byte(':');
-    var nb: [256]u8 = undefined;
+    var nb: [256]u8 = @splat(0);
     const name = if (content_disposition) |cd| if (param(cd, "filename")) |f| unquote(f, &nb) else null else null;
     try fileObject(b, body, mime, name);
     try b.byte('}');
@@ -212,9 +212,9 @@ fn writeWholeBinary(b: *Builder, prop: []const u8, mime: []const u8, content_dis
 
 fn writeMultipart(b: *Builder, content_type: []const u8, body: []const u8, opts: BodyOptions) WriteError!void {
     const boundary_raw = boundaryOf(content_type) orelse return error.BadMultipart;
-    var bbuf: [80]u8 = undefined;
+    var bbuf: [80]u8 = @splat(0);
     const boundary = unquote(boundary_raw, &bbuf);
-    var parts: [max_parts]Part = undefined;
+    var parts: [max_parts]Part = @splat(.{ .name = &.{}, .filename = null, .content_type = null, .data = &.{} });
     var n: usize = 0;
     var it = try Iterator.init(body, boundary);
     while (try it.next()) |p| {
@@ -254,22 +254,22 @@ fn writeMultipart(b: *Builder, content_type: []const u8, body: []const u8, opts:
         for (parts[i..n]) |q| {
             if (q.filename == null or !std.mem.eql(u8, q.name, p.name)) continue;
             try b.append(if (nfiles == 0) ",\"$binary\":{" else ",");
-            var name_buf: [160]u8 = undefined;
-            var nm: []const u8 = undefined;
-            var qn_buf: [128]u8 = undefined;
+            var name_buf: [160]u8 = @splat(0);
+            var nm: []const u8 = &.{};
+            var qn_buf: [128]u8 = @splat(0);
             var key = unquote(q.name, &qn_buf);
             if (std.mem.endsWith(u8, key, "[]")) key = key[0 .. key.len - 2];
             if (opts.binary_property.len > 0) {
-                nm = std.fmt.bufPrint(&name_buf, "{s}{d}", .{ opts.binary_property[0..@min(opts.binary_property.len, 128)], nfiles }) catch unreachable;
+                nm = std.fmt.bufPrint(&name_buf, "{s}{d}", .{ opts.binary_property[0..@min(opts.binary_property.len, 128)], nfiles }) catch unreachable; // 160 bytes fit a 128-byte name and a number.
             } else if (std.mem.trim(u8, key, " \t").len == 0) {
-                nm = std.fmt.bufPrint(&name_buf, "data{d}", .{nfiles}) catch unreachable;
+                nm = std.fmt.bufPrint(&name_buf, "data{d}", .{nfiles}) catch unreachable; // 160 bytes fit any count.
             } else if (multi) {
-                nm = std.fmt.bufPrint(&name_buf, "{s}{d}", .{ key[0..@min(key.len, 128)], file_count }) catch unreachable;
+                nm = std.fmt.bufPrint(&name_buf, "{s}{d}", .{ key[0..@min(key.len, 128)], file_count }) catch unreachable; // 160 bytes fit a 128-byte name and a number.
                 file_count += 1;
             } else nm = key;
             try str(b, nm);
             try b.byte(':');
-            var fb: [256]u8 = undefined;
+            var fb: [256]u8 = @splat(0);
             try fileObject(b, q.data, q.content_type orelse "application/octet-stream", unquote(q.filename.?, &fb));
             nfiles += 1;
         }
@@ -301,7 +301,7 @@ fn fileObject(b: *Builder, data: []const u8, mime: []const u8, file_name: ?[]con
     // Reserve the bytes, then encode in place.
     var k: usize = 0;
     while (k < n) : (k += 1) try b.byte(0);
-    _ = enc.encode(b.arena.buf[b.start + start ..][0..n], data);
+    _ = enc.encode(b.arena.buf[b.start + start ..][0..n], data); // the base64 lands in the reserved span; the returned slice is not needed.
     try b.append("\",\"mimeType\":");
     try str(b, mime);
     if (file_name) |f| {
@@ -312,8 +312,8 @@ fn fileObject(b: *Builder, data: []const u8, mime: []const u8, file_name: ?[]con
             try str(b, f[dot + 1 ..]);
         };
     }
-    var nb: [32]u8 = undefined;
-    try b.append(std.fmt.bufPrint(&nb, ",\"bytes\":{d}}}", .{data.len}) catch unreachable);
+    var nb: [32]u8 = @splat(0);
+    try b.append(std.fmt.bufPrint(&nb, ",\"bytes\":{d}}}", .{data.len}) catch unreachable); // 32 bytes fit any usize byte count.
 }
 
 fn str(b: *Builder, s: []const u8) error{ArenaFull}!void {
@@ -338,15 +338,15 @@ pub fn writeLossy(b: *Builder, s: []const u8) error{ArenaFull}!void {
                 0x08 => try b.append("\\b"),
                 0x0C => try b.append("\\f"),
                 0...0x07, 0x0B, 0x0E...0x1F => {
-                    var e: [6]u8 = undefined;
-                    try b.append(std.fmt.bufPrint(&e, "\\u{x:0>4}", .{c}) catch unreachable);
+                    var e: [6]u8 = @splat(0);
+                    try b.append(std.fmt.bufPrint(&e, "\\u{x:0>4}", .{c}) catch unreachable); // \\u{x:0>4} writes exactly 6 bytes.
                 },
-                else => try b.byte(c),
+                else => try b.byte(c), // every other byte passes through.
             }
             i += 1;
             continue;
         }
-        const n = std.unicode.utf8ByteSequenceLength(c) catch 0;
+        const n = std.unicode.utf8ByteSequenceLength(c) catch 0; // a byte that starts no sequence is skipped.
         if (n > 1 and i + n <= s.len) {
             if (std.unicode.utf8Decode(s[i..][0..n])) |_| {
                 try b.append(s[i..][0..n]);
@@ -361,7 +361,7 @@ pub fn writeLossy(b: *Builder, s: []const u8) error{ArenaFull}!void {
 }
 
 fn quotedName(b: *Builder, raw: []const u8) error{ArenaFull}!void {
-    var buf: [256]u8 = undefined;
+    var buf: [256]u8 = @splat(0);
     try str(b, unquote(raw, &buf));
 }
 
@@ -372,10 +372,10 @@ pub fn writePairs(b: *Builder, text: []const u8, sep: u8, plus: bool) error{Aren
     // Safe builds fill `undefined` memory with 0xAA; for these buffers
     // (kilobytes, on every request) the fill cost more than the work. The
     // callee keeps its safety checks.
-    var keys: [max_parts][]const u8 = undefined;
-    var vals: [max_parts][]const u8 = undefined;
-    var kb: [512]u8 = undefined;
-    var kb2: [512]u8 = undefined;
+    var keys: [max_parts][]const u8 = @splat(&.{});
+    var vals: [max_parts][]const u8 = @splat(&.{});
+    var kb: [512]u8 = @splat(0);
+    var kb2: [512]u8 = @splat(0);
     return writePairsWith(b, text, sep, plus, &keys, &vals, &kb, &kb2);
 }
 

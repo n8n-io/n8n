@@ -72,7 +72,7 @@ fn aliasValue(word: []const u8) ?u32 {
 /// Lower-case the expression, expand a preset, and replace names with
 /// numbers, as the npm package does. Letters run in groups of up to three.
 fn normalise(text: []const u8, out: []u8) ParseError![]const u8 {
-    var lower: [256]u8 = undefined;
+    var lower: [256]u8 = @splat(0);
     if (text.len > lower.len) return error.BadCron;
     for (text, 0..) |ch, i| lower[i] = std.ascii.toLower(ch);
     var src: []const u8 = std.mem.trim(u8, lower[0..text.len], " \t\r\n");
@@ -118,7 +118,7 @@ fn parseField(text: []const u8, f: Field) ParseError!u64 {
     while (it.next()) |item0| {
         if (item0.len == 0) return error.BadCron;
         if (std.mem.indexOfScalar(u8, item0, '*')) |w| if (w != 0) return error.BadCron;
-        var lower: u32 = undefined;
+        var lower: u32 = 0;
         var upper: ?u32 = null;
         var step: u32 = 1;
         var has_step = false;
@@ -151,9 +151,9 @@ fn parseField(text: []const u8, f: Field) ParseError!u64 {
 }
 
 pub fn parse(text: []const u8) ParseError!Spec {
-    var buf: [512]u8 = undefined;
+    var buf: [512]u8 = @splat(0);
     const src = try normalise(text, &buf);
-    var fields: [6][]const u8 = undefined;
+    var fields: [6][]const u8 = @splat(&.{});
     var nf: usize = 0;
     var it = std.mem.tokenizeAny(u8, src, " \t\r\n");
     while (it.next()) |tok| {
@@ -334,7 +334,7 @@ fn findWall(s: *const Spec, from: i64, limit: i64) ?i64 {
 }
 
 /// Search horizon, as in the npm package: about eight years.
-pub const horizon_s: i64 = 8 * 366 * 86400;
+const horizon_s: i64 = 8 * 366 * 86400;
 
 /// The first slot strictly after `after_ms`, in ms since the epoch, or null
 /// when the spec has no slot in the next eight years.

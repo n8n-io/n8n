@@ -24,7 +24,7 @@ fn next(s: []const u8, i: usize) struct { cp: u21, n: usize } {
     if (n == 3 and s[i] == 0xED and s[i + 1] >= 0xA0) {
         return .{ .cp = (@as(u21, s[i] & 0x0F) << 12) | (@as(u21, s[i + 1] & 0x3F) << 6) | (s[i + 2] & 0x3F), .n = 3 };
     }
-    return .{ .cp = std.unicode.utf8Decode(s[i..][0..n]) catch 0xFFFD, .n = n };
+    return .{ .cp = std.unicode.utf8Decode(s[i..][0..n]) catch 0xFFFD, .n = n }; // bad UTF-8 reads as U+FFFD.
 }
 
 /// Characters that `.` in a regular expression does not match, besides `\n`.
@@ -173,8 +173,8 @@ fn entityAt(b: *Builder, s: []const u8, i: usize) Err!?usize {
         if (k == start) return null;
         var num: u64 = 0;
         for (s[start..k]) |c| {
-            const d = std.fmt.charToDigit(c, if (hex) 16 else 10) catch unreachable;
-            num = std.math.mul(u64, num, if (hex) 16 else 10) catch std.math.maxInt(u64);
+            const d = std.fmt.charToDigit(c, if (hex) 16 else 10) catch unreachable; // the loop above checked each byte.
+            num = std.math.mul(u64, num, if (hex) 16 else 10) catch std.math.maxInt(u64); // overflow saturates.
             num +|= d;
         }
         try codePoint(b, num);
@@ -205,7 +205,7 @@ fn jsTrim(s: []const u8) []const u8 {
 fn isJsSpace(cp: u21) bool {
     return switch (cp) {
         '\t', '\n', 0x0B, 0x0C, '\r', ' ', 0xA0, 0x1680, 0x2000...0x200A, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000, 0xFEFF => true,
-        else => false,
+        else => false, // any other code point is not XML whitespace.
     };
 }
 
@@ -232,7 +232,7 @@ fn escapeText(b: *Builder, s: []const u8) Err!void {
         '<' => try b.append("&lt;"),
         '>' => try b.append("&gt;"),
         '\r' => try b.append("&#xD;"),
-        else => try b.byte(c),
+        else => try b.byte(c), // every other byte passes through.
     };
 }
 
@@ -244,7 +244,7 @@ fn escapeAttr(b: *Builder, s: []const u8) Err!void {
         '\t' => try b.append("&#x9;"),
         '\n' => try b.append("&#xA;"),
         '\r' => try b.append("&#xD;"),
-        else => try b.byte(c),
+        else => try b.byte(c), // every other byte passes through.
     };
 }
 

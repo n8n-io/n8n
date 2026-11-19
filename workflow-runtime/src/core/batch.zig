@@ -69,6 +69,9 @@ const KeyText = struct {
 /// module (the core sorts its ready list by module already); the key cache
 /// starts empty at each change of module. A job that does not fit gets
 /// `ok = false` and the caller encodes it alone.
+///
+/// Status: the tests below are the only callers for now. `core.zig` will
+/// call this when the batch loop lands, so it stays `pub`.
 pub fn encodeRequests(jobs: []EncodeJob, out: *Arena) void {
     @setRuntimeSafety(false); // Only for the 0xAA fill of `keys`, kilobytes.
     var keys: KeyText = undefined;
@@ -131,7 +134,7 @@ fn encodeOne(vm: *Vm, b: *Builder, v: Value, keys: *KeyText, stack: *[ops.max_de
         const cv = if (value.kindOf(c) == .undefined and is_arr) value.null_ else c;
         if (value.isHeap(cv)) for (stack[0..sp]) |f| if (f.v == cv) return error.Unsupported;
         if (sp == ops.max_depth) return error.Unsupported;
-        _ = try scalarOrOpen(vm, b, cv, stack, &sp);
+        _ = try scalarOrOpen(vm, b, cv, stack, &sp); // its bool tells whether a container opened; the caller does not need it.
     }
 }
 
@@ -167,7 +170,7 @@ fn scalarOrOpen(vm: *Vm, b: *Builder, v: Value, stack: []Frame, sp: *usize) !boo
         .number => {
             const f = value.asNum(v);
             if (!std.math.isFinite(f)) return error.Unsupported;
-            var nb: [32]u8 = undefined;
+            var nb: [32]u8 = @splat(0);
             try b.append(fast.formatNumber(&nb, f));
         },
         .null => try b.append("null"),
@@ -196,6 +199,9 @@ pub const DecodeJob = struct {
 /// Decode each job's result into its own execution's region. Scratch use
 /// (escaped strings) begins and ends inside each job, so nothing of one
 /// job is visible to the next.
+///
+/// Status: the tests below are the only callers for now. `core.zig` will
+/// call this when the batch loop lands, so it stays `pub`.
 pub fn decodeResults(jobs: []DecodeJob) void {
     for (jobs) |*j| {
         const used = j.vm.scratch.used;
@@ -219,7 +225,7 @@ const Execs = struct {
     var regions: [n][16 << 10]u8 align(8) = undefined;
     var scratch_mem: [n][8 << 10]u8 = undefined;
     var out_mem: [64 << 10]u8 = undefined;
-    var natives: [8]u16 = undefined;
+    var natives: [8]u16 = @splat(0);
 
     m: module.Module,
     bytes: []u8,
@@ -232,7 +238,7 @@ const Execs = struct {
         var a: Asm = .{ .gpa = gpa };
         defer a.deinit();
         const names = [_][]const u8{ "method", "url", "headers", "body", "token" };
-        var ids: [5]u16 = undefined;
+        var ids: [5]u16 = @splat(0);
         for (names, 0..) |nm, i| ids[i] = try a.str(nm);
         a.beginFunc();
         try a.emit(.ret, 0, 0, 0, 0);
@@ -250,7 +256,7 @@ const Execs = struct {
     /// A request description with a token unique to execution `i`.
     fn request(e: *Execs, i: usize) !Value {
         const vm = &e.vm[i];
-        var tb: [64]u8 = undefined;
+        var tb: [64]u8 = @splat(0);
         const tok = try std.fmt.bufPrint(&tb, "tok-{d}-\"\\{d}", .{ i, i * 7919 });
         const o = try vm.r.newObject(5);
         const h = try vm.r.newObject(1);
@@ -280,7 +286,7 @@ test "batch: every request and result reaches its own execution" {
         try std.testing.expectEqualStrings(b.bytes(), j.out);
         b.abandon();
         // Its own token, and no other execution's.
-        var tb: [64]u8 = undefined;
+        var tb: [64]u8 = @splat(0);
         const tok = try std.fmt.bufPrint(&tb, "tok-{d}-\\\"\\\\{d}\"", .{ i, i * 7919 });
         try std.testing.expect(std.mem.indexOf(u8, j.out, tok) != null);
         for (0..Execs.n) |other| {

@@ -32,11 +32,11 @@ pub const Error = error{ Syntax, TooLarge, StepLimit, ArenaFull };
 /// Steps of one `exec` call before the execution ends with the fuel limit.
 pub const max_steps: u64 = 10_000_000;
 /// Instructions of one compiled pattern.
-pub const max_program: usize = 1 << 16;
+const max_program: usize = 1 << 16;
 /// Depth of nested groups.
 pub const max_depth: u32 = 64;
 /// Entries of the backtracking stack.
-pub const max_stack: usize = 1 << 18;
+const max_stack: usize = 1 << 18;
 
 pub const Flags = struct {
     global: bool = false,
@@ -56,7 +56,7 @@ pub const Flags = struct {
                 's' => &f.dot_all,
                 'u' => &f.unicode,
                 'y' => &f.sticky,
-                else => return error.Syntax,
+                else => return error.Syntax, // an unknown flag is a syntax error.
             };
             if (slot.*) return error.Syntax;
             slot.* = true;
@@ -164,14 +164,14 @@ fn setOf(c: u21) ?Set {
         'W' => .{ .ranges = &word_ranges, .negated = true },
         's' => .{ .ranges = &space_ranges, .negated = false },
         'S' => .{ .ranges = &space_ranges, .negated = true },
-        else => null,
+        else => null, // a letter that is not a class escape.
     };
 }
 
 fn isSyntaxChar(c: u21) bool {
     return switch (c) {
         '^', '$', '\\', '.', '*', '+', '?', '(', ')', '[', ']', '{', '}', '|', '/' => true,
-        else => false,
+        else => false, // any other code point is not a syntax character.
     };
 }
 
@@ -180,7 +180,7 @@ fn hexDigit(c: u21) ?u32 {
         '0'...'9' => c - '0',
         'a'...'f' => c - 'a' + 10,
         'A'...'F' => c - 'A' + 10,
-        else => null,
+        else => null, // a byte that is not a hex digit.
     };
 }
 
@@ -361,9 +361,9 @@ const Compiler = struct {
             .capture => {
                 c.groups += 1;
                 group = c.groups;
-                _ = try c.emit(.{ .op = .save, .a = 2 * group });
+                _ = try c.emit(.{ .op = .save, .a = 2 * group }); // the instruction index is not needed.
             },
-            .look => _ = try c.emit(.{ .op = .look, .a = none, .b = @intFromBool(negative) }),
+            .look => _ = try c.emit(.{ .op = .look, .a = none, .b = @intFromBool(negative) }), // the instruction index is not needed.
             .root, .group => {},
         }
         c.opens[c.n_opens] = .{ .kind = kind, .start = start, .alt_start = c.n, .pend_base = c.n_pend, .group = group, .groups_before = before };
@@ -399,14 +399,14 @@ const Compiler = struct {
         const o = c.opens[c.n_opens - 1];
         c.n_opens -= 1;
         switch (o.kind) {
-            .capture => _ = try c.emit(.{ .op = .save, .a = 2 * o.group + 1 }),
+            .capture => _ = try c.emit(.{ .op = .save, .a = 2 * o.group + 1 }), // the instruction index is not needed.
             .look => {
-                _ = try c.emit(.{ .op = .look_end });
+                _ = try c.emit(.{ .op = .look_end }); // the instruction index is not needed.
                 c.prog[o.start].a = c.n;
                 return null;
             },
             .group => {},
-            .root => unreachable,
+            .root => unreachable, // the caller handles root nodes before this switch.
         }
         return .{ .start = o.start, .g_lo = o.groups_before + 1, .g_hi = c.groups + 1 };
     }
@@ -454,7 +454,7 @@ const Compiler = struct {
                 max = b.max;
                 c.pos += b.len;
             },
-            else => return,
+            else => return, // no quantifier follows the atom.
         }
         const greedy = !c.eat('?');
         try c.repeat(atom, min, max, greedy);
@@ -463,10 +463,10 @@ const Compiler = struct {
     /// One iteration of the atom in `tmp`: its captures start unset, and an
     /// optional iteration fails when it matches the empty string.
     fn iteration(c: *Compiler, atom: Atom, old_start: u32, len: u32, slot: ?u32) Error!void {
-        if (slot) |s| _ = try c.emit(.{ .op = .mark, .a = s });
-        if (atom.g_hi > atom.g_lo) _ = try c.emit(.{ .op = .reset, .a = 2 * atom.g_lo, .b = 2 * atom.g_hi });
+        if (slot) |s| _ = try c.emit(.{ .op = .mark, .a = s }); // the instruction index is not needed.
+        if (atom.g_hi > atom.g_lo) _ = try c.emit(.{ .op = .reset, .a = 2 * atom.g_lo, .b = 2 * atom.g_hi }); // the instruction index is not needed.
         try c.putBlock(old_start, len);
-        if (slot) |s| _ = try c.emit(.{ .op = .check, .a = s });
+        if (slot) |s| _ = try c.emit(.{ .op = .check, .a = s }); // the instruction index is not needed.
     }
 
     fn repeat(c: *Compiler, atom: Atom, min: u32, max: u32, greedy: bool) Error!void {
@@ -481,7 +481,7 @@ const Compiler = struct {
             const loop = try c.emit(.{ .op = .split });
             const body = c.n;
             try c.iteration(atom, old, len, slot);
-            _ = try c.emit(.{ .op = .jmp, .a = loop });
+            _ = try c.emit(.{ .op = .jmp, .a = loop }); // the instruction index is not needed.
             c.setSplit(loop, body, c.n, greedy);
             return;
         }
@@ -530,14 +530,14 @@ const Compiler = struct {
                 },
                 '^', '$' => {
                     c.pos += 1;
-                    _ = try c.emit(.{ .op = if (ch == '^') .bol else .eol });
+                    _ = try c.emit(.{ .op = if (ch == '^') .bol else .eol }); // the instruction index is not needed.
                     if (c.isQuantifierHere()) return error.Syntax;
                 },
                 '*', '+', '?' => return error.Syntax,
-                else => {
+                else => { // any other byte is a literal.
                     if (ch == '\\' and (c.peek(1) == 'b' or c.peek(1) == 'B')) {
                         c.pos += 2;
-                        _ = try c.emit(.{ .op = if (c.src[c.pos - 1] == 'b') .word_boundary else .not_word_boundary });
+                        _ = try c.emit(.{ .op = if (c.src[c.pos - 1] == 'b') .word_boundary else .not_word_boundary }); // the instruction index is not needed.
                         if (c.isQuantifierHere()) return error.Syntax;
                         continue;
                     }
@@ -558,14 +558,14 @@ const Compiler = struct {
         switch (ch) {
             '.' => {
                 c.pos += 1;
-                _ = try c.emit(.{ .op = .any });
+                _ = try c.emit(.{ .op = .any }); // the instruction index is not needed.
             },
             '[' => try c.class(),
             '\\' => {
                 c.pos += 1;
                 try c.atomEscape();
             },
-            else => {
+            else => { // any other byte is a literal character.
                 c.pos += 1;
                 try c.char(ch);
             },
@@ -573,7 +573,7 @@ const Compiler = struct {
     }
 
     fn char(c: *Compiler, ch: u21) Error!void {
-        _ = try c.emit(.{ .op = .char, .a = if (c.flags.ignore_case and ch <= 0xFFFF) unicase.canonicalize(@intCast(ch)) else ch });
+        _ = try c.emit(.{ .op = .char, .a = if (c.flags.ignore_case and ch <= 0xFFFF) unicase.canonicalize(@intCast(ch)) else ch }); // the instruction index is not needed.
     }
 
     fn atomEscape(c: *Compiler) Error!void {
@@ -583,7 +583,7 @@ const Compiler = struct {
             const n = number(c.src, &i) orelse return error.Syntax;
             if (n > c.total_groups) return error.Syntax;
             c.pos = i;
-            _ = try c.emit(.{ .op = .backref, .a = n });
+            _ = try c.emit(.{ .op = .backref, .a = n }); // the instruction index is not needed.
             return;
         }
         if (ch == 'k' and (c.flags.unicode or c.names.len > 0)) {
@@ -595,7 +595,7 @@ const Compiler = struct {
             for (c.names) |nm| {
                 if (std.mem.eql(u21, nm.text, c.src[start..i])) {
                     c.pos = i + 1;
-                    _ = try c.emit(.{ .op = .backref, .a = nm.group });
+                    _ = try c.emit(.{ .op = .backref, .a = nm.group }); // the instruction index is not needed.
                     return;
                 }
             }
@@ -640,7 +640,7 @@ const Compiler = struct {
         if (c.n_classes >= c.classes.len) return error.TooLarge;
         c.classes[c.n_classes] = .{ .lo = start, .hi = c.n_ranges, .negated = negated };
         c.n_classes += 1;
-        _ = try c.emit(.{ .op = .class, .a = c.n_classes - 1 });
+        _ = try c.emit(.{ .op = .class, .a = c.n_classes - 1 }); // the instruction index is not needed.
     }
 
     fn addRange(c: *Compiler, lo: u21, hi: u21) Error!void {
@@ -740,7 +740,7 @@ const Compiler = struct {
                 return 'x';
             },
             'u' => return c.unicodeEscape(),
-            else => {
+            else => { // any other byte escapes to itself.
                 if (ch >= '1' and ch <= '9') return error.Syntax;
                 if (c.flags.unicode and !isSyntaxChar(ch)) return error.Syntax;
                 return ch;
@@ -855,7 +855,7 @@ const Matcher = struct {
         var hit = inClass(rs, c);
         if (!hit and m.flags.ignore_case and c <= 0xFFFF) {
             // Any member whose canonical form is the canonical form of c.
-            var buf: [unicase.max_inverse]u16 = undefined;
+            var buf: [unicase.max_inverse]u16 = @splat(0);
             for (unicase.canonicalizeInverse(unicase.canonicalize(@intCast(c)), &buf)) |x| {
                 if (inClass(rs, x)) {
                     hit = true;
@@ -886,7 +886,7 @@ const Matcher = struct {
                 const ok = switch (inst.op) {
                     .char => (if (m.flags.ignore_case) unicase.canonicalize(@intCast(ch.c)) else ch.c) == inst.a,
                     .any => m.flags.dot_all or !isLineTerminator(ch.c),
-                    else => m.classMatches(m.classes[inst.a], ch.c),
+                    else => m.classMatches(m.classes[inst.a], ch.c), // every other op is a class.
                 };
                 if (!ok) return false;
                 pos.* += ch.len;
@@ -942,7 +942,7 @@ const Matcher = struct {
                 pc.* = look.a;
                 return true;
             },
-            .match => unreachable,
+            .match => unreachable, // a match instruction ends the loop before this switch.
         }
         pc.* += 1;
         return true;
@@ -1014,10 +1014,10 @@ pub fn compile(arena: *Arena, source: []const u8, flags_text: []const u8) Error!
         .names = names[0..scan.named],
         .next_slot = 2 * (scan.count + 1),
     };
-    _ = try c.emit(.{ .op = .save, .a = 0 });
+    _ = try c.emit(.{ .op = .save, .a = 0 }); // the instruction index is not needed.
     try c.compileAll();
-    _ = try c.emit(.{ .op = .save, .a = 1 });
-    _ = try c.emit(.{ .op = .match });
+    _ = try c.emit(.{ .op = .save, .a = 1 }); // the instruction index is not needed.
+    _ = try c.emit(.{ .op = .match }); // the instruction index is not needed.
     std.debug.assert(c.groups == scan.count);
     return .{
         .prog = c.prog[0..c.n],
@@ -1087,7 +1087,7 @@ fn decodePattern(arena: *Arena, source: []const u8, unicode: bool) Error![]u21 {
 }
 
 /// One code point of WTF-8 (UTF-8 that may hold encoded lone surrogates).
-pub fn decodeWtf8(s: []const u8, i: *usize) u21 {
+fn decodeWtf8(s: []const u8, i: *usize) u21 {
     const b0 = s[i.*];
     const n: usize = if (b0 < 0x80) 1 else if (b0 >= 0xF0 and b0 < 0xF8) 4 else if (b0 >= 0xE0) 3 else if (b0 >= 0xC0) 2 else 1;
     if (i.* + n > s.len or n == 1) {
@@ -1097,7 +1097,7 @@ pub fn decodeWtf8(s: []const u8, i: *usize) u21 {
     var cp: u21 = switch (n) {
         2 => b0 & 0x1F,
         3 => b0 & 0x0F,
-        else => b0 & 0x07,
+        else => b0 & 0x07, // a 4-byte sequence.
     };
     for (s[i.* + 1 ..][0 .. n - 1]) |b| cp = (cp << 6) | (b & 0x3F);
     i.* += n;

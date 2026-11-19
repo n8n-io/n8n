@@ -68,7 +68,7 @@ inline fn prefixXor(x0: u64) u64 {
 pub fn isOther(c: u8) bool {
     return switch (c) {
         ' ', '\t', '\n', '\r', '{', '}', '[', ']', ':', ',', '"' => false,
-        else => true,
+        else => true, // every other byte is part of a value.
     };
 }
 
@@ -104,7 +104,7 @@ pub const Scanner = struct {
         @setRuntimeSafety(checked);
         const start = s.next_block;
         assert(start < s.src.len);
-        var v: V64 = undefined;
+        var v: V64 = @splat(0);
         if (start + 64 <= s.src.len) {
             v = s.src[start..][0..64].*;
         } else {
@@ -239,7 +239,7 @@ const Decoder = struct {
                     v = try d.literal(pos, "null", value.null_);
                     continue :state .after;
                 },
-                else => {
+                else => { // else is a number.
                     v = value.num(try numberAt(d.src, pos));
                     continue :state .after;
                 },
@@ -570,7 +570,7 @@ const Decoder = struct {
             const f: ?f64 = if (e == 0) fm else if (e > 0 and e <= 22) fm * pow10[@intCast(e)] else if (e < 0 and e >= -22) fm / pow10[@intCast(-e)] else null;
             if (f) |x| return if (neg) -x else x;
         }
-        return std.fmt.parseFloat(f64, s[pos..i]) catch error.Syntax;
+        return std.fmt.parseFloat(f64, s[pos..i]) catch error.Syntax; // a malformed number is a syntax error.
     }
 };
 
@@ -672,7 +672,7 @@ pub fn unescape(comptime Sink: type, sink: *Sink, src: []const u8, start: u32, e
             'r' => '\r',
             't' => '\t',
             'u' => 0,
-            else => return error.Syntax,
+            else => return error.Syntax, // an escape other than u is invalid.
         };
         if (e != 'u') {
             try sink.byte(simple);
@@ -692,7 +692,7 @@ pub fn unescape(comptime Sink: type, sink: *Sink, src: []const u8, start: u32, e
             }
         }
         if (cp >= 0xD800 and cp < 0xE000) cp = 0xFFFD; // A lone surrogate has no UTF-8 form.
-        var ub: [4]u8 = undefined;
+        var ub: [4]u8 = @splat(0);
         const n = std.unicode.utf8Encode(cp, &ub) catch unreachable; // cp is a scalar value.
         try sink.append(ub[0..n]);
         units += if (cp >= 0x10000) 2 else 1;
@@ -705,7 +705,7 @@ fn isDigit(c: u8) bool {
 }
 
 const pow10 = blk: {
-    var t: [23]f64 = undefined;
+    var t: [23]f64 = @splat(0);
     var p: f64 = 1;
     for (&t) |*x| {
         x.* = p;
@@ -719,7 +719,7 @@ fn hexVal(c: u8) ?u21 {
         '0'...'9' => c - '0',
         'a'...'f' => c - 'a' + 10,
         'A'...'F' => c - 'A' + 10,
-        else => null,
+        else => null, // a byte that is not a hex digit.
     };
 }
 
@@ -873,7 +873,7 @@ fn encodeWith(vm: *Vm, b: *Builder, v: Value, indent: []const u8, stack: *[ops.m
                 }
             }
             if (sp == ops.max_depth) return vm.limit(.depth);
-            _ = try writeScalarOrOpen(vm, b, child, stack, &sp);
+            _ = try writeScalarOrOpen(vm, b, child, stack, &sp); // the bool return is not needed here.
             continue;
         }
         if (top.wrote and indent.len > 0) try newline(b, indent, sp - 1);
@@ -887,7 +887,7 @@ fn encodable(v: Value, vm: *Vm) bool {
     return switch (value.kindOf(v)) {
         .undefined => false,
         .ref => vm.r.hdr(value.payload(v)).kind != .closure,
-        else => true,
+        else => true, // the other scalar kinds are not on the heap.
     };
 }
 
@@ -974,7 +974,7 @@ fn writeScalarOrOpen(vm: *Vm, b: *Builder, v: Value, stack: []EFrame, sp: *usize
             if (std.math.isNan(f) or std.math.isInf(f)) {
                 try b.append("null");
             } else {
-                var nb: [numfmt.max_len]u8 = undefined;
+                var nb: [numfmt.max_len]u8 = @splat(0);
                 try b.append(formatNumber(&nb, f));
             }
         },
@@ -1080,7 +1080,7 @@ inline fn escapeAt(s: []const u8, i: usize, out: []u8) struct { w: usize, r: usi
         '\t' => 't',
         0x08 => 'b',
         0x0C => 'f',
-        else => 0,
+        else => 0, // a control byte with no short escape.
     };
     if (e != 0) {
         out[0..2].* = .{ '\\', e };
@@ -1093,7 +1093,7 @@ inline fn escapeAt(s: []const u8, i: usize, out: []u8) struct { w: usize, r: usi
 
 /// The length of `writeString(s)`, quotes included.
 fn escapedLen(s: []const u8) usize {
-    var scratch: [6]u8 = undefined;
+    var scratch: [6]u8 = @splat(0);
     var n: usize = 2;
     var i: usize = 0;
     while (i < s.len) {
@@ -1186,7 +1186,7 @@ pub fn writeString(b: *Builder, s: []const u8) error{ArenaFull}!void {
 const two53: f64 = 9007199254740992.0;
 
 const digit_pairs = blk: {
-    var t: [200]u8 = undefined;
+    var t: [200]u8 = @splat(0);
     for (0..100) |i| {
         t[i * 2] = '0' + i / 10;
         t[i * 2 + 1] = '0' + i % 10;
@@ -1221,7 +1221,7 @@ fn digits(tmp: *[20]u8, n_in: u64) []const u8 {
 pub fn formatNumber(buf: *[numfmt.max_len]u8, x: f64) []const u8 {
     const ax = @abs(x);
     if (ax < two53) {
-        var tmp: [20]u8 = undefined;
+        var tmp: [20]u8 = @splat(0);
         var len: usize = 0;
         if (x < 0) {
             buf[0] = '-';

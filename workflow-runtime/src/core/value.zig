@@ -59,7 +59,7 @@ pub inline fn boolean(b: bool) Value {
 pub inline fn isHeap(v: Value) bool {
     return switch (kindOf(v)) {
         .string, .array, .object, .ref => payload(v) < const_handle_base,
-        else => false,
+        else => false, // the scalar kinds live outside the region.
     };
 }
 
