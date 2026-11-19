@@ -22,8 +22,12 @@ The module tells the editor if the open workflow can run on engine v2. Every ans
 - `useEngineV2Compatibility` takes getters for the nodes, the connections and the settings of the
   workflow, because the document store belongs to the shell. It returns the reasons, the blocking
   reasons and `isNodeTypeIncompatible`.
-- `EngineV2CompatibilityCallout` lists the reasons. `src/engineV2ReasonText.ts` gives the text of
-  each reason:
+- `EngineV2CompatibilityButton` shows the number of reasons, with a red icon when one blocks and a
+  yellow icon when all are warnings. The shell puts it above the canvas toolbar. A click opens
+  `EngineV2CompatibilityDialog`, which lists the blocking reasons first, then the warnings. The
+  list scrolls inside the dialog. Each entry's icon depends on its severity only, so a new reason
+  code needs no icon.
+- `src/engineV2ReasonText.ts` gives the text of each reason:
   - A code in `REASON_TEXT_KEYS` shows its own string from `en.json`. A `temporary` reason adds
     "Run this workflow on engine v1 for now." A code with two meanings uses `CODE.kind` keys.
   - Any other code shows the English `message` of the package. That covers a new code, and a code

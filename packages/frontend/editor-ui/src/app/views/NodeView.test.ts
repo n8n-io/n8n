@@ -203,6 +203,9 @@ describe('NodeView', () => {
 								data-test-id="node-creation-stub-add-node"
 								@click="$emit('addNodes', { nodes: [{ type: '${SET_NODE_TYPE}', name: 'Added' }], connections: [] }); $emit('toggleNodeCreator', { createNodeActive: false, hasAddedNodes: true }); $emit('close')"
 							/>
+							<div data-test-id="node-creation-stub-above-toolbar">
+								<slot name="above-toolbar" />
+							</div>
 						</>`,
 					}),
 					LazySetupWorkflowCredentialsButton: { render: () => null },
@@ -1064,7 +1067,14 @@ describe('NodeView', () => {
 	});
 
 	describe('Engine v2 compatibility', () => {
-		const CALLOUT = 'engine-v2-compatibility-callout';
+		const BUTTON = 'engine-v2-compatibility-button';
+
+		/** Opens the list of reasons from the button, and returns its text. */
+		async function reasonsText(findByTestId: (id: string) => Promise<HTMLElement>) {
+			await userEvent.click(await findByTestId(BUTTON));
+			return (await findByTestId('engine-v2-compatibility-dialog')).textContent;
+		}
+
 		const incompatible = createTestNode({ type: SET_NODE_TYPE, name: 'Incompatible' });
 		const blockingReason: EngineCompatibilityReason = {
 			code: 'ERROR_WORKFLOW',
@@ -1073,7 +1083,7 @@ describe('NodeView', () => {
 			message: 'Engine v2 does not run an error workflow yet.',
 		};
 
-		// A reason for every node of the incompatible type, so the callout follows the canvas.
+		// A reason for every node of the incompatible type, so the button follows the canvas.
 		const mockReasonsForIncompatibleNodes = () =>
 			mockEngineV2Compatibility({
 				reasons: (workflow) =>
@@ -1094,15 +1104,31 @@ describe('NodeView', () => {
 			]);
 		});
 
-		it('shows the reasons on the canvas', async () => {
+		it('shows the button above the toolbar on an editable canvas, and lists the reasons', async () => {
 			setEngineV2Gate();
 			mockEngineV2Compatibility({ reasons: [blockingReason] });
+			useWorkflowsListStore().addWorkflow(
+				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+			);
 
 			const { findByTestId } = renderNodeView();
 
-			expect(await findByTestId(CALLOUT)).toHaveTextContent(
+			const aboveToolbar = await findByTestId('node-creation-stub-above-toolbar');
+			expect(aboveToolbar).toContainElement(await findByTestId(BUTTON));
+			expect(await reasonsText(findByTestId)).toContain(
 				"Engine v2 doesn't run error workflows yet.",
 			);
+		});
+
+		it('shows the button on its own on a read-only canvas', async () => {
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [blockingReason] });
+			useSourceControlStore().preferences.branchReadOnly = true;
+
+			const { findByTestId, queryByTestId } = renderNodeView();
+
+			expect(await findByTestId(BUTTON)).toBeInTheDocument();
+			expect(queryByTestId('node-creation-stub-above-toolbar')).not.toBeInTheDocument();
 		});
 
 		it.each([
@@ -1115,21 +1141,21 @@ describe('NodeView', () => {
 			const { findByTestId, queryByTestId } = renderNodeView();
 
 			await findByTestId('canvas-stub-copy');
-			expect(queryByTestId(CALLOUT)).not.toBeInTheDocument();
+			expect(queryByTestId(BUTTON)).not.toBeInTheDocument();
 			expect(checkWorkflow).not.toHaveBeenCalled();
 		});
 
-		it('hides the callout when no reason is left', async () => {
+		it('hides the button when no reason is left', async () => {
 			setEngineV2Gate();
 			mockReasonsForIncompatibleNodes();
 			workflowDocumentStore.setNodes([incompatible]);
 
 			const { findByTestId, queryByTestId } = renderNodeView();
-			expect(await findByTestId(CALLOUT)).toHaveTextContent('Incompatible');
+			expect(await findByTestId(BUTTON)).toBeInTheDocument();
 
 			workflowDocumentStore.removeNodeById(incompatible.id);
 
-			await waitFor(() => expect(queryByTestId(CALLOUT)).not.toBeInTheDocument());
+			await waitFor(() => expect(queryByTestId(BUTTON)).not.toBeInTheDocument());
 		});
 
 		it('shows the reasons after an import', async () => {
@@ -1138,13 +1164,13 @@ describe('NodeView', () => {
 
 			const { findByTestId, queryByTestId } = renderNodeView();
 			await findByTestId('canvas-stub-copy');
-			expect(queryByTestId(CALLOUT)).not.toBeInTheDocument();
+			expect(queryByTestId(BUTTON)).not.toBeInTheDocument();
 
 			nodeViewEventBus.emit('importWorkflowData', {
 				data: { nodes: [incompatible], connections: {} },
 			});
 
-			expect(await findByTestId(CALLOUT)).toHaveTextContent('Incompatible');
+			expect(await reasonsText(findByTestId)).toContain('Incompatible');
 		});
 
 		it('shows the reasons after a paste', async () => {
@@ -1161,7 +1187,7 @@ describe('NodeView', () => {
 
 			const { findByTestId, queryByTestId } = renderNodeView();
 			await findByTestId('canvas-stub-copy');
-			expect(queryByTestId(CALLOUT)).not.toBeInTheDocument();
+			expect(queryByTestId(BUTTON)).not.toBeInTheDocument();
 
 			const event = new Event('paste');
 			Object.assign(event, {
@@ -1171,7 +1197,7 @@ describe('NodeView', () => {
 			});
 			document.dispatchEvent(event);
 
-			expect(await findByTestId(CALLOUT)).toHaveTextContent('Incompatible');
+			expect(await reasonsText(findByTestId)).toContain('Incompatible');
 		});
 	});
 

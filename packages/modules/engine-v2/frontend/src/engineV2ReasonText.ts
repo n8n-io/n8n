@@ -4,8 +4,8 @@ import type { EngineCompatibilityReason } from './engineV2Check';
 
 /**
  * The editor's own text for a reason, by `code`, or by `code.kind` when one code has more than
- * one meaning. The text says what the package's `message` says, without the node name and
- * without the engine v1 advice, which the callout adds.
+ * one meaning. The text says what the package's `message` says, without the node name, which
+ * the dialog shows, and without the engine v1 advice, which `describeCompatibilityReason` adds.
  *
  * A code that has no entry shows the package's `message`. That covers a code that the editor
  * doesn't know yet, and a code whose `message` carries details that a fixed text can't hold,

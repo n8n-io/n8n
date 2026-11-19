@@ -2,15 +2,18 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { render } from '@testing-library/vue';
 
 import type { EngineCompatibilityReason } from '../engineV2Check';
-import EngineV2CompatibilityCallout from './EngineV2CompatibilityCallout.vue';
+import EngineV2CompatibilityDialog from './EngineV2CompatibilityDialog.vue';
 
 type Code = EngineCompatibilityReason['code'];
 type Kind = EngineCompatibilityReason['kind'];
 
 const V1_ADVICE = 'Run this workflow on engine v1 for now.';
 
-function renderCallout(reasons: EngineCompatibilityReason[]) {
-	return render(EngineV2CompatibilityCallout, { props: { reasons } });
+// The dialog renders into `document.body`, where the queries of `render` look, after the mount.
+async function renderDialog(reasons: EngineCompatibilityReason[]) {
+	const result = render(EngineV2CompatibilityDialog, { props: { reasons, open: true } });
+	await result.findByTestId('engine-v2-compatibility-dialog');
+	return result;
 }
 
 function reasonTexts(getAllByTestId: (id: string) => HTMLElement[]) {
@@ -121,11 +124,11 @@ const PACKAGE_MESSAGE: Code[] = [
 	'SPLIT_IN_BATCHES_VERSION',
 ];
 
-describe('EngineV2CompatibilityCallout', () => {
+describe('EngineV2CompatibilityDialog', () => {
 	const i18n = useI18n();
 
-	it('lists every reason', () => {
-		const { getAllByTestId } = renderCallout([
+	it('lists every reason', async () => {
+		const { getAllByTestId } = await renderDialog([
 			reason('MERGE_MODE_EXPRESSION', 'permanent'),
 			reason('LOOP_WITHOUT_RETURN', 'permanent'),
 		]);
@@ -136,8 +139,8 @@ describe('EngineV2CompatibilityCallout', () => {
 		]);
 	});
 
-	it('shows the node name before the text when the reason has one', () => {
-		const { getAllByTestId } = renderCallout([
+	it('shows the node name before the text when the reason has one', async () => {
+		const { getAllByTestId } = await renderDialog([
 			reason('LOOP_WITHOUT_RETURN', 'permanent', { nodeId: 'node-1', nodeName: 'Loop Over Items' }),
 		]);
 
@@ -153,8 +156,8 @@ describe('EngineV2CompatibilityCallout', () => {
 		expect(OWN_TEXT).toHaveLength(31);
 	});
 
-	it.each(OWN_TEXT)('shows its own text for %s (%s)', (code, kind, key) => {
-		const { getAllByTestId } = renderCallout([reason(code, kind)]);
+	it.each(OWN_TEXT)('shows its own text for %s (%s)', async (code, kind, key) => {
+		const { getAllByTestId } = await renderDialog([reason(code, kind)]);
 
 		const text = i18n.baseText(key);
 		expect(text).not.toBe(key);
@@ -163,8 +166,8 @@ describe('EngineV2CompatibilityCallout', () => {
 		]);
 	});
 
-	it('tells the two meanings of SPLIT_IN_BATCHES_BATCH_SIZE apart', () => {
-		const { getAllByTestId } = renderCallout([
+	it('tells the two meanings of SPLIT_IN_BATCHES_BATCH_SIZE apart', async () => {
+		const { getAllByTestId } = await renderDialog([
 			reason('SPLIT_IN_BATCHES_BATCH_SIZE', 'permanent'),
 			reason('SPLIT_IN_BATCHES_BATCH_SIZE', 'invalid'),
 		]);
@@ -173,15 +176,15 @@ describe('EngineV2CompatibilityCallout', () => {
 		expect(expression).not.toBe(invalid);
 	});
 
-	it.each(PACKAGE_MESSAGE)('shows the package message for %s, as it comes', (code) => {
+	it.each(PACKAGE_MESSAGE)('shows the package message for %s, as it comes', async (code) => {
 		const message = `Details only the package knows. ${V1_ADVICE}`;
-		const { getAllByTestId } = renderCallout([reason(code, 'temporary', { message })]);
+		const { getAllByTestId } = await renderDialog([reason(code, 'temporary', { message })]);
 
 		expect(reasonTexts(getAllByTestId)).toEqual([message]);
 	});
 
-	it('shows the package message for an unknown code', () => {
-		const { getAllByTestId } = renderCallout([
+	it('shows the package message for an unknown code', async () => {
+		const { getAllByTestId } = await renderDialog([
 			// A newer package can return a code that this editor does not know.
 			reason('FUTURE_CODE' as Code, 'permanent', {
 				message: 'Engine v2 does not support this.',
@@ -191,24 +194,62 @@ describe('EngineV2CompatibilityCallout', () => {
 		expect(reasonTexts(getAllByTestId)).toEqual(['Engine v2 does not support this.']);
 	});
 
-	it('uses the blocking title and theme when a reason blocks', () => {
-		const { getByTestId } = renderCallout([
+	it('uses the blocking title when a reason blocks', async () => {
+		const { getByTestId } = await renderDialog([
 			reason('REDACTION_POLICY', 'temporary', { severity: 'warning' }),
 			reason('ERROR_WORKFLOW', 'temporary'),
 		]);
 
-		const callout = getByTestId('engine-v2-compatibility-callout');
-		expect(callout).toHaveTextContent(i18n.baseText('engineV2Compatibility.callout.title'));
-		expect(callout.className).toMatch(/danger/);
+		expect(getByTestId('engine-v2-compatibility-dialog')).toHaveTextContent(
+			i18n.baseText('engineV2Compatibility.dialog.title'),
+		);
 	});
 
-	it('uses the warning title and theme when no reason blocks', () => {
-		const { getByTestId } = renderCallout([
+	it('uses the warning title when no reason blocks', async () => {
+		const { getByTestId } = await renderDialog([
 			reason('REDACTION_POLICY', 'temporary', { severity: 'warning' }),
 		]);
 
-		const callout = getByTestId('engine-v2-compatibility-callout');
-		expect(callout).toHaveTextContent(i18n.baseText('engineV2Compatibility.callout.titleWarnings'));
-		expect(callout.className).toMatch(/warning/);
+		expect(getByTestId('engine-v2-compatibility-dialog')).toHaveTextContent(
+			i18n.baseText('engineV2Compatibility.dialog.titleWarnings'),
+		);
+	});
+
+	it('gives each entry the icon of its severity', async () => {
+		const { getAllByTestId } = await renderDialog([
+			reason('ERROR_WORKFLOW', 'temporary'),
+			reason('REDACTION_POLICY', 'temporary', { severity: 'warning' }),
+		]);
+
+		const icons = getAllByTestId('engine-v2-compatibility-reason').map((item) =>
+			item.querySelector('[data-icon]')?.getAttribute('data-icon'),
+		);
+		expect(icons).toEqual(['circle-x', 'triangle-alert']);
+	});
+
+	it('lists blocking reasons first, each group in the order of the check', async () => {
+		const { getAllByTestId } = await renderDialog([
+			reason('ERROR_WORKFLOW', 'temporary', { severity: 'warning', nodeName: 'A' }),
+			reason('ERROR_WORKFLOW', 'temporary', { nodeName: 'B' }),
+			reason('ERROR_WORKFLOW', 'temporary', { severity: 'warning', nodeName: 'C' }),
+			reason('ERROR_WORKFLOW', 'temporary', { nodeName: 'D' }),
+		]);
+
+		const names = getAllByTestId('engine-v2-compatibility-reason').map(
+			(item) => item.querySelector('strong')?.textContent,
+		);
+		expect(names).toEqual(['B: ', 'D: ', 'A: ', 'C: ']);
+	});
+
+	it('puts a long list in the scrolling body of the dialog', async () => {
+		const reasons = Array.from({ length: 60 }, (_, index) =>
+			reason('FORM_NODE', 'temporary', { nodeName: `Form ${index}` }),
+		);
+		const { getAllByTestId, baseElement } = await renderDialog(reasons);
+
+		const body = baseElement.querySelector('[data-slot="dialog-body"]');
+		const items = getAllByTestId('engine-v2-compatibility-reason');
+		expect(items).toHaveLength(60);
+		expect(items.every((item) => body?.contains(item))).toBe(true);
 	});
 });

@@ -8,4 +8,4 @@ export {
 	useEngineV2Compatibility,
 	type EngineV2CompatibilityWorkflowSource,
 } from './composables/useEngineV2Compatibility';
-export { default as EngineV2CompatibilityCallout } from './components/EngineV2CompatibilityCallout.vue';
+export { default as EngineV2CompatibilityButton } from './components/EngineV2CompatibilityButton.vue';
