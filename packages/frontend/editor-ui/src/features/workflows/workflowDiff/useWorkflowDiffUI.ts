@@ -64,9 +64,12 @@ export function useWorkflowDiffUI(options: UseWorkflowDiffUIOptions) {
 			return acc;
 		}, []);
 
-		settings.push(
-			...versionedSettingsDiff(sourceWorkflow.value?.settings, targetWorkflow.value?.settings),
-		);
+		// A missing workflow has no engine, so the default must not show as its engine.
+		if (sourceWorkflow.value && targetWorkflow.value) {
+			settings.push(
+				...versionedSettingsDiff(sourceWorkflow.value.settings, targetWorkflow.value.settings),
+			);
+		}
 
 		const sourceName = sourceWorkflow.value?.name;
 		const targetName = targetWorkflow.value?.name;

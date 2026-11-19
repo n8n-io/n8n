@@ -232,6 +232,23 @@ describe('useWorkflowDiffUI', () => {
 			expect(settingsDiff.value).toEqual([]);
 			expect(changesCount.value).toBe(0);
 		});
+
+		it.each([
+			{ missing: 'source', source: false, target: true },
+			{ missing: 'target', source: true, target: false },
+		])('shows no engine change when the $missing workflow is missing', ({ source, target }) => {
+			const workflow = createMockWorkflow({ settings: { engineType: 'v2' } });
+
+			const { settingsDiff } = useWorkflowDiffUI({
+				sourceWorkflow: computed(() => (source ? workflow : undefined)),
+				targetWorkflow: computed(() => (target ? workflow : undefined)),
+				nodesDiff: ref(new Map()),
+				connectionsDiff: ref(new Map()),
+				selectedDetailId: ref(undefined),
+			});
+
+			expect(settingsDiff.value.map((change) => change.name)).not.toContain('engineType');
+		});
 	});
 
 	describe('nodeChanges', () => {
