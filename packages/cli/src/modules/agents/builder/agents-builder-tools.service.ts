@@ -362,6 +362,9 @@ const PUBLISH_CONFIRMATION_SCHEMA = z.object({
 });
 
 type PublishConfirmation = z.infer<typeof PUBLISH_CONFIRMATION_SCHEMA>;
+
+/** The version a publish card described, kept with the suspended call. */
+const publishContinuationSchema = z.object({ confirmedVersionId: z.string().nullable() }).strict();
 type AgentPublishTargets = ReturnType<typeof describePublishSendTargets>['sendTargets'];
 
 /** A agent_builder_call_agent continuation that carries a sessionNote across an approval. */
@@ -1088,18 +1091,8 @@ export class AgentsBuilderToolsService {
 					const editorLock = await this.getEditorLockFailure(agentId);
 					if (editorLock) return editorLock;
 					// Going live is always the user's decision: ask every time, with no session grant.
-					// `suspend()` stays outside the try, so its control flow is never caught as an error.
 					if (ctx.resumeData === undefined) {
-						let confirmation: PublishConfirmation;
-						try {
-							confirmation = await this.buildPublishConfirmation(agentId, projectId, versionId);
-						} catch (e) {
-							return {
-								ok: false,
-								errors: [{ message: e instanceof Error ? e.message : String(e) }],
-							};
-						}
-						return await ctx.suspend(confirmation);
+						return await this.askToPublish(ctx, agentId, projectId, versionId);
 					}
 					if (!ctx.resumeData.approved) {
 						return {
@@ -1110,6 +1103,15 @@ export class AgentsBuilderToolsService {
 					}
 					try {
 						const before = await this.agentsService.findById(agentId, projectId);
+						// The card described one version. If the draft changed while it was open, the
+						// user has not seen what would go live, so ask again instead of publishing.
+						const confirmed = publishContinuationSchema.safeParse(ctx.continuation);
+						if (
+							confirmed.success &&
+							(versionId ?? before?.versionId ?? null) !== confirmed.data.confirmedVersionId
+						) {
+							return await this.askToPublish(ctx, agentId, projectId, versionId);
+						}
 						const beforeActiveVersionId = before?.activeVersionId;
 						const beforeVersionId = before?.versionId;
 						const { agent } = await this.agentPublishService.publishAgent(
@@ -1141,6 +1143,28 @@ export class AgentsBuilderToolsService {
 	}
 
 	/**
+	 * Shows the go live card and remembers the version it describes. `suspend()` stays
+	 * outside the try, so its control flow is never caught as an error.
+	 */
+	private async askToPublish(
+		ctx: InterruptibleToolContext<PublishConfirmation, ApprovalResumePayload>,
+		agentId: string,
+		projectId: string,
+		versionId: string | undefined,
+	) {
+		let card: { confirmation: PublishConfirmation; confirmedVersionId: string | null } | undefined;
+		try {
+			card = await this.buildPublishConfirmation(agentId, projectId, versionId);
+		} catch (e) {
+			return { ok: false, errors: [{ message: e instanceof Error ? e.message : String(e) }] };
+		}
+		if (!card) return { ok: false, errors: [{ message: 'Agent not found.' }] };
+		return await ctx.suspend(card.confirmation, {
+			continuation: { confirmedVersionId: card.confirmedVersionId },
+		});
+	}
+
+	/**
 	 * The go live confirmation, in the shape of an Assistant approval card: what goes live
 	 * and what the live agent might really send. A history version lists no targets, because
 	 * its config is not loaded here. The card then says that anything it sends is real.
@@ -1149,18 +1173,19 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		versionId: string | undefined,
-	): Promise<PublishConfirmation> {
+	): Promise<{ confirmation: PublishConfirmation; confirmedVersionId: string | null } | undefined> {
 		const agent = await this.agentsService.findById(agentId, projectId);
-		const selectedVersion = versionId !== undefined && versionId !== agent?.versionId;
-		const targetVersionId = selectedVersion ? versionId : agent?.versionId;
-		const liveAvailability = !agent?.activeVersionId
+		if (!agent) return undefined;
+		const selectedVersion = versionId !== undefined && versionId !== agent.versionId;
+		const targetVersionId = selectedVersion ? versionId : agent.versionId;
+		const liveAvailability = !agent.activeVersionId
 			? 'unpublished'
 			: targetVersionId === agent.activeVersionId
 				? 'published'
 				: 'changed';
 
 		let targets = { sendTargets: [] as AgentPublishTargets, moreSendTargets: 0 };
-		if (agent && !selectedVersion) {
+		if (!selectedVersion) {
 			const tasks = agent.schema?.tasks?.some((task) => task.enabled)
 				? await this.agentTaskService.list(agentId)
 				: [];
@@ -1179,7 +1204,7 @@ export class AgentsBuilderToolsService {
 			sendTargets: targets.sendTargets,
 			...(targets.moreSendTargets > 0 ? { moreSendTargets: targets.moreSendTargets } : {}),
 		} satisfies InstanceAiApprovalDetails;
-		const name = agent?.name ?? 'the agent';
+		const name = agent.name || 'the agent';
 		const headline = {
 			unpublished: `Publish ${name} and go live.`,
 			changed: `Republish ${name} and go live.`,
@@ -1197,11 +1222,14 @@ export class AgentsBuilderToolsService {
 				: 'Anything the agent sends will be real.';
 
 		return {
-			// Clients that cannot read the details show this text instead.
-			message: `${headline} ${sends}`,
-			severity: 'warning',
-			...(agent?.name ? { resourceName: agent.name } : {}),
-			approvalDetails,
+			confirmation: {
+				// Clients that cannot read the details show this text instead.
+				message: `${headline} ${sends}`,
+				severity: 'warning',
+				...(agent.name ? { resourceName: agent.name } : {}),
+				approvalDetails,
+			},
+			confirmedVersionId: targetVersionId ?? null,
 		};
 	}
 

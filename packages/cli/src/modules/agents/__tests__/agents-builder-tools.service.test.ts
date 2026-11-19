@@ -3398,6 +3398,9 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getPublishTool(service).handler!({}, { ...ctx, suspend });
 
 			expect(suspend).toHaveBeenCalledTimes(1);
+			expect(suspend).toHaveBeenCalledWith(expect.anything(), {
+				continuation: { confirmedVersionId: 'v-draft' },
+			});
 			expect(result).toEqual({
 				message:
 					'Republish Support agent and go live. These might get sent for real: Slack (channel), Daily digest (task), 1 tool.',
@@ -3415,6 +3418,71 @@ describe('AgentsBuilderToolsService', () => {
 				},
 			});
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+		});
+
+		it('asks again instead of publishing when the draft changed while the card was open', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue({
+				id: agentId,
+				name: 'Support agent',
+				versionId: 'v-draft-2',
+				activeVersionId: null,
+				integrations: [],
+				schema: baseConfig,
+			} as unknown as ProjectAgent);
+			const suspend = vi.fn(async (payload: unknown) => payload as never);
+
+			const result = await getPublishTool(service).handler!(
+				{},
+				{
+					...ctx,
+					suspend,
+					resumeData: { approved: true },
+					continuation: { confirmedVersionId: 'v-draft-1' },
+				},
+			);
+
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+			expect(suspend).toHaveBeenCalledWith(expect.anything(), {
+				continuation: { confirmedVersionId: 'v-draft-2' },
+			});
+			expect(result).toMatchObject({
+				approvalDetails: { action: 'publish-agent', liveAvailability: 'unpublished' },
+			});
+		});
+
+		it('publishes the version the user confirmed', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue({
+				id: agentId,
+				versionId: 'v-draft',
+				activeVersionId: null,
+			} as unknown as ProjectAgent);
+			agentPublishService.publishAgent.mockResolvedValue({
+				agent: { activeVersionId: 'v-draft', versionId: 'v-draft' } as ProjectAgent,
+			});
+
+			const result = await getPublishTool(service).handler!(
+				{},
+				{ ...ctx, resumeData: { approved: true }, continuation: { confirmedVersionId: 'v-draft' } },
+			);
+
+			expect(agentPublishService.publishAgent).toHaveBeenCalledTimes(1);
+			expect(result).toMatchObject({ ok: true, activeVersionId: 'v-draft' });
+		});
+
+		it('reports a missing agent instead of asking to publish it', async () => {
+			const { service, agentsService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue(null);
+			const suspend = vi.fn(async (payload: unknown) => payload as never);
+
+			const result = await getPublishTool(service).handler!({}, { ...ctx, suspend });
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toEqual({ ok: false, errors: [{ message: 'Agent not found.' }] });
 		});
 
 		it('publishes nothing when the user cancels', async () => {
