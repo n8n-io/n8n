@@ -319,6 +319,10 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 	// With the error output, the item of an input item that fails goes to the error list at
 	// once: v1 looks at the first item of the node before it moves that item.
 	const firstFailed = again !== null && errors !== null;
+	// The names of the flags of this step: two steps can be in one scope.
+	const firstFailedVar = c.local('FirstFailed');
+	const stoppedVar = c.local('Stopped');
+	const stopErrorVar = c.local('StopError');
 	if (again) {
 		c.helper('retryError');
 		w.open(`for (let tryIndex = 0; tryIndex < ${again.tries}; tryIndex++) {`);
@@ -331,14 +335,14 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 		if (errors) w.line(`while (${errors}.length > 0) ${errors}.pop();`);
 		if (pairs) w.line(`while (${pairs}.paired.length > 0) ${pairs}.paired.pop();`);
 		w.line('let failed = false;');
-		if (firstFailed) w.line('let firstFailed = false;');
+		if (firstFailed) w.line(`let ${firstFailedVar} = false;`);
 		w.open('try {');
 	}
 	// The error item of an input item, on the error output or on output 0.
 	const failedItem = (): string => {
 		const pushed = errors ? errorOutputPush(c, errors, ITEM, push('{}')) : push(errorItem(c));
 		return firstFailed
-			? `{ if (${out}.length === 0 && ${errors}.length === 0) firstFailed = true; ${pushed} }`
+			? `{ if (${out}.length === 0 && ${errors}.length === 0) ${firstFailedVar} = true; ${pushed} }`
 			: pushed;
 	};
 	// The requests of the items after an item that fails go out too (`StepCall.sendsAll`). A
@@ -346,8 +350,8 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 	// error the answers have no reader, and the node gives that error after the last item.
 	const sendsRest = call.sendsAll === true && onError === 'stopWorkflow';
 	if (sendsRest) {
-		w.line('let stopped = false;');
-		w.line('let stopError: Json = null;');
+		w.line(`let ${stoppedVar} = false;`);
+		w.line(`let ${stopErrorVar}: Json = null;`);
 	}
 	if (call.usesIndex || pairs) {
 		w.open(`for (let ${INDEX} = 0; ${INDEX} < ${input}.length; ${INDEX}++) {`);
@@ -374,7 +378,7 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 		} else {
 			emitCall(c, 'result', 'let result: Json[]', fn, opts, 'result[0]', call.hostLimit, plain);
 		}
-		w.line(`if (!stopped) for (const r of result) ${push('r')}`);
+		w.line(`if (!${stoppedVar}) for (const r of result) ${push('r')}`);
 		w.close('} catch (error) {');
 		w.depth++;
 		// The mark of `RUNS_IN_HOST` is no error of an item: the host form runs the node.
@@ -382,7 +386,7 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 			c.helper('fileLimitInHost');
 			w.line('if (fileLimitInHost(error)) throw error;');
 		}
-		w.line('if (!stopped) { stopped = true; stopError = error; }');
+		w.line(`if (!${stoppedVar}) { ${stoppedVar} = true; ${stopErrorVar} = error; }`);
 		w.close();
 	} else if (call.hostItem !== undefined) {
 		// The call for the item, and the host call for the same item after the mark. With a
@@ -398,7 +402,7 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 		// The v1 node in the host gives the error item of the item itself. n8n's engine moves
 		// an item that has only `error` to the error output, with the JSON of the input item.
 		const first = firstFailed
-			? `if (${out}.length === 0 && ${errors}.length === 0) firstFailed = true; `
+			? `if (${out}.length === 0 && ${errors}.length === 0) ${firstFailedVar} = true; `
 			: '';
 		const moved = errors
 			? `if (itemInHost && r != null && typeof r.error === 'string' && r.error !== '' && Object.keys(r).length === 1) { ${first}${errorOutputPush(c, errors, ITEM, push('{}')).replace('error.message', 'r.error')} } else ${push('r')}`
@@ -461,13 +465,13 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 	}
 	w.close();
 	if (sendsRest) {
-		w.open('if (stopped) {');
+		w.open(`if (${stoppedVar}) {`);
 		if (c.traceAll && !again) {
 			w.line(
-				`ctx.trace(${str(c.node.name)}, { $error: { message: stopError.message, description: stopError.description ?? '' } });`,
+				`ctx.trace(${str(c.node.name)}, { $error: { message: ${stopErrorVar}.message, description: ${stopErrorVar}.description ?? '' } });`,
 			);
 		}
-		w.line('throw stopError;');
+		w.line(`throw ${stopErrorVar};`);
 		w.close();
 	}
 	if (again) {
@@ -488,7 +492,7 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 		w.line('failed = true;');
 		w.close();
 		w.line(
-			`if (!failed && !${firstFailed ? '(firstFailed || ' : ''}retryError(${out}[0])${firstFailed ? ')' : ''}) break;`,
+			`if (!failed && !${firstFailed ? `(${firstFailedVar} || ` : ''}retryError(${out}[0])${firstFailed ? ')' : ''}) break;`,
 		);
 		w.close();
 	}
