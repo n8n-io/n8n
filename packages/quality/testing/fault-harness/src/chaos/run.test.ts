@@ -1,4 +1,4 @@
-import { CHAOS_HOOKS, chaosProfile, chaosSchedule, engineChaosHooks } from './run';
+import { CHAOS_HOOKS, chaosProfile, chaosSchedule, engineChaosHooks, hitSince } from './run';
 import { parseHookSpecs } from '../hooks/spec';
 
 const options = {
@@ -66,5 +66,23 @@ describe('chaosSchedule', () => {
 			expect(fault.target).toBe('main');
 			if (fault.kind === 'delay' || fault.kind === 'cut') expect(fault.to).toBe('postgres');
 		}
+	});
+});
+
+describe('hitSince', () => {
+	const line = (at: number, point: string) =>
+		`[fault-harness] ${new Date(at).toISOString()} pid=1 hit ${point} {}`;
+
+	it('ignores a hit of the point logged before the arm time', async () => {
+		const armedAt = Date.now();
+		const log = [line(armedAt - 1_000, 'p'), line(armedAt + 10, 'q')].join('\n');
+		expect(await hitSince(async () => log, 'p', armedAt, 300)).toBe(false);
+	});
+
+	it('finds a hit of the point logged after the arm time', async () => {
+		const armedAt = Date.now();
+		let log = line(armedAt - 1_000, 'p');
+		setTimeout(() => (log += `\n${line(Date.now(), 'p')}`), 100);
+		expect(await hitSince(async () => log, 'p', armedAt, 2_000)).toBe(true);
 	});
 });

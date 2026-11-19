@@ -14,7 +14,7 @@ import type { Violation } from '../invariants';
 import { checkEngineWorkload, checkWorkload } from '../invariants';
 import { network } from '../network';
 import type { Container, Signal } from '../process';
-import { docker, freeze, logs, signal, startAgain, waitForExit } from '../process';
+import { docker, freeze, logs, signal, startAgain, until, waitForExit } from '../process';
 import type { StackOptions } from '../stack';
 import { CONTROL_POSTGRES, ENGINE_POSTGRES, HarnessStack } from '../stack';
 import { ENGINE_V2_SETTINGS } from '../workflows';
@@ -190,6 +190,24 @@ export function chaosSchedule(options: ChaosOptions): ScheduledFault[] {
 	);
 }
 
+/** Waits until the log shows a hit of the point logged at or after `from`; false at the timeout. */
+export async function hitSince(
+	readLog: () => Promise<string>,
+	point: string,
+	from: number,
+	timeoutMs: number,
+): Promise<boolean> {
+	return await until(
+		`hit ${point}`,
+		async () => hitBetween(await readLog(), point, from, Date.now()),
+		timeoutMs,
+		250,
+	).then(
+		() => true,
+		() => false,
+	);
+}
+
 const SERVICES = {
 	postgres: CONTROL_POSTGRES,
 	'engine-postgres': ENGINE_POSTGRES,
@@ -239,12 +257,14 @@ function harnessExecutor(harness: HarnessStack) {
 			case 'hook': {
 				const point = hook([container], fault.point);
 				if (crashPoints.has(fault.point)) {
-					const reached = point.waitHit(fault.forMs).then(
-						() => true,
-						() => false,
-					);
+					const armedAt = Date.now();
 					await point.arm();
-					const hit = await reached;
+					const hit = await hitSince(
+						async () => await logs(container),
+						fault.point,
+						armedAt,
+						fault.forMs,
+					);
 					await point.disarm();
 					if (hit) await restart(container, 'SIGKILL');
 					return { hit };

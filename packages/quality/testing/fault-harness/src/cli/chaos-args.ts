@@ -73,7 +73,10 @@ export function parseChaosArgs(argv: string[], random = Math.random): ChaosArgs 
 	const repeats = count('repeats', values.repeats);
 	const minFailures = count('min-failures', values['min-failures']);
 	if (minFailures > repeats) throw new Error(`--min-failures cannot exceed --repeats\n${USAGE}`);
-	const engine = values.engine === undefined ? undefined : ENGINES[values.engine];
+	const engine =
+		values.engine !== undefined && Object.hasOwn(ENGINES, values.engine)
+			? ENGINES[values.engine]
+			: undefined;
 	if (values.engine !== undefined && !engine)
 		throw new Error(`--engine must be in-process or remote\n${USAGE}`);
 	if (engine && values.workers !== undefined)
