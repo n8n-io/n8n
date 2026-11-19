@@ -509,6 +509,20 @@ describe('QuickJsBridge string transfer', () => {
 		expect(bridge.execute('return this.$json.s;', data)).toBe('\0x\0y');
 	});
 
+	it('should read a data string that contains a lone surrogate', () => {
+		const codeUnitsOf = (s: string) =>
+			bridge.execute(
+				'return Array.from({ length: this.$json.s.length }, (_, i) => this.$json.s.charCodeAt(i));',
+				{ $json: { s } },
+			);
+
+		expect(codeUnitsOf('\ud800x')).toEqual([0xd800, 0x78]);
+		expect(codeUnitsOf('x\udc00')).toEqual([0x78, 0xdc00]);
+		expect(codeUnitsOf('\udc00\ud800')).toEqual([0xdc00, 0xd800]);
+		expect(codeUnitsOf('x\ud800\ud800y')).toEqual([0x78, 0xd800, 0xd800, 0x79]);
+		expect(codeUnitsOf('😀')).toEqual([0xd83d, 0xde00]);
+	});
+
 	it('should pass strings that contain NUL characters to Intl', () => {
 		expect(
 			bridge.execute('return new Intl.Collator("en").compare("\\u0000a", "\\u0000b");', {}),

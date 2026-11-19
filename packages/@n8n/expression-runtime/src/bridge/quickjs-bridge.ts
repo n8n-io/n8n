@@ -105,6 +105,18 @@ function fitsInCString(value: string): boolean {
 	return !value.includes('\0');
 }
 
+const LONE_SURROGATE = /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/;
+
+/** vm.newString() encodes a string as UTF-8, which has no form for a lone surrogate. */
+function fitsInUtf8(value: string): boolean {
+	return !LONE_SURROGATE.test(value);
+}
+
+/** True when the guest string that vm.newString() builds has the same code units as `value`. */
+function survivesNewString(value: string): boolean {
+	return fitsInCString(value) && fitsInUtf8(value);
+}
+
 /** A guest value read on the host, or the guest error that stopped the read. The caller owns `error`. */
 type GuestRead = { value: unknown } | { error: QuickJSHandle };
 
@@ -1484,7 +1496,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		if (typeof value === 'number') {
 			return this.vm.newNumber(value);
 		}
-		if (typeof value === 'string' && fitsInCString(value)) return this.vm.newString(value);
+		if (typeof value === 'string' && survivesNewString(value)) return this.vm.newString(value);
 		if (typeof value === 'boolean') {
 			return value ? this.vm.true : this.vm.false;
 		}
