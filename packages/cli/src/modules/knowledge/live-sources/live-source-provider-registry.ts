@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 import { LiveSourceUnknownProviderError } from './live-source.errors';
 import type { KnowledgeLiveSourceProvider } from './live-source-provider';
 import { NotionLiveSourceProvider } from './providers/notion.provider';
+import { SlackLiveSourceProvider } from './providers/slack.provider';
 
 /**
  * The live source providers by id. The built-in providers come in through the
@@ -13,8 +14,9 @@ import { NotionLiveSourceProvider } from './providers/notion.provider';
 export class LiveSourceProviderRegistry {
 	private readonly providers = new Map<string, KnowledgeLiveSourceProvider>();
 
-	constructor(notion: NotionLiveSourceProvider) {
+	constructor(notion: NotionLiveSourceProvider, slack: SlackLiveSourceProvider) {
 		this.register(notion);
+		this.register(slack);
 	}
 
 	register(provider: KnowledgeLiveSourceProvider): void {

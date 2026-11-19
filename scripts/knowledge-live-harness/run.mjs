@@ -278,21 +278,26 @@ async function ask(client, agentId, question) {
 	return { question, ...result, thread };
 }
 
+const SMOKE_QUESTIONS = {
+	notion: [
+		'How many days does the 2026 refund policy give customers to ask for a refund? Cite the page.',
+		'What does the Notion page titled "Not picked" say?',
+	],
+	slack: [
+		'In which region was the queue consumer stuck during the payment webhook incident in November? Cite the thread.',
+		'What is the scope-probe secret posted in the Slack channel #seed-not-picked?',
+	],
+};
+
 async function smoke(client, scaffold, items) {
-	const agentId = await ensureAgent(
-		client,
-		'kb-native',
-		buildAgentConfig('kb-native', scaffold, items),
-	);
+	const config = buildAgentConfig('kb-native', scaffold, items);
+	const agentId = await ensureAgent(client, 'kb-native', config);
 	const runs = [];
-	runs.push(
-		await ask(
-			client,
-			agentId,
-			'How many days does the 2026 refund policy give customers to ask for a refund? Cite the page.',
-		),
-	);
-	runs.push(await ask(client, agentId, 'What does the Notion page titled "Not picked" say?'));
+	for (const source of config.knowledge.liveSources) {
+		for (const question of SMOKE_QUESTIONS[source.id] ?? []) {
+			runs.push(await ask(client, agentId, question));
+		}
+	}
 	await mkdir(RESULTS, { recursive: true });
 	const file = path.join(RESULTS, `smoke-${new Date().toISOString().replace(/[:.]/g, '-')}.json`);
 	await writeFile(file, JSON.stringify({ agentId, runs }, null, '\t'));
