@@ -31,6 +31,17 @@ node kind, or when the credential type it wraps is restricted under the credenti
 and leaves HTTP Request and the other credential-only nodes alone. The backend never sees the
 generated name and refuses a node type rule on it; the credential type rule is the one to write.
 
+The admin pages read and write the instance policy through `useInstancePolicy()`. It loads only
+the kinds the user can manage, from `/node-type-policies/instance` and
+`/credential-type-policies/instance`. `save(kind, update)` takes a function from the current policy
+to the new rules and default action. Saves of one kind run in order, and each one sends the version
+that the previous one returned. When the server answers 409 and the policy has a new version, the
+page loads the new policy, saves nothing and tells the admin. Saves queued behind it are dropped.
+A 409 with no new version means the server refuses to edit the policy in place, because it has
+several attached documents or shares one. The save returns `notEditable`, the page says so once,
+and the store sets `notEditable` for that kind. Later saves of that kind are not sent until a load
+finds a newer version.
+
 ```bash
 pnpm turbo typecheck lint test --filter=@n8n/frontend-module-type-availability-policies
 ```

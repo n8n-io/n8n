@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import Draggable from '@/app/components/Draggable.vue';
 import EmptySharedSectionActionBox from '@/features/core/folders/components/EmptySharedSectionActionBox.vue';
 import FolderBreadcrumbs from '@/features/core/folders/components/FolderBreadcrumbs.vue';
@@ -747,7 +748,8 @@ const onFolderDeleted = async (payload: {
 	} else {
 		await fetchWorkflows();
 	}
-	telemetry.track('User deleted folder', {
+	telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_DELETED_FOLDER, {
+		resource_type: 'workflow',
 		folder_id: payload.folderId,
 		deleted_sub_folders: payload.folderCount,
 		deleted_sub_workflows: payload.workflowCount,
@@ -1854,7 +1856,8 @@ const createFolder = async (
 				},
 				type: 'success',
 			});
-			telemetry.track('User created folder', {
+			telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_CREATED_FOLDER, {
+				resource_type: 'workflow',
 				folder_id: newFolder.id,
 			});
 			if (options.openAfterCreate) {
@@ -1918,7 +1921,8 @@ const renameFolder = async (folderId: string) => {
 				type: 'success',
 			});
 			await fetchWorkflows();
-			telemetry.track('User renamed folder', {
+			telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_RENAMED_FOLDER, {
+				resource_type: 'workflow',
 				folder_id: folderId,
 			});
 		} catch (error) {
@@ -2203,7 +2207,8 @@ const onWorkflowMoved = async (payload: WorkflowListEventMap['workflow-moved']) 
 			},
 			type: 'success',
 		});
-		telemetry.track('User moved content', {
+		telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_MOVED_CONTENT, {
+			resource_type: 'workflow',
 			workflow_id: payload.workflow.id,
 			source_folder_id: payload.workflow.oldParentId,
 			destination_folder_id: payload.newParent.id,
@@ -2272,7 +2277,8 @@ const onNameSubmit = async (name: string) => {
 				}),
 				type: 'success',
 			});
-			telemetry.track('User renamed folder', {
+			telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_RENAMED_FOLDER, {
+				resource_type: 'workflow',
 				folder_id: currentFolder.value.id,
 			});
 		} catch (error) {

@@ -78,17 +78,16 @@ show a generic description such as `Save the changes to this workflow`.
 Data-table approvals build the description from the tool input: columns, row
 counts, and filter conditions. Insert previews show up to three rows, five columns
 per row, and 100 characters per JSON-formatted value, including quotes. The card states how many rows or columns
-the preview omits. Pass `dataTableName` and `currentColumnName` when known
-so the card shows names instead of IDs. No tool looks up names only for the
-card. These messages do not change approval permissions or group separate tool
-calls. Bare `like` and `ilike` values use contains matching: the data-table
+the preview omits. One `change_data_tables` call shows one card that lists
+every change of the batch. These messages do not change approval permissions. Bare `like` and `ilike` values use contains matching: the data-table
 service adds `%` before and after a value when it has no `%`. Values with `%`
 keep their explicit pattern. `like` matches case; `ilike` ignores case.
 
 | Tool | Actions |
 |------|---------|
 | `list_workflows`, `get_workflow_node_usage`, `get_workflow`, `get_workflow_as_code`, `archive_workflow`, `unarchive_workflow`, `setup_workflow`, `validate_workflow`, `publish_workflow`, `unpublish_workflow`, `list_workflow_versions`, `restore_workflow_version`, `update_workflow_version` | single-purpose |
-| `list_data_tables`, `get_data_table_schema`, `query_data_table`, `create_data_table`, `delete_data_table`, `add_data_table_column`, `delete_data_table_column`, `rename_data_table_column`, `insert_data_table_rows`, `update_data_table_rows`, `delete_data_table_rows` | single-purpose |
+| `list_data_tables`, `get_data_table_schema`, `query_data_table` | single-purpose |
+| `change_data_tables` | 8 change actions in one batch |
 | `list_projects`, `list_tags`, `tag_workflow`, `cleanup_test_executions`, `list_folders`, `create_folder`, `delete_folder`, `move_workflow_to_folder` | single-purpose |
 | `workflow_builder_executions` | 8 |
 | `list_credentials`, `search_credential_types`, `setup_credentials`, `test_credential`, `delete_credential`, `update_credential_description` | single-purpose |
@@ -1141,39 +1140,50 @@ one caller stops its wait without cancelling a refresh shared with other callers
 
 ---
 
-## Data table tools (11 tools)
+## Data table tools (4 tools)
 
-Full CRUD suite for n8n data tables. Each operation is a separate tool. System
-columns (`id`, `createdAt`, `updatedAt`) are reserved and auto-managed. The
-read tools never suspend. The write tools ask for approval unless the
-permission allows them. Stored calls of the former `data_tables` tool still
-resolve to the matching tool.
+Three read tools and one write tool. System columns (`id`, `createdAt`,
+`updatedAt`) are reserved and auto-managed. The read tools never suspend.
 
-### Table operations
+### Read tools
 
 | Tool | Description |
 |------|-------------|
 | `list_data_tables` | List data tables |
-| `create_data_table` | Create a data table with columns |
-| `delete_data_table` | Delete a data table after confirmation |
 | `get_data_table_schema` | Get the table columns |
-
-### Column operations
-
-| Tool | Description |
-|------|-------------|
-| `add_data_table_column` | Add a column to a table |
-| `delete_data_table_column` | Remove a column from a table |
-| `rename_data_table_column` | Rename a column |
-
-### Row operations
-
-| Tool | Description |
-|------|-------------|
 | `query_data_table` | Query rows with optional filters |
-| `insert_data_table_rows` | Insert one or more rows |
-| `update_data_table_rows` | Update rows matching a filter |
-| `delete_data_table_rows` | Delete rows matching a non-empty filter after confirmation |
+
+### `change_data_tables`
+
+Input: `{ projectId?, changes: [{ action, ... }] }`, with 1 to 50 changes.
+
+| Action | Description |
+|--------|-------------|
+| `create` | Create a table with typed columns |
+| `delete` | Delete a table and all its rows |
+| `add-column` | Add a column |
+| `delete-column` | Remove a column |
+| `rename-column` | Rename a column |
+| `insert-rows` | Insert 1 to 100 rows |
+| `update-rows` | Update rows that match a filter |
+| `delete-rows` | Delete rows that match a non-empty filter |
+
+- `table` accepts a table ID or name. A later change can name a table that an
+  earlier change in the batch creates. `column` accepts a column name, or an ID
+  for `delete-column` and `rename-column`.
+- The tool checks the whole batch before it runs a change. Then it runs the
+  changes in order and stops at the first failure. Earlier changes stay
+  applied. The result lists `applied`, `failed`, and `skipped` changes.
+- The user approves the whole batch on one card. A change needs no approval
+  when the permission is `always_allow`, when a session approval covers its
+  action, or when it changes columns or rows of a table that the thread
+  created. Session approvals never cover destructive actions. An approval
+  applies only to the tables that the card showed. If one of them changed, the
+  tool shows a new card.
+- The former write tools (`create_data_table`, `insert_data_table_rows`, and
+  the others) and the former `data_tables` tool are legacy names. A suspended
+  call under such a name still resumes through `change_data_tables`. A new call
+  under such a name fails as an unknown tool.
 
 ---
 
@@ -1509,6 +1519,14 @@ The `type` field selects one lookup. Supported values are `agents`, `config-sche
 `capabilities`, `integrations`, and `attachable-workflows`. Detailed lookups
 return one body at a time. Session lookup supports status, origin, date, and
 cursor filters.
+
+By default, a `session` lookup returns a compact transcript. Long values are
+cut and the oldest turns of a long session are left out. Set
+`maxToolValueLength` to get every turn with complete text, in pages. Each tool
+input and output is cut at that length, and `0` leaves them out. While
+`nextCursor` is not `null`, pass it back as `cursor` with the same `threadId`,
+`executionId`, and `maxToolValueLength`. A cursor that does not match the
+transcript returns an error.
 
 The Agent id is optional when the conversation has a bound Agent target. Use
 `type: "agents"` to resolve the id in other conversations. The tool labels the

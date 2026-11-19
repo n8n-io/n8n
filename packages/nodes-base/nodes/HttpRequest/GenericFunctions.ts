@@ -29,7 +29,7 @@ export type IAuthDataSanitizeKeys = {
 };
 
 export const replaceNullValues = (item: INodeExecutionData) => {
-	if (item.json === null) {
+	if (item.json === null || item.json === undefined) {
 		item.json = {};
 	}
 	return item;

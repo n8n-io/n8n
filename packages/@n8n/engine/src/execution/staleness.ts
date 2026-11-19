@@ -8,13 +8,18 @@ import { UnexpectedError } from '../common';
 export interface StalenessThresholds {
 	/** For an execution or a step that is `queued`. */
 	queuedMs: number;
-	/** For a step that is `running`. */
+	/**
+	 * For a step that is `running`. The engine fails a step that runs longer, so
+	 * the value must be larger than the run time of the slowest healthy node.
+	 */
 	runningStepMs: number;
 }
 
 export const DEFAULT_STALENESS_THRESHOLDS: StalenessThresholds = {
 	queuedMs: 60_000,
-	runningStepMs: 60_000,
+	// Ten minutes: the engine fails a step that is `running` past this time, and
+	// it cannot tell a slow node from a stopped worker. A low value fails healthy nodes.
+	runningStepMs: 600_000,
 };
 
 /** Throws when a threshold is not a positive whole number of milliseconds. */

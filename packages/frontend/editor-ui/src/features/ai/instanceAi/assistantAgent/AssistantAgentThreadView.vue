@@ -24,7 +24,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useElementSize } from '@vueuse/core';
 import { computed, onBeforeUnmount, provide, ref, useTemplateRef, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import AgentChatPanel from '@/features/agents/components/AgentChatPanel.vue';
 import { useN8nAssistantIdentity } from '@/features/agents/n8nChatPage/composables/useN8nAssistantIdentity';
@@ -40,6 +40,7 @@ import InstanceAiFixWithAiPanel from '../components/InstanceAiFixWithAiPanel.vue
 import InstanceAiInputMenu from '../components/InstanceAiInputMenu.vue';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
 import InstanceAiResourcePicker from '../components/InstanceAiResourcePicker.vue';
+import InstanceAiSkillPreview from '../components/InstanceAiSkillPreview.vue';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
@@ -64,14 +65,18 @@ import {
 	getPendingWorkflowAttachment,
 	type PendingFirstMessage,
 } from '../composables/useInstanceAiHandoff';
-import { INSTANCE_AI_VIEW } from '../constants';
+import { INSTANCE_AI_APP_ID_QUERY, INSTANCE_AI_VIEW } from '../constants';
 import { buildFixWithAiPrompt } from '../fixWithAi';
 import { formatAgentPreviewContextLabel } from '../instanceAi.handoffContext';
 import { useInstanceAiStore } from '../instanceAi.store';
-import { firstMessageTitle, threadTargetsAgent } from '../instanceAi.threadRuntime';
+import {
+	firstMessageTitle,
+	getAppTargetsFromThreadMetadata,
+	threadTargetsAgent,
+} from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { buildThreadArtifactsContext } from '../threadArtifacts';
-import { useCanvasPreview } from '../useCanvasPreview';
+import { isArtifactTab, useCanvasPreview } from '../useCanvasPreview';
 import { toAgentPreviewComposerAttachment } from './assistantAgentPreviewHandoff';
 import {
 	fetchAssistantAgentThreadTabs,
@@ -125,6 +130,7 @@ provide(ASSISTANT_AGENT_PROJECT_ID, props.projectId);
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const router = useRouter();
+const route = useRoute();
 const rootStore = useRootStore();
 const settingsStore = useInstanceAiSettingsStore();
 const identity = useN8nAssistantIdentity();
@@ -207,6 +213,8 @@ function clientContext(): Record<string, unknown> {
 		browserUseAvailable: settingsStore.isBrowserUseAvailable,
 		...(pendingReferences.length > 0 ? { attachments: pendingReferences } : {}),
 		...(pendingHandoffContext ? { context: pendingHandoffContext } : {}),
+		// The server binds the subject on the first turn. Until then, every send carries it.
+		...(launch?.subject && isNewSession.value ? { subject: launch.subject } : {}),
 		...threadArtifactsContext(),
 	};
 }
@@ -221,7 +229,7 @@ function threadArtifactsContext(): Record<string, unknown> {
 	const threadArtifacts = buildThreadArtifactsContext(
 		thread.producedArtifacts.values(),
 		activeId,
-		preview.openTabs.value,
+		preview.openTabs.value.filter(isArtifactTab),
 	);
 	return threadArtifacts ? { threadArtifacts } : {};
 }
@@ -326,6 +334,25 @@ provideArtifactAgentTargets(agentTargets.agentTargets);
 // Set from the preview tabs below, which need the thread first.
 const activeArtifactId = ref<string>();
 
+// The apps of the thread metadata, and the saved app of a new thread before the server has it.
+const appTargets = computed(() => {
+	const targets = getAppTargetsFromThreadMetadata(
+		threadsStore.threadsById.get(props.threadId)?.metadata,
+	);
+	const subject = launch?.subject;
+	if (subject?.type !== 'app' || subject.pending) return targets;
+	if (targets.some(({ appId }) => appId === subject.id)) return targets;
+	const { id: appId, projectId, name } = subject;
+	return [...targets, { appId, projectId, ...(name ? { name } : {}) }];
+});
+// An app page opens its chat with `?appId=`. Only an app of this thread opens.
+const requestedAppId = computed(() => {
+	const appId = route.query[INSTANCE_AI_APP_ID_QUERY];
+	return typeof appId === 'string' && appTargets.value.some((target) => target.appId === appId)
+		? appId
+		: undefined;
+});
+
 const thread = useAssistantArtifactThread({
 	threadId: props.threadId,
 	projectId: props.projectId,
@@ -344,6 +371,7 @@ const thread = useAssistantArtifactThread({
 	},
 	pendingWorkflowAttachment: handoff.workflow,
 	agentTargets: () => agentTargets.state.value,
+	appTargets: () => appTargets.value,
 	activeArtifactId: () => activeArtifactId.value,
 });
 provideArtifactThread(thread);
@@ -351,6 +379,7 @@ provideArtifactThread(thread);
 const preview = useCanvasPreview({
 	thread,
 	threadId: () => props.threadId,
+	initialAppId: () => requestedAppId.value ?? appTargets.value[0]?.appId,
 	tabsStorage: {
 		// A new thread has no stored tabs, and the server does not know it before its first message.
 		load: async () =>
@@ -365,8 +394,18 @@ const preview = useCanvasPreview({
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAppPreview', preview.openAppPreview);
+provide('openSkillPreview', preview.openSkillPreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('openAgentChatPreview', openAgentChatPreview);
+watch(
+	[requestedAppId, () => preview.tabsLoaded.value],
+	([appId, tabsLoaded]) => {
+		if (appId && tabsLoaded) preview.openAppPreview(appId);
+	},
+	{ immediate: true },
+);
+
+const openSkillTabs = computed(() => preview.openTabs.value.filter((tab) => tab.type === 'skill'));
 
 watch(
 	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
@@ -693,7 +732,7 @@ function removeStagedNodes(chipId: string): void {
 							preview.openTabs.value.length === 0
 						"
 						:project-id="props.projectId"
-						:excluded-tabs="preview.openTabs.value"
+						:excluded-tabs="preview.openTabs.value.filter(isArtifactTab)"
 						placement="bottom-end"
 						content-test-id="assistant-agent-open-resource-picker"
 						@select="preview.openTab"
@@ -891,6 +930,15 @@ function removeStagedNodes(chipId: string): void {
 							@preview-open-change="handleAgentTestDockOpenChange"
 							@assistant-handoff="handleAgentPreviewAssistantHandoff"
 						/>
+						<!-- Retain each open skill's draft while another artifact is visible. -->
+						<KeepAlive v-for="tab in openSkillTabs" :key="tab.id">
+							<InstanceAiSkillPreview
+								v-if="preview.isPreviewVisible.value && preview.activeSkillId.value === tab.id"
+								:class="$style.previewSlot"
+								:skill-id="tab.id"
+								:refresh-key="preview.skillRefreshKey.value"
+							/>
+						</KeepAlive>
 					</div>
 				</N8nTabsRoot>
 			</N8nResizeWrapper>

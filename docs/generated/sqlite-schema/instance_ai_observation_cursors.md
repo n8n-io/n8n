@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "instance_ai_observation_cursors" ("observationScopeId" varchar PRIMARY KEY NOT NULL, "lastObservedMessageId" varchar(36) NOT NULL, "lastObservedAt" datetime(3) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "resumeFromMessageId" varchar(36), "resumeFromAt" datetime(3), "resumeNotes" text, "lastRequestTokens" integer, "lastModelId" varchar(255), CONSTRAINT "FK_5b6319b2e9a37c1064a72428f9a" FOREIGN KEY ("observationScopeId") REFERENCES "instance_ai_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "instance_ai_observation_cursors" ("observationScopeId" varchar PRIMARY KEY NOT NULL, "lastObservedMessageId" varchar(36) NOT NULL, "lastObservedAt" datetime(3) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "resumeFromMessageId" varchar(36), "resumeFromAt" datetime(3), "resumeNotes" text, "lastRequestTokens" integer, "lastModelId" varchar(255), "workingSet" text, CONSTRAINT "FK_5b6319b2e9a37c1064a72428f9a" FOREIGN KEY ("observationScopeId") REFERENCES "instance_ai_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -25,6 +25,7 @@ CREATE TABLE "instance_ai_observation_cursors" ("observationScopeId" varchar PRI
 | resumeFromMessageId | varchar(36) |  | true |  |  |  |
 | resumeNotes | TEXT |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| workingSet | TEXT |  | true |  |  |  |
 
 ## Constraints
 
@@ -58,6 +59,7 @@ erDiagram
   varchar_36_ resumeFromMessageId
   TEXT resumeNotes
   datetime_3_ updatedAt
+  TEXT workingSet
 }
 "instance_ai_threads" {
   datetime_3_ createdAt

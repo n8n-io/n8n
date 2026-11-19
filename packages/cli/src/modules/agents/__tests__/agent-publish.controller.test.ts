@@ -2,6 +2,7 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { FolderService } from '@/services/folder.service';
 import { LockedError } from '@n8n/errors';
 
 import type { AgentPublishService } from '../agent-publish.service';
@@ -37,7 +38,7 @@ function makeController({
 	return {
 		controller: new AgentPublishController(
 			agentPublishService,
-			new AgentResponseMapper(agentRunnableStateService),
+			new AgentResponseMapper(agentRunnableStateService, mock<FolderService>()),
 			agentWriteLockService,
 		),
 		agentPublishService,

@@ -26,6 +26,54 @@ describe('convertDbMessages — host events', () => {
 		]);
 	});
 
+	it('keeps the text around a host event as one text, as the live stream shows it', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm-1',
+				role: 'assistant',
+				content: [
+					{ type: 'text', text: "I'll " },
+					{ type: 'host-event', name: 'test.first' },
+					{ type: 'text', text: 'flip the image.' },
+				],
+			},
+		];
+
+		const [message] = convertDbMessages(dbMessages);
+
+		expect(message.content).toBe("I'll flip the image.");
+		expect(message.renderParts).toEqual([{ type: 'text', text: "I'll flip the image." }]);
+		expect(message.hostEvents).toHaveLength(1);
+	});
+
+	it('keeps a break between texts that a tool call separates', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm-1',
+				role: 'assistant',
+				content: [
+					{ type: 'text', text: "I'll flip the image." },
+					{ type: 'host-event', name: 'test.first' },
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-1',
+						toolName: 'flip',
+						state: 'resolved',
+						output: {},
+					},
+					{ type: 'text', text: 'Done.' },
+				],
+			},
+		];
+
+		const [message] = convertDbMessages(dbMessages);
+
+		expect(message.renderParts).toEqual([
+			{ type: 'text', text: "I'll flip the image." },
+			{ type: 'text', text: 'Done.' },
+		]);
+	});
+
 	it('keeps the key of a keyed host event', () => {
 		const dbMessages: AgentPersistedMessageDto[] = [
 			{

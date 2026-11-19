@@ -5,18 +5,18 @@ import path from 'node:path';
 import type { KnowledgeFile } from '../entities/knowledge-file.entity';
 import { KnowledgeUploadError } from './knowledge-upload.error';
 
-export interface KnowledgePaths {
+export interface KnowledgeMirrorPaths {
 	filesDir: string;
-	manifest: string;
+	manifestPath: string;
 	stagingDir: string;
 }
 
-export function getKnowledgePaths(provider: SandboxProvider): KnowledgePaths {
+export function getKnowledgeMirrorPaths(provider: SandboxProvider): KnowledgeMirrorPaths {
 	const home = path.dirname(getPromptWorkspaceRoot(provider));
 	const mirrorDir = `${home}/knowledge-mirror`;
 	return {
 		filesDir: `${mirrorDir}/files`,
-		manifest: `${mirrorDir}/manifest`,
+		manifestPath: `${mirrorDir}/manifest`,
 		stagingDir: `${mirrorDir}/.staging`,
 	};
 }
@@ -63,7 +63,7 @@ function sanitizeStorageFileName(originalName: string): string {
 	return sanitized;
 }
 
-export function storageFileNameForOriginalFileName(originalFileName: string): string {
+export function toKnowledgeContentFileName(originalFileName: string): string {
 	const sanitizedName = sanitizeStorageFileName(originalFileName);
 	const extension = path.extname(sanitizedName).toLowerCase();
 	if (extension === '.pdf') {

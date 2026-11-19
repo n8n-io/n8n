@@ -1,4 +1,6 @@
 import type {
+	MoveSkillSourceDto,
+	DeleteSkillSourceQueryDto,
 	AcceptSkillSourceUpdatesDto,
 	ReviewSkillSourceUpdateQueryDto,
 	SkillListCollapsedSource,
@@ -159,9 +161,9 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		return response;
 	}
 
-	/** Deletes a source and its synced skills. The caller reloads the lists. */
-	async function deleteSource(sourceId: string): Promise<void> {
-		await api.deleteSkillSource(rootStore.restApiContext, sourceId);
+	/** Removes a source and optionally keeps its skills. The caller reloads the lists. */
+	async function deleteSource(sourceId: string, query?: DeleteSkillSourceQueryDto): Promise<void> {
+		await api.deleteSkillSource(rootStore.restApiContext, sourceId, query);
 	}
 
 	async function fetchReplacementCredentials(source: SkillSourceListItem) {
@@ -175,6 +177,14 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 	/** Check for updates on one source. The caller reloads the lists. */
 	async function checkSource(sourceId: string) {
 		return await api.checkSkillSource(rootStore.restApiContext, sourceId);
+	}
+
+	async function previewSourceMove(sourceId: string, payload: MoveSkillSourceDto) {
+		return await api.previewSkillSourceMove(rootStore.restApiContext, sourceId, payload);
+	}
+
+	async function moveSource(sourceId: string, payload: MoveSkillSourceDto) {
+		await api.moveSkillSource(rootStore.restApiContext, sourceId, payload);
 	}
 
 	async function fetchSourceUpdates(sourceId: string) {
@@ -195,6 +205,8 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 	}
 
 	return {
+		previewSourceMove,
+		moveSource,
 		skills,
 		count,
 		pageCount,

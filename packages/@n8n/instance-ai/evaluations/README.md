@@ -840,7 +840,7 @@ The agent is stubbed for non-interactive use. The summary tracks divergence
 from this assumption — investigate any non-zero count:
 
 - `askUserCount` — `ask_user` tool was invoked (eval responds with `{ approved: false }`)
-- `autoApprovedSuspensions` — HITL-gated tool fired (e.g., `create_data_table`); auto-approved
+- `autoApprovedSuspensions` — HITL-gated tool fired (e.g., `change_data_tables`); auto-approved
 - `mockedCredentialTypes` — credential types the agent referenced (auto-mocked since `credentialService.list()` returns `[]`)
 
 ### Comparison report

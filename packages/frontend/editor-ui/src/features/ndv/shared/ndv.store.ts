@@ -26,6 +26,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { computed, inject, ref, type ShallowRef } from 'vue';
+import { PANE_DEFAULT_DISPLAY_MODE, resolveDisplayMode } from './ndv.utils';
 import type { TelemetryNdvSource } from '@/app/types/telemetry';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { injectStrict } from '@/app/utils/injectStrict';
@@ -65,9 +66,13 @@ function defineNDVStore(id: NDVStoreId) {
 				isEmpty: true,
 			},
 		});
-		const inputPanelDisplayMode = useLocalStorage<IRunDataDisplayMode>(
+		// The raw stored value. Read the resolved `inputPanelDisplayMode` instead.
+		const storedInputPanelDisplayMode = useLocalStorage<IRunDataDisplayMode>(
 			LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE,
-			'schema',
+			PANE_DEFAULT_DISPLAY_MODE.input,
+		);
+		const inputPanelDisplayMode = computed(() =>
+			resolveDisplayMode(storedInputPanelDisplayMode.value, 'input'),
 		);
 		const output = ref<OutputPanel>({
 			run: undefined,
@@ -80,9 +85,12 @@ function defineNDVStore(id: NDVStoreId) {
 				value: '',
 			},
 		});
-		const outputPanelDisplayMode = useLocalStorage<IRunDataDisplayMode>(
+		const storedOutputPanelDisplayMode = useLocalStorage<IRunDataDisplayMode>(
 			LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE,
-			'table',
+			PANE_DEFAULT_DISPLAY_MODE.output,
+		);
+		const outputPanelDisplayMode = computed(() =>
+			resolveDisplayMode(storedOutputPanelDisplayMode.value, 'output'),
 		);
 		const focusedMappableInput = ref('');
 		const focusedInputPath = ref('');
@@ -279,9 +287,9 @@ function defineNDVStore(id: NDVStoreId) {
 			mode: IRunDataDisplayMode;
 		}): void => {
 			if (params.pane === 'input') {
-				inputPanelDisplayMode.value = params.mode;
+				storedInputPanelDisplayMode.value = params.mode;
 			} else {
-				outputPanelDisplayMode.value = params.mode;
+				storedOutputPanelDisplayMode.value = params.mode;
 			}
 		};
 

@@ -1,9 +1,18 @@
 import {
+	CHANGE_DATA_TABLES_TOOL_NAME,
+	DATA_TABLE_READ_TOOL_ACTIONS,
+	DATA_TABLE_TOOL_ACTIONS,
+	DATA_TABLE_TOOL_NAME_BY_ACTION,
+	DATA_TABLE_TOOL_NAMES,
+	DATA_TABLE_WRITE_TOOL_ACTIONS,
+	DATA_TABLE_WRITE_TOOL_NAMES,
 	LEGACY_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
+	getDataTableCallAction,
 	getLegacyBuilderToolActions,
 	getLegacyBuilderToolNames,
+	isDataTableWriteToolAction,
 	isFormerWorkflowsTool,
 	resolveBuilderToolName,
 } from '../builder-tool-names';
@@ -132,4 +141,45 @@ describe('isFormerWorkflowsTool', () => {
 			expect(isFormerWorkflowsTool(name)).toBe(false);
 		},
 	);
+});
+
+describe('data table tool names', () => {
+	it('splits every action into exactly one of read or write', () => {
+		expect([...DATA_TABLE_READ_TOOL_ACTIONS, ...DATA_TABLE_WRITE_TOOL_ACTIONS].sort()).toEqual(
+			[...DATA_TABLE_TOOL_ACTIONS].sort(),
+		);
+	});
+
+	it('keeps no read action among the write actions', () => {
+		for (const action of DATA_TABLE_READ_TOOL_ACTIONS) {
+			expect(DATA_TABLE_WRITE_TOOL_ACTIONS).not.toContain(action);
+		}
+	});
+
+	it('keeps the former write tool name of every write action for stored calls', () => {
+		for (const action of DATA_TABLE_WRITE_TOOL_ACTIONS) {
+			expect(DATA_TABLE_WRITE_TOOL_NAMES).toContain(DATA_TABLE_TOOL_NAME_BY_ACTION[action]);
+		}
+		expect(DATA_TABLE_WRITE_TOOL_NAMES).not.toContain(CHANGE_DATA_TABLES_TOOL_NAME);
+	});
+
+	it('still resolves the action of a stored former write call', () => {
+		expect(getDataTableCallAction(SHARED_BUILDER_TOOL_NAMES.ADD_DATA_TABLE_COLUMN)).toBe(
+			'add-column',
+		);
+	});
+
+	it('recognizes only write actions as data table write actions', () => {
+		for (const action of DATA_TABLE_WRITE_TOOL_ACTIONS) {
+			expect(isDataTableWriteToolAction(action)).toBe(true);
+		}
+		for (const value of [...DATA_TABLE_READ_TOOL_ACTIONS, 'drop-everything', undefined, 1, {}]) {
+			expect(isDataTableWriteToolAction(value)).toBe(false);
+		}
+	});
+
+	it('recognizes the batch tool as a data table tool without a single action', () => {
+		expect(DATA_TABLE_TOOL_NAMES).toContain(CHANGE_DATA_TABLES_TOOL_NAME);
+		expect(getDataTableCallAction(CHANGE_DATA_TABLES_TOOL_NAME)).toBeUndefined();
+	});
 });

@@ -1045,6 +1045,7 @@ export async function executeWebhook(
 	);
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep the alias for existing webhook expressions.
 		$executionId: executionId,
 	};
 
