@@ -70,8 +70,8 @@ pub fn main(init: std.process.Init) !void {
         return;
     }
     const cmd = args[1];
-    bench.backing = std.heap.page_allocator;
-    loadgen.backing = std.heap.page_allocator;
+    // The page allocator backs every benchmark and load test.
+    const bench_gpa = std.heap.page_allocator;
     const cwd = std.Io.Dir.cwd();
     if (std.mem.eql(u8, cmd, "run") and args.len >= 4) {
         const mod = try cwd.readFileAlloc(io, args[2], gpa, .limited(64 << 20));
@@ -149,7 +149,7 @@ pub fn main(init: std.process.Init) !void {
             if (std.mem.eql(u8, args[i], "--tls-cert")) so.tls_cert = args[i + 1];
             if (std.mem.eql(u8, args[i], "--tls-key")) so.tls_key = args[i + 1];
         }
-        return loadgen.runStub(so);
+        return loadgen.runStub(bench_gpa, so);
     }
     if (std.mem.eql(u8, cmd, "bench-w1")) {
         var o: bench.W1Options = .{};
@@ -166,7 +166,7 @@ pub fn main(init: std.process.Init) !void {
         const n: u32 = if (args.len >= 3) try std.fmt.parseInt(u32, args[2], 10) else 100_000;
         return bench.runW5(gpa, out, n);
     }
-    if (std.mem.eql(u8, cmd, "bench-w6")) return bench.runW6(out, 2000);
+    if (std.mem.eql(u8, cmd, "bench-w6")) return bench.runW6(bench_gpa, out, 2000);
     if (std.mem.eql(u8, cmd, "bench-counts")) {
         const ok = try bench.runCounts(gpa, out);
         try out.flush();
@@ -232,7 +232,9 @@ pub fn main(init: std.process.Init) !void {
 /// say so when the system allows less. Each inbound and outbound connection
 /// is one file; with too few, outbound requests wait for a socket.
 fn checkFdLimit(opts: server.Options) void {
-    const per_shard: u64 = @as(u64, opts.max_conns) + opts.egress.max_conns + opts.sql.max_conns * 2 + 64;
+    const sql_clients: u64 = 2 + @as(u64, @intFromBool(opts.sql_mssql));
+    const smtp_fds: u64 = if (opts.smtp_native) opts.smtp.max_reqs else 0;
+    const per_shard: u64 = @as(u64, opts.max_conns) + opts.egress.max_conns + opts.sql.max_conns * sql_clients + smtp_fds + 64;
     const need = per_shard * opts.shards + 64;
     const lim = @import("shell/sys.zig").raiseFdLimit(need) orelse return;
     if (lim.soft >= need) return;
@@ -611,7 +613,7 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
     const regions = opts.regionCounts();
     std.debug.print("sizing: {d} in flight; --max-conns {d} --slots {d} regions {d}/{d}/{d}/{d} --egress-max-requests {d} --egress-max-conns {d} --egress-big-slots {d} --request-big-slots {d} --max-service-calls {d} --max-renewals {d}; each shard reserves {d} MB\n", .{
         opts.inFlight(),       opts.max_conns,         opts.slots,             regions[0],        regions[1],                            regions[2], regions[3], opts.max_egress, opts.egress.max_conns,
-        opts.egress_big_slots, opts.request_big_slots, opts.max_service_calls, opts.max_renewals, arenas[0].arena.queryCapacity() >> 20,
+        opts.egress_big_slots, opts.request_big_slots, opts.max_service_calls, opts.max_renewals, arenas[0].capacityBytes() >> 20,
     });
     defer for (arenas) |*a| a.deinit();
     std.debug.print("wfrt serving on :{d} with {d} shard(s), {d} route(s)\n", .{ opts.port, opts.shards, routes.items.len });

@@ -3,8 +3,6 @@
 const std = @import("std");
 const sys = @import("sys.zig");
 
-/// Set by main: the only place that names a global allocator.
-pub var backing: std.mem.Allocator = undefined;
 const http = @import("http.zig");
 const http2 = @import("http2.zig");
 const hpack = @import("hpack.zig");
@@ -73,11 +71,11 @@ const LConn = struct {
     }
 };
 
-fn loadThread(opts: LoadOptions, nconns: u32, res: *LoadResult, req: []const u8) void {
-    loadThreadInner(opts, nconns, res, req) catch |e| std.debug.print("load thread: {s}\n", .{@errorName(e)});
+fn loadThread(opts: LoadOptions, nconns: u32, res: *LoadResult, req: []const u8, backing: std.mem.Allocator) void {
+    loadThreadInner(opts, nconns, res, req, backing) catch |e| std.debug.print("load thread: {s}\n", .{@errorName(e)});
 }
 
-fn loadThreadInner(opts: LoadOptions, nconns: u32, res: *LoadResult, req: []const u8) !void {
+fn loadThreadInner(opts: LoadOptions, nconns: u32, res: *LoadResult, req: []const u8, backing: std.mem.Allocator) !void {
     var poller = try sys.Poller.init();
     defer poller.deinit();
     const conns = try backing.alloc(LConn, nconns);
@@ -221,7 +219,7 @@ pub fn runLoad(gpa: std.mem.Allocator, out: *std.Io.Writer, opts: LoadOptions) !
     const threads = try gpa.alloc(std.Thread, opts.threads);
     defer gpa.free(threads);
     for (results) |*r| r.* = .{};
-    for (threads, 0..) |*t, i| t.* = try std.Thread.spawn(.{}, loadThread, .{ opts, opts.conns / opts.threads, &results[i], req });
+    for (threads, 0..) |*t, i| t.* = try std.Thread.spawn(.{}, loadThread, .{ opts, opts.conns / opts.threads, &results[i], req, gpa });
     for (threads) |t| t.join();
     var total: LoadResult = .{};
     for (results) |r| {
@@ -280,7 +278,7 @@ const stub_body = "{\"ok\":true}";
 const stub_resp_small = "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: 11\r\n\r\n" ++ stub_body;
 
 /// The HTTP/1.1 answer of the stub: a JSON body of `body_bytes` bytes, or the small one for 0.
-fn stubResponse(body_bytes: u32) ![]const u8 {
+fn stubResponse(backing: std.mem.Allocator, body_bytes: u32) ![]const u8 {
     if (body_bytes == 0) return stub_resp_small;
     const head_max = 96;
     const buf = try backing.alloc(u8, head_max + body_bytes);
@@ -293,6 +291,7 @@ fn stubResponse(body_bytes: u32) ![]const u8 {
 /// The HTTP/2 side of one stub connection. Benchmark code: it allocates
 /// from `backing` per connection, which the runtime itself never does.
 const StubH2 = struct {
+    backing: std.mem.Allocator,
     reader: http2.Reader,
     dec: hpack.Decoder,
     preface_left: u32 = http2.preface.len,
@@ -303,9 +302,10 @@ const StubH2 = struct {
     failed: bool = false,
     pub const Err = error{OutOfMemory};
 
-    fn create(streams: u32) !*StubH2 {
+    fn create(backing: std.mem.Allocator, streams: u32) !*StubH2 {
         const h = try backing.create(StubH2);
         h.* = .{
+            .backing = backing,
             .reader = http2.Reader.init(try backing.alloc(u8, 64 << 10), http2.default_max_frame),
             .dec = hpack.Decoder.init(try backing.alloc(u8, 4096), try backing.alloc(hpack.Entry, hpack.entriesFor(4096)), try backing.alloc(u8, 16 << 10)),
         };
@@ -317,13 +317,13 @@ const StubH2 = struct {
     }
 
     fn destroy(h: *StubH2) void {
-        backing.free(h.reader.block);
-        backing.free(h.dec.ring);
-        backing.free(h.dec.ents);
-        backing.free(h.dec.scratch);
-        h.out.deinit(backing);
-        h.ended.deinit(backing);
-        backing.destroy(h);
+        h.backing.free(h.reader.block);
+        h.backing.free(h.dec.ring);
+        h.backing.free(h.dec.ents);
+        h.backing.free(h.dec.scratch);
+        h.out.deinit(h.backing);
+        h.ended.deinit(h.backing);
+        h.backing.destroy(h);
     }
 
     fn feed(h: *StubH2, in: []const u8) void {
@@ -354,13 +354,13 @@ const StubH2 = struct {
         try http2.writeDataHeader(&b, &len, sid, stub_body.len, true);
         @memcpy(b[len..][0..stub_body.len], stub_body);
         len += stub_body.len;
-        try h.out.appendSlice(backing, b[0..len]);
+        try h.out.appendSlice(h.backing, b[0..len]);
     }
 
     pub fn onDataStart(_: *StubH2, _: u32, _: u32, _: bool) Err!void {}
     pub fn onData(_: *StubH2, _: u32, _: []const u8) Err!void {}
     pub fn onDataEnd(h: *StubH2, sid: u32, end_stream: bool) Err!void {
-        if (end_stream) try h.ended.append(backing, sid);
+        if (end_stream) try h.ended.append(h.backing, sid);
     }
     pub fn onHeaders(h: *StubH2, sid: u32, block: []const u8, end_stream: bool) Err!void {
         var d: Discard = .{};
@@ -368,7 +368,7 @@ const StubH2 = struct {
             h.failed = true;
             return;
         };
-        if (end_stream) try h.ended.append(backing, sid);
+        if (end_stream) try h.ended.append(h.backing, sid);
     }
     pub fn onRst(_: *StubH2, _: u32, _: http2.ErrorCode) Err!void {}
     pub fn onSetting(_: *StubH2, _: u16, _: u32) Err!void {}
@@ -377,14 +377,14 @@ const StubH2 = struct {
         var b: [16]u8 = undefined;
         var n: usize = 0;
         http2.writeSettingsAck(&b, &n) catch unreachable;
-        try h.out.appendSlice(backing, b[0..n]);
+        try h.out.appendSlice(h.backing, b[0..n]);
     }
     pub fn onPing(h: *StubH2, data: [8]u8, ack: bool) Err!void {
         if (ack) return;
         var b: [32]u8 = undefined;
         var n: usize = 0;
         http2.writePing(&b, &n, data, true) catch unreachable;
-        try h.out.appendSlice(backing, b[0..n]);
+        try h.out.appendSlice(h.backing, b[0..n]);
     }
     pub fn onGoaway(_: *StubH2, _: u32, _: http2.ErrorCode) Err!void {}
     pub fn onWindowUpdate(_: *StubH2, _: u32, _: u32) Err!void {}
@@ -407,9 +407,9 @@ const StubConn = struct {
     gen: u32 = 0,
 };
 
-pub fn runStub(o: StubOptions) !void {
+pub fn runStub(gpa: std.mem.Allocator, o: StubOptions) !void {
     const delay_ms = o.delay_ms;
-    const stub_resp = try stubResponse(o.body_bytes);
+    const stub_resp = try stubResponse(gpa, o.body_bytes);
     var ctx: ?tls.Context = null;
     if (o.tls_cert != null and o.tls_key != null) {
         ctx = try tls.Context.server(o.tls_cert.?, o.tls_key.?);
@@ -419,11 +419,12 @@ pub fn runStub(o: StubOptions) !void {
     const lfd = try sys.listenTcp(o.host, o.port, false);
     try poller.addRead(lfd, 0xFFFF_FFFF);
     const max = 65536;
-    const conns = try backing.alloc(StubConn, max);
+    const conns = try gpa.alloc(StubConn, max);
     for (conns) |*c| c.* = .{};
     // Responses wait in a FIFO: every request has the same delay.
     const Due = struct { at: u64, fd: c_int, gen: u32, sid: u32 };
     var queue: std.ArrayList(Due) = .empty;
+    const backing = gpa;
     var head: usize = 0;
     var ready: [1024]sys.Ready = undefined;
     // Connections with HTTP/2 output to write after this round.
@@ -459,7 +460,7 @@ pub fn runStub(o: StubOptions) !void {
                     .n => {
                         c.shaking = false;
                         if (o.h2 and c.session.?.alpnH2()) {
-                            c.h2 = try StubH2.create(o.h2_streams);
+                            c.h2 = try StubH2.create(backing, o.h2_streams);
                             try dirty.append(backing, fd);
                         }
                         c.decided = true;
@@ -496,7 +497,7 @@ pub fn runStub(o: StubOptions) !void {
                     // Prior knowledge: the first byte of the preface.
                     c.decided = true;
                     if (o.h2 and c.buf[0] == 'P') {
-                        c.h2 = try StubH2.create(o.h2_streams);
+                        c.h2 = try StubH2.create(backing, o.h2_streams);
                         try dirty.append(backing, fd);
                     }
                 }
@@ -616,11 +617,11 @@ test "regression: a connection that the server closes counts once, with its requ
     try std.testing.expectEqual(@as(c_int, 0), std.c.getsockname(lfd, @ptrCast(&sa), &sl));
     const port = std.mem.bigToNative(u16, sa.port);
     const t = try std.Thread.spawn(.{}, acceptAndClose, .{ lfd, 2 });
-    backing = std.testing.allocator;
-    const res = try std.testing.allocator.create(LoadResult);
-    defer std.testing.allocator.destroy(res);
+    const testing_alloc = std.testing.allocator;
+    const res = try testing_alloc.create(LoadResult);
+    defer testing_alloc.destroy(res);
     res.* = .{};
-    try loadThreadInner(.{ .port = port, .seconds = 1, .conns = 2, .pipeline = 4 }, 2, res, "POST / HTTP/1.1\r\ncontent-length: 0\r\n\r\n");
+    try loadThreadInner(.{ .port = port, .seconds = 1, .conns = 2, .pipeline = 4 }, 2, res, "POST / HTTP/1.1\r\ncontent-length: 0\r\n\r\n", testing_alloc);
     t.join();
     try std.testing.expectEqual(@as(u64, 2), res.closed_conns);
     try std.testing.expect(res.errors >= 2 and res.errors <= 2 * 4);
