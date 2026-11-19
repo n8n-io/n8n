@@ -25,7 +25,6 @@ import {
 	Post,
 	RootLevelController,
 } from '@n8n/decorators';
-import { principalFromUser } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 import type { Principal } from '@n8n/permissions';
@@ -54,7 +53,7 @@ import {
 import { toRuntimeBinding } from '../bindings/app-bindings.service';
 import { AppRuntimeError } from '../bindings/app-runtime.error';
 import { AppPreviewService } from '../preview/app-preview.service';
-import { AppHostService } from '../serving/app-host.service';
+import { AppHostService, type AppHostKind } from '../serving/app-host.service';
 import type { AppVersion } from '../versions/app-version.entity';
 import { AppVersionRepository } from '../versions/app-version.repository';
 
@@ -80,18 +79,18 @@ interface AppRuntimeContext {
 	user: AppRuntimeUser;
 	versionId: string;
 	isPreview: boolean;
-	/** The n8n OAuth access token of the session. A preview session has none. */
-	sessionToken?: string;
+	/** The n8n OAuth access token of the session. */
+	sessionToken: string;
 }
 
 /** The app host of the request. A preview host serves a version that can be an unpublished draft. */
-type AppRuntimeHost = { kind: 'published' | 'preview'; namespace: string };
+type AppRuntimeHost = { kind: AppHostKind; namespace: string };
 
 interface AppRuntimeAdmission {
 	app: App;
 	versionId: string | null;
 	user: AppRuntimeUser;
-	sessionToken?: string;
+	sessionToken: string;
 }
 
 export interface AppRuntimeRequest<P = Record<string, string>> extends Request<P> {
@@ -244,10 +243,13 @@ export class AppRuntimeController {
 	async runWorkflow(req: KeyRequest, res: Response) {
 		await this.answer(res, async () => {
 			const { ctx, binding } = this.resolve(req, 'workflow');
-			const { app, user, sessionToken } = this.context(req);
-			if (sessionToken) {
-				ctx.runnerIdentity = await this.auth.sealVisitor(app, sessionToken, user.id);
-			}
+			const { app, user, sessionToken, isPreview } = this.context(req);
+			ctx.runnerIdentity = await this.auth.sealVisitor(
+				app,
+				sessionToken,
+				user.id,
+				isPreview ? 'preview' : 'published',
+			);
 			const result = await this.workflows.run(ctx, binding.workflowId, req.body ?? {});
 			this.interacted(req, 'workflow_run');
 			if (result.status === 'running') res.status(202);
@@ -374,10 +376,8 @@ export class AppRuntimeController {
 				'This preview session ended. Open the preview again.',
 			);
 		}
-		const { app, versionId, user } = admitted;
-		// A service account has no email or name.
-		const { id, email, firstName, lastName } = principalFromUser(user);
-		return { app, versionId, user: { id, email, firstName, lastName } };
+		const { app, versionId, security, token } = admitted;
+		return { app, versionId, user: security.subject, sessionToken: token };
 	}
 
 	private interacted(req: AppRuntimeRequest, interactionType: AppInteractionType) {

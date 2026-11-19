@@ -18,6 +18,7 @@ const state = 'opaque.State_~-1';
 const flowCookieName = `__Host-n8n-app-flow-${createHash('sha256').update(state).digest('hex')}`;
 const appId = '11111111-1111-4111-8111-111111111111';
 const callbackUrl = `https://sales.apps.example.com/_n8n/auth/${appId}/callback`;
+const previewCallbackUrl = `https://sales--preview.apps.example.com/_n8n/auth/${appId}/callback`;
 
 function setup(visibility: App['visibility'] = 'project') {
 	const app = mock<App>({
@@ -31,11 +32,13 @@ function setup(visibility: App['visibility'] = 'project') {
 	const hosts = mock<AppHostService>({
 		baseUrl: new URL('https://apps.example.com'),
 		namespace: () => 'sales',
-		callbackUrl: () => callbackUrl,
+		callbackUrl: (_app, kind) => (kind === 'preview' ? previewCallbackUrl : callbackUrl),
 	});
 	const resources = mock<AppProtectedResource>();
 	resources.forApp.mockReturnValue(mock<ProtectedResource>());
-	resources.grantFor.mockReturnValue({ audiences: [callbackUrl] });
+	resources.grantFor.mockImplementation((_app, kind) => ({
+		audiences: [kind === 'preview' ? previewCallbackUrl : callbackUrl],
+	}));
 	const executionContext = mock<ExecutionContextService>();
 	executionContext.buildTriggerIdentityCredentials.mockResolvedValue('sealed-identity');
 	const flow = mock<OAuth2FlowProxy>();
@@ -71,7 +74,7 @@ function setup(visibility: App['visibility'] = 'project') {
 	const res = mock<Response>();
 	res.set.mockReturnValue(res);
 	res.status.mockReturnValue(res);
-	return { service, app, apps, admission, flow, jwt, executionContext, req, res };
+	return { service, app, apps, resources, admission, flow, jwt, executionContext, req, res };
 }
 
 const sessionCookie = { '__Host-n8n-app-session': 'app-token' };
@@ -112,6 +115,44 @@ describe('AppAuthService', () => {
 			'app-token',
 			callbackUrl,
 			{ audiences: [callbackUrl] },
+			'user',
+		);
+	});
+
+	it('admits a preview token against the preview resource', async () => {
+		const { service, app, req, resources, admission } = setup();
+
+		await expect(service.admitToken(req, app, 'preview-token', 'preview')).resolves.toMatchObject({
+			ok: true,
+			token: 'preview-token',
+		});
+
+		expect(resources.forApp).toHaveBeenCalledWith(app, { kind: 'preview', revalidate: false });
+		expect(admission.admitBearer).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ url: previewCallbackUrl }),
+			'preview-token',
+		);
+	});
+
+	it('does not share cached admissions between published and preview hosts', async () => {
+		const { service, app, req, admission } = setup();
+
+		await service.admitToken(req, app, 'app-token');
+		await service.admitToken(req, app, 'app-token', 'preview');
+
+		expect(admission.admitBearer).toHaveBeenCalledTimes(2);
+	});
+
+	it('seals a preview visitor with the preview grant', async () => {
+		const { service, app, executionContext } = setup();
+
+		await service.sealVisitor(app, 'preview-token', 'user', 'preview');
+
+		expect(executionContext.buildTriggerIdentityCredentials).toHaveBeenCalledExactlyOnceWith(
+			'preview-token',
+			previewCallbackUrl,
+			{ audiences: [previewCallbackUrl] },
 			'user',
 		);
 	});

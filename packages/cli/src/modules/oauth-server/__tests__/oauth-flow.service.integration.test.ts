@@ -974,3 +974,37 @@ describe('chat trigger resources', () => {
 		}
 	});
 });
+
+describe('issue', () => {
+	test('issues a token for the resource to a signed-in user without a redirect', async () => {
+		const resourceUrl = await createProtectedFormWorkflow();
+
+		const result = await flow.issue(resourceUrl, owner.id);
+
+		expect(result).toMatchObject({ valid: true, user: { id: owner.id } });
+		if (result.valid) {
+			expect(decodeJwtPayload(result.token)).toMatchObject({ sub: owner.id, aud: resourceUrl });
+			expect(result.refreshToken).toBeUndefined();
+			expect(result.expiresIn).toBeGreaterThan(0);
+		}
+	});
+
+	test('refuses a user that the resource does not authorize', async () => {
+		const resourceUrl = await createProtectedFormWorkflow();
+
+		const result = await flow.issue(resourceUrl, member.id);
+
+		expect(result).toEqual({ valid: false, reason: 'insufficient_scope' });
+	});
+
+	test('rejects a resource URL that is not a first-party protected resource', async () => {
+		await expect(flow.issue(resourceUrlFor(randomUUID()), owner.id)).rejects.toThrow(UserError);
+	});
+
+	test('rejects a resource that accepts another trusted source', async () => {
+		const source = await createIdpSource();
+		const resourceUrl = await createProtectedFormWorkflow(owner, source.id);
+
+		await expect(flow.issue(resourceUrl, owner.id)).rejects.toThrow(UserError);
+	});
+});

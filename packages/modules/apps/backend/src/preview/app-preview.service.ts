@@ -1,8 +1,9 @@
 import { appSchema, appVersionSchema, type AppPreviewResponse } from '@n8n/api-types';
-import { CacheService, JwtService } from '@n8n/backend-services';
-import { UserRepository, type User } from '@n8n/db';
+import { CacheService } from '@n8n/backend-services';
+import { OAuth2FlowProxy } from '@n8n/backend-services/auth';
 import { Service } from '@n8n/di';
 import { AuthError, BadRequestError, NotFoundError } from '@n8n/errors';
+import type { SecurityContext } from '@n8n/permissions';
 import type { NextFunction, Request, Response } from 'express';
 import { createHash, randomBytes } from 'node:crypto';
 import { z } from 'zod';
@@ -10,43 +11,40 @@ import { z } from 'zod';
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
 import { appCookieName, embeddedAppCookieOptions, readCookie } from '../auth/app-cookies';
-import type { AppRequest } from '../auth/app-auth.service';
-import { AppProtectedResource } from '../auth/app-protected-resource';
+import { AppAuthService, type AppRequest } from '../auth/app-auth.service';
 import { AppHostService } from '../serving/app-host.service';
 import { AppVersionRepository } from '../versions/app-version.repository';
 import { assertBuiltVersion } from '../versions/assert-built-version';
 
 const CODE_PREFIX = 'apps-preview:';
+const SESSION_PREFIX = 'apps-preview-session:';
 const CODE_TTL_MS = 60_000;
-const SESSION_TTL_SECONDS = 60 * 60;
 
 const grantSchema = z.object({ userId: z.string(), appId: z.string(), versionId: z.string() });
 type PreviewGrant = z.infer<typeof grantSchema>;
-
-const sessionSchema = z.object({
-	sub: z.string(),
-	appId: z.string(),
-	versionId: z.string(),
-});
-type PreviewSession = z.infer<typeof sessionSchema>;
 
 export interface AppPreviewAdmission {
 	app: App;
 	/** The version that the preview session shows. It can be an unpublished draft. */
 	versionId: string;
-	user: User;
+	security: SecurityContext;
+	token: string;
 }
 
+/**
+ * The editor opens a preview with a one-time code. The code exchange signs the editor in to
+ * the preview host with an n8n OAuth token, and the server keeps the previewed version for
+ * that token.
+ */
 @Service()
 export class AppPreviewService {
 	constructor(
 		private readonly apps: AppRepository,
 		private readonly versions: AppVersionRepository,
 		private readonly hosts: AppHostService,
-		private readonly resources: AppProtectedResource,
-		private readonly users: UserRepository,
+		private readonly auth: AppAuthService,
+		private readonly flow: OAuth2FlowProxy,
 		private readonly cache: CacheService,
-		private readonly jwt: JwtService,
 	) {}
 
 	async createGrant(
@@ -69,7 +67,7 @@ export class AppPreviewService {
 
 		const code = randomBytes(32).toString('hex');
 		const grant: PreviewGrant = { userId, appId, versionId };
-		await this.cache.set(this.codeKey(code), JSON.stringify(grant), CODE_TTL_MS);
+		await this.cache.set(this.key(CODE_PREFIX, code), JSON.stringify(grant), CODE_TTL_MS);
 		const url = new URL('/_n8n/preview', origin);
 		url.searchParams.set('code', code);
 		return { url: url.toString() };
@@ -80,12 +78,22 @@ export class AppPreviewService {
 		const namespace = this.hosts.previewNamespace(req);
 		if (!namespace) throw new NotFoundError('App not found.');
 		const code = typeof req.query.code === 'string' ? req.query.code : '';
-		const grant = code ? this.parseGrant(await this.cache.take(this.codeKey(code))) : undefined;
+		const grant = code
+			? this.parseGrant(await this.cache.take(this.key(CODE_PREFIX, code)))
+			: undefined;
 		const app = grant ? await this.apps.findByNamespace(namespace) : null;
-		if (!grant || app?.id !== grant.appId) {
-			throw new AuthError('This preview link is no longer valid. Open the preview again.');
-		}
-		this.setSession(res, { sub: grant.userId, appId: grant.appId, versionId: grant.versionId });
+		if (!grant || !app || app.id !== grant.appId) throw this.invalidLink();
+
+		// The code proves the editor's n8n session, so the token is issued without a redirect.
+		const issued = await this.flow.issue(this.hosts.callbackUrl(app, 'preview'), grant.userId);
+		if (!issued.valid) throw this.invalidLink();
+
+		const ttlMs = issued.expiresIn * 1000;
+		await this.cache.set(this.key(SESSION_PREFIX, issued.token), grant.versionId, ttlMs);
+		res.cookie(this.cookieName(), issued.token, {
+			...embeddedAppCookieOptions(this.hosts.baseUrl),
+			maxAge: ttlMs,
+		});
 		res.redirect('/');
 	}
 
@@ -101,42 +109,27 @@ export class AppPreviewService {
 			app: admitted.app,
 			versionId: admitted.versionId,
 			preview: true,
-			previewUserId: admitted.user.id,
+			previewUserId: admitted.security.subject.id,
 		};
 		next();
 	}
 
-	/**
-	 * Resolves the preview session of the request. The session user must still
-	 * be able to read the app. Returns `null` when the session is missing or ended.
-	 */
+	/** Returns `null` when the preview session is missing or ended. */
 	async admit(req: Request): Promise<AppPreviewAdmission | null> {
-		const session = this.verifySession(readCookie(req, this.cookieName()));
-		if (!session) return null;
+		const token = readCookie(req, this.cookieName());
 		const namespace = this.hosts.previewNamespace(req);
-		const app = namespace ? await this.apps.findByNamespace(namespace) : null;
-		if (!app || app.id !== session.appId) return null;
-		const user = await this.users.findByIdWithRole(session.sub);
-		if (!user || user.disabled || !(await this.resources.canRead(app, user))) return null;
-		return { app, versionId: session.versionId, user };
+		if (!token || !namespace) return null;
+		const app = await this.apps.findByNamespace(namespace);
+		if (!app) return null;
+		const admitted = await this.auth.admitToken(req, app, token, 'preview');
+		if (!admitted.ok) return null;
+		const versionId = await this.cache.get<string>(this.key(SESSION_PREFIX, token));
+		if (typeof versionId !== 'string') return null;
+		return { app, versionId, security: admitted.security, token };
 	}
 
-	private setSession(res: Response, { sub, appId, versionId }: PreviewSession) {
-		const token = this.jwt.sign(
-			'appPreview',
-			{ sub, appId, versionId },
-			{ expiresIn: SESSION_TTL_SECONDS },
-		);
-		res.cookie(this.cookieName(), token, embeddedAppCookieOptions(this.hosts.baseUrl));
-	}
-
-	private verifySession(token: string | undefined): PreviewSession | undefined {
-		if (!token) return undefined;
-		try {
-			return sessionSchema.parse(this.jwt.verify<unknown>('appPreview', token));
-		} catch {
-			return undefined;
-		}
+	private invalidLink() {
+		return new AuthError('This preview link is no longer valid. Open the preview again.');
 	}
 
 	private parseGrant(value: unknown): PreviewGrant | undefined {
@@ -149,10 +142,10 @@ export class AppPreviewService {
 	}
 
 	private cookieName(): string {
-		return appCookieName(this.hosts.baseUrl, 'preview');
+		return appCookieName(this.hosts.baseUrl, 'session');
 	}
 
-	private codeKey(code: string): string {
-		return CODE_PREFIX + createHash('sha256').update(code).digest('hex');
+	private key(prefix: string, value: string): string {
+		return prefix + createHash('sha256').update(value).digest('hex');
 	}
 }
