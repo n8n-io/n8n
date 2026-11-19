@@ -18,6 +18,7 @@ const static_data = @import("static_data.zig");
 const workload = @import("workload.zig");
 const cred_flags = @import("cred_flags.zig");
 const held = @import("held.zig");
+const checksum = @import("checksum.zig").checksum;
 const Arena = @import("arena.zig").Arena;
 const reserveMem = @import("arena.zig").reserve;
 const poison = @import("arena.zig").poison;
@@ -3474,7 +3475,7 @@ pub const SnapHeader = extern struct {
 };
 pub const snap_magic: u32 = 0x50414E53;
 /// 2: the execution root has the static data fields (128 bytes), and the
-/// checksum is `logfmt.checksum` (XXH3), not CRC-32.
+/// checksum is `checksum.checksum` (XXH3), not CRC-32.
 /// 3: the execution root has the clock offset (CLOCK-OFFSET, 136 bytes). A
 /// snapshot of version 2 is not read.
 pub const snap_version: u32 = 3;
@@ -3512,7 +3513,7 @@ fn evict(s: *State, slot: SlotId, attention: bool, scratch: *Arena) StepError!vo
         .exec_id = s.slot_exec[slot],
         .module_hash = lm.m.hash,
         .len = dst.used,
-        .checksum = @import("logfmt.zig").checksum(body[0..dst.used]),
+        .checksum = checksum(body[0..dst.used]),
         .attention = @intFromBool(attention),
         ._pad = 0,
     };
@@ -3544,7 +3545,7 @@ fn restore(s: *State, exec_id: u64, snap: []const u8) void {
     const h = std.mem.bytesToValue(SnapHeader, snap[0..@sizeOf(SnapHeader)]);
     if (h.magic != snap_magic or h.version != snap_version or h.exec_id != exec_id or snap.len < @sizeOf(SnapHeader) + h.len) return;
     const body = snap[@sizeOf(SnapHeader)..][0..h.len];
-    if (@import("logfmt.zig").checksum(body) != h.checksum) return;
+    if (checksum(body) != h.checksum) return;
     const slot = takeSlot(s) orelse return;
     var class: u8 = 0;
     while (class < 4 and s.cfg.region_sizes[class] < h.len + h.len / 2 + 256) class += 1;

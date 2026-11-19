@@ -32,9 +32,8 @@ pub const EventHeader = extern struct {
 const batch_magic: u32 = 0x32474F4C;
 
 /// The checksum of a record body: torn and corrupt records stop the reader.
-/// Kept as a re-export so `core.zig` keeps compiling until it imports
-/// `checksum.zig` directly.
-pub const checksum = @import("checksum.zig").checksum;
+const checksum_mod = @import("checksum.zig");
+const checksum = checksum_mod.checksum;
 
 comptime {
     std.debug.assert(@sizeOf(BatchHeader) == 32);

@@ -9,7 +9,7 @@ const std = @import("std");
 const value = @import("value.zig");
 const heap = @import("heap.zig");
 const numfmt = @import("numfmt.zig");
-const date = @import("date.zig");
+const date_fmt = @import("date_fmt.zig");
 const ops = @import("ops.zig");
 const Builder = @import("arena.zig").Builder;
 const Value = value.Value;
@@ -155,7 +155,7 @@ fn writeScalarOrOpen(vm: *Vm, b: *Builder, v: Value, stack: []Frame, sp: *usize)
                 try b.append("null");
             } else {
                 try b.byte('"');
-                try date.appendFormat(b, t, .iso);
+                try date_fmt.appendFormat(b, t, .iso);
                 try b.byte('"');
             }
         } else try b.append("{}"),
