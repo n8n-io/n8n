@@ -380,10 +380,10 @@ describe('GET /workflow-review-requests', () => {
 describe('the level that requires a review for a workflow', () => {
 	const setInstanceApprovalRequired = async (alwaysRequired: boolean) =>
 		await policyService.update({ alwaysRequired });
-	const setProjectApprovalRequired = async (projectApprovalRequired: boolean) =>
+	const setProjectApprovalRequired = async (requiredByProject: boolean) =>
 		await ownerAgent
 			.patch(`/projects/${teamProject.id}/workflow-review-settings`)
-			.send({ projectApprovalRequired })
+			.send({ requiredByProject })
 			.expect(200);
 	const reviewRequiredBy = async (agent: SuperAgentTest, workflowId: string) =>
 		(await listRequests(agent, { workflowId }).expect(200)).body.data.reviewRequiredBy;

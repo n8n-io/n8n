@@ -20,12 +20,12 @@ export class ProjectWorkflowReviewSettingsRepository {
 		this.table = new ProjectWorkflowReviewSettingsTable(dataSource, transactionRunner);
 	}
 
-	async isProjectApprovalRequired(projectId: string, ctx: OperationContext): Promise<boolean> {
+	async isRequiredByProject(projectId: string, ctx: OperationContext): Promise<boolean> {
 		const row = await this.table.managerFor(ctx).findOne(ProjectWorkflowReviewSettings, {
 			where: { projectId },
-			select: ['projectApprovalRequired'],
+			select: ['requiredByProject'],
 		});
-		return row?.projectApprovalRequired ?? false;
+		return row?.requiredByProject ?? false;
 	}
 
 	/**
@@ -33,7 +33,7 @@ export class ProjectWorkflowReviewSettingsRepository {
 	 * Returns `null` when no team project has this id. The project row stays locked until the
 	 * write commits, so a concurrent project delete cannot break the insert.
 	 */
-	async setTeamProjectApprovalRequired(
+	async setRequiredByTeamProject(
 		projectId: string,
 		required: boolean,
 		ctx: OperationContext,
@@ -58,12 +58,12 @@ export class ProjectWorkflowReviewSettingsRepository {
 				where: { projectId },
 				lock: isPostgres ? { mode: 'pessimistic_write' } : undefined,
 			});
-			if (row.projectApprovalRequired === required) return false;
+			if (row.requiredByProject === required) return false;
 
 			await manager.update(
 				ProjectWorkflowReviewSettings,
 				{ projectId },
-				{ projectApprovalRequired: required },
+				{ requiredByProject: required },
 			);
 			return true;
 		});

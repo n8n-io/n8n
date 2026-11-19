@@ -124,11 +124,11 @@ export class ProjectApiHelper {
 	/** Turns "Require approval" for workflow reviews on or off for a team project. */
 	async setWorkflowReviewApprovalRequired(
 		projectId: string,
-		projectApprovalRequired: boolean,
+		requiredByProject: boolean,
 	): Promise<void> {
 		const response = await this.api.request.patch(
 			`/rest/projects/${projectId}/workflow-review-settings`,
-			{ data: { projectApprovalRequired } },
+			{ data: { requiredByProject } },
 		);
 
 		if (!response.ok()) {

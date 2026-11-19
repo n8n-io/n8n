@@ -438,29 +438,29 @@ describe('useProjectsStore workflow review settings', () => {
 
 	it('loads and saves the workflow review settings of a project', async () => {
 		vi.mocked(workflowReviewsApi.getProjectWorkflowReviewSettings).mockResolvedValue({
-			projectApprovalRequired: false,
+			requiredByProject: false,
 		});
 		vi.mocked(workflowReviewsApi.updateProjectWorkflowReviewSettings).mockResolvedValue({
-			projectApprovalRequired: true,
+			requiredByProject: true,
 		});
 		const store = useProjectsStore();
 
 		await store.fetchProjectWorkflowReviewSettings('p1');
-		expect(store.currentProjectWorkflowReviewSettings).toEqual({ projectApprovalRequired: false });
+		expect(store.currentProjectWorkflowReviewSettings).toEqual({ requiredByProject: false });
 
-		await store.updateCurrentProjectWorkflowReviewSettings('p1', { projectApprovalRequired: true });
+		await store.updateCurrentProjectWorkflowReviewSettings('p1', { requiredByProject: true });
 
 		expect(workflowReviewsApi.updateProjectWorkflowReviewSettings).toHaveBeenCalledWith(
 			expect.anything(),
 			'p1',
-			{ projectApprovalRequired: true },
+			{ requiredByProject: true },
 		);
-		expect(store.currentProjectWorkflowReviewSettings).toEqual({ projectApprovalRequired: true });
+		expect(store.currentProjectWorkflowReviewSettings).toEqual({ requiredByProject: true });
 	});
 
 	it('clears the previous project value when the fetch for a new project fails', async () => {
 		vi.mocked(workflowReviewsApi.getProjectWorkflowReviewSettings)
-			.mockResolvedValueOnce({ projectApprovalRequired: true })
+			.mockResolvedValueOnce({ requiredByProject: true })
 			.mockRejectedValueOnce(new Error('network down'));
 		const store = useProjectsStore();
 		await store.fetchProjectWorkflowReviewSettings('p1');
@@ -473,7 +473,7 @@ describe('useProjectsStore workflow review settings', () => {
 
 	it('drops a response for a project that is no longer current', async () => {
 		vi.mocked(workflowReviewsApi.getProjectWorkflowReviewSettings).mockResolvedValue({
-			projectApprovalRequired: true,
+			requiredByProject: true,
 		});
 		const store = useProjectsStore();
 		const fetch = store.fetchProjectWorkflowReviewSettings('p1');
@@ -486,11 +486,11 @@ describe('useProjectsStore workflow review settings', () => {
 
 	it('drops a saved value for a project that is no longer current', async () => {
 		vi.mocked(workflowReviewsApi.updateProjectWorkflowReviewSettings).mockResolvedValue({
-			projectApprovalRequired: true,
+			requiredByProject: true,
 		});
 		const store = useProjectsStore();
 		const save = store.updateCurrentProjectWorkflowReviewSettings('p1', {
-			projectApprovalRequired: true,
+			requiredByProject: true,
 		});
 
 		mockRoute.params = { projectId: 'p2' };

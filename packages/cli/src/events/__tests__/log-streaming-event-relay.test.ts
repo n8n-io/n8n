@@ -3801,11 +3801,11 @@ describe('LogStreamingEventRelay', () => {
 			[false, 'n8n.audit.workflow-reviews.project-approval-required.disabled'],
 		])(
 			'should log the project approval requirement set to %s as `%s`',
-			(projectApprovalRequired, eventName) => {
+			(requiredByProject, eventName) => {
 				eventService.emit('project-workflow-review-settings-updated', {
 					user: reviewer,
 					projectId: 'project-1',
-					projectApprovalRequired,
+					requiredByProject,
 				});
 
 				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({

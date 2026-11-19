@@ -1268,7 +1268,7 @@ describe('ProjectSettings', () => {
 
 		beforeEach(() => {
 			setWorkflowReviewsPolicy({ enabled: true, alwaysRequired: false });
-			projectsStore.currentProjectWorkflowReviewSettings = { projectApprovalRequired: false };
+			projectsStore.currentProjectWorkflowReviewSettings = { requiredByProject: false };
 			projectsStore.fetchProjectWorkflowReviewSettings.mockResolvedValue(undefined);
 			projectsStore.updateProject.mockResolvedValue(undefined);
 			projectsStore.updateCurrentProjectWorkflowReviewSettings.mockResolvedValue(undefined);
@@ -1290,12 +1290,12 @@ describe('ProjectSettings', () => {
 			await userEvent.click(getByTestId('project-settings-save-button'));
 
 			expect(projectsStore.updateCurrentProjectWorkflowReviewSettings).toHaveBeenCalledWith('123', {
-				projectApprovalRequired: true,
+				requiredByProject: true,
 			});
 		});
 
 		it('sends no workflow review setting on a name-only save', async () => {
-			projectsStore.currentProjectWorkflowReviewSettings = { projectApprovalRequired: true };
+			projectsStore.currentProjectWorkflowReviewSettings = { requiredByProject: true };
 			const { getByTestId } = renderComponent();
 			await nextTick();
 
@@ -1325,7 +1325,7 @@ describe('ProjectSettings', () => {
 		it('shows the loaded Require approval value', async () => {
 			projectsStore.currentProjectWorkflowReviewSettings = null;
 			projectsStore.fetchProjectWorkflowReviewSettings.mockImplementation(async () => {
-				projectsStore.currentProjectWorkflowReviewSettings = { projectApprovalRequired: true };
+				projectsStore.currentProjectWorkflowReviewSettings = { requiredByProject: true };
 			});
 			const { getByTestId } = renderComponent();
 

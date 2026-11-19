@@ -7,10 +7,15 @@ export class CreateProjectWorkflowReviewSettingsTable1794935569530 implements Re
 		await createTable(tableName)
 			.withColumns(
 				column('projectId').varchar(36).primary,
-				column('projectApprovalRequired')
+				column('requiredByProject')
 					.bool.notNull.default(false)
 					.comment(
 						'Set by a project admin. When true, a workflow version in this project needs an approved review before it is published',
+					),
+				column('requiredByInstance')
+					.bool.notNull.default(false)
+					.comment(
+						'Set by an instance admin. When true, a workflow version in this project needs an approved review before it is published, whatever requiredByProject says',
 					),
 			)
 			.withForeignKey('projectId', {

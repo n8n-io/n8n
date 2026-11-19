@@ -1635,10 +1635,10 @@ export class LogStreamingEventRelay extends EventRelay {
 	private projectWorkflowReviewSettingsUpdated({
 		user,
 		projectId,
-		projectApprovalRequired,
+		requiredByProject,
 	}: RelayEventMap['project-workflow-review-settings-updated']) {
 		void this.eventBus.sendAuditEvent({
-			eventName: projectApprovalRequired
+			eventName: requiredByProject
 				? 'n8n.audit.workflow-reviews.project-approval-required.enabled'
 				: 'n8n.audit.workflow-reviews.project-approval-required.disabled',
 			payload: { ...user, projectId },

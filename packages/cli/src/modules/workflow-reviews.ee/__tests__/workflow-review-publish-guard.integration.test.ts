@@ -108,7 +108,7 @@ const projectSettingsUrl = (projectId: string) => `/projects/${projectId}/workfl
 const requireProjectApproval = async () =>
 	await ownerAgent
 		.patch(projectSettingsUrl(teamProject.id))
-		.send({ projectApprovalRequired: true })
+		.send({ requiredByProject: true })
 		.expect(200);
 
 /** A team project workflow with its first version live and a second version not yet published. */
@@ -587,24 +587,24 @@ describe('changing the project review settings', () => {
 		const { workflow, newVersionId } = await createLiveTeamWorkflow();
 		const readSetting = async () =>
 			(await projectAdminAgent.get(projectSettingsUrl(teamProject.id)).expect(200)).body.data;
-		const setSetting = async (projectApprovalRequired: boolean) => {
+		const setSetting = async (requiredByProject: boolean) => {
 			const response = await projectAdminAgent
 				.patch(projectSettingsUrl(teamProject.id))
-				.send({ projectApprovalRequired })
+				.send({ requiredByProject })
 				.expect(200);
-			expect(response.body.data).toEqual({ projectApprovalRequired });
+			expect(response.body.data).toEqual({ requiredByProject });
 		};
 		const publishNewVersion = async () =>
 			await ownerAgent.post(`/workflows/${workflow.id}/activate`).send({ versionId: newVersionId });
 
-		expect(await readSetting()).toEqual({ projectApprovalRequired: false });
+		expect(await readSetting()).toEqual({ requiredByProject: false });
 
 		await setSetting(true);
-		expect(await readSetting()).toEqual({ projectApprovalRequired: true });
+		expect(await readSetting()).toEqual({ requiredByProject: true });
 		expect((await publishNewVersion()).status).toBe(409);
 
 		await setSetting(false);
-		expect(await readSetting()).toEqual({ projectApprovalRequired: false });
+		expect(await readSetting()).toEqual({ requiredByProject: false });
 		expect((await publishNewVersion()).status).toBe(200);
 		expect(await publishedVersionOf(workflow.id)).toBe(newVersionId);
 	});
@@ -612,11 +612,11 @@ describe('changing the project review settings', () => {
 	test('rejects a project editor who changes Require approval', async () => {
 		await memberAgent
 			.patch(projectSettingsUrl(teamProject.id))
-			.send({ projectApprovalRequired: true })
+			.send({ requiredByProject: true })
 			.expect(403);
 
 		const stored = await ownerAgent.get(projectSettingsUrl(teamProject.id)).expect(200);
-		expect(stored.body.data).toEqual({ projectApprovalRequired: false });
+		expect(stored.body.data).toEqual({ requiredByProject: false });
 	});
 
 	test('rejects a user outside the project who reads Require approval', async () => {
@@ -631,23 +631,23 @@ describe('changing the project review settings', () => {
 		await ownerAgent.get(projectSettingsUrl(teamProject.id)).expect(403);
 		await ownerAgent
 			.patch(projectSettingsUrl(teamProject.id))
-			.send({ projectApprovalRequired: true })
+			.send({ requiredByProject: true })
 			.expect(403);
 
 		await policyService.update({ enabled: true });
 		const stored = await ownerAgent.get(projectSettingsUrl(teamProject.id)).expect(200);
-		expect(stored.body.data).toEqual({ projectApprovalRequired: false });
+		expect(stored.body.data).toEqual({ requiredByProject: false });
 	});
 
 	test('never requires a review in a personal space', async () => {
 		await ownerAgent.get(projectSettingsUrl(ownerProject.id)).expect(404);
 		await ownerAgent
 			.patch(projectSettingsUrl(ownerProject.id))
-			.send({ projectApprovalRequired: true })
+			.send({ requiredByProject: true })
 			.expect(404);
 		await Container.get(DataSource)
 			.getRepository(ProjectWorkflowReviewSettings)
-			.insert({ projectId: ownerProject.id, projectApprovalRequired: true });
+			.insert({ projectId: ownerProject.id, requiredByProject: true });
 		const { workflow, versionId } = await createReviewableWorkflow(owner);
 
 		await ownerAgent.post(`/workflows/${workflow.id}/activate`).send({ versionId }).expect(200);
@@ -702,10 +702,10 @@ describe('changing the project review settings', () => {
 		eventService.on('project-workflow-review-settings-updated', listener);
 
 		try {
-			for (const projectApprovalRequired of [false, true, true]) {
+			for (const requiredByProject of [false, true, true]) {
 				await ownerAgent
 					.patch(projectSettingsUrl(teamProject.id))
-					.send({ projectApprovalRequired })
+					.send({ requiredByProject })
 					.expect(200);
 			}
 		} finally {
@@ -716,7 +716,7 @@ describe('changing the project review settings', () => {
 			{
 				user: expect.objectContaining({ id: owner.id }),
 				projectId: teamProject.id,
-				projectApprovalRequired: true,
+				requiredByProject: true,
 			},
 		]);
 	});

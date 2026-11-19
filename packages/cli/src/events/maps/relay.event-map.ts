@@ -1521,7 +1521,7 @@ export type RelayEventMap = ModuleEventMap & {
 	'project-workflow-review-settings-updated': {
 		user: UserLike;
 		projectId: string;
-		projectApprovalRequired: boolean;
+		requiredByProject: boolean;
 	};
 
 	'workflow-review-requested': {

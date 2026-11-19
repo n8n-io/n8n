@@ -24,22 +24,19 @@ export class WorkflowReviewProjectSettingsService {
 		if (project?.type !== 'team') throw new NotFoundError('Could not find team project');
 
 		return {
-			projectApprovalRequired: await this.settingsRepository.isProjectApprovalRequired(
-				projectId,
-				{},
-			),
+			requiredByProject: await this.settingsRepository.isRequiredByProject(projectId, {}),
 		};
 	}
 
 	async update(
 		user: User,
 		projectId: string,
-		{ projectApprovalRequired }: UpdateProjectWorkflowReviewSettingsDto,
+		{ requiredByProject }: UpdateProjectWorkflowReviewSettingsDto,
 	): Promise<ProjectWorkflowReviewSettingsResponse> {
 		await this.featureGate.assertAvailable();
-		const changed = await this.settingsRepository.setTeamProjectApprovalRequired(
+		const changed = await this.settingsRepository.setRequiredByTeamProject(
 			projectId,
-			projectApprovalRequired,
+			requiredByProject,
 			{},
 		);
 		if (changed === null) throw new NotFoundError('Could not find team project');
@@ -47,10 +44,10 @@ export class WorkflowReviewProjectSettingsService {
 			this.eventService.emit('project-workflow-review-settings-updated', {
 				user,
 				projectId,
-				projectApprovalRequired,
+				requiredByProject,
 			});
 		}
 
-		return { projectApprovalRequired };
+		return { requiredByProject };
 	}
 }

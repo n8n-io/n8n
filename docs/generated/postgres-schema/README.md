@@ -127,7 +127,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.project_pool_settings](public.project_pool_settings.md) | 4 |  | BASE TABLE |
 | [public.project_relation](public.project_relation.md) | 5 |  | BASE TABLE |
 | [public.project_secrets_provider_access](public.project_secrets_provider_access.md) | 5 |  | BASE TABLE |
-| [public.project_workflow_review_settings](public.project_workflow_review_settings.md) | 4 |  | BASE TABLE |
+| [public.project_workflow_review_settings](public.project_workflow_review_settings.md) | 5 |  | BASE TABLE |
 | [public.promotion_environment](public.promotion_environment.md) | 9 |  | BASE TABLE |
 | [public.promotion_environment_project](public.promotion_environment_project.md) | 5 |  | BASE TABLE |
 | [public.promotion_provider](public.promotion_provider.md) | 8 |  | BASE TABLE |
@@ -1722,8 +1722,9 @@ erDiagram
 }
 "public.project_workflow_review_settings" {
   timestamp_3__with_time_zone createdAt
-  boolean projectApprovalRequired
   varchar_36_ projectId FK
+  boolean requiredByInstance
+  boolean requiredByProject
   timestamp_3__with_time_zone updatedAt
 }
 "public.promotion_environment" {

@@ -127,7 +127,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [project_pool_settings](project_pool_settings.md) | 4 |  | table |
 | [project_relation](project_relation.md) | 5 |  | table |
 | [project_secrets_provider_access](project_secrets_provider_access.md) | 5 |  | table |
-| [project_workflow_review_settings](project_workflow_review_settings.md) | 4 |  | table |
+| [project_workflow_review_settings](project_workflow_review_settings.md) | 5 |  | table |
 | [promotion_environment](promotion_environment.md) | 9 |  | table |
 | [promotion_environment_project](promotion_environment_project.md) | 5 |  | table |
 | [promotion_provider](promotion_provider.md) | 8 |  | table |
@@ -1708,8 +1708,9 @@ erDiagram
 }
 "project_workflow_review_settings" {
   datetime_3_ createdAt
-  boolean projectApprovalRequired
   varchar_36_ projectId PK
+  boolean requiredByInstance
+  boolean requiredByProject
   datetime_3_ updatedAt
 }
 "promotion_environment" {

@@ -48,7 +48,7 @@ describe('WorkflowReviewPublishGuard', () => {
 		sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(
 			mock<Project>({ id: 'project-1', type: 'team' }),
 		);
-		projectSettingsRepository.isProjectApprovalRequired.mockResolvedValue(false);
+		projectSettingsRepository.isRequiredByProject.mockResolvedValue(false);
 
 		await expect(guard.assertCanPublish('workflow-1', target)).resolves.toBeUndefined();
 	});

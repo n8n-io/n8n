@@ -251,8 +251,9 @@ erDiagram
 }
 "public.project_workflow_review_settings" {
   timestamp_3__with_time_zone createdAt
-  boolean projectApprovalRequired
   varchar_36_ projectId FK
+  boolean requiredByInstance
+  boolean requiredByProject
   timestamp_3__with_time_zone updatedAt
 }
 "public.promotion_environment_project" {

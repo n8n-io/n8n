@@ -101,7 +101,7 @@ const formData = ref<
 	Pick<Project, 'name' | 'description' | 'relations'> & {
 		customTelemetryTags: NonNullable<Project['customTelemetryTags']>;
 		defaultPool: string | null;
-		projectApprovalRequired: boolean;
+		requiredByProject: boolean;
 	}
 >({
 	name: '',
@@ -109,7 +109,7 @@ const formData = ref<
 	relations: [],
 	customTelemetryTags: [],
 	defaultPool: null,
-	projectApprovalRequired: false,
+	requiredByProject: false,
 });
 // Used to skip one watcher sync after targeted server updates (e.g., immediate removal)
 const suppressNextSync = ref(false);
@@ -398,7 +398,7 @@ const updateProject = async () => {
 		if (hasWorkflowReviewChanges()) {
 			tasks.push(
 				projectsStore.updateCurrentProjectWorkflowReviewSettings(projectId, {
-					projectApprovalRequired: formData.value.projectApprovalRequired,
+					requiredByProject: formData.value.requiredByProject,
 				}),
 			);
 		}
@@ -511,21 +511,21 @@ const showWorkflowReviewSettings = computed(
 );
 
 function resetWorkflowReviewFormData() {
-	formData.value.projectApprovalRequired =
-		projectsStore.currentProjectWorkflowReviewSettings?.projectApprovalRequired ?? false;
+	formData.value.requiredByProject =
+		projectsStore.currentProjectWorkflowReviewSettings?.requiredByProject ?? false;
 }
 
 function hasWorkflowReviewChanges(): boolean {
 	return (
 		showWorkflowReviewSettings.value &&
 		!isInstanceApprovalRequired.value &&
-		formData.value.projectApprovalRequired !==
-			projectsStore.currentProjectWorkflowReviewSettings?.projectApprovalRequired
+		formData.value.requiredByProject !==
+			projectsStore.currentProjectWorkflowReviewSettings?.requiredByProject
 	);
 }
 
 const onRequireApprovalUpdate = (value: boolean) => {
-	formData.value.projectApprovalRequired = value;
+	formData.value.requiredByProject = value;
 	onTextInput();
 };
 
@@ -965,7 +965,7 @@ onMounted(async () => {
 										)
 									: i18n.baseText('projects.settings.workflowReviews.requireApproval.description')
 							"
-							:enabled="isInstanceApprovalRequired || formData.projectApprovalRequired"
+							:enabled="isInstanceApprovalRequired || formData.requiredByProject"
 							:disabled="isInstanceApprovalRequired"
 							switch-test-id="project-settings-require-approval-switch"
 							@update:enabled="onRequireApprovalUpdate"

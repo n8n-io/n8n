@@ -5,8 +5,9 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| projectApprovalRequired | boolean | false | false |  |  | Set by a project admin. When true, a workflow version in this project needs an approved review before it is published |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
+| requiredByInstance | boolean | false | false |  |  | Set by an instance admin. When true, a workflow version in this project needs an approved review before it is published, whatever requiredByProject says |
+| requiredByProject | boolean | false | false |  |  | Set by a project admin. When true, a workflow version in this project needs an approved review before it is published |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -15,9 +16,10 @@
 | ---- | ---- | ---------- |
 | FK_project_workflow_review_settings_projectId | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | PK_caa3a33321fd1558892b0ca8944 | PRIMARY KEY | PRIMARY KEY ("projectId") |
-| project_workflow_review_settin_projectApprovalRequired_not_null | n | NOT NULL "projectApprovalRequired" |
 | project_workflow_review_settings_createdAt_not_null | n | NOT NULL "createdAt" |
 | project_workflow_review_settings_projectId_not_null | n | NOT NULL "projectId" |
+| project_workflow_review_settings_requiredByInstance_not_null | n | NOT NULL "requiredByInstance" |
+| project_workflow_review_settings_requiredByProject_not_null | n | NOT NULL "requiredByProject" |
 | project_workflow_review_settings_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
 ## Indexes
@@ -35,8 +37,9 @@ erDiagram
 
 "public.project_workflow_review_settings" {
   timestamp_3__with_time_zone createdAt
-  boolean projectApprovalRequired
   varchar_36_ projectId FK
+  boolean requiredByInstance
+  boolean requiredByProject
   timestamp_3__with_time_zone updatedAt
 }
 "public.project" {
