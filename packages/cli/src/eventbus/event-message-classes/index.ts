@@ -183,6 +183,7 @@ export const eventNamesAudit = [
 	'n8n.audit.node-type-policy.document.updated',
 	'n8n.audit.node-type-policy.document.deleted',
 	'n8n.audit.node-type-policy.attachments.updated',
+	'n8n.audit.execution-limit.updated',
 	'n8n.audit.policy.decision.blocked',
 	'n8n.audit.trusted-source.created',
 	'n8n.audit.trusted-source.updated',

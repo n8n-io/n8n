@@ -4708,6 +4708,40 @@ describe('LogStreamingEventRelay', () => {
 			]);
 		});
 
+		describe('execution limits', () => {
+			const payload = {
+				updatedBy: 'sa-1',
+				projectId: 'project-1',
+				field: 'projectMaxExecutions',
+				oldValue: 100,
+				newValue: null,
+			} as const;
+
+			itCarriesLoginId([
+				{
+					event: 'execution-limit-updated',
+					auditName: 'n8n.audit.execution-limit.updated',
+					payload,
+				},
+			]);
+
+			it('should send the changed limit with its old and new value', () => {
+				eventService.emit('execution-limit-updated', payload);
+
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName: 'n8n.audit.execution-limit.updated',
+					payload,
+				});
+			});
+
+			it('should omit the user of a limit that n8n changed', () => {
+				eventService.emit('execution-limit-updated', { ...payload, updatedBy: null });
+
+				const [{ payload: sent }] = eventBus.sendAuditEvent.mock.calls[0];
+				expect(sent).not.toHaveProperty('updatedBy');
+			});
+		});
+
 		describe('settings', () => {
 			itCarriesLoginId([
 				{

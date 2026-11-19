@@ -148,6 +148,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'node-type-policy-attachments-updated': (event) =>
 				this.nodeTypePolicyAttachmentsUpdated(event),
 			'policy-decision-blocked': (event) => this.policyDecisionBlocked(event),
+			'execution-limit-updated': (event) => this.executionLimitUpdated(event),
 			'external-secrets-provider-settings-saved': (event) =>
 				this.externalSecretsProviderSettingsSaved(event),
 			'external-secrets-provider-reloaded': (event) => this.externalSecretsProviderReloaded(event),
@@ -1041,6 +1042,20 @@ export class LogStreamingEventRelay extends EventRelay {
 				scopeId: event.scopeId,
 				before: event.before ? { ...event.before } : null,
 				after: { ...event.after },
+				...(event.loginId !== undefined && { loginId: event.loginId }),
+			},
+		});
+	}
+
+	private executionLimitUpdated(event: RelayEventMap['execution-limit-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.execution-limit.updated',
+			payload: {
+				...(event.updatedBy !== null && { updatedBy: event.updatedBy }),
+				projectId: event.projectId,
+				field: event.field,
+				oldValue: event.oldValue,
+				newValue: event.newValue,
 				...(event.loginId !== undefined && { loginId: event.loginId }),
 			},
 		});
