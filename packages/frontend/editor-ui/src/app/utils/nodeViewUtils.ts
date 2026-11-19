@@ -533,6 +533,35 @@ export function generateOffsets(nodeCount: number, nodeSize: number, spacing: nu
 	return Array.from({ length: nodeCount }, (_, index) => (index - (nodeCount - 1) / 2) * step);
 }
 
+/** The node that the new node comes after */
+export type NextNodeSlotSource = {
+	position: XYPosition;
+	/** Rendered width */
+	width: number;
+	/** Offset of the main output handle from the top */
+	handleOffset: number;
+};
+
+/** The node to place */
+export type NextNodeSlotTarget = {
+	/** Rendered height */
+	height: number;
+	/** Offset of the main input handle from the top */
+	handleOffset: number;
+};
+
+/** The main output of the source that the new node connects to, of `count` main outputs */
+export type NextNodeSlotFan = {
+	index: number;
+	count: number;
+};
+
+export type NextNodeSlotOptions = {
+	source: NextNodeSlotSource;
+	target: NextNodeSlotTarget;
+	fan?: NextNodeSlotFan;
+};
+
 /**
  * Gets the position of a node that comes after the source node. The node is one
  * NODE_X_SPACING gap past the source's right edge, and its main input handle is
@@ -540,11 +569,11 @@ export function generateOffsets(nodeCount: number, nodeSize: number, spacing: nu
  * For a source with more than one main output, `fan` moves the node to the row of
  * output `index`. The rows are one new node height plus NODE_Y_SPACING apart.
  */
-export function getNextNodeSlot(
-	source: { position: XYPosition; width: number; handleOffset: number },
-	target: { height: number; handleOffset: number },
-	fan: { index: number; count: number } = { index: 0, count: 1 },
-): XYPosition {
+export function getNextNodeSlot({
+	source,
+	target,
+	fan = { index: 0, count: 1 },
+}: NextNodeSlotOptions): XYPosition {
 	const fanOffset = generateOffsets(fan.count, target.height, NODE_Y_SPACING)[fan.index] ?? 0;
 
 	return [

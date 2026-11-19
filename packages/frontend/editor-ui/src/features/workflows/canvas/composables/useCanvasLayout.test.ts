@@ -426,15 +426,15 @@ describe('useCanvasLayout', () => {
 		])('keeps the nodes placed after %s where they are', (_description, source) => {
 			const [width, height] = DEFAULT_NODE_SIZE;
 			const slots = Array.from({ length: source.outputCount }, (_, index) =>
-				getNextNodeSlot(
-					{
+				getNextNodeSlot({
+					source: {
 						position: [0, 0],
 						width: source.dimensions.width,
 						handleOffset: getMainHandleOffset(source.dimensions.height, source.isAgentCard),
 					},
-					{ height, handleOffset: getMainHandleOffset(height, false) },
-					{ index, count: source.outputCount },
-				),
+					target: { height, handleOffset: getMainHandleOffset(height, false) },
+					fan: { index, count: source.outputCount },
+				}),
 			);
 			const nodes = [
 				createCanvasGraphNode({

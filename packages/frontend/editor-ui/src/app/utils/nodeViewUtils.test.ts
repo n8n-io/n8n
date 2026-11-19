@@ -267,20 +267,20 @@ describe('generateOffsets', () => {
 
 describe('getNextNodeSlot', () => {
 	it('should place the node one NODE_X_SPACING gap past the right edge of the source', () => {
-		const slot = getNextNodeSlot(
-			{ position: [32, 64], width: 224, handleOffset: 48 },
-			{ height: 96, handleOffset: 48 },
-		);
+		const slot = getNextNodeSlot({
+			source: { position: [32, 64], width: 224, handleOffset: 48 },
+			target: { height: 96, handleOffset: 48 },
+		});
 
 		expect(slot).toEqual([32 + 224 + NODE_X_SPACING, 64]);
 	});
 
 	it('should line up the main handles of the source and the new node', () => {
 		// 4-input Merge (160 high) followed by a default node
-		const slot = getNextNodeSlot(
-			{ position: [0, 0], width: 96, handleOffset: 80 },
-			{ height: 96, handleOffset: 48 },
-		);
+		const slot = getNextNodeSlot({
+			source: { position: [0, 0], width: 96, handleOffset: 80 },
+			target: { height: 96, handleOffset: 48 },
+		});
 
 		expect(slot).toEqual([224, 32]);
 	});
@@ -292,22 +292,22 @@ describe('getNextNodeSlot', () => {
 		// The source is 128 high for 3 outputs, so its handle line sits at 64
 		const sourceHandleOffset = count === 3 ? 64 : 48;
 		const slots = ys.map((_, index) =>
-			getNextNodeSlot(
-				{ position: [0, 0], width: 96, handleOffset: sourceHandleOffset },
-				{ height: 96, handleOffset: 48 },
-				{ index, count },
-			),
+			getNextNodeSlot({
+				source: { position: [0, 0], width: 96, handleOffset: sourceHandleOffset },
+				target: { height: 96, handleOffset: 48 },
+				fan: { index, count },
+			}),
 		);
 
 		expect(slots).toEqual(ys.map((y) => [224, y]));
 	});
 
 	it('should not fan the node for an output index out of range', () => {
-		const slot = getNextNodeSlot(
-			{ position: [0, 0], width: 96, handleOffset: 48 },
-			{ height: 96, handleOffset: 48 },
-			{ index: 5, count: 2 },
-		);
+		const slot = getNextNodeSlot({
+			source: { position: [0, 0], width: 96, handleOffset: 48 },
+			target: { height: 96, handleOffset: 48 },
+			fan: { index: 5, count: 2 },
+		});
 
 		expect(slot).toEqual([224, 0]);
 	});

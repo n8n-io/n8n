@@ -107,6 +107,7 @@ import {
 	getNodesGroupSize,
 	PUSH_NODES_OFFSET,
 	HORIZONTAL_NODE_STEP,
+	type NextNodeSlotFan,
 	getNodeSizeFromPorts,
 	isPositionBlocked,
 	snapToGrid,
@@ -220,6 +221,17 @@ type AddNodeOptions = AddNodesBaseOptions & {
 	actionName?: string;
 	/** Places a node without a position in the next-node slot of this node, moved by `offset` */
 	placeAfter?: { node: INodeUi; offset?: XYPosition };
+};
+
+type NextNodeSlotAfterOptions = {
+	/** The node that the new node comes after */
+	source: INodeUi;
+	/** Read from the node types store when not given */
+	sourceTypeDescription?: INodeTypeDescription;
+	/** The node to place */
+	node: INodeUi;
+	nodeTypeDescription: INodeTypeDescription;
+	fan?: NextNodeSlotFan;
 };
 
 export function useCanvasOperations() {
@@ -1620,7 +1632,11 @@ export function useCanvasOperations() {
 		let initialPosition = node.position;
 		if (!initialPosition && options.placeAfter) {
 			const { node: previousNode, offset = [0, 0] } = options.placeAfter;
-			const [x, y] = getNextNodeSlotAfter(previousNode, undefined, nodeData, nodeTypeDescription);
+			const [x, y] = getNextNodeSlotAfter({
+				source: previousNode,
+				node: nodeData,
+				nodeTypeDescription,
+			});
 			initialPosition = [x + offset[0], y + offset[1]];
 		}
 		const { position, isAnchored } = resolveNodePlacement(
@@ -1925,15 +1941,15 @@ export function useCanvasOperations() {
 
 					// If a node is active then add the new node directly after the current one.
 					// When inserting via edge plus button, keep Y aligned to preserve vertical line.
-					position = getNextNodeSlotAfter(
-						lastInteractedWithNodeObject,
-						lastInteractedWithNodeTypeDescription,
-						{ ...node, position: lastInteractedWithNodeObject.position },
+					position = getNextNodeSlotAfter({
+						source: lastInteractedWithNodeObject,
+						sourceTypeDescription: lastInteractedWithNodeTypeDescription,
+						node: { ...node, position: lastInteractedWithNodeObject.position },
 						nodeTypeDescription,
-						lastInteractedWithNodeConnection
+						fan: lastInteractedWithNodeConnection
 							? undefined
 							: { index: connectionIndex, count: lastInteractedWithNodeMainOutputs.length },
-					);
+					});
 				}
 			}
 		}
@@ -1959,25 +1975,25 @@ export function useCanvasOperations() {
 	 * Gets the next-node slot after the source node, from the rendered size and
 	 * the main handle line of both nodes
 	 */
-	function getNextNodeSlotAfter(
-		source: INodeUi,
-		sourceTypeDescription: INodeTypeDescription | undefined,
-		node: INodeUi,
-		nodeTypeDescription: INodeTypeDescription,
-		fan?: { index: number; count: number },
-	): XYPosition {
+	function getNextNodeSlotAfter({
+		source,
+		sourceTypeDescription,
+		node,
+		nodeTypeDescription,
+		fan,
+	}: NextNodeSlotAfterOptions): XYPosition {
 		const [sourceWidth, sourceHeight] = getNodePlacementSize(source, sourceTypeDescription);
 		const [, height] = getNodePlacementSize(node, nodeTypeDescription);
 
-		return NodeViewUtils.getNextNodeSlot(
-			{
+		return NodeViewUtils.getNextNodeSlot({
+			source: {
 				position: source.position,
 				width: sourceWidth,
 				handleOffset: getMainHandleOffset(sourceHeight, isAgentNodeV2(source)),
 			},
-			{ height, handleOffset: getMainHandleOffset(height, isAgentNodeV2(node)) },
+			target: { height, handleOffset: getMainHandleOffset(height, isAgentNodeV2(node)) },
 			fan,
-		);
+		});
 	}
 
 	function resolveNodeName(node: INodeUi) {
