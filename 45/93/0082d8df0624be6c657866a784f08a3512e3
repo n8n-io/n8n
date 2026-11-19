@@ -1,0 +1,23 @@
+packages/core/src/execution-engine/workflow-execute.ts
+  s_76609b7a0052e3::t_23f9fb8bbb7ed6 67
+  s_76609b7a0052e3::t_dd09a16602a29c 112-116,3176
+packages/core/src/execution-engine/__tests__/workflow-execute.test.ts
+  s_76609b7a0052e3::t_bd7775c14c07d5 2404-2424,2426-2437
+  s_76609b7a0052e3::t_aa16607e95f51f 2425,2438-2439
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "45930082d8df0624be6c657866a784f08a3512e3",
+  "prompts": {},
+  "sessions": {
+    "s_76609b7a0052e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d0c4aa48-620f-4458-b87c-f7b5f8a982a4",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

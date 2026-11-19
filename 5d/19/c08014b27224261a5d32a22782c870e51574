@@ -1,0 +1,38 @@
+packages/workflow/test/native-evaluation-fuzz.test.ts
+  s_80c035668937e3::t_df190cd7f0b642 38,63
+  s_c29e195750221b::t_05990b2a7e7aaa 22-25,32,39,64
+packages/@n8n/expression-runtime/src/bridge/__tests__/quickjs-bridge.test.ts
+  s_80c035668937e3::t_8a0e7d7b060982 545
+  s_80c035668937e3::t_f56f4222d17a9c 488-509
+  s_80c035668937e3::t_c870daa596c95c 554-571
+  s_80c035668937e3::t_81f352314601ff 511-515,572-573,593,595-596,598,600-601
+  s_c29e195750221b::t_8a553e4eedcec9 96-104,594,597,599
+  s_80c035668937e3::t_69926eb12543f0 5
+  s_80c035668937e3::t_1322f51a8e7192 11,516-517,537-544,546-553
+  s_c29e195750221b::t_f25446a9d7b6ae 518-536
+  s_80c035668937e3::t_2f01aeebc63a42 574-592
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5d19c08014b27224261a5d32a22782c870e51574",
+  "prompts": {},
+  "sessions": {
+    "s_80c035668937e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72d6a770-533e-48f8-9a8e-1296e62a48e8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_c29e195750221b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "452dc3f8-5662-46f8-8e1b-34c5a79efbc6",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
