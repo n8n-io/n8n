@@ -11,7 +11,7 @@ import { AppAuthService, type AppRequest } from '../app-auth.service';
 import { AppProtectedResource } from '../app-protected-resource';
 import type { App } from '../../app.entity';
 import { AppRepository } from '../../app.repository';
-import { AppHostService } from '../../serving/app-host.service';
+import { AppHostService, type AppHostKind } from '../../serving/app-host.service';
 
 const issuer = 'https://n8n.example.net';
 const state = 'opaque.State_~-1';
@@ -20,7 +20,10 @@ const appId = '11111111-1111-4111-8111-111111111111';
 const callbackUrl = `https://sales.apps.example.com/_n8n/auth/${appId}/callback`;
 const previewCallbackUrl = `https://sales--preview.apps.example.com/_n8n/auth/${appId}/callback`;
 
-function setup(visibility: App['visibility'] = 'project') {
+function setup({
+	visibility = 'project',
+	host = 'published',
+}: { visibility?: App['visibility']; host?: AppHostKind } = {}) {
 	const app = mock<App>({
 		id: appId,
 		namespace: 'sales',
@@ -31,10 +34,10 @@ function setup(visibility: App['visibility'] = 'project') {
 	apps.findByNamespace.mockResolvedValue(app);
 	const hosts = mock<AppHostService>({
 		baseUrl: new URL('https://apps.example.com'),
-		namespace: () => 'sales',
-		previewNamespace: () => 'sales',
 		callbackUrl: (_app, kind) => (kind === 'preview' ? previewCallbackUrl : callbackUrl),
 	});
+	hosts.namespace.mockReturnValue(host === 'published' ? 'sales' : undefined);
+	hosts.previewNamespace.mockReturnValue(host === 'preview' ? 'sales' : undefined);
 	const resources = mock<AppProtectedResource>();
 	resources.forApp.mockReturnValue(mock<ProtectedResource>());
 	resources.grantFor.mockImplementation((_app, kind) => ({
@@ -75,20 +78,20 @@ function setup(visibility: App['visibility'] = 'project') {
 	const res = mock<Response>();
 	res.set.mockReturnValue(res);
 	res.status.mockReturnValue(res);
-	return { service, app, apps, resources, admission, flow, jwt, executionContext, req, res };
+	return { service, app, apps, hosts, resources, admission, flow, jwt, executionContext, req, res };
 }
 
 const sessionCookie = { '__Host-n8n-app-session': 'app-token' };
 
 describe('AppAuthService', () => {
 	it('requires a published app', async () => {
-		const { service, req, res, apps } = setup('instance');
+		const { service, req, res, apps } = setup({ visibility: 'instance' });
 		apps.findByNamespace.mockResolvedValue(null);
 		await expect(service.authenticate(req, res, vi.fn())).rejects.toThrow('App not found');
 	});
 
 	it('authenticates instance apps with the session cookie', async () => {
-		const { service, req, res, admission } = setup('instance');
+		const { service, req, res, admission } = setup({ visibility: 'instance' });
 		req.cookies = { '__Host-n8n-app-session': 'app-token' };
 		const next = vi.fn();
 		await service.authenticate(req, res, next);
@@ -101,10 +104,12 @@ describe('AppAuthService', () => {
 	});
 
 	it('returns the session token with an admitted visitor', async () => {
-		const { service, req } = setup();
+		const { service, req, apps, hosts } = setup();
 		req.cookies = { '__Host-n8n-app-session': 'app-token' };
 
 		await expect(service.admit(req)).resolves.toMatchObject({ ok: true, token: 'app-token' });
+		expect(apps.findByNamespace).toHaveBeenCalledExactlyOnceWith('sales');
+		expect(hosts.previewNamespace).not.toHaveBeenCalled();
 	});
 
 	it('seals the visitor with the app grant and the user ID', async () => {
@@ -122,7 +127,7 @@ describe('AppAuthService', () => {
 
 	describe('on a preview host', () => {
 		it('admits the session token against the preview resource', async () => {
-			const { service, app, req, resources, admission } = setup();
+			const { service, app, apps, hosts, req, resources, admission } = setup({ host: 'preview' });
 			req.cookies = sessionCookie;
 
 			await expect(service.admit(req, 'preview')).resolves.toMatchObject({
@@ -130,6 +135,8 @@ describe('AppAuthService', () => {
 				token: 'app-token',
 			});
 
+			expect(apps.findByNamespace).toHaveBeenCalledExactlyOnceWith('sales');
+			expect(hosts.namespace).not.toHaveBeenCalled();
 			expect(resources.forApp).toHaveBeenCalledWith(app, { kind: 'preview', revalidate: false });
 			expect(admission.admitBearer).toHaveBeenCalledWith(
 				expect.anything(),
@@ -139,7 +146,7 @@ describe('AppAuthService', () => {
 		});
 
 		it('admits an app that was never published', async () => {
-			const { service, app, req } = setup();
+			const { service, app, req } = setup({ host: 'preview' });
 			req.cookies = sessionCookie;
 			app.publishedVersionId = null;
 
@@ -147,7 +154,7 @@ describe('AppAuthService', () => {
 		});
 
 		it('throws when the app no longer exists', async () => {
-			const { service, req, apps } = setup();
+			const { service, req, apps } = setup({ host: 'preview' });
 			req.cookies = sessionCookie;
 			apps.findByNamespace.mockResolvedValue(null);
 
@@ -155,7 +162,7 @@ describe('AppAuthService', () => {
 		});
 
 		it('reads a cached admission without looking up the app', async () => {
-			const { service, req, apps, admission } = setup();
+			const { service, req, apps, admission } = setup({ host: 'preview' });
 			req.cookies = sessionCookie;
 
 			await service.admit(req, 'preview');
@@ -166,8 +173,10 @@ describe('AppAuthService', () => {
 		});
 
 		it('does not share cached admissions with the published host', async () => {
-			const { service, req, admission } = setup();
+			const { service, req, hosts, admission } = setup({ host: 'preview' });
 			req.cookies = sessionCookie;
+			// Both hosts resolve here, so only the cache key can keep the entries apart.
+			hosts.namespace.mockReturnValue('sales');
 
 			await service.admit(req);
 			await service.admit(req, 'preview');
