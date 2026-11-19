@@ -691,7 +691,7 @@ The profile of 19 November 2026 (`bench/loadtest/README.md`, `perf record`
 of the runtime thread at 4,200 concurrent runs, one executor core) agrees,
 and it shows where the time goes under load: workflow code 50%
 (interpreter 36%, JSON decode of results 8%, library calls 6%), kernel 27%,
-outbound HTTP client 15%, outbox 7% (`logfmt.checksum` 4% inside it),
+outbound HTTP client 15%, outbox 7%, the checksum of the durability log 4%,
 inbound replies and flush 6%. The parts overlap where one calls the other.
 The single costs that stand out: the intern of each object key of a decoded
 result (`Module.internKey`, 5%), the checksum of each durability record
@@ -707,5 +707,4 @@ state; instructions, not time):
 | 19-library-slack-perplexity (2 calls) | 708 | 3,224 | 1,063 |
 
 `Module.internKey` has no calls to `mem.zig`, so the model does not see its
-cost; the 5% of the profile is its share. The next section cuts the miss
-path of that function.
+cost; the 5% of the profile is its share.
