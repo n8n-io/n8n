@@ -5,7 +5,7 @@ import {
 	ImportPackageSelectionRequestDto,
 	ImportResultDto,
 } from '@n8n/api-types';
-import { EventService } from '@n8n/backend-services';
+import { EventService, loginIdOf } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -24,7 +24,6 @@ import {
 import { BadRequestError, ForbiddenError, UserError } from '@n8n/errors';
 import type { Response } from 'express';
 
-import { loginIdOf } from '@/events/login-id';
 import {
 	PackageEntityAccessDeniedError,
 	PackageEntityNotFoundError,

@@ -664,6 +664,45 @@ describe('AgentAdvancedPanel', () => {
 		expect(last.config).not.toHaveProperty('maxIterations');
 	});
 
+	it.each([
+		['config has not loaded', null],
+		['config block is absent', makeConfig()],
+		['toolCallConcurrency is unset', makeConfig({ config: { toolCallConcurrency: undefined } })],
+	] as const)('shows the runtime concurrency default when %s', (_description, config) => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		const input = wrapper.find('[data-testid="agent-concurrency-input"]');
+		expect(Number(input.element.getAttribute('value'))).toBe(1);
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	it('shows explicit concurrency and restores the runtime default when it is removed', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config: makeConfig({ config: { toolCallConcurrency: 7 } }) },
+			global: { stubs: globalStubs },
+		});
+		const input = wrapper.find('[data-testid="agent-concurrency-input"]');
+		expect(Number(input.element.getAttribute('value'))).toBe(7);
+		await wrapper.setProps({ config: makeConfig({ config: {} }) });
+		expect(Number(input.element.getAttribute('value'))).toBe(1);
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	it('resets cleared concurrency to the runtime default and preserves other settings', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config: makeConfig({ config: { toolCallConcurrency: 7, maxIterations: 42 } }) },
+			global: { stubs: globalStubs },
+		});
+		const input = wrapper.find('[data-testid="agent-concurrency-input"]');
+		await input.setValue('abc');
+		expect(Number(input.element.getAttribute('value'))).toBe(1);
+		expect(wrapper.emitted('update:config')).toEqual([
+			[{ config: { toolCallConcurrency: 1, maxIterations: 42 } }],
+		]);
+	});
+
 	it('emits update:config with toolCallConcurrency when the concurrency field changes', async () => {
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config: makeConfig() },

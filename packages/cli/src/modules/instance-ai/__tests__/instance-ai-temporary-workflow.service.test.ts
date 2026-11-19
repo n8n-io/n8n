@@ -14,8 +14,6 @@ import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thr
 // The adapter service (a value dependency of the service under test) pulls in
 // the heavy AI runtime at module-load time; stub it out.
 vi.mock('@n8n/instance-ai', () => ({
-	BuilderTemplatesService: class {},
-	builderTemplatesOptionsFromEnv: vi.fn(),
 	wrapUntrustedData: vi.fn((value: unknown) => value),
 }));
 

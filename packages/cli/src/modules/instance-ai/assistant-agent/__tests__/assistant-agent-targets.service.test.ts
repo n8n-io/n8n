@@ -145,6 +145,19 @@ describe('AssistantAgentTargetsService', () => {
 	describe('persistPendingAgent', () => {
 		const request = { projectId: PROJECT_ID, agentId: AGENT_ID, name: 'New agent' };
 
+		it.each(['folder-1', null])('forwards folder placement %s', async (parentFolderId) => {
+			useThread({ instanceAiPendingAgentTarget: { agentId: AGENT_ID, projectId: PROJECT_ID } });
+			agentDrafts.persistDraft.mockResolvedValue(draft('New agent'));
+
+			await service.persistPendingAgent(user, THREAD_ID, { ...request, parentFolderId });
+
+			expect(agentDrafts.persistDraft).toHaveBeenCalledWith(
+				user,
+				PROJECT_ID,
+				expect.objectContaining({ parentFolderId }),
+			);
+		});
+
 		it('creates the agent and binds it with its saved name', async () => {
 			useThread({ instanceAiPendingAgentTarget: { agentId: AGENT_ID, projectId: PROJECT_ID } });
 			agentDrafts.persistDraft.mockResolvedValue(draft('New agent'));

@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { LockedError } from '@n8n/errors';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { FolderService } from '@/services/folder.service';
 
 import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
 import type { AgentDefaultModelResolverService } from '../agent-default-model-resolver.service';
@@ -57,7 +58,10 @@ function makeController({
 		agentPublishService,
 		skillRefs,
 	);
-	const agentResponseMapper = new AgentResponseMapper(agentRunnableStateService);
+	const agentResponseMapper = new AgentResponseMapper(
+		agentRunnableStateService,
+		mock<FolderService>(),
+	);
 
 	return {
 		controller: new AgentsController(

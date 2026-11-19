@@ -6,8 +6,7 @@ import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import type { Person, PersonRepository, Role, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@n8n/backend-services';
-import type { PasswordUtility } from '@/services/password.utility';
+import type { EventService, PasswordUtility } from '@n8n/backend-services';
 import type { UrlService } from '@n8n/backend-services';
 
 import {

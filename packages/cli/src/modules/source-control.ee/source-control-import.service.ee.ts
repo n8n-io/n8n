@@ -39,6 +39,7 @@ import {
 import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
+import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -117,6 +118,14 @@ import type {
 import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
+
+type ImportVersionIdOptions = {
+	existingWorkflow: WorkflowEntity | undefined;
+	importedWorkflow: IWorkflowToImport;
+	/** The versionId in the file from Git */
+	pulledVersionId: string;
+	shouldPublishAfterImport: boolean;
+};
 
 const toStatusOwner = (project: Project | undefined): StatusResourceOwner | undefined => {
 	if (project?.type) {
@@ -249,6 +258,7 @@ export class SourceControlImportService {
 					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
 					owner: toStatusOwner(project),
 					isRemoteArchived: remote.isArchived,
+					versionedSettings: pickVersionedSettings(remote.settings),
 				};
 			},
 		);
@@ -267,6 +277,7 @@ export class SourceControlImportService {
 				name: true,
 				description: true,
 				updatedAt: true,
+				settings: {},
 				parentFolder: {
 					id: true,
 				},
@@ -294,6 +305,7 @@ export class SourceControlImportService {
 				parentFolderId: local.parentFolder?.id ?? null,
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
 				updatedAt: updatedAt.toISOString(),
+				versionedSettings: pickVersionedSettings(local.settings),
 			};
 		});
 	}
@@ -314,6 +326,7 @@ export class SourceControlImportService {
 				name: true,
 				description: true,
 				updatedAt: true,
+				settings: {},
 				parentFolder: {
 					id: true,
 				},
@@ -355,6 +368,7 @@ export class SourceControlImportService {
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
 				updatedAt: updatedAt.toISOString(),
 				owner: toStatusOwner(ownerProject),
+				versionedSettings: pickVersionedSettings(local.settings),
 			};
 		});
 	}
@@ -940,6 +954,14 @@ export class SourceControlImportService {
 				userId,
 			);
 
+		const importVersionId = await this.resolveImportVersionId({
+			existingWorkflow,
+			importedWorkflow,
+			pulledVersionId: versionId,
+			shouldPublishAfterImport,
+		});
+		importedWorkflow.versionId = importVersionId;
+
 		let finalPublishingError = publishingError;
 		let finalPublishingErrorDetails = publishingErrorDetails;
 
@@ -977,7 +999,7 @@ export class SourceControlImportService {
 
 		try {
 			await this.saveOrUpdateWorkflowHistory(
-				{ id, versionId, nodes, connections, nodeGroups, settings },
+				{ id, versionId: importVersionId, nodes, connections, nodeGroups, settings },
 				userId,
 			);
 		} catch (error) {
@@ -999,7 +1021,7 @@ export class SourceControlImportService {
 
 		// Now publish the workflow if needed (after history is saved)
 		if (shouldPublishAfterImport) {
-			const publishResult = await this.publishWorkflow(id, versionId, userId);
+			const publishResult = await this.publishWorkflow(id, importVersionId, userId);
 			if (!publishResult.success) {
 				finalPublishingError = publishResult.error;
 				finalPublishingErrorDetails = publishResult.errorDetails;
@@ -2318,6 +2340,49 @@ export class SourceControlImportService {
 		}
 
 		return teamProject;
+	}
+
+	/**
+	 * Picks the versionId that the import saves under. Usually it is the one from the file.
+	 *
+	 * The exception: the file changes the engine but keeps the versionId of the published
+	 * version, and this pull does not publish. Then the pulled content gets a draft
+	 * versionId, so production keeps its engine until someone publishes.
+	 */
+	private async resolveImportVersionId({
+		existingWorkflow,
+		importedWorkflow,
+		pulledVersionId,
+		shouldPublishAfterImport,
+	}: ImportVersionIdOptions): Promise<string> {
+		const staysPublishedOnPulledVersion =
+			!shouldPublishAfterImport && importedWorkflow.activeVersionId === pulledVersionId;
+		if (!existingWorkflow || !staysPublishedOnPulledVersion) return pulledVersionId;
+
+		const publishedVersion = await this.workflowHistoryService.findVersion(
+			existingWorkflow.id,
+			pulledVersionId,
+		);
+		if (
+			!publishedVersion ||
+			versionedSettingsEqual(publishedVersion.settings, importedWorkflow.settings)
+		) {
+			return pulledVersionId;
+		}
+
+		// Pulling the same file again reuses the draft from the first pull
+		const draft = await this.workflowHistoryService.findVersion(
+			existingWorkflow.id,
+			existingWorkflow.versionId,
+		);
+		const draftHasPulledContent =
+			!!draft &&
+			isEqual(draft.nodes, importedWorkflow.nodes) &&
+			isEqual(draft.connections, importedWorkflow.connections) &&
+			isEqual(draft.nodeGroups, importedWorkflow.nodeGroups) &&
+			versionedSettingsEqual(draft.settings, importedWorkflow.settings);
+
+		return draftHasPulledContent ? draft.versionId : uuid();
 	}
 
 	/**

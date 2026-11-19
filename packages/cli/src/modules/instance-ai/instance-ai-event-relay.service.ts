@@ -38,11 +38,14 @@ export class InstanceAiEventRelay {
 	private async handleUserDeleted(userId: string): Promise<void> {
 		try {
 			const deletedThreads = await this.memoryService.deleteThreadsForUser(userId);
-			const { affected } = await this.mcpRegistryConnectionRepository.delete({ userId });
+			const deletedMcpConnections = await this.mcpRegistryConnectionRepository.deleteByUserId(
+				userId,
+				{},
+			);
 			this.logger.debug('Cleaned up Instance AI data for deleted user', {
 				userId,
 				deletedThreads,
-				deletedMcpConnections: affected ?? 0,
+				deletedMcpConnections,
 			});
 		} catch (error) {
 			this.logger.error('Failed to clean up Instance AI data for deleted user', { userId, error });

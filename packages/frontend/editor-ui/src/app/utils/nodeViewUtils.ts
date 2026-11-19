@@ -117,35 +117,23 @@ export const getBottomMostNode = <T extends { position: XYPosition }>(nodes: T[]
 	}, nodes[0]);
 };
 
-export const getNodesGroupSize = (nodes: INodeUi[]): [number, number] => {
-	const leftMostNode = getLeftMostNode(nodes);
-	const topMostNode = getTopMostNode(nodes);
-	const rightMostNode = getRightMostNode(nodes);
-	const bottomMostNode = getBottomMostNode(nodes);
-
-	const width =
-		Math.abs(rightMostNode.position[0] - leftMostNode.position[0]) + DEFAULT_NODE_SIZE[0];
-	const height =
-		Math.abs(bottomMostNode.position[1] - topMostNode.position[1]) + DEFAULT_NODE_SIZE[1];
-
-	return [width, height];
-};
-
 /**
- * Checks if the given position is available for a new node
+ * Returns the size of the bounding box of the nodes. Without `getNodeSize`, every node is 96 × 96.
  */
-export const canUsePosition = (
-	position1: XYPosition,
-	position2: XYPosition,
-	size: [number, number] = DEFAULT_NODE_SIZE,
-) => {
-	if (Math.abs(position1[0] - position2[0]) <= size[0]) {
-		if (Math.abs(position1[1] - position2[1]) <= size[1]) {
-			return false;
-		}
+export const getNodesGroupSize = (
+	nodes: INodeUi[],
+	getNodeSize: (node: INodeUi) => [number, number] = () => DEFAULT_NODE_SIZE,
+): [number, number] => {
+	let [xMin, yMin, xMax, yMax] = [Infinity, Infinity, -Infinity, -Infinity];
+	for (const node of nodes) {
+		const [width, height] = getNodeSize(node);
+		xMin = Math.min(xMin, node.position[0]);
+		yMin = Math.min(yMin, node.position[1]);
+		xMax = Math.max(xMax, node.position[0] + width);
+		yMax = Math.max(yMax, node.position[1] + height);
 	}
 
-	return true;
+	return [xMax - xMin, yMax - yMin];
 };
 
 /**
@@ -174,7 +162,19 @@ export function snapToGrid(value: number): number {
 }
 
 /**
- * Returns the new position for a node based on the given position and the nodes in the workflow
+ * A node blocks a position when it overlaps the candidate rectangle or is less
+ * than one grid cell away from it.
+ */
+export function isPositionBlocked(candidate: Rect, obstacle: Rect): boolean {
+	return doRectsOverlap(addPadding(candidate, GRID_SIZE), obstacle);
+}
+
+const isFiniteRect = ({ x, y, width, height }: Rect) =>
+	[x, y, width, height].every((value) => Number.isFinite(value));
+
+/**
+ * Returns the new position for a node based on the given position and the nodes in the workflow.
+ * `getNodeSize` gives the size of each existing node. Without it, every node is 96 × 96.
  */
 export const getNewNodePosition = (
 	nodes: INodeUi[],
@@ -184,11 +184,13 @@ export const getNewNodePosition = (
 		size = DEFAULT_NODE_SIZE,
 		viewport = DEFAULT_VIEWPORT_BOUNDARIES,
 		normalize = true,
+		getNodeSize = () => DEFAULT_NODE_SIZE,
 	}: {
 		offset?: XYPosition;
 		size?: [number, number];
 		viewport?: ViewportBoundaries;
 		normalize?: boolean;
+		getNodeSize?: (node: INodeUi) => [number, number];
 	} = {},
 ): XYPosition => {
 	// Step at least one grid cell, so that the conflict loop always moves the position
@@ -199,28 +201,31 @@ export const getNewNodePosition = (
 	const resolvedPosition: XYPosition = snapPositionToGrid(initialPosition);
 
 	if (normalize) {
-		let conflictFound = false;
-		let i, node;
-		do {
-			conflictFound = false;
-			for (i = 0; i < nodes.length; i++) {
-				node = nodes[i];
+		// A rectangle with a non-finite value overlaps everything, so the loop would never end
+		const obstacles = nodes
+			.filter((node) => node && !NODE_POSITION_CONFLICT_ALLOWLIST.includes(node.type))
+			.map((node) => {
+				const [width, height] = getNodeSize(node);
+				return { x: node.position[0], y: node.position[1], width, height };
+			})
+			.filter(isFiniteRect);
+		const isBlocked = () => {
+			const candidate = {
+				x: resolvedPosition[0],
+				y: resolvedPosition[1],
+				width: size[0],
+				height: size[1],
+			};
+			return (
+				isFiniteRect(candidate) &&
+				obstacles.some((obstacle) => isPositionBlocked(candidate, obstacle))
+			);
+		};
 
-				if (!node || NODE_POSITION_CONFLICT_ALLOWLIST.includes(node.type)) {
-					continue;
-				}
-
-				if (!canUsePosition(node.position, resolvedPosition, size)) {
-					conflictFound = true;
-					break;
-				}
-			}
-
-			if (conflictFound) {
-				resolvedPosition[0] += resolvedOffset[0];
-				resolvedPosition[1] += resolvedOffset[1];
-			}
-		} while (conflictFound);
+		while (isBlocked()) {
+			resolvedPosition[0] += resolvedOffset[0];
+			resolvedPosition[1] += resolvedOffset[1];
+		}
 
 		if (resolvedPosition[0] < viewport.xMin + resolvedOffset[0]) {
 			resolvedPosition[0] = viewport.xMin + resolvedOffset[0];
@@ -573,7 +578,7 @@ export function getBounds(
 	return { xMin, yMin, xMax, yMax };
 }
 
-function addPadding({ x, y, width, height }: Rect, amount: number): Rect {
+export function addPadding({ x, y, width, height }: Rect, amount: number): Rect {
 	return {
 		x: x - amount,
 		y: y - amount,

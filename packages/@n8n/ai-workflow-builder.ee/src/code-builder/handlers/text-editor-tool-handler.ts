@@ -244,6 +244,7 @@ export class TextEditorToolHandler {
 				new ToolMessage({
 					tool_call_id: toolCallId,
 					content: `${createResult}\n\nParse error: ${errorMessage}\n\n${errorContext}\n\n${FIX_VALIDATION_ERRORS_INSTRUCTION}`,
+					// oxlint-disable-next-line typescript/no-deprecated -- Keep the validation marker in the existing message format.
 					additional_kwargs: { validationMessage: true },
 				}),
 			);

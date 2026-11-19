@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { PushProxy, TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -15,9 +16,7 @@ import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 
-import { Push } from '@/push';
 import { AiService } from '@/services/ai.service';
-import { Telemetry } from '@/telemetry';
 
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 
@@ -88,9 +87,9 @@ export class InstanceAiCreditService {
 	constructor(
 		logger: Logger,
 		private readonly aiService: AiService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly push: Push,
+		private readonly push: PushProxy,
 		private readonly threadRepo: InstanceAiThreadRepository,
 	) {
 		this.logger = logger.scoped('instance-ai');

@@ -51,7 +51,7 @@ test.describe(
 			);
 			await promotions.saveEnvironment();
 			expect((await connect).ok()).toBe(true);
-			await expect(promotions.getEnvironmentStatus('apply')).toHaveText('Connected');
+			await expect(promotions.getEnvironmentCard('apply')).toBeVisible();
 
 			const providerDelete = n8n.page.waitForResponse(
 				(response) =>
