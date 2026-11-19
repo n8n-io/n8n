@@ -1,4 +1,5 @@
 import { EventService } from '@n8n/backend-services';
+import type { AgentsConfig } from '@n8n/config';
 import { GLOBAL_OWNER_ROLE, type IWorkflowDb, type Person, type UserRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import type { INode, IRun, IWorkflowBase, RelatedAgentRun } from 'n8n-workflow';
@@ -15,7 +16,14 @@ describe('LogStreamingEventRelay', () => {
 	const hostId = 'host-xyz';
 	const instanceSettings = mock<InstanceSettings>({ hostId });
 	const userRepository = mock<UserRepository>();
-	new LogStreamingEventRelay(eventService, eventBus, instanceSettings, userRepository).init();
+	const agentsConfig = mock<AgentsConfig>({ serviceAccountsEnabled: true });
+	new LogStreamingEventRelay(
+		eventService,
+		eventBus,
+		instanceSettings,
+		userRepository,
+		agentsConfig,
+	).init();
 
 	afterEach(() => {
 		vi.clearAllMocks();
@@ -1026,6 +1034,22 @@ describe('LogStreamingEventRelay', () => {
 					mode: 'manual',
 					parentAgentRun: markerWithoutAccount,
 				});
+
+				expect(sentPayload()).not.toHaveProperty('agentId');
+			});
+
+			it('adds no agent fields when agent service accounts are off, also for a stored marker', () => {
+				agentsConfig.serviceAccountsEnabled = false;
+				try {
+					eventService.emit('workflow-pre-execute', {
+						executionId: 'exec-1',
+						data: toolWorkflow,
+						mode: 'manual',
+						parentAgentRun,
+					});
+				} finally {
+					agentsConfig.serviceAccountsEnabled = true;
+				}
 
 				expect(sentPayload()).not.toHaveProperty('agentId');
 			});
