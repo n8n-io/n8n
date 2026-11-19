@@ -1,6 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import { UnexpectedError } from '@n8n/errors';
 import type { LeaseKind, LeaseProvider, LeaseStatus } from '@n8n/leases';
 import { mock } from 'vitest-mock-extended';
 
@@ -37,6 +38,10 @@ describe('DurableLeaseService', () => {
 		it('logs at debug and resolves when every kind is synced', async () => {
 			await expect(service.syncAll()).resolves.toBeUndefined();
 			expect(logger.debug).toHaveBeenCalled();
+		});
+
+		it('rejects a status request with an unexpected error', async () => {
+			await expect(service.status('test-kind', ['a'])).rejects.toThrow(UnexpectedError);
 		});
 	});
 
