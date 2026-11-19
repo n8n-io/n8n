@@ -703,10 +703,106 @@ const LOCATOR_TYPES = new Set([
 ]);
 
 /**
- * Library nodes whose v1 node pairs each output item, and the error item, with the input item
- * of its run (`constructExecutionMetaData` with `itemData: { item: i }`).
+ * The operations of a library node whose v1 node pairs each output item, and its error item,
+ * with the input item of its call (`constructExecutionMetaData` with `itemData: { item: i }`).
+ * `src/nodes/__tests__/paired-by-call.test.ts` records the pair of each output item of every
+ * library case on three input items. A row is here when v1 pairs by call on its cases and no
+ * case of the row pairs another way: `googleSheets sheet.clear` pairs nothing, `airtable
+ * record.search` and `googleSheets sheet.delete` pair a list of items, and `dataTable row.insert`
+ * pairs every item with the first one. A `*` is a node whose every operation pairs by call.
+ *
+ * An operation that v1 runs once for all items (`BATCH_OPERATIONS`) gives the pairs of each
+ * item to that one call, which the step cannot keep: its row here has no effect until the call
+ * runs for each item.
  */
-const PAIRS_BY_CALL = new Set(['n8n-nodes-base.microsoftTeams']);
+const PAIRS_BY_CALL_ROWS: Record<string, Set<string>> = {
+	'@n8n/n8n-nodes-langchain.anthropic': new Set(['text.message']),
+	'@n8n/n8n-nodes-langchain.googleGemini': new Set(['text.message']),
+	'@n8n/n8n-nodes-langchain.openAi': new Set(['text.message', 'text.response']),
+	'n8n-nodes-base.adalo': new Set(['collection.delete', 'collection.get', 'collection.getAll']),
+	'n8n-nodes-base.airtable': new Set(['record.create', 'record.update', 'record.upsert']),
+	'n8n-nodes-base.currents': new Set([
+		'action.create',
+		'action.update',
+		'project.getAll',
+		'run.get',
+		'run.getAll',
+		'run.reset',
+	]),
+	'n8n-nodes-base.dataTable': new Set(['row.get']),
+	'n8n-nodes-base.gmail': new Set([
+		'draft.create',
+		'message.addLabels',
+		'message.delete',
+		'message.get',
+		'message.getAll',
+		'message.markAsRead',
+		'message.markAsUnread',
+		'message.removeLabels',
+		'message.send',
+	]),
+	'n8n-nodes-base.googleBusinessProfile': new Set(['post.delete', 'post.get', 'review.reply']),
+	'n8n-nodes-base.googleCalendar': new Set(['event.delete', 'event.getAll']),
+	'n8n-nodes-base.googleDrive': new Set([
+		'file.copy',
+		'file.createFromText',
+		'file.deleteFile',
+		'file.move',
+		'fileFolder.search',
+		'folder.create',
+	]),
+	'n8n-nodes-base.googleSheets': new Set([
+		'sheet.append',
+		'sheet.appendOrUpdate',
+		'sheet.read',
+		'sheet.update',
+	]),
+	'n8n-nodes-base.highLevel': new Set([
+		'calendar.getFreeSlots',
+		'contact.get',
+		'opportunity.update',
+		'task.delete',
+	]),
+	'n8n-nodes-base.jinaAi': new Set(['reader.read', 'reader.search']),
+	'n8n-nodes-base.microsoftOutlook': new Set(['message.delete', 'message.move', 'message.send']),
+	'n8n-nodes-base.microsoftTeams': new Set(['*']),
+	'n8n-nodes-base.notion': new Set([
+		'databasePage.create',
+		'databasePage.getAll',
+		'databasePage.update',
+	]),
+	'n8n-nodes-base.npm': new Set(['distTag.getMany', 'package.getMetadata']),
+	'n8n-nodes-base.perplexity': new Set([
+		'agent.createResponse',
+		'embedding.createEmbedding',
+		'search.search',
+	]),
+	'n8n-nodes-base.sendInBlue': new Set([
+		'attribute.delete',
+		'contact.create',
+		'contact.get',
+		'contact.getAll',
+		'contact.update',
+		'sender.create',
+	]),
+	'n8n-nodes-base.slack': new Set(['channel.history', 'message.post', 'reaction.add']),
+	'n8n-nodes-base.supabase': new Set(['row.create', 'row.get', 'row.getAll', 'row.update']),
+	'n8n-nodes-base.telegram': new Set(['message.sendMessage']),
+	'n8n-nodes-base.whatsApp': new Set(['media.mediaDelete', 'media.mediaUrlGet']),
+};
+
+/**
+ * True when the v1 node of the call pairs each output item with the input item of its call, so
+ * the step can keep that index for each item that the call gives (`StepCall.pairsByCall`). False
+ * for an operation that `src/nodes/__tests__/paired-by-call.test.ts` does not class `by-call`.
+ */
+function pairsByCallOf(type: string, parameters: Record<string, unknown>): boolean {
+	const rows = PAIRS_BY_CALL_ROWS[type];
+	if (rows === undefined) return false;
+	if (rows.has('*')) return true;
+	const key = libraryCallKey(type, parameters);
+	return key !== null && rows.has(key);
+}
 
 /** The oldest version of a node type that its library node runs; older ones run in the host. */
 export const MIN_VERSIONS: Record<string, number> = {
@@ -755,6 +851,20 @@ const BATCH_OPERATIONS: Record<string, (key: string, p: Record<string, unknown>)
 };
 
 let supports: Map<string, Support> | undefined;
+
+/**
+ * The `resource` and `operation` of a library call as one key (`resource.operation`), with the
+ * default operation of the resource when the parameters name no operation. Null when the
+ * parameters name no resource that the library node knows.
+ */
+export function libraryCallKey(type: string, parameters: Record<string, unknown>): string | null {
+	const support = supportOf(type);
+	const resource = parameters.resource ?? support?.resource;
+	if (typeof resource !== 'string') return null;
+	const operation = parameters.operation ?? support?.operation[resource];
+	if (typeof operation !== 'string') return null;
+	return `${resource}.${operation}`;
+}
 
 /** The `supports` list of each library node type. */
 function supportOf(type: string): Support | undefined {
@@ -1526,7 +1636,7 @@ export function lowerLibrary(c: NodeContext): void {
 	// v1 runs the node once for each item, so the library node runs once for each item too.
 	emitStep(c, {
 		...nodeCall(c, type, parameters, c.credential(), true),
-		pairsByCall: PAIRS_BY_CALL.has(type),
+		pairsByCall: pairsByCallOf(type, adapted),
 	});
 }
 

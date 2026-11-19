@@ -1135,6 +1135,7 @@ async function recordNode(
 			wire: recorded.map((request) => request.wire ?? null),
 			...(testCase.serviceResults ? { services } : {}),
 			output: load().workflow.deepCopy(items.map(outputItem)),
+			pairs: load().workflow.deepCopy(items.map((item: AnyRecord) => item.pairedItem ?? null)),
 			...waited(),
 		};
 	} catch (error) {

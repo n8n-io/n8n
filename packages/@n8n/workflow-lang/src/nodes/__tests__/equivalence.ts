@@ -153,6 +153,11 @@ export interface Recording {
 	 */
 	paired?: unknown[][];
 	/**
+	 * For each item of output 0 of a case without settings: the `pairedItem` that the node
+	 * itself gave (`null` when it gave none), before the engine pairs anything.
+	 */
+	pairs?: unknown[];
+	/**
 	 * The message of the error of a node that threw under a "continue" setting (cases with
 	 * `settings`): the engine keeps it on the run data and passes the input items on.
 	 */
