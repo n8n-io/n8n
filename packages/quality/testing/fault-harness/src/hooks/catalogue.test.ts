@@ -1,4 +1,12 @@
-import { olderThan } from './catalogue';
+import { observeHookedMethods, olderThan } from './catalogue';
+
+describe('HOOKED_METHODS', () => {
+	it('leaves engine methods out of the install check, which runs without engine v2', () => {
+		expect(observeHookedMethods('latest').some((h) => h.file.startsWith('@n8n/engine/'))).toBe(
+			false,
+		);
+	});
+});
 
 describe('olderThan', () => {
 	it('compares release tags by number, not as text', () => {
