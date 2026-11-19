@@ -37,9 +37,10 @@ function verdictsReader({ withoutProjectPolicy, byProject }: AllProjectsEvaluati
 }
 
 /**
- * Judges the credentials of a list against the policy of each one's home project. Like the
- * restricted node filter of the workflow list, it evaluates every project in one pass, so a
- * list with many home projects costs no extra queries.
+ * Judges the credentials of a list against the policy of the project given for each one: the
+ * listed project, or else its home project. Like the restricted node filter of the workflow
+ * list, it evaluates every project in one pass, so a list with many projects costs no extra
+ * queries.
  */
 @Service()
 export class CredentialTypePolicyRestrictionsProvider implements CredentialRestrictionsProvider {
