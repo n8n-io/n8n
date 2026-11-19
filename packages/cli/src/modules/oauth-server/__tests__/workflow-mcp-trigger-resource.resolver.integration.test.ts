@@ -10,13 +10,15 @@ import { createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
+import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
 import { CacheService, UrlService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
+// The integration runner reuses a migrated SQLite template in CI.
 const testServer = setupTestServer({
-	modules: ['oauth-server', 'mcp', 'inbound-auth-core'],
-	endpointGroups: ['mcp'],
+	modules: ['inbound-auth-core', 'oauth-server'],
+	endpointGroups: ['oauth-server'],
 });
 
 let owner: User;
@@ -97,6 +99,8 @@ const decodeJwtPayload = (token: string): Record<string, unknown> =>
 	JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()) as Record<string, unknown>;
 
 beforeAll(async () => {
+	// The audience tests need the default MCP resource but do not use its controllers.
+	Container.get(ProtectedResourceRegistry).register(Container.get(McpProtectedResource));
 	owner = await createOwner();
 	mcpEndpoint = Container.get(GlobalConfig).endpoints.mcp;
 });
@@ -361,7 +365,9 @@ describe('token audience', () => {
 		);
 		await tokenService.saveTokenPair(accessToken, refreshToken, clientId, owner.id, [], audience);
 
-		expect(decodeJwtPayload(accessToken).aud).not.toBe(resourceUrlFor(webhookPath));
+		expect(decodeJwtPayload(accessToken).aud).toBe(
+			Container.get(McpProtectedResource).getResourceUrl(),
+		);
 		await expect(
 			tokenService.verifyAccessToken(accessToken, resourceUrlFor(webhookPath)),
 		).rejects.toThrow();

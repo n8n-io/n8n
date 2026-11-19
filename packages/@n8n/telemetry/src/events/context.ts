@@ -569,16 +569,20 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	SKILL_SOURCE_CHECK_FLAGGED_SKILL: {
 		name: 'Skill source check flagged skill',
 		description:
-			'The security check of Skill Sync gave a skill from a source a verdict other than pass. At import it fires when the picker reads the link, once for each flagged skill, so a second read of the same link fires again. Counts rule codes only, never names, files or content.',
+			'The security check of Skill Sync gave a skill from a source a verdict other than pass. At import it fires when the picker reads the link, once for each flagged skill, so a second read of the same link fires again. A check that finds a new skill in a connected source fires it once for each new content of that skill. Counts rule codes only, never names, files or content.',
 		properties: z.object({
 			user_id: z
 				.string()
 				.optional()
-				.describe('The user who read the link. Absent for a check that runs in the background'),
+				.describe(
+					'The user who read the link or clicked Check for updates. Absent for a check that runs in the background',
+				),
 			provider: skillSourceProvider,
 			stage: z
 				.enum(['import', 'update'])
-				.describe('`import` is the picker of a connect. `update` is a new version from the source'),
+				.describe(
+					'`import` is the picker of a connect, or a new skill that a check found in a connected source. `update` is a new version from the source',
+				),
 			verdict: z
 				.enum(['needs_review', 'blocked'])
 				.describe(
@@ -616,6 +620,10 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			updates_found: z
 				.number()
 				.describe('Skills of the source with an update that waits for review, after the check'),
+			new_skills_found: z
+				.number()
+				.optional()
+				.describe('New skills that are not hidden from the count, after the check'),
 			throttled: z
 				.boolean()
 				.describe(
@@ -632,7 +640,9 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			user_id: userId,
 			provider: skillSourceProvider,
-			kind: z.literal('update').describe('An update to an existing synced skill'),
+			kind: z
+				.enum(['update', 'new'])
+				.describe('An update to a synced skill, or a new skill hidden from the count'),
 			action: z.enum(['accept', 'skip']),
 			verdict: z.enum(['pass', 'needs_review', 'blocked']),
 			bulk: z.boolean().describe('Whether the request selected more than one skill'),

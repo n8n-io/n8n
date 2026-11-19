@@ -81,4 +81,30 @@ describe('AcceptSkillSourceUpdatesDto', () => {
 			}).success,
 		).toBe(false);
 	});
+	it('allows new-only imports and skips, but refuses duplicate or oversized mixed selections', () => {
+		const newSkill = { key: 'new-skill', contentHash: 'b'.repeat(64) };
+		expect(
+			AcceptSkillSourceUpdatesDto.safeParse({ updates: [], newSkills: [newSkill] }).success,
+		).toBe(true);
+		expect(
+			AcceptSkillSourceUpdatesDto.safeParse({ updates: [], skippedNewSkills: [newSkill] }).success,
+		).toBe(true);
+		expect(
+			AcceptSkillSourceUpdatesDto.safeParse({ updates: [], newSkills: [newSkill, newSkill] })
+				.success,
+		).toBe(false);
+		expect(
+			AcceptSkillSourceUpdatesDto.safeParse({
+				updates: [],
+				newSkills: [newSkill],
+				skippedNewSkills: [newSkill],
+			}).success,
+		).toBe(false);
+		expect(
+			AcceptSkillSourceUpdatesDto.safeParse({
+				updates: [update],
+				newSkills: keys(SKILL_SOURCE_MAX_SKILLS).map((key) => ({ ...newSkill, key })),
+			}).success,
+		).toBe(false);
+	});
 });

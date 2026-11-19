@@ -38,6 +38,14 @@ variable "DEBIAN_RUNTIME_IMAGE" {
 }
 
 # Published by build-node-pc-image.yml on master.
+variable "N8N_BUILDER_IMAGE" {
+  default = "n8nio/node-patched:26.13.0-6484e2d8092f46c7ce7a4fbd97847ba3cb539e72-dev@sha256:2bb25015cc92814809410aaab21ad5696a901a2f58c9bce6ed5faeafe4fd5f15"
+}
+variable "N8N_RUNTIME_IMAGE" {
+  default = "n8nio/node-patched:26.13.0-6484e2d8092f46c7ce7a4fbd97847ba3cb539e72@sha256:c1ae64f56f1e54ef84bcd9e6205a8d167a929ae1e0f057bc6b8949ccdaa2212c"
+}
+
+# Published by build-node-pc-image.yml on master.
 variable "PC_BUILDER_IMAGE" {
   default = "n8nio/node-pc:26.13.0-c191db3de7f8187af3f35a59c2a1ca6833c66afc-dev@sha256:c1ff9dd826920453d5ab67cb3daaa4b3efb5270cf45d65b7f393bee7c4ff1857"
 }
@@ -126,8 +134,8 @@ target "n8n" {
   dockerfile = "docker/images/n8n/Dockerfile"
   tags       = tags(N8N_TAGS, "${IMAGE_BASE_NAME}:${IMAGE_TAG}")
   args = {
-    BUILDER_IMAGE = BUILDER_IMAGE
-    RUNTIME_IMAGE = RUNTIME_IMAGE
+    BUILDER_IMAGE = N8N_BUILDER_IMAGE
+    RUNTIME_IMAGE = N8N_RUNTIME_IMAGE
   }
 }
 

@@ -960,7 +960,7 @@ async function onCheckSource(source: SkillSourceListItem) {
 		checkingSourceIds.value = checkingSourceIds.value.filter((id) => id !== source.id);
 		await loadSources();
 	}
-	const { label, updatesFound, throttled } = result;
+	const { label, updatesFound, newSkillsFound = 0, throttled } = result;
 	showMessage({
 		title: throttled
 			? i18n.baseText('settings.context.skills.checkForUpdates.throttled', {
@@ -969,13 +969,24 @@ async function onCheckSource(source: SkillSourceListItem) {
 			: i18n.baseText('settings.context.skills.checkForUpdates.checked', {
 					interpolate: { label },
 				}),
-		message:
-			updatesFound === 0
+		message: [
+			updatesFound === 0 && newSkillsFound === 0
 				? i18n.baseText('settings.context.skills.checkForUpdates.none')
-				: i18n.baseText('settings.context.skills.checkForUpdates.found', {
-						interpolate: { count: updatesFound },
-						adjustToNumber: updatesFound,
-					}),
+				: updatesFound > 0
+					? i18n.baseText('settings.context.skills.checkForUpdates.found', {
+							interpolate: { count: updatesFound },
+							adjustToNumber: updatesFound,
+						})
+					: '',
+			newSkillsFound > 0
+				? i18n.baseText('settings.context.skills.checkForUpdates.new', {
+						interpolate: { count: newSkillsFound },
+						adjustToNumber: newSkillsFound,
+					})
+				: '',
+		]
+			.filter(Boolean)
+			.join(' '),
 		type: 'success',
 	});
 }
@@ -1393,8 +1404,9 @@ onMounted(async () => {
 	text-align: center;
 }
 
+// Wide enough to keep the "Based on" source of each card on one line.
 .recommended {
-	max-width: 48rem;
+	max-width: 58rem;
 	margin: var(--spacing--xs) 0;
 }
 </style>

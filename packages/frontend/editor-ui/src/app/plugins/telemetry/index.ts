@@ -84,13 +84,16 @@ export class TelemetryService implements Telemetry {
 
 	identify({ instanceId, userId, versionCli, projectId, userRole }: TelemetryIdentifyOptions) {
 		const settingsStore = useSettingsStore();
+		const installId = settingsStore.settings?.installId;
 		const traits: {
 			instance_id: string;
+			install_id?: string;
 			version_cli?: string;
 			user_cloud_id?: string;
 			user_role?: string;
 		} = {
 			instance_id: instanceId,
+			...(installId && { install_id: installId }),
 			version_cli: versionCli,
 			user_role: userRole,
 		};
@@ -127,9 +130,11 @@ export class TelemetryService implements Telemetry {
 		if (!this.rudderStack) return;
 
 		const posthogSessionId = window.posthog?.get_session_id?.();
+		const installId = useSettingsStore().settings?.installId;
 
 		const updatedProperties = {
 			...properties,
+			...(installId && { install_id: installId }),
 			version_cli: useRootStore().versionCli,
 			posthog_session_id: posthogSessionId,
 		};

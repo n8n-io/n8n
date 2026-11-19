@@ -243,6 +243,7 @@ export class WorkflowRunner {
 						status === 'waiting'
 							? {
 									data: createRunExecutionData({ resultData: { runData: {} } }),
+									// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 									finished: false,
 									mode: executionMode,
 									startedAt,
@@ -260,6 +261,7 @@ export class WorkflowRunner {
 											runData: {},
 										},
 									}),
+									// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 									finished: false,
 									mode: executionMode,
 									startedAt,
@@ -321,6 +323,7 @@ export class WorkflowRunner {
 					...(failedBeforeStart && { failedBeforeStart: true }),
 				},
 			}),
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 			finished: false,
 			mode: executionMode,
 			startedAt,
@@ -1003,6 +1006,7 @@ export class WorkflowRunner {
 					};
 				} else {
 					runData = {
+						// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 						finished: jobResult.success,
 						mode: data.executionMode,
 						startedAt: jobResult.startedAt,

@@ -151,7 +151,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [shared_workflow](shared_workflow.md) | 5 |  | table |
 | [skill](skill.md) | 8 |  | table |
 | [skill_file](skill_file.md) | 5 |  | table |
-| [skill_source](skill_source.md) | 14 |  | table |
+| [skill_source](skill_source.md) | 15 |  | table |
 | [skill_source_link](skill_source_link.md) | 14 |  | table |
 | [skill_version](skill_version.md) | 12 |  | table |
 | [tag_entity](tag_entity.md) | 4 |  | table |
@@ -1948,6 +1948,7 @@ erDiagram
   varchar_36_ projectId FK
   varchar_32_ status
   varchar_16_ type
+  TEXT unlinkedSkills
   datetime_3_ updatedAt
 }
 "skill_source_link" {

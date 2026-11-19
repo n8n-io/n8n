@@ -1,4 +1,5 @@
 import type { PromotionRepository, PromotionRepositoryListPublicDto } from '@n8n/api-types';
+import { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
@@ -33,6 +34,12 @@ const renderSelect = createComponentRenderer(PromotionGitHostSelect, {
 	props: { modelValue: '', providerId: 'gitlab-1', kind: 'repository', inputId: 'repository' },
 });
 
+function setupSearchUser() {
+	// Keep the search debounce from firing between simulated keystrokes.
+	vi.useFakeTimers();
+	return userEvent.setup({ advanceTimers: vi.advanceTimersByTime, delay: 1 });
+}
+
 beforeEach(() => {
 	vi.resetAllMocks();
 	createTestingPinia();
@@ -41,6 +48,10 @@ beforeEach(() => {
 		data: [{ name: 'main', isDefault: true }],
 		nextCursor: null,
 	});
+});
+
+afterEach(() => {
+	vi.useRealTimers();
 });
 
 it('ignores an old provider response while the current provider is still loading', async () => {
@@ -72,6 +83,7 @@ it('ignores an old provider response while the current provider is still loading
 });
 
 it('shows a saved selection outside discovery results by its label and clears empty-search feedback on reselection', async () => {
+	const user = setupSearchUser();
 	api.fetchPromotionRepositories.mockResolvedValue({ data: [otherRepository], nextCursor: 'next' });
 	const { emitted } = renderSelect({
 		props: { modelValue: repository.remoteUrl, selectedLabel: repository.fullPath },
@@ -87,12 +99,12 @@ it('shows a saved selection outside discovery results by its label and clears em
 	expect(emitted('update:modelValue')).toBeUndefined();
 	expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 	api.fetchPromotionRepositories.mockResolvedValue({ data: [], nextCursor: null });
-	await userEvent.type(screen.getByRole('combobox'), 'team');
-	await waitFor(() =>
-		expect(screen.getByRole('status')).toHaveTextContent('No repositories found'),
-	);
-	await userEvent.click(screen.getByRole('option', { name: repository.fullPath }));
-	await waitFor(() => expect(api.fetchPromotionRepositories).toHaveBeenCalledTimes(3));
+	await user.type(screen.getByRole('combobox'), 'team');
+	await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.INPUT.SEARCH);
+	expect(screen.getByRole('status')).toHaveTextContent('No repositories found');
+	await user.click(screen.getByRole('option', { name: repository.fullPath }));
+	await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.INPUT.SEARCH);
+	expect(api.fetchPromotionRepositories).toHaveBeenCalledTimes(3);
 	expect(screen.getByRole('combobox')).toHaveValue(repository.fullPath);
 	expect(screen.queryByText('Results for “team”')).not.toBeInTheDocument();
 	expect(screen.queryByText(/No repositories found/)).not.toBeInTheDocument();
@@ -112,6 +124,7 @@ describe.each(['repository', 'branch'] as const)('filtered %s discovery', (kind)
 		});
 
 	it('loads up to 25 matches and keeps search and selection through a retry', async () => {
+		const user = setupSearchUser();
 		api.fetchPromotionRepositories
 			.mockResolvedValueOnce({ data: [repository], nextCursor: 'unfiltered-next' })
 			.mockRejectedValueOnce(new Error('GitLab is unavailable.'))
@@ -134,32 +147,34 @@ describe.each(['repository', 'branch'] as const)('filtered %s discovery', (kind)
 			});
 		const onClick = vi.fn();
 		const { emitted } = renderPicker(onClick);
-		await waitFor(() => expect(requests()).toHaveLength(1));
+		await flushPromises();
+		expect(requests()).toHaveLength(1);
 		const input = screen.getByRole('combobox');
 		expect(input).toHaveAttribute(
 			'placeholder',
 			kind === 'repository' ? 'Search or select a repository' : 'Search or select a branch',
 		);
 		expect(requests()[0]).toEqual({ search: undefined, limit: 25 });
-		await userEvent.type(input, 'team');
-		await waitFor(() => expect(requests()).toHaveLength(2));
+		await user.type(input, 'team');
+		await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.INPUT.SEARCH);
+		expect(requests()).toHaveLength(2);
 		onClick.mockClear();
-		await userEvent.click(await screen.findByRole('button', { name: 'Retry' }));
-		await waitFor(() => expect(requests()).toHaveLength(3));
+		await user.click(screen.getByRole('button', { name: 'Retry' }));
+		expect(requests()).toHaveLength(3);
 		expect(requests()[1]).toEqual({ search: 'team', limit: 25 });
 		expect(requests()[2]).toEqual(requests()[1]);
 		expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
 		expect(onClick).not.toHaveBeenCalled();
 		expect(screen.getByRole('combobox')).toHaveValue('');
 		expect(screen.getByRole('status')).toHaveTextContent('Results for “team”');
-		await userEvent.click(screen.getByRole('combobox'));
+		await user.click(screen.getByRole('combobox'));
 		expect(requests()).toHaveLength(3);
 		expect(
 			screen.getAllByRole('option', {
 				name: kind === 'repository' ? 'team/workflows' : 'team/main',
 			}),
 		).toHaveLength(1);
-		await userEvent.click(await screen.findByRole('option', { name: 'team/other' }));
+		await user.click(screen.getByRole('option', { name: 'team/other' }));
 		expect(emitted('update:modelValue')).toEqual([
 			[kind === 'repository' ? otherRepository.remoteUrl : 'team/other'],
 		]);

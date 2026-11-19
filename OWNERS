@@ -28,7 +28,8 @@ packages/workflow/stryker.config.mjs                    @n8n-io/qa-dx
 packages/@n8n/db/                                       @n8n-io/core-execution
 packages/@n8n/typeorm/                                  @n8n-io/core-execution
 packages/@n8n/blob-storage/                             @n8n-io/core-execution
-packages/@n8n/engine/                                   @n8n-io/core-execution
+packages/@n8n/engine/                                   @n8n-io/core-execution required
+packages/@n8n/node-engine-compatibility/                @n8n-io/core-execution required
 packages/@n8n/code-runtime-js/                          @n8n-io/core-execution required
 packages/@n8n/code-task-contract/                       @n8n-io/core-execution required
 packages/@n8n/task-runner/                              @n8n-io/core-execution
@@ -63,6 +64,7 @@ packages/@n8n/extension-sdk/                            @n8n-io/core-application
 # Other @n8n packages
 packages/@n8n/workflow-sdk/                             @n8n-io/ai-assistant
 packages/@n8n/eslint-config/                            @n8n-io/qa-dx required
+packages/@n8n/oxlint-config/                            @n8n-io/qa-dx required
 packages/@n8n/typescript-config/                        @n8n-io/qa-dx
 
 packages/@n8n/db/src/migrations/                        @n8n-io/migrations-review required
@@ -118,7 +120,7 @@ packages/cli/src/task-runners/                          @n8n-io/core-execution
 packages/cli/src/binary-data/                           @n8n-io/core-execution
 packages/cli/src/eventbus/                              @n8n-io/core-execution
 packages/cli/src/events/                                @n8n-io/core-execution
-packages/cli/src/modules/engine-v2/                     @n8n-io/core-execution
+packages/cli/src/modules/engine-v2/                     @n8n-io/core-execution required
 packages/cli/src/workflow-runner.ts                     @n8n-io/core-execution
 packages/cli/src/wait-tracker.ts                        @n8n-io/core-execution
 packages/cli/src/active-executions.ts                   @n8n-io/core-execution

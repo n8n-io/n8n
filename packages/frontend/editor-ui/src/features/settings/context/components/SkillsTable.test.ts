@@ -387,11 +387,13 @@ describe('SkillsTable', () => {
 			skillCount: 2,
 			updatesAvailable: 0,
 			updatesBlocked: 0,
+			newSkillsAvailable: 0,
 			health: 'connected',
 			lastCheckedAt: null,
 			missingSkills: [],
 			canReplaceCredential: false,
 			canReview: true,
+			canImport: true,
 			canMove: true,
 			canDelete: true,
 			...overrides,
@@ -431,6 +433,27 @@ describe('SkillsTable', () => {
 			expect(getAllByTestId('data-table-group-row')).toHaveLength(1);
 			expect(getByTestId('skill-group-title')).toHaveTextContent('acme/skills · main');
 			expect(getAllByTestId('skill-scope-badge')[0]).toHaveTextContent('Marketing');
+		});
+
+		it('opens the shared review from the new count', async () => {
+			const current = source({ newSkillsAvailable: 2 });
+			const view = renderGrouped({ sources: [current] });
+			const badge = view.getByTestId('skill-group-review-new');
+			expect(badge).toHaveTextContent('2 new');
+			expect(view.getByTestId('skill-group-new-dot').className).toMatch(/success/);
+			await userEvent.click(badge);
+			expect(view.emitted().reviewSource).toEqual([[current]]);
+		});
+
+		it('offers explicit review without a new count so initial omissions remain reachable', async () => {
+			const current = source();
+			const view = renderGrouped({ sources: [current] });
+			await userEvent.click(within(view.getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-reviewSkills"]')).toBeInTheDocument(),
+			);
+			await userEvent.click(document.querySelector('[data-test-id="action-reviewSkills"]')!);
+			expect(view.emitted().reviewSource).toEqual([[current]]);
 		});
 
 		it('names a source that has not loaded as unknown', () => {
@@ -514,9 +537,10 @@ describe('SkillsTable', () => {
 					sources: [source({ updatesAvailable: available, updatesBlocked: blocked })],
 				});
 
-				const badge = getByTestId('skill-group-updates');
-				expect(badge).toHaveTextContent(text);
-				expect(badge.className).toMatch(red ? /danger/ : /warning/);
+				expect(getByTestId('skill-group-updates')).toHaveTextContent(text);
+				expect(getByTestId('skill-group-updates-dot').className).toMatch(
+					red ? /danger/ : /warning/,
+				);
 			},
 		);
 

@@ -74,6 +74,7 @@ export function useAgentChannelRemoval(options: {
 					pending.channelType,
 				).presentDisconnectWarning?.(result.warning, {
 					text: (key, interpolate) => i18n.baseText(key, interpolate ? { interpolate } : undefined),
+					restart: pending.restartWith !== undefined,
 				});
 				if (presentation) {
 					toast.showMessage({ type: 'warning', ...presentation, duration: 0 });

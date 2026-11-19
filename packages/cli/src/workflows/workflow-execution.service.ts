@@ -213,6 +213,7 @@ export class WorkflowExecutionService {
 		const payload: CreateExecutionPayload = {
 			data: executionData,
 			mode,
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 			finished: false,
 			workflowData,
 			status: 'new',
@@ -677,6 +678,7 @@ export class WorkflowExecutionService {
 					const fullExecutionData: CreateExecutionPayload = {
 						data: fakeExecution.data,
 						mode: fakeExecution.mode,
+						// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 						finished: false,
 						stoppedAt: new Date(),
 						workflowData,

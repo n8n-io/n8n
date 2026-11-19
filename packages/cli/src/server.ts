@@ -42,6 +42,7 @@ import '@/controllers/binary-data.controller';
 import '@/controllers/change-email.controller';
 import '@/controllers/ai.controller';
 import '@/controllers/ai-preference.controller';
+import '@/controllers/ai-preference-settings.controller';
 import '@/controllers/dynamic-node-parameters.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';

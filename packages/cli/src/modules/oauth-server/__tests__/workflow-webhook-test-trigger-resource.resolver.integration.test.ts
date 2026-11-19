@@ -20,9 +20,10 @@ import { CacheService, UrlService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 
+// The integration runner reuses a migrated SQLite template in CI.
 const testServer = setupTestServer({
-	modules: ['oauth-server', 'mcp', 'inbound-auth-core'],
-	endpointGroups: ['mcp'],
+	modules: ['inbound-auth-core', 'oauth-server'],
+	endpointGroups: ['oauth-server'],
 });
 
 let owner: User;
