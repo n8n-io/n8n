@@ -57,6 +57,7 @@ describe('getAssistantToolCallCode', () => {
 
 	it.each([
 		['get_node_types', {}],
+		['agent_builder_get_node_types', {}],
 		['workflow_builder_nodes', { action: 'type-definition' }],
 	])('joins the node type definitions of %s', (tool, input) => {
 		expect(getAssistantToolCallCode(call({ tool, input, output: definitions }))).toBe(
