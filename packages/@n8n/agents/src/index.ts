@@ -464,7 +464,10 @@ export type {
 } from './runtime/memory/memory-lifecycle';
 export { loadReplayedMessages } from './runtime/memory/memory-orchestrator';
 export { settleAbandonedToolCallsInMemory } from './runtime/memory/strip-orphaned-tool-messages';
-export { prepareObservationLogBatchCursor } from './runtime/memory/observation-log-batch';
+export {
+	observationCursorPosition,
+	prepareObservationLogBatchCursor,
+} from './runtime/memory/observation-log-batch';
 export {
 	fromObservationResumeColumns,
 	toObservationResumeColumns,
