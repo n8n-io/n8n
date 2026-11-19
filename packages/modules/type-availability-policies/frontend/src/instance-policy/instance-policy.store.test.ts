@@ -177,7 +177,7 @@ describe('useInstancePolicyStore', () => {
 			expect(store.typeAccess.node?.version).toBe(4);
 		});
 
-		it('shows no access, not the access before the save, when the read after a save fails', async () => {
+		it('keeps the older access, and its older version, when the read after a save fails', async () => {
 			mocks.saveInstancePolicy.mockResolvedValue({ ...nodePolicy(4, [DENY_SLACK]), warnings: [] });
 			const store = useInstancePolicyStore();
 			await store.load(['node']);
@@ -186,7 +186,8 @@ describe('useInstancePolicyStore', () => {
 			const result = await store.save('node', addDenySlack);
 
 			expect(result).toEqual({ status: 'saved', warnings: [], accessError: new Error('offline') });
-			expect(store.typeAccess.node).toBeNull();
+			expect(store.typeAccess.node?.version).toBe(3);
+			expect(store.policies.node?.version).toBe(4);
 		});
 
 		it('reads the access of the new policy when a save finds that the policy changed', async () => {
@@ -202,7 +203,7 @@ describe('useInstancePolicyStore', () => {
 			expect(store.typeAccess.node?.types.get('n8n-nodes-base.slack')?.access).toBe('deny');
 		});
 
-		it('reports the read error, and shows no access, when the policy changed and its access cannot be read', async () => {
+		it('reports the read error, and keeps the older access, when the policy changed and its access cannot be read', async () => {
 			mocks.saveInstancePolicy.mockRejectedValue(conflict());
 			const store = useInstancePolicyStore();
 			await store.load(['node']);
@@ -212,7 +213,8 @@ describe('useInstancePolicyStore', () => {
 			const result = await store.save('node', addDenySlack);
 
 			expect(result).toEqual({ status: 'changed', accessError: new Error('offline') });
-			expect(store.typeAccess.node).toBeNull();
+			expect(store.typeAccess.node?.version).toBe(3);
+			expect(store.policies.node?.version).toBe(4);
 		});
 
 		it('sends the next save of a kind before the access read of the previous save ends', async () => {

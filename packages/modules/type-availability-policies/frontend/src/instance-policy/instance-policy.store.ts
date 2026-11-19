@@ -87,9 +87,15 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 	// tells which answer is current.
 	const accessReads = { node: useLatestFetch(), credential: useLatestFetch() };
 
+	// After a failed read the snapshot can be older than the policy. A reader that must not show a
+	// saved change as lost compares the two versions.
 	const typeAccess = shallowReactive<Record<RestrictedTypeKind, TypeAccessSnapshot | null>>({
 		node: null,
 		credential: null,
+	});
+	const accessLoading = shallowReactive<Record<RestrictedTypeKind, boolean>>({
+		node: false,
+		credential: false,
 	});
 
 	/**
@@ -98,19 +104,15 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 	 */
 	async function loadTypeAccess(kind: RestrictedTypeKind): Promise<unknown> {
 		const isLatest = accessReads[kind].next();
+		accessLoading[kind] = true;
 		try {
 			const access = toTypeAccess(await fetchInstanceAccess(rootStore.restApiContext, kind));
 			if (isLatest()) typeAccess[kind] = access;
 			return null;
 		} catch (error) {
-			if (!isLatest()) return null;
-			// Access of an older version would show a saved change as lost, so rows show none until
-			// a later policy version loads it again.
-			const policyVersion = policies[kind]?.version;
-			if (policyVersion !== undefined && (typeAccess[kind]?.version ?? -1) < policyVersion) {
-				typeAccess[kind] = null;
-			}
-			return error;
+			return isLatest() ? error : null;
+		} finally {
+			if (isLatest()) accessLoading[kind] = false;
 		}
 	}
 
@@ -249,5 +251,14 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 		return { status: 'changed' };
 	}
 
-	return { policies, loadStates, notEditable, typeAccess, load, loadAccess, save };
+	return {
+		policies,
+		loadStates,
+		notEditable,
+		typeAccess,
+		accessLoading,
+		load,
+		loadAccess,
+		save,
+	};
 });

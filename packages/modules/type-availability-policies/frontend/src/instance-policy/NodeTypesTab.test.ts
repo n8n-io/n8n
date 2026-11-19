@@ -64,15 +64,13 @@ const access = (
 
 const renderTab = createComponentRenderer(NodeTypesTab);
 
-const setup = async (arrangeTabReads?: () => void) => {
+const setup = async (arrangeAccessReads?: () => void) => {
 	const pinia = createTestingPinia({ stubActions: false });
 	useSettingsStore().isModuleActive = vi.fn(() => true);
 	useRBACStore().setGlobalScopes(['nodeTypePolicy:manage']);
 	vi.spyOn(useTypeAvailabilityPoliciesStore(), 'reload').mockResolvedValue();
+	arrangeAccessReads?.();
 	await useInstancePolicyStore().load(['node']);
-	// The store reads the access list on load too. The tests arrange and count only the reads of the tab.
-	mocks.fetchInstanceAccess.mockClear();
-	arrangeTabReads?.();
 	return renderTab({ pinia });
 };
 
@@ -149,8 +147,8 @@ describe('NodeTypesTab', () => {
 		await userEvent.click(accessCell(getByTestId, HIDDEN));
 		await userEvent.click(await findPopupItem(MENU_ITEM, 'Allowed'));
 
-		// After the save, the store and the tab each read the access list again.
-		await waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(3));
+		// After the save, the store reads the access list again.
+		await waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(2));
 		expect(queryByText('Internal thing')).toBeInTheDocument();
 	});
 
@@ -226,9 +224,8 @@ describe('NodeTypesTab', () => {
 		);
 		// The change applies at once: no dialog asks the admin to confirm it.
 		expect(document.querySelector('[role="dialog"],[role="alertdialog"]')).toBeNull();
-		// The row shows the access that the server reports after the save. The store and the tab each
-		// read it again.
-		await waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(3));
+		// The row shows the access that the server reports after the save.
+		await waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(2));
 		expect(accessCell(getByTestId)).toHaveTextContent('Restricted');
 		// The trigger has a name of its own, so the rule on Slack does not change it.
 		expect(accessCell(getByTestId, SLACK_TRIGGER)).toHaveTextContent('Allowed');

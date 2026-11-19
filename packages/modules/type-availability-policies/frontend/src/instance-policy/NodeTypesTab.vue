@@ -5,7 +5,6 @@ import { computed, onMounted, shallowRef } from 'vue';
 
 import InstancePolicyTable, { type InstancePolicyTableRow } from './InstancePolicyTable.vue';
 import { FALLBACK_NODE_TYPE_ICON, nodeTypeIcon } from './nodeTypeIcon';
-import { setTypeAccess } from './setTypeAccess';
 import { useInstancePolicy } from './useInstancePolicy';
 import { useInstanceTypeAccess } from './useInstanceTypeAccess';
 import { useAppliedTheme } from '../composables/useAppliedTheme';
@@ -15,7 +14,7 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const theme = useAppliedTheme();
 const instancePolicy = useInstancePolicy();
-const { types, loading, changeAccess } = useInstanceTypeAccess('node', setTypeAccess);
+const { types, loading, changeAccess } = useInstanceTypeAccess('node');
 
 // `null` until the summaries load. Until then the tab cannot tell hidden node types from rows.
 const typeSummaries = shallowRef<ReadonlyMap<string, NodeTypeSummary> | null>(null);

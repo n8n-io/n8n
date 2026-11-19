@@ -95,6 +95,7 @@ export function useInstancePolicy() {
 		loadStates: store.loadStates,
 		notEditable: store.notEditable,
 		typeAccess: store.typeAccess,
+		accessLoading: store.accessLoading,
 		load,
 		loadAccess,
 		save,
