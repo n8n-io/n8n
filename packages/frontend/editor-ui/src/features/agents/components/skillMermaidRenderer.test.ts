@@ -12,7 +12,7 @@ describe('renderSkillMermaid', () => {
 		try {
 			const frame = document.body.querySelector('iframe');
 			const sandbox = new DOMParser().parseFromString(frame?.srcdoc ?? '', 'text/html');
-			const scripts = [...sandbox.querySelectorAll('script[src]')];
+			const scripts = [...sandbox.querySelectorAll<HTMLScriptElement>('script[src]')];
 			expect(scripts).toHaveLength(2);
 			expect(scripts.map((script) => script.nonce)).toEqual([nonce.nonce, nonce.nonce]);
 			expect(sandbox.querySelector('script:not([src])')).toBeNull();
