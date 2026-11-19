@@ -338,7 +338,9 @@ export class DataTableDetails extends BasePage {
 			await input.fill(value);
 			await input.press('Enter');
 		} else if (type === 'date') {
-			const input = this.page.locator('[data-test-id="data-grid-date-editor"] input');
+			const input = this.page.locator(
+				'[data-test-id="data-grid-date-editor"] .el-date-editor input',
+			);
 			await input.fill(value);
 			await input.press('Enter');
 		} else if (type === 'boolean') {

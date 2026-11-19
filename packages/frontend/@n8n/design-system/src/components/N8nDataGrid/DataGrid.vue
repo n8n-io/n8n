@@ -945,6 +945,7 @@ defineExpose({ focusCell });
 }
 
 .data-grid-container--has-rows :deep(.ag-floating-bottom) {
+	box-sizing: content-box;
 	border-top: var(--border-width) var(--border-style) var(--ag-border-color);
 }
 
