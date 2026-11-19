@@ -264,6 +264,127 @@ describe('reconstructSeedFromThread', () => {
 		expect((insertBlock.input as Record<string, unknown>).rows).toBe('<1 row(s) omitted>');
 	});
 
+	it('omits row values nested in change_data_tables changes in seeded messages', async () => {
+		const batch: FakeRun = {
+			id: 'dt-batch',
+			run_type: 'tool',
+			name: 'change_data_tables',
+			start_time: t(5),
+			inputs: {
+				projectId: 'project-1',
+				changes: [
+					{ action: 'insert-rows', table: 'leads', rows: [{ email: 'a' }, { email: 'b' }] },
+					{ action: 'add-column', table: 'leads', column: { name: 'score', type: 'number' } },
+				],
+			},
+			outputs: { success: true, applied: [], skipped: [] },
+			extra: { metadata: { langsmith_root_run_id: 'r1' } },
+		};
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Add leads'), outputs: { response: 'Done.' } },
+			batch,
+			turn('r2', 30, 'Now change something'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+
+		const assistant = result.seed.messages.find((m) => m.role === 'assistant')!;
+		const batchBlock = (assistant.content as Array<Record<string, unknown>>).find(
+			(b) => b.toolName === 'change_data_tables',
+		)!;
+		const input = batchBlock.input as {
+			projectId: string;
+			changes: Array<Record<string, unknown>>;
+		};
+		expect(input.changes[0].rows).toBe('<2 row(s) omitted>');
+		expect(input.changes[0].table).toBe('leads');
+		expect(input.changes[1]).toEqual({
+			action: 'add-column',
+			table: 'leads',
+			column: { name: 'score', type: 'number' },
+		});
+		expect(input.projectId).toBe('project-1');
+	});
+
+	it('reconstructs data tables that a change_data_tables batch created', async () => {
+		const batch: FakeRun = {
+			id: 'dt-batch-create',
+			run_type: 'tool',
+			name: 'change_data_tables',
+			start_time: t(5),
+			inputs: { changes: [] },
+			outputs: {
+				success: false,
+				applied: [
+					{
+						index: 0,
+						action: 'create',
+						table: { id: 'dt-new', name: 'Leads' },
+						result: { columns: [{ name: 'email', type: 'string' }] },
+					},
+					{
+						index: 1,
+						action: 'add-column',
+						table: { id: 'dt-existing', name: 'Orders' },
+						result: { column: 'total' },
+					},
+				],
+				failed: { index: 2, action: 'insert-rows', error: 'Column not found' },
+				skipped: [],
+			},
+			extra: { metadata: { langsmith_root_run_id: 'r1' } },
+		};
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Make a leads table'), outputs: { response: 'Done.' } },
+			batch,
+			turn('r2', 30, 'Now change something'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+
+		expect(result.seed.dataTables).toEqual([
+			{ id: 'dt-new', name: 'Leads', columns: [{ name: 'email', type: 'string' }] },
+		]);
+	});
+
+	it('does not rebuild a table that the same change_data_tables batch created and deleted', async () => {
+		const batch: FakeRun = {
+			id: 'dt-batch-create-delete',
+			run_type: 'tool',
+			name: 'change_data_tables',
+			start_time: t(5),
+			inputs: { changes: [] },
+			outputs: {
+				success: true,
+				applied: [
+					{
+						index: 0,
+						action: 'create',
+						table: { id: 'dt-temp', name: 'Scratch' },
+						result: { columns: [{ name: 'note', type: 'string' }] },
+					},
+					{
+						index: 1,
+						action: 'create',
+						table: { id: 'dt-kept', name: 'Leads' },
+						result: { columns: [{ name: 'email', type: 'string' }] },
+					},
+					{ index: 2, action: 'delete', table: { id: 'dt-temp', name: 'Scratch' }, result: {} },
+				],
+				skipped: [],
+			},
+			extra: { metadata: { langsmith_root_run_id: 'r1' } },
+		};
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Make a leads table'), outputs: { response: 'Done.' } },
+			batch,
+			turn('r2', 30, 'Now change something'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+
+		expect(result.seed.dataTables).toEqual([
+			{ id: 'dt-kept', name: 'Leads', columns: [{ name: 'email', type: 'string' }] },
+		]);
+	});
+
 	it('takes the latest successful build per workflow id before the boundary', async () => {
 		const earlyBuild: FakeRun = {
 			id: 'tool1',

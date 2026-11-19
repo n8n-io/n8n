@@ -1,6 +1,7 @@
 import type {
 	StepExecutionContext,
 	StepSlots,
+	StepOutputSources,
 	SubExecutionResumeCause,
 	TriggerOutputs,
 	WorkflowDocument,
@@ -48,6 +49,8 @@ export interface StepData {
 	graph: WorkflowGraph;
 	/** Completed step outputs, by node id then by iteration. */
 	outputsByNode: Record<string, Record<number, StepSlots>>;
+	/** Where a loop node's outputs came from, by node id then by iteration; absent for every other step. */
+	outputSourcesByNode?: Record<string, Record<number, StepOutputSources>>;
 }
 
 export type StepDataLoader = (context: StepExecutionContext) => Promise<StepData>;

@@ -17,6 +17,7 @@ import type {
 	IBinaryKeyData,
 	IPairedItemData,
 	ExecutionTracingContext,
+	WorkflowEngineType,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -28,7 +29,7 @@ import type { Project } from './project';
 import type { SharedCredentials } from './shared-credentials';
 import type { SharedWorkflow } from './shared-workflow';
 import type { TagEntity } from './tag-entity';
-import type { User } from './user';
+import type { User, UserKind } from './user';
 import type { WorkflowEntity } from './workflow-entity';
 import type { WorkflowHistory } from './workflow-history';
 
@@ -156,7 +157,12 @@ export interface PublicUser {
 
 export type UserSettings = Pick<User, 'id' | 'settings'>;
 
-export type SlimProject = Pick<Project, 'id' | 'type' | 'name' | 'icon'>;
+export type SlimProject = Pick<Project, 'id' | 'type' | 'name' | 'icon'> & {
+	/** Set on personal projects only: the kind of account that owns the project. */
+	accountKind?: UserKind;
+	/** Set for a service account only: the project that the account acts for. */
+	accountProject?: { id: string; name: string };
+};
 
 export interface CredentialUsedByWorkflow {
 	id: string;
@@ -228,6 +234,7 @@ export namespace ExecutionSummaries {
 		workflowVersionId: string;
 		isArchived: boolean;
 		workflowBooleanSettings: Array<{ key: string; value: boolean }>;
+		engine: WorkflowEngineType;
 	}>;
 
 	export type StopExecutionFilterQuery = { workflowId: string } & Pick<
@@ -344,6 +351,7 @@ export function isAuthProviderType(value: string): value is AuthProviderType {
 
 export type FolderWithWorkflowAndSubFolderCount = Folder & {
 	workflowCount?: number;
+	agentCount?: number;
 	subFolderCount?: number;
 };
 
@@ -417,6 +425,7 @@ export interface IGetExecutionsQueryFilter {
 	metadata?: Array<{ key: string; value: string; exactMatch?: boolean }>;
 	startedAfter?: string;
 	startedBefore?: string;
+	engine?: WorkflowEngineType;
 }
 
 export type ResourceType = 'folder' | 'workflow';

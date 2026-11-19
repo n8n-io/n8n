@@ -1,3 +1,9 @@
+export { default as N8nAttachment } from './N8nAttachments/Attachment/Attachment.vue';
+export { default as N8nAttachmentGroup } from './N8nAttachments/AttachmentGroup/AttachmentGroup.vue';
+export type {
+	AttachmentProps,
+	AttachmentEmits,
+} from './N8nAttachments/Attachment/Attachment.types';
 export { default as N8nAskAssistantButton } from './AskAssistantButton';
 export {
 	default as N8nAskAssistantChat,
@@ -159,6 +165,13 @@ export {
 	type ChatInputAutoFocusTarget,
 } from './N8nChatInput';
 export { default as N8nChatMessage } from './N8nChatMessage';
+export { default as N8nChatScrollArea } from './N8nChatScrollArea';
+export type {
+	ChatScrollAreaEmits,
+	ChatScrollAreaExposed,
+	ChatScrollAreaProps,
+	ChatScrollAreaSlots,
+} from './N8nChatScrollArea/ChatScrollArea.types';
 export { default as N8nChatActions } from './N8nChatActions/ChatActions.vue';
 export type {
 	ChatActionCopyResult,

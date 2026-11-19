@@ -21,7 +21,7 @@ import { computed, inject, nextTick, onBeforeUnmount, provide, ref, watch } from
 import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 
-import { buildAlwaysAllowKey } from '../alwaysAllow';
+import { buildAlwaysAllowKeys } from '../alwaysAllow';
 import { formatApprovalDetails, formatApprovalTitle } from '../approvalDetails';
 import { ASSISTANT_RUNTIME } from '../assistantRuntime';
 import {
@@ -307,9 +307,9 @@ if (props.input.testListener) {
 // --- Plain approval ---
 
 const approvalTitle = computed(() => {
-	const { targetApproval, toolName, args, resourceName } = props.input;
+	const { targetApproval, toolName, args, resourceName, approvalDetails } = props.input;
 	if (targetApproval || !toolName) return i18n.baseText('agents.chat.approval.title');
-	return formatApprovalTitle({ toolName, args, resourceName });
+	return formatApprovalTitle({ toolName, args, resourceName, approvalDetails });
 });
 
 const approvalDescription = computed(() => {
@@ -329,7 +329,7 @@ const canAlwaysAllow = computed(() => {
 	if (!toolName || severity === 'destructive' || targetApproval || credentialDestination) {
 		return false;
 	}
-	return buildAlwaysAllowKey(toolName, args ?? {}, workflowId) !== null;
+	return buildAlwaysAllowKeys(toolName, args ?? {}, workflowId).length > 0;
 });
 
 function onApprovalSelect(key: string) {

@@ -1,6 +1,8 @@
+import { ModuleRegistry } from '@n8n/backend-common';
 import {
 	mockInstance,
 	testDb,
+	createWorkflow,
 	createWorkflowWithTriggerAndHistory,
 	setActiveVersion,
 	createWorkflowHistory,
@@ -10,11 +12,13 @@ import {
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import fs from 'fs';
+import { jsonParse } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import os from 'os';
 import path from 'path';
 
 import { ExportWorkflowsCommand } from '@/commands/export/workflow';
+import type { IWorkflowWithVersionMetadata } from '@/interfaces';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { captureStatements, countCopies } from '@test-integration/utils/query-capture';
 import { setupTestCommand } from '@test-integration/utils/test-command';
@@ -535,5 +539,74 @@ test('should include versionMetadata with historical description when set', asyn
 	expect(exportedData.versionMetadata).toEqual({
 		name: null,
 		description: 'Version 2 Historical Description',
+	});
+});
+
+describe('engine of the exported version', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	const enableEngineV2 = () =>
+		vi
+			.spyOn(Container.get(ModuleRegistry), 'eligibleModules', 'get')
+			.mockReturnValue(['engine-v2']);
+
+	/** A saved version on engine v2, then a draft on engine v1 with a live setting. */
+	const createVersionWithDifferentDraftEngine = async () => {
+		const workflow = await createWorkflow({ settings: { engineType: 'v2' } });
+		const savedVersionId = workflow.versionId;
+		await createWorkflowHistory(workflow, undefined, undefined, {
+			settings: { engineType: 'v2' },
+		});
+
+		workflow.versionId = nanoid();
+		workflow.settings = { engineType: 'v1', timezone: 'Europe/Kyiv' };
+		await Container.get(WorkflowRepository).save(workflow);
+		await createWorkflowHistory(workflow, undefined, undefined, {
+			settings: { engineType: 'v1' },
+		});
+
+		return { workflow, savedVersionId };
+	};
+
+	const exportWorkflow = async (args: string[]) => {
+		const outputFile = path.join(testOutputDir, 'output.json');
+		await command.run([...args, `--output=${outputFile}`]);
+		const [exported] = jsonParse<IWorkflowWithVersionMetadata[]>(
+			fs.readFileSync(outputFile, 'utf-8'),
+		);
+		return exported;
+	};
+
+	test('should export the engine of the published version with --published', async () => {
+		enableEngineV2();
+		const { workflow, savedVersionId } = await createVersionWithDifferentDraftEngine();
+		await setActiveVersion(workflow.id, savedVersionId);
+
+		const exported = await exportWorkflow([`--id=${workflow.id}`, '--published']);
+
+		expect(exported.versionId).toBe(savedVersionId);
+		expect(exported.settings).toEqual({ engineType: 'v2', timezone: 'Europe/Kyiv' });
+	});
+
+	test('should export the engine of the selected version with --version', async () => {
+		enableEngineV2();
+		const { workflow, savedVersionId } = await createVersionWithDifferentDraftEngine();
+
+		const exported = await exportWorkflow([`--id=${workflow.id}`, `--version=${savedVersionId}`]);
+
+		expect(exported.versionId).toBe(savedVersionId);
+		expect(exported.settings).toEqual({ engineType: 'v2', timezone: 'Europe/Kyiv' });
+	});
+
+	test('should export the draft settings with --published when engine-v2 is off', async () => {
+		vi.spyOn(Container.get(ModuleRegistry), 'eligibleModules', 'get').mockReturnValue([]);
+		const { workflow, savedVersionId } = await createVersionWithDifferentDraftEngine();
+		await setActiveVersion(workflow.id, savedVersionId);
+
+		const exported = await exportWorkflow([`--id=${workflow.id}`, '--published']);
+
+		expect(exported.settings).toEqual({ engineType: 'v1', timezone: 'Europe/Kyiv' });
 	});
 });

@@ -99,6 +99,7 @@ export class ActiveExecutions {
 				const fullExecutionData: CreateExecutionPayload = {
 					data: executionData.executionData!,
 					mode,
+					// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 					finished: false,
 					workflowData: executionData.workflowData,
 					status: executionStatus,
@@ -390,7 +391,7 @@ export class ActiveExecutions {
 
 		try {
 			await Promise.race([
-				this.executionRepository.cancelManyRunning(executionIds),
+				this.executionRepository.markAsCanceled(executionIds, ['running']),
 				new Promise<never>((_, reject) => {
 					timeout = setTimeout(
 						() => reject(new OperationalError('Timed out writing the cancelled status')),

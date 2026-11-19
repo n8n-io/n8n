@@ -1,4 +1,7 @@
 import type {
+	MoveSkillSourceDto,
+	DeleteSkillSourceQueryDto,
+	SkillSourceMovePreview,
 	AcceptSkillSourceUpdatesDto,
 	ReviewSkillSourceUpdateQueryDto,
 	SkillSourceUpdates,
@@ -40,6 +43,8 @@ export type SkillListQuery = {
 	projectId?: string;
 	agentId?: string;
 	createdById?: string;
+	/** Comma-separated ids of the selected connected sources. */
+	sourceIds?: string;
 	sortBy?: SkillSortOption;
 	/** `source` groups the synced skills under their source. */
 	groupBy?: 'source';
@@ -178,9 +183,18 @@ export async function listSkillSources(context: IRestApiContext): Promise<SkillS
 	return await makeRestApiRequest<SkillSourceListItem[]>(context, 'GET', SOURCES_ENDPOINT);
 }
 
-/** Deletes a source and its synced skills. */
-export async function deleteSkillSource(context: IRestApiContext, sourceId: string): Promise<void> {
-	await makeRestApiRequest(context, 'DELETE', `${SOURCES_ENDPOINT}/${sourceId}`);
+/** Removes a source and optionally keeps its skills. */
+export async function deleteSkillSource(
+	context: IRestApiContext,
+	sourceId: string,
+	query?: DeleteSkillSourceQueryDto,
+): Promise<void> {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`${SOURCES_ENDPOINT}/${sourceId}`,
+		query && { ...query },
+	);
 }
 
 function sourceCredentialEndpoint(source: Pick<SkillSourceListItem, 'id' | 'projectId'>) {
@@ -227,6 +241,28 @@ export async function stopSyncingSkill(context: IRestApiContext, skillId: string
 		'POST',
 		`${SOURCES_ENDPOINT}/skills/${skillId}/stop-syncing`,
 	);
+}
+
+/** Local validation for a source scope change. */
+export async function previewSkillSourceMove(
+	context: IRestApiContext,
+	sourceId: string,
+	payload: MoveSkillSourceDto,
+): Promise<SkillSourceMovePreview> {
+	return await makeRestApiRequest<SkillSourceMovePreview>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/${sourceId}/move/preview`,
+		payload,
+	);
+}
+
+export async function moveSkillSource(
+	context: IRestApiContext,
+	sourceId: string,
+	payload: MoveSkillSourceDto,
+): Promise<void> {
+	await makeRestApiRequest(context, 'POST', `${SOURCES_ENDPOINT}/${sourceId}/move`, payload);
 }
 
 export async function getSkillSourceUpdates(context: IRestApiContext, sourceId: string) {

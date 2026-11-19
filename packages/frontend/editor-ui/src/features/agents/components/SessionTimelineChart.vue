@@ -354,6 +354,7 @@ onBeforeUnmount(() => {
 					<div v-if="activePopover" :class="$style.popoverInner">
 						<SessionTimelinePill
 							:kind="popoverPillKind(activePopover.segment.item)"
+							:tool-name="activePopover.segment.item.toolName"
 							:label="popoverLabel(activePopover.segment.item)"
 						/>
 						<span :class="$style.popoverName">{{ popoverName(activePopover.segment.item) }}</span>

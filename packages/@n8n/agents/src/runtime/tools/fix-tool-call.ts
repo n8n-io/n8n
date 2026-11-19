@@ -24,6 +24,11 @@ function withoutAction(input: unknown): unknown {
 	return Object.fromEntries(Object.entries(value).filter(([key]) => key !== 'action'));
 }
 
+/** A former name that the tool keeps for stored calls only. A new call must stay unknown. */
+function isResumeOnlyFormerName(tool: BuiltTool, toolName: string): boolean {
+	return tool.legacyResumeOnly !== undefined && tool.name !== toolName;
+}
+
 const isZodEmptyObject = (schema: unknown) => {
 	if (!isZodSchema(schema)) return false;
 	const typeName = (schema._def as { typeName?: string }).typeName;
@@ -50,6 +55,7 @@ export const fixToolCall = async (
 ): ReturnType<ToolCallRepairFunction<NoInfer<ToolSet>>> => {
 	if (options.toolCall.providerExecuted) return null;
 	const tool = resolveToolForCall(toolMap, options.toolCall.toolName, options.toolCall.input);
+	if (tool && isResumeOnlyFormerName(tool, options.toolCall.toolName)) return null;
 	if (!tool) {
 		// A direct call to a tool from the tool catalog, by its name or a former name, for
 		// example after the model reads an older conversation. Run it through its dispatcher.
@@ -60,6 +66,8 @@ export const fixToolCall = async (
 			options.toolCall.input,
 		);
 		if (!routed) return null;
+		const target = routed.dispatcher.dispatch?.resolve(routed.input);
+		if (target && isResumeOnlyFormerName(target.tool, options.toolCall.toolName)) return null;
 		return {
 			type: 'tool-call' as const,
 			toolCallId: options.toolCall.toolCallId,

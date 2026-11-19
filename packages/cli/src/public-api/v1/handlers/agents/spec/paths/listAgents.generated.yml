@@ -1,0 +1,75 @@
+operationId: listAgents
+tags:
+  - Agent
+summary: List agents
+description: |-
+  List the agents in the projects where you hold the agent:list permission. The response is one cursor page: read the next page with the cursor query parameter. Narrow the list to one project with projectId.
+
+  Requires the `agent:list` API key scope.
+x-required-scope: agent:list
+parameters:
+  - $ref: ../../../../shared/spec/parameters/cursor.yml
+  - $ref: ../../../../shared/spec/parameters/limit.yml
+  - schema:
+      type: string
+      minLength: 1
+    required: false
+    name: projectId
+    in: query
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  projectId:
+                    type: string
+                  availableInMCP:
+                    type: boolean
+                  isArchived:
+                    type: boolean
+                  versionId:
+                    type: string
+                    nullable: true
+                  activeVersionId:
+                    type: string
+                    nullable: true
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - name
+                  - projectId
+                  - availableInMCP
+                  - isArchived
+                  - versionId
+                  - activeVersionId
+                  - createdAt
+                  - updatedAt
+            nextCursor:
+              type: string
+              nullable: true
+          required:
+            - data
+            - nextCursor
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

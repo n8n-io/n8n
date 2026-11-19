@@ -20,6 +20,7 @@ export abstract class PromotionApplyCommand extends BaseCommand {
 		result: ApplyPackageResult,
 		flags: ReportFlags,
 		continueCommand: ContinueCommand,
+		previewCommand: string,
 	): void {
 		// `succeed()` ignores --jq, so JSON output for every status goes through `output()`.
 		if (this.isJsonMode(flags)) {
@@ -40,7 +41,7 @@ export abstract class PromotionApplyCommand extends BaseCommand {
 		}
 
 		if (!flags.quiet) {
-			this.logToStderr(stopMessage(result, continueCommand));
+			this.logToStderr(stopMessage(result, continueCommand, previewCommand));
 		}
 		this.exit(exitCodeFor(result));
 	}
@@ -51,12 +52,16 @@ function exitCodeFor(result: ApplyPackageResult): number {
 	return result.status === 'blocked' ? EXIT_BLOCKED : EXIT_SOURCE_CHANGED;
 }
 
-function stopMessage(result: ApplyPackageResult, continueCommand: ContinueCommand): string {
+function stopMessage(
+	result: ApplyPackageResult,
+	continueCommand: ContinueCommand,
+	previewCommand: string,
+): string {
 	if (result.status === 'blocked') return blockedMessage(result, result.check, continueCommand);
 	if (result.status === 'preview-changed') {
 		return [
 			'The Apply preview changed since you reviewed it. Nothing was imported.',
-			'Run list-changes again. Review the changes. Then apply with the new revision.',
+			`Run ${previewCommand}. Review the changes. Then apply with the new revision.`,
 		].join('\n');
 	}
 	return sourceChangedMessage(result);
@@ -122,7 +127,10 @@ function expectedSourceArgs(result: BlockedResult): string {
 	);
 }
 
-/** The command that resumes a blocked whole-instance Apply. */
+/**
+ * The command that resumes a blocked whole-instance Apply. It leaves out the preview revision:
+ * setting up a binding changes the preview, so the old one never matches.
+ */
 export function environmentContinueCommand(environmentId: string): ContinueCommand {
 	return (result) =>
 		`n8n-cli promotion-environment apply-continue ${shellQuote(environmentId)}` +
@@ -142,6 +150,16 @@ export function selectionContinueCommand(
 		workflowIds.map((id) => ` -w ${shellQuote(id)}`).join('') +
 		folderIds.map((id) => ` --folder ${shellQuote(id)}`).join('') +
 		expectedSourceArgs(result);
+}
+
+/** The command that shows the whole-instance Apply preview, with its new revision. */
+export function environmentPreviewCommand(environmentId: string): string {
+	return `n8n-cli promotion-environment list-apply-changes ${shellQuote(environmentId)} --json`;
+}
+
+/** The command that shows the Apply preview of a project, with its new revision. */
+export function selectionPreviewCommand(projectId: string): string {
+	return `n8n-cli promotion-environment list-changes ${shellQuote(projectId)} apply --json`;
 }
 
 /** Branch names can contain shell metacharacters such as `;` and `$(`, so the shell must not interpret them. */
