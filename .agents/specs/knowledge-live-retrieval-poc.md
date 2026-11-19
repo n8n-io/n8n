@@ -312,7 +312,7 @@ so native tool deferral is available).
 |---|---|
 | `kb-native` | `retrieval: native` on every source |
 | `kb-index` | `retrieval: index`; index built before the run |
-| `kb-mcp-c0` | no live sources; `mcpServers` with the hosted Notion and Slack servers, read-only `toolPermissions`, picked items with urls in the instructions |
+| `kb-mcp-c0` | no live sources; `mcpServers` with the hosted Notion server (Slack optional, decision 15), read-only `toolPermissions`, picked items with urls in the instructions |
 | `kb-hybrid` (optional) | `index` for Notion, `native` for Slack |
 | ~~`kb-mirror`~~ | dropped with the `mirror` strategy |
 
@@ -354,6 +354,16 @@ Setup decisions of 2026-11-19:
 13. The stub "Live sources" panel stays the last optional item.
 14. KNO-338 stays as it is until the results exist.
 
+Day-2 decision of 2026-11-19:
+
+15. C0 runs with the hosted Notion MCP server only. The hosted Slack MCP
+    server (`https://mcp.slack.com`) has no dynamic client registration: its
+    authorization server is Slack's user OAuth with a fixed app client id,
+    which needs an HTTPS redirect URL, so a local instance needs a tunnel.
+    Slack's own search backs both our provider and its MCP server, so the
+    Slack half of C0 would mostly re-measure scope enforcement and tokens.
+    A Slack C0 through a tunnel is a day-4 optional.
+
 ## Rules on this branch
 
 - No `@n8n/typeorm` in business logic. Credential lookup goes through
@@ -374,8 +384,10 @@ Setup decisions of 2026-11-19:
   by `channel`.
 - Exact output shape of Notion `page:getMarkdown` through `executeInline`.
   Fallback: `block:getAll` with `simplifyOutput`.
-- Is the hosted Slack MCP server reachable, and does the Notion MCP OAuth grant
-  work, for C0?
+- ~~Is the hosted Slack MCP server reachable, and does the Notion MCP OAuth grant
+  work, for C0?~~ Settled: the Notion grant works through dynamic client
+  registration; the Slack server needs a fixed client id and an HTTPS
+  redirect URL (decision 15).
 - Which model snapshot and which route (deferred or eager tools; the new tools
   are not in `harnessEagerToolNames`).
 - ~~Completion signal for the harness: stream end or polling the thread.~~ Settled: the chat stream sends `{ type: 'done' }`; the harness reads the thread after it. The `tool-result` events of the stream carry the model-facing output (`{ type: 'content', value: [{ type: 'text', text: '<untrusted_data …>JSON</untrusted_data>' }] }`), so the scoring parses the JSON inside the wrapper; the thread `timeline[]` holds the same with `success`, `startTime` and `endTime`.
@@ -436,7 +448,7 @@ Notes:
 - [x] Spike 1: Notion `page:getMarkdown` output shape: `{ object: 'page_markdown', id, markdown, truncated, unknown_block_ids }`, read from the node code instead of a run
 - [x] Spike 2: moot. The 2.7 search output carries `channel_id`, so the provider passes the channel name (from `channel:get`, cached per credential) to `in:` and filters the hits by id
 - [x] Spike 3: `executeInline` runs the Notion operations without a workflow id (the day-1 exit); Slack follows with its provider
-- [ ] C0: hosted Notion and Slack MCP servers connect; tool lists recorded
+- [x] C0: the hosted Notion MCP server connects (DCR); the Slack server needs a fixed client id and an HTTPS redirect (decision 15). Tool lists: recorded with the first `kb-mcp-c0` run
 - [ ] Spike outputs saved under `scripts/knowledge-live-harness/fixtures/spikes/`
 
 ### Day 1: vertical slice, Notion, `native`
@@ -472,5 +484,6 @@ Notes:
 - [ ] Three runs per question and agent, same model snapshot
 - [x] ~~`mirror` strategy and `kb-mirror`, if time allows~~ Dropped: no sandbox available locally
 - [ ] `notionOAuth2Api` credential and a re-run of the Notion questions, if time allows
+- [ ] Slack C0 through a tunnel (fixed client id, HTTPS redirect), if time allows
 - [ ] Stub "Live sources" panel, if time allows
 - [ ] Write-up on the Notion page: per-source correctness, tokens per correct answer, wall time, turns, tool calls, scope violations, effort actuals, recommendation
