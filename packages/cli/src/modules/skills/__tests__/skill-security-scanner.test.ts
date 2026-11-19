@@ -324,6 +324,25 @@ describe('SkillSecurityScanner', () => {
 				),
 			});
 		});
+
+		it.each([
+			'|Docs|https://docs.example.com|',
+			'|https://docs.example.com|Docs|',
+			'|https://docs.example.com|@team|',
+		])('lists an ordinary domain in a Markdown table row at import: %s', (row) => {
+			const instructions = `| First | Second |\n| --- | --- |\n${row}`;
+
+			expect(scanner.scan(fetched(skill({ instructions })))).toEqual({
+				verdict: 'pass',
+				findings: [
+					expect.objectContaining({
+						rule: 'new_url',
+						severity: 'info',
+						domain: 'docs.example.com',
+					}),
+				],
+			});
+		});
 	});
 
 	describe('rule risky_url: links that need review at import', () => {

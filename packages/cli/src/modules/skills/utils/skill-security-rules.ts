@@ -115,10 +115,10 @@ export function findHiddenUnicode(input: SkillScanInput): SkillScanFinding[] {
 /**
  * A link up to the first character that cannot be part of it. An IPv6 host sits in brackets,
  * which the rest of a link cannot hold, so it has its own group after the optional user info.
- * An underscore can come before a link, as in Markdown emphasis.
+ * An underscore can come before a link, as in Markdown emphasis. A pipe ends a table cell.
  */
 const URL_PATTERN =
-	/(?<![a-z0-9])(?:https?|wss?|ftp):\/\/(?:[^\s<>"'`()[\]{}/?#@]*@)?(?:\[[\d:a-f.]+\])?[^\s<>"'`()[\]{}]*/gi;
+	/(?<![a-z0-9])(?:https?|wss?|ftp):\/\/(?:[^\s<>"'`()[\]{}/?#@|]*@)?(?:\[[\d:a-f.]+\])?[^\s<>"'`()[\]{}|]*/gi;
 
 /** The English text of each reason, for the `detail` of a finding. */
 const LINK_REASON_DETAIL: Record<SkillLinkReviewReason, string> = {
