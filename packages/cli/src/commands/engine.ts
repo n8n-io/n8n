@@ -150,7 +150,7 @@ export class Engine extends BaseCommand {
 			async () => await this.runtime?.shutdown(),
 			// Before the publisher, so a late fetch fails instead of taking a message it can no longer give back.
 			async () => this.workQueues?.close(),
-			// After the engine and the queues, so a final response still has somewhere to go.
+			// After the engine, so a final response still has somewhere to go.
 			async () => await this.channelPublisher?.stop(),
 			async () => await Expression.disposeExpressionEngine(),
 		];
