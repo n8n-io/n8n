@@ -6,9 +6,6 @@ const shard_mod = @import("shard.zig");
 const programs = @import("programs.zig");
 const sys = @import("sys.zig");
 
-/// Set by main: the only place that names a global allocator.
-pub var backing: std.mem.Allocator = undefined;
-
 pub const W1Options = struct { seconds: u32 = 3, batch: u32 = 256, threads: u32 = 1 };
 
 const W1Result = struct { execs: u64 = 0, instructions: u64 = 0, batches: u64 = 0, ns: u64 = 0 };
@@ -25,11 +22,11 @@ fn trigger1k(buf: []u8) []const u8 {
     return w.buffered();
 }
 
-fn w1Thread(opts: W1Options, module: []const u8, res: *W1Result) void {
-    w1Inner(opts, module, res) catch |e| std.debug.print("w1: {s}\n", .{@errorName(e)});
+fn w1Thread(opts: W1Options, module: []const u8, res: *W1Result, backing: std.mem.Allocator) void {
+    w1Inner(opts, module, res, backing) catch |e| std.debug.print("w1: {s}\n", .{@errorName(e)});
 }
 
-fn w1Inner(opts: W1Options, module: []const u8, res: *W1Result) !void {
+fn w1Inner(opts: W1Options, module: []const u8, res: *W1Result, backing: std.mem.Allocator) !void {
     var arena = std.heap.ArenaAllocator.init(backing);
     defer arena.deinit();
     const a = arena.allocator();
@@ -64,7 +61,7 @@ pub fn runW1(gpa: std.mem.Allocator, out: *std.Io.Writer, opts: W1Options) !void
     const ths = try gpa.alloc(std.Thread, opts.threads);
     defer gpa.free(ths);
     for (res) |*r| r.* = .{};
-    for (ths, 0..) |*t, i| t.* = try std.Thread.spawn(.{}, w1Thread, .{ opts, module, &res[i] });
+    for (ths, 0..) |*t, i| t.* = try std.Thread.spawn(.{}, w1Thread, .{ opts, module, &res[i], gpa });
     for (ths) |t| t.join();
     var total: u64 = 0;
     var instr: u64 = 0;
@@ -131,8 +128,7 @@ pub fn runCounts(gpa: std.mem.Allocator, out: *std.Io.Writer) !bool {
 /// W5: park many executions on an approval, then resume them all. Reports
 /// snapshot bytes and memory per parked execution and resume throughput.
 pub fn runW5(gpa: std.mem.Allocator, out: *std.Io.Writer, n: u32) !void {
-    _ = gpa;
-    var arena = std.heap.ArenaAllocator.init(backing);
+    var arena = std.heap.ArenaAllocator.init(gpa);
     defer arena.deinit();
     const a = arena.allocator();
     const module = try programs.approval(a, "{\"durability\":\"none\"}");
@@ -198,8 +194,8 @@ pub fn runW5(gpa: std.mem.Allocator, out: *std.Io.Writer, n: u32) !void {
 
 /// W6: a loop of 100 effects per execution, answered at once. Measures the
 /// cost of one suspend, dispatch and resume round trip in the core.
-pub fn runW6(out: *std.Io.Writer, execs: u32) !void {
-    var arena = std.heap.ArenaAllocator.init(backing);
+pub fn runW6(gpa: std.mem.Allocator, out: *std.Io.Writer, execs: u32) !void {
+    var arena = std.heap.ArenaAllocator.init(gpa);
     defer arena.deinit();
     const a = arena.allocator();
     const module = try programs.loop(a, "{\"durability\":\"none\"}");

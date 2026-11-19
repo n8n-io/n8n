@@ -83,6 +83,9 @@ lap "sim"
 lap "bench-counts"
 if [ -d ../packages/@n8n/workflow-lang/corpus ]; then ./zig-out/bin/wfrt corpus ../packages/@n8n/workflow-lang/corpus; fi
 lap "corpus"
+# The performance-model gate checks that deterministic instruction counts
+# and memory accesses have not risen (docs/perf-model.md, section 10).
+if [ -f perf-record ] && [ -d ../packages/@n8n/workflow-lang/corpus ]; then bench/perf-gate.sh; lap "perf-gate"; fi
 # Compiled library code (src/core/aot.zig): a warning, not a failure, when a
 # node source changed after the last `wfrt aot-gen` (docs/aot-design.md).
 if command -v node > /dev/null && [ -d ../packages/@n8n/workflow-lang/node_modules ]; then

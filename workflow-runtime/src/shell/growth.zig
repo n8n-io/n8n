@@ -7,6 +7,10 @@ const std = @import("std");
 
 pub const Guard = struct {
     arena: std.heap.ArenaAllocator,
+    /// The pre-reserved block, when the guard was created with `initReserved`.
+    reserved_block: ?[]u8 = null,
+    /// The allocator that backed `reserved_block`, for `deinit`.
+    reserved_backing: ?std.mem.Allocator = null,
     /// Set when `Runner.init` returns.
     ready: bool = false,
     /// The arena capacity when the shard became ready.
@@ -21,8 +25,28 @@ pub const Guard = struct {
         return .{ .arena = std.heap.ArenaAllocator.init(backing) };
     }
 
+    /// Reserve a single block of `bytes` and back the arena with it.
+    /// The block is freed by `deinit`.
+    pub fn initReserved(backing: std.mem.Allocator, bytes: usize) !Guard {
+        const block = try @import("core").arena.reserve(backing, u8, bytes);
+        var fba = std.heap.FixedBufferAllocator.init(block);
+        return .{
+            .arena = std.heap.ArenaAllocator.init(fba.allocator()),
+            .reserved_block = block,
+            .reserved_backing = backing,
+        };
+    }
+
     pub fn deinit(g: *Guard) void {
         g.arena.deinit();
+        if (g.reserved_block) |block| {
+            g.reserved_backing.?.free(block);
+        }
+    }
+
+    /// The current capacity of the arena, in bytes.
+    pub fn capacityBytes(g: *const Guard) usize {
+        return g.arena.queryCapacity();
     }
 
     pub fn allocator(g: *Guard) std.mem.Allocator {

@@ -110,26 +110,8 @@ pub const Piece = union(enum) {
 };
 
 /// A reserved transfer: the row in the low half, its generation in the high half.
-pub const Handle = enum(u32) {
-    none = std.math.maxInt(u32),
-    /// A request whose rule decides after the head of the response
-    /// (`store_rule.zig`): it has no row yet. The store never gives this
-    /// value, and takes it in no call.
-    pending = std.math.maxInt(u32) - 1,
-    _,
-
-    fn of(row: u16, gen: u16) Handle {
-        // The two named values have the rows 0xffff and 0xfffe.
-        std.debug.assert(row < std.math.maxInt(u16) - 1);
-        return @fromBackingInt(@as(u32, gen) << 16 | row);
-    }
-    fn index(h: Handle) u16 {
-        return @truncate(@backingInt(h));
-    }
-    fn generation(h: Handle) u16 {
-        return @truncate(@backingInt(h) >> 16);
-    }
-};
+/// See `handle.zig` for the generic type and its tests.
+pub const Handle = @import("handle.zig").Handle(struct {});
 
 /// A response whose body comes with `append`.
 pub const Begin = struct {
@@ -420,7 +402,7 @@ pub const Store = struct {
         const ri = s.free[s.nfree];
         const r = &s.rows[ri];
         std.debug.assert(r.state == .free and !r.in_flight);
-        const gen = r.gen +% 1;
+        const gen = Handle.nextGen(r.gen);
         r.* = .{ .gen = gen, .state = .reserved };
         return ri;
     }
@@ -430,7 +412,7 @@ pub const Store = struct {
         std.debug.assert(r.state != .free and !r.in_flight and r.block_head == none and !r.open);
         std.debug.assert(r.dir_fd < 0 and r.file_fd < 0 and r.src_buf == none);
         r.state = .free;
-        r.gen +%= 1;
+        r.gen = Handle.nextGen(r.gen);
         s.free[s.nfree] = ri;
         s.nfree += 1;
     }
@@ -1957,4 +1939,8 @@ test "put on the ring of a shard (Linux)" {
     try t.expectEqual(@as(u64, 3), s.counters.stored);
     try t.expectEqual(@as(u32, 4), s.nfree);
     try t.expectEqual(s.block_next.len, @as(usize, s.blocks_free));
+}
+
+test {
+    _ = @import("handle.zig");
 }
