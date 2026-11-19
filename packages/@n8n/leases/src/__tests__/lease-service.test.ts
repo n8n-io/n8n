@@ -7,7 +7,7 @@ import {
 import * as leases from '../index';
 import { LeaseService } from '../lease-service';
 import type { LeaseProvider } from '../provider';
-import { DEFAULT_LEASE_KIND_OPTIONS } from '../types';
+import { DEFAULT_LEASE_KIND_OPTIONS } from '../constants';
 import type { Lease, LeaseKind, LeaseSource, LeaseStatus } from '../types';
 
 type Tx = { id: string };

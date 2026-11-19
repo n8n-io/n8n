@@ -20,4 +20,4 @@ export type {
 	LeaseState,
 	LeaseStatus,
 } from './types';
-export { DEFAULT_LEASE_KIND_OPTIONS, MAX_LEASE_KIND_LENGTH } from './types';
+export { DEFAULT_LEASE_KIND_OPTIONS, MAX_LEASE_KIND_LENGTH } from './constants';
