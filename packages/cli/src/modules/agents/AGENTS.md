@@ -6,6 +6,7 @@ Guidance for the agents module (`packages/cli/src/modules/agents`). See the [cli
 
 - [BUILT_IN_TOOLS.md](./BUILT_IN_TOOLS.md) — the built-in tools that the runtime attaches to an agent, with the attach condition for each. Read it before you add a built-in tool. Update it when you add, remove, or change a built-in tool.
 - [TEST_CHAT_RECOVERY.md](./TEST_CHAT_RECOVERY.md) — the preview chat recovery contract.
+- New chat channels must declare their card components and supported actions in `AgentChatIntegration`. Rich UI stays in the channel actions. The `conversationTools` contract derives the eager `do_not_respond` tool from the supported actions. The action tool adds a short channel capability summary to the system prompt. See [conversation tools](./BUILT_IN_TOOLS.md#do_not_respond).
 
 ## Backend boundary
 

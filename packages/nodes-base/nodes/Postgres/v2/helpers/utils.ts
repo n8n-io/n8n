@@ -6,7 +6,6 @@ import type {
 	INodePropertyOptions,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { isRecord } from '@n8n/utils/is-record';
 import { NodeOperationError, deepCopy, jsonParse } from 'n8n-workflow';
 
 import type {
@@ -226,59 +225,6 @@ export function addStartAfterClause(
 		`${query} WHERE ${conditions ? `(${conditions}) AND ` : ''}${cursorCondition}`,
 		withCursor,
 	];
-}
-
-export function getStartAfter(ctx: IExecuteFunctions, itemIndex: number): StartAfter | undefined {
-	const startAfter: unknown = ctx.getNodeParameter('startAfter.values', itemIndex, null);
-	if (!isRecord(startAfter)) return undefined;
-
-	const { column, value } = startAfter;
-	if (typeof column !== 'string' || column === '') {
-		throw new NodeOperationError(ctx.getNode(), 'Choose a column in Start After', {
-			itemIndex,
-			description: 'Start After needs a unique column, for example the primary key.',
-		});
-	}
-
-	if (value === undefined || value === null || value === '') return { column };
-	if (typeof value === 'object') {
-		throw new NodeOperationError(ctx.getNode(), 'The Start After value must be text or a number', {
-			itemIndex,
-			description: `Use the value of "${column}" in the last row of the page before.`,
-		});
-	}
-	if (typeof value === 'number' && Number.isInteger(value) && !Number.isSafeInteger(value)) {
-		throw new NodeOperationError(ctx.getNode(), 'The Start After value is too big to be exact', {
-			itemIndex,
-			description:
-				'n8n cannot keep all digits of a number above 9007199254740991, so the next page can skip rows. In Options, set Output Large-Format Numbers As to Text.',
-		});
-	}
-
-	return { column, value: String(value) };
-}
-
-/**
- * The cursor column must be the first sort key. A key before it changes the
- * order of the rows, so "after the last value" skips rows.
- */
-export function getStartAfterSortRules(
-	node: INode,
-	itemIndex: number,
-	sortRules: SortRule[],
-	column: string,
-): SortRule[] {
-	if (sortRules.length === 0) return [{ column, direction: 'ASC' }];
-	if (sortRules[0].column === column) return sortRules;
-
-	const fix = sortRules.some((rule) => rule.column === column)
-		? `Move "${column}" to the top of Sort.`
-		: `Add "${column}" as the first sort rule, or remove the other sort rules.`;
-
-	throw new NodeOperationError(node, `Sort by "${column}" first`, {
-		itemIndex,
-		description: `Start After pages by "${column}", so "${column}" must be the first sort rule. ${fix}`,
-	});
 }
 
 export function addSortRules(

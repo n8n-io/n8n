@@ -22,13 +22,14 @@ describe('KnowledgeModule', () => {
 	});
 
 	describe('settings()', () => {
-		it('exposes the configured upload limits in bytes and counts', async () => {
+		it('exposes the configured upload limits in bytes and counts, and the collections override', async () => {
 			Container.set(
 				KnowledgeConfig,
 				mock<KnowledgeConfig>({
 					maxFileSizeBytes: 5 * 1024 * 1024,
 					maxFilesPerUpload: 3,
 					maxTotalSizeBytes: 500 * 1024 * 1024,
+					collectionsEnabled: true,
 				}),
 			);
 
@@ -38,6 +39,7 @@ describe('KnowledgeModule', () => {
 					maxFilesPerUpload: 3,
 					maxTotalSizeBytes: 500 * 1024 * 1024,
 				},
+				collectionsEnabled: true,
 			});
 		});
 	});

@@ -4643,6 +4643,39 @@ describe('TelemetryEventRelay', () => {
 			expect(info?.n8n_deployment_artifact).toBeUndefined();
 		});
 
+		it('should send the license consumer ID on `server-started` when the instance has a license', async () => {
+			license.isEphemeral.mockReturnValueOnce(false);
+			license.getConsumerId.mockReturnValueOnce('test-consumer-id');
+
+			eventService.emit('server-started');
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
+				expect.objectContaining({ license_consumer_id: 'test-consumer-id' }),
+			);
+		});
+
+		it.each([
+			{ name: 'no license', isEphemeral: false, consumerId: 'unknown' },
+			{ name: 'an ephemeral license', isEphemeral: true, consumerId: 'shared-placeholder-id' },
+		])(
+			'should leave out the license consumer ID on `server-started` with $name',
+			async ({ isEphemeral, consumerId }) => {
+				license.isEphemeral.mockReturnValueOnce(isEphemeral);
+				license.getConsumerId.mockReturnValue(consumerId);
+
+				eventService.emit('server-started');
+				await flushPromises();
+
+				const startupEvent = telemetry.track.mock.calls.find(
+					([event]) => (event as unknown) === TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
+				);
+				expect(startupEvent?.[1]).toHaveProperty('license_consumer_id', undefined);
+				license.getConsumerId.mockReset();
+			},
+		);
+
 		it('should skip the PostHog group update on `server-started` before owner setup', async () => {
 			workflowRepository.findOne.mockResolvedValue(null);
 			ownershipService.hasInstanceOwner.mockResolvedValue(false);

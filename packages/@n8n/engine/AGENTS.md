@@ -40,7 +40,11 @@ a deployable engine worker) without touching core logic.
   in at construction.
 - **Adapters (do)** — effectful implementations: `database/` (TypeORM entities,
   migrations, the Postgres `DataSource`, and `TypeOrmExecutionStore`), `queue/`
-  (in-memory default). The Postgres/ORM coupling lives *here only*.
+  (in-memory default, and `RedisWorkQueue` on a Redis list). The Postgres/ORM
+  coupling lives *here only*. `RedisWorkQueue` receives its Redis clients and
+  never closes them: the composition root owns the connections and the key
+  names. The engine has no runtime dependency on `ioredis`; the adapter declares
+  the client commands it needs as interfaces.
 - **Serving infra** — `server/` (express), `serve.ts` (standalone entrypoint),
   Dockerfile. First candidate to be extracted later.
 - **Runtime factory** — `runtime/` (`createEngineRuntime`). Owns the engine's

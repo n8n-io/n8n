@@ -44,6 +44,7 @@ import {
 	createEmptyRunExecutionData,
 	createErrorExecutionData,
 	runDataUsedDynamicCredentials,
+	WORKFLOW_ENGINE_TYPES,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -96,6 +97,7 @@ export const schemaGetExecutionsQueryFilter = {
 		vote: { type: 'string' },
 		projectId: { type: 'string' },
 		workflowVersionId: { type: 'string' },
+		engine: { type: 'string', enum: [...WORKFLOW_ENGINE_TYPES] },
 	},
 	$defs: {
 		metadata: {
@@ -493,6 +495,17 @@ export class ExecutionService {
 	async delete(user: User, payload: DeleteExecutionsDto, sharedWorkflowIds: string[]) {
 		const { deleteBefore, ids, filters: requestFiltersRaw } = payload;
 
+		// Read the engine from the raw filter: if a field fails the schema, the
+		// filters are dropped and a delete by date would match every v1 row.
+		const engine: unknown = requestFiltersRaw?.engine;
+		if (engine !== undefined && !WORKFLOW_ENGINE_TYPES.some((known) => known === engine)) {
+			throw new BadRequestError('Unknown engine in the executions filter');
+		}
+
+		// A delete by date reaches only the engine v1 table, so an engine v2 filter
+		// matches nothing there.
+		if (deleteBefore && engine === 'v2') return;
+
 		let requestFilters: IGetExecutionsQueryFilter | undefined;
 		if (requestFiltersRaw) {
 			try {
@@ -542,6 +555,7 @@ export class ExecutionService {
 		const fullExecutionData: CreateExecutionPayload = {
 			data: executionData,
 			mode,
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 			finished: false,
 			workflowData,
 			workflowId: workflow.id,

@@ -13,6 +13,7 @@ export class KnowledgeModule implements ModuleInterface {
 	 * Settings exposed to the frontend under `/rest/module-settings`. The editor
 	 * rejects an upload with these limits before the request, so a configured
 	 * limit shows up as the friendly client message and not as a server error.
+	 * `collectionsEnabled` is the operator override of the collections flag.
 	 */
 	async settings() {
 		const { KnowledgeConfig } = await import('./knowledge.config.js');
@@ -24,6 +25,7 @@ export class KnowledgeModule implements ModuleInterface {
 				maxFilesPerUpload: config.maxFilesPerUpload,
 				maxTotalSizeBytes: config.maxTotalSizeBytes,
 			},
+			collectionsEnabled: config.collectionsEnabled,
 		} satisfies FrontendModuleSettings['knowledge'];
 	}
 

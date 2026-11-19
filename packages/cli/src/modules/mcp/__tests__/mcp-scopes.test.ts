@@ -60,6 +60,7 @@ import { MigrationFindingQueryService } from '@/modules/breaking-changes/query/m
 import { MigrationFindingSyncService } from '@/modules/breaking-changes/sync/migration-finding-sync.service';
 import { MigrationFindingTriageService } from '@/modules/breaking-changes/triage/migration-finding-triage.service';
 import { SkillService, SkillsGate } from '@/modules/skills';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
 import {
@@ -310,6 +311,7 @@ describe('McpService scope enforcement', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockInstance(SkillsGate, { isEnabled: false });
+		mockInstance(AiPreferenceSettingsService, { isEnabled: true });
 	});
 
 	it.each([false, true])(
@@ -686,6 +688,24 @@ describe('McpService scope enforcement', () => {
 			);
 
 			expect(getRegisteredToolNames(server)).toContain('get_user_preferences');
+		});
+
+		it('registers no preference tool and drops the instructions while preferences are off', async () => {
+			mockInstance(AiPreferenceSettingsService, { isEnabled: false });
+			const server = await buildService().getServer(user, mcpFeatureFlags());
+			const registered = getRegisteredToolNames(server);
+			const instructions =
+				(server as unknown as { server: { _instructions?: string } }).server._instructions ?? '';
+
+			expect(
+				[
+					'get_user_preferences',
+					'save_user_preference',
+					'update_user_preference',
+					'undo_user_preference',
+				].filter((name) => registered.has(name)),
+			).toEqual([]);
+			expect(instructions).not.toContain('get_user_preferences');
 		});
 
 		it('is not a builder tool, so it stays out of the builder-gated set', () => {

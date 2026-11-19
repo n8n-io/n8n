@@ -21,6 +21,7 @@ import type {
 
 import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/eval-mock-helpers';
 
+import { getNonWorkflowAdditionalKeys } from '../get-additional-keys';
 import { httpRequestWithAuthentication, requestWithAuthentication } from './authentication';
 import { proxyRequestToAxios } from './legacy-request-adapter';
 import { refreshOAuth2Token, requestOAuth1, requestOAuth2 } from './oauth';
@@ -58,7 +59,7 @@ export const getRequestHelperFunctions = (
 				node.name,
 				connectionInputData,
 				mode,
-				additionalKeys ?? {},
+				{ ...getNonWorkflowAdditionalKeys(additionalData), ...additionalKeys },
 				executeData,
 				returnObjectAsString,
 			);
@@ -142,6 +143,7 @@ export const getRequestHelperFunctions = (
 			);
 		},
 
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep this helper for existing node implementations.
 		request: async (uriOrObjectWithTarget, optionsWithTarget) => {
 			const uriOrObject =
 				typeof uriOrObjectWithTarget === 'string'
@@ -163,6 +165,7 @@ export const getRequestHelperFunctions = (
 			return await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
 		},
 
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep this helper for existing node implementations.
 		async requestWithAuthentication(
 			this,
 			credentialsType,
@@ -184,6 +187,7 @@ export const getRequestHelperFunctions = (
 			);
 		},
 
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep this helper for existing node implementations.
 		async requestOAuth1(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
@@ -205,6 +209,7 @@ export const getRequestHelperFunctions = (
 			return await requestOAuth1.call(this, credentialsType, requestOptions);
 		},
 
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep this helper for existing node implementations.
 		async requestOAuth2(
 			this: IAllExecuteFunctions,
 			credentialsType: string,

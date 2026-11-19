@@ -2,6 +2,7 @@ import { parseFlatted } from '@n8n/backend-common';
 import {
 	EventService,
 	ExecutionLedger,
+	ExecutionRetentionService,
 	CorruptedExecutionDataError,
 	ExecutionDataJsonStore,
 	isExecutionDataPayload,
@@ -116,6 +117,7 @@ export class ExecutionPersistence {
 		private readonly storageConfig: StorageConfig,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly databaseConfig: DatabaseConfig,
+		private readonly retention: ExecutionRetentionService,
 		private readonly errorReporter: ErrorReporter,
 		private readonly eventService: EventService,
 		private readonly executionLedger: ExecutionLedger,
@@ -807,6 +809,8 @@ export class ExecutionPersistence {
 		const targets = Array.isArray(target) ? target : [target];
 		if (targets.length === 0) return;
 
+		await this.retention.assertCanDelete(targets.map((target) => target.executionId));
+
 		// Binaries first. A failure leaves the payload and the rows, so the execution stays openable.
 		await this.binaryDataService.deleteMany(
 			targets.map((t) => ({ type: 'execution' as const, ...t })),
@@ -835,6 +839,9 @@ export class ExecutionPersistence {
 
 	async hardDeleteBy(criteria: ExecutionDeletionCriteria) {
 		const refs = await this.executionRepository.findExecutionsToDelete(criteria);
+		// Check every target before the first batch commits, so a retained execution
+		// does not stop the deletion part way through.
+		await this.retention.assertCanDelete(refs.map((ref) => ref.executionId));
 
 		// Batches keep each row delete under the SQLite expression-depth limit.
 		// Each batch deletes binaries, then the payload, then the rows.
@@ -854,6 +861,12 @@ export class ExecutionPersistence {
 	 * instead of looping forever.
 	 */
 	async hardDeleteByWorkflowId(workflowId: string) {
+		// Check before the first batch commits. Each batch checks again for work that
+		// starts during the deletion.
+		await this.retention.assertNoneRetained(
+			async (retainedIds) =>
+				await this.executionRepository.hasWorkflowExecutionAmong(workflowId, retainedIds),
+		);
 		const maxBatches = await this.maxBulkDeletionBatches();
 
 		for (let batch = 0; batch < maxBatches; batch++) {
@@ -1149,6 +1162,7 @@ export class ExecutionPersistence {
 		}
 
 		const where: FindOptionsWhere<ExecutionEntity> = { id: executionId };
+		if (conditions?.requireWaitTill) where.waitTill = conditions.requireWaitTill;
 		if (conditions?.requireStatus) where.status = conditions.requireStatus;
 		if (conditions?.requireStatuses) where.status = In([...conditions.requireStatuses]);
 		// TODO(CAT-3214): `ExecutionEntity.finished` is deprecated and we should rely on statuses

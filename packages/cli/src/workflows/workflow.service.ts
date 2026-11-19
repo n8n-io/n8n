@@ -1376,6 +1376,7 @@ export class WorkflowService {
 		// the previous active version running instead of deactivating it.
 		const candidateWorkflow = this.workflowRepository.create({
 			...workflow,
+			// oxlint-disable-next-line typescript/no-deprecated -- Preserve the active field for existing lifecycle hook consumers.
 			active: true,
 			activeVersionId: versionIdToActivate,
 			activeVersion: versionToActivate,
@@ -1441,6 +1442,7 @@ export class WorkflowService {
 
 			const activatedWorkflow = this.workflowRepository.create({
 				...workflow,
+				// oxlint-disable-next-line typescript/no-deprecated -- Preserve the active field for existing event consumers.
 				active: true,
 				activeVersionId: versionIdToActivate,
 				activeVersion: versionToActivate,
@@ -1481,6 +1483,7 @@ export class WorkflowService {
 
 			await this.workflowRepository.update(workflowId, {
 				activeVersionId: versionIdToActivate,
+				// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy active column in sync with publication state.
 				active: true,
 				// workflow content did not change, so we keep updatedAt as is
 				updatedAt: workflow.updatedAt,
@@ -1823,6 +1826,7 @@ export class WorkflowService {
 			await this.activeWorkflowManager.remove(workflowId);
 
 			await this.workflowRepository.update(workflowId, {
+				// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy active column in sync with publication state.
 				active: false,
 				activeVersionId: null,
 				// workflow content did not change, so we keep updatedAt as is
@@ -1997,6 +2001,7 @@ export class WorkflowService {
 
 		await this.workflowRepository.update(workflowId, {
 			isArchived: true,
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy active column in sync with publication state.
 			active: false,
 			activeVersion: null,
 			versionId,
@@ -2383,6 +2388,7 @@ export class WorkflowService {
 				: { id: workflowId, activeVersionId: options.onlyIfActiveVersionIs },
 			{
 				activeVersionId: versionIdToActivate,
+				// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy active column in sync with publication state.
 				active: true,
 				// workflow content did not change, so we keep updatedAt as is
 				updatedAt,
@@ -2443,6 +2449,7 @@ export class WorkflowService {
 				WorkflowEntity,
 				{ id: workflowId },
 				{
+					// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy active column in sync with publication state.
 					active: false,
 					activeVersionId: null,
 					// workflow content did not change, so we keep updatedAt as is

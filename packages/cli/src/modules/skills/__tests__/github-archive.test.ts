@@ -1,6 +1,7 @@
 import { Readable } from 'node:stream';
 import { Header, Parser } from 'tar';
 import { gzipSync } from 'zlib';
+import { sha256 } from '@n8n/utils/sha256';
 
 import {
 	DEFAULT_ARCHIVE_LIMITS,
@@ -124,7 +125,7 @@ describe('readRepositoryArchive', () => {
 
 		expect(archive.paths).toEqual(['a/SKILL.md', 'b/SKILL.md']);
 		expect([...archive.text.keys()]).toEqual(['a/SKILL.md']);
-		expect([...archive.oversized]).toEqual(['b/SKILL.md']);
+		expect([...archive.oversized]).toEqual([['b/SKILL.md', await sha256('x'.repeat(11))]]);
 	});
 
 	describe('under a folder', () => {
