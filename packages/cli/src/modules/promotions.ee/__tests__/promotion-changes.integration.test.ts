@@ -1355,13 +1355,22 @@ describe('resources in the preview', () => {
 		const credentialKey = `credential:${credential.id}`;
 		const workflowKey = `workflow:${charge.id}`;
 
-		const { body } = await agent
-			.post(`${endpoint}/details`)
-			.send({ commitSha, keys: [credentialKey, workflowKey] })
-			.expect(200);
+		const loadDetails = async () =>
+			(
+				await agent
+					.post(`${endpoint}/details`)
+					.send({ commitSha, keys: [credentialKey, workflowKey] })
+					.expect(200)
+			).body;
 
-		expect(body.missingKeys).toEqual([credentialKey]);
-		expect(body.details).toEqual([expect.objectContaining({ key: workflowKey })]);
+		const expected = {
+			missingKeys: [credentialKey],
+			details: [expect.objectContaining({ key: workflowKey })],
+		};
+		expect(await loadDetails()).toEqual(expected);
+		// The branch still holds the credential after its deletion on this instance.
+		await Container.get(CredentialsRepository).delete(credential.id);
+		expect(await loadDetails()).toEqual(expected);
 	}, 30_000);
 
 	it('returns both sides of a project whose id has a colon', async () => {

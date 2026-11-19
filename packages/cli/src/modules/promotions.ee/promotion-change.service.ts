@@ -21,7 +21,7 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import type { z } from 'zod';
 
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { diffDataTableSchema } from '@/modules/n8n-packages/entities/data-table/data-table-compat';
 import { gitBlobSha } from '@/modules/n8n-packages/io/hashing-package-writer';
 import { PACKAGE_ENTITY_LAYOUT, entityIdOfSegment } from '@/modules/n8n-packages/io/manifest-entry';
@@ -355,6 +355,10 @@ export class PromotionChangeService {
 			if (resource?.type !== 'credential') continue;
 			const canRead = await userHasScopes(user, ['credential:read'], false, {
 				credentialId: resource.id,
+			}).catch((error: unknown) => {
+				// A credential that is gone from this instance has nobody who can read it.
+				if (error instanceof NotFoundError) return false;
+				throw error;
 			});
 			if (!canRead) hidden.add(key);
 		}
