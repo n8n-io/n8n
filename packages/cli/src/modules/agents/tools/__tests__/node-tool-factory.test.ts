@@ -10,6 +10,8 @@ import { NodeTypes } from '@/node-types';
 import type { NonEmptyViolations } from '@/policy/policy-violation.error';
 
 import { AgentFileBridge } from '../../agent-file-bridge.service';
+import { currentNodeGuard, withChatScope } from '../../../mcp-guard/chat-scope';
+import type { HydrationModel } from '../../../mcp-guard/hydration-llm';
 import { resolveNodeTool } from '../node-tool-factory';
 
 const violation = (overrides: Partial<PolicyViolation> = {}): PolicyViolation => ({
@@ -537,5 +539,37 @@ describe('resolveNodeTool → $fromAI argument named files', () => {
 		expect(executeInline).toHaveBeenCalledWith(
 			expect.objectContaining({ inputData: [{ json: { files: 'a.txt,b.txt' } }] }),
 		);
+	});
+});
+
+describe('resolveNodeTool → mcp-guard scope', () => {
+	const model: HydrationModel = { resolve: async () => ({}) as never };
+
+	const run = async (guardModel?: HydrationModel) => {
+		let seen: { model: HydrationModel } | undefined;
+		const executeInline = vi.fn(async () => {
+			seen = currentNodeGuard();
+			return { status: 'success', data: [] };
+		});
+		const tool = await resolveNodeTool(baseToolSchema, {
+			executor: { executeInline } as unknown as EphemeralNodeExecutor,
+			projectId: 'p1',
+			guardModel,
+		});
+
+		await withChatScope(
+			'chat1',
+			async () => await tool.handler!({ input: 'x' }, {} as never),
+			'a1',
+		);
+		return seen;
+	};
+
+	it('runs the node inside the guard scope when the context has a guard model', async () => {
+		expect((await run(model))?.model).toBe(model);
+	});
+
+	it('runs the node outside the guard scope when the context has no guard model', async () => {
+		expect(await run(undefined)).toBeUndefined();
 	});
 });
