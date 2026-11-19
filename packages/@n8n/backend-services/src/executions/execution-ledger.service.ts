@@ -12,6 +12,7 @@ import type {
 	ExecutionLedgerEndedFacts,
 	ExecutionLedgerStartedFacts,
 	ExecutionLedgerWriter,
+	ExecutionLedgerWriteResult,
 } from './execution-ledger-writer';
 
 /** An execution row as `create` inserted it, plus the tombstone it replaced, if any. */
@@ -113,8 +114,7 @@ export class ExecutionLedger {
 		assertTransaction(ctx);
 		if (!this.writer) return;
 
-		const { hasOwnerProject } = await this.writer.writeStarted(facts, ctx);
-		if (!hasOwnerProject) this.reportNoOwnerProject(facts);
+		this.reportIfNoOwnerProject(await this.writer.writeStarted(facts, ctx), facts);
 	}
 
 	async recordEndedInTransaction(
@@ -124,8 +124,7 @@ export class ExecutionLedger {
 		assertTransaction(ctx);
 		if (!this.writer) return;
 
-		const { hasOwnerProject } = await this.writer.writeEnded(facts, ctx);
-		if (!hasOwnerProject) this.reportNoOwnerProject(facts);
+		this.reportIfNoOwnerProject(await this.writer.writeEnded(facts, ctx), facts);
 	}
 
 	/**
@@ -136,8 +135,7 @@ export class ExecutionLedger {
 		if (!this.writer) return;
 
 		try {
-			const { hasOwnerProject } = await this.writer.writeEnded(facts, {});
-			if (!hasOwnerProject) this.reportNoOwnerProject(facts);
+			this.reportIfNoOwnerProject(await this.writer.writeEnded(facts, {}), facts);
 		} catch (e) {
 			const error = ensureError(e);
 			const { executionId, workflowId } = facts;
@@ -170,7 +168,12 @@ export class ExecutionLedger {
 	}
 
 	/** The row is written, but no project count includes it. */
-	private reportNoOwnerProject({ executionId, workflowId }: ExecutionLedgerStartedFacts) {
+	private reportIfNoOwnerProject(
+		{ hasOwnerProject }: ExecutionLedgerWriteResult,
+		{ executionId, workflowId }: ExecutionLedgerStartedFacts,
+	) {
+		if (hasOwnerProject) return;
+
 		this.logger.error(
 			`Execution ${executionId} of workflow ${workflowId} is in the execution ledger with no project: the workflow has no owner project`,
 			{ executionId, workflowId },
