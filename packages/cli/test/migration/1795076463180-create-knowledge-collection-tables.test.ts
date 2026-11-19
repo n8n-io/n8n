@@ -11,7 +11,7 @@ import { DataSource } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { randomUUID } from 'node:crypto';
 
-const migrationName = 'CreateKnowledgeCollectionTables1794937304000';
+const migrationName = 'CreateKnowledgeCollectionTables1795076463180';
 
 const tables = [
 	'knowledge_collection',
@@ -122,7 +122,9 @@ describe('CreateKnowledgeCollectionTables migration', () => {
 
 		const insertAgent = async (projectId: string) => {
 			const id = randomUUID();
-			await insertRow('agents', { id, name: 'Knowledge agent', projectId });
+			const identityId = randomUUID();
+			await insertRow('user', { id: identityId, kind: 'service', roleSlug: 'global:agent' });
+			await insertRow('agents', { id, name: 'Knowledge agent', projectId, identityId });
 			return id;
 		};
 

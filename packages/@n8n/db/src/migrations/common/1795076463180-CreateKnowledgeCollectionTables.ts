@@ -15,7 +15,7 @@ const agentDependencyTable = 'agent_knowledge_dependency';
  * row of `shared_knowledge_collection`. `ownerProjectId` is the source of truth.
  * A project delete removes its collections and their rows through the cascade.
  */
-export class CreateKnowledgeCollectionTables1794937304000 implements ReversibleMigration {
+export class CreateKnowledgeCollectionTables1795076463180 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		await this.createCollectionTable(context);
 		await this.createShareTable(context);

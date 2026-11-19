@@ -861,8 +861,8 @@ describe('ImportService', () => {
 			const dbMigrations = [
 				{
 					id: '2',
-					timestamp: '1794937304000',
-					name: 'CreateKnowledgeCollectionTables1794937304000',
+					timestamp: '1795076463180',
+					name: 'CreateKnowledgeCollectionTables1795076463180',
 				},
 			];
 
