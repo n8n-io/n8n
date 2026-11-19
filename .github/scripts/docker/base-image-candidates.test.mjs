@@ -102,6 +102,10 @@ describe('compareScans', () => {
 			['CVE-3'],
 		);
 		assert.deepEqual(diff.addedPackages, ['curl']);
+		assert.deepEqual(
+			diff.remaining.map((f) => f.id),
+			['CVE-2', 'CVE-3'],
+		);
 	});
 
 	it('treats the same CVE in another package as another finding', () => {
@@ -272,13 +276,13 @@ describe('renderSummary', () => {
 		const summary = renderSummary([ready, evaluateSource(pin, digest('a'), [])]);
 		assert.match(
 			summary,
-			/\| `DHI_REF` \| ready \| 2026-11-17T00:00:00.000Z \| no \| linux\/amd64 \| 1 C \/ 0 H \/ 0 M \| 0 C \/ 0 H \/ 0 M \| curl \|/,
+			/\| `DHI_REF` \| ready \| 2026-11-17T00:00:00.000Z \| no \| linux\/amd64 \| 1 C \/ 0 H \/ 0 M \| 0 C \/ 0 H \/ 0 M \| 0 C \/ 0 H \/ 0 M \| curl \|/,
 		);
 		assert.match(
 			summary,
-			/\| `DHI_REF` \| ready \| 2026-11-17T00:00:00.000Z \| no \| linux\/arm64 \| 0 C \/ 1 H \/ 0 M \| 0 C \/ 0 H \/ 0 M \| - \|/,
+			/\| `DHI_REF` \| ready \| 2026-11-17T00:00:00.000Z \| no \| linux\/arm64 \| 0 C \/ 1 H \/ 0 M \| 0 C \/ 0 H \/ 0 M \| 0 C \/ 0 H \/ 0 M \| - \|/,
 		);
-		assert.match(summary, /\| `DHI_REF` \| current \| - \| - \| - \| - \| - \| - \|/);
+		assert.match(summary, /\| `DHI_REF` \| current \| - \| - \| - \| - \| - \| - \| - \|/);
 	});
 
 	it('lists the sources that need a person', () => {
