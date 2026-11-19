@@ -12,7 +12,8 @@ A layout that needs a resize handle and its own markup uses `N8nResizeWrapper` i
 
 ```
 N8nSidebar
-├── default slot
+├── scroll area
+│   └── default slot
 └── resize handle (when resizable)
 ```
 
@@ -36,21 +37,18 @@ N8nSidebar
 
 **Slots**
 
-- `default` Sidebar body. The caller supplies the content and the behaviour. A selectable list is an `N8nListbox` in this slot. A form is inputs in this slot. A control’s click handler lives on that control.
+- `default` Sidebar body. This region scrolls. The caller supplies the content and the behaviour. A selectable list is an `N8nListbox` in this slot. A form is inputs in this slot. A control’s click handler lives on that control.
 
 **Tokens**
 
 Set a token on the sidebar. The sidebar uses the token. When the token is unset, it uses the default.
 
-- `--n8n-sidebar--color--background` Surface fill. | default: `--color--background--light-2`
-- `--n8n-sidebar--color--border` Color of the inner edge. | default: `--border-color--subtle`
-- `--n8n-sidebar--border-width` Width of the inner edge. | default: `--border-width` (1px)
-- `--n8n-sidebar--color--text` Text color. | default: `--color--text`
-- `--n8n-sidebar--padding` Padding around the slot. | default: `--spacing--2xs` (8px)
+- `--n8n-sidebar--color--background` Surface fill. | default: `--background--subtle`
+- `--n8n-sidebar--padding` Padding around the scrolling body. | default: `--spacing--2xs` (8px)
 
 A list uses the default padding. A form sets a larger padding on the sidebar.
 
-The sidebar fills the height of its parent. The slot scrolls. Content beside the sidebar scrolls on its own when that content has its own overflow.
+The sidebar fills the height of its parent. The default slot scrolls in an `N8nScrollArea`. The area fades at the top and the bottom when the content overflows. Content beside the sidebar scrolls on its own when that content has its own overflow.
 
 **Types**
 
@@ -64,6 +62,12 @@ type SidebarProps = {
 	 * @default 'left'
 	 */
 	side?: SidebarSide;
+	/**
+	 * Current width in pixels.
+	 * Bind with v-model:width.
+	 * @default 240
+	 */
+	width?: number;
 	/**
 	 * Local storage key for the width.
 	 * The sidebar reads this key on mount.
