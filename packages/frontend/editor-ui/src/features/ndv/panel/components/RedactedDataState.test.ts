@@ -139,6 +139,36 @@ describe('RedactedDataState', () => {
 		});
 	});
 
+	describe('when a credential the execution used was deleted', () => {
+		it('says the credential was deleted and offers to reveal the data', () => {
+			const { getByTestId, queryByText } = renderComponent({
+				props: { title: 'Redacted', reason: 'credential_deleted', canReveal: true },
+			});
+
+			expect(getByTestId('ndv-data-redacted')).toHaveTextContent(
+				i18n.baseText('ndv.redacted.credentialDeleted.description'),
+			);
+			// Redaction rules did not cause this, so do not point to the settings.
+			expect(queryByText(i18n.baseText('ndv.redacted.description.link'))).not.toBeInTheDocument();
+			expect(getByTestId('ndv-reveal-redacted-data')).toBeInTheDocument();
+		});
+
+		it('says the viewer cannot reveal it, without a share link', () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: { title: 'Redacted', reason: 'credential_deleted', canReveal: false },
+			});
+
+			expect(getByTestId('ndv-data-redacted')).toHaveTextContent(
+				i18n.baseText('ndv.redacted.credentialDeleted.description'),
+			);
+			expect(getByTestId('ndv-data-redacted')).toHaveTextContent(
+				i18n.baseText('ndv.redacted.credentialDeleted.noPermission'),
+			);
+			expect(queryByTestId('redacted-data-share-credential')).not.toBeInTheDocument();
+			expect(queryByTestId('ndv-reveal-redacted-data')).not.toBeInTheDocument();
+		});
+	});
+
 	it('should show reveal button when canReveal is true', () => {
 		const { getByTestId } = renderComponent({
 			props: { title: 'Redacted', canReveal: true },
@@ -181,6 +211,8 @@ describe('RedactedDataState', () => {
 		{ reason: 'dynamic_credentials', canReveal: false },
 		{ reason: 'sub_workflow_redaction_policy', canReveal: true },
 		{ reason: 'credential_inaccessible', canReveal: false },
+		{ reason: 'credential_deleted', canReveal: true },
+		{ reason: 'credential_deleted', canReveal: false },
 	])('should show docs link regardless of redaction reason (%o)', ({ reason, canReveal }) => {
 		const { getByTestId } = renderComponent({
 			props: { title: 'Redacted', reason, canReveal },

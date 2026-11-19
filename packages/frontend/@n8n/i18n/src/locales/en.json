@@ -2527,6 +2527,8 @@
 	"ndv.redacted.shareCredential.description": "This execution used a credential you don't have access to, so its data is hidden.",
 	"ndv.redacted.shareCredential.link": "Give yourself access to {credential}",
 	"ndv.redacted.shareCredential.linkNoName": "Give yourself access to the credential",
+	"ndv.redacted.credentialDeleted.description": "This execution used a credential that was deleted, so its data is hidden.",
+	"ndv.redacted.credentialDeleted.noPermission": "You don't have permission to reveal it.",
 	"ndv.redacted.dynamicCredentials.description": "This execution used end-user credentials. Data from end-user credential executions cannot be revealed.",
 	"ndv.redacted.subWorkflow.description": "This execution is redacted because a sub-workflow it called has a redaction policy.",
 	"ndv.redacted.revealButton": "Reveal data",

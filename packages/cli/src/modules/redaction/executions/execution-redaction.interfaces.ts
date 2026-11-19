@@ -24,6 +24,11 @@ export interface RedactionContext {
 	/** The credentials behind `enforceCredentialUsabilityRedaction`: those the
 	 *  requesting user cannot use. Empty when that redaction does not apply. */
 	readonly inaccessibleCredentialIds: readonly string[];
+	/** True when the execution references a deleted credential, and no existing
+	 *  one that the requesting user cannot use. Nobody can use a deleted
+	 *  credential, so the `execution:reveal` scope decides `userCanReveal`.
+	 *  Drives the `credential_deleted` redaction reason. */
+	readonly enforceDeletedCredentialRedaction: boolean;
 	/** True when the execution's own policy does not redact its mode, but the
 	 *  channels its sub-workflows reported do. Drives the
 	 *  `sub_workflow_redaction_policy` redaction reason. */
