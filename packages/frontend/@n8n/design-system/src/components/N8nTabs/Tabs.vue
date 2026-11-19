@@ -313,6 +313,7 @@ function scroll(direction: 'left' | 'right') {
 	position: relative;
 	display: flex;
 	align-items: center;
+	text-align: center;
 	gap: var(--n8n-tabs--tab--gap);
 	padding: var(--n8n-tabs--tab--padding);
 	border-radius: var(--radius);

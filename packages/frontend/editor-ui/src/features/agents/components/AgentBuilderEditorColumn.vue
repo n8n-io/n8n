@@ -617,10 +617,6 @@ defineExpose({ onSetupTaskAction });
 .mainTabs {
 	width: 100%;
 	border-bottom: var(--border);
-
-	:global([data-test-id='tab-agent'] > *) {
-		padding-left: 0;
-	}
 }
 
 .setupTasks {

@@ -153,8 +153,8 @@ function onTooltipClick(tab: NodeSettingsTab, event: MouseEvent) {
 	<N8nTabs
 		:options="options"
 		:model-value="modelValue"
-		variant="modern"
 		:size="compact ? 'small' : 'medium'"
+		:class="$style.tabs"
 		@update:model-value="onTabSelect"
 		@tooltip-click="onTooltipClick"
 	>
@@ -186,6 +186,9 @@ function onTooltipClick(tab: NodeSettingsTab, event: MouseEvent) {
 </template>
 
 <style lang="scss" module>
+.tabs {
+	width: 100%;
+}
 .docsLink {
 	display: flex;
 	align-items: center;
