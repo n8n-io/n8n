@@ -88,6 +88,18 @@ a deployable engine worker) without touching core logic.
   `@n8n/scheduler` does) to enforce the allowlist. Until then, this doc is the
   intent.
 
+## Migrations are additive
+
+Change the schema only with a new migration, for example one that adds a
+column. Never edit a migration that is already on master. Engine databases
+persist, and a database that ran a migration does not run it again, so an edit
+never reaches it.
+
+A new migration gets a timestamp later than the last one and its entry in
+`src/database/migrations/index.ts`. Add its file name to the
+`unicorn/filename-case` exemptions in `oxlint.config.mts` and
+`eslint.config.mjs`, and mirror the change in the entity decorators.
+
 ## Crash recovery: reconciliation, not transactions
 
 Handlers advance an execution through several separate writes — claim the
