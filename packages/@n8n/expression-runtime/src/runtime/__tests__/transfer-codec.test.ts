@@ -276,3 +276,21 @@ describe('unwrapTransferredValue', () => {
 		expect(second.message).toBe('original');
 	});
 });
+
+describe('decodeHostValue with whole host data', () => {
+	it('gives the data back as it is', () => {
+		const data = { rows: [{ id: 1 }] };
+
+		expect(decodeHostValue({ __n8nType: 'HostData', __value: data })).toBe(data);
+	});
+
+	it('keeps metadata keys and error flags in the data as data', () => {
+		const data = {
+			__isObject: true,
+			__keys: ['a'],
+			nested: { __isArray: true, __length: 2, __isError: true },
+		};
+
+		expect(decodeHostValue({ __n8nType: 'HostData', __value: data })).toBe(data);
+	});
+});
