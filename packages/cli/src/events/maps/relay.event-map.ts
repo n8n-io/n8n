@@ -25,6 +25,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	IWorkflowSettings,
 	JsonValue,
+	RelatedAgentRun,
 	WorkflowExecuteMode,
 	WorkflowSettings,
 } from 'n8n-workflow';
@@ -289,6 +290,8 @@ export type RelayEventMap = ModuleEventMap & {
 		mode: WorkflowExecuteMode;
 		projectId?: string;
 		projectName?: string;
+		/** The agent tool call that started this execution. Relays read ids from it and never send it whole. */
+		parentAgentRun?: RelatedAgentRun;
 	};
 
 	'workflow-post-execute': {
@@ -300,6 +303,8 @@ export type RelayEventMap = ModuleEventMap & {
 		projectName?: string;
 		source?: IWorkflowExecutionDataProcess['source'];
 		telemetryMetadata?: IWorkflowExecutionDataProcess['telemetryMetadata'];
+		/** The agent tool call that started this execution. Relays read ids from it and never send it whole. */
+		parentAgentRun?: RelatedAgentRun;
 	};
 
 	'workflow-sharing-updated': {
