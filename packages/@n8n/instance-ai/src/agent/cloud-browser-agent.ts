@@ -89,8 +89,11 @@ export type CloudBrowserUserControlResult = { returned: true } | { returned: fal
 
 /** What `browser_request_user_action` needs from the host, which owns the browser session. */
 export interface CloudBrowserUserActionHost {
-	/** Gives the user control of the browser and waits until they return it. */
-	requestUserAction(): Promise<CloudBrowserUserControlResult>;
+	/**
+	 * Gives the user control of the browser and waits until they return it. With
+	 * `isLoginRequest`, the user can save the login when they return control.
+	 */
+	requestUserAction(options: { isLoginRequest: boolean }): Promise<CloudBrowserUserControlResult>;
 	/** Returns and clears the notes the user wrote when they gave control back, oldest first. */
 	drainUserControlNotes(): string[];
 }
@@ -102,6 +105,9 @@ const requestUserActionInputSchema = z.object({
 		.describe(
 			'One sentence that tells the user what to do, for example "Sign in to Ledgerly so I can create the API key."',
 		),
+	isLoginRequest: z
+		.boolean()
+		.describe('true when the user needs to sign in to the site that is open in the browser.'),
 });
 
 /**
@@ -115,8 +121,8 @@ function createRequestUserActionTool(userActionHost: CloudBrowserUserActionHost)
 				'Use it when the page needs the user: a sign-in, a two-factor code, a CAPTCHA, or a choice only they can make.',
 		)
 		.input(requestUserActionInputSchema)
-		.handler(async () => {
-			const result = await userActionHost.requestUserAction();
+		.handler(async ({ isLoginRequest }) => {
+			const result = await userActionHost.requestUserAction({ isLoginRequest });
 			if (!result.returned) return { controlReturned: false, error: result.error };
 			return {
 				controlReturned: true,
@@ -130,7 +136,7 @@ function createRequestUserActionTool(userActionHost: CloudBrowserUserActionHost)
 
 const CLOUD_BROWSER_AGENT_PROMPT = `You are a browser agent for n8n Assistant. You do one task in a virtual browser, in the background, and report the result. You cannot see the conversation with the user. The task message is all you know about it.
 
-You can get the user to sign in. When a site needs a login, call ${REQUEST_USER_ACTION_TOOL_ID}: the user takes over the browser, signs in through the live view, and returns control to you. Then you continue the task. A login page never ends a task.
+You can get the user to sign in. When a site needs a login, call ${REQUEST_USER_ACTION_TOOL_ID} with isLoginRequest true, on the site's sign-in page: the user takes over the browser, signs in through the live view, and returns control to you. Then you continue the task. A login page never ends a task.
 
 ## Working in the browser
 - Start with browser_start_session. Open the start URL from the task, or the site the goal names.

@@ -4,6 +4,11 @@ export interface CloudBrowserSession {
 	/** Carries a signing key, so it must never be logged. */
 	connectUrl: string;
 	/**
+	 * The provider's id of the region the browser runs in, for example "eu-central-1". Absent when
+	 * unknown.
+	 */
+	regionId?: string;
+	/**
 	 * The country of the region the browser runs in, as a two-letter code such as "DE". Sites see
 	 * the browser there unless it uses a proxy. Absent when unknown.
 	 */
@@ -19,10 +24,39 @@ export interface CloudBrowserSessionScope {
 	taskId: string;
 }
 
-export interface CloudBrowserSessionOptions {
+export interface CloudBrowserSessionLocation {
+	/** The provider's id of the region to run in, for example "eu-central-1". */
+	regionId?: string;
 	/** Browse through a residential proxy in this country, for example "DE". */
 	proxyCountry?: string;
+	/** A city in `proxyCountry`. */
+	proxyCity?: string;
 }
+
+export interface CloudBrowserSessionOptions extends CloudBrowserSessionLocation {
+	/** A login profile from `createLoginProfile`. The session keeps its sign-ins in it. */
+	loginProfileId?: string;
+}
+
+/**
+ * A browser profile that keeps the cookies and site storage of a session. Each session gets a new
+ * one. When the user signs in to a site and saves the login, the profile is kept for that site.
+ * Otherwise it is deleted when the session ends.
+ */
+export interface CloudBrowserLoginProfile {
+	id: string;
+	/** The registrable domain it is for, for example "linkedin.com". */
+	domain: string;
+	/** When the user saved it. Absent while it is not saved. */
+	savedAt?: Date;
+	/** Where it was saved. A session that uses it must open there. Set together with `savedAt`. */
+	savedLocation?: CloudBrowserSessionLocation;
+	/** When a session last used it. Set for a saved login profile. */
+	lastUsedAt?: Date;
+}
+
+/** The user whose saved login profiles a call reads or deletes. These calls are not part of a task. */
+export type CloudBrowserUserScope = Pick<CloudBrowserSessionScope, 'userId'>;
 
 /**
  * Where cloud browser sessions come from. The instance uses one provider for
@@ -43,4 +77,19 @@ export interface CloudBrowserSessionProvider {
 		sessionId: string,
 		targetId?: string,
 	): Promise<string>;
+	/**
+	 * Creates an empty login profile for a new session, so that the sign-ins made in the session
+	 * can be saved later. Returns its id.
+	 */
+	createLoginProfile(scope: CloudBrowserSessionScope): Promise<string>;
+	/**
+	 * Saves a login profile for `domain`, and returns it as saved. `location` is where its session
+	 * runs.
+	 */
+	saveLoginProfile(
+		scope: CloudBrowserSessionScope,
+		loginProfile: { id: string; domain: string; location: CloudBrowserSessionLocation },
+	): Promise<CloudBrowserLoginProfile>;
+	/** Deletes a login profile, saved or not. */
+	deleteLoginProfile(scope: CloudBrowserUserScope, id: string): Promise<void>;
 }

@@ -1238,7 +1238,8 @@ describe('InstanceAiController', () => {
 	});
 
 	describe('returnCloudBrowserControl', () => {
-		const payload = (note?: string) => mock<InstanceAiCloudBrowserReturnControlRequest>({ note });
+		const payload = (note?: string) =>
+			mock<InstanceAiCloudBrowserReturnControlRequest>({ note, shouldSaveLogin: undefined });
 
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('returnCloudBrowserControl')).toEqual({
@@ -1249,7 +1250,10 @@ describe('InstanceAiController', () => {
 
 		it("should give control back to the agent with the user's note", async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			cloudBrowserService.returnControlToAgent.mockReturnValue(undefined);
+			cloudBrowserService.returnControlToAgent.mockResolvedValue({
+				returned: true,
+				loginSaved: false,
+			});
 
 			const result = await controller.returnCloudBrowserControl(
 				req,
@@ -1259,12 +1263,12 @@ describe('InstanceAiController', () => {
 				payload('Signed in'),
 			);
 
-			expect(result).toEqual({ ok: true });
+			expect(result).toEqual({ ok: true, loginSaved: false });
 			expect(cloudBrowserService.returnControlToAgent).toHaveBeenCalledWith(
 				USER_ID,
 				THREAD_ID,
 				'task-1',
-				'Signed in',
+				{ note: 'Signed in', shouldSaveLogin: undefined },
 			);
 		});
 
@@ -1273,7 +1277,10 @@ describe('InstanceAiController', () => {
 			['no note', undefined],
 		])('should pass no note for %s', async (_, note) => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			cloudBrowserService.returnControlToAgent.mockReturnValue(undefined);
+			cloudBrowserService.returnControlToAgent.mockResolvedValue({
+				returned: true,
+				loginSaved: false,
+			});
 
 			await controller.returnCloudBrowserControl(req, res, THREAD_ID, 'task-1', payload(note));
 
@@ -1281,15 +1288,43 @@ describe('InstanceAiController', () => {
 				USER_ID,
 				THREAD_ID,
 				'task-1',
-				undefined,
+				{ note: undefined, shouldSaveLogin: undefined },
+			);
+		});
+
+		it('should save the login and say that it was saved', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			cloudBrowserService.returnControlToAgent.mockResolvedValue({
+				returned: true,
+				loginSaved: true,
+			});
+
+			const result = await controller.returnCloudBrowserControl(
+				req,
+				res,
+				THREAD_ID,
+				'task-1',
+				mock<InstanceAiCloudBrowserReturnControlRequest>({
+					note: undefined,
+					shouldSaveLogin: true,
+				}),
+			);
+
+			expect(result).toEqual({ ok: true, loginSaved: true });
+			expect(cloudBrowserService.returnControlToAgent).toHaveBeenCalledWith(
+				USER_ID,
+				THREAD_ID,
+				'task-1',
+				{ note: undefined, shouldSaveLogin: true },
 			);
 		});
 
 		it('should throw ConflictError with the reason when control cannot be returned', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			cloudBrowserService.returnControlToAgent.mockReturnValue(
-				'The user does not have control of the browser.',
-			);
+			cloudBrowserService.returnControlToAgent.mockResolvedValue({
+				returned: false,
+				error: 'The user does not have control of the browser.',
+			});
 
 			const call = controller.returnCloudBrowserControl(req, res, THREAD_ID, 'task-1', payload());
 

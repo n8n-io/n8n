@@ -1,7 +1,8 @@
 import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
-import { reactive } from 'vue';
+import { defineComponent, h, reactive } from 'vue';
+import type { RouteLocationRaw } from 'vue-router';
 
 import { createComponentRenderer } from '@/__tests__/render';
 
@@ -13,13 +14,18 @@ import {
 import { postCloudBrowserReturnControl, postCloudBrowserTakeOver } from '../../instanceAi.api';
 import InstanceAiBrowserPreview from '../InstanceAiBrowserPreview.vue';
 
-const { showError } = vi.hoisted(() => ({ showError: vi.fn() }));
+const { showError, showMessage } = vi.hoisted(() => ({
+	showError: vi.fn(),
+	showMessage: vi.fn(),
+}));
 vi.mock('../../instanceAi.api', () => ({
 	postCloudBrowserTakeOver: vi.fn(),
 	postCloudBrowserReturnControl: vi.fn(),
 }));
 vi.mock('../../instanceAi.store', () => ({ useThread: () => ({ id: 'thread-1' }) }));
-vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError }) }));
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError, showMessage }),
+}));
 vi.mock('@n8n/stores/useRootStore', () => ({ useRootStore: () => ({ restApiContext: {} }) }));
 
 const renderComponent = createComponentRenderer(InstanceAiBrowserPreview);
@@ -38,10 +44,23 @@ const popup: CloudBrowserLiveView = {
 	background: { windowId: 'window-1', liveViewUrl: 'https://live.example.com/1' },
 };
 const userAction = { reason: 'Log in to the shop, please' };
+const loginRequest = { reason: 'Sign in to the shop, please', isLoginRequest: true };
+const liveWithLogin: CloudBrowserLiveView = {
+	...live,
+	loginProfile: { domain: 'shop.example.com' },
+};
+
+// Keeps the link target readable, since the default stub drops it.
+const RouterLinkStub = defineComponent({
+	props: { to: { type: [String, Object], required: true } },
+	setup(props: { to: RouteLocationRaw }, { slots }) {
+		return () => h('a', { 'data-to': JSON.stringify(props.to) }, slots.default?.());
+	},
+});
 
 function render(
 	view: CloudBrowserLiveView | undefined,
-	props: { userAction?: { reason: string } } = {},
+	props: { userAction?: { reason: string; isLoginRequest?: boolean } } = {},
 ) {
 	const liveViews = reactive(new Map<string, CloudBrowserLiveView>());
 	if (view) liveViews.set('task-1', view);
@@ -49,6 +68,7 @@ function render(
 	const rendered = renderComponent({
 		props: { taskId: 'task-1', ...props },
 		global: {
+			stubs: { RouterLink: RouterLinkStub },
 			provide: {
 				[CloudBrowserLiveViewsKey as symbol]: liveViews,
 				[CloudBrowserLiveViewRefreshKey as symbol]: refreshLiveView,
@@ -61,8 +81,11 @@ function render(
 describe('InstanceAiBrowserPreview', () => {
 	beforeEach(() => {
 		vi.mocked(postCloudBrowserTakeOver).mockReset().mockResolvedValue(undefined);
-		vi.mocked(postCloudBrowserReturnControl).mockReset().mockResolvedValue(undefined);
+		vi.mocked(postCloudBrowserReturnControl)
+			.mockReset()
+			.mockResolvedValue({ ok: true, loginSaved: false });
 		showError.mockReset();
+		showMessage.mockReset();
 	});
 
 	describe('placeholder', () => {
@@ -260,12 +283,10 @@ describe('InstanceAiBrowserPreview', () => {
 			// Once after the take over, once after control returns.
 			expect(refreshLiveView).toHaveBeenCalledTimes(2);
 			expect(queryByTestId('instance-ai-browser-preview-note-dialog')).not.toBeInTheDocument();
-			expect(postCloudBrowserReturnControl).toHaveBeenCalledWith(
-				{},
-				'thread-1',
-				'task-1',
-				undefined,
-			);
+			expect(postCloudBrowserReturnControl).toHaveBeenCalledWith({}, 'thread-1', 'task-1', {
+				note: undefined,
+				shouldSaveLogin: false,
+			});
 			expect(getByTestId('instance-ai-browser-preview-frame')).toHaveClass('viewOnly');
 		});
 
@@ -325,12 +346,10 @@ describe('InstanceAiBrowserPreview', () => {
 			await fireEvent.click(getByTestId('instance-ai-browser-preview-note-skip'));
 			await flushPromises();
 
-			expect(postCloudBrowserReturnControl).toHaveBeenCalledWith(
-				{},
-				'thread-1',
-				'task-1',
-				undefined,
-			);
+			expect(postCloudBrowserReturnControl).toHaveBeenCalledWith({}, 'thread-1', 'task-1', {
+				note: undefined,
+				shouldSaveLogin: false,
+			});
 			expect(queryByTestId('instance-ai-browser-preview-note-dialog')).not.toBeInTheDocument();
 			expect(queryByTestId('instance-ai-browser-preview-banner')).not.toBeInTheDocument();
 		});
@@ -345,12 +364,10 @@ describe('InstanceAiBrowserPreview', () => {
 			await user.click(getByTestId('instance-ai-browser-preview-note-submit'));
 			await flushPromises();
 
-			expect(postCloudBrowserReturnControl).toHaveBeenCalledWith(
-				{},
-				'thread-1',
-				'task-1',
-				'I accepted the cookies',
-			);
+			expect(postCloudBrowserReturnControl).toHaveBeenCalledWith({}, 'thread-1', 'task-1', {
+				note: 'I accepted the cookies',
+				shouldSaveLogin: false,
+			});
 			expect(queryByTestId('instance-ai-browser-preview-note-dialog')).not.toBeInTheDocument();
 		});
 
@@ -478,6 +495,149 @@ describe('InstanceAiBrowserPreview', () => {
 			expect(queryByTestId('instance-ai-browser-preview-banner')).not.toBeInTheDocument();
 			expect(getByTestId('instance-ai-browser-preview-frame')).toHaveClass('viewOnly');
 			expect(getByTestId('instance-ai-browser-preview-overlay')).toBeInTheDocument();
+		});
+	});
+	describe('save login', () => {
+		async function takeOverAndFinish(
+			view: CloudBrowserLiveView,
+			action: { reason: string; isLoginRequest?: boolean },
+		) {
+			const rendered = render(view, { userAction: action });
+			await fireEvent.click(rendered.getByTestId('instance-ai-browser-preview-take-over'));
+			await flushPromises();
+			await fireEvent.click(rendered.getByTestId('instance-ai-browser-preview-done'));
+			await flushPromises();
+			return rendered;
+		}
+
+		it('asks to save the login after a sign-in the agent asked for', async () => {
+			const { getByTestId } = await takeOverAndFinish(liveWithLogin, loginRequest);
+
+			const dialog = getByTestId('instance-ai-browser-preview-save-login-dialog');
+			expect(dialog).toHaveTextContent('Save your login?');
+			expect(dialog).toHaveTextContent('n8n Assistant can reuse your login for shop.example.com.');
+			expect(postCloudBrowserReturnControl).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['the request is not a sign-in', liveWithLogin, userAction],
+			['the session has no login profile', live, loginRequest],
+			[
+				'the login is already saved',
+				{
+					...live,
+					loginProfile: { domain: 'shop.example.com', savedAt: '2026-10-01T08:00:00.000Z' },
+				},
+				loginRequest,
+			],
+		])('does not ask to save the login when %s', async (_, view, action) => {
+			const { queryByTestId } = await takeOverAndFinish(view, action);
+
+			expect(
+				queryByTestId('instance-ai-browser-preview-save-login-dialog'),
+			).not.toBeInTheDocument();
+			expect(postCloudBrowserReturnControl).toHaveBeenCalledWith({}, 'thread-1', 'task-1', {
+				note: undefined,
+				shouldSaveLogin: false,
+			});
+		});
+
+		it('saves the login and says so when the user chooses to save', async () => {
+			vi.mocked(postCloudBrowserReturnControl).mockResolvedValue({ ok: true, loginSaved: true });
+			const { getByTestId, queryByTestId, refreshLiveView } = await takeOverAndFinish(
+				liveWithLogin,
+				loginRequest,
+			);
+
+			await fireEvent.click(getByTestId('instance-ai-browser-preview-save-login-submit'));
+			await flushPromises();
+
+			expect(postCloudBrowserReturnControl).toHaveBeenCalledExactlyOnceWith(
+				{},
+				'thread-1',
+				'task-1',
+				{ note: undefined, shouldSaveLogin: true },
+			);
+			expect(showMessage).toHaveBeenCalledExactlyOnceWith({
+				type: 'success',
+				title: 'Login saved',
+				message: 'You can manage this login at any time in your settings.',
+			});
+			expect(refreshLiveView).toHaveBeenCalledTimes(2);
+			expect(
+				queryByTestId('instance-ai-browser-preview-save-login-dialog'),
+			).not.toBeInTheDocument();
+			expect(getByTestId('instance-ai-browser-preview-frame')).toHaveClass('viewOnly');
+		});
+
+		it('warns with the site when the server did not save the login', async () => {
+			vi.mocked(postCloudBrowserReturnControl).mockResolvedValue({ ok: true, loginSaved: false });
+			const { getByTestId } = await takeOverAndFinish(liveWithLogin, loginRequest);
+
+			await fireEvent.click(getByTestId('instance-ai-browser-preview-save-login-submit'));
+			await flushPromises();
+
+			expect(showMessage).toHaveBeenCalledExactlyOnceWith({
+				type: 'warning',
+				title: 'Your login was not saved',
+				message:
+					'The browser is no longer on shop.example.com, so n8n Assistant cannot tell where you signed in.',
+			});
+		});
+
+		it('returns control without saving when the user skips', async () => {
+			const { getByTestId, queryByTestId } = await takeOverAndFinish(liveWithLogin, loginRequest);
+
+			await fireEvent.click(getByTestId('instance-ai-browser-preview-save-login-skip'));
+			await flushPromises();
+
+			expect(postCloudBrowserReturnControl).toHaveBeenCalledExactlyOnceWith(
+				{},
+				'thread-1',
+				'task-1',
+				{ note: undefined, shouldSaveLogin: false },
+			);
+			expect(showMessage).not.toHaveBeenCalled();
+			expect(
+				queryByTestId('instance-ai-browser-preview-save-login-dialog'),
+			).not.toBeInTheDocument();
+		});
+
+		it('closes the dialog on Escape and keeps control with the user', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId } = await takeOverAndFinish(liveWithLogin, loginRequest);
+
+			await user.keyboard('{Escape}');
+			await flushPromises();
+
+			expect(
+				queryByTestId('instance-ai-browser-preview-save-login-dialog'),
+			).not.toBeInTheDocument();
+			expect(postCloudBrowserReturnControl).not.toHaveBeenCalled();
+			expect(getByTestId('instance-ai-browser-preview-done')).toBeInTheDocument();
+		});
+
+		it('shows an error, no save toast and keeps control when returning control fails', async () => {
+			const error = new Error('Request failed');
+			vi.mocked(postCloudBrowserReturnControl).mockRejectedValue(error);
+			const { getByTestId } = await takeOverAndFinish(liveWithLogin, loginRequest);
+
+			await fireEvent.click(getByTestId('instance-ai-browser-preview-save-login-submit'));
+			await flushPromises();
+
+			expect(showError).toHaveBeenCalledWith(error, 'Could not give control back to the assistant');
+			expect(showMessage).not.toHaveBeenCalled();
+			expect(getByTestId('instance-ai-browser-preview-save-login-dialog')).toBeInTheDocument();
+		});
+
+		it('closes the dialog when the request of the agent ends', async () => {
+			const { queryByTestId, rerender } = await takeOverAndFinish(liveWithLogin, loginRequest);
+
+			await rerender({ taskId: 'task-1', userAction: undefined });
+
+			expect(
+				queryByTestId('instance-ai-browser-preview-save-login-dialog'),
+			).not.toBeInTheDocument();
 		});
 	});
 });

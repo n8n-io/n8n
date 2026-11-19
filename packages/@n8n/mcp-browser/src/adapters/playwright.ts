@@ -902,6 +902,53 @@ export class PlaywrightAdapter {
 		}, kind);
 	}
 
+	/**
+	 * Clears the site data in the browser for every site except `domain` and its subdomains: the
+	 * cookies, and the storage of the sites that set cookies or have a page open.
+	 */
+	async clearSiteDataExcept(domain: string): Promise<void> {
+		const context = this.requireContext();
+		const isOtherSite = (host: string) => {
+			const bare = host.replace(/^\./, '');
+			return bare !== domain && !bare.endsWith(`.${domain}`);
+		};
+
+		const otherCookieHosts = new Set(
+			(await context.cookies()).map((cookie) => cookie.domain).filter(isOtherSite),
+		);
+		for (const host of otherCookieHosts) {
+			await context.clearCookies({ domain: host });
+		}
+
+		// CDP cannot list the origins that hold storage, so this clears the ones we know of: the
+		// sites that set cookies and the pages that are open.
+		const otherOrigins = new Set<string>();
+		for (const host of otherCookieHosts) {
+			const bare = host.replace(/^\./, '');
+			otherOrigins.add(`https://${bare}`);
+			otherOrigins.add(`http://${bare}`);
+		}
+		for (const page of context.pages()) {
+			try {
+				const { origin, hostname } = new URL(page.url());
+				if (origin !== 'null' && isOtherSite(hostname)) otherOrigins.add(origin);
+			} catch {
+				// A page without a URL has no site data.
+			}
+		}
+		const [page] = context.pages();
+		if (!page || otherOrigins.size === 0) return;
+
+		const session = await context.newCDPSession(page);
+		try {
+			for (const origin of otherOrigins) {
+				await session.send('Storage.clearDataForOrigin', { origin, storageTypes: 'all' });
+			}
+		} finally {
+			await session.detach().catch(() => {});
+		}
+	}
+
 	// =========================================================================
 	// Post-action settling — waits for network/navigation to complete
 	// Matches Playwright MCP's waitForCompletion() behavior.

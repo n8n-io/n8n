@@ -86,10 +86,12 @@ describe('CloudBrowserLocalMcpServer', () => {
 			onDisconnect?: (reason: string, details?: { blockingExtensionIds: string[] }) => void;
 			getPageUrl: Mock<(pageId: string) => string | undefined>;
 			getTargetId: Mock<(pageId: string) => Promise<string | undefined>>;
+			clearSiteDataExcept: Mock<(domain: string) => Promise<void>>;
 		} = {
 			onDisconnect: connectionOnDisconnect,
 			getPageUrl: vi.fn(),
 			getTargetId: vi.fn(async (pageId: string) => `target-${pageId}`),
+			clearSiteDataExcept: vi.fn().mockResolvedValue(undefined),
 		};
 		const state = { activePageId: 'page-1', adapter };
 		const click = {
@@ -166,6 +168,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 		sessionProvider.releaseSession.mockImplementation(async (_scope, id) => {
 			openSessions.delete(id);
 		});
+		sessionProvider.createLoginProfile.mockResolvedValue('login-profile-1');
 		const toolkits: Array<ReturnType<typeof fakeToolkit>> = [];
 		const createToolkit = vi.fn((connectUrl?: string) => {
 			const toolkit = fakeToolkit();
@@ -538,6 +541,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 			expect(sessionProvider.createSession).toHaveBeenCalledWith(scope, {
 				proxyCountry: undefined,
+				loginProfileId: 'login-profile-1',
 			});
 			expect(createToolkit).toHaveBeenCalledWith('wss://connect/1');
 			expect(toolkits[0].connection.connect).toHaveBeenCalled();
@@ -549,7 +553,10 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 			await start({ url: 'https://example.com', proxyCountry: 'de' });
 
-			expect(sessionProvider.createSession).toHaveBeenCalledWith(scope, { proxyCountry: 'DE' });
+			expect(sessionProvider.createSession).toHaveBeenCalledWith(scope, {
+				proxyCountry: 'DE',
+				loginProfileId: 'login-profile-1',
+			});
 		});
 
 		describe('browser region country', () => {
@@ -1129,7 +1136,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 			expect(server.isUserInControl()).toBe(false);
 			expect(server.giveControlToUser()).toBeUndefined();
 			expect(server.isUserInControl()).toBe(true);
-			expect(server.returnControlToAgent()).toBeUndefined();
+			expect(await server.returnControlToAgent()).toEqual({ returned: true, loginSaved: false });
 			expect(server.isUserInControl()).toBe(false);
 		});
 
@@ -1139,7 +1146,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 			server.giveControlToUser();
 
 			const call = server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
-			server.returnControlToAgent();
+			await server.returnControlToAgent();
 
 			expect(await call).toEqual(skippedResult);
 			expect(clickOn(toolkits[0])).not.toHaveBeenCalled();
@@ -1152,7 +1159,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 				server.giveControlToUser();
 
 				const call = server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
-				server.returnControlToAgent('I accepted the cookie banner');
+				await server.returnControlToAgent('I accepted the cookie banner');
 
 				expect(await call).toEqual(skippedResult);
 				expect(server.drainUserControlNotes()).toEqual(['I accepted the cookie banner']);
@@ -1163,7 +1170,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 				await start({ url: 'https://example.com' });
 				server.giveControlToUser();
 
-				server.returnControlToAgent('I signed in');
+				await server.returnControlToAgent('I signed in');
 
 				expect(server.drainUserControlNotes()).toEqual(['I signed in']);
 			});
@@ -1172,9 +1179,9 @@ describe('CloudBrowserLocalMcpServer', () => {
 				const { server, start } = setup();
 				await start({ url: 'https://example.com' });
 				server.giveControlToUser();
-				server.returnControlToAgent('first');
+				await server.returnControlToAgent('first');
 				server.giveControlToUser();
-				server.returnControlToAgent('second');
+				await server.returnControlToAgent('second');
 
 				expect(server.drainUserControlNotes()).toEqual(['first', 'second']);
 				expect(server.drainUserControlNotes()).toEqual([]);
@@ -1185,7 +1192,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 				await start({ url: 'https://example.com' });
 				server.giveControlToUser();
 
-				server.returnControlToAgent();
+				await server.returnControlToAgent();
 
 				expect(server.drainUserControlNotes()).toEqual([]);
 			});
@@ -1194,7 +1201,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 				const { server, start } = setup();
 				await start({ url: 'https://example.com' });
 
-				server.returnControlToAgent('x');
+				await server.returnControlToAgent('x');
 
 				expect(server.drainUserControlNotes()).toEqual([]);
 			});
@@ -1219,7 +1226,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 			const { server, toolkits, start } = setup();
 			await start({ url: 'https://example.com' });
 			server.giveControlToUser();
-			server.returnControlToAgent();
+			await server.returnControlToAgent();
 
 			const result = await server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
 
@@ -1249,9 +1256,10 @@ describe('CloudBrowserLocalMcpServer', () => {
 			const listener = vi.fn();
 			server.setControlReturnedListener(listener);
 
-			expect(server.returnControlToAgent('x')).toBe(
-				'The user does not have control of the browser.',
-			);
+			expect(await server.returnControlToAgent('x')).toEqual({
+				returned: false,
+				error: 'The user does not have control of the browser.',
+			});
 			expect(listener).not.toHaveBeenCalled();
 		});
 
@@ -1262,7 +1270,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 			server.setControlReturnedListener(listener);
 			server.giveControlToUser();
 
-			server.returnControlToAgent();
+			await server.returnControlToAgent();
 
 			expect(listener).toHaveBeenCalledTimes(1);
 		});
@@ -1275,7 +1283,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 			const first = server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
 			expect(server.giveControlToUser()).toBeUndefined();
 			const second = server.callTool({ name: 'browser_click', arguments: { ref: 'e2' } });
-			server.returnControlToAgent('done');
+			await server.returnControlToAgent('done');
 
 			expect(await first).toEqual(skippedResult);
 			expect(await second).toEqual(skippedResult);
@@ -1287,9 +1295,9 @@ describe('CloudBrowserLocalMcpServer', () => {
 				const { server, start } = setup();
 				await start({ url: 'https://example.com' });
 
-				const request = server.requestUserAction();
+				const request = server.requestUserAction({ isLoginRequest: false });
 				expect(server.isUserInControl()).toBe(true);
-				server.returnControlToAgent('Signed in');
+				await server.returnControlToAgent('Signed in');
 
 				expect(await request).toEqual({ returned: true });
 				expect(server.drainUserControlNotes()).toEqual(['Signed in']);
@@ -1298,7 +1306,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 			it('does not give control when no session is open', async () => {
 				const { server } = setup();
 
-				expect(await server.requestUserAction()).toEqual({
+				expect(await server.requestUserAction({ isLoginRequest: false })).toEqual({
 					returned: false,
 					error:
 						'No browser session is open. Call browser_start_session with a URL to open a session.',
@@ -1310,7 +1318,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 				const { server, start } = setup();
 				await start({ url: 'https://example.com' });
 
-				const request = server.requestUserAction();
+				const request = server.requestUserAction({ isLoginRequest: false });
 				await server.release();
 
 				expect(await request).toEqual({ returned: false, error: releasedMessage });
@@ -1339,7 +1347,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 				const { server, start } = setup();
 				await start({ url: 'https://example.com' });
 
-				const request = server.requestUserAction();
+				const request = server.requestUserAction({ isLoginRequest: false });
 				const call = server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
 				await vi.advanceTimersByTimeAsync(USER_CONTROL_TIMEOUT_MS);
 
@@ -1381,7 +1389,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 				server.giveControlToUser();
 				await vi.advanceTimersByTimeAsync(SESSION_IDLE_TIMEOUT_MS + 1000);
 
-				server.returnControlToAgent();
+				await server.returnControlToAgent();
 				await vi.advanceTimersByTimeAsync(SESSION_IDLE_TIMEOUT_MS - 1000);
 
 				expect([...openSessions]).toEqual(['sess-1']);
@@ -1445,6 +1453,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 				status: 'live',
 				liveViewUrl: 'https://live.example.com/1',
 				windowId: 'page-1',
+				loginProfile: { domain: 'example.com' },
 			});
 			expect(sessionProvider.getSessionLiveViewUrl).toHaveBeenCalledWith(
 				scope,
@@ -1463,15 +1472,17 @@ describe('CloudBrowserLocalMcpServer', () => {
 				status: 'live',
 				liveViewUrl: 'https://live.example.com/1',
 				windowId: 'page-1',
+				loginProfile: { domain: 'example.com' },
 				userHasTakenOver: true,
 			});
 
-			server.returnControlToAgent();
+			await server.returnControlToAgent();
 
 			expect(await server.getLiveView()).toEqual({
 				status: 'live',
 				liveViewUrl: 'https://live.example.com/1',
 				windowId: 'page-1',
+				loginProfile: { domain: 'example.com' },
 			});
 		});
 
@@ -1483,16 +1494,17 @@ describe('CloudBrowserLocalMcpServer', () => {
 				status: 'live',
 				liveViewUrl: 'https://live.example.com/1',
 				windowId: 'page-1',
+				loginProfile: { domain: 'example.com' },
 			};
 
-			const request = server.requestUserAction();
+			const request = server.requestUserAction({ isLoginRequest: false });
 			expect(server.isUserInControl()).toBe(true);
 			expect(await server.getLiveView()).toEqual(live);
 
 			expect(server.giveControlToUser()).toBeUndefined();
 			expect(await server.getLiveView()).toEqual({ ...live, userHasTakenOver: true });
 
-			server.returnControlToAgent();
+			await server.returnControlToAgent();
 			expect(await request).toEqual({ returned: true });
 			expect(await server.getLiveView()).toEqual(live);
 		});
@@ -1803,7 +1815,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 				const { server, openWindow, click } = await setupWithSession();
 				server.giveControlToUser();
 				openWindow('page-2');
-				server.returnControlToAgent();
+				await server.returnControlToAgent();
 
 				const result = await click();
 
@@ -1928,6 +1940,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 					status: 'live',
 					liveViewUrl: 'https://live.example.com/1',
 					windowId: 'page-1',
+					loginProfile: { domain: 'example.com' },
 				});
 				expect(toolkit.adapter.getTargetId).not.toHaveBeenCalled();
 				expect(sessionProvider.getSessionLiveViewUrl).toHaveBeenCalledWith(
@@ -1946,6 +1959,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 					status: 'live',
 					liveViewUrl: 'https://live.example.com/2',
 					windowId: 'page-2',
+					loginProfile: { domain: 'example.com' },
 				});
 				expect(toolkit.adapter.getTargetId).toHaveBeenCalledWith('page-2');
 				expect(sessionProvider.getSessionLiveViewUrl).toHaveBeenCalledWith(
@@ -2010,7 +2024,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 		it('ends a wait for the user with the closed unexpectedly error', async () => {
 			const { server, toolkits, start } = setup();
 			await start({ url: 'https://example.com' });
-			const request = server.requestUserAction();
+			const request = server.requestUserAction({ isLoginRequest: false });
 			const heldCall = server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
 
 			dropConnection(toolkits[0]);
@@ -2083,6 +2097,464 @@ describe('CloudBrowserLocalMcpServer', () => {
 					'Cloud browser session lost',
 					expect.anything(),
 				);
+			});
+		});
+	});
+
+	describe('saved logins', () => {
+		/** The login profile of the session, as the gateway returns it once saved. */
+		const savedResult = {
+			id: 'login-profile-1',
+			domain: 'example.com',
+			savedAt: new Date('2026-10-01T00:00:00Z'),
+		};
+		/** Lets `requestUserAction` note the site of the page before the test goes on. */
+		const settle = async () => await new Promise((resolve) => setTimeout(resolve, 0));
+
+		async function setupSignIn({
+			regionId = 'eu-central-1',
+			url = 'https://example.com',
+			proxyCountry,
+		}: { regionId?: string; url?: string; proxyCountry?: string } = {}) {
+			const context = setup();
+			const { sessionProvider, start, toolkits } = context;
+			sessionProvider.createSession.mockResolvedValueOnce({
+				id: 'sess-1',
+				connectUrl: 'wss://connect/1',
+				...(regionId ? { regionId } : {}),
+			});
+			sessionProvider.saveLoginProfile.mockResolvedValue(savedResult);
+			await start({ url, ...(proxyCountry ? { proxyCountry } : {}) });
+			const pageUrl = toolkits[0].adapter.getPageUrl;
+			pageUrl.mockReturnValue('https://login.example.com/sign-in');
+			return { ...context, pageUrl };
+		}
+
+		async function askToSignIn(server: CloudBrowserLocalMcpServer) {
+			const request = server.requestUserAction({ isLoginRequest: true });
+			await settle();
+			return { request };
+		}
+
+		/** Signs in on example.com and saves the login, so the session has a saved login profile. */
+		async function setupSavedLogin() {
+			const context = await setupSignIn();
+			await askToSignIn(context.server);
+			await context.server.returnControlToAgent(undefined, true);
+			return context;
+		}
+
+		describe('opening a session', () => {
+			it('creates a login profile for the registrable domain of the URL', async () => {
+				const { server, sessionProvider, start } = setup();
+
+				await start({ url: 'https://accounts.example.co.uk/login' });
+
+				expect(sessionProvider.createLoginProfile).toHaveBeenCalledWith(scope);
+				expect(sessionProvider.createSession).toHaveBeenCalledWith(scope, {
+					proxyCountry: undefined,
+					loginProfileId: 'login-profile-1',
+				});
+				expect(await server.getLiveView()).toMatchObject({
+					loginProfile: { domain: 'example.co.uk' },
+				});
+			});
+
+			it.each(['http://127.0.0.1:5678', 'http://[::1]:5678', 'http://localhost:5678'])(
+				'opens a session without a login profile on %s',
+				async (url) => {
+					const { server, sessionProvider, start } = setup();
+					sessionProvider.getSessionLiveViewUrl.mockResolvedValue('https://live.example.com/1');
+
+					const result = await start({ url });
+
+					expect(result.isError).toBeUndefined();
+					expect(sessionProvider.createLoginProfile).not.toHaveBeenCalled();
+					expect(sessionProvider.createSession).toHaveBeenCalledWith(scope, {
+						proxyCountry: undefined,
+						loginProfileId: undefined,
+					});
+					expect(await server.getLiveView()).not.toHaveProperty('loginProfile');
+				},
+			);
+
+			it('opens a session without a login profile when creating one fails', async () => {
+				const { sessionProvider, logger, start } = setup();
+				sessionProvider.createLoginProfile.mockRejectedValue(new Error('HTTP 502'));
+
+				const result = await start({ url: 'https://example.com' });
+
+				expect(result).toEqual({ content: [{ type: 'text', text: 'opened https://example.com' }] });
+				expect(sessionProvider.createSession).toHaveBeenCalledWith(scope, {
+					proxyCountry: undefined,
+					loginProfileId: undefined,
+				});
+				expect(logger.warn).toHaveBeenCalledWith(
+					'Failed to create a login profile, opening the cloud browser session without one',
+					expect.objectContaining({ error: 'HTTP 502' }),
+				);
+			});
+
+			it('deletes the new login profile when the session cannot be created', async () => {
+				const { sessionProvider, start } = setup();
+				sessionProvider.createSession.mockRejectedValue(new Error('HTTP 402'));
+
+				const result = await start({ url: 'https://example.com' });
+
+				expect(result.isError).toBe(true);
+				expect(sessionProvider.deleteLoginProfile).toHaveBeenCalledWith(scope, 'login-profile-1');
+			});
+		});
+
+		describe('session context', () => {
+			const navigateResult = {
+				content: [{ type: 'text' as const, text: 'opened https://example.com' }],
+				structuredContent: { url: 'https://example.com' },
+			};
+
+			function setupWithStructuredResult() {
+				const context = setup();
+				context.createToolkit.mockImplementationOnce(() => {
+					const toolkit = fakeToolkit();
+					vi.mocked(toolkit.tools[0].execute).mockResolvedValue(navigateResult);
+					return toolkit;
+				});
+				return context;
+			}
+
+			it('does not tell the agent about the login profile', async () => {
+				const { start } = setupWithStructuredResult();
+
+				const result = await start({ url: 'https://example.com' });
+
+				expect(result).toEqual(navigateResult);
+			});
+		});
+
+		describe('saving a login', () => {
+			it('saves the login on the site the agent asked the user to sign in to', async () => {
+				const { server, sessionProvider } = await setupSignIn();
+				const { request } = await askToSignIn(server);
+
+				expect(await server.returnControlToAgent(undefined, true)).toEqual({
+					returned: true,
+					loginSaved: true,
+				});
+				expect(sessionProvider.saveLoginProfile).toHaveBeenCalledWith(scope, {
+					id: 'login-profile-1',
+					domain: 'example.com',
+					location: { regionId: 'eu-central-1', proxyCountry: undefined, proxyCity: undefined },
+				});
+				expect(await request).toEqual({ returned: true });
+				expect(server.isUserInControl()).toBe(false);
+			});
+
+			it('saves the login with the proxy country of the session', async () => {
+				const { server, sessionProvider } = await setupSignIn({ proxyCountry: 'de' });
+				await askToSignIn(server);
+
+				await server.returnControlToAgent(undefined, true);
+
+				expect(sessionProvider.saveLoginProfile).toHaveBeenCalledWith(
+					scope,
+					expect.objectContaining({
+						location: { regionId: 'eu-central-1', proxyCountry: 'DE', proxyCity: undefined },
+					}),
+				);
+			});
+
+			it('shows the saved login in the live view', async () => {
+				const { server } = await setupSignIn();
+				await askToSignIn(server);
+
+				await server.returnControlToAgent(undefined, true);
+
+				expect(await server.getLiveView()).toMatchObject({
+					loginProfile: { domain: 'example.com', savedAt: '2026-10-01T00:00:00.000Z' },
+				});
+			});
+
+			it('does not save without shouldSaveLogin', async () => {
+				const { server, sessionProvider } = await setupSignIn();
+				await askToSignIn(server);
+
+				expect(await server.returnControlToAgent()).toEqual({ returned: true, loginSaved: false });
+				expect(sessionProvider.saveLoginProfile).not.toHaveBeenCalled();
+			});
+
+			it('does not save when the user took over without a login request', async () => {
+				const { server, sessionProvider } = await setupSignIn();
+				server.giveControlToUser();
+
+				expect(await server.returnControlToAgent(undefined, true)).toEqual({
+					returned: true,
+					loginSaved: false,
+				});
+				expect(sessionProvider.saveLoginProfile).not.toHaveBeenCalled();
+				expect(server.isUserInControl()).toBe(false);
+			});
+
+			it('does not save when the agent asked for an action that is not a sign-in', async () => {
+				const { server, sessionProvider } = await setupSignIn();
+				void server.requestUserAction({ isLoginRequest: false });
+				await settle();
+
+				expect(await server.returnControlToAgent(undefined, true)).toEqual({
+					returned: true,
+					loginSaved: false,
+				});
+				expect(sessionProvider.saveLoginProfile).not.toHaveBeenCalled();
+			});
+
+			it('does not save when the user is on another site than when the agent asked', async () => {
+				const { server, sessionProvider, pageUrl } = await setupSignIn();
+				await askToSignIn(server);
+				pageUrl.mockReturnValue('https://other.example.org/');
+
+				expect(await server.returnControlToAgent(undefined, true)).toEqual({
+					returned: true,
+					loginSaved: false,
+				});
+				expect(sessionProvider.saveLoginProfile).not.toHaveBeenCalled();
+				expect(server.isUserInControl()).toBe(false);
+			});
+
+			it('does not save when the agent asked on another site than the session is for', async () => {
+				const { server, sessionProvider, pageUrl } = await setupSignIn();
+				pageUrl.mockReturnValue('https://accounts.example.org/sign-in');
+				await askToSignIn(server);
+
+				expect(await server.returnControlToAgent(undefined, true)).toEqual({
+					returned: true,
+					loginSaved: false,
+				});
+				expect(sessionProvider.saveLoginProfile).not.toHaveBeenCalled();
+			});
+
+			it('does not save a login that is already saved', async () => {
+				const { server, sessionProvider } = await setupSavedLogin();
+				await askToSignIn(server);
+
+				expect(await server.returnControlToAgent(undefined, true)).toEqual({
+					returned: true,
+					loginSaved: false,
+				});
+				expect(sessionProvider.saveLoginProfile).toHaveBeenCalledTimes(1);
+			});
+
+			it('does not save when the region of the session is unknown', async () => {
+				const { server, sessionProvider } = await setupSignIn({ regionId: '' });
+				await askToSignIn(server);
+
+				expect(await server.returnControlToAgent(undefined, true)).toEqual({
+					returned: true,
+					loginSaved: false,
+				});
+				expect(sessionProvider.saveLoginProfile).not.toHaveBeenCalled();
+			});
+
+			it('does not save when the session has no login profile', async () => {
+				const { server, sessionProvider, toolkits, start } = setup();
+				sessionProvider.createLoginProfile.mockRejectedValue(new Error('HTTP 502'));
+				sessionProvider.createSession.mockResolvedValueOnce({
+					id: 'sess-1',
+					connectUrl: 'wss://connect/1',
+					regionId: 'eu-central-1',
+				});
+				await start({ url: 'https://example.com' });
+				toolkits[0].adapter.getPageUrl.mockReturnValue('https://example.com/');
+				await askToSignIn(server);
+
+				expect(await server.returnControlToAgent(undefined, true)).toEqual({
+					returned: true,
+					loginSaved: false,
+				});
+				expect(sessionProvider.saveLoginProfile).not.toHaveBeenCalled();
+			});
+
+			it('keeps control with the user when the save fails', async () => {
+				const { server, sessionProvider, logger } = await setupSignIn();
+				sessionProvider.saveLoginProfile.mockRejectedValue(new Error('HTTP 409'));
+				const listener = vi.fn();
+				server.setControlReturnedListener(listener);
+				const { request } = await askToSignIn(server);
+
+				expect(await server.returnControlToAgent('Signed in', true)).toEqual({
+					returned: false,
+					error: 'Could not save the login: HTTP 409',
+				});
+				expect(server.isUserInControl()).toBe(true);
+				expect(listener).not.toHaveBeenCalled();
+				expect(server.drainUserControlNotes()).toEqual([]);
+				expect(logger.warn).toHaveBeenCalledWith(
+					'Failed to save a cloud browser login',
+					expect.objectContaining({ error: 'HTTP 409' }),
+				);
+
+				expect(await server.returnControlToAgent('Signed in')).toEqual({
+					returned: true,
+					loginSaved: false,
+				});
+				expect(await request).toEqual({ returned: true });
+			});
+
+			it('keeps a login saved in the session when the session ends', async () => {
+				const { server, sessionProvider, toolkits } = await setupSignIn();
+				await askToSignIn(server);
+				await server.returnControlToAgent(undefined, true);
+
+				await server.release();
+
+				expect(toolkits[0].adapter.clearSiteDataExcept).toHaveBeenCalledWith('example.com');
+				expect(sessionProvider.deleteLoginProfile).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('ending a session', () => {
+			const dropConnection = (toolkit: ReturnType<typeof fakeToolkit>) =>
+				toolkit.adapter.onDisconnect?.('browser_closed');
+
+			it('deletes an unsaved login profile after its session is released', async () => {
+				const { server, sessionProvider, toolkits, start } = setup();
+				await start({ url: 'https://example.com' });
+
+				await server.release();
+
+				expect(sessionProvider.deleteLoginProfile).toHaveBeenCalledWith(scope, 'login-profile-1');
+				expect(sessionProvider.releaseSession.mock.invocationCallOrder[0]).toBeLessThan(
+					sessionProvider.deleteLoginProfile.mock.invocationCallOrder[0],
+				);
+				expect(toolkits[0].adapter.clearSiteDataExcept).not.toHaveBeenCalled();
+			});
+
+			it('deletes the login profile of a session that a new session replaces', async () => {
+				const { sessionProvider, start } = setup();
+				sessionProvider.createLoginProfile
+					.mockResolvedValueOnce('login-profile-1')
+					.mockResolvedValueOnce('login-profile-2');
+				await start({ url: 'https://example.com' });
+
+				await start({ url: 'https://example.org' });
+
+				expect(sessionProvider.deleteLoginProfile).toHaveBeenCalledTimes(1);
+				expect(sessionProvider.deleteLoginProfile).toHaveBeenCalledWith(scope, 'login-profile-1');
+			});
+
+			it('deletes the login profile when connecting to the session fails', async () => {
+				const { sessionProvider, createToolkit, start } = setup();
+				createToolkit.mockImplementationOnce(() => {
+					const toolkit = fakeToolkit();
+					toolkit.connection.connect.mockRejectedValue(new Error('CDP refused'));
+					return toolkit;
+				});
+
+				await start({ url: 'https://example.com' });
+
+				expect(sessionProvider.deleteLoginProfile).toHaveBeenCalledWith(scope, 'login-profile-1');
+			});
+
+			it('deletes the login profile when the connection drops', async () => {
+				const { sessionProvider, toolkits, start } = setup();
+				await start({ url: 'https://example.com' });
+
+				dropConnection(toolkits[0]);
+
+				await vi.waitFor(() =>
+					expect(sessionProvider.deleteLoginProfile).toHaveBeenCalledWith(scope, 'login-profile-1'),
+				);
+			});
+
+			it('deletes the login profile when a tool call finds the connection dropped', async () => {
+				const { server, sessionProvider, toolkits, start } = setup();
+				await start({ url: 'https://example.com' });
+				toolkits[0].connection.isConnected = false;
+
+				await server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+
+				expect(sessionProvider.deleteLoginProfile).toHaveBeenCalledWith(scope, 'login-profile-1');
+			});
+
+			it('deletes the login profile after an idle timeout', async () => {
+				vi.useFakeTimers();
+				try {
+					const { sessionProvider, start } = setup();
+					await start({ url: 'https://example.com' });
+
+					await vi.advanceTimersByTimeAsync(SESSION_IDLE_TIMEOUT_MS);
+
+					expect(sessionProvider.deleteLoginProfile).toHaveBeenCalledWith(scope, 'login-profile-1');
+				} finally {
+					vi.useRealTimers();
+				}
+			});
+
+			it('logs a failed delete instead of throwing', async () => {
+				const { server, sessionProvider, logger, start } = setup();
+				await start({ url: 'https://example.com' });
+				sessionProvider.deleteLoginProfile.mockRejectedValue(new Error('HTTP 502'));
+
+				await expect(server.release()).resolves.toBeUndefined();
+
+				expect(logger.warn).toHaveBeenCalledWith(
+					'Failed to delete an unsaved cloud browser login profile',
+					expect.objectContaining({ error: 'HTTP 502' }),
+				);
+			});
+
+			it('clears the other sites from a saved login before it releases the session', async () => {
+				const { server, sessionProvider, toolkits } = await setupSavedLogin();
+
+				await server.release();
+
+				const { adapter, connection } = toolkits[0];
+				expect(adapter.clearSiteDataExcept).toHaveBeenCalledWith('example.com');
+				expect(adapter.clearSiteDataExcept.mock.invocationCallOrder[0]).toBeLessThan(
+					connection.disconnect.mock.invocationCallOrder[0],
+				);
+				expect(connection.disconnect.mock.invocationCallOrder[0]).toBeLessThan(
+					sessionProvider.releaseSession.mock.invocationCallOrder[0],
+				);
+				expect(sessionProvider.deleteLoginProfile).not.toHaveBeenCalled();
+			});
+
+			it('still releases the session when clearing the other sites fails', async () => {
+				const { server, sessionProvider, toolkits, logger } = await setupSavedLogin();
+				toolkits[0].adapter.clearSiteDataExcept.mockRejectedValue(new Error('CDP error'));
+
+				await server.release();
+
+				expect(sessionProvider.releaseSession).toHaveBeenCalledWith(scope, 'sess-1');
+				expect(logger.warn).toHaveBeenCalledWith(
+					'Failed to clear other sites from a saved cloud browser login',
+					expect.objectContaining({ error: 'CDP error' }),
+				);
+			});
+
+			it('logs a session that ended without a sign-in', async () => {
+				const { server, logger, start } = setup();
+				await start({ url: 'https://example.com' });
+
+				await server.release();
+
+				expect(logger.info).toHaveBeenCalledWith('Cloud browser session ended', {
+					taskId: scope.taskId,
+					sessionId: 'sess-1',
+					hadLoginRequest: false,
+					loginSaved: false,
+				});
+			});
+
+			it('logs that the agent asked the user to sign in, and whether the login was saved', async () => {
+				const { server, logger } = await setupSavedLogin();
+
+				await server.release();
+
+				expect(logger.info).toHaveBeenCalledWith('Cloud browser session ended', {
+					taskId: scope.taskId,
+					sessionId: 'sess-1',
+					hadLoginRequest: true,
+					loginSaved: true,
+				});
 			});
 		});
 	});

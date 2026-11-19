@@ -264,12 +264,12 @@ describe('InstanceAiCloudBrowserService', () => {
 			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
 			const returnControlToAgent = vi
 				.spyOn(server, 'returnControlToAgent')
-				.mockReturnValue(undefined);
+				.mockResolvedValue({ returned: true, loginSaved: false });
 
 			expect(
-				service.returnControlToAgent('user-1', 'thread-1', 'task-1', 'Signed in'),
-			).toBeUndefined();
-			expect(returnControlToAgent).toHaveBeenCalledWith('Signed in');
+				await service.returnControlToAgent('user-1', 'thread-1', 'task-1', { note: 'Signed in' }),
+			).toEqual({ returned: true, loginSaved: false });
+			expect(returnControlToAgent).toHaveBeenCalledWith('Signed in', undefined);
 		});
 
 		it.each([
@@ -279,16 +279,18 @@ describe('InstanceAiCloudBrowserService', () => {
 			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
 			const returnControlToAgent = vi.spyOn(server, 'returnControlToAgent');
 
-			expect(service.returnControlToAgent(userId, threadId, 'task-1')).toBe(
-				'This browser task is not running.',
-			);
+			expect(await service.returnControlToAgent(userId, threadId, 'task-1')).toEqual({
+				returned: false,
+				error: 'This browser task is not running.',
+			});
 			expect(returnControlToAgent).not.toHaveBeenCalled();
 		});
 
-		it('says the task is not running for a task with no server', () => {
-			expect(service.returnControlToAgent('user-1', 'thread-1', 'task-1')).toBe(
-				'This browser task is not running.',
-			);
+		it('says the task is not running for a task with no server', async () => {
+			expect(await service.returnControlToAgent('user-1', 'thread-1', 'task-1')).toEqual({
+				returned: false,
+				error: 'This browser task is not running.',
+			});
 		});
 	});
 
@@ -396,6 +398,7 @@ describe('InstanceAiCloudBrowserService', () => {
 			id: 'sess-1',
 			connectUrl: 'wss://connect',
 			regionCountry: 'DE',
+			regionId: 'eu-central-1',
 		});
 	});
 
@@ -413,6 +416,7 @@ describe('InstanceAiCloudBrowserService', () => {
 			await expect(sessionProvider.createSession(scope)).resolves.toStrictEqual({
 				id: 'sess-1',
 				connectUrl: 'wss://connect',
+				...(region ? { regionId: region } : {}),
 			});
 		},
 	);
@@ -478,6 +482,128 @@ describe('InstanceAiCloudBrowserService', () => {
 			await expect(sessionProvider.getSessionLiveViewUrl(scope, 'sess-1')).resolves.toBe(
 				'https://live.example.com/1',
 			);
+		});
+	});
+
+	const savedContext = {
+		id: 'ctx-1',
+		domain: 'example.com',
+		region: 'eu-central-1',
+		proxyCountry: 'DE',
+		proxyCity: 'BERLIN',
+		savedAt: new Date('2026-11-01T10:00:00.000Z'),
+		lastUsedAt: new Date('2026-11-02T09:30:00.000Z'),
+	};
+
+	const savedLoginProfile = {
+		id: 'ctx-1',
+		domain: 'example.com',
+		savedAt: savedContext.savedAt,
+		lastUsedAt: savedContext.lastUsedAt,
+		savedLocation: { regionId: 'eu-central-1', proxyCountry: 'DE', proxyCity: 'BERLIN' },
+	};
+
+	describe('login profiles through the gateway', () => {
+		const attribution = { instanceAiThreadId: 'thread-1', instanceAiTaskId: 'task-1' };
+
+		async function getSessionProvider() {
+			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			return server['options'];
+		}
+
+		it('opens a session with the region, the proxy city and the login profile', async () => {
+			aiGatewayBrowserUseService.createSession.mockResolvedValue({
+				id: 'sess-1',
+				connectUrl: 'wss://connect',
+			});
+			const { sessionProvider, scope } = await getSessionProvider();
+
+			await sessionProvider.createSession(scope, {
+				regionId: 'eu-central-1',
+				proxyCountry: 'DE',
+				proxyCity: 'BERLIN',
+				loginProfileId: 'ctx-1',
+			});
+
+			expect(aiGatewayBrowserUseService.createSession).toHaveBeenCalledWith({
+				userId: 'user-1',
+				attribution,
+				region: 'eu-central-1',
+				proxyCountry: 'DE',
+				proxyCity: 'BERLIN',
+				contextId: 'ctx-1',
+			});
+		});
+
+		it('creates a login profile as a context for the task', async () => {
+			aiGatewayBrowserUseService.createContext.mockResolvedValue({ id: 'ctx-1' });
+			const { sessionProvider, scope } = await getSessionProvider();
+
+			await expect(sessionProvider.createLoginProfile(scope)).resolves.toBe('ctx-1');
+			expect(aiGatewayBrowserUseService.createContext).toHaveBeenCalledWith({
+				userId: 'user-1',
+				attribution,
+			});
+		});
+
+		it('saves a login profile as a context, where its session runs', async () => {
+			aiGatewayBrowserUseService.saveContext.mockResolvedValue(savedContext);
+			const { sessionProvider, scope } = await getSessionProvider();
+
+			await expect(
+				sessionProvider.saveLoginProfile(scope, {
+					id: 'ctx-1',
+					domain: 'example.com',
+					location: { regionId: 'eu-central-1', proxyCountry: 'DE', proxyCity: 'BERLIN' },
+				}),
+			).resolves.toEqual(savedLoginProfile);
+			expect(aiGatewayBrowserUseService.saveContext).toHaveBeenCalledWith({
+				userId: 'user-1',
+				attribution,
+				contextId: 'ctx-1',
+				domain: 'example.com',
+				region: 'eu-central-1',
+				proxyCountry: 'DE',
+				proxyCity: 'BERLIN',
+			});
+		});
+
+		it('gives a saved login profile without a proxy only its region', async () => {
+			const { proxyCountry, proxyCity, ...withoutProxy } = savedContext;
+			aiGatewayBrowserUseService.saveContext.mockResolvedValue(withoutProxy);
+			const { sessionProvider, scope } = await getSessionProvider();
+
+			const loginProfile = await sessionProvider.saveLoginProfile(scope, {
+				id: 'ctx-1',
+				domain: 'example.com',
+				location: { regionId: 'eu-central-1' },
+			});
+
+			expect(loginProfile.savedLocation).toStrictEqual({ regionId: 'eu-central-1' });
+		});
+
+		it('refuses to save a login profile without a region', async () => {
+			const { sessionProvider, scope } = await getSessionProvider();
+
+			await expect(
+				sessionProvider.saveLoginProfile(scope, {
+					id: 'ctx-1',
+					domain: 'example.com',
+					location: { proxyCountry: 'DE' },
+				}),
+			).rejects.toThrow('A login profile cannot be saved without its region');
+			expect(aiGatewayBrowserUseService.saveContext).not.toHaveBeenCalled();
+		});
+
+		it('deletes a login profile as a context', async () => {
+			const { sessionProvider, scope } = await getSessionProvider();
+
+			await sessionProvider.deleteLoginProfile(scope, 'ctx-1');
+
+			expect(aiGatewayBrowserUseService.deleteContext).toHaveBeenCalledWith({
+				userId: 'user-1',
+				contextId: 'ctx-1',
+			});
 		});
 	});
 });

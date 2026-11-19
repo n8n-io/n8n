@@ -6,6 +6,7 @@ import type {
 	InstanceAiBrowserCreateLinkResponse,
 	InstanceAiBrowserStatusResponse,
 	InstanceAiCloudBrowserLiveViewResponse,
+	InstanceAiCloudBrowserReturnControlResponse,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmRequest,
@@ -150,13 +151,13 @@ export async function postCloudBrowserReturnControl(
 	context: IRestApiContext,
 	threadId: string,
 	taskId: string,
-	note?: string,
-): Promise<void> {
-	await makeRestApiRequest(
+	{ note, shouldSaveLogin }: { note?: string; shouldSaveLogin?: boolean } = {},
+): Promise<InstanceAiCloudBrowserReturnControlResponse> {
+	return await makeRestApiRequest(
 		context,
 		'POST',
 		`/instance-ai/chat/${threadId}/tasks/${taskId}/cloud-browser-return-control`,
-		note ? { note } : {},
+		{ ...(note && { note }), ...(shouldSaveLogin && { shouldSaveLogin }) },
 	);
 }
 

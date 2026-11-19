@@ -361,7 +361,7 @@ export class AiGatewayService {
 		path: string;
 		body?: unknown;
 		userId: string;
-		attribution: AiGatewayRequestAttribution;
+		attribution?: AiGatewayRequestAttribution;
 		mapErrorResponse?: (response: AiGatewayErrorResponse) => Error;
 		/** The request fails when no response arrives within this time. */
 		timeoutMs?: number;
@@ -373,7 +373,7 @@ export class AiGatewayService {
 		const baseUrl = this.requireBaseUrl();
 		const token = await this.getOrFetchToken(userId, timeoutMs);
 		const gatewayPath = `${AiGatewayService.GATEWAY_PATH_PREFIX}/${provider}`;
-		const url = this.buildGatewayUrl(baseUrl, gatewayPath, attribution);
+		const url = this.buildGatewayUrl(baseUrl, gatewayPath, attribution ?? {});
 		return await this.gatewayRequest<T>({
 			method,
 			url: `${url}${path}`,

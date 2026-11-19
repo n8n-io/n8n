@@ -108,6 +108,42 @@ describe('AiGatewayBrowserUseService', () => {
 			});
 		});
 
+		it('sends the region, the proxy city and the context', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				id: 'sess-1',
+				connectUrl: 'wss://connect.example.com',
+			});
+
+			await service.createSession({
+				userId: 'user-1',
+				attribution,
+				proxyCountry: 'DE',
+				proxyCity: 'BERLIN',
+				region: 'eu-central-1',
+				contextId: 'ctx/1',
+			});
+
+			const [{ body }] = aiGatewayService.sendProviderRequest.mock.calls[0];
+			expect(body).toEqual({
+				keepAlive: false,
+				region: 'eu-central-1',
+				browserSettings: { viewport: { width: 1280, height: 800 }, context: { id: 'ctx/1' } },
+				proxies: [{ type: 'browserbase', geolocation: { country: 'DE', city: 'BERLIN' } }],
+			});
+		});
+
+		it('sends no proxies for a city without a country', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				id: 'sess-1',
+				connectUrl: 'wss://connect.example.com',
+			});
+
+			await service.createSession({ userId: 'user-1', attribution, proxyCity: 'BERLIN' });
+
+			const [{ body }] = aiGatewayService.sendProviderRequest.mock.calls[0];
+			expect(body).not.toHaveProperty('proxies');
+		});
+
 		it('throws when the response has no connect URL', async () => {
 			aiGatewayService.sendProviderRequest.mockResolvedValue({ id: 'sess-1' });
 
@@ -205,6 +241,142 @@ describe('AiGatewayBrowserUseService', () => {
 				...sessionRequest,
 				path: '/v1/sessions/sess%2F1',
 				body: { status: 'REQUEST_RELEASE' },
+			});
+		});
+	});
+	const savedContext = {
+		id: 'ctx-1',
+		domain: 'example.com',
+		region: 'eu-central-1',
+		proxyCountry: 'DE',
+		proxyCity: 'BERLIN',
+		savedAt: '2026-11-01T10:00:00.000Z',
+		lastUsedAt: '2026-11-02T09:30:00.000Z',
+	};
+
+	const parsedSavedContext = {
+		...savedContext,
+		savedAt: new Date('2026-11-01T10:00:00.000Z'),
+		lastUsedAt: new Date('2026-11-02T09:30:00.000Z'),
+	};
+
+	describe('createContext()', () => {
+		it('creates an empty context for the task', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({ id: 'ctx-1' });
+
+			const context = await service.createContext({ userId: 'user-1', attribution });
+
+			expect(context).toEqual({ id: 'ctx-1' });
+			expect(aiGatewayService.sendProviderRequest).toHaveBeenCalledWith({
+				...sessionRequest,
+				path: '/v1/contexts',
+				body: {},
+			});
+		});
+
+		it.each([{}, { id: '' }, null])('throws when the response is %j', async (response) => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue(response);
+
+			await expect(service.createContext({ userId: 'user-1', attribution })).rejects.toThrow(
+				'Could not read the new browser login. Try again later.',
+			);
+		});
+	});
+
+	describe('saveContext()', () => {
+		it('saves the context for the domain, where the login was made', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue(savedContext);
+
+			const saved = await service.saveContext({
+				userId: 'user-1',
+				attribution,
+				contextId: 'ctx/1',
+				domain: 'example.com',
+				region: 'eu-central-1',
+				proxyCountry: 'DE',
+				proxyCity: 'BERLIN',
+			});
+
+			expect(saved).toEqual(parsedSavedContext);
+			expect(saved.savedAt).toBeInstanceOf(Date);
+			expect(aiGatewayService.sendProviderRequest).toHaveBeenCalledWith({
+				...sessionRequest,
+				path: '/v1/contexts/ctx%2F1/save',
+				body: {
+					domain: 'example.com',
+					region: 'eu-central-1',
+					proxyCountry: 'DE',
+					proxyCity: 'BERLIN',
+				},
+			});
+		});
+
+		it('sends no proxy location without a country', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue(savedContext);
+
+			await service.saveContext({
+				userId: 'user-1',
+				attribution,
+				contextId: 'ctx-1',
+				domain: 'example.com',
+				region: 'eu-central-1',
+				proxyCity: 'BERLIN',
+			});
+
+			const [{ body }] = aiGatewayService.sendProviderRequest.mock.calls[0];
+			expect(body).toEqual({ domain: 'example.com', region: 'eu-central-1' });
+		});
+
+		it('reads a saved context without a proxy location', async () => {
+			const { proxyCountry, proxyCity, ...withoutProxy } = savedContext;
+			aiGatewayService.sendProviderRequest.mockResolvedValue(withoutProxy);
+
+			const saved = await service.saveContext({
+				userId: 'user-1',
+				attribution,
+				contextId: 'ctx-1',
+				domain: 'example.com',
+				region: 'eu-central-1',
+			});
+
+			expect(saved).not.toHaveProperty('proxyCountry');
+			expect(saved).not.toHaveProperty('proxyCity');
+		});
+
+		it.each([
+			['no domain', { ...savedContext, domain: undefined }],
+			['no region', { ...savedContext, region: undefined }],
+			['a date that is not ISO', { ...savedContext, savedAt: 'yesterday' }],
+			['no last use', { ...savedContext, lastUsedAt: undefined }],
+		])('throws when the response has %s', async (_, response) => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue(response);
+
+			await expect(
+				service.saveContext({
+					userId: 'user-1',
+					attribution,
+					contextId: 'ctx-1',
+					domain: 'example.com',
+					region: 'eu-central-1',
+				}),
+			).rejects.toThrow('Could not read the saved login. Try again later.');
+		});
+	});
+
+	describe('deleteContext()', () => {
+		it('deletes the context without attribution', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({});
+
+			await service.deleteContext({ userId: 'user-1', contextId: 'ctx/1' });
+
+			expect(aiGatewayService.sendProviderRequest).toHaveBeenCalledWith({
+				provider: 'browserbaseBrowserUse',
+				authHeaderKey: 'X-BB-API-Key',
+				method: 'DELETE',
+				path: '/v1/contexts/ctx%2F1',
+				userId: 'user-1',
+				mapErrorResponse: toGatewayError,
+				timeoutMs: 30_000,
 			});
 		});
 	});

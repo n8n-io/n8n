@@ -47,7 +47,7 @@ export interface BrowserTab {
 	icon: IconName;
 	taskId: string;
 	/** Set while the task waits for the user to do a step in the browser. */
-	userAction?: { reason: string };
+	userAction?: CloudBrowserTask['userAction'];
 }
 
 /** A tab in the preview tab bar. */
