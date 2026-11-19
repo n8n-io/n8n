@@ -119,6 +119,11 @@ describe('InsightsByPeriodRepository', () => {
 	});
 
 	describe('getInsightsByTime timezone-aware bucketing (LIGO-808)', () => {
+		// Some tests query without a projectId, so rows from other tests must not stay in the table
+		beforeEach(async () => {
+			await testDb.truncate(['InsightsByPeriod', 'InsightsMetadata', 'WorkflowEntity', 'Project']);
+		});
+
 		test('groups a caller-local day into a single bucket instead of splitting it across the UTC day boundary', async () => {
 			// ARRANGE
 			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
