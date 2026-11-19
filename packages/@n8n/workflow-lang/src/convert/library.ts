@@ -707,9 +707,10 @@ const LOCATOR_TYPES = new Set([
  * with the input item of its call (`constructExecutionMetaData` with `itemData: { item: i }`).
  * `src/nodes/__tests__/paired-by-call.test.ts` records the pair of each output item of every
  * library case on three input items. A row is here when v1 pairs by call on its cases and no
- * case of the row pairs another way: `googleSheets sheet.clear` pairs nothing, `airtable
- * record.search` and `googleSheets sheet.delete` pair a list of items, and `dataTable row.insert`
- * pairs every item with the first one. A `*` is a node whose every operation pairs by call.
+ * case of the row pairs another way: `googleSheets sheet.clear` pairs nothing, `googleSheets
+ * sheet.delete` pairs a list of several items, and `dataTable row.insert` pairs every item with
+ * the first one. A list of ONE entry counts as the index of its call (`airtable record.search`,
+ * `rssFeedRead`). A `*` is a node whose every operation pairs by call.
  *
  * An operation that v1 runs once for all items (`BATCH_OPERATIONS`) gives the pairs of each
  * item to that one call, which the step cannot keep: its row here has no effect until the call
@@ -720,7 +721,12 @@ const PAIRS_BY_CALL_ROWS: Record<string, Set<string>> = {
 	'@n8n/n8n-nodes-langchain.googleGemini': new Set(['text.message']),
 	'@n8n/n8n-nodes-langchain.openAi': new Set(['text.message', 'text.response']),
 	'n8n-nodes-base.adalo': new Set(['collection.delete', 'collection.get', 'collection.getAll']),
-	'n8n-nodes-base.airtable': new Set(['record.create', 'record.update', 'record.upsert']),
+	'n8n-nodes-base.airtable': new Set([
+		'record.create',
+		'record.search',
+		'record.update',
+		'record.upsert',
+	]),
 	'n8n-nodes-base.currents': new Set([
 		'action.create',
 		'action.update',
@@ -777,6 +783,9 @@ const PAIRS_BY_CALL_ROWS: Record<string, Set<string>> = {
 		'embedding.createEmbedding',
 		'search.search',
 	]),
+	// The node reads one feed, and pairs with a list of one entry. It has no `resource` or
+	// `operation`, so every call of it is this read.
+	'n8n-nodes-base.rssFeedRead': new Set(['*']),
 	'n8n-nodes-base.sendInBlue': new Set([
 		'attribute.delete',
 		'contact.create',

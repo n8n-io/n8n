@@ -99,7 +99,7 @@ export const CONVERT_COST: Record<string, [ops: number, allocations: number]> = 
 	"convert/92-retry-rss-one-item-fails-once": [5220, 276],
 	"convert/93-retry-core-node-fails-always": [520, 44],
 	"convert/94-retry-http-paired-read": [3816, 265],
-	"convert/95-single-target-rss-flat": [2077, 92],
+	"convert/95-single-target-rss-flat": [2087, 94],
 	"convert/96-multi-conn-both-branches": [5770, 351],
 	"convert/97-multi-conn-branch-node": [6059, 368],
 	"convert/98-multi-conn-reader-itself": [5753, 346],

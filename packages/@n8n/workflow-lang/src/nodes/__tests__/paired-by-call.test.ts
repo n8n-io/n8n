@@ -60,9 +60,11 @@ function pairText(value: unknown): string {
 /**
  * The class of a row.
  *
- * - `by-call`: each output item pairs with the input item of its call. The indices do not go
- *   back and the first is 0. A call that gives no item is no row here, so the last index need
- *   not be the last input item.
+ * - `by-call`: each output item pairs with the input item of its call, as one `{ item: i }`. The
+ *   indices do not go back and the first is 0. A call that gives no item is no row here, so the
+ *   last index need not be the last input item.
+ * - `by-call-list`: the same, as a list with one entry (`[{ item: i }]`). A reader of v1 reads
+ *   that one entry like the entry alone, so the step keeps the index as a number.
  * - `all-one`: every output item pairs with item 0. Exact only for a node that v1 runs once for
  *   all items, and the converter keeps those rows (`BATCH_OPERATIONS`) without pairs.
  * - `empty`: the node gave no item. A node that gives items for other answers is a risk, so the
@@ -71,12 +73,15 @@ function pairText(value: unknown): string {
 function kindOf(pairs: string[], inputCount: number): string {
 	if (pairs.length === 0) return 'empty';
 	if (pairs.every((pair) => pair === 'none')) return 'none';
-	if (!pairs.every((pair) => /^\d+$/.test(pair))) return 'other';
-	const indices = pairs.map(Number);
+	// A list of one entry means the same as the entry. A list of several entries is no index.
+	const list = pairs.every((pair) => /^\[\d+\]$/.test(pair));
+	if (!list && !pairs.every((pair) => /^\d+$/.test(pair))) return 'other';
+	const indices = pairs.map((pair) => Number(pair.replace(/\D/g, '')));
 	if (indices.every((index) => index === 0)) return 'all-one';
 	const ordered = indices.every((index, k) => k === 0 || index >= indices[k - 1]!);
 	const inside = indices.every((index) => index >= 0 && index < inputCount);
-	return ordered && inside && indices[0] === 0 ? 'by-call' : 'other';
+	if (!(ordered && inside && indices[0] === 0)) return 'other';
+	return list ? 'by-call-list' : 'by-call';
 }
 
 /** Three input items: the items of the case when it has several, else its item three times. */
@@ -209,8 +214,8 @@ describe('the compiled read of a paired item through a library node', () => {
 			{
 				resource: 'sheet',
 				operation: 'clear',
-				documentId: { __rl: true, mode: 'id', value: 'doc1' },
-				sheetName: { __rl: true, mode: 'name', value: 'Sheet1' },
+				documentId: { __rl: true, mode: 'id', value: 'd1' },
+				sheetName: { __rl: true, mode: 'name', value: 'S1' },
 			},
 			4.7,
 		);
@@ -260,15 +265,15 @@ const SNAPSHOT: Record<string, string> = {
 	'telegram message.sendMessage no attribution': 'by-call 0,1,2',
 	'airtable record.create': 'by-call 0,1,2',
 	'airtable record.create auto map': 'by-call 0,1',
-	'airtable record.search limit': 'other [0],[1],[2]',
-	'airtable record.search all pages': 'other [0],[0],[0],[1],[2]',
+	'airtable record.search limit': 'by-call-list [0],[1],[2]',
+	'airtable record.search all pages': 'by-call-list [0],[0],[0],[1],[2]',
 	'airtable record.create schema types': 'by-call 0,1,2',
 	'airtable record.update by id typecast': 'by-call 0,1,2',
 	'airtable record.update by id auto map': 'by-call 0,1',
 	'airtable record.upsert by column': 'by-call 0,1,2',
 	'airtable record.upsert by id creates on 422': 'by-call 0,1,2',
 	'airtable record.upsert several matches': 'by-call 0,0,1,1,2,2',
-	'airtable record.search v2.1 flat fields': 'other [0],[0],[1],[1]',
+	'airtable record.search v2.1 flat fields': 'by-call-list [0],[0],[1],[1]',
 	'slack message.post v2.3 channel thread options': 'by-call 0,1,2',
 	'slack message.post v2 user by name with bot profile': 'by-call 0,1',
 	'slack message.post v2.4 blocks': 'by-call 0,1,2',
@@ -340,11 +345,11 @@ const SNAPSHOT: Record<string, string> = {
 	'googleCalendar event.getAll limit and offsets': 'by-call 0,0,1,1,2,2',
 	'googleCalendar event.getAll returnAll with time zone': 'by-call 0,0,1,2',
 	'googleCalendar event.getAll recurring first': 'by-call 0,0,1,1,2,2',
-	'rssFeedRead rss 2.0 with custom fields': 'other [0],[0],[0],[1],[1],[1],[2],[2],[2]',
-	'rssFeedRead version 1.1': 'other [0],[1],[2]',
-	'rssFeedRead atom': 'other [0],[0],[1],[1],[2],[2]',
-	'rssFeedRead podcast': 'other [0],[1],[2]',
-	'rssFeedRead rss 1.0': 'other [0],[1],[2]',
+	'rssFeedRead rss 2.0 with custom fields': 'by-call-list [0],[0],[0],[1],[1],[1],[2],[2],[2]',
+	'rssFeedRead version 1.1': 'by-call-list [0],[1],[2]',
+	'rssFeedRead atom': 'by-call-list [0],[0],[1],[1],[2],[2]',
+	'rssFeedRead podcast': 'by-call-list [0],[1],[2]',
+	'rssFeedRead rss 1.0': 'by-call-list [0],[1],[2]',
 	'openAi text.response': 'by-call 0,1,2',
 	'openAi text.response json schema raw': 'by-call 0,1,2',
 	'openAi text.response json object': 'by-call 0,1,2',
