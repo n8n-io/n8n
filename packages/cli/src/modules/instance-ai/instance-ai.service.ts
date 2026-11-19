@@ -3895,7 +3895,8 @@ export class InstanceAiService {
 			this.runState.getPromptConfiguration(opts.threadId)?.version;
 		setTracePromptVersion(opts.tracing, promptVersion);
 		setTraceModelId(opts.tracing, opts.modelId);
-		// The resumed run keeps its agent, so only this call records the mode in the new trace.
+		// A resume that reuses the suspended agent does not create the agent again, so the mode
+		// is recorded here for the new trace.
 		setTraceApprovalMode(opts.tracing, opts.orchestrationContext?.domainContext?.approvalMode);
 		let completedSetupWorkflowId: string | undefined;
 		let skipPostRunCleanup = false;
