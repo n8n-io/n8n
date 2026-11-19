@@ -2,8 +2,8 @@ import type { SkillLinkReviewReason } from '@n8n/api-types';
 import { isIP } from 'node:net';
 
 /**
- * Link extraction and the link shapes that need review at import. Changes to this file
- * need approval from IAM (see OWNERS).
+ * Link extraction and the link shapes that need review at import. A change to the shapes
+ * changes a security policy.
  */
 const URL_SCHEME = /(?:https?|wss?|ftp):\/\//;
 const URL_HOST_AND_REST = /(?:\[[\d:a-f.]+\])?[^\s<>"'`()[\]{}|]*/;
