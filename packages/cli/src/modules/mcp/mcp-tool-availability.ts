@@ -6,6 +6,7 @@ import { hasGlobalScope, type AuthPrincipal } from '@n8n/permissions';
 
 import type { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { SkillsGate } from '@/modules/skills';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 
 import type { McpConfig } from './mcp.config';
 
@@ -30,8 +31,11 @@ export function canReadMigrationReport(
 	return isMigrationReportAvailable(moduleRegistry) && hasGlobalScope(user, 'breakingChanges:list');
 }
 
-export function isMcpPreferencesSwitchOn(moduleRegistry: ModuleRegistry): boolean {
-	return moduleRegistry.settings.get('mcp')?.preferencesEnabled === true;
+export function areMcpPreferencesAvailable(moduleRegistry: ModuleRegistry): boolean {
+	return (
+		Container.get(AiPreferenceSettingsService).isEnabled &&
+		moduleRegistry.settings.get('mcp')?.preferencesEnabled === true
+	);
 }
 
 export function areMcpSkillsAvailable(moduleRegistry: ModuleRegistry): boolean {

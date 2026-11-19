@@ -2,6 +2,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { mock } from 'vitest-mock-extended';
 import { setActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { IUser } from '@n8n/rest-api-client/api/users';
@@ -12,6 +13,7 @@ import type { Preference } from './context.types';
 import {
 	canWriteInstanceScope,
 	canWriteProjectScope,
+	isMcpSkillsEnabled,
 	preferenceAudience,
 	preferenceScope,
 	preferenceUserName,
@@ -275,5 +277,22 @@ describe('context.utils', () => {
 		it('reports anything that is not a response as a failure', () => {
 			expect(preferenceWriteRejectionReason(new Error('offline'))).toBe('failed');
 		});
+	});
+
+	describe('isMcpSkillsEnabled', () => {
+		it.each([
+			{ mcpAccessEnabled: false, skillsEnabled: true, expected: false },
+			{ mcpAccessEnabled: true, skillsEnabled: false, expected: false },
+			{ mcpAccessEnabled: true, skillsEnabled: true, expected: true },
+		])(
+			'is $expected while MCP access is $mcpAccessEnabled and its Skills switch is $skillsEnabled',
+			({ mcpAccessEnabled, skillsEnabled, expected }) => {
+				mockedStore(useSettingsStore).moduleSettings = {
+					mcp: { mcpAccessEnabled, skillsEnabled },
+				} as never;
+
+				expect(isMcpSkillsEnabled()).toBe(expected);
+			},
+		);
 	});
 });

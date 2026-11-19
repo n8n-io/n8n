@@ -25,8 +25,8 @@ import {
 	areAgentToolsAvailable,
 	canReadMigrationReport,
 	isCommunityNodeInstallAvailable,
+	areMcpPreferencesAvailable,
 	areMcpSkillsAvailable,
-	isMcpPreferencesSwitchOn,
 	isMigrationReportAvailable,
 } from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
@@ -86,7 +86,7 @@ export class McpProtectedResource implements ProtectedResource {
 	get scopes(): string[] {
 		const agentsAvailable = areAgentToolsAvailable(this.globalConfig, this.moduleRegistry);
 		const skillsAvailable = areMcpSkillsAvailable(this.moduleRegistry);
-		const preferencesAvailable = isMcpPreferencesSwitchOn(this.moduleRegistry);
+		const preferencesAvailable = areMcpPreferencesAvailable(this.moduleRegistry);
 		const migrationReportAvailable = isMigrationReportAvailable(this.moduleRegistry);
 		return SUPPORTED_SCOPES.filter(
 			(scope) =>

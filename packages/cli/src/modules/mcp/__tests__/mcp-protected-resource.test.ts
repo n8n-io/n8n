@@ -26,6 +26,7 @@ import { Container } from '@n8n/di';
 
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { SkillsGate } from '@/modules/skills';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 
 import { ACTIVITY_LOG_TOOLS, INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
 import { McpProtectedResource } from '../mcp-protected-resource';
@@ -79,6 +80,10 @@ describe('McpProtectedResource', () => {
 			mock<CommunityPackagesConfig>({ enabled: true, verifiedEnabled: true }),
 		);
 		Container.set(SkillsGate, mock<SkillsGate>({ isEnabled: true }));
+		Container.set(
+			AiPreferenceSettingsService,
+			mock<AiPreferenceSettingsService>({ isEnabled: true }),
+		);
 	});
 
 	describe('getScopeTools', () => {
@@ -118,6 +123,17 @@ describe('McpProtectedResource', () => {
 
 		it('withholds preference scopes while the MCP Preferences switch is off', () => {
 			mockModuleSettings({ mcp: { preferencesEnabled: false, skillsEnabled: true } });
+
+			expect(resource.scopes).not.toContain('aiPreference:read');
+			expect(resource.scopes).not.toContain('aiPreference:write');
+			expect(resource.scopes).toContain('skill:read');
+		});
+
+		it('withholds preference scopes while the instance preferences switch is off', () => {
+			Container.set(
+				AiPreferenceSettingsService,
+				mock<AiPreferenceSettingsService>({ isEnabled: false }),
+			);
 
 			expect(resource.scopes).not.toContain('aiPreference:read');
 			expect(resource.scopes).not.toContain('aiPreference:write');

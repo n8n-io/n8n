@@ -46,7 +46,6 @@ import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
-import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
@@ -79,10 +78,10 @@ import {
 import { FOLDER_FEATURE_TOOLS, getAllowedToolNames } from './mcp-scopes';
 import {
 	areAgentToolsAvailable,
+	areMcpPreferencesAvailable,
 	areMcpSkillsAvailable,
 	canReadMigrationReport,
 	isCommunityNodeInstallAvailable,
-	isMcpPreferencesSwitchOn,
 } from './mcp-tool-availability';
 import type {
 	McpAppsTelemetryVariant,
@@ -546,9 +545,7 @@ export class McpService {
 		const contextToolsAllowed = allowedToolNames?.has(GET_INSTANCE_CONTEXT_TOOL_NAME) ?? true;
 		// Gates the sentence and the preference tools below, which also go through
 		// `registerIfAllowed`. No RBAC check: a user's own preferences need no scope.
-		const preferencesEnabled =
-			Container.get(AiPreferenceSettingsService).isEnabled &&
-			isMcpPreferencesSwitchOn(this.moduleRegistry);
+		const preferencesEnabled = areMcpPreferencesAvailable(this.moduleRegistry);
 		const skillsEnabled = areMcpSkillsAvailable(this.moduleRegistry);
 		const userPreferencesInstructionsEnabled =
 			preferencesEnabled && (allowedToolNames?.has(MCP_GET_USER_PREFERENCES_TOOL_NAME) ?? true);
