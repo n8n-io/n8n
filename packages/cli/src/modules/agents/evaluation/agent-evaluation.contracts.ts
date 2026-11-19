@@ -1,4 +1,4 @@
-import type { Agent, FetchFn, McpToolCallSettledEvent } from '@n8n/agents';
+import type { Agent, FetchFn, McpToolCallSettledEvent, ToolCallInterceptor } from '@n8n/agents';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import type { AgentJsonConfig } from '@n8n/api-types';
 
@@ -42,16 +42,16 @@ export interface AgentMcpToolCallSettledContext extends McpToolCallSettledEvent 
 
 /**
  * Optional per-run overrides for how an agent runtime reaches the outside
- * world. Only set by the Instance AI eval execution path — never present for
- * chat, published, task, or workflow-node runs. Callers must build the
+ * world. Set by the Instance AI eval execution path and by test runs (safe
+ * testing) — never present for live chat, published, task, or workflow-node runs. Callers must build the
  * runtime uncached (bypass AgentRuntimeCacheService) when passing this, so an
  * instrumented runtime can never be served to a normal run.
  */
 export interface AgentRuntimeInstrumentation {
 	/** Replaces the default proxy-aware transport for the agent's model calls. */
 	modelFetch?: FetchFn;
-	/** Replaces the default SSRF-guarded transport for MCP server traffic. */
-	mcpFetch?: FetchFn;
+	/** Replaces the default SSRF-guarded transport for the traffic of each MCP server. */
+	mcpFetch?: (serverName: string) => FetchFn;
 	/** Receives exact model-facing names for MCP calls after they settle. */
 	onMcpToolCallSettled?: (event: AgentMcpToolCallSettledContext) => void | Promise<void>;
 	/**
@@ -75,6 +75,18 @@ export interface AgentRuntimeInstrumentation {
 		additionalData: IWorkflowExecuteAdditionalData,
 		context: AgentToolInstrumentationContext,
 	) => void;
+	/**
+	 * Runs around every tool call of the runtime and of its sub-agents. A test
+	 * run uses it to block the tools that the simulation cannot serve.
+	 */
+	toolCallInterceptor?: ToolCallInterceptor;
+	/**
+	 * Leaves out the model provider's own tools (native web search and any
+	 * configured `providerTools`). They run inside the provider's call, where no
+	 * seam can see them. Web search uses the fallback `web_search` tool instead.
+	 * Also applies to sub-agents. Set by test runs.
+	 */
+	disableProviderTools?: boolean;
 	/**
 	 * Transforms a configured sub-agent's config before its delegated runtime
 	 * is reconstructed (the child inherits this instrumentation, so its seams
