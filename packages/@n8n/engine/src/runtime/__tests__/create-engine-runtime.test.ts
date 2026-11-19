@@ -4,15 +4,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
 import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
-import { TypeOrmStepStore, type EngineStores } from '../../database';
+import { TypeOrmExecutionStore, TypeOrmStepStore, type EngineStores } from '../../database';
+import { generateId } from '../../database/generate-id';
 import { BatchingLifecycleEventPublisher } from '../../lifecycle-events';
-import { InMemoryWorkQueue } from '../../queue';
+import { createInMemoryWorkQueues, type OrchestrationMessage, type StepMessage } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../create-engine-runtime';
 
-vi.mock('../../queue', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('../../queue')>();
-	return { ...actual, InMemoryWorkQueue: vi.fn(actual.InMemoryWorkQueue) };
+const fakeQueue = <T>() => ({
+	publish: vi.fn(async (_message: T) => {}),
+	start: vi.fn(),
+	stop: vi.fn(async () => {}),
 });
 
 /** Enough of a `DataSource` for the stores: they only hold on to a repository. */
@@ -29,6 +31,7 @@ const runtime = () =>
 		admittance: new AllowAllAdmittance(),
 		identityVerifier,
 		responseSender,
+		queues: createInMemoryWorkQueues(),
 	});
 
 describe('createEngineRuntime', () => {
@@ -74,6 +77,7 @@ describe('createEngineRuntime', () => {
 			admittance: new AllowAllAdmittance(),
 			identityVerifier,
 			responseSender,
+			queues: createInMemoryWorkQueues(),
 			externalDependencies: (given) => {
 				stores = given;
 				return {};
@@ -93,6 +97,7 @@ describe('createEngineRuntime', () => {
 			admittance: new AllowAllAdmittance(),
 			identityVerifier,
 			responseSender,
+			queues: createInMemoryWorkQueues(),
 			externalDependencies: build,
 		});
 
@@ -108,6 +113,7 @@ describe('createEngineRuntime', () => {
 			admittance: new AllowAllAdmittance(),
 			identityVerifier,
 			responseSender,
+			queues: createInMemoryWorkQueues(),
 			externalDependencies: () => ({
 				lifecycleEventCallback: vi.fn().mockResolvedValue(undefined),
 			}),
@@ -147,7 +153,7 @@ describe('createEngineRuntime', () => {
 			identityVerifier,
 			responseSender,
 			waitSweepIntervalMs: 1,
-			concurrency: { step: 3 },
+			queues: createInMemoryWorkQueues({ concurrency: { step: 3 } }),
 		});
 		engine.start();
 
@@ -168,20 +174,85 @@ describe('createEngineRuntime', () => {
 		}
 	});
 
-	it('passes each queue its configured concurrency', () => {
-		vi.mocked(InMemoryWorkQueue).mockClear();
-
-		createEngineRuntime({
+	it('runs on the queues the host gives it', async () => {
+		const executionId = generateId();
+		vi.spyOn(TypeOrmExecutionStore.prototype, 'createExecution').mockResolvedValue();
+		// Lets the wait sweeper publish to the step queue without a database.
+		vi.spyOn(TypeOrmStepStore.prototype, 'nextWaitDeadline').mockResolvedValue(null);
+		vi.spyOn(TypeOrmStepStore.prototype, 'resumeDueSteps')
+			.mockResolvedValueOnce([{ id: 'step-1', executionId }])
+			.mockResolvedValue([]);
+		const orchestration = fakeQueue<OrchestrationMessage>();
+		const step = fakeQueue<StepMessage>();
+		const engine = createEngineRuntime({
 			dataSource: fakeDataSource(),
 			admittance: new AllowAllAdmittance(),
 			identityVerifier,
 			responseSender,
-			concurrency: { orchestration: 2, step: 3 },
+			waitSweepIntervalMs: 1,
+			queues: { orchestration, step },
 		});
+		engine.start();
 
-		expect(InMemoryWorkQueue).toHaveBeenCalledTimes(2);
-		expect(InMemoryWorkQueue).toHaveBeenNthCalledWith(1, expect.anything(), { concurrency: 2 });
-		expect(InMemoryWorkQueue).toHaveBeenNthCalledWith(2, expect.anything(), { concurrency: 3 });
+		try {
+			await request(engine.app)
+				.post('/api/workflow-executions')
+				.set('Authorization', `Bearer ${token}`)
+				.send({
+					workflowId: 'wf-1',
+					graph: { nodes: [{ id: 'trigger', name: 'Trigger', type: 'trigger' }], edges: [] },
+					workflow: {},
+					executionId,
+					callerContext: { hostMode: 'trigger' },
+				})
+				.expect(201);
+			await vi.waitFor(() =>
+				expect(step.publish).toHaveBeenCalledWith({
+					type: 'step:ready',
+					executionId,
+					stepId: 'step-1',
+				}),
+			);
+			expect(orchestration.publish).toHaveBeenCalledExactlyOnceWith({
+				type: 'execution:enqueued',
+				executionId,
+			});
+			expect(orchestration.start).toHaveBeenCalledOnce();
+			expect(step.start).toHaveBeenCalledOnce();
+		} finally {
+			await engine.stop();
+		}
+
+		expect(orchestration.stop).toHaveBeenCalledOnce();
+		expect(step.stop).toHaveBeenCalledOnce();
+	});
+
+	it('re-announces a stale queued execution on the orchestration queue the host gives it', async () => {
+		vi.spyOn(TypeOrmExecutionStore.prototype, 'findStaleQueuedExecutions')
+			.mockResolvedValueOnce([{ id: 'exec-1', staleAfter: new Date() }])
+			.mockResolvedValue([]);
+		vi.spyOn(TypeOrmExecutionStore.prototype, 'renewQueuedExecution').mockResolvedValue(true);
+		const orchestration = fakeQueue<OrchestrationMessage>();
+		const engine = createEngineRuntime({
+			dataSource: fakeDataSource(),
+			admittance: new AllowAllAdmittance(),
+			identityVerifier,
+			responseSender,
+			reconciliationIntervalMs: 1,
+			queues: { orchestration, step: fakeQueue<StepMessage>() },
+		});
+		engine.start();
+
+		try {
+			await vi.waitFor(() =>
+				expect(orchestration.publish).toHaveBeenCalledExactlyOnceWith({
+					type: 'execution:enqueued',
+					executionId: 'exec-1',
+				}),
+			);
+		} finally {
+			await engine.stop();
+		}
 	});
 
 	it('starts and stops both workers', async () => {
@@ -200,6 +271,7 @@ describe('createEngineRuntime', () => {
 					admittance: new AllowAllAdmittance(),
 					identityVerifier,
 					responseSender,
+					queues: createInMemoryWorkQueues(),
 					staleness: { queuedMs, runningStepMs: 60_000 },
 				}),
 			).toThrow('The staleness threshold "queuedMs" must be a positive whole number');
@@ -213,6 +285,7 @@ describe('createEngineRuntime', () => {
 				admittance: new AllowAllAdmittance(),
 				identityVerifier,
 				responseSender,
+				queues: createInMemoryWorkQueues(),
 				staleness: { queuedMs: 1, runningStepMs: 60_000 },
 			}),
 		).not.toThrow();

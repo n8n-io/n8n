@@ -1,6 +1,5 @@
+import type { ExecutionRef } from '@n8n/backend-services';
 import { UnexpectedError } from '@n8n/errors';
-
-import type { ExecutionRef } from './types';
 
 /**
  * Thrown when an update targets an execution whose data bundle is

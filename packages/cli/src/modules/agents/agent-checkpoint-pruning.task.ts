@@ -28,6 +28,7 @@ export class AgentCheckpointPruningTask implements SystemTask {
 				5 * Time.minutes.toSeconds,
 			),
 		},
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep timer scheduling while the durable scheduler is disabled.
 		leaderTimer: {
 			runOnTakeover: true,
 			retryDelaySeconds: 30,

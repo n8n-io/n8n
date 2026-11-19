@@ -11,7 +11,7 @@ import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
-import { defineComponent, h, ref, type Ref } from 'vue';
+import { defineComponent, h, inject, ref, type Ref } from 'vue';
 
 import type { AgentChatComposerAttachment } from '@/features/agents/utils/composer-attachments';
 import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
@@ -80,6 +80,8 @@ const {
 		thread: undefined as ArtifactThread | undefined,
 	},
 }));
+
+const { routeQuery } = vi.hoisted(() => ({ routeQuery: {} as Record<string, string> }));
 
 const { fetchTabs, saveTabs } = vi.hoisted(() => ({
 	fetchTabs: vi.fn(),
@@ -244,6 +246,34 @@ vi.mock('../../components/InstanceAiAppPreview.vue', () => ({
 	}),
 }));
 
+// The real editor has its own tests. The stub keeps a local draft, so a remount loses it.
+vi.mock('../../components/InstanceAiSkillPreview.vue', () => ({
+	default: defineComponent({
+		inheritAttrs: false,
+		setup(_props, { attrs }) {
+			const draft = ref('');
+			return () =>
+				h(
+					'div',
+					{
+						'data-test-id': 'skill-preview-stub',
+						'data-skill-id': attrs['skill-id'],
+						'data-refresh-key': attrs['refresh-key'],
+					},
+					[
+						h('input', {
+							'data-test-id': 'skill-preview-draft',
+							value: draft.value,
+							onInput: (event: Event) => {
+								if (event.target instanceof HTMLInputElement) draft.value = event.target.value;
+							},
+						}),
+					],
+				);
+		},
+	}),
+}));
+
 // The tab that the `tab-bar-open-tab` button opens.
 const { tabBarTabToOpen } = vi.hoisted(() => ({
 	tabBarTabToOpen: { current: undefined as unknown },
@@ -321,7 +351,20 @@ vi.mock('../../components/NodesAttachmentChips.vue', () => ({
 
 vi.mock('../../components/InstanceAiArtifactsPanel.vue', () => ({
 	default: defineComponent({
-		setup: () => () => h('div', { 'data-test-id': 'artifacts-panel-stub' }),
+		setup() {
+			// The real panel opens a skill row through this injected opener.
+			const openSkillPreview = inject<((id: string) => boolean) | undefined>(
+				'openSkillPreview',
+				undefined,
+			);
+			return () =>
+				h('div', { 'data-test-id': 'artifacts-panel-stub' }, [
+					h('button', {
+						'data-test-id': 'artifacts-panel-open-skill',
+						onClick: () => openSkillPreview?.('skill-1'),
+					}),
+				]);
+		},
 	}),
 }));
 
@@ -339,6 +382,7 @@ vi.mock('../../components/InstanceAiViewHeader.vue', () => ({
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<typeof import('vue-router')>()),
 	useRouter: () => ({ push: routerPush, currentRoute: { value: { params: {} } } }),
+	useRoute: () => ({ query: routeQuery }),
 }));
 
 const renderView = createComponentRenderer(AssistantAgentThreadView);
@@ -373,6 +417,26 @@ function buildMessage(toolCallId: string): ChatMessage {
 	};
 }
 
+function skillMessage(toolCallId: string, action: 'create' | 'update'): ChatMessage {
+	return {
+		id: `a-${toolCallId}`,
+		role: 'assistant',
+		content: '',
+		toolCalls: [
+			{
+				tool: 'skills',
+				toolCallId,
+				input: { action, ...(action === 'update' ? { skillId: 'skill-1' } : {}) },
+				output:
+					action === 'create'
+						? { success: true, skill: { id: 'skill-1', name: 'Tone guide' } }
+						: { success: true, saved: { id: 'skill-1' } },
+				state: 'done',
+			},
+		],
+	};
+}
+
 function noTargets(): AssistantAgentTargetsState {
 	return { bound: null, pending: null, targets: [], previewSession: null };
 }
@@ -388,6 +452,7 @@ describe('AssistantAgentThreadView', () => {
 		previewThread.current = undefined;
 		appPreviewProps.current = undefined;
 		routerPush.mockReset();
+		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
 		focusInput.mockReset();
 		openFilePicker.mockReset();
 		composerBlocked.current = false;
@@ -678,6 +743,165 @@ describe('AssistantAgentThreadView', () => {
 		await flushPromises();
 
 		expect(appPreviewProps.current?.['refresh-key']).toBe(Number(firstKey) + 1);
+	});
+
+	describe('skill artifacts', () => {
+		async function renderWithSkill() {
+			const result = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+			chatMessages.value = [skillMessage('tc-1', 'create')];
+			await flushPromises();
+			return result;
+		}
+
+		it('opens the skill that the Assistant writes and reloads it on the next update', async () => {
+			const { getByTestId } = await renderWithSkill();
+
+			expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+			const skillPreview = getByTestId('skill-preview-stub');
+			expect(skillPreview).toHaveAttribute('data-skill-id', 'skill-1');
+			const firstKey = Number(skillPreview.dataset.refreshKey);
+
+			chatMessages.value = [...chatMessages.value, skillMessage('tc-2', 'update')];
+			await flushPromises();
+
+			expect(getByTestId('skill-preview-stub')).toHaveAttribute(
+				'data-refresh-key',
+				String(firstKey + 1),
+			);
+		});
+
+		it.each([
+			{ destination: 'another skill', tab: { type: 'skill', id: 'skill-2', name: 'Other' } },
+			{ destination: 'a workflow', tab: { type: 'workflow', id: 'wf-1', name: 'Workflow' } },
+		])('keeps the unsaved skill draft after the user visits $destination', async ({ tab }) => {
+			const { getByTestId, queryByTestId } = await renderWithSkill();
+			await fireEvent.update(getByTestId('skill-preview-draft'), 'Unsaved instructions');
+
+			tabBarTabToOpen.current = tab;
+			await userEvent.click(getByTestId('tab-bar-open-tab'));
+			await flushPromises();
+			if (tab.type === 'skill') {
+				expect(getByTestId('skill-preview-stub')).toHaveAttribute('data-skill-id', 'skill-2');
+				expect(getByTestId('skill-preview-draft')).toHaveValue('');
+			} else {
+				expect(queryByTestId('skill-preview-stub')).not.toBeInTheDocument();
+			}
+
+			tabBarTabToOpen.current = { type: 'skill', id: 'skill-1', name: 'Tone guide' };
+			await userEvent.click(getByTestId('tab-bar-open-tab'));
+			await flushPromises();
+
+			expect(getByTestId('skill-preview-stub')).toHaveAttribute('data-skill-id', 'skill-1');
+			expect(getByTestId('skill-preview-draft')).toHaveValue('Unsaved instructions');
+		});
+
+		it('opens a skill from the artifacts panel', async () => {
+			if (threadArea.width) threadArea.width.value = 1200;
+			const { getByTestId, queryByTestId } = await renderWithSkill();
+			// The panel shows only while the preview is hidden.
+			await userEvent.click(getByTestId('tab-bar-preview-toggle'));
+			await flushPromises();
+			expect(queryByTestId('skill-preview-stub')).not.toBeInTheDocument();
+
+			await userEvent.click(getByTestId('artifacts-panel-open-skill'));
+			await flushPromises();
+
+			expect(getByTestId('skill-preview-stub')).toHaveAttribute('data-skill-id', 'skill-1');
+		});
+	});
+
+	describe('app chats', () => {
+		const APP_ID = '019a4012-272c-7313-91af-5c94a3d819a9';
+		const OTHER_APP_ID = '019a4012-272c-7313-91af-5c94a3d819aa';
+
+		function clientContext(): Record<string, unknown> {
+			return (panelProps.current['client-context'] as () => Record<string, unknown>)();
+		}
+
+		it('opens the app of a new thread and binds it with the first message', async () => {
+			routeQuery.appId = APP_ID;
+			stashAssistantAgentLaunch('thread-new', {
+				projectId: 'project-1',
+				source: 'app_builder_page',
+				origin: 'internal',
+				subject: { type: 'app', id: APP_ID, projectId: 'project-1', name: 'Portal' },
+			});
+
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-new', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+			expect(appPreviewProps.current).toMatchObject({
+				'project-id': 'project-1',
+				'app-id': APP_ID,
+			});
+			const subject = { type: 'app', id: APP_ID, projectId: 'project-1', name: 'Portal' };
+			expect(clientContext()).toMatchObject({ subject });
+
+			// A refused send keeps the app for the retry.
+			const onMessageAccepted = panelProps.current.onMessageAccepted as AcceptMessage;
+			onMessageAccepted({ clientContext: clientContext() });
+			expect(clientContext()).toMatchObject({ subject });
+
+			const onSessionCreated = panelProps.current.onSessionCreated as () => void;
+			onSessionCreated();
+			expect(clientContext()).not.toHaveProperty('subject');
+		});
+
+		it('sends a pending app without opening a preview', async () => {
+			stashAssistantAgentLaunch('thread-new', {
+				projectId: 'project-1',
+				source: 'app_builder_page',
+				origin: 'internal',
+				subject: { type: 'app', id: APP_ID, projectId: 'project-1', pending: true },
+			});
+
+			renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
+			await flushPromises();
+
+			expect(appPreviewProps.current).toBeUndefined();
+			expect(clientContext()).toMatchObject({
+				subject: { type: 'app', id: APP_ID, projectId: 'project-1', pending: true },
+			});
+		});
+
+		it('opens the app from the URL among the apps of the thread metadata', async () => {
+			routeQuery.appId = OTHER_APP_ID;
+			useAssistantAgentThreadsStore().openedThreads = [
+				{
+					id: 'thread-1',
+					title: 'Apps',
+					updatedAt: '2026-11-02T10:00:00.000Z',
+					projectId: 'project-1',
+					metadata: {
+						instanceAiAppTargets: [
+							{ appId: APP_ID, projectId: 'project-1' },
+							{ appId: OTHER_APP_ID, projectId: 'project-1', name: 'Other' },
+						],
+					},
+				},
+			];
+
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+
+			expect(appPreviewProps.current).toMatchObject({ 'app-id': OTHER_APP_ID });
+			expect(clientContext()).not.toHaveProperty('subject');
+		});
+
+		it('ignores an app in the URL that the thread does not have', async () => {
+			routeQuery.appId = OTHER_APP_ID;
+
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+
+			expect(appPreviewProps.current).toBeUndefined();
+		});
 	});
 
 	it('does not open the preview for a workflow built before the thread loaded', async () => {
@@ -1000,6 +1224,25 @@ describe('AssistantAgentThreadView', () => {
 			const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
 			expect(clientContext().threadArtifacts).toEqual({
 				artifacts: [{ type: 'workflow', id: 'wf-9', name: 'Opened by hand' }],
+				activeId: 'wf-9',
+			});
+		});
+
+		it('names the run that the user started in the preview of a tab', async () => {
+			fetchTabs.mockResolvedValue({ state: storedState });
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+
+			// The preview remembers the run on the thread when the run starts.
+			previewThread.current?.rememberManualExecution('wf-9', 'exec-1', undefined);
+
+			const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
+			expect(clientContext().threadArtifacts).toEqual({
+				artifacts: [
+					{ type: 'workflow', id: 'wf-9', name: 'Opened by hand', executionId: 'exec-1' },
+				],
 				activeId: 'wf-9',
 			});
 		});
@@ -1470,6 +1713,82 @@ describe('AssistantAgentThreadView', () => {
 			onSessionCreated();
 
 			expect(getAssistantAgentLaunch('thread-new')).toBeUndefined();
+		});
+	});
+
+	describe('agent subject of a new thread', () => {
+		function launchWith(subject: Record<string, unknown>) {
+			stashAssistantAgentLaunch('thread-new', {
+				projectId: 'project-1',
+				source: 'agent_builder_page',
+				origin: 'internal',
+				subject: { type: 'agent', id: 'agent-1', projectId: 'project-1', ...subject } as never,
+			});
+		}
+
+		async function renderNewThread() {
+			const view = renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+			return view;
+		}
+
+		function clientContext(): Record<string, unknown> {
+			return (panelProps.current['client-context'] as () => Record<string, unknown>)();
+		}
+
+		it('opens a saved agent before the first message and binds it with that message', async () => {
+			launchWith({ name: 'Triage' });
+
+			const { getByTestId } = await renderNewThread();
+
+			expect(getByTestId('agent-preview-stub')).toBeInTheDocument();
+			expect(agentPreview.props).toMatchObject({
+				'agent-id': 'agent-1',
+				'project-id': 'project-1',
+			});
+			expect(fetchTargets).not.toHaveBeenCalled();
+			expect(clientContext()).toMatchObject({
+				subject: { type: 'agent', id: 'agent-1', projectId: 'project-1', name: 'Triage' },
+			});
+		});
+
+		it('binds a change from the preview once the server accepts the first message', async () => {
+			launchWith({ name: 'Triage' });
+			await renderNewThread();
+			const renamed = { agentId: 'agent-1', projectId: 'project-1', name: 'Refund triage' };
+
+			expect(agentPreview.targets).toBeDefined();
+			await agentPreview.targets?.bind(renamed);
+			expect(bindTarget).not.toHaveBeenCalled();
+
+			// The first turn bound the subject under its old name.
+			fetchTargets.mockResolvedValue({
+				targets: {
+					bound: { agentId: 'agent-1', projectId: 'project-1', name: 'Triage' },
+					pending: null,
+					targets: [],
+					previewSession: null,
+				},
+			});
+			bindTarget.mockResolvedValue({ targets: noTargets() });
+			const onSessionCreated = panelProps.current.onSessionCreated as () => void;
+			onSessionCreated();
+			await flushPromises();
+
+			expect(bindTarget).toHaveBeenCalledExactlyOnceWith(expect.anything(), 'thread-new', renamed);
+		});
+
+		it('sends a pending agent without a preview before the first message', async () => {
+			launchWith({ pending: true });
+
+			const { queryByTestId } = await renderNewThread();
+
+			expect(queryByTestId('agent-preview-stub')).not.toBeInTheDocument();
+			expect(clientContext()).toMatchObject({
+				subject: { type: 'agent', id: 'agent-1', projectId: 'project-1', pending: true },
+			});
 		});
 	});
 

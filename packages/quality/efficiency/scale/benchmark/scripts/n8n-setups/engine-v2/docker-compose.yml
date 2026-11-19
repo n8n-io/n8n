@@ -59,6 +59,8 @@ services:
       - N8N_ENGINE_HOST=0.0.0.0
       - N8N_ENGINE_PORT=3000
       - N8N_ENGINE_CONTROL_PLANE_BASE_URL=http://n8n:3001
+      - N8N_ENGINE_ORCHESTRATION_CONCURRENCY=8
+      - N8N_ENGINE_STEP_CONCURRENCY=4
     command: engine
     volumes:
       - ${RUN_DIR}/n8n-engine1:/n8n
@@ -94,6 +96,8 @@ services:
       - N8N_ENGINE_HOST=0.0.0.0
       - N8N_ENGINE_PORT=3000
       - N8N_ENGINE_CONTROL_PLANE_BASE_URL=http://n8n:3001
+      - N8N_ENGINE_ORCHESTRATION_CONCURRENCY=8
+      - N8N_ENGINE_STEP_CONCURRENCY=4
     command: engine
     volumes:
       - ${RUN_DIR}/n8n-engine2:/n8n

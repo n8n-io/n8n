@@ -8,6 +8,7 @@ import type { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
 
 import { toLedgerOutcome } from './counting-rules';
 import type {
+	ExecutionLedgerBacklogStats,
 	ExecutionLedgerEndedFacts,
 	ExecutionLedgerStartedFacts,
 	ExecutionLedgerWriter,
@@ -55,6 +56,11 @@ export class ExecutionLedger {
 		return this.writer !== undefined;
 	}
 
+	async getBacklogStats(): Promise<ExecutionLedgerBacklogStats> {
+		if (!this.writer) throw new UnexpectedError('No execution ledger writer is registered');
+		return await this.writer.getBacklogStats();
+	}
+
 	/**
 	 * Writes the rows for a new execution row, in its transaction. A reclaimed tombstone
 	 * never ran, so it ends blocked. A row created finished also gets its `ended` row here.
@@ -79,14 +85,14 @@ export class ExecutionLedger {
 
 		const recorded = await this.recordStarted(started, ctx);
 		const { mode } = started;
-		const outcome = toLedgerOutcome({
+		const ended = toLedgerOutcome({
 			mode,
 			status: created.status,
 			startedAt: created.startedAt ?? null,
 		});
-		if (!recorded || outcome === 'none') return;
+		if (!recorded || ended.outcome === 'none') return;
 
-		if (outcome !== 'blocked') {
+		if (ended.outcome !== 'blocked') {
 			// No caller creates a row that finished with work done, so its runtime is unknown.
 			this.errorReporter.error(
 				new UnexpectedError('An execution row was created finished with work done', {
@@ -97,7 +103,7 @@ export class ExecutionLedger {
 		}
 
 		await this.recordEndedInTransaction(
-			{ ...started, ...blocked, occurredAt: created.stoppedAt ?? started.occurredAt },
+			{ ...started, ...ended, occurredAt: created.stoppedAt ?? started.occurredAt },
 			ctx,
 		);
 	}

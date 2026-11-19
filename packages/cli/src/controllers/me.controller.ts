@@ -5,7 +5,7 @@ import {
 	UserUpdateRequestDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, PasswordUtility } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { User, PublicUser, AuthIdentity } from '@n8n/db';
 import { AuthenticatedRequest, isPerson, PersonRepository } from '@n8n/db';
@@ -20,7 +20,6 @@ import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { MfaService } from '@/mfa/mfa.service';
 import { MeRequest } from '@/requests';
-import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
 import { assertPerson } from '@/utils/assert-person';
 import { getCurrentAuthenticationMethod, isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';

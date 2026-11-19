@@ -25,8 +25,8 @@ type EnvironmentChange = EnvironmentChangedCommand['change'];
  *
  * A request that cleans up runs its database change through this service. The service
  * takes the environment lock before the change, removes the descriptor and moves the
- * folders to trash inside the lock. It deletes the trash and publishes to the other
- * mains after it releases the lock, so the environment is not busy when the other
+ * folders to trash inside the lock. After it releases the lock, it publishes to the
+ * other mains and then deletes the trash. The environment is not busy when the other
  * mains get the message.
  *
  * The startup check and the messages from other mains take no lock: with a lock that
@@ -247,10 +247,13 @@ export class PromotionCheckoutCleanupService {
 		);
 	}
 
-	/** Runs after the locks are released. */
+	/**
+	 * Runs after the locks are released. Publishes before the trash deletion, so that a
+	 * Connect on another main is less likely to start before the message arrives.
+	 */
 	private async finish(trashed: string[], environmentIds: string[], change: EnvironmentChange) {
-		await this.deleteTrash(trashed);
 		this.publishToOtherMains(environmentIds, change);
+		await this.deleteTrash(trashed);
 	}
 
 	/** For the paths without a lock. */
