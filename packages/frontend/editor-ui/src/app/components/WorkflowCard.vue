@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, defineAsyncComponent, ref } from 'vue';
+import { loadDeterminismBadge } from '@n8n/frontend-module-agent-determinism';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	DUPLICATE_MODAL_KEY,
 	MODAL_CONFIRM,
@@ -122,6 +124,8 @@ const emit = defineEmits<{
 const toast = useToast();
 const message = useMessage();
 const locale = useI18n();
+const DeterminismBadge = defineAsyncComponent(loadDeterminismBadge);
+const isDeterminismActive = computed(() => useSettingsStore().isModuleActive('agent-determinism'));
 const router = useRouter();
 const route = useRoute();
 const telemetry = useTelemetry();
@@ -755,6 +759,12 @@ const tags = computed(
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
+				<DeterminismBadge
+					v-if="isDeterminismActive && data.homeProject?.id && !data.isArchived"
+					:project-id="data.homeProject.id"
+					source-type="workflow"
+					:source-id="data.id"
+				/>
 				<DependencyPill
 					v-if="workflowHasDependencies"
 					resource-type="workflow"

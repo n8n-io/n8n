@@ -1,6 +1,7 @@
 import type { AppEventMap } from '@n8n/backend-module-apps';
 import type { DataTableEventMap } from '@n8n/backend-module-data-table';
 import type {
+	AgentExecutionStatus,
 	AuthenticationMethod,
 	BreakingChangeLightReportResult,
 	BreakingChangeVersion,
@@ -58,6 +59,7 @@ import type {
 import type { TracingContext } from '@/modules/otel/tracing-context';
 import type { McpCallerAuth } from '@n8n/backend-services/auth';
 import type { UserLike } from '@/types/user-like.types';
+import type { AgentRunTelemetryType } from '@/modules/agents/agent-telemetry.types';
 import type { PublicApiCaller, PublicApiClient } from '@/public-api/public-api-client';
 import type { PublicApiResult } from '@/public-api/types';
 
@@ -1449,6 +1451,15 @@ export type RelayEventMap = ModuleEventMap & {
 	'agent-deleted': {
 		agentId: string;
 		projectId: string;
+	};
+
+	'agent-execution-finished': {
+		agentId: string;
+		projectId: string;
+		executionId: string;
+		status: AgentExecutionStatus;
+		runType: AgentRunTelemetryType | null;
+		userId: string | null;
 	};
 
 	'agent-archived': {
