@@ -1,5 +1,15 @@
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import {
+	computed,
+	h,
+	nextTick,
+	onBeforeUnmount,
+	onMounted,
+	ref,
+	useCssModule,
+	useTemplateRef,
+	watch,
+} from 'vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRoute, useRouter } from 'vue-router';
@@ -10,6 +20,7 @@ import {
 	MCP_SKILLS_EXTENSION_FLAG,
 	SKILLS_SORT_OPTIONS,
 	skillScopeSchema,
+	skillSourceDeleteBlockSchema,
 	type AgentSkill,
 	type SkillCreateMethod,
 	type SkillAgentOption,
@@ -23,10 +34,12 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { ResponseError } from '@n8n/rest-api-client';
+import { isRecord } from '@n8n/utils/is-record';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	N8nActionDropdown,
 	N8nButton,
+	N8nCheckbox,
 	N8nHeading,
 	N8nIcon,
 	N8nInput,
@@ -77,7 +90,11 @@ import SkillsTable from '../components/SkillsTable.vue';
 import SkillSourceDeleteDialog from '../components/SkillSourceDeleteDialog.vue';
 import SkillSourceCredentialDialog from '../components/SkillSourceCredentialDialog.vue';
 import { useSkillSyncFlag } from '../composables/useSkillSyncFlag';
-import { CONTEXT_DEFAULT_SORT_BY, SKILLS_DEFAULT_PAGE_SIZE } from '../context.constants';
+import {
+	CONTEXT_DEFAULT_SORT_BY,
+	PREFERENCES_PAGE_SIZES,
+	SKILLS_DEFAULT_PAGE_SIZE,
+} from '../context.constants';
 import {
 	canWriteInstanceSkillScope,
 	canWriteProjectSkillScope,
@@ -111,6 +128,7 @@ const FILTER_KEYS: Array<keyof SkillFilters> = ['scope', 'agentId', 'createdById
 const NO_FILTERS: SkillFilters = { scope: '', agentId: '', createdById: '', sourceIds: [] };
 
 const i18n = useI18n();
+const $style = useCssModule();
 const router = useRouter();
 const route = useRoute();
 const documentTitle = useDocumentTitle();
@@ -144,11 +162,39 @@ const recommendedOpen = ref(false);
 const sourceToDelete = ref<SkillSourceListItem>();
 const sourceToReplaceCredential = ref<SkillSourceListItem>();
 
-const tableOptions = ref<TableOptions>({
+const usersStore = useUsersStore();
+const defaultTableOptions: TableOptions = {
 	page: 0,
 	itemsPerPage: SKILLS_DEFAULT_PAGE_SIZE,
 	sortBy: CONTEXT_DEFAULT_SORT_BY,
-});
+};
+const tableOptions = useLocalStorage<TableOptions>(
+	() => `n8n-skills-pagination:${usersStore.currentUserId ?? 'anonymous'}`,
+	{ ...defaultTableOptions },
+	{
+		// Another tab must not move this table while the user reads it.
+		listenToStorageChanges: false,
+		serializer: {
+			read(value) {
+				const saved: unknown = JSON.parse(value);
+				if (!isRecord(saved)) return { ...defaultTableOptions };
+				return {
+					page:
+						typeof saved.page === 'number' && Number.isSafeInteger(saved.page) && saved.page >= 0
+							? saved.page
+							: 0,
+					itemsPerPage:
+						typeof saved.itemsPerPage === 'number' &&
+						PREFERENCES_PAGE_SIZES.includes(saved.itemsPerPage)
+							? saved.itemsPerPage
+							: SKILLS_DEFAULT_PAGE_SIZE,
+					sortBy: CONTEXT_DEFAULT_SORT_BY,
+				};
+			},
+			write: ({ page, itemsPerPage }) => JSON.stringify({ page, itemsPerPage }),
+		},
+	},
+);
 const search = ref('');
 const filters = ref<SkillFilters>({ ...NO_FILTERS });
 const agentOptions = ref<SkillAgentOption[]>([]);
@@ -811,9 +857,30 @@ async function onDownload(item: Pick<SkillListItem, 'id'>) {
 }
 
 /** `onDeleted` runs as soon as the delete succeeds, before the list reloads. */
-async function onDelete(skill: Pick<SkillListItem, 'id'>, onDeleted?: () => void) {
+async function onDelete(skill: SkillListItem, onDeleted?: () => void) {
+	const source = skillsStore.sources.find(
+		(item) =>
+			skillSyncEnabled.value &&
+			item.id === skill.sourceId &&
+			item.skillCount === 1 &&
+			item.canDelete,
+	);
+	let removeSource = false;
+	const warning = i18n.baseText('settings.context.skills.delete.confirm.message');
 	const confirmed = await message.confirm(
-		i18n.baseText('settings.context.skills.delete.confirm.message'),
+		source
+			? h('div', { class: $style.confirmation }, [
+					h('p', warning),
+					h(N8nCheckbox, {
+						label: i18n.baseText('settings.context.skills.delete.removeSource', {
+							interpolate: { source: source.label },
+						}),
+						'onUpdate:modelValue': (checked: boolean) => {
+							removeSource = checked;
+						},
+					}),
+				])
+			: warning,
 		i18n.baseText('settings.context.skills.delete.confirm.title'),
 		{
 			type: 'warning',
@@ -823,7 +890,11 @@ async function onDelete(skill: Pick<SkillListItem, 'id'>, onDeleted?: () => void
 	);
 	if (confirmed !== MODAL_CONFIRM) return;
 	try {
-		await skillsStore.deleteSkill(skill.id);
+		if (source && removeSource) {
+			await skillsStore.deleteSource(source.id, { onlySkillId: skill.id });
+		} else {
+			await skillsStore.deleteSkill(skill.id);
+		}
 		onDeleted?.();
 		showMessage({
 			title: i18n.baseText('settings.context.skills.delete.success'),
@@ -831,7 +902,24 @@ async function onDelete(skill: Pick<SkillListItem, 'id'>, onDeleted?: () => void
 		});
 	} catch (error) {
 		// An agent may have attached the skill since the list loaded: that answers 409.
-		showError(error, i18n.baseText('settings.context.skills.error.delete'));
+		// The source delete names its agents in a payload, which a toast cannot list.
+		const block = skillSourceDeleteBlockSchema.safeParse(
+			error instanceof ResponseError && error.httpStatusCode === 409 ? error.meta : undefined,
+		);
+		if (block.success) {
+			const count = block.data.agents.length + block.data.hiddenAgents;
+			showMessage({
+				title: i18n.baseText('settings.context.skills.error.delete'),
+				message: i18n.baseText('settings.context.skills.delete.inUse', {
+					interpolate: { count },
+					adjustToNumber: count,
+				}),
+				type: 'error',
+				duration: 0,
+			});
+		} else {
+			showError(error, i18n.baseText('settings.context.skills.error.delete'));
+		}
 	}
 	// The deleted skill may have been the last one of its creator.
 	void loadCreators();
@@ -847,10 +935,19 @@ async function onDelete(skill: Pick<SkillListItem, 'id'>, onDeleted?: () => void
 async function onStopSyncing(skill: SkillListItem, onStopped?: () => void) {
 	const name = skill.name;
 	const confirmed = await message.confirm(
-		i18n.baseText('settings.context.skills.stopSyncing.confirm.message', {
-			interpolate: { scope: scopeDisplay(skill).label, count: skill.latestVersion },
-			adjustToNumber: skill.latestVersion,
-		}),
+		h('div', { class: $style.confirmation }, [
+			h(
+				'p',
+				i18n.baseText('settings.context.skills.stopSyncing.confirm.message', {
+					interpolate: { scope: scopeDisplay(skill).label },
+				}),
+			),
+			h(
+				'p',
+				i18n.baseText('settings.context.skills.stopSyncing.confirm.keep', { adjustToNumber: 1 }),
+			),
+			h('p', i18n.baseText('settings.context.skills.stopSyncing.confirm.updates')),
+		]),
 		i18n.baseText('settings.context.skills.stopSyncing.confirm.title', {
 			interpolate: { name },
 		}),
@@ -876,7 +973,6 @@ async function onStopSyncing(skill: SkillListItem, onStopped?: () => void) {
 }
 
 /** The sources that the user folded, kept in this browser, so the table opens as it was left. */
-const usersStore = useUsersStore();
 const collapsedSourceIds = useLocalStorage<string[]>(
 	() => `n8n-skills-collapsed-sources:${usersStore.currentUserId ?? 'anonymous'}`,
 	[],
@@ -925,7 +1021,7 @@ async function onToggleSource(sourceId: string) {
 	if (ids.has(sourceId)) ids.delete(sourceId);
 	else ids.add(sourceId);
 	collapsedSourceIds.value = [...ids];
-	await load(sourceId);
+	await load();
 }
 
 /** Check for updates on a source: progress on its row, then a toast with the result. */
@@ -960,7 +1056,7 @@ async function onCheckSource(source: SkillSourceListItem) {
 		checkingSourceIds.value = checkingSourceIds.value.filter((id) => id !== source.id);
 		await loadSources();
 	}
-	const { label, updatesFound, throttled } = result;
+	const { label, updatesFound, newSkillsFound = 0, throttled } = result;
 	showMessage({
 		title: throttled
 			? i18n.baseText('settings.context.skills.checkForUpdates.throttled', {
@@ -969,13 +1065,24 @@ async function onCheckSource(source: SkillSourceListItem) {
 			: i18n.baseText('settings.context.skills.checkForUpdates.checked', {
 					interpolate: { label },
 				}),
-		message:
-			updatesFound === 0
+		message: [
+			updatesFound === 0 && newSkillsFound === 0
 				? i18n.baseText('settings.context.skills.checkForUpdates.none')
-				: i18n.baseText('settings.context.skills.checkForUpdates.found', {
-						interpolate: { count: updatesFound },
-						adjustToNumber: updatesFound,
-					}),
+				: updatesFound > 0
+					? i18n.baseText('settings.context.skills.checkForUpdates.found', {
+							interpolate: { count: updatesFound },
+							adjustToNumber: updatesFound,
+						})
+					: '',
+			newSkillsFound > 0
+				? i18n.baseText('settings.context.skills.checkForUpdates.new', {
+						interpolate: { count: newSkillsFound },
+						adjustToNumber: newSkillsFound,
+					})
+				: '',
+		]
+			.filter(Boolean)
+			.join(' '),
 		type: 'success',
 	});
 }
@@ -1008,7 +1115,6 @@ async function goBack() {
 // The flags can arrive after the page: with Skill Sync on, the list groups and the sources load.
 watch(skillSyncEnabled, async (enabled) => {
 	if (!enabled) filters.value = { ...filters.value, sourceIds: [] };
-	tableOptions.value = { ...tableOptions.value, page: 0 };
 	await Promise.all([load(), ...(enabled ? [loadSources()] : [])]);
 });
 
@@ -1239,6 +1345,7 @@ onMounted(async () => {
 			:sources="tableSources"
 			:collapsed-source-ids="collapsedSourceIds"
 			:collapsed-sources="skillsStore.collapsedSources"
+			:source-ranges="skillsStore.sourceRanges"
 			:checking-source-ids="checkingSourceIds"
 			@open="openEditModal($event)"
 			@timeline="openEditModal($event, 'versions')"
@@ -1350,6 +1457,12 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
+.confirmation {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+}
+
 /* The settings shell insets the page; the header is pulled to the table's left edge. */
 .layout {
 	padding: 0;

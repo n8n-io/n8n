@@ -82,19 +82,21 @@ describe('N8nClient packages', () => {
 			branchName: 'release',
 			commitSha: 'a'.repeat(40),
 		};
+		const expectedPreviewRevision = 'b'.repeat(64);
 
 		it.each([
 			{
-				title: 'posts apply with no body when no expected source is given',
+				title: 'posts apply with an empty body when no expected source is given',
 				send: async () => await client.applyPackage('env-1'),
 				path: 'apply',
-				body: undefined,
+				body: {},
 			},
 			{
-				title: 'posts apply with the expected source in the body',
-				send: async () => await client.applyPackage('env-1', expectedSource),
+				title: 'posts apply with the expected source and the preview revision in the body',
+				send: async () =>
+					await client.applyPackage('env-1', expectedSource, expectedPreviewRevision),
 				path: 'apply',
-				body: { expectedSource },
+				body: { expectedSource, expectedPreviewRevision },
 			},
 			{
 				title: 'posts continue to apply/continue with the expected source in the body',
@@ -103,10 +105,11 @@ describe('N8nClient packages', () => {
 				body: { expectedSource },
 			},
 			{
-				title: 'posts continue with the confirmation of destructive data table changes',
-				send: async () => await client.continueApplyPackage('env-1', expectedSource, true),
+				title: 'posts continue with the confirmation and the preview revision',
+				send: async () =>
+					await client.continueApplyPackage('env-1', expectedSource, true, expectedPreviewRevision),
 				path: 'apply/continue',
-				body: { expectedSource, confirmDestructiveChanges: true },
+				body: { expectedSource, confirmDestructiveChanges: true, expectedPreviewRevision },
 			},
 		])('$title', async ({ send, path, body }) => {
 			fetchMock.mockResolvedValue(jsonResponse(200, { status: 'applied' }));

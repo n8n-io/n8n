@@ -21,6 +21,7 @@ import {
 	NodeTypesProxy,
 	PostHogClient,
 	TelemetryProxy,
+	loginIdOf,
 } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { type OperationContext, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
@@ -41,12 +42,12 @@ import type z from 'zod';
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { loginIdOf } from '@/events/login-id';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { SkillsGate } from '@/modules/skills';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
@@ -542,10 +543,11 @@ export class McpService {
 		// Same rationale again: a grant that cannot reach the instance-context tools is not told
 		// to start by calling them, and does not get the resource that carries the same data.
 		const contextToolsAllowed = allowedToolNames?.has(GET_INSTANCE_CONTEXT_TOOL_NAME) ?? true;
-		// Gates the sentence only; registration below goes through `registerIfAllowed` like every
-		// other tool. No RBAC check: a user's own preferences need no scope.
+		// Gates the sentence and the preference tools below, which also go through
+		// `registerIfAllowed`. No RBAC check: a user's own preferences need no scope.
+		const preferencesEnabled = Container.get(AiPreferenceSettingsService).isEnabled;
 		const userPreferencesInstructionsEnabled =
-			allowedToolNames?.has(MCP_GET_USER_PREFERENCES_TOOL_NAME) ?? true;
+			preferencesEnabled && (allowedToolNames?.has(MCP_GET_USER_PREFERENCES_TOOL_NAME) ?? true);
 		// The same rationale again: only a caller whose role and grant reach the report is
 		// pointed at it.
 		const migrationReportReadable = canReadMigrationReport(this.moduleRegistry, user);
@@ -885,38 +887,40 @@ export class McpService {
 
 		// Not builder-gated: preferences apply to Agents, data tables and folders as well as
 		// workflows, so a caller without the builder still has changes to apply them to.
-		registerIfAllowed(
-			createGetUserPreferencesTool(
-				user,
-				this.aiPreferenceService,
-				this.telemetry,
-				this.preferencesNoteService,
-				featureFlags.preferencesNoteVariant,
-			),
-		);
-		// The write path. Gated by `aiPreference:write` at registration; the service applies the
-		// same rules as the settings area, and `source` is fixed to `mcp` inside the tools.
-		registerIfAllowed(
-			createSaveUserPreferenceTool(
-				user,
-				this.aiPreferenceService,
-				this.telemetry,
-				this.urlService,
-				this.logger,
-			),
-		);
-		registerIfAllowed(
-			createUpdateUserPreferenceTool(
-				user,
-				this.aiPreferenceService,
-				this.telemetry,
-				this.urlService,
-				this.logger,
-			),
-		);
-		registerIfAllowed(
-			createUndoUserPreferenceTool(user, this.aiPreferenceService, this.telemetry, this.logger),
-		);
+		if (preferencesEnabled) {
+			registerIfAllowed(
+				createGetUserPreferencesTool(
+					user,
+					this.aiPreferenceService,
+					this.telemetry,
+					this.preferencesNoteService,
+					featureFlags.preferencesNoteVariant,
+				),
+			);
+			// The write path. Gated by `aiPreference:write` at registration; the service applies the
+			// same rules as the settings area, and `source` is fixed to `mcp` inside the tools.
+			registerIfAllowed(
+				createSaveUserPreferenceTool(
+					user,
+					this.aiPreferenceService,
+					this.telemetry,
+					this.urlService,
+					this.logger,
+				),
+			);
+			registerIfAllowed(
+				createUpdateUserPreferenceTool(
+					user,
+					this.aiPreferenceService,
+					this.telemetry,
+					this.urlService,
+					this.logger,
+				),
+			);
+			registerIfAllowed(
+				createUndoUserPreferenceTool(user, this.aiPreferenceService, this.telemetry, this.logger),
+			);
+		}
 
 		// Not builder-gated: reading the report and running its built-in fixes need no builder.
 		// The tools belong to the `breaking-changes` module, so they load only when it serves a report.

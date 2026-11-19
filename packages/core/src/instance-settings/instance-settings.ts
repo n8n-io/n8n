@@ -82,6 +82,15 @@ export class InstanceSettings {
 	 */
 	readonly derivedInstanceId: string;
 
+	/**
+	 * Random ID of this install (one database, shared by all its mains and
+	 * workers), for telemetry. Unlike `instanceId`, it is never derived from
+	 * the encryption key or set from the environment, so installs that share
+	 * a key still get different values. Set by `initialize()`; undefined when
+	 * no row exists and this process may not seed one.
+	 */
+	installId: string | undefined;
+
 	hmacSignatureSecret: string;
 
 	/**
@@ -110,7 +119,7 @@ export class InstanceSettings {
 	}
 
 	/**
-	 * Two-phase init: reads or creates deployment-key rows for instance.id and signing.hmac.
+	 * Two-phase init: reads or creates deployment-key rows for instance.id, install.id and signing.hmac.
 	 * Must be called after DB migrations complete, before license init.
 	 *
 	 * Precedence for each key: env var → DB active row → new value (and persist).
@@ -140,6 +149,16 @@ export class InstanceSettings {
 			() => (keepDerivedInstanceId ? this.instanceId : randomBytes(32).toString('hex')),
 			(v) => {
 				this.instanceId = v;
+			},
+		);
+		await this.initIdentifier(
+			repo,
+			'install.id',
+			undefined,
+			canSeed,
+			() => randomBytes(32).toString('hex'),
+			(v) => {
+				this.installId = v;
 			},
 		);
 		await this.initSecret(

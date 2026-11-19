@@ -551,6 +551,8 @@ export class InstanceAiService {
 			backgroundTaskIdleTimeoutMs: livenessPolicyConfig.backgroundTaskIdleTimeoutMs,
 			runState: this.runState,
 			backgroundTasks: this.backgroundTasks,
+			isTaskWaitingForUser: (taskId) =>
+				this.cloudBrowserService.findServer(taskId)?.isUserInControl() ?? false,
 			eventBus: this.eventBus,
 			logger: this.logger,
 			finalizeCancelledSuspendedRun: (suspended, reason) => {
@@ -579,7 +581,6 @@ export class InstanceAiService {
 			backgroundTasks: this.backgroundTasks,
 			settingsService: this.settingsService,
 			aiService: this.aiService,
-			getTemplatesService: () => this.adapterService.getTemplatesService(),
 			resolveTracingConfig: async (threadId, userId) => {
 				const ownerId = userId ?? (await this.memoryService.getThreadActorId(threadId));
 				if (!ownerId) return { userId: 'system' };

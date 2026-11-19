@@ -202,6 +202,7 @@ export class SkillService {
 				count: page.count,
 				data: await this.toListItems(user, page.skills),
 				collapsedSources: page.collapsedSources,
+				sourceRanges: page.sourceRanges,
 				page: page.page,
 				pageCount: page.pageCount,
 			};
@@ -262,12 +263,20 @@ export class SkillService {
 			const localCount = counts.get(null);
 			if (localCount) groups.push({ sourceId: null, count: localCount });
 		}
-		const page = skillGroupPage(groups, collapsed, pageIndex, take, focusSourceId);
-		const sourceIds = page.groups
-			.filter((group) => group.count > 0 && !collapsed.has(group.sourceId))
-			.map((group) => group.sourceId);
+		const page = skillGroupPage(groups, pageIndex, take, focusSourceId);
+		const openGroups = page.groups.filter(
+			(group) => group.take > 0 && !collapsed.has(group.sourceId),
+		);
 		const [sourceSkills, localSkills] = await Promise.all([
-			this.skillRepository.findVisibleSourceSkills(visibility, groupedMatch, sourceIds),
+			this.skillRepository.findVisibleSourceSkills(
+				visibility,
+				groupedMatch,
+				openGroups.map((group) => group.sourceId),
+				{
+					skip: openGroups[0]?.skip ?? 0,
+					take: openGroups.reduce((total, group) => total + group.take, 0),
+				},
+			),
 			page.localTake > 0
 				? this.skillRepository.findVisibleSlice(visibility, {
 						...groupedMatch,
@@ -282,7 +291,7 @@ export class SkillService {
 		for (const group of page.groups) {
 			if (group.count === 0 || collapsed.has(group.sourceId)) {
 				collapsedSources.push({ sourceId: group.sourceId, index, skillCount: group.count });
-			} else index += group.count;
+			} else index += group.take;
 		}
 		return {
 			skills: [...sourceSkills, ...localSkills],
@@ -290,6 +299,14 @@ export class SkillService {
 			page: page.page,
 			pageCount: page.pageCount,
 			collapsedSources,
+			sourceRanges: page.groups
+				.filter((group) => group.take > 0)
+				.map((group) => ({
+					sourceId: group.sourceId,
+					start: group.skip + 1,
+					end: group.skip + group.take,
+					total: group.count,
+				})),
 		};
 	}
 
@@ -895,6 +912,7 @@ export class SkillService {
 		ctx: OperationContext = {},
 	): Promise<void> {
 		await this.txRunner.run(ctx, async (txCtx) => {
+			await this.sourceRepository.invalidateSourceForSkill(skillId, txCtx);
 			const [skill] = await this.skillRepository.findByIds([skillId], txCtx);
 			if (!skill) throw new NotFoundError('Skill not found');
 			await this.skillRepository.lockForEdit([skillId], txCtx);

@@ -116,6 +116,10 @@ export default defineConfig({
 		},
 		'selector-purity': { enabled: true, severity: 'error' },
 		deduplication: { enabled: true, severity: 'warning' },
+		'duplicate-logic': {
+			// Benchmark profiles repeat the same steps so their results are comparable.
+			excludeTestBodyPaths: [/^tests\/infrastructure\/benchmarks(?:-local)?\//],
+		},
 		'dead-code': { enabled: true, severity: 'warning' },
 		'no-page-in-flow': {
 			enabled: true,

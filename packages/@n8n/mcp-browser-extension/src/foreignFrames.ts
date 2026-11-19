@@ -27,11 +27,12 @@ function frameNavigation(
 	params?: object,
 ): { frameId: string; url: string } | undefined {
 	if (method === 'Page.frameRequestedNavigation' || method === 'Page.frameStartedNavigating') {
-		const p = params as { frameId?: string; url?: string } | undefined;
+		const p: { frameId?: string; url?: string } | undefined = params;
 		return p?.frameId && p.url ? { frameId: p.frameId, url: p.url } : undefined;
 	}
 	if (method === 'Page.frameNavigated') {
-		const frame = (params as { frame?: { id?: string; url?: string } } | undefined)?.frame;
+		const p: { frame?: { id?: string; url?: string } } | undefined = params;
+		const frame = p?.frame;
 		return frame?.id && frame.url ? { frameId: frame.id, url: frame.url } : undefined;
 	}
 	return undefined;
@@ -49,7 +50,8 @@ export class ForeignFrames {
 	/** Forgets frames that detach or navigate away, so a closed menu is not blamed later. */
 	track(chromeTabId: number, method: string, params?: object): void {
 		if (method === 'Page.frameDetached') {
-			const frameId = (params as { frameId?: string } | undefined)?.frameId;
+			const p: { frameId?: string } | undefined = params;
+			const frameId = p?.frameId;
 			if (frameId) this.byTab.get(chromeTabId)?.delete(frameId);
 			return;
 		}

@@ -33,7 +33,7 @@ import {
 } from '@n8n/db';
 import type { PolicyCleared } from '@n8n/decorators';
 import type { SecurityContext } from '@n8n/permissions';
-import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
+import type { EntityManager } from '@n8n/typeorm';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
 import { OAuth2Api } from 'n8n-nodes-base/credentials/OAuth2Api.credentials';
 import {
@@ -1626,19 +1626,18 @@ describe('CredentialsService', () => {
 
 		it('does not return instance credentials without an explicit opt-in', async () => {
 			credentialsRepository.findOneBy.mockResolvedValue(instanceCredential);
-			sharedCredentialsRepository.findOne.mockResolvedValue(null);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
 
 			await expect(service.getOne(ownerUser, instanceCredential.id, false)).rejects.toThrow(
 				`Credential with ID "${instanceCredential.id}" could not be found.`,
 			);
 			expect(credentialsRepository.findOneBy).not.toHaveBeenCalled();
-			expect(sharedCredentialsRepository.findOne).toHaveBeenCalledWith({
-				where: {
-					credentialsId: instanceCredential.id,
-					credentials: { usageScope: 'project' },
-				},
-				relations: { credentials: true },
-			});
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				instanceCredential.id,
+				ownerUser,
+				['credential:read'],
+				{ visibilityOnly: true },
+			);
 		});
 
 		it('returns instance credentials to managers when explicitly requested', async () => {
@@ -1655,75 +1654,85 @@ describe('CredentialsService', () => {
 			});
 		});
 
-		describe('decryption gate', () => {
+		describe('access resolution', () => {
 			// `getOne` is the non-enterprise path, taken when sharing is unlicensed. It
-			// decrypts only when `getSharing` matches on both `credential:read` and
-			// `credential:update`, exactly as the enterprise path does. A see-only
-			// instance role holds read but not update, so it gets metadata only.
-			const credentialOwner = mock<User>({ id: 'cred-owner-id', role: GLOBAL_MEMBER_ROLE });
+			// resolves access through the credentials finder, like the enterprise path,
+			// so team project membership and shares count. It decrypts only when the
+			// user can both read and update the credential.
 			const credential = mock<CredentialsEntity>({
-				id: 'shared-credential',
+				id: 'project-credential',
 				data: 'encrypted-data',
 				isResolvable: false,
+				shared: [],
 			});
-			const sharing = mock<SharedCredentials>({ credentials: credential });
 			const decryptedData = { clientSecret: 'plaintext-secret' };
 
 			let decryptSpy: MockInstance<CredentialsService['decrypt']>;
 
 			beforeEach(() => {
 				decryptSpy = vi.spyOn(service, 'decrypt').mockResolvedValue(decryptedData);
-
-				// Stand in for the database: `getSharing` drops the ownership filter when
-				// the caller holds every global scope it asked for, so an unfiltered
-				// lookup matches, and a filtered one matches only for the owner.
-				sharedCredentialsRepository.findOne.mockImplementation(async (options) => {
-					const where = options.where as FindOptionsWhere<SharedCredentials>;
-					if (where.role !== 'credential:owner') return sharing;
-					const { projectRelations } = where.project as {
-						projectRelations: { userId: string };
-					};
-					return projectRelations.userId === credentialOwner.id ? sharing : null;
-				});
 			});
 
 			afterEach(() => {
 				decryptSpy.mockRestore();
 			});
 
-			it('withholds the secret from a role with global read but not update', async () => {
+			it('returns the secret when the user can read and update the credential', async () => {
+				credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
+
+				const result = await service.getOne(memberUser, credential.id, true);
+
+				expect(result).toMatchObject({ id: credential.id, data: decryptedData });
+				expect(decryptSpy).toHaveBeenCalledWith(credential);
+				expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledTimes(1);
+				expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+					credential.id,
+					memberUser,
+					['credential:read', 'credential:update'],
+				);
+			});
+
+			it('withholds the secret when the user can only read the credential', async () => {
+				credentialsFinderService.findCredentialForUser
+					.mockResolvedValueOnce(null)
+					.mockResolvedValueOnce(credential);
+
 				const result = await service.getOne(viewOnlyUser, credential.id, true);
+
+				expect(result).toMatchObject({ id: credential.id });
+				expect(result).not.toHaveProperty('data');
+				expect(decryptSpy).not.toHaveBeenCalled();
+				expect(credentialsFinderService.findCredentialForUser).toHaveBeenNthCalledWith(
+					2,
+					credential.id,
+					viewOnlyUser,
+					['credential:read'],
+					{ visibilityOnly: true },
+				);
+			});
+
+			it('does not look up update access when data is not requested', async () => {
+				credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
+
+				const result = await service.getOne(memberUser, credential.id, false);
 
 				expect(result).not.toHaveProperty('data');
 				expect(decryptSpy).not.toHaveBeenCalled();
-				// The decrypt lookup asked for update as well, which this role lacks, so
-				// it fell back to the ownership filter and matched nothing.
-				expect(sharedCredentialsRepository.findOne).toHaveBeenNthCalledWith(
-					1,
-					expect.objectContaining({
-						where: expect.objectContaining({ role: 'credential:owner' }),
-					}),
+				expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledTimes(1);
+				expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+					credential.id,
+					memberUser,
+					['credential:read'],
+					{ visibilityOnly: true },
 				);
 			});
 
-			it('returns the secret to a role with both global scopes', async () => {
-				const result = await service.getOne(ownerUser, credential.id, true);
+			it('throws when the user cannot see the credential', async () => {
+				credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
 
-				expect(result).toMatchObject({ data: decryptedData });
-				expect(decryptSpy).toHaveBeenCalledWith(credential);
-				expect(sharedCredentialsRepository.findOne).toHaveBeenNthCalledWith(
-					1,
-					expect.objectContaining({
-						where: expect.not.objectContaining({ role: 'credential:owner' }),
-					}),
+				await expect(service.getOne(memberUser, credential.id, true)).rejects.toThrow(
+					`Credential with ID "${credential.id}" could not be found.`,
 				);
-			});
-
-			it('returns the secret to the credential owner without any global scope', async () => {
-				const result = await service.getOne(credentialOwner, credential.id, true);
-
-				expect(result).toMatchObject({ data: decryptedData });
-				expect(decryptSpy).toHaveBeenCalledWith(credential);
 			});
 		});
 	});

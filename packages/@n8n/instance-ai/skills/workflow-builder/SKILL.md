@@ -106,9 +106,8 @@ topology. Never solicit secrets through `ask_user`.
 **Prefer n8n sources over guessing.** Consult, in this order:
 
 1. The knowledge base in the sandbox workspace, read with the workspace tools (not `load_skill`):
-   `knowledge-base/index.json` (technique guides and reference docs),
-   `knowledge-base/templates/` (search it; never load `templates/index.json`
-   wholesale), and `node-types/index.txt` (searchable node catalog)
+   `knowledge-base/index.json` (technique guides and reference docs) and
+   `node-types/index.txt` (searchable node catalog)
 2. A matching runtime skill (`data-table-manager`, `debugging-executions`, …).
 3. Official n8n docs: load `n8n-docs-assistant` and call `n8n-docs`.
 

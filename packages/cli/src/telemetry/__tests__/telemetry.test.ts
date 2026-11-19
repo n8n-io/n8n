@@ -45,7 +45,7 @@ describe('Telemetry', () => {
 	let postHog: PostHogClient;
 	const instanceId = 'Telemetry unit test';
 	const testDateTime = new Date('2022-01-01 00:00:00');
-	const instanceSettings = mockInstance(InstanceSettings, { instanceId });
+	const instanceSettings = mockInstance(InstanceSettings, { instanceId, installId: undefined });
 	const globalConfig = mock<GlobalConfig>({
 		diagnostics: { enabled: true },
 		logging: { level: 'info', outputs: ['console'] },
@@ -963,6 +963,78 @@ describe('Telemetry', () => {
 				traits: undefined,
 				context: { ip: '0.0.0.0' },
 			});
+		});
+	});
+
+	describe('install ID', () => {
+		const installId = 'test-install-id';
+		const traits = { version: '1.0' } as Record<string, string | number>;
+
+		beforeEach(() => {
+			instanceSettings.installId = installId;
+		});
+
+		afterEach(() => {
+			instanceSettings.installId = undefined;
+		});
+
+		test('should add install_id next to instance_id on tracked events', () => {
+			telemetry.track('Test Event', { user_id: '1234' });
+
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					userId: `${instanceId}#1234`,
+					properties: expect.objectContaining({ instance_id: instanceId, install_id: installId }),
+				}),
+			);
+			expect(postHog.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					properties: expect.objectContaining({ instance_id: instanceId, install_id: installId }),
+				}),
+			);
+		});
+
+		test('should add installId to RudderStack identify traits', () => {
+			telemetry.identify({ name: 'Test User' });
+
+			expect(mockRudderStack.identify).toHaveBeenCalledWith({
+				userId: instanceId,
+				traits: { name: 'Test User', instanceId, installId },
+				context: { ip: '0.0.0.0' },
+			});
+		});
+
+		test('should add install_id to the instance group traits without changing the group key', () => {
+			telemetry.groupIdentify({ traits, postHog: { userId: 'owner-1', traits } });
+
+			expect(postHog.groupIdentify).toHaveBeenLastCalledWith({
+				distinctId: `${instanceId}#owner-1`,
+				instanceId,
+				properties: { ...traits, install_id: installId },
+			});
+			expect(mockRudderStack.group).toHaveBeenLastCalledWith({
+				groupId: instanceId,
+				userId: instanceId,
+				traits: { ...traits, install_id: installId },
+				context: { ip: '0.0.0.0' },
+			});
+		});
+
+		test('should not send group traits when there were none to send', () => {
+			telemetry.groupIdentify({ userId: 'owner-1', postHog: { userId: 'owner-1' } });
+
+			expect(mockRudderStack.group).toHaveBeenLastCalledWith(
+				expect.objectContaining({ traits: undefined }),
+			);
+		});
+
+		test('should leave install_id out while the install ID is unknown', () => {
+			instanceSettings.installId = undefined;
+
+			telemetry.track('Test Event', { user_id: '1234' });
+
+			const [[payload]] = mockRudderStack.track.mock.calls;
+			expect(payload.properties).not.toHaveProperty('install_id');
 		});
 	});
 

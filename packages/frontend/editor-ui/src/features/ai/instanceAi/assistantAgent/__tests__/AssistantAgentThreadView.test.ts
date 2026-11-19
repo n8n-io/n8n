@@ -81,6 +81,8 @@ const {
 	},
 }));
 
+const { routeQuery } = vi.hoisted(() => ({ routeQuery: {} as Record<string, string> }));
+
 const { fetchTabs, saveTabs } = vi.hoisted(() => ({
 	fetchTabs: vi.fn(),
 	saveTabs: vi.fn(),
@@ -380,6 +382,7 @@ vi.mock('../../components/InstanceAiViewHeader.vue', () => ({
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<typeof import('vue-router')>()),
 	useRouter: () => ({ push: routerPush, currentRoute: { value: { params: {} } } }),
+	useRoute: () => ({ query: routeQuery }),
 }));
 
 const renderView = createComponentRenderer(AssistantAgentThreadView);
@@ -449,6 +452,7 @@ describe('AssistantAgentThreadView', () => {
 		previewThread.current = undefined;
 		appPreviewProps.current = undefined;
 		routerPush.mockReset();
+		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
 		focusInput.mockReset();
 		openFilePicker.mockReset();
 		composerBlocked.current = false;
@@ -809,6 +813,97 @@ describe('AssistantAgentThreadView', () => {
 		});
 	});
 
+	describe('app chats', () => {
+		const APP_ID = '019a4012-272c-7313-91af-5c94a3d819a9';
+		const OTHER_APP_ID = '019a4012-272c-7313-91af-5c94a3d819aa';
+
+		function clientContext(): Record<string, unknown> {
+			return (panelProps.current['client-context'] as () => Record<string, unknown>)();
+		}
+
+		it('opens the app of a new thread and binds it with the first message', async () => {
+			routeQuery.appId = APP_ID;
+			stashAssistantAgentLaunch('thread-new', {
+				projectId: 'project-1',
+				source: 'app_builder_page',
+				origin: 'internal',
+				subject: { type: 'app', id: APP_ID, projectId: 'project-1', name: 'Portal' },
+			});
+
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-new', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+			expect(appPreviewProps.current).toMatchObject({
+				'project-id': 'project-1',
+				'app-id': APP_ID,
+			});
+			const subject = { type: 'app', id: APP_ID, projectId: 'project-1', name: 'Portal' };
+			expect(clientContext()).toMatchObject({ subject });
+
+			// A refused send keeps the app for the retry.
+			const onMessageAccepted = panelProps.current.onMessageAccepted as AcceptMessage;
+			onMessageAccepted({ clientContext: clientContext() });
+			expect(clientContext()).toMatchObject({ subject });
+
+			const onSessionCreated = panelProps.current.onSessionCreated as () => void;
+			onSessionCreated();
+			expect(clientContext()).not.toHaveProperty('subject');
+		});
+
+		it('sends a pending app without opening a preview', async () => {
+			stashAssistantAgentLaunch('thread-new', {
+				projectId: 'project-1',
+				source: 'app_builder_page',
+				origin: 'internal',
+				subject: { type: 'app', id: APP_ID, projectId: 'project-1', pending: true },
+			});
+
+			renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
+			await flushPromises();
+
+			expect(appPreviewProps.current).toBeUndefined();
+			expect(clientContext()).toMatchObject({
+				subject: { type: 'app', id: APP_ID, projectId: 'project-1', pending: true },
+			});
+		});
+
+		it('opens the app from the URL among the apps of the thread metadata', async () => {
+			routeQuery.appId = OTHER_APP_ID;
+			useAssistantAgentThreadsStore().openedThreads = [
+				{
+					id: 'thread-1',
+					title: 'Apps',
+					updatedAt: '2026-11-02T10:00:00.000Z',
+					projectId: 'project-1',
+					metadata: {
+						instanceAiAppTargets: [
+							{ appId: APP_ID, projectId: 'project-1' },
+							{ appId: OTHER_APP_ID, projectId: 'project-1', name: 'Other' },
+						],
+					},
+				},
+			];
+
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+
+			expect(appPreviewProps.current).toMatchObject({ 'app-id': OTHER_APP_ID });
+			expect(clientContext()).not.toHaveProperty('subject');
+		});
+
+		it('ignores an app in the URL that the thread does not have', async () => {
+			routeQuery.appId = OTHER_APP_ID;
+
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+
+			expect(appPreviewProps.current).toBeUndefined();
+		});
+	});
+
 	it('does not open the preview for a workflow built before the thread loaded', async () => {
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
 		await flushPromises();
@@ -1129,6 +1224,25 @@ describe('AssistantAgentThreadView', () => {
 			const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
 			expect(clientContext().threadArtifacts).toEqual({
 				artifacts: [{ type: 'workflow', id: 'wf-9', name: 'Opened by hand' }],
+				activeId: 'wf-9',
+			});
+		});
+
+		it('names the run that the user started in the preview of a tab', async () => {
+			fetchTabs.mockResolvedValue({ state: storedState });
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+
+			// The preview remembers the run on the thread when the run starts.
+			previewThread.current?.rememberManualExecution('wf-9', 'exec-1', undefined);
+
+			const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
+			expect(clientContext().threadArtifacts).toEqual({
+				artifacts: [
+					{ type: 'workflow', id: 'wf-9', name: 'Opened by hand', executionId: 'exec-1' },
+				],
 				activeId: 'wf-9',
 			});
 		});

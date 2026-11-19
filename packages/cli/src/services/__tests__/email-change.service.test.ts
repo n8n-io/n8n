@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { PasswordUtility } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type { AuthIdentity, Person } from '@n8n/db';
 import type { Mock } from 'vitest';
@@ -7,7 +8,6 @@ import { mock } from 'vitest-mock-extended';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import type { MfaService } from '@/mfa/mfa.service';
-import type { PasswordUtility } from '@/services/password.utility';
 import type { UserService } from '@/services/user.service';
 import { getCurrentAuthenticationMethod, isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
 

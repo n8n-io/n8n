@@ -1,4 +1,5 @@
-import { buildThreadArtifactsContext } from '../threadArtifacts';
+import type { ArtifactTurn } from '../artifactTurns';
+import { buildThreadArtifactsContext, createDisplayedExecutionReader } from '../threadArtifacts';
 import type { ResourceEntry } from '../useResourceRegistry';
 
 function entry(
@@ -134,5 +135,87 @@ describe('buildThreadArtifactsContext', () => {
 			expect(result?.artifacts.some((artifact) => artifact.id === 'wf-19')).toBe(false);
 			expect(result?.activeId).toBe('wf-24');
 		});
+
+		it('names the execution that the preview of a workflow tab shows', () => {
+			const displayedExecutionId = (workflowId: string) =>
+				({ 'wf-2': 'exec-7', 'dt-9': 'exec-8' })[workflowId];
+
+			expect(
+				buildThreadArtifactsContext(
+					produced,
+					'wf-2',
+					[
+						{ type: 'workflow', id: 'wf-1', name: 'First' },
+						{ type: 'workflow', id: 'wf-2', name: 'Second' },
+						{ type: 'data-table', id: 'dt-9', name: 'Picked table', projectId: 'proj-1' },
+					],
+					displayedExecutionId,
+				)?.artifacts,
+			).toEqual([
+				{ type: 'workflow', id: 'wf-1', name: 'First', archived: true },
+				{ type: 'workflow', id: 'wf-2', name: 'Second', executionId: 'exec-7' },
+				{ type: 'data-table', id: 'dt-9', name: 'Picked table', projectId: 'proj-1' },
+			]);
+		});
+	});
+});
+
+describe('createDisplayedExecutionReader', () => {
+	function agentRun(executionId: string): ArtifactTurn {
+		return {
+			id: `turn-${executionId}`,
+			role: 'assistant',
+			isLive: false,
+			toolCalls: [
+				{
+					toolCallId: `tc-${executionId}`,
+					toolName: 'workflow_builder_verify_built_workflow',
+					args: { workflowId: 'wf-1' },
+					result: { executionId, status: 'success' },
+					isLoading: false,
+				},
+			],
+		};
+	}
+
+	it('reads no execution for a workflow that did not run', () => {
+		expect(createDisplayedExecutionReader([], () => undefined)('wf-1')).toBeUndefined();
+	});
+
+	it('reads the latest run of the agent', () => {
+		const read = createDisplayedExecutionReader(
+			[agentRun('agent-1'), agentRun('agent-2')],
+			() => undefined,
+		);
+
+		expect(read('wf-1')).toBe('agent-2');
+		expect(read('wf-2')).toBeUndefined();
+	});
+
+	it('reads the run of the user when the agent did not run the workflow', () => {
+		const read = createDisplayedExecutionReader([], () => ({
+			executionId: 'manual-1',
+			agentExecutionId: undefined,
+		}));
+
+		expect(read('wf-1')).toBe('manual-1');
+	});
+
+	it('reads the run of the user when it is newer than the run of the agent', () => {
+		const read = createDisplayedExecutionReader([agentRun('agent-1')], () => ({
+			executionId: 'manual-1',
+			agentExecutionId: 'agent-1',
+		}));
+
+		expect(read('wf-1')).toBe('manual-1');
+	});
+
+	it('reads the run of the agent when the agent ran after the user', () => {
+		const read = createDisplayedExecutionReader([agentRun('agent-1'), agentRun('agent-2')], () => ({
+			executionId: 'manual-1',
+			agentExecutionId: 'agent-1',
+		}));
+
+		expect(read('wf-1')).toBe('agent-2');
 	});
 });
