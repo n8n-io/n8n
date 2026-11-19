@@ -1,37 +1,12 @@
 import mermaidUrl from 'mermaid/dist/mermaid.min.js?url&no-inline';
+import sandboxScriptUrl from './skillMermaidSandbox.js?url&no-inline';
 
 const RENDER_TIMEOUT_MS = 10_000;
 
 export const MAX_DIAGRAM_LENGTH = 50_000;
 
-// The sandbox runs this script. Send diagram source as data, never as markup.
-const bootstrap = `
-window.addEventListener('message', async (event) => {
-	if (event.source !== window.parent) return;
-	const { code, theme } = event.data;
-	let svg;
-	try {
-		mermaid.initialize({
-			startOnLoad: false,
-			securityLevel: 'strict',
-			suppressErrorRendering: true,
-			maxTextSize: ${MAX_DIAGRAM_LENGTH},
-			htmlLabels: false,
-			theme,
-		});
-		const parsed = await mermaid.parse(code, { suppressErrors: true });
-		if (parsed && parsed.diagramType !== 'error') {
-			({ svg } = await mermaid.render('skill-diagram', code, document.body));
-		}
-	} catch {
-		// The viewer keeps the source if rendering fails.
-	}
-	event.ports[0].postMessage(svg);
-}, { once: true });
-`;
-
 function sandboxDocument() {
-	// srcdoc inherits the editor's policy. Only these two trusted scripts need its nonce.
+	// srcdoc inherits the editor's policy. Vite exposes the response nonce in this tag.
 	const editorNonce = document.querySelector<HTMLMetaElement>('meta[property="csp-nonce"]')?.nonce;
 	const nonce =
 		editorNonce && /^[\w+/=-]+$/.test(editorNonce)
@@ -45,7 +20,7 @@ function sandboxDocument() {
 	mermaid.src = mermaidUrl;
 	const renderer = document.createElement('script');
 	renderer.setAttribute('nonce', nonce);
-	renderer.textContent = bootstrap;
+	renderer.src = sandboxScriptUrl;
 
 	return `<!doctype html><html><head>${policy.outerHTML}${mermaid.outerHTML}${renderer.outerHTML}</head><body style="margin: 0"></body></html>`;
 }
@@ -80,7 +55,10 @@ export async function renderSkillMermaid(
 			port1.onmessage = ({ data }: MessageEvent<unknown>) => {
 				resolve(typeof data === 'string' ? data : undefined);
 			};
-			frame.onload = () => frame.contentWindow?.postMessage({ code, theme }, '*', [port2]);
+			frame.onload = () =>
+				frame.contentWindow?.postMessage({ code, theme, maxTextSize: MAX_DIAGRAM_LENGTH }, '*', [
+					port2,
+				]);
 			document.body.append(frame);
 		});
 	} finally {
