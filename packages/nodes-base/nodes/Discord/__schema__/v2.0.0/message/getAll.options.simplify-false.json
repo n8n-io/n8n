@@ -1,0 +1,298 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"attachments": {
+			"items": {
+				"additionalProperties": true,
+				"properties": {
+					"content_scan_version": {
+						"type": "number"
+					},
+					"content_type": {
+						"type": "string"
+					},
+					"filename": {
+						"type": "string"
+					},
+					"id": {
+						"type": "string"
+					},
+					"proxy_url": {
+						"type": "string"
+					},
+					"size": {
+						"type": "number"
+					},
+					"url": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"author": {
+			"properties": {
+				"accent_color": {},
+				"avatar": {
+					"type": ["null", "string"]
+				},
+				"avatar_decoration_data": {
+					"properties": {
+						"asset": {
+							"type": "string"
+						},
+						"expires_at": {},
+						"sku_id": {
+							"type": "string"
+						}
+					},
+					"type": ["null", "object"]
+				},
+				"banner": {},
+				"banner_color": {},
+				"bot": {
+					"type": "boolean"
+				},
+				"clan": {
+					"properties": {
+						"badge": {
+							"type": "string"
+						},
+						"identity_enabled": {
+							"type": "boolean"
+						},
+						"identity_guild_id": {
+							"type": "string"
+						},
+						"tag": {
+							"type": "string"
+						}
+					},
+					"type": ["null", "object"]
+				},
+				"collectibles": {
+					"properties": {
+						"nameplate": {
+							"properties": {
+								"asset": {
+									"type": "string"
+								},
+								"label": {
+									"type": "string"
+								},
+								"palette": {
+									"type": "string"
+								},
+								"sku_id": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						}
+					},
+					"type": ["null", "object"]
+				},
+				"discriminator": {
+					"type": "string"
+				},
+				"display_name_styles": {
+					"properties": {
+						"colors": {
+							"items": {
+								"type": "number"
+							},
+							"type": "array"
+						},
+						"effect_id": {
+							"type": "number"
+						},
+						"font_id": {
+							"type": "number"
+						}
+					},
+					"type": ["null", "object"]
+				},
+				"flags": {
+					"type": "number"
+				},
+				"global_name": {
+					"type": ["null", "string"]
+				},
+				"id": {
+					"type": "string"
+				},
+				"primary_guild": {
+					"properties": {
+						"badge": {
+							"type": "string"
+						},
+						"identity_enabled": {
+							"type": "boolean"
+						},
+						"identity_guild_id": {
+							"type": "string"
+						},
+						"tag": {
+							"type": "string"
+						}
+					},
+					"type": ["null", "object"]
+				},
+				"public_flags": {
+					"type": "number"
+				},
+				"username": {
+					"type": "string"
+				},
+				"vad_colors": {}
+			},
+			"type": "object"
+		},
+		"channel_id": {
+			"type": "string"
+		},
+		"components": {
+			"items": {
+				"properties": {
+					"components": {
+						"items": {
+							"properties": {
+								"id": {
+									"type": "number"
+								},
+								"label": {
+									"type": "string"
+								},
+								"style": {
+									"type": "number"
+								},
+								"type": {
+									"type": "number"
+								},
+								"url": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"id": {
+						"type": "number"
+					},
+					"type": {
+						"type": "number"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"content": {
+			"type": "string"
+		},
+		"edited_timestamp": {
+			"type": ["null", "string"]
+		},
+		"embeds": {
+			"items": {
+				"additionalProperties": true,
+				"properties": {
+					"color": {
+						"type": "number"
+					},
+					"content_scan_version": {
+						"type": "number"
+					},
+					"description": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"flags": {
+			"type": "number"
+		},
+		"id": {
+			"type": "string"
+		},
+		"mention_everyone": {
+			"type": "boolean"
+		},
+		"mention_roles": {
+			"items": {},
+			"type": "array"
+		},
+		"mentions": {
+			"items": {
+				"properties": {
+					"accent_color": {},
+					"avatar": {
+						"type": ["null", "string"]
+					},
+					"avatar_decoration_data": {
+						"properties": {
+							"asset": {
+								"type": "string"
+							},
+							"expires_at": {},
+							"sku_id": {
+								"type": "string"
+							}
+						},
+						"type": ["null", "object"]
+					},
+					"banner": {},
+					"banner_color": {},
+					"bot": {
+						"type": "boolean"
+					},
+					"clan": {},
+					"collectibles": {},
+					"discriminator": {
+						"type": "string"
+					},
+					"display_name_styles": {},
+					"flags": {
+						"type": "number"
+					},
+					"global_name": {
+						"type": ["null", "string"]
+					},
+					"id": {
+						"type": "string"
+					},
+					"primary_guild": {},
+					"public_flags": {
+						"type": "number"
+					},
+					"username": {
+						"type": "string"
+					},
+					"vad_colors": {}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"pinned": {
+			"type": "boolean"
+		},
+		"timestamp": {
+			"type": "string"
+		},
+		"tts": {
+			"type": "boolean"
+		},
+		"type": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

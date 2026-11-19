@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import {
 	fetchCredentialTypeSummaries,
+	fetchCredentialTypeUsage,
 	fetchInstanceAccess,
 	fetchInstancePolicy,
 	saveInstancePolicy,
@@ -65,6 +66,16 @@ describe('instance access requests', () => {
 			context,
 			'GET',
 			'/credential-type-policies/instance/access',
+		);
+	});
+
+	it('reads the credential type usage from the usage route', async () => {
+		await fetchCredentialTypeUsage(context);
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'GET',
+			'/credential-type-policies/usage',
 		);
 	});
 

@@ -33,6 +33,14 @@ describe('RECOMMENDED_SKILLS', () => {
 		},
 	);
 
+	it.each(RECOMMENDED_SKILLS.map((recommended) => [recommended.id, recommended]))(
+		'shows the source of %s that its license notice names',
+		(id, recommended) => {
+			expect(SOURCES[id].endsWith(`Source: ${recommended.source.url}`)).toBe(true);
+			expect(recommended.source.url).toContain(`github.com/${recommended.source.label}`);
+		},
+	);
+
 	it('keeps only the reference files that the cold-email instructions link to', async () => {
 		const coldEmail = RECOMMENDED_SKILLS.find(({ id }) => id === 'cold-email');
 		const skill = await coldEmail!.load();

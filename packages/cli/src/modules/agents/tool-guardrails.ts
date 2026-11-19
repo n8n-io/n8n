@@ -39,7 +39,7 @@ const DEFAULT_LLM_THRESHOLD = 0.7;
 /** Adapts an AI SDK model to the model-agnostic LLM check seam. */
 function toGuardrailModelRunner(model: LanguageModel): GuardrailModelRunner {
 	return async (systemPrompt, input) => {
-		const result = await generateText({ model, system: systemPrompt, prompt: input });
+		const result = await generateText({ model, instructions: systemPrompt, prompt: input });
 		return result.text;
 	};
 }

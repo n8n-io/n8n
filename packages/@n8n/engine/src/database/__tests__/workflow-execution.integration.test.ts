@@ -3,7 +3,7 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testconta
 import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { ExecutionNotFoundError } from '../../execution/execution-store';
+import { ExecutionNotFoundError, ParentExecutionEndedError } from '../../execution/execution-store';
 import type { NewExecutionRecord } from '../../execution/execution-store';
 import type { ExecutionStatus, StepStatus } from '../../execution/execution.types';
 import { createDataSource } from '../data-source';
@@ -32,6 +32,19 @@ describe('workflow_execution table (integration)', () => {
 		if (dataSource?.isInitialized) await dataSource.destroy();
 		if (container) await container.stop();
 	});
+
+	async function waitUntilQueryBlocksOnLock(queryFragment: string): Promise<void> {
+		for (let attempt = 0; attempt < 500; attempt++) {
+			const [{ blocked }] = await dataSource.query<Array<{ blocked: number }>>(
+				`SELECT count(*)::int AS blocked FROM pg_stat_activity
+				 WHERE wait_event_type = 'Lock' AND pid <> pg_backend_pid() AND query LIKE $1`,
+				[`%${queryFragment}%`],
+			);
+			if (blocked > 0) return;
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		}
+		throw new Error(`No query containing "${queryFragment}" blocked on a lock`);
+	}
 
 	it('persists and retrieves a workflow_execution row', async () => {
 		const repo = dataSource.getRepository(WorkflowExecution);
@@ -442,11 +455,61 @@ describe('workflow_execution table (integration)', () => {
 	it('TypeOrmExecutionStore.createExecution stores the parent link, and loadExecution reads it back', async () => {
 		const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
 		const parent = { executionId: generateId(), stepId: generateId(), awaited: true };
+		await store.createExecution({ ...newRecord(parent.executionId), status: 'running' });
 		const id = generateId();
 
 		await store.createExecution({ ...newRecord(id), parent });
 
 		expect((await store.loadExecution(id)).parent).toEqual(parent);
+	});
+
+	it.each(['completed', 'failed', 'cancelled'] satisfies ExecutionStatus[])(
+		'TypeOrmExecutionStore.createExecution refuses a parent that is %s',
+		async (status) => {
+			const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+			const parent = { executionId: generateId(), stepId: generateId(), awaited: true };
+			await store.createExecution({ ...newRecord(parent.executionId), status });
+			const id = generateId();
+
+			await expect(store.createExecution({ ...newRecord(id), parent })).rejects.toThrow(
+				ParentExecutionEndedError,
+			);
+			await expect(store.loadExecution(id)).rejects.toThrow(ExecutionNotFoundError);
+		},
+	);
+
+	it('TypeOrmExecutionStore.createExecution refuses a parent that does not exist', async () => {
+		const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+		const parent = { executionId: generateId(), stepId: generateId(), awaited: true };
+
+		await expect(store.createExecution({ ...newRecord(generateId()), parent })).rejects.toThrow(
+			ExecutionNotFoundError,
+		);
+	});
+
+	it('TypeOrmExecutionStore.createExecution waits for an end of the parent that is in flight, then refuses', async () => {
+		const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+		const parent = { executionId: generateId(), stepId: generateId(), awaited: true };
+		await store.createExecution({ ...newRecord(parent.executionId), status: 'running' });
+		// A cancel that has written the end but not committed holds the parent row.
+		const ending = dataSource.createQueryRunner();
+		await ending.connect();
+		await ending.startTransaction();
+		try {
+			await ending.manager.update(
+				WorkflowExecution,
+				{ id: parent.executionId, status: 'running' },
+				{ status: 'cancelled', finishedAt: new Date() },
+			);
+			const insert = store.createExecution({ ...newRecord(generateId()), parent });
+			insert.catch(() => {});
+			await waitUntilQueryBlocksOnLock('FOR SHARE');
+
+			await ending.commitTransaction();
+			await expect(insert).rejects.toThrow(ParentExecutionEndedError);
+		} finally {
+			await ending.release();
+		}
 	});
 
 	describe('stale_after', () => {
@@ -580,6 +643,27 @@ describe('workflow_execution table (integration)', () => {
 		);
 		expect(check.definition).toBe(
 			'CHECK ((((parent_execution_id IS NULL) AND (parent_step_id IS NULL) AND (parent_awaited IS NULL)) OR ((parent_execution_id IS NOT NULL) AND (parent_step_id IS NOT NULL) AND (parent_awaited IS NOT NULL))))',
+		);
+	});
+
+	it('TypeOrmExecutionStore.loadLiveSubExecutionIds lists the sub-executions that have not ended', async () => {
+		const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+		const parentId = generateId();
+		await store.createExecution({ ...newRecord(parentId), status: 'running' });
+		const link = (awaited: boolean) => ({ executionId: parentId, stepId: generateId(), awaited });
+		const [queued, running, waiting, completed, other] = Array.from({ length: 5 }, generateId);
+		await store.createExecution({ ...newRecord(queued), status: 'queued', parent: link(true) });
+		await store.createExecution({ ...newRecord(running), status: 'running', parent: link(false) });
+		await store.createExecution({ ...newRecord(waiting), status: 'waiting', parent: link(true) });
+		await store.createExecution({
+			...newRecord(completed),
+			status: 'completed',
+			parent: link(true),
+		});
+		await store.createExecution({ ...newRecord(other), status: 'running' });
+
+		expect((await store.loadLiveSubExecutionIds(parentId)).sort()).toEqual(
+			[queued, running, waiting].sort(),
 		);
 	});
 });

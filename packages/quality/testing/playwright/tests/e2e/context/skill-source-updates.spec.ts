@@ -16,6 +16,8 @@ test.use({
 		env: {
 			N8N_ENABLED_MODULES: 'agents',
 			N8N_FEATURE_FLAG_OVERRIDES: JSON.stringify({ '136_skill_sync': true }),
+			N8N_SKILL_SYNC_MANAGED_BY_ENV: 'true',
+			N8N_SKILL_SYNC_ENABLED: 'true',
 			TEST_ISOLATION: 'skill-source-updates',
 		},
 	},

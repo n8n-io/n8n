@@ -29,11 +29,12 @@ import {
 	threadTargetsAgent,
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { useCanvasPreview } from './useCanvasPreview';
+import { isArtifactTab, useCanvasPreview } from './useCanvasPreview';
 import { useAssistantAwayTelemetry } from './composables/useAssistantAwayTelemetry';
 import { getCurrentTurn } from './assistantTurn';
 import { CloudBrowserTasksKey, useCloudBrowserTasks } from './composables/useCloudBrowserTasks';
 import {
+	CloudBrowserLiveViewRefreshKey,
 	CloudBrowserLiveViewsKey,
 	useCloudBrowserLiveViews,
 } from './composables/useCloudBrowserLiveViews';
@@ -70,6 +71,8 @@ import { buildFixWithAiPrompt } from './fixWithAi';
 import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
+import InstanceAiBrowserPreview from './components/InstanceAiBrowserPreview.vue';
+import InstanceAiCloudBrowserUserActionPanel from './components/InstanceAiCloudBrowserUserActionPanel.vue';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
 import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
@@ -270,9 +273,11 @@ const requestedAppId = computed(() => {
 		? appId
 		: undefined;
 });
+const cloudBrowserTasks = useCloudBrowserTasks(thread);
 const preview = useCanvasPreview({
 	thread,
 	threadId: () => props.threadId,
+	cloudBrowserTasks: () => cloudBrowserTasks.value,
 	initialAgentId: () =>
 		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
 	initialAppId: () => requestedAppId.value ?? appTargets.value[0]?.appId,
@@ -294,7 +299,9 @@ watch(
 watch(
 	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
 	([tabId, previewVisible]) => {
-		thread.setActiveArtifactId(previewVisible ? tabId : undefined);
+		// The agent only hears about artifacts, not browser tabs.
+		const isArtifact = preview.openTabs.value.some((tab) => tab.id === tabId && isArtifactTab(tab));
+		thread.setActiveArtifactId(previewVisible && isArtifact ? tabId : undefined);
 	},
 	{ immediate: true },
 );
@@ -302,7 +309,7 @@ watch(
 // stored tabs load, the default tabs can still hold closed ones, so send none.
 watch(
 	[() => preview.openTabs.value, () => preview.tabsLoaded.value],
-	([tabs, loaded]) => thread.setOpenTabs(loaded ? tabs : null),
+	([tabs, loaded]) => thread.setOpenTabs(loaded ? tabs.filter(isArtifactTab) : null),
 	{ immediate: true },
 );
 // --- Setup panel (checklist docked above the composer) ---
@@ -365,15 +372,18 @@ provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('showMentionedWorkflow', preview.showMentionedWorkflow);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
-const cloudBrowserTasks = useCloudBrowserTasks(thread);
-provide(CloudBrowserTasksKey, cloudBrowserTasks);
+provide('openCloudBrowserTab', preview.openCloudBrowserTab);
+provide(CloudBrowserTasksKey, preview.cloudBrowserTasks);
+// Only a running task has a browser to show.
 const runningCloudBrowserTasks = computed(() =>
-	cloudBrowserTasks.value.filter((task) => task.state === 'running'),
+	preview.cloudBrowserTasks.value.filter((task) => task.state === 'running'),
 );
-provide(
-	CloudBrowserLiveViewsKey,
-	useCloudBrowserLiveViews(runningCloudBrowserTasks, () => props.threadId),
+const cloudBrowserLiveViews = useCloudBrowserLiveViews(
+	runningCloudBrowserTasks,
+	() => props.threadId,
 );
+provide(CloudBrowserLiveViewsKey, cloudBrowserLiveViews.views);
+provide(CloudBrowserLiveViewRefreshKey, cloudBrowserLiveViews.refresh);
 provide('openAgentChatPreview', openAgentChatPreview);
 provide('openSkillPreview', preview.openSkillPreview);
 provide('openAppPreview', preview.openAppPreview);
@@ -844,7 +854,7 @@ function handleNewThreadClick() {
 						<InstanceAiResourcePicker
 							v-if="showOpenResourcePicker && thread.projectId"
 							:project-id="thread.projectId"
-							:excluded-tabs="preview.openTabs.value"
+							:excluded-tabs="preview.openTabs.value.filter(isArtifactTab)"
 							placement="bottom-end"
 							content-test-id="instance-ai-open-resource-picker"
 							@select="preview.openTab"
@@ -921,6 +931,7 @@ function handleNewThreadClick() {
 						<ApprovalModeSelector :thread-id="props.threadId" />
 					</template>
 					<template #above-input>
+						<InstanceAiCloudBrowserUserActionPanel />
 						<InstanceAiSetupPanel
 							v-if="setupPanelWorkflowId"
 							ref="setupPanel"
@@ -1078,6 +1089,18 @@ function handleNewThreadClick() {
 								:pending="preview.activeAgentPending.value"
 								@preview-open-change="handleAgentTestDockOpenChange"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"
+							/>
+							<!-- A viewed browser tab stays mounted, so its live view does not reload on each switch. -->
+							<InstanceAiBrowserPreview
+								v-for="browserTab in preview.viewedBrowserTabs.value"
+								v-show="
+									preview.isPreviewVisible.value &&
+									preview.activeBrowserTab.value?.id === browserTab.id
+								"
+								:key="browserTab.id"
+								:class="$style.previewSlot"
+								:task-id="browserTab.taskId"
+								:user-action="browserTab.userAction"
 							/>
 							<!-- Retain each open skill's draft while another artifact is visible. -->
 							<KeepAlive v-for="tab in openSkillTabs" :key="tab.id">

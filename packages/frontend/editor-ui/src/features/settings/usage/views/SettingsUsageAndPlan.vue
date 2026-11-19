@@ -8,6 +8,7 @@ import { i18n as locale } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { usePrefetchModals } from '@/app/composables/usePrefetchModals';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '../usage.constants';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -189,6 +190,13 @@ onMounted(async () => {
 		}
 		toast.showError(error, error.name, { message: error.message });
 	}
+});
+
+// After `onMounted` above, which sets `isLoading` before this reads it.
+usePrefetchModals([COMMUNITY_PLUS_ENROLLMENT_MODAL], {
+	// The permission is `undefined` when the user lacks it.
+	enabled: () =>
+		!usageStore.isLoading && isCommunity.value && canUserRegisterCommunityPlus.value === true,
 });
 
 const sendUsageTelemetry = (action: UsageTelemetry['action']) => {

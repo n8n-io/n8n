@@ -196,6 +196,7 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 							'iteration', step.iteration,
 							'status', step.status,
 							'outputs', step.outputs,
+							'outputSources', step.output_sources,
 							'error', step.error,
 							'createdAt', step.created_at,
 							'updatedAt', step.updated_at

@@ -150,6 +150,6 @@ responses:
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
   '422':
-    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+    description: A requested workflow cannot be exported because its stored data is invalid. The message names the workflow and the invalid fields.
   '429':
     $ref: ../../../../shared/spec/responses/tooManyRequests.yml

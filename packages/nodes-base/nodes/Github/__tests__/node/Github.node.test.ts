@@ -150,7 +150,7 @@ describe('Test Github Node', () => {
 					ref: 'main',
 					inputs: {},
 				})
-				.reply(200, {});
+				.reply(204);
 		});
 
 		new NodeTestHarness().setupTests({

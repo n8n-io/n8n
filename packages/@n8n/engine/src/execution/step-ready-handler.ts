@@ -14,7 +14,7 @@ import {
 } from '../graph';
 import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
 import { createResponseEmitter, type ExecutionResponseSender } from '../response-channel';
-import { runBatchStep } from './batch-step';
+import { runBatchStep, type BatchStepResult } from './batch-step';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import {
@@ -29,6 +29,7 @@ import {
 	type StepKeyId,
 	type StepSlots,
 	type ExecutorWaitDeclaration,
+	type StepOutputSources,
 } from './execution.types';
 import { classifyEdge, sourceRow } from './iteration-mapping';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
@@ -117,25 +118,25 @@ export class StepReadyHandler {
 		// Only a failure to run the step fails it. A store error propagates instead —
 		// recording `failed` on a step whose side effects happened would be a lie.
 		let run:
-			| { kind: 'outputs'; outputs: StepSlots }
+			| { kind: 'outputs'; outputs: StepSlots; outputSources: StepOutputSources | null }
 			| { kind: 'wait'; wait: ExecutorWaitDeclaration }
 			| { kind: 'subExecution'; subExecution: SubExecutionDeclaration }
 			| { kind: 'error'; error: StepError };
 		try {
-			let result: StepExecutionResult;
-			if (dispatch.kind === 'replay') {
-				result = { outputs: recordedOutputs(step, dispatch.cause) };
-			} else if (dispatch.kind === 'batch') {
-				result = { outputs: await this.runBatchNode(step, execution, node) };
+			if (dispatch.kind === 'batch') {
+				run = { kind: 'outputs', ...(await this.runBatchNode(step, execution, node)) };
 			} else {
-				result = await this.runStep(step, execution, node, dispatch);
-			}
-			if (result.wait) {
-				run = { kind: 'wait', wait: result.wait };
-			} else if (result.subExecution) {
-				run = { kind: 'subExecution', subExecution: result.subExecution };
-			} else {
-				run = { kind: 'outputs', outputs: result.outputs };
+				const result: StepExecutionResult =
+					dispatch.kind === 'replay'
+						? { outputs: recordedOutputs(step, dispatch.cause) }
+						: await this.runStep(step, execution, node, dispatch);
+				if (result.wait) {
+					run = { kind: 'wait', wait: result.wait };
+				} else if (result.subExecution) {
+					run = { kind: 'subExecution', subExecution: result.subExecution };
+				} else {
+					run = { kind: 'outputs', outputs: result.outputs, outputSources: null };
+				}
 			}
 		} catch (error) {
 			run = { kind: 'error', error: toStepError(error) };
@@ -151,12 +152,12 @@ export class StepReadyHandler {
 			run =
 				started.kind === 'error'
 					? { kind: 'error', error: toStepError(started.error) }
-					: { kind: 'outputs', outputs: subExecution.outputs };
+					: { kind: 'outputs', outputs: subExecution.outputs, outputSources: null };
 		}
 
 		let recorded: boolean;
 		if (run.kind === 'outputs') {
-			recorded = await this.stepStore.completeStep(event.stepId, run.outputs);
+			recorded = await this.stepStore.completeStep(event.stepId, run.outputs, run.outputSources);
 		} else if (run.kind === 'wait') {
 			recorded = await this.stepStore.suspendStep(event.stepId, run.wait);
 		} else {
@@ -336,7 +337,7 @@ export class StepReadyHandler {
 		step: StepRecord,
 		execution: ExecutionRecord,
 		node: GraphNode,
-	): Promise<StepSlots> {
+	): Promise<BatchStepResult> {
 		if (!isBatchStepConfig(node.config)) {
 			throw new UnexpectedError(
 				`step ${step.id} runs batch node ${step.nodeId}, whose config has no whole batch size of at least 1`,

@@ -2,8 +2,9 @@ import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils'
 import { Container } from '@n8n/di';
 
 import { AgentMessageRepository } from '../../repositories/agent-message.repository';
-import { AgentRepository } from '../../repositories/agent.repository';
 import { N8nMemory, type N8nMemoryImpl } from '../n8n-memory';
+
+import { createAgent } from '@test-integration/db/agents';
 
 describe('N8nMemoryImpl memory source messages', () => {
 	const scope = { resourceId: 'user-1', threadId: 'thread-1' };
@@ -15,10 +16,11 @@ describe('N8nMemoryImpl memory source messages', () => {
 		await testDb.init();
 		messages = Container.get(AgentMessageRepository);
 		const project = await createTeamProject();
-		const agentRepository = Container.get(AgentRepository);
-		const agent = await agentRepository.save(
-			agentRepository.create({ name: 'Memory agent', projectId: project.id, integrations: [] }),
-		);
+		const agent = await createAgent({
+			name: 'Memory agent',
+			projectId: project.id,
+			integrations: [],
+		});
 		memory = Container.get(N8nMemory).getImplementation(agent.id);
 	});
 

@@ -5,12 +5,15 @@ import { useToast } from '@n8n/composables/useToast';
 
 import { renderComponent } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
+import { isModalPrefetchEnabled } from '@/__tests__/prefetchModals';
+import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
+
+vi.mock('@/app/composables/usePrefetchModals');
 import SettingsApiView from './SettingsApiView.vue';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useApiKeysStore } from '../apiKeys.store';
-import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
 import { DateTime } from 'luxon';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -831,5 +834,14 @@ describe('SettingsApiView', () => {
 			expect(apiKeysStore.setOwnerFilter).toHaveBeenCalledWith(['u1']);
 			expect(toast.showError).toHaveBeenCalled();
 		});
+	});
+
+	it('prefetches the API key modal only when the public API is enabled', () => {
+		settingsStore.isPublicApiEnabled = false;
+		renderComponent(SettingsApiView);
+		expect(isModalPrefetchEnabled(API_KEY_CREATE_OR_EDIT_MODAL_KEY)).toBe(false);
+
+		settingsStore.isPublicApiEnabled = true;
+		expect(isModalPrefetchEnabled(API_KEY_CREATE_OR_EDIT_MODAL_KEY)).toBe(true);
 	});
 });

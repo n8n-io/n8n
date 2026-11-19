@@ -14,7 +14,7 @@ import {
 	TransferCredentialPublicDto,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import { EventService, CredentialsFinderService } from '@n8n/backend-services';
+import { EventService, CredentialsFinderService, loginIdOf } from '@n8n/backend-services';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb, User } from '@n8n/db';
 import {
 	ApiDescription,
@@ -49,7 +49,6 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
-import { loginIdOf } from '@/events/login-id';
 import {
 	assertValidUpdateProperties,
 	buildSharedForCredential,

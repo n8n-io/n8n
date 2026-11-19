@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PolicyAction } from '@n8n/api-types';
+import type { PolicyAction, TypeUsage } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nDataTableServer,
@@ -25,6 +25,8 @@ import type { InstanceTypeAccessRow } from './useInstanceTypeAccess';
 export type InstancePolicyTableRow = InstanceTypeAccessRow & {
 	displayName: string;
 	icon: TypeIcon;
+	/** Null when the counts are not known, so the usage cells show no value. */
+	usage: TypeUsage | null;
 };
 
 type AccessFilter = 'all' | PolicyAction;
@@ -54,7 +56,7 @@ const ACCESS_ICON: Record<PolicyAction, { icon: IconName; color: TextColor }> = 
 	delegate: { icon: 'lock-unlocked', color: 'secondary' },
 };
 
-const USAGE_COLUMNS: Array<{ key: string; title: BaseTextKey }> = [
+const USAGE_COLUMNS: Array<{ key: keyof TypeUsage; title: BaseTextKey }> = [
 	{ key: 'projects', title: 'typeAvailabilityPolicies.instancePolicy.table.projects' },
 	{ key: 'uses', title: 'typeAvailabilityPolicies.instancePolicy.table.uses' },
 	{ key: 'workflows', title: 'typeAvailabilityPolicies.instancePolicy.table.workflows' },
@@ -87,8 +89,9 @@ const headers = computed<Array<TableHeader<InstancePolicyTableRow>>>(() => [
 	...USAGE_COLUMNS.map((column) => ({
 		title: i18n.baseText(column.title),
 		key: column.key,
-		// The usage routes do not exist yet, so every row shows that the value is not known.
-		value: () => i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.noValue'),
+		value: (row: InstancePolicyTableRow) =>
+			row.usage?.[column.key] ??
+			i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.noValue'),
 		disableSort: true,
 		width: 92,
 	})),

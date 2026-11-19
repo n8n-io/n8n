@@ -5,12 +5,13 @@ import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
+import { createAgent } from '@test-integration/db/agents';
+
 import { AgentChatExecutionService } from '@/modules/agents/agent-chat-execution.service';
 import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
-import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 import { createOwner } from '../shared/db/users';
 import { setupTestServer } from '../shared/utils';
@@ -35,7 +36,7 @@ describe.each(['execution', 'run'] as const)('Preview %s cancellation HTTP route
 			const threadId = randomUUID();
 			const executionId = randomUUID();
 			const runId = randomUUID();
-			await Container.get(AgentRepository).save({
+			await createAgent({
 				id: agentId,
 				name: 'Agent',
 				projectId: project.id,
