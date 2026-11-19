@@ -3604,6 +3604,7 @@ describe('createBuildWorkflowTool', () => {
 		expect(first).toMatchObject({ success: true, workflowId: 'wf-1', workItemId: 'wi-run' });
 		expect(second).toMatchObject({ success: true, workflowId: 'wf-2' });
 		expect(second.workItemId).toMatch(/^wi_/);
+		expect(latestOutcomes.get(second.workItemId ?? '')?.workflowId).toBe('wf-2');
 		// Building the second workflow must not replace the first one's outcome.
 		expect(latestOutcomes.get('wi-run')?.workflowId).toBe('wf-1');
 
