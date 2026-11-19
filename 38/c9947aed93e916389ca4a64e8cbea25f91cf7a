@@ -1,0 +1,94 @@
+.agents/specs/rig.md
+  h_8fb27e0cdf6d1e 9,78-79,102,171,174,183-184,206-207,228-231,243-246,254,272-274,276-278,280,353-354,359-369,377-381,398,409,419-426,429-430,441,445,456-463,483,513-521,637-638,644-646,683-686,710,713-714,717-731,858-859,868-869,882-883,891,902-903,972-991,1028,1044-1056
+packages/quality/environments/rig/README.md
+  h_8fb27e0cdf6d1e 73-88,128-133,138,140-171,178-184,197-211,242,245-246,248,262-263
+packages/quality/environments/rig/src/cli.ts
+  h_8fb27e0cdf6d1e 3,30,49,59
+packages/quality/environments/rig/src/commands/clone.ts
+  h_8fb27e0cdf6d1e 1-49
+packages/quality/environments/rig/src/commands/common.ts
+  h_8fb27e0cdf6d1e 86
+packages/quality/environments/rig/src/commands/doctor.ts
+  h_8fb27e0cdf6d1e 363-364
+packages/quality/environments/rig/src/commands/env-browse.ts
+  h_8fb27e0cdf6d1e 62,114,320,372-373,378
+packages/quality/environments/rig/src/commands/env.ts
+  h_8fb27e0cdf6d1e 20-21,24,27-35,57,80,96,98-100,111-112,126-127,210-292,301
+packages/quality/environments/rig/src/commands/layers.ts
+  h_8fb27e0cdf6d1e 1-2,4,11-12,21-41,43,45-46,48
+packages/quality/environments/rig/src/commands/lifecycle.ts
+  h_8fb27e0cdf6d1e 22,33,49,76,95-96,119-124,136-138,142-192,205-209,216-223,236-237,253
+packages/quality/environments/rig/src/commands/profile.ts
+  h_8fb27e0cdf6d1e 1-112
+packages/quality/environments/rig/src/commands/running.ts
+  h_8fb27e0cdf6d1e 6,10,12,29-41,47-58,64-71,73,109-117,121-122,129-136,143,145,150,156-157,159-165,295,315-317,343-346,353
+packages/quality/environments/rig/src/commands/tools.ts
+  h_8fb27e0cdf6d1e 2,20-21,56-95,101-105,129-148,150
+packages/quality/environments/rig/src/commands/wizard.ts
+  h_8fb27e0cdf6d1e 14,17,62-68,72-78,81,90,110-115,147-162
+packages/quality/environments/rig/src/config/env-yaml.ts
+  h_8fb27e0cdf6d1e 8,26,71-72,78-79,81-89,143,145-146,160,163-165,169
+packages/quality/environments/rig/src/config/paths.ts
+  h_8fb27e0cdf6d1e 25-44,124-128
+packages/quality/environments/rig/src/env/managed.ts
+  h_8fb27e0cdf6d1e 4-5,8-9,12,66,71,75-89,102-104,127,130-131,143,180-182,229-245
+packages/quality/environments/rig/src/env/resolve.ts
+  h_8fb27e0cdf6d1e 5,10,21,26,32,90-92,147-161,173,177,193,197,217-240,242-244
+packages/quality/environments/rig/src/environment.ts
+  h_8fb27e0cdf6d1e 4-9,11-20,36,43-44,48-67,176-180,182-203,207,256,273-289,304-309,317-321,323-328,331-335,342
+packages/quality/environments/rig/src/launcher/config.ts
+  h_8fb27e0cdf6d1e 40-45,70-90,102,105-107,115,118-120
+packages/quality/environments/rig/src/runtime/health.ts
+  h_8fb27e0cdf6d1e 2-3,13-16,22-60,70,79
+packages/quality/environments/rig/src/runtime/preflight.ts
+  h_8fb27e0cdf6d1e 8,15-19,24,27-32,37-42,50-51,58
+packages/quality/environments/rig/src/runtime/session.ts
+  h_8fb27e0cdf6d1e 6-7,19-28,78-81,110-111,116,120-124,131,139,168-169,171,180-181,184,200,208,215,230,257,266-268,277-323,368-370,411-415,422,431,441,450,463-467,498-501,551
+packages/quality/environments/rig/src/runtime/split.ts
+  h_8fb27e0cdf6d1e 1-137
+packages/quality/environments/rig/src/runtime/state.ts
+  h_8fb27e0cdf6d1e 20-21
+packages/quality/environments/rig/src/runtime/supervisor.ts
+  h_8fb27e0cdf6d1e 6,12,14-19,21,33,49-50,59-60,66-72,79,90-97,108-112,122,126-130,135-136,138-144,154-158,168-171,173-177,225,228,239-244,249-271,275,284,322,362-363,378-381
+packages/quality/environments/rig/src/services/compose.ts
+  h_8fb27e0cdf6d1e 57,77,90-91,108
+packages/quality/environments/rig/src/services/engine-tls.ts
+  h_8fb27e0cdf6d1e 1-61
+packages/quality/environments/rig/src/services/tunnel.ts
+  h_8fb27e0cdf6d1e 6-7,47-50,81
+packages/quality/environments/rig/src/topology/components.ts
+  h_8fb27e0cdf6d1e 1,5-9,13-20,31-32,40-59,69,90-103,111,118,128,138,164,178-200,234,239-240
+packages/quality/environments/rig/src/topology/slots.ts
+  h_8fb27e0cdf6d1e 1-62
+packages/quality/environments/rig/src/topology/validate.ts
+  h_8fb27e0cdf6d1e 20-25
+packages/quality/environments/rig/src/ui/log-format.ts
+  h_8fb27e0cdf6d1e 1-70
+packages/quality/environments/rig/src/ui/output.ts
+  h_8fb27e0cdf6d1e 6,45-58,81,84-88,93
+packages/quality/environments/rig/src/ui/status-line.ts
+  h_8fb27e0cdf6d1e 1-80
+packages/quality/environments/rig/test/layers.test.ts
+  h_8fb27e0cdf6d1e 1-96
+packages/quality/environments/rig/test/log-format.test.ts
+  h_8fb27e0cdf6d1e 1-44
+packages/quality/environments/rig/test/runners.test.ts
+  h_8fb27e0cdf6d1e 1-175
+packages/quality/environments/rig/test/setup.ts
+  h_8fb27e0cdf6d1e 1-16
+packages/quality/environments/rig/test/slots.test.ts
+  h_8fb27e0cdf6d1e 1-66
+packages/quality/environments/rig/vitest.config.ts
+  h_8fb27e0cdf6d1e 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "38c9947aed93e916389ca4a64e8cbea25f91cf7a",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

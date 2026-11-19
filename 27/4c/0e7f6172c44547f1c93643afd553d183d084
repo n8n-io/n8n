@@ -1,0 +1,26 @@
+packages/quality/testing/playwright/composables/TestEntryComposer.ts
+  s_ff02cb585a0470::t_cf19858bdb3905 35-38,40,42-43
+  s_ff02cb585a0470::t_cb6847da47adf0 33-34
+  s_ff02cb585a0470::t_128f505af12b26 39
+  s_ff02cb585a0470::t_f11f9320cd0757 41
+packages/quality/testing/playwright/tests/e2e/building-blocks/credentials.spec.ts
+  s_ff02cb585a0470::t_1f1fc76fb27d2d 74-75,81-84,125,127,135-138
+packages/quality/testing/playwright/tests/e2e/credentials/crud.spec.ts
+  s_ff02cb585a0470::t_4ee4beb19cc79f 228,231,237-240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "274c0e7f6172c44547f1c93643afd553d183d084",
+  "prompts": {},
+  "sessions": {
+    "s_ff02cb585a0470": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5002596e-f38f-4102-ae5d-6df0ace96fbd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

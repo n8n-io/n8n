@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/integrations/__tests__/integration-tools.test.ts
+  s_adee977eab8a65::t_f0a7c7a701f0a8 723-725
+packages/cli/src/modules/agents/integrations/integration-tool-descriptions.ts
+  s_adee977eab8a65::t_f0a7c7a701f0a8 36,46-48,54,56-68,70
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelinePill.test.ts
+  s_adee977eab8a65::t_f0a7c7a701f0a8 3,5,27-54
+packages/cli/src/modules/agents/integrations/__tests__/integration-tool-descriptions.test.ts
+  s_adee977eab8a65::t_f0a7c7a701f0a8 10-14,23-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "318758d685327468cc070a91628ce8f55f271ba7",
+  "prompts": {},
+  "sessions": {
+    "s_adee977eab8a65": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d5e8-1bc3-73e2-8649-1f304c4b7793",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

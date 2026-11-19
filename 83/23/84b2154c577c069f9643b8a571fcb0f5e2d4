@@ -1,0 +1,38 @@
+packages/@n8n/db/src/repositories/workflow-publication-retry-state.repository.ts
+  s_40f8b037f3bcf9::t_5d13236a3f8724 72
+  s_40f8b037f3bcf9::t_441edba76c3c6e 87-89
+  s_5359bd91d5136d::t_5587e2ce85efd0 14-15,23-28,31,58-60,70-71,79,81-82,90,93
+packages/cli/test/migration/1794922948806-add-retry-delay-to-workflow-publication-retry-state.test.ts
+  s_40f8b037f3bcf9::t_bcd8dd670f0594 1-180
+packages/cli/test/integration/workflows/workflow-publication-retry.test.ts
+  s_40f8b037f3bcf9::t_b2a2e000c4c5b2 175-180
+  s_40f8b037f3bcf9::t_417d96bd0b46e6 173-174
+  s_40f8b037f3bcf9::t_2873ba55926e33 181-183
+  s_40f8b037f3bcf9::t_6c38d0efb611da 113-116,184-188,446-478
+packages/@n8n/db/src/migrations/common/1794922948806-AddRetryDelayToWorkflowPublicationRetryState.ts
+  s_40f8b037f3bcf9::t_bcd8dd670f0594 1-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "832384b2154c577c069f9643b8a571fcb0f5e2d4",
+  "prompts": {},
+  "sessions": {
+    "s_40f8b037f3bcf9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66c65aaf-9fbc-4586-9b3f-bc033bff0f2a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    },
+    "s_5359bd91d5136d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "998c67fb-1b2c-4a65-8cb7-ec8a56def7ed",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/app/composables/useWorkflowActivate.test.ts
+  s_3d42f5aac10616::t_7be81e34a9013e 95-96,203,273-289
+packages/frontend/editor-ui/src/app/composables/useWorkflowActivate.ts
+  ai_agent 285
+  s_3d42f5aac10616::t_7be81e34a9013e 286-293
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5b07e119a2cc8067236c9b0897ed417656726f70",
+  "prompts": {},
+  "sessions": {
+    "s_3d42f5aac10616": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14440739-a8bf-40e4-b7b8-ad261dcda974",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

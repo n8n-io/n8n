@@ -1,0 +1,83 @@
+packages/core/src/execution-engine/__tests__/trigger-data.test.ts
+  s_5631e4fb1157e6::t_8eb7f58012a9e2 1-2,4-6,8-22,24-113,115-137
+  s_5631e4fb1157e6::t_225cb4556c8505 3,114
+  s_5631e4fb1157e6::t_dad6d4e1f95ebe 7,23
+  s_5631e4fb1157e6::t_e17214a5441de5 138
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/get-additional-keys.test.ts
+  s_5631e4fb1157e6::t_c0f2ab4f545025 2,49-70
+packages/workflow/src/execution-context.ts
+  s_5631e4fb1157e6::t_177b1e2d680e61 46-50,273-280
+packages/cli/src/execution-lifecycle/__tests__/execute-error-workflow.test.ts
+  s_5631e4fb1157e6::t_364612e7a3e676 6-12,348-349,355-356,359,361,369,377-378,396-397,399,402-403,405,408,410-412,415,418-419
+packages/core/src/execution-engine/trigger-data.ts
+  s_5631e4fb1157e6::t_46d2ca30b256b1 35-41
+  s_5631e4fb1157e6::t_9661eebf649d4c 1-22,24-34,42-46
+  s_5631e4fb1157e6::t_f2f7e929f0ceb2 23
+  s_5631e4fb1157e6::t_2770945d9e4ecc 47-52
+packages/workflow/test/execution-context.test.ts
+  s_5631e4fb1157e6::t_427c37eed48b49 101,104-107
+  s_5631e4fb1157e6::t_473a1140d5fc82 108
+packages/cli/src/interfaces.ts
+  s_5631e4fb1157e6::t_ea13fae0c83674 15,219-220,222
+packages/cli/src/task-runners/task-managers/__tests__/data-request-response-builder.test.ts
+  s_5631e4fb1157e6::t_c0f2ab4f545025 5,150-194
+  s_5631e4fb1157e6::t_f14cdaed9249fd 195
+packages/core/src/execution-engine/execution-context.ts
+  s_5631e4fb1157e6::t_bc881594b537f6 14,299-303
+  s_5631e4fb1157e6::t_b59411fdfdf99d 304
+packages/cli/src/task-runners/task-managers/data-request-response-builder.ts
+  s_5631e4fb1157e6::t_3964ae9adebb8f 71-77,82-85,87,99
+  s_5631e4fb1157e6::t_ea13fae0c83674 80-81,88-90
+  s_5631e4fb1157e6::t_c0f2ab4f545025 78-79,86
+  s_5631e4fb1157e6::t_f9cfbd767ffcff 4
+packages/workflow/src/workflow-settings-scope.ts
+  s_5631e4fb1157e6::t_177b1e2d680e61 33
+packages/@n8n/api-types/src/dto/workflows/workflow-public.openapi.ts
+  s_5631e4fb1157e6::t_2cd29a9aea20eb 43,46-50,262
+packages/@n8n/api-types/src/dto/workflows/base-workflow-public.dto.ts
+  s_5631e4fb1157e6::t_2cd29a9aea20eb 82
+packages/core/src/execution-engine/node-execution-context/utils/get-additional-keys.ts
+  s_5631e4fb1157e6::t_bc881594b537f6 43
+packages/workflow/src/interfaces.ts
+  s_5631e4fb1157e6::t_177b1e2d680e61 3456-3457,4245-4247,4249
+packages/core/src/execution-engine/__tests__/execution-context.test.ts
+  s_5631e4fb1157e6::t_67de850bdb662b 6,10-11,13,1722-1839
+  s_5631e4fb1157e6::t_3c03e06e5ba942 1840
+packages/cli/src/execution-lifecycle/execute-error-workflow.ts
+  s_5631e4fb1157e6::t_ea13fae0c83674 5-6,80-81
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/createWorkflow.generated.yml
+  s_5631e4fb1157e6::t_6f2b892d012e44 178,180,771,774
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/deleteWorkflow.generated.yml
+  s_5631e4fb1157e6::t_ee24c11db29116 205,208
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflow.generated.yml
+  s_5631e4fb1157e6::t_3265a01db3f0f3 214,217
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflows.generated.yml
+  s_5631e4fb1157e6::t_9f18d5ad2bc49a 241,244
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  s_5631e4fb1157e6::t_7b1c336d819cc4 193,195,783,786
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowPublicDto.generated.yml
+  s_5631e4fb1157e6::t_34b031264804d4 183,186
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowPublishPublicDto.generated.yml
+  s_5631e4fb1157e6::t_d35f544ccbe719 183,186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0ec57e0fe74802281df49dd1cdaa3cf5947fa7bc",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5631e4fb1157e6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa70ca35-8c1d-451e-9aca-ed24413b8763",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

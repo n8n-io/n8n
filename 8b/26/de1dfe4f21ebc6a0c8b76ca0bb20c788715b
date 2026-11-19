@@ -1,0 +1,21 @@
+packages/cli/src/public-api/v1/controllers/source-control.public.controller.ts
+  s_37ef7547c3b88e::t_e69e14437fc3fb 96-98
+packages/cli/src/public-api/v1/handlers/source-control/spec/paths/pushSourceControl.generated.yml
+  ai_agent 219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8b26de1dfe4f21ebc6a0c8b76ca0bb20c788715b",
+  "prompts": {},
+  "sessions": {
+    "s_37ef7547c3b88e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b495f5fc-a42e-4c56-a429-2c7612c8a238",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

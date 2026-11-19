@@ -1,0 +1,27 @@
+packages/cli/src/modules/skills/__tests__/integration/skill-source-rows.integration.test.ts
+  s_8b47cfe1b033b8::t_e14625b9f9de77 233
+  s_8b47cfe1b033b8::t_b11ba100d754f6 305-309,315,317
+  s_8b47cfe1b033b8::t_d89fe1e0f77729 112
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.vue
+  s_8b47cfe1b033b8::t_e14625b9f9de77 81,180,1086,1094
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.test.ts
+  s_8b47cfe1b033b8::t_e14625b9f9de77 183-184,1449-1451,1464,1503-1504,1514-1515
+packages/@n8n/api-types/src/agents/__tests__/skills.schema.test.ts
+  s_8b47cfe1b033b8::t_e14625b9f9de77 13-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1880237363c14a790c703bc3ef6b2b3c73c10e47",
+  "prompts": {},
+  "sessions": {
+    "s_8b47cfe1b033b8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e4b3-b48e-71c2-a019-129183b4679c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

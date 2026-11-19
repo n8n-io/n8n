@@ -1,0 +1,20 @@
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_28c9f8298cf40f::t_2f5881e4c266a3 1,466-467,469-472
+  s_28c9f8298cf40f::t_93afd319a1b4c6 473-476,506-507
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "945a21c6ffef7e85d6688ba09a982fa2456276a4",
+  "prompts": {},
+  "sessions": {
+    "s_28c9f8298cf40f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f434-6202-75f8-8814-2bc6a818815a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
