@@ -92,7 +92,8 @@ export class WebhookChannelController {
 		}
 		res.setHeader('Access-Control-Allow-Origin', '*');
 		res.setHeader('Cache-Control', 'no-cache');
-		res.type(file.type).sendFile(file.path);
+		// The deployed package lives under node_modules/.pnpm: `send` refuses dot segments by default.
+		res.type(file.type).sendFile(file.path, { dotfiles: 'allow' });
 	}
 
 	// `:surface` is `chat` (API channel, v1: webhook path) or `n8n-chat` (n8n Chat
@@ -105,7 +106,7 @@ export class WebhookChannelController {
 			return;
 		}
 		res.setHeader('Content-Type', 'text/html; charset=utf-8');
-		res.send(chatPageHtml(page.agent.name, page.name));
+		res.send(chatPageHtml(page.agent.name, page.name, nonceAttr(res)));
 	}
 
 	@Options('/:agentId/:surface/config', {
@@ -322,7 +323,7 @@ export class WebhookChannelController {
 		const login: LoginRequest = { token, user, expires: now + REQUEST_TTL };
 		await this.cache.set(loginKey(requestId), login, REQUEST_TTL);
 		res.setHeader('Content-Type', 'text/html; charset=utf-8');
-		res.send(loginDoneHtml(user.name));
+		res.send(loginDoneHtml(user.name, nonceAttr(res)));
 	}
 
 	@Options('/:agentId/:surface/login/:requestId', {
@@ -600,21 +601,27 @@ const CHAT_ASSETS: Record<string, { path: string; type: string }> = {
 	'agent-chat.css': { path: path.join(chatDist, 'agent-chat.css'), type: 'text/css' },
 };
 
+/** The CSP nonce of this response (n8n's CSP middleware), for our script tags; base64url, so safe in HTML. */
+const nonceAttr = (res: Response) => {
+	const nonce: string | undefined = res.locals.cspNonce;
+	return nonce ? ` nonce="${nonce}"` : '';
+};
+
 /** SPIKE: what the sign-in popup shows once it has handed the token over. */
-function loginDoneHtml(userName: string) {
+function loginDoneHtml(userName: string, nonce: string) {
 	const escape = (value: string) => value.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 	return `<!doctype html>
 <html lang="en">
 <head><meta charset="utf-8" /><title>Signed in</title></head>
 <body style="font-family: system-ui, sans-serif; padding: 24px">
 	<p data-testid="chat-login-done">Signed in as <strong>${escape(userName)}</strong>. You can close this window and go back to the chat.</p>
-	<script>window.close()</script>
+	<script${nonce}>window.close()</script>
 </body>
 </html>`;
 }
 
 /** SPIKE: the hosted chat page. It mounts @n8n/agent-chat in full-screen mode. */
-function chatPageHtml(agentName: string, surface: ChatSurfaceName) {
+function chatPageHtml(agentName: string, surface: ChatSurfaceName, nonce: string) {
 	const escape = (value: string) => value.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 	return `<!doctype html>
 <html lang="en">
@@ -624,7 +631,7 @@ function chatPageHtml(agentName: string, surface: ChatSurfaceName) {
 	<title>${escape(agentName)}</title>
 </head>
 <body>
-	<script src="../assets/agent-chat.js" data-agent-url="${escape(`./${surface}`)}" data-mode="fullscreen" data-theme="n8n"></script>
+	<script${nonce} src="../assets/agent-chat.js" data-agent-url="${escape(`./${surface}`)}" data-mode="fullscreen" data-theme="n8n"></script>
 </body>
 </html>`;
 }
