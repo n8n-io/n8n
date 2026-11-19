@@ -1,4 +1,5 @@
 import express from 'express';
+import { parseHTML } from 'linkedom';
 import request from 'supertest';
 
 import { TEMPLATES_DIR } from '@/constants';
@@ -671,6 +672,134 @@ describe('chat-shell.handlebars', () => {
 			signalSuccess();
 
 			expect(barTextEl.textContent).toBe('Account connected · ready to chat');
+		});
+	});
+
+	describe('Disconnect', () => {
+		const revokeUrl = 'http://localhost:5678/rest/credentials/cred-1/revoke?resolverId=system-n8n';
+
+		type FetchResult = { status: number } | Error;
+
+		/**
+		 * Runs the bar script against a real DOM with one connected account. Each fetch
+		 * waits until the test settles it, so a test can look at the row mid-request.
+		 */
+		async function runConnectedBar() {
+			const html = await renderView({
+				...withOneMissingAccount,
+				ready: true,
+				connectedCount: 1,
+				credentials: [
+					{
+						key: 'cred-1::system-n8n',
+						id: 'cred-1',
+						name: 'Slack account',
+						connected: true,
+						initial: 'S',
+						account: 'visitor@example.com',
+						resolverId: 'system-n8n',
+						revokeUrl,
+					},
+				],
+			});
+			const source = html.slice(html.lastIndexOf('<script>') + '<script>'.length);
+			const js = source.slice(0, source.indexOf('</script>'));
+			const { window, document } = parseHTML(html);
+
+			const requests: Array<{ url: string; method: string; settle: (r: FetchResult) => void }> = [];
+			const fetch = async (url: string, init: { method: string }) =>
+				await new Promise<Response>((resolve, reject) => {
+					requests.push({
+						url,
+						method: init.method,
+						settle: (result) => {
+							if (result instanceof Error) reject(result);
+							else resolve(new Response(result.status === 204 ? null : '{}', result));
+						},
+					});
+				});
+
+			// eslint-disable-next-line @typescript-eslint/no-implied-eval
+			new Function(
+				'window',
+				'document',
+				'setTimeout',
+				'setInterval',
+				'clearTimeout',
+				'clearInterval',
+				'fetch',
+				'localStorage',
+				'BroadcastChannel',
+				js,
+			)(
+				window,
+				document,
+				() => 0,
+				() => 0,
+				() => {},
+				() => {},
+				fetch,
+				{ getItem: () => 'browser-1' },
+				undefined,
+			);
+
+			const row = () => document.querySelector('.cred-row')!;
+			return {
+				requests,
+				row,
+				clickDisconnect: () =>
+					row()
+						.querySelector('.btn-disconnect')!
+						.dispatchEvent(new window.Event('click', { bubbles: true })),
+				flush: async () => await new Promise((resolve) => setImmediate(resolve)),
+				status: () => row().querySelector('.cred-sub')!.textContent,
+				error: () => row().querySelector('.cred-error'),
+			};
+		}
+
+		it('shows a pending state and sends one request when clicked twice', async () => {
+			const bar = await runConnectedBar();
+
+			bar.clickDisconnect();
+			bar.clickDisconnect();
+
+			expect(bar.requests).toHaveLength(1);
+			expect(bar.requests[0]).toMatchObject({
+				url: `${revokeUrl}&authSource=cookie`,
+				method: 'DELETE',
+			});
+			expect(bar.status()).toBe('Disconnecting…');
+			expect(bar.row().getAttribute('data-pending')).toBe('true');
+		});
+
+		it.each([204, 404])('marks the account as not connected on a %s', async (status) => {
+			const bar = await runConnectedBar();
+
+			bar.clickDisconnect();
+			bar.requests[0].settle({ status });
+			await bar.flush();
+
+			expect(bar.row().getAttribute('data-connected')).toBeNull();
+			expect(bar.status()).toBe('Not connected');
+			expect(bar.error()).toBeNull();
+		});
+
+		it.each([
+			['a server error', { status: 500 }, "Couldn't disconnect. Try again."],
+			['a network error', new Error('offline'), "Couldn't disconnect. Try again."],
+			['a 401', { status: 401 }, 'Your session expired. Reload the page to try again.'],
+		])('keeps the account connected and shows an error on %s', async (_label, result, message) => {
+			const bar = await runConnectedBar();
+
+			bar.clickDisconnect();
+			bar.requests[0].settle(result);
+			await bar.flush();
+
+			expect(bar.row().getAttribute('data-connected')).toBe('true');
+			expect(bar.row().getAttribute('data-pending')).toBeNull();
+			expect(bar.status()).toBe('Connected as visitor@example.com');
+			expect(bar.error()?.textContent).toBe(message);
+			expect(bar.error()?.getAttribute('role')).toBe('alert');
 		});
 	});
 });
