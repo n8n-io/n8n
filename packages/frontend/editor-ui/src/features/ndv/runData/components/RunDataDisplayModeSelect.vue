@@ -24,7 +24,6 @@ const {
 	paneType: NodePanelType;
 	nodeGeneratesHtml: boolean;
 	hasRenderableData: boolean;
-	/** Registered modes that can render the current data, in registration order */
 	registeredDisplayModes?: RunDataDisplayModeContribution[];
 }>();
 
@@ -62,9 +61,6 @@ const options = computed(() => {
 	return defaults;
 });
 
-// If the selected mode isn't an option, reset to the first built-in option. A
-// registered mode is never the reset target, so one that renders most data
-// does not take over every node.
 watch(
 	[() => value, options],
 	([val, opts]) => {
