@@ -1,3 +1,5 @@
+import { OutboundHttp } from '@n8n/backend-network';
+import { Container } from '@n8n/di';
 import type { ICredentialDataDecryptedObject, IHttpRequestOptions } from 'n8n-workflow';
 
 import { SchemaRegistryApi } from '../SchemaRegistryApi.credentials';
@@ -119,51 +121,51 @@ describe('SchemaRegistryApi Credential', () => {
 	});
 
 	describe('preAuthentication', () => {
-		const helperWith = (response: unknown) => {
-			const httpRequest = vi.fn().mockResolvedValue(response);
-			return { context: { helpers: { httpRequest } } as never, httpRequest };
-		};
+		const requestMock = vi.fn();
+		const oauthCredentials = {
+			authentication: 'oAuth2ClientCredentials',
+			tokenUrl: 'https://idp.example.com/token',
+			clientId: 'id',
+			clientSecret: 'secret',
+		} satisfies ICredentialDataDecryptedObject;
+
+		beforeEach(() => {
+			requestMock.mockReset();
+			requestMock.mockResolvedValue({ access_token: 'tok' });
+			vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+				if (token === OutboundHttp) return { requests: () => ({ request: requestMock }) };
+				throw new Error('unexpected DI token');
+			});
+		});
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
 
 		it('mints a token for the OAuth2 method', async () => {
-			const { context, httpRequest } = helperWith({ access_token: 'tok' });
-
-			const result = await credential.preAuthentication?.call(context, {
-				authentication: 'oAuth2ClientCredentials',
-				tokenUrl: 'https://idp.example.com/token',
-				clientId: 'id',
-				clientSecret: 'secret',
-			} satisfies ICredentialDataDecryptedObject);
+			const result = await credential.preAuthentication?.(oauthCredentials);
 
 			expect(result).toEqual({ accessToken: 'tok' });
-			expect(String((httpRequest.mock.calls[0][0] as IHttpRequestOptions).url)).toBe(
+			expect((requestMock.mock.calls[0][0] as { url: string }).url).toBe(
 				'https://idp.example.com/token',
 			);
 		});
 
 		it('surfaces what the token endpoint said when it refuses the grant', async () => {
-			const context = {
-				helpers: { httpRequest: vi.fn().mockRejectedValue(new Error('invalid_client')) },
-			} as never;
+			requestMock.mockRejectedValue(new Error('invalid_client'));
 
-			await expect(
-				credential.preAuthentication?.call(context, {
-					authentication: 'oAuth2ClientCredentials',
-					tokenUrl: 'https://idp.example.com/token',
-					clientId: 'id',
-					clientSecret: 'wrong',
-				} satisfies ICredentialDataDecryptedObject),
-			).rejects.toThrow('invalid_client');
+			await expect(credential.preAuthentication?.(oauthCredentials)).rejects.toThrow(
+				'invalid_client',
+			);
 		});
 
 		it.each(['basicAuth', 'none'])('mints nothing for the %s method', async (authentication) => {
-			const { context, httpRequest } = helperWith({ access_token: 'tok' });
-
-			const result = await credential.preAuthentication?.call(context, {
+			const result = await credential.preAuthentication?.({
 				authentication,
 			} satisfies ICredentialDataDecryptedObject);
 
 			expect(result).toEqual({});
-			expect(httpRequest).not.toHaveBeenCalled();
+			expect(requestMock).not.toHaveBeenCalled();
 		});
 	});
 });

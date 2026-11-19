@@ -1,3 +1,5 @@
+import { OutboundHttp } from '@n8n/backend-network';
+import { Container } from '@n8n/di';
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import { passthroughEgressFilter } from '@n8n/backend-network';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -1248,13 +1250,18 @@ describe('Kafka Utils', () => {
 					nodeCredentials: schemaRegistryNodeCredentials,
 					credentialData: oauthCredential,
 				});
-				ctx.helpers.httpRequest = vi.fn().mockResolvedValue({ access_token: 'tok' });
+				const requestMock = vi.fn().mockResolvedValue({ access_token: 'tok' });
+				vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+					if (token === OutboundHttp) return { requests: () => ({ request: requestMock }) };
+					throw new Error('unexpected DI token');
+				});
 
 				await createSchemaRegistry(ctx, '');
 
 				expect(await bearerFromMiddleware()).toEqual({
 					headers: { Authorization: 'Bearer tok' },
 				});
+				vi.restoreAllMocks();
 			});
 
 			it('allows the token endpoint separately, because it is a host of its own', async () => {
@@ -1264,7 +1271,6 @@ describe('Kafka Utils', () => {
 					credentialData: oauthCredential,
 					secureEgressFilter: filter,
 				});
-				ctx.helpers.httpRequest = vi.fn().mockResolvedValue({ access_token: 'tok' });
 
 				await createSchemaRegistry(ctx, '');
 

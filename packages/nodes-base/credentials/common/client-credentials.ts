@@ -1,6 +1,6 @@
 import { OperationalError, UserError } from '@n8n/errors';
-import type { IDataObject, IHttpRequestOptions, WithRequestTarget } from 'n8n-workflow';
-import { requestUrl } from 'n8n-workflow';
+
+import { getTokenRequestClient, hasAccessToken, TOKEN_REQUEST_TIMEOUT } from './token-request';
 
 export interface ClientCredentialsConfig {
 	tokenUrl?: unknown;
@@ -9,24 +9,17 @@ export interface ClientCredentialsConfig {
 	scope?: unknown;
 }
 
-export interface MintedToken {
-	accessToken: string;
-	expiresInSeconds: number;
-}
-
-/** Sends the request the token endpoint expects, so a caller only supplies transport. */
-export type TokenRequest = (options: WithRequestTarget<IHttpRequestOptions>) => Promise<unknown>;
-
 const ASSUMED_LIFETIME_SECONDS = 3600;
-const CLOCK_SKEW_MARGIN_MS = 30_000;
+const RENEW_MARGIN_MS = 30_000;
 
 const asFilledString = (value: unknown) =>
 	typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
 
-export async function requestClientCredentialsToken(
-	request: TokenRequest,
-	config: ClientCredentialsConfig,
-): Promise<MintedToken> {
+/**
+ * Swaps a client ID and secret for a bearer token at a user-supplied endpoint,
+ * through the outbound layer that carries n8n's SSRF guard, proxy and timeout.
+ */
+export async function requestClientCredentialsToken(config: ClientCredentialsConfig) {
 	const tokenUrl = asFilledString(config.tokenUrl);
 	const clientId = asFilledString(config.clientId);
 	const clientSecret = asFilledString(config.clientSecret);
@@ -35,30 +28,30 @@ export async function requestClientCredentialsToken(
 		throw new UserError('Set the token URL, client ID and client secret');
 	}
 
-	const body: IDataObject = {
+	const body = new URLSearchParams({
 		grant_type: 'client_credentials',
 		client_id: clientId,
 		client_secret: clientSecret,
-	};
+	});
 	const scope = asFilledString(config.scope);
-	if (scope) body.scope = scope;
+	if (scope) body.append('scope', scope);
 
-	const response = (await request({
+	const response = await getTokenRequestClient('user-controlled').request({
+		url: tokenUrl,
 		method: 'POST',
-		url: requestUrl`${tokenUrl}`,
-		body,
+		body: body.toString(),
 		headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
 		json: true,
-	})) as { access_token?: unknown; expires_in?: unknown } | undefined;
+		timeout: TOKEN_REQUEST_TIMEOUT,
+	});
 
-	const accessToken = asFilledString(response?.access_token);
-	if (!accessToken) {
+	if (!hasAccessToken(response)) {
 		throw new OperationalError('The token endpoint returned no access token');
 	}
 
-	const expiresIn = Number(response?.expires_in);
+	const expiresIn = Number((response as { expires_in?: unknown }).expires_in);
 	return {
-		accessToken,
+		accessToken: response.access_token,
 		expiresInSeconds:
 			Number.isFinite(expiresIn) && expiresIn > 0 ? expiresIn : ASSUMED_LIFETIME_SECONDS,
 	};
@@ -70,7 +63,6 @@ export async function requestClientCredentialsToken(
  * keeps working.
  */
 export function createClientCredentialsTokenSource(
-	request: TokenRequest,
 	config: ClientCredentialsConfig,
 	now: () => number = Date.now,
 ) {
@@ -80,14 +72,8 @@ export function createClientCredentialsTokenSource(
 		async getToken(): Promise<string> {
 			if (cached && cached.expiresAt > now()) return cached.accessToken;
 
-			const { accessToken, expiresInSeconds } = await requestClientCredentialsToken(
-				request,
-				config,
-			);
-			cached = {
-				accessToken,
-				expiresAt: now() + expiresInSeconds * 1000 - CLOCK_SKEW_MARGIN_MS,
-			};
+			const { accessToken, expiresInSeconds } = await requestClientCredentialsToken(config);
+			cached = { accessToken, expiresAt: now() + expiresInSeconds * 1000 - RENEW_MARGIN_MS };
 			return accessToken;
 		},
 	};

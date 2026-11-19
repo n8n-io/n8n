@@ -17,18 +17,16 @@ import type {
 	INode,
 	INodeExecutionData,
 	FunctionsBase,
-	IHttpRequestOptions,
 	NodeEgressFilter,
 	RequestHelperFunctions,
-	WithRequestTarget,
 } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { raceAbort } from '@n8n/utils/race-abort';
 import { sleep } from '@n8n/utils/sleep';
 
-import type { ClientCredentialsConfig } from '../../utils/oauth2ClientCredentials';
-import { createClientCredentialsTokenSource } from '../../utils/oauth2ClientCredentials';
+import type { ClientCredentialsConfig } from '../../credentials/common/client-credentials';
+import { createClientCredentialsTokenSource } from '../../credentials/common/client-credentials';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import { OperationalError, UserError } from '@n8n/errors';
 import http from 'node:http';
@@ -604,7 +602,7 @@ async function assertAllowedUrl(
 
 export async function createSchemaRegistry(
 	ctx: Pick<FunctionsBase, 'getNode' | 'getCredentials'> & {
-		helpers: Pick<RequestHelperFunctions, 'getSecureEgressFilter' | 'httpRequest'>;
+		helpers: Pick<RequestHelperFunctions, 'getSecureEgressFilter'>;
 	},
 	fallbackUrl: string,
 ): Promise<SchemaRegistry> {
@@ -628,11 +626,7 @@ export async function createSchemaRegistry(
 
 	// The token endpoint is a host of its own, so the user has to allow it too.
 	const tokenUrl = await assertAllowedUrl(ctx, String(oauth.tokenUrl), filter, 'token URL');
-	const tokenSource = createClientCredentialsTokenSource(
-		async (requestOptions: WithRequestTarget<IHttpRequestOptions>) =>
-			await ctx.helpers.httpRequest(requestOptions),
-		{ ...oauth, tokenUrl: tokenUrl.href },
-	);
+	const tokenSource = createClientCredentialsTokenSource({ ...oauth, tokenUrl: tokenUrl.href });
 
 	return new SchemaRegistry({
 		...clientOptions,

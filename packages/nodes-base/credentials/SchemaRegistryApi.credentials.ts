@@ -2,12 +2,11 @@ import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
-	IHttpRequestHelper,
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { requestClientCredentialsToken } from '../utils/oauth2ClientCredentials';
+import { requestClientCredentialsToken } from './common/client-credentials';
 
 export class SchemaRegistryApi implements ICredentialType {
 	name = 'schemaRegistryApi';
@@ -143,13 +142,10 @@ export class SchemaRegistryApi implements ICredentialType {
 		},
 	];
 
-	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
+	async preAuthentication(credentials: ICredentialDataDecryptedObject) {
 		if (credentials.authentication !== 'oAuth2ClientCredentials') return {};
 
-		const { accessToken } = await requestClientCredentialsToken(
-			async (options) => await this.helpers.httpRequest(options),
-			credentials,
-		);
+		const { accessToken } = await requestClientCredentialsToken(credentials);
 		return { accessToken };
 	}
 
