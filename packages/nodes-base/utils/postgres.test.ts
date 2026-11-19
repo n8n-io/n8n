@@ -229,14 +229,22 @@ describe('getLegacyDateTypeParsers', () => {
 });
 
 describe('nodes that share the parsers but have no version to opt in with', () => {
-	// No version of CrateDB, QuestDB or TimescaleDB opts in to the zoneless timestamp output that
-	// Postgres 2.9 added. They must keep the older reading until one does, see ENT-882.
-	it.each(['CrateDb', 'QuestDb', 'TimescaleDb'])(
-		'should pass legacyUtcTimestamps from the %s node',
-		(node) => {
-			const source = readFileSync(join(__dirname, '..', 'nodes', node, `${node}.node.ts`), 'utf8');
+	// CrateDB and QuestDB send a value that is genuinely UTC, so the zoneless reading Postgres 2.9
+	// added is the wrong fix for them: it would strip an offset the value really carries. They need
+	// a parse-as-UTC mode instead, which nothing has written yet, so they keep the older reading.
+	it.each(['CrateDb', 'QuestDb'])('should pass legacyUtcTimestamps from the %s node', (node) => {
+		const source = readFileSync(join(__dirname, '..', 'nodes', node, `${node}.node.ts`), 'utf8');
 
-			expect(source).toContain('getDateAsStringTypeParsers(pgp, { legacyUtcTimestamps: true })');
-		},
-	);
+		expect(source).toContain('getDateAsStringTypeParsers(pgp, { legacyUtcTimestamps: true })');
+	});
+
+	// TimescaleDB is PostgreSQL, so it takes the zoneless reading at 1.3 and keeps the older one below.
+	it('should gate legacyUtcTimestamps on the version in the TimescaleDb node', () => {
+		const source = readFileSync(
+			join(__dirname, '..', 'nodes', 'TimescaleDb', 'TimescaleDb.node.ts'),
+			'utf8',
+		);
+
+		expect(source).toContain('legacyUtcTimestamps: this.getNode().typeVersion < 1.3');
+	});
 });
