@@ -2359,5 +2359,33 @@ describe('AssistantAgentThreadView', () => {
 				['Uptime monitor', 'Support agent'],
 			);
 		});
+
+		it('does not show the agent that the thread builds as a reference', async () => {
+			// The Agent Builder panel attaches its agent to each message.
+			fetchTargets.mockResolvedValue({
+				targets: {
+					bound: { agentId: 'agent-1', projectId: 'project-1', name: 'Support agent' },
+					pending: null,
+					targets: [],
+					previewSession: null,
+				},
+			});
+			const { getAllByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			referencedMessage.value = {
+				id: 'u-1',
+				role: 'user',
+				content: 'Add a tool',
+				references: [workflowMention.attachment, agentMention.attachment],
+			};
+			await flushPromises();
+
+			expect(getAllByTestId('attachment-preview-resource').map((chip) => chip.textContent)).toEqual(
+				['Uptime monitor'],
+			);
+		});
 	});
 });

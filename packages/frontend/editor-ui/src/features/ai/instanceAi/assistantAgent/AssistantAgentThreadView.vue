@@ -6,6 +6,7 @@ import type {
 	InstanceAiAttachment,
 	InstanceAiHandoffContext,
 	InstanceAiNodesAttachment,
+	InstanceAiResourceAttachment,
 	InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -27,7 +28,9 @@ import { useElementSize } from '@vueuse/core';
 import { computed, onBeforeUnmount, provide, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import { isString } from '@/app/utils/typeGuards';
 import AgentChatPanel from '@/features/agents/components/AgentChatPanel.vue';
+import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import { useN8nAssistantIdentity } from '@/features/agents/n8nChatPage/composables/useN8nAssistantIdentity';
 import AssistantAtMentionPicker from '@/features/ai/assistant-at-mentions/AssistantAtMentionPicker.vue';
 import type { WorkflowArtifactReference } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
@@ -375,6 +378,20 @@ const launchAgentTargets: AssistantAgentTargetsState | null =
 				previewSession: null,
 			}
 		: null;
+
+// The Agent Builder panel attaches its agent to each message it sends, so the
+// agent that the thread builds is not a reference that the user chose.
+const threadAgentIds = computed(() => {
+	const targets = agentTargets.state.value ?? launchAgentTargets;
+	return new Set([targets?.bound?.agentId, targets?.pending?.agentId].filter(isString));
+});
+
+/** The references that a user message shows, without the agent of the thread. */
+function shownReferences(message: ChatMessage): InstanceAiResourceAttachment[] {
+	return readMessageReferences(message.references).filter(
+		(reference) => reference.type !== 'agent' || !threadAgentIds.value.has(reference.id),
+	);
+}
 
 // The apps of the thread metadata, and the app of the launch subject.
 const appTargets = computed(() => {
@@ -922,7 +939,7 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 						</template>
 						<template #user-message-references="{ message }">
 							<AttachmentPreview
-								v-for="(reference, index) in readMessageReferences(message.references)"
+								v-for="(reference, index) in shownReferences(message)"
 								:key="index"
 								:attachment="reference"
 								:is-removable="false"

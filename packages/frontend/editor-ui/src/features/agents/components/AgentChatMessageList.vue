@@ -1240,6 +1240,11 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 	.chatMessage + & {
 		margin-top: var(--spacing--2xs);
 	}
+
+	// The host can show none of the references of a message.
+	&:empty {
+		display: none;
+	}
 }
 
 .chatMessageError {
