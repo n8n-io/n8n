@@ -11,6 +11,7 @@ import { generateId } from '../../database/generate-id';
 import type { IStepExecutor } from '../../dependencies';
 import type { ExecutionStatus, NewStepRecord, StartExecutionResult } from '../../execution';
 import type { WorkflowGraph } from '../../graph';
+import { createInMemoryWorkQueues } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 
@@ -70,6 +71,7 @@ describe('settled step with no message (integration)', () => {
 			responseSender: noopExecutionResponseSender,
 			staleness,
 			reconciliationIntervalMs: 20,
+			queues: createInMemoryWorkQueues(),
 			externalDependencies: () => ({ v1StepExecutor: { execute } }),
 		});
 	}
