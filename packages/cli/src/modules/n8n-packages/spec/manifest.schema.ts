@@ -1,3 +1,4 @@
+import { isSafeObjectKey } from '@n8n/api-types';
 import path from 'node:path';
 import { z } from 'zod';
 
@@ -5,7 +6,8 @@ import { FORMAT_VERSION } from './constants';
 import { packageRequirementsSchema } from './requirements.schema';
 
 export const manifestEntrySchema = z.object({
-	id: z.string().min(1),
+	// Imported entities keep this id, so it follows the same rule as REST-created workflows.
+	id: z.string().min(1).refine(isSafeObjectKey, 'Invalid entry id'),
 	name: z.string(),
 	// Scope filters compare prefixes before readers resolve paths.
 	// Canonical targets keep both steps consistent for every entity type.

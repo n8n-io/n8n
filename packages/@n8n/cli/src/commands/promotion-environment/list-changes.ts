@@ -68,11 +68,24 @@ export function changedRows({ resources, dependencies }: PromotionPreview) {
 				id,
 				name,
 				change,
+				project: projectOf(parentKey, byKey),
 				folder: parent?.type === 'folder' ? parent.name : undefined,
 				usedBy: listIds(usedBy.get(key) ?? []),
 				selectable,
 			};
 		});
+}
+
+/** The name of the project that holds the resource, through any number of folders. */
+function projectOf(
+	parentKey: string | null,
+	byKey: Map<string, PromotionPreview['resources'][number]>,
+): string | undefined {
+	let parent = parentKey === null ? undefined : byKey.get(parentKey);
+	while (parent && parent.type !== 'project') {
+		parent = parent.parentKey === null ? undefined : byKey.get(parent.parentKey);
+	}
+	return parent?.name;
 }
 
 function listIds(ids: string[]): string | undefined {

@@ -260,8 +260,8 @@ catalog:
   nodemailer: 10.1.4
   openai: 6.46.0
   oracledb: 6.10.0
-  oxlint: 1.78.0
-  oxlint-tsgolint: ^0.21.1
+  oxlint: 1.93.0
+  oxlint-tsgolint: ^7.0.2007
   p-limit: ^3.1.0
   pdf-parse: 2.4.5
   pdfjs-dist: 6.3.289
@@ -393,6 +393,7 @@ overrides:
   ast-types: 0.16.1
   baseline-browser-mapping: ^2.11.0
   '@azure/identity': 4.13.0
+  '@azure/msal-node@5.0.0-beta.0 - 7.0': 7.1.0
   '@lezer/common': ^1.2.0
   '@mistralai/mistralai': ^2.2.1
   '@n8n/typeorm>@sentry/node': catalog:sentry

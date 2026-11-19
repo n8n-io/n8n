@@ -25,8 +25,11 @@ export class EngineConfig {
 	 * control plane side. Remote mode needs `N8N_ENGINE_BASE_URL` and
 	 * `N8N_ENGINE_AUTH_SECRET`.
 	 *
-	 * The mode also sets how execution responses reach the control plane:
-	 * in memory for `in-process`, and over Redis for `remote`.
+	 * In `in-process` mode, execution responses stay in memory. In `remote`
+	 * mode, execution responses and the work queues go through Redis. Set the
+	 * same `QUEUE_BULL_REDIS_*` connection and `N8N_REDIS_KEY_PREFIX` on this
+	 * instance and on every engine process. Despite their name, the
+	 * `QUEUE_BULL_REDIS_*` variables set every Redis connection in n8n.
 	 */
 	@Env('N8N_ENGINE_MODE', engineModeSchema)
 	mode: EngineMode = 'in-process';

@@ -46,9 +46,9 @@ export class AlwaysOutputDataMultiOutputRule implements IBreakingChangeWorkflowR
 	): Promise<BreakingChangeRecommendation[]> {
 		return [
 			{
-				action: 'Review nodes using "Always Output Data" with multiple outputs',
+				action: 'Update logic that relies on the "Always Output Data" empty item',
 				description:
-					'After the update to n8n 3.0, these nodes no longer add an empty item to the first output when another output has data. Update any downstream logic that relies on that empty first-output item (for example a branch off the first output that runs on the empty case). The finding stays while the node keeps "Always Output Data" on: after your review, set it to Won\'t fix.',
+					'For each affected node, check the nodes connected to its first output. If they run on the empty item while another output has data, change them so they do not depend on it. After the update, the node sends the empty item only when every output is empty. The finding stays while the node keeps "Always Output Data" on: after your review, set it to Won\'t fix.',
 			},
 		];
 	}

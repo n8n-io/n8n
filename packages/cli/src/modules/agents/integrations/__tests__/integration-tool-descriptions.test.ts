@@ -1,4 +1,71 @@
-import { buildFileUploadGuidance } from '../integration-tool-descriptions';
+import {
+	buildActionToolDescription,
+	buildChannelToolInstruction,
+	buildFileUploadGuidance,
+} from '../integration-tool-descriptions';
+import { getIntegrationToolConnectionDescriptors } from '../integration-tool-factory';
+
+describe('buildActionToolDescription', () => {
+	it('includes card examples and destination guidance in channel actions', () => {
+		const [descriptor] = getIntegrationToolConnectionDescriptors(
+			[{ type: 'slack', credentialId: 'cred-1' }],
+			'agent-1',
+			() => ({ supportedComponents: ['section', 'button', 'select', 'radio_select'] }),
+		);
+		const description = buildActionToolDescription(descriptor);
+		expect(description).toContain('Call respond only with message.card');
+		expect(description).toContain('Generic card examples:');
+		expect(description).toContain(
+			'send_channel_message with input.channelId and input.message.card',
+		);
+		expect(description).not.toContain('render_ui');
+	});
+
+	it.each([undefined, []])(
+		'omits card guidance for Linear with components=%s',
+		(supportedComponents) => {
+			const [descriptor] = getIntegrationToolConnectionDescriptors(
+				[{ type: 'linear', credentialId: 'cred-1' }],
+				'agent-1',
+				() => ({ supportedComponents }),
+			);
+			const description = buildActionToolDescription(descriptor);
+			expect(description).toContain('Do not send rich cards.');
+			expect(description).toContain(
+				'your final reply text is posted to that conversation automatically',
+			);
+			expect(description).not.toContain('message.card');
+			expect(description).not.toContain('Generic card examples:');
+			expect(description).not.toContain('For button components');
+			expect(description).not.toContain('For radio-style choices');
+		},
+	);
+});
+
+describe('buildChannelToolInstruction', () => {
+	it('names the connection tools and declared card components', () => {
+		const descriptors = getIntegrationToolConnectionDescriptors(
+			[
+				{ type: 'slack', credentialId: 'cred-1' },
+				{ type: 'slack', credentialId: 'cred-2' },
+			],
+			'agent-1',
+			() => ({ supportedComponents: ['section', 'button', 'select'] }),
+		);
+		const instruction = buildChannelToolInstruction(descriptors[1]);
+		expect(instruction).toContain('slack_2_context and slack_2_action');
+		expect(instruction).toContain('Search your tools');
+		expect(instruction).toContain('section, button, select');
+		expect(instruction).toContain('supported destinations');
+	});
+
+	it('does not claim card support without declared components', () => {
+		const [descriptor] = getIntegrationToolConnectionDescriptors([
+			{ type: 'linear', credentialId: 'cred-1' },
+		]);
+		expect(buildChannelToolInstruction(descriptor)).not.toContain('rich messages');
+	});
+});
 
 describe('buildFileUploadGuidance', () => {
 	const limits = { maxFiles: 10, maxFileBytes: 50 * 1024 * 1024 };

@@ -2,7 +2,11 @@ import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import type { CreateExecutionPayload, WorkflowEntity } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { createEmptyRunExecutionData, createRunExecutionData } from 'n8n-workflow';
+import {
+	createEmptyRunExecutionData,
+	createRunExecutionData,
+	WAIT_INDEFINITELY,
+} from 'n8n-workflow';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -23,6 +27,41 @@ describe('ExecutionPersistence', () => {
 
 	afterAll(async () => {
 		await testDb.terminate();
+	});
+
+	it('keeps only the first response to an indefinite wait', async () => {
+		const workflow = await createWorkflow();
+		const executionId = await executionPersistence.create({
+			workflowData: workflow,
+			workflowId: workflow.id,
+			mode: 'manual',
+			finished: false,
+			status: 'waiting',
+			waitTill: WAIT_INDEFINITELY,
+			data: createEmptyRunExecutionData(),
+		});
+		const conditions = { requireStatus: 'waiting' as const, requireWaitTill: WAIT_INDEFINITELY };
+		for (const [index, approved] of [true, false].entries()) {
+			const saved = await executionPersistence.updateExistingExecution(
+				executionId,
+				{
+					waitTill: new Date(),
+					data: createRunExecutionData({
+						resultData: { pinData: { Review: [{ json: { approved } }] } },
+					}),
+				},
+				conditions,
+			);
+			expect(saved).toBe(index === 0);
+		}
+		const saved = await executionPersistence.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
+		expect(saved?.data.resultData.pinData?.Review[0].json).toEqual({ approved: true });
+		expect((await executionRepository.getWaitingExecutions()).map(({ id }) => id)).toContain(
+			executionId,
+		);
 	});
 
 	describe('create with deduplicationKey', () => {

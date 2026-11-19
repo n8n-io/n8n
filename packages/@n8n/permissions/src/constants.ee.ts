@@ -13,7 +13,7 @@ export const RESOURCES = {
 	aiAssistant: ['manage'] as const,
 	// AI prompt preferences. `aiPreference`: instance-wide rows and other users' rows.
 	// `projectAiPreference`: rows of a project. A user's own rows need no scope.
-	aiPreference: [...DEFAULT_OPERATIONS] as const,
+	aiPreference: [...DEFAULT_OPERATIONS, 'manage'] as const,
 	projectAiPreference: [...DEFAULT_OPERATIONS] as const,
 	// Skills. `skill`: instance skills. `projectSkill`: the skills of a project and of
 	// its agents.
@@ -134,6 +134,7 @@ export const API_KEY_RESOURCES = {
 		'export',
 		'import',
 		'read',
+		'list',
 		'create',
 		'update',
 		'publish',

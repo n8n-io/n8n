@@ -60,6 +60,10 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 		});
 	}
 
+	async hasAny(): Promise<boolean> {
+		return await this.exists();
+	}
+
 	async countVisible(query: VisibleAiPreferencesQuery): Promise<number> {
 		return await this.count({ where: visibleTo(query, query.allUsers) });
 	}
