@@ -12,8 +12,9 @@ Source: https://linear.app/n8n/issue/CAP-760
 
 Leases coordinate work between main instances through the database. Code in several parts of the
 cli registers lease kinds and reports changes. Leases must stay off until an operator turns them
-on. Backend modules are the way to turn a feature on or off in the cli: `N8N_ENABLED_MODULES`
-lists the modules that load, and a module that is not listed loads none of its code.
+on. Backend modules are the way to turn a feature on or off in the cli. Default modules load
+unless `N8N_DISABLED_MODULES` lists them. Any other module loads only when `N8N_ENABLED_MODULES`
+lists it, and a module that does not load runs none of its code.
 
 ## Decision
 
@@ -21,8 +22,8 @@ Leases run as the `leases` backend module. The module is not in the default modu
 `N8N_ENABLED_MODULES` turns it on. Engine v2 uses the same shape.
 
 Consumers inject `DurableLeaseService`, which is always in DI. When the module is active, it gives
-the service its database provider. Without the module, the service has no provider and its calls
-do nothing.
+the service its database provider. Without the module, the service has no provider:
+`registerKind`, `changed` and `syncAll` do nothing, and `status` throws an error.
 
 The main reason is that backend modules are the pattern that n8n follows from now on. A feature
 does not manage its own enable flag and settings outside the module system.
@@ -40,6 +41,7 @@ does not manage its own enable flag and settings outside the module system.
 1. Operators turn leases on with `N8N_ENABLED_MODULES=leases`. No separate enable flag exists.
 2. A consumer checks `ModuleRegistry.isActive('leases')` before it relies on leases.
 3. Without the module, `registerKind`, `changed` and `syncAll` log at debug level and return.
+   `status` throws, so a consumer does not call it before it checks that the module is active.
 4. Default modules initialise before `leases`. A kind that a default module registers during its
    own initialisation gets no provider.
 
