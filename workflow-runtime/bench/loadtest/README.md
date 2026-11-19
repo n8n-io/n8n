@@ -94,6 +94,46 @@ of the tree (`scripts/gym/engine-test-adapter.mjs`). The set folder holds `bundl
 some values differ), `status` or `mismatch`. The replay deletes the tenant of each bundle: restore the tenants before
 the next load run.
 
+## Measurements of 19 November 2026
+
+One executor core, the pure compiled set with ten copies of each workflow, six load drivers, release 3.
+The three numbers of each line are workflows a second at 1,200, 2,400 and 4,200 concurrent runs.
+
+**Durability tier.** The runtime gives a module with `durability: full` the `batched` tier. A build that gives it the
+`sync` tier (the reply waits for the synced log record) was measured against it:
+
+| Configuration | 1,200 | 2,400 | 4,200 |
+| --- | --- | --- | --- |
+| `batched` tier (two runs) | 2,056 and 2,207 | 3,120 and 3,194 | 4,108 and 3,986 |
+| `sync` tier, the outbox synced for each record | 367 | 187 | 226 |
+| `sync` tier, the outbox synced once for each batch | 2,028 | 3,138 | 4,130 |
+| `sync` tier, one sync for each batch, `--log-offload on` | 2,289 | 3,483 | 4,676 |
+
+The durability log already made one sync for each batch. The outbox made one sync for each record of the `sync` tier,
+with the CPU idle. With one sync for each batch the `sync` tier has no measurable cost at this load. Each line is one
+run; two runs of the same configuration differed by up to 7%.
+
+**Where the CPU goes.** A sampled profile of the runtime thread (`perf record`, 5,193 samples in 20 s, a build with
+frame pointers) at 4,200 concurrent runs:
+
+| Part | Share of the thread |
+| --- | --- |
+| Workflow code (`core.step`): interpreter 36%, JSON decode of results 8%, library calls 6% | 50% |
+| Kernel: send, receive and poll of the connections | 27% |
+| Outbound HTTP client (TLS, HTTP/2, request build), without the kernel part | 15% |
+| Outbox: the record write, the sync and the stream to the reader | 7% |
+| Replies and connection flush of the inbound side | 6% |
+
+The parts overlap where one calls the other, so the column is not a sum. Two single functions stand out: the intern
+of an object key with its hash (`Module.internKey` and `XxHash3.hashLong`, 8% together, called for each key of a decoded
+result), and the outbox sync on the shard thread (2%).
+
+**Comparison with v1.** Release 3, 1,500 bundles: 914 exact, 568 `structure`, 4 `status`, 14 `mismatch`. Of the 568, 455
+differ only in nodes that read the clock or a random id. A second live run of v1 against its own record is exact for 7
+of 131 such bundles, so a value difference in this group does not show an engine difference. The 18 failing bundles:
+6 call the API of their own n8n instance (no instance runs in this test), 2 used a service call that the test harness
+did not answer (corrected), 3 were a `var` variable with a Date (corrected), 7 are open.
+
 ## Method
 
 - **Same input for all engines.** Each bundle's start trigger becomes a
