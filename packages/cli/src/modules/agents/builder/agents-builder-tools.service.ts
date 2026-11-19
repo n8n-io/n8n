@@ -363,8 +363,12 @@ const PUBLISH_CONFIRMATION_SCHEMA = z.object({
 
 type PublishConfirmation = z.infer<typeof PUBLISH_CONFIRMATION_SCHEMA>;
 
-/** The version a publish card described, kept with the suspended call. */
-const publishContinuationSchema = z.object({ confirmedVersionId: z.string().nullable() }).strict();
+/** What a publish card described, kept with the suspended call: the version and the live version. */
+const publishContinuationSchema = z
+	.object({ confirmedVersionId: z.string().nullable(), liveVersionId: z.string().nullable() })
+	.strict();
+
+type PublishContinuation = z.infer<typeof publishContinuationSchema>;
 type AgentPublishTargets = ReturnType<typeof describePublishSendTargets>['sendTargets'];
 
 /** A agent_builder_call_agent continuation that carries a sessionNote across an approval. */
@@ -1111,13 +1115,14 @@ export class AgentsBuilderToolsService {
 							errors: [{ message: e instanceof Error ? e.message : String(e) }],
 						};
 					}
-					// The card described one version. If the draft changed while it was open, or the
-					// card's version is unknown, the user has not seen what would go live: ask again.
-					// Like the first call, this stays outside the try below.
+					// The card described one version and what was live. If either changed while it was
+					// open, or the card did not record them, the user has not seen what would happen:
+					// ask again. Like the first call, this stays outside the try below.
 					const confirmed = publishContinuationSchema.safeParse(ctx.continuation);
 					if (
 						!confirmed.success ||
-						(versionId ?? before?.versionId ?? null) !== confirmed.data.confirmedVersionId
+						(versionId ?? before?.versionId ?? null) !== confirmed.data.confirmedVersionId ||
+						(before?.activeVersionId ?? null) !== confirmed.data.liveVersionId
 					) {
 						return await this.askToPublish(ctx, agentId, projectId, versionId);
 					}
@@ -1170,16 +1175,14 @@ export class AgentsBuilderToolsService {
 		projectId: string,
 		versionId: string | undefined,
 	) {
-		let card: { confirmation: PublishConfirmation; confirmedVersionId: string | null } | undefined;
+		let card: { confirmation: PublishConfirmation; continuation: PublishContinuation } | undefined;
 		try {
 			card = await this.buildPublishConfirmation(agentId, projectId, versionId);
 		} catch (e) {
 			return { ok: false, errors: [{ message: e instanceof Error ? e.message : String(e) }] };
 		}
 		if (!card) return { ok: false, errors: [{ message: 'Agent not found.' }] };
-		return await ctx.suspend(card.confirmation, {
-			continuation: { confirmedVersionId: card.confirmedVersionId },
-		});
+		return await ctx.suspend(card.confirmation, { continuation: card.continuation });
 	}
 
 	/**
@@ -1191,7 +1194,7 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		versionId: string | undefined,
-	): Promise<{ confirmation: PublishConfirmation; confirmedVersionId: string | null } | undefined> {
+	): Promise<{ confirmation: PublishConfirmation; continuation: PublishContinuation } | undefined> {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) return undefined;
 		const selectedVersion = versionId !== undefined && versionId !== agent.versionId;
@@ -1256,7 +1259,10 @@ export class AgentsBuilderToolsService {
 				...(agent.name ? { resourceName: agent.name } : {}),
 				approvalDetails,
 			},
-			confirmedVersionId: targetVersionId ?? null,
+			continuation: {
+				confirmedVersionId: targetVersionId ?? null,
+				liveVersionId: agent.activeVersionId ?? null,
+			},
 		};
 	}
 
