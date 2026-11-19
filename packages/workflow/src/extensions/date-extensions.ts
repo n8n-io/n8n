@@ -121,7 +121,7 @@ function extract(date: Date | DateTime, args: DatePart[]): number {
 	let [part = 'week'] = args;
 
 	if (part === 'yearDayNumber') {
-		date = isDateTime(date) ? date.toJSDate() : date;
+		if (isDateTime(date)) return date.ordinal;
 
 		const firstDayOfTheYear = new Date(date.getFullYear(), 0, 0);
 
