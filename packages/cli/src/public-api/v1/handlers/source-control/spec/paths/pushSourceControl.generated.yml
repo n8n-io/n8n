@@ -217,7 +217,7 @@ responses:
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '409':
-    description: 'The push includes files with unresolved conflicts. Retry with `force: true` to push anyway.'
+    description: 'The push includes files with unresolved conflicts, or the remote branch has commits that the instance has not pulled. To keep those remote commits, pull first. Retry with `force: true` to push anyway. A forced push overwrites remote commits that the instance has not pulled.'
     content:
       application/json:
         schema:
@@ -379,7 +379,6 @@ responses:
                   - updatedAt
           required:
             - message
-            - conflicts
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
   '422':

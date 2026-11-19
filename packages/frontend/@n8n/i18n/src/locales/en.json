@@ -5501,6 +5501,8 @@
 	"settings.sourceControl.modals.push.buttons.cancel": "Cancel",
 	"settings.sourceControl.modals.push.buttons.save": "Commit and push",
 	"settings.sourceControl.modals.push.modifiedCredentialsNotice": "Modified credentials will update expressions, numbers, and boolean values, any other values will not be synced, because they would be exposed as plain text in the connected git repository.",
+	"settings.sourceControl.modals.push.remoteAhead.title": "Push blocked",
+	"settings.sourceControl.modals.push.remoteAhead.message": "The remote branch has changes that this instance does not have. Pull the changes first, then push again.",
 	"settings.sourceControl.modals.push.success.title": "Pushed successfully",
 	"settings.sourceControl.modals.push.success.description": "was committed and pushed to your remote repository | were committed and pushed to your remote repository",
 	"settings.sourceControl.modals.push.projectAdmin.callout": "If you want to push workflows from your personal space, move them to a project first.",

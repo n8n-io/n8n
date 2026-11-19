@@ -6,6 +6,7 @@ import { Container } from '@n8n/di';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { SourceControlRemoteAheadError } from '@/modules/source-control.ee/source-control-remote-ahead.error';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
 import { Telemetry } from '@/telemetry';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
@@ -599,6 +600,22 @@ describe('Source Control (Public API)', () => {
 				expect.objectContaining({ force: true }),
 				'other',
 			);
+		});
+
+		it('should return 409 with a pull-first message when the remote has unpulled commits', async () => {
+			testServer.license.enable('feat:sourceControl');
+			mockConnected();
+
+			vi.spyOn(Container.get(SourceControlService), 'pushWorkfolder').mockRejectedValue(
+				new SourceControlRemoteAheadError(),
+			);
+
+			const response = await testServer.publicApiAgentFor(owner).post(pushUrl).send(validBody);
+
+			expect(response.status).toBe(409);
+			expect(response.body).toEqual({
+				message: expect.stringContaining('Pull the changes first'),
+			});
 		});
 
 		it('should return 400 when pushing onto a read-only branch', async () => {

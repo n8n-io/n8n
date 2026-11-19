@@ -1,4 +1,5 @@
 import {
+	isRemoteAheadError,
 	buildFolderFilterOptions,
 	buildWorkflowTreeRows,
 	formatSourceControlUpdatedAt,
@@ -12,7 +13,12 @@ import {
 import type { useToast } from '@n8n/composables/useToast';
 import type { Router } from 'vue-router';
 
-import { SOURCE_CONTROL_FILE_STATUS, type SourceControlledFile } from '@n8n/api-types';
+import {
+	SOURCE_CONTROL_FILE_STATUS,
+	SOURCE_CONTROL_PUSH_REMOTE_AHEAD_REASON,
+	type SourceControlledFile,
+} from '@n8n/api-types';
+import { ResponseError } from '@n8n/rest-api-client';
 import { PROTECTED_INSTANCE_DOCS_URL } from './sourceControl.constants';
 
 describe('source control utils', () => {
@@ -481,6 +487,40 @@ describe('source control utils', () => {
 					expect.objectContaining({ message: '1 Workflow was pulled' }),
 				);
 			});
+		});
+	});
+	describe('isRemoteAheadError', () => {
+		const remoteAhead = () =>
+			new ResponseError('remote ahead', {
+				httpStatusCode: 409,
+				meta: { reason: SOURCE_CONTROL_PUSH_REMOTE_AHEAD_REASON },
+			});
+
+		it('returns true for a 409 response error with the remote-ahead reason', () => {
+			expect(isRemoteAheadError(remoteAhead())).toBe(true);
+		});
+
+		it('returns false for a 409 without the remote-ahead reason', () => {
+			expect(isRemoteAheadError(new ResponseError('conflict', { httpStatusCode: 409 }))).toBe(
+				false,
+			);
+		});
+
+		it('returns false for another status with the remote-ahead reason', () => {
+			const error = new ResponseError('bad request', {
+				httpStatusCode: 400,
+				meta: { reason: SOURCE_CONTROL_PUSH_REMOTE_AHEAD_REASON },
+			});
+
+			expect(isRemoteAheadError(error)).toBe(false);
+		});
+
+		it.each([
+			['plain error', new Error('boom')],
+			['string', 'remote-ahead'],
+			['undefined', undefined],
+		])('returns false for %s', (_label, error) => {
+			expect(isRemoteAheadError(error)).toBe(false);
 		});
 	});
 });

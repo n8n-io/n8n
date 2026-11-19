@@ -402,6 +402,40 @@ export class SourceControlGitService {
 	}
 
 	/**
+	 * Returns true when `origin/<branch>` has commits that `since` does not have.
+	 * `since` defaults to the local HEAD. A `since` commit that this repository does not know
+	 * counts as ahead: the history was rewritten or the folder was recreated, so the instance
+	 * must pull to record a commit that it can compare with.
+	 */
+	async isRemoteAhead(branch: string, since?: string): Promise<boolean> {
+		if (!this.git) {
+			throw new UnexpectedError('Git is not initialized (isRemoteAhead)');
+		}
+		const remoteRef = `refs/remotes/${SOURCE_CONTROL_ORIGIN}/${branch}`;
+		// `--quiet` prints nothing and exits non-zero when the ref is missing, which simple-git
+		// does not raise as an error. A missing remote branch cannot be ahead.
+		const remoteSha = await this.git.raw(['rev-parse', '--verify', '--quiet', remoteRef]);
+		if (!remoteSha.trim()) return false;
+
+		let base = 'HEAD';
+		if (since) {
+			const known = await this.git.raw(['rev-parse', '--verify', '--quiet', `${since}^{commit}`]);
+			if (!known.trim()) return true;
+			base = since;
+		}
+		const count = await this.git.raw(['rev-list', '--count', `${base}..${remoteRef}`]);
+		return Number.parseInt(count.trim(), 10) > 0;
+	}
+
+	/** Returns the commit that the local HEAD points at. */
+	async getHeadCommit(): Promise<string> {
+		if (!this.git) {
+			throw new UnexpectedError('Git is not initialized (getHeadCommit)');
+		}
+		return (await this.git.raw(['rev-parse', 'HEAD'])).trim();
+	}
+
+	/**
 	 * Reject a remote commit whose managed paths would materialize the wrong shape
 	 * before applying it. Each managed path is either a directory or a regular file;
 	 * a directory placed at a file path (or the reverse) passes a naive recursive

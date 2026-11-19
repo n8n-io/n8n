@@ -1,7 +1,12 @@
 import { h, nextTick } from 'vue';
 import type { Router } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { type SourceControlledFile, SOURCE_CONTROL_FILE_STATUS } from '@n8n/api-types';
+import {
+	type SourceControlledFile,
+	SOURCE_CONTROL_FILE_STATUS,
+	SOURCE_CONTROL_PUSH_REMOTE_AHEAD_REASON,
+} from '@n8n/api-types';
+import { ResponseError } from '@n8n/rest-api-client';
 import type { BaseTextKey } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import groupBy from 'lodash/groupBy';
@@ -14,6 +19,12 @@ import { PROTECTED_INSTANCE_DOCS_URL } from './sourceControl.constants';
 type SourceControlledFileStatus = SourceControlledFile['status'];
 
 const i18n = useI18n();
+
+/** True when a push failed because the remote branch has commits the instance has not pulled. */
+export const isRemoteAheadError = (error: unknown): error is ResponseError =>
+	error instanceof ResponseError &&
+	error.httpStatusCode === 409 &&
+	error.meta?.reason === SOURCE_CONTROL_PUSH_REMOTE_AHEAD_REASON;
 
 /** Tooltip HTML that explains why an action is disabled on a protected instance. */
 export const getProtectedInstanceTooltip = () =>

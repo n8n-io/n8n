@@ -178,7 +178,10 @@ export {
 	PullWorkFolderRequestDto,
 	AUTO_PUBLISH_MODE,
 } from './source-control/pull-work-folder-request.dto';
-export { PushWorkFolderRequestDto } from './source-control/push-work-folder-request.dto';
+export {
+	PushWorkFolderRequestDto,
+	SOURCE_CONTROL_PUSH_REMOTE_AHEAD_REASON,
+} from './source-control/push-work-folder-request.dto';
 export { type GitCommitInfo } from './source-control/push-work-folder-response.dto';
 export { SourceControlStatusQueryPublicDto } from './source-control/source-control-status-query-public.dto';
 export { SourceControlStatusPublicDto } from './source-control/source-control-status-public.dto';

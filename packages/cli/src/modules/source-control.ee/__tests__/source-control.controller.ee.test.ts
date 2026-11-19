@@ -1,4 +1,8 @@
-import type { PullWorkFolderRequestDto, PushWorkFolderRequestDto } from '@n8n/api-types';
+import {
+	SOURCE_CONTROL_PUSH_REMOTE_AHEAD_REASON,
+	type PullWorkFolderRequestDto,
+	type PushWorkFolderRequestDto,
+} from '@n8n/api-types';
 import type { EventService } from '@n8n/backend-services';
 import type { AuthenticatedRequest, Project, User } from '@n8n/db';
 import { Person } from '@n8n/db';
@@ -11,6 +15,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@n8n/errors';
 
+import { SourceControlRemoteAheadError } from '../source-control-remote-ahead.error';
 import type { SourceControlContextFactory } from '../source-control-context.factory';
 import type { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
@@ -156,6 +161,19 @@ describe('SourceControlController', () => {
 			);
 
 			await expect(controller.pushWorkfolder(req, res, payload)).rejects.toThrow('Git push failed');
+		});
+
+		it('rethrows the remote-ahead error unchanged so the client gets a 409 with its reason', async () => {
+			const req = mock<AuthenticatedRequest>({ user: mock<User>() });
+			const res = mock<Response>();
+			const payload = { acceptConflicts: true } as PushWorkFolderRequestDto;
+			const error = new SourceControlRemoteAheadError();
+
+			(sourceControlService.pushWorkfolder as Mock).mockRejectedValueOnce(error);
+
+			await expect(controller.pushWorkfolder(req, res, payload)).rejects.toBe(error);
+			expect(error.httpStatusCode).toBe(409);
+			expect(error.meta).toEqual({ reason: SOURCE_CONTROL_PUSH_REMOTE_AHEAD_REASON });
 		});
 	});
 

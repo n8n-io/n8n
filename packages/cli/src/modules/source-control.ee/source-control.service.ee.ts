@@ -37,6 +37,7 @@ import {
 	getDeletedResources,
 	getNonDeletedResources,
 } from './source-control-resource-helper';
+import { SourceControlRemoteAheadError } from './source-control-remote-ahead.error';
 import { SourceControlScopedService } from './source-control-scoped.service';
 import { SourceControlStatusService } from './source-control-status.service.ee';
 import type { ImportResult } from './types/import-result';
@@ -45,7 +46,10 @@ import type { SourceControlPreferences } from './types/source-control-preference
 
 export type PushWorkfolderOptions = {
 	commitMessage?: string;
+	/** Pushes with `git push -f` and skips the file conflict check. */
 	force?: boolean;
+	/** Skips the file conflict check only. The git push stays a normal push. */
+	acceptConflicts?: boolean;
 	fileNames: Array<Pick<SourceControlledFile, 'id' | 'type'>>;
 };
 
@@ -196,6 +200,7 @@ export class SourceControlService {
 				branchColor: SOURCE_CONTROL_DEFAULT_BRANCH_COLOR,
 				connectionType: preferences.connectionType,
 			});
+			await this.sourceControlPreferencesService.clearLastSyncedCommit();
 			await this.sourceControlExportService.deleteRepositoryFolder();
 
 			if (preferences.connectionType === 'https') {
@@ -288,6 +293,8 @@ export class SourceControlService {
 			branchName: branch,
 			connected: branch?.length > 0,
 		});
+		// The stored commit belongs to the previous branch.
+		await this.sourceControlPreferencesService.clearLastSyncedCommit();
 		return result;
 	}
 
@@ -398,9 +405,19 @@ export class SourceControlService {
 
 		const filesToPush = await this.resolveAuthorizedFilesToPush(user, options.fileNames, publicApi);
 
+		if (!options.force) {
+			// Runs after the status: it fast-forwards the work folder, which would hide a remote commit
+			// that arrived before it. A commit that arrives later makes the push a non-fast-forward,
+			// which git rejects. The check still runs before the export and commit, so a stale push
+			// leaves no commit.
+			if (await this.isRemoteAheadOfDatabase()) {
+				throw new SourceControlRemoteAheadError();
+			}
+		}
+
 		let statusResult: SourceControlledFile[] = filesToPush;
 
-		if (!options.force) {
+		if (!options.force && !options.acceptConflicts) {
 			const possibleConflicts = filesToPush?.filter((file) => file.conflict);
 			if (possibleConflicts?.length > 0) {
 				return {
@@ -514,8 +531,15 @@ export class SourceControlService {
 			} catch (resetError) {
 				this.logger.error('Failed to reset branch after push error', { error: resetError });
 			}
+			// A commit that arrived after the check makes git reject the push. Report it like the check.
+			if (!options.force && (await this.remoteAheadAfterFailedPush())) {
+				throw new SourceControlRemoteAheadError();
+			}
 			throw error;
 		}
+
+		// Outside the try block: a failed save must not reset the branch after a push that worked.
+		await this.recordSyncedCommit();
 
 		// #region Tracking Information
 		this.eventService.emit('source-control-user-finished-push-ui', {
@@ -724,10 +748,48 @@ export class SourceControlService {
 		);
 		// #endregion
 
+		await this.recordSyncedCommit();
+
 		return {
 			statusCode: 200,
 			statusResult,
 		};
+	}
+
+	/**
+	 * Stores the commit that the database now matches, so that the next push can detect newer
+	 * remote commits. A failed save is logged only. The sync itself already succeeded, and the
+	 * old value makes the next push stricter, not looser.
+	 */
+	private async recordSyncedCommit(): Promise<void> {
+		try {
+			await this.sourceControlPreferencesService.setLastSyncedCommit(
+				await this.gitService.getHeadCommit(),
+			);
+		} catch (error) {
+			this.logger.warn('Failed to store the last synced commit', { error });
+		}
+	}
+
+	private async remoteAheadAfterFailedPush(): Promise<boolean> {
+		try {
+			return await this.isRemoteAheadOfDatabase();
+		} catch {
+			// The original push error is the useful one.
+			return false;
+		}
+	}
+
+	/** Fetches, then checks whether the remote branch has commits that the database has not synced. */
+	private async isRemoteAheadOfDatabase(): Promise<boolean> {
+		await this.gitService.fetch();
+		const lastSyncedCommit = await this.sourceControlPreferencesService.getLastSyncedCommit();
+		// Without a stored commit (an instance that has not synced since the upgrade), the check
+		// falls back to the local HEAD.
+		return await this.gitService.isRemoteAhead(
+			this.sourceControlPreferencesService.getBranchName(),
+			lastSyncedCommit,
+		);
 	}
 
 	async getStatus(user: User, options: SourceControlGetStatus) {
