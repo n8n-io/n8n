@@ -186,9 +186,12 @@ import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { isExecutionIdV2 } from '@/executions/execution-id';
+import { ExecutionService } from '@/executions/execution.service';
 import {
 	findUnsavedManualExecutionForViewer,
 	getExecutionRedaction,
+	loadEngineV2ExecutionForViewer,
 	loadExecutionForViewer,
 } from '@/executions/execution-viewer-reader';
 import {
@@ -256,7 +259,7 @@ import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { isAgentsAccessEnabled } from './agents-access';
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
-import { waitForInstanceAiExecution } from './instance-ai-execution-wait';
+import { waitForEngineV2Execution, waitForInstanceAiExecution } from './instance-ai-execution-wait';
 import {
 	FOLDER_SCAN_LIMIT,
 	FOLDER_SCAN_PROJECT_LIMIT,
@@ -2235,9 +2238,11 @@ export class InstanceAiAdapterService {
 		) => {
 			// A manual execution that n8n did not save stays readable only for the user who
 			// started it, until pruning hard-deletes it.
-			const execution =
-				(await executionRepository.findSingleExecution(executionId, { includeData: false })) ??
-				(await findUnsavedManualExecutionForViewer(executionId, user));
+			// SPIKE (AST-1677): a v2 id is a UUID that the v1 table cannot query.
+			const execution = isExecutionIdV2(executionId)
+				? await loadEngineV2ExecutionForViewer(executionId, user, { includeData: false })
+				: ((await executionRepository.findSingleExecution(executionId, { includeData: false })) ??
+					(await findUnsavedManualExecutionForViewer(executionId, user)));
 			if (!execution) {
 				throw new Error(`Execution ${executionId} not found`);
 			}
@@ -2374,8 +2379,13 @@ export class InstanceAiAdapterService {
 				// instance-wide or per-workflow save settings. Manual mode is gated by
 				// `saveManualExecutions`; trigger modes (webhook, chat, trigger) are
 				// gated by the success/error settings — override all three.
+				// SPIKE (AST-1677): the v2 dispatcher drops pins outside manual mode and
+				// refuses a run that starts at a pinned node, so v2 runs go in manual mode
+				// and name the trigger instead.
+				const runsOnEngineV2 = workflow.settings?.engineType === 'v2';
 				const runData: IWorkflowExecutionDataProcess = {
-					executionMode: triggerNode ? getExecutionModeForTrigger(triggerNode) : 'manual',
+					executionMode:
+						triggerNode && !runsOnEngineV2 ? getExecutionModeForTrigger(triggerNode) : 'manual',
 					workflowData: {
 						...workflow,
 						nodes: waits.nodes,
@@ -2413,7 +2423,10 @@ export class InstanceAiAdapterService {
 					inputData,
 					triggerNode,
 				});
-				if (pinDataPlan.startNodeName) {
+				if (pinDataPlan.startNodeName && runsOnEngineV2) {
+					// The dispatcher takes the trigger's pin as the payload.
+					runData.triggerToStartFrom = { name: pinDataPlan.startNodeName };
+				} else if (pinDataPlan.startNodeName) {
 					runData.startNodes = [{ name: pinDataPlan.startNodeName, sourceData: null }];
 				} else if (triggerNode) {
 					// No inputData but we have a trigger node (e.g. test-trigger from
@@ -2424,7 +2437,7 @@ export class InstanceAiAdapterService {
 				if (pinDataPlan.runPinData) {
 					runData.pinData = pinDataPlan.runPinData;
 				}
-				if (pinDataPlan.triggerExecutionData) {
+				if (pinDataPlan.triggerExecutionData && !runsOnEngineV2) {
 					// Persist pin data in executionData so queued workers can hydrate
 					// verification fixtures while starting from the trigger node.
 					runData.executionData = pinDataPlan.triggerExecutionData;
@@ -2503,6 +2516,8 @@ export class InstanceAiAdapterService {
 				try {
 					const executionId = await workflowRunner.run(runData);
 					const pruneVerificationPins = async (executedNodeNames?: string[]) => {
+						// SPIKE (AST-1677): v2 keeps no control-plane row to prune.
+						if (isExecutionIdV2(executionId)) return;
 						try {
 							await pruneUnreachedVerificationPinData({
 								executionId,
@@ -2519,12 +2534,26 @@ export class InstanceAiAdapterService {
 					};
 
 					// Wait for completion with timeout / abort protection
-					const waitOutcome = await waitForInstanceAiExecution({
-						activeExecutions,
-						executionId,
-						timeoutMs,
-						abortSignal: options?.abortSignal,
-					});
+					const waitOutcome = isExecutionIdV2(executionId)
+						? await waitForEngineV2Execution({
+								readStatus: async () =>
+									(
+										await loadEngineV2ExecutionForViewer(executionId, user, {
+											includeData: false,
+										})
+									)?.status,
+								stop: async () => {
+									await Container.get(ExecutionService).stop(executionId, [workflowId]);
+								},
+								timeoutMs,
+								abortSignal: options?.abortSignal,
+							})
+						: await waitForInstanceAiExecution({
+								activeExecutions,
+								executionId,
+								timeoutMs,
+								abortSignal: options?.abortSignal,
+							});
 
 					if (waitOutcome.kind === 'cancelled') {
 						const result = {

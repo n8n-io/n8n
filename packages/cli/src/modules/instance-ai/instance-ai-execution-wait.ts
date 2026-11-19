@@ -90,3 +90,46 @@ export async function waitForInstanceAiExecution(args: {
 		if (onAbort) abortSignal?.removeEventListener('abort', onAbort);
 	}
 }
+
+const ENGINE_V2_POLL_INTERVAL_MS = 250;
+const ENGINE_V2_UNSETTLED_STATUSES = new Set(['new', 'running']);
+
+/**
+ * SPIKE (AST-1677): waits for an engine v2 execution. A v2 run never registers in
+ * `ActiveExecutions`, and the engine offers no awaitable end of run to the
+ * control plane, so this polls the data plane until the status settles.
+ */
+export async function waitForEngineV2Execution(args: {
+	readStatus: () => Promise<string | undefined>;
+	stop: () => Promise<void>;
+	timeoutMs: number;
+	abortSignal?: AbortSignal;
+}): Promise<ExecutionWaitOutcome> {
+	const { readStatus, stop, timeoutMs, abortSignal } = args;
+	const deadline = Date.now() + timeoutMs;
+
+	while (true) {
+		const status = await readStatus();
+		if (status !== undefined && !ENGINE_V2_UNSETTLED_STATUSES.has(status)) {
+			return { kind: 'completed' };
+		}
+
+		const isAbort = abortSignal?.aborted === true;
+		if (isAbort || Date.now() >= deadline) {
+			try {
+				await stop();
+			} catch {
+				// The run may have settled between the read and the stop.
+			}
+			return {
+				kind: 'cancelled',
+				reason: isAbort ? 'abort' : 'timeout',
+				message: isAbort
+					? 'Execution was cancelled'
+					: `Execution timed out after ${timeoutMs}ms and was cancelled`,
+			};
+		}
+
+		await new Promise((resolve) => setTimeout(resolve, ENGINE_V2_POLL_INTERVAL_MS));
+	}
+}

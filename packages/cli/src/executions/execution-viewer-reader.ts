@@ -1,9 +1,11 @@
-import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import { ExecutionRedactionServiceProxy, WorkflowSharingService } from '@n8n/backend-services';
 import type { ExecutionEntity, IExecutionResponse, User } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { UnsavedManualExecutionService } from '@/execution-lifecycle/unsaved-manual-execution.service';
+import { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
+import { isExecutionIdV2 } from '@/executions/execution-id';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -23,11 +25,12 @@ export async function loadExecutionForViewer(
 	executionId: string,
 	viewer: User,
 ): Promise<IExecutionResponse | undefined> {
-	const execution =
-		(await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		})) ?? (await loadUnsavedManualExecution(executionId, viewer));
+	const execution = isExecutionIdV2(executionId)
+		? await loadEngineV2ExecutionForViewer(executionId, viewer)
+		: ((await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			})) ?? (await loadUnsavedManualExecution(executionId, viewer)));
 	if (!execution) return undefined;
 
 	// Redacts in place. Never reveals: a reveal is an audited user action in the
@@ -36,6 +39,26 @@ export async function loadExecutionForViewer(
 		user: viewer,
 	});
 	return execution;
+}
+
+/**
+ * SPIKE (AST-1677): an engine v2 execution in the v1 shape, if `viewer` may read
+ * executions of its workflow. The data plane has no control-plane row, so the
+ * access check runs against the viewer's shared workflow ids.
+ */
+export async function loadEngineV2ExecutionForViewer(
+	executionId: string,
+	viewer: User,
+	options: { includeData?: boolean } = {},
+): Promise<IExecutionResponse | undefined> {
+	if (!isExecutionIdV2(executionId)) return undefined;
+	const workflowIds = await Container.get(WorkflowSharingService).getSharedWorkflowIds(viewer, {
+		scopes: ['workflow:read', 'execution:read'],
+	});
+	const execution = await Container.get(EngineV2ExecutionReader).findOne(executionId, workflowIds, {
+		includeData: options.includeData ?? true,
+	});
+	return execution as IExecutionResponse | undefined;
 }
 
 /**
