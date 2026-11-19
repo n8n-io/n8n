@@ -356,6 +356,20 @@ describe('QuickJsBridge workflow data', () => {
 		).toBe('from host');
 	});
 
+	it.each([
+		{ label: 'a marker key', $json: { a: { __isDate: true, __isoString: 'text' }, b: 1 } },
+		{ label: 'a metadata key', $json: { __isObject: true, __keys: ['x'], __length: 3 } },
+		{ label: 'a __proto__ key', $json: JSON.parse('{"__proto__": {"a": 1}, "b": 2}') as object },
+		{ label: 'a marker key as text', $json: { text: '__isDate', b: 1 } },
+		{ label: 'a Date', $json: { at: new Date(0), b: 1 } },
+		{ label: 'undefined', $json: { a: undefined, list: [undefined, 1] } },
+		{ label: 'NaN', $json: { nan: NaN, b: 1 } },
+	])('returns a small item with $label as the same data', async ({ $json }) => {
+		const bridge = await newBridge();
+
+		expect(bridge.execute('return this.$json;', { $json })).toStrictEqual($json);
+	});
+
 	it('reads a host symbol as undefined and frees the runtime', async () => {
 		const bridge = await newBridge();
 
