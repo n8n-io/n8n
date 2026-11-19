@@ -81,6 +81,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [execution_data](execution_data.md) | 4 |  | table |
 | [execution_entity](execution_entity.md) | 20 |  | table |
 | [execution_ledger](execution_ledger.md) | 16 |  | table |
+| [execution_limit_instance_usage](execution_limit_instance_usage.md) | 5 |  | table |
 | [execution_limit_usage](execution_limit_usage.md) | 6 |  | table |
 | [execution_metadata](execution_metadata.md) | 4 |  | table |
 | [folder](folder.md) | 7 |  | table |
@@ -1282,6 +1283,13 @@ erDiagram
   INTEGER runtimeMs
   varchar_32_ source
   INTEGER timeSavedMin
+}
+"execution_limit_instance_usage" {
+  INTEGER blockedCount
+  date day PK
+  varchar_16_ entityType PK
+  INTEGER startedCount
+  datetime_3_ updatedAt
 }
 "execution_limit_usage" {
   INTEGER blockedCount

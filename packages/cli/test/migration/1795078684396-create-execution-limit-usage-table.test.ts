@@ -52,6 +52,7 @@ describe('CreateExecutionLimitUsageTable Migration', () => {
 
 	afterEach(async () => {
 		await context.runQuery(`DELETE FROM ${usage()}`).catch(() => {});
+		await context.runQuery(`DELETE FROM ${instanceUsage()}`).catch(() => {});
 		await context.queryRunner.release();
 	});
 
@@ -60,25 +61,50 @@ describe('CreateExecutionLimitUsageTable Migration', () => {
 	});
 
 	const usage = () => context.escape.tableName('execution_limit_usage');
+	const instanceUsage = () => context.escape.tableName('execution_limit_instance_usage');
 	const column = (name: string) => context.escape.columnName(name);
 	const checkFailure = (check: string) => new RegExp(`CHK_\\w*execution_limit_usage_${check}`);
+	const instanceCheckFailure = (check: string) =>
+		new RegExp(`CHK_\\w*execution_limit_instance_usage_${check}`);
 
-	const insertSql = (row: Record<string, unknown>) => {
+	const insertSql = (row: Record<string, unknown>, table = usage()) => {
 		const keys = Object.keys(row);
-		return `INSERT INTO ${usage()} AS u (${keys.map(column).join(', ')}) VALUES (${keys.map((key) => `:${key}`).join(', ')})`;
+		return `INSERT INTO ${table} AS u (${keys.map(column).join(', ')}) VALUES (${keys.map((key) => `:${key}`).join(', ')})`;
 	};
 
 	async function insertRow(row: Record<string, unknown>) {
 		await context.runQuery(insertSql(row), row);
 	}
 
+	async function insertInstanceRow(row: Record<string, unknown>) {
+		await context.runQuery(insertSql(row, instanceUsage()), row);
+	}
+
 	// The shape of the statement that the fold step runs.
-	async function addCounts(row: Required<UsageRow>) {
+	async function addCounts(row: Record<string, unknown>, table: string, key: string[]) {
 		const add = (name: string) => `${column(name)} = u.${column(name)} + excluded.${column(name)}`;
 		await context.runQuery(
-			`${insertSql(row)} ON CONFLICT (${['projectId', 'day', 'entityType'].map(column).join(', ')}) DO UPDATE SET ${add('startedCount')}, ${add('blockedCount')}, ${column('updatedAt')} = excluded.${column('updatedAt')}`,
+			`${insertSql(row, table)} ON CONFLICT (${key.map(column).join(', ')}) DO UPDATE SET ${add('startedCount')}, ${add('blockedCount')}, ${column('updatedAt')} = excluded.${column('updatedAt')}`,
 			row,
 		);
+	}
+
+	const instanceRow = (overrides: Record<string, unknown> = {}) => {
+		const { projectId: _, ...row } = usageRow();
+		return { ...row, ...overrides };
+	};
+
+	async function selectInstanceRows() {
+		const rows = await context.runQuery<
+			Array<{ day: string; entityType: string; startedCount: number; blockedCount: number }>
+		>(
+			`SELECT CAST(${column('day')} AS TEXT) AS "day", ${column('entityType')} AS "entityType", ${column('startedCount')} AS "startedCount", ${column('blockedCount')} AS "blockedCount" FROM ${instanceUsage()} ORDER BY ${column('day')}, ${column('entityType')}`,
+		);
+		return rows.map((row) => ({
+			...row,
+			startedCount: Number(row.startedCount),
+			blockedCount: Number(row.blockedCount),
+		}));
 	}
 
 	async function selectRows() {
@@ -129,8 +155,8 @@ describe('CreateExecutionLimitUsageTable Migration', () => {
 		]);
 	});
 
-	it('accepts an instance row that matches no project', async () => {
-		await insertRow(usageRow({ projectId: 'instance' }));
+	it('accepts a row that matches no project', async () => {
+		await insertRow(usageRow({ projectId: 'deleted-project' }));
 
 		expect(await selectRows()).toHaveLength(1);
 	});
@@ -159,8 +185,13 @@ describe('CreateExecutionLimitUsageTable Migration', () => {
 
 	it('adds to the counts of an existing row on conflict', async () => {
 		const counts = { startedCount: 5, blockedCount: 1 };
-		await addCounts({ ...usageRow(), ...counts, updatedAt: '2026-11-19 10:00:00.000' });
-		await addCounts({ ...usageRow(), ...counts, updatedAt: '2026-11-19 10:00:05.000' });
+		const key = ['projectId', 'day', 'entityType'];
+		await addCounts({ ...usageRow(), ...counts }, usage(), key);
+		await addCounts(
+			{ ...usageRow(), ...counts, updatedAt: '2026-11-19 10:00:05.000' },
+			usage(),
+			key,
+		);
 
 		expect(await selectRows()).toEqual([
 			expect.objectContaining({ startedCount: 10, blockedCount: 2 }),
@@ -182,32 +213,102 @@ describe('CreateExecutionLimitUsageTable Migration', () => {
 		expect(Number(total)).toBe(7);
 	});
 
-	it('sets the storage options on Postgres', async () => {
-		if (!context.isPostgres) return;
+	describe('instance table', () => {
+		it('stores one row for each day and entity type', async () => {
+			await insertInstanceRow(instanceRow());
+			await insertInstanceRow(instanceRow({ entityType: 'agent' }));
+			await insertInstanceRow(instanceRow({ day: '2026-11-20' }));
 
-		const [{ reloptions }] = await context.runQuery<Array<{ reloptions: string[] }>>(
-			`SELECT reloptions FROM pg_class WHERE oid = to_regclass('${usage()}')`,
-		);
+			expect(await selectInstanceRows()).toHaveLength(3);
+		});
 
-		expect(reloptions).toEqual(
-			expect.arrayContaining([
-				'fillfactor=90',
-				'autovacuum_vacuum_scale_factor=0.0',
-				'autovacuum_vacuum_threshold=1000',
-			]),
-		);
+		it('rejects a second row with the same day and entity type', async () => {
+			await insertInstanceRow(instanceRow());
+
+			await expect(insertInstanceRow(instanceRow())).rejects.toThrow();
+		});
+
+		it('stores the day as a date and defaults both counts to 0', async () => {
+			await insertInstanceRow(instanceRow());
+
+			expect(await selectInstanceRows()).toEqual([
+				{ day: '2026-11-19', entityType: 'workflow', startedCount: 0, blockedCount: 0 },
+			]);
+		});
+
+		it('rejects an unknown entity type', async () => {
+			await expect(insertInstanceRow(instanceRow({ entityType: 'credential' }))).rejects.toThrow(
+				instanceCheckFailure('entityType'),
+			);
+		});
+
+		it.each(['startedCount', 'blockedCount'])('rejects a negative %s', async (key) => {
+			await expect(insertInstanceRow(instanceRow({ [key]: -1 }))).rejects.toThrow(
+				instanceCheckFailure('counts_non_negative'),
+			);
+		});
+
+		it('rejects a row without updatedAt', async () => {
+			await expect(insertInstanceRow(instanceRow({ updatedAt: null }))).rejects.toThrow();
+		});
+
+		it('adds to the counts of an existing row on conflict', async () => {
+			const row = instanceRow({ startedCount: 5, blockedCount: 1 });
+			await addCounts(row, instanceUsage(), ['day', 'entityType']);
+			await addCounts(row, instanceUsage(), ['day', 'entityType']);
+
+			expect(await selectInstanceRows()).toEqual([
+				expect.objectContaining({ startedCount: 10, blockedCount: 2 }),
+			]);
+		});
+
+		it('is not part of a sum of the project rows', async () => {
+			await insertRow(usageRow({ startedCount: 4 }));
+			await insertInstanceRow(instanceRow({ startedCount: 4 }));
+
+			const [{ total }] = await context.runQuery<Array<{ total: string | number }>>(
+				`SELECT SUM(${column('startedCount')}) AS "total" FROM ${usage()}`,
+			);
+
+			expect(Number(total)).toBe(4);
+		});
 	});
+
+	it.each([['execution_limit_usage'], ['execution_limit_instance_usage']])(
+		'sets the storage options of %s on Postgres',
+		async (table) => {
+			if (!context.isPostgres) return;
+
+			const [{ reloptions }] = await context.runQuery<Array<{ reloptions: string[] }>>(
+				`SELECT reloptions FROM pg_class WHERE oid = to_regclass('${context.escape.tableName(table)}')`,
+			);
+
+			expect(reloptions).toEqual(
+				expect.arrayContaining([
+					'fillfactor=90',
+					'autovacuum_vacuum_scale_factor=0.0',
+					'autovacuum_vacuum_threshold=1000',
+				]),
+			);
+		},
+	);
 
 	// Runs last: it reverts the migration.
 	it('down warns with the number of rows that it drops', async () => {
 		await insertRow(usageRow());
 		await insertRow(usageRow({ entityType: 'agent' }));
+		await insertInstanceRow(instanceRow());
 		await context.queryRunner.release();
 		const warn = vi.spyOn(Container.get(Logger), 'warn');
 
 		await undoLastSingleMigration();
 
-		expect(warn).toHaveBeenCalledWith(`[${MIGRATION_NAME}] Dropping 2 execution limit usage rows`);
+		expect(warn).toHaveBeenCalledWith(
+			`[${MIGRATION_NAME}] Dropping 2 rows of execution_limit_usage`,
+		);
+		expect(warn).toHaveBeenCalledWith(
+			`[${MIGRATION_NAME}] Dropping 1 rows of execution_limit_instance_usage`,
+		);
 		warn.mockRestore();
 		await runSingleMigration(MIGRATION_NAME);
 		context = createTestMigrationContext(dataSource);
@@ -219,7 +320,7 @@ describe('CreateExecutionLimitUsageTable Migration', () => {
 
 		await undoLastSingleMigration();
 
-		expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('usage rows'));
+		expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('Dropping'));
 		warn.mockRestore();
 		await runSingleMigration(MIGRATION_NAME);
 		context = createTestMigrationContext(dataSource);
@@ -232,12 +333,15 @@ describe('CreateExecutionLimitUsageTable Migration', () => {
 
 		context = createTestMigrationContext(dataSource);
 		await expect(context.runQuery(`SELECT 1 FROM ${usage()}`)).rejects.toThrow();
+		await expect(context.runQuery(`SELECT 1 FROM ${instanceUsage()}`)).rejects.toThrow();
 		await context.queryRunner.release();
 
 		await runSingleMigration(MIGRATION_NAME);
 
 		context = createTestMigrationContext(dataSource);
 		await insertRow(usageRow());
+		await insertInstanceRow(instanceRow());
 		expect(await selectRows()).toHaveLength(1);
+		expect(await selectInstanceRows()).toHaveLength(1);
 	});
 });

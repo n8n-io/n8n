@@ -7,7 +7,7 @@
 | blockedCount | integer | 0 | false |  |  | Runs that stopped before their first node. Usage is startedCount minus blockedCount |
 | day | date |  | false |  |  | UTC day of the counted ledger row |
 | entityType | varchar(16) |  | false |  |  | workflow: workflow runs; agent: agent messages |
-| projectId | varchar(36) |  | false |  |  | Project at the time of the run, or instance for the instance total. No foreign key: rows outlive the project |
+| projectId | varchar(36) |  | false |  |  | Project at the time of the run. No foreign key: rows outlive the project |
 | startedCount | integer | 0 | false |  |  | Runs that started on this day |
 | updatedAt | timestamp(3) with time zone |  | false |  |  | Time of the last fold that changed the row |
 

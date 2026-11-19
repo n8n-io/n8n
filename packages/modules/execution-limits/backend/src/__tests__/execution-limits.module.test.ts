@@ -3,6 +3,7 @@ import { LICENSE_FEATURES } from '@n8n/constants';
 import { ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
+import { ExecutionLimitInstanceUsage } from '../execution-limit-instance-usage.entity';
 import { ExecutionLimitUsage } from '../execution-limit-usage.entity';
 import { ExecutionLimitsModule } from '../execution-limits.module';
 import { ExecutionLimitsSnapshot } from '../execution-limits-snapshot';
@@ -37,9 +38,13 @@ describe('ExecutionLimitsModule', () => {
 		expect(onInitDone).toHaveBeenCalledTimes(1);
 	});
 
-	it('owns the project limit entity and the usage entity', async () => {
+	it('owns the project limit entity and the two usage entities', async () => {
 		const module = new ExecutionLimitsModule();
 
-		expect(await module.entities()).toEqual([ProjectExecutionLimit, ExecutionLimitUsage]);
+		expect(await module.entities()).toEqual([
+			ProjectExecutionLimit,
+			ExecutionLimitUsage,
+			ExecutionLimitInstanceUsage,
+		]);
 	});
 });
