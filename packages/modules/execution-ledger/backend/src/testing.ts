@@ -7,7 +7,7 @@ import { ExecutionLedgerRepository } from './database/repositories/execution-led
 export async function claimAllLedgerRows(): Promise<ExecutionLedgerRow[]> {
 	const rows: ExecutionLedgerRow[] = [];
 	for (;;) {
-		const batch = await Container.get(TransactionRunner).run(
+		const { rows: batch } = await Container.get(TransactionRunner).run(
 			{},
 			async (ctx) => await Container.get(ExecutionLedgerRepository).claimBatch(10_000, ctx),
 		);

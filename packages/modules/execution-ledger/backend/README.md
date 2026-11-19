@@ -1,6 +1,7 @@
 # @n8n/backend-module-execution-ledger
 
-Owns the `execution_ledger` table: one row when a run starts and one when it ends. Fold steps
+Owns the `execution_ledger` table: one row when a run starts and one when it ends. It also owns
+`execution_ledger_parked`, which holds the rows that a fold step could not fold. Fold steps
 from other modules read the rows through the contract in `@n8n/db`. The module is opt-in: enable
 it with `N8N_ENABLED_MODULES=execution-ledger`.
 
@@ -10,9 +11,27 @@ nothing. The writer records workflow runs only (`entityType = workflow`). Agent 
 execution row and get their own hook in a later ticket.
 
 Every 5 seconds, the `execution-ledger-fold` system task claims a batch of rows and runs every
-registered fold step on it, in one transaction with a savepoint for each step. When a step fails,
-the whole batch rolls back and stays in the ledger. When no step is registered, the fold does not
-claim rows.
+registered fold step on it, in one transaction with a savepoint for each step. When no step is
+registered, the fold does not claim rows.
+
+## When a fold step fails
+
+- Failures 1 and 2 of a step on the same batch: the whole batch rolls back and stays in the
+  ledger. The next run tries again.
+- Failure 3: the fold copies the batch to `execution_ledger_parked` with the name of the step,
+  and commits the other steps. The parked step does not run its after-commit work.
+- If two steps fail on the same batch, the batch is parked once for each step.
+- A row with a value that this version does not know (for example, a new `outcome` from a newer
+  main during a rolling upgrade) is parked with the step name `_unreadable`. The other rows of
+  the batch are folded.
+- The park is in the fold transaction. If the transaction is lost, nothing is parked and the
+  rows stay in the ledger.
+
+The failure count is in the shared cache, one entry for each step, so each main sees it. If the
+cache is not available, the fold retries the batch and does not park it.
+
+Parked rows stay in the table until a replay gives them to the step again. Do not delete them
+by hand: no step has counted them.
 
 The n8n runtime loads the module through the lazy import in
 `packages/cli/src/modules/modules.manifest.ts`.
@@ -49,9 +68,9 @@ is cached for 60 seconds and shared by all mains, so it can lag behind new rows.
 
 Any main can run the fold, so a main that stopped folding keeps its old fold metrics. Aggregate across mains: `max()` for the timestamp, `sum()` for counters.
 
-After 3 failures in a row on the same batch, the fold logs one error in the
-`execution-ledger` scope with `step`, `attempt` and `firstLedgerId`. Errors that go to Sentry
-have a `foldStep` tag.
+When the fold parks a batch, it logs one error in the `execution-ledger` scope with `step`,
+`attempt`, `firstLedgerId` and `rows`, and reports the step error to Sentry. Errors that go to
+Sentry have a `foldStep` tag.
 
 Suggested alert rules:
 
@@ -60,7 +79,7 @@ Suggested alert rules:
 time() - max(n8n_execution_ledger_fold_last_success_timestamp_seconds) > 120
 # Same signal from the database. It still works after a restart or when another main takes over.
 max(n8n_execution_ledger_backlog_oldest_row_age_seconds) > 300
-# A step keeps failing. The fold retries every 5 seconds, so 3 failures take about 15 seconds.
+# A step keeps failing. The fold retries every 5 seconds, so it parks the batch after about 15 seconds.
 sum by (step) (increase(n8n_execution_ledger_fold_step_failures_total[1m])) >= 3
 ```
 
