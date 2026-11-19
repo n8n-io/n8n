@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_67ceb9173fafe7::t_09aaeb184f5f6f 512-529
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e02d74ed19f3431dc55856f72a7b14c399fc250f",
+  "prompts": {},
+  "sessions": {
+    "s_67ceb9173fafe7": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f434-61c8-7540-bfea-4d6f94c2166b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
