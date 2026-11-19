@@ -2083,6 +2083,7 @@ describe('TelemetryEventRelay', () => {
 				packageNodeNames: ['CustomNode1', 'CustomNode2'],
 				packageAuthor: 'John Smith',
 				packageAuthorEmail: 'john@example.com',
+				source: 'mcp',
 			};
 
 			eventService.emit('community-package-installed', event);
@@ -2097,6 +2098,7 @@ describe('TelemetryEventRelay', () => {
 				package_author: 'John Smith',
 				package_author_email: 'john@example.com',
 				failure_reason: undefined,
+				source: 'mcp',
 			});
 		});
 
@@ -2686,6 +2688,32 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('Sso user instance role update', {
 				user_id: 'user123',
 				role: 'global:admin',
+			});
+		});
+
+		it('should track on `sso-settings-updated` event', () => {
+			const event: RelayEventMap['sso-settings-updated'] = {
+				user: {
+					id: 'user123',
+					email: 'owner@example.com',
+					firstName: 'Olga',
+					lastName: 'Owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				protocol: 'saml',
+				loginEnabled: true,
+				fieldsChanged: ['metadata', 'loginEnabled'],
+				publicApi: false,
+			};
+
+			eventService.emit('sso-settings-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.SSO.USER_UPDATED_SSO_SETTINGS, {
+				user_id: 'user123',
+				authentication_method: 'saml',
+				is_active: true,
+				fields_changed: ['metadata', 'loginEnabled'],
+				public_api: false,
 			});
 		});
 	});
@@ -4640,6 +4668,39 @@ describe('TelemetryEventRelay', () => {
 			expect(traits?.n8n_deployment_artifact).toBeUndefined();
 			expect(info?.n8n_deployment_artifact).toBeUndefined();
 		});
+
+		it('should send the license consumer ID on `server-started` when the instance has a license', async () => {
+			license.isEphemeral.mockReturnValueOnce(false);
+			license.getConsumerId.mockReturnValueOnce('test-consumer-id');
+
+			eventService.emit('server-started');
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
+				expect.objectContaining({ license_consumer_id: 'test-consumer-id' }),
+			);
+		});
+
+		it.each([
+			{ name: 'no license', isEphemeral: false, consumerId: 'unknown' },
+			{ name: 'an ephemeral license', isEphemeral: true, consumerId: 'shared-placeholder-id' },
+		])(
+			'should leave out the license consumer ID on `server-started` with $name',
+			async ({ isEphemeral, consumerId }) => {
+				license.isEphemeral.mockReturnValueOnce(isEphemeral);
+				license.getConsumerId.mockReturnValue(consumerId);
+
+				eventService.emit('server-started');
+				await flushPromises();
+
+				const startupEvent = telemetry.track.mock.calls.find(
+					([event]) => (event as unknown) === TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
+				);
+				expect(startupEvent?.[1]).toHaveProperty('license_consumer_id', undefined);
+				license.getConsumerId.mockReset();
+			},
+		);
 
 		it('should skip the PostHog group update on `server-started` before owner setup', async () => {
 			workflowRepository.findOne.mockResolvedValue(null);

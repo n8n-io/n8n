@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 
+import type { SerializableAgentState } from '@n8n/agents';
 import type { AgentSseEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { TransactionRunner, User } from '@n8n/db';
@@ -37,6 +38,7 @@ import type {
 import type { AgentExecutionThreadRepository } from '../../repositories/agent-execution-thread.repository';
 import type { AgentExecutionStreamChunk } from '../../types/agent-steering';
 import type { AgentTurnFinalizeOutcome, FormattedTurnError } from '../../types/agent-turn-outcome';
+import { systemChatMemoryResourceId } from '../../utils/agent-memory-scope';
 import { executionToMessagesDto } from '../../utils/execution-to-message-mapper';
 import { SystemAgentExecutionService } from '../system-agent-execution.service';
 import { SystemAgentRegistry } from '../system-agent-registry';
@@ -2239,6 +2241,73 @@ describe('SystemAgentExecutionService', () => {
 					projectId: 'project-2',
 				}),
 			);
+		});
+	});
+
+	describe('user stops', () => {
+		const stopScope = { agentId: AGENT_ID, threadId: 'thread-1', userId: 'user-1' };
+
+		it('reports a stop to the provider', async () => {
+			const { service, provider } = setup();
+			const onUserStoppedTurn = vi.fn();
+			Object.assign(provider, { onUserStoppedTurn });
+
+			await service.reportUserStoppedTurn(stopScope);
+
+			expect(onUserStoppedTurn).toHaveBeenCalledWith(stopScope);
+		});
+
+		it('logs a failing stop callback', async () => {
+			const { service, provider, logger } = setup();
+			Object.assign(provider, {
+				onUserStoppedTurn: vi.fn(() => {
+					throw new Error('telemetry down');
+				}),
+			});
+
+			await expect(service.reportUserStoppedTurn(stopScope)).resolves.toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'System agent stop callback failed',
+				expect.objectContaining({ threadId: 'thread-1', error: 'telemetry down' }),
+			);
+		});
+
+		it('ignores a provider without a stop callback', async () => {
+			const { service } = setup();
+
+			await expect(service.reportUserStoppedTurn(stopScope)).resolves.toBeUndefined();
+		});
+
+		it('reads the thread of a run that the user owns', async () => {
+			const { service, checkpointStorage } = setup();
+			checkpointStorage.getStatus.mockResolvedValue({
+				status: 'active',
+				checkpoint: {
+					persistence: { threadId: 'thread-1', resourceId: systemChatMemoryResourceId('user-1') },
+				} as SerializableAgentState,
+			});
+
+			await expect(service.findThreadIdOfRun(AGENT_ID, user, 'run-1')).resolves.toBe('thread-1');
+			expect(checkpointStorage.getStatus).toHaveBeenCalledWith('run-1', AGENT_ID);
+		});
+
+		it('does not read the thread of a run of another user', async () => {
+			const { service, checkpointStorage } = setup();
+			checkpointStorage.getStatus.mockResolvedValue({
+				status: 'active',
+				checkpoint: {
+					persistence: { threadId: 'thread-1', resourceId: systemChatMemoryResourceId('user-2') },
+				} as SerializableAgentState,
+			});
+
+			await expect(service.findThreadIdOfRun(AGENT_ID, user, 'run-1')).resolves.toBeUndefined();
+		});
+
+		it('returns no thread for an unknown run', async () => {
+			const { service, checkpointStorage } = setup();
+			checkpointStorage.getStatus.mockResolvedValue({ status: 'not-found' });
+
+			await expect(service.findThreadIdOfRun(AGENT_ID, user, 'run-1')).resolves.toBeUndefined();
 		});
 	});
 

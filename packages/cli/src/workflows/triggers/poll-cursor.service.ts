@@ -1,4 +1,3 @@
-import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { SchedulerConfig, WorkflowsConfig } from '@n8n/config';
 import type { CreateExecutionPayload, PollerCursor, PollLeaseFence } from '@n8n/db';
@@ -19,20 +18,13 @@ const toPollCursor = (cursor: PollerCursor): PollCursor => cursor as PollCursor;
 @Service()
 export class PollCursorService {
 	constructor(
-		private readonly logger: Logger,
 		private readonly pollerStateRepository: PollerStateRepository,
 		private readonly transactionRunner: TransactionRunner,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly schedulerConfig: SchedulerConfig,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly eventService: EventService,
-	) {
-		if (this.schedulerConfig.durableCursorsEnabled && !this.schedulerChainEnabled) {
-			this.logger.warn(
-				'N8N_POLLER_DURABLE_CURSORS_ENABLED requires N8N_SCHEDULER_ENABLED, N8N_SCHEDULER_POLL_TRIGGERS_ENABLED and N8N_USE_WORKFLOW_PUBLICATION_SERVICE; durable poll cursors stay disabled.',
-			);
-		}
-	}
+	) {}
 
 	/**
 	 * Cursors additionally require the publication service because cursor rows

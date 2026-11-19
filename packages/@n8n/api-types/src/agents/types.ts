@@ -681,6 +681,11 @@ export interface AgentChatMessagesResponse {
 	 * An omitted value means that the endpoint does not report execution state.
 	 */
 	activeExecutionId?: string | null;
+	/**
+	 * Cursor of the next older page. `null` means that no older turns exist.
+	 * An omitted value means that the response holds the whole thread.
+	 */
+	nextCursor?: string | null;
 }
 
 /**

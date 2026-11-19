@@ -1,4 +1,4 @@
-import { EventService } from '@n8n/backend-services';
+import { EventService, WorkflowVersionedSettingsService } from '@n8n/backend-services';
 import type { WorkflowHistory } from '@n8n/db';
 import { WorkflowRepository, WorkflowHistoryRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
@@ -237,6 +237,8 @@ function mergeHistoriesIntoWorkflows(
 	historyMap: Map<string, WorkflowHistory>,
 	flags: z.infer<typeof flagsSchema>,
 ) {
+	const versionedSettingsService = Container.get(WorkflowVersionedSettingsService);
+
 	return workflows
 		.map((workflow) => {
 			const versionId = versionIdByWorkflow.get(workflow.id);
@@ -247,8 +249,15 @@ function mergeHistoriesIntoWorkflows(
 			if (!history && (flags.published || flags.version)) return null;
 
 			if (history) {
+				// A selected version runs on its own version-scoped settings, such as the engine.
+				const settings =
+					flags.published || flags.version
+						? versionedSettingsService.forVersionRun(workflow.settings, history)
+						: workflow.settings;
+
 				return {
 					...workflow,
+					settings,
 					nodes: history.nodes,
 					connections: history.connections,
 					nodeGroups: history.nodeGroups,

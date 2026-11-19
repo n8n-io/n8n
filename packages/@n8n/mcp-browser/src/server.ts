@@ -173,7 +173,9 @@ export async function startHttpTransport(opts: {
 		// still adds value when bound to loopback, so keep it enabled there.
 		const transport = new StreamableHTTPServerTransport({
 			sessionIdGenerator: () => randomUUID(),
+			// oxlint-disable-next-line typescript/no-deprecated -- Preserve host validation. TODO: Use external middleware.
 			enableDnsRebindingProtection: allowedHosts !== undefined,
+			// oxlint-disable-next-line typescript/no-deprecated -- Preserve host validation. TODO: Use external middleware.
 			allowedHosts,
 			onsessioninitialized: (id) => {
 				// A sweep can fire while this request is still in flight and evict the transport

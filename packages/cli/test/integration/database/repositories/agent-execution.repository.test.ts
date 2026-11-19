@@ -1,3 +1,4 @@
+import type { FolderRepository } from '@n8n/db';
 import { AgentProjectDeletionRepository } from '@/modules/agents/repositories/agent-project-deletion.repository';
 import type {
 	AgentSessionOrigin,
@@ -34,6 +35,7 @@ import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import type { AgentUsageTelemetryService } from '@/modules/agents/agent-usage-telemetry.service';
+import type { AgentExecutionMetrics } from '@/modules/agents/agent-execution-metrics';
 import type { Publisher } from '@n8n/backend-services';
 import type { ExternalHooks } from '@/external-hooks';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
@@ -57,7 +59,8 @@ import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
 } from '@/modules/agents/agent-sandbox-principal';
-import type { IntegrationMessageContextService } from '@/modules/agents/integrations/integration-message-context.service';
+import { IntegrationMessageContextService } from '@/modules/agents/integrations/integration-message-context.service';
+import { AgentResourceRepository } from '@/modules/agents/repositories/agent-resource.repository';
 import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
 import type { AgentChatExecutionService } from '@/modules/agents/agent-chat-execution.service';
 import { buildInboundUserMessage } from '@/modules/agents/utils/inbound-attachments';
@@ -232,6 +235,12 @@ describe('AgentExecutionRepository', () => {
 			messageRepository,
 			systemAgents,
 			Container.get(AgentProjectDeletionRepository),
+			new IntegrationMessageContextService(
+				new AgentThreadRepository(connection ?? repository.manager.connection, txRunner),
+				new AgentResourceRepository(connection ?? repository.manager.connection),
+				mockLogger(),
+			),
+			mock<AgentExecutionMetrics>(),
 		);
 		const queueUpdates = mock<AgentExecutionUpdateBroadcaster>();
 		const settingsService = new AgentsSettingsService(
@@ -267,6 +276,7 @@ describe('AgentExecutionRepository', () => {
 						connection,
 						txRunner,
 						Container.get(GlobalConfig),
+						mock<FolderRepository>(),
 						Container.get(ServiceAccountRepository),
 					)
 				: agentRepo,

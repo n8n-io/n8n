@@ -46,7 +46,8 @@ export interface ILockService {
 	 *   (Redis backend only — see below). Honor it for long critical sections; abort is
 	 *   cooperative, so ignoring the signal reopens the concurrent-holder window.
 	 * @param options.waitTimeoutMs Max time to wait to acquire before throwing
-	 *   `OperationalError`. Omit to wait indefinitely.
+	 *   `LockAcquisitionTimeoutError`. Omit to wait indefinitely. Pass `0` to make one
+	 *   attempt and fail at once if the lease is held.
 	 * @param options.leaseTtlMs Lease backstop for the **Redis backend only**. The lease
 	 *   auto-expires after this window if not renewed (the watchdog renews every
 	 *   `leaseTtlMs / 3`), so a crashed holder can't block the key forever. Must exceed

@@ -1552,7 +1552,7 @@ describe('EnterpriseWorkflowService', () => {
 				.mockResolvedValue(undefined);
 		});
 
-		it('keeps Agent folders out of workflow transfers', async () => {
+		it('rejects a transfer when the source folder is not found', async () => {
 			folderRepository.findOneOrFailFolderInProject.mockRejectedValue(
 				new Error('Folder not found'),
 			);

@@ -1,8 +1,10 @@
 import type {
 	MoveSkillSourceDto,
+	DeleteSkillSourceQueryDto,
 	AcceptSkillSourceUpdatesDto,
 	ReviewSkillSourceUpdateQueryDto,
 	SkillListCollapsedSource,
+	SkillListSourceRange,
 	SkillSourceListItem,
 	ConnectSkillSourceDto,
 	CreateSkillDto,
@@ -35,6 +37,7 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 	const page = ref<number>();
 	/** The folded sources of the current page, with grouped lists. */
 	const collapsedSources = ref<SkillListCollapsedSource[]>([]);
+	const sourceRanges = ref<SkillListSourceRange[]>([]);
 	const loading = ref(false);
 	/** Current names for skill artifact tabs, including renames made in the editor. */
 	const skillNames = ref(new Map<string, string>());
@@ -53,6 +56,7 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 				pageCount.value = response.pageCount;
 				page.value = response.page;
 				collapsedSources.value = response.collapsedSources ?? [];
+				sourceRanges.value = response.sourceRanges ?? [];
 			}
 			return response;
 		} finally {
@@ -160,9 +164,9 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		return response;
 	}
 
-	/** Deletes a source and its synced skills. The caller reloads the lists. */
-	async function deleteSource(sourceId: string): Promise<void> {
-		await api.deleteSkillSource(rootStore.restApiContext, sourceId);
+	/** Removes a source and optionally keeps its skills. The caller reloads the lists. */
+	async function deleteSource(sourceId: string, query?: DeleteSkillSourceQueryDto): Promise<void> {
+		await api.deleteSkillSource(rootStore.restApiContext, sourceId, query);
 	}
 
 	async function fetchReplacementCredentials(source: SkillSourceListItem) {
@@ -229,6 +233,7 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		stopSyncingSkill,
 		sources,
 		collapsedSources,
+		sourceRanges,
 		fetchSources,
 		checkSource,
 		fetchSourceUpdates,

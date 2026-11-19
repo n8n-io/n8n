@@ -294,6 +294,15 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 	readonly disableStreaming = true;
 
 	/**
+	 * Inbound messages use the digits-only "wa_id". Strip "+", spaces and
+	 * dashes so "+447397567320" and "447397567320" share one thread.
+	 */
+	normalizeUserId(userId: string): string {
+		const digits = userId.replace(/\D/g, '');
+		return digits || userId;
+	}
+
+	/**
 	 * WhatsApp supports neither editing nor deleting a sent message (Cloud API
 	 * limitation), so there is nothing useful to delete before resuming — the
 	 * action card is simply left as-is in the conversation.
@@ -381,14 +390,15 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		);
 		// Sent straight through the adapter, not `postMessage`: a template is the
 		// one message type the customer service window allows.
-		const threadId = await adapter.openDM(input.userId);
+		const userId = this.normalizeUserId(input.userId);
+		const threadId = await adapter.openDM(userId);
 		const sent = await adapter.sendTemplate(threadId, message);
 		return {
 			ok: true,
 			messageContext: {
 				integrationConnectionId: params.descriptor.integrationConnectionId,
 				platform: params.descriptor.integration.type,
-				target: { type: 'dm', userId: input.userId, threadId },
+				target: { type: 'dm', userId, threadId },
 				messageId: sent.id,
 				updatedAt: new Date().toISOString(),
 			},
