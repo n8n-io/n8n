@@ -1,0 +1,46 @@
+packages/@n8n/engine/src/execution/__tests__/settlement.test.ts
+  h_8fb27e0cdf6d1e 69-74,86-91,108,125,145,153,161,186,194,214,237,254-351,531-536,545-550,559-564,574,596-601,640,659,669,678-683
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  h_8fb27e0cdf6d1e 629-739
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  h_8fb27e0cdf6d1e 296-380
+packages/@n8n/engine/src/execution/settlement.ts
+  h_8fb27e0cdf6d1e 50-55,58-66,74-75,93,112-119,181-243
+packages/@n8n/engine/src/execution/step-settled-handler.ts
+  h_8fb27e0cdf6d1e 24,144,151-153,159-160,176-180,183,187-256,259
+packages/@n8n/engine/src/graph/__tests__/validate-executable-graph.test.ts
+  h_8fb27e0cdf6d1e 142-154
+packages/@n8n/engine/src/graph/validate-executable-graph.ts
+  h_8fb27e0cdf6d1e 57-60,62-63,66
+packages/@n8n/engine/src/graph/workflow-graph.ts
+  h_8fb27e0cdf6d1e 7
+packages/@n8n/engine/src/server/start-execution.schema.ts
+  h_8fb27e0cdf6d1e 8
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-workflow-converter.test.ts
+  h_8fb27e0cdf6d1e 379-402
+packages/@n8n/node-engine-compatibility/src/constants.ts
+  h_8fb27e0cdf6d1e 6-9
+packages/@n8n/node-engine-compatibility/src/v1-adapters.ts
+  h_8fb27e0cdf6d1e 44-45,84-87,220-230
+packages/@n8n/node-engine-compatibility/src/v1-workflow-converter.ts
+  h_8fb27e0cdf6d1e 10,151-154
+packages/nodes-base/nodes/Race/Race.node.json
+  h_8fb27e0cdf6d1e 1-17
+packages/nodes-base/nodes/Race/Race.node.test.ts
+  h_8fb27e0cdf6d1e 1-15
+packages/nodes-base/nodes/Race/Race.node.ts
+  h_8fb27e0cdf6d1e 1-43
+packages/nodes-base/package.json
+  h_8fb27e0cdf6d1e 784
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c4fb6562ef43c30c047a083c684a596e2777f4cb",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
