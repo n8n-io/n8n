@@ -4,11 +4,10 @@
  * DHI and distroless sign their images with cosign. The Rekor entry of the
  * signature gives the publication time. Rekor signs that time, so the registry
  * cannot change it. A digest signed before its push would pass the 24-hour
- * gate early. We accept this limit: on the last 25 distroless digests the
- * signature came 1 to 10 seconds after the GCR upload, and on DHI 20 seconds
- * after the image creation. Docker Official Images have no signature. For them, the
- * SLSA provenance must name the docker-library builder and source, and Docker
- * Hub gives the push time of the tag.
+ * gate early. We accept this: the signature follows the push by seconds.
+ * Docker Official Images have no signature. For them, the SLSA provenance
+ * must name the docker-library builder and source, and Docker Hub gives the
+ * push time of the tag.
  */
 
 import { execFileSync } from 'node:child_process';
