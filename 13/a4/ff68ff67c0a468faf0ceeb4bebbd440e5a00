@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_0d08b1699015c9::t_837a34c567ccfb 144-146
+  s_0d08b1699015c9::t_92ec542557602e 132
+  s_0d08b1699015c9::t_bfe011e4f2a854 141-143
+packages/@n8n/api-types/src/agents/agent-integration.schema.ts
+  s_0d08b1699015c9::t_724245f1c1a2f0 59-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "13a4ff68ff67c0a468faf0ceeb4bebbd440e5a00",
+  "prompts": {},
+  "sessions": {
+    "s_0d08b1699015c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "02b547dd-b473-45e9-a57b-ead7d2d067a3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

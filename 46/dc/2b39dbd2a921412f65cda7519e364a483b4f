@@ -1,0 +1,21 @@
+packages/@n8n/expression-runtime/src/bridge/guest-transfer.ts
+  s_c91086089dc9e8::t_7f5131a9ee808d 75-83,85,88-91,93-95,100-105,193-194,203-205,224-226
+packages/workflow/test/expression-unclonable-item-engine-parity.test.ts
+  s_c91086089dc9e8::t_7f5131a9ee808d 3-4,85-89,100-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "46dc2b39dbd2a921412f65cda7519e364a483b4f",
+  "prompts": {},
+  "sessions": {
+    "s_c91086089dc9e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd0b98d4-c930-4691-a229-9c48922affde",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

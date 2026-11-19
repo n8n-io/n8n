@@ -1,0 +1,98 @@
+packages/modules/promotions/frontend/src/components/preview/PromotionChangeCards.vue
+  s_3dd47ea0104342::t_5f2d2e930c8f72 3,33-37,39,73-83,100-130,140-150
+  s_3dd47ea0104342::t_b1f3ee6f7a97dc 151
+packages/modules/promotions/frontend/src/promotions.api.ts
+  s_3dd47ea0104342::t_a576f8598a38d6 74
+  s_3dd47ea0104342::t_86c9859e639797 12,62,64-67,70-71,82-83,88,90-110,116,122,141-145
+packages/modules/promotions/frontend/src/composables/usePromotionPreviewLabels.ts
+  s_3dd47ea0104342::t_440cfda5fc2544 45-48
+  s_3dd47ea0104342::t_5f2d2e930c8f72 26-44,49-52,57-59,94-96,141
+packages/modules/promotions/frontend/src/components/dependencies/PromotionGapRow.vue
+  s_3dd47ea0104342::t_a4e654189dde55 49,66-71,122-131
+  s_3dd47ea0104342::t_ac0b36207ec5a1 132
+packages/modules/promotions/frontend/src/__fixtures__/dependencyReport.fixtures.ts
+  s_3dd47ea0104342::t_a4e654189dde55 697
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3dd47ea0104342::t_ed71b3fef703ff 11270-11275
+  s_3dd47ea0104342::t_1d3d95c9b5b1a1 11019,11059-11060,11110-11113,11185,11194,11227,11229,11244-11245,11256,11262-11269,11276-11277,11372-11378,11414-11415,11418,11435-11465
+packages/modules/inbox/frontend/src/promotions/PromotionOwnerRequestDetail.vue
+  s_3dd47ea0104342::t_1d3d95c9b5b1a1 91-92
+packages/modules/promotions/frontend/src/composables/usePromotionDependencyLabels.ts
+  s_3dd47ea0104342::t_a4e654189dde55 2,6,16-23,80-97,131-132
+packages/modules/promotions/frontend/src/components/dependencies/PromotionPlannedMoves.vue
+  s_3dd47ea0104342::t_5f2d2e930c8f72 39
+  s_3dd47ea0104342::t_4ffa42c4dcc685 1-38,40-171
+packages/modules/promotions/frontend/src/composables/usePromotionPreview.ts
+  s_3dd47ea0104342::t_0c388f90b05644 14-18,62-73,84,108-109,174-194,232-239,247-251,254,268,319
+  s_3dd47ea0104342::t_18c0f0d0529b60 252
+packages/modules/promotions/frontend/src/composables/usePromotionOperation.ts
+  s_3dd47ea0104342::t_c8ebe8445ca4c0 35-36,53-59,135-139,144,147-149,156-157,167-178,225-229,242-247,265-269,278,290,294-309,312-316,319,341-343,355,366-367,369,372,375,380-385,402-403,442-443
+packages/frontend/editor-ui/src/app/capabilities.manifest.ts
+  s_3dd47ea0104342::t_32a21eec2c2d20 110-115
+packages/modules/promotions/frontend/src/components/dependencies/PromotionDependencyReport.vue
+  s_3dd47ea0104342::t_a4e654189dde55 2,38-43,89,91,95,98,100-107,127-133,211,220-221,290-312,345-348
+  s_3dd47ea0104342::t_bfd783e26e1bdf 349-350
+packages/modules/promotions/frontend/src/components/dependencies/PromotionApplyConfirmations.vue
+  s_3dd47ea0104342::t_5f2d2e930c8f72 15,47,139-141
+  s_3dd47ea0104342::t_a4e654189dde55 16,48-49,252,277,304-312
+  s_3dd47ea0104342::t_3ca5254e351f35 313
+packages/modules/promotions/frontend/src/promotionSelectionHandoff.ts
+  s_3dd47ea0104342::t_a4e654189dde55 1,17-23
+packages/modules/promotions/frontend/src/composables/useCredentialTypeNames.ts
+  s_3dd47ea0104342::t_0da0b94a1d9d3d 1-31
+packages/modules/promotions/frontend/src/components/dependencies/PromotionApplyResultDialog.vue
+  s_3dd47ea0104342::t_a4e654189dde55 19,39,141
+  s_3dd47ea0104342::t_bb68d7c3c1a988 1-18,20-38,40-140,142-280
+  s_3dd47ea0104342::t_22308b30f65fd1 281-283
+  s_3dd47ea0104342::t_0e670a62a7b6e8 284
+packages/modules/promotions/frontend/src/composables/usePromotionOutcome.ts
+  s_3dd47ea0104342::t_a4e654189dde55 50,53-61
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_3dd47ea0104342::t_ed71b3fef703ff 9,20,816-841,1215-1218
+  s_3dd47ea0104342::t_a32b7b80bb62d8 3,614
+  s_3dd47ea0104342::t_17f7b4bd2c9878 222-225
+  s_3dd47ea0104342::t_3f4a9c1e3fc06f 2,4-6,32,36,43,45,51,116-122,125,131,136,147-151,168-175,181-188,190-196,198-203,226-240,245,249-266,283,406-408,415,431,433-437,463,468,470-471,489,500-503,514-518,609-613,615-642,703,708,710,719-720,739-743,745-784,1007-1015,1026-1085,1110,1133,1136-1139,1153-1161,1186-1190,1219,1288-1310,1313
+  s_3dd47ea0104342::t_ac4a573eeda6ea 204
+  s_3dd47ea0104342::t_0e372fdb20a9eb 785
+  s_3dd47ea0104342::t_61dd9c70dc6e2f 842
+  s_3dd47ea0104342::t_a8403cfb2a589b 1191-1192
+  s_3dd47ea0104342::t_342ce077291a58 1311-1312
+  s_3dd47ea0104342::t_db9931d1c6d924 868
+packages/modules/promotions/frontend/src/composables/usePromotionMoveLabels.ts
+  s_3dd47ea0104342::t_a550774eb15254 1-38,41-47
+  s_3dd47ea0104342::t_440cfda5fc2544 39-40
+packages/modules/promotions/frontend/src/components/preview/PromotionChangeCard.vue
+  s_3dd47ea0104342::t_5f2d2e930c8f72 64,66,187-195
+packages/modules/promotions/frontend/src/promotionMoves.ts
+  s_3dd47ea0104342::t_f062598cb08d33 1-48
+packages/frontend/@n8n/frontend-module-sdk/src/types/capability.ts
+  s_3dd47ea0104342::t_32a21eec2c2d20 145-146
+packages/modules/promotions/frontend/src/promotionDependencies.ts
+  s_3dd47ea0104342::t_a4e654189dde55 4,54-55,80,85,258-259,262-263
+packages/modules/promotions/frontend/src/promotionApplyOutcome.ts
+  s_3dd47ea0104342::t_aba52393282115 1-92
+packages/modules/promotions/frontend/src/components/dependencies/PromotionDependencyTarget.vue
+  s_3dd47ea0104342::t_5f2d2e930c8f72 7,21,35
+packages/modules/promotions/frontend/src/components/preview/PromotionBlockers.vue
+  s_3dd47ea0104342::t_5f2d2e930c8f72 99-111,117-119
+packages/modules/promotions/frontend/src/composables/usePromotionDependencies.ts
+  s_3dd47ea0104342::t_a4e654189dde55 35-39,57-61
+spike/ligo-1159/poc/decisions.md
+  s_3dd47ea0104342::t_f8802c27424e87 448-525
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "016b42cdfefbc143ce0573c29495c0589c8f0d26",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_8fb27e0cdf6d1e 3246
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  h_8fb27e0cdf6d1e 173-176,2319
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenu.test.ts
+  h_8fb27e0cdf6d1e 165-204
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenuItems.ts
+  h_8fb27e0cdf6d1e 6,20,48,104,162-166,627-633
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  h_8fb27e0cdf6d1e 117,248,1820-1824
+packages/frontend/editor-ui/src/features/workflows/compositeNodes/CompositeNodeLookInside.vue
+  h_8fb27e0cdf6d1e 2-3,8,13,18-19,24-35,39
+packages/frontend/editor-ui/src/features/workflows/compositeNodes/CompositeNodeLookInsideDialog.vue
+  h_8fb27e0cdf6d1e 1-65
+packages/frontend/editor-ui/src/features/workflows/compositeNodes/compositeNodeLookInside.store.ts
+  h_8fb27e0cdf6d1e 1-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f5173ac4f10dca0dcc6b80975c1fac42d1f40ca2",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

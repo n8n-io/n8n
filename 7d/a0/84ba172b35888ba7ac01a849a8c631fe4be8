@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/components/print-studio/WorkflowPrintStudio.vue
+  s_c33bde4687101e::t_1cd12990202709 33,49-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7da084ba172b35888ba7ac01a849a8c631fe4be8",
+  "prompts": {},
+  "sessions": {
+    "s_c33bde4687101e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edf6-ffe6-77f0-898f-eea7d7b98df2",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

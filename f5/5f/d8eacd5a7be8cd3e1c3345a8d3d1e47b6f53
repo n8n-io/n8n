@@ -1,0 +1,57 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolPolicyToolField.test.ts
+  s_6bdcca0a27f363::t_709e4b51ee3324 1-70,72-90,92-94,96-123,125-165,170-212
+  s_6bdcca0a27f363::t_aadd55a4c6128d 91,166-169
+  s_6bdcca0a27f363::t_2b55200c25048b 71,95,124
+packages/frontend/editor-ui/src/features/agents/utils/tool-policy-picker.ts
+  s_6bdcca0a27f363::t_d7e61ccb1c0d03 82-83,86-90,95-96,98,116-117,132-134,140-143,178-179
+  s_6bdcca0a27f363::t_e47b0c35c8f7c7 1-81,84-85,91-94,97,99-115,118-131,135-139,144-177,180-191,197-219
+  s_6bdcca0a27f363::t_aadd55a4c6128d 192-196
+packages/frontend/editor-ui/src/features/agents/components/AgentToolPolicyPanel.vue
+  s_6bdcca0a27f363::t_d7e61ccb1c0d03 450
+  s_6bdcca0a27f363::t_c3b680d0da550b 19,51-55,57-58,94-100,113,127,130,134-138,204-205,209,234,241-281,429-441,452,467-483,486-511,513-514,516-517,519-520,522-529,531-558,561,563-564,566,569,571,573-580,582-586,664-686,690-729
+  s_6bdcca0a27f363::t_a2be86c949adb2 730
+packages/frontend/editor-ui/src/features/agents/components/AgentToolPolicyToolField.vue
+  s_6bdcca0a27f363::t_3bff5d1f1b150d 1-2,4-98,100-101,103,105-168,170-255,257-360,362-431
+  s_6bdcca0a27f363::t_a260239bdf8b59 361
+  s_6bdcca0a27f363::t_c3b680d0da550b 3,169,256
+  s_6bdcca0a27f363::t_d7e61ccb1c0d03 99,102,104
+packages/frontend/editor-ui/src/features/agents/__tests__/tool-policy-picker.test.ts
+  s_6bdcca0a27f363::t_d7e61ccb1c0d03 83-89,119-139
+  s_6bdcca0a27f363::t_e47b0c35c8f7c7 1-82,90-118,140-190
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6bdcca0a27f363::t_87957e41a2b9b4 10097-10104,10106,10124-10142
+packages/@n8n/agents/src/runtime/tools/tool-call-runner.ts
+  s_6bdcca0a27f363::t_e2163bc4316134 114-121
+packages/@n8n/agents/src/types/sdk/pre-tool-execution.ts
+  s_6bdcca0a27f363::t_e2163bc4316134 17-18
+packages/@n8n/agents/src/runtime/__tests__/tool-call-runner.test.ts
+  s_6bdcca0a27f363::t_2f1236a557a262 581-615
+packages/frontend/editor-ui/src/features/agents/components/AgentToolPolicyChips.vue
+  s_6bdcca0a27f363::t_d7b6b60b024dda 34-39,41-55,60-64
+  s_6bdcca0a27f363::t_3bff5d1f1b150d 1-20,22-33,40,56-59,65-103
+  s_6bdcca0a27f363::t_d7e61ccb1c0d03 21
+packages/cli/src/modules/agent-tool-policies/__tests__/tool-policy-engine.test.ts
+  s_6bdcca0a27f363::t_3ae406bb8d0a59 427-442
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolPolicyPanel.test.ts
+  s_6bdcca0a27f363::t_99ac5a809fb1b0 9,98-101,112-115,119-124,146,251
+  s_6bdcca0a27f363::t_2b55200c25048b 302-303,579-580,594-596
+  s_6bdcca0a27f363::t_709e4b51ee3324 42,546-578,581-593,597-601,606-619
+  s_6bdcca0a27f363::t_aadd55a4c6128d 602-605
+  s_6bdcca0a27f363::t_a5ff783ae9e8ad 620
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f55fd8eacd5a7be8cd3e1c3345a8d3d1e47b6f53",
+  "prompts": {},
+  "sessions": {
+    "s_6bdcca0a27f363": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "565eb793-19a9-4a9e-85f2-146865e3826b",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

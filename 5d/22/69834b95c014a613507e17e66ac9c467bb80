@@ -1,0 +1,24 @@
+packages/@n8n/engine/src/execution/step-events.ts
+  h_8fb27e0cdf6d1e 16-17
+packages/@n8n/engine/src/lifecycle-events/lifecycle-event.schema.ts
+  h_8fb27e0cdf6d1e 24-25
+packages/cli/src/modules/engine-v2/__tests__/engine-lifecycle-event-push-relay.test.ts
+  h_8fb27e0cdf6d1e 472-577
+packages/cli/src/modules/engine-v2/engine-lifecycle-event-push-relay.ts
+  h_8fb27e0cdf6d1e 6,17-19,67-70,171-223
+packages/cli/src/services/engine-v2-push-session.ts
+  h_8fb27e0cdf6d1e 28-32
+packages/workflow/src/composite-node.ts
+  h_8fb27e0cdf6d1e 36-37,134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5d2269834b95c014a613507e17e66ac9c467bb80",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

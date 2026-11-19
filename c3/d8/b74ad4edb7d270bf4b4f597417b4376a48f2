@@ -1,0 +1,21 @@
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_dfe3f914c8bb46::t_a9bedbc23e9d5e 629,673
+packages/@n8n/db/src/repositories/__tests__/execution.repository.test.ts
+  s_dfe3f914c8bb46::t_dd2eb669130954 14,688-722
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3d8b74ad4edb7d270bf4b4f597417b4376a48f2",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

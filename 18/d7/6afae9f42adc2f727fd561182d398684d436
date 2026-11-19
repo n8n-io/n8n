@@ -1,0 +1,26 @@
+packages/cli/src/modules/agent-determinism/trace-run-collector.ts
+  s_8b881202fd680e::t_f98d9d9c11b552 1-53,59-233
+  s_8b881202fd680e::t_60bb3534801114 54-58
+packages/cli/src/modules/agent-determinism/agent-determinism.contracts.ts
+  s_8b881202fd680e::t_a062d4f4bc70db 16-25,29-30,46-48,54
+packages/cli/src/modules/agent-determinism/__tests__/draft-guards.test.ts
+  s_8b881202fd680e::t_3ed0e1ad26971e 25
+packages/cli/src/modules/agent-determinism/run-preparation.ts
+  s_8b881202fd680e::t_15edd3a7a49067 28-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "18d76afae9f42adc2f727fd561182d398684d436",
+  "prompts": {},
+  "sessions": {
+    "s_8b881202fd680e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f1ea5cf4-fc38-4f7e-85d1-84234a035547",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

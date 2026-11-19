@@ -1,0 +1,38 @@
+packages/@n8n/tournament/src/ExpressionBuilder.ts
+  s_f8b297ae6460ac::t_67c7ed1e039c48 239
+  s_f8b297ae6460ac::t_360b1a629f7bf5 176-189,195,200-205
+  s_f8b297ae6460ac::t_5187142dea7634 217-218,226-227
+  s_f8b297ae6460ac::t_8686fda25e8261 139,147-153,197,199,207,209-215,219-225,240-247,253,324,380,400-403
+  s_f8b297ae6460ac::t_f6b46370db0496 135,144-146,248-252,254-257
+  s_f8b297ae6460ac::t_514fc766dbf5ca 228-236
+  s_f8b297ae6460ac::t_672da493c55443 136-138,140-143,208
+  s_f8b297ae6460ac::t_70a052c182f41f 154-175,190-194
+packages/@n8n/tournament/test/Es6Syntax.test.ts
+  s_f8b297ae6460ac::t_c9db10c5dac036 53-64
+  s_f8b297ae6460ac::t_53fd858dea1418 66
+  s_f8b297ae6460ac::t_f5da83e0418089 36-52,65,67-75
+packages/@n8n/tournament/test/Expression.test.ts
+  s_f8b297ae6460ac::t_11d8de6dee3a50 38-39,42-49
+  s_f8b297ae6460ac::t_f824fb65e6ff26 21-25,27-31,35
+  s_f8b297ae6460ac::t_d5f408ce419d08 36-37,40-41,50
+  s_f8b297ae6460ac::t_b8b8678aa9ce3f 26,32-34
+  s_f8b297ae6460ac::t_a8765d171ce78f 51-58
+packages/workflow/test/native-evaluation-corpus.ts
+  s_f8b297ae6460ac::t_2af20d8de6937d 260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3ce91a4d7684fdd27b6865dcca4a165163199583",
+  "prompts": {},
+  "sessions": {
+    "s_f8b297ae6460ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40de4508-254f-4727-9e5b-2bf52d4346b8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
