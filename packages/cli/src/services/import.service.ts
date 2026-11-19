@@ -1,6 +1,7 @@
 import { Logger, safeJoinPath } from '@n8n/backend-common';
 import type { TagEntity, ICredentialsDb, User } from '@n8n/db';
 import {
+	binaryColumnType,
 	Project,
 	WorkflowEntity,
 	SharedWorkflow,
@@ -15,9 +16,12 @@ import {
 import type { PolicyCleared, PolicyViolation } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, In, type EntityMetadata } from '@n8n/typeorm';
+import { createReadStream } from 'fs';
 import { readdir, readFile } from 'fs/promises';
 import { Cipher } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { isRecord } from '@n8n/utils/is-record';
+import { createInterface } from 'readline';
 import {
 	pickVersionedSettings,
 	type INode,
@@ -68,6 +72,26 @@ const LEGACY_ENTITY_FILE_NAMES: Readonly<Record<string, string>> = {
 /** The entity name an archive file was written for: `user.2.jsonl` is `user`. */
 function toArchiveBaseName(file: string): string {
 	return file.replace(/\.\d+\.jsonl$/, '.jsonl').replace('.jsonl', '');
+}
+
+/** The bytes of an archived binary value, written as base64 or as a serialised Buffer. */
+function binaryValue(value: unknown): unknown {
+	return typeof value === 'string'
+		? Buffer.from(value, 'base64')
+		: isRecord(value) && value.type === 'Buffer' && Array.isArray(value.data)
+			? Buffer.from(value.data)
+			: value;
+}
+
+function restoreBinaryColumns(
+	entity: Record<string, unknown>,
+	metadata: EntityMetadata,
+): Record<string, unknown> {
+	const restored = { ...entity };
+	for (const column of metadata.columns.filter(({ type }) => type === binaryColumnType)) {
+		restored[column.databaseName] = binaryValue(restored[column.databaseName]);
+	}
+	return restored;
 }
 
 /**
@@ -554,22 +578,22 @@ export class ImportService {
 		return currentName;
 	}
 
-	/**
-	 * Read and parse JSONL file content
-	 * @param filePath - Path to the JSONL file
-	 * @param customEncryptionKey - Optional custom encryption key
-	 * @returns Array of parsed entity objects
-	 */
-	async readEntityFile(
+	/** Rows of each encrypted line of an archive file, read one line at a time. */
+	async *readEntityBlocks(
 		filePath: string,
 		customEncryptionKey?: string,
-	): Promise<Array<Record<string, unknown>>> {
-		const content = await readFile(filePath, 'utf8');
-		const entities: Array<Record<string, unknown>> = [];
+	): AsyncGenerator<Array<Record<string, unknown>>> {
 		const entitySchema = z.record(z.string(), z.unknown());
+		const blocks = createInterface({
+			input: createReadStream(filePath, 'utf8'),
+			crlfDelay: Infinity,
+		});
 
-		for (const block of content.split('\n')) {
+		for await (const block of blocks) {
+			if (!block) continue;
+
 			const lines = (await this.cipher.decryptV2(block, customEncryptionKey)).split(/\r?\n/);
+			const entities: Array<Record<string, unknown>> = [];
 
 			for (let i = 0; i < lines.length; i++) {
 				const line = lines[i].trim();
@@ -588,8 +612,19 @@ export class ImportService {
 					);
 				}
 			}
-		}
 
+			yield entities;
+		}
+	}
+
+	async readEntityFile(
+		filePath: string,
+		customEncryptionKey?: string,
+	): Promise<Array<Record<string, unknown>>> {
+		const entities: Array<Record<string, unknown>> = [];
+		for await (const block of this.readEntityBlocks(filePath, customEncryptionKey)) {
+			entities.push(...block);
+		}
 		return entities;
 	}
 
@@ -756,19 +791,18 @@ export class ImportService {
 				this.logger.info(`   📋 Target table: ${tableName}`);
 
 				let entityCount = 0;
-				await Promise.all(
-					files.map(async (filePath) => {
-						this.logger.info(`   📁 Reading file: ${filePath}`);
+				for (const filePath of files) {
+					this.logger.info(`   📁 Reading file: ${filePath}`);
 
-						const entities: Array<Record<string, unknown>> = await this.readEntityFile(
-							filePath,
-							customEncryptionKey,
-						);
+					for await (const entities of this.readEntityBlocks(filePath, customEncryptionKey)) {
 						this.logger.info(`      Found ${entities.length} entities`);
 
 						await Promise.all(
 							entities.map(async (entity) => {
-								const normalizedEntity = this.normalizeEntityJsonColumns(entity, entityMetadata);
+								const normalizedEntity = this.normalizeEntityJsonColumns(
+									restoreBinaryColumns(entity, entityMetadata),
+									entityMetadata,
+								);
 								const columns = Object.keys(normalizedEntity);
 								const columnNames = columns.map(this.dataSource.driver.escape).join(', ');
 								const columnValues = columns.map((key) => `:${key}`).join(', ');
@@ -784,8 +818,8 @@ export class ImportService {
 						);
 
 						entityCount += entities.length;
-					}),
-				);
+					}
+				}
 
 				this.logger.info(`   ✅ Completed ${entityName}: ${entityCount} entities imported`);
 				totalEntitiesImported += entityCount;

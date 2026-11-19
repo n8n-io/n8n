@@ -5,6 +5,7 @@ export {
 	WithTimestampsAndStringId,
 	jsonColumnType,
 	datetimeColumnType,
+	binaryColumnType,
 	dbType,
 	JsonColumn,
 	DateTimeColumn,
