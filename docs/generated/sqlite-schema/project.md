@@ -159,9 +159,11 @@ erDiagram
   boolean availableInMCP
   datetime_3_ createdAt
   varchar_36_ id PK
+  varchar identityId FK
   TEXT integrations
   boolean isArchived
   varchar_128_ name
+  varchar_36_ parentFolderId FK
   varchar_255_ projectId FK
   INTEGER publicationRevision
   INTEGER revision
@@ -207,6 +209,7 @@ erDiagram
   varchar_128_ name
   varchar_36_ parentFolderId FK
   varchar_36_ projectId FK
+  varchar_16_ resourceType
   datetime_3_ updatedAt
 }
 "insights_metadata" {
@@ -337,6 +340,7 @@ erDiagram
   datetime_3_ createdAt
   varchar createdById FK
   varchar_36_ credentialId FK
+  boolean credentialRequired
   varchar id PK
   varchar_255_ identityKey
   datetime_3_ lastCheckedAt
@@ -346,6 +350,7 @@ erDiagram
   varchar_36_ projectId FK
   varchar_32_ status
   varchar_16_ type
+  TEXT unlinkedSkills
   datetime_3_ updatedAt
 }
 "type_availability_policy_scope" {

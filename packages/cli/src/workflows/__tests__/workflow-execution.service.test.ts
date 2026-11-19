@@ -1,8 +1,9 @@
-import type { Logger } from '@n8n/backend-common';
-import type {
-	EventService,
-	InstanceWriteAccessService,
-	WorkflowPublishedDataService,
+import type { Logger, ModuleName, ModuleRegistry } from '@n8n/backend-common';
+import {
+	type EventService,
+	type InstanceWriteAccessService,
+	type WorkflowPublishedDataService,
+	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
@@ -26,6 +27,7 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	type ExecutionError,
 	type IExecuteResponsePromiseData,
+	type IRun,
 	createRunExecutionData,
 } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -38,6 +40,9 @@ import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resumi
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import { ForbiddenError } from '@n8n/errors';
 import type { ExecutionCrashService } from '@/executions/execution-crash.service';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { FailedRunFactory } from '@/executions/failed-run-factory';
+import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
 import type { NodeTypes } from '@/node-types';
 import type { OwnershipService } from '@/services/ownership.service';
@@ -107,6 +112,9 @@ const mockOwnershipService = () => {
 	return ownershipService;
 };
 
+const versionedSettings = (eligibleModules: ModuleName[] = []) =>
+	new WorkflowVersionedSettingsService(mock<ModuleRegistry>({ eligibleModules }));
+
 describe('WorkflowExecutionService', () => {
 	const nodeTypes = mock<NodeTypes>();
 	const workflowRunner = mock<WorkflowRunner>();
@@ -134,6 +142,7 @@ describe('WorkflowExecutionService', () => {
 		pollCursorService,
 		executionCrashService,
 		mock(),
+		versionedSettings(),
 	);
 
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({});
@@ -182,6 +191,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				executionCrashService,
 				instanceWriteAccess,
+				versionedSettings(),
 			);
 			const node = mock<INode>();
 			const workflow = mock<IWorkflowBase>({
@@ -702,6 +712,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				executionCrashService,
 				instanceWriteAccess,
+				versionedSettings(),
 			);
 			const user = mock<User>({ id: 'user-id' });
 			const workflowData = mock<IWorkflowBase>({ nodes: [webhookNode], connections: {} });
@@ -1182,6 +1193,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
+				versionedSettings(),
 			);
 
 			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
@@ -1260,6 +1272,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
+				versionedSettings(),
 			);
 
 			const result = await service.executeManually(workflowData, runPayload, user);
@@ -1449,6 +1462,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
+				versionedSettings(),
 			);
 		});
 
@@ -1608,6 +1622,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
+				versionedSettings(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1754,6 +1769,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
+				versionedSettings(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1861,6 +1877,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
+				versionedSettings(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1874,6 +1891,83 @@ describe('WorkflowExecutionService', () => {
 			);
 			expect(workflowRunnerMock.run).toHaveBeenCalledTimes(1);
 			expect(workflowRunnerMock.run.mock.calls[0][0].workflowData.nodes).toEqual(mappingNodes);
+		});
+
+		test('marks the stored refusal as blocked by policy when the error workflow refuses its caller', async () => {
+			const workflowErrorData: IWorkflowErrorData = {
+				workflow: { id: 'workflow-id', name: 'Test Workflow' },
+				execution: {
+					id: 'execution-id',
+					mode: 'manual',
+					error: new Error('Test error') as ExecutionError,
+					lastNodeExecuted: 'Node with error',
+				},
+			};
+			const errorTriggerType = 'n8n-nodes-base.errorTrigger';
+			const errorTriggerNode: INode = {
+				id: 'error-trigger-node-id',
+				name: 'Error Trigger',
+				type: errorTriggerType,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+			const errorWorkflow = mock<WorkflowEntity>({
+				id: 'error-workflow-id',
+				name: 'Error Workflow',
+				pinData: {},
+				staticData: {},
+				nodes: [errorTriggerNode],
+				connections: {},
+				activeVersion: { nodes: [errorTriggerNode], connections: {} },
+			});
+			const workflowRepositoryMock = mock<WorkflowRepository>();
+			workflowRepositoryMock.get.mockResolvedValue(errorWorkflow);
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({ description: { properties: [] } }),
+			);
+			const policyChecker = mock<SubworkflowPolicyChecker>();
+			policyChecker.check.mockRejectedValue(new Error('refused'));
+			const failedRunFactory = mock<FailedRunFactory>();
+			failedRunFactory.generateFailedExecutionFromError.mockReturnValue({
+				mode: 'error',
+				status: 'error',
+				data: createRunExecutionData({}),
+			} as IRun);
+			const executionPersistence = mock<ExecutionPersistence>();
+			const workflowRunnerMock = mock<WorkflowRunner>();
+
+			const service = new WorkflowExecutionService(
+				mock(),
+				mock(),
+				executionPersistence,
+				workflowRepositoryMock,
+				nodeTypes,
+				mock(),
+				workflowRunnerMock,
+				mock<GlobalConfig>({ nodes: { errorTriggerType } }),
+				policyChecker,
+				failedRunFactory,
+				mock(),
+				mockOwnershipService(),
+				mock(),
+				mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
+				mock(),
+				pollCursorService,
+				mock(),
+				mock(),
+				versionedSettings(),
+			);
+
+			await service.executeErrorWorkflow(
+				'error-workflow-id',
+				workflowErrorData,
+				mock<Project>({ id: 'project-id' }),
+			);
+
+			expect(workflowRunnerMock.run).not.toHaveBeenCalled();
+			const [payload] = executionPersistence.create.mock.calls[0];
+			expect(payload.data.resultData.failedBeforeStart).toBe('policy');
 		});
 
 		test('should not run the error workflow when it has no published version (flag on)', async () => {
@@ -1917,6 +2011,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
+				versionedSettings(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1929,6 +2024,100 @@ describe('WorkflowExecutionService', () => {
 			// workflow separately (single query via the publication service).
 			expect(workflowRunnerMock.run).not.toHaveBeenCalled();
 			expect(workflowRepositoryMock.get).not.toHaveBeenCalled();
+		});
+
+		describe('with the engine-v2 module', () => {
+			const errorTriggerType = 'n8n-nodes-base.errorTrigger';
+			const errorTriggerNode: INode = {
+				id: 'error-trigger-node-id',
+				name: 'Error Trigger',
+				type: errorTriggerType,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+			const workflowErrorData: IWorkflowErrorData = {
+				workflow: { id: 'workflow-id', name: 'Test Workflow' },
+				execution: {
+					id: 'execution-id',
+					mode: 'trigger',
+					error: new Error('Test error') as ExecutionError,
+					lastNodeExecuted: 'Node with error',
+				},
+			};
+			const publishedVersion = {
+				nodes: [errorTriggerNode],
+				connections: {},
+				settings: { engineType: 'v1' as const },
+			};
+
+			const runErrorWorkflow = async (useWorkflowPublicationService: boolean) => {
+				const errorWorkflow = mock<WorkflowEntity>({
+					id: 'error-workflow-id',
+					name: 'Error Workflow',
+					activeVersionId: 'active-version-id',
+					isArchived: false,
+					pinData: {},
+					staticData: {},
+					nodes: [errorTriggerNode],
+					connections: {},
+					// The draft runs on engine v2; the published version runs on v1.
+					settings: { engineType: 'v2', timezone: 'Europe/Berlin' },
+					activeVersion: publishedVersion,
+				});
+
+				const workflowRunnerMock = mock<WorkflowRunner>();
+				workflowRunnerMock.run.mockResolvedValue('fake-execution-id');
+
+				const workflowRepositoryMock = mock<WorkflowRepository>();
+				workflowRepositoryMock.get.mockResolvedValue(errorWorkflow);
+
+				const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
+				workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
+					workflow: errorWorkflow,
+					publishedVersion: mock<WorkflowHistory>(publishedVersion),
+				});
+
+				const service = new WorkflowExecutionService(
+					mock(),
+					mock(),
+					mock(),
+					workflowRepositoryMock,
+					nodeTypes,
+					mock(),
+					workflowRunnerMock,
+					mock<GlobalConfig>({ nodes: { errorTriggerType } }),
+					mock(),
+					mock(),
+					mock(),
+					mockOwnershipService(),
+					mock(),
+					mock<WorkflowsConfig>({ useWorkflowPublicationService }),
+					workflowPublishedDataService,
+					pollCursorService,
+					mock(),
+					mock(),
+					versionedSettings(['engine-v2']),
+				);
+
+				await service.executeErrorWorkflow(
+					'error-workflow-id',
+					workflowErrorData,
+					mock<Project>({ id: 'project-id' }),
+				);
+
+				expect(workflowRunnerMock.run).toHaveBeenCalledTimes(1);
+				return workflowRunnerMock.run.mock.calls[0][0].workflowData.settings;
+			};
+
+			test.each([true, false])(
+				'runs on the engine of the published version, not the draft (publication service: %s)',
+				async (useWorkflowPublicationService) => {
+					const settings = await runErrorWorkflow(useWorkflowPublicationService);
+
+					expect(settings).toEqual({ engineType: 'v1', timezone: 'Europe/Berlin' });
+				},
+			);
 		});
 	});
 
@@ -1960,6 +2149,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
+				versionedSettings(),
 			);
 
 			const user = mock<User>({ id: 'user-id' });

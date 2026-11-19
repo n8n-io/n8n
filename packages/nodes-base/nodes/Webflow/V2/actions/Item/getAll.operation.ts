@@ -4,6 +4,7 @@ import type {
 	INodeProperties,
 	IExecuteFunctions,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import { webflowApiRequest, webflowApiRequestAllItems } from '../../../GenericFunctions';
@@ -84,7 +85,7 @@ export async function execute(
 				responseData = await webflowApiRequestAllItems.call(
 					this,
 					'GET',
-					`/collections/${collectionId}/items`,
+					requestPath`/collections/${collectionId}/items`,
 					{},
 				);
 			} else {
@@ -92,7 +93,7 @@ export async function execute(
 				responseData = await webflowApiRequest.call(
 					this,
 					'GET',
-					`/collections/${collectionId}/items`,
+					requestPath`/collections/${collectionId}/items`,
 					{},
 					qs,
 				);

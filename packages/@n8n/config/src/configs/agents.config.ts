@@ -83,6 +83,14 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_BACKGROUND_TASKS_ENABLED')
 	backgroundTasksEnabled: boolean = false;
 
+	/**
+	 * Whether users can share credentials and other resources with agents, and
+	 * see agent projects in project lists. Each agent has its own service account
+	 * either way. Set the same value on every main instance.
+	 */
+	@Env('N8N_AGENTS_SERVICE_ACCOUNTS_ENABLED')
+	serviceAccountsEnabled: boolean = false;
+
 	/** Enable sandbox-backed agent knowledge base operations. */
 	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;

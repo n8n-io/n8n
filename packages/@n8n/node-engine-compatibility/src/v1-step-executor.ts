@@ -4,6 +4,7 @@ import type {
 	StepExecutionRequest,
 	StepExecutionResult,
 } from '@n8n/engine';
+import { attachStepErrorDetails } from '@n8n/engine';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import type { INodeExecutionData } from 'n8n-workflow';
 import {
@@ -37,6 +38,7 @@ import type {
 	V1StepExecutorDeps,
 } from './types';
 import type { DurableWaitExecuteContext } from './v1-adapters';
+import { toV1ErrorDetails } from './v1-error-details';
 import {
 	toAdditionalDataContext,
 	toV1ExecuteContext,
@@ -117,6 +119,7 @@ export class V1StepExecutor implements IStepExecutor {
 			stepData.outputsByNode,
 			request.node.id,
 			request.context.iteration,
+			stepData.outputSourcesByNode,
 		);
 		const workflow = toV1Workflow(request.context.workflowId, node, execution, this.deps.nodeTypes);
 
@@ -129,7 +132,12 @@ export class V1StepExecutor implements IStepExecutor {
 			node,
 			workflow,
 			execution,
-			source: toV1Sources(stepData.graph).get(node.id) ?? [],
+			source: toV1Sources(
+				stepData.graph,
+				stepData.outputsByNode,
+				node.id,
+				request.context.iteration,
+			),
 			additionalData,
 			stepContext: request.context,
 			itemsByConnection: fromStepInputs(request.inputs),
@@ -225,7 +233,7 @@ export class V1StepExecutor implements IStepExecutor {
 			// The node failed, so do not start a sub-execution it may have declared
 			// before failing. This holds for continueOnFail too.
 			context.subWorkflowCalls.declaration = undefined;
-			if (!context.continueOnFail()) throw result.error;
+			if (!context.continueOnFail()) throw withV1ErrorDetails(result.error);
 			return [context.getInputData()];
 		}
 
@@ -256,4 +264,11 @@ export class V1StepExecutor implements IStepExecutor {
 
 		return 'Node execution failed';
 	}
+}
+
+/** A v1 error has more to tell the editor than its message; any other error crosses as it is. */
+function withV1ErrorDetails(error: unknown): unknown {
+	if (!(error instanceof Error)) return error;
+	const details = toV1ErrorDetails(error);
+	return details === undefined ? error : attachStepErrorDetails(error, details);
 }

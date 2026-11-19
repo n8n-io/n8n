@@ -137,4 +137,20 @@ describe('useRemoteProjectSearch', () => {
 			type: 'personal',
 		});
 	});
+
+	it('asks for service accounts only when the caller opts in', async () => {
+		const store = useProjectsStore();
+		const spy = vi
+			.spyOn(store, 'searchShareableProjects')
+			.mockResolvedValue({ count: 0, data: [] });
+
+		const search = useRemoteProjectSearch({ includeServiceAccounts: true });
+		await search('bot');
+
+		expect(spy).toHaveBeenCalledWith({
+			search: 'bot',
+			take: DEFAULT_PROJECT_SEARCH_PAGE_SIZE,
+			includeServiceAccounts: true,
+		});
+	});
 });

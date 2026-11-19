@@ -1,7 +1,7 @@
 import { OperationalError } from '@n8n/errors';
 
 import { InProcessLockService } from '../in-process-lock.service';
-import { LockNamespace } from '../lock-service.interface';
+import { LockAcquisitionTimeoutError, LockNamespace } from '../lock-service.interface';
 
 const NS = LockNamespace.CREDENTIALS;
 
@@ -117,10 +117,27 @@ describe('InProcessLockService', () => {
 
 		await expect(p2).rejects.toThrow(OperationalError);
 		await expect(p2).rejects.toThrow(/Timed out waiting for lock '.*' after 100ms/);
+		// In-process, a timeout always means another holder: there is no lock backend that can fail.
+		await expect(p2).rejects.toMatchObject({ sawContention: true });
 		expect(fn2).not.toHaveBeenCalled();
 
 		resolveFirst();
 		await p1;
+	});
+
+	it('should reject at once and not queue when waitTimeoutMs is 0', async () => {
+		let resolveFirst!: () => void;
+		const firstBlocking = new Promise<void>((r) => (resolveFirst = r));
+		const fn2 = vi.fn();
+
+		const p1 = service.withLease(NS, 'k', async () => await firstBlocking);
+		const p2 = service.withLease(NS, 'k', fn2, { waitTimeoutMs: 0 });
+
+		resolveFirst(); // release before any timer runs
+		await p1;
+
+		await expect(p2).rejects.toBeInstanceOf(LockAcquisitionTimeoutError);
+		expect(fn2).not.toHaveBeenCalled();
 	});
 
 	it('should release the lock when fn throws', async () => {

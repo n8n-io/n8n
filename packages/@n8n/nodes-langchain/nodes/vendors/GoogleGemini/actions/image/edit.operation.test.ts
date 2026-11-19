@@ -22,7 +22,9 @@ const getMockedExecuteFunctions = ({
 
 	executeFunctions.getCredentials
 		.calledWith('googlePalmApi')
-		.mockResolvedValue(mock<ICredentialDataDecryptedObject>());
+		.mockResolvedValue(
+			mock<ICredentialDataDecryptedObject>({ host: 'https://generativelanguage.googleapis.com' }),
+		);
 	executeFunctions.getNodeParameter.calledWith('prompt', 0).mockReturnValue(prompt);
 	executeFunctions.getNodeParameter
 		.calledWith('options.binaryPropertyOutput', 0)
@@ -64,7 +66,7 @@ const getMockedExecuteFunctions = ({
 		.calledWith(
 			'googlePalmApi',
 			expect.objectContaining({
-				url: expect.stringContaining('generateContent'),
+				url: expect.objectContaining({ value: expect.stringContaining('generateContent') }),
 			}),
 		)
 		.mockResolvedValue(

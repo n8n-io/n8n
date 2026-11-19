@@ -9,11 +9,22 @@ import {
 	type AssistantMentionCounts,
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 
+import { messageApprovalMode, threadTargetsAgent } from '../instanceAi.threadRuntime';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import {
 	resolveAuthorship,
 	type InstanceAiMessageAuthorship,
 	type InstanceAiPrefillPayload,
 } from '../prefills';
+import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
+
+/** The context of the user message that starts a run, as `User sent builder message` reports it. */
+export interface AssistantAgentSentMessageContext {
+	isFirstMessage: boolean;
+	mentionCounts: AssistantMentionCounts;
+	attachmentCount: number;
+	selectedElementCount: number;
+}
 
 /** A text that the host sends for the user. Its authorship is final. */
 export interface AssistantAgentHostSend {
@@ -37,6 +48,8 @@ export interface AssistantAgentSendingMessage {
 export function useAssistantAgentMessageTelemetry(threadId: string) {
 	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
+	const settingsStore = useInstanceAiSettingsStore();
+	const threadsStore = useAssistantAgentThreadsStore();
 	let prefill: InstanceAiPrefillPayload | null = null;
 	let hostSend: AssistantAgentHostSend | null = null;
 
@@ -51,12 +64,26 @@ export function useAssistantAgentMessageTelemetry(threadId: string) {
 		return { authorship: resolveAuthorship(text, prefill) };
 	}
 
-	function trackSend({ text, files, clientContext, isFirstMessage }: AssistantAgentSendingMessage) {
+	/** Returns the context of the message, which `User received AI Assistant response` repeats. */
+	function trackSend({
+		text,
+		files,
+		clientContext,
+		isFirstMessage,
+	}: AssistantAgentSendingMessage): AssistantAgentSentMessageContext {
 		const { authorship, mentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS } = takeAuthorship(text);
 		const isPrefill = authorship.kind === 'prefill';
 		const attachments: unknown[] = Array.isArray(clientContext?.attachments)
 			? clientContext.attachments
 			: [];
+		const attachmentCount = files.length + attachments.length;
+		const selectedElementCount = attachments.filter(
+			(a) => isRecord(a) && a.type === 'element',
+		).length;
+		// Like the backend: a message that attaches an agent, or a thread that builds one, runs in Manual.
+		const buildsAgent =
+			attachments.some((attachment) => isRecord(attachment) && attachment.type === 'agent') ||
+			threadTargetsAgent(threadsStore.threadsById.get(threadId)?.metadata);
 		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE, {
 			thread_id: threadId,
 			instance_id: rootStore.instanceId,
@@ -66,11 +93,13 @@ export function useAssistantAgentMessageTelemetry(threadId: string) {
 			prefill_type: isPrefill ? authorship.prefillType : null,
 			prefill_id: isPrefill ? (authorship.prefillId ?? null) : null,
 			prompt_modified: isPrefill ? (authorship.promptModified ?? false) : null,
+			approval_mode: messageApprovalMode(settingsStore, buildsAgent),
 			mention_counts: mentionCounts,
-			attachment_count: files.length + attachments.length,
-			selected_element_count: attachments.filter((a) => isRecord(a) && a.type === 'element').length,
+			attachment_count: attachmentCount,
+			selected_element_count: selectedElementCount,
 			runtime: 'agents',
 		});
+		return { isFirstMessage, mentionCounts, attachmentCount, selectedElementCount };
 	}
 
 	return {

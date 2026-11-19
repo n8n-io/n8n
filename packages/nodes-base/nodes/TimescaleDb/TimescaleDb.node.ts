@@ -17,7 +17,7 @@ export class TimescaleDb implements INodeType {
 		name: 'timescaleDb',
 		icon: { light: 'file:timescaleDb.svg', dark: 'file:timescaleDb.dark.svg' },
 		group: ['input'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Add and update data in TimescaleDB',
 		defaults: {
 			name: 'TimescaleDB',
@@ -274,7 +274,11 @@ export class TimescaleDb implements INodeType {
 		const db = pgp({
 			...config,
 			// Return date/timestamp columns as strings so node output stays JSON-safe
-			...(this.getNode().typeVersion >= 1.1 ? { types: getDateAsStringTypeParsers(pgp) } : {}),
+			...(this.getNode().typeVersion >= 1.1
+				? // No version of this node opts in to the zoneless timestamp output that
+					// Postgres 2.9 added. Keep the older reading until one does, see ENT-882.
+					{ types: getDateAsStringTypeParsers(pgp, { legacyUtcTimestamps: true }) }
+				: {}),
 		});
 
 		let returnItems = [];
@@ -289,6 +293,7 @@ export class TimescaleDb implements INodeType {
 
 			const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail(), {
 				resolveExpression: true,
+				literalExpressions: this.getNode().typeVersion >= 1.2,
 			});
 
 			returnItems = this.helpers.returnJsonArray(queryResult);

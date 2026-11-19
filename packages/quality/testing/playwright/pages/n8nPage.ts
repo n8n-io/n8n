@@ -39,6 +39,7 @@ import { SecretsProviderSettingsPage } from './SecretsProviderSettingsPage';
 import { SecuritySettingsPage } from './SecuritySettingsPage';
 import { SettingsEnvironmentPage } from './SettingsEnvironmentPage';
 import { SettingsLogStreamingPage } from './SettingsLogStreamingPage';
+import { SettingsSkillsPage } from './settings-skills-page';
 import { SettingsMcpPage } from './SettingsMcpPage';
 import { SettingsPersonalPage } from './SettingsPersonalPage';
 import { SettingsPromotionsPage } from './settings-promotions-page';
@@ -74,7 +75,7 @@ import { TestEntryComposer } from '../composables/TestEntryComposer';
 import { WorkflowComposer } from '../composables/WorkflowComposer';
 import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NavigationHelper } from '../helpers/NavigationHelper';
-import { ApiHelpers } from '../services/api-helper';
+import type { ApiHelpers } from '../services/api-helper';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export class n8nPage {
@@ -103,6 +104,7 @@ export class n8nPage {
 	readonly projectSettings: ProjectSettingsPage;
 	readonly settingsPersonal: SettingsPersonalPage;
 	readonly settingsMcp: SettingsMcpPage;
+	readonly settingsSkills: SettingsSkillsPage;
 	readonly settingsPromotions: SettingsPromotionsPage;
 	readonly settingsLogStreaming: SettingsLogStreamingPage;
 	readonly templateCredentialSetup: TemplateCredentialSetupPage;
@@ -167,12 +169,9 @@ export class n8nPage {
 	readonly breadcrumbs: Breadcrumbs;
 	readonly clipboard: ClipboardHelper;
 
-	constructor(page: Page, api?: ApiHelpers) {
+	constructor(page: Page, api: ApiHelpers) {
 		this.page = page;
-		// The fallback helper carries no options, so it applies no stack workflow
-		// settings and its engine v2 routing check stays quiet. Pass a helper, or
-		// use `start.newTab()`, for a page that creates or runs workflows.
-		this.api = api ?? new ApiHelpers(page.context().request);
+		this.api = api;
 
 		// Pages
 		this.aiAssistant = new AIAssistantPage(page);
@@ -196,6 +195,7 @@ export class n8nPage {
 		this.projectSettings = new ProjectSettingsPage(page);
 		this.settingsPersonal = new SettingsPersonalPage(page);
 		this.settingsMcp = new SettingsMcpPage(page);
+		this.settingsSkills = new SettingsSkillsPage(page);
 		this.settingsPromotions = new SettingsPromotionsPage(page);
 		this.settingsLogStreaming = new SettingsLogStreamingPage(page);
 		this.templateCredentialSetup = new TemplateCredentialSetupPage(page);

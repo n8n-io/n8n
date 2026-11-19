@@ -5,7 +5,7 @@ import type { RoleMember } from '@n8n/api-types';
 import { N8nLoading, N8nTableBase, N8nText, N8nUserInfo } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useAsyncState } from '@vueuse/core';
-import { watch } from 'vue';
+import { computed, watch } from 'vue';
 
 const props = defineProps<{ roleSlug: string }>();
 
@@ -22,6 +22,11 @@ const {
 	members: [],
 	total: 0,
 });
+
+// Service accounts stay hidden until the design decides how role lists show them.
+const visibleMembers = computed(() =>
+	members.value.members.filter((member) => member.kind !== 'service'),
+);
 
 watch(
 	() => props.roleSlug,
@@ -45,7 +50,7 @@ function isCurrentUser(member: RoleMember): boolean {
 				i18n.baseText('roles.instance.assignments.fetch.error')
 			}}</N8nText>
 		</div>
-		<div v-else-if="members.members.length === 0" :class="$style.stateBox">
+		<div v-else-if="visibleMembers.length === 0" :class="$style.stateBox">
 			<N8nText color="text-light">{{
 				i18n.baseText('roles.instance.assignments.emptyState')
 			}}</N8nText>
@@ -59,7 +64,7 @@ function isCurrentUser(member: RoleMember): boolean {
 			</thead>
 			<tbody>
 				<tr
-					v-for="member in members.members"
+					v-for="member in visibleMembers"
 					:key="member.userId"
 					data-test-id="instance-role-member-row"
 				>

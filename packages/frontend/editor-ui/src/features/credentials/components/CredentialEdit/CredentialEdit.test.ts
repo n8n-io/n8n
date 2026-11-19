@@ -32,6 +32,13 @@ import { reactive } from 'vue';
 import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '../../templatedAuth.utils';
 import { getCredentialOptions } from '../../credentials.api';
+import { getResourceDependencyCounts } from '@/app/api/workflow-dependencies';
+
+vi.mock('@/app/api/workflow-dependencies', () => ({
+	getResourceDependencyCounts: vi.fn().mockResolvedValue({}),
+	getResourceDependencies: vi.fn().mockResolvedValue({}),
+	getFolderDependencies: vi.fn().mockResolvedValue([]),
+}));
 
 vi.mock('../../credentials.api', async (importOriginal) => ({
 	...(await importOriginal<object>()),
@@ -625,6 +632,77 @@ describe('CredentialEdit', () => {
 					.length,
 			).toBeGreaterThan(0),
 		);
+	});
+
+	describe('dependency pill', () => {
+		const emptyCounts = {
+			agentUsage: 0,
+			credentialId: 0,
+			dataTableId: 0,
+			errorWorkflow: 0,
+			errorWorkflowParent: 0,
+			workflowCall: 0,
+			workflowParent: 0,
+		};
+
+		const loadCredential = (id: string) => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialData.mockResolvedValueOnce({
+				id,
+				name: 'Test credential',
+				type: 'testApi',
+				data: {},
+				isManaged: false,
+				sharedWithProjects: [],
+				scopes: ['credential:read'],
+				createdAt: '2025-05-13T10:45:45.588Z',
+				updatedAt: '2025-05-15T12:36:01.826Z',
+			});
+		};
+
+		test('shows the pill when workflows use the credential', async () => {
+			vi.mocked(getResourceDependencyCounts).mockResolvedValueOnce({
+				'cred-used': { ...emptyCounts, credentialId: 2 },
+			});
+
+			loadCredential('cred-used');
+			const { findByTestId } = renderComponent({
+				props: { activeId: 'cred-used', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+			});
+
+			expect(await findByTestId('credential-edit-dependents')).toHaveTextContent('2');
+			expect(getResourceDependencyCounts).toHaveBeenCalledWith(
+				expect.anything(),
+				['cred-used'],
+				'credential',
+			);
+		});
+
+		test('hides the pill when nothing uses the credential', async () => {
+			loadCredential('cred-unused');
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: { activeId: 'cred-unused', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+			});
+
+			await retry(() => expect(getByTestId('credential-edit-dialog')).toBeInTheDocument());
+			await waitFor(() =>
+				expect(getResourceDependencyCounts).toHaveBeenCalledWith(
+					expect.anything(),
+					['cred-unused'],
+					'credential',
+				),
+			);
+			expect(queryByTestId('credential-edit-dependents')).not.toBeInTheDocument();
+		});
+
+		test('does not fetch dependencies for a new credential', async () => {
+			const { getByTestId } = renderComponent({
+				props: { modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+			});
+
+			await retry(() => expect(getByTestId('editCredential-modal')).toBeInTheDocument());
+			expect(getResourceDependencyCounts).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('external secrets', () => {

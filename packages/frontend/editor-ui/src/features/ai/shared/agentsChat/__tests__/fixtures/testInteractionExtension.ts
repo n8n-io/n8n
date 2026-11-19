@@ -89,6 +89,7 @@ export const TEST_HOST_EVENT = {
 	END: 'test.end',
 	TRANSIENT: 'test.transient',
 	THINKING: 'test.thinking',
+	TOOL_CALL: 'test.tool-call',
 } as const;
 
 export const TestHostEvent = defineComponent({
@@ -135,5 +136,15 @@ export const testHostEventExtensions: readonly AgentsChatInteractionExtension[] 
 		matchHostEvent: matchName(TEST_HOST_EVENT.THINKING),
 		hostEventComponent: TestHostEvent,
 		hostEventPlacement: 'thinking',
+	},
+	{
+		key: 'test_host_tool_call',
+		matchHostEvent: matchName(TEST_HOST_EVENT.TOOL_CALL),
+		hostEventComponent: TestHostEvent,
+		hostEventPlacement: 'tool-call',
+		hostEventToolCallId: (event) =>
+			isRecord(event.payload) && typeof event.payload.toolCallId === 'string'
+				? event.payload.toolCallId
+				: undefined,
 	},
 ];

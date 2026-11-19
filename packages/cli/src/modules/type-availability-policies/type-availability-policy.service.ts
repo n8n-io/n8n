@@ -1,5 +1,5 @@
-import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
-import { EventService } from '@n8n/backend-services';
+import type { InstanceTypeAccessResponse, NodeTypeAvailabilityScope } from '@n8n/api-types';
+import { EventService, loginIdOf } from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -26,7 +26,12 @@ import {
 	type ProjectEffectivePolicy,
 } from './effective-policy';
 import { loadedCheckFor, packageResolverFor, policedTypeFor } from './package-resolver';
-import { evaluateComposedType, orderedAttachments, type ComposedVerdict } from './policy-evaluator';
+import {
+	evaluateComposedType,
+	evaluateRules,
+	orderedAttachments,
+	type ComposedVerdict,
+} from './policy-evaluator';
 import type { PolicyAction, PolicyAttachment, PolicyRule } from './policy-rule.types';
 import { lintPolicyRules, type PolicyRuleWarning } from './policy-rule-lint';
 import { TypeAvailabilityPolicySnapshot } from './type-availability-policy-snapshot';
@@ -47,6 +52,11 @@ export type ScopeAttachments = {
 
 /** One type's composed verdict, as `evaluateComposedTypes` reports it. */
 export type ComposedTypeVerdict = ComposedVerdict & { readonly name: string };
+
+export type AllProjectsEvaluation = {
+	withoutProjectPolicy: ComposedTypeVerdict[];
+	byProject: Array<{ projectId: string; verdicts: ComposedTypeVerdict[] }>;
+};
 
 /**
  * Composed verdicts plus the version of every scope that was read.
@@ -311,6 +321,7 @@ export class TypeAvailabilityPolicyService {
 		kind: string,
 		rules: readonly PolicyRule[],
 		updatedBy: string,
+		ctx: OperationContext = {},
 	): Promise<PolicyDocumentWrite> {
 		const warnings = this.validateAndLintRules(kind, rules);
 
@@ -322,6 +333,7 @@ export class TypeAvailabilityPolicyService {
 			policyId: policy.id,
 			origin: 'document-api',
 			after: { rules: policy.rules, version: policy.version },
+			loginId: loginIdOf(ctx),
 		});
 
 		return { policy, warnings };
@@ -344,6 +356,7 @@ export class TypeAvailabilityPolicyService {
 		rules: readonly PolicyRule[],
 		expectedVersion: number,
 		updatedBy: string,
+		ctx: OperationContext = {},
 	): Promise<PolicyDocumentWrite> {
 		const warnings = this.validateAndLintRules(kind, rules);
 
@@ -416,6 +429,7 @@ export class TypeAvailabilityPolicyService {
 			origin: 'document-api',
 			before: { rules: result.existing.rules, version: result.existing.version },
 			after: { rules: result.updated.rules, version: result.updated.version },
+			loginId: loginIdOf(ctx),
 		});
 
 		return { policy: result.updated, warnings };
@@ -430,7 +444,12 @@ export class TypeAvailabilityPolicyService {
 	 * row lock. An attachment insert takes a key-share lock on the document it points at, so a
 	 * concurrent attach waits for this transaction rather than landing between the two.
 	 */
-	async deletePolicyDocument(kind: string, policyId: string, updatedBy: string): Promise<void> {
+	async deletePolicyDocument(
+		kind: string,
+		policyId: string,
+		updatedBy: string,
+		ctx: OperationContext = {},
+	): Promise<void> {
 		const existing = await this.transactionRunner.run({}, async (ctx) => {
 			const policy = await this.policyRepository.findByIdAndKind(policyId, kind, ctx, true);
 			if (!policy) {
@@ -457,6 +476,7 @@ export class TypeAvailabilityPolicyService {
 			kind: existing.kind,
 			policyId,
 			before: { rules: existing.rules, version: existing.version },
+			loginId: loginIdOf(ctx),
 		});
 	}
 
@@ -514,6 +534,7 @@ export class TypeAvailabilityPolicyService {
 		attachments: readonly AttachmentInput[],
 		expectedVersion: number,
 		updatedBy: string,
+		ctx: OperationContext = {},
 	): Promise<ScopeAttachments> {
 		assertNoDuplicateAttachmentSlots(attachments);
 
@@ -581,6 +602,7 @@ export class TypeAvailabilityPolicyService {
 			scopeId,
 			before: { attachments: result.before, version: result.versionBefore },
 			after: { attachments: result.after, version: result.versionAfter },
+			loginId: loginIdOf(ctx),
 		});
 
 		return { attachments: orderedAttachments(result.after), version: result.versionAfter };
@@ -601,6 +623,7 @@ export class TypeAvailabilityPolicyService {
 		input: { rules: readonly PolicyRule[]; defaultAction: PolicyAction },
 		expectedVersion: number,
 		updatedBy: string,
+		ctx: OperationContext = {},
 	): Promise<{
 		scopeId: string;
 		defaultAction: PolicyAction;
@@ -768,6 +791,7 @@ export class TypeAvailabilityPolicyService {
 			scopeId: result.scopeId,
 			before: result.scopeBefore,
 			after: result.scopeAfter,
+			loginId: loginIdOf(ctx),
 		});
 
 		if (result.documentCreated) {
@@ -777,6 +801,7 @@ export class TypeAvailabilityPolicyService {
 				policyId: result.policyId,
 				origin: 'composed-save',
 				after: result.documentAfter,
+				loginId: loginIdOf(ctx),
 			});
 		} else {
 			this.eventService.emit('node-type-policy-document-updated', {
@@ -786,6 +811,7 @@ export class TypeAvailabilityPolicyService {
 				origin: 'composed-save',
 				before: result.documentBefore ?? { rules: [], version: UNCONFIGURED_VERSION },
 				after: result.documentAfter,
+				loginId: loginIdOf(ctx),
 			});
 		}
 
@@ -808,6 +834,35 @@ export class TypeAvailabilityPolicyService {
 			version: result.scopeAfter.version,
 			rules: [...result.documentAfter.rules],
 			warnings,
+		};
+	}
+
+	/**
+	 * What the instance policy alone decides for each type, evaluated against one read so that
+	 * `version` matches the verdicts. Uncached for the reason on `getEffectivePolicy`.
+	 */
+	async getInstanceAccess(
+		kind: string,
+		typeNames: readonly string[],
+	): Promise<InstanceTypeAccessResponse> {
+		const effective = await this.getEffectivePolicy(kind, null);
+		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
+		const policedType = policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials);
+
+		return {
+			scopeId: effective.scopeId,
+			version: effective.version,
+			defaultAction: effective.defaultAction,
+			types: typeNames.map((name) => {
+				const { action, matchedRuleId } = evaluateRules(
+					effective.rules,
+					effective.defaultAction,
+					policedType(name),
+					resolvePackage,
+				);
+
+				return { name, access: action, matchedRuleId };
+			}),
 		};
 	}
 
@@ -873,10 +928,7 @@ export class TypeAvailabilityPolicyService {
 	async evaluateComposedTypesForAllProjects(
 		kind: string,
 		typeNames: readonly string[],
-	): Promise<{
-		withoutProjectPolicy: ComposedTypeVerdict[];
-		byProject: Array<{ projectId: string; verdicts: ComposedTypeVerdict[] }>;
-	}> {
+	): Promise<AllProjectsEvaluation> {
 		const [instance, projects] = await Promise.all([
 			this.readEnforcedScope(kind, null),
 			this.snapshot.projectScopes(kind) ?? this.readProjectScopes(kind),

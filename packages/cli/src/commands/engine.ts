@@ -2,7 +2,7 @@ import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
 import { EngineConfig } from '@n8n/config';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { ExecutionChannelPublisher } from '@n8n/engine';
+import type { ExecutionChannelPublisher, RedisWorkQueues } from '@n8n/engine';
 import { BinaryDataConfig, BinaryDataService, ErrorReporter } from 'n8n-core';
 import { Expression } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
@@ -15,7 +15,7 @@ import { BaseCommand } from './base-command';
 @Command({
 	name: 'engine',
 	description:
-		'Starts the engine v2 data plane. Needs a control plane (`n8n start` with N8N_ENGINE_MODE=remote) to resolve credentials from, and Redis to send execution responses and lifecycle events over.',
+		'Starts the engine v2 data plane. Needs a control plane (`n8n start` with N8N_ENGINE_MODE=remote) to resolve credentials from, and Redis for its work queues, execution responses and lifecycle events.',
 })
 export class Engine extends BaseCommand {
 	// The data plane has no control plane database. Its own database is the
@@ -25,13 +25,15 @@ export class Engine extends BaseCommand {
 	// The data plane runs the nodes, so it hosts the task broker the Code node's
 	// runners connect to. Same module and env as `n8n start`.
 	// TODO(CET-332): remove once Code nodes run on the sandbox service.
-	override needsTaskRunner = true;
+	override needsCodeExecution = true;
 
 	override needsExpressionEngine = true;
 
 	private runtime?: EngineV2Runtime;
 
 	private channelPublisher?: ExecutionChannelPublisher;
+
+	private workQueues?: RedisWorkQueues;
 
 	async init() {
 		// The guards below run before `super.init()` wires the reporter, and the
@@ -66,14 +68,29 @@ export class Engine extends BaseCommand {
 		const { LifecycleEventChannelSender } = await import(
 			'@/modules/engine-v2/execution-channel/lifecycle-event-sender.js'
 		);
-		const publisher = await createRedisExecutionChannelPublisher(logger);
+		const { RedisClientService } = await import('@n8n/backend-services');
+		// The work queues share this connection, so on one Redis node a response arrives before the queue message that follows it.
+		const redisPublisher = Container.get(RedisClientService).createClient({
+			type: 'publisher(n8n)',
+		});
+		const publisher = await createRedisExecutionChannelPublisher(redisPublisher, logger);
 		this.channelPublisher = publisher;
+
+		// In Redis, so that every engine process shares the work.
+		const { createInstanceRedisWorkQueues } = await import(
+			'@/modules/engine-v2/work-queue/redis-work-queues.js'
+		);
+		this.workQueues = await createInstanceRedisWorkQueues(redisPublisher, logger, {
+			orchestration: engineConfig.orchestrationConcurrency,
+			step: engineConfig.stepConcurrency,
+		});
 
 		const { EngineV2Runtime } = await import('@/modules/engine-v2/engine-v2.runtime.js');
 		this.runtime = Container.get(EngineV2Runtime);
 		await this.runtime.init({
 			responseSender: new ExecutionChannelSender(publisher, createExecutionResponseCodec(logger)),
 			lifecycleEventSender: new LifecycleEventChannelSender(publisher, logger),
+			queues: this.workQueues.queues,
 		});
 
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
@@ -128,16 +145,27 @@ export class Engine extends BaseCommand {
 	protected async stopProcess() {
 		this.logger.info('Stopping engine v2 data plane...');
 
-		try {
-			try {
-				await this.runtime?.shutdown();
-			} finally {
-				// After the engine, so a final response still has somewhere to go.
-				await this.channelPublisher?.stop();
-			}
-			await Expression.disposeExpressionEngine();
-		} catch (error) {
-			await this.exitWithCrash('There was an error shutting down the engine.', error);
+		const errors: unknown[] = [];
+		const releaseSteps = [
+			async () => await this.runtime?.shutdown(),
+			// Before the publisher, so a late fetch fails instead of taking a message it can no longer give back.
+			async () => this.workQueues?.close(),
+			// After the engine, so a final response still has somewhere to go.
+			async () => await this.channelPublisher?.stop(),
+			async () => await Expression.disposeExpressionEngine(),
+		];
+
+		for (const release of releaseSteps) {
+			await release().catch((error: unknown) => {
+				errors.push(error);
+			});
+		}
+
+		if (errors.length > 0) {
+			await this.exitWithCrash(
+				'There was an error shutting down the engine.',
+				new AggregateError(errors, 'The engine could not release every resource'),
+			);
 		}
 
 		// No control plane database to close and no crash journal to clear, so

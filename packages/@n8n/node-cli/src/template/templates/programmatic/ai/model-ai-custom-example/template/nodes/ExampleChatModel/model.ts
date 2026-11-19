@@ -1,4 +1,5 @@
-import type { IHttpRequestMethods } from 'n8n-workflow';
+import type { IHttpRequestMethods, RequestUrl } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 import {
 	BaseChatModel,
 	getParametersJsonSchema,
@@ -320,13 +321,13 @@ interface OpenAIChatModelConfig extends ChatModelConfig {
 interface RequestConfig {
 	httpRequest: (
 		method: IHttpRequestMethods,
-		url: string,
+		url: RequestUrl,
 		body?: object,
 		headers?: Record<string, string>,
 	) => Promise<{ body: unknown }>;
 	openStream: (
 		method: IHttpRequestMethods,
-		url: string,
+		url: RequestUrl,
 		body?: object,
 		headers?: Record<string, string>,
 	) => Promise<{ body: AsyncIterableIterator<Buffer | Uint8Array> }>;
@@ -369,7 +370,7 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 
 		const response = await this.requests.httpRequest(
 			'POST',
-			`${this.baseURL}/responses`,
+			requestUrl`${this.baseURL}/responses`,
 			requestBody,
 		);
 		const body = response.body as OpenAIResponsesResponse;
@@ -450,7 +451,7 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 
 		const streamResponse = await this.requests.openStream(
 			'POST',
-			`${this.baseURL}/responses`,
+			requestUrl`${this.baseURL}/responses`,
 			requestBody,
 		);
 		const streamBody = streamResponse.body;

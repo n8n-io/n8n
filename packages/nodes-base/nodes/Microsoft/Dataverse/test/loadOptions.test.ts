@@ -341,7 +341,7 @@ describe('Microsoft Dataverse loadOptions', () => {
 			const [, metadataRequest] = request.mock.calls[0];
 			expect(metadataRequest.qs.$filter).toBe("EntitySetName eq 'accounts'");
 			const [, rowsRequest] = request.mock.calls[1];
-			expect(rowsRequest.url).toContain('/accounts');
+			expect(String(rowsRequest.url)).toContain('/accounts');
 			expect(rowsRequest.qs).toEqual({
 				$select: 'accountid,name',
 				$filter: "contains(name,'Ac''me')",
@@ -391,7 +391,7 @@ describe('Microsoft Dataverse loadOptions', () => {
 				results: [{ name: 'Beta (row-2)', value: 'row-2' }],
 			});
 			const [, pageRequest] = request.mock.calls[1];
-			expect(pageRequest.url).toBe(token);
+			expect(String(pageRequest.url)).toBe(token);
 			// The nextLink already encodes the query; don't resend it.
 			expect(pageRequest.qs).toEqual({});
 			expect(pageRequest.headers.Prefer).toBe('odata.maxpagesize=100');

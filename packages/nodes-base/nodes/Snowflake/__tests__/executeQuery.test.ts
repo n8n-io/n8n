@@ -190,6 +190,30 @@ describe('Test Snowflake, executeQuery - invalid query parameters', () => {
 	);
 });
 
+describe('Test Snowflake, executeQuery - resolved query', () => {
+	it.each([
+		{ typeVersion: 1.2, expected: "select '1$&2', '1$$2', '^[0-9]+$'" },
+		{ typeVersion: 1.1, expected: "select '1{{ $json.sql }}2', '1$2', '^[0-9]+" },
+	])('inserts the resolved query for version $typeVersion', async ({ typeVersion, expected }) => {
+		const executeFns = mock<IExecuteFunctions>({
+			getNode: () => mock<INode>({ typeVersion }),
+			getInputData: () => [{ json: {} }],
+		});
+		executeFns.getNodeParameter.mockImplementation((name, _itemIndex, fallback) => {
+			if (name === 'authentication') return 'credentials';
+			if (name === 'operation') return 'executeQuery';
+			if (name === 'query') return '{{ $json.sql }}';
+			return fallback;
+		});
+		executeFns.getCredentials.mockResolvedValue(snowflakeCredentials);
+		executeFns.evaluateExpression.mockReturnValue("select '1$&2', '1$$2', '^[0-9]+$'");
+
+		await new Snowflake().execute.call(executeFns);
+
+		expect(mockExecute).toHaveBeenCalledWith(expect.objectContaining({ sqlText: expected }));
+	});
+});
+
 describe('Test Snowflake, executeQuery - connection cleanup', () => {
 	it('destroys the connection even when a query fails', async () => {
 		const lockError = new Error(

@@ -19,6 +19,7 @@ export interface AgentDraftReference {
 }
 
 export interface PersistAgentDraftOptions {
+	parentFolderId?: string | null;
 	id: string;
 	name: string;
 	adoptOnCollision: boolean;

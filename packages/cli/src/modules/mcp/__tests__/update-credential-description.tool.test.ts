@@ -1,15 +1,16 @@
-import type { User } from '@n8n/db';
+import type { TelemetryProxy } from '@n8n/backend-services';
+import type { OperationContext, User } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { Telemetry } from '@/telemetry';
 
 import { createUpdateCredentialDescriptionTool } from '../tools/update-credential-description.tool';
 
 describe('update credential description MCP tool', () => {
 	const user = mock<User>({ id: 'user-1' });
 	const service = mock<CredentialsService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	beforeEach(() => vi.resetAllMocks());
 
 	it.each(['  Reporting  ', '', null])(
@@ -21,6 +22,7 @@ describe('update credential description MCP tool', () => {
 				user,
 				'cred-1',
 				description?.trim() || null,
+				{},
 			);
 			expect(result.structuredContent).toEqual({ success: true });
 			expect(result.content).toEqual([{ type: 'text', text: JSON.stringify({ success: true }) }]);
@@ -32,6 +34,15 @@ describe('update credential description MCP tool', () => {
 			expect(JSON.stringify(telemetry.track.mock.calls)).not.toContain('Reporting');
 		},
 	);
+
+	it('passes the operation context to the service', async () => {
+		const ctx: OperationContext = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
+		const tool = createUpdateCredentialDescriptionTool(user, service, telemetry, ctx);
+
+		await tool.handler({ credentialId: 'cred-1', description: 'Reporting' }, {} as never);
+
+		expect(service.updateDescription.mock.calls[0][3]).toBe(ctx);
+	});
 
 	it('rejects invalid input before calling the service', async () => {
 		const tool = createUpdateCredentialDescriptionTool(user, service, telemetry);

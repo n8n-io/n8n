@@ -311,6 +311,22 @@ export class DataTableRowsRepository {
 		});
 	}
 
+	async insertRowsInContext<T extends DataTableInsertRowsReturnType>(
+		dataTableId: string,
+		rows: DataTableRows,
+		columns: DataTableColumn[],
+		returnType: T,
+		ctx: OperationContext,
+	): Promise<DataTableInsertRowsResult<T>> {
+		return await this.insertRows(
+			dataTableId,
+			rows,
+			columns,
+			returnType,
+			this.table.managerFor(ctx),
+		);
+	}
+
 	async updateRows<T extends boolean | undefined>(
 		dataTableId: string,
 		data: Record<string, DataTableColumnJsType | null>,

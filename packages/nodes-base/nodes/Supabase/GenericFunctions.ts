@@ -7,9 +7,11 @@ import type {
 	IPairedItemData,
 	JsonObject,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, toPathSegment } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
+import { NodeApiError, requestPath, requestUrl, toPathSegment } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 
 type SupabaseCredentials = {
@@ -198,10 +200,10 @@ export function getSchemaHeader(
 export async function supabaseApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject | IDataObject[] = {},
 	qs: IDataObject = {},
-	uri?: string,
+	filterString?: string,
 	headers: IDataObject = {},
 	itemIndex = 0,
 ) {
@@ -219,7 +221,7 @@ export async function supabaseApiRequest(
 		host = credentials.host;
 	}
 
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		headers: {
 			Prefer: 'return=representation',
 			...(projectKey
@@ -232,7 +234,7 @@ export async function supabaseApiRequest(
 		method,
 		qs,
 		body,
-		url: uri ?? `${host.replace(/\/$/, '')}/rest/v1${resource}`,
+		url: requestUrl`${host.replace(/\/$/, '')}/rest/v1${resource}`,
 		json: true,
 	};
 
@@ -241,23 +243,27 @@ export async function supabaseApiRequest(
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
+		const request =
+			filterString === undefined
+				? options
+				: { ...options, url: `${options.url.toString()}?${filterString}` };
 		if (credentialType === 'supabaseOAuth2Api') {
 			try {
-				return await this.helpers.httpRequest(options);
+				return await this.helpers.httpRequest(request);
 			} catch (error) {
 				if (error.response?.status !== 401 || !projectRef || !projectKey) throw error;
 
 				await invalidateProjectSecretKey(this, projectRef, projectKey);
 				projectKey = await getProjectSecretKey(this, projectRef);
-				options.headers = {
-					...options.headers,
+				request.headers = {
+					...request.headers,
 					apikey: projectKey,
 					Authorization: `Bearer ${projectKey}`,
 				};
-				return await this.helpers.httpRequest(options);
+				return await this.helpers.httpRequest(request);
 			}
 		}
-		return await this.helpers.httpRequestWithAuthentication.call(this, credentialType, options);
+		return await this.helpers.httpRequestWithAuthentication.call(this, credentialType, request);
 	} catch (error) {
 		if (error.description) {
 			error.message = `${error.message}: ${error.description}`;
@@ -299,7 +305,7 @@ export async function getApiDefinition(
 	const inFlight = apiDefinitionsInFlight.get(key);
 	if (inFlight) return await inFlight;
 
-	const request = supabaseApiRequest.call(this, 'GET', '/', {}, {}, undefined, header);
+	const request = supabaseApiRequest.call(this, 'GET', requestPath`/`, {}, {}, undefined, header);
 	apiDefinitionsInFlight.set(key, request);
 	try {
 		return await request;
@@ -633,11 +639,7 @@ export function applyFilterStringParameters(filterString: string, parameters: ID
 	});
 }
 
-export function appendFilterStringToEndpoint(
-	context: IExecuteFunctions,
-	endpoint: string,
-	itemIndex: number,
-) {
+export function getFilterString(context: IExecuteFunctions, itemIndex: number) {
 	const filterString = context.getNodeParameter('filterString', itemIndex) as string;
 	const filterStringParameters = context.getNodeParameter(
 		'filterStringParameters.values',
@@ -646,7 +648,7 @@ export function appendFilterStringToEndpoint(
 	) as IDataObject[];
 
 	const encodedTemplate = encodeURI(filterString);
-	return `${endpoint}?${applyFilterStringParameters(encodedTemplate, filterStringParameters)}`;
+	return applyFilterStringParameters(encodedTemplate, filterStringParameters);
 }
 
 export function mapPairedItemsFrom<T>(iterable: Iterable<T> | ArrayLike<T>): IPairedItemData[] {

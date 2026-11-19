@@ -12,10 +12,9 @@ import { MicrosoftSharePointV2 } from '../../../v2/MicrosoftSharePointV2.node';
 // layer down instead keeps both request helpers real and end-to-end.
 const SITE_ID =
 	'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE';
-const ENCODED_SITE_ID = encodeURIComponent(SITE_ID);
 const LIST_ID = '58a279af-1f06-4392-a5ed-2b37fa1d6c1d';
 const GRAPH_BASE_URL = 'https://graph.microsoft.com';
-const ITEMS_URI = `${GRAPH_BASE_URL}/v1.0/sites/${ENCODED_SITE_ID}/lists/${LIST_ID}/items`;
+const ITEMS_URI = `${GRAPH_BASE_URL}/v1.0/sites/${SITE_ID}/lists/${LIST_ID}/items`;
 const NEXT_LINK = `${ITEMS_URI}?$skiptoken=UGFnZWQ9VFJVRQ`;
 const PREFER_NON_INDEXED = { Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly' };
 
@@ -74,7 +73,7 @@ describe('Microsoft SharePoint v2 — Item: Get Many', () => {
 		expect(ctx.helpers.requestOAuth2).toHaveBeenCalledWith(
 			'microsoftOAuth2Api',
 			expect.objectContaining({
-				uri: ITEMS_URI,
+				uri: expect.objectContaining({ value: ITEMS_URI }),
 				qs: { $filter: "fields/Title eq 'item1'" },
 				headers: expect.objectContaining(PREFER_NON_INDEXED),
 			}),

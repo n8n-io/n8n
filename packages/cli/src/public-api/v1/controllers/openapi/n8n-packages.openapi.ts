@@ -25,6 +25,10 @@ export const EXPORT_DESCRIPTION =
 	'Agent definitions include referenced skills, custom tools, and schedules.\n' +
 	'Knowledge base files and runtime data are excluded.\n';
 
+export const EXPORT_422_DESCRIPTION =
+	'A requested workflow cannot be exported because its stored data is invalid. ' +
+	'The message names the workflow and the invalid fields.';
+
 export const EXPORT_200_DESCRIPTION =
 	'A gzipped tar archive containing the exported package contents.';
 export const EXPORT_COUNTS_HEADER_DESCRIPTION =
@@ -54,10 +58,10 @@ export const IMPORT_DESCRIPTION =
 	'Agent packages require `agent:import` and `agent:read`. Workflow packages require ' +
 	'`workflow:import`. Mixed packages require both import grants. A project package requires ' +
 	'`project:create` when it creates a project, and `project:update` when ' +
-	'`projectConflictPolicy=overwrite` changes the details of an existing project. It requires ' +
-	'`folder:create` only when it creates a folder, and a license that supports folders only ' +
-	'when it creates, changes or removes a folder. A workflow package with folders always ' +
-	'requires `folder:create`, `folder:update` and that license. Planned Agent actions also ' +
+	'`projectConflictPolicy=overwrite` changes the details of an existing project. An import ' +
+	'requires `folder:create` only when it creates a folder, and a license that supports ' +
+	'folders only when it creates, changes or removes a folder. It requires ' +
+	'`dataTable:create` only when it creates a data table. Planned Agent actions also ' +
 	'require `agent:create`, `agent:update`, `agent:publish`, or `agent:unpublish`. Skipped Agents ' +
 	'do not require write grants. Creating a project or instance skill requires `skill:create`, ' +
 	'and saving a new version of one requires `skill:update`. ' +
@@ -68,6 +72,7 @@ export const IMPORT_DESCRIPTION =
 	'workflow needs `workflow:delete`. Restoring and publishing a workflow requires both ' +
 	'`workflow:delete` and `workflow:activate`. Archiving or restoring a matched Agent needs ' +
 	'`agent:delete`. ' +
+	'Creating a missing credential requires `credential:create`. ' +
 	'Destination-project permissions and dependency scopes still apply.\n\n' +
 	'The response contains Agent summaries in `agents`, source IDs in `bindings.agents`, and ' +
 	'totals in `counts.agents`. Definition import and publication have separate outcomes. ' +

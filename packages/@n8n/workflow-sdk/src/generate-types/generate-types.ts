@@ -715,11 +715,13 @@ function collectSchemasFromVersionDir(
 		for (const entry of entries) {
 			// JSON files directly in the version directory (nodes without resource/operation)
 			if (entry.isFile() && entry.name.endsWith('.json')) {
-				const operationName = entry.name.replace('.json', '');
-				// `output.<variant>.json` files are context-conditional layout
-				// variants (e.g. with-parser), not operations — skip them here.
-				if (operationName.includes('.')) continue;
-				if (seen.has(`/${operationName}`)) continue;
+				const fileKey = entry.name.replace('.json', '');
+				// `output.<variant>.json` is a variant of the node's output: a parameter
+				// variant such as `simple-false`, or a layout variant such as
+				// `with-parser` that parameter typing ignores. Other dotted names are skipped.
+				const [operationName, variant] = splitOperationVariant(fileKey);
+				if (variant && operationName !== 'output') continue;
+				if (seen.has(`/${fileKey}`)) continue;
 				const filePath = path.join(versionDir, entry.name);
 
 				try {
@@ -728,9 +730,10 @@ function collectSchemasFromVersionDir(
 					schemas.push({
 						resource: '',
 						operation: operationName,
+						...(variant ? { variant } : {}),
 						schema,
 					});
-					seen.add(`/${operationName}`);
+					seen.add(`/${fileKey}`);
 				} catch {
 					// Skip invalid JSON files
 				}
@@ -895,6 +898,8 @@ function indexSignatureType(
 	declaredTypes: string[],
 	hasOptional: boolean,
 ): string {
+	// `unknown` already accepts every declared type
+	if (additionalType === 'unknown') return 'unknown';
 	const members = [additionalType, ...declaredTypes, ...(hasOptional ? ['undefined'] : [])];
 	return [...new Set(members)].join(' | ');
 }
@@ -976,8 +981,11 @@ export function jsonSchemaToTypeScript(schema: JsonSchema, indent = 0): string {
 					declaredTypes.push(propType);
 					return `${nextIndent}${quotedKey}${optional}: ${propType};`;
 				});
-				if (typeof schema.additionalProperties === 'object') {
-					const additionalType = jsonSchemaToTypeScript(schema.additionalProperties, indent + 1);
+				if (schema.additionalProperties) {
+					const additionalType =
+						schema.additionalProperties === true
+							? 'unknown'
+							: jsonSchemaToTypeScript(schema.additionalProperties, indent + 1);
 					const hasOptional = Object.keys(schema.properties).some((key) => !required.has(key));
 					props.push(
 						`${nextIndent}[key: string]: ${indexSignatureType(additionalType, declaredTypes, hasOptional)};`,
@@ -2560,22 +2568,23 @@ function parseParameterVariant(variant: string): { param: string; value: string 
 /**
  * Turn the variant schemas of an operation into one `ParameterVariants`, or
  * undefined when they cannot be typed: no plain schema, several parameters,
- * a parameter the node does not have, or no default to attach the plain schema to.
+ * or no default to attach the plain schema to. A variant whose name does not
+ * name a node parameter, such as the `with-parser` layout of `output.json`,
+ * is not a parameter variant and is left out first.
  */
 function resolveParameterVariants(
 	props: NodeProperty[],
 	variantSchemas: OutputSchema[],
 ): ParameterVariants | undefined {
-	const parsed = variantSchemas.map((s) => ({
-		...parseParameterVariant(s.variant ?? ''),
-		schema: s.schema,
-	}));
+	const parsed = variantSchemas
+		.map((s) => ({ ...parseParameterVariant(s.variant ?? ''), schema: s.schema }))
+		.filter((entry) => entry.param !== undefined && findPropertyAtPath(props, entry.param));
 	const param = parsed[0]?.param;
 	if (!param || parsed.some((entry) => entry.param !== param || entry.value === undefined)) {
 		return undefined;
 	}
 
-	const property = props.find((p) => p.name === param);
+	const property = findPropertyAtPath(props, param);
 	const valueType = property ? getParameterValueType(property) : undefined;
 	if (!property || !valueType) return undefined;
 
@@ -2600,8 +2609,38 @@ function resolveParameterVariants(
 	};
 }
 
+type VariantProperty = Pick<NodePropertyOption, 'type' | 'default'>;
+
+/**
+ * The property a variant parameter names: a top-level property, or an option
+ * of a collection for a dotted path such as `options.simplifyOutput`.
+ */
+function findPropertyAtPath(props: NodeProperty[], param: string): VariantProperty | undefined {
+	const [first, ...rest] = param.split('.');
+	let current: NodeProperty | NodePropertyOption | undefined = props.find((p) => p.name === first);
+	for (const name of rest) {
+		if (current?.type !== 'collection') return undefined;
+		current = current.options?.find((option) => option.name === name);
+	}
+	return current;
+}
+
+/**
+ * The TypeScript constraint that sets a variant parameter, nesting a dotted
+ * path: `options.simplifyOutput` → `options: { simplifyOutput: false }`.
+ */
+function parameterConstraint(param: string, valueType: string, optional: boolean): string {
+	const mark = optional ? '?:' : ':';
+	return param
+		.split('.')
+		.reduceRight(
+			(inner, name) => (inner ? `${name}${mark} { ${inner} }` : `${name}${mark} ${valueType}`),
+			'',
+		);
+}
+
 /** The value type of a boolean parameter, or of an options parameter whose default is a string, number or boolean. */
-function getParameterValueType(property: NodeProperty): ParameterValueType | undefined {
+function getParameterValueType(property: VariantProperty): ParameterValueType | undefined {
 	if (property.type === 'boolean') {
 		return typeof property.default === 'boolean' ? 'boolean' : undefined;
 	}
@@ -2658,19 +2697,19 @@ function generateParameterVariantTypes(
 	const members = [
 		{
 			node: nodeOf(defaultValue),
-			constraint: `${param}?: ${parameterValueLiteral(variants, defaultValue)}`,
+			constraint: parameterConstraint(param, parameterValueLiteral(variants, defaultValue), true),
 			output: names.output,
 		},
 		...others.map(({ value }) => ({
 			node: nodeOf(value),
-			constraint: `${param}: ${parameterValueLiteral(variants, value)}`,
+			constraint: parameterConstraint(param, parameterValueLiteral(variants, value), false),
 			output: outputOf(value),
 		})),
 	];
 	const allOutputs = members.map((member) => member.output).join(' | ');
 	members.push({
 		node: `${names.base}${toPascalCase(param)}ExpressionNode`,
-		constraint: `${param}: Expression<${variants.valueType}>`,
+		constraint: parameterConstraint(param, `Expression<${variants.valueType}>`, false),
 		output: allOutputs,
 	});
 
@@ -3238,6 +3277,8 @@ export function generateSingleVersionTypeFile(
 
 	// Map from config type name to output type name (only populated when schema exists)
 	const configToOutputType = new Map<string, string>();
+	// Parameter variants of `output.json` (`output.<param>-<value>.json`), by config type name
+	const configToVariants = new Map<string, ParameterVariants>();
 
 	// Collect output types that have schemas
 	const outputTypesToGenerate: Array<{ typeName: string; schema: JsonSchema }> = [];
@@ -3249,10 +3290,20 @@ export function generateSingleVersionTypeFile(
 				? findSchemaForOperation(outputSchemas, configInfo.resource, configInfo.operation)
 				: undefined;
 
-		// Fallback for nodes without resource/operation discriminators:
-		// use root-level schema files (resource === '')
+		// Fallback for nodes without resource/operation discriminators: use a
+		// root-level schema file (resource === ''). Prefer `output.json`, because a
+		// trigger can share its schema folder with an action's root-level files.
 		if (!matchingSchema && !configInfo.resource && !configInfo.operation) {
-			matchingSchema = outputSchemas.find((s) => s.resource === '');
+			const rootSchemas = outputSchemas.filter((s) => s.resource === '' && !s.variant);
+			matchingSchema = rootSchemas.find((s) => s.operation === 'output') ?? rootSchemas[0];
+			const outputVariants = outputSchemas.filter(
+				(s) => s.resource === '' && s.operation === 'output' && s.variant !== undefined,
+			);
+			const variants =
+				matchingSchema?.operation === 'output' && outputVariants.length > 0
+					? resolveParameterVariants(filteredProperties, outputVariants)
+					: undefined;
+			if (variants) configToVariants.set(configInfo.typeName, variants);
 		}
 
 		if (matchingSchema) {
@@ -3348,21 +3399,41 @@ export function generateSingleVersionTypeFile(
 
 		individualNodeTypes.push(finalTypeName);
 
-		lines.push(`export type ${finalTypeName} = ${baseTypeName} & {`);
 		// Include narrowed subnode config in the NodeConfig if available
 		// subnodes field is required if any AI input type is required
 		const hasRequiredSubnodes = aiInputTypes.some((input) => input.required);
-		const configType = buildNodeConfigType(configInfo.typeName, {
-			credentialsTypeName: credTypeName,
-			subnodeConfigTypeName: subnodeConfigTypeName ?? undefined,
-			subnodesRequired: hasRequiredSubnodes,
-		});
-		lines.push(`${INDENT}config: ${configType};`);
-		if (outputTypeName) {
-			lines.push(`${INDENT}output?: Items<${outputTypeName}>;`);
+		const nodeBody = (typeName: string, paramsConstraint?: string, output?: string) => {
+			const configType = buildNodeConfigType(
+				paramsConstraint ? `${configInfo.typeName} & ${paramsConstraint}` : configInfo.typeName,
+				{
+					credentialsTypeName: credTypeName,
+					subnodeConfigTypeName: subnodeConfigTypeName ?? undefined,
+					subnodesRequired: hasRequiredSubnodes,
+				},
+			);
+			return [
+				`export type ${typeName} = ${baseTypeName} & {`,
+				`${INDENT}config: ${configType};`,
+				...(output ? [`${INDENT}output?: Items<${output}>;`] : []),
+				'};',
+				'',
+			];
+		};
+
+		const variants = configToVariants.get(configInfo.typeName);
+		if (variants && outputTypeName) {
+			const base = finalTypeName.replace(/Node$/, '');
+			lines.push(
+				...generateParameterVariantTypes(
+					variants,
+					{ base, output: outputTypeName, node: finalTypeName },
+					nodeBody,
+				),
+				'',
+			);
+		} else {
+			lines.push(...nodeBody(finalTypeName, undefined, outputTypeName));
 		}
-		lines.push('};');
-		lines.push('');
 	}
 
 	// Generate union type of all individual node types

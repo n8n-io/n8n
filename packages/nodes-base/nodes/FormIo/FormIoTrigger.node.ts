@@ -8,6 +8,7 @@ import {
 	type INodeTypeDescription,
 	type IWebhookResponseData,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import { formIoApiRequest } from './GenericFunctions';
@@ -97,7 +98,7 @@ export class FormIoTrigger implements INodeType {
 	methods = {
 		loadOptions: {
 			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const projects = await formIoApiRequest.call(this, 'GET', '/project', {});
+				const projects = await formIoApiRequest.call(this, 'GET', requestPath`/project`, {});
 				const returnData: INodePropertyOptions[] = [];
 				for (const project of projects) {
 					returnData.push({
@@ -109,7 +110,12 @@ export class FormIoTrigger implements INodeType {
 			},
 			async getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const projectId = this.getCurrentNodeParameter('projectId') as string;
-				const forms = await formIoApiRequest.call(this, 'GET', `/project/${projectId}/form`, {});
+				const forms = await formIoApiRequest.call(
+					this,
+					'GET',
+					requestPath`/project/${projectId}/form`,
+					{},
+				);
 				const returnData: INodePropertyOptions[] = [];
 				for (const form of forms) {
 					returnData.push({
@@ -133,7 +139,7 @@ export class FormIoTrigger implements INodeType {
 				const actions = await formIoApiRequest.call(
 					this,
 					'GET',
-					`/project/${projectId}/form/${formId}/action`,
+					requestPath`/project/${projectId}/form/${formId}/action`,
 				);
 				for (const action of actions) {
 					if (action.name === 'webhook') {
@@ -176,7 +182,7 @@ export class FormIoTrigger implements INodeType {
 				const webhook = await formIoApiRequest.call(
 					this,
 					'POST',
-					`/project/${projectId}/form/${formId}/action`,
+					requestPath`/project/${projectId}/form/${formId}/action`,
 					payload,
 				);
 				webhookData.webhookId = webhook._id;
@@ -190,7 +196,7 @@ export class FormIoTrigger implements INodeType {
 				await formIoApiRequest.call(
 					this,
 					'DELETE',
-					`/project/${projectId}/form/${formId}/action/${webhookData.webhookId}`,
+					requestPath`/project/${projectId}/form/${formId}/action/${webhookData.webhookId}`,
 				);
 				delete webhookData.webhookId;
 				return true;

@@ -67,7 +67,8 @@ export class InstanceSettings {
 
 	/**
 	 * Fixed ID of this n8n instance, for telemetry.
-	 * Derived from encryption key on first boot, then read from DB.
+	 * Set on first boot (random, or derived from the encryption key when a
+	 * license certificate exists), then read from DB.
 	 * Do not confuse with `hostId`.
 	 *
 	 * @example '258fce876abf5ea60eb86a2e777e5e190ff8f3e36b5b37aafec6636c31d4d1f9'
@@ -80,6 +81,15 @@ export class InstanceSettings {
 	 * fingerprint when the override is too short for the license server.
 	 */
 	readonly derivedInstanceId: string;
+
+	/**
+	 * Random ID of this install (one database, shared by all its mains and
+	 * workers), for telemetry. Unlike `instanceId`, it is never derived from
+	 * the encryption key or set from the environment, so installs that share
+	 * a key still get different values. Set by `initialize()`; undefined when
+	 * no row exists and this process may not seed one.
+	 */
+	installId: string | undefined;
 
 	hmacSignatureSecret: string;
 
@@ -109,10 +119,11 @@ export class InstanceSettings {
 	}
 
 	/**
-	 * Two-phase init: reads or creates deployment-key rows for instance.id and signing.hmac.
+	 * Two-phase init: reads or creates deployment-key rows for instance.id, install.id and signing.hmac.
 	 * Must be called after DB migrations complete, before license init.
 	 *
-	 * Precedence for each key: env var → DB active row → derive-from-key (and persist).
+	 * Precedence for each key: env var → DB active row → new value (and persist).
+	 * The new instance.id is random unless `keepDerivedInstanceId` is set.
 	 *
 	 * When `canSeed` is false, missing rows are not created: only server
 	 * processes hold the deployment's encryption key, so a one-off CLI command
@@ -123,7 +134,10 @@ export class InstanceSettings {
 	 */
 	async initialize(
 		repo: DeploymentStateRepo,
-		{ canSeed = true }: { canSeed?: boolean } = {},
+		{
+			canSeed = true,
+			keepDerivedInstanceId = true,
+		}: { canSeed?: boolean; keepDerivedInstanceId?: boolean } = {},
 	): Promise<void> {
 		this.canSeedDeploymentState = canSeed;
 		await this.initIdentifier(
@@ -131,9 +145,20 @@ export class InstanceSettings {
 			'instance.id',
 			process.env.N8N_INSTANCE_ID,
 			canSeed,
-			() => this.instanceId,
+			// A license certificate is bound to the derived ID, so only installs without one get a random ID.
+			() => (keepDerivedInstanceId ? this.instanceId : randomBytes(32).toString('hex')),
 			(v) => {
 				this.instanceId = v;
+			},
+		);
+		await this.initIdentifier(
+			repo,
+			'install.id',
+			undefined,
+			canSeed,
+			() => randomBytes(32).toString('hex'),
+			(v) => {
+				this.installId = v;
 			},
 		);
 		await this.initSecret(

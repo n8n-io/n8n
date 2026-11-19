@@ -4,6 +4,7 @@ import { DateTime } from 'luxon';
 import {
 	getDateRangesCommonTableExpressionQuery,
 	getDateRangesSelectQuery,
+	getUtcOffsetSegments,
 } from '../insights-by-period-query.helper';
 
 describe('getDateRangesCommonTableExpressionQuery', () => {
@@ -640,5 +641,55 @@ describe('getDateRangesCommonTableExpressionQuery', () => {
 				expect(withoutTimeZone).toBe(withUtcTimeZone);
 			});
 		});
+	});
+});
+
+describe('getUtcOffsetSegments', () => {
+	test('returns one segment when the range has no offset change', () => {
+		const segments = getUtcOffsetSegments({
+			startDate: new Date('2023-06-01T00:00:00Z'),
+			endDate: new Date('2023-06-30T00:00:00Z'),
+			timeZone: 'Europe/Berlin',
+		});
+
+		expect(segments).toEqual([{ offsetMinutes: 120 }]);
+	});
+
+	test('starts a new segment at the exact UTC instant of a DST transition', () => {
+		// Europe/Berlin ended summer time on 2023-10-29 at 01:00 UTC.
+		const segments = getUtcOffsetSegments({
+			startDate: new Date('2023-10-20T00:00:00Z'),
+			endDate: new Date('2023-11-05T00:00:00Z'),
+			timeZone: 'Europe/Berlin',
+		});
+
+		expect(segments).toEqual([
+			{ offsetMinutes: 120 },
+			{ fromUtc: '2023-10-29 01:00:00.000', offsetMinutes: 60 },
+		]);
+	});
+
+	test('returns every transition when the range spans both DST changes', () => {
+		const segments = getUtcOffsetSegments({
+			startDate: new Date('2023-01-01T00:00:00Z'),
+			endDate: new Date('2023-12-31T00:00:00Z'),
+			timeZone: 'America/New_York',
+		});
+
+		expect(segments).toEqual([
+			{ offsetMinutes: -300 },
+			{ fromUtc: '2023-03-12 07:00:00.000', offsetMinutes: -240 },
+			{ fromUtc: '2023-11-05 06:00:00.000', offsetMinutes: -300 },
+		]);
+	});
+
+	test('finds a transition up to a day after the end date, where the range end is extended', () => {
+		const segments = getUtcOffsetSegments({
+			startDate: new Date('2023-10-25T00:00:00Z'),
+			endDate: new Date('2023-10-28T12:00:00Z'),
+			timeZone: 'Europe/Berlin',
+		});
+
+		expect(segments).toHaveLength(2);
 	});
 });

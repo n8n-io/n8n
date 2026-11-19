@@ -28,6 +28,7 @@ import type {
 	InstanceAiPreferenceCardEvent,
 	InstanceAiSendMessageRequest,
 	InstanceAiCorrectTaskRequest,
+	InstanceAiCloudBrowserReturnControlRequest,
 	InstanceAiConfirmRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiThreadMessagesQuery,
@@ -50,12 +51,14 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { ProjectService } from '@/services/project.service.ee';
+import type { TelemetryProxy } from '@n8n/backend-services';
 
 import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 import type { DurableEventLog } from '../event-bus/durable-event-log';
@@ -70,6 +73,7 @@ import type { InstanceAiSettingsService } from '../instance-ai-settings.service'
 import { InstanceAiController } from '../instance-ai.controller';
 import type { InstanceAiService } from '../instance-ai.service';
 import type { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
+import type { InstanceAiCloudBrowserService } from '../browser/instance-ai-cloud-browser.service';
 
 const USER_ID = 'user-1';
 const THREAD_ID = 'thread-1';
@@ -101,7 +105,9 @@ describe('InstanceAiController', () => {
 	const preferenceCardService = mock<InstanceAiPreferenceCardService>();
 	const onboarding = mock<InstanceAiOnboardingService>();
 	const threadTabsService = mock<InstanceAiThreadTabsService>();
+	const cloudBrowserService = mock<InstanceAiCloudBrowserService>();
 	const globalConfig = mock<GlobalConfig>({ instanceAi: { evalInstance: false } });
+	const telemetry = mock<TelemetryProxy>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
@@ -118,6 +124,8 @@ describe('InstanceAiController', () => {
 		preferenceCardService,
 		globalConfig,
 		threadTabsService,
+		telemetry,
+		cloudBrowserService,
 	);
 
 	const req = mock<AuthenticatedRequest>({ user: { id: USER_ID } });
@@ -162,7 +170,6 @@ describe('InstanceAiController', () => {
 				payload.context,
 				payload.timeZone,
 				payload.pushRef,
-				payload.mode,
 				payload.promptVersion,
 				payload.browserUseAvailable,
 				payload.threadArtifacts,
@@ -195,7 +202,6 @@ describe('InstanceAiController', () => {
 				payloadWithArtifacts.context,
 				payloadWithArtifacts.timeZone,
 				payloadWithArtifacts.pushRef,
-				payloadWithArtifacts.mode,
 				payloadWithArtifacts.promptVersion,
 				payloadWithArtifacts.browserUseAvailable,
 				payloadWithArtifacts.threadArtifacts,
@@ -287,7 +293,6 @@ describe('InstanceAiController', () => {
 				payloadWithPushRef.context,
 				payloadWithPushRef.timeZone,
 				'iframe-push-ref-123',
-				payloadWithPushRef.mode,
 				payloadWithPushRef.promptVersion,
 				payloadWithPushRef.browserUseAvailable,
 				payloadWithPushRef.threadArtifacts,
@@ -295,34 +300,32 @@ describe('InstanceAiController', () => {
 			);
 		});
 
-		it('should forward the build mode and prompt version to startRun', async () => {
-			const payloadWithMode = mock<InstanceAiSendMessageRequest>({
+		it('should forward the prompt version to startRun', async () => {
+			const payloadWithVersion = mock<InstanceAiSendMessageRequest>({
 				observerThresholdTokens: undefined,
 				message: 'build me a workflow',
 				timeZone: 'UTC',
 				attachments: undefined,
-				mode: 'progressive',
-				promptVersion: 'progressive@1',
+				promptVersion: 'concise@1',
 			});
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			instanceAiService.hasActiveRun.mockReturnValue(false);
 			instanceAiService.startRun.mockReturnValue('run-5');
 
-			await controller.chat(req, res, THREAD_ID, payloadWithMode);
+			await controller.chat(req, res, THREAD_ID, payloadWithVersion);
 
 			expect(instanceAiService.startRun).toHaveBeenCalledWith(
 				req.user,
 				THREAD_ID,
-				payloadWithMode.message,
-				payloadWithMode.attachments,
-				payloadWithMode.context,
-				payloadWithMode.timeZone,
-				payloadWithMode.pushRef,
-				'progressive',
-				'progressive@1',
-				payloadWithMode.browserUseAvailable,
-				payloadWithMode.threadArtifacts,
-				payloadWithMode.observerThresholdTokens,
+				payloadWithVersion.message,
+				payloadWithVersion.attachments,
+				payloadWithVersion.context,
+				payloadWithVersion.timeZone,
+				payloadWithVersion.pushRef,
+				'concise@1',
+				payloadWithVersion.browserUseAvailable,
+				payloadWithVersion.threadArtifacts,
+				payloadWithVersion.observerThresholdTokens,
 			);
 		});
 
@@ -356,7 +359,6 @@ describe('InstanceAiController', () => {
 				payloadWithContext.context,
 				payloadWithContext.timeZone,
 				payloadWithContext.pushRef,
-				payloadWithContext.mode,
 				payloadWithContext.promptVersion,
 				payloadWithContext.browserUseAvailable,
 				payloadWithContext.threadArtifacts,
@@ -462,7 +464,6 @@ describe('InstanceAiController', () => {
 				nodesPayload.context,
 				nodesPayload.timeZone,
 				nodesPayload.pushRef,
-				nodesPayload.mode,
 				nodesPayload.promptVersion,
 				nodesPayload.browserUseAvailable,
 				nodesPayload.threadArtifacts,
@@ -782,6 +783,43 @@ describe('InstanceAiController', () => {
 			expect(sseRes.write).not.toHaveBeenCalled();
 		});
 
+		it('should write a run-sync frame for a background task, but not for one detached from its turn', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: false,
+				isSuspended: false,
+				backgroundTasks: [
+					{ status: 'running', runId: 'run-builder', messageGroupId: 'mg-builder' },
+					{
+						status: 'running',
+						runId: 'run-browser',
+						messageGroupId: 'mg-browser',
+						detachedFromTurn: true,
+					},
+				],
+			} as never);
+			instanceAiService.getRunIdsForMessageGroup.mockImplementation((groupId) => [
+				groupId === 'mg-builder' ? 'run-builder' : 'run-browser',
+			]);
+			eventLog.getEventsForRuns.mockResolvedValue([RUN_START] as never);
+			eventBus.subscribe.mockReturnValue(vi.fn());
+			const { sseReq, sseRes, frames } = sseIo();
+
+			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
+
+			const runSyncGroups = frames()
+				.filter((frame) => frame.startsWith('event: run-sync\n'))
+				.map(
+					(frame) =>
+						(
+							JSON.parse(frame.slice('event: run-sync\ndata: '.length)) as {
+								messageGroupId: string;
+							}
+						).messageGroupId,
+				);
+			expect(runSyncGroups).toEqual(['mg-builder']);
+		});
+
 		it('should close SSE stream when thread ownership changes after pre-creation subscribe', async () => {
 			// Simulate: thread does not exist at connect time
 			memoryService.checkThreadOwnership.mockResolvedValueOnce('not_found');
@@ -1013,13 +1051,18 @@ describe('InstanceAiController', () => {
 			expect(scopeOf('cancel')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
 		});
 
-		it('should cancel the run', async () => {
+		it('should cancel the run and track the stop', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 
 			const result = await controller.cancel(req, res, THREAD_ID);
 
 			expect(result).toEqual({ ok: true });
 			expect(instanceAiService.routeCancelRun).toHaveBeenCalledWith(THREAD_ID);
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.INSTANCE_AI.USER_STOPPED_RUN, {
+				user_id: USER_ID,
+				thread_id: THREAD_ID,
+				runtime: 'instance-ai',
+			});
 		});
 
 		it('should throw ForbiddenError for other user thread', async () => {
@@ -1103,6 +1146,174 @@ describe('InstanceAiController', () => {
 
 			expect(result).toEqual({ ok: true });
 			expect(instanceAiService.routeCancelBackgroundTask).toHaveBeenCalledWith(THREAD_ID, 'task-1');
+		});
+	});
+
+	describe('cloudBrowserLiveView', () => {
+		it('should require instanceAi:message scope', () => {
+			expect(scopeOf('cloudBrowserLiveView')).toEqual({
+				scope: 'instanceAi:message',
+				globalOnly: true,
+			});
+		});
+
+		it("should return the task's live view for the thread's owner", async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			cloudBrowserService.getLiveView.mockResolvedValue({
+				status: 'live',
+				liveViewUrl: 'https://live.example.com/view',
+				windowId: 'page-1',
+			});
+
+			const result = await controller.cloudBrowserLiveView(req, res, THREAD_ID, 'task-1');
+
+			expect(result).toEqual({
+				status: 'live',
+				liveViewUrl: 'https://live.example.com/view',
+				windowId: 'page-1',
+			});
+			expect(cloudBrowserService.getLiveView).toHaveBeenCalledWith(USER_ID, THREAD_ID, 'task-1');
+		});
+
+		it('should not read the live view of a thread the user does not own', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(
+				controller.cloudBrowserLiveView(req, res, THREAD_ID, 'task-1'),
+			).rejects.toThrow();
+			expect(cloudBrowserService.getLiveView).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('takeOverCloudBrowser', () => {
+		it('should require instanceAi:message scope', () => {
+			expect(scopeOf('takeOverCloudBrowser')).toEqual({
+				scope: 'instanceAi:message',
+				globalOnly: true,
+			});
+		});
+
+		it("should give the user control of the task's browser", async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			cloudBrowserService.giveControlToUser.mockReturnValue(undefined);
+
+			const result = await controller.takeOverCloudBrowser(req, res, THREAD_ID, 'task-1');
+
+			expect(result).toEqual({ ok: true });
+			expect(cloudBrowserService.giveControlToUser).toHaveBeenCalledWith(
+				USER_ID,
+				THREAD_ID,
+				'task-1',
+			);
+		});
+
+		it('should throw ConflictError with the reason when the user cannot take over', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			cloudBrowserService.giveControlToUser.mockReturnValue('This browser task is not running.');
+
+			const call = controller.takeOverCloudBrowser(req, res, THREAD_ID, 'task-1');
+
+			await expect(call).rejects.toThrow(ConflictError);
+			await expect(call).rejects.toThrow('This browser task is not running.');
+		});
+
+		it('should not give control of a browser in a thread the user does not own', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(controller.takeOverCloudBrowser(req, res, THREAD_ID, 'task-1')).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(cloudBrowserService.giveControlToUser).not.toHaveBeenCalled();
+		});
+
+		it('should not give control when Instance AI is disabled', async () => {
+			settingsService.isInstanceAiEnabled.mockReturnValue(false);
+
+			await expect(controller.takeOverCloudBrowser(req, res, THREAD_ID, 'task-1')).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(memoryService.checkThreadOwnership).not.toHaveBeenCalled();
+			expect(cloudBrowserService.giveControlToUser).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('returnCloudBrowserControl', () => {
+		const payload = (note?: string) => mock<InstanceAiCloudBrowserReturnControlRequest>({ note });
+
+		it('should require instanceAi:message scope', () => {
+			expect(scopeOf('returnCloudBrowserControl')).toEqual({
+				scope: 'instanceAi:message',
+				globalOnly: true,
+			});
+		});
+
+		it("should give control back to the agent with the user's note", async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			cloudBrowserService.returnControlToAgent.mockReturnValue(undefined);
+
+			const result = await controller.returnCloudBrowserControl(
+				req,
+				res,
+				THREAD_ID,
+				'task-1',
+				payload('Signed in'),
+			);
+
+			expect(result).toEqual({ ok: true });
+			expect(cloudBrowserService.returnControlToAgent).toHaveBeenCalledWith(
+				USER_ID,
+				THREAD_ID,
+				'task-1',
+				'Signed in',
+			);
+		});
+
+		it.each([
+			['an empty note', ''],
+			['no note', undefined],
+		])('should pass no note for %s', async (_, note) => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			cloudBrowserService.returnControlToAgent.mockReturnValue(undefined);
+
+			await controller.returnCloudBrowserControl(req, res, THREAD_ID, 'task-1', payload(note));
+
+			expect(cloudBrowserService.returnControlToAgent).toHaveBeenCalledWith(
+				USER_ID,
+				THREAD_ID,
+				'task-1',
+				undefined,
+			);
+		});
+
+		it('should throw ConflictError with the reason when control cannot be returned', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			cloudBrowserService.returnControlToAgent.mockReturnValue(
+				'The user does not have control of the browser.',
+			);
+
+			const call = controller.returnCloudBrowserControl(req, res, THREAD_ID, 'task-1', payload());
+
+			await expect(call).rejects.toThrow(ConflictError);
+			await expect(call).rejects.toThrow('The user does not have control of the browser.');
+		});
+
+		it('should not return control of a browser in a thread the user does not own', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(
+				controller.returnCloudBrowserControl(req, res, THREAD_ID, 'task-1', payload()),
+			).rejects.toThrow(ForbiddenError);
+			expect(cloudBrowserService.returnControlToAgent).not.toHaveBeenCalled();
+		});
+
+		it('should not return control when Instance AI is disabled', async () => {
+			settingsService.isInstanceAiEnabled.mockReturnValue(false);
+
+			await expect(
+				controller.returnCloudBrowserControl(req, res, THREAD_ID, 'task-1', payload()),
+			).rejects.toThrow(ForbiddenError);
+			expect(memoryService.checkThreadOwnership).not.toHaveBeenCalled();
+			expect(cloudBrowserService.returnControlToAgent).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1645,6 +1856,89 @@ describe('InstanceAiController', () => {
 			});
 		});
 
+		it('should start delivering waiting cloud browser results without waiting for it', async () => {
+			memoryService.getRichMessages.mockResolvedValue(
+				mock<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>>(),
+			);
+			eventLog.getNextEventId.mockResolvedValue(42);
+			instanceAiService.getActiveRunId.mockReturnValue(undefined);
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: false,
+				isSuspended: false,
+				backgroundTasks: [],
+			} as never);
+			// A delivery that never ends must not hold up the messages.
+			instanceAiService.maybeDeliverCloudBrowserTaskResults.mockReturnValue(
+				new Promise<void>(() => {}),
+			);
+			const query = mock<InstanceAiThreadMessagesQuery>({ limit: 50, page: 0, raw: undefined });
+
+			const result = await controller.getThreadMessages(req, res, THREAD_ID, query);
+
+			expect(result).toMatchObject({ nextEventId: 42 });
+			expect(instanceAiService.maybeDeliverCloudBrowserTaskResults).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+			);
+		});
+
+		it('should start delivering waiting cloud browser results only after reading the event cursor', async () => {
+			memoryService.getRichMessages.mockResolvedValue(
+				mock<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>>(),
+			);
+			eventLog.getNextEventId.mockResolvedValue(42);
+			instanceAiService.getActiveRunId.mockReturnValue(undefined);
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: false,
+				isSuspended: false,
+				backgroundTasks: [],
+			} as never);
+			instanceAiService.maybeDeliverCloudBrowserTaskResults.mockResolvedValue();
+			const query = mock<InstanceAiThreadMessagesQuery>({ limit: 50, page: 0, raw: undefined });
+
+			await controller.getThreadMessages(req, res, THREAD_ID, query);
+
+			const [cursorRead] = eventLog.getNextEventId.mock.invocationCallOrder;
+			const [deliveryStart] =
+				instanceAiService.maybeDeliverCloudBrowserTaskResults.mock.invocationCallOrder;
+			expect(deliveryStart).toBeGreaterThan(cursorRead);
+		});
+
+		it("should leave out a background task's turn, but not the turn of one detached from it", async () => {
+			instanceAiService.getActiveRunId.mockReturnValue(undefined);
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: false,
+				isSuspended: false,
+				backgroundTasks: [
+					{ status: 'running', runId: 'run-builder', messageGroupId: 'mg-builder' },
+					{
+						status: 'running',
+						runId: 'run-browser',
+						messageGroupId: 'mg-browser',
+						detachedFromTurn: true,
+					},
+				],
+			} as never);
+			memoryService.getRichMessages.mockResolvedValue(
+				mock<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>>(),
+			);
+			const query = mock<InstanceAiThreadMessagesQuery>({
+				limit: 50,
+				page: 0,
+				cursor: 'cursor-1',
+				raw: undefined,
+			});
+
+			await controller.getThreadMessages(req, res, THREAD_ID, query);
+
+			expect(memoryService.getRichMessages).toHaveBeenCalledWith(USER_ID, THREAD_ID, {
+				limit: 50,
+				cursor: 'cursor-1',
+				excludeRunIds: ['run-builder'],
+				excludeMessageGroupIds: ['mg-builder'],
+			});
+		});
+
 		it('should carry the latest applied-preferences payload when a turn reported one', async () => {
 			memoryService.getRichMessages.mockResolvedValue(
 				mock<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>>(),
@@ -1742,6 +2036,8 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 		mock<InstanceAiPreferenceCardService>(),
 		mock<GlobalConfig>(),
 		mock<InstanceAiThreadTabsService>(),
+		mock<TelemetryProxy>(),
+		mock<InstanceAiCloudBrowserService>(),
 	);
 
 	beforeEach(() => {

@@ -145,7 +145,7 @@ describe('SkillSourceController', () => {
 				expect.objectContaining({
 					location: 'skills/broken',
 					name: null,
-					error: expect.objectContaining({ reason: 'parse_error' }),
+					error: { reason: 'parse_error', message: expect.any(String) },
 				}),
 				expect.objectContaining({ location: 'skills/docx', name: 'docx', error: null }),
 				expect.objectContaining({
@@ -259,6 +259,24 @@ describe('SkillSourceController', () => {
 	});
 
 	describe('connect', () => {
+		it('imports a skill from a folder link without downloading the repository archive', async () => {
+			const url = `${REPO}/tree/main/skills/pdf`;
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+			expect(discovery.skills).toEqual([
+				expect.objectContaining({ name: 'pdf', location: 'skills/pdf', error: null }),
+			]);
+
+			const { data } = await connect(owner, {
+				url,
+				scope: 'instance',
+				skillKeys: keysOf(discovery, ['pdf']),
+			});
+
+			expect(data.failed).toEqual([]);
+			expect(data.imported).toEqual([expect.objectContaining({ name: 'pdf' })]);
+			expect(github.requests.archives).toBe(0);
+		});
+
 		it('refuses a skill whose name is only spaces as blocked by the security check', async () => {
 			github.push('acme/blank', { '  /SKILL.md': '---\ndescription: Blank\n---\n\nBody.\n' });
 			const url = 'https://github.com/acme/blank';
