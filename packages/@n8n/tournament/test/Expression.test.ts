@@ -53,8 +53,28 @@ describe('Expression', () => {
 		const longLookalike = `__n8n_literal_text_${'_'.repeat(100_000)}`;
 		const lookalike = '__n8n_literal_text_0_0__';
 
-		expect(evaluator.execute(`{{ '${longLookalike}' }}`, {})).toBe(longLookalike);
+		expect(evaluator.execute(`{{ ['a\\\nb', '${longLookalike}'] }}`, {})).toEqual([
+			'ab',
+			longLookalike,
+		]);
 		expect(evaluator.execute(`{{ ['a\\\nb', '${lookalike}'] }}`, {})).toEqual(['ab', lookalike]);
+	});
+
+	test.each([
+		[
+			'{{ $json.name }}',
+			'var global = {};\nvar ___n8n_data = this;\n\ntry {\n    return ("$json" in ___n8n_data ? ___n8n_data : global).$json.name;\n} catch (e) {\n    E(e, this);\n}',
+		],
+		[
+			'Hello {{ $json.name }}!',
+			'var global = {};\nvar ___n8n_data = this;\n\nreturn ["Hello ", function(v) {\n    try {\n        v = ("$json" in ___n8n_data ? ___n8n_data : global).$json.name;\n    } catch (e) {\n        E(e, this);\n    }\n\n    ;\n    return v || v === 0 || v === false ? v : "";\n}.call(this), "!"].join("");',
+		],
+		[
+			"{{ `a` + x + 'c\\nd' }}",
+			'var global = {};\nvar ___n8n_data = this;\n\ntry {\n    return `a` + ("x" in ___n8n_data ? ___n8n_data : global).x + \'c\\nd\';\n} catch (e) {\n    E(e, this);\n}',
+		],
+	])('Should keep the generated code of the one-line expression %s', (expression, code) => {
+		expect(evaluator.getExpressionCode(expression)[0]).toBe(code);
 	});
 
 	test('Should keep a data node name that looks like the token for a multi-line string', () => {

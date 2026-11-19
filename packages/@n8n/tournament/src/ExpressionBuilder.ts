@@ -262,6 +262,41 @@ const fixStringNewLines = (
 	return node;
 };
 
+type MultiLineLiteralFix = {
+	/** Returns the node with each literal that spans lines held as a one-line token. */
+	hold: (node: types.namedTypes.File) => types.namedTypes.File;
+	/** Returns the code with each held literal back in its source text. */
+	restore: (code: string) => string;
+};
+
+const noMultiLineLiteralFix: MultiLineLiteralFix = {
+	hold: (node) => node,
+	restore: (code) => code,
+};
+
+/**
+ * The fix for the literals of `expr` that span lines. The source text of such a literal
+ * is part of `expr`, so an expression without a line terminator needs no fix.
+ */
+const createMultiLineLiteralFix = (
+	expr: string,
+	dataNodeName: string,
+	chunks: Array<ExpressionText | ParsedCode>,
+): MultiLineLiteralFix => {
+	if (LINE_TERMINATOR.test(expr)) {
+		const literalText = createLiteralTextStore([
+			expr,
+			dataNodeName,
+			...chunks.flatMap((chunk) => (chunk.type === 'code' ? getDecodedTexts(chunk.parsed) : [])),
+		]);
+		return {
+			hold: (node) => fixStringNewLines(node, literalText),
+			restore: literalText.restore,
+		};
+	}
+	return noMultiLineLiteralFix;
+};
+
 export const getParsedExpression = (expr: string): Array<ExpressionText | ParsedCode> => {
 	return splitExpression(expr).map<ExpressionText | ParsedCode>((chunk) => {
 		if (chunk.type === 'code') {
@@ -282,11 +317,7 @@ export const getExpressionCode = (
 	hooks: TournamentHooks,
 ): [string, ExpressionAnalysis] => {
 	const chunks = getParsedExpression(expr);
-	const literalText = createLiteralTextStore([
-		expr,
-		dataNodeName,
-		...chunks.flatMap((chunk) => (chunk.type === 'code' ? getDecodedTexts(chunk.parsed) : [])),
-	]);
+	const multiLineLiterals = createMultiLineLiteralFix(expr, dataNodeName, chunks);
 
 	const newProg = b.program([
 		b.variableDeclaration('var', [b.variableDeclarator(globalIdentifier, b.objectExpression([]))]),
@@ -323,7 +354,7 @@ export const getExpressionCode = (
 				parts.push(rawStringLiteral(chunk.text));
 				// This is a code chunk so do some magic
 			} else {
-				const fixed = fixStringNewLines(chunk.parsed, literalText);
+				const fixed = multiLineLiterals.hold(chunk.parsed);
 				for (const hook of hooks.before) {
 					hook(fixed, dataNode);
 				}
@@ -379,7 +410,7 @@ export const getExpressionCode = (
 			);
 		}
 	} else {
-		const fixed = fixStringNewLines((chunks[1] as ParsedCode).parsed, literalText);
+		const fixed = multiLineLiterals.hold((chunks[1] as ParsedCode).parsed);
 		for (const hook of hooks.before) {
 			hook(fixed, dataNode);
 		}
@@ -400,7 +431,7 @@ export const getExpressionCode = (
 	}
 
 	return [
-		literalText.restore(print(newProg).code),
+		multiLineLiterals.restore(print(newProg).code),
 		{ has: { function: hasFn, templateString: hasTempString } },
 	];
 };
