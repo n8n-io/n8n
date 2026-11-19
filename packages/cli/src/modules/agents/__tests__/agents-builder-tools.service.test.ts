@@ -3359,7 +3359,14 @@ describe('AgentsBuilderToolsService', () => {
 				.json.find((tool) => tool.name === BUILDER_TOOLS.PUBLISH_AGENT)!;
 		}
 
-		/** An approved card for the draft. The default `findById` mock has no agent. */
+		/** An unpublished agent whose draft has no saved version, which `approvedCtx` approves. */
+		const unpublishedAgent = {
+			id: agentId,
+			versionId: null,
+			activeVersionId: null,
+		} as unknown as ProjectAgent;
+
+		/** An approved card for `unpublishedAgent`'s draft. */
 		const approvedCtx = {
 			...ctx,
 			resumeData: { approved: true },
@@ -3519,6 +3526,17 @@ describe('AgentsBuilderToolsService', () => {
 				7,
 			);
 			expect(result).toMatchObject({ ok: true, activeVersionId: 'v-draft' });
+		});
+
+		it('reports an agent deleted while the card was open instead of publishing', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue(null);
+
+			const result = await getPublishTool(service).handler!({}, approvedCtx);
+
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+			expect(result).toEqual({ ok: false, errors: [{ message: 'Agent not found.' }] });
 		});
 
 		it('reports a missing agent instead of asking to publish it', async () => {
@@ -3703,8 +3721,9 @@ describe('AgentsBuilderToolsService', () => {
 		);
 
 		it('publishes the bound agent draft when the user has agent:publish', async () => {
-			const { service, agentPublishService } = makeService();
+			const { service, agentsService, agentPublishService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue(unpublishedAgent);
 			agentPublishService.publishAgent.mockResolvedValue({
 				agent: {
 					activeVersionId: 'v-active',
@@ -3736,8 +3755,9 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('forwards an optional versionId to publishAgent', async () => {
-			const { service, agentPublishService } = makeService();
+			const { service, agentsService, agentPublishService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue(unpublishedAgent);
 			agentPublishService.publishAgent.mockResolvedValue({
 				agent: {
 					activeVersionId: 'v-history',
@@ -3823,8 +3843,9 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('surfaces publish service errors to the model', async () => {
-			const { service, agentPublishService } = makeService();
+			const { service, agentsService, agentPublishService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue(unpublishedAgent);
 			agentPublishService.publishAgent.mockRejectedValue(
 				new Error('Cannot publish agent with missing custom tools: my_tool'),
 			);

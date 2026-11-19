@@ -1115,14 +1115,15 @@ export class AgentsBuilderToolsService {
 							errors: [{ message: e instanceof Error ? e.message : String(e) }],
 						};
 					}
+					if (!before) return { ok: false, errors: [{ message: 'Agent not found.' }] };
 					// The card described one version and what was live. If either changed while it was
 					// open, or the card did not record them, the user has not seen what would happen:
 					// ask again. Like the first call, this stays outside the try below.
 					const confirmed = publishContinuationSchema.safeParse(ctx.continuation);
 					if (
 						!confirmed.success ||
-						(versionId ?? before?.versionId ?? null) !== confirmed.data.confirmedVersionId ||
-						(before?.activeVersionId ?? null) !== confirmed.data.liveVersionId
+						(versionId ?? before.versionId ?? null) !== confirmed.data.confirmedVersionId ||
+						(before.activeVersionId ?? null) !== confirmed.data.liveVersionId
 					) {
 						return await this.askToPublish(ctx, agentId, projectId, versionId);
 					}
