@@ -501,6 +501,21 @@ describe('Recording the review lifecycle in the feed', () => {
 		expect(entryTypes(await getActivity(memberAgent, requestId))).toEqual(['review.opened']);
 	});
 
+	test('records the user who closed the review, not an automatic close', async () => {
+		const workflow = await createReviewableWorkflow();
+		const requestId = await openReview(workflow.id);
+
+		await memberAgent.post(`/workflow-review-requests/${requestId}/close`).expect(200);
+
+		const feed = await getActivity(memberAgent, requestId);
+		expect(entryTypes(feed)).toEqual(['review.opened', 'review.closed_by_user']);
+		expect(feed.data[1]).toMatchObject({
+			typeVersion: 1,
+			data: null,
+			createdBy: expect.objectContaining({ id: member.id }),
+		});
+	});
+
 	test('leaves the review undecided when its feed entry cannot be written', async () => {
 		const workflow = await createReviewableWorkflow();
 		const requestId = await openReview(workflow.id);

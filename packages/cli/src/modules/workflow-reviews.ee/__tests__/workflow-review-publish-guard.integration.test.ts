@@ -249,6 +249,20 @@ describe('publishing a workflow under review', () => {
 		},
 	);
 
+	test('keeps the live version on close and lets the workflow be published again', async () => {
+		const { workflow, liveVersionId, newVersionId } = await createLiveTeamWorkflow();
+		const request = await seedTeamReview(workflow.id, newVersionId);
+
+		await memberAgent.post(`/workflow-review-requests/${request.id}/close`).expect(200);
+		expect(await publishedVersionOf(workflow.id)).toBe(liveVersionId);
+
+		await memberAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: newVersionId })
+			.expect(200);
+		expect(await publishedVersionOf(workflow.id)).toBe(newVersionId);
+	});
+
 	test('allows unpublishing while a review is open', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow(owner);
 
@@ -290,6 +304,21 @@ describe('publishing when the instance always requires an approved review', () =
 			validationError: true,
 		});
 		expect(response.body.message).toContain('Submit this version for review');
+		expect(await publishedVersionOf(workflow.id)).toBe(liveVersionId);
+	});
+
+	test('rejects a version whose review was closed without approval', async () => {
+		const { workflow, liveVersionId, newVersionId } = await createLiveTeamWorkflow();
+		const request = await seedTeamReview(workflow.id, newVersionId);
+		await requireApproval();
+
+		await memberAgent.post(`/workflow-review-requests/${request.id}/close`).expect(200);
+
+		const response = await ownerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: newVersionId })
+			.expect(409);
+		expect(response.body.meta).toMatchObject({ reason: 'review_required' });
 		expect(await publishedVersionOf(workflow.id)).toBe(liveVersionId);
 	});
 
