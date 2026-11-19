@@ -254,6 +254,7 @@ describe('Workflow history store', () => {
 		it('downloads only the fields of Export JSON', async () => {
 			const workflowHistoryStore = useWorkflowHistoryStore();
 			const workflowsListStore = useWorkflowsListStore();
+			useRootStore().setInstanceId('instance-123');
 
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				id: 'workflow-123',
@@ -263,7 +264,7 @@ describe('Workflow history store', () => {
 				settings: {},
 				tags: [],
 				pinData: {},
-				meta: {},
+				meta: { templateId: '42' },
 				activeVersion: { versionId: 'active-version' },
 				homeProject: { id: 'project-1', name: 'Jane Doe <jane@example.com>' },
 				sharedWithProjects: [],
@@ -296,6 +297,7 @@ describe('Workflow history store', () => {
 				'tags',
 				'versionId',
 			]);
+			expect(file.meta).toEqual({ templateId: '42', instanceId: 'instance-123' });
 		});
 	});
 
