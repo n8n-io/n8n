@@ -144,8 +144,7 @@ const savedVersionIsApproved = computed(() => {
 });
 
 const mustSubmitForReview = computed(
-	() =>
-		isApprovalRequired.value && !savedVersionIsLive.value && !savedVersionIsApproved.value,
+	() => isApprovalRequired.value && !savedVersionIsLive.value && !savedVersionIsApproved.value,
 );
 
 const effectiveReviewRequired = computed(() =>
