@@ -1,7 +1,7 @@
 import type { DataSource } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import postgresVersions from 'n8n-containers/postgres-versions.json';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createDataSource, createStores } from '../../database';
 import { generateId } from '../../database/generate-id';
@@ -13,6 +13,7 @@ import {
 } from '../../lifecycle-events';
 import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
+import type { CancelExecutionService } from '../cancel-execution.service';
 import { stepKeyId, type StepSlots } from '../execution.types';
 import { StepSettledHandler } from '../step-settled-handler';
 
@@ -76,6 +77,7 @@ async function setup(dataSource: DataSource, graph: WorkflowGraph, queued: strin
 		new RecordingQueue<OrchestrationMessage>(),
 		new LifecycleEventPublisherFactory(publisher),
 		noopExecutionResponseSender,
+		{ cancelSubExecutions: vi.fn() } as unknown as CancelExecutionService,
 	);
 	const executionId = generateId();
 
