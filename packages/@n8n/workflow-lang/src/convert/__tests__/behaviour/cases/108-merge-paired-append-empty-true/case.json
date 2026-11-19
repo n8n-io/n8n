@@ -1,0 +1,28 @@
+{
+	"description": "As case 103, but the If condition matches no item: the true branch (input 1 of the Merge node) is empty and the false branch holds all four items.",
+	"trigger": {
+		"body": {
+			"ids": [
+				"a0",
+				"a1",
+				"a2",
+				"a3"
+			]
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"pairedItems": [
+		"A",
+		"If",
+		"Merge",
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"recordRuns": true,
+	"expectRefusal": true
+}

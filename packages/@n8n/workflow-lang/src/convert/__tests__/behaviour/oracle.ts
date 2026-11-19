@@ -128,6 +128,7 @@ async function runCase(dir: string, port: number, captured: Captured): Promise<u
 		...(spec.credentials
 			? { additionalData: { credentialsHelper: credentialsHelper(spec.credentials) } }
 			: {}),
+		...(spec.pairedItems ? { pairedItems: spec.pairedItems } : {}),
 	});
 	captured.responses.push(...result.responses);
 	return {
@@ -136,8 +137,11 @@ async function runCase(dir: string, port: number, captured: Captured): Promise<u
 		...(result.nodeMetadata ? { nodeMetadata: result.nodeMetadata } : {}),
 		generatedBy: 'oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1',
 		error: result.error,
+		...(result.errorDescription ? { errorDescription: result.errorDescription } : {}),
 		order: result.order,
 		nodes: result.nodes,
+		...(result.pairedItems ? { pairedItems: result.pairedItems } : {}),
+		...(spec.recordRuns === true ? { runs: result.runs } : {}),
 		requests: captured.requests,
 		responses: captured.responses,
 	};

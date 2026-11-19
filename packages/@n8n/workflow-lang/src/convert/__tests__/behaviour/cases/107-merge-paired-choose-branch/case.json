@@ -1,0 +1,28 @@
+{
+	"description": "As case 103 with the Merge mode chooseBranch and output of input 1. Input 1 of the node is its first connection, which carries the false branch (a2, a3), so the Merge and the readers see a2 and a3.",
+	"trigger": {
+		"body": {
+			"ids": [
+				"a0",
+				"a1",
+				"a2",
+				"a3"
+			]
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"pairedItems": [
+		"A",
+		"If",
+		"Merge",
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"recordRuns": true,
+	"expectRefusal": true
+}

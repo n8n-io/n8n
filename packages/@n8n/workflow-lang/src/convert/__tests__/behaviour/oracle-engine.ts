@@ -223,6 +223,8 @@ export interface OracleOptions {
 	 * call of a node. `args` has the form of a `deduplication` service call (spec 9.9).
 	 */
 	deduplication?: (call: ServiceCall) => unknown;
+	/** Node names whose `pairedItem` per output item the result keeps. */
+	pairedItems?: string[];
 }
 
 /** A call of a v1 node to a store of n8n, in the form of a `ctx.service` call. */
@@ -283,6 +285,10 @@ export interface OracleResult {
 	order: string[];
 	/** The output lists of each node: one list for each output, the items of all runs joined. */
 	nodes: Record<string, unknown[][]>;
+	/** The `pairedItem` of each output item, for the nodes of `options.pairedItems`. */
+	pairedItems?: Record<string, unknown[][]>;
+	/** The number of items of each output, for each run of each node. */
+	runs: Record<string, number[][]>;
 	/** The responses that Respond to Webhook sent. */
 	responses: unknown[];
 	/** True when the run stopped at a node that waits for a resume (Wait, Form, send and wait). */
@@ -301,7 +307,13 @@ interface RunData {
 			runData: Record<
 				string,
 				Array<{
-					data?: { main: Array<Array<{ json: unknown; binary?: object | null }> | null> };
+					data?: {
+						main: Array<Array<{
+							json: unknown;
+							binary?: object | null;
+							pairedItem?: unknown;
+						}> | null>;
+					};
 					metadata?: unknown;
 				}>
 			>;
@@ -450,10 +462,18 @@ export async function runOracle(
 		0,
 	);
 	const nodes: Record<string, unknown[][]> = {};
-	for (const [name, runs] of Object.entries(run.data.resultData.runData)) {
+	const pairedItems: Record<string, unknown[][]> = {};
+	const runs: Record<string, number[][]> = {};
+	const pairedWanted = new Set(options.pairedItems ?? []);
+	for (const [name, nodeRuns] of Object.entries(run.data.resultData.runData)) {
 		const outputs: unknown[][] = [];
-		for (const r of runs) {
-			(r.data?.main ?? []).forEach((list, k) => {
+		const pairedOutputs: unknown[][] = [];
+		const counts: number[][] = [];
+		for (const r of nodeRuns) {
+			const main = r.data?.main ?? [];
+			counts.push(main.map((list) => list?.length ?? 0));
+			main.forEach((list, k) => {
+				pairedOutputs[k] = [...(pairedOutputs[k] ?? []), ...(list ?? []).map((i) => i.pairedItem)];
 				outputs[k] = [
 					...(outputs[k] ?? []),
 					...(list ?? []).map((i) =>
@@ -470,6 +490,10 @@ export async function runOracle(
 			});
 		}
 		nodes[name] = Array.from({ length: outputs.length }, (_, k) => outputs[k] ?? []);
+		runs[name] = counts;
+		if (pairedWanted.has(name)) {
+			pairedItems[name] = Array.from({ length: outputs.length }, (_, k) => pairedOutputs[k] ?? []);
+		}
 	}
 	const nodeMetadata: Record<string, unknown[]> = {};
 	for (const [name, runs] of Object.entries(run.data.resultData.runData)) {
@@ -483,6 +507,8 @@ export async function runOracle(
 			: {}),
 		order,
 		nodes,
+		...(Object.keys(pairedItems).length > 0 ? { pairedItems } : {}),
+		runs,
 		responses,
 		...(run.data.resultData.metadata ? { customData: run.data.resultData.metadata } : {}),
 		...(Object.keys(nodeMetadata).length > 0 ? { nodeMetadata } : {}),

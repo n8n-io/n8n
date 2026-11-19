@@ -46,6 +46,17 @@ export interface BehaviourCase {
 	services?: Record<string, unknown[]>;
 	/** Node names whose output the test compares. The default is every leaf of the converted run. */
 	compare?: string[];
+	/**
+	 * Node names whose `pairedItem` of each output item the recording keeps, in the runs of the
+	 * node (`pairedItems` of `expected.json`). The test does not compare them: the recording
+	 * states what n8n saves.
+	 */
+	pairedItems?: string[];
+	/**
+	 * True to record the number of items of each output, for each run of each node
+	 * (`runs` of `expected.json`). The test does not compare them.
+	 */
+	recordRuns?: boolean;
 	/** True when the converter should refuse this case (no compiled form for the path). */
 	expectRefusal?: boolean;
 	/**

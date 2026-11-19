@@ -1,0 +1,279 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"A",
+		"Tag",
+		"Merge",
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"ids": [
+							"a0",
+							"a1",
+							"a2",
+							"a3"
+						]
+					}
+				}
+			]
+		],
+		"A": [
+			[
+				{
+					"id": "a0"
+				},
+				{
+					"id": "a1"
+				},
+				{
+					"id": "a2"
+				},
+				{
+					"id": "a3"
+				}
+			]
+		],
+		"Tag": [
+			[
+				{
+					"id": "a0",
+					"tag": "x"
+				},
+				{
+					"id": "a1",
+					"tag": "x"
+				},
+				{
+					"id": "a2",
+					"tag": "x"
+				},
+				{
+					"id": "a3",
+					"tag": "x"
+				}
+			]
+		],
+		"Merge": [
+			[
+				{
+					"id": "a0",
+					"tag": "x"
+				},
+				{
+					"id": "a1",
+					"tag": "x"
+				},
+				{
+					"id": "a2",
+					"tag": "x"
+				},
+				{
+					"id": "a3",
+					"tag": "x"
+				}
+			]
+		],
+		"Read Each": [
+			[
+				{
+					"from": "a0"
+				},
+				{
+					"from": "a1"
+				},
+				{
+					"from": "a2"
+				},
+				{
+					"from": "a3"
+				}
+			]
+		],
+		"Read All": [
+			[
+				{
+					"from": "a0"
+				}
+			]
+		],
+		"Read Expr": [
+			[
+				{
+					"from": "a0"
+				},
+				{
+					"from": "a1"
+				},
+				{
+					"from": "a2"
+				},
+				{
+					"from": "a3"
+				}
+			]
+		]
+	},
+	"pairedItems": {
+		"A": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				}
+			]
+		],
+		"Tag": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 2
+				},
+				{
+					"item": 3
+				}
+			]
+		],
+		"Merge": [
+			[
+				[
+					{
+						"item": 0
+					},
+					{
+						"item": 0,
+						"input": 1
+					}
+				],
+				[
+					{
+						"item": 1
+					},
+					{
+						"item": 1,
+						"input": 1
+					}
+				],
+				[
+					{
+						"item": 2
+					},
+					{
+						"item": 2,
+						"input": 1
+					}
+				],
+				[
+					{
+						"item": 3
+					},
+					{
+						"item": 3,
+						"input": 1
+					}
+				]
+			]
+		],
+		"Read Each": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 2
+				},
+				{
+					"item": 3
+				}
+			]
+		],
+		"Read All": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"Read Expr": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 2
+				},
+				{
+					"item": 3
+				}
+			]
+		]
+	},
+	"runs": {
+		"Webhook": [
+			[
+				1
+			]
+		],
+		"A": [
+			[
+				4
+			]
+		],
+		"Tag": [
+			[
+				4
+			]
+		],
+		"Merge": [
+			[
+				4
+			]
+		],
+		"Read Each": [
+			[
+				4
+			]
+		],
+		"Read All": [
+			[
+				1
+			]
+		],
+		"Read Expr": [
+			[
+				4
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

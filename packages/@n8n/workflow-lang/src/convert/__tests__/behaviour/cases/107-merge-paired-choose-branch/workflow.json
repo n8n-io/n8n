@@ -1,0 +1,210 @@
+{
+	"name": "Merge paired read - merge-paired-choose-branch",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [
+				0,
+				0
+			],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "107-merge-paired-choose-branch",
+				"options": {}
+			},
+			"webhookId": "0f1a2b3c-4d5e-4f60-8a9b-000000000107"
+		},
+		{
+			"id": "a",
+			"name": "A",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"jsCode": "return $input.first().json.body.ids.map((id) => ({ json: { id } }));"
+			}
+		},
+		{
+			"id": "if",
+			"name": "If",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [
+				400,
+				0
+			],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c1",
+							"leftValue": "={{ $json.id }}",
+							"operator": {
+								"type": "string",
+								"operation": "equals"
+							},
+							"rightValue": "a0"
+						},
+						{
+							"id": "c2",
+							"leftValue": "={{ $json.id }}",
+							"operator": {
+								"type": "string",
+								"operation": "equals"
+							},
+							"rightValue": "a1"
+						}
+					],
+					"combinator": "or"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "merge",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [
+				600,
+				0
+			],
+			"parameters": {
+				"numberInputs": 2,
+				"options": {},
+				"mode": "chooseBranch",
+				"chooseBranchMode": "waitForAll",
+				"output": "specifiedInput",
+				"useDataOfInput": 1
+			}
+		},
+		{
+			"id": "read-each",
+			"name": "Read Each",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				800,
+				-100
+			],
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "return { json: { from: $('A').item.json.id } };"
+			}
+		},
+		{
+			"id": "read-all",
+			"name": "Read All",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				800,
+				0
+			],
+			"parameters": {
+				"jsCode": "return [{ json: { from: $('A').item.json.id } }];"
+			}
+		},
+		{
+			"id": "read-expr",
+			"name": "Read Expr",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				800,
+				100
+			],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "rx-f",
+							"name": "from",
+							"value": "={{ $('A').item.json.id }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "A",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"A": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				],
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge": {
+			"main": [
+				[
+					{
+						"node": "Read Each",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read Expr",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
