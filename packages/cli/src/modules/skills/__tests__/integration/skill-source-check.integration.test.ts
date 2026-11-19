@@ -18,7 +18,6 @@ import { GLOBAL_OWNER_ROLE, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { UserError } from '@n8n/errors';
-import { sha256 } from '@n8n/utils/sha256';
 import nock from 'nock';
 import { randomUUID } from 'node:crypto';
 
@@ -359,25 +358,35 @@ describe('Skill source checks', () => {
 			});
 		});
 
-		it('keeps an oversized skill hidden when its stored hash comes from a tarball read', async () => {
-			const { sourceId } = await importAll(undefined, FOLDER);
-			const content = 'x'.repeat(1024 * 1024 + 1);
-			const key = JSON.stringify({ path: 'skills/pdf' });
-			const contentHash = await sha256(content);
+		it('keeps an oversized skill hidden when switching from tarball to folder reads', async () => {
+			const { sourceId } = await importAll();
+			const content = 'pdf'.padEnd(1024 * 1024 + 1, 'x');
+			pushChange({ 'skills/pdf/SKILL.md': content });
+			await sync().checkAll();
+			const [hidden] = (await review(sourceId)).newSkills!;
+			expect(hidden.check?.verdict).toBe('blocked');
+			await act(sourceId, { skippedNewSkills: [hidden] });
+			const { key, contentHash } = hidden;
+			const { archives } = github.requests;
+			expect(archives).toBeGreaterThan(0);
+			expect(github.requests.trees).toBe(0);
+
+			// Before folder reads used the Trees API, they used the same tarball reader as root links.
+			const { locator } = await sourceOf(sourceId);
 			await db().update(
 				SkillSourceConnection,
 				{ id: sourceId },
-				{
-					unlinkedSkills: [{ key, contentHash, verdict: 'blocked', skipped: true }],
-				},
+				{ locator: { ...locator, path: 'skills' } },
 			);
 
-			pushChange({ 'skills/pdf/SKILL.md': content });
+			pushChange({ 'README.md': 'A source change without a skill change.' });
 			await sync().checkAll();
 			expect((await sources())[0].newSkillsAvailable).toBe(0);
 			expect((await review(sourceId)).newSkills).toEqual([
 				expect.objectContaining({ key, contentHash, skipped: true }),
 			]);
+			expect(github.requests.archives).toBe(archives);
+			expect(github.requests.trees).toBeGreaterThan(0);
 
 			pushChange({ 'skills/pdf/SKILL.md': `${content}!` });
 			await sync().checkAll();
