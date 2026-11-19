@@ -144,13 +144,25 @@ function coveredBySameMajor(file) {
 		.some((dir) => existsSync(join(absolute, dir, rest)));
 }
 
-/** Marks each indexed node whose source folder declares a `resource` parameter. */
+/**
+ * Marks each indexed node that declares a `resource` parameter. In a folder
+ * that several nodes share, only the node's own file counts, unless that file
+ * is a versioned wrapper whose descriptions live elsewhere in the folder.
+ */
 function withResourceFlags(index, sourceIndex) {
+	const dirCounts = new Map();
+	for (const { dir } of sourceIndex.values()) dirCounts.set(dir, (dirCounts.get(dir) ?? 0) + 1);
 	const flagged = new Map();
 	for (const [type, entry] of index) {
-		const sourceDir = sourceIndex.get(type)?.dir ?? entry.dir;
-		const hasResource = readSources(sourceDir).some((s) => s.text.includes("name: 'resource',"));
-		flagged.set(type, { ...entry, hasResource });
+		const source = sourceIndex.get(type) ?? entry;
+		const ownText = readFileSync(join(repoRoot, source.sourceFile), 'utf8');
+		const scanFolder =
+			(dirCounts.get(source.dir) ?? 1) === 1 || ownText.includes('VersionedNodeType');
+		const texts = scanFolder ? readSources(source.dir).map((s) => s.text) : [ownText];
+		flagged.set(type, {
+			...entry,
+			hasResource: texts.some((t) => t.includes("name: 'resource',")),
+		});
 	}
 	return flagged;
 }
