@@ -68,10 +68,27 @@ describe('planPins', () => {
 	it('skips a pin that already points at the published image', async () => {
 		const pinned = /variable "RUNTIME_IMAGE" \{\s*default = "([^"@]+)@([^"]+)"/.exec(hcl);
 		const changes = await planPins(hcl, 'build-base-image.yml', pinned[1].split('-').at(-1), {
-			resolve: (tag) => (tag === pinned[1] ? pinned[2] : null),
+			resolve: (tag) => (tag === pinned[1] ? pinned[2] : digest('d')),
 			contains: async () => true,
 		});
-		assert.deepEqual(changes, []);
+		assert.deepEqual(
+			changes.map((change) => change.source),
+			['DEBIAN_RUNTIME_IMAGE'],
+		);
+	});
+
+	it('reads the tag versions from the bake file of the published commit', async () => {
+		const tags = [];
+		await planPins(hcl, 'build-node-pc-image.yml', sha, {
+			publishedHcl: hcl.replace(/(variable "NODE_VERSION" \{ default = )"[^"]+"/, '$1"1.2.3"'),
+			resolve: (tag) => {
+				tags.push(tag);
+				return null;
+			},
+			contains: async () => true,
+		});
+		assert.equal(tags.length, 4);
+		assert.ok(tags.every((tag) => tag.includes(':1.2.3-')));
 	});
 
 	it('never moves a pin back to an older image', async () => {
