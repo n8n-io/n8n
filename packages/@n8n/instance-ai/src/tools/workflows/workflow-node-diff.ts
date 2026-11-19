@@ -1,16 +1,16 @@
 /**
  * Node-level diff between a built workflow and its previously saved version.
  *
- * `build-workflow` round-trips the whole workflow (get-as-code → edit → build),
+ * `workflow_builder_build_workflow` round-trips the whole workflow (get-as-code → edit → build),
  * so every build re-submits nodes the user never asked to touch. These helpers
  * let the build pipeline tell touched nodes apart from pre-existing ones, so
  * validation and setup routing never punish a node for merely being present.
  *
  * Nodes are paired by id, which get-as-code preserves across the edit round-trip,
- * with a name fallback for nodes without a saved id counterpart. Connection changes count
- * as node changes: a node wired differently (e.g. a previously disconnected
- * node pulled into the flow) is no longer the node the user left there, even
- * when its parameters are byte-identical.
+ * with a name fallback for nodes without a saved id counterpart. A previously
+ * disconnected node pulled into the flow counts as changed, even when its
+ * parameters are byte-identical: it never ran before. Re-wiring a node that was
+ * already connected (a step added before or after it) does not.
  */
 
 import { isRecord } from '@n8n/utils/is-record';
@@ -99,6 +99,18 @@ function connectionsUnchanged(
 	);
 }
 
+function wiredIntoFlow(
+	node: NodeJSON,
+	saved: NodeJSON,
+	builtSignatures: SignatureLookup,
+	savedSignatures: SignatureLookup,
+): boolean {
+	return (
+		(savedSignatures.get(nodeKey(saved)) ?? []).length === 0 &&
+		(builtSignatures.get(nodeKey(node)) ?? []).length > 0
+	);
+}
+
 function parametersUnchanged(node: NodeJSON, saved: NodeJSON): boolean {
 	return (
 		node.type === saved.type &&
@@ -116,10 +128,24 @@ function nodeUnchanged(node: NodeJSON, saved: NodeJSON): boolean {
 	);
 }
 
+/** Codegen writes boolean settings only when true, so `false` and absent compare equal. */
+function executionSettingsUnchanged(node: NodeJSON, saved: NodeJSON): boolean {
+	return (
+		Boolean(node.executeOnce) === Boolean(saved.executeOnce) &&
+		Boolean(node.retryOnFail) === Boolean(saved.retryOnFail) &&
+		Boolean(node.alwaysOutputData) === Boolean(saved.alwaysOutputData) &&
+		node.maxTries === saved.maxTries &&
+		node.waitBetweenTries === saved.waitBetweenTries &&
+		node.onError === saved.onError &&
+		node.extendsCredential === saved.extendsCredential
+	);
+}
+
 /**
  * Names of nodes this build added or modified relative to the saved workflow
- * (type, typeVersion, parameters, credentials, disabled state, name, or the
- * node's connections differ). Unnamed nodes are always treated as changed.
+ * (type, typeVersion, parameters, credentials, disabled state, or name differ,
+ * or a disconnected node got wired into the flow). Unnamed nodes are always
+ * treated as changed.
  */
 export function computeChangedNodeNames(
 	workflow: WorkflowJSON,
@@ -135,7 +161,7 @@ export function computeChangedNodeNames(
 		if (
 			!saved ||
 			!nodeUnchanged(node, saved) ||
-			!connectionsUnchanged(node, saved, builtSignatures, savedSignatures)
+			wiredIntoFlow(node, saved, builtSignatures, savedSignatures)
 		) {
 			changed.push(node.name);
 		}
@@ -243,6 +269,13 @@ export function downgradeUnchangedNodeBlockers(
 				warning.code === 'chat_model_validation' &&
 				(!isDeepStrictEqual(node.credentials ?? {}, saved.credentials ?? {}) ||
 					(node.disabled ?? false) !== (saved.disabled ?? false))
+			)
+				return warning;
+		} else if (warning.code === 'PREFER_PREDEFINED_CREDENTIAL') {
+			if (
+				!nodeUnchanged(node, saved) ||
+				!executionSettingsUnchanged(node, saved) ||
+				wiredIntoFlow(node, saved, builtSignatures, savedSignatures)
 			)
 				return warning;
 		} else {

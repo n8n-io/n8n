@@ -219,6 +219,18 @@ describe('CredentialTypePolicyCheck', () => {
 			);
 			expect(result.violations.map((violation) => violation.subject)).toEqual([SLACK_API]);
 		});
+
+		it('accepts a node stored without parameters', async () => {
+			const { parameters, ...withoutParameters } = node(SLACK_NODE, { [SLACK_API]: 'cred-1' });
+
+			const result = await check.onWorkflowSave({
+				workflow: workflow([withoutParameters as INode]),
+				storedWorkflow: null,
+				projectId: 'project-1',
+			});
+
+			expect(result.violations.map((violation) => violation.subject)).toEqual([SLACK_API]);
+		});
 	});
 
 	describe('a credential type named by parameter', () => {

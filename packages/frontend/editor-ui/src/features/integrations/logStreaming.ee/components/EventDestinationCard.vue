@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, onBeforeMount, onMounted, ref } from 'vue';
 import { MODAL_CONFIRM } from '@/app/constants';
+import { useToast } from '@n8n/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { useLogStreamingStore } from '../logStreaming.store';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
@@ -10,8 +11,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 
-import { ElSwitch } from 'element-plus';
-import { N8nActionToggle, N8nCard, N8nHeading, N8nText } from '@n8n/design-system';
+import { N8nActionToggle, N8nCard, N8nHeading, N8nSwitch, N8nText } from '@n8n/design-system';
 
 const DESTINATION_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -19,6 +19,8 @@ const DESTINATION_LIST_ITEM_ACTIONS = {
 };
 
 const { confirm } = useMessage();
+const { showError } = useToast();
+const isSaving = ref(false);
 const i18n = useI18n();
 const logStreamingStore = useLogStreamingStore();
 
@@ -97,14 +99,22 @@ async function onClick(event: Event) {
 	emit('edit', props.destination.id);
 }
 
-function onEnabledSwitched(state: string | number | boolean) {
-	const boolValue = typeof state === 'boolean' ? state : Boolean(state);
-	nodeParameters.value.enabled = boolValue;
-	void saveDestination();
-}
-
-async function saveDestination() {
-	await logStreamingStore.saveDestination(nodeParameters.value);
+async function onEnabledSwitched(state: string | number | boolean) {
+	if (isSaving.value) return;
+	const previousEnabled = nodeParameters.value.enabled;
+	isSaving.value = true;
+	try {
+		const saved = await logStreamingStore.saveDestination({
+			...nodeParameters.value,
+			enabled: Boolean(state),
+		});
+		if (saved) nodeParameters.value.enabled = Boolean(state);
+	} catch (error) {
+		nodeParameters.value.enabled = previousEnabled;
+		showError(error, i18n.baseText('settings.log-streaming.destinationSave.error'));
+	} finally {
+		isSaving.value = false;
+	}
 }
 
 async function onAction(action: string) {
@@ -161,21 +171,19 @@ async function onAction(action: string) {
 					</N8nText>
 				</div>
 
-				<ElSwitch
+				<N8nSwitch
 					class="mr-s"
-					:disabled="readonly"
+					size="large"
+					:disabled="readonly || isSaving"
 					:model-value="nodeParameters.enabled"
 					:title="
 						nodeParameters.enabled
 							? i18n.baseText('workflowActivator.deactivateWorkflow')
 							: i18n.baseText('workflowActivator.activateWorkflow')
 					"
-					active-color="#13ce66"
-					inactive-color="#8899AA"
 					data-test-id="workflow-activate-switch"
 					@update:model-value="onEnabledSwitched($event)"
-				>
-				</ElSwitch>
+				/>
 
 				<N8nActionToggle :actions="actions" theme="dark" @action="onAction" />
 			</div>

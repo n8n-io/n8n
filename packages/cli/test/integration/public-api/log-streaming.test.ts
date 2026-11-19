@@ -5,6 +5,7 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	MessageEventBusDestinationTypeNames,
+	type MessageEventBusDestinationSyslogOptions,
 	type MessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
 
@@ -12,7 +13,7 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { createMessageEventBusDestination } from '@/modules/log-streaming.ee/create-message-event-bus-destination';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -167,6 +168,31 @@ describe('Log streaming in Public API', () => {
 			expect(response.body.data).toHaveLength(1);
 			expect(response.body.data[0].id).toBe(created.id);
 			expect(response.body.data[0].type).toBe('webhook');
+		});
+
+		it('lists a stored destination that the request checks reject', async () => {
+			const options: MessageEventBusDestinationSyslogOptions = {
+				__type: MessageEventBusDestinationTypeNames.syslog,
+				label: 'Stored before the host checks',
+				host: '127.1',
+			};
+			const stored = await service().addDestination(
+				createMessageEventBusDestination(
+					Container.get(MessageEventBus),
+					Container.get(OutboundHttp),
+					options,
+				),
+				false,
+			);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get('/settings/log-streaming/destinations');
+
+			expect(response.status).toBe(200);
+			expect(response.body.data).toContainEqual(
+				expect.objectContaining({ id: stored.getId(), host: '127.1' }),
+			);
 		});
 	});
 

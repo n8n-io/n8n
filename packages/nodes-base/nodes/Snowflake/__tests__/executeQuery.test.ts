@@ -122,6 +122,32 @@ describe('Test Snowflake, executeQuery - comma-separated query parameters', () =
 	);
 });
 
+describe('Test Snowflake, executeQuery - a comma in a resolved value keeps its own slot', () => {
+	new NodeTestHarness().setupTest(
+		{
+			description: 'does not let a comma in a resolved value land in another parameter slot',
+			input: {
+				workflowData: executeQueryWorkflow(
+					'SELECT * FROM users WHERE name = ? AND city = ?',
+					"={{ 'Doe, Jane' }},Springfield",
+				),
+			},
+			output: { nodeData: {} },
+		},
+		{
+			credentials: { snowflake: snowflakeCredentials },
+			customAssertions() {
+				expect(mockExecute).toHaveBeenCalledWith(
+					expect.objectContaining({
+						sqlText: 'SELECT * FROM users WHERE name = ? AND city = ?',
+						binds: ['Doe, Jane', 'Springfield'],
+					}),
+				);
+			},
+		},
+	);
+});
+
 describe('Test Snowflake, executeQuery - query parameters provided as an array', () => {
 	new NodeTestHarness().setupTest(
 		{
@@ -164,6 +190,30 @@ describe('Test Snowflake, executeQuery - invalid query parameters', () => {
 	);
 });
 
+describe('Test Snowflake, executeQuery - resolved query', () => {
+	it.each([
+		{ typeVersion: 1.2, expected: "select '1$&2', '1$$2', '^[0-9]+$'" },
+		{ typeVersion: 1.1, expected: "select '1{{ $json.sql }}2', '1$2', '^[0-9]+" },
+	])('inserts the resolved query for version $typeVersion', async ({ typeVersion, expected }) => {
+		const executeFns = mock<IExecuteFunctions>({
+			getNode: () => mock<INode>({ typeVersion }),
+			getInputData: () => [{ json: {} }],
+		});
+		executeFns.getNodeParameter.mockImplementation((name, _itemIndex, fallback) => {
+			if (name === 'authentication') return 'credentials';
+			if (name === 'operation') return 'executeQuery';
+			if (name === 'query') return '{{ $json.sql }}';
+			return fallback;
+		});
+		executeFns.getCredentials.mockResolvedValue(snowflakeCredentials);
+		executeFns.evaluateExpression.mockReturnValue("select '1$&2', '1$$2', '^[0-9]+$'");
+
+		await new Snowflake().execute.call(executeFns);
+
+		expect(mockExecute).toHaveBeenCalledWith(expect.objectContaining({ sqlText: expected }));
+	});
+});
+
 describe('Test Snowflake, executeQuery - connection cleanup', () => {
 	it('destroys the connection even when a query fails', async () => {
 		const lockError = new Error(
@@ -197,7 +247,11 @@ describe('Test Snowflake, executeQuery - connection cleanup', () => {
 		});
 		executeFns.getCredentials.mockResolvedValue(snowflakeCredentials);
 
-		await expect(new Snowflake().execute.call(executeFns)).rejects.toThrow('has locked table');
+		await expect(new Snowflake().execute.call(executeFns)).rejects.toMatchObject({
+			name: 'NodeOperationError',
+			message: expect.stringContaining('has locked table'),
+			context: expect.objectContaining({ itemIndex: 0 }),
+		});
 
 		expect(mockDestroy).toHaveBeenCalled();
 	});

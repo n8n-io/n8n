@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { DialogContent, DialogTitle, DialogDescription, VisuallyHidden } from 'reka-ui';
-import { computed, useCssModule } from 'vue';
+import { DialogContent, DialogTitle, DialogDescription } from 'reka-ui';
+import { computed, provide, useCssModule } from 'vue';
 
+import N8nVisuallyHidden from '../N8nVisuallyHidden';
 import N8nDialogClose from './DialogClose.vue';
+import { dialogCloseButtonKey } from './dialogContext';
 
 export type DialogContentSize =
 	| 'small'
@@ -35,7 +37,19 @@ export interface DialogContentProps {
 	 */
 	disableOutsidePointerEvents?: boolean;
 	/**
-	 * Shows/hides close button in top right
+	 * Close the dialog when the user clicks outside it.
+	 * Escape and the close button still close the dialog.
+	 * @default true
+	 */
+	closeOnOverlayClick?: boolean;
+	/**
+	 * Close the dialog when the user presses Escape.
+	 * An overlay click and the close button still close the dialog.
+	 * @default true
+	 */
+	closeOnEscape?: boolean;
+	/**
+	 * Show the close button on the title row. The button is the last stop in the tab order.
 	 * @default true
 	 */
 	showCloseButton?: boolean;
@@ -64,6 +78,8 @@ const props = withDefaults(defineProps<DialogContentProps>(), {
 	size: 'medium',
 	trapFocus: true,
 	disableOutsidePointerEvents: true,
+	closeOnOverlayClick: true,
+	closeOnEscape: true,
 	showCloseButton: true,
 });
 
@@ -84,24 +100,41 @@ const sizeClasses: Record<DialogContentSize, string> = {
 
 const sizeClass = computed(() => sizeClasses[props.size]);
 
+provide(dialogCloseButtonKey, {
+	show: computed(() => props.showCloseButton),
+});
+
 /** ARIA Fallbacks: These are visually hidden but accessible to screen readers **/
 const needsFallbackTitle = computed(() => !!props.ariaLabel);
 const needsFallbackDescription = computed(() => !!props.ariaDescription);
 
 /**
- * Handles outside interaction events to prevent Reka UI from closing the dialog
- * when interacting with Element Plus teleported elements (dropdowns, selects, overlays).
- * These elements are teleported to body as siblings of the dialog, so Reka UI's
- * DismissableLayer detects clicks on them as "outside" clicks.
+ * Portaled UI that belongs to a control inside the dialog.
+ * It is mounted outside the dialog, so a click on it looks like an outside click.
  *
- * TODO: Remove once Element Plus components are migrated to Reka UI, and replace with a simple emit.
+ * Element Plus dropdowns teleport to the body. CodeMirror suggestion tooltips
+ * mount in `#cm-tooltip-container`.
+ *
+ * TODO: Drop the Element Plus selectors once those components use Reka UI.
  */
+const PORTALED_INTERACTIVE_SELECTOR = '.el-popper, .el-select-dropdown, .el-overlay, .cm-tooltip';
+
 function handleInteractOutside(e: Event) {
-	const target = e.target as HTMLElement | null;
-	if (target?.closest('.el-popper, .el-select-dropdown, .el-overlay')) {
+	const target = e.target instanceof Element ? e.target : null;
+	if (target?.closest(PORTALED_INTERACTIVE_SELECTOR)) {
+		e.preventDefault();
+	}
+	if (!props.closeOnOverlayClick) {
 		e.preventDefault();
 	}
 	emit('interactOutside', e);
+}
+
+function handleEscapeKeyDown(event: KeyboardEvent) {
+	if (!props.closeOnEscape) {
+		event.preventDefault();
+	}
+	emit('escapeKeyDown', event);
 }
 </script>
 
@@ -111,24 +144,24 @@ function handleInteractOutside(e: Event) {
 		:trap-focus="trapFocus"
 		:disable-outside-pointer-events="disableOutsidePointerEvents"
 		:class="[$style.content, sizeClass, stacked && $style.stacked]"
-		@escape-key-down="emit('escapeKeyDown', $event)"
+		@escape-key-down="handleEscapeKeyDown"
 		@interact-outside="handleInteractOutside"
 		@open-auto-focus="emit('openAutoFocus', $event)"
 		@close-auto-focus="emit('closeAutoFocus', $event)"
 	>
 		<!-- Fallback accessible title for screen readers when DialogTitle is not provided -->
-		<VisuallyHidden v-if="needsFallbackTitle" as-child>
+		<N8nVisuallyHidden v-if="needsFallbackTitle" as-child>
 			<DialogTitle>{{ ariaLabel }}</DialogTitle>
-		</VisuallyHidden>
+		</N8nVisuallyHidden>
 
 		<!-- Fallback accessible description for screen readers when DialogDescription is not provided -->
-		<VisuallyHidden v-if="needsFallbackDescription" as-child>
+		<N8nVisuallyHidden v-if="needsFallbackDescription" as-child>
 			<DialogDescription>{{ ariaDescription }}</DialogDescription>
-		</VisuallyHidden>
+		</N8nVisuallyHidden>
 
 		<slot />
 
-		<N8nDialogClose v-if="showCloseButton" />
+		<N8nDialogClose v-if="showCloseButton" :class="$style.dismiss" />
 	</DialogContent>
 </template>
 
@@ -158,12 +191,57 @@ function handleInteractOutside(e: Event) {
 }
 
 .content {
+	/* Include the focus outline so a focused control stays inside the dialog edge. */
+	--n8n-dialog-region--padding: calc(
+		var(--n8n-dialog-content--padding, var(--spacing--md)) + var(--focus--border-width)
+	);
+	--n8n-dialog-close--size: var(--spacing--lg);
+	--n8n-dialog-title--line: calc(var(--font-size--lg) * var(--line-height--xl));
+	--n8n-dialog-close--inset-block-start: calc(
+		var(--n8n-dialog-region--padding) +
+			(var(--n8n-dialog-title--line) - var(--n8n-dialog-close--size)) / 2
+	);
+	--n8n-dialog-close--inset-inline-end: var(--n8n-dialog-region--padding);
+
+	&:not(:has([data-slot='dialog-header'])) [data-slot='dialog-body'] {
+		padding-block-start: var(
+			--n8n-dialog-body--padding-block-start,
+			var(--n8n-dialog-region--padding)
+		);
+		margin-block-start: 0;
+	}
+
+	&:not(:has([data-slot='dialog-header'])):has(.dismiss) [data-slot='dialog-body'] {
+		padding-block-start: var(
+			--n8n-dialog-body--padding-block-start,
+			calc(var(--n8n-dialog-close--size) + var(--spacing--xs))
+		);
+	}
+
+	&:has([data-slot='dialog-footer']) [data-slot='dialog-body'] {
+		padding-block-end: var(--n8n-dialog-body--padding-block-end, var(--focus--border-width));
+		margin-block-end: calc(var(--focus--border-width) * -1);
+	}
+
+	&:not(:has([data-slot='dialog-header'])) .dismiss {
+		top: var(--spacing--sm);
+		inset-inline-end: var(--spacing--sm);
+	}
+
+	&:has([data-slot='dialog-header']) .dismiss {
+		top: var(--n8n-dialog-close--inset-block-start);
+		inset-inline-end: var(--n8n-dialog-close--inset-inline-end);
+	}
+
 	position: fixed;
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
 	width: 100%;
-	padding: var(--n8n-dialog-content--padding, var(--spacing--lg));
+	display: flex;
+	flex-direction: column;
+	max-height: calc(100dvh - var(--spacing--lg));
+
 	border-radius: var(--radius--lg);
 	background-color: light-dark(var(--background--surface), var(--background--subtle));
 	outline: 1px solid var(--border-color);
@@ -178,6 +256,11 @@ function handleInteractOutside(e: Event) {
 	&:focus {
 		outline: none;
 	}
+}
+
+.dismiss {
+	position: absolute;
+	z-index: 1;
 }
 
 .stacked {
@@ -250,14 +333,21 @@ function handleInteractOutside(e: Event) {
 	height: 100%;
 	max-width: calc(100dvw - var(--spacing--lg));
 	max-height: calc(100dvh - var(--spacing--lg));
+
+	[data-slot='dialog-body'] {
+		flex: 1 1 auto;
+		overflow: auto;
+	}
 }
 </style>
 
 <style lang="scss">
-/* Workaround: reka-ui DismissableLayer sets pointer-events: none on body,
-   which breaks Element Plus poppers teleported to body.
-   TODO: Remove once Element Plus components are migrated to Reka UI. */
-.el-popper {
+/* A modal dialog sets pointer-events: none on the body.
+   Portaled content outside the dialog must opt back in, or a click passes through it.
+   That closes a CodeMirror suggestion list without applying the selected value,
+   and the list cannot scroll. */
+.el-popper,
+.cm-tooltip {
 	pointer-events: auto;
 }
 </style>

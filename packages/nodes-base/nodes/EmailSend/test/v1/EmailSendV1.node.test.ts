@@ -42,6 +42,39 @@ describe('Test EmailSendV1', () => {
 		vi.clearAllMocks();
 	});
 
+	describe('array recipients', () => {
+		it('should send to every recipient when recipient fields are arrays', async () => {
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { data: 'test' } }]);
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				host: 'smtp.example.com',
+				port: 587,
+				secure: false,
+			});
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('from@example.com')
+				.mockReturnValueOnce(['to1@example.com', 'to2@example.com'])
+				.mockReturnValueOnce(['cc1@example.com', 'cc2@example.com'])
+				.mockReturnValueOnce(['bcc@example.com'])
+				.mockReturnValueOnce('Test Subject')
+				.mockReturnValueOnce('Test text')
+				.mockReturnValueOnce('<p>Test HTML</p>')
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce({ replyTo: ['reply1@example.com', 'reply2@example.com'] });
+			transporter.sendMail.mockResolvedValue({ messageId: 'test-id' });
+
+			await emailSendV1.execute.call(mockExecuteFunctions);
+
+			expect(transporter.sendMail).toHaveBeenCalledWith(
+				expect.objectContaining({
+					to: 'to1@example.com, to2@example.com',
+					cc: 'cc1@example.com, cc2@example.com',
+					bcc: 'bcc@example.com',
+					replyTo: 'reply1@example.com, reply2@example.com',
+				}),
+			);
+		});
+	});
+
 	describe('comma-separated attachment strings', () => {
 		it('should process comma-separated attachment names with spaces', async () => {
 			const items = [

@@ -15,8 +15,10 @@ import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { MfaService } from '@/mfa/mfa.service';
+import type { InboxService } from '@/modules/inbox/inbox.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import type { PushConfig } from '@/push/push.config';
+import type { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
 import type { UrlService } from '@n8n/backend-services';
@@ -99,6 +101,7 @@ describe('FrontendService', () => {
 	const instanceSettings = mock<InstanceSettings>({
 		isDocker: false,
 		instanceId: 'test-instance',
+		installId: 'test-install',
 		isMultiMain: false,
 		hostId: 'test-host',
 		staticCacheDir: '/tmp/test-cache',
@@ -129,6 +132,7 @@ describe('FrontendService', () => {
 
 	const credentialsOverwrites = mock<CredentialsOverwrites>({
 		getAll: vi.fn().mockReturnValue({}),
+		getNewerAppProperties: vi.fn().mockReturnValue([]),
 	});
 
 	const license = mock<License>({
@@ -206,6 +210,11 @@ describe('FrontendService', () => {
 	});
 
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
+	const inboxService = mock<InboxService>();
+	const aiPreferenceSettingsService = mock<AiPreferenceSettingsService>({
+		isSwitchOn: true,
+		isManagedByEnv: false,
+	});
 
 	const createMockService = () => {
 		Container.set(
@@ -218,35 +227,47 @@ describe('FrontendService', () => {
 		// constructor-injected mock above must also be registered here.
 		Container.set(License, license);
 
-		return {
-			service: new FrontendService(
-				globalConfig,
-				logger,
-				loadNodesAndCredentials,
-				credentialTypes,
-				credentialsOverwrites,
+		// Suppress the constructor's background write so it cannot outlive the test.
+		// Restore the method so tests and reload handlers can call it explicitly.
+		const generateTypes = vi
+			.spyOn(FrontendService.prototype, 'generateTypes')
+			.mockResolvedValueOnce();
+		try {
+			return {
+				service: new FrontendService(
+					globalConfig,
+					logger,
+					loadNodesAndCredentials,
+					credentialTypes,
+					credentialsOverwrites,
+					license,
+					mailer,
+					instanceSettings,
+					urlService,
+					securityConfig,
+					pushConfig,
+					binaryDataConfig,
+					licenseState,
+					moduleRegistry,
+					mfaService,
+					ownershipService,
+					aiUsageService,
+					workflowRepository,
+					workflowReviewPolicyService,
+					inboxService,
+					aiPreferenceSettingsService,
+				),
 				license,
-				mailer,
-				instanceSettings,
-				urlService,
-				securityConfig,
-				pushConfig,
-				binaryDataConfig,
-				licenseState,
-				moduleRegistry,
-				mfaService,
-				ownershipService,
-				aiUsageService,
-				workflowRepository,
-				workflowReviewPolicyService,
-			),
-			license,
-		};
+			};
+		} finally {
+			generateTypes.mockRestore();
+		}
 	};
 
 	beforeEach(() => {
 		originalEnv = { ...process.env };
 		vi.clearAllMocks();
+		moduleRegistry.isActive.mockReturnValue(false);
 		globalConfig.diagnostics.enabled = false;
 		globalConfig.endpoints.frontendHealthCheckTimeoutMs = 5000;
 		globalConfig.aiAssistant.baseUrl = '';
@@ -280,6 +301,44 @@ describe('FrontendService', () => {
 	});
 
 	describe('getSettings', () => {
+		it('refreshes Inbox availability from registered sources on each request', async () => {
+			moduleRegistry.isActive.mockReturnValue(true);
+			inboxService.getSettings
+				.mockResolvedValueOnce({
+					enabled: true,
+					availableTypes: ['workflow_review'],
+					failedTypes: [],
+				})
+				.mockResolvedValueOnce({
+					enabled: true,
+					availableTypes: [],
+					failedTypes: ['workflow_review'],
+				});
+			const { service } = createMockService();
+
+			expect((await service.getSettings()).inbox).toEqual({
+				enabled: true,
+				availableTypes: ['workflow_review'],
+				failedTypes: [],
+			});
+			expect((await service.getSettings()).inbox).toEqual({
+				enabled: true,
+				availableTypes: [],
+				failedTypes: ['workflow_review'],
+			});
+			expect(inboxService.getSettings).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not query Inbox sources when its module is inactive', async () => {
+			const { service } = createMockService();
+			expect((await service.getSettings()).inbox).toEqual({
+				enabled: false,
+				availableTypes: [],
+				failedTypes: [],
+			});
+			expect(inboxService.getSettings).not.toHaveBeenCalled();
+		});
+
 		it('should return frontend settings', async () => {
 			const { service } = createMockService();
 			const settings = await service.getSettings();
@@ -666,6 +725,8 @@ describe('FrontendService', () => {
 				communityNodesEnabled: false,
 				previewMode: false,
 				enterprise: { saml: false, ldap: false, oidc: false },
+				activeModules: [],
+				expressionEngine: 'legacy',
 			};
 
 			const { service } = createMockService();
@@ -696,6 +757,8 @@ describe('FrontendService', () => {
 				communityNodesEnabled: false,
 				previewMode: false,
 				enterprise: { saml: false, ldap: false, oidc: false },
+				activeModules: [],
+				expressionEngine: 'legacy',
 				mfa: {
 					enabled: false,
 					enforced: false,
@@ -706,6 +769,31 @@ describe('FrontendService', () => {
 			const settings = await service.getPublicSettings(true);
 
 			expect(settings).toEqual(expectedPublicSettings);
+		});
+
+		it('should include the install ID in the settings for signed-in users', async () => {
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.instanceId).toBe('test-instance');
+			expect(settings.installId).toBe('test-install');
+		});
+
+		it('should include the active modules and no settings that need a user', async () => {
+			moduleRegistry.getActiveModules.mockReturnValue(['data-table', 'insights']);
+
+			const { service } = createMockService();
+			const publicSettings = await service.getPublicSettings(false);
+
+			expect(publicSettings.activeModules).toEqual(['data-table', 'insights']);
+			expect(publicSettings).not.toHaveProperty('instanceId');
+			expect(publicSettings).not.toHaveProperty('installId');
+			expect(publicSettings).not.toHaveProperty('urlBaseWebhook');
+			expect(publicSettings).not.toHaveProperty('telemetry');
+			expect(publicSettings).not.toHaveProperty('mfa');
+
+			moduleRegistry.getActiveModules.mockReturnValue([]);
 		});
 
 		it('should expose configured passwordMinLength in settings', async () => {
@@ -721,22 +809,6 @@ describe('FrontendService', () => {
 
 			// Restore default
 			(globalConfig as any).userManagement = { password: { minLength: 8 } };
-		});
-
-		it('reports granular credential sharing off unless the env flag is set', async () => {
-			delete process.env.N8N_ENV_FEAT_CRED_SHARING;
-
-			const { service } = createMockService();
-
-			expect((await service.getSettings()).granularCredentialSharing).toBe(false);
-		});
-
-		it('reports granular credential sharing on when the env flag is set', async () => {
-			process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
-
-			const { service } = createMockService();
-
-			expect((await service.getSettings()).granularCredentialSharing).toBe(true);
 		});
 
 		it('should set showSetupOnFirstLoad to false in preview mode', async () => {
@@ -871,6 +943,14 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 			expect(settings.expressionEngine).toBe('quickjs');
 		});
+
+		it('should surface the engine in the public settings', async () => {
+			globalConfig.expressionEngine.frontendEngine = 'quickjs';
+
+			const { service } = createMockService();
+			const publicSettings = await service.getPublicSettings(false);
+			expect(publicSettings.expressionEngine).toBe('quickjs');
+		});
 	});
 
 	describe('aiBuilder setting', () => {
@@ -928,6 +1008,21 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.ai.allowSendingParameterValues).toBe(false);
+		});
+	});
+
+	describe('aiPreferences setting', () => {
+		afterEach(() => {
+			Object.assign(aiPreferenceSettingsService, { isSwitchOn: true, isManagedByEnv: false });
+		});
+
+		it('reports the switch and whether the env manages it', async () => {
+			const { service } = createMockService();
+			Object.assign(aiPreferenceSettingsService, { isSwitchOn: false, isManagedByEnv: true });
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiPreferences).toEqual({ enabled: false, managedByEnv: true });
 		});
 	});
 
@@ -1118,6 +1213,32 @@ describe('FrontendService', () => {
 			(service as any).overwriteCredentialsProperties();
 
 			expect(credential.__skipManagedCreation).toBeUndefined();
+		});
+
+		it('should hide the fields that only the newer app of a rollout sets', () => {
+			const credential = {
+				name: 'notionOAuth2Api',
+				displayName: 'Notion OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+			loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+			(globalConfig as any).credentials = { overwrite: { skipTypes: [] } };
+			(credentialsOverwrites.getAll as Mock).mockReturnValue({
+				notionOAuth2Api: { clientId: 'id', clientSecret: 'secret' },
+			});
+			(credentialsOverwrites.getNewerAppProperties as Mock).mockReturnValue([
+				'clientId',
+				'clientSecret',
+				'scope',
+			]);
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(credential.__overwrittenProperties).toEqual(['clientId', 'clientSecret', 'scope']);
+
+			(credentialsOverwrites.getAll as Mock).mockReturnValue({});
+			(credentialsOverwrites.getNewerAppProperties as Mock).mockReturnValue([]);
 		});
 
 		it('should not propagate __skipManagedCreation from a skip-listed parent to extending types', () => {
@@ -1326,9 +1447,9 @@ describe('FrontendService', () => {
 				const largeNodes = createNodes(5000);
 				const smallNodes = createNodes(1);
 				const collectTypes = loadNodesAndCredentials.collectTypes as Mock;
-				collectTypes.mockReturnValueOnce(new Promise(() => {}));
 
 				const { service } = createMockService();
+				expect(collectTypes).not.toHaveBeenCalled();
 
 				for (let attempt = 0; attempt < 10; attempt++) {
 					collectTypes
@@ -1341,6 +1462,8 @@ describe('FrontendService', () => {
 					expect(readTypesFile('credentials')).toEqual([]);
 					expect(readTypesFile('node-versions')).toEqual(expect.any(Array));
 				}
+
+				expect(collectTypes).toHaveBeenCalledTimes(20);
 			});
 		});
 	});

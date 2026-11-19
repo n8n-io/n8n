@@ -1,5 +1,7 @@
 import userEvent from '@testing-library/user-event';
-import { render } from '@testing-library/vue';
+import { render, waitFor } from '@testing-library/vue';
+
+import type { IconName } from '../N8nIcon/icons';
 
 import N8nButton from './Button.vue';
 
@@ -7,11 +9,6 @@ const stubs = ['N8nSpinner', 'N8nIcon'];
 
 describe('components', () => {
 	describe('N8nButton', () => {
-		it('maps the legacy subtle variant to brand', () => {
-			const wrapper = render(N8nButton, { props: { variant: 'subtle' }, global: { stubs } });
-			expect(wrapper.getByRole('button').className).toContain('brand');
-		});
-
 		describe('rendering', () => {
 			it('should render correctly with default props', () => {
 				const wrapper = render(N8nButton, {
@@ -154,7 +151,11 @@ describe('components', () => {
 					});
 					const button = wrapper.container.querySelector('button');
 					expect(button?.className).toContain('loading');
-					expect(wrapper.container.querySelector('n8n-icon-stub')).toBeInTheDocument();
+					const spinner = wrapper.container.querySelector('n8n-spinner-stub');
+					expect(spinner).toBeInTheDocument();
+					expect(spinner).toHaveAttribute('type', 'dots');
+					expect(spinner).toHaveAttribute('size', 'medium');
+					expect(spinner).toHaveAttribute('aria-hidden', 'true');
 				});
 
 				it('should be disabled while loading', async () => {
@@ -461,6 +462,19 @@ describe('components', () => {
 				const button = wrapper.getByRole('button');
 				expect(button).toHaveAttribute('data-test-id', 'custom-button');
 				expect(button).toHaveAttribute('aria-describedby', 'help-text');
+			});
+		});
+
+		describe('fallback icon', () => {
+			it('should draw the fallback icon for an icon name no icon set has', async () => {
+				const wrapper = render(N8nButton, {
+					props: { icon: 'not-an-icon' as IconName, fallbackIcon: 'bot', iconOnly: true },
+					attrs: { 'aria-label': 'Change icon' },
+				});
+
+				await waitFor(() =>
+					expect(wrapper.container.querySelector('svg[data-icon="bot"]')).toBeTruthy(),
+				);
 			});
 		});
 

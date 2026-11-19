@@ -36,6 +36,11 @@ export class VariableModal {
 	}
 
 	async close(): Promise<void> {
+		const closeButton = this.root.getByTestId('dialog-close-button');
+		if (await closeButton.isVisible()) {
+			await closeButton.click();
+			return;
+		}
 		await closeDialogIfOpen(this.root);
 	}
 

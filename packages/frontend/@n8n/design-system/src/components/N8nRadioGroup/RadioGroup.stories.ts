@@ -2,6 +2,10 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
 import { defineComponent, ref } from 'vue';
 
+import N8nInput from '../N8nInput';
+import N8nInputLabel from '../N8nInputLabel';
+import N8nText from '../N8nText';
+import N8nSelect2 from '../../v2/components/Select/Select.vue';
 import RadioGroup from './RadioGroup.vue';
 import RadioGroupItem from './RadioGroupItem.vue';
 
@@ -93,11 +97,9 @@ const RadioGroupDefaultDemo = defineComponent({
 					:id="radioItemId('radio-group-default', option.value)"
 					:value="option.value"
 					:label="option.label"
-					:description="option.description"
 					:data-test-id="'radio-' + option.value"
 				/>
 			</RadioGroup>
-			<p style="margin-top: 16px; font-size: 14px;">Selected: {{ value }}</p>
 		</div>
 	`,
 });
@@ -198,7 +200,6 @@ const RadioGroupOrientationDemo = defineComponent({
 						:description="option.description"
 					/>
 				</RadioGroup>
-				<p style="margin-top: 16px; font-size: 14px;">Selected: {{ verticalValue }}</p>
 			</section>
 			<section>
 				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: var(--font-weight--medium);">Horizontal</h3>
@@ -213,7 +214,6 @@ const RadioGroupOrientationDemo = defineComponent({
 					<RadioGroupItem id="radio-group-orientation-horizontal-light" value="light" label="Light" />
 					<RadioGroupItem id="radio-group-orientation-horizontal-dark" value="dark" label="Dark" />
 				</RadioGroup>
-				<p style="margin-top: 16px; font-size: 14px;">Selected: {{ horizontalValue }}</p>
 			</section>
 		</div>
 	`,
@@ -238,9 +238,30 @@ const RadioGroupDisabledOptionDemo = defineComponent({
 	`,
 });
 
+const RadioGroupDescriptionDemo = defineComponent({
+	name: 'RadioGroupDescriptionDemo',
+	components: { RadioGroup, RadioGroupItem },
+	setup() {
+		const value = ref('all');
+		return { value, scopeOptions, radioItemId };
+	},
+	template: `
+		<RadioGroup v-model="value" name="radio-group-description" aria-label="Scope selection mode">
+			<RadioGroupItem
+				v-for="option in scopeOptions"
+				:key="option.value"
+				:id="radioItemId('radio-group-description', option.value)"
+				:value="option.value"
+				:label="option.label"
+				:description="option.description"
+			/>
+		</RadioGroup>
+	`,
+});
+
 const RadioGroupCustomLabelDemo = defineComponent({
 	name: 'RadioGroupCustomLabelDemo',
-	components: { RadioGroup, RadioGroupItem },
+	components: { RadioGroup, RadioGroupItem, N8nText },
 	setup() {
 		const value = ref('terms');
 		return { value };
@@ -250,12 +271,70 @@ const RadioGroupCustomLabelDemo = defineComponent({
 			<RadioGroup v-model="value" name="radio-group-custom-label" aria-label="Agreement">
 				<RadioGroupItem id="radio-group-custom-label-terms" value="terms">
 					<template #label>
-						I accept the <a href="#">terms and conditions</a>
+						<N8nText bold color="text-dark">
+							I accept the <a href="#" style="color: var(--link--color--secondary)" @click.prevent>terms and conditions</a>
+						</N8nText>
 					</template>
 				</RadioGroupItem>
 				<RadioGroupItem id="radio-group-custom-label-privacy" value="privacy">
 					<template #label>
-						I accept the <a href="#">privacy policy</a>
+						<N8nText bold color="text-dark">
+							I accept the <a href="#" style="color: var(--link--color--secondary)" @click.prevent>privacy policy</a>
+						</N8nText>
+					</template>
+				</RadioGroupItem>
+			</RadioGroup>
+		</div>
+	`,
+});
+
+const RadioGroupContentSlotDemo = defineComponent({
+	name: 'RadioGroupContentSlotDemo',
+	components: { RadioGroup, RadioGroupItem, N8nInput, N8nInputLabel, N8nSelect2, N8nText },
+	setup() {
+		const value = ref('transfer');
+		const project = ref<string>();
+		const confirmText = ref('');
+		const projectItems = [
+			{ value: 'personal', label: 'Personal' },
+			{ value: 'marketing', label: 'Marketing' },
+			{ value: 'operations', label: 'Operations' },
+		];
+		return { value, project, confirmText, projectItems };
+	},
+	template: `
+		<div style="max-width: 36rem">
+			<RadioGroup v-model="value" name="radio-group-content-slot" aria-label="What happens to the workflows">
+				<RadioGroupItem id="radio-group-content-slot-transfer" value="transfer">
+					<template #label>
+						<N8nText color="text-dark">Transfer workflows and credentials</N8nText>
+					</template>
+					<template #content>
+						<div
+							v-if="value === 'transfer'"
+							style="display: flex; flex-direction: column; gap: var(--spacing--2xs); padding-top: var(--spacing--2xs)"
+						>
+							<N8nText color="text-dark">Choose a project</N8nText>
+							<N8nSelect2
+								v-model="project"
+								:items="projectItems"
+								placeholder="Select a project"
+								aria-label="Choose a project"
+								size="large"
+							/>
+						</div>
+					</template>
+				</RadioGroupItem>
+				<RadioGroupItem id="radio-group-content-slot-delete" value="delete">
+					<template #label>
+						<N8nText color="text-dark">Delete workflows and credentials</N8nText>
+					</template>
+					<template #content>
+						<div v-if="value === 'delete'" style="padding-top: var(--spacing--2xs)">
+							<N8nInputLabel label="Type delete to confirm">
+								<N8nInput v-model="confirmText" placeholder="delete" />
+							</N8nInputLabel>
+						</div>
 					</template>
 				</RadioGroupItem>
 			</RadioGroup>
@@ -300,6 +379,14 @@ export const Default: Story = {
 	},
 };
 
+export const WithDescription: Story = {
+	name: 'With Description',
+	render: () => ({
+		components: { RadioGroupDescriptionDemo },
+		template: '<RadioGroupDescriptionDemo />',
+	}),
+};
+
 export const ControlledUncontrolled: Story = {
 	name: 'Controlled/Uncontrolled',
 	render: () => ({
@@ -323,13 +410,31 @@ export const DisabledOption: Story = {
 };
 
 export const CustomLabel: Story = {
+	name: 'With Custom Label',
 	render: () => ({
 		components: { RadioGroupCustomLabelDemo },
 		template: '<RadioGroupCustomLabelDemo />',
 	}),
 };
 
+export const ContentSlot: Story = {
+	name: 'With Content Slot',
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'The label slot is only the option name. Follow-up fields render in the content slot, outside the label, and appear after that option is selected.',
+			},
+		},
+	},
+	render: () => ({
+		components: { RadioGroupContentSlotDemo },
+		template: '<RadioGroupContentSlotDemo />',
+	}),
+};
+
 export const LongLabels: Story = {
+	name: 'With Long Labels',
 	render: () => ({
 		components: { RadioGroupLongLabelsDemo },
 		template: '<RadioGroupLongLabelsDemo />',

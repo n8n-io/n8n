@@ -7,7 +7,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeApiError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeApiError, decodePathValue, requestPath } from 'n8n-workflow';
 
 import { gitlabApiRequest } from './GenericFunctions';
 import { generateWebhookSecret, verifySignature } from './GitlabTriggerHelpers';
@@ -78,13 +78,21 @@ const GITLAB_EVENTS = [
 	},
 ];
 
+function getProjectPath(context: IHookFunctions) {
+	const owner = context.getNodeParameter('owner') as string;
+	const repository = context.getNodeParameter('repository') as string;
+	const project = `${owner}/${repository}`;
+	return context.getNode().typeVersion < 1.1 ? decodePathValue(project) : project;
+}
+
 export class GitlabTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GitLab Trigger',
 		name: 'gitlabTrigger',
 		icon: 'file:gitlab.svg',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		subtitle:
 			'={{$parameter["owner"] + "/" + $parameter["repository"] + ": " + $parameter["events"].join(", ")}}',
 		description: 'Starts the workflow when GitLab events occur',
@@ -186,17 +194,12 @@ export class GitlabTrigger implements INodeType {
 				}
 
 				// Webhook got created before so check if it still exists
-				const owner = this.getNodeParameter('owner') as string;
-				const repository = this.getNodeParameter('repository') as string;
-
-				const path = `${owner}/${repository}`.replace(/\//g, '%2F');
-
-				const endpoint = `/projects/${path}/hooks/${webhookData.webhookId}`;
+				const endpoint = requestPath`/projects/${getProjectPath(this)}/hooks/${webhookData.webhookId}`;
 
 				try {
 					await gitlabApiRequest.call(this, 'GET', endpoint, {});
 				} catch (error) {
-					if (error.cause.httpCode === '404' || error.description.includes('404')) {
+					if (error.httpCode === '404' || error.description?.includes('404')) {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;
@@ -205,7 +208,7 @@ export class GitlabTrigger implements INodeType {
 						return false;
 					}
 
-					// Some error occured
+					// Some error occurred
 					throw error;
 				}
 
@@ -218,9 +221,6 @@ export class GitlabTrigger implements INodeType {
 			 */
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
-
-				const owner = this.getNodeParameter('owner') as string;
-				const repository = this.getNodeParameter('repository') as string;
 
 				let eventsArray = this.getNodeParameter('events', []) as string[];
 				if (eventsArray.includes('*')) {
@@ -238,9 +238,7 @@ export class GitlabTrigger implements INodeType {
 					events.push_events = false;
 				}
 
-				const path = `${owner}/${repository}`.replace(/\//g, '%2F');
-
-				const endpoint = `/projects/${path}/hooks`;
+				const endpoint = requestPath`/projects/${getProjectPath(this)}/hooks`;
 
 				const webhookSecret = generateWebhookSecret();
 
@@ -276,15 +274,10 @@ export class GitlabTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-					const owner = this.getNodeParameter('owner') as string;
-					const repository = this.getNodeParameter('repository') as string;
-
-					const path = `${owner}/${repository}`.replace(/\//g, '%2F');
-
-					const endpoint = `/projects/${path}/hooks/${webhookData.webhookId}`;
 					const body = {};
 
 					try {
+						const endpoint = requestPath`/projects/${getProjectPath(this)}/hooks/${webhookData.webhookId}`;
 						await gitlabApiRequest.call(this, 'DELETE', endpoint, body);
 					} catch (error) {
 						return false;

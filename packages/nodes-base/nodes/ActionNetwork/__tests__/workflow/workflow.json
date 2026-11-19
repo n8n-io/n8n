@@ -1,0 +1,768 @@
+{
+	"name": "Action Network Request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "236e207d-40df-5dde-a96d-0299a2422f3c",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "attendance",
+				"operation": "create",
+				"personId": "c3d4e5f6-0001-4a7b-8c1d-2e3f4a5b6c01",
+				"eventId": "a1b2c3d4-0001-4e5f-8a9b-0c1d2e3f4a01",
+				"simple": false
+			},
+			"type": "n8n-nodes-base.actionNetwork",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "d7888dc4-0208-540c-bf46-86f30eeeccdb",
+			"name": "Attendance > Create",
+			"credentials": {
+				"actionNetworkApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "attendance",
+				"operation": "get",
+				"eventId": "a1b2c3d4-0001-4e5f-8a9b-0c1d2e3f4a01",
+				"attendanceId": "b2c3d4e5-0001-4f6a-9b0c-1d2e3f4a5b01",
+				"simple": false
+			},
+			"type": "n8n-nodes-base.actionNetwork",
+			"typeVersion": 1,
+			"position": [300, 200],
+			"id": "32d83377-4e77-5b3a-86a1-c31d3d67d0b5",
+			"name": "Attendance > Get",
+			"credentials": {
+				"actionNetworkApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "attendance",
+				"operation": "getAll",
+				"eventId": "a1b2c3d4-0001-4e5f-8a9b-0c1d2e3f4a01",
+				"returnAll": true,
+				"simple": false
+			},
+			"type": "n8n-nodes-base.actionNetwork",
+			"typeVersion": 1,
+			"position": [300, 400],
+			"id": "e65dbfe6-dc87-5700-8669-f4a125a00c0e",
+			"name": "Attendance > Get Many",
+			"credentials": {
+				"actionNetworkApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "create",
+				"originSystem": "n8n",
+				"title": "Town hall",
+				"additionalFields": {},
+				"simple": false
+			},
+			"type": "n8n-nodes-base.actionNetwork",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"id": "51d827b3-f7e2-578f-9396-517068408be9",
+			"name": "Event > Create",
+			"credentials": {
+				"actionNetworkApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "get",
+				"eventId": "a1b2c3d4-0002-4e5f-8a9b-0c1d2e3f4a02",
+				"simple": false
+			},
+			"type": "n8n-nodes-base.actionNetwork",
+			"typeVersion": 1,
+			"position": [300, 800],
+			"id": "e0cef452-e454-5a6d-816c-852c3efcb2c3",
+			"name": "Event > Get",
+			"credentials": {
+				"actionNetworkApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "getAll",
+				"returnAll": true,
+				"simple": false
+			},
+			"type": "n8n-nodes-base.actionNetwork",
+			"typeVersion": 1,
+			"position": [300, 1000],
+			"id": "3109c94d-78a9-5f1c-a0f0-4855c1965a5b",
+			"name": "Event > Get Many",
+			"credentials": {
+				"actionNetworkApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "person",
+				"operation": "create",
+				"email_addresses": {
+					"email_addresses_fields": {
+						"address": "ada@example.com",
+						"primary": true,
+						"status": "subscribed"
+					}
+				},
+				"additionalFields": {},
+				"simple": false
+			},
+			"type": "n8n-nodes-base.actionNetwork",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"id": "11b291de-1da0-5460-9d60-30bc70044dad",
+			"name": "Person > Create",
+			"credentials": {
+				"actionNetworkApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "person",
+				"operation": "get",
+				"personId": "c3d4e5f6-0001-4a7b-8c1d-2e3f4a5b6c01",
+				"simple": false
+			},
+			"type": "n8n-nodes-base.actionNetwork",
+			"typeVersion": 1,
+			"position": [300, 1400],
+			"id": "25099187-21ab-5787-807f-a28db4b05b0b",
+			"name": "Person > Get",
+			"credentials": {
+				"actionNetworkApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "person",
+				"operation": "getAll",
+				"returnAll": true,
+				"simple": false
+			},
+			"type": "n8n-nodes-base.actionNetwork",
+			"typeVersion": 1,
+			"position": [300, 1600],
+			"id": "1eea65c8-8b61-52cb-a1af-8d6bf640b5c1",
+			"name": "Person > Get Many",
+			"credentials": {
+				"actionNetworkApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "person",
+				"operation": "update",
+				"personId": "c3d4e5f6-0002-4a7b-8c1d-2e3f4a5b6c02",
+				"updateFields": {
+					"given_name": "Ada"
+				},
+				"simple": false
+			},
+			"type": "n8n-nodes-base.actionNetwork",
+			"typeVersion": 1,
+			"position": [300, 1800],
+			"id": "50948eaa-876d-5f21-9252-fbd8937d96bf",
+			"name": "Person > Update",
+			"credentials": {
+				"actionNetworkApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "petition",
+				"operation": "create",
+				"originSystem": "n8n",
+				"title": "Save the park",
+				"additionalFields": {},
+				"simple": false
+			},
+			"type": "n8n-nodes-base.actionNetwork",
+			"typeVersion": 1,
+			"position": [300, 2000],
+			"id": "9ce923a3-2a88-56f7-9de3-d390873fae59",
+			"name": "Petition > Create",
+			"credentials": {
+				"actionNetworkApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "petition",
+				"operation": "get",
+				"petitionId": "d4e5f6a7-0001-4b8c-9d2e-3f4a5b6c7d01",
+				"simple": false
+			},
+			"type": "n8n-nodes-base.actionNetwork",
+			"typeVersion": 1,
+			"position": [300, 2200],
+			"id": "e49a5c28-7690-5ea2-bb0f-86ef0569f347",
+			"name": "Petition > Get",
+			"credentials": {
+				"actionNetworkApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "petition",
+				"operation": "getAll",
+				"returnAll": true,
+				"simple": false
+			},
+			"type": "n8n-nodes-base.actionNetwork",
+			"typeVersion": 1,
+			"position": [300, 2400],
+			"id": "0d302292-feac-55a3-b20c-c322b819a7d5",
+			"name": "Petition > Get Many",
+			"credentials": {
+				"actionNetworkApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "petition",
+				"operation": "update",
+				"petitionId": "d4e5f6a7-0002-4b8c-9d2e-3f4a5b6c7d02",
+				"updateFields": {
+					"petition_text": "Updated"
+				},
+				"simple": false
+			},
+			"type": "n8n-nodes-base.actionNetwork",
+			"typeVersion": 1,
+			"position": [300, 2600],
+			"id": "31330651-7dad-539c-b75c-e28d27fbe05a",
+			"name": "Petition > Update",
+			"credentials": {
+				"actionNetworkApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "signature",
+				"operation": "create",
+				"petitionId": "d4e5f6a7-0001-4b8c-9d2e-3f4a5b6c7d01",
+				"personId": "c3d4e5f6-0001-4a7b-8c1d-2e3f4a5b6c01",
+				"additionalFields": {},
+				"simple": false
+			},
+			"type": "n8n-nodes-base.actionNetwork",
+			"typeVersion": 1,
+			"position": [300, 2800],
+			"id": "1b1032a5-8873-54df-9fb7-beb7bc47a43d",
+			"name": "Signature > Create",
+			"credentials": {
+				"actionNetworkApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "signature",
+				"operation": "get",
+				"petitionId": "d4e5f6a7-0001-4b8c-9d2e-3f4a5b6c7d01",
+				"signatureId": "e5f6a7b8-0001-4c9d-8e3f-4a5b6c7d8e01",
+				"simple": false
+			},
+			"type": "n8n-nodes-base.actionNetwork",
+			"typeVersion": 1,
+			"position": [300, 3000],
+			"id": "b354f582-a8a1-5a34-b154-87b6ad4f7419",
+			"name": "Signature > Get",
+			"credentials": {
+				"actionNetworkApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "signature",
+				"operation": "getAll",
+				"petitionId": "d4e5f6a7-0001-4b8c-9d2e-3f4a5b6c7d01",
+				"returnAll": true,
+				"simple": false
+			},
+			"type": "n8n-nodes-base.actionNetwork",
+			"typeVersion": 1,
+			"position": [300, 3200],
+			"id": "575914e8-68e3-5c06-9921-3c8fc7dcaf7d",
+			"name": "Signature > Get Many",
+			"credentials": {
+				"actionNetworkApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "signature",
+				"operation": "update",
+				"petitionId": "d4e5f6a7-0001-4b8c-9d2e-3f4a5b6c7d01",
+				"signatureId": "e5f6a7b8-0002-4c9d-8e3f-4a5b6c7d8e02",
+				"updateFields": {
+					"comments": "Done"
+				},
+				"simple": false
+			},
+			"type": "n8n-nodes-base.actionNetwork",
+			"typeVersion": 1,
+			"position": [300, 3400],
+			"id": "a4a2b9b7-3efc-59d9-bd01-789a07767c9c",
+			"name": "Signature > Update",
+			"credentials": {
+				"actionNetworkApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "tag",
+				"operation": "create",
+				"name": "volunteer",
+				"simple": false
+			},
+			"type": "n8n-nodes-base.actionNetwork",
+			"typeVersion": 1,
+			"position": [300, 3600],
+			"id": "248c91e1-b765-5351-885c-f3812a966d17",
+			"name": "Tag > Create",
+			"credentials": {
+				"actionNetworkApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "tag",
+				"operation": "get",
+				"tagId": "f6a7b8c9-0001-4d0e-9f4a-5b6c7d8e9f01",
+				"simple": false
+			},
+			"type": "n8n-nodes-base.actionNetwork",
+			"typeVersion": 1,
+			"position": [300, 3800],
+			"id": "af141a0d-c598-56ac-90d7-06cebbafe82e",
+			"name": "Tag > Get",
+			"credentials": {
+				"actionNetworkApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "tag",
+				"operation": "getAll",
+				"returnAll": true,
+				"simple": false
+			},
+			"type": "n8n-nodes-base.actionNetwork",
+			"typeVersion": 1,
+			"position": [300, 4000],
+			"id": "d82eb81e-89b9-54a0-8c11-1d234ea4a532",
+			"name": "Tag > Get Many",
+			"credentials": {
+				"actionNetworkApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "personTag",
+				"operation": "add",
+				"tagId": "f6a7b8c9-0001-4d0e-9f4a-5b6c7d8e9f01",
+				"personId": "c3d4e5f6-0001-4a7b-8c1d-2e3f4a5b6c01"
+			},
+			"type": "n8n-nodes-base.actionNetwork",
+			"typeVersion": 1,
+			"position": [300, 4200],
+			"id": "26092c1b-3b3d-5ea0-8c7d-d7a44021817e",
+			"name": "Person Tag > Add",
+			"credentials": {
+				"actionNetworkApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "personTag",
+				"operation": "remove",
+				"tagId": "f6a7b8c9-0001-4d0e-9f4a-5b6c7d8e9f01",
+				"taggingId": "a7b8c9d0-0001-4e1f-8a5b-6c7d8e9f0a01"
+			},
+			"type": "n8n-nodes-base.actionNetwork",
+			"typeVersion": 1,
+			"position": [300, 4400],
+			"id": "774cc863-c62f-5099-a213-b6b33f77a4e9",
+			"name": "Person Tag > Remove",
+			"credentials": {
+				"actionNetworkApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Attendance > Create": [
+			{
+				"json": {
+					"id": "attendance-created"
+				}
+			}
+		],
+		"Attendance > Get": [
+			{
+				"json": {
+					"id": "attendance-get"
+				}
+			}
+		],
+		"Attendance > Get Many": [
+			{
+				"json": {
+					"id": "attendance-list"
+				}
+			}
+		],
+		"Event > Create": [
+			{
+				"json": {
+					"id": "event-created"
+				}
+			}
+		],
+		"Event > Get": [
+			{
+				"json": {
+					"id": "event-get"
+				}
+			}
+		],
+		"Event > Get Many": [
+			{
+				"json": {
+					"id": "event-list"
+				}
+			}
+		],
+		"Person > Create": [
+			{
+				"json": {
+					"id": "person-created"
+				}
+			}
+		],
+		"Person > Get": [
+			{
+				"json": {
+					"id": "person-get"
+				}
+			}
+		],
+		"Person > Get Many": [
+			{
+				"json": {
+					"id": "person-list"
+				}
+			}
+		],
+		"Person > Update": [
+			{
+				"json": {
+					"id": "person-updated"
+				}
+			}
+		],
+		"Petition > Create": [
+			{
+				"json": {
+					"id": "petition-created"
+				}
+			}
+		],
+		"Petition > Get": [
+			{
+				"json": {
+					"id": "petition-get"
+				}
+			}
+		],
+		"Petition > Get Many": [
+			{
+				"json": {
+					"id": "petition-list"
+				}
+			}
+		],
+		"Petition > Update": [
+			{
+				"json": {
+					"id": "petition-updated"
+				}
+			}
+		],
+		"Signature > Create": [
+			{
+				"json": {
+					"id": "signature-created"
+				}
+			}
+		],
+		"Signature > Get": [
+			{
+				"json": {
+					"id": "signature-get"
+				}
+			}
+		],
+		"Signature > Get Many": [
+			{
+				"json": {
+					"id": "signature-list"
+				}
+			}
+		],
+		"Signature > Update": [
+			{
+				"json": {
+					"id": "signature-updated"
+				}
+			}
+		],
+		"Tag > Create": [
+			{
+				"json": {
+					"id": "tag-created"
+				}
+			}
+		],
+		"Tag > Get": [
+			{
+				"json": {
+					"id": "tag-get"
+				}
+			}
+		],
+		"Tag > Get Many": [
+			{
+				"json": {
+					"id": "tag-list"
+				}
+			}
+		],
+		"Person Tag > Add": [
+			{
+				"json": {
+					"id": "tagging-created"
+				}
+			}
+		],
+		"Person Tag > Remove": [
+			{
+				"json": {
+					"notice": "deleted"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Attendance > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Attendance > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Attendance > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Event > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Event > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Event > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Person > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Person > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Person > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Person > Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Petition > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Petition > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Petition > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Petition > Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Signature > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Signature > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Signature > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Signature > Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Tag > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Tag > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Tag > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Person Tag > Add",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Person Tag > Remove",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

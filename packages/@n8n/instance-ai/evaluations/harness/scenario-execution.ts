@@ -16,6 +16,7 @@ import { attributionForScenario } from './attribution';
 import type { EvalLogger } from './logger';
 import { reseedScenarioTables, type ScenarioSeedContext } from './seed-tables';
 import {
+	throwIfFrameworkIssue,
 	throwIfServerBudgetStop,
 	isTransientExecutionAbort,
 	MAX_EXEC_ATTEMPTS,
@@ -284,7 +285,7 @@ async function runScenario(
 			logger,
 		);
 	}
-	// The server reads these tables live, so a read sees the rows and earlier writes.
+	// The server keeps these rows; it fills every other table the workflow uses.
 	const seededDataTableIds = seedContext
 		? (scenario.seedDataTables ?? []).map((table) => seedContext.tableIdsByName[table.name])
 		: undefined;
@@ -296,6 +297,7 @@ async function runScenario(
 		timeoutMs,
 		pinNodes,
 		seededDataTableIds,
+		scenario.description,
 	);
 	// DB write races abort the execution before any node runs and are reported
 	// in-band (success:false), bypassing the throw-based transient retry —
@@ -317,10 +319,12 @@ async function runScenario(
 			timeoutMs,
 			pinNodes,
 			seededDataTableIds,
+			scenario.description,
 		);
 	}
 	// Killed for time, not by the builder — throw so the timeout path classifies it.
 	throwIfServerBudgetStop(evalResult);
+	throwIfFrameworkIssue(evalResult);
 
 	const execMs = Date.now() - execStart;
 

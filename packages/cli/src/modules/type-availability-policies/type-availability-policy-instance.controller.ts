@@ -3,6 +3,7 @@ import {
 	PutInstancePolicyDto,
 	ReplaceAttachmentsDto,
 	UpdatePolicyDocumentDto,
+	type InstanceTypeAccessResponse,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -22,6 +23,8 @@ import type { Response } from 'express';
 
 import { NotFoundError } from '@n8n/errors';
 
+import { NodeTypes } from '@/node-types';
+
 import { NODE_TYPES_KIND } from './constants';
 import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
 
@@ -33,7 +36,10 @@ import { TypeAvailabilityPolicyService } from './type-availability-policy.servic
  */
 @RestController('/node-type-policies')
 export class TypeAvailabilityPolicyInstanceController {
-	constructor(private readonly service: TypeAvailabilityPolicyService) {}
+	constructor(
+		private readonly service: TypeAvailabilityPolicyService,
+		private readonly nodeTypes: NodeTypes,
+	) {}
 
 	@Get('/instance')
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
@@ -47,6 +53,16 @@ export class TypeAvailabilityPolicyInstanceController {
 			defaultAction: effective.defaultAction,
 			version: effective.version,
 		};
+	}
+
+	@Get('/instance/access')
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
+	@GlobalScope('nodeTypePolicy:manage')
+	async getInstanceAccess(): Promise<InstanceTypeAccessResponse> {
+		return await this.service.getInstanceAccess(
+			NODE_TYPES_KIND,
+			Object.keys(this.nodeTypes.getKnownTypes()),
+		);
 	}
 
 	@Put('/instance')
@@ -143,6 +159,17 @@ export class TypeAvailabilityPolicyInstanceController {
 		return { success: true };
 	}
 
+	@Get('/scopes/:scopeId/attachments')
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
+	@GlobalScope('nodeTypePolicy:manage')
+	async getAttachments(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('scopeId') scopeId: string,
+	) {
+		return await this.service.getAttachments(NODE_TYPES_KIND, scopeId);
+	}
+
 	@Put('/scopes/:scopeId/attachments')
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@GlobalScope('nodeTypePolicy:manage')
@@ -156,6 +183,7 @@ export class TypeAvailabilityPolicyInstanceController {
 			NODE_TYPES_KIND,
 			scopeId,
 			dto.attachments,
+			dto.version,
 			req.user.id,
 		);
 	}

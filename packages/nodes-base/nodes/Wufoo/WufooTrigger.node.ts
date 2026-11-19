@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, jsonParse } from 'n8n-workflow';
+import { NodeConnectionTypes, jsonParse, requestPath } from 'n8n-workflow';
 
 import { wufooApiRequest } from './GenericFunctions';
 import type { IField, IWebhook } from './Interface';
@@ -71,7 +71,7 @@ export class WufooTrigger implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 
 				// https://wufoo.github.io/docs/#all-forms
-				const formObject = await wufooApiRequest.call(this, 'GET', 'forms.json');
+				const formObject = await wufooApiRequest.call(this, 'GET', requestPath`forms.json`);
 				for (const form of formObject.Forms) {
 					const name = form.Name;
 					const value = form.Hash;
@@ -108,7 +108,7 @@ export class WufooTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const formHash = this.getNodeParameter('form') as IDataObject;
-				const endpoint = `forms/${formHash}/webhooks.json`;
+				const endpoint = requestPath`forms/${formHash}/webhooks.json`;
 
 				// Handshake key for webhook endpoint protection
 				webhookData.handshakeKey = randomBytes(20).toString('hex');
@@ -126,8 +126,8 @@ export class WufooTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				const formHash = this.getNodeParameter('form') as IDataObject;
-				const endpoint = `forms/${formHash}/webhooks/${webhookData.webhookId}.json`;
 				try {
+					const endpoint = requestPath`forms/${formHash}/webhooks/${webhookData.webhookId}.json`;
 					await wufooApiRequest.call(this, 'DELETE', endpoint);
 				} catch (error) {
 					return false;

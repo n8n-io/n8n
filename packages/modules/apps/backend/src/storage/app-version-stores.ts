@@ -1,0 +1,48 @@
+import type { AppBinding } from '@n8n/api-types';
+import type { OperationContext } from '@n8n/db';
+import type { AppBuildAttempt } from '../build/app-build.types';
+
+export type AppFiles = ReadonlyMap<string, Buffer>;
+
+export type NewSourceVersion = {
+	id: string;
+	appId: string;
+	expectedDraftVersionId: string | null;
+	label: string | null;
+	bindings: AppBinding[];
+};
+
+export abstract class AppSourceVersionStore {
+	/** Creates a source-backed version with a queued build and advances the draft atomically. */
+	abstract createVersion(version: NewSourceVersion, files: AppFiles): Promise<void>;
+
+	/**
+	 * Creates a version that shares the source and the build of the expected draft,
+	 * with other bindings, and advances the draft atomically.
+	 */
+	abstract copyDraft(version: NewSourceVersion & { expectedDraftVersionId: string }): Promise<void>;
+
+	abstract readSource(versionId: string): Promise<AppFiles>;
+
+	abstract listSourceFiles(versionId: string): Promise<string[]>;
+
+	abstract readSourceFile(versionId: string, filePath: string): Promise<Buffer | null>;
+
+	/** Removes selected versions in the caller's transaction. */
+	abstract removeVersions(versionIds: string[], ctx: OperationContext): Promise<void>;
+}
+
+export abstract class AppBuildResultStore {
+	/** Attaches a stored bundle and records build success atomically. */
+	abstract recordSuccess(
+		appId: string,
+		versionId: string,
+		files: AppFiles,
+		attempt: AppBuildAttempt,
+	): Promise<void>;
+
+	abstract readBundle(versionId: string): Promise<AppFiles>;
+
+	/** Removes selected bundles in the caller's transaction. */
+	abstract removeBundles(versionIds: string[], ctx: OperationContext): Promise<void>;
+}

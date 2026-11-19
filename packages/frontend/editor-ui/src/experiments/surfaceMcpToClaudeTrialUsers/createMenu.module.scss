@@ -1,0 +1,7 @@
+.claudeMenu :global(.el-menu-item):has(.claudeMenuIcon) {
+	gap: var(--spacing--2xs);
+}
+.claudeMenu :global(.el-menu-item):has(.claudeMenuIcon) > span:has(.claudeMenuIcon) {
+	order: -1;
+	margin-left: 0;
+}

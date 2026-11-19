@@ -180,6 +180,34 @@ export class CredentialAccessRepository extends BaseRepository<SharedCredentials
 		return result;
 	}
 
+	/**
+	 * The ids among `credentialIds` that are shared with any team project
+	 * through one of `credentialRoles`. Answers the access question for a user
+	 * who is an implicit member of every team project.
+	 */
+	async findTeamProjectCredentialIds(
+		credentialIds: string[],
+		credentialRoles: string[],
+		ctx: OperationContext = {},
+	): Promise<Set<string>> {
+		const result = new Set<string>();
+		if (credentialRoles.length === 0) return result;
+		const manager = this.managerFor(ctx);
+		for (const chunk of chunkIds(credentialIds)) {
+			const rows = await manager.find(SharedCredentials, {
+				select: { credentialsId: true },
+				where: {
+					credentialsId: In(chunk),
+					credentials: { usageScope: 'project' },
+					role: In(credentialRoles),
+					project: { type: 'team' },
+				},
+			});
+			for (const row of rows) result.add(row.credentialsId);
+		}
+		return result;
+	}
+
 	async findGlobalProjectCredentialIds(
 		credentialIds: string[],
 		resolvableOnly: boolean,

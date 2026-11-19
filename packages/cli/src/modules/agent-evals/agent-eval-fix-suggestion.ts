@@ -80,7 +80,6 @@ export async function generateFixSuggestion(
 			config.model,
 			config.credential,
 			credentialProvider,
-			config.modelDeploymentName,
 		);
 
 		// Lazy-loaded: `@n8n/agents` is heavy, and this only runs for failed rules.

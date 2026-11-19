@@ -1,6 +1,7 @@
 import {
 	LogStreamingDestinationPublicDto,
 	LogStreamingEventTypesPublicDto,
+	UpdateLogStreamingDestinationPublicDto,
 } from '../log-streaming-public.dto';
 
 describe('LogStreamingEventTypesPublicDto', () => {
@@ -40,5 +41,13 @@ describe('LogStreamingDestinationPublicDto', () => {
 		['an unknown type', { ...webhook, type: 'kafka' }],
 	])('rejects %s', (_, input) => {
 		expect(LogStreamingDestinationPublicDto.safeParse(input).success).toBe(false);
+	});
+
+	test.each([
+		['webhook URL', { ...webhook, url: 'ftp://example.com/n8n-events' }],
+		['syslog host', { ...webhook, url: undefined, type: 'syslog', host: '127.1' }],
+	])('returns a stored %s that the request checks reject', (_, input) => {
+		expect(LogStreamingDestinationPublicDto.safeParse(input).success).toBe(true);
+		expect(UpdateLogStreamingDestinationPublicDto.safeParse(input).success).toBe(false);
 	});
 });

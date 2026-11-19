@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
 	checkTeamsCredential,
+	checkTeamsFileAccess,
 	createTeamsManagerCredential,
 	fetchTeamsAppPackage,
 	getTeamsAzureSubscriptions,
@@ -58,6 +59,12 @@ describe('teams channel api', () => {
 		await checkTeamsCredential(context, 'project-1', 'agent-1', 'cred-1');
 
 		expect(sent()).toEqual([context, 'POST', `${BASE}/check/cred-1`]);
+	});
+
+	it('checks file access by credential id, in its path', async () => {
+		await checkTeamsFileAccess(context, 'project-1', 'agent-1', 'cred-1');
+
+		expect(sent()).toEqual([context, 'GET', `${BASE}/file-access/cred-1`]);
 	});
 
 	it('reads the managed setup state', async () => {

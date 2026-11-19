@@ -18,6 +18,7 @@ import { ParseValidateHandler } from '../parse-validate-handler';
 // Mock the workflow-sdk module
 vi.mock('@n8n/workflow-sdk', () => ({
 	parseWorkflowCodeToBuilder: vi.fn(),
+	resolveNodePorts: vi.fn(),
 	validateWorkflow: vi.fn(),
 	workflow: { fromJSON: vi.fn() },
 	stripImportStatements: vi.fn((code: string) => code),
@@ -388,6 +389,7 @@ describe('ParseValidateHandler', () => {
 
 			expect(mockBuilder.toJSON).toHaveBeenCalledWith({
 				tidyUp: true,
+				nodePorts: undefined,
 				existingGroupIdsByName: new Map([
 					['Ingestion', 'group-random-1'],
 					['Processing', 'group-random-2'],

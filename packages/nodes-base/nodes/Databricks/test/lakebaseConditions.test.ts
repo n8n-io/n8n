@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import {
 	buildLakebaseQuery,
@@ -62,6 +62,29 @@ describe('Lakebase -> condition translation', () => {
 			expect(() => query({ where: [{ column: 'a', condition: 'drop', value: 'x' }] })).toThrow(
 				UserError,
 			);
+		});
+
+		// `col.eq.` selects rows holding an empty string, so a null that slipped through
+		// would quietly return the wrong rows rather than the rows with no value.
+		it.each([
+			['null', null],
+			['undefined', undefined],
+		])('should reject a filter value of %s', (_name, value) => {
+			expect(() => query({ where: [{ column: 'sku', condition: 'eq', value }] })).toThrow(
+				UserError,
+			);
+		});
+
+		it('should still accept an empty string, which matches an empty value', () => {
+			expect(query({ where: [{ column: 'sku', condition: 'eq', value: '' }] })).toEqual({
+				and: '(sku.eq.)',
+			});
+		});
+
+		it.each(['is.null', 'not.is.null'])('should allow %s with no value', (condition) => {
+			expect(query({ where: [{ column: 'sku', condition }] })).toEqual({
+				and: `(sku.${condition})`,
+			});
 		});
 
 		it('skips a rule with no column', () => {

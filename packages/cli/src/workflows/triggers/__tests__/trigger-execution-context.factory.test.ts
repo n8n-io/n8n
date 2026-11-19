@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import type {
+	EventService,
+	PublishedWorkflowDataForExecution,
+	WorkflowPublishedDataService,
+} from '@n8n/backend-services';
 import type { Project, WorkflowEntity } from '@n8n/db';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -11,7 +15,8 @@ import type {
 	IGetExecutePollFunctions,
 	StorageConfig,
 } from 'n8n-core';
-import { UnexpectedError, UserError, Workflow } from 'n8n-workflow';
+import { Workflow } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import type {
 	Cron,
 	CronExpression,
@@ -42,10 +47,7 @@ import type { OwnershipService } from '@/services/ownership.service';
 import type { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import type {
-	PublishedWorkflowDataForExecution,
-	WorkflowPublishedDataService,
-} from '@/workflows/workflow-published-data.service';
+
 import type { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
 import { EngineV2ActiveTriggers } from '@/workflows/triggers/engine-v2-active-triggers';

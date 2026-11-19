@@ -1,3 +1,4 @@
+import { ExecutionLedger } from '@n8n/backend-services';
 import { ScheduledJobOwnerType, Time } from '@n8n/constants';
 import {
 	LicenseMetricsRepository,
@@ -19,12 +20,16 @@ type PublicationStats = Partial<
 	Record<WorkflowPublicationOutboxStatus, { count: number; oldestMs: number }>
 >;
 
+/** The ledger backlog, as JSON so the cache can hold it. */
+export type LedgerBacklogState = { rows: number; oldestMs: number | null };
+
 /** The stored schedule of one durable system task, as JSON so the cache can hold it. */
 export type DurableJobState = {
 	task: string;
 	/** Enabled and not quarantined, so the scheduler will claim it. */
 	runnable: boolean;
 	nextRunAtSeconds: number | null;
+	lastSuccessAtSeconds: number | null;
 };
 
 /** Owns database reads for metrics. Each method returns a query with outage handling. */
@@ -37,6 +42,7 @@ export class DatabaseMetricQueryService {
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
 		private readonly taskRepository: ScheduledTaskRepository,
 		private readonly jobRepository: ScheduledJobRepository,
+		private readonly executionLedger: ExecutionLedger,
 	) {}
 
 	activeWorkflowCount(ttlMs: number) {
@@ -78,6 +84,18 @@ export class DatabaseMetricQueryService {
 		});
 	}
 
+	/** Call only while `ExecutionLedger.isEnabled`, that is once the module bound its writer. */
+	executionLedgerBacklog(ttlMs: number) {
+		return this.cachedQueries.create<LedgerBacklogState>({
+			cacheKey: 'metrics:execution-ledger:backlog:v1',
+			ttlMs,
+			query: async () => {
+				const { rows, oldestOccurredAt } = await this.executionLedger.getBacklogStats();
+				return { rows, oldestMs: oldestOccurredAt?.getTime() ?? null };
+			},
+		});
+	}
+
 	schedulerSnapshot(ttlMs: number) {
 		return this.cachedQueries.create({
 			cacheKey: 'metrics:scheduler:snapshot:v1',
@@ -88,17 +106,21 @@ export class DatabaseMetricQueryService {
 
 	durableSystemTaskJobs(ttlMs: number) {
 		return this.cachedQueries.create<DurableJobState[]>({
-			cacheKey: 'metrics:system-tasks:durable-jobs:v1',
+			cacheKey: 'metrics:system-tasks:durable-jobs:v2',
 			ttlMs,
 			query: async () => {
 				const jobs = await this.jobRepository.findScheduleStatesByOwnerType(
 					ScheduledJobOwnerType.SystemTask,
 				);
-				return jobs.map(({ ownerId, runnable, nextRunAt }) => ({
+				return jobs.map(({ ownerId, runnable, nextRunAt, lastDispatchedAt }) => ({
 					task: ownerId,
 					runnable,
 					nextRunAtSeconds:
 						nextRunAt === null ? null : nextRunAt.getTime() / Time.seconds.toMilliseconds,
+					lastSuccessAtSeconds:
+						lastDispatchedAt === null
+							? null
+							: lastDispatchedAt.getTime() / Time.seconds.toMilliseconds,
 				}));
 			},
 		});

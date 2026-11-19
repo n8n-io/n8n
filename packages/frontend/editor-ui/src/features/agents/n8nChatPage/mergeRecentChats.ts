@@ -1,16 +1,25 @@
-import type { InstanceAiThreadSummary, AgentN8nChatThreadSummary } from '@n8n/api-types';
+import type {
+	InstanceAiThreadSummary,
+	AgentN8nChatThreadSummary,
+	SystemAgentThreadSummary,
+} from '@n8n/api-types';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import type { useI18n } from '@n8n/i18n';
 import { INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
 import { AGENT_N8N_CHAT_VIEW } from '../constants';
 
+/**
+ * A chat in the sidebar or the history. `assistant-agent` is an n8n Assistant thread
+ * on the agents runtime. It opens at the same URL as an `assistant` thread.
+ */
 export type RecentChatItem =
 	| { kind: 'assistant'; thread: InstanceAiThreadSummary }
+	| { kind: 'assistant-agent'; thread: SystemAgentThreadSummary }
 	| { kind: 'agent'; thread: AgentN8nChatThreadSummary };
 
 /** Route to open a sidebar or history chat item on its own page. */
 export function chatItemRoute(item: RecentChatItem) {
-	if (item.kind === 'assistant') {
+	if (item.kind === 'assistant' || item.kind === 'assistant-agent') {
 		return { name: INSTANCE_AI_THREAD_VIEW, params: { threadId: item.thread.id } };
 	}
 	return {
@@ -23,6 +32,13 @@ export function chatItemRoute(item: RecentChatItem) {
 export function chatItemTitle(item: RecentChatItem, i18n: ReturnType<typeof useI18n>): string {
 	if (item.kind === 'assistant') return item.thread.title;
 	return item.thread.title ?? i18n.baseText('commandBar.instanceAi.newThread');
+}
+
+/** Whether the item is an n8n Assistant thread, on either runtime. */
+export function isAssistantChatItem(
+	item: RecentChatItem,
+): item is Extract<RecentChatItem, { kind: 'assistant' | 'assistant-agent' }> {
+	return item.kind === 'assistant' || item.kind === 'assistant-agent';
 }
 
 /** The agent thread row menu, shared by every surface that lists them: delete only. */
@@ -38,35 +54,49 @@ export type MergeRecentChatsOptions = {
 	limit: number;
 	/** The currently open thread's id, kept visible past `limit` if already loaded. */
 	openThreadId?: string;
+	/** n8n Assistant threads on the agents runtime, newest first. */
+	assistantAgentThreads?: SystemAgentThreadSummary[];
 };
 
 /**
- * Single-pass merge of two already newest-first lists into one recency-ordered list for
- * the sidebar, stopping at `limit`.
+ * Single-pass merge of already newest-first lists into one recency-ordered list for
+ * the sidebar, stopping at `limit`. On equal times, the Assistant threads come first.
  */
 export function mergeRecentChats(
 	assistantThreads: InstanceAiThreadSummary[],
 	agentThreads: AgentN8nChatThreadSummary[],
 	options: MergeRecentChatsOptions,
 ): RecentChatItem[] {
-	const assistantItems = assistantThreads.map((thread) => ({ kind: 'assistant' as const, thread }));
-	const agentItems = agentThreads.map((thread) => ({ kind: 'agent' as const, thread }));
+	const lists: RecentChatItem[][] = [
+		assistantThreads.map((thread) => ({ kind: 'assistant' as const, thread })),
+		(options.assistantAgentThreads ?? []).map((thread) => ({
+			kind: 'assistant-agent' as const,
+			thread,
+		})),
+		agentThreads.map((thread) => ({ kind: 'agent' as const, thread })),
+	];
+	// A thread without an update time sorts as the oldest.
+	const updatedAtOf = (item: RecentChatItem) => item.thread.updatedAt ?? '';
 
 	const merged: RecentChatItem[] = [];
-	let a = 0;
-	let g = 0;
-	while (merged.length < options.limit && (a < assistantItems.length || g < agentItems.length)) {
-		const useAssistant =
-			g >= agentItems.length ||
-			(a < assistantItems.length &&
-				assistantItems[a].thread.updatedAt >= agentItems[g].thread.updatedAt);
-		merged.push(useAssistant ? assistantItems[a++] : agentItems[g++]);
+	const positions = lists.map(() => 0);
+	while (merged.length < options.limit) {
+		let next = -1;
+		for (let index = 0; index < lists.length; index++) {
+			const head = lists[index][positions[index]];
+			if (!head) continue;
+			if (next === -1 || updatedAtOf(head) > updatedAtOf(lists[next][positions[next]])) {
+				next = index;
+			}
+		}
+		if (next === -1) break;
+		merged.push(lists[next][positions[next]++]);
 	}
 
 	const openId = options.openThreadId;
 	if (!openId || merged.some((item) => item.thread.id === openId)) return merged;
 
-	const openItem = [...assistantItems, ...agentItems].find((item) => item.thread.id === openId);
+	const openItem = lists.flat().find((item) => item.thread.id === openId);
 	if (!openItem) return merged;
 
 	return [...merged.slice(0, Math.max(options.limit - 1, 0)), openItem];

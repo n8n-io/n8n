@@ -1,12 +1,12 @@
-import type { ListAgentsQueryDto, UpdateAgentsMcpAvailabilityDto } from '@n8n/api-types';
+import type { ListAgentsOptions, UpdateAgentsMcpAvailabilityDto } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { CollaborationService } from '@/collaboration/collaboration.service';
+import { AgentWriteLockService } from './agent-write-lock.service';
 import { BadRequestError } from '@n8n/errors';
 import { ProjectScopeService } from '@n8n/backend-services';
 
-import type { Agent } from './entities/agent.entity';
+import type { Agent, ProjectScoped } from './entities/agent.entity';
 import { AgentRepository, type AgentListResult } from './repositories/agent.repository';
 
 const BULK_CHUNK_SIZE = 500;
@@ -29,14 +29,14 @@ export class AgentMcpAccessService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
 		private readonly projectScopeService: ProjectScopeService,
-		private readonly collaborationService: CollaborationService,
+		private readonly agentWriteLockService: AgentWriteLockService,
 	) {}
 
 	/**
 	 * Paginated list of agents in projects where the user holds `agent:update`.
 	 * Defaults to agents that are not yet available to MCP.
 	 */
-	async getAgents(user: User, options: ListAgentsQueryDto): Promise<AgentListResult> {
+	async getAgents(user: User, options: ListAgentsOptions): Promise<AgentListResult> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:update']);
 		return await this.agentRepository.findByProjectIdsPaginated(
 			projectIds,
@@ -84,7 +84,7 @@ export class AgentMcpAccessService {
 		// One cache round-trip per chunk; the candidates already came from the
 		// repository, so no per-agent project check is needed.
 		for (let start = 0; start < agentIds.length; start += BULK_CHUNK_SIZE) {
-			await this.collaborationService.validateAgentWriteLocks(
+			await this.agentWriteLockService.validateAgentWriteLocks(
 				user.id,
 				pushRef,
 				agentIds.slice(start, start + BULK_CHUNK_SIZE),
@@ -92,32 +92,42 @@ export class AgentMcpAccessService {
 			);
 		}
 
+		const updatedCount = await this.writeAvailability(agentIds, dto.availableInMCP);
+		if (!dto.agentIds) return { updatedCount };
+
+		// Per-id breakdown only for explicit `agentIds` requests; the caller
+		// uses it to confirm each requested agent landed in a known state.
+		const updatedIds = await this.findIdsInState(agentIds, dto.availableInMCP);
+		return {
+			updatedCount: updatedIds.length,
+			updatedIds,
+			unchangedIds: accessible
+				.filter((agent) => agent.availableInMCP === dto.availableInMCP)
+				.map((agent) => agent.id),
+		};
+	}
+
+	private async writeAvailability(agentIds: string[], availableInMCP: boolean): Promise<number> {
+		let updatedCount = 0;
 		for (let start = 0; start < agentIds.length; start += BULK_CHUNK_SIZE) {
-			await this.agentRepository.setAvailableInMCP(
+			updatedCount += await this.agentRepository.setAvailableInMCP(
 				agentIds.slice(start, start + BULK_CHUNK_SIZE),
-				dto.availableInMCP,
+				availableInMCP,
 			);
 		}
+		return updatedCount;
+	}
 
-		return {
-			updatedCount: toUpdate.length,
-			// Per-id breakdown only for explicit `agentIds` requests; the caller
-			// uses it to confirm each requested agent landed in a known state.
-			...(dto.agentIds
-				? {
-						updatedIds: agentIds,
-						unchangedIds: accessible
-							.filter((agent) => agent.availableInMCP === dto.availableInMCP)
-							.map((agent) => agent.id),
-					}
-				: {}),
-		};
+	/** The write skips an agent that was archived after the candidate lookup, so read the result back. */
+	private async findIdsInState(agentIds: string[], availableInMCP: boolean): Promise<string[]> {
+		const agents = await this.agentRepository.findMcpAvailabilityCandidates({ ids: agentIds });
+		return agents.filter((agent) => agent.availableInMCP === availableInMCP).map(({ id }) => id);
 	}
 
 	private async resolveCandidates(
 		dto: UpdateAgentsMcpAvailabilityDto,
 		projectIds: string[] | null,
-	): Promise<Array<Pick<Agent, 'id' | 'projectId' | 'availableInMCP'>>> {
+	): Promise<Array<ProjectScoped<Pick<Agent, 'id' | 'projectId' | 'availableInMCP'>>>> {
 		if (dto.agentIds) {
 			return await this.agentRepository.findMcpAvailabilityCandidates({
 				ids: [...new Set(dto.agentIds)],

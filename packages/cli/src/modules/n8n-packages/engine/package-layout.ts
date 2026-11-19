@@ -1,18 +1,21 @@
-import { UserError } from 'n8n-workflow';
+import type { SerializedCredential, SerializedVariable } from '@n8n/api-types';
+import { UserError } from '@n8n/errors';
 
-import { credentialMissingModeUsesPackageData } from '../entities/credential/credential-missing-mode';
+import { resolveCredentialConflictPolicy } from '../entities/credential/credential-conflict-policy';
 import type { PlacedCredentialRequirement } from '../entities/credential/credential.types';
 import { variableMissingModeUsesPackageValue } from '../entities/variable/variable-missing-mode';
 import type { PlacedVariableRequirement } from '../entities/variable/variable.types';
-import { VariableConflictPolicy, VariableParentPolicy } from '../n8n-packages.types';
+import {
+	CredentialConflictPolicy,
+	VariableConflictPolicy,
+	VariableParentPolicy,
+} from '../n8n-packages.types';
 import type { ImportCredentialProperties, ImportVariableProperties } from '../n8n-packages.types';
 import type { ManifestEntry } from '../spec/manifest.schema';
 import type {
 	PackageCredentialRequirement,
 	PackageVariableRequirement,
 } from '../spec/requirements.schema';
-import type { SerializedCredential } from '../spec/serialized/credential.schema';
-import type { SerializedVariable } from '../spec/serialized/variable.schema';
 
 export function foldersInScope(
 	entries: ManifestEntry[] | undefined,
@@ -32,13 +35,6 @@ export function workflowsInScope(
 	);
 }
 
-export function needsBundledCredentialData(
-	request: ImportCredentialProperties,
-	hasRequirements: boolean,
-): boolean {
-	return hasRequirements && credentialMissingModeUsesPackageData(request.credentialMissingMode);
-}
-
 /**
  * Attaches each requirement's bundled expression data. Lookup is by id: the manifest
  * rejects duplicate credential ids, so each requirement has at most one bundle entry —
@@ -46,21 +42,22 @@ export function needsBundledCredentialData(
  */
 export function placeCredentialData({
 	requirements,
-	manifestCredentials,
 	bundledCredentials,
 }: {
 	requirements: PackageCredentialRequirement[] | undefined;
-	manifestCredentials: ManifestEntry[] | undefined;
-	bundledCredentials?: Map<string, SerializedCredential>;
+	/** Package credential files by credential id. */
+	bundledCredentials?: ReadonlyMap<string, SerializedCredential>;
 }): PlacedCredentialRequirement[] | undefined {
 	return requirements?.map((requirement) => {
-		const bundle = (manifestCredentials ?? []).find((entry) => entry.id === requirement.id);
-		const credential = bundle ? bundledCredentials?.get(bundle.target) : undefined;
+		const credential = bundledCredentials?.get(requirement.id);
 		const packageData = credential?.data;
 
 		return {
 			...requirement,
 			...(packageData !== undefined ? { packageData } : {}),
+			...(credential?.description !== undefined
+				? { packageDescription: credential.description }
+				: {}),
 			...(credential?.dataIsComplete !== undefined
 				? { packageDataIsComplete: credential.dataIsComplete }
 				: {}),
@@ -76,6 +73,18 @@ export function needsBundledVariableValues(
 		hasRequirements &&
 		(variableMissingModeUsesPackageValue(request.variableMissingMode) ||
 			request.variableConflictPolicy !== VariableConflictPolicy.KeepExisting)
+	);
+}
+
+/** Only an update compares with the package credential files, so `keep-existing` never reads them. */
+export function needsBundledCredentialFiles(
+	request: Pick<ImportCredentialProperties, 'credentialConflictPolicy'>,
+	hasRequirements: boolean,
+): boolean {
+	return (
+		hasRequirements &&
+		resolveCredentialConflictPolicy(request.credentialConflictPolicy) !==
+			CredentialConflictPolicy.KeepExisting
 	);
 }
 
@@ -145,19 +154,20 @@ export function placeByLayout(
 }
 
 export function deriveParentFolderId(
-	workflowTarget: string,
+	resourceTarget: string,
 	folderTargetToId: Map<string, string>,
+	collection: 'workflows' | 'agents' = 'workflows',
 ): string | null {
-	const idx = workflowTarget.lastIndexOf('/workflows/');
+	const idx = resourceTarget.lastIndexOf(`/${collection}/`);
 	if (idx === -1) return null;
 
-	const containerTarget = workflowTarget.slice(0, idx);
+	const containerTarget = resourceTarget.slice(0, idx);
 
 	if (!containerTarget.includes('folders/')) return null;
 	const folderId = folderTargetToId.get(containerTarget);
 	if (folderId === undefined) {
 		throw new UserError(
-			`Package workflow at "${workflowTarget}" is nested under folder "${containerTarget}", which is missing from the manifest.`,
+			`Package ${collection} entry at "${resourceTarget}" is nested under folder "${containerTarget}", which is missing from the manifest.`,
 		);
 	}
 	return folderId;

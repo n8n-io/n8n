@@ -8,19 +8,23 @@ import {
 	getGenericHints,
 	getNewNodePosition,
 	getNodeViewTab,
+	isPastableWorkflowText,
+	readClipboardTextIfGranted,
 	updateViewportToContainNodes,
 	DEFAULT_NODE_SIZE,
 	snapPositionToGrid,
+	snapToGrid,
 	calculateNodeSize,
+	getNodeSizeFromPorts,
 	GRID_SIZE,
 	NODE_X_SPACING,
 	HORIZONTAL_NODE_STEP,
 	doRectsOverlap,
-	canUsePosition,
+	isPositionBlocked,
 } from './nodeViewUtils';
 import type { INode, INodeTypeDescription, INodeExecutionData, Workflow } from 'n8n-workflow';
 import type { INodeUi, XYPosition } from '@/Interface';
-import { NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { mock, type MockProxy } from 'vitest-mock-extended';
@@ -258,7 +262,13 @@ describe('snapPositionToGrid', () => {
 	it('should snap position to grid', () => {
 		const position: XYPosition = [105, 115];
 		const snappedPosition = snapPositionToGrid(position);
-		expect(snappedPosition).toEqual([112, 128]);
+		expect(snappedPosition).toEqual([112, 112]);
+	});
+
+	it('should snap a negative midpoint to the nearest grid line like snapToGrid', () => {
+		const position: XYPosition = [-24, -24];
+		const snappedPosition = snapPositionToGrid(position);
+		expect(snappedPosition).toEqual([-16, -16]);
 	});
 
 	it('should not change position if already on grid', () => {
@@ -274,6 +284,16 @@ describe('snapPositionToGrid', () => {
 	});
 });
 
+describe('snapToGrid', () => {
+	it('should return 0 and not -0 for a small negative value', () => {
+		expect(snapToGrid(-8)).toBe(0);
+	});
+
+	it('should keep NaN', () => {
+		expect(snapToGrid(Number.NaN)).toBeNaN();
+	});
+});
+
 describe('getNewNodePosition', () => {
 	it('should return the new position when there are no conflicts', () => {
 		const nodes: INodeUi[] = [];
@@ -286,7 +306,7 @@ describe('getNewNodePosition', () => {
 		const nodes: INodeUi[] = [];
 		const newPosition: XYPosition = [105, 115];
 		const result = getNewNodePosition(nodes, newPosition);
-		expect(result).toEqual([112, 128]);
+		expect(result).toEqual([112, 112]);
 	});
 
 	it('should move the position to avoid conflicts', () => {
@@ -294,6 +314,13 @@ describe('getNewNodePosition', () => {
 		const newPosition: XYPosition = [96, 96];
 		const result = getNewNodePosition(nodes, newPosition);
 		expect(result).toEqual([240, 240]);
+	});
+
+	it('should move by at least one grid cell when the offset is smaller than half a cell', () => {
+		const nodes: INodeUi[] = [createTestNode({ id: '1', position: [96, 96], type: SET_NODE_TYPE })];
+		const newPosition: XYPosition = [96, 96];
+		const result = getNewNodePosition(nodes, newPosition, { offset: [7, 7] });
+		expect(result).toEqual([208, 208]);
 	});
 
 	it('should skip nodes in the conflict allowlist', () => {
@@ -323,6 +350,41 @@ describe('getNewNodePosition', () => {
 		const newPosition: XYPosition = [96, 96];
 		const result = getNewNodePosition(nodes, newPosition);
 		expect(result).toEqual([288, 288]);
+	});
+
+	it('should test the new node against the full width of a wide node', () => {
+		const nodes: INodeUi[] = [createTestNode({ id: '1', position: [0, 0], type: SET_NODE_TYPE })];
+		const result = getNewNodePosition(nodes, [160, 0], {
+			getNodeSize: () => [224, 96],
+		});
+		expect(result).toEqual([256, 96]);
+	});
+
+	it('should test the new node against the full height of a tall node', () => {
+		const nodes: INodeUi[] = [
+			createTestNode({ id: '1', position: [224, -96], type: SET_NODE_TYPE }),
+		];
+		const result = getNewNodePosition(nodes, [224, 96], {
+			getNodeSize: () => [96, 224],
+		});
+		expect(result).toEqual([272, 144]);
+	});
+
+	it('should keep a wide new node at its position when no node is in its rectangle', () => {
+		const nodes: INodeUi[] = [createTestNode({ id: '1', position: [0, 0], type: SET_NODE_TYPE })];
+		const result = getNewNodePosition(nodes, [784, -48], { size: [1440, 96] });
+		expect(result).toEqual([784, -48]);
+	});
+
+	it('should ignore a node with a position or size that is not a finite number', () => {
+		const nodes: INodeUi[] = [
+			createTestNode({ id: '1', position: [Number.NaN, 0], type: SET_NODE_TYPE }),
+			createTestNode({ id: '2', position: [0, 0], type: SET_NODE_TYPE }),
+		];
+		const result = getNewNodePosition(nodes, [0, 0], {
+			getNodeSize: (node) => (node.id === '2' ? [Infinity, 96] : DEFAULT_NODE_SIZE),
+		});
+		expect(result).toEqual([0, 0]);
 	});
 });
 
@@ -436,6 +498,17 @@ describe('getNodesGroupSize', () => {
 		expect(we).toBe(DEFAULT_NODE_SIZE[0]);
 		expect(he).toBe(DEFAULT_NODE_SIZE[1]);
 	});
+
+	it('should include the size of each node in the bounding box', () => {
+		const nodes: INode[] = [
+			createTestNode({ id: 'wide', position: [0, 0] }),
+			createTestNode({ id: 'tall', position: [400, -96] }),
+		];
+		const sizes: Record<string, [number, number]> = { wide: [320, 128], tall: [96, 224] };
+		const [width, height] = getNodesGroupSize(nodes, (node) => sizes[node.id]);
+		expect(width).toBe(496);
+		expect(height).toBe(224);
+	});
 });
 
 describe('updateViewportToContainNodes', () => {
@@ -491,6 +564,7 @@ describe('calculateNodeSize', () => {
 			1,
 			1,
 			0,
+			0,
 			false,
 		);
 		// width = GRID_SIZE * 5 = 16 * 5 = 80
@@ -507,7 +581,7 @@ describe('calculateNodeSize', () => {
 		// maxVerticalHandles = 3
 		// height = 96 + (3 - 2) * 32 = 96 + 32 = 128
 		expect(
-			calculateNodeSize(false, true, mainInputCount, mainOutputCount, nonMainInputCount, false),
+			calculateNodeSize(false, true, mainInputCount, mainOutputCount, nonMainInputCount, 0, false),
 		).toEqual({ width: 272, height: 128 });
 	});
 
@@ -515,7 +589,7 @@ describe('calculateNodeSize', () => {
 		const nonMainInputCount = 2;
 		// width = 80 + 16 + (max(4, 2) - 1) * 16 * 3 = 240
 		// height = CONFIGURATION_NODE_SIZE[1] = 16 * 5 = 80
-		expect(calculateNodeSize(true, true, 1, 1, nonMainInputCount, false)).toEqual({
+		expect(calculateNodeSize(true, true, 1, 1, nonMainInputCount, 0, false)).toEqual({
 			width: 240,
 			height: 80,
 		});
@@ -527,7 +601,7 @@ describe('calculateNodeSize', () => {
 		// width = 96
 		// maxVerticalHandles = 3
 		// height = 96 + (3 - 2) * 32 = 128
-		expect(calculateNodeSize(false, false, mainInputCount, mainOutputCount, 0, false)).toEqual({
+		expect(calculateNodeSize(false, false, mainInputCount, mainOutputCount, 0, 0, false)).toEqual({
 			width: 96,
 			height: 128,
 		});
@@ -538,9 +612,9 @@ describe('calculateNodeSize', () => {
 		const mainOutputCount = 4;
 		// maxVerticalHandles = 6
 		// height = 96 + (6 - 2) * 32 = 96 + 128 = 224
-		expect(calculateNodeSize(false, false, mainInputCount, mainOutputCount, 0, false).height).toBe(
-			224,
-		);
+		expect(
+			calculateNodeSize(false, false, mainInputCount, mainOutputCount, 0, 0, false).height,
+		).toBe(224);
 	});
 
 	it('should respect the minimum width for configurable nodes', () => {
@@ -549,7 +623,7 @@ describe('calculateNodeSize', () => {
 		// height = default path, mainInputCount = 1, mainOutputCount = 1
 		// maxVerticalHandles = 1
 		// height = 96 + (1 - 2) * 32 = 96 + 0 = 96
-		expect(calculateNodeSize(false, true, 1, 1, nonMainInputCount, false)).toEqual({
+		expect(calculateNodeSize(false, true, 1, 1, nonMainInputCount, 0, false)).toEqual({
 			width: 224,
 			height: 96,
 		});
@@ -558,7 +632,58 @@ describe('calculateNodeSize', () => {
 	it('should handle edge case when mainInputCount and mainOutputCount are 0', () => {
 		// maxVerticalHandles = max(0,0,1) = 1
 		// height = 96 + (1 - 2) * 32 = 96 + 0 = 96
-		expect(calculateNodeSize(false, false, 0, 0, 0, false).height).toBe(96);
+		expect(calculateNodeSize(false, false, 0, 0, 0, 0, false).height).toBe(96);
+	});
+});
+
+describe('getNodeSizeFromPorts', () => {
+	const { Main, AiLanguageModel, AiMemory, AiTool, AiOutputParser, AiRetriever } =
+		NodeConnectionTypes;
+
+	it('should return the default size for a node with main ports only', () => {
+		expect(getNodeSizeFromPorts([Main], [Main])).toEqual({ width: 96, height: 96 });
+	});
+
+	it('should return the configurable size for an AI Agent', () => {
+		expect(getNodeSizeFromPorts([Main, AiLanguageModel, AiMemory, AiTool], [Main])).toEqual({
+			width: 224,
+			height: 96,
+		});
+	});
+
+	it('should make a configurable node wider for each non-main input above four', () => {
+		expect(
+			getNodeSizeFromPorts(
+				[Main, AiLanguageModel, AiMemory, AiTool, AiOutputParser, AiRetriever],
+				[Main],
+			),
+		).toEqual({ width: 272, height: 96 });
+	});
+
+	it('should make a node taller for four main inputs', () => {
+		expect(getNodeSizeFromPorts([Main, Main, Main, Main], [Main])).toEqual({
+			width: 96,
+			height: 160,
+		});
+	});
+
+	it('should return the configurable configuration size for a HITL tool', () => {
+		expect(getNodeSizeFromPorts([AiTool], [AiTool])).toEqual({ width: 240, height: 80 });
+	});
+
+	it('should not count non-main outputs as ports for an AI Agent Tool with an output parser', () => {
+		expect(
+			getNodeSizeFromPorts([AiLanguageModel, AiMemory, AiTool, AiOutputParser], [AiTool]),
+		).toEqual({ width: 240, height: 80 });
+	});
+
+	it('should make a node wider for each non-main output at the top above four', () => {
+		expect(
+			getNodeSizeFromPorts(
+				[Main, AiLanguageModel],
+				[AiLanguageModel, AiMemory, AiTool, AiRetriever, AiOutputParser, AiTool],
+			),
+		).toEqual({ width: 336, height: 80 });
 	});
 });
 
@@ -615,29 +740,29 @@ describe('doRectsOverlap', () => {
 	});
 });
 
-describe('canUsePosition', () => {
-	it('should return true when positions are far apart', () => {
-		const pos1: XYPosition = [0, 0];
-		const pos2: XYPosition = [200, 200];
-		expect(canUsePosition(pos1, pos2)).toBe(true);
+describe('isPositionBlocked', () => {
+	const obstacle = { x: 0, y: 0, width: 224, height: 96 };
+
+	it('should block a candidate that overlaps the obstacle', () => {
+		expect(isPositionBlocked({ x: 200, y: 0, width: 96, height: 96 }, obstacle)).toBe(true);
 	});
 
-	it('should return false when positions overlap', () => {
-		const pos1: XYPosition = [0, 0];
-		const pos2: XYPosition = [50, 50];
-		expect(canUsePosition(pos1, pos2)).toBe(false);
+	it('should block a candidate less than one grid cell away', () => {
+		expect(
+			isPositionBlocked({ x: 224 + GRID_SIZE - 1, y: 0, width: 96, height: 96 }, obstacle),
+		).toBe(true);
+		expect(
+			isPositionBlocked({ x: 0, y: 96 + GRID_SIZE - 1, width: 96, height: 96 }, obstacle),
+		).toBe(true);
 	});
 
-	it('should return true when positions are separated horizontally', () => {
-		const pos1: XYPosition = [0, 0];
-		const pos2: XYPosition = [DEFAULT_NODE_SIZE[0] + 1, 0];
-		expect(canUsePosition(pos1, pos2)).toBe(true);
-	});
-
-	it('should return true when positions are separated vertically', () => {
-		const pos1: XYPosition = [0, 0];
-		const pos2: XYPosition = [0, DEFAULT_NODE_SIZE[1] + 1];
-		expect(canUsePosition(pos1, pos2)).toBe(true);
+	it('should not block a candidate one grid cell or more away', () => {
+		expect(isPositionBlocked({ x: 224 + GRID_SIZE, y: 0, width: 96, height: 96 }, obstacle)).toBe(
+			false,
+		);
+		expect(isPositionBlocked({ x: 0, y: -96 - GRID_SIZE, width: 96, height: 96 }, obstacle)).toBe(
+			false,
+		);
 	});
 });
 
@@ -696,5 +821,41 @@ describe('horizontal spacing constants', () => {
 	it('should resolve to the canonical 8-dot step (224px on a 16px grid)', () => {
 		expect(NODE_X_SPACING).toBe(GRID_SIZE * 8);
 		expect(HORIZONTAL_NODE_STEP).toBe(224);
+	});
+});
+
+describe('isPastableWorkflowText', () => {
+	it.each([
+		['workflow JSON', JSON.stringify({ nodes: [], connections: {} }), true],
+		['a workflow URL', 'https://example.com/workflow.json', true],
+		['plain text', 'just some text', false],
+		['JSON without nodes and connections', '{}', false],
+		['a JSON string', '"text"', false],
+		['a JSON array', '[1]', false],
+	])('returns %s -> %s', (_label, text, expected) => {
+		expect(isPastableWorkflowText(text)).toBe(expected);
+	});
+});
+
+describe('readClipboardTextIfGranted', () => {
+	afterEach(() => {
+		Reflect.deleteProperty(window.navigator, 'permissions');
+		Reflect.deleteProperty(window.navigator, 'clipboard');
+	});
+
+	it('returns undefined when the browser rejects the permission query', async () => {
+		// Firefox and Safari reject the 'clipboard-read' permission name
+		Object.defineProperty(window.navigator, 'permissions', {
+			value: { query: vi.fn().mockRejectedValue(new TypeError('unsupported')) },
+			configurable: true,
+		});
+		const readText = vi.fn();
+		Object.defineProperty(window.navigator, 'clipboard', {
+			value: { readText },
+			configurable: true,
+		});
+
+		await expect(readClipboardTextIfGranted()).resolves.toBeUndefined();
+		expect(readText).not.toHaveBeenCalled();
 	});
 });

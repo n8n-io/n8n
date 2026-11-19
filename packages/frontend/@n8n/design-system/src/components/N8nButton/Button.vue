@@ -5,6 +5,7 @@ import type { IconSize } from '../../types';
 import type { ButtonProps } from '../../types/button';
 import { cn } from '../../utils/cn';
 import N8nIcon from '../N8nIcon';
+import N8nSpinner from '../N8nSpinner';
 
 const $style = useCssModule();
 const attrs = useAttrs();
@@ -25,14 +26,6 @@ const props = withDefaults(defineProps<ButtonProps>(), {
 const effectiveSize = computed(() => {
 	if (props.size === 'mini' || props.size === 'xmini') return 'xsmall';
 	return props.size;
-});
-
-// Map legacy variant values to current ones
-const effectiveVariant = computed(() => {
-	if (props.variant === 'subtle') return 'brand';
-	if (props.variant === 'highlight') return 'ghost';
-	if (props.variant === 'highlight-fill') return 'ghost';
-	return props.variant;
 });
 
 const computedIconSize = computed((): IconSize | undefined => {
@@ -57,7 +50,7 @@ const classes = computed(() =>
 	cn(
 		'button',
 		$style.button,
-		$style[effectiveVariant.value],
+		$style[props.variant],
 		$style[effectiveSize.value],
 		props.loading && $style.loading,
 		props.iconOnly && $style.iconOnly,
@@ -102,17 +95,13 @@ const handleClick = (event: MouseEvent) => {
 		:aria-live="attrs['aria-live'] ?? 'polite'"
 		@click="handleClick"
 	>
-		<Transition name="n8n-button-fade">
-			<div v-if="loading" :class="$style['loading-container']">
-				<div :class="[$style['loading-spinner'], 'n8n-spinner']">
-					<N8nIcon icon="loader" :size="computedIconSize" transform-origin="center" />
-				</div>
-			</div>
-		</Transition>
+		<div v-if="loading" :class="$style['loading-container']">
+			<N8nSpinner type="dots" :size="computedIconSize" aria-hidden="true" />
+		</div>
 
 		<div :class="$style['button-inner']">
-			<slot v-if="!loading" name="icon">
-				<N8nIcon v-if="icon && !loading" :icon="icon" :size="computedIconSize" />
+			<slot name="icon">
+				<N8nIcon v-if="icon" :icon="icon" :fallback-icon="fallbackIcon" :size="computedIconSize" />
 			</slot>
 
 			<span v-if="label">{{ label }}</span>
@@ -129,7 +118,6 @@ const handleClick = (event: MouseEvent) => {
 
 <style lang="scss" module>
 @use '../../css/mixins/focus';
-@use '../../css/mixins/motion';
 
 .button {
 	appearance: none;
@@ -383,6 +371,12 @@ const handleClick = (event: MouseEvent) => {
 		}
 	}
 
+	// Anchor and clip the spinner until its exit animation ends, so its slide adds no scrollbar.
+	&:has(> .loading-container) {
+		position: relative;
+		overflow: clip;
+	}
+
 	&.loading {
 		pointer-events: none;
 	}
@@ -399,8 +393,11 @@ const handleClick = (event: MouseEvent) => {
 	}
 }
 
+// Cover the whole button so the spinner stays centered, also in an inline-flex dropdown trigger.
 .loading-container {
-	height: auto;
+	position: absolute;
+	inset: 0;
+	grid-area: auto;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -420,23 +417,9 @@ const handleClick = (event: MouseEvent) => {
 	}
 }
 
+// Hide the content but keep it in layout, so a loading button keeps its width.
 .loading-container + .button-inner {
 	pointer-events: none;
 	opacity: 0;
-}
-
-.loading-spinner {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	@include motion.spin;
-}
-
-:global(.n8n-button-fade-enter-active) {
-	@include motion.fade-in-up;
-}
-
-:global(.n8n-button-fade-leave-active) {
-	@include motion.fade-out-down;
 }
 </style>

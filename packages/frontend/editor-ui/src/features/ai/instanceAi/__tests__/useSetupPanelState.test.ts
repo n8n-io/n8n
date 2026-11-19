@@ -87,6 +87,8 @@ function createHarness(
 				},
 			},
 		],
+		// The editing check is mocked, so the turns are never read.
+		artifactTurns: [],
 		setupItemsByWorkflowId: { [WORKFLOW_ID]: eventItems },
 	});
 
@@ -138,7 +140,7 @@ describe('useSetupPanelState', () => {
 		expect(state.rows.value.map((row) => row.item)).toEqual([eventItem]);
 		thread.messages[0].agentTree!.toolCalls.push({
 			toolCallId: 'build',
-			toolName: 'build-workflow',
+			toolName: 'workflow_builder_build_workflow',
 			args: {},
 			isLoading: false,
 			result: { success: true, workflowId: WORKFLOW_ID },

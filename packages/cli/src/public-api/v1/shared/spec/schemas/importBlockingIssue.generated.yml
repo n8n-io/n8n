@@ -4,6 +4,128 @@ oneOf:
       type:
         type: string
         enum:
+          - agent-conflict
+      kind:
+        type: string
+        enum:
+          - existing
+          - id
+          - task-id
+      sourceAgentId:
+        type: string
+      projectId:
+        type: string
+      sourceTaskId:
+        type: string
+      targetIds:
+        type: array
+        items:
+          type: string
+    required:
+      - type
+      - kind
+      - sourceAgentId
+      - projectId
+      - targetIds
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - agent-invalid
+      sourceAgentId:
+        type: string
+      path:
+        type: string
+      message:
+        type: string
+    required:
+      - type
+      - sourceAgentId
+      - path
+      - message
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - agent-dependency-unresolved
+      sourceAgentId:
+        type: string
+      projectId:
+        type: string
+      dependencyType:
+        type: string
+        enum:
+          - agent
+          - workflow
+          - credential
+      referenceId:
+        type: string
+      path:
+        type: string
+      reason:
+        type: string
+        enum:
+          - missing
+          - inaccessible
+          - ambiguous
+          - unsupported
+    required:
+      - type
+      - sourceAgentId
+      - projectId
+      - dependencyType
+      - referenceId
+      - path
+      - reason
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - agent-policy-violation
+      sourceAgentId:
+        type: string
+      name:
+        type: string
+      violations:
+        type: array
+        items:
+          type: object
+          properties:
+            kind:
+              type: string
+            checkId:
+              type: string
+            message:
+              type: string
+            subject:
+              type: string
+            subjectType:
+              type: string
+            scope:
+              type: string
+            matchedRuleId:
+              type: string
+            projectId:
+              type: string
+            optInAvailable:
+              type: boolean
+          required:
+            - kind
+            - checkId
+            - message
+    required:
+      - type
+      - sourceAgentId
+      - name
+      - violations
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
           - workflow-conflict
       sourceWorkflowId:
         type: string
@@ -91,7 +213,8 @@ oneOf:
         description: Folder that currently contains the matched workflow, or null when it lives at the project root.
       targetFolderId:
         type: string
-        description: Folder the import was requested to land in.
+        nullable: true
+        description: Folder the import was requested to land in, or null when a project package puts the workflow at the project root.
       name:
         type: string
     required:
@@ -101,7 +224,7 @@ oneOf:
       - existingParentFolderId
       - targetFolderId
       - name
-    description: A workflow whose source id already matches one in the target project but lives outside the requested import folder. Folder-targeted imports cannot update workflows in place at a different location.
+    description: A workflow whose source id already matches one in the target project but lives in a different folder than the import target. An import cannot move a workflow while it updates it in place. For a project package, the project root is a target too.
   - type: object
     properties:
       type:
@@ -144,6 +267,13 @@ oneOf:
           - unknown_type
           - source_not_found
           - type_mismatch
+      reason:
+        type: string
+        enum:
+          - not-on-instance
+          - access-required
+          - incompatible-usage-scope
+        description: 'For `not_found` of a credential named by id, when the caller can read all credentials: `not-on-instance` (no credential has the id), `access-required` (the credential exists, but it is not shared with the target project), or `incompatible-usage-scope` (the credential is not a project credential).'
       sourceId:
         type: string
       targetId:
@@ -170,11 +300,81 @@ oneOf:
       type:
         type: string
         enum:
+          - credential-conflict
+      kind:
+        type: string
+        enum:
+          - differs
+          - divergent
+        description: '`differs`: under `credentialConflictPolicy=fail`, the package would change the name or values of the destination credential. `divergent`: under `overwrite`, two or more package credentials with different names or values resolve to one destination credential. The import does not select one of them.'
+      targetId:
+        type: string
+        description: Id of the destination credential.
+      sourceIds:
+        type: array
+        items:
+          type: string
+        description: Ids of the package credentials that resolve to the destination credential. For `differs`, the package credentials that would change it.
+      name:
+        type: string
+        description: Name of the destination credential.
+      usedBy:
+        type: array
+        items:
+          $ref: packageRequirementConsumer.generated.yml
+        description: Package consumers that use the listed package credentials.
+    required:
+      - type
+      - kind
+      - targetId
+      - sourceIds
+      - name
+      - usedBy
+    description: 'A matched credential that the credential conflict policy does not let the import change. Only a credential that the import can update is checked: a credential owned by a project of the import. Values are never reported.'
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - credential-update-forbidden
+      targetId:
+        type: string
+        description: Id of the destination credential.
+      sourceIds:
+        type: array
+        items:
+          type: string
+        description: Ids of the package credentials that resolve to it.
+      name:
+        type: string
+        description: Name of the destination credential.
+      usedBy:
+        type: array
+        items:
+          $ref: packageRequirementConsumer.generated.yml
+        description: Package consumers that use the listed package credentials.
+    required:
+      - type
+      - targetId
+      - sourceIds
+      - name
+      - usedBy
+    description: A matched credential that the import can update, but the caller has no `credential:update` permission on it. Only under `credentialConflictPolicy` `overwrite` or `fail`. The import does not read its values, so this blocks also when the package would not change it. Use `keep-existing` to bind it without a change.
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
           - project-conflict
       kind:
         type: string
         enum:
           - fail-policy
+          - not-team
+          - update-forbidden
+          - create-forbidden
+          - license
+        description: '`fail-policy`: the project exists and `projectConflictPolicy` is `fail`. The import endpoints return only this kind. They report the other kinds as a 403 error: `not-team` (the id belongs to a personal project), `update-forbidden`, `create-forbidden`, and `license` (the license does not allow team projects).'
       sourceProjectId:
         type: string
       name:
@@ -292,6 +492,7 @@ oneOf:
           - schema-incompatible
           - module-disabled
           - permission-denied
+          - column-id-conflict
       sourceId:
         type: string
         description: Absent for import-wide failures (`module-disabled`, `permission-denied`).
@@ -476,6 +677,17 @@ oneOf:
       currentName:
         type: string
         description: "For a rename `name-conflict`: the matched table's current name."
+      column:
+        type: object
+        properties:
+          id:
+            type: string
+          name:
+            type: string
+        required:
+          - id
+          - name
+        description: 'For `column-id-conflict`: the package column whose id a column of another table already uses. The import endpoints do not return this. They fail with an error.'
       usedBy:
         type: array
         items:
@@ -671,10 +883,28 @@ oneOf:
       type:
         type: string
         enum:
+          - policy-check-failed
+      point:
+        type: string
+        enum:
+          - contentImport
+          - credentialSave
+    required:
+      - type
+      - point
+    description: A policy check that could not run. The import endpoints do not return this. They fail with an error.
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
           - credential-policy-violation
       sourceId:
         type: string
         description: Credential id as it appears in the package.
+      targetId:
+        type: string
+        description: Id of the matched credential on the target instance. Set when the policy refused an update of this credential under `credentialConflictPolicy=overwrite`. Absent when the policy refused a credential that the import would create.
       name:
         type: string
       credentialType:
@@ -717,5 +947,5 @@ oneOf:
       - credentialType
       - usedBy
       - violations
-    description: A credential the import would write that the credential-save policy refused, for example a stub of a credential type this instance does not allow. The import stops before any writes.
+    description: A credential the import would write that a credential-save or content-import policy refused, for example a stub of a credential type this instance does not allow, or an update of a matched credential. The import stops before any writes.
 type: object

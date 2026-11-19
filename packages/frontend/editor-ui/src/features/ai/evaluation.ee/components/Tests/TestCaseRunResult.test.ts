@@ -93,4 +93,35 @@ describe('TestCaseRunResult', () => {
 		expect(queryByTestId('tests-result-running-1')).toBeNull();
 		expect(queryByTestId('tests-result-result-1')).toBeNull();
 	});
+
+	it('renders an unscaled custom metric as a raw number', () => {
+		const evaluationStore = seedTwoRuns();
+		evaluationStore.testCaseExecutionsById.eo = {
+			...evaluationStore.testCaseExecutionsById.eo,
+			metrics: { normalizedLookingValue: 0.5 },
+		} as never;
+
+		const { getByTestId } = renderComponent({ props: { index: 0, runId: 'run-old' } });
+		const badge = getByTestId('tests-result-badge-0-normalizedLookingValue');
+
+		expect(badge.textContent).toContain('0.5');
+		expect(badge.textContent).not.toContain('50%');
+	});
+
+	it('uses the target run scale when formatting a custom metric', () => {
+		const evaluationStore = seedTwoRuns();
+		evaluationStore.testRunsById['run-old'] = {
+			...evaluationStore.testRunsById['run-old'],
+			metricScales: { customScore: 'oneToFive' },
+		} as never;
+		evaluationStore.testCaseExecutionsById.eo = {
+			...evaluationStore.testCaseExecutionsById.eo,
+			metrics: { customScore: 5 },
+		} as never;
+
+		const { getByTestId } = renderComponent({ props: { index: 0, runId: 'run-old' } });
+		const badge = getByTestId('tests-result-badge-0-customScore');
+
+		expect(badge.textContent).toContain('100%');
+	});
 });

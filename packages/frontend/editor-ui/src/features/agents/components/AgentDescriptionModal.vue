@@ -48,7 +48,6 @@ function onSave() {
 				type="textarea"
 				:rows="6"
 				:maxlength="AGENT_DESCRIPTION_MAX_LENGTH"
-				autofocus
 				:placeholder="i18n.baseText('agents.builder.description.placeholder')"
 				data-testid="agent-description-input"
 			/>

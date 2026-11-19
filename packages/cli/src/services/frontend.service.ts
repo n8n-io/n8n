@@ -13,12 +13,12 @@ import path from 'path';
 
 import { UrlService } from '@n8n/backend-services';
 
+import { AiPreferenceSettingsService } from './ai-preference-settings.service';
 import { AiUsageService } from './ai-usage.service';
 import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
 
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
-import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
@@ -26,6 +26,7 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+import { InboxService } from '@/modules/inbox/inbox.service';
 import { isApiKeyAuthEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
 import { OwnershipService } from '@/services/ownership.service';
@@ -51,6 +52,9 @@ export type PublicFrontendSettings = {
 
 	/** Used to bypass authentication on the workflows/demo page */
 	previewMode: FrontendSettings['previewMode'];
+
+	/** Lets the editor load its expression engine before the user signs in */
+	expressionEngine: FrontendSettings['expressionEngine'];
 
 	authCookie: {
 		/** Blocks insecure access incompatible with the authentication cookie. */
@@ -105,6 +109,9 @@ export type PublicFrontendSettings = {
 	/** Used to fetch community nodes on preview instance */
 	communityNodesEnabled: FrontendSettings['communityNodesEnabled'];
 
+	/** Lets the editor know the active backend modules before its first request */
+	activeModules: FrontendSettings['activeModules'];
+
 	mfa?: {
 		enabled: boolean;
 		enforced: boolean;
@@ -141,6 +148,8 @@ export class FrontendService {
 		private readonly aiUsageService: AiUsageService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
+		private readonly inboxService: InboxService,
+		private readonly aiPreferenceSettingsService: AiPreferenceSettingsService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		credentialsOverwrites.registerReloadHandler(async () => await this.generateTypes());
@@ -251,12 +260,12 @@ export class FrontendService {
 				},
 			},
 			instanceId: this.instanceSettings.instanceId,
+			installId: this.instanceSettings.installId,
 			telemetry: telemetrySettings,
 			posthog: {
 				enabled: this.globalConfig.diagnostics.enabled,
 				apiHost: this.globalConfig.diagnostics.posthogConfig.apiHost,
 				apiKey: this.globalConfig.diagnostics.posthogConfig.apiKey,
-				autocapture: false,
 				disableSessionRecording: this.globalConfig.deployment.type !== 'cloud',
 				proxy: `${instanceBaseUrl}/${restEndpoint}/ph`,
 				debug: this.globalConfig.logging.level === 'debug',
@@ -308,7 +317,6 @@ export class FrontendService {
 			workflowsGroupsWithManyBoundariesEnabled:
 				this.globalConfig.workflows.groupsWithManyBoundariesEnabled,
 			useWorkflowPublicationService: this.globalConfig.workflows.useWorkflowPublicationService,
-			granularCredentialSharing: isCredSharingEnabled(),
 			logLevel: this.globalConfig.logging.level,
 			hiringBannerEnabled: this.globalConfig.hiringBanner.enabled,
 			aiAssistant: {
@@ -384,6 +392,7 @@ export class FrontendService {
 			banners: {
 				dismissed: [],
 			},
+			// oxlint-disable-next-line typescript/no-deprecated -- The AI Transform node still uses this setting.
 			askAi: {
 				enabled: false,
 			},
@@ -398,6 +407,10 @@ export class FrontendService {
 			},
 			ai: {
 				allowSendingParameterValues: true,
+			},
+			aiPreferences: {
+				enabled: false,
+				managedByEnv: false,
 			},
 			workflowHistory: {
 				pruneTime: getWorkflowHistoryPruneTime(),
@@ -524,6 +537,11 @@ export class FrontendService {
 			this.settings.ai.allowSendingParameterValues =
 				this.globalConfig.ai.allowSendingParameterValues;
 		}
+
+		this.settings.aiPreferences = {
+			enabled: this.aiPreferenceSettingsService.isSwitchOn,
+			managedByEnv: this.aiPreferenceSettingsService.isManagedByEnv,
+		};
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
@@ -666,6 +684,9 @@ export class FrontendService {
 		} else {
 			delete this.settings.workflowReviews;
 		}
+		this.settings.inbox = this.moduleRegistry.isActive('inbox')
+			? await this.inboxService.getSettings()
+			: { enabled: false, availableTypes: [], failedTypes: [] };
 
 		this.settings.executionMode = this.globalConfig.executions.mode;
 
@@ -729,6 +750,8 @@ export class FrontendService {
 			enterprise: { saml, ldap, oidc },
 			mfa,
 			communityNodesEnabled,
+			activeModules,
+			expressionEngine,
 		} = await this.getSettings();
 		const publicSettings: PublicFrontendSettings = {
 			settingsMode: 'public',
@@ -753,6 +776,8 @@ export class FrontendService {
 			previewMode,
 			enterprise: { saml, ldap, oidc },
 			communityNodesEnabled,
+			activeModules,
+			expressionEngine,
 		};
 		if (includeMfaSettings) {
 			publicSettings.mfa = mfa;
@@ -825,6 +850,10 @@ export class FrontendService {
 			if (credential.name in credentialsOverwrites) {
 				overwrittenProperties.push(...Object.keys(credentialsOverwrites[credential.name]));
 			}
+
+			overwrittenProperties.push(
+				...this.credentialsOverwrites.getNewerAppProperties(credential.name),
+			);
 
 			if (overwrittenProperties.length) {
 				credential.__overwrittenProperties = uniq(overwrittenProperties);

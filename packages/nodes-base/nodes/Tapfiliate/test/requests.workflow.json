@@ -1,0 +1,374 @@
+{
+	"name": "Tapfiliate Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "affiliate",
+				"operation": "get",
+				"affiliateId": "nathanexample"
+			},
+			"id": "node-0",
+			"name": "Affiliate Get",
+			"type": "n8n-nodes-base.tapfiliate",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"tapfiliateApi": {
+					"id": "1",
+					"name": "Tapfiliate account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "affiliate",
+				"operation": "getAll",
+				"limit": 1
+			},
+			"id": "node-1",
+			"name": "Affiliate Get Many",
+			"type": "n8n-nodes-base.tapfiliate",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"tapfiliateApi": {
+					"id": "1",
+					"name": "Tapfiliate account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "affiliate",
+				"operation": "delete",
+				"affiliateId": "nathanexample"
+			},
+			"id": "node-2",
+			"name": "Affiliate Delete",
+			"type": "n8n-nodes-base.tapfiliate",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"tapfiliateApi": {
+					"id": "1",
+					"name": "Tapfiliate account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "affiliateMetadata",
+				"operation": "add",
+				"affiliateId": "nathanexample",
+				"metadataUi": {
+					"metadataValues": [
+						{
+							"key": "tier",
+							"value": "gold"
+						}
+					]
+				}
+			},
+			"id": "node-3",
+			"name": "Metadata Add",
+			"type": "n8n-nodes-base.tapfiliate",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"tapfiliateApi": {
+					"id": "1",
+					"name": "Tapfiliate account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "affiliateMetadata",
+				"operation": "remove",
+				"affiliateId": "nathanexample",
+				"key": "tier"
+			},
+			"id": "node-4",
+			"name": "Metadata Remove",
+			"type": "n8n-nodes-base.tapfiliate",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"tapfiliateApi": {
+					"id": "1",
+					"name": "Tapfiliate account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "affiliateMetadata",
+				"operation": "update",
+				"affiliateId": "nathanexample",
+				"key": "tier",
+				"value": "silver"
+			},
+			"id": "node-5",
+			"name": "Metadata Update",
+			"type": "n8n-nodes-base.tapfiliate",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"tapfiliateApi": {
+					"id": "1",
+					"name": "Tapfiliate account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "programAffiliate",
+				"operation": "add",
+				"programId": "acme-corp-program",
+				"affiliateId": "nathanexample"
+			},
+			"id": "node-6",
+			"name": "Program Affiliate Add",
+			"type": "n8n-nodes-base.tapfiliate",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"tapfiliateApi": {
+					"id": "1",
+					"name": "Tapfiliate account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "programAffiliate",
+				"operation": "approve",
+				"programId": "acme-corp-program",
+				"affiliateId": "nathanexample"
+			},
+			"id": "node-7",
+			"name": "Program Affiliate Approve",
+			"type": "n8n-nodes-base.tapfiliate",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"credentials": {
+				"tapfiliateApi": {
+					"id": "1",
+					"name": "Tapfiliate account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "programAffiliate",
+				"operation": "disapprove",
+				"programId": "acme-corp-program",
+				"affiliateId": "nathanexample"
+			},
+			"id": "node-8",
+			"name": "Program Affiliate Disapprove",
+			"type": "n8n-nodes-base.tapfiliate",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"credentials": {
+				"tapfiliateApi": {
+					"id": "1",
+					"name": "Tapfiliate account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "programAffiliate",
+				"operation": "get",
+				"programId": "acme-corp-program",
+				"affiliateId": "nathanexample"
+			},
+			"id": "node-9",
+			"name": "Program Affiliate Get",
+			"type": "n8n-nodes-base.tapfiliate",
+			"typeVersion": 1,
+			"position": [300, 1350],
+			"credentials": {
+				"tapfiliateApi": {
+					"id": "1",
+					"name": "Tapfiliate account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "programAffiliate",
+				"operation": "getAll",
+				"programId": "acme-corp-program",
+				"returnAll": true
+			},
+			"id": "node-10",
+			"name": "Program Affiliate Get Many",
+			"type": "n8n-nodes-base.tapfiliate",
+			"typeVersion": 1,
+			"position": [300, 1500],
+			"credentials": {
+				"tapfiliateApi": {
+					"id": "1",
+					"name": "Tapfiliate account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Affiliate Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Affiliate Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Affiliate Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Metadata Add",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Metadata Remove",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Metadata Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Program Affiliate Add",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Program Affiliate Approve",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Program Affiliate Disapprove",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Program Affiliate Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Program Affiliate Get Many",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Affiliate Get": [
+			{
+				"json": {
+					"id": "nathanexample",
+					"firstname": "Nathan"
+				}
+			}
+		],
+		"Affiliate Get Many": [
+			{
+				"json": {
+					"id": "nathanexample",
+					"firstname": "Nathan"
+				}
+			}
+		],
+		"Affiliate Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Metadata Add": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Metadata Remove": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Metadata Update": [
+			{
+				"json": {
+					"tier": "silver"
+				}
+			}
+		],
+		"Program Affiliate Add": [
+			{
+				"json": {
+					"id": "nathanexample",
+					"approved": null
+				}
+			}
+		],
+		"Program Affiliate Approve": [
+			{
+				"json": {
+					"approved": true
+				}
+			}
+		],
+		"Program Affiliate Disapprove": [
+			{
+				"json": {
+					"approved": false
+				}
+			}
+		],
+		"Program Affiliate Get": [
+			{
+				"json": {
+					"id": "nathanexample",
+					"approved": true
+				}
+			}
+		],
+		"Program Affiliate Get Many": [
+			{
+				"json": {
+					"id": "nathanexample",
+					"approved": true
+				}
+			}
+		]
+	}
+}

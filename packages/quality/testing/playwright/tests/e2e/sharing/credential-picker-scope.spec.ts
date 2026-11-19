@@ -19,11 +19,18 @@ test.describe(
 			// answers used to share one store slot, so the last fetch to land owned the
 			// dropdown — offering credentials the workflow cannot use, which the backend
 			// then rejects or silently discards on save.
-			const personalCredName = `Personal Notion ${nanoid()}`;
+			//
+			// A personal credential follows its owner into every team project they
+			// belong to, so the credential the picker must keep out belongs to another
+			// team project.
+			await api.setMaxTeamProjectsQuota(-1);
+			const otherProject = await api.projects.createProject(`Other team ${nanoid()}`);
+			const otherTeamCredName = `Other team Notion ${nanoid()}`;
 			await api.credentials.createCredential({
-				name: personalCredName,
+				name: otherTeamCredName,
 				type: 'notionApi',
 				data: { apiKey: TEST_API_KEY },
+				projectId: otherProject.id,
 			});
 
 			const project = await api.projects.createProject(`Team ${nanoid()}`);
@@ -76,11 +83,11 @@ test.describe(
 
 			await n8n.ndv.getNodeCredentialsSelect().click();
 			await expect(n8n.ndv.credentials.getOptionByText(teamCredName)).toBeVisible();
-			await expect(n8n.ndv.credentials.getOptionByText(personalCredName)).toBeHidden();
+			await expect(n8n.ndv.credentials.getOptionByText(otherTeamCredName)).toBeHidden();
 			await n8n.page.keyboard.press('Escape');
 			await n8n.ndv.close();
 
-			// "Change owner" loads every credential the user can read, personal ones
+			// "Change owner" loads every credential the user can read, other projects'
 			// included, without leaving the workflow. The picker must not widen because
 			// of it.
 			const unscopedFetch = n8n.page.waitForResponse(
@@ -95,7 +102,7 @@ test.describe(
 			await n8n.canvas.openNode('Notion');
 			await n8n.ndv.getNodeCredentialsSelect().click();
 			await expect(n8n.ndv.credentials.getOptionByText(teamCredName)).toBeVisible();
-			await expect(n8n.ndv.credentials.getOptionByText(personalCredName)).toBeHidden();
+			await expect(n8n.ndv.credentials.getOptionByText(otherTeamCredName)).toBeHidden();
 		});
 	},
 );

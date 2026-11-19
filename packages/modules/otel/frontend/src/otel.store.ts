@@ -89,6 +89,17 @@ export const useOtelStore = defineStore(OTEL_STORE, () => {
 		}
 	}
 
+	// Applies only the status. Other fields keep their unsaved draft values.
+	async function saveEnabled(enabled: boolean): Promise<void> {
+		const updated = await updateOtelSettings(rootStore.restApiContext, {
+			...savedSettings.value,
+			enabled,
+		});
+		savedSettings.value = extractSettings(updated);
+		settings.value = { ...settings.value, enabled: updated.enabled };
+		envManagedFields.value = updated.envManagedFields;
+	}
+
 	function discardChanges(): void {
 		settings.value = { ...savedSettings.value };
 	}
@@ -142,6 +153,7 @@ export const useOtelStore = defineStore(OTEL_STORE, () => {
 		testTimestamp,
 		fetchSettings,
 		saveSettings,
+		saveEnabled,
 		discardChanges,
 		sendTestTrace,
 		resetTestState,

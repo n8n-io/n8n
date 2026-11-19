@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import http from 'node:http';
 import https from 'node:https';
 import type { LookupFunction } from 'node:net';
@@ -8,6 +8,11 @@ import { EnvProxyHttpAgent } from './env-proxy-http-agent';
 import { EnvProxyHttpsAgent } from './env-proxy-https-agent';
 import { createProxiedHttpAgent, createProxiedHttpsAgent } from '../proxy/proxied-agents';
 import type { SsrfBridge } from '../ssrf';
+
+export interface NodeAgents {
+	httpAgent: http.Agent;
+	httpsAgent: https.Agent;
+}
 
 /**
  * An explicit proxy URL for routing all requests from this client.
@@ -93,7 +98,7 @@ export function buildNodeAgents(
 	proxy: ProxyOption,
 	ssrf: SsrfOption,
 	agentOptions?: NodeAgentOptions,
-): { httpAgent: http.Agent; httpsAgent: https.Agent } {
+): NodeAgents {
 	if (agentOptions?.lookup) {
 		throw new UserError(
 			'`agentOptions.lookup` is not supported: DNS resolution is managed by the SSRF policy. Remove it from `agentOptions`.',

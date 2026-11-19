@@ -141,9 +141,19 @@ unauthenticated and serves the whole table: keep it on loopback.
 See [scripts/instance-seeding/AGENTS.md](scripts/instance-seeding/AGENTS.md) for
 profiles, tokens, determinism, and the other commands.
 
+### Docker images
+
+`docker/docker-bake.hcl` holds every base image pin. Images that n8n publishes
+(`n8nio/base`, `n8nio/node-pc`) change in two PRs: inputs first, then the pin
+of the digest that master published. See [docker/AGENTS.md](docker/AGENTS.md).
+
 ## Architecture Overview
 
 **Monorepo Structure:** pnpm workspaces with Turbo build orchestration
+
+For an orientation to the backend (process roles, a map of the code, and
+walkthroughs of how workflows and agents run), read
+[docs/backend/README.md](docs/backend/README.md) when a task needs it.
 
 ### Package Structure
 
@@ -167,7 +177,9 @@ The monorepo is organized into these key packages:
 - **Backend:** Node.js + TypeScript + Express + TypeORM
 - **Testing:** Vitest (unit) + Playwright (UI, API, infrastructure, lifecycle, performance, and E2E orchestration)
 - **Database:** TypeORM with SQLite/PostgreSQL support
-- **Code Quality:** Biome (for formatting) + ESLint + lefthook git hooks
+- **Code Quality:** Biome (for formatting) + Oxlint + Vize (Vue templates in
+  the frontend packages) + ESLint (the node packages and a few others) +
+  lefthook git hooks
 
 ### Key Architectural Patterns
 
@@ -253,18 +265,39 @@ baseline. A new business-logic import fails CI.
   repository methods you call. `run` **requires** a context — pass an empty `{}`
   at the operation entry point, and reuse the one you were handed everywhere
   below it (a context that already carries a transaction is joined, not nested).
-  Repositories extend `BaseRepository` and resolve the right `EntityManager` with
-  `this.managerFor(ctx)`; the `Transaction` handle is opaque and never exposes a
-  driver type to business logic. See `oauth-token.service.ts` +
-  `oauth-*-token.repository.ts` for a worked example.
+  The `Transaction` handle is opaque and never exposes a driver type to
+  business logic. See `oauth-token.service.ts` for a worked service example
+  (its repositories predate the composition rule below; do not copy their shape).
+- **Repositories compose, they don't extend.** A repository is the boundary
+  that keeps TypeORM out of business logic. If it extended `BaseRepository`,
+  every service that injects it would also get `find`, `save`, `delete`,
+  `createQueryBuilder` and `.manager` for free, and TypeORM would leak through
+  inferred types that no lint rule can see. So a repository is a plain
+  `@Service()` class that holds a **file-private `BaseRepository` subclass (the
+  table)** as a private field and resolves the manager with
+  `this.table.managerFor(ctx)`. The table is never exported or registered with
+  DI. Every data access is a named use-case method on the repository that
+  calls the table internally; there is no generic `find`/`save`/`delete`
+  unless you write it for one operation. See
+  `packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source.repository.ts`
+  for a worked example. The existing `extends BaseRepository` / `extends
+  Repository` repositories are legacy. Do not copy them, and do not convert them
+  in unrelated PRs. This rule is not yet lint-enforced.
 - **Anti-patterns reviewers reject** — they hide the dependency instead of
   removing it:
   - String-matching TypeORM errors, e.g. `error.name === 'QueryFailedError'`.
   - Relabeling the import from `@n8n/typeorm` to `@n8n/db` to silence the rule
     (`@n8n/db` re-exports several operators/types, but this relabels the
     dependency rather than removing it).
-  - Pushing `.manager` / `createQueryBuilder` into business logic to avoid an
-    operator import — trades a visible leak for an invisible one.
+  - Pushing `.manager` / `createQueryBuilder` / `repo.managerFor(ctx)` into
+    business logic to avoid an operator import — trades a visible leak for an
+    invisible one.
+  - A repository that `extends BaseRepository` / `extends Repository`, or that
+    exposes its table (public property, getter, or a `find(options)`
+    passthrough) — the inherited TypeORM surface must stay private to the table.
+- **Account kinds:** the `user` table holds people and service accounts. Before
+  you load or type an account, read "Account kinds" in
+  [packages/@n8n/db/AGENTS.md](packages/@n8n/db/AGENTS.md).
 
 ### ESLint configuration layers
 
@@ -275,8 +308,16 @@ config picks exactly one:
 |---|---|---|
 | `baseConfig` | `@n8n/eslint-config/base` | runtime-agnostic libraries |
 | `backendConfig` | `@n8n/eslint-config/backend` | anything that runs on Node; adds the network and encryption boundaries |
-| `frontendConfig` | `@n8n/eslint-config/frontend` | Vue packages |
+| `frontendConfig` | `@n8n/eslint-config/frontend` | Vue packages outside `packages/frontend/` and `packages/modules/`, such as `@n8n/mcp-apps` |
 | `nodesConfig` | `@n8n/eslint-config/nodes` | `n8n-nodes-base` and `@n8n/nodes-langchain`; adds the node and credential file rules |
+
+The frontend packages (`packages/frontend/` and `packages/modules/*/frontend`)
+do not run ESLint. Their `oxlint.config.mts` extends
+`@n8n/oxlint-config/frontend`, and the same layering rules apply to it. The
+packages that have Vue files also run `vize lint` on their templates, with a
+config from `@n8n/oxlint-config/vize`. `@n8n/eslint-plugin-design-system` is the
+exception: `@n8n/oxlint-config` depends on it, so its config extends no layer.
+Do not add a layer import to it.
 
 A package config may add `ignores`, an additive plugin config, a block that
 raises rules to `error`, and blocks scoped to `files`. It must not turn a rule
@@ -320,7 +361,7 @@ extends one of those layers):
 - **All UI text must use i18n** - add translations to `@n8n/i18n` package
 - **Use CSS variables directly** - never hardcode spacing as px values
 - **data-testid must be a single value** (no spaces or multiple values)
-- Always use the `design-system` skill in reviews
+- Always use the `n8n:ui-design` skill in reviews
 
 ### Verify changes
 
@@ -358,6 +399,7 @@ extends one of those layers):
 | Run backend with PostgreSQL, Redis, email, and proxy services | `pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy`, then `pnpm dev:be` |
 | Add editor hot reload | `pnpm dev:fe:editor` |
 | Start a Codespace backend and share its port | `pnpm dev:up` |
+| See the telemetry events of a local instance | `pnpm telemetry:sink`, then `pnpm dev:be:telemetry` |
 
 The root `pnpm dev` command does not start a server. See the
 [Playwright guide](packages/quality/testing/playwright/README.md) and the
@@ -368,7 +410,7 @@ The root `pnpm dev` command does not start a server. See the
 When implementing features:
 1. Define API types in `packages/@n8n/api-types`
 2. Implement backend logic in `packages/cli` module, follow
-   `scripts/backend-module/backend-module-guide.md`
+   `docs/backend/how-to/build-a-backend-module.md`
 3. Add API endpoints via controllers
 4. Update frontend in `packages/frontend/editor-ui` with i18n support. For a
    frontend feature module, obey

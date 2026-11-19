@@ -65,7 +65,10 @@ describe('resolveStreamStatus', () => {
 		},
 	);
 
-	it('never reads a cancelled run as a clean finish', () => {
-		expect(resolveStreamStatus(streamResult({ status: 'cancelled' }), false)).toBe('timed-out');
-	});
+	it.each([streamResult({ status: 'cancelled' }), streamResult({ finishReason: 'cancelled' })])(
+		'never reads a cancelled run as a clean finish',
+		(result) => {
+			expect(resolveStreamStatus(result, false)).toBe('timed-out');
+		},
+	);
 });

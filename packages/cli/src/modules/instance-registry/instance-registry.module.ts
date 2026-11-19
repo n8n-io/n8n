@@ -19,9 +19,7 @@ export class InstanceRegistryModule implements ModuleInterface {
 		const instanceRegistryService = Container.get(InstanceRegistryService);
 		await instanceRegistryService.init();
 
-		const { InstanceRegistryProxyService } = await import(
-			'@/services/instance-registry-proxy.service.js'
-		);
+		const { InstanceRegistryProxyService } = await import('@n8n/backend-services');
 		Container.get(InstanceRegistryProxyService).registerProvider(instanceRegistryService);
 
 		await import('./checks/index.js');

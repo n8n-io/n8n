@@ -4,7 +4,7 @@
  * A build outcome freezes the execute-vs-simulate plan at build time. A node
  * that was simulated only because its credentials were mocked goes stale the
  * moment a real credential is assigned — via the setup flow, the
- * apply-workflow-credentials tool, or a manual selection in the editor — since
+ * workflow_builder_apply_workflow_credentials tool, or a manual selection in the editor — since
  * none of those paths rebuild the workflow. The same applies to AI roots
  * simulated because their language-model sub-node had no credentials. This
  * module re-derives the plan for exactly those nodes from the live workflow
@@ -22,7 +22,9 @@ import {
 	withWaitGateHaltVerdicts,
 } from './plan-verification-simulation';
 import type { CredentialMap } from './resolve-credentials';
-import type { ModelConfig } from '../../types';
+import type { FetchFn } from '@n8n/agents';
+
+import type { HelperUsageHook, ModelConfig } from '../../types';
 import type {
 	NodeSimulationVerdict,
 	WorkflowBuildOutcome,
@@ -78,10 +80,24 @@ export async function reconcileSimulationPlan(args: {
 	buildOutcome: WorkflowBuildOutcome;
 	workflow: WorkflowJSON;
 	availableCredentials: CredentialMap;
-	/** Host-resolved model used when no eval model API key is configured in the environment. */
-	fallbackModelConfig?: ModelConfig;
+	/** Host-resolved main model for the run. */
+	model?: ModelConfig;
+	/** Host-resolved utility model. The classifier prefers it over `model`. */
+	utilityModel?: ModelConfig;
+	/** Transport for the helper's model call. */
+	modelFetch?: FetchFn;
+	/** Receives the classifier call's token usage so the host can bill it. */
+	onHelperUsage?: HelperUsageHook;
 }): Promise<SimulationPlanPatch | undefined> {
-	const { buildOutcome, workflow, availableCredentials, fallbackModelConfig } = args;
+	const {
+		buildOutcome,
+		workflow,
+		availableCredentials,
+		model,
+		utilityModel,
+		modelFetch,
+		onHelperUsage,
+	} = args;
 
 	const mockedEntries = Object.entries(buildOutcome.mockedCredentialsByNode ?? {});
 	const satisfiedNames = new Set(
@@ -131,7 +147,10 @@ export async function reconcileSimulationPlan(args: {
 			workflow,
 			nodeNames: satisfiedNames,
 			mockedNodeNames: remainingMockedNames,
-			fallbackModelConfig,
+			model,
+			utilityModel,
+			modelFetch,
+			onHelperUsage,
 		});
 		freshVerdictByName = new Map(freshVerdicts.map((verdict) => [verdict.nodeName, verdict]));
 	}
@@ -191,8 +210,7 @@ export async function reconcileSimulationPlan(args: {
 		simulationFixtures,
 	};
 
-	// The mocked-credentials requirement is settled; complete-checkpoint
-	// re-analyzes the live workflow, so any other pending setup still blocks.
+	// The mocked-credentials requirement is settled; any other pending setup still blocks.
 	if (
 		!hasRemainingMocks &&
 		!buildOutcome.hasUnresolvedPlaceholders &&

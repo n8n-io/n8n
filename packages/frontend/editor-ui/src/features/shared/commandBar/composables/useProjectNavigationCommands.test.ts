@@ -225,6 +225,11 @@ describe('useProjectNavigationCommands', () => {
 			});
 		});
 
+		// AI-2833: All resource creation actions must use the plus icon.
+		it('uses the plus icon for project creation', () => {
+			expect(findCreateCommand()).toMatchObject({ icon: { props: { icon: 'plus' } } });
+		});
+
 		it.each(['hasPermissionToCreateProjects', 'canCreateProjects'] as const)(
 			'hides the create command when %s is false',
 			(flag) => {

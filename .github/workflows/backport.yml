@@ -130,7 +130,8 @@ jobs:
       fail-fast: false
       matrix:
         pr_number: ${{ fromJSON(needs.prepare-auto-merge.outputs.pr_numbers_json) }}
-    uses: ./.github/workflows/util-approve-and-set-automerge.yml
+    uses: n8n-io/github-actions/.github/workflows/approve-and-set-automerge.yml@8fe337080c0386a17ce3c857b61db606c9430f4b
     with:
       pull-request-number: ${{ matrix.pr_number }}
+      enable-automerge: true
     secrets: inherit

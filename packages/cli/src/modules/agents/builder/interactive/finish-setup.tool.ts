@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { BuiltTool, CredentialListItem, InterruptibleToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
@@ -8,8 +9,10 @@ import {
 	questionsSuspendPayloadSchema,
 	shouldAutoResolveCredential,
 	type InteractionQuestion,
+	type QuestionAnswer,
+	getLegacyBuilderToolNames,
 } from '@n8n/api-types';
-import type { InstanceAiCredentialService } from '@n8n/instance-ai';
+import type { BuilderCredentialService } from '../builder-session';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -27,7 +30,7 @@ function credentialsOfType(
 
 /** Resolve a credential's display name by id via `get`, falling back to the id if it was deleted between suspend and resume. */
 async function credentialNameById(
-	credentialService: InstanceAiCredentialService,
+	credentialService: BuilderCredentialService,
 	credentialId: string,
 ): Promise<string> {
 	try {
@@ -38,6 +41,21 @@ async function credentialNameById(
 	}
 }
 
+/** Setup results to write into the agent config when the flow completes. */
+export interface FinishSetupConfigWrites {
+	credentials: Array<{ credentialType: string; id: string; name: string }>;
+	values: Array<{ path: string; value: string }>;
+}
+
+export interface FinishSetupConfigApplyResult {
+	/** Credential types written to at least one node-tool slot. */
+	credentialTypes: string[];
+	/** Config paths that received an answer. */
+	paths: string[];
+	configHash?: string;
+	errors?: Array<{ path: string; message: string }>;
+}
+
 export interface FinishSetupToolDeps extends CredentialSetupDeps, ChannelSetupDeps {
 	/**
 	 * Credential types whose every required node-tool slot is already served by an
@@ -45,7 +63,20 @@ export interface FinishSetupToolDeps extends CredentialSetupDeps, ChannelSetupDe
 	 * empty on any tool is excluded, so an uncovered node/operation keeps prompting.
 	 */
 	listAiGatewayManagedCredentialTypes?: () => Promise<string[]>;
+	/** Writes resolved credentials and path-bound answers into the agent config. */
+	applySetupToConfig?: (writes: FinishSetupConfigWrites) => Promise<FinishSetupConfigApplyResult>;
 }
+
+const finishSetupQuestionInputSchema = interactionQuestionSchema.extend({
+	configPath: z
+		.string()
+		.startsWith('/')
+		.optional()
+		.describe(
+			'JSON Pointer that receives the answer as a string, e.g. "/tools/2/node/nodeParameters/sendTo"',
+		),
+});
+type FinishSetupQuestionInput = z.infer<typeof finishSetupQuestionInputSchema>;
 
 const finishSetupCredentialRequestInputSchema = z.object({
 	credentialType: z.string().min(1),
@@ -60,7 +91,7 @@ const finishSetupChannelInputSchema = z.object({
 
 const finishSetupInputSchema = z
 	.object({
-		questions: z.array(interactionQuestionSchema).optional(),
+		questions: z.array(finishSetupQuestionInputSchema).optional(),
 		credentialRequests: z.array(finishSetupCredentialRequestInputSchema).optional(),
 		channels: z.array(finishSetupChannelInputSchema).optional(),
 	})
@@ -151,6 +182,116 @@ type FinishSetupCtx = InterruptibleToolContext<FinishSetupSuspendPayload, Finish
 
 interface FinishSetupToolResult extends Collected {
 	completed: true;
+	appliedToConfig?: { credentialTypes: string[]; paths: string[] };
+	configHash?: string;
+	configApplyErrors?: Array<{ path: string; message: string }>;
+	/** Resolved credential slots that the config write did not apply, such as MCP credentials. */
+	unappliedCredentials?: string[];
+}
+
+/** The card question shape: `configPath` is builder-only and never reaches the FE. */
+function toCardQuestions(
+	questions: FinishSetupQuestionInput[] | undefined,
+): InteractionQuestion[] | undefined {
+	return questions?.map(({ configPath: _configPath, ...question }) => question);
+}
+
+/** Matches how the questions card combines a multi-select answer with its custom text. */
+function answerValue(
+	answer: QuestionAnswer,
+	type: FinishSetupQuestionInput['type'],
+): string | undefined {
+	if (answer.skipped) return undefined;
+	const customText = answer.customText?.trim();
+	const value =
+		type === 'multi'
+			? [...answer.selectedOptions, ...(customText ? [customText] : [])].join(', ')
+			: customText || answer.selectedOptions.join(', ');
+	return value || undefined;
+}
+
+function collectConfigWrites(
+	input: FinishSetupInput,
+	collected: Collected,
+): FinishSetupConfigWrites {
+	const credentials: FinishSetupConfigWrites['credentials'] = [];
+	for (const [key, outcome] of Object.entries(collected.credentials ?? {})) {
+		if (outcome === 'skipped') continue;
+		const request = input.credentialRequests?.find(
+			(slot) => (slot.credentialSlot ?? slot.credentialType) === key,
+		);
+		credentials.push({ credentialType: request?.credentialType ?? key, ...outcome });
+	}
+
+	const values: FinishSetupConfigWrites['values'] = [];
+	for (const question of input.questions ?? []) {
+		if (!question.configPath) continue;
+		const answer = collected.answers?.find((a) => a.questionId === question.id);
+		const value = answer ? answerValue(answer, question.type) : undefined;
+		if (value !== undefined) values.push({ path: question.configPath, value });
+	}
+
+	return { credentials, values };
+}
+
+/** Write the collected setup into the config so the builder does not patch it afterwards. */
+async function complete(
+	input: FinishSetupInput,
+	collected: Collected,
+	deps: FinishSetupToolDeps,
+): Promise<FinishSetupToolResult> {
+	const result = await applyCollectedSetup(input, collected, deps);
+	// Only a write that saved something tells which credentials are left. A write that
+	// saved nothing has its own configApplyErrors step.
+	const savedNothing = result.configApplyErrors !== undefined && !result.appliedToConfig;
+	if (!deps.applySetupToConfig || savedNothing) return result;
+	const unapplied = unappliedCredentialSlots(input, collected, result.appliedToConfig);
+	if (unapplied.length > 0) result.unappliedCredentials = unapplied;
+	return result;
+}
+
+/** Resolved slots whose credential type the config write did not apply. Slots and types can differ. */
+function unappliedCredentialSlots(
+	input: FinishSetupInput,
+	collected: Collected,
+	applied: FinishSetupToolResult['appliedToConfig'],
+): string[] {
+	const appliedTypes = new Set(applied?.credentialTypes ?? []);
+	return Object.entries(collected.credentials ?? {})
+		.filter(([, outcome]) => outcome !== 'skipped')
+		.map(([slot]) => slot)
+		.filter((slot) => {
+			const request = input.credentialRequests?.find(
+				(r) => (r.credentialSlot ?? r.credentialType) === slot,
+			);
+			return !appliedTypes.has(request?.credentialType ?? slot);
+		});
+}
+
+async function applyCollectedSetup(
+	input: FinishSetupInput,
+	collected: Collected,
+	deps: FinishSetupToolDeps,
+): Promise<FinishSetupToolResult> {
+	const result: FinishSetupToolResult = { completed: true, ...collected };
+	if (!deps.applySetupToConfig) return result;
+
+	const writes = collectConfigWrites(input, collected);
+	if (writes.credentials.length === 0 && writes.values.length === 0) return result;
+
+	try {
+		const applied = await deps.applySetupToConfig(writes);
+		if (applied.credentialTypes.length > 0 || applied.paths.length > 0) {
+			result.appliedToConfig = { credentialTypes: applied.credentialTypes, paths: applied.paths };
+		}
+		if (applied.configHash) result.configHash = applied.configHash;
+		if (applied.errors?.length) result.configApplyErrors = applied.errors;
+	} catch (error) {
+		result.configApplyErrors = [
+			{ path: '(root)', message: error instanceof Error ? error.message : String(error) },
+		];
+	}
+	return result;
 }
 
 /** Normalize checkpoint-only legacy outcomes before they enter the current setup flow. */
@@ -176,8 +317,11 @@ function validateCredentialTypes(input: FinishSetupInput, deps: FinishSetupToolD
 }
 
 /** Throws for any requested channel whose type isn't a known chat integration. */
-function validateChannelTypes(input: FinishSetupInput, deps: FinishSetupToolDeps): void {
-	const availableChannelTypes = deps.listChatIntegrationTypes();
+async function validateChannelTypes(
+	input: FinishSetupInput,
+	deps: FinishSetupToolDeps,
+): Promise<void> {
+	const availableChannelTypes = await deps.listChatIntegrationTypes();
 	for (const channel of input.channels ?? []) {
 		if (!availableChannelTypes.includes(channel.integrationType)) {
 			const availableMessage = availableChannelTypes.length
@@ -194,7 +338,7 @@ function validateChannelTypes(input: FinishSetupInput, deps: FinishSetupToolDeps
 
 /**
  * Validate input, then auto-resolve every credential slot using the same
- * rules as ask_credential (matching channel credential first, then a single
+ * rules as credentials setup for an Agent (matching channel credential first, then a single
  * existing credential of the type). Slots that cannot be auto-resolved
  * become a phase. Phase order is fixed: questions, then credentials, then
  * one channel phase per requested channel — channels always run last after
@@ -205,7 +349,7 @@ async function computeInitialPlan(
 	deps: FinishSetupToolDeps,
 ): Promise<{ phases: PhaseDescriptor[]; collected: Collected }> {
 	validateCredentialTypes(input, deps);
-	validateChannelTypes(input, deps);
+	await validateChannelTypes(input, deps);
 
 	const collected: Collected = {};
 	const pendingSlots: CredentialSlotInput[] = [];
@@ -386,7 +530,7 @@ async function startPlan(
 ): Promise<FinishSetupToolResult> {
 	const { phases, collected } = await computeInitialPlan(input, deps);
 	if (phases.length === 0) {
-		return { completed: true, ...collected };
+		return await complete(input, collected, deps);
 	}
 
 	const [currentPhase, ...remainingPhases] = phases;
@@ -396,7 +540,7 @@ async function startPlan(
 		collected,
 		totalPhases: phases.length,
 		phaseNumber: 1,
-		questions: input.questions,
+		questions: toCardQuestions(input.questions),
 		deps,
 		ctx,
 	});
@@ -417,7 +561,7 @@ async function resumePlan(
 	);
 
 	if (chain.remainingPhases.length === 0) {
-		return { completed: true, ...collected };
+		return await complete(input, collected, deps);
 	}
 
 	const [nextPhase, ...restPhases] = chain.remainingPhases;
@@ -427,32 +571,57 @@ async function resumePlan(
 		collected,
 		totalPhases: chain.totalPhases,
 		phaseNumber: chain.totalPhases - restPhases.length,
-		questions: input.questions,
+		questions: toCardQuestions(input.questions),
 		deps,
 		ctx,
 	});
 }
 
+/** What the model must do after the flow. The tool description stays short; this rides on the result. */
+function nextStepFor(result: Record<string, unknown>): string | undefined {
+	if (result.completed !== true) return undefined;
+	const steps: string[] = [];
+	if (result.appliedToConfig !== undefined) {
+		steps.push('The flow already wrote everything in appliedToConfig. Do not patch it again.');
+	}
+	if (result.configApplyErrors !== undefined) {
+		steps.push('Fix each configApplyErrors entry with agent_builder_patch_config.');
+	}
+	if (result.channels !== undefined) {
+		steps.push('Do not call agent_builder_configure_channel for these channels again.');
+	}
+	if (Array.isArray(result.answers) && result.answers.length > 0) {
+		steps.push('If an answer picks the model, resolve it with agent_builder_resolve_llm.');
+	}
+	if (Array.isArray(result.unappliedCredentials) && result.unappliedCredentials.length > 0) {
+		steps.push(
+			'For each credential in unappliedCredentials, such as an MCP server credential, call ' +
+				'agent_builder_verify_mcp_server.',
+		);
+	}
+	return steps.length > 0 ? steps.join(' ') : undefined;
+}
+
+function withNextStep(result: unknown): unknown {
+	if (!isRecord(result)) return result;
+	const nextStep = nextStepFor(result);
+	return nextStep ? { ...result, nextStep } : result;
+}
+
 export function buildFinishSetupTool(deps: FinishSetupToolDeps): BuiltTool {
 	return new Tool(BUILDER_TOOLS.FINISH_SETUP)
+		.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.FINISH_SETUP))
 		.description(
-			'Collect everything still needed to finish the initial build in ONE guided flow: open ' +
-				'questions (including the model choice), credential slots, and chat-channel ' +
-				'setup. Call it at most once, only in the trailing step of an initial build ' +
-				'when only pending setup remains, and never together with another interactive tool. ' +
-				'It shows setup cards back-to-back without returning control between them: questions, ' +
-				'then credentials, then one card per requested channel. Channel cards always run last ' +
-				'after every credential phase, including when earlier setup was skipped or dismissed. Pass ' +
-				'`channels` with a returned `type` from agent-context integrations, one entry per channel ' +
-				'to configure; do not infer channel names. Each channel card persists the configuration ' +
-				'or skips it, so channel outcomes are `"configured"` or `"skipped"`. Do not call ' +
-				'configure_channel again for a channel handled by ' +
-				'this flow. Returns { completed, answers, credentials, ' +
-				'channels } (plus configMutated/agentId refresh metadata when completed): resolve the ' +
-				'model answer with resolve_llm, copy returned credential ids into the config, and verify ' +
-				'MCP servers with them. Auto-resolves credential slots that match an existing single ' +
-				'credential or configured channel credential.',
+			'Collect all pending setup of an initial build in ONE guided flow: questions (including ' +
+				'the model choice), credential slots, and chat channels. Call it at most once, as the ' +
+				'trailing step of an initial build when only pending setup remains, and never with ' +
+				'another interactive tool. Cards run back-to-back: questions, credentials, then one ' +
+				'card per channel. Pass channel types returned by agent-context integrations; do not ' +
+				'infer names. Give a question `configPath` when its answer has a place in the config, ' +
+				'and write that field empty first. Slots that match a single existing credential or a ' +
+				'channel credential resolve without a card. The result carries `nextStep`: follow it.',
 		)
+		.toModelOutput(withNextStep)
 		.input(finishSetupInputSchema)
 		.suspend(finishSetupSuspendSchema)
 		.resume(finishSetupResumeSchema)

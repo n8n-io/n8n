@@ -106,14 +106,18 @@ const shouldHideTrialBanner = computed(
 // Banner config from backend
 const bannerTimeLeft = computed(() => cloudPlanStore.bannerTimeLeft);
 const showExecutions = computed(() => cloudPlanStore.showExecutions);
-const bannerCta = computed(() => ({
-	text: cloudPlanStore.bannerCta.text,
-	icon: cloudPlanStore.bannerCta.icon as IconName | undefined,
-	size: cloudPlanStore.bannerCta.size as 'small' | 'medium',
-	style: cloudPlanStore.bannerCta.style,
-	variant: cloudPlanStore.bannerCta.variant as ButtonVariant | undefined,
-	href: cloudPlanStore.bannerCta.href,
-}));
+const bannerCta = computed(() => {
+	const variant = cloudPlanStore.bannerCta.variant;
+	return {
+		text: cloudPlanStore.bannerCta.text,
+		icon: cloudPlanStore.bannerCta.icon as IconName | undefined,
+		size: cloudPlanStore.bannerCta.size as 'small' | 'medium',
+		style: cloudPlanStore.bannerCta.style,
+		// BannerConfig.cta.variant still lists the old button value 'subtle'.
+		variant: variant === 'subtle' ? 'outline' : variant,
+		href: cloudPlanStore.bannerCta.href,
+	};
+});
 const bannerIcon = computed(() => cloudPlanStore.bannerIcon as IconName | undefined);
 
 // If backend sends variant, use it directly. Otherwise, map legacy style to variant.

@@ -162,7 +162,7 @@ describe('chat resume — real node-type onMessage mapping', () => {
 		}
 
 		beforeEach(() => {
-			executionRepository.update.mockClear();
+			executionRepository.markAsCanceled.mockClear();
 		});
 
 		it('cancels an abandoned chat execution', async () => {
@@ -170,7 +170,10 @@ describe('chat resume — real node-type onMessage mapping', () => {
 
 			await manager.cancelExecution('1');
 
-			expect(executionRepository.update).toHaveBeenCalledWith({ id: '1' }, { status: 'canceled' });
+			expect(executionRepository.markAsCanceled).toHaveBeenCalledWith(
+				['1'],
+				['running', 'waiting', 'unknown'],
+			);
 		});
 
 		it('does not cancel a Telegram Send-and-Wait execution the socket does not drive', async () => {
@@ -180,7 +183,7 @@ describe('chat resume — real node-type onMessage mapping', () => {
 
 			await manager.cancelExecution('1');
 
-			expect(executionRepository.update).not.toHaveBeenCalled();
+			expect(executionRepository.markAsCanceled).not.toHaveBeenCalled();
 		});
 
 		it('does not cancel a plain Wait execution the socket does not drive', async () => {
@@ -190,7 +193,7 @@ describe('chat resume — real node-type onMessage mapping', () => {
 
 			await manager.cancelExecution('1');
 
-			expect(executionRepository.update).not.toHaveBeenCalled();
+			expect(executionRepository.markAsCanceled).not.toHaveBeenCalled();
 		});
 	});
 

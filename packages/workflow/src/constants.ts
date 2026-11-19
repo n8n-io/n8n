@@ -28,6 +28,8 @@ export const LOG_LEVELS = ['silent', 'error', 'warn', 'info', 'debug'] as const;
 export const CODE_LANGUAGES = ['javaScript', 'python', 'json', 'html'] as const;
 export const CODE_EXECUTION_MODES = ['runOnceForAllItems', 'runOnceForEachItem'] as const;
 
+export const WORKFLOW_ENGINE_TYPES = ['v1', 'v2'] as const;
+
 // Arbitrary value to represent an empty credential value
 export const CREDENTIAL_EMPTY_VALUE = '__n8n_EMPTY_VALUE_7b1af746-3729-4c60-9b9b-e08eb29e58da';
 
@@ -64,6 +66,8 @@ export const EVALUATION_NODE_TYPE = 'n8n-nodes-base.evaluation';
 export const ERROR_TRIGGER_NODE_TYPE = 'n8n-nodes-base.errorTrigger';
 export const EXECUTE_WORKFLOW_NODE_TYPE = 'n8n-nodes-base.executeWorkflow';
 export const EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE = 'n8n-nodes-base.executeWorkflowTrigger';
+export const MESSAGE_AN_AGENT_NODE_TYPE = 'n8n-nodes-base.messageAnAgent';
+export const MESSAGE_AN_AGENT_TOOL_NODE_TYPE = 'n8n-nodes-base.messageAnAgentTool';
 export const CODE_NODE_TYPE = 'n8n-nodes-base.code';
 export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';
 export const FUNCTION_ITEM_NODE_TYPE = 'n8n-nodes-base.functionItem';
@@ -134,6 +138,7 @@ export const CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE =
 	'@n8n/n8n-nodes-langchain.chainSummarization';
 export const AGENT_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.agentTool';
 export const CODE_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolCode';
+export const CODE_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.code';
 export const WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolWorkflow';
 export const RETRIEVER_WORKFLOW_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.retrieverWorkflow';
 export const HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolHttpRequest';
@@ -219,3 +224,12 @@ export const BINARY_IN_JSON_PROPERTY = '_files';
 
 export const BINARY_MODE_SEPARATE = 'separate';
 export const BINARY_MODE_COMBINED = 'combined';
+
+/**
+ * Key inside `oauthTokenData` that records which version of a managed OAuth app
+ * a credential was connected with.
+ */
+export const MANAGED_VERSION_KEY = 'n8n_managed_version';
+
+/** Version of a managed OAuth app when a credential or a config does not state one. */
+export const IMPLICIT_MANAGED_VERSION = 1;

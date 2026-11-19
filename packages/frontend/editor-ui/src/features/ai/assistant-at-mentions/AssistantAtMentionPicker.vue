@@ -4,6 +4,7 @@ import {
 	N8nButton,
 	N8nIcon,
 	N8nIconButton,
+	N8nSpinner,
 	N8nText,
 	N8nTooltip,
 	type DropdownMenuExposed,
@@ -181,11 +182,6 @@ const menuItems = computed<MentionMenuItem[]>(() => {
 			if (!failedToLoadWorkflows) return [];
 			return [
 				{
-					id: 'section:workflows',
-					label: i18n.baseText('instanceAi.mentions.workflowsSection'),
-					header: true,
-				},
-				{
 					id: 'state:workflows-error',
 					label: i18n.baseText('instanceAi.mentions.loadError'),
 					disabled: true,
@@ -197,18 +193,7 @@ const menuItems = computed<MentionMenuItem[]>(() => {
 				},
 			];
 		}
-		return [
-			{
-				id: `section:${section.id}`,
-				label: i18n.baseText(
-					section.id === 'artifacts'
-						? 'instanceAi.mentions.artifactsSection'
-						: 'instanceAi.mentions.workflowsSection',
-				),
-				header: true,
-			},
-			...section.items,
-		];
+		return section.items;
 	});
 });
 
@@ -230,10 +215,6 @@ function getResultPosition(itemId: string): number | undefined {
 	function find(items: MentionMenuItem[]): number | undefined {
 		let position = 0;
 		for (const item of items) {
-			if (item.header) {
-				position = 0;
-				continue;
-			}
 			if (item.data) position++;
 			if (item.id === itemId && item.data) return position;
 			const childPosition = item.children ? find(item.children) : undefined;
@@ -456,7 +437,6 @@ defineExpose({ handleExternalKeydown, getOpenMetrics, flushEmptySearch });
 		:extra-popper-class="$style.menuContent"
 		:disabled="disabled"
 		:loading="isLoading"
-		:loading-item-count="10"
 		:empty-text="emptyText"
 		:search-placeholder="i18n.baseText('instanceAi.mentions.searchPlaceholder')"
 		placement="top-start"
@@ -468,6 +448,11 @@ defineExpose({ handleExternalKeydown, getOpenMetrics, flushEmptySearch });
 		@select="handleSelect"
 		@submenu:toggle="handleSubmenuToggle"
 	>
+		<template #loading>
+			<div :class="$style.loadingState">
+				<N8nSpinner size="small" />
+			</div>
+		</template>
 		<template v-if="sources.providerErrors.value.size > 0" #empty>
 			<div :class="$style.errorState">
 				<N8nText size="small">{{ i18n.baseText('instanceAi.mentions.loadError') }}</N8nText>
@@ -554,6 +539,12 @@ defineExpose({ handleExternalKeydown, getOpenMetrics, flushEmptySearch });
 <style module lang="scss">
 .menuContent {
 	width: var(--n8n--dropdown-menu-width);
+}
+
+.loadingState {
+	display: flex;
+	justify-content: center;
+	padding: var(--spacing--xs);
 }
 
 .errorState {

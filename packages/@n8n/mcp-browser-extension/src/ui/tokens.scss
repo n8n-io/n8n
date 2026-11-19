@@ -27,7 +27,7 @@ body {
 	font-family: var(--font-family);
 	-webkit-font-smoothing: antialiased;
 	background-color: var(--color--background);
-	color: var(--color--text--shade-1);
+	color: var(--text-color);
 }
 
 /** Keep the shared card layout for extension panels. */
@@ -39,7 +39,6 @@ body {
 	border: var(--border);
 	border-radius: var(--radius--lg);
 	padding: var(--spacing--lg);
-	min-height: 0;
 }
 
 .panel + .panel {

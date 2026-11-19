@@ -6,7 +6,7 @@ import { Container } from '@n8n/di';
 import * as BullModule from 'bull';
 import { ENCODED_BUFFER_KEY, InstanceSettings } from 'n8n-core';
 import type { ErrorReporter } from 'n8n-core';
-import { OperationalError, UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from '@n8n/errors';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -1113,13 +1113,14 @@ describe('ScalingService', () => {
 				statusCode: 500,
 			});
 		});
-		describe('job outcome wiring', () => {
+		describe.each(['main', 'worker'] as const)('job outcome wiring on %s', (instanceType) => {
 			const getHandler = (event: string) =>
 				queue.on.mock.calls.find(([name]) => (name as string) === event)?.[1] as (
 					...args: unknown[]
 				) => void;
 
 			beforeEach(async () => {
+				Object.assign(instanceSettings, { instanceType });
 				await scalingService.setupQueue();
 			});
 
@@ -1139,6 +1140,8 @@ describe('ScalingService', () => {
 				});
 
 				expect(jobOutcomeTracker.recordFinished).toHaveBeenCalledWith(
+					'jobs',
+					'job-789',
 					'exec-123',
 					expect.objectContaining({
 						status: 'waiting',
@@ -1150,6 +1153,48 @@ describe('ScalingService', () => {
 				);
 			});
 
+			it('should keep the failedBeforeStart flag of a v2 job-finished result', () => {
+				getHandler('global:progress')('job-789', {
+					kind: 'job-finished',
+					version: 2,
+					executionId: 'exec-123',
+					workerId: 'worker-456',
+					success: false,
+					status: 'error',
+					startedAt: '2026-07-25T11:59:00.000Z',
+					stoppedAt: '2026-07-25T11:59:30.000Z',
+					failedBeforeStart: true,
+				});
+
+				expect(jobOutcomeTracker.recordFinished).toHaveBeenCalledWith(
+					'jobs',
+					'job-789',
+					'exec-123',
+					expect.objectContaining({ failedBeforeStart: true }),
+				);
+			});
+
+			it('should record the node time saved minutes of a v2 job-finished result', () => {
+				getHandler('global:progress')('job-789', {
+					kind: 'job-finished',
+					version: 2,
+					executionId: 'exec-123',
+					workerId: 'worker-456',
+					success: true,
+					status: 'success',
+					startedAt: '2026-07-25T11:59:00.000Z',
+					stoppedAt: '2026-07-25T11:59:30.000Z',
+					nodeTimeSavedMinutes: 60,
+				});
+
+				expect(jobOutcomeTracker.recordFinished).toHaveBeenCalledWith(
+					'jobs',
+					'job-789',
+					'exec-123',
+					expect.objectContaining({ nodeTimeSavedMinutes: 60 }),
+				);
+			});
+
 			it('should record a v1 job-finished message without a result', () => {
 				getHandler('global:progress')('job-789', {
 					kind: 'job-finished',
@@ -1158,7 +1203,12 @@ describe('ScalingService', () => {
 					success: true,
 				});
 
-				expect(jobOutcomeTracker.recordFinished).toHaveBeenCalledWith('exec-123', undefined);
+				expect(jobOutcomeTracker.recordFinished).toHaveBeenCalledWith(
+					'jobs',
+					'job-789',
+					'exec-123',
+					undefined,
+				);
 			});
 
 			it('should record a job-failed report as a handled error', () => {
@@ -1171,10 +1221,12 @@ describe('ScalingService', () => {
 				});
 
 				expect(jobOutcomeTracker.recordFailed).toHaveBeenCalledWith(
+					'jobs',
+					'job-789',
 					'exec-123',
 					expect.any(OperationalError),
 				);
-				expect(jobOutcomeTracker.recordFailed.mock.calls[0][1].message).toBe('boom');
+				expect(jobOutcomeTracker.recordFailed.mock.calls[0][3].message).toBe('boom');
 			});
 
 			it('should settle the wait for a job Bull reports as failed, by queue and job ID', () => {
@@ -1231,7 +1283,83 @@ describe('ScalingService', () => {
 				});
 
 				await expect(wait).resolves.toBeUndefined();
-				expect(service.popJobResult('exec-1')).toBeUndefined();
+				expect(service.popJobResult(job)).toBeUndefined();
+			});
+
+			it.each([
+				{ isActive: true, expected: expect.objectContaining({ status: 'success' }) },
+				{ isActive: false, expected: undefined },
+			])(
+				'should keep a v2 result only for an execution active in this process (active: $isActive)',
+				async ({ isActive, expected }) => {
+					const localActiveExecutions = mock<ActiveExecutions>();
+					localActiveExecutions.has.mockReturnValue(isActive);
+					const realTracker = new JobOutcomeTracker(
+						mockLogger(),
+						localActiveExecutions,
+						mock(),
+						mock(),
+					);
+					const service = new ScalingService(
+						logger,
+						errorReporter,
+						localActiveExecutions,
+						jobProcessor,
+						globalConfig,
+						executionRepository,
+						executionPersistence,
+						instanceSettings,
+						mock(),
+						webhookResponseRelay,
+						executionCrashService,
+						realTracker,
+					);
+					await service.setupQueue();
+					const onProgress = queue.on.mock.calls
+						.filter(([event]) => (event as string) === 'global:progress')
+						.at(-1)?.[1] as (jobId: JobId, msg: unknown) => void;
+
+					const job = mock<Job>({
+						id: 'job-1',
+						data: { executionId: 'exec-1' },
+						queue: { name: 'jobs' },
+					});
+					const wait = service.waitForJob(job);
+
+					onProgress('job-1', {
+						kind: 'job-finished',
+						version: 2,
+						executionId: 'exec-1',
+						workerId: 'worker-1',
+						success: true,
+						status: 'success',
+						startedAt: '2026-07-25T11:59:00.000Z',
+						stoppedAt: '2026-07-25T11:59:30.000Z',
+					});
+
+					await expect(wait).resolves.toBeUndefined();
+					expect(service.popJobResult(job)).toEqual(expected);
+				},
+			);
+		});
+
+		describe('on worker', () => {
+			beforeEach(async () => {
+				Object.assign(instanceSettings, { instanceType: 'worker' });
+				await scalingService.setupQueue();
+			});
+
+			it('should stop the job on abort-job, without recording an outcome', () => {
+				const onProgress = queue.on.mock.calls.find(
+					([event]) => (event as string) === 'global:progress',
+				)?.[1] as (jobId: JobId, msg: unknown) => void;
+
+				onProgress('job-1', { kind: 'abort-job' });
+
+				expect(jobProcessor.stopJob).toHaveBeenCalledWith('job-1');
+				expect(jobOutcomeTracker.recordFinished).not.toHaveBeenCalled();
+				expect(jobOutcomeTracker.recordFailed).not.toHaveBeenCalled();
+				expect(jobOutcomeTracker.settleByJobKey).not.toHaveBeenCalled();
 			});
 		});
 	});
@@ -1280,7 +1408,7 @@ describe('ScalingService', () => {
 				runningJobs: 1,
 			});
 
-			scalingService.popJobResult('exec-123');
+			scalingService.popJobResult(mock<Job>({ id: 'job-789', queue: { name: 'jobs' } }));
 
 			expect(scalingService.getDiagnosticCounts().jobResults).toBe(0);
 		});

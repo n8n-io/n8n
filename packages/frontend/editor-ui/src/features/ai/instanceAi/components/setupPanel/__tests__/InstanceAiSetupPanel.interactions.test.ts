@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { toArtifactTurns } from '../../../agentTreeArtifactTurns';
 import { mock } from 'vitest-mock-extended';
 import { computed, defineComponent, h, reactive, ref, type PropType } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -22,6 +23,7 @@ import {
 	readPendingInstanceAiSetupCredentialSelections,
 	type InstanceAiAgentNode,
 	type InstanceAiCredentialSetupHint,
+	type InstanceAiMessage,
 	type InstanceAiSetupItem,
 	type PushMessage,
 } from '@n8n/api-types';
@@ -343,7 +345,10 @@ describe('InstanceAiSetupPanel interactions', () => {
 		documentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
 		thread = reactive({
 			id: 'thread-1',
-			messages: [],
+			messages: [] as InstanceAiMessage[],
+			get artifactTurns() {
+				return toArtifactTurns(this.messages);
+			},
 			setupItemsByWorkflowId: {
 				'wf-1': [
 					{ id: 'wf-1:credential:slackApi', kind: 'credential', credentialType: 'slackApi' },
@@ -366,7 +371,7 @@ describe('InstanceAiSetupPanel interactions', () => {
 			toolCalls: [
 				{
 					toolCallId: 'update',
-					toolName: 'workflows',
+					toolName: 'workflow_builder_workflows',
 					isLoading: true,
 					args: { action: 'update', workflowId: 'wf-1' },
 				},

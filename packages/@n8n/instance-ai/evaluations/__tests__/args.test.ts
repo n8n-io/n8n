@@ -182,6 +182,7 @@ describe('parseCliArgs --build-via-mcp', () => {
 		// --build-via-mcp is LangSmith-only; give every test in this suite a key
 		// so the requirement doesn't drown out what each test actually asserts.
 		vi.stubEnv('LANGSMITH_API_KEY', 'test-key');
+		vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
 	});
 
 	afterEach(() => {
@@ -191,6 +192,14 @@ describe('parseCliArgs --build-via-mcp', () => {
 	it('requires LANGSMITH_API_KEY (the direct loop does not support MCP builds)', () => {
 		vi.stubEnv('LANGSMITH_API_KEY', '');
 		expect(() => parseCliArgs(['--build-via-mcp'])).toThrow(/--build-via-mcp requires LangSmith/);
+	});
+
+	it('requires env-based claude auth for isolated builds, but not with --build-cwd', () => {
+		vi.stubEnv('ANTHROPIC_API_KEY', '');
+		vi.stubEnv('ANTHROPIC_AUTH_TOKEN', '');
+		vi.stubEnv('CLAUDE_CODE_OAUTH_TOKEN', '');
+		expect(() => parseCliArgs(['--build-via-mcp'])).toThrow(/isolated from ~\/\.claude/);
+		expect(parseCliArgs(['--build-via-mcp', '--build-cwd', '/tmp/x']).buildViaMcp).toBe(true);
 	});
 
 	it('defaults to disabled with sensible build knobs', () => {
@@ -294,5 +303,48 @@ describe('parseCliArgs --build-via-mcp', () => {
 
 	it('rejects a non-integer --build-max-attempts', () => {
 		expect(() => parseCliArgs(['--build-max-attempts', 'lots'])).toThrow();
+	});
+});
+
+describe('parseCliArgs --assistant-runtime', () => {
+	afterEach(() => vi.unstubAllEnvs());
+
+	it('defaults to instance-ai', () => {
+		expect(parseCliArgs([]).assistantRuntime).toBe('instance-ai');
+	});
+
+	it.each(['instance-ai', 'agents'] as const)('accepts %s', (runtime) => {
+		expect(parseCliArgs(['--assistant-runtime', runtime]).assistantRuntime).toBe(runtime);
+	});
+
+	it('rejects an unknown runtime', () => {
+		expect(() => parseCliArgs(['--assistant-runtime', 'v1'])).toThrow();
+	});
+
+	it('requires a value', () => {
+		expect(() => parseCliArgs(['--assistant-runtime'])).toThrow(
+			'Missing value for --assistant-runtime',
+		);
+	});
+
+	it('rejects the agents runtime with --build-via-mcp', () => {
+		vi.stubEnv('LANGSMITH_API_KEY', 'test-key');
+		vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
+		expect(() => parseCliArgs(['--build-via-mcp', '--assistant-runtime', 'agents'])).toThrow(
+			/--assistant-runtime applies to Assistant builds/,
+		);
+	});
+
+	it('rejects the agents runtime with --prebuilt-workflows', () => {
+		expect(() =>
+			parseCliArgs(['--prebuilt-workflows', 'manifest.json', '--assistant-runtime', 'agents']),
+		).toThrow(/--prebuilt-workflows grades existing workflows/);
+	});
+
+	it('accepts the instance-ai runtime with --prebuilt-workflows', () => {
+		expect(
+			parseCliArgs(['--prebuilt-workflows', 'manifest.json', '--assistant-runtime', 'instance-ai'])
+				.assistantRuntime,
+		).toBe('instance-ai');
 	});
 });

@@ -4,6 +4,10 @@ export const defaultSettings: FrontendSettings = {
 	ai: {
 		allowSendingParameterValues: true,
 	},
+	aiPreferences: {
+		enabled: true,
+		managedByEnv: false,
+	},
 	inE2ETests: false,
 	databaseType: 'sqlite',
 	isDocker: false,
@@ -75,7 +79,6 @@ export const defaultSettings: FrontendSettings = {
 	posthog: {
 		apiHost: '',
 		apiKey: '',
-		autocapture: false,
 		debug: false,
 		disableSessionRecording: false,
 		enabled: false,
@@ -209,5 +212,4 @@ export const defaultSettings: FrontendSettings = {
 		},
 	},
 	useWorkflowPublicationService: false,
-	granularCredentialSharing: false,
 };

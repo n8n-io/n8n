@@ -23,7 +23,7 @@ import { createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { putCredentialTypePolicy } from './shared/credential-type-policy';
-import { clearPolicyCache } from './shared/policy-cache';
+import { reloadPolicySnapshot } from './shared/policy-snapshot';
 
 const MANUAL_TRIGGER = 'n8n-nodes-base.manualTrigger';
 const HTTP_REQUEST = 'n8n-nodes-base.httpRequest';
@@ -118,7 +118,7 @@ afterEach(async () => {
 		'SharedWorkflow',
 		'WorkflowHistory',
 	]);
-	await clearPolicyCache();
+	await reloadPolicySnapshot();
 });
 
 describe('a rule on a base credential type', () => {
@@ -183,19 +183,19 @@ describe('a rule on a base credential type', () => {
 });
 
 describe('writing an extends rule', () => {
-	test('rejects a base credential type that is not installed', async () => {
+	test('saves a base credential type that is not installed, with a warning', async () => {
 		const response = await ownerAgent.put('/credential-type-policies/instance').send({
-			rules: [
-				{ id: 'r1', action: 'deny', selector: { kind: 'extends', value: 'notInstalledApi' } },
-			],
+			rules: [{ id: 'r1', action: 'deny', selector: { kind: 'extends', value: 'notLoadedApi' } }],
 			defaultAction: 'allow',
 			version: 0,
 		});
 
-		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toBe(
-			'Extends rule names a credential type that is not installed: notInstalledApi',
-		);
+		expect(response.statusCode).toBe(200);
+		const persisted = await ownerAgent.get('/credential-type-policies/instance');
+		expect(persisted.body.data.rules).toEqual([
+			{ id: 'r1', action: 'deny', selector: { kind: 'extends', value: 'notLoadedApi' } },
+		]);
+		expect(response.body.data.warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r1' }]);
 	});
 
 	test('rejects the rule in a node type policy request', async () => {
