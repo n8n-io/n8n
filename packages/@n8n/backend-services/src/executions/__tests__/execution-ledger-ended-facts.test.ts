@@ -1,4 +1,4 @@
-import type { CrashedExecution } from '@n8n/db';
+import type { CanceledExecution, CrashedExecution } from '@n8n/db';
 import type {
 	ExecutionBlockedReason,
 	ExecutionStatus,
@@ -10,7 +10,11 @@ import type {
 } from 'n8n-workflow';
 import { createRunExecutionData } from 'n8n-workflow';
 
-import { toEndedFactsFromCrash, toEndedFactsFromRun } from '../execution-ledger-ended-facts';
+import {
+	toEndedFactsFromCancel,
+	toEndedFactsFromCrash,
+	toEndedFactsFromRun,
+} from '../execution-ledger-ended-facts';
 
 const startedAt = new Date('2026-01-01T10:00:00.000Z');
 const stoppedAt = new Date('2026-01-01T10:00:05.000Z');
@@ -336,5 +340,33 @@ describe('toEndedFactsFromCrash', () => {
 		const facts = toEndedFactsFromCrash(makeCrashed({ workflowName: undefined }));
 
 		expect(facts.workflowName).toBe('');
+	});
+});
+
+describe('toEndedFactsFromCancel', () => {
+	const canceled = {
+		id: 'execution-1',
+		workflowId: 'workflow-1',
+		workflowName: 'My Workflow',
+		mode: 'trigger',
+		startedAt,
+		stoppedAt,
+	} satisfies CanceledExecution;
+
+	test('records the canceled outcome with the runtime and no time saved', () => {
+		expect(toEndedFactsFromCancel(canceled)).toEqual({
+			executionId: 'execution-1',
+			workflowId: 'workflow-1',
+			workflowName: 'My Workflow',
+			mode: 'trigger',
+			occurredAt: stoppedAt,
+			outcome: 'canceled',
+			runtimeMs: 5000,
+			timeSavedMin: 0,
+		});
+	});
+
+	test('records a runtime of 0 when a queued run is canceled before it started', () => {
+		expect(toEndedFactsFromCancel({ ...canceled, startedAt: null }).runtimeMs).toBe(0);
 	});
 });
