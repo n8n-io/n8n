@@ -1,7 +1,13 @@
 import type { INodeProperties, INodePropertyOptions, PostReceiveAction } from 'n8n-workflow';
 
-import type { OperationRow, Resource } from './resolve-operations';
-import type { ApiParameter, Schema, SpecOperation, SpecOptions } from './types';
+import type {
+	ApiParameter,
+	OperationRow,
+	Resource,
+	Schema,
+	SpecOperation,
+	SpecOptions,
+} from './types';
 
 export const NODE_PARAMETER_NAMES = ['resource', 'operation', 'returnAll', 'options'];
 

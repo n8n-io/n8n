@@ -2,20 +2,9 @@ import pluralize from 'pluralize';
 
 import { NODE_PARAMETER_NAMES, operationLabel } from './build-properties';
 import type { Overrides } from './overrides';
-import type { Spec, SpecOperation, SpecTag } from './types';
+import type { OperationRow, Resource, Spec, SpecOperation, SpecTag } from './types';
 
-export interface Resource {
-	id: string;
-	displayName: string;
-}
-
-export interface OperationRow {
-	operation: SpecOperation;
-	resource: Resource;
-	excludeReason?: string;
-}
-
-export interface Resolution {
+interface Resolution {
 	rows: OperationRow[];
 	errors: string[];
 }

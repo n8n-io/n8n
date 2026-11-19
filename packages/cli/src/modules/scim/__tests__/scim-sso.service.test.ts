@@ -1,5 +1,5 @@
 import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
-import type { CacheService } from '@n8n/backend-services';
+import type { CacheService, EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { SettingsRepository } from '@n8n/db';
 import { InternalServerError } from '@n8n/errors';
@@ -18,6 +18,7 @@ describe('ScimSsoService', () => {
 	let logger: ReturnType<typeof mockLogger>;
 	let scimSwitchReader: ScimSwitchReader;
 	let settingsRepository: Mocked<SettingsRepository>;
+	let eventService: Mocked<EventService>;
 	let service: ScimSsoService;
 
 	const ssoOn = (on: boolean) =>
@@ -36,14 +37,17 @@ describe('ScimSsoService', () => {
 			mock<SettingsRepository>(),
 			mock<CacheService>(),
 			mockLogger(),
+			mock<EventService>(),
 		);
 		settingsRepository = mock<SettingsRepository>();
+		eventService = mock<EventService>();
 		service = new ScimSsoService(
 			logger,
 			scimSettingsService,
 			moduleRegistry,
 			scimSwitchReader,
 			settingsRepository,
+			eventService,
 		);
 	});
 
@@ -138,6 +142,12 @@ describe('ScimSsoService', () => {
 				expect(logger.info).toHaveBeenCalledWith(
 					`SCIM provisioning turned off, because ${protocol.toUpperCase()} single sign-on turned off. The SCIM token and the SCIM settings are kept.`,
 				);
+				expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('scim-settings-updated', {
+					user: null,
+					isActive: false,
+					change: 'disabled',
+					source: 'sso_off',
+				});
 			},
 		);
 
@@ -161,6 +171,7 @@ describe('ScimSsoService', () => {
 
 			expect(moduleRegistry.refreshModuleSettings).not.toHaveBeenCalled();
 			expect(logger.info).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		// A silent failure leaves SCIM on, and SCIM serves again when single
@@ -219,6 +230,12 @@ describe('ScimSsoService', () => {
 			expect(logger.info).toHaveBeenCalledWith(
 				'SCIM provisioning turned off, because single sign-on is off at startup. The SCIM token and the SCIM settings are kept.',
 			);
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('scim-settings-updated', {
+				user: null,
+				isActive: false,
+				change: 'disabled',
+				source: 'startup',
+			});
 		});
 
 		it('keeps SCIM on when single sign-on is on', async () => {
@@ -237,6 +254,7 @@ describe('ScimSsoService', () => {
 
 			expect(moduleRegistry.refreshModuleSettings).not.toHaveBeenCalled();
 			expect(logger.info).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('does not fail the startup when the check fails', async () => {

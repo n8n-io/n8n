@@ -83,10 +83,10 @@ const envelopeSchema = z.object({
 function readTags(envelope: unknown): SpecTag[] {
 	const { tags } = parse(envelopeSchema, envelope, 'the tags of the spec');
 
-	const groups = new Map<string, SpecGroup>();
+	const parentTags = new Map<string, SpecGroup>();
 	for (const tag of tags) {
 		if (tag['x-parent'] === undefined) {
-			groups.set(tag.name, { name: tag.name, displayName: tag['x-displayName'] });
+			parentTags.set(tag.name, { name: tag.name, displayName: tag['x-displayName'] });
 		}
 	}
 
@@ -94,7 +94,7 @@ function readTags(envelope: unknown): SpecTag[] {
 	for (const tag of tags) {
 		const parent = tag['x-parent'];
 		if (parent === undefined) continue;
-		const group = groups.get(parent);
+		const group = parentTags.get(parent);
 		if (!group) {
 			throw new Error(
 				`Cannot read the tags of the spec: the tag "${tag.name}" has the parent "${parent}", but no parent tag has this name.`,
@@ -169,17 +169,17 @@ function readParameters(operation: Operation, options: SpecOptions) {
 
 	parameters.push(...readBodyParameters(operation, blockers));
 
-	const responseTypes = Object.entries(operation.responses)
+	const successfulResponseTypes = Object.entries(operation.responses)
 		.filter(([status]) => status.startsWith('2'))
 		.flatMap(([, response]) => Object.keys(response.content ?? {}));
-	if (responseTypes.length > 0 && !responseTypes.includes(JSON_MEDIA_TYPE)) {
-		blockers.push(`${responseTypes[0]} response`);
+	if (successfulResponseTypes.length > 0 && !successfulResponseTypes.includes(JSON_MEDIA_TYPE)) {
+		blockers.push(`${successfulResponseTypes[0]} response`);
 	}
 
-	return { parameters, paginated, emptyResponse: responseTypes.length === 0, blockers };
+	return { parameters, paginated, emptyResponse: successfulResponseTypes.length === 0, blockers };
 }
 
-export interface SpecDocuments {
+interface SpecDocuments {
 	routes: unknown;
 	envelope: unknown;
 }
@@ -221,7 +221,6 @@ export function readSpec(documents: SpecDocuments, options: SpecOptions): Spec {
 	}
 
 	return {
-		tags,
 		operations: [...operations.values()].sort((a, b) =>
 			a.operationId.localeCompare(b.operationId, 'en'),
 		),

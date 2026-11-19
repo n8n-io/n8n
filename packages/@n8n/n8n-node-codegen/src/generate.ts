@@ -6,17 +6,9 @@ import { formatReport } from './report';
 import { resolveOperations } from './resolve-operations';
 import { parseYaml } from './spec/parse-yaml';
 import { readSpec } from './spec/read-spec';
-import type { Spec, SpecOptions } from './types';
+import type { GenerateConfig, Spec } from './types';
 
-export interface GenerateConfig {
-	envelopeFile: string;
-	routesFile: string;
-	overridesFile: string;
-	outputFile: string;
-	spec: SpecOptions;
-}
-
-export interface GenerateResult {
+interface GenerateResult {
 	report: string;
 	errors: string[];
 	content: string;

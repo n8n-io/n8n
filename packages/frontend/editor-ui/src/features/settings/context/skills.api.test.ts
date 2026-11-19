@@ -3,6 +3,7 @@ import { makeRestApiRequest } from '@n8n/rest-api-client';
 
 import {
 	connectSkillSource,
+	deleteSkillSource,
 	discoverSkillSource,
 	getSkillSourceCredentials,
 	getSkillSourceReplacementCredentials,
@@ -20,6 +21,19 @@ describe('skills.api', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
+
+	it.each([{ keepSkills: true }, { onlySkillId: 'skill-1' }])(
+		'sends source removal choices as query parameters: %j',
+		async (query) => {
+			await deleteSkillSource(context, 'source-1', query);
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				context,
+				'DELETE',
+				'/skill-sources/source-1',
+				query,
+			);
+		},
+	);
 
 	it('lists the credentials a source scope accepts', async () => {
 		await getSkillSourceCredentials(context, { scope: 'project', projectId: 'team-1' });

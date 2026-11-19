@@ -158,7 +158,7 @@ function pathRelativeToSkillDir(path: string, skillDir: string): string | null {
 	return path.slice(skillDir.length + 1);
 }
 
-function parseSkillMarkdown(content: string): AgentSkill {
+export function parseSkillMarkdown(content: string): AgentSkill {
 	const lines = content.split(/\r?\n/);
 	if (lines[0]?.trim() !== FRONTMATTER_DELIMITER) {
 		throw new AgentSkillImportError('agents.builder.skills.import.missingFrontmatter');

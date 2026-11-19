@@ -15,16 +15,16 @@
     "test:unit": "pnpm bundle-spec && vitest run"
   },
   "dependencies": {
-    "pluralize": "^8.0.0",
+    "pluralize": "catalog:",
     "yaml": "catalog:"
   },
   "devDependencies": {
     "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "@redocly/cli": "^2.76.0",
+    "@redocly/cli": "catalog:",
     "@types/node": "catalog:",
-    "@types/pluralize": "^0.0.33",
+    "@types/pluralize": "catalog:",
     "n8n-workflow": "workspace:*",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",

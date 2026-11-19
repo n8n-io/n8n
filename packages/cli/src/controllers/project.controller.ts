@@ -5,6 +5,7 @@ import {
 	AddUsersToProjectDto,
 	ChangeUserRoleInProject,
 	ListProjectsQueryDto,
+	ListSharingCandidatesQueryDto,
 } from '@n8n/api-types';
 import { accountSummary, AuthenticatedRequest, type User } from '@n8n/db';
 import {
@@ -88,7 +89,7 @@ export class ProjectController {
 	async getSharingCandidates(
 		req: AuthenticatedRequest,
 		res: Response,
-		@Query payload: ListProjectsQueryDto,
+		@Query payload: ListSharingCandidatesQueryDto,
 	) {
 		const { projects, count } = await this.projectsService.getShareableProjectsAndCount(
 			req.user,

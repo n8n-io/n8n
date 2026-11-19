@@ -95,6 +95,19 @@ describe('RedisLockService', () => {
 			expect(fn).not.toHaveBeenCalled();
 		});
 
+		it('should make one attempt and not retry when waitTimeoutMs is 0', async () => {
+			vi.useFakeTimers({ toFake: ['Date'] }); // same ms for every check; sleep() keeps real timers
+			client.set.mockResolvedValueOnce(null).mockResolvedValue('OK'); // busy, then free
+			client.eval.mockResolvedValue(1);
+			const fn = vi.fn();
+
+			const attempt = service.withLease(NS, 'k', fn, { waitTimeoutMs: 0 });
+
+			await expect(attempt).rejects.toMatchObject({ sawContention: true });
+			expect(client.set).toHaveBeenCalledTimes(1);
+			expect(fn).not.toHaveBeenCalled();
+		});
+
 		it('should report contention when an attempt saw the lock held', async () => {
 			client.set.mockResolvedValue(null); // held by another owner
 

@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import type { GenerateConfig } from './generate';
+import type { GenerateConfig } from './types';
 
 const PACKAGE_DIR = path.resolve(__dirname, '..');
 

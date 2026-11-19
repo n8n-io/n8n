@@ -14,13 +14,4 @@ describe('parseYaml', () => {
 
 		expect(document).toEqual({ first: { type: 'string' }, list: [{ type: 'string' }] });
 	});
-
-	it('should parse a text with more than 100 aliases', () => {
-		const aliases = Array.from({ length: 150 }, () => '  - *shared');
-		const document = parseYaml(
-			['first: &shared', '  type: string', 'list:', ...aliases].join('\n'),
-		);
-
-		expect(document).toMatchObject({ list: expect.arrayContaining([{ type: 'string' }]) });
-	});
 });

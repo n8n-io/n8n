@@ -124,7 +124,6 @@ describe('readSpec', () => {
 		const workflow = { name: 'Workflow', displayName: 'Workflows', group: buildAndRun };
 		const executions = { name: 'Executions', displayName: 'Executions', group: buildAndRun };
 		expect(spec).toEqual({
-			tags: [workflow, executions],
 			operations: [
 				{
 					operationId: 'createWorkflow',

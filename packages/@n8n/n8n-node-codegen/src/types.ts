@@ -54,7 +54,6 @@ export interface SpecOperation {
 }
 
 export interface Spec {
-	tags: SpecTag[];
 	operations: SpecOperation[];
 }
 
@@ -64,4 +63,23 @@ export interface SpecOptions {
 	limitParameter: string;
 	nextCursorProperty: string;
 	itemsProperty: string;
+}
+
+export interface GenerateConfig {
+	envelopeFile: string;
+	routesFile: string;
+	overridesFile: string;
+	outputFile: string;
+	spec: SpecOptions;
+}
+
+export interface Resource {
+	id: string;
+	displayName: string;
+}
+
+export interface OperationRow {
+	operation: SpecOperation;
+	resource: Resource;
+	excludeReason?: string;
 }

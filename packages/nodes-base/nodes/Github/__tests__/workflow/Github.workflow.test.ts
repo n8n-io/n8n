@@ -91,7 +91,17 @@ describe('Github > Workflows', () => {
 			.query({ per_page: '5' })
 			.reply(200, [{ login: 'nathan' }]);
 		github.put(`${repo}/actions/workflows/ci.yml/disable`).reply(200, {});
-		github.post(`${repo}/actions/workflows/ci.yml/dispatches`).reply(200, {});
+		github
+			.post(`${repo}/actions/workflows/ci.yml/dispatches`, {
+				ref: 'main',
+				inputs: { environment: 'staging' },
+				return_run_details: true,
+			})
+			.reply(200, {
+				workflow_run_id: 123,
+				run_url: `https://api.github.com${repo}/actions/runs/123`,
+				html_url: 'https://github.com/acme-corp/billing-service/actions/runs/123',
+			});
 		github.put(`${repo}/actions/workflows/ci.yml/enable`).reply(200, {});
 		github.get(`${repo}/actions/workflows/ci.yml`).reply(200, { id: 161335 });
 		github.get(`${repo}/actions/workflows/ci.yml/timing`).reply(200, { billable: {} });

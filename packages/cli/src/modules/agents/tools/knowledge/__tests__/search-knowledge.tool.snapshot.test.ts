@@ -4,10 +4,10 @@ import { mock } from 'vitest-mock-extended';
 
 import type { KnowledgeRetriever } from '@/modules/knowledge/knowledge-retriever';
 import type {
-	AgentKnowledgeFileReference,
-	GlobKnowledgeFilesResult,
-	ReadKnowledgeResult,
-	SearchKnowledgeResult,
+	KnowledgeFileReference,
+	FindKnowledgeFilesResult,
+	ReadKnowledgeFileResult,
+	SearchKnowledgeTextResult,
 } from '@/modules/knowledge/retrieval/retrieval-schemas';
 
 import { createKnowledgeRetrievalTools } from '../search-knowledge.tool';
@@ -23,7 +23,7 @@ import { createKnowledgeRetrievalTools } from '../search-knowledge.tool';
 const projectId = 'project-1';
 const agentId = 'agent-1';
 
-const fileReference: AgentKnowledgeFileReference = {
+const fileReference: KnowledgeFileReference = {
 	file: 'knowledge/notes.txt',
 	fileId: 'file-1',
 	storedAt: 'db',
@@ -35,9 +35,9 @@ const fileReference: AgentKnowledgeFileReference = {
 };
 
 const fixtures: {
-	findFiles: GlobKnowledgeFilesResult;
-	searchText: Record<SearchKnowledgeResult['outputMode'], SearchKnowledgeResult>;
-	readFile: ReadKnowledgeResult;
+	findFiles: FindKnowledgeFilesResult;
+	searchText: Record<SearchKnowledgeTextResult['outputMode'], SearchKnowledgeTextResult>;
+	readFile: ReadKnowledgeFileResult;
 } = {
 	findFiles: {
 		files: [fileReference],

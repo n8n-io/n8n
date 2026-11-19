@@ -855,7 +855,7 @@ export class S3 implements INodeType {
 						const region = responseData.LocationConstraint?._;
 
 						if (isBinaryData) {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 							body = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 

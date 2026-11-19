@@ -1,4 +1,5 @@
 import { getN8nVersion } from '@n8n/backend-common';
+import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse } from 'n8n-workflow';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
@@ -6,7 +7,6 @@ import path from 'node:path';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
-import { getWorkflowConsumerIds } from '@/modules/n8n-packages/spec/requirement-consumers';
 import type {
 	PackageRequirementConsumer,
 	PackageRequirements,
@@ -26,6 +26,8 @@ const SNAPSHOT_FILES = {
 	'project.json': 'projects',
 	'folder.json': 'folders',
 	'workflow.json': 'workflows',
+	'agent.json': 'agents',
+	'skill.json': 'skills',
 	'credential.json': 'credentials',
 	'data-table.json': 'dataTables',
 	'tag.json': 'tags',
@@ -64,6 +66,7 @@ function dropSelectedRequirementUsers(
 		credentials: dropSelectedUsers(leftover.requirements.credentials, selected),
 		dataTables: dropSelectedUsers(leftover.requirements.dataTables, selected),
 		workflows: dropSelectedUsers(leftover.requirements.workflows, selected),
+		agents: dropSelectedUsers(leftover.requirements.agents, selected),
 		variables: dropSelectedUsers(leftover.requirements.variables, selected),
 		tags: dropSelectedUsers(leftover.requirements.tags, selected),
 		nodeTypes: dropSelectedUsers(leftover.requirements.nodeTypes, selected),
@@ -81,7 +84,7 @@ function dropSelectedUsers<T extends { usedBy: PackageRequirementConsumer[] }>(
 		.map((row) => ({
 			...row,
 			usedBy: row.usedBy.filter(
-				({ kind, id }) => kind === 'workflow' && !selectedWorkflowIds.has(id),
+				({ kind, id }) => kind !== 'workflow' || !selectedWorkflowIds.has(id),
 			),
 		}))
 		.filter((row) => row.usedBy.length > 0);
@@ -130,6 +133,8 @@ async function walkSnapshotCollections(
 		projects: [],
 		folders: [],
 		workflows: [],
+		agents: [],
+		skills: [],
 		credentials: [],
 		dataTables: [],
 		tags: [],
@@ -148,7 +153,7 @@ async function walkSnapshotCollections(
 			if (kind === undefined) continue;
 			const relativeFile = path.relative(exportFolder, fullPath).split(path.sep).join('/');
 			const target = path.posix.dirname(relativeFile);
-			const item = await readIdNameFile(fullPath, target);
+			const item = await readIdNameFile(fullPath, target, kind);
 			if (!item) continue;
 			const { entry: listed, isArchived } = item;
 			// Only a workflow entry carries the flag; the other kinds list id, name and target.
@@ -165,6 +170,8 @@ async function walkSnapshotCollections(
 		...(state.projects.length > 0 ? { projects: state.projects } : {}),
 		...(state.folders.length > 0 ? { folders: state.folders } : {}),
 		...(state.workflows.length > 0 ? { workflows: state.workflows } : {}),
+		...(state.agents.length > 0 ? { agents: state.agents } : {}),
+		...(state.skills.length > 0 ? { skills: state.skills } : {}),
 		...(state.credentials.length > 0 ? { credentials: state.credentials } : {}),
 		...(state.dataTables.length > 0 ? { dataTables: state.dataTables } : {}),
 		...(state.tags.length > 0 ? { tags: state.tags } : {}),
@@ -174,6 +181,7 @@ async function walkSnapshotCollections(
 async function readIdNameFile(
 	file: string,
 	target: string,
+	kind: SnapshotKind,
 ): Promise<{ entry: ManifestEntry; isArchived: boolean } | undefined> {
 	let parsed: unknown;
 	try {
@@ -181,16 +189,15 @@ async function readIdNameFile(
 	} catch {
 		return undefined;
 	}
-	if (
-		typeof parsed !== 'object' ||
-		parsed === null ||
-		typeof (parsed as { id?: unknown }).id !== 'string' ||
-		typeof (parsed as { name?: unknown }).name !== 'string'
-	) {
+
+	const nameSource = isRecord(parsed) && kind === 'skills' ? parsed.skill : parsed;
+	const name = isRecord(nameSource) ? nameSource.name : undefined;
+
+	if (!isRecord(parsed) || typeof parsed.id !== 'string' || typeof name !== 'string') {
 		return undefined;
 	}
-	const { id, name, isArchived } = parsed as { id: string; name: string; isArchived?: unknown };
-	return { entry: { id, name, target }, isArchived: isArchived === true };
+
+	return { entry: { id: parsed.id, name, target }, isArchived: parsed.isArchived === true };
 }
 
 async function collectVariables(
@@ -269,6 +276,13 @@ function requirementsBlock(
 			selectedWorkflowIds,
 			(row) => row.id,
 		),
+		agents: mergeRequirementRows(
+			leftover?.requirements?.agents,
+			staging.requirements?.agents,
+			remainingWorkflowIds,
+			selectedWorkflowIds,
+			(row) => row.id,
+		),
 		variables: mergeRequirementRows(
 			leftover?.requirements?.variables,
 			staging.requirements?.variables,
@@ -304,7 +318,7 @@ function mergeRequirementRows<T extends { usedBy: PackageRequirementConsumer[] }
 	const byKey = new Map<string, T>();
 	for (const row of leftover ?? []) {
 		const usedBy = remainingUsers(
-			row.usedBy.filter(({ kind, id }) => kind === 'workflow' && !selectedWorkflowIds.has(id)),
+			row.usedBy.filter(({ kind, id }) => kind !== 'workflow' || !selectedWorkflowIds.has(id)),
 			remainingWorkflowIds,
 		);
 		if (usedBy.length === 0) continue;
@@ -330,26 +344,34 @@ function remainingUsers(
 	usedBy: PackageRequirementConsumer[],
 	remainingWorkflowIds: Set<string>,
 ): PackageRequirementConsumer[] {
-	return [
-		...new Set(getWorkflowConsumerIds({ usedBy }).filter((id) => remainingWorkflowIds.has(id))),
-	]
-		.sort()
-		.map((id) => ({ kind: 'workflow', id }));
+	const kept = new Map<string, PackageRequirementConsumer>();
+
+	for (const consumer of usedBy) {
+		if (consumer.kind === 'workflow' && !remainingWorkflowIds.has(consumer.id)) {
+			continue;
+		}
+
+		kept.set(`${consumer.kind}:${consumer.id}`, consumer);
+	}
+
+	return [...kept.values()].sort((a, b) => `${a.kind}:${a.id}`.localeCompare(`${b.kind}:${b.id}`));
 }
 
 function compactRequirements(input: {
 	credentials: PackageRequirements['credentials'];
 	dataTables: PackageRequirements['dataTables'];
 	workflows: PackageRequirements['workflows'];
+	agents: PackageRequirements['agents'];
 	variables: PackageRequirements['variables'];
 	tags: PackageRequirements['tags'];
 	nodeTypes: PackageRequirements['nodeTypes'];
 }): PackageRequirements | undefined {
-	const { credentials, dataTables, workflows, variables, tags, nodeTypes } = input;
+	const { credentials, dataTables, workflows, agents, variables, tags, nodeTypes } = input;
 	const requirements: PackageRequirements = {
 		...(credentials?.length ? { credentials } : {}),
 		...(dataTables?.length ? { dataTables } : {}),
 		...(workflows?.length ? { workflows } : {}),
+		...(agents?.length ? { agents } : {}),
 		...(variables?.length ? { variables } : {}),
 		...(tags?.length ? { tags } : {}),
 		...(nodeTypes?.length ? { nodeTypes } : {}),

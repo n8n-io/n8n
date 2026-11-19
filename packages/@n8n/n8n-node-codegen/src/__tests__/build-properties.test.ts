@@ -2,8 +2,7 @@ import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 
 import { buildProperties } from '../build-properties';
 import { N8N_NODE_CONFIG } from '../n8n-node.config';
-import type { OperationRow } from '../resolve-operations';
-import type { ApiParameter, SpecOperation } from '../types';
+import type { ApiParameter, OperationRow, SpecOperation } from '../types';
 
 const PARSED_JSON = '={{ typeof $value === "string" ? $value.parseJson() : $value }}';
 

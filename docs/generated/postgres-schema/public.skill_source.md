@@ -17,6 +17,7 @@
 | projectId | varchar(36) |  | true |  | [public.project](public.project.md) | The scope: a team or personal project. NULL = Global |
 | status | varchar(32) | 'connected'::character varying | false |  |  | Health of the source, set by the last check |
 | type | varchar(16) |  | false |  |  | Source type, "github". Selects the client |
+| unlinkedSkills | json |  | true |  |  | Unlinked skill keys, content hashes, verdicts, and skipped flags. No content. |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -70,6 +71,7 @@ erDiagram
   varchar_36_ projectId FK
   varchar_32_ status
   varchar_16_ type
+  json unlinkedSkills
   timestamp_3__with_time_zone updatedAt
 }
 "public.user" {
