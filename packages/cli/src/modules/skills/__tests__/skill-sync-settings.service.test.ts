@@ -77,14 +77,12 @@ describe('SkillSyncSettingsService', () => {
 		},
 	);
 
-	it('reads the plan when it loads, so the backend and the UI agree', async () => {
+	it('reads the plan on each call', async () => {
 		const { service, licenseState } = createService();
 		await service.init();
-
-		licenseState.isEnterprisePlan.mockReturnValue(true);
 		expect(service.isEnabled()).toBe(true);
 
-		await service.load();
+		licenseState.isEnterprisePlan.mockReturnValue(true);
 		expect(service.isEnabled()).toBe(false);
 	});
 

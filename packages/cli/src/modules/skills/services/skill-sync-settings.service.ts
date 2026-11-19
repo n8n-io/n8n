@@ -11,8 +11,6 @@ const SKILL_SYNC_ENABLED_KEY = 'skills.skillSync.enabled';
 export class SkillSyncSettingsService {
 	private savedEnabled: boolean | undefined;
 
-	private isEnterprisePlan = false;
-
 	constructor(
 		private readonly loaderConfig: InstanceSettingsLoaderConfig,
 		private readonly licenseState: LicenseState,
@@ -27,7 +25,7 @@ export class SkillSyncSettingsService {
 
 	isEnabled(): boolean {
 		if (this.isManagedByEnv) return this.loaderConfig.skillSyncEnabled;
-		return this.savedEnabled ?? !this.isEnterprisePlan;
+		return this.savedEnabled ?? !this.licenseState.isEnterprisePlan();
 	}
 
 	async init(): Promise<void> {
@@ -36,7 +34,6 @@ export class SkillSyncSettingsService {
 	}
 
 	async load(): Promise<void> {
-		this.isEnterprisePlan = this.licenseState.isEnterprisePlan();
 		const saved = await this.settingsRepository.findByKeyInContext(SKILL_SYNC_ENABLED_KEY, {});
 		this.savedEnabled = saved ? saved.value === 'true' : undefined;
 	}
@@ -48,7 +45,7 @@ export class SkillSyncSettingsService {
 
 	private async keepEnabledIfInUse(): Promise<void> {
 		if (this.isManagedByEnv || this.savedEnabled !== undefined) return;
-		if (!this.isEnterprisePlan) return;
+		if (!this.licenseState.isEnterprisePlan()) return;
 		if (!(await this.sourceRepository.hasAnySource())) return;
 		const saved = await this.txRunner.run(
 			{},
