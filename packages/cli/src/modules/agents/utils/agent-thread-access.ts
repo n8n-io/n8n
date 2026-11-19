@@ -80,23 +80,6 @@ export function canContinueThreadInPreview(
 	);
 }
 
-/**
- * A Public API stop may target a `public_api` session.
- * Preview continuation does not use this check.
- */
-export function canCancelPublicApiThread(
-	thread: AgentExecutionThread,
-	userId: string,
-	source: string | null | undefined,
-	isSystemAgent: boolean,
-): boolean {
-	return (
-		!isSystemAgent &&
-		isOpenChatThread(thread, userId) &&
-		(source?.trim().toLowerCase() ?? '') === 'public_api'
-	);
-}
-
 export function canContinueThreadInN8nChat(
 	thread: AgentExecutionThread,
 	userId: string,

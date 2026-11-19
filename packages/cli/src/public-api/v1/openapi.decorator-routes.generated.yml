@@ -24,6 +24,9 @@ paths:
   /agents/{agentId}/executions/{executionId}/stop:
     post:
       $ref: ./handlers/agents/spec/paths/stopAgentExecution.generated.yml
+  /agents/{agentId}/executions:
+    get:
+      $ref: ./handlers/agents/spec/paths/listAgentExecutions.generated.yml
   /community-packages:
     get:
       $ref: ./handlers/community-packages/spec/paths/getInstalledPackages.generated.yml

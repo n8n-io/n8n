@@ -26,6 +26,7 @@ describe('AgentsPublicController route metadata', () => {
 			'createAgent',
 			'deleteAgent',
 			'getAgent',
+			'listAgentExecutions',
 			'listAgents',
 			'runAgent',
 			'stopAgentExecution',
@@ -133,6 +134,20 @@ describe('AgentsPublicController route metadata', () => {
 		expect(route?.responseDto).toBeDefined();
 		expect(route?.errorResponses?.some((response) => response.status === 404)).toBe(true);
 		expect(route?.errorResponses?.some((response) => response.status === 409)).toBe(true);
+	});
+
+	it('listAgentExecutions requires the agent:read API key scope and project RBAC check', () => {
+		expect(routes.get('listAgentExecutions')?.apiKeyScope).toBe('agent:read');
+		expect(routes.get('listAgentExecutions')?.accessScope).toEqual({
+			scope: 'agent:read',
+			globalOnly: false,
+		});
+		expect(routes.get('listAgentExecutions')?.successStatus).toBe(200);
+		expect(
+			routes
+				.get('listAgentExecutions')
+				?.errorResponses?.some((response) => response.status === 404),
+		).toBe(true);
 	});
 });
 
@@ -678,7 +693,12 @@ describe('AgentsPublicController run and stop', () => {
 		agentPublicRunService.run.mockResolvedValue(body as never);
 
 		await expect(controller.runAgent(req, res, 'agent-1', { message: 'Hi' })).resolves.toBe(body);
-		expect(agentPublicRunService.run).toHaveBeenCalledWith(req.user, 'agent-1', { message: 'Hi' });
+		expect(agentPublicRunService.run).toHaveBeenCalledWith(
+			req.user,
+			'agent-1',
+			{ message: 'Hi' },
+			expect.any(AbortSignal),
+		);
 	});
 
 	it('delegates a stop to the public run service', async () => {
@@ -689,5 +709,29 @@ describe('AgentsPublicController run and stop', () => {
 			body,
 		);
 		expect(agentPublicRunService.stop).toHaveBeenCalledWith(req.user, 'agent-1', 'execution-1');
+	});
+
+	it('delegates an executions list to the public run service and encodes the next cursor', async () => {
+		const row = {
+			executionId: 'execution-1',
+			sessionId: 'session-1',
+			status: 'success' as const,
+			source: 'public_api',
+			createdAt: '2026-11-19T14:00:00.000Z',
+			startedAt: null,
+			stoppedAt: null,
+			usage: { promptTokens: 2, completionTokens: 3, totalTokens: 5, cost: 0.1 },
+		};
+		agentPublicRunService.listExecutions.mockResolvedValue({ count: 1, data: [row] });
+
+		await expect(
+			controller.listAgentExecutions(req, res, 'agent-1', { limit: 100 }),
+		).resolves.toEqual({ data: [row], nextCursor: null });
+		expect(agentPublicRunService.listExecutions).toHaveBeenCalledWith('agent-1', {
+			offset: 0,
+			limit: 100,
+			sessionId: undefined,
+			status: undefined,
+		});
 	});
 });

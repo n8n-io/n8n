@@ -4,9 +4,9 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 
-import type { AgentChatExecutionService } from '../agent-chat-execution.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentPublicRunService } from '../agent-public-run.service';
+import type { AgentSessionStopService } from '../agent-session-stop.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
 import type { AgentsService } from '../agents.service';
 import type { AgentExecution } from '../entities/agent-execution.entity';
@@ -20,14 +20,14 @@ describe('AgentPublicRunService', () => {
 	const credentialsService = mock<CredentialsService>();
 	const executionRepository = mock<AgentExecutionRepository>();
 	const executionService = mock<AgentExecutionService>();
-	const chatExecutionService = mock<AgentChatExecutionService>();
+	const sessionStopService = mock<AgentSessionStopService>();
 	const service = new AgentPublicRunService(
 		agentsService,
 		agentTestRunService,
 		credentialsService,
 		executionRepository,
 		executionService,
-		chatExecutionService,
+		sessionStopService,
 	);
 	const user = { id: 'user-1' } as User;
 
@@ -236,34 +236,29 @@ describe('AgentPublicRunService', () => {
 				executionId: 'execution-1',
 				status: 'success',
 			});
-			expect(chatExecutionService.requestCancel).not.toHaveBeenCalled();
+			expect(sessionStopService.abortExecution).not.toHaveBeenCalled();
 		});
 
-		it('requests cancel for a running run', async () => {
+		it('aborts a running run through the execution controller', async () => {
 			executionRepository.findExecution.mockResolvedValue({
 				threadId: 'thread-1',
 				status: 'running',
 			} as AgentExecution);
 			executionService.findThreadById.mockResolvedValue(thread);
-			chatExecutionService.requestCancel.mockResolvedValue(true);
+			sessionStopService.abortExecution.mockResolvedValue(true);
 
 			await expect(service.stop(user, 'agent-1', 'execution-1')).resolves.toEqual({
 				executionId: 'execution-1',
 				status: 'cancel_requested',
 			});
-			expect(chatExecutionService.requestCancel).toHaveBeenCalledWith(
-				expect.objectContaining({
-					agentId: 'agent-1',
-					executionId: 'execution-1',
-					threadId: 'thread-1',
-					userId: 'user-1',
-					surface: 'preview',
-					allowPublicApiSource: true,
-				}),
+			expect(sessionStopService.abortExecution).toHaveBeenCalledWith(
+				'agent-1',
+				'thread-1',
+				'execution-1',
 			);
 		});
 
-		it('returns the finished status when cancel finds the run already done', async () => {
+		it('returns the finished status when this process cannot abort the run', async () => {
 			executionRepository.findExecution
 				.mockResolvedValueOnce({
 					threadId: 'thread-1',
@@ -274,7 +269,7 @@ describe('AgentPublicRunService', () => {
 					status: 'success',
 				} as AgentExecution);
 			executionService.findThreadById.mockResolvedValue(thread);
-			chatExecutionService.requestCancel.mockResolvedValue(false);
+			sessionStopService.abortExecution.mockResolvedValue(false);
 
 			await expect(service.stop(user, 'agent-1', 'execution-1')).resolves.toEqual({
 				executionId: 'execution-1',
@@ -292,6 +287,66 @@ describe('AgentPublicRunService', () => {
 			} as AgentExecution);
 			executionService.findThreadById.mockResolvedValue({ ...thread, ownerId: 'user-2' });
 			await expect(service.stop(user, 'agent-1', 'execution-1')).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('listExecutions', () => {
+		it('lists the runs of an agent with filters and pagination', async () => {
+			executionRepository.findListForAgent.mockResolvedValue([
+				[
+					{
+						id: 'execution-1',
+						threadId: 'thread-1',
+						status: 'running',
+						source: 'public_api',
+						createdAt: new Date('2026-11-19T14:00:00Z'),
+						startedAt: new Date('2026-11-19T14:00:01Z'),
+						stoppedAt: null,
+						promptTokens: 2,
+						completionTokens: 3,
+						totalTokens: 5,
+						cost: 0.1,
+					} as unknown as AgentExecution,
+				],
+				1,
+			]);
+
+			await expect(
+				service.listExecutions('agent-1', {
+					sessionId: 'thread-1',
+					status: 'running',
+					offset: 0,
+					limit: 100,
+				}),
+			).resolves.toEqual({
+				count: 1,
+				data: [
+					{
+						executionId: 'execution-1',
+						sessionId: 'thread-1',
+						status: 'running',
+						source: 'public_api',
+						createdAt: '2026-11-19T14:00:00.000Z',
+						startedAt: '2026-11-19T14:00:01.000Z',
+						stoppedAt: null,
+						usage: { promptTokens: 2, completionTokens: 3, totalTokens: 5, cost: 0.1 },
+					},
+				],
+			});
+			expect(executionRepository.findListForAgent).toHaveBeenCalledWith(
+				'agent-1',
+				{ sessionId: 'thread-1', status: 'running' },
+				{ offset: 0, limit: 100 },
+			);
+		});
+
+		it('returns 404 for an unknown agent', async () => {
+			agentsService.findById.mockResolvedValue(null);
+
+			await expect(service.listExecutions('missing', { offset: 0, limit: 100 })).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(executionRepository.findListForAgent).not.toHaveBeenCalled();
 		});
 	});
 });

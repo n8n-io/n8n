@@ -23,7 +23,6 @@ import {
 	userIdFromSystemChatMemoryResourceId,
 } from './utils/agent-memory-scope';
 import {
-	canCancelPublicApiThread,
 	canContinueThreadOnSurface,
 	chatSurfaceMemoryResourceId,
 	N8N_CHAT_PRODUCTION_SOURCE,
@@ -260,13 +259,6 @@ export class AgentChatExecutionService {
 				thread.ownerId === context.userId &&
 				source === N8N_CHAT_PRODUCTION_SOURCE
 			);
-		}
-		// The Public API stop path opts in. Preview continuation stays on preview sources.
-		if (
-			context.allowPublicApiSource &&
-			canCancelPublicApiThread(thread, context.userId, source, isSystemAgent)
-		) {
-			return true;
 		}
 		return canContinueThreadOnSurface(
 			context.surface,

@@ -180,4 +180,34 @@ describe('AgentSessionStopService', () => {
 		expect(chatExecutions.cancelProjectSessionWork).toHaveBeenCalledWith(thread.agentId, thread.id);
 		expect(attachments.deleteByIds).not.toHaveBeenCalled();
 	});
+
+	it('aborts one execution on this process without stopping the rest of the session', async () => {
+		await expect(service.abortExecution('agent-1', 'thread-1', 'execution-1')).resolves.toBe(true);
+		expect(executionService.stopExecution).toHaveBeenCalledExactlyOnceWith('execution-1');
+		expect(chatExecutions.stopSessionExecutions).toHaveBeenCalledExactlyOnceWith(
+			'agent-1',
+			'thread-1',
+			['execution-1'],
+		);
+		expect(queue.prepareSessionStop).not.toHaveBeenCalled();
+		expect(publisher.publishCommand).not.toHaveBeenCalled();
+	});
+
+	it('relays one execution when another main may hold it', async () => {
+		config.mode = 'queue';
+		executionService.stopExecution.mockReturnValue(false);
+		await expect(service.abortExecution('agent-1', 'thread-1', 'execution-1')).resolves.toBe(true);
+		expect(chatExecutions.stopSessionExecutions).not.toHaveBeenCalled();
+		expect(publisher.publishCommand).toHaveBeenCalledExactlyOnceWith({
+			command: 'stop-agent-session',
+			payload: { agentId: 'agent-1', threadId: 'thread-1', executionIds: ['execution-1'] },
+		});
+	});
+
+	it('reports that a single process could not abort the execution', async () => {
+		executionService.stopExecution.mockReturnValue(false);
+		await expect(service.abortExecution('agent-1', 'thread-1', 'execution-1')).resolves.toBe(false);
+		expect(publisher.publishCommand).not.toHaveBeenCalled();
+		expect(chatExecutions.stopSessionExecutions).not.toHaveBeenCalled();
+	});
 });

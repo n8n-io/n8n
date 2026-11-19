@@ -379,16 +379,6 @@ it.each(['foreground', 'all'] as const)(
 	},
 );
 
-it('stops a Public API run only when the stop path allows that source', async () => {
-	const { service, repository } = makeService(false);
-	repository.findOneBy.mockResolvedValue({ ...running, source: 'public_api' });
-
-	await expect(service.requestCancel(context)).rejects.toThrow('Execution not found');
-	await expect(service.requestCancel({ ...context, allowPublicApiSource: true })).resolves.toBe(
-		true,
-	);
-});
-
 it('does not let the Preview surface stop a system-agent turn', async () => {
 	const { service, repository, systemAgents } = makeService(false);
 	registerSystemAgent(systemAgents);

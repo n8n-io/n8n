@@ -166,12 +166,6 @@ export type PubSubCommandMap = {
 		/** Older mains read only `productionN8nChat`, so senders set both. */
 		surface?: 'preview' | 'n8n-chat' | 'system';
 		productionN8nChat?: boolean;
-		/**
-		 * Set only by the Public API stop path.
-		 * It lets this cancel target a `public_api` run.
-		 * Older mains ignore this field.
-		 */
-		allowPublicApiSource?: boolean;
 	};
 
 	'cancel-agent-chat-foreground': PubSubCommandMap['cancel-agent-chat-execution'];

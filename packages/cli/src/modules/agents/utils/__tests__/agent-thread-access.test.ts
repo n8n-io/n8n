@@ -1,6 +1,5 @@
 import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
 import {
-	canCancelPublicApiThread,
 	canContinueThreadOnSurface,
 	chatSurfaceForKind,
 	N8N_CHAT_PRODUCTION_SOURCE,
@@ -55,13 +54,6 @@ describe('canContinueThreadOnSurface', () => {
 		expect(canContinueThreadOnSurface('preview', thread, 'user-1', 'public_api', false)).toBe(
 			false,
 		);
-	});
-
-	it('lets the Public API stop path cancel its own session', () => {
-		expect(canCancelPublicApiThread(thread, 'user-1', 'public_api', false)).toBe(true);
-		expect(canCancelPublicApiThread(thread, 'user-1', 'chat', false)).toBe(false);
-		expect(canCancelPublicApiThread(thread, 'user-2', 'public_api', false)).toBe(false);
-		expect(canCancelPublicApiThread(thread, 'user-1', 'public_api', true)).toBe(false);
 	});
 
 	describe('system threads', () => {

@@ -1,12 +1,14 @@
 import {
 	agentExecutionIdParamSchema,
 	agentIdParamSchema,
+	AgentExecutionListPublicDto,
 	AgentListPublicDto,
 	AgentPublicDto,
 	AgentRunPublicDto,
 	CreatedAgentPublicDto,
 	CreateAgentPublicDto,
 	DeletedAgentPublicDto,
+	ListAgentExecutionsPublicQueryDto,
 	ListAgentsPublicQueryDto,
 	RunAgentPublicDto,
 	StoppedAgentExecutionPublicDto,
@@ -36,6 +38,7 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentPublicRunService } from '@/modules/agents/agent-public-run.service';
+import { SESSION_STOPPED_REASON } from '@/modules/agents/agent-session-stop-reason';
 import { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
 import {
 	AgentResponseMapper,
@@ -171,11 +174,22 @@ export class AgentsPublicController {
 	@ApiErrorResponse(422)
 	async runAgent(
 		req: AuthenticatedRequest,
-		_res: Response,
+		res: Response,
 		@Param('agentId', agentIdParamSchema) agentId: string,
 		@Body body: RunAgentPublicDto,
 	): Promise<AgentRunPublicDto> {
-		return await this.agentPublicRunService.run(req.user, agentId, body);
+		// The request is the only handle the caller has until the response.
+		// Close aborts the run. A finished response must not.
+		const abortController = new AbortController();
+		const abortIfDisconnected = () => {
+			if (!res.writableEnded) abortController.abort(SESSION_STOPPED_REASON);
+		};
+		res.on('close', abortIfDisconnected);
+		try {
+			return await this.agentPublicRunService.run(req.user, agentId, body, abortController.signal);
+		} finally {
+			res.off('close', abortIfDisconnected);
+		}
 	}
 
 	@Post('/:agentId/executions/:executionId/stop')
@@ -195,6 +209,39 @@ export class AgentsPublicController {
 		@Param('executionId', agentExecutionIdParamSchema) executionId: string,
 	): Promise<StoppedAgentExecutionPublicDto> {
 		return await this.agentPublicRunService.stop(req.user, agentId, executionId);
+	}
+
+	@Get('/:agentId/executions')
+	@ApiKeyScope('agent:read')
+	@ProjectScope('agent:read')
+	@ApiSummary('List agent executions')
+	@ApiDescription(
+		'List the runs of one agent, newest first. The response is one cursor page: read the next page with the cursor query parameter. ' +
+			'Narrow the list to one session with sessionId, or to one run status with status. ' +
+			'Runs of a sub-agent do not appear in this list.',
+	)
+	@ApiTags(['Agent'])
+	@ApiResponse(200, AgentExecutionListPublicDto)
+	@ApiErrorResponse(404)
+	async listAgentExecutions(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId', agentIdParamSchema) agentId: string,
+		@Query query: ListAgentExecutionsPublicQueryDto,
+	): Promise<AgentExecutionListPublicDto> {
+		const { offset, limit } = resolveOffsetPagination({ cursor: query.cursor, limit: query.limit });
+
+		const { count, data } = await this.agentPublicRunService.listExecutions(agentId, {
+			offset,
+			limit,
+			sessionId: query.sessionId,
+			status: query.status,
+		});
+
+		return {
+			data,
+			nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
+		};
 	}
 
 	@Put('/:agentId')

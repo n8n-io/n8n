@@ -204,6 +204,38 @@ export class StoppedAgentExecutionPublicDto extends Z.class({
 	status: agentRunStatusSchema.or(z.literal('cancel_requested')),
 }) {}
 
+/** Query of the Public API `GET /agents/{agentId}/executions`. Pick `limit` off the schema: `offset` is the decoded cursor field, never a client-facing param. */
+export class ListAgentExecutionsPublicQueryDto extends Z.class({
+	cursor: z.string().optional(),
+	limit: publicApiPaginationSchema.limit,
+	sessionId: z.string().min(1).optional(),
+	status: agentRunStatusSchema.optional(),
+}) {}
+
+/** Row of the Public API `GET /agents/{agentId}/executions` */
+export const agentExecutionPublicItemSchema = z.object({
+	executionId: z.string(),
+	sessionId: z.string(),
+	status: agentRunStatusSchema,
+	source: z.string().nullable(),
+	createdAt: z.string(),
+	startedAt: z.string().nullable(),
+	stoppedAt: z.string().nullable(),
+	usage: z.object({
+		promptTokens: z.number().nullable(),
+		completionTokens: z.number().nullable(),
+		totalTokens: z.number().nullable(),
+		cost: z.number().nullable(),
+	}),
+});
+
+export class AgentExecutionPublicItemDto extends Z.class(agentExecutionPublicItemSchema.shape) {}
+
+export class AgentExecutionListPublicDto extends Z.class({
+	data: z.array(agentExecutionPublicItemSchema),
+	nextCursor: z.string().nullable(),
+}) {}
+
 export class ListAgentSessionsQueryDto extends Z.class({
 	cursor: z.string().optional(),
 	limit: z.string().optional(),
