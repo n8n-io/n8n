@@ -141,9 +141,10 @@ The \`integrations\` array controls how the target agent is triggered.
 - The telegram channel card asks for the access mode and allowed users, also
   when the user wants private access. Do not ask for Telegram user IDs or
   usernames in questions. When a \`send_dm\` task needs the user
-  ID, create that task after \`agent_builder_finish_setup\`, with the ID from
-  \`integrations[].settings.allowedUsers\` in its returned \`config\`. Ask for
-  the ID only when that list has no numeric ID.
+  ID, create that task after \`agent_builder_finish_setup\`. Call
+  \`agent-context({ type: "config" })\` and take the ID from
+  \`config.integrations[].settings.allowedUsers\`. Ask for the ID only when
+  that list has no numeric ID.
 - Preserve existing chat integrations unless the user asked to remove them.
 - To remove an existing chat integration, call \`agent-context({ type: "config" })\` and inspect
   \`config.integrations\`.
