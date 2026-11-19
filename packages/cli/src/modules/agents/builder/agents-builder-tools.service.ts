@@ -1101,25 +1101,38 @@ export class AgentsBuilderToolsService {
 							reason: 'The user cancelled. Nothing was published.',
 						};
 					}
+					let before: Awaited<ReturnType<AgentsService['findById']>>;
 					try {
-						const before = await this.agentsService.findById(agentId, projectId);
-						// The card described one version. If the draft changed while it was open, or the
-						// card's version is unknown, the user has not seen what would go live: ask again.
-						const confirmed = publishContinuationSchema.safeParse(ctx.continuation);
-						if (
-							!confirmed.success ||
-							(versionId ?? before?.versionId ?? null) !== confirmed.data.confirmedVersionId
-						) {
-							return await this.askToPublish(ctx, agentId, projectId, versionId);
-						}
+						before = await this.agentsService.findById(agentId, projectId);
+					} catch (e) {
+						return {
+							ok: false,
+							errors: [{ message: e instanceof Error ? e.message : String(e) }],
+						};
+					}
+					// The card described one version. If the draft changed while it was open, or the
+					// card's version is unknown, the user has not seen what would go live: ask again.
+					// Like the first call, this stays outside the try below.
+					const confirmed = publishContinuationSchema.safeParse(ctx.continuation);
+					if (
+						!confirmed.success ||
+						(versionId ?? before?.versionId ?? null) !== confirmed.data.confirmedVersionId
+					) {
+						return await this.askToPublish(ctx, agentId, projectId, versionId);
+					}
+					try {
 						const beforeActiveVersionId = before?.activeVersionId;
 						const beforeVersionId = before?.versionId;
+						// The revision read with the check: a write after it fails the publish instead
+						// of putting an unseen draft live.
 						const { agent } = await this.agentPublishService.publishAgent(
 							agentId,
 							projectId,
 							user,
 							{ by: 'builder', trigger: 'explicit' },
 							versionId,
+							undefined,
+							before?.revision,
 						);
 						return {
 							ok: true,

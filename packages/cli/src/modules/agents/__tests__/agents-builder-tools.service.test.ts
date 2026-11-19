@@ -3457,13 +3457,44 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
-		it('publishes the version the user confirmed', async () => {
+		it('passes a stale-card suspension through instead of reporting an error', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue({
+				id: agentId,
+				name: 'Support agent',
+				versionId: 'v-draft-2',
+				activeVersionId: null,
+				integrations: [],
+				schema: baseConfig,
+			} as unknown as ProjectAgent);
+			const suspended = new Error('suspended');
+			const suspend = vi.fn(async () => {
+				throw suspended;
+			});
+
+			await expect(
+				getPublishTool(service).handler!(
+					{},
+					{
+						...ctx,
+						suspend,
+						resumeData: { approved: true },
+						continuation: { confirmedVersionId: 'v-draft-1' },
+					},
+				),
+			).rejects.toBe(suspended);
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+		});
+
+		it('publishes the version the user confirmed, at the revision it checked', async () => {
 			const { service, agentsService, agentPublishService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			agentsService.findById.mockResolvedValue({
 				id: agentId,
 				versionId: 'v-draft',
 				activeVersionId: null,
+				revision: 7,
 			} as unknown as ProjectAgent);
 			agentPublishService.publishAgent.mockResolvedValue({
 				agent: { activeVersionId: 'v-draft', versionId: 'v-draft' } as ProjectAgent,
@@ -3474,7 +3505,15 @@ describe('AgentsBuilderToolsService', () => {
 				{ ...ctx, resumeData: { approved: true }, continuation: { confirmedVersionId: 'v-draft' } },
 			);
 
-			expect(agentPublishService.publishAgent).toHaveBeenCalledTimes(1);
+			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				user,
+				{ by: 'builder', trigger: 'explicit' },
+				undefined,
+				undefined,
+				7,
+			);
 			expect(result).toMatchObject({ ok: true, activeVersionId: 'v-draft' });
 		});
 
@@ -3572,6 +3611,8 @@ describe('AgentsBuilderToolsService', () => {
 				user,
 				{ by: 'builder', trigger: 'explicit' },
 				undefined,
+				undefined,
+				undefined,
 			);
 			expect(result).toEqual({
 				ok: true,
@@ -3603,6 +3644,8 @@ describe('AgentsBuilderToolsService', () => {
 				user,
 				{ by: 'builder', trigger: 'explicit' },
 				'v-history',
+				undefined,
+				undefined,
 			);
 			expect(result).toEqual({
 				ok: true,
