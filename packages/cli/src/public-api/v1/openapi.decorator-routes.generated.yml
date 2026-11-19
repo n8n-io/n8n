@@ -387,7 +387,7 @@ paths:
   /skills/{skillId}:
     get:
       $ref: ./handlers/skills/spec/paths/getSkill.generated.yml
-    patch:
+    put:
       $ref: ./handlers/skills/spec/paths/updateSkill.generated.yml
     delete:
       $ref: ./handlers/skills/spec/paths/deleteSkill.generated.yml

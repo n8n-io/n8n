@@ -21,9 +21,9 @@ import {
 	Get,
 	Middleware,
 	Param,
-	Patch,
 	Post,
 	PublicApiController,
+	Put,
 	Query,
 } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
@@ -114,13 +114,14 @@ export class SkillsPublicController {
 		return toSkillPublicDto(await this.skillService.create(req.user, body, 'api'));
 	}
 
-	@Patch('/:skillId')
+	@Put('/:skillId')
 	@ApiKeyScope('skill:update')
 	@ApiSummary('Update a skill')
 	@ApiDescription(
-		'Save the changes as the next version of the skill. Fields you leave out keep their value. ' +
-			'Send the skillHash of the version you read as baseSkillHash: a save based on an older ' +
-			'version fails with 409. Set scope and projectId to move the skill.',
+		'Replace the skill and save it as the next version. Send the whole skill: ' +
+			'the body of the retrieve endpoint is a valid body. Keep the skillHash you read: ' +
+			'a save based on an older version fails with 409. The server ignores id, latestVersion, ' +
+			'createdAt and updatedAt. Change scope and projectId to move the skill.',
 	)
 	@ApiTags(['Skill'])
 	@ApiResponse(200, SkillPublicDto)
@@ -132,7 +133,27 @@ export class SkillsPublicController {
 		@Param('skillId', skillIdParamSchema) skillId: string,
 		@Body body: UpdateSkillPublicDto,
 	): Promise<SkillPublicDto> {
-		await this.skillService.update(req.user, skillId, body, 'api');
+		const current = await this.skillService.get(req.user, skillId);
+		const moves = body.scope !== current.scope || body.projectId !== current.projectId;
+		await this.skillService.update(
+			req.user,
+			skillId,
+			{
+				baseSkillHash: body.skillHash,
+				name: body.name,
+				description: body.description,
+				instructions: body.instructions,
+				references: body.references,
+				...(moves ? { scope: body.scope, projectId: body.projectId ?? undefined } : {}),
+				...(body.availableToAssistant !== current.availableToAssistant
+					? { availableToAssistant: body.availableToAssistant }
+					: {}),
+				...(body.availableToMCP !== current.availableToMCP
+					? { availableToMCP: body.availableToMCP }
+					: {}),
+			},
+			'api',
+		);
 		return toSkillPublicDto(await this.skillService.getAfterWrite(req.user, skillId));
 	}
 

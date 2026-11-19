@@ -29,7 +29,7 @@
 		"POST /skills": {
 			"status": "gap"
 		},
-		"PATCH /skills/{skillId}": {
+		"PUT /skills/{skillId}": {
 			"status": "gap"
 		},
 		"DELETE /skills/{skillId}": {

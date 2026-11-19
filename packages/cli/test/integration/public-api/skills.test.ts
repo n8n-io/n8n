@@ -72,7 +72,7 @@ describe('authentication and gates', () => {
 		{ method: 'get', path: '/skills', scope: 'skill:list' },
 		{ method: 'get', path: '/skills/some-skill', scope: 'skill:read' },
 		{ method: 'post', path: '/skills', scope: 'skill:create' },
-		{ method: 'patch', path: '/skills/some-skill', scope: 'skill:update' },
+		{ method: 'put', path: '/skills/some-skill', scope: 'skill:update' },
 		{ method: 'delete', path: '/skills/some-skill', scope: 'skill:delete' },
 	] as const;
 
@@ -327,17 +327,17 @@ describe('POST /skills', () => {
 	});
 });
 
-describe('PATCH /skills/:skillId', () => {
-	const readHash = async (id: string) =>
-		(await api(owner).get(`/skills/${id}`).expect(200)).body.skillHash as string;
+describe('PUT /skills/:skillId', () => {
+	const readSkill = async (id: string) =>
+		(await api(owner).get(`/skills/${id}`).expect(200)).body as Record<string, unknown>;
 
-	test('saves the next version and returns it', async () => {
+	test('saves a retrieved body with changes as the next version', async () => {
 		const { id } = await createSkill({ projectId: teamProject.id });
-		const baseSkillHash = await readHash(id);
+		const skill = await readSkill(id);
 
 		const response = await api(editor)
-			.patch(`/skills/${id}`)
-			.send({ baseSkillHash, instructions: 'Use plain words.' })
+			.put(`/skills/${id}`)
+			.send({ ...skill, instructions: 'Use plain words.' })
 			.expect(200);
 
 		expect(response.body).toMatchObject({
@@ -346,37 +346,56 @@ describe('PATCH /skills/:skillId', () => {
 			instructions: 'Use plain words.',
 			latestVersion: 2,
 		});
-		expect(response.body.skillHash).not.toBe(baseSkillHash);
+		expect(response.body.skillHash).not.toBe(skill.skillHash);
 		expect(await findLatestSkillVersion(id)).toMatchObject({
 			version: 2,
 			instructions: 'Use plain words.',
 		});
 	});
 
-	test('keeps the references that an update leaves out', async () => {
-		const references = [{ path: 'references/style.md', content: 'Short words.' }];
-		const created = await api(owner)
-			.post('/skills')
-			.send({ scope: 'instance', skill: { ...skillContent, references } })
-			.expect(201);
-		expect(created.body.references).toEqual(references);
+	test('saves no new version for an unchanged retrieved body', async () => {
+		const { id } = await createSkill();
+		const skill = await readSkill(id);
+
+		const response = await api(owner).put(`/skills/${id}`).send(skill).expect(200);
+
+		expect(response.body).toEqual(skill);
+	});
+
+	test('replaces the references with the ones in the body', async () => {
+		const { id } = await createSkill({
+			content: { files: [{ path: 'references/style.md', content: 'Short words.' }] },
+		});
+		const skill = await readSkill(id);
 
 		const response = await api(owner)
-			.patch(`/skills/${created.body.id}`)
-			.send({ baseSkillHash: created.body.skillHash, instructions: 'Use plain words.' })
+			.put(`/skills/${id}`)
+			.send({ ...skill, references: [] })
 			.expect(200);
 
-		expect(response.body).toMatchObject({ instructions: 'Use plain words.', references });
+		expect(response.body.references).toEqual([]);
+		expect(await findLatestSkillVersion(id)).toMatchObject({ files: [] });
+	});
+
+	test('changes the availability without a new version', async () => {
+		const { id } = await createSkill();
+		const skill = await readSkill(id);
+
+		const response = await api(owner)
+			.put(`/skills/${id}`)
+			.send({ ...skill, availableToMCP: true })
+			.expect(200);
+
+		expect(response.body).toMatchObject({ availableToMCP: true, latestVersion: 1 });
 	});
 
 	test('moves a project skill to the instance', async () => {
 		const { id } = await createSkill({ projectId: teamProject.id });
-
-		const baseSkillHash = await readHash(id);
+		const skill = await readSkill(id);
 
 		const response = await api(owner)
-			.patch(`/skills/${id}`)
-			.send({ baseSkillHash, scope: 'instance' })
+			.put(`/skills/${id}`)
+			.send({ ...skill, scope: 'instance', projectId: null })
 			.expect(200);
 
 		expect(response.body).toMatchObject({ scope: 'instance', projectId: null });
@@ -390,11 +409,11 @@ describe('PATCH /skills/:skillId', () => {
 		const otherProject = await createTeamProject('Other', owner);
 		await linkUserToProject(editor, otherProject, createOnlyRole.slug);
 		const { id } = await createSkill({ projectId: teamProject.id });
-		const baseSkillHash = await readHash(id);
+		const skill = await readSkill(id);
 
 		const response = await api(editor)
-			.patch(`/skills/${id}`)
-			.send({ baseSkillHash, scope: 'project', projectId: otherProject.id })
+			.put(`/skills/${id}`)
+			.send({ ...skill, projectId: otherProject.id })
 			.expect(200);
 
 		expect(response.body).toMatchObject({ id, scope: 'project', projectId: otherProject.id });
@@ -405,12 +424,11 @@ describe('PATCH /skills/:skillId', () => {
 		['member outside the project', 404, () => outsider],
 	])('answers %s with %d for a team project skill', async (_role, status, user) => {
 		const { id } = await createSkill({ projectId: teamProject.id });
-
-		const baseSkillHash = await readHash(id);
+		const skill = await readSkill(id);
 
 		await api(user())
-			.patch(`/skills/${id}`)
-			.send({ baseSkillHash, instructions: 'Changed.' })
+			.put(`/skills/${id}`)
+			.send({ ...skill, instructions: 'Changed.' })
 			.expect(status);
 
 		expect(await findLatestSkillVersion(id)).toMatchObject({ version: 1 });
@@ -418,38 +436,54 @@ describe('PATCH /skills/:skillId', () => {
 
 	test('answers 403 when a member updates an instance skill', async () => {
 		const { id } = await createSkill();
-
-		const baseSkillHash = await readHash(id);
+		const skill = await readSkill(id);
 
 		await api(member)
-			.patch(`/skills/${id}`)
-			.send({ baseSkillHash, instructions: 'Changed.' })
+			.put(`/skills/${id}`)
+			.send({ ...skill, instructions: 'Changed.' })
 			.expect(403);
 	});
 
-	test('answers 409 for an outdated base hash', async () => {
+	test('answers 409 for an outdated skill hash', async () => {
 		const { id } = await createSkill();
+		const skill = await readSkill(id);
 
 		await api(owner)
-			.patch(`/skills/${id}`)
-			.send({ baseSkillHash: 'outdated', instructions: 'Changed.' })
+			.put(`/skills/${id}`)
+			.send({ ...skill, skillHash: 'outdated', instructions: 'Changed.' })
 			.expect(409);
 	});
 
 	test.each([
-		['without a base hash', { instructions: 'Changed.' }],
-		['with an unknown field', { baseSkillHash: 'hash', allowedTools: ['x'] }],
-	])('answers 400 %s', async (_case, body) => {
+		[
+			'for a partial body',
+			(skill: Record<string, unknown>) => ({
+				skillHash: skill.skillHash,
+				instructions: 'Changed.',
+			}),
+		],
+		['without a skill hash', ({ skillHash: _, ...skill }: Record<string, unknown>) => skill],
+		[
+			'with an unknown field',
+			(skill: Record<string, unknown>) => ({
+				...skill,
+				allowedTools: ['x'],
+			}),
+		],
+	])('answers 400 %s', async (_case, toBody) => {
 		const { id } = await createSkill();
+		const skill = await readSkill(id);
 
-		await api(owner).patch(`/skills/${id}`).send(body).expect(400);
+		await api(owner).put(`/skills/${id}`).send(toBody(skill)).expect(400);
+
+		expect(await findLatestSkillVersion(id)).toMatchObject({ version: 1 });
 	});
 
 	test('answers 404 for an unknown skill', async () => {
-		await api(owner)
-			.patch('/skills/missing-skill')
-			.send({ baseSkillHash: 'hash', instructions: 'Changed.' })
-			.expect(404);
+		const { id } = await createSkill();
+		const skill = await readSkill(id);
+
+		await api(owner).put('/skills/missing-skill').send(skill).expect(404);
 	});
 });
 

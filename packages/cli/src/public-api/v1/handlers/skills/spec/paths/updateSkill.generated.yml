@@ -3,7 +3,7 @@ tags:
   - Skill
 summary: Update a skill
 description: |-
-  Save the changes as the next version of the skill. Fields you leave out keep their value. Send the skillHash of the version you read as baseSkillHash: a save based on an older version fails with 409. Set scope and projectId to move the skill.
+  Replace the skill and save it as the next version. Send the whole skill: the body of the retrieve endpoint is a valid body. Keep the skillHash you read: a save based on an older version fails with 409. The server ignores id, latestVersion, createdAt and updatedAt. Change scope and projectId to move the skill.
 
   Requires the `skill:update` API key scope.
 x-required-scope: skill:update
@@ -21,8 +21,6 @@ requestBody:
       schema:
         type: object
         properties:
-          availableToAssistant:
-            type: boolean
           name:
             type: string
             minLength: 1
@@ -52,9 +50,6 @@ requestBody:
                 - content
               additionalProperties: false
             maxItems: 20
-          baseSkillHash:
-            type: string
-            minLength: 1
           scope:
             type: string
             enum:
@@ -62,11 +57,33 @@ requestBody:
               - instance
           projectId:
             type: string
+            nullable: true
             maxLength: 36
+          availableToAssistant:
+            type: boolean
           availableToMCP:
             type: boolean
+          skillHash:
+            type: string
+            minLength: 1
+          id:
+            type: string
+          latestVersion:
+            type: number
+          createdAt:
+            type: string
+          updatedAt:
+            type: string
         required:
-          - baseSkillHash
+          - name
+          - description
+          - instructions
+          - references
+          - scope
+          - projectId
+          - availableToAssistant
+          - availableToMCP
+          - skillHash
         additionalProperties: false
 responses:
   '200':

@@ -313,7 +313,24 @@ export class CreateSkillPublicDto extends Z.class(
 	{ strict: true },
 ) {}
 
-export class UpdateSkillPublicDto extends Z.class(SaveSkillDto.schema.shape, { strict: true }) {}
+export class UpdateSkillPublicDto extends Z.class(
+	{
+		name: skillNameSchema,
+		description: agentSkillShape.description,
+		instructions: agentSkillShape.instructions,
+		references: agentSkillShape.references.unwrap(),
+		scope: skillScopeSchema,
+		projectId: z.string().max(36).nullable(),
+		availableToAssistant: z.boolean(),
+		availableToMCP: z.boolean(),
+		skillHash: z.string().min(1),
+		id: z.string().optional(),
+		latestVersion: z.number().optional(),
+		createdAt: z.string().optional(),
+		updatedAt: z.string().optional(),
+	},
+	{ strict: true },
+) {}
 
 export class ListSkillsPublicQueryDto extends Z.class({
 	cursor: z.string().optional(),
