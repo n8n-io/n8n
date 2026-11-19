@@ -146,6 +146,22 @@ function normalizeAppearance(value: unknown): unknown {
 	}
 	return out;
 }
+const RASTER_DATA_URL = /^data:image\/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
+/**
+ * A logo the widget may load: an http(s) URL, or a small raster data URL (what a
+ * browser's "copy image" gives). No SVG: it can carry script.
+ */
+export function isLogoUrl(value: string) {
+	if (RASTER_DATA_URL.test(value))
+		return (value.length - value.indexOf(',') - 1) * 0.75 <= 100 * 1024;
+	if (value.length > 2000 || !/^https?:\/\//i.test(value)) return false;
+	try {
+		new URL(value);
+		return true;
+	} catch {
+		return false;
+	}
+}
 const ColorSetShape = z.object({
 	primaryColor: color,
 	backgroundColor: color,
@@ -163,9 +179,11 @@ const AppearanceShape = z.object({
 	radius: z.number().int().min(0).max(24).optional(),
 	logoUrl: z
 		.string()
-		.url()
-		.max(500)
-		.refine((url) => /^https?:\/\//.test(url), 'Use an http(s) URL')
+		.max(140_000)
+		.refine(
+			isLogoUrl,
+			'Use an https:// image URL, or a PNG, JPEG, GIF or WebP data URL up to 100 KB',
+		)
 		.optional(),
 	colorScheme: z.enum(['light', 'dark', 'auto']).optional(),
 	position: z.enum(['right', 'left']).optional(),

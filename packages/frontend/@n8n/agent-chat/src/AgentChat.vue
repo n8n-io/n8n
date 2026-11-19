@@ -62,11 +62,19 @@ const look = computed<ChatAppearance>(() => ({
 	),
 }));
 const css = computed(() => themeCss(look.value, props.mode, props.preview?.scheme));
+// Same rule as the server: http(s), or a small raster data URL. Never SVG (it can carry script).
+const logo = computed(() => {
+	const url = look.value.logoUrl;
+	if (!url) return undefined;
+	return /^https?:\/\//i.test(url) || /^data:image\/(png|jpeg|gif|webp);base64,/.test(url)
+		? url
+		: undefined;
+});
 const title = computed(() => look.value.title || config.value?.name || 'Agent');
 const welcome = computed(() => look.value.welcomeMessage || config.value?.welcomeMessage);
 const launcherIcon = computed(() => {
 	const icon = look.value.launcherIcon;
-	if (icon === 'logo' && look.value.logoUrl) return undefined;
+	if (icon === 'logo' && logo.value) return undefined;
 	return icon === 'sparkle' ? '✨' : icon === 'help' ? '?' : '💬';
 });
 
@@ -82,6 +90,17 @@ const needsLogin = computed(
 	() => !!config.value && !config.value.methods.anonymous && !config.value.user && !token.value,
 );
 const signedInAs = computed(() => config.value?.user?.name ?? userName.value);
+// Says which identity is in use, so an n8n account that takes over after an invite ends is visible.
+const identityKind = computed(() =>
+	config.value?.user?.kind === 'invite' ? 'invite link' : 'n8n account',
+);
+const inviteEndedText = computed(() => {
+	const ended = config.value?.inviteEnded;
+	if (ended === 'revoked') return 'This invite was revoked. Ask the sender for a new link.';
+	if (ended === 'expired') return 'This invite has expired. Ask the sender for a new link.';
+	if (ended === 'ended') return 'Your invite session ended. Open your invite link again.';
+	return undefined;
+});
 
 function readSession(): { token: string; user: string } | undefined {
 	try {
@@ -427,9 +446,9 @@ function onKeydown(event: KeyboardEvent) {
 		<section v-if="open" class="agent-chat__window" role="dialog" :aria-label="title">
 			<header class="agent-chat__header">
 				<img
-					v-if="look.logoUrl"
+					v-if="logo"
 					class="agent-chat__logo-img"
-					:src="look.logoUrl"
+					:src="logo"
 					alt=""
 					referrerpolicy="no-referrer"
 				/>
@@ -505,6 +524,13 @@ function onKeydown(event: KeyboardEvent) {
 						This chat is not available.
 					</p>
 				</div>
+				<p
+					v-if="inviteEndedText"
+					class="agent-chat__message agent-chat__message--agent agent-chat__message--error"
+					data-testid="agent-chat-invite-ended"
+				>
+					{{ inviteEndedText }}
+				</p>
 				<p v-if="restored" class="agent-chat__note" data-testid="agent-chat-restored">
 					Conversation restored after reload ({{ restored }} messages)
 				</p>
@@ -540,7 +566,7 @@ function onKeydown(event: KeyboardEvent) {
 				class="agent-chat__identity"
 				data-testid="agent-chat-identity"
 			>
-				Chatting as {{ signedInAs }}
+				Chatting as {{ signedInAs }} · {{ identityKind }}
 				<button
 					v-if="token || config?.user?.kind === 'invite'"
 					class="agent-chat__link"
@@ -654,7 +680,7 @@ function onKeydown(event: KeyboardEvent) {
 			<img
 				v-else
 				class="agent-chat__launcher-img"
-				:src="look.logoUrl"
+				:src="logo"
 				alt=""
 				referrerpolicy="no-referrer"
 			/>

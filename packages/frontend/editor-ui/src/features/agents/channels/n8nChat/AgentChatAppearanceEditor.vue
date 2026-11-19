@@ -477,6 +477,10 @@ onBeforeUnmount(() => widget?.unmount());
 								data-testid="appearance-logoUrl"
 								@update:model-value="(v: string) => set('logoUrl', v.trim())"
 							/>
+							<N8nText size="xsmall" color="text-light">
+								An https:// image URL, or a copied PNG, JPEG, GIF or WebP image (data URL, up to 100
+								KB). No SVG.
+							</N8nText>
 						</label>
 					</section>
 

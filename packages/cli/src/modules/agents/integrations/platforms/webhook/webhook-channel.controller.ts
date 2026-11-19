@@ -124,8 +124,11 @@ export class WebhookChannelController {
 		const chatUrl = `${this.urlService.getAgentWebhookUrl(page.agent.id)}/${page.name}`;
 		const user = await this.chatUser(req, page.name);
 		const external = page.name === 'n8n-chat';
+		const inviteEnded = await this.endedInvite(req, res, page.agent.id, page.name);
 		res.json({
 			name: page.agent.name,
+			// This browser's invite session no longer works: the page says why ("revoked", "expired").
+			...(inviteEnded ? { inviteEnded } : {}),
 			methods: page.surface.methods,
 			// The owner's look for this chat. The widget applies it; data-* attributes on the snippet win.
 			appearance:
@@ -387,9 +390,10 @@ export class WebhookChannelController {
 			sameSite: 'lax',
 			secure: globalConfig.auth.cookie.secure,
 			path: chatCookiePath(agent.id, name),
-			// A link without expiry keeps the session until revoke or logout (browsers cap cookies at 400 days).
+			// The server checks expiry on every request. The cookie lives a day longer, so the page can
+			// say "This invite has expired". No expiry: until revoke or logout (browsers cap at 400 days).
 			maxAge: result.invite.expiresAt
-				? Date.parse(result.invite.expiresAt) - Date.now()
+				? Date.parse(result.invite.expiresAt) - Date.now() + 24 * 60 * 60 * 1000
 				: 400 * 24 * 60 * 60 * 1000,
 		});
 		res.json({ user: { name: result.invite.label, kind: 'invite' } });
@@ -478,6 +482,28 @@ export class WebhookChannelController {
 			if (invited) return invited;
 		}
 		return methods.n8nUsers ? await this.cookieUser(req) : undefined;
+	}
+
+	/**
+	 * An invite session cookie that no longer works (revoked, expired, method off): clear it
+	 * and return why, so the page does not silently fall back to another identity.
+	 */
+	private async endedInvite(
+		req: Request,
+		res: Response,
+		agentId: string,
+		surface: ChatSurfaceName,
+	): Promise<'revoked' | 'expired' | 'ended' | undefined> {
+		const session = isSameOriginChatCall(req) ? readCookie(req, SESSION_COOKIE) : undefined;
+		if (!session) return undefined;
+		const { methods, revokedBefore = {} } = await this.webhookChannel.chatSurface(agentId, surface);
+		const state = methods.magicLinks
+			? await this.invites.sessionState(agentId, surface, session, revokedBefore.magicLinks ?? 0)
+			: { ended: 'ended' as const };
+		if ('user' in state) return undefined;
+		await this.invites.endSession(session);
+		res.clearCookie(SESSION_COOKIE, { path: chatCookiePath(agentId, surface) });
+		return state.ended;
 	}
 
 	private async cookieUser(req: Request): Promise<ChatPageUser | undefined> {

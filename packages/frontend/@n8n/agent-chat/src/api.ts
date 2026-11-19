@@ -75,6 +75,8 @@ export interface ChatConfig {
 	appearance?: ChatAppearance;
 	methods: { n8nUsers: boolean; magicLinks: boolean; anonymous: boolean };
 	user: { name: string; kind?: 'n8n-user' | 'invite' } | null;
+	/** This browser's invite session no longer works, and why. */
+	inviteEnded?: 'revoked' | 'expired' | 'ended';
 	variant?: 'webhook' | 'n8n-chat';
 	features?: {
 		history: boolean;

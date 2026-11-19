@@ -133,16 +133,32 @@ export class ChatPageInviteService {
 		session: string,
 		notBefore = 0,
 	): Promise<ChatPageUser | undefined> {
+		const state = await this.sessionState(agentId, surface, session, notBefore);
+		return 'user' in state ? state.user : undefined;
+	}
+
+	/**
+	 * Why a session no longer works, so the page can say so: the invite was revoked,
+	 * it expired, or the session ended otherwise (method turned off, unknown session).
+	 */
+	async sessionState(
+		agentId: string,
+		surface: ChatSurfaceName,
+		session: string,
+		notBefore = 0,
+	): Promise<{ user: ChatPageUser } | { ended: 'revoked' | 'expired' | 'ended' }> {
 		const row = await this.settingsRepository.findByKey(`agentChatSession.${sha256(session)}`);
-		if (!row) return undefined;
+		if (!row) return { ended: 'ended' };
 		const entry = JSON.parse(row.value) as { scope: string; inviteId: string; issuedAt?: number };
-		if (entry.scope !== scopeOf(agentId, surface) || (entry.issuedAt ?? 0) <= notBefore)
-			return undefined;
+		if (entry.scope !== scopeOf(agentId, surface)) return { ended: 'ended' };
 		const invite = (await this.list(agentId, surface)).find(
 			(candidate) => candidate.id === entry.inviteId,
 		);
-		if (!invite || typeof this.state(invite) === 'string') return undefined;
-		return { key: `invite-${invite.id}`, kind: 'invite', name: invite.label };
+		const state = invite ? this.state(invite) : 'invite_invalid';
+		if (state === 'invite_revoked') return { ended: 'revoked' };
+		if (state === 'invite_expired') return { ended: 'expired' };
+		if (typeof state === 'string' || (entry.issuedAt ?? 0) <= notBefore) return { ended: 'ended' };
+		return { user: { key: `invite-${state.id}`, kind: 'invite', name: state.label } };
 	}
 
 	async endSession(session: string) {
