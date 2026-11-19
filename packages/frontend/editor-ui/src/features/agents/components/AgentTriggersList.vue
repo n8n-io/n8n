@@ -2,6 +2,7 @@
 import type { AgentConfigValidationIssue, AgentJsonTaskConfig } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nSwitch2, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useAgentTasks, type AgentTaskRow } from '../composables/useAgentTasks';
 import { describeSchedule, summarizeSchedule } from '../utils/scheduleBuilder';
 import type { AgentTriggerChannelItem } from './AgentTriggersList.types';
@@ -43,6 +44,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const rootStore = useRootStore();
 
 const { taskRows, taskErrorMessage, removingTaskId, toggleTask, reloadTasks } = useAgentTasks({
 	projectId: () => props.projectId,
@@ -88,6 +90,16 @@ function scheduleTitle(task: AgentTaskRow) {
 		});
 	}
 	return describeSchedule(task.cronExpression) ?? task.name;
+}
+
+/**
+ * Names the timezone the cron runs in, so the time in the title is not read in
+ * the viewer's zone. Tasks without a timezone run on the instance timezone.
+ */
+function scheduleSource(task: AgentTaskRow) {
+	return i18n.baseText('agents.builder.triggers.schedule.sourceWithTimezone', {
+		interpolate: { timezone: task.timezone ?? rootStore.timezone },
+	});
 }
 
 defineExpose({ reloadTasks });
@@ -180,7 +192,7 @@ defineExpose({ reloadTasks });
 							{{ scheduleTitle(task) }}
 						</N8nText>
 						<N8nText :class="$style.source" size="medium" bold color="text-light">
-							{{ i18n.baseText('agents.builder.triggers.schedule.source') }}
+							{{ scheduleSource(task) }}
 						</N8nText>
 					</span>
 					<N8nTooltip v-if="task.enabled && task.invalid" placement="top">

@@ -10688,7 +10688,7 @@
 	"agents.builder.triggers.channel.mention.botInWorkspace": "Mention {'@'}{bot} in {workspace}",
 	"agents.builder.triggers.channel.mention.botInServers": "Mention {'@'}{bot} in {count} servers",
 	"agents.builder.triggers.channel.mention.botInManyServers": "Mention {'@'}{bot} in {count}+ servers",
-	"agents.builder.triggers.schedule.source": "on a schedule",
+	"agents.builder.triggers.schedule.sourceWithTimezone": "on a schedule ({timezone})",
 	"agents.builder.triggers.schedule.hourly": "Every hour",
 	"agents.builder.triggers.schedule.hourlyAtMinute": "Every hour at minute {minute}",
 	"agents.builder.triggers.schedule.daily": "Every day at {time}",
