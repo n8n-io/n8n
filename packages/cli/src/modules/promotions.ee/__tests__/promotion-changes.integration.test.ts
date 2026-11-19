@@ -183,13 +183,7 @@ async function exportPreviewBaseline(environment: PromotionEnvironment, owner: U
 
 /** The source a preview reports for an environment created by `createInstanceEnvironments`. */
 function sourceOf(environment: PromotionEnvironment) {
-	return {
-		environmentId: environment.id,
-		environmentName: environment.name,
-		providerType: 'git',
-		branchName: 'main',
-		...(environment.direction === 'promote' ? { createBranchOnPromotion: false } : {}),
-	};
+	return { environmentId: environment.id, branchName: 'main' };
 }
 
 /** The resources that the operation changes. Unchanged resources only give context. */
@@ -319,9 +313,11 @@ it("previews against the project's environment, not the instance one", async () 
 		.expect(200);
 	expect(linkedPreview.body.source).toEqual({
 		environmentId: projectPromote.id,
-		environmentName: 'Project',
-		providerType: 'git',
 		branchName: 'production',
+	});
+	expect(linkedPreview.body.environment).toEqual({
+		name: 'Project',
+		providerType: 'git',
 		createBranchOnPromotion: false,
 	});
 	const otherPreview = await agent

@@ -35,12 +35,8 @@ const resource = (overrides: Partial<Resource> & Pick<Resource, 'key' | 'type'>)
 
 const PREVIEW: PromotionPreview = {
 	commitSha: 'abc123',
-	source: {
-		environmentId: 'env-1',
-		environmentName: 'Production',
-		providerType: 'git',
-		branchName: 'main',
-	},
+	source: { environmentId: 'env-1', branchName: 'main' },
+	environment: { name: 'Production', providerType: 'git' },
 	revision: 'e'.repeat(64),
 	resources: [
 		resource({ key: 'project:proj-1', type: 'project', parentKey: null }),

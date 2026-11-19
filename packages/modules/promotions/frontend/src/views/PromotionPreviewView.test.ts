@@ -147,13 +147,8 @@ const previewWithCheck = ({ environmentId, git, ...previewCheck } = check()) => 
 });
 
 // Apply names the source of the preview it shows.
-const { environmentId: sourceEnvironmentId, branchName: sourceBranchName } =
-	billingPreview().source;
-const expectedSource = {
-	environmentId: sourceEnvironmentId,
-	branchName: sourceBranchName,
-	commitSha: COMMIT_SHA,
-};
+const expectedSource = { ...billingPreview().source, commitSha: COMMIT_SHA };
+const sourceEnvironmentId = expectedSource.environmentId;
 
 async function renderApply() {
 	return await render('/projects/p1/promotions/apply', 'apply');
@@ -300,7 +295,7 @@ describe('PromotionPreviewView', () => {
 			const preview = billingPreview();
 			vi.mocked(api.getPromotionPreview).mockResolvedValue({
 				...preview,
-				source: { ...preview.source, environmentName },
+				environment: { ...preview.environment, name: environmentName },
 				resources: preview.resources.map((resource) =>
 					resource.key === 'project:p1' ? { ...resource, name: project } : resource,
 				),
@@ -487,14 +482,37 @@ describe('PromotionPreviewView', () => {
 		expect(scrollIntoView).toHaveBeenCalledTimes(2);
 	});
 
-	it('should explain that the direction is not set up when the project has no environment for it', async () => {
-		vi.mocked(api.getPromotionPreview).mockRejectedValueOnce(
-			new ResponseError('No promote promotion environment is configured', { httpStatusCode: 404 }),
-		);
+	it.each([
+		{
+			name: 'the project has no environment for it',
+			heading: "Promote isn't set up",
+			open: async () => {
+				vi.mocked(api.getPromotionPreview).mockRejectedValueOnce(
+					new ResponseError('No promote promotion environment is configured', {
+						httpStatusCode: 404,
+					}),
+				);
+				return await render();
+			},
+		},
+		{
+			name: 'the instance has no Apply environment for a whole-instance Apply',
+			heading: "Apply isn't set up",
+			open: async () => {
+				vi.mocked(settingsApi.fetchPromotionEnvironments).mockResolvedValue([]);
+				await router.push('/promotions/apply');
+				const result = renderComponent({
+					pinia: createTestingPinia(),
+					props: { direction: 'apply' },
+				});
+				await waitAllPromises();
+				return result;
+			},
+		},
+	])('should explain that the direction is not set up when $name', async ({ heading, open }) => {
+		const { getByTestId } = await open();
 
-		const { getByTestId } = await render();
-
-		expect(getByTestId('promotion-preview-disconnected')).toHaveTextContent("Promote isn't set up");
+		expect(getByTestId('promotion-preview-disconnected')).toHaveTextContent(heading);
 	});
 
 	it.each([
@@ -694,7 +712,7 @@ describe('PromotionPreviewView', () => {
 		expect(getByTestId('promote-commit-message')).toHaveValue('Route leads by region');
 	});
 
-	it('should clear the typed commit message when the project changes', async () => {
+	it('should close the promote dialog and clear the typed commit message when the project changes', async () => {
 		// The project change mounts the cards again. One workflow keeps this case focused.
 		vi.mocked(api.getPromotionPreview).mockResolvedValue(
 			billingPreview({
@@ -714,9 +732,15 @@ describe('PromotionPreviewView', () => {
 			expectedPreviewRevision: REVISION,
 		});
 
+		// The dialog is still open when the user lands on the preview of another project.
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+		expect(getByTestId('promote-commit-message')).toHaveValue('Route leads by region');
+
 		await rerender({ projectId: 'p2', direction: 'promote' });
 		await waitAllPromises();
 		expect(api.getPromotionPreview).toHaveBeenLastCalledWith(expect.anything(), 'p2', 'promote');
+		// It stays closed, so its Confirm cannot promote the other project.
+		expect(queryByTestId('promote-selection-dialog')).not.toBeInTheDocument();
 		await userEvent.click(getByTestId('promotion-preview-submit'));
 
 		expect(getByTestId('promote-commit-message')).toHaveValue('');
@@ -726,7 +750,8 @@ describe('PromotionPreviewView', () => {
 		const preview = billingPreview();
 		vi.mocked(api.getPromotionPreview).mockResolvedValue({
 			...preview,
-			source: { ...preview.source, branchName: 'release', createBranchOnPromotion: false },
+			source: { ...preview.source, branchName: 'release' },
+			environment: { ...preview.environment, createBranchOnPromotion: false },
 		});
 		const { getByTestId, queryByTestId } = await render();
 		await userEvent.click(getByTestId('promotion-preview-submit'));

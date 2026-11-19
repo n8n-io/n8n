@@ -15,6 +15,7 @@ import {
 	blobsByPath,
 	buildPreview,
 	parsePackageManifest,
+	previewEnvironment,
 	previewRevision,
 	previewSource,
 	scopeManifestToProject,
@@ -57,6 +58,7 @@ export class PromotePreviewService {
 			return {
 				commitSha: null,
 				source,
+				environment: previewEnvironment(input),
 				resources: [],
 				dependencies: [],
 				blocker,
@@ -90,6 +92,7 @@ export class PromotePreviewService {
 		return {
 			commitSha: branch.commitSha,
 			source,
+			environment: previewEnvironment(branch.input),
 			resources,
 			dependencies,
 			revision: previewRevision({ source, resources }),

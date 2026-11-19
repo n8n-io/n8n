@@ -73,13 +73,8 @@ describe('PromotionChangeService.getPreview review gate', () => {
 
 		expect(preview).toEqual({
 			commitSha: null,
-			source: {
-				environmentId: 'env-1',
-				environmentName: 'Staging',
-				providerType: 'gitlab',
-				branchName: 'staging',
-				createBranchOnPromotion: true,
-			},
+			source: { environmentId: 'env-1', branchName: 'staging' },
+			environment: { name: 'Staging', providerType: 'gitlab', createBranchOnPromotion: true },
 			resources: [],
 			dependencies: [],
 			blocker: { code: 'reviewOpen', reviewId: 'review-1' },
