@@ -337,9 +337,6 @@ pub const LoadedModule = struct {
     /// would outgrow at once (a grow compacts and copies the region). It
     /// changes only when regions grow, not what executions compute.
     start_class: u8 = 0,
-    /// The slot of `wf_creds` for this workflow, or `0xFFFF_FFFF` when not
-    /// cached. Set by the shell; never read in the core.
-    wf_creds_slot: u32 = 0xFFFF_FFFF,
 
     pub fn workflowId(lm: *const LoadedModule) []const u8 {
         return lm.wf_id[0..lm.wf_id_len];
@@ -788,7 +785,7 @@ pub const State = struct {
         const slot = s.by_exec.get(exec_id) orelse return null;
         const p = s.pending.get(.{ .exec_id = exec_id, .seq = seq }) orelse return null;
         // The args of these kinds are the payload of their dispatch.
-        if (p.kind != .http and p.kind != .service) return null;
+        if (p.kind != .http and p.kind != .service and p.kind != .sql and p.kind != .smtp) return null;
         var vm = vmFor(s, slot, scratch);
         const fi = interp.fibreForEffect(&vm, seq) orelse return null;
         const req = interp.pendingEffect(&vm, fi);

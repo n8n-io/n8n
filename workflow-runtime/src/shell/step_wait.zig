@@ -1,7 +1,8 @@
 //! Steps that wait for a row of a bounded table or for a large buffer: an
 //! outbound request (`--egress-max-requests`, `--egress-big-slots`), a
-//! service call (`--max-service-calls`) or a credential renewal
-//! (`--max-renewals`). A step that finds its table full waits here, in
+//! service call (`--max-service-calls`), a credential renewal
+//! (`--max-renewals`), a SQL call (`--sql-max-requests`) or an SMTP call
+//! (`--smtp-max-requests`). A step that finds its table full waits here, in
 //! arrival order, and starts when a row is free (back-pressure: a full table
 //! delays a step, it does not fail it). The shell keeps no copy of the args
 //! of the step: the core gives them again (`State.pendingDispatch`).
@@ -19,13 +20,17 @@ pub const Kind = enum(u8) {
     /// A row of the table of credential renewals. `Step.aux` is the status
     /// of the response that asked for the renewal.
     renewal,
+    /// A row of a SQL client of the `sql` effect.
+    sql,
+    /// A row of the SMTP client of the `smtp` effect.
+    smtp,
 };
 
-/// The count of kinds: `renewal` is the last one.
-pub const kinds = 4;
+/// The count of kinds: `smtp` is the last one.
+pub const kinds = 6;
 
 comptime {
-    std.debug.assert(@backingInt(Kind.renewal) == kinds - 1);
+    std.debug.assert(@backingInt(Kind.smtp) == kinds - 1);
 }
 
 pub const Step = struct {

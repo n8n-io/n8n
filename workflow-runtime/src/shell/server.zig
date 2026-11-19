@@ -17,8 +17,6 @@ const pg = @import("pg.zig");
 const smtp = @import("smtp.zig");
 const my = @import("my.zig");
 const tds_client = @import("ms.zig");
-const ms_call = @import("ms_call.zig");
-const my_call = @import("my_call.zig");
 const creds = @import("creds.zig");
 const admin = @import("admin.zig");
 const renew = @import("renew.zig");
@@ -29,6 +27,7 @@ const blob_store = @import("blob_store.zig");
 const fbf = @import("fallback_frames.zig");
 const outbox = @import("outbox.zig");
 const programs = @import("programs.zig");
+const effect_driver = @import("effect_driver.zig");
 
 /// The largest stored file that a binary reply reads.
 const binary_reply_limit: usize = 64 << 20;
@@ -442,17 +441,17 @@ const Kind = enum(u8) {
     /// A file operation of the binary data store (`blob_store.zig`).
     ring_file = 12,
     /// A connection and a name lookup of the PostgreSQL client (`pg.zig`).
-    sql = 13,
-    sql_dns = 14,
+    sql = effect_driver.kind_sql,
+    sql_dns = effect_driver.kind_sql_dns,
     /// A connection and a name lookup of the MySQL client (`my.zig`).
-    mysql = 16,
-    mysql_dns = 17,
+    mysql = effect_driver.kind_mysql,
+    mysql_dns = effect_driver.kind_mysql_dns,
     /// A connection and a name lookup of the SMTP client (`smtp.zig`).
-    smtp = 19,
-    smtp_dns = 20,
+    smtp = effect_driver.kind_smtp,
+    smtp_dns = effect_driver.kind_smtp_dns,
     /// A connection and a name lookup of the SQL Server client (`ms.zig`).
-    mssql = 21,
-    mssql_dns = 22,
+    mssql = effect_driver.kind_mssql,
+    mssql_dns = effect_driver.kind_mssql_dns,
     /// The log writer synced or made room (`logoff.zig`).
     log_wake = 18,
 };
@@ -834,6 +833,9 @@ pub const Runner = struct {
     /// Credentials of each workflow, by workflow id. In memory only: they
     /// never go into a load event, so never into the log.
     wf_creds: []WfCreds = &.{},
+    /// The slot of `wf_creds` for each module slot, or `0xFFFF_FFFF` when
+    /// not cached. Set and read only by the shell.
+    wf_creds_slots: []u32 = &.{},
     wf_pool: ?creds.Pool = null,
     global_pool: ?creds.Pool = null,
     /// Requests that can get a credential renewal (with the admin API).
@@ -997,16 +999,7 @@ pub const Runner = struct {
         ecfg.blobs = r.blobs;
         ecfg.max_uploads = opts.binary_max_transfers;
         try r.egress.init(gpa, ecfg, .{ .ctx = r, .done = egressDone, .stored = egressStored }, &r.poller, @backingInt(Kind.egress), @backingInt(Kind.dns));
-        r.sql = try gpa.create(pg.Client);
-        var scfg = opts.sql;
-        scfg.insecure_tls = opts.insecure_tls;
-        scfg.ca_file = opts.ca_file;
-        scfg.dns_servers = opts.gym_dns;
-        try r.sql.init(gpa, scfg, &r.poller, @backingInt(Kind.sql), @backingInt(Kind.sql_dns));
-        try r.startMysql(gpa, scfg);
-        try r.startMssql(gpa, scfg);
-        r.mail = null;
-        if (opts.smtp_native) try r.startSmtp(gpa);
+        try effect_driver.initAll(r, gpa);
         // Virtual memory: pages are used only as large frames come and go.
         // Without --fallback the shard keeps no host buffers.
         r.fb_conns = try gpa.alloc(FbConn, if (opts.fallback != null) fbf.max_conns else 0);
@@ -1036,6 +1029,8 @@ pub const Runner = struct {
         r.fb_serve = 0;
         r.fb_up_at = sys.nowMs();
         const nmod = r.sh.st.modules.len;
+        r.wf_creds_slots = try gpa.alloc(u32, nmod);
+        @memset(r.wf_creds_slots, 0xFFFF_FFFF);
         r.fb_wf_head = try gpa.alloc(u32, nmod);
         r.fb_wf_tail = try gpa.alloc(u32, nmod);
         r.fb_wf_list = try gpa.alloc(u32, nmod);
@@ -1188,10 +1183,8 @@ pub const Runner = struct {
         if (r.svc) |*t| t.deinit();
         if (r.renewals) |*t| t.deinit();
         r.egress.deinit();
-        r.sql.deinit();
-        r.mysql.deinit();
-        r.mssql.deinit();
-        if (r.mail) |m| m.deinit();
+        effect_driver.deinitAll(r);
+        r.gpa.free(r.wf_creds_slots);
         if (r.blobs) |b| b.deinit();
         if (r.ring) |ring| ring.deinit(r.ring_fba.allocator());
         r.poller.deinit();
@@ -1302,7 +1295,7 @@ pub const Runner = struct {
         var next_timer: ?i64 = r.start_out.next_timer_ms;
         while (!r.stop.load(.monotonic)) {
             var timeout: i32 = 50;
-            if (has_ready or r.events.items.len > 0 or r.sh.wakes.items.len > 0 or r.nlost > 0 or r.egress.hasWork() or r.sql.hasWork() or r.mysql.hasWork() or r.mssql.hasWork() or r.smtpHasWork()) timeout = 0;
+            if (has_ready or r.events.items.len > 0 or r.sh.wakes.items.len > 0 or r.nlost > 0 or r.egress.hasWork() or effect_driver.hasWork(r)) timeout = 0;
             // The stream has durable lines that one pass did not send.
             if (r.stream_more or r.renewalsPending()) timeout = 0;
             // A stored response has a result that found no room.
@@ -1330,11 +1323,8 @@ pub const Runner = struct {
             r.egress.afterEvents(now);
             if (r.opts.stats and now - r.egress_stats_ms >= egress_stats_gap_ms) r.publishClassStats();
             if (r.opts.stats and now - r.egress_stats_ms >= egress_stats_gap_ms) r.publishEgressStats(now);
-            r.sql.afterEvents(now);
-            r.mysql.afterEvents(now);
-            r.mssql.afterEvents(now);
-            r.drainSql();
-            r.pumpSmtp(now);
+            effect_driver.tickAll(r, now);
+            effect_driver.drainAll(r);
             r.drainEgressLost();
             r.drainStored(now);
             r.serviceFallback(now);
@@ -1399,6 +1389,7 @@ pub const Runner = struct {
         const kind: Kind = @fromBackingInt(@intCast(@as(u8, @intCast(ev.token >> 56))));
         const idx: u32 = @truncate(ev.token);
         const gen: u32 = @truncate((ev.token >> 32) & 0xFFFFFF);
+        if (effect_driver.handleToken(r, @backingInt(kind), idx, gen, ev, sys.nowMs())) return;
         switch (kind) {
             .listener => r.acceptAll(),
             .conn => {
@@ -1412,14 +1403,6 @@ pub const Runner = struct {
             },
             .egress => r.egress.onConn(idx, gen, ev, sys.nowMs()),
             .dns => r.egress.onDns(@intCast(idx), ev),
-            .sql => r.sql.onConn(idx, gen, ev, sys.nowMs()),
-            .sql_dns => r.sql.onDns(@intCast(idx), ev),
-            .mysql => r.mysql.onConn(idx, gen, ev, sys.nowMs()),
-            .mysql_dns => r.mysql.onDns(@intCast(idx), ev),
-            .mssql => r.mssql.onConn(idx, gen, ev, sys.nowMs()),
-            .mssql_dns => r.mssql.onDns(@intCast(idx), ev),
-            .smtp => if (r.mail) |m| m.onConn(idx, gen, ev, sys.nowMs()),
-            .smtp_dns => if (r.mail) |m| m.onDns(@intCast(idx), ev),
             .fallback => {
                 if (idx >= r.fb_conns.len) return;
                 const c = &r.fb_conns[idx];
@@ -1438,6 +1421,8 @@ pub const Runner = struct {
                 if (ev.readable) r.readAdmin(idx);
             }, // Ring completions never come through epoll.
             .ring_accept, .ring_recv, .ring_send, .ring_epoll, .ring_file => unreachable,
+            // effect_driver.handleToken took these kinds above.
+            .sql, .sql_dns, .mysql, .mysql_dns, .mssql, .mssql_dns, .smtp, .smtp_dns => unreachable,
         }
     }
 
@@ -2130,118 +2115,24 @@ pub const Runner = struct {
         }
     }
 
-    // ---- PostgreSQL and MySQL (pg.zig, my.zig, spec 9.10) ---------------------------
+    // ---- SQL and SMTP effects (pg.zig, my.zig, ms.zig, smtp.zig) --------------
 
-    /// The MySQL client has the limits of the PostgreSQL client (the `--sql-*` flags).
-    fn startMysql(r: *Runner, gpa: std.mem.Allocator, scfg: pg.Config) !void {
-        r.mysql = try gpa.create(my.Client);
-        const mcfg: my.Config = .{
-            .max_reqs = scfg.max_reqs,
-            .max_conns = scfg.max_conns,
-            .pool_conns = scfg.pool_conns,
-            .max_pools = scfg.max_pools,
-            .max_result = scfg.max_result,
-            .max_request = scfg.max_request,
-            .max_statements = scfg.max_statements,
-            .idle_ms = scfg.idle_ms,
-            .total_ms = scfg.total_ms,
-            .insecure_tls = scfg.insecure_tls,
-            .ca_file = scfg.ca_file,
-            .dns_servers = scfg.dns_servers,
-            .credentials = scfg.credentials,
-        };
-        try r.mysql.init(gpa, mcfg, &r.poller, @backingInt(Kind.mysql), @backingInt(Kind.mysql_dns));
-    }
-
-    /// The SQL Server client has the limits of the PostgreSQL client (the `--sql-*` flags).
-    /// Its time limits to connect and for a statement come from the credential.
-    fn startMssql(r: *Runner, gpa: std.mem.Allocator, scfg: pg.Config) !void {
-        r.mssql = try gpa.create(tds_client.Client);
-        const mcfg: tds_client.Config = .{
-            .max_reqs = scfg.max_reqs,
-            .max_conns = scfg.max_conns,
-            .pool_conns = scfg.pool_conns,
-            .max_pools = scfg.max_pools,
-            .max_result = scfg.max_result,
-            .max_request = scfg.max_request,
-            .max_statements = scfg.max_statements,
-            .idle_ms = scfg.idle_ms,
-            .total_ms = scfg.total_ms,
-            .insecure_tls = scfg.insecure_tls,
-            .ca_file = scfg.ca_file,
-            .dns_servers = scfg.dns_servers,
-            .credentials = scfg.credentials,
-        };
-        try r.mssql.init(gpa, mcfg, &r.poller, @backingInt(Kind.mssql), @backingInt(Kind.mssql_dns));
-    }
-
-    // ---- SMTP (smtp.zig) -------------------------------------------------------------
-
-    fn startSmtp(r: *Runner, gpa: std.mem.Allocator) !void {
-        const m = try gpa.create(smtp.Client);
-        var cfg = r.opts.smtp;
-        cfg.insecure_tls = r.opts.insecure_tls;
-        cfg.ca_file = r.opts.ca_file;
-        cfg.dns_servers = r.opts.gym_dns;
-        try m.init(gpa, cfg, &r.poller, @backingInt(Kind.smtp), @backingInt(Kind.smtp_dns));
-        r.mail = m;
+    /// The `dialect` of the call selects the SQL client.
+    fn startSql(r: *Runner, a: core.Action) void {
+        const store = r.credsFor(a.module);
+        const now = sys.nowMs();
+        const driver = effect_driver.driverForSql(a.payload);
+        if (driver == .mysql and !r.opts.sql_mysql) return r.effectError(a.exec_id, a.seq, "sql: the native MySQL client is not on in this build (limit: sql-host)");
+        if (driver == .mssql and !r.opts.sql_mssql) return r.effectError(a.exec_id, a.seq, "sql: the native SQL Server client is not on in this build (limit: sql-host)");
+        const full = effect_driver.submitSql(r, a, store, now, driver);
+        if (full) |msg| return r.stepWait(.sql, .{ .exec_id = a.exec_id, .seq = a.seq }, msg);
     }
 
     /// Without the gate, the marker sends the step to the fallback host.
     fn startSmtpCall(r: *Runner, a: core.Action) void {
         const m = r.mail orelse return r.effectError(a.exec_id, a.seq, "smtp: the native SMTP client is not on in this build (limit: smtp-host)");
-        const answer = m.start(a.exec_id, a.seq, a.payload, r.credsFor(a.module), sys.nowMs());
-        r.effectError(a.exec_id, a.seq, answer orelse return);
-    }
-
-    fn smtpHasWork(r: *const Runner) bool {
-        const m = r.mail orelse return false;
-        return m.hasWork();
-    }
-
-    fn pumpSmtp(r: *Runner, now: i64) void {
-        const m = r.mail orelse return;
-        m.afterEvents(now);
-        r.drainSqlOf(m);
-    }
-
-    /// The `dialect` of the call selects the client.
-    fn startSql(r: *Runner, a: core.Action) void {
-        const store = r.credsFor(a.module);
-        const now = sys.nowMs();
-        const mysql = my_call.isMysql(a.payload);
-        if (mysql and !r.opts.sql_mysql) return r.effectError(a.exec_id, a.seq, "sql: the native MySQL client is not on in this build (limit: sql-host)");
-        const mssql = ms_call.isMssql(a.payload);
-        if (mssql and !r.opts.sql_mssql) return r.effectError(a.exec_id, a.seq, "sql: the native SQL Server client is not on in this build (limit: sql-host)");
-        if (mssql) return r.effectError(a.exec_id, a.seq, r.mssql.start(a.exec_id, a.seq, a.payload, store, now) orelse return);
-        const answer = if (mysql) r.mysql.start(a.exec_id, a.seq, a.payload, store, now) else r.sql.start(a.exec_id, a.seq, a.payload, store, now);
-        r.effectError(a.exec_id, a.seq, answer orelse return);
-    }
-
-    fn drainSql(r: *Runner) void {
-        r.drainSqlOf(r.sql);
-        r.drainSqlOf(r.mysql);
-        r.drainSqlOf(r.mssql);
-    }
-
-    /// Hand the results of finished `sql` calls to the core, oldest first,
-    /// as the events of the batch have room. A call keeps its slot and its
-    /// result until then, so results that wait hold back new calls.
-    fn drainSqlOf(r: *Runner, client: anytype) void {
-        // Each pass frees one call slot.
-        for (0..r.opts.sql.max_reqs) |_| {
-            const d = client.nextDone() orelse return;
-            if (r.events.items.len + r.resultReserve() >= r.events.capacity) return;
-            const kind: core.EventKind = if (d.ok) .effect_ok else .effect_err;
-            if (r.batch.dupe(d.payload)) |p| {
-                r.events.appendAssumeCapacity(.{ .kind = kind, .exec_id = d.exec_id, .seq = d.seq, .payload = p });
-            } else |_| {
-                // The batch memory is full of other results: they go first.
-                if (r.events.items.len > 0) return;
-                r.events.appendAssumeCapacity(.{ .kind = .effect_err, .exec_id = d.exec_id, .seq = d.seq, .payload = "sql: the result does not fit in the batch memory (limit)" });
-            }
-            client.release(d.req);
-        }
+        const full = effect_driver.submitSmtp(m, a, r.credsFor(a.module), sys.nowMs());
+        if (full) |msg| return r.stepWait(.smtp, .{ .exec_id = a.exec_id, .seq = a.seq }, msg);
     }
 
     // ---- outbound HTTP --------------------------------------------------------
@@ -2319,6 +2210,8 @@ pub const Runner = struct {
             .http_big => r.egress.freeRequests() > 0 and r.egress.freeBig() > 0,
             .service => if (r.svc) |*t| t.count < t.calls.len else true,
             .renewal => if (r.renewals) |*t| t.count < t.entries.len else true,
+            .sql => effect_driver.sqlRoom(r),
+            .smtp => effect_driver.smtpRoom(r),
         };
     }
 
@@ -2326,7 +2219,7 @@ pub const Runner = struct {
     /// free rows and the event list has room for a result.
     fn serveStepWaits(r: *Runner, now: i64) void {
         if (r.waits.total() == 0) return;
-        const all = [_]step_wait.Kind{ .http_row, .http_big, .service, .renewal };
+        const all = [_]step_wait.Kind{ .http_row, .http_big, .service, .renewal, .sql, .smtp };
         for (all) |kind| {
             var left = r.waits.waiting(kind);
             while (left > 0 and r.waitRoom(kind) and r.events.items.len + r.resultReserve() < r.events.capacity) : (left -= 1) {
@@ -2364,6 +2257,8 @@ pub const Runner = struct {
         switch (a.effect_kind) {
             .http => r.sendEgress(a, now),
             .service => r.startService(a),
+            .sql => r.startSql(a),
+            .smtp => r.startSmtpCall(a),
             else => unreachable, // `pendingDispatch` gives only these kinds.
         }
         return true;
@@ -3197,7 +3092,7 @@ pub const Runner = struct {
         };
         // Cache the slot on the loaded module.
         if (r.sh.st.liveWorkflow(id)) |mod| {
-            r.sh.st.modules[mod].wf_creds_slot = @intCast((@intFromPtr(w) - @intFromPtr(r.wf_creds.ptr)) / @sizeOf(WfCreds));
+            r.wf_creds_slots[mod] = @intCast((@intFromPtr(w) - @intFromPtr(r.wf_creds.ptr)) / @sizeOf(WfCreds));
         }
         return true;
     }
@@ -3208,7 +3103,7 @@ pub const Runner = struct {
         w.* = .{};
         // Clear the cached slot on the loaded module.
         if (r.sh.st.liveWorkflow(id)) |mod| {
-            r.sh.st.modules[mod].wf_creds_slot = 0xFFFF_FFFF;
+            r.wf_creds_slots[mod] = 0xFFFF_FFFF;
         }
     }
 
@@ -3226,7 +3121,7 @@ pub const Runner = struct {
         var lm = &r.sh.st.modules[mod];
         if (lm.wf_id_len == 0 or r.wf_creds.len == 0) return r.egress.cfg.credentials;
         // Use the cached slot when it is still valid.
-        const slot = lm.wf_creds_slot;
+        const slot = r.wf_creds_slots[mod];
         if (slot < r.wf_creds.len) {
             const w = &r.wf_creds[slot];
             if (w.store != null and w.id_len == lm.wf_id_len and
@@ -3237,7 +3132,7 @@ pub const Runner = struct {
         }
         // Slow path: find the store and cache the slot.
         if (r.findWorkflowCreds(lm.workflowId())) |w| {
-            lm.wf_creds_slot = @intCast((@intFromPtr(w) - @intFromPtr(r.wf_creds.ptr)) / @sizeOf(WfCreds));
+            r.wf_creds_slots[mod] = @intCast((@intFromPtr(w) - @intFromPtr(r.wf_creds.ptr)) / @sizeOf(WfCreds));
             return w.store.?;
         }
         return r.egress.cfg.credentials;
@@ -4663,7 +4558,7 @@ pub const Runner = struct {
 
     /// Room that inbound requests and host frames leave in the event queue
     /// for HTTP results: one for each outbound request that can be in flight.
-    fn resultReserve(r: *const Runner) usize {
+    pub fn resultReserve(r: *const Runner) usize {
         return r.opts.max_egress;
     }
 
@@ -4729,7 +4624,15 @@ pub const Runner = struct {
             wait_high = @max(wait_high, h);
         }
         try limitPart(b, "\"step_wait\":{{\"max\":{d},\"high\":{d},\"refused\":{d}}}", .{ w.cap, wait_high, wait_refused });
-        try limitPart(b, ",\"step_wait_http\":{{\"high\":{d}}},\"step_wait_big\":{{\"high\":{d}}},\"step_wait_service\":{{\"high\":{d}}},\"step_wait_renewal\":{{\"high\":{d}}},", .{ w.high[kind(.http_row)], w.high[kind(.http_big)], w.high[kind(.service)], w.high[kind(.renewal)] });
+        try limitPart(b, ",\"step_wait_http\":{{\"high\":{d}}},\"step_wait_big\":{{\"high\":{d}}},\"step_wait_service\":{{\"high\":{d}}},\"step_wait_renewal\":{{\"high\":{d}}},\"step_wait_sql\":{{\"high\":{d}}},\"step_wait_smtp\":{{\"high\":{d}}},", .{ w.high[kind(.http_row)], w.high[kind(.http_big)], w.high[kind(.service)], w.high[kind(.renewal)], w.high[kind(.sql)], w.high[kind(.smtp)] });
+        const gp = effect_driver.gauges(r, .pg);
+        const gmy = effect_driver.gauges(r, .mysql);
+        const gms = effect_driver.gauges(r, .mssql);
+        const gsm = effect_driver.gauges(r, .smtp);
+        try limitPart(b, "\"sql_pg\":{{\"used\":{d},\"max\":{d}}},\"sql_pg_conns\":{{\"used\":{d},\"max\":{d}}},", .{ gp.req_used, gp.req_max, gp.conn_used, gp.conn_max });
+        try limitPart(b, "\"sql_mysql\":{{\"used\":{d},\"max\":{d}}},\"sql_mysql_conns\":{{\"used\":{d},\"max\":{d}}},", .{ gmy.req_used, gmy.req_max, gmy.conn_used, gmy.conn_max });
+        try limitPart(b, "\"sql_mssql\":{{\"used\":{d},\"max\":{d}}},\"sql_mssql_conns\":{{\"used\":{d},\"max\":{d}}},", .{ gms.req_used, gms.req_max, gms.conn_used, gms.conn_max });
+        try limitPart(b, "\"smtp\":{{\"used\":{d},\"max\":{d}}},\"smtp_conns\":{{\"used\":{d},\"max\":{d}}},", .{ gsm.req_used, gsm.req_max, gsm.conn_used, gsm.conn_max });
         const ob: outbox.Status = if (r.ob) |*o| o.status() else .{ .first = 0, .last = 0, .acked = 0, .bytes = 0, .max_bytes = 0 };
         try limitPart(b, "\"host\":{{\"used\":{d},\"max\":{d},\"waiting\":{d},\"refused\":{d}}},\"outbox\":{{\"bytes\":{d},\"max\":{d}}}}}", .{ r.fb_inflight.count(), fb_max_inflight, r.fb_waiting_n, r.stats.host_refused.load(.monotonic), ob.bytes, ob.max_bytes });
     }
@@ -4762,6 +4665,7 @@ pub const Runner = struct {
 
 test {
     _ = fbf;
+    _ = effect_driver;
 }
 
 /// The most connection slots a test shard gives out. `acceptAll` uses a
@@ -6057,7 +5961,7 @@ fn pumpSql(r: *Runner, server: *pg_fake.Server, want: usize) !void {
             if (ev.token >> 56 == kind_pg_fake) server.onReady(ev) else try r.onReady(ev);
         }
         r.sql.afterEvents(sys.nowMs());
-        r.drainSql();
+        effect_driver.drainAll(r);
     }
     return error.NoResult;
 }
@@ -6145,6 +6049,10 @@ test "sql results wait in the client while the event list has no room, and a cal
     // Calls with bad arguments end at once and hold their slots until the shard takes the results.
     for (0..slots) |i| r.startSql(.{ .kind = .dispatch, .effect_kind = .sql, .exec_id = 9, .seq = std.math.cast(u32, i + 1).?, .module = 0, .step = 0, .attempt = 0, .payload = "{}" });
     try std.testing.expectEqual(@as(usize, 0), r.events.items.len);
+    // Fill the sql wait queue, so a full queue makes the capacity the limit.
+    for (0..r.waits.cap) |_| {
+        try std.testing.expect(r.waits.push(.sql, .{ .exec_id = 0xFFFF_FFFF, .seq = 0 }));
+    }
     // No slot is free: the next call fails with the limit error, as an event.
     r.startSql(.{ .kind = .dispatch, .effect_kind = .sql, .exec_id = 10, .seq = 1, .module = 0, .step = 0, .attempt = 0, .payload = "{}" });
     try std.testing.expectEqual(@as(usize, 1), r.events.items.len);
@@ -6155,13 +6063,13 @@ test "sql results wait in the client while the event list has no room, and a cal
     // A full event list takes no result; the results come later, oldest first.
     const free = r.events.capacity - r.resultReserve();
     for (0..free) |_| r.events.appendAssumeCapacity(.{ .kind = .cancel, .exec_id = 1 });
-    r.drainSql();
+    effect_driver.drainAll(r);
     try std.testing.expectEqual(free, r.events.items.len);
     var next_seq: u32 = 1;
     for (0..slots) |_| {
         if (next_seq > slots) break;
         r.events.clearRetainingCapacity();
-        r.drainSql();
+        effect_driver.drainAll(r);
         try std.testing.expect(r.events.items.len > 0 and r.events.items.len + r.resultReserve() <= r.events.capacity);
         for (r.events.items) |ev| {
             try std.testing.expectEqual(core.EventKind.effect_err, ev.kind);
@@ -6190,7 +6098,7 @@ fn pumpMysql(r: *Runner, server: *my_fake.Server, want: usize) !void {
             if (ev.token >> 56 == kind_pg_fake) server.onReady(ev) else try r.onReady(ev);
         }
         r.mysql.afterEvents(sys.nowMs());
-        r.drainSql();
+        effect_driver.drainAll(r);
     }
     return error.NoResult;
 }
@@ -6240,7 +6148,7 @@ test "a sql step with the dialect mssql goes to the host while the gate is off, 
             if (ev.token >> 56 == kind_pg_fake) server.onReady(ev) else try r.onReady(ev);
         }
         r.mssql.afterEvents(sys.nowMs());
-        r.drainSql();
+        effect_driver.drainAll(r);
     }
     try std.testing.expectEqual(@as(usize, 1), r.events.items.len);
     try std.testing.expectEqual(core.EventKind.effect_ok, r.events.items[0].kind);
@@ -6312,7 +6220,7 @@ test "an smtp step goes to the host without the gate, and to the SMTP client wit
     r.events.clearRetainingCapacity();
 
     // The gate is on: the result of the call is the value of the step.
-    try r.startSmtp(gpa);
+    try effect_driver.initSmtp(r, gpa);
     if (r.mail) |m| m.cfg.entropy = smtp_fake.entropy;
     server.script(&.{
         .{ .reply = "220 mx.test\r\n" },
@@ -6330,7 +6238,8 @@ test "an smtp step goes to the host without the gate, and to the SMTP client wit
         for (ready[0..n]) |ev| {
             if (ev.token >> 56 == kind_pg_fake) server.onReady(ev) else try r.onReady(ev);
         }
-        r.pumpSmtp(sys.nowMs());
+        effect_driver.tickAll(r, sys.nowMs());
+        effect_driver.drainAll(r);
     }
     try std.testing.expectEqual(@as(usize, 1), r.events.items.len);
     try std.testing.expectEqual(core.EventKind.effect_ok, r.events.items[0].kind);
@@ -6485,7 +6394,7 @@ test "credentials of a workflow: set, replace, drop and lookup" {
     // Before set: credsFor returns the global store.
     const global = r.egress.cfg.credentials;
     try std.testing.expect(Runner.credsFor(r, m) == global);
-    try std.testing.expectEqual(@as(u32, 0xFFFF_FFFF), r.sh.st.modules[m].wf_creds_slot);
+    try std.testing.expectEqual(@as(u32, 0xFFFF_FFFF), r.wf_creds_slots[m]);
 
     // Set workflow creds and verify the cache is populated.
     var store1 = try r.wf_pool.?.parse("{\"api\":{\"data\":{}}}");
@@ -6495,13 +6404,13 @@ test "credentials of a workflow: set, replace, drop and lookup" {
 
     const got1 = Runner.credsFor(r, m);
     try std.testing.expect(got1 == store1);
-    try std.testing.expect(r.sh.st.modules[m].wf_creds_slot != 0xFFFF_FFFF);
-    const slot1 = r.sh.st.modules[m].wf_creds_slot;
+    try std.testing.expect(r.wf_creds_slots[m] != 0xFFFF_FFFF);
+    const slot1 = r.wf_creds_slots[m];
 
     // A second lookup uses the cached slot.
     const got2 = Runner.credsFor(r, m);
     try std.testing.expect(got2 == store1);
-    try std.testing.expectEqual(slot1, r.sh.st.modules[m].wf_creds_slot);
+    try std.testing.expectEqual(slot1, r.wf_creds_slots[m]);
 
     // Replace the store in place.
     var store2 = try r.wf_pool.?.parse("{\"api\":{\"data\":{},\"renewal\":{\"oauth2\":true}}}");
@@ -6514,7 +6423,7 @@ test "credentials of a workflow: set, replace, drop and lookup" {
     // Drop the credentials.
     Runner.dropWorkflowCreds(r, "wf");
     try std.testing.expect(Runner.credsFor(r, m) == global);
-    try std.testing.expectEqual(@as(u32, 0xFFFF_FFFF), r.sh.st.modules[m].wf_creds_slot);
+    try std.testing.expectEqual(@as(u32, 0xFFFF_FFFF), r.wf_creds_slots[m]);
 
     // Set again after a drop (a new slot).
     var store3 = try r.wf_pool.?.parse("{\"other\":{}}");
@@ -6525,12 +6434,31 @@ test "credentials of a workflow: set, replace, drop and lookup" {
     try std.testing.expect(got4 == store3);
 
     // Corrupt the cached slot: the check must recover via the slow path.
-    r.sh.st.modules[m].wf_creds_slot = @intCast(wf_creds.len + 10);
+    r.wf_creds_slots[m] = @intCast(wf_creds.len + 10);
     const got5 = Runner.credsFor(r, m);
     try std.testing.expect(got5 == store3);
-    try std.testing.expect(r.sh.st.modules[m].wf_creds_slot != wf_creds.len + 10);
+    try std.testing.expect(r.wf_creds_slots[m] != wf_creds.len + 10);
 
     // Drop and verify the slot is cleared.
     Runner.dropWorkflowCreds(r, "wf");
-    try std.testing.expectEqual(@as(u32, 0xFFFF_FFFF), r.sh.st.modules[m].wf_creds_slot);
+    try std.testing.expectEqual(@as(u32, 0xFFFF_FFFF), r.wf_creds_slots[m]);
+}
+
+test "the limits document reports the SQL and SMTP drivers as valid JSON" {
+    var t: TestRunner = .{ .arena = std.heap.ArenaAllocator.init(std.testing.allocator) };
+    try t.start();
+    defer t.deinit();
+    const r = t.r;
+    var buf: [8192]u8 = @splat(0);
+    var a = Arena.init(&buf);
+    var b = a.builder();
+    try Runner.writeLimits(r, &b);
+    const doc = b.bytes();
+    try std.testing.expect(try std.json.validate(t.arena.allocator(), doc));
+    const keys = [_][]const u8{ "sql_pg", "sql_pg_conns", "sql_mysql", "sql_mysql_conns", "sql_mssql", "sql_mssql_conns", "smtp", "smtp_conns" };
+    for (keys) |key| {
+        var needle: [64]u8 = @splat(0);
+        const quoted = std.fmt.bufPrint(&needle, "\"{s}\"", .{key}) catch unreachable; // 64 bytes hold every key
+        try std.testing.expect(std.mem.indexOf(u8, doc, quoted) != null);
+    }
 }
