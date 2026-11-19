@@ -1,0 +1,28 @@
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-publish-guard.integration.test.ts
+  s_3d42f5aac10616::t_6f588903274264 38
+  s_d842348d080092::t_d42b57b6a62f9f 601-603
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4d7d469fa403f98639df358097c01b9bc033d121",
+  "prompts": {},
+  "sessions": {
+    "s_3d42f5aac10616": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14440739-a8bf-40e4-b7b8-ad261dcda974",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_d842348d080092": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e5ff11ea-ea68-4dce-b3b9-094b483d7df4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
