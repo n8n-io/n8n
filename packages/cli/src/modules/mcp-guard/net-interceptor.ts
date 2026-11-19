@@ -3,7 +3,7 @@ import http from 'node:http';
 import https from 'node:https';
 import { PassThrough, Writable } from 'node:stream';
 
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { currentNodeGuard } from './chat-scope';
 
