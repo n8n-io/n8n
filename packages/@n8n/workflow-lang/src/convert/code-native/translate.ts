@@ -3785,7 +3785,14 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				const callee = stripParens(call.expression);
 				if (!ts.isPropertyAccessExpression(callee) || callee.name.text !== 'reduce') return false;
 				const init = call.arguments[1];
-				return init !== undefined && noValue(init, seen) && returnsAccumulator(fn, d.name);
+				const symbol = checker.getSymbolAtLocation(d.name);
+				return (
+					init !== undefined &&
+					symbol !== undefined &&
+					noValue(init, seen) &&
+					returnsAccumulator(fn, d.name) &&
+					everyAssignmentPlain(symbol, seen)
+				);
 			};
 			/** True when every assignment to \`symbol\` in the code gives a plain value. */
 			const everyAssignmentPlain = (symbol: ts.Symbol, seen: Set<ts.Symbol>): boolean => {
