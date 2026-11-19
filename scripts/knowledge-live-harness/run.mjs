@@ -25,7 +25,10 @@ const AGENTS_FILE = process.env.HARNESS_AGENTS_FILE ?? path.join(FIXTURES, 'agen
 
 const BASE_URL = (process.env.N8N_BASE_URL ?? 'http://localhost:5678').replace(/\/$/, '');
 const MODEL = process.env.N8N_MODEL ?? 'anthropic/claude-sonnet-4-5';
-const CHAT_TIMEOUT_MS = Number(process.env.CHAT_TIMEOUT_MS ?? 180_000);
+const CHAT_TIMEOUT_MS = Number(process.env.CHAT_TIMEOUT_MS ?? 600_000);
+/** Reuse the indexes that an earlier run built; they live in the instance until it restarts. */
+const SKIP_INDEX_REBUILD =
+	(process.env.HARNESS_SKIP_INDEX_REBUILD ?? 'false').toLowerCase() === 'true';
 
 function fail(message) {
 	console.error(message);
@@ -340,9 +343,31 @@ function findOutOfSeedCalls(toolCalls, seedIds) {
 	return flagged;
 }
 
+/** A question that times out or fails is a failed run, not the end of the whole run. */
+async function askOrFail(client, agentId, question) {
+	const startedAt = Date.now();
+	try {
+		return await client.chat(agentId, question);
+	} catch (error) {
+		const message =
+			error?.name === 'AbortError'
+				? `timeout after ${CHAT_TIMEOUT_MS} ms`
+				: String(error?.message ?? error);
+		return {
+			threadId: undefined,
+			text: '',
+			toolCalls: [],
+			errors: [message],
+			events: [],
+			steps: 0,
+			wallMs: Date.now() - startedAt,
+		};
+	}
+}
+
 async function ask(client, agentId, question, seedIds) {
 	console.log(`\nQ: ${question}`);
-	const result = await client.chat(agentId, question);
+	const result = await askOrFail(client, agentId, question);
 	for (const line of summarizeToolCalls(result.toolCalls)) console.log(`  tool: ${line}`);
 	const outOfSeed = findOutOfSeedCalls(result.toolCalls, seedIds);
 	for (const call of outOfSeed) {
@@ -492,15 +517,25 @@ function metricsOf(result) {
 	};
 }
 
-/** Rebuilds the index of every source of the agent that uses the index strategy. */
+/** Rebuilds the index of every source of the agent that uses the index strategy, or checks that one exists. */
 async function rebuildIndexes(client, agentId, config) {
 	for (const source of config.knowledge?.liveSources ?? []) {
 		if (source.retrieval !== 'index') continue;
+		const route = `/projects/${PROJECT_ID}/agents/v2/${agentId}/knowledge/live-sources/${source.id}/index`;
+		if (SKIP_INDEX_REBUILD) {
+			const status = await client.request('GET', route);
+			if (!status.indexed) {
+				fail(
+					`No index of ${source.id} exists on the instance: run without HARNESS_SKIP_INDEX_REBUILD`,
+				);
+			}
+			console.log(
+				`Index of ${source.id}: ${status.indexed} of ${status.total}, built ${status.builtAt}`,
+			);
+			continue;
+		}
 		console.log(`Rebuilding the index of ${source.id}…`);
-		const status = await client.request(
-			'POST',
-			`/projects/${PROJECT_ID}/agents/v2/${agentId}/knowledge/live-sources/${source.id}/index`,
-		);
+		const status = await client.request('POST', route);
 		console.log(
 			`  indexed ${status.indexed} of ${status.total} in ${status.buildMs} ms${status.error ? ` (${status.error})` : ''}`,
 		);
@@ -575,6 +610,14 @@ async function run(client, scaffold, items, { agentKeys, repeat }) {
 	const forbiddenIds = forbiddenIdsOf(items);
 	const runs = [];
 	const startedAt = new Date();
+	await mkdir(RESULTS, { recursive: true });
+	const base = path.join(RESULTS, `run-${startedAt.toISOString().replace(/[:.]/g, '-')}`);
+	// Every answer is saved at once, so a crash keeps what was already measured.
+	const save = async (partial) =>
+		await writeFile(
+			`${base}.json`,
+			JSON.stringify({ model: MODEL, agentKeys, repeat, partial, runs }, null, '\t'),
+		);
 	for (const agentKey of agentKeys) {
 		const config = buildAgentConfig(agentKey, scaffold, items);
 		const agentId = await ensureAgent(client, agentKey, config);
@@ -593,19 +636,14 @@ async function run(client, scaffold, items, { agentKeys, repeat }) {
 				const metrics = metricsOf(result);
 				console.log(`  ${score.pass ? 'PASS' : 'FAIL'} ${question.id} ${JSON.stringify(score)}`);
 				runs.push({ agentKey, agentId, repetition, question, score, metrics, result });
+				await save(true);
 			}
 		}
 	}
 	const summary = summarize(runs);
 	const comparison = compare(runs, agentKeys);
 	console.log(`\n${summary}\n\n${comparison}`);
-	await mkdir(RESULTS, { recursive: true });
-	const stamp = startedAt.toISOString().replace(/[:.]/g, '-');
-	const base = path.join(RESULTS, `run-${stamp}`);
-	await writeFile(
-		`${base}.json`,
-		JSON.stringify({ model: MODEL, agentKeys, repeat, runs }, null, '\t'),
-	);
+	await save(false);
 	await writeFile(
 		`${base}.md`,
 		`# Knowledge live retrieval run ${startedAt.toISOString()}\n\nModel: \`${MODEL}\`. Agents: ${agentKeys.join(', ')}. Repetitions: ${repeat}.\n\n${summary}\n\n${comparison}\n`,

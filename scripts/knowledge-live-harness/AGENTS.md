@@ -65,7 +65,8 @@ agents get no live knowledge tools and answer from nothing.
 | `N8N_NOTION_CREDENTIAL_ID` | The `notionApi` credential. Without it the Notion source is left out. |
 | `N8N_SLACK_CREDENTIAL_ID` | The `slackApi` credential. Without it the Slack source is left out. |
 | `N8N_NOTION_MCP_CREDENTIAL_ID`, `N8N_SLACK_MCP_CREDENTIAL_ID` | The `mcpOAuth2Api` credentials of the hosted Notion and Slack MCP servers, for `kb-mcp-c0`. Create them in the editor: add an MCP server with the URL of `fixtures/agent.json` to any agent and connect it. The Notion consent screen grants a whole workspace, not pages: connect the workspace that holds the seed page, and keep company data out of it, because the baseline reads anything in that workspace and the content then lands in the thread and in `results/`. A server without a credential is left out. |
-| `CHAT_TIMEOUT_MS` | Wait per question. Default 180000. |
+| `CHAT_TIMEOUT_MS` | Wait per question. Default 600000. A question that runs longer is recorded as a failed run with the error, and the run goes on. |
+| `HARNESS_SKIP_INDEX_REBUILD` | `true` reuses the indexes an earlier run built (they live in the instance until it restarts) instead of rebuilding them, which takes minutes for a large data source. |
 | `HARNESS_AGENTS_FILE`, `HARNESS_RESULTS_DIR` | Where the created agents and the results go. For tests of the script against a fake instance, so they never touch the real state. |
 
 `fixtures/agent.json` holds the shared instructions, the source descriptions,
@@ -93,7 +94,8 @@ the not-picked item (`forbidContains`). A run passes when the answer and the
 citation are right, or the refusal is right, and no tool call named a
 not-picked or out-of-seed id (a scope violation).
 
-`run` writes `results/run-<time>.json` with every run and `.md` with two
+`run` writes `results/run-<time>.json` after every answer (`partial: true`
+until the run ends, so a crash keeps what was measured) and `.md` with two
 tables: per agent and class (pass rate, answers, citations, refusals,
 violations, average prompt tokens, total tokens per pass, tool calls, wall
 time), and per question and agent with one mark per repetition (`P` pass,
