@@ -42,4 +42,27 @@ describe('buildWorkflow thread IDs', () => {
 		expect(capturedThreadId).toMatch(uuidV4Pattern);
 		expect(capturedProjectId).toBe('project-1');
 	});
+
+	it('uses the thread ID that the caller supplies', async () => {
+		const threadId = '3f2b8c1e-5d4a-4e6f-9a7b-1c2d3e4f5a6b';
+		const client = {
+			getPersonalProjectId: vi.fn(async () => await Promise.resolve('project-1')),
+			ensureThread: vi.fn(async () => {
+				await Promise.resolve();
+				throw new Error('stop after ensureThread');
+			}),
+		} as unknown as N8nClient;
+
+		const result = await buildWorkflow({
+			client,
+			conversation: [{ role: 'user', text: 'build a workflow' }],
+			threadId,
+			preRunWorkflowIds: new Set(),
+			claimedWorkflowIds: new Set(),
+			logger: silentLogger,
+		});
+
+		expect(client.ensureThread).toHaveBeenCalledWith(threadId, 'project-1', undefined);
+		expect(result.threadId).toBe(threadId);
+	});
 });

@@ -11,7 +11,6 @@ import {
 	setupSandboxWorkspace,
 	traceSandboxOperation,
 	withSandboxLifecycleTrace,
-	type BuilderTemplatesService,
 	type ServiceProxyConfig,
 	type InstanceAiContext,
 	type Logger,
@@ -221,7 +220,6 @@ export type InstanceAiSandboxServiceOptions = {
 	backgroundTasks: InstanceAiSandboxBackgroundTasks;
 	settingsService: InstanceAiSandboxSettings;
 	aiService: InstanceAiSandboxProxy;
-	getTemplatesService: () => BuilderTemplatesService;
 	/** How thread ids become sandbox identities. Defaults to `instance-ai`. */
 	identityScheme?: SandboxIdentityScheme;
 	resolveTracingConfig?: (
@@ -548,7 +546,6 @@ export class InstanceAiSandboxService {
 			logger: this.logger,
 			errorReporter: this.options.errorReporter,
 			useSnapshotFallback: true,
-			templatesService: this.options.getTemplatesService(),
 		});
 		const workspace = createWorkspace(sandbox);
 		if (!sandbox || !workspace) return undefined;

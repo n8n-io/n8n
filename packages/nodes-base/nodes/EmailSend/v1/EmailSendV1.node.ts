@@ -20,6 +20,7 @@ const versionDescription: INodeTypeDescription = {
 	group: ['output'],
 	version: 1,
 	description: 'Sends an Email',
+	annotations: { effect: 'write', destructive: false, idempotent: false },
 	defaults: {
 		name: 'Send Email',
 	},

@@ -35,6 +35,7 @@ import {
 	type IRunExecutionData,
 	type WorkflowExecuteMode,
 	type ExecutionError,
+	type ExecutionBlockedReason,
 	WorkflowExpression,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
@@ -766,7 +767,7 @@ describe('JobProcessor', () => {
 	});
 
 	// A plain run, since a deep mock answers every flag with a truthy function.
-	test.each([true as const, undefined])(
+	test.each(['policy', 'startFailed', undefined] as const)(
 		'should report failedBeforeStart=%s in job-finished',
 		async (flag) => {
 			const executionPersistence = mock<ExecutionPersistence>();
@@ -807,7 +808,7 @@ describe('JobProcessor', () => {
 			await jobProcessor.processJob(job);
 
 			const finished = job.progress.mock.calls
-				.map(([msg]) => msg as { kind: string; failedBeforeStart?: true })
+				.map(([msg]) => msg as { kind: string; failedBeforeStart?: ExecutionBlockedReason })
 				.find((msg) => msg.kind === 'job-finished');
 			expect(finished?.failedBeforeStart).toBe(flag);
 		},
@@ -829,6 +830,7 @@ describe('JobProcessor', () => {
 					pinData,
 				},
 				executionData: undefined,
+				resumeToken: 'stored-token',
 			}),
 		});
 		const executionPersistence = mock<ExecutionPersistence>();
@@ -869,6 +871,7 @@ describe('JobProcessor', () => {
 			executionId,
 			pinData,
 			's3',
+			'stored-token',
 		);
 	});
 
@@ -909,6 +912,44 @@ describe('JobProcessor', () => {
 		);
 
 		expect(additionalData.restartExecutionId).toBe(restartExecutionId);
+	});
+
+	it('should restore the root execution mode on additionalData from the execution data', async () => {
+		const executionRepository = mock<ExecutionRepository>();
+		const execution = mock<IExecutionResponse>({
+			mode: 'manual',
+			workflowData: { id: 'workflow-id', nodes: [], staticData: {} },
+			data: mock<IRunExecutionData>({
+				resultData: { runData: {} },
+				executionData: undefined,
+				rootExecutionMode: 'manual',
+			}),
+		});
+		const executionPersistence = mock<ExecutionPersistence>();
+		executionPersistence.findSingleExecution.mockResolvedValue(execution);
+
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+		const manualExecutionService = createManualExecutionServiceMock();
+		const jobProcessor = new JobProcessor(
+			logger,
+			executionRepository,
+			executionPersistence,
+			mock(),
+			mock(),
+			mock(),
+			manualExecutionService,
+			executionsConfig,
+			mock(),
+			mock(),
+		);
+
+		await jobProcessor.processJob(
+			mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } }),
+		);
+
+		expect(additionalData.rootExecutionMode).toBe('manual');
 	});
 
 	it('should rehydrate the manual-execution identity onto additionalData from job data', async () => {

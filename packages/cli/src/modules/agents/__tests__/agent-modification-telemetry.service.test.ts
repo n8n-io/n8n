@@ -1,12 +1,11 @@
 import type { AgentJsonVectorStoreConfig } from '@n8n/api-types';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { createKnowledgeTelemetryHmac } from '@/modules/knowledge/telemetry/helpers';
-import type { Telemetry } from '@/telemetry';
 
 import { buildVectorStoreFingerprints } from '../agent-knowledge-telemetry';
 import {
@@ -96,7 +95,7 @@ describe('knowledge reuse telemetry', () => {
 		['builder', TELEMETRY_EVENT.AGENTS.BUILDER_MODIFIED_AGENT],
 		['mcp', TELEMETRY_EVENT.AGENTS.MCP_MODIFIED_AGENT],
 	] as const)('reports committed stores for %s with the acting user', (by, entry) => {
-		const telemetry = mock<Telemetry>();
+		const telemetry = mock<TelemetryProxy>();
 		const service = new AgentModificationTelemetryService(
 			telemetry,
 			instanceSettings,
@@ -118,7 +117,7 @@ describe('knowledge reuse telemetry', () => {
 	});
 
 	it('reports an empty set after all stores are removed', () => {
-		const telemetry = mock<Telemetry>();
+		const telemetry = mock<TelemetryProxy>();
 		new AgentModificationTelemetryService(telemetry, instanceSettings, mock<EventService>()).record(
 			event({ config: null }),
 		);
@@ -129,7 +128,7 @@ describe('knowledge reuse telemetry', () => {
 	});
 
 	it('omits fingerprints for unrelated changes and creation', () => {
-		const telemetry = mock<Telemetry>();
+		const telemetry = mock<TelemetryProxy>();
 		const service = new AgentModificationTelemetryService(
 			telemetry,
 			instanceSettings,
@@ -144,7 +143,7 @@ describe('knowledge reuse telemetry', () => {
 	});
 
 	it('sends the event without fingerprints when the fingerprints fail', () => {
-		const telemetry = mock<Telemetry>();
+		const telemetry = mock<TelemetryProxy>();
 		const brokenInstanceSettings = mock<InstanceSettings>();
 		Object.defineProperty(brokenInstanceSettings, 'hmacSignatureSecret', {
 			get: () => {
@@ -165,7 +164,7 @@ describe('knowledge reuse telemetry', () => {
 	});
 
 	it('does not emit for an unchanged configuration', () => {
-		const telemetry = mock<Telemetry>();
+		const telemetry = mock<TelemetryProxy>();
 		new AgentModificationTelemetryService(telemetry, instanceSettings, mock<EventService>()).record(
 			event({ changedParts: [] }),
 		);

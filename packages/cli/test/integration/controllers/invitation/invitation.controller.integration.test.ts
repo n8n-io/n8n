@@ -1,4 +1,4 @@
-import { EventService, JwtService } from '@n8n/backend-services';
+import { EventService, JwtService, PasswordUtility } from '@n8n/backend-services';
 import {
 	mockInstance,
 	randomEmail,
@@ -18,7 +18,6 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { DataSource, Not, type Repository } from '@n8n/typeorm';
 
 import { ExternalHooks } from '@/external-hooks';
-import { PasswordUtility } from '@/services/password.utility';
 import { UserManagementMailer } from '@/user-management/email';
 
 import {

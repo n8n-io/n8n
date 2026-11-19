@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
@@ -19,6 +19,7 @@ import {
 	WorkflowExecute,
 } from 'n8n-core';
 import type {
+	ExecutionBlockedReason,
 	ExecutionError,
 	ExecutionStorageLocation,
 	IExecuteResponsePromiseData,
@@ -27,7 +28,6 @@ import type {
 	IRun,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
-	WebhookResponseMode,
 } from 'n8n-workflow';
 import {
 	CRASHABLE_EXECUTION_STATUSES,
@@ -142,7 +142,7 @@ export class WorkflowRunner {
 		executionId: string,
 		hooks?: ExecutionLifecycleHooks,
 		storedAt: ExecutionStorageLocation = this.storageConfig.modeTag,
-		failedBeforeStart = false,
+		failedBeforeStart?: ExecutionBlockedReason,
 	) {
 		// This means the execution was probably cancelled and has already
 		// been cleaned up.
@@ -244,6 +244,7 @@ export class WorkflowRunner {
 						status === 'waiting'
 							? {
 									data: createRunExecutionData({ resultData: { runData: {} } }),
+									// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 									finished: false,
 									mode: executionMode,
 									startedAt,
@@ -261,6 +262,7 @@ export class WorkflowRunner {
 											runData: {},
 										},
 									}),
+									// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 									finished: false,
 									mode: executionMode,
 									startedAt,
@@ -319,9 +321,10 @@ export class WorkflowRunner {
 						stack: error.stack,
 					},
 					runData: {},
-					...(failedBeforeStart && { failedBeforeStart: true }),
+					...(failedBeforeStart && { failedBeforeStart }),
 				},
 			}),
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 			finished: false,
 			mode: executionMode,
 			startedAt,
@@ -363,7 +366,10 @@ export class WorkflowRunner {
 			}
 
 			try {
-				await this.executionCrashService.announceStalledExecution(executionId);
+				await this.executionCrashService.announceStalledExecution(
+					executionId,
+					hooks?.workflowData.name,
+				);
 			} catch (announceError) {
 				// The announce is telemetry; its failure must not abort finalization
 				// for an execution already persisted as crashed.
@@ -390,6 +396,7 @@ export class WorkflowRunner {
 		data: IWorkflowExecutionDataProcess,
 		executionId: string,
 		error: ExecutionError & { node?: INode },
+		blockedReason: ExecutionBlockedReason,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		existingExecution?: ResumableExecution,
 	): Promise<void> {
@@ -400,7 +407,7 @@ export class WorkflowRunner {
 		);
 		const isResume = existingExecution?.expectedStatus === 'waiting';
 		if (!hasExecutionRunNodes(data.executionData?.resultData?.runData, isResume)) {
-			runData.data.resultData.failedBeforeStart = true;
+			runData.data.resultData.failedBeforeStart = blockedReason;
 		}
 		const lifecycleHooks = getLifecycleHooksForRegularMain(data, executionId);
 		await lifecycleHooks.runHook('workflowExecuteBefore', [undefined, data.executionData]);
@@ -474,7 +481,6 @@ export class WorkflowRunner {
 		realtime?: boolean,
 		existingExecution?: ResumableExecution,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-		responseMode?: WebhookResponseMode,
 	): Promise<string> {
 		// The engine v2 path owns the whole run: it keeps no control-plane
 		// execution row, so everything below here does not apply to it.
@@ -488,9 +494,8 @@ export class WorkflowRunner {
 		}
 
 		const establishContextError = await this.establishContextForPersistence(data);
-		const deferOnReceivedStartup = responseMode === 'onReceived' && existingExecution === undefined;
 
-		if (!establishContextError && !deferOnReceivedStartup) {
+		if (!establishContextError) {
 			try {
 				const { personalCredentialsCount } = await this.credentialsPermissionChecker.check(
 					data.workflowData.id,
@@ -501,14 +506,21 @@ export class WorkflowRunner {
 				// set, so a reused `data` object cannot keep the count of an earlier run.
 				data.telemetryMetadata = { ...data.telemetryMetadata, personalCredentialsCount };
 			} catch (error) {
-				const executionId = await this.activeExecutions.add(data, existingExecution, responseMode);
-				await this.failExecution(data, executionId, error, responsePromise, existingExecution);
+				const executionId = await this.activeExecutions.add(data, existingExecution);
+				await this.failExecution(
+					data,
+					executionId,
+					error,
+					'credentialAccess',
+					responsePromise,
+					existingExecution,
+				);
 				return executionId;
 			}
 		}
 
 		let executionWorkflow: Workflow | undefined;
-		if (!deferOnReceivedStartup && !existingExecution && !establishContextError) {
+		if (!existingExecution && !establishContextError) {
 			try {
 				executionWorkflow = await this.prepareNewExecution(data, loadStaticData);
 			} catch (error) {
@@ -517,30 +529,14 @@ export class WorkflowRunner {
 		}
 
 		// Register a new execution
-		const executionId = await this.activeExecutions.add(data, existingExecution, responseMode);
-
-		if (deferOnReceivedStartup) {
-			void this.startOnReceivedExecution(
-				data,
-				executionId,
-				loadStaticData,
-				realtime,
-				responsePromise,
-				establishContextError,
-			).catch((error) => {
-				this.logger.error('Background execution start failed for onReceived webhook', {
-					executionId,
-					error,
-				});
-			});
-			return executionId;
-		}
+		const executionId = await this.activeExecutions.add(data, existingExecution);
 
 		if (establishContextError) {
 			await this.failExecution(
 				data,
 				executionId,
 				establishContextError,
+				'contextHook',
 				responsePromise,
 				existingExecution,
 			);
@@ -581,7 +577,6 @@ export class WorkflowRunner {
 					shouldReloadStaticData,
 					existingExecution,
 					executionWorkflow,
-					this.executionsConfig.mode === 'regular' || existingExecution !== undefined,
 				);
 			}
 		} catch (error) {
@@ -627,106 +622,6 @@ export class WorkflowRunner {
 		return executionId;
 	}
 
-	private async startOnReceivedExecution(
-		data: IWorkflowExecutionDataProcess,
-		executionId: string,
-		loadStaticData?: boolean,
-		realtime?: boolean,
-		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-		establishContextError?: ExecutionError & { node?: INode },
-	): Promise<void> {
-		try {
-			await this.activeExecutions.waitForActivation(executionId);
-		} catch (error) {
-			await this.failExecution(
-				data,
-				executionId,
-				error as ExecutionError & { node?: INode },
-				responsePromise,
-			);
-			return;
-		}
-		if (!this.activeExecutions.has(executionId)) return;
-
-		if (establishContextError) {
-			await this.failExecution(data, executionId, establishContextError, responsePromise);
-			return;
-		}
-
-		let executionWorkflow: Workflow | undefined;
-		try {
-			await this.credentialsPermissionChecker.check(
-				data.workflowData.id,
-				data.workflowData.nodes,
-				data.userId,
-			);
-			executionWorkflow = await this.prepareNewExecution(data, loadStaticData);
-		} catch (error) {
-			const startupError = PreExecuteBlockedError.unwrap(error);
-			await this.failExecution(
-				data,
-				executionId,
-				startupError as ExecutionError & { node?: INode },
-				responsePromise,
-			);
-			return;
-		}
-
-		if (responsePromise) this.activeExecutions.attachResponsePromise(executionId, responsePromise);
-		const heartbeat = this.setupV1StreamingHeartbeat(data);
-		const workflowId = data.workflowData.id;
-		const shouldEnqueue =
-			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
-				? this.executionsConfig.mode === 'queue'
-				: this.executionsConfig.mode === 'queue' && data.executionMode !== 'manual';
-
-		try {
-			if (shouldEnqueue) {
-				await this.enqueueExecution(executionId, workflowId, data, loadStaticData, realtime);
-			} else {
-				await this.runMainProcess(
-					executionId,
-					data,
-					false,
-					undefined,
-					executionWorkflow,
-					this.executionsConfig.mode === 'regular',
-				);
-			}
-		} catch (error) {
-			heartbeat?.stop();
-			await this.failExecution(
-				data,
-				executionId,
-				error as ExecutionError & { node?: INode },
-				responsePromise,
-			);
-			return;
-		}
-
-		if (
-			this.executionsConfig.mode !== 'queue' ||
-			this.instanceSettings.instanceType === 'worker' ||
-			data.executionMode === 'manual' ||
-			data.executionMode === 'chat'
-		) {
-			void this.activeExecutions.getPostExecutePromise(executionId).catch((error) => {
-				if (error instanceof ExecutionCancelledError) return;
-				this.errorReporter.error(error, { extra: { executionId, workflowId } });
-				this.logger.error('There was an error in the post-execution promise', {
-					error,
-					executionId,
-					workflowId,
-					workflowName: data.workflowData.name,
-				});
-			});
-		}
-
-		if (heartbeat) {
-			void this.activeExecutions.getPostExecutePromise(executionId).finally(() => heartbeat.stop());
-		}
-	}
-
 	private setupV1StreamingHeartbeat(
 		data: IWorkflowExecutionDataProcess,
 	): StreamingWebhookResponseHeartbeat | undefined {
@@ -767,7 +662,6 @@ export class WorkflowRunner {
 		loadStaticData?: boolean,
 		existingExecution?: ResumableExecution,
 		executionWorkflow?: Workflow,
-		executionAlreadyMarkedRunning = false,
 	): Promise<void> {
 		const workflowId = data.workflowData.id;
 		if (loadStaticData === true && workflowId) {
@@ -814,6 +708,7 @@ export class WorkflowRunner {
 
 		additionalData.executionId = executionId;
 		additionalData.evaluationRunId = data.evaluationRunId;
+		additionalData.rootExecutionMode = data.executionData?.rootExecutionMode;
 
 		const storedAt = existingExecution?.storedAt ?? this.storageConfig.modeTag;
 
@@ -822,9 +717,7 @@ export class WorkflowRunner {
 			{ executionId },
 		);
 		let workflowExecution: PCancelable<IRun>;
-		if (!executionAlreadyMarkedRunning) {
-			await this.executionRepository.setRunning(executionId);
-		}
+		await this.executionRepository.setRunning(executionId); // write
 
 		try {
 			const lifecycleHooks = getLifecycleHooksForRegularMain(data, executionId);
@@ -1000,7 +893,9 @@ export class WorkflowRunner {
 			// Without a job, no worker can have run a node.
 			const failedBeforeStart =
 				job === undefined &&
-				!hasExecutionRunNodes(data.executionData?.resultData?.runData, !!restartExecutionId);
+				!hasExecutionRunNodes(data.executionData?.resultData?.runData, !!restartExecutionId)
+					? 'startFailed'
+					: undefined;
 			await this.processError(
 				error,
 				new Date(),
@@ -1133,6 +1028,7 @@ export class WorkflowRunner {
 					};
 				} else {
 					runData = {
+						// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 						finished: jobResult.success,
 						mode: data.executionMode,
 						startedAt: jobResult.startedAt,

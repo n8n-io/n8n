@@ -1,15 +1,18 @@
-import { In, type Repository } from '@n8n/typeorm';
+import { In, LessThanOrEqual, type EntityManager, type Repository } from '@n8n/typeorm';
 
 import { WorkflowSeededStep, type WorkflowExecution } from './entities';
 import { parentLinkSql, toParentColumns } from './parent-link-columns';
 import {
 	ExecutionNotFoundError,
+	ParentExecutionEndedError,
 	type ExecutionRecord,
 	type ExecutionStore,
 	type NewExecutionRecord,
+	type StaleQueuedExecution,
 } from '../execution/execution-store';
 import { DEFAULT_STALENESS_THRESHOLDS, type StalenessThresholds } from '../execution/staleness';
 import {
+	isEndedExecutionStatus,
 	LIVE_EXECUTION_STATUSES,
 	stepKeyId,
 	type ExecutionStatus,
@@ -47,12 +50,30 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 			passes.map((outputs, iteration) => ({ executionId: record.id, nodeId, iteration, outputs })),
 		);
 		await this.repo.manager.transaction(async (manager) => {
+			if (parent) await this.holdParentNotEnded(manager, parent.executionId);
 			// The cast is needed because the insert payload type recurses into the
 			// opaque `graph` jsonb and rejects `StepConfig`'s deliberate `unknown`.
 			// NOTE: prefer insert to save for performance reasons.
 			await manager.insert(this.repo.target, execution as InsertValues);
 			if (seeded.length > 0) await manager.insert(WorkflowSeededStep, seeded);
 		});
+	}
+
+	/**
+	 * Takes a shared lock on the parent row. We do this to prevent a race between
+	 * sub-execution creation and parent status update (cancellation, failure).
+	 */
+	private async holdParentNotEnded(manager: EntityManager, parentId: string): Promise<void> {
+		const row = await manager
+			.createQueryBuilder(this.repo.target, 'execution')
+			.setLock('pessimistic_read')
+			.select('execution.status', 'status')
+			.where('execution.id = :parentId', { parentId })
+			.getRawOne<{ status: ExecutionStatus }>();
+		if (!row) throw new ExecutionNotFoundError(parentId);
+		if (isEndedExecutionStatus(row.status)) {
+			throw new ParentExecutionEndedError(parentId, row.status);
+		}
 	}
 
 	async loadSeededOutputs(
@@ -133,6 +154,38 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 			{ status: 'cancelled', finishedAt, staleAfter: null },
 		);
 		return result.affected === 1 ? { finishedAt } : null;
+	}
+
+	async findStaleQueuedExecutions(at: Date, limit: number): Promise<StaleQueuedExecution[]> {
+		// Served by the partial index on `stale_after` for `queued` rows.
+		const rows = await this.repo.find({
+			select: { id: true, staleAfter: true },
+			where: { status: 'queued', staleAfter: LessThanOrEqual(at) },
+			order: { staleAfter: 'ASC' },
+			take: limit,
+		});
+		return rows.flatMap(({ id, staleAfter }) => (staleAfter ? [{ id, staleAfter }] : []));
+	}
+
+	async renewQueuedExecution(id: string, staleAfter: Date): Promise<boolean> {
+		const result = await this.repo.update(
+			{ id, status: 'queued', staleAfter },
+			{ staleAfter: this.staleAfterFor('queued') },
+		);
+		return result.affected === 1;
+	}
+
+	async loadLiveSubExecutionIds(parentExecutionId: string): Promise<string[]> {
+		const rows: Array<{ id: string }> = await this.repo
+			.createQueryBuilder('execution')
+			.select('execution.id', 'id')
+			.where('execution.parent_execution_id = :parentExecutionId', { parentExecutionId })
+			.andWhere('execution.status IN (:...statuses)', {
+				statuses: ['queued', ...LIVE_EXECUTION_STATUSES] satisfies ExecutionStatus[],
+			})
+			.orderBy('execution.id', 'ASC')
+			.getRawMany();
+		return rows.map(({ id }) => id);
 	}
 
 	async refreshLiveStatus(id: string): Promise<void> {

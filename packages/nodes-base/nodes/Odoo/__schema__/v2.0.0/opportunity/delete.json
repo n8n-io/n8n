@@ -1,0 +1,11 @@
+{
+	"properties": {
+		"deleted": {
+			"type": "boolean"
+		},
+		"id": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

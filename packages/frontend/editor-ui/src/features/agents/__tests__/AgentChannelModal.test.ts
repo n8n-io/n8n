@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentApproval, ChatIntegrationDescriptor } from '@n8n/api-types';
 
+import { getAgentChannelPlatform } from '../channels/registry';
 import AgentChannelModal, { type ChannelView } from '../components/AgentChannelModal.vue';
 
 const mocks = vi.hoisted(() => ({
@@ -957,6 +958,31 @@ describe('AgentChannelModal', () => {
 			duration: 0,
 		});
 		expect(wrapper.emitted('agent-changed')).toHaveLength(1);
+	});
+
+	it('tells the platform when a removal is a restart', async () => {
+		statuses.value.example = 'connected';
+		connectedCredentials.value.example = 'credential-old';
+		const warning = {
+			integrationType: 'example',
+			code: 'cleanup_incomplete',
+			action: { type: 'open_url', url: 'https://example.test/settings' },
+		};
+		mocks.disconnect.mockResolvedValueOnce({ status: 'disconnected', warning });
+		const presentDisconnectWarning = vi.spyOn(
+			getAgentChannelPlatform('example'),
+			'presentDisconnectWarning',
+		);
+		const wrapper = mountModal('example_edit');
+		await flushPromises();
+
+		await wrapper.get('[data-testid="platform-restart"]').trigger('click');
+		await flushPromises();
+
+		expect(presentDisconnectWarning).toHaveBeenCalledWith(
+			warning,
+			expect.objectContaining({ restart: true }),
+		);
 	});
 
 	it('confirms managed removal from the edit view and keeps the Slack app when unchecked', async () => {

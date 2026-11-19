@@ -1,5 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { fireEvent, screen, waitFor } from '@testing-library/vue';
+import { defineComponent, ref } from 'vue';
 
 import N8nUserSelect from '.';
 import { createComponentRenderer } from '../../__tests__/render';
@@ -416,6 +417,112 @@ describe('UserSelect', () => {
 			const optionIds = Array.from(options).map((o) => o.getAttribute('id'));
 			expect(optionIds).not.toContain('user-select-option-id-u1');
 		});
+	});
+
+	it('accepts typing for the next user after selecting a user without another click', async () => {
+		const user = userEvent.setup();
+		const remoteMethod = vi.fn();
+		const onAddMember = vi.fn();
+		// IAM-1904: Project settings removes each added user and leaves modelValue empty.
+		const memberPicker = defineComponent({
+			components: { N8nUserSelect },
+			setup() {
+				const users = ref(sampleUsers);
+				const addMember = (userId: string) => {
+					onAddMember(userId);
+					users.value = users.value.filter((member) => member.id !== userId);
+				};
+				return { users, addMember, remoteMethod };
+			},
+			template:
+				'<N8nUserSelect :users="users" remote :remote-method="remoteMethod" @update:model-value="addMember" />',
+		});
+		const { getByRole } = createComponentRenderer(memberPicker)({});
+		const input = getByRole('combobox');
+
+		await user.click(input);
+		await user.keyboard('alice');
+		expect(input).toHaveValue('alice');
+		await waitFor(() => expect(remoteMethod).toHaveBeenLastCalledWith('alice'));
+		await user.hover(getByRole('option', { name: /Alice Smith/ }));
+		await user.keyboard('{Enter}');
+		expect(onAddMember).toHaveBeenCalledExactlyOnceWith('u1');
+		await waitFor(() => expect(input).toHaveValue(''));
+		expect(input).toHaveFocus();
+
+		// Type into the current focus. Clicking the input again hides the regression.
+		await user.keyboard('bob');
+		expect(input).toHaveValue('bob');
+		await waitFor(() => expect(remoteMethod).toHaveBeenLastCalledWith('bob'));
+		await user.hover(getByRole('option', { name: /Bob Johnson/ }));
+		await user.keyboard('{Enter}');
+		expect(onAddMember).toHaveBeenNthCalledWith(2, 'u2');
+		expect(onAddMember).toHaveBeenCalledTimes(2);
+	});
+
+	it('closes the dropdown and keeps the selected user when the parent updates the value', async () => {
+		const picker = defineComponent({
+			components: { N8nUserSelect },
+			setup() {
+				return { users: sampleUsers, selected: ref('') };
+			},
+			template: '<N8nUserSelect v-model="selected" :users="users" />',
+		});
+		const { getByRole, queryByRole } = createComponentRenderer(picker)({});
+
+		await userEvent.click(getByRole('combobox'));
+		await userEvent.click(getByRole('option', { name: /Alice Smith/ }));
+
+		await waitFor(() => {
+			expect(queryByRole('listbox')).not.toBeInTheDocument();
+			expect(getByRole('combobox')).toHaveValue('Alice Smith (alice@example.com)');
+		});
+	});
+
+	it('allows the action picker to close with Escape after a selection', async () => {
+		const user = userEvent.setup();
+		const picker = defineComponent({
+			components: { N8nUserSelect },
+			setup() {
+				const users = ref(sampleUsers);
+				const removeUser = (id: string) => {
+					users.value = users.value.filter((user) => user.id !== id);
+				};
+				return { users, removeUser };
+			},
+			template: '<N8nUserSelect :users="users" @update:model-value="removeUser" />',
+		});
+		const { getByRole, queryByRole } = createComponentRenderer(picker)({});
+		await user.click(getByRole('combobox'));
+		await user.click(getByRole('option', { name: /Alice Smith/ }));
+		expect(getByRole('combobox')).toHaveFocus();
+		expect(getByRole('listbox')).toBeVisible();
+
+		await user.keyboard('{Escape}');
+
+		await waitFor(() => expect(queryByRole('listbox')).not.toBeInTheDocument());
+	});
+
+	it('keeps the dropdown closed while the parent saves the selected user', async () => {
+		const picker = defineComponent({
+			components: { N8nUserSelect },
+			props: { selectedUser: String },
+			setup() {
+				return { users: sampleUsers };
+			},
+			template: '<N8nUserSelect :model-value="selectedUser" :users="users" />',
+		});
+		const { getByRole, queryByRole, rerender } = createComponentRenderer(picker)({
+			props: { selectedUser: '' },
+		});
+
+		await userEvent.click(getByRole('combobox'));
+		await userEvent.click(getByRole('option', { name: /Alice Smith/ }));
+		await waitFor(() => expect(queryByRole('listbox')).not.toBeInTheDocument());
+
+		await rerender({ selectedUser: 'u1' });
+		expect(getByRole('combobox')).toHaveValue('Alice Smith (alice@example.com)');
+		expect(queryByRole('listbox')).not.toBeInTheDocument();
 	});
 
 	it('should show the name and the email of the selected user', async () => {

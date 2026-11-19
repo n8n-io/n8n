@@ -85,6 +85,13 @@ const skillSourceStatus = z
 	.enum(['success', 'failure'])
 	.describe('Whether the action succeeded. A failure carries a reason code');
 
+const skillSourceHealth = z.enum([
+	'connected',
+	'credential_issue',
+	'source_unavailable',
+	'delayed',
+]);
+
 const skillSourceReason = z
 	.enum([...SKILL_SOURCE_REASONS, 'unexpected'])
 	.optional()
@@ -107,6 +114,18 @@ const preferenceExampleId = z
 	.optional()
 	.describe(
 		'The example card on the empty preferences page that filled the text (experiment 127). Absent when the text box opened empty',
+	);
+
+const recommendedSkillsVariant = z
+	.enum(['variant'])
+	.describe(
+		'Variant of the 143_recommended_skills feature flag. Only the treatment shows the cards',
+	);
+
+const recommendedSkillsEntryPoint = z
+	.enum(['empty_state', 'create_menu', 'agent_skill_modal'])
+	.describe(
+		'`empty_state` is the Skills page with no skills. `create_menu` is the entry in the "Create skills" menu, which shows the cards in a dialog. `agent_skill_modal` is the "Recommended" tab of the skill picker of an agent',
 	);
 
 export const CONTEXT_TELEMETRY = defineTelemetryEvents({
@@ -423,6 +442,30 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			scope_changed: z.boolean().describe('Whether the same save moved the skill to another scope'),
 		}),
 	},
+	USER_VIEWED_RECOMMENDED_SKILLS: {
+		name: 'User viewed recommended skills',
+		description:
+			'The recommended skills of experiment 143 appeared: as cards on the Skills settings page (in the empty state or in the dialog of the "Create skills" menu), or in the skill picker of an agent. Fires each time the cards appear, and each time the skill picker opens.',
+		properties: z.object({
+			entry_point: recommendedSkillsEntryPoint,
+			variant: recommendedSkillsVariant,
+			'$feature/143_recommended_skills': recommendedSkillsVariant,
+		}),
+	},
+	USER_ADDED_RECOMMENDED_SKILL: {
+		name: 'User added recommended skill',
+		description:
+			'A user saved a skill that a recommended skill card of experiment 143 filled in. Fires once the create succeeds, so a card click that the user cancels reports nothing.',
+		properties: z.object({
+			recommended_skill_id: z
+				.enum(['humanizer', 'cold-email', 'research'])
+				.describe('The recommended skill that filled the create form'),
+			skill_id: skillId.optional().describe('Not set for the agent skill picker'),
+			entry_point: recommendedSkillsEntryPoint,
+			variant: recommendedSkillsVariant,
+			'$feature/143_recommended_skills': recommendedSkillsVariant,
+		}),
+	},
 	MCP_LISTED_SKILLS: {
 		name: 'MCP listed skills',
 		description:
@@ -450,6 +493,21 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			...skillOrigin,
 		}),
 	},
+	USER_CHANGED_SKILL_SOURCE_SCOPE: {
+		name: 'User changed skill source scope',
+		description:
+			'A source scope move committed or failed. Read-only previews do not emit this event.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			from_scope_type: skillSourceScopeType,
+			to_scope_type: skillSourceScopeType,
+			skill_count: z.number(),
+			status: skillSourceStatus,
+			reason: z.enum([...SKILL_SOURCE_REASONS, 'agent_in_use', 'unexpected']).optional(),
+		}),
+	},
+
 	USER_CONNECTED_SKILL_SOURCE: {
 		name: 'User connected skill source',
 		description:
@@ -511,16 +569,20 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	SKILL_SOURCE_CHECK_FLAGGED_SKILL: {
 		name: 'Skill source check flagged skill',
 		description:
-			'The security check of Skill Sync gave a skill from a source a verdict other than pass. At import it fires when the picker reads the link, once for each flagged skill, so a second read of the same link fires again. Counts rule codes only, never names, files or content.',
+			'The security check of Skill Sync gave a skill from a source a verdict other than pass. At import it fires when the picker reads the link, once for each flagged skill, so a second read of the same link fires again. A check that finds a new skill in a connected source fires it once for each new content of that skill. Counts rule codes only, never names, files or content.',
 		properties: z.object({
 			user_id: z
 				.string()
 				.optional()
-				.describe('The user who read the link. Absent for a check that runs in the background'),
+				.describe(
+					'The user who read the link or clicked Check for updates. Absent for a check that runs in the background',
+				),
 			provider: skillSourceProvider,
 			stage: z
 				.enum(['import', 'update'])
-				.describe('`import` is the picker of a connect. `update` is a new version from the source'),
+				.describe(
+					'`import` is the picker of a connect, or a new skill that a check found in a connected source. `update` is a new version from the source',
+				),
 			verdict: z
 				.enum(['needs_review', 'blocked'])
 				.describe(
@@ -558,6 +620,10 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			updates_found: z
 				.number()
 				.describe('Skills of the source with an update that waits for review, after the check'),
+			new_skills_found: z
+				.number()
+				.optional()
+				.describe('New skills that are not hidden from the count, after the check'),
 			throttled: z
 				.boolean()
 				.describe(
@@ -567,15 +633,58 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			reason: skillSourceReason,
 		}),
 	},
+	USER_REVIEWED_SKILL_UPDATE: {
+		name: 'User reviewed skill update',
+		description:
+			'A user reviewed a pending skill update. Fires for each selected skill after the transaction succeeds or fails.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			kind: z
+				.enum(['update', 'new'])
+				.describe('An update to a synced skill, or a new skill hidden from the count'),
+			action: z.enum(['accept', 'skip']),
+			verdict: z.enum(['pass', 'needs_review', 'blocked']),
+			bulk: z.boolean().describe('Whether the request selected more than one skill'),
+			status: skillSourceStatus,
+			reason: skillSourceReason,
+		}),
+	},
 	USER_DELETED_SKILL_SOURCE: {
 		name: 'User deleted skill source',
 		description:
-			'A user deleted a source and its synced skills. Fires after the transaction commits or fails. An agent draft or published pin blocks the delete with reason skills_in_use. Contains no skill, source, agent, or project names.',
+			'A user removed a source. The user deleted its synced skills, or kept them as normal skills that n8n can edit (`skills_kept`). Fires after the transaction commits or fails. An agent draft or published pin blocks a delete of the skills with reason skills_in_use. A request for a skill list that changed in the meantime fails with reason stale. Contains no skill, source, agent, or project names.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			skills_kept: z
+				.boolean()
+				.describe(
+					'True when the user chose Stop syncing in the dialog, so the skills stay. This choice does not fire `User stopped skill sync`',
+				),
+			status: skillSourceStatus,
+			reason: z.enum(['skills_in_use', 'stale', 'unexpected']).optional(),
+		}),
+	},
+	USER_UPDATED_SKILL_SOURCE_CREDENTIAL: {
+		name: 'User updated skill source credential',
+		description:
+			'A user replaced the credential of a skill source. Fires after validation and the write succeed or fail. Contains no credential names, identifiers, or secrets.',
 		properties: z.object({
 			user_id: userId,
 			provider: skillSourceProvider,
 			status: skillSourceStatus,
-			reason: z.enum(['skills_in_use', 'unexpected']).optional(),
+			reason: skillSourceReason,
+		}),
+	},
+	SKILL_SOURCE_HEALTH_CHANGED: {
+		name: 'Skill source health changed',
+		description:
+			'A source check or credential replacement changed the health of a skill source. Repeated results do not report. Carries no user id, so it reaches BigQuery and not PostHog.',
+		properties: z.object({
+			provider: skillSourceProvider,
+			previous_health: skillSourceHealth,
+			health: skillSourceHealth,
 		}),
 	},
 	USER_STOPPED_SKILL_SYNC: {
@@ -593,7 +702,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_DELETED_SKILL: {
 		name: 'User deleted skill',
 		description:
-			'A user deleted a skill from the settings page, n8n Assistant or an MCP client. Fires once the delete commits. Removing a skill from one agent keeps the skill and reports nothing here.',
+			'A user deleted a skill from the settings page, n8n Assistant or an MCP client. Fires once the delete commits, also when the user removes the source with its last skill. Removing a skill from one agent keeps the skill and reports nothing here.',
 		properties: z.object({
 			user_id: userId,
 			skill_id: skillId,

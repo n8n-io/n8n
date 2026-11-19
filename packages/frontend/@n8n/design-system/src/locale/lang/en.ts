@@ -2,6 +2,8 @@
 import type { N8nLocale } from '../../types';
 
 export default {
+	'generic.remove': 'Remove',
+	'attachment.remove': 'Remove {fileName}',
 	'approvalCard.awaitingApproval': 'Awaiting approval',
 	'approvalCard.alwaysAllow': 'Always allow',
 	'approvalCard.alwaysAllowSuffix': 'during this session',
@@ -91,6 +93,8 @@ export default {
 	'settingsPageHeader.docsLabel': 'documentation',
 	'spinner.loading': 'Loading…',
 	'askAssistantButton.askAssistant': 'n8n AI',
+	'chatScrollArea.scrollToBottom': 'Jump to latest message',
+	'chatScrollArea.messages': 'Messages',
 	'assistantChat.builder.name': 'AI Builder',
 	'assistantChat.builder.generatingFinalWorkflow': 'Generating final workflow...',
 	'assistantChat.builder.configuredNodes': 'Configured nodes',

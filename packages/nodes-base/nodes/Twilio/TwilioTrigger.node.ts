@@ -15,6 +15,7 @@ export class TwilioTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Twilio Trigger',
 		name: 'twilioTrigger',
+		schemaPath: 'Twilio',
 		icon: 'file:twilio.svg',
 		group: ['trigger'],
 		version: [1],

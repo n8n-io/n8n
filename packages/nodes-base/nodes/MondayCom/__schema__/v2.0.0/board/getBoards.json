@@ -1,0 +1,63 @@
+{
+	"properties": {
+		"board_folder_id": {
+			"type": ["null", "string"]
+		},
+		"board_kind": {
+			"type": "string"
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"description": {
+			"type": ["null", "string"]
+		},
+		"folder": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"type": ["null", "object"]
+		},
+		"id": {
+			"type": "string"
+		},
+		"item_terminology": {
+			"type": "string"
+		},
+		"items_count": {
+			"type": "number"
+		},
+		"name": {
+			"type": "string"
+		},
+		"state": {
+			"type": "string"
+		},
+		"type": {
+			"type": "string"
+		},
+		"updated_at": {
+			"type": "string"
+		},
+		"url": {
+			"type": "string"
+		},
+		"workspace": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

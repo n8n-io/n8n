@@ -132,7 +132,7 @@ describe('ActiveExecutions', () => {
 			unsavedManualExecutionService,
 		);
 
-		executionRepository.cancelManyRunning.mockResolvedValue();
+		executionRepository.markAsCanceled.mockResolvedValue([]);
 		executionPersistence.create.mockResolvedValue(FAKE_EXECUTION_ID);
 		executionPersistence.updateExistingExecution.mockResolvedValue(true);
 		executionRepository.setRunning.mockResolvedValue(new Date());
@@ -240,6 +240,20 @@ describe('ActiveExecutions', () => {
 			expect.objectContaining({
 				deduplicationKey: 'wf-1:node-1:1700000000000',
 			}),
+			{},
+			{ source: undefined },
+		);
+	});
+
+	test('Should pass the run source to executionPersistence.create for the ledger', async () => {
+		await activeExecutions.add({ ...executionData, source: 'instance_ai' });
+
+		expect(executionPersistence.create).toHaveBeenCalledWith(
+			expect.anything(),
+			{},
+			{
+				source: 'instance_ai',
+			},
 		);
 	});
 
@@ -1095,7 +1109,10 @@ describe('ActiveExecutions', () => {
 			);
 			expect(workflowExecution.cancel).toHaveBeenCalled();
 			expect(enqueuedWorkflowExecution.cancel).not.toHaveBeenCalled();
-			expect(executionRepository.cancelManyRunning).toHaveBeenCalledWith([inProcessExecutionId]);
+			expect(executionRepository.markAsCanceled).toHaveBeenCalledWith(
+				[inProcessExecutionId],
+				['running'],
+			);
 			expect(activeExecutions.has(enqueuedExecutionId)).toBe(true);
 
 			const outcome = await Promise.race([
@@ -1148,7 +1165,7 @@ describe('ActiveExecutions', () => {
 			expect(activeExecutions.getRunningExecutionIds()).toEqual([]);
 			await expect(activeExecutions.cancelRunningExecutions()).resolves.toEqual([]);
 			expect(activeExecutions.has(waitingExecutionId)).toBe(true);
-			expect(executionRepository.cancelManyRunning).not.toHaveBeenCalled();
+			expect(executionRepository.markAsCanceled).not.toHaveBeenCalled();
 		});
 
 		test('Should record the executions as cancelled before returning', async () => {
@@ -1157,14 +1174,15 @@ describe('ActiveExecutions', () => {
 			const postExecute = activeExecutions.getPostExecutePromise(executionId);
 
 			let hasRecorded = false;
-			executionRepository.cancelManyRunning.mockImplementation(async () => {
+			executionRepository.markAsCanceled.mockImplementation(async () => {
 				hasRecorded = true;
+				return [];
 			});
 
 			await activeExecutions.cancelRunningExecutions();
 
 			expect(hasRecorded).toBe(true);
-			expect(executionRepository.cancelManyRunning).toHaveBeenCalledWith([executionId]);
+			expect(executionRepository.markAsCanceled).toHaveBeenCalledWith([executionId], ['running']);
 			await expect(postExecute).rejects.toThrow(SystemShutdownExecutionCancelledError);
 		});
 
@@ -1173,7 +1191,7 @@ describe('ActiveExecutions', () => {
 			activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 			const postExecute = activeExecutions.getPostExecutePromise(executionId);
 
-			executionRepository.cancelManyRunning.mockRejectedValue(new Error('Connection terminated'));
+			executionRepository.markAsCanceled.mockRejectedValue(new Error('Connection terminated'));
 
 			await expect(activeExecutions.cancelRunningExecutions()).resolves.toEqual([executionId]);
 
@@ -1190,7 +1208,7 @@ describe('ActiveExecutions', () => {
 			const executionId = await addExecutionWithStatus('running');
 			activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 
-			executionRepository.cancelManyRunning.mockReturnValue(new Promise(() => {}));
+			executionRepository.markAsCanceled.mockReturnValue(new Promise(() => {}));
 
 			let hasCancelled = false;
 			const cancelling = activeExecutions.cancelRunningExecutions().then((ids) => {
@@ -1220,7 +1238,7 @@ describe('ActiveExecutions', () => {
 			const executionId = await addExecutionWithStatus('running');
 			activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 
-			executionRepository.cancelManyRunning.mockReturnValue(new Promise(() => {}));
+			executionRepository.markAsCanceled.mockReturnValue(new Promise(() => {}));
 
 			let hasCancelled = false;
 			const cancelling = activeExecutions.cancelRunningExecutions(1_000).then((ids) => {
