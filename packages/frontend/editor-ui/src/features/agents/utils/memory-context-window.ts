@@ -36,8 +36,10 @@ export function getMemoryWindowWarnings(
 		const mainWindow = modelWindow(model);
 		const window = cap > 0 ? Math.min(mainWindow ?? cap, cap) : mainWindow;
 		const batch = window === undefined ? undefined : Math.max(1, Math.floor(window * 0.6));
+		// Keep the estimate aligned with DEFAULT_MEMORY_POLICY.windowShares.reflectAt.
 		const reflection =
-			memory?.reflectorThresholdTokens ?? (usesShares && batch !== undefined ? batch : 60_000);
+			memory?.reflectorThresholdTokens ??
+			(usesShares && window !== undefined ? Math.max(1, Math.floor(window * 0.15)) : 60_000);
 		for (const [role, tokens] of [
 			['observer', batch],
 			['reflector', reflection],

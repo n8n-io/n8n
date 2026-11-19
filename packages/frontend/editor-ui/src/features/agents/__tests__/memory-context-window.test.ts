@@ -45,13 +45,21 @@ describe('memory context window compatibility', () => {
 		).toEqual([]);
 	});
 
-	it.each([500_000, 0])('warns independently for both workers with cap %s', (cap) => {
-		const tokens = (cap || 1_000_000) * 0.6;
+	it('warns only for the observer when 15% of the window fits the reflector', () => {
 		expect(
-			getMemoryWindowWarnings(config({ windowShares: { maxContextWindowTokens: cap } }), catalog),
+			getMemoryWindowWarnings(
+				config({ windowShares: { maxContextWindowTokens: 500_000 } }),
+				catalog,
+			),
+		).toEqual([{ role: 'observer', reason: 'exceeds', tokens: 300_000, context: 128_000 }]);
+	});
+
+	it('warns both workers when 60% and 15% of the uncapped window exceed their limits', () => {
+		expect(
+			getMemoryWindowWarnings(config({ windowShares: { maxContextWindowTokens: 0 } }), catalog),
 		).toEqual([
-			{ role: 'observer', reason: 'exceeds', tokens, context: 128_000 },
-			{ role: 'reflector', reason: 'exceeds', tokens, context: 128_000 },
+			{ role: 'observer', reason: 'exceeds', tokens: 600_000, context: 128_000 },
+			{ role: 'reflector', reason: 'exceeds', tokens: 150_000, context: 128_000 },
 		]);
 	});
 
@@ -120,15 +128,15 @@ describe('memory context window compatibility', () => {
 
 	it('checks inherited memory against delegated difficulty models', () => {
 		const agent = {
-			...config({ windowShares: { maxContextWindowTokens: 500_000 } }),
+			...config({ windowShares: { maxContextWindowTokens: 900_000 } }),
 			model: 'openai/128000',
 			subAgents: {
 				modelsByDifficulty: { high: { model: 'openai/1000000', credential: 'example' } },
 			},
 		};
 		expect(getMemoryWindowWarnings(agent, catalog)).toEqual([
-			{ role: 'observer', reason: 'exceeds', tokens: 300_000, context: 128_000 },
-			{ role: 'reflector', reason: 'exceeds', tokens: 300_000, context: 128_000 },
+			{ role: 'observer', reason: 'exceeds', tokens: 540_000, context: 128_000 },
+			{ role: 'reflector', reason: 'exceeds', tokens: 135_000, context: 128_000 },
 		]);
 		const memory = {
 			...agent.memory!,
@@ -146,7 +154,7 @@ describe('memory context window compatibility', () => {
 		};
 		expect(getMemoryWindowWarnings(agent, catalog)).toEqual([
 			{ role: 'observer', reason: 'exceeds', tokens: 600_000, context: 128_000 },
-			{ role: 'reflector', reason: 'exceeds', tokens: 600_000, context: 128_000 },
+			{ role: 'reflector', reason: 'exceeds', tokens: 150_000, context: 128_000 },
 		]);
 	});
 
