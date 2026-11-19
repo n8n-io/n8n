@@ -7892,13 +7892,19 @@ importers:
       '@n8n/decorators':
         specifier: workspace:*
         version: link:../../../@n8n/decorators
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../../../@n8n/di
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../../../@n8n/errors
       '@n8n/typeorm':
         specifier: workspace:*
         version: link:../../../@n8n/typeorm
     devDependencies:
-      '@n8n/di':
+      '@n8n/backend-test-utils':
         specifier: workspace:*
-        version: link:../../../@n8n/di
+        version: link:../../../@n8n/backend-test-utils
       '@n8n/oxlint-config':
         specifier: workspace:*
         version: link:../../../@n8n/oxlint-config
