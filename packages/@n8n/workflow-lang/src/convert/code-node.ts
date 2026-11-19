@@ -26,7 +26,7 @@ import { eachItemModeError, lowerCodeNative, previousRunsOnce } from './code-nat
 import type { Code } from './code.ts';
 import { escapeControls, raw, str } from './code.ts';
 import type { NodeContext } from './context.ts';
-import { NodeFailure } from './context.ts';
+import { NodeFailure, pairingNote } from './context.ts';
 import { emitStep, hostFormOf, lowerFallback } from './steps.ts';
 
 /**
@@ -508,9 +508,10 @@ export function lowerCode(c: NodeContext): void {
 		// such a node is not accepted here: it has no proof for the code in the host.
 		const tracked = name === c.node.name ? null : c.pairedIndex(name, 'k');
 		if (tracked === null || tracked.values.length === 0) {
+			const reason = name === c.node.name ? 'target is the reader' : c.pairingReason?.(name);
 			throw new NodeFailure(
 				'code-node-reference',
-				`The code reads the item of node "${name}" that pairs with an input item, and the pairing is not known: v1 follows the paired items of each node on the way.`,
+				`The code reads the item of node "${name}" that pairs with an input item, and the pairing is not known: v1 follows the paired items of each node on the way.${pairingNote(reason)}`,
 				codeField,
 			);
 		}
@@ -534,7 +535,7 @@ export function lowerCode(c: NodeContext): void {
 		if (name && name !== c.node.name && !c.pairsByPosition(name) && c.ranBefore(name) !== null) {
 			throw new NodeFailure(
 				'code-node-reference',
-				`The code reads node "${name}" with $node, and the pairing of its items with the items of this node is not known: v1 follows the paired items of each node on the way.`,
+				`The code reads node "${name}" with $node, and the pairing of its items with the items of this node is not known: v1 follows the paired items of each node on the way.${pairingNote(c.pairingReason?.(name))}`,
 				codeField,
 			);
 		}
@@ -542,7 +543,7 @@ export function lowerCode(c: NodeContext): void {
 	if (refs.length > 0 && /\.\s*pairedItem\b(?!\s*\()/.test(user)) {
 		throw new NodeFailure(
 			'code-node-reference',
-			'The code reads `pairedItem` of an item and reads other nodes: the paired items of the items of another node are not known.',
+			`The code reads \`pairedItem\` of an item and reads other nodes: the paired items of the items of another node are not known.${pairingNote('reader reads pairedItem of an item')}`,
 			codeField,
 		);
 	}

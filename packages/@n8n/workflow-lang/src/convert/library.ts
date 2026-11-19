@@ -1727,6 +1727,7 @@ function keyValues(list: unknown): Array<{ name: unknown; value: unknown }> {
 export function lowerHttpRequest(c: NodeContext): void {
 	// The caller says that the node runs in the host (`NodeSources.runsInHost`).
 	if (c.nodeSources?.runsInHost?.(c.node.name) === true) {
+		c.noPairs?.('whole node in the host: the caller says so');
 		lowerHostNode(c, 1, [['host', raw("'fallback'")]]);
 		return;
 	}
@@ -1734,6 +1735,10 @@ export function lowerHttpRequest(c: NodeContext): void {
 		lowerHttpLibrary(c);
 	} catch (error) {
 		if (!(error instanceof NodeFailure) || !error.code.startsWith('http')) throw error;
+		// The code and the parameter path of a failure are fixed words of the converter.
+		c.noPairs?.(
+			`whole node in the host: ${error.code}${error.parameter === undefined ? '' : ` at ${error.parameter}`}`,
+		);
 		c.warn(
 			'fallback-degrade',
 			`${error.message} The node runs in the fallback host.`,
@@ -2288,6 +2293,7 @@ function lowerHttpLibrary(c: NodeContext): void {
 	);
 	// v1 sends the pages of each item in a loop (n8n-core requestWithAuthenticationPaginated).
 	if (paging) {
+		c.noPairs?.('pagination');
 		if (detectsFile) {
 			const replay = c.local('Replay');
 			const answers = replayOf(replay);
@@ -2387,10 +2393,14 @@ function lowerHttpLibrary(c: NodeContext): void {
  * item: the node then hands all items over, and the later read is not compiled.
  */
 function pairedHostItem(c: NodeContext, replay: string): { code: Code; usesIndex: boolean } | null {
-	if (c.pairsWanted !== true || c.setPairs === undefined || c.node.retryOnFail === true) {
+	if (c.pairsWanted !== true || c.setPairs === undefined) return null;
+	if (c.node.retryOnFail === true) {
+		c.noPairs?.('retry on fail');
 		return null;
 	}
-	return hostItemOf(c, [['replay', raw(`${replay}.list`)]]);
+	const hostItem = hostItemOf(c, [['replay', raw(`${replay}.list`)]]);
+	if (hostItem === null) c.noPairs?.('no host form for one item');
+	return hostItem;
 }
 
 function flatCode(code: Code): string {

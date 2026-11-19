@@ -121,6 +121,8 @@ export interface CodeNativeInput {
 	 * runs in the fallback host. The values are the workflow variables of the code: each one
 	 * is a parameter of the function that runs the code, with the name that it says.
 	 */
+	/** Why the pairing of the items of node `name` is not known, in fixed words. */
+	pairingReason?(name: string): string;
 	pairedIndex?(name: string): {
 		at(itemIndex: string): string;
 		values: Array<{ param: string; value: string }>;
@@ -147,6 +149,8 @@ export interface Blocker {
 	/** Short stable name of the construct, used to rank blockers. */
 	feature: string;
 	message: string;
+	/** For a read of a paired item: why the pairing is not known (`CodeNativeInput.pairingReason`). */
+	pairing?: string;
 }
 
 export interface Translation {
@@ -1237,8 +1241,8 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	const text = WRAP_PREFIX + input.code + WRAP_SUFFIX;
 	const { sf, checker, syntax } = programOf(text);
 	const blockers: Blocker[] = [];
-	const block = (feature: string, message: string) => {
-		if (!blockers.some((b) => b.feature === feature)) blockers.push({ feature, message });
+	const block = (feature: string, message: string, pairing?: string) => {
+		if (!blockers.some((b) => b.feature === feature)) blockers.push({ feature, message, pairing });
 	};
 	/** Each Date that the code holds is a Date value (\`CodeNativeInput.dateObjects\`). */
 	const objects = input.dateObjects === true && input.dateValues === true;
@@ -1737,6 +1741,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				block(
 					"$('…').item without a known pairing",
 					"`$('…').item` has a native form only when v1 pairs the items by position.",
+					input.pairingReason?.(name),
 				);
 				return;
 			}
@@ -1795,6 +1800,9 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		block(
 			own ? `$input.${member}` : `$('…').${member}`,
 			`\`${own ? '$input' : "$('…')"}.${member}\` has no native form.`,
+			!own && (member === 'itemMatching' || member === 'pairedItem')
+				? input.pairingReason?.(name)
+				: undefined,
 		);
 	};
 

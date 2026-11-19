@@ -291,9 +291,9 @@ describe('a compiled node that reaches the largest size of a stored file', () =>
 			instance: { baseUrl: 'https://n8n.example', id: 'a'.repeat(64) },
 		});
 		expect(result.source).not.toContain('.paired');
-		expect(
-			result.diagnostics.filter((d) => d.code === 'paired-item').map((d) => d.node),
-		).toEqual(['Good']);
+		expect(result.diagnostics.filter((d) => d.code === 'paired-item').map((d) => d.node)).toEqual([
+			'Good',
+		]);
 		// The node itself hands over as before.
 		const out = await run({}, [FILE, TOO_LARGE], { reads: true });
 		expect(out.status).toBe('ok');

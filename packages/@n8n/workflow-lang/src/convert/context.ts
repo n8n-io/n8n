@@ -145,6 +145,14 @@ export interface NodeContext {
 		name: string,
 		itemIndex: string,
 	): { code: string; values: Array<{ param: string; value: string }> } | null;
+	/**
+	 * Why the item of node `name` that pairs with an input item is not known, in fixed words:
+	 * node types and settings, never a name or a value (`pairingNote` makes the end of a
+	 * diagnostic from it).
+	 */
+	pairingReason?(name: string): string;
+	/** Records why this node keeps no paired items, in fixed words (the first reason counts). */
+	noPairs?(why: string): void;
 	/** The output of node `name` that `$('name')` reads from this node. */
 	readOutput(name: string): number;
 	/**
@@ -177,3 +185,11 @@ export type SubWorkflowCall =
 	| { kind: 'host'; reason: string };
 
 export type Lowerer = (c: NodeContext) => void;
+
+/**
+ * The end of a diagnostic of a read of a paired item that is not known: the reason in a
+ * fixed form that a count of the diagnostics can read.
+ */
+export function pairingNote(reason: string | undefined): string {
+	return ` [pairing: ${reason ?? 'not known'}]`;
+}

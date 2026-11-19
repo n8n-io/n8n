@@ -299,6 +299,7 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 		c.node.retryOnFail !== true
 			? `${out}Pairs`
 			: null;
+	if (call.pairsByCall === true && c.node.retryOnFail === true) c.noPairs?.('retry on fail');
 	if (pairs) {
 		w.line(`const ${pairs}: Json = { items: ${out}, paired: [] };`);
 		c.setPairs?.(pairs);
@@ -666,6 +667,17 @@ function compiledNode(c: NodeContext): boolean {
 		!errorRetry(c) &&
 		!compiled.marksFileLimit &&
 		pairsAsV1(sources, c.node.type, c.version, compiled.resolved);
+	if (!lineage && c.pairsWanted === true) {
+		c.noPairs?.(
+			onError !== 'stopWorkflow'
+				? 'compiled node with a continue setting'
+				: errorRetry(c)
+					? 'compiled node with retry on fail'
+					: compiled.marksFileLimit
+						? 'compiled node that can hand over to the host'
+						: 'compiled node, paired items not checked',
+		);
+	}
 	if (
 		lineage ||
 		(once &&
