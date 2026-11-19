@@ -376,6 +376,61 @@ export const AgentVectorStoreConfigSchema = z.discriminatedUnion('provider', [
 		.strict(),
 ]);
 
+export const LIVE_SOURCE_ID_REGEX = /^[a-zA-Z0-9_-]+$/;
+export const LIVE_SOURCE_RETRIEVAL_STRATEGIES = ['native', 'index'] as const;
+
+/** One picked item of a live knowledge source: a single document or a container of documents. */
+const LiveSourceItemSchema = z
+	.object({
+		id: z.string().min(1).describe('Id of the item in the source'),
+		kind: z.enum(['item', 'container']),
+		containerType: z
+			.string()
+			.optional()
+			.describe('Provider-specific type of a container, such as page, dataSource or channel'),
+		title: z.string().min(1),
+		url: z.string().url().optional(),
+		parentId: z.string().optional(),
+	})
+	.strict();
+
+/**
+ * A live knowledge source: picked items of an external service that the agent
+ * reads at run time. No copy stays in n8n. `provider` is validated by the
+ * provider registry in the knowledge module, not by this schema.
+ */
+export const AgentLiveSourceConfigSchema = z
+	.object({
+		id: z
+			.string()
+			.min(1)
+			.max(64)
+			.regex(
+				LIVE_SOURCE_ID_REGEX,
+				'Live source id can only contain letters, numbers, hyphens, and underscores',
+			)
+			.describe('Unique id within the agent, used in knowledge refs'),
+		provider: z.string().min(1),
+		name: z.string().min(1).max(64),
+		description: z.string().max(512).optional(),
+		credential: CredentialIdSchema,
+		retrieval: z.enum(LIVE_SOURCE_RETRIEVAL_STRATEGIES).optional(),
+		items: z.array(LiveSourceItemSchema).max(200),
+	})
+	.strict();
+
+export const AgentKnowledgeConfigSchema = z
+	.object({
+		liveSources: z
+			.array(AgentLiveSourceConfigSchema)
+			.max(20)
+			.refine((sources) => new Set(sources.map((s) => s.id)).size === sources.length, {
+				message: 'Live source ids must be unique within an agent',
+			})
+			.optional(),
+	})
+	.strict();
+
 const CustomToolJsonConfigSchema = z.object({
 	type: z.literal('custom'),
 	enabled: z.boolean().optional(),
@@ -676,6 +731,8 @@ export const AgentJsonConfigBaseSchema = z.object({
 			{ message: 'Vector store names must be unique within an agent' },
 		)
 		.optional(),
+	/** Knowledge the agent reads at run time from external services (live sources). */
+	knowledge: AgentKnowledgeConfigSchema.optional(),
 	config: z
 		.object({
 			reasoning: z.enum(AGENT_REASONING_LEVELS).optional(),
@@ -798,6 +855,9 @@ export type McpAuthenticationSchemaType = z.infer<typeof McpAuthenticationSchema
 export type SubAgentTaskDifficulty = z.infer<typeof SubAgentTaskDifficultySchema>;
 export type AgentVectorStoreProvider = (typeof AGENT_VECTOR_STORE_PROVIDERS)[number];
 export type AgentJsonVectorStoreConfig = z.infer<typeof AgentVectorStoreConfigSchema>;
+export type AgentJsonLiveSourceConfig = z.infer<typeof AgentLiveSourceConfigSchema>;
+export type AgentJsonLiveSourceItem = AgentJsonLiveSourceConfig['items'][number];
+export type AgentLiveSourceRetrievalStrategy = (typeof LIVE_SOURCE_RETRIEVAL_STRATEGIES)[number];
 
 export interface ConfigValidationError {
 	path: string;
