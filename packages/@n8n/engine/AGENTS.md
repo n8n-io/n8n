@@ -54,8 +54,8 @@ a deployable engine worker) without touching core logic.
 - **Runtime factory** — `runtime/` (`createEngineRuntime`). Owns the engine's
   internal topology: the stores, the handlers, the workers, the HTTP app and the
   start/stop order. It takes the adapters a host chooses and returns a running
-  engine, so no host repeats the wiring. The host always gives it the pair of
-  queues. It starts and stops the queues, but never closes their connections.
+  engine, so no host repeats the wiring. The host gives it the queues. It
+  starts and stops them, but never closes their connections.
   A data plane database is not optional — the factory's type requires one, and
   each composition root refuses to start without it rather than serving
   `/healthz` while unable to run a workflow.
