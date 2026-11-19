@@ -9,6 +9,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import type { SamlPreferencesExtractedData } from '@n8n/rest-api-client/api/sso';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import type { Scope } from '@n8n/permissions';
 import { generateScimToken, getScimConfig, setScimEnabled } from '@n8n/rest-api-client/api/scim';
@@ -231,7 +232,7 @@ describe('SettingsSso View', () => {
 			expect(windowOpenSpy).toHaveBeenCalled();
 
 			expect(telemetryTrack).toHaveBeenCalledWith(
-				expect.any(String),
+				TELEMETRY_EVENT.SSO.USER_UPDATED_SSO_SETTINGS,
 				expect.objectContaining({ identity_provider: 'metadata' }),
 			);
 
@@ -293,7 +294,7 @@ describe('SettingsSso View', () => {
 			expect(windowOpenSpy).toHaveBeenCalled();
 
 			expect(telemetryTrack).toHaveBeenCalledWith(
-				expect.any(String),
+				TELEMETRY_EVENT.SSO.USER_UPDATED_SSO_SETTINGS,
 				expect.objectContaining({ identity_provider: 'xml' }),
 			);
 
@@ -543,7 +544,7 @@ describe('SettingsSso View', () => {
 			);
 
 			expect(telemetryTrack).toHaveBeenCalledWith(
-				expect.any(String),
+				TELEMETRY_EVENT.SSO.USER_UPDATED_SSO_SETTINGS,
 				expect.objectContaining({
 					authentication_method: 'oidc',
 					discovery_endpoint: oidcConfig.discoveryEndpoint,
