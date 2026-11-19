@@ -3,6 +3,8 @@ import { Container } from '@n8n/di';
 import { UserError } from '@n8n/errors';
 import type { IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
 
+import { runsOnQueueWorker } from '@/workflow-runner';
+
 /**
  * An instrumented run (a test run or an eval) would leave the main process, or pause and
  * resume later. Its hooks live in a closure on main, so the run would go on without them and
@@ -24,15 +26,12 @@ export function instrumentedRunGap(
 	workflow: Pick<IWorkflowBase, 'settings'>,
 	executionMode: WorkflowExecuteMode,
 ): string | undefined {
-	// Engine v2 routes on this setting before anything else (`EngineV2Dispatcher.handlesWorkflow`).
-	// Checked for every mode, so a later change to which modes v2 takes cannot let a run through.
+	// Stricter than `EngineV2Dispatcher.handlesWorkflow`, which takes only some modes: every v2
+	// workflow is refused, so a later change to which modes v2 takes cannot let a run through.
 	if (workflow.settings?.engineType === 'v2') {
-		return 'This workflow runs on Engine v2, which test runs and evaluations cannot reach yet.';
+		return 'Test runs and evaluations do not support Engine v2 workflows yet.';
 	}
-	// Mirrors the queue decision in `WorkflowRunner.run`.
-	const queueMode = Container.get(ExecutionsConfig).mode === 'queue';
-	const offloadsManual = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
-	if (queueMode && (offloadsManual || executionMode !== 'manual')) {
+	if (runsOnQueueWorker(Container.get(ExecutionsConfig), executionMode)) {
 		return 'This workflow would run on a queue worker, which test runs and evaluations cannot reach.';
 	}
 	return undefined;
@@ -50,5 +49,16 @@ export function assertInstrumentedRunStaysOnMain(
 export const PAUSED_INSTRUMENTED_RUN_MESSAGE =
 	'This workflow paused to wait. A paused workflow resumes outside the test run, so it was stopped.';
 
-/** Custom data on a workflow execution that an instrumented tool started. */
+/**
+ * A run that the runner started without applying the hooks, so it left this process. Only
+ * possible if `instrumentedRunGap` and `WorkflowRunner.run` disagree.
+ */
+export const UNINSTRUMENTED_RUN_MESSAGE =
+	'This workflow run started outside the test run, without its mocks, so it was stopped. Its first requests may have reached real services.';
+
+/**
+ * Custom data on a workflow execution that an instrumented tool started. A label for the
+ * executions list, not a trust signal: it takes one of the execution's custom data slots
+ * (`KV_LIMIT`), and the workflow's own Execution Data node can overwrite it.
+ */
 export const SIMULATED_RUN_METADATA: Readonly<Record<string, string>> = { simulated: 'true' };

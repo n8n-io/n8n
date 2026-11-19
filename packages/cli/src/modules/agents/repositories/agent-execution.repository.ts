@@ -79,6 +79,29 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		return await this.find({ where: { threadId }, order: { createdAt: 'ASC', id: 'ASC' } });
 	}
 
+	/**
+	 * Up to `limit` executions of a thread, newest first. With `before`, only
+	 * the executions older than that one. The `id` breaks ties in `createdAt`.
+	 */
+	async findByThreadIdNewestFirst(
+		threadId: string,
+		limit: number,
+		before?: { createdAt: Date; id: string },
+	): Promise<AgentExecution[]> {
+		const query = this.createQueryBuilder('execution')
+			.where('execution.threadId = :threadId', { threadId })
+			.orderBy('execution.createdAt', 'DESC')
+			.addOrderBy('execution.id', 'DESC')
+			.take(limit);
+		if (before) {
+			query.andWhere(
+				'(execution.createdAt < :beforeCreatedAt OR (execution.createdAt = :beforeCreatedAt AND execution.id < :beforeId))',
+				{ beforeCreatedAt: before.createdAt, beforeId: before.id },
+			);
+		}
+		return await query.getMany();
+	}
+
 	/** Usage columns of all executions in a thread, oldest first. Skips the timeline. */
 	async findUsageByThreadId(threadId: string): Promise<AgentExecutionUsageRow[]> {
 		return await this.find({

@@ -367,6 +367,7 @@ export class JobProcessor {
 				executionId,
 				resultData.pinData,
 				execution.storedAt,
+				execution.data.resumeToken,
 			);
 		}
 
@@ -581,7 +582,9 @@ export class JobProcessor {
 			usedDynamicCredentials: !!run.data.executionData?.runtimeData?.credentials,
 			metadata: run.data.resultData.metadata,
 			waitTill: run.waitTill ?? null,
-			...(run.data.resultData.failedBeforeStart && { failedBeforeStart: true }),
+			...(run.data.resultData.failedBeforeStart && {
+				failedBeforeStart: run.data.resultData.failedBeforeStart,
+			}),
 			nodeTimeSavedMinutes: sumNodeTimeSavedMinutes(run.data.resultData.runData),
 		};
 	}

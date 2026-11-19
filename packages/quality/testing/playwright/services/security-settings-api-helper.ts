@@ -56,6 +56,19 @@ export class SecuritySettingsApiHelper {
 		}
 	}
 
+	/** Sets "Require approval" to "Always required" or back to "Set per project or workflow". */
+	async setWorkflowReviewsAlwaysRequired(alwaysRequired: boolean): Promise<void> {
+		const response = await this.api.request.post('/rest/settings/security', {
+			data: { workflowReviews: { alwaysRequired } },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/settings/security failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+	}
+
 	async setRedactionFloorRaw(floor: RedactionFloor): Promise<APIResponse> {
 		return await this.api.request.post('/rest/settings/security', {
 			data: { redactionEnforcement: { floor } },

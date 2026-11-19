@@ -715,13 +715,16 @@ describe('AgentChatController chat message history', () => {
 			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
 			user: { id: 'user-1' },
 		};
-		expect(await controller.getChatMessages(request as never)).toEqual({
+		expect(await controller.getChatMessages(request as never, mock<express.Response>())).toEqual({
 			messages: [],
 			openSuspensions: [],
 			activeExecutionId: null,
 		});
 		await expect(
-			controller.getChatMessages({ ...request, user: { id: 'user-2' } } as never),
+			controller.getChatMessages(
+				{ ...request, user: { id: 'user-2' } } as never,
+				mock<express.Response>(),
+			),
 		).rejects.toThrow(NotFoundError);
 		agentExecutionService.findThreadById.mockResolvedValue(
 			mock<AgentExecutionThread>({
@@ -732,8 +735,91 @@ describe('AgentChatController chat message history', () => {
 			}),
 		);
 		checkpointStorage.findSuspendedForThread.mockClear();
-		await expect(controller.getChatMessages(request as never)).rejects.toThrow(NotFoundError);
+		await expect(
+			controller.getChatMessages(request as never, mock<express.Response>()),
+		).rejects.toThrow(NotFoundError);
 		expect(checkpointStorage.findSuspendedForThread).not.toHaveBeenCalled();
+	});
+
+	it('reads one page of turns when the query has a limit', async () => {
+		const { controller, agentsService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsService.getConversationHistory.mockResolvedValue({
+			messages: [],
+			activeExecutionId: null,
+			nextCursor: '2026-05-07T10:00:00.000Z|execution-1',
+		});
+		const request = {
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+			user: { id: 'user-1' },
+		};
+
+		const result = await controller.getChatMessages(request as never, mock<express.Response>(), {
+			limit: 20,
+		});
+
+		expect(agentsService.getConversationHistory).toHaveBeenCalledWith(
+			expect.objectContaining({ threadId: 'thread-1', page: { limit: 20 } }),
+		);
+		expect(result.nextCursor).toBe('2026-05-07T10:00:00.000Z|execution-1');
+	});
+
+	describe('a page of older turns', () => {
+		const olderPage = { limit: 20, cursor: '2026-05-07T10:00:00.000Z|execution-1' };
+		const request = {
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+			user: { id: 'user-1' },
+		};
+
+		function setupProjectThread(resourceId: string) {
+			const { controller, agentsService, checkpointStorage, agentExecutionService } =
+				makeController();
+			agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+			agentsService.getConversationHistory.mockResolvedValue({
+				messages: [],
+				activeExecutionId: null,
+				nextCursor: null,
+			});
+			agentExecutionService.findThreadById.mockResolvedValue(
+				mock<AgentExecutionThread>({
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					accessScope: 'project',
+					ownerId: null,
+				}),
+			);
+			checkpointStorage.findSuspendedForThread.mockResolvedValue({
+				persistence: { threadId: 'thread-1', resourceId },
+				pendingToolCalls: { 'tc-1': { toolCallId: 'tc-1', runId: 'run-1', suspended: true } },
+				messageList: { messages: [] },
+			} as never);
+			return controller;
+		}
+
+		it('leaves out the open suspensions of the newest turn', async () => {
+			const controller = setupProjectThread('integration:slack:user-1');
+
+			const result = await controller.getChatMessages(
+				request as never,
+				mock<express.Response>(),
+				olderPage,
+			);
+
+			expect(result).toEqual({
+				messages: [],
+				openSuspensions: [],
+				activeExecutionId: null,
+				nextCursor: null,
+			});
+		});
+
+		it("rejects a project thread that holds another user's draft checkpoint", async () => {
+			const controller = setupProjectThread('draft-chat:user-2');
+
+			await expect(
+				controller.getChatMessages(request as never, mock<express.Response>(), olderPage),
+			).rejects.toThrow(NotFoundError);
+		});
 	});
 
 	it('accepts only shared checkpoints for a project-scoped thread', async () => {
@@ -760,7 +846,9 @@ describe('AgentChatController chat message history', () => {
 		});
 		checkpointStorage.findSuspendedForThread.mockResolvedValue(checkpoint);
 
-		await expect(controller.getChatMessages(request as never)).resolves.toEqual({
+		await expect(
+			controller.getChatMessages(request as never, mock<express.Response>()),
+		).resolves.toEqual({
 			messages: [],
 			openSuspensions: [],
 			activeExecutionId: null,
@@ -770,7 +858,9 @@ describe('AgentChatController chat message history', () => {
 			...checkpoint,
 			persistence: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
 		});
-		await expect(controller.getChatMessages(request as never)).rejects.toThrow(NotFoundError);
+		await expect(
+			controller.getChatMessages(request as never, mock<express.Response>()),
+		).rejects.toThrow(NotFoundError);
 	});
 
 	it('returns conversation history envelope from the execution orchestrator', async () => {
@@ -792,10 +882,13 @@ describe('AgentChatController chat message history', () => {
 			],
 		});
 
-		const result = await controller.getChatMessages({
-			user: { id: 'user-1' },
-			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
-		} as never);
+		const result = await controller.getChatMessages(
+			{
+				user: { id: 'user-1' },
+				params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+			} as never,
+			mock<express.Response>(),
+		);
 
 		expect(result).toEqual({
 			messages: [
@@ -827,10 +920,13 @@ describe('AgentChatController chat message history', () => {
 		agentsService.getConversationHistory.mockResolvedValue(null);
 
 		await expect(
-			controller.getChatMessages({
-				user: { id: 'user-1' },
-				params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
-			} as never),
+			controller.getChatMessages(
+				{
+					user: { id: 'user-1' },
+					params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+				} as never,
+				mock<express.Response>(),
+			),
 		).rejects.toThrow(NotFoundError);
 	});
 });
@@ -2006,7 +2102,9 @@ describe('AgentChatController n8n Chat read-route ownership', () => {
 
 			const req = { params: { projectId, agentId, threadId: 'thread-1' }, user: { id: userId } };
 
-			await expect(controller.getProductionChatMessages(req as never)).resolves.toMatchObject({
+			await expect(
+				controller.getProductionChatMessages(req as never, mock<express.Response>()),
+			).resolves.toMatchObject({
 				activeExecutionId: null,
 			});
 		});
@@ -2021,9 +2119,9 @@ describe('AgentChatController n8n Chat read-route ownership', () => {
 				user: { id: userId },
 			};
 
-			await expect(controller.getProductionChatMessages(req as never)).rejects.toThrow(
-				NotFoundError,
-			);
+			await expect(
+				controller.getProductionChatMessages(req as never, mock<express.Response>()),
+			).rejects.toThrow(NotFoundError);
 		});
 	});
 

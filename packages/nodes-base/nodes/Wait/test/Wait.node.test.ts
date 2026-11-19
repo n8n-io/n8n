@@ -2,6 +2,7 @@ import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { mock } from 'vitest-mock-extended';
 import { DateTime } from 'luxon';
 import {
+	displayParameter,
 	FORM_TRIGGER_NODE_TYPE,
 	NodeOperationError,
 	WAIT_INDEFINITELY,
@@ -225,4 +226,18 @@ describe('Execute Wait Node', () => {
 	});
 
 	new NodeTestHarness().setupTests();
+});
+
+describe('Wait Node description', () => {
+	it.each([1, 1.1, 1.2])('shows the response mode for version %s', (typeVersion) => {
+		const { description } = new Wait();
+		const responseMode = description.properties.find(
+			({ name, displayOptions }) =>
+				name === 'responseMode' && displayOptions?.show?.resume?.includes('webhook'),
+		);
+
+		expect(
+			displayParameter({ resume: 'webhook' }, responseMode!, { typeVersion }, description),
+		).toBe(true);
+	});
 });

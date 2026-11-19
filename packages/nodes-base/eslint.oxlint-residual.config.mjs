@@ -3,6 +3,7 @@ import { nodesConfig } from '@n8n/eslint-config/nodes';
 
 import { databricksUserAgentRestriction } from './nodes/Databricks/eslint-user-agent-restriction.mjs';
 import { kafkaImportRestrictions } from './nodes/Kafka/eslint-import-restrictions.mjs';
+import { resolvablesRestriction } from './utils/eslint-resolvables-restriction.mjs';
 
 const disabledNodesConfig = nodesConfig.map((config) => ({
 	...config,
@@ -16,6 +17,7 @@ export default defineConfig(
 		'scripts/**',
 		'nodes/Databricks/eslint-user-agent-restriction.mjs',
 		'nodes/Kafka/eslint-import-restrictions.mjs',
+		'utils/eslint-resolvables-restriction.mjs',
 	]),
 	{
 		files: ['nodes/**/*.ts', 'credentials/**/*.ts', 'utils/**/*.ts', 'test/**/*.ts'],
@@ -36,4 +38,5 @@ export default defineConfig(
 	},
 	...databricksUserAgentRestriction,
 	...kafkaImportRestrictions,
+	...resolvablesRestriction,
 );

@@ -13,6 +13,7 @@ import UserRoleProvisioningDropdown from '../provisioning/components/UserRolePro
 import { useUserRoleProvisioningForm } from '../provisioning/composables/useUserRoleProvisioningForm';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
 import RoleMappingRuleEditor from '../provisioning/components/RoleMappingRuleEditor.vue';
 import { MODAL_CONFIRM } from '@/app/constants/modals';
@@ -148,13 +149,12 @@ const sendTrackingEvent = (config?: SamlPreferences) => {
 		captureMessage('Single Sign-On SAML: telemtetry data undefined on submit', { level: 'error' });
 		return;
 	}
-	const trackingMetadata = {
+	telemetry.track(TELEMETRY_EVENT.SSO.USER_UPDATED_SSO_SETTINGS, {
 		instance_id: useRootStore().instanceId,
 		authentication_method: SupportedProtocols.SAML,
 		identity_provider: config.metadataUrl ? 'metadata' : 'xml',
 		is_active: config.loginEnabled ?? false,
-	};
-	telemetry.track('User updated single sign on settings', trackingMetadata);
+	});
 };
 
 const promptConfirmDisablingSamlLogin = async () => {

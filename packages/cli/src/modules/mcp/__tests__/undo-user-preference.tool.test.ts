@@ -4,8 +4,7 @@ import { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
-import { AiPreferenceService } from '@n8n/backend-services';
-import { Telemetry } from '@/telemetry';
+import { AiPreferenceService, TelemetryProxy } from '@n8n/backend-services';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { createUndoUserPreferenceTool } from '../tools/undo-user-preference.tool';
@@ -40,7 +39,7 @@ const createMocks = () => {
 	const aiPreferenceService = mockInstance(AiPreferenceService, {
 		undoWrite: vi.fn().mockImplementation(async () => removedRow()),
 	});
-	const telemetry = mockInstance(Telemetry, { track: vi.fn() });
+	const telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 	const logger = mockLogger();
 	const tool = createUndoUserPreferenceTool(user, aiPreferenceService, telemetry, logger);
 	return { aiPreferenceService, telemetry, tool, logger };

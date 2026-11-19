@@ -10,6 +10,7 @@ import { Request, Response } from 'express';
 import { AuthService } from '@/auth/auth.service';
 import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { validateRedirectUrl } from '@n8n/utils/validate-redirect-url';
 import {
 	SSO_ACCESS_DENIED_REDIRECT_PATH,
 	SSO_LOGIN_FAILED_REDIRECT_PATH,
@@ -17,7 +18,7 @@ import {
 import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import { AuthlessRequest } from '@/requests';
 import { isOidcCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
-import { validateRedirectUrl } from '@/utils/validate-redirect-url';
+import { getChangedFields } from '@/utils/changed-fields';
 
 import {
 	OIDC_CLIENT_SECRET_REDACTED_VALUE,
@@ -53,18 +54,26 @@ export class OidcController {
 	@Post('/config')
 	@Licensed('feat:oidc')
 	@GlobalScope('oidc:manage')
-	async saveConfiguration(
-		_req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: OidcConfigDto,
-	) {
+	async saveConfiguration(req: AuthenticatedRequest, _res: Response, @Body payload: OidcConfigDto) {
 		if (this.instanceSettingsLoaderConfig.ssoManagedByEnv) {
 			throw new ForbiddenError(
 				'OIDC configuration is managed via environment variables and cannot be modified through the API',
 			);
 		}
+		const previous = this.oidcService.getRedactedConfig();
+		// `updateConfig` swaps the redaction sentinel for the stored secret in place, so decide first.
+		const clientSecretSubmitted = payload.clientSecret !== OIDC_CLIENT_SECRET_REDACTED_VALUE;
 		await this.oidcService.updateConfig(payload);
 		const config = this.oidcService.getRedactedConfig();
+		const fieldsChanged = getChangedFields(previous, config);
+		if (clientSecretSubmitted) fieldsChanged.push('clientSecret');
+		this.eventService.emit('sso-settings-updated', {
+			user: req.user,
+			protocol: 'oidc',
+			loginEnabled: config.loginEnabled,
+			fieldsChanged,
+			publicApi: false,
+		});
 		return config;
 	}
 

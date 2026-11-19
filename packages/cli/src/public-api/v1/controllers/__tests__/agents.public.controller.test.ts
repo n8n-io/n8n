@@ -5,10 +5,11 @@ import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { NotFoundError, UserError } from '@n8n/errors';
+import { BadRequestError, ConflictError, NotFoundError, UserError } from '@n8n/errors';
+import type { AgentConfigService } from '@/modules/agents/agent-config.service';
 import type { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import type { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
-import type { AgentResponseMapper } from '@/modules/agents/agent-response.mapper';
+import { toAgentPublicDto, type AgentResponseMapper } from '@/modules/agents/agent-response.mapper';
 import type { AgentsService, DeletedAgentSnapshot } from '@/modules/agents/agents.service';
 
 import { AgentsPublicController } from '../agents.public.controller';
@@ -19,8 +20,14 @@ describe('AgentsPublicController route metadata', () => {
 	);
 	const routes = new Map(metadata.routes);
 
-	it('registers the create and delete routes', () => {
-		expect([...routes.keys()].sort()).toEqual(['createAgent', 'deleteAgent']);
+	it('registers the create, read, list, update, and delete routes', () => {
+		expect([...routes.keys()].sort()).toEqual([
+			'createAgent',
+			'deleteAgent',
+			'getAgent',
+			'listAgents',
+			'updateAgent',
+		]);
 	});
 
 	it('createAgent requires the agent:create API key scope and no path-param RBAC check', () => {
@@ -50,6 +57,50 @@ describe('AgentsPublicController route metadata', () => {
 		expect(route?.successStatus).toBe(200);
 		expect(route?.responseDto).toBeDefined();
 		expect(route?.errorResponses?.some((response) => response.status === 404)).toBe(true);
+	});
+
+	it('getAgent requires the agent:read API key scope and project RBAC check', () => {
+		expect(routes.get('getAgent')?.apiKeyScope).toBe('agent:read');
+		expect(routes.get('getAgent')?.accessScope).toEqual({
+			scope: 'agent:read',
+			globalOnly: false,
+		});
+	});
+
+	it('getAgent answers 200 with the public agent DTO', () => {
+		const route = routes.get('getAgent');
+		expect(route?.successStatus).toBe(200);
+		expect(route?.responseDto).toBeDefined();
+		expect(route?.errorResponses?.some((response) => response.status === 404)).toBe(true);
+	});
+
+	it('listAgents requires the agent:list API key scope and no path-param RBAC check', () => {
+		// Cross-project list: `AgentsService` enforces the per-project scope,
+		// the same reasoning as the internal agents list route.
+		expect(routes.get('listAgents')?.apiKeyScope).toBe('agent:list');
+		expect(routes.get('listAgents')?.accessScope).toBeUndefined();
+	});
+
+	it('listAgents answers 200 with the agent list DTO', () => {
+		const route = routes.get('listAgents');
+		expect(route?.successStatus).toBe(200);
+		expect(route?.responseDto).toBeDefined();
+	});
+
+	it('updateAgent requires the agent:update API key scope and project RBAC check', () => {
+		expect(routes.get('updateAgent')?.apiKeyScope).toBe('agent:update');
+		expect(routes.get('updateAgent')?.accessScope).toEqual({
+			scope: 'agent:update',
+			globalOnly: false,
+		});
+	});
+
+	it('updateAgent answers 200 with the public agent DTO and declares the conflict', () => {
+		const route = routes.get('updateAgent');
+		expect(route?.successStatus).toBe(200);
+		expect(route?.responseDto).toBeDefined();
+		expect(route?.errorResponses?.some((response) => response.status === 404)).toBe(true);
+		expect(route?.errorResponses?.some((response) => response.status === 409)).toBe(true);
 	});
 });
 
@@ -88,6 +139,7 @@ describe('AgentsPublicController createAgent', () => {
 		agentResponseMapper,
 		agentDefaultModelResolverService,
 		agentCustomToolsService,
+		mock<AgentConfigService>(),
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
@@ -95,7 +147,7 @@ describe('AgentsPublicController createAgent', () => {
 	function mockSuccessfulCreate() {
 		agentsService.resolveOwningProjectId.mockResolvedValue('project-1');
 		agentsService.createOrAdopt.mockResolvedValue({ agent: {} } as never);
-		agentResponseMapper.toAgentDto.mockResolvedValue(fullAgentDto);
+		agentResponseMapper.toPublicDto.mockResolvedValue(toAgentPublicDto(fullAgentDto));
 	}
 
 	it('creates the agent in the resolved project and returns the public DTO', async () => {
@@ -113,12 +165,13 @@ describe('AgentsPublicController createAgent', () => {
 				createdBy: 'user',
 			}),
 		);
-		expect(agentResponseMapper.toAgentDto).toHaveBeenCalledWith({}, 'project-1', req.user);
+		expect(agentResponseMapper.toPublicDto).toHaveBeenCalledWith({}, 'project-1', req.user);
 		expect(result).toEqual({
 			id: 'agent-1',
 			name: 'My Agent',
 			projectId: 'project-1',
 			project: null,
+			parentFolder: null,
 			availableInMCP: false,
 			isArchived: false,
 			versionId: 'version-1',
@@ -217,6 +270,309 @@ describe('AgentsPublicController createAgent', () => {
 	});
 });
 
+describe('AgentsPublicController getAgent', () => {
+	const agentsService = mock<AgentsService>();
+	const agentResponseMapper = mock<AgentResponseMapper>();
+	const controller = new AgentsPublicController(
+		agentsService,
+		agentResponseMapper,
+		mock<AgentDefaultModelResolverService>(),
+		mock<AgentCustomToolsService>(),
+		mock<AgentConfigService>(),
+	);
+	const req = mock<AuthenticatedRequest>();
+	const res = mock<Response>();
+
+	it('resolves the agent by ID alone and returns the public DTO without builder state', async () => {
+		agentsService.findById.mockResolvedValue({
+			id: 'agent-1',
+			projectId: 'project-1',
+		} as unknown as Awaited<ReturnType<AgentsService['findById']>>);
+		agentResponseMapper.toPublicDto.mockResolvedValue(toAgentPublicDto(fullAgentDto));
+
+		const result = await controller.getAgent(req, res, 'agent-1');
+
+		expect(agentsService.findById).toHaveBeenCalledWith('agent-1');
+		expect(agentResponseMapper.toPublicDto).toHaveBeenCalledWith(
+			{ id: 'agent-1', projectId: 'project-1' },
+			'project-1',
+			req.user,
+		);
+		expect(result).toEqual({
+			id: 'agent-1',
+			name: 'My Agent',
+			projectId: 'project-1',
+			project: null,
+			parentFolder: null,
+			availableInMCP: false,
+			isArchived: false,
+			versionId: 'version-1',
+			activeVersionId: null,
+			createdAt: '2025-01-02T03:04:05.000Z',
+			updatedAt: '2025-06-07T08:09:10.000Z',
+			config: { name: 'My Agent', model: '', instructions: '' },
+			configHash: 'hash-1',
+			tools: {},
+			activeVersion: null,
+		});
+	});
+
+	it('answers 404 when the agent does not exist', async () => {
+		agentsService.findById.mockResolvedValue(null);
+
+		await expect(controller.getAgent(req, res, 'missing-agent')).rejects.toThrow(NotFoundError);
+	});
+});
+
+describe('AgentsPublicController listAgents', () => {
+	const agentsService = mock<AgentsService>();
+	const agentResponseMapper = mock<AgentResponseMapper>();
+	const controller = new AgentsPublicController(
+		agentsService,
+		agentResponseMapper,
+		mock<AgentDefaultModelResolverService>(),
+		mock<AgentCustomToolsService>(),
+		mock<AgentConfigService>(),
+	);
+	const req = mock<AuthenticatedRequest>();
+	const res = mock<Response>();
+
+	const agentRows = [
+		{
+			id: 'agent-1',
+			name: 'First',
+			projectId: 'project-1',
+			availableInMCP: true,
+			isArchived: false,
+			versionId: null,
+			activeVersionId: 'version-1',
+			createdAt: new Date('2025-01-02T03:04:05Z'),
+			updatedAt: new Date('2025-06-07T08:09:10Z'),
+		},
+		{
+			id: 'agent-2',
+			name: null,
+			projectId: 'project-2',
+			availableInMCP: undefined,
+			isArchived: true,
+			versionId: 'version-2',
+			activeVersionId: null,
+			createdAt: new Date('2025-02-03T04:05:06Z'),
+			updatedAt: new Date('2025-07-08T09:10:11Z'),
+		},
+	] as unknown as Awaited<ReturnType<AgentsService['findListableByUserPaginated']>>['data'];
+
+	it('returns one cursor page of lean rows', async () => {
+		agentsService.findListableByUserPaginated.mockResolvedValue({ count: 2, data: agentRows });
+
+		const result = await controller.listAgents(req, res, { limit: 2 });
+
+		expect(agentsService.findListableByUserPaginated).toHaveBeenCalledWith(req.user, {
+			offset: 0,
+			limit: 2,
+			filter: {},
+		});
+		expect(result.nextCursor).toBeNull();
+		expect(result.data).toEqual([
+			{
+				id: 'agent-1',
+				name: 'First',
+				projectId: 'project-1',
+				availableInMCP: true,
+				isArchived: false,
+				versionId: null,
+				activeVersionId: 'version-1',
+				createdAt: '2025-01-02T03:04:05.000Z',
+				updatedAt: '2025-06-07T08:09:10.000Z',
+			},
+			{
+				id: 'agent-2',
+				name: '',
+				projectId: 'project-2',
+				availableInMCP: false,
+				isArchived: true,
+				versionId: 'version-2',
+				activeVersionId: null,
+				createdAt: '2025-02-03T04:05:06.000Z',
+				updatedAt: '2025-07-08T09:10:11.000Z',
+			},
+		]);
+	});
+
+	it('encodes the next page into nextCursor when more rows follow', async () => {
+		agentsService.findListableByUserPaginated.mockResolvedValue({ count: 5, data: agentRows });
+
+		const result = await controller.listAgents(req, res, { limit: 2 });
+
+		expect(result.nextCursor).toBe(
+			Buffer.from(JSON.stringify({ limit: 2, offset: 2 })).toString('base64'),
+		);
+	});
+
+	it('passes the projectId filter through', async () => {
+		agentsService.findListableByUserPaginated.mockResolvedValue({ count: 0, data: [] });
+
+		await controller.listAgents(req, res, { limit: 2, projectId: 'project-2' });
+
+		expect(agentsService.findListableByUserPaginated).toHaveBeenCalledWith(req.user, {
+			offset: 0,
+			limit: 2,
+			filter: { projectId: 'project-2' },
+		});
+	});
+
+	it('answers 400 when the cursor is invalid', async () => {
+		await expect(
+			controller.listAgents(req, res, { limit: 2, cursor: 'not-a-cursor' }),
+		).rejects.toThrow(BadRequestError);
+
+		expect(agentsService.findListableByUserPaginated).not.toHaveBeenCalled();
+	});
+});
+
+describe('AgentsPublicController updateAgent', () => {
+	const agentsService = mock<AgentsService>();
+	const agentResponseMapper = mock<AgentResponseMapper>();
+	const agentConfigService = mock<AgentConfigService>();
+	const controller = new AgentsPublicController(
+		agentsService,
+		agentResponseMapper,
+		mock<AgentDefaultModelResolverService>(),
+		mock<AgentCustomToolsService>(),
+		agentConfigService,
+	);
+	const req = mock<AuthenticatedRequest>();
+	const res = mock<Response>();
+
+	const agentEntity = {
+		id: 'agent-1',
+		projectId: 'project-1',
+	} as unknown as Awaited<ReturnType<AgentsService['findById']>>;
+
+	const config = { name: 'My Agent', model: 'openai/gpt-5', instructions: 'Help users' };
+
+	it('replaces the config and returns the public DTO without builder state', async () => {
+		agentsService.findById.mockResolvedValueOnce(agentEntity).mockResolvedValueOnce(agentEntity);
+		agentConfigService.updateConfig.mockResolvedValue({} as never);
+		agentResponseMapper.toPublicDto.mockResolvedValue(toAgentPublicDto(fullAgentDto));
+
+		const result = await controller.updateAgent(req, res, 'agent-1', {
+			config,
+			baseConfigHash: 'hash-1',
+		});
+
+		expect(agentConfigService.updateConfig).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			config,
+			req.user,
+			{ baseConfigHash: 'hash-1', modifiedBy: 'user' },
+		);
+		expect(agentResponseMapper.toPublicDto).toHaveBeenCalledWith(
+			agentEntity,
+			'project-1',
+			req.user,
+		);
+		expect(result).toEqual({
+			id: 'agent-1',
+			name: 'My Agent',
+			projectId: 'project-1',
+			project: null,
+			parentFolder: null,
+			availableInMCP: false,
+			isArchived: false,
+			versionId: 'version-1',
+			activeVersionId: null,
+			createdAt: '2025-01-02T03:04:05.000Z',
+			updatedAt: '2025-06-07T08:09:10.000Z',
+			config: { name: 'My Agent', model: '', instructions: '' },
+			configHash: 'hash-1',
+			tools: {},
+			activeVersion: null,
+		});
+	});
+
+	it('answers 404 when the agent does not exist', async () => {
+		agentsService.findById.mockResolvedValue(null);
+
+		await expect(
+			controller.updateAgent(req, res, 'missing-agent', {
+				config,
+				baseConfigHash: 'hash-1',
+			}),
+		).rejects.toThrow(NotFoundError);
+
+		expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+	});
+
+	it('propagates the conflict when the config hash is stale', async () => {
+		agentsService.findById.mockResolvedValue(agentEntity);
+		agentConfigService.updateConfig.mockRejectedValue(
+			new ConflictError('Agent config was changed elsewhere; reload to get the latest version'),
+		);
+
+		await expect(
+			controller.updateAgent(req, res, 'agent-1', {
+				config,
+				baseConfigHash: 'stale-hash',
+			}),
+		).rejects.toThrow(ConflictError);
+	});
+
+	it('treats a null config as a no-op for an agent without a configuration', async () => {
+		const noConfigAgent = {
+			id: 'agent-1',
+			projectId: 'project-1',
+			schema: null,
+		} as unknown as Awaited<ReturnType<AgentsService['findById']>>;
+		agentsService.findById.mockResolvedValue(noConfigAgent);
+		agentResponseMapper.toPublicDto.mockResolvedValue(toAgentPublicDto(fullAgentDto));
+
+		const result = await controller.updateAgent(req, res, 'agent-1', {
+			config: null,
+			baseConfigHash: null,
+		});
+
+		expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+		expect(agentResponseMapper.toPublicDto).toHaveBeenCalledWith(
+			noConfigAgent,
+			'project-1',
+			req.user,
+		);
+		expect(result).toEqual({
+			id: 'agent-1',
+			name: 'My Agent',
+			projectId: 'project-1',
+			project: null,
+			parentFolder: null,
+			availableInMCP: false,
+			isArchived: false,
+			versionId: 'version-1',
+			activeVersionId: null,
+			createdAt: '2025-01-02T03:04:05.000Z',
+			updatedAt: '2025-06-07T08:09:10.000Z',
+			config: { name: 'My Agent', model: '', instructions: '' },
+			configHash: 'hash-1',
+			tools: {},
+			activeVersion: null,
+		});
+	});
+
+	it('rejects a null config when the agent has a configuration', async () => {
+		agentsService.findById.mockResolvedValue({
+			id: 'agent-1',
+			projectId: 'project-1',
+			schema: { name: 'My Agent' },
+		} as unknown as Awaited<ReturnType<AgentsService['findById']>>);
+
+		await expect(
+			controller.updateAgent(req, res, 'agent-1', { config: null, baseConfigHash: 'hash-1' }),
+		).rejects.toThrow(BadRequestError);
+
+		expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+	});
+});
+
 describe('AgentsPublicController deleteAgent', () => {
 	const agentsService = mock<AgentsService>();
 	const agentResponseMapper = mock<AgentResponseMapper>();
@@ -226,6 +582,7 @@ describe('AgentsPublicController deleteAgent', () => {
 		agentResponseMapper,
 		agentDefaultModelResolverService,
 		mock<AgentCustomToolsService>(),
+		mock<AgentConfigService>(),
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
@@ -246,7 +603,7 @@ describe('AgentsPublicController deleteAgent', () => {
 
 		const result = await controller.deleteAgent(req, res, 'agent-1');
 
-		expect(agentsService.delete).toHaveBeenCalledWith('agent-1');
+		expect(agentsService.delete).toHaveBeenCalledWith('agent-1', req.user, undefined, {}, req.ctx);
 		expect(result).toEqual({
 			id: 'agent-1',
 			name: 'My Agent',

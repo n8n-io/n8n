@@ -12,16 +12,15 @@ import { Service } from '@n8n/di';
 import { GLOBAL_MEMBER_ROLE_SLUG, GLOBAL_OWNER_ROLE_SLUG, hasGlobalScope } from '@n8n/permissions';
 import { randomString } from 'n8n-workflow';
 
-import { EventService, UrlService } from '@n8n/backend-services';
-import { PasswordUtility } from '@/services/password.utility';
+import { EventService, UrlService, PasswordUtility } from '@n8n/backend-services';
 
 import { ScimUserRepository } from './database/scim-user.repository';
 import { ScimDeprovisioningService } from './scim-deprovisioning.service';
 import {
 	ScimConflictError,
-	ScimForbiddenError,
 	ScimInvalidFilterError,
 	ScimInvalidValueError,
+	ScimOwnerProtectedError,
 	ScimResourceNotFoundError,
 } from './scim.errors';
 
@@ -238,6 +237,7 @@ export class ScimService {
 			user: createdUser,
 			userType: providerType ?? 'email',
 			wasDisabledLdapUser: false,
+			source: 'scim',
 		});
 
 		const created = await this.getUserById(createdUser.id);
@@ -276,7 +276,11 @@ export class ScimService {
 
 		if (changes.size > 0) {
 			await this.saveUser(person);
-			this.eventService.emit('user-updated', { user: person, fieldsChanged: [...changes] });
+			this.eventService.emit('user-updated', {
+				user: person,
+				fieldsChanged: [...changes],
+				source: 'scim',
+			});
 		}
 
 		const patched = await this.getUserById(person.id);
@@ -384,7 +388,11 @@ export class ScimService {
 
 		if (changes.size > 0) {
 			await this.saveUser(person);
-			this.eventService.emit('user-updated', { user: person, fieldsChanged: [...changes] });
+			this.eventService.emit('user-updated', {
+				user: person,
+				fieldsChanged: [...changes],
+				source: 'scim',
+			});
 		}
 
 		const updated = await this.getUserById(person.id);
@@ -411,7 +419,7 @@ export class ScimService {
 	async deleteUser(id: string): Promise<void> {
 		const person = await this.getUserEntity(id);
 		if (this.isOwner(person)) {
-			throw new ScimForbiddenError('The instance owner cannot be deleted via SCIM');
+			throw new ScimOwnerProtectedError('The instance owner cannot be deleted via SCIM');
 		}
 
 		const policy = await this.scimDeprovisioningService.getPolicy();
@@ -433,7 +441,11 @@ export class ScimService {
 	private async deactivate(person: Person): Promise<void> {
 		person.disabled = true;
 		await this.personRepository.save(person);
-		this.eventService.emit('user-updated', { user: person, fieldsChanged: ['disabled'] });
+		this.eventService.emit('user-updated', {
+			user: person,
+			fieldsChanged: ['disabled'],
+			source: 'scim',
+		});
 		this.logger.info('SCIM: User deprovisioned', { userId: person.id });
 	}
 
@@ -462,11 +474,13 @@ export class ScimService {
 
 		// A difference in case only is the same address, so allow it.
 		if (person.email.toLowerCase() !== before.email.toLowerCase()) {
-			throw new ScimForbiddenError('The email of the instance owner cannot be changed via SCIM');
+			throw new ScimOwnerProtectedError(
+				'The email of the instance owner cannot be changed via SCIM',
+			);
 		}
 
 		if (person.disabled && !before.disabled) {
-			throw new ScimForbiddenError('The instance owner cannot be deactivated via SCIM');
+			throw new ScimOwnerProtectedError('The instance owner cannot be deactivated via SCIM');
 		}
 	}
 

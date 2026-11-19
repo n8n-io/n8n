@@ -40,6 +40,7 @@ import {
 import { getCompositeType } from './semantic-registry';
 import { detectSibMergePattern, buildSibMergeExplicitConnections } from './sib-merge-handler';
 import type { SemanticGraph, SemanticNode } from './types';
+import { resolveErrorOutputIndex } from '../types/base';
 
 /**
  * Strip trailing deferred-merge VarRef from a composite.
@@ -382,6 +383,34 @@ function buildIfElse(node: SemanticNode, ctx: BuildContext): IfElseCompositeNode
 }
 
 /**
+ * Resolve the Switch output index from a semantic output name. `position` is
+ * the index to use when the name carries no index.
+ */
+function resolveSwitchOutputIndex(
+	outputName: string,
+	node: SemanticNode,
+	position: number,
+): number {
+	const caseMatch = outputName.match(/^case(\d+)$/);
+	if (caseMatch) return parseInt(caseMatch[1], 10);
+
+	if (outputName === 'fallback') {
+		// Mirror semantic-registry.ts — fallback index = numCases
+		const rules = node.json.parameters?.rules as Record<string, unknown> | undefined;
+		// Switch v3+ uses rules.values, older versions use rules.rules
+		const rulesArray = (rules?.rules ?? rules?.values) as unknown[] | undefined;
+		return rulesArray?.length ?? 4;
+	}
+
+	// The error output follows the natural outputs; unwired rules must not shift it
+	if (outputName === 'error') return resolveErrorOutputIndex(node.json);
+
+	// For any other output pattern (like "outputN"), try to extract the number
+	const outputMatch = outputName.match(/(\d+)$/);
+	return outputMatch ? parseInt(outputMatch[1], 10) : position;
+}
+
+/**
  * Build composite for a Switch node
  */
 function buildSwitchCase(node: SemanticNode, ctx: BuildContext): SwitchCaseCompositeNode {
@@ -396,38 +425,10 @@ function buildSwitchCase(node: SemanticNode, ctx: BuildContext): SwitchCaseCompo
 	};
 
 	// Iterate through all outputs in order, extracting the case index from the output name
-	// Output names are like "case0", "case1", ..., "fallback"
+	// Output names are like "case0", "case1", ..., "fallback", "error"
 	for (const [outputName, connections] of node.outputs) {
-		// Extract case index from output name
-		let outputIndex = 0;
-		const caseMatch = outputName.match(/^case(\d+)$/);
-		if (caseMatch) {
-			const caseIndex = parseInt(caseMatch[1], 10);
-			caseIndices.push(caseIndex);
-			outputIndex = caseIndex;
-		} else if (outputName === 'fallback') {
-			// Mirror semantic-registry.ts — fallback index = numCases
-			const params = node.json.parameters;
-			const rules = params?.rules as Record<string, unknown> | undefined;
-			// Switch v3+ uses rules.values, older versions use rules.rules
-			const rulesArray = (rules?.rules ?? rules?.values) as unknown[] | undefined;
-			const numCases = rulesArray?.length ?? 4;
-			const fallbackIndex = numCases;
-			caseIndices.push(fallbackIndex);
-			outputIndex = fallbackIndex;
-		} else {
-			// For any other output pattern (like "outputN"), try to extract the number
-			const outputMatch = outputName.match(/(\d+)$/);
-			if (outputMatch) {
-				const idx = parseInt(outputMatch[1], 10);
-				caseIndices.push(idx);
-				outputIndex = idx;
-			} else {
-				// Default to sequential index
-				caseIndices.push(cases.length);
-				outputIndex = cases.length;
-			}
-		}
+		const outputIndex = resolveSwitchOutputIndex(outputName, node, cases.length);
+		caseIndices.push(outputIndex);
 		// Use buildBranchTargets with branch context to handle fan-out within each case
 		// Pass the switch node name and output index for deferred merge connections
 		cases.push(buildBranchTargets(connections, branchCtx, node.name, outputIndex));
