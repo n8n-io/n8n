@@ -153,6 +153,43 @@ describe('getGenericHints', () => {
 		]);
 	});
 
+	it('should list all fields with an expression in the name if found in Set node', () => {
+		mockNode.type = 'n8n-nodes-base.set';
+		mockNode.parameters.mode = 'manual';
+		mockNodeType.properties = [];
+
+		vi.spyOn(NodeHelpers, 'getNodeParameters').mockReturnValue({
+			assignments: {
+				assignments: [
+					{ id: 'a', name: '=', value: '', type: 'string' },
+					{ id: 'b', name: 'name', value: '', type: 'string' },
+					{ id: 'c', name: '=', value: '', type: 'string' },
+				],
+			},
+			options: {},
+		});
+
+		const hints = getGenericHints({
+			workflowNode: mockWorkflowNode,
+			node: mockNode,
+			nodeType: mockNodeType,
+			nodeOutputData: mockNodeOutputData,
+			hasMultipleInputItems,
+			hasNodeRun,
+			getNodeByName: () => null,
+			connections: {},
+		});
+
+		expect(hints).toEqual([
+			{
+				message:
+					"An expression is used in 'Fields to Set' in fields 1, 3, did you mean to use it in the value instead?",
+				whenToDisplay: 'beforeExecution',
+				location: 'outputPane',
+			},
+		]);
+	});
+
 	it('should return Split In Batches setup hints if loop is not set up correctly', () => {
 		mockNode.type = 'n8n-nodes-base.splitInBatches';
 		mockWorkflow.getChildNodes.mockReturnValue([]);
