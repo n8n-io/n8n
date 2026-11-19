@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/sensitive-data-map/engine/walkJson.ts
+  s_4ea71e2ba1183f::t_96d437eca2f9bf 1-57
+packages/frontend/editor-ui/src/features/sensitive-data-map/sensitiveDataMap.types.ts
+  s_4ea71e2ba1183f::t_0c5186c41b56a3 11-15,24-29
+  s_4ea71e2ba1183f::t_d1c96a75b138da 1-10,16-23,30-75
+packages/frontend/editor-ui/src/features/sensitive-data-map/engine/__tests__/findSensitiveData.sources.test.ts
+  s_4ea71e2ba1183f::t_caf023bd8632d8 1-3,13-17,19-50,52-101,103-110,114-122,124-130
+  s_4ea71e2ba1183f::t_0c5186c41b56a3 4-12,18,102,111-113,123
+  s_4ea71e2ba1183f::t_210ec0ffbb6633 51
+packages/frontend/editor-ui/src/features/sensitive-data-map/engine/__tests__/fixtures.ts
+  s_4ea71e2ba1183f::t_0c5186c41b56a3 1-8
+  s_4ea71e2ba1183f::t_c050e24736b7f9 9-92
+packages/frontend/editor-ui/src/features/sensitive-data-map/engine/findSensitiveData.ts
+  s_4ea71e2ba1183f::t_66bee774f55b57 1-187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4342a5c8422fcf6a90f012dae27eed1f48c7e7f2",
+  "prompts": {},
+  "sessions": {
+    "s_4ea71e2ba1183f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79c66528-1553-4a0f-a9b2-b8474eca94f5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
