@@ -95,8 +95,10 @@ describe('Public API /ai-preferences', () => {
 
 			await settings().setEnabled(false);
 			const whileOff = await callEveryRoute();
+			const invalidBodyWhileOff = await agent.post('/ai-preferences').send({ scope: 'team' });
 
 			expect(whileOff.map((response) => response.statusCode)).toEqual([404, 404, 404, 404]);
+			expect(invalidBodyWhileOff.statusCode).toBe(404);
 			expect(whileOff[0].body).toEqual({ message: 'Not Found' });
 			expect(await repository().findOneByOrFail({ id: row.id })).toMatchObject({ content: 'mine' });
 
@@ -138,12 +140,21 @@ describe('Public API /ai-preferences', () => {
 			await seed({ content: 'instance' });
 			await seed({ content: 'member row', userId: member.id });
 			await seed({ content: 'foreign project', projectId: foreignProject.id });
+			await seed({
+				content: "member's personal project",
+				projectId: (await getPersonalProject(member)).id,
+			});
 
 			for (const caller of [owner, admin]) {
 				const response = await testServer.publicApiAgentFor(caller).get('/ai-preferences');
 
 				expect(response.statusCode).toBe(200);
-				expect(contentsOf(response)).toEqual(['foreign project', 'instance', 'member row']);
+				expect(contentsOf(response)).toEqual([
+					'foreign project',
+					'instance',
+					'member row',
+					"member's personal project",
+				]);
 			}
 		});
 
