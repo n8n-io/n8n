@@ -189,10 +189,6 @@ describe('validFieldReferences', () => {
 					additionalProperties: true,
 				},
 				meta: { type: 'object', properties: { source: { type: 'string' } } },
-				tags: {
-					type: 'object',
-					additionalProperties: { type: 'object', properties: { label: { type: 'string' } } },
-				},
 			},
 		} satisfies JsonSchema;
 
@@ -202,11 +198,32 @@ describe('validFieldReferences', () => {
 			expect(result.pass).toBe(true);
 		});
 
-		it('fails for an unlisted field inside a nested closed object', async () => {
+		it('passes for an unlisted field inside a nested closed object', async () => {
 			const result = await run(RECORD_SCHEMA, '={{ $json.meta.author }}');
 
+			expect(result.pass).toBe(true);
+		});
+
+		it('passes for a nested field that the sample schema does not list', async () => {
+			const issueSchema = {
+				type: 'object',
+				properties: {
+					key: { type: 'string' },
+					fields: { type: 'object', properties: { summary: { type: 'string' } } },
+				},
+			} satisfies JsonSchema;
+
+			const result = await run(issueSchema, '={{ $json.fields.description }}');
+
+			expect(result.pass).toBe(true);
+		});
+
+		it('does not count an unlisted nested field as a fallback for a missing field', async () => {
+			const result = await run(RECORD_SCHEMA, '={{ $json.author ?? $json.meta.author }}');
+
 			expect(result.pass).toBe(false);
-			expect(result.comment).toContain('"meta.author" not in output of "Feedback Form"');
+			expect(result.comment).toContain('"author" not in output of "Feedback Form"');
+			expect(result.comment).not.toContain('meta.author');
 		});
 
 		it('passes for a listed field inside a nested closed object', async () => {
@@ -215,67 +232,8 @@ describe('validFieldReferences', () => {
 			expect(result.pass).toBe(true);
 		});
 
-		it('walks into an additionalProperties schema', async () => {
-			const valid = await run(RECORD_SCHEMA, '={{ $json.tags.urgent.label }}');
-			const invalid = await run(RECORD_SCHEMA, '={{ $json.tags.urgent.colour }}');
-
-			expect(valid.pass).toBe(true);
-			expect(invalid.pass).toBe(false);
-			expect(invalid.comment).toContain('"tags.urgent.colour" not in output of "Feedback Form"');
-		});
-
 		it('passes when a method call follows a listed field', async () => {
 			const result = await run(RECORD_SCHEMA, '={{ $json.meta.hasOwnProperty("x") }}');
-
-			expect(result.pass).toBe(true);
-		});
-
-		it('fails for an unlisted bracket key inside a nested closed object', async () => {
-			const result = await run(RECORD_SCHEMA, '={{ $json.meta["author"] }}');
-
-			expect(result.pass).toBe(false);
-			expect(result.comment).toContain('"meta.author" not in output of "Feedback Form"');
-		});
-
-		it('passes for a listed bracket key inside a nested closed object', async () => {
-			const result = await run(RECORD_SCHEMA, "={{ $json.meta['source'].trim() }}");
-
-			expect(result.pass).toBe(true);
-		});
-
-		it('passes when a nested key is dynamic', async () => {
-			const result = await run(RECORD_SCHEMA, '={{ $json.meta[$now.weekday] }}');
-
-			expect(result.pass).toBe(true);
-		});
-
-		it('walks into array items through a numeric index', async () => {
-			const schema = {
-				type: 'object',
-				properties: {
-					lines: {
-						type: 'array',
-						items: { type: 'object', properties: { sku: { type: 'string' } } },
-					},
-				},
-			} satisfies JsonSchema;
-
-			const valid = await run(schema, '={{ $json.lines[0].sku }}');
-			const invalid = await run(schema, '={{ $json.lines[0].price }}');
-
-			expect(valid.pass).toBe(true);
-			expect(invalid.pass).toBe(false);
-			expect(invalid.comment).toContain('"lines[0].price" not in output of "Feedback Form"');
-		});
-
-		it('fails when a plain read follows the missing nested key before the fallback', async () => {
-			const result = await run(RECORD_SCHEMA, '={{ $json.meta?.author.name ?? $json.id }}');
-
-			expect(result.pass).toBe(false);
-		});
-
-		it('passes when the missing nested key is read safely before the fallback', async () => {
-			const result = await run(RECORD_SCHEMA, '={{ $json.meta.author?.name ?? $json.id }}');
 
 			expect(result.pass).toBe(true);
 		});
