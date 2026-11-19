@@ -8,6 +8,7 @@ import { ExpressionEvaluator } from '../../evaluator/expression-evaluator';
 import { classifyExpressionError, errorOriginOf } from '../../evaluator/error-classification';
 import type { BridgeConfig, RuntimeBridge } from '../../types';
 import { HostCallError, RuntimeRestartingError } from '../../types';
+import { HostDataResolver } from '../host-data-resolver';
 import { QuickJsBridge } from '../quickjs-bridge';
 
 // Deep enough that V8 runs out of native stack inside the QuickJS WASM code
@@ -344,6 +345,65 @@ describe('QuickJsBridge workflow data', () => {
 				$json: { profile: { name: 'from host' } },
 			}),
 		).toBe('from host');
+	});
+
+	it('reads a small item in one host read', async () => {
+		const bridge = await newBridge();
+		const $json = { id: 7, rows: Array.from({ length: 20 }, (_, index) => ({ index, tag: 'a' })) };
+		const resolve = vi.spyOn(HostDataResolver.prototype, 'resolve');
+
+		expect(bridge.execute('return JSON.stringify(this.$json);', { $json })).toBe(
+			JSON.stringify($json),
+		);
+		expect(resolve).toHaveBeenCalledTimes(1);
+	});
+
+	it('reads each small row of a large item in one host read', async () => {
+		const bridge = await newBridge();
+		const rows = Array.from({ length: 300 }, (_, index) => ({ index, text: 'x'.repeat(100) }));
+		const resolve = vi.spyOn(HostDataResolver.prototype, 'resolve');
+
+		expect(bridge.execute('return JSON.stringify(this.$json, null, 2);', { $json: { rows } })).toBe(
+			JSON.stringify({ rows }, null, 2),
+		);
+		// $json and the rows array stay lazy. Each takes one read for itself and one for `toJSON`.
+		expect(resolve).toHaveBeenCalledTimes(4 + rows.length);
+	});
+
+	it('keeps a change to a small item inside the evaluation', async () => {
+		const bridge = await newBridge();
+		const $json = { count: 1, rows: [{ id: 1 }] };
+
+		expect(
+			bridge.execute(
+				'this.$json.count = 2; this.$json.rows.push({ id: 2 }); return [this.$json.count, this.$json.rows.length];',
+				{ $json },
+			),
+		).toEqual([2, 2]);
+		expect($json).toEqual({ count: 1, rows: [{ id: 1 }] });
+	});
+
+	it.each([
+		{ label: 'a marker key', $json: { a: { __isDate: true, __isoString: 'text' }, b: 1 } },
+		{ label: 'a metadata key', $json: { __isObject: true, __keys: ['x'], __length: 3 } },
+		{ label: 'a __proto__ key', $json: JSON.parse('{"__proto__": {"a": 1}, "b": 2}') as object },
+		{ label: 'a marker key as text', $json: { text: '__isDate', b: 1 } },
+	])('returns a small item with $label as the same data in one host read', async ({ $json }) => {
+		const bridge = await newBridge();
+		const resolve = vi.spyOn(HostDataResolver.prototype, 'resolve');
+
+		expect(bridge.execute('return this.$json;', { $json })).toStrictEqual($json);
+		expect(resolve).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([
+		{ label: 'a Date', $json: { at: new Date(0), b: 1 } },
+		{ label: 'undefined', $json: { a: undefined, list: [undefined, 1] } },
+		{ label: 'NaN', $json: { nan: NaN, b: 1 } },
+	])('returns a small item with $label as the same data', async ({ $json }) => {
+		const bridge = await newBridge();
+
+		expect(bridge.execute('return this.$json;', { $json })).toStrictEqual($json);
 	});
 
 	it('reads a host symbol as undefined and frees the runtime', async () => {

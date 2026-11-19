@@ -3,10 +3,13 @@ import type { ErrorSentinel } from '../runtime/lazy-proxy';
 import {
 	isEscapedTransferValue,
 	TRANSFER_ESCAPED_KEY,
+	TRANSFER_TYPE_KEY,
 	TRANSFER_VALUE_KEY,
 } from '../runtime/transfer';
+import { HOST_DATA_TYPE } from '../runtime/transfer-codec';
 import { bridgeMessageSchema } from './bridge-messages';
 import { prepareForGuest } from './guest-transfer';
+import { isSmallJsonData } from './small-json-data';
 import type { HostDataResolver } from './host-data-resolver';
 
 // ============================================================================
@@ -86,16 +89,27 @@ export function reconstructError(data: ErrorSentinel): Error {
 	return error;
 }
 
-/** Read a host path and return its value or metadata for lazy access. */
-export function getValueAtPath(resolver: HostDataResolver, pathArr: readonly string[]): unknown {
-	return toHostMetadata(resolver.resolve(pathArr));
+/**
+ * Read a host path and return its value or metadata for lazy access.
+ * Item data under `$json` of at most `wholeDataChars` characters is returned whole.
+ */
+export function getValueAtPath(
+	resolver: HostDataResolver,
+	pathArr: readonly string[],
+	wholeDataChars = 0,
+): unknown {
+	return toGuestValue(resolver.resolve(pathArr), wholeDataCharsFor(pathArr, wholeDataChars));
 }
 
-/** Read one array item and return its value or metadata for lazy access. */
+/**
+ * Read one array item and return its value or metadata for lazy access.
+ * Item data under `$json` of at most `wholeDataChars` characters is returned whole.
+ */
 export function getArrayElement(
 	resolver: HostDataResolver,
 	pathArr: readonly string[],
 	index: number,
+	wholeDataChars = 0,
 ): unknown {
 	const arr = resolver.resolve(pathArr);
 	if (!Array.isArray(arr)) {
@@ -107,7 +121,25 @@ export function getArrayElement(
 		return undefined;
 	}
 
-	return toHostMetadata(arr[index]);
+	return toGuestValue(arr[index], wholeDataCharsFor(pathArr, wholeDataChars));
+}
+
+/**
+ * Only `$json` is sent whole. It holds item data, so reading it runs no host code.
+ * Other roots are host proxies, where a read can evaluate a parameter or throw.
+ */
+const WHOLE_DATA_ROOT = '$json';
+
+/** The size limit of whole data for a path. Zero for a path that stays lazy. */
+function wholeDataCharsFor(pathArr: readonly string[], wholeDataChars: number): number {
+	return pathArr[0] === WHOLE_DATA_ROOT ? Math.max(0, Math.trunc(wholeDataChars)) : 0;
+}
+
+/** Small JSON data in a wrapper that the guest reads without a walk. Metadata for any other value. */
+function toGuestValue(value: unknown, wholeDataChars: number): unknown {
+	return isSmallJsonData(value, wholeDataChars)
+		? { [TRANSFER_TYPE_KEY]: HOST_DATA_TYPE, [TRANSFER_VALUE_KEY]: value }
+		: toHostMetadata(value);
 }
 
 /** Describe objects and arrays without reading their contents. */

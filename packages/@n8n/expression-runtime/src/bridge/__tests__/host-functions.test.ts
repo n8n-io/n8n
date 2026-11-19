@@ -57,6 +57,68 @@ describe.each([
 	});
 });
 
+describe('whole item data', () => {
+	const row = { id: 1, tags: ['a', 'b'] };
+	const whole = (value: unknown) => ({ __n8nType: 'HostData', __value: value });
+
+	it('returns small data under $json whole', () => {
+		const resolver = new HostDataResolver({ $json: { rows: [row] } });
+
+		expect(getValueAtPath(resolver, ['$json'], 1000)).toEqual(whole({ rows: [row] }));
+		expect(getValueAtPath(resolver, ['$json', 'rows'], 1000)).toEqual(whole([row]));
+		expect(getArrayElement(resolver, ['$json', 'rows'], 0, 1000)).toEqual(whole(row));
+	});
+
+	it('returns a primitive under $json as it is', () => {
+		const resolver = new HostDataResolver({ $json: { name: 'text', ids: [7] } });
+
+		expect(getValueAtPath(resolver, ['$json', 'name'], 1000)).toBe('text');
+		expect(getArrayElement(resolver, ['$json', 'ids'], 0, 1000)).toBe(7);
+	});
+
+	it('describes data over the size limit, and returns its small parts whole', () => {
+		const resolver = new HostDataResolver({ $json: { text: 'x'.repeat(2000), row } });
+
+		expect(getValueAtPath(resolver, ['$json'], 1000)).toEqual({
+			__isObject: true,
+			__keys: ['text', 'row'],
+		});
+		expect(getValueAtPath(resolver, ['$json', 'row'], 1000)).toEqual(whole(row));
+	});
+
+	it('describes data that JSON cannot carry', () => {
+		const resolver = new HostDataResolver({ $json: { at: new Date(0) } });
+
+		expect(getValueAtPath(resolver, ['$json'], 1000)).toEqual({ __isObject: true, __keys: ['at'] });
+	});
+
+	it('describes small data under another root without reading it', () => {
+		const read = vi.fn(() => 1);
+		const $parameter = Object.defineProperty({}, 'value', { get: read, enumerable: true });
+		const resolver = new HostDataResolver({ $parameter, $vars: row });
+
+		expect(getValueAtPath(resolver, ['$parameter'], 1000)).toEqual({
+			__isObject: true,
+			__keys: ['value'],
+		});
+		expect(getValueAtPath(resolver, ['$vars'], 1000)).toEqual({
+			__isObject: true,
+			__keys: ['id', 'tags'],
+		});
+		expect(read).not.toHaveBeenCalled();
+	});
+
+	it('describes small data under $json when no size limit is given', () => {
+		const resolver = new HostDataResolver({ $json: { rows: [row] } });
+
+		expect(getValueAtPath(resolver, ['$json'])).toEqual({ __isObject: true, __keys: ['rows'] });
+		expect(getArrayElement(resolver, ['$json', 'rows'], 0)).toEqual({
+			__isObject: true,
+			__keys: ['id', 'tags'],
+		});
+	});
+});
+
 describe('getArrayElement indices', () => {
 	it.each([-1, 0.5, NaN, Infinity, '0', 'constructor'])(
 		'returns undefined for invalid index %s',

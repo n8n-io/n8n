@@ -148,6 +148,12 @@ sequenceDiagram
     Proxy-->>Runtime: "test@example.com"
 ```
 
+`QuickJsBridge` does not make a lazy proxy for small item data. When a value
+under `$json` is plain JSON data of at most `WHOLE_DATA_CHARS` characters, the
+host sends the whole value in one callback. The runtime then reads it as a
+plain object. In QuickJS, one callback for each key costs much more than one
+JSON copy. Larger values and all other roots stay lazy.
+
 ## Environment-Specific Implementations
 
 ### IsolatedVmBridge (Node.js Backend)

@@ -324,6 +324,9 @@ function wrapSpecialValuesForGuest(value: unknown): unknown {
 	return collides ? { __isEscaped: true, __value: result } : result;
 }
 
+/** Each marker key as it reads in JSON. */
+const TRANSFER_MARKER_KEYS_IN_JSON = [...TRANSFER_MARKER_KEYS].map((key) => safeStringify(key));
+
 /** JSON drops the named keys of an array, so an array with named keys goes across in a sentinel. */
 function wrapArrayForGuest(value: unknown[]): unknown {
 	const items = value.map(wrapSpecialValuesForGuest);
@@ -363,6 +366,14 @@ function loadRuntimeBundle(): string {
 	throw new Error(
 		`Could not find runtime bundle (${BUNDLE_RELATIVE_PATH}) in any parent of ${__dirname}`,
 	);
+}
+
+/**
+ * False only when the JSON of a host value holds no sentinel of
+ * wrapSpecialValuesForGuest. The guest can then use the parsed JSON as it is.
+ */
+function mayHoldGuestSentinel(json: string): boolean {
+	return TRANSFER_MARKER_KEYS_IN_JSON.some((key) => json.includes(key));
 }
 
 /**
@@ -519,6 +530,9 @@ const INTL_DISPATCH: Record<string, IntlDispatchEntry> = {
 		},
 	},
 };
+
+/** Item data up to this size crosses whole. The guest reads it without a host call for each key. */
+const WHOLE_DATA_CHARS = 8192;
 
 /** The dumped result of one guest call. */
 type GuestOutcome = { kind: 'compileError' | 'error' | 'value'; dump: unknown };
@@ -1114,8 +1128,9 @@ export class QuickJsBridge implements RuntimeBridge {
 
 	// Reverse direction: rebuild real instances from the sentinels the host's
 	// wrapSpecialValuesForGuest() produces for callback results.
-	globalThis.__unwrapFromHost = function(json) {
-		return unwrapFromHost(parseJSON(json));
+	globalThis.__unwrapFromHost = function(json, holdsSentinel) {
+		var parsed = parseJSON(json);
+		return holdsSentinel ? unwrapFromHost(parsed) : parsed;
 	};
 	function unwrapFromHost(v) {
 		if (v === null || typeof v !== 'object') return v;
@@ -1249,7 +1264,7 @@ export class QuickJsBridge implements RuntimeBridge {
 				vm.newFunction('__getValueAtPathImpl', (pathHandle) => {
 					const pathArr = vm.dump(pathHandle) as string[];
 					try {
-						const result = getValueAtPath(resolver, pathArr);
+						const result = getValueAtPath(resolver, pathArr, WHOLE_DATA_CHARS);
 						return this.hostValueToQuickJSHandle(result);
 					} catch (err) {
 						return this.hostValueToQuickJSHandle(serializeError(err));
@@ -1262,7 +1277,7 @@ export class QuickJsBridge implements RuntimeBridge {
 					const pathArr = vm.dump(pathHandle) as string[];
 					const index = vm.dump(indexHandle) as number;
 					try {
-						const result = getArrayElement(resolver, pathArr, index);
+						const result = getArrayElement(resolver, pathArr, index, WHOLE_DATA_CHARS);
 						return this.hostValueToQuickJSHandle(result);
 					} catch (err) {
 						return this.hostValueToQuickJSHandle(serializeError(err));
@@ -1355,7 +1370,12 @@ export class QuickJsBridge implements RuntimeBridge {
 		// JSON keys must keep their data meaning, including __proto__.
 		const unwrapFn = this.vm.getProp(this.vm.global, '__unwrapFromHost');
 		const jsonHandle = this.vm.newString(json);
-		const result = this.vm.callFunction(unwrapFn, this.vm.undefined, jsonHandle);
+		const result = this.vm.callFunction(
+			unwrapFn,
+			this.vm.undefined,
+			jsonHandle,
+			mayHoldGuestSentinel(json) ? this.vm.true : this.vm.false,
+		);
 		jsonHandle.dispose();
 		unwrapFn.dispose();
 		if (result.error) {
