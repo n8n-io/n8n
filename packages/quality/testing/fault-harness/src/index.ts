@@ -1,5 +1,5 @@
 export { FILES, hookSpecSchema, parseHookSpecs } from './hooks/spec';
-export type { HookSpec, Role } from './hooks/spec';
+export type { HookSpec, HarnessHookSpec, Role, SetHookSpec } from './hooks/spec';
 export { hook, parseHookLine, preloadNodeOptions } from './hooks/control';
 export type { HookHit } from './hooks/control';
 export {

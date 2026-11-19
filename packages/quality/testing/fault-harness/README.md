@@ -19,21 +19,23 @@ The harness builds on the `n8n-containers` stacks. It loads a preload script int
 
 ### Hook specs
 
-A hook wraps one method in a compiled n8n file. By default it pauses the call until the test releases it. It can also only log the call. The test arms a hook with `hook(containers, point).arm()`, waits for it with `waitHit`, and lets the call continue with `release`.
+A hook wraps one method in a compiled n8n file. By default it pauses the call until the test releases it. It can also only log the call. A `set` hook wraps no method: it writes fixed values into the module when the file loads, before n8n reads them. The test arms a hook with `hook(containers, point).arm()`, waits for it with `waitHit`, and lets the call continue with `release`.
 
 | Field | Meaning |
 |---|---|
 | `point` | Name of the hook, used to arm it and to match its hits |
 | `file` | Path suffix of the compiled file; `FILES` lists the known ones |
-| `target`, `method` | Where the method lives inside the module exports, such as `JobProcessor.prototype`, `prototype` for a class export, or `''` for the exports object, and the method name |
-| `kind` | `pause` (default: wait for release, then call through) or `observe` (log a hit only) |
+| `target`, `method` | Where the method lives inside the module exports, such as `JobProcessor.prototype`, `prototype` for a class export, or `''` for the exports object, and the method name. A `set` hook has a `target` and no `method` |
+| `kind` | `pause` (default: wait for release, then call through), `observe` (log a hit only), or `set` (write `values`) |
 | `arm` | `file` (default: the test arms it) or `always` (default for `observe`) |
 | `once` | Fire once each time the hook is armed (default) |
 | `scope` | Another method (`file`, `target`, `method`); fire only inside a call of it, at most once per call |
 | `where` | Conditions on the call, such as `[{ path: 'args.0.node.name', equals: 'Pause' }]`; a condition can use `truthy` instead of `equals` |
 | `detail` | Values to log with each hit, such as `{ executionId: 'args.0.executionId' }` |
 | `phase` | `before` the call (default) or `after` it resolves, when `where` and `detail` can also read `result` |
-| `roles`, `lazy` | Containers that must show the hook installed before the test starts (default `worker`); `lazy` skips that check for a file that loads only on first use |
+| `values` | For a `set` hook: JSON values to write onto the `target` object, such as `{ runningStepMs: 20000 }`. Each key must already be a writable data property of the target, so write a constant on the module that defines it, not on an `index.js` that re-exports it through a getter. Otherwise the hook logs `missing` and writes nothing. The only other fields a `set` hook takes are `point`, `file`, `roles`, `lazy` and `optional` |
+| `roles`, `lazy` | Containers that must show the hook installed before the test starts (`main`, `worker` or `engine`; default `worker`); `lazy` skips that check for a file that loads only on first use |
+| `optional` | For a file that older images do not have: the install check passes when the file never loads, and still fails when it loads without the method or keys |
 
 Paths in `where` and `detail` start at `args`, `this`, `scope.args` or `result`. A paused call continues by itself after two minutes if the test never releases it.
 
