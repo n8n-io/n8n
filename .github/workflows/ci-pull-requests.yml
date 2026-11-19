@@ -52,6 +52,7 @@ jobs:
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
       affected_base: ${{ steps.affected-base.outputs.sha }}
       affected_head: ${{ steps.affected-base.outputs.head }}
+      lockfile_base: ${{ steps.affected-base.outputs.lockfile-base }}
       # The merge base, or the last green commit when this run tests only the newer commits.
       diff_base: ${{ steps.ci-filter.outputs.diff-base }}
       db_test_matrix: ${{ steps.generate-db-test-matrix.outputs.db_test_matrix }}
@@ -283,6 +284,7 @@ jobs:
           INCREMENTAL: ${{ steps.ci-filter.outputs.incremental }}
           DIFF_BASE: ${{ steps.ci-filter.outputs.diff-base }}
         run: |
+          echo "lockfile-base=${MERGE_GROUP_BASE_SHA:-$(git rev-parse HEAD^1)}" >> "$GITHUB_OUTPUT"
           if [ "$INCREMENTAL" = 'true' ]; then
             echo "sha=$DIFF_BASE" >> "$GITHUB_OUTPUT"
             echo "head=$(git rev-parse HEAD^2)" >> "$GITHUB_OUTPUT"
@@ -484,12 +486,12 @@ jobs:
           fetch-depth: 1
 
       # Impact selection reads package.json at the diff base, and pnpm-lock.yaml at
-      # the affected base: the merge commit's first parent, so lockfile changes that
-      # master made after the merge base do not count as the PR's.
-      - name: Fetch diff base and affected base
+      # the merge commit's first parent, so lockfile changes that master made after
+      # the merge base do not count as the PR's.
+      - name: Fetch diff base and lockfile base
         env:
           MERGE_BASE: ${{ needs.install-and-build.outputs.diff_base }}
-          AFFECTED_BASE: ${{ needs.install-and-build.outputs.affected_base }}
+          AFFECTED_BASE: ${{ needs.install-and-build.outputs.lockfile_base }}
         run: |
           for sha in "$MERGE_BASE" "$AFFECTED_BASE"; do
             if [ -n "$sha" ] && ! git cat-file -e "$sha^{commit}" 2>/dev/null; then
@@ -511,7 +513,7 @@ jobs:
         env:
           CHANGED_FILES: ${{ needs.install-and-build.outputs.changed_files }}
           MERGE_BASE: ${{ needs.install-and-build.outputs.diff_base }}
-          LOCKFILE_BASE: ${{ needs.install-and-build.outputs.affected_base }}
+          LOCKFILE_BASE: ${{ needs.install-and-build.outputs.lockfile_base }}
           PLAYWRIGHT_GREP_INVERT: ${{ github.event.pull_request.head.repo.fork == true && '@licensed' || '' }}
           PLAYWRIGHT_PROJECT: ${{ github.event.pull_request.head.repo.fork == true && 'sqlite:e2e' || 'multi-main:e2e' }}
         run: |
