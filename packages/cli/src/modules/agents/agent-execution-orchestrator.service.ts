@@ -66,7 +66,7 @@ import { AgentsSettingsService } from './agents-settings.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentTurnExecutionService, type AgentTurnRequest } from './agent-turn-execution.service';
-import { withBudgetGuardrail } from './budget-guardrail';
+import { budgetChargeOptions, withBudgetGuardrail } from './budget-guardrail';
 import { withToolGuardrails } from './tool-guardrails';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import type { AgentChatBridge } from './integrations/agent-chat-bridge';
@@ -288,6 +288,8 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 	toolGuardrails?: AgentToolGuardrailConfig[];
 	/** Model instance for the model-based guardrail kinds. Absent when none is configured. */
 	guardrailModel?: LanguageModel;
+	/** Catalog id of `guardrailModel`. Absent when none is configured. */
+	guardrailModelId?: string;
 	/** See `AgentRuntime.mcpServerAttributions`. */
 	mcpServerAttributions: Map<string, string>;
 	userId?: string;
@@ -965,6 +967,7 @@ export class AgentExecutionOrchestratorService {
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					toolGuardrails: runtime.toolGuardrails,
 					guardrailModel: runtime.guardrailModel,
+					guardrailModelId: runtime.guardrailModelId,
 					agentId,
 					message,
 					modelMessage,
@@ -1048,6 +1051,7 @@ export class AgentExecutionOrchestratorService {
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					toolGuardrails: runtime.toolGuardrails,
 					guardrailModel: runtime.guardrailModel,
+					guardrailModelId: runtime.guardrailModelId,
 					agentId,
 					projectId,
 					message,
@@ -1111,6 +1115,7 @@ export class AgentExecutionOrchestratorService {
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					toolGuardrails: runtime.toolGuardrails,
 					guardrailModel: runtime.guardrailModel,
+					guardrailModelId: runtime.guardrailModelId,
 					agentId,
 					message,
 					memory,
@@ -1172,6 +1177,7 @@ export class AgentExecutionOrchestratorService {
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					toolGuardrails: runtime.toolGuardrails,
 					guardrailModel: runtime.guardrailModel,
+					guardrailModelId: runtime.guardrailModelId,
 					agentId,
 					userId: user.id,
 					message,
@@ -1537,28 +1543,29 @@ export class AgentExecutionOrchestratorService {
 			runtime,
 		);
 		const messageContext = await this.resolveResumeMessageContext(config, memoryScope);
+		const budgetInput = {
+			budget: runtime.budget,
+			sessionId: memoryScope.threadId,
+			agentId: config.agentId,
+			...(runtime.modelCredentialGatewayManaged ? { modelCredentialGatewayManaged: true } : {}),
+			...(config.chatSurface === 'preview' && config.onBudgetNotice
+				? { onNotice: config.onBudgetNotice }
+				: {}),
+		};
 		return {
 			type: 'resume',
 			resumeData: config.resumeData,
 			options: withToolGuardrails(
 				withBudgetGuardrail(
 					this.createResumeOptions(config, memoryScope, messageContext, executionSource, tracing),
-					{
-						budget: runtime.budget,
-						sessionId: memoryScope.threadId,
-						agentId: config.agentId,
-						...(runtime.modelCredentialGatewayManaged
-							? { modelCredentialGatewayManaged: true }
-							: {}),
-						...(config.chatSurface === 'preview' && config.onBudgetNotice
-							? { onNotice: config.onBudgetNotice }
-							: {}),
-					},
+					budgetInput,
 				),
 				{
 					toolGuardrails: runtime.toolGuardrails,
 					toolRegistry: runtime.toolRegistry,
 					guardrailModel: runtime.guardrailModel,
+					guardrailModelId: runtime.guardrailModelId,
+					budget: budgetChargeOptions(budgetInput),
 				},
 			),
 			recording: this.createResumeRecording(config, checkpoint, runtime, executionSource),
@@ -1854,6 +1861,7 @@ export class AgentExecutionOrchestratorService {
 			modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 			toolGuardrails: runtime.toolGuardrails,
 			guardrailModel: runtime.guardrailModel,
+			guardrailModelId: runtime.guardrailModelId,
 			agentId,
 			userId: user.id,
 			message,
@@ -1916,6 +1924,15 @@ export class AgentExecutionOrchestratorService {
 			config.messageContext === undefined
 				? await this.integrationMessageContextService.getLatest(threadId)
 				: config.messageContext;
+		const budgetInput = {
+			budget: config.budget,
+			sessionId: threadId,
+			agentId,
+			...(config.modelCredentialGatewayManaged ? { modelCredentialGatewayManaged: true } : {}),
+			...(config.chatSurface === 'preview' && config.onBudgetNotice
+				? { onNotice: config.onBudgetNotice }
+				: {}),
+		};
 		const hostMetadata = {
 			...encodeAgentSandboxHostMetadata({
 				projectId,
@@ -1965,22 +1982,14 @@ export class AgentExecutionOrchestratorService {
 						...(tracing ? { telemetry: tracing } : {}),
 						...(abortSignal ? { abortSignal } : {}),
 					},
-					{
-						budget: config.budget,
-						sessionId: threadId,
-						agentId,
-						...(config.modelCredentialGatewayManaged
-							? { modelCredentialGatewayManaged: true }
-							: {}),
-						...(config.chatSurface === 'preview' && config.onBudgetNotice
-							? { onNotice: config.onBudgetNotice }
-							: {}),
-					},
+					budgetInput,
 				),
 				{
 					toolGuardrails: config.toolGuardrails,
 					toolRegistry: config.toolRegistry,
 					guardrailModel: config.guardrailModel,
+					guardrailModelId: config.guardrailModelId,
+					budget: budgetChargeOptions(budgetInput),
 				},
 			),
 			recording: this.createChatRecording(config),
@@ -2085,6 +2094,7 @@ export class AgentExecutionOrchestratorService {
 			modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 			toolGuardrails: runtime.toolGuardrails,
 			guardrailModel: runtime.guardrailModel,
+			guardrailModelId: runtime.guardrailModelId,
 			agentId,
 			...(access.ownerId ? { userId: access.ownerId } : {}),
 			message,
