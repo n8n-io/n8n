@@ -40,6 +40,8 @@ import {
 	reconstructError,
 	serializeError,
 } from './host-functions';
+import { BATCH_READ_LIMITS, readBatchAtPath } from './batch-read';
+import type { BatchRequest } from '../runtime/lazy-proxy';
 
 /**
  * The instantiated WASM module that new bridges use, cached after the first
@@ -1412,6 +1414,24 @@ export class QuickJsBridge implements RuntimeBridge {
 			);
 
 			handles.push(
+				vm.newFunction('__readBatchImpl', (pathHandle, startHandle, stepHandle, requestHandle) => {
+					try {
+						const result = readBatchAtPath(
+							resolver,
+							vm.dump(pathHandle) as string[],
+							vm.dump(startHandle) as number,
+							vm.dump(stepHandle) as number,
+							vm.dump(requestHandle) as BatchRequest,
+							BATCH_READ_LIMITS,
+						);
+						return this.hostValueToQuickJSHandle(result);
+					} catch (err) {
+						return this.hostValueToQuickJSHandle(serializeError(err));
+					}
+				}),
+			);
+
+			handles.push(
 				vm.newFunction('__callHostImpl', (msgHandle) => {
 					const rawMsg = vm.dump(msgHandle);
 					try {
@@ -1550,10 +1570,11 @@ export class QuickJsBridge implements RuntimeBridge {
 			// as plain functions; the isolated-vm bridge wires ivm.Callback there,
 			// while QuickJS host functions are already plain functions in the context.
 			const wrappedCode = `
-(function(__getValueAtPathImpl, __getArrayElementImpl, __callHostImpl) {
+(function(__getValueAtPathImpl, __getArrayElementImpl, __readBatchImpl, __callHostImpl) {
   var __ctx = buildContext({
     getValueAtPath: __getValueAtPathImpl,
     getArrayElement: __getArrayElementImpl,
+    readBatch: __readBatchImpl,
     callHost: __callHostImpl,
   }, ${timezone});
   try {
