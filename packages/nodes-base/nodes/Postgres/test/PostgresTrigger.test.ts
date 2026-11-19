@@ -144,11 +144,18 @@ describe('pgTriggerFunction', () => {
 
 describe('PostgresTrigger.trigger (Table Row Change Events mode)', () => {
 	const setup = (additionalFields: IDataObject = {}, firesOn = 'INSERT') => {
+		let released = false;
+		const afterRelease = async () => {
+			if (released) throw new Error('Client has already been released');
+			return [];
+		};
 		const connection = {
-			none: vi.fn().mockResolvedValue(undefined),
-			any: vi.fn().mockResolvedValue([]),
-			query: vi.fn().mockResolvedValue([]),
-			done: vi.fn().mockResolvedValue(undefined),
+			none: vi.fn(afterRelease),
+			any: vi.fn(afterRelease),
+			query: vi.fn(afterRelease),
+			done: vi.fn(async () => {
+				released = true;
+			}),
 			client: { on: vi.fn(), removeListener: vi.fn() },
 		};
 		const db = {
@@ -225,14 +232,27 @@ describe('PostgresTrigger.trigger (Table Row Change Events mode)', () => {
 		expect(connection.done).toHaveBeenCalledTimes(1);
 	});
 
-	it('releases once when close runs twice', async () => {
+	it('closing twice releases once and does not throw, as it did before the release', async () => {
 		const { connection, fns } = setup();
 		const response = await new PostgresTrigger().trigger.call(fns);
 
 		await response.closeFunction?.();
-		await response.closeFunction?.();
+		await expect(response.closeFunction?.()).resolves.toBeUndefined();
 
 		expect(connection.done).toHaveBeenCalledTimes(1);
+	});
+
+	it('still settles, and says so, when releasing fails', async () => {
+		const { connection, fns } = setup();
+		const response = await new PostgresTrigger().trigger.call(fns);
+		connection.done.mockRejectedValueOnce(new Error('already ended'));
+
+		await expect(response.closeFunction?.()).resolves.toBeUndefined();
+
+		expect(fns.logger.warn).toHaveBeenCalledWith(
+			'Postgres Trigger could not release its connection',
+			{ error: expect.any(Error) },
+		);
 	});
 
 	it('logs a lost connection instead of going silent', async () => {

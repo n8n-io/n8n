@@ -313,6 +313,8 @@ export class PostgresTrigger implements INodeType {
 		};
 
 		const cleanUpDb = async () => {
+			if (connectionReleased) return;
+
 			try {
 				try {
 					// check if the connection is healthy
