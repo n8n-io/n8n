@@ -147,6 +147,7 @@ export class WorkflowHistoryCompactionService {
 		metaData: Partial<Record<keyof DiffMetaData, boolean>> = {},
 	): Promise<void> {
 		const compactionStartTime = Date.now();
+		const allSkipRules = [...skipRules, SKIP_RULES.skipDifferentVersionedSettings];
 
 		const startDate = new Date(anchor.getTime() - startDeltaMs);
 		const endDate = new Date(anchor.getTime() - endDeltaMs);
@@ -188,7 +189,7 @@ export class WorkflowHistoryCompactionService {
 					startDate,
 					endDate,
 					rules,
-					skipRules,
+					allSkipRules,
 					metaData,
 				);
 				batchSum += seen;

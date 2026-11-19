@@ -39,6 +39,7 @@ import {
 	BINARY_MODE_COMBINED,
 	BINARY_MODE_SEPARATE,
 	channelsToPolicy,
+	pickVersionedSettings,
 	policyToChannels,
 } from 'n8n-workflow';
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
@@ -273,6 +274,13 @@ const engineType = computed({
 	set(value: 'v1' | 'v2') {
 		workflowSettings.value.engineType = value;
 	},
+});
+
+// Production keeps running the published engine until the user publishes again.
+const isEngineTypeChangePendingPublish = computed(() => {
+	const activeVersion = workflowDocumentStore.value.activeVersion;
+	if (!activeVersion) return false;
+	return pickVersionedSettings(activeVersion.settings).engineType !== engineType.value;
 });
 
 const isProductionRedactionLockedByFloor = computed(
@@ -881,8 +889,8 @@ onMounted(async () => {
 
 	if (!workflowsStore.isWorkflowSaved[workflowDocumentStore.value.workflowId]) {
 		toast.showMessage({
-			title: 'No workflow active',
-			message: 'No workflow active to display settings of.',
+			title: i18n.baseText('workflowSettings.showMessage.noWorkflowActive.title'),
+			message: i18n.baseText('workflowSettings.showMessage.noWorkflowActive.message'),
 			type: 'error',
 			duration: 0,
 		});
@@ -923,8 +931,8 @@ onMounted(async () => {
 
 		await Promise.all(promises);
 	} catch (error) {
-		toast.showError(error, 'Problem loading settings', {
-			message: 'The following error occurred loading the data:',
+		toast.showError(error, i18n.baseText('workflowSettings.showError.loadSettings.title'), {
+			message: i18n.baseText('workflowSettings.showError.loadSettings.message'),
 		});
 	}
 
@@ -1068,6 +1076,19 @@ onBeforeUnmount(() => {
 								<div v-text="helpTexts.engineType"></div>
 							</template>
 							<N8nIcon icon="circle-help" />
+						</N8nTooltip>
+						<N8nTooltip v-if="isEngineTypeChangePendingPublish" placement="top">
+							<template #content>
+								{{ i18n.baseText('workflowSettings.engineType.appliesOnPublish') }}
+							</template>
+							<N8nBadge
+								variant="warning"
+								leading-icon="clock"
+								:class="$style['engine-type-pending-badge']"
+								data-test-id="workflow-settings-engine-type-pending-publish"
+							>
+								{{ i18n.baseText('workflowSettings.engineType.appliesOnPublish.badge') }}
+							</N8nBadge>
 						</N8nTooltip>
 					</ElCol>
 					<ElCol :span="14" class="ignore-key-press-canvas">
@@ -1987,6 +2008,15 @@ onBeforeUnmount(() => {
 		svg {
 			opacity: 1;
 		}
+	}
+}
+
+.engine-type-pending-badge {
+	margin-left: var(--spacing--3xs);
+
+	// `.setting-name` hides label icons until hover. The badge icon stays visible.
+	svg {
+		opacity: 1;
 	}
 }
 

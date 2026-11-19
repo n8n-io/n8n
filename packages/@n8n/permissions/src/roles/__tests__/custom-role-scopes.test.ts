@@ -57,6 +57,7 @@ describe('Agent package export scope', () => {
 			'export',
 			'import',
 			'read',
+			'list',
 			'create',
 			'update',
 			'publish',

@@ -146,6 +146,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		skip?: number;
 		type?: 'personal' | 'team';
 		activated?: boolean;
+		includeServiceAccounts?: boolean;
 	}) => {
 		return await projectsApi.searchShareableProjects(rootStore.restApiContext, params);
 	};

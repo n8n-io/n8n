@@ -22,13 +22,13 @@ import {
 } from '@n8n/api-types';
 import {
 	ContactAdminModal,
+	RestrictedMenuItemMarker,
 	SCOPE_LABEL_KEY,
 	type ContactAudience,
 	useTypeAvailability,
 } from '@n8n/frontend-module-type-availability-policies';
 import ModelSelectorTriggerIcon from './model-selector/ModelSelectorTriggerIcon.vue';
 import ModelSelectorItemLeadingIcon from './model-selector/ModelSelectorItemLeadingIcon.vue';
-import ModelSelectorRestrictedMarker from './model-selector/ModelSelectorRestrictedMarker.vue';
 import { buildMenuItemId, parseMenuItemId } from './model-selector/menuItemId';
 import { useModelCatalog } from '../composables/useModelCatalog';
 import {
@@ -787,8 +787,9 @@ defineExpose({
 			</template>
 
 			<template #item-restricted="{ item }">
-				<ModelSelectorRestrictedMarker
-					:name="restrictedCredentialsName(item)"
+				<RestrictedMenuItemMarker
+					kind="credential"
+					:node-type-name="restrictedCredentialsName(item)"
 					:restriction="item.data?.restriction"
 					@contact-admin="
 						(audience) => requestContactAdmin(restrictedCredentialsName(item), audience)

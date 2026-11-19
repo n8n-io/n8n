@@ -379,6 +379,7 @@ import IconLucideLifeBuoy from '~icons/lucide/life-buoy';
 import IconLucideListOrdered from '~icons/lucide/list-ordered';
 import IconLucideLoaderCircle from '~icons/lucide/loader-circle';
 import IconLucideLoader2 from '~icons/lucide/loader2';
+import IconLucideMessageCircleOff from '~icons/lucide/message-circle-off';
 import IconLucideMilestone from '~icons/lucide/milestone';
 import IconLucideMonitor from '~icons/lucide/monitor';
 import IconLucideMoon from '~icons/lucide/moon';
@@ -948,6 +949,7 @@ export const updatedIconSet = {
 	'maximize-2': BrandMaximize2,
 	menu: BrandMenu,
 	'message-circle': BrandMessageCircle,
+	'message-circle-off': IconLucideMessageCircleOff,
 	'message-square': BrandMessageSquare,
 	'message-square-plus': BrandMessageSquarePlus,
 	'message-circle-plus': BrandMessageCirclePlus,

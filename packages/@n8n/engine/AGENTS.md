@@ -28,7 +28,7 @@ a deployable engine worker) without touching core logic.
 
 ## Layers (today, all in this package)
 
-- **Core (decides)** — `graph/`, `execution/`, `admittance/`. Pure
+- **Core (decides)** — `graph/`, `execution/`, `reconciliation/`, `admittance/`. Pure
   orchestration/policy. Must not open connections, bind an HTTP server, or read
   the environment. Everything external arrives via constructor args / a deps bag
   (the `createScheduler(deps)` pattern).
@@ -40,7 +40,11 @@ a deployable engine worker) without touching core logic.
   in at construction.
 - **Adapters (do)** — effectful implementations: `database/` (TypeORM entities,
   migrations, the Postgres `DataSource`, and `TypeOrmExecutionStore`), `queue/`
-  (in-memory default). The Postgres/ORM coupling lives *here only*.
+  (in-memory default, and `RedisWorkQueue` on a Redis list). The Postgres/ORM
+  coupling lives *here only*. `RedisWorkQueue` receives its Redis clients and
+  never closes them: the composition root owns the connections and the key
+  names. The engine has no runtime dependency on `ioredis`; the adapter declares
+  the client commands it needs as interfaces.
 - **Serving infra** — `server/` (express), `serve.ts` (standalone entrypoint),
   Dockerfile. First candidate to be extracted later.
 - **Runtime factory** — `runtime/` (`createEngineRuntime`). Owns the engine's
@@ -58,7 +62,7 @@ a deployable engine worker) without touching core logic.
 
 ## Rules that keep the seams extractable
 
-- Core modules (`graph`, `execution`, `admittance`) don't import `express`,
+- Core modules (`graph`, `execution`, `reconciliation`, `admittance`) don't import `express`,
   `pg`, or `@n8n/typeorm`, don't construct a `DataSource`, and never import from
   `database/`. Persistence, queue, and HTTP are injected. The dependency arrow
   is one-way: `database/` imports the interface + domain types from the core, not

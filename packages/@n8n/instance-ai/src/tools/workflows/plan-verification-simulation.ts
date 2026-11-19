@@ -35,7 +35,7 @@ import {
 import type { Logger } from '../../logger';
 import type { FetchFn } from '@n8n/agents';
 
-import type { ModelConfig } from '../../types';
+import type { HelperUsageHook, ModelConfig } from '../../types';
 import { itemsForNode } from '../../utils/node-keyed-items';
 import type {
 	NodeSimulationVerdict,
@@ -55,10 +55,14 @@ export interface PlanVerificationSimulationInput {
 	workflowId: string;
 	/** Node output `__schema__` lookup used to shape generated fixtures. */
 	outputSchemaLookup?: OutputSchemaLookup;
-	/** Host-resolved model used when no eval model API key is configured in the environment. */
-	fallbackModelConfig?: ModelConfig;
+	/** Host-resolved main model for the run. */
+	model?: ModelConfig;
+	/** Host-resolved utility model. Classification and fixture generation prefer it over `model`. */
+	utilityModel?: ModelConfig;
 	/** Transport for the helper's model call. */
 	modelFetch?: FetchFn;
+	/** Receives each helper call's token usage so the host can bill it. */
+	onHelperUsage?: HelperUsageHook;
 	logger?: Logger;
 }
 
@@ -348,8 +352,10 @@ export async function planVerificationSimulation({
 	declaredOutputFixtures,
 	workflowId,
 	outputSchemaLookup,
-	fallbackModelConfig,
+	model,
+	utilityModel,
 	modelFetch,
+	onHelperUsage,
 	logger,
 }: PlanVerificationSimulationInput): Promise<VerificationSimulationPlan> {
 	let nodeSimulationPlan: NodeSimulationVerdict[] | undefined;
@@ -360,8 +366,10 @@ export async function planVerificationSimulation({
 		nodeSimulationPlan = await classifyNodesForSimulation({
 			workflow,
 			mockedNodeNames,
-			fallbackModelConfig,
+			model,
+			utilityModel,
 			modelFetch,
+			onHelperUsage,
 			logger,
 		});
 		nodeSimulationPlan = withDeclaredOutputVerdicts(nodeSimulationPlan, declaredFixtures);
@@ -387,8 +395,10 @@ export async function planVerificationSimulation({
 							workflow,
 							plan: planNeedingGeneratedFixtures,
 							outputSchemaLookup,
-							fallbackModelConfig,
+							model,
+							utilityModel,
 							modelFetch,
+							onHelperUsage,
 							logger,
 						})
 					: {};

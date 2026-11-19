@@ -11,6 +11,7 @@ import {
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 import { isRecord } from '@n8n/utils/is-record';
+import { sha256 } from '@n8n/utils/sha256';
 import { LRUCache } from 'lru-cache';
 import type { Readable } from 'node:stream';
 import pLimit from 'p-limit';
@@ -92,7 +93,7 @@ const TOKEN_OF: Record<
 
 /**
  * Reads skills from GitHub repositories. Branches come from `ls-refs` over git smart HTTP. A
- * public tarball comes from codeload, so a public source makes no REST call. A private source
+ * public tarball comes from codeload. Optional commit metadata uses the REST API. A private source
  * reads its tarball through the REST API with the token of its credential, and the repository
  * select lists repositories through the REST API, so both count against the REST rate limit of
  * that token. Every request goes to a fixed GitHub host. The user only fills path segments.
@@ -213,17 +214,39 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		return readRef(ref).path || '/';
 	}
 
-	webUrl(locator: SkillSourceLocator, ref?: RemoteSkillRef): string {
+	webUrl(locator: SkillSourceLocator, ref?: RemoteSkillRef, revision?: string): string {
 		const { owner, repository, branch, path } = readLocator(locator);
-		return gitHubTreeUrl(owner, repository, branch, ref ? readRef(ref).path : path);
+		return gitHubTreeUrl(owner, repository, revision ?? branch, ref ? readRef(ref).path : path);
+	}
+
+	revisionUrl(locator: SkillSourceLocator, revision: string): string {
+		const { owner, repository } = readLocator(locator);
+		return `https://${GITHUB_HOST}/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}/commit/${encodeURIComponent(revision)}`;
+	}
+
+	async describeRevision(locator: SkillSourceLocator, revision: string, auth?: SkillSourceAuth) {
+		const { owner, repository } = readLocator(locator);
+		const [o, r, sha] = [owner, repository, revision].map(encodeURIComponent);
+		// The git commit endpoint returns metadata without the potentially large file diff.
+		const body = await this.sendJson(`${API}/repos/${o}/${r}/git/commits/${sha}`, auth);
+		if (!isRecord(body))
+			throw new SkillSourceReadError('unreachable', 'GitHub sent an answer n8n cannot read.');
+		const author = isRecord(body.author) ? body.author : {};
+		return {
+			message: typeof body.message === 'string' ? body.message : null,
+			author: typeof author.name === 'string' ? author.name : null,
+			date: typeof author.date === 'string' ? author.date : null,
+		};
 	}
 
 	async discover(
 		locator: SkillSourceLocator,
 		auth?: SkillSourceAuth,
+		_cursor?: string,
+		revision?: string,
 	): Promise<{ items: RemoteSkillRef[]; truncated: boolean; tooDeep: number; revision: string }> {
 		const parsed = readLocator(locator);
-		const sha = await this.head(parsed, auth);
+		const sha = revision ?? (await this.head(parsed, auth));
 		const archive = await this.archiveAt(parsed, sha, auth);
 		const { path } = parsed;
 		if (path && !archive.paths.some((file) => isInside(file, path) && file !== path)) {
@@ -252,9 +275,13 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		const inRepository = (file: string) => (path ? `${path}/${file}` : file);
 		const skillFile = inRepository(SKILL_FILE);
 		if (archive.oversized.has(skillFile)) {
-			throw new SkillParseError(`The SKILL.md of ${path || '/'} is larger than 1 MB.`);
+			throw new SkillParseError(
+				`The SKILL.md of ${path || '/'} is larger than 1 MB.`,
+				archive.oversized.get(skillFile),
+			);
 		}
-		if (!archive.text.has(skillFile)) {
+		const skillText = archive.text.get(skillFile);
+		if (skillText === undefined) {
 			throw new SkillSourceNotFoundError(`The skill folder ${path || '/'} has no SKILL.md.`, {
 				skill: true,
 			});
@@ -266,14 +293,21 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 			.filter((file) => !archive.oversized.has(inRepository(file)))
 			.map((file) => ({ path: file, content: archive.text.get(inRepository(file)) ?? '' }));
 		const folderName = path.split('/').at(-1) || parsed.repository;
-		const { content, skippedFiles, unstorableFiles } = readSkillFolder(folderName, files);
-		return {
-			content,
-			revision: sha,
-			fidelity: [],
-			skippedFiles: [...skippedFiles, ...oversized],
-			unstorableFiles,
-		};
+		try {
+			const { content, skippedFiles, unstorableFiles } = readSkillFolder(folderName, files);
+			return {
+				content,
+				revision: sha,
+				fidelity: [],
+				skippedFiles: [...skippedFiles, ...oversized],
+				unstorableFiles,
+			};
+		} catch (error) {
+			if (error instanceof SkillParseError) {
+				throw new SkillParseError(error.message, await sha256(skillText));
+			}
+			throw error;
+		}
 	}
 
 	/**
@@ -453,12 +487,16 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	}
 
 	/** One page of a REST answer as JSON. */
-	private async sendJson(url: string, auth: SkillSourceAuth): Promise<unknown> {
-		const body = await this.send({ url, method: 'GET', headers: bearer(auth) }, auth, {
-			bytes: MAX_REFS_BYTES,
-			message: 'GitHub sent too much data.',
-			reason: 'unreachable',
-		});
+	private async sendJson(url: string, auth?: SkillSourceAuth): Promise<unknown> {
+		const body = await this.send(
+			{ url, method: 'GET', headers: auth ? bearer(auth) : API_HEADERS },
+			auth,
+			{
+				bytes: MAX_REFS_BYTES,
+				message: 'GitHub sent too much data.',
+				reason: 'unreachable',
+			},
+		);
 		try {
 			return jsonParse<unknown>(body.toString('utf8'));
 		} catch (error) {

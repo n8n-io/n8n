@@ -44,8 +44,18 @@ function formatObservationTime(date: Date): string {
 	return `${hours}:${minutes}`;
 }
 
-function renderBullet(entry: ObservationLogEntry, indent = ''): string {
-	return `${indent}* ${MARKER_LABELS[entry.marker]} (${formatObservationTime(entry.createdAt)}) ${entry.text}`;
+function formatObservationDate(date: Date): string {
+	const month = String(date.getMonth() + 1).padStart(2, '0');
+	const day = String(date.getDate()).padStart(2, '0');
+	return `${date.getFullYear()}-${month}-${day}`;
+}
+
+/** Gives the date only for an entry from another day than its heading. */
+function renderBullet(entry: ObservationLogEntry, day: string, indent = ''): string {
+	const entryDay = formatObservationDate(entry.createdAt);
+	const time = formatObservationTime(entry.createdAt);
+	const stamp = entryDay === day ? time : `${entryDay} ${time}`;
+	return `${indent}* ${MARKER_LABELS[entry.marker]} (${stamp}) ${entry.text}`;
 }
 
 export function renderObservationLog(
@@ -138,13 +148,23 @@ export function renderObservationLog(
 	if (includedRoots.length === 0) return null;
 
 	const lines: string[] = ['<observations>', MEMORY_INTRO, MARKER_LEGEND, ''];
-	const renderTree = (entry: ObservationLogEntry, indent = '') => {
-		lines.push(renderBullet(entry, indent));
+	const renderTree = (entry: ObservationLogEntry, day: string, indent = '') => {
+		lines.push(renderBullet(entry, day, indent));
 		for (const child of childrenByParent.get(entry.id) ?? []) {
-			if (included.has(child.id)) renderTree(child, `${indent}  `);
+			if (included.has(child.id)) renderTree(child, day, `${indent}  `);
 		}
 	};
-	for (const root of includedRoots) renderTree(root);
+	// Bullets carry only the time, so a thread that runs over several days needs
+	// the date to tell when something happened.
+	let day: string | undefined;
+	for (const root of includedRoots) {
+		const rootDay = formatObservationDate(root.createdAt);
+		if (rootDay !== day) {
+			day = rootDay;
+			lines.push(`Date: ${day}`);
+		}
+		renderTree(root, day);
+	}
 	lines.push('</observations>');
 
 	return lines.join('\n');

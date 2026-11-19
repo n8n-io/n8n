@@ -1,4 +1,10 @@
-import { NodeOperationError, type IExecuteFunctions, type INode } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeOperationError,
+	type IExecuteFunctions,
+	type INode,
+	type JsonObject,
+} from 'n8n-workflow';
 
 import * as transport from '../../v2//transport/discord.api';
 import {
@@ -238,5 +244,25 @@ describe('Test Discord > parseDiscordError', () => {
 		const result = parseDiscordError.call(executeFunction, error);
 		expect(result).toBeInstanceOf(NodeOperationError);
 		expect(result.message).toBe('Invalid Form Body');
+	});
+
+	it.each([
+		['an empty object', {}],
+		['an object without a message', { content: ['Must be 2000 or fewer in length.'] }],
+	])('should keep the original error when the response body is %s', (_, responseBody) => {
+		const requestError = Object.assign(new Error(`400 - ${JSON.stringify(responseBody)}`), {
+			statusCode: 400,
+			error: responseBody,
+		});
+		const error = new NodeApiError(node, requestError as unknown as JsonObject);
+		const executeFunction = {
+			getNode: () => node,
+		} as unknown as IExecuteFunctions;
+
+		const result = parseDiscordError.call(executeFunction, error);
+		expect(result).toBeInstanceOf(NodeOperationError);
+		expect(result.message).toBe(error.message);
+		expect(result.message).not.toBe('');
+		expect(result.description).toBe(`400 - ${JSON.stringify(responseBody)}`);
 	});
 });

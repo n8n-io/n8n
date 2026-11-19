@@ -24,7 +24,7 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
-import type { User } from '@n8n/db';
+import type { OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
@@ -74,9 +74,9 @@ import {
 	CredentialsFinderService,
 	NodeTypesProxy,
 	ProjectScopeService,
+	TelemetryProxy,
 	UrlService,
 } from '@n8n/backend-services';
-import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch, createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { McpAgentSlackSetup, SLACK_INTEGRATION_TYPE } from './agent-slack-setup';
@@ -253,6 +253,7 @@ const getAgentSessionInput = {
 } satisfies z.ZodRawShape;
 
 const searchAgentsInput = {
+	parentFolderId: z.string().min(1).max(36).nullable().optional(),
 	projectId: z.string().min(1).optional().describe('Restrict results to one project'),
 	query: z.string().optional().describe('Filter by Agent name'),
 	publishedOnly: z.boolean().optional().default(false),
@@ -286,6 +287,7 @@ const initialAgentConfigSchema = AgentJsonConfigBaseSchema.omit({
 });
 
 const createAgentInput = {
+	parentFolderId: z.string().min(1).max(36).nullable().optional(),
 	projectId: z.string().min(1),
 	name: z.string().trim().min(1).max(128),
 	config: initialAgentConfigSchema
@@ -293,6 +295,16 @@ const createAgentInput = {
 		.describe(
 			'Optional initial Agent config without name, skills, tasks, or custom tools. The top-level name is injected into the config.',
 		),
+} satisfies z.ZodRawShape;
+
+const moveAgentInput = {
+	...agentIdentityShape,
+	parentFolderId: z
+		.string()
+		.min(1)
+		.max(36)
+		.nullable()
+		.describe('Agent folder in the same project, or null for the project root'),
 } satisfies z.ZodRawShape;
 
 const jsonPatchValueSchema = z.union([
@@ -406,7 +418,7 @@ const updateIntegrationInput = {
 		.min(1)
 		.optional()
 		.describe(
-			'Accessible credential for this integration. Required for disconnect and for non-Slack connect operations. Omit it to connect Slack through managed setup, and for a channel that runs without a credential, such as a webhook with authentication none',
+			'Accessible credential for this integration. Required for disconnect and for non-Slack connect operations. Omit it to connect Slack through managed setup, and for a channel that runs without a credential, such as the API channel (type webhook) with authentication none',
 		),
 	managerCredentialId: z
 		.string()
@@ -425,7 +437,9 @@ const updateIntegrationInput = {
 	settings: z
 		.record(z.unknown())
 		.optional()
-		.describe('Integration settings; required for Telegram and webhook connect operations'),
+		.describe(
+			'Integration settings; required for Telegram and API channel (type webhook) connect operations',
+		),
 	replacesCredentialId: z
 		.string()
 		.min(1)
@@ -488,7 +502,7 @@ type MutationResource = {
 @Service()
 export class McpAgentToolsService {
 	constructor(
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly credentialsService: CredentialsService,
 		private readonly agentsService: AgentsService,
 		private readonly agentConfigService: AgentConfigService,
@@ -528,6 +542,7 @@ export class McpAgentToolsService {
 		registerResource: RegisterResourceFn,
 		user: User,
 		allowedToolNames?: Set<string>,
+		ctx: OperationContext = {},
 	): void {
 		const isCallAgentAvailable = allowedToolNames?.has(MCP_CALL_AGENT_TOOL_NAME) ?? true;
 		const registerIfAllowed = <Input extends z.ZodRawShape>(tool: ToolDefinition<Input>): void => {
@@ -538,6 +553,7 @@ export class McpAgentToolsService {
 		registerIfAllowed(this.searchAgentsTool(user));
 		registerIfAllowed(this.getAgentTool(user));
 		registerIfAllowed(this.createAgentTool(user));
+		registerIfAllowed(this.moveAgentTool(user));
 		registerIfAllowed(this.mutateAgentTool(user));
 		registerIfAllowed(this.validateAgentTool(user, isCallAgentAvailable));
 		registerIfAllowed(this.callAgentTool(user));
@@ -547,7 +563,7 @@ export class McpAgentToolsService {
 		registerIfAllowed(this.listAgentVersionsTool(user));
 		registerIfAllowed(this.listAgentSessionsTool(user));
 		registerIfAllowed(this.getAgentSessionTool(user));
-		registerIfAllowed(this.archiveAgentTool(user));
+		registerIfAllowed(this.archiveAgentTool(user, ctx));
 		registerIfAllowed(this.discoverAssetsTool(user));
 		registerIfAllowed(this.verifyMcpServerTool(user));
 		registerIfAllowed(this.updateIntegrationTool(user));
@@ -599,6 +615,7 @@ export class McpAgentToolsService {
 					}
 					const agents = await this.agentsService.findSummariesInProjects(projectIds, {
 						query: input.query?.trim() || undefined,
+						parentFolderId: input.parentFolderId,
 						publishedOnly: input.publishedOnly,
 						excludeAgentId: input.excludeAgentId,
 						limit: input.limit,
@@ -607,6 +624,7 @@ export class McpAgentToolsService {
 						id: agent.id,
 						name: agent.name,
 						projectId: agent.projectId,
+						parentFolderId: agent.parentFolderId,
 						published: agent.activeVersionId !== null,
 						availableInMCP: agent.availableInMCP,
 						updatedAt: agent.updatedAt.toISOString(),
@@ -663,7 +681,7 @@ export class McpAgentToolsService {
 					openWorldHint: false,
 				},
 			},
-			handler: async ({ projectId, name, config }: CreateAgentInput) =>
+			handler: async ({ projectId, name, config, parentFolderId }: CreateAgentInput) =>
 				await this.run(user, 'create_agent', { projectId }, async () => {
 					await this.assertScope(user, projectId, 'agent:create');
 					const initialConfig = config ? { ...config, name } : undefined;
@@ -678,6 +696,7 @@ export class McpAgentToolsService {
 						createdBy: 'mcp',
 						config: initialConfig,
 						availableInMCP: true,
+						parentFolderId,
 					});
 
 					return {
@@ -693,6 +712,36 @@ export class McpAgentToolsService {
 						configHash,
 						url: this.getAgentUrl(projectId, agent.id),
 					};
+				}),
+		};
+	}
+
+	private moveAgentTool(user: User): ToolDefinition<typeof moveAgentInput> {
+		return {
+			name: 'move_agent',
+			config: {
+				description:
+					'Move an Agent to an Agent folder in its project, or to the project root. Keeps its saved versions and publication state.',
+				inputSchema: moveAgentInput,
+				annotations: {
+					title: 'Move Agent',
+					readOnlyHint: false,
+					destructiveHint: false,
+					idempotentHint: true,
+					openWorldHint: false,
+				},
+			},
+			handler: async ({ agentId, parentFolderId }) =>
+				await this.run(user, 'move_agent', { agentId, parentFolderId }, async () => {
+					const agent = await this.resolveAgent(user, agentId);
+					await this.assertScope(user, agent.projectId, 'agent:update');
+					const moved = await this.agentsService.move(agentId, agent.projectId, parentFolderId);
+
+					if (!moved) {
+						throw new UserError('Agent not found');
+					}
+
+					return { ok: true, agentId, parentFolderId };
 				}),
 		};
 	}
@@ -1123,7 +1172,10 @@ export class McpAgentToolsService {
 		};
 	}
 
-	private archiveAgentTool(user: User): ToolDefinition<typeof agentIdentityShape> {
+	private archiveAgentTool(
+		user: User,
+		ctx: OperationContext,
+	): ToolDefinition<typeof agentIdentityShape> {
 		return {
 			name: 'archive_agent',
 			config: {
@@ -1142,7 +1194,14 @@ export class McpAgentToolsService {
 				await this.run(user, 'archive_agent', { agentId }, async () => {
 					const { projectId } = await this.resolveAgent(user, agentId);
 					await this.assertScope(user, projectId, 'agent:delete');
-					await this.agentPublishService.archiveAgent(agentId, projectId, user, undefined, 'mcp');
+					await this.agentPublishService.archiveAgent(
+						agentId,
+						projectId,
+						user,
+						undefined,
+						'mcp',
+						ctx,
+					);
 					return { ok: true, archived: true, agentId };
 				}),
 		};
@@ -1210,7 +1269,7 @@ export class McpAgentToolsService {
 			name: 'update_agent_integration',
 			config: {
 				description:
-					"Configure or disconnect a Slack, Telegram, Linear, or webhook conversation integration. This is the only way to manage integrations; config.replace and config.patch can't change them. Configuration never publishes the Agent. If the Agent is already published, connecting starts the channel immediately. Otherwise, the channel stays inactive until publish_agent is called. For Slack, connect without credentialId first: n8n returns the workspaces where it can create a Slack app for the Agent, or the steps the user must take in n8n. Then call again with managerCredentialId and workspaceId after the user confirms the workspace. For a webhook, pass settings.authentication, and omit credentialId when it is none.",
+					"Configure or disconnect a Slack, Telegram, Linear, or API (type webhook) conversation integration. This is the only way to manage integrations; config.replace and config.patch can't change them. Configuration never publishes the Agent. If the Agent is already published, connecting starts the channel immediately. Otherwise, the channel stays inactive until publish_agent is called. For Slack, connect without credentialId first: n8n returns the workspaces where it can create a Slack app for the Agent, or the steps the user must take in n8n. Then call again with managerCredentialId and workspaceId after the user confirms the workspace. For the API channel, pass settings.authentication, and omit credentialId when it is none.",
 				inputSchema: updateIntegrationInput,
 				annotations: {
 					title: 'Update Agent Integration',

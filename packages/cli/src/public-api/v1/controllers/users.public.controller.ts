@@ -155,7 +155,7 @@ export class UsersPublicController {
 		_res: Response,
 		@Body body: CreateUsersPublicDto,
 	): Promise<InvitedUsersPublicDto> {
-		return await this.userService.inviteUser(req.user, body, req.publicApiClient);
+		return await this.userService.inviteUser(req.user, body, req.publicApiClient, req.ctx);
 	}
 
 	@Delete('/:userId')
@@ -171,7 +171,13 @@ export class UsersPublicController {
 		@Param('userId', userUuidParamSchema) userId: string,
 		@Query query: DeleteUserQueryPublicDto,
 	): Promise<void> {
-		await this.userService.deleteUser(req.user, userId, query.transferId, req.publicApiClient);
+		await this.userService.deleteUser(
+			req.user,
+			userId,
+			query.transferId,
+			req.publicApiClient,
+			req.ctx,
+		);
 	}
 
 	@Patch('/:userId/role')

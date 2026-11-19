@@ -20,10 +20,15 @@ describe('WhatsAppWebhookVerificationStore', () => {
 	});
 
 	describe('markVerified', () => {
-		it('records the handshake for seven days', async () => {
-			await store.markVerified(AGENT_ID);
+		it('records the time of the handshake for seven days', async () => {
+			vi.useFakeTimers({ now: 1_700_000_000_000 });
+			try {
+				await store.markVerified(AGENT_ID);
+			} finally {
+				vi.useRealTimers();
+			}
 
-			expect(cacheService.set).toHaveBeenCalledWith(KEY, true, SEVEN_DAYS_MS);
+			expect(cacheService.set).toHaveBeenCalledWith(KEY, 1_700_000_000_000, SEVEN_DAYS_MS);
 		});
 
 		it('logs a warning and does not throw when the cache fails', async () => {
@@ -71,21 +76,27 @@ describe('WhatsAppWebhookVerificationStore', () => {
 		});
 	});
 
-	describe('isVerified', () => {
-		it('returns true when the cache holds true', async () => {
+	describe('verifiedAt', () => {
+		it('returns the recorded time', async () => {
+			cacheService.get.mockResolvedValue(1_700_000_000_000);
+
+			expect(await store.verifiedAt(AGENT_ID)).toBe(1_700_000_000_000);
+			expect(cacheService.get).toHaveBeenCalledWith(KEY);
+		});
+
+		it('returns 0 for a record from before the time was kept', async () => {
 			cacheService.get.mockResolvedValue(true);
 
-			expect(await store.isVerified(AGENT_ID)).toBe(true);
-			expect(cacheService.get).toHaveBeenCalledWith(KEY);
+			expect(await store.verifiedAt(AGENT_ID)).toBe(0);
 		});
 
 		it.each([
 			['nothing', undefined],
-			['a value that is not true', 'true'],
-		])('returns false when the cache holds %s', async (_label, value) => {
+			['a value that is not a time', 'true'],
+		])('returns undefined when the cache holds %s', async (_label, value) => {
 			cacheService.get.mockResolvedValue(value);
 
-			expect(await store.isVerified(AGENT_ID)).toBe(false);
+			expect(await store.verifiedAt(AGENT_ID)).toBeUndefined();
 		});
 	});
 });

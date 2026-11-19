@@ -26,6 +26,7 @@ import {
 	unflattenExecutionData,
 	executionFilterToQueryFilter,
 	getDefaultExecutionFilters,
+	isEngineV2ExecutionId,
 } from './executions.utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -385,6 +386,9 @@ export const useExecutionsStore = defineStore('executions', () => {
 		if (sendData.deleteBefore) {
 			const deleteBefore = new Date(sendData.deleteBefore);
 			allExecutions.value.forEach((execution) => {
+				// A delete by date reaches only engine v1 executions, so keep the v2 rows.
+				if (isEngineV2ExecutionId(execution.id)) return;
+
 				if (new Date(execution.startedAt ?? execution.createdAt) < deleteBefore) {
 					removeExecution(execution.id);
 				}

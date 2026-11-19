@@ -3,8 +3,11 @@ import { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import z from 'zod';
 
-import { type ApplicableAiPreferences, AiPreferenceService } from '@n8n/backend-services';
-import { Telemetry } from '@/telemetry';
+import {
+	type ApplicableAiPreferences,
+	AiPreferenceService,
+	TelemetryProxy,
+} from '@n8n/backend-services';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { McpPreferencesNoteService } from '../mcp-preferences-note.service';
@@ -43,7 +46,7 @@ const createMocks = (result: ApplicableAiPreferences | Error = empty) => {
 		getApplicableAcrossProjects: read(),
 		getApplicableForProject: read(),
 	});
-	const telemetry = mockInstance(Telemetry, { track: vi.fn() });
+	const telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 	const preferencesNoteService = mockInstance(McpPreferencesNoteService, {
 		takeNote: vi.fn().mockResolvedValue(undefined),
 	});

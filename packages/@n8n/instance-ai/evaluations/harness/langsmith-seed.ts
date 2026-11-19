@@ -261,20 +261,32 @@ function isHitlRequestEnvelope(output: unknown): boolean {
 	);
 }
 
-/** Top-level fields that carry data-table row values across the data-table
- *  tools (insert/upsert/update take `rows`; reads return `data`). */
+/** Fields that carry data-table row values across the data-table tools
+ *  (insert/upsert/update take `rows`; reads return `data`). */
 const DATA_TABLE_ROW_FIELDS = new Set(['rows', 'data']);
 
 /** Replace data-table row arrays with an omission marker, keeping the rest of
- *  the payload — so seeded history carries no real (PII) row values. */
+ *  the payload — so seeded history carries no real (PII) row values. The batch
+ *  tool nests its row payloads in `changes[]`, so redact each change too. */
 function redactDataTableRowPayload(value: unknown): Record<string, unknown> {
 	if (!isRecord(value)) return {};
 	const out: Record<string, unknown> = {};
 	for (const [key, val] of Object.entries(value)) {
-		out[key] =
-			DATA_TABLE_ROW_FIELDS.has(key) && Array.isArray(val) ? `<${val.length} row(s) omitted>` : val;
+		out[key] = redactDataTableRowField(key, val);
 	}
 	return out;
+}
+
+function redactDataTableRowField(key: string, value: unknown): unknown {
+	if (DATA_TABLE_ROW_FIELDS.has(key) && Array.isArray(value)) {
+		return `<${value.length} row(s) omitted>`;
+	}
+	if (key === 'changes' && Array.isArray(value)) {
+		return value.map((change: unknown) =>
+			isRecord(change) ? redactDataTableRowPayload(change) : change,
+		);
+	}
+	return value;
 }
 
 // Type aliases, not interfaces: seed content blocks are open by design
@@ -933,17 +945,39 @@ function buildSeedDataTables(toolRuns: Run[], boundaryMs: number): ConversationS
 
 		// A `create`: output carries the new table's id, name and columns.
 		const table = isRecord(out.table) ? out.table : undefined;
-		const tableId = table ? asString(table.id) : undefined;
-		if (!table || !tableId || !Array.isArray(table.columns)) continue;
-		const columns = table.columns.flatMap((col) => {
-			if (!isRecord(col)) return [];
-			const name = asString(col.name);
-			const type = asString(col.type);
-			if (!name || !type || !isDataTableColumnType(type)) return [];
-			return [{ name, type }];
-		});
-		created.set(tableId, { id: tableId, name: asString(table.name) ?? 'data table', columns });
+		if (table) addSeedDataTable(created, table, table.columns);
+
+		// A batch: each applied `create` carries the table, with its columns in `result`.
+		// A later `delete` of that table removes it again.
+		const applied = Array.isArray(out.applied) ? out.applied : [];
+		for (const change of applied) {
+			if (!isRecord(change) || !isRecord(change.table)) continue;
+			if (change.action === 'create') {
+				const result = isRecord(change.result) ? change.result : {};
+				addSeedDataTable(created, change.table, result.columns);
+			} else if (change.action === 'delete') {
+				const deletedId = asString(change.table.id);
+				if (deletedId) created.delete(deletedId);
+			}
+		}
 	}
 
 	return [...created.values()];
+}
+
+function addSeedDataTable(
+	created: Map<string, ConversationSeed['dataTables'][number]>,
+	table: Record<string, unknown>,
+	rawColumns: unknown,
+): void {
+	const tableId = asString(table.id);
+	if (!tableId || !Array.isArray(rawColumns)) return;
+	const columns = rawColumns.flatMap((col: unknown) => {
+		if (!isRecord(col)) return [];
+		const name = asString(col.name);
+		const type = asString(col.type);
+		if (!name || !type || !isDataTableColumnType(type)) return [];
+		return [{ name, type }];
+	});
+	created.set(tableId, { id: tableId, name: asString(table.name) ?? 'data table', columns });
 }

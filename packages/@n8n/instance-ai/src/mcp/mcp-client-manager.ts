@@ -5,7 +5,7 @@ import {
 	type BuiltTool,
 	type McpServerConfig as NativeMcpServerConfig,
 } from '@n8n/agents';
-import { compileMcpToolPermissions } from '@n8n/ai-utilities/agent-config';
+import { compileStricterMcpToolPermissions } from '@n8n/ai-utilities/agent-config';
 import {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	type InstanceAiPermissions,
@@ -32,10 +32,19 @@ type McpToolRegistry = InstanceAiToolRegistry;
 function mcpConfigCacheKey(
 	configs: McpServerConfig[],
 	defaultToolPermissions: McpToolPermissions,
+	enforceAdminPermissions: boolean,
 ): string {
 	return createHash('sha256')
-		.update(JSON.stringify({ configs, defaultToolPermissions }))
+		.update(JSON.stringify({ configs, defaultToolPermissions, enforceAdminPermissions }))
 		.digest('hex');
+}
+
+export interface McpRegularToolsOptions {
+	/**
+	 * Apply the stricter of the admin permission and the server's own permission
+	 * to each tool. Without it, a server's own permissions replace the admin's.
+	 */
+	enforceAdminPermissions?: boolean;
 }
 
 /** Per-server connection failures recorded while listing tools for one config. */
@@ -78,14 +87,19 @@ export interface SsrfUrlValidator {
 function buildNativeMcpConfigs(
 	configs: McpServerConfig[],
 	defaultToolPermissions: McpToolPermissions,
+	enforceAdminPermissions: boolean,
 	onToolCallSettled?: McpClientManagerOptions['onToolCallSettled'],
 ): NativeMcpServerConfig[] {
 	const servers: NativeMcpServerConfig[] = [];
 	for (const server of configs) {
-		const toolPermissions = server.toolPermissions ?? defaultToolPermissions;
+		const policies = !server.toolPermissions
+			? [defaultToolPermissions]
+			: enforceAdminPermissions
+				? [defaultToolPermissions, server.toolPermissions]
+				: [server.toolPermissions];
 		const baseConfig: NativeMcpServerConfig = {
 			name: server.name,
-			configureTools: (tools) => compileMcpToolPermissions(toolPermissions, tools),
+			configureTools: (tools) => compileStricterMcpToolPermissions(policies, tools),
 		};
 		if (onToolCallSettled) {
 			baseConfig.onToolCallSettled = ({ toolName, success }) =>
@@ -194,6 +208,7 @@ export class McpClientManager {
 			mcpRead,
 			mcpWrite,
 		}: Pick<InstanceAiPermissions, 'mcpRead' | 'mcpWrite'> = DEFAULT_INSTANCE_AI_PERMISSIONS,
+		{ enforceAdminPermissions = false }: McpRegularToolsOptions = {},
 	): Promise<McpRegularToolsResult> {
 		const safeConfigs = getSafeMcpServers(configs, logger, 'external MCP');
 		if (safeConfigs.length === 0) return { tools: createToolRegistry(), connectionFailures: [] };
@@ -201,7 +216,7 @@ export class McpClientManager {
 		const defaultToolPermissions: McpToolPermissions = {
 			categories: { read: mcpRead, write: mcpWrite },
 		};
-		const key = mcpConfigCacheKey(safeConfigs, defaultToolPermissions);
+		const key = mcpConfigCacheKey(safeConfigs, defaultToolPermissions, enforceAdminPermissions);
 		// FIXME: changing mcp settings leaves the old client connected, we need to disconnect it
 		return await this.getOrLoad(
 			this.regularToolsByKey,
@@ -212,6 +227,7 @@ export class McpClientManager {
 				return await this.connectAndListTools(
 					safeConfigs,
 					defaultToolPermissions,
+					enforceAdminPermissions,
 					key,
 					logger,
 					'external MCP',
@@ -285,12 +301,18 @@ export class McpClientManager {
 	private async connectAndListTools(
 		configs: McpServerConfig[],
 		defaultToolPermissions: McpToolPermissions,
+		enforceAdminPermissions: boolean,
 		clientKey: string,
 		logger: Logger,
 		source: string,
 	): Promise<McpRegularToolsResult> {
 		const client = new McpClient(
-			buildNativeMcpConfigs(configs, defaultToolPermissions, this.options.onToolCallSettled),
+			buildNativeMcpConfigs(
+				configs,
+				defaultToolPermissions,
+				enforceAdminPermissions,
+				this.options.onToolCallSettled,
+			),
 		);
 		this.clientsByKey.set(clientKey, client);
 

@@ -387,9 +387,14 @@ describe('SkillsTable', () => {
 			skillCount: 2,
 			updatesAvailable: 0,
 			updatesBlocked: 0,
+			newSkillsAvailable: 0,
 			health: 'connected',
 			lastCheckedAt: null,
+			missingSkills: [],
+			canReplaceCredential: false,
 			canReview: true,
+			canImport: true,
+			canMove: true,
 			canDelete: true,
 			...overrides,
 		});
@@ -430,6 +435,27 @@ describe('SkillsTable', () => {
 			expect(getAllByTestId('skill-scope-badge')[0]).toHaveTextContent('Marketing');
 		});
 
+		it('opens the shared review from the new count', async () => {
+			const current = source({ newSkillsAvailable: 2 });
+			const view = renderGrouped({ sources: [current] });
+			const badge = view.getByTestId('skill-group-review-new');
+			expect(badge).toHaveTextContent('2 new');
+			expect(view.getByTestId('skill-group-new-dot').className).toMatch(/success/);
+			await userEvent.click(badge);
+			expect(view.emitted().reviewSource).toEqual([[current]]);
+		});
+
+		it('offers explicit review without a new count so initial omissions remain reachable', async () => {
+			const current = source();
+			const view = renderGrouped({ sources: [current] });
+			await userEvent.click(within(view.getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-reviewSkills"]')).toBeInTheDocument(),
+			);
+			await userEvent.click(document.querySelector('[data-test-id="action-reviewSkills"]')!);
+			expect(view.emitted().reviewSource).toEqual([[current]]);
+		});
+
 		it('names a source that has not loaded as unknown', () => {
 			const { getByTestId } = renderGrouped({ sources: [] });
 
@@ -438,11 +464,11 @@ describe('SkillsTable', () => {
 
 		it('names the source menu and keeps health visible without review permission', () => {
 			const { getByRole, queryByTestId } = renderGrouped({
-				sources: [source({ canReview: false, health: 'unreachable', updatesAvailable: 2 })],
+				sources: [source({ canReview: false, health: 'source_unavailable', updatesAvailable: 2 })],
 			});
 
 			expect(getByRole('button', { name: 'Actions for acme/skills · main' })).toBeInTheDocument();
-			expect(getByRole('button', { name: 'Unreachable' })).toBeInTheDocument();
+			expect(getByRole('button', { name: 'Source unavailable' })).toBeInTheDocument();
 			expect(queryByTestId('skill-group-updates')).toBeNull();
 		});
 
@@ -511,15 +537,26 @@ describe('SkillsTable', () => {
 					sources: [source({ updatesAvailable: available, updatesBlocked: blocked })],
 				});
 
-				const badge = getByTestId('skill-group-updates');
-				expect(badge).toHaveTextContent(text);
-				expect(badge.className).toMatch(red ? /danger/ : /warning/);
+				expect(getByTestId('skill-group-updates')).toHaveTextContent(text);
+				expect(getByTestId('skill-group-updates-dot').className).toMatch(
+					red ? /danger/ : /warning/,
+				);
 			},
 		);
 
+		it('opens the source review without folding the source', async () => {
+			const current = source({ updatesAvailable: 1 });
+			const { getByTestId, emitted } = renderGrouped({ sources: [current] });
+			await userEvent.click(getByTestId('skill-group-updates'));
+			expect(emitted('reviewSource')).toEqual([[current]]);
+			expect(emitted('toggleSource')).toBeUndefined();
+		});
+
 		it('shows no update badge to a user who cannot review, and only Open in GitHub', async () => {
 			const { getByTestId, queryByTestId } = renderGrouped({
-				sources: [source({ updatesAvailable: 2, canReview: false, canDelete: false })],
+				sources: [
+					source({ updatesAvailable: 2, canReview: false, canMove: false, canDelete: false }),
+				],
 			});
 
 			expect(queryByTestId('skill-group-updates')).toBeNull();
@@ -529,6 +566,7 @@ describe('SkillsTable', () => {
 			);
 			expect(document.querySelector('[data-test-id="action-checkNow"]')).toBeNull();
 			expect(document.querySelector('[data-test-id="action-deleteSource"]')).toBeNull();
+			expect(document.querySelector('[data-test-id="action-changeScope"]')).toBeNull();
 		});
 
 		it('offers Delete source with delete permission even without update permission', async () => {
@@ -563,6 +601,45 @@ describe('SkillsTable', () => {
 			await userEvent.click(document.querySelector('[data-test-id="action-checkNow"]')!);
 
 			expect(emitted('checkSource')).toEqual([[source()]]);
+		});
+
+		it('offers Change scope based on move permission, independently of review permission', async () => {
+			const item = source({ canReview: false, canMove: true });
+			const { getByTestId, emitted } = renderGrouped({ sources: [item] });
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-changeScope"]')).toBeInTheDocument(),
+			);
+			await userEvent.click(document.querySelector('[data-test-id="action-changeScope"]')!);
+			expect(emitted('moveSource')).toEqual([[item]]);
+		});
+
+		it('hides Change scope when the source cannot be moved', async () => {
+			const { getByTestId } = renderGrouped({ sources: [source({ canMove: false })] });
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-openInGitHub"]')).toBeInTheDocument(),
+			);
+			expect(document.querySelector('[data-test-id="action-changeScope"]')).not.toBeInTheDocument();
+		});
+
+		it('offers credential replacement only when the source permits it', async () => {
+			const row = source({ canReplaceCredential: true });
+			const { getByTestId, emitted, rerender } = renderGrouped({ sources: [row] });
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(
+					document.querySelector('[data-test-id="action-replaceCredential"]'),
+				).toBeInTheDocument(),
+			);
+			await userEvent.click(document.querySelector('[data-test-id="action-replaceCredential"]')!);
+			expect(emitted('replaceCredential')).toEqual([[row]]);
+			await rerender({ sources: [source({ canReview: true, canReplaceCredential: false })] });
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-checkNow"]')).toBeInTheDocument(),
+			);
+			expect(document.querySelector('[data-test-id="action-replaceCredential"]')).toBeNull();
 		});
 
 		it('opens the repository in GitHub', async () => {

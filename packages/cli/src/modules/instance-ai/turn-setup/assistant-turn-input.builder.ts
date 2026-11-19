@@ -16,6 +16,7 @@ import {
 	AiPreferenceService,
 	buildAppliedPreferencesPayload,
 	renderAiPreferencesBlock,
+	type ApplicableAiPreferences,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { type User } from '@n8n/db';
@@ -45,6 +46,8 @@ import { ErrorReporter } from 'n8n-core';
 import { UnexpectedError, UserError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
+
 import type { AssistantTurnEnvironment } from './assistant-turn-environment.factory';
 import type { AssistantTurnRuntime } from './assistant-turn-runtime';
 import { assertAgentTestHandoffScopes, resolveAgentTestHandoff } from '../agent-test-handoff';
@@ -61,6 +64,7 @@ import { InstanceAiSkillsService, SKILLS } from '../instance-ai-skills.service';
 import {
 	asStoredThreadContextSection,
 	buildAppTargetsBlock,
+	buildAutoApprovalModeBlock,
 	buildCurrentDateTimeBlock,
 	buildInstanceUrlsBlock,
 	buildOnboardingSkillBlock,
@@ -174,6 +178,8 @@ export interface AssistantTurnInputParams {
  */
 export const OPENED_METADATA_KEY = 'assistantOpened';
 
+const NO_APPLICABLE_PREFERENCES: ApplicableAiPreferences = { instance: [], user: [], projects: [] };
+
 export interface AssistantTurnInput {
 	/** The model input text: handoff and setup blocks, thread context, then the user message. */
 	fullMessage: string;
@@ -233,6 +239,7 @@ export class AssistantTurnInputBuilder {
 		private readonly skillsService: InstanceAiSkillsService,
 		private readonly instanceContext: InstanceContextService,
 		private readonly aiPreferenceService: AiPreferenceService,
+		private readonly aiPreferenceSettingsService: AiPreferenceSettingsService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.defaultTimeZone = globalConfig.generic.timezone;
@@ -510,6 +517,9 @@ export class AssistantTurnInputBuilder {
 				: undefined,
 			pastConversationsSection ? buildPastConversationsBlock(pastConversationsSection) : undefined,
 			aiPreferencesTurn?.block,
+			resumeReason === undefined && context.approvalReviewer
+				? buildAutoApprovalModeBlock()
+				: undefined,
 			buildCurrentDateTimeBlock(getDateTimeSection(timeZone ?? this.defaultTimeZone)),
 		]);
 		const fullMessage = [handoffContextBlock, setupStateBlock, threadContextBlock, messageBody]
@@ -679,10 +689,9 @@ export class AssistantTurnInputBuilder {
 			'Assistant failed to read the AI preferences for this turn',
 			{ userId },
 			async () => {
-				const preferences = await this.aiPreferenceService.getApplicable(
-					userId,
-					project ? [project] : [],
-				);
+				const preferences = this.aiPreferenceSettingsService.isEnabled
+					? await this.aiPreferenceService.getApplicable(userId, project ? [project] : [])
+					: NO_APPLICABLE_PREFERENCES;
 				return { preferences, rendered: renderAiPreferencesBlock(preferences) };
 			},
 		);

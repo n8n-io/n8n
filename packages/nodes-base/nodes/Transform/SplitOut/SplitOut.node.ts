@@ -7,6 +7,7 @@ import {
 	deepCopy,
 	isSafeObjectProperty,
 	NodeConnectionTypes,
+	READ_ONLY_ANNOTATIONS,
 	setSafeObjectProperty,
 } from 'n8n-workflow';
 import type {
@@ -31,6 +32,7 @@ export class SplitOut implements INodeType {
 		subtitle: '',
 		version: [1, 1.1],
 		description: 'Turn a list inside item(s) into separate items',
+		annotations: READ_ONLY_ANNOTATIONS,
 		defaults: {
 			name: 'Split Out',
 		},

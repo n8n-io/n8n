@@ -10,6 +10,7 @@ import type {
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { firstNonBlank, isActiveBuilderAgent, isBuilderAgent } from './builderAgents';
+import { isCloudBrowserAgent } from './cloudBrowserAgents';
 import { isPreferenceWriteOutcome, SAVE_USER_PREFERENCE_TOOL_NAME } from './preferenceCard.utils';
 
 /** Tool calls that are internal bookkeeping and should not be shown to the user.
@@ -88,7 +89,7 @@ type ToolCallKind =
  * child agent section represents them. In-thread builds (`workflow_builder_build_workflow`)
  * render as trace rows so the build step is visible inside the thinking block.
  */
-function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
+function classifyToolCall(tc: InstanceAiToolCallState, preferencesEnabled: boolean): ToolCallKind {
 	if (HIDDEN_TOOLS.has(tc.toolName)) return 'hidden';
 	if (tc.renderHint === 'tasks') return 'tasks';
 	if (tc.renderHint === 'builder' && tc.toolName.endsWith('-with-agent')) return 'hidden';
@@ -96,7 +97,7 @@ function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
 	// The card is the whole render for a finished preference write, saved or refused.
 	// A call still in flight drops instead of joining the thinking block.
 	if (tc.toolName === SAVE_USER_PREFERENCE_TOOL_NAME) {
-		return isPreferenceWriteOutcome(tc) ? 'preference' : 'hidden';
+		return preferencesEnabled && isPreferenceWriteOutcome(tc) ? 'preference' : 'hidden';
 	}
 	if (tc.confirmation?.mcpConnectRequest) return 'mcp-connect';
 	if (tc.confirmation?.appBlueprint) return 'app-blueprint';
@@ -118,6 +119,7 @@ export function buildTimelineBlocks(
 	toolCallsById: Record<string, InstanceAiToolCallState>,
 	childrenById: Record<string, InstanceAiAgentNode>,
 	agentStatus: InstanceAiAgentNode['status'],
+	preferencesEnabled: boolean,
 ): TimelineBlock[] {
 	// A text entry is intermediate narration (part of the thinking trace) when
 	// trace content from the SAME model response follows it — i.e. the model
@@ -152,7 +154,7 @@ export function buildTimelineBlocks(
 			const tc = toolCallsById[entry.toolCallId];
 			if (
 				tc &&
-				classifyToolCall(tc) === 'trace' &&
+				classifyToolCall(tc, preferencesEnabled) === 'trace' &&
 				// Keep the explanation before a confirmation outside the trace.
 				tc.confirmation === undefined &&
 				!(
@@ -230,8 +232,9 @@ export function buildTimelineBlocks(
 			const child = childrenById[entry.agentId];
 			// Running builder sub-agents are extracted and rendered at the bottom
 			// of the conversation by InstanceAiView; once a builder finishes it
-			// reappears here in its chronological slot.
-			if (child && !isActiveBuilderAgent(child)) {
+			// reappears here in its chronological slot. A cloud browser sub-agent is never
+			// drawn here since it runs in the background
+			if (child && !isCloudBrowserAgent(child) && !isActiveBuilderAgent(child)) {
 				pushStandalone({ type: 'child', key: `child-${idx}`, child });
 			}
 			return;
@@ -245,7 +248,7 @@ export function buildTimelineBlocks(
 		) {
 			return;
 		}
-		switch (classifyToolCall(tc)) {
+		switch (classifyToolCall(tc, preferencesEnabled)) {
 			case 'tasks':
 				pushStandalone({ type: 'tasks', key: `tasks-${idx}`, toolCall: tc });
 				return;

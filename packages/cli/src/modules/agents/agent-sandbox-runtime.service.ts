@@ -19,13 +19,13 @@ import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from '@n8n/errors';
+import { sanitizeSandboxErrorDetail } from '@n8n/utils/redaction/sanitize-sandbox-error-detail';
 import { homedir } from 'node:os';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { v5 as uuidv5 } from 'uuid';
 
 import { assertKnowledgePathSegment } from '@/modules/knowledge/files/storage-naming';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
-import { sanitizeSandboxErrorDetail } from '@/utils/sanitize-sandbox-error-detail';
 
 import type { AgentSandboxPrincipalHash } from './agent-sandbox-principal';
 import { AgentRepository } from './repositories/agent.repository';

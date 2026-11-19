@@ -50,6 +50,7 @@ import {
 	N8nNewBadge,
 	N8nNotice,
 	N8nOption,
+	N8nScrollArea,
 	N8nSelect,
 	N8nText,
 	N8nTooltip,
@@ -327,17 +328,17 @@ const filtersNoResultText = computed(() => {
 const tabs = computed(() => {
 	return [
 		{
-			label: 'Workflows',
+			label: i18n.baseText('settings.sourceControl.modals.tabs.workflows'),
 			value: SOURCE_CONTROL_FILE_TYPE.workflow,
 			total: groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.workflow]?.length || 0,
 		},
 		{
-			label: 'Credentials',
+			label: i18n.baseText('settings.sourceControl.modals.tabs.credentials'),
 			value: SOURCE_CONTROL_FILE_TYPE.credential,
 			total: groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.credential]?.length || 0,
 		},
 		{
-			label: 'Data Tables',
+			label: i18n.baseText('settings.sourceControl.modals.tabs.dataTables'),
 			value: SOURCE_CONTROL_FILE_TYPE.datatable,
 			total: groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.datatable]?.length || 0,
 		},
@@ -485,11 +486,11 @@ function openDiffModal(id: string) {
 	});
 }
 
-const modalHeight = computed(() =>
+const modalMinHeight = computed(() =>
 	groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.workflow]?.length ||
 	groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.credential]?.length
 		? 'min(80vh, 850px)'
-		: 'auto',
+		: undefined,
 );
 
 // Load data when modal opens
@@ -507,7 +508,8 @@ onMounted(() => {
 		width="812px"
 		:event-bus="data.eventBus"
 		:name="SOURCE_CONTROL_PULL_MODAL_KEY"
-		:height="modalHeight"
+		:min-height="modalMinHeight"
+		max-height="100%"
 		:custom-class="$style.sourceControlPull"
 		:before-close="close"
 	>
@@ -579,7 +581,7 @@ onMounted(() => {
 						</N8nOption>
 					</N8nSelect>
 				</div>
-				<div style="display: flex; flex: 1; min-height: 0">
+				<div style="display: flex; flex: 1">
 					<div :class="$style.tabs">
 						<template v-for="tab in tabs" :key="tab.value">
 							<button
@@ -590,16 +592,23 @@ onMounted(() => {
 							>
 								<div>{{ tab.label }}</div>
 								<N8nText tag="div" color="text-light">
-									{{ tab.total }} {{ tab.total === 1 ? 'item' : 'items' }}
+									{{
+										i18n.baseText('settings.sourceControl.modals.pull.itemCount', {
+											adjustToNumber: tab.total,
+											interpolate: { count: `${tab.total}` },
+										})
+									}}
 								</N8nText>
 							</button>
 						</template>
 					</div>
-					<div style="flex: 1">
+					<div :class="$style.listColumn">
 						<div :class="[$style.table]">
 							<div :class="[$style.tableHeader]">
 								<div :class="$style.headerTitle">
-									<N8nText>Title</N8nText>
+									<N8nText>{{
+										i18n.baseText('settings.sourceControl.modals.tableHeader.title')
+									}}</N8nText>
 								</div>
 							</div>
 							<div style="flex: 1; overflow: hidden">
@@ -815,12 +824,24 @@ onMounted(() => {
 				<N8nText bold size="medium">Additional changes to be pulled:</N8nText>
 				<N8nText size="small">{{ otherFilesText }}</N8nText>
 			</div>
-			<N8nCallout v-if="hasDataTableConflicts" theme="warning" class="mb-xs">
+			<N8nCallout
+				v-if="hasDataTableConflicts"
+				theme="warning"
+				:class="[$style.dataTableWarning, 'mb-xs']"
+			>
 				<div :class="$style.warningContent">
 					<div>{{ dataTableWarningMessage }}</div>
-					<ul :class="$style.dataTableList">
-						<li v-for="table in conflictedDataTables" :key="table.id">{{ table.name }}</li>
-					</ul>
+					<N8nScrollArea max-height="10vh" type="auto">
+						<ul :class="$style.dataTableList">
+							<li
+								v-for="table in conflictedDataTables"
+								:key="table.id"
+								data-test-id="pull-modal-conflicting-data-table"
+							>
+								{{ table.name }}
+							</li>
+						</ul>
+					</N8nScrollArea>
 				</div>
 			</N8nCallout>
 			<div :class="$style.footer">
@@ -947,6 +968,12 @@ onMounted(() => {
 	margin-top: 8px;
 }
 
+// N8nCallout sizes its message to the text; stretch it so the list scrollbar sits at the box edge.
+.dataTableWarning > :first-child,
+.dataTableWarning > :first-child > :global(.n8n-text) {
+	flex-grow: 1;
+}
+
 .warningContent {
 	display: flex;
 	flex-direction: column;
@@ -965,6 +992,12 @@ onMounted(() => {
 			margin-bottom: 0;
 		}
 	}
+}
+
+// Size containment keeps the list from growing the row, so the tabs set its minimum height.
+.listColumn {
+	flex: 1;
+	contain: size;
 }
 
 .table {

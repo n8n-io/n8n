@@ -27,7 +27,6 @@ import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import type {
 	AddedNodesAndConnections,
 	INodeUi,
-	IWorkflowDb,
 	NodeCreatorOpenSource,
 	NodeFilterType,
 	ToggleNodeCreatorOptions,
@@ -92,23 +91,18 @@ import type {
 	IWorkflowGroup,
 } from 'n8n-workflow';
 import { useToast } from '@n8n/composables/useToast';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { AddNodeGroupCommand, historyBus } from '@/app/models/history';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useCanvasNodeGroupTelemetry } from '@/features/workflows/canvas/composables/useCanvasNodeGroupTelemetry';
 import { useMessage } from '@/app/composables/useMessage';
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
-import { useTagsStore } from '@/features/shared/tags/tags.store';
 
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
@@ -154,6 +148,7 @@ import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimenta
 import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { useSourceControlPullReload } from './useSourceControlPullReload';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useUnusableWorkflowCredentials } from '@/features/credentials/composables/useUnusableWorkflowCredentials';
 
@@ -193,7 +188,6 @@ const telemetry = useTelemetry();
 const externalHooks = useExternalHooks();
 const toast = useToast();
 const message = useMessage();
-const documentTitle = useDocumentTitle();
 const workflowSaving = useWorkflowSaving({
 	router,
 	// This is the canvas, so this instance drives autosave — and a preview host
@@ -221,13 +215,10 @@ const settingsStore = useSettingsStore();
 const nodeCreatorStore = useNodeCreatorStore();
 // Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
 const groupTelemetry = useCanvasNodeGroupTelemetry();
-const credentialsStore = useCredentialsStore();
-const environmentsStore = useEnvironmentsStore();
 const canvasStore = useCanvasStore();
 const npsSurveyStore = useNpsSurveyStore();
 const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
-const tagsStore = useTagsStore();
 
 const ndvStore = injectNDVStore();
 const focusPanelStore = useFocusPanelStore();
@@ -293,6 +284,7 @@ const {
 	fitView,
 } = useCanvasOperations();
 const { extractWorkflow } = useWorkflowExtraction();
+useSourceControlPullReload({ initializeWorkspace, fitView });
 
 useKeybindings({
 	ctrl_alt_o: () => uiStore.openModal(ABOUT_MODAL_KEY),
@@ -307,11 +299,6 @@ const workflowId = useInjectWorkflowId();
 const routeNodeId = computed(() => {
 	const nodeId = route.params.nodeId;
 	return Array.isArray(nodeId) ? nodeId[0] : nodeId;
-});
-
-// Check if this is a new workflow by looking for the ?new query param
-const isNewWorkflowRoute = computed(() => {
-	return route.query.new === 'true';
 });
 
 // Check if canvas controls should be hidden (e.g., for workflow preview thumbnails)
@@ -461,29 +448,6 @@ watch(
 		nodeHelpers.updateNodesCredentialsIssues();
 	},
 );
-
-/**
- * Workflow
- */
-
-async function openWorkflow(data: IWorkflowDb) {
-	resetWorkspace();
-	// Show AI_BUILDING status if builder is actively streaming, otherwise IDLE
-	if (builderStore.streaming) {
-		documentTitle.setDocumentTitle(data.name, 'AI_BUILDING');
-	} else {
-		documentTitle.setDocumentTitle(data.name, 'IDLE');
-	}
-
-	await initializeWorkspace(data);
-
-	void externalHooks.run('workflow.open', {
-		workflowId: data.id,
-		workflowName: data.name,
-	});
-
-	fitView();
-}
 
 /**
  * Nodes
@@ -692,6 +656,7 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 		const result = await importWorkflowData(workflowData, 'paste', {
 			importTags: false,
 			viewport: viewportBoundaries.value,
+			warnRestrictedNodes: true,
 		});
 		const ids = result.nodes?.map((node) => node.id) ?? [];
 
@@ -896,31 +861,6 @@ function onClickNodeAdd(source: string, sourceHandle: string) {
 }
 
 /**
- * Credentials
- */
-
-async function loadCredentials() {
-	let options: { workflowId: string } | { projectId: string };
-
-	if (workflowId.value && !isNewWorkflowRoute.value) {
-		options = { workflowId: workflowId.value };
-	} else {
-		const queryParam =
-			typeof route.query?.projectId === 'string' ? route.query?.projectId : undefined;
-		const projectId = queryParam ?? projectsStore.personalProject?.id;
-		if (projectId === undefined) {
-			throw new Error(
-				'Could not find projectId in the query nor could I find the personal project in the project store',
-			);
-		}
-
-		options = { projectId };
-	}
-
-	await credentialsStore.fetchUsableCredentials(options);
-}
-
-/**
  * Connections
  */
 
@@ -982,6 +922,7 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 		regenerateIds: data.regenerateIds === true || data.regenerateIds === undefined,
 		trackEvents,
 		setStateDirty,
+		warnRestrictedNodes: data.warnRestrictedNodes === true,
 	});
 
 	await nextTick();
@@ -1017,6 +958,7 @@ async function onImportWorkflowUrlEvent(data: IDataObject) {
 
 		await importWorkflowData(workflowData, 'url', {
 			viewport: viewportBoundaries.value,
+			warnRestrictedNodes: true,
 		});
 
 		canvasRef.value?.ensureNodesAreVisible(workflowData.nodes?.map((node) => node.id) ?? []);
@@ -1029,12 +971,14 @@ function addImportEventBindings() {
 	nodeViewEventBus.on('importWorkflowData', onImportWorkflowDataEvent);
 	nodeViewEventBus.on('importWorkflowUrl', onImportWorkflowUrlEvent);
 	nodeViewEventBus.on('openChat', onOpenChat);
+	nodeViewEventBus.on('replaceNode', onReplaceNodeEvent);
 }
 
 function removeImportEventBindings() {
 	nodeViewEventBus.off('importWorkflowData', onImportWorkflowDataEvent);
 	nodeViewEventBus.off('importWorkflowUrl', onImportWorkflowUrlEvent);
 	nodeViewEventBus.off('openChat', onOpenChat);
+	nodeViewEventBus.off('replaceNode', onReplaceNodeEvent);
 }
 
 /**
@@ -1259,7 +1203,13 @@ function onClickConnectionAdd(connection: Connection) {
 	}
 }
 
-function onClickReplaceNode(nodeId: string) {
+/** The bus reaches every mounted NodeView, previews too, so only an editable canvas replaces. */
+function onReplaceNodeEvent(nodeId: string) {
+	if (isCanvasReadOnly.value) return;
+	onClickReplaceNode(nodeId, { fromSetupPanel: true });
+}
+
+function onClickReplaceNode(nodeId: string, { fromSetupPanel = false } = {}) {
 	const node = workflowDocumentStore?.value?.getNodeById(nodeId);
 	const expression = workflowDocumentStore?.value?.getExpressionHandler();
 	if (!node || !expression) return;
@@ -1268,6 +1218,7 @@ function onClickReplaceNode(nodeId: string) {
 
 	nodeCreatorReplaceTargetId.value = nodeId;
 	nodeCreatorStore.openingContext = 'replacement';
+	nodeCreatorStore.isReplacingFromSetupPanel = fromSetupPanel;
 	if (isTriggerNode(nodeType)) {
 		nodeCreatorStore.openNodeCreatorForTriggerNodes(
 			workflowId.value,
@@ -1684,38 +1635,6 @@ function removeUndoRedoEventBindings() {
 	historyBus.off('revertAddNodeGroup', onRevertAddNodeGroup);
 	historyBus.off('revertRemoveNodeGroup', onRevertRemoveNodeGroup);
 	historyBus.off('revertUpdateNodeGroup', onRevertUpdateNodeGroup);
-}
-
-/**
- * Source control
- */
-
-async function onSourceControlPull() {
-	try {
-		await Promise.all([
-			environmentsStore.fetchAllVariables(),
-			tagsStore.fetchAll(),
-			loadCredentials(),
-			projectsStore.getAvailableProjects(),
-		]);
-
-		if (workflowId.value && !uiStore.stateIsDirty) {
-			const workflowData = await workflowsListStore.fetchWorkflow(workflowId.value);
-			if (workflowData) {
-				await openWorkflow(workflowData);
-			}
-		}
-	} catch (error) {
-		console.error(error);
-	}
-}
-
-function addSourceControlEventBindings() {
-	sourceControlEventBus.on('pull', onSourceControlPull);
-}
-
-function removeSourceControlEventBindings() {
-	sourceControlEventBus.off('pull', onSourceControlPull);
 }
 
 /**
@@ -2180,7 +2099,6 @@ onMounted(async () => {
 	void usersStore.showPersonalizationSurvey();
 	checkIfRouteIsAllowed();
 
-	addSourceControlEventBindings();
 	addWorkflowSavedEventBindings();
 	addBeforeUnloadEventBindings();
 	addImportEventBindings();
@@ -2197,7 +2115,6 @@ onBeforeUnmount(() => {
 	toast.clearAllStickyNotifications();
 	workflowDocumentStore?.value?.setViewport(viewportTransform.value);
 
-	removeSourceControlEventBindings();
 	removeWorkflowSavedEventBindings();
 	removeBeforeUnloadEventBindings();
 	removeImportEventBindings();

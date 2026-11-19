@@ -3,11 +3,11 @@ import {
 	updateCredentialDescriptionSchema,
 	UPDATE_CREDENTIAL_DESCRIPTION_TOOL_DESCRIPTION,
 } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import type { TelemetryProxy } from '@n8n/backend-services';
+import type { OperationContext, User } from '@n8n/db';
 import { z } from 'zod';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
@@ -16,7 +16,8 @@ import { trackAndReturnToolError } from './tool-error.utils';
 export const createUpdateCredentialDescriptionTool = (
 	user: User,
 	credentialsService: CredentialsService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
+	ctx: OperationContext = {},
 ): ToolDefinition<typeof updateCredentialDescriptionSchema.shape> => ({
 	name: SHARED_BUILDER_TOOL_NAMES.UPDATE_CREDENTIAL_DESCRIPTION,
 	config: {
@@ -39,7 +40,7 @@ export const createUpdateCredentialDescriptionTool = (
 		};
 		try {
 			const { credentialId, description } = updateCredentialDescriptionSchema.parse(input);
-			await credentialsService.updateDescription(user, credentialId, description);
+			await credentialsService.updateDescription(user, credentialId, description, ctx);
 			const output = { success: true };
 			telemetryPayload.results = { success: true };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
