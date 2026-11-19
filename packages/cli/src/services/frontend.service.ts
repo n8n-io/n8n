@@ -391,13 +391,6 @@ export class FrontendService {
 			banners: {
 				dismissed: [],
 			},
-<<<<<<< HEAD
-=======
-			// oxlint-disable-next-line typescript/no-deprecated -- The AI Transform node still uses this setting.
-			askAi: {
-				enabled: false,
-			},
->>>>>>> 71370107b42e989a9759a5acdc6af604eb3120ac
 			aiBuilder: {
 				enabled: false,
 				setup: false,
