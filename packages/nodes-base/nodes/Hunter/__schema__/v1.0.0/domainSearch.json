@@ -1,0 +1,80 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"confidence": {
+			"type": "number"
+		},
+		"decision_maker": {
+			"type": "boolean"
+		},
+		"department": {
+			"type": ["null", "string"]
+		},
+		"first_name": {
+			"type": ["null", "string"]
+		},
+		"last_name": {
+			"type": ["null", "string"]
+		},
+		"linkedin": {
+			"type": ["null", "string"]
+		},
+		"phone_number": {
+			"type": ["null", "string"]
+		},
+		"position": {
+			"type": ["null", "string"]
+		},
+		"position_raw": {
+			"type": ["null", "string"]
+		},
+		"seniority": {
+			"type": ["null", "string"]
+		},
+		"source_type": {
+			"type": "string"
+		},
+		"sources": {
+			"items": {
+				"properties": {
+					"domain": {
+						"type": "string"
+					},
+					"extracted_on": {
+						"type": "string"
+					},
+					"last_seen_on": {
+						"type": "string"
+					},
+					"still_on_page": {
+						"type": "boolean"
+					},
+					"uri": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"twitter": {},
+		"type": {
+			"type": "string"
+		},
+		"value": {
+			"type": "string"
+		},
+		"verification": {
+			"properties": {
+				"date": {
+					"type": ["null", "string"]
+				},
+				"status": {
+					"type": ["null", "string"]
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

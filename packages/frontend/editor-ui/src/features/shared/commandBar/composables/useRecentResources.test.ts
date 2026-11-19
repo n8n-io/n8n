@@ -450,8 +450,8 @@ describe('useRecentResources', () => {
 
 			expect(listAgentsPageGlobal).toHaveBeenCalledTimes(1);
 			expect(listAgentsPageGlobal).toHaveBeenCalledWith(expect.anything(), {
-				skip: 0,
-				take: 2,
+				offset: 0,
+				limit: 2,
 				filter: { ids: ['agent-2', 'agent-1'] },
 			});
 		});

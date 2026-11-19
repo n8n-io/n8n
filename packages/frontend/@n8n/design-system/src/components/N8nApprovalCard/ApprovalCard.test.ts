@@ -1,4 +1,4 @@
-import { render, fireEvent, waitFor } from '@testing-library/vue';
+import { render, fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 import N8nApprovalCard, { type ApprovalOption } from './ApprovalCard.vue';
@@ -48,6 +48,21 @@ describe('N8nApprovalCard', () => {
 			expect(getByText('Action details')).toBeVisible();
 		},
 	);
+
+	it('puts the description and the arguments in one focusable region', () => {
+		const { getByRole } = render(N8nApprovalCard, {
+			props: {
+				title: 'Review action',
+				description: 'Action details',
+				descriptionLabel: 'Details',
+				args: { value: 1 },
+			},
+		});
+		const region = getByRole('region', { name: 'Details' });
+		expect(region).toHaveAttribute('tabindex', '0');
+		expect(within(region).getByText('Action details')).toBeVisible();
+		expect(within(region).getByTestId('approval-card-args')).toBeVisible();
+	});
 
 	it('keeps the title visible and hides details when collapsed', () => {
 		const { getByText, queryByText, queryByTestId } = render(N8nApprovalCard, {

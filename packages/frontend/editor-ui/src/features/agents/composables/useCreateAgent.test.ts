@@ -5,11 +5,22 @@ import { useCreateAgent } from './useCreateAgent';
 const mocks = vi.hoisted(() => ({
 	routerPush: vi.fn(),
 	trackClickedNewAgent: vi.fn(),
+	folderId: undefined as string | undefined,
+	foldersEnabled: true,
 }));
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<typeof import('vue-router')>()),
 	useRouter: () => ({ push: mocks.routerPush }),
+	useRoute: () => ({
+		name: 'ProjectAgents',
+		params: { projectId: 'project-1' },
+		query: { folderId: mocks.folderId },
+	}),
+}));
+
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => ({ isFoldersFeatureEnabled: mocks.foldersEnabled }),
 }));
 
 vi.mock('./useAgentTelemetry', () => ({
@@ -17,6 +28,49 @@ vi.mock('./useAgentTelemetry', () => ({
 }));
 
 describe('useCreateAgent', () => {
+	it('ignores the folder query when folders are disabled', () => {
+		mocks.folderId = 'folder-1';
+		mocks.foldersEnabled = false;
+
+		useCreateAgent().createAgent('button', 'project-1');
+
+		expect(mocks.routerPush.mock.lastCall?.[0]).not.toHaveProperty('query');
+		mocks.folderId = undefined;
+		mocks.foldersEnabled = true;
+	});
+
+	it('starts at root when the target project differs from the current folder project', () => {
+		mocks.folderId = 'folder-1';
+
+		useCreateAgent().createAgent('button', 'project-2');
+
+		expect(mocks.routerPush.mock.lastCall?.[0]).not.toHaveProperty('query');
+		mocks.folderId = undefined;
+	});
+
+	it('keeps the current folder when opening a new Agent', () => {
+		mocks.folderId = 'folder-1';
+
+		useCreateAgent().createAgent('button', 'project-1');
+
+		expect(mocks.routerPush).toHaveBeenCalledWith(
+			expect.objectContaining({ query: { folderId: 'folder-1' } }),
+		);
+		mocks.folderId = undefined;
+	});
+
+	it('creates inside the selected folder instead of the currently open folder', () => {
+		mocks.folderId = 'parent-folder';
+
+		useCreateAgent().createAgent('dropdown', 'project-1', undefined, 'selected-folder');
+
+		expect(mocks.routerPush).toHaveBeenCalledWith(
+			expect.objectContaining({ query: { folderId: 'selected-folder' } }),
+		);
+		expect(mocks.trackClickedNewAgent).toHaveBeenCalledWith('dropdown', expect.any(String));
+		mocks.folderId = undefined;
+	});
+
 	it('mints an id, tracks the click, and pushes the builder route for it', () => {
 		const { createAgent } = useCreateAgent();
 

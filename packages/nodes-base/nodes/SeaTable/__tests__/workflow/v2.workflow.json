@@ -1,0 +1,610 @@
+{
+	"name": "SeaTable v2 request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "31e7aa43-fa28-532c-862d-ad1d7a7b43c7",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "6f0c1a2b-3d4e-4f5a-8b9c-0d1e2f3a4b5c",
+							"name": "content",
+							"value": "hello",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [100, 3200],
+			"id": "725fec5d-1685-5631-a219-bcb6a174b76e",
+			"name": "Set Content"
+		},
+		{
+			"parameters": {
+				"operation": "toText",
+				"sourceProperty": "content",
+				"options": {
+					"fileName": "notes.txt"
+				}
+			},
+			"type": "n8n-nodes-base.convertToFile",
+			"typeVersion": 1.1,
+			"position": [200, 3200],
+			"id": "1ca6b0a6-2304-5b98-9af7-58fe8a5bdd01",
+			"name": "Convert to File"
+		},
+		{
+			"parameters": {
+				"tableName": "Table1",
+				"columnsUi": {
+					"columnValues": [
+						{
+							"columnName": "Name",
+							"columnValue": "Nathan"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.seaTable",
+			"typeVersion": 2,
+			"position": [300, 0],
+			"id": "b49e6851-985f-5021-aeda-6446997e0f92",
+			"name": "Row > Create",
+			"credentials": {
+				"seaTableApi": {
+					"id": "Xq3ZbT9kLm2Pw7Rd",
+					"name": "SeaTable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"tableName": "Table1",
+				"rowId": "Qtf7xPmoRaiFyQPO1aENTA",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.seaTable",
+			"typeVersion": 2,
+			"position": [300, 200],
+			"id": "ff6d9c76-9b03-5c6d-bf03-d6209f83a325",
+			"name": "Row > Get",
+			"credentials": {
+				"seaTableApi": {
+					"id": "Xq3ZbT9kLm2Pw7Rd",
+					"name": "SeaTable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "list",
+				"tableName": "Table1",
+				"viewName": "Default View",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.seaTable",
+			"typeVersion": 2,
+			"position": [300, 400],
+			"id": "4c2d541c-a993-5103-bf2d-356b6bbd3f34",
+			"name": "Row > List",
+			"credentials": {
+				"seaTableApi": {
+					"id": "Xq3ZbT9kLm2Pw7Rd",
+					"name": "SeaTable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "search",
+				"tableName": "Table1",
+				"searchColumn": "Name",
+				"searchTerm": "Nat",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.seaTable",
+			"typeVersion": 2,
+			"position": [300, 600],
+			"id": "3f2a85fb-3c6d-5318-b9f0-221e139d652c",
+			"name": "Row > Search",
+			"credentials": {
+				"seaTableApi": {
+					"id": "Xq3ZbT9kLm2Pw7Rd",
+					"name": "SeaTable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"tableName": "Table1",
+				"rowId": "Qtf7xPmoRaiFyQPO1aENTA",
+				"columnsUi": {
+					"columnValues": [
+						{
+							"columnName": "Name",
+							"columnValue": "Nathan 2"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.seaTable",
+			"typeVersion": 2,
+			"position": [300, 800],
+			"id": "d36405b3-4e3d-57cf-86d1-ba52b0034b6d",
+			"name": "Row > Update",
+			"credentials": {
+				"seaTableApi": {
+					"id": "Xq3ZbT9kLm2Pw7Rd",
+					"name": "SeaTable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "remove",
+				"tableName": "Table1",
+				"rowId": "Qtf7xPmoRaiFyQPO1aENTA"
+			},
+			"type": "n8n-nodes-base.seaTable",
+			"typeVersion": 2,
+			"position": [300, 1000],
+			"id": "34b65005-0911-5213-9bd2-643807d8e3ef",
+			"name": "Row > Remove",
+			"credentials": {
+				"seaTableApi": {
+					"id": "Xq3ZbT9kLm2Pw7Rd",
+					"name": "SeaTable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "lock",
+				"tableName": "Table1",
+				"rowId": "Qtf7xPmoRaiFyQPO1aENTA"
+			},
+			"type": "n8n-nodes-base.seaTable",
+			"typeVersion": 2,
+			"position": [300, 1200],
+			"id": "b1fa37b4-cdfa-5319-a76f-3d198491ad96",
+			"name": "Row > Lock",
+			"credentials": {
+				"seaTableApi": {
+					"id": "Xq3ZbT9kLm2Pw7Rd",
+					"name": "SeaTable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "unlock",
+				"tableName": "Table1",
+				"rowId": "Qtf7xPmoRaiFyQPO1aENTA"
+			},
+			"type": "n8n-nodes-base.seaTable",
+			"typeVersion": 2,
+			"position": [300, 1400],
+			"id": "94bc820d-a472-54da-a676-20f15fdf03ce",
+			"name": "Row > Unlock",
+			"credentials": {
+				"seaTableApi": {
+					"id": "Xq3ZbT9kLm2Pw7Rd",
+					"name": "SeaTable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "base",
+				"operation": "snapshot"
+			},
+			"type": "n8n-nodes-base.seaTable",
+			"typeVersion": 2,
+			"position": [300, 1600],
+			"id": "57b6f361-5263-56c6-a92a-b1ab9460dbb5",
+			"name": "Base > Snapshot",
+			"credentials": {
+				"seaTableApi": {
+					"id": "Xq3ZbT9kLm2Pw7Rd",
+					"name": "SeaTable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "base",
+				"operation": "metadata"
+			},
+			"type": "n8n-nodes-base.seaTable",
+			"typeVersion": 2,
+			"position": [300, 1800],
+			"id": "a5485799-9e31-502d-8a90-17651b292bd6",
+			"name": "Base > Metadata",
+			"credentials": {
+				"seaTableApi": {
+					"id": "Xq3ZbT9kLm2Pw7Rd",
+					"name": "SeaTable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "base",
+				"operation": "collaborator",
+				"searchString": "nathan"
+			},
+			"type": "n8n-nodes-base.seaTable",
+			"typeVersion": 2,
+			"position": [300, 2000],
+			"id": "1b9e72b3-3d7c-5573-b081-8c7e240c69f4",
+			"name": "Base > Collaborator",
+			"credentials": {
+				"seaTableApi": {
+					"id": "Xq3ZbT9kLm2Pw7Rd",
+					"name": "SeaTable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "link",
+				"operation": "add",
+				"tableName": "Table1:::0000",
+				"linkColumn": "Contacts:::aB3d:::7Kq2:::fL9x",
+				"linkColumnSourceId": "Qtf7xPmoRaiFyQPO1aENTA",
+				"linkColumnTargetId": "Zp4LmW8sTqKcR2nYvXb1Ae"
+			},
+			"type": "n8n-nodes-base.seaTable",
+			"typeVersion": 2,
+			"position": [300, 2200],
+			"id": "ae3c0b5d-58b9-5c08-a055-a4fead54ca99",
+			"name": "Link > Add",
+			"credentials": {
+				"seaTableApi": {
+					"id": "Xq3ZbT9kLm2Pw7Rd",
+					"name": "SeaTable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "link",
+				"operation": "list",
+				"tableName": "Table1:::0000",
+				"linkColumn": "Contacts:::aB3d:::7Kq2:::fL9x",
+				"rowId": "Qtf7xPmoRaiFyQPO1aENTA"
+			},
+			"type": "n8n-nodes-base.seaTable",
+			"typeVersion": 2,
+			"position": [300, 2400],
+			"id": "ed0137e2-17c2-58af-b425-b215f645d0ac",
+			"name": "Link > List",
+			"credentials": {
+				"seaTableApi": {
+					"id": "Xq3ZbT9kLm2Pw7Rd",
+					"name": "SeaTable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "link",
+				"operation": "remove",
+				"tableName": "Table1:::0000",
+				"linkColumn": "Contacts:::aB3d:::7Kq2:::fL9x",
+				"linkColumnSourceId": "Qtf7xPmoRaiFyQPO1aENTA",
+				"linkColumnTargetId": "Zp4LmW8sTqKcR2nYvXb1Ae"
+			},
+			"type": "n8n-nodes-base.seaTable",
+			"typeVersion": 2,
+			"position": [300, 2600],
+			"id": "80c70079-fd2a-5dc1-9cad-dc7dd92f83e2",
+			"name": "Link > Remove",
+			"credentials": {
+				"seaTableApi": {
+					"id": "Xq3ZbT9kLm2Pw7Rd",
+					"name": "SeaTable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "asset",
+				"operation": "getPublicURL",
+				"assetPath": "/images/2024-05/logo.png"
+			},
+			"type": "n8n-nodes-base.seaTable",
+			"typeVersion": 2,
+			"position": [300, 2800],
+			"id": "67908c00-e631-5c60-9acb-2f036b8569de",
+			"name": "Asset > Public URL",
+			"credentials": {
+				"seaTableApi": {
+					"id": "Xq3ZbT9kLm2Pw7Rd",
+					"name": "SeaTable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "asset",
+				"operation": "upload",
+				"tableName": "Table1",
+				"uploadColumn": "Image:::image",
+				"rowId": "Qtf7xPmoRaiFyQPO1aENTA",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.seaTable",
+			"typeVersion": 2,
+			"position": [300, 3000],
+			"id": "010e104c-11d0-5b7d-b462-5a1a37040a93",
+			"name": "Asset > Upload",
+			"credentials": {
+				"seaTableApi": {
+					"id": "Xq3ZbT9kLm2Pw7Rd",
+					"name": "SeaTable account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Row > Create": [
+			{
+				"json": {
+					"_id": "Qtf7xPmoRaiFyQPO1aENTA",
+					"Name": "Nathan"
+				}
+			}
+		],
+		"Row > Get": [
+			{
+				"json": {
+					"Name": "Nathan"
+				}
+			}
+		],
+		"Row > List": [
+			{
+				"json": {
+					"Name": "Nathan"
+				}
+			}
+		],
+		"Row > Search": [
+			{
+				"json": {
+					"_id": "Qtf7xPmoRaiFyQPO1aENTA",
+					"Name": "Nathan"
+				}
+			}
+		],
+		"Row > Update": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Row > Remove": [
+			{
+				"json": {
+					"deleted_rows": 1
+				}
+			}
+		],
+		"Row > Lock": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Row > Unlock": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Base > Snapshot": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Base > Metadata": [
+			{
+				"json": {
+					"tables": [
+						{
+							"_id": "0000",
+							"name": "Table1",
+							"columns": [
+								{
+									"key": "0000",
+									"name": "Name",
+									"type": "text",
+									"editable": true
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"Base > Collaborator": [
+			{
+				"json": {
+					"email": "4f1c2a@auth.local",
+					"name": "nathan",
+					"contact_email": "nathan@n8n.io"
+				}
+			}
+		],
+		"Link > Add": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Link > List": [
+			{
+				"json": {
+					"Qtf7xPmoRaiFyQPO1aENTA": [
+						{
+							"row_id": "Zp4LmW8sTqKcR2nYvXb1Ae",
+							"display_value": "Jan"
+						}
+					]
+				}
+			}
+		],
+		"Link > Remove": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Asset > Public URL": [
+			{
+				"json": {
+					"download_link": "https://seatable.example.com/seafhttp/files/1d7f3b2e/logo.png"
+				}
+			}
+		],
+		"Asset > Upload": [
+			{
+				"json": {
+					"name": "notes.txt",
+					"size": 5,
+					"upload_successful": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Row > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Row > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Row > List",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Row > Search",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Row > Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Row > Remove",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Row > Lock",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Row > Unlock",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Base > Snapshot",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Base > Metadata",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Base > Collaborator",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Link > Add",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Link > List",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Link > Remove",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Asset > Public URL",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Set Content",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set Content": {
+			"main": [
+				[
+					{
+						"node": "Convert to File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Convert to File": {
+			"main": [
+				[
+					{
+						"node": "Asset > Upload",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

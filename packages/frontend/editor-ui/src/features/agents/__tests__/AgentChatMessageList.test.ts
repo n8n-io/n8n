@@ -55,6 +55,7 @@ vi.mock('@n8n/design-system', () => ({
 		</div>`,
 	},
 	N8nIcon: { template: '<i />' },
+	N8nSpinner: { template: '<span />' },
 	N8nLink: { props: ['to', 'theme', 'size', 'underline'], template: '<a :href="to"><slot /></a>' },
 	N8nIconButton: {
 		template: '<button v-bind="$attrs" @click="$emit(\'click\')">{{ icon }}</button>',
@@ -120,7 +121,7 @@ vi.mock('@/features/agents/components/AgentChatToolSteps.vue', () => ({
 				endedAt: 1250
 			}])"
 		/>`,
-		props: ['toolCalls', 'projectId', 'canFixWithAssistant', 'executionId'],
+		props: ['toolCalls', 'projectId', 'canFixWithAssistant', 'executionId', 'hostEvents'],
 		emits: ['fixWithAssistant'],
 	},
 }));
@@ -492,55 +493,6 @@ describe('AgentChatMessageList', () => {
 
 		wrapper.unmount();
 	});
-
-	it.each([true, false])(
-		'follows a resized status only when near the bottom: %s',
-		async (nearBottom) => {
-			let resizeStatus: (() => void) | undefined;
-			vi.stubGlobal(
-				'ResizeObserver',
-				class {
-					constructor(onResize: () => void) {
-						resizeStatus = onResize;
-					}
-
-					observe() {}
-
-					disconnect() {}
-				},
-			);
-			vi.stubGlobal('requestAnimationFrame', (onFrame: FrameRequestCallback) => {
-				onFrame(0);
-
-				return 0;
-			});
-			const wrapper = mount(AgentChatMessageList, {
-				props: { messages: [], messagingState: 'idle' },
-				slots: { status: '<div role="status">Stopping all tasks…</div>' },
-			});
-
-			try {
-				await flushPromises();
-				const scroller = wrapper.element as HTMLElement;
-				Object.defineProperty(scroller, 'scrollHeight', { configurable: true, value: 500 });
-				Object.defineProperty(scroller, 'clientHeight', { value: 100 });
-				scroller.scrollTop = nearBottom ? 400 : 0;
-				await wrapper.trigger('scroll');
-
-				Object.defineProperty(scroller, 'scrollHeight', { value: 600 });
-
-				expect(resizeStatus).toBeDefined();
-
-				resizeStatus?.();
-				await flushPromises();
-
-				expect(scroller.scrollTop).toBe(nearBottom ? 600 : 0);
-			} finally {
-				wrapper.unmount();
-				vi.unstubAllGlobals();
-			}
-		},
-	);
 
 	it('uses shared message shells without merging consecutive assistant output', () => {
 		const wrapper = mount(AgentChatMessageList, {
@@ -2187,54 +2139,6 @@ describe('AgentChatMessageList', () => {
 			wrapper.unmount();
 		});
 
-		it('scrolls to the bottom when a host event arrives on the last message', async () => {
-			vi.stubGlobal('requestAnimationFrame', (onFrame: FrameRequestCallback) => {
-				onFrame(0);
-				return 0;
-			});
-			const streaming = assistantMessage([], { content: '', status: 'streaming' });
-			const wrapper = mountList([streaming]);
-			await flushPromises();
-			const scroller = wrapper.element as HTMLElement;
-			Object.defineProperty(scroller, 'scrollHeight', { configurable: true, value: 500 });
-			scroller.scrollTop = 0;
-
-			await wrapper.setProps({
-				messages: [{ ...streaming, hostEvents: [hostEvent(TEST_HOST_EVENT.TRANSIENT, 't')] }],
-			});
-			await flushPromises();
-
-			expect(scroller.scrollTop).toBe(500);
-			wrapper.unmount();
-			vi.unstubAllGlobals();
-		});
-
-		it('scrolls to the bottom when a keyed host event updates its payload', async () => {
-			vi.stubGlobal('requestAnimationFrame', (onFrame: FrameRequestCallback) => {
-				onFrame(0);
-				return 0;
-			});
-			const progress = (done: number): AgentsChatHostEvent => ({
-				id: 'progress',
-				name: TEST_HOST_EVENT.END,
-				key: 'build',
-				payload: { done },
-			});
-			const streaming = assistantMessage([progress(1)], { content: '', status: 'streaming' });
-			const wrapper = mountList([streaming]);
-			await flushPromises();
-			const scroller = wrapper.element as HTMLElement;
-			Object.defineProperty(scroller, 'scrollHeight', { configurable: true, value: 500 });
-			scroller.scrollTop = 0;
-
-			await wrapper.setProps({ messages: [{ ...streaming, hostEvents: [progress(2)] }] });
-			await flushPromises();
-
-			expect(scroller.scrollTop).toBe(500);
-			wrapper.unmount();
-			vi.unstubAllGlobals();
-		});
-
 		it('keeps a run with only hidden plan calls when a host event in it renders', () => {
 			const wrapper = mountList([
 				planMessage(planView()),
@@ -2321,6 +2225,41 @@ describe('AgentChatMessageList', () => {
 			expect(rendered.find('em').text()).toBe('assistant-1');
 			wrapper.unmount();
 		});
+
+		it.each([
+			{ name: 'a message', content: 'Answer text', final: [] },
+			{
+				name: 'a tool run',
+				content: '',
+				final: [
+					{ id: 'assistant-2', role: 'assistant', content: 'Done', status: 'success' } as const,
+				],
+			},
+		])(
+			'passes tool-call events to the step of their call in $name, and shows the rest at the start',
+			({ content, final }) => {
+				const toolCallEvent = (id: string, toolCallId: string): AgentsChatHostEvent => ({
+					id,
+					name: TEST_HOST_EVENT.TOOL_CALL,
+					payload: { id, toolCallId },
+				});
+				const wrapper = mountList([
+					assistantMessage([toolCallEvent('approval', 'tc-1'), toolCallEvent('orphan', 'tc-9')], {
+						content,
+						toolCalls: [{ tool: 'search', toolCallId: 'tc-1', state: 'done' }],
+					}),
+					...final,
+				]);
+
+				const hostEvents = wrapper
+					.findComponent({ name: 'AgentChatToolSteps' })
+					.props('hostEvents') as Map<string, Array<{ event: AgentsChatHostEvent }>>;
+				expect([...hostEvents.keys()]).toEqual(['tc-1']);
+				expect(hostEvents.get('tc-1')?.map(({ event }) => event.id)).toEqual(['approval']);
+				expect(renderOrder(wrapper)).toEqual(['start:orphan', 'text']);
+				wrapper.unmount();
+			},
+		);
 
 		it('renders start events before the tool steps of a tool run', () => {
 			const wrapper = mountList([

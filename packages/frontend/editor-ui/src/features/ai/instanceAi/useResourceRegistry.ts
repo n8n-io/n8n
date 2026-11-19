@@ -13,7 +13,11 @@ import {
 import type { InstanceAiWorkflowAttachment, InstanceAiAppTarget } from '@n8n/api-types';
 
 import type { ArtifactToolCall, ArtifactTurn } from './artifactTurns';
-import { getAppArtifactFromToolCall, getSkillArtifactFromToolCall } from './canvasPreview.utils';
+import {
+	getAppArtifactFromToolCall,
+	getChangedDataTablesFromBatch,
+	getSkillArtifactFromToolCall,
+} from './canvasPreview.utils';
 
 export type ResourceEntry = {
 	type: 'workflow' | 'credential' | 'data-table' | 'agent' | 'skill' | 'app';
@@ -243,8 +247,16 @@ function extractFromAppsResult(tc: ArtifactToolCall, col: Collections): void {
 	recordProduced(col, { type: 'app', id: app.appId, name: app.name, projectId: app.projectId });
 }
 
+/** Batch data table results: every table the batch changed and kept. Deleted tables stay out. */
+function extractFromDataTableBatch(tc: ArtifactToolCall, col: Collections): void {
+	for (const table of getChangedDataTablesFromBatch(tc)) {
+		recordProduced(col, { type: 'data-table', ...table });
+	}
+}
+
 function extractFromToolCall(tc: ArtifactToolCall, col: Collections): void {
 	extractFromAgentBuilderResult(tc, col);
+	extractFromDataTableBatch(tc, col);
 	extractFromSkillsResult(tc, col);
 	extractFromAppsResult(tc, col);
 	const isFormerWorkflowsCall = isFormerWorkflowsTool(tc.toolName);
@@ -424,6 +436,24 @@ function collectFromToolCalls(turn: ArtifactTurn, col: Collections): void {
 		col.intake = toolCallOrigin(tc);
 		extractFromToolCall(tc, col);
 	}
+}
+
+/**
+ * Whether the agent built, changed or opened an artifact in this turn, which is
+ * what the artifacts panel lists. Resources that the user attached to a
+ * message do not count: the agent did not produce them.
+ */
+export function turnHasArtifact(turn: ArtifactTurn): boolean {
+	const col: Collections = {
+		produced: new Map(),
+		byName: new Map(),
+		linkableByName: new Map(),
+		origins: new Map(),
+		intake: 'attached',
+		agentNames: new Map(),
+	};
+	collectFromToolCalls(turn, col);
+	return col.produced.size > 0;
 }
 
 /**

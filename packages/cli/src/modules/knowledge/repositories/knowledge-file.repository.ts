@@ -10,7 +10,7 @@ class KnowledgeFileTable extends BaseRepository<KnowledgeFile> {
 	}
 }
 
-export interface AgentKnowledgeTotals {
+export interface KnowledgeFileTotals {
 	fileCount: number;
 	/** Sum of the original upload sizes, not of the stored text. */
 	totalBytes: number;
@@ -53,8 +53,8 @@ export class KnowledgeFileRepository {
 		ctx: OperationContext,
 	): Promise<KnowledgeFile> {
 		const manager = this.table.managerFor(ctx);
-		const agentFile = manager.create(KnowledgeFile, file);
-		return await manager.save(KnowledgeFile, agentFile);
+		const knowledgeFile = manager.create(KnowledgeFile, file);
+		return await manager.save(KnowledgeFile, knowledgeFile);
 	}
 
 	async deleteByIdAndAgentId(
@@ -69,7 +69,7 @@ export class KnowledgeFileRepository {
 		await this.table.managerFor(ctx).delete(KnowledgeFile, { agentId });
 	}
 
-	async getKnowledgeTotals(agentId: string, ctx: OperationContext): Promise<AgentKnowledgeTotals> {
+	async getKnowledgeTotals(agentId: string, ctx: OperationContext): Promise<KnowledgeFileTotals> {
 		const totalsByAgentId = await this.getKnowledgeTotalsByAgentIds([agentId], ctx);
 		return totalsByAgentId.get(agentId) ?? { fileCount: 0, totalBytes: 0 };
 	}
@@ -78,8 +78,8 @@ export class KnowledgeFileRepository {
 	async getKnowledgeTotalsByAgentIds(
 		agentIds: string[],
 		ctx: OperationContext,
-	): Promise<Map<string, AgentKnowledgeTotals>> {
-		const totalsByAgentId = new Map<string, AgentKnowledgeTotals>();
+	): Promise<Map<string, KnowledgeFileTotals>> {
+		const totalsByAgentId = new Map<string, KnowledgeFileTotals>();
 		if (agentIds.length === 0) {
 			return totalsByAgentId;
 		}

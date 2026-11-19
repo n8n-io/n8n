@@ -1,3 +1,4 @@
+import type { ExecutionLedgerBacklogStats } from '@n8n/backend-services';
 import { DatabaseConfig } from '@n8n/config';
 import {
 	BaseRepository,
@@ -82,6 +83,28 @@ export class ExecutionLedgerRepository {
 	}
 
 	/**
+	 * Separate subqueries, because SQLite scans the whole table when MIN and MAX share
+	 * one aggregate. Each one is a primary-key lookup on both dialects.
+	 */
+	async getBacklogStats(): Promise<ExecutionLedgerBacklogStats> {
+		const manager = this.table.managerFor({});
+		const table = manager.connection.driver.escape(this.table.metadata.tableName);
+		const [stats] = await this.query<{ minId: unknown; maxId: unknown; oldest: unknown }>(
+			manager,
+			`SELECT (SELECT MIN("id") FROM ${table}) AS "minId", (SELECT MAX("id") FROM ${table}) AS "maxId", (SELECT "occurredAt" FROM ${table} WHERE "id" = (SELECT MIN("id") FROM ${table})) AS "oldest"`,
+			[],
+		);
+		const oldest = stats?.oldest;
+		const isEmpty = stats?.minId === null || stats?.minId === undefined;
+
+		return {
+			rows: isEmpty ? 0 : Number(stats.maxId) - Number(stats.minId) + 1,
+			oldestOccurredAt:
+				oldest instanceof Date || typeof oldest === 'string' ? parseDbTime(oldest) : null,
+		};
+	}
+
+	/**
 	 * The sqlite-pooled driver drops the rows of a DELETE ... RETURNING. A SELECT and then a
 	 * DELETE up to the last id is exact, because the write lock stops new inserts in between.
 	 */
@@ -99,13 +122,13 @@ export class ExecutionLedgerRepository {
 		return rows;
 	}
 
-	private async query(
+	private async query<T = RawLedgerRow>(
 		manager: EntityManager,
 		rawSql: string,
 		rawParams: unknown[],
-	): Promise<RawLedgerRow[]> {
+	): Promise<T[]> {
 		const { sql, params } = toDialectQuery(this.isPostgres, rawSql, rawParams);
-		const rows: RawLedgerRow[] = await manager.query(sql, params);
+		const rows: T[] = await manager.query(sql, params);
 		return rows;
 	}
 }

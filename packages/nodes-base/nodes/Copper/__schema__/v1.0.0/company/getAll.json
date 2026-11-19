@@ -1,0 +1,96 @@
+{
+	"properties": {
+		"address": {
+			"properties": {
+				"city": {
+					"type": ["null", "string"]
+				},
+				"country": {
+					"type": ["null", "string"]
+				},
+				"postal_code": {
+					"type": ["null", "string"]
+				},
+				"state": {
+					"type": ["null", "string"]
+				},
+				"street": {
+					"type": ["null", "string"]
+				}
+			},
+			"type": ["null", "object"]
+		},
+		"assignee_id": {
+			"type": ["null", "number"]
+		},
+		"contact_type_id": {
+			"type": ["null", "number"]
+		},
+		"custom_fields": {
+			"type": "array"
+		},
+		"date_created": {
+			"type": "number"
+		},
+		"date_modified": {
+			"type": "number"
+		},
+		"details": {
+			"type": ["null", "string"]
+		},
+		"email_domain": {
+			"type": ["null", "string"]
+		},
+		"id": {
+			"type": "number"
+		},
+		"interaction_count": {
+			"type": "number"
+		},
+		"name": {
+			"type": "string"
+		},
+		"phone_numbers": {
+			"items": {
+				"properties": {
+					"category": {
+						"type": "string"
+					},
+					"number": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"primary_contact_id": {
+			"type": ["null", "number"]
+		},
+		"socials": {
+			"items": {},
+			"type": "array"
+		},
+		"tags": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"websites": {
+			"items": {
+				"properties": {
+					"category": {
+						"type": "string"
+					},
+					"url": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		}
+	},
+	"type": "object"
+}

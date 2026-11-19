@@ -1,18 +1,30 @@
 import { Logger } from '@n8n/backend-common';
+import { PushProxy, TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { isSelfHealingResourceId, type BuilderUsageItem, type TraceStatus } from '@n8n/instance-ai';
+import {
+	isSelfHealingResourceId,
+	tokenUsageToBuilderUsageItems,
+	type BuilderUsageItem,
+	type HelperModelUsageReport,
+	type HelperUsageHook,
+	type TraceStatus,
+} from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { sleep } from '@n8n/utils/sleep';
 import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 
-import { Push } from '@/push';
 import { AiService } from '@/services/ai.service';
-import { Telemetry } from '@/telemetry';
 
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
+
+/**
+ * The user ID that self-healing usage carries in the AI service. It is not the
+ * ID of a person, so billing can show this usage on its own line.
+ */
+export const SELF_HEALING_BILLING_USER_ID = 'self_healing';
 
 /**
  * Keeps the display total of threads that are not on the current Assistant
@@ -75,12 +87,69 @@ export class InstanceAiCreditService {
 	constructor(
 		logger: Logger,
 		private readonly aiService: AiService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly push: Push,
+		private readonly push: PushProxy,
 		private readonly threadRepo: InstanceAiThreadRepository,
 	) {
 		this.logger = logger.scoped('instance-ai');
+	}
+
+	/**
+	 * Claims one LLM call that runs beside the main turn, such as a memory task,
+	 * a title, or a verification helper. Returns the claimed credits. Best effort:
+	 * a billing failure is logged and never fails the call.
+	 */
+	async claimSideCallUsage(
+		user: User,
+		threadId: string,
+		dedupeId: string,
+		call: { model: string; usage: HelperModelUsageReport['usage'] },
+		source: 'chat' | 'self_healing' = 'chat',
+	): Promise<number | undefined> {
+		try {
+			return await this.claimRunUsage(
+				user,
+				threadId,
+				dedupeId,
+				tokenUsageToBuilderUsageItems(call.model, call.usage),
+				'completed',
+				source,
+			);
+		} catch (error) {
+			this.logger.warn('Failed to claim Assistant side-call usage', {
+				threadId,
+				dedupeId,
+				error: getErrorMessage(error),
+			});
+			return undefined;
+		}
+	}
+
+	/** Claims one verification helper call, such as the classifier or the simulation fixtures. */
+	async claimHelperUsage(
+		user: User,
+		threadId: string,
+		runId: string,
+		report: HelperModelUsageReport,
+		source: 'chat' | 'self_healing' = 'chat',
+	): Promise<number | undefined> {
+		return await this.claimSideCallUsage(
+			user,
+			threadId,
+			`${runId}:helper:${report.helper}:${report.reportId}`,
+			report,
+			source,
+		);
+	}
+
+	/** `claimHelperUsage` bound to one run, for the context's `onHelperUsage` hook. */
+	helperUsageClaimer(user: User, threadId: string, runId: string): HelperUsageHook {
+		// Awaiting here does not block the helper: `generateValidatedJson` fires the
+		// hook without awaiting it. Self-healing awaits its own claims to total them.
+		return async (report) => {
+			await this.claimHelperUsage(user, threadId, runId, report);
+		};
 	}
 
 	/**
@@ -130,7 +199,11 @@ export class InstanceAiCreditService {
 		// later run can re-attempt, and reports the failure.
 		let result: Awaited<ReturnType<typeof this.claimTokens>>;
 		try {
-			result = await this.claimTokensWithRetry(user, threadId, dedupeId, usage);
+			// The billing page shows self-healing usage apart from the usage of a person.
+			const billingUser = {
+				id: source === 'self_healing' ? SELF_HEALING_BILLING_USER_ID : user.id,
+			};
+			result = await this.claimTokensWithRetry(billingUser, threadId, dedupeId, usage);
 		} catch (error) {
 			this.claimedRunIds.delete(dedupeId); // allow retry on failure
 			this.telemetry.track('Builder credits claimed', {
@@ -255,7 +328,7 @@ export class InstanceAiCreditService {
 	 * Authorization headers. Each caller gets a unique token (separate nanoid)
 	 * for audit tracking.
 	 */
-	private async getProxyAuth(user: User) {
+	private async getProxyAuth(user: Pick<User, 'id'>) {
 		const client = await this.aiService.getClient();
 		const token = await client.getInstanceAiApiProxyToken(
 			{ id: user.id },
@@ -272,7 +345,7 @@ export class InstanceAiCreditService {
 	 * `threadId` so the service can attach it to the claim telemetry.
 	 */
 	private async claimTokens(
-		user: User,
+		user: Pick<User, 'id'>,
 		threadId: string,
 		dedupeId: string,
 		usage: BuilderUsageItem[],
@@ -291,7 +364,7 @@ export class InstanceAiCreditService {
 	 * attempt fails.
 	 */
 	private async claimTokensWithRetry(
-		user: User,
+		user: Pick<User, 'id'>,
 		threadId: string,
 		dedupeId: string,
 		usage: BuilderUsageItem[],

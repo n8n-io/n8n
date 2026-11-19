@@ -273,6 +273,11 @@ export async function truncate(entities: EntityName[]) {
 		await connection.getRepository('WorkflowPublishedVersion').delete({});
 	}
 
+	// `agents.identityId` references `user` with RESTRICT, so agents go first.
+	if (entities.includes('User') && connection.hasMetadata('Agent')) {
+		await connection.getRepository('Agent').delete({});
+	}
+
 	for (const name of entities) {
 		// `workflow_statistics_delta` is a raw-SQL, Postgres-only table with no TypeORM entity, so it
 		// can't go through the repository, so we clear it directly.

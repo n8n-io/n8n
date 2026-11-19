@@ -8,9 +8,18 @@ const item = (n: number) => ({ json: { n } });
 
 function makeReader(originalItems: JsonValue, arrivals: JsonValue[] = []): LoopReader {
 	return {
-		readOriginalItems: vi.fn().mockResolvedValue(originalItems),
+		readOriginalItems: vi.fn().mockResolvedValue({
+			items: originalItems,
+			from: { nodeId: 'entry', outputIndex: 0, iteration: 0 },
+		}),
 		readArrivals: vi.fn(
-			async (iteration: number) => await Promise.resolve(arrivals.slice(0, iteration)),
+			async (iteration: number) =>
+				await Promise.resolve(
+					arrivals.slice(0, iteration).map((items, index) => ({
+						items,
+						from: { nodeId: 'body', outputIndex: 0, iteration: index },
+					})),
+				),
 		),
 	};
 }
@@ -38,12 +47,29 @@ describe('isBatchStepConfig', () => {
 describe('runBatchStep', () => {
 	const config = { batchSize: 2 };
 
+	it('states where the items of each pass came from', async () => {
+		const config = { batchSize: 2 };
+		const reader = makeReader([item(1), item(2), item(3)], [[item(10), item(20)], [item(30)]]);
+
+		expect((await runBatchStep(config, 1, reader)).outputSources).toEqual([
+			null,
+			[{ nodeId: 'entry', outputIndex: 0, iteration: 0, offset: 2, itemCount: 1 }],
+		]);
+		expect((await runBatchStep(config, 2, reader)).outputSources).toEqual([
+			[
+				{ nodeId: 'body', outputIndex: 0, iteration: 0, offset: 0, itemCount: 2 },
+				{ nodeId: 'body', outputIndex: 0, iteration: 1, offset: 0, itemCount: 1 },
+			],
+			null,
+		]);
+	});
+
 	it('fires the loop slot with its own slice, and leaves the done slot dead', async () => {
 		const reader = makeReader([item(1), item(2), item(3), item(4), item(5)]);
 
-		expect(await runBatchStep(config, 0, reader)).toEqual([null, [item(1), item(2)]]);
-		expect(await runBatchStep(config, 1, reader)).toEqual([null, [item(3), item(4)]]);
-		expect(await runBatchStep(config, 2, reader)).toEqual([null, [item(5)]]);
+		expect((await runBatchStep(config, 0, reader)).outputs).toEqual([null, [item(1), item(2)]]);
+		expect((await runBatchStep(config, 1, reader)).outputs).toEqual([null, [item(3), item(4)]]);
+		expect((await runBatchStep(config, 2, reader)).outputs).toEqual([null, [item(5)]]);
 	});
 
 	it('never reads the arrivals while the loop still runs', async () => {
@@ -58,32 +84,38 @@ describe('runBatchStep', () => {
 		const arrivals = [[item(10)], [item(20)], [item(30)]];
 		const reader = makeReader([item(1), item(2), item(3), item(4), item(5)], arrivals);
 
-		expect(await runBatchStep(config, 3, reader)).toEqual([[item(10), item(20), item(30)], null]);
+		expect((await runBatchStep(config, 3, reader)).outputs).toEqual([
+			[item(10), item(20), item(30)],
+			null,
+		]);
 	});
 
 	it('concatenates the arrivals in iteration order', async () => {
 		const arrivals = [[item(1), item(2)], [item(3)]];
 		const reader = makeReader([], arrivals);
 
-		expect(await runBatchStep(config, 2, reader)).toEqual([[item(1), item(2), item(3)], null]);
+		expect((await runBatchStep(config, 2, reader)).outputs).toEqual([
+			[item(1), item(2), item(3)],
+			null,
+		]);
 	});
 
 	it('ends at once when there are no items, firing neither slot', async () => {
 		const reader = makeReader([]);
 
-		expect(await runBatchStep(config, 0, reader)).toEqual([null, null]);
+		expect((await runBatchStep(config, 0, reader)).outputs).toEqual([null, null]);
 	});
 
 	it('fires neither slot when the body sent nothing back', async () => {
 		const reader = makeReader([item(1)], [[]]);
 
-		expect(await runBatchStep(config, 1, reader)).toEqual([null, null]);
+		expect((await runBatchStep(config, 1, reader)).outputs).toEqual([null, null]);
 	});
 
 	it('treats a dead arrival as empty, so a filtered body ends the loop', async () => {
 		const reader = makeReader([item(1), item(2)], [[item(9)], null]);
 
-		expect(await runBatchStep(config, 2, reader)).toEqual([[item(9)], null]);
+		expect((await runBatchStep(config, 2, reader)).outputs).toEqual([[item(9)], null]);
 	});
 
 	it('rejects an input the batch node cannot slice', async () => {

@@ -11,6 +11,7 @@ import {
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 import { isRecord } from '@n8n/utils/is-record';
+import { sha256 } from '@n8n/utils/sha256';
 import { LRUCache } from 'lru-cache';
 import type { Readable } from 'node:stream';
 import pLimit from 'p-limit';
@@ -19,10 +20,12 @@ import { createHash } from 'node:crypto';
 import {
 	DEFAULT_ARCHIVE_LIMITS,
 	archiveSize,
+	archiveTooLarge,
 	readRepositoryArchive,
 	type ArchiveLimits,
 	type RepositoryArchive,
 } from './github-archive';
+import { readRepositoryFolder } from './github-folder';
 import {
 	GITHUB_HOST,
 	gitHubTreeUrl,
@@ -55,9 +58,15 @@ type GitHubLocator = { owner: string; repository: string; branch: string; path: 
 type GitHubSkillRef = { path: string };
 
 const TIMEOUT_MS = 30_000;
-/** The whole download of an archive, so a large repository cannot keep a request open. */
-const ARCHIVE_DOWNLOAD_MS = 2 * 60_000;
+/** The total time to read a repository or folder. */
+const DOWNLOAD_MS = 2 * 60_000;
 const MAX_REFS_BYTES = 5 * 1024 * 1024;
+type ResponseLimit = { bytes: number; message: string; reason: SkillSourceReadError['reason'] };
+const JSON_RESPONSE_LIMIT: ResponseLimit = {
+	bytes: MAX_REFS_BYTES,
+	message: 'GitHub sent too much data.',
+	reason: 'unreachable',
+};
 /** A discover and the fetches of an import read one archive. */
 const ARCHIVE_CACHE_MS = 5 * 60_000;
 const ARCHIVE_CACHE_SIZE = 4;
@@ -91,11 +100,8 @@ const TOKEN_OF: Record<
 };
 
 /**
- * Reads skills from GitHub repositories. Branches come from `ls-refs` over git smart HTTP. A
- * public tarball comes from codeload, so a public source makes no REST call. A private source
- * reads its tarball through the REST API with the token of its credential, and the repository
- * select lists repositories through the REST API, so both count against the REST rate limit of
- * that token. Every request goes to a fixed GitHub host. The user only fills path segments.
+ * Branches come from `ls-refs` over git smart HTTP. Repository links use tarballs. Folder links
+ * use Git trees over the REST API. Every request goes to a fixed GitHub host.
  */
 @Service()
 export class GitHubSkillSourceClient extends SkillSourceClient {
@@ -213,17 +219,39 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		return readRef(ref).path || '/';
 	}
 
-	webUrl(locator: SkillSourceLocator, ref?: RemoteSkillRef): string {
+	webUrl(locator: SkillSourceLocator, ref?: RemoteSkillRef, revision?: string): string {
 		const { owner, repository, branch, path } = readLocator(locator);
-		return gitHubTreeUrl(owner, repository, branch, ref ? readRef(ref).path : path);
+		return gitHubTreeUrl(owner, repository, revision ?? branch, ref ? readRef(ref).path : path);
+	}
+
+	revisionUrl(locator: SkillSourceLocator, revision: string): string {
+		const { owner, repository } = readLocator(locator);
+		return `https://${GITHUB_HOST}/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}/commit/${encodeURIComponent(revision)}`;
+	}
+
+	async describeRevision(locator: SkillSourceLocator, revision: string, auth?: SkillSourceAuth) {
+		const { owner, repository } = readLocator(locator);
+		const [o, r, sha] = [owner, repository, revision].map(encodeURIComponent);
+		// The git commit endpoint returns metadata without the potentially large file diff.
+		const body = await this.sendJson(`${API}/repos/${o}/${r}/git/commits/${sha}`, auth);
+		if (!isRecord(body))
+			throw new SkillSourceReadError('unreachable', 'GitHub sent an answer n8n cannot read.');
+		const author = isRecord(body.author) ? body.author : {};
+		return {
+			message: typeof body.message === 'string' ? body.message : null,
+			author: typeof author.name === 'string' ? author.name : null,
+			date: typeof author.date === 'string' ? author.date : null,
+		};
 	}
 
 	async discover(
 		locator: SkillSourceLocator,
 		auth?: SkillSourceAuth,
+		_cursor?: string,
+		revision?: string,
 	): Promise<{ items: RemoteSkillRef[]; truncated: boolean; tooDeep: number; revision: string }> {
 		const parsed = readLocator(locator);
-		const sha = await this.head(parsed, auth);
+		const sha = revision ?? (await this.head(parsed, auth));
 		const archive = await this.archiveAt(parsed, sha, auth);
 		const { path } = parsed;
 		if (path && !archive.paths.some((file) => isInside(file, path) && file !== path)) {
@@ -252,9 +280,13 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		const inRepository = (file: string) => (path ? `${path}/${file}` : file);
 		const skillFile = inRepository(SKILL_FILE);
 		if (archive.oversized.has(skillFile)) {
-			throw new SkillParseError(`The SKILL.md of ${path || '/'} is larger than 1 MB.`);
+			throw new SkillParseError(
+				`The SKILL.md of ${path || '/'} is larger than 1 MB.`,
+				archive.oversized.get(skillFile) ?? undefined,
+			);
 		}
-		if (!archive.text.has(skillFile)) {
+		const skillText = archive.text.get(skillFile);
+		if (skillText === undefined) {
 			throw new SkillSourceNotFoundError(`The skill folder ${path || '/'} has no SKILL.md.`, {
 				skill: true,
 			});
@@ -266,14 +298,21 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 			.filter((file) => !archive.oversized.has(inRepository(file)))
 			.map((file) => ({ path: file, content: archive.text.get(inRepository(file)) ?? '' }));
 		const folderName = path.split('/').at(-1) || parsed.repository;
-		const { content, skippedFiles, unstorableFiles } = readSkillFolder(folderName, files);
-		return {
-			content,
-			revision: sha,
-			fidelity: [],
-			skippedFiles: [...skippedFiles, ...oversized],
-			unstorableFiles,
-		};
+		try {
+			const { content, skippedFiles, unstorableFiles } = readSkillFolder(folderName, files);
+			return {
+				content,
+				revision: sha,
+				fidelity: [],
+				skippedFiles: [...skippedFiles, ...oversized],
+				unstorableFiles,
+			};
+		} catch (error) {
+			if (error instanceof SkillParseError) {
+				throw new SkillParseError(error.message, await sha256(skillText));
+			}
+			throw error;
+		}
 	}
 
 	/**
@@ -365,7 +404,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	}
 
 	/**
-	 * The archive of the folder of the link. Each link keeps only the files under its folder.
+	 * The files under the link at one commit.
 	 * The cache key holds the access, as for `head`, so one credential never gets an archive
 	 * that another one read.
 	 */
@@ -379,7 +418,11 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		const key = `${owner}/${repository}@${sha}`.toLowerCase() + `:${path}#${accessKey(auth)}`;
 		const cached = this.archives.get(key);
 		if (cached) return await cached;
-		const archive = this.downloads(async () => await this.download(locator, sha, auth));
+		const archive = this.downloads(async () =>
+			path
+				? await this.downloadFolder(locator, sha, auth)
+				: await this.downloadArchive(locator, sha, auth),
+		);
 		this.archives.set(key, archive, { size: 1 });
 		archive.then(
 			(read) => {
@@ -399,17 +442,67 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		return await archive;
 	}
 
-	/**
-	 * A public tarball comes from codeload. A private one comes from the REST API, which
-	 * redirects to codeload with a short-lived token in the link, so the credential never goes
-	 * to codeload: the HTTP client drops `Authorization` on a redirect to another host.
-	 */
-	private async download(
+	private async downloadFolder(
 		locator: GitHubLocator,
 		sha: string,
 		auth?: SkillSourceAuth,
 	): Promise<RepositoryArchive> {
 		const { owner, repository, path } = locator;
+		const [o, r] = [owner, repository].map(encodeURIComponent);
+		const base = `${API}/repos/${o}/${r}/git`;
+		const fileTarget = (file: string, blob: string) =>
+			auth
+				? {
+						url: `${base}/blobs/${blob}`,
+						headers: { ...bearer(auth), Accept: 'application/vnd.github.raw+json' },
+					}
+				: {
+						// Public file reads do not count against the REST API rate limit.
+						url: `https://raw.githubusercontent.com/${o}/${r}/${sha}/${file.split('/').map(encodeURIComponent).join('/')}`,
+					};
+		const tooLarge = archiveTooLarge(path);
+		const deadline = new AbortController();
+		const timer = setTimeout(() => deadline.abort(), DOWNLOAD_MS);
+		const limit = (bytes: number): ResponseLimit => ({
+			bytes,
+			message: tooLarge.message,
+			reason: tooLarge.reason,
+		});
+		try {
+			return await readRepositoryFolder(
+				path,
+				sha,
+				this.archiveLimits,
+				async (tree, recursive, bytes) =>
+					await this.sendJson(`${base}/trees/${tree}${recursive ? '?recursive=1' : ''}`, auth, {
+						limit: limit(bytes),
+						signal: deadline.signal,
+					}),
+				async (file, blob) =>
+					await this.send(
+						{ ...fileTarget(file, blob), method: 'GET', abortSignal: deadline.signal },
+						auth,
+						limit(Math.max(this.archiveLimits.maxTextFileBytes, 1024)),
+					),
+				async (file, blob) => await this.sendStream(fileTarget(file, blob), auth, deadline.signal),
+			);
+		} finally {
+			clearTimeout(timer);
+			deadline.abort();
+		}
+	}
+
+	/**
+	 * A public tarball comes from codeload. A private one comes from the REST API, which
+	 * redirects to codeload with a short-lived token in the link, so the credential never goes
+	 * to codeload: the HTTP client drops `Authorization` on a redirect to another host.
+	 */
+	private async downloadArchive(
+		locator: GitHubLocator,
+		sha: string,
+		auth?: SkillSourceAuth,
+	): Promise<RepositoryArchive> {
+		const { owner, repository } = locator;
 		const [o, r, s] = [owner, repository, sha].map(encodeURIComponent);
 		const target = auth
 			? {
@@ -418,30 +511,10 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 				}
 			: { url: `https://codeload.${GITHUB_HOST}/${o}/${r}/tar.gz/${s}` };
 		const deadline = new AbortController();
-		const timer = setTimeout(() => deadline.abort(), ARCHIVE_DOWNLOAD_MS);
+		const timer = setTimeout(() => deadline.abort(), DOWNLOAD_MS);
 		try {
-			let response;
-			try {
-				response = await this.http.request<Readable>({
-					...target,
-					method: 'GET',
-					encoding: 'stream',
-					json: false,
-					returnFullResponse: true,
-					ignoreHttpStatusErrors: true,
-					abortSignal: deadline.signal,
-				});
-			} catch (error) {
-				throw new SkillSourceReadError('unreachable', 'n8n could not reach GitHub.', {
-					cause: error,
-				});
-			}
-			if (!isSuccess(response.statusCode)) {
-				response.body.destroy();
-				throwForStatus(response.statusCode, response.headers, auth);
-			}
-			return await readRepositoryArchive(response.body, {
-				root: path,
+			const body = await this.sendStream(target, auth, deadline.signal);
+			return await readRepositoryArchive(body, {
 				signal: deadline.signal,
 				limits: this.archiveLimits,
 			});
@@ -452,13 +525,45 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		}
 	}
 
+	private async sendStream(
+		target: { url: string; headers?: Record<string, string> },
+		auth: SkillSourceAuth | undefined,
+		abortSignal: AbortSignal,
+	): Promise<Readable> {
+		let response;
+		try {
+			response = await this.http.request<Readable>({
+				...target,
+				method: 'GET',
+				encoding: 'stream',
+				json: false,
+				returnFullResponse: true,
+				ignoreHttpStatusErrors: true,
+				abortSignal,
+			});
+		} catch (error) {
+			throw new SkillSourceReadError('unreachable', 'n8n could not reach GitHub.', {
+				cause: error,
+			});
+		}
+		if (!isSuccess(response.statusCode)) {
+			response.body.destroy();
+			throwForStatus(response.statusCode, response.headers, auth);
+		}
+		return response.body;
+	}
+
 	/** One page of a REST answer as JSON. */
-	private async sendJson(url: string, auth: SkillSourceAuth): Promise<unknown> {
-		const body = await this.send({ url, method: 'GET', headers: bearer(auth) }, auth, {
-			bytes: MAX_REFS_BYTES,
-			message: 'GitHub sent too much data.',
-			reason: 'unreachable',
-		});
+	private async sendJson(
+		url: string,
+		auth?: SkillSourceAuth,
+		{ limit = JSON_RESPONSE_LIMIT, signal }: { limit?: ResponseLimit; signal?: AbortSignal } = {},
+	): Promise<unknown> {
+		const body = await this.send(
+			{ url, method: 'GET', headers: auth ? bearer(auth) : API_HEADERS, abortSignal: signal },
+			auth,
+			limit,
+		);
 		try {
 			return jsonParse<unknown>(body.toString('utf8'));
 		} catch (error) {
@@ -474,9 +579,10 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 			method: 'GET' | 'POST';
 			body?: Buffer;
 			headers?: Record<string, string>;
+			abortSignal?: AbortSignal;
 		},
 		auth: SkillSourceAuth | undefined,
-		limit: { bytes: number; message: string; reason: SkillSourceReadError['reason'] },
+		limit: ResponseLimit,
 	): Promise<Buffer> {
 		let response;
 		try {

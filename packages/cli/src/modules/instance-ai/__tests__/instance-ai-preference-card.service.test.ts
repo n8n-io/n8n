@@ -3,8 +3,9 @@ import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
-import type { AiPreferenceService } from '@n8n/backend-services';
-import type { Telemetry } from '@/telemetry';
+import type { AiPreferenceService, TelemetryProxy } from '@n8n/backend-services';
+
+import type { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import { InstanceAiPreferenceCardService } from '../instance-ai-preference-card.service';
@@ -12,11 +13,35 @@ import { InstanceAiPreferenceCardService } from '../instance-ai-preference-card.
 describe('InstanceAiPreferenceCardService', () => {
 	const aiPreferenceService = mock<AiPreferenceService>();
 	const eventBus = mock<InProcessEventBus>();
-	const telemetry = mock<Telemetry>();
-	const service = new InstanceAiPreferenceCardService(aiPreferenceService, eventBus, telemetry);
+	const telemetry = mock<TelemetryProxy>();
+	const preferenceSettings = { isEnabled: true } as AiPreferenceSettingsService;
+	const service = new InstanceAiPreferenceCardService(
+		aiPreferenceService,
+		eventBus,
+		telemetry,
+		preferenceSettings,
+	);
 	const user = mock<User>({ id: 'user-1' });
 
-	beforeEach(() => vi.resetAllMocks());
+	beforeEach(() => {
+		vi.resetAllMocks();
+		Object.assign(preferenceSettings, { isEnabled: true });
+	});
+
+	it('refuses undo and edit while preferences are off', async () => {
+		Object.assign(preferenceSettings, { isEnabled: false });
+		const card = { runId: 'run-1', toolCallId: 'tc-1' };
+
+		await expect(service.undo(user, 'thread-1', 'pref-1', card)).rejects.toThrow(
+			'Preferences are turned off',
+		);
+		await expect(
+			service.edit(user, 'thread-1', 'pref-1', { ...card, content: 'Keep replies short.' }),
+		).rejects.toThrow('Preferences are turned off');
+		expect(aiPreferenceService.delete).not.toHaveBeenCalled();
+		expect(aiPreferenceService.update).not.toHaveBeenCalled();
+		expect(eventBus.publish).not.toHaveBeenCalled();
+	});
 	// A test that fakes the clock must not leave it faked for the next one, even when it throws.
 	afterEach(() => vi.useRealTimers());
 

@@ -153,9 +153,11 @@ erDiagram
   boolean availableInMCP
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
+  uuid identityId FK
   json integrations
   boolean isArchived
   varchar_128_ name
+  varchar_36_ parentFolderId FK
   varchar_255_ projectId FK
   integer publicationRevision
   integer revision
@@ -201,6 +203,7 @@ erDiagram
   varchar_128_ name
   varchar_36_ parentFolderId FK
   varchar_36_ projectId FK
+  varchar_16_ resourceType
   timestamp_3__with_time_zone updatedAt
 }
 "public.insights_metadata" {
@@ -331,6 +334,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ credentialId FK
+  boolean credentialRequired
   uuid id
   varchar_255_ identityKey
   timestamp_3__with_time_zone lastCheckedAt
@@ -340,6 +344,7 @@ erDiagram
   varchar_36_ projectId FK
   varchar_32_ status
   varchar_16_ type
+  json unlinkedSkills
   timestamp_3__with_time_zone updatedAt
 }
 "public.type_availability_policy_scope" {

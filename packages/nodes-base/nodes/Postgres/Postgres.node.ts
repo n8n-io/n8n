@@ -11,11 +11,13 @@ export class Postgres extends VersionedNodeType {
 			name: 'postgres',
 			icon: 'file:postgres.svg',
 			group: ['input'],
-			defaultVersion: 2.8,
+			defaultVersion: 2.9,
 			description: 'Get, add and update data in Postgres',
 			parameterPane: 'wide',
 		};
 
+		// The keys are numbers, so a `2.10` key is the number 2.1 and would silently replace 2.1.
+		// The version after 2.9 must not be 2.10.
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new PostgresV1(baseDescription),
 			2: new PostgresV2(baseDescription),
@@ -27,6 +29,7 @@ export class Postgres extends VersionedNodeType {
 			2.6: new PostgresV2(baseDescription),
 			2.7: new PostgresV2(baseDescription),
 			2.8: new PostgresV2(baseDescription),
+			2.9: new PostgresV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

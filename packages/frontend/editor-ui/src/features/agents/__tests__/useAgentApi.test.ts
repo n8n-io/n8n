@@ -143,8 +143,8 @@ describe('useAgentApi', () => {
 			vi.mocked(getFullApiResponse).mockResolvedValueOnce(response);
 
 			const result = await listAgentsPage(restApiContext, 'project-1', {
-				skip: 10,
-				take: 25,
+				offset: 10,
+				limit: 25,
 				sortBy: 'name:asc',
 				filter: { query: 'support' },
 			});
@@ -154,8 +154,8 @@ describe('useAgentApi', () => {
 				'GET',
 				'/projects/project-1/agents/v2',
 				{
-					skip: 10,
-					take: 25,
+					offset: 10,
+					limit: 25,
 					sortBy: 'name:asc',
 					filter: { query: 'support' },
 				},
@@ -180,14 +180,14 @@ describe('useAgentApi', () => {
 				restApiContext,
 				'GET',
 				'/projects/project-1/agents/v2',
-				{ skip: 0, take: 250 },
+				{ offset: 0, limit: 250 },
 			);
 			expect(getFullApiResponse).toHaveBeenNthCalledWith(
 				2,
 				restApiContext,
 				'GET',
 				'/projects/project-1/agents/v2',
-				{ skip: 1, take: 250 },
+				{ offset: 1, limit: 250 },
 			);
 		});
 	});
@@ -217,6 +217,25 @@ describe('useAgentApi', () => {
 				['GET', '/agents/system/assistant/chat/thread-1/messages'],
 				['GET', '/agents/system/assistant/chat/thread-1/queue'],
 				['DELETE', '/agents/system/assistant/chat/runs/run-1'],
+			]);
+		});
+
+		it('reads a page of chat messages, with the cursor only when set', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValue({ messages: [], openSuspensions: [] });
+
+			await getChatMessages(restApiContext, 'project-1', 'agent-1', 'thread-1');
+			await getChatMessages(restApiContext, 'project-1', 'agent-1', 'thread-1', 'chat', {
+				limit: 20,
+			});
+			await getChatMessages(restApiContext, 'project-1', 'agent-1', 'thread-1', 'chat', {
+				limit: 20,
+				cursor: 'cursor-1',
+			});
+
+			expect(vi.mocked(makeRestApiRequest).mock.calls.map((call) => call.slice(3))).toEqual([
+				[],
+				[{ limit: '20' }],
+				[{ limit: '20', cursor: 'cursor-1' }],
 			]);
 		});
 
@@ -521,15 +540,15 @@ describe('useAgentApi', () => {
 
 			const result = await listN8nChatAgents(restApiContext, {
 				query: '  support  ',
-				skip: 10,
-				take: 50,
+				offset: 10,
+				limit: 50,
 				sortBy: 'usage:desc',
 			});
 
 			expect(getFullApiResponse).toHaveBeenCalledWith(restApiContext, 'GET', '/agents/v2', {
 				filter: { availableInChat: true, query: 'support' },
-				skip: 10,
-				take: 50,
+				offset: 10,
+				limit: 50,
 				sortBy: 'usage:desc',
 			});
 			expect(result).toBe(response);
@@ -538,19 +557,19 @@ describe('useAgentApi', () => {
 		it('omits the query from the filter when blank — not given, empty, or whitespace-only', async () => {
 			vi.mocked(getFullApiResponse).mockResolvedValue({ count: 0, data: [] });
 
-			await listN8nChatAgents(restApiContext, { skip: 0, take: 50 });
-			await listN8nChatAgents(restApiContext, { query: '   ', skip: 0, take: 50 });
+			await listN8nChatAgents(restApiContext, { offset: 0, limit: 50 });
+			await listN8nChatAgents(restApiContext, { query: '   ', offset: 0, limit: 50 });
 
 			expect(getFullApiResponse).toHaveBeenNthCalledWith(1, restApiContext, 'GET', '/agents/v2', {
 				filter: { availableInChat: true },
-				skip: 0,
-				take: 50,
+				offset: 0,
+				limit: 50,
 				sortBy: undefined,
 			});
 			expect(getFullApiResponse).toHaveBeenNthCalledWith(2, restApiContext, 'GET', '/agents/v2', {
 				filter: { availableInChat: true },
-				skip: 0,
-				take: 50,
+				offset: 0,
+				limit: 50,
 				sortBy: undefined,
 			});
 		});

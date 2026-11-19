@@ -773,6 +773,7 @@ describe('RoleController', () => {
 						lastName: 'Lovelace',
 						email: 'ada@example.com',
 						role: 'global:admin',
+						kind: 'person' as const,
 					},
 				],
 				total: 1,

@@ -1,10 +1,9 @@
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, PasswordUtility } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type { AuthIdentity, Person, PersonRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { AuthError } from '@n8n/errors';
-import type { PasswordUtility } from '@/services/password.utility';
 
 import { EmailAuthHandler } from '../email.auth-handler';
 

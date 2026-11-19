@@ -1,0 +1,216 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"authors": {
+			"type": "string"
+		},
+		"connections": {
+			"type": "object"
+		},
+		"createdAt": {
+			"type": "string"
+		},
+		"description": {
+			"type": ["null", "string"]
+		},
+		"name": {
+			"type": ["null", "string"]
+		},
+		"nodeGroups": {
+			"items": {},
+			"type": "array"
+		},
+		"nodes": {
+			"items": {
+				"additionalProperties": true,
+				"properties": {
+					"alwaysOutputData": {
+						"type": "boolean"
+					},
+					"credentials": {
+						"type": "object"
+					},
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"onError": {
+						"type": "string"
+					},
+					"parameters": {
+						"additionalProperties": true,
+						"properties": {
+							"authentication": {
+								"type": "string"
+							},
+							"conditions": {
+								"properties": {
+									"combinator": {
+										"type": "string"
+									},
+									"conditions": {
+										"items": {
+											"properties": {
+												"id": {
+													"type": "string"
+												},
+												"leftValue": {
+													"type": "string"
+												},
+												"operator": {
+													"additionalProperties": true,
+													"properties": {
+														"operation": {
+															"type": "string"
+														},
+														"singleValue": {
+															"type": "boolean"
+														},
+														"type": {
+															"type": "string"
+														}
+													},
+													"type": "object"
+												},
+												"rightValue": {
+													"type": ["boolean", "number", "string"]
+												}
+											},
+											"type": "object"
+										},
+										"type": "array"
+									},
+									"options": {
+										"properties": {
+											"caseSensitive": {
+												"type": "boolean"
+											},
+											"leftValue": {
+												"type": "string"
+											},
+											"typeValidation": {
+												"type": "string"
+											},
+											"version": {
+												"type": "number"
+											}
+										},
+										"type": "object"
+									}
+								},
+								"type": "object"
+							},
+							"headerParameters": {
+								"properties": {
+									"parameters": {
+										"items": {
+											"properties": {
+												"name": {
+													"type": "string"
+												},
+												"value": {
+													"type": "string"
+												}
+											},
+											"type": "object"
+										},
+										"type": "array"
+									}
+								},
+								"type": "object"
+							},
+							"httpMethod": {
+								"type": "string"
+							},
+							"jsCode": {
+								"type": "string"
+							},
+							"jsonBody": {
+								"type": "string"
+							},
+							"method": {
+								"type": "string"
+							},
+							"operation": {
+								"type": "string"
+							},
+							"options": {
+								"additionalProperties": true,
+								"properties": {
+									"response": {
+										"properties": {
+											"response": {
+												"properties": {
+													"fullResponse": {
+														"type": "boolean"
+													},
+													"neverError": {
+														"type": "boolean"
+													},
+													"responseFormat": {
+														"type": "string"
+													}
+												},
+												"type": "object"
+											}
+										},
+										"type": "object"
+									}
+								},
+								"type": "object"
+							},
+							"path": {
+								"type": "string"
+							},
+							"sendBody": {
+								"type": "boolean"
+							},
+							"sendHeaders": {
+								"type": "boolean"
+							},
+							"specifyBody": {
+								"type": "string"
+							},
+							"url": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"position": {
+						"items": {
+							"type": "number"
+						},
+						"type": "array"
+					},
+					"retryOnFail": {
+						"type": "boolean"
+					},
+					"type": {
+						"type": "string"
+					},
+					"typeVersion": {
+						"type": "number"
+					},
+					"webhookId": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"updatedAt": {
+			"type": "string"
+		},
+		"versionId": {
+			"type": "string"
+		},
+		"workflowId": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

@@ -5,7 +5,7 @@ import type {
 	INodeProperties,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -58,7 +58,7 @@ export async function execute(this: IExecuteFunctions, index: number, _: INodeEx
 		extractValue: true,
 	}) as string;
 
-	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
+	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index);
 	const options = this.getNodeParameter('options', index);
 
 	const binaryData = this.helpers.assertBinaryData(index, binaryPropertyName);
@@ -90,7 +90,7 @@ export async function execute(this: IExecuteFunctions, index: number, _: INodeEx
 		responseData = await microsoftApiRequest.call(
 			this,
 			'POST',
-			`/messages/${messageId}/attachments/createUploadSession`,
+			requestPath`/messages/${messageId}/attachments/createUploadSession`,
 			index,
 			body,
 		);
@@ -129,7 +129,7 @@ export async function execute(this: IExecuteFunctions, index: number, _: INodeEx
 		responseData = await microsoftApiRequest.call(
 			this,
 			'POST',
-			`/messages/${messageId}/attachments`,
+			requestPath`/messages/${messageId}/attachments`,
 			index,
 			body,
 			{},

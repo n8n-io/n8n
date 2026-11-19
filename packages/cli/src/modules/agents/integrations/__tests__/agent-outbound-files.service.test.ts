@@ -213,6 +213,17 @@ describe('AgentOutboundFiles.postReplyFiles', () => {
 		});
 	});
 
+	it('posts Telegram reply text as its own message when Markdown escaping can pass the caption limit', async () => {
+		const { service, thread } = createService();
+		// 1000 characters, but 1100 after each "." is escaped.
+		const caption = 'a'.repeat(900) + '.'.repeat(100);
+
+		await service.postReplyFiles(thread, 'telegram', { fileIds: ['file-1'], caption, scope });
+
+		expect(thread.post).toHaveBeenCalledTimes(2);
+		expect(thread.post).toHaveBeenNthCalledWith(1, { markdown: caption });
+	});
+
 	it('posts Discord reply files as raw uploads with the reply text', async () => {
 		const { service, thread } = createService();
 
@@ -249,6 +260,20 @@ describe('AgentOutboundFiles.postReplyFiles', () => {
 		).toBe(caption);
 		expect(posts[2]).toEqual({
 			raw: '',
+			files: [{ data: Buffer.from('png'), filename: 'chart.png', mimeType: 'image/png' }],
+		});
+	});
+
+	it('keeps Discord reply text near the message limit with the files', async () => {
+		const { service, thread } = createService();
+		// 1,900 characters: at the Discord limit. Only Telegram counts Markdown escaping.
+		const caption = 'a'.repeat(1800) + '.'.repeat(100);
+
+		await service.postReplyFiles(thread, 'discord', { fileIds: ['file-1'], caption, scope });
+
+		expect(thread.post).toHaveBeenCalledTimes(1);
+		expect(thread.post).toHaveBeenCalledWith({
+			markdown: caption,
 			files: [{ data: Buffer.from('png'), filename: 'chart.png', mimeType: 'image/png' }],
 		});
 	});

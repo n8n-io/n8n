@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { apiRequestAllItems } from './GenericFunctions';
 
@@ -22,7 +23,7 @@ export async function searchWorkflows(
 	const searchResults = (await apiRequestAllItems.call(
 		this,
 		'GET',
-		'workflows',
+		requestPath`workflows`,
 		{},
 	)) as DataItemsResponse<PartialWorkflow>;
 

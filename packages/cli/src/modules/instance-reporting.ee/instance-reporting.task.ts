@@ -12,6 +12,7 @@ export class InstanceReportingTask implements SystemTask {
 
 	readonly target = clusterTarget({
 		scheduler: { retryOnFailure: false },
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep timer scheduling while the durable scheduler is disabled.
 		leaderTimer: { runOnTakeover: true },
 	});
 

@@ -68,8 +68,8 @@ function focusInput(options?: FocusOptions) {
 	chatPanel.value?.focusInput(options);
 }
 
-function getConversationMarkdown(): string {
-	return chatPanel.value?.getConversationMarkdown() ?? '';
+async function getConversationMarkdown(): Promise<string> {
+	return (await chatPanel.value?.getConversationMarkdown()) ?? '';
 }
 
 function clearBudgetStops(fields: BudgetAmountField[]) {

@@ -28,6 +28,7 @@ type AgentPackageKeyHandling = {
 	isArchived: 'copy';
 	project: 'exclude';
 	projectId: 'exclude';
+	parentFolderId: 'exclude';
 	scope: 'exclude';
 	createdAt: 'exclude';
 	updatedAt: 'exclude';
@@ -37,6 +38,8 @@ type AgentPackageKeyHandling = {
 	revision: 'exclude';
 	publicationRevision: 'exclude';
 	setupCompletedAt: 'exclude';
+	identityId: 'exclude';
+	identity: 'exclude';
 };
 
 const serializePayload = definePackageSerializationPayload<
