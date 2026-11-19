@@ -1,0 +1,12 @@
+{
+	"description": "Readers of Source through a Code node in an If branch: the middle Code node creates fresh items, the If splits, and each branch reads $('Source').item",
+	"trigger": {
+		"body": {
+			"label": "code-if-branch-paired"
+		}
+	},
+	"compare": [
+		"Read True",
+		"Read False"
+	]
+}
