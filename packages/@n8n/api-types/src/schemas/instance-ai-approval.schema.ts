@@ -155,7 +155,7 @@ export const instanceAiApprovalDetailsSchema = z.discriminatedUnion('action', [
 		liveAvailability: z.enum(['unpublished', 'changed', 'published']),
 		/** True when a history version goes live instead of the draft. */
 		selectedVersion: z.boolean(),
-		/** Empty when not known, for example for a history version. */
+		/** Empty when the agent can send nothing. The card then says that anything it sends is real. */
 		sendTargets: z.array(agentPublishSendTargetSchema).max(AGENT_PUBLISH_SEND_TARGETS_LIMIT),
 		/** Send targets left out of `sendTargets` by the limit. */
 		moreSendTargets: z.number().int().nonnegative().optional(),
