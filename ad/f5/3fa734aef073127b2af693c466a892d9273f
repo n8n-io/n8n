@@ -1,0 +1,27 @@
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_3dd47ea0104342::t_3ce5e447b6c962 24-27
+packages/@n8n/api-types/src/dto/promotions/promotion-dependency.dto.ts
+  s_3dd47ea0104342::t_5a833b92452749 370-385
+  s_3dd47ea0104342::t_96d1255784ac4c 149-154
+  s_3dd47ea0104342::t_2d7f637af2edc8 156-175,223-226,251,253-258,287-291,323-324,401-412,420-424
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_3dd47ea0104342::t_b2ce1793d4b32a 212-217
+packages/@n8n/api-types/src/dto/promotions/promotion-apply-check.dto.ts
+  s_3dd47ea0104342::t_2d7f637af2edc8 267-268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "adf53fa734aef073127b2af693c466a892d9273f",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

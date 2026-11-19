@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-bridge-behavior.ts
+  s_b83c2cc9d859ec::t_507064dbb0f343 148,176,189,202,281,296,303,314-364,372,376,400
+  s_b83c2cc9d859ec::t_bb68b92e74491c 6,51-52,55-64
+  s_b83c2cc9d859ec::t_733d43b10710ca 65
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_b83c2cc9d859ec::t_507064dbb0f343 224
+packages/cli/src/modules/agents/integrations/__tests__/slack-integration.test.ts
+  s_b83c2cc9d859ec::t_5e545c492d96a4 492-571
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7db0d6d2550803ded1739c5145a6302872700d80",
+  "prompts": {},
+  "sessions": {
+    "s_b83c2cc9d859ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b90adbb-dcfe-439f-a7eb-7c74a20d13cc",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

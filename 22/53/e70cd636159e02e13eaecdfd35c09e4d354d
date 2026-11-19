@@ -1,0 +1,63 @@
+pnpm-workspace.yaml
+  s_5c1ecd57d60262::t_69d2388c9e1d42 313-314
+packages/nodes-base/package.json
+  s_5c1ecd57d60262::t_69d2388c9e1d42 931,1024
+packages/nodes-base/nodes/Postgres/v2/actions/database/insert.operation.ts
+  s_7ae6e88d2e646d::t_bce2a37b909a79 316
+  s_5c1ecd57d60262::t_3a2d1f92fe14e8 305-306,309,313-314
+  s_5c1ecd57d60262::t_62fb97ebdf0f92 312
+  s_5c1ecd57d60262::t_8f19590b3724bd 2,13,188-189,247,251-265,287-290,293-301,303-304,307-308,310-311,315
+  s_5c1ecd57d60262::t_b764767f5fa6a7 302
+packages/nodes-base/nodes/Postgres/v2/actions/common.descriptions.ts
+  s_5c1ecd57d60262::t_8f19590b3724bd 83-94,120-124,178,211-213
+  s_7ae6e88d2e646d::t_472e05cf4db371 82
+packages/nodes-base/nodes/Postgres/test/v2/descriptions.test.ts
+  s_3e205110d3a13c::t_e069991de2b552 1
+  s_5c1ecd57d60262::t_2bd1eb8d4318ea 96
+  s_5c1ecd57d60262::t_3a2d1f92fe14e8 94-95,97-130
+pnpm-lock.yaml
+  s_5c1ecd57d60262::t_933f0c15ba1898 485-487,734-736,1449,3982,9339-9341,9475-9477,16973-16975,24002-24004,31324,31382,31395,31449,35635-35639,44335-44336
+packages/nodes-base/nodes/Postgres/v2/helpers/interfaces.ts
+  s_5c1ecd57d60262::t_8f19590b3724bd 54
+packages/nodes-base/nodes/Postgres/test/v2/operations.test.ts
+  s_5c1ecd57d60262::t_188b5d7f3c052d 1291-1292
+  s_5c1ecd57d60262::t_87a60f685cb118 2,21-23,1128-1179,1186,1193-1272,1286-1289
+  s_5c1ecd57d60262::t_9abb89a2681032 1180-1185,1187-1192
+  s_5c1ecd57d60262::t_3a2d1f92fe14e8 1273-1285,1290
+packages/nodes-base/nodes/Postgres/test/v2/copy.test.ts
+  s_5c1ecd57d60262::t_86b3a87e43362e 1-132
+packages/nodes-base/nodes/Postgres/v2/helpers/copy.ts
+  s_5c1ecd57d60262::t_bfffa92d11f43b 1-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2253e70cd636159e02e13eaecdfd35c09e4d354d",
+  "prompts": {},
+  "sessions": {
+    "s_3e205110d3a13c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-af247e19bc68b731c",
+        "model": "unknown"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    },
+    "s_5c1ecd57d60262": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e14320d-908e-4b1c-aae6-04d9eb36cd24",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    },
+    "s_7ae6e88d2e646d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f5f92f4-b90f-4b89-a741-6823744049e6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

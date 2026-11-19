@@ -1,0 +1,23 @@
+packages/modules/page/demo/workflows/daily-sales-report.json
+  s_f27bda1bd0c713::t_a444b8119a5ac5 33-48,63-79
+packages/modules/page/demo/README.md
+  s_f27bda1bd0c713::t_a444b8119a5ac5 27,34
+packages/modules/page/demo/pages/daily-sales-report.md
+  s_f27bda1bd0c713::t_a444b8119a5ac5 10-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "eb3516ece6201f9b8d7b30409a5240dedbadd5a7",
+  "prompts": {},
+  "sessions": {
+    "s_f27bda1bd0c713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e884d7e-3c84-4428-98db-a0c5cff39be6",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

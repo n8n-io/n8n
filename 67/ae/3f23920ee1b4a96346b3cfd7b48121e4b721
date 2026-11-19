@@ -1,0 +1,14 @@
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  h_52a137d26d774c 16,335-339
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "67ae3f23920ee1b4a96346b3cfd7b48121e4b721",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

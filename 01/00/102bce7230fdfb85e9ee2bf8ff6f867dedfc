@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/README.md
+  s_c33bde4687101e::t_8073c5600d95b0 12,32,45
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/zoom.test.ts
+  s_c33bde4687101e::t_8073c5600d95b0 7-9,11,14-15,18
+  s_c33bde4687101e::t_1a9ee35ca41c0e 12-13,16-17
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/zoom.ts
+  s_c33bde4687101e::t_1a9ee35ca41c0e 5-6
+  s_c33bde4687101e::t_8073c5600d95b0 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0100102bce7230fdfb85e9ee2bf8ff6f867dedfc",
+  "prompts": {},
+  "sessions": {
+    "s_c33bde4687101e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edf6-ffe6-77f0-898f-eea7d7b98df2",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
