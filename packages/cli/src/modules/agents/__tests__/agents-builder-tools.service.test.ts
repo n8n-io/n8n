@@ -3359,7 +3359,12 @@ describe('AgentsBuilderToolsService', () => {
 				.json.find((tool) => tool.name === BUILDER_TOOLS.PUBLISH_AGENT)!;
 		}
 
-		const approvedCtx = { ...ctx, resumeData: { approved: true } };
+		/** An approved card for the draft. The default `findById` mock has no agent. */
+		const approvedCtx = {
+			...ctx,
+			resumeData: { approved: true },
+			continuation: { confirmedVersionId: null },
+		};
 
 		function getUnpublishTool(service: AgentsBuilderToolsService) {
 			return service
@@ -3485,6 +3490,19 @@ describe('AgentsBuilderToolsService', () => {
 			expect(result).toEqual({ ok: false, errors: [{ message: 'Agent not found.' }] });
 		});
 
+		it('asks again when an approval does not say which version the card showed', async () => {
+			const { service, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			const suspend = vi.fn(async (payload: unknown) => payload as never);
+
+			await getPublishTool(service).handler!(
+				{},
+				{ ...ctx, suspend, resumeData: { approved: true }, continuation: undefined },
+			);
+
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+		});
+
 		it('publishes nothing when the user cancels', async () => {
 			const { service, agentPublishService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
@@ -3576,7 +3594,7 @@ describe('AgentsBuilderToolsService', () => {
 
 			const result = await getPublishTool(service).handler!(
 				{ versionId: 'v-history' },
-				approvedCtx,
+				{ ...approvedCtx, continuation: { confirmedVersionId: 'v-history' } },
 			);
 
 			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
@@ -3605,7 +3623,10 @@ describe('AgentsBuilderToolsService', () => {
 			agentsService.findById.mockResolvedValue(publishedAgent);
 			agentPublishService.publishAgent.mockResolvedValue({ agent: publishedAgent });
 
-			const result = await getPublishTool(service).handler!({}, approvedCtx);
+			const result = await getPublishTool(service).handler!(
+				{},
+				{ ...approvedCtx, continuation: { confirmedVersionId: 'v-active' } },
+			);
 
 			expect(result).toEqual({
 				ok: true,

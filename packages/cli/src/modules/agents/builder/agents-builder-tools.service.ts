@@ -1103,11 +1103,11 @@ export class AgentsBuilderToolsService {
 					}
 					try {
 						const before = await this.agentsService.findById(agentId, projectId);
-						// The card described one version. If the draft changed while it was open, the
-						// user has not seen what would go live, so ask again instead of publishing.
+						// The card described one version. If the draft changed while it was open, or the
+						// card's version is unknown, the user has not seen what would go live: ask again.
 						const confirmed = publishContinuationSchema.safeParse(ctx.continuation);
 						if (
-							confirmed.success &&
+							!confirmed.success ||
 							(versionId ?? before?.versionId ?? null) !== confirmed.data.confirmedVersionId
 						) {
 							return await this.askToPublish(ctx, agentId, projectId, versionId);
@@ -1218,7 +1218,9 @@ export class AgentsBuilderToolsService {
 								? `${target.count} ${target.count === 1 ? 'tool' : 'tools'}`
 								: `${target.name} (${target.kind})`,
 						)
-						.join(', ')}.`
+						.join(', ')}${
+						targets.moreSendTargets > 0 ? `, and ${targets.moreSendTargets} more` : ''
+					}.`
 				: 'Anything the agent sends will be real.';
 
 		return {
