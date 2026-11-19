@@ -20,7 +20,7 @@ CREATE TABLE "workflow_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" va
 | connections | TEXT |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | description | TEXT |  | true |  |  |  |
-| id | varchar(36) |  | false | [agent_workflow_dependency](agent_workflow_dependency.md) [ai_builder_temporary_workflow](ai_builder_temporary_workflow.md) [chat_hub_messages](chat_hub_messages.md) [chat_hub_sessions](chat_hub_sessions.md) [evaluation_collection](evaluation_collection.md) [evaluation_config](evaluation_config.md) [execution_entity](execution_entity.md) [insights_metadata](insights_metadata.md) [migration_finding](migration_finding.md) [migration_workflow_owner](migration_workflow_owner.md) [poller_state](poller_state.md) [processed_data](processed_data.md) [self_healing_configuration_workflow](self_healing_configuration_workflow.md) [self_healing_investigation](self_healing_investigation.md) [self_healing_result](self_healing_result.md) [shared_workflow](shared_workflow.md) [test_run](test_run.md) [workflow_builder_session](workflow_builder_session.md) [workflow_dependency](workflow_dependency.md) [workflow_history](workflow_history.md) [workflow_publication_retry_state](workflow_publication_retry_state.md) [workflow_publication_trigger_status](workflow_publication_trigger_status.md) [workflow_publish_history](workflow_publish_history.md) [workflow_published_version](workflow_published_version.md) [workflow_review_request_workflow](workflow_review_request_workflow.md) [workflow_suggestion](workflow_suggestion.md) [workflows_tags](workflows_tags.md) |  |  |
+| id | varchar(36) |  | false | [agent_workflow_dependency](agent_workflow_dependency.md) [ai_builder_temporary_workflow](ai_builder_temporary_workflow.md) [chat_hub_messages](chat_hub_messages.md) [chat_hub_sessions](chat_hub_sessions.md) [evaluation_collection](evaluation_collection.md) [evaluation_config](evaluation_config.md) [execution_entity](execution_entity.md) [insights_metadata](insights_metadata.md) [migration_finding](migration_finding.md) [migration_workflow_owner](migration_workflow_owner.md) [poller_state](poller_state.md) [processed_data](processed_data.md) [self_healing_configuration_workflow](self_healing_configuration_workflow.md) [self_healing_investigation](self_healing_investigation.md) [self_healing_result](self_healing_result.md) [shared_workflow](shared_workflow.md) [task_board](task_board.md) [test_run](test_run.md) [workflow_builder_session](workflow_builder_session.md) [workflow_dependency](workflow_dependency.md) [workflow_history](workflow_history.md) [workflow_publication_retry_state](workflow_publication_retry_state.md) [workflow_publication_trigger_status](workflow_publication_trigger_status.md) [workflow_publish_history](workflow_publish_history.md) [workflow_published_version](workflow_published_version.md) [workflow_review_request_workflow](workflow_review_request_workflow.md) [workflow_suggestion](workflow_suggestion.md) [workflows_tags](workflows_tags.md) |  |  |
 | isArchived | boolean | FALSE | false |  |  |  |
 | meta | TEXT |  | true |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
@@ -81,6 +81,7 @@ erDiagram
 "self_healing_investigation" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_result" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_workflow" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"task_board" }o--o| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "test_run" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_builder_session" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_dependency" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -309,6 +310,16 @@ erDiagram
   TEXT role
   datetime_3_ updatedAt
   varchar_36_ workflowId PK
+}
+"task_board" {
+  datetime_3_ createdAt
+  TEXT description
+  varchar_36_ id PK
+  varchar_128_ name
+  varchar_36_ projectId FK
+  varchar_32_ templateKey
+  datetime_3_ updatedAt
+  varchar_36_ workflowId FK
 }
 "test_run" {
   boolean cancelRequested

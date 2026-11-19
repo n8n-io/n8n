@@ -1309,6 +1309,164 @@ export type DataTableProxyFunctions = {
 	getDataTableProxy?(dataTableId: string): Promise<IDataTableProjectService>;
 };
 
+export type TaskBoardActor = {
+	type: 'user' | 'agent' | 'workflow';
+	id: string;
+};
+
+export type TaskBoardEventName = 'task.created' | 'task.assigned' | 'task.moved' | 'task.commented';
+
+export type TaskBoardEvent = {
+	event: TaskBoardEventName;
+	projectId: string;
+	boardId: string;
+	taskId: string;
+	actor: TaskBoardActor;
+	commentId?: string;
+	fromColumnId?: string;
+	toColumnId?: string;
+};
+
+// The shapes below mirror the response types in @n8n/api-types. They are
+// duplicated because n8n-workflow must not depend on @n8n/api-types.
+export type TaskBoardNamedRef = TaskBoardActor & { name: string };
+
+export type TaskBoardAssigneeInput = { type: 'user' | 'agent'; id: string };
+
+export type TaskBoardAssigneeData = TaskBoardAssigneeInput & { name: string };
+
+export type TaskBoardSeverity = 'low' | 'medium' | 'high' | 'critical';
+
+/** Token totals of the agent runs on a task. `cost` is in USD, and null when no run reported a price. */
+export type TaskBoardUsageTotals = {
+	promptTokens: number;
+	completionTokens: number;
+	totalTokens: number;
+	cost: number | null;
+};
+
+/** One agent on the board's project that a task can be handed off to. */
+export type TaskBoardTeamMember = { id: string; name: string; description: string };
+
+export type TaskBoardColumnData = {
+	id: string;
+	boardId: string;
+	name: string;
+	position: number;
+	role: 'backlog' | 'todo' | 'in_progress' | 'needs_input' | 'done' | null;
+};
+
+export type TaskBoardTaskData = {
+	id: string;
+	boardId: string;
+	columnId: string;
+	number: number;
+	title: string;
+	description: string;
+	assignee: TaskBoardAssigneeData | null;
+	severity: TaskBoardSeverity | null;
+	tags: string[];
+	usage: TaskBoardUsageTotals;
+	createdBy: TaskBoardNamedRef;
+	position: number;
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type TaskBoardCommentData = {
+	id: string;
+	taskId: string;
+	author: TaskBoardNamedRef;
+	body: string;
+	createdAt: string;
+};
+
+export type TaskBoardTaskContext = {
+	task: TaskBoardTaskData;
+	board: { id: string; name: string; workflowId: string | null };
+	columns: TaskBoardColumnData[];
+	assignee: TaskBoardAssigneeData | null;
+	comments: TaskBoardCommentData[];
+	/** The task title, description and comments as one plain-text thread. */
+	threadText: string;
+	/** The agents of the board's project, without the current assignee. */
+	team: TaskBoardTeamMember[];
+	/** The team as plain text, one agent for each line, for an agent prompt. */
+	teamText: string;
+	/** Hand-offs since a person last commented on or assigned the task. */
+	handoffCount: number;
+};
+
+export interface ITaskBoardProxy {
+	/** Subscribe to task events. Returns an unsubscribe function. */
+	onEvent(cb: (event: TaskBoardEvent) => void): () => void;
+	getTaskContext(taskId: string): Promise<TaskBoardTaskContext>;
+	createTask(
+		input: {
+			boardId: string;
+			title: string;
+			description?: string;
+			columnId?: string;
+			columnRole?: string;
+			assignee?: TaskBoardAssigneeInput;
+			severity?: TaskBoardSeverity | null;
+			tags?: string[];
+		},
+		actor: TaskBoardActor,
+	): Promise<TaskBoardTaskData>;
+	/** Changes the given fields only. A null severity removes it. */
+	updateTask(
+		taskId: string,
+		fields: {
+			title?: string;
+			description?: string;
+			severity?: TaskBoardSeverity | null;
+			tags?: string[];
+		},
+		actor: TaskBoardActor,
+	): Promise<TaskBoardTaskData>;
+	/**
+	 * Assigns the task to another agent of the board. `to` is an agent id or an agent name.
+	 * At the hand-off limit the task moves to the needs-input column and `handedOff` is false.
+	 */
+	handoffTask(
+		taskId: string,
+		to: string,
+		actor: TaskBoardActor,
+	): Promise<{ task: TaskBoardTaskData; handedOff: boolean }>;
+	/** Adds the usage of one agent run to the task. Emits no task event. */
+	recordUsage(
+		taskId: string,
+		usage: {
+			agentId: string;
+			promptTokens: number;
+			completionTokens: number;
+			totalTokens: number;
+			cost?: number | null;
+		},
+	): Promise<TaskBoardTaskData>;
+	addComment(taskId: string, body: string, actor: TaskBoardActor): Promise<TaskBoardCommentData>;
+	moveTask(
+		taskId: string,
+		target: { columnId?: string; columnRole?: string },
+		actor: TaskBoardActor,
+	): Promise<TaskBoardTaskData>;
+	assignTask(
+		taskId: string,
+		assignee: TaskBoardAssigneeInput | null,
+		actor: TaskBoardActor,
+	): Promise<TaskBoardTaskData>;
+}
+
+export type TaskBoardProxyProvider = {
+	getTaskBoardProxy(workflow: Workflow, node: INode): Promise<ITaskBoardProxy>;
+};
+
+export type TaskBoardProxyFunctions = {
+	// Optional to account for situations where the task-board module is disabled
+	getTaskBoardProxy?(): Promise<ITaskBoardProxy>;
+};
+
 /** What a node may ask of a trusted source: the surface it is used on and the capability it needs. */
 export type TrustedSourceFilter = {
 	surface: 'trigger';
@@ -1492,6 +1650,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			FileSystemHelperFunctions &
 			SSHTunnelFunctions &
 			DataTableProxyFunctions &
+			TaskBoardProxyFunctions &
 			CredentialCheckProxyFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 				constructExecutionMetaData(
@@ -1682,6 +1841,7 @@ export interface ITriggerFunctions
 		BinaryHelperFunctions &
 		SSHTunnelFunctions &
 		SchedulingFunctions &
+		TaskBoardProxyFunctions &
 		ExpressionIsolateFunctions;
 }
 
@@ -2638,6 +2798,8 @@ export interface ExecuteAgentData {
 		promptTokens: number;
 		completionTokens: number;
 		totalTokens: number;
+		/** Cost of the call in USD, when the model provider reports one. */
+		cost?: number | null;
 	} | null;
 	/** Tool calls the agent made during execution. */
 	toolCalls: Array<{

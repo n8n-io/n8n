@@ -636,6 +636,35 @@ describe('AgentWorkflowExecutionService', () => {
 		});
 	});
 
+	it('returns the cost of the run with the token usage', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(
+			makeRuntime([
+				{
+					type: 'finish',
+					finishReason: 'stop',
+					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.02 },
+				},
+			]),
+		);
+
+		const result = await service.executeForWorkflow(
+			agentId,
+			'hello',
+			'execution-1',
+			'thread-1',
+			projectId,
+		);
+
+		expect(result.usage).toEqual({
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+			cost: 0.02,
+		});
+	});
+
 	it('omits the telemetry option from stream() when AgentRunTracingService.build resolves undefined', async () => {
 		const { service, agentRepository, reconstructionService, agentRunTracingService } =
 			makeService();

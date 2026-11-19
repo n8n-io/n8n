@@ -902,3 +902,8 @@ export {
 } from './scim';
 export { CreateTrustedSourceDto } from './trusted-source/create-trusted-source.dto';
 export { UpdateTrustedSourceDto } from './trusted-source/update-trusted-source.dto';
+
+export { CreateTaskBoardFromTemplateDto } from './task-board/create-task-board-from-template.dto';
+export { CreateTaskBoardTaskDto } from './task-board/create-task-board-task.dto';
+export { UpdateTaskBoardTaskDto } from './task-board/update-task-board-task.dto';
+export { CreateTaskBoardCommentDto } from './task-board/create-task-board-comment.dto';

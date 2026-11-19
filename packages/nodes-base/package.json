@@ -835,6 +835,8 @@
       "dist/nodes/SurveyMonkey/SurveyMonkeyTrigger.node.js",
       "dist/nodes/Switch/Switch.node.js",
       "dist/nodes/SyncroMSP/SyncroMsp.node.js",
+      "dist/nodes/TaskBoard/TaskBoard.node.js",
+      "dist/nodes/TaskBoard/TaskBoardTrigger.node.js",
       "dist/nodes/Taiga/Taiga.node.js",
       "dist/nodes/Taiga/TaigaTrigger.node.js",
       "dist/nodes/Tapfiliate/Tapfiliate.node.js",

@@ -143,6 +143,11 @@
 			"name": "ExecutionLedgerEntity",
 			"path": "packages/modules/execution-ledger/backend/src/database/entities/execution-ledger.entity.ts",
 			"reason": "Event record of runs in the project at the time they happened; re-homing rows would misstate where they ran. Rows live only seconds before the fold deletes them, and no foreign key ties them to the project."
+		},
+		{
+			"name": "TaskBoardEntity",
+			"path": "packages/cli/src/modules/task-board/database/entities/task-board.entity.ts",
+			"reason": "A board belongs to the project's dispatcher workflow and agents, and agents are not transferred either (see Agent). Deleting the project removes its boards, columns, tasks and comments through the foreign key cascade."
 		}
 	]
 }

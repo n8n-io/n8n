@@ -17,6 +17,7 @@ import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
 import { getSchedulingFunctions } from './utils/scheduling-helper-functions';
 import { getSSHTunnelFunctions } from './utils/ssh-tunnel-helper-functions';
+import { getTaskBoardHelperFunctions } from './utils/task-board-helper-functions';
 
 const throwOnEmit = () => {
 	throw new UnexpectedError('Overwrite TriggerContext.emit function');
@@ -56,6 +57,7 @@ export class TriggerContext extends NodeExecutionContext implements ITriggerFunc
 			...getSSHTunnelFunctions(),
 			...getRequestHelperFunctions(workflow, node, additionalData),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
+			...getTaskBoardHelperFunctions(additionalData, workflow, node),
 			...schedulingFunctions,
 			withExpressionIsolate: async (fn) => await workflow.expression.withIsolate(fn),
 		};

@@ -608,6 +608,7 @@ export class AgentWorkflowExecutionService {
 						promptTokens: messageRecord.usage.promptTokens,
 						completionTokens: messageRecord.usage.completionTokens,
 						totalTokens: messageRecord.usage.totalTokens,
+						cost: messageRecord.totalCost,
 					}
 				: null,
 			toolCalls,
