@@ -8,3 +8,4 @@ export {
 	type RuntimeSandboxEntry,
 	type SandboxIdentityScheme,
 } from './instance-ai-sandbox.service';
+export { InstanceAiSandboxProviderHealth } from './sandbox-provider-health';

@@ -152,7 +152,7 @@ import { InstanceAiObservationCursorRepository } from './repositories/instance-a
 import { InstanceAiObservationRepository } from './repositories/instance-ai-observation.repository';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { InstanceAiThreadGrantRepository } from './repositories/instance-ai-thread-grant.repository';
-import { InstanceAiSandboxService } from './sandbox';
+import { InstanceAiSandboxProviderHealth, InstanceAiSandboxService } from './sandbox';
 import {
 	SelfHealingAgentService,
 	type SelfHealingRunInput,
@@ -506,6 +506,7 @@ export class InstanceAiService {
 		private readonly turnEnvironment: AssistantTurnEnvironmentFactory,
 		private readonly turnInput: AssistantTurnInputBuilder,
 		private readonly agentFactory: AssistantAgentFactory,
+		sandboxProviderHealth: InstanceAiSandboxProviderHealth,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -582,6 +583,8 @@ export class InstanceAiService {
 			settingsService: this.settingsService,
 			aiService: this.aiService,
 			getTemplatesService: () => this.adapterService.getTemplatesService(),
+			telemetry: this.telemetry,
+			providerHealth: sandboxProviderHealth,
 			resolveTracingConfig: async (threadId, userId) => {
 				const ownerId = userId ?? (await this.memoryService.getThreadActorId(threadId));
 				if (!ownerId) return { userId: 'system' };
