@@ -14,11 +14,11 @@ anyerror 14
 inferred-error 16
 unreachable-comment 74
 optional-unwrap 21
-switch-else 80
+switch-else 79
 unbounded-loop 24
-fn-length 40
+fn-length 38
 nesting 26
-fn-assert 143
+fn-assert 142
 discard 105
 core-std 89
 shell-syscall 0

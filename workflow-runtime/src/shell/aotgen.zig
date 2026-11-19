@@ -7,6 +7,7 @@ const std = @import("std");
 const core = @import("core");
 const module = core.module;
 const aot = core.aot;
+const interp = core.interp;
 const Op = module.Op;
 
 const Found = struct { hash: u64, nregs: u16, code_len: u32, mod: usize, fi: u32 };
@@ -99,6 +100,26 @@ fn emitBody(w: *std.Io.Writer, m: *const module.Module, ins: module.Instr, pc: u
     const op: Op = @fromBackingInt(ins.op);
     const next = pc + 1;
     const ind = "            ";
+    // The opcode classification lives in `interp.opKind`, so the generator
+    // and the interpreter agree on which opcode is fast and how it runs.
+    switch (interp.opKind(op)) {
+        .plain => try emitPlain(w, op, ins, pc),
+        .arith => try w.print(ind ++ "if (!aot.numOp(cx, .{s}, R, {d}, {d}, {d}, {d})) break :sw {d};\n", .{ @tagName(op), ins.a, ins.b, ins.c, pc, pc }),
+        .getprop => try w.print(ind ++ "if (!aot.getprop(cx, R, {d}, {d}, cx.code[{d}].c, {d})) break :sw {d};\n", .{ ins.a, ins.b, pc, pc, pc }),
+        .setprop => try w.print(ind ++ "if (!aot.setprop(cx, R, {d}, cx.code[{d}].b, {d}, {d})) break :sw {d};\n", .{ ins.a, pc, ins.c, pc, pc }),
+        .newobj => try w.print(ind ++ "if (!aot.newobj(cx, R, {d}, {d})) break :sw {d};\n", .{ ins.a, pc, pc }),
+        .newarr => try w.print(ind ++ "if (!aot.newarr(cx, R, {d}, {d})) break :sw {d};\n", .{ ins.a, pc, pc }),
+        .push => try w.print(ind ++ "if (!aot.push(cx, R, {d}, {d}, {d})) break :sw {d};\n", .{ ins.a, ins.b, pc, pc }),
+        .getelem => try w.print(ind ++ "if (!aot.getelem(cx, R, {d}, {d}, {d}, {d})) break :sw {d};\n", .{ ins.a, ins.b, ins.c, pc, pc }),
+        .jump => return emitJump(w, op, ins, next),
+        .slow => try emitSlow(w, m, ins, op, pc),
+    }
+    try w.print(ind ++ "cx.n += 1;\n" ++ ind ++ "continue :sw {d};\n", .{next});
+}
+
+/// The plain register loads, moves, and simple checks (`.plain` opcodes).
+fn emitPlain(w: *std.Io.Writer, op: Op, ins: module.Instr, pc: u32) std.Io.Writer.Error!void {
+    const ind = "            ";
     switch (op) {
         .nop => {},
         .mov => try w.print(ind ++ "R[{d}] = R[{d}];\n", .{ ins.a, ins.b }),
@@ -108,11 +129,18 @@ fn emitBody(w: *std.Io.Writer, m: *const module.Module, ins: module.Instr, pc: u
         .loadundef => try w.print(ind ++ "R[{d}] = value.undef;\n", .{ins.a}),
         .loadnull => try w.print(ind ++ "R[{d}] = value.null_;\n", .{ins.a}),
         .loadbool => try w.print(ind ++ "R[{d}] = value.{s};\n", .{ ins.a, if (ins.x != 0) "true_" else "false_" }),
-        .add, .sub, .mul, .mod, .lt, .le, .gt, .ge => try w.print(ind ++ "if (!aot.numOp(cx, .{s}, R, {d}, {d}, {d}, {d})) break :sw {d};\n", .{ @tagName(op), ins.a, ins.b, ins.c, pc, pc }),
         .seq => try w.print(ind ++ "R[{d}] = value.boolean(aot.strictEquals(cx, R[{d}], R[{d}]));\n", .{ ins.a, ins.b, ins.c }),
         .sne => try w.print(ind ++ "R[{d}] = value.boolean(!aot.strictEquals(cx, R[{d}], R[{d}]));\n", .{ ins.a, ins.b, ins.c }),
         .not => try w.print(ind ++ "R[{d}] = value.boolean(!aot.truthy(cx, R[{d}]));\n", .{ ins.a, ins.b }),
         .isnullish => try w.print(ind ++ "R[{d}] = value.boolean(value.isNullish(R[{d}]));\n", .{ ins.a, ins.b }),
+        else => unreachable, // opKind routes only the plain opcodes here.
+    }
+}
+
+/// The control-flow opcodes (`.jump`): jmp, jt, jf, jnullish.
+fn emitJump(w: *std.Io.Writer, op: Op, ins: module.Instr, next: u32) std.Io.Writer.Error!void {
+    const ind = "            ";
+    switch (op) {
         .jmp => return w.print(ind ++ "cx.n += 1;\n" ++ ind ++ "continue :sw {d};\n", .{ins.bc()}),
         .jt, .jf, .jnullish => {
             const cond = switch (op) {
@@ -123,19 +151,22 @@ fn emitBody(w: *std.Io.Writer, m: *const module.Module, ins: module.Instr, pc: u
             try w.print(ind ++ "cx.n += 1;\n" ++ ind ++ "if ({s}{d}])", .{ cond, ins.a });
             return w.print(") continue :sw {d};\n" ++ ind ++ "continue :sw {d};\n", .{ ins.bc(), next });
         },
-        .getprop => try w.print(ind ++ "if (!aot.getprop(cx, R, {d}, {d}, cx.code[{d}].c, {d})) break :sw {d};\n", .{ ins.a, ins.b, pc, pc, pc }),
-        .setprop => try w.print(ind ++ "if (!aot.setprop(cx, R, {d}, cx.code[{d}].b, {d}, {d})) break :sw {d};\n", .{ ins.a, pc, ins.c, pc, pc }),
-        .newobj => try w.print(ind ++ "if (!aot.newobj(cx, R, {d}, {d})) break :sw {d};\n", .{ ins.a, pc, pc }),
-        .newarr => try w.print(ind ++ "if (!aot.newarr(cx, R, {d}, {d})) break :sw {d};\n", .{ ins.a, pc, pc }),
-        .push => try w.print(ind ++ "if (!aot.push(cx, R, {d}, {d}, {d})) break :sw {d};\n", .{ ins.a, ins.b, pc, pc }),
-        .getelem => try w.print(ind ++ "if (!aot.getelem(cx, R, {d}, {d}, {d}, {d})) break :sw {d};\n", .{ ins.a, ins.b, ins.c, pc, pc }),
-        .calln => if (ins.x == 1 and std.mem.eql(u8, m.str(ins.b), "Array.isArray"))
+        else => unreachable, // opKind routes only the jump opcodes here.
+    }
+}
+
+/// The slow opcodes: `calln` has a fast `Array.isArray` form; the rest run
+/// through `stepIn`.
+fn emitSlow(w: *std.Io.Writer, m: *const module.Module, ins: module.Instr, op: Op, pc: u32) std.Io.Writer.Error!void {
+    const ind = "            ";
+    if (op == .calln) {
+        if (ins.x == 1 and std.mem.eql(u8, m.str(ins.b), "Array.isArray"))
             try w.print(ind ++ "if (!aot.isArray(cx, R, {d}, {d}, {d})) break :sw {d};\n", .{ ins.a, ins.c, pc, pc })
         else
-            try w.print(ind ++ "if (!aot.slowOp(cx, .calln, {d})) break :sw {d};\n", .{ pc, pc }),
-        else => try w.print(ind ++ "if (!aot.slowOp(cx, .{s}, {d})) break :sw {d};\n", .{ opName(op), pc, pc }),
+            try w.print(ind ++ "if (!aot.slowOp(cx, .calln, {d})) break :sw {d};\n", .{ pc, pc });
+    } else {
+        try w.print(ind ++ "if (!aot.slowOp(cx, .{s}, {d})) break :sw {d};\n", .{ opName(op), pc, pc });
     }
-    try w.print(ind ++ "cx.n += 1;\n" ++ ind ++ "continue :sw {d};\n", .{next});
 }
 
 /// The start of a generated table file.

@@ -21,6 +21,11 @@ pub fn build(b: *std.Build) void {
     const perf_model = b.option(bool, "perf-model", "Record instructions and memory accesses for `wfrt perf-model` (default false)") orelse false;
     const perf_options = b.addOptions();
     perf_options.addOption(bool, "perf_model", perf_model);
+    // Precompiled AOT library functions (aot_gen.zig). Off, the interpreter
+    // runs every function as bytecode with the same results and fuel; the
+    // build skips the 7 MB generated table.
+    const aot = b.option(bool, "aot", "Link precompiled AOT library functions in aot_gen.zig (default true)") orelse true;
+    perf_options.addOption(bool, "aot", aot);
 
     const core = b.createModule(.{
         .root_source_file = b.path("src/core/root.zig"),

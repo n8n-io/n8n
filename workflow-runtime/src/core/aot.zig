@@ -19,10 +19,14 @@ const ops = @import("ops.zig");
 const module = @import("module.zig");
 const interp = @import("interp.zig");
 const heap = @import("heap.zig");
-const gen = @import("aot_gen.zig");
 const Value = value.Value;
 const Vm = ops.Vm;
 const Op = module.Op;
+
+// The build links the generated table unless `-Daot=false`. The bench
+// builds do not add the `aot` option, so they keep the table by default.
+const perf_options = @import("perf_options");
+const aot_enabled = if (@hasDecl(perf_options, "aot")) perf_options.aot else true;
 
 pub const Fn = *const fn (cx: *Cx) void;
 
@@ -33,12 +37,15 @@ pub const Entry = struct {
     run: Fn,
 };
 
-/// Sorted by hash.
-pub const table: []const Entry = &gen.table;
+/// Sorted by hash. Empty when `-Daot=false`; `find` then gives no ids and
+/// the interpreter runs bytecode with the same results and fuel.
+pub const table: []const Entry = if (aot_enabled) &@import("aot_gen.zig").table else &.{};
 
 comptime {
-    // The id `module.no_aot` must stay free.
-    std.debug.assert(gen.table.len < module.no_aot);
+    if (aot_enabled) {
+        // The id `module.no_aot` must stay free.
+        std.debug.assert(@import("aot_gen.zig").table.len < module.no_aot);
+    }
 }
 
 /// The state of one run of a compiled function, set by `interp.runFibre`.
@@ -70,7 +77,7 @@ pub const Cx = struct {
 /// Run compiled function `id`, from `find`.
 pub fn run(id: u16, cx: *Cx) void {
     // With an empty table `find` gives no ids.
-    if (gen.table.len == 0) unreachable else gen.table[id].run(cx);
+    if (table.len == 0) unreachable else table[id].run(cx);
 }
 
 /// The compiled function for module function `fi`, or `module.no_aot`.
@@ -155,41 +162,23 @@ pub fn slowOp(cx: *Cx, comptime op: Op, pc: u32) bool {
 }
 
 /// Number arithmetic and comparison, as in `fastRun`; other operands go
-/// through `step`.
+/// through `step`. The result comes from `interp.numOpValue`.
 pub inline fn numOp(cx: *Cx, comptime op: Op, R: [*]Value, a: u16, b: u16, c: u16, pc: u32) bool {
     const x = R[b];
     const y = R[c];
     if (value.kindOf(x) != .number or value.kindOf(y) != .number) return slowOp(cx, op, pc);
-    const p = value.asNum(x);
-    const q = value.asNum(y);
-    R[a] = switch (op) {
-        .add => value.num(p + q),
-        .sub => value.num(p - q),
-        .mul => value.num(p * q),
-        .mod => value.num(interp.jsMod(p, q)),
-        .lt => value.boolean(p < q),
-        .le => value.boolean(p <= q),
-        .gt => value.boolean(p > q),
-        .ge => value.boolean(p >= q),
-        else => @compileError("not a number operation"),
-    };
+    R[a] = interp.numOpValue(op, value.asNum(x), value.asNum(y));
     return true;
 }
 
 pub inline fn getprop(cx: *Cx, R: [*]Value, a: u16, b: u16, key: u16, pc: u32) bool {
-    const o = R[b];
-    if (value.kindOf(o) != .object) return slowOp(cx, .getprop, pc);
-    const off = value.payload(o);
-    const vm = cx.vm;
-    R[a] = vm.objGetValue(off, value.constString(key));
+    R[a] = interp.fastGetProp(cx.vm, R[b], key) orelse return slowOp(cx, .getprop, pc);
     return true;
 }
 
 pub inline fn setprop(cx: *Cx, R: [*]Value, a: u16, key: u16, c: u16, pc: u32) bool {
-    const o = R[a];
-    if (value.kindOf(o) != .object) return slowOp(cx, .setprop, pc);
     // A full region leaves nothing changed; `step` then reports it.
-    cx.vm.objSet(value.payload(o), value.constString(key), R[c]) catch return slowOp(cx, .setprop, pc);
+    if (!interp.fastSetProp(cx.vm, R[a], key, R[c])) return slowOp(cx, .setprop, pc);
     return true;
 }
 
@@ -204,18 +193,12 @@ pub inline fn newarr(cx: *Cx, R: [*]Value, a: u16, pc: u32) bool {
 }
 
 pub inline fn push(cx: *Cx, R: [*]Value, a: u16, b: u16, pc: u32) bool {
-    if (value.kindOf(R[a]) != .array) return slowOp(cx, .push, pc);
-    cx.vm.r.arrPush(value.payload(R[a]), R[b]) catch return slowOp(cx, .push, pc);
+    if (!interp.fastPush(cx.vm, R[a], R[b])) return slowOp(cx, .push, pc);
     return true;
 }
 
 pub inline fn getelem(cx: *Cx, R: [*]Value, a: u16, b: u16, c: u16, pc: u32) bool {
-    const arr = R[b];
-    const k = R[c];
-    if (value.kindOf(arr) != .array or value.kindOf(k) != .number) return slowOp(cx, .getelem, pc);
-    const x = value.asNum(k);
-    if (!(x >= 0 and x == @trunc(x) and x < 4294967295)) return slowOp(cx, .getelem, pc);
-    R[a] = cx.vm.arrGet(arr, @intFromFloat(x));
+    R[a] = interp.fastGetElem(cx.vm, R[b], R[c]) orelse return slowOp(cx, .getelem, pc);
     return true;
 }
 
