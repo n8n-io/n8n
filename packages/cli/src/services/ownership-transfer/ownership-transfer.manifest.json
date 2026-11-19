@@ -147,7 +147,7 @@
 		{
 			"name": "SharedKnowledgeCollection",
 			"path": "packages/cli/src/modules/knowledge/entities/shared-knowledge-collection.entity.ts",
-			"reason": "Dropped with its project through the foreign-key cascade until project deletion can transfer collections. The owner row repeats KnowledgeCollection.ownerProjectId and goes with its collection. A user row goes alone: the collection stays in its owner project."
+			"reason": "Dropped with its project through the foreign-key cascade until project deletion can transfer collections. The owner row repeats KnowledgeCollection.projectId and goes with its collection. A user row goes alone: the collection stays in its owner project."
 		},
 		{
 			"name": "ExecutionLedgerEntity",

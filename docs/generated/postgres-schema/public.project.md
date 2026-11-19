@@ -49,7 +49,7 @@ erDiagram
 "public.folder" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.insights_metadata" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE SET NULL"
 "public.instance_ai_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
-"public.knowledge_collection" }o--o| "public.project" : "FOREIGN KEY (#quot;ownerProjectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.knowledge_collection" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.project_execution_limit" |o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.project_pool_settings" |o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.project_relation" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
@@ -233,7 +233,7 @@ erDiagram
   boolean isGlobal
   varchar_16_ kind
   varchar_128_ name
-  varchar_36_ ownerProjectId FK
+  varchar_36_ projectId FK
   varchar_24_ slug
   timestamp_3__with_time_zone updatedAt
 }

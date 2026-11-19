@@ -7,7 +7,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | knowledgeCollectionId | varchar(16) |  | false |  | [public.knowledge_collection](public.knowledge_collection.md) |  |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
-| role | varchar(32) |  | false |  |  | 'knowledgeCollection:owner' (the home project, as in knowledge_collection.ownerProjectId) or 'knowledgeCollection:user' |
+| role | varchar(32) |  | false |  |  | 'knowledgeCollection:owner' (the home project, as in knowledge_collection.projectId) or 'knowledgeCollection:user' |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -55,7 +55,7 @@ erDiagram
   boolean isGlobal
   varchar_16_ kind
   varchar_128_ name
-  varchar_36_ ownerProjectId FK
+  varchar_36_ projectId FK
   varchar_24_ slug
   timestamp_3__with_time_zone updatedAt
 }

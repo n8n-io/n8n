@@ -112,7 +112,7 @@ erDiagram
   boolean isGlobal
   varchar_16_ kind
   varchar_128_ name
-  varchar_36_ ownerProjectId FK
+  varchar_36_ projectId FK
   varchar_24_ slug
   timestamp_3__with_time_zone updatedAt
 }

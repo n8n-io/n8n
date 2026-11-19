@@ -11,8 +11,8 @@ const agentDependencyTable = 'agent_knowledge_dependency';
  * collection belongs to a project and other projects can get a share of it. A
  * private collection belongs to one agent.
  *
- * The owner project is in `knowledge_collection.ownerProjectId` and in the owner
- * row of `shared_knowledge_collection`. `ownerProjectId` is the source of truth.
+ * The owner project is in `knowledge_collection.projectId` and in the owner
+ * row of `shared_knowledge_collection`. The column is the source of truth.
  * A project delete removes its collections and their rows through the cascade.
  */
 export class CreateKnowledgeCollectionTables1795076463180 implements ReversibleMigration {
@@ -38,12 +38,9 @@ export class CreateKnowledgeCollectionTables1795076463180 implements ReversibleM
 		escape,
 		isSqlite,
 	}: MigrationContext) {
-		const [kind, agentId, ownerProjectId, isGlobal] = [
-			'kind',
-			'agentId',
-			'ownerProjectId',
-			'isGlobal',
-		].map((columnName) => escape.columnName(columnName));
+		const [kind, agentId, projectId, isGlobal] = ['kind', 'agentId', 'projectId', 'isGlobal'].map(
+			(columnName) => escape.columnName(columnName),
+		);
 		const falseValue = isSqlite ? '0' : 'FALSE';
 
 		await createTable(collectionTable)
@@ -65,7 +62,7 @@ export class CreateKnowledgeCollectionTables1795076463180 implements ReversibleM
 					.notNull.comment(
 						"'shared' (belongs to a project) or 'agent' (the private collection of one agent)",
 					),
-				column('ownerProjectId')
+				column('projectId')
 					.varchar(36)
 					.comment('Home project of a shared collection. NULL for an agent collection'),
 				column('agentId')
@@ -78,11 +75,11 @@ export class CreateKnowledgeCollectionTables1795076463180 implements ReversibleM
 			)
 			.withTimestamps.withIndexOn(['slug'], true)
 			// An agent collection has no project, so its name does not collide with others.
-			.withIndexOn(['ownerProjectId', 'name'], true)
+			.withIndexOn(['projectId', 'name'], true)
 			// One private collection for each agent. Both databases let many NULLs pass a
 			// unique index, so a plain index has the effect of a partial one.
 			.withIndexOn(['agentId'], true)
-			.withForeignKey('ownerProjectId', {
+			.withForeignKey('projectId', {
 				tableName: 'project',
 				columnName: 'id',
 				onDelete: 'CASCADE',
@@ -101,7 +98,7 @@ export class CreateKnowledgeCollectionTables1795076463180 implements ReversibleM
 			// that an agent owns has the kind 'agent'. A private collection is not global.
 			.withCheck(
 				`CHK_${tablePrefix}knowledge_collection_owner`,
-				`((${agentId} IS NULL) <> (${ownerProjectId} IS NULL)) AND ((${kind} = 'agent') = (${agentId} IS NOT NULL)) AND (${agentId} IS NULL OR ${isGlobal} = ${falseValue})`,
+				`((${agentId} IS NULL) <> (${projectId} IS NULL)) AND ((${kind} = 'agent') = (${agentId} IS NOT NULL)) AND (${agentId} IS NULL OR ${isGlobal} = ${falseValue})`,
 			);
 	}
 
@@ -119,7 +116,7 @@ export class CreateKnowledgeCollectionTables1795076463180 implements ReversibleM
 				column('role')
 					.varchar(32)
 					.notNull.comment(
-						"'knowledgeCollection:owner' (the home project, as in knowledge_collection.ownerProjectId) or 'knowledgeCollection:user'",
+						"'knowledgeCollection:owner' (the home project, as in knowledge_collection.projectId) or 'knowledgeCollection:user'",
 					),
 			)
 			.withTimestamps.withIndexOn(['projectId'])

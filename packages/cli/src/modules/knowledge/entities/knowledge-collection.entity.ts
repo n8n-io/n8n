@@ -1,5 +1,5 @@
-import { WithTimestampsAndStringId, type Project } from '@n8n/db';
-import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
+import { WithTimestampsAndStringId } from '@n8n/db';
+import { Column, Entity, Index } from '@n8n/typeorm';
 
 /**
  * A knowledge collection: files and vector stores that agents search. A shared
@@ -12,7 +12,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8
  */
 @Entity({ name: 'knowledge_collection' })
 @Index(['slug'], { unique: true })
-@Index(['ownerProjectId', 'name'], { unique: true })
+@Index(['projectId', 'name'], { unique: true })
 @Index(['agentId'], { unique: true })
 export class KnowledgeCollection extends WithTimestampsAndStringId {
 	/** Unique in the owner project of a shared collection. */
@@ -38,16 +38,7 @@ export class KnowledgeCollection extends WithTimestampsAndStringId {
 	 * repeats it: code that writes one writes both in one transaction.
 	 */
 	@Column({ type: 'varchar', length: 36, nullable: true })
-	ownerProjectId: string | null;
-
-	/**
-	 * Read-only link to the owner project; the ownership-transfer guard needs it.
-	 * To move a collection, change `ownerProjectId` with `update()`: if this
-	 * relation is loaded, `save()` keeps the old project.
-	 */
-	@ManyToOne('Project', { onDelete: 'CASCADE' })
-	@JoinColumn({ name: 'ownerProjectId' })
-	ownerProject?: Relation<Project> | null;
+	projectId: string | null;
 
 	/**
 	 * Agent of a private collection. The database keeps the foreign key to

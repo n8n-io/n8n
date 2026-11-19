@@ -6,7 +6,7 @@ import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
  * as `SharedCredentials`, so the permission checks can reuse the credential
  * code.
  *
- * `KnowledgeCollection.ownerProjectId` is the source of truth for the owner
+ * `KnowledgeCollection.projectId` is the source of truth for the owner
  * project. The owner row repeats it: code that writes one writes both in one
  * transaction.
  */

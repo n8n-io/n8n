@@ -382,7 +382,7 @@ erDiagram
 "public.instance_ai_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.instance_credential_assignment" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE RESTRICT"
 "public.knowledge_collection" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
-"public.knowledge_collection" }o--o| "public.project" : "FOREIGN KEY (#quot;ownerProjectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.knowledge_collection" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.knowledge_collection" }o--o| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.knowledge_file" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.knowledge_file" }o--|| "public.knowledge_collection" : "FOREIGN KEY (#quot;knowledgeCollectionId#quot;) REFERENCES knowledge_collection(id) ON DELETE CASCADE"
@@ -1582,7 +1582,7 @@ erDiagram
   boolean isGlobal
   varchar_16_ kind
   varchar_128_ name
-  varchar_36_ ownerProjectId FK
+  varchar_36_ projectId FK
   varchar_24_ slug
   timestamp_3__with_time_zone updatedAt
 }

@@ -12,7 +12,7 @@
 | isGlobal | boolean | false | false |  |  | Every agent on the instance can use a global collection |
 | kind | varchar(16) |  | false |  |  | 'shared' (belongs to a project) or 'agent' (the private collection of one agent) |
 | name | varchar(128) |  | false |  |  | Name of the collection, unique in the project of a shared collection |
-| ownerProjectId | varchar(36) |  | true |  | [public.project](public.project.md) | Home project of a shared collection. NULL for an agent collection |
+| projectId | varchar(36) |  | true |  | [public.project](public.project.md) | Home project of a shared collection. NULL for an agent collection |
 | slug | varchar(24) |  | false |  |  | Tool-safe identifier, unique on the instance. Set at creation and never changed |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -20,10 +20,10 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_knowledge_collection_owner | CHECK | CHECK (((("agentId" IS NULL) <> ("ownerProjectId" IS NULL)) AND (((kind)::text = 'agent'::text) = ("agentId" IS NOT NULL)) AND (("agentId" IS NULL) OR ("isGlobal" = false)))) |
+| CHK_knowledge_collection_owner | CHECK | CHECK (((("agentId" IS NULL) <> ("projectId" IS NULL)) AND (((kind)::text = 'agent'::text) = ("agentId" IS NOT NULL)) AND (("agentId" IS NULL) OR ("isGlobal" = false)))) |
 | FK_2db6cab650ebf156debd84c3772 | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
 | FK_3dbb6554cfa9ce504a94274c64f | FOREIGN KEY | FOREIGN KEY ("createdById") REFERENCES "user"(id) ON DELETE SET NULL |
-| FK_9a2316d690a0d7beac2fce60fc6 | FOREIGN KEY | FOREIGN KEY ("ownerProjectId") REFERENCES project(id) ON DELETE CASCADE |
+| FK_d99632e9dc75614f710319df742 | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | PK_6a44e34e2bfddaf1ca3f079748b | PRIMARY KEY | PRIMARY KEY (id) |
 | knowledge_collection_createdAt_not_null | n | NOT NULL "createdAt" |
 | knowledge_collection_id_not_null | n | NOT NULL id |
@@ -38,7 +38,7 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_2db6cab650ebf156debd84c377 | CREATE UNIQUE INDEX "IDX_2db6cab650ebf156debd84c377" ON public.knowledge_collection USING btree ("agentId") |
-| IDX_8c3a44f80b4217349360cd1281 | CREATE UNIQUE INDEX "IDX_8c3a44f80b4217349360cd1281" ON public.knowledge_collection USING btree ("ownerProjectId", name) |
+| IDX_7668e1c858cbe75167f74145df | CREATE UNIQUE INDEX "IDX_7668e1c858cbe75167f74145df" ON public.knowledge_collection USING btree ("projectId", name) |
 | IDX_f99bb4c895c3203736ce2da3f4 | CREATE UNIQUE INDEX "IDX_f99bb4c895c3203736ce2da3f4" ON public.knowledge_collection USING btree (slug) |
 | PK_6a44e34e2bfddaf1ca3f079748b | CREATE UNIQUE INDEX "PK_6a44e34e2bfddaf1ca3f079748b" ON public.knowledge_collection USING btree (id) |
 
@@ -53,7 +53,7 @@ erDiagram
 "public.knowledge_file" }o--|| "public.knowledge_collection" : "FOREIGN KEY (#quot;knowledgeCollectionId#quot;) REFERENCES knowledge_collection(id) ON DELETE CASCADE"
 "public.knowledge_vector_store" }o--|| "public.knowledge_collection" : "FOREIGN KEY (#quot;knowledgeCollectionId#quot;) REFERENCES knowledge_collection(id) ON DELETE CASCADE"
 "public.shared_knowledge_collection" }o--|| "public.knowledge_collection" : "FOREIGN KEY (#quot;knowledgeCollectionId#quot;) REFERENCES knowledge_collection(id) ON DELETE CASCADE"
-"public.knowledge_collection" }o--o| "public.project" : "FOREIGN KEY (#quot;ownerProjectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.knowledge_collection" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 
 "public.knowledge_collection" {
   varchar_36_ agentId FK
@@ -64,7 +64,7 @@ erDiagram
   boolean isGlobal
   varchar_16_ kind
   varchar_128_ name
-  varchar_36_ ownerProjectId FK
+  varchar_36_ projectId FK
   varchar_24_ slug
   timestamp_3__with_time_zone updatedAt
 }

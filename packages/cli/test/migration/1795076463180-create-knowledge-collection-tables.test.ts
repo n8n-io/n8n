@@ -147,7 +147,7 @@ describe('CreateKnowledgeCollectionTables migration', () => {
 				description: 'Use for HR questions',
 				slug: newSlug(),
 				kind: 'shared',
-				ownerProjectId,
+				projectId: ownerProjectId,
 				...values,
 			});
 			return id;
@@ -282,12 +282,12 @@ describe('CreateKnowledgeCollectionTables migration', () => {
 			it.each<[string, (owners: { projectId: string; agentId: string }) => Row]>([
 				[
 					'a collection with a project and an agent',
-					({ projectId, agentId }) => ({ kind: 'shared', ownerProjectId: projectId, agentId }),
+					({ projectId, agentId }) => ({ kind: 'shared', projectId, agentId }),
 				],
 				['a collection without a project or an agent', () => ({ kind: 'shared' })],
 				[
 					'an agent collection that a project owns',
-					({ projectId }) => ({ kind: 'agent', ownerProjectId: projectId }),
+					({ projectId }) => ({ kind: 'agent', projectId }),
 				],
 				['a shared collection that an agent owns', ({ agentId }) => ({ kind: 'shared', agentId })],
 				[
@@ -425,7 +425,7 @@ describe('CreateKnowledgeCollectionTables migration', () => {
 			const foreignKeys: ForeignKeyCase[] = [
 				{
 					child: 'knowledge_collection',
-					column: 'ownerProjectId',
+					column: 'projectId',
 					parent: 'project',
 					parentRow: 'ownerProjectId',
 					childRow: 'sharedCollectionId',
