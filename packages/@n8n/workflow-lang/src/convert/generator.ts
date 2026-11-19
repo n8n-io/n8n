@@ -625,7 +625,7 @@ export class ModuleGenerator {
 			if (!parent || parent.executeOnce) break;
 			if (!(ONE_TO_ONE.has(parent.type) || parent.disabled)) {
 				// A compiled node gives the paired item of each output item, as the v1 node does.
-				const pairs = e.output === 0 ? b.pairs.get(e.from) : undefined;
+				const pairs = b.pairs.get(`${e.from}|${e.output}`);
 				if (!pairs) break;
 				this.helpers.add('pairedSourceIndex');
 				hops.push({ ...pairs, name: b.short(e.from) });
@@ -707,7 +707,7 @@ export class ModuleGenerator {
 					const parent = b.graph.nodes.get(e.from);
 					if (!parent || parent.executeOnce) break;
 					if (!(ONE_TO_ONE.has(parent.type) || parent.disabled)) {
-						const pairs = e.output === 0 ? b.pairs.get(e.from) : undefined;
+						const pairs = b.pairs.get(`${e.from}|${e.output}`);
 						if (!pairs) break;
 						hops.push({ ...pairs, name: b.short(e.from) });
 					}
@@ -982,8 +982,8 @@ export class ModuleGenerator {
 				this.compiledSteps.add(node.name);
 			},
 			pairsWanted: !b.engine && this.lineageOf(b).has(node.name),
-			setPairs: (run) => {
-				b.pairs.set(node.name, { run, input });
+			setPairs: (run, output = 0) => {
+				b.pairs.set(`${node.name}|${output}`, { run, input });
 			},
 			noOutputWhen: (condition) => {
 				// "Always output data" gives one empty item instead (ensureAlwaysOutputData of v1).

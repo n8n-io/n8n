@@ -1,0 +1,13 @@
+{
+	"description": "Expressions and a Code node read the item of a node before a Switch on the three outputs of the Switch",
+	"trigger": {
+		"body": {
+			"label": "switch-paired"
+		}
+	},
+	"compare": [
+		"Read Low",
+		"Read Mid",
+		"Read High"
+	]
+}

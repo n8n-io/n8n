@@ -6,6 +6,8 @@
 		}
 	},
 	"compare": [
-		"Read True"
+		"Read True",
+		"Read False",
+		"Read False Code"
 	]
 }
