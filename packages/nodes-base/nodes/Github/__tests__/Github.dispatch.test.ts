@@ -55,9 +55,13 @@ describe('GitHub workflow dispatch', () => {
 		context.getCredentials.mockResolvedValue({ server });
 		context.helpers.requestWithAuthentication.mockResolvedValue(response);
 		context.helpers.returnJsonArray.mockReturnValue([{ json: response ?? {} }]);
-		context.helpers.constructExecutionMetaData.mockImplementation((items) => items);
+		context.helpers.constructExecutionMetaData.mockImplementation((items, { itemData }) =>
+			items.map((item) => ({ ...item, pairedItem: itemData })),
+		);
 
-		await expect(new Github().execute.call(context)).resolves.toEqual([[{ json: response ?? {} }]]);
+		await expect(new Github().execute.call(context)).resolves.toEqual([
+			[{ json: response ?? {}, pairedItem: { item: 0 } }],
+		]);
 
 		expect(context.helpers.requestWithAuthentication).toHaveBeenCalledExactlyOnceWith(
 			'githubApi',
