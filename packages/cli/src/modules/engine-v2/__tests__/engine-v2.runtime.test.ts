@@ -5,6 +5,7 @@ import {
 	mintApprovalCallback,
 	mintResumeToken,
 	mintStepBoundResumeToken,
+	type EngineWorkQueues,
 	type ExecutionResponseSender,
 } from '@n8n/engine';
 import type { V1StepExecutorDeps } from '@n8n/node-engine-compatibility';
@@ -93,7 +94,7 @@ const mocks = vi.hoisted(() => {
 		engine,
 		v1StepExecutor,
 		stepDataLoader,
-		createDataSource: vi.fn((_url: string) => dataSource),
+		createDataSource: vi.fn((_url: string, _options?: unknown) => dataSource),
 		createServer: vi.fn((_app: unknown) => httpServer),
 		createEngineRuntime: vi.fn((_options: unknown) => engine),
 		createEngineStepDataLoader: vi.fn((_executionStore: unknown, _stepStore: unknown) => {
@@ -129,6 +130,8 @@ describe('EngineV2Runtime', () => {
 			host: '0.0.0.0',
 			port: 3000,
 			resumeSecret: '',
+			databasePoolSize: 10,
+			databaseConnectionTimeoutMs: 20_000,
 			...overrides,
 		});
 
@@ -143,10 +146,11 @@ describe('EngineV2Runtime', () => {
 	const additionalDataBuilder = mock<EngineAdditionalDataBuilder>();
 	const binaryDataService = mock<BinaryDataService>();
 
-	// `@n8n/engine` is mocked below, so the senders are stand-ins too.
-	const senders = () => ({
+	// `@n8n/engine` is mocked below, so the senders and queues are stand-ins too.
+	const initOptions = () => ({
 		responseSender: mock<ExecutionResponseSender>(),
 		lifecycleEventSender: { send: vi.fn().mockResolvedValue(undefined) },
+		queues: mock<EngineWorkQueues>(),
 	});
 
 	const newRuntime = (databaseUrl = 'postgres://engine', config: Partial<EngineConfig> = {}) =>
@@ -205,15 +209,15 @@ describe('EngineV2Runtime', () => {
 
 	describe('init', () => {
 		it('refuses to start without a data plane database', async () => {
-			await expect(newRuntime('').init(senders())).rejects.toThrow('N8N_ENGINE_DATABASE_URL');
+			await expect(newRuntime('').init(initOptions())).rejects.toThrow('N8N_ENGINE_DATABASE_URL');
 
 			expect(mocks.createDataSource).not.toHaveBeenCalled();
 		});
 
 		it('opens the data plane connection and migrates it before building the engine', async () => {
-			await newRuntime().init(senders());
+			await newRuntime().init(initOptions());
 
-			expect(mocks.createDataSource).toHaveBeenCalledWith('postgres://engine');
+			expect(mocks.createDataSource).toHaveBeenCalledWith('postgres://engine', expect.anything());
 			expect(mocks.dataSource.initialize).toHaveBeenCalled();
 			expect(mocks.dataSource.runMigrations).toHaveBeenCalled();
 			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
@@ -221,14 +225,36 @@ describe('EngineV2Runtime', () => {
 			);
 		});
 
+		it('sizes the database pool from the engine config', async () => {
+			await newRuntime('postgres://engine', {
+				databasePoolSize: 25,
+				databaseConnectionTimeoutMs: 5000,
+			}).init(initOptions());
+
+			expect(mocks.createDataSource).toHaveBeenCalledWith('postgres://engine', {
+				poolSize: 25,
+				connectTimeoutMS: 5000,
+			});
+		});
+
+		it('passes the work queues it is given to the engine', async () => {
+			const options = initOptions();
+
+			await newRuntime().init(options);
+
+			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ queues: options.queues }),
+			);
+		});
+
 		it('starts the engine', async () => {
-			await newRuntime().init(senders());
+			await newRuntime().init(initOptions());
 
 			expect(mocks.engine.start).toHaveBeenCalled();
 		});
 
 		it('injects a lifecycle event callback that publishes to the execution channel', async () => {
-			const channel = senders();
+			const channel = initOptions();
 			await newRuntime().init(channel);
 
 			const events = [
@@ -249,7 +275,10 @@ describe('EngineV2Runtime', () => {
 		});
 
 		it('injects no lifecycle event callback without a lifecycle event sender', async () => {
-			await newRuntime().init({ responseSender: mock<ExecutionResponseSender>() });
+			await newRuntime().init({
+				responseSender: mock<ExecutionResponseSender>(),
+				queues: mock<EngineWorkQueues>(),
+			});
 
 			expect(
 				externalDependencies({ executionStore: {}, stepStore: {} }).lifecycleEventCallback,
@@ -257,7 +286,7 @@ describe('EngineV2Runtime', () => {
 		});
 
 		it('injects a deleter that removes the binary files of one execution', async () => {
-			await newRuntime().init(senders());
+			await newRuntime().init(initOptions());
 
 			const deleteExecutionFiles = externalDependencies({ executionStore: {}, stepStore: {} })
 				.deleteExecutionFiles as (execution: {
@@ -274,7 +303,7 @@ describe('EngineV2Runtime', () => {
 		});
 
 		it('injects the v1 step executor so v1-node steps can run', async () => {
-			await newRuntime().init(senders());
+			await newRuntime().init(initOptions());
 
 			const stores = { executionStore: {}, stepStore: {} };
 
@@ -292,7 +321,7 @@ describe('EngineV2Runtime', () => {
 
 		it('gives the engine the resume secret and the executor its minters when a secret is set', async () => {
 			const resumeSecret = 's'.repeat(32);
-			await newRuntime('postgres://engine', { resumeSecret }).init(senders());
+			await newRuntime('postgres://engine', { resumeSecret }).init(initOptions());
 
 			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
 				expect.objectContaining({ resumeSecret }),
@@ -312,7 +341,7 @@ describe('EngineV2Runtime', () => {
 		});
 
 		it('passes an unset secret through and gives the executor no minters', async () => {
-			await newRuntime().init(senders());
+			await newRuntime().init(initOptions());
 
 			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
 				expect.objectContaining({ resumeSecret: '' }),
@@ -325,7 +354,7 @@ describe('EngineV2Runtime', () => {
 		});
 
 		it('builds the v1 additional data from the step context, not from the control plane', async () => {
-			await newRuntime().init(senders());
+			await newRuntime().init(initOptions());
 
 			await additionalDataFactory()(stepContext);
 
@@ -337,7 +366,7 @@ describe('EngineV2Runtime', () => {
 		});
 
 		it('gives the step a sub-workflow resolver that asks the control plane', async () => {
-			await newRuntime().init(senders());
+			await newRuntime().init(initOptions());
 			externalDependencies({ executionStore: {}, stepStore: {} });
 			const request = { workflowId: 'sub-execution' };
 			vi.mocked(subWorkflowClient.resolve).mockResolvedValue({
@@ -354,7 +383,7 @@ describe('EngineV2Runtime', () => {
 		});
 
 		it('gives the step a credentials helper that asks the control plane', async () => {
-			await newRuntime().init(senders());
+			await newRuntime().init(initOptions());
 
 			const additionalData = await additionalDataFactory()(stepContext);
 
@@ -362,7 +391,7 @@ describe('EngineV2Runtime', () => {
 		});
 
 		it('gives the step a data table provider that asks the control plane', async () => {
-			await newRuntime().init(senders());
+			await newRuntime().init(initOptions());
 
 			const additionalData = await additionalDataFactory()(stepContext);
 
@@ -372,7 +401,7 @@ describe('EngineV2Runtime', () => {
 		});
 
 		it('binds the data table provider to the execution of the step', async () => {
-			await newRuntime().init(senders());
+			await newRuntime().init(initOptions());
 			vi.mocked(dataTablesHttp.request).mockResolvedValue({
 				statusCode: 200,
 				body: { data: [] },
@@ -400,7 +429,7 @@ describe('EngineV2Runtime', () => {
 		});
 
 		it('binds the credentials helper to the execution of the step', async () => {
-			await newRuntime().init(senders());
+			await newRuntime().init(initOptions());
 			vi.mocked(credentialsClient.resolve).mockResolvedValue({});
 
 			const { credentialsHelper: helper } = (await additionalDataFactory()(stepContext)) as {
@@ -424,7 +453,7 @@ describe('EngineV2Runtime', () => {
 		});
 
 		it('serves the engine API on the configured address', async () => {
-			await newRuntime().init(senders());
+			await newRuntime().init(initOptions());
 
 			expect(mocks.createServer).toHaveBeenCalledWith(mocks.engine.app);
 			expect(mocks.httpServer.listen).toHaveBeenCalledWith(3000, '0.0.0.0');
@@ -433,7 +462,7 @@ describe('EngineV2Runtime', () => {
 		it('closes the connection when migrations fail', async () => {
 			mocks.dataSource.runMigrations.mockRejectedValueOnce(new Error('migration failed'));
 
-			await expect(newRuntime().init(senders())).rejects.toThrow('migration failed');
+			await expect(newRuntime().init(initOptions())).rejects.toThrow('migration failed');
 
 			expect(mocks.dataSource.destroy).toHaveBeenCalled();
 			expect(mocks.engine.stop).not.toHaveBeenCalled();
@@ -442,7 +471,7 @@ describe('EngineV2Runtime', () => {
 		it('closes the unbound server, stops the engine and closes the connection when the server fails to listen', async () => {
 			mocks.listen.error = new Error('listen failed');
 
-			await expect(newRuntime().init(senders())).rejects.toThrow('listen failed');
+			await expect(newRuntime().init(initOptions())).rejects.toThrow('listen failed');
 
 			// Closing it drops its subscription to TLS reloads.
 			expect(mocks.server.close).toHaveBeenCalledOnce();
@@ -451,7 +480,7 @@ describe('EngineV2Runtime', () => {
 		});
 
 		it('keeps the engine API server open when it reports an error after it bound', async () => {
-			await newRuntime().init(senders());
+			await newRuntime().init(initOptions());
 
 			mocks.server.listeners.error(new Error('later error'));
 
@@ -462,14 +491,14 @@ describe('EngineV2Runtime', () => {
 			mocks.listen.error = new Error('listen failed');
 			mocks.engine.stop.mockRejectedValueOnce(new Error('stop failed'));
 
-			await expect(newRuntime().init(senders())).rejects.toThrow('listen failed');
+			await expect(newRuntime().init(initOptions())).rejects.toThrow('listen failed');
 		});
 	});
 
 	describe('shutdown', () => {
 		it('closes the server, stops the engine and closes the connection', async () => {
 			const runtime = newRuntime();
-			await runtime.init(senders());
+			await runtime.init(initOptions());
 
 			await runtime.shutdown();
 
@@ -480,7 +509,7 @@ describe('EngineV2Runtime', () => {
 
 		it('stops the engine and closes the connection when the server fails to close', async () => {
 			const runtime = newRuntime();
-			await runtime.init(senders());
+			await runtime.init(initOptions());
 			mocks.server.close.mockImplementationOnce((done) => done?.(new Error('close failed')));
 
 			const error = await runtime
@@ -495,7 +524,7 @@ describe('EngineV2Runtime', () => {
 
 		it('closes the connection when the engine fails to stop', async () => {
 			const runtime = newRuntime();
-			await runtime.init(senders());
+			await runtime.init(initOptions());
 			mocks.engine.stop.mockRejectedValueOnce(new Error('stop failed'));
 
 			await expect(runtime.shutdown()).rejects.toThrow(AggregateError);
@@ -505,7 +534,7 @@ describe('EngineV2Runtime', () => {
 
 		it('aborts the credential requests of running steps', async () => {
 			const runtime = newRuntime();
-			await runtime.init(senders());
+			await runtime.init(initOptions());
 			vi.mocked(credentialsClient.resolve).mockResolvedValue({});
 			const { credentialsHelper: helper } = (await additionalDataFactory()(stepContext)) as {
 				credentialsHelper: RemoteCredentialsHelper;
@@ -532,7 +561,7 @@ describe('EngineV2Runtime', () => {
 
 		it('releases a resource again when its first release failed', async () => {
 			const runtime = newRuntime();
-			await runtime.init(senders());
+			await runtime.init(initOptions());
 			mocks.server.close.mockImplementationOnce((done) => done?.(new Error('close failed')));
 
 			await expect(runtime.shutdown()).rejects.toThrow(AggregateError);
@@ -547,7 +576,7 @@ describe('EngineV2Runtime', () => {
 
 		it('is safe to call twice', async () => {
 			const runtime = newRuntime();
-			await runtime.init(senders());
+			await runtime.init(initOptions());
 
 			await runtime.shutdown();
 			await expect(runtime.shutdown()).resolves.toBeUndefined();

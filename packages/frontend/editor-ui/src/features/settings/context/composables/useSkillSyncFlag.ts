@@ -1,6 +1,8 @@
 import { SKILL_SYNC_FLAG } from '@n8n/api-types';
 import { computed } from 'vue';
 
+import { useSettingsStore } from '@n8n/stores/settings.store';
+
 import { usePostHog } from '@/app/stores/posthog.store';
 
 /**
@@ -11,4 +13,12 @@ import { usePostHog } from '@/app/stores/posthog.store';
 export const useSkillSyncFlag = () => {
 	const postHog = usePostHog();
 	return computed(() => postHog.isFeatureEnabled(SKILL_SYNC_FLAG) === true);
+};
+
+export const useSkillSyncEnabled = () => {
+	const settingsStore = useSettingsStore();
+	const isFlagEnabled = useSkillSyncFlag();
+	return computed(
+		() => isFlagEnabled.value && settingsStore.moduleSettings.skills?.skillSyncEnabled === true,
+	);
 };

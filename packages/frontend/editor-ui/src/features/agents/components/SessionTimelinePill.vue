@@ -6,6 +6,7 @@ import type { EventKind } from '../session-timeline.types';
 const props = withDefaults(
 	defineProps<{
 		kind: EventKind | 'idle' | 'subagent';
+		toolName?: string;
 		label: string;
 		showLabel?: boolean;
 	}>(),
@@ -31,7 +32,7 @@ const icon = computed((): IconName => {
 		case 'memory':
 			return 'brain';
 		case 'tool':
-			return 'wrench';
+			return props.toolName === 'do_not_respond' ? 'message-circle-off' : 'wrench';
 		case 'workflow':
 			return 'workflow';
 		case 'node':
@@ -53,7 +54,13 @@ const icon = computed((): IconName => {
 	<N8nBadge v-if="showLabel && label" :leading-icon="icon" variant="filled" size="xxsmall">
 		{{ label }}
 	</N8nBadge>
-	<N8nIcon v-else :aria-label="label" :icon="icon" size="medium" />
+	<N8nIcon
+		v-else
+		:aria-label="label"
+		:aria-hidden="icon !== 'message-circle-off'"
+		:icon="icon"
+		size="medium"
+	/>
 </template>
 
 <style module lang="scss">

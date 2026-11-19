@@ -6,6 +6,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import type { IWorkflowDb, IWorkflowShortResponse } from '@/Interface';
 import type { ExecutionFilterMetadata, ExecutionFilterType } from '../executions.types';
+import { WORKFLOW_ENGINE_TYPES, type WorkflowEngineType } from 'n8n-workflow';
 import { i18n as locale } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
@@ -75,6 +76,7 @@ const getDefaultFilter = (): ExecutionFilterType => ({
 	metadata: [{ key: '', value: '', exactMatch: false }],
 	vote: 'all',
 	workflowVersionId: 'all',
+	engine: 'all',
 });
 // Copy, so nested edits do not change the caller's filters before this component emits them.
 const filter = reactive({ ...getDefaultFilter(), ...cloneDeep(props.initialFilters) });
@@ -146,6 +148,16 @@ const statuses = computed(() => [
 	{ id: 'waiting', name: locale.baseText('executionsList.waiting') },
 ]);
 
+const engineFilterOptions = computed<Array<{ id: 'all' | WorkflowEngineType; name: string }>>(
+	() => [
+		{ id: 'all', name: locale.baseText('executionsFilter.engine.all') },
+		...WORKFLOW_ENGINE_TYPES.map((engine) => ({
+			id: engine,
+			name: locale.baseText('generic.engine', { interpolate: { engine } }),
+		})),
+	],
+);
+
 const voteFilterOptions = computed(() => [
 	{ id: 'all', name: locale.baseText('executionsFilter.annotation.rating.all') },
 	{ id: 'up', name: locale.baseText('executionsFilter.annotation.rating.good') },
@@ -159,6 +171,7 @@ const countSelectedFilterProps = computed(() => {
 		!isEmpty(filter.annotationTags),
 		filter.vote !== 'all',
 		filter.workflowVersionId !== 'all',
+		filter.engine !== 'all',
 		!isEmpty(filter.metadata),
 		!!filter.startDate,
 		!!filter.endDate,
@@ -285,6 +298,24 @@ onBeforeMount(() => {
 						<N8nOption
 							v-for="(item, idx) in statuses"
 							:key="idx"
+							:label="item.name"
+							:value="item.id"
+						/>
+					</N8nSelect>
+				</div>
+				<div v-if="settingsStore.isEngineV2Enabled" :class="$style.group">
+					<label for="execution-filter-engine">{{
+						locale.baseText('executionsFilter.engine')
+					}}</label>
+					<N8nSelect
+						id="execution-filter-engine"
+						v-model="filter.engine"
+						data-test-id="executions-filter-engine-select"
+						:teleported="teleported"
+					>
+						<N8nOption
+							v-for="item in engineFilterOptions"
+							:key="item.id"
 							:label="item.name"
 							:value="item.id"
 						/>

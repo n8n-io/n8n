@@ -10,7 +10,7 @@ import { mock } from 'vitest-mock-extended';
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 import type {
 	KnowledgeFileService,
-	UploadedKnowledgeFile,
+	KnowledgeFileUploadResult,
 } from '@/modules/knowledge/files/knowledge-file.service';
 import type { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import type { KnowledgeConsumerScope } from '@/modules/knowledge/knowledge-consumer-scope';
@@ -43,7 +43,7 @@ function makeMulterFile(overrides: Partial<Express.Multer.File> = {}): Express.M
 	};
 }
 
-const uploadedFile: UploadedKnowledgeFile = {
+const uploadedFile: KnowledgeFileUploadResult = {
 	file: {
 		id: 'file-1',
 		agentId,

@@ -415,6 +415,7 @@ describe('GET /executions/:id', () => {
 						iteration: 0,
 						status: 'completed',
 						outputs: [[{ json: { hello: 'world' } }]],
+						outputSources: null,
 						error: null,
 						createdAt: '2026-08-25T10:00:00.000Z',
 						updatedAt: '2026-08-25T10:00:00.250Z',

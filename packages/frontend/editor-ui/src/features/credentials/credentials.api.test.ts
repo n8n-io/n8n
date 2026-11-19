@@ -7,6 +7,7 @@ import {
 	oAuth1CredentialAuthorize,
 	oAuth2CredentialAuthorize,
 	searchCredentials,
+	getAllCredentials,
 	getCredentialOptions,
 	type CredentialOptionsDestination,
 } from './credentials.api';
@@ -128,5 +129,25 @@ describe('credentials.api searchCredentials', () => {
 			take: 21,
 			includeGlobal: true,
 		});
+	});
+});
+
+describe('credentials.api getAllCredentials', () => {
+	beforeEach(() => {
+		makeRestApiRequestMock.mockReset();
+		makeRestApiRequestMock.mockResolvedValue([]);
+	});
+
+	it('asks for restrictions only when the caller wants them', async () => {
+		await getAllCredentials(context, { includeRestrictions: true });
+		expect(makeRestApiRequestMock).toHaveBeenLastCalledWith(
+			context,
+			'GET',
+			'/credentials',
+			expect.objectContaining({ includeRestrictions: true }),
+		);
+
+		await getAllCredentials(context, { includeRestrictions: false });
+		expect(makeRestApiRequestMock.mock.lastCall?.[3]).not.toHaveProperty('includeRestrictions');
 	});
 });

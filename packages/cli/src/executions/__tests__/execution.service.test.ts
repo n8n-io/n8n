@@ -1,5 +1,10 @@
 import { DeleteExecutionsDto } from '@n8n/api-types';
-import type { EventService, ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import type { ModuleName, ModuleRegistry } from '@n8n/backend-common';
+import {
+	type EventService,
+	type ExecutionRedactionServiceProxy,
+	WorkflowVersionedSettingsService,
+} from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -65,6 +70,8 @@ describe('ExecutionService', () => {
 	const engineV2ExecutionReader = mock<EngineV2ExecutionReader>();
 	const engineDataPlane = mock<EngineDataPlaneProxyService>();
 	const workflowRepository = mock<WorkflowRepository>();
+	const eligibleModules: ModuleName[] = [];
+	const moduleRegistry = mock<ModuleRegistry>({ eligibleModules });
 
 	const executionService = new ExecutionService(
 		globalConfig,
@@ -87,6 +94,7 @@ describe('ExecutionService', () => {
 		ownershipService,
 		engineV2ExecutionReader,
 		engineDataPlane,
+		new WorkflowVersionedSettingsService(moduleRegistry),
 	);
 
 	beforeEach(() => {
@@ -191,7 +199,11 @@ describe('ExecutionService', () => {
 
 			await executionService.findOne(req, ['workflow-1']);
 
-			expect(engineV2ExecutionReader.findOne).toHaveBeenCalledWith(V2_EXECUTION_ID, ['workflow-1']);
+			expect(engineV2ExecutionReader.findOne).toHaveBeenCalledWith(
+				V2_EXECUTION_ID,
+				['workflow-1'],
+				{ maxDataSizeBytes: globalConfig.executions.maxDisplaySize },
+			);
 			expect(executionPersistence.findOneInWorkflows).not.toHaveBeenCalled();
 		});
 
@@ -213,6 +225,57 @@ describe('ExecutionService', () => {
 			expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(
 				execution,
 				expect.objectContaining({ redactExecutionData: true }),
+			);
+		});
+	});
+
+	describe('findOneAcrossEngines', () => {
+		const options = { includeData: true, includeAnnotation: false };
+
+		it('should read a v1 id from the control plane', async () => {
+			const execution = mock<IExecutionResponse>({ id: '123' });
+			executionPersistence.findOneInWorkflows.mockResolvedValue(execution);
+
+			const result = await executionService.findOneAcrossEngines('123', ['workflow-1'], options);
+
+			expect(result).toBe(execution);
+			expect(executionPersistence.findOneInWorkflows).toHaveBeenCalledWith(
+				'123',
+				['workflow-1'],
+				options,
+			);
+			expect(engineV2ExecutionReader.findOne).not.toHaveBeenCalled();
+		});
+
+		it('should read a v2 id from the data plane', async () => {
+			const execution = mock<IExecutionResponse>({ id: V2_EXECUTION_ID });
+			engineV2ExecutionReader.findOne.mockResolvedValue(execution);
+
+			const result = await executionService.findOneAcrossEngines(
+				V2_EXECUTION_ID,
+				['workflow-1'],
+				options,
+			);
+
+			expect(result).toBe(execution);
+			expect(engineV2ExecutionReader.findOne).toHaveBeenCalledWith(
+				V2_EXECUTION_ID,
+				['workflow-1'],
+				options,
+			);
+			expect(executionPersistence.findOneInWorkflows).not.toHaveBeenCalled();
+		});
+
+		// The metadata-only read must stay cheap on both stores.
+		it('should pass includeData through to the data plane', async () => {
+			await executionService.findOneAcrossEngines(V2_EXECUTION_ID, ['workflow-1'], {
+				includeData: false,
+			});
+
+			expect(engineV2ExecutionReader.findOne).toHaveBeenCalledWith(
+				V2_EXECUTION_ID,
+				['workflow-1'],
+				{ includeData: false },
 			);
 		});
 	});
@@ -267,6 +330,7 @@ describe('ExecutionService', () => {
 				ownershipService,
 				mock(),
 				mock(),
+				new WorkflowVersionedSettingsService(moduleRegistry),
 			);
 
 			const mockUser = mock<User>({ id: 'user-1' });
@@ -350,6 +414,7 @@ describe('ExecutionService', () => {
 				ownershipService,
 				mock(),
 				mock(),
+				new WorkflowVersionedSettingsService(moduleRegistry),
 			);
 
 			workflowRunner.run.mockResolvedValue('retried-123');
@@ -484,6 +549,17 @@ describe('ExecutionService', () => {
 			expect(workflowRunner.run).toHaveBeenCalledWith(
 				expect.objectContaining({ callerAwaitsOutcome: 'completion' }),
 			);
+		});
+
+		it('should not carry the root execution mode of the original run into the retry', async () => {
+			const { service, workflowRunner } = buildRetryService();
+			const execution = buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} });
+			execution.data.rootExecutionMode = 'manual';
+			executionPersistence.findWithUnflattenedData.mockResolvedValue(execution);
+
+			await service.retry(retryArgs());
+
+			expect(workflowRunner.run.mock.calls[0][0].executionData?.rootExecutionMode).toBeUndefined();
 		});
 
 		it('should not throw when retrying a crashed execution whose runData is undefined', async () => {
@@ -676,10 +752,6 @@ describe('ExecutionService', () => {
 	});
 
 	describe('getLastSuccessfulExecution', () => {
-		beforeEach(() => {
-			workflowRepository.findSettings.mockResolvedValue({});
-		});
-
 		it('should return the redacted last successful execution for a workflow', async () => {
 			/**
 			 * Arrange
@@ -708,7 +780,15 @@ describe('ExecutionService', () => {
 			expect(result).toEqual(mockExecution);
 			expect(executionPersistence.findMultipleExecutions).toHaveBeenCalledWith(
 				{
-					select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId', 'jsonSizeBytes'],
+					select: [
+						'id',
+						'mode',
+						'createdAt',
+						'startedAt',
+						'stoppedAt',
+						'workflowId',
+						'jsonSizeBytes',
+					],
 					where: {
 						workflowId,
 						status: 'success',
@@ -764,40 +844,76 @@ describe('ExecutionService', () => {
 			expect(executionRedactionServiceProxy.processExecution).not.toHaveBeenCalled();
 		});
 
-		describe('for a workflow on engine v2', () => {
-			const workflowId = 'workflow-v2';
+		describe('with the engine-v2 module', () => {
+			const workflowId = 'workflow-123';
 			const mockUser = mock<User>();
-
-			beforeEach(() => {
-				workflowRepository.findSettings.mockResolvedValue({ engineType: 'v2' });
+			const v1Execution = mock<IExecutionResponse>({
+				id: 'v1-execution',
+				createdAt: new Date('2025-01-15T10:00:00Z'),
+				startedAt: new Date('2025-01-15T10:00:00Z'),
+			});
+			const v2Execution = mock<IExecutionResponse>({
+				id: V2_EXECUTION_ID,
+				createdAt: new Date('2025-01-15T11:00:00Z'),
+				startedAt: new Date('2025-01-15T11:00:00Z'),
 			});
 
-			it('should read the latest successful execution from the data plane', async () => {
-				const execution = mock<IExecutionResponse>({ id: V2_EXECUTION_ID, workflowId });
-				engineV2ExecutionReader.findLatest.mockResolvedValue(execution);
-				executionRedactionServiceProxy.processExecution.mockResolvedValue(execution);
+			beforeEach(() => {
+				eligibleModules.push('engine-v2');
+				executionRedactionServiceProxy.processExecution.mockImplementation(
+					async (execution) => execution,
+				);
+			});
+
+			afterEach(() => {
+				eligibleModules.length = 0;
+			});
+
+			it('should return the newest success of both engines', async () => {
+				executionPersistence.findMultipleExecutions.mockResolvedValue([v1Execution]);
+				engineV2ExecutionReader.findLatest.mockResolvedValue(v2Execution);
 
 				const result = await executionService.getLastSuccessfulExecution(workflowId, mockUser);
 
-				expect(result).toEqual(execution);
-				expect(engineV2ExecutionReader.findLatest).toHaveBeenCalledWith({ status: ['success'] }, [
-					workflowId,
-				]);
-				expect(executionPersistence.findMultipleExecutions).not.toHaveBeenCalled();
-				expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(execution, {
-					user: mockUser,
-					redactExecutionData: undefined,
-				});
+				expect(result).toBe(v2Execution);
 			});
 
-			it('should return undefined when the data plane has no successful execution', async () => {
+			it('should compare the engines by creation, as each engine picks its newest run', async () => {
+				const queuedV1Execution = mock<IExecutionResponse>({
+					id: 'queued-v1-execution',
+					createdAt: new Date('2025-01-15T10:00:00Z'),
+					startedAt: new Date('2025-01-15T12:00:00Z'),
+				});
+				executionPersistence.findMultipleExecutions.mockResolvedValue([queuedV1Execution]);
+				engineV2ExecutionReader.findLatest.mockResolvedValue(v2Execution);
+
+				const result = await executionService.getLastSuccessfulExecution(workflowId, mockUser);
+
+				expect(result).toBe(v2Execution);
+			});
+
+			it('should return the success of the engine that has one', async () => {
+				executionPersistence.findMultipleExecutions.mockResolvedValue([v1Execution]);
 				engineV2ExecutionReader.findLatest.mockResolvedValue(undefined);
 
 				const result = await executionService.getLastSuccessfulExecution(workflowId, mockUser);
 
-				expect(result).toBeUndefined();
-				expect(executionRedactionServiceProxy.processExecution).not.toHaveBeenCalled();
+				expect(result).toBe(v1Execution);
 			});
+		});
+
+		it('should read only engine v1 without the engine-v2 module', async () => {
+			const execution = mock<IExecutionResponse>({ id: 'v1-execution' });
+			executionPersistence.findMultipleExecutions.mockResolvedValue([execution]);
+			executionRedactionServiceProxy.processExecution.mockResolvedValue(execution);
+
+			const result = await executionService.getLastSuccessfulExecution(
+				'workflow-123',
+				mock<User>(),
+			);
+
+			expect(result).toBe(execution);
+			expect(engineV2ExecutionReader.findLatest).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1066,14 +1182,17 @@ describe('ExecutionService', () => {
 				concurrencyControl.has.mockReturnValue(true);
 				activeExecutions.has.mockReturnValue(false);
 				waitTracker.has.mockReturnValue(false);
-				executionRepository.stopBeforeRun.mockResolvedValue(mock<IExecutionResponse>());
+				const stoppedAt = new Date();
+				executionRepository.markAsCanceled.mockResolvedValue([
+					{ id: '123', workflowId: 'wf', mode: 'trigger', startedAt: null, stoppedAt },
+				]);
 
 				const req = mock<ExecutionRequest.Stop>({ params: { id: execution.id } });
 
 				/**
 				 * Act
 				 */
-				await executionService.stop(req.params.id, [execution.id]);
+				const result = await executionService.stop(req.params.id, [execution.id]);
 
 				/**
 				 * Assert
@@ -1085,6 +1204,22 @@ describe('ExecutionService', () => {
 				expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
 				expect(waitTracker.stopExecution).not.toHaveBeenCalled();
 				expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+				expect(executionRepository.markAsCanceled).toHaveBeenCalledWith(['123']);
+				expect(result).toMatchObject({ status: 'canceled', stoppedAt });
+			});
+
+			it('should return the finished run when a queued run finished before the stop', async () => {
+				const execution = mock<IExecutionResponse>({ id: '123', status: 'new', mode: 'trigger' });
+				const finished = mock<IExecutionResponse>({ id: '123', status: 'success' });
+				executionPersistence.findWithUnflattenedData
+					.mockResolvedValueOnce(execution)
+					.mockResolvedValueOnce(finished);
+				concurrencyControl.has.mockReturnValue(true);
+				executionRepository.markAsCanceled.mockResolvedValue([]);
+
+				const result = await executionService.stop('123', ['wf']);
+
+				expect(result).toMatchObject({ status: 'success' });
 			});
 		});
 
@@ -1452,6 +1587,74 @@ describe('ExecutionService', () => {
 					deleteConditions: { deleteBefore: undefined, ids: ['1', '2'] },
 				}),
 			);
+		});
+
+		describe('engine filter', () => {
+			const deleteBefore = '2026-01-01T00:00:00.000Z';
+
+			// A delete by date reaches only the engine v1 table, so a v2 filter must not
+			// fall through to deleting the v1 rows that match the other filters.
+			it('should delete nothing by date for the engine v2 filter', async () => {
+				await executionService.delete(
+					user,
+					DeleteExecutionsDto.parse({ deleteBefore, filters: { engine: 'v2' } }),
+					['wf-1'],
+				);
+
+				expect(executionPersistence.hardDeleteBy).not.toHaveBeenCalled();
+				expect(eventService.emit).not.toHaveBeenCalled();
+			});
+
+			it('should delete nothing by date for the engine v2 filter when another field is invalid', async () => {
+				await executionService.delete(
+					user,
+					DeleteExecutionsDto.parse({ deleteBefore, filters: { engine: 'v2', status: 123 } }),
+					['wf-1'],
+				);
+
+				expect(executionPersistence.hardDeleteBy).not.toHaveBeenCalled();
+			});
+
+			// An unknown engine fails the schema, which drops every filter. A delete by
+			// date would then match every v1 execution before the date.
+			it.each([['v3'], [123], [null]])(
+				'should reject an unknown engine %s instead of deleting without filters',
+				async (engine) => {
+					await expect(
+						executionService.delete(
+							user,
+							DeleteExecutionsDto.parse({ deleteBefore, filters: { engine, mode: 'manual' } }),
+							['wf-1'],
+						),
+					).rejects.toThrow(BadRequestError);
+
+					expect(executionPersistence.hardDeleteBy).not.toHaveBeenCalled();
+				},
+			);
+
+			it('should keep the engine v1 filter when deleting by date', async () => {
+				await executionService.delete(
+					user,
+					DeleteExecutionsDto.parse({ deleteBefore, filters: { engine: 'v1', mode: 'manual' } }),
+					['wf-1'],
+				);
+
+				expect(executionPersistence.hardDeleteBy).toHaveBeenCalledWith(
+					expect.objectContaining({ filters: { engine: 'v1', mode: 'manual' } }),
+				);
+			});
+
+			it('should delete by ids whatever the engine filter', async () => {
+				await executionService.delete(
+					user,
+					DeleteExecutionsDto.parse({ ids: ['1'], filters: { engine: 'v2' } }),
+					['wf-1'],
+				);
+
+				expect(executionPersistence.hardDeleteBy).toHaveBeenCalledWith(
+					expect.objectContaining({ deleteConditions: { deleteBefore: undefined, ids: ['1'] } }),
+				);
+			});
 		});
 	});
 

@@ -1,14 +1,17 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { useAsyncState } from '@vueuse/core';
 import { I18nT } from 'vue-i18n';
 import {
 	N8nAlertDialog,
 	N8nBadge,
 	N8nNotice,
+	N8nPreviewBadge,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
+	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
 	N8nSwitch,
@@ -30,16 +33,24 @@ import WorkflowReviewsSection from './WorkflowReviewsSection.vue';
 import ApiKeyRateLimitsSection from './rateLimits/ApiKeyRateLimitsSection.vue';
 import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG } from './rateLimits/rateLimits';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
+import { usePolicyAdminAccess } from '@n8n/frontend-module-type-availability-policies';
+import { useTypePoliciesSettingsFlag } from './composables/useTypePoliciesSettingsFlag';
 
+const router = useRouter();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const i18n = useI18n();
 const { showToast, showError } = useToast();
 const pageRedirectionHelper = usePageRedirectionHelper();
-const { isWorkflowReviewsAvailable } = useWorkflowReviewsFeature();
 const posthogStore = usePostHog();
+const { canManagePolicies: canManageTypePolicies, entryRouteName: typePoliciesRouteName } =
+	usePolicyAdminAccess();
+const { isEnabled: isTypePoliciesSettingsEnabled } = useTypePoliciesSettingsFlag();
+
+function openTypePolicies() {
+	void router.push({ name: typePoliciesRouteName.value });
+}
 
 const isRateLimitSettingsEnabled = computed(() =>
 	posthogStore.isFeatureEnabled(PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG),
@@ -90,7 +101,7 @@ const { state, isReady, error } = useAsyncState(async () => {
 		sharedPersonalCredentialsCount: settings.sharedPersonalCredentialsCount,
 		managedByEnv: settings.managedByEnv,
 		initialRedactionFloor: (settings.redactionEnforcement?.floor ?? 'off') as RedactionFloor,
-		workflowReviewsEnabled: settings.workflowReviews?.enabled ?? false,
+		workflowReviews: settings.workflowReviews,
 	};
 }, undefined);
 
@@ -393,16 +404,44 @@ const sharingCountText = computed(() => {
 		</N8nSettingsSection>
 
 		<N8nSettingsSection
-			v-if="isSecuritySettingsSettled && isWorkflowReviewsAvailable && state !== undefined"
-			:title="i18n.baseText('settings.security.workflowReviews.title')"
-			data-test-id="security-workflow-reviews-section"
+			v-if="canManageTypePolicies && isTypePoliciesSettingsEnabled"
+			:title="i18n.baseText('settings.security.nodeAndCredentialPolicies.section')"
+			data-test-id="security-type-policies-section"
 		>
 			<N8nSettingsRowGroup>
-				<WorkflowReviewsSection
-					:initial-enabled="state.workflowReviewsEnabled"
-					:managed-by-env="isManagedByEnv"
-				/>
+				<N8nSettingsRow
+					clickable
+					data-test-id="security-type-policies-row"
+					data-attr="security-type-policies-row"
+					@click="openTypePolicies"
+				>
+					<template #info>
+						<N8nText :bold="true">
+							{{ i18n.baseText('settings.security.nodeAndCredentialPolicies.title') }}
+							<N8nPreviewBadge class="ml-4xs" data-test-id="security-type-policies-preview-badge" />
+						</N8nText>
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('settings.security.nodeAndCredentialPolicies.description') }}
+						</N8nText>
+					</template>
+					<template #action>
+						<N8nSettingsRowConfigure :value="i18n.baseText('generic.configure')" />
+					</template>
+				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
+		</N8nSettingsSection>
+
+		<N8nSettingsSection
+			v-if="state?.workflowReviews"
+			:title="i18n.baseText('settings.security.workflowReviews.title')"
+			:description="i18n.baseText('settings.security.workflowReviews.description')"
+			data-test-id="security-workflow-reviews-section"
+		>
+			<WorkflowReviewsSection
+				:initial-enabled="state.workflowReviews.enabled"
+				:initial-always-required="state.workflowReviews.alwaysRequired === true"
+				:managed-by-env="isManagedByEnv"
+			/>
 		</N8nSettingsSection>
 
 		<ApiKeyRateLimitsSection v-if="isRateLimitSettingsEnabled" />

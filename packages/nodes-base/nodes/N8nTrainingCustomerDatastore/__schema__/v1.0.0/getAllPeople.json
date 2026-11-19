@@ -1,0 +1,23 @@
+{
+	"properties": {
+		"country": {
+			"type": "string"
+		},
+		"created": {
+			"type": "string"
+		},
+		"email": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"notes": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

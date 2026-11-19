@@ -367,7 +367,9 @@ describe('CanvasNodeDefault', () => {
 					},
 				},
 			});
-			expect(getByText('Test Node').closest('.node')).toHaveClass('waiting');
+			const node = getByText('Test Node').closest('.node');
+			expect(node).toHaveClass('waiting');
+			expect(node?.querySelector('.statusRing')).not.toBeNull();
 		});
 	});
 
@@ -381,7 +383,16 @@ describe('CanvasNodeDefault', () => {
 					},
 				},
 			});
-			expect(getByText('Test Node').closest('.node')).toHaveClass('running');
+			const node = getByText('Test Node').closest('.node');
+			expect(node).toHaveClass('running');
+			expect(node?.querySelector('.statusRing')).not.toBeNull();
+		});
+
+		it('should not render the status ring when node is idle', () => {
+			const { getByText } = renderComponent({
+				global: { stubs, provide: { ...createCanvasNodeProvide() } },
+			});
+			expect(getByText('Test Node').closest('.node')?.querySelector('.statusRing')).toBeNull();
 		});
 	});
 
@@ -566,6 +577,53 @@ describe('CanvasNodeDefault', () => {
 
 			expect(getByTestId('canvas-configurable-node')).toMatchSnapshot();
 		});
+
+		it.each([
+			[1, '240px'],
+			[4, '240px'],
+			[6, '336px'],
+		])(
+			'should give a node with %s non-main outputs at the top a width of %s',
+			(outputCount, expectedWidth) => {
+				renderNodeInputsMap.set(
+					'node',
+					computed(() => [
+						{ type: NodeConnectionTypes.Main, index: 0 },
+						{ type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+					]),
+				);
+				renderNodeOutputsMap.set(
+					'node',
+					computed(() =>
+						Array.from({ length: outputCount }, (_, index) => ({
+							type: NodeConnectionTypes.AiTool,
+							index,
+						})),
+					),
+				);
+
+				const { getByText } = renderComponent({
+					global: {
+						stubs,
+						provide: {
+							...createCanvasNodeProvide({
+								data: {
+									render: {
+										type: CanvasNodeRenderType.Default,
+										options: { configurable: true, configuration: true },
+									},
+								},
+							}),
+						},
+					},
+				});
+
+				expect(getByText('Test Node').closest('.node')).toHaveStyle({
+					'--canvas-node--width': expectedWidth,
+					'--canvas-node--height': '80px',
+				});
+			},
+		);
 	});
 
 	describe('trigger', () => {

@@ -152,6 +152,7 @@ describe('WorkflowService', () => {
 				mock(),
 				mock(), // projectScopeService
 				mock(),
+				mock(), // WorkflowVersionedSettingsService
 			);
 		});
 
@@ -542,6 +543,7 @@ describe('WorkflowService', () => {
 				mock(),
 				mock(), // projectScopeService
 				mock(),
+				mock(), // WorkflowVersionedSettingsService
 			);
 
 			vi.clearAllMocks();
@@ -618,7 +620,7 @@ describe('WorkflowService', () => {
 
 			expect(workflowHistoryServiceMock.saveVersion).toHaveBeenCalledWith(
 				user,
-				prepared.changes,
+				prepared.workflow,
 				original.id,
 				false,
 				'n8n-ai',
@@ -672,7 +674,7 @@ describe('WorkflowService', () => {
 			).rejects.toBe(error);
 			expect(workflowHistoryServiceMock.saveVersion).toHaveBeenCalledWith(
 				prepared.user,
-				prepared.changes,
+				prepared.workflow,
 				original.id,
 				false,
 				'ui',
@@ -708,7 +710,7 @@ describe('WorkflowService', () => {
 
 			expect(workflowHistoryServiceMock.saveVersion).toHaveBeenCalledWith(
 				prepared.user,
-				prepared.changes,
+				prepared.workflow,
 				original.id,
 				false,
 				'ui',
@@ -1804,6 +1806,7 @@ describe('WorkflowService', () => {
 				mock(),
 				mock(), // projectScopeService
 				mock(),
+				mock(), // WorkflowVersionedSettingsService
 			);
 
 			// Bypass validation internals
@@ -2068,7 +2071,10 @@ describe('WorkflowService', () => {
 				versionId: TARGET_VERSION_ID,
 			});
 
-			expect(workflowPublishGuardMock.assertCanPublish).toHaveBeenCalledWith(WORKFLOW_ID);
+			expect(workflowPublishGuardMock.assertCanPublish).toHaveBeenCalledWith(WORKFLOW_ID, {
+				versionId: TARGET_VERSION_ID,
+				fromSourceControlPull: false,
+			});
 			expect(externalHooksMock.run).toHaveBeenCalledTimes(1);
 			const [hookName, hookArgs] = externalHooksMock.run.mock.calls[0] as [
 				string,
@@ -2659,6 +2665,7 @@ describe('WorkflowService', () => {
 				mock(),
 				mock(), // projectScopeService
 				workflowIndexServiceMock,
+				mock(), // WorkflowVersionedSettingsService
 			);
 		});
 
@@ -2713,6 +2720,17 @@ describe('WorkflowService', () => {
 				event: 'deactivated',
 				userId: null,
 			});
+		});
+
+		test('calls the workflow.deactivate hook with the workflow and the hook context only', async () => {
+			workflowRepositoryMock.findOne.mockResolvedValue(makeWorkflowEntity());
+
+			await workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID, 'memory-guard');
+
+			expect(externalHooksMock.run).toHaveBeenCalledExactlyOnceWith('workflow.deactivate', [
+				expect.objectContaining({ id: WORKFLOW_ID }),
+				expect.anything(),
+			]);
 		});
 
 		test('does nothing when the workflow does not exist', async () => {
@@ -2839,6 +2857,7 @@ describe('WorkflowService', () => {
 				mock(),
 				mock(), // projectScopeService
 				mock(),
+				mock(), // WorkflowVersionedSettingsService
 			);
 		});
 
@@ -3187,6 +3206,7 @@ describe('WorkflowService', () => {
 				mock(),
 				mock(), // projectScopeService
 				mock(),
+				mock(), // WorkflowVersionedSettingsService
 			);
 		});
 
@@ -3364,6 +3384,7 @@ describe('WorkflowService', () => {
 				mock(),
 				mock(), // projectScopeService
 				mock(),
+				mock(), // WorkflowVersionedSettingsService
 			);
 		});
 
@@ -3556,6 +3577,7 @@ describe('WorkflowService', () => {
 				mock(),
 				mock(), // projectScopeService
 				mock(),
+				mock(), // WorkflowVersionedSettingsService
 			);
 		});
 
@@ -3720,6 +3742,7 @@ describe('WorkflowService', () => {
 				mock(),
 				mock(), // projectScopeService
 				mock(),
+				mock(), // WorkflowVersionedSettingsService
 			);
 		});
 
@@ -3829,6 +3852,7 @@ describe('WorkflowService', () => {
 				mock(),
 				mock(), // projectScopeService
 				mock(),
+				mock(), // WorkflowVersionedSettingsService
 			);
 
 			vi.mocked(WorkflowHelpers.removeDefaultValues).mockImplementation((settings) => settings);

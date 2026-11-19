@@ -4,6 +4,7 @@ import {
 	EventService,
 	InstanceWriteAccessService,
 	WorkflowPublishedDataService,
+	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
@@ -78,6 +79,7 @@ export class WorkflowExecutionService {
 		private readonly pollCursorService: PollCursorService,
 		private readonly executionCrashService: ExecutionCrashService,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
+		private readonly workflowVersionedSettings: WorkflowVersionedSettingsService,
 	) {}
 
 	async runWorkflow(
@@ -211,6 +213,7 @@ export class WorkflowExecutionService {
 		const payload: CreateExecutionPayload = {
 			data: executionData,
 			mode,
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 			finished: false,
 			workflowData,
 			status: 'new',
@@ -597,6 +600,10 @@ export class WorkflowExecutionService {
 			const workflowData = publishedData.workflow;
 			workflowData.nodes = publishedData.publishedVersion.nodes;
 			workflowData.connections = publishedData.publishedVersion.connections;
+			workflowData.settings = this.workflowVersionedSettings.forPublishedRun(
+				workflowData.settings,
+				publishedData.publishedVersion,
+			);
 			return workflowData;
 		}
 
@@ -617,6 +624,10 @@ export class WorkflowExecutionService {
 		}
 		loaded.nodes = loaded.activeVersion.nodes;
 		loaded.connections = loaded.activeVersion.connections;
+		loaded.settings = this.workflowVersionedSettings.forPublishedRun(
+			loaded.settings,
+			loaded.activeVersion,
+		);
 		return loaded;
 	}
 
@@ -667,10 +678,12 @@ export class WorkflowExecutionService {
 						errorWorkflowPermissionError,
 						initialNode,
 					);
+					fakeExecution.data.resultData.failedBeforeStart = 'policy';
 
 					const fullExecutionData: CreateExecutionPayload = {
 						data: fakeExecution.data,
 						mode: fakeExecution.mode,
+						// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 						finished: false,
 						stoppedAt: new Date(),
 						workflowData,

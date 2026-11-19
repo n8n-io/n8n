@@ -6,9 +6,10 @@ import {
 	AgentEvalRunRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
 
-import { Agent } from '@/modules/agents/entities/agent.entity';
+import { createAgent as createTestAgent } from '@test-integration/db/agents';
+
+import type { Agent } from '@/modules/agents/entities/agent.entity';
 
 /**
  * Real DB on purpose: mocking the entity manager only proves which `where` object
@@ -24,9 +25,7 @@ describe('agent-eval scoped repository reads (integration)', () => {
 	/** Real agent row so `agent_eval_dataset.agentId`'s FK holds. */
 	async function createAgent(): Promise<Agent> {
 		const project = await createTeamProject();
-		return await Container.get(DataSource)
-			.getRepository(Agent)
-			.save(Object.assign(new Agent(), { name: 'test agent', projectId: project.id }));
+		return await createTestAgent({ name: 'test agent', projectId: project.id });
 	}
 
 	beforeAll(async () => {

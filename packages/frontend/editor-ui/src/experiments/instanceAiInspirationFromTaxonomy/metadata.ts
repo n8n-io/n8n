@@ -1,4 +1,4 @@
-// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 import type { CloudPersonalizationMetadata } from '@/experiments/instanceAiPersonalizedPromptSuggestions/metadata';
 import type {
 	PersonalizedPromptDisplaySuggestion,
@@ -9,7 +9,6 @@ import type {
 import {
 	INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS,
 	INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION,
-	type INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_BIS_VERSION,
 	TAXONOMY_SEE_MORE_ENABLED,
 	type TaxonomyPromptSuggestion,
 	type TaxonomyRole,
@@ -37,9 +36,7 @@ export type TaxonomyPromptSegment =
 	| { source: 'excluded' };
 
 export type TaxonomyPromptTelemetryPayload = {
-	suggestion_catalog_version:
-		| typeof INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION
-		| typeof INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_BIS_VERSION;
+	suggestion_catalog_version: typeof INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION;
 	suggestion_format: TaxonomySuggestionFormat;
 	suggestion_source: 'taxonomy';
 	segment_key: TaxonomyRole;
@@ -116,15 +113,11 @@ export function resolveTaxonomyPromptSuggestions({
 	metadataLoadState,
 	suggestionFormat = 'list',
 	catalog = INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS,
-	catalogVersion = INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION,
 }: {
 	metadata: CloudPersonalizationMetadata;
 	metadataLoadState: PersonalizedPromptMetadataLoadState;
 	suggestionFormat?: TaxonomySuggestionFormat;
 	catalog?: readonly TaxonomyPromptSuggestion[];
-	catalogVersion?:
-		| typeof INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION
-		| typeof INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_BIS_VERSION;
 }): TaxonomyPromptSuggestionResolution {
 	if (metadataLoadState !== 'loaded') {
 		return EXCLUDED_RESOLUTION;
@@ -145,7 +138,7 @@ export function resolveTaxonomyPromptSuggestions({
 		suggestions,
 		showSeeMore: TAXONOMY_SEE_MORE_ENABLED,
 		telemetryPayload: {
-			suggestion_catalog_version: catalogVersion,
+			suggestion_catalog_version: INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION,
 			suggestion_format: suggestionFormat,
 			suggestion_source: 'taxonomy',
 			segment_key: segment.segmentKey,

@@ -7,54 +7,60 @@ import type { Mock } from 'vitest';
 // mock the shared sandbox module. The mock classes live in vi.hoisted
 // so they are shared between the mock factory and the test (`instanceof` checks in
 // source must see the same DaytonaError the test constructs).
-const { DaytonaError, DaytonaNotFoundError, Image } = vi.hoisted(() => {
-	class DaytonaError extends Error {
-		statusCode?: number;
-		constructor(message: string, statusCode?: number) {
-			super(message);
-			this.name = 'DaytonaError';
-			this.statusCode = statusCode;
+const { DaytonaError, DaytonaNotFoundError, Image, packSnapshotWorkspacePackages } = vi.hoisted(
+	() => {
+		class DaytonaError extends Error {
+			statusCode?: number;
+			constructor(message: string, statusCode?: number) {
+				super(message);
+				this.name = 'DaytonaError';
+				this.statusCode = statusCode;
+			}
 		}
-	}
-	class DaytonaNotFoundError extends DaytonaError {
-		constructor(message: string, statusCode = 404) {
-			super(message, statusCode);
-			this.name = 'DaytonaNotFoundError';
+		class DaytonaNotFoundError extends DaytonaError {
+			constructor(message: string, statusCode = 404) {
+				super(message, statusCode);
+				this.name = 'DaytonaNotFoundError';
+			}
 		}
-	}
-	class Image {
-		dockerfile: string;
-		contextList: Array<{ sourcePath: string; archivePath: string }>;
-		constructor(base = 'node:20') {
-			this.dockerfile = `FROM ${base}`;
-			this.contextList = [];
+		class Image {
+			dockerfile: string;
+			contextList: Array<{ sourcePath: string; archivePath: string }>;
+			constructor(base = 'node:20') {
+				this.dockerfile = `FROM ${base}`;
+				this.contextList = [];
+			}
+			static base(base: string) {
+				return new Image(base);
+			}
+			addLocalDir(localPath: string, remotePath: string) {
+				this.contextList.push({ sourcePath: localPath, archivePath: localPath });
+				this.dockerfile += `\nCOPY ${localPath} ${remotePath}`;
+				return this;
+			}
+			runCommands(...commands: string[]) {
+				this.dockerfile += commands.map((command) => `\nRUN ${command}`).join('');
+				return this;
+			}
 		}
-		static base(base: string) {
-			return new Image(base);
-		}
-		addLocalDir(localPath: string, remotePath: string) {
-			this.contextList.push({ sourcePath: localPath, archivePath: localPath });
-			this.dockerfile += `\nCOPY ${localPath} ${remotePath}`;
-			return this;
-		}
-		runCommands(...commands: string[]) {
-			this.dockerfile += commands.map((command) => `\nRUN ${command}`).join('');
-			return this;
-		}
-	}
-	return { DaytonaError, DaytonaNotFoundError, Image };
-});
+		return { DaytonaError, DaytonaNotFoundError, Image, packSnapshotWorkspacePackages: vi.fn() };
+	},
+);
 
 vi.mock('@n8n/agents/sandbox', async (importOriginal) => ({
 	...(await importOriginal<typeof SharedSandboxMod>()),
 	loadDaytona: () => ({ DaytonaError, DaytonaNotFoundError, Image }),
 }));
 
+vi.mock('../pack-workspace-sdk', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../pack-workspace-sdk')>()),
+	packSnapshotWorkspacePackages,
+}));
+
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import type { Logger } from '../../logger';
-import type { BuilderTemplatesService } from '../builder-templates-service';
 import { SnapshotManager } from '../snapshot-manager';
 
 const SNAPSHOT_NAME = 'n8n/instance-ai:1.123.0';
@@ -65,10 +71,6 @@ const NOOP_LOGGER: Logger = {
 	error: () => {},
 	debug: () => {},
 };
-
-const TEMPLATES_SERVICE = {
-	getBundle: async () => ({ archive: null, version: null }),
-} as BuilderTemplatesService;
 
 interface CreateSnapshotParams {
 	name: string;
@@ -137,8 +139,12 @@ function mockGetActiveOnlyFor(daytona: FakeDaytona, name: string): void {
 }
 
 describe('SnapshotManager.ensureImage', () => {
+	afterEach(() => {
+		packSnapshotWorkspacePackages.mockReset();
+	});
+
 	it('stages workspace files and builds a small COPY-based Daytona image descriptor', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 
 		const image = await manager.ensureImage();
 
@@ -173,7 +179,7 @@ describe('SnapshotManager.ensureImage', () => {
 	});
 
 	it('uses a content-hash cache key when no n8n version is configured', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, undefined, TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, undefined);
 
 		const image = await manager.ensureImage();
 		const stagingDir = image.contextList[0]?.sourcePath;
@@ -183,18 +189,40 @@ describe('SnapshotManager.ensureImage', () => {
 		expect(stagingDir).toMatch(/n8n-snapshot-context-[0-9a-f]+$/);
 	});
 
+	it('bakes local workspace package tarballs into release snapshots', async () => {
+		packSnapshotWorkspacePackages.mockResolvedValue([
+			{
+				filename: 'n8n-workflow-sdk-0.41.0.tgz',
+				packageName: '@n8n/workflow-sdk',
+				packagePath: '/repo/packages/@n8n/workflow-sdk',
+				tarball: Buffer.from([0, 1, 2, 255]),
+				version: '0.41.0',
+			},
+		]);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.1', {
+			packWorkspacePackages: true,
+		});
+
+		const image = await manager.ensureImage();
+		const stagingDir = image.contextList[0]?.sourcePath;
+
+		expect(packSnapshotWorkspacePackages).toHaveBeenCalledWith(NOOP_LOGGER);
+		expect(stagingDir).toBeDefined();
+		await expect(readFile(join(stagingDir, 'package.json'), 'utf8')).resolves.toContain(
+			'file:.n8n-packages/n8n-workflow-sdk-0.41.0.tgz',
+		);
+		await expect(
+			readFile(join(stagingDir, '.n8n-packages/n8n-workflow-sdk-0.41.0.tgz')),
+		).resolves.toEqual(Buffer.from([0, 1, 2, 255]));
+	});
+
 	it('keeps the snapshot name stable when the base image changes', async () => {
 		const daytonaA = makeFakeDaytona();
 		const daytonaB = makeFakeDaytona();
 		daytonaA.snapshot.create.mockResolvedValue({ name: 'ignored-a' });
 		daytonaB.snapshot.create.mockResolvedValue({ name: 'ignored-b' });
-		const managerA = new SnapshotManager(
-			'daytonaio/sandbox:0.5.0',
-			NOOP_LOGGER,
-			'1.123.0',
-			TEMPLATES_SERVICE,
-		);
-		const managerB = new SnapshotManager('node:24', NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const managerA = new SnapshotManager('daytonaio/sandbox:0.5.0', NOOP_LOGGER, '1.123.0');
+		const managerB = new SnapshotManager('node:24', NOOP_LOGGER, '1.123.0');
 
 		const snapshotA = await managerA.createSnapshot(daytonaA as never);
 		const snapshotB = await managerB.createSnapshot(daytonaB as never);
@@ -210,7 +238,7 @@ describe('SnapshotManager.ensureImage', () => {
 
 describe('SnapshotManager.createSnapshot', () => {
 	it('returns the snapshot name on successful create', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockResolvedValue({ name: 'n8n/instance-ai:1.123.0' });
 
@@ -225,7 +253,7 @@ describe('SnapshotManager.createSnapshot', () => {
 	});
 
 	it('treats 409 conflict as success', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockRejectedValue(new DaytonaError('already exists', 409));
 
@@ -235,7 +263,7 @@ describe('SnapshotManager.createSnapshot', () => {
 	});
 
 	it('treats messages mentioning "already exists" as success', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockRejectedValue(
 			new DaytonaError('Snapshot with this name already exists', 400),
@@ -247,7 +275,7 @@ describe('SnapshotManager.createSnapshot', () => {
 	});
 
 	it('deletes an unusable snapshot, rebuilds once, and throws when the rebuild also fails', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockResolvedValue({ name: SNAPSHOT_NAME });
 		// Every build lands in a failed state; the record 404s while deleted.
@@ -289,7 +317,7 @@ describe('SnapshotManager.createSnapshot', () => {
 		// with "An operation is already in progress for this resource" and threw a
 		// synthesized DaytonaError without a statusCode. The failed record blocks
 		// every retry until deleted (previously a manual step in the Daytona UI).
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		let record: FakeSnapshot | undefined;
 		daytona.snapshot.create
@@ -332,7 +360,7 @@ describe('SnapshotManager.createSnapshot', () => {
 	});
 
 	it('recovers a re-run blocked by a leftover failed record', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		let record: FakeSnapshot | undefined = {
 			name: SNAPSHOT_NAME,
@@ -372,7 +400,7 @@ describe('SnapshotManager.createSnapshot', () => {
 	});
 
 	it('bounds failed-record cleanups and surfaces the create failure', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		let record: FakeSnapshot | undefined;
 		// Every create attempt re-registers a record that lands in `error`.
@@ -413,7 +441,7 @@ describe('SnapshotManager.createSnapshot', () => {
 	});
 
 	it('waits for an existing snapshot that is still building', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockRejectedValue(new DaytonaError('already exists', 409));
 		daytona.snapshot.get
@@ -435,7 +463,7 @@ describe('SnapshotManager.createSnapshot', () => {
 	});
 
 	it('retries transient errors and throws after exhausting retries', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockRejectedValue(new DaytonaError('upstream 500', 500));
 
@@ -455,7 +483,7 @@ describe('SnapshotManager.createSnapshot', () => {
 	});
 
 	it('recovers when a transient error is followed by already-exists on retry', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create
 			.mockRejectedValueOnce(new DaytonaError('<html>502 Bad Gateway</html>', 502))
@@ -475,7 +503,7 @@ describe('SnapshotManager.createSnapshot', () => {
 	});
 
 	it('does not retry non-transient errors', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockRejectedValue(new DaytonaError('invalid image', 400));
 
@@ -484,7 +512,7 @@ describe('SnapshotManager.createSnapshot', () => {
 	});
 
 	it('reactivates an existing inactive snapshot instead of failing', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockRejectedValue(new DaytonaError('already exists', 409));
 		daytona.snapshot.get
@@ -508,7 +536,7 @@ describe('SnapshotManager.createSnapshot', () => {
 	});
 
 	it('retries activation on a transient error at the next settle window', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockRejectedValue(new DaytonaError('already exists', 409));
 		let polls = 0;
@@ -536,7 +564,7 @@ describe('SnapshotManager.createSnapshot', () => {
 	});
 
 	it('gives up after exhausting activation attempts on a stuck-inactive snapshot', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockRejectedValue(new DaytonaError('already exists', 409));
 		daytona.snapshot.get.mockResolvedValue({ name: SNAPSHOT_NAME, state: 'inactive' });
@@ -556,7 +584,7 @@ describe('SnapshotManager.createSnapshot', () => {
 	});
 
 	it('waits after requesting activation and times out if the snapshot stays inactive', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockRejectedValue(new DaytonaError('already exists', 409));
 		daytona.snapshot.get.mockResolvedValue({ name: SNAPSHOT_NAME, state: 'inactive' });
@@ -576,7 +604,7 @@ describe('SnapshotManager.createSnapshot', () => {
 	});
 
 	it('bounds a hung status poll with the overall deadline', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockResolvedValue({ name: SNAPSHOT_NAME });
 		// A request that never settles (stalled transport, no error).
@@ -596,7 +624,7 @@ describe('SnapshotManager.createSnapshot', () => {
 	});
 
 	it('tolerates a transient error while polling snapshot state', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockResolvedValue({ name: SNAPSHOT_NAME });
 		daytona.snapshot.get
@@ -617,7 +645,7 @@ describe('SnapshotManager.createSnapshot', () => {
 	});
 
 	it('throws when no version is configured', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, undefined, TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, undefined);
 		const daytona = makeFakeDaytona();
 
 		await expect(manager.createSnapshot(daytona as never)).rejects.toThrow();
@@ -625,7 +653,7 @@ describe('SnapshotManager.createSnapshot', () => {
 	});
 
 	it('forwards options to daytona.snapshot.create', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockResolvedValue({ name: 'n8n/instance-ai:1.123.0' });
 		const onLogs = vi.fn();
@@ -640,7 +668,7 @@ describe('SnapshotManager.createSnapshot', () => {
 
 describe('SnapshotManager snapshot pruning', () => {
 	it('prunes on quota exhaustion and retries the create once', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create
 			.mockRejectedValueOnce(new DaytonaError('Snapshot quota exceeded. Maximum allowed: 30'))
@@ -667,7 +695,7 @@ describe('SnapshotManager snapshot pruning', () => {
 	});
 
 	it('waits for pruned snapshots to finish removing before retrying after a quota error', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create
 			.mockRejectedValueOnce(new DaytonaError('Snapshot quota exceeded. Maximum allowed: 30'))
@@ -708,7 +736,7 @@ describe('SnapshotManager snapshot pruning', () => {
 	});
 
 	it('throws the quota error when no retention is configured', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockRejectedValue(
 			new DaytonaError('Snapshot quota exceeded. Maximum allowed: 30'),
@@ -720,7 +748,7 @@ describe('SnapshotManager snapshot pruning', () => {
 	});
 
 	it('treats an explicit retention of 0 as pruning disabled on the quota path', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockRejectedValue(
 			new DaytonaError('Snapshot quota exceeded. Maximum allowed: 30'),
@@ -735,7 +763,7 @@ describe('SnapshotManager snapshot pruning', () => {
 	it('force-evicts the least-recently-used snapshot when quota is held below the retention window', async () => {
 		// Foreign snapshots can exhaust the org quota while our own count is
 		// within policy — the publish still needs one slot freed.
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create
 			.mockRejectedValueOnce(new DaytonaError('Snapshot quota exceeded. Maximum allowed: 30'))
@@ -759,7 +787,7 @@ describe('SnapshotManager snapshot pruning', () => {
 	});
 
 	it('throws the quota error when pruning frees nothing', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockRejectedValue(
 			new DaytonaError('Snapshot quota exceeded. Maximum allowed: 30'),
@@ -776,7 +804,7 @@ describe('SnapshotManager snapshot pruning', () => {
 	});
 
 	it('enforces the count cap after a successful publish, sparing the newest versions and in-progress builds', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockResolvedValue({ name: SNAPSHOT_NAME });
 		daytona.snapshot.list.mockResolvedValue(
@@ -800,7 +828,7 @@ describe('SnapshotManager snapshot pruning', () => {
 	});
 
 	it('age-prunes snapshots unused beyond maxAgeDays, keeping recently used and floor-protected ones', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockResolvedValue({ name: SNAPSHOT_NAME });
 		daytona.snapshot.list.mockResolvedValue(
@@ -839,7 +867,7 @@ describe('SnapshotManager snapshot pruning', () => {
 	});
 
 	it('does not let failed or suffixed snapshots consume rollback-floor slots', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockResolvedValue({ name: SNAPSHOT_NAME });
 		daytona.snapshot.list.mockResolvedValue(
@@ -863,7 +891,7 @@ describe('SnapshotManager snapshot pruning', () => {
 	});
 
 	it('count-cap eviction is LRU: an old version still in use outlives an idle newer one', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockResolvedValue({ name: SNAPSHOT_NAME });
 		daytona.snapshot.list.mockResolvedValue(
@@ -886,7 +914,7 @@ describe('SnapshotManager snapshot pruning', () => {
 	});
 
 	it('deletes failed snapshots even within the retention window', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockResolvedValue({ name: SNAPSHOT_NAME });
 		daytona.snapshot.list.mockResolvedValue(
@@ -905,7 +933,7 @@ describe('SnapshotManager snapshot pruning', () => {
 
 	it('never deletes the snapshot being published', async () => {
 		// Republish of an old version that ranks outside the retention window.
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockResolvedValue({ name: SNAPSHOT_NAME });
 		daytona.snapshot.list.mockResolvedValue(
@@ -921,7 +949,7 @@ describe('SnapshotManager snapshot pruning', () => {
 	});
 
 	it('paginates through the snapshot list', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockResolvedValue({ name: SNAPSHOT_NAME });
 		daytona.snapshot.list
@@ -938,7 +966,7 @@ describe('SnapshotManager snapshot pruning', () => {
 	});
 
 	it('does not fail the publish when pruning fails', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockResolvedValue({ name: SNAPSHOT_NAME });
 		daytona.snapshot.list.mockRejectedValue(new DaytonaError('boom', 500));
@@ -949,7 +977,7 @@ describe('SnapshotManager snapshot pruning', () => {
 	});
 
 	it('does not fail the publish when a single delete fails', async () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockResolvedValue({ name: SNAPSHOT_NAME });
 		daytona.snapshot.list.mockResolvedValue(
@@ -974,13 +1002,13 @@ describe('SnapshotManager snapshot pruning', () => {
 
 describe('SnapshotManager.snapshotName', () => {
 	it('returns null when no version is configured', () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, undefined, TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, undefined);
 
 		expect(manager.snapshotName()).toBeNull();
 	});
 
 	it('returns the versioned snapshot name', () => {
-		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 
 		expect(manager.snapshotName()).toBe(SNAPSHOT_NAME);
 	});

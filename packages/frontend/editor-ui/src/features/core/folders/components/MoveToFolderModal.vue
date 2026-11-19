@@ -8,6 +8,7 @@ import { useFoldersStore } from '../folders.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useDependencies } from '@/app/composables/useDependencies';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { type EventBus, createEventBus } from '@n8n/utils/event-bus';
@@ -23,7 +24,6 @@ import type {
 } from '@/features/credentials/credentials.types';
 import type { ResolvedDependency } from '@n8n/api-types';
 import { getResourcePermissions } from '@n8n/permissions';
-import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import Modal from '@/app/components/Modal.vue';
 import MoveToFolderDropdown from './MoveToFolderDropdown.vue';
 import ProjectMoveResourceModalCredentialsList from '@/features/collaboration/projects/components/ProjectMoveResourceModalCredentialsList.vue';
@@ -83,6 +83,7 @@ const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const workflowsListStore = useWorkflowsListStore();
 const workflowsStore = useWorkflowsStore();
+const settingsStore = useSettingsStore();
 const { fetchDependencies, fetchFolderDependencies, getDependencies } = useDependencies();
 const toast = useToast();
 const { labelOf } = usePolicyViolationLabels();
@@ -107,6 +108,9 @@ const isTransferringOwnership = computed(() => {
 const workflowCount = ref(0);
 const subFolderCount = ref(0);
 
+const isSharingEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
+);
 const shareUsedCredentials = ref(false);
 const usedCredentials = ref<IUsedCredential[]>([]);
 const allCredentials = ref<ICredentialsResponse[]>([]);
@@ -114,6 +118,7 @@ const shareableCredentials = computed(() =>
 	allCredentials.value.filter(
 		(credential) =>
 			isTransferringOwnership.value &&
+			isSharingEnabled.value &&
 			getResourcePermissions(credential.scopes).credential.share &&
 			usedCredentials.value.find((uc) => uc.id === credential.id),
 	),
@@ -123,7 +128,10 @@ const unShareableCredentials = computed(() =>
 		(acc, uc) => {
 			const credential = credentialsStore.getCredentialById(uc.id);
 			const credentialPermissions = getResourcePermissions(credential?.scopes).credential;
-			if (!credentialPermissions.share) {
+			if (
+				!credentialPermissions.share ||
+				(isTransferringOwnership.value && !isSharingEnabled.value)
+			) {
 				if (credentialPermissions.read) {
 					acc.push(credential);
 				} else {
@@ -495,7 +503,7 @@ onMounted(async () => {
 			>
 				{{ descriptionMessage }}
 			</p>
-			<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
+			<div v-if="projectsStore.isTeamProjectFeatureEnabled" :class="$style.content">
 				<div :class="$style.block">
 					<N8nText color="text-dark">
 						{{ i18n.baseText('folders.move.modal.project.label') }}
@@ -547,7 +555,7 @@ onMounted(async () => {
 						</div>
 					</N8nText>
 				</div>
-			</EnterpriseEdition>
+			</div>
 			<template v-if="selectedProject && isFolderSelectable">
 				<div :class="$style.block">
 					<N8nText color="text-dark">
@@ -561,6 +569,7 @@ onMounted(async () => {
 						:parent-folder-id="props.data.resource.parentFolderId"
 						:exclude-only-parent="props.data.resourceType === 'workflow'"
 						@location:selected="onFolderSelected"
+						@load:error="toast.showError($event, i18n.baseText('folders.open.error.title'))"
 					/>
 				</div>
 			</template>
