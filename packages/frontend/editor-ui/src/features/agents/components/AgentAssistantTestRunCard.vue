@@ -3,15 +3,14 @@ import { N8nBadge, N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref, useId } from 'vue';
 
-import type { AgentToolCallRouteItem } from '../toolCallSimulation.types';
+import type { AgentAssistantTestRunCall } from '../assistantTestRun.types';
 import AgentToolCallRouteRow from './AgentToolCallRouteRow.vue';
 import WouldHaveHappenedPreview from './testRun/WouldHaveHappenedPreview.vue';
-import type { WouldHaveHappenedPreviewInput } from './testRun/wouldHaveHappened.types';
 
 /** Presentational only. The caller must confirm that this is a simulated test run. */
 const props = defineProps<{
 	agentName: string;
-	calls: Array<AgentToolCallRouteItem & { preview?: WouldHaveHappenedPreviewInput }>;
+	calls: AgentAssistantTestRunCall[];
 	/** Omit until the caller has a saved test chat to open. */
 	testChatId?: string;
 }>();

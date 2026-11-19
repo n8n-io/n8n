@@ -5,10 +5,8 @@ import { defineComponent } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import AgentAssistantTestRunCard from '../components/AgentAssistantTestRunCard.vue';
-import type { AgentToolCallRouteItem } from '../toolCallSimulation.types';
-import type { WouldHaveHappenedPreviewInput } from '../components/testRun/wouldHaveHappened.types';
+import type { AgentAssistantTestRunCall as Call } from '../assistantTestRun.types';
 
-type Call = AgentToolCallRouteItem & { preview?: WouldHaveHappenedPreviewInput };
 const render = createComponentRenderer(AgentAssistantTestRunCard);
 const email: Call = {
 	toolCallId: 'email',
