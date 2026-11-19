@@ -277,9 +277,6 @@ export class TimescaleDb implements INodeType {
 			...(this.getNode().typeVersion >= 1.1
 				? {
 						types: getDateAsStringTypeParsers(pgp, {
-							// TimescaleDB is PostgreSQL, so a `timestamp without time zone` carries no
-							// offset here either. 1.3 reads it the way Postgres 2.9 does. Below that the
-							// older reading stays, so an existing workflow sees the output it always has.
 							legacyUtcTimestamps: this.getNode().typeVersion < 1.3,
 						}),
 					}
