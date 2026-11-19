@@ -62,10 +62,13 @@ declare module 'n8n-workflow' {
 		/** Eval only: answers for non-HTTP nodes at run time. Never present in normal executions. */
 		evalNodeMockHandler?: EvalNodeMockHandler;
 		/**
-		 * Eval only: the proxy (`http://host:port`) that every outbound HTTP request of a
-		 * simulated-services eval run goes through, so its vendor calls reach the sim
-		 * server. Applied after credential auth and signing, so the request is the one
-		 * production sends. Never present in normal executions.
+		 * Eval only: the proxy (`http://host:port`) of a simulated-services eval run. Every
+		 * request that goes through the node request helpers and the OAuth2 token client
+		 * uses it, so those vendor calls reach the sim server. SDK-based nodes on
+		 * `OutboundHttp.transport()` do not. Applied after credential auth and signing, so
+		 * the request is the one production sends. The caller must run with run-scoped
+		 * credentials: OAuth2 tokens the sim issues are stored like any other token. Never
+		 * present in normal executions.
 		 */
 		evalEgressProxy?: string;
 		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
