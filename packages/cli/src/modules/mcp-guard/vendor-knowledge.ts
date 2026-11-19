@@ -103,3 +103,15 @@ export function isPassthroughHost(host: string): boolean {
 		vendor.passthroughHosts.includes(canonicalHost(host)),
 	);
 }
+
+/**
+ * True for a token exchange or refresh on a sign-in host: a POST to a path that ends in `/token`.
+ * Any other request on that host, such as a token revocation, is not passed through.
+ */
+export function isTokenExchange(req: { method: string; url: URL }): boolean {
+	return (
+		isPassthroughHost(req.url.hostname) &&
+		req.method.toUpperCase() === 'POST' &&
+		/\/token$/.test(req.url.pathname)
+	);
+}

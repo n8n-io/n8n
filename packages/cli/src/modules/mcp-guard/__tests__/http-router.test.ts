@@ -72,6 +72,16 @@ describe('HttpGuardRouter', () => {
 		expect(gym.callTool).not.toHaveBeenCalled();
 	});
 
+	it('refuses a request on the sign-in host that is no token exchange', async () => {
+		const { router, gym, realSend } = setup();
+
+		const res = await router.handle(request('POST', '/revoke', {}, 'oauth2.googleapis.com'));
+
+		expect(res.status).toBe(403);
+		expect(realSend).not.toHaveBeenCalled();
+		expect(gym.callTool).not.toHaveBeenCalled();
+	});
+
 	it('sends the sign-in host to the real network as it is', async () => {
 		const { router, gym, realSend } = setup();
 

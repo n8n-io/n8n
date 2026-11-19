@@ -3,6 +3,8 @@ import http from 'node:http';
 import https from 'node:https';
 import { PassThrough, Writable } from 'node:stream';
 
+import { UnexpectedError } from 'n8n-workflow';
+
 import { currentNodeGuard } from './chat-scope';
 
 export interface CapturedRequest {
@@ -66,12 +68,18 @@ function readArgs(protocol: 'http:' | 'https:', args: unknown[]) {
 	const port = text(opts.port, fromUrl?.port ?? '');
 	const path = text(opts.path, fromUrl ? fromUrl.pathname + fromUrl.search : '/');
 	const url = new URL(`${protocol}//${host}${port ? `:${port}` : ''}${path}`);
-	return {
-		url,
-		method: text(opts.method, 'GET').toUpperCase(),
-		headers: lowerHeaders(opts.headers),
-		onResponse,
-	};
+	const headers = lowerHeaders(opts.headers);
+	// Basic auth is set by the client, not as a header. Add it, so a replay of the request keeps it.
+	const auth =
+		typeof opts.auth === 'string'
+			? opts.auth
+			: fromUrl?.username
+				? `${decodeURIComponent(fromUrl.username)}:${decodeURIComponent(fromUrl.password)}`
+				: undefined;
+	if (auth !== undefined && headers.authorization === undefined) {
+		headers.authorization = `Basic ${Buffer.from(auth).toString('base64')}`;
+	}
+	return { url, method: text(opts.method, 'GET').toUpperCase(), headers, onResponse };
 }
 
 const PLAIN_BODY_DROPS: ReadonlySet<string> = new Set([
@@ -106,6 +114,10 @@ class InterceptedRequest extends Writable {
 
 	private readonly headers: Record<string, string>;
 
+	// Headers that the caller removed. The real request is made from the original options, so a
+	// removed header must be removed there too.
+	private readonly removed = new Set<string>();
+
 	constructor(
 		private readonly lib: Lib,
 		private readonly realArgs: unknown[],
@@ -118,6 +130,7 @@ class InterceptedRequest extends Writable {
 
 	setHeader(name: string, value: unknown): this {
 		this.headers[name.toLowerCase()] = headerValue(value);
+		this.removed.delete(name.toLowerCase());
 		return this;
 	}
 
@@ -127,6 +140,7 @@ class InterceptedRequest extends Writable {
 
 	removeHeader(name: string): void {
 		delete this.headers[name.toLowerCase()];
+		this.removed.add(name.toLowerCase());
 	}
 
 	// Calls that a real request has and that need no work here.
@@ -174,8 +188,9 @@ class InterceptedRequest extends Writable {
 	private sendToNetwork(req: CapturedRequest): void {
 		const original = installed?.originals;
 		const request = this.lib === https ? original?.httpsRequest : original?.httpRequest;
-		if (!request) throw new Error('net interceptor is not installed');
+		if (!request) throw new UnexpectedError('net interceptor is not installed');
 		const real = request(...(this.realArgs as Parameters<RequestFn>));
+		for (const name of this.removed) real.removeHeader(name);
 		for (const [name, value] of Object.entries(req.headers)) real.setHeader(name, value);
 		real.on('response', (res) => this.emit('response', res));
 		real.on('error', (error) => this.emit('error', error));
@@ -200,7 +215,9 @@ function patchedRequest(lib: Lib, original: RequestFn, decide: () => RequestDeci
 function patchedFetch(original: typeof globalThis.fetch, decide: () => RequestDecider) {
 	return async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
 		if (!intercepting()) return await original(input, init);
-		const probe = input instanceof Request ? input.clone() : new Request(input, init);
+		// `init` overrides the request, as it does in the real `fetch`. Clone, so the body stays unread
+		// for a passthrough.
+		const probe = new Request(input instanceof Request ? input.clone() : input, init);
 		const headers: Record<string, string> = {};
 		probe.headers.forEach((value, key) => {
 			headers[key] = value;

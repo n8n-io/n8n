@@ -8,7 +8,7 @@ import type { McpCaller } from './mcp-upstream';
 import type { CapturedRequest } from './net-interceptor';
 import { isReadShaped } from './request-classifier';
 import type { Hydrator } from './router';
-import { canonicalHost, isPassthroughHost, vendorForRequest } from './vendor-knowledge';
+import { canonicalHost, isTokenExchange, vendorForRequest } from './vendor-knowledge';
 
 export interface HttpGuardRouterDeps {
 	// The real service. Only a read-shaped request reaches it.
@@ -49,7 +49,7 @@ export class HttpGuardRouter {
 
 	async handle(req: CapturedRequest): Promise<Response> {
 		const host = canonicalHost(req.url.hostname);
-		if (isPassthroughHost(host)) return await this.deps.realSend(req);
+		if (isTokenExchange(req)) return await this.deps.realSend(req);
 		const vendor = vendorForRequest(host, req.url.pathname);
 		if (!vendor) return refusal(403, 'mcp-guard: this host is not available in a preview chat');
 

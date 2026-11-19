@@ -106,7 +106,31 @@ describe('fromToolArgs', () => {
 	});
 });
 
+describe('fromToolArgs path check', () => {
+	it.each(['https://evil.test/x', '//evil.test/x', 'gmail/v1/x', '/a\\b'])(
+		'refuses the path %s',
+		(path) => {
+			expect(() => fromToolArgs('https://x.test', { method: 'GET', path }, {})).toThrow();
+		},
+	);
+});
+
 describe('createHttpToolCaller', () => {
+	it('does not send a call that the allow check refuses', async () => {
+		const send = vi.fn(async (_r: CapturedRequest) => new Response('{}'));
+		const caller = createHttpToolCaller({
+			origin: 'https://x.test',
+			send,
+			headers: () => ({}),
+			allow: (req) => req.method === 'GET',
+		});
+
+		await expect(caller.callTool('read_x', { method: 'POST', path: '/a' })).rejects.toThrow();
+		expect(send).not.toHaveBeenCalled();
+		await caller.callTool('read_x', { method: 'GET', path: '/a' });
+		expect(send).toHaveBeenCalledTimes(1);
+	});
+
 	const respond = (status: number, body: string, type = 'application/json') =>
 		vi.fn(
 			async (_r: CapturedRequest) =>
@@ -223,7 +247,14 @@ describe('createGymSender', () => {
 				'POST',
 				'https://www.googleapis.com/gmail/v1/users/me/messages/send?a=1',
 				{ raw: 'abc' },
-				{ authorization: 'Bearer real-secret', host: 'wrong', 'content-length': '999', 'x-k': 'v' },
+				{
+					authorization: 'Bearer real-secret',
+					cookie: 'sid=real-cookie',
+					'proxy-authorization': 'Basic real-proxy',
+					host: 'wrong',
+					'content-length': '999',
+					'x-k': 'v',
+				},
 			),
 		);
 
@@ -235,6 +266,8 @@ describe('createGymSender', () => {
 		expect(seen.headers['x-k']).toBe('v');
 		expect(JSON.parse(seen.body)).toEqual({ raw: 'abc' });
 		expect(JSON.stringify(seen.headers)).not.toContain('real-secret');
+		expect(JSON.stringify(seen.headers)).not.toContain('real-cookie');
+		expect(JSON.stringify(seen.headers)).not.toContain('real-proxy');
 	});
 
 	it('returns an error status of the gym as it is', async () => {

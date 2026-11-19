@@ -1,7 +1,8 @@
 import type { CapturedRequest } from './net-interceptor';
 
-// A GraphQL operation keyword at the start of a definition. Anything else in the text is not one.
-const OPERATION = /(?:^|[}\s])(query|mutation|subscription)\b/g;
+// A GraphQL operation keyword is a whole word. Commas, braces and spaces all separate definitions, so
+// only a letter, a digit or an underscore before or after the word makes it part of a longer name.
+const OPERATION = /(?<![_A-Za-z0-9])(query|mutation|subscription)(?![_A-Za-z0-9])/g;
 
 function isGraphqlQuery(body: Buffer | undefined): boolean {
 	if (!body) return false;
@@ -16,7 +17,10 @@ function isGraphqlQuery(body: Buffer | undefined): boolean {
 	if (typeof query !== 'string') return false;
 	const words = [...query.matchAll(OPERATION)].map((match) => match[1]);
 	// A document with a mutation or a subscription anywhere is a write.
-	return !words.includes('mutation') && !words.includes('subscription');
+	if (words.includes('mutation') || words.includes('subscription')) return false;
+	// Text that is no GraphQL, such as a search term, is not a read. A query has the keyword or opens
+	// with a selection set.
+	return words.includes('query') || query.trimStart().startsWith('{');
 }
 
 /**

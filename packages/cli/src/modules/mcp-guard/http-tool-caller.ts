@@ -2,6 +2,7 @@ import http from 'node:http';
 import https from 'node:https';
 
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { UnexpectedError } from 'n8n-workflow';
 
 import type { McpCaller } from './mcp-upstream';
 import type { CapturedRequest } from './net-interceptor';
@@ -79,7 +80,14 @@ export function fromToolArgs(
 	args: HttpToolArgs,
 	headers: Record<string, string>,
 ): CapturedRequest {
+	// A path is relative to the origin. An absolute URL would send the node credential to another host.
+	if (!args.path.startsWith('/') || args.path.startsWith('//') || args.path.includes('\\')) {
+		throw new UnexpectedError('mcp-guard: the path of a call must be relative');
+	}
 	const url = new URL(args.path, origin);
+	if (url.origin !== new URL(origin).origin) {
+		throw new UnexpectedError('mcp-guard: the call leaves the host of the request');
+	}
 	for (const [key, value] of Object.entries(args.query ?? {})) {
 		for (const item of Array.isArray(value) ? value : [value]) url.searchParams.append(key, item);
 	}
@@ -107,6 +115,8 @@ export interface HttpToolCallerOptions {
 	headers: () => Record<string, string>;
 	// Changes a JSON answer before it becomes the text of the result.
 	enrich?: (json: unknown) => unknown;
+	// Checks the request that the args make, before it is sent. The args come from a model.
+	allow?: (req: CapturedRequest) => boolean;
 }
 
 /** A tool caller that sends HTTP requests. The result is the body as text, `_meta` holds the status. */
@@ -114,13 +124,15 @@ export function createHttpToolCaller(options: HttpToolCallerOptions): McpCaller 
 	return {
 		listTools: async () => [],
 		callTool: async (_name, args): Promise<CallToolResult> => {
-			const res = await options.send(
-				fromToolArgs(
-					typeof options.origin === 'function' ? options.origin() : options.origin,
-					args as HttpToolArgs,
-					options.headers(),
-				),
+			const req = fromToolArgs(
+				typeof options.origin === 'function' ? options.origin() : options.origin,
+				args as HttpToolArgs,
+				options.headers(),
 			);
+			if (options.allow && !options.allow(req)) {
+				throw new UnexpectedError('mcp-guard: this call is not allowed');
+			}
+			const res = await options.send(req);
 			let text = await res.text();
 			if (options.enrich) {
 				try {
@@ -141,6 +153,10 @@ export function createHttpToolCaller(options: HttpToolCallerOptions): McpCaller 
 // Headers that the client of the copy sets, and the credential of the real service.
 const NOT_FORWARDED: ReadonlySet<string> = new Set([
 	'authorization',
+	'cookie',
+	'proxy-authorization',
+	'x-api-key',
+	'x-goog-api-key',
 	'host',
 	'content-length',
 	'connection',

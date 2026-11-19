@@ -6,7 +6,8 @@ import { createPlanLlm, type HydrationModel } from './hydration-llm';
 import { PLAN_INSTRUCTIONS } from './hydration-prompts';
 import { sendToNetwork } from './net-interceptor';
 import { PlanHydrator } from './plan-hydrator';
-import type { VendorKnowledge } from './vendor-knowledge';
+import { isReadShaped } from './request-classifier';
+import { matchesVendor, type VendorKnowledge } from './vendor-knowledge';
 
 export interface HttpRun {
 	tenant: string;
@@ -74,6 +75,11 @@ export class HttpRunRegistry {
 				...(context.authorization && { authorization: context.authorization }),
 			}),
 			enrich: profile.enrich,
+			// The model writes the args of a real read. Code checks the request they make: it must be
+			// read-shaped, on the host of the node, and inside the vendor.
+			allow: (req) =>
+				isReadShaped(req, vendor.readPaths) &&
+				matchesVendor(vendor, req.url.hostname, req.url.pathname),
 		});
 		const gym = createHttpToolCaller({
 			origin: () => context.origin,
@@ -115,8 +121,9 @@ export class HttpRunRegistry {
 	async delete(runId: string): Promise<boolean> {
 		const run = this.runs.get(runId);
 		if (!run) return false;
-		this.runs.delete(runId);
+		// Forget the run only after the gym deleted the tenant, so a failed delete is tried again.
 		await this.cfg.admin.deleteTenant(run.tenant);
+		this.runs.delete(runId);
 		return true;
 	}
 }

@@ -2,6 +2,7 @@ import {
 	loadVendorKnowledge,
 	matchesVendor,
 	parseVendorFile,
+	isTokenExchange,
 	vendorForRequest,
 } from '../vendor-knowledge';
 
@@ -85,5 +86,16 @@ describe('the Gmail vendor file', () => {
 		);
 		expect(vendorForRequest('www.googleapis.com', '/drive/v3/files')).toBeUndefined();
 		expect(vendorForRequest('example.com', '/gmail/v1/users/me/messages')).toBeUndefined();
+	});
+
+	it('treats only a POST to a token path of a sign-in host as a token exchange', () => {
+		const call = (method: string, path: string, host = 'oauth2.googleapis.com') => ({
+			method,
+			url: new URL(`https://${host}${path}`),
+		});
+		expect(isTokenExchange(call('POST', '/token'))).toBe(true);
+		expect(isTokenExchange(call('POST', '/revoke'))).toBe(false);
+		expect(isTokenExchange(call('GET', '/token'))).toBe(false);
+		expect(isTokenExchange(call('POST', '/token', 'example.com'))).toBe(false);
 	});
 });

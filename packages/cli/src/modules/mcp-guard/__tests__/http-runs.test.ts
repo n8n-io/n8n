@@ -83,6 +83,15 @@ describe('HttpRunRegistry', () => {
 		expect(admin.createTenant).toHaveBeenCalledWith('guard-agent-x-1-chat');
 	});
 
+	it('keeps the run when the gym cannot delete the tenant, so a later delete tries again', async () => {
+		const { registry, admin } = setup();
+		await registry.getOrCreate('agent-a', model);
+		admin.deleteTenant.mockRejectedValueOnce(new Error('gym down'));
+
+		await expect(registry.delete('agent-a')).rejects.toThrow('gym down');
+		expect(await registry.delete('agent-a')).toBe(true);
+	});
+
 	it('deletes the tenant of a run', async () => {
 		const { registry, admin } = setup();
 		await registry.getOrCreate('agent-a', model);
