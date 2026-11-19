@@ -120,7 +120,6 @@ const enableMcpSettings = () => {
 			mcpManagedByEnv: false,
 			autoExposeNewWorkflows: false,
 			preferencesEnabled: true,
-			skillsEnabled: true,
 		},
 	};
 };
@@ -149,7 +148,6 @@ describe('SettingsMCPView', () => {
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: false,
 				preferencesEnabled: true,
-				skillsEnabled: true,
 			},
 		};
 
@@ -666,7 +664,6 @@ describe('SettingsMCPView', () => {
 					mcpManagedByEnv: true,
 					autoExposeNewWorkflows: false,
 					preferencesEnabled: true,
-					skillsEnabled: true,
 				},
 			};
 
@@ -837,22 +834,20 @@ describe('SettingsMCPView', () => {
 		});
 	});
 
-	describe('preferences and skills switches', () => {
+	describe('preferences switch', () => {
 		beforeEach(() => {
 			enableMcpSettings();
 			mcpStore.preferencesEnabled = true;
-			mcpStore.skillsEnabled = false;
 		});
 
-		it('shows both switches with their saved values to a user with mcp:manage', async () => {
+		it('shows the switch with its saved value to a user with mcp:manage', async () => {
 			const { getByTestId } = createComponent({ pinia });
 			await waitAllPromises();
 
 			expect(getByTestId('mcp-preferences-toggle')).toHaveAttribute('aria-checked', 'true');
-			expect(getByTestId('mcp-skills-toggle')).toHaveAttribute('aria-checked', 'false');
 		});
 
-		it('hides the switches from a user without mcp:manage', async () => {
+		it('hides the switch from a user without mcp:manage', async () => {
 			rbacStore.hasScope.mockReturnValue(false);
 
 			const { queryByTestId } = createComponent({ pinia });
@@ -861,29 +856,25 @@ describe('SettingsMCPView', () => {
 			expect(queryByTestId('mcp-preview-features-section')).toBeNull();
 		});
 
-		it('saves the new value of each switch', async () => {
+		it('saves the new value', async () => {
 			mcpStore.setPreferencesEnabled.mockResolvedValue(false);
-			mcpStore.setSkillsEnabled.mockResolvedValue(true);
 
 			const { getByTestId } = createComponent({ pinia });
 			await waitAllPromises();
 
 			await userEvent.click(getByTestId('mcp-preferences-toggle'));
 			await waitAllPromises();
-			await userEvent.click(getByTestId('mcp-skills-toggle'));
-			await waitAllPromises();
 
 			expect(mcpStore.setPreferencesEnabled).toHaveBeenCalledWith(false);
-			expect(mcpStore.setSkillsEnabled).toHaveBeenCalledWith(true);
 		});
 
 		it('shows a toast error when saving fails', async () => {
-			mcpStore.setSkillsEnabled.mockRejectedValueOnce(new Error('nope'));
+			mcpStore.setPreferencesEnabled.mockRejectedValueOnce(new Error('nope'));
 
 			const { getByTestId } = createComponent({ pinia });
 			await waitAllPromises();
 
-			await userEvent.click(getByTestId('mcp-skills-toggle'));
+			await userEvent.click(getByTestId('mcp-preferences-toggle'));
 			await waitAllPromises();
 
 			expect(useToast().showError).toHaveBeenCalledWith(
@@ -903,17 +894,15 @@ describe('SettingsMCPView', () => {
 
 			expect(getByTestId('mcp-preferences-toggle')).toHaveAttribute('aria-checked', 'false');
 			expect(getByTestId('mcp-preferences-toggle')).toBeDisabled();
-			expect(getByTestId('mcp-skills-toggle')).not.toBeDisabled();
 		});
 
-		it('disables the switches when MCP settings are managed by env', async () => {
+		it('disables the switch when MCP settings are managed by env', async () => {
 			mcpStore.mcpManagedByEnv = true;
 
 			const { getByTestId } = createComponent({ pinia });
 			await waitAllPromises();
 
 			expect(getByTestId('mcp-preferences-toggle')).toBeDisabled();
-			expect(getByTestId('mcp-skills-toggle')).toBeDisabled();
 		});
 
 		it.each([true, false])(
@@ -925,7 +914,7 @@ describe('SettingsMCPView', () => {
 				await waitAllPromises();
 
 				expect(queryAllByTestId('settings-enable-row-enterprise-readiness-badge')).toHaveLength(
-					isEnterprisePlan ? 2 : 0,
+					isEnterprisePlan ? 1 : 0,
 				);
 			},
 		);

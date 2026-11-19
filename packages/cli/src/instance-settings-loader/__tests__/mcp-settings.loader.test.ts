@@ -55,26 +55,20 @@ describe('McpSettingsLoader', () => {
 			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(false);
 		});
 
-		it('applies the preferences and skills switches when they are set', async () => {
-			const loader = createLoader({
-				mcpManagedByEnv: true,
-				mcpPreferencesEnabled: false,
-				mcpSkillsEnabled: true,
-			});
+		it('applies the preferences switch when it is set', async () => {
+			const loader = createLoader({ mcpManagedByEnv: true, mcpPreferencesEnabled: false });
 
 			await loader.run();
 
 			expect(mcpSettingsService.setPreferencesEnabled).toHaveBeenCalledWith(false);
-			expect(mcpSettingsService.setSkillsEnabled).toHaveBeenCalledWith(true);
 		});
 
-		it('keeps the preferences and skills switches when they are unset', async () => {
+		it('keeps the preferences switch when it is unset', async () => {
 			const loader = createLoader({ mcpManagedByEnv: true });
 
 			await loader.run();
 
 			expect(mcpSettingsService.setPreferencesEnabled).not.toHaveBeenCalled();
-			expect(mcpSettingsService.setSkillsEnabled).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -969,7 +969,6 @@ describe('WorkflowProductionChecklist', () => {
 					mcpManagedByEnv: false,
 					autoExposeNewWorkflows: false,
 					preferencesEnabled: true,
-					skillsEnabled: true,
 				},
 			});
 			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(true);
@@ -999,7 +998,6 @@ describe('WorkflowProductionChecklist', () => {
 					mcpManagedByEnv: false,
 					autoExposeNewWorkflows: false,
 					preferencesEnabled: true,
-					skillsEnabled: true,
 				},
 			});
 			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(false);
@@ -1026,7 +1024,6 @@ describe('WorkflowProductionChecklist', () => {
 					mcpManagedByEnv: false,
 					autoExposeNewWorkflows: false,
 					preferencesEnabled: true,
-					skillsEnabled: true,
 				},
 			});
 			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(true);
@@ -1057,7 +1054,6 @@ describe('WorkflowProductionChecklist', () => {
 					mcpManagedByEnv: false,
 					autoExposeNewWorkflows: false,
 					preferencesEnabled: true,
-					skillsEnabled: true,
 				},
 			});
 
@@ -1085,7 +1081,6 @@ describe('WorkflowProductionChecklist', () => {
 					mcpManagedByEnv: false,
 					autoExposeNewWorkflows: false,
 					preferencesEnabled: true,
-					skillsEnabled: true,
 				},
 			});
 
@@ -1118,7 +1113,6 @@ describe('WorkflowProductionChecklist', () => {
 					mcpManagedByEnv: false,
 					autoExposeNewWorkflows: false,
 					preferencesEnabled: true,
-					skillsEnabled: true,
 				},
 			});
 
@@ -1149,7 +1143,6 @@ describe('WorkflowProductionChecklist', () => {
 					mcpManagedByEnv: false,
 					autoExposeNewWorkflows: false,
 					preferencesEnabled: true,
-					skillsEnabled: true,
 				},
 			});
 			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(true);
@@ -1180,7 +1173,6 @@ describe('WorkflowProductionChecklist', () => {
 					mcpManagedByEnv: false,
 					autoExposeNewWorkflows: false,
 					preferencesEnabled: true,
-					skillsEnabled: true,
 				},
 			});
 

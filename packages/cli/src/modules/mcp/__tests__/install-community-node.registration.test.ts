@@ -157,8 +157,7 @@ describe('install_community_node registration', () => {
 			mockInstance(ModuleRegistry, {
 				isActive: vi.fn().mockImplementation((name: string) => name === 'community-packages'),
 				settings: {
-					get: (name: string) =>
-						name === 'mcp' ? { preferencesEnabled: true, skillsEnabled: true } : undefined,
+					get: (name: string) => (name === 'mcp' ? { preferencesEnabled: true } : undefined),
 				} as unknown as ModuleRegistry['settings'],
 			}),
 			mockInstance(EventService),

@@ -14,7 +14,6 @@ export type McpSettingsResponse = {
 	mcpAccessEnabled: boolean;
 	autoExposeNewWorkflows: boolean;
 	preferencesEnabled: boolean;
-	skillsEnabled: boolean;
 };
 
 export type ToggleWorkflowsMcpAccessTarget =

@@ -85,7 +85,6 @@ describe('SettingsMCPAgentsView', () => {
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: false,
 				preferencesEnabled: true,
-				skillsEnabled: true,
 			},
 		};
 		settingsStore.isAgentsEnabled = true;
@@ -104,7 +103,6 @@ describe('SettingsMCPAgentsView', () => {
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: false,
 				preferencesEnabled: true,
-				skillsEnabled: true,
 			},
 		};
 

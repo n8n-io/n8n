@@ -140,14 +140,6 @@ export class InstanceSettingsLoaderConfig {
 	mcpPreferencesEnabled?: boolean;
 
 	/**
-	 * Whether MCP clients can read and change skills. n8n reads this value only when
-	 * `N8N_MCP_MANAGED_BY_ENV` is true. When unset, skills are off on the Enterprise plan and
-	 * on for other plans, unless an admin already changed the setting.
-	 */
-	@Env('N8N_MCP_SKILLS_ENABLED')
-	mcpSkillsEnabled?: boolean;
-
-	/**
 	 * Whether `N8N_PREFERENCES_ENABLED` controls the Preferences setting. When true, n8n applies
 	 * that value on every startup and admins can't change the setting in the UI.
 	 */

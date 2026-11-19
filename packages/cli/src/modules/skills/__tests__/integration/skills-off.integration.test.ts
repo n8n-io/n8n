@@ -43,7 +43,7 @@ describe('Skills with the agents module, by consumer', () => {
 	const setConsumers = ({ agents = false, assistant = false, mcp = false }) => {
 		settings.set('agents', { enabled: agents });
 		settings.set('instance-ai', { enabled: assistant });
-		settings.set('mcp', { mcpAccessEnabled: mcp, skillsEnabled: mcp });
+		settings.set('mcp', { mcpAccessEnabled: mcp });
 	};
 
 	beforeAll(async () => {

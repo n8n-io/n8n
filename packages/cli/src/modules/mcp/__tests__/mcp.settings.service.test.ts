@@ -57,20 +57,9 @@ describe('McpSettingsService', () => {
 		);
 	});
 
-	describe.each([
-		{
-			name: 'preferences',
-			key: 'mcp.preferences.enabled',
-			get: async () => await service.getPreferencesEnabled(),
-			set: async (enabled: boolean) => await service.setPreferencesEnabled(enabled),
-		},
-		{
-			name: 'skills',
-			key: 'mcp.skills.enabled',
-			get: async () => await service.getSkillsEnabled(),
-			set: async (enabled: boolean) => await service.setSkillsEnabled(enabled),
-		},
-	])('$name switch', ({ key, get, set }) => {
+	describe('preferences switch', () => {
+		const key = 'mcp.preferences.enabled';
+
 		test.each([
 			{ isEnterprisePlan: true, expected: false },
 			{ isEnterprisePlan: false, expected: true },
@@ -80,7 +69,7 @@ describe('McpSettingsService', () => {
 				findByKey.mockResolvedValue(null);
 				license.isEnterprisePlan.mockReturnValue(isEnterprisePlan);
 
-				await expect(get()).resolves.toBe(expected);
+				await expect(service.getPreferencesEnabled()).resolves.toBe(expected);
 				expect(findByKey).toHaveBeenCalledWith(key);
 			},
 		);
@@ -89,11 +78,11 @@ describe('McpSettingsService', () => {
 			findByKey.mockResolvedValue(mock<Settings>({ key, value }));
 			license.isEnterprisePlan.mockReturnValue(true);
 
-			await expect(get()).resolves.toBe(value === 'true');
+			await expect(service.getPreferencesEnabled()).resolves.toBe(value === 'true');
 		});
 
 		test('saves the value', async () => {
-			await set(false);
+			await service.setPreferencesEnabled(false);
 
 			expect(upsertByKey).toHaveBeenCalledWith(key, 'false', true, {});
 		});

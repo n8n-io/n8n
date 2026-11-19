@@ -92,8 +92,6 @@ import type {
 	ToolHandlerResult,
 } from '../mcp.types';
 import { McpPreferencesNoteService } from '../mcp-preferences-note.service';
-import { McpSkillToolsService } from '../tools/skills/skill-tools.service';
-import { SkillsGate } from '@/modules/skills';
 import { createWorkflow } from './mock.utils';
 
 // Keep the real mcpAppToolMeta and constants; only the preview-app
@@ -111,7 +109,7 @@ const mockAiGatewayService = () =>
 const mockModuleRegistry = () => {
 	const moduleRegistry = mockInstance(ModuleRegistry);
 	Object.assign(moduleRegistry, {
-		settings: new Map([['mcp', { preferencesEnabled: true, skillsEnabled: true }]]),
+		settings: new Map([['mcp', { preferencesEnabled: true }]]),
 	});
 	return moduleRegistry;
 };
@@ -691,7 +689,7 @@ describe('McpService', () => {
 		it.each([true, false])(
 			'registers the preference tools only while the MCP Preferences switch is %s',
 			async (preferencesEnabled) => {
-				moduleRegistry.settings.set('mcp', { preferencesEnabled, skillsEnabled: true });
+				moduleRegistry.settings.set('mcp', { preferencesEnabled });
 				const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 
 				const server = await mcpService.getServer(user, mcpFeatureFlags());
@@ -707,20 +705,6 @@ describe('McpService', () => {
 				]) {
 					expect(toolNames.includes(tool)).toBe(preferencesEnabled);
 				}
-			},
-		);
-
-		it.each([true, false])(
-			'registers the skill tools only while the MCP Skills switch is %s',
-			async (skillsEnabled) => {
-				moduleRegistry.settings.set('mcp', { preferencesEnabled: true, skillsEnabled });
-				Container.set(SkillsGate, mock<SkillsGate>({ isEnabled: true }));
-				const skillTools = mockInstance(McpSkillToolsService);
-				const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
-
-				await mcpService.getServer(user, mcpFeatureFlags());
-
-				expect(skillTools.registerTools).toHaveBeenCalledTimes(skillsEnabled ? 1 : 0);
 			},
 		);
 

@@ -32,19 +32,17 @@ export class McpModule implements ModuleInterface {
 	 * Settings exposed to the frontend under `/rest/module-settings`.
 	 *
 	 * The response shape will be
-	 * `{ mcp: { mcpAccessEnabled: boolean, mcpManagedByEnv: boolean, serverUrl: string, autoExposeNewWorkflows: boolean, preferencesEnabled: boolean, skillsEnabled: boolean } }`.
+	 * `{ mcp: { mcpAccessEnabled: boolean, mcpManagedByEnv: boolean, serverUrl: string, autoExposeNewWorkflows: boolean, preferencesEnabled: boolean } }`.
 	 */
 	async settings() {
 		const { McpSettingsService } = await import('./mcp.settings.service.js');
 		const { McpProtectedResource } = await import('./mcp-protected-resource.js');
 		const mcpSettingsService = Container.get(McpSettingsService);
-		const [mcpAccessEnabled, autoExposeNewWorkflows, preferencesEnabled, skillsEnabled] =
-			await Promise.all([
-				mcpSettingsService.getEnabled(),
-				mcpSettingsService.getAutoExposeNewWorkflows(),
-				mcpSettingsService.getPreferencesEnabled(),
-				mcpSettingsService.getSkillsEnabled(),
-			]);
+		const [mcpAccessEnabled, autoExposeNewWorkflows, preferencesEnabled] = await Promise.all([
+			mcpSettingsService.getEnabled(),
+			mcpSettingsService.getAutoExposeNewWorkflows(),
+			mcpSettingsService.getPreferencesEnabled(),
+		]);
 		const { mcpManagedByEnv } = Container.get(InstanceSettingsLoaderConfig);
 		// Canonical resource URL, so the UI shows the URL clients must actually
 		// use when a dedicated MCP base URL is configured.
@@ -55,7 +53,6 @@ export class McpModule implements ModuleInterface {
 			serverUrl,
 			autoExposeNewWorkflows,
 			preferencesEnabled,
-			skillsEnabled,
 		};
 	}
 

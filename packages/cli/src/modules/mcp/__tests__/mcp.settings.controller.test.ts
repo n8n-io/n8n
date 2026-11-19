@@ -280,22 +280,17 @@ describe('McpSettingsController', () => {
 			expect(result).toEqual({ mcpAccessEnabled: true, autoExposeNewWorkflows: true });
 		});
 
-		test('saves the preferences and skills switches and returns them', async () => {
-			const req = createReq(
-				{ preferencesEnabled: false, skillsEnabled: true },
-				{ user: createPerson() },
-			);
-			const dto = UpdateMcpSettingsDto.parse({ preferencesEnabled: false, skillsEnabled: true });
+		test('saves the preferences switch and returns it', async () => {
+			const req = createReq({ preferencesEnabled: false }, { user: createPerson() });
+			const dto = UpdateMcpSettingsDto.parse({ preferencesEnabled: false });
 			mcpSettingsService.getEnabled.mockResolvedValue(true);
 			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(false);
 			mcpSettingsService.getPreferencesEnabled.mockResolvedValue(false);
-			mcpSettingsService.getSkillsEnabled.mockResolvedValue(true);
 			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
 
 			const result = await controller.updateSettings(req, createRes(), dto);
 
 			expect(mcpSettingsService.setPreferencesEnabled).toHaveBeenCalledWith(false);
-			expect(mcpSettingsService.setSkillsEnabled).toHaveBeenCalledWith(true);
 			expect(mcpSettingsService.setEnabled).not.toHaveBeenCalled();
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
 			expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-mcp-settings' });
@@ -303,7 +298,6 @@ describe('McpSettingsController', () => {
 				mcpAccessEnabled: true,
 				autoExposeNewWorkflows: false,
 				preferencesEnabled: false,
-				skillsEnabled: true,
 			});
 		});
 
@@ -313,7 +307,7 @@ describe('McpSettingsController', () => {
 			expect(result.success).toBe(false);
 			if (!result.success) {
 				expect(result.error.errors[0].message).toBe(
-					'Provide at least one of mcpAccessEnabled, autoExposeNewWorkflows, preferencesEnabled or skillsEnabled',
+					'Provide at least one of mcpAccessEnabled, autoExposeNewWorkflows or preferencesEnabled',
 				);
 			}
 			expect(mcpSettingsService.setEnabled).not.toHaveBeenCalled();

@@ -84,7 +84,6 @@ describe('SettingsMCPClientsView', () => {
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: false,
 				preferencesEnabled: true,
-				skillsEnabled: true,
 			},
 		};
 
@@ -114,7 +113,6 @@ describe('SettingsMCPClientsView', () => {
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: false,
 				preferencesEnabled: true,
-				skillsEnabled: true,
 			},
 		};
 

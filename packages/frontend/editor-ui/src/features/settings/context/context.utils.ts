@@ -117,15 +117,10 @@ export function canWriteInstanceSkillScope(): boolean {
 	return getResourcePermissions(currentUser?.globalScopes).skill?.create === true;
 }
 
-export function isMcpSkillsEnabled(): boolean {
-	const { mcp } = useSettingsStore().moduleSettings;
-	return mcp?.mcpAccessEnabled === true && mcp?.skillsEnabled === true;
-}
-
 /**
- * Skills are on while agents, n8n Assistant or instance MCP access with its Skills switch
- * is on, and the agents module is active. The backend `SkillsGate` uses the same rule. The
- * skills routes answer 404 while skills are off.
+ * Skills are on while agents, n8n Assistant or instance MCP access is on, and the
+ * agents module is active. The backend `SkillsGate` uses the same rule. The skills
+ * routes answer 404 while skills are off.
  */
 export function isContextSkillsEnabled(): boolean {
 	const settingsStore = useSettingsStore();
@@ -134,7 +129,7 @@ export function isContextSkillsEnabled(): boolean {
 		settingsStore.isModuleActive('agents') === true &&
 		(moduleSettings.agents?.enabled === true ||
 			moduleSettings['instance-ai']?.enabled === true ||
-			isMcpSkillsEnabled())
+			moduleSettings.mcp?.mcpAccessEnabled === true)
 	);
 }
 

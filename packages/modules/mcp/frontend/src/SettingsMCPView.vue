@@ -77,22 +77,19 @@ const autoExposeSaving = ref(false);
 const showCallbackUrlsDialog = ref(false);
 const savingCallbackUrls = ref(false);
 
-const previewFeatureSaving = ref(false);
+const preferencesSaving = ref(false);
 const globalPreferencesEnabled = computed(
 	() => settingsStore.settings.aiPreferences?.enabled === true,
 );
 
-const onTogglePreviewFeature = async (
-	setEnabled: (enabled: boolean) => Promise<boolean>,
-	enabled: boolean,
-) => {
-	previewFeatureSaving.value = true;
+const onTogglePreferences = async (enabled: boolean) => {
+	preferencesSaving.value = true;
 	try {
-		await setEnabled(enabled);
+		await mcpStore.setPreferencesEnabled(enabled);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.previewFeatures.error.title'));
 	} finally {
-		previewFeatureSaving.value = false;
+		preferencesSaving.value = false;
 	}
 };
 
@@ -458,19 +455,10 @@ onBeforeUnmount(() => {
 						:title="i18n.baseText('settings.mcp.preferences.title')"
 						:description="i18n.baseText('settings.mcp.preferences.description')"
 						:enabled="mcpStore.preferencesEnabled && globalPreferencesEnabled"
-						:disabled="!canToggleMCP || previewFeatureSaving || !globalPreferencesEnabled"
+						:disabled="!canToggleMCP || preferencesSaving || !globalPreferencesEnabled"
 						:show-enterprise-readiness-badge="settingsStore.isEnterprisePlan"
 						switch-test-id="mcp-preferences-toggle"
-						@update:enabled="onTogglePreviewFeature(mcpStore.setPreferencesEnabled, $event)"
-					/>
-					<N8nSettingsEnableRow
-						:title="i18n.baseText('settings.mcp.skills.title')"
-						:description="i18n.baseText('settings.mcp.skills.description')"
-						:enabled="mcpStore.skillsEnabled"
-						:disabled="!canToggleMCP || previewFeatureSaving"
-						:show-enterprise-readiness-badge="settingsStore.isEnterprisePlan"
-						switch-test-id="mcp-skills-toggle"
-						@update:enabled="onTogglePreviewFeature(mcpStore.setSkillsEnabled, $event)"
+						@update:enabled="onTogglePreferences"
 					/>
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>

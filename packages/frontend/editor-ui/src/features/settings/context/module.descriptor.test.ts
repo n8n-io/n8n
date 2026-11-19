@@ -103,7 +103,7 @@ describe('ContextModule routes', () => {
 		test.each([
 			{ agents: { enabled: true } },
 			{ 'instance-ai': { enabled: true } },
-			{ mcp: { mcpAccessEnabled: true, skillsEnabled: true } },
+			{ mcp: { mcpAccessEnabled: true } },
 		] as FrontendModuleSettings[])(
 			'opens the skills page while one consumer is on: %o',
 			async (consumerOn) => {
@@ -119,13 +119,6 @@ describe('ContextModule routes', () => {
 		test.each<{ agentsActive: boolean; moduleSettings: FrontendModuleSettings }>([
 			{ agentsActive: true, moduleSettings: allConsumersOff },
 			{ agentsActive: true, moduleSettings: {} },
-			{
-				agentsActive: true,
-				moduleSettings: {
-					...allConsumersOff,
-					mcp: { mcpAccessEnabled: true, skillsEnabled: false },
-				} as FrontendModuleSettings,
-			},
 			{
 				agentsActive: false,
 				moduleSettings: { ...allConsumersOff, agents: { enabled: true } } as FrontendModuleSettings,

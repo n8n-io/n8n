@@ -555,7 +555,6 @@ describe('mcp.store', () => {
 					mcpAccessEnabled: true,
 					autoExposeNewWorkflows: true,
 					preferencesEnabled: true,
-					skillsEnabled: true,
 				},
 			},
 			{
@@ -564,7 +563,6 @@ describe('mcp.store', () => {
 					mcpAccessEnabled: false,
 					autoExposeNewWorkflows: false,
 					preferencesEnabled: true,
-					skillsEnabled: true,
 				},
 			},
 		])('$desc', async ({ response }) => {
@@ -576,7 +574,6 @@ describe('mcp.store', () => {
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: !response.autoExposeNewWorkflows,
 				preferencesEnabled: true,
-				skillsEnabled: true,
 				serverUrl: 'https://example.com/mcp',
 			};
 
@@ -591,7 +588,6 @@ describe('mcp.store', () => {
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: response.autoExposeNewWorkflows,
 				preferencesEnabled: true,
-				skillsEnabled: true,
 				serverUrl: 'https://example.com/mcp',
 			});
 			// The response carries both values, so no follow-up module-settings fetch.
@@ -603,7 +599,6 @@ describe('mcp.store', () => {
 				mcpAccessEnabled: true,
 				autoExposeNewWorkflows: false,
 				preferencesEnabled: true,
-				skillsEnabled: true,
 			});
 			const settingsStore = useSettingsStore();
 			settingsStore.moduleSettings.mcp = undefined;
@@ -616,7 +611,6 @@ describe('mcp.store', () => {
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: false,
 				preferencesEnabled: true,
-				skillsEnabled: true,
 			});
 		});
 	});
@@ -627,7 +621,6 @@ describe('mcp.store', () => {
 				mcpAccessEnabled: true,
 				autoExposeNewWorkflows: true,
 				preferencesEnabled: true,
-				skillsEnabled: true,
 			});
 			const settingsStore = useSettingsStore();
 			settingsStore.moduleSettings.mcp = {
@@ -635,7 +628,6 @@ describe('mcp.store', () => {
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: false,
 				preferencesEnabled: true,
-				skillsEnabled: true,
 			};
 
 			const result = await useMCPStore().setAutoExposeNewWorkflows(true);
@@ -649,20 +641,12 @@ describe('mcp.store', () => {
 		});
 	});
 
-	describe.each([
-		{
-			field: 'preferencesEnabled',
-			set: async () => await useMCPStore().setPreferencesEnabled(false),
-		},
-		{ field: 'skillsEnabled', set: async () => await useMCPStore().setSkillsEnabled(false) },
-	] as const)('$field', ({ field, set }) => {
-		it(`patches only ${field} and syncs every value from the response`, async () => {
+	describe('setPreferencesEnabled', () => {
+		it('patches only preferencesEnabled and syncs every value from the response', async () => {
 			const response = {
 				mcpAccessEnabled: true,
 				autoExposeNewWorkflows: false,
-				preferencesEnabled: true,
-				skillsEnabled: true,
-				[field]: false,
+				preferencesEnabled: false,
 			};
 			const updateSpy = vi.spyOn(mcpApi, 'updateMcpSettings').mockResolvedValue(response);
 			const settingsStore = useSettingsStore();
@@ -671,12 +655,11 @@ describe('mcp.store', () => {
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: false,
 				preferencesEnabled: true,
-				skillsEnabled: true,
 			};
 
-			const result = await set();
+			const result = await useMCPStore().setPreferencesEnabled(false);
 
-			expect(updateSpy).toHaveBeenCalledWith(expect.anything(), { [field]: false });
+			expect(updateSpy).toHaveBeenCalledWith(expect.anything(), { preferencesEnabled: false });
 			expect(result).toBe(false);
 			expect(settingsStore.moduleSettings.mcp).toEqual({ ...response, mcpManagedByEnv: false });
 		});

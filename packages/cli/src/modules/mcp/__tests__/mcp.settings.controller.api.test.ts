@@ -195,7 +195,6 @@ describe('PATCH /mcp/settings', () => {
 		await Container.get(McpSettingsService).setEnabled(false);
 		await Container.get(SettingsRepository).delete({ key: settingsKey });
 		await Container.get(SettingsRepository).delete({ key: 'mcp.preferences.enabled' });
-		await Container.get(SettingsRepository).delete({ key: 'mcp.skills.enabled' });
 	});
 
 	test('owner can enable MCP access', async () => {
@@ -209,7 +208,6 @@ describe('PATCH /mcp/settings', () => {
 			mcpAccessEnabled: true,
 			autoExposeNewWorkflows: false,
 			preferencesEnabled: true,
-			skillsEnabled: true,
 		});
 
 		const stored = await Container.get(SettingsRepository).findByKey(settingsKey);
@@ -229,25 +227,23 @@ describe('PATCH /mcp/settings', () => {
 			mcpAccessEnabled: false,
 			autoExposeNewWorkflows: false,
 			preferencesEnabled: true,
-			skillsEnabled: true,
 		});
 
 		const stored = await Container.get(SettingsRepository).findByKey(settingsKey);
 		expect(stored?.value).toBe('false');
 	});
 
-	test('owner can turn the preferences and skills switches off', async () => {
+	test('owner can turn the preferences switch off', async () => {
 		const response = await testServer
 			.authAgentFor(owner)
 			.patch('/mcp/settings')
-			.send({ preferencesEnabled: false, skillsEnabled: false });
+			.send({ preferencesEnabled: false });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data).toMatchObject({ preferencesEnabled: false, skillsEnabled: false });
+		expect(response.body.data).toMatchObject({ preferencesEnabled: false });
 
-		const settingsRepository = Container.get(SettingsRepository);
-		expect((await settingsRepository.findByKey('mcp.preferences.enabled'))?.value).toBe('false');
-		expect((await settingsRepository.findByKey('mcp.skills.enabled'))?.value).toBe('false');
+		const stored = await Container.get(SettingsRepository).findByKey('mcp.preferences.enabled');
+		expect(stored?.value).toBe('false');
 	});
 
 	test('member without mcp:manage scope is forbidden', async () => {

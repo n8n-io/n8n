@@ -60,10 +60,6 @@ export class McpSettingsController {
 			await this.mcpSettingsService.setPreferencesEnabled(dto.preferencesEnabled);
 		}
 
-		if (dto.skillsEnabled !== undefined) {
-			await this.mcpSettingsService.setSkillsEnabled(dto.skillsEnabled);
-		}
-
 		await this.refreshMcpModuleSettings();
 		try {
 			await this.publisher.publishCommand({ command: 'reload-mcp-settings' });
@@ -75,15 +71,13 @@ export class McpSettingsController {
 
 		// Always return every value (read back from the source of truth) so the
 		// client can sync local state without a follow-up module-settings fetch.
-		const [mcpAccessEnabled, autoExposeNewWorkflows, preferencesEnabled, skillsEnabled] =
-			await Promise.all([
-				this.mcpSettingsService.getEnabled(),
-				this.mcpSettingsService.getAutoExposeNewWorkflows(),
-				this.mcpSettingsService.getPreferencesEnabled(),
-				this.mcpSettingsService.getSkillsEnabled(),
-			]);
+		const [mcpAccessEnabled, autoExposeNewWorkflows, preferencesEnabled] = await Promise.all([
+			this.mcpSettingsService.getEnabled(),
+			this.mcpSettingsService.getAutoExposeNewWorkflows(),
+			this.mcpSettingsService.getPreferencesEnabled(),
+		]);
 
-		return { mcpAccessEnabled, autoExposeNewWorkflows, preferencesEnabled, skillsEnabled };
+		return { mcpAccessEnabled, autoExposeNewWorkflows, preferencesEnabled };
 	}
 
 	@GlobalScope('mcpApiKey:create')

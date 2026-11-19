@@ -5,7 +5,6 @@ import { Container } from '@n8n/di';
 import { hasGlobalScope, type AuthPrincipal } from '@n8n/permissions';
 
 import type { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
-import { SkillsGate } from '@/modules/skills';
 import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 
 import type { McpConfig } from './mcp.config';
@@ -35,13 +34,6 @@ export function areMcpPreferencesAvailable(moduleRegistry: ModuleRegistry): bool
 	return (
 		Container.get(AiPreferenceSettingsService).isEnabled &&
 		moduleRegistry.settings.get('mcp')?.preferencesEnabled === true
-	);
-}
-
-export function areMcpSkillsAvailable(moduleRegistry: ModuleRegistry): boolean {
-	return (
-		Container.get(SkillsGate).isEnabled &&
-		moduleRegistry.settings.get('mcp')?.skillsEnabled === true
 	);
 }
 

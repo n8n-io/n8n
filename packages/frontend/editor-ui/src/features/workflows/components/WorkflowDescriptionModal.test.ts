@@ -453,7 +453,6 @@ describe('WorkflowDescriptionModal', () => {
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: false,
 				preferencesEnabled: true,
-				skillsEnabled: true,
 			};
 
 			const { getByTestId } = renderModal({
@@ -486,7 +485,6 @@ describe('WorkflowDescriptionModal', () => {
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: false,
 				preferencesEnabled: true,
-				skillsEnabled: true,
 			};
 
 			const { getByTestId } = renderModal({

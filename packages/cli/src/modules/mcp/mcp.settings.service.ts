@@ -29,7 +29,6 @@ const KEY = 'mcp.access.enabled';
 const REDIRECT_URIS_KEY = 'mcp.oauth.allowedRedirectUris';
 const AUTO_EXPOSE_NEW_WORKFLOWS_KEY = 'mcp.autoExposeNewWorkflows';
 const PREFERENCES_ENABLED_KEY = 'mcp.preferences.enabled';
-const SKILLS_ENABLED_KEY = 'mcp.skills.enabled';
 
 const BULK_CHUNK_SIZE = 500;
 
@@ -145,28 +144,17 @@ export class McpSettingsService {
 	}
 
 	async getPreferencesEnabled(): Promise<boolean> {
-		return await this.getPreviewFeatureEnabled(PREFERENCES_ENABLED_KEY);
-	}
-
-	async setPreferencesEnabled(enabled: boolean): Promise<void> {
-		await this.setPreviewFeatureEnabled(PREFERENCES_ENABLED_KEY, enabled);
-	}
-
-	async getSkillsEnabled(): Promise<boolean> {
-		return await this.getPreviewFeatureEnabled(SKILLS_ENABLED_KEY);
-	}
-
-	async setSkillsEnabled(enabled: boolean): Promise<void> {
-		await this.setPreviewFeatureEnabled(SKILLS_ENABLED_KEY, enabled);
-	}
-
-	private async getPreviewFeatureEnabled(key: string): Promise<boolean> {
-		const row = await this.settingsRepository.findByKey(key);
+		const row = await this.settingsRepository.findByKey(PREFERENCES_ENABLED_KEY);
 		return row ? row.value === 'true' : !this.license.isEnterprisePlan();
 	}
 
-	private async setPreviewFeatureEnabled(key: string, enabled: boolean): Promise<void> {
-		await this.settingsRepository.upsertByKey(key, enabled.toString(), true, {});
+	async setPreferencesEnabled(enabled: boolean): Promise<void> {
+		await this.settingsRepository.upsertByKey(
+			PREFERENCES_ENABLED_KEY,
+			enabled.toString(),
+			true,
+			{},
+		);
 	}
 
 	async bulkSetAvailableInMCP(

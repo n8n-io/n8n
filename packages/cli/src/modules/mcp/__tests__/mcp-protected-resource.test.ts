@@ -61,7 +61,7 @@ describe('McpProtectedResource', () => {
 
 	function mockModuleSettings(overrides: Record<string, Record<string, unknown>>) {
 		const settings: Record<string, Record<string, unknown>> = {
-			mcp: { preferencesEnabled: true, skillsEnabled: true },
+			mcp: { preferencesEnabled: true },
 			...overrides,
 		};
 		vi.mocked(moduleRegistry.settings.get).mockImplementation((name) => settings[name]);
@@ -113,16 +113,8 @@ describe('McpProtectedResource', () => {
 			expect(await resource.getScopeTools()).not.toHaveProperty('skill:read');
 		});
 
-		it('withholds skill scopes while the MCP Skills switch is off', () => {
-			mockModuleSettings({ mcp: { preferencesEnabled: true, skillsEnabled: false } });
-
-			expect(resource.scopes).not.toContain('skill:read');
-			expect(resource.scopes).not.toContain('skill:write');
-			expect(resource.scopes).toContain('aiPreference:read');
-		});
-
 		it('withholds preference scopes while the MCP Preferences switch is off', () => {
-			mockModuleSettings({ mcp: { preferencesEnabled: false, skillsEnabled: true } });
+			mockModuleSettings({ mcp: { preferencesEnabled: false } });
 
 			expect(resource.scopes).not.toContain('aiPreference:read');
 			expect(resource.scopes).not.toContain('aiPreference:write');

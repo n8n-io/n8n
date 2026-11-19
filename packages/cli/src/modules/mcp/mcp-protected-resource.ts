@@ -13,6 +13,7 @@ import { Container, Service } from '@n8n/di';
 
 import type { ProtectedResource, ResourcePrincipal, ResourceUser } from '@n8n/inbound-auth';
 import { UrlService, PostHogClient } from '@n8n/backend-services';
+import { SkillsGate } from '@/modules/skills';
 
 import {
 	ACTIVITY_LOG_TOOLS,
@@ -26,7 +27,6 @@ import {
 	canReadMigrationReport,
 	isCommunityNodeInstallAvailable,
 	areMcpPreferencesAvailable,
-	areMcpSkillsAvailable,
 	isMigrationReportAvailable,
 } from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
@@ -85,7 +85,7 @@ export class McpProtectedResource implements ProtectedResource {
 
 	get scopes(): string[] {
 		const agentsAvailable = areAgentToolsAvailable(this.globalConfig, this.moduleRegistry);
-		const skillsAvailable = areMcpSkillsAvailable(this.moduleRegistry);
+		const skillsAvailable = Container.get(SkillsGate).isEnabled;
 		const preferencesAvailable = areMcpPreferencesAvailable(this.moduleRegistry);
 		const migrationReportAvailable = isMigrationReportAvailable(this.moduleRegistry);
 		return SUPPORTED_SCOPES.filter(
