@@ -164,6 +164,12 @@ const CASES: WiringCase[] = [
 		method: 'removeProjectFromPromotionEnvironment',
 		callArgs: ['env-1', 'proj-1'],
 	},
+	{
+		title: 'promotion-settings get',
+		commandClass: PromotionSettingsGet,
+		method: 'getPromotionSettings',
+		callArgs: [],
+	},
 ];
 
 /**

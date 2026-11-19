@@ -83,7 +83,8 @@ async function save(setting: PromotionProjectAccessSetting, selected: SelectValu
 			type: 'success',
 		});
 	} catch (error) {
-		values.value = previous;
+		// The server can save the settings and still fail later, so show what it stored.
+		values.value = await getPromotionSettings(rootStore.publicApiContext).catch(() => previous);
 		toast.showError(error, i18n.baseText('settings.promotions.projectAccess.toast.error.save'), {
 			message: i18n.baseText('settings.promotions.projectAccess.toast.error.description'),
 		});
