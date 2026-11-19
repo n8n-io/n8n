@@ -60,6 +60,36 @@ today's master (the whole "credentials offered during the build" group, and
 `notification-router`), so they are drift between July and now, not the PoC.
 PR tier: 37 of 38 units green.
 
+## Reading the LangSmith compare view
+
+The baseline experiment shows a 95% "avg score" in LangSmith. That is its
+`pass_at_k` feedback: at least one of k iterations passed, with k=10, so one
+lucky pass in ten counts. Do not compare it with runs at another k (for N=1
+runs pass@k is the plain pass rate; the PoC N=3 is pass@3 0.840 against
+pass^3 0.700). Per-run keys are comparable:
+
+| per-run feedback key | baseline 13/07 (k=10) | PoC N=3 | master N=1 |
+|---|---|---|---|
+| `scenario_pass` | 0.816 | 0.816 | 0.831 |
+| `fulfills_user_request` (judge, built workflow) | 0.890 | 0.870 | 0.829 |
+| `response_describes_changes_accurately` | 0.975 | 0.979 | 0.972 |
+| `no_unnecessary_code_nodes` | 0.912 | 0.954 | 0.972 |
+| `valid_field_references` | 0.951 | 0.954 | 0.967 |
+| `build_duration_s` | 220 | 120 | 122 |
+| `node_count` | 5.2 | 6.3 | 6.4 |
+
+Build time over MCP equals master's (120 s vs 122 s): the in-process protocol
+hop costs nothing measurable. The baseline's 220 s is July's model and
+harness. In the compare view, select `scenario_pass` or the
+`evals.workflows.*` keys, and put the master session (`a6691fa9-6bf8-46f4-a28c-b79a4d4f7838`)
+next to the PoC N=3 session (`2ecdef89-3c17-4892-92b2-3e5d99d0d10d`); both
+have comparable k.
+
+The earlier PoC N=1 run scored 0.774 on `fulfills_user_request` and 0.825 on
+`response_describes_changes_accurately`: those two checks judge the saved
+workflow, which in that run was often the stale duplicate from the wrong
+project. After the `projectId` fix both are at or above master.
+
 ## The one regression: no verification loop
 
 "The agent ran a verification of the built workflow" and everything that
@@ -91,7 +121,9 @@ master.
 - **Wrong project (fixed).** Server create tools default to the personal
   project; 26% of PoC builds were rebuilt into the conversation's project
   before the bridge started injecting the thread's `projectId`. After the
-  fix: 0 of 1153. It cost a rebuild each, not scores.
+  fix: 0 of 1153. It cost a rebuild each and distorted the two judge checks
+  that read the saved workflow (see the LangSmith section); the unit-level
+  aggregate moved only +0.7 pp.
 - **Build quality.** Scenario pass 79.5% vs 81.5% and builder-attributed
   failures 11.9% vs 8.0%: slightly worse, inside the noise of one master
   trial, but worth re-checking once the verification loop is back (several
