@@ -12,9 +12,14 @@ export const FILES = {
 	bullQueue: 'bull/lib/queue.js',
 	bullJob: 'bull/lib/job.js',
 	bullScripts: 'bull/lib/scripts.js',
+	engineExecutionStart: '@n8n/engine/dist/execution/execution-start-handler.js',
+	engineStepReady: '@n8n/engine/dist/execution/step-ready-handler.js',
+	engineStepSettled: '@n8n/engine/dist/execution/step-settled-handler.js',
+	engineExecutionStore: '@n8n/engine/dist/database/typeorm-execution-store.js',
+	engineStepStore: '@n8n/engine/dist/database/typeorm-step-store.js',
 } as const;
 
-const ROLES = ['main', 'worker'] as const;
+const ROLES = ['main', 'worker', 'engine'] as const;
 export type Role = (typeof ROLES)[number];
 
 const methodRef = z.object({

@@ -5,7 +5,7 @@ export type { HookHit } from './hooks/control';
 export { RigStack, stopAllStacks } from './stack';
 export type { StackOptions } from './stack';
 export { N8nClient } from './n8n-client';
-export { PostgresProbe, RedisProbe } from './probes';
+export { EngineProbe, PostgresProbe, RedisProbe } from './probes';
 export type { BullState, ExecutionState } from './probes';
 export {
 	finishedAt,
@@ -21,7 +21,7 @@ export {
 export type { Container, ExitResult, LogMatch, Signal } from './process';
 export { licenceEnv, scaledTimeouts } from './timeouts';
 export { anything, atMost, below, excludes, includes, is, isNot, Scenario } from './scenario';
-export { chain, nodes, webhookPath } from './workflows';
+export { chain, ENGINE_V2_SETTINGS, nodes, webhookPath } from './workflows';
 export type { WorkflowNode } from './workflows';
 export { network } from './network';
 export { Workload } from './workload';
