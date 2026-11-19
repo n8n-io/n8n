@@ -1836,16 +1836,6 @@ function pairedSourceIndex(run: Json, k: number, inputCount: number, node: strin
 	return index;
 }`,
 	},
-	pairedUnavailable: {
-		uses: [],
-		source: `/**
- * The error of v1 for a read of a paired item of a node when the connection of the latest run
- * of the node before it matches no connection that the reader knows.
- */
-function pairedUnavailable(node: string): Json {
-	throw new Error(${PAIRED_UNAVAILABLE('node')});
-}`,
-	},
 	splitPairedErrorItems: {
 		uses: ['isErrorItem', 'mergedErrorItem', 'pairedInputIndex'],
 		source: `/**

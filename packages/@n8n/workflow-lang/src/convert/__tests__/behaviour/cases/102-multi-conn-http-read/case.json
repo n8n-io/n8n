@@ -1,0 +1,41 @@
+{
+	"description": "Both outputs of an If node connect to the same No Operation node, so that node has two connections into input 0. v1 runs it twice: first with a2 and a3, then with a0 and a1. Three readers after it are Code nodes and an Edit Fields node, and a fourth is an HTTP Request node whose URL reads the item of the split node A in a parameter expression. $('A').item gives the item with the same id in every run.",
+	"trigger": {
+		"body": {
+			"ids": ["a0", "a1", "a2", "a3"]
+		}
+	},
+	"compare": ["Read Each", "Read All", "Read Expr", "Read Http"],
+	"runData": true,
+	"http": {
+		"Read Http": {
+			"path": "read",
+			"responses": [
+				{
+					"status": 200,
+					"body": {
+						"got": "r0"
+					}
+				},
+				{
+					"status": 200,
+					"body": {
+						"got": "r1"
+					}
+				},
+				{
+					"status": 200,
+					"body": {
+						"got": "r2"
+					}
+				},
+				{
+					"status": 200,
+					"body": {
+						"got": "r3"
+					}
+				}
+			]
+		}
+	}
+}

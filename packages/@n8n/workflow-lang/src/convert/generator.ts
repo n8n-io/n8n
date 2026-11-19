@@ -936,11 +936,14 @@ export class ModuleGenerator {
 			return single ? `0 * ${out}` : out;
 		}
 		const at = walk.hops.length === 0 ? index : steps(walk.hops, index, false);
-		this.helpers.add('pairedUnavailable');
-		let out = `pairedUnavailable(${str(b.short(target))})`;
-		const { source } = walk.fork;
-		for (let k = walk.fork.alternatives.length - 1; k >= 0; k--) {
-			const alt = walk.fork.alternatives[k];
+		const { source, alternatives } = walk.fork;
+		// Every connection into the node is one alternative, so the source of the latest run
+		// always matches one: the last one is the else branch. The choice is then a number
+		// everywhere, and an expression of a parameter that reads it keeps its native form.
+		const last = alternatives.length - 1;
+		let out = steps(alternatives[last].hops, at, alternatives[last].direct);
+		for (let k = last - 1; k >= 0; k--) {
+			const alt = alternatives[k];
 			const match = `${source}?.previousNode === ${str(alt.from)} && ${source}?.previousNodeOutput === ${String(alt.via)}`;
 			out = `(${match} ? ${steps(alt.hops, at, alt.direct)} : ${out})`;
 		}

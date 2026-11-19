@@ -4,7 +4,7 @@
  * `cost.test.ts` fails when a number rises.
  */
 export const CONVERT_COST: Record<string, [ops: number, allocations: number]> = {
-	"convert/01-webhook-if-http-respond": [1579, 148],
+	"convert/01-webhook-if-http-respond": [1557, 146],
 	"convert/02-schedule-split-merge": [1733, 139],
 	"convert/03-error-output": [1211, 113],
 	"convert/04-code-nodes": [1651, 105],
@@ -14,7 +14,8 @@ export const CONVERT_COST: Record<string, [ops: number, allocations: number]> = 
 	"convert/08-position-noop-once": [1605, 110],
 	"convert/09-wait": [112, 12],
 	"convert/10-expressions": [519, 48],
-	"convert/101-multi-conn-switch-three": [7606, 442],
+	"convert/101-multi-conn-switch-three": [7499, 440],
+	"convert/102-multi-conn-http-read": [7642, 457],
 	"convert/11-old-versions-and-host": [595, 47],
 	"convert/12-loop-over-items": [2806, 184],
 	"convert/13-sub-workflow": [752, 61],
@@ -94,10 +95,10 @@ export const CONVERT_COST: Record<string, [ops: number, allocations: number]> = 
 	"convert/93-retry-core-node-fails-always": [520, 44],
 	"convert/94-retry-http-paired-read": [3816, 265],
 	"convert/95-single-target-rss-flat": [2077, 92],
-	"convert/96-multi-conn-both-branches": [5874, 353],
-	"convert/97-multi-conn-branch-node": [6163, 370],
-	"convert/98-multi-conn-reader-itself": [5856, 348],
-	"convert/99-multi-conn-fan-out": [6861, 389],
+	"convert/96-multi-conn-both-branches": [5770, 351],
+	"convert/97-multi-conn-branch-node": [6059, 368],
+	"convert/98-multi-conn-reader-itself": [5753, 346],
+	"convert/99-multi-conn-fan-out": [6654, 387],
 	"convert/small": [126, 14],
 	"corpus/01-order-approval": [160, 17],
 	"corpus/02-loops": [265, 13],
