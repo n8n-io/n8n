@@ -1,4 +1,4 @@
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import type { GymAdmin } from '../gym-admin';
 import type { HydrationModel } from '../hydration-llm';

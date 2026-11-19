@@ -1,4 +1,4 @@
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { AgentHydrator } from './agent-hydrator';
 import type { GymAdmin } from './gym-admin';

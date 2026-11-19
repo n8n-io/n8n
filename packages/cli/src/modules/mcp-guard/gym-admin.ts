@@ -1,4 +1,4 @@
-import { OperationalError, UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from '@n8n/errors';
 
 export class GymAdmin {
 	private readonly baseUrl: string;
