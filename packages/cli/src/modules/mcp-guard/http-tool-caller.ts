@@ -22,7 +22,7 @@ export interface HttpToolArgs extends Record<string, unknown> {
 const NOISE_SEGMENTS: ReadonlySet<string> = new Set(['users', 'me', 'gmail', 'api']);
 const VERSION_SEGMENT = /^v\d+$/;
 // An id has a digit and is not a short word.
-const looksLikeId = (segment: string): boolean => segment.length >= 8 && /\d/.test(segment);
+export const looksLikeId = (segment: string): boolean => segment.length >= 8 && /\d/.test(segment);
 
 function describePath(method: string, pathname: string): string {
 	const segments = pathname.split('/').filter((s) => s !== '');
@@ -100,8 +100,8 @@ export function fromToolArgs(
 }
 
 export interface HttpToolCallerOptions {
-	// Where the paths of the args point to, such as `https://www.googleapis.com`.
-	origin: string;
+	// Where the paths of the args point to, such as `https://www.googleapis.com`. A function is read at call time.
+	origin: string | (() => string);
 	send: (req: CapturedRequest) => Promise<Response>;
 	// Read at call time, so a refreshed token is used.
 	headers: () => Record<string, string>;
@@ -115,7 +115,11 @@ export function createHttpToolCaller(options: HttpToolCallerOptions): McpCaller 
 		listTools: async () => [],
 		callTool: async (_name, args): Promise<CallToolResult> => {
 			const res = await options.send(
-				fromToolArgs(options.origin, args as HttpToolArgs, options.headers()),
+				fromToolArgs(
+					typeof options.origin === 'function' ? options.origin() : options.origin,
+					args as HttpToolArgs,
+					options.headers(),
+				),
 			);
 			let text = await res.text();
 			if (options.enrich) {

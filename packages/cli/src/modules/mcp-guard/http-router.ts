@@ -1,0 +1,117 @@
+import { Logger } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+
+import type { HttpVendorProfile } from './http-profiles';
+import { looksLikeId, toToolCall, type HttpToolArgs } from './http-tool-caller';
+import type { McpCaller } from './mcp-upstream';
+import type { CapturedRequest } from './net-interceptor';
+import { isReadShaped } from './request-classifier';
+import type { Hydrator } from './router';
+import { canonicalHost, isPassthroughHost, vendorForRequest } from './vendor-knowledge';
+
+export interface HttpGuardRouterDeps {
+	// The real service. Only a read-shaped request reaches it.
+	upstream: McpCaller;
+	gym: McpCaller;
+	hydrator: Hydrator;
+	// Sends a request of a sign-in host to the real network as it is.
+	realSend: (req: CapturedRequest) => Promise<Response>;
+	profile: HttpVendorProfile;
+	// The credential and the host of the latest request. The real reads of the hydration use them.
+	context: { authorization?: string; origin: string };
+}
+
+const refusal = (status: number, text: string): Response => new Response(text, { status });
+
+const textOf = (res: CallToolResult): string =>
+	res.content.flatMap((c) => (c.type === 'text' ? [c.text] : [])).join('\n');
+
+function toResponse(res: CallToolResult): Response {
+	const status = typeof res._meta?.status === 'number' ? res._meta.status : res.isError ? 500 : 200;
+	const type =
+		typeof res._meta?.contentType === 'string' ? res._meta.contentType : 'application/json';
+	return new Response(textOf(res), { status, headers: { 'content-type': type } });
+}
+
+const ID_FIELD = /"(?:id|threadId)"\s*:\s*"([^"]+)"/g;
+
+/**
+ * Routes the HTTP requests of one chat. A read-shaped request reads the real service, then the gym
+ * gets a copy of the answer and answers. Every other request goes only to the gym. The model never
+ * decides which requests may reach the real service: `isReadShaped` does.
+ */
+export class HttpGuardRouter {
+	// Ids that the gym made. The real service does not know them.
+	private readonly gymIds = new Set<string>();
+
+	constructor(private readonly deps: HttpGuardRouterDeps) {}
+
+	async handle(req: CapturedRequest): Promise<Response> {
+		const host = canonicalHost(req.url.hostname);
+		if (isPassthroughHost(host)) return await this.deps.realSend(req);
+		const vendor = vendorForRequest(host, req.url.pathname);
+		if (!vendor) return refusal(403, 'mcp-guard: this host is not available in a preview chat');
+
+		this.deps.context.origin = `${req.url.protocol}//${req.url.host}`;
+		if (req.headers.authorization) this.deps.context.authorization = req.headers.authorization;
+		const readShaped = isReadShaped(req, vendor.readPaths);
+		const { name, args } = toToolCall(req, readShaped);
+		Container.get(Logger).info(
+			`mcp-guard http ${req.method} ${host}${req.url.pathname} -> ${readShaped ? 'real read, then gym' : 'gym'}`,
+		);
+		return readShaped ? await this.read(name, args) : await this.write(name, args);
+	}
+
+	private async write(name: string, args: HttpToolArgs): Promise<Response> {
+		const { hydrator, profile } = this.deps;
+		if (profile.hydrateWrite?.(args, this.gymIds)) {
+			// A failed parent read must not block the write. The gym then answers with its own error.
+			await hydrator.hydrateWrite?.(name, args).catch(() => undefined);
+		}
+		const res = await this.callGym(name, args);
+		if (res instanceof Response) return res;
+		if (!res.isError) hydrator.noteWrite?.(name, res);
+		return toResponse(res);
+	}
+
+	private async read(name: string, args: HttpToolArgs): Promise<Response> {
+		const { upstream, hydrator, profile } = this.deps;
+		// An id that the gym made names nothing in the real service.
+		const ids = args.path.split('/').filter(looksLikeId);
+		const gymOnly = ids.length > 0 && ids.every((id) => this.gymIds.has(id));
+		if (!gymOnly) {
+			try {
+				const real = await upstream.callTool(name, args);
+				// A failed real read (an id that only the gym knows, a bad token) leaves the gym to answer.
+				if (!real.isError && profile.hydrateRead?.(args, safeJson(textOf(real))) !== false) {
+					await hydrator.hydrate(name, args, real).catch(() => {
+						Container.get(Logger).warn(`mcp-guard http hydration failed for ${name}`);
+					});
+				}
+			} catch {
+				Container.get(Logger).warn(`mcp-guard http real read failed for ${name}`);
+			}
+		}
+		const res = await this.callGym(name, args);
+		return res instanceof Response ? res : toResponse(res);
+	}
+
+	private async callGym(name: string, args: HttpToolArgs): Promise<CallToolResult | Response> {
+		try {
+			const res = await this.deps.gym.callTool(name, args);
+			for (const match of textOf(res).matchAll(ID_FIELD)) this.gymIds.add(match[1]);
+			return res;
+		} catch {
+			return refusal(502, 'mcp-guard: the gym could not be reached');
+		}
+	}
+}
+
+function safeJson(text: string): unknown {
+	try {
+		return JSON.parse(text) as unknown;
+	} catch {
+		return undefined;
+	}
+}
