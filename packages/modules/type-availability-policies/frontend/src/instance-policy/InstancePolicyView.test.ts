@@ -25,6 +25,7 @@ vi.mock('../type-availability-policies.api', () => ({
 	fetchCredentialTypeSummaries: vi.fn(
 		async () => new Map([['bitlyApi', { displayName: 'Bitly API' }]]),
 	),
+	fetchCredentialTypeUsage: vi.fn(async () => ({})),
 }));
 
 vi.mock('vue-router', () => ({
