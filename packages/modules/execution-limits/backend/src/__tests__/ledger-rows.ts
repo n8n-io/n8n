@@ -15,7 +15,8 @@ export const ledgerRow = (overrides: Partial<ExecutionLedgerRow> = {}): Executio
 	source: 'none',
 	event: 'started',
 	outcome: 'none',
-	blockedBy: 'none',
+	// The ledger rejects a blocked row that has no reason.
+	blockedBy: overrides.outcome === 'blocked' ? 'startFailed' : 'none',
 	runtimeMs: 0,
 	timeSavedMin: 0,
 	origin: 'v1',
