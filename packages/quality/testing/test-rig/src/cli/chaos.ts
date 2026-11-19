@@ -13,7 +13,10 @@ async function main(): Promise<number> {
 	if (!process.env.TEST_IMAGE_N8N) throw new Error(`set TEST_IMAGE_N8N\n${USAGE}`);
 
 	const schedule = chaosSchedule(args);
-	console.log(`seed ${args.seed}: ${schedule.length} faults over ${args.durationMs / 1000} s`);
+	const profile = args.engine ? `engine v2 ${args.engine}` : `queue mode, ${args.workers} workers`;
+	console.log(
+		`seed ${args.seed} (${profile}): ${schedule.length} faults over ${args.durationMs / 1000} s`,
+	);
 	for (const { atMs, fault } of schedule) console.log(`  +${atMs} ms ${describeFault(fault)}`);
 
 	const result = await chaosRun(args, schedule);

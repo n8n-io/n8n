@@ -1,8 +1,8 @@
 import { sleep } from '@n8n/utils/sleep';
 import { nanoid } from 'nanoid';
 
-import type { RunRecord } from './invariants';
-import { FINAL_STATUSES, lines } from './probes';
+import type { EngineRunRecord, RunRecord } from './invariants';
+import { ENGINE_FINAL_STATUSES, FINAL_STATUSES, lines } from './probes';
 import type { RigStack } from './stack';
 import { chain, nodes, webhookPath } from './workflows';
 
@@ -21,6 +21,8 @@ export interface Effect {
 
 const TABLE = 'test_rig_effects';
 
+type WorkloadRig = Pick<RigStack, 'api' | 'db' | 'redis' | 'engineDb'>;
+
 /**
  * Steady webhook traffic against one workflow that writes a row per run, so
  * invariants can tell lost, stuck and repeated work apart.
@@ -33,13 +35,13 @@ export class Workload {
 	private timer?: NodeJS.Timeout;
 
 	private constructor(
-		private readonly rig: Pick<RigStack, 'api' | 'db' | 'redis'>,
+		private readonly rig: WorkloadRig,
 		readonly workflowId: string,
 		readonly path: string,
 	) {}
 
-	/** Creates the effects table, a Postgres credential and the workload workflow. */
-	static async setup(rig: Pick<RigStack, 'api' | 'db' | 'redis'>): Promise<Workload> {
+	/** Creates the effects table, a Postgres credential and the workload workflow with `settings`. */
+	static async setup(rig: WorkloadRig, settings: Record<string, unknown> = {}): Promise<Workload> {
 		await rig.db.sql(
 			`create table if not exists ${TABLE} (request_id text not null, execution_id text not null, at timestamptz not null default now())`,
 		);
@@ -60,7 +62,7 @@ export class Workload {
 			'={{ [$execution.id, $json.body.requestId] }}',
 			{ id: credentialId, name: 'test-rig postgres' },
 		);
-		const workflowId = await rig.api.createWorkflow(chain('workload', [webhook, record]));
+		const workflowId = await rig.api.createWorkflow(chain('workload', [webhook, record], settings));
 		await rig.api.waitForWebhook(path);
 		return new Workload(rig, workflowId, path);
 	}
@@ -119,6 +121,29 @@ export class Workload {
 				Object.values(executions).every((status) => FINAL_STATUSES.includes(status));
 			if (settled || Date.now() > deadline) {
 				return { requests, executions, effects: await this.effects(), bull: { wait, active } };
+			}
+			await sleep(500);
+		}
+	}
+
+	/** Waits until every engine v2 execution is final, or the timeout passes, then reads the run. */
+	async recordEngine(
+		requests: WorkloadRequest[],
+		settleTimeoutMs: number,
+	): Promise<EngineRunRecord> {
+		const deadline = Date.now() + settleTimeoutMs;
+		for (;;) {
+			const executions = lines(
+				await this.rig.engineDb.sql(
+					`select e.id, e.status, coalesce(jsonb_path_query_first(e.trigger_outputs, '$.**.requestId') #>> '{}', ''), (select count(*) from workflow_step_execution s where s.execution_id = e.id and s.status in ('queued', 'running', 'waiting')) from workflow_execution e where e.workflow_id = '${this.workflowId}' order by e.created_at`,
+				),
+			).map((row) => {
+				const [id, status, requestId, liveSteps] = row.split('|');
+				return { id, status, requestId, liveSteps: Number(liveSteps) };
+			});
+			const settled = executions.every((e) => ENGINE_FINAL_STATUSES.includes(e.status));
+			if (settled || Date.now() > deadline) {
+				return { requests, executions, effects: await this.effects() };
 			}
 			await sleep(500);
 		}
