@@ -124,9 +124,9 @@ frame pointers) at 4,200 concurrent runs:
 | Outbox: the record write, the sync and the stream to the reader | 7% |
 | Replies and connection flush of the inbound side | 6% |
 
-The parts overlap where one calls the other, so the column is not a sum. Two single functions stand out: the intern
-of an object key with its hash (`Module.internKey` and `XxHash3.hashLong`, 8% together, called for each key of a decoded
-result), and the outbox sync on the shard thread (2%).
+The parts overlap where one calls the other, so the column is not a sum. Three single costs stand out: the intern of
+each object key of a decoded result (`Module.internKey`, 5%), the checksum of each durability log record
+(`logfmt.checksum`, 4%), and the outbox sync on the shard thread (2%).
 
 **Comparison with v1.** Release 3, 1,500 bundles: 914 exact, 568 `structure`, 4 `status`, 14 `mismatch`. Of the 568, 455
 differ only in nodes that read the clock or a random id. A second live run of v1 against its own record is exact for 7
