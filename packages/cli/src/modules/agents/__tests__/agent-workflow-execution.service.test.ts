@@ -51,6 +51,7 @@ import type { ToolRegistry } from '../tool-registry';
 import type { WorkflowAgentStreamObserver } from '../workflow-agent-stream';
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
+import type { LiveRetrievalService } from '@/modules/knowledge/live-sources/live-retrieval.service';
 
 const aiConfigMock = mock<AiConfig>();
 
@@ -182,6 +183,7 @@ function makeService() {
 			mock<AgentToolApprovalService>(),
 			knowledgeUsageTracker,
 			mock<AgentSandboxFilesService>(),
+			mock<LiveRetrievalService>(),
 		),
 		telemetry,
 		credentialsService,

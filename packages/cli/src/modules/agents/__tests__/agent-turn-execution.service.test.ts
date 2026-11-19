@@ -22,6 +22,7 @@ import { EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
 import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import type { AgentTurnFinalizeOutcome } from '../types/agent-turn-outcome';
 import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
+import type { LiveRetrievalService } from '@/modules/knowledge/live-sources/live-retrieval.service';
 
 it('ends a preview turn stopped during preparation without recording an error', async () => {
 	const executions = mock<AgentExecutionService>();
@@ -38,6 +39,7 @@ it('ends a preview turn stopped during preparation without recording an error', 
 		mock<AgentToolApprovalService>(),
 		mock<AgentKnowledgeUsageTracker>(),
 		mock<AgentSandboxFilesService>(),
+		mock<LiveRetrievalService>(),
 	);
 	const controller = new AbortController();
 	const turn: AgentTurnRequest = {
@@ -109,6 +111,7 @@ describe('onBeforeFinalize', () => {
 			mock<AgentToolApprovalService>(),
 			mock<AgentKnowledgeUsageTracker>(),
 			sandboxFiles,
+			mock<LiveRetrievalService>(),
 		);
 		const agentInstance = mock<RuntimeAgent>();
 		agentInstance.getWorkspace.mockReturnValue(options.workspace);
@@ -421,6 +424,7 @@ describe('onSideCallUsage', () => {
 			mock<AgentToolApprovalService>(),
 			mock<AgentKnowledgeUsageTracker>(),
 			mock<AgentSandboxFilesService>(),
+			mock<LiveRetrievalService>(),
 		);
 		const emptyStream = () =>
 			new ReadableStream<StreamChunk>({
@@ -542,6 +546,7 @@ describe('admitted start turns', () => {
 			mock<AgentToolApprovalService>(),
 			mock<AgentKnowledgeUsageTracker>(),
 			mock<AgentSandboxFilesService>(),
+			mock<LiveRetrievalService>(),
 		);
 		const agentInstance = mock<RuntimeAgent>();
 		agentInstance.stream.mockResolvedValue({
@@ -619,6 +624,7 @@ describe('host instructions at the completing boundary', () => {
 			mock<AgentToolApprovalService>(),
 			mock<AgentKnowledgeUsageTracker>(),
 			mock<AgentSandboxFilesService>(),
+			mock<LiveRetrievalService>(),
 		);
 		let handler: ExecutionOptions['onInputBoundary'];
 		const agentInstance = mock<RuntimeAgent>();

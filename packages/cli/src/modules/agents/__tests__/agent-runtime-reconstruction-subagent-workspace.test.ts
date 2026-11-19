@@ -31,6 +31,7 @@ import type { ToolExecutor } from '../json-config/from-json-config';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
+import type { LiveRetrievalService } from '@/modules/knowledge/live-sources/live-retrieval.service';
 
 const builtAgent = mock<agents.Agent>();
 builtAgent.hasCheckpointStorage.mockReturnValue(true);
@@ -88,6 +89,7 @@ function makeService(sandboxFilesEnabled = true) {
 		mock<AgentSandboxFilesService>({
 			isEnabled: vi.fn().mockResolvedValue(sandboxFilesEnabled),
 		}),
+		mock<LiveRetrievalService>(),
 	);
 
 	return { service, workspaceService };

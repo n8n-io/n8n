@@ -30,6 +30,7 @@ import {
 	type AgentModelCredentialConfig,
 	type AgentSkill,
 	type AgentJsonConfig,
+	type AgentJsonLiveSourceConfig,
 	type AgentJsonMcpServerConfig,
 	type AgentJsonMemoryConfig,
 	type AgentJsonToolConfig,
@@ -148,6 +149,12 @@ export interface BuildFromJsonOptions {
 	previewChat?: boolean;
 	/** Called when each vector store search starts. The returned function gets the size of the output that the model gets. */
 	onVectorStoreSearch?: (runId: string | undefined) => FinishKnowledgeToolCall;
+	/**
+	 * Builds the live knowledge tools of `config.knowledge.liveSources`. When
+	 * absent, or when the config has no live source, no live tool is attached.
+	 * The tools need no sandbox, so they attach here and not with the file tools.
+	 */
+	buildLiveKnowledgeTools?: (sources: AgentJsonLiveSourceConfig[]) => Promise<BuiltTool[]>;
 }
 
 function wrapVectorStoreSearch(
@@ -266,6 +273,11 @@ export async function buildFromJson(
 				throw sanitizer.sanitize(error);
 			}
 		}
+	}
+
+	if (config.knowledge?.liveSources?.length && options.buildLiveKnowledgeTools) {
+		const liveTools = await options.buildLiveKnowledgeTools(config.knowledge.liveSources);
+		if (liveTools.length > 0) agent.tool(liveTools);
 	}
 
 	agent.skills(configuredSkillSource);

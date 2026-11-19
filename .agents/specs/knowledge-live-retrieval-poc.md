@@ -1,7 +1,7 @@
 # Knowledge live retrieval: PoC spec
 
-Status: plan, not started. Setup decisions of 2026-11-19 applied (see
-"Decisions"). Ticket: https://linear.app/n8n/issue/KNO-338
+Status: in progress, day 1 done (Notion, `native`, the three tools). Setup
+decisions of 2026-11-19 applied (see "Decisions"). Ticket: https://linear.app/n8n/issue/KNO-338
 (project "Knowledge live retrieval"). Research notes (internal):
 [Knowledge live retrieval: PoC approach and session notes](https://app.notion.com/p/41b5b6e0c94f81148174fb637547c64f).
 
@@ -116,18 +116,20 @@ packages/cli/src/modules/knowledge/
   knowledge.module.ts                      + register the built-in providers on init
   live-sources/
     live-source-provider.ts                contract and helper types
-    live-source-provider-registry.ts       get(id), list(); throws on an unknown provider
-    live-credential-resolver.ts            the one seam: (projectId, principal, credentialId, allowedTypes) -> { id, type }
+    live-source-provider-registry.ts       get(id), list(); throws on an unknown provider; the built-in providers come in through DI
+    live-credential-resolver.ts            the one seam: (projectId, principal, sourceId, credentialId, allowedTypes) -> { id, type }
     node-operation-adapter.ts              execute(ctx, op) over EphemeralNodeExecutor.executeInline
-    live-source.errors.ts                  LiveSourceUnavailableError and the sanitiser
-    live-retrieval-schemas.ts              zod inputs of the three tools, ref parsing, result types
+    live-source.errors.ts                  the error classes with their errorType, and the sanitiser
+    live-retrieval-schemas.ts              zod inputs of the three tools, ref formatting and parsing, result types
     live-retrieval.service.ts              allow-set, per-run cache, provenance, strategy dispatch, endRun(runId)
     live-index.service.ts                  cards and BM25 per agentId:sourceId
+    strategies/live-retrieval-strategy.ts  the strategy contract
+    strategies/text-search.ts              query terms and the in-process line search
     strategies/native.strategy.ts
     strategies/index.strategy.ts
     providers/notion.provider.ts
     providers/slack.provider.ts
-    __tests__/live-retrieval.service.test.ts   the one test: the allow-set refusal
+    __tests__/live-retrieval.service.test.ts   the allow-set refusal, the per-run extension, refs, unavailable sources
 packages/cli/src/modules/agents/
   tools/knowledge/live-knowledge.tool.ts   the three tools
   json-config/from-json-config.ts          + options.buildLiveKnowledgeTools after the vector-store block
@@ -151,6 +153,7 @@ type Principal = { kind: 'project' } | { kind: 'person'; user: User }; // servic
 type RunContext = {
   projectId: string;
   principal: Principal;
+  sourceId: string;                        // for errors and logs
   credential: { id: string; type: string }; // never decrypted here
   runId: string;
   signal?: AbortSignal;
@@ -158,9 +161,10 @@ type RunContext = {
 
 type LiveSourceItem = { id: string; kind: 'item' | 'container'; containerType?: string; title: string; url?: string; parentId?: string };
 type LiveEntry = LiveSourceItem & { icon?: string; hasChildren?: boolean; updatedAt?: string };
-type LiveEntryRef = { sourceId: string; itemId: string }; // knowledge://live/<sourceId>/<itemId>
-type LiveHit = { ref: string; sourceId: string; title: string; snippet: string; url?: string; lineRange?: { start: number; end: number }; updatedAt?: string; retrieval: 'native' | 'index' };
-type LiveDocument = { id: string; title: string; url: string; text: string; updatedAt?: string };
+type LiveEntryRef = { sourceId: string; itemId: string }; // knowledge://live/<sourceId>/<itemId>; knowledge://live/<sourceId> names a source
+type LiveSearchMatch = { entry: LiveEntry; snippet: string; lineRange?: { start: number; end: number } }; // what a provider returns
+type LiveHit = { ref: string; sourceId: string; title: string; snippet: string; url?: string; lineRange?: { start: number; end: number }; updatedAt?: string; retrieval: 'native' | 'index' }; // what the tools return
+type LiveDocument = { id: string; title: string; url?: string; text: string; updatedAt?: string; truncated?: boolean };
 
 interface KnowledgeLiveSourceProvider {
   readonly id: string;                           // registry key
@@ -169,10 +173,20 @@ interface KnowledgeLiveSourceProvider {
   readonly defaultRetrieval: 'native' | 'index';
   resolveLink(ctx: RunContext, url: string): Promise<LiveEntry | null>; // paste-a-link, replaces browse
   list(ctx: RunContext, container: LiveSourceItem, req: { cursor?: string; limit?: number }): Promise<{ entries: LiveEntry[]; cursor?: string }>;
-  search(ctx: RunContext, scope: LiveSourceItem[], query: string, limit: number): Promise<LiveHit[]>;
-  read(ctx: RunContext, ref: LiveEntryRef): Promise<LiveDocument>;
+  search(ctx: RunContext, scope: readonly LiveEntry[], query: string, limit: number): Promise<LiveSearchMatch[]>; // scope: the allow-set; results stay in it or directly below a container in it
+  read(ctx: RunContext, entry: LiveEntry): Promise<LiveDocument>; // the entry comes from the allow-set, so title and url are known
+}
+
+interface LiveRetrievalStrategy {
+  readonly id: 'native' | 'index';
+  search(context: { ctx; source; provider; scope; pickedItems; readDocument }, query: string, limit: number): Promise<Array<LiveSearchMatch & { score: number }>>;
 }
 ```
+
+The tools pass `LiveKnowledgeScope = { projectId, agentId, principal }` and
+`LiveCallContext = { runId?, signal? }` to the service. The agents module
+builds the principal: `{ kind: 'person', user }` when the run has an
+interactive user, `{ kind: 'project' }` otherwise.
 
 `NodeOperationAdapter.execute(ctx, { nodeType, nodeTypeVersion, parameters, input? })`:
 
@@ -192,8 +206,9 @@ not needed in the PoC; it comes with the picker.
 - `describe(sources)`: the knowledge map, no API call.
 - `list`, `search`, `read(scope, sources, callCtx, request)`.
 - `endRun(runId)`.
-- Per-run state `{ allowSet: Map<sourceId, Set<itemId>>, docs: Map<ref, LiveDocument>, credentials }`
-  in a `Map<runId, …>` with a TTL sweep plus the explicit `endRun`.
+- Per-run state `{ allow: Map<itemId, LiveEntry>, docs: Map<itemId, LiveDocument>, credential }`
+  per source, in a `Map<runId, …>` with a TTL sweep (30 min) plus the explicit
+  `endRun`. A call without a run id gets a throwaway state.
 - The allow-set starts from `items[]`. Only ids that `list` or `search` of a
   picked container return extend it. `read` of any other id returns
   `{ error: 'Not in the selected knowledge', errorType: 'out_of_scope' }`.
@@ -207,7 +222,7 @@ Built in the agents module with the SDK `Tool` builder.
 
 | Tool | Input | Behaviour |
 |---|---|---|
-| `list_knowledge` | `{ scope?: string; filter?: string; cursor?: string }` | No arguments: the map and the picked items, no API call. A container ref: `provider.list`. |
+| `list_knowledge` | `{ scope?: string; filter?: string; limit?: number; cursor?: string }` | No arguments: the map and the picked items, no API call. A source ref: that source's map. A container ref: `provider.list`, and the entries extend the allow-set. |
 | `search_knowledge` | `{ query: string; scope?: string[]; limit?: number }` (limit 1-20, default 10) | Strategy of each source. Hits with refs and urls. |
 | `read_knowledge` | `{ ref: string; ranges?: Array<{ startLine; endLine }> }` (max 10 ranges) | Allow-set check, per-run cache, line ranges, citation. |
 
@@ -228,7 +243,7 @@ needs a sandbox.
 
 | Strategy | search | read | Notes |
 |---|---|---|---|
-| `native` | `provider.search` per picked container, plus in-process search over the cached picked items | live | Floor of the PoC. |
+| `native` | one `provider.search` over the allow-set (the provider keeps the scope), plus an in-process term search over the text of the picked single items, cached per run | live | Floor of the PoC. Provider matches rank 1 (a title match); line matches rank by the number of terms on the line. |
 | `index` | BM25 over cards `{ ref, title, path, head ≤500 chars (redacted), updatedAt }` built on rebuild or first search; caps: 500 entries, depth 2 | live | In memory per `agentId:sourceId`. Lost on restart. Slack cards hold channel metadata only. `list_knowledge()` shows `indexed N of M` and the build time. |
 
 BM25: about 80 lines in `live-index.service.ts`. No new dependency.
@@ -243,9 +258,9 @@ optional again.
 | | Notion v3 (`n8n-nodes-base.notion`, version 3) | Slack v2.7 (`n8n-nodes-base.slack`, version 2.7) |
 |---|---|---|
 | resolveLink | `pageLocator` url regex (`v3/actions/common.descriptions.ts`), then `page:get` for the title | archive-URL regex: channel id and optional `p<ts>` |
-| list | `block:getAll` (`child_page`, `child_database`), `databasePage:getAll` with `dataSourceLocator` | `channel:history` (`oldest` = 30 days by default, cap 200) |
-| search | `page:search` post-filtered by the allow-set; data sources through `databasePage:getAll` with a title filter; in-process over cached items | `message:search` per picked channel, post-filter by `channel` |
-| read | `page:getMarkdown` | `channel:replies` for the thread; url from `message:getPermalink` |
+| list | `block:getAll` raw (`child_page`, `child_database`); `database:get` lists the data sources of a database; `databasePage:getAll` raw with `dataSourceLocator` for a data source | `channel:history` (`oldest` = 30 days by default, cap 200) |
+| search | `page:search` raw (`simple: false`, because the simplified output throws on an untitled page), kept when the result or its parent is in the allow-set; data sources through `databasePage:getAll` with a JSON title filter (`property: 'title'`, one `contains` per term); in-process over cached items | `message:search` per picked channel, post-filter by `channel` |
+| read | `page:getMarkdown` (`{ id, markdown, truncated }`, no title or url), plus `databasePage:get` raw when the entry has no url or edit time | `channel:replies` for the thread; url from `message:getPermalink` |
 | defaultRetrieval | `index` for containers, `native` for items | `native` |
 | persistableContent | `true` | `false` (terms forbid stored messages) |
 | credential in the PoC | `notionApi` internal integration token first; `notionOAuth2Api` before the final runs if time allows | `slackApi` with the user OAuth token (`xoxp-…`) of a new app in a test workspace, installed from the app's OAuth page. Slack requires an HTTPS redirect URL, so the `slackOAuth2Api` flow needs a tunnel on a local instance; optional later |
@@ -373,32 +388,32 @@ Setup decisions of 2026-11-19:
 
 - [x] Branch `kno-338-research-track` from fresh master
 - [x] `liveSourcesEnabled` on `KnowledgeConfig`, `isLiveSourcesEnabled()` on the availability service
-- [ ] Notion internal integration (token, root page shared with it); `notionApi` credential in the local project
-- [ ] Slack test workspace and app (n8n default user scopes); `slackOAuth2Api` credential in the local project; user token for the seed script
+- [x] Notion internal integration (token, root page shared with it); `notionApi` credential in the local project
+- [x] Slack test workspace and app (user scopes only, from a manifest); `slackApi` credential with the user token in the local project; the same token for the seed script
 - [ ] Anthropic credential in the local project
-- [x] `seed-sources.mjs` seeds the Notion and Slack content and writes `fixtures/items.json` (smoke-tested against a fake API; the first real run is part of the credential setup)
-- [ ] Spike 1: Notion `page:getMarkdown` output shape through a node-tool agent
+- [x] `seed-sources.mjs` seeds the Notion and Slack content and writes `fixtures/items.json` (both sources seeded on 2026-11-19)
+- [x] Spike 1: Notion `page:getMarkdown` output shape: `{ object: 'page_markdown', id, markdown, truncated, unknown_block_ids }`, read from the node code instead of a run
 - [ ] Spike 2: Slack `message:search` with `in:` and a channel id
-- [ ] Spike 3: `executeInline` runs both operations without a workflow id
+- [ ] Spike 3: `executeInline` runs both operations without a workflow id (the day-1 exit covers Notion)
 - [ ] C0: hosted Notion and Slack MCP servers connect; tool lists recorded
 - [ ] Spike outputs saved under `scripts/knowledge-live-harness/fixtures/spikes/`
 
 ### Day 1: vertical slice, Notion, `native`
 
-- [ ] `knowledge.liveSources` schema and types in `@n8n/api-types`
-- [ ] `CREDENTIAL_LOCATIONS` row
-- [ ] Provider contract, registry, credential resolver, adapter, errors, schemas
-- [ ] `LiveRetrievalService` with the `native` strategy
-- [ ] Notion provider: `resolveLink`, `list`, `search`, `read`
-- [ ] The three tools and the `buildLiveKnowledgeTools` hook
-- [ ] `BUILT_IN_TOOLS.md` entry
+- [x] `knowledge.liveSources` schema and types in `@n8n/api-types`
+- [x] `CREDENTIAL_LOCATIONS` row
+- [x] Provider contract, registry, credential resolver, adapter, errors, schemas
+- [x] `LiveRetrievalService` with the `native` strategy
+- [x] Notion provider: `resolveLink`, `list`, `search`, `read`
+- [x] The three tools and the `buildLiveKnowledgeTools` hook
+- [x] `BUILT_IN_TOOLS.md` entry
 - [ ] Exit: an agent with one Notion source answers an item question with a url and refuses an unpicked page
 
 ### Day 2: Slack, per-run state, C0 agent, the test
 
 - [ ] Slack provider: `resolveLink`, `list`, `search`, `read`
-- [ ] `endRun` hook in the turn-execution run end
-- [ ] Allow-set refusal test
+- [x] `endRun` hook in the turn-execution run end (done on day 1)
+- [x] Allow-set refusal test (done on day 1, with the per-run extension, refs and the unavailable-source result)
 - [ ] `fixtures/agent.json` for `kb-native`, `kb-index`, `kb-mcp-c0`
 - [ ] Exit: `kb-native` answers a Slack channel question with a permalink; `kb-mcp-c0` runs
 

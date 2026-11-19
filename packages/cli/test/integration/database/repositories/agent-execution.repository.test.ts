@@ -116,6 +116,7 @@ import { N8N_CHAT_PRODUCTION_SOURCE } from '@/modules/agents/utils/agent-thread-
 
 import { createMember, createAdmin } from '../../shared/db/users';
 import type { AgentSandboxFilesService } from '@/modules/agents/agent-sandbox-files.service';
+import type { LiveRetrievalService } from '@/modules/knowledge/live-sources/live-retrieval.service';
 
 // Share the transaction class loaded by the built BaseRepository.
 const { TypeOrmTransaction, TypeOrmTransactionRunner } = createRequire(__filename)(
@@ -316,6 +317,7 @@ describe('AgentExecutionRepository', () => {
 				mock<AgentToolApprovalService>(),
 				mock<AgentKnowledgeUsageTracker>(),
 				mock<AgentSandboxFilesService>(),
+				mock<LiveRetrievalService>(),
 			),
 		};
 	}

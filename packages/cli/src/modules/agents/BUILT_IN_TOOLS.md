@@ -119,6 +119,12 @@ Files in `outputs/` become conversation files with source `sandbox`. A turn that
 - Attach condition: The sandbox is on, the `knowledge` module is active (`KnowledgeAvailabilityService` in the knowledge module answers this), the agent is not an inline agent, and the agent has knowledge files.
 - Source: [`tools/knowledge/search-knowledge.tool.ts`](./tools/knowledge/search-knowledge.tool.ts). The tools call `KnowledgeRetrievalService` in the knowledge module with the scope of the agent. The knowledge module owns the search, the read and the sandbox copy of the files.
 
+### Live knowledge tools (experimental)
+
+- Purpose: `list_knowledge` shows the live knowledge sources of the agent and their picked items, or the items inside one picked container. `search_knowledge` searches the picked items and containers with keywords. `read_knowledge` reads one item live from its source. Every result carries a `knowledge://live/<source>/<item>` ref and the url of the item. An item outside the picked items and containers cannot be read.
+- Attach condition: `N8N_KNOWLEDGE_LIVE_SOURCES_ENABLED` is on, the `knowledge` module is active (`KnowledgeAvailabilityService.isLiveSourcesEnabled()`), and the agent config has `knowledge.liveSources`. The tools need no sandbox. `buildFromJson` attaches them through `buildLiveKnowledgeTools`, which the runtime reconstruction service implements.
+- Source: [`tools/knowledge/live-knowledge.tool.ts`](./tools/knowledge/live-knowledge.tool.ts). The tools call `LiveRetrievalService` in the knowledge module with the project, the agent and the principal of the run. The knowledge module owns the allow-set, the per-run cache, the retrieval strategies and the providers (`live-sources/providers/`), which run node operations through `EphemeralNodeExecutor`.
+
 ## Tools attached to top-level agents only
 
 ### Chat integration tools

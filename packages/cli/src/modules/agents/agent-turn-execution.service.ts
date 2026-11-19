@@ -14,6 +14,8 @@ import { Service } from '@n8n/di';
 import { UnexpectedError } from '@n8n/errors';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 
+import { LiveRetrievalService } from '@/modules/knowledge/live-sources/live-retrieval.service';
+
 import type { AgentChatSurface, AgentSessionMode } from './utils/agent-thread-access';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
@@ -144,6 +146,7 @@ export class AgentTurnExecutionService {
 		private readonly toolApprovalService: AgentToolApprovalService,
 		private readonly knowledgeUsageTracker: AgentKnowledgeUsageTracker,
 		private readonly sandboxFiles: AgentSandboxFilesService,
+		private readonly liveRetrievalService: LiveRetrievalService,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -548,6 +551,8 @@ export class AgentTurnExecutionService {
 		} finally {
 			// Make sure the run's knowledge counts leave memory, also when recording fails.
 			this.sendKnowledgeUsage(args.runId, params);
+			// The live knowledge allow-set and cache of the run leave memory with it.
+			this.liveRetrievalService.endRun(args.runId);
 		}
 		onExecutionRecorded?.(recordedId);
 	}

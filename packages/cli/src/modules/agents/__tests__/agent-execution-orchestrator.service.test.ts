@@ -93,6 +93,7 @@ import { AgentN8nChatUnavailableError } from '../agent-n8n-chat-unavailable.erro
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
 import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
+import type { LiveRetrievalService } from '@/modules/knowledge/live-sources/live-retrieval.service';
 
 // Draft runs check `agent:read`; these tests run as a user who holds it.
 vi.mock('@/permissions.ee/check-access', () => ({
@@ -324,6 +325,7 @@ function makeService(sandboxEnabled = false) {
 			toolApprovalService,
 			knowledgeUsageTracker,
 			mock<AgentSandboxFilesService>(),
+			mock<LiveRetrievalService>(),
 		),
 		telemetry,
 		runtimeCacheService,

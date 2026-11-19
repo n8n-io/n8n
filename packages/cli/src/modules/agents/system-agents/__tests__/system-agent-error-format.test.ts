@@ -22,6 +22,7 @@ import { SystemAgentExecutionService } from '../system-agent-execution.service';
 import { SystemAgentRegistry } from '../system-agent-registry';
 import type { SystemAgentProvider, SystemAgentTurnHandle } from '../system-agent.types';
 import type { AgentSandboxFilesService } from '../../agent-sandbox-files.service';
+import type { LiveRetrievalService } from '@/modules/knowledge/live-sources/live-retrieval.service';
 
 /**
  * Runs a system-agent turn on the real turn execution service and recorder,
@@ -110,6 +111,7 @@ function setup(
 		toolApprovalService,
 		mock<AgentKnowledgeUsageTracker>(),
 		mock<AgentSandboxFilesService>(),
+		mock<LiveRetrievalService>(),
 	);
 
 	const registry = new SystemAgentRegistry();

@@ -49,6 +49,7 @@ import type {
 	SubAgentSourceResolver,
 } from '../sub-agent-source-resolver';
 import type { AgentSandboxFilesService } from '../../agent-sandbox-files.service';
+import type { LiveRetrievalService } from '@/modules/knowledge/live-sources/live-retrieval.service';
 
 const aiConfigMock = mock<AiConfig>();
 const toolApprovalService = mock<AgentToolApprovalService>();
@@ -184,6 +185,7 @@ describe('SubAgentRunner', () => {
 				toolApprovalService,
 				knowledgeUsageTracker,
 				mock<AgentSandboxFilesService>(),
+				mock<LiveRetrievalService>(),
 			),
 			checkpointStorage,
 			logger,

@@ -62,6 +62,10 @@ import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import type { KnowledgeConsumerScope } from '@/modules/knowledge/knowledge-consumer-scope';
+import {
+	LiveRetrievalService,
+	type LiveKnowledgeScope,
+} from '@/modules/knowledge/live-sources/live-retrieval.service';
 import { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
 import type { EmbeddingProviderOptions } from '@/modules/knowledge/vector-stores/embedding-credential';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -391,6 +395,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly knowledgeUsageTracker: AgentKnowledgeUsageTracker,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 		private readonly sandboxFiles: AgentSandboxFilesService,
+		private readonly liveRetrievalService: LiveRetrievalService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -821,6 +826,7 @@ export class AgentRuntimeReconstructionService {
 			skills,
 			instrumentation,
 			previewChat,
+			user,
 		} = options;
 		const toolExecutor = this.secureRuntime.createToolExecutor(toolCodeByName);
 		const toolResolver = this.createRuntimeToolResolver(
@@ -851,6 +857,24 @@ export class AgentRuntimeReconstructionService {
 				await this.resolveManagedEmbeddingProviderOptions(projectId),
 			onVectorStoreSearch: (runId) =>
 				this.knowledgeUsageTracker.startToolCall(runId, 'vector_store_search'),
+			buildLiveKnowledgeTools: this.knowledgeAvailabilityService.isLiveSourcesEnabled()
+				? async (sources) => {
+						const { createLiveKnowledgeTools } = await import(
+							'./tools/knowledge/live-knowledge.tool.js'
+						);
+						// A person run reads with the access of that user; a published run stays project-scoped.
+						const scope: LiveKnowledgeScope = {
+							projectId,
+							agentId: memoryOwnerAgentId,
+							principal: user ? { kind: 'person', user } : { kind: 'project' },
+						};
+						return createLiveKnowledgeTools({
+							scope,
+							sources,
+							service: this.liveRetrievalService,
+						}).map((tool) => tool.build());
+					}
+				: undefined,
 			modelFetch: credentialProvider.createAiGatewayTokenRefreshFetch?.(modelFetch) ?? modelFetch,
 			fallbackWebSearch: instrumentation?.webSearch,
 			// Only the mock MCP transport makes attaching auth-pending servers safe.
