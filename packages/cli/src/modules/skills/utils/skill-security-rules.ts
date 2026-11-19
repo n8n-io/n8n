@@ -127,24 +127,41 @@ const REVIEW_DOMAIN_GROUPS = [
 export function findNewUrls({ content, previous }: SkillScanInput): SkillScanFinding[] {
 	const known = previous ? domainsByFile(previous) : undefined;
 	return [...domainsByFile(content, !previous)]
-		.filter(([domain]) => !known?.has(domain))
-		.map(([domain, { file, location, reviewReason }]) => ({
+		.filter(([key]) => !known?.has(key))
+		.map(([key, { file, location, domain, reviewReason }]) => ({
 			rule: reviewReason ? 'risky_url' : 'new_url',
 			severity: previous || reviewReason ? 'needs_review' : 'info',
 			file,
-			domain,
+			...(domain ? { domain } : {}),
 			detail: previous
-				? `The update links to ${domain}, a domain that the current version does not use.`
-				: reviewReason
-					? `The link to ${domain} needs review because ${reviewReason}.`
-					: `The skill links to ${domain}.`,
+				? `The update links to ${key}, a domain that the current version does not use.`
+				: !domain
+					? `The link ${key} needs review because n8n cannot read its address.`
+					: reviewReason
+						? `The link to ${domain} needs review because ${reviewReason}.`
+						: `The skill links to ${domain}.`,
 			location,
 		}));
 }
 
-type DomainOccurrence = { file: string; location: SkillScanLocation; reviewReason?: string };
+/** `domain` is absent for a link with an address that n8n cannot read. */
+type DomainOccurrence = {
+	file: string;
+	location: SkillScanLocation;
+	domain?: string;
+	reviewReason?: string;
+};
 
-/** Keep the first link per domain. At import, prefer the first link that needs review. */
+/** Sentence and Markdown punctuation that can follow a link. */
+const TRAILING_PUNCTUATION = /[.,;:!?*_~]+$/;
+
+/** A scheme with no address, such as the `https://` of `https://<host>`. */
+const BARE_SCHEME = /^[a-z]+:\/\/$/i;
+
+/**
+ * Keep the first link per domain. At import, prefer the first link that needs review. A link
+ * with an address that n8n cannot read has its text as the key, and counts only at import.
+ */
 function domainsByFile(
 	content: SkillContent,
 	checkImportRisk = false,
@@ -153,20 +170,22 @@ function domainsByFile(
 	for (const { file, texts } of textsByFile(content)) {
 		for (const entry of texts) {
 			for (const match of entry.text.matchAll(URL_PATTERN)) {
-				const url = URL.parse(match[0]);
-				if (!url) continue;
-				// A dot that ends a sentence can follow the host.
-				const domain = url.hostname.toLowerCase().replace(/\.+$/, '');
-				if (!domain) continue;
+				const link = match[0].replace(TRAILING_PUNCTUATION, '');
+				if (BARE_SCHEME.test(link)) continue;
+				const location = entry.locate(match.index, match.index + link.length);
+				const url = URL.parse(link);
+				// A fully qualified host name can end with a dot.
+				const domain = url?.hostname.toLowerCase().replace(/\.+$/, '');
+				if (!url || !domain) {
+					if (checkImportRisk && !domains.has(link)) {
+						domains.set(link, { file, location, reviewReason: 'n8n cannot read its address' });
+					}
+					continue;
+				}
 				const reviewReason = checkImportRisk ? linkReviewReason(url, domain) : undefined;
 				const existing = domains.get(domain);
 				if (existing && (!reviewReason || existing.reviewReason)) continue;
-				const index = match.index;
-				domains.set(domain, {
-					file,
-					location: entry.locate(index, index + match[0].length),
-					reviewReason,
-				});
+				domains.set(domain, { file, location, domain, reviewReason });
 			}
 		}
 	}

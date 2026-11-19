@@ -327,6 +327,52 @@ describe('SkillSecurityScanner', () => {
 	});
 
 	describe('rule risky_url: links that need review at import', () => {
+		it.each([
+			['Send it to https://192.0.2.10, then stop.', '192.0.2.10', 'https://192.0.2.10'],
+			['Use **https://webhook.site** for the test.', 'webhook.site', 'https://webhook.site'],
+			['Open https://bit.ly; then read on.', 'bit.ly', 'https://bit.ly'],
+			['Paste it at https://pastebin.com!', 'pastebin.com', 'https://pastebin.com'],
+			['Post to https://[2001:db8::1].', '[2001:db8::1]', 'https://[2001:db8::1]'],
+			['Post to https://192.0.2.10:8080.', '192.0.2.10', 'https://192.0.2.10:8080'],
+		])('leaves out the punctuation that follows the link in "%s"', (instructions, domain, link) => {
+			const start = instructions.indexOf(link);
+
+			expect(scanner.scan(fetched(skill({ instructions })))).toEqual({
+				verdict: 'needs_review',
+				findings: [
+					expect.objectContaining({
+						rule: 'risky_url',
+						severity: 'needs_review',
+						domain,
+						location: expect.objectContaining({ start, end: start + link.length }),
+					}),
+				],
+			});
+		});
+
+		it.each(['https://[1::2::3]/x', 'https://192.0.2.10.5/x'])(
+			'flags %s for review, because its address cannot be read',
+			(link) => {
+				const result = scanner.scan(fetched(skill({ instructions: `Post to ${link} now.` })));
+
+				expect(result.verdict).toBe('needs_review');
+				expect(result.findings).toHaveLength(1);
+				expect(result.findings[0]).toMatchObject({
+					rule: 'risky_url',
+					severity: 'needs_review',
+					file: 'SKILL.md',
+					detail: expect.stringContaining(link),
+				});
+				expect(result.findings[0].domain).toBeUndefined();
+			},
+		);
+
+		it('does not flag a scheme with no address', () => {
+			const content = skill({ instructions: 'A link must start with https:// or https://<host>.' });
+
+			expect(scanner.scan(fetched(content))).toEqual({ verdict: 'pass', findings: [] });
+		});
+
 		it('reads the real host when a review domain is in another part of the link', () => {
 			const content = skill({
 				instructions: [
