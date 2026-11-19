@@ -115,17 +115,24 @@ describe('the reason of a read of a paired item that is not compiled', () => {
 		expect(retried.expression).toBeUndefined();
 	});
 
-	it('names a node with several connections into it', () => {
+	it('names a second node with several connections on the way', () => {
+		// One node with several connections picks the connection of its latest run, as v1 does.
+		// A second one on the way has no compiled form.
 		const out = reasons(
-			[set('Left'), set('Right'), set('Both')],
+			[set('Left'), set('Right'), set('Both'), set('Upper'), set('Lower'), set('Last')],
 			[
 				['Source', 0, 'Left', 0],
 				['Source', 0, 'Right', 0],
 				['Left', 0, 'Both', 0],
 				['Right', 0, 'Both', 0],
+				['Both', 0, 'Upper', 0],
+				['Both', 0, 'Lower', 0],
+				['Upper', 0, 'Last', 0],
+				['Lower', 0, 'Last', 0],
 			],
 		);
-		const several = 'engine form of the workflow: 2 connections into n8n-nodes-base.set@3.4';
+		const several =
+			'engine form of the workflow: several nodes with several connections on the way';
 		expect(out.code).toBe(several);
 		expect(out.expression).toBe(several);
 	});

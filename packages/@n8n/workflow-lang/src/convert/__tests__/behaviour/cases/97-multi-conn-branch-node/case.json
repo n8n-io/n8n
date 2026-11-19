@@ -15,5 +15,5 @@
 		"Read All",
 		"Read Expr"
 	],
-	"expectRefusal": true
+	"runData": true
 }

@@ -49,6 +49,11 @@ export interface BehaviourCase {
 	/** True when the converter should refuse this case (no compiled form for the path). */
 	expectRefusal?: boolean;
 	/**
+	 * True for a case whose compared nodes run more than once in the engine form: the
+	 * converted run then gives the items of all their runs, as the recording has them.
+	 */
+	runData?: boolean;
+	/**
 	 * True when the runtime of the case stores a response as binary data
 	 * (`NodeSources.storesResponses`): the response format "file" of an HTTP Request node.
 	 */
@@ -62,8 +67,10 @@ export interface BehaviourCase {
 
 /** The options of the converter for a case. */
 export function convertOptionsOf(spec: BehaviourCase): ConvertOptions {
-	if (spec.storesResponses !== true) return {};
+	const options: ConvertOptions = spec.runData === true ? { runData: true } : {};
+	if (spec.storesResponses !== true) return options;
 	return {
+		...options,
 		nodeSources: {
 			entry: () => undefined,
 			readFile: () => undefined,
