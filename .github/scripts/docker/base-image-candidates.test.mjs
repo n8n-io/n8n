@@ -5,6 +5,8 @@ import {
 	GATE_MS,
 	SOURCES,
 	applyGate,
+	classifyNoFix,
+	movingTagOf,
 	compareScans,
 	evaluateSource,
 	readPin,
@@ -138,6 +140,67 @@ describe('evaluateSource', () => {
 	});
 });
 
+describe('evaluateSource without a newer digest', () => {
+	const same = (vulns) => {
+		const scanned = summarizeReport(report(vulns));
+		return [{ platform: 'linux/amd64', pinned: scanned, newest: scanned }];
+	};
+
+	it('reports a pinned digest without findings as current', () => {
+		assert.equal(evaluateSource(pin, digest('a'), same([])).status, 'current');
+	});
+
+	it('reports a pinned digest with findings as no-fix', () => {
+		const result = evaluateSource(pin, digest('a'), same([finding('CVE-1', 'openssl')]));
+		assert.equal(result.status, 'no-fix');
+	});
+});
+
+describe('movingTagOf', () => {
+	it('drops the patch number', () => {
+		assert.equal(movingTagOf('26.13.0-alpine3.24-dev'), '26.13-alpine3.24-dev');
+		assert.equal(movingTagOf('3.13.18-slim-trixie'), '3.13-slim-trixie');
+		assert.equal(movingTagOf('26.13.0'), '26.13');
+	});
+
+	it('returns null for a tag without a patch number', () => {
+		assert.equal(movingTagOf('latest'), null);
+		assert.equal(movingTagOf('26.13-alpine3.24-dev'), null);
+	});
+});
+
+describe('classifyNoFix', () => {
+	const now = Date.parse('2026-11-19T12:00:00Z');
+	const daysAgo = (days) => new Date(now - days * 24 * 60 * 60 * 1000).toISOString();
+	const noFix = { source: 'DHI_REF', status: 'no-fix', platforms: [] };
+	const moving = (removed) => ({
+		ref: `dhi.io/node:26.13-alpine3.24-dev@${digest('d')}`,
+		platforms: [{ platform: 'linux/amd64', removed, added: [], addedPackages: [] }],
+	});
+	const fixed = { id: 'CVE-1', pkg: 'openssl', severity: 'HIGH' };
+
+	it('asks for a version update when the moving tag removes a finding', () => {
+		const result = classifyNoFix(noFix, moving([fixed]), { publishedAt: daysAgo(1), now });
+		assert.equal(result.status, 'version-update');
+		assert.equal(result.versionUpdate.ref, `dhi.io/node:26.13-alpine3.24-dev@${digest('d')}`);
+	});
+
+	it('reports no upstream fix when the moving tag removes nothing', () => {
+		const result = classifyNoFix(noFix, moving([]), { publishedAt: daysAgo(1), now });
+		assert.equal(result.status, 'no-upstream-fix');
+		assert.equal(result.stale, false);
+	});
+
+	it('marks a source stale when its newest digest is at least 7 days old', () => {
+		const result = classifyNoFix(noFix, null, { publishedAt: daysAgo(7), now });
+		assert.equal(result.stale, true);
+	});
+
+	it('leaves the staleness unknown without a publication time', () => {
+		assert.equal(classifyNoFix(noFix, null, { publishedAt: null, now }).stale, null);
+	});
+});
+
 describe('applyGate', () => {
 	const now = Date.parse('2026-11-19T12:00:00Z');
 	const candidate = (addedPackages = []) => ({
@@ -225,6 +288,29 @@ describe('renderSummary', () => {
 			/\| `DHI_REF` \| ready \| 2026-11-17T00:00:00.000Z \| no \| linux\/arm64 \| 0 C \/ 1 H \/ 0 M \| 0 C \/ 0 H \/ 0 M \| - \|/,
 		);
 		assert.match(summary, /\| `DHI_REF` \| current \| - \| - \| - \| - \| - \| - \|/);
+	});
+
+	it('lists the sources that need a person', () => {
+		const fixed = { id: 'CVE-1', pkg: 'openssl', severity: 'HIGH' };
+		const versionUpdate = classifyNoFix(
+			{ source: 'DHI_REF', status: 'no-fix', platforms: [] },
+			{
+				ref: 'dhi.io/node:26.13-alpine3.24-dev@sha256:d',
+				platforms: [{ platform: 'linux/amd64', removed: [fixed], added: [], addedPackages: [] }],
+			},
+			{ publishedAt: null, now: 0 },
+		);
+		const stale = classifyNoFix({ source: 'PYTHON_IMAGE', status: 'no-fix', platforms: [] }, null, {
+			publishedAt: '2026-11-01T00:00:00.000Z',
+			now: Date.parse('2026-11-19T00:00:00Z'),
+		});
+		const summary = renderSummary([versionUpdate, stale]);
+		assert.match(summary, /### Needs a person/);
+		assert.match(
+			summary,
+			/- `DHI_REF`: version update needed\. `dhi\.io\/node:26\.13-alpine3\.24-dev@sha256:d` removes 0 C \/ 1 H \/ 0 M\./,
+		);
+		assert.match(summary, /- `PYTHON_IMAGE`: fixable findings and no new digest since 2026-11-01/);
 	});
 
 	it('lists the publisher errors', () => {

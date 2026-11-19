@@ -7,7 +7,9 @@
  * the newest digest of the pinned tag, then scans the pinned and the newest
  * digest with Trivy on each platform. The newest digest is a candidate when it
  * removes at least one finding. A candidate is ready when its publisher is
- * verified and it is at least 24 hours old (see applyGate).
+ * verified and it is at least 24 hours old (see applyGate). When no digest of
+ * the tag removes a finding, the moving tag of the line shows whether a newer
+ * patch does (see classifyNoFix).
  *
  * Usage: node base-image-candidates.mjs [--out <file>] [--skip-gate]
  * Needs docker buildx, trivy, cosign, and a login to each private registry
@@ -85,21 +87,45 @@ export function compareScans(pinned, newest) {
 	};
 }
 
-/** The result for one source. `scans` holds { platform, pinned, newest } entries. */
+/**
+ * The result for one source. `scans` holds { platform, pinned, newest } entries.
+ * When the tag has no newer digest, `newest` is the scan of the pinned digest.
+ */
 export function evaluateSource(pin, newestDigest, scans) {
 	const result = {
 		source: pin.name,
 		pinned: pin.ref,
 		newest: `${pin.repository}:${pin.tag}@${newestDigest}`,
 	};
-	if (newestDigest === pin.digest) return { ...result, status: 'current', platforms: [] };
-
 	const platforms = scans.map(({ platform, pinned, newest }) => ({
 		platform,
 		...compareScans(pinned, newest),
 	}));
-	const removes = platforms.some((platform) => platform.removed.length > 0);
-	return { ...result, status: removes ? 'candidate' : 'no-fix', platforms };
+	if (platforms.some((platform) => platform.removed.length > 0))
+		return { ...result, status: 'candidate', platforms };
+	const remains = scans.some(({ newest }) => newest.findings.length > 0);
+	return { ...result, status: remains ? 'no-fix' : 'current', platforms };
+}
+
+/** The moving tag of a pinned tag's line: the same tag without the patch number. */
+export function movingTagOf(tag) {
+	const match = /^(\d+\.\d+)\.\d+(-.+)?$/.exec(tag);
+	return match ? `${match[1]}${match[2] ?? ''}` : null;
+}
+
+export const STALE_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Classifies a source whose newest digest leaves fixable findings. When the
+ * moving tag points to a newer patch that removes a finding, a person must
+ * update the version. Otherwise the upstream has no fix yet, and the source is
+ * stale when its newest digest is at least 7 days old.
+ */
+export function classifyNoFix(result, moving, { publishedAt, now }) {
+	if (moving?.platforms.some((platform) => platform.removed.length > 0))
+		return { ...result, status: 'version-update', versionUpdate: moving };
+	const stale = publishedAt ? now - Date.parse(publishedAt) >= STALE_MS : null;
+	return { ...result, status: 'no-upstream-fix', newestPublishedAt: publishedAt, stale };
 }
 
 export const GATE_MS = 24 * 60 * 60 * 1000;
@@ -122,22 +148,15 @@ export function applyGate(candidate, publisher, { now, skipGate }) {
 	return { ...checked, status: 'ready', autoMerge: !addsPackage && !gated, gateSkipped: gated };
 }
 
-function resolveNewestDigest(pin) {
+function resolveDigest(repository, tag) {
 	const out = execFileSync(
 		'docker',
-		[
-			'buildx',
-			'imagetools',
-			'inspect',
-			`${pin.repository}:${pin.tag}`,
-			'--format',
-			'{{json .Manifest}}',
-		],
+		['buildx', 'imagetools', 'inspect', `${repository}:${tag}`, '--format', '{{json .Manifest}}'],
 		{ encoding: 'utf8' },
 	);
 	const digest = JSON.parse(out).digest;
 	if (!/^sha256:[0-9a-f]{64}$/.test(digest ?? '')) {
-		throw new Error(`No digest for ${pin.repository}:${pin.tag}`);
+		throw new Error(`No digest for ${repository}:${tag}`);
 	}
 	return digest;
 }
@@ -186,7 +205,18 @@ export function renderSummary(results) {
 		'| --- | --- | --- | --- | --- | --- | --- | --- |',
 	];
 	const errors = [];
+	const notes = [];
 	for (const result of results) {
+		if (result.versionUpdate) {
+			const removed = result.versionUpdate.platforms.flatMap((platform) => platform.removed);
+			notes.push(
+				`- \`${result.source}\`: version update needed. \`${result.versionUpdate.ref}\` removes ${count(removed)}.`,
+			);
+		}
+		if (result.stale)
+			notes.push(
+				`- \`${result.source}\`: fixable findings and no new digest since ${result.newestPublishedAt}.`,
+			);
 		const published = result.publisher?.publishedAt ?? '-';
 		const autoMerge = result.autoMerge === undefined ? '-' : result.autoMerge ? 'yes' : 'no';
 		const head = `| \`${result.source}\` | ${result.status} | ${published} | ${autoMerge}`;
@@ -201,6 +231,7 @@ export function renderSummary(results) {
 			);
 		}
 	}
+	if (notes.length > 0) lines.push('', '### Needs a person', '', ...notes);
 	if (errors.length > 0) lines.push('', '### Publisher errors', '', ...errors);
 	return `${lines.join('\n')}\n`;
 }
@@ -215,21 +246,38 @@ async function main() {
 	try {
 		for (const name of SOURCES) {
 			const pin = readPin(hcl, name);
-			const newestDigest = resolveNewestDigest(pin);
-			const newestRef = `${pin.repository}@${newestDigest}`;
-			const pinnedRef = `${pin.repository}@${pin.digest}`;
-			const scans =
-				newestDigest === pin.digest
-					? []
-					: PLATFORMS.map((platform) => ({
-							platform,
-							pinned: scan(pinnedRef, platform, workDir),
-							newest: scan(newestRef, platform, workDir),
-						}));
+			const newestDigest = resolveDigest(pin.repository, pin.tag);
+			const scans = PLATFORMS.map((platform) => {
+				const pinned = scan(`${pin.repository}@${pin.digest}`, platform, workDir);
+				const newest =
+					newestDigest === pin.digest
+						? pinned
+						: scan(`${pin.repository}@${newestDigest}`, platform, workDir);
+				return { platform, pinned, newest };
+			});
 			let result = evaluateSource(pin, newestDigest, scans);
 			if (result.status === 'candidate') {
 				const publisher = await verifyPublisher(pin, newestDigest, PLATFORMS);
 				result = applyGate(result, publisher, { now: Date.now(), skipGate: values['skip-gate'] });
+			} else if (result.status === 'no-fix') {
+				// A pinned tag can freeze on its patch. The moving tag of the line shows a newer patch.
+				const movingTag = movingTagOf(pin.tag);
+				const movingDigest = movingTag ? resolveDigest(pin.repository, movingTag) : null;
+				const moving =
+					movingDigest && movingDigest !== newestDigest
+						? {
+								ref: `${pin.repository}:${movingTag}@${movingDigest}`,
+								platforms: scans.map(({ platform, newest }) => ({
+									platform,
+									...compareScans(
+										newest,
+										scan(`${pin.repository}@${movingDigest}`, platform, workDir),
+									),
+								})),
+							}
+						: null;
+				const { publishedAt } = await verifyPublisher(pin, newestDigest, PLATFORMS);
+				result = classifyNoFix(result, moving, { publishedAt, now: Date.now() });
 			}
 			console.log(`${name}: ${result.status} (${result.newest})`);
 			results.push(result);
