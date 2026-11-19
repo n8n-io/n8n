@@ -280,18 +280,24 @@ describe('a compiled node that reaches the largest size of a stored file', () =>
 		expect(out.result).toMatchObject({ Good: [{ error: expect.any(String) }, { id: 'b' }] });
 	});
 
-	it('runs the node in the host in the same run when a later node reads the paired items', async () => {
-		const compiled = await run({}, [FILE], { reads: true });
-		expect(compiled.source).toContain('.paired');
-		expect(compiled.kinds).toEqual(['http GET', 'http GET']);
-		expect(compiled.result).toMatchObject({ Good: [{ source: 'a' }, { source: 'b' }] });
-		// The host gives no paired items: the later node pairs by position, as v1's engine.
+	it('keeps no paired items, so a later read of a paired item is not compiled as exact', async () => {
+		// The host runs the v1 node for all items and gives no paired items. The v1 node pairs
+		// each of its items with its input item, so no rule of positions gives v1's item: for
+		// the items `a, a2, b` of the inputs `a, b`, the read by position gives `a, b` and
+		// nothing, and v1 gives `a, a, b`.
+		const flow = workflowWith({}, false, true);
+		const result = convertWorkflow(flow, {
+			nodeSources: sourcesWith([...ONE_CALL, '@pairedItems']),
+			instance: { baseUrl: 'https://n8n.example', id: 'a'.repeat(64) },
+		});
+		expect(result.source).not.toContain('.paired');
+		expect(
+			result.diagnostics.filter((d) => d.code === 'paired-item').map((d) => d.node),
+		).toEqual(['Good']);
+		// The node itself hands over as before.
 		const out = await run({}, [FILE, TOO_LARGE], { reads: true });
 		expect(out.status).toBe('ok');
 		expect(out.kinds).toEqual(['http GET', 'http GET', 'node']);
-		expect(out.result).toEqual({ Good: [{ source: 'a' }, { source: 'b' }] });
-		const traced = await run({}, [TOO_LARGE], { reads: true, trace: true });
-		expect(traced.status).toBe('ok');
 		const stopped = await run({}, [TOUCHED, TOO_LARGE], { reads: true, touch: true });
 		expect(stopped.kinds).toEqual(['http POST', 'http GET']);
 		expect(stopped.status).not.toBe('ok');

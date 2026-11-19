@@ -656,12 +656,15 @@ function compiledNode(c: NodeContext): boolean {
 	const once = callsOnce(sources, c.node.type, c.version, compiled.resolved, onError);
 	// A later node reads the item of an earlier node through this node (`$('Node').item`):
 	// the module gives the paired item of each output item, when the check against v1 proved
-	// that they are the paired items of the v1 node.
+	// that they are the paired items of the v1 node. A node that can hand all items over to
+	// the fallback host (the file size limit) keeps none: the host gives no paired items, and
+	// the v1 node gives its own, so the later read is not compiled.
 	const lineage =
 		onError === 'stopWorkflow' &&
 		c.pairsWanted === true &&
 		c.setPairs !== undefined &&
 		!errorRetry(c) &&
+		!compiled.marksFileLimit &&
 		pairsAsV1(sources, c.node.type, c.version, compiled.resolved);
 	if (
 		lineage ||
@@ -906,7 +909,7 @@ function compiledNode(c: NodeContext): boolean {
 	);
 	const byPosition = errorItemsByPosition(c.nodeSources, c.node.type, c.version, compiled);
 	const emitForm = (to: NodeContext, hostLimit: boolean) => {
-		if (lineage) emitPairedStep(to, call, null);
+		if (lineage) emitPairedStep(to, call);
 		else if (onError === 'stopWorkflow') emitStep(to, { ...call, hostLimit });
 		else if (once) {
 			const retry = errorRetry(to);
@@ -928,7 +931,6 @@ function compiledNode(c: NodeContext): boolean {
 		}
 	};
 	if (hostForm === null) emitForm(c, false);
-	else if (lineage) emitPairedStep(c, call, hostForm);
 	else emitWithHostForm(c, onError === 'continueErrorOutput', emitForm, hostForm);
 	c.markCompiled?.();
 	return true;
@@ -1038,44 +1040,15 @@ export function emitWithHostForm(
 /**
  * Emits one call of a compiled node that gives the paired item of each output item
  * (`{ items, paired }`), and declares output 0. The node stops the workflow when it fails,
- * and has no "retry on fail".
- *
- * With `host`, the node runs in the fallback host when the module marks the error of the file
- * size limit (`emitWithHostForm`). The host gives no paired items, so the run has none: the
- * later node pairs by position, as v1's engine does for a node that gives none.
+ * and has no "retry on fail". A node with a fallback-host form does not come here: the host
+ * gives no paired items.
  */
-function emitPairedStep(c: NodeContext, call: StepCall, host: HostForm | null): void {
+function emitPairedStep(c: NodeContext, call: StepCall): void {
 	const { w, input } = c;
 	const run = c.local('Run');
 	const empty = '{ items: [], paired: [] }';
 	const opts = options(c, call, input);
-	if (host) {
-		const inHost = c.local('RunsInHost');
-		c.helper('fileLimitInHost');
-		w.line(`let ${run}: Json = ${empty};`);
-		w.line(`let ${inHost} = false;`);
-		w.open(`if (${input}.length > 0) {`);
-		w.open('try {');
-		const head = `${run} = await ctx.node(`;
-		w.block(`${head}${c.print(opts, head)});`);
-		w.close('} catch (error) {');
-		w.depth++;
-		w.open('if (!fileLimitInHost(error)) {');
-		if (c.traceAll) {
-			w.line(
-				`ctx.trace(${str(c.node.name)}, { $error: { message: error.message, description: error.description ?? '' } });`,
-			);
-		}
-		w.line('throw error;');
-		w.close();
-		w.line(`${inHost} = true;`);
-		w.close();
-		w.close();
-		w.open(`if (${inHost}) {`);
-		w.append(host.text.split('\n'));
-		w.line(`${run} = { items: ${host.out}, paired: ${host.out}.map(() => null) };`);
-		w.close();
-	} else if (c.traceAll) {
+	if (c.traceAll) {
 		w.line(`let ${run}: Json = ${empty};`);
 		w.open(`if (${input}.length > 0) {`);
 		w.open('try {');
