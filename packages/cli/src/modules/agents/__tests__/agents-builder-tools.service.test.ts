@@ -3408,7 +3408,7 @@ describe('AgentsBuilderToolsService', () => {
 			});
 			expect(result).toEqual({
 				message:
-					'Republish Support agent and go live. These might get sent for real: Slack (channel), Daily digest (task), 1 tool.',
+					'Republish Support agent and go live. These might get sent for real: replies in Slack, runs the scheduled task "Daily digest", uses its 1 tool.',
 				severity: 'warning',
 				resourceName: 'Support agent',
 				approvalDetails: {
@@ -3540,6 +3540,39 @@ describe('AgentsBuilderToolsService', () => {
 			);
 
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+		});
+
+		it('does not tie a history version publish to the draft revision', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue({
+				id: agentId,
+				versionId: 'v-draft',
+				activeVersionId: 'v-draft',
+				revision: 7,
+			} as unknown as ProjectAgent);
+			agentPublishService.publishAgent.mockResolvedValue({
+				agent: { activeVersionId: 'v-history', versionId: 'v-draft' } as ProjectAgent,
+			});
+
+			await getPublishTool(service).handler!(
+				{ versionId: 'v-history' },
+				{
+					...ctx,
+					resumeData: { approved: true },
+					continuation: { confirmedVersionId: 'v-history' },
+				},
+			);
+
+			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				user,
+				{ by: 'builder', trigger: 'explicit' },
+				'v-history',
+				undefined,
+				undefined,
+			);
 		});
 
 		it('publishes nothing when the user cancels', async () => {

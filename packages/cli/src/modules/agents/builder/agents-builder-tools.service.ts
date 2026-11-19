@@ -1132,7 +1132,8 @@ export class AgentsBuilderToolsService {
 							{ by: 'builder', trigger: 'explicit' },
 							versionId,
 							undefined,
-							before?.revision,
+							// A history version cannot change, so only a draft publish needs the guard.
+							versionId === undefined ? before?.revision : undefined,
 						);
 						return {
 							ok: true,
@@ -1226,11 +1227,18 @@ export class AgentsBuilderToolsService {
 		const sends =
 			targets.sendTargets.length > 0
 				? `These might get sent for real: ${targets.sendTargets
-						.map((target) =>
-							target.kind === 'tools'
-								? `${target.count} ${target.count === 1 ? 'tool' : 'tools'}`
-								: `${target.name} (${target.kind})`,
-						)
+						.map((target) => {
+							switch (target.kind) {
+								case 'channel':
+									return `replies in ${target.name}`;
+								case 'task':
+									return `runs the scheduled task "${target.name}"`;
+								case 'mcp-server':
+									return `calls tools from ${target.name}`;
+								case 'tools':
+									return `uses its ${target.count} ${target.count === 1 ? 'tool' : 'tools'}`;
+							}
+						})
 						.join(', ')}${
 						targets.moreSendTargets > 0 ? `, and ${targets.moreSendTargets} more` : ''
 					}.`
