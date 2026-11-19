@@ -1,7 +1,7 @@
 name: 'Security: Base Image Refresh'
 
 # Finds the base image digests that remove fixable OS findings from the release
-# images. See .github/scripts/docker/base-image-candidates.mjs.
+# images, and opens the pin PRs. See .github/scripts/docker/base-image-candidates.mjs.
 
 on:
   schedule:
@@ -13,11 +13,23 @@ on:
       - '.github/workflows/sec-base-image-refresh.yml'
       - '.github/scripts/docker/base-image-candidates.mjs'
       - '.github/scripts/docker/base-image-publisher.mjs'
+      - '.github/scripts/docker/base-image-pin-pr.mjs'
       - 'security/keys/dhi.pub'
   workflow_dispatch:
+    inputs:
+      preview:
+        description: 'Show the pin PRs in the job summary, and open no PR'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
+
+env:
+  # Labels for the pin PRs, comma-separated. For example, add `Backport to Beta`
+  # to send a fix to the release branches. The PRs merge only on master today.
+  PR_LABELS: ''
 
 # A PR run has its own group, so it does not wait for the scheduled run.
 concurrency:
@@ -25,8 +37,8 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  detect:
-    name: Find candidate digests
+  refresh:
+    name: Refresh base image pins
     # A fork PR gets no secrets, so the registry login would fail.
     if: >-
       github.repository == 'n8n-io/n8n' &&
@@ -69,11 +81,87 @@ jobs:
           if [ "$EVENT" = workflow_dispatch ]; then args+=(--skip-gate); fi
           node .github/scripts/docker/base-image-candidates.mjs "${args[@]}"
 
+      # A PR run, or a run off master, only shows the PRs that it would open.
+      - name: Decide whether to open the PRs
+        id: mode
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          PREVIEW_INPUT: ${{ inputs.preview }}
+        run: |
+          preview=false
+          if [ "$EVENT" = pull_request ] || [ "$REF" != refs/heads/master ] || [ "$PREVIEW_INPUT" = true ]; then
+            preview=true
+          fi
+          echo "preview=$preview" >> "$GITHUB_OUTPUT"
+
+      # A PR that GITHUB_TOKEN opens does not start CI, so the app token opens them.
+      - name: Generate GitHub App token
+        id: app-token
+        if: steps.mode.outputs.preview == 'false'
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Prepare the daily PR
+        id: daily
+        run: |
+          node .github/scripts/docker/base-image-pin-pr.mjs --candidates base-image-candidates.json \
+            --group daily --body daily-pr.md
+
+      - name: Open the daily PR
+        if: steps.daily.outputs.changed == 'true' && steps.mode.outputs.preview == 'false'
+        uses: peter-evans/create-pull-request@3ffccacd46053766916f087ce41d627c0b8cf2d1 # v8.1.3
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          add-paths: docker/docker-bake.hcl
+          commit-message: 'build: Update base image digests with fewer OS findings'
+          title: 'build: Update base image digests with fewer OS findings'
+          body-path: daily-pr.md
+          branch: base-image-refresh/daily
+          base: master
+          labels: ${{ env.PR_LABELS }}
+          delete-branch: true
+          author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+
+      - name: Reset the bake file
+        run: git checkout -- docker/docker-bake.hcl
+
+      # Digests that add a package get their own PR without auto-merge.
+      - name: Prepare the review PR
+        id: review
+        run: |
+          node .github/scripts/docker/base-image-pin-pr.mjs --candidates base-image-candidates.json \
+            --group review --body review-pr.md
+
+      - name: Open the review PR
+        if: steps.review.outputs.changed == 'true' && steps.mode.outputs.preview == 'false'
+        uses: peter-evans/create-pull-request@3ffccacd46053766916f087ce41d627c0b8cf2d1 # v8.1.3
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          add-paths: docker/docker-bake.hcl
+          commit-message: 'build: Update base image digests that add packages'
+          title: 'build: Update base image digests that add packages'
+          body-path: review-pr.md
+          branch: base-image-refresh/review
+          base: master
+          labels: ${{ env.PR_LABELS }}
+          delete-branch: true
+          author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+
       - name: Upload candidates
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: base-image-candidates
-          path: base-image-candidates.json
+          path: |
+            base-image-candidates.json
+            daily-pr.md
+            review-pr.md
           if-no-files-found: ignore
           retention-days: 14
