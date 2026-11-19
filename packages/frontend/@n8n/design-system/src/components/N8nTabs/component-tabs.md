@@ -43,7 +43,6 @@ interface TabOptions<Value extends string | number> {
   iconPosition?: 'left' | 'right';
   /** Replace variant?: 'default' | 'danger'; **/
   isDestructive:false;
-  href?: string;  
   disabled?: boolean;
   tooltip?: string;
   align?: 'left' | 'right';
@@ -103,8 +102,9 @@ interface TabsProps<Value extends string | number = string | number> {
 - **Model name.** The prop is `modelValue`, so `v-model` works with no argument. Bind `TabsRoot` with `:model-value` and `@update:model-value`. Do not use `:v-model` or a different event name.
 - **Backward compatibility.** With no slots, `N8nTabs` works the same as before. Existing callers do not need changes.
 - **Dangling `aria-controls`.** Each `TabsTrigger` sets `aria-controls` to the id of its panel. Content in the default slot that has no `N8nTabsContent` wrapper leaves this id without a target. To fix this, wrap panels in `N8nTabsContent` or use the `content` slot.
-- **Link options (`href`, `to`).** These options navigate. They do not select a panel. Do not put them in `TabsList` as triggers, because arrow-key focus would stop on links. Render them outside `TabsList`, like `align: 'right'` items. Move navigation-only call sites (for example `ProjectTabs`) to a separate navigation component later.
-- **Disabled tabs.** Pass `disabled` to `TabsTrigger`. Disabled `href` and `to` options render as inert tabs and do not navigate.
+- **Route options (`to`).** These options render in `TabsList` as `TabsTrigger` with `as` set to `RouterLink`. They keep their order, style, and arrow-key focus like other tabs. A click goes to the route, and the component does not emit `update:modelValue`. The consumer sets `modelValue` from the current route. A disabled route option renders as a disabled button.
+- **Disabled tabs.** Pass `disabled` to `TabsTrigger`. Disabled `to` options render as inert tabs and do not navigate.
+- **External links.** Tabs do not support external links. Put them in the `suffix` slot. The call site owns the link markup and its click handling.
 - **Tooltips.** `N8nTooltip` wraps the trigger through `as-child`, so focus and hover reach the trigger.
 - **Active state styles.** Use `[data-state='active']` and `[data-disabled]` from Reka. Do not use custom active classes.
 - **Overflow scroll.** `TabsList` is a component ref. Use `$el` for the `ResizeObserver` and scroll logic. When roving focus moves to a tab outside the visible area, scroll that tab into view.

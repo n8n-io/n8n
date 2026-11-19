@@ -9,7 +9,6 @@ export interface TabOptions<Value extends string | number> {
 	iconPosition?: 'left' | 'right';
 	/** Shows the tab in the danger color. */
 	isDestructive?: boolean;
-	href?: string;
 	/** Prevents selecting the tab (greyed out); combine with `tooltip` to explain why. */
 	disabled?: boolean;
 	tooltip?: string;

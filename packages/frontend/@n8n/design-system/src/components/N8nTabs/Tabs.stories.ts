@@ -85,11 +85,6 @@ const options: Array<TabOptions<string>> = [
 		value: 'second',
 	},
 	{
-		label: 'External Link',
-		value: 'external',
-		href: 'https://github.com/',
-	},
-	{
 		label: 'Danger',
 		value: 'danger',
 		isDestructive: true,

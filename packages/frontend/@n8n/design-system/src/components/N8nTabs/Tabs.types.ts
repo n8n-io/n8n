@@ -2,6 +2,7 @@ import type { TabOptions } from '../../types';
 
 export type {
 	TabsContentProps as N8nTabsContentProps,
+	TabsIndicatorProps as N8nTabsIndicatorProps,
 	TabsListProps as N8nTabsListProps,
 	TabsRootEmits as N8nTabsRootEmits,
 	TabsRootProps as N8nTabsRootProps,
