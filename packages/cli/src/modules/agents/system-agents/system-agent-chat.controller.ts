@@ -1,7 +1,7 @@
 import {
 	type AgentBackgroundJobsResponse,
 	AgentChatCancelDto,
-	AgentChatMessageDto,
+	SystemAgentChatMessageDto,
 	type AgentChatMessagesResponse,
 	AgentChatQueueReorderDto,
 	type AgentChatQueueResponse,
@@ -10,6 +10,8 @@ import {
 	AgentChatResumeDto,
 	type AgentThreadUsageResponse,
 	ListSystemAgentThreadsQueryDto,
+	AgentChatMessagesQueryDto,
+	RenameSystemAgentThreadDto,
 	SystemAgentChatQueryDto,
 	type SystemAgentThreadSummary,
 	type SystemAgentThreadsResponse,
@@ -29,7 +31,9 @@ import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentExecutionThreadKeyset } from '../repositories/agent-execution-thread.repository';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
+import { N8nMemory } from '../integrations/n8n-memory';
 import { SYSTEM_CHAT_SOURCE } from '../utils/agent-thread-access';
+import { isOlderChatHistoryPage, parseChatHistoryPage } from '../utils/chat-history-page';
 import { ownCheckpoint, threadMessagesResponse } from '../utils/messages-envelope';
 import { parseThreadListLimit } from '../utils/parse-thread-list-limit';
 import { SystemAgentExecutionService } from './system-agent-execution.service';
@@ -56,6 +60,7 @@ export class SystemAgentChatController {
 		private readonly orchestrator: AgentExecutionOrchestratorService,
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly attachments: AgentChatAttachmentService,
+		private readonly memory: N8nMemory,
 	) {}
 
 	/**
@@ -67,7 +72,7 @@ export class SystemAgentChatController {
 		req: AuthenticatedRequest,
 		res: FlushableResponse,
 		@Param('agentId') agentId: string,
-		@Body payload: AgentChatMessageDto,
+		@Body payload: SystemAgentChatMessageDto,
 		@Query { projectId }: SystemAgentChatQueryDto,
 	) {
 		const { message, sessionId, messageId, attachments, clientContext } = payload;
@@ -115,8 +120,9 @@ export class SystemAgentChatController {
 			...(cursor ? { before: decodeThreadCursor(cursor) } : {}),
 		});
 		const last = page.threads.at(-1);
+		const metadata = await this.memory.getThreadsMetadata(page.threads.map(({ id }) => id));
 		return {
-			data: page.threads.map(toThreadSummary),
+			data: page.threads.map((thread) => toThreadSummary(thread, metadata.get(thread.id))),
 			nextCursor: page.hasMore && last ? encodeThreadCursor(last) : null,
 		};
 	}
@@ -127,7 +133,22 @@ export class SystemAgentChatController {
 		req: AuthenticatedRequest<{ agentId: string; threadId: string }>,
 	): Promise<SystemAgentThreadSummary> {
 		const { agentId, threadId } = req.params;
-		return toThreadSummary(await this.systemAgents.getUsableThread(agentId, req.user, threadId));
+		const thread = await this.systemAgents.getUsableThread(agentId, req.user, threadId);
+		const metadata = await this.memory.getThreadsMetadata([thread.id]);
+		return toThreadSummary(thread, metadata.get(thread.id));
+	}
+
+	/** Rename one of the user's own threads with the agent. Renaming runs the access floor. */
+	@Patch('/:agentId/threads/:threadId')
+	async renameThread(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('threadId') threadId: string,
+		@Body payload: RenameSystemAgentThreadDto,
+	) {
+		await this.systemAgents.updateThread(agentId, req.user, threadId, { title: payload.title });
+		return { success: true };
 	}
 
 	@Post('/:agentId/chat/resume', { usesTemplates: true })
@@ -172,6 +193,13 @@ export class SystemAgentChatController {
 			surface: 'system',
 			...(payload.scope ? { scope: payload.scope } : {}),
 		});
+		if (cancelRequested) {
+			await this.systemAgents.reportUserStoppedTurn({
+				agentId,
+				threadId: thread.id,
+				userId: req.user.id,
+			});
+		}
 		return { cancelRequested };
 	}
 
@@ -185,12 +213,16 @@ export class SystemAgentChatController {
 		@Query payload: AgentChatCancelDto = {},
 	) {
 		this.systemAgents.assertRegistered(agentId);
+		const threadId = await this.systemAgents.findThreadIdOfRun(agentId, req.user, runId);
 		const cancelled = await this.orchestrator.cancelChatRun({
 			agentId,
 			runId,
 			resourceId: this.systemAgents.resourceIdFor(req.user),
 			...(payload.scope === 'foreground' ? { cancelBackgroundJobs: false } : {}),
 		});
+		if (cancelled && threadId) {
+			await this.systemAgents.reportUserStoppedTurn({ agentId, threadId, userId: req.user.id });
+		}
 		return { cancelled };
 	}
 
@@ -213,15 +245,20 @@ export class SystemAgentChatController {
 	@Get('/:agentId/chat/:threadId/messages')
 	async getChatMessages(
 		req: AuthenticatedRequest<{ agentId: string; threadId: string }>,
+		_res: Response,
+		@Query query: AgentChatMessagesQueryDto = {},
 	): Promise<AgentChatMessagesResponse> {
 		const { agentId, threadId } = req.params;
+		const page = parseChatHistoryPage(query);
 		const thread = await this.systemAgents.getUsableThread(agentId, req.user, threadId);
 		const history = await this.orchestrator.getConversationHistory({
 			threadId: thread.id,
 			projectId: thread.projectId,
 			agentId,
 			userId: req.user.id,
+			page,
 		});
+		if (isOlderChatHistoryPage(page)) return threadMessagesResponse(history, null);
 		const checkpoint = await this.checkpointStorage.findSuspendedForThread(agentId, thread.id);
 		return threadMessagesResponse(
 			history,
@@ -371,12 +408,16 @@ export class SystemAgentChatController {
 	}
 }
 
-function toThreadSummary(thread: AgentExecutionThread): SystemAgentThreadSummary {
+function toThreadSummary(
+	thread: AgentExecutionThread,
+	metadata: Record<string, unknown> | undefined,
+): SystemAgentThreadSummary {
 	return {
 		id: thread.id,
 		title: thread.title,
 		updatedAt: thread.updatedAt.toISOString(),
 		projectId: thread.projectId,
+		...(metadata ? { metadata } : {}),
 	};
 }
 

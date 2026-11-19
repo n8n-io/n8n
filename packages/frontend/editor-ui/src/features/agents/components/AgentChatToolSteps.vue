@@ -11,10 +11,13 @@ import {
 	getViolationVerdict,
 	SCOPE_LABEL_KEY,
 } from '@n8n/frontend-module-type-availability-policies';
+import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { computed, toRef } from 'vue';
+import type { AgentsChatHostEventItem } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
+import ToolDataBlock from '@/features/ai/shared/components/ToolDataBlock/ToolDataBlock.vue';
 import type { AgentFixWithAssistantFailure } from '../types';
 import { useSubAgentNames } from '../composables/useSubAgentNames';
 import { isCompactToolName, resolveToolNameForDisplay } from '../utils/toolDisplayName';
@@ -35,13 +38,19 @@ import {
 import { TOOL_CALL_STATE } from '../constants';
 import { parseToolPolicyRefusal } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
 import AgentChatToolPolicyRefusal from './AgentChatToolPolicyRefusal.vue';
+import AgentChatHostEvents from './AgentChatHostEvents.vue';
+import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
+import { getToolOutputAttachments } from '../utils/tool-output-files';
 
 const props = defineProps<{
 	toolCalls: ToolCall[];
 	projectId?: string;
+	agentId?: string;
 	canFixWithAssistant?: boolean;
 	dismissedToolCallIds?: string[];
 	executionId?: string;
+	/** Host events that show right before the step of their call, by call. */
+	hostEvents?: ReadonlyMap<string, AgentsChatHostEventItem[]>;
 }>();
 
 const emit = defineEmits<{
@@ -54,13 +63,36 @@ const showFix = computed(() => Boolean(props.canFixWithAssistant && props.execut
 
 const dismissedToolCallIds = computed(() => new Set(props.dismissedToolCallIds ?? []));
 
+const outputFilesByToolCallId = computed(
+	() =>
+		new Map(
+			props.toolCalls.map((tc) => [
+				tc.toolCallId,
+				// The reply files of n8n Chat show on the message, not under the step.
+				tc.tool === N8N_CHAT_ACTION_TOOL_NAME ? [] : getToolOutputAttachments(tc.output),
+			]),
+		),
+);
+
+function outputFiles(tc: ToolCall) {
+	return outputFilesByToolCallId.value.get(tc.toolCallId) ?? [];
+}
+
+function hostEventsFor(tc: ToolCall): AgentsChatHostEventItem[] {
+	return props.hostEvents?.get(tc.toolCallId) ?? [];
+}
+
 const fixableFailures = computed<AgentFixWithAssistantFailure[]>(() => {
 	if (!showFix.value) return [];
 
 	const dismissed = dismissedToolCallIds.value;
 	const failures: AgentFixWithAssistantFailure[] = [];
+
 	for (const toolCall of props.toolCalls) {
 		if (dismissed.has(toolCall.toolCallId)) continue;
+
+		if (isCanceledToolCall(toolCall)) continue;
+
 		if (toolCall.state !== TOOL_CALL_STATE.ERROR) continue;
 		if (isRecoverablePlanError(toolCall)) continue;
 		// The assistant cannot lift a policy.
@@ -121,6 +153,8 @@ function toolStepLabel(tc: ToolCall, isCompact = false): string {
 }
 
 function toolStepMetadata(tc: ToolCall): string[] {
+	if (isCanceledToolCall(tc)) return [i18n.baseText('agentSessions.status.cancelled')];
+
 	if (isDelegateSubAgentTool(tc.tool)) {
 		return [
 			resolveSubAgentName(tc.input, subAgentNameById.value),
@@ -187,7 +221,19 @@ function toolStepRefusal(tc: ToolCall) {
 	return parseToolPolicyRefusal(tc.output);
 }
 
+function isCanceledToolCall(tc: ToolCall): boolean {
+	return (
+		tc.canceled === true ||
+		tc.state === TOOL_CALL_STATE.CANCELLED ||
+		// Older saved cancellations used the tool-error path.
+		(tc.state === TOOL_CALL_STATE.ERROR &&
+			tc.output === 'Error: Tool call stopped by guardrail: tasks-cancelled')
+	);
+}
+
 function toolStepError(tc: ToolCall): string | undefined {
+	if (isCanceledToolCall(tc)) return undefined;
+
 	if (isRecoverablePlanError(tc)) return i18n.baseText('agents.chat.plan.error.rejected');
 	if (tc.state !== TOOL_CALL_STATE.ERROR) return undefined;
 	const refusal = toolStepRefusal(tc);
@@ -241,8 +287,9 @@ function hasActiveToolCall(): boolean {
 <template>
 	<div :class="$style.toolSteps">
 		<template v-if="toolCalls.length > 1">
-			<N8nAiActivityStepGroup :label="groupLabel()" size="small" :loading="hasActiveToolCall()">
+			<N8nAiActivityStepGroup :label="groupLabel()" size="medium" :loading="hasActiveToolCall()">
 				<template v-for="tc in toolCalls" :key="tc.toolCallId">
+					<AgentChatHostEvents :items="hostEventsFor(tc)" />
 					<N8nAiActivityStep
 						v-for="view in [toolStepView(tc)]"
 						:key="`${tc.toolCallId}-${view.label}`"
@@ -299,22 +346,30 @@ function hasActiveToolCall(): boolean {
 								<span :class="$style.toolDataLabel">
 									{{ i18n.baseText('agentSessions.timeline.input') }}
 								</span>
-								<pre :class="$style.toolDataContent">{{ formatToolData(tc.input) }}</pre>
+								<ToolDataBlock :value="tc.input" />
 							</div>
 							<div v-if="showToolOutput(tc)" :class="$style.toolDataSection">
 								<span :class="$style.toolDataLabel">
 									{{ i18n.baseText('agentSessions.timeline.output') }}
 								</span>
-								<pre :class="$style.toolDataContent">{{ formatToolData(tc.output) }}</pre>
+								<ToolDataBlock :value="tc.output" />
 							</div>
 						</div>
 					</N8nAiActivityStep>
+					<AgentChatMessageAttachments
+						v-if="outputFiles(tc).length && projectId && agentId"
+						:class="$style.outputFiles"
+						:attachments="outputFiles(tc)"
+						:project-id="projectId"
+						:agent-id="agentId"
+					/>
 				</template>
 			</N8nAiActivityStepGroup>
 		</template>
 
 		<template v-else>
 			<template v-for="tc in toolCalls" :key="tc.toolCallId">
+				<AgentChatHostEvents :items="hostEventsFor(tc)" />
 				<N8nAiActivityStep
 					:label="toolStepView(tc).label"
 					:loading="isToolStepLoading(tc)"
@@ -370,17 +425,24 @@ function hasActiveToolCall(): boolean {
 								<span :class="$style.toolDataLabel">
 									{{ i18n.baseText('agentSessions.timeline.input') }}
 								</span>
-								<pre :class="$style.toolDataContent">{{ formatToolData(tc.input) }}</pre>
+								<ToolDataBlock :value="tc.input" />
 							</div>
 							<div v-if="showToolOutput(tc)" :class="$style.toolDataSection">
 								<span :class="$style.toolDataLabel">
 									{{ i18n.baseText('agentSessions.timeline.output') }}
 								</span>
-								<pre :class="$style.toolDataContent">{{ formatToolData(tc.output) }}</pre>
+								<ToolDataBlock :value="tc.output" />
 							</div>
 						</div>
 					</template>
 				</N8nAiActivityStep>
+				<AgentChatMessageAttachments
+					v-if="outputFiles(tc).length && projectId && agentId"
+					:class="$style.outputFiles"
+					:attachments="outputFiles(tc)"
+					:project-id="projectId"
+					:agent-id="agentId"
+				/>
 			</template>
 		</template>
 
@@ -448,6 +510,10 @@ function hasActiveToolCall(): boolean {
 	margin-top: var(--spacing--4xs);
 }
 
+.outputFiles {
+	margin: var(--spacing--4xs) 0 var(--spacing--2xs);
+}
+
 .childProgress {
 	display: flex;
 	flex-direction: column;
@@ -480,10 +546,7 @@ function hasActiveToolCall(): boolean {
 }
 
 .toolDataSection {
-	border: var(--border-width) var(--border-style) var(--border-color);
-	border-radius: var(--radius--xs);
-	background-color: var(--background--base);
-	padding: var(--spacing--2xs);
+	min-width: 0;
 	user-select: text;
 }
 
@@ -493,17 +556,6 @@ function hasActiveToolCall(): boolean {
 	line-height: var(--line-height--sm);
 	color: var(--text-color--subtle);
 	margin-bottom: var(--spacing--5xs);
-}
-
-.toolDataContent {
-	margin: 0;
-	font-family: monospace;
-	font-size: var(--font-size--xs);
-	line-height: var(--line-height--sm);
-	color: var(--text-color);
-	white-space: pre-wrap;
-	overflow-wrap: anywhere;
-	user-select: text;
 }
 </style>
 

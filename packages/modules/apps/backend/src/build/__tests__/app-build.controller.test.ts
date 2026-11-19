@@ -26,6 +26,7 @@ describe('AppBuildController', () => {
 
 	const req = mock<AuthenticatedRequest<{ projectId: string; appId: string; versionId: string }>>({
 		params: { projectId: 'project', appId: 'app', versionId: 'version' },
+		user: { id: 'user-1' },
 	});
 
 	it('returns an accepted response for a started retry', async () => {
@@ -40,7 +41,9 @@ describe('AppBuildController', () => {
 		builds.startBuild.mockResolvedValue(status);
 
 		expect(await new AppBuildController(builds).retry(req, res)).toEqual(status);
-		expect(builds.startBuild).toHaveBeenCalledWith('project', 'app', 'version', true);
+		expect(builds.startBuild).toHaveBeenCalledWith('project', 'app', 'version', true, {
+			userId: 'user-1',
+		});
 		expect(res.status).toHaveBeenCalledWith(202);
 	});
 });

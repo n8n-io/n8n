@@ -225,7 +225,7 @@ describe('reconstructSeedFromThread', () => {
 		// eval instance and shown to the judge.
 		const assistant = result.seed.messages.find((m) => m.role === 'assistant')!;
 		const insertBlock = (assistant.content as Array<Record<string, unknown>>).find(
-			(b) => b.toolName === 'data_tables[insert-rows]',
+			(b) => b.toolName === 'insert_data_table_rows',
 		)!;
 		expect((insertBlock.input as Record<string, unknown>).rows).toBe('<1 row(s) omitted>');
 		// Non-row fields are preserved.
@@ -257,11 +257,132 @@ describe('reconstructSeedFromThread', () => {
 		const toolNames = (assistant.content as Array<Record<string, unknown>>)
 			.filter((b) => b.type === 'tool-call')
 			.map((b) => b.toolName);
-		expect(toolNames).toEqual(['data_tables[insert-rows]']);
+		expect(toolNames).toEqual(['insert_data_table_rows']);
 		const insertBlock = (assistant.content as Array<Record<string, unknown>>).find(
 			(b) => b.type === 'tool-call',
 		)!;
 		expect((insertBlock.input as Record<string, unknown>).rows).toBe('<1 row(s) omitted>');
+	});
+
+	it('omits row values nested in change_data_tables changes in seeded messages', async () => {
+		const batch: FakeRun = {
+			id: 'dt-batch',
+			run_type: 'tool',
+			name: 'change_data_tables',
+			start_time: t(5),
+			inputs: {
+				projectId: 'project-1',
+				changes: [
+					{ action: 'insert-rows', table: 'leads', rows: [{ email: 'a' }, { email: 'b' }] },
+					{ action: 'add-column', table: 'leads', column: { name: 'score', type: 'number' } },
+				],
+			},
+			outputs: { success: true, applied: [], skipped: [] },
+			extra: { metadata: { langsmith_root_run_id: 'r1' } },
+		};
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Add leads'), outputs: { response: 'Done.' } },
+			batch,
+			turn('r2', 30, 'Now change something'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+
+		const assistant = result.seed.messages.find((m) => m.role === 'assistant')!;
+		const batchBlock = (assistant.content as Array<Record<string, unknown>>).find(
+			(b) => b.toolName === 'change_data_tables',
+		)!;
+		const input = batchBlock.input as {
+			projectId: string;
+			changes: Array<Record<string, unknown>>;
+		};
+		expect(input.changes[0].rows).toBe('<2 row(s) omitted>');
+		expect(input.changes[0].table).toBe('leads');
+		expect(input.changes[1]).toEqual({
+			action: 'add-column',
+			table: 'leads',
+			column: { name: 'score', type: 'number' },
+		});
+		expect(input.projectId).toBe('project-1');
+	});
+
+	it('reconstructs data tables that a change_data_tables batch created', async () => {
+		const batch: FakeRun = {
+			id: 'dt-batch-create',
+			run_type: 'tool',
+			name: 'change_data_tables',
+			start_time: t(5),
+			inputs: { changes: [] },
+			outputs: {
+				success: false,
+				applied: [
+					{
+						index: 0,
+						action: 'create',
+						table: { id: 'dt-new', name: 'Leads' },
+						result: { columns: [{ name: 'email', type: 'string' }] },
+					},
+					{
+						index: 1,
+						action: 'add-column',
+						table: { id: 'dt-existing', name: 'Orders' },
+						result: { column: 'total' },
+					},
+				],
+				failed: { index: 2, action: 'insert-rows', error: 'Column not found' },
+				skipped: [],
+			},
+			extra: { metadata: { langsmith_root_run_id: 'r1' } },
+		};
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Make a leads table'), outputs: { response: 'Done.' } },
+			batch,
+			turn('r2', 30, 'Now change something'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+
+		expect(result.seed.dataTables).toEqual([
+			{ id: 'dt-new', name: 'Leads', columns: [{ name: 'email', type: 'string' }] },
+		]);
+	});
+
+	it('does not rebuild a table that the same change_data_tables batch created and deleted', async () => {
+		const batch: FakeRun = {
+			id: 'dt-batch-create-delete',
+			run_type: 'tool',
+			name: 'change_data_tables',
+			start_time: t(5),
+			inputs: { changes: [] },
+			outputs: {
+				success: true,
+				applied: [
+					{
+						index: 0,
+						action: 'create',
+						table: { id: 'dt-temp', name: 'Scratch' },
+						result: { columns: [{ name: 'note', type: 'string' }] },
+					},
+					{
+						index: 1,
+						action: 'create',
+						table: { id: 'dt-kept', name: 'Leads' },
+						result: { columns: [{ name: 'email', type: 'string' }] },
+					},
+					{ index: 2, action: 'delete', table: { id: 'dt-temp', name: 'Scratch' }, result: {} },
+				],
+				skipped: [],
+			},
+			extra: { metadata: { langsmith_root_run_id: 'r1' } },
+		};
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Make a leads table'), outputs: { response: 'Done.' } },
+			batch,
+			turn('r2', 30, 'Now change something'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+
+		expect(result.seed.dataTables).toEqual([
+			{ id: 'dt-kept', name: 'Leads', columns: [{ name: 'email', type: 'string' }] },
+		]);
 	});
 
 	it('takes the latest successful build per workflow id before the boundary', async () => {
@@ -399,12 +520,12 @@ describe('reconstructSeedFromThread', () => {
 		expect(result.liveTurn).toBe('Real follow-up');
 	});
 
-	it('collapses an workflow_builder_ask_user suspend+resume pair to one block carrying the answer', async () => {
+	it('collapses an ask_user suspend+resume pair to one block carrying the answer', async () => {
 		const questions = [{ id: 'q1', question: 'Which channel?', options: ['#a', '#b'] }];
 		const suspend: FakeRun = {
 			id: 'tool-suspend',
 			run_type: 'tool',
-			name: 'workflow_builder_ask_user',
+			name: 'ask_user',
 			start_time: t(3),
 			inputs: { questions },
 			// Suspend: a re-statement of the pending request, no answer.
@@ -414,7 +535,7 @@ describe('reconstructSeedFromThread', () => {
 		const resume: FakeRun = {
 			id: 'tool-resume',
 			run_type: 'tool',
-			name: 'workflow_builder_ask_user',
+			name: 'ask_user',
 			start_time: t(6),
 			inputs: { questions },
 			outputs: { answered: true, answers: [{ questionId: 'q1', selectedOptions: ['#a'] }] },
@@ -431,7 +552,7 @@ describe('reconstructSeedFromThread', () => {
 		const askBlocks = result.seed.messages
 			.filter((m) => Array.isArray(m.content))
 			.flatMap((m) => m.content as Array<Record<string, unknown>>)
-			.filter((b) => b.type === 'tool-call' && b.toolName === 'workflow_builder_ask_user');
+			.filter((b) => b.type === 'tool-call' && b.toolName === 'ask_user');
 		expect(askBlocks).toHaveLength(1); // suspend dropped, resume kept — no duplication
 		expect(askBlocks[0]).toMatchObject({
 			output: { answers: [{ questionId: 'q1', selectedOptions: ['#a'] }] },
@@ -478,7 +599,7 @@ describe('reconstructSeedFromThread', () => {
 		const resume: FakeRun = {
 			id: 'tool-resume',
 			run_type: 'tool',
-			name: 'workflow_builder_ask_user',
+			name: 'ask_user',
 			start_time: t(4),
 			inputs: { questions },
 			outputs: { answered: true, answers: [{ questionId: 'q1', selectedOptions: ['#a'] }] },
@@ -489,7 +610,7 @@ describe('reconstructSeedFromThread', () => {
 		const lateSuspend: FakeRun = {
 			id: 'tool-suspend-late',
 			run_type: 'tool',
-			name: 'workflow_builder_ask_user',
+			name: 'ask_user',
 			start_time: t(7),
 			inputs: { questions },
 			outputs: { payload: { inputType: 'questions', requestId: 'req1', questions } },
@@ -505,7 +626,7 @@ describe('reconstructSeedFromThread', () => {
 		const askBlocks = result.seed.messages
 			.filter((m) => Array.isArray(m.content))
 			.flatMap((m) => m.content as Array<Record<string, unknown>>)
-			.filter((b) => b.type === 'tool-call' && b.toolName === 'workflow_builder_ask_user');
+			.filter((b) => b.type === 'tool-call' && b.toolName === 'ask_user');
 		expect(askBlocks).toHaveLength(1);
 		expect(askBlocks[0]).toMatchObject({
 			output: { answers: [{ questionId: 'q1', selectedOptions: ['#a'] }] },
@@ -545,6 +666,28 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ __code: 'CODE_V2' });
 	});
 
+	it('replays dollar signs in a replacement as plain text', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: '…' } },
+			tool('w1', 2, 'workspace_write_file', { path: FILE, content: 'PRICE' }),
+			tool('e1', 3, 'workspace_str_replace_file', {
+				path: FILE,
+				replacements: [{ old_str: 'PRICE', new_str: '$& costs $1' }],
+			}),
+			tool(
+				'b1',
+				4,
+				'workflow_builder_build_workflow',
+				{ filePath: FILE, name: 'Main' },
+				{ success: true, workflowId: 'WF1', workflowName: 'Main' },
+			),
+			turn('r2', 30, 'change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+
+		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ __code: '$& costs $1' });
+	});
+
 	it('skips a failed edit so the replay matches the unchanged sandbox file', async () => {
 		const runs: FakeRun[] = [
 			{ ...turn('r1', 1, 'Build it'), outputs: { response: '…' } },
@@ -568,6 +711,35 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 		];
 		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
 		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ __code: 'GOOD' });
+	});
+
+	it('replays the successful operations of a batch edit and skips the failed ones', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: '…' } },
+			tool('w1', 2, 'workspace_write_file', { path: FILE, content: 'CODE_V1' }),
+			tool(
+				'e1',
+				3,
+				'workspace_edit_files',
+				{
+					operations: [
+						{ type: 'replace', path: FILE, replacements: [{ old_str: 'V1', new_str: 'V2' }] },
+						{ type: 'replace', path: FILE, replacements: [{ old_str: 'CODE', new_str: 'BAD' }] },
+					],
+				},
+				{ success: false, results: [{ success: true }, { success: false }] },
+			),
+			tool(
+				'b1',
+				4,
+				'workflow_builder_build_workflow',
+				{ filePath: FILE },
+				{ success: true, workflowId: 'WF1' },
+			),
+			turn('r2', 30, 'change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ __code: 'CODE_V2' });
 	});
 
 	it('falls back to a get-as-code capture when a successful edit cannot be replayed', async () => {

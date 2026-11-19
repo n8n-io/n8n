@@ -126,6 +126,7 @@ erDiagram
   varchar_128_ name
   TEXT nodeGroups
   TEXT nodes
+  JSON settings
   datetime_3_ updatedAt
   varchar_36_ versionId PK
   varchar_36_ workflowId FK
@@ -209,6 +210,7 @@ erDiagram
   INTEGER id
   bigint jsonSizeBytes
   varchar mode
+  SMALLINT resumeAttempts
   varchar retryOf
   varchar retrySuccessId
   datetime startedAt
@@ -290,14 +292,12 @@ erDiagram
   datetime_3_ completedAt
   INTEGER configurationId FK
   datetime_3_ createdAt
-  datetime_3_ dismissedAt
-  varchar dismissedById FK
   varchar_36_ executionId
   varchar_36_ id PK
   varchar_16_ outcome
   varchar_36_ projectId FK
   TEXT report
-  varchar_36_ suggestionId FK
+  varchar_16_ reviewState
   TEXT summary
   datetime_3_ updatedAt
   TEXT usage
@@ -401,6 +401,7 @@ erDiagram
   TEXT payload
   varchar_36_ projectId FK
   varchar_16_ resultKind
+  varchar_36_ selfHealingResultId FK
   varchar_16_ state
   datetime_3_ updatedAt
   varchar_36_ workflowId FK
@@ -415,6 +416,7 @@ erDiagram
   varchar_128_ name
   varchar_36_ parentFolderId FK
   varchar_36_ projectId FK
+  varchar_16_ resourceType
   datetime_3_ updatedAt
 }
 ```

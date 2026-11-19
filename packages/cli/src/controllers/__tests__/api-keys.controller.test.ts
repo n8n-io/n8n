@@ -1,6 +1,6 @@
 import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { AuthenticatedRequest, User, ApiKey } from '@n8n/db';
+import type { AuthenticatedRequest, Person, User, ApiKey } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
@@ -155,7 +155,7 @@ describe('ApiKeysController', () => {
 
 	describe('deleteAPIKey', () => {
 		it('emits isOwn=true when the caller deletes their own key', async () => {
-			const user = mock<User>({
+			const person = mock<Person>({
 				id: '123',
 				password: 'password',
 				authIdentities: [],
@@ -163,15 +163,15 @@ describe('ApiKeysController', () => {
 				mfaEnabled: false,
 			});
 
-			const req = mock<AuthenticatedRequest>({ user, params: { id: user.id } });
+			const req = mock<AuthenticatedRequest>({ user: person, params: { id: person.id } });
 
 			publicApiKeyService.deleteApiKey.mockResolvedValue({ isOwn: true });
 
-			await controller.deleteApiKey(req, mock(), user.id);
+			await controller.deleteApiKey(req, mock(), person.id);
 
-			expect(publicApiKeyService.deleteApiKey).toHaveBeenCalledWith(user, user.id);
+			expect(publicApiKeyService.deleteApiKey).toHaveBeenCalledWith(person, person.id);
 			expect(eventService.emit).toHaveBeenCalledWith('public-api-key-deleted', {
-				user,
+				user: person,
 				publicApi: false,
 				isOwn: true,
 			});

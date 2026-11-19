@@ -1,4 +1,4 @@
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import type { IHttpRequestOptions, IRequestOptions } from 'n8n-workflow';
 
 import { MicrosoftAzureCosmosDbSharedKeyApi } from '@credentials/MicrosoftAzureCosmosDbSharedKeyApi.credentials';

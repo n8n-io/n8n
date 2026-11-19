@@ -9,7 +9,7 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import snowflake from 'snowflake-sdk';
 
 import { resolveQueryReplacementSegments } from '@utils/sql-query-parameters';
-import { getResolvables } from '@utils/utilities';
+import { resolveExpressions } from '@utils/utilities';
 
 import {
 	connect,
@@ -27,7 +27,7 @@ export class Snowflake implements INodeType {
 		name: 'snowflake',
 		icon: 'file:snowflake.svg',
 		group: ['input'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Get, add and update data in Snowflake',
 		defaults: {
 			name: 'Snowflake',
@@ -283,11 +283,11 @@ export class Snowflake implements INodeType {
 				// ----------------------------------
 
 				for (let i = 0; i < items.length; i++) {
-					let query = this.getNodeParameter('query', i) as string;
-
-					for (const resolvable of getResolvables(query)) {
-						query = query.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
-					}
+					const query = resolveExpressions(
+						this.getNodeParameter('query', i) as string,
+						(resolvable) => this.evaluateExpression(resolvable, i),
+						{ legacy: nodeVersion < 1.2 },
+					);
 
 					const options = this.getNodeParameter('options', i, {});
 					const rawReplacement = options.queryReplacement;

@@ -19,6 +19,7 @@ import {
 	WorkflowExecute,
 } from 'n8n-core';
 import type {
+	ExecutionBlockedReason,
 	ExecutionError,
 	ExecutionStorageLocation,
 	IExecuteResponsePromiseData,
@@ -29,10 +30,14 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
+	CRASHABLE_EXECUTION_STATUSES,
 	createRunExecutionData,
 	ExecutionCancelledError,
+	hasExecutionRunNodes,
+	isExecutionOutputRedacted,
 	isTerminalExecutionStatus,
 	ManualExecutionCancelledError,
+	redactErrorReport,
 	TimeoutExecutionCancelledError,
 	Workflow,
 	WorkflowOperationError,
@@ -50,6 +55,7 @@ import {
 	getLifecycleHooksForRegularMain,
 	getLifecycleHooksForScalingWorker,
 	getLifecycleHooksForScalingMain,
+	getPushRefUserId,
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { toSaveSettings } from '@/execution-lifecycle/to-save-settings';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
@@ -136,6 +142,7 @@ export class WorkflowRunner {
 		executionId: string,
 		hooks?: ExecutionLifecycleHooks,
 		storedAt: ExecutionStorageLocation = this.storageConfig.modeTag,
+		failedBeforeStart?: ExecutionBlockedReason,
 	) {
 		// This means the execution was probably cancelled and has already
 		// been cleaned up.
@@ -237,6 +244,7 @@ export class WorkflowRunner {
 						status === 'waiting'
 							? {
 									data: createRunExecutionData({ resultData: { runData: {} } }),
+									// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 									finished: false,
 									mode: executionMode,
 									startedAt,
@@ -254,6 +262,7 @@ export class WorkflowRunner {
 											runData: {},
 										},
 									}),
+									// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 									finished: false,
 									mode: executionMode,
 									startedAt,
@@ -289,19 +298,18 @@ export class WorkflowRunner {
 			}
 		}
 
-		this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
-		this.errorReporter.error(error, { executionId });
-
-		if (error instanceof MaxStalledCountError) {
-			const claimed = await this.executionCrashService.markAsCrashedWithoutCounting(
-				executionId,
-				'stall',
-			);
-			if (claimed.length === 0) {
-				this.activeExecutions.finalizeExecution(executionId);
-				return;
-			}
-		}
+		// The run data is gone at this point, so the stored workflow setting decides;
+		// the instance floor is already enforced on that setting.
+		const redacted = isExecutionOutputRedacted(
+			undefined,
+			hooks?.workflowData.settings,
+			executionMode,
+		);
+		this.logger.error(
+			`Problem with execution ${executionId}: ${redacted ? error.constructor.name : error.message}. Aborting.`,
+		);
+		const toReport = redacted ? redactErrorReport(error) : error;
+		if (toReport) this.errorReporter.error(toReport, { executionId });
 
 		const fullRunData: IRun = {
 			data: createRunExecutionData({
@@ -313,8 +321,10 @@ export class WorkflowRunner {
 						stack: error.stack,
 					},
 					runData: {},
+					...(failedBeforeStart && { failedBeforeStart }),
 				},
 			}),
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 			finished: false,
 			mode: executionMode,
 			startedAt,
@@ -322,6 +332,54 @@ export class WorkflowRunner {
 			status: error instanceof MaxStalledCountError ? 'crashed' : 'error',
 			storedAt,
 		};
+
+		if (error instanceof MaxStalledCountError) {
+			// Save-as-claim: transition to `crashed` and persist the error payload in one
+			// guarded write. If crash recovery (or another writer) transitioned the
+			// execution first, keep its data and run no hooks.
+			let claimed: boolean;
+			try {
+				claimed = await this.executionPersistence.updateExistingExecution(
+					executionId,
+					{
+						stoppedAt: fullRunData.stoppedAt,
+						status: fullRunData.status,
+						data: fullRunData.data,
+					},
+					{ requireStatuses: CRASHABLE_EXECUTION_STATUSES },
+				);
+			} catch (claimError) {
+				// A failed claim rolls back, so the row stays claimable for crash
+				// recovery. It must not abort finalization.
+				this.logger.warn('Could not persist the stalled execution as crashed', {
+					executionId,
+					error: ensureError(claimError),
+				});
+				this.errorReporter.error(ensureError(claimError), { executionId });
+				this.activeExecutions.finalizeExecution(executionId);
+				return;
+			}
+
+			if (!claimed) {
+				this.activeExecutions.finalizeExecution(executionId);
+				return;
+			}
+
+			try {
+				await this.executionCrashService.announceStalledExecution(
+					executionId,
+					hooks?.workflowData.name,
+				);
+			} catch (announceError) {
+				// The announce is telemetry; its failure must not abort finalization
+				// for an execution already persisted as crashed.
+				this.logger.warn('Could not announce the stalled execution as crashed', {
+					executionId,
+					error: ensureError(announceError),
+				});
+				this.errorReporter.error(ensureError(announceError), { executionId });
+			}
+		}
 
 		// Remove from active execution with empty data. That will
 		// set the execution to failed.
@@ -338,13 +396,19 @@ export class WorkflowRunner {
 		data: IWorkflowExecutionDataProcess,
 		executionId: string,
 		error: ExecutionError & { node?: INode },
+		blockedReason: ExecutionBlockedReason,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		existingExecution?: ResumableExecution,
 	): Promise<void> {
 		const runData = this.failedRunFactory.generateFailedExecutionFromError(
 			data.executionMode,
 			error,
 			error.node,
 		);
+		const isResume = existingExecution?.expectedStatus === 'waiting';
+		if (!hasExecutionRunNodes(data.executionData?.resultData?.runData, isResume)) {
+			runData.data.resultData.failedBeforeStart = blockedReason;
+		}
 		const lifecycleHooks = getLifecycleHooksForRegularMain(data, executionId);
 		await lifecycleHooks.runHook('workflowExecuteBefore', [undefined, data.executionData]);
 		await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);
@@ -433,14 +497,24 @@ export class WorkflowRunner {
 
 		if (!establishContextError) {
 			try {
-				await this.credentialsPermissionChecker.check(
+				const { personalCredentialsCount } = await this.credentialsPermissionChecker.check(
 					data.workflowData.id,
 					data.workflowData.nodes,
 					data.userId,
 				);
+				// Reuses the check's result so telemetry costs no extra query. Always
+				// set, so a reused `data` object cannot keep the count of an earlier run.
+				data.telemetryMetadata = { ...data.telemetryMetadata, personalCredentialsCount };
 			} catch (error) {
 				const executionId = await this.activeExecutions.add(data, existingExecution);
-				await this.failExecution(data, executionId, error, responsePromise);
+				await this.failExecution(
+					data,
+					executionId,
+					error,
+					'credentialAccess',
+					responsePromise,
+					existingExecution,
+				);
 				return executionId;
 			}
 		}
@@ -458,7 +532,14 @@ export class WorkflowRunner {
 		const executionId = await this.activeExecutions.add(data, existingExecution);
 
 		if (establishContextError) {
-			await this.failExecution(data, executionId, establishContextError, responsePromise);
+			await this.failExecution(
+				data,
+				executionId,
+				establishContextError,
+				'contextHook',
+				responsePromise,
+				existingExecution,
+			);
 			return executionId;
 		}
 
@@ -627,6 +708,7 @@ export class WorkflowRunner {
 
 		additionalData.executionId = executionId;
 		additionalData.evaluationRunId = data.evaluationRunId;
+		additionalData.rootExecutionMode = data.executionData?.rootExecutionMode;
 
 		const storedAt = existingExecution?.storedAt ?? this.storageConfig.modeTag;
 
@@ -658,6 +740,7 @@ export class WorkflowRunner {
 
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
 				pushRef: data.pushRef,
+				userId: getPushRefUserId(data),
 			});
 
 			if (data.configureAdditionalData) {
@@ -778,6 +861,7 @@ export class WorkflowRunner {
 				executionId,
 				loadStaticData: !!loadStaticData,
 				pushRef: data.pushRef,
+				pushRefUserId: getPushRefUserId(data),
 				streamingEnabled: data.streamingEnabled,
 				callerAwaitsOutcome: data.callerAwaitsOutcome,
 				restartExecutionId,
@@ -806,7 +890,21 @@ export class WorkflowRunner {
 			// We use "getLifecycleHooksForScalingWorker" as "getLifecycleHooksForScalingMain" does not contain the
 			// "workflowExecuteAfter" which we require.
 			const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
-			await this.processError(error, new Date(), data.executionMode, executionId, lifecycleHooks);
+			// Without a job, no worker can have run a node.
+			const failedBeforeStart =
+				job === undefined &&
+				!hasExecutionRunNodes(data.executionData?.resultData?.runData, !!restartExecutionId)
+					? 'startFailed'
+					: undefined;
+			await this.processError(
+				error,
+				new Date(),
+				data.executionMode,
+				executionId,
+				lifecycleHooks,
+				undefined,
+				failedBeforeStart,
+			);
 			// Nobody will wait for this job, so drop any outcome the worker already reported
 			if (job) this.scalingService.popJobResult(job);
 			throw error;
@@ -930,6 +1028,7 @@ export class WorkflowRunner {
 					};
 				} else {
 					runData = {
+						// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 						finished: jobResult.success,
 						mode: data.executionMode,
 						startedAt: jobResult.startedAt,
@@ -942,6 +1041,7 @@ export class WorkflowRunner {
 								lastNodeExecuted: jobResult.lastNodeExecuted,
 								error: jobResult.error,
 								metadata: jobResult.metadata,
+								failedBeforeStart: jobResult.failedBeforeStart,
 							},
 						}),
 						jobId: job.id.toString(),

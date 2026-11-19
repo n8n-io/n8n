@@ -5,6 +5,8 @@ import { SPLUNK } from '../../v1/types';
 import {
 	formatEntry,
 	extractErrorDescription,
+	toListValue,
+	toPathValue,
 	getId,
 	populate,
 	formatFeed,
@@ -140,6 +142,26 @@ describe('Splunk, getId', () => {
 	});
 });
 
+describe('Splunk, toPathValue', () => {
+	test('should decode the value in version 2', () => {
+		expect(toPathValue(2, 'Errors%20%2F%20hour')).toBe('Errors / hour');
+	});
+
+	test('should keep the value unchanged from version 2.1', () => {
+		expect(toPathValue(2.1, 'Errors%20%2F%20hour')).toBe('Errors%20%2F%20hour');
+	});
+});
+
+describe('Splunk, toListValue', () => {
+	test('should keep the encoded id in version 2', () => {
+		expect(toListValue(2, 'Errors%20in%20hour')).toBe('Errors%20in%20hour');
+	});
+
+	test('should decode the id from version 2.1', () => {
+		expect(toListValue(2.1, 'Errors%20in%20hour')).toBe('Errors in hour');
+	});
+});
+
 describe('Splunk, populate', () => {
 	test('should populate destination object with source object properties', () => {
 		const source = {
@@ -235,7 +257,7 @@ describe('Splunk, setCount', () => {
 		const qs: IDataObject = {};
 		executeFunctionsMock.getNodeParameter.calledWith('returnAll', 0).mockReturnValue(true);
 
-		setReturnAllOrLimit.call(executeFunctionsMock, qs);
+		setReturnAllOrLimit.call(executeFunctionsMock, qs, 0);
 
 		expect(qs.count).toBe(0);
 	});
@@ -246,7 +268,7 @@ describe('Splunk, setCount', () => {
 		executeFunctionsMock.getNodeParameter.calledWith('returnAll', 0).mockReturnValue(false);
 		executeFunctionsMock.getNodeParameter.calledWith('limit', 0).mockReturnValue(10);
 
-		setReturnAllOrLimit.call(executeFunctionsMock, qs);
+		setReturnAllOrLimit.call(executeFunctionsMock, qs, 0);
 
 		expect(qs.count).toBe(10);
 	});

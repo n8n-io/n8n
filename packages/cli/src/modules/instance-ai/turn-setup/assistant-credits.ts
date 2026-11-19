@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 /**
  * Substituted for a masked stream failure once the credit re-check confirms

@@ -2,10 +2,12 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { setFlagsFromString } from 'node:v8';
 import { runInNewContext } from 'node:vm';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { ExpressionEvaluator } from '../../evaluator/expression-evaluator';
+import { classifyExpressionError, errorOriginOf } from '../../evaluator/error-classification';
 import type { BridgeConfig, RuntimeBridge } from '../../types';
+import { HostCallError, RuntimeRestartingError } from '../../types';
 import { QuickJsBridge } from '../quickjs-bridge';
 
 // Deep enough that V8 runs out of native stack inside the QuickJS WASM code
@@ -49,6 +51,27 @@ describe('QuickJsBridge after a host error in a guest call', () => {
 		await Promise.all(bridges.splice(0).map(async (bridge) => await bridge.dispose()));
 	});
 
+	it('should classify the host error and the restart that follows it apart from other errors', async () => {
+		const bridge = await newBridge();
+		const errorOf = (code: string, data: Record<string, unknown>) => {
+			try {
+				bridge.execute(code, data);
+			} catch (error) {
+				return error;
+			}
+			throw new Error('expected the call to fail');
+		};
+
+		const hostError = errorOf(OVERFLOW, deepData);
+		expect(hostError).toBeInstanceOf(HostCallError);
+		expect(hostError).toMatchObject({ hostErrorName: 'RangeError' });
+		expect(classifyExpressionError(hostError)).toBe('host_error');
+
+		const restarting = errorOf('return 1 + 1;', {});
+		expect(restarting).toBeInstanceOf(RuntimeRestartingError);
+		expect(classifyExpressionError(restarting)).toBe('engine_restarting');
+	});
+
 	it('should dispose a bridge after a native stack overflow', async () => {
 		const bridge = await newBridge();
 
@@ -74,6 +97,7 @@ describe('QuickJsBridge after a host error in a guest call', () => {
 		expect(() => bridge.execute(OVERFLOW, deepData)).toThrow(NATIVE_OVERFLOW);
 
 		expect(() => bridge.execute('return 1 + 1;', {})).toThrow(/restarting after an earlier error/);
+		expect(() => bridge.execute('return 1 + 1;', {})).toThrow(RuntimeRestartingError);
 
 		await waitForReplacementModule();
 		expect(bridge.execute('return 1 + 1;', {})).toBe(2);
@@ -152,6 +176,112 @@ describe('QuickJsBridge after a host error in a guest call', () => {
 		await waitForReplacementModule();
 		expect(bridge.execute('return 1 + 1;', {})).toBe(2);
 	});
+
+	it('should record a failed rebuild as the origin of its error', async () => {
+		const bridge = await newBridge();
+		expect(() => bridge.execute(OVERFLOW, deepData)).toThrow(NATIVE_OVERFLOW);
+		await waitForReplacementModule();
+		vi.spyOn(
+			bridge as unknown as { verifyProxySystem(): void },
+			'verifyProxySystem',
+		).mockImplementationOnce(() => {
+			throw new TypeError('rebuild failed');
+		});
+
+		let rebuildError: unknown;
+		try {
+			bridge.execute('return 1 + 1;', {});
+		} catch (error) {
+			rebuildError = error;
+		}
+
+		expect(errorOriginOf(rebuildError)).toEqual({ kind: 'rebuild', errorName: 'TypeError' });
+	});
+});
+
+describe('QuickJsBridge error origin', () => {
+	let bridge: QuickJsBridge;
+
+	beforeAll(async () => {
+		bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+	});
+
+	afterAll(async () => {
+		await bridge.dispose();
+	});
+
+	const errorOf = (code: string, data: Record<string, unknown> = {}) => {
+		try {
+			bridge.execute(code, data);
+		} catch (error) {
+			return error;
+		}
+		throw new Error('expected the call to fail');
+	};
+
+	it('should keep the class of a guest error that the bridge replaces with a generic Error', () => {
+		const error = errorOf('return null.missing;');
+
+		expect(error).toMatchObject({ name: 'Error' });
+		expect(errorOriginOf(error)).toEqual({ kind: 'guest', errorName: 'TypeError' });
+	});
+
+	it('should tell an error that a host callback threw from a guest error', () => {
+		const data = {
+			$json: {
+				get broken() {
+					throw new RangeError('host failure');
+				},
+			},
+		};
+
+		expect(errorOriginOf(errorOf('return this.$json.broken;', data))).toEqual({
+			kind: 'host_callback',
+			errorName: 'RangeError',
+		});
+	});
+
+	it('should record a compile error', () => {
+		expect(errorOriginOf(errorOf('return );'))).toEqual({ kind: 'compile' });
+	});
+
+	it('should record a failed callback setup and keep its error', () => {
+		const vm = (bridge as unknown as { vm: { newFunction(): unknown } }).vm;
+		const setupError = new TypeError('setup failed');
+		vi.spyOn(vm, 'newFunction').mockImplementationOnce(() => {
+			throw setupError;
+		});
+
+		const error = errorOf('return 1;');
+
+		expect(error).toBe(setupError);
+		expect(errorOriginOf(error)).toEqual({ kind: 'callback_setup', errorName: 'TypeError' });
+	});
+
+	it('should record a failed callback cleanup and keep its error', () => {
+		const cleanupError = new RangeError('cleanup failed');
+		const internals = bridge as unknown as {
+			createCallbackHandles(resolver: unknown): Array<{ dispose(): void }>;
+		};
+		const createCallbackHandles = internals.createCallbackHandles.bind(bridge);
+		vi.spyOn(internals, 'createCallbackHandles').mockImplementationOnce((resolver) => {
+			const handles = createCallbackHandles(resolver);
+			const [first] = handles;
+			const dispose = first.dispose.bind(first);
+			first.dispose = () => {
+				dispose();
+				throw cleanupError;
+			};
+			return handles;
+		});
+
+		const error = errorOf('return 1;');
+
+		expect(error).toBe(cleanupError);
+		expect(errorOriginOf(error)).toEqual({ kind: 'callback_cleanup', errorName: 'RangeError' });
+		expect(bridge.execute('return 1 + 1;', {})).toBe(2);
+	});
 });
 
 describe('QuickJsBridge workflow data', () => {
@@ -179,8 +309,8 @@ describe('QuickJsBridge workflow data', () => {
 		bridge: QuickJsBridge,
 		override: (
 			call: number,
-			build: () => import('quickjs-emscripten').QuickJSHandle,
-		) => import('quickjs-emscripten').QuickJSHandle,
+			build: () => import('quickjs-emscripten-core').QuickJSHandle,
+		) => import('quickjs-emscripten-core').QuickJSHandle,
 	): void {
 		const vm = bridge['vm']!;
 		const newFunction = vm.newFunction.bind(vm);
@@ -191,8 +321,8 @@ describe('QuickJsBridge workflow data', () => {
 
 	/** Makes `handle.dispose()` free the handle and then throw. */
 	function failDispose(
-		handle: import('quickjs-emscripten').QuickJSHandle,
-	): import('quickjs-emscripten').QuickJSHandle {
+		handle: import('quickjs-emscripten-core').QuickJSHandle,
+	): import('quickjs-emscripten-core').QuickJSHandle {
 		const dispose = handle.dispose.bind(handle);
 		handle.dispose = () => {
 			dispose();
@@ -203,6 +333,26 @@ describe('QuickJsBridge workflow data', () => {
 
 	afterEach(async () => {
 		await Promise.all(bridges.splice(0).map(async (bridge) => await bridge.dispose()));
+	});
+
+	it('reads host objects after an earlier call changes the JSON parser', async () => {
+		const bridge = await newBridge();
+		bridge.execute('JSON.parse = () => { throw new Error("custom parser"); }; return 1;', {});
+
+		expect(
+			bridge.execute('return this.$json.profile.name;', {
+				$json: { profile: { name: 'from host' } },
+			}),
+		).toBe('from host');
+	});
+
+	it('reads a host symbol as undefined and frees the runtime', async () => {
+		const bridge = await newBridge();
+
+		expect(bridge.execute('return this.$json.sym;', { $json: { sym: Symbol('s') } })).toBe(
+			undefined,
+		);
+		await expect(bridge.dispose()).resolves.toBeUndefined();
 	});
 
 	it('should free the data of a finished call while the bridge is alive', async () => {

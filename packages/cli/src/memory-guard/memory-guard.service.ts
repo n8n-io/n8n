@@ -326,7 +326,12 @@ export class MemoryGuardService {
 		this.holdStartedAt = undefined;
 		this.fastSamplingUntil = Date.now() + FAST_SAMPLING_AFTER_HOLD_MS;
 		this.productionHold.end();
-		this.eventService.emit('memory-guard-hold-ended', { heldMs });
+		const { heldCount, oldestHeldAt } = this.productionHold;
+		this.eventService.emit('memory-guard-hold-ended', {
+			heldMs,
+			heldExecutions: heldCount,
+			longestWaitMs: oldestHeldAt === undefined ? 0 : Date.now() - oldestHeldAt,
+		});
 		return heldMs;
 	}
 
@@ -365,7 +370,7 @@ export class MemoryGuardService {
 
 		this.stopStreak = 0;
 		this.pendingStopWorkflowId = target.workflow.id;
-		this.pendingStop = this.finishStop(target, engines, usage, trigger)
+		this.pendingStop = this.finishStop(target, engines, usage, trigger, this.holdStartedAt)
 			.catch((error: unknown) => {
 				this.logger.error(
 					'The memory guard stopped an execution, but could not check how much memory the stop freed',
@@ -386,12 +391,15 @@ export class MemoryGuardService {
 	 * did not and memory is still at the stop level, executions do not hold the memory, so
 	 * the guard stops only at the critical level until memory falls. Below the stop level,
 	 * other work can allocate during the stop, and the guard must still stop at the stop level.
+	 * A hold-limit stop that frees no memory ends the hold, because the next hold-limit stops
+	 * would only stop more executions without freeing memory.
 	 */
 	private async finishStop(
 		target: StopTarget,
 		engines: Array<Promise<void>>,
 		before: MemoryUsage,
 		trigger: StopTrigger,
+		holdStartedAt: number | undefined,
 	) {
 		await settleWithin(engines, RELEASE_TIMEOUT_MS);
 		const { after, freedMemory } = await this.measureAfterStop(before, target.estimatedBytes);
@@ -412,6 +420,11 @@ export class MemoryGuardService {
 			this.logger.warn(
 				`The stop freed less memory than expected, so the memory guard now stops executions only at ${percent(this.config.criticalLevel)} or more, until memory falls below ${percent(this.config.resumeLevel)}`,
 			);
+		}
+
+		const isSameHold = holdStartedAt !== undefined && this.holdStartedAt === holdStartedAt;
+		if (!freedMemory && trigger === 'hold-limit' && isSameHold) {
+			this.suspendHold('A stop at the hold limit did not free the expected memory');
 		}
 
 		this.eventService.emit('memory-guard-execution-stopped', {
@@ -558,7 +571,7 @@ export class MemoryGuardService {
 
 			// Lazy import, as in crash recovery, because the workflow service has many dependencies.
 			const { WorkflowService } = await import('@/workflows/workflow.service.js');
-			await Container.get(WorkflowService).deactivateWorkflowAsSystem(workflowId);
+			await Container.get(WorkflowService).deactivateWorkflowAsSystem(workflowId, 'memory-guard');
 			this.stopsByWorkflow.delete(workflowId);
 			this.logger.warn(
 				`Deactivated workflow ${workflowId}, because n8n stopped ${this.config.stopsToUnpublish} of its executions to keep the instance from running out of memory`,

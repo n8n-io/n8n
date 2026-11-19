@@ -1,6 +1,11 @@
 import FormData from 'form-data';
 import { IncomingMessage } from 'http';
-import { NodeHelpers } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeHelpers,
+	READ_ONLY_ANNOTATIONS,
+	resolveNodeAnnotations,
+} from 'n8n-workflow';
 import { Socket } from 'net';
 import type {
 	IExecuteFunctions,
@@ -86,7 +91,7 @@ describe('HttpRequestV3', () => {
 	});
 
 	describe('Method dropdown', () => {
-		const webdavMethods = ['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT'];
+		const webdavMethods = ['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT', 'SEARCH'];
 
 		const visibleMethods = (nodeParameters: INodeParameters) => {
 			const methodProperty = node.description.properties.find((p) => p.name === 'method');
@@ -145,6 +150,30 @@ describe('HttpRequestV3', () => {
 		});
 	});
 
+	describe('Annotations', () => {
+		it.each([
+			['GET', {}, READ_ONLY_ANNOTATIONS],
+			['PROPFIND', { webdavMethods: true }, READ_ONLY_ANNOTATIONS],
+			['SEARCH', { webdavMethods: true }, READ_ONLY_ANNOTATIONS],
+			['PUT', {}, { effect: 'write', destructive: true, idempotent: true }],
+			['DELETE', {}, { effect: 'write', destructive: true, idempotent: false }],
+			[
+				'MKCOL',
+				{ webdavMethods: true },
+				{ effect: 'write', destructive: false, idempotent: false },
+			],
+			['POST', {}, { effect: 'write', destructive: true, idempotent: false }],
+			['={{ $json.method }}', {}, { effect: 'write', destructive: true, idempotent: false }],
+		])('should resolve method %s', (method, methodOptions, expected) => {
+			expect(
+				resolveNodeAnnotations(node.description, {
+					parameters: { method, options: methodOptions },
+					typeVersion: 4.5,
+				}),
+			).toEqual(expected);
+		});
+	});
+
 	it('should add an "Enable WebDAV Methods" option to Options, disabled by default', () => {
 		const optionsProperty = node.description.properties.find((p) => p.name === 'options');
 		expect(optionsProperty).toBeDefined();
@@ -157,7 +186,7 @@ describe('HttpRequestV3', () => {
 		});
 	});
 
-	it.each(['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT'])(
+	it.each(['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT', 'SEARCH'])(
 		'should make a %s request',
 		async (method) => {
 			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
@@ -869,6 +898,44 @@ describe('HttpRequestV3', () => {
 
 			expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
 		});
+
+		it('should return an empty object for a paginated JSON response with no body', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return { ...options, response: { response: { responseFormat: 'json' } } };
+						case 'options.pagination.pagination':
+							return {
+								paginationMode: 'responseContainsNextURL',
+								nextURL: '={{ $response.body?.next }}',
+								paginationCompleteWhen: 'other',
+								completeExpression: '={{ !$response.body?.next }}',
+								limitPagesFetched: false,
+								requestInterval: 0,
+							};
+						case 'options.response.response.responseFormat':
+							return 'json';
+						default:
+							return defaultValue;
+					}
+				},
+			);
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue([
+				{ headers: {}, body: undefined, statusCode: 204 },
+			]);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
+		});
 	});
 
 	describe('Continued request errors', () => {
@@ -905,6 +972,93 @@ describe('HttpRequestV3', () => {
 				body: responseBody,
 				context: { itemIndex: 0 },
 			});
+		});
+
+		it('should remove request options from continued errors', async () => {
+			const headerName = 'x-custom-header-name';
+			const headerValue = 'header-value';
+
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'genericCredentialType';
+					case 'genericAuthType':
+						return 'httpHeaderAuth';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({
+				name: headerName,
+				value: headerValue,
+			});
+			(executeFunctions.helpers.request as Mock).mockImplementation(
+				async (requestOptions: { headers: Record<string, unknown> }) => {
+					expect(requestOptions.headers[headerName]).toBe(headerValue);
+
+					throw Object.assign(new Error('Request failed'), {
+						statusCode: 400,
+						error: { message: 'Bad Request' },
+						options: { headers: requestOptions.headers },
+					});
+				},
+			);
+
+			const result = await node.execute.call(executeFunctions);
+			const outputError = result[0][0].json.error;
+
+			expect(outputError).toMatchObject({ message: 'Request failed', statusCode: 400 });
+			expect(outputError).not.toHaveProperty('options');
+			expect(JSON.stringify(outputError)).not.toContain(headerValue);
+		});
+
+		it('should remove request options from the cause of continued errors', async () => {
+			const headerValue = 'header-value';
+
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'predefinedCredentialType';
+					case 'nodeCredentialType':
+						return 'testApi';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({ apiKey: headerValue });
+			(executeFunctions.helpers.requestWithAuthentication as Mock).mockImplementation(async () => {
+				const cause = Object.assign(new Error('Request failed'), {
+					statusCode: 401,
+					error: { message: 'Unauthorized' },
+					options: { headers: { Authorization: `Bearer ${headerValue}` } },
+				});
+
+				throw new NodeApiError(executeFunctions.getNode(), cause as unknown as JsonObject);
+			});
+
+			const result = await node.execute.call(executeFunctions);
+			const outputError = result[0][0].json.error as NodeApiError;
+
+			expect(outputError).toBeInstanceOf(NodeApiError);
+			expect(outputError.cause).toMatchObject({ message: 'Request failed', statusCode: 401 });
+			expect(outputError.cause).not.toHaveProperty('options');
+			expect(JSON.stringify(outputError.cause)).not.toContain(headerValue);
 		});
 
 		const errorResponseBodies: Array<{

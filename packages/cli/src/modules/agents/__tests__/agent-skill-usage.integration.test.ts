@@ -1,5 +1,7 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
+import { createAgent } from '@test-integration/db/agents';
 import { createMember } from '@test-integration/db/users';
 import { randomUUID } from 'node:crypto';
 
@@ -12,7 +14,7 @@ import {
 } from '@/modules/skills/testing';
 
 import { AgentSkillUsage } from '../agent-skill-usage';
-import { AgentHistoryRepository } from '../repositories/agent-history.repository';
+import { AgentHistory } from '../entities/agent-history.entity';
 import { AgentPublishHistoryRepository } from '../repositories/agent-publish-history.repository';
 import { AgentSkillRepository } from '../repositories/agent-skill.repository';
 import { AgentRepository } from '../repositories/agent.repository';
@@ -20,7 +22,7 @@ import { AgentRepository } from '../repositories/agent.repository';
 /** Writes a world into the agent and skill tables, with fresh ids. */
 async function seed(world: SkillUsageWorld) {
 	const agents = Container.get(AgentRepository);
-	const histories = Container.get(AgentHistoryRepository);
+	const histories = Container.get(DataSource).getRepository(AgentHistory);
 	const publications = Container.get(AgentPublishHistoryRepository);
 	const agentSkills = Container.get(AgentSkillRepository);
 
@@ -30,16 +32,14 @@ async function seed(world: SkillUsageWorld) {
 	}
 	const agentIds = new Map<string, string>();
 	for (const { key, name, project } of world.agents) {
-		const agent = await agents.save(
-			agents.create({
-				id: randomUUID(),
-				name,
-				projectId: projectIds.get(project),
-				integrations: [],
-				tools: {},
-				versionId: randomUUID(),
-			}),
-		);
+		const agent = await createAgent({
+			id: randomUUID(),
+			name,
+			projectId: projectIds.get(project) as string,
+			integrations: [],
+			tools: {},
+			versionId: randomUUID(),
+		});
 		agentIds.set(key, agent.id);
 	}
 	const skillIds = new Map<string, string>();

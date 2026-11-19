@@ -3,7 +3,12 @@ import { LicenseState } from '@n8n/backend-common';
 import { CacheService, EventService } from '@n8n/backend-services';
 import { RoleMappingProxyService } from '@n8n/backend-services/auth';
 import { createTeamProject, linkUserToProject, testDb, testModules } from '@n8n/backend-test-utils';
-import { ProjectRelationRepository, ProjectRepository, UserRepository } from '@n8n/db';
+import {
+	PersonRepository,
+	ProjectRelationRepository,
+	ProjectRepository,
+	UserRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	trustedSourceConfigSchemaFor,
@@ -38,6 +43,7 @@ let cacheService: CacheService;
 let rows: Repository<TrustedSourceEntity>;
 let bindings: Repository<TrustedSourceIdentityEntity>;
 let users: UserRepository;
+let people: PersonRepository;
 let service: TrustedSourceIdentityService;
 let emit: ReturnType<typeof spyOnEmit>;
 
@@ -48,16 +54,20 @@ let seeded = 0;
 async function seedSource(
 	identity: Partial<TrustedSourceIdentity> = {},
 	managedBy: ManagedBy = 'admin',
+	version: 1 | 2 = 2,
 ): Promise<TrustedSource> {
 	seeded += 1;
 	const config = trustedSourceConfigSchemaFor(managedBy).parse({
-		version: 1,
+		version,
 		authentication: {
 			type: 'oauth2',
 			...(managedBy === 'system' && { keys: { kind: 'local-keystore' } }),
 		},
 		surfaces: { 'instance-mcp': {} },
-		identity,
+		identity:
+			version === 1
+				? { ...identity, provision: { human: identity.provision?.person ?? 'off' } }
+				: identity,
 	});
 	const row = await rows.save(
 		rows.create({
@@ -68,7 +78,7 @@ async function seedSource(
 			status: 'healthy',
 			lastError: null,
 			lastCheckedAt: new Date(),
-			configVersion: 1,
+			configVersion: version,
 			config: await cipher.encryptV2(config),
 			metadata: null,
 			discoveryClaimToken: null,
@@ -149,6 +159,7 @@ beforeAll(async () => {
 	rows = Container.get(DataSource).getRepository(TrustedSourceEntity);
 	bindings = Container.get(DataSource).getRepository(TrustedSourceIdentityEntity);
 	users = Container.get(UserRepository);
+	people = Container.get(PersonRepository);
 	service = Container.get(TrustedSourceIdentityService);
 });
 
@@ -521,49 +532,52 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			projectRoleRules: [],
 			fallbackInstanceRole: 'global:member',
 		};
-		const jit: Partial<TrustedSourceIdentity> = { provision: { human: 'jit' }, roleMapping };
+		const jit: Partial<TrustedSourceIdentity> = { provision: { person: 'jit' }, roleMapping };
 
-		it('creates the user with a personal project and the jit binding, then emits the provisioned event', async () => {
-			const source = await seedSource(jit);
+		it.each([1, 2] as const)(
+			'creates a user with a personal project and a jit binding from config v%s',
+			async (version) => {
+				const source = await seedSource(jit, 'admin', version);
+				expect(source.config.version).toBe(2);
+				expect(source.config.identity.provision).toEqual({ person: 'jit' });
 
-			const context = expectOk(
-				await service.identify(
-					verified(source, {
-						sub: 'bob',
-						email: 'New.User@Example.com',
-						email_verified: true,
-						name: 'Ada King Lovelace',
-					}),
-				),
-			);
+				const context = expectOk(
+					await service.identify(
+						verified(source, {
+							sub: 'bob',
+							email: 'New.User@Example.com',
+							email_verified: true,
+							name: 'Ada King Lovelace',
+						}),
+					),
+				);
 
-			const user = await users.findOneOrFail({
-				where: { email: 'new.user@example.com' },
-				relations: ['role'],
-			});
-			expect(user).toMatchObject({
-				firstName: 'Ada',
-				lastName: 'King Lovelace',
-				password: '!trusted-source-no-password',
-			});
-			expect(user.role.slug).toBe('global:member');
-			expect(
-				await Container.get(ProjectRepository).getPersonalProjectForUser(user.id),
-			).not.toBeNull();
-			expect(await readBinding(source, 'bob')).toMatchObject({
-				provenance: 'jit',
-				status: 'active',
-				userId: user.id,
-			});
-			expect(context.subject.id).toBe(user.id);
-			expect(emit).toHaveBeenCalledWith('trusted-source-user-provisioned', {
-				userId: user.id,
-				sourceId: source.id,
-				issuer: source.issuer,
-				subject: 'bob',
-				role: 'global:member',
-			});
-		});
+				const person = (await people.findByEmailWithAuthIdentities('new.user@example.com'))!;
+				expect(person).toMatchObject({
+					kind: 'person',
+					firstName: 'Ada',
+					lastName: 'King Lovelace',
+					password: '!trusted-source-no-password',
+				});
+				expect(person.role.slug).toBe('global:member');
+				expect(
+					await Container.get(ProjectRepository).getPersonalProjectForUser(person.id),
+				).not.toBeNull();
+				expect(await readBinding(source, 'bob')).toMatchObject({
+					provenance: 'jit',
+					status: 'active',
+					userId: person.id,
+				});
+				expect(context.subject.id).toBe(person.id);
+				expect(emit).toHaveBeenCalledWith('trusted-source-user-provisioned', {
+					userId: person.id,
+					sourceId: source.id,
+					issuer: source.issuer,
+					subject: 'bob',
+					role: 'global:member',
+				});
+			},
+		);
 
 		it('cuts the first name to 32 characters', async () => {
 			const source = await seedSource(jit);
@@ -580,9 +594,9 @@ describe('TrustedSourceIdentityService (integration)', () => {
 				),
 			);
 
-			const user = await users.findOneByOrFail({ email: 'bob@example.com' });
-			expect(user.firstName).toHaveLength(32);
-			expect(user.lastName).toBe('Lovelace');
+			const person = (await people.findByEmail('bob@example.com'))!;
+			expect(person.firstName).toHaveLength(32);
+			expect(person.lastName).toBe('Lovelace');
 		});
 
 		it.each([
@@ -607,7 +621,7 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			);
 
 			expect(rejectReason(result)).toBe('provision-refused');
-			expect(await users.countBy({ email: 'bob@example.com' })).toBe(0);
+			expect(await people.findByEmail('bob@example.com')).toBeNull();
 			expect(await bindings.count()).toBe(0);
 		});
 
@@ -622,7 +636,22 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			);
 
 			expect(rejectReason(result)).toBe('no-role');
-			expect(await users.countBy({ email: 'bob@example.com' })).toBe(0);
+			expect(await people.findByEmail('bob@example.com')).toBeNull();
+			expect(await bindings.count()).toBe(0);
+		});
+
+		it('rejects with no-role when the fallback role is the agent role and writes nothing', async () => {
+			const source = await seedSource({
+				...jit,
+				roleMapping: { ...roleMapping, fallbackInstanceRole: 'global:agent' },
+			});
+
+			const result = await service.identify(
+				verified(source, { sub: 'bob', email: 'bob@example.com', email_verified: true }),
+			);
+
+			expect(rejectReason(result)).toBe('no-role');
+			expect(await people.findByEmail('bob@example.com')).toBeNull();
 			expect(await bindings.count()).toBe(0);
 		});
 
@@ -648,8 +677,8 @@ describe('TrustedSourceIdentityService (integration)', () => {
 				),
 			);
 
-			const user = await users.findOneByOrFail({ email: 'bob@example.com' });
-			expect(context.subject.id).toBe(user.id);
+			const person = (await people.findByEmail('bob@example.com'))!;
+			expect(context.subject.id).toBe(person.id);
 			expect((await readBinding(source, 'bob')).provenance).toBe('jit');
 		});
 	});
@@ -682,7 +711,7 @@ describe('TrustedSourceIdentityService (integration)', () => {
 		const jitSource = async (roleMapping: TrustedSourceIdentity['roleMapping']) =>
 			await seedSource({
 				linkByEmail: 'verified-only',
-				provision: { human: 'jit' },
+				provision: { person: 'jit' },
 				roleMapping,
 			});
 		const claims = (sub: string, email: string, groups: string[]) => ({
@@ -946,7 +975,7 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			);
 
 			expect(rejectReason(result)).toBe('no-role');
-			expect(await users.countBy({ email: 'bob@example.com' })).toBe(0);
+			expect(await people.findByEmail('bob@example.com')).toBeNull();
 			expect(await bindings.count()).toBe(0);
 		});
 
@@ -973,7 +1002,7 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			);
 
 			expect(rejectReason(result)).toBe('no-role');
-			expect(await users.countBy({ email: 'bob@example.com' })).toBe(0);
+			expect(await people.findByEmail('bob@example.com')).toBeNull();
 			expect(await bindings.count()).toBe(0);
 		});
 

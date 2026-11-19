@@ -1,5 +1,5 @@
 import type { IHookFunctions } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import { gumroadApiRequest } from '../GenericFunctions';
 import type { Mock } from 'vitest';
@@ -31,13 +31,13 @@ describe('Gumroad GenericFunctions', () => {
 				resource_subscriptions: [],
 			});
 
-			const result = await gumroadApiRequest.call(ctx, 'GET', '/resource_subscriptions');
+			const result = await gumroadApiRequest.call(ctx, 'GET', requestPath`/resource_subscriptions`);
 
 			expect(ctx.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				'gumroadApi',
 				expect.objectContaining({
 					method: 'GET',
-					url: `${baseUrl}/resource_subscriptions`,
+					url: expect.objectContaining({ value: `${baseUrl}/resource_subscriptions` }),
 					json: true,
 				}),
 			);
@@ -50,13 +50,13 @@ describe('Gumroad GenericFunctions', () => {
 				resource_subscriptions: [],
 			});
 
-			const result = await gumroadApiRequest.call(ctx, 'GET', '/resource_subscriptions');
+			const result = await gumroadApiRequest.call(ctx, 'GET', requestPath`/resource_subscriptions`);
 
 			expect(ctx.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				'gumroadOAuth2Api',
 				expect.objectContaining({
 					method: 'GET',
-					url: `${baseUrl}/resource_subscriptions`,
+					url: expect.objectContaining({ value: `${baseUrl}/resource_subscriptions` }),
 					json: true,
 				}),
 			);
@@ -70,7 +70,7 @@ describe('Gumroad GenericFunctions', () => {
 			await gumroadApiRequest.call(
 				ctx,
 				'PUT',
-				'/resource_subscriptions',
+				requestPath`/resource_subscriptions`,
 				{ post_url: 'https://example.com/hook', resource_name: 'sale' },
 				{ foo: 'bar' },
 			);
@@ -98,11 +98,28 @@ describe('Gumroad GenericFunctions', () => {
 				(_param: string, _index: number, fallback: string) => fallback,
 			);
 
-			await gumroadApiRequest.call(ctx, 'GET', '/resource_subscriptions');
+			await gumroadApiRequest.call(ctx, 'GET', requestPath`/resource_subscriptions`);
 
 			expect(ctx.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				'gumroadApi',
 				expect.anything(),
+			);
+		});
+
+		it('should encode path values in the request URL', async () => {
+			const ctx = buildContext('accessToken');
+			(ctx.helpers.httpRequestWithAuthentication as Mock).mockResolvedValue({ success: true });
+
+			const id = 'abc/delete?x=1';
+			await gumroadApiRequest.call(ctx, 'DELETE', requestPath`/resource_subscriptions/${id}`);
+
+			expect(ctx.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'gumroadApi',
+				expect.objectContaining({
+					url: expect.objectContaining({
+						value: `${baseUrl}/resource_subscriptions/abc%2Fdelete%3Fx=1`,
+					}),
+				}),
 			);
 		});
 
@@ -112,9 +129,9 @@ describe('Gumroad GenericFunctions', () => {
 				message: 'boom',
 			});
 
-			await expect(gumroadApiRequest.call(ctx, 'GET', '/resource_subscriptions')).rejects.toThrow(
-				NodeApiError,
-			);
+			await expect(
+				gumroadApiRequest.call(ctx, 'GET', requestPath`/resource_subscriptions`),
+			).rejects.toThrow(NodeApiError);
 		});
 	});
 });

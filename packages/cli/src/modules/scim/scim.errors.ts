@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 /** Requested SCIM resource does not exist. Maps to HTTP 404. */
 export class ScimResourceNotFoundError extends UserError {
@@ -20,6 +20,9 @@ export class ScimForbiddenError extends UserError {
 		super(detail);
 	}
 }
+
+/** The request tries to delete, deactivate or change the email of the instance owner. Maps to HTTP 403. */
+export class ScimOwnerProtectedError extends ScimForbiddenError {}
 
 /** Filter expression is not supported. Maps to HTTP 400 with scimType "invalidFilter". */
 export class ScimInvalidFilterError extends UserError {

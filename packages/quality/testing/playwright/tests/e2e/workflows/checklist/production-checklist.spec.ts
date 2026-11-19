@@ -109,6 +109,84 @@ test.describe(
 			await expect(n8n.canvas.getTimeSavedActionItem()).toBeVisible();
 		});
 
+		test('should not reopen the checklist automatically after a page reload', async ({ n8n }) => {
+			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
+			await n8n.canvas.publishWorkflow();
+			await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
+			await n8n.workflowActivationModal.close();
+
+			await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
+			await n8n.canvas.closeProductionChecklist();
+			await expect(n8n.canvas.getProductionChecklistPopover()).toBeHidden();
+
+			await n8n.canvas.trackProductionChecklistOpens();
+			const publicationStatusLoaded = n8n.canvas.waitForPublicationStatusResponse();
+			await n8n.page.reload();
+			await publicationStatusLoaded;
+
+			// The auto-open waits for the publication status and the settings cache. The menu item
+			// needs the cache too, so once it shows, the auto-open has made its decision.
+			await n8n.canvas.clickWorkflowMenu();
+			await expect(n8n.canvas.getProductionChecklistMenuItem()).toBeVisible();
+			// Opening the menu closes the checklist, so check whether it showed at any time
+			expect(await n8n.canvas.wasProductionChecklistOpened()).toBe(false);
+		});
+
+		test('should allow ignoring individual actions', async ({ n8n }) => {
+			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
+			await n8n.canvas.publishWorkflow();
+			await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
+			await n8n.workflowActivationModal.close();
+
+			await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
+			await expect(n8n.canvas.getErrorActionItem()).toBeVisible();
+
+			await n8n.canvas.ignoreProductionChecklistAction();
+			await expect(n8n.canvas.getErrorActionItem()).toBeHidden();
+			await expect(n8n.canvas.getTimeSavedActionItem()).toBeVisible();
+
+			// The ignored action stays hidden after a reload
+			await n8n.page.reload();
+			await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
+			await n8n.canvas.openProductionChecklist();
+
+			await expect(n8n.canvas.getTimeSavedActionItem()).toBeVisible();
+			await expect(n8n.canvas.getErrorActionItem()).toBeHidden();
+		});
+
+		test('should allow ignoring all actions for all workflows with confirmation', async ({
+			n8n,
+		}) => {
+			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
+			await n8n.canvas.publishWorkflow();
+			await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
+			await n8n.workflowActivationModal.close();
+
+			await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
+
+			await n8n.canvas.clickProductionChecklistIgnoreAll();
+			await n8n.canvas.confirmIgnoreAllForAllWorkflows();
+
+			await expect(n8n.canvas.getProductionChecklistPopover()).toBeHidden();
+			await n8n.canvas.clickWorkflowMenu();
+			await expect(n8n.canvas.getProductionChecklistMenuItem()).toBeHidden();
+			await n8n.page.keyboard.press('Escape');
+
+			// Another workflow does not show the checklist on its first publish
+			await n8n.start.fromBlankCanvas();
+			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
+			await n8n.canvas.publishWorkflow();
+
+			// The editor saves the first activation date after it decides whether to open the checklist
+			const secondWorkflowId = n8n.canvas.getWorkflowIdFromUrl();
+			await expect
+				.poll(async () => await n8n.canvas.getChecklistFirstActivatedAt(secondWorkflowId))
+				.toBeDefined();
+			await expect(n8n.canvas.getProductionChecklistPopover()).toBeHidden();
+			await n8n.canvas.clickWorkflowMenu();
+			await expect(n8n.canvas.getProductionChecklistMenuItem()).toBeHidden();
+		});
+
 		// Flaky in multi-main mode
 		test.fixme('should show completed state for configured actions', async ({ n8n, api }) => {
 			const errorWorkflow = await api.workflows.createWorkflow({

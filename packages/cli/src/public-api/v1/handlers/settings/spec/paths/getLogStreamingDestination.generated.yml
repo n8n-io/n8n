@@ -2,7 +2,10 @@ operationId: getLogStreamingDestination
 tags:
   - LogStreaming
 summary: Retrieve a log streaming destination
-description: Retrieve a single log streaming destination by id. Requires the `eventBusDestination:read` scope and the Log Streaming feature to be licensed.
+description: |-
+  Retrieve a single log streaming destination by id. Requires the Log Streaming feature to be licensed.
+
+  Requires the `eventBusDestination:read` API key scope.
 x-required-scope: eventBusDestination:read
 parameters:
   - schema:
@@ -24,3 +27,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

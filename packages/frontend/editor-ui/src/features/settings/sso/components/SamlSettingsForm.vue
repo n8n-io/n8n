@@ -13,6 +13,7 @@ import UserRoleProvisioningDropdown from '../provisioning/components/UserRolePro
 import { useUserRoleProvisioningForm } from '../provisioning/composables/useUserRoleProvisioningForm';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
 import RoleMappingRuleEditor from '../provisioning/components/RoleMappingRuleEditor.vue';
 import { MODAL_CONFIRM } from '@/app/constants/modals';
@@ -148,13 +149,12 @@ const sendTrackingEvent = (config?: SamlPreferences) => {
 		captureMessage('Single Sign-On SAML: telemtetry data undefined on submit', { level: 'error' });
 		return;
 	}
-	const trackingMetadata = {
+	telemetry.track(TELEMETRY_EVENT.SSO.USER_UPDATED_SSO_SETTINGS, {
 		instance_id: useRootStore().instanceId,
 		authentication_method: SupportedProtocols.SAML,
 		identity_provider: config.metadataUrl ? 'metadata' : 'xml',
 		is_active: config.loginEnabled ?? false,
-	};
-	telemetry.track('User updated single sign on settings', trackingMetadata);
+	});
 };
 
 const promptConfirmDisablingSamlLogin = async () => {
@@ -342,7 +342,9 @@ const hasUnsavedChanges = computed(
 	() => isSaveEnabled.value && (!isSsoManagedByEnv.value || isRulesMappingInN8n.value),
 );
 
-defineExpose({ hasUnsavedChanges, onSave });
+// The SSO page saves through its save bar and shows the test button below
+// the SCIM section, so it needs these.
+defineExpose({ hasUnsavedChanges, onSave, saving: savingForm, isTestEnabled, onTest });
 
 onMounted(async () => {
 	await loadSamlConfig();
@@ -489,28 +491,6 @@ onMounted(async () => {
 					</N8nSelect>
 				</div>
 			</div>
-		</div>
-
-		<div :class="$style.buttons">
-			<N8nButton
-				v-if="!isSsoManagedByEnv || isRulesMappingInN8n"
-				:disabled="!isSaveEnabled"
-				:loading="savingForm"
-				size="large"
-				data-test-id="sso-save"
-				@click="onSave(false)"
-			>
-				{{ i18n.baseText('settings.sso.settings.save') }}
-			</N8nButton>
-			<N8nButton
-				variant="outline"
-				:disabled="!isTestEnabled"
-				size="large"
-				data-test-id="sso-test"
-				@click="onTest"
-			>
-				{{ i18n.baseText('settings.sso.settings.test') }}
-			</N8nButton>
 		</div>
 	</div>
 </template>

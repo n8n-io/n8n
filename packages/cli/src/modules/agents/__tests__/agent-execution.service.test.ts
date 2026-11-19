@@ -3,14 +3,15 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { TransactionRunner } from '@n8n/db';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
+import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
 
-import type { Telemetry } from '@/telemetry';
-
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { AgentExecutionMetrics } from '../agent-execution-metrics';
 import { AgentExecutionService, type RecordMessageParams } from '../agent-execution.service';
 import { SESSION_STOPPED_REASON } from '../agent-session-stop-reason';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
+import type { AgentUsageTelemetryService } from '../agent-usage-telemetry.service';
 import type {
 	AgentExecutionThread,
 	AgentThreadAccess,
@@ -19,6 +20,7 @@ import type { AgentExecution } from '../entities/agent-execution.entity';
 import { AgentMessageEntity } from '../entities/agent-message.entity';
 import type { MessageRecord, TimelineEvent } from '../execution-recorder';
 import type { AgentExecutionLogStore } from '../execution-log/agent-execution-log-store';
+import type { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
@@ -94,19 +96,26 @@ function makeMessageRecord(overrides: Partial<MessageRecord> = {}): MessageRecor
 	};
 }
 
+const projectDeletion = mock<AgentProjectDeletionRepository>();
+const executionMetrics = mock<AgentExecutionMetrics>();
+projectDeletion.withWritableProject.mockImplementation(
+	async (_projectId, write, ctx = {}) => await write(ctx),
+);
+
 describe('AgentExecutionService', () => {
 	let service: AgentExecutionService;
 	let agentExecutionRepository: Mocked<AgentExecutionRepository>;
 	let agentExecutionThreadRepository: Mocked<AgentExecutionThreadRepository>;
 	let n8nMemory: Mocked<N8nMemory>;
 	let memoryBackend: Mocked<N8nMemoryImplementation>;
-	let telemetry: Mocked<Telemetry>;
+	let telemetry: Mocked<AgentUsageTelemetryService>;
 	let agentExecutionLogStore: Mocked<AgentExecutionLogStore>;
 	let storageConfig: Mocked<StorageConfig>;
 	let errorReporter: Mocked<ErrorReporter>;
 	let agentChatAttachmentService: Mocked<AgentChatAttachmentService>;
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	let executionUpdateBroadcaster: Mocked<AgentExecutionUpdateBroadcaster>;
+	let integrationMessageContext: Mocked<IntegrationMessageContextService>;
 	const txRunner = mock<TransactionRunner>();
 	const queueRepository = mock<AgentMessageQueueRepository>();
 	const messageRepository = mock<AgentMessageRepository>();
@@ -130,12 +139,14 @@ describe('AgentExecutionService', () => {
 		n8nMemory = mock<N8nMemory>();
 		memoryBackend = mock<N8nMemoryImplementation>();
 		n8nMemory.getImplementation.mockReturnValue(memoryBackend);
-		telemetry = mock<Telemetry>();
+		telemetry = mock<AgentUsageTelemetryService>();
 		agentExecutionLogStore = mock<AgentExecutionLogStore>();
 		storageConfig = mock<StorageConfig>({ modeTag: 'db' });
 		errorReporter = mock<ErrorReporter>();
 		agentChatAttachmentService = mock<AgentChatAttachmentService>();
 		executionUpdateBroadcaster = mock<AgentExecutionUpdateBroadcaster>();
+		integrationMessageContext = mock<IntegrationMessageContextService>();
+		integrationMessageContext.findBoundThreadIds.mockResolvedValue([]);
 		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 
 		service = new AgentExecutionService(
@@ -154,6 +165,9 @@ describe('AgentExecutionService', () => {
 			queueRepository,
 			messageRepository,
 			new SystemAgentRegistry(),
+			projectDeletion,
+			integrationMessageContext,
+			executionMetrics,
 		);
 	});
 
@@ -969,6 +983,9 @@ describe('AgentExecutionService', () => {
 				queueRepository,
 				messageRepository,
 				new SystemAgentRegistry(),
+				projectDeletion,
+				integrationMessageContext,
+				executionMetrics,
 			);
 
 			const record = makeMessageRecord({
@@ -1024,7 +1041,11 @@ describe('AgentExecutionService', () => {
 				expect.any(Object),
 				undefined,
 			);
-			expect(agentExecutionRepository.moveTimelineToBlob).toHaveBeenCalledWith('execution-1', 'fs');
+			expect(agentExecutionRepository.moveTimelineToBlob).toHaveBeenCalledWith(
+				'execution-1',
+				'fs',
+				{},
+			);
 			expect(agentExecutionRepository.updateIfRunning.mock.invocationCallOrder[0]).toBeLessThan(
 				agentExecutionLogStore.write.mock.invocationCallOrder[0],
 			);
@@ -1048,9 +1069,11 @@ describe('AgentExecutionService', () => {
 		it.each([
 			['blob write', null, false],
 			['storage pointer update', 'db', true],
+			['storage pointer update after project deletion', null, true],
+			['project deletion', null, true],
 			['storage pointer acknowledgement', 'fs', false],
 		] as const)(
-			'keeps the finalized execution in the database when the %s fails',
+			'handles %s errors without deleting a referenced timeline',
 			async (failure, currentLocation, shouldDeleteBlob) => {
 				storageConfig = mock<StorageConfig>({ modeTag: 'fs' });
 				service = new AgentExecutionService(
@@ -1069,6 +1092,9 @@ describe('AgentExecutionService', () => {
 					queueRepository,
 					messageRepository,
 					new SystemAgentRegistry(),
+					projectDeletion,
+					integrationMessageContext,
+					executionMetrics,
 				);
 
 				const record = makeMessageRecord({
@@ -1097,6 +1123,11 @@ describe('AgentExecutionService', () => {
 				const error = new Error('storage unavailable');
 				if (failure === 'blob write') {
 					agentExecutionLogStore.write.mockRejectedValue(error);
+				} else if (failure === 'project deletion') {
+					projectDeletion.withWritableProject
+						.mockImplementationOnce(async (_projectId, write, ctx = {}) => await write(ctx))
+						.mockRejectedValueOnce(error);
+					agentExecutionRepository.findTimelineStorageLocation.mockResolvedValue(null);
 				} else {
 					agentExecutionRepository.moveTimelineToBlob.mockRejectedValue(error);
 					agentExecutionRepository.findTimelineStorageLocation.mockResolvedValue(currentLocation);
@@ -1258,9 +1289,12 @@ describe('AgentExecutionService', () => {
 				record: makeMessageRecord(),
 			});
 
-			expect(agentExecutionThreadRepository.update).toHaveBeenCalledWith('thread-1', {
-				title: 'Workflow builder chat',
-			});
+			// The repository writes only to a thread without a title, so a rename during the turn stays.
+			expect(agentExecutionThreadRepository.setGeneratedTitle).toHaveBeenCalledWith(
+				'thread-1',
+				'Workflow builder chat',
+				null,
+			);
 		});
 
 		it('does not sync title from memory when the thread already has a title', async () => {
@@ -1283,7 +1317,7 @@ describe('AgentExecutionService', () => {
 			});
 
 			expect(memoryBackend.getThread).not.toHaveBeenCalled();
-			expect(agentExecutionThreadRepository.update).not.toHaveBeenCalled();
+			expect(agentExecutionThreadRepository.setGeneratedTitle).not.toHaveBeenCalled();
 		});
 
 		it('tracks succeeded turn telemetry after recording the execution', async () => {
@@ -1531,6 +1565,147 @@ describe('AgentExecutionService', () => {
 	});
 
 	describe('finalizeExecution', () => {
+		const approvalTimeline = [
+			{
+				type: 'suspension' as const,
+				toolName: 'send_channel_message',
+				toolCallId: 'call-1',
+				timestamp: 1,
+				suspendPayload: { type: 'approval', toolName: 'send_channel_message' },
+			},
+		];
+
+		describe('metrics', () => {
+			const params: RecordMessageParams = {
+				threadId: 'thread-1',
+				agentId: 'child-agent',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record: makeMessageRecord(),
+				source: 'subagent',
+				hitlStatus: 'suspended',
+				threadMetadata: { parentThreadId: 'parent-thread', parentAgentId: 'root-agent' },
+			};
+
+			it('reports the stored outcome with the root agent of a delegated run', async () => {
+				agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+
+				await service.finalizeExecution('execution-1', params);
+
+				expect(executionMetrics.stopped).toHaveBeenCalledWith('execution-1');
+				expect(executionMetrics.finished).toHaveBeenCalledWith(
+					{ agentId: 'child-agent', parentAgentId: 'root-agent' },
+					{ status: 'success', hitlStatus: 'suspended' },
+					params.record,
+				);
+			});
+
+			it('does not report an outcome that failed to store', async () => {
+				agentExecutionRepository.updateIfRunning.mockRejectedValue(new Error('db down'));
+
+				await expect(service.finalizeExecution('execution-1', params)).rejects.toThrow('db down');
+
+				expect(executionMetrics.finished).not.toHaveBeenCalled();
+			});
+
+			it('finalizes a stored execution when the metrics report fails', async () => {
+				agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+				const error = new Error('metrics failed');
+				executionMetrics.finished.mockImplementationOnce(() => {
+					throw error;
+				});
+
+				await expect(service.finalizeExecution('execution-1', params)).resolves.toBe('execution-1');
+
+				expect(errorReporter.error).toHaveBeenCalledWith(error);
+			});
+
+			it('reports an execution that the sweep interrupted, with the agents of its thread', async () => {
+				agentExecutionThreadRepository.findOneBy.mockResolvedValue(
+					makeThread({ agentId: 'child-agent', parentAgentId: 'root-agent' }),
+				);
+
+				const finalized = await service.finalizeInterruptedExecution(
+					{
+						id: 'execution-1',
+						threadId: 'thread-1',
+						startedAt: new Date(0),
+						updatedAt: new Date(0),
+						timeline: null,
+					},
+					new Date(),
+				);
+
+				expect(finalized).toBe(true);
+				await vi.waitFor(() =>
+					expect(executionMetrics.interrupted).toHaveBeenCalledWith({
+						agentId: 'child-agent',
+						parentAgentId: 'root-agent',
+					}),
+				);
+			});
+		});
+
+		it('records a task approval suspension as awaiting and skips turn telemetry', async () => {
+			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+			const record = makeMessageRecord({ timeline: approvalTimeline });
+
+			await service.finalizeExecution('execution-1', {
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record,
+				source: 'task',
+				hitlStatus: 'suspended',
+				telemetry: {
+					runType: 'production',
+					configuration: {
+						model: null,
+						channels: [],
+						tool_types: [],
+						tool_count: 0,
+						num_skills: 0,
+						memory_type: 'none',
+					},
+				},
+			});
+
+			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({ status: 'awaiting' }),
+				undefined,
+				expect.any(Object),
+				undefined,
+			);
+			expect(telemetry.trackAgentTurnFinished).not.toHaveBeenCalled();
+		});
+
+		it('keeps a channel approval suspension as success', async () => {
+			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+
+			await service.finalizeExecution('execution-1', {
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record: makeMessageRecord({ timeline: approvalTimeline }),
+				source: 'slack',
+				hitlStatus: 'suspended',
+			});
+
+			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({ status: 'success' }),
+				undefined,
+				expect.any(Object),
+				undefined,
+			);
+		});
+
 		it('makes the terminal timeline authoritative', async () => {
 			const record = makeMessageRecord({
 				finishReason: 'cancelled',
@@ -1691,6 +1866,9 @@ describe('AgentExecutionService', () => {
 				queueRepository,
 				messageRepository,
 				new SystemAgentRegistry(),
+				projectDeletion,
+				integrationMessageContext,
+				executionMetrics,
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
@@ -1721,13 +1899,13 @@ describe('AgentExecutionService', () => {
 					status: 'interrupted',
 					timeline: partial,
 					storedAt: 'db',
-					error: expect.stringContaining('interrupted'),
+					error: expect.stringContaining('n8n restarted'),
 					failureSummary: {
 						count: 1,
 						latest: {
 							kind: 'execution',
 							name: null,
-							message: expect.stringContaining('interrupted'),
+							message: expect.stringContaining('n8n restarted'),
 							occurredAt: expect.any(Number),
 						},
 					},
@@ -2240,6 +2418,140 @@ describe('AgentExecutionService', () => {
 		});
 	});
 
+	describe('getThreadDetailPage', () => {
+		const execution = (id: string, minute: number) =>
+			({
+				id,
+				storedAt: 'db',
+				createdAt: new Date(`2026-05-07T10:${String(minute).padStart(2, '0')}:00Z`),
+			}) as AgentExecution;
+
+		beforeEach(() => {
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(makeThread());
+			messageRepository.continuesExecution.mockResolvedValue(false);
+		});
+
+		it('returns the newest turns oldest first, and reports older turns', async () => {
+			agentExecutionRepository.findByThreadIdNewestFirst.mockResolvedValue([
+				execution('execution-4', 4),
+				execution('execution-3', 3),
+				execution('execution-2', 2),
+			]);
+
+			const result = await service.getThreadDetailPage(
+				'thread-1',
+				'project-1',
+				'agent-1',
+				'user-1',
+				{ limit: 2 },
+			);
+
+			expect(agentExecutionRepository.findByThreadIdNewestFirst).toHaveBeenCalledWith(
+				'thread-1',
+				3,
+				undefined,
+			);
+			expect(result?.executions.map(({ id }) => id)).toEqual(['execution-3', 'execution-4']);
+			expect(result?.hasOlder).toBe(true);
+		});
+
+		it('reports no older turns on the last page', async () => {
+			const before = { createdAt: new Date('2026-05-07T10:03:00Z'), id: 'execution-3' };
+			agentExecutionRepository.findByThreadIdNewestFirst.mockResolvedValue([
+				execution('execution-2', 2),
+				execution('execution-1', 1),
+			]);
+
+			const result = await service.getThreadDetailPage(
+				'thread-1',
+				'project-1',
+				'agent-1',
+				'user-1',
+				{ limit: 2, before },
+			);
+
+			expect(agentExecutionRepository.findByThreadIdNewestFirst).toHaveBeenCalledWith(
+				'thread-1',
+				3,
+				before,
+			);
+			expect(result?.executions.map(({ id }) => id)).toEqual(['execution-1', 'execution-2']);
+			expect(result?.hasOlder).toBe(false);
+		});
+
+		it('keeps a resumed turn on the page of the execution that it continues', async () => {
+			const suspended = execution('execution-2', 2);
+			const first = execution('execution-1', 1);
+			agentExecutionRepository.findByThreadIdNewestFirst
+				.mockResolvedValueOnce([
+					execution('execution-4', 4),
+					execution('execution-3', 3),
+					suspended,
+				])
+				.mockResolvedValueOnce([first]);
+			messageRepository.continuesExecution.mockImplementation(
+				async (executionId, predecessorId) =>
+					executionId === 'execution-3' && predecessorId === 'execution-2',
+			);
+
+			const result = await service.getThreadDetailPage(
+				'thread-1',
+				'project-1',
+				'agent-1',
+				'user-1',
+				{ limit: 2 },
+			);
+
+			expect(agentExecutionRepository.findByThreadIdNewestFirst).toHaveBeenLastCalledWith(
+				'thread-1',
+				1,
+				suspended,
+			);
+			expect(result?.executions.map(({ id }) => id)).toEqual([
+				'execution-2',
+				'execution-3',
+				'execution-4',
+			]);
+			expect(result?.hasOlder).toBe(true);
+		});
+
+		it('keeps a resume without input links on the page of the execution before it', async () => {
+			// Resumes from before input messages were linked have only their status.
+			const resumed = { ...execution('execution-3', 3), hitlStatus: 'resumed' } as AgentExecution;
+			const suspended = execution('execution-2', 2);
+			agentExecutionRepository.findByThreadIdNewestFirst
+				.mockResolvedValueOnce([execution('execution-4', 4), resumed, suspended])
+				.mockResolvedValueOnce([]);
+
+			const result = await service.getThreadDetailPage(
+				'thread-1',
+				'project-1',
+				'agent-1',
+				'user-1',
+				{ limit: 2 },
+			);
+
+			expect(messageRepository.continuesExecution).not.toHaveBeenCalled();
+			expect(result?.executions.map(({ id }) => id)).toEqual([
+				'execution-2',
+				'execution-3',
+				'execution-4',
+			]);
+			expect(result?.hasOlder).toBe(false);
+		});
+
+		it('does not read executions for a thread outside the requested owner', async () => {
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(
+				makeThread({ ownerId: 'other-user' }),
+			);
+
+			await expect(
+				service.getThreadDetailPage('thread-1', 'project-1', 'agent-1', 'user-1', { limit: 2 }),
+			).resolves.toBeNull();
+			expect(agentExecutionRepository.findByThreadIdNewestFirst).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('findLatestSuspendedRun', () => {
 		it('delegates to the repository and returns its result', async () => {
 			const suspended = { id: 'execution-1', source: 'telegram' } as AgentExecution;
@@ -2303,6 +2615,21 @@ describe('AgentExecutionService', () => {
 			]);
 		});
 
+		it('reports the deletion when the blob-stored logs fail to delete', async () => {
+			agentExecutionThreadRepository.deleteSession.mockResolvedValue({
+				status: 'deleted',
+				refs: {
+					attachmentBinaryDataIds: [],
+					executionLogs: [{ id: 'execution-1', storedAt: 'fs' }],
+				},
+			});
+			agentExecutionLogStore.delete.mockRejectedValue(new Error('store down'));
+
+			await expect(
+				service.deleteThread('project-1', 'agent-1', 'thread-1', 'user-1'),
+			).resolves.toBe(true);
+		});
+
 		it('does not clean SDK memory when the execution thread is not found', async () => {
 			agentExecutionThreadRepository.deleteSession.mockResolvedValue(null);
 
@@ -2312,6 +2639,52 @@ describe('AgentExecutionService', () => {
 			expect(n8nMemory.getImplementation).not.toHaveBeenCalled();
 			expect(memoryBackend.deleteThread).not.toHaveBeenCalled();
 			expect(agentChatAttachmentService.deleteStoredData).not.toHaveBeenCalled();
+		});
+
+		it('clears the session bindings of the deleted thread after the delete', async () => {
+			agentExecutionThreadRepository.deleteSession.mockResolvedValue({
+				status: 'deleted',
+				refs: { attachmentBinaryDataIds: [], executionLogs: [] },
+			});
+			integrationMessageContext.findBoundThreadIds.mockResolvedValue(['agent-1:whatsapp:1']);
+
+			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1', 'user-1');
+
+			expect(result).toBe(true);
+			expect(integrationMessageContext.findBoundThreadIds).toHaveBeenCalledWith('thread-1', {});
+			expect(integrationMessageContext.findBoundThreadIds.mock.invocationCallOrder[0]).toBeLessThan(
+				memoryBackend.deleteThread.mock.invocationCallOrder[0],
+			);
+			expect(integrationMessageContext.clearSessionBindings).toHaveBeenCalledWith('thread-1', [
+				'agent-1:whatsapp:1',
+			]);
+			expect(memoryBackend.deleteThread.mock.invocationCallOrder[0]).toBeLessThan(
+				integrationMessageContext.clearSessionBindings.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('keeps the session bindings when the session is busy', async () => {
+			agentExecutionThreadRepository.deleteSession.mockResolvedValue({ status: 'busy' });
+
+			await expect(
+				service.deleteThread('project-1', 'agent-1', 'thread-1', 'user-1'),
+			).rejects.toThrow('The session has active work and cannot be deleted');
+
+			expect(integrationMessageContext.findBoundThreadIds).not.toHaveBeenCalled();
+			expect(integrationMessageContext.clearSessionBindings).not.toHaveBeenCalled();
+		});
+
+		it('reports the deletion when the session bindings fail to clear', async () => {
+			agentExecutionThreadRepository.deleteSession.mockResolvedValue({
+				status: 'deleted',
+				refs: { attachmentBinaryDataIds: [], executionLogs: [] },
+			});
+			integrationMessageContext.findBoundThreadIds.mockResolvedValue(['agent-1:whatsapp:1']);
+			integrationMessageContext.clearSessionBindings.mockRejectedValue(new Error('db down'));
+
+			await expect(
+				service.deleteThread('project-1', 'agent-1', 'thread-1', 'user-1'),
+			).resolves.toBe(true);
 		});
 	});
 
@@ -2324,6 +2697,41 @@ describe('AgentExecutionService', () => {
 			expect(agentExecutionThreadRepository.findIdsByAgentId).toHaveBeenCalledWith('agent-1');
 			expect(n8nMemory.getImplementation).toHaveBeenCalledWith('agent-1');
 			expect(memoryBackend.deleteThreads).toHaveBeenCalledWith(['thread-1', 'thread-2']);
+		});
+	});
+
+	describe('deleteMemoryThreadsForProject', () => {
+		it('cleans project sessions grouped by agent, including instance agents', async () => {
+			agentExecutionThreadRepository.findMemoryThreadsForProject.mockResolvedValue([
+				{ id: 'thread-1', agentId: 'agent-1' },
+				{ id: 'thread-2', agentId: 'instance-agent' },
+			]);
+
+			await service.deleteMemoryThreadsForProject('project-1');
+
+			expect(agentExecutionThreadRepository.findMemoryThreadsForProject).toHaveBeenCalledWith(
+				'project-1',
+			);
+			expect(n8nMemory.getImplementation.mock.calls).toEqual([['agent-1'], ['instance-agent']]);
+			expect(memoryBackend.deleteThreads.mock.calls).toEqual([[['thread-1']], [['thread-2']]]);
+		});
+	});
+
+	describe('deleteExecutionLogsForProject', () => {
+		it('deletes project log blobs with their owning agent and storage location', async () => {
+			agentExecutionRepository.findBlobRefsByProjectId.mockResolvedValue([
+				{ id: 'exec-1', threadId: 'thread-1', agentId: 'project-agent', storedAt: 'fs' },
+				{ id: 'exec-2', threadId: 'thread-2', agentId: 'instance-agent', storedAt: 's3' },
+				{ id: 'exec-3', threadId: 'thread-3', agentId: 'instance-agent', storedAt: 'db' },
+			]);
+
+			await service.deleteExecutionLogsForProject('project-1');
+
+			expect(agentExecutionRepository.findBlobRefsByProjectId).toHaveBeenCalledWith('project-1');
+			expect(agentExecutionLogStore.delete).toHaveBeenCalledExactlyOnceWith([
+				{ executionId: 'exec-1', threadId: 'thread-1', agentId: 'project-agent', storedAt: 'fs' },
+				{ executionId: 'exec-2', threadId: 'thread-2', agentId: 'instance-agent', storedAt: 's3' },
+			]);
 		});
 	});
 

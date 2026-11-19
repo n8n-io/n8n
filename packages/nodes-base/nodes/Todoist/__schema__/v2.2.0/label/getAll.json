@@ -1,0 +1,20 @@
+{
+	"properties": {
+		"color": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"is_favorite": {
+			"type": "boolean"
+		},
+		"name": {
+			"type": "string"
+		},
+		"order": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

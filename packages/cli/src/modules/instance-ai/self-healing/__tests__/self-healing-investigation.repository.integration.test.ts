@@ -75,7 +75,9 @@ it('allows one concurrent investigation claim per workflow', async () => {
 
 it('releases technical failures while retaining the original execution identity', async () => {
 	const first = await createInvestigation();
-	await investigations.finishWithoutResult(first.id);
+	expect(await investigations.finishWithoutResult(first.id)).toBe(true);
+	// A repeat changes nothing. The caller uses this to send one telemetry event.
+	expect(await investigations.finishWithoutResult(first.id)).toBe(false);
 	expect(await investigations.getUnfinishedForWorkflow(baseline.workflowId)).toBeNull();
 	expect(await investigations.getForExecution(baseline.workflowId, first.executionId)).toEqual({
 		id: first.id,
@@ -103,6 +105,9 @@ it('reverts and reapplies the investigation schemas', async () => {
 		'CreateSelfHealingConfigurations1792742505678',
 		'ReplaceSelfHealingInvestigationBaseline1792750863544',
 		'AddIncludeAllProjectMembersToSelfHealingConfiguration1793106080688',
+		'AddIncludeSubWorkflowsToSelfHealingConfiguration1794320824000',
+		'LinkWorkflowSuggestionsToSelfHealingResult1794320825000',
+		'IndexSelfHealingInvestigationActivity1794320826000',
 	].map((name) => {
 		const migration = db.migrations.find(({ constructor }) => constructor.name === name);
 		if (!migration) throw new Error(`${name} is not registered.`);

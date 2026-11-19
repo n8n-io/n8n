@@ -16,15 +16,17 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, inject, nextTick, onBeforeUnmount, ref } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, provide, ref, watch } from 'vue';
 
 import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 
-import { buildAlwaysAllowKey } from '../alwaysAllow';
+import { buildAlwaysAllowKeys } from '../alwaysAllow';
 import { formatApprovalDetails, formatApprovalTitle } from '../approvalDetails';
+import { ASSISTANT_RUNTIME } from '../assistantRuntime';
 import {
 	approvalInputs,
+	appBlueprintInputs,
 	continueInputs,
 	getConfirmationType,
 	mcpConnectInputs,
@@ -36,10 +38,21 @@ import {
 	type ConfirmationInputs,
 } from '../confirmationTelemetry';
 import DomainAccessApproval from '../components/DomainAccessApproval.vue';
+import GatewayResourceDecision from '../components/GatewayResourceDecision.vue';
+import InstanceAiChannelSetup from '../components/InstanceAiChannelSetup.vue';
+import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.vue';
 import InstanceAiMcpConnectCard from '../components/InstanceAiMcpConnectCard.vue';
+import AppBlueprintCard from '../components/AppBlueprintCard.vue';
 import InstanceAiQuestions, { type QuestionAnswer } from '../components/InstanceAiQuestions.vue';
+import InstanceAiWorkflowSetup from '../workflowSetup/InstanceAiWorkflowSetup.vue';
+import type {
+	WorkflowSetupApplyPayload,
+	WorkflowSetupOutcome,
+	WorkflowSetupSection,
+} from '../workflowSetup/workflowSetup.types';
+import { ASSISTANT_AGENT_PROJECT_ID, ASSISTANT_AGENT_THREAD_ID } from './assistantAgentThreads';
 import type { AssistantConfirmationInput } from './assistantConfirmation';
-import { ASSISTANT_AGENT_THREAD_ID } from './assistantAgentThreads';
+import { ASSISTANT_AGENT_SETUP_SAVED } from './useAssistantAgentSetupSavedTelemetry';
 
 const props = defineProps<{
 	input: AssistantConfirmationInput;
@@ -56,6 +69,9 @@ const approvalLabels = useApprovalCardLabels();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
 const threadId = inject(ASSISTANT_AGENT_THREAD_ID, '');
+const expectSetupResult = inject(ASSISTANT_AGENT_SETUP_SAVED, undefined);
+// The shared cards inside track their own input. Every agents thread renders them here.
+provide(ASSISTANT_RUNTIME, 'agents');
 const submitted = ref(false);
 // Bumped when the chat refuses an answer. The inner cards remount, so they drop
 // their own answered state too.
@@ -69,23 +85,34 @@ function reopen() {
 	attempt.value += 1;
 }
 
+// A tool can suspend again on the same call, for example when n8n rejects the
+// answer. The new request is a new question, so the card opens again.
+watch(
+	() => props.input.requestId,
+	() => reopen(),
+);
+
+// A payload without a project uses the project of the thread.
+const threadProjectId = inject(ASSISTANT_AGENT_PROJECT_ID, undefined);
+const projectId = computed(() => props.input.projectId ?? threadProjectId);
+/** Joins the telemetry with the "Builder asked for input" event, which the backend sends with the request id. */
+const inputThreadId = computed(() => props.input.inputThreadId ?? props.input.requestId);
+
 /** The same order as the current Assistant confirmation panel. */
 const variant = computed(() => {
 	const { input } = props;
 	if (input.inputType === 'questions' && input.questions?.length) return 'questions';
-	// Cards that need the current Assistant thread. They come to this chat later.
-	if (
-		input.setupRequests?.length ||
-		input.credentialRequests?.length ||
-		(input.inputType === 'resource-decision' && input.resourceDecision) ||
-		input.channelConfig
-	) {
-		return 'unsupported';
-	}
 	if (input.mcpConnectRequest) return 'mcp-connect';
+	if (input.appBlueprint) return 'app-blueprint';
+	if (input.setupRequests?.length) return 'workflow-setup';
+	if (input.credentialRequests?.length) return 'credential-setup';
 	if (input.inputType === 'text') return 'text';
 	if (input.inputType === 'continue') return 'continue';
 	if (input.testListener) return 'test-listener';
+	if (input.inputType === 'resource-decision' && input.resourceDecision) {
+		return 'resource-decision';
+	}
+	if (input.channelConfig) return 'channel-config';
 	if (input.domainAccess) return 'domain-access';
 	if (input.webSearch) return 'web-search';
 	if (input.credentialDestination) return 'credential-destination';
@@ -98,7 +125,7 @@ function trackAnswer(inputs: ConfirmationInputs) {
 		telemetry,
 		{
 			threadId,
-			inputThreadId: props.input.inputThreadId,
+			inputThreadId: inputThreadId.value,
 			instanceId: rootStore.instanceId,
 			// Assistant agent threads keep no launch source yet.
 			actionSource: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
@@ -111,16 +138,48 @@ function trackAnswer(inputs: ConfirmationInputs) {
 
 /**
  * `inputs` is the telemetry of the answer, sent once the server accepts it. A card
- * that the backend settles has none.
+ * that the backend settles has none. `onAccepted` also runs once the server accepts it.
  */
-function submit(body: InstanceAiConfirmRequest, inputs?: ConfirmationInputs) {
+function submit(
+	body: InstanceAiConfirmRequest,
+	inputs?: ConfirmationInputs,
+	onAccepted?: () => void,
+) {
 	if (isInactive.value) return;
 	submitted.value = true;
-	emit('submit', body, inputs ? () => trackAnswer(inputs) : undefined);
+	const accepted =
+		inputs || onAccepted
+			? () => {
+					if (inputs) trackAnswer(inputs);
+					onAccepted?.();
+				}
+			: undefined;
+	emit('submit', body, accepted);
 	// The chat removes a card as soon as it takes the answer. A busy chat refuses the
 	// answer and keeps the card, so the card takes the answer back. After a failed
 	// send, the chat renders the card again as a new instance.
 	void nextTick(reopen);
+}
+
+// The workflow setup card hands its answer here, and this card resumes the tool with it.
+// The chat shows the tool result, so the setup card settles as soon as the answer is sent.
+const workflowSetupOutcome = ref<WorkflowSetupOutcome>();
+
+function onWorkflowSetupApply(
+	payload: WorkflowSetupApplyPayload,
+	sections: WorkflowSetupSection[],
+) {
+	const { requestId, workflowId } = props.input;
+	// The chat shows the tool result after this card unmounts, so the thread view sends the event.
+	submit({ kind: 'setupWorkflowApply', ...payload }, undefined, () =>
+		expectSetupResult?.({ requestId, workflowId, sections }),
+	);
+	workflowSetupOutcome.value = { state: 'applied' };
+}
+
+function onWorkflowSetupDefer() {
+	submit({ kind: 'approval', approved: false });
+	workflowSetupOutcome.value = { state: 'deferred' };
 }
 
 function onQuestionsSubmit(answers: QuestionAnswer[]) {
@@ -248,9 +307,9 @@ if (props.input.testListener) {
 // --- Plain approval ---
 
 const approvalTitle = computed(() => {
-	const { targetApproval, toolName, args, resourceName } = props.input;
+	const { targetApproval, toolName, args, resourceName, approvalDetails } = props.input;
 	if (targetApproval || !toolName) return i18n.baseText('agents.chat.approval.title');
-	return formatApprovalTitle({ toolName, args, resourceName });
+	return formatApprovalTitle({ toolName, args, resourceName, approvalDetails });
 });
 
 const approvalDescription = computed(() => {
@@ -270,7 +329,7 @@ const canAlwaysAllow = computed(() => {
 	if (!toolName || severity === 'destructive' || targetApproval || credentialDestination) {
 		return false;
 	}
-	return buildAlwaysAllowKey(toolName, args ?? {}, workflowId) !== null;
+	return buildAlwaysAllowKeys(toolName, args ?? {}, workflowId).length > 0;
 });
 
 function onApprovalSelect(key: string) {
@@ -303,22 +362,64 @@ function onApprovalSelect(key: string) {
 			data-test-id="assistant-agent-questions"
 			@submit="onQuestionsSubmit"
 		/>
-		<N8nCard
-			v-else-if="variant === 'unsupported'"
-			:class="$style.card"
-			data-test-id="assistant-agent-unsupported-card"
-		>
-			<N8nText v-if="input.message" tag="div">{{ input.message }}</N8nText>
-			<N8nText tag="div" size="small" color="text-light">
-				{{ i18n.baseText('instanceAi.assistantAgent.unsupportedCard') }}
-			</N8nText>
-		</N8nCard>
 		<InstanceAiMcpConnectCard
 			v-else-if="variant === 'mcp-connect' && input.mcpConnectRequest"
 			:servers="input.mcpConnectRequest.servers"
 			:read-only="isInactive"
 			data-test-id="assistant-agent-mcp-connect"
 			@resolve="onMcpConnectResolve"
+		/>
+		<AppBlueprintCard
+			v-else-if="variant === 'app-blueprint' && input.appBlueprint"
+			:blueprint="input.appBlueprint"
+			:errors="input.appBlueprintErrors"
+			:read-only="isInactive"
+			data-test-id="assistant-agent-app-blueprint"
+			@submit="
+				(body) =>
+					submit(body, body.kind === 'appBlueprint' ? appBlueprintInputs(body.approved) : undefined)
+			"
+		/>
+		<!-- The setup cards keep their own submitted state. -->
+		<InstanceAiWorkflowSetup
+			v-else-if="variant === 'workflow-setup' && input.setupRequests"
+			:request-id="input.requestId"
+			:setup-requests="input.setupRequests"
+			:project-id="projectId"
+			:credential-flow="input.credentialFlow"
+			:workflow-id="input.workflowId"
+			:thread-id="threadId"
+			:input-thread-id="inputThreadId"
+			:outcome="workflowSetupOutcome"
+			@apply="onWorkflowSetupApply"
+			@defer="onWorkflowSetupDefer"
+		/>
+		<InstanceAiCredentialSetup
+			v-else-if="variant === 'credential-setup' && input.credentialRequests"
+			:credential-requests="input.credentialRequests"
+			:message="input.message"
+			:project-id="projectId"
+			:credential-flow="input.credentialFlow"
+			:require-user-selection="input.requireUserSelection"
+			:thread-id="threadId"
+			:input-thread-id="inputThreadId"
+			@decide="(body) => submit(body)"
+		/>
+		<GatewayResourceDecision
+			v-else-if="variant === 'resource-decision' && input.resourceDecision"
+			:resource="input.resourceDecision.resource"
+			:description="input.resourceDecision.description"
+			:options="input.resourceDecision.options"
+			:thread-id="threadId"
+			:input-thread-id="inputThreadId"
+			@decide="(decision) => submit({ kind: 'resourceDecision', resourceDecision: decision })"
+		/>
+		<InstanceAiChannelSetup
+			v-else-if="variant === 'channel-config' && input.channelConfig"
+			:integration-type="input.channelConfig.integrationType"
+			:agent-id="input.channelConfig.agentId"
+			:project-id="projectId ?? ''"
+			@decide="(approved) => submit({ kind: 'approval', approved })"
 		/>
 		<N8nCard
 			v-else-if="variant === 'test-listener' && input.testListener"

@@ -38,6 +38,10 @@ const ExecutionFilterShape = {
 	workflowIds: z.union([z.literal('all'), z.array(z.string().min(1)).min(1).max(10_000)]),
 	status: z.array(ExecutionStatusSchema).min(1).optional(),
 	hostMode: z.string().min(1).max(32).optional(),
+	/** Only the executions this one started. */
+	parentExecutionId: z.string().uuid().optional(),
+	/** `true` for sub-executions only, `false` for top-level executions only. */
+	hasParent: z.boolean().optional(),
 	createdAfter: datetimeStringWithOffset().optional(),
 	createdBefore: datetimeStringWithOffset().optional(),
 };
@@ -124,6 +128,7 @@ export function toExecutionSnapshot(
 		hostMode: record.hostMode,
 		graph: record.graph,
 		workflow: record.workflow,
+		parent: record.parent,
 		createdAt: record.createdAt.toISOString(),
 		updatedAt: record.updatedAt.toISOString(),
 		finishedAt: record.finishedAt?.toISOString() ?? null,
@@ -140,6 +145,7 @@ function toStepDetail(record: StepView): StepDetail {
 		iteration: record.iteration,
 		status: record.status,
 		outputs: record.outputs,
+		outputSources: record.outputSources,
 		error: record.error,
 		createdAt: record.createdAt,
 		updatedAt: record.updatedAt,

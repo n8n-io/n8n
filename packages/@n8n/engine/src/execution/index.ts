@@ -1,21 +1,29 @@
-export { StartExecutionService } from './start-execution.service';
+export { InvalidParentLinkError, StartExecutionService } from './start-execution.service';
 export { CancelExecutionService } from './cancel-execution.service';
 export type { CancelExecutionResult } from './cancel-execution.service';
 export type {
+	InvalidParentLinkReason,
 	StartExecutionRequest,
 	StartExecutionResult,
 } from './start-execution.service';
 export { stepKeyId } from './execution.types';
 export type {
 	CallerContext,
+	SubExecutionOutcome,
+	SubExecutionResult,
+	SubExecutionResumeCause,
 	ExecutionMode,
 	ExecutionStatus,
+	ExecutorWaitDeclaration,
+	ParentLink,
 	StepError,
 	StepKey,
 	StepKeyId,
 	ResumeBinding,
 	ResumeCause,
 	StepSlots,
+	StepOutputSource,
+	StepOutputSources,
 	StepStatus,
 	SeededSteps,
 	TriggerOutputs,
@@ -23,7 +31,12 @@ export type {
 	WorkflowDocument,
 } from './execution.types';
 export { ExecutionNotFoundError } from './execution-store';
-export type { ExecutionRecord, ExecutionStore, NewExecutionRecord } from './execution-store';
+export type {
+	ExecutionRecord,
+	ExecutionStore,
+	NewExecutionRecord,
+	StaleQueuedExecution,
+} from './execution-store';
 export type {
 	ExecutionViewStore,
 	ExecutionView,
@@ -32,12 +45,25 @@ export type {
 	StepView,
 } from './execution-view-store';
 export { StepNotFoundError } from './step-store';
-export type { DueStep, NewStepRecord, StepRecord, StepStore, StepSummary } from './step-store';
+export { announceStepFailed } from './step-events';
+export { validateStepContext } from './validate-step-context';
+export type {
+	DueStep,
+	NewStepRecord,
+	StaleQueuedStep,
+	StaleRunningStep,
+	StepRecord,
+	StepStore,
+	StepSummary,
+} from './step-store';
+export { assertValidStalenessThresholds, DEFAULT_STALENESS_THRESHOLDS } from './staleness';
+export type { StalenessThresholds } from './staleness';
 export { ExecutionStartHandler } from './execution-start-handler';
 export { ExecutionQueryService } from './execution-query.service';
 export { OrchestrationWorker } from './orchestration-worker';
 export { StepSettledHandler } from './step-settled-handler';
 export { StepReadyHandler } from './step-ready-handler';
+export { attachStepErrorDetails, stepErrorDetails } from './step-error-details';
 export { StepWorker } from './step-worker';
 export {
 	WaitSweeper,
@@ -46,4 +72,9 @@ export {
 } from './wait-sweeper';
 export { ExecutionFileCleanup } from './execution-file-cleanup';
 export { ResumeRejectedError, ResumeRequestService } from './resume-request.service';
-export type { ResumeHold, ResumeRejection, ResumeTarget } from './resume-request.service';
+export type {
+	ResumeHold,
+	ResumeLocation,
+	ResumeRejection,
+	ResumeTarget,
+} from './resume-request.service';

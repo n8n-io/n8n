@@ -385,3 +385,45 @@ describe('notices that answer one click', () => {
 		);
 	});
 });
+
+describe('files queued before a suspension', () => {
+	it('passes the earlier tool results and agent thread of the run to the stream consumer', async () => {
+		const consume = vi.fn().mockResolvedValue(undefined);
+		const toolResults = [
+			{
+				toolCallId: 'tc-1',
+				toolName: 'discord_action',
+				output: { ok: true, queuedFileIds: ['f'] },
+			},
+		];
+		const getSuspendedRun = vi.fn().mockResolvedValue({ threadId: 'agent-thread-1', toolResults });
+		const handler = createHandler({
+			agentService: { resumeForChat: vi.fn(() => (async function* () {})()), getSuspendedRun },
+			streamConsumer: { consume } as never,
+		});
+
+		await handler.executeResume(createThread(true) as never, 'run-1', 'tool-1', { approved: true });
+
+		expect(getSuspendedRun).toHaveBeenCalledWith({ agentId: 'agent-1', runId: 'run-1' });
+		expect(consume).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			expect.objectContaining({ agentThreadId: 'agent-thread-1', earlierToolResults: toolResults }),
+		);
+	});
+
+	it('still resumes when the suspended run cannot be read', async () => {
+		const resumeForChat = vi.fn(() => (async function* () {})());
+		const handler = createHandler({
+			agentService: {
+				resumeForChat,
+				getSuspendedRun: vi.fn().mockRejectedValue(new Error('database unavailable')),
+			},
+		});
+
+		await expect(
+			handler.executeResume(createThread(true) as never, 'run-1', 'tool-1', { approved: true }),
+		).resolves.toBe(true);
+		expect(resumeForChat).toHaveBeenCalled();
+	});
+});

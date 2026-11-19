@@ -24,6 +24,7 @@ import type { ToolCallState } from './constants';
 import { isDelegateSubAgentTool, isFailedDelegateOutput } from './delegateTool';
 import type { AgentsChatInteractionExtension } from './interactionRegistry';
 import { summariseToolCall } from './interactiveSummary';
+import { addReplyAttachments, newReplyAttachments } from './replyFiles';
 import { isPolicyRefusedToolOutput } from './toolPolicyRefusal';
 import type {
 	AgentsChatHostEvent,
@@ -299,11 +300,25 @@ export function convertDbMessages(
 		if (failed) status = CHAT_MESSAGE_STATUS.ERROR;
 		else if (msg.executionStatus === 'running') status = CHAT_MESSAGE_STATUS.STREAMING;
 
+		// True while the parts after the last text part are only host events.
+		let continuesText = false;
 		for (const [partIndex, part] of msg.content.entries()) {
 			if (part.type === 'text' && part.text) {
 				text += part.text;
-				renderParts.push({ type: 'text', text: part.text });
-			} else if (part.type === 'file' && part.fileId) {
+				const previous = renderParts.at(-1);
+				// The live stream joins the text deltas around a host event into one
+				// text, so history keeps them as one text too, without a break.
+				if (continuesText && previous?.type === 'text') {
+					previous.text += part.text;
+				} else {
+					renderParts.push({ type: 'text', text: part.text });
+				}
+				continuesText = true;
+				continue;
+			}
+			if (part.type !== 'host-event') continuesText = false;
+
+			if (part.type === 'file' && part.fileId) {
 				attachments.push({
 					fileId: part.fileId,
 					fileName: part.fileName ?? 'attachment',
@@ -373,6 +388,7 @@ export function convertDbMessages(
 					displaySummary: summariseToolCall(part.toolName, output, part.input),
 				};
 				toolCalls.push(toolCall);
+				attachments.push(...newReplyAttachments(attachments, toolCall));
 				if (msg.executionStatus === 'cancelled') continue;
 
 				const rebuilt = rebuildInteractiveFromHistory(toolCall, extensions);
@@ -394,6 +410,7 @@ export function convertDbMessages(
 			id: msg.id ?? crypto.randomUUID(),
 			role,
 			content: text,
+			...(role === CHAT_MESSAGE_ROLE.ASSISTANT && msg.stopReport ? { stopReport: true } : {}),
 			...(msg.author && { author: msg.author }),
 			...(renderParts.length > 0 && { renderParts }),
 			thinking: thinking || undefined,
@@ -433,6 +450,7 @@ export function convertDbMessages(
 			result.push(createStoppedMessage(msg.executionId));
 		}
 	}
+
 	return result;
 }
 
@@ -470,6 +488,7 @@ export function applyOpenSuspensions(
 				if (suspension.suspendPayload !== undefined) {
 					toolCall.suspendPayload = suspension.suspendPayload;
 				}
+				addReplyAttachments(msg, toolCall);
 				const rebuilt = rebuildInteractiveFromHistory(toolCall, extensions);
 				if (rebuilt) {
 					rebuilt.runId = suspension.runId;

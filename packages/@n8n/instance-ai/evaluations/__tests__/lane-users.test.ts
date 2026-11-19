@@ -123,12 +123,12 @@ describe('provisionCaseBuildUser', () => {
 		return { member, client: member as unknown as N8nClient, created };
 	}
 
-	it("accepts the pooled invite as the member and returns that user's MCP key", async () => {
+	it("accepts the pooled invite as the member and returns that user's MCP key and id", async () => {
 		const { client: ownerClient } = fakeOwnerClient();
 		const pool = new LaneUserPool(ownerClient, 1);
 		const { member, client } = fakeMemberClient();
 
-		const mcpApiKey = await provisionCaseBuildUser({
+		const { mcpApiKey, userId } = await provisionCaseBuildUser({
 			pool,
 			memberClient: client,
 			onCredentialCreated: () => {},
@@ -142,6 +142,7 @@ describe('provisionCaseBuildUser', () => {
 		expect(acceptArgs.password).toBe(pool.password);
 		expect(acceptArgs.token).toContain('token-');
 		expect(mcpApiKey).toBe('mcp-key-1');
+		expect(userId).toEqual(expect.any(String));
 		expect(member.createCredential).not.toHaveBeenCalled();
 	});
 

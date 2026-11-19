@@ -29,7 +29,8 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { Workflow, UnexpectedError, createRunExecutionData } from 'n8n-workflow';
+import { Workflow, createRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -589,6 +590,7 @@ export class TriggerExecutionContextFactory {
 					runData: {},
 				},
 			}),
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 			finished: false,
 			mode,
 			startedAt: new Date(),

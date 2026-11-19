@@ -8,7 +8,10 @@ import { AgentExecution } from '../entities/agent-execution.entity';
 import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { AgentExecutionMessageLink } from '../entities/agent-execution-message-link.entity';
 import { AgentMessageEntity } from '../entities/agent-message.entity';
-import type { ThreadFailureSummary } from '../utils/execution-failure-summary';
+import type {
+	AgentExecutionFailureSummary,
+	ThreadFailureSummary,
+} from '../utils/execution-failure-summary';
 
 export type RunningAgentExecution = Pick<
 	AgentExecution,
@@ -76,6 +79,29 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		return await this.find({ where: { threadId }, order: { createdAt: 'ASC', id: 'ASC' } });
 	}
 
+	/**
+	 * Up to `limit` executions of a thread, newest first. With `before`, only
+	 * the executions older than that one. The `id` breaks ties in `createdAt`.
+	 */
+	async findByThreadIdNewestFirst(
+		threadId: string,
+		limit: number,
+		before?: { createdAt: Date; id: string },
+	): Promise<AgentExecution[]> {
+		const query = this.createQueryBuilder('execution')
+			.where('execution.threadId = :threadId', { threadId })
+			.orderBy('execution.createdAt', 'DESC')
+			.addOrderBy('execution.id', 'DESC')
+			.take(limit);
+		if (before) {
+			query.andWhere(
+				'(execution.createdAt < :beforeCreatedAt OR (execution.createdAt = :beforeCreatedAt AND execution.id < :beforeId))',
+				{ beforeCreatedAt: before.createdAt, beforeId: before.id },
+			);
+		}
+		return await query.getMany();
+	}
+
 	/** Usage columns of all executions in a thread, oldest first. Skips the timeline. */
 	async findUsageByThreadId(threadId: string): Promise<AgentExecutionUsageRow[]> {
 		return await this.find({
@@ -124,6 +150,10 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 			order: { createdAt: 'ASC', id: 'ASC' },
 		});
 		return first?.parentExecutionId ? { parentExecutionId: first.parentExecutionId } : null;
+	}
+
+	async hasRunningForProject(projectId: string): Promise<boolean> {
+		return await this.exists({ where: { status: 'running', thread: { projectId } } });
 	}
 
 	async findRunning(): Promise<RunningAgentExecution[]> {
@@ -258,8 +288,13 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	async moveTimelineToBlob(
 		executionId: string,
 		storedAt: Exclude<AgentExecution['storedAt'], 'db'>,
+		ctx: OperationContext = {},
 	): Promise<void> {
-		await this.update({ id: executionId, storedAt: 'db' }, { storedAt, timeline: null });
+		await this.managerFor(ctx).update(
+			AgentExecution,
+			{ id: executionId, storedAt: 'db' },
+			{ storedAt, timeline: null },
+		);
 	}
 
 	async findTimelineStorageLocation(
@@ -463,9 +498,59 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 			.execute();
 	}
 
+	/**
+	 * Close task approvals whose checkpoint the TTL prune just expired.
+	 * Session status follows the latest execution, so this is the expiry notice.
+	 * A waiting run can already list failed tool calls. Keep those in the count.
+	 */
+	async failExpiredWaitingApprovals(threadIds: string[]): Promise<void> {
+		if (threadIds.length === 0) return;
+		const message = 'This approval expired.';
+		const expiry = {
+			kind: 'execution' as const,
+			name: null,
+			message,
+			occurredAt: Date.now(),
+		};
+		const awaiting = await this.find({
+			select: ['id', 'failureSummary'],
+			where: { threadId: In(threadIds), status: 'awaiting' },
+		});
+		for (const execution of awaiting) {
+			const existing = execution.failureSummary;
+			const failureSummary: AgentExecutionFailureSummary = existing
+				? {
+						count: existing.count + 1,
+						latest: expiry.occurredAt >= existing.latest.occurredAt ? expiry : existing.latest,
+					}
+				: { count: 1, latest: expiry };
+			await this.update(
+				{ id: execution.id, status: 'awaiting' },
+				{ status: 'error', error: message, failureSummary },
+			);
+		}
+	}
+
 	/** Delete every run in a thread. Caller must verify ownership first. */
 	async deleteByThreadId(threadId: string): Promise<void> {
 		await this.delete({ threadId });
+	}
+
+	/** Find log handles before the project cascade removes its execution threads. */
+	async findBlobRefsByProjectId(
+		projectId: string,
+	): Promise<(Pick<AgentExecution, 'id' | 'threadId' | 'storedAt'> & { agentId: string })[]> {
+		const executions = await this.find({
+			select: { id: true, threadId: true, storedAt: true, thread: { agentId: true } },
+			relations: { thread: true },
+			where: { thread: { projectId }, storedAt: Not('db') },
+		});
+		return executions.map((execution) => ({
+			id: execution.id,
+			threadId: execution.threadId,
+			storedAt: execution.storedAt,
+			agentId: execution.thread.agentId,
+		}));
 	}
 
 	/** Blob-stored log refs across all of an agent's threads — for log cleanup on agent delete. */

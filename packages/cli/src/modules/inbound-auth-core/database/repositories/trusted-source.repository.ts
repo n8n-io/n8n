@@ -7,7 +7,7 @@ import {
 	TransactionRunner,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, LessThan } from '@n8n/typeorm';
 
 import { TrustedSourceEntity } from '../entities/trusted-source.entity';
 
@@ -85,6 +85,40 @@ export class TrustedSourceRepository {
 
 	async findAll(ctx: OperationContext) {
 		return await this.table.managerFor(ctx).find(TrustedSourceEntity, { order: { name: 'ASC' } });
+	}
+
+	async findWithConfigVersionBelow(version: number, ctx: OperationContext) {
+		return await this.table
+			.managerFor(ctx)
+			.findBy(TrustedSourceEntity, { configVersion: LessThan(version) });
+	}
+
+	/**
+	 * Replaces the config only while the row still holds `fromVersion`, so a concurrent upgrade or
+	 * admin write wins. `false` when the row has moved on.
+	 */
+	async upgradeConfig(
+		id: string,
+		fromVersion: number,
+		changes: Required<Pick<TrustedSourceRowChanges, 'config' | 'configVersion'>>,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		const result = await this.table
+			.managerFor(ctx)
+			.update(TrustedSourceEntity, { id, configVersion: fromVersion }, changes);
+		return result.affected === 1;
+	}
+
+	/** Stamps the first authentication from the database clock; `false` when the row already carries one. */
+	async markFirstAuthenticated(id: string, ctx: OperationContext): Promise<boolean> {
+		const result = await this.table
+			.managerFor(ctx)
+			.createQueryBuilder()
+			.update(TrustedSourceEntity)
+			.set({ firstAuthenticatedAt: () => dbNowLiteral(this.isPostgres) })
+			.where('id = :id AND "firstAuthenticatedAt" IS NULL', { id })
+			.execute();
+		return result.affected === 1;
 	}
 
 	/**

@@ -1,6 +1,5 @@
-import { UnexpectedError } from 'n8n-workflow';
-
-import type { ExecutionRef } from './types';
+import type { ExecutionRef } from '@n8n/backend-services';
+import { UnexpectedError } from '@n8n/errors';
 
 /**
  * Thrown when an update targets an execution whose data bundle is

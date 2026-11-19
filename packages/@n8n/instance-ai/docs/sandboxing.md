@@ -33,9 +33,11 @@ is created only when the agent first uses a workspace capability. Instance AI
 exposes this core workspace tool set:
 
 - `workspace_read_file`
+- `workspace_read_files` (several files or line ranges in one call)
 - `workspace_read_tool_result`
 - `workspace_write_file`
 - `workspace_str_replace_file`
+- `workspace_edit_files` (several writes and replacements in one call)
 - `workspace_execute_command`
 
 The underlying `Workspace` supports more filesystem operations. The lazy
@@ -127,6 +129,34 @@ The Daytona image or versioned snapshot includes the stable workspace files
 and installed dependencies. The node-type catalog is written after sandbox
 creation because it is instance-specific and too large for the Daytona image
 request.
+
+The release snapshot packs the workflow SDK and its runtime workspace
+dependencies from the release checkout. Its `package.json` installs these local
+tarballs instead of waiting for the same versions to become available from npm.
+Run this focused smoke test without the release pipeline or Daytona credentials:
+
+```sh
+pnpm --filter @n8n/instance-ai test:snapshot-packages
+```
+
+The smoke test builds the SDK dependency graph, packs the same packages as the
+release snapshot, installs them in a temporary workspace, and rejects any n8n
+workspace package that resolves from the npm registry.
+
+To test the complete remote Daytona image build from a branch, dispatch the
+snapshot workflow in verification mode:
+
+```sh
+gh workflow run release-build-daytona-snapshot.yml \
+  --ref <branch> \
+  -f n8n_version=<version> \
+  -f verify_image_only=true
+```
+
+This mode uses the dev Daytona environment. It builds the branch's image as a
+uniquely named, non-versioned verification snapshot. It requires the snapshot
+to become active and then deletes it. It does not publish or retain a release
+snapshot.
 
 The knowledge base has a manifest with a content hash. Setup compares the
 manifest hash with the expected hash. When the hashes do not match, setup
@@ -270,6 +300,26 @@ end with a cancelled status; their underlying work can finish independently.
 
 Provider-side automatic stop and deletion are not reported. They require
 provider notifications or polling.
+
+## Workspace root
+
+The n8n sandbox service and current Daytona snapshots use `/home/user/workspace`
+as the workspace root, so the prompt is the same for both. A custom
+`N8N_INSTANCE_AI_SANDBOX_IMAGE` gets the same root, because n8n builds the
+workspace on top of it. These Daytona sandboxes still use
+`/home/daytona/workspace`:
+
+- Sandboxes created before this change, which a thread reconnects to.
+- Sandboxes from a snapshot built before this change, including a pinned
+  `N8N_INSTANCE_AI_SANDBOX_SNAPSHOT`.
+
+The agent does not know about the Daytona path. When n8n first resolves the
+root of one of these sandboxes, it creates `/home/user` (using passwordless
+`sudo` when running as a non-root user). It then
+links `/home/user/workspace` to `/home/daytona/workspace`. The prompt and shell
+commands can then use `/home/user/workspace` on every sandbox. Tool output can
+show the real path, so the workflow tools accept absolute paths under both
+roots. If n8n cannot create the link, the tools use `/home/daytona/workspace`.
 
 ## Configuration
 

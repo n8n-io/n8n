@@ -1,12 +1,13 @@
 import { AI_PREFERENCE_CONTENT_MAX_LENGTH, AI_PREFERENCE_MAX_PER_SCOPE } from '@n8n/api-types';
 import type { AiPreferenceSource } from '@n8n/api-types';
+import { ModuleRegistry } from '@n8n/backend-common';
 import {
 	createTeamProject,
 	getPersonalProject,
 	linkUserToProject,
 	testDb,
 } from '@n8n/backend-test-utils';
-import type { Project, User } from '@n8n/db';
+import type { Person, Project } from '@n8n/db';
 import { AiPreferenceRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -16,10 +17,10 @@ import { createAdmin, createMember, createOwner } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
-let owner: User;
-let admin: User;
-let member: User;
-let outsider: User;
+let owner: Person;
+let admin: Person;
+let member: Person;
+let outsider: Person;
 
 let ownerAgent: SuperAgentTest;
 let adminAgent: SuperAgentTest;
@@ -34,6 +35,7 @@ let readOnlyProject: Project;
 const testServer = utils.setupTestServer({ endpointGroups: ['ai-preferences'] });
 
 beforeAll(async () => {
+	Container.get(ModuleRegistry).settings.set('mcp', { mcpAccessEnabled: true });
 	owner = await createOwner();
 	admin = await createAdmin();
 	member = await createMember();

@@ -8,10 +8,14 @@ import {
 	ExecutionRedactionServiceProxy,
 	WorkflowPublishedDataService,
 	AiPreferenceService,
+	CredentialsFinderService,
+	NodeTypesProxy,
+	PostHogClient,
+	TelemetryProxy,
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
+import { ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -20,17 +24,15 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { NodeCatalogService } from '@/node-catalog';
-import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { TagService } from '@/services/tag.service';
-import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
@@ -38,6 +40,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { WorkflowService } from '@/workflows/workflow.service';
+import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 
 import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
 import { BUILDER_TOOLS, TOOLS_BY_SCOPE } from '../mcp-scopes';
@@ -59,6 +62,7 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service';
 
 import type { McpAuthContext } from '../mcp.types';
+import { McpPreferencesNoteService } from '../mcp-preferences-note.service';
 
 vi.mock('@n8n/permissions', async (importOriginal) => ({
 	...(await importOriginal<typeof permissions>()),
@@ -70,7 +74,6 @@ const hasGlobalScope = vi.mocked(permissions.hasGlobalScope);
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
 	mcpApps: { enabled: false, variant: 'unassigned' },
 	instanceContextEnabled: false,
-	aiPreferencesEnabled: false,
 	...overrides,
 });
 
@@ -92,6 +95,9 @@ const OAUTH_WITH_INSTALL: McpAuthContext = {
  * harness. Without this file that exemption would mean nothing checks the tool
  * ever registers, so renaming it would silently remove it for every client.
  */
+
+mockInstance(AiPreferenceSettingsService, { isEnabled: true });
+
 describe('install_community_node registration', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 
@@ -107,6 +113,7 @@ describe('install_community_node registration', () => {
 			mockInstance(WorkflowService),
 			mockInstance(UrlService),
 			mockInstance(CredentialsService),
+			mockInstance(CredentialsFinderService),
 			mockInstance(ActiveExecutions),
 			mockInstance(GlobalConfig, {
 				endpoints: {
@@ -119,17 +126,16 @@ describe('install_community_node registration', () => {
 				diagnostics: { enabled: false, frontendConfig: '' },
 				instanceSettingsLoader: { communityPackagesManagedByEnv: managedByEnv },
 			}),
-			mockInstance(Telemetry),
+			mockInstance(TelemetryProxy),
 			mockInstance(WorkflowRunner),
 			mockInstance(RoleService),
 			mockInstance(ProjectService),
 			mockInstance(NodeCatalogService),
 			mockInstance(WorkflowCreationService),
-			mockInstance(NodeTypes),
+			mockInstance(NodeTypesProxy),
 			mockInstance(ProjectRepository),
 			mockInstance(FolderFinderService),
 			mockInstance(SharedWorkflowRepository),
-			mockInstance(ExecutionRepository),
 			mockInstance(ExecutionService),
 			mockInstance(ExecutionListService),
 			mockInstance(DataTableProxyService),
@@ -157,6 +163,8 @@ describe('install_community_node registration', () => {
 			mockInstance(McpConfig, { communityNodeDiscoveryEnabled: true }),
 			mockInstance(ExecutionRedactionServiceProxy),
 			mockInstance(InstanceWriteAccessService),
+			mockInstance(McpPreferencesNoteService),
+			mockInstance(WorkflowPublicationStatusService),
 		);
 
 	beforeEach(() => {

@@ -6,7 +6,10 @@ import type {
 	IDataObject,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 /**
  * Make an API request to Mattermost
@@ -14,18 +17,18 @@ import type {
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject | GenericValue | GenericValue[] = {},
 	query: IDataObject = {},
 ) {
 	const credentials = await this.getCredentials('mattermostApi');
 	const baseUrl = (credentials.baseUrl as string).replace(/\/$/, '');
 
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		method,
 		body,
 		qs: query,
-		url: `${baseUrl}/api/v4/${endpoint}`,
+		url: requestUrl`${baseUrl}/api/v4/${endpoint}`,
 		headers: {
 			'content-type': 'application/json; charset=utf-8',
 		},
@@ -38,7 +41,7 @@ export async function apiRequest(
 export async function apiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD',
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {

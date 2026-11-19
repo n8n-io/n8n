@@ -1,3 +1,5 @@
+import type { AppEventMap } from '@n8n/backend-module-apps';
+import type { DataTableEventMap } from '@n8n/backend-module-data-table';
 import type {
 	AuthenticationMethod,
 	BreakingChangeLightReportResult,
@@ -9,7 +11,9 @@ import type {
 	PromotionProviderAuthType,
 	PromotionProviderType,
 	PromotionReviewType,
+	PublicApiRateLimitSettings,
 	RedactionFloor,
+	ScimDeprovisioningPolicy,
 } from '@n8n/api-types';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type {
@@ -26,7 +30,10 @@ import type {
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
-import type { PromotionFailureKind } from '@/modules/promotions.ee/promotion-telemetry';
+import type {
+	ClosedHostStatus,
+	PromotionFailureKind,
+} from '@/modules/promotions.ee/promotion-telemetry';
 import type { CredentialAuthProbeOutcome } from '@/services/credentials-tester.service';
 import type {
 	CredentialExportPolicy,
@@ -36,6 +43,7 @@ import type {
 	ImportPackageEventOptions,
 	PackageFailureReason,
 } from '@/modules/n8n-packages/n8n-packages.types';
+import type { ScimOperation, ScimRejectReason } from '@/modules/scim/scim-request.types';
 import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
 import type { AdminCredentialSelection as InstanceAiCredentialSelection } from '@/modules/instance-ai/instance-ai-settings.service';
 import type {
@@ -50,8 +58,11 @@ import type {
 import type { TracingContext } from '@/modules/otel/tracing-context';
 import type { McpCallerAuth } from '@n8n/backend-services/auth';
 import type { UserLike } from '@/types/user-like.types';
+import type { PublicApiCaller, PublicApiClient } from '@/public-api/public-api-client';
+import type { PublicApiResult } from '@/public-api/types';
 
 import type { AiEventMap } from './ai.event-map';
+import type { SurfaceId, TrustedSourceFacets } from '@n8n/inbound-auth';
 
 export type WorkflowActionSource =
 	| 'ui'
@@ -71,11 +82,18 @@ export type { UserLike };
  */
 export type PolicyWriteOrigin = 'composed-save' | 'document-api';
 
+export type SystemDeactivationReason =
+	| 'memory-guard'
+	| 'crash-recovery'
+	| 'source-control-pull'
+	| 'instance-ai-eval-rollback';
+
 export type CrashDetector =
 	| 'stall'
 	| 'queue-recovery'
 	| 'startup-recovery'
 	| 'start-failure'
+	| 'resume-limit'
 	| 'workflow-deactivation';
 
 export type ProjectSummary = {
@@ -83,7 +101,9 @@ export type ProjectSummary = {
 	name: string;
 };
 
-export type RelayEventMap = {
+type ModuleEventMap = DataTableEventMap & AppEventMap;
+
+export type RelayEventMap = ModuleEventMap & {
 	// #region Lifecycle
 
 	'server-started': {};
@@ -133,11 +153,13 @@ export type RelayEventMap = {
 	'workflow-created': {
 		user: UserLike;
 		workflow: IWorkflowBase;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 		projectId: string;
 		projectType: string;
 		uiContext?: string;
 		source?: WorkflowActionSource;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'n8n-package-imported': {
@@ -151,6 +173,8 @@ export type RelayEventMap = {
 		packageVersion: string;
 		credentialIds: ImportAuditCredentialIds;
 		counts: ImportPackageEventCounts;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'n8n-package-exported': {
@@ -161,7 +185,9 @@ export type RelayEventMap = {
 		projectIds?: string[];
 		counts: ExportPackageEventCounts;
 		credentialExportPolicy: CredentialExportPolicy;
-		includeArchivedWorkflows: boolean;
+		includeArchived: boolean;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'n8n-package-export-failed': {
@@ -171,6 +197,8 @@ export type RelayEventMap = {
 		workflowIds?: string[];
 		folderIds?: string[];
 		projectIds?: string[];
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'n8n-package-import-failed': {
@@ -178,6 +206,8 @@ export type RelayEventMap = {
 		reason: PackageFailureReason;
 		projectId?: string;
 		folderId?: string;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'workflow-deleted': {
@@ -191,46 +221,65 @@ export type RelayEventMap = {
 		 */
 		workflowName: string;
 		projectId: string | undefined;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'workflow-archived': {
 		user: UserLike;
 		workflowId: string;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'workflow-unarchived': {
 		user: UserLike;
 		workflowId: string;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'workflow-saved': {
 		user: UserLike;
 		workflow: IWorkflowDb;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 		previousWorkflow?: IWorkflowDb;
 		aiBuilderAssisted?: boolean;
 		settingsChanged?: Record<string, { from: JsonValue; to: JsonValue }>;
 		source?: WorkflowActionSource;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'workflow-activated': {
 		user: UserLike;
 		workflowId: string;
 		workflow: IWorkflowDb;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 		source?: WorkflowActionSource;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'workflow-deactivated': {
 		user: UserLike;
 		workflowId: string;
 		workflow: IWorkflowDb;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 		deactivatedVersionId: string | null;
 		source?: WorkflowActionSource;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
+	};
+
+	'workflow-deactivated-by-system': {
+		workflowId: string;
+		workflowName: string;
+		deactivatedVersionId: string;
+		reason: SystemDeactivationReason;
 	};
 
 	'workflow-pre-execute': {
@@ -276,6 +325,8 @@ export type RelayEventMap = {
 			| 'integrated'
 			| 'evaluation'
 			| 'chat';
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'workflow-version-updated': {
@@ -328,19 +379,23 @@ export type RelayEventMap = {
 		user: UserLike | null;
 		/** The system that deleted the user without a user request. */
 		source?: 'scim';
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 		targetUserOldStatus: 'active' | 'invited';
 		migrationStrategy?: 'transfer_data' | 'delete_data';
 		targetUserId?: string;
 		migrationUserId?: string;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'user-invited': {
 		user: UserLike;
 		targetUserId: string[];
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 		emailSent: boolean;
 		inviteeRole: string;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'user-reinvited': {
@@ -351,6 +406,8 @@ export type RelayEventMap = {
 	'user-updated': {
 		user: UserLike;
 		fieldsChanged: string[];
+		/** The system that changed the user without a user request. */
+		source?: 'scim';
 	};
 
 	'user-mfa-enabled': {
@@ -366,11 +423,17 @@ export type RelayEventMap = {
 		user: UserLike;
 		userType: AuthProviderType;
 		wasDisabledLdapUser: boolean;
+		/** The system that created the user without a user request. */
+		source?: 'scim';
 	};
 
 	'user-logged-in': {
 		user: UserLike;
 		authenticationMethod: AuthenticationMethod;
+	};
+
+	'user-logged-out': {
+		user: UserLike;
 	};
 
 	'user-login-failed': {
@@ -388,48 +451,48 @@ export type RelayEventMap = {
 	'user-changed-role': {
 		userId: string;
 		targetUserId: string;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 		targetUserNewRole: string;
 	};
 
 	'user-retrieved-user': {
 		userId: string;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'user-retrieved-all-users': {
 		userId: string;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'user-retrieved-execution': {
 		userId: string;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'user-retrieved-all-executions': {
 		userId: string;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'user-retried-execution': {
 		userId: string;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'user-retrieved-workflow': {
 		userId: string;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'user-retrieved-workflow-version': {
 		userId: string;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'user-retrieved-all-workflows': {
 		userId: string;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	// #endregion
@@ -460,7 +523,7 @@ export type RelayEventMap = {
 			| 'Credentials shared'
 			| 'Project shared'
 			| 'Email change confirmation';
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	// #endregion
@@ -469,26 +532,27 @@ export type RelayEventMap = {
 
 	'public-api-key-created': {
 		user: UserLike;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'public-api-key-deleted': {
 		user: UserLike;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 		isOwn: boolean;
 	};
 
 	'public-api-key-rotated': {
 		user: UserLike;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'public-api-invoked': {
 		userId: string;
-		path: string;
-		method: string;
+		route: string;
+		result: PublicApiResult;
 		apiVersion: string;
 		userAgent?: string;
+		client: PublicApiClient;
 	};
 
 	// #endregion
@@ -506,7 +570,9 @@ export type RelayEventMap = {
 			| 'Credentials shared'
 			| 'Project shared'
 			| 'Email change confirmation';
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	// #endregion
@@ -519,7 +585,7 @@ export type RelayEventMap = {
 		credentialId: string;
 		credentialName: string;
 		credentialDescriptionLength?: number;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 		projectId?: string;
 		projectType?: string;
 		uiContext?: string;
@@ -528,6 +594,10 @@ export type RelayEventMap = {
 		jweEnabled?: boolean;
 		supportsManagedAuth?: boolean;
 		usesManagedAuth?: boolean;
+		/** Version of the managed app that the credential uses. Unset when it uses none. */
+		managedAppVersion?: number;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'credentials-shared': {
@@ -540,6 +610,7 @@ export type RelayEventMap = {
 	};
 
 	'credentials-updated': {
+		descriptionOnly?: boolean;
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
@@ -550,6 +621,10 @@ export type RelayEventMap = {
 		jweEnabled?: boolean;
 		supportsManagedAuth?: boolean;
 		usesManagedAuth?: boolean;
+		/** Version of the managed app that the credential uses. Unset when it uses none. */
+		managedAppVersion?: number;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'credentials-deleted': {
@@ -559,6 +634,33 @@ export type RelayEventMap = {
 		/** Both resolved before the delete, which cascades away the rows that name the project. */
 		credentialName: string;
 		projectId: string | undefined;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
+	};
+
+	/** A user retrieved the decrypted data of a credential through `includeData=true`. */
+	'credentials-data-read': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+		publicApi: PublicApiCaller;
+	};
+
+	/**
+	 * A user retrieved the decrypted data of several credentials at once through
+	 * `includeData=true` on the list. One event per chunk of ids, so that every id is
+	 * recorded and every event stays small.
+	 */
+	'credentials-list-data-read': {
+		user: UserLike;
+		/** Ids of the credentials whose data was returned, this chunk only. */
+		credentialIds: string[];
+		/** Number of credentials whose data was returned, across all chunks. */
+		credentialCount: number;
+		/** 1-based index of this chunk. */
+		chunk: number;
+		chunkCount: number;
+		publicApi: PublicApiCaller;
 	};
 
 	'credentials-user-disconnected': {
@@ -571,6 +673,17 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialId: string;
 		outcome: CredentialAuthProbeOutcome;
+	};
+
+	'oauth-client-registered': {
+		userId?: string;
+		credentialId: string;
+		credentialType: string;
+		method?: 'cimd' | 'dcr' | 'none_available';
+		success: boolean;
+		cimdEnabled: boolean;
+		serverSupportsCimd?: boolean;
+		serverSupportsDcr?: boolean;
 	};
 
 	'oauth-callback-binding-rejected': {
@@ -638,6 +751,10 @@ export type RelayEventMap = {
 		packageAuthor?: string;
 		packageAuthorEmail?: string;
 		failureReason?: string;
+		/** Where the install came from: the editor UI, the public API, or MCP. */
+		source?: 'ui' | 'publicApi' | 'mcp';
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'community-package-updated': {
@@ -648,6 +765,8 @@ export type RelayEventMap = {
 		packageNodeNames: string[];
 		packageAuthor?: string;
 		packageAuthorEmail?: string;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'community-package-deleted': {
@@ -657,6 +776,8 @@ export type RelayEventMap = {
 		packageNodeNames: string[];
 		packageAuthor?: string;
 		packageAuthorEmail?: string;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	// #endregion
@@ -720,6 +841,8 @@ export type RelayEventMap = {
 		ipAddress: string;
 		userAgent: string;
 		redactionPolicy: WorkflowSettings.RedactionPolicy;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'execution-data-reveal-failure': {
@@ -730,6 +853,8 @@ export type RelayEventMap = {
 		userAgent: string;
 		redactionPolicy: WorkflowSettings.RedactionPolicy;
 		rejectionReason: string;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	// #endregion
@@ -780,7 +905,7 @@ export type RelayEventMap = {
 		workflowUpdates: number;
 		workflowConflicts: number;
 		credConflicts: number;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'source-control-user-finished-pull-ui': {
@@ -800,7 +925,7 @@ export type RelayEventMap = {
 		credsEligible: number;
 		credsEligibleWithConflicts: number;
 		variablesEligible: number;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'source-control-user-finished-push-ui': {
@@ -809,7 +934,7 @@ export type RelayEventMap = {
 		workflowsPushed: number;
 		credsPushed: number;
 		variablesPushed: number;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	// #endregion
@@ -835,6 +960,8 @@ export type RelayEventMap = {
 		variableId: string;
 		variableKey: string;
 		projectId?: string;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'variable-updated': {
@@ -842,6 +969,8 @@ export type RelayEventMap = {
 		variableId: string;
 		variableKey: string;
 		projectId?: string;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'variable-deleted': {
@@ -849,6 +978,8 @@ export type RelayEventMap = {
 		variableId: string;
 		variableKey: string;
 		projectId?: string;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	// #endregion
@@ -963,6 +1094,64 @@ export type RelayEventMap = {
 		userId: string;
 	};
 
+	'sso-settings-updated': {
+		user: UserLike;
+		protocol: 'saml' | 'oidc';
+		loginEnabled: boolean;
+		/** Settings keys whose stored value changed. Names only, never values. */
+		fieldsChanged: string[];
+		publicApi: boolean;
+	};
+
+	/**
+	 * An admin saved the SSO user role provisioning settings. Reports the
+	 * state after the save, not what changed. The settings page saves the
+	 * settings before the rules, so the counts are those at the time of the
+	 * save. Rule changes emit the `role-mapping-rule-*` events.
+	 */
+	'provisioning-settings-updated': {
+		user: UserLike;
+		/** The sign-in method that is active at the time of the save. */
+		authenticationMethod: AuthProviderType;
+		/** Which roles SSO provisions. With rules in n8n, project roles count when project rules exist. */
+		assignmentMethod: 'disabled' | 'instance_role' | 'instance_and_project_roles';
+		/** `idp_rule_mapping`: the claims carry the roles. `n8n_rule_mapping`: rules in n8n map claims to roles. */
+		roleMappingMethod: 'idp_rule_mapping' | 'n8n_rule_mapping';
+		instanceRuleCount: number;
+		projectRuleCount: number;
+	};
+
+	/**
+	 * SCIM provisioning turned on or off, or its token changed. Emitted only
+	 * when the saved state changes.
+	 */
+	'scim-settings-updated': {
+		/** The user who made the change. `null` when n8n turned SCIM off by itself. */
+		user: UserLike | null;
+		/** SCIM provisioning is on after the change. */
+		isActive: boolean;
+		change: 'enabled' | 'disabled' | 'token_created' | 'token_rotated' | 'token_revoked';
+		/** `sso_off`: SAML or OIDC sign-in turned off. `startup`: single sign-on was off at startup. */
+		source: 'user' | 'sso_off' | 'startup';
+	};
+
+	/** An admin changed what SCIM DELETE does. Emitted only when the policy changes. */
+	'scim-deprovisioning-policy-updated': {
+		user: UserLike;
+		/** SCIM provisioning is on. */
+		isActive: boolean;
+		before: ScimDeprovisioningPolicy;
+		after: ScimDeprovisioningPolicy;
+	};
+
+	/** n8n answered a request of the identity provider with an error status. */
+	'scim-request-rejected': {
+		operation: ScimOperation;
+		/** The HTTP status of the response. */
+		status: number;
+		reason: ScimRejectReason;
+	};
+
 	/**
 	 * SAML or OIDC sign-in turned off: the authentication method changed from
 	 * that protocol to email. A switch from one protocol to the other keeps
@@ -1007,6 +1196,8 @@ export type RelayEventMap = {
 		ruleType: 'instance' | 'project';
 		expression: string;
 		role: string;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'role-mapping-rule-updated': {
@@ -1014,12 +1205,16 @@ export type RelayEventMap = {
 		ruleId: string;
 		ruleType: 'instance' | 'project';
 		patchedFields: string[];
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'role-mapping-rule-deleted': {
 		user: UserLike;
 		ruleId: string;
 		ruleType: 'instance' | 'project';
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'role-mapping-rules-bulk-deleted': {
@@ -1052,12 +1247,14 @@ export type RelayEventMap = {
 		user: UserLike;
 		sourceId: string;
 		issuer: string;
+		facets: TrustedSourceFacets;
 	};
 
 	'trusted-source-updated': {
 		user: UserLike;
 		sourceId: string;
 		issuer: string;
+		facets: TrustedSourceFacets;
 	};
 
 	'trusted-source-deleted': {
@@ -1065,6 +1262,12 @@ export type RelayEventMap = {
 		sourceId: string;
 		issuer: string;
 	};
+
+	'trusted-source-healthy': {
+		sourceId: string;
+	};
+
+	'trusted-source-first-authenticated': { sourceId: string; surface: SurfaceId };
 
 	// #endregion
 
@@ -1163,6 +1366,21 @@ export type RelayEventMap = {
 
 	'memory-guard-hold-ended': {
 		heldMs: number;
+		/** Executions still waiting when the hold ended. */
+		heldExecutions: number;
+		longestWaitMs: number;
+	};
+
+	/** A production execution starts to wait because of a hold. */
+	'memory-guard-execution-held': {
+		executionId: string;
+	};
+
+	/** A held execution starts, or is cancelled while it waits. */
+	'memory-guard-execution-released': {
+		executionId: string;
+		waitedMs: number;
+		started: boolean;
 	};
 
 	/** Crashed sessions so far, by the strongest guard action before each crash. */
@@ -1241,15 +1459,6 @@ export type RelayEventMap = {
 	};
 	// #endregion
 
-	// #region Data Tables
-
-	'data-table-deleted': {
-		dataTableId: string;
-		projectId: string;
-	};
-
-	// #endregion
-
 	// #region Folders
 
 	'folder-deleted': {
@@ -1269,15 +1478,36 @@ export type RelayEventMap = {
 		projectId: string;
 	};
 
+	'agent-archived': {
+		user: UserLike;
+		agentId: string;
+		projectId: string;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
+	};
+
+	'agent-unarchived': {
+		user: UserLike;
+		agentId: string;
+		projectId: string;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
+	};
+
 	// #region Instance Policies
 
-	'instance-policies-updated': { user: UserLike } & (
+	'instance-policies-updated': {
+		user: UserLike;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
+	} & (
 		| {
 				settingName:
 					| '2fa_enforcement'
 					| 'workflow_publishing'
 					| 'workflow_sharing'
 					| 'workflow_reviews'
+					| 'workflow_reviews_approval_required'
 					| 'public_api_rate_limit';
 				value: boolean;
 		  }
@@ -1291,6 +1521,15 @@ export type RelayEventMap = {
 		user: UserLike;
 		before: RedactionFloor;
 		after: RedactionFloor;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
+	};
+
+	/** `before` and `after` hold only the limits and windows that changed. */
+	'public-api-rate-limit-updated': {
+		user: UserLike;
+		before: Partial<Omit<PublicApiRateLimitSettings, 'enabled'>>;
+		after: Partial<Omit<PublicApiRateLimitSettings, 'enabled'>>;
 	};
 
 	// #endregion
@@ -1360,53 +1599,95 @@ export type RelayEventMap = {
 		user: UserLike;
 		/** Set when the outcome is 'success'. */
 		providerId?: string;
+		/** Set when the outcome is 'success'. */
+		providerName?: string;
 		providerType: PromotionProviderType;
 		authType: PromotionProviderAuthType;
+		/** Git host providers only. Set when the outcome is 'success'. */
+		hostBaseUrl?: string;
 		outcome: 'success' | 'failed';
 		failureKind?: PromotionFailureKind;
 		durationMs: number;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'promotion-environment-created': {
 		user: UserLike;
 		environmentId: string;
+		environmentName: string;
+		providerId: string;
+		providerName: string;
 		providerType: PromotionProviderType;
+		/** The remote URL without query or fragment, or the Git host repository path. */
+		repository: string;
 		direction: PromotionDirection;
 		environmentScope: PromotionEnvironmentScope;
 		/** Promote environments only. */
 		createBranchOnPromotion?: boolean;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'promotion-provider-updated': {
 		user: UserLike;
 		providerId: string;
+		/** The name after the update. Set when the outcome is 'success'. */
+		providerName?: string;
 		providerType: PromotionProviderType;
+		authType: PromotionProviderAuthType;
+		/** Git host providers only. The URL after the update. Set when the outcome is 'success'. */
+		hostBaseUrl?: string;
 		/** The fields the request sent, never their values. */
 		changedFields: Array<'name' | 'auth' | 'config'>;
 		outcome: 'success' | 'failed';
 		failureKind?: PromotionFailureKind;
 		durationMs: number;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'promotion-provider-deleted': {
 		user: UserLike;
 		providerId: string;
+		providerName: string;
 		providerType: PromotionProviderType;
+		authType: PromotionProviderAuthType;
+		/** Git host providers only. */
+		hostBaseUrl?: string;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
+	/** Name, provider, and repository are the values after the update. */
 	'promotion-environment-updated': {
 		user: UserLike;
 		environmentId: string;
+		environmentName: string;
+		providerId: string;
+		providerName: string;
+		/** The remote URL without query or fragment, or the Git host repository path. */
+		repository: string;
 		direction: PromotionDirection;
+		environmentScope: PromotionEnvironmentScope;
 		/** The fields the request sent, never their values. */
 		changedFields: Array<'name' | 'remote' | 'provider' | 'settings'>;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'promotion-environment-deleted': {
 		user: UserLike;
 		environmentId: string;
+		environmentName: string;
+		providerId: string;
+		providerName: string;
+		/** The remote URL without query or fragment, or the Git host repository path. */
+		repository: string;
 		direction: PromotionDirection;
 		environmentScope: PromotionEnvironmentScope;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'promotion-environment-connected': {
@@ -1423,10 +1704,10 @@ export type RelayEventMap = {
 		environmentId: string;
 		scope: 'instance' | 'project';
 		projectId?: string;
-		outcome: 'success' | 'success_with_warnings' | 'failed';
+		outcome: 'success' | 'success_with_warnings' | 'failed' | 'preview_changed';
 		failureKind?: PromotionFailureKind;
 		durationMs: number;
-		/** Set when the outcome is not 'failed'. */
+		/** Set when the outcome is 'success' or 'success_with_warnings'. */
 		counts?: {
 			workflows: number;
 			folders: number;
@@ -1437,7 +1718,9 @@ export type RelayEventMap = {
 		};
 		/** Project scope only. */
 		selectedWorkflowCount?: number;
-		/** Set when the outcome is not 'failed'. */
+		/** Project scope only. */
+		selectedFolderCount?: number;
+		/** Set when the outcome is 'success' or 'success_with_warnings'. */
 		openedReview?: boolean;
 	};
 
@@ -1453,6 +1736,10 @@ export type RelayEventMap = {
 		workflowsChanged?: number;
 		/** Set when the outcome is 'applied'. */
 		workflowsFailedToPublish?: number;
+		/** Set when the outcome is 'applied'. */
+		foldersChanged?: number;
+		/** Set when the outcome is 'applied'. */
+		projectsChanged?: number;
 	};
 
 	'promotion-merge-request-opened': {
@@ -1472,6 +1759,21 @@ export type RelayEventMap = {
 		/** Time from the review opening to this approval. */
 		reviewAgeMs: number;
 		outcome: 'merged' | 'failed';
+		failureKind?: PromotionFailureKind;
+		durationMs: number;
+	};
+
+	'promotion-review-closed': {
+		user: UserLike;
+		reviewId: string;
+		/** Null when the environment was deleted after the review opened. */
+		environmentId: string | null;
+		reviewType: PromotionReviewType;
+		/** Time from the review opening to this close. */
+		reviewAgeMs: number;
+		/** What the host reported at close time. Null when the close failed before n8n asked the host. */
+		hostStatus: ClosedHostStatus | null;
+		outcome: 'closed' | 'failed';
 		failureKind?: PromotionFailureKind;
 		durationMs: number;
 	};
@@ -1528,6 +1830,11 @@ export type RelayEventMap = {
 		serverSlug: string;
 	};
 
+	/** A self-healing result closed because one of its workflows changed. Emitted after commit. */
+	'self-healing-result-outdated': {
+		selfHealingResultId: string;
+	};
+
 	// #endregion
 
 	// #region Server CLI
@@ -1580,6 +1887,8 @@ export type RelayEventMap = {
 		status: 'success' | 'error';
 		errorMessage?: string;
 		clientName?: string;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	} & (McpCallerAuth | { authType?: undefined; clientId?: undefined });
 
 	'mcp-access-updated': {
@@ -1602,6 +1911,8 @@ export type RelayEventMap = {
 		scopeId: string;
 		before: { defaultAction: PolicyAction; version: number } | null;
 		after: { defaultAction: PolicyAction; version: number };
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'node-type-policy-document-created': {
@@ -1610,6 +1921,8 @@ export type RelayEventMap = {
 		policyId: string;
 		origin: PolicyWriteOrigin;
 		after: { rules: readonly PolicyRule[]; version: number };
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'node-type-policy-document-updated': {
@@ -1619,6 +1932,8 @@ export type RelayEventMap = {
 		origin: PolicyWriteOrigin;
 		before: { rules: readonly PolicyRule[]; version: number };
 		after: { rules: readonly PolicyRule[]; version: number };
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	'node-type-policy-document-deleted': {
@@ -1626,6 +1941,8 @@ export type RelayEventMap = {
 		kind: string;
 		policyId: string;
 		before: { rules: readonly PolicyRule[]; version: number };
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	/**
@@ -1653,6 +1970,8 @@ export type RelayEventMap = {
 		scopeId: string;
 		before: { attachments: readonly PolicyAttachment[]; version: number };
 		after: { attachments: readonly PolicyAttachment[]; version: number };
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	// #endregion

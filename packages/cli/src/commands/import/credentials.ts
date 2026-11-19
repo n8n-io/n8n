@@ -18,7 +18,8 @@ import fs from 'fs';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import { Cipher } from 'n8n-core';
-import { jsonParse, UserError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { jsonParse, type ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';

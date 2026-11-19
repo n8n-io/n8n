@@ -233,17 +233,17 @@ describe('buildTranscriptFromEvents', () => {
 		});
 	});
 
-	describe('workflow_builder_ask_user routing', () => {
+	describe('ask_user routing', () => {
 		const questions = [
 			{ id: 'q1', question: 'Which channel?', type: 'single', options: ['Slack', 'Teams'] },
 		];
 
-		it('renders workflow_builder_ask_user from confirmation-request and skips the tool-call twin', () => {
+		it('renders ask_user from confirmation-request and skips the tool-call twin', () => {
 			const turns = buildTranscriptFromEvents({
 				events: [
 					RUN_START,
 					evt('tool-call', {
-						payload: { toolName: 'workflow_builder_ask_user', args: { questions } },
+						payload: { toolName: 'ask_user', args: { questions } },
 					}),
 					evt('confirmation-request', {
 						payload: { requestId: 'r1', questions, inputType: 'questions' },
@@ -275,7 +275,7 @@ describe('buildTranscriptFromEvents', () => {
 				events: [
 					RUN_START,
 					evt('tool-call', {
-						payload: { toolName: 'workflow_builder_ask_user', args: { questions } },
+						payload: { toolName: 'ask_user', args: { questions } },
 					}),
 					evt('confirmation-request', {
 						payload: { requestId: 'r1', questions, inputType: 'questions' },

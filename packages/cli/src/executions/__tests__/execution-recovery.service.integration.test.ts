@@ -38,7 +38,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 import type { EventService } from '@n8n/backend-services';
-import { WorkflowSharingService } from '@n8n/backend-services';
+import { ExecutionLedger, WorkflowSharingService } from '@n8n/backend-services';
 import { createExecution } from '@test-integration/db/executions';
 
 import { IN_PROGRESS_EXECUTION_DATA, OOM_WORKFLOW } from './constants';
@@ -81,7 +81,13 @@ describe('ExecutionRecoveryService', () => {
 			ownershipService,
 			projectRelationRepository,
 			workflowPushNotifier,
-			new ExecutionCrashService(executionRepository, mock(), eventService, instanceSettings),
+			new ExecutionCrashService(
+				executionRepository,
+				mock(),
+				eventService,
+				instanceSettings,
+				Container.get(ExecutionLedger),
+			),
 		);
 	});
 
@@ -692,6 +698,8 @@ describe('ExecutionRecoveryService', () => {
 
 				const workflow = await createCrashedActiveWorkflow();
 				mockOwnershipForDeactivation();
+				const { WorkflowService } = await import('@/workflows/workflow.service.js');
+				const deactivateSpy = vi.spyOn(WorkflowService.prototype, 'deactivateWorkflowAsSystem');
 
 				/**
 				 * Act
@@ -704,6 +712,7 @@ describe('ExecutionRecoveryService', () => {
 				const updatedWorkflow = await getWorkflowById(workflow.id);
 				if (!updatedWorkflow) expect.fail('Expected `updatedWorkflow` to be defined');
 				expect(updatedWorkflow.activeVersionId).toBeNull();
+				expect(deactivateSpy).toHaveBeenCalledWith(workflow.id, 'crash-recovery');
 			});
 
 			test('should deactivate workflow if the last crashed executions were not saved', async () => {

@@ -1,39 +1,59 @@
+import type { HttpRequestClient } from '@n8n/backend-network';
 import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import type { EngineRuntime, ExecutionResponseSender } from '@n8n/engine';
+import type {
+	EngineRuntime,
+	EngineWorkQueues,
+	ExecutionResponseSender,
+	LifecycleEventCallback,
+} from '@n8n/engine';
 import {
 	AllowAllAdmittance,
 	createDataSource,
 	createEngineRuntime,
+	mintApprovalCallback,
 	mintResumeToken,
-	noopExecutionResponseSender,
+	mintStepBoundResumeToken,
 	SharedSecretIdentityVerifier,
 } from '@n8n/engine';
 import type { AdditionalDataContext, V1StepExecutorDeps } from '@n8n/node-engine-compatibility';
 import { createEngineStepDataLoader, V1StepExecutor } from '@n8n/node-engine-compatibility';
 import { BinaryDataService, FileLocation } from 'n8n-core';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsHelper } from '@/credentials-helper';
-import { NodeTypes } from '@/node-types';
+import { NodeTypesProxy } from '@n8n/backend-services';
 
 import { EngineAdditionalDataBuilder } from './engine-additional-data';
-import { EngineControlPlaneClient } from './engine-control-plane-client';
+import { EngineControlPlaneTransport } from './engine-control-plane-transport';
 import { EngineCredentialsClient } from './engine-credentials-client';
+import { EngineSubWorkflowClient } from './engine-sub-workflow-client';
+import { EngineMtls } from './engine-mtls';
 import { RemoteCredentialsHelper } from './remote-credentials-helper';
+import { RemoteDataTableProxyProvider } from './remote-data-table-proxy-provider';
+
+export interface EngineV2RuntimeOptions {
+	/** The data plane end of the execution channel for responses. */
+	responseSender: ExecutionResponseSender;
+	/** Without it, the engine publishes no lifecycle events. */
+	lifecycleEventSender?: { send: LifecycleEventCallback };
+	/** The queues the engine runs on. The caller closes their connections. */
+	queues: EngineWorkQueues;
+}
 
 /**
  * Runs the engine v2 data plane inside the n8n process.
  *
  * This is the integrated-mode composition root. It chooses the adapters the
  * engine needs — the data plane `DataSource`, the admittance policy, the v1 step
- * executor — and owns the connection and the HTTP listener. The engine owns its
- * own wiring, so this host never sees the workers or the queues.
+ * executor — and owns the connection and the HTTP listener. Its caller chooses
+ * the work queues. The engine owns its own wiring, so this host never sees the
+ * workers.
  */
 @Service()
 export class EngineV2Runtime {
@@ -50,25 +70,31 @@ export class EngineV2Runtime {
 	 */
 	private stopping?: AbortController;
 
+	/** Sends the data table operations of every step to the control plane. */
+	private readonly dataTablesHttp: HttpRequestClient;
+
 	constructor(
 		private readonly engineConfig: EngineConfig,
-		private readonly nodeTypes: NodeTypes,
+		private readonly mtls: EngineMtls,
+		private readonly nodeTypes: NodeTypesProxy,
 		private readonly logger: Logger,
-		private readonly controlPlaneClient: EngineControlPlaneClient,
 		private readonly credentialsClient: EngineCredentialsClient,
+		transport: EngineControlPlaneTransport,
+		private readonly subWorkflowClient: EngineSubWorkflowClient,
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly additionalDataBuilder: EngineAdditionalDataBuilder,
 		private readonly binaryDataService: BinaryDataService,
 	) {
 		this.logger = this.logger.scoped('engine-v2');
+		this.dataTablesHttp = transport.forScope('data-tables:use');
 	}
 
-	async init(responseSender: ExecutionResponseSender = noopExecutionResponseSender): Promise<void> {
+	async init(options: EngineV2RuntimeOptions): Promise<void> {
 		try {
 			await this.initDb();
 
-			this.initEngine(responseSender);
+			this.initEngine(options);
 
 			await this.initServer();
 		} catch (error) {
@@ -84,7 +110,7 @@ export class EngineV2Runtime {
 	}
 
 	private async initDb(): Promise<void> {
-		const { databaseUrl } = this.engineConfig;
+		const { databaseUrl, databasePoolSize, databaseConnectionTimeoutMs } = this.engineConfig;
 
 		if (!databaseUrl) {
 			throw new UserError(
@@ -92,12 +118,19 @@ export class EngineV2Runtime {
 			);
 		}
 
-		this.dataSource = createDataSource(databaseUrl);
+		this.dataSource = createDataSource(databaseUrl, {
+			poolSize: databasePoolSize,
+			connectTimeoutMS: databaseConnectionTimeoutMs,
+		});
 		await this.dataSource.initialize();
 		await this.dataSource.runMigrations();
 	}
 
-	private initEngine(responseSender: ExecutionResponseSender): void {
+	private initEngine({
+		responseSender,
+		lifecycleEventSender,
+		queues,
+	}: EngineV2RuntimeOptions): void {
 		assert(this.dataSource, 'Engine v2 cannot start without a data source');
 
 		const stopping = new AbortController();
@@ -112,9 +145,11 @@ export class EngineV2Runtime {
 			logger: this.logger,
 			responseSender,
 			resumeSecret: this.engineConfig.resumeSecret,
+			queues,
 			externalDependencies: ({ executionStore, stepStore }) => ({
-				lifecycleEventCallback: async (events, signal) =>
-					await this.controlPlaneClient.sendLifecycleEvents(events, signal),
+				lifecycleEventCallback: lifecycleEventSender
+					? async (events, signal) => await lifecycleEventSender.send(events, signal)
+					: undefined,
 				// The same call the v1 hard delete makes: one prefix per run, safe to repeat.
 				deleteExecutionFiles: async ({ workflowId, executionId }) =>
 					await this.binaryDataService.deleteMany([
@@ -124,7 +159,9 @@ export class EngineV2Runtime {
 					nodeTypes: this.nodeTypes,
 					additionalDataFactory: async (context) => this.buildAdditionalData(context, stopping),
 					loadStepData: createEngineStepDataLoader(executionStore, stepStore),
-					resumeToken: this.resumeTokenMinter(),
+					...this.resumeMinters(),
+					resolveSubWorkflow: async (request) =>
+						await this.subWorkflowClient.resolve(request, stopping.signal),
 				}),
 			}),
 		});
@@ -133,11 +170,20 @@ export class EngineV2Runtime {
 		this.engine = engine;
 	}
 
-	private resumeTokenMinter(): V1StepExecutorDeps['resumeToken'] {
+	private resumeMinters(): Pick<
+		V1StepExecutorDeps,
+		'resumeToken' | 'stepBoundResumeToken' | 'approvalCallback'
+	> {
 		const { resumeSecret } = this.engineConfig;
-		if (!resumeSecret) return undefined;
+		if (!resumeSecret) return {};
 
-		return ({ executionId }) => mintResumeToken(resumeSecret, executionId);
+		return {
+			resumeToken: ({ executionId }) => mintResumeToken(resumeSecret, executionId),
+			stepBoundResumeToken: ({ stepId, binding }) =>
+				mintStepBoundResumeToken(resumeSecret, stepId, binding),
+			approvalCallback: ({ stepId, decision }) =>
+				mintApprovalCallback(resumeSecret, stepId, decision),
+		};
 	}
 
 	private buildAdditionalData(
@@ -151,8 +197,13 @@ export class EngineV2Runtime {
 			context,
 			stopping.signal,
 		);
+		const dataTableProxyProvider = new RemoteDataTableProxyProvider(
+			this.dataTablesHttp,
+			context,
+			stopping.signal,
+		);
 
-		return this.additionalDataBuilder.build(context, credentialsHelper);
+		return this.additionalDataBuilder.build(context, credentialsHelper, dataTableProxyProvider);
 	}
 
 	private async initServer(): Promise<void> {
@@ -161,14 +212,20 @@ export class EngineV2Runtime {
 		this.server = await new Promise<Server>((resolve, reject) => {
 			assert(this.engine, 'Engine v2 cannot start without an engine runtime');
 
-			const listener = this.engine.app.listen(port, host);
+			const listener = this.mtls.createServer(this.engine.app).listen(port, host);
 			listener.once('listening', () => resolve(listener));
-			listener.once('error', reject);
+			listener.once('error', (error) => {
+				// A failed bind: closing also ends its subscription to TLS reloads.
+				if (!listener.listening) listener.close();
+				reject(error);
+			});
 		});
 
 		// An IPv6 literal needs brackets to read as a URL.
 		const shownHost = host.includes(':') ? `[${host}]` : host;
-		this.logger.info(`Engine v2 listening on http://${shownHost}:${port}`);
+		this.logger.info(
+			`Engine v2 listening on ${this.mtls.enabled ? 'https' : 'http'}://${shownHost}:${port}`,
+		);
 	}
 
 	/**

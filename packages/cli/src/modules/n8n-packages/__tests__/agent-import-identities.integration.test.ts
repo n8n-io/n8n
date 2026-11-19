@@ -5,6 +5,7 @@ import { ForbiddenError } from '@n8n/errors';
 
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { createAgent } from '@test-integration/db/agents';
 import { createMember, createOwner } from '@test-integration/db/users';
 
 import { looseAgentsFixture } from './fixtures/agent-package-fixtures';
@@ -21,7 +22,12 @@ let otherProject: Project;
 const fixture = looseAgentsFixture();
 const sources: PreparedAgent[] = fixture.manifest.agents.map(({ target }) => {
 	const { id, ...content } = serializedAgentSchema.parse(fixture.files[`${target}/agent.json`]);
-	return { ...content, sourceAgentId: id, metadata: { versionId: null, publishedVersionId: null } };
+	return {
+		...content,
+		isArchived: false,
+		sourceAgentId: id,
+		metadata: { versionId: null, publishedVersionId: null },
+	};
 });
 const taskBody = sources[0].tasks.support_source_task;
 
@@ -40,7 +46,7 @@ afterEach(() => vi.restoreAllMocks());
 afterAll(async () => await testDb.terminate());
 
 async function seedAgent(id: string, projectId = project.id) {
-	return await agents.save({ id, name: id, projectId });
+	return await createAgent({ id, name: id, projectId });
 }
 
 async function records() {

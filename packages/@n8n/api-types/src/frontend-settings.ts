@@ -135,12 +135,13 @@ export interface FrontendSettings {
 		};
 	};
 	instanceId: string;
+	/** Random ID of this install, for telemetry. Absent while the process has none. */
+	installId?: string;
 	telemetry: ITelemetrySettings;
 	posthog: {
 		enabled: boolean;
 		apiHost: string;
 		apiKey: string;
-		autocapture: boolean;
 		disableSessionRecording: boolean;
 		debug: boolean;
 		proxy: string;
@@ -265,6 +266,10 @@ export interface FrontendSettings {
 	ai: {
 		allowSendingParameterValues: boolean;
 	};
+	aiPreferences: {
+		enabled: boolean;
+		managedByEnv: boolean;
+	};
 	pruning?: {
 		isEnabled: boolean;
 		maxAge: number;
@@ -354,6 +359,11 @@ export type FrontendModuleSettings = {
 		serverUrl?: string;
 		/** Whether newly created workflows are auto-exposed to MCP. */
 		autoExposeNewWorkflows: boolean;
+	};
+
+	skills?: {
+		skillSyncEnabled: boolean;
+		skillSyncManagedByEnv: boolean;
 	};
 
 	/**
@@ -464,6 +474,31 @@ export type FrontendModuleSettings = {
 		knowledgeBaseEnabled: boolean;
 		/** Whether the AI Assistant proxy is available to the agents module. */
 		proxyEnabled: boolean;
+	};
+
+	/**
+	 * Client settings for the knowledge module.
+	 */
+	knowledge?: {
+		/**
+		 * The upload limits the backend enforces, so the editor can reject an
+		 * upload with the same limits before the request. Configured through
+		 * the `N8N_KNOWLEDGE_*` environment variables.
+		 */
+		limits: {
+			/** Largest single file, in bytes. */
+			maxFileSizeBytes: number;
+			/** Most files in one upload request. */
+			maxFilesPerUpload: number;
+			/** Most bytes one knowledge base can hold across all its files. */
+			maxTotalSizeBytes: number;
+		};
+		/**
+		 * Whether the operator turned collections on with
+		 * `N8N_KNOWLEDGE_COLLECTIONS_ENABLED`. The editor combines it with the
+		 * PostHog flag `KNOWLEDGE_COLLECTIONS_FLAG`.
+		 */
+		collectionsEnabled?: boolean;
 	};
 };
 

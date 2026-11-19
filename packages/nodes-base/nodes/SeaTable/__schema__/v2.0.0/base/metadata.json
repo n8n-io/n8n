@@ -1,0 +1,377 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"format_version": {
+			"type": "number"
+		},
+		"settings": {
+			"additionalProperties": true,
+			"properties": {
+				"date_settings": {
+					"properties": {
+						"first_day_of_week": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"tables": {
+			"items": {
+				"properties": {
+					"_id": {
+						"type": "string"
+					},
+					"columns": {
+						"items": {
+							"additionalProperties": true,
+							"properties": {
+								"colorbys": {
+									"type": "object"
+								},
+								"data": {
+									"additionalProperties": true,
+									"properties": {
+										"array_data": {
+											"properties": {
+												"checkbox_style": {
+													"properties": {
+														"color": {
+															"type": "string"
+														},
+														"type": {
+															"type": "string"
+														}
+													},
+													"type": "object"
+												},
+												"display_type": {
+													"type": "string"
+												},
+												"format": {
+													"type": "string"
+												},
+												"options": {
+													"items": {
+														"properties": {
+															"borderColor": {
+																"type": "string"
+															},
+															"color": {
+																"type": "string"
+															},
+															"id": {
+																"type": "string"
+															},
+															"name": {
+																"type": "string"
+															},
+															"textColor": {
+																"type": "string"
+															}
+														},
+														"type": "object"
+													},
+													"type": "array"
+												}
+											},
+											"type": ["null", "object"]
+										},
+										"array_type": {
+											"type": "string"
+										},
+										"decimal": {
+											"type": "string"
+										},
+										"default_date_type": {
+											"type": "string"
+										},
+										"default_value": {
+											"type": ["boolean", "number", "object", "string"]
+										},
+										"display_column_key": {
+											"type": "string"
+										},
+										"enable_check_format": {
+											"type": "boolean"
+										},
+										"enable_fill_default_value": {
+											"type": "boolean"
+										},
+										"enable_precision": {
+											"type": "boolean"
+										},
+										"format": {
+											"type": "string"
+										},
+										"format_check_type": {
+											"type": "string"
+										},
+										"format_specification_value": {},
+										"formula": {
+											"type": "string"
+										},
+										"is_multiple": {
+											"type": "boolean"
+										},
+										"link_id": {
+											"type": "string"
+										},
+										"operated_columns": {
+											"items": {
+												"type": "string"
+											},
+											"type": ["array", "null"]
+										},
+										"options": {
+											"items": {
+												"properties": {
+													"borderColor": {
+														"type": "string"
+													},
+													"color": {
+														"type": "string"
+													},
+													"id": {
+														"type": "string"
+													},
+													"name": {
+														"type": "string"
+													},
+													"textColor": {
+														"type": "string"
+													}
+												},
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"other_table_id": {
+											"type": "string"
+										},
+										"precision": {
+											"type": "number"
+										},
+										"result_type": {
+											"type": "string"
+										},
+										"table_id": {
+											"type": "string"
+										},
+										"thousands": {
+											"type": "string"
+										}
+									},
+									"type": ["null", "object"]
+								},
+								"description": {
+									"type": ["null", "string"]
+								},
+								"draggable": {
+									"type": "boolean"
+								},
+								"edit_metadata_permission_type": {
+									"type": "string"
+								},
+								"edit_metadata_permitted_group": {
+									"items": {},
+									"type": "array"
+								},
+								"edit_metadata_permitted_users": {
+									"items": {},
+									"type": "array"
+								},
+								"editable": {
+									"type": "boolean"
+								},
+								"editor": {
+									"properties": {
+										"_owner": {},
+										"key": {},
+										"props": {
+											"type": "object"
+										},
+										"ref": {}
+									},
+									"type": "object"
+								},
+								"formatter": {
+									"properties": {
+										"_owner": {},
+										"key": {},
+										"props": {
+											"type": "object"
+										},
+										"ref": {}
+									},
+									"type": "object"
+								},
+								"key": {
+									"type": "string"
+								},
+								"name": {
+									"type": "string"
+								},
+								"permission_type": {
+									"type": "string"
+								},
+								"permitted_group": {
+									"items": {},
+									"type": "array"
+								},
+								"permitted_users": {
+									"items": {},
+									"type": "array"
+								},
+								"resizable": {
+									"type": "boolean"
+								},
+								"type": {
+									"type": "string"
+								},
+								"width": {
+									"type": "number"
+								}
+							},
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"header_settings": {
+						"type": "object"
+					},
+					"is_header_locked": {
+						"type": "boolean"
+					},
+					"name": {
+						"type": "string"
+					},
+					"summary_configs": {
+						"type": "object"
+					},
+					"views": {
+						"items": {
+							"additionalProperties": true,
+							"properties": {
+								"_id": {
+									"type": "string"
+								},
+								"colorbys": {
+									"type": "object"
+								},
+								"colors": {
+									"type": "object"
+								},
+								"column_colors": {
+									"type": "object"
+								},
+								"filter_conjunction": {
+									"type": "string"
+								},
+								"filters": {
+									"items": {
+										"additionalProperties": true,
+										"properties": {
+											"column_key": {
+												"type": "string"
+											},
+											"filter_predicate": {
+												"type": "string"
+											},
+											"filter_term": {
+												"items": {
+													"type": "string"
+												},
+												"type": ["array", "boolean", "number", "string"]
+											}
+										},
+										"type": "object"
+									},
+									"type": "array"
+								},
+								"formula_rows": {
+									"type": "object"
+								},
+								"groupbys": {
+									"items": {
+										"properties": {
+											"column_key": {
+												"type": "string"
+											},
+											"count_type": {
+												"type": "string"
+											},
+											"sort_type": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									},
+									"type": "array"
+								},
+								"groups": {
+									"items": {},
+									"type": "array"
+								},
+								"hidden_columns": {
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"is_locked": {
+									"type": "boolean"
+								},
+								"link_rows": {
+									"type": "object"
+								},
+								"name": {
+									"type": "string"
+								},
+								"private_for": {},
+								"row_height": {
+									"type": "string"
+								},
+								"rows": {
+									"items": {},
+									"type": "array"
+								},
+								"sorts": {
+									"items": {
+										"properties": {
+											"column_key": {
+												"type": "string"
+											},
+											"sort_type": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									},
+									"type": "array"
+								},
+								"summaries": {
+									"items": {},
+									"type": ["array", "object"]
+								},
+								"type": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"type": "array"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"version": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

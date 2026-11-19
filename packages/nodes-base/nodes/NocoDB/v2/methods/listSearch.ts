@@ -5,7 +5,7 @@ import type {
 	INodeListSearchResult,
 	NodeApiError,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { parseToApiNodeOperationError } from '../helpers';
 import { ColumnsFetcher } from '../helpers/columns-fetcher';
@@ -32,7 +32,7 @@ export async function getWorkspaces(
 
 		const requestMethod = 'GET';
 		// no v3 api yet for workspaces list
-		const endpoint = '/api/v2/meta/workspaces';
+		const endpoint = requestPath`/api/v2/meta/workspaces`;
 		const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
 		const results: INodeListSearchItems[] = responseData.list.map((i: IDataObject) => ({
 			name: i.title,
@@ -63,7 +63,7 @@ export async function getBases(
 
 	try {
 		const requestMethod = 'GET';
-		const endpoint = `/api/v3/meta/workspaces/${workspaceId}/bases`;
+		const endpoint = requestPath`/api/v3/meta/workspaces/${workspaceId}/bases`;
 		const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
 		let results: INodeListSearchItems[] = responseData.list.map((i: IDataObject) => ({
 			name: i.title,
@@ -105,7 +105,7 @@ export async function getTables(
 		};
 		try {
 			const requestMethod = 'GET';
-			const endpoint = `/api/v3/meta/bases/${baseId}/tables`;
+			const endpoint = requestPath`/api/v3/meta/bases/${baseId}/tables`;
 			const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
 			const results: INodeListSearchItems[] = responseData.list.map((i: IDataObject) => ({
 				name: i.title,
@@ -153,7 +153,7 @@ export async function getViews(
 	if (tableId) {
 		try {
 			const requestMethod = 'GET';
-			const endpoint = `/api/v3/meta/bases/${baseId}/tables/${tableId}`;
+			const endpoint = requestPath`/api/v3/meta/bases/${baseId}/tables/${tableId}`;
 			const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
 			const results = responseData.views.map((i: IDataObject) => {
 				return {
@@ -198,7 +198,7 @@ export async function getFields(
 	if (tableId) {
 		try {
 			const requestMethod = 'GET';
-			const endpoint = `/api/v3/meta/bases/${baseId}/tables/${tableId}`;
+			const endpoint = requestPath`/api/v3/meta/bases/${baseId}/tables/${tableId}`;
 			const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
 
 			const results = responseData.fields.map((i: IDataObject) => {
@@ -365,14 +365,14 @@ export async function getRelatedTableFields(
 	if (linkFieldName) {
 		try {
 			const requestMethod = 'GET';
-			let endpoint = `/api/v3/meta/bases/${baseId}/tables/${tableId}/fields/${linkFieldName}`;
+			let endpoint = requestPath`/api/v3/meta/bases/${baseId}/tables/${tableId}/fields/${linkFieldName}`;
 			let responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
 			const relatedTableId = responseData.options?.related_table_id;
 			if (!relatedTableId) {
 				return { results: [] };
 			}
 
-			endpoint = `/api/v3/meta/bases/${baseId}/tables/${relatedTableId}`;
+			endpoint = requestPath`/api/v3/meta/bases/${baseId}/tables/${relatedTableId}`;
 			responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
 
 			return {
