@@ -12,15 +12,13 @@ import {
 	withSavepoint,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { sleep } from '@n8n/utils/sleep';
 import { ErrorReporter } from 'n8n-core';
 
 import { FoldFailureStreaks } from './fold-failure-streaks';
 import { FoldStepFailedError } from './fold-step-failed.error';
-import {
-	ExecutionLedgerParkedRepository,
-	UNREADABLE_ROWS_STEP,
-} from '../database/repositories/execution-ledger-parked.repository';
+import { ExecutionLedgerParkedRepository } from '../database/repositories/execution-ledger-parked.repository';
 import { ExecutionLedgerRepository } from '../database/repositories/execution-ledger.repository';
 import type { ExecutionLedgerMetricsEventMap } from '../execution-ledger-metrics.events';
 
@@ -36,7 +34,7 @@ const SKIP_WARN_THRESHOLD = 5;
 export const FOLD_FAILURE_ALERT_THRESHOLD = 3;
 
 type FoldedBatch = {
-	claimed: number;
+	readable: number;
 	unreadable: number;
 	afterCommit: AfterFoldCommit[];
 	parked: FoldStepFailedError[];
@@ -110,7 +108,8 @@ export class ExecutionLedgerFoldService {
 		}
 
 		this.consecutiveLockSkips = 0;
-		this.emitMetric('execution-ledger-fold-succeeded', { rows: folded.claimed });
+		const claimed = folded.readable + folded.unreadable;
+		this.emitMetric('execution-ledger-fold-succeeded', { rows: claimed });
 		this.reportParkedRows(folded);
 
 		for (const work of folded.afterCommit) {
@@ -121,7 +120,7 @@ export class ExecutionLedgerFoldService {
 			}
 		}
 
-		return folded.claimed;
+		return claimed;
 	}
 
 	private async foldClaimedBatch(
@@ -130,20 +129,13 @@ export class ExecutionLedgerFoldService {
 	): Promise<FoldedBatch> {
 		const { rows, unreadable } = await this.repository.claimBatch(FOLD_BATCH_SIZE, ctx);
 		const folded: FoldedBatch = {
-			claimed: rows.length + unreadable.length,
+			readable: rows.length,
 			unreadable: unreadable.length,
 			afterCommit: [],
 			parked: [],
 		};
 
-		if (unreadable.length > 0) {
-			await this.parkedRepository.park(
-				UNREADABLE_ROWS_STEP,
-				unreadable,
-				'Ledger row has an unexpected value',
-				ctx,
-			);
-		}
+		if (unreadable.length > 0) await this.parkedRepository.parkUnreadable(unreadable, ctx);
 		if (rows.length === 0) return folded;
 
 		const firstLedgerId = rows[0].id;
@@ -167,7 +159,7 @@ export class ExecutionLedgerFoldService {
 				}
 
 				// The count is not saved here: if a later step rolls the batch back, this step parks again.
-				await this.parkedRepository.park(step.name, rows, messageOf(error), ctx);
+				await this.parkedRepository.park(step.name, rows, getErrorMessage(error), ctx);
 				folded.parked.push(failure);
 			}
 		}
@@ -175,7 +167,7 @@ export class ExecutionLedgerFoldService {
 	}
 
 	/** Runs after the commit, so it never reports rows that a rollback put back. */
-	private reportParkedRows({ claimed, unreadable, parked }: FoldedBatch) {
+	private reportParkedRows({ readable, unreadable, parked }: FoldedBatch) {
 		if (unreadable > 0) {
 			this.logger.error('Execution ledger fold parked rows that it could not read', {
 				rows: unreadable,
@@ -187,7 +179,7 @@ export class ExecutionLedgerFoldService {
 				step,
 				attempt,
 				firstLedgerId,
-				rows: claimed - unreadable,
+				rows: readable,
 			});
 			this.errorReporter.error(failure, { shouldBeLogged: false });
 		}
@@ -214,10 +206,6 @@ export class ExecutionLedgerFoldService {
 			consecutiveLockSkips: this.consecutiveLockSkips,
 		});
 	}
-}
-
-function messageOf(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
 }
 
 /** Whether the pause and a batch as long as the last one both end before the deadline. */

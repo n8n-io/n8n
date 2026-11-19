@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { CacheService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 
 type Streak = { batchKey: string; failures: number };
 
@@ -46,11 +47,6 @@ const keyOf = (step: string) => `execution-ledger:fold-failures:${step}`;
 
 function isStreak(value: unknown): value is Streak {
 	return (
-		typeof value === 'object' &&
-		value !== null &&
-		'batchKey' in value &&
-		typeof value.batchKey === 'string' &&
-		'failures' in value &&
-		typeof value.failures === 'number'
+		isRecord(value) && typeof value.batchKey === 'string' && typeof value.failures === 'number'
 	);
 }

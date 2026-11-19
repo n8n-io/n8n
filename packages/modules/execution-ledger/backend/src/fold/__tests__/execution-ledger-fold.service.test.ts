@@ -16,10 +16,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { fakeFailureStreaks } from '../../__tests__/fake-failure-streaks';
 import type { RawLedgerRow } from '../../database/ledger-row.parser';
-import {
-	type ExecutionLedgerParkedRepository,
-	UNREADABLE_ROWS_STEP,
-} from '../../database/repositories/execution-ledger-parked.repository';
+import type { ExecutionLedgerParkedRepository } from '../../database/repositories/execution-ledger-parked.repository';
 import type { ExecutionLedgerRepository } from '../../database/repositories/execution-ledger.repository';
 import {
 	ExecutionLedgerFoldService,
@@ -389,19 +386,14 @@ describe('ExecutionLedgerFoldService', () => {
 		});
 
 		describe('unreadable rows', () => {
-			it('parks them under the unreadable step and runs no step when they are all there is', async () => {
+			it('parks them as unreadable and runs no step when they are all there is', async () => {
 				const unreadable = unreadableOf('7', '8');
 				claims([], unreadable);
 				const step = addStep('first');
 
 				await expect(service.foldBatch()).resolves.toBe(2);
 
-				expect(parkedRepository.park).toHaveBeenCalledWith(
-					UNREADABLE_ROWS_STEP,
-					unreadable,
-					expect.any(String),
-					ctx,
-				);
+				expect(parkedRepository.parkUnreadable).toHaveBeenCalledWith(unreadable, ctx);
 				expect(step.fold).not.toHaveBeenCalled();
 			});
 
@@ -410,8 +402,8 @@ describe('ExecutionLedgerFoldService', () => {
 				const unreadable = unreadableOf('9');
 				claims(rows, unreadable);
 				const order: string[] = [];
-				parkedRepository.park.mockImplementation(async (step) => {
-					order.push(`park:${step}`);
+				parkedRepository.parkUnreadable.mockImplementation(async () => {
+					order.push('park');
 					await Promise.resolve();
 				});
 				const step = addStep('first', async () => {
@@ -421,7 +413,7 @@ describe('ExecutionLedgerFoldService', () => {
 
 				await expect(service.foldBatch()).resolves.toBe(3);
 
-				expect(order).toEqual([`park:${UNREADABLE_ROWS_STEP}`, 'fold']);
+				expect(order).toEqual(['park', 'fold']);
 				expect(step.fold).toHaveBeenCalledWith(rows, ctx);
 			});
 

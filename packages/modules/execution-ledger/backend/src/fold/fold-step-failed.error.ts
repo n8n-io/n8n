@@ -1,6 +1,9 @@
 import { OperationalError } from '@n8n/errors';
 
-/** A fold step threw. The fold rolled the batch back, or parked it for the step. `cause` is the step error. */
+/**
+ * A fold step threw. The fold rolled the batch back, or parked it for the step.
+ * `cause` is the step error.
+ */
 export class FoldStepFailedError extends OperationalError {
 	constructor(
 		readonly step: string,

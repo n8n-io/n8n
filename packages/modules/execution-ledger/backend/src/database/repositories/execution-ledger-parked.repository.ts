@@ -1,10 +1,10 @@
-import { BaseRepository, type OperationContext, parseDbTime, TransactionRunner } from '@n8n/db';
+import { BaseRepository, type OperationContext, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
 
 import { ExecutionLedgerParkedEntity } from '../entities/execution-ledger-parked.entity';
-import type { RawLedgerRow } from '../ledger-row.parser';
+import { coerceLedgerRow, type RawLedgerRow } from '../ledger-row.parser';
 
 /** Step name of the rows that no step could read. The step name pattern rejects it. */
 export const UNREADABLE_ROWS_STEP = '_unreadable';
@@ -29,6 +29,11 @@ export class ExecutionLedgerParkedRepository {
 		this.table = new ExecutionLedgerParkedTable(dataSource, transactionRunner);
 	}
 
+	/** Parks the rows that no step can read, so no step name applies. */
+	async parkUnreadable(rows: readonly RawLedgerRow[], ctx: OperationContext): Promise<void> {
+		await this.park(UNREADABLE_ROWS_STEP, rows, 'Ledger row has an unexpected value', ctx);
+	}
+
 	/** Pass the fold transaction in `ctx`, so the rows are parked only if the claim commits. */
 	async park(
 		step: string,
@@ -43,9 +48,10 @@ export class ExecutionLedgerParkedRepository {
 		const manager = this.table.managerFor(ctx);
 
 		for (let offset = 0; offset < rows.length; offset += INSERT_CHUNK_SIZE) {
-			const values = rows
-				.slice(offset, offset + INSERT_CHUNK_SIZE)
-				.map((row) => ({ ...toParkedValues(row), step, error: parkedError, parkedAt }));
+			const values = rows.slice(offset, offset + INSERT_CHUNK_SIZE).map((row) => {
+				const { id: ledgerId, ...ledgerValues } = coerceLedgerRow(row);
+				return { ...ledgerValues, ledgerId, step, error: parkedError, parkedAt };
+			});
 			await manager
 				.createQueryBuilder()
 				.insert()
@@ -55,30 +61,4 @@ export class ExecutionLedgerParkedRepository {
 				.execute();
 		}
 	}
-}
-
-function toParkedValues(raw: RawLedgerRow) {
-	return {
-		ledgerId: String(raw.id),
-		executionId: String(raw.executionId),
-		occurredAt: toDate(raw.occurredAt),
-		entityType: String(raw.entityType),
-		entityName: String(raw.entityName),
-		entityId: String(raw.entityId),
-		projectId: String(raw.projectId),
-		mode: String(raw.mode),
-		source: String(raw.source),
-		event: String(raw.event),
-		outcome: String(raw.outcome),
-		blockedBy: String(raw.blockedBy),
-		runtimeMs: Number(raw.runtimeMs),
-		timeSavedMin: Number(raw.timeSavedMin),
-		origin: String(raw.origin),
-		eventId: String(raw.eventId),
-	};
-}
-
-// A time that no driver returns becomes the epoch: a throw here would block the fold.
-function toDate(value: unknown): Date {
-	return value instanceof Date || typeof value === 'string' ? parseDbTime(value) : new Date(0);
 }
