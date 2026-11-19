@@ -24,7 +24,7 @@ describe('ExecutionCancelService', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		Object.defineProperty(executionLedger, 'isEnabled', { value: true, configurable: true });
-		executionLedger.recordEnded.mockResolvedValue();
+		executionLedger.recordEndedInSequence.mockResolvedValue();
 		cancelService = new ExecutionCancelService(executionRepository, executionLedger);
 	});
 
@@ -39,7 +39,7 @@ describe('ExecutionCancelService', () => {
 
 		expect(executionRepository.markAsCanceled).toHaveBeenCalledWith(['1', '2', '3'], ['running']);
 		expect(canceled.map(({ id }) => id)).toEqual(['1', '2']);
-		expect(executionLedger.recordEnded.mock.calls.map(([fact]) => fact)).toEqual([
+		expect(executionLedger.recordEndedInSequence).toHaveBeenCalledExactlyOnceWith([
 			expect.objectContaining({ executionId: '1', outcome: 'canceled', runtimeMs: 60_000 }),
 			expect.objectContaining({ executionId: '2', outcome: 'canceled', runtimeMs: 60_000 }),
 		]);
@@ -50,7 +50,7 @@ describe('ExecutionCancelService', () => {
 
 		await (await cancelService.markAsCanceled(['1'])).recorded;
 
-		expect(executionLedger.recordEnded).not.toHaveBeenCalled();
+		expect(executionLedger.recordEndedInSequence).not.toHaveBeenCalled();
 	});
 
 	it('records nothing when the ledger is off', async () => {
@@ -59,12 +59,12 @@ describe('ExecutionCancelService', () => {
 
 		await (await cancelService.markAsCanceled(['1'])).recorded;
 
-		expect(executionLedger.recordEnded).not.toHaveBeenCalled();
+		expect(executionLedger.recordEndedInSequence).not.toHaveBeenCalled();
 	});
 
 	it('settles `recorded` only after the rows are written', async () => {
 		const write = createDeferredPromise<undefined>();
-		executionLedger.recordEnded.mockReturnValue(write.promise);
+		executionLedger.recordEndedInSequence.mockReturnValue(write.promise);
 		executionRepository.markAsCanceled.mockResolvedValue([canceledExecution('1')]);
 
 		let settled = false;

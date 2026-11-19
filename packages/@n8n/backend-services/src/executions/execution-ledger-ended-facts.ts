@@ -1,8 +1,7 @@
 import type { CanceledExecution, CrashedExecution } from '@n8n/db';
 import type { IRun, IWorkflowBase, WorkflowExecutionSource } from 'n8n-workflow';
-import { isTerminalExecutionStatus } from 'n8n-workflow';
 
-import { toLedgerFact } from './counting-rules';
+import { toLedgerFact, toLedgerOutcome } from './counting-rules';
 import type { ExecutionLedgerEndedFacts } from './execution-ledger-writer';
 import { computeTimeSavedMinutes } from './time-saved';
 
@@ -21,16 +20,22 @@ export function toEndedFactsFromRun({
 	run: IRun;
 	source?: WorkflowExecutionSource;
 }): ExecutionLedgerEndedFacts | undefined {
-	if (!isTerminalExecutionStatus(run.status) || !workflow.id) return undefined;
+	const ended = toLedgerOutcome(run);
+	if (ended.outcome === 'none' || !workflow.id) return undefined;
 
-	return {
+	const facts = {
 		executionId,
 		workflowId: workflow.id,
 		workflowName: workflow.name,
 		mode: run.mode,
 		source,
 		occurredAt: run.stoppedAt ?? new Date(),
-		outcome: run.status,
+	};
+	if (ended.outcome === 'blocked') return { ...facts, ...ended };
+
+	return {
+		...facts,
+		outcome: ended.outcome,
 		runtimeMs: run.stoppedAt ? run.stoppedAt.getTime() - run.startedAt.getTime() : 0,
 		timeSavedMin:
 			computeTimeSavedMinutes({
@@ -42,33 +47,41 @@ export function toEndedFactsFromRun({
 	};
 }
 
-/** The `ended` facts of a row that a crash sweep claimed. */
-export function toEndedFactsFromCrash(
-	execution: CrashedExecution,
-	stoppedAtOverride?: Date,
-): ExecutionLedgerEndedFacts {
-	return toEndedFactsFromRow(execution, 'crashed', stoppedAtOverride ?? execution.stoppedAt);
+/** The `ended` facts of a row that a crash sweep claimed. A run that no runner took ends blocked. */
+export function toEndedFactsFromCrash(execution: CrashedExecution): ExecutionLedgerEndedFacts {
+	const { mode, startedAt, stoppedAt } = execution;
+	const ended = toLedgerOutcome({ mode, status: 'crashed', startedAt });
+
+	const facts = {
+		executionId: execution.id,
+		workflowId: execution.workflowId,
+		workflowName: execution.workflowName ?? '',
+		projectId: execution.project?.id,
+		mode,
+		occurredAt: stoppedAt,
+	};
+	if (ended.outcome === 'blocked') return { ...facts, ...ended };
+
+	return {
+		...facts,
+		outcome: 'crashed',
+		runtimeMs: startedAt ? stoppedAt.getTime() - startedAt.getTime() : 0,
+		timeSavedMin: 0,
+	};
 }
 
 /** The `ended` facts of a row that a cancel write moved to `canceled`. */
 export function toEndedFactsFromCancel(execution: CanceledExecution): ExecutionLedgerEndedFacts {
-	return toEndedFactsFromRow(execution, 'canceled', execution.stoppedAt);
-}
+	const { startedAt, stoppedAt } = execution;
 
-/** A run that never started has no runtime. The row stores no source, so it stays unset. */
-function toEndedFactsFromRow(
-	execution: CanceledExecution,
-	outcome: 'crashed' | 'canceled',
-	stoppedAt: Date,
-): ExecutionLedgerEndedFacts {
 	return {
 		executionId: execution.id,
 		workflowId: execution.workflowId,
 		workflowName: execution.workflowName ?? '',
 		mode: execution.mode,
 		occurredAt: stoppedAt,
-		outcome,
-		runtimeMs: execution.startedAt ? stoppedAt.getTime() - execution.startedAt.getTime() : 0,
+		outcome: 'canceled',
+		runtimeMs: startedAt ? stoppedAt.getTime() - startedAt.getTime() : 0,
 		timeSavedMin: 0,
 	};
 }

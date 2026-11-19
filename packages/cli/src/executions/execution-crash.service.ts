@@ -61,9 +61,13 @@ export class ExecutionCrashService {
 		options: { stoppedAt?: Date } = {},
 	): Promise<CrashedExecution[]> {
 		return await this.executionRepository.markAsCrashed(executionIds, (batch) => {
-			this.announce(batch, detector, options.stoppedAt);
+			const stopped = batch.map((execution) => ({
+				...execution,
+				stoppedAt: options.stoppedAt ?? execution.stoppedAt,
+			}));
+			this.announce(stopped, detector);
 			// The caller's hooks find the run already crashed, so they record no `ended` row.
-			this.recordEnded(batch, options.stoppedAt);
+			this.recordEnded(stopped);
 		});
 	}
 
@@ -103,18 +107,10 @@ export class ExecutionCrashService {
 		return crashed;
 	}
 
-	/** Chained, so batches and sweeps insert one row at a time and do not take the whole pool. */
-	private endedWrites = Promise.resolve();
-
-	private recordEnded(executions: CrashedExecution[], stoppedAtOverride?: Date) {
+	private recordEnded(executions: CrashedExecution[]) {
 		if (!this.executionLedger.isEnabled || executions.length === 0) return;
 
-		const facts = executions.map((execution) =>
-			toEndedFactsFromCrash(execution, stoppedAtOverride),
-		);
-		this.endedWrites = this.endedWrites.then(async () => {
-			for (const fact of facts) await this.executionLedger.recordEnded(fact);
-		});
+		void this.executionLedger.recordEndedInSequence(executions.map(toEndedFactsFromCrash));
 	}
 
 	private count(executions: CrashedExecution[]) {
@@ -123,11 +119,7 @@ export class ExecutionCrashService {
 		this.workflowStatisticsService.emit('executionsCrashed', { executions });
 	}
 
-	private announce(
-		executions: CrashedExecution[],
-		detector: CrashDetector,
-		stoppedAtOverride?: Date,
-	) {
+	private announce(executions: CrashedExecution[], detector: CrashDetector) {
 		for (const {
 			id,
 			workflowId,
@@ -149,7 +141,7 @@ export class ExecutionCrashService {
 				mode,
 				retryOf,
 				startedAt: startedAt ?? undefined,
-				stoppedAt: stoppedAtOverride ?? stoppedAt,
+				stoppedAt,
 				detector,
 				hostId: this.instanceSettings.hostId,
 				tracingContext,

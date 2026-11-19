@@ -1440,7 +1440,7 @@ describe('enqueueExecution', () => {
 				'queue unavailable',
 			);
 
-			expect(finishedRun().data.resultData.failedBeforeStart).toBe(true);
+			expect(finishedRun().data.resultData.failedBeforeStart).toBe('startFailed');
 		});
 
 		it('does not flag the run once the job is enqueued', async () => {
@@ -1483,7 +1483,7 @@ describe('enqueueExecution', () => {
 			status: 'error',
 			startedAt: new Date(),
 			stoppedAt: new Date(),
-			failedBeforeStart: true,
+			failedBeforeStart: 'startFailed',
 		} satisfies JobFinishedProps);
 
 		// @ts-expect-error Private method
@@ -1491,7 +1491,7 @@ describe('enqueueExecution', () => {
 		await workflowExecution;
 
 		const [, run] = finalize.mock.calls.at(-1)!;
-		expect(run?.data.resultData.failedBeforeStart).toBe(true);
+		expect(run?.data.resultData.failedBeforeStart).toBe('startFailed');
 	});
 
 	it.each([
@@ -1650,7 +1650,7 @@ describe('enqueueExecution', () => {
 			'1',
 			expect.anything(),
 			undefined,
-			true,
+			'startFailed',
 		);
 		expect(addJob).not.toHaveBeenCalled();
 	});
@@ -2162,7 +2162,14 @@ describe('pre-persist context establishment', () => {
 		await expect(runner.run(data)).resolves.toBe('exec-1');
 
 		expect(gateSpy).not.toHaveBeenCalled();
-		expect(failExecution).toHaveBeenCalledWith(data, 'exec-1', unauthorized, undefined, undefined);
+		expect(failExecution).toHaveBeenCalledWith(
+			data,
+			'exec-1',
+			unauthorized,
+			'credentialAccess',
+			undefined,
+			undefined,
+		);
 	});
 
 	it('flags the run as failed before start when credential authorization fails', async () => {
@@ -2183,7 +2190,7 @@ describe('pre-persist context establishment', () => {
 			string,
 			[IRun],
 		];
-		expect(run.data.resultData.failedBeforeStart).toBe(true);
+		expect(run.data.resultData.failedBeforeStart).toBe('credentialAccess');
 	});
 
 	it('skips the preExecute gate when claiming an existing execution', async () => {
@@ -2301,7 +2308,7 @@ describe('pre-persist context establishment', () => {
 		it('flags the failed run as failed before start', async () => {
 			await runner.run(buildRunData(buildExecutionDataWithHeader()));
 
-			expect(finishedRun().data.resultData.failedBeforeStart).toBe(true);
+			expect(finishedRun().data.resultData.failedBeforeStart).toBe('contextHook');
 		});
 
 		const withEarlierRunData = () => {
@@ -2315,7 +2322,7 @@ describe('pre-persist context establishment', () => {
 		it('flags a retry that carries the run data of the original execution', async () => {
 			await runner.run(buildRunData(withEarlierRunData(), 'retry'));
 
-			expect(finishedRun().data.resultData.failedBeforeStart).toBe(true);
+			expect(finishedRun().data.resultData.failedBeforeStart).toBe('contextHook');
 		});
 
 		it('flags a claimed new execution', async () => {
@@ -2324,7 +2331,7 @@ describe('pre-persist context establishment', () => {
 				expectedStatus: 'new',
 			});
 
-			expect(finishedRun().data.resultData.failedBeforeStart).toBe(true);
+			expect(finishedRun().data.resultData.failedBeforeStart).toBe('contextHook');
 		});
 
 		it('does not flag a resumed run whose nodes ran before it waited', async () => {

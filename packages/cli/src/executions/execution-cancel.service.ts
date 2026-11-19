@@ -24,17 +24,10 @@ export class ExecutionCancelService {
 		return { canceled, recorded: this.recordEnded(canceled) };
 	}
 
-	/** Chained, so a large cancel inserts one row at a time and does not take the whole pool. */
-	private endedWrites = Promise.resolve();
-
 	/** For a caller whose own write moved the runs to `canceled`. */
 	async recordEnded(executions: CanceledExecution[]): Promise<void> {
 		if (!this.executionLedger.isEnabled || executions.length === 0) return;
 
-		const facts = executions.map(toEndedFactsFromCancel);
-		this.endedWrites = this.endedWrites.then(async () => {
-			for (const fact of facts) await this.executionLedger.recordEnded(fact);
-		});
-		await this.endedWrites;
+		await this.executionLedger.recordEndedInSequence(executions.map(toEndedFactsFromCancel));
 	}
 }

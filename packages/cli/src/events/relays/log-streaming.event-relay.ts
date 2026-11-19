@@ -1,4 +1,4 @@
-import { EventService } from '@n8n/backend-services';
+import { EventService, EventRelay } from '@n8n/backend-services';
 import { UserRepository } from '@n8n/db';
 import { Redactable } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -14,7 +14,6 @@ import type { EventNamesAuditType } from '@/eventbus/event-message-classes';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { RelayEventMap, UserLike } from '@/events/maps/relay.event-map';
-import { EventRelay } from '@/events/relays/event-relay';
 import type {
 	PolicyAttachment,
 	PolicyRule,
@@ -121,6 +120,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'user-logged-out': (event) => this.userLoggedOut(event),
 			'user-login-failed': (event) => this.userLoginFailed(event),
 			'user-login-email-conflict': (event) => this.userLoginEmailConflict(event),
+			'sso-settings-updated': (event) => this.ssoSettingsUpdated(event),
 			'user-invite-email-click': (event) => this.userInviteEmailClick(event),
 			'user-password-reset-email-click': (event) => this.userPasswordResetEmailClick(event),
 			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
@@ -755,6 +755,20 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.login.emailConflict',
 			payload: { ...user, authenticationMethod, _assertedEmail: assertedEmail },
+		});
+	}
+
+	@Redactable()
+	private ssoSettingsUpdated({
+		user,
+		protocol,
+		loginEnabled,
+		fieldsChanged,
+		publicApi,
+	}: RelayEventMap['sso-settings-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.sso.settings.updated',
+			payload: { ...user, protocol, loginEnabled, fieldsChanged, publicApi },
 		});
 	}
 

@@ -156,6 +156,27 @@ describe('execution ledger ended rows', () => {
 			expect(rows[0]).toMatchObject({ executionId, outcome: 'success', mode: 'manual' });
 		});
 
+		it('writes one blocked row for a run that failed before its first node', async () => {
+			const executionId = await createRunningExecution();
+			const run = finishedRun('error');
+			run.data.resultData.failedBeforeStart = 'policy';
+
+			await getLifecycleHooksForRegularMain(
+				{ executionMode: 'trigger', workflowData: workflow },
+				executionId,
+			).runHook('workflowExecuteAfter', [run, {}]);
+
+			const rows = await collectEndedRows(1);
+			expect(rows).toHaveLength(1);
+			expect(rows[0]).toMatchObject({
+				executionId,
+				outcome: 'blocked',
+				blockedBy: 'policy',
+				runtimeMs: 0,
+				timeSavedMin: 0,
+			});
+		});
+
 		it('writes one row for each run when a crash sweep races the final saves', async () => {
 			const executionIds = await Promise.all(
 				Array.from({ length: 10 }, async () => await createRunningExecution()),
