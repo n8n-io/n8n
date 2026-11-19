@@ -23,7 +23,7 @@ The module tells the editor if the open workflow can run on engine v2. Every ans
   workflow, because the document store belongs to the shell. It returns the reasons, the blocking
   reasons and `isNodeTypeIncompatible`.
 - `EngineV2CompatibilityButton` shows the number of reasons, with a red icon when one blocks and a
-  yellow icon when all are warnings. The shell puts it above the canvas toolbar. A click opens
+  yellow icon when all are warnings. The shell puts it above the node creator toolbar on editable canvases, and at the top right on read-only canvases. A click opens
   `EngineV2CompatibilityDialog`, which lists the blocking reasons first, then the warnings. The
   list scrolls inside the dialog. Each entry's icon depends on its severity only, so a new reason
   code needs no icon.
