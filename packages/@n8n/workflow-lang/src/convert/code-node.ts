@@ -520,9 +520,14 @@ export function lowerCode(c: NodeContext): void {
 			`${JSON.stringify(name)}: ((${params}): Json[] => pairedIndexList(${c.input}.length, (k: number): number => ${tracked.code}))(${values})`,
 		);
 	}
-	// $node[name].json follows pairedItem in v1; the converter uses the index of the current
-	// item, which equals the paired item only when the items pair by position.
-	const nodeAccess = user.matchAll(/\$node\s*\[\s*['"]([^'"]*)['"]\s*\]/g);
+	// `$node[name].json` in the Code node of v1 is the item of the node at the index of the
+	// current item: it follows no paired item (the parity test with the task runner has the
+	// proof for each chain). The legacy Function nodes have no such proof, so there the read
+	// is compiled only when the items pair by position.
+	const nodeAccess =
+		type === 'n8n-nodes-base.code'
+			? []
+			: user.matchAll(/\$node\s*\[\s*['"]([^'"]*)['"]\s*\]/g);
 	for (const m of nodeAccess) {
 		const name = m[1];
 		if (name && name !== c.node.name && !c.pairsByPosition(name) && c.ranBefore(name) !== null) {
