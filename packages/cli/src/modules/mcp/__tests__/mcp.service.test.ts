@@ -135,6 +135,7 @@ describe('McpService', () => {
 
 	beforeEach(() => {
 		moduleRegistry = mockModuleRegistry();
+		aiPreferenceSettings.isEnabled = true;
 		eventService = mockInstance(EventService);
 		instanceWriteAccess = mockInstance(InstanceWriteAccessService, {
 			isReadOnly: vi.fn().mockReturnValue(false),
@@ -996,10 +997,7 @@ describe('McpService', () => {
 			it('drops the pointer while the instance preferences switch is off', async () => {
 				aiPreferenceSettings.isEnabled = false;
 
-				const instructions = await initialize(mcpFeatureFlags());
-				aiPreferenceSettings.isEnabled = true;
-
-				expect(instructions).not.toContain('get_user_preferences');
+				expect(await initialize(mcpFeatureFlags())).not.toContain('get_user_preferences');
 			});
 
 			it('serves a 2025-era client through the stateless legacy fallback', async () => {
