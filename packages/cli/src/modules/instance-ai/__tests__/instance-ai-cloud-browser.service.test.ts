@@ -509,6 +509,59 @@ describe('InstanceAiCloudBrowserService', () => {
 		savedLocation: { regionId: 'eu-central-1', proxyCountry: 'DE', proxyCity: 'BERLIN' },
 	};
 
+	describe('saved logins', () => {
+		it("lists the user's saved logins with ISO dates", async () => {
+			aiGatewayBrowserUseService.listSavedContexts.mockResolvedValue([savedContext]);
+
+			expect(await service.listSavedLogins('user-1')).toEqual([
+				{
+					id: 'ctx-1',
+					domain: 'example.com',
+					savedAt: '2026-11-01T10:00:00.000Z',
+					lastUsedAt: '2026-11-02T09:30:00.000Z',
+				},
+			]);
+			expect(aiGatewayBrowserUseService.listSavedContexts).toHaveBeenCalledWith({
+				userId: 'user-1',
+			});
+		});
+
+		it("deletes one of the user's saved logins", async () => {
+			await service.deleteSavedLogin('user-1', 'ctx-1');
+
+			expect(aiGatewayBrowserUseService.deleteContext).toHaveBeenCalledWith({
+				userId: 'user-1',
+				contextId: 'ctx-1',
+			});
+		});
+
+		it.each([
+			[
+				'the gateway cannot create browser sessions',
+				() => {
+					aiGatewayBrowserUseService.isGatewayBrowserUseEnabled.mockReturnValue(false);
+				},
+			],
+			[
+				'the rollout flag is off',
+				() => {
+					postHogClient.getFeatureFlagForInstance.mockResolvedValue(false);
+				},
+			],
+		])('refuses to list or delete saved logins when %s', async (_, makeUnavailable) => {
+			makeUnavailable();
+
+			await expect(service.listSavedLogins('user-1')).rejects.toThrow(
+				'The cloud browser is not available on this instance',
+			);
+			await expect(service.deleteSavedLogin('user-1', 'ctx-1')).rejects.toThrow(
+				'The cloud browser is not available on this instance',
+			);
+			expect(aiGatewayBrowserUseService.listSavedContexts).not.toHaveBeenCalled();
+			expect(aiGatewayBrowserUseService.deleteContext).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('login profiles through the gateway', () => {
 		const attribution = { instanceAiThreadId: 'thread-1', instanceAiTaskId: 'task-1' };
 
@@ -597,6 +650,18 @@ describe('InstanceAiCloudBrowserService', () => {
 			expect(aiGatewayBrowserUseService.deleteContext).toHaveBeenCalledWith({
 				userId: 'user-1',
 				contextId: 'ctx-1',
+			});
+		});
+
+		it("lists the user's saved login profiles", async () => {
+			aiGatewayBrowserUseService.listSavedContexts.mockResolvedValue([savedContext]);
+			const { sessionProvider, scope } = await getSessionProvider();
+
+			await expect(sessionProvider.listSavedLoginProfiles(scope)).resolves.toEqual([
+				savedLoginProfile,
+			]);
+			expect(aiGatewayBrowserUseService.listSavedContexts).toHaveBeenCalledWith({
+				userId: 'user-1',
 			});
 		});
 	});

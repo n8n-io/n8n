@@ -1,6 +1,7 @@
 import {
 	INSTANCE_AI_CLOUD_BROWSER_FLAG,
 	type InstanceAiCloudBrowserLiveViewResponse,
+	type InstanceAiSavedLogin,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { PostHogClient } from '@n8n/backend-services';
@@ -204,6 +205,29 @@ export class InstanceAiCloudBrowserService {
 		await Promise.allSettled(entries.map(async ({ server }) => await server.release()));
 	}
 
+	/** The user's saved logins, most recently used first. */
+	async listSavedLogins(userId: string): Promise<InstanceAiSavedLogin[]> {
+		await this.assertAvailable();
+		const loginProfiles = await this.getSessionProvider().listSavedLoginProfiles({ userId });
+		return loginProfiles.flatMap(({ id, domain, savedAt, lastUsedAt }) =>
+			savedAt && lastUsedAt
+				? [{ id, domain, savedAt: savedAt.toISOString(), lastUsedAt: lastUsedAt.toISOString() }]
+				: [],
+		);
+	}
+
+	/** Deletes one of the user's saved logins. The provider refuses a login of another user. */
+	async deleteSavedLogin(userId: string, savedLoginId: string): Promise<void> {
+		await this.assertAvailable();
+		await this.getSessionProvider().deleteLoginProfile({ userId }, savedLoginId);
+	}
+
+	private async assertAvailable(): Promise<void> {
+		if (!(await this.isAvailable())) {
+			throw new UserError('The cloud browser is not available on this instance');
+		}
+	}
+
 	private getSessionProvider(): CloudBrowserSessionProvider {
 		if (this.aiGatewayBrowserUseService.isGatewayBrowserUseEnabled()) {
 			return this.buildGatewaySessionProvider();
@@ -257,6 +281,13 @@ export class InstanceAiCloudBrowserService {
 				});
 				return id;
 			},
+			findSavedLoginProfileForDomain: async ({ userId }, domain) => {
+				const [context] = await this.aiGatewayBrowserUseService.listSavedContexts({
+					userId,
+					domain,
+				});
+				return context && toLoginProfile(context);
+			},
 			saveLoginProfile: async ({ userId, threadId, taskId }, { id, domain, location }) => {
 				const context = await this.aiGatewayBrowserUseService.saveContext({
 					userId,
@@ -271,6 +302,8 @@ export class InstanceAiCloudBrowserService {
 			},
 			deleteLoginProfile: async ({ userId }, id) =>
 				await this.aiGatewayBrowserUseService.deleteContext({ userId, contextId: id }),
+			listSavedLoginProfiles: async ({ userId }) =>
+				(await this.aiGatewayBrowserUseService.listSavedContexts({ userId })).map(toLoginProfile),
 		};
 	}
 }

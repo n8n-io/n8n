@@ -38,7 +38,10 @@ let uiStore: ReturnType<typeof useUIStore>;
 let cloudPlanStore: ReturnType<typeof useCloudPlanStore>;
 let server: ReturnType<typeof setupServer>;
 
-const renderComponent = createComponentRenderer(SettingsPersonalView);
+// The saved logins section has its own tests. It needs the router, which these tests leave out.
+const renderComponent = createComponentRenderer(SettingsPersonalView, {
+	global: { stubs: { SavedLoginsSettingsSection: true } },
+});
 
 const currentUser = {
 	id: '1',

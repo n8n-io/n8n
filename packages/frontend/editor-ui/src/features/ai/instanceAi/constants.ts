@@ -74,3 +74,6 @@ export function isNodeChipRemovalKey(key: string): boolean {
 
 export const INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY = 'instanceAiBrowserUseSetup';
 export const INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY = 'instanceAiToolsConnection';
+
+/** The personal settings query parameter that opens the list of saved browser logins. */
+export const SAVED_LOGINS_QUERY = 'savedLogins';

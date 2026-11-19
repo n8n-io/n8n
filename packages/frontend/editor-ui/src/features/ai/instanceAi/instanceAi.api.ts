@@ -7,6 +7,7 @@ import type {
 	InstanceAiBrowserStatusResponse,
 	InstanceAiCloudBrowserLiveViewResponse,
 	InstanceAiCloudBrowserReturnControlResponse,
+	InstanceAiSavedLoginsResponse,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmRequest,
@@ -158,6 +159,25 @@ export async function postCloudBrowserReturnControl(
 		'POST',
 		`/instance-ai/chat/${threadId}/tasks/${taskId}/cloud-browser-return-control`,
 		{ ...(note && { note }), ...(shouldSaveLogin && { shouldSaveLogin }) },
+	);
+}
+
+/** GET /instance-ai/cloud-browser/saved-logins: the user's saved browser logins. */
+export async function fetchSavedLogins(
+	context: IRestApiContext,
+): Promise<InstanceAiSavedLoginsResponse> {
+	return await makeRestApiRequest(context, 'GET', '/instance-ai/cloud-browser/saved-logins');
+}
+
+/** DELETE /instance-ai/cloud-browser/saved-logins/:savedLoginId */
+export async function deleteSavedLogin(
+	context: IRestApiContext,
+	savedLoginId: string,
+): Promise<void> {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/instance-ai/cloud-browser/saved-logins/${encodeURIComponent(savedLoginId)}`,
 	);
 }
 

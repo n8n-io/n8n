@@ -383,6 +383,40 @@ describe('AiGatewayBrowserUseService', () => {
 		});
 	});
 
+	describe('listSavedContexts()', () => {
+		const listRequest = {
+			provider: 'browserbaseBrowserUse',
+			authHeaderKey: 'X-BB-API-Key',
+			method: 'GET',
+			userId: 'user-1',
+			mapErrorResponse: toGatewayError,
+			timeoutMs: 30_000,
+		};
+
+		it('lists the saved contexts without attribution', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({ contexts: [savedContext] });
+
+			const contexts = await service.listSavedContexts({ userId: 'user-1' });
+
+			expect(contexts).toEqual([parsedSavedContext]);
+			expect(aiGatewayService.sendProviderRequest).toHaveBeenCalledWith({
+				...listRequest,
+				path: '/v1/contexts',
+			});
+		});
+
+		it.each([
+			['no context list', {}],
+			['a context it cannot read', { contexts: [{ ...savedContext, savedAt: 'yesterday' }] }],
+		])('throws when the response has %s', async (_, response) => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue(response);
+
+			await expect(service.listSavedContexts({ userId: 'user-1' })).rejects.toThrow(
+				'Could not read the saved logins. Try again later.',
+			);
+		});
+	});
+
 	describe('deleteContext()', () => {
 		it('deletes the context without attribution', async () => {
 			aiGatewayService.sendProviderRequest.mockResolvedValue({});

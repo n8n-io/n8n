@@ -56,6 +56,8 @@ const savedContextSchema = z.object({
 	lastUsedAt: z.string().datetime().pipe(z.coerce.date()),
 });
 
+const savedContextsSchema = z.object({ contexts: z.array(savedContextSchema) });
+
 /** Errors from the gateway itself carry a message written for the user. */
 const gatewayErrorSchema = z.object({
 	error: z.object({
@@ -268,6 +270,34 @@ export class AiGatewayBrowserUseService {
 			throw new OperationalError('Could not read the saved login. Try again later.');
 		}
 		return parsed.data;
+	}
+
+	/**
+	 * The user's saved logins, most recently used first, only for `domain` when it is given. This
+	 * request is free and is not part of a task, so it has no attribution.
+	 */
+	async listSavedContexts({
+		userId,
+		domain,
+	}: {
+		userId: string;
+		/** A registrable domain, as sent to `saveContext`. */
+		domain?: string;
+	}): Promise<AiGatewaySavedBrowserContext[]> {
+		const body = await this.aiGatewayService.sendProviderRequest<unknown>({
+			provider: BROWSERBASE_BROWSER_USE_PROVIDER,
+			authHeaderKey: BROWSERBASE_API_KEY_HEADER,
+			method: 'GET',
+			path: domain ? `/v1/contexts?domain=${encodeURIComponent(domain)}` : '/v1/contexts',
+			userId,
+			mapErrorResponse: toGatewayError,
+			timeoutMs: REQUEST_TIMEOUT_MS,
+		});
+		const parsed = savedContextsSchema.safeParse(body);
+		if (!parsed.success) {
+			throw new OperationalError('Could not read the saved logins. Try again later.');
+		}
+		return parsed.data.contexts;
 	}
 
 	/**
