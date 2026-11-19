@@ -8497,6 +8497,11 @@ class Specialiser {
 		const zonesOf = (n: ts.Node) => {
 			const use = momentZoneUse(n);
 			if (use?.error !== undefined) this.error('code', use.error);
+			if (use?.runtime === true) {
+				for (const zone of this.zonesInParameters()) {
+					if (zone !== 'UTC') this.zones.add(zone);
+				}
+			}
 			for (const zone of use?.zones ?? []) this.zones.add(zone);
 			ts.forEachChild(n, zonesOf);
 		};

@@ -124,7 +124,11 @@ export const MOMENT_HELPERS: Record<string, string> = {
 	if (zone === '' || zone === 'utc' || zone === 'UTC' || isNaN(t)) return 0;
 	if (t < 0) throw new Error('a date before 1970 in a time zone has no compiled form');
 	if (t > 253402214400000) throw new Error('a date after the year 9999 in a time zone has no compiled form');
-	return Date.zoneOffset(zone, t);
+	try {
+		return Date.zoneOffset(zone, t);
+	} catch (error) {
+		throw new Error('a time zone of a moment that is not loaded has no compiled form');
+	}
 }`,
 	__momentWall: `function __momentWall(zone: string, wall: number): number {
 	if (zone === '' || zone === 'utc' || zone === 'UTC' || isNaN(wall)) return wall;
@@ -193,9 +197,11 @@ export const MOMENT_HELPERS: Record<string, string> = {
 	return { t: __momentParse(input, mode), z: mode, o: 0 };
 }`,
 	__momentIn: `function __momentIn(input: any, zone: string): any {
+	if (zone === null || zone === undefined || zone === '') throw new Error('a time zone of a moment that is empty has no compiled form');
 	return __momentAt(__momentParse(input, zone), zone);
 }`,
 	__momentNowIn: `function __momentNowIn(zone: string): any {
+	if (zone === null || zone === undefined || zone === '') throw new Error('a time zone of a moment that is empty has no compiled form');
 	return __momentAt(Date.now(), zone);
 }`,
 	__momentTz: `function __momentTz(m: any, zone: string): any {
@@ -367,6 +373,8 @@ export const MOMENT_ZONE_HELPERS: Record<string, number> = {
 	__momentNowIn: 0,
 	__momentTz: 1,
 };
+
+const MOMENT_ZONE_RUNTIME = new Set(['__momentIn', '__momentNowIn']);
 
 const FORMAT_TOKENS =
 	/(\[[^[]*\])|(\\)?([Hh]mm(ss)?|Mo|MM?M?M?|Do|DDDo|DD?D?D?|ddd?d?|do?|w[o|w]?|W[o|W]?|Qo?|N{1,5}|YYYYYY|YYYYY|YYYY|YY|y{2,4}|yo?|gg(ggg?)?|GG(GGG?)?|e|E|a|A|hh?|HH?|kk?|mm?|ss?|S{1,9}|x|X|zz?|ZZ?|.)/g;
@@ -771,14 +779,21 @@ function zoneChoices(zone: ts.Expression): string[] | undefined {
 	return known.elements.map((element) => (ts.isStringLiteral(element) ? element.text : ''));
 }
 
-export function momentZoneUse(node: ts.Node): { zones?: string[]; error?: string } | undefined {
+export function momentZoneUse(node: ts.Node): {
+	zones?: string[];
+	runtime?: boolean;
+	error?: string;
+} | undefined {
 	if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression)) return undefined;
 	const name = node.expression.text;
 	if (!Object.hasOwn(MOMENT_ZONE_HELPERS, name)) return undefined;
 	const zone = node.arguments[MOMENT_ZONE_HELPERS[name]];
 	const choices = zone === undefined ? undefined : zoneChoices(zone);
-	if (zone === undefined || (!ts.isStringLiteral(zone) && choices === undefined))
-		return { error: 'the time zone of a moment is not known at compile time' };
+	if (zone === undefined) return { error: 'the time zone of a moment is not known at compile time' };
+	if (!ts.isStringLiteral(zone) && choices === undefined)
+		return MOMENT_ZONE_RUNTIME.has(name)
+			? { runtime: true }
+			: { error: 'the time zone of a moment is not known at compile time' };
 	const zones = (choices ?? (ts.isStringLiteral(zone) ? [zone.text] : [])).filter(
 		(text) => text !== 'UTC',
 	);

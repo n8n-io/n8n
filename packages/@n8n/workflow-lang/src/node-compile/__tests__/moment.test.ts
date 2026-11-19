@@ -348,6 +348,59 @@ describe('moment calls in compiled node code', () => {
 			expect(compare(shape, undefined)).toBe('equal');
 	});
 
+	it('gives the text and the numbers of moment for a run-time zone, or refuses', () => {
+		const differences: string[] = [];
+		let equal = 0;
+		let limits = 0;
+		const zones = [
+			'America/New_York',
+			'Europe/Berlin',
+			'Asia/Kolkata',
+			'Australia/Lord_Howe',
+			'Pacific/Chatham',
+			'America/St_Johns',
+			'Asia/Kathmandu',
+			'Pacific/Apia',
+			'America/Sao_Paulo',
+			'Africa/Cairo',
+			'Asia/Tehran',
+			'UTC',
+			'default',
+			'Mars/Olympus',
+			'',
+		];
+		const values = [
+			'2020-01-15T10:30:00',
+			'2020-07-15T10:30:00+05:30',
+			'2020-01-15T10:30:00Z',
+			'2021-03-28T01:30:00',
+			'2021-11-07T01:30:00',
+			'2020-01-15',
+			'2020-07-01',
+			'',
+		];
+		const shapes = [
+			'moment.tz(x, y).format()',
+			"moment.tz(x, y).format('yyyy-MM-DD')",
+			'moment.tz(x, y).utc().format()',
+			'moment.tz(x, y).toISOString()',
+		];
+		for (const shape of shapes) {
+			for (const zone of zones) {
+				for (const value of values) {
+					const result = compare(shape, value, zone);
+					if (result === 'equal') equal++;
+					else if (result === 'limit') limits++;
+					else if (differences.length < 40 && !differences.includes(result))
+						differences.push(result);
+				}
+			}
+		}
+		expect(differences).toEqual([]);
+		expect(equal).toBeGreaterThan(0);
+		expect(limits).toBeGreaterThan(0);
+	});
+
 	it('agrees with moment around each change of a zone offset from 2000 to 2025', () => {
 		const differences: string[] = [];
 		const from = Date.UTC(2000, 0, 1);
@@ -646,9 +699,8 @@ export class Probe {
 		);
 		expect(fixed.zones).toEqual(['America/New_York', 'Europe/Berlin']);
 		const dynamic = withParameters(body, { entry: { timezone: '={{ $json.zone }}' } });
-		expect(dynamic.errors).toEqual([
-			'code: the time zone of a moment is not known at compile time',
-		]);
+		expect(dynamic.errors).toEqual([]);
+		expect(dynamic.zones).toEqual(['America/New_York']);
 	});
 
 	it('takes a format from a function that gives text literals only', () => {
@@ -661,8 +713,6 @@ export class Probe {
 	});
 
 	it('gives a compile error for a zone that is not known at compile time', () => {
-		const result = probe("import moment from 'moment-timezone';", ['moment.tz(x, x).format()']);
-		expect(result.errors).toEqual(['code: the time zone of a moment is not known at compile time']);
 		const unknown = probe("import moment from 'moment-timezone';", [
 			"moment.tz(x, 'Mars/Olympus').format()",
 		]);
