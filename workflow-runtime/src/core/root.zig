@@ -40,6 +40,8 @@ pub const cred_flags = @import("cred_flags.zig");
 test {
     @import("std").testing.refAllDecls(@This());
     _ = @import("json_test.zig");
+    _ = @import("batch_test.zig");
+    _ = @import("columns_test.zig");
     _ = @import("interp_test.zig");
     _ = @import("schedule_test.zig");
     _ = @import("workflow_test.zig");

@@ -4,7 +4,7 @@
 # List the findings of one rule with: zig build lint -- --rule <name>
 core-allocator 8
 row-pointer 10
-undefined 269
+undefined 259
 pointer-cast 26
 local-array 1
 global-var 16
@@ -18,14 +18,14 @@ switch-else 29
 unbounded-loop 24
 fn-length 38
 nesting 26
-fn-assert 135
+fn-assert 132
 discard 58
-core-std 76
+core-std 68
 shell-syscall 0
-core-print 47
+core-print 41
 map-order 3
 safety-off 17
-pub-unused 43
+pub-unused 41
 test-sleep 2
 test-no-check 1
 embed-file 3
