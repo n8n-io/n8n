@@ -1,4 +1,5 @@
 import { createConsoleLogger, type EngineLogger } from '../logging';
+import { epochNowMs, QueueTimings } from './queue-timings';
 import { checkWorkQueueConcurrency } from './work-queue-concurrency';
 import type { WorkQueue } from './work-queue.types';
 
@@ -25,7 +26,9 @@ export class InMemoryWorkQueue<TMessage> implements WorkQueue<TMessage> {
 		this.concurrency = checkWorkQueueConcurrency(concurrency);
 	}
 
-	private pending: TMessage[] = [];
+	readonly timings = new QueueTimings();
+
+	private pending: Array<{ message: TMessage; enqueuedAt: number }> = [];
 
 	private handler: ((message: TMessage) => Promise<void>) | undefined;
 
@@ -34,7 +37,7 @@ export class InMemoryWorkQueue<TMessage> implements WorkQueue<TMessage> {
 	private idleWaiters: Array<() => void> = [];
 
 	async publish(message: TMessage): Promise<void> {
-		this.pending.push(message);
+		this.pending.push({ message, enqueuedAt: epochNowMs() });
 		this.fillSlots();
 	}
 
@@ -54,8 +57,9 @@ export class InMemoryWorkQueue<TMessage> implements WorkQueue<TMessage> {
 	/** Starts queued messages until every slot is busy. Safe to call on every publish. */
 	private fillSlots(): void {
 		while (this.handler && this.inFlight < this.concurrency && this.pending.length > 0) {
-			const [message] = this.pending.splice(0, 1);
+			const [{ message, enqueuedAt }] = this.pending.splice(0, 1);
 			this.inFlight += 1;
+			this.timings.handlerStarted(enqueuedAt);
 			void this.run(this.handler, message);
 		}
 	}
@@ -67,6 +71,7 @@ export class InMemoryWorkQueue<TMessage> implements WorkQueue<TMessage> {
 			// Contained per message: a failed one must not strand those behind it.
 			this.logger.error('work queue handler failed', { error });
 		} finally {
+			this.timings.handlerEnded();
 			this.inFlight -= 1;
 			this.fillSlots();
 			if (this.inFlight === 0) this.resolveIdleWaiters();
