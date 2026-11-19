@@ -11,7 +11,6 @@
 //! form is `error.Unsupported`: the call then runs in the fallback host.
 const std = @import("std");
 const numfmt = @import("numfmt.zig");
-const date = @import("date.zig");
 const pgwire = @import("pgwire.zig");
 
 pub const Error = error{ NoSpace, Malformed };
@@ -62,8 +61,8 @@ pub fn frame(o: *Out, message_kind: u8, payload: []const u8, size: usize) Error!
         var head: [header_len]u8 = @splat(0);
         head[0] = message_kind;
         head[1] = if (i + 1 == count) 1 else 0;
-        std.mem.writeInt(u16, head[2..4], @intCast(part.len + header_len), .big);
-        head[6] = @truncate(i + 1);
+        std.mem.writeInt(u16, head[2..4], std.math.cast(u16, part.len + header_len) orelse unreachable, .big);  // invariant
+        head[6] = std.math.cast(u8, i + 1) orelse unreachable; // packet count fits in u8
         o.put(&head) catch |e| return undo(o, start, e);
         o.put(part) catch |e| return undo(o, start, e);
     }
@@ -97,7 +96,7 @@ fn decodeUtf8(s: []const u8) error{Malformed}!struct { cp: u21, len: usize } {
     if (c < 0x80) return .{ .cp = c, .len = 1 };
     const len: usize = if (c & 0xE0 == 0xC0) 2 else if (c & 0xF0 == 0xE0) 3 else if (c & 0xF8 == 0xF0) 4 else return error.Malformed;
     if (s.len < len) return error.Malformed;
-    var cp: u21 = c & (@as(u8, 0x7F) >> @intCast(len));
+    var cp: u21 = c & (@as(u8, 0x7F) >> (std.math.cast(u3, len) orelse unreachable)); // len in 2..4
     for (s[1..len]) |b| {
         if (b & 0xC0 != 0x80) return error.Malformed;
         cp = cp << 6 | (b & 0x3F);
@@ -121,12 +120,12 @@ fn putUtf16(o: *Out, s: []const u8) Error!usize {
         const d = try decodeUtf8(s[i..]);
         i += d.len;
         if (d.cp < 0x10000) {
-            try putInt(o, u16, @intCast(d.cp));
+            try putInt(o, u16, std.math.cast(u16, d.cp) orelse unreachable); // cp < 0x10000
             units += 1;
         } else {
             const v = d.cp - 0x10000;
-            try putInt(o, u16, @intCast(0xD800 + (v >> 10)));
-            try putInt(o, u16, @intCast(0xDC00 + (v & 0x3FF)));
+            try putInt(o, u16, std.math.cast(u16, 0xD800 + (v >> 10)) orelse unreachable);  // invariant
+            try putInt(o, u16, std.math.cast(u16, 0xDC00 + (v & 0x3FF)) orelse unreachable);  // invariant
             units += 2;
         }
     }
@@ -153,7 +152,7 @@ pub fn prelogin(o: *Out, encrypt: bool, trace: *const [trace_bytes]u8) Error!voi
     var at: u16 = sizes.len * 5 + 1;
     for (sizes, 0..) |size, option| {
         var entry: [5]u8 = @splat(0);
-        entry[0] = @intCast(option);
+        entry[0] = std.math.cast(u8, option) orelse unreachable; // option < 7
         std.mem.writeInt(u16, entry[1..3], at, .big);
         entry[4] = size;
         o.put(&entry) catch |e| return undo(o, start, e);
@@ -246,11 +245,11 @@ fn login7Parts(o: *Out, l: Login, start: usize) Error!void {
     for (0..3) |i| std.mem.writeInt(u16, fixed[78 + i * 4 ..][0..2], try offset16(o.len - start), .little);
     if (extension) {
         const at = std.mem.readInt(u16, fixed[56..58], .little);
-        patch(o, start + at, u32, @intCast(o.len - start));
+        patch(o, start + at, u32, std.math.cast(u32, o.len - start) orelse unreachable);  // invariant
         // UTF8_SUPPORT, then the terminator.
         try o.put(&.{ 0x0A, 1, 0, 0, 0, 1, 0xFF });
     }
-    std.mem.writeInt(u32, fixed[0..4], @intCast(o.len - start), .little);
+    std.mem.writeInt(u32, fixed[0..4], std.math.cast(u32, o.len - start) orelse unreachable, .little);  // invariant
     @memcpy(o.buf[start..][0..login_fixed], &fixed);
 }
 
@@ -345,7 +344,7 @@ fn executeSqlParts(o: *Out, sql: []const u8, params: []const Param, collation: [
 fn paramName(o: *Out, name: []const u8) ReplyError!void {
     for (name) |c| if (!std.ascii.isAlphanumeric(c) and c != '_') return error.Malformed;
     if (name.len == 0 or name.len > 127) return error.Malformed;
-    try o.byte(@intCast(name.len + 1));
+    try o.byte(std.math.cast(u8, name.len + 1) orelse unreachable); // name.len < 127
     std.debug.assert(try putUtf16(o, "@") == 1);
     std.debug.assert(try putUtf16(o, name) == name.len);
     // The status flags: an input value.
@@ -393,7 +392,7 @@ fn declaration(o: *Out, value: Value) ReplyError!usize {
             var at: usize = digits.len;
             for (0..digits.len) |_| {
                 at -= 1;
-                digits[at] = @intCast('0' + n % 10);
+                digits[at] = std.math.cast(u8, '0' + n % 10) orelse unreachable; // digit
                 n /= 10;
                 if (n == 0) break;
             }
@@ -457,8 +456,8 @@ const NVarChar = struct {
         const size = t.units * 2;
         std.debug.assert(o.len == t.start + short_head + size);
         if (t.units <= max_short_units) {
-            patch(o, t.start + 1, u16, @intCast(@max(size, 2)));
-            patch(o, t.start + short_head - 2, u16, @intCast(size));
+            patch(o, t.start + 1, u16, std.math.cast(u16, @max(size, 2)) orelse unreachable);  // invariant
+            patch(o, t.start + short_head - 2, u16, std.math.cast(u16, size) orelse unreachable);  // invariant
             return;
         }
         const grow = long_head - short_head;
@@ -469,7 +468,7 @@ const NVarChar = struct {
         patch(o, t.start + 1, u16, 0xFFFF);
         // The whole length is not known, then one chunk and the end.
         patch(o, t.start + 3 + collation_bytes, u64, 0xFFFF_FFFF_FFFF_FFFE);
-        patch(o, t.start + long_head - 4, u32, @intCast(size));
+        patch(o, t.start + long_head - 4, u32, std.math.cast(u32, size) orelse unreachable);  // invariant
         patch(o, o.len - 4, u32, 0);
     }
 };
@@ -771,7 +770,7 @@ fn putUnsigned(o: *Out, v: u64) error{NoSpace}!void {
     var at: usize = digits.len;
     for (0..digits.len) |_| {
         at -= 1;
-        digits[at] = @intCast('0' + n % 10);
+        digits[at] = std.math.cast(u8, '0' + n % 10) orelse unreachable; // digit
         n /= 10;
         if (n == 0) break;
     }
@@ -796,12 +795,79 @@ const day_ms: f64 = 86400000.0;
 /// The day number of 2000-01-01 in a `date` (days from 0001-01-01).
 const day_2000: f64 = 730119.0;
 
+const IsoWriter = struct {
+    buf: *[80]u8,
+    len: usize = 0,
+
+    fn put(w: *IsoWriter, s: []const u8) void {
+        @memcpy(w.buf[w.len..][0..s.len], s);
+        w.len += s.len;
+    }
+
+    fn num(w: *IsoWriter, n: i64, width: usize) void {
+        std.debug.assert(n >= 0);
+        var tmp: [20]u8 = @splat(0);
+        var i: usize = tmp.len;
+        var x: u64 = std.math.cast(u64, n) orelse unreachable; // n >= 0
+        while (true) {
+            i -= 1;
+            tmp[i] = std.math.cast(u8, '0' + x % 10) orelse unreachable; // digit
+            x /= 10;
+            if (x == 0) break;
+        }
+        var digits = tmp.len - i;
+        while (digits < width) : (digits += 1) w.put("0");
+        w.put(tmp[i..]);
+    }
+};
+
+/// ISO 8601 UTC formatting for a valid time value (not NaN, within ±8.64e15).
+fn formatIsoUtc(buf: *[80]u8, t: f64) []const u8 {
+    const ms: i64 = @intFromFloat(t);
+    const days = @divFloor(ms, 86_400_000);
+    const in_day = ms - days * 86_400_000;
+    const z = days + 719_468;
+    const era = @divFloor(z, 146_097);
+    const doe = z - era * 146_097;
+    const yoe = @divFloor(doe - @divFloor(doe, 1460) + @divFloor(doe, 36_524) - @divFloor(doe, 146_096), 365);
+    const doy = doe - (365 * yoe + @divFloor(yoe, 4) - @divFloor(yoe, 100));
+    const mp = @divFloor(5 * doy + 2, 153);
+    const d = doy - @divFloor(153 * mp + 2, 5) + 1;
+    const m = if (mp < 10) mp + 3 else mp - 9;
+    const y = yoe + era * 400 + if (m <= 2) @as(i64, 1) else @as(i64, 0);
+    const hour = @divFloor(in_day, 3_600_000);
+    const minute = @mod(@divFloor(in_day, 60_000), 60);
+    const second = @mod(@divFloor(in_day, 1000), 60);
+    const milli = @mod(in_day, 1000);
+    var w: IsoWriter = .{ .buf = buf };
+    if (y >= 0 and y <= 9999) {
+        w.num(y, 4);
+    } else {
+        w.put(if (y < 0) "-" else "+");
+        w.num(if (y < 0) -y else y, 6);
+    }
+    w.put("-");
+    w.num(m, 2);
+    w.put("-");
+    w.num(d, 2);
+    w.put("T");
+    w.num(hour, 2);
+    w.put(":");
+    w.num(minute, 2);
+    w.put(":");
+    w.num(second, 2);
+    w.put(".");
+    w.num(milli, 3);
+    w.put("Z");
+    return buf[0..w.len];
+}
+
 /// A JavaScript `Date` of `ms` as `JSON.stringify` writes it.
 fn putDate(o: *Out, ms: f64) error{NoSpace}!void {
     if (!(@abs(ms) <= 8.64e15)) return o.put("null");
-    var buf: [date.max_format_len]u8 = @splat(0);
+    var buf: [80]u8 = @splat(0);
     try o.byte('"');
-    try o.put(date.format(&buf, @trunc(ms), .iso));
+    try o.put(formatIsoUtc(&buf, ms));
     try o.byte('"');
 }
 
@@ -921,7 +987,7 @@ fn putDateTime(o: *Out, raw: []const u8) ReplyError!void {
 fn timeTicks(raw: []const u8, scale: u8) Error!f64 {
     if (raw.len < 3 or raw.len > 5 or scale > 7) return error.Malformed;
     var n: u64 = 0;
-    for (raw, 0..) |b, i| n |= @as(u64, b) << @intCast(i * 8);
+    for (raw, 0..) |b, i| n |= @as(u64, b) << (std.math.cast(u6, i * 8) orelse unreachable); // i < 5
     var value: f64 = @floatFromInt(n);
     for (scale..7) |_| value *= 10;
     return value;
@@ -1099,7 +1165,7 @@ fn onRow(o: *Out, p: *Pass, cols: []const Column, r: *Reader, nulls: []const u8)
         if (i > 0) try o.byte(',');
         try putUtf16String(o, col.name);
         try o.byte(':');
-        if (nulls.len > 0 and nulls[i / 8] >> @intCast(i % 8) & 1 != 0) {
+        if (nulls.len > 0 and nulls[i / 8] >> (std.math.cast(u3, i % 8) orelse unreachable) & 1 != 0) {  // invariant
             try o.put("null");
         } else {
             try putValue(o, col, r);
@@ -1315,7 +1381,7 @@ fn unhex(buf: []u8, text: []const u8) ![]u8 {
     for (buf[0 .. text.len / 2], 0..) |*b, i| {
         const high = std.mem.indexOfScalar(u8, hex_lower, text[i * 2]) orelse return error.BadHex;
         const low = std.mem.indexOfScalar(u8, hex_lower, text[i * 2 + 1]) orelse return error.BadHex;
-        b.* = @intCast(high << 4 | low);
+        b.* = std.math.cast(u8, high << 4 | low) orelse unreachable; // high/low are hex nibbles
     }
     return buf[0 .. text.len / 2];
 }
@@ -1357,7 +1423,7 @@ test "tdswire: PRELOGIN, LOGIN7 and a SQL batch equal the bytes of tedious" {
     var s: Scratch = .{};
     var o: Out = .{ .buf = &s.a };
     var trace: [trace_bytes]u8 = @splat(0);
-    for (&trace, 0..) |*b, i| b.* = @truncate(i * 7 + 3);
+    for (&trace, 0..) |*b, i| b.* = std.math.cast(u8, i * 7 + 3) orelse unreachable; // trace bytes from 0..255
     try prelogin(&o, true, &trace);
     try std.testing.expectEqualSlices(u8, try vectorBytes(&s, "prelogin_on"), s.a[0..o.len]);
     try std.testing.expectEqual(encryption.on, try preloginEncryption(s.a[0..o.len]));

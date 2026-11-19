@@ -3,7 +3,7 @@
 //! and the JSON of a row. Everything here works on buffers that the
 //! client (`my.zig`) owns; nothing here touches a socket.
 const std = @import("std");
-const mywire = @import("core").mywire;
+const mywire = @import("wire").mywire;
 const http = @import("http.zig");
 
 pub const Mode = enum(u8) { single, independently, transaction };

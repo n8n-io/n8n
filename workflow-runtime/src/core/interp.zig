@@ -19,14 +19,7 @@ const Instr = module.Instr;
 const Fibre = heap.Fibre;
 const Frame = heap.Frame;
 
-pub const Limits = struct {
-    call_depth: u32 = 256,
-    fibres: u32 = 64,
-    fuel_total: u64 = 50_000_000,
-    /// Run the compiled form of a function when the module has one
-    /// (`aot.zig`). The results, the region and the fuel are the same.
-    aot: bool = true,
-};
+pub const Limits = @import("limits").Limits;
 
 pub const EffectReq = struct {
     fibre: u32,

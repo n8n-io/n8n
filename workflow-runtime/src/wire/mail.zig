@@ -586,7 +586,7 @@ fn putDecimal(o: *Out, n: u64) Error!void {
     var rest = n;
     for (0..digits.len) |_| {
         at -= 1;
-        digits[at] = '0' + @as(u8, @intCast(rest % 10));
+        digits[at] = '0' + (std.math.cast(u8, rest % 10) orelse unreachable); // rest % 10 < 10
         rest /= 10;
         if (rest == 0) break;
     }
@@ -595,13 +595,13 @@ fn putDecimal(o: *Out, n: u64) Error!void {
 
 fn putTwo(o: *Out, n: u64) Error!void {
     std.debug.assert(n < 100);
-    try o.byte('0' + @as(u8, @intCast(n / 10)));
-    try o.byte('0' + @as(u8, @intCast(n % 10)));
+    try o.byte('0' + (std.math.cast(u8, n / 10) orelse unreachable)); // n < 100
+    try o.byte('0' + (std.math.cast(u8, n % 10) orelse unreachable)); // n < 100
 }
 
 /// `toUTCString` with `+0000` for `GMT`.
 fn putDate(o: *Out, now_ms: i64) Error!void {
-    const secs: u64 = @intCast(@divFloor(@max(now_ms, 0), 1000));
+    const secs: u64 = std.math.cast(u64, @divFloor(@max(now_ms, 0), 1000)) orelse unreachable; // now_ms is a valid timestamp
     const days = secs / 86400;
     const rem = secs % 86400;
     // The civil date of a day count (the algorithm of Howard Hinnant).

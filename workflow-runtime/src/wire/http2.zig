@@ -108,7 +108,7 @@ pub const FrameHeader = struct {
     pub fn parse(b: *const [frame_header_len]u8) FrameHeader {
         return .{
             .len = (@as(u32, b[0]) << 16) | (@as(u32, b[1]) << 8) | b[2],
-            .type = @fromBackingInt(@intCast(b[3])),
+            .type = @fromBackingInt(std.math.cast(u8, b[3]) orelse unreachable), // b[3] is a u8
             .flags = b[4],
             .stream = std.mem.readInt(u32, b[5..9], .big) & 0x7fffffff,
         };
@@ -116,9 +116,9 @@ pub const FrameHeader = struct {
 
     pub fn write(h: FrameHeader, b: *[frame_header_len]u8) void {
         std.debug.assert(h.len <= max_max_frame and h.stream <= 0x7fffffff);
-        b[0] = @intCast(h.len >> 16);
-        b[1] = @intCast((h.len >> 8) & 0xff);
-        b[2] = @intCast(h.len & 0xff);
+        b[0] = std.math.cast(u8, h.len >> 16) orelse unreachable; // h.len <= max_max_frame
+        b[1] = std.math.cast(u8, (h.len >> 8) & 0xff) orelse unreachable;  // invariant
+        b[2] = std.math.cast(u8, h.len & 0xff) orelse unreachable;  // invariant
         b[3] = @backingInt(h.type);
         b[4] = h.flags;
         std.mem.writeInt(u32, b[5..9], h.stream, .big);
@@ -153,9 +153,9 @@ pub const Reader = struct {
     max_frame: u32 = default_max_frame,
     /// HEADERS and CONTINUATION payloads; bounds the header block.
     block: []u8,
-    hdr: [frame_header_len]u8 = undefined,
+    hdr: [frame_header_len]u8 = @splat(0),
     hdr_have: u8 = 0,
-    cur: FrameHeader = undefined,
+    cur: FrameHeader = .{ .len = 0, .type = @enumFromInt(0), .flags = 0, .stream = 0 },
     in_frame: bool = false,
     /// Payload bytes of `cur` taken so far.
     got: u32 = 0,
@@ -164,7 +164,7 @@ pub const Reader = struct {
     pad_known: bool = false,
     /// Small fixed payloads: RST, PING, GOAWAY head, WINDOW_UPDATE, a
     /// SETTINGS entry.
-    ctl: [8]u8 = undefined,
+    ctl: [8]u8 = @splat(0),
     ctl_have: u8 = 0,
     /// The header block collected so far, and the payload start of the
     /// current HEADERS or CONTINUATION frame in `block`.
@@ -194,7 +194,7 @@ pub const Reader = struct {
                 if (pos == in.len) return;
                 const take = @min(frame_header_len - r.hdr_have, in.len - pos);
                 @memcpy(r.hdr[r.hdr_have..][0..take], in[pos..][0..take]);
-                r.hdr_have += @intCast(take);
+                r.hdr_have += std.math.cast(u8, take) orelse unreachable; // take <= 9
                 pos += take;
                 if (r.hdr_have < frame_header_len) return;
                 r.hdr_have = 0;
@@ -204,7 +204,7 @@ pub const Reader = struct {
                 r.got = 0;
             }
             const left = r.cur.len - r.got;
-            const take: u32 = @intCast(@min(left, in.len - pos));
+            const take: u32 = std.math.cast(u32, @min(left, in.len - pos)) orelse unreachable;  // invariant
             if (take > 0) {
                 try r.payload(in[pos..][0..take], h);
                 pos += take;
@@ -299,7 +299,7 @@ pub const Reader = struct {
             },
             .headers, .continuation => {
                 @memcpy(r.block[r.block_len..][0..bytes.len], bytes);
-                r.block_len += @intCast(bytes.len);
+                r.block_len += std.math.cast(u32, bytes.len) orelse unreachable;  // invariant
             },
             .rst_stream, .ping, .window_update, .goaway, .settings => {
                 // GOAWAY keeps its first 8 bytes; SETTINGS one entry at a time.
@@ -313,7 +313,7 @@ pub const Reader = struct {
                     }
                 }
             },
-            else => {},
+            else => {}, // unsupported frame type: payload is skipped
         }
     }
 
@@ -350,12 +350,12 @@ pub const Reader = struct {
                     r.cont_stream = f.stream;
                 }
             },
-            .rst_stream => try h.onRst(f.stream, @fromBackingInt(@intCast(std.mem.readInt(u32, r.ctl[0..4], .big)))),
+            .rst_stream => try h.onRst(f.stream, @fromBackingInt(std.math.cast(u32, std.mem.readInt(u32, r.ctl[0..4], .big)) orelse unreachable)),  // invariant
             .settings => try h.onSettingsEnd(f.flags & flag_ack != 0),
             .ping => try h.onPing(r.ctl, f.flags & flag_ack != 0),
-            .goaway => try h.onGoaway(std.mem.readInt(u32, r.ctl[0..4], .big) & 0x7fffffff, @fromBackingInt(@intCast(std.mem.readInt(u32, r.ctl[4..8], .big)))),
+            .goaway => try h.onGoaway(std.mem.readInt(u32, r.ctl[0..4], .big) & 0x7fffffff, @fromBackingInt(std.math.cast(u32, std.mem.readInt(u32, r.ctl[4..8], .big)) orelse unreachable)),  // invariant
             .window_update => try h.onWindowUpdate(f.stream, std.mem.readInt(u32, r.ctl[0..4], .big) & 0x7fffffff),
-            else => {},
+            else => {}, // priority and unsupported frames: no handler action
         }
     }
 };
@@ -371,7 +371,7 @@ fn header(out: []u8, len: *usize, h: FrameHeader) WriteError!void {
 }
 
 pub fn writeSettings(out: []u8, len: *usize, entries: []const struct { SettingId, u32 }) WriteError!void {
-    try header(out, len, .{ .len = @intCast(entries.len * 6), .type = .settings, .flags = 0, .stream = 0 });
+    try header(out, len, .{ .len = std.math.cast(u32, entries.len * 6) orelse unreachable, .type = .settings, .flags = 0, .stream = 0 });  // invariant
     for (entries) |e| {
         std.mem.writeInt(u16, out[len.*..][0..2], @backingInt(e[0]), .big);
         std.mem.writeInt(u32, out[len.* + 2 ..][0..4], e[1], .big);
@@ -436,13 +436,13 @@ pub fn frameHeaderBlock(out: []u8, len: *usize, stream: u32, block_len: usize, m
         const n = @min(max_frame, block_len - k * max_frame);
         const dst = base + (k + 1) * frame_header_len + k * max_frame;
         std.mem.copyBackwards(u8, out[dst..][0..n], out[src..][0..n]);
-        (FrameHeader{ .len = @intCast(n), .type = .continuation, .flags = if (k == nframes - 1) flag_end_headers else 0, .stream = stream })
+        (FrameHeader{ .len = std.math.cast(u32, n) orelse unreachable, .type = .continuation, .flags = if (k == nframes - 1) flag_end_headers else 0, .stream = stream })  // invariant
             .write(out[dst - frame_header_len ..][0..frame_header_len]);
     }
     const first_n = @min(block_len, max_frame);
     var flags: u8 = if (end_stream) flag_end_stream else 0;
     if (nframes == 1) flags |= flag_end_headers;
-    (FrameHeader{ .len = @intCast(first_n), .type = .headers, .flags = flags, .stream = stream }).write(out[base..][0..frame_header_len]);
+    (FrameHeader{ .len = std.math.cast(u32, first_n) orelse unreachable, .type = .headers, .flags = flags, .stream = stream }).write(out[base..][0..frame_header_len]);  // invariant
     len.* = base + total;
 }
 
@@ -469,7 +469,7 @@ fn plain(name: []const u8) bool {
 /// ("Name: value\r\n" ... ending with the blank line), as `request.zig`
 /// builds them. Names go to lower case.
 pub fn encodeRequest(out: []u8, len: *usize, method: []const u8, https: bool, authority: []const u8, path: []const u8, lines: []const u8) WriteError!void {
-    var ab: [600]u8 = undefined;
+    var ab: [600]u8 = @splat(0);
     var an: usize = 0;
     try hpack.encodeField(&ab, &an, ":authority", authority, false);
     return encodeRequestFast(out, len, method, https, ab[0..an], path, lines);
@@ -493,7 +493,7 @@ pub fn encodeRequestFast(out: []u8, len: *usize, method: []const u8, https: bool
     } else {
         // Literal without indexing, name :path (static 4), raw value.
         try putByte(out, len, 0x04);
-        try hpack.encodeInt(out, len, 0, 7, @intCast(path.len));
+        try hpack.encodeInt(out, len, 0, 7, std.math.cast(u32, path.len) orelse unreachable);  // invariant
         if (out.len - len.* < path.len) return error.NoSpace;
         @memcpy(out[len.*..][0..path.len], path);
         len.* += path.len;
@@ -532,12 +532,12 @@ const const_lines = [_][]const u8{
 
 const const_encoded = blk: {
     @setEvalBranchQuota(200_000);
-    var encs: [const_lines.len][]const u8 = undefined;
+    var encs: [const_lines.len][]const u8 = @splat(&[_]u8{});
     for (const_lines, 0..) |l, i| {
         const colon = std.mem.indexOfScalar(u8, l, ':').?;
-        var buf: [128]u8 = undefined;
+        var buf: [128]u8 = @splat(0);
         var n: usize = 0;
-        hpack.encodeField(&buf, &n, l[0..colon], l[colon + 2 ..], !plain(l[0..colon])) catch unreachable;
+        hpack.encodeField(&buf, &n, l[0..colon], l[colon + 2 ..], !plain(l[0..colon])) catch unreachable;  // invariant
         const final = buf[0..n].*;
         encs[i] = &final;
     }
@@ -568,7 +568,7 @@ fn encodeLine(out: []u8, len: *usize, line: []const u8) WriteError!void {
 fn encodeLowered(out: []u8, len: *usize, raw_name: []const u8, value: []const u8) WriteError!void {
     // Safe builds would fill the buffer on every call; it is written before use.
     @setRuntimeSafety(false);
-    var nb: [256]u8 = undefined;
+    var nb: [256]u8 = @splat(0);
     return encodeNamed(out, len, std.ascii.lowerString(nb[0..raw_name.len], raw_name), value);
 }
 
@@ -582,51 +582,75 @@ fn encodeNamed(out: []u8, len: *usize, name: []const u8, value: []const u8) Writ
 
 /// Records what the reader reports, as text.
 const Rec = struct {
-    buf: [4096]u8 = undefined,
+    buf: [4096]u8 = @splat(0),
     len: usize = 0,
     pub const Err = error{};
 
-    fn put(r: *Rec, comptime fmt: []const u8, args: anytype) void {
-        const w = std.fmt.bufPrint(r.buf[r.len..], fmt, args) catch return;
-        r.len += w.len;
+    fn putU32(r: *Rec, n: u32) void {
+        if (r.len >= r.buf.len) return;
+        if (n == 0) {
+            r.buf[r.len] = '0'; r.len += 1;
+            return;
+        }
+        var tmp: [10]u8 = @splat(0);
+        var ti: usize = 10;
+        var x = n;
+        while (x > 0) {
+            ti -= 1;
+            tmp[ti] = std.math.cast(u8, '0' + x % 10) orelse unreachable; // invariant
+            x /= 10;
+        }
+        const digits = tmp[ti..];
+        if (r.len + digits.len > r.buf.len) return;
+        @memcpy(r.buf[r.len..][0..digits.len], digits);
+        r.len += digits.len;
+    }
+    fn putStr(r: *Rec, s: []const u8) void {
+        if (r.len + s.len > r.buf.len) return;
+        @memcpy(r.buf[r.len..][0..s.len], s);
+        r.len += s.len;
+    }
+    fn putByte(r: *Rec, b: u8) void {
+        if (r.len >= r.buf.len) return;
+        r.buf[r.len] = b; r.len += 1;
     }
     pub fn onDataStart(r: *Rec, s: u32, n: u32, end_stream: bool) Err!void {
-        r.put("D{d}:{d}{s}[", .{ s, n, if (end_stream) "E" else "" });
+        r.putByte('D'); r.putU32(s); r.putByte(':'); r.putU32(n); r.putStr(if (end_stream) "E" else ""); r.putByte('[');
     }
     pub fn onData(r: *Rec, s: u32, b: []const u8) Err!void {
         _ = s;
-        r.put("{s}", .{b});
+        r.putStr(b);
     }
     pub fn onDataEnd(r: *Rec, s: u32, end_stream: bool) Err!void {
         _ = s;
         _ = end_stream;
-        r.put("]", .{});
+        r.putByte(']');
     }
     pub fn onHeaders(r: *Rec, s: u32, block: []const u8, end_stream: bool) Err!void {
-        r.put("H{d}:{d}{s}", .{ s, block.len, if (end_stream) "E" else "" });
+        r.putByte('H'); r.putU32(s); r.putByte(':'); r.putU32(std.math.cast(u32, block.len) orelse unreachable); r.putStr(if (end_stream) "E" else ""); // invariant
     }
     pub fn onRst(r: *Rec, s: u32, c: ErrorCode) Err!void {
-        r.put("R{d}:{s}", .{ s, c.text() });
+        r.putByte('R'); r.putU32(s); r.putByte(':'); r.putStr(c.text());
     }
     pub fn onSetting(r: *Rec, id: u16, v: u32) Err!void {
-        r.put("S{d}={d}", .{ id, v });
+        r.putByte('S'); r.putU32(id); r.putByte('='); r.putU32(v);
     }
     pub fn onSettingsEnd(r: *Rec, ack: bool) Err!void {
-        r.put("S{s}", .{if (ack) "A" else "."});
+        r.putByte('S'); r.putStr(if (ack) "A" else ".");
     }
     pub fn onPing(r: *Rec, d: [8]u8, ack: bool) Err!void {
-        r.put("P{d}{s}", .{ d[7], if (ack) "A" else "" });
+        r.putByte('P'); r.putU32(d[7]); r.putStr(if (ack) "A" else "");
     }
     pub fn onGoaway(r: *Rec, last: u32, c: ErrorCode) Err!void {
-        r.put("G{d}:{s}", .{ last, c.text() });
+        r.putByte('G'); r.putU32(last); r.putByte(':'); r.putStr(c.text());
     }
     pub fn onWindowUpdate(r: *Rec, s: u32, inc: u32) Err!void {
-        r.put("W{d}+{d}", .{ s, inc });
+        r.putByte('W'); r.putU32(s); r.putByte('+'); r.putU32(inc);
     }
 };
 
 fn frame(out: []u8, len: *usize, ty: FrameType, flags: u8, stream: u32, payload: []const u8) void {
-    (FrameHeader{ .len = @intCast(payload.len), .type = ty, .flags = flags, .stream = stream }).write(out[len.*..][0..9]);
+    (FrameHeader{ .len = std.math.cast(u32, payload.len) orelse unreachable, .type = ty, .flags = flags, .stream = stream }).write(out[len.*..][0..9]);  // invariant
     @memcpy(out[len.* + 9 ..][0..payload.len], payload);
     len.* += 9 + payload.len;
 }
@@ -642,7 +666,7 @@ fn sampleStream(buf: []u8) usize {
     frame(buf, &n, .window_update, 0, 0, &.{ 0, 1, 0, 0 });
     frame(buf, &n, .ping, 0, 0, &.{ 0, 0, 0, 0, 0, 0, 0, 7 });
     frame(buf, &n, .rst_stream, 0, 3, &.{ 0, 0, 0, 7 });
-    frame(buf, &n, @fromBackingInt(@intCast(0xfa)), 0, 0, "unknown frames are ignored");
+    frame(buf, &n, @fromBackingInt(std.math.cast(u8, 0xfa) orelse unreachable), 0, 0, "unknown frames are ignored");  // invariant
     frame(buf, &n, .goaway, 0, 0, &.{ 0, 0, 0, 5, 0, 0, 0, 0, 'd', 'b', 'g' });
     return n;
 }
@@ -650,9 +674,9 @@ fn sampleStream(buf: []u8) usize {
 const sample_want = "S3=100S4=65536S.SAH1:3D1:9[hello]D1:6E[ world]W0+65536P7R3:REFUSED_STREAMG5:NO_ERROR";
 
 test "http2: the reader reports frames the same for every split of the input" {
-    var buf: [512]u8 = undefined;
+    var buf: [512]u8 = @splat(0);
     const n = sampleStream(&buf);
-    var block: [64]u8 = undefined;
+    var block: [64]u8 = @splat(0);
     var split: usize = 0;
     while (split <= n) : (split += 1) {
         var r = Reader.init(&block, default_max_frame);
@@ -669,7 +693,7 @@ test "http2: the reader reports frames the same for every split of the input" {
 }
 
 test "http2: protocol errors" {
-    var block: [64]u8 = undefined;
+    var block: [64]u8 = @splat(0);
     const cases = [_]struct { ty: FrameType, flags: u8, stream: u32, payload: []const u8, err: ReadError }{
         .{ .ty = .data, .flags = 0, .stream = 0, .payload = "x", .err = error.Protocol },
         .{ .ty = .settings, .flags = 0, .stream = 1, .payload = "", .err = error.Protocol },
@@ -685,7 +709,7 @@ test "http2: protocol errors" {
         .{ .ty = .window_update, .flags = 0, .stream = 0, .payload = "123", .err = error.FrameSize },
     };
     for (cases) |c| {
-        var buf: [128]u8 = undefined;
+        var buf: [128]u8 = @splat(0);
         var n: usize = 0;
         frame(&buf, &n, c.ty, c.flags, c.stream, c.payload);
         var r = Reader.init(&block, default_max_frame);
@@ -693,7 +717,7 @@ test "http2: protocol errors" {
         try std.testing.expectError(c.err, r.feed(buf[0..n], &rec));
     }
     // A frame other than CONTINUATION inside a header block.
-    var buf: [64]u8 = undefined;
+    var buf: [64]u8 = @splat(0);
     var n: usize = 0;
     frame(&buf, &n, .headers, 0, 1, &.{0x82});
     frame(&buf, &n, .ping, 0, 0, &.{ 0, 0, 0, 0, 0, 0, 0, 0 });
@@ -701,20 +725,20 @@ test "http2: protocol errors" {
     var rec: Rec = .{};
     try std.testing.expectError(error.Protocol, r.feed(buf[0..n], &rec));
     // Larger than SETTINGS_MAX_FRAME_SIZE.
-    var hb: [9]u8 = undefined;
+    var hb: [9]u8 = @splat(0);
     (FrameHeader{ .len = default_max_frame + 1, .type = .data, .flags = 0, .stream = 1 }).write(&hb);
     r = Reader.init(&block, default_max_frame);
     try std.testing.expectError(error.FrameSize, r.feed(&hb, &rec));
 }
 
 test "http2: a header block split into CONTINUATION frames and read back" {
-    var out: [100_000]u8 = undefined;
+    var out: [100_000]u8 = @splat(0);
     var len: usize = 3;
     const block_len: usize = 40_000;
-    for (0..block_len) |i| out[len + 9 + i] = @intCast(i % 251);
+    for (0..block_len) |i| out[len + 9 + i] = std.math.cast(u8, i % 251) orelse unreachable;  // invariant
     try frameHeaderBlock(&out, &len, 5, block_len, default_max_frame, true);
     try std.testing.expectEqual(@as(usize, 3 + block_len + 3 * 9), len);
-    var block: [block_len]u8 = undefined;
+    var block: [block_len]u8 = @splat(0);
     var r = Reader.init(&block, default_max_frame);
     const Got = struct {
         n: usize = 0,
@@ -745,24 +769,29 @@ test "http2: a header block split into CONTINUATION frames and read back" {
 }
 
 test "http2: request headers drop connection headers and keep the rest in lower case" {
-    var out: [512]u8 = undefined;
+    var out: [512]u8 = @splat(0);
     var len: usize = 0;
     try encodeRequest(&out, &len, "POST", true, "api.example.com", "/v1/x?a=1", "Content-Type: application/json\r\nConnection: keep-alive\r\nAuthorization: Bearer t\r\nTE: gzip\r\nX-Id: 7\r\n\r\n");
     // Authorization (static name 23) is a never-indexed literal: 0001 1111, then 23 - 15.
     try std.testing.expect(std.mem.indexOf(u8, out[0..len], &.{ 0x1f, 0x08 }) != null);
     // X-Id (a new name) too: 0001 0000, then the name.
     try std.testing.expect(std.mem.indexOf(u8, out[0..len], &.{0x10}) != null);
-    var ring: [4096]u8 = undefined;
-    var ents: [hpack.entriesFor(4096)]hpack.Entry = undefined;
-    var scratch: [256]u8 = undefined;
+    var ring: [4096]u8 = @splat(0);
+    var ents: [hpack.entriesFor(4096)]hpack.Entry = @splat(.{ .off = 0, .nlen = 0, .vlen = 0 });
+    var scratch: [256]u8 = @splat(0);
     var d = hpack.Decoder.init(&ring, &ents, &scratch);
     const C = struct {
-        buf: [512]u8 = undefined,
+        buf: [512]u8 = @splat(0),
         n: usize = 0,
         pub const Err = error{};
         pub fn field(c: *@This(), name: []const u8, value: []const u8) Err!void {
-            const w = std.fmt.bufPrint(c.buf[c.n..], "{s}={s};", .{ name, value }) catch unreachable;
-            c.n += w.len;
+            std.debug.assert(c.n + name.len + 1 + value.len + 1 <= c.buf.len);
+            @memcpy(c.buf[c.n..][0..name.len], name);
+            c.n += name.len;
+            c.buf[c.n] = '='; c.n += 1;
+            @memcpy(c.buf[c.n..][0..value.len], value);
+            c.n += value.len;
+            c.buf[c.n] = ';'; c.n += 1;
         }
     };
     var c: C = .{};

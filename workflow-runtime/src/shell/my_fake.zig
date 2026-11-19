@@ -11,7 +11,7 @@
 //! line into `log` for each login, command text, reset, quit and
 //! `KILL QUERY`, so a test can say what the client sent.
 const std = @import("std");
-const mywire = @import("core").mywire;
+const mywire = @import("wire").mywire;
 const sys = @import("sys.zig");
 
 /// What the server does at a login.

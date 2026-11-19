@@ -6,8 +6,8 @@
 //! in `WFRT_TEST_MS_PASSWORD`), and are skipped without it.
 const std = @import("std");
 const core_lib = @import("core");
-const tds = core_lib.tdswire;
-const cases = core_lib.tdscase_tables;
+const tds = @import("wire").tdswire;
+const cases = @import("wire").tdscase_tables;
 const sys = @import("sys.zig");
 const creds = @import("creds.zig");
 const ms = @import("ms.zig");

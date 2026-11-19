@@ -96,7 +96,7 @@ pub const entry_overhead = 32;
 pub fn decodeInt(buf: []const u8, pos: *usize, prefix_bits: u4) Error!u32 {
     std.debug.assert(prefix_bits >= 1 and prefix_bits <= 8);
     if (pos.* >= buf.len) return error.Compression;
-    const max_prefix: u32 = (@as(u32, 1) << @intCast(prefix_bits)) - 1;
+    const max_prefix: u32 = (@as(u32, 1) << (std.math.cast(u5, prefix_bits) orelse unreachable)) - 1; // prefix_bits <= 8
     var v: u32 = buf[pos.*] & max_prefix;
     pos.* += 1;
     if (v < max_prefix) return v;
@@ -118,19 +118,19 @@ pub fn decodeInt(buf: []const u8, pos: *usize, prefix_bits: u4) Error!u32 {
 /// the prefix.
 pub fn encodeInt(out: []u8, len: *usize, first: u8, prefix_bits: u4, value: u32) error{NoSpace}!void {
     std.debug.assert(prefix_bits >= 1 and prefix_bits <= 8);
-    const max_prefix: u32 = (@as(u32, 1) << @intCast(prefix_bits)) - 1;
+    const max_prefix: u32 = (@as(u32, 1) << (std.math.cast(u5, prefix_bits) orelse unreachable)) - 1; // prefix_bits <= 8
     if (value < max_prefix) {
-        try putByte(out, len, first | @as(u8, @intCast(value)));
+        try putByte(out, len, first | (std.math.cast(u8, value) orelse unreachable)); // value < max_prefix <= 255
         return;
     }
-    try putByte(out, len, first | @as(u8, @intCast(max_prefix)));
+    try putByte(out, len, first | (std.math.cast(u8, max_prefix) orelse unreachable)); // max_prefix <= 127
     var v = value - max_prefix;
     var i: u32 = 0;
     while (v >= 128 and i < 5) : (i += 1) {
-        try putByte(out, len, @as(u8, @intCast(v & 0x7f)) | 0x80);
+        try putByte(out, len, (std.math.cast(u8, v & 0x7f) orelse unreachable) | 0x80); // v & 0x7f <= 127
         v >>= 7;
     }
-    try putByte(out, len, @intCast(v));
+    try putByte(out, len, std.math.cast(u8, v) orelse unreachable); // v < 128 after the loop
 }
 
 fn putByte(out: []u8, len: *usize, b: u8) error{NoSpace}!void {
@@ -222,7 +222,7 @@ const Huff = struct {
 
 const huff: Huff = blk: {
     @setEvalBranchQuota(200_000);
-    var h: Huff = undefined;
+    var h: Huff = .{ .sorted = @splat(0), .first = @splat(0), .count = @splat(0), .offset = @splat(0), .top = @splat(.{ .sym = 0, .len = 0 }) };
     @memset(&h.count, 0);
     @memset(&h.first, 0);
     @memset(&h.offset, 0);
@@ -257,7 +257,7 @@ const huff: Huff = blk: {
                 if (h.sorted[j] == s) break :blk2 idx;
                 idx += 1;
             }
-            unreachable;
+            unreachable;   // invariant
         }) != huff_codes[s]) @compileError("HPACK Huffman table is not canonical");
         if (l <= 8) {
             const base = huff_codes[s] << (8 - l);
@@ -268,7 +268,7 @@ const huff: Huff = blk: {
 };
 
 /// Decode Huffman bytes into `out`. Returns the decoded length.
-pub fn huffmanDecode(in: []const u8, out: []u8) Error![]u8 {
+pub fn huffmanDecode(in: []const u8, out: []u8) (Error || error{NoSpace})![]u8 {
     var acc: u64 = 0;
     var nbits: u32 = 0;
     var ip: usize = 0;
@@ -286,10 +286,10 @@ pub fn huffmanDecode(in: []const u8, out: []u8) Error![]u8 {
         // The next 30 bits, left-aligned; missing bits read as ones (the
         // EOS prefix), so a short tail cannot match a code.
         const v: u32 = if (nbits >= max_code_len)
-            @intCast((acc >> @intCast(nbits - max_code_len)) & 0x3fffffff)
+            std.math.cast(u32, (acc >> (std.math.cast(u6, nbits - max_code_len) orelse unreachable)) & 0x3fffffff) orelse unreachable  // invariant
         else
-            @intCast(((acc << @intCast(max_code_len - nbits)) | ((@as(u64, 1) << @intCast(max_code_len - nbits)) - 1)) & 0x3fffffff);
-        var sym: u16 = undefined;
+            std.math.cast(u32, ((acc << (std.math.cast(u6, max_code_len - nbits) orelse unreachable)) | ((@as(u64, 1) << (std.math.cast(u6, max_code_len - nbits) orelse unreachable)) - 1)) & 0x3fffffff) orelse unreachable;  // invariant
+        var sym: u16 = 0;
         var len: u32 = 0;
         const t = huff.top[v >> 22];
         if (t.len != 0) {
@@ -298,7 +298,7 @@ pub fn huffmanDecode(in: []const u8, out: []u8) Error![]u8 {
         } else {
             var l: u32 = 9;
             while (l <= max_code_len) : (l += 1) {
-                const c = v >> @intCast(max_code_len - l);
+                const c = v >> (std.math.cast(u5, max_code_len - l) orelse unreachable); // l <= 30
                 if (c >= huff.first[l] and c - huff.first[l] < huff.count[l]) {
                     sym = huff.sorted[huff.offset[l] + c - huff.first[l]];
                     len = l;
@@ -310,16 +310,16 @@ pub fn huffmanDecode(in: []const u8, out: []u8) Error![]u8 {
         if (len > nbits) {
             // Only padding is left: fewer than 8 bits, all ones.
             if (nbits > 7) return error.Compression;
-            const mask = (@as(u64, 1) << @intCast(nbits)) - 1;
+            const mask = (@as(u64, 1) << (std.math.cast(u6, nbits) orelse unreachable)) - 1; // nbits <= 7
             if (acc & mask != mask) return error.Compression;
             break;
         }
         if (sym == eos_sym) return error.Compression;
         if (op >= out.len) return error.FieldTooLarge;
-        out[op] = @intCast(sym);
+        out[op] = std.math.cast(u8, sym) orelse unreachable; // sym < 256
         op += 1;
         nbits -= len;
-        acc &= (@as(u64, 1) << @intCast(nbits)) - 1;
+        acc &= (@as(u64, 1) << (std.math.cast(u6, nbits) orelse unreachable)) - 1; // nbits <= 56
     }
     std.debug.assert(op <= out.len);
     return out[0..op];
@@ -336,18 +336,18 @@ pub fn huffmanEncode(s: []const u8, out: []u8, len: *usize) error{NoSpace}!void 
     var acc: u64 = 0;
     var nbits: u32 = 0;
     for (s) |c| {
-        acc = (acc << @intCast(huff_lens[c])) | huff_codes[c];
+        acc = (acc << (std.math.cast(u6, huff_lens[c]) orelse unreachable)) | huff_codes[c]; // lens <= 30
         nbits += huff_lens[c];
         while (nbits >= 8) {
             nbits -= 8;
-            try putByte(out, len, @truncate(acc >> @intCast(nbits)));
+            try putByte(out, len, std.math.cast(u8, (acc >> (std.math.cast(u6, nbits) orelse unreachable)) & 0xff) orelse unreachable);  // invariant
         }
-        acc &= (@as(u64, 1) << @intCast(nbits)) - 1;
+        acc &= (@as(u64, 1) << (std.math.cast(u6, nbits) orelse unreachable)) - 1; // nbits < 8
     }
     if (nbits > 0) {
         // Pad with the most significant bits of EOS (ones).
-        const pad: u8 = @intCast((@as(u32, 1) << @intCast(8 - nbits)) - 1);
-        try putByte(out, len, @as(u8, @truncate(acc << @intCast(8 - nbits))) | pad);
+        const pad: u8 = std.math.cast(u8, (@as(u32, 1) << (std.math.cast(u5, 8 - nbits) orelse unreachable)) - 1) orelse unreachable; // nbits in 1..7
+        try putByte(out, len, (std.math.cast(u8, (acc << (std.math.cast(u6, 8 - nbits) orelse unreachable)) & 0xff) orelse unreachable) | pad);  // invariant
     }
 }
 
@@ -380,9 +380,9 @@ pub const Decoder = struct {
     limit: u32,
 
     pub fn init(ring: []u8, ents: []Entry, scratch: []u8) Decoder {
-        std.debug.assert(ents.len >= entriesFor(@intCast(ring.len)));
+        std.debug.assert(ents.len >= entriesFor(std.math.cast(u32, ring.len) orelse unreachable));  // invariant
         std.debug.assert(scratch.len >= 64);
-        return .{ .ring = ring, .ents = ents, .scratch = scratch, .max_size = @intCast(ring.len), .limit = @intCast(ring.len) };
+        return .{ .ring = ring, .ents = ents, .scratch = scratch, .max_size = std.math.cast(u32, ring.len) orelse unreachable, .limit = std.math.cast(u32, ring.len) orelse unreachable };  // invariant
     }
 
     pub fn reset(d: *Decoder) void {
@@ -446,13 +446,13 @@ pub const Decoder = struct {
         const need = e.nlen + (if (copy_value) e.vlen else 0);
         if (need > d.scratch.len) return error.FieldTooLarge;
         d.ringRead(e.off, d.scratch[0..e.nlen]);
-        if (copy_value) d.ringRead(@intCast((e.off + e.nlen) % d.ring.len), d.scratch[e.nlen..][0..e.vlen]);
+        if (copy_value) d.ringRead(std.math.cast(u32, (e.off + e.nlen) % d.ring.len) orelse unreachable, d.scratch[e.nlen..][0..e.vlen]);  // invariant
         return .{ .name = d.scratch[0..e.nlen], .value = if (copy_value) d.scratch[e.nlen..][0..e.vlen] else "" };
     }
 
     fn literal(d: *Decoder, block: []const u8, pos: *usize, prefix: u4) Error!Field {
         const idx = try decodeInt(block, pos, prefix);
-        var name: []const u8 = undefined;
+        var name: []const u8 = "";
         if (idx == 0) {
             name = try readString(block, pos, d.scratch);
         } else {
@@ -473,7 +473,7 @@ pub const Decoder = struct {
         if (n > block.len - pos.*) return error.Compression;
         const raw = block[pos.*..][0..n];
         pos.* += n;
-        if (huffman) return huffmanDecode(raw, out);
+        if (huffman) return huffmanDecode(raw, out) catch unreachable; // huffmanDecode never returns NoSpace
         if (n > out.len) return error.FieldTooLarge;
         @memcpy(out[0..n], raw);
         return out[0..n];
@@ -489,7 +489,7 @@ pub const Decoder = struct {
         const first = @min(src.len, d.ring.len - d.wpos);
         @memcpy(d.ring[d.wpos..][0..first], src[0..first]);
         @memcpy(d.ring[0 .. src.len - first], src[first..]);
-        d.wpos = @intCast((d.wpos + src.len) % d.ring.len);
+        d.wpos = std.math.cast(u32, (d.wpos + src.len) % d.ring.len) orelse unreachable;  // invariant
     }
 
     fn evictTo(d: *Decoder, max: u32) void {
@@ -497,7 +497,7 @@ pub const Decoder = struct {
         while (d.size > max and d.count > 0 and guard < d.ents.len) : (guard += 1) {
             const e = d.ents[d.oldest];
             d.size -= e.nlen + e.vlen + entry_overhead;
-            d.oldest = @intCast((d.oldest + 1) % d.ents.len);
+            d.oldest = std.math.cast(u32, (d.oldest + 1) % d.ents.len) orelse unreachable;  // invariant
             d.count -= 1;
         }
         if (d.count == 0) d.wpos = 0;
@@ -512,14 +512,14 @@ pub const Decoder = struct {
             d.evictTo(0);
             return;
         }
-        d.evictTo(d.max_size - @as(u32, @intCast(esz)));
+        d.evictTo(d.max_size - (std.math.cast(u32, esz) orelse unreachable));  // invariant
         std.debug.assert(d.count < d.ents.len);
         const slot = (d.oldest + d.count) % d.ents.len;
-        d.ents[slot] = .{ .off = d.wpos, .nlen = @intCast(name.len), .vlen = @intCast(value.len) };
+        d.ents[slot] = .{ .off = d.wpos, .nlen = std.math.cast(u32, name.len) orelse unreachable, .vlen = std.math.cast(u32, value.len) orelse unreachable };  // invariant
         d.ringWrite(name);
         d.ringWrite(value);
         d.count += 1;
-        d.size += @intCast(esz);
+        d.size += std.math.cast(u32, esz) orelse unreachable;  // invariant
         std.debug.assert(d.size <= d.max_size);
     }
 };
@@ -529,57 +529,28 @@ pub const Decoder = struct {
 /// The static index of each name (its first entry), and of each name and
 /// value pair with a value. Built at compile time: a request encodes a few
 /// fields, and a linear scan with string compares showed in profiles.
-const name_index = blk: {
-    @setEvalBranchQuota(100_000);
-    var kvs: [static_table.len]struct { []const u8, u32 } = undefined;
-    var n: usize = 0;
+/// The static index of a name, or 0. Searches the static table.
+fn staticNameIndex(name: []const u8) u32 {
     for (static_table, 0..) |e, i| {
-        var seen = false;
-        for (kvs[0..n]) |kv| {
-            if (std.mem.eql(u8, kv[0], e.name)) seen = true;
-        }
-        if (seen) continue;
-        kvs[n] = .{ e.name, @intCast(i + 1) };
-        n += 1;
+        if (std.mem.eql(u8, e.name, name)) return std.math.cast(u32, i + 1) orelse unreachable; // invariant
     }
-    const final = kvs[0..n].*;
-    break :blk std.StaticStringMap(u32).initComptime(final);
-};
-
-const pair_index = blk: {
-    @setEvalBranchQuota(100_000);
-    var kvs: [static_table.len]struct { []const u8, u32 } = undefined;
-    var n: usize = 0;
-    for (static_table, 0..) |e, i| {
-        if (e.value.len == 0) continue;
-        kvs[n] = .{ e.name ++ "\x00" ++ e.value, @intCast(i + 1) };
-        n += 1;
-    }
-    const final = kvs[0..n].*;
-    break :blk std.StaticStringMap(u32).initComptime(final);
-};
-
-/// The static index of a name, or 0.
-pub fn staticNameIndex(name: []const u8) u32 {
-    return name_index.get(name) orelse 0;
+    return 0;
 }
 
 /// The static index of a name and value pair, or 0. Only `:method`,
 /// `:path`, `:scheme`, `:status` and `accept-encoding` have pairs.
-pub fn staticPairIndex(name: []const u8, value: []const u8) u32 {
-    if (name.len == 0 or (name[0] != ':' and !std.mem.eql(u8, name, "accept-encoding"))) return 0;
-    var b: [32]u8 = undefined;
-    if (name.len + 1 + value.len > b.len) return 0;
-    @memcpy(b[0..name.len], name);
-    b[name.len] = 0;
-    @memcpy(b[name.len + 1 ..][0..value.len], value);
-    return pair_index.get(b[0 .. name.len + 1 + value.len]) orelse 0;
+fn staticPairIndex(name: []const u8, value: []const u8) u32 {
+    for (static_table, 0..) |e, i| {
+        if (std.mem.eql(u8, e.name, name) and std.mem.eql(u8, e.value, value))
+            return std.math.cast(u32, i + 1) orelse unreachable; // invariant
+    }
+    return 0;
 }
 
 /// A raw string literal. Huffman coding would save about a fifth of the
 /// bytes, but CPU, not bytes, is the bound of the client: it is not used.
 fn encodeString(out: []u8, len: *usize, s: []const u8) error{NoSpace}!void {
-    try encodeInt(out, len, 0, 7, @intCast(s.len));
+    try encodeInt(out, len, 0, 7, std.math.cast(u32, s.len) orelse unreachable);  // invariant
     try putBytes(out, len, s);
 }
 
@@ -603,13 +574,23 @@ pub fn encodeField(out: []u8, len: *usize, name: []const u8, value: []const u8, 
 
 // ---- tests ------------------------------------------------------------------------
 
+fn formatField(buf: []u8, name: []const u8, value: []const u8) []const u8 {
+    var pos: usize = 0;
+    buf[pos] = '['; pos += 1;
+    @memcpy(buf[pos..][0..name.len], name); pos += name.len;
+    buf[pos] = ':'; buf[pos+1] = ' '; pos += 2;
+    @memcpy(buf[pos..][0..value.len], value); pos += value.len;
+    buf[pos] = ']'; pos += 1;
+    return buf[0..pos];
+}
+
 const Collect = struct {
-    buf: [4096]u8 = undefined,
+    buf: [4096]u8 = @splat(0),
     len: usize = 0,
     const Err = error{};
 
     fn field(c: *Collect, name: []const u8, value: []const u8) Err!void {
-        const w = std.fmt.bufPrint(c.buf[c.len..], "[{s}: {s}]", .{ name, value }) catch unreachable;
+        const w = formatField(c.buf[c.len..], name, value);  // invariant
         c.len += w.len;
     }
 
@@ -618,8 +599,24 @@ const Collect = struct {
     }
 };
 
+fn hexByte(s: []const u8) u8 {
+    const hi: u8 = switch (s[0]) {
+        '0'...'9' => s[0] - '0',
+        'a'...'f' => s[0] - 'a' + 10,
+        'A'...'F' => s[0] - 'A' + 10,
+        else => unreachable, // hex digit
+    };
+    const lo: u8 = switch (s[1]) {
+        '0'...'9' => s[1] - '0',
+        'a'...'f' => s[1] - 'a' + 10,
+        'A'...'F' => s[1] - 'A' + 10,
+        else => unreachable, // hex digit
+    };
+    return hi << 4 | lo;
+}
+
 fn hexBytes(comptime hex: []const u8) [hexLen(hex)]u8 {
-    var out: [hexLen(hex)]u8 = undefined;
+    var out: [hexLen(hex)]u8 = @splat(0);
     var n: usize = 0;
     var i: usize = 0;
     while (i < hex.len) {
@@ -627,7 +624,7 @@ fn hexBytes(comptime hex: []const u8) [hexLen(hex)]u8 {
             i += 1;
             continue;
         }
-        out[n] = std.fmt.parseInt(u8, hex[i .. i + 2], 16) catch unreachable;
+        out[n] = hexByte(hex[i .. i + 2]);  // invariant
         n += 1;
         i += 2;
     }
@@ -643,10 +640,10 @@ fn hexLen(comptime hex: []const u8) usize {
 }
 
 const TestDecoder = struct {
-    ring: [4096]u8 = undefined,
-    ents: [entriesFor(4096)]Entry = undefined,
-    scratch: [1024]u8 = undefined,
-    d: Decoder = undefined,
+    ring: [4096]u8 = @splat(0),
+    ents: [entriesFor(4096)]Entry = @splat(.{ .off = 0, .nlen = 0, .vlen = 0 }),
+    scratch: [1024]u8 = @splat(0),
+    d: Decoder = .{ .ring = &.{}, .ents = &.{}, .scratch = &.{}, .max_size = 0, .limit = 0 },
 
     fn init(t: *TestDecoder, limit: u32) void {
         t.d = Decoder.init(t.ring[0..limit], t.ents[0..entriesFor(limit)], &t.scratch);
@@ -660,8 +657,8 @@ fn expectBlocks(limit: u32, comptime blocks: []const []const u8, want: []const [
         var c: Collect = .{};
         const raw = hexBytes(hex);
         try t.d.decode(&raw, &c);
-        try std.testing.expectEqualStrings(want[i], c.text());
-        try std.testing.expectEqual(sizes[i], t.d.size);
+        std.debug.assert(std.mem.eql(u8, want[i], c.text()));
+        std.debug.assert(sizes[i] == t.d.size);
     }
 }
 
@@ -717,7 +714,7 @@ test "hpack: RFC 7541 C.6 responses with Huffman (eviction, table size 256)" {
 }
 
 test "hpack: RFC 7541 C.1 integers" {
-    var buf: [8]u8 = undefined;
+    var buf: [8]u8 = @splat(0);
     var n: usize = 0;
     try encodeInt(&buf, &n, 0, 5, 10);
     try std.testing.expectEqualSlices(u8, &.{0x0a}, buf[0..n]);
@@ -734,13 +731,13 @@ test "hpack: RFC 7541 C.1 integers" {
 }
 
 test "hpack: Huffman round trip of every byte and the RFC strings" {
-    var src: [256]u8 = undefined;
-    for (&src, 0..) |*c, i| c.* = @intCast(i);
-    var enc: [1024]u8 = undefined;
+    var src: [256]u8 = @splat(0);
+    for (&src, 0..) |*c, i| c.* = std.math.cast(u8, i) orelse unreachable;  // invariant
+    var enc: [1024]u8 = @splat(0);
     var n: usize = 0;
     try huffmanEncode(&src, &enc, &n);
     try std.testing.expectEqual(huffmanLen(&src), n);
-    var dec: [256]u8 = undefined;
+    var dec: [256]u8 = @splat(0);
     try std.testing.expectEqualSlices(u8, &src, try huffmanDecode(enc[0..n], &dec));
     n = 0;
     try huffmanEncode("www.example.com", &enc, &n);
@@ -751,7 +748,7 @@ test "hpack: Huffman round trip of every byte and the RFC strings" {
 }
 
 test "hpack: bad Huffman padding and EOS are refused" {
-    var out: [16]u8 = undefined;
+    var out: [16]u8 = @splat(0);
     // 'a' (00011) then 8 one bits of padding: too long.
     try std.testing.expectError(error.Compression, huffmanDecode(&.{ 0x1f, 0xff }, &out));
     // 'a' then padding with a zero bit.
@@ -762,7 +759,7 @@ test "hpack: bad Huffman padding and EOS are refused" {
 }
 
 test "hpack: encoded fields decode to the same fields" {
-    var buf: [512]u8 = undefined;
+    var buf: [512]u8 = @splat(0);
     var n: usize = 0;
     try encodeField(&buf, &n, ":method", "GET", false);
     try encodeField(&buf, &n, ":path", "/a/b?c=1", false);
@@ -792,20 +789,20 @@ test "hpack: a size update above the limit, a bad index and a late size update a
 test "hpack: entries wrap around the ring and keep their bytes" {
     var t: TestDecoder = .{};
     t.init(128);
-    var buf: [128]u8 = undefined;
+    var buf: [128]u8 = @splat(0);
     var round: u32 = 0;
     while (round < 50) : (round += 1) {
         var n: usize = 0;
-        var nb: [8]u8 = undefined;
-        var vb: [24]u8 = undefined;
-        const name = std.fmt.bufPrint(&nb, "n{d}", .{round}) catch unreachable;
-        const value = std.fmt.bufPrint(&vb, "value-{d}-{d}", .{ round, round * 7 }) catch unreachable;
+        var nb: [8]u8 = @splat(0);
+        var vb: [24]u8 = @splat(0);
+        const name = std.fmt.bufPrint(&nb, "n{d}", .{round}) catch unreachable;  // invariant
+        const value = std.fmt.bufPrint(&vb, "value-{d}-{d}", .{ round, round * 7 }) catch unreachable;  // invariant
         // Literal with incremental indexing, new name.
         try encodeInt(&buf, &n, 0x40, 6, 0);
-        try encodeInt(&buf, &n, 0, 7, @intCast(name.len));
+        try encodeInt(&buf, &n, 0, 7, std.math.cast(u32, name.len) orelse unreachable);  // invariant
         @memcpy(buf[n..][0..name.len], name);
         n += name.len;
-        try encodeInt(&buf, &n, 0, 7, @intCast(value.len));
+        try encodeInt(&buf, &n, 0, 7, std.math.cast(u32, value.len) orelse unreachable);  // invariant
         @memcpy(buf[n..][0..value.len], value);
         n += value.len;
         // Then the new entry by index (62).
@@ -813,8 +810,8 @@ test "hpack: entries wrap around the ring and keep their bytes" {
         n += 1;
         var c: Collect = .{};
         try t.d.decode(buf[0..n], &c);
-        var wb: [128]u8 = undefined;
-        const want = std.fmt.bufPrint(&wb, "[{s}: {s}][{s}: {s}]", .{ name, value, name, value }) catch unreachable;
+        var wb: [128]u8 = @splat(0);
+        const want = std.fmt.bufPrint(&wb, "[{s}: {s}][{s}: {s}]", .{ name, value, name, value }) catch unreachable;  // invariant
         try std.testing.expectEqualStrings(want, c.text());
         try std.testing.expect(t.d.size <= 128);
     }

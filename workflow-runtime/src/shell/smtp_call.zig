@@ -5,7 +5,7 @@
 //! calls `onBytes`, writes `pending`, and does what the step says.
 //! `docs/smtp-effect.md` states what v1 does.
 const std = @import("std");
-const smtp = @import("core").smtp;
+const smtp = @import("wire").smtp;
 const creds = @import("creds.zig");
 const http = @import("http.zig");
 const sql_net = @import("sql_net.zig");

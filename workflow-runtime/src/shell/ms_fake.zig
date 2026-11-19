@@ -12,7 +12,7 @@
 //! (`core/tdscase_tables.zig`). The server writes a log line for each
 //! login, batch, request and ATTENTION.
 const std = @import("std");
-const tds = @import("core").tdswire;
+const tds = @import("wire").tdswire;
 const sys = @import("sys.zig");
 const tls = @import("tls.zig");
 

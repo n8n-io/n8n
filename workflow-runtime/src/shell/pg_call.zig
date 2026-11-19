@@ -3,7 +3,7 @@
 //! result. Everything here works on buffers that the client (`pg.zig`)
 //! owns; nothing here touches a socket.
 const std = @import("std");
-const pgwire = @import("core").pgwire;
+const pgwire = @import("wire").pgwire;
 const http = @import("http.zig");
 const creds = @import("creds.zig");
 
