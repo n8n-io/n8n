@@ -21,6 +21,7 @@ const publicApiEnabled = process.env.N8N_PUBLIC_API_DISABLED !== 'true';
 generateUserManagementEmailTemplates();
 generateTimezoneData();
 copyAgentIntegrationAssets();
+copyMcpGuardVendorFiles();
 
 if (publicApiEnabled) {
 	createPublicApiDirectory();
@@ -146,6 +147,14 @@ function bundleSpec(sourcePath, distPath) {
 	if (!existsSync(distPath)) {
 		throw new Error(`redocly did not write the bundle for ${sourcePath} to ${distPath}`);
 	}
+}
+
+function copyMcpGuardVendorFiles() {
+	// tsc emits no non-TS files. The mcp-guard reads its vendor files from next to the compiled code.
+	const sourceDir = path.resolve(ROOT_DIR, 'src', 'modules', 'mcp-guard', 'vendors');
+	const destinationDir = path.resolve(ROOT_DIR, 'dist', 'modules', 'mcp-guard', 'vendors');
+	shell.mkdir('-p', destinationDir);
+	shell.cp(path.join(sourceDir, '*.md'), destinationDir);
 }
 
 function copyAgentIntegrationAssets() {
