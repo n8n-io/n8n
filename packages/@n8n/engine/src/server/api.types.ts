@@ -77,8 +77,8 @@ export interface ExecutionSnapshot {
  * A step's detail as `GET /:id?includeSteps=true` reports it.
  *
  * No `input`: step inputs are re-derived at run time from predecessor outputs
- * and never persisted, so there's nothing to return. No `attempt`: the engine
- * has no retry mechanism, so it would always be `1`.
+ * and never persisted, so there's nothing to return. No `attempt`: the step row
+ * has one, but this API does not report it yet.
  */
 export interface StepDetail {
 	id: string;

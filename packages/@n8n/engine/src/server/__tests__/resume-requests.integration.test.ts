@@ -106,7 +106,7 @@ async function seed(waits: Partial<Record<'wait-a' | 'wait-b', WaitDeclaration>>
 	for (const nodeId of nodeIds) {
 		const { id } = created.find((step) => step.nodeId === nodeId)!;
 		await stepStore.claimStep(id);
-		await stepStore.suspendStep(id, waits[nodeId]!);
+		await stepStore.suspendStep(id, 1, waits[nodeId]!);
 		stepIds[nodeId] = id;
 	}
 	return { executionId, stepIds, token: mintResumeToken(resumeSecret, executionId), stepStore };

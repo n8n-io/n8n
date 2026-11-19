@@ -13,6 +13,7 @@ const graphNodeSchema = z.object({
 	name: z.string().min(1),
 	type: stepTypeSchema,
 	config: z.unknown().optional(),
+	idempotent: z.boolean().optional(),
 });
 
 const graphEdgeSchema = z.object({

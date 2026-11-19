@@ -38,6 +38,13 @@ export interface GraphNode {
 	type: StepType;
 	/** Step-type-specific configuration; some step types (e.g. trigger) carry none. */
 	config?: StepConfig;
+	/**
+	 * True when a second run of the node has the same effect as one run. The
+	 * caller that builds the graph sets it. The engine reads it only to decide
+	 * if it can run a step again after the worker of the step stopped. Absent
+	 * means false.
+	 */
+	idempotent?: boolean;
 }
 
 export interface GraphEdge {

@@ -179,7 +179,7 @@ describe('settled step with no message (integration)', () => {
 		]);
 		await stepStore.acknowledgeSettledStep(stepIds.trigger);
 		await stepStore.claimStep(stepIds['node-a']);
-		await stepStore.failStep(stepIds['node-a'], { name: 'Error', message: 'boom' });
+		await stepStore.failStep(stepIds['node-a'], 1, { name: 'Error', message: 'boom' });
 		// From here `claimStep` refuses the step of node B, so that step stays
 		// `queued` until the execution fails.
 		const execute = vi.fn<IStepExecutor['execute']>();

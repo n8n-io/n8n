@@ -27,6 +27,7 @@ const accepting = (id: string): StepRecord => ({
 	outputSources: null,
 	waitDeclaration: { resumeBinding: 'execution' },
 	resumeCause: null,
+	attempt: 1,
 });
 
 const stepId = '0199a1b2-0000-7000-8000-0000000000aa';

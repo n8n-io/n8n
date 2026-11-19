@@ -43,6 +43,12 @@ export interface StepRecord {
 	waitDeclaration: WaitDeclaration | null;
 	/** What resumed this step's current dispatch; `null` on a first run. */
 	resumeCause: ResumeCause | null;
+	/**
+	 * How many times the engine queued the step to run it from the start. It is 1
+	 * until `requeueStaleRunningStep` adds 1. The worker that claimed the step
+	 * passes it to each outcome write.
+	 */
+	attempt: number;
 	/** Why the step failed; absent unless it did. */
 	error?: StepError | null;
 }
@@ -109,6 +115,10 @@ export interface StaleSettledStep {
  * stays on the row until `acknowledgeSettledStep` clears it.
  *
  * Every other transition clears the time.
+ *
+ * Each outcome write of a step worker takes the `attempt` that `claimStep`
+ * returned, and changes the row only while the row has that attempt. A worker
+ * of an earlier attempt, which the engine treated as stopped, writes nothing.
  */
 export interface StepStore {
 	/**
@@ -150,25 +160,28 @@ export interface StepStore {
 
 	/**
 	 * Record a successful run: persist `outputs` and mark the step completed.
-	 * A compare-and-set on `running`, so it returns `false` if the caller no
-	 * longer holds the claim — the outcome and the status are written together,
-	 * so they can't be observed apart. `outputSources` is what the step states
-	 * about where its items came from; `null` when it states nothing.
+	 * A compare-and-set on `running` and on `attempt`, so it returns `false` if
+	 * the caller no longer holds the claim. The outcome and the status are
+	 * written together, so they can't be observed apart. `outputSources` is what
+	 * the step states about where its items came from; `null` when it states
+	 * nothing.
 	 */
 	completeStep(
 		id: string,
+		attempt: number,
 		outputs: StepSlots,
 		outputSources: StepOutputSources | null,
 	): Promise<boolean>;
 
 	/**
 	 * Record a wait: persist `wait_declaration` and move the step to `waiting`. A
-	 * compare-and-set on `running`, as `completeStep` — but `waiting` is no
-	 * outcome, so nothing plans behind the step and nothing counts it settled.
-	 * If the execution has ended, the step is cancelled instead and the call
-	 * returns `false`: nothing resumes a wait in an ended execution.
+	 * compare-and-set on `running` and on `attempt`, as `completeStep`. But
+	 * `waiting` is no outcome, so nothing plans behind the step and nothing
+	 * counts it settled. If the execution has ended, the step is cancelled
+	 * instead and the call returns `false`: nothing resumes a wait in an ended
+	 * execution.
 	 */
-	suspendStep(id: string, waitDeclaration: WaitDeclaration): Promise<boolean>;
+	suspendStep(id: string, attempt: number, waitDeclaration: WaitDeclaration): Promise<boolean>;
 
 	/**
 	 * Resume a wait: persist `resume_cause` and return the step to `queued`, from
@@ -241,6 +254,19 @@ export interface StepStore {
 	failStaleRunningStep(id: string, staleAfter: Date, error: StepError): Promise<boolean>;
 
 	/**
+	 * Queue a step again that no worker settled in time (`running -> queued`),
+	 * and add 1 to its `attempt`. A compare-and-set on the `staleAfter` value
+	 * that the caller read, as `failStaleRunningStep`. Only for a step that is
+	 * safe to run a second time.
+	 *
+	 * Returns `false` and changes nothing when the execution has ended, because
+	 * no worker runs a step of an ended execution. The test and the write are
+	 * serialized with the write that ends the execution, so
+	 * `cancelPendingSteps` cancels a step that this call queued first.
+	 */
+	requeueStaleRunningStep(id: string, staleAfter: Date): Promise<boolean>;
+
+	/**
 	 * The steps that are `completed`, `failed` or `skipped`, and whose
 	 * `stale_after` time is `at` or earlier, oldest first, at most `limit`. A
 	 * plain read: it locks no row.
@@ -263,7 +289,7 @@ export interface StepStore {
 	acknowledgeSettledStep(id: string): Promise<void>;
 
 	/** Record a failed run: persist `error` and mark the step failed. As `completeStep`. */
-	failStep(id: string, error: StepError): Promise<boolean>;
+	failStep(id: string, attempt: number, error: StepError): Promise<boolean>;
 
 	/**
 	 * Fail a step that waits on a sub-execution the engine could not start. As
@@ -275,9 +301,9 @@ export interface StepStore {
 	/**
 	 * Settle a claimed step that will not run, because its execution ended
 	 * between the claim and the run. As `completeStep`, a compare-and-set on
-	 * `running`, so a worker that lost the claim writes nothing.
+	 * `running` and on `attempt`, so a worker that lost the claim writes nothing.
 	 */
-	cancelStep(id: string): Promise<boolean>;
+	cancelStep(id: string, attempt: number): Promise<boolean>;
 
 	/**
 	 * Cancel every pending step of the execution (`-> cancelled`). A pending step
