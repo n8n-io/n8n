@@ -943,6 +943,9 @@ export class PlaywrightAdapter {
 	 */
 	async clearSiteDataExcept(domain: string): Promise<void> {
 		const context = this.requireContext();
+		if (this.visitedOrigins.size >= MAX_VISITED_ORIGINS) {
+			throw new Error(`Cannot clear the site data after more than ${MAX_VISITED_ORIGINS} sites`);
+		}
 		const isOtherSite = (host: string) => {
 			const bare = host.replace(/^\./, '');
 			return bare !== domain && !bare.endsWith(`.${domain}`);

@@ -251,14 +251,14 @@ describe('PlaywrightAdapter.clearSiteDataExcept', () => {
 			);
 		});
 
-		it('stops recording at 1000 origins', async () => {
-			const { adapter, session, tab } = setupVisits();
+		it('clears nothing and throws once it recorded 1000 origins', async () => {
+			const { adapter, context, tab } = setupVisits();
 			for (let index = 0; index < 1100; index++) tab.navigate(`https://site-${index}.org/`);
 
-			await adapter.clearSiteDataExcept('example.com');
-
-			// The open page on example.com takes one of the 1000, and it is kept.
-			expect(clearedOrigins(session)).toHaveLength(999);
+			await expect(adapter.clearSiteDataExcept('example.com')).rejects.toThrow(
+				'Cannot clear the site data after more than 1000 sites',
+			);
+			expect(context.clearCookies).not.toHaveBeenCalled();
 		});
 	});
 
