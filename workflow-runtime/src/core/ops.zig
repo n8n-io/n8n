@@ -10,7 +10,7 @@ const mem = @import("mem.zig");
 const perf = @import("perf.zig");
 const Arena = @import("arena.zig").Arena;
 const Builder = @import("arena.zig").Builder;
-const Module = @import("module.zig").Module;
+const Module = @import("bytecode.zig").Module;
 const tz = @import("tz.zig");
 const Value = value.Value;
 

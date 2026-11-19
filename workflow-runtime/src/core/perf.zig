@@ -3,7 +3,7 @@
 //! a table of costs. It is pure: the shell gives it its memory and prints
 //! its counters (`wfrt perf-model`). Cycles are in hundredths.
 const std = @import("std");
-const module = @import("module.zig");
+const module = @import("bytecode.zig");
 const Op = module.Op;
 
 /// The data structure that an access belongs to.

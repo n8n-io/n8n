@@ -1,7 +1,7 @@
 //! A small module writer for tests. It emits the same format as the
 //! TypeScript compiler, so runtime tests do not depend on the compiler.
 const std = @import("std");
-const module = @import("module.zig");
+const module = @import("bytecode.zig");
 const Op = module.Op;
 
 pub const Asm = struct {

@@ -5,7 +5,7 @@
 //! each call gives the access to the recorder (`perf.zig`).
 const std = @import("std");
 const perf = @import("perf.zig");
-const module = @import("module.zig");
+const module = @import("bytecode.zig");
 const addressOf = @import("arena.zig").addressOf;
 
 pub const enabled: bool = @import("perf_options").perf_model;
