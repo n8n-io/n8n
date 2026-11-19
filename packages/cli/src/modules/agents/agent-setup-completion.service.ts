@@ -4,11 +4,10 @@ import type {
 	AgentJsonConfig,
 	AgentTaskConfig,
 } from '@n8n/api-types';
+import { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-
-import { Telemetry } from '@/telemetry';
 
 import { AgentValidationService } from './agent-validation.service';
 import type { Agent } from './entities/agent.entity';
@@ -40,7 +39,7 @@ type EmitSetupCompleted = () => Promise<void>;
 export class AgentSetupCompletionService {
 	constructor(
 		private readonly agentValidationService: AgentValidationService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly agentRepository: AgentRepository,
 	) {}
 

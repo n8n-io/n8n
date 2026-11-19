@@ -7,6 +7,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { isRecord } from '@n8n/utils/is-record';
 import type {
 	AgentBuilderOpenSuspension,
+	AgentChatMessagesResponse,
 	AgentChatQueueItem,
 	AgentPersistedMessageDto,
 	AgentSseEvent,
@@ -117,6 +118,8 @@ type ResumePayload =
 	  };
 
 const STOP_ACCEPTANCE_TIMEOUT_MS = 30 * TIME.SECOND;
+/** Turns in one page of a thread's history. */
+const HISTORY_PAGE_SIZE = 20;
 const MAX_WAITING_STREAMS = 2;
 const MAX_START_VALIDATION_ATTEMPTS = 3;
 
@@ -198,6 +201,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const streamSettlements = new WeakMap<AbortController, Promise<void>>();
 	const historyLoaded = ref(false);
 	const isLoadingHistory = ref(false);
+	/** Cursor of the next older page of the thread. `null` when no older turns exist. */
+	const olderMessagesCursor = ref<string | null>(null);
+	/** Whether `messages` starts with turns from older pages, which a refresh must keep. */
+	let hasLoadedOlderPages = false;
+	/** Stops a second load of the same page while one runs. */
+	let isLoadingOlderMessages = false;
+	const hasOlderMessages = computed(() => olderMessagesCursor.value !== null);
 	const pushStore = usePushConnectionStore();
 	const visibility = useDocumentVisibility();
 	let disposed = false;
@@ -263,6 +273,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			let dbMessages: AgentPersistedMessageDto[];
 			let openSuspensions: AgentBuilderOpenSuspension[] = [];
 			let runningExecutionId: string | null | undefined;
+			let nextCursor: string | null = null;
 			if (continueId) {
 				const envelope = await getChatMessages(
 					rootStore.restApiContext,
@@ -270,10 +281,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					params.agentId.value,
 					continueId,
 					channel.value,
+					{ limit: HISTORY_PAGE_SIZE },
 				);
 				dbMessages = envelope.messages;
 				openSuspensions = envelope.openSuspensions;
 				runningExecutionId = envelope.activeExecutionId;
+				nextCursor = envelope.nextCursor ?? null;
 			} else if (!capabilities.value.previewHistory) {
 				// A fresh n8n Chat has no default thread to fall back to (unlike the
 				// builder's single test chat) — nothing to load until the first
@@ -305,7 +318,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				// A new session's history holds its first message only after its run starts.
 				const early = earlySend.value?.message;
 				const hasRun = history.some((message) => message.role === CHAT_MESSAGE_ROLE.USER);
-				messages.value = early && !hasRun ? [...history, early] : history;
+				const newestPage = early && !hasRun ? [...history, early] : history;
+				const olderTurns = hasLoadedOlderPages ? turnsBefore(newestPage) : undefined;
+				if (olderTurns) {
+					// Keep the older pages that the user loaded. Their cursor stays valid.
+					messages.value = [...olderTurns, ...newestPage];
+				} else {
+					messages.value = newestPage;
+					olderMessagesCursor.value = nextCursor;
+					hasLoadedOlderPages = false;
+				}
 				if (hasRun) earlySend.value = undefined;
 				isRecovering.value = false;
 				if (runningExecutionId !== undefined) activeExecutionId.value = runningExecutionId;
@@ -331,6 +353,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					streamAtStart === streamVersion
 				) {
 					messages.value = [];
+					resetOlderMessages();
 				}
 				return clearOnNotFound;
 			} else if (!silent) {
@@ -343,6 +366,95 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			return false;
 		}
+	}
+
+	/**
+	 * The loaded messages of the turns before `newestPage`. `undefined` when the
+	 * loaded messages and the page have no turn in common, so that a gap could
+	 * exist between them.
+	 */
+	function turnsBefore(newestPage: ChatMessage[]): ChatMessage[] | undefined {
+		const pageExecutionIds = new Set(newestPage.map((message) => message.executionId));
+		const firstShared = messages.value.findIndex(
+			(message) => message.executionId !== undefined && pageExecutionIds.has(message.executionId),
+		);
+		return firstShared === -1 ? undefined : messages.value.slice(0, firstShared);
+	}
+
+	/**
+	 * The chat messages of a response that holds older turns. Open suspensions
+	 * belong to the newest turn, so these turns settle their tool calls.
+	 */
+	function toOlderMessages(envelope: AgentChatMessagesResponse): ChatMessage[] {
+		return applyOpenSuspensions(convertDbMessages(envelope.messages, extensions), [], extensions);
+	}
+
+	function resetOlderMessages(): void {
+		olderMessagesCursor.value = null;
+		hasLoadedOlderPages = false;
+		isLoadingOlderMessages = false;
+	}
+
+	/**
+	 * Load the next older page of the thread and add it before the loaded
+	 * messages. Rejects when the request fails, so the caller can offer a retry.
+	 */
+	async function loadOlderMessages(): Promise<void> {
+		const cursor = olderMessagesCursor.value;
+		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
+		if (cursor === null || !threadId || disposed || isLoadingOlderMessages) return;
+		const target = targetKey();
+		// A refresh that drops the older pages, or a new target, makes this page stale.
+		const isCurrent = () =>
+			!disposed && target === targetKey() && olderMessagesCursor.value === cursor;
+		isLoadingOlderMessages = true;
+		try {
+			const envelope = await getChatMessages(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+				threadId,
+				channel.value,
+				{ limit: HISTORY_PAGE_SIZE, cursor },
+			);
+			if (!isCurrent()) return;
+			const loadedIds = new Set(messages.value.map((message) => message.id));
+			const older = toOlderMessages(envelope).filter((message) => !loadedIds.has(message.id));
+			// Hosts with sync watchers, such as the Assistant preview, skip turns that load as
+			// history. Mark the older turns as history only while they are added.
+			const wasLoadingHistory = isLoadingHistory.value;
+			isLoadingHistory.value = true;
+			messages.value = [...older, ...messages.value];
+			isLoadingHistory.value = wasLoadingHistory;
+			olderMessagesCursor.value = envelope.nextCursor ?? null;
+			hasLoadedOlderPages = true;
+		} finally {
+			if (target === targetKey()) isLoadingOlderMessages = false;
+		}
+	}
+
+	/**
+	 * Every message of the thread, also the older turns that are not loaded.
+	 * Fetches the whole thread only when older turns exist. Leaves `messages`
+	 * as it is.
+	 */
+	async function getFullHistory(): Promise<ChatMessage[]> {
+		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
+		if (olderMessagesCursor.value === null || !threadId) return messages.value;
+		const envelope = await getChatMessages(
+			rootStore.restApiContext,
+			params.projectId.value,
+			params.agentId.value,
+			threadId,
+			channel.value,
+		);
+		const thread = toOlderMessages(envelope);
+		// The loaded messages can be newer than the response, for example a live reply.
+		const loadedExecutionIds = new Set(messages.value.map((message) => message.executionId));
+		const firstLoaded = thread.findIndex(
+			(message) => message.executionId !== undefined && loadedExecutionIds.has(message.executionId),
+		);
+		return firstLoaded === -1 ? thread : [...thread.slice(0, firstLoaded), ...messages.value];
 	}
 
 	async function loadHistory(): Promise<void> {
@@ -583,6 +695,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	watch(targetKey, () => {
 		detachStream();
 		messages.value = [];
+		resetOlderMessages();
 		earlySend.value = undefined;
 		queuedMessages.value = [];
 		removingQueueIds.value.clear();
@@ -616,6 +729,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				params.agentId.value,
 			);
 			messages.value = [];
+			resetOlderMessages();
 		} catch (error) {
 			showError(error, locale.baseText('agents.chat.clearHistory.error'));
 		}
@@ -1474,11 +1588,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			!disposed && !session.controller.signal.aborted && session.target === targetKey();
 		for (let attempt = 0; attempt < MAX_START_VALIDATION_ATTEMPTS && isCurrent(); attempt++) {
 			const ownershipAtStart = ownershipVersion;
+			// The running execution is the newest turn, so the newest page is enough.
 			const history = await getChatMessages(
 				rootStore.restApiContext,
 				params.projectId.value,
 				params.agentId.value,
 				event.sessionId,
+				channel.value,
+				{ limit: 1 },
 			).catch(() => undefined);
 			if (!isCurrent()) break;
 			// Timeline updates do not invalidate execution ownership.
@@ -2073,8 +2190,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		reorderQueuedMessage,
 		isSubmitting,
 		isLoadingHistory,
+		hasOlderMessages,
+		loadOlderMessages,
+		getFullHistory,
 		messages,
 		isStreaming,
+		isStreamAttached: computed(() => isStreamOpen.value),
 		activeExecutionId,
 		isCancelling,
 		messagingState,

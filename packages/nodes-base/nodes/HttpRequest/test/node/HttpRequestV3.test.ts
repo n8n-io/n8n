@@ -91,7 +91,7 @@ describe('HttpRequestV3', () => {
 	});
 
 	describe('Method dropdown', () => {
-		const webdavMethods = ['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT'];
+		const webdavMethods = ['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT', 'SEARCH'];
 
 		const visibleMethods = (nodeParameters: INodeParameters) => {
 			const methodProperty = node.description.properties.find((p) => p.name === 'method');
@@ -154,6 +154,7 @@ describe('HttpRequestV3', () => {
 		it.each([
 			['GET', {}, READ_ONLY_ANNOTATIONS],
 			['PROPFIND', { webdavMethods: true }, READ_ONLY_ANNOTATIONS],
+			['SEARCH', { webdavMethods: true }, READ_ONLY_ANNOTATIONS],
 			['PUT', {}, { effect: 'write', destructive: true, idempotent: true }],
 			['DELETE', {}, { effect: 'write', destructive: true, idempotent: false }],
 			[
@@ -185,7 +186,7 @@ describe('HttpRequestV3', () => {
 		});
 	});
 
-	it.each(['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT'])(
+	it.each(['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT', 'SEARCH'])(
 		'should make a %s request',
 		async (method) => {
 			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
@@ -892,6 +893,44 @@ describe('HttpRequestV3', () => {
 				body: '',
 			};
 			(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
+		});
+
+		it('should return an empty object for a paginated JSON response with no body', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return { ...options, response: { response: { responseFormat: 'json' } } };
+						case 'options.pagination.pagination':
+							return {
+								paginationMode: 'responseContainsNextURL',
+								nextURL: '={{ $response.body?.next }}',
+								paginationCompleteWhen: 'other',
+								completeExpression: '={{ !$response.body?.next }}',
+								limitPagesFetched: false,
+								requestInterval: 0,
+							};
+						case 'options.response.response.responseFormat':
+							return 'json';
+						default:
+							return defaultValue;
+					}
+				},
+			);
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue([
+				{ headers: {}, body: undefined, statusCode: 204 },
+			]);
 
 			const result = await node.execute.call(executeFunctions);
 

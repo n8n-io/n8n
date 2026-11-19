@@ -4,6 +4,7 @@ import { n8nCommunityNodesPlugin } from '@n8n/eslint-plugin-community-nodes';
 
 import { databricksUserAgentRestriction } from './nodes/Databricks/eslint-user-agent-restriction.mjs';
 import { kafkaImportRestrictions } from './nodes/Kafka/eslint-import-restrictions.mjs';
+import { resolvablesRestriction } from './utils/eslint-resolvables-restriction.mjs';
 
 // Deprecated nodes get no more fixes, so the path segment rule does not check them:
 // https://docs.n8n.io/integrations/builtin/deprecated-nodes
@@ -110,6 +111,7 @@ export default defineConfig(
 		'scripts/**',
 		'./nodes/Databricks/eslint-user-agent-restriction.mjs',
 		'./nodes/Kafka/eslint-import-restrictions.mjs',
+		'./utils/eslint-resolvables-restriction.mjs',
 	]),
 	{
 		plugins: {
@@ -292,4 +294,5 @@ export default defineConfig(
 	},
 	...databricksUserAgentRestriction,
 	...kafkaImportRestrictions,
+	...resolvablesRestriction,
 );

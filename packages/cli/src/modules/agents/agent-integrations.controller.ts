@@ -23,7 +23,7 @@ import { channelIntegrationRecorder } from './integrations/recording/channel-int
 import { AgentChannelStatusRepository } from './repositories/agent-channel-status.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
-import { CollaborationService } from '@/collaboration/collaboration.service';
+import { AgentWriteLockService } from './agent-write-lock.service';
 import { NotFoundError } from '@n8n/errors';
 
 @RestController('/projects/:projectId/agents/v2')
@@ -36,7 +36,7 @@ export class AgentIntegrationsController {
 		private readonly channelStatusRepository: AgentChannelStatusRepository,
 		private readonly statusReporter: AgentChannelStatusReporter,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly collaborationService: CollaborationService,
+		private readonly agentWriteLockService: AgentWriteLockService,
 		private readonly urlService: UrlService,
 	) {}
 
@@ -52,7 +52,7 @@ export class AgentIntegrationsController {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			req.params.projectId,
@@ -83,7 +83,7 @@ export class AgentIntegrationsController {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			req.params.projectId,

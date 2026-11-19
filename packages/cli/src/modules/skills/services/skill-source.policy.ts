@@ -15,6 +15,10 @@ export type SkillSourceAction =
 	| 'checkNow'
 	| 'stopSyncing'
 	| 'replaceCredential'
+	/**
+	 * Remove the source. This also covers Stop syncing for all its skills at once: a user who
+	 * can delete the skills can also keep them.
+	 */
 	| 'disconnect'
 	/** Delete one synced skill. */
 	| 'deleteSkill';

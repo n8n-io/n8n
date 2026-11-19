@@ -5,7 +5,7 @@ import type {
 	UpdateSelfHealingConfigurationDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { RoleService, type RoleLoader } from '@n8n/backend-services';
+import { RoleService, type RoleLoader, TelemetryProxy } from '@n8n/backend-services';
 import {
 	ProjectRelationRepository,
 	ProjectRepository,
@@ -22,7 +22,6 @@ import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { afterCommit, runInTransaction } from '../after-commit';
@@ -54,7 +53,7 @@ export class SelfHealingConfigurationService {
 		private readonly transactionRunner: TransactionRunner,
 		private readonly investigations: SelfHealingInvestigationRepository,
 		private readonly logger: Logger,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 	) {}
 
 	private trackChange(

@@ -1,13 +1,15 @@
-import type { CredentialProvider, EmbeddingProviderOptions } from '@n8n/agents';
+import {
+	type CredentialProvider,
+	type EmbeddingProviderOptions,
+	mapCredentialForProvider,
+} from '@n8n/agents';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
 
-import { mapCredentialForProvider } from '@/credentials/credential-field-mapping';
-
 /** Re-exported so callers don't need to depend on `@n8n/agents` directly for this type. */
-export type ManagedEmbeddingProviderOptions = EmbeddingProviderOptions;
+export type { EmbeddingProviderOptions } from '@n8n/agents';
 export type ManagedEmbeddingProviderOptionsResolver =
-	() => Promise<ManagedEmbeddingProviderOptions | null>;
+	() => Promise<EmbeddingProviderOptions | null>;
 
 /** Keys `createEmbeddingModel` (via `EmbeddingProviderOptions`) accepts, across all supported providers. */
 const EMBEDDING_PROVIDER_OPTION_KEYS = [
@@ -34,10 +36,10 @@ export async function resolveEmbeddingProviderOptionsFromCredential(
 	credential: string,
 	embeddingModel: string,
 	credentialProvider: CredentialProvider,
-): Promise<ManagedEmbeddingProviderOptions> {
+): Promise<EmbeddingProviderOptions> {
 	const raw = await credentialProvider.resolve(credential);
 	const mapped = mapCredentialForProvider(getProviderPrefix(embeddingModel), raw);
-	const options: ManagedEmbeddingProviderOptions = {};
+	const options: EmbeddingProviderOptions = {};
 	for (const key of EMBEDDING_PROVIDER_OPTION_KEYS) {
 		const value = mapped[key];
 		if (typeof value === 'string') options[key] = value;
@@ -48,7 +50,7 @@ export async function resolveEmbeddingProviderOptionsFromCredential(
 export interface EpisodicMemoryEmbeddingTransport {
 	resolveManaged?: ManagedEmbeddingProviderOptionsResolver;
 	/** Proxy-aware `fetch` for a credential embedder. Managed options bring their own. */
-	fetch?: ManagedEmbeddingProviderOptions['fetch'];
+	fetch?: EmbeddingProviderOptions['fetch'];
 }
 
 /**
@@ -60,7 +62,7 @@ export async function resolveEpisodicMemoryEmbeddingProviderOptions(
 	embeddingModel: string,
 	credentialProvider: CredentialProvider,
 	{ resolveManaged, fetch }: EpisodicMemoryEmbeddingTransport = {},
-): Promise<ManagedEmbeddingProviderOptions | null> {
+): Promise<EmbeddingProviderOptions | null> {
 	if (credential === MANAGED_CREDENTIAL_TOKEN) {
 		return (await resolveManaged?.()) ?? null;
 	}

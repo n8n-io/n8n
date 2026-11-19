@@ -158,6 +158,7 @@ const GROUP_STATUS_PRIORITY: readonly GroupExecutionStatus[] = [
 	'running',
 	'error',
 	'issues',
+	'setup',
 	'warning',
 ];
 
@@ -165,8 +166,9 @@ const IDLE_STATUSES: readonly ExecutionStatus[] = ['new', 'unknown', 'canceled']
 
 /**
  * Classify a single member for the group rollup by this priority:
- * waiting > running > error > issues > warning > success > idle.
- * Validation issues are kept distinct from execution errors.
+ * waiting > running > error > issues > setup > warning > success > idle.
+ * Validation issues are kept distinct from execution errors. Missing
+ * credentials are "setup", which matches the key icon on the member node.
  * Other is an active-but-unhandled status that must block a misleading success.
  * Idle statuses return undefined (they neither paint nor veto).
  */
@@ -177,7 +179,7 @@ function classifyNodeForGroup(
 	if (snapshot.waiting || status === 'waiting') return 'waiting';
 	if (snapshot.running || snapshot.waitingForNext) return 'running';
 	if (snapshot.hasExecutionError) return 'error';
-	if (snapshot.hasValidationError) return 'issues';
+	if (snapshot.hasValidationError) return snapshot.needsCredentialSetup ? 'setup' : 'issues';
 	if (snapshot.dirty) return 'warning';
 	if (status === 'success') return 'success';
 	if (status === undefined || IDLE_STATUSES.includes(status)) return undefined;

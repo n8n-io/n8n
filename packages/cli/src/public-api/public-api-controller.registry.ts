@@ -15,8 +15,6 @@ import type {
 import { Container, Service } from '@n8n/di';
 import type { Request, RequestHandler, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
-import { z } from 'zod';
-import type { ZodTypeAny } from 'zod';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import {
@@ -45,47 +43,15 @@ import {
 import { formatValidationError } from '@/public-api/public-api-validation-error';
 import { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
 import { type PublicApiRequest, resolvePublicApiClient } from '@/public-api/public-api-client';
+import {
+	matchesPathTemplate,
+	parsePathParam,
+	toEndpointPath,
+	toPublicApiResult,
+	toRouteName,
+} from '@/public-api/public-api-controller.utils';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { LastActiveAtService } from '@/services/last-active-at.service';
-
-function parsePathParam(key: string, schema: ZodTypeAny, params: Request['params']): unknown {
-	const output = z.object({ [key]: schema }).safeParse(params);
-
-	if (!output.success) {
-		throw new BadRequestError(formatValidationError('params', output.error));
-	}
-
-	return output.data[key];
-}
-
-/**
- * Whether an Express route template (`/widgets/:widgetId`) matches a request path. A `:param`
- * segment matches any single segment. Any other segment must be equal.
- */
-function matchesPathTemplate(template: string, path: string): boolean {
-	const templateSegments = template.split('/');
-	const pathSegments = (path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path).split(
-		'/',
-	);
-	return (
-		templateSegments.length === pathSegments.length &&
-		templateSegments.every(
-			(segment, i) =>
-				segment.startsWith(':') || segment.toLowerCase() === pathSegments[i].toLowerCase(),
-		)
-	);
-}
-
-// Match the legacy version-less route. req.path drops the prefix, req.baseUrl adds /api/v1
-function routePath(prefix: string, req: Request): string {
-	const path = (prefix === '/' ? '' : prefix) + req.path;
-	return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
-}
-
-function toEndpointPath(apiVersion: string, prefix: string, routeTemplate: string): string {
-	const path = `/${apiVersion}${prefix === '/' ? '' : prefix}${routeTemplate}`;
-	return path.endsWith('/') ? path.slice(0, -1) : path;
-}
 
 @Service()
 export class PublicApiControllerRegistry {
@@ -171,6 +137,7 @@ export class PublicApiControllerRegistry {
 		);
 
 		for (const [handlerName, route] of metadata.routes) {
+			const routeName = toRouteName(route.method, prefix, route.path);
 			const resolvedArgs = resolveRouteArgs(controllerClass, handlerName, route.args);
 
 			const successStatus = resolveSuccessStatus(
@@ -245,7 +212,7 @@ export class PublicApiControllerRegistry {
 				middlewares.push(this.createDeprecationMiddleware(route.deprecated));
 			}
 
-			middlewares.push(this.createAuthMiddleware(apiVersion, prefix));
+			middlewares.push(this.createAuthMiddleware(apiVersion, routeName));
 			middlewares.push(
 				...this.rateLimitService.createRouteLimiters(
 					route.method,
@@ -336,7 +303,7 @@ export class PublicApiControllerRegistry {
 		}
 	}
 
-	private createAuthMiddleware(apiVersion: string, prefix: string): RequestHandler {
+	private createAuthMiddleware(apiVersion: string, routeName: string): RequestHandler {
 		return async (req, res, next) => {
 			const result = await this.authStrategyRegistry.authenticate(req as AuthenticatedRequest);
 
@@ -356,13 +323,17 @@ export class PublicApiControllerRegistry {
 			const userId = (req as AuthenticatedRequest).user?.id;
 			if (userId) {
 				this.lastActiveAtService.updateLastActiveIfStale(userId).catch(() => undefined);
-				this.eventService.emit('public-api-invoked', {
-					userId,
-					path: routePath(prefix, req),
-					method: req.method,
-					apiVersion,
-					userAgent: req.headers['user-agent'],
-					client: publicApiClient,
+
+				// Invocation event must be emitted after the response is sent, so that the event's result matches the actual response.
+				res.once('finish', () => {
+					this.eventService.emit('public-api-invoked', {
+						userId,
+						route: routeName,
+						apiVersion,
+						userAgent: req.headers['user-agent'],
+						client: publicApiClient,
+						result: toPublicApiResult(res.statusCode),
+					});
 				});
 			}
 

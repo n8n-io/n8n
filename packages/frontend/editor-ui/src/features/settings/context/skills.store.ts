@@ -1,5 +1,10 @@
 import type {
+	MoveSkillSourceDto,
+	DeleteSkillSourceQueryDto,
+	AcceptSkillSourceUpdatesDto,
+	ReviewSkillSourceUpdateQueryDto,
 	SkillListCollapsedSource,
+	SkillListSourceRange,
 	SkillSourceListItem,
 	ConnectSkillSourceDto,
 	CreateSkillDto,
@@ -32,6 +37,7 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 	const page = ref<number>();
 	/** The folded sources of the current page, with grouped lists. */
 	const collapsedSources = ref<SkillListCollapsedSource[]>([]);
+	const sourceRanges = ref<SkillListSourceRange[]>([]);
 	const loading = ref(false);
 	/** Current names for skill artifact tabs, including renames made in the editor. */
 	const skillNames = ref(new Map<string, string>());
@@ -50,6 +56,7 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 				pageCount.value = response.pageCount;
 				page.value = response.page;
 				collapsedSources.value = response.collapsedSources ?? [];
+				sourceRanges.value = response.sourceRanges ?? [];
 			}
 			return response;
 		} finally {
@@ -157,9 +164,17 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		return response;
 	}
 
-	/** Deletes a source and its synced skills. The caller reloads the lists. */
-	async function deleteSource(sourceId: string): Promise<void> {
-		await api.deleteSkillSource(rootStore.restApiContext, sourceId);
+	/** Removes a source and optionally keeps its skills. The caller reloads the lists. */
+	async function deleteSource(sourceId: string, query?: DeleteSkillSourceQueryDto): Promise<void> {
+		await api.deleteSkillSource(rootStore.restApiContext, sourceId, query);
+	}
+
+	async function fetchReplacementCredentials(source: SkillSourceListItem) {
+		return await api.getSkillSourceReplacementCredentials(rootStore.restApiContext, source);
+	}
+
+	async function replaceSourceCredential(source: SkillSourceListItem, credentialId: string) {
+		await api.replaceSkillSourceCredential(rootStore.restApiContext, source, credentialId);
 	}
 
 	/** Check for updates on one source. The caller reloads the lists. */
@@ -167,7 +182,34 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		return await api.checkSkillSource(rootStore.restApiContext, sourceId);
 	}
 
+	async function previewSourceMove(sourceId: string, payload: MoveSkillSourceDto) {
+		return await api.previewSkillSourceMove(rootStore.restApiContext, sourceId, payload);
+	}
+
+	async function moveSource(sourceId: string, payload: MoveSkillSourceDto) {
+		await api.moveSkillSource(rootStore.restApiContext, sourceId, payload);
+	}
+
+	async function fetchSourceUpdates(sourceId: string) {
+		return await api.getSkillSourceUpdates(rootStore.restApiContext, sourceId);
+	}
+	async function fetchSourceUpdate(
+		sourceId: string,
+		skillId: string,
+		reviewed: ReviewSkillSourceUpdateQueryDto,
+	) {
+		return await api.getSkillSourceUpdate(rootStore.restApiContext, sourceId, skillId, reviewed);
+	}
+	async function fetchSourceCommit(sourceId: string, revision: string) {
+		return await api.getSkillSourceCommit(rootStore.restApiContext, sourceId, revision);
+	}
+	async function acceptSourceUpdates(sourceId: string, payload: AcceptSkillSourceUpdatesDto) {
+		return await api.acceptSkillSourceUpdates(rootStore.restApiContext, sourceId, payload);
+	}
+
 	return {
+		previewSourceMove,
+		moveSource,
 		skills,
 		count,
 		pageCount,
@@ -191,8 +233,15 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		stopSyncingSkill,
 		sources,
 		collapsedSources,
+		sourceRanges,
 		fetchSources,
 		checkSource,
+		fetchSourceUpdates,
+		fetchSourceUpdate,
+		fetchSourceCommit,
+		acceptSourceUpdates,
 		deleteSource,
+		fetchReplacementCredentials,
+		replaceSourceCredential,
 	};
 });

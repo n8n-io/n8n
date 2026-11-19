@@ -46,6 +46,9 @@ import {
 } from './idempotency-key';
 import { InstanceCredentialAssignment } from './instance-credential-assignment';
 import { InvalidAuthToken } from './invalid-auth-token';
+import { Lease } from './lease';
+import { LeaseKind } from './lease-kind';
+import { LeaseSession } from './lease-session';
 import { PollerState } from './poller-state';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
@@ -145,6 +148,9 @@ export {
 	type IdempotencyKeyStatus,
 	InvalidAuthToken,
 	InstanceCredentialAssignment,
+	Lease,
+	LeaseKind,
+	LeaseSession,
 	AiBuilderTemporaryWorkflow,
 	PollerState,
 	ProcessedData,
@@ -242,6 +248,9 @@ export const entities = {
 	IdempotencyKey,
 	InvalidAuthToken,
 	InstanceCredentialAssignment,
+	Lease,
+	LeaseKind,
+	LeaseSession,
 	AiBuilderTemporaryWorkflow,
 	PollerState,
 	ProcessedData,

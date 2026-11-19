@@ -22,6 +22,8 @@ export type {
 	ResumeBinding,
 	ResumeCause,
 	StepSlots,
+	StepOutputSource,
+	StepOutputSources,
 	StepStatus,
 	SeededSteps,
 	TriggerOutputs,
@@ -29,7 +31,12 @@ export type {
 	WorkflowDocument,
 } from './execution.types';
 export { ExecutionNotFoundError } from './execution-store';
-export type { ExecutionRecord, ExecutionStore, NewExecutionRecord } from './execution-store';
+export type {
+	ExecutionRecord,
+	ExecutionStore,
+	NewExecutionRecord,
+	StaleQueuedExecution,
+} from './execution-store';
 export type {
 	ExecutionViewStore,
 	ExecutionView,
@@ -38,7 +45,17 @@ export type {
 	StepView,
 } from './execution-view-store';
 export { StepNotFoundError } from './step-store';
-export type { DueStep, NewStepRecord, StepRecord, StepStore, StepSummary } from './step-store';
+export { announceStepFailed } from './step-events';
+export { validateStepContext } from './validate-step-context';
+export type {
+	DueStep,
+	NewStepRecord,
+	StaleQueuedStep,
+	StaleRunningStep,
+	StepRecord,
+	StepStore,
+	StepSummary,
+} from './step-store';
 export { assertValidStalenessThresholds, DEFAULT_STALENESS_THRESHOLDS } from './staleness';
 export type { StalenessThresholds } from './staleness';
 export { ExecutionStartHandler } from './execution-start-handler';

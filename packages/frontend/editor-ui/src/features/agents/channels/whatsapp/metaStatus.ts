@@ -14,6 +14,8 @@ export interface WhatsAppMetaPresentation {
 	fallbackTitle?: { needs: 'number' | 'name'; key: BaseTextKey };
 	descriptionKey: BaseTextKey;
 	action?: { labelKey: BaseTextKey; url: string };
+	/** A button that starts the channel setup again, for a number that is gone. */
+	setupAction?: { labelKey: BaseTextKey };
 }
 
 const submitNewName: WhatsAppMetaPresentation['action'] = {
@@ -37,6 +39,23 @@ const presentations: Record<
 			labelKey: 'agents.channels.whatsapp.meta.action.openManager',
 			url: WHATSAPP_MANAGER_URL,
 		},
+	},
+	numberMigrated: {
+		theme: 'danger',
+		titleKey: 'agents.channels.whatsapp.meta.numberMigrated.title',
+		fallbackTitle: {
+			needs: 'number',
+			key: 'agents.channels.whatsapp.meta.numberMigrated.titleNoNumber',
+		},
+		descriptionKey: 'agents.channels.whatsapp.meta.numberMigrated.description',
+		setupAction: { labelKey: 'agents.channels.whatsapp.meta.action.setUpAgain' },
+	},
+	// Meta does not return the number with this error, so the headline has no number.
+	numberNotFound: {
+		theme: 'danger',
+		titleKey: 'agents.channels.whatsapp.meta.numberNotFound.title',
+		descriptionKey: 'agents.channels.whatsapp.meta.numberNotFound.description',
+		setupAction: { labelKey: 'agents.channels.whatsapp.meta.action.setUpAgain' },
 	},
 	numberPending: {
 		theme: 'warning',
