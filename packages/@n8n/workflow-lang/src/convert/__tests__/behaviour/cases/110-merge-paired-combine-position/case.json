@@ -1,0 +1,11 @@
+{
+	"description": "A goes into input 1 of a Merge node in combine mode by position, and through an Edit Fields node that adds a field into input 2. Three readers after the Merge read the item of A.",
+	"trigger": {
+		"body": {
+			"ids": ["a0", "a1", "a2", "a3"]
+		}
+	},
+	"compare": ["Read Each", "Read All", "Read Expr"],
+	"expectRefusal": true,
+	"runDetails": true
+}

@@ -1,0 +1,11 @@
+{
+	"description": "The same workflow as the case before with batch size 2: two items in each batch, so each reader sees two items in each run and the all-items reader gives the id of the first item of its batch.",
+	"trigger": {
+		"body": {
+			"ids": ["a0", "a1", "a2", "a3"]
+		}
+	},
+	"compare": ["Read Each", "Read All", "Read Expr"],
+	"expectRefusal": true,
+	"runDetails": true
+}

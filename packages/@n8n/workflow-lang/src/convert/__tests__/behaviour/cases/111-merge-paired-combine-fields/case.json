@@ -1,0 +1,11 @@
+{
+	"description": "As case 110 with the Merge node in combine mode by the matching field id.",
+	"trigger": {
+		"body": {
+			"ids": ["a0", "a1", "a2", "a3"]
+		}
+	},
+	"compare": ["Read Each", "Read All", "Read Expr"],
+	"expectRefusal": true,
+	"runDetails": true
+}

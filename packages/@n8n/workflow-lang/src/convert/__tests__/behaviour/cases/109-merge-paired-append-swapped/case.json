@@ -1,0 +1,11 @@
+{
+	"description": "As case 108 with the inputs swapped: the false branch (a2, a3) goes into input 1 of the Merge node and the true branch (a0, a1) into input 2.",
+	"trigger": {
+		"body": {
+			"ids": ["a0", "a1", "a2", "a3"]
+		}
+	},
+	"compare": ["Read Each", "Read All", "Read Expr"],
+	"expectRefusal": true,
+	"runDetails": true
+}

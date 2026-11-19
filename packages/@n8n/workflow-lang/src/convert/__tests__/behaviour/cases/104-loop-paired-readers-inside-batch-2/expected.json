@@ -1,0 +1,273 @@
+{
+	"pairedItems": {
+		"Webhook": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"A": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				}
+			]
+		],
+		"Loop Over Items": [
+			[
+				{
+					"sourceOverwrite": {
+						"previousNode": "Read All",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 0
+					},
+					"item": 0
+				},
+				{
+					"sourceOverwrite": {
+						"previousNode": "Read All",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 1
+					},
+					"item": 0
+				}
+			],
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 2,
+					"sourceOverwrite": {
+						"previousNode": "A",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 0
+					}
+				},
+				{
+					"item": 3,
+					"sourceOverwrite": {
+						"previousNode": "A",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 0
+					}
+				}
+			]
+		],
+		"Tag": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"Read Each": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"Read Expr": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"Read All": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				}
+			]
+		]
+	},
+	"runSizes": {
+		"Webhook": [[1]],
+		"A": [[4]],
+		"Loop Over Items": [[0, 2], [0, 2], [2, 0]],
+		"Tag": [[2], [2]],
+		"Read Each": [[2], [2]],
+		"Read Expr": [[2], [2]],
+		"Read All": [[1], [1]]
+	},
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"A",
+		"Loop Over Items",
+		"Tag",
+		"Read Each",
+		"Read Expr",
+		"Read All",
+		"Loop Over Items",
+		"Tag",
+		"Read Each",
+		"Read Expr",
+		"Read All",
+		"Loop Over Items"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"ids": ["a0", "a1", "a2", "a3"]
+					}
+				}
+			]
+		],
+		"A": [
+			[
+				{
+					"id": "a0"
+				},
+				{
+					"id": "a1"
+				},
+				{
+					"id": "a2"
+				},
+				{
+					"id": "a3"
+				}
+			]
+		],
+		"Loop Over Items": [
+			[
+				{
+					"from": "a0"
+				},
+				{
+					"from": "a2"
+				}
+			],
+			[
+				{
+					"id": "a0"
+				},
+				{
+					"id": "a1"
+				},
+				{
+					"id": "a2"
+				},
+				{
+					"id": "a3"
+				}
+			]
+		],
+		"Tag": [
+			[
+				{
+					"id": "a0",
+					"tag": "a0-tag"
+				},
+				{
+					"id": "a1",
+					"tag": "a1-tag"
+				},
+				{
+					"id": "a2",
+					"tag": "a2-tag"
+				},
+				{
+					"id": "a3",
+					"tag": "a3-tag"
+				}
+			]
+		],
+		"Read Each": [
+			[
+				{
+					"from": "a0"
+				},
+				{
+					"from": "a1"
+				},
+				{
+					"from": "a2"
+				},
+				{
+					"from": "a3"
+				}
+			]
+		],
+		"Read Expr": [
+			[
+				{
+					"from": "a0"
+				},
+				{
+					"from": "a1"
+				},
+				{
+					"from": "a2"
+				},
+				{
+					"from": "a3"
+				}
+			]
+		],
+		"Read All": [
+			[
+				{
+					"from": "a0"
+				},
+				{
+					"from": "a2"
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

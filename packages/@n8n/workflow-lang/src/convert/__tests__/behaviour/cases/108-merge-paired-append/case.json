@@ -2,27 +2,10 @@
 	"description": "An If node splits A. The true branch (a0, a1) goes into input 1 of a Merge node in append mode and the false branch (a2, a3) into input 2. Three readers after the Merge read the item of A in both Code modes and in an expression.",
 	"trigger": {
 		"body": {
-			"ids": [
-				"a0",
-				"a1",
-				"a2",
-				"a3"
-			]
+			"ids": ["a0", "a1", "a2", "a3"]
 		}
 	},
-	"compare": [
-		"Read Each",
-		"Read All",
-		"Read Expr"
-	],
-	"pairedItems": [
-		"A",
-		"If",
-		"Merge",
-		"Read Each",
-		"Read All",
-		"Read Expr"
-	],
-	"recordRuns": true,
-	"expectRefusal": true
+	"compare": ["Read Each", "Read All", "Read Expr"],
+	"expectRefusal": true,
+	"runDetails": true
 }
