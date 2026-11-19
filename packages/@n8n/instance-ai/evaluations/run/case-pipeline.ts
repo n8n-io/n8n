@@ -551,6 +551,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 						workflowJsons: build.workflowJsons,
 						buildTrace: build.buildTrace,
 						seedContext,
+						fileSlug: inputs.testCaseFile,
 						timeoutMs: effectiveTimeoutMs(
 							testCaseByFileSlug.get(inputs.testCaseFile)?.complexity,
 							args.timeoutMs,

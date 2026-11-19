@@ -126,6 +126,14 @@ export interface CliArgs {
 	/** Which Assistant runtime the builds drive: `instance-ai` (default) or `agents`, the
 	 *  Assistant agent on the Agents runtime. See clients/assistant-agents-api.ts. */
 	assistantRuntime: AssistantRuntime;
+	/** How execution scenarios answer vendor calls: `llm` (the LLM mock, default) or `sim`
+	 *  (simulated services: the eval instance runs each scenario and sends its vendor
+	 *  requests to the sim server). See sim/README.md. */
+	mocking: 'llm' | 'sim';
+	/** Admin API of the sim server (`--mocking sim`). Its token comes from N8N_EVAL_SIM_TOKEN. */
+	simAdminUrl?: string;
+	/** Directory that keeps written sim worlds, so later runs reuse them (`--mocking sim`). */
+	simWorldCache?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -171,6 +179,9 @@ const cliArgsSchema = z.object({
 	buildMcpTimeoutMs: z.number().int().positive().default(120_000),
 	buildTimeoutMs: z.number().int().nonnegative().default(DEFAULT_MCP_BUILD_TIMEOUT_MS),
 	assistantRuntime: z.enum(ASSISTANT_RUNTIMES).default('instance-ai'),
+	mocking: z.enum(['llm', 'sim']).default('llm'),
+	simAdminUrl: z.string().url().optional(),
+	simWorldCache: z.string().min(1).optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -232,6 +243,12 @@ export function parseCliArgs(argv: string[]): CliArgs {
 	if (validated.source === 'langtracer' && !validated.suite) {
 		throw new Error('--source langtracer requires --suite <slug>');
 	}
+	if (validated.mocking === 'sim' && !validated.simAdminUrl) {
+		throw new Error('--mocking sim requires --sim-admin-url <url> (and N8N_EVAL_SIM_TOKEN)');
+	}
+	if (validated.mocking !== 'sim' && (validated.simAdminUrl ?? validated.simWorldCache)) {
+		throw new Error('--sim-admin-url and --sim-world-cache only apply with --mocking sim');
+	}
 
 	// In langtracer mode, default the dataset + baseline to a suite-scoped, eval-tagged
 	// name so runs don't pollute the shared cohort and re-runs upsert one stable dataset.
@@ -280,6 +297,9 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		buildMcpTimeoutMs: validated.buildMcpTimeoutMs,
 		buildTimeoutMs: validated.buildTimeoutMs,
 		assistantRuntime: validated.assistantRuntime,
+		mocking: validated.mocking,
+		simAdminUrl: validated.simAdminUrl,
+		simWorldCache: validated.simWorldCache,
 	};
 }
 
@@ -341,6 +361,9 @@ interface RawArgs {
 	buildMcpTimeoutMs: number;
 	buildTimeoutMs: number;
 	assistantRuntime: string;
+	mocking: string;
+	simAdminUrl?: string;
+	simWorldCache?: string;
 	/** Whether --dataset / --baseline-prefix were explicitly passed (langtracer mode
 	 *  derives suite-scoped defaults otherwise). */
 	datasetProvided: boolean;
@@ -372,6 +395,7 @@ function parseRawArgs(argv: string[]): RawArgs {
 		buildMcpTimeoutMs: 120_000,
 		buildTimeoutMs: DEFAULT_MCP_BUILD_TIMEOUT_MS,
 		assistantRuntime: 'instance-ai',
+		mocking: 'llm',
 		datasetProvided: false,
 		baselineProvided: false,
 		buildOnlyFlags: [],
@@ -427,6 +451,21 @@ function parseRawArgs(argv: string[]): RawArgs {
 
 			case '--keep-workflows':
 				result.keepWorkflows = true;
+				break;
+
+			case '--mocking':
+				result.mocking = nextArg(argv, i, '--mocking');
+				i++;
+				break;
+
+			case '--sim-admin-url':
+				result.simAdminUrl = nextArg(argv, i, '--sim-admin-url');
+				i++;
+				break;
+
+			case '--sim-world-cache':
+				result.simWorldCache = nextArg(argv, i, '--sim-world-cache');
+				i++;
 				break;
 
 			case '--delete-prebuilt-workflows':

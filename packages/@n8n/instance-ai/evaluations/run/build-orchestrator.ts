@@ -167,6 +167,8 @@ export interface LaneState {
 		buildTrace?: BuildResult['buildTrace'];
 		timeoutMs: number;
 		seedContext?: ScenarioSeedContext;
+		/** The case's file slug; `--mocking sim` reads the case's request through it. */
+		fileSlug?: string;
 	}) => Promise<Awaited<ReturnType<typeof executeScenario>>>;
 	tracedExecuteAgent: (execArgs: {
 		agentId: string;
