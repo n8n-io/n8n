@@ -255,6 +255,10 @@ describe('Delete a skill source', () => {
 		expect(await sources().findById(sourceId)).toBeNull();
 		expect(await findSkill(first.id)).toBeNull();
 		expect(await findLatestSkillVersion(first.id)).toBeNull();
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.USER_DELETED_SKILL,
+			expect.objectContaining({ skill_id: first.id, source: 'ui' }),
+		);
 	});
 
 	it('keeps the source when deleting the last linked skill without the option', async () => {

@@ -77,7 +77,11 @@ import { SkillSecurityScanner } from './skill-security-scanner.service';
 import { SkillService } from './skill.service';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
 import { SkillUsageProxy } from './skill-usage-proxy.service';
-import { SkillsTelemetry, type SkillSourceTelemetryReason } from './skills-telemetry.service';
+import {
+	SkillsTelemetry,
+	type SkillSourceTelemetryReason,
+	type SkillTelemetryRef,
+} from './skills-telemetry.service';
 
 /** Skills fetched at the same time from one source. */
 const FETCH_CONCURRENCY = 8;
@@ -619,6 +623,8 @@ export class SkillSourceService {
 		const readable = await this.projectScopeService.getProjectIds(user, ['agent:read']);
 		// A stale request is a normal race, so telemetry must not report it as a bug.
 		let stale = false;
+		// The last-skill removal deletes one skill by choice, so it also reports a skill delete.
+		let deletedSkill: Exclude<SkillTelemetryRef, string> | undefined;
 		try {
 			await this.txRunner.run({}, async (ctx) => {
 				const locked = await this.sourceRepository.findForDelete(sourceId, ctx);
@@ -672,6 +678,9 @@ export class SkillSourceService {
 						block,
 					);
 				}
+				if (onlySkillId) {
+					[deletedSkill] = await this.skillRepository.findByIds([onlySkillId], ctx);
+				}
 				for (const { skillId } of current) await this.skillRepository.deleteSkill(skillId, ctx);
 				await this.sourceRepository.deleteSource(sourceId, ctx);
 			});
@@ -691,6 +700,7 @@ export class SkillSourceService {
 			{ provider: source.type, skills_kept: keepSkills, status: 'success' },
 			user.id,
 		);
+		if (deletedSkill) await this.skillsTelemetry.deleted(user.id, deletedSkill, 'ui');
 	}
 
 	// ---------------------------------------------------------------- steps
