@@ -215,7 +215,7 @@ function onSelectTriggerNode(name: string) {
 					icon-size="medium"
 					:disabled="disabled"
 					:class="$style.chevron"
-					aria-label="Select trigger node"
+					:aria-label="i18n.baseText('nodeView.runButtonText.selectTriggerNode')"
 					icon="chevron-down"
 				/>
 			</template>
