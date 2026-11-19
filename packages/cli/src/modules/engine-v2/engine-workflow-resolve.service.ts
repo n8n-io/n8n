@@ -372,6 +372,7 @@ export class EngineWorkflowResolveService {
 				workflowData,
 				triggerName: trigger.name,
 				triggerOutputs,
+				nodeTypes: this.nodeTypes,
 			});
 		} catch (error) {
 			if (!(error instanceof UserError)) throw error;

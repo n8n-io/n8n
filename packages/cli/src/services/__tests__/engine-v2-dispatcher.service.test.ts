@@ -4,6 +4,7 @@ import { ConflictError, NotFoundError, NotImplementedError, UserError } from '@n
 import type {
 	INode,
 	INodeExecutionData,
+	INodeType,
 	IPinData,
 	IRunData,
 	ITaskData,
@@ -19,6 +20,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumableExecution } from '@/interfaces';
+import type { NodeTypes } from '@/node-types';
 import { EngineV2LifecycleSubscriptions } from '@/modules/engine-v2/engine-lifecycle-event-subscriptions';
 import {
 	EngineDidNotAdmitError,
@@ -140,6 +142,7 @@ describe('EngineV2Dispatcher', () => {
 	const pushRegistry = mock<EngineV2PushRegistry>();
 	const payloadFiles = mock<EngineV2PayloadFiles>();
 	const manualRunPlanner = mock<EngineV2ManualRunPlanner>();
+	const nodeTypes = mock<NodeTypes>();
 	const lifecycleSubscriptions = mockInstance(EngineV2LifecycleSubscriptions);
 
 	let dispatcher: EngineV2Dispatcher;
@@ -158,6 +161,7 @@ describe('EngineV2Dispatcher', () => {
 			pushRegistry,
 			payloadFiles,
 			manualRunPlanner,
+			nodeTypes,
 		);
 	});
 
@@ -352,6 +356,33 @@ describe('EngineV2Dispatcher', () => {
 			expect(graph.edges).toEqual([
 				{ from: MANUAL_TRIGGER.id, to: SET_NODE.id, outputIndex: 0, inputIndex: 0 },
 			]);
+		});
+
+		it('marks a node as idempotent when its node type declares that annotation', async () => {
+			nodeTypes.getByNameAndVersion.mockImplementation((type) =>
+				mock<INodeType>({
+					description: {
+						properties: [],
+						annotations: type === SET_NODE.type ? { idempotent: true } : undefined,
+					},
+				}),
+			);
+
+			await dispatcher.start(runData());
+
+			const { graph } = proxy.startExecution.mock.calls[0][0];
+			expect(graph.nodes.find(({ id }) => id === SET_NODE.id)).toMatchObject({ idempotent: true });
+		});
+
+		it('leaves a node unmarked when its node type is not known', async () => {
+			nodeTypes.getByNameAndVersion.mockImplementation(() => {
+				throw new Error('Unrecognized node type');
+			});
+
+			await dispatcher.start(runData());
+
+			const { graph } = proxy.startExecution.mock.calls[0][0];
+			expect(graph.nodes.find(({ id }) => id === SET_NODE.id)).not.toHaveProperty('idempotent');
 		});
 
 		it('converts only the branch of the selected manual trigger', async () => {
