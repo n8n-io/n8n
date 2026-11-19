@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/main.ts
+  s_c33bde4687101e::t_0afe0d90627ae7 2,97
+packages/frontend/editor-ui/src/app/dev/demoConsole.ts
+  s_c33bde4687101e::t_0afe0d90627ae7 1,6-9
+demos/HACKMATION.md
+  s_c33bde4687101e::t_0afe0d90627ae7 1-15
+demos/canvas-delight/real-workflow.json
+  s_c33bde4687101e::t_0afe0d90627ae7 2,10-13,21-24,34-37,41,50-53
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeStickyNote.vue
+  s_c33bde4687101e::t_0afe0d90627ae7 2,33
+packages/frontend/editor-ui/src/app/components/print-studio/WorkflowPrintStudio.vue
+  s_c33bde4687101e::t_0afe0d90627ae7 2
+  s_c33bde4687101e::t_b6285100c99922 14-15
+packages/frontend/editor-ui/src/app/hackmation.ts
+  s_c33bde4687101e::t_0afe0d90627ae7 1-2
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeDefault.vue
+  s_c33bde4687101e::t_0afe0d90627ae7 2,86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ef11b311cea6780f9fd429cddef2aedc26ffb725",
+  "prompts": {},
+  "sessions": {
+    "s_c33bde4687101e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edf6-ffe6-77f0-898f-eea7d7b98df2",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

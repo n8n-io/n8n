@@ -1,0 +1,67 @@
+packages/frontend/editor-ui/src/features/settings/communityNodes/views/SettingsCommunityNodesView.vue
+  s_9c6c5365533a74::t_3589a483836430 52
+  s_9c6c5365533a74::t_7c9311f157fae3 53
+packages/frontend/editor-ui/src/features/integrations/externalSecrets.ee/views/SettingsExternalSecrets.vue
+  s_9c6c5365533a74::t_3589a483836430 21-23
+packages/frontend/editor-ui/src/features/settings/usage/views/SettingsUsageAndPlan.test.ts
+  s_9c6c5365533a74::t_d0d5f2764538a3 6-8,612-619,622,625-628,630-645,647-650
+  s_9c6c5365533a74::t_d1bd03f572299e 620-621,623,629
+  s_9c6c5365533a74::t_889b3590671d6a 646
+  s_9c6c5365533a74::t_903f0941a9bdde 624,651
+packages/frontend/editor-ui/src/app/composables/usePrefetchModals.ts
+  s_9c6c5365533a74::t_9f211a1a699a45 1,48-50,57-58,71-74,76-89,94
+packages/frontend/editor-ui/src/features/settings/usage/views/SettingsUsageAndPlan.vue
+  s_9c6c5365533a74::t_c32d51d3051ceb 197
+  s_9c6c5365533a74::t_3589a483836430 195-196
+  s_9c6c5365533a74::t_e9ae9b15641d68 198-199
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.test.ts
+  s_9c6c5365533a74::t_d0d5f2764538a3 8-11,838-845
+  s_9c6c5365533a74::t_71891b844916ac 846
+packages/frontend/editor-ui/src/app/views/NodeView.test.ts
+  s_9c6c5365533a74::t_fcde17bc8c33fa 3-4,50-57,69-77,1048-1106
+  s_9c6c5365533a74::t_91f56516987197 1107-1108
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.vue
+  s_9c6c5365533a74::t_3589a483836430 57-59
+packages/frontend/editor-ui/src/features/integrations/secretsProviders.ee/views/SettingsSecretsProviders.test.ts
+  s_9c6c5365533a74::t_a0ee02d5f81a08 7,10
+  s_9c6c5365533a74::t_d0d5f2764538a3 5-6,8-9,11-12,446-454
+  s_9c6c5365533a74::t_0d716cea49d3d6 455
+packages/frontend/editor-ui/src/app/composables/usePrefetchModals.test.ts
+  s_9c6c5365533a74::t_ff695942163c3e 1,153-188
+  s_9c6c5365533a74::t_cc69cc491aa691 189
+packages/frontend/editor-ui/src/features/settings/users/views/SettingsUsersView.vue
+  s_9c6c5365533a74::t_3589a483836430 84-93
+  s_9c6c5365533a74::t_837ab59bd8263a 94
+packages/frontend/editor-ui/src/features/settings/users/views/SettingsUsersView.test.ts
+  s_9c6c5365533a74::t_d0d5f2764538a3 15-17,1271-1277,1279-1293
+  s_9c6c5365533a74::t_baa159f68dc958 1278,1294
+packages/frontend/editor-ui/src/features/integrations/externalSecrets.ee/views/SettingsExternalSecrets.test.ts
+  s_9c6c5365533a74::t_d0d5f2764538a3 4-6,61-67
+  s_9c6c5365533a74::t_a0ee02d5f81a08 3
+  s_9c6c5365533a74::t_f99ea2674b7435 68
+packages/frontend/editor-ui/src/features/integrations/secretsProviders.ee/views/SettingsSecretsProviders.ee.vue
+  s_9c6c5365533a74::t_3589a483836430 49-51
+packages/frontend/editor-ui/src/__tests__/prefetchModals.ts
+  s_9c6c5365533a74::t_d0d5f2764538a3 1-4,6-8,13,17
+  s_9c6c5365533a74::t_dd6790a6feff80 5,9-12
+  s_9c6c5365533a74::t_889b3590671d6a 14-16
+packages/frontend/editor-ui/src/features/settings/communityNodes/views/SettingsCommunityNodesView.test.ts
+  s_9c6c5365533a74::t_d0d5f2764538a3 12,14-16,313-328
+  s_9c6c5365533a74::t_5eaaa225cfbeb8 329
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "775646c06e8c323ed0b014fe893cc4dd7540d786",
+  "prompts": {},
+  "sessions": {
+    "s_9c6c5365533a74": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb8b8f31-422d-4421-aa44-e00a2476b0f8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
