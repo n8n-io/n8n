@@ -60,7 +60,7 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 						precision: 3,
 						isNullable: true,
 						comment:
-							'When the engine treats the step as stuck. Written at each transition into queued or running. Also written at each transition into completed, failed or skipped, and cleared after the orchestration worker handled the step:settled message of the step. NULL in every other case.',
+							'When the engine treats a queued or running step as stuck. Written at each transition into those statuses. NULL in every other status.',
 					},
 					{
 						name: 'created_at',
@@ -105,12 +105,11 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 						where: "status IN ('queued', 'running', 'waiting')",
 					},
 					// For the search for stuck steps. `status` is first in the key, because
-					// each search reads the statuses of one stuck state. A settled row
-					// leaves the index when the orchestration worker clears its time.
+					// each search reads one status. Other rows are not in the index.
 					{
 						name: 'idx_workflow_step_execution_stale_after',
 						columnNames: ['status', 'stale_after'],
-						where: 'stale_after IS NOT NULL',
+						where: "status IN ('queued', 'running')",
 					},
 				],
 				foreignKeys: [

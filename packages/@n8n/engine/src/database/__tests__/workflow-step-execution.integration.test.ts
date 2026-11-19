@@ -15,6 +15,7 @@ import { createDataSource } from '../data-source';
 import { WorkflowExecution } from '../entities/workflow-execution.entity';
 import { WorkflowStepExecution } from '../entities/workflow-step-execution.entity';
 import { generateId } from '../generate-id';
+import { WidenStepStaleAfterIndex1795046400000 } from '../migrations/1795046400000-WidenStepStaleAfterIndex';
 import { TypeOrmExecutionViewStore } from '../typeorm-execution-view-store';
 import { TypeOrmStepStore } from '../typeorm-step-store';
 
@@ -1760,6 +1761,44 @@ describe('workflow_step_execution table (integration)', () => {
 				 WHERE table_name = 'workflow_step_execution' AND column_name = 'iteration'`,
 		);
 		expect(column).toEqual({ is_nullable: 'NO', column_default: '0' });
+	});
+
+	it('the migration of the stale_after index changes a table that has rows, in both directions', async () => {
+		const executionId = await createExecution();
+		const past = new Date('2020-01-01T00:00:00.000Z');
+		// Rows as an instance has them when it gets the migration.
+		await seedStep({ executionId, nodeId: 'queued', status: 'queued', staleAfter: past });
+		await seedStep({ executionId, nodeId: 'completed', status: 'completed', staleAfter: null });
+		const staleAfterIndex = async (): Promise<string> => {
+			const [row]: Array<{ indexdef: string }> = await dataSource.query(
+				"SELECT indexdef FROM pg_indexes WHERE indexname = 'idx_workflow_step_execution_stale_after'",
+			);
+			return row.indexdef;
+		};
+		const staleAfterComment = async (): Promise<string> => {
+			const [row]: Array<{ comment: string }> = await dataSource.query(
+				`SELECT col_description('workflow_step_execution'::regclass, attnum) AS comment
+				 FROM pg_attribute
+				 WHERE attrelid = 'workflow_step_execution'::regclass AND attname = 'stale_after'`,
+			);
+			return row.comment;
+		};
+		const migration = new WidenStepStaleAfterIndex1795046400000();
+		const queryRunner = dataSource.createQueryRunner();
+		await queryRunner.connect();
+		try {
+			await migration.down(queryRunner);
+			expect(await staleAfterIndex()).toContain('WHERE ((status)::text = ANY');
+			expect(await staleAfterComment()).toContain('NULL in every other status');
+		} finally {
+			// The other tests need the schema of the newest migration.
+			await migration.up(queryRunner);
+			await queryRunner.release();
+		}
+
+		expect(await staleAfterIndex()).toContain('(status, stale_after)');
+		expect(await staleAfterIndex()).toContain('WHERE (stale_after IS NOT NULL)');
+		expect(await staleAfterComment()).toContain('NULL in every other case');
 	});
 
 	it.each([
