@@ -1,0 +1,13 @@
+{
+	"description": "A Set node and Code nodes read the item of Source through a Code node in all-items mode with fresh items (1 item in, 3 out)",
+	"trigger": {
+		"body": {
+			"label": "code-all-fresh-1-3"
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	]
+}

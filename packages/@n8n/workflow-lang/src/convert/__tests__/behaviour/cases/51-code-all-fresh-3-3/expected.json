@@ -1,0 +1,93 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Source",
+		"Middle",
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"label": "code-all-fresh-3-3"
+					}
+				}
+			]
+		],
+		"Source": [
+			[
+				{
+					"n": 10
+				},
+				{
+					"n": 20
+				},
+				{
+					"n": 30
+				}
+			]
+		],
+		"Middle": [
+			[
+				{
+					"a": 1
+				},
+				{
+					"a": 2
+				},
+				{
+					"a": 3
+				}
+			]
+		],
+		"Read Each": [
+			[
+				{
+					"sourceN": 10
+				},
+				{
+					"sourceN": 20
+				},
+				{
+					"sourceN": 30
+				}
+			]
+		],
+		"Read All": [
+			[
+				{
+					"sourceN": 10
+				},
+				{
+					"sourceN": 10
+				},
+				{
+					"sourceN": 10
+				}
+			]
+		],
+		"Read Expr": [
+			[
+				{
+					"sourceN": 10
+				},
+				{
+					"sourceN": 20
+				},
+				{
+					"sourceN": 30
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

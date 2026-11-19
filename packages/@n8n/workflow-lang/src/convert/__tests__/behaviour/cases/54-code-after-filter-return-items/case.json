@@ -1,0 +1,13 @@
+{
+  "description": "Read Source through a Code node that returns items (keeping pairedItem from Filter) after a Filter dropped one item",
+  "trigger": {
+    "body": {
+      "label": "code-return-items"
+    }
+  },
+  "compare": [
+    "Read Each",
+    "Read All",
+    "Read Expr"
+  ]
+}

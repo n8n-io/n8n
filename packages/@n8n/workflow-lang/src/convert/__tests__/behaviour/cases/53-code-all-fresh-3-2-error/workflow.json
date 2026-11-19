@@ -1,0 +1,137 @@
+{
+  "name": "Code all-items fresh 3 in 2 out paired read error",
+  "nodes": [
+    {
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "code-all-fresh-3-2",
+        "options": {}
+      },
+      "webhookId": "e5f6a7b8-c9d0-1234-efab-345678901234"
+    },
+    {
+      "id": "source",
+      "name": "Source",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return [{ json: { n: 10 } }, { json: { n: 20 } }, { json: { n: 30 } }];"
+      }
+    },
+    {
+      "id": "middle",
+      "name": "Middle",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return [{ json: { a: 1 } }, { json: { a: 2 } }];"
+      }
+    },
+    {
+      "id": "read-each",
+      "name": "Read Each",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return { json: { sourceN: $('Source').item.json.n } };"
+      }
+    },
+    {
+      "id": "read-all",
+      "name": "Read All",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        100
+      ],
+      "parameters": {
+        "jsCode": "return items.map((item, k) => ({ json: { sourceN: $('Source').item.json.n } }));"
+      }
+    },
+    {
+      "id": "read-expr",
+      "name": "Read Expr",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        600,
+        200
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={ \"sourceN\": {{ $('Source').item.json.n }} }",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Source": {
+      "main": [
+        [
+          {
+            "node": "Middle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Middle": {
+      "main": [
+        [
+          {
+            "node": "Read Each",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read All",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read Expr",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "description": "Read Source through a Code node that sets pairedItem as { item: number } on each output item",
+  "trigger": {
+    "body": {
+      "label": "code-set-paired-object"
+    }
+  },
+  "compare": [
+    "Read Each",
+    "Read All",
+    "Read Expr"
+  ]
+}
