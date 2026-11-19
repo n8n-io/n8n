@@ -115,6 +115,17 @@ export interface CodeNativeInput {
 	 */
 	pairsByPosition?(name: string): boolean;
 	/**
+	 * The index of the item of node `name` that v1 pairs with input item `itemIndex`, following
+	 * the paired items that the compiled nodes on the way keep (`NodeContext.pairedIndex`).
+	 * Null when a node on the way keeps none: the code then has no native form, and the node
+	 * runs in the fallback host. The values are the workflow variables of the code: each one
+	 * is a parameter of the function that runs the code, with the name that it says.
+	 */
+	pairedIndex?(name: string): {
+		at(itemIndex: string): string;
+		values: Array<{ param: string; value: string }>;
+	} | null;
+	/**
 	 * The output of node `name` that `$('name')` reads from this node (v1's
 	 * `getNodeConnectionIndexes`). The default is 0.
 	 */
@@ -181,6 +192,11 @@ export interface Translation {
 	/** The code reads a node by a computed name: it gets every node that ran before. */
 	usesAllNodes: boolean;
 	allNodes: string[];
+	/**
+	 * The workflow variables that the paired index code of a read of another node reads
+	 * (`CodeNativeInput.pairedIndex`): each is a parameter of the function that runs the code.
+	 */
+	pairedValues: Array<{ param: string; value: string }>;
 	/** The code reads `.index`, `.input` or `.groups` of matches (registry `__wf_matches`). */
 	usesMatchProps: boolean;
 	/**
@@ -1255,6 +1271,14 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		handsOver ??= feature;
 	};
 	const nodes: Array<{ name: string; output: number }> = [];
+	/** The workflow variables of the paired index code of a read (see `Translation.pairedValues`). */
+	const pairedValues: Array<{ param: string; value: string }> = [];
+	/** Adds the values of a paired index code, each one only once. */
+	const addPaired = (values: Array<{ param: string; value: string }>): void => {
+		for (const v of values) {
+			if (!pairedValues.some((x) => x.param === v.param)) pairedValues.push(v);
+		}
+	};
 	let usesFirstJson = false;
 	let nondeterministic = false;
 	/** The code draws random numbers: a second run draws other ones. */
@@ -1680,9 +1704,28 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		}
 		if (!call && member === 'item') {
 			// As v1: the item that pairs with the current item (the first item in "all items"
-			// mode). The pairing has a native form only when it is by position.
-			const paired = !own && input.pairsByPosition?.(name) === true;
-			if (!own && !paired) {
+			// mode). The pair is either kept by the nodes on the way, or by position.
+			if (own) {
+				replace(
+					base.getStart(sf),
+					p.getEnd(),
+					input.mode === 'each' ? ITEM : `${list}[0]`,
+				);
+				return;
+			}
+			const tracked = input.pairedIndex?.(name);
+			if (tracked) {
+				addPaired(tracked.values);
+				helpers.add('pairedSourceIndex');
+				replace(
+					base.getStart(sf),
+					p.getEnd(),
+					`${list}[${tracked.at(input.mode === 'each' ? INDEX : '0')}]`,
+				);
+				return;
+			}
+			const paired = input.pairsByPosition?.(name) === true;
+			if (!paired) {
 				block(
 					"$('…').item without a known pairing",
 					"`$('…').item` has a native form only when v1 pairs the items by position.",
@@ -1692,13 +1735,35 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			replace(
 				base.getStart(sf),
 				p.getEnd(),
-				own && input.mode === 'each'
-					? ITEM
-					: paired && input.mode === 'each'
-						? `${list}[${INDEX}]`
-						: `${list}[0]`,
+				paired && input.mode === 'each' ? `${list}[${INDEX}]` : `${list}[0]`,
 			);
 			return;
+		}
+		if (
+			call &&
+			member === 'itemMatching' &&
+			!own &&
+			call.arguments.length === 1 &&
+			!ts.isSpreadElement(call.arguments[0])
+		) {
+			const tracked = input.pairedIndex?.(name);
+			if (tracked) {
+				// As v1: the paired item of input item k. v1 reads the input item with `k` as a
+				// key, and fails for an index that it does not have.
+				addPaired(tracked.values);
+				helpers.add('pairedSourceIndex');
+				helpers.add('pairedMatch');
+				const arg = call.arguments[0];
+				const o = seq;
+				replace(base.getStart(sf), arg.getStart(sf), `pairedMatch(${list}, ${ITEMS}.length, `);
+				edits.push({
+					start: arg.getEnd(),
+					end: call.getEnd(),
+					text: `, (${P}k: number) => ${tracked.at(`${P}k`)})`,
+					order: 1_000_000 - o,
+				});
+				return;
+			}
 		}
 		if (
 			call &&
@@ -6299,15 +6364,19 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 					block('$node[…] other than .json', 'Only `$node[…].json` has a native form.');
 					return false;
 				}
+				const list = nodeList(nodeName);
+				if (list === null) return false;
 				if (input.mode === 'each') {
-					block(
-						'$node[…] in "each item" mode',
-						'`$node[…].json` is the item at the index of the current item there, with an error of v1 past the last item.',
+					// As v1: the item at the index of the current item, not a paired item.
+					helpers.add('nodeJsonAt');
+					replace(
+						n.getStart(sf),
+						member.getEnd(),
+						`nodeJsonAt(${list}, ${INDEX}, ${JSON.stringify(nodeName)})`,
 					);
 					return false;
 				}
-				const list = nodeList(nodeName);
-				if (list !== null) replace(n.getStart(sf), member.getEnd(), `${list}[0]?.json`);
+				replace(n.getStart(sf), member.getEnd(), `${list}[0]?.json`);
 				return false;
 			}
 			case '$item': {
@@ -7185,6 +7254,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		usesAllNodes,
 		allNodes: usesAllNodes ? (input.allNodes ?? []) : [],
 		usesMatchProps,
+		pairedValues,
 		typedDates,
 	};
 	if (blockers.length > 0) return { ok: false, blockers, partial: translation };

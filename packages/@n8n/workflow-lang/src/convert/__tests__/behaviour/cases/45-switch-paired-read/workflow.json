@@ -1,0 +1,193 @@
+{
+	"name": "Switch paired read",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [
+				0,
+				0
+			],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "switch-paired",
+				"options": {}
+			},
+			"webhookId": "9d1a6f42-2c3b-4e5d-8a7f-1b2c3d4e5f63"
+		},
+		{
+			"id": "source",
+			"name": "Source",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"jsCode": "return [{ json: { n: 10 } }, { json: { n: 20 } }, { json: { n: 30 } }, { json: { n: 40 } }];"
+			}
+		},
+		{
+			"id": "switch",
+			"name": "Switch",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3,
+			"position": [
+				400,
+				0
+			],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 2
+								},
+								"conditions": [
+									{
+										"id": "c1",
+										"leftValue": "={{ $json.n }}",
+										"operator": {
+											"type": "number",
+											"operation": "lt"
+										},
+										"rightValue": 25
+									}
+								],
+								"combinator": "and"
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 2
+								},
+								"conditions": [
+									{
+										"id": "c2",
+										"leftValue": "={{ $json.n }}",
+										"operator": {
+											"type": "number",
+											"operation": "lt"
+										},
+										"rightValue": 35
+									}
+								],
+								"combinator": "and"
+							}
+						}
+					]
+				},
+				"options": {
+					"fallbackOutput": "extra"
+				}
+			}
+		},
+		{
+			"id": "read-low",
+			"name": "Read Low",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				600,
+				-100
+			],
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "={ \"sourceN\": {{ $('Source').item.json.n }} }",
+				"options": {}
+			}
+		},
+		{
+			"id": "read-mid",
+			"name": "Read Mid",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				600,
+				0
+			],
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "return { json: { sourceN: $('Source').item.json.n } };"
+			}
+		},
+		{
+			"id": "read-high",
+			"name": "Read High",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				600,
+				100
+			],
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "={ \"sourceN\": {{ $('Source').item.json.n }} }",
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Source",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Source": {
+			"main": [
+				[
+					{
+						"node": "Switch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch": {
+			"main": [
+				[
+					{
+						"node": "Read Low",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Read Mid",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Read High",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

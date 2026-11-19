@@ -102,11 +102,17 @@ function emitParts(
 	traced: Translation | undefined,
 	files: string,
 	made: string,
+	pairArgs: string[] | undefined,
 ): { params: string; lines: string[]; args: string } {
 	const raw = (k: number) => `${P}r${k}`;
+	// Code that cannot run twice runs in its traced form, whose code names its own variables.
+	const pairs = (traced !== undefined && !t.repeatable ? traced : t).pairedValues;
 	const params = [
 		`${P}in: Json[]`,
 		...t.nodes.map((_, k) => `${raw(k)}: Json[]`),
+		// The workflow variables that the paired index of a read of another node reads
+		// (\`Translation.pairedValues\`).
+		...pairs.map((v) => `${v.param}: Json`),
 		...(t.usesAllNodes ? [`${ALL_NODES}: Json`] : []),
 		// The base64 text of the stored files of the input items (\`Translation.binaryNames\`).
 		...(t.binaryNames !== undefined ? [`${FILES}: Json`] : []),
@@ -235,6 +241,7 @@ function emitParts(
 	const args = [
 		input,
 		...lists,
+		...(pairArgs ?? pairs.map((v) => v.value)),
 		...(t.usesAllNodes ? [`{ ${all} }`] : []),
 		...(t.binaryNames !== undefined ? [files] : []),
 		...(t.preparesBinary ? [made] : []),
@@ -257,6 +264,7 @@ export function emitAsync(
 	traced?: Translation,
 	files = '{}',
 	made = '{ plan: [] }',
+	pairArgs?: string[],
 ): { declaration: string; expression: string } {
 	const parts = emitParts(
 		t,
@@ -269,6 +277,7 @@ export function emitAsync(
 		traced,
 		files,
 		made,
+		pairArgs,
 	);
 	return {
 		declaration: [
@@ -294,7 +303,20 @@ export function emitExpression(
 	traced?: Translation,
 	files = '{}',
 	made = '{ plan: [] }',
+	pairArgs?: string[],
 ): string {
-	const parts = emitParts(t, mode, input, lists, allLists, plainInput, null, traced, files, made);
+	const parts = emitParts(
+		t,
+		mode,
+		input,
+		lists,
+		allLists,
+		plainInput,
+		null,
+		traced,
+		files,
+		made,
+		pairArgs,
+	);
 	return [`((${parts.params}): Json[] => {`, ...parts.lines, `})(${parts.args})`].join('\n');
 }

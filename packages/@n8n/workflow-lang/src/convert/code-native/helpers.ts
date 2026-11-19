@@ -1991,6 +1991,36 @@ function pairedAt(list: Json[], k: Json): Json {
 	return list[index];
 }`,
 	},
+	pairedMatch: {
+		uses: [],
+		source: `/**
+ * \\\`$(name).itemMatching(k)\\\` of a node whose paired items the nodes on the way keep:
+ * item \\\`index(k)\\\` of the node, with v1's errors. v1 reads input item k with \\\`k\\\` as a key,
+ * so the text of an index counts too. The errors of v1 here have no line.
+ */
+function pairedMatch(list: Json[], inputCount: number, k: Json, index: (k: number) => number): Json {
+	if (k === undefined) throw { name: 'ExpressionError', message: 'Missing item index for .itemMatching()', $line: null };
+	const at: number = typeof k === 'number' ? k : typeof k === 'string' && String(Number(k)) === k ? Number(k) : -1;
+	if (!(at >= 0 && at < inputCount && Math.floor(at) === at)) {
+		throw { name: 'ExpressionError', message: 'Can’t get data', $line: null };
+	}
+	return list[index(at)];
+}`,
+	},
+	nodeJsonAt: {
+		uses: [],
+		source: `/**
+ * \\\`$node[name].json\\\` in "each item" mode of v1: the item of the node at the index of the
+ * current item, with the errors of v1 past the last item.
+ */
+function nodeJsonAt(list: Json[], k: number, name: string): Json {
+	if (list.length === 0) throw { name: 'ExpressionError', message: "Node '" + name + "' hasn't been executed", $line: null };
+	if (list.length <= k) {
+		throw { name: 'ExpressionError', message: '"' + name + '" node has ' + list.length + " item(s) but you're trying to access item " + k, $line: null };
+	}
+	return list[k].json;
+}`,
+	},
 	itemOfNode: {
 		uses: [],
 		source: `/** \\\`$item(k).$node[name].json\\\`: the JSON of item k of the node, with v1's errors. */
