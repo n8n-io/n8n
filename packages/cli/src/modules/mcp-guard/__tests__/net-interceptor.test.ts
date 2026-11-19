@@ -270,6 +270,83 @@ describe('installNetInterceptor', () => {
 		}
 	});
 
+	it('reads header lists, and supports the calls that a real request has', async () => {
+		const seen: CapturedRequest[] = [];
+		uninstall = installNetInterceptor(async (req) => {
+			seen.push(req);
+			return new Response('ok');
+		});
+
+		await inGuard(
+			async () =>
+				await new Promise<void>((resolve, reject) => {
+					const r = http.request(`${base}/h`, { headers: { 'x-list': ['a', 'b'] } }, (res) => {
+						res.resume();
+						res.on('end', resolve);
+					});
+					r.on('error', reject);
+					r.setNoDelay();
+					r.setSocketKeepAlive();
+					r.flushHeaders();
+					r.setHeader('X-Set', ['c', 'd']);
+					expect(r.getHeader('x-set')).toBe('c, d');
+					r.end();
+				}),
+		);
+
+		expect(seen[0].headers['x-list']).toBe('a, b');
+		expect(seen[0].headers['x-set']).toBe('c, d');
+	});
+
+	it('destroys the request on abort', async () => {
+		uninstall = installNetInterceptor(async () => new Response('ok'));
+
+		const destroyed = await inGuard(async () => {
+			const r = http.request(`${base}/a`);
+			r.on('error', () => {});
+			r.abort();
+			return r.destroyed;
+		});
+
+		expect(destroyed).toBe(true);
+	});
+
+	it('emits an error when the decision fails, also when it fails with a text', async () => {
+		uninstall = installNetInterceptor(async () => {
+			throw 'plain text failure';
+		});
+
+		const message = await inGuard(
+			async () =>
+				await new Promise<string>((resolve) => {
+					const r = http.request(`${base}/e`);
+					r.on('error', (error) => resolve(error.message));
+					r.end();
+				}),
+		);
+
+		expect(message).toBe('plain text failure');
+	});
+
+	it('emits the error of a passthrough request that cannot connect', async () => {
+		uninstall = installNetInterceptor(async () => 'passthrough');
+		const closed = http.createServer();
+		await new Promise<void>((resolve) => closed.listen(0, '127.0.0.1', resolve));
+		const port = (closed.address() as AddressInfo).port;
+		await new Promise((resolve) => closed.close(resolve));
+
+		const code = await inGuard(
+			async () =>
+				await new Promise<string | undefined>((resolve) => {
+					const r = http.request(`http://127.0.0.1:${port}/x`);
+					r.on('error', (error: NodeJS.ErrnoException) => resolve(error.code));
+					r.end();
+				}),
+		);
+
+		expect(code).toBe('ECONNREFUSED');
+	});
+
 	it('does not intercept the calls that decide makes itself', async () => {
 		let decisions = 0;
 		uninstall = installNetInterceptor(async () => {
