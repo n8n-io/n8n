@@ -548,24 +548,76 @@ it, MCP adoption dashboards count Assistant traffic and Assistant tool
 events double-count with server events. Effort: 2-3 days plus the
 `@n8n/telemetry` registry update.
 
-### Phases
+### Migration plan (without the shared agent client)
 
-1. **Parity (3-4 weeks):** verification on the server, `nextSteps` and
-   credentials in save results, skills back on, first-party caller context,
-   the telemetry dimension. Re-run full/N=3 against a master N=3 control;
-   parity is the go/no-go.
-2. **Single tool layer (4-6 weeks):** port the remaining native domain tools,
-   delete the duplicates and the override map, capability-dependent tool
-   lists, the knowledge base as a resource.
-3. **Shared client (3-4 weeks):** the `@n8n/agents`-hosted client on 2.x,
-   Agents first-party on the instance server, HTTP loopback for
-   out-of-process runs.
+The shared client is deferred: it is the only item that touches
+`@n8n/agents` and the SDK 1.x to 2.x migration. Everything else lives in the
+Assistant and the MCP module and migrates one tool at a time, behind a flag,
+with every step shippable and reversible.
 
-Cross-cutting: context cost (server tool descriptions are long; `find_tools`
-results were 5 MB of the eval transcripts, so first-party callers need a
-terse description mode), the maturity of the 2.x client SDK (the `callTool`
-output-schema quirk will have siblings), and a decision on legacy clients
-and write confirmations.
+**Flag and kill switch.** The per-turn decision in
+`assistant-turn-environment.factory.ts` goes behind a flag (PostHog on cloud,
+env for self-hosted). It is evaluated per turn, so a flip needs no restart,
+and the existing fallback (server unavailable, native tools stay) is the kill
+switch. Old threads keep working on both paths: tool calls render by name,
+and `resolveBuilderToolName` already aliases removed tool names.
+
+**Per-tool recipe**, one PR per capability:
+
+1. The server tool gains what the native twin's result had (`nextSteps`,
+   `credentials.offered` and `.bound`), or the missing operation.
+2. Add it to `INSTANCE_MCP_TOOLS_IN_USE` and the replacement map. The map is
+   the migration ledger until phase 3, then it is deleted.
+3. Frontend label, and the `approvalDetails` mapping when the tool writes.
+4. Skills reference the server name.
+5. The PR tier runs on the PR; a full N=3 against a master N=3 control at
+   each phase gate.
+6. Once the flag is default-on: delete the native tool, keep the name alias
+   for persisted threads.
+
+**Caller context** moves out of the bridge: `McpAuthContext` gets
+`{ firstParty, projectId, threadId }`, server tools resolve the
+conversation's scope from it, and the bridge stops injecting `projectId` and
+`workspaceKey` and rewriting schemas. Generic clients pass the same values
+explicitly.
+
+| phase | what | gate | effort |
+|---|---|---|---|
+| 0. Mergeable foundation | Flag and kill switch; client factory and in-process transport as a tested service; first-party caller context on the server; `callerKind` telemetry dimension; the unit tests the PoC skipped; frontend labels for every server tool | PR tier green with the flag on and off | 2 weeks |
+| 1. Parity | Verification as a server tool plus `nextSteps` in save results; credentials offered and bound in save results; skills on, naming server tools; tool list adapts to sandbox availability; terse descriptions for first-party callers | full N=3 vs master N=3 at parity: about −1 pp or better, the verification units no longer at 0/3 | 3-4 weeks |
+| 2. Single tool layer | Flag default-on; port the remaining native domain tools one at a time (executions, credentials, data tables, `execute_node`, setup computation), deleting each native twin as it lands; knowledge base as a server resource | each PR the PR tier; at the end a full N=3 | 4-6 weeks |
+| 3. Retire the native path | Remove the flag, delete `NATIVE_TOOL_REPLACEMENTS` and the native domain tool implementations, keep the alias map for old threads, drop the prompt's dual-path sections | PR tier, plus a production check: Assistant turn success rate by `callerKind` unchanged | 1-2 weeks |
+
+Total: 10-14 weeks for one engineer, about 8-10 calendar weeks for two,
+since the server-tool work of phases 1 and 2 (verification, credentials, the
+ports) runs in parallel with the client, skills and telemetry side. Phase 0
+is the unlock and is not split.
+
+**From the PoC, keep:** the `InstanceMcpServer` seam and adapter, the bridge
+and the elicitation mapping, `McpConfirmationService`, the caller policy
+(AsyncLocalStorage), the workspace service and tools, tool groups via
+`_meta`. **Rewrite:** the per-turn wiring (flag, context), the schema
+rewriting in the bridge (gone with caller context), the skill gating
+(inverted: skills always on), the replacement map's role (ledger, then
+deleted).
+
+**Risks to budget:**
+
+- Context cost is the one thing that can fail the phase 1 gate on latency
+  rather than correctness: server tool descriptions are long, and
+  `find_tools` results were 5 MB of the eval transcripts. The terse
+  description mode sits in phase 1 for that reason.
+- Legacy-client policy: with the native tools gone, the server is the only
+  write path. Decide before phase 3 whether 1.x clients (no elicitation) get
+  writes without confirmation, or no writes.
+- Thread-state features (session grants, verify verdicts, setup diffs) stay
+  client-side permanently: a design boundary, not debt.
+- The 2.x client SDK's maturity: the `callTool` output-schema quirk will have
+  siblings.
+
+**Deferred: the shared agent client** (previous section). When it comes
+back, it is a fourth phase of 3-4 weeks plus 1 week for the HTTP loopback,
+and it depends on phase 0 (caller context, telemetry) only.
 
 ## Open questions
 
