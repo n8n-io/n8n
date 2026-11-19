@@ -5,7 +5,7 @@ const value = @import("value.zig");
 const ops = @import("ops.zig");
 const json = @import("json.zig");
 const json_error = @import("json_error.zig");
-const lib = @import("lib.zig");
+const lib = @import("lib_types.zig");
 const lib_array = @import("lib_array.zig");
 
 const Value = value.Value;

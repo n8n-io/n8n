@@ -6,7 +6,7 @@ const value = @import("value.zig");
 const ops = @import("ops.zig");
 const numfmt = @import("numfmt.zig");
 const exactnum = @import("exactnum.zig");
-const lib = @import("lib.zig");
+const lib = @import("lib_types.zig");
 
 const Value = value.Value;
 const Vm = ops.Vm;

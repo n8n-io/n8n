@@ -2,9 +2,9 @@
 # A count may only go down. Lint fails when a rule has more findings than its line,
 # and also when it has fewer: lower the line in the same change. Never raise a line.
 # List the findings of one rule with: zig build lint -- --rule <name>
-core-allocator 9
+core-allocator 8
 row-pointer 10
-undefined 272
+undefined 269
 pointer-cast 26
 local-array 1
 global-var 16
@@ -18,11 +18,11 @@ switch-else 29
 unbounded-loop 24
 fn-length 38
 nesting 26
-fn-assert 139
+fn-assert 135
 discard 58
-core-std 89
+core-std 76
 shell-syscall 0
-core-print 56
+core-print 47
 map-order 3
 safety-off 17
 pub-unused 43

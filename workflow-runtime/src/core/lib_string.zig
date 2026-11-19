@@ -9,7 +9,7 @@ const unorm = @import("normalize.zig");
 const unicase = @import("unicase.zig");
 const heap = @import("heap.zig");
 const Builder = @import("arena.zig").Builder;
-const lib = @import("lib.zig");
+const lib = @import("lib_types.zig");
 
 const Value = value.Value;
 const Vm = ops.Vm;

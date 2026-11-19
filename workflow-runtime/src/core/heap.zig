@@ -911,3 +911,9 @@ test "appendStr grows in place, keeps older strings, and survives compaction" {
     // The two strings of one buffer still share it after the copy.
     try std.testing.expectEqual(b.at(StrRef, value.payload(items[0])).data, b.at(StrRef, value.payload(items[1])).data);
 }
+
+test "region adds no probe overhead in the normal build" {
+    if (mem.enabled) return error.SkipZigTest;
+    // A region is a slice and a count: the probe adds nothing.
+    try std.testing.expectEqual(@sizeOf([]u8) + @sizeOf(usize), @sizeOf(Region));
+}

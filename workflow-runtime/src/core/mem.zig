@@ -119,11 +119,8 @@ pub inline fn scan(p: Probe, loop: Loop, elems: usize) void {
 }
 
 test "the layer has no size and no effect in the normal build" {
-    const heap = @import("heap.zig");
     if (enabled) return error.SkipZigTest;
     try std.testing.expectEqual(@as(usize, 0), @sizeOf(Probe));
-    // A region is a slice and a count: the probe adds nothing.
-    try std.testing.expectEqual(@sizeOf([]u8) + @sizeOf(usize), @sizeOf(heap.Region));
     var x: u64 = 7;
     store(none, .registers, .interp_reg, &x, load(none, .registers, .interp_reg, &x) + 1);
     try std.testing.expectEqual(@as(u64, 8), x);

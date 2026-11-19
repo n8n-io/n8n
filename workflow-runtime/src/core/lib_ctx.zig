@@ -11,7 +11,7 @@ const textcodec = @import("textcodec.zig");
 const regex = @import("regex.zig");
 const cred_flags = @import("cred_flags.zig");
 const Builder = @import("arena.zig").Builder;
-const lib = @import("lib.zig");
+const lib = @import("lib_types.zig");
 
 const Value = value.Value;
 const Vm = ops.Vm;
