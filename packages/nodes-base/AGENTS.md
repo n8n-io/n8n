@@ -44,19 +44,24 @@ A relational node that pages a read operation uses a keyset cursor, never `OFFSE
 while it is being paged shifts rows under the reader and a row can be skipped or
 returned twice.
 
-The engine-agnostic half lives in `utils/sql-keyset-paging.ts`: reading the field,
-ordering the sort rules, and adding the predicate. Use it, do not write a second
-copy. The checks that have to query the server, such as proving the column is
-unique, stay in the node's own helpers because each engine asks a different
-catalogue.
+`utils/sql-keyset-paging.ts` holds everything except the queries: reading the
+field, ordering the sort rules, building the predicate, and all four rejections
+with their messages. The node runs the catalogue query its own engine needs and
+passes the answer in. Use the shared helpers, do not write a second copy of a
+rejection message.
 
 - **Start After**, parameter name `startAfter`, a `fixedCollection` holding Column
-  and Value. Shown only when Return All is off. The existing Limit is the page size.
+  and Value. Shown when Return All is off and the node is at or above the version
+  that introduced it. Put `'@version'` first in `show`: when a show value is an
+  expression, n8n displays the field and skips every later key. The existing Limit
+  is the page size.
 - An empty Value is the first page: no predicate, Limit rows, ordered by Column.
-  Empty text in Column looks the same to the next page, so a text Column must not
-  contain empty text. The node looks for such a row with an index lookup and stops
-  with a `NodeOperationError`. Oracle stores empty text as NULL, so a NOT NULL
-  column never has it and Oracle does not need the check.
+  Empty text in Column looks the same, so when the Value is empty the node looks
+  for a row holding empty text with an index lookup and stops with a
+  `NodeOperationError`. Oracle stores empty text as NULL, so a NOT NULL column
+  never has it and Oracle does not need the check.
+- Column must appear in Output Columns, or Output Columns must be `*`, otherwise
+  the next page has no value to resume from.
 - A Value that is set adds `Column > :value` to the WHERE clause, bound through the
   engine's own parameter binding and never concatenated. The node's other conditions
   go in brackets before it, so an `OR` cannot match rows of an earlier page.
