@@ -9,15 +9,13 @@ import type { CanvasEventBusEvents } from '@/features/workflows/canvas/canvas.ty
 import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanvas.vue';
 
 import { useDraftWorkflowDocument } from '../composables/useDraftWorkflowDocument';
-import InstanceAiCanvasRunStatus from './InstanceAiCanvasRunStatus.vue';
+import AgentBuildingIndicator from './AgentBuildingIndicator.vue';
 import type { WorkflowDraft } from '../instanceAi.workflowDrafts';
 
 const props = defineProps<{
 	draft: WorkflowDraft;
 	/** The agent is still working, so a save can still replace this draft. */
 	building: boolean;
-	/** What the agent does now. Replaces the building label while it works. */
-	statusText?: string;
 	/** The run waits on the user in the chat, for an answer or an approval. */
 	waiting?: boolean;
 }>();
@@ -58,7 +56,14 @@ watch(
 			:striped-background="false"
 			:class="$style.canvas"
 		/>
-		<InstanceAiCanvasRunStatus v-if="building" :status-text="statusText" :waiting="waiting" />
+		<!-- The run waits on the user, so nothing builds. The chat asks for the answer. -->
+		<template v-if="building">
+			<AgentBuildingIndicator
+				v-if="!waiting"
+				:show-label="false"
+				data-test-id="instance-ai-draft-building-wave"
+			/>
+		</template>
 		<div v-else :class="$style.badge" data-test-id="instance-ai-workflow-draft-badge">
 			<N8nText size="small" color="text-base">
 				{{ i18n.baseText('instanceAi.workflowDraft.unsaved') }}
