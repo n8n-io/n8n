@@ -2242,6 +2242,7 @@ defineExpose({ enterEditMode });
 					:search="search"
 					:compact="props.compact"
 					:execution="workflowExecution"
+					:connection-type="connectionType"
 				/>
 			</Suspense>
 

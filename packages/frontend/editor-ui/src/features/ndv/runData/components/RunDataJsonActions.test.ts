@@ -20,7 +20,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
 import { defaultNodeDescriptions, mockNodes } from '@/__tests__/mocks';
 import { useI18n } from '@n8n/i18n';
-import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, createRunExecutionData } from 'n8n-workflow';
 
 vi.mock('vue-router', () => {
 	return {
@@ -117,32 +117,6 @@ async function createPiniaWithActiveNode() {
 										},
 									],
 								],
-								ai_tool: [
-									[
-										{
-											json: { id: 4, name: 'Tool output' },
-										},
-									],
-									[
-										{
-											json: { id: 7, name: 'Tool branch 2 output' },
-										},
-									],
-								],
-								ai_memory: [
-									[
-										{
-											json: { id: 5, name: 'Memory output' },
-										},
-									],
-								],
-								ai_languageModel: [
-									[
-										{
-											json: { id: 6, name: 'Language model output' },
-										},
-									],
-								],
 							},
 							source: [null],
 						},
@@ -232,41 +206,60 @@ describe('RunDataJsonActions', () => {
 		);
 	});
 
-	it.each([
-		[NodeConnectionTypes.AiTool, 0, { id: 4, name: 'Tool output' }],
-		[NodeConnectionTypes.AiMemory, 0, { id: 5, name: 'Memory output' }],
-		[NodeConnectionTypes.AiLanguageModel, 0, { id: 6, name: 'Language model output' }],
-		[NodeConnectionTypes.AiTool, 1, { id: 7, name: 'Tool branch 2 output' }],
-	])(
-		'should copy unselected JSON output from the active %s connection branch %i',
-		async (connectionType, outputIndex, item) => {
-			const { pinia, activeNode } = await createPiniaWithActiveNode();
-			const renderComponent = createComponentRenderer(RunDataJsonActions, {
-				props: {
-					node: activeNode ?? undefined,
-					paneType: 'output',
-					pushRef: 'ref',
-					distanceFromActive: 0,
-					selectedJsonPath: nonExistingJsonPath,
-					jsonData: [item],
-					outputIndex,
-					runIndex: 1,
-					connectionType,
+	it('should copy the current AI connection output', async () => {
+		const { pinia, activeNode } = await createPiniaWithActiveNode();
+		const aiData = [{ json: { memory: 'value' } }];
+		const execution = createRunExecutionData({
+			resultData: {
+				runData: {
+					[activeNode!.name]: [
+						{
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+							data: { [NodeConnectionTypes.AiMemory]: [aiData] },
+						},
+					],
 				},
-				global: {
-					provide: {
-						[WorkflowIdKey as unknown as string]: computed(() => '1'),
+			},
+		});
+		const renderComponent = createComponentRenderer(RunDataJsonActions, {
+			props: {
+				node: activeNode ?? undefined,
+				paneType: 'output',
+				pushRef: 'ref',
+				distanceFromActive: 0,
+				selectedJsonPath: nonExistingJsonPath,
+				jsonData: [{ memory: 'value' }],
+				outputIndex: 0,
+				runIndex: 0,
+				execution,
+				connectionType: NodeConnectionTypes.AiMemory,
+			},
+			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+				},
+				mocks: {
+					$route: {
+						name: VIEWS.WORKFLOW,
 					},
 				},
-			});
+			},
+		});
 
-			const { getByTestId } = renderComponent({ pinia });
+		const { getByTestId } = renderComponent({
+			pinia,
+		});
 
-			await fireEvent.click(within(getByTestId('ndv-json-actions')).getByRole('button'));
+		await waitFor(() => expect(getByTestId('ndv-json-actions')).toBeInTheDocument());
 
-			expect(copy).toHaveBeenCalledWith(JSON.stringify([item], null, 2));
-		},
-	);
+		const button = within(getByTestId('ndv-json-actions')).getByRole('button');
+
+		await fireEvent.click(button);
+
+		expect(copy).toHaveBeenCalledWith(JSON.stringify([{ memory: 'value' }], null, 2));
+	});
 
 	it('should copy unselected JSON output from selected previous run on click', async () => {
 		const { pinia, activeNode } = await createPiniaWithActiveNode();

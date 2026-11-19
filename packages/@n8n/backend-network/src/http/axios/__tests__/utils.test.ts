@@ -440,8 +440,8 @@ describe('generateContentLengthHeader', () => {
 		Container.set(Logger, logger);
 		const formData = new FormData();
 		formData.append('key', 'value');
-		vi.spyOn(formData, 'getLength').mockImplementation((cb) => {
-			cb(new Error('length failed'), 0);
+		vi.spyOn(formData, 'getLength').mockImplementation((onLength) => {
+			onLength(new Error('length failed'), 0);
 		});
 		const config: AxiosRequestConfig = { data: formData, headers: {} };
 
