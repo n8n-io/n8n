@@ -43,8 +43,8 @@ describe('Expression', () => {
 
 	test('Should keep identifiers that are written with escapes next to a multi-line string', () => {
 		const expression =
-			"{{ ['a\\\nb', \\u005f_n8n_literal_text_0__, \\u005f_n8n_literal_text_1__] }}";
-		const data = { __n8n_literal_text_0__: 'first', __n8n_literal_text_1__: 'second' };
+			"{{ ['a\\\nb', \\u005f_n8n_literal_text_0_0__, \\u005f_n8n_literal_text_1_0__] }}";
+		const data = { __n8n_literal_text_0_0__: 'first', __n8n_literal_text_1_0__: 'second' };
 
 		expect(evaluator.execute(expression, data)).toEqual(['ab', 'first', 'second']);
 	});
