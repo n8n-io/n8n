@@ -1,4 +1,4 @@
-import { defineComponent } from 'vue';
+import { defineComponent, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -1289,6 +1289,24 @@ describe('SettingsUsersView', () => {
 
 			usersStore.usersLimitNotReached = true;
 			ssoStore.isSamlLoginEnabled = true;
+			expect(isModalPrefetchEnabled(INVITE_USER_MODAL_KEY)).toBe(false);
+		});
+
+		it('waits for the provisioning config before it prefetches the invite modal', () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Provisioning] = true;
+			// The store exposes the config as a readonly ref, so a getter stands in for the fetch.
+			const config = ref<{ scopesProvisionInstanceRole: boolean } | undefined>();
+			Object.defineProperty(mockedStore(useUserRoleProvisioningStore), 'provisioningConfig', {
+				configurable: true,
+				get: () => config.value,
+			});
+			renderComponent();
+			expect(isModalPrefetchEnabled(INVITE_USER_MODAL_KEY)).toBe(false);
+
+			config.value = { scopesProvisionInstanceRole: false };
+			expect(isModalPrefetchEnabled(INVITE_USER_MODAL_KEY)).toBe(true);
+
+			config.value = { scopesProvisionInstanceRole: true };
 			expect(isModalPrefetchEnabled(INVITE_USER_MODAL_KEY)).toBe(false);
 		});
 

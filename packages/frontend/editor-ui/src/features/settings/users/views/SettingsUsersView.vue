@@ -87,6 +87,9 @@ usePrefetchModals([INVITE_USER_MODAL_KEY], {
 		!showUMSetupWarning.value &&
 		!isSSOEnabled.value &&
 		usersStore.usersLimitNotReached &&
+		// With the provisioning license, wait for its config: it can hide the invite button.
+		(!settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Provisioning] ||
+			userRoleProvisioningStore.provisioningConfig !== undefined) &&
 		!isInstanceRoleProvisioningEnabled.value,
 });
 usePrefetchModals([DELETE_USER_MODAL_KEY], {
