@@ -22,7 +22,6 @@ import {
 	ReportBuilder,
 	toConsumer,
 	Visibility,
-	withIncompleteExit,
 } from './dependency-check.shared';
 import {
 	targetKey,
@@ -52,10 +51,10 @@ export function computeApplyReport(input: ApplyCheckInput): PromotionDependencyR
  *    without a reason is a warning for a workflow and a gap for a credential.
  *
  * The result also holds what the operation must do: the workflows and the projects to keep,
- * and the placeholders of an incomplete Apply.
+ * and the placeholders of the credential gaps.
  */
 export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
-	const { allowIncomplete, branch, plan, access, destinationTargets } = input;
+	const { branch, plan, access, destinationTargets } = input;
 	const visibility = new Visibility(access);
 	const report = new ReportBuilder();
 	const canCreateIn = new Set(access.createCredentialProjectIds);
@@ -154,7 +153,7 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 
 	const grants = new Map<string, PromotionCredentialGrant>();
 	const homeChoices = new Map<string, PromotionCredentialHomeChoice>();
-	/** The consumer projects of each credential that an incomplete Apply gives a placeholder. */
+	/** The consumer projects of each credential that the Apply gives a placeholder. */
 	const placeholderGaps = new Map<string, { reference: ReferenceFact; gapIds: string[] }[]>();
 
 	const canUse = (destination: DestinationTargetFact, id: string, projectId: string) =>
@@ -204,7 +203,7 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 				target: visibility.target(reference, known),
 				usage,
 				group,
-				exits: withIncompleteExit(exits, allowIncomplete),
+				exits,
 				...extra,
 			});
 		};
@@ -212,13 +211,13 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 		/** A gap for a target that the user may not see: only what the node holds. */
 		const hiddenGap = () => gap('no-access', ['ask-owner'], undefined);
 
-		/** A credential gap that an incomplete Apply satisfies with a placeholder. */
+		/** A credential gap that the Apply satisfies with a placeholder. */
 		const placeholderExtra = (): Partial<PromotionGap> => {
 			if (target.kind !== 'credential' || destination) return {};
 			const entries = placeholderGaps.get(target.id) ?? [];
 			entries.push({ reference, gapIds: [id] });
 			placeholderGaps.set(target.id, entries);
-			return allowIncomplete ? { placeholder: true } : {};
+			return { placeholder: true };
 		};
 
 		/** The target is on the branch and not on the destination: include it or ask the owner. */
@@ -474,10 +473,7 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 			target: visibility.target(reference, visible ? destination : undefined),
 			usage: reference.usage,
 			group: visible ? 'access-not-grantable' : 'no-access',
-			exits: withIncompleteExit(
-				visible && access.sharingLicensed === false ? [] : ['ask-owner'],
-				allowIncomplete,
-			),
+			exits: visible && access.sharingLicensed === false ? [] : ['ask-owner'],
 			detail: 'published-version',
 		});
 	}
@@ -503,13 +499,13 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 		});
 	}
 
-	// --- Placeholders of an incomplete Apply: one for each credential id.
+	// --- Placeholders: one for each credential id that the destination does not hold.
 	const placeholders: PlaceholderCandidate[] = [];
 	const rank = (projectId: string) => {
 		const index = plan.projectOrder.indexOf(projectId);
 		return index === -1 ? plan.projectOrder.length : index;
 	};
-	for (const [credentialId, entries] of allowIncomplete ? placeholderGaps : []) {
+	for (const [credentialId, entries] of placeholderGaps) {
 		const projectIds = [...new Set(entries.map(({ reference }) => reference.consumer.projectId))];
 		projectIds.sort((a, b) => rank(a) - rank(b));
 		const [homeProjectId, ...shareWithProjectIds] = projectIds;
@@ -555,7 +551,7 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 	};
 
 	return {
-		report: report.build(allowIncomplete, {
+		report: report.build({
 			grants: [...grants.values()],
 			credentialMoves,
 			deletionCallers,

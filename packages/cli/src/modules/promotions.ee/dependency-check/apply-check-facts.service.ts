@@ -205,7 +205,6 @@ export class ApplyCheckFactsService {
 		}
 
 		return {
-			allowIncomplete: input.config.settings.allowIncomplete,
 			references,
 			expressionReferences,
 			branch,

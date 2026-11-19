@@ -12,7 +12,6 @@ import {
 	ReportBuilder,
 	toConsumer,
 	Visibility,
-	withIncompleteExit,
 } from './dependency-check.shared';
 import {
 	targetKey,
@@ -32,7 +31,7 @@ import {
  * 5. Can the user include it? The answer gives the group and the exits of the gap.
  */
 export function computePromoteReport(input: PromoteCheckInput): PromotionDependencyReport {
-	const { allowIncomplete, branch, plan, sourceTargets } = input;
+	const { branch, plan, sourceTargets } = input;
 	const visibility = new Visibility(input.access);
 	const report = new ReportBuilder();
 	const deleted = new Set(plan.deletedWorkflows.map(({ id }) => id));
@@ -89,7 +88,7 @@ export function computePromoteReport(input: PromoteCheckInput): PromotionDepende
 				target: shownTarget,
 				usage,
 				group,
-				exits: withIncompleteExit(exits, allowIncomplete),
+				exits,
 				...extra,
 			});
 		};
@@ -165,7 +164,7 @@ export function computePromoteReport(input: PromoteCheckInput): PromotionDepende
 
 	report.notes.push(...expressionNotes(input.expressionReferences));
 
-	return report.build(allowIncomplete, {
+	return report.build({
 		grants: [],
 		credentialMoves: [],
 		deletionCallers: [],

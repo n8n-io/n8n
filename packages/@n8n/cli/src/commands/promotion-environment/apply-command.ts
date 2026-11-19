@@ -43,7 +43,7 @@ export abstract class PromotionApplyCommand extends BaseCommand {
 					...(result.dependencyMessages ?? []),
 					...(result.dependencyReport?.gaps.length
 						? [
-								`Applied incomplete, with ${result.dependencyReport.gaps.length} gap(s). Run with --json for the report.`,
+								`Applied with ${result.dependencyReport.gaps.length} gap(s). Run with --json for the report.`,
 							]
 						: []),
 				];
@@ -96,9 +96,7 @@ function stopMessage(result: ApplyPackageResult, continueCommand: ContinueComman
 			...formatDependencyReport(report),
 			hasUnknownGap(report)
 				? 'This version of the CLI does not know every gap. Update the CLI before you confirm a gap.'
-				: report.allowIncomplete
-					? 'Close the gaps, or pass each gap ID to --confirm-gap. Pass the ID of each listed deletion to --confirm-deletion to accept its callers. Then apply again.'
-					: 'Close the gaps, then apply again. Pass the ID of each listed deletion to --confirm-deletion to accept its callers.',
+				: 'Close the gaps, or pass each gap ID to --confirm-gap. Pass the ID of each listed deletion to --confirm-deletion to accept its callers. Then apply again.',
 		].join('\n');
 	}
 	if (result.status === 'preview-changed') {

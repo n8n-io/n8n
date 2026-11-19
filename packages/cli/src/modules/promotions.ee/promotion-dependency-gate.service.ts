@@ -280,8 +280,8 @@ export class PromotionDependencyGate {
 	}
 
 	/**
-	 * True when the Promote must write nothing: the report has a hard block, the environment is
-	 * strict and gaps exist, or the gaps differ from the confirmed ones.
+	 * True when the Promote must write nothing: the report has a hard block, or the gaps differ
+	 * from the confirmed ones.
 	 */
 	mustStop(report: PromotionDependencyReport, confirmedGapIds: readonly string[] = []): boolean {
 		return report.blocked || verifyConfirmedGaps(report, confirmedGapIds) === 'changed';
@@ -296,9 +296,7 @@ export class PromotionDependencyGate {
 		const reason =
 			blocks.length > 0
 				? 'A confirmation does not lift a block.'
-				: report.allowIncomplete
-					? 'The dependency gaps differ from the confirmed gaps. Close each gap, or send its id in `confirmedGapIds`.'
-					: 'This environment does not allow incomplete promotions. Close each gap.';
+				: 'The dependency gaps differ from the confirmed gaps. Close each gap, or send its id in `confirmedGapIds`.';
 		throw new ConflictError(
 			[
 				`The Promote stopped and wrote nothing. ${reason}`,
@@ -345,7 +343,7 @@ export class PromotionDependencyGate {
 		};
 	}
 
-	/** The commit message of an incomplete Promote lists the gaps that the user can see. */
+	/** The commit message of a Promote with gaps lists the gaps that the user can see. */
 	commitMessageWithGaps(message: string, report: PromotionDependencyReport): string {
 		const gaps = renderGapsForCommitMessage(report);
 		return gaps === '' ? message : `${message.trimEnd()}\n\n${gaps}`;
@@ -446,7 +444,7 @@ export class PromotionDependencyGate {
 	 * Checks the Apply and compares the report with the confirmations of the user.
 	 *
 	 * It stops, before any write, when the gaps differ from the confirmed gaps, when the
-	 * environment is strict and gaps exist, when the report has a hard block, and while the
+	 * report has a hard block, and while the
 	 * Apply deletes a workflow that other workflows call and the user did not accept that.
 	 *
 	 * It writes nothing, so an operation can call it for each selection that it plans: the plan

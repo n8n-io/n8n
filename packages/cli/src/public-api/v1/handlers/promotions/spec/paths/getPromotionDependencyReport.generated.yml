@@ -84,11 +84,9 @@ responses:
         schema:
           type: object
           properties:
-            allowIncomplete:
-              type: boolean
             blocked:
               type: boolean
-              description: 'True when the operation cannot run: the environment is strict and the report has gaps, or it has a hard block.'
+              description: 'True when the operation cannot run: the report has a hard block, or a credential of the branch has no home project. A gap does not set it.'
             gaps:
               type: array
               items:
@@ -638,7 +636,6 @@ responses:
                   - consumer
                   - resource
           required:
-            - allowIncomplete
             - blocked
             - gaps
             - warnings

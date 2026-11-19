@@ -58,10 +58,6 @@ requestBody:
                     type: string
                     minLength: 1
                     maxLength: 255
-                  allowIncomplete:
-                    type: boolean
-                    default: false
-                    description: When true, an Apply can continue with dependency gaps after the user confirms them. When false or omitted, a gap stops the Apply.
                 required:
                   - schemaVersion
                   - branchName
@@ -78,10 +74,6 @@ requestBody:
                     maxLength: 255
                   createBranchOnPromotion:
                     type: boolean
-                  allowIncomplete:
-                    type: boolean
-                    default: false
-                    description: When true, a Promote can continue with dependency gaps after the user confirms them. When false or omitted, a gap stops the Promote.
                 required:
                   - schemaVersion
                   - baseBranchName

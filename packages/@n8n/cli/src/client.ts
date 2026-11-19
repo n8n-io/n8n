@@ -115,7 +115,7 @@ export type PromotePackageResult = {
 	environmentId: string;
 	counts: ExportPackageCounts;
 	git: PromotionGitResult;
-	/** The gaps that an incomplete Promote wrote, and its warnings and notes. */
+	/** The gaps that a Promote with gaps wrote, and its warnings and notes. */
 	dependencyReport?: PromotionDependencyReport;
 };
 

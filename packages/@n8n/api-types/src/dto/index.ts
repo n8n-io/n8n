@@ -832,11 +832,8 @@ export {
 	type PromotionDirection,
 	type PromotionEnvironmentCheckout,
 	type PromotionEnvironmentScope,
-	type CreatePromotionEnvironmentInput,
 	type PromotionEnvironmentSettings,
-	type PromotionEnvironmentSettingsInput,
 	type PromotionEnvironmentSummary,
-	type UpdatePromotionEnvironmentInput,
 } from './promotions/promotion-environment.dto';
 export {
 	ApplyEnvironmentSelectionRequestDto,

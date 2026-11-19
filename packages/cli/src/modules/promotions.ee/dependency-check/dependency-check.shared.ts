@@ -4,7 +4,6 @@ import type {
 	PromotionDependencyReport,
 	PromotionDependencyWarning,
 	PromotionGap,
-	PromotionGapExit,
 	PromotionHardBlock,
 	PromotionReferenceConsumer,
 	PromotionReferenceTarget,
@@ -102,14 +101,6 @@ export function toConsumer(consumer: ReferenceFact['consumer']): PromotionRefere
 	return { kind: 'workflow', id: consumer.id, name: consumer.name, projectId: consumer.projectId };
 }
 
-/** Every gap can continue incomplete when the environment allows it. */
-export function withIncompleteExit(
-	exits: PromotionGapExit[],
-	allowIncomplete: boolean,
-): PromotionGapExit[] {
-	return allowIncomplete ? [...exits, 'continue-incomplete'] : exits;
-}
-
 export function expressionNotes(references: ExpressionReferenceFact[]): PromotionDependencyNote[] {
 	return references.map(({ consumer, usage }) => ({
 		consumer: toConsumer(consumer),
@@ -142,7 +133,6 @@ export class ReportBuilder {
 	}
 
 	build(
-		allowIncomplete: boolean,
 		rest: Pick<
 			PromotionDependencyReport,
 			| 'grants'
@@ -153,13 +143,10 @@ export class ReportBuilder {
 			| 'credentialHomeChoices'
 		>,
 	): PromotionDependencyReport {
-		// A hard block and a credential without a home stop both modes. A gap stops a strict one.
-		const blocked =
-			this.hardBlocks.length > 0 ||
-			rest.credentialHomeChoices.length > 0 ||
-			(!allowIncomplete && this.gaps.length > 0);
+		// A hard block and a credential without a home stop the operation. A gap does not:
+		// the user confirms it.
+		const blocked = this.hardBlocks.length > 0 || rest.credentialHomeChoices.length > 0;
 		return {
-			allowIncomplete,
 			blocked,
 			gaps: this.gaps,
 			warnings: this.warnings,

@@ -227,7 +227,6 @@ export class PromoteCheckFactsService {
 				: []);
 
 		return {
-			allowIncomplete: settings.allowIncomplete,
 			references,
 			expressionReferences,
 			sourceTargets,

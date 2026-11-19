@@ -712,7 +712,7 @@ export class PromotionsService {
 			const baseMessage =
 				request.commitMessage ??
 				this.defaultSelectionCommitMessage(projects, selections, staging, branch);
-			// An incomplete Promote lists its gaps for the reviewer.
+			// A Promote with gaps lists them for the reviewer.
 			const commitMessage = this.dependencyGate.commitMessageWithGaps(
 				baseMessage,
 				dependencyReport,

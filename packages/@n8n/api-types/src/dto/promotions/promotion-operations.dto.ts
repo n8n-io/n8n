@@ -70,7 +70,7 @@ export const promotePackageResultSchema = z.object({
 	review: promotionReviewResultSchema.optional(),
 	/** The push succeeded, but a follow-up step did not. The admin can finish it on the host. */
 	warnings: z.array(promotionPromoteWarningSchema).optional(),
-	/** Set when the Promote checked its dependencies. An incomplete Promote lists its gaps here. */
+	/** Set when the Promote checked its dependencies. A Promote with gaps lists them here. */
 	dependencyReport: promotionDependencyReportSchema.optional(),
 });
 
@@ -82,8 +82,7 @@ export const promoteSelectionResultSchema = z.discriminatedUnion('status', [
 	/** The project or its branch changed after the reviewed preview. Nothing was pushed. */
 	z.object({ status: z.literal('preview-changed'), environmentId: n8nIdSchema }),
 	/**
-	 * The gaps differ from `confirmedGapIds`, or the environment is strict and gaps exist.
-	 * Nothing was pushed. The report holds the current gaps.
+	 * The gaps differ from `confirmedGapIds`. Nothing was pushed. The report holds the current gaps.
 	 */
 	z.object({
 		status: z.literal('gaps-changed'),
@@ -251,7 +250,7 @@ export const applyPackageResultSchema = z.discriminatedUnion('status', [
 		/** The workflows and folders that the Apply moved between two team projects. */
 		moves: z.array(promotionAppliedMoveSchema).optional(),
 		...promotionApplyDependencyResultShape,
-		/** Set when the Apply checked its dependencies. An incomplete Apply lists its gaps here. */
+		/** Set when the Apply checked its dependencies. An Apply with gaps lists them here. */
 		dependencyReport: promotionDependencyReportSchema.optional(),
 	}),
 	applyPackageIdentitySchema.extend({
@@ -262,8 +261,7 @@ export const applyPackageResultSchema = z.discriminatedUnion('status', [
 		grants: promotionApplyDependencyResultShape.grants,
 	}),
 	/**
-	 * The gaps or the grants differ from the confirmed lists, or the environment is strict and
-	 * gaps exist. Nothing was imported. The report holds the current state.
+	 * The gaps or the grants differ from the confirmed lists. Nothing was imported. The report holds the current state.
 	 */
 	applyPackageIdentitySchema.extend({
 		status: z.literal('gaps-changed'),

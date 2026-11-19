@@ -5,7 +5,7 @@ summary: 'Beta: Read the promotion environments of a project'
 description: |-
   **Beta** — breaking changes may still occur without major version bump.
 
-  Returns the Promote environment and the Apply environment that serve a team project: its own environment for the direction, otherwise the instance environment. A direction is left out when no environment covers the project. Each entry has the `id`, the `name`, the branch, the `allowIncomplete` setting, and `canOperate`: whether the user can run that operation in the project. The user needs read access to the project. The global promotion scopes are not needed.
+  Returns the Promote environment and the Apply environment that serve a team project: its own environment for the direction, otherwise the instance environment. A direction is left out when no environment covers the project. Each entry has the `id`, the `name`, the branch, and `canOperate`: whether the user can run that operation in the project. The user needs read access to the project. The global promotion scopes are not needed.
 
   Requires one of these API key scopes: `promotions:promote`, `promotions:apply`.
 x-required-scope: promotions:promote,promotions:apply
@@ -38,8 +38,6 @@ responses:
                   enum:
                     - git
                     - gitlab
-                allowIncomplete:
-                  type: boolean
                 branchName:
                   type: string
                 canOperate:
@@ -50,7 +48,6 @@ responses:
                 - id
                 - name
                 - providerType
-                - allowIncomplete
                 - branchName
                 - canOperate
                 - createBranchOnPromotion
@@ -68,8 +65,6 @@ responses:
                   enum:
                     - git
                     - gitlab
-                allowIncomplete:
-                  type: boolean
                 branchName:
                   type: string
                 canOperate:
@@ -78,7 +73,6 @@ responses:
                 - id
                 - name
                 - providerType
-                - allowIncomplete
                 - branchName
                 - canOperate
   '401':

@@ -4,20 +4,19 @@ import type { PromotionApplyConfirmations, PromotionDependencyReport } from '../
 
 type Gap = PromotionDependencyReport['gaps'][number];
 
-/** The flag that accepts the gaps of an incomplete Promote or Apply. */
-export function confirmGapFlag(operation: 'promotions' | 'applies') {
-	return {
-		confirmGap: Flags.string({
-			description: `ID of a dependency gap that you accept, from the dependency report (repeat for more than one). Needs an environment that allows incomplete ${operation}.`,
-			aliases: ['confirm-gap'],
-			multiple: true,
-		}),
-	};
-}
+/** The flag that accepts the gaps of a Promote or an Apply. */
+export const confirmGapFlag = {
+	confirmGap: Flags.string({
+		description:
+			'ID of a dependency gap that you accept, from the dependency report (repeat for more than one). The operation continues with the gaps that you accept.',
+		aliases: ['confirm-gap'],
+		multiple: true,
+	}),
+};
 
 /** The flags that carry the confirmations of an Apply. */
 export const applyConfirmationFlags = {
-	...confirmGapFlag('applies'),
+	...confirmGapFlag,
 	confirmGrant: Flags.string({
 		description:
 			'ID of a credential grant that you accept, from the dependency report (repeat for more than one). The Apply then shares the credential with the project that uses it.',
@@ -110,7 +109,6 @@ const EXITS: Record<string, string> = {
 	include: 'include it',
 	'open-review': 'open the review',
 	'ask-owner': 'ask the owner',
-	'continue-incomplete': 'continue incomplete',
 	restore: 'restore it',
 	'remove-deletion': 'remove the deletion',
 	'change-policy': 'change the caller policy',
@@ -160,9 +158,7 @@ export function formatDependencyReport(report: PromotionDependencyReport): strin
 	}
 	if (report.gaps.length > 0) {
 		lines.push(
-			report.allowIncomplete
-				? `Gaps (${report.gaps.length}). This environment allows incomplete operations: pass each ID to --confirm-gap to continue.`
-				: `Gaps (${report.gaps.length}). This environment is strict: close each gap first.`,
+			`Gaps (${report.gaps.length}). Close a gap, or pass its ID to --confirm-gap to continue with it.`,
 		);
 		for (const gap of report.gaps) {
 			const known = gap.group in GROUPS;
@@ -172,7 +168,7 @@ export function formatDependencyReport(report: PromotionDependencyReport): strin
 				`    "${gap.consumer.name}" needs the ${targetLabel(gap)}: ${known ? GROUPS[gap.group] : `unknown gap "${gap.group}". Treat it as a blocker and update the CLI`}.`,
 				...(exits ? [`    You can: ${exits}.`] : []),
 				...(gap.placeholder
-					? ['    An incomplete Apply creates an empty placeholder credential for it.']
+					? ['    The Apply creates an empty placeholder credential for it.']
 					: []),
 				...(gap.ownerRequestSent ? ['    Request sent to the owner.'] : []),
 			);

@@ -12,15 +12,13 @@ export function gapsChangedMessage(report: PromotionDependencyReport): string {
 		...formatDependencyReport(report),
 		hasUnknownGap(report)
 			? 'This version of the CLI does not know every gap. Update the CLI before you confirm a gap.'
-			: report.allowIncomplete
-				? 'Close the gaps, or pass each gap ID to --confirm-gap. Then promote again.'
-				: 'Close the gaps, then promote again.',
+			: 'Close the gaps, or pass each gap ID to --confirm-gap. Then promote again.',
 	].join('\n');
 }
 
 export default class PromotionEnvironmentPromoteSelection extends BaseCommand {
 	static override description =
-		"Read a chosen set of a project's workflows and folders now and push their current state to the branch of the project's Promote environment, or of the instance Promote environment. The project's own details are always pushed, so a call without --workflow and --folder promotes only the project. A selected folder is pushed with the folders above it. Archived workflows stay on the branch as archived. A selected workflow that was deleted leaves this project's branch. A selected workflow that moved into or out of the project since the branch was written is refused. Move it back first. The request fails before any write if the branch does not hold a deleted workflow under this project. With --expected-preview-revision, nothing is pushed when the project or its branch changed since that preview, and the command exits with code 3. When the dependency gaps differ from --confirm-gap, or the environment is strict and gaps exist, nothing is pushed and the command exits with code 4. Requires that environment to be connected first.";
+		"Read a chosen set of a project's workflows and folders now and push their current state to the branch of the project's Promote environment, or of the instance Promote environment. The project's own details are always pushed, so a call without --workflow and --folder promotes only the project. A selected folder is pushed with the folders above it. Archived workflows stay on the branch as archived. A selected workflow that was deleted leaves this project's branch. A selected workflow that moved into or out of the project since the branch was written is refused. Move it back first. The request fails before any write if the branch does not hold a deleted workflow under this project. With --expected-preview-revision, nothing is pushed when the project or its branch changed since that preview, and the command exits with code 3. When the dependency gaps differ from --confirm-gap, or the dependency report has a block, nothing is pushed and the command exits with code 4. Requires that environment to be connected first.";
 
 	static override examples = [
 		'<%= config.bin %> promotion-environment promote-selection proj-abc -w wf-1 -w wf-2',
@@ -54,7 +52,7 @@ export default class PromotionEnvironmentPromoteSelection extends BaseCommand {
 			description: 'Commit message. If you omit it, the commit uses a generated message.',
 		}),
 		...expectedPreviewRevisionFlag,
-		...confirmGapFlag('promotions'),
+		...confirmGapFlag,
 	};
 
 	async run() {

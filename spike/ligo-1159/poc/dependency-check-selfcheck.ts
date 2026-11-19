@@ -35,8 +35,7 @@ import { computePromoteReport } from '../../../packages/cli/src/modules/promotio
 const verbose = process.argv.includes('--verbose');
 
 /** A report with nothing in it. The script cannot load the helper of `@n8n/api-types`. */
-const emptyPromotionDependencyReport = (allowIncomplete: boolean): PromotionDependencyReport => ({
-	allowIncomplete,
+const emptyPromotionDependencyReport = (): PromotionDependencyReport => ({
 	blocked: false,
 	gaps: [],
 	warnings: [],
@@ -124,7 +123,6 @@ const access = (projects: FactProject[], over: Partial<AccessFact> = {}): Access
 });
 
 const promote = (over: Partial<PromoteCheckInput> = {}): PromoteCheckInput => ({
-	allowIncomplete: false,
 	references: [usesCrmKey(), callsNotify()],
 	expressionReferences: [],
 	sourceTargets: { 'credential:cred-crm': crmOnSource(), 'workflow:wf-notify': notifyOnSource() },
@@ -146,7 +144,6 @@ const branchWithBoth = () =>
 	});
 
 const apply = (over: Partial<ApplyCheckInput> = {}): ApplyCheckInput => ({
-	allowIncomplete: false,
 	references: [usesCrmKey(), callsNotify()],
 	expressionReferences: [],
 	branch: branchWithBoth(),
@@ -257,9 +254,9 @@ console.log('\n=== Promote ===');
 {
 	const report = computePromoteReport(promote());
 	const gap = gapOf(report, 'cred-crm');
-	scenario('4.1 builder with access to Sales only, strict', report, [
+	scenario('4.1 builder with access to Sales only', report, [
 		['2 gaps', report.gaps.length === 2],
-		['blocked', report.blocked],
+		['not blocked: a gap does not stop the Promote', !report.blocked],
 		['group no-access', gap?.group === 'no-access'],
 		['exit ask-owner only', gap?.exits.join() === 'ask-owner'],
 		['name from the node, not the real name', gap?.target.name === 'CRM key'],
@@ -269,10 +266,9 @@ console.log('\n=== Promote ===');
 }
 
 {
-	const report = computePromoteReport(promote({ allowIncomplete: true }));
-	scenario('4.2 same builder, allow incomplete', report, [
+	const report = computePromoteReport(promote());
+	scenario('4.2 same builder, Promote with 2 gaps', report, [
 		['2 gaps, not blocked', report.gaps.length === 2 && !report.blocked],
-		['every gap can continue', report.gaps.every((g) => g.exits.includes('continue-incomplete'))],
 		[
 			'confirmation of both ids is ok',
 			verifyConfirmedGaps(
@@ -518,7 +514,7 @@ console.log('\n=== Promote ===');
 		}),
 	);
 	scenario('existing branch: a top-level credential is not on the branch', report, [
-		['gap', report.gaps.length === 1 && report.blocked],
+		['gap, not blocked', report.gaps.length === 1 && !report.blocked],
 	]);
 }
 
@@ -540,7 +536,6 @@ console.log('\n=== Promote ===');
 {
 	const report = computePromoteReport(
 		promote({
-			allowIncomplete: true,
 			references: [usesCrmKey(), callsNotify(), usesCrmKey(dailyReport)],
 			plan: plan({ writtenWorkflows: { [syncOrders.id]: SALES.id, [dailyReport.id]: SALES.id } }),
 		}),
@@ -585,15 +580,14 @@ console.log('\n=== Apply ===');
 			crm?.group === 'no-access' && crm.exits.join() === 'ask-owner' && !crm.target.project,
 		],
 		['does not name Platform', !/Platform/.test(text(report))],
-		['strict: no placeholder flag', !crm?.placeholder],
-		['blocked', report.blocked],
+		['CRM key gets a placeholder', crm?.placeholder === true],
+		['not blocked', !report.blocked],
 	]);
 }
 
 {
 	const { report, actions } = computeApplyOutcome(
 		apply({
-			allowIncomplete: true,
 			references: [
 				usesCrmKey(),
 				usesCrmKey({ id: 'wf-page', name: 'Page engineer', projectId: OPS.id }),
@@ -614,7 +608,7 @@ console.log('\n=== Apply ===');
 			access: access([SALES, OPS]),
 		}),
 	);
-	scenario('4.4 incomplete Apply: one placeholder for two consumer projects', report, [
+	scenario('4.4 Apply with gaps: one placeholder for two consumer projects', report, [
 		[
 			'2 gaps not-on-branch with the placeholder flag',
 			report.gaps.length === 2 &&
@@ -633,9 +627,16 @@ console.log('\n=== Apply ===');
 {
 	const report = computeApplyReport(
 		apply({
-			allowIncomplete: true,
 			references: [usesCrmKey()],
-			branch: emptyBranch(),
+			branch: emptyBranch({
+				requirements: {
+					'credential:cred-crm': {
+						reason: 'confirmed-gap',
+						name: 'CRM key',
+						credentialType: 'crmApi',
+					},
+				},
+			}),
 			access: access([SALES], { createCredentialProjectIds: [] }),
 		}),
 	);
@@ -666,9 +667,7 @@ console.log('\n=== Apply ===');
 				grantable.gaps.length === 0,
 		],
 	]);
-	const notGrantable = computeApplyReport(
-		apply({ ...base, allowIncomplete: true, access: access([SALES, PLATFORM]) }),
-	);
+	const notGrantable = computeApplyReport(apply({ ...base, access: access([SALES, PLATFORM]) }));
 	scenario('the user may not share it: a gap, no placeholder', notGrantable, [
 		['gap access-not-grantable', notGrantable.gaps[0]?.group === 'access-not-grantable'],
 		['no placeholder', !notGrantable.gaps[0]?.placeholder],
@@ -912,7 +911,6 @@ console.log('\n=== Apply ===');
 {
 	const mismatch = computeApplyReport(
 		apply({
-			allowIncomplete: true,
 			references: [usesCrmKey()],
 			destinationTargets: {
 				'credential:cred-crm': { ...crmOnDestination, credentialType: 'otherApi' },
@@ -920,7 +918,7 @@ console.log('\n=== Apply ===');
 			access: access([SALES, PLATFORM]),
 		}),
 	);
-	scenario('same id and another type blocks in both modes', mismatch, [
+	scenario('same id and another type is a hard block', mismatch, [
 		[
 			'hard block with both types',
 			mismatch.hardBlocks[0]?.code === 'credential-type-mismatch' &&
@@ -930,7 +928,6 @@ console.log('\n=== Apply ===');
 	]);
 	const instance = computeApplyReport(
 		apply({
-			allowIncomplete: true,
 			references: [usesCrmKey()],
 			branch: emptyBranch({
 				requirements: { 'credential:cred-crm': { reason: 'instance-credential' } },
@@ -952,7 +949,6 @@ console.log('\n=== Apply ===');
 	});
 	const report = computeApplyReport(
 		apply({
-			allowIncomplete: true,
 			references: [usesCrmKey()],
 			branch: topLevel,
 			access: access([OPS, SALES, ALICE]),
@@ -964,7 +960,7 @@ console.log('\n=== Apply ===');
 			'home choice, Sales first, no personal project',
 			report.credentialHomeChoices[0]?.candidateProjects.map((p) => p.name).join() === 'Sales,Ops',
 		],
-		['blocked in both modes, no gap', report.blocked && report.gaps.length === 0],
+		['blocked, no gap', report.blocked && report.gaps.length === 0],
 	]);
 	const chosen = computeApplyReport(
 		apply({
@@ -997,7 +993,7 @@ console.log('\n=== Apply ===');
 	};
 
 	const withGrant: PromotionDependencyReport = {
-		...emptyPromotionDependencyReport(false),
+		...emptyPromotionDependencyReport(),
 		grants: [
 			{
 				id: 'cred-crm|p-sales',
@@ -1053,16 +1049,16 @@ console.log('\n=== Apply ===');
 		],
 	};
 	const needsHome: PromotionDependencyReport = {
-		...emptyPromotionDependencyReport(true),
+		...emptyPromotionDependencyReport(),
 		blocked: true,
 		credentialHomeChoices: [{ credential: crm, candidateProjects: [SALES] }],
 	};
 	const noHome = reconcileApplyCheck(unknownOwner, needsHome);
-	const home = reconcileApplyCheck(unknownOwner, emptyPromotionDependencyReport(true), {
+	const home = reconcileApplyCheck(unknownOwner, emptyPromotionDependencyReport(), {
 		homes: new Map([[crm.id, { id: SALES.id, name: SALES.name }]]),
 	});
 	const notOnBranch = reconcileApplyCheck(unknownOwner, {
-		...emptyPromotionDependencyReport(false),
+		...emptyPromotionDependencyReport(),
 		blocked: true,
 		gaps: [
 			{

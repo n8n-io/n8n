@@ -46,7 +46,6 @@ export const promotionGapExitSchema = z.enum([
 	'include',
 	'open-review',
 	'ask-owner',
-	'continue-incomplete',
 	'restore',
 	'remove-deletion',
 	'change-policy',
@@ -101,7 +100,7 @@ export const promotionGapDetailSchema = z.enum([
 	'placeholder-on-source',
 	/** Apply: the instance has no sharing licence, so nobody can grant the access. */
 	'sharing-not-licensed',
-	/** Apply: an incomplete Promote left the target out. */
+	/** Apply: a Promote with gaps left the target out. */
 	'confirmed-gap',
 	/** Apply: an earlier version wrote the branch, so the requirement has no reason. */
 	'legacy-reference',
@@ -132,7 +131,7 @@ export const promotionGapSchema = z
 		include: z.object({ projectId: sourceId, resourceKey: z.string() }).optional(),
 		/** The user already sent an "Ask the owner" request for this target. */
 		ownerRequestSent: z.boolean().optional(),
-		/** Apply: an incomplete Apply creates a placeholder credential for this gap. */
+		/** Apply: the Apply creates a placeholder credential for this gap. */
 		placeholder: z.boolean().optional(),
 		detail: promotionGapDetailSchema.optional(),
 	})
@@ -299,11 +298,9 @@ export type PromotionHardBlock = z.infer<typeof promotionHardBlockSchema>;
  */
 export const promotionDependencyReportSchema = z
 	.object({
-		/** The value of the environment setting. */
-		allowIncomplete: z.boolean(),
 		blocked: z.boolean().openapi({
 			description:
-				'True when the operation cannot run: the environment is strict and the report has gaps, or it has a hard block.',
+				'True when the operation cannot run: the report has a hard block, or a credential of the branch has no home project. A gap does not set it.',
 		}),
 		gaps: z.array(promotionGapSchema),
 		warnings: z.array(promotionDependencyWarningSchema),
@@ -329,11 +326,8 @@ export type PromotionDependencyReport = z.infer<typeof promotionDependencyReport
 export class PromotionDependencyReportDto extends Z.class(promotionDependencyReportSchema.shape) {}
 
 /** A report with nothing in it, for the code paths that do not compute one yet. */
-export function emptyPromotionDependencyReport(
-	allowIncomplete: boolean,
-): PromotionDependencyReport {
+export function emptyPromotionDependencyReport(): PromotionDependencyReport {
 	return {
-		allowIncomplete,
 		blocked: false,
 		gaps: [],
 		warnings: [],
@@ -357,8 +351,8 @@ export const confirmedGapIdsSchema = z
 	.openapi({
 		description:
 			'The `id` of each gap that the user accepts, from the dependency report of the preview. ' +
-			'Needs an environment that allows incomplete operations. When the list differs from the ' +
-			'current gaps, the operation returns status `gaps-changed` and changes nothing.',
+			'An operation with gaps needs it. When the list differs from the current gaps, the ' +
+			'operation returns status `gaps-changed` and changes nothing.',
 	});
 
 /** The confirmations of an Apply. A confirmation never gives a permission. */
@@ -389,7 +383,7 @@ export const promotionApplyConfirmationShape = {
 	}),
 };
 
-/** A created placeholder credential, in the result of an incomplete Apply. */
+/** A created placeholder credential, in the result of an Apply with gaps. */
 export const promotionPlaceholderResultSchema = z.object({
 	id: sourceId,
 	name: z.string(),
@@ -458,7 +452,6 @@ const projectEnvironmentFields = {
 	name: z.string(),
 	/** The kind of provider, so a client knows whether a Promote can open a review. */
 	providerType: promotionProviderTypeSchema,
-	allowIncomplete: z.boolean(),
 	branchName: z.string(),
 	/** Whether the user can run the operation of this direction in the project. */
 	canOperate: z.boolean(),

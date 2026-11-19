@@ -164,7 +164,6 @@ export type DestinationCallerFact = {
 };
 
 export type PromoteCheckInput = {
-	allowIncomplete: boolean;
 	references: ReferenceFact[];
 	expressionReferences: ExpressionReferenceFact[];
 	/** By target key. A target that is not in the record is unknown, so it counts as working. */
@@ -176,7 +175,6 @@ export type PromoteCheckInput = {
 };
 
 export type ApplyCheckInput = {
-	allowIncomplete: boolean;
 	references: ReferenceFact[];
 	expressionReferences: ExpressionReferenceFact[];
 	branch: BranchFact;
@@ -194,7 +192,7 @@ export type ApplyCheckInput = {
 	credentialHomes?: Record<string, string>;
 };
 
-/** A placeholder credential that an incomplete Apply must create. */
+/** A placeholder credential that the Apply must create for a credential gap. */
 export type PlaceholderCandidate = {
 	credential: { id: string; name: string; type: string };
 	/** The first consumer project in the order of the changes view. */
@@ -213,7 +211,7 @@ export type ApplyCheckActions = {
 	keptWorkflowIds: string[];
 	/** Reconciliation must not delete these projects: a written workflow uses their credential. */
 	keptProjects: Array<{ projectId: string; credentialIds: string[] }>;
-	/** Only for an incomplete Apply, after the user confirmed the gaps. */
+	/** Created only after the user confirmed the gaps. */
 	placeholders: PlaceholderCandidate[];
 };
 

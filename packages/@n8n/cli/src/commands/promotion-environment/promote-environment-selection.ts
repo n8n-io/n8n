@@ -28,7 +28,7 @@ export default class PromotionEnvironmentPromoteEnvironmentSelection extends Bas
 			description: 'Commit message. If you omit it, the commit uses a generated message.',
 		}),
 		...expectedPreviewRevisionFlag,
-		...confirmGapFlag('promotions'),
+		...confirmGapFlag,
 	};
 
 	async run() {

@@ -233,7 +233,6 @@ n8n-cli promotion-environment create --file=promote.json
 | `settings.branchName` | For `apply`: the branch to import from. |
 | `settings.baseBranchName` | For `promote`: the branch to push to. |
 | `settings.createBranchOnPromotion` | For `promote`: required. Push to a new timestamped branch instead of the base branch. |
-| `settings.allowIncomplete` | Optional, `false` when omitted. `true` lets a Promote or an Apply continue with dependency gaps after the user confirms them. A write replaces the whole settings object, so send it again on each update. |
 
 ## `promotion-environment list` / `get` / `update` / `delete`
 
@@ -673,10 +672,11 @@ when it holds something, and `--json` gives the full report in
 `dependencyReport`. `list-changes` and `list-environment-changes` print the
 report of "every listed change".
 
-- A strict environment stops on a gap. Close the gap, then run the command
-  again.
-- An environment that allows incomplete operations continues when you pass the
-  ID of each gap to `--confirm-gap`. Quote the ID: it holds the `|` character.
+- An operation with gaps continues when you pass the ID of each gap to
+  `--confirm-gap`. Quote the ID: it holds the `|` character. You can also
+  close a gap first: the report lists what you can do for each one.
+- A block of the report always stops the operation. A confirmation does not
+  lift it.
 - The command exits `4` and changes nothing when the gaps differ from the IDs
   that you passed. `promote` (the whole instance) fails with status 409 instead.
 - The CLI treats a gap that it does not know as a blocker. Update the CLI
@@ -693,7 +693,7 @@ flags:
 | `--confirm-deletion-callers` | Accept that the Apply deletes workflows that other workflows on this instance call. |
 | `--credential-home` | Project that gets a credential that the branch holds without an owner, as `<credentialId>:<projectId>`. |
 
-An incomplete Apply creates an empty placeholder credential for a credential
+An Apply with gaps creates an empty placeholder credential for a credential
 that this instance does not hold. A workflow that uses a placeholder cannot be
 published until a person saves values in the credential. Apply never publishes
 and never unpublishes a workflow.

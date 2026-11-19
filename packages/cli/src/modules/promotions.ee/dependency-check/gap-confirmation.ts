@@ -6,10 +6,7 @@ import { targetKey, type RequirementReasonFact, type TargetKey } from './depende
  * Compares the gaps that the user confirmed with the current gaps.
  *
  * - No gap: `ok`. There is nothing to confirm.
- * - Gaps on a strict environment: `changed`. A confirmation cannot lift them, and the report
- *   has `blocked: true`.
- * - Gaps on an environment that allows incomplete operations: `ok` only when the confirmed
- *   list holds the same ids as the current gaps.
+ * - Gaps: `ok` only when the confirmed list holds the same ids as the current gaps.
  *
  * `ok` does not mean that the operation can run: the caller must also read `report.blocked`.
  */
@@ -18,7 +15,6 @@ export function verifyConfirmedGaps(
 	confirmedGapIds: readonly string[] | undefined,
 ): 'ok' | 'changed' {
 	if (report.gaps.length === 0) return 'ok';
-	if (!report.allowIncomplete) return 'changed';
 	const current = new Set(report.gaps.map(({ id }) => id));
 	const confirmed = new Set(confirmedGapIds ?? []);
 	if (current.size !== confirmed.size) return 'changed';
@@ -27,9 +23,9 @@ export function verifyConfirmedGaps(
 }
 
 /**
- * The reason that an incomplete Promote writes on each requirement row. The reason is on the
- * row, not on each consumer. A row with one confirmed gap is a confirmed gap, because a strict
- * Apply must stop on it.
+ * The reason that a Promote with gaps writes on each requirement row. The reason is on the
+ * row, not on each consumer. A row with one confirmed gap is a confirmed gap, because the
+ * Apply must show it as a gap.
  */
 export function requirementReasons(
 	report: PromotionDependencyReport,

@@ -98,7 +98,6 @@ properties:
         - include
         - open-review
         - ask-owner
-        - continue-incomplete
         - restore
         - remove-deletion
         - change-policy
