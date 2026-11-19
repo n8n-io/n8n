@@ -57,9 +57,9 @@ export const NODE_Y_SPACING = GRID_SIZE * 6;
 // Gaps the auto-layout leaves between an AI node and its sub-nodes
 export const AI_X_SPACING = GRID_SIZE * 3;
 export const AI_Y_SPACING = GRID_SIZE * 8;
-// Horizontal step past a default-width node: its width plus NODE_X_SPACING. A
-// mid-flow insert uses it to shift the downstream nodes. To place a node after
-// another node, use getNextNodeSlot, which uses the rendered width of the source.
+// Horizontal step past a default-width node: its width plus NODE_X_SPACING. To
+// place a node after another node, use getNextNodeSlot, which uses the rendered
+// width of the source.
 export const HORIZONTAL_NODE_STEP = DEFAULT_NODE_SIZE[0] + NODE_X_SPACING;
 export const DEFAULT_VIEWPORT_BOUNDARIES: ViewportBoundaries = {
 	xMin: -Infinity,
@@ -560,6 +560,8 @@ export type NextNodeSlotOptions = {
 	source: NextNodeSlotSource;
 	target: NextNodeSlotTarget;
 	fan?: NextNodeSlotFan;
+	/** Y of the line for the main input handle. When set, `fan` has no effect. */
+	handleLine?: number;
 };
 
 /**
@@ -568,18 +570,19 @@ export type NextNodeSlotOptions = {
  * on the line of the source's main output handle, the same as after tidy-up.
  * For a source with more than one main output, `fan` moves the node to the row of
  * output `index`. The rows are one new node height plus NODE_Y_SPACING apart.
+ * `handleLine` puts the main input handle on a different line, for example the
+ * line of the node after the new node.
  */
 export function getNextNodeSlot({
 	source,
 	target,
 	fan = { index: 0, count: 1 },
+	handleLine,
 }: NextNodeSlotOptions): XYPosition {
 	const fanOffset = generateOffsets(fan.count, target.height, NODE_Y_SPACING)[fan.index] ?? 0;
+	const line = handleLine ?? source.position[1] + source.handleOffset + fanOffset;
 
-	return [
-		source.position[0] + source.width + NODE_X_SPACING,
-		source.position[1] + source.handleOffset + fanOffset - target.handleOffset,
-	];
+	return [source.position[0] + source.width + NODE_X_SPACING, line - target.handleOffset];
 }
 
 /**

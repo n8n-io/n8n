@@ -9956,14 +9956,36 @@ describe('useCanvasOperations', () => {
 			inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.AiLanguageModel],
 		});
 		const setNodeType = mockNodeTypeDescription({ name: SET_NODE_TYPE });
+		const ifNodeType = mockNodeTypeDescription({
+			name: IF_NODE_TYPE,
+			outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+		});
+		const agentCardNodeType = mockNodeTypeDescription({
+			name: MESSAGE_AN_AGENT_NODE_TYPE,
+			version: 3.1,
+		});
 
-		/** Inserts a Set node on the connection from `source` to `target`. */
-		function insertOnConnection(source: INodeUi, target: INodeUi, nodes: INodeUi[]) {
+		/**
+		 * Inserts a node on the connection from `source` to `target`, and returns
+		 * the position of the new node. The new node is a Set node by default.
+		 */
+		function insertOnConnection(
+			source: INodeUi,
+			target: INodeUi,
+			nodes: INodeUi[],
+			{
+				nodeType = setNodeType,
+				sourceHandle = `outputs/${NodeConnectionTypes.Main}/0`,
+			}: { nodeType?: INodeTypeDescription; sourceHandle?: string } = {},
+		) {
 			const uiStore = mockedStore(useUIStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
-			const nodeTypes = [configurableNodeType, setNodeType];
+			const nodeTypes = [nodeType, configurableNodeType, setNodeType, ifNodeType];
 
 			workflowDocumentStoreInstance.allNodes = nodes;
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(workflowNodes) => createWorkflowObjectKeepingParameters(workflowNodes),
+			);
 			vi.mocked(workflowDocumentStoreInstance.getNodeById).mockImplementation((id) =>
 				nodes.find((node) => node.id === id),
 			);
@@ -9989,16 +10011,141 @@ describe('useCanvasOperations', () => {
 			uiStore.lastInteractedWithNodeConnection = {
 				source: source.id,
 				target: target.id,
-				sourceHandle: `outputs/${NodeConnectionTypes.Main}/0`,
+				sourceHandle,
 				targetHandle: `inputs/${NodeConnectionTypes.Main}/0`,
 			};
 
 			const { resolveNodePosition } = useCanvasOperations();
-			resolveNodePosition(
-				{ ...createTestNode({ id: 'new', name: 'New', type: SET_NODE_TYPE }), position: undefined },
-				setNodeType,
+			return resolveNodePosition(
+				{
+					...createTestNode({
+						id: 'new',
+						name: 'New',
+						type: nodeType.name,
+						typeVersion: Array.isArray(nodeType.version) ? nodeType.version[0] : nodeType.version,
+					}),
+					position: undefined,
+				},
+				nodeType,
 			);
 		}
+
+		it('should make room for the new node after an AI Agent', () => {
+			const agent = createTestNode({
+				id: 'agent',
+				name: 'AI Agent',
+				type: configurableNodeType.name,
+				position: [0, 0],
+			});
+			const target = createTestNode({
+				id: 't',
+				name: 'T',
+				type: SET_NODE_TYPE,
+				position: [368, 0],
+			});
+
+			const position = insertOnConnection(agent, target, [agent, target]);
+
+			// The AI Agent is 224 wide: 0 + 224 + NODE_X_SPACING (128)
+			expect(position).toEqual([352, 0]);
+			// T moves by the new node width (96) plus NODE_X_SPACING (128)
+			expect(target.position).toEqual([592, 0]);
+		});
+
+		it('should make room for the full size of an agent card', () => {
+			const source = createTestNode({ id: 's', name: 'S', type: SET_NODE_TYPE, position: [0, 0] });
+			const target = createTestNode({
+				id: 't',
+				name: 'T',
+				type: SET_NODE_TYPE,
+				position: [224, 0],
+			});
+
+			const position = insertOnConnection(source, target, [source, target], {
+				nodeType: agentCardNodeType,
+			});
+
+			// The card is 128 high, so its handle is at 64. The handle line of T is at 48.
+			expect(position).toEqual([224, -16]);
+			// T moves by the card width (320) plus NODE_X_SPACING (128)
+			expect(target.position).toEqual([672, 0]);
+		});
+
+		it('should keep a node inserted on an IF branch on the row of the branch', () => {
+			const ifNode = createTestNode({ id: 'if', name: 'If', type: IF_NODE_TYPE, position: [0, 0] });
+			const trueBranch = createTestNode({
+				id: 't0',
+				name: 'T0',
+				type: SET_NODE_TYPE,
+				position: [224, -96],
+			});
+			const falseBranch = createTestNode({
+				id: 't1',
+				name: 'T1',
+				type: SET_NODE_TYPE,
+				position: [224, 96],
+			});
+
+			const position = insertOnConnection(ifNode, falseBranch, [ifNode, trueBranch, falseBranch], {
+				sourceHandle: `outputs/${NodeConnectionTypes.Main}/1`,
+			});
+
+			expect(position).toEqual([224, 96]);
+			expect(falseBranch.position).toEqual([448, 96]);
+			// T0 is in the band of 192 above the new node, so it moves too
+			expect(trueBranch.position).toEqual([448, -96]);
+		});
+
+		it('should move the target by the rendered width of an inserted AI Agent', () => {
+			const source = createTestNode({ id: 's', name: 'S', type: SET_NODE_TYPE, position: [0, 0] });
+			const target = createTestNode({
+				id: 't',
+				name: 'T',
+				type: SET_NODE_TYPE,
+				position: [224, 0],
+			});
+
+			const position = insertOnConnection(source, target, [source, target], {
+				nodeType: configurableNodeType,
+			});
+
+			expect(position).toEqual([224, 0]);
+			// The AI Agent width (224) plus NODE_X_SPACING (128)
+			expect(target.position).toEqual([576, 0]);
+		});
+
+		it('should not move the target when an inserted Merge node fits before it', () => {
+			const source = createTestNode({ id: 'a', name: 'A', type: SET_NODE_TYPE, position: [0, 0] });
+			const target = createTestNode({
+				id: 'b',
+				name: 'B',
+				type: SET_NODE_TYPE,
+				position: [448, 0],
+			});
+
+			const position = insertOnConnection(source, target, [source, target], {
+				nodeType: createMergeNodeTypeDescription(),
+			});
+
+			// The Merge node is 96 wide, so it ends 128 before B
+			expect(position).toEqual([224, 0]);
+			expect(target.position).toEqual([448, 0]);
+		});
+
+		it('should keep a node inserted on a back edge on the line of the source', () => {
+			const loop = createTestNode({ id: 'l', name: 'Loop', type: SET_NODE_TYPE, position: [0, 0] });
+			const step = createTestNode({
+				id: 's',
+				name: 'Step',
+				type: SET_NODE_TYPE,
+				position: [224, 192],
+			});
+
+			const position = insertOnConnection(step, loop, [loop, step]);
+
+			expect(position).toEqual([448, 192]);
+			expect(loop.position).toEqual([0, 0]);
+		});
 
 		it('should move a wide target that a default-size check misses', () => {
 			const source = createTestNode({ id: 's', name: 'S', type: SET_NODE_TYPE, position: [0, 0] });

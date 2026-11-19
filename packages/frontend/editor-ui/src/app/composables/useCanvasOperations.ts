@@ -107,6 +107,7 @@ import {
 	getNodesGroupSize,
 	PUSH_NODES_OFFSET,
 	HORIZONTAL_NODE_STEP,
+	NODE_X_SPACING,
 	type NextNodeSlotFan,
 	getNodeSizeFromPorts,
 	isPositionBlocked,
@@ -118,7 +119,7 @@ import {
 	getAgentNodeHandleOffset,
 	isAgentNodeV2,
 } from '@/features/agents/utils/agentNode';
-import type { Connection } from '@vue-flow/core';
+import type { Connection, Rect } from '@vue-flow/core';
 import type {
 	IConnection,
 	IConnections,
@@ -232,6 +233,8 @@ type NextNodeSlotAfterOptions = {
 	node: INodeUi;
 	nodeTypeDescription: INodeTypeDescription;
 	fan?: NextNodeSlotFan;
+	/** Puts the main input handle of the new node on the main handle line of this node */
+	alignTo?: INodeUi;
 };
 
 export function useCanvasOperations() {
@@ -1851,41 +1854,6 @@ export function useCanvasOperations() {
 					(output) => output === NodeConnectionTypes.Main,
 				);
 
-				if (lastInteractedWithNodeConnection) {
-					// When clicking the plus button of a node edge / connection
-					// Compute the y offset for the new node based on the number of main outputs of the source node
-					// and shift the downstream nodes accordingly
-
-					// Calculate actual node size for the new node being inserted
-					// Configurable nodes (like AI Agent) have non-main inputs and are wider
-					// Use nodeTypeDescription.inputs directly since the node isn't in the workflow yet
-					// If inputs is a string (expression), it's a dynamic node like AI Agent which is configurable
-					let isNewNodeConfigurable = false;
-					if (typeof nodeTypeDescription.inputs === 'string') {
-						// Dynamic inputs (expression string) indicates AI/configurable nodes
-						isNewNodeConfigurable = true;
-					} else if (Array.isArray(nodeTypeDescription.inputs)) {
-						const nodeInputTypes = NodeHelpers.getConnectionTypes(nodeTypeDescription.inputs);
-						isNewNodeConfigurable =
-							nodeInputTypes.filter((input) => input !== NodeConnectionTypes.Main).length > 0;
-					}
-					const newNodeSize: [number, number] = isNewNodeConfigurable
-						? CONFIGURABLE_NODE_SIZE
-						: DEFAULT_NODE_SIZE;
-					// Calculate shift margin: base horizontal step plus extra width for configurable nodes
-					// For standard nodes: HORIZONTAL_NODE_STEP (224, matches auto-layout)
-					// For configurable nodes: HORIZONTAL_NODE_STEP + (configurable width - default width)
-					const extraWidth = isNewNodeConfigurable
-						? CONFIGURABLE_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0]
-						: 0;
-					const shiftMargin = HORIZONTAL_NODE_STEP + extraWidth;
-
-					shiftDownstreamNodesPosition(lastInteractedWithNode.value.name, shiftMargin, {
-						trackHistory: true,
-						nodeSize: newNodeSize,
-					});
-				}
-
 				let outputs: Array<NodeConnectionType | INodeOutputConfiguration> = [];
 				try {
 					// It fails when the outputs are an expression. As those nodes have
@@ -1940,7 +1908,16 @@ export function useCanvasOperations() {
 					// We want to place the new node directly to the right of the last interacted with node.
 
 					// If a node is active then add the new node directly after the current one.
-					// When inserting via edge plus button, keep Y aligned to preserve vertical line.
+					// A node inserted on a main connection stays on the line of the connection target,
+					// so it keeps the row of its branch. A back edge goes to a node on the left,
+					// so there the new node keeps the line of the source.
+					const insertConnection =
+						connectionType === NodeConnectionTypes.Main
+							? lastInteractedWithNodeConnection
+							: undefined;
+					const insertTarget = insertConnection
+						? workflowDocumentStore.value.getNodeById(insertConnection.target)
+						: undefined;
 					position = getNextNodeSlotAfter({
 						source: lastInteractedWithNodeObject,
 						sourceTypeDescription: lastInteractedWithNodeTypeDescription,
@@ -1949,7 +1926,24 @@ export function useCanvasOperations() {
 						fan: lastInteractedWithNodeConnection
 							? undefined
 							: { index: connectionIndex, count: lastInteractedWithNodeMainOutputs.length },
+						alignTo:
+							insertTarget && insertTarget.position[0] > lastInteractedWithNodeObject.position[0]
+								? insertTarget
+								: undefined,
 					});
+
+					if (insertConnection) {
+						// Make room for the final rectangle of the new node
+						const [width, height] = getNodePlacementSize(
+							{ ...node, position },
+							nodeTypeDescription,
+						);
+						shiftDownstreamNodesPosition(lastInteractedWithNode.value.name, {
+							insertRect: { x: position[0], y: position[1], width, height },
+							margin: width + NODE_X_SPACING,
+							trackHistory: true,
+						});
+					}
 				}
 			}
 		}
@@ -1981,9 +1975,11 @@ export function useCanvasOperations() {
 		node,
 		nodeTypeDescription,
 		fan,
+		alignTo,
 	}: NextNodeSlotAfterOptions): XYPosition {
 		const [sourceWidth, sourceHeight] = getNodePlacementSize(source, sourceTypeDescription);
 		const [, height] = getNodePlacementSize(node, nodeTypeDescription);
+		const alignToHeight = alignTo ? getNodePlacementSize(alignTo)[1] : 0;
 
 		return NodeViewUtils.getNextNodeSlot({
 			source: {
@@ -1993,6 +1989,9 @@ export function useCanvasOperations() {
 			},
 			target: { height, handleOffset: getMainHandleOffset(height, isAgentNodeV2(node)) },
 			fan,
+			handleLine: alignTo
+				? alignTo.position[1] + getMainHandleOffset(alignToHeight, isAgentNodeV2(alignTo))
+				: undefined,
 		});
 	}
 
@@ -2387,32 +2386,24 @@ export function useCanvasOperations() {
 
 	/**
 	 * Moves downstream nodes when inserting a node between existing nodes.
-	 * Only moves nodes if there isn't enough space for the new node.
+	 * Only moves nodes if there isn't enough space for the new node at `insertRect`,
+	 * its final rectangle. The nodes that move, move right by `margin`.
 	 * Sticky notes that overlap the insertion area are stretched instead of moved.
 	 * Stickies at the insertion point are repositioned behind the new node.
 	 */
 	function shiftDownstreamNodesPosition(
 		sourceNodeName: string,
-		margin: number,
 		{
+			insertRect,
+			margin,
 			trackHistory = false,
-			nodeSize = DEFAULT_NODE_SIZE,
-		}: { trackHistory?: boolean; nodeSize?: [number, number] },
+		}: { insertRect: Rect; margin: number; trackHistory?: boolean },
 	) {
 		const sourceNode = workflowDocumentStore.value.getNodeByName(sourceNodeName);
 		if (!sourceNode) return;
 
-		// Calculate insertion position (to the right of source node)
-		// HORIZONTAL_NODE_STEP matches the next-node slot only after a default-width
-		// node, so widen it for the agent card
-		let insertOffset = HORIZONTAL_NODE_STEP;
-		if (isAgentNodeV2(sourceNode)) {
-			insertOffset += DEFAULT_AGENT_WIDTH - DEFAULT_NODE_SIZE[0];
-		}
-		const insertPosition: XYPosition = [
-			sourceNode.position[0] + insertOffset,
-			sourceNode.position[1],
-		];
+		const insertPosition: XYPosition = [insertRect.x, insertRect.y];
+		const nodeSize: [number, number] = [insertRect.width, insertRect.height];
 
 		// Get all nodes except source and stickies
 		const nodesToCheck = workflowDocumentStore.value.allNodes.filter(

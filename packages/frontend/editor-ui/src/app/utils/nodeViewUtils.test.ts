@@ -311,6 +311,17 @@ describe('getNextNodeSlot', () => {
 
 		expect(slot).toEqual([224, 0]);
 	});
+
+	it('should put the main input handle on the given handle line instead of the fan row', () => {
+		const slot = getNextNodeSlot({
+			source: { position: [0, 0], width: 96, handleOffset: 48 },
+			target: { height: 128, handleOffset: 64 },
+			fan: { index: 0, count: 2 },
+			handleLine: 144,
+		});
+
+		expect(slot).toEqual([224, 80]);
+	});
 });
 
 describe('snapPositionToGrid', () => {
