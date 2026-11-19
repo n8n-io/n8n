@@ -25,8 +25,28 @@ function getEntry(projectId: string): Entry {
 	return entry;
 }
 
+async function loadProjectAgentsList(projectId: string, entry: Entry): Promise<AgentListItem[]> {
+	if (!entry.inFlight) {
+		const request = listAgents(useRootStore().restApiContext, projectId)
+			.then((result) => {
+				if (entry.inFlight === request) {
+					entry.list.value = result;
+				}
+
+				return result;
+			})
+			.finally(() => {
+				if (entry.inFlight === request) {
+					entry.inFlight = null;
+				}
+			});
+		entry.inFlight = request;
+	}
+
+	return await entry.inFlight;
+}
+
 export function useProjectAgentsList(projectId: Ref<string>) {
-	const rootStore = useRootStore();
 	const list = computed(() => {
 		const id = projectId.value;
 		return id ? getEntry(id).list.value : null;
@@ -34,30 +54,27 @@ export function useProjectAgentsList(projectId: Ref<string>) {
 
 	async function ensureLoaded(): Promise<AgentListItem[]> {
 		const id = projectId.value;
+
 		if (!id) return [];
+
 		const entry = getEntry(id);
+
+		if (entry.inFlight) return await entry.inFlight;
+
 		if (entry.list.value) return entry.list.value;
-		if (!entry.inFlight) {
-			entry.inFlight = listAgents(rootStore.restApiContext, id)
-				.then((result) => {
-					entry.list.value = result;
-					entry.inFlight = null;
-					return result;
-				})
-				.catch((err: unknown) => {
-					entry.inFlight = null;
-					throw err;
-				});
-		}
-		return await entry.inFlight;
+
+		return await loadProjectAgentsList(id, entry);
 	}
 
 	async function refresh(): Promise<AgentListItem[]> {
 		const id = projectId.value;
+
 		if (!id) return [];
+
 		const entry = getEntry(id);
-		entry.list.value = null;
-		return await ensureLoaded();
+		entry.inFlight = null;
+
+		return await loadProjectAgentsList(id, entry);
 	}
 
 	return { list, ensureLoaded, refresh };
@@ -86,6 +103,17 @@ export function removeProjectAgentFromListCache(projectId: string, agentId: stri
 	if (!current) return;
 
 	entry.list.value = current.filter((agent) => agent.id !== agentId);
+}
+
+export function invalidateProjectAgentsListCache(projectId: string) {
+	const entry = caches.get(projectId);
+
+	if (entry && (entry.list.value || entry.inFlight)) {
+		entry.inFlight = null;
+		void loadProjectAgentsList(projectId, entry).catch(() => {
+			// Keep the last list if the background refresh fails.
+		});
+	}
 }
 
 /** Test-only escape hatch — drops the module-level cache between specs. */

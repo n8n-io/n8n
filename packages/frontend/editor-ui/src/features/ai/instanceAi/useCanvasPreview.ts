@@ -1,6 +1,7 @@
 import { computed, ref, watch } from 'vue';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 import { useSkillsStore } from '@/features/settings/context/skills.store';
 import {
@@ -8,7 +9,7 @@ import {
 	getLatestWorkflowSetupResult,
 	getLatestWorkflowUpdateResult,
 	getLatestDataTableResult,
-	getLatestDeletedDataTableId,
+	getLatestDeletedDataTableIds,
 	getLatestAgentArtifactResult,
 	getLatestSkillArtifactResult,
 	getLatestAppArtifactResult,
@@ -16,6 +17,7 @@ import {
 } from './canvasPreview.utils';
 import { useAgentMutationRefresh } from './composables/useAgentMutationRefresh';
 import { useBuildingArtifactIds } from './composables/useBuildingArtifactIds';
+import type { CloudBrowserTask } from './composables/useCloudBrowserTasks';
 import { useIsAgentWorking } from './composables/useIsAgentWorking';
 import {
 	ARTIFACT_TAB_ICONS,
@@ -37,6 +39,30 @@ export interface ArtifactTab {
 	building?: boolean;
 }
 
+/** The live view of a running cloud browser task. Never stored with the thread. */
+export interface BrowserTab {
+	id: string;
+	type: 'browser';
+	name: string;
+	icon: IconName;
+	taskId: string;
+	/** Set while the task waits for the user to do a step in the browser. */
+	userAction?: { reason: string };
+}
+
+/** A tab in the preview tab bar. */
+export type PreviewTab = ArtifactTab | BrowserTab;
+
+export function isArtifactTab(tab: PreviewTab): tab is ArtifactTab {
+	return tab.type !== 'browser';
+}
+
+const BROWSER_TAB_PREFIX = 'browser:';
+
+function isBrowserTabId(tabId: string | undefined): boolean {
+	return tabId?.startsWith(BROWSER_TAB_PREFIX) === true;
+}
+
 interface UseCanvasPreviewOptions {
 	thread: ArtifactThread;
 	threadId: () => string;
@@ -44,6 +70,8 @@ interface UseCanvasPreviewOptions {
 	initialAppId?: () => string | undefined;
 	/** Saves the open tabs. Without it, the tabs reset when the thread loads again. */
 	tabsStorage?: ThreadTabsStorage;
+	/** The cloud browser tasks of the thread. A runtime without the cloud browser leaves it out. */
+	cloudBrowserTasks?: () => CloudBrowserTask[];
 }
 
 interface LinkedAgentTarget {
@@ -67,7 +95,9 @@ export function useCanvasPreview({
 	initialAgentId,
 	initialAppId,
 	tabsStorage,
+	cloudBrowserTasks: getCloudBrowserTasks,
 }: UseCanvasPreviewOptions) {
+	const i18n = useI18n();
 	const recentWorkflowsStore = useRecentWorkflowsStore();
 	const skillsStore = useSkillsStore();
 
@@ -148,7 +178,61 @@ export function useCanvasPreview({
 		storage: tabsStorage,
 		previewOpen: () => isPreviewOpen.value,
 	});
-	const openTabs = tabs.openTabs;
+
+	// --- Cloud browser tabs ---
+	// Every running browser task has a tab. Closing the tab hides it until the user opens the
+	// browser again. The tab goes away when the task ends, and is never stored: the live view
+	// link is short-lived.
+	const cloudBrowserTasks = computed(() => getCloudBrowserTasks?.() ?? []);
+	const closedBrowserTaskIds = ref(new Set<string>());
+	const browserTabs = computed((): BrowserTab[] =>
+		cloudBrowserTasks.value
+			.filter((task) => task.state === 'running' && !closedBrowserTaskIds.value.has(task.taskId))
+			.map((task) => ({
+				id: `${BROWSER_TAB_PREFIX}${task.taskId}`,
+				type: 'browser',
+				name: task.title || i18n.baseText('instanceAi.cloudBrowser.tabName'),
+				icon: 'globe',
+				taskId: task.taskId,
+				userAction: task.userAction,
+			})),
+	);
+
+	// A browser tab the user moved keeps its place on screen. The others go at the end.
+	const tabPositions = ref(new Map<string, number>());
+
+	const openTabs = computed((): PreviewTab[] => {
+		const result: PreviewTab[] = [...tabs.openTabs.value];
+		const positionOf = (tab: BrowserTab) => tabPositions.value.get(tab.id) ?? result.length;
+		for (const tab of [...browserTabs.value].sort((a, b) => positionOf(a) - positionOf(b))) {
+			result.splice(positionOf(tab), 0, tab);
+		}
+		return result;
+	});
+
+	const activeBrowserTab = computed(() => {
+		const tab = openTabs.value.find((t) => t.id === activeTabId.value);
+		return tab?.type === 'browser' ? tab : null;
+	});
+
+	// The browser tabs the user has looked at. Each keeps its live view mounted, so a switch
+	// back does not reload it. A tab the user has not opened loads nothing.
+	const viewedBrowserTabIds = ref(new Set<string>());
+	watch(activeBrowserTab, (tab) => {
+		if (tab) viewedBrowserTabIds.value.add(tab.id);
+	});
+	const viewedBrowserTabs = computed(() =>
+		browserTabs.value.filter((tab) => viewedBrowserTabIds.value.has(tab.id)),
+	);
+
+	// When the task of the active browser tab ends, show another tab.
+	watch(browserTabs, (current) => {
+		const activeId = activeTabId.value;
+		if (!isBrowserTabId(activeId) || current.some((tab) => tab.id === activeId)) return;
+		activeTabId.value = openTabs.value[0]?.id;
+		if (userTabId.value === activeId) userTabId.value = undefined;
+		if (activeTabId.value === undefined) setPreviewOpen(false, false);
+	});
 
 	// Derived preview state from active tab
 	const activeWorkflowId = computed(() => {
@@ -306,12 +390,19 @@ export function useCanvasPreview({
 
 	// The user opened the workflow, so it shows in their recent workflows, as from the editor.
 	function recordWorkflowOpen(workflowId: string) {
-		const tab = openTabs.value.find(({ id }) => id === workflowId);
+		const tab = openTabs.value.filter(isArtifactTab).find(({ id }) => id === workflowId);
 		recentWorkflowsStore.registerWorkflowOpen(workflowId, tab?.projectId ?? thread.projectId);
 	}
 
 	/** Show a tab the user picked. Agent changes use `showAgentArtifact` instead. */
 	function selectTab(tabId: string) {
+		if (isBrowserTabId(tabId)) {
+			activeTabId.value = tabId;
+			userTabId.value = isAgentWorking.value ? tabId : undefined;
+			// Not saved: the browser tab is gone after a reload.
+			setPreviewOpen(true, false);
+			return;
+		}
 		// Opening a closed artifact from the chat or the artifacts list shows its tab again.
 		tabs.reopenTab(tabId);
 		if (openTabs.value.find(({ id }) => id === tabId)?.type === 'workflow') {
@@ -330,11 +421,29 @@ export function useCanvasPreview({
 	}
 
 	function reorderTab(tabId: string, toIndex: number) {
-		tabs.moveTab(tabId, toIndex);
+		const order = openTabs.value.map((tab) => tab.id);
+		order.splice(order.indexOf(tabId), 1);
+		order.splice(toIndex, 0, tabId);
+		tabPositions.value = new Map(order.map((id, index): [string, number] => [id, index]));
+
+		// The stored order has only the artifact tabs.
+		if (isBrowserTabId(tabId)) return;
+		tabs.moveTab(tabId, order.filter((id) => !isBrowserTabId(id)).indexOf(tabId));
 		tabs.saveTabs(activeTabId.value);
 	}
 
 	function closeTab(tabId: string) {
+		if (isBrowserTabId(tabId)) {
+			const taskId = tabId.slice(BROWSER_TAB_PREFIX.length);
+			closedBrowserTaskIds.value.add(taskId);
+			viewedBrowserTabIds.value.delete(tabId);
+			if (activeTabId.value === tabId) {
+				activeTabId.value = openTabs.value.find((tab) => tab.id !== tabId)?.id;
+				if (userTabId.value === tabId) userTabId.value = undefined;
+				if (activeTabId.value === undefined) setPreviewOpen(false, false);
+			}
+			return;
+		}
 		const nextTabId = tabs.closeTab(tabId);
 		if (activeTabId.value === tabId) {
 			activeTabId.value = nextTabId;
@@ -359,6 +468,16 @@ export function useCanvasPreview({
 		if (!pinned) activeTabId.value = tabId;
 		setPreviewOpen(true);
 		if (reopened) tabs.saveTabs(activeTabId.value);
+	}
+
+	/** Show a running cloud browser task in its tab. */
+	function openCloudBrowserTab(taskId: string) {
+		const isRunning = cloudBrowserTasks.value.some(
+			(task) => task.taskId === taskId && task.state === 'running',
+		);
+		if (!isRunning) return;
+		closedBrowserTaskIds.value.delete(taskId);
+		selectTab(`${BROWSER_TAB_PREFIX}${taskId}`);
 	}
 
 	/**
@@ -595,12 +714,15 @@ export function useCanvasPreview({
 
 	// --- Close data table preview if the active table is deleted ---
 
-	const latestDeletedDataTableId = computed(
-		() => getLatestDeletedDataTableId(thread.artifactTurns) ?? null,
+	// A batch can delete several tables at once. The joined key changes only when the deletion does.
+	const latestDeletedDataTablesKey = computed(() =>
+		getLatestDeletedDataTableIds(thread.artifactTurns).join(),
 	);
 
-	watch(latestDeletedDataTableId, (deletedId) => {
-		if (deletedId && deletedId === activeTabId.value) {
+	watch(latestDeletedDataTablesKey, () => {
+		const deletedIds = getLatestDeletedDataTableIds(thread.artifactTurns);
+		const deletedId = activeTabId.value;
+		if (deletedId && deletedIds.includes(deletedId)) {
 			const remaining = openTabs.value.filter((t) => t.id !== deletedId);
 			activeTabId.value = remaining.length > 0 ? remaining[0].id : undefined;
 			if (!activeTabId.value) {
@@ -623,6 +745,10 @@ export function useCanvasPreview({
 		activeAgentId,
 		activeAgentProjectId,
 		activeAgentPending,
+		activeBrowserTab,
+		browserTabs,
+		viewedBrowserTabs,
+		cloudBrowserTasks,
 		activeSkillId,
 		activeApp,
 		activeWorkflowExecutionResult,
@@ -640,6 +766,7 @@ export function useCanvasPreview({
 		showMentionedWorkflow,
 		openDataTablePreview,
 		openAgentPreview,
+		openCloudBrowserTab,
 		openSkillPreview: openArtifactPreview,
 		openAppPreview: openArtifactPreview,
 	};

@@ -457,6 +457,24 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).not.toHaveBeenCalled();
 		});
 
+		it('honors the generic silence tool for Slack', async () => {
+			const thread = await runMention({ type: 'slack', credentialId: 'cred-1' }, [
+				{ ...silentToolResult, toolName: 'do_not_respond' },
+				{ type: 'text-delta', id: 'text', delta: 'Not replying.' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('does not trust a generic silence result when the channel does not support it', async () => {
+			const thread = await runMention(streamingIntegration, [
+				{ ...silentToolResult, toolName: 'do_not_respond' },
+				{ type: 'text-delta', id: 'text', delta: 'A reply is expected.' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+			expect(thread.post).toHaveBeenCalled();
+		});
+
 		it('drops text when the silent result is nested in a batched action call', async () => {
 			const thread = await runMention(streamingIntegration, [
 				{

@@ -946,4 +946,112 @@ describe('research tool', () => {
 			});
 		});
 	});
+	// ── fetch-url with saveTo ───────────────────────────────────────────────
+
+	describe('fetch-url action with saveTo', () => {
+		const fullContent = 'intro '.repeat(10) + 'x'.repeat(60_000) + ' FACT_AT_THE_END';
+
+		function createSaveContext(overrides: Partial<InstanceAiContext> = {}) {
+			const files = new Map<string, string>();
+			const writeFile = vi.fn(async (path: string, content: string | Buffer) => {
+				files.set(path, Buffer.isBuffer(content) ? content.toString('utf-8') : content);
+				await Promise.resolve();
+			});
+			const context = createMockContext({
+				permissions: { fetchUrl: 'always_allow' },
+				workspace: { filesystem: { writeFile } } as never,
+				workspaceRoot: '/home/user/workspace',
+				logger: { debug: vi.fn(), warn: vi.fn() } as never,
+				...overrides,
+			});
+			context.webResearchService!.fetchUrl = vi.fn().mockResolvedValue({
+				url: 'https://example.com/pricing',
+				finalUrl: 'https://example.com/pricing',
+				title: 'Pricing',
+				content: fullContent,
+				truncated: false,
+				contentLength: fullContent.length,
+			});
+			return { context, files, writeFile };
+		}
+
+		async function fetchAndSave(context: InstanceAiContext, saveTo: string) {
+			const tool = createResearchTool(context);
+			return (await executeTool(
+				tool,
+				{ action: 'fetch-url' as const, url: 'https://example.com/pricing', saveTo },
+				createAgentCtx() as never,
+			)) as {
+				content: string;
+				savedTo?: string;
+				saveError?: string;
+				contentLength: number;
+				nextOffset?: number;
+			};
+		}
+
+		it('should write the full page to the workspace file', async () => {
+			const { context, files } = createSaveContext();
+
+			await fetchAndSave(context, 'research/pricing.md');
+
+			const saved = files.get('research/pricing.md');
+			expect(saved).toContain(fullContent);
+			expect(saved).toContain('https://example.com/pricing');
+		});
+
+		it('should return the absolute file path and a short preview instead of the page', async () => {
+			const { context } = createSaveContext();
+
+			const result = await fetchAndSave(context, 'research/pricing.md');
+
+			expect(result.savedTo).toBe('/home/user/workspace/research/pricing.md');
+			expect(result.content).toMatch(/^<untrusted_data source="https:\/\/example\.com\/pricing">/);
+			const preview = result.content
+				.replace(/^<untrusted_data[^>]*>\n?/, '')
+				.replace(/\n?<\/untrusted_data>$/, '');
+			expect(preview).toBe(fullContent.slice(0, 500));
+			expect(result.contentLength).toBe(fullContent.length);
+			expect(result.nextOffset).toBeUndefined();
+		});
+
+		it('should accept an absolute path under the workspace root', async () => {
+			const { context, files } = createSaveContext();
+
+			await fetchAndSave(context, '/home/user/workspace/research/pricing.md');
+
+			expect(files.has('research/pricing.md')).toBe(true);
+		});
+
+		it('should not write a path outside the workspace', async () => {
+			const { context, writeFile } = createSaveContext();
+
+			const result = await fetchAndSave(context, '../outside.md');
+
+			expect(writeFile).not.toHaveBeenCalled();
+			expect(result.savedTo).toBeUndefined();
+			expect(result.saveError).toEqual(expect.any(String));
+		});
+
+		it('should return the page inline when there is no workspace', async () => {
+			const { context } = createSaveContext({ workspace: undefined });
+
+			const result = await fetchAndSave(context, 'research/pricing.md');
+
+			expect(result.savedTo).toBeUndefined();
+			expect(result.saveError).toEqual(expect.any(String));
+			expect(result.nextOffset).toBe(30_000);
+		});
+
+		it('should return the page inline when the write fails', async () => {
+			const { context, writeFile } = createSaveContext();
+			writeFile.mockRejectedValue(new Error('disk full'));
+
+			const result = await fetchAndSave(context, 'research/pricing.md');
+
+			expect(result.savedTo).toBeUndefined();
+			expect(result.saveError).toEqual(expect.any(String));
+			expect(result.nextOffset).toBe(30_000);
+		});
+	});
 });

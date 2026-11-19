@@ -1,6 +1,6 @@
 import { jsonStringify } from 'n8n-workflow';
 
-/** Max `console.log` calls recorded per task. Later calls are only counted. */
+/** Max `console.log` calls recorded per task. Later calls only mark the output as truncated. */
 export const MAX_LOGGED_CALLS = 100;
 
 /** Max length of the output of one `console.log` call, in UTF-16 code units. A cut call also gets the cut marker. */
@@ -34,12 +34,18 @@ const CONSOLE_METHODS = [
 /** The formatted arguments of one `console.log` call. */
 export type LoggedCall = string[];
 
+/** The console output of a task, in the shape of the `console` field of the task result. */
+export interface ConsoleOutput {
+	entries: LoggedCall[];
+	truncated?: true;
+}
+
 export interface TaskConsole {
 	/** The `console` global of the task. Only `log` records, the other methods exist so that calls do not throw. */
 	console: Record<string, (...args: unknown[]) => void>;
 
-	/** The output of each recorded call, plus the count of dropped calls if any. */
-	getLoggedCalls(): LoggedCall[];
+	/** The recorded calls, and `truncated` if the task made more than the max. */
+	getOutput(): ConsoleOutput;
 }
 
 const CUT_MARKER = '... [truncated]';
@@ -96,14 +102,14 @@ function formatCall(args: unknown[]): LoggedCall {
 /** Creates a `console` for one task that records the output of `console.log`. */
 export function createTaskConsole(): TaskConsole {
 	const loggedCalls: LoggedCall[] = [];
-	let droppedCalls = 0;
+	let truncated = false;
 
 	const console: Record<string, (...args: unknown[]) => void> = {};
 	for (const name of CONSOLE_METHODS) console[name] = () => {};
 
 	console.log = (...args: unknown[]) => {
 		if (loggedCalls.length >= MAX_LOGGED_CALLS) {
-			droppedCalls++;
+			truncated = true;
 			return;
 		}
 
@@ -119,9 +125,7 @@ export function createTaskConsole(): TaskConsole {
 
 	return {
 		console,
-		getLoggedCalls: () =>
-			droppedCalls === 0
-				? [...loggedCalls]
-				: [...loggedCalls, [`[Output truncated - ${droppedCalls} more entries]`]],
+		getOutput: () =>
+			truncated ? { entries: [...loggedCalls], truncated } : { entries: [...loggedCalls] },
 	};
 }

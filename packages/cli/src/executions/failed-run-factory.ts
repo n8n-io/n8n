@@ -30,6 +30,7 @@ export class FailedRunFactory {
 					runData: {},
 				},
 			}),
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 			finished: false,
 			mode,
 			startedAt: new Date(),

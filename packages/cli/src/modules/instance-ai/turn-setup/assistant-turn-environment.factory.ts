@@ -595,7 +595,6 @@ export class AssistantTurnEnvironmentFactory {
 			timeZone: this.defaultTimeZone,
 			localMcpServer: context.localMcpServer,
 			skills: skills.source,
-			mapSkillEventForDisplay: skills.mapSkillEventForDisplay,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
 			cancelBackgroundTask: runtime.cancelBackgroundTask,
 			touchRun: runtime.touchRun,
@@ -607,6 +606,27 @@ export class AssistantTurnEnvironmentFactory {
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 		};
+
+		const { cloudBrowser } = runtime;
+		if (adminSettings.cloudBrowserEnabled && cloudBrowser && (await cloudBrowser.isAvailable())) {
+			orchestrationContext.startCloudBrowserTask = async (input) =>
+				await cloudBrowser.startTask(input, {
+					runId,
+					user,
+					threadId,
+					messageGroupId,
+					modelId,
+					modelStreamStallOptions: orchestrationContext.modelStreamStallOptions,
+					tracing: orchestrationContext.tracing,
+					domainGate: {
+						tracker: domainTracker,
+						runId,
+						permissionMode: context.permissions?.fetchUrl,
+						createCredentialPermissionMode: context.permissions?.createCredential,
+					},
+					getCredentialFields: context.credentialService.getCredentialFields,
+				});
+		}
 
 		return {
 			context,

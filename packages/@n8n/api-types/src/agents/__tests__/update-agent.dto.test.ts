@@ -6,6 +6,7 @@ const agentDto = {
 	id: 'agent-1',
 	name: 'Support',
 	projectId: 'project-1',
+	parentFolderId: 'folder-1',
 	project: { id: 'project-1', name: 'Team', type: 'team' },
 	availableInMCP: false,
 	isArchived: false,
