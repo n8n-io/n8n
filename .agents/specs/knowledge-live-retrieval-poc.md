@@ -136,7 +136,7 @@ packages/cli/src/modules/agents/
   agent-knowledge-live.controller.ts       POST .../:agentId/knowledge/live-sources/:sourceId/index
   BUILT_IN_TOOLS.md                        + the three tools and their attach condition
 packages/@n8n/api-types/src/agents/agent-json-config.schema.ts   + knowledge.liveSources
-scripts/knowledge-live-harness/            run.mjs, seed-sources.mjs, fixtures/, results/
+scripts/knowledge-live-harness/            AGENTS.md, run.mjs, seed-sources.mjs, fixtures/content.mjs, fixtures/items.json (generated), results/ (generated)
 ```
 
 The existing boundary files (`knowledge-retriever.ts`,
@@ -265,10 +265,13 @@ fixtures:
   (2026)", "Pricing FAQ", a "Support KB" data source with about 300 rows (some
   with poor titles), and a "Not picked" page for the scope probe.
 - Slack, through the API with `SLACK_SEED_USER_TOKEN` (the user token of the
-  test app, so the messages are not bot messages): a `#support` channel with
-  a few threads, and a `#not-picked` channel for the scope probe.
-- Writes the created ids to `fixtures/items.json`. A re-run replaces its own
-  content.
+  test app, so the messages are not bot messages): a `#seed-support` channel
+  with a few threads, and a `#seed-not-picked` channel for the scope probe.
+- The content and the facts the questions check live in
+  `fixtures/content.mjs`. The rows of the Support KB come from a seeded
+  generator (`SEED`, `KB_ROWS`).
+- Writes the created ids to `fixtures/items.json` (not committed). A re-run
+  replaces its own content. The folder's `AGENTS.md` documents the env vars.
 
 `scripts/knowledge-live-harness/run.mjs` (root script `knowledge:harness`):
 
@@ -369,11 +372,11 @@ Setup decisions of 2026-11-19:
 ### Day 0: branch, flag, spikes, C0 check
 
 - [x] Branch `kno-338-research-track` from fresh master
-- [ ] `liveSourcesEnabled` on `KnowledgeConfig`, `isLiveSourcesEnabled()` on the availability service
+- [x] `liveSourcesEnabled` on `KnowledgeConfig`, `isLiveSourcesEnabled()` on the availability service
 - [ ] Notion internal integration (token, root page shared with it); `notionApi` credential in the local project
 - [ ] Slack test workspace and app (n8n default user scopes); `slackOAuth2Api` credential in the local project; user token for the seed script
 - [ ] Anthropic credential in the local project
-- [ ] `seed-sources.mjs` seeds the Notion and Slack content and writes `fixtures/items.json`
+- [x] `seed-sources.mjs` seeds the Notion and Slack content and writes `fixtures/items.json` (smoke-tested against a fake API; the first real run is part of the credential setup)
 - [ ] Spike 1: Notion `page:getMarkdown` output shape through a node-tool agent
 - [ ] Spike 2: Slack `message:search` with `in:` and a channel id
 - [ ] Spike 3: `executeInline` runs both operations without a workflow id
