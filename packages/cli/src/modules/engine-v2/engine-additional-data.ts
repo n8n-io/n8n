@@ -40,13 +40,13 @@ function unimplemented(feature: string) {
 const variablesPlaceholder: IWorkflowExecuteAdditionalData['variables'] = new Proxy(
 	{},
 	{
-		get: (target, property) => {
+		get: (target, property, receiver) => {
 			if (
 				typeof property === 'symbol' ||
 				Object.hasOwn(target, property) ||
 				property === 'toJSON'
 			) {
-				return Reflect.get(target, property);
+				return Reflect.get(target, property, receiver);
 			}
 			throw new UnimplementedError('Variables ($vars) are not supported on Engine v2 yet');
 		},

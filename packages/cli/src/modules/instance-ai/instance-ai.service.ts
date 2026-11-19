@@ -220,7 +220,8 @@ function isTelemetryConfigurableAgent(
 	return (
 		typeof agent === 'object' &&
 		agent !== null &&
-		typeof Reflect.get(agent, 'telemetry') === 'function'
+		'telemetry' in agent &&
+		typeof agent.telemetry === 'function'
 	);
 }
 

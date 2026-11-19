@@ -45,8 +45,8 @@ const proxyFetch = ((...args: unknown[]) => proxyFetchMock(...args)) as unknown 
 function headersToCaseInsensitiveRecord(headers: HeadersInit | undefined): Record<string, string> {
 	const values = Object.fromEntries(new Headers(headers).entries());
 	return new Proxy(values, {
-		get: (target, property) => {
-			if (typeof property !== 'string') return Reflect.get(target, property);
+		get: (target, property, receiver) => {
+			if (typeof property !== 'string') return Reflect.get(target, property, receiver);
 			return target[property] ?? target[property.toLowerCase()];
 		},
 	});

@@ -41,7 +41,8 @@ function isActiveSpanTracer(value: unknown): value is ActiveSpanTracer {
 	return (
 		value !== null &&
 		typeof value === 'object' &&
-		typeof Reflect.get(value, 'startActiveSpan') === 'function'
+		'startActiveSpan' in value &&
+		typeof value.startActiveSpan === 'function'
 	);
 }
 

@@ -46,18 +46,17 @@ function isEligibleModel(model: unknown): model is {
 	modalities: { output: ['text'] };
 	releaseDate?: unknown;
 } {
-	const id = typeof model === 'object' && model !== null ? Reflect.get(model, 'id') : undefined;
-	const name = typeof model === 'object' && model !== null ? Reflect.get(model, 'name') : undefined;
-	const modalities =
-		typeof model === 'object' && model !== null ? Reflect.get(model, 'modalities') : undefined;
+	if (typeof model !== 'object' || model === null) return false;
+	const id = 'id' in model ? model.id : undefined;
+	const name = 'name' in model ? model.name : undefined;
+	const modalities = 'modalities' in model ? model.modalities : undefined;
 	const output =
-		typeof modalities === 'object' && modalities !== null
-			? Reflect.get(modalities, 'output')
+		typeof modalities === 'object' && modalities !== null && 'output' in modalities
+			? modalities.output
 			: undefined;
 	return (
-		typeof model === 'object' &&
-		model !== null &&
-		Reflect.get(model, 'toolCall') === true &&
+		'toolCall' in model &&
+		model.toolCall === true &&
 		Array.isArray(output) &&
 		output.length === 1 &&
 		output[0] === 'text' &&

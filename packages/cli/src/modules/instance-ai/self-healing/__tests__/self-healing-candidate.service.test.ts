@@ -250,7 +250,10 @@ describe('SelfHealingCandidateService', () => {
 			validation: { success: true },
 			verification: { status: 'success', success: true, nodesNotReached: [] },
 		});
-		expect(first).not.toHaveProperty('candidateChecksum', Reflect.get(second, 'candidateChecksum'));
+		expect(first).not.toHaveProperty(
+			'candidateChecksum',
+			'candidateChecksum' in second ? second.candidateChecksum : undefined,
+		);
 		expect(filesystem.readFile).toHaveBeenCalledTimes(2);
 		expect(executionService.run).toHaveBeenCalledTimes(2);
 		for (const [workflowId, , options] of executionService.run.mock.calls) {

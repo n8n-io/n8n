@@ -508,6 +508,7 @@ export class CredentialsTester {
 		additionalData.credentialsHelper = new Proxy(storedCredentialsHelper, {
 			get(target, prop) {
 				if (prop === 'getDecrypted') return getDecrypted;
+				// oxlint-disable-next-line anti-slop/no-reflect-get -- getters must keep the helper, not the proxy, as `this`
 				const value = Reflect.get(target, prop);
 				return typeof value === 'function' ? value.bind(target) : value;
 			},

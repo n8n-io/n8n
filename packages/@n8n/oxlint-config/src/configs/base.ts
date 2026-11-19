@@ -241,6 +241,7 @@ export const baseConfig = defineConfig({
 		'oxc/no-accumulating-spread': 'error',
 		'anti-slop/no-reduce-accumulator-copy': 'error',
 		'anti-slop/no-reflect-apply': 'error',
+		'anti-slop/no-reflect-get': 'error',
 		'anti-slop/no-widen-then-assert': 'error',
 	},
 	overrides: [

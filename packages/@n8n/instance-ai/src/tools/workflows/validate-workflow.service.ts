@@ -306,7 +306,8 @@ function isManagedCredentialEntry(entry: unknown): boolean {
 	return (
 		typeof entry === 'object' &&
 		entry !== null &&
-		Reflect.get(entry, 'id') === AI_GATEWAY_MANAGED_TAG
+		'id' in entry &&
+		entry.id === AI_GATEWAY_MANAGED_TAG
 	);
 }
 

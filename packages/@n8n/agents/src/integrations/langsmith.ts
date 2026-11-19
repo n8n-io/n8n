@@ -102,8 +102,10 @@ function isOtelSpanLike(value: unknown): value is OtelSpanLike {
 	return (
 		value !== null &&
 		typeof value === 'object' &&
-		typeof Reflect.get(value, 'spanContext') === 'function' &&
-		typeof Reflect.get(value, 'attributes') === 'object'
+		'spanContext' in value &&
+		typeof value.spanContext === 'function' &&
+		'attributes' in value &&
+		typeof value.attributes === 'object'
 	);
 }
 

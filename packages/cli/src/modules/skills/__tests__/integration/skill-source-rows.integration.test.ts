@@ -89,7 +89,7 @@ describe('Sources in the skills table', () => {
 		await deleteAllSkills();
 		await db().delete(SkillSourceConnection, {});
 		postHog.getFeatureFlags.mockResolvedValue({ [SKILL_SYNC_FLAG]: true });
-		(Reflect.get(Container.get(SkillSyncService), 'backoff') as Map<string, unknown>).clear();
+		Container.get(SkillSyncService)['backoff'].clear();
 		github.start();
 		github.push('acme/zeta', repo(['z1', 'z2', 'z3']));
 		github.push('acme/alpha', repo(['a1', 'a2']));

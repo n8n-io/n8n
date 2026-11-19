@@ -605,7 +605,7 @@ describe('AssistantTurnEnvironmentFactory', () => {
 				mock(),
 			);
 
-			expect(Reflect.get(factory, 'oauth2CallbackUrl')).toBe(
+			expect(factory['oauth2CallbackUrl']).toBe(
 				'https://acme.example.com/rest/oauth2-credential/callback',
 			);
 		});

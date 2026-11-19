@@ -24,6 +24,7 @@ export function hasFunctionProperty<K extends PropertyKey>(
 	value: object,
 	property: K,
 ): value is Record<K, (...args: never[]) => unknown> {
+	// oxlint-disable-next-line anti-slop/no-reflect-get -- a generic key cannot index `object` without a cast
 	return property in value && typeof Reflect.get(value, property) === 'function';
 }
 

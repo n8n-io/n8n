@@ -4,7 +4,7 @@ import { writeFileSync } from 'node:fs';
 import { relative, sep } from 'node:path';
 
 function workerHash(test: TestCase): string {
-	const value: unknown = Reflect.get(test, '_workerHash');
+	const value: unknown = '_workerHash' in test ? test._workerHash : undefined;
 	if (typeof value !== 'string' || value.length === 0) {
 		throw new Error('Playwright did not expose a worker hash for a listed test');
 	}
@@ -12,7 +12,7 @@ function workerHash(test: TestCase): string {
 }
 
 function poolDigest(test: TestCase): string {
-	const value: unknown = Reflect.get(test, '_poolDigest');
+	const value: unknown = '_poolDigest' in test ? test._poolDigest : undefined;
 	if (typeof value !== 'string' || value.length === 0) {
 		throw new Error('Playwright did not expose a fixture-pool digest for a listed test');
 	}

@@ -223,7 +223,7 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 - **NEVER use `any` type** - use proper types or `unknown`
 - **Avoid type casting with `as`** - use type guards or type predicates instead (except in test code where `as` is acceptable)
 - **Run `pnpm lint:anti-slop` before you finish.** It reports anti-slop rule
-  hits (chained `as` casts, `Reflect.get`, `filter().map()`, conditional
+  hits (chained `as` casts, `filter().map()`, conditional
   `{}` spreads, `object` parameters) on the lines you added.
   Fix each hit. Old code is not reported
 - **Define shared interfaces in `@n8n/api-types`** package for FE/BE communication

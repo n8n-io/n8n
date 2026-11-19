@@ -59,7 +59,7 @@ function getLocalFilesystemRoot(workspace: SandboxWorkspace): string | null {
 	const provider = filesystem.provider;
 	if (provider !== 'local' && provider !== 'lazy') return null;
 
-	const basePath = Reflect.get(filesystem, 'basePath');
+	const basePath = 'basePath' in filesystem ? filesystem.basePath : undefined;
 	return typeof basePath === 'string' && basePath.length > 0 ? basePath : null;
 }
 

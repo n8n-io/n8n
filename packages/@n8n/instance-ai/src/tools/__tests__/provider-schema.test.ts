@@ -69,7 +69,7 @@ async function isProviderObjectInputSchema(schema: BuiltTool['inputSchema']): Pr
 	}
 
 	if (typeof schema === 'object' && schema !== null && !Array.isArray(schema)) {
-		return Reflect.get(schema, 'type') === 'object';
+		return 'type' in schema && schema.type === 'object';
 	}
 
 	return false;

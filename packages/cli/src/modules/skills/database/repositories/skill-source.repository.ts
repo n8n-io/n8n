@@ -348,7 +348,7 @@ export class SkillSourceRepository {
 			.where('link.skillId = :skillId', { skillId })
 			.getOne();
 		// The entities declare no relation, so the join maps the source onto an extra property.
-		const source: unknown = link && Reflect.get(link, 'source');
+		const source: unknown = link && 'source' in link ? link.source : undefined;
 		if (!link || !(source instanceof SkillSourceConnection)) return null;
 		return {
 			sourceId: source.id,

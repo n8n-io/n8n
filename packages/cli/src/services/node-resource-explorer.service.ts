@@ -623,10 +623,10 @@ function readLocatorValue(raw: unknown): string | undefined {
 	if (typeof raw === 'string') return staticIdentifier(raw);
 	if (typeof raw !== 'object' || raw === null) return undefined;
 
-	const mode = Reflect.get(raw, 'mode');
+	const mode = 'mode' in raw ? raw.mode : undefined;
 	if (typeof mode === 'string' && !IDENTIFIER_LOCATOR_MODES.has(mode)) return undefined;
 
-	const value = Reflect.get(raw, 'value');
+	const value = 'value' in raw ? raw.value : undefined;
 	if (typeof value === 'string') return staticIdentifier(value);
 	if (typeof value === 'number') return String(value);
 	return undefined;

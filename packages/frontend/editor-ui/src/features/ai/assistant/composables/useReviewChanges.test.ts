@@ -20,9 +20,9 @@ vi.mock('n8n-workflow', async () => {
 		...actual,
 		compareWorkflowsNodes: (...args: unknown[]) => compareWorkflowsNodesMock(...args),
 		NodeHelpers: new Proxy(actualNodeHelpers, {
-			get(target, prop) {
+			get(target, prop, receiver) {
 				if (prop === 'getNodeParameters') return getNodeParametersMock;
-				return Reflect.get(target, prop);
+				return Reflect.get(target, prop, receiver);
 			},
 		}),
 		NodeDiffStatus: {

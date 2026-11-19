@@ -26,7 +26,7 @@ export class N8nPdfLoader extends BufferLoader {
 	protected async parse(raw: Buffer, metadata: Record<string, unknown>): Promise<Document[]> {
 		// pdf-parse v2 is backed by pdfjs-dist, which expects a `DOMMatrix` global
 		// that Node.js does not provide. Polyfill it before parsing.
-		if (typeof Reflect.get(globalThis, 'DOMMatrix') === 'undefined') {
+		if (typeof globalThis.DOMMatrix === 'undefined') {
 			const { default: DOMMatrix } = await import('@thednp/dommatrix');
 			Reflect.set(globalThis, 'DOMMatrix', DOMMatrix);
 		}

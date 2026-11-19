@@ -129,8 +129,10 @@ function isOpenTelemetryTracer(value: unknown): value is Tracer {
 	return (
 		value !== null &&
 		typeof value === 'object' &&
-		typeof Reflect.get(value, 'startSpan') === 'function' &&
-		typeof Reflect.get(value, 'startActiveSpan') === 'function'
+		'startSpan' in value &&
+		typeof value.startSpan === 'function' &&
+		'startActiveSpan' in value &&
+		typeof value.startActiveSpan === 'function'
 	);
 }
 

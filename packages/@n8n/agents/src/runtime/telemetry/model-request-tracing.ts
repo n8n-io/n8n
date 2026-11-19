@@ -36,7 +36,8 @@ function isTracer(value: unknown): value is Tracer {
 	return (
 		value !== null &&
 		typeof value === 'object' &&
-		typeof Reflect.get(value, 'startSpan') === 'function'
+		'startSpan' in value &&
+		typeof value.startSpan === 'function'
 	);
 }
 

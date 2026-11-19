@@ -583,8 +583,9 @@ async function runDistribute(options: CliOptions): Promise<void> {
 		if (typeof groups !== 'object' || groups === null || Array.isArray(groups)) {
 			throw new Error('Distribution groups must be a JSON object');
 		}
+		const groupsByPath = new Map<string, unknown>(Object.entries(groups));
 		specs = specs.map((spec) => {
-			const fixturePools: unknown = Reflect.get(groups, spec.path.replaceAll('\\', '/'));
+			const fixturePools = groupsByPath.get(spec.path.replaceAll('\\', '/'));
 			if (
 				!Array.isArray(fixturePools) ||
 				fixturePools.length === 0 ||

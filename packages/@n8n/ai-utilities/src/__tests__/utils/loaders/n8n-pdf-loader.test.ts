@@ -247,7 +247,7 @@ describe('N8nPdfLoader', () => {
 	// exercise that code path.
 	describe('DOMMatrix polyfill', () => {
 		const hadDomMatrix = 'DOMMatrix' in globalThis;
-		const originalDomMatrix: unknown = Reflect.get(globalThis, 'DOMMatrix');
+		const originalDomMatrix: unknown = (globalThis as { DOMMatrix?: unknown }).DOMMatrix;
 
 		afterAll(() => {
 			if (hadDomMatrix) {
@@ -268,7 +268,7 @@ describe('N8nPdfLoader', () => {
 			const loader = new N8nPdfLoader(makeBlob());
 			await loader.load();
 
-			expect(typeof Reflect.get(globalThis, 'DOMMatrix')).toBe('function');
+			expect(typeof (globalThis as { DOMMatrix?: unknown }).DOMMatrix).toBe('function');
 		});
 	});
 });

@@ -183,7 +183,7 @@ function containsDynamicValue(value: unknown): boolean {
 
 	if (value !== null && typeof value === 'object') {
 		if (isResourceLocatorValue(value)) return true;
-		return Object.keys(value).some((key) => containsDynamicValue(Reflect.get(value, key)));
+		return Object.values(value).some(containsDynamicValue);
 	}
 
 	return false;

@@ -370,7 +370,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('job return on shutdown (real Redis)
 				stopping = true;
 				void worker.pause(true, true);
 				currentJobsFinished = Promise.all(
-					Object.values(Reflect.get(worker, 'processing') as Record<string, Promise<unknown>>),
+					Object.values((worker as JobQueue & { processing: Array<Promise<unknown>> }).processing),
 				);
 			});
 			void worker.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {

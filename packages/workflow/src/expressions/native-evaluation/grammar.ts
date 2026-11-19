@@ -123,6 +123,7 @@ const captureGetters = (proto: object, names: string[]): ReadonlyMap<string, Nat
 const captureMethods = (proto: object, names: string[]): ReadonlyMap<string, NativeMethod> => {
 	const methods = new Map<string, NativeMethod>();
 	for (const name of names) {
+		// oxlint-disable-next-line anti-slop/no-reflect-get -- captures intrinsic methods from a prototype by dynamic name
 		const method: unknown = Reflect.get(proto, name);
 		if (typeof method === 'function') methods.set(name, method as NativeMethod);
 	}
@@ -202,6 +203,7 @@ export const RESERVED_NAMES = new Set<string>([
 
 // A test that mocks luxon leaves DateTime without a prototype; the lists are
 // then empty and every time root declines.
+// oxlint-disable-next-line anti-slop/no-reflect-get -- DateTime can be a mock without a prototype
 const capturedProto: unknown = Reflect.get(DateTime ?? {}, 'prototype');
 const dateTimeProto: object =
 	typeof capturedProto === 'object' && capturedProto !== null ? capturedProto : {};

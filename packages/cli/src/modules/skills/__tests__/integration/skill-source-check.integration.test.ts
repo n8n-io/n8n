@@ -32,7 +32,6 @@ import { SkillSourceConnection } from '../../database/entities/skill-source-conn
 import { SkillSourceLink } from '../../database/entities/skill-source-link.entity';
 import { SkillSourceCheckTask } from '../../services/skill-source-check.task';
 import { SkillUsageProxy } from '../../services/skill-usage-proxy.service';
-import type { SkillUsage } from '../../services/skill-usage.contracts';
 import { SkillSyncService } from '../../services/skill-sync.service';
 import { SkillService } from '../../services/skill.service';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
@@ -98,8 +97,8 @@ describe('Skill source checks', () => {
 		await db().delete(SkillSourceConnection, {});
 		postHog.getFeatureFlags.mockResolvedValue({ [SKILL_SYNC_FLAG]: true });
 		// The rate limit budget lives in memory on the service, so one test's limit stays there.
-		(Reflect.get(sync(), 'backoff') as Map<string, unknown>).clear();
-		Reflect.get(sync(), 'commits').clear();
+		sync()['backoff'].clear();
+		sync()['commits'].clear();
 		github.start();
 		github.push('acme/skills', FILES);
 	});
@@ -869,7 +868,8 @@ describe('Skill source checks', () => {
 		it('does not disclose agent names when a rename clashes in an agent', async () => {
 			const { sourceId, docx } = await importAll();
 			const proxy = Container.get(SkillUsageProxy);
-			const original = Reflect.get(proxy, 'impl') as SkillUsage;
+			const original = proxy['impl'];
+			if (!original) throw new Error('SkillUsage is not registered');
 			const usage = new FakeSkillUsage();
 			await usage.seed({
 				agents: [{ key: 'hidden', name: 'Hidden agent name', project: 'other-project' }],
@@ -993,7 +993,8 @@ describe('Skill source checks', () => {
 		it('reports a committed update when agent names cannot be read', async () => {
 			const { sourceId, docx, reviewed } = await changed();
 			const proxy = Container.get(SkillUsageProxy);
-			const original = Reflect.get(proxy, 'impl') as SkillUsage;
+			const original = proxy['impl'];
+			if (!original) throw new Error('SkillUsage is not registered');
 			const usage = new FakeSkillUsage();
 			await usage.seed({
 				agents: [{ key: 'follower', name: 'Following agent', project: team.id }],
@@ -1039,7 +1040,8 @@ describe('Skill source checks', () => {
 		it('refreshes followers after commit and does not expose hidden agent names or change pins', async () => {
 			const { sourceId, docx, reviewed } = await changed();
 			const proxy = Container.get(SkillUsageProxy);
-			const original = Reflect.get(proxy, 'impl') as SkillUsage;
+			const original = proxy['impl'];
+			if (!original) throw new Error('SkillUsage is not registered');
 			const usage = new FakeSkillUsage();
 			await usage.seed({
 				agents: [
@@ -1389,7 +1391,7 @@ describe('Skill source checks', () => {
 			await importAll();
 			github.failWith = { status: 429, headers: { 'retry-after': '600' } };
 			await sync().checkAll();
-			const backoff = Reflect.get(sync(), 'backoff') as Map<string, unknown>;
+			const backoff = sync()['backoff'];
 			const until = backoff.get('public:github');
 
 			await sync().checkAll();
