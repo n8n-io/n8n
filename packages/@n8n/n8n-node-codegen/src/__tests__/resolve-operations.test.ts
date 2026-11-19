@@ -20,7 +20,7 @@ const operation = (operationId: string, overrides: Partial<SpecOperation> = {}):
 	...overrides,
 });
 
-const spec = (...operations: SpecOperation[]): Spec => ({ tags: [], operations });
+const spec = (...operations: SpecOperation[]): Spec => ({ operations });
 
 describe('resolveOperations', () => {
 	it('should give each operation the singular resource of its tag', () => {

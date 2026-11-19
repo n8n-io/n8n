@@ -49,7 +49,6 @@ export interface SpecOperation {
 }
 
 export interface Spec {
-	tags: SpecTag[];
 	operations: SpecOperation[];
 }
 
@@ -57,4 +56,22 @@ export interface SpecOptions {
 	ignoredHeaderParameters: string[];
 	cursorParameter: string;
 	limitParameter: string;
+}
+
+export interface GenerateConfig {
+	envelopeFile: string;
+	routesFile: string;
+	overridesFile: string;
+	spec: SpecOptions;
+}
+
+export interface Resource {
+	id: string;
+	displayName: string;
+}
+
+export interface OperationRow {
+	operation: SpecOperation;
+	resource: Resource;
+	excludeReason?: string;
 }

@@ -1,23 +1,22 @@
-import type { OperationRow } from './resolve-operations';
+import type { OperationRow } from './types';
 
 const resourceTitle = ({ operation, resource }: OperationRow) =>
 	`${operation.tag.group.displayName} / ${resource.displayName} (resource: ${resource.id})`;
 
-function notes({ operation, excludeReason }: OperationRow): string {
-	return [operation.deprecated ? 'deprecated' : undefined, excludeReason]
-		.filter((note) => note !== undefined)
-		.join('; ');
-}
-
 function formatTable(rows: OperationRow[]): string[] {
-	const cells = rows.map((row) => [
-		row.excludeReason === undefined ? 'in node' : 'excluded',
-		row.operation.operationId,
-		row.operation.summary,
-		row.operation.method,
-		row.operation.apiPath,
-		notes(row),
-	]);
+	const cells = rows.map((row) => {
+		const notes = [row.operation.deprecated ? 'deprecated' : undefined, row.excludeReason]
+			.filter((note) => note !== undefined)
+			.join('; ');
+		return [
+			row.excludeReason === undefined ? 'in node' : 'excluded',
+			row.operation.operationId,
+			row.operation.summary,
+			row.operation.method,
+			row.operation.apiPath,
+			notes,
+		];
+	});
 	const widths = cells[0].map((_, column) => Math.max(...cells.map((row) => row[column].length)));
 	return cells.map((row) =>
 		`  ${row.map((cell, column) => cell.padEnd(widths[column])).join('  ')}`.trimEnd(),
