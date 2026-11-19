@@ -364,6 +364,62 @@ describe('InstanceAiApprovalReviewerFactory', () => {
 			expect(properties?.review_duration_ms).toBeGreaterThanOrEqual(25);
 		});
 
+		it('records the decision in the trace that the run has when it reviews', async () => {
+			const startChildRun = vi.fn(async () => ({ id: 'review-run' }));
+			let tracing: InstanceAiTraceContext | undefined;
+			const reviewer = createReviewer({ getTracing: () => tracing });
+			// A resumed run has a new trace. The host attaches it after it builds the reviewer.
+			tracing = {
+				actorRun: { id: 'actor-run' },
+				startChildRun,
+				finishRun: vi.fn(async () => {}),
+			} as unknown as InstanceAiTraceContext;
+
+			await reviewer.onReviewed(approval, {
+				decision: 'ask',
+				decidedBy: 'rule',
+				reason: 'Auto mode always asks you to confirm this action.',
+				route: 'always-ask',
+			});
+
+			expect(startChildRun).toHaveBeenCalledWith(
+				{ id: 'actor-run' },
+				expect.objectContaining({
+					name: 'approval: review',
+					metadata: {
+						tool_name: 'publish_workflow',
+						tool_call_id: 'call-1',
+						approval_route: 'always-ask',
+						approval_decision: 'ask',
+						approval_decided_by: 'rule',
+						approval_judge_failed: false,
+					},
+				}),
+			);
+		});
+
+		it('keeps the review when the trace fails', async () => {
+			const tracing = {
+				actorRun: { id: 'actor-run' },
+				startChildRun: vi.fn(async () => await Promise.reject(new Error('trace down'))),
+			} as unknown as InstanceAiTraceContext;
+			const reviewer = createReviewer({ getTracing: () => tracing });
+
+			await expect(
+				reviewer.onReviewed(approval, {
+					decision: 'approve',
+					decidedBy: 'rule',
+					reason: 'Low-risk action that is easy to undo.',
+					route: 'low-risk',
+				}),
+			).resolves.toBeUndefined();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.APPROVAL_DECIDED_IN_AUTO_MODE,
+				expect.objectContaining({ route: 'low-risk', decision: 'approve' }),
+			);
+		});
+
 		it('tracks a judge that failed', async () => {
 			judgeApproval.mockResolvedValue({ ok: false, error: 'timeout', durationMs: 10_000 });
 			const reviewer = createReviewer();
