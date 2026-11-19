@@ -1,0 +1,19 @@
+packages/cli/src/modules/promotions.ee/promotions-git.utils.ts
+  s_3dd47ea0104342::t_9f66f899c5a943 38-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dbc182a8c06aa6b1daf0db63931bd487d8bdffe5",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

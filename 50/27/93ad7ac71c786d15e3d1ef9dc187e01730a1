@@ -1,0 +1,32 @@
+.github/WORKFLOWS.md
+  h_52a137d26d774c 912,922,953-962
+.github/scripts/owners/assign-reviewers.mjs
+  h_52a137d26d774c 33
+.github/scripts/owners/assign-reviewers.test.mjs
+  h_52a137d26d774c 37,107
+.github/scripts/owners/owners.mjs
+  h_52a137d26d774c 10,18-19,45,65,69,76-84,94,239,243,246,253,258-259,261,321
+.github/scripts/owners/owners.test.mjs
+  h_52a137d26d774c 22,36-38,46,50-70,296-297,306-307,311-325,340-341,345,350,363
+.github/scripts/owners/required-reviews.mjs
+  h_52a137d26d774c 196,200,205,214-217,220,238-239,251,259-260,262-264,271
+.github/scripts/owners/required-reviews.test.mjs
+  h_52a137d26d774c 3,46,51-52,369,376,383,386,428,442,462,496-498,511-540,542,558,570,597,610,651,662
+.github/scripts/owners/review-recommendations.mjs
+  h_52a137d26d774c 232,235-236,238,243,245-248,311-312
+.github/scripts/owners/review-recommendations.test.mjs
+  h_52a137d26d774c 33,325,328-329,336,338,343,354,361,364-365,464,466,472
+OWNERS
+  h_52a137d26d774c 3,8,12-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "502793ad7ac71c786d15e3d1ef9dc187e01730a1",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

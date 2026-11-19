@@ -1,0 +1,148 @@
+packages/@n8n/agents/src/sdk/agent.ts
+  s_6bdcca0a27f363::t_ca8755cba2544c 96
+  s_6bdcca0a27f363::t_e17a35f8107102 190-191,317-325,1262-1264,1433-1436
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_6bdcca0a27f363::t_7a9d795e5e0f65 12807-12850
+packages/@n8n/agents/src/runtime/tools/tool-adapter.ts
+  s_6bdcca0a27f363::t_3b0a3563b1dbd6 20,113,119-121
+packages/@n8n/decorators/src/policy-check/policy-cleared.ts
+  s_6bdcca0a27f363::t_93819d3d874957 18
+packages/@n8n/agents/src/runtime/tools/tool-call-clearance.ts
+  s_6bdcca0a27f363::t_707826479ec783 1-18
+packages/cli/src/policy/policy-enforcement.service.ts
+  s_6bdcca0a27f363::t_93819d3d874957 9,221-233
+  s_6bdcca0a27f363::t_709027fdcfb5a1 234-235
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-subagent-workspace.test.ts
+  s_6bdcca0a27f363::t_c38f86f838c64c 92
+  s_6bdcca0a27f363::t_9798d091d481ce 19
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_6bdcca0a27f363::t_c38f86f838c64c 117,155,335-339,347-349,351
+  s_6bdcca0a27f363::t_e57dacea9e08d6 328-334,340-346,350,352
+  s_6bdcca0a27f363::t_9798d091d481ce 37
+  s_6bdcca0a27f363::t_76f1030685a970 353-354
+packages/@n8n/agents/src/types/runtime/tool-execution.ts
+  s_6bdcca0a27f363::t_a5a40cd86451b9 20,157-158
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_6bdcca0a27f363::t_e17a35f8107102 297
+packages/@n8n/agents/src/index.ts
+  s_6bdcca0a27f363::t_ca8755cba2544c 16-19
+packages/cli/src/modules/policy-infrastructure/policy-decision.service.ts
+  s_6bdcca0a27f363::t_93819d3d874957 26
+  s_6bdcca0a27f363::t_5db50df50108d6 38
+packages/cli/src/policy/__tests__/policy-enforcement.service.test.ts
+  s_6bdcca0a27f363::t_35725ef0eab71e 370-384,387-395
+  s_6bdcca0a27f363::t_d082f2d495eb1a 385-386
+packages/cli/src/modules/policy-infrastructure/README.md
+  s_6bdcca0a27f363::t_c508df027081bc 11,103,105,148-150,175-191,206-208
+  s_6bdcca0a27f363::t_d46a145001cc35 133,192-205
+  s_6bdcca0a27f363::t_7f15267f9eb97c 209
+packages/cli/src/modules/agents/agent-tool-call-history.service.ts
+  s_6bdcca0a27f363::t_4112d51016eaee 1-84
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_6bdcca0a27f363::t_c38f86f838c64c 200
+  s_6bdcca0a27f363::t_9798d091d481ce 40
+packages/@n8n/agents/src/types/runtime/agent-runtime.ts
+  s_6bdcca0a27f363::t_e17a35f8107102 86-89
+  s_6bdcca0a27f363::t_ca8755cba2544c 35
+  s_6bdcca0a27f363::t_aa357096604cfb 85
+packages/cli/src/modules/policy-infrastructure/policy-decision-audit.ts
+  s_6bdcca0a27f363::t_93819d3d874957 65-67,94-102
+packages/cli/src/modules/policy-infrastructure/__tests__/policy-decision.service.test.ts
+  s_6bdcca0a27f363::t_35725ef0eab71e 10,200-203,530-541,544-556
+  s_6bdcca0a27f363::t_d082f2d495eb1a 542-543
+  s_6bdcca0a27f363::t_c9fd732c9e8b41 557-559
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_6bdcca0a27f363::t_e5e2e7a43f444e 862-863,865
+  s_6bdcca0a27f363::t_af601eb3507717 394,864
+  s_6bdcca0a27f363::t_c38f86f838c64c 75
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_6bdcca0a27f363::t_d7b4ce65118691 93
+  s_6bdcca0a27f363::t_be07eef4eb38e1 302
+packages/@n8n/agents/src/types/index.ts
+  s_6bdcca0a27f363::t_ca8755cba2544c 245-251
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_6bdcca0a27f363::t_e5e2e7a43f444e 76,90,185,236
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_6bdcca0a27f363::t_e5e2e7a43f444e 100
+packages/@n8n/agents/src/runtime/__tests__/tool-adapter.test.ts
+  s_6bdcca0a27f363::t_e9af547281dd79 293-295,310-312,326-328,347-349
+  s_6bdcca0a27f363::t_5616985b0572f2 257-271
+  s_6bdcca0a27f363::t_94e53722c6e308 8,283,363
+packages/cli/src/modules/agent-tool-policies/__tests__/tool-call-log.check.test.ts
+  s_6bdcca0a27f363::t_85223c02fe65a3 1,49
+  s_6bdcca0a27f363::t_d7b4ce65118691 2-3,6,11-20,31-43,47,50-51,57-94
+  s_6bdcca0a27f363::t_e4c9b6e40c3014 4-5,7-10,21-30,44-46,48,52-56,95-97
+packages/@n8n/decorators/src/policy-check/policy-check.ts
+  s_6bdcca0a27f363::t_93819d3d874957 23,151-159,161-164,188-204,217-218,312-315,339
+  s_6bdcca0a27f363::t_4112d51016eaee 165-187,205-216
+  s_6bdcca0a27f363::t_cb745c01b90400 1,160
+packages/cli/src/policy/policy-enforcement-backend.ts
+  s_6bdcca0a27f363::t_93819d3d874957 8,27
+packages/@n8n/agents/src/sdk/__tests__/inline-sub-agent-tools.test.ts
+  s_6bdcca0a27f363::t_e7f53fe743887e 572-591
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_6bdcca0a27f363::t_e5e2e7a43f444e 46
+packages/@n8n/agents/src/runtime/__tests__/mcp-connection.test.ts
+  s_6bdcca0a27f363::t_94e53722c6e308 4,495-496
+packages/cli/src/modules/agent-tool-policies/agent-tool-policies.module.ts
+  s_6bdcca0a27f363::t_4fe2540451ca9b 1-16
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_6bdcca0a27f363::t_4112d51016eaee 979-987
+  s_6bdcca0a27f363::t_7dfdd96aa374f0 978
+packages/@n8n/agents/src/runtime/__tests__/tool-call-runner.test.ts
+  s_6bdcca0a27f363::t_94e53722c6e308 339
+  s_6bdcca0a27f363::t_c9ef53a4c3fd06 435-439,447-451
+  s_6bdcca0a27f363::t_432b4c55a6e1e4 336-338,340-434,440-446,452-544,561-578,580,585,587-600
+  s_6bdcca0a27f363::t_3307bdc38ca8d0 545-560
+  s_6bdcca0a27f363::t_5895ac14cca69d 579,581-584,586
+  s_6bdcca0a27f363::t_9f99e6608908e9 3,9
+  s_6bdcca0a27f363::t_e9af547281dd79 7
+packages/cli/src/modules/agents/__tests__/agent-tool-call-history.service.test.ts
+  s_6bdcca0a27f363::t_5db50df50108d6 28-29,60-62,102-104,118-122,128-130
+  s_6bdcca0a27f363::t_c9ef53a4c3fd06 1-27,30-59,63-101,105-117,123-127,131-181
+packages/cli/src/modules/agents/agent-policy.service.ts
+  s_6bdcca0a27f363::t_af601eb3507717 5,10,13-14,47-48,115-122,126-130,132-137,141-152
+  s_6bdcca0a27f363::t_ba88bb6ddcf12d 1,3,12,32-42,52-55,123-125,131,138-140,153
+  s_6bdcca0a27f363::t_b588317bbeaa3a 11
+packages/@n8n/agents/src/types/sdk/pre-tool-execution.ts
+  s_6bdcca0a27f363::t_c397b26fa8477a 1-41
+packages/cli/src/modules/agents/__tests__/agent-policy.service.test.ts
+  s_6bdcca0a27f363::t_5db50df50108d6 219-224
+  s_6bdcca0a27f363::t_cc821ca1a68262 290-293
+  s_6bdcca0a27f363::t_d082f2d495eb1a 217-218,225
+  s_6bdcca0a27f363::t_9798d091d481ce 171-200,202-210,212-213,285-289,294-329
+  s_6bdcca0a27f363::t_ba88bb6ddcf12d 1,3-7,15,56-61,201,211,214-216,226-284
+  s_6bdcca0a27f363::t_a1c21d776a8f46 330
+packages/@n8n/agents/src/runtime/tools/tool-call-runner.ts
+  s_6bdcca0a27f363::t_4112d51016eaee 7,100-104,109,254
+  s_6bdcca0a27f363::t_c09134fa5dd5e7 11,89-99,105-107,110,190-192,222-253,256,259-300,307,330,550,578
+  s_6bdcca0a27f363::t_3307bdc38ca8d0 257-258
+  s_6bdcca0a27f363::t_e9af547281dd79 35
+  s_6bdcca0a27f363::t_6ae5b9d26abc94 108
+  s_6bdcca0a27f363::t_8106711700f15e 111,255
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_6bdcca0a27f363::t_be07eef4eb38e1 97,308,371,387,412
+  s_6bdcca0a27f363::t_c38f86f838c64c 169
+packages/cli/src/modules/agent-tool-policies/tool-call-log.check.ts
+  s_6bdcca0a27f363::t_d7b4ce65118691 2,18-21,26,28-31,35-56
+  s_6bdcca0a27f363::t_a8dec8297ef410 1,3-17,22-25,27,32,34,57-58
+  s_6bdcca0a27f363::t_a03e22bfd15942 33
+packages/cli/src/modules/agent-tool-policies/__tests__/agent-tool-policies.module.test.ts
+  s_6bdcca0a27f363::t_e930ab520ec819 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a4c932da15547362ac91b3525dfd9a69e401e590",
+  "prompts": {},
+  "sessions": {
+    "s_6bdcca0a27f363": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "565eb793-19a9-4a9e-85f2-146865e3826b",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
