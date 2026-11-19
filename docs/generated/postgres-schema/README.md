@@ -81,6 +81,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.execution_data](public.execution_data.md) | 4 |  | BASE TABLE |
 | [public.execution_entity](public.execution_entity.md) | 20 |  | BASE TABLE |
 | [public.execution_ledger](public.execution_ledger.md) | 16 |  | BASE TABLE |
+| [public.execution_ledger_parked](public.execution_ledger_parked.md) | 20 |  | BASE TABLE |
 | [public.execution_metadata](public.execution_metadata.md) | 4 |  | BASE TABLE |
 | [public.folder](public.folder.md) | 7 |  | BASE TABLE |
 | [public.folder_tag](public.folder_tag.md) | 2 |  | BASE TABLE |
@@ -1294,6 +1295,28 @@ erDiagram
   varchar_36_ projectId
   bigint runtimeMs
   varchar_32_ source
+  integer timeSavedMin
+}
+"public.execution_ledger_parked" {
+  varchar_32_ blockedBy
+  varchar_36_ entityId
+  varchar_128_ entityName
+  varchar_16_ entityType
+  varchar_255_ error
+  varchar_16_ event
+  uuid eventId
+  varchar_36_ executionId
+  integer id
+  bigint ledgerId
+  varchar_32_ mode
+  timestamp_3__with_time_zone occurredAt
+  varchar_8_ origin
+  varchar_16_ outcome
+  timestamp_3__with_time_zone parkedAt
+  varchar_36_ projectId
+  bigint runtimeMs
+  varchar_32_ source
+  varchar_48_ step
   integer timeSavedMin
 }
 "public.execution_metadata" {
