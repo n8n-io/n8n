@@ -187,7 +187,7 @@ These only run if specific files changed:
 | `packages/quality/efficiency/scale/benchmark/**`                       | `build-benchmark-image.yml` | master     |
 | `packages/@n8n/instance-ai/src/**`, `packages/@n8n/instance-ai/skills/**`, `packages/@n8n/instance-ai/knowledge-base/**`, `packages/@n8n/instance-ai/evaluations/**`, `packages/cli/src/modules/instance-ai/**`, `packages/core/src/execution-engine/eval-mock-helpers.ts`, `packages/@n8n/agents/src/**` | `ci-instance-ai-evals.yml` | on PR `opened` / `reopened` / `ready_for_review` |
 | `docker/get-n8n.sh`, `docker/get-n8n-compose.yml`, `docker/test-get-n8n.sh` | `test-get-n8n.yml`          | any        |
-| `.github/workflows/sec-base-image-refresh.yml`, `.github/scripts/docker/base-image-candidates.mjs`, `.github/scripts/docker/base-image-publisher.mjs`, `security/keys/dhi.pub` | `sec-base-image-refresh.yml` on PRs only; it also runs daily and on dispatch. Skips fork PRs, which get no registry secrets | any        |
+| `.github/workflows/sec-base-image-refresh.yml`, `.github/scripts/docker/base-image-candidates.mjs`, `.github/scripts/docker/base-image-publisher.mjs`, `.github/scripts/docker/base-image-pin-pr.mjs`, `security/keys/dhi.pub` | `sec-base-image-refresh.yml` on PRs only; it also runs daily and on dispatch. Skips fork PRs, which get no registry secrets | any        |
 
 ### Pushes to an open PR
 
@@ -721,7 +721,7 @@ Push to master
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
 | Daily 02:00               | `test-get-n8n.yml`                | get.n8n.io installer health |
 | Daily 02:00               | `test-e2e-pc-nightly.yml`         | E2E on the `-pc` image   |
-| Daily 02:00               | `sec-base-image-refresh.yml`      | Find base image digests that remove fixable OS findings |
+| Daily 02:00               | `sec-base-image-refresh.yml`      | Find base image digests that remove fixable OS findings, and open the pin PRs |
 | Daily 03:00               | `test-e2e-helm.yml`               | n8n build on the public Helm chart |
 | Daily 04:00               | `test-sbom-nightly.yml`           | Release and image SBOM license validation |
 | Daily 04:30               | `test-image-efficiency.yml`       | Image size and layer waste with Dive |
@@ -924,6 +924,7 @@ Scripts in `.github/scripts/`:
 | `docker/bake-inputs-changed.mjs`| Decide whether an image must build: compare its resolved bake inputs and Dockerfile between two commits | `build-base-image.yml`, `build-node-pc-image.yml`|
 | `docker/base-image-candidates.mjs`| Find the newest digest of each upstream base image pin and keep it when a Trivy scan shows that it removes fixable OS findings. A candidate is ready when its publisher is verified and it is at least 24 hours old. A manual run skips the age check. When the tag has no fix, the moving tag of its line shows whether a newer patch needs a version update | `sec-base-image-refresh.yml`|
 | `docker/base-image-publisher.mjs`| Verify the publisher of a base image digest (cosign for DHI and distroless, SLSA provenance for Docker Official Images) and read its publication time | `sec-base-image-refresh.yml`|
+| `docker/base-image-pin-pr.mjs`| Update the pins of the ready candidates in `docker/docker-bake.hcl` and write the PR body: one daily PR, and one review PR without auto-merge for digests that add a package. A preview run shows the PRs in the job summary and opens none | `sec-base-image-refresh.yml`|
 | `attest-image-sbom.mjs` | Generate, validate, and optionally attest image SBOMs | `docker-build-push.yml`, `test-sbom-nightly.yml` |
 
 ### Node CLI Scripts
