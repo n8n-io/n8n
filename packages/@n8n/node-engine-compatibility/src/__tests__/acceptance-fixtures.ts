@@ -1,6 +1,7 @@
 import type {
 	createDataSource,
 	ExecutionMode,
+	ExecutionSnapshot,
 	StartExecutionResult,
 	TriggerOutputs,
 	WorkflowGraph,
@@ -80,6 +81,26 @@ export function setNode(id: string, name: string, assignments: Assignment[]) {
 			},
 			options: {},
 		},
+	};
+}
+
+export function splitOutNode(id: string, name: string, field: string) {
+	return {
+		id,
+		name,
+		type: 'n8n-nodes-base.splitOut',
+		typeVersion: 1,
+		parameters: { fieldToSplitOut: field, options: {} },
+	};
+}
+
+export function loopNode(id: string, name: string, batchSize: number) {
+	return {
+		id,
+		name,
+		type: 'n8n-nodes-base.splitInBatches',
+		typeVersion: 3,
+		parameters: { batchSize },
 	};
 }
 
@@ -387,6 +408,8 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 			.expect(201);
 		const { executionId } = response.body as StartExecutionResult;
 
+		// the run as the control plane reads it, steps included
+		let view: ExecutionSnapshot;
 		try {
 			await Promise.race([
 				finished,
@@ -410,6 +433,13 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 					}, 10_000).unref();
 				}),
 			]);
+			view = (
+				await request(runtime.app)
+					.get(`/api/workflow-executions/${executionId}`)
+					.query({ includeSteps: 'true' })
+					.set('Authorization', `Bearer ${mintIdentityToken(authSecret, caller)}`)
+					.expect(200)
+			).body as ExecutionSnapshot;
 		} finally {
 			await runtime.stop();
 		}
@@ -423,6 +453,7 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 		return {
 			execution,
 			steps,
+			view,
 			byNode: (nodeId: string) =>
 				steps.find((step: WorkflowStepExecution) => step.nodeId === nodeId),
 		};

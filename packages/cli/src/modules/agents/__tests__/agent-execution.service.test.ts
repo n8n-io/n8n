@@ -20,6 +20,7 @@ import type { AgentExecution } from '../entities/agent-execution.entity';
 import { AgentMessageEntity } from '../entities/agent-message.entity';
 import type { MessageRecord, TimelineEvent } from '../execution-recorder';
 import type { AgentExecutionLogStore } from '../execution-log/agent-execution-log-store';
+import type { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
@@ -114,6 +115,7 @@ describe('AgentExecutionService', () => {
 	let agentChatAttachmentService: Mocked<AgentChatAttachmentService>;
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	let executionUpdateBroadcaster: Mocked<AgentExecutionUpdateBroadcaster>;
+	let integrationMessageContext: Mocked<IntegrationMessageContextService>;
 	const txRunner = mock<TransactionRunner>();
 	const queueRepository = mock<AgentMessageQueueRepository>();
 	const messageRepository = mock<AgentMessageRepository>();
@@ -143,6 +145,8 @@ describe('AgentExecutionService', () => {
 		errorReporter = mock<ErrorReporter>();
 		agentChatAttachmentService = mock<AgentChatAttachmentService>();
 		executionUpdateBroadcaster = mock<AgentExecutionUpdateBroadcaster>();
+		integrationMessageContext = mock<IntegrationMessageContextService>();
+		integrationMessageContext.findBoundThreadIds.mockResolvedValue([]);
 		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 
 		service = new AgentExecutionService(
@@ -162,6 +166,7 @@ describe('AgentExecutionService', () => {
 			messageRepository,
 			new SystemAgentRegistry(),
 			projectDeletion,
+			integrationMessageContext,
 			executionMetrics,
 		);
 	});
@@ -979,6 +984,7 @@ describe('AgentExecutionService', () => {
 				messageRepository,
 				new SystemAgentRegistry(),
 				projectDeletion,
+				integrationMessageContext,
 				executionMetrics,
 			);
 
@@ -1087,6 +1093,7 @@ describe('AgentExecutionService', () => {
 					messageRepository,
 					new SystemAgentRegistry(),
 					projectDeletion,
+					integrationMessageContext,
 					executionMetrics,
 				);
 
@@ -1860,6 +1867,7 @@ describe('AgentExecutionService', () => {
 				messageRepository,
 				new SystemAgentRegistry(),
 				projectDeletion,
+				integrationMessageContext,
 				executionMetrics,
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
@@ -2631,6 +2639,52 @@ describe('AgentExecutionService', () => {
 			expect(n8nMemory.getImplementation).not.toHaveBeenCalled();
 			expect(memoryBackend.deleteThread).not.toHaveBeenCalled();
 			expect(agentChatAttachmentService.deleteStoredData).not.toHaveBeenCalled();
+		});
+
+		it('clears the session bindings of the deleted thread after the delete', async () => {
+			agentExecutionThreadRepository.deleteSession.mockResolvedValue({
+				status: 'deleted',
+				refs: { attachmentBinaryDataIds: [], executionLogs: [] },
+			});
+			integrationMessageContext.findBoundThreadIds.mockResolvedValue(['agent-1:whatsapp:1']);
+
+			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1', 'user-1');
+
+			expect(result).toBe(true);
+			expect(integrationMessageContext.findBoundThreadIds).toHaveBeenCalledWith('thread-1', {});
+			expect(integrationMessageContext.findBoundThreadIds.mock.invocationCallOrder[0]).toBeLessThan(
+				memoryBackend.deleteThread.mock.invocationCallOrder[0],
+			);
+			expect(integrationMessageContext.clearSessionBindings).toHaveBeenCalledWith('thread-1', [
+				'agent-1:whatsapp:1',
+			]);
+			expect(memoryBackend.deleteThread.mock.invocationCallOrder[0]).toBeLessThan(
+				integrationMessageContext.clearSessionBindings.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('keeps the session bindings when the session is busy', async () => {
+			agentExecutionThreadRepository.deleteSession.mockResolvedValue({ status: 'busy' });
+
+			await expect(
+				service.deleteThread('project-1', 'agent-1', 'thread-1', 'user-1'),
+			).rejects.toThrow('The session has active work and cannot be deleted');
+
+			expect(integrationMessageContext.findBoundThreadIds).not.toHaveBeenCalled();
+			expect(integrationMessageContext.clearSessionBindings).not.toHaveBeenCalled();
+		});
+
+		it('reports the deletion when the session bindings fail to clear', async () => {
+			agentExecutionThreadRepository.deleteSession.mockResolvedValue({
+				status: 'deleted',
+				refs: { attachmentBinaryDataIds: [], executionLogs: [] },
+			});
+			integrationMessageContext.findBoundThreadIds.mockResolvedValue(['agent-1:whatsapp:1']);
+			integrationMessageContext.clearSessionBindings.mockRejectedValue(new Error('db down'));
+
+			await expect(
+				service.deleteThread('project-1', 'agent-1', 'thread-1', 'user-1'),
+			).resolves.toBe(true);
 		});
 	});
 

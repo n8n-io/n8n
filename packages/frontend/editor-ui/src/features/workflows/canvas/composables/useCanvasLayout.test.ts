@@ -4,6 +4,7 @@ import { computed, ref, shallowRef } from 'vue';
 import {
 	checkOverlap,
 	createEmptyCanvasRenderData,
+	getMainHandleOffset,
 	type CanvasRenderData,
 } from '@/features/workflows/canvas/canvas.utils';
 import {
@@ -20,7 +21,12 @@ import {
 } from '../canvas.types';
 import { useCanvasLayout, type CanvasLayoutResult } from './useCanvasLayout';
 import { STICKY_NODE_TYPE } from '@/app/constants';
-import { DEFAULT_NODE_SIZE, GRID_SIZE, NODE_X_SPACING } from '@/app/utils/nodeViewUtils';
+import {
+	DEFAULT_NODE_SIZE,
+	GRID_SIZE,
+	getNextNodeSlot,
+	NODE_X_SPACING,
+} from '@/app/utils/nodeViewUtils';
 import { DEFAULT_AGENT_HEIGHT, DEFAULT_AGENT_WIDTH } from '@/features/agents/utils/agentNode';
 import type { INodeUi } from '@/Interface';
 import {
@@ -391,6 +397,75 @@ describe('useCanvasLayout', () => {
 		// The card's handle sits on the grid line nearest its center: 176px, not 178px.
 		expect(agent.y % GRID_SIZE).toBe(0);
 		expect(agent.y + 176).toBe(node.y + DEFAULT_NODE_SIZE[1] / 2);
+	});
+
+	describe('parity with the next-node slot', () => {
+		type SlotSource = {
+			dimensions: { width: number; height: number };
+			isAgentCard: boolean;
+			outputCount: number;
+		};
+
+		test.each<[string, SlotSource]>([
+			[
+				'a Switch node with 3 outputs',
+				{ dimensions: { width: 96, height: 128 }, isAgentCard: false, outputCount: 3 },
+			],
+			[
+				'an AI Agent v1 node',
+				{ dimensions: { width: 224, height: 96 }, isAgentCard: false, outputCount: 1 },
+			],
+			[
+				'an agent card',
+				{
+					dimensions: { width: DEFAULT_AGENT_WIDTH, height: 224 },
+					isAgentCard: true,
+					outputCount: 1,
+				},
+			],
+		])('keeps the nodes placed after %s where they are', (_description, source) => {
+			const [width, height] = DEFAULT_NODE_SIZE;
+			const slots = Array.from({ length: source.outputCount }, (_, index) =>
+				getNextNodeSlot({
+					source: {
+						position: [0, 0],
+						width: source.dimensions.width,
+						handleOffset: getMainHandleOffset(source.dimensions.height, source.isAgentCard),
+					},
+					target: { height, handleOffset: getMainHandleOffset(height, false) },
+					fan: { index, count: source.outputCount },
+				}),
+			);
+			const nodes = [
+				createCanvasGraphNode({
+					id: 'source',
+					position: { x: 0, y: 0 },
+					dimensions: source.dimensions,
+					...(source.isAgentCard
+						? { data: { render: { type: CanvasNodeRenderType.Agent, options: {} } } }
+						: {}),
+				}),
+				...slots.map(([x, y], index) =>
+					createCanvasGraphNode({
+						id: `next${index}`,
+						position: { x, y },
+						dimensions: { width, height },
+					}),
+				),
+			];
+
+			const { layout } = createTestSetup(
+				nodes,
+				slots.map((_, index): TestConnection => ['source', `next${index}`, index]),
+			);
+			const result = layout('all');
+
+			expect(result.nodes).toEqual(
+				expect.arrayContaining(
+					nodes.map(({ id, position }) => ({ id, x: position.x, y: position.y })),
+				),
+			);
+		});
 	});
 
 	test('should calculate dimensions for configurable nodes with missing dimensions', () => {

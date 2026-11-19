@@ -131,14 +131,7 @@ const launchKey = (threadId: string) => `n8n-assistant-agent-launch:${threadId}`
  * fields into the hand-off stash and remove the marker (AST-1898).
  */
 export function stashAssistantAgentLaunch(threadId: string, launch: AssistantAgentThreadLaunch) {
-	rememberAssistantAgentThread(threadId, launch.projectId);
-	localStorage.setItem(
-		launchKey(threadId),
-		JSON.stringify({
-			projectId: launch.projectId,
-			...(launch.subject ? { subject: launch.subject } : {}),
-		}),
-	);
+	markAssistantAgentLaunch(threadId, launch);
 	useTelemetry().track('User launched Instance AI thread', {
 		thread_id: threadId,
 		instance_id: useRootStore().instanceId,
@@ -148,6 +141,24 @@ export function stashAssistantAgentLaunch(threadId: string, launch: AssistantAge
 		...selfHealingLaunchTelemetry(launch),
 		runtime: 'agents',
 	});
+}
+
+/**
+ * Marks a new thread as an Assistant agent thread without the launch telemetry,
+ * for a thread whose launch another place tracks.
+ */
+export function markAssistantAgentLaunch(
+	threadId: string,
+	launch: Pick<AssistantAgentThreadLaunch, 'projectId' | 'subject'>,
+): void {
+	rememberAssistantAgentThread(threadId, launch.projectId);
+	localStorage.setItem(
+		launchKey(threadId),
+		JSON.stringify({
+			projectId: launch.projectId,
+			...(launch.subject ? { subject: launch.subject } : {}),
+		}),
+	);
 }
 
 /** The project and the subject of a new thread that the server does not know yet. */
