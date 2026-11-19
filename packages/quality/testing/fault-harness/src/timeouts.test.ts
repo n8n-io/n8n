@@ -1,4 +1,5 @@
-import { licenceEnv, scaledTimeouts } from './timeouts';
+import { parseHookSpecs } from './hooks/spec';
+import { licenceEnv, scaledEngineTimers, scaledTimeouts } from './timeouts';
 
 describe('scaledTimeouts', () => {
 	it('keeps n8n defaults at scale 1', () => {
@@ -25,6 +26,30 @@ describe('scaledTimeouts', () => {
 
 	it.each([0, 0.5, -1, Number.NaN])('rejects the scale %d', (scale) => {
 		expect(() => scaledTimeouts(scale)).toThrow('scale must be 1 or more');
+	});
+});
+
+describe('scaledEngineTimers', () => {
+	it('divides the engine timers and sets them in the given roles', () => {
+		const hooks = parseHookSpecs(scaledEngineTimers(30, ['engine']));
+		expect(hooks.map((h) => ('values' in h ? h.values : undefined))).toEqual([
+			{ queuedMs: 2_000, runningStepMs: 20_000 },
+			{ DEFAULT_RECONCILIATION_INTERVAL_MS: 2_000 },
+			{ DEFAULT_WAIT_SWEEP_INTERVAL_MS: 2_000 },
+		]);
+		expect(hooks.every((h) => h.roles?.join() === 'engine')).toBe(true);
+	});
+
+	it('marks only the timers that older engines lack as optional', () => {
+		expect(scaledEngineTimers(1, ['main']).map((h) => [h.point, h.optional ?? false])).toEqual([
+			['engine-staleness', true],
+			['engine-reconciliation-interval', true],
+			['engine-wait-sweep-interval', false],
+		]);
+	});
+
+	it('rejects a scale below 1', () => {
+		expect(() => scaledEngineTimers(0.5, ['main'])).toThrow('scale must be 1 or more');
 	});
 });
 
