@@ -43,6 +43,14 @@ export class KnowledgeConfig {
 	@Env('N8N_KNOWLEDGE_COLLECTIONS_ENABLED')
 	collectionsEnabled: boolean = false;
 
+	/**
+	 * Whether agents can read knowledge from live sources at run time, such as
+	 * picked Notion pages and Slack channels. Set to true to turn the feature
+	 * on. The feature is experimental and can change without notice.
+	 */
+	@Env('N8N_KNOWLEDGE_LIVE_SOURCES_ENABLED')
+	liveSourcesEnabled: boolean = false;
+
 	get maxFileSizeBytes(): number {
 		return this.maxFileSizeMb * BYTES_PER_MB;
 	}

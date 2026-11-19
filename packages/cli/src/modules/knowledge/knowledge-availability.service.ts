@@ -55,6 +55,15 @@ export class KnowledgeAvailabilityService {
 		);
 	}
 
+	/**
+	 * Whether live knowledge sources are on: the module is active and the
+	 * operator flag is set. Live sources read external services at run time and
+	 * need no sandbox.
+	 */
+	isLiveSourcesEnabled(): boolean {
+		return this.isModuleActive() && this.knowledgeConfig.liveSourcesEnabled;
+	}
+
 	/** For calls that need the module's entities but not the sandbox, such as file cleanup. */
 	assertModuleActive(): void {
 		if (!this.isModuleActive()) {
