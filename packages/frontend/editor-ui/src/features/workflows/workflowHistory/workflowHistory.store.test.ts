@@ -250,6 +250,53 @@ describe('Workflow history store', () => {
 			expect(file.settings).toEqual({ engineType: 'v2', timezone: 'Europe/Kyiv' });
 			expect(file.versionId).toBe('version-456');
 		});
+
+		it('downloads only the fields of Export JSON', async () => {
+			const workflowHistoryStore = useWorkflowHistoryStore();
+			const workflowsListStore = useWorkflowsListStore();
+
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
+				id: 'workflow-123',
+				name: 'Original workflow',
+				active: false,
+				versionId: 'draft-version',
+				settings: {},
+				tags: [],
+				pinData: {},
+				meta: {},
+				activeVersion: { versionId: 'active-version' },
+				homeProject: { id: 'project-1', name: 'Jane Doe <jane@example.com>' },
+				sharedWithProjects: [],
+				scopes: ['workflow:read'],
+				checksum: 'abc',
+			} as never);
+			vi.mocked(whApi.getWorkflowVersion).mockResolvedValue({
+				versionId: 'version-456',
+				nodes: [],
+				connections: {},
+				nodeGroups: [],
+				settings: {},
+			} as never);
+
+			await workflowHistoryStore.downloadVersion('workflow-123', 'version-456', {
+				formattedCreatedAt: '2026-09-24',
+			});
+
+			const file = await readDownloadedFile();
+			expect(Object.keys(file).sort()).toEqual([
+				'active',
+				'connections',
+				'id',
+				'meta',
+				'name',
+				'nodeGroups',
+				'nodes',
+				'pinData',
+				'settings',
+				'tags',
+				'versionId',
+			]);
+		});
 	});
 
 	describe('cloneIntoNewWorkflow', () => {

@@ -2,7 +2,7 @@ import { computed } from 'vue';
 import { defineStore } from 'pinia';
 import { saveAs } from 'file-saver';
 import { applyVersionedSettings, pickVersionedSettings } from 'n8n-workflow';
-import type { IWorkflowDb } from '@/Interface';
+import type { IWorkflowDb, IWorkflowToShare } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import type {
 	WorkflowHistory,
@@ -63,17 +63,22 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			getWorkflowVersion(workflowId, workflowVersionId),
 		]);
 		const { connections, nodes, nodeGroups } = workflowVersion;
-		const workflowData: WorkflowDataUpdate = {
-			...workflow,
+		// Same fields as Export JSON. Do not spread `workflow`: it has API-only fields.
+		const workflowData: IWorkflowToShare = {
+			id: workflow.id,
+			name: workflow.name,
 			nodes,
+			pinData: workflow.pinData,
 			connections,
-			nodeGroups: nodeGroups ?? [],
-			versionId: workflowVersion.versionId,
+			active: workflow.active,
 			settings: applyVersionedSettings(
 				workflow.settings,
 				pickVersionedSettings(workflowVersion.settings),
 			),
+			tags: workflow.tags ?? [],
+			versionId: workflowVersion.versionId,
 			meta: { ...workflow.meta, instanceId: rootStore.instanceId },
+			nodeGroups: nodeGroups ?? [],
 		};
 		if (!emptyCanvasGroupsEnabled.value) {
 			removeEmptyCanvasGroupsFromWorkflowData(workflowData);
